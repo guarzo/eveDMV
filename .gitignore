@@ -1,0 +1,117 @@
+# The directory Mix will write compiled artifacts to.
+/_build/
+
+# If you run "mix test --cover", coverage assets end up here.
+/cover/
+
+# The directory Mix downloads your dependencies sources to.
+/deps/
+
+# Where third-party dependencies like ExDoc output generated docs.
+/doc/
+
+# Ignore .fetch files in case you like to edit your project deps locally.
+/.fetch
+
+# If the VM crashes, it generates a dump, let's ignore it too.
+erl_crash.dump
+
+# Also ignore archive artifacts (built via "mix archive.build").
+*.ez
+
+# Ignore package tarball (built via "mix hex.build").
+eve_tracker-*.tar
+
+# Temporary files, for example, from tests.
+/tmp/
+
+# Dependencies
+deps
+_build
+.mix
+
+# Phoenix
+/priv/static/assets/
+/priv/static/cache_manifest.json
+
+# Node.js dependencies
+/assets/node_modules/
+npm-debug.log
+yarn-error.log
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+/logs/
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker
+.docker/
+
+# Dev container bash history
+.devcontainer/.bash_history
+
+# Elixir Language Server
+.elixir_ls/
+
+# Dialyzer
+/priv/plts/
+dialyzer.ignore-warnings
+
+# Sobelow security scanner
+.sobelow
+
+# Coverage reports
+/cover/
+/coverage/
+
+# Test artifacts
+/test/support/fixtures/
+
+# Local configuration
+/config/*.secret.exs
+/config/runtime.exs.local
+
+# Phoenix LiveView uploads
+/priv/static/uploads/
+
+# Cachex persistence
+/priv/cachex/
+
+# Static analysis
+credo.ignore
+
+# Documentation
+/docs/
+
+# Release artifacts
+eve_tracker-*.tar.gz
+rel/
+_rel/
+
+# Kubernetes secrets
+k8s/secrets/ 

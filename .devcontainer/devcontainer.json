@@ -1,0 +1,48 @@
+{
+  "name": "EVE PvP Tracker Dev Container",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "forwardPorts": [4000, 5432, 6379],
+  "postCreateCommand": "mix deps.get && npm ci --prefix assets",
+  "settings": {
+    "terminal.integrated.shell.linux": "/bin/bash",
+    "editor.formatOnSave": true,
+    "elixir.projectPath": "/workspace",
+    "elixir.suggestSpecs": false,
+    "files.associations": {
+      "*.ex": "elixir",
+      "*.exs": "elixir",
+      "*.eex": "eex",
+      "*.leex": "eex",
+      "*.heex": "phoenix-heex"
+    },
+    "emmet.includeLanguages": {
+      "phoenix-heex": "html",
+      "elixir": "html"
+    }
+  },
+  "extensions": [
+    "phoenixframework.phoenix",
+    "jakebecker.elixir-ls",
+    "esbenp.prettier-vscode",
+    "bradlc.vscode-tailwindcss",
+    "ms-vscode.vscode-json",
+    "redhat.vscode-yaml"
+  ],
+  "remoteUser": "vscode",
+  "mounts": [
+    "source=${localWorkspaceFolder}/.devcontainer/.bash_history,target=/home/vscode/.bash_history,type=bind,consistency=cached"
+  ],
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "elixirLS.dialyzerEnabled": true,
+        "elixirLS.fetchDeps": false,
+        "elixirLS.suggestSpecs": false,
+        "elixirLS.enableTestLenses": true
+      }
+    }
+  }
+} 
