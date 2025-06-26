@@ -1,0 +1,57 @@
+# Git
+.git
+.gitignore
+
+# CI/CD
+.github/
+
+# Development
+_build/
+deps/
+.elixir_ls/
+
+# Documentation
+docs/
+*.md
+EPIC*.md
+SPRINT*.md
+
+# Test files
+test/
+cover/
+
+# Cache files
+.cache/
+node_modules/
+assets/node_modules/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local environment files
+.env
+.env.local
+
+# Log files
+*.log
+
+# Temporary files
+tmp/
+temp/
+
+# Editor files
+*~
+.*.swp
+.*.swo
+
+# Coverage reports
+cover/
+*.coverdata
+
+# PLT files
+priv/plts/

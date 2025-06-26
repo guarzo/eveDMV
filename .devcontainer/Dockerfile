@@ -1,36 +1,43 @@
-# Use latest Alpine with Erlang/Elixir 1.15
-FROM elixir:1.15-alpine
+# Use official Elixir image based on Ubuntu
+FROM elixir:1.17
 
-# Install build tools, Node.js 20.x, and other dependencies
-RUN apk add --no-cache \
-    build-base \
+# Install dependencies and configure locales
+RUN apt-get update && apt-get install -y \
+    build-essential \
     git \
-    bash \
     curl \
-    openssl \
-    openssl-dev \
-    inotify-tools \
-    nodejs-current \
-    npm \
-    postgresql-client \
+    wget \
     ca-certificates \
-    tzdata \
-    make \
-    gcc \
-    g++ \
-    libc-dev \
-    linux-headers
+    gnupg \
+    lsb-release \
+    inotify-tools \
+    postgresql-client \
+    locales \
+    && locale-gen en_US.UTF-8 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set locale environment variables
+ENV LANG=en_US.UTF-8
+ENV LC_ALL=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+
+# Install Node.js LTS
+RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
+    && apt-get install -y nodejs
 
 # Create vscode user for development
-RUN addgroup -g 1000 vscode && \
-    adduser -u 1000 -G vscode -s /bin/bash -D vscode
-
-# Install global tools
-RUN npm install -g npm@latest
+RUN groupadd --gid 1000 vscode \
+    && useradd --uid 1000 --gid vscode --shell /bin/bash --create-home vscode
 
 # Set up workspace directory
 WORKDIR /workspace
 RUN chown -R vscode:vscode /workspace
+
+# Create directories that will be volume mounted to ensure proper ownership
+RUN mkdir -p /workspace/deps /workspace/_build && \
+    chown -R vscode:vscode /workspace/deps /workspace/_build
+
+RUN npm install -g @anthropic-ai/claude-code
 
 # Switch to vscode user
 USER vscode
@@ -41,8 +48,6 @@ RUN mix local.hex --force && \
 
 # Set up shell environment
 RUN echo 'export MIX_ENV=dev' >> ~/.bashrc && \
-    echo 'export LANG=en_US.UTF-8' >> ~/.bashrc && \
-    echo 'export LC_ALL=en_US.UTF-8' >> ~/.bashrc && \
     echo 'alias ll="ls -la"' >> ~/.bashrc && \
     echo 'alias phoenix="mix phx.server"' >> ~/.bashrc && \
     echo 'alias iex="iex -S mix"' >> ~/.bashrc
