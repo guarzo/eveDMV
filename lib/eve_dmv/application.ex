@@ -23,6 +23,8 @@ defmodule EveDmv.Application do
       EveDmv.Market.PriceCache,
       # Start the ESI cache
       EveDmv.Eve.EsiCache,
+      # Start rate limiter for Janice API (5 requests per second)
+      {EveDmv.Market.RateLimiter, name: :janice_rate_limiter, max_tokens: 5, refill_rate: 5},
       # Start the surveillance matching engine
       EveDmv.Surveillance.MatchingEngine,
       # Start the re-enrichment worker

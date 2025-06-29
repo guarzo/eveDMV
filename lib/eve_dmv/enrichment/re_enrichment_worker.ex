@@ -97,14 +97,22 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
   @impl true
   def handle_cast(:trigger_re_enrichment, state) do
     Logger.info("Manual re-enrichment triggered")
-    spawn(fn -> perform_full_re_enrichment(state.config) end)
+
+    Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
+      perform_full_re_enrichment(state.config)
+    end)
+
     {:noreply, state}
   end
 
   @impl true
   def handle_cast(:trigger_price_update, state) do
     Logger.info("Manual price update triggered")
-    spawn(fn -> perform_price_update(state.config) end)
+
+    Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
+      perform_price_update(state.config)
+    end)
+
     new_state = %{state | last_price_update: DateTime.utc_now()}
     {:noreply, new_state}
   end

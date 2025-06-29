@@ -19,7 +19,8 @@ defmodule ConfigHelper do
       {:janice,
        [
          api_key: System.get_env("JANICE_API_KEY"),
-         base_url: System.get_env("JANICE_BASE_URL", "https://janice.e-351.com/api")
+         base_url: System.get_env("JANICE_BASE_URL", "https://janice.e-351.com/api"),
+         enabled: System.get_env("JANICE_ENABLED", "true") == "true"
        ]},
       {:mutamarket,
        [

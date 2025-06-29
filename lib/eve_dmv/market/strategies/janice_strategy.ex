@@ -12,15 +12,21 @@ defmodule EveDmv.Market.Strategies.JaniceStrategy do
   alias EveDmv.Market.JaniceClient
 
   @impl true
-  def priority, do: 2
+  def priority, do: 3
 
   @impl true
   def name, do: "Janice"
 
   @impl true
   def supports?(_type_id, _item_attributes) do
-    # Janice supports most items, so this is a general fallback
-    true
+    # Check if Janice is enabled in configuration
+    case Application.get_env(:eve_dmv, :janice, []) do
+      config when is_list(config) ->
+        Keyword.get(config, :enabled, true)
+
+      _ ->
+        true
+    end
   end
 
   @impl true

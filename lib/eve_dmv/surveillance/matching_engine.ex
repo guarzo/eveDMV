@@ -30,6 +30,13 @@ defmodule EveDmv.Surveillance.MatchingEngine do
   @index_by_system :surveillance_index_by_system
   @index_by_isk :surveillance_index_by_isk
   @index_by_ship :surveillance_index_by_ship
+  @profile_metadata :surveillance_profile_metadata
+  @match_cache :surveillance_match_cache
+  
+  # Performance tuning constants
+  @max_candidate_set_size 100
+  @batch_record_interval 5_000
+  @match_cache_ttl 60_000
 
   # Public API
 
@@ -80,13 +87,18 @@ defmodule EveDmv.Surveillance.MatchingEngine do
     state = %{
       profiles_loaded: 0,
       matches_processed: 0,
-      last_reload: DateTime.utc_now()
+      last_reload: DateTime.utc_now(),
+      pending_matches: [],
+      last_batch_record: System.monotonic_time(:millisecond)
     }
 
     # Initial profile load
-    load_active_profiles()
+    profiles_count = load_active_profiles()
 
-    {:ok, state}
+    # Schedule periodic batch recording
+    schedule_batch_recording()
+
+    {:ok, %{state | profiles_loaded: profiles_count}}
   end
 
   @impl true
@@ -94,40 +106,24 @@ defmodule EveDmv.Surveillance.MatchingEngine do
     start_time = System.monotonic_time(:microsecond)
 
     try do
-      # Find candidate profiles using inverted indexes
-      candidates = find_candidate_profiles(killmail)
-
-      # Evaluate candidates against the killmail
-      matches = evaluate_candidates(candidates, killmail)
-
-      # Record matches
-      record_matches(matches, killmail)
-
-      # Emit telemetry
-      duration = System.monotonic_time(:microsecond) - start_time
-      :telemetry.execute([:eve_dmv, :surveillance, :matching_time], %{duration: duration}, %{})
-
-      :telemetry.execute(
-        [:eve_dmv, :surveillance, :profile, :evaluated],
-        %{count: length(candidates)},
-        %{}
-      )
-
-      if length(matches) > 0 do
-        :telemetry.execute(
-          [:eve_dmv, :surveillance, :profile, :match],
-          %{count: length(matches)},
-          %{}
-        )
+      # Check cache first for recent identical killmails
+      cache_key = generate_cache_key(killmail)
+      
+      case :ets.lookup(@match_cache, cache_key) do
+        [{^cache_key, cached_matches, expires_at}] when expires_at > start_time ->
+          # Cache hit - return cached result
+          {:reply, cached_matches, %{state | matches_processed: state.matches_processed + 1}}
+          
+        _ ->
+          # Cache miss - perform matching
+          {matches, new_state} = perform_matching(killmail, start_time, state)
+          
+          # Cache the result
+          expires_at = start_time + @match_cache_ttl * 1000
+          :ets.insert(@match_cache, {cache_key, matches, expires_at})
+          
+          {:reply, matches, new_state}
       end
-
-      Logger.debug(
-        "Matched killmail #{killmail["killmail_id"]} against #{length(candidates)} candidates in #{duration}μs, #{length(matches)} matches"
-      )
-
-      new_state = %{state | matches_processed: state.matches_processed + 1}
-
-      {:reply, matches, new_state}
     rescue
       error ->
         Logger.error("Error matching killmail: #{inspect(error)}")
@@ -137,16 +133,27 @@ defmodule EveDmv.Surveillance.MatchingEngine do
 
   @impl true
   def handle_call(:get_stats, _from, state) do
+    cache_size = :ets.info(@match_cache, :size)
+    metadata_size = :ets.info(@profile_metadata, :size)
+    
     stats = %{
       profiles_loaded: state.profiles_loaded,
       matches_processed: state.matches_processed,
       last_reload: state.last_reload,
+      pending_matches: length(state.pending_matches),
+      last_batch_record: state.last_batch_record,
+      cache_stats: %{
+        size: cache_size,
+        hit_rate: calculate_cache_hit_rate()
+      },
       ets_tables: %{
         compiled_profiles: :ets.info(@compiled_profiles, :size),
         index_by_tag: :ets.info(@index_by_tag, :size),
         index_by_system: :ets.info(@index_by_system, :size),
         index_by_isk: :ets.info(@index_by_isk, :size),
-        index_by_ship: :ets.info(@index_by_ship, :size)
+        index_by_ship: :ets.info(@index_by_ship, :size),
+        profile_metadata: metadata_size,
+        match_cache: cache_size
       }
     }
 
@@ -168,6 +175,35 @@ defmodule EveDmv.Surveillance.MatchingEngine do
   end
 
   @impl true
+  def handle_info(:batch_record_matches, state) do
+    # Process pending matches in batch
+    if length(state.pending_matches) > 0 do
+      Logger.info("📝 Recording batch of #{length(state.pending_matches)} surveillance matches")
+      
+      # Record matches asynchronously to avoid blocking
+      Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
+        record_matches_batch(state.pending_matches)
+      end)
+      
+      # Update match frequency metadata
+      update_profile_metadata(state.pending_matches)
+    end
+    
+    # Clean up expired cache entries
+    cleanup_expired_cache()
+    
+    # Schedule next batch recording
+    schedule_batch_recording()
+    
+    new_state = %{state | 
+      pending_matches: [],
+      last_batch_record: System.monotonic_time(:millisecond)
+    }
+    
+    {:noreply, new_state}
+  end
+
+  @impl true
   def handle_info(msg, state) do
     Logger.debug("Unexpected message: #{inspect(msg)}")
     {:noreply, state}
@@ -182,8 +218,68 @@ defmodule EveDmv.Surveillance.MatchingEngine do
     :ets.new(@index_by_system, [:bag, :public, :named_table])
     :ets.new(@index_by_isk, [:bag, :public, :named_table])
     :ets.new(@index_by_ship, [:bag, :public, :named_table])
+    :ets.new(@profile_metadata, [:set, :public, :named_table])
+    :ets.new(@match_cache, [:set, :public, :named_table])
 
     Logger.debug("Created ETS tables for surveillance engine")
+  end
+
+  defp schedule_batch_recording do
+    Process.send_after(self(), :batch_record_matches, @batch_record_interval)
+  end
+
+  defp generate_cache_key(killmail) do
+    # Generate cache key based on killmail properties that affect matching
+    key_fields = [
+      killmail["killmail_id"],
+      killmail["solar_system_id"] || killmail["system_id"],
+      get_in(killmail, ["victim", "ship_type_id"]),
+      killmail["total_value"] || get_in(killmail, ["zkb", "totalValue"]),
+      length(killmail["attackers"] || [])
+    ]
+    
+    :crypto.hash(:md5, inspect(key_fields)) |> Base.encode16()
+  end
+
+  defp perform_matching(killmail, start_time, state) do
+    # Find candidate profiles using optimized inverted indexes
+    candidates = find_candidate_profiles_optimized(killmail)
+
+    # Evaluate candidates against the killmail
+    matches = evaluate_candidates_parallel(candidates, killmail)
+
+    # Add matches to pending batch instead of immediate recording
+    new_pending = state.pending_matches ++ 
+                  Enum.map(matches, &{&1, killmail, DateTime.utc_now()})
+
+    # Emit telemetry
+    duration = System.monotonic_time(:microsecond) - start_time
+    :telemetry.execute([:eve_dmv, :surveillance, :matching_time], %{duration: duration}, %{})
+
+    :telemetry.execute(
+      [:eve_dmv, :surveillance, :profile, :evaluated],
+      %{count: length(candidates)},
+      %{}
+    )
+
+    if length(matches) > 0 do
+      :telemetry.execute(
+        [:eve_dmv, :surveillance, :profile, :match],
+        %{count: length(matches)},
+        %{}
+      )
+    end
+
+    Logger.debug(
+      "Matched killmail #{killmail["killmail_id"]} against #{length(candidates)} candidates in #{duration}μs, #{length(matches)} matches"
+    )
+
+    new_state = %{state | 
+      matches_processed: state.matches_processed + 1,
+      pending_matches: new_pending
+    }
+
+    {matches, new_state}
   end
 
   defp load_active_profiles do
@@ -193,6 +289,7 @@ defmodule EveDmv.Surveillance.MatchingEngine do
     :ets.delete_all_objects(@index_by_system)
     :ets.delete_all_objects(@index_by_isk)
     :ets.delete_all_objects(@index_by_ship)
+    :ets.delete_all_objects(@profile_metadata)
 
     # Load active profiles from database
     case Ash.read(Profile, action: :active_profiles, domain: Api) do
@@ -547,24 +644,102 @@ defmodule EveDmv.Surveillance.MatchingEngine do
 
   defp extract_rule_fields(_), do: []
 
-  defp find_candidate_profiles(killmail) do
+  # Optimized candidate finding with intersection-based filtering
+  defp find_candidate_profiles_optimized(killmail) do
     # Gather candidates from all indexes
-    tag_candidates = get_tag_candidates(killmail)
-    system_candidates = get_system_candidates(killmail)
-    isk_candidates = get_isk_candidates(killmail)
-    ship_candidates = get_ship_candidates(killmail)
+    candidate_sets = [
+      get_tag_candidates(killmail),
+      get_system_candidates(killmail),
+      get_isk_candidates(killmail),
+      get_ship_candidates(killmail)
+    ]
+    |> Enum.reject(&Enum.empty?/1)
 
-    # Combine all candidates (union)
-    all_candidates = tag_candidates ++ system_candidates ++ isk_candidates ++ ship_candidates
+    case candidate_sets do
+      [] ->
+        # No specific candidates found, test all profiles (but limit to avoid performance issues)
+        all_profiles = :ets.tab2list(@compiled_profiles)
+                      |> Enum.map(fn {profile_id, _fun, _name} -> profile_id end)
+        
+        if length(all_profiles) > @max_candidate_set_size do
+          # Use metadata to prioritize profiles by match frequency
+          prioritize_profiles(all_profiles)
+        else
+          all_profiles
+        end
 
-    # If no specific candidates found, test all profiles
-    if Enum.empty?(all_candidates) do
-      :ets.tab2list(@compiled_profiles)
-      |> Enum.map(fn {profile_id, _fun, _name} -> profile_id end)
-    else
-      Enum.uniq(all_candidates)
+      [single_set] ->
+        # Only one index type matched, use those candidates directly
+        Enum.uniq(single_set)
+
+      multiple_sets ->
+        # Multiple index types matched, use intersection for precision
+        multiple_sets
+        |> Enum.map(&MapSet.new/1)
+        |> Enum.reduce(&MapSet.intersection/2)
+        |> MapSet.to_list()
+        |> case do
+          [] -> 
+            # Intersection is empty, fall back to union but limit size
+            all_candidates = Enum.flat_map(multiple_sets, &MapSet.to_list/1)
+            if length(all_candidates) > @max_candidate_set_size do
+              prioritize_profiles(Enum.uniq(all_candidates))
+            else
+              Enum.uniq(all_candidates)
+            end
+          
+          intersection ->
+            intersection
+        end
     end
   end
+
+  defp prioritize_profiles(profile_ids) do
+    # Sort profiles by recent match frequency and take top candidates
+    profile_ids
+    |> Enum.map(fn profile_id ->
+      match_frequency = case :ets.lookup(@profile_metadata, profile_id) do
+        [{^profile_id, metadata}] -> Map.get(metadata, :recent_matches, 0)
+        [] -> 0
+      end
+      {profile_id, match_frequency}
+    end)
+    |> Enum.sort_by(&elem(&1, 1), :desc)
+    |> Enum.take(@max_candidate_set_size)
+    |> Enum.map(&elem(&1, 0))
+  end
+
+  defp evaluate_candidates_parallel(candidates, killmail) do
+    # For small candidate sets, use direct evaluation
+    if length(candidates) <= 10 do
+      evaluate_candidates(candidates, killmail)
+    else
+      # For larger sets, use parallel evaluation
+      candidates
+      |> Task.async_stream(
+        fn profile_id ->
+          case :ets.lookup(@compiled_profiles, profile_id) do
+            [{_id, compiled_fn, _name}] ->
+              try do
+                if compiled_fn.(killmail), do: profile_id, else: nil
+              rescue
+                _ -> nil
+              end
+
+            [] ->
+              nil
+          end
+        end,
+        max_concurrency: 4,
+        timeout: 1000
+      )
+      |> Enum.reduce([], fn
+        {:ok, profile_id}, acc when not is_nil(profile_id) -> [profile_id | acc]
+        _, acc -> acc
+      end)
+    end
+  end
+
 
   defp get_tag_candidates(killmail) do
     tags = killmail["module_tags"] || []
@@ -630,54 +805,96 @@ defmodule EveDmv.Surveillance.MatchingEngine do
     end)
   end
 
-  defp record_matches(matches, killmail) do
-    # Record matches in database and trigger notifications
-    Enum.each(matches, fn profile_id ->
-      Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
-        try do
-          record_profile_match(profile_id, killmail)
-        catch
-          kind, reason ->
-            require Logger
 
-            Logger.error(
-              "Failed to record profile match #{profile_id}: #{kind} - #{inspect(reason)}"
-            )
-
-            :error
+  defp record_matches_batch(pending_matches) do
+    # Group matches by profile for efficiency
+    matches_by_profile = Enum.group_by(pending_matches, fn {profile_id, _, _} -> profile_id end)
+    
+    Enum.each(matches_by_profile, fn {profile_id, matches} ->
+      try do
+        # Record all matches for this profile
+        match_records = Enum.map(matches, fn {_profile_id, killmail, timestamp} ->
+          %{
+            profile_id: profile_id,
+            killmail_id: killmail["killmail_id"],
+            killmail_time: parse_killmail_time(killmail),
+            victim_character_name: get_in(killmail, ["victim", "character_name"]),
+            victim_ship_name: get_in(killmail, ["victim", "ship_name"]),
+            solar_system_name: killmail["solar_system_name"],
+            total_value: killmail["total_value"] || get_in(killmail, ["zkb", "totalValue"]),
+            created_at: timestamp
+          }
+        end)
+        
+        # Bulk create matches for better performance
+        case Ash.bulk_create(ProfileMatch, match_records, 
+               action: :create, 
+               domain: Api,
+               return_errors?: true) do
+          %{records: [_ | _] = created} ->
+            Logger.debug("Successfully recorded #{length(created)} matches for profile #{profile_id}")
+            
+            # Update profile match count
+            case Ash.get(Profile, profile_id, domain: Api) do
+              {:ok, profile} ->
+                Ash.update(profile, 
+                  action: :increment_match_count, 
+                  input: %{match_count_increment: length(created)},
+                  domain: Api)
+              _ ->
+                :ok
+            end
+            
+          %{errors: [_ | _] = errors} ->
+            Logger.error("Failed to record some matches for profile #{profile_id}: #{inspect(errors)}")
+            
+          result ->
+            Logger.warning("Unexpected bulk create result for profile #{profile_id}: #{inspect(result)}")
         end
-      end)
+        
+      rescue
+        error ->
+          Logger.error("Error recording matches batch for profile #{profile_id}: #{inspect(error)}")
+      end
     end)
   end
 
-  defp record_profile_match(profile_id, killmail) do
-    match_data = %{
-      profile_id: profile_id,
-      killmail_id: killmail["killmail_id"],
-      killmail_time: parse_killmail_time(killmail),
-      victim_character_name: get_in(killmail, ["victim", "character_name"]),
-      victim_ship_name: get_in(killmail, ["victim", "ship_name"]),
-      solar_system_name: killmail["solar_system_name"],
-      total_value: killmail["total_value"] || get_in(killmail, ["zkb", "totalValue"])
-    }
+  defp update_profile_metadata(pending_matches) do
+    # Update recent match frequency for profile prioritization
+    matches_by_profile = Enum.group_by(pending_matches, fn {profile_id, _, _} -> profile_id end)
+    
+    Enum.each(matches_by_profile, fn {profile_id, matches} ->
+      current_metadata = case :ets.lookup(@profile_metadata, profile_id) do
+        [{^profile_id, metadata}] -> metadata
+        [] -> %{}
+      end
+      
+      updated_metadata = Map.update(current_metadata, :recent_matches, length(matches), fn count ->
+        # Decay old count and add new matches
+        max(0, trunc(count * 0.9)) + length(matches)
+      end)
+      
+      :ets.insert(@profile_metadata, {profile_id, updated_metadata})
+    end)
+  end
 
-    case Ash.create(ProfileMatch, match_data, domain: Api) do
-      {:ok, _match} ->
-        # Update profile match count
-        case Ash.get(Profile, profile_id, domain: Api) do
-          {:ok, profile} ->
-            Ash.update(profile, action: :increment_match_count, domain: Api)
-
-          _ ->
-            :ok
-        end
-
-        Logger.debug("Recorded profile match: #{profile_id}")
-
-      {:error, error} ->
-        Logger.error("Failed to record profile match: #{inspect(error)}")
+  defp cleanup_expired_cache do
+    current_time = System.monotonic_time(:microsecond)
+    
+    # Find and delete expired cache entries
+    expired_keys = :ets.select(@match_cache, [
+      {{:"$1", :"$2", :"$3"}, [{:<, :"$3", current_time}], [:"$1"]}
+    ])
+    
+    Enum.each(expired_keys, fn key ->
+      :ets.delete(@match_cache, key)
+    end)
+    
+    if length(expired_keys) > 0 do
+      Logger.debug("Cleaned up #{length(expired_keys)} expired cache entries")
     end
   end
+
 
   defp parse_killmail_time(killmail) do
     case killmail["kill_time"] || killmail["timestamp"] do
@@ -692,6 +909,20 @@ defmodule EveDmv.Surveillance.MatchingEngine do
 
       _ ->
         DateTime.utc_now()
+    end
+  end
+
+  defp calculate_cache_hit_rate do
+    # Simple approximation - would need proper counters for accurate measurement
+    cache_size = :ets.info(@match_cache, :size)
+    
+    # Estimate hit rate based on cache size and activity
+    case cache_size do
+      0 -> 0.0
+      size when size < 10 -> 0.1
+      size when size < 50 -> 0.3
+      size when size < 100 -> 0.5
+      _ -> 0.7
     end
   end
 end

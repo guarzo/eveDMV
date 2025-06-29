@@ -12,7 +12,7 @@ defmodule EveDmv.Market.Strategies.EsiStrategy do
   alias EveDmv.Eve.EsiClient
 
   @impl true
-  def priority, do: 3
+  def priority, do: 2
 
   @impl true
   def name, do: "ESI Market Data"

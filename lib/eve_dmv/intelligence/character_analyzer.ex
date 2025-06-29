@@ -15,6 +15,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
   alias EveDmv.Eve.{ItemType, NameResolver}
   alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Killmails.{KillmailEnriched, Participant}
+  require Ash.Query
 
   @analysis_period_days 90
   # Minimum kills+losses for meaningful analysis
@@ -105,24 +106,27 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
 
   defp get_character_info(character_id) do
     # Try to get the most recent victim record for basic info using Ash
-    case Ash.read(Participant, 
-           domain: Api,
-           filter: [
-             character_id: character_id,
-             is_victim: true
-           ],
-           sort: [killmail_time: :desc],
-           limit: 1) do
+    query = 
+      Participant
+      |> Ash.Query.new()
+      |> Ash.Query.filter(character_id == ^character_id and is_victim == true)
+      |> Ash.Query.sort(killmail_time: :desc)
+      |> Ash.Query.limit(1)
+      
+    case Ash.read(query, domain: Api) do
       {:ok, [participant | _]} ->
         extract_basic_info(participant, character_id)
         
       {:ok, []} ->
         # Try non-victim records
-        case Ash.read(Participant,
-               domain: Api,
-               filter: [character_id: character_id],
-               sort: [killmail_time: :desc],
-               limit: 1) do
+        query = 
+          Participant
+          |> Ash.Query.new()
+          |> Ash.Query.filter(character_id == ^character_id)
+          |> Ash.Query.sort(killmail_time: :desc)
+          |> Ash.Query.limit(1)
+          
+        case Ash.read(query, domain: Api) do
           {:ok, [participant | _]} ->
             extract_basic_info(participant, character_id)
             
@@ -159,13 +163,13 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
     cutoff_date = DateTime.add(DateTime.utc_now(), -@analysis_period_days, :day)
 
     # Use Ash to get participants for this character
-    case Ash.read(Participant, 
-           domain: Api,
-           filter: [
-             character_id: character_id,
-             killmail_time: [gte: cutoff_date]
-           ],
-           sort: [killmail_time: :desc]) do
+    query = 
+      Participant
+      |> Ash.Query.new()
+      |> Ash.Query.filter(character_id == ^character_id and killmail_time >= ^cutoff_date)
+      |> Ash.Query.sort(killmail_time: :desc)
+      
+    case Ash.read(query, domain: Api) do
       {:ok, participants} ->
         # Get unique killmail IDs
         killmail_ids = participants 
@@ -173,10 +177,13 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
                       |> Enum.uniq()
         
         # Get enriched killmails for these IDs
-        case Ash.read(KillmailEnriched,
-               domain: Api,
-               filter: [killmail_id: [in: killmail_ids]],
-               sort: [killmail_time: :desc]) do
+        km_query = 
+          KillmailEnriched
+          |> Ash.Query.new()
+          |> Ash.Query.filter(killmail_id in ^killmail_ids)
+          |> Ash.Query.sort(killmail_time: :desc)
+          
+        case Ash.read(km_query, domain: Api) do
           {:ok, killmails} ->
             if length(killmails) < @min_activity_threshold do
               {:error, :insufficient_activity}
@@ -494,7 +501,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
   end
 
   defp categorize_ship(type_id) do
-    case Ash.get(ItemType, type_id, domain: EveDmv.Api) do
+    case Ash.get(ItemType, type_id, domain: Api) do
       {:ok, item_type} ->
         determine_ship_category(item_type)
 
@@ -689,7 +696,12 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
       |> Map.put(:data_completeness, calculate_completeness(stats))
 
     # Upsert the stats
-    case Ash.read_one(CharacterStats, filter: [character_id: attrs.character_id], domain: Api) do
+    query = 
+      CharacterStats
+      |> Ash.Query.new()
+      |> Ash.Query.filter(character_id == ^attrs.character_id)
+      
+    case Ash.read_one(query, domain: Api) do
       {:ok, existing} ->
         Ash.update(existing, attrs, domain: Api)
 

@@ -351,7 +351,7 @@ defmodule EveDmv.Market.MutamarketClient do
 
   defp with_retry(fun, attempts \\ @retry_attempts) do
     case fun.() do
-      {:error, _reason} = _error when attempts > 1 ->
+      {:error, _reason} when attempts > 1 ->
         Process.sleep(@retry_delay)
         with_retry(fun, attempts - 1)
 

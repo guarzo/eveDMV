@@ -220,6 +220,7 @@ defmodule EveDmv.Eve.ItemType do
 
     # Custom create/upsert for SDE imports
     create :create do
+      primary?(true)
       description("Create or update item type from SDE")
 
       accept([

@@ -353,6 +353,98 @@ defmodule EveDmv.Eve.EsiClient do
   end
 
   @doc """
+  Get type information by ID from ESI.
+
+  ## Examples
+
+      iex> EsiClient.get_type(587)
+      {:ok, %{
+        type_id: 587,
+        name: "Rifter",
+        description: "The Rifter is a...",
+        group_id: 25,
+        category_id: 6,
+        market_group_id: 74,
+        mass: 1067000.0,
+        volume: 27289.0,
+        capacity: 140.0,
+        published: true
+      }}
+  """
+  @spec get_type(integer()) :: {:ok, map()} | {:error, term()}
+  def get_type(type_id) when is_integer(type_id) do
+    path = "/#{@universe_api_version}/universe/types/#{type_id}/"
+
+    with_rate_limit(fn ->
+      case get_request(path) do
+        {:ok, data} ->
+          type_info = parse_type_response(type_id, data)
+          {:ok, type_info}
+
+        error ->
+          error
+      end
+    end)
+  end
+
+  @doc """
+  Get group information by ID from ESI.
+
+  ## Examples
+
+      iex> EsiClient.get_group(25)
+      {:ok, %{
+        group_id: 25,
+        name: "Frigate",
+        category_id: 6,
+        published: true
+      }}
+  """
+  @spec get_group(integer()) :: {:ok, map()} | {:error, term()}
+  def get_group(group_id) when is_integer(group_id) do
+    path = "/#{@universe_api_version}/universe/groups/#{group_id}/"
+
+    with_rate_limit(fn ->
+      case get_request(path) do
+        {:ok, data} ->
+          group_info = parse_group_response(group_id, data)
+          {:ok, group_info}
+
+        error ->
+          error
+      end
+    end)
+  end
+
+  @doc """
+  Get category information by ID from ESI.
+
+  ## Examples
+
+      iex> EsiClient.get_category(6)
+      {:ok, %{
+        category_id: 6,
+        name: "Ship",
+        published: true
+      }}
+  """
+  @spec get_category(integer()) :: {:ok, map()} | {:error, term()}
+  def get_category(category_id) when is_integer(category_id) do
+    path = "/#{@universe_api_version}/universe/categories/#{category_id}/"
+
+    with_rate_limit(fn ->
+      case get_request(path) do
+        {:ok, data} ->
+          category_info = parse_category_response(category_id, data)
+          {:ok, category_info}
+
+        error ->
+          error
+      end
+    end)
+  end
+
+  @doc """
   Get aggregated market statistics for multiple types efficiently.
 
   This calculates buy/sell prices based on market orders, using the
@@ -491,6 +583,41 @@ defmodule EveDmv.Eve.EsiClient do
       security_status: data["security_status"],
       star_id: data["star_id"],
       security_class: data["security_class"],
+      updated_at: DateTime.utc_now()
+    }
+  end
+
+  defp parse_type_response(type_id, data) do
+    %{
+      type_id: type_id,
+      name: data["name"],
+      description: data["description"],
+      group_id: data["group_id"],
+      category_id: data["category_id"],
+      market_group_id: data["market_group_id"],
+      mass: data["mass"],
+      volume: data["volume"],
+      capacity: data["capacity"],
+      published: data["published"],
+      updated_at: DateTime.utc_now()
+    }
+  end
+
+  defp parse_group_response(group_id, data) do
+    %{
+      group_id: group_id,
+      name: data["name"],
+      category_id: data["category_id"],
+      published: data["published"],
+      updated_at: DateTime.utc_now()
+    }
+  end
+
+  defp parse_category_response(category_id, data) do
+    %{
+      category_id: category_id,
+      name: data["name"],
+      published: data["published"],
       updated_at: DateTime.utc_now()
     }
   end

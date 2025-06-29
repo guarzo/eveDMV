@@ -30,6 +30,8 @@ defmodule EveDmvWeb.Router do
     live "/profile", ProfileLive
     live "/login", AuthLive.SignIn
     live "/intel/:character_id", CharacterIntelLive
+    live "/player/:character_id", PlayerProfileLive
+    live "/corp/:corporation_id", CorporationLive
     live "/surveillance", SurveillanceLive
   end
 

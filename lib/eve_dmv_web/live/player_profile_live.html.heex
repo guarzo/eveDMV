@@ -1,0 +1,339 @@
+<div class="min-h-screen bg-gray-900 text-white">
+  <!-- Header -->
+  <div class="bg-gray-800 border-b border-gray-700">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center space-x-4">
+          <h1 class="text-xl font-bold">Player Profile</h1>
+          <span class="text-gray-400">Character ID: {@character_id}</span>
+        </div>
+
+        <div class="flex items-center space-x-2">
+          <button
+            phx-click="refresh_stats"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
+          >
+            🔄 Refresh
+          </button>
+
+          <%= if @player_stats == nil do %>
+            <button
+              phx-click="generate_stats"
+              class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
+            >
+              📊 Generate Stats
+            </button>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+<!-- Error State -->
+  <%= if @error do %>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="bg-red-600 text-white p-4 rounded-lg">
+        <h2 class="text-lg font-bold">Error</h2>
+        <p>{@error}</p>
+      </div>
+    </div>
+  <% else %>
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <%= if @player_stats do %>
+        <!-- Player Statistics -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <!-- Basic Stats Card -->
+          <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h3 class="text-lg font-bold mb-4 text-blue-400">Basic Statistics</h3>
+
+            <div class="space-y-3">
+              <div class="flex justify-between">
+                <span class="text-gray-400">Character:</span>
+                <span class="font-medium">{@player_stats.character_name}</span>
+              </div>
+
+              <div class="flex justify-between">
+                <span class="text-gray-400">Total Kills:</span>
+                <span class="font-medium text-green-400">
+                  {format_number(@player_stats.total_kills)}
+                </span>
+              </div>
+
+              <div class="flex justify-between">
+                <span class="text-gray-400">Total Losses:</span>
+                <span class="font-medium text-red-400">
+                  {format_number(@player_stats.total_losses)}
+                </span>
+              </div>
+
+              <div class="flex justify-between">
+                <span class="text-gray-400">K/D Ratio:</span>
+                <span class="font-medium">
+                  {format_ratio(@player_stats.total_kills, @player_stats.total_losses)}
+                </span>
+              </div>
+
+              <div class="flex justify-between">
+                <span class="text-gray-400">ISK Efficiency:</span>
+                <span class="font-medium">
+                  {format_percentage(@player_stats.isk_efficiency_percent)}
+                </span>
+              </div>
+            </div>
+          </div>
+          
+<!-- Solo vs Gang Stats -->
+          <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h3 class="text-lg font-bold mb-4 text-purple-400">Solo vs Gang Performance</h3>
+
+            <div class="space-y-3">
+              <div class="flex justify-between">
+                <span class="text-gray-400">Solo Kills:</span>
+                <span class="font-medium text-purple-400">
+                  {format_number(@player_stats.solo_kills)}
+                </span>
+              </div>
+
+              <div class="flex justify-between">
+                <span class="text-gray-400">Solo Losses:</span>
+                <span class="font-medium text-purple-300">
+                  {format_number(@player_stats.solo_losses)}
+                </span>
+              </div>
+
+              <div class="flex justify-between">
+                <span class="text-gray-400">Gang Kills:</span>
+                <span class="font-medium text-blue-400">
+                  {format_number(@player_stats.gang_kills)}
+                </span>
+              </div>
+
+              <div class="flex justify-between">
+                <span class="text-gray-400">Gang Losses:</span>
+                <span class="font-medium text-blue-300">
+                  {format_number(@player_stats.gang_losses)}
+                </span>
+              </div>
+
+              <div class="flex justify-between">
+                <span class="text-gray-400">Solo K/D:</span>
+                <span class="font-medium">
+                  {format_ratio(@player_stats.solo_kills, @player_stats.solo_losses)}
+                </span>
+              </div>
+            </div>
+          </div>
+          
+<!-- ISK Statistics -->
+          <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h3 class="text-lg font-bold mb-4 text-yellow-400">ISK Performance</h3>
+
+            <div class="space-y-3">
+              <div class="flex justify-between">
+                <span class="text-gray-400">ISK Destroyed:</span>
+                <span class="font-medium text-green-400">
+                  {format_isk(@player_stats.total_isk_destroyed)}
+                </span>
+              </div>
+
+              <div class="flex justify-between">
+                <span class="text-gray-400">ISK Lost:</span>
+                <span class="font-medium text-red-400">
+                  {format_isk(@player_stats.total_isk_lost)}
+                </span>
+              </div>
+
+              <div class="flex justify-between">
+                <span class="text-gray-400">Net ISK:</span>
+                <% net_isk =
+                  Decimal.sub(@player_stats.total_isk_destroyed, @player_stats.total_isk_lost) %>
+                <span class={"font-medium #{if Decimal.positive?(net_isk), do: "text-green-400", else: "text-red-400"}"}>
+                  {format_isk(net_isk)}
+                </span>
+              </div>
+
+              <div class="flex justify-between">
+                <span class="text-gray-400">Efficiency:</span>
+                <span class="font-medium">
+                  {format_percentage(@player_stats.isk_efficiency_percent)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+<!-- Additional Information -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <!-- Activity & Behavior -->
+          <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h3 class="text-lg font-bold mb-4 text-cyan-400">Activity & Behavior</h3>
+
+            <div class="space-y-4">
+              <div class="flex justify-between items-center">
+                <span class="text-gray-400">Danger Rating:</span>
+                <div>
+                  <% {stars, badge_class} = danger_badge(@player_stats.danger_rating) %>
+                  <span class={"px-2 py-1 rounded text-sm font-medium #{badge_class}"}>
+                    {stars}
+                  </span>
+                </div>
+              </div>
+
+              <div class="flex justify-between items-center">
+                <span class="text-gray-400">Primary Activity:</span>
+                <div>
+                  <% {activity_text, activity_class} =
+                    activity_badge(@player_stats.primary_activity) %>
+                  <span class={"px-2 py-1 rounded text-sm font-medium #{activity_class}"}>
+                    {activity_text}
+                  </span>
+                </div>
+              </div>
+
+              <div class="flex justify-between items-center">
+                <span class="text-gray-400">Gang Preference:</span>
+                <div>
+                  <% {gang_text, gang_class} = gang_size_badge(@player_stats.preferred_gang_size) %>
+                  <span class={"px-2 py-1 rounded text-sm font-medium #{gang_class}"}>
+                    {gang_text}
+                  </span>
+                </div>
+              </div>
+
+              <div class="flex justify-between">
+                <span class="text-gray-400">Avg Gang Size:</span>
+                <span class="font-medium">
+                  {if @player_stats.avg_gang_size,
+                    do: format_number(@player_stats.avg_gang_size),
+                    else: "1.0"}
+                </span>
+              </div>
+
+              <div class="flex justify-between">
+                <span class="text-gray-400">Ship Types Used:</span>
+                <span class="font-medium">{@player_stats.ship_types_used}</span>
+              </div>
+            </div>
+          </div>
+          
+<!-- Ship Information -->
+          <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h3 class="text-lg font-bold mb-4 text-orange-400">Ship Usage</h3>
+
+            <div class="space-y-3">
+              <%= if @player_stats.favorite_ship_name do %>
+                <div class="flex justify-between">
+                  <span class="text-gray-400">Favorite Ship:</span>
+                  <span class="font-medium text-orange-400">
+                    {@player_stats.favorite_ship_name}
+                  </span>
+                </div>
+              <% end %>
+
+              <div class="flex justify-between">
+                <span class="text-gray-400">Ship Diversity:</span>
+                <span class="font-medium">
+                  {@player_stats.ship_types_used} different ships
+                </span>
+              </div>
+
+              <%= if @player_stats.active_regions && @player_stats.active_regions > 0 do %>
+                <div class="flex justify-between">
+                  <span class="text-gray-400">Active Regions:</span>
+                  <span class="font-medium">{@player_stats.active_regions}</span>
+                </div>
+              <% end %>
+
+              <%= if @player_stats.home_region_name do %>
+                <div class="flex justify-between">
+                  <span class="text-gray-400">Home Region:</span>
+                  <span class="font-medium">{@player_stats.home_region_name}</span>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+        
+<!-- Time Information -->
+        <%= if @player_stats.last_updated do %>
+          <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+            <div class="flex justify-between items-center text-sm text-gray-400">
+              <span>
+                Statistics last updated: {Calendar.strftime(
+                  @player_stats.last_updated,
+                  "%Y-%m-%d %H:%M:%S UTC"
+                )}
+              </span>
+              <%= if @player_stats.stats_period_start && @player_stats.stats_period_end do %>
+                <span>
+                  Period: {Date.to_string(@player_stats.stats_period_start)} to {Date.to_string(
+                    @player_stats.stats_period_end
+                  )}
+                </span>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      <% else %>
+        <!-- No Statistics Available -->
+        <div class="bg-gray-800 rounded-lg p-8 border border-gray-700 text-center">
+          <div class="text-gray-400 mb-4">
+            <svg
+              class="w-16 h-16 mx-auto mb-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+              >
+              </path>
+            </svg>
+          </div>
+
+          <h2 class="text-xl font-bold mb-2">No Statistics Available</h2>
+          <p class="text-gray-400 mb-6">
+            Player statistics have not been generated for this character yet.
+          </p>
+
+          <button
+            phx-click="generate_stats"
+            class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded font-medium transition-colors"
+          >
+            📊 Generate Player Statistics
+          </button>
+
+          <%= if @character_intel do %>
+            <div class="mt-6 pt-6 border-t border-gray-700">
+              <p class="text-sm text-gray-400 mb-2">
+                Character intelligence data is available:
+              </p>
+              <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span class="text-gray-400">Kills:</span>
+                  <span class="text-green-400 ml-2">{@character_intel.total_kills || 0}</span>
+                </div>
+                <div>
+                  <span class="text-gray-400">Losses:</span>
+                  <span class="text-red-400 ml-2">{@character_intel.total_losses || 0}</span>
+                </div>
+              </div>
+              <div class="mt-2">
+                <a
+                  href={~p"/intel/#{@character_id}"}
+                  class="text-blue-400 hover:text-blue-300 underline text-sm"
+                >
+                  View Character Intelligence →
+                </a>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</div>

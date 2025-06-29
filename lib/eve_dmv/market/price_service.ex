@@ -145,6 +145,8 @@ defmodule EveDmv.Market.PriceService do
       total_value: victim_ship_value + fitted_value,
       ship_value: victim_ship_value,
       fitted_value: fitted_value,
+      destroyed_value: destroyed_value,
+      dropped_value: dropped_value,
       price_source: determine_primary_source(prices)
     }
   end

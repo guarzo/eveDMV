@@ -25,7 +25,7 @@ defmodule EveDmv.Market.JaniceClient do
   """
 
   require Logger
-  alias EveDmv.Market.PriceCache
+  alias EveDmv.Market.{PriceCache, RateLimiter}
 
   @default_base_url "https://janice.e-351.com/api"
   # 30 seconds
@@ -33,6 +33,8 @@ defmodule EveDmv.Market.JaniceClient do
   @retry_attempts 3
   # 1 second
   @retry_delay 1_000
+  # Rate limiter name for Janice API
+  @rate_limiter :janice_rate_limiter
 
   # Janice API endpoints
   @item_endpoint "/v2/prices"
@@ -154,25 +156,33 @@ defmodule EveDmv.Market.JaniceClient do
   # Private functions
 
   defp fetch_prices_from_api(type_ids) do
-    params = %{
-      "types" => Enum.join(type_ids, ","),
-      "market" => "jita"
-    }
+    # Check rate limit before making request
+    case RateLimiter.try_acquire(@rate_limiter) do
+      {:ok, _remaining} ->
+        params = %{
+          "types" => Enum.join(type_ids, ","),
+          "market" => "jita"
+        }
 
-    with_retry(fn ->
-      case get_request(@item_endpoint, params) do
-        {:ok, %HTTPoison.Response{status_code: 200, body: response_body}} ->
-          parse_price_response(response_body)
+        with_retry(fn ->
+          case get_request(@item_endpoint, params) do
+            {:ok, %HTTPoison.Response{status_code: 200, body: response_body}} ->
+              parse_price_response(response_body)
 
-        {:ok, %HTTPoison.Response{status_code: status, body: body}} ->
-          Logger.error("Janice price fetch failed with status #{status}: #{inspect(body)}")
-          {:error, "API returned status #{status}"}
+            {:ok, %HTTPoison.Response{status_code: status, body: body}} ->
+              Logger.error("Janice price fetch failed with status #{status}: #{inspect(body)}")
+              {:error, "API returned status #{status}"}
 
-        {:error, reason} = error ->
-          Logger.error("Janice price request failed: #{inspect(reason)}")
-          error
-      end
-    end)
+            {:error, reason} = error ->
+              Logger.error("Janice price request failed: #{inspect(reason)}")
+              error
+          end
+        end)
+
+      {:error, :insufficient_tokens} ->
+        Logger.warning("Janice API rate limit reached, skipping request")
+        {:error, "Rate limit exceeded"}
+    end
   end
 
   defp get_request(endpoint, params) do

@@ -5,16 +5,24 @@ defmodule EveDmvWeb.ProfileLive do
 
   use EveDmvWeb, :live_view
 
+  # Load current user from session on mount
+  on_mount {EveDmvWeb.AuthLive, :load_from_session}
+
   @impl true
   def mount(_params, _session, socket) do
     current_user = socket.assigns[:current_user]
 
-    socket =
-      socket
-      |> assign(:page_title, "Profile")
-      |> assign(:current_user, current_user)
+    # Redirect to login if not authenticated
+    unless current_user do
+      {:ok, redirect(socket, to: ~p"/login")}
+    else
+      socket =
+        socket
+        |> assign(:page_title, "Profile")
+        |> assign(:current_user, current_user)
 
-    {:ok, socket}
+      {:ok, socket}
+    end
   end
 
   @impl true
@@ -23,9 +31,32 @@ defmodule EveDmvWeb.ProfileLive do
     <.flash_group flash={@flash} />
 
     <div class="max-w-4xl mx-auto">
-      <div class="mb-8">
-        <h1 class="text-3xl font-bold text-white mb-2">Character Profile</h1>
-        <p class="text-gray-400">Manage your EVE Online character information and preferences.</p>
+      <!-- Navigation -->
+      <div class="mb-8 flex items-center justify-between">
+        <div>
+          <h1 class="text-3xl font-bold text-white mb-2">Character Profile</h1>
+          <p class="text-gray-400">Manage your EVE Online character information and preferences.</p>
+        </div>
+        <div class="flex gap-3">
+          <.link
+            navigate={~p"/dashboard"}
+            class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+          >
+            Dashboard
+          </.link>
+          <.link
+            navigate={~p"/feed"}
+            class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+          >
+            Kill Feed
+          </.link>
+          <.link
+            navigate={~p"/surveillance"}
+            class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+          >
+            Surveillance
+          </.link>
+        </div>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -178,14 +209,24 @@ defmodule EveDmvWeb.ProfileLive do
         </div>
       </div>
       
-    <!-- Development Information -->
-      <div class="mt-8 bg-yellow-900 border border-yellow-700 rounded-lg p-6">
-        <h3 class="text-lg font-semibold text-yellow-200 mb-2">🚧 Development Note</h3>
-        <p class="text-yellow-300 text-sm">
-          This profile page shows the data successfully retrieved from EVE SSO authentication.
-          Additional features like token refresh and corporation data updates will be implemented
-          in Epic 3 when we add the full EVE ESI integration.
-        </p>
+    <!-- Quick Actions -->
+      <div class="mt-8 bg-gray-800 rounded-lg p-6">
+        <h3 class="text-lg font-semibold text-white mb-4">Quick Actions</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <.link
+            navigate={~p"/intel/#{@current_user.eve_character_id}"}
+            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg text-center transition-colors"
+          >
+            View My Character Intelligence
+          </.link>
+          <button
+            type="button"
+            class="bg-gray-700 text-gray-400 px-4 py-3 rounded-lg cursor-not-allowed"
+            disabled
+          >
+            Export My Data (Coming Soon)
+          </button>
+        </div>
       </div>
     </div>
     """

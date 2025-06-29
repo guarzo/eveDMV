@@ -189,8 +189,24 @@ defmodule EveDmv.Eve.SolarSystem do
         description("Search pattern (partial system name)")
       end
 
+      argument :similarity_threshold, :float do
+        allow_nil?(true)
+        default(0.3)
+        constraints(min: 0.0, max: 1.0)
+        description("Minimum similarity score (0.0-1.0, default: 0.3)")
+      end
+
       # Use PostgreSQL trigram similarity for fuzzy matching
-      filter(expr(fragment("similarity(system_name, ?) > 0.3", ^arg(:name_pattern))))
+      filter(
+        expr(
+          fragment(
+            "similarity(system_name, ?) > ?",
+            ^arg(:name_pattern),
+            ^arg(:similarity_threshold)
+          )
+        )
+      )
+
       prepare(build(sort: [:system_name]))
     end
 

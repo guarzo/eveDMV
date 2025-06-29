@@ -12,12 +12,11 @@ defmodule EveDmv.Killmails.KillmailPipeline do
   require Logger
 
   alias Broadway.Message
+  alias EveDmv.Api
   alias EveDmv.Killmails.{KillmailEnriched, KillmailRaw, Participant}
   alias EveDmv.Surveillance.{MatchingEngine, NotificationService}
   alias EveDmv.Eve.TypeResolver
   alias EveDmvWeb.Endpoint
-
-  require EveDmv.Api
 
   # Broadway configuration
   def start_link(_opts) do

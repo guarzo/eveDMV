@@ -7,6 +7,12 @@
       </a>
     </div>
     <div class="flex items-center gap-4 font-semibold leading-6 text-gray-300">
+      <.link navigate={~p"/feed"} class="hover:text-gray-100">
+        Kill Feed
+      </.link>
+      <.link navigate={~p"/surveillance"} class="hover:text-gray-100">
+        Surveillance
+      </.link>
       <%= if assigns[:current_user] do %>
         <.link navigate={~p"/dashboard"} class="hover:text-gray-100">
           Dashboard

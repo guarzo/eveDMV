@@ -104,7 +104,11 @@ defmodule EveDmv.Surveillance.ProfileMatch do
       description("The profile that generated this match")
     end
 
-    # Note: Relationship to killmail will be added when we improve foreign keys
+    belongs_to :killmail, EveDmv.Killmails.KillmailEnriched do
+      destination_attribute(:killmail_id)
+      source_attribute(:killmail_id)
+      description("The killmail that matched this profile")
+    end
   end
 
   # Actions

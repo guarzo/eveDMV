@@ -30,6 +30,11 @@ defmodule EveDmv.Api do
     # Surveillance profiles
     resource(EveDmv.Surveillance.Profile)
     resource(EveDmv.Surveillance.ProfileMatch)
+    resource(EveDmv.Surveillance.Notification)
+
+    # Analytics resources
+    resource(EveDmv.Analytics.PlayerStats)
+    resource(EveDmv.Analytics.ShipStats)
   end
 
   # Authorization configuration
