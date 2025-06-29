@@ -136,30 +136,32 @@ defmodule EveDmvWeb.CoreComponents do
       <.flash_group flash={@flash} />
   """
   attr :flash, :map, required: true, doc: "the map of flash messages"
-  attr :id, :string, default: "flash-group", doc: "the optional id of flash container"
+  attr :id, :string, default: nil, doc: "the optional id of flash container"
 
   def flash_group(assigns) do
+    assigns = assign_new(assigns, :id, fn -> "flash-group-#{System.unique_integer([:positive])}" end)
+    
     ~H"""
     <div id={@id}>
       <.flash kind={:info} title="Success!" flash={@flash} />
       <.flash kind={:error} title="Error!" flash={@flash} />
       <.flash
-        id="client-error"
+        id={"#{@id}-client-error"}
         kind={:error}
         title="We can't find the internet"
-        phx-disconnected={show(".phx-client-error #client-error")}
-        phx-connected={hide("#client-error")}
+        phx-disconnected={show(".phx-client-error ##{@id}-client-error")}
+        phx-connected={hide("##{@id}-client-error")}
         hidden
       >
         Attempting to reconnect <.icon name="hero-arrow-path" class="ml-1 h-3 w-3 animate-spin" />
       </.flash>
 
       <.flash
-        id="server-error"
+        id={"#{@id}-server-error"}
         kind={:error}
         title="Something went wrong!"
-        phx-disconnected={show(".phx-server-error #server-error")}
-        phx-connected={hide("#server-error")}
+        phx-disconnected={show(".phx-server-error ##{@id}-server-error")}
+        phx-connected={hide("##{@id}-server-error")}
         hidden
       >
         Hang in there while we get back on track

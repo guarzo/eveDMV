@@ -11,11 +11,10 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
   """
 
   require Logger
-  alias EveDmv.{Api, Repo}
+  alias EveDmv.Api
   alias EveDmv.Eve.{ItemType, NameResolver}
   alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Killmails.{KillmailEnriched, Participant}
-  import Ecto.Query
 
   @analysis_period_days 90
   # Minimum kills+losses for meaningful analysis
@@ -105,29 +104,41 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
   # Private functions
 
   defp get_character_info(character_id) do
-    # Get the most recent participant record for basic info
-    query =
-      from p in Participant,
-        where: p.character_id == ^character_id and p.is_victim == true,
-        order_by: [desc: p.killmail_time],
-        limit: 1
-
-    case Repo.one(query) do
-      nil ->
-        # Try non-victim records
-        query =
-          from p in Participant,
-            where: p.character_id == ^character_id,
-            order_by: [desc: p.killmail_time],
-            limit: 1
-
-        case Repo.one(query) do
-          nil -> {:error, :character_not_found}
-          participant -> extract_basic_info(participant, character_id)
-        end
-
-      participant ->
+    # Try to get the most recent victim record for basic info using Ash
+    case Ash.read(Participant, 
+           domain: Api,
+           query: [
+             filter: [
+               character_id: character_id,
+               is_victim: true
+             ],
+             sort: [killmail_time: :desc],
+             limit: 1
+           ]) do
+      {:ok, [participant | _]} ->
         extract_basic_info(participant, character_id)
+        
+      {:ok, []} ->
+        # Try non-victim records
+        case Ash.read(Participant,
+               domain: Api,
+               query: [
+                 filter: [character_id: character_id],
+                 sort: [killmail_time: :desc],
+                 limit: 1
+               ]) do
+          {:ok, [participant | _]} ->
+            extract_basic_info(participant, character_id)
+            
+          {:ok, []} ->
+            {:error, :character_not_found}
+            
+          {:error, error} ->
+            {:error, error}
+        end
+        
+      {:error, error} ->
+        {:error, error}
     end
   end
 
@@ -151,28 +162,50 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
   defp get_recent_killmails(character_id) do
     cutoff_date = DateTime.add(DateTime.utc_now(), -@analysis_period_days, :day)
 
-    # Get all killmails where character participated
-    query =
-      from ke in KillmailEnriched,
-        join: p in Participant,
-        on: p.killmail_id == ke.killmail_id,
-        where: p.character_id == ^character_id and ke.killmail_time >= ^cutoff_date,
-        preload: [participants: ^participant_preload_query()],
-        order_by: [desc: ke.killmail_time]
-
-    killmails = Repo.all(query)
-
-    if length(killmails) < @min_activity_threshold do
-      {:error, :insufficient_activity}
-    else
-      {:ok, killmails}
+    # Use Ash to get participants for this character
+    case Ash.read(Participant, 
+           domain: Api, 
+           query: [
+             filter: [
+               character_id: character_id,
+               killmail_time: [gte: cutoff_date]
+             ],
+             sort: [killmail_time: :desc]
+           ]) do
+      {:ok, participants} ->
+        # Get unique killmail IDs
+        killmail_ids = participants 
+                      |> Enum.map(& &1.killmail_id) 
+                      |> Enum.uniq()
+        
+        # Get enriched killmails for these IDs
+        case Ash.read(KillmailEnriched,
+               domain: Api,
+               query: [
+                 filter: [killmail_id: [in: killmail_ids]],
+                 sort: [killmail_time: :desc]
+               ]) do
+          {:ok, killmails} ->
+            if length(killmails) < @min_activity_threshold do
+              {:error, :insufficient_activity}
+            else
+              # Attach participants to killmails manually
+              killmails_with_participants = Enum.map(killmails, fn km ->
+                km_participants = Enum.filter(participants, & &1.killmail_id == km.killmail_id)
+                Map.put(km, :participants, km_participants)
+              end)
+              {:ok, killmails_with_participants}
+            end
+            
+          {:error, error} ->
+            {:error, error}
+        end
+        
+      {:error, error} ->
+        {:error, error}
     end
   end
 
-  defp participant_preload_query do
-    from p in Participant,
-      order_by: [desc: p.damage_done]
-  end
 
   defp calculate_statistics(character_id, killmails) do
     stats = %{

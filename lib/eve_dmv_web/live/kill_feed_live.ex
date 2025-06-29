@@ -235,6 +235,7 @@ defmodule EveDmvWeb.KillFeedLive do
       id: generate_killmail_id(killmail_data),
       killmail_id: killmail_data["killmail_id"],
       killmail_time: parse_killmail_timestamp(killmail_data),
+      victim_character_id: victim["character_id"],
       victim_character_name: victim["character_name"] || "Unknown Pilot",
       victim_corporation_name: victim["corporation_name"] || "Unknown Corp",
       victim_alliance_name: victim["alliance_name"],
@@ -247,6 +248,7 @@ defmodule EveDmvWeb.KillFeedLive do
       total_value: extract_total_value(killmail_data),
       ship_value: extract_ship_value(killmail_data),
       attacker_count: killmail_data["attacker_count"] || length(attackers),
+      final_blow_character_id: get_in(final_blow, ["character_id"]),
       final_blow_character_name: get_in(final_blow, ["character_name"]),
       age_minutes: 0,
       is_expensive: expensive_kill_wanderer(killmail_data)
