@@ -1,5 +1,5 @@
 # Use the official Elixir image
-FROM elixir:1.15.8-alpine AS builder
+FROM elixir:1.17.2-alpine AS builder
 
 # Set environment variables
 ENV MIX_ENV=prod
