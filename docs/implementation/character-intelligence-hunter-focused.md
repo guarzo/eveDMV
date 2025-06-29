@@ -59,7 +59,7 @@ Tama            | ████░░░░ | Random           | Gate camps
 
 #### Hunting Grounds
 - **Preferred Space**: Lowsec (78%), Nullsec (19%), Highsec (3%)
-- **Engagement Range**: 0-3 jumps from home (82%)
+- **Engagement Range**: 0–3 jumps from home (82%)
 - **Site Preferences**: Gates (45%), Stations (30%), Belts (15%), Anoms (10%)
 
 ### 4. **Target Selection Profile**
@@ -104,7 +104,7 @@ Escalation Indicators:
 
 ### 7. **Recent Activity Analysis**
 #### Last 7 Days
-- **Activity Level**: ██████░░░░ Above average
+- **Activity Level**: ██████░░░░ Above-average
 - **Ships Lost**: Hecate (Friday, 15M), Stiletto (Sunday, 45M)
 - **Notable Kills**: Orthrus (450M), Gila (380M)
 - **Pattern Change**: ⚠️ Flying cheaper ships after losses

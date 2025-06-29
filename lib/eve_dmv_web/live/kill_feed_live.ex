@@ -122,22 +122,18 @@ defmodule EveDmvWeb.KillFeedLive do
   defp build_killmail_from_enriched(enriched) do
     # Use name resolution for ship and system names if not already provided
     victim_ship_name =
-      case enriched.victim_ship_name do
-        name when name in [nil, "", "Unknown Ship"] ->
-          NameResolver.ship_name(enriched.victim_ship_type_id)
-
-        name ->
-          name
-      end
+      resolve_name_if_unknown(
+        enriched.victim_ship_name,
+        ["Unknown Ship"],
+        fn -> NameResolver.ship_name(enriched.victim_ship_type_id) end
+      )
 
     system_name =
-      case enriched.solar_system_name do
-        name when name in [nil, "", "Unknown System"] ->
-          NameResolver.system_name(enriched.solar_system_id)
-
-        name ->
-          name
-      end
+      resolve_name_if_unknown(
+        enriched.solar_system_name,
+        ["Unknown System"],
+        fn -> NameResolver.system_name(enriched.solar_system_id) end
+      )
 
     system_security = NameResolver.system_security(enriched.solar_system_id)
 
@@ -171,22 +167,18 @@ defmodule EveDmvWeb.KillFeedLive do
 
     # Use name resolution for ship and system names
     victim_ship_name =
-      case get_in(victim, ["ship_name"]) do
-        name when name in [nil, "", "Unknown Ship"] ->
-          NameResolver.ship_name(raw.victim_ship_type_id)
-
-        name ->
-          name
-      end
+      resolve_name_if_unknown(
+        get_in(victim, ["ship_name"]),
+        ["Unknown Ship"],
+        fn -> NameResolver.ship_name(raw.victim_ship_type_id) end
+      )
 
     system_name =
-      case raw.raw_data["solar_system_name"] do
-        name when name in [nil, "", "Unknown System"] ->
-          NameResolver.system_name(raw.solar_system_id)
-
-        name ->
-          name
-      end
+      resolve_name_if_unknown(
+        raw.raw_data["solar_system_name"],
+        ["Unknown System"],
+        fn -> NameResolver.system_name(raw.solar_system_id) end
+      )
 
     system_security = NameResolver.system_security(raw.solar_system_id)
 
@@ -224,22 +216,18 @@ defmodule EveDmvWeb.KillFeedLive do
 
     # Use name resolution for ship and system names
     victim_ship_name =
-      case victim["ship_name"] do
-        name when name in [nil, "", "Unknown Ship"] ->
-          NameResolver.ship_name(victim["ship_type_id"])
-
-        name ->
-          name
-      end
+      resolve_name_if_unknown(
+        victim["ship_name"],
+        ["Unknown Ship"],
+        fn -> NameResolver.ship_name(victim["ship_type_id"]) end
+      )
 
     system_name =
-      case killmail_data["solar_system_name"] do
-        name when name in [nil, "", "Unknown System"] ->
-          NameResolver.system_name(system_id)
-
-        name ->
-          name
-      end
+      resolve_name_if_unknown(
+        killmail_data["solar_system_name"],
+        ["Unknown System"],
+        fn -> NameResolver.system_name(system_id) end
+      )
 
     system_security = NameResolver.system_security(system_id)
 
@@ -386,6 +374,16 @@ defmodule EveDmvWeb.KillFeedLive do
   defp safe_decimal_new(value) when is_float(value), do: Decimal.from_float(value)
   defp safe_decimal_new(value) when is_binary(value), do: Decimal.new(value)
   defp safe_decimal_new(_), do: Decimal.new(0)
+
+  # Helper function to resolve names if they are unknown/empty
+  defp resolve_name_if_unknown(name, fallback_values, resolver_fn)
+       when is_list(fallback_values) do
+    if name in ([nil, ""] ++ fallback_values) do
+      resolver_fn.()
+    else
+      name
+    end
+  end
 
   # Template helper functions
 

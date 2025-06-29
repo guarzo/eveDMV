@@ -20,6 +20,11 @@ defmodule EveDmv.Eve.NameResolver do
   # ESI data more frequent updates
   @esi_data_ttl :timer.minutes(30)
 
+  # Configurable timeout and concurrency settings
+  @task_timeout Application.compile_env(:eve_dmv, :name_resolver_task_timeout, 30_000)
+  @max_concurrency Application.compile_env(:eve_dmv, :name_resolver_max_concurrency, 10)
+  @esi_timeout Application.compile_env(:eve_dmv, :name_resolver_esi_timeout, 10_000)
+
   # ============================================================================
   # Public API
   # ============================================================================
@@ -304,7 +309,7 @@ defmodule EveDmv.Eve.NameResolver do
     ]
 
     # Wait for all tasks to complete
-    Enum.each(tasks, &Task.await(&1, 30_000))
+    Enum.each(tasks, &Task.await(&1, @task_timeout))
 
     Logger.debug("Name preloading complete")
     :ok
@@ -317,32 +322,28 @@ defmodule EveDmv.Eve.NameResolver do
   def warm_cache do
     Logger.info("Warming EVE name resolver cache")
 
+    cache_config = Application.get_env(:eve_dmv, :name_resolver_cache_warming, [])
+
     # Pre-load common ship types
-    # T1 frigates
-    common_ships = [587, 588, 589, 590, 591, 592, 593, 594]
-    ship_names(common_ships)
+    common_ships = Keyword.get(cache_config, :common_ships, [])
+
+    unless Enum.empty?(common_ships) do
+      ship_names(common_ships)
+    end
 
     # Pre-load major trade hubs
-    # Jita, Amarr, Dodixie, Rens
-    trade_hubs = [30_000_142, 30_002_187, 30_002_659, 30_002_510]
-    system_names(trade_hubs)
+    trade_hubs = Keyword.get(cache_config, :trade_hubs, [])
+
+    unless Enum.empty?(trade_hubs) do
+      system_names(trade_hubs)
+    end
 
     # Pre-load well-known NPCs and corporations
-    # CCP, CONCORD, major NPC corps
-    npc_corps = [
-      # Caldari Business Tribunal
-      1_000_001,
-      # Garoun Investment Bank
-      1_000_002,
-      # Amarr Trade Registry
-      1_000_003,
-      # Core Complexion Inc.
-      1_000_004,
-      # CONCORD
-      1_000_125
-    ]
+    npc_corps = Keyword.get(cache_config, :npc_corporations, [])
 
-    corporation_names(npc_corps)
+    unless Enum.empty?(npc_corps) do
+      corporation_names(npc_corps)
+    end
 
     Logger.info("Cache warming complete")
     :ok
@@ -362,24 +363,54 @@ defmodule EveDmv.Eve.NameResolver do
         else
           # Cache expired, fetch fresh data
           :ets.delete(@table_name, cache_key)
-          fetch_and_cache(type, id)
+          fetch_and_cache_atomic(type, id)
         end
 
       [] ->
-        fetch_and_cache(type, id)
+        fetch_and_cache_atomic(type, id)
     end
   end
 
-  defp fetch_and_cache(type, id) do
+  # Atomic cache insertion to prevent race conditions
+  defp fetch_and_cache_atomic(type, id) do
+    cache_key = {type, id}
+
     case fetch_from_database(type, id) do
       {:ok, value} ->
         ttl = get_ttl_for_type(type)
         expires_at = :os.system_time(:millisecond) + ttl
-        :ets.insert(@table_name, {{type, id}, value, expires_at})
-        {:ok, value}
+        cache_entry = {cache_key, value, expires_at}
+
+        # Use insert_new to atomically insert only if key doesn't exist
+        case :ets.insert_new(@table_name, cache_entry) do
+          true ->
+            {:ok, value}
+
+          false ->
+            handle_cache_collision(cache_key, cache_entry, value)
+        end
 
       error ->
         error
+    end
+  end
+
+  defp handle_cache_collision(cache_key, cache_entry, value) do
+    # Another process already inserted this key, use their value
+    case :ets.lookup(@table_name, cache_key) do
+      [{^cache_key, existing_value, existing_expires}] ->
+        if :os.system_time(:millisecond) < existing_expires do
+          {:ok, existing_value}
+        else
+          # Their entry expired too, replace it
+          :ets.insert(@table_name, cache_entry)
+          {:ok, value}
+        end
+
+      [] ->
+        # Edge case: they deleted it between insert_new and lookup
+        :ets.insert(@table_name, cache_entry)
+        {:ok, value}
     end
   end
 
@@ -537,8 +568,8 @@ defmodule EveDmv.Eve.NameResolver do
             {:error, _} -> {id, "Unknown Corporation (#{id})"}
           end
         end,
-        max_concurrency: 10,
-        timeout: 10_000
+        max_concurrency: @max_concurrency,
+        timeout: @esi_timeout
       )
       |> Enum.reduce(%{}, fn
         {:ok, {id, name}}, acc -> Map.put(acc, id, name)
@@ -561,8 +592,8 @@ defmodule EveDmv.Eve.NameResolver do
             {:error, _} -> {id, "Unknown Alliance (#{id})"}
           end
         end,
-        max_concurrency: 10,
-        timeout: 10_000
+        max_concurrency: @max_concurrency,
+        timeout: @esi_timeout
       )
       |> Enum.reduce(%{}, fn
         {:ok, {id, name}}, acc -> Map.put(acc, id, name)

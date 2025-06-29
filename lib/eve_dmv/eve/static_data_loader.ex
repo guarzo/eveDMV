@@ -302,36 +302,12 @@ defmodule EveDmv.Eve.StaticDataLoader do
   end
 
   defp decompress_bz2(compressed_data) do
-    case System.find_executable("bzip2") do
-      nil ->
-        {:error, "bzip2 command not found - please install bzip2 to decompress files"}
-
-      _path ->
-        case write_temp_file(compressed_data, ".bz2") do
-          {:ok, temp_path} ->
-            try do
-              case System.cmd("bzip2", ["-dc", temp_path], stderr_to_stdout: true) do
-                {output, 0} -> {:ok, output}
-                {error, _} -> {:error, "bzip2 decompression failed: #{error}"}
-              end
-            after
-              File.rm(temp_path)
-            end
-
-          error ->
-            error
-        end
-    end
-  end
-
-  defp write_temp_file(data, extension) do
-    uuid = :crypto.strong_rand_bytes(16) |> Base.url_encode64(padding: false)
-    temp_path = Path.join(System.tmp_dir!(), "eve_dmv_#{uuid}#{extension}")
-
-    case File.write(temp_path, data) do
-      :ok -> {:ok, temp_path}
-      error -> error
-    end
+    decompressed = Bzip2.decompress!(compressed_data)
+    {:ok, decompressed}
+  rescue
+    error ->
+      Logger.error("bzip2 decompression failed: #{inspect(error)}")
+      {:error, "bzip2 decompression failed: #{inspect(error)}"}
   end
 
   # ============================================================================

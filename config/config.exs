@@ -88,6 +88,26 @@ config :eve_dmv,
   zkillboard_sse_url: System.get_env("ZKILLBOARD_SSE_URL", "https://zkillboard.com/sse"),
   pipeline_enabled: System.get_env("PIPELINE_ENABLED", "true") == "true"
 
+# Name Resolver Cache Warming Configuration
+config :eve_dmv, :name_resolver_cache_warming,
+  # T1 Frigates: Rifter, Punisher, Tormentor, Merlin, Incursus, Tristan, Kestrel, Atron
+  common_ships: [587, 588, 589, 590, 591, 592, 593, 594],
+  # Major trade hubs: Jita, Amarr, Dodixie, Rens
+  trade_hubs: [30_000_142, 30_002_187, 30_002_659, 30_002_510],
+  # Major NPC corporations for preloading
+  npc_corporations: [
+    # Caldari Business Tribunal
+    1_000_001,
+    # Garoun Investment Bank
+    1_000_002,
+    # Amarr Trade Registry
+    1_000_003,
+    # Core Complexion Inc.
+    1_000_004,
+    # CONCORD
+    1_000_125
+  ]
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

@@ -8,17 +8,12 @@ defmodule EveDmv.Application do
   @impl true
   def start(_type, _args) do
     # Initialize EVE name resolver cache early
-    :ok = EveDmv.Eve.NameResolver.start_cache()
-
-    # Load static data if not already present (in background to not block startup)
-    Task.start(fn ->
-      # Wait a bit for the app to fully start
-      Process.sleep(5000)
-      ensure_static_data_loaded()
-    end)
+    EveDmv.Eve.NameResolver.start_cache()
 
     children = [
       EveDmvWeb.Telemetry,
+      # Task supervisor for background tasks (start early)
+      {Task.Supervisor, name: EveDmv.TaskSupervisor},
       EveDmv.Repo,
       {DNSCluster, query: Application.get_env(:eve_dmv, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: EveDmv.PubSub},
@@ -36,6 +31,8 @@ defmodule EveDmv.Application do
       maybe_start_mock_sse_server(),
       # Start the killmail ingestion pipeline
       maybe_start_pipeline(),
+      # Start background static data loader
+      static_data_loader_spec(),
       # Start a worker by calling: EveDmv.Worker.start_link(arg)
       # {EveDmv.Worker, arg},
       # Start to serve requests, typically the last entry
@@ -74,6 +71,25 @@ defmodule EveDmv.Application do
       # Return a no-op process if pipeline is disabled
       %{id: :noop_pipeline, start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}}
     end
+  end
+
+  # Spec for background static data loader
+  defp static_data_loader_spec do
+    %{
+      id: :static_data_loader,
+      start: {
+        Task,
+        :start_link,
+        [
+          fn ->
+            delay_ms = Application.get_env(:eve_dmv, :static_data_load_delay, 5000)
+            Process.sleep(delay_ms)
+            ensure_static_data_loaded()
+          end
+        ]
+      },
+      restart: :transient
+    }
   end
 
   # Tell Phoenix to update the endpoint configuration

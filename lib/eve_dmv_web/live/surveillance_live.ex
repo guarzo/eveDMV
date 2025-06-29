@@ -88,10 +88,15 @@ defmodule EveDmvWeb.SurveillanceLive do
   @impl true
   def handle_event("create_profile", %{"profile" => profile_params}, socket) do
     # Parse JSON filter tree
-    filter_tree =
+    {filter_tree, has_json_error} =
       case Jason.decode(profile_params["filter_tree"] || "{}") do
-        {:ok, parsed} -> parsed
-        {:error, _} -> sample_filter_tree()
+        {:ok, parsed} ->
+          {parsed, false}
+
+        {:error, error} ->
+          require Logger
+          Logger.warning("Invalid JSON in filter tree: #{inspect(error)}")
+          {sample_filter_tree(), true}
       end
 
     profile_data = %{
@@ -115,6 +120,17 @@ defmodule EveDmvWeb.SurveillanceLive do
           |> assign(:profiles, profiles)
           |> assign(:show_create_modal, false)
           |> put_flash(:info, "Surveillance profile '#{profile.name}' created successfully!")
+          |> then(fn socket ->
+            if has_json_error do
+              put_flash(
+                socket,
+                :warning,
+                "Note: Invalid JSON in filter tree was replaced with default template."
+              )
+            else
+              socket
+            end
+          end)
 
         {:noreply, socket}
 

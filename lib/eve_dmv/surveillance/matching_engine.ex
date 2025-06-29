@@ -633,7 +633,20 @@ defmodule EveDmv.Surveillance.MatchingEngine do
   defp record_matches(matches, killmail) do
     # Record matches in database and trigger notifications
     Enum.each(matches, fn profile_id ->
-      spawn(fn -> record_profile_match(profile_id, killmail) end)
+      Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
+        try do
+          record_profile_match(profile_id, killmail)
+        catch
+          kind, reason ->
+            require Logger
+
+            Logger.error(
+              "Failed to record profile match #{profile_id}: #{kind} - #{inspect(reason)}"
+            )
+
+            :error
+        end
+      end)
     end)
   end
 

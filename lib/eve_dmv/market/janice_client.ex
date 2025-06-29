@@ -216,8 +216,8 @@ defmodule EveDmv.Market.JaniceClient do
 
             price_info = %{
               type_id: type_id,
-              buy_price: get_in(price_data, ["buy", "max"]) || 0.0,
-              sell_price: get_in(price_data, ["sell", "min"]) || 0.0,
+              buy_price: get_in(price_data, ["buy", "max"]),
+              sell_price: get_in(price_data, ["sell", "min"]),
               volume: get_in(price_data, ["volume"]) || 0,
               updated_at: DateTime.utc_now()
             }
@@ -263,11 +263,24 @@ defmodule EveDmv.Market.JaniceClient do
     end)
   end
 
-  defp with_retry(fun, attempts \\ @retry_attempts) do
+  defp with_retry(fun, attempts \\ @retry_attempts, base_delay \\ @retry_delay) do
     case fun.() do
       {:error, _reason} = _error when attempts > 1 ->
-        Process.sleep(@retry_delay)
-        with_retry(fun, attempts - 1)
+        # Exponential backoff: double the delay each time, with jitter
+        retry_attempt = @retry_attempts - attempts + 1
+        exponential_delay = base_delay * :math.pow(2, retry_attempt - 1)
+
+        # Add random jitter (±25% of the delay) to prevent thundering herd
+        jitter_range = trunc(exponential_delay * 0.25)
+        jitter = :rand.uniform(jitter_range * 2) - jitter_range
+        final_delay = max(trunc(exponential_delay + jitter), 100)
+
+        Logger.debug(
+          "Retrying Janice API call in #{final_delay}ms (attempt #{retry_attempt}/#{@retry_attempts})"
+        )
+
+        Process.sleep(final_delay)
+        with_retry(fun, attempts - 1, base_delay)
 
       result ->
         result

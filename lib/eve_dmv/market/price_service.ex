@@ -1,18 +1,19 @@
 defmodule EveDmv.Market.PriceService do
   @moduledoc """
-  Unified price resolution service with fallback chain.
+  Unified price resolution service using pluggable pricing strategies.
 
-  Priority order:
+  Uses a strategy pattern to resolve prices through multiple sources:
   1. Mutamarket API (for abyssal modules only)
   2. Janice API (most accurate for current market)
   3. ESI market data (fallback)
   4. Base price from static data (last resort)
 
+  Strategies are executed in priority order until one succeeds.
   All prices are cached to reduce API calls.
   """
 
   require Logger
-  alias EveDmv.Market.{JaniceClient, MutamarketClient}
+  alias EveDmv.Market.StrategyRegistry
 
   # @default_market_hub "jita"  # Reserved for future use
 
@@ -40,7 +41,10 @@ defmodule EveDmv.Market.PriceService do
           :sell -> price_data.sell_price
         end
 
-      {:ok, price}
+      case price do
+        nil -> {:error, "No price available for price type #{price_type}"}
+        price -> {:ok, price}
+      end
     end
   end
 
@@ -60,23 +64,17 @@ defmodule EveDmv.Market.PriceService do
   """
   @spec get_item_price_data(integer()) :: {:ok, map()} | {:error, String.t()}
   def get_item_price_data(type_id, item_attributes \\ nil) do
-    # Check if this might be an abyssal module
-    if abyssal_item?(type_id, item_attributes) do
-      # Try Mutamarket first for abyssal modules
-      with {:error, _} <- try_mutamarket(type_id, item_attributes),
-           {:error, _} <- try_janice(type_id),
-           {:error, _} <- try_base_price(type_id) do
-        Logger.warning("No price found for abyssal item #{type_id}")
+    # Get all strategies that can handle this item type
+    strategies = StrategyRegistry.strategies_for(type_id, item_attributes)
+
+    # Try each strategy in priority order
+    case try_strategies(strategies, type_id, item_attributes) do
+      {:ok, price_data} ->
+        {:ok, price_data}
+
+      {:error, _} ->
+        Logger.warning("No price found for item #{type_id} using any available strategy")
         {:error, "No price available"}
-      end
-    else
-      # Regular item pricing flow
-      with {:error, _} <- try_janice(type_id),
-           {:error, _} <- try_esi(type_id),
-           {:error, _} <- try_base_price(type_id) do
-        Logger.warning("No price found for item #{type_id}")
-        {:error, "No price available"}
-      end
     end
   end
 
@@ -109,6 +107,23 @@ defmodule EveDmv.Market.PriceService do
   end
 
   @doc """
+  Get information about available pricing strategies.
+
+  ## Examples
+
+      iex> PriceService.strategy_info()
+      [
+        %{name: "Mutamarket", priority: 1, module: EveDmv.Market.Strategies.MutamarketStrategy},
+        %{name: "Janice", priority: 2, module: EveDmv.Market.Strategies.JaniceStrategy},
+        ...
+      ]
+  """
+  @spec strategy_info() :: [%{module: atom(), name: String.t(), priority: integer()}]
+  def strategy_info do
+    StrategyRegistry.strategy_info()
+  end
+
+  @doc """
   Calculate total value for a killmail.
 
   Includes destroyed value and dropped value.
@@ -121,44 +136,9 @@ defmodule EveDmv.Market.PriceService do
     # Fetch prices
     {:ok, prices} = get_item_prices(type_ids)
 
-    # Calculate victim ship value
-    victim_ship_value =
-      case get_in(killmail, ["victim", "ship_type_id"]) do
-        nil ->
-          0.0
-
-        ship_type_id ->
-          case prices[ship_type_id] do
-            nil -> 0.0
-            price_data -> price_data.buy_price
-          end
-      end
-
-    # Calculate items value
-    {destroyed_value, dropped_value} =
-      case get_in(killmail, ["victim", "items"]) do
-        nil ->
-          {0.0, 0.0}
-
-        items ->
-          items
-          |> Enum.reduce({0.0, 0.0}, fn item, {destroyed, dropped} ->
-            quantity = item["quantity_destroyed"] || 0
-            dropped_qty = item["quantity_dropped"] || 0
-
-            unit_price =
-              case prices[item["item_type_id"]] do
-                nil -> 0.0
-                price_data -> price_data.buy_price
-              end
-
-            {
-              destroyed + quantity * unit_price,
-              dropped + dropped_qty * unit_price
-            }
-          end)
-      end
-
+    # Calculate values
+    victim_ship_value = calculate_ship_value(killmail, prices)
+    {destroyed_value, dropped_value} = calculate_items_value(killmail, prices)
     fitted_value = destroyed_value + dropped_value
 
     %{
@@ -171,58 +151,53 @@ defmodule EveDmv.Market.PriceService do
 
   # Private functions
 
-  defp try_mutamarket(type_id, attributes) do
-    # TODO: Implement Mutamarket integration for abyssal modules
-    # This function should query Mutamarket API for abyssal item pricing
-    Logger.debug(
-      "Mutamarket price lookup attempted for #{type_id} with attributes: #{inspect(attributes)}"
-    )
-
-    {:error, "Mutamarket not available"}
-  end
-
-  defp try_janice(type_id) do
-    case JaniceClient.get_item_price(type_id) do
-      {:ok, price_data} ->
-        {:ok, Map.put(price_data, :source, :janice)}
-
-      error ->
-        Logger.debug("Janice price lookup failed for #{type_id}: #{inspect(error)}")
-        error
+  defp calculate_ship_value(killmail, prices) do
+    case get_in(killmail, ["victim", "ship_type_id"]) do
+      nil -> 0.0
+      ship_type_id -> get_item_price_from_data(prices, ship_type_id)
     end
   end
 
-  defp try_esi(type_id) do
-    # TODO: Implement ESI market data integration
-    # This function should query EVE ESI API for market pricing data
-    Logger.debug("ESI price lookup skipped for #{type_id} - using other sources")
-    {:error, "ESI not implemented"}
+  defp calculate_items_value(killmail, prices) do
+    case get_in(killmail, ["victim", "items"]) do
+      nil ->
+        {0.0, 0.0}
+
+      items ->
+        items
+        |> Enum.reduce({0.0, 0.0}, fn item, {destroyed, dropped} ->
+          quantity = item["quantity_destroyed"] || 0
+          dropped_qty = item["quantity_dropped"] || 0
+          unit_price = get_item_price_from_data(prices, item["item_type_id"])
+
+          {
+            destroyed + quantity * unit_price,
+            dropped + dropped_qty * unit_price
+          }
+        end)
+    end
   end
 
-  defp try_base_price(type_id) do
-    # Look up base price from static data
-    case Ash.get(EveDmv.Eve.ItemType, type_id, domain: EveDmv.Api) do
-      {:ok, item} ->
-        # Use base price as both buy and sell with 10% margin
-        base = Decimal.to_float(item.base_price || Decimal.new(0))
+  defp get_item_price_from_data(prices, type_id) do
+    case prices[type_id] do
+      nil -> 0.0
+      price_data -> price_data.buy_price || 0.0
+    end
+  end
 
-        if base > 0 do
-          {:ok,
-           %{
-             type_id: type_id,
-             # 10% below base
-             buy_price: base * 0.9,
-             # 10% above base
-             sell_price: base * 1.1,
-             source: :base_price,
-             updated_at: DateTime.utc_now()
-           }}
-        else
-          {:error, "No base price"}
-        end
+  defp try_strategies([], _type_id, _item_attributes) do
+    {:error, "No strategies available"}
+  end
 
-      error ->
-        error
+  defp try_strategies([strategy | rest], type_id, item_attributes) do
+    case strategy.get_price(type_id, item_attributes) do
+      {:ok, price_data} ->
+        Logger.debug("Price resolved for #{type_id} using #{strategy.name()}")
+        {:ok, price_data}
+
+      {:error, reason} ->
+        Logger.debug("Strategy #{strategy.name()} failed for #{type_id}: #{inspect(reason)}")
+        try_strategies(rest, type_id, item_attributes)
     end
   end
 
@@ -275,26 +250,5 @@ defmodule EveDmv.Market.PriceService do
     sources
     |> Enum.max_by(fn {_source, count} -> count end, fn -> {:unknown, 0} end)
     |> elem(0)
-  end
-
-  defp abyssal_item?(type_id, attributes) do
-    # Check if this is likely an abyssal module
-    cond do
-      # Specific abyssal type ID ranges
-      type_id in 47_800..49_000 ->
-        true
-
-      # Abyssal filaments
-      type_id in 52_227..52_230 ->
-        true
-
-      # Check attributes if provided
-      not is_nil(attributes) and map_size(attributes) > 0 ->
-        MutamarketClient.abyssal_module?(%{"type_id" => type_id, "attributes" => attributes})
-
-      # Default to false
-      true ->
-        false
-    end
   end
 end

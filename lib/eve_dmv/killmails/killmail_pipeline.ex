@@ -41,8 +41,8 @@ defmodule EveDmv.Killmails.KillmailPipeline do
         ],
         pubsub: [
           concurrency: 1,
-          batch_size: 1,
-          batch_timeout: 100
+          batch_size: Application.get_env(:eve_dmv, :pubsub_batch_size, 1),
+          batch_timeout: Application.get_env(:eve_dmv, :pubsub_batch_timeout, 100)
         ]
       ]
     )
@@ -468,58 +468,91 @@ defmodule EveDmv.Killmails.KillmailPipeline do
   # Helper functions for database insertion
 
   defp insert_raw_killmails(raw_changesets) do
-    raw_changesets
-    |> Enum.each(fn changeset ->
-      Logger.debug("Attempting to insert raw killmail: #{changeset.killmail_id}")
+    Logger.debug("Bulk inserting #{length(raw_changesets)} raw killmails")
 
-      case Ash.create(KillmailRaw, changeset,
-             action: :ingest_from_source,
-             domain: EveDmv.Api
-           ) do
-        {:ok, record} ->
-          Logger.debug("Successfully inserted raw killmail: #{record.killmail_id}")
+    case Ash.bulk_create(KillmailRaw, :ingest_from_source, EveDmv.Api,
+           inputs: raw_changesets,
+           return_records?: false,
+           return_errors?: true
+         ) do
+      %Ash.BulkResult{status: :success, records: records} ->
+        Logger.debug("Successfully bulk inserted #{length(records)} raw killmails")
+        :ok
 
-        {:error, error} ->
-          Logger.error("Failed to insert raw killmail: #{inspect(error)}")
-      end
-    end)
+      %Ash.BulkResult{status: :error, errors: errors} ->
+        Logger.error("Bulk insert failed for raw killmails: #{inspect(errors)}")
+        :error
+
+      %Ash.BulkResult{status: :partial_success, records: records, errors: errors} ->
+        Logger.warning(
+          "Partial success for raw killmails: #{length(records)} inserted, #{length(errors)} failed"
+        )
+
+        Enum.each(errors, fn error ->
+          Logger.error("Raw killmail insert error: #{inspect(error)}")
+        end)
+
+        :ok
+    end
   end
 
   defp insert_enriched_killmails(enriched_changesets) do
-    enriched_changesets
-    |> Enum.each(fn changeset ->
-      Logger.debug("Attempting to insert enriched killmail: #{changeset.killmail_id}")
+    Logger.debug("Bulk inserting #{length(enriched_changesets)} enriched killmails")
 
-      case Ash.create(KillmailEnriched, changeset,
-             action: :create,
-             domain: EveDmv.Api
-           ) do
-        {:ok, record} ->
-          Logger.debug("Successfully inserted enriched killmail: #{record.killmail_id}")
+    case Ash.bulk_create(KillmailEnriched, :create, EveDmv.Api,
+           inputs: enriched_changesets,
+           return_records?: false,
+           return_errors?: true
+         ) do
+      %Ash.BulkResult{status: :success, records: records} ->
+        Logger.debug("Successfully bulk inserted #{length(records)} enriched killmails")
+        :ok
 
-        {:error, error} ->
-          Logger.error("Failed to insert enriched killmail: #{inspect(error)}")
-      end
-    end)
+      %Ash.BulkResult{status: :error, errors: errors} ->
+        Logger.error("Bulk insert failed for enriched killmails: #{inspect(errors)}")
+        :error
+
+      %Ash.BulkResult{status: :partial_success, records: records, errors: errors} ->
+        Logger.warning(
+          "Partial success for enriched killmails: #{length(records)} inserted, #{length(errors)} failed"
+        )
+
+        Enum.each(errors, fn error ->
+          Logger.error("Enriched killmail insert error: #{inspect(error)}")
+        end)
+
+        :ok
+    end
   end
 
   defp insert_participants(participants_lists) do
-    participants_lists
-    |> List.flatten()
-    |> Enum.each(fn participant ->
-      Logger.debug("Attempting to insert participant: #{participant.character_name || "Unknown"}")
+    participants = List.flatten(participants_lists)
+    Logger.debug("Bulk inserting #{length(participants)} participants")
 
-      case Ash.create(Participant, participant,
-             action: :create,
-             domain: EveDmv.Api
-           ) do
-        {:ok, record} ->
-          Logger.debug("Successfully inserted participant: #{record.character_name || "Unknown"}")
+    case Ash.bulk_create(Participant, :create, EveDmv.Api,
+           inputs: participants,
+           return_records?: false,
+           return_errors?: true
+         ) do
+      %Ash.BulkResult{status: :success, records: records} ->
+        Logger.debug("Successfully bulk inserted #{length(records)} participants")
+        :ok
 
-        {:error, error} ->
-          Logger.error("Failed to insert participant: #{inspect(error)}")
-      end
-    end)
+      %Ash.BulkResult{status: :error, errors: errors} ->
+        Logger.error("Bulk insert failed for participants: #{inspect(errors)}")
+        :error
+
+      %Ash.BulkResult{status: :partial_success, records: records, errors: errors} ->
+        Logger.warning(
+          "Partial success for participants: #{length(records)} inserted, #{length(errors)} failed"
+        )
+
+        Enum.each(errors, fn error ->
+          Logger.error("Participant insert error: #{inspect(error)}")
+        end)
+
+        :ok
+    end
   end
 
   defp broadcast_killmails(messages) do
@@ -535,6 +568,8 @@ defmodule EveDmv.Killmails.KillmailPipeline do
           Logger.warning("No raw data to broadcast for killmail")
       end
     end
+
+    :ok
   end
 
   defp check_surveillance_matches(messages) do
@@ -569,5 +604,7 @@ defmodule EveDmv.Killmails.KillmailPipeline do
           Logger.debug("No killmail data for surveillance matching")
       end
     end
+
+    :ok
   end
 end

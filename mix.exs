@@ -85,6 +85,8 @@ defmodule EveDmv.MixProject do
       {:httpoison, "~> 2.0"},
       {:dotenvy, "~> 1.1"},
       {:nimble_csv, "~> 1.2"},
+      # For native bzip2 decompression
+      {:bzip2, "~> 0.3.0"},
       {:cowboy, "~> 2.9", only: [:dev, :test]},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},

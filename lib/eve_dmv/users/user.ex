@@ -172,27 +172,14 @@ defmodule EveDmv.Users.User do
 
         # EVE SSO provides user_info and oauth_tokens
 
-        # Extract character info from EVE SSO response
-        character_id = Map.get(user_info, "CharacterID") || Map.get(user_info, "character_id")
-
-        character_name =
-          Map.get(user_info, "CharacterName") || Map.get(user_info, "character_name")
-
-        # Extract token info
-        access_token = Map.get(oauth_tokens, "access_token")
-        refresh_token = Map.get(oauth_tokens, "refresh_token")
-
-        expires_at =
-          case Map.get(oauth_tokens, "expires_in") do
-            nil ->
-              nil
-
-            expires_in when is_integer(expires_in) ->
-              DateTime.utc_now() |> DateTime.add(expires_in, :second)
-
-            _ ->
-              nil
-          end
+        # Extract EVE SSO data using helper function
+        %{
+          character_id: character_id,
+          character_name: character_name,
+          access_token: access_token,
+          refresh_token: refresh_token,
+          expires_at: expires_at
+        } = extract_eve_sso_data(user_info, oauth_tokens)
 
         changeset
         |> Ash.Changeset.change_attribute(:eve_character_id, character_id)
@@ -235,27 +222,14 @@ defmodule EveDmv.Users.User do
         user_info = Ash.Changeset.get_argument(changeset, :user_info)
         oauth_tokens = Ash.Changeset.get_argument(changeset, :oauth_tokens)
 
-        # Extract character info from EVE SSO response
-        character_id = Map.get(user_info, "CharacterID") || Map.get(user_info, "character_id")
-
-        character_name =
-          Map.get(user_info, "CharacterName") || Map.get(user_info, "character_name")
-
-        # Extract token info
-        access_token = Map.get(oauth_tokens, "access_token")
-        refresh_token = Map.get(oauth_tokens, "refresh_token")
-
-        expires_at =
-          case Map.get(oauth_tokens, "expires_in") do
-            nil ->
-              nil
-
-            expires_in when is_integer(expires_in) ->
-              DateTime.utc_now() |> DateTime.add(expires_in, :second)
-
-            _ ->
-              nil
-          end
+        # Extract EVE SSO data using helper function
+        %{
+          character_id: character_id,
+          character_name: character_name,
+          access_token: access_token,
+          refresh_token: refresh_token,
+          expires_at: expires_at
+        } = extract_eve_sso_data(user_info, oauth_tokens)
 
         changeset
         |> Ash.Changeset.change_attribute(:eve_character_id, character_id)
@@ -318,6 +292,37 @@ defmodule EveDmv.Users.User do
       nil -> {:error, "You must configure :token_signing_secret in your application config"}
       secret -> {:ok, secret}
     end
+  end
+
+  # Helper function to extract EVE SSO data from user_info and oauth_tokens
+  defp extract_eve_sso_data(user_info, oauth_tokens) do
+    # Extract character info from EVE SSO response
+    character_id = Map.get(user_info, "CharacterID") || Map.get(user_info, "character_id")
+    character_name = Map.get(user_info, "CharacterName") || Map.get(user_info, "character_name")
+
+    # Extract token info
+    access_token = Map.get(oauth_tokens, "access_token")
+    refresh_token = Map.get(oauth_tokens, "refresh_token")
+
+    expires_at =
+      case Map.get(oauth_tokens, "expires_in") do
+        nil ->
+          nil
+
+        expires_in when is_integer(expires_in) ->
+          DateTime.utc_now() |> DateTime.add(expires_in, :second)
+
+        _ ->
+          nil
+      end
+
+    %{
+      character_id: character_id,
+      character_name: character_name,
+      access_token: access_token,
+      refresh_token: refresh_token,
+      expires_at: expires_at
+    }
   end
 
   defp get_eve_sso_config([:authentication, :strategies, :eve_sso, :client_id], _) do

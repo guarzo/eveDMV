@@ -324,11 +324,11 @@
                         </.link>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                        {NameResolver.corporation_name(associate["corp_id"])}
+                        {associate["corp_name"]}
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                         {associate["times_together"]}
-                        <%= if associate["name"] =~ ~r/logi|guardian|deacon|scimi/i do %>
+                        <%= if associate["is_logistics"] do %>
                           <span class="text-yellow-400 ml-2">⚕️</span>
                         <% end %>
                       </td>

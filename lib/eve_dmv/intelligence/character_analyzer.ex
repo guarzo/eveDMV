@@ -12,7 +12,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
 
   require Logger
   alias EveDmv.{Api, Repo}
-  alias EveDmv.Eve.NameResolver
+  alias EveDmv.Eve.{ItemType, NameResolver}
   alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Killmails.{KillmailEnriched, Participant}
   import Ecto.Query
@@ -55,30 +55,51 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
   """
   @spec analyze_characters([integer()]) :: {:ok, [CharacterStats.t()]}
   def analyze_characters(character_ids) do
-    character_ids
-    |> Task.async_stream(&analyze_character/1,
-      max_concurrency: 5,
-      timeout: 30_000,
-      on_timeout: :kill_task
-    )
-    |> Enum.reduce({[], []}, fn
-      {:ok, {:ok, stats}}, {successful, failed} ->
-        {[stats | successful], failed}
+    # Use a database transaction to ensure consistency
+    EveDmv.Repo.transaction(fn ->
+      character_ids
+      |> Task.async_stream(&analyze_character_with_timeout/1,
+        max_concurrency: 5,
+        timeout: 30_000,
+        on_timeout: :exit
+      )
+      |> Enum.reduce({[], []}, fn
+        {:ok, {:ok, stats}}, {successful, failed} ->
+          {[stats | successful], failed}
 
-      {:ok, {:error, reason}}, {successful, failed} ->
-        {successful, [{:error, reason} | failed]}
+        {:ok, {:error, reason}}, {successful, failed} ->
+          {successful, [{:error, reason} | failed]}
 
-      {:exit, reason}, {successful, failed} ->
-        {successful, [{:timeout, reason} | failed]}
+        {:exit, :timeout}, {successful, failed} ->
+          {successful, [{:timeout, "Character analysis timed out"} | failed]}
+
+        {:exit, reason}, {successful, failed} ->
+          {successful, [{:exit, reason} | failed]}
+      end)
+      |> case do
+        {successful, []} ->
+          {:ok, successful}
+
+        {successful, failed} ->
+          Logger.warning("Partial analysis failure: #{length(failed)} characters failed")
+          {:ok, successful}
+      end
     end)
     |> case do
-      {successful, []} ->
-        {:ok, successful}
-
-      {successful, failed} ->
-        Logger.warning("Partial analysis failure: #{length(failed)} characters failed")
-        {:ok, successful}
+      {:ok, result} -> result
+      {:error, reason} -> {:error, reason}
     end
+  end
+
+  # Wrapper that handles timeout gracefully
+  defp analyze_character_with_timeout(character_id) do
+    analyze_character(character_id)
+  catch
+    :exit, {:timeout, _} ->
+      {:error, :timeout}
+
+    :exit, reason ->
+      {:error, {:exit, reason}}
   end
 
   # Private functions
@@ -448,13 +469,74 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
   end
 
   defp categorize_ship(type_id) do
-    # Ship categorization based on common type ID ranges
-    # This provides basic categorization for analysis purposes
-    cond do
-      type_id in 16_000..17_000 -> "cruiser"
-      type_id in 24_000..25_000 -> "battleship"
-      type_id in 600..700 -> "frigate"
-      true -> "unknown"
+    case Ash.get(ItemType, type_id, domain: EveDmv.Api) do
+      {:ok, item_type} ->
+        determine_ship_category(item_type)
+
+      {:error, _} ->
+        "unknown"
+    end
+  rescue
+    _ -> "unknown"
+  end
+
+  # Determine ship category based on group name and other attributes
+  defp determine_ship_category(item_type) do
+    case item_type.group_name do
+      name
+      when name in [
+             "Frigate",
+             "Assault Frigate",
+             "Covert Ops",
+             "Electronic Attack Ship",
+             "Interceptor",
+             "Stealth Bomber"
+           ] ->
+        "frigate"
+
+      name
+      when name in [
+             "Cruiser",
+             "Heavy Assault Cruiser",
+             "Logistics",
+             "Recon Ship",
+             "Strategic Cruiser"
+           ] ->
+        "cruiser"
+
+      name when name in ["Battleship", "Black Ops", "Marauder"] ->
+        "battleship"
+
+      name when name in ["Destroyer", "Interdictor", "Command Destroyer", "Tactical Destroyer"] ->
+        "destroyer"
+
+      name
+      when name in [
+             "Battlecruiser",
+             "Combat Battlecruiser",
+             "Attack Battlecruiser",
+             "Command Ship"
+           ] ->
+        "battlecruiser"
+
+      name
+      when name in [
+             "Carrier",
+             "Dreadnought",
+             "Supercarrier",
+             "Titan",
+             "Capital Industrial Ship",
+             "Jump Freighter",
+             "Force Auxiliary"
+           ] ->
+        "capital"
+
+      name
+      when name in ["Industrial", "Mining Barge", "Exhumer", "Freighter", "Transport Ship"] ->
+        "industrial"
+
+      _ ->
+        if item_type.is_ship, do: "small", else: "unknown"
     end
   end
 
@@ -533,7 +615,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
       Enum.count(losses, fn km ->
         Enum.any?(km.participants, fn p ->
           not p.is_victim and
-            p.weapon_name && p.weapon_name =~ ~r/neutralizer/i
+            p.weapon_name && String.contains?(String.downcase(p.weapon_name), "neutralizer")
         end)
       end)
 

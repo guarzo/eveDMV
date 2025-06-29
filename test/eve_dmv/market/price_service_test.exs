@@ -4,18 +4,24 @@ defmodule EveDmv.Market.PriceServiceTest do
   alias EveDmv.Api
   alias EveDmv.Market.PriceService
 
+  defp create_test_item(type_id, type_name, base_price, category_id, group_id) do
+    {:ok, item} =
+      Api.create(EveDmv.Eve.ItemType, %{
+        type_id: type_id,
+        type_name: type_name,
+        base_price: Decimal.new(base_price),
+        category_id: category_id,
+        group_id: group_id,
+        published: true
+      })
+
+    item
+  end
+
   describe "get_item_price/2" do
     test "returns base price when no external APIs available" do
       # Create a test item with base price
-      {:ok, item} =
-        Api.create(EveDmv.Eve.ItemType, %{
-          type_id: 587,
-          type_name: "Rifter",
-          base_price: Decimal.new("500000"),
-          category_id: 6,
-          group_id: 25,
-          published: true
-        })
+      _item = create_test_item(587, "Rifter", "500000", 6, 25)
 
       # Without Janice configured, should fall back to base price
       assert {:ok, price} = PriceService.get_item_price(587)
@@ -31,25 +37,8 @@ defmodule EveDmv.Market.PriceServiceTest do
   describe "calculate_killmail_value/1" do
     test "calculates total value from killmail data" do
       # Create test items
-      {:ok, _ship} =
-        Api.create(EveDmv.Eve.ItemType, %{
-          type_id: 587,
-          type_name: "Rifter",
-          base_price: Decimal.new("500000"),
-          category_id: 6,
-          group_id: 25,
-          published: true
-        })
-
-      {:ok, _module} =
-        Api.create(EveDmv.Eve.ItemType, %{
-          type_id: 2881,
-          type_name: "200mm AutoCannon II",
-          base_price: Decimal.new("1000000"),
-          category_id: 7,
-          group_id: 55,
-          published: true
-        })
+      _ship = create_test_item(587, "Rifter", "500000", 6, 25)
+      _module = create_test_item(2881, "200mm AutoCannon II", "1000000", 7, 55)
 
       killmail = %{
         "victim" => %{

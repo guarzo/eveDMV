@@ -61,13 +61,9 @@ defmodule Mix.Tasks.Eve.LoadStaticData do
   end
 
   defp format_number(n) do
+    # Use Elixir's built-in number formatting with delimiter
     n
     |> Integer.to_string()
-    |> String.split("", trim: true)
-    |> Enum.reverse()
-    |> Enum.chunk_every(3)
-    |> Enum.map(&Enum.reverse/1)
-    |> Enum.reverse()
-    |> Enum.join(",")
+    |> String.replace(~r/(\d)(?=(\d{3})+(?!\d))/, "\\1,")
   end
 end

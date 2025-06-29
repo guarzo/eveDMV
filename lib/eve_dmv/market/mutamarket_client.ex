@@ -184,6 +184,7 @@ defmodule EveDmv.Market.MutamarketClient do
 
     cond do
       # Check for abyssal type ID ranges
+      # Range 47,800-49,000 contains mutated abyssal modules according to EVE SDE
       item_data["type_id"] in 47_800..49_000 -> true
       # Check for mutated attribute flag
       item_data["mutated"] == true -> true

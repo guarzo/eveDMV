@@ -12,7 +12,6 @@ defmodule EveDmvWeb.CharacterIntelLive do
 
   use EveDmvWeb, :live_view
 
-  alias EveDmv.Eve.NameResolver
   alias EveDmv.Intelligence.{CharacterAnalyzer, CharacterStats}
 
   @impl true
@@ -51,9 +50,12 @@ defmodule EveDmvWeb.CharacterIntelLive do
   def handle_info({:load_character, character_id}, socket) do
     case load_or_analyze_character(character_id) do
       {:ok, stats} ->
+        # Enrich associates data with corporation names and logistics flags
+        enriched_stats = enrich_associates_data(stats)
+
         {:noreply,
          socket
-         |> assign(:stats, stats)
+         |> assign(:stats, enriched_stats)
          |> assign(:loading, false)
          |> assign(:error, nil)}
 
@@ -75,12 +77,14 @@ defmodule EveDmvWeb.CharacterIntelLive do
       |> assign(:error, nil)
 
     # Force re-analysis
-    Task.start(fn ->
+    Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
       case CharacterAnalyzer.analyze_character(character_id) do
         {:ok, _stats} ->
           send(self(), {:load_character, character_id})
 
-        _ ->
+        {:error, reason} ->
+          require Logger
+          Logger.warning("Character re-analysis failed for #{character_id}: #{inspect(reason)}")
           :ok
       end
     end)
@@ -111,9 +115,10 @@ defmodule EveDmvWeb.CharacterIntelLive do
 
       {:ok, stats} ->
         # Check if stats are stale (>24 hours old)
-        if stale_stats?(stats) do
-          # Re-analyze in background
-          Task.start(fn -> CharacterAnalyzer.analyze_character(character_id) end)
+        staleness_threshold = Application.get_env(:eve_dmv, :character_stats_staleness_hours, 24)
+
+        if stale_stats?(stats, staleness_threshold) do
+          start_background_analysis(character_id)
         end
 
         {:ok, stats}
@@ -123,15 +128,83 @@ defmodule EveDmvWeb.CharacterIntelLive do
     end
   end
 
-  defp stale_stats?(stats) do
+  defp stale_stats?(stats, threshold_hours) do
     case stats.last_calculated_at do
       nil ->
         true
 
       last_calc ->
         hours_old = DateTime.diff(DateTime.utc_now(), last_calc, :hour)
-        hours_old > 24
+        hours_old > threshold_hours
     end
+  end
+
+  defp start_background_analysis(character_id) do
+    Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
+      case CharacterAnalyzer.analyze_character(character_id) do
+        {:ok, _} ->
+          :ok
+
+        {:error, reason} ->
+          require Logger
+
+          Logger.warning(
+            "Background character analysis failed for #{character_id}: #{inspect(reason)}"
+          )
+
+          :ok
+      end
+    end)
+  end
+
+  # Enrich associates data with corporation names and logistics detection
+  defp enrich_associates_data(stats) do
+    enriched_associates =
+      stats.frequent_associates
+      |> Enum.map(fn {char_id, associate} ->
+        # Add corporation name
+        corp_name = EveDmv.Eve.NameResolver.corporation_name(associate["corp_id"])
+
+        # Detect logistics ships
+        is_logistics = logistics_pilot?(associate["name"], associate["ships_flown"] || [])
+
+        enriched_associate =
+          associate
+          |> Map.put("corp_name", corp_name)
+          |> Map.put("is_logistics", is_logistics)
+
+        {char_id, enriched_associate}
+      end)
+      |> Map.new()
+
+    # Update the stats with enriched associates
+    Map.put(stats, :frequent_associates, enriched_associates)
+  end
+
+  # Detect logistics pilots based on name and ships flown
+  defp logistics_pilot?(name, ships_flown) do
+    # Check pilot name for logistics indicators
+    name_indicates_logi =
+      name && String.contains?(String.downcase(name), ["logi", "guardian", "deacon", "scimi"])
+
+    # Check ships flown for logistics ship types
+    ships_indicate_logi =
+      Enum.any?(ships_flown, fn ship ->
+        String.contains?(String.downcase(ship), [
+          "guardian",
+          "basilisk",
+          "oneiros",
+          "scimitar",
+          "deacon",
+          "thalia",
+          "minokawa",
+          "apostle",
+          "fax",
+          "nestor"
+        ])
+      end)
+
+    name_indicates_logi || ships_indicate_logi
   end
 
   defp format_error(:insufficient_activity),

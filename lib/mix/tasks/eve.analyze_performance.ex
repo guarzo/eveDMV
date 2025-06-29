@@ -18,10 +18,10 @@ defmodule Mix.Tasks.Eve.AnalyzePerformance do
 
     # Run performance analysis
     Mix.shell().info("📈 Analyzing performance...")
-    analysis = PerformanceOptimizer.analyze_performance()
+    {:ok, analysis} = PerformanceOptimizer.analyze_performance()
 
     # Get connection stats
-    connection_stats = PerformanceOptimizer.get_connection_stats()
+    {:ok, connection_stats} = PerformanceOptimizer.get_connection_stats()
 
     # Output results
     output_text(analysis, connection_stats)
@@ -39,12 +39,21 @@ defmodule Mix.Tasks.Eve.AnalyzePerformance do
     Mix.shell().info("Cache Hit Ratio: #{connection_stats["cache_hit_ratio"]}%")
 
     # Slow Queries
-    if length(analysis.slow_queries) > 0 do
+    if analysis.slow_queries != [] do
       Mix.shell().info("\n🐌 Slow Queries (>1 second)")
       Mix.shell().info("=" <> String.duplicate("=", 40))
 
       Enum.each(analysis.slow_queries, fn query ->
-        Mix.shell().info("Query: #{String.slice(query.query, 0, 100)}...")
+        query_text =
+          case query.query do
+            query_str when is_binary(query_str) ->
+              String.slice(query_str, 0, 100) <> "..."
+
+            _ ->
+              "Query text unavailable"
+          end
+
+        Mix.shell().info("Query: #{query_text}")
         Mix.shell().info("  Average: #{Float.round(query.mean_time_seconds, 3)}s")
         Mix.shell().info("  Total: #{Float.round(query.total_time_seconds, 3)}s")
         Mix.shell().info("")

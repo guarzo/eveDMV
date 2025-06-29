@@ -35,11 +35,11 @@ defmodule EveDmv.Repo.Migrations.OptimizeDatabasePerformance do
       comment: "Optimizes high-value killmail queries"
     )
 
-    # Partial index for recent killmails (using a fixed timestamp to avoid immutability issues)
+    # Partial index for recent killmails (last 6 months for relevance)
     create index(:killmails_enriched, [:total_value], 
       name: "killmails_enriched_recent_value_idx", 
-      where: "killmail_time > '2024-01-01'::timestamp",
-      comment: "Optimizes recent killmail value queries"
+      where: "killmail_time > now() - interval '6 months'",
+      comment: "Optimizes recent killmail value queries (last 6 months)"
     )
 
     # Composite indexes for participant analysis

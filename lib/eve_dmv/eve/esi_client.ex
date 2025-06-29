@@ -42,10 +42,11 @@ defmodule EveDmv.Eve.EsiClient do
   @rate_limit_window 1_000
 
   # ESI API versions
-  @character_api_version "v5"
-  @corporation_api_version "v5"
-  @alliance_api_version "v4"
+  @character_api_version "v4"
+  @corporation_api_version "v4"
+  @alliance_api_version "v3"
   @universe_api_version "v4"
+  @market_api_version "v1"
 
   # Public API
 
@@ -260,6 +261,133 @@ defmodule EveDmv.Eve.EsiClient do
     end)
   end
 
+  @doc """
+  Get market orders for a specific type in a region.
+
+  ## Parameters
+  - type_id: The item type ID to get orders for
+  - region_id: The region ID (defaults to The Forge/Jita region: 10000002)
+  - order_type: :buy, :sell, or :all (defaults to :all)
+
+  ## Examples
+
+      iex> EsiClient.get_market_orders(587, 10000002)
+      {:ok, [
+        %{
+          order_id: 12345,
+          type_id: 587,
+          location_id: 60003760,
+          price: 350000.0,
+          volume_remain: 100,
+          is_buy_order: false
+        },
+        ...
+      ]}
+  """
+  @spec get_market_orders(integer(), integer(), :buy | :sell | :all) ::
+          {:ok, [map()]} | {:error, term()}
+  def get_market_orders(type_id, region_id \\ 10_000_002, order_type \\ :all) do
+    path = "/#{@market_api_version}/markets/#{region_id}/orders/"
+
+    params = %{
+      "type_id" => type_id,
+      "order_type" => to_string(order_type)
+    }
+
+    with_rate_limit(fn ->
+      case get_request(path, params) do
+        {:ok, data} when is_list(data) ->
+          orders = Enum.map(data, &parse_market_order/1)
+          {:ok, orders}
+
+        {:ok, _} ->
+          {:error, "Invalid response format"}
+
+        error ->
+          error
+      end
+    end)
+  end
+
+  @doc """
+  Get market history for a specific type in a region.
+
+  Returns daily price history including average, highest, lowest prices and volume.
+
+  ## Examples
+
+      iex> EsiClient.get_market_history(587, 10000002)
+      {:ok, [
+        %{
+          date: ~D[2024-01-01],
+          average: 350000.0,
+          highest: 380000.0,
+          lowest: 320000.0,
+          volume: 15000,
+          order_count: 250
+        },
+        ...
+      ]}
+  """
+  @spec get_market_history(integer(), integer()) :: {:ok, [map()]} | {:error, term()}
+  def get_market_history(type_id, region_id \\ 10_000_002) do
+    path = "/#{@market_api_version}/markets/#{region_id}/history/"
+
+    params = %{
+      "type_id" => type_id
+    }
+
+    with_rate_limit(fn ->
+      case get_request(path, params) do
+        {:ok, data} when is_list(data) ->
+          history = Enum.map(data, &parse_market_history/1)
+          {:ok, history}
+
+        {:ok, _} ->
+          {:error, "Invalid response format"}
+
+        error ->
+          error
+      end
+    end)
+  end
+
+  @doc """
+  Get aggregated market statistics for multiple types efficiently.
+
+  This calculates buy/sell prices based on market orders, using the
+  5th percentile for buy orders and 95th percentile for sell orders
+  to avoid market manipulation.
+
+  ## Examples
+
+      iex> EsiClient.get_market_prices([587, 588, 589])
+      {:ok, %{
+        587 => %{buy_price: 350000.0, sell_price: 380000.0, volume: 1500},
+        588 => %{buy_price: 450000.0, sell_price: 480000.0, volume: 1200},
+        589 => %{buy_price: 550000.0, sell_price: 580000.0, volume: 800}
+      }}
+  """
+  @spec get_market_prices([integer()], integer()) :: {:ok, map()}
+  def get_market_prices(type_ids, region_id \\ 10_000_002) when is_list(type_ids) do
+    # Fetch market orders for each type in parallel (with rate limiting)
+    results =
+      type_ids
+      |> Enum.map(fn type_id ->
+        Task.async(fn ->
+          case get_market_orders(type_id, region_id) do
+            {:ok, orders} -> {type_id, calculate_market_prices(orders)}
+            _ -> {type_id, nil}
+          end
+        end)
+      end)
+      |> Enum.map(&Task.await(&1, 60_000))
+      |> Enum.reject(fn {_type_id, data} -> is_nil(data) end)
+      |> Map.new()
+
+    {:ok, results}
+  end
+
   # Private functions
 
   defp get_request(path, params \\ %{}) do
@@ -417,10 +545,17 @@ defmodule EveDmv.Eve.EsiClient do
   end
 
   defp with_rate_limit(fun) do
-    # Simple rate limiting - in production, use a proper rate limiter
-    # This is a placeholder that just ensures we don't overwhelm the API
+    # Rate limiting with safety margin - use 80% of the allowed rate
+    # This provides a buffer to prevent rate limit breaches
+    safe_rate_per_second = round(@rate_limit_per_second * 0.8)
+    interval_ms = div(@rate_limit_window, safe_rate_per_second)
+
+    # Add small jitter to prevent thundering herd
+    jitter_ms = :rand.uniform(5)
+    total_delay_ms = interval_ms + jitter_ms
+
     result = fun.()
-    Process.sleep(div(@rate_limit_window, @rate_limit_per_second))
+    Process.sleep(total_delay_ms)
     result
   end
 
@@ -440,5 +575,76 @@ defmodule EveDmv.Eve.EsiClient do
     :eve_dmv
     |> Application.get_env(:esi, [])
     |> Keyword.get(key, default)
+  end
+
+  defp parse_market_order(data) do
+    %{
+      order_id: data["order_id"],
+      type_id: data["type_id"],
+      location_id: data["location_id"],
+      price: data["price"] || 0.0,
+      volume_remain: data["volume_remain"] || 0,
+      volume_total: data["volume_total"] || 0,
+      is_buy_order: data["is_buy_order"] || false,
+      min_volume: data["min_volume"] || 1,
+      duration: data["duration"],
+      issued: parse_datetime(data["issued"]),
+      range: data["range"]
+    }
+  end
+
+  defp parse_market_history(data) do
+    %{
+      date: Date.from_iso8601!(data["date"]),
+      average: data["average"] || 0.0,
+      highest: data["highest"] || 0.0,
+      lowest: data["lowest"] || 0.0,
+      volume: data["volume"] || 0,
+      order_count: data["order_count"] || 0
+    }
+  end
+
+  defp calculate_market_prices(orders) do
+    buy_orders = Enum.filter(orders, & &1.is_buy_order)
+    sell_orders = Enum.reject(orders, & &1.is_buy_order)
+
+    buy_price = calculate_percentile_price(buy_orders, 0.95, :desc)
+    sell_price = calculate_percentile_price(sell_orders, 0.05, :asc)
+
+    total_volume = Enum.reduce(orders, 0, &(&1.volume_remain + &2))
+
+    %{
+      buy_price: buy_price,
+      sell_price: sell_price,
+      volume: total_volume,
+      buy_orders_count: length(buy_orders),
+      sell_orders_count: length(sell_orders)
+    }
+  end
+
+  defp calculate_percentile_price([], _percentile, _sort_order), do: nil
+
+  defp calculate_percentile_price(orders, percentile, sort_order) do
+    sorted_orders =
+      case sort_order do
+        :asc -> Enum.sort_by(orders, & &1.price)
+        :desc -> Enum.sort_by(orders, & &1.price, :desc)
+      end
+
+    total_volume = Enum.reduce(sorted_orders, 0, &(&1.volume_remain + &2))
+    target_volume = total_volume * percentile
+
+    {_accumulated, price} =
+      Enum.reduce_while(sorted_orders, {0, 0}, fn order, {acc_volume, _price} ->
+        new_volume = acc_volume + order.volume_remain
+
+        if new_volume >= target_volume do
+          {:halt, {new_volume, order.price}}
+        else
+          {:cont, {new_volume, order.price}}
+        end
+      end)
+
+    price
   end
 end
