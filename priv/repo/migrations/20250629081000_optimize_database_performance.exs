@@ -36,10 +36,12 @@ defmodule EveDmv.Repo.Migrations.OptimizeDatabasePerformance do
     )
 
     # Partial index for recent killmails (last 6 months for relevance)
+    # Note: Using fixed date instead of now() to ensure IMMUTABLE constraint
+    recent_date = DateTime.utc_now() |> DateTime.add(-180, :day) |> DateTime.to_iso8601()
     create index(:killmails_enriched, [:total_value], 
       name: "killmails_enriched_recent_value_idx", 
-      where: "killmail_time > now() - interval '6 months'",
-      comment: "Optimizes recent killmail value queries (last 6 months)"
+      where: "killmail_time > '#{recent_date}'::timestamp",
+      comment: "Optimizes recent killmail value queries (last ~6 months from migration date)"
     )
 
     # Composite indexes for participant analysis

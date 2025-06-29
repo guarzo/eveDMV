@@ -133,14 +133,34 @@ defmodule EveDmv.Killmails.PipelineTest do
 
     Repo.transaction(fn ->
       # Insert raw killmail
-      {:ok, _raw} = Ash.create(KillmailRaw, raw_changeset)
+      case Ash.create(KillmailRaw, raw_changeset, domain: Api) do
+        {:ok, raw} ->
+          Logger.debug("Created raw killmail: #{raw.killmail_id}")
 
-      # Insert enriched killmail
-      {:ok, _enriched} = Ash.create(KillmailEnriched, enriched_changeset)
+        {:error, error} ->
+          Logger.error("Failed to create raw killmail: #{inspect(error)}")
+          raise "Failed to create raw killmail: #{inspect(error)}"
+      end
+
+      case Ash.create(KillmailEnriched, enriched_changeset, domain: Api) do
+        {:ok, enriched} ->
+          Logger.debug("Created enriched killmail: #{enriched.killmail_id}")
+
+        {:error, error} ->
+          Logger.error("Failed to create enriched killmail: #{inspect(error)}")
+          raise "Failed to create enriched killmail: #{inspect(error)}"
+      end
 
       # Insert participants
       Enum.each(participants, fn participant_data ->
-        {:ok, _participant} = Ash.create(Participant, participant_data)
+        case Ash.create(Participant, participant_data, domain: Api) do
+          {:ok, participant} ->
+            Logger.debug("Created participant: #{participant.character_id}")
+
+          {:error, error} ->
+            Logger.error("Failed to create participant: #{inspect(error)}")
+            raise "Failed to create participant: #{inspect(error)}"
+        end
       end)
 
       :ok
