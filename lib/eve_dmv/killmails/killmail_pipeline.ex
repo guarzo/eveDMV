@@ -13,7 +13,8 @@ defmodule EveDmv.Killmails.KillmailPipeline do
 
   alias Broadway.Message
   alias EveDmv.Killmails.{KillmailEnriched, KillmailRaw, Participant}
-  alias EveDmv.Surveillance.MatchingEngine
+  alias EveDmv.Surveillance.{MatchingEngine, NotificationService}
+  alias EveDmv.Eve.TypeResolver
   alias EveDmvWeb.Endpoint
 
   require EveDmv.Api
@@ -251,14 +252,25 @@ defmodule EveDmv.Killmails.KillmailPipeline do
   end
 
   defp calculate_price_values(enriched) do
-    price_result = EveDmv.Market.PriceService.calculate_killmail_value(enriched)
+    # Use values from the killmail data if available, otherwise default to 0
+    # Wanderer-kills may provide these values pre-calculated
+    zkb_value = get_in(enriched, ["zkb", "totalValue"])
 
+    total_value =
+      case enriched["total_value"] || enriched["value"] || zkb_value do
+        nil -> 0.0
+        value -> parse_decimal(value)
+      end
+
+    # If we don't have a total value, we won't try to calculate individual components
+    # This avoids making unnecessary API calls during ingestion
     %{
-      total_value: parse_decimal(price_result.total_value),
-      ship_value: parse_decimal(price_result.ship_value),
-      destroyed_value: parse_decimal(price_result.destroyed_value),
-      dropped_value: parse_decimal(price_result.dropped_value),
-      price_data_source: Atom.to_string(price_result.price_source)
+      total_value: total_value,
+      # Will be calculated on-demand if needed
+      ship_value: 0.0,
+      # Will be calculated on-demand if needed
+      fitted_value: 0.0,
+      price_data_source: "wanderer_kills"
     }
   end
 
@@ -294,32 +306,65 @@ defmodule EveDmv.Killmails.KillmailPipeline do
         _ -> []
       end
 
-    # Build victim participant
-    victim_participant = %{
-      killmail_id: enriched["killmail_id"],
-      killmail_time: parse_timestamp(enriched["timestamp"] || enriched["kill_time"]),
-      character_id: victim["character_id"],
-      character_name: victim["character_name"],
-      corporation_id: victim["corporation_id"],
-      corporation_name: victim["corporation_name"],
-      alliance_id: victim["alliance_id"],
-      alliance_name: victim["alliance_name"],
-      faction_id: victim["faction_id"],
-      faction_name: victim["faction_name"],
-      ship_type_id: victim["ship_type_id"],
-      ship_name: victim["ship_name"],
-      weapon_type_id: nil,
-      weapon_name: nil,
-      damage_done: victim["damage_taken"] || 0,
-      security_status: victim["security_status"],
-      is_victim: true,
-      final_blow: false,
-      solar_system_id: enriched["solar_system_id"] || enriched["system_id"]
-    }
+    # Build victim participant (only if has valid ship_type_id)
+    victim_participants = 
+      case victim["ship_type_id"] do
+        nil ->
+          killmail_id = enriched["killmail_id"]
+          victim_name = victim["character_name"] || "Unknown"
+          character_id = victim["character_id"]
+          
+          Logger.debug(
+            "Skipping victim with missing ship_type_id: #{victim_name} (character_id: #{character_id}) in killmail #{killmail_id}. " <>
+            "This may be a structure, deployable, or invalid killmail data."
+          )
+          []
+          
+        ship_type_id when is_integer(ship_type_id) ->
+          [%{
+            killmail_id: enriched["killmail_id"],
+            killmail_time: parse_timestamp(enriched["timestamp"] || enriched["kill_time"]),
+            character_id: victim["character_id"],
+            character_name: victim["character_name"],
+            corporation_id: victim["corporation_id"],
+            corporation_name: victim["corporation_name"],
+            alliance_id: victim["alliance_id"],
+            alliance_name: victim["alliance_name"],
+            faction_id: victim["faction_id"],
+            faction_name: victim["faction_name"],
+            ship_type_id: ship_type_id,
+            ship_name: victim["ship_name"],
+            weapon_type_id: nil,
+            weapon_name: nil,
+            damage_done: victim["damage_taken"] || 0,
+            security_status: victim["security_status"],
+            is_victim: true,
+            final_blow: false,
+            solar_system_id: enriched["solar_system_id"] || enriched["system_id"]
+          }]
+      end
 
-    # Build attacker participants
+    # Build attacker participants (only those with valid ship_type_id)
     attacker_participants =
-      Enum.map(attackers, fn a ->
+      attackers
+      |> Enum.filter(fn a ->
+        case a["ship_type_id"] do
+          nil ->
+            killmail_id = enriched["killmail_id"]
+            attacker_name = a["character_name"] || "Unknown"
+            character_id = a["character_id"]
+            
+            Logger.debug(
+              "Skipping attacker with missing ship_type_id: #{attacker_name} (character_id: #{character_id}) in killmail #{killmail_id}. " <>
+              "This may be a structure, deployable, or invalid killmail data."
+            )
+            false
+            
+          ship_type_id when is_integer(ship_type_id) ->
+            true
+        end
+      end)
+      |> Enum.map(fn a ->
         %{
           killmail_id: enriched["killmail_id"],
           killmail_time: parse_timestamp(enriched["timestamp"] || enriched["kill_time"]),
@@ -343,7 +388,16 @@ defmodule EveDmv.Killmails.KillmailPipeline do
         }
       end)
 
-    [victim_participant | attacker_participants]
+    all_participants = victim_participants ++ attacker_participants
+    total_possible = 1 + length(attackers)  # victim + attackers
+    total_valid = length(all_participants)
+    skipped_count = total_possible - total_valid
+    
+    if skipped_count > 0 do
+      Logger.debug("Built #{total_valid} valid participants for killmail #{enriched["killmail_id"]}, skipped #{skipped_count} invalid participants")
+    end
+    
+    all_participants
   end
 
   # Helper functions for data extraction and normalization
@@ -468,90 +522,130 @@ defmodule EveDmv.Killmails.KillmailPipeline do
   # Helper functions for database insertion
 
   defp insert_raw_killmails(raw_changesets) do
-    Logger.debug("Bulk inserting #{length(raw_changesets)} raw killmails")
+    Logger.debug("Inserting #{length(raw_changesets)} raw killmails")
 
-    case Ash.bulk_create(KillmailRaw, :ingest_from_source, EveDmv.Api,
-           inputs: raw_changesets,
-           return_records?: false,
-           return_errors?: true
-         ) do
-      %Ash.BulkResult{status: :success, records: records} ->
-        Logger.debug("Successfully bulk inserted #{length(records)} raw killmails")
-        :ok
+    results =
+      Enum.map(raw_changesets, fn changeset ->
+        case Ash.create(KillmailRaw, changeset,
+               action: :ingest_from_source,
+               domain: EveDmv.Api
+             ) do
+          {:ok, _record} -> :ok
+          {:error, error} -> {:error, error}
+        end
+      end)
 
-      %Ash.BulkResult{status: :error, errors: errors} ->
-        Logger.error("Bulk insert failed for raw killmails: #{inspect(errors)}")
-        :error
+    errors = Enum.filter(results, &match?({:error, _}, &1))
 
-      %Ash.BulkResult{status: :partial_success, records: records, errors: errors} ->
-        Logger.warning(
-          "Partial success for raw killmails: #{length(records)} inserted, #{length(errors)} failed"
-        )
+    if length(errors) > 0 do
+      Logger.error("Failed to insert #{length(errors)} raw killmails")
 
-        Enum.each(errors, fn error ->
-          Logger.error("Raw killmail insert error: #{inspect(error)}")
-        end)
+      Enum.each(errors, fn {:error, error} ->
+        Logger.error("Raw killmail insert error: #{inspect(error)}")
+      end)
 
-        :ok
+      :error
+    else
+      Logger.debug("Successfully inserted #{length(raw_changesets)} raw killmails")
+      :ok
     end
   end
 
   defp insert_enriched_killmails(enriched_changesets) do
-    Logger.debug("Bulk inserting #{length(enriched_changesets)} enriched killmails")
+    Logger.debug("Inserting #{length(enriched_changesets)} enriched killmails")
 
-    case Ash.bulk_create(KillmailEnriched, :create, EveDmv.Api,
-           inputs: enriched_changesets,
-           return_records?: false,
-           return_errors?: true
-         ) do
-      %Ash.BulkResult{status: :success, records: records} ->
-        Logger.debug("Successfully bulk inserted #{length(records)} enriched killmails")
-        :ok
+    results =
+      Enum.map(enriched_changesets, fn changeset ->
+        case Ash.create(KillmailEnriched, changeset,
+               action: :upsert,
+               domain: EveDmv.Api
+             ) do
+          {:ok, _record} -> :ok
+          {:error, error} -> {:error, error}
+        end
+      end)
 
-      %Ash.BulkResult{status: :error, errors: errors} ->
-        Logger.error("Bulk insert failed for enriched killmails: #{inspect(errors)}")
-        :error
+    errors = Enum.filter(results, &match?({:error, _}, &1))
 
-      %Ash.BulkResult{status: :partial_success, records: records, errors: errors} ->
-        Logger.warning(
-          "Partial success for enriched killmails: #{length(records)} inserted, #{length(errors)} failed"
-        )
+    if length(errors) > 0 do
+      Logger.error("Failed to insert #{length(errors)} enriched killmails")
 
-        Enum.each(errors, fn error ->
-          Logger.error("Enriched killmail insert error: #{inspect(error)}")
-        end)
+      Enum.each(errors, fn {:error, error} ->
+        Logger.error("Enriched killmail insert error: #{inspect(error)}")
+      end)
 
-        :ok
+      :error
+    else
+      Logger.debug("Successfully inserted #{length(enriched_changesets)} enriched killmails")
+      :ok
     end
   end
 
   defp insert_participants(participants_lists) do
     participants = List.flatten(participants_lists)
-    Logger.debug("Bulk inserting #{length(participants)} participants")
+    Logger.debug("Inserting #{length(participants)} participants")
 
-    case Ash.bulk_create(Participant, :create, EveDmv.Api,
-           inputs: participants,
-           return_records?: false,
-           return_errors?: true
-         ) do
-      %Ash.BulkResult{status: :success, records: records} ->
-        Logger.debug("Successfully bulk inserted #{length(records)} participants")
-        :ok
+    results =
+      Enum.map(participants, fn participant ->
+        case Ash.create(Participant, participant,
+               action: :create,
+               domain: EveDmv.Api
+             ) do
+          {:ok, _record} ->
+            :ok
 
-      %Ash.BulkResult{status: :error, errors: errors} ->
-        Logger.error("Bulk insert failed for participants: #{inspect(errors)}")
-        :error
+          {:error, error} ->
+            # Debug logging for error analysis
+            Logger.debug("Participant insertion failed, analyzing error type: #{inspect(error)}")
+            
+            # Check if it's a missing ship_type_id error
+            if is_ship_type_constraint_error?(error) do
+              ship_type_id = extract_ship_type_id_from_error(error)
+              Logger.info("Detected foreign key constraint error for ship_type_id: #{ship_type_id}")
+              handle_missing_ship_type(participant, ship_type_id)
+            else
+              if is_weapon_type_constraint_error?(error) do
+                # Handle missing weapon_type_id error
+                weapon_type_id = extract_weapon_type_id_from_error(error)
+                Logger.info("Detected foreign key constraint error for weapon_type_id: #{weapon_type_id}")
+                handle_missing_weapon_type(participant, weapon_type_id)
+              else
+                # For any other errors (including required field errors that shouldn't happen now)
+                character_name = participant[:character_name] || "Unknown"
+                character_id = participant[:character_id]
+                killmail_id = participant[:killmail_id]
+                
+                Logger.warning(
+                  "Unexpected participant error for #{character_name} (character_id: #{character_id}) " <>
+                  "in killmail #{killmail_id}: #{inspect(error)}"
+                )
+                {:error, error}
+              end
+            end
+        end
+      end)
 
-      %Ash.BulkResult{status: :partial_success, records: records, errors: errors} ->
-        Logger.warning(
-          "Partial success for participants: #{length(records)} inserted, #{length(errors)} failed"
-        )
+    errors = Enum.filter(results, &match?({:error, _}, &1))
+    successes = Enum.filter(results, &(&1 == :ok))
 
-        Enum.each(errors, fn error ->
-          Logger.error("Participant insert error: #{inspect(error)}")
-        end)
+    if length(errors) > 0 do
+      Logger.error("Failed to insert #{length(errors)} participants")
 
-        :ok
+      Enum.each(errors, fn {:error, error} ->
+        Logger.error("Participant insert error: #{inspect(error)}")
+      end)
+
+      :error
+    else
+      skipped_count = length(participants) - length(successes)
+      
+      if skipped_count > 0 do
+        Logger.info("Successfully inserted #{length(successes)} participants, skipped #{skipped_count} invalid participants")
+      else
+        Logger.debug("Successfully inserted #{length(participants)} participants")
+      end
+      
+      :ok
     end
   end
 
@@ -588,7 +682,10 @@ defmodule EveDmv.Killmails.KillmailPipeline do
                   "🎯 Killmail #{killmail_data["killmail_id"]} matched #{length(matches)} surveillance profiles"
                 )
 
-                # Broadcast surveillance match notification
+                # Create persistent notifications for matches
+                NotificationService.create_batch_match_notifications(killmail_data, matches)
+
+                # Broadcast surveillance match notification (legacy support)
                 Endpoint.broadcast!("surveillance", "profile_match", %{
                   killmail: killmail_data,
                   profile_ids: matches
@@ -606,5 +703,223 @@ defmodule EveDmv.Killmails.KillmailPipeline do
     end
 
     :ok
+  end
+
+  # Helper functions for handling missing ship types
+
+  defp is_ship_type_constraint_error?(%Ash.Error.Invalid{errors: errors}) do
+    result = Enum.any?(errors, fn error ->
+      case error do
+        %Ash.Error.Changes.InvalidAttribute{
+          field: :ship_type_id,
+          private_vars: private_vars
+        } ->
+          constraint_name = Keyword.get(private_vars, :constraint)
+          constraint_type = Keyword.get(private_vars, :constraint_type)
+          detail = Keyword.get(private_vars, :detail)
+          
+          Logger.debug("Checking constraint: #{constraint_name}, type: #{constraint_type}")
+          Logger.debug("Detail: #{detail}")
+          
+          # Check if it's a foreign key constraint error by constraint name OR constraint type
+          is_fkey_constraint = constraint_name == "participants_ship_type_id_fkey" or 
+                              constraint_type == :foreign_key
+          
+          # Also check if the detail message contains the expected pattern
+          has_fkey_detail = is_binary(detail) and String.contains?(detail, "is not present in table")
+          
+          result = is_fkey_constraint and has_fkey_detail
+          Logger.debug("Is FK constraint: #{is_fkey_constraint}, has FK detail: #{has_fkey_detail}, result: #{result}")
+          result
+
+        _ ->
+          false
+      end
+    end)
+    Logger.debug("Foreign key constraint error detected: #{result}")
+    result
+  end
+
+  defp is_ship_type_constraint_error?(_), do: false
+
+  defp extract_ship_type_id_from_error(%Ash.Error.Invalid{errors: errors}) do
+    result = Enum.find_value(errors, fn error ->
+      case error do
+        %Ash.Error.Changes.InvalidAttribute{
+          field: :ship_type_id,
+          private_vars: private_vars
+        } ->
+          # Extract ship_type_id from the constraint detail message
+          detail = Keyword.get(private_vars, :detail)
+          Logger.debug("Extracting ship_type_id from detail: #{detail}")
+          
+          case detail do
+            detail when is_binary(detail) ->
+              # Parse "Key (ship_type_id)=(23378) is not present in table \"eve_item_types\"."
+              case Regex.run(~r/Key \(ship_type_id\)=\((\d+)\)/, detail) do
+                [_, ship_type_id_str] -> 
+                  ship_type_id = String.to_integer(ship_type_id_str)
+                  Logger.debug("Extracted ship_type_id: #{ship_type_id}")
+                  ship_type_id
+                _ -> 
+                  Logger.debug("Could not parse ship_type_id from detail")
+                  nil
+              end
+
+            _ ->
+              Logger.debug("Detail is not a string: #{inspect(detail)}")
+              nil
+          end
+
+        _ ->
+          nil
+      end
+    end)
+    Logger.debug("Final extracted ship_type_id: #{result}")
+    result
+  end
+
+  defp extract_ship_type_id_from_error(_), do: nil
+
+  defp handle_missing_ship_type(participant, ship_type_id) when is_integer(ship_type_id) do
+    Logger.info("Resolving missing ship type #{ship_type_id} for participant")
+
+    case TypeResolver.resolve_item_type(ship_type_id) do
+      {:ok, _item_type} ->
+        # Now retry the participant insertion
+        case Ash.create(Participant, participant,
+               action: :create,
+               domain: EveDmv.Api
+             ) do
+          {:ok, _record} ->
+            Logger.info(
+              "Successfully inserted participant after resolving ship type #{ship_type_id}"
+            )
+
+            :ok
+
+          {:error, error} ->
+            Logger.error(
+              "Failed to insert participant even after resolving ship type #{ship_type_id}: #{inspect(error)}"
+            )
+
+            {:error, error}
+        end
+
+      {:error, error} ->
+        Logger.error("Failed to resolve ship type #{ship_type_id}: #{inspect(error)}")
+        {:error, error}
+    end
+  end
+
+  defp handle_missing_ship_type(_participant, nil) do
+    Logger.warning("Could not extract ship_type_id from constraint error for participant")
+    {:error, :missing_ship_type_id}
+  end
+
+
+  # Weapon type error detection and handling
+
+  defp is_weapon_type_constraint_error?(%Ash.Error.Invalid{errors: errors}) do
+    result = Enum.any?(errors, fn error ->
+      case error do
+        %Ash.Error.Changes.InvalidAttribute{
+          field: :weapon_type_id,
+          private_vars: private_vars
+        } ->
+          constraint_name = Keyword.get(private_vars, :constraint)
+          constraint_type = Keyword.get(private_vars, :constraint_type)
+          detail = Keyword.get(private_vars, :detail)
+          
+          Logger.debug("Checking weapon constraint: #{constraint_name}, type: #{constraint_type}")
+          
+          # Check if it's a foreign key constraint error by constraint name OR constraint type
+          is_fkey_constraint = constraint_name == "participants_weapon_type_id_fkey" or 
+                              constraint_type == :foreign_key
+          
+          # Also check if the detail message contains the expected pattern
+          has_fkey_detail = is_binary(detail) and String.contains?(detail, "is not present in table")
+          
+          result = is_fkey_constraint and has_fkey_detail
+          Logger.debug("Is weapon FK constraint: #{is_fkey_constraint}, has FK detail: #{has_fkey_detail}, result: #{result}")
+          result
+
+        _ ->
+          false
+      end
+    end)
+    Logger.debug("Weapon foreign key constraint error detected: #{result}")
+    result
+  end
+
+  defp is_weapon_type_constraint_error?(_), do: false
+
+  defp extract_weapon_type_id_from_error(%Ash.Error.Invalid{errors: errors}) do
+    result = Enum.find_value(errors, fn error ->
+      case error do
+        %Ash.Error.Changes.InvalidAttribute{
+          field: :weapon_type_id,
+          private_vars: private_vars
+        } ->
+          # Extract weapon_type_id from the constraint detail message
+          detail = Keyword.get(private_vars, :detail)
+          Logger.debug("Extracting weapon_type_id from detail: #{detail}")
+          
+          case detail do
+            detail when is_binary(detail) ->
+              # Parse "Key (weapon_type_id)=(3638) is not present in table \"eve_item_types\"."
+              case Regex.run(~r/Key \(weapon_type_id\)=\((\d+)\)/, detail) do
+                [_, weapon_type_id_str] -> 
+                  weapon_type_id = String.to_integer(weapon_type_id_str)
+                  Logger.debug("Extracted weapon_type_id: #{weapon_type_id}")
+                  weapon_type_id
+                _ -> 
+                  Logger.debug("Could not parse weapon_type_id from detail")
+                  nil
+              end
+
+            _ ->
+              Logger.debug("Weapon detail is not a string: #{inspect(detail)}")
+              nil
+          end
+
+        _ ->
+          nil
+      end
+    end)
+    Logger.debug("Final extracted weapon_type_id: #{result}")
+    result
+  end
+
+  defp extract_weapon_type_id_from_error(_), do: nil
+
+  defp handle_missing_weapon_type(participant, weapon_type_id) when is_integer(weapon_type_id) do
+    Logger.info("Resolving missing weapon type #{weapon_type_id} for participant")
+
+    case TypeResolver.resolve_item_type(weapon_type_id) do
+      {:ok, _item_type} ->
+        # Now retry the participant insertion
+        case Ash.create(Participant, participant,
+               action: :create,
+               domain: EveDmv.Api
+             ) do
+          {:ok, _record} ->
+            Logger.info("Successfully inserted participant after resolving weapon type #{weapon_type_id}")
+            :ok
+
+          {:error, error} ->
+            Logger.error("Failed to insert participant even after resolving weapon type #{weapon_type_id}: #{inspect(error)}")
+            {:error, error}
+        end
+
+      {:error, error} ->
+        Logger.error("Failed to resolve weapon type #{weapon_type_id}: #{inspect(error)}")
+        {:error, error}
+    end
+  end
+
+  defp handle_missing_weapon_type(_participant, nil) do
+    Logger.warning("Could not extract weapon_type_id from constraint error for participant")
+    {:error, :missing_weapon_type_id}
   end
 end
