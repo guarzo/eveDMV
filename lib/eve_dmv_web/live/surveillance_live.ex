@@ -1,14 +1,14 @@
 defmodule EveDmvWeb.SurveillanceLive do
   @moduledoc """
   LiveView for managing surveillance profiles.
-  
+
   Allows users to create, edit, and manage killmail surveillance profiles
   with real-time notifications when profiles match incoming killmails.
   """
 
   use EveDmvWeb, :live_view
   alias EveDmv.Api
-  alias EveDmv.Surveillance.{Profile, ProfileMatch, MatchingEngine}
+  alias EveDmv.Surveillance.{MatchingEngine, Profile, ProfileMatch}
 
   @impl true
   def mount(_params, session, socket) do
@@ -42,7 +42,14 @@ defmodule EveDmvWeb.SurveillanceLive do
   end
 
   @impl true
-  def handle_info(%Phoenix.Socket.Broadcast{topic: "surveillance", event: "profile_match", payload: payload}, socket) do
+  def handle_info(
+        %Phoenix.Socket.Broadcast{
+          topic: "surveillance",
+          event: "profile_match",
+          payload: payload
+        },
+        socket
+      ) do
     # New profile match - add to recent matches and show notification
     new_match = %{
       killmail: payload.killmail,
@@ -81,10 +88,11 @@ defmodule EveDmvWeb.SurveillanceLive do
   @impl true
   def handle_event("create_profile", %{"profile" => profile_params}, socket) do
     # Parse JSON filter tree
-    filter_tree = case Jason.decode(profile_params["filter_tree"] || "{}") do
-      {:ok, parsed} -> parsed
-      {:error, _} -> sample_filter_tree()
-    end
+    filter_tree =
+      case Jason.decode(profile_params["filter_tree"] || "{}") do
+        {:ok, parsed} -> parsed
+        {:error, _} -> sample_filter_tree()
+      end
 
     profile_data = %{
       name: profile_params["name"],
@@ -98,10 +106,10 @@ defmodule EveDmvWeb.SurveillanceLive do
       {:ok, profile} ->
         # Reload matching engine profiles
         MatchingEngine.reload_profiles()
-        
+
         # Reload user profiles
         profiles = load_user_profiles(socket.assigns.user_id)
-        
+
         socket =
           socket
           |> assign(:profiles, profiles)
@@ -111,19 +119,7 @@ defmodule EveDmvWeb.SurveillanceLive do
         {:noreply, socket}
 
       {:error, error} ->
-        error_message = case error do
-          %Ash.Error.Invalid{errors: errors} ->
-            errors
-            |> Enum.map_join(", ", fn err -> 
-              case err do
-                %{message: msg} -> msg
-                %{field: field} -> "#{field} is invalid"
-                _ -> inspect(err)
-              end
-            end)
-          _ -> "Failed to create profile: #{inspect(error)}"
-        end
-
+        error_message = format_error_message(error)
         socket = put_flash(socket, :error, error_message)
         {:noreply, socket}
     end
@@ -137,10 +133,10 @@ defmodule EveDmvWeb.SurveillanceLive do
           {:ok, _updated_profile} ->
             # Reload matching engine profiles
             MatchingEngine.reload_profiles()
-            
+
             # Reload user profiles
             profiles = load_user_profiles(socket.assigns.user_id)
-            
+
             socket =
               socket
               |> assign(:profiles, profiles)
@@ -167,10 +163,10 @@ defmodule EveDmvWeb.SurveillanceLive do
           :ok ->
             # Reload matching engine profiles
             MatchingEngine.reload_profiles()
-            
-            # Reload user profiles  
+
+            # Reload user profiles
             profiles = load_user_profiles(socket.assigns.user_id)
-            
+
             socket =
               socket
               |> assign(:profiles, profiles)
@@ -213,11 +209,9 @@ defmodule EveDmvWeb.SurveillanceLive do
   end
 
   defp get_engine_stats do
-    try do
-      MatchingEngine.get_stats()
-    rescue
-      _ -> %{profiles_loaded: 0, matches_processed: 0}
-    end
+    MatchingEngine.get_stats()
+  rescue
+    _ -> %{profiles_loaded: 0, matches_processed: 0}
   end
 
   defp sample_filter_tree do
@@ -226,13 +220,14 @@ defmodule EveDmvWeb.SurveillanceLive do
       "rules" => [
         %{
           "field" => "total_value",
-          "operator" => "gt", 
+          "operator" => "gt",
           "value" => 100_000_000
         },
         %{
           "field" => "solar_system_id",
           "operator" => "in",
-          "value" => [30_000_142, 30_002_187]  # Jita, Amarr
+          # Jita, Amarr
+          "value" => [30_000_142, 30_002_187]
         }
       ]
     }
@@ -256,6 +251,26 @@ defmodule EveDmvWeb.SurveillanceLive do
       "🟢 Active"
     else
       "🔴 Inactive"
+    end
+  end
+
+  # Helper function to format error messages and reduce nesting
+  defp format_error_message(error) do
+    case error do
+      %Ash.Error.Invalid{errors: errors} ->
+        errors
+        |> Enum.map_join(", ", &format_validation_error/1)
+
+      _ ->
+        "Failed to create profile: #{inspect(error)}"
+    end
+  end
+
+  defp format_validation_error(err) do
+    case err do
+      %{message: msg} -> msg
+      %{field: field} -> "#{field} is invalid"
+      _ -> inspect(err)
     end
   end
 end

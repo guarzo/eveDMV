@@ -157,7 +157,8 @@ defmodule EveDmv.Surveillance.ProfileMatch do
 
       filter(expr(profile_id == ^arg(:profile_id)))
       prepare(build(sort: [matched_at: :desc]))
-      prepare(build(limit: 100))  # Limit to last 100 matches
+      # Limit to last 100 matches
+      prepare(build(limit: 100))
     end
   end
 

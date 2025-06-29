@@ -119,7 +119,11 @@ defmodule EveDmv.Killmails.KillmailPipeline do
 
       # Emit telemetry for successful processing
       processing_time = System.monotonic_time(:microsecond) - start_time
-      :telemetry.execute([:eve_dmv, :killmail, :processing_time], %{duration: processing_time}, %{killmail_id: killmail_id})
+
+      :telemetry.execute([:eve_dmv, :killmail, :processing_time], %{duration: processing_time}, %{
+        killmail_id: killmail_id
+      })
+
       :telemetry.execute([:eve_dmv, :killmail, :processed], %{count: 1}, %{})
 
       msg
@@ -137,7 +141,7 @@ defmodule EveDmv.Killmails.KillmailPipeline do
   def handle_batch(:db_insert, messages, _batch_info, _ctx) do
     batch_start_time = System.monotonic_time(:microsecond)
     batch_size = length(messages)
-    
+
     Logger.info("💾 Inserting batch of #{batch_size} killmails to database")
 
     # Extract data from messages
@@ -152,7 +156,7 @@ defmodule EveDmv.Killmails.KillmailPipeline do
       insert_participants(participants_lists)
 
       # Emit telemetry for successful batch
-      batch_time = System.monotonic_time(:microsecond) - batch_start_time
+      _batch_time = System.monotonic_time(:microsecond) - batch_start_time
       :telemetry.execute([:eve_dmv, :killmail, :batch_size], %{size: batch_size}, %{})
       :telemetry.execute([:eve_dmv, :killmail, :enriched], %{count: batch_size}, %{})
 
@@ -171,8 +175,10 @@ defmodule EveDmv.Killmails.KillmailPipeline do
     rescue
       error ->
         # Emit telemetry for failed batch
-        :telemetry.execute([:eve_dmv, :killmail, :failed], %{count: batch_size}, %{error: inspect(error)})
-        
+        :telemetry.execute([:eve_dmv, :killmail, :failed], %{count: batch_size}, %{
+          error: inspect(error)
+        })
+
         Logger.error("Failed to insert killmail batch: #{inspect(error)}")
         Logger.error("Error type: #{inspect(error.__struct__)}")
         Logger.error("Stack trace: #{inspect(__STACKTRACE__)}")
@@ -541,9 +547,12 @@ defmodule EveDmv.Killmails.KillmailPipeline do
           spawn(fn ->
             try do
               matches = MatchingEngine.match_killmail(killmail_data)
+
               if length(matches) > 0 do
-                Logger.info("🎯 Killmail #{killmail_data["killmail_id"]} matched #{length(matches)} surveillance profiles")
-                
+                Logger.info(
+                  "🎯 Killmail #{killmail_data["killmail_id"]} matched #{length(matches)} surveillance profiles"
+                )
+
                 # Broadcast surveillance match notification
                 Endpoint.broadcast!("surveillance", "profile_match", %{
                   killmail: killmail_data,

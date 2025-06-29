@@ -124,7 +124,9 @@ defmodule EveDmv.Market.PriceService do
     # Calculate victim ship value
     victim_ship_value =
       case get_in(killmail, ["victim", "ship_type_id"]) do
-        nil -> 0.0
+        nil ->
+          0.0
+
         ship_type_id ->
           case prices[ship_type_id] do
             nil -> 0.0
@@ -229,24 +231,32 @@ defmodule EveDmv.Market.PriceService do
 
     item_types =
       case get_in(killmail, ["victim", "items"]) do
-        nil -> []
+        nil ->
+          []
+
         items when is_list(items) ->
           items
           |> Enum.map(& &1["item_type_id"])
           |> Enum.reject(&is_nil/1)
           |> Enum.uniq()
-        _ -> []
+
+        _ ->
+          []
       end
 
     attacker_types =
       case killmail["attackers"] do
-        nil -> []
+        nil ->
+          []
+
         attackers when is_list(attackers) ->
           attackers
           |> Enum.map(& &1["ship_type_id"])
           |> Enum.reject(&is_nil/1)
           |> Enum.uniq()
-        _ -> []
+
+        _ ->
+          []
       end
 
     [victim_type | item_types ++ attacker_types]

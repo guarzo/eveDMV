@@ -111,7 +111,7 @@ defmodule EveDmvWeb.Telemetry do
       counter("eve_dmv.price.cache.hit.count",
         description: "Price cache hits"
       ),
-      counter("eve_dmv.price.cache.miss.count", 
+      counter("eve_dmv.price.cache.miss.count",
         description: "Price cache misses"
       ),
       summary("eve_dmv.price.lookup_time",
@@ -145,7 +145,7 @@ defmodule EveDmvWeb.Telemetry do
         description: "Name resolver cache hits by type"
       ),
       counter("eve_dmv.name_resolver.cache.miss.count",
-        tags: [:type], 
+        tags: [:type],
         description: "Name resolver cache misses by type"
       ),
       summary("eve_dmv.name_resolver.lookup_time",
@@ -196,52 +196,57 @@ defmodule EveDmvWeb.Telemetry do
   Measure surveillance profile statistics.
   """
   def measure_surveillance_profiles do
-    try do
-      case EveDmv.Surveillance.MatchingEngine.get_stats() do
-        %{profiles_loaded: count} when is_integer(count) ->
-          :telemetry.execute([:eve_dmv, :surveillance, :active_profiles], %{}, %{value: count})
-        _ -> :ok
-      end
-    rescue
-      _ -> :ok
+    case EveDmv.Surveillance.MatchingEngine.get_stats() do
+      %{profiles_loaded: count} when is_integer(count) ->
+        :telemetry.execute([:eve_dmv, :surveillance, :active_profiles], %{}, %{value: count})
+
+      _ ->
+        :ok
     end
+  rescue
+    _ -> :ok
   end
 
   @doc """
   Measure cache statistics.
   """
   def measure_cache_stats do
-    try do
-      # Name resolver cache stats
-      case :ets.whereis(:eve_name_cache) do
-        :undefined -> :ok
-        _pid ->
-          cache_size = :ets.info(:eve_name_cache, :size)
-          :telemetry.execute([:eve_dmv, :name_resolver, :cache_size], %{}, %{size: cache_size || 0})
-      end
+    # Name resolver cache stats
+    case :ets.whereis(:eve_name_cache) do
+      :undefined ->
+        :ok
 
-      # Price cache stats  
-      case :ets.whereis(:price_cache) do
-        :undefined -> :ok
-        _pid ->
-          price_cache_size = :ets.info(:price_cache, :size)
-          :telemetry.execute([:eve_dmv, :price, :cache_size], %{}, %{size: price_cache_size || 0})
-      end
-    rescue
-      _ -> :ok
+      _pid ->
+        cache_size = :ets.info(:eve_name_cache, :size)
+
+        :telemetry.execute([:eve_dmv, :name_resolver, :cache_size], %{}, %{
+          size: cache_size || 0
+        })
     end
+
+    # Price cache stats
+    case :ets.whereis(:price_cache) do
+      :undefined ->
+        :ok
+
+      _pid ->
+        price_cache_size = :ets.info(:price_cache, :size)
+        :telemetry.execute([:eve_dmv, :price, :cache_size], %{}, %{size: price_cache_size || 0})
+    end
+  rescue
+    _ -> :ok
   end
 
   @doc """
   Measure pipeline statistics.
   """
   def measure_pipeline_stats do
-    try do
-      # Broadway pipeline stats would go here
-      # For now, just emit a heartbeat
-      :telemetry.execute([:eve_dmv, :pipeline, :heartbeat], %{}, %{timestamp: System.system_time(:second)})
-    rescue
-      _ -> :ok
-    end
+    # Broadway pipeline stats would go here
+    # For now, just emit a heartbeat
+    :telemetry.execute([:eve_dmv, :pipeline, :heartbeat], %{}, %{
+      timestamp: System.system_time(:second)
+    })
+  rescue
+    _ -> :ok
   end
 end

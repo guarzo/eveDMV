@@ -13,9 +13,12 @@ defmodule EveDmv.Eve.NameResolver do
   # ETS table for caching lookups
   @table_name :eve_name_cache
   # Different TTLs for different data types
-  @static_data_ttl :timer.hours(24)  # Ship/item names rarely change
-  @dynamic_data_ttl :timer.hours(4)  # Character/corp names can change
-  @esi_data_ttl :timer.minutes(30)   # ESI data more frequent updates
+  # Ship/item names rarely change
+  @static_data_ttl :timer.hours(24)
+  # Character/corp names can change
+  @dynamic_data_ttl :timer.hours(4)
+  # ESI data more frequent updates
+  @esi_data_ttl :timer.minutes(30)
 
   # ============================================================================
   # Public API
@@ -270,24 +273,26 @@ defmodule EveDmv.Eve.NameResolver do
 
   @doc """
   Preloads names for killmail participants to improve UI performance.
-  
+
   Takes a list of killmails and preloads all character, corporation, 
   and alliance names found in the participants.
   """
   def preload_killmail_names(killmails) when is_list(killmails) do
     Logger.debug("Preloading names for #{length(killmails)} killmails")
-    
+
     # Extract all unique IDs from killmails
-    {character_ids, corp_ids, alliance_ids} = 
+    {character_ids, corp_ids, alliance_ids} =
       Enum.reduce(killmails, {[], [], []}, fn km, {chars, corps, alliances} ->
-        new_chars = [
-          km.victim_character_id,
-          km.final_blow_character_id
-        ] |> Enum.reject(&is_nil/1)
-        
+        new_chars =
+          [
+            km.victim_character_id,
+            km.final_blow_character_id
+          ]
+          |> Enum.reject(&is_nil/1)
+
         new_corps = [km.victim_corporation_id] |> Enum.reject(&is_nil/1)
         new_alliances = [km.victim_alliance_id] |> Enum.reject(&is_nil/1)
-        
+
         {chars ++ new_chars, corps ++ new_corps, alliances ++ new_alliances}
       end)
 
@@ -300,7 +305,7 @@ defmodule EveDmv.Eve.NameResolver do
 
     # Wait for all tasks to complete
     Enum.each(tasks, &Task.await(&1, 30_000))
-    
+
     Logger.debug("Name preloading complete")
     :ok
   end
@@ -378,7 +383,8 @@ defmodule EveDmv.Eve.NameResolver do
     end
   end
 
-  defp get_ttl_for_type(type) when type in [:item_type, :ship_type, :solar_system, :solar_system_full] do
+  defp get_ttl_for_type(type)
+       when type in [:item_type, :ship_type, :solar_system, :solar_system_full] do
     @static_data_ttl
   end
 
@@ -469,11 +475,12 @@ defmodule EveDmv.Eve.NameResolver do
     end)
   end
 
-  defp batch_resolve_with_esi(type, ids, fallback_fn) when type in [:character, :corporation, :alliance] do
+  defp batch_resolve_with_esi(type, ids, fallback_fn)
+       when type in [:character, :corporation, :alliance] do
     unique_ids = Enum.uniq(ids)
-    
+
     # Check cache first, separate cached from uncached
-    {cached, uncached} = 
+    {cached, uncached} =
       Enum.reduce(unique_ids, {%{}, []}, fn id, {cached_acc, uncached_acc} ->
         case get_cached_or_fetch(type, id) do
           {:ok, name} -> {Map.put(cached_acc, id, name), uncached_acc}
@@ -482,18 +489,20 @@ defmodule EveDmv.Eve.NameResolver do
       end)
 
     # If we have uncached IDs, try ESI bulk lookup
-    esi_results = 
+    esi_results =
       if length(uncached) > 0 do
         case bulk_esi_lookup(type, uncached) do
-          {:ok, results} -> 
+          {:ok, results} ->
             # Cache the successful lookups
             Enum.each(results, fn {id, name} ->
               ttl = get_ttl_for_type(type)
               expires_at = :os.system_time(:millisecond) + ttl
               :ets.insert(@table_name, {{type, id}, name, expires_at})
             end)
+
             results
-          {:error, _} -> 
+
+          {:error, _} ->
             # Fall back to individual lookups
             Map.new(uncached, fn id -> {id, fallback_fn.(id)} end)
         end
@@ -511,63 +520,58 @@ defmodule EveDmv.Eve.NameResolver do
 
   defp bulk_esi_lookup(:character, character_ids) when length(character_ids) <= 1000 do
     case EsiClient.get_characters(character_ids) do
-      {:ok, characters_map} -> 
+      {:ok, characters_map} ->
         results = Map.new(characters_map, fn {id, char} -> {id, char.name} end)
         {:ok, results}
-      error -> error
     end
   end
 
   defp bulk_esi_lookup(:corporation, corporation_ids) when length(corporation_ids) <= 50 do
     # ESI doesn't have bulk corp lookup, so we'll use Task.async_stream for parallel requests
-    try do
-      results = 
-        corporation_ids
-        |> Task.async_stream(
-          fn id -> 
-            case EsiClient.get_corporation(id) do
-              {:ok, corp} -> {id, corp.name}
-              {:error, _} -> {id, "Unknown Corporation (#{id})"}
-            end
-          end,
-          max_concurrency: 10,
-          timeout: 10_000
-        )
-        |> Enum.reduce(%{}, fn
-          {:ok, {id, name}}, acc -> Map.put(acc, id, name)
-          {:exit, _reason}, acc -> acc
-        end)
+    results =
+      corporation_ids
+      |> Task.async_stream(
+        fn id ->
+          case EsiClient.get_corporation(id) do
+            {:ok, corp} -> {id, corp.name}
+            {:error, _} -> {id, "Unknown Corporation (#{id})"}
+          end
+        end,
+        max_concurrency: 10,
+        timeout: 10_000
+      )
+      |> Enum.reduce(%{}, fn
+        {:ok, {id, name}}, acc -> Map.put(acc, id, name)
+        {:exit, _reason}, acc -> acc
+      end)
 
-      {:ok, results}
-    rescue
-      _ -> {:error, :parallel_fetch_failed}
-    end
+    {:ok, results}
+  rescue
+    _ -> {:error, :parallel_fetch_failed}
   end
 
   defp bulk_esi_lookup(:alliance, alliance_ids) when length(alliance_ids) <= 50 do
     # ESI doesn't have bulk alliance lookup, so we'll use Task.async_stream for parallel requests
-    try do
-      results = 
-        alliance_ids
-        |> Task.async_stream(
-          fn id -> 
-            case EsiClient.get_alliance(id) do
-              {:ok, alliance} -> {id, alliance.name}
-              {:error, _} -> {id, "Unknown Alliance (#{id})"}
-            end
-          end,
-          max_concurrency: 10,
-          timeout: 10_000
-        )
-        |> Enum.reduce(%{}, fn
-          {:ok, {id, name}}, acc -> Map.put(acc, id, name)
-          {:exit, _reason}, acc -> acc
-        end)
+    results =
+      alliance_ids
+      |> Task.async_stream(
+        fn id ->
+          case EsiClient.get_alliance(id) do
+            {:ok, alliance} -> {id, alliance.name}
+            {:error, _} -> {id, "Unknown Alliance (#{id})"}
+          end
+        end,
+        max_concurrency: 10,
+        timeout: 10_000
+      )
+      |> Enum.reduce(%{}, fn
+        {:ok, {id, name}}, acc -> Map.put(acc, id, name)
+        {:exit, _reason}, acc -> acc
+      end)
 
-      {:ok, results}
-    rescue
-      _ -> {:error, :parallel_fetch_failed}
-    end
+    {:ok, results}
+  rescue
+    _ -> {:error, :parallel_fetch_failed}
   end
 
   # If too many IDs, chunk them appropriately

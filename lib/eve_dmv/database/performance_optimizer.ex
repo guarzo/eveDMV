@@ -142,7 +142,13 @@ defmodule EveDmv.Database.PerformanceOptimizer do
   @doc """
   Analyze database performance and suggest optimizations.
   """
-  @spec analyze_performance() :: map()
+  @spec analyze_performance() :: %{
+          slow_queries: [map()],
+          index_usage: [map()],
+          table_stats: [map()],
+          recommendations: [String.t()],
+          analyzed_at: DateTime.t()
+        }
   def analyze_performance do
     Logger.info("Starting database performance analysis")
 
@@ -172,7 +178,7 @@ defmodule EveDmv.Database.PerformanceOptimizer do
 
     tables = [
       "killmails_raw",
-      "killmails_enriched", 
+      "killmails_enriched",
       "participants",
       "surveillance_profiles",
       "surveillance_profile_matches",
@@ -181,9 +187,10 @@ defmodule EveDmv.Database.PerformanceOptimizer do
 
     Enum.each(tables, fn table ->
       case Repo.query("ANALYZE #{table}") do
-        {:ok, _} -> 
+        {:ok, _} ->
           Logger.debug("Updated statistics for table: #{table}")
-        {:error, error} -> 
+
+        {:error, error} ->
           Logger.warning("Failed to analyze table #{table}: #{inspect(error)}")
       end
     end)
@@ -199,12 +206,13 @@ defmodule EveDmv.Database.PerformanceOptimizer do
     full = Keyword.get(opts, :full, false)
     verbose = Keyword.get(opts, :verbose, false)
 
-    vacuum_cmd = case {full, verbose} do
-      {true, true} -> "VACUUM (FULL, VERBOSE, ANALYZE)"
-      {true, false} -> "VACUUM (FULL, ANALYZE)"
-      {false, true} -> "VACUUM (VERBOSE, ANALYZE)"
-      {false, false} -> "VACUUM ANALYZE"
-    end
+    vacuum_cmd =
+      case {full, verbose} do
+        {true, true} -> "VACUUM (FULL, VERBOSE, ANALYZE)"
+        {true, false} -> "VACUUM (FULL, ANALYZE)"
+        {false, true} -> "VACUUM (VERBOSE, ANALYZE)"
+        {false, false} -> "VACUUM ANALYZE"
+      end
 
     Logger.info("Starting vacuum operation: #{vacuum_cmd}")
 
@@ -212,15 +220,16 @@ defmodule EveDmv.Database.PerformanceOptimizer do
       "killmails_raw",
       "killmails_enriched",
       "participants",
-      "surveillance_profiles", 
+      "surveillance_profiles",
       "surveillance_profile_matches"
     ]
 
     Enum.each(tables, fn table ->
       case Repo.query("#{vacuum_cmd} #{table}") do
-        {:ok, _} -> 
+        {:ok, _} ->
           Logger.info("Vacuumed table: #{table}")
-        {:error, error} -> 
+
+        {:error, error} ->
           Logger.error("Failed to vacuum table #{table}: #{inspect(error)}")
       end
     end)
@@ -231,23 +240,24 @@ defmodule EveDmv.Database.PerformanceOptimizer do
   @doc """
   Get current connection and query statistics.
   """
-  @spec get_connection_stats() :: map()
+  @spec get_connection_stats() :: %{String.t() => any(), checked_at: DateTime.t()}
   def get_connection_stats do
     queries = [
       {"active_connections", "SELECT count(*) FROM pg_stat_activity WHERE state = 'active'"},
       {"idle_connections", "SELECT count(*) FROM pg_stat_activity WHERE state = 'idle'"},
       {"total_connections", "SELECT count(*) FROM pg_stat_activity"},
       {"database_size", "SELECT pg_size_pretty(pg_database_size(current_database()))"},
-      {"cache_hit_ratio", """
-        SELECT round(
-          100.0 * sum(blks_hit) / (sum(blks_hit) + sum(blks_read)), 2
-        ) as cache_hit_ratio 
-        FROM pg_stat_database 
-        WHERE datname = current_database()
-      """}
+      {"cache_hit_ratio",
+       """
+         SELECT round(
+           100.0 * sum(blks_hit) / (sum(blks_hit) + sum(blks_read)), 2
+         ) as cache_hit_ratio 
+         FROM pg_stat_database 
+         WHERE datname = current_database()
+       """}
     ]
 
-    stats = 
+    stats =
       Enum.into(queries, %{}, fn {name, query} ->
         case Repo.query(query) do
           {:ok, %{rows: [[value]]}} -> {name, value}
@@ -264,36 +274,50 @@ defmodule EveDmv.Database.PerformanceOptimizer do
     recommendations = []
 
     # Check for slow queries
-    recommendations = if length(slow_queries) > 0 do
-      ["Consider optimizing slow queries - #{length(slow_queries)} queries taking >1 second" | recommendations]
-    else
-      recommendations
-    end
+    recommendations =
+      if length(slow_queries) > 0 do
+        [
+          "Consider optimizing slow queries - #{length(slow_queries)} queries taking >1 second"
+          | recommendations
+        ]
+      else
+        recommendations
+      end
 
     # Check for unused indexes
-    unused_indexes = Enum.filter(index_usage, fn idx -> 
-      (idx.number_of_scans || 0) < 10 and idx.index_name != nil
-    end)
+    unused_indexes =
+      Enum.filter(index_usage, fn idx ->
+        (idx.number_of_scans || 0) < 10 and idx.index_name != nil
+      end)
 
-    recommendations = if length(unused_indexes) > 0 do
-      ["Consider dropping #{length(unused_indexes)} unused indexes to save space" | recommendations]
-    else
-      recommendations
-    end
+    recommendations =
+      if length(unused_indexes) > 0 do
+        [
+          "Consider dropping #{length(unused_indexes)} unused indexes to save space"
+          | recommendations
+        ]
+      else
+        recommendations
+      end
 
     # Check for missing indexes on frequently accessed tables
-    high_scan_tables = index_usage
-    |> Enum.filter(fn idx -> (idx.tuples_read || 0) > 100_000 end)
-    |> Enum.map(& &1.table_name)
-    |> Enum.uniq()
+    high_scan_tables =
+      index_usage
+      |> Enum.filter(fn idx -> (idx.tuples_read || 0) > 100_000 end)
+      |> Enum.map(& &1.table_name)
+      |> Enum.uniq()
 
-    recommendations = if length(high_scan_tables) > 0 do
-      ["Tables with high scan counts may benefit from additional indexes: #{Enum.join(high_scan_tables, ", ")}" | recommendations]
-    else
-      recommendations
-    end
+    recommendations =
+      if length(high_scan_tables) > 0 do
+        [
+          "Tables with high scan counts may benefit from additional indexes: #{Enum.join(high_scan_tables, ", ")}"
+          | recommendations
+        ]
+      else
+        recommendations
+      end
 
-    if length(recommendations) == 0 do
+    if Enum.empty?(recommendations) do
       ["Database performance looks good - no immediate optimizations needed"]
     else
       recommendations

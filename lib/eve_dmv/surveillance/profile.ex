@@ -75,6 +75,7 @@ defmodule EveDmv.Surveillance.Profile do
     # Notification settings
     attribute :notification_settings, :map do
       allow_nil?(false)
+
       default(%{
         "enabled" => true,
         "sound_enabled" => true,
@@ -83,6 +84,7 @@ defmodule EveDmv.Surveillance.Profile do
         "email_enabled" => false,
         "discord_webhook" => nil
       })
+
       description("Notification configuration for matches")
     end
 
@@ -140,12 +142,18 @@ defmodule EveDmv.Surveillance.Profile do
         case changeset.attributes[:filter_tree] do
           %{} = filter_tree ->
             case validate_filter_tree(filter_tree) do
-              :ok -> changeset
-              {:error, message} -> 
+              :ok ->
+                changeset
+
+              {:error, message} ->
                 Ash.Changeset.add_error(changeset, field: :filter_tree, message: message)
             end
+
           _ ->
-            Ash.Changeset.add_error(changeset, field: :filter_tree, message: "must be a valid filter tree")
+            Ash.Changeset.add_error(changeset,
+              field: :filter_tree,
+              message: "must be a valid filter tree"
+            )
         end
       end)
     end
@@ -213,14 +221,15 @@ defmodule EveDmv.Surveillance.Profile do
       description("Whether this profile has matched killmails in the last 24 hours")
     end
 
-    calculate :matches_per_day, :decimal, 
-      expr(match_count / datetime_diff(now(), inserted_at, :day)) do
+    calculate :matches_per_day,
+              :decimal,
+              expr(match_count / datetime_diff(now(), inserted_at, :day)) do
       description("Average matches per day since creation")
     end
   end
 
   # Private validation functions
-  defp validate_filter_tree(%{"condition" => condition, "rules" => rules}) 
+  defp validate_filter_tree(%{"condition" => condition, "rules" => rules})
        when condition in ["and", "or"] and is_list(rules) do
     if length(rules) > 0 do
       Enum.reduce_while(rules, :ok, fn rule, :ok ->
@@ -250,28 +259,56 @@ defmodule EveDmv.Surveillance.Profile do
 
   defp validate_rule(_), do: {:error, "invalid rule structure"}
 
-  defp validate_field(field) when field in [
-    "killmail_id", "victim_character_id", "victim_corporation_id", "victim_alliance_id",
-    "solar_system_id", "victim_ship_type_id", "total_value", "ship_value", "fitted_value",
-    "attacker_count", "final_blow_character_id", "kill_category", "victim_ship_category",
-    "module_tags", "noteworthy_modules", "killmail_time", "victim_character_name",
-    "victim_corporation_name", "victim_alliance_name", "solar_system_name", "victim_ship_name"
-  ] do
+  defp validate_field(field)
+       when field in [
+              "killmail_id",
+              "victim_character_id",
+              "victim_corporation_id",
+              "victim_alliance_id",
+              "solar_system_id",
+              "victim_ship_type_id",
+              "total_value",
+              "ship_value",
+              "fitted_value",
+              "attacker_count",
+              "final_blow_character_id",
+              "kill_category",
+              "victim_ship_category",
+              "module_tags",
+              "noteworthy_modules",
+              "killmail_time",
+              "victim_character_name",
+              "victim_corporation_name",
+              "victim_alliance_name",
+              "solar_system_name",
+              "victim_ship_name"
+            ] do
     :ok
   end
 
   defp validate_field(_), do: {:error, "invalid field name"}
 
-  defp validate_operator(op) when op in [
-    "eq", "ne", "gt", "lt", "gte", "lte", "in", "not_in",
-    "contains_any", "contains_all", "not_contains"
-  ] do
+  defp validate_operator(op)
+       when op in [
+              "eq",
+              "ne",
+              "gt",
+              "lt",
+              "gte",
+              "lte",
+              "in",
+              "not_in",
+              "contains_any",
+              "contains_all",
+              "not_contains"
+            ] do
     :ok
   end
 
   defp validate_operator(_), do: {:error, "invalid operator"}
 
-  defp validate_value_for_operator(op, value) when op in ["in", "not_in", "contains_any", "contains_all", "not_contains"] do
+  defp validate_value_for_operator(op, value)
+       when op in ["in", "not_in", "contains_any", "contains_all", "not_contains"] do
     if is_list(value) and length(value) > 0 do
       :ok
     else

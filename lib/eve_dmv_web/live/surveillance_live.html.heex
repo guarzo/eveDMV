@@ -6,7 +6,7 @@
         <h1 class="text-2xl font-bold text-blue-400">Surveillance Profiles</h1>
         <div class="text-sm text-gray-400">Target Tracking System</div>
       </div>
-      
+
       <div class="flex items-center space-x-4">
         <button
           phx-click="refresh_stats"
@@ -42,13 +42,15 @@
           <%= if @engine_stats[:last_reload] do %>
             <div class="flex justify-between">
               <span class="text-gray-400">Last Reload:</span>
-              <span class="text-yellow-400 text-xs">{format_datetime(@engine_stats.last_reload)}</span>
+              <span class="text-yellow-400 text-xs">
+                {format_datetime(@engine_stats.last_reload)}
+              </span>
             </div>
           <% end %>
         </div>
       </div>
-
-      <!-- Recent Matches -->
+      
+<!-- Recent Matches -->
       <div class="p-6">
         <h2 class="text-lg font-semibold text-gray-200 mb-4">Recent Matches</h2>
         <div class="space-y-3">
@@ -80,8 +82,8 @@
         </div>
       </div>
     </div>
-
-    <!-- Main Content - Profile Management -->
+    
+<!-- Main Content - Profile Management -->
     <div class="flex-1 h-screen overflow-y-auto">
       <div class="p-6">
         <div class="flex items-center justify-between mb-6">
@@ -90,8 +92,8 @@
             {length(@profiles)} profile{if length(@profiles) != 1, do: "s"}
           </div>
         </div>
-
-        <!-- Profiles Grid -->
+        
+<!-- Profiles Grid -->
         <%= if length(@profiles) > 0 do %>
           <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             <%= for profile <- @profiles do %>
@@ -108,8 +110,8 @@
                     {profile_status_badge(profile.is_active)}
                   </div>
                 </div>
-
-                <!-- Profile Stats -->
+                
+<!-- Profile Stats -->
                 <div class="grid grid-cols-2 gap-4 mb-4">
                   <div class="text-center">
                     <div class="text-lg font-bold text-blue-400">{profile.match_count}</div>
@@ -125,8 +127,8 @@
                     <% end %>
                   </div>
                 </div>
-
-                <!-- Filter Preview -->
+                
+<!-- Filter Preview -->
                 <div class="mb-4">
                   <div class="text-sm font-medium text-gray-300 mb-2">Filter Rules:</div>
                   <div class="bg-gray-900 rounded p-3">
@@ -135,8 +137,8 @@
                     </code>
                   </div>
                 </div>
-
-                <!-- Actions -->
+                
+<!-- Actions -->
                 <div class="flex space-x-2">
                   <button
                     phx-click="toggle_profile"
@@ -165,7 +167,9 @@
           <div class="text-center py-12">
             <div class="text-6xl text-gray-600 mb-4">🎯</div>
             <h3 class="text-lg font-medium text-gray-400 mb-2">No Surveillance Profiles</h3>
-            <p class="text-gray-500 mb-6">Create your first profile to start tracking specific killmail patterns</p>
+            <p class="text-gray-500 mb-6">
+              Create your first profile to start tracking specific killmail patterns
+            </p>
             <button
               phx-click="show_create_modal"
               class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
@@ -177,17 +181,14 @@
       </div>
     </div>
   </div>
-
-  <!-- Create Profile Modal -->
+  
+<!-- Create Profile Modal -->
   <%= if @show_create_modal do %>
     <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-gray-800 rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-xl font-semibold text-gray-200">Create Surveillance Profile</h2>
-          <button
-            phx-click="hide_create_modal"
-            class="text-gray-400 hover:text-gray-200 text-xl"
-          >
+          <button phx-click="hide_create_modal" class="text-gray-400 hover:text-gray-200 text-xl">
             ✕
           </button>
         </div>
@@ -207,8 +208,8 @@
               placeholder="e.g., High-Value Targets"
             />
           </div>
-
-          <!-- Description -->
+          
+<!-- Description -->
           <div class="mb-4">
             <label class="block text-sm font-medium text-gray-300 mb-2">
               Description
@@ -220,8 +221,8 @@
               placeholder="Optional description of what this profile tracks"
             >{@new_profile_form["description"]}</textarea>
           </div>
-
-          <!-- Filter Tree -->
+          
+<!-- Filter Tree -->
           <div class="mb-6">
             <label class="block text-sm font-medium text-gray-300 mb-2">
               Filter Rules (JSON) *
@@ -234,11 +235,12 @@
               placeholder="Enter filter rules in JSON format"
             >{format_filter_tree(@new_profile_form["filter_tree"])}</textarea>
             <div class="mt-2 text-sm text-gray-400">
-              <strong>Example:</strong> The default filter matches killmails > 100M ISK in Jita or Amarr
+              <strong>Example:</strong>
+              The default filter matches killmails > 100M ISK in Jita or Amarr
             </div>
           </div>
-
-          <!-- Actions -->
+          
+<!-- Actions -->
           <div class="flex space-x-3">
             <button
               type="submit"
