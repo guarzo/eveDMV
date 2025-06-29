@@ -80,7 +80,7 @@ config :eve_dmv, :eve_sso,
   client_id: System.get_env("EVE_SSO_CLIENT_ID", "your-eve-sso-client-id"),
   client_secret: System.get_env("EVE_SSO_CLIENT_SECRET", "your-eve-sso-client-secret"),
   redirect_uri:
-    System.get_env("EVE_SSO_REDIRECT_URI", "http://localhost:4000/auth/user/eve_sso/callback")
+    System.get_env("EVE_SSO_REDIRECT_URI", "http://localhost:4010/auth/user/eve_sso/callback")
 
 # Killmail Pipeline Configuration
 config :eve_dmv,

@@ -26,6 +26,10 @@ defmodule EveDmv.Api do
 
     # Intelligence data
     resource(EveDmv.Intelligence.CharacterStats)
+
+    # Surveillance profiles
+    resource(EveDmv.Surveillance.Profile)
+    resource(EveDmv.Surveillance.ProfileMatch)
   end
 
   # Authorization configuration

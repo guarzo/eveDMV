@@ -131,9 +131,9 @@ Last Updated: June 29, 2025
 ## 🔗 Quick Links
 
 ### Development
-- Local: http://localhost:4000
-- Kill Feed: http://localhost:4000/feed
-- Character Intel: http://localhost:4000/intel/:character_id
+- Local: http://localhost:4010
+- Kill Feed: http://localhost:4010/feed
+- Character Intel: http://localhost:4010/intel/:character_id
 
 ### Commands
 ```bash

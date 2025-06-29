@@ -2,22 +2,10 @@
   "attributes": [
     {
       "allow_nil?": false,
-      "default": "fragment(\"gen_random_uuid()\")",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": true,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "id",
-      "type": "uuid"
-    },
-    {
-      "allow_nil?": false,
       "default": "nil",
       "generated?": false,
       "precision": null,
-      "primary_key?": false,
+      "primary_key?": true,
       "references": null,
       "scale": null,
       "size": null,
@@ -29,7 +17,7 @@
       "default": "nil",
       "generated?": false,
       "precision": null,
-      "primary_key?": false,
+      "primary_key?": true,
       "references": null,
       "scale": null,
       "size": null,
@@ -45,7 +33,7 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "character_id",
+      "source": "victim_character_id",
       "type": "bigint"
     },
     {
@@ -57,7 +45,7 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "character_name",
+      "source": "victim_character_name",
       "type": "text"
     },
     {
@@ -69,7 +57,7 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "corporation_id",
+      "source": "victim_corporation_id",
       "type": "bigint"
     },
     {
@@ -81,7 +69,7 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "corporation_name",
+      "source": "victim_corporation_name",
       "type": "text"
     },
     {
@@ -93,7 +81,7 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "alliance_id",
+      "source": "victim_alliance_id",
       "type": "bigint"
     },
     {
@@ -105,159 +93,8 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "alliance_name",
+      "source": "victim_alliance_name",
       "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "faction_id",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "faction_name",
-      "type": "text"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": {
-        "deferrable": false,
-        "destination_attribute": "type_id",
-        "destination_attribute_default": null,
-        "destination_attribute_generated": null,
-        "index?": false,
-        "match_type": null,
-        "match_with": null,
-        "multitenancy": {
-          "attribute": null,
-          "global": null,
-          "strategy": null
-        },
-        "name": "participants_ship_type_id_fkey",
-        "on_delete": null,
-        "on_update": null,
-        "primary_key?": true,
-        "schema": "public",
-        "table": "eve_item_types"
-      },
-      "scale": null,
-      "size": null,
-      "source": "ship_type_id",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "ship_name",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "weapon_type_id",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "weapon_name",
-      "type": "text"
-    },
-    {
-      "allow_nil?": false,
-      "default": "0",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "damage_done",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": 5,
-      "primary_key?": false,
-      "references": null,
-      "scale": 2,
-      "size": null,
-      "source": "security_status",
-      "type": "decimal"
-    },
-    {
-      "allow_nil?": false,
-      "default": "false",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "is_victim",
-      "type": "boolean"
-    },
-    {
-      "allow_nil?": false,
-      "default": "false",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "final_blow",
-      "type": "boolean"
-    },
-    {
-      "allow_nil?": false,
-      "default": "false",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "is_npc",
-      "type": "boolean"
     },
     {
       "allow_nil?": false,
@@ -270,6 +107,192 @@
       "size": null,
       "source": "solar_system_id",
       "type": "bigint"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "solar_system_name",
+      "type": "text"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "victim_ship_type_id",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "victim_ship_name",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": 15,
+      "primary_key?": false,
+      "references": null,
+      "scale": 2,
+      "size": null,
+      "source": "total_value",
+      "type": "decimal"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": 15,
+      "primary_key?": false,
+      "references": null,
+      "scale": 2,
+      "size": null,
+      "source": "ship_value",
+      "type": "decimal"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": 15,
+      "primary_key?": false,
+      "references": null,
+      "scale": 2,
+      "size": null,
+      "source": "fitted_value",
+      "type": "decimal"
+    },
+    {
+      "allow_nil?": false,
+      "default": "0",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "attacker_count",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "final_blow_character_id",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "final_blow_character_name",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "kill_category",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "victim_ship_category",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "[]",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "module_tags",
+      "type": [
+        "array",
+        "text"
+      ]
+    },
+    {
+      "allow_nil?": true,
+      "default": "[]",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "noteworthy_modules",
+      "type": [
+        "array",
+        "text"
+      ]
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "enriched_at",
+      "type": "utc_datetime"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "price_data_source",
+      "type": "text"
     },
     {
       "allow_nil?": false,
@@ -303,165 +326,6 @@
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
-        "killmail_id",
-        "killmail_time"
-      ],
-      "fields": [
-        {
-          "type": "atom",
-          "value": "killmail_id"
-        },
-        {
-          "type": "atom",
-          "value": "killmail_time"
-        }
-      ],
-      "include": null,
-      "message": null,
-      "name": "participants_killmail_idx",
-      "nulls_distinct": true,
-      "prefix": null,
-      "table": null,
-      "unique": false,
-      "using": null,
-      "where": null
-    },
-    {
-      "all_tenants?": false,
-      "concurrently": false,
-      "error_fields": [
-        "character_id"
-      ],
-      "fields": [
-        {
-          "type": "atom",
-          "value": "character_id"
-        }
-      ],
-      "include": null,
-      "message": null,
-      "name": "participants_character_idx",
-      "nulls_distinct": true,
-      "prefix": null,
-      "table": null,
-      "unique": false,
-      "using": null,
-      "where": null
-    },
-    {
-      "all_tenants?": false,
-      "concurrently": false,
-      "error_fields": [
-        "corporation_id"
-      ],
-      "fields": [
-        {
-          "type": "atom",
-          "value": "corporation_id"
-        }
-      ],
-      "include": null,
-      "message": null,
-      "name": "participants_corporation_idx",
-      "nulls_distinct": true,
-      "prefix": null,
-      "table": null,
-      "unique": false,
-      "using": null,
-      "where": null
-    },
-    {
-      "all_tenants?": false,
-      "concurrently": false,
-      "error_fields": [
-        "alliance_id"
-      ],
-      "fields": [
-        {
-          "type": "atom",
-          "value": "alliance_id"
-        }
-      ],
-      "include": null,
-      "message": null,
-      "name": "participants_alliance_idx",
-      "nulls_distinct": true,
-      "prefix": null,
-      "table": null,
-      "unique": false,
-      "using": null,
-      "where": null
-    },
-    {
-      "all_tenants?": false,
-      "concurrently": false,
-      "error_fields": [
-        "ship_type_id"
-      ],
-      "fields": [
-        {
-          "type": "atom",
-          "value": "ship_type_id"
-        }
-      ],
-      "include": null,
-      "message": null,
-      "name": "participants_ship_type_idx",
-      "nulls_distinct": true,
-      "prefix": null,
-      "table": null,
-      "unique": false,
-      "using": null,
-      "where": null
-    },
-    {
-      "all_tenants?": false,
-      "concurrently": false,
-      "error_fields": [
-        "is_victim"
-      ],
-      "fields": [
-        {
-          "type": "atom",
-          "value": "is_victim"
-        }
-      ],
-      "include": null,
-      "message": null,
-      "name": "participants_victim_idx",
-      "nulls_distinct": true,
-      "prefix": null,
-      "table": null,
-      "unique": false,
-      "using": null,
-      "where": null
-    },
-    {
-      "all_tenants?": false,
-      "concurrently": false,
-      "error_fields": [
-        "final_blow"
-      ],
-      "fields": [
-        {
-          "type": "atom",
-          "value": "final_blow"
-        }
-      ],
-      "include": null,
-      "message": null,
-      "name": "participants_final_blow_idx",
-      "nulls_distinct": true,
-      "prefix": null,
-      "table": null,
-      "unique": false,
-      "using": null,
-      "where": null
-    },
-    {
-      "all_tenants?": false,
-      "concurrently": false,
-      "error_fields": [
         "killmail_time"
       ],
       "fields": [
@@ -472,7 +336,117 @@
       ],
       "include": null,
       "message": null,
-      "name": "participants_time_idx",
+      "name": "killmails_enriched_time_idx",
+      "nulls_distinct": true,
+      "prefix": null,
+      "table": null,
+      "unique": false,
+      "using": null,
+      "where": null
+    },
+    {
+      "all_tenants?": false,
+      "concurrently": false,
+      "error_fields": [
+        "victim_character_id"
+      ],
+      "fields": [
+        {
+          "type": "atom",
+          "value": "victim_character_id"
+        }
+      ],
+      "include": null,
+      "message": null,
+      "name": "killmails_enriched_victim_character_idx",
+      "nulls_distinct": true,
+      "prefix": null,
+      "table": null,
+      "unique": false,
+      "using": null,
+      "where": null
+    },
+    {
+      "all_tenants?": false,
+      "concurrently": false,
+      "error_fields": [
+        "victim_corporation_id"
+      ],
+      "fields": [
+        {
+          "type": "atom",
+          "value": "victim_corporation_id"
+        }
+      ],
+      "include": null,
+      "message": null,
+      "name": "killmails_enriched_victim_corp_idx",
+      "nulls_distinct": true,
+      "prefix": null,
+      "table": null,
+      "unique": false,
+      "using": null,
+      "where": null
+    },
+    {
+      "all_tenants?": false,
+      "concurrently": false,
+      "error_fields": [
+        "victim_alliance_id"
+      ],
+      "fields": [
+        {
+          "type": "atom",
+          "value": "victim_alliance_id"
+        }
+      ],
+      "include": null,
+      "message": null,
+      "name": "killmails_enriched_victim_alliance_idx",
+      "nulls_distinct": true,
+      "prefix": null,
+      "table": null,
+      "unique": false,
+      "using": null,
+      "where": null
+    },
+    {
+      "all_tenants?": false,
+      "concurrently": false,
+      "error_fields": [
+        "solar_system_id"
+      ],
+      "fields": [
+        {
+          "type": "atom",
+          "value": "solar_system_id"
+        }
+      ],
+      "include": null,
+      "message": null,
+      "name": "killmails_enriched_system_idx",
+      "nulls_distinct": true,
+      "prefix": null,
+      "table": null,
+      "unique": false,
+      "using": null,
+      "where": null
+    },
+    {
+      "all_tenants?": false,
+      "concurrently": false,
+      "error_fields": [
+        "total_value"
+      ],
+      "fields": [
+        {
+          "type": "atom",
+          "value": "total_value"
+        }
+      ],
+      "include": null,
+      "message": null,
+      "name": "killmails_enriched_value_idx",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
@@ -483,12 +457,12 @@
   ],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "095032BF7837CD869C942DE32A96CB9E683BC107381C91B74039E203FF912D4C",
+  "hash": "52835D5ACC5DDA022D3A19CA279523271BF74BAB1825CED3A9A923FC4E031C2D",
   "identities": [
     {
       "all_tenants?": false,
       "base_filter": null,
-      "index_name": "participants_unique_participant_per_killmail_index",
+      "index_name": "killmails_enriched_unique_killmail_index",
       "keys": [
         {
           "type": "atom",
@@ -497,17 +471,9 @@
         {
           "type": "atom",
           "value": "killmail_time"
-        },
-        {
-          "type": "atom",
-          "value": "character_id"
-        },
-        {
-          "type": "atom",
-          "value": "ship_type_id"
         }
       ],
-      "name": "unique_participant_per_killmail",
+      "name": "unique_killmail",
       "nils_distinct?": true,
       "where": null
     }
@@ -519,5 +485,5 @@
   },
   "repo": "Elixir.EveDmv.Repo",
   "schema": null,
-  "table": "participants"
+  "table": "killmails_enriched"
 }

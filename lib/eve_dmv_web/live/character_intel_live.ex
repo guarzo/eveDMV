@@ -100,7 +100,11 @@ defmodule EveDmvWeb.CharacterIntelLive do
 
   defp load_or_analyze_character(character_id) do
     # Try to load existing stats first
-    case Ash.read_one(CharacterStats, filter: [character_id: character_id], domain: EveDmv.Api) do
+    case Ash.read_one(CharacterStats,
+           action: :get_by_character_id,
+           args: [character_id: character_id],
+           domain: EveDmv.Api
+         ) do
       {:ok, nil} ->
         # No stats exist, analyze the character
         CharacterAnalyzer.analyze_character(character_id)

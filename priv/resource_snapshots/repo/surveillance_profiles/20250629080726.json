@@ -2,27 +2,15 @@
   "attributes": [
     {
       "allow_nil?": false,
-      "default": "nil",
+      "default": "fragment(\"gen_random_uuid()\")",
       "generated?": false,
       "precision": null,
       "primary_key?": true,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "killmail_id",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": true,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "killmail_time",
-      "type": "utc_datetime"
+      "source": "id",
+      "type": "uuid"
     },
     {
       "allow_nil?": false,
@@ -33,7 +21,19 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "killmail_hash",
+      "source": "name",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "description",
       "type": "text"
     },
     {
@@ -45,44 +45,20 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "solar_system_id",
-      "type": "bigint"
+      "source": "user_id",
+      "type": "uuid"
     },
     {
-      "allow_nil?": true,
-      "default": "nil",
+      "allow_nil?": false,
+      "default": "true",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "victim_character_id",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "victim_corporation_id",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "victim_alliance_id",
-      "type": "bigint"
+      "source": "is_active",
+      "type": "boolean"
     },
     {
       "allow_nil?": false,
@@ -93,8 +69,20 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "victim_ship_type_id",
-      "type": "bigint"
+      "source": "filter_tree",
+      "type": "map"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "notification_settings",
+      "type": "map"
     },
     {
       "allow_nil?": false,
@@ -105,11 +93,11 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "attacker_count",
+      "source": "match_count",
       "type": "bigint"
     },
     {
-      "allow_nil?": false,
+      "allow_nil?": true,
       "default": "nil",
       "generated?": false,
       "precision": null,
@@ -117,20 +105,8 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "raw_data",
-      "type": "map"
-    },
-    {
-      "allow_nil?": false,
-      "default": "\"wanderer-kills\"",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "source",
-      "type": "text"
+      "source": "last_match_at",
+      "type": "utc_datetime"
     },
     {
       "allow_nil?": false,
@@ -143,52 +119,99 @@
       "size": null,
       "source": "inserted_at",
       "type": "utc_datetime_usec"
+    },
+    {
+      "allow_nil?": false,
+      "default": "fragment(\"(now() AT TIME ZONE 'utc')\")",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "updated_at",
+      "type": "utc_datetime_usec"
     }
   ],
   "base_filter": null,
   "check_constraints": [],
-  "custom_indexes": [],
-  "custom_statements": [],
-  "has_create_action": true,
-  "hash": "1287814C2BE252EB83CE1E140776E1906EBF189316C111E570085939873B6867",
-  "identities": [
+  "custom_indexes": [
     {
       "all_tenants?": false,
-      "base_filter": null,
-      "index_name": "killmails_raw_unique_hash_time_index",
-      "keys": [
+      "concurrently": false,
+      "error_fields": [
+        "user_id"
+      ],
+      "fields": [
         {
           "type": "atom",
-          "value": "killmail_hash"
-        },
-        {
-          "type": "atom",
-          "value": "killmail_time"
+          "value": "user_id"
         }
       ],
-      "name": "unique_hash_time",
-      "nils_distinct?": true,
+      "include": null,
+      "message": null,
+      "name": "surveillance_profiles_user_idx",
+      "nulls_distinct": true,
+      "prefix": null,
+      "table": null,
+      "unique": false,
+      "using": null,
       "where": null
     },
     {
       "all_tenants?": false,
-      "base_filter": null,
-      "index_name": "killmails_raw_unique_killmail_index",
-      "keys": [
+      "concurrently": false,
+      "error_fields": [
+        "is_active"
+      ],
+      "fields": [
         {
           "type": "atom",
-          "value": "killmail_id"
+          "value": "is_active"
+        }
+      ],
+      "include": null,
+      "message": null,
+      "name": "surveillance_profiles_active_idx",
+      "nulls_distinct": true,
+      "prefix": null,
+      "table": null,
+      "unique": false,
+      "using": null,
+      "where": null
+    },
+    {
+      "all_tenants?": false,
+      "concurrently": false,
+      "error_fields": [
+        "user_id",
+        "is_active"
+      ],
+      "fields": [
+        {
+          "type": "atom",
+          "value": "user_id"
         },
         {
           "type": "atom",
-          "value": "killmail_time"
+          "value": "is_active"
         }
       ],
-      "name": "unique_killmail",
-      "nils_distinct?": true,
+      "include": null,
+      "message": null,
+      "name": "surveillance_profiles_user_active_idx",
+      "nulls_distinct": true,
+      "prefix": null,
+      "table": null,
+      "unique": false,
+      "using": null,
       "where": null
     }
   ],
+  "custom_statements": [],
+  "has_create_action": true,
+  "hash": "5C2FF7E0461E74ACC88915B23BE726363ECC4FC6E3C85EE6B22AA1D62AF052D3",
+  "identities": [],
   "multitenancy": {
     "attribute": null,
     "global": null,
@@ -196,5 +219,5 @@
   },
   "repo": "Elixir.EveDmv.Repo",
   "schema": null,
-  "table": "killmails_raw"
+  "table": "surveillance_profiles"
 }

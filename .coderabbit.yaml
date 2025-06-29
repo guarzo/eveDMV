@@ -1,14 +1,14 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 
 language: "en-US"
-early_access: true  
+early_access: true
 reviews:
   profile: "assertive"
-  request_changes_workflow: true 
+  request_changes_workflow: true
   high_level_summary: true
-  poem: true                      
-  review_status: true              
-  collapse_walkthrough: false      
+  poem: true
+  review_status: true
+  collapse_walkthrough: false
   path_filters:
     - "!node_modules/**"   # Ignore dependencies
     - "!dist/**"           # Ignore build output

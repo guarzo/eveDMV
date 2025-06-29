@@ -61,7 +61,7 @@ defmodule EveDmv.Market.PriceService do
   @spec get_item_price_data(integer()) :: {:ok, map()} | {:error, String.t()}
   def get_item_price_data(type_id, item_attributes \\ nil) do
     # Check if this might be an abyssal module
-    if abyssal_item?(type_id, item_attributes) and not is_nil(item_attributes) do
+    if abyssal_item?(type_id, item_attributes) do
       # Try Mutamarket first for abyssal modules
       with {:error, _} <- try_mutamarket(type_id, item_attributes),
            {:error, _} <- try_janice(type_id),
@@ -123,35 +123,46 @@ defmodule EveDmv.Market.PriceService do
 
     # Calculate victim ship value
     victim_ship_value =
-      case prices[killmail["victim"]["ship_type_id"]] do
+      case get_in(killmail, ["victim", "ship_type_id"]) do
         nil -> 0.0
-        price_data -> price_data.buy_price
+        ship_type_id ->
+          case prices[ship_type_id] do
+            nil -> 0.0
+            price_data -> price_data.buy_price
+          end
       end
 
     # Calculate items value
     {destroyed_value, dropped_value} =
-      killmail["victim"]["items"]
-      |> Enum.reduce({0.0, 0.0}, fn item, {destroyed, dropped} ->
-        quantity = item["quantity_destroyed"] || 0
-        dropped_qty = item["quantity_dropped"] || 0
+      case get_in(killmail, ["victim", "items"]) do
+        nil ->
+          {0.0, 0.0}
 
-        unit_price =
-          case prices[item["item_type_id"]] do
-            nil -> 0.0
-            price_data -> price_data.buy_price
-          end
+        items ->
+          items
+          |> Enum.reduce({0.0, 0.0}, fn item, {destroyed, dropped} ->
+            quantity = item["quantity_destroyed"] || 0
+            dropped_qty = item["quantity_dropped"] || 0
 
-        {
-          destroyed + quantity * unit_price,
-          dropped + dropped_qty * unit_price
-        }
-      end)
+            unit_price =
+              case prices[item["item_type_id"]] do
+                nil -> 0.0
+                price_data -> price_data.buy_price
+              end
+
+            {
+              destroyed + quantity * unit_price,
+              dropped + dropped_qty * unit_price
+            }
+          end)
+      end
+
+    fitted_value = destroyed_value + dropped_value
 
     %{
-      total_value: victim_ship_value + destroyed_value + dropped_value,
+      total_value: victim_ship_value + fitted_value,
       ship_value: victim_ship_value,
-      destroyed_value: destroyed_value,
-      dropped_value: dropped_value,
+      fitted_value: fitted_value,
       price_source: determine_primary_source(prices)
     }
   end
@@ -159,8 +170,8 @@ defmodule EveDmv.Market.PriceService do
   # Private functions
 
   defp try_mutamarket(type_id, attributes) do
-    # Mutamarket integration for abyssal modules
-    # Currently returns error for fallback to other pricing sources
+    # TODO: Implement Mutamarket integration for abyssal modules
+    # This function should query Mutamarket API for abyssal item pricing
     Logger.debug(
       "Mutamarket price lookup attempted for #{type_id} with attributes: #{inspect(attributes)}"
     )
@@ -180,8 +191,8 @@ defmodule EveDmv.Market.PriceService do
   end
 
   defp try_esi(type_id) do
-    # ESI market data integration would go here
-    # Currently using Janice and Mutamarket as primary sources
+    # TODO: Implement ESI market data integration
+    # This function should query EVE ESI API for market pricing data
     Logger.debug("ESI price lookup skipped for #{type_id} - using other sources")
     {:error, "ESI not implemented"}
   end
@@ -214,20 +225,33 @@ defmodule EveDmv.Market.PriceService do
   end
 
   defp extract_type_ids(killmail) do
-    victim_type = killmail["victim"]["ship_type_id"]
+    victim_type = get_in(killmail, ["victim", "ship_type_id"])
 
     item_types =
-      killmail["victim"]["items"]
-      |> Enum.map(& &1["item_type_id"])
-      |> Enum.uniq()
+      case get_in(killmail, ["victim", "items"]) do
+        nil -> []
+        items when is_list(items) ->
+          items
+          |> Enum.map(& &1["item_type_id"])
+          |> Enum.reject(&is_nil/1)
+          |> Enum.uniq()
+        _ -> []
+      end
 
     attacker_types =
-      killmail["attackers"]
-      |> Enum.map(& &1["ship_type_id"])
-      |> Enum.reject(&is_nil/1)
-      |> Enum.uniq()
+      case killmail["attackers"] do
+        nil -> []
+        attackers when is_list(attackers) ->
+          attackers
+          |> Enum.map(& &1["ship_type_id"])
+          |> Enum.reject(&is_nil/1)
+          |> Enum.uniq()
+        _ -> []
+      end
 
-    Enum.uniq([victim_type | item_types] ++ attacker_types)
+    [victim_type | item_types ++ attacker_types]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
   end
 
   defp determine_primary_source(prices) do

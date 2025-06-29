@@ -13,6 +13,7 @@ defmodule EveDmv.Killmails.KillmailPipeline do
 
   alias Broadway.Message
   alias EveDmv.Killmails.{KillmailEnriched, KillmailRaw, Participant}
+  alias EveDmv.Surveillance.MatchingEngine
   alias EveDmvWeb.Endpoint
 
   require EveDmv.Api
@@ -87,6 +88,7 @@ defmodule EveDmv.Killmails.KillmailPipeline do
 
   @impl true
   def handle_message(:default, %Message{data: enriched} = msg, _ctx) do
+    start_time = System.monotonic_time(:microsecond)
     killmail_id = enriched["killmail_id"]
 
     # The wanderer-kills data has victim directly in the main structure, not participants
@@ -109,22 +111,34 @@ defmodule EveDmv.Killmails.KillmailPipeline do
 
     Logger.info("⚔️  Processing killmail #{killmail_id}: #{victim_name} in #{system_name}")
 
-    # Normalize common fields for DB insertion
-    raw_changeset = build_raw_changeset(enriched)
-    enriched_changeset = build_enriched_changeset(enriched)
-    participants = build_participants(enriched)
+    try do
+      # Normalize common fields for DB insertion
+      raw_changeset = build_raw_changeset(enriched)
+      enriched_changeset = build_enriched_changeset(enriched)
+      participants = build_participants(enriched)
 
-    msg
-    |> Message.update_data(fn _ -> {raw_changeset, enriched_changeset, participants} end)
-  rescue
-    error ->
-      Logger.error("Failed to parse killmail: #{inspect(error)}")
-      Message.failed(msg, error)
+      # Emit telemetry for successful processing
+      processing_time = System.monotonic_time(:microsecond) - start_time
+      :telemetry.execute([:eve_dmv, :killmail, :processing_time], %{duration: processing_time}, %{killmail_id: killmail_id})
+      :telemetry.execute([:eve_dmv, :killmail, :processed], %{count: 1}, %{})
+
+      msg
+      |> Message.update_data(fn _ -> {raw_changeset, enriched_changeset, participants} end)
+    rescue
+      error ->
+        # Emit telemetry for failed processing
+        :telemetry.execute([:eve_dmv, :killmail, :failed], %{count: 1}, %{error: inspect(error)})
+        Logger.error("Failed to parse killmail: #{inspect(error)}")
+        Message.failed(msg, error)
+    end
   end
 
   @impl true
   def handle_batch(:db_insert, messages, _batch_info, _ctx) do
-    Logger.info("💾 Inserting batch of #{length(messages)} killmails to database")
+    batch_start_time = System.monotonic_time(:microsecond)
+    batch_size = length(messages)
+    
+    Logger.info("💾 Inserting batch of #{batch_size} killmails to database")
 
     # Extract data from messages
     raw_changesets = Enum.map(messages, &elem(&1.data, 0))
@@ -137,6 +151,11 @@ defmodule EveDmv.Killmails.KillmailPipeline do
       insert_enriched_killmails(enriched_changesets)
       insert_participants(participants_lists)
 
+      # Emit telemetry for successful batch
+      batch_time = System.monotonic_time(:microsecond) - batch_start_time
+      :telemetry.execute([:eve_dmv, :killmail, :batch_size], %{size: batch_size}, %{})
+      :telemetry.execute([:eve_dmv, :killmail, :enriched], %{count: batch_size}, %{})
+
       Logger.info(
         "✅ Successfully processed #{length(raw_changesets)} killmails (raw + enriched + participants)"
       )
@@ -144,10 +163,16 @@ defmodule EveDmv.Killmails.KillmailPipeline do
       # Broadcast to LiveView clients
       broadcast_killmails(messages)
 
+      # Check surveillance profiles for matches
+      check_surveillance_matches(messages)
+
       # Return messages for Broadway
       messages
     rescue
       error ->
+        # Emit telemetry for failed batch
+        :telemetry.execute([:eve_dmv, :killmail, :failed], %{count: batch_size}, %{error: inspect(error)})
+        
         Logger.error("Failed to insert killmail batch: #{inspect(error)}")
         Logger.error("Error type: #{inspect(error.__struct__)}")
         Logger.error("Stack trace: #{inspect(__STACKTRACE__)}")
@@ -206,10 +231,7 @@ defmodule EveDmv.Killmails.KillmailPipeline do
         killmail_time: parse_timestamp(enriched["timestamp"] || enriched["kill_time"]),
         total_value: price_values.total_value,
         ship_value: price_values.ship_value,
-        destroyed_value: price_values.destroyed_value,
-        dropped_value: price_values.dropped_value,
-        fitted_value:
-          parse_decimal(get_in(enriched, ["zkb", "fittedValue"]) || enriched["fitted_value"]),
+        fitted_value: price_values.fitted_value,
         attacker_count: count_attackers(enriched),
         final_blow_character_id: get_final_blow_character_id(enriched),
         final_blow_character_name: get_final_blow_character_name(enriched),
@@ -505,6 +527,37 @@ defmodule EveDmv.Killmails.KillmailPipeline do
 
         _ ->
           Logger.warning("No raw data to broadcast for killmail")
+      end
+    end
+  end
+
+  defp check_surveillance_matches(messages) do
+    Logger.debug("🔍 Checking #{length(messages)} killmails against surveillance profiles")
+
+    for %Message{data: {raw_changeset, _enriched_changeset, _}} <- messages do
+      case raw_changeset do
+        %{raw_data: killmail_data} when not is_nil(killmail_data) ->
+          # Run surveillance matching in background to avoid blocking pipeline
+          spawn(fn ->
+            try do
+              matches = MatchingEngine.match_killmail(killmail_data)
+              if length(matches) > 0 do
+                Logger.info("🎯 Killmail #{killmail_data["killmail_id"]} matched #{length(matches)} surveillance profiles")
+                
+                # Broadcast surveillance match notification
+                Endpoint.broadcast!("surveillance", "profile_match", %{
+                  killmail: killmail_data,
+                  profile_ids: matches
+                })
+              end
+            rescue
+              error ->
+                Logger.error("Error in surveillance matching: #{inspect(error)}")
+            end
+          end)
+
+        _ ->
+          Logger.debug("No killmail data for surveillance matching")
       end
     end
   end

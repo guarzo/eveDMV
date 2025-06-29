@@ -28,6 +28,10 @@ defmodule EveDmv.Application do
       EveDmv.Market.PriceCache,
       # Start the ESI cache
       EveDmv.Eve.EsiCache,
+      # Start the surveillance matching engine
+      EveDmv.Surveillance.MatchingEngine,
+      # Start the re-enrichment worker
+      EveDmv.Enrichment.ReEnrichmentWorker,
       # Start mock SSE server in development
       maybe_start_mock_sse_server(),
       # Start the killmail ingestion pipeline

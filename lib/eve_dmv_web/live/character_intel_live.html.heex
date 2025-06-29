@@ -401,7 +401,9 @@
                         {system["losses"]}
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                        {Calendar.strftime(system["last_seen"], "%m-%d %H:%M")}
+                        {if system["last_seen"],
+                          do: Calendar.strftime(system["last_seen"], "%m-%d %H:%M"),
+                          else: "Never"}
                       </td>
                     </tr>
                   <% end %>

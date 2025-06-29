@@ -37,6 +37,16 @@ Transform the working prototype into a feature-complete PvP intelligence platfor
 - Build character analytics foundation
 - Start surveillance profile system
 
+**Technical Debt & API Improvements (based on PR feedback)**
+- 🔄 Implement ESI market data integration (try_esi stub)
+- 🔄 Complete Mutamarket integration for abyssal modules
+- 🔄 Improve rate limiting with proper token bucket algorithm
+- 🔄 Replace Task.start with Task.Supervisor for better error handling
+- 🔄 Add exponential backoff to API retry logic
+- 🔄 Extract common configuration helpers for external APIs
+- 🔄 Fix race conditions in name resolver cache
+- 🔄 Replace external bzip2 command with native Elixir library
+
 ### **Milestone 2: Intelligence Features (4 weeks)**
 *Build the analytics that differentiate the platform*
 

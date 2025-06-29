@@ -15,7 +15,7 @@ EVE DMV is an Elixir Phoenix application for tracking EVE Online PvP data. It us
 ```bash
 # Setup and Development
 mix setup              # Full setup: deps, DB, migrations, assets
-mix phx.server         # Start Phoenix server (http://localhost:4000)
+mix phx.server         # Start Phoenix server (http://localhost:4010)
 iex -S mix phx.server  # Start with interactive shell
 
 # Database Operations

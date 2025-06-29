@@ -1,4 +1,4 @@
-defmodule EveDmv.Repo.Migrations.CreateAshResources do
+defmodule EveDmv.Repo.Migrations.InitialTables do
   @moduledoc """
   Updates resources based on their most recent snapshots.
 
@@ -176,35 +176,55 @@ defmodule EveDmv.Repo.Migrations.CreateAshResources do
 
     create index(:killmails_enriched, [:killmail_time], name: "killmails_enriched_time_idx")
 
-    create table(:eve_item_types, primary_key: false) do
-      add :type_id, :bigint, null: false, primary_key: true
-    end
-
-    alter table(:participants) do
-      modify :ship_type_id,
-             references(:eve_item_types,
-               column: :type_id,
-               name: "participants_ship_type_id_fkey",
-               type: :bigint,
-               prefix: "public"
-             )
-
-      modify :weapon_type_id,
-             references(:eve_item_types,
-               column: :type_id,
-               name: "participants_weapon_type_id_fkey",
-               type: :bigint,
-               prefix: "public"
-             )
-    end
-
-    create unique_index(
-             :participants,
-             [:killmail_id, :killmail_time, :character_id, :ship_type_id],
-             name: "participants_unique_participant_per_killmail_index"
+    create unique_index(:killmails_enriched, [:killmail_id, :killmail_time],
+             name: "killmails_enriched_unique_killmail_index"
            )
 
-    alter table(:eve_item_types) do
+    create table(:eve_solar_systems, primary_key: false) do
+      add :system_id, :bigint, null: false, primary_key: true
+      add :system_name, :text, null: false
+      add :region_id, :bigint
+      add :region_name, :text
+      add :constellation_id, :bigint
+      add :constellation_name, :text
+      add :security_status, :decimal, precision: 15, scale: 10
+      add :security_class, :text
+      add :x, :decimal, precision: 25, scale: 2
+      add :y, :decimal, precision: 25, scale: 2
+      add :z, :decimal, precision: 25, scale: 2
+      add :sde_version, :text
+      add :last_updated, :utc_datetime
+
+      add :inserted_at, :utc_datetime_usec,
+        null: false,
+        default: fragment("(now() AT TIME ZONE 'utc')")
+
+      add :updated_at, :utc_datetime_usec,
+        null: false,
+        default: fragment("(now() AT TIME ZONE 'utc')")
+    end
+
+    create index(:eve_solar_systems, ["system_name gin_trgm_ops"],
+             name: "eve_solar_systems_name_trgm_idx",
+             using: "gin"
+           )
+
+    create index(:eve_solar_systems, [:security_status], name: "eve_solar_systems_security_idx")
+
+    create index(:eve_solar_systems, [:constellation_id],
+             name: "eve_solar_systems_constellation_idx"
+           )
+
+    create index(:eve_solar_systems, [:region_id], name: "eve_solar_systems_region_idx")
+
+    create index(:eve_solar_systems, [:system_name], name: "eve_solar_systems_name_idx")
+
+    create unique_index(:eve_solar_systems, [:system_id],
+             name: "eve_solar_systems_system_id_index"
+           )
+
+    create table(:eve_item_types, primary_key: false) do
+      add :type_id, :bigint, null: false, primary_key: true
       add :type_name, :text, null: false
       add :description, :text
       add :group_id, :bigint
@@ -238,6 +258,11 @@ defmodule EveDmv.Repo.Migrations.CreateAshResources do
         default: fragment("(now() AT TIME ZONE 'utc')")
     end
 
+    create index(:eve_item_types, [:search_keywords],
+             name: "eve_item_types_search_keywords_gin_idx",
+             using: "gin"
+           )
+
     create index(:eve_item_types, [:is_module], name: "eve_item_types_module_idx")
 
     create index(:eve_item_types, [:is_ship], name: "eve_item_types_ship_idx")
@@ -256,9 +281,141 @@ defmodule EveDmv.Repo.Migrations.CreateAshResources do
     create index(:eve_item_types, [:group_id], name: "eve_item_types_group_idx")
 
     create index(:eve_item_types, [:type_name], name: "eve_item_types_name_idx")
+
+    create unique_index(:eve_item_types, [:type_id], name: "eve_item_types_type_id_index")
+
+    alter table(:participants) do
+      modify :ship_type_id,
+             references(:eve_item_types,
+               column: :type_id,
+               name: "participants_ship_type_id_fkey",
+               type: :bigint,
+               prefix: "public"
+             )
+
+      modify :weapon_type_id,
+             references(:eve_item_types,
+               column: :type_id,
+               name: "participants_weapon_type_id_fkey",
+               type: :bigint,
+               prefix: "public"
+             )
+    end
+
+    create unique_index(
+             :participants,
+             [:killmail_id, :killmail_time, :character_id, :ship_type_id],
+             name: "participants_unique_participant_per_killmail_index"
+           )
+
+    create table(:character_stats, primary_key: false) do
+      add :id, :bigserial, null: false, primary_key: true
+      add :character_id, :bigint, null: false
+      add :character_name, :text, null: false
+      add :corporation_id, :bigint
+      add :corporation_name, :text
+      add :alliance_id, :bigint
+      add :alliance_name, :text
+      add :total_kills, :bigint, default: 0
+      add :total_losses, :bigint, default: 0
+      add :solo_kills, :bigint, default: 0
+      add :solo_losses, :bigint, default: 0
+      add :ship_usage, :map, default: %{}
+      add :frequent_associates, :map, default: %{}
+      add :active_systems, :map, default: %{}
+      add :target_profile, :map, default: %{}
+      add :aggression_index, :float, default: 0.0
+      add :avg_gang_size, :float, default: 1.0
+      add :prime_timezone, :text
+      add :home_system_id, :bigint
+      add :home_system_name, :text
+      add :uses_cynos, :boolean, default: false
+      add :flies_capitals, :boolean, default: false
+      add :has_logi_support, :boolean, default: false
+      add :batphone_probability, :text, default: "low"
+      add :isk_efficiency, :float, default: 50.0
+      add :kill_death_ratio, :float, default: 1.0
+      add :dangerous_rating, :bigint, default: 3
+      add :identified_weaknesses, :map, default: %{}
+
+      add :inserted_at, :utc_datetime_usec,
+        null: false,
+        default: fragment("(now() AT TIME ZONE 'utc')")
+
+      add :updated_at, :utc_datetime_usec,
+        null: false,
+        default: fragment("(now() AT TIME ZONE 'utc')")
+
+      add :last_calculated_at, :utc_datetime_usec
+      add :data_completeness, :bigint, default: 0
+    end
+
+    create index(:character_stats, [:identified_weaknesses],
+             name: "character_stats_identified_weaknesses_gin_idx",
+             using: "gin"
+           )
+
+    create index(:character_stats, [:target_profile],
+             name: "character_stats_target_profile_gin_idx",
+             using: "gin"
+           )
+
+    create index(:character_stats, [:active_systems],
+             name: "character_stats_active_systems_gin_idx",
+             using: "gin"
+           )
+
+    create index(:character_stats, [:frequent_associates],
+             name: "character_stats_frequent_associates_gin_idx",
+             using: "gin"
+           )
+
+    create index(:character_stats, [:ship_usage],
+             name: "character_stats_ship_usage_gin_idx",
+             using: "gin"
+           )
   end
 
   def down do
+    drop_if_exists index(:character_stats, [:ship_usage],
+                     name: "character_stats_ship_usage_gin_idx"
+                   )
+
+    drop_if_exists index(:character_stats, [:frequent_associates],
+                     name: "character_stats_frequent_associates_gin_idx"
+                   )
+
+    drop_if_exists index(:character_stats, [:active_systems],
+                     name: "character_stats_active_systems_gin_idx"
+                   )
+
+    drop_if_exists index(:character_stats, [:target_profile],
+                     name: "character_stats_target_profile_gin_idx"
+                   )
+
+    drop_if_exists index(:character_stats, [:identified_weaknesses],
+                     name: "character_stats_identified_weaknesses_gin_idx"
+                   )
+
+    drop table(:character_stats)
+
+    drop_if_exists unique_index(
+                     :participants,
+                     [:killmail_id, :killmail_time, :character_id, :ship_type_id],
+                     name: "participants_unique_participant_per_killmail_index"
+                   )
+
+    drop constraint(:participants, "participants_ship_type_id_fkey")
+
+    drop constraint(:participants, "participants_weapon_type_id_fkey")
+
+    alter table(:participants) do
+      modify :weapon_type_id, :bigint
+      modify :ship_type_id, :bigint
+    end
+
+    drop_if_exists unique_index(:eve_item_types, [:type_id], name: "eve_item_types_type_id_index")
+
     drop_if_exists index(:eve_item_types, [:type_name], name: "eve_item_types_name_idx")
 
     drop_if_exists index(:eve_item_types, [:group_id], name: "eve_item_types_group_idx")
@@ -279,50 +436,37 @@ defmodule EveDmv.Repo.Migrations.CreateAshResources do
 
     drop_if_exists index(:eve_item_types, [:is_module], name: "eve_item_types_module_idx")
 
-    alter table(:eve_item_types) do
-      remove :updated_at
-      remove :inserted_at
-      remove :last_updated
-      remove :sde_version
-      remove :search_keywords
-      remove :is_deployable
-      remove :is_blueprint
-      remove :is_charge
-      remove :is_module
-      remove :is_ship
-      remove :published
-      remove :tech_level
-      remove :meta_level
-      remove :base_price
-      remove :capacity
-      remove :volume
-      remove :mass
-      remove :market_group_name
-      remove :market_group_id
-      remove :category_name
-      remove :category_id
-      remove :group_name
-      remove :group_id
-      remove :description
-      remove :type_name
-    end
-
-    drop_if_exists unique_index(
-                     :participants,
-                     [:killmail_id, :killmail_time, :character_id, :ship_type_id],
-                     name: "participants_unique_participant_per_killmail_index"
+    drop_if_exists index(:eve_item_types, [:search_keywords],
+                     name: "eve_item_types_search_keywords_gin_idx"
                    )
 
-    drop constraint(:participants, "participants_ship_type_id_fkey")
-
-    drop constraint(:participants, "participants_weapon_type_id_fkey")
-
-    alter table(:participants) do
-      modify :weapon_type_id, :bigint
-      modify :ship_type_id, :bigint
-    end
-
     drop table(:eve_item_types)
+
+    drop_if_exists unique_index(:eve_solar_systems, [:system_id],
+                     name: "eve_solar_systems_system_id_index"
+                   )
+
+    drop_if_exists index(:eve_solar_systems, [:system_name], name: "eve_solar_systems_name_idx")
+
+    drop_if_exists index(:eve_solar_systems, [:region_id], name: "eve_solar_systems_region_idx")
+
+    drop_if_exists index(:eve_solar_systems, [:constellation_id],
+                     name: "eve_solar_systems_constellation_idx"
+                   )
+
+    drop_if_exists index(:eve_solar_systems, [:security_status],
+                     name: "eve_solar_systems_security_idx"
+                   )
+
+    drop_if_exists index(:eve_solar_systems, ["system_name gin_trgm_ops"],
+                     name: "eve_solar_systems_name_trgm_idx"
+                   )
+
+    drop table(:eve_solar_systems)
+
+    drop_if_exists unique_index(:killmails_enriched, [:killmail_id, :killmail_time],
+                     name: "killmails_enriched_unique_killmail_index"
+                   )
 
     drop_if_exists index(:killmails_enriched, [:killmail_time],
                      name: "killmails_enriched_time_idx"

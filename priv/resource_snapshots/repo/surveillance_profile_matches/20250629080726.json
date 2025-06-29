@@ -2,14 +2,57 @@
   "attributes": [
     {
       "allow_nil?": false,
-      "default": "nil",
+      "default": "fragment(\"gen_random_uuid()\")",
       "generated?": false,
       "precision": null,
       "primary_key?": true,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "system_id",
+      "source": "id",
+      "type": "uuid"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": {
+        "deferrable": false,
+        "destination_attribute": "id",
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null,
+        "index?": false,
+        "match_type": null,
+        "match_with": null,
+        "multitenancy": {
+          "attribute": null,
+          "global": null,
+          "strategy": null
+        },
+        "name": "surveillance_profile_matches_profile_id_fkey",
+        "on_delete": null,
+        "on_update": null,
+        "primary_key?": true,
+        "schema": "public",
+        "table": "surveillance_profiles"
+      },
+      "scale": null,
+      "size": null,
+      "source": "profile_id",
+      "type": "uuid"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "killmail_id",
       "type": "bigint"
     },
     {
@@ -21,7 +64,43 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "system_name",
+      "source": "killmail_time",
+      "type": "utc_datetime"
+    },
+    {
+      "allow_nil?": false,
+      "default": "fragment(\"(now() AT TIME ZONE 'utc')\")",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "matched_at",
+      "type": "utc_datetime"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "match_conditions",
+      "type": "map"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "victim_character_name",
       "type": "text"
     },
     {
@@ -33,19 +112,7 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "region_id",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "region_name",
+      "source": "victim_ship_name",
       "type": "text"
     },
     {
@@ -57,19 +124,7 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "constellation_id",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "constellation_name",
+      "source": "solar_system_name",
       "type": "text"
     },
     {
@@ -79,82 +134,10 @@
       "precision": 15,
       "primary_key?": false,
       "references": null,
-      "scale": 10,
-      "size": null,
-      "source": "security_status",
-      "type": "decimal"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "security_class",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": 25,
-      "primary_key?": false,
-      "references": null,
       "scale": 2,
       "size": null,
-      "source": "x",
+      "source": "total_value",
       "type": "decimal"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": 25,
-      "primary_key?": false,
-      "references": null,
-      "scale": 2,
-      "size": null,
-      "source": "y",
-      "type": "decimal"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": 25,
-      "primary_key?": false,
-      "references": null,
-      "scale": 2,
-      "size": null,
-      "source": "z",
-      "type": "decimal"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "sde_version",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "last_updated",
-      "type": "utc_datetime"
     },
     {
       "allow_nil?": false,
@@ -188,17 +171,17 @@
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
-        "system_name"
+        "profile_id"
       ],
       "fields": [
         {
           "type": "atom",
-          "value": "system_name"
+          "value": "profile_id"
         }
       ],
       "include": null,
       "message": null,
-      "name": "eve_solar_systems_name_idx",
+      "name": "profile_matches_profile_idx",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
@@ -210,17 +193,22 @@
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
-        "region_id"
+        "killmail_id",
+        "killmail_time"
       ],
       "fields": [
         {
           "type": "atom",
-          "value": "region_id"
+          "value": "killmail_id"
+        },
+        {
+          "type": "atom",
+          "value": "killmail_time"
         }
       ],
       "include": null,
       "message": null,
-      "name": "eve_solar_systems_region_idx",
+      "name": "profile_matches_killmail_idx",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
@@ -232,17 +220,17 @@
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
-        "constellation_id"
+        "matched_at"
       ],
       "fields": [
         {
           "type": "atom",
-          "value": "constellation_id"
+          "value": "matched_at"
         }
       ],
       "include": null,
       "message": null,
-      "name": "eve_solar_systems_constellation_idx",
+      "name": "profile_matches_time_idx",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
@@ -254,64 +242,34 @@
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
-        "security_status"
+        "profile_id",
+        "matched_at"
       ],
       "fields": [
         {
           "type": "atom",
-          "value": "security_status"
+          "value": "profile_id"
+        },
+        {
+          "type": "atom",
+          "value": "matched_at"
         }
       ],
       "include": null,
       "message": null,
-      "name": "eve_solar_systems_security_idx",
+      "name": "profile_matches_profile_time_idx",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
       "unique": false,
       "using": null,
-      "where": null
-    },
-    {
-      "all_tenants?": false,
-      "concurrently": false,
-      "error_fields": [],
-      "fields": [
-        {
-          "type": "string",
-          "value": "system_name gin_trgm_ops"
-        }
-      ],
-      "include": null,
-      "message": null,
-      "name": "eve_solar_systems_name_trgm_idx",
-      "nulls_distinct": true,
-      "prefix": null,
-      "table": null,
-      "unique": false,
-      "using": "gin",
       "where": null
     }
   ],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "3F34E1447CC79A0675E5F0D53C079CF187E3703E7C9B4E893A0155E8513970CC",
-  "identities": [
-    {
-      "all_tenants?": false,
-      "base_filter": null,
-      "index_name": "eve_solar_systems_system_id_index",
-      "keys": [
-        {
-          "type": "atom",
-          "value": "system_id"
-        }
-      ],
-      "name": "system_id",
-      "nils_distinct?": true,
-      "where": null
-    }
-  ],
+  "hash": "1A5912532BE790E422F4E0EFFD3DBDF089623521023AE9C74116B2D128E6070D",
+  "identities": [],
   "multitenancy": {
     "attribute": null,
     "global": null,
@@ -319,5 +277,5 @@
   },
   "repo": "Elixir.EveDmv.Repo",
   "schema": null,
-  "table": "eve_solar_systems"
+  "table": "surveillance_profile_matches"
 }
