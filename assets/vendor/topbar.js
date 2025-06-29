@@ -131,7 +131,7 @@
         currentProgress = to > 1 ? 1 : to;
         repaint();
         if (currentProgress === 1) {
-          canvas.style.display = "block";
+          if (canvas) canvas.style.display = "block";
         } else if (currentProgress >= 0) {
           (function loop() {
             if (showing) {
@@ -143,7 +143,7 @@
               }
             }
           })();
-          canvas.style.display = "block";
+          if (canvas) canvas.style.display = "block";
         }
       },
       hide: function () {
@@ -163,7 +163,9 @@
             repaint();
             fadeTimerId = setTimeout(loop, 100);
           } else {
-            canvas.style.display = "none";
+            if (canvas) {
+              canvas.style.display = "none";
+            }
             fadeTimerId = null;
           }
         })();
