@@ -59,6 +59,7 @@
       className: null,
     },
     repaint = function () {
+      if (!canvas) return;
       canvas.width = window.innerWidth;
       canvas.height = options.barThickness * 5; // space for shadow
 
