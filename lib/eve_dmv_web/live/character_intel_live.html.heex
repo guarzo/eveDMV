@@ -13,6 +13,15 @@
         <p class="text-red-400">{@error}</p>
       </div>
     <% else %>
+      <%= if Map.get(@stats, :no_killmail_data, false) do %>
+        <!-- No Killmail Data Notice -->
+        <div class="bg-yellow-900/20 border border-yellow-500 rounded-lg p-4 mb-6">
+          <p class="text-yellow-400">
+            No killmail data available for this character. Showing basic ESI information only.
+          </p>
+        </div>
+      <% end %>
+      
       <!-- Character Header -->
       <div class="bg-gray-800 rounded-lg p-6 mb-6">
         <div class="flex items-start justify-between">
