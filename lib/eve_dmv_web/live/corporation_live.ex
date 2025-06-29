@@ -69,100 +69,102 @@ defmodule EveDmvWeb.CorporationLive do
   # Private helper functions
 
   defp load_corporation_info(corporation_id) do
-    # Get corporation info from recent killmail data
-    {:ok, participants} = Ash.read(Participant, domain: Api)
-
-    corp_data =
-      participants
-      |> Enum.filter(&(&1.corporation_id == corporation_id))
-      |> List.first()
-
-    if corp_data do
-      %{
-        corporation_id: corporation_id,
-        corporation_name: corp_data.corporation_name || "Unknown Corporation",
-        alliance_id: corp_data.alliance_id,
-        alliance_name: corp_data.alliance_name
-      }
-    else
-      %{
-        corporation_id: corporation_id,
-        corporation_name: "Unknown Corporation",
-        alliance_id: nil,
-        alliance_name: nil
-      }
+    # Get corporation info from recent killmail data using database filtering
+    case Ash.read(Participant, 
+      filter: %{corporation_id: corporation_id},
+      limit: 1,
+      domain: Api
+    ) do
+      {:ok, [corp_data | _]} ->
+        %{
+          corporation_id: corporation_id,
+          corporation_name: corp_data.corporation_name || "Unknown Corporation",
+          alliance_id: corp_data.alliance_id,
+          alliance_name: corp_data.alliance_name
+        }
+      
+      {:ok, []} ->
+        %{
+          corporation_id: corporation_id,
+          corporation_name: "Unknown Corporation",
+          alliance_id: nil,
+          alliance_name: nil
+        }
+        
+      {:error, _} ->
+        %{
+          corporation_id: corporation_id,
+          corporation_name: "Unknown Corporation",
+          alliance_id: nil,
+          alliance_name: nil
+        }
     end
-  rescue
-    _ ->
-      %{
-        corporation_id: corporation_id,
-        corporation_name: "Unknown Corporation",
-        alliance_id: nil,
-        alliance_name: nil
-      }
   end
 
   defp load_corp_members(corporation_id) do
-    # Get all unique characters from this corporation
-    {:ok, participants} = Ash.read(Participant, domain: Api)
+    # Get corporation participants filtered at database level
+    case Ash.read(Participant, 
+      filter: %{corporation_id: corporation_id},
+      domain: Api
+    ) do
+      {:ok, participants} ->
+        corp_members =
+          participants
+          |> Enum.group_by(& &1.character_id)
+          |> Enum.map(fn {character_id, participations} ->
+            character_name = participations |> List.first() |> Map.get(:character_name, "Unknown")
 
-    corp_members =
-      participants
-      |> Enum.filter(&(&1.corporation_id == corporation_id))
-      |> Enum.group_by(& &1.character_id)
-      |> Enum.map(fn {character_id, participations} ->
-        character_name = participations |> List.first() |> Map.get(:character_name, "Unknown")
+            # Calculate basic activity stats using is_victim flag instead of damage_dealt
+            kills = participations |> Enum.count(&(not &1.is_victim))
+            losses = participations |> Enum.count(& &1.is_victim)
 
-        # Calculate basic activity stats
-        kills = participations |> Enum.count(&(&1.damage_dealt > 0))
-        losses = participations |> Enum.count(&(&1.damage_dealt == 0))
+            # Get latest activity
+            latest_activity =
+              participations
+              |> Enum.map(& &1.inserted_at)
+              |> Enum.max(Date, fn -> nil end)
 
-        # Get latest activity
-        latest_activity =
-          participations
-          |> Enum.map(& &1.inserted_at)
-          |> Enum.max(Date, fn -> nil end)
+            %{
+              character_id: character_id,
+              character_name: character_name,
+              total_kills: kills,
+              total_losses: losses,
+              total_activity: kills + losses,
+              latest_activity: latest_activity
+            }
+          end)
+          |> Enum.sort_by(& &1.total_activity, :desc)
+          # Limit to top 50 most active members
+          |> Enum.take(50)
 
-        %{
-          character_id: character_id,
-          character_name: character_name,
-          total_kills: kills,
-          total_losses: losses,
-          total_activity: kills + losses,
-          latest_activity: latest_activity
-        }
-      end)
-      |> Enum.sort_by(& &1.total_activity, :desc)
-      # Limit to top 50 most active members
-      |> Enum.take(50)
-
-    corp_members
-  rescue
-    _ -> []
+        corp_members
+        
+      {:error, _} -> []
+    end
   end
 
   defp load_recent_activity(corporation_id) do
-    # Get recent killmail activity for the corporation
-    {:ok, participants} = Ash.read(Participant, domain: Api)
-
-    recent =
-      participants
-      |> Enum.filter(&(&1.corporation_id == corporation_id))
-      |> Enum.sort_by(& &1.inserted_at, {:desc, DateTime})
-      |> Enum.take(20)
-      |> Enum.map(fn p ->
-        %{
-          character_name: p.character_name,
-          ship_name: p.ship_name,
-          is_kill: p.damage_dealt > 0,
-          timestamp: p.inserted_at,
-          solar_system_name: p.solar_system_name
-        }
-      end)
-
-    recent
-  rescue
-    _ -> []
+    # Get recent killmail activity filtered and sorted at database level
+    case Ash.read(Participant, 
+      filter: %{corporation_id: corporation_id},
+      sort: %{inserted_at: :desc},
+      limit: 20,
+      domain: Api
+    ) do
+      {:ok, participants} ->
+        participants
+        |> Enum.map(fn p ->
+          %{
+            character_name: p.character_name,
+            ship_name: p.ship_name,
+            is_kill: not p.is_victim,  # Use is_victim flag instead of damage_dealt
+            timestamp: p.inserted_at,
+            solar_system_name: p.solar_system_name
+          }
+        end)
+        
+      {:error, _} -> []
+    end
   end
 
   defp calculate_corp_stats(members) do

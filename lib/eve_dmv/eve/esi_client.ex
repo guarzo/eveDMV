@@ -340,7 +340,10 @@ defmodule EveDmv.Eve.EsiClient do
     with_rate_limit(fn ->
       case get_request(path, params) do
         {:ok, data} when is_list(data) ->
-          history = Enum.map(data, &parse_market_history/1)
+          history = 
+            data
+            |> Enum.map(&parse_market_history/1)
+            |> Enum.reject(&is_nil/1)
           {:ok, history}
 
         {:ok, _} ->
@@ -373,18 +376,28 @@ defmodule EveDmv.Eve.EsiClient do
   """
   @spec get_type(integer()) :: {:ok, map()} | {:error, term()}
   def get_type(type_id) when is_integer(type_id) do
-    path = "/#{@universe_api_version}/universe/types/#{type_id}/"
+    cache_key = "type_#{type_id}"
+    
+    case EsiCache.get(cache_key) do
+      {:ok, cached_data} ->
+        {:ok, cached_data}
+        
+      {:error, :not_found} ->
+        path = "/#{@universe_api_version}/universe/types/#{type_id}/"
 
-    with_rate_limit(fn ->
-      case get_request(path) do
-        {:ok, data} ->
-          type_info = parse_type_response(type_id, data)
-          {:ok, type_info}
+        with_rate_limit(fn ->
+          case get_request(path) do
+            {:ok, data} ->
+              type_info = parse_type_response(type_id, data)
+              # Cache for 1 week (universe data rarely changes)
+              EsiCache.put(cache_key, type_info, ttl: 604_800)
+              {:ok, type_info}
 
-        error ->
-          error
-      end
-    end)
+            error ->
+              error
+          end
+        end)
+    end
   end
 
   @doc """
@@ -402,18 +415,28 @@ defmodule EveDmv.Eve.EsiClient do
   """
   @spec get_group(integer()) :: {:ok, map()} | {:error, term()}
   def get_group(group_id) when is_integer(group_id) do
-    path = "/#{@universe_api_version}/universe/groups/#{group_id}/"
+    cache_key = "group_#{group_id}"
+    
+    case EsiCache.get(cache_key) do
+      {:ok, cached_data} ->
+        {:ok, cached_data}
+        
+      {:error, :not_found} ->
+        path = "/#{@universe_api_version}/universe/groups/#{group_id}/"
 
-    with_rate_limit(fn ->
-      case get_request(path) do
-        {:ok, data} ->
-          group_info = parse_group_response(group_id, data)
-          {:ok, group_info}
+        with_rate_limit(fn ->
+          case get_request(path) do
+            {:ok, data} ->
+              group_info = parse_group_response(group_id, data)
+              # Cache for 1 week (universe data rarely changes)
+              EsiCache.put(cache_key, group_info, ttl: 604_800)
+              {:ok, group_info}
 
-        error ->
-          error
-      end
-    end)
+            error ->
+              error
+          end
+        end)
+    end
   end
 
   @doc """
@@ -430,18 +453,28 @@ defmodule EveDmv.Eve.EsiClient do
   """
   @spec get_category(integer()) :: {:ok, map()} | {:error, term()}
   def get_category(category_id) when is_integer(category_id) do
-    path = "/#{@universe_api_version}/universe/categories/#{category_id}/"
+    cache_key = "category_#{category_id}"
+    
+    case EsiCache.get(cache_key) do
+      {:ok, cached_data} ->
+        {:ok, cached_data}
+        
+      {:error, :not_found} ->
+        path = "/#{@universe_api_version}/universe/categories/#{category_id}/"
 
-    with_rate_limit(fn ->
-      case get_request(path) do
-        {:ok, data} ->
-          category_info = parse_category_response(category_id, data)
-          {:ok, category_info}
+        with_rate_limit(fn ->
+          case get_request(path) do
+            {:ok, data} ->
+              category_info = parse_category_response(category_id, data)
+              # Cache for 1 week (universe data rarely changes)
+              EsiCache.put(cache_key, category_info, ttl: 604_800)
+              {:ok, category_info}
 
-        error ->
-          error
-      end
-    end)
+            error ->
+              error
+          end
+        end)
+    end
   end
 
   @doc """
@@ -495,8 +528,8 @@ defmodule EveDmv.Eve.EsiClient do
           Jason.decode(body)
 
         {:ok, %{status_code: 304}} ->
-          # Not modified - should have been served from cache
-          {:ok, %{}}
+          # Not modified - return error to indicate cache should be used
+          {:error, :not_modified}
 
         {:ok, %{status_code: 404}} ->
           {:error, :not_found}
@@ -721,14 +754,20 @@ defmodule EveDmv.Eve.EsiClient do
   end
 
   defp parse_market_history(data) do
-    %{
-      date: Date.from_iso8601!(data["date"]),
-      average: data["average"] || 0.0,
-      highest: data["highest"] || 0.0,
-      lowest: data["lowest"] || 0.0,
-      volume: data["volume"] || 0,
-      order_count: data["order_count"] || 0
-    }
+    case Date.from_iso8601(data["date"]) do
+      {:ok, date} ->
+        %{
+          date: date,
+          average: data["average"] || 0.0,
+          highest: data["highest"] || 0.0,
+          lowest: data["lowest"] || 0.0,
+          volume: data["volume"] || 0,
+          order_count: data["order_count"] || 0
+        }
+
+      {:error, _} ->
+        nil
+    end
   end
 
   defp calculate_market_prices(orders) do

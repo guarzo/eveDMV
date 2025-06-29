@@ -374,7 +374,13 @@ defmodule EveDmvWeb.KillFeedLive do
   # Helper function to safely create Decimal from various number types
   defp safe_decimal_new(value) when is_integer(value), do: Decimal.new(value)
   defp safe_decimal_new(value) when is_float(value), do: Decimal.from_float(value)
-  defp safe_decimal_new(value) when is_binary(value), do: Decimal.new(value)
+  defp safe_decimal_new(value) when is_binary(value) do
+    try do
+      Decimal.new(value)
+    rescue
+      _ -> Decimal.new(0)
+    end
+  end
   defp safe_decimal_new(_), do: Decimal.new(0)
 
   # Helper function to resolve names if they are unknown/empty

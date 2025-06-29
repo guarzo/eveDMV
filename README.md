@@ -1,6 +1,15 @@
-# EVE PvP Tracker
+# EVE DMV
 
 A real-time PvP activity tracking platform for EVE Online that provides actionable intelligence for fleet commanders, recruiters, and PvP enthusiasts.
+
+## 📚 Documentation
+
+- **[Project Overview](./docs/project-management/project-overview.md)** - Start here for project vision and architecture
+- **[Product Requirements](./docs/product-requirements.md)** - Detailed feature specifications
+- **[Development Setup](./docs/development/devcontainer.md)** - Get started with development
+- **[Current Roadmap](./docs/project-management/prioritized-roadmap.md)** - See what we're building next
+
+For complete documentation, see the [/docs directory](./docs/README.md).
 
 ## Features
 

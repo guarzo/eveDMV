@@ -1,4 +1,8 @@
 defmodule EveDmv.Market.Strategies.MutamarketStrategy do
+  # Abyssal module type ID ranges
+  @abyssal_module_range 47_800..49_000
+  # Abyssal filament type ID ranges
+  @abyssal_filament_range 52_227..52_230
   @moduledoc """
   Pricing strategy for abyssal modules using the Mutamarket API.
 
@@ -79,11 +83,11 @@ defmodule EveDmv.Market.Strategies.MutamarketStrategy do
   defp abyssal_item?(type_id, attributes) do
     cond do
       # Specific abyssal type ID ranges
-      type_id in 47_800..49_000 ->
+      type_id in @abyssal_module_range ->
         true
 
       # Abyssal filaments
-      type_id in 52_227..52_230 ->
+      type_id in @abyssal_filament_range ->
         true
 
       # Check attributes if provided

@@ -126,7 +126,11 @@ if config_env() == :prod do
       """
 
   host = System.get_env("PHX_HOST") || "example.com"
-  port = String.to_integer(System.get_env("PHX_PORT") || System.get_env("PORT") || "4010")
+  port = 
+    case Integer.parse(System.get_env("PHX_PORT") || System.get_env("PORT") || "4010") do
+      {port_num, ""} -> port_num
+      _ -> 4010
+    end
 
   config :eve_dmv, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 

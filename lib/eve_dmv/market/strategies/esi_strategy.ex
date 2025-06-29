@@ -1,4 +1,6 @@
 defmodule EveDmv.Market.Strategies.EsiStrategy do
+  # Default region ID for The Forge (Jita) - can be overridden by config
+  @default_region_id 10_000_002
   @moduledoc """
   Pricing strategy using EVE ESI market data.
 
@@ -27,8 +29,8 @@ defmodule EveDmv.Market.Strategies.EsiStrategy do
   def get_price(type_id, _item_attributes) do
     Logger.debug("Attempting ESI market data lookup for #{type_id}")
 
-    # Use The Forge region (Jita) as default market hub
-    region_id = 10_000_002
+    # Use configured region or default to The Forge (Jita)
+    region_id = Application.get_env(:eve_dmv, :market_region_id, @default_region_id)
 
     case EsiClient.get_market_orders(type_id, region_id) do
       {:ok, orders} when orders != [] ->

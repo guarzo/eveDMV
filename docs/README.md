@@ -1,6 +1,6 @@
-# EVE Online PvP Tracker - Documentation
+# EVE DMV - Documentation
 
-This directory contains all project documentation organized into logical categories. Each document serves a specific purpose in the development and understanding of the EVE PvP Tracker platform.
+This directory contains all project documentation organized into logical categories. Each document serves a specific purpose in the development and understanding of the EVE DMV platform.
 
 ## 📋 Core Documents
 
@@ -35,11 +35,41 @@ Detailed implementation specifications for core features.
 
 | Document | Purpose | Key Topics |
 |----------|---------|------------|
-| [Killmail Pipeline](./implementation/killmail-pipeline.md) | Broadway pipeline implementation | SSE consumption, data enrichment |
 | [Service Integration](./implementation/service-integration.md) | External API integration | wanderer-kills, EVE ESI |
 | [Authentication Edge Cases](./implementation/authentication-edge-cases.md) | Complex authentication scenarios | Corp transfers, token expiration |
 | [Surveillance Profile Matching](./implementation/surveillance-profile-matching.md) | Profile filtering system | JSON schema, performance optimization |
 | [Data Freshness](./implementation/data-freshness.md) | Data freshness management | Retry policies, error handling |
+| [Character Intelligence Design](./implementation/character-intelligence-design.md) | Character intelligence feature specification | Data aggregation, real-time updates |
+| [Character Intelligence Hunter-Focused](./implementation/character-intelligence-hunter-focused.md) | Hunter-focused intelligence features | Tactical data, hunting patterns |
+| [Phase 2 Roadmap](./implementation/phase-2-roadmap.md) | Phase 2 planning and features | Surveillance system, advanced intelligence |
+| [ESI Integration Summary](./implementation/esi-integration-summary.md) | EVE ESI integration details | API endpoints, data flow |
+| [Wormhole Features Specification](./implementation/wormhole-features-specification.md) | WH-specific feature details | Wanderer integration, chain intelligence |
+
+## 📊 Project Management
+
+Project status tracking and management documentation.
+
+| Document | Purpose | Key Topics |
+|----------|---------|------------|
+| [Project Status](./project-management/project-status.md) | Current implementation status | Feature completion, upcoming work |
+| [PR Feedback Sprint 2](./project-management/pr-feedback-sprint-2.md) | Pull request feedback items | Code review comments, action items |
+
+## 🏃 Sprints
+
+Sprint planning and tracking documentation.
+
+| Document | Purpose | Key Topics |
+|----------|---------|------------|
+| [Sprint 2](./sprints/sprint-2.md) | Sprint 2 progress and planning | Tasks, priorities, blockers |
+| [Sprint 2 Bug Fixes](./sprints/sprint-2-bug-fixes.md) | Bug fix summary from Sprint 2 | Resolved issues, remaining bugs |
+
+## 🧪 Testing
+
+Testing guides and procedures.
+
+| Document | Purpose | Key Topics |
+|----------|---------|------------|
+| [Manual Testing Guide](./testing/manual-testing-guide.md) | Manual testing procedures | Test scenarios, validation steps |
 
 ## 📚 Reference
 
@@ -86,4 +116,4 @@ For new developers joining the project:
 
 ---
 
-*Last updated: Initial organization - 2024* 
+*Last updated: Reorganized documentation structure - 2025-06-29* 

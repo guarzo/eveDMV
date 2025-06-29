@@ -55,39 +55,33 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
   """
   @spec analyze_characters([integer()]) :: {:ok, [CharacterStats.t()]}
   def analyze_characters(character_ids) do
-    # Use a database transaction to ensure consistency
-    EveDmv.Repo.transaction(fn ->
-      character_ids
-      |> Task.async_stream(&analyze_character_with_timeout/1,
-        max_concurrency: 5,
-        timeout: 30_000,
-        on_timeout: :exit
-      )
-      |> Enum.reduce({[], []}, fn
-        {:ok, {:ok, stats}}, {successful, failed} ->
-          {[stats | successful], failed}
+    # Remove unnecessary transaction wrapper - analyze_character_with_timeout handles its own DB operations
+    character_ids
+    |> Task.async_stream(&analyze_character_with_timeout/1,
+      max_concurrency: 5,
+      timeout: 30_000,
+      on_timeout: :exit
+    )
+    |> Enum.reduce({[], []}, fn
+      {:ok, {:ok, stats}}, {successful, failed} ->
+        {[stats | successful], failed}
 
-        {:ok, {:error, reason}}, {successful, failed} ->
-          {successful, [{:error, reason} | failed]}
+      {:ok, {:error, reason}}, {successful, failed} ->
+        {successful, [{:error, reason} | failed]}
 
-        {:exit, :timeout}, {successful, failed} ->
-          {successful, [{:timeout, "Character analysis timed out"} | failed]}
+      {:exit, :timeout}, {successful, failed} ->
+        {successful, [{:timeout, "Character analysis timed out"} | failed]}
 
-        {:exit, reason}, {successful, failed} ->
-          {successful, [{:exit, reason} | failed]}
-      end)
-      |> case do
-        {successful, []} ->
-          {:ok, successful}
-
-        {successful, failed} ->
-          Logger.warning("Partial analysis failure: #{length(failed)} characters failed")
-          {:ok, successful}
-      end
+      {:exit, reason}, {successful, failed} ->
+        {successful, [{:exit, reason} | failed]}
     end)
     |> case do
-      {:ok, result} -> result
-      {:error, reason} -> {:error, reason}
+      {successful, []} ->
+        {:ok, successful}
+
+      {successful, failed} ->
+        Logger.warning("Partial analysis failure: #{length(failed)} characters failed")
+        {:ok, successful}
     end
   end
 
@@ -268,14 +262,14 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
 
       gang_sizes =
         uses
-        |> Enum.map(fn {_, _, km, _} -> length(km.participants) end)
-        |> Enum.filter(&(&1 > 0))
+        |> Enum.map(fn {_, _, km, _} -> max(0, length(km.participants) - 1) end)  # Subtract 1 to exclude victim
+        |> Enum.filter(&(&1 >= 0))
 
       avg_gang_size =
         if length(gang_sizes) > 0 do
           Enum.sum(gang_sizes) / length(gang_sizes)
         else
-          1.0
+          0.0  # No gang if excluding victim results in 0
         end
 
       {Integer.to_string(type_id),
@@ -384,7 +378,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
     avg_victim_gang_size =
       killmails
       |> Enum.filter(fn km -> not victim_is_character?(km, character_id) end)
-      |> Enum.map(&length(&1.participants))
+      |> Enum.map(&max(0, length(&1.participants) - 1))  # Subtract 1 to exclude victim
       |> average()
 
     %{
@@ -563,7 +557,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
         "industrial"
 
       _ ->
-        if item_type.is_ship, do: "small", else: "unknown"
+        if item_type.is_ship, do: "unknown", else: "unknown"
     end
   end
 

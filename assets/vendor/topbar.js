@@ -136,7 +136,7 @@
           (function loop() {
             if (showing) {
               if (currentProgress < 1) {
-                var newProgress = currentProgress + 0.05 * Math.pow(1 - Math.sqrt(currentProgress), 2);
+                const newProgress = currentProgress + 0.05 * Math.pow(1 - Math.sqrt(currentProgress), 2);
                 currentProgress = newProgress > 0.95 ? 0.95 : newProgress;
                 repaint();
                 progressTimerId = setTimeout(loop, 100);

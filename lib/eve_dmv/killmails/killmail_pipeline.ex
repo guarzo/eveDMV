@@ -511,6 +511,9 @@ defmodule EveDmv.Killmails.KillmailPipeline do
   end
 
   # Helper functions for database insertion
+  # NOTE: Using individual inserts instead of bulk operations for better error visibility.
+  # Monitor performance in production - if throughput becomes an issue, consider switching
+  # to batched inserts with error collection (maintaining error detail while improving performance).
 
   defp insert_raw_killmails(raw_changesets) do
     Logger.debug("Inserting #{length(raw_changesets)} raw killmails")

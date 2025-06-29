@@ -20,20 +20,29 @@ defmodule EveDmvWeb.CharacterIntelLive do
 
   @impl true
   def mount(%{"character_id" => character_id_str}, _session, socket) do
-    character_id = String.to_integer(character_id_str)
+    case Integer.parse(character_id_str) do
+      {character_id, ""} ->
+        socket =
+          socket
+          |> assign(:character_id, character_id)
+          |> assign(:loading, true)
+          |> assign(:error, nil)
+          |> assign(:stats, nil)
+          |> assign(:tab, :overview)
 
-    socket =
-      socket
-      |> assign(:character_id, character_id)
-      |> assign(:loading, true)
-      |> assign(:error, nil)
-      |> assign(:stats, nil)
-      |> assign(:tab, :overview)
+        # Load character stats asynchronously
+        send(self(), {:load_character, character_id})
 
-    # Load character stats asynchronously
-    send(self(), {:load_character, character_id})
+        {:ok, socket}
 
-    {:ok, socket}
+      _ ->
+        socket =
+          socket
+          |> assign(:error, "Invalid character ID")
+          |> assign(:loading, false)
+
+        {:ok, socket}
+    end
   end
 
   @impl true
@@ -273,7 +282,7 @@ defmodule EveDmvWeb.CharacterIntelLive do
   defp handle_unknown_character(character_id, socket) do
     parent_pid = self()
 
-    Task.start(fn ->
+    Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
       # Fetch character info from ESI
       with {:ok, character_info} <- EsiClient.get_character(character_id),
            {:ok, corp_info} <- fetch_corporation_info(character_info.corporation_id),

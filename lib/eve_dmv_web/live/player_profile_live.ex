@@ -134,7 +134,7 @@ defmodule EveDmvWeb.PlayerProfileLive do
     character_id = socket.assigns.character_id
 
     # Trigger analytics calculation for this character
-    Task.start(fn ->
+    Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
       AnalyticsEngine.calculate_player_stats(days: 90, batch_size: 1)
     end)
 
@@ -209,7 +209,7 @@ defmodule EveDmvWeb.PlayerProfileLive do
   defp handle_unknown_character(character_id, socket) do
     parent_pid = self()
 
-    Task.start(fn ->
+    Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
       # Fetch character info from ESI
       with {:ok, character_info} <- EsiClient.get_character(character_id),
            {:ok, corp_info} <- fetch_corporation_info(character_info.corporation_id),
@@ -324,6 +324,50 @@ defmodule EveDmvWeb.PlayerProfileLive do
 
   # Template helper functions
 
+  def generate_stats_button_html(nil) do
+    ~H"""
+    <button
+      phx-click="generate_stats"
+      class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
+    >
+      📊 Generate Stats
+    </button>
+    """
+  end
+
+  def generate_stats_button_html(_), do: ~H""
+
+  def format_avg_gang_size(nil), do: "1.0"
+  def format_avg_gang_size(size), do: format_number(size)
+
+  def safe_security_status(nil), do: "0.00"
+  def safe_security_status(status) when is_number(status), do: Float.round(status, 2) |> to_string()
+  def safe_security_status(_), do: "0.00"
+
+  def safe_character_age(nil), do: "Unknown"
+  def safe_character_age(birthday) do
+    try do
+      days = DateTime.diff(DateTime.utc_now(), birthday, :day)
+      if days >= 0 do
+        (days / 365) |> trunc() |> to_string() <> " years"
+      else
+        "Unknown"
+      end
+    rescue
+      _ -> "Unknown"
+    end
+  end
+
+  def format_net_isk(destroyed, lost) do
+    net_isk = Decimal.sub(destroyed, lost)
+    format_isk(net_isk)
+  end
+
+  def net_isk_class(destroyed, lost) do
+    net_isk = Decimal.sub(destroyed, lost)
+    if Decimal.positive?(net_isk), do: "text-green-400", else: "text-red-400"
+  end
+
   def format_number(nil), do: "0"
 
   def format_number(number) when is_integer(number) do
@@ -409,5 +453,351 @@ defmodule EveDmvWeb.PlayerProfileLive do
       "fleet" -> {"🚢 Fleet", "bg-green-600 text-white"}
       _ -> {"❓ Unknown", "bg-gray-600 text-white"}
     end
+  end
+
+  # Template component functions
+
+  def player_stats_section(assigns) do
+    ~H"""
+    <!-- Player Statistics -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <!-- Basic Stats Card -->
+      <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h3 class="text-lg font-bold mb-4 text-blue-400">Basic Statistics</h3>
+
+        <div class="space-y-3">
+          <div class="flex justify-between">
+            <span class="text-gray-400">Character:</span>
+            <span class="font-medium">{@player_stats.character_name}</span>
+          </div>
+
+          <div class="flex justify-between">
+            <span class="text-gray-400">Total Kills:</span>
+            <span class="font-medium text-green-400">
+              {format_number(@player_stats.total_kills)}
+            </span>
+          </div>
+
+          <div class="flex justify-between">
+            <span class="text-gray-400">Total Losses:</span>
+            <span class="font-medium text-red-400">
+              {format_number(@player_stats.total_losses)}
+            </span>
+          </div>
+
+          <div class="flex justify-between">
+            <span class="text-gray-400">K/D Ratio:</span>
+            <span class="font-medium">
+              {format_ratio(@player_stats.total_kills, @player_stats.total_losses)}
+            </span>
+          </div>
+
+          <div class="flex justify-between">
+            <span class="text-gray-400">ISK Efficiency:</span>
+            <span class="font-medium">
+              {format_percentage(@player_stats.isk_efficiency_percent)}
+            </span>
+          </div>
+        </div>
+      </div>
+      
+<!-- Solo vs Gang Stats -->
+      <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h3 class="text-lg font-bold mb-4 text-purple-400">Solo vs Gang Performance</h3>
+
+        <div class="space-y-3">
+          <div class="flex justify-between">
+            <span class="text-gray-400">Solo Kills:</span>
+            <span class="font-medium text-purple-400">
+              {format_number(@player_stats.solo_kills)}
+            </span>
+          </div>
+
+          <div class="flex justify-between">
+            <span class="text-gray-400">Solo Losses:</span>
+            <span class="font-medium text-purple-300">
+              {format_number(@player_stats.solo_losses)}
+            </span>
+          </div>
+
+          <div class="flex justify-between">
+            <span class="text-gray-400">Gang Kills:</span>
+            <span class="font-medium text-blue-400">
+              {format_number(@player_stats.gang_kills)}
+            </span>
+          </div>
+
+          <div class="flex justify-between">
+            <span class="text-gray-400">Gang Losses:</span>
+            <span class="font-medium text-blue-300">
+              {format_number(@player_stats.gang_losses)}
+            </span>
+          </div>
+
+          <div class="flex justify-between">
+            <span class="text-gray-400">Solo K/D:</span>
+            <span class="font-medium">
+              {format_ratio(@player_stats.solo_kills, @player_stats.solo_losses)}
+            </span>
+          </div>
+        </div>
+      </div>
+      
+<!-- ISK Statistics -->
+      <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h3 class="text-lg font-bold mb-4 text-yellow-400">ISK Performance</h3>
+
+        <div class="space-y-3">
+          <div class="flex justify-between">
+            <span class="text-gray-400">ISK Destroyed:</span>
+            <span class="font-medium text-green-400">
+              {format_isk(@player_stats.total_isk_destroyed)}
+            </span>
+          </div>
+
+          <div class="flex justify-between">
+            <span class="text-gray-400">ISK Lost:</span>
+            <span class="font-medium text-red-400">
+              {format_isk(@player_stats.total_isk_lost)}
+            </span>
+          </div>
+
+          <div class="flex justify-between">
+            <span class="text-gray-400">Net ISK:</span>
+            <span class={"font-medium #{net_isk_class(@player_stats.total_isk_destroyed, @player_stats.total_isk_lost)}"}>>
+              {format_net_isk(@player_stats.total_isk_destroyed, @player_stats.total_isk_lost)}
+            </span>
+          </div>
+
+          <div class="flex justify-between">
+            <span class="text-gray-400">Efficiency:</span>
+            <span class="font-medium">
+              {format_percentage(@player_stats.isk_efficiency_percent)}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+<!-- Additional Information -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <!-- Activity & Behavior -->
+      <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h3 class="text-lg font-bold mb-4 text-cyan-400">Activity & Behavior</h3>
+
+        <div class="space-y-4">
+          <div class="flex justify-between items-center">
+            <span class="text-gray-400">Danger Rating:</span>
+            <div>
+              <% {stars, badge_class} = danger_badge(@player_stats.danger_rating) %>
+              <span class={"px-2 py-1 rounded text-sm font-medium #{badge_class}"}>>
+                {stars}
+              </span>
+            </div>
+          </div>
+
+          <div class="flex justify-between items-center">
+            <span class="text-gray-400">Primary Activity:</span>
+            <div>
+              <% {activity_text, activity_class} =
+                activity_badge(@player_stats.primary_activity) %>
+              <span class={"px-2 py-1 rounded text-sm font-medium #{activity_class}"}>>
+                {activity_text}
+              </span>
+            </div>
+          </div>
+
+          <div class="flex justify-between items-center">
+            <span class="text-gray-400">Gang Preference:</span>
+            <div>
+              <% {gang_text, gang_class} = gang_size_badge(@player_stats.preferred_gang_size) %>
+              <span class={"px-2 py-1 rounded text-sm font-medium #{gang_class}"}>>
+                {gang_text}
+              </span>
+            </div>
+          </div>
+
+          <div class="flex justify-between">
+            <span class="text-gray-400">Avg Gang Size:</span>
+            <span class="font-medium">
+              {format_avg_gang_size(@player_stats.avg_gang_size)}
+            </span>
+          </div>
+
+          <div class="flex justify-between">
+            <span class="text-gray-400">Ship Types Used:</span>
+            <span class="font-medium">{@player_stats.ship_types_used}</span>
+          </div>
+        </div>
+      </div>
+      
+<!-- Ship Information -->
+      <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h3 class="text-lg font-bold mb-4 text-orange-400">Ship Usage</h3>
+
+        <div class="space-y-3">
+          <%= if @player_stats.favorite_ship_name do %>
+            <div class="flex justify-between">
+              <span class="text-gray-400">Favorite Ship:</span>
+              <span class="font-medium text-orange-400">
+                {@player_stats.favorite_ship_name}
+              </span>
+            </div>
+          <% end %>
+
+          <div class="flex justify-between">
+            <span class="text-gray-400">Ship Diversity:</span>
+            <span class="font-medium">
+              {@player_stats.ship_types_used} different ships
+            </span>
+          </div>
+
+          <%= if @player_stats.active_regions && @player_stats.active_regions > 0 do %>
+            <div class="flex justify-between">
+              <span class="text-gray-400">Active Regions:</span>
+              <span class="font-medium">{@player_stats.active_regions}</span>
+            </div>
+          <% end %>
+
+          <%= if @player_stats.home_region_name do %>
+            <div class="flex justify-between">
+              <span class="text-gray-400">Home Region:</span>
+              <span class="font-medium">{@player_stats.home_region_name}</span>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+    
+<!-- Time Information -->
+    <%= if @player_stats.last_updated do %>
+      <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+        <div class="flex justify-between items-center text-sm text-gray-400">
+          <span>
+            Statistics last updated: {Calendar.strftime(
+              @player_stats.last_updated,
+              "%Y-%m-%d %H:%M:%S UTC"
+            )}
+          </span>
+          <%= if @player_stats.stats_period_start && @player_stats.stats_period_end do %>
+            <span>
+              Period: {Date.to_string(@player_stats.stats_period_start)} to {Date.to_string(
+                @player_stats.stats_period_end
+              )}
+            </span>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+    """
+  end
+
+  def character_info_section(assigns) do
+    ~H"""
+    <!-- Character Info Only (ESI Data) -->
+    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-2xl font-bold mb-4">{@character_info.name}</h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <span class="text-gray-400">Corporation:</span>
+          <span class="text-white ml-2">
+            {@character_info[:corporation_name] || "Unknown"}
+          </span>
+        </div>
+
+        <%= if @character_info[:alliance_name] do %>
+          <div>
+            <span class="text-gray-400">Alliance:</span>
+            <span class="text-white ml-2">{@character_info[:alliance_name]}</span>
+          </div>
+        <% end %>
+
+        <div>
+          <span class="text-gray-400">Security Status:</span>
+          <span class="text-white ml-2">
+            {safe_security_status(@character_info.security_status)}
+          </span>
+        </div>
+
+        <%= if @character_info.birthday do %>
+          <div>
+            <span class="text-gray-400">Character Age:</span>
+            <span class="text-white ml-2">
+              {safe_character_age(@character_info.birthday)}
+            </span>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="mt-6 pt-6 border-t border-gray-700">
+        <p class="text-gray-400 text-sm">
+          This character has no killmail activity recorded. The information above is retrieved from EVE Online's ESI API.
+        </p>
+      </div>
+    </div>
+    """
+  end
+
+  def no_data_section(assigns) do
+    ~H"""
+    <!-- No Statistics Available -->
+    <div class="bg-gray-800 rounded-lg p-8 border border-gray-700 text-center">
+      <div class="text-gray-400 mb-4">
+        <svg
+          class="w-16 h-16 mx-auto mb-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+          >
+          </path>
+        </svg>
+      </div>
+
+      <h2 class="text-xl font-bold mb-2">No Statistics Available</h2>
+      <p class="text-gray-400 mb-6">
+        Player statistics have not been generated for this character yet.
+      </p>
+
+      <button
+        phx-click="generate_stats"
+        class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded font-medium transition-colors"
+      >
+        📊 Generate Player Statistics
+      </button>
+
+      <%= if @character_intel do %>
+        <div class="mt-6 pt-6 border-t border-gray-700">
+          <p class="text-sm text-gray-400 mb-2">
+            Character intelligence data is available:
+          </p>
+          <div class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span class="text-gray-400">Kills:</span>
+              <span class="text-green-400 ml-2">{@character_intel.total_kills || 0}</span>
+            </div>
+            <div>
+              <span class="text-gray-400">Losses:</span>
+              <span class="text-red-400 ml-2">{@character_intel.total_losses || 0}</span>
+            </div>
+          </div>
+          <div class="mt-2">
+            <a
+              href={~p"/intel/#{@character_id}"}
+              class="text-blue-400 hover:text-blue-300 underline text-sm"
+            >
+              View Character Intelligence →
+            </a>
+          </div>
+        </div>
+      <% end %>
+    </div>
+    """
   end
 end

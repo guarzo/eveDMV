@@ -171,13 +171,11 @@ defmodule EveDmvWeb.DashboardLive do
           <p class="text-gray-400 text-sm">Real-time killmail data with system statistics</p>
         </.link>
 
-        <.link
-          navigate={~p"/intel/1234567"}
-          class="bg-gray-800 hover:bg-gray-700 rounded-lg p-4 transition-colors"
-        >
+        <div class="bg-gray-800 rounded-lg p-4">
           <h3 class="text-lg font-medium text-white mb-2">Character Intelligence</h3>
           <p class="text-gray-400 text-sm">Analyze pilot behavior and combat patterns</p>
-        </.link>
+          <p class="text-gray-500 text-xs mt-2">Enter a character ID in the URL: /intel/CHARACTER_ID</p>
+        </div>
 
         <.link
           navigate={~p"/surveillance"}

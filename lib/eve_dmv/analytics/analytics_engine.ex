@@ -32,10 +32,16 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
 
     Logger.info("Starting player statistics for last #{days} days")
 
-    participants_ids(:character_id, min_activity)
-    |> chunk_and_process(batch_size, &process_character(&1, start_date, now), "player")
-
-    Logger.info("Player statistics calculation completed")
+    case participants_ids(:character_id, min_activity) do
+      {:error, reason} ->
+        Logger.error("Failed to calculate player stats: #{inspect(reason)}")
+        {:error, reason}
+      
+      ids ->
+        chunk_and_process(ids, batch_size, &process_character(&1, start_date, now), "player")
+        Logger.info("Player statistics calculation completed")
+        :ok
+    end
   end
 
   @doc """
@@ -54,20 +60,28 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
 
     Logger.info("Starting ship statistics for last #{days} days")
 
-    participants_ids(:ship_type_id, min_usage)
-    |> Enum.with_index(1)
-    |> Task.async_stream(
-      fn {ship_id, idx} ->
-        if rem(idx, 50) == 1, do: Logger.debug("Processing ship #{idx}")
-        process_ship(ship_id, start_date, now)
-      end,
-      max_concurrency: System.schedulers_online(),
-      ordered: false
-    )
-    |> Stream.run()
+    case participants_ids(:ship_type_id, min_usage) do
+      {:error, reason} ->
+        Logger.error("Failed to calculate ship stats: #{inspect(reason)}")
+        {:error, reason}
+      
+      ids ->
+        ids
+        |> Enum.with_index(1)
+        |> Task.async_stream(
+          fn {ship_id, idx} ->
+            if rem(idx, 50) == 1, do: Logger.debug("Processing ship #{idx}")
+            process_ship(ship_id, start_date, now)
+          end,
+          max_concurrency: System.schedulers_online(),
+          ordered: false
+        )
+        |> Stream.run()
 
-    update_ship_rankings()
-    Logger.info("Ship statistics calculation completed")
+        update_ship_rankings()
+        Logger.info("Ship statistics calculation completed")
+        :ok
+    end
   end
 
   # Fetch up to `limit` unique non-nil values of `field` from recent participants
@@ -82,7 +96,7 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
 
       {:error, reason} ->
         Logger.error("Failed to fetch participants: #{inspect(reason)}")
-        []
+        {:error, reason}
     end
   end
 
@@ -159,30 +173,44 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
   # --- Metric calculations ---
 
   defp calculate_character_metrics(character_id, _start_date, _end_date) do
-    with {:ok, parts} <- Ash.read(Participant, domain: Api),
-         parts <- Enum.filter(parts, &(&1.character_id == character_id)),
-         parts <- Enum.take(parts, 1_000),
-         [_ | _] <- parts do
-      build_character_metrics(parts)
-    else
-      _ -> %{}
+    case Ash.read(Participant, 
+      filter: %{character_id: character_id},
+      limit: 1_000,
+      domain: Api
+    ) do
+      {:ok, [_ | _] = parts} ->
+        build_character_metrics(parts)
+      {:ok, []} ->
+        %{}
+      {:error, reason} ->
+        Logger.error("Failed to fetch character metrics: #{inspect(reason)}")
+        %{}
     end
   end
 
   defp calculate_ship_metrics(ship_type_id, _start_date, _end_date) do
-    with {:ok, parts} <- Ash.read(Participant, domain: Api),
-         parts <- Enum.filter(parts, &(&1.ship_type_id == ship_type_id)),
-         parts <- Enum.take(parts, 1_000),
-         [_ | _] <- parts do
-      build_ship_metrics(parts)
-    else
-      _ -> %{}
+    case Ash.read(Participant, 
+      filter: %{ship_type_id: ship_type_id},
+      limit: 1_000,
+      domain: Api
+    ) do
+      {:ok, [_ | _] = parts} ->
+        build_ship_metrics(parts)
+      {:ok, []} ->
+        %{}
+      {:error, reason} ->
+        Logger.error("Failed to fetch ship metrics: #{inspect(reason)}")
+        %{}
     end
   end
 
   # Build character-level metrics map
   defp build_character_metrics(ps) do
-    character_name = List.first(ps).character_name || "Unknown"
+    character_name = 
+      case List.first(ps) do
+        %{character_name: name} when is_binary(name) -> name
+        _ -> "Unknown"
+      end
     {kills, losses} = split_kills_losses(ps)
     {solo_kills, gang_kills, solo_losses, gang_losses} = split_solo_gang(kills, losses)
 
@@ -232,11 +260,24 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
     total_kills = length(kills)
     total_losses = length(losses)
 
+    # Calculate actual ISK values from participant data instead of hardcoded multipliers
+    total_isk_destroyed = 
+      ps
+      |> Enum.filter(&(not &1.is_victim))
+      |> Enum.map(&(&1.ship_value || Decimal.new(0)))
+      |> Enum.reduce(Decimal.new(0), &Decimal.add/2)
+    
+    total_isk_lost = 
+      ps
+      |> Enum.filter(& &1.is_victim)
+      |> Enum.map(&(&1.ship_value || Decimal.new(0)))
+      |> Enum.reduce(Decimal.new(0), &Decimal.add/2)
+    
     %{
       total_kills: total_kills,
       total_losses: total_losses,
-      total_isk_destroyed: Decimal.new(total_kills * 50_000_000),
-      total_isk_lost: Decimal.new(total_losses * 50_000_000)
+      total_isk_destroyed: total_isk_destroyed,
+      total_isk_lost: total_isk_lost
     }
   end
 
@@ -288,8 +329,16 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
     total_losses = length(losses)
     pilots = ps |> Enum.map(& &1.character_id) |> Enum.uniq() |> length()
 
-    total_isk_out = Decimal.new(total_kills * 50_000_000)
-    total_isk_in = Decimal.new(total_losses * 50_000_000)
+    # Calculate actual ISK values from participant data instead of hardcoded multipliers
+    total_isk_out = 
+      kills
+      |> Enum.map(&(&1.ship_value || Decimal.new(0)))
+      |> Enum.reduce(Decimal.new(0), &Decimal.add/2)
+    
+    total_isk_in = 
+      losses
+      |> Enum.map(&(&1.ship_value || Decimal.new(0)))
+      |> Enum.reduce(Decimal.new(0), &Decimal.add/2)
 
     avg_damage_dealt =
       if total_kills > 0,
