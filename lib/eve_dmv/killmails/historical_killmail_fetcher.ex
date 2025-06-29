@@ -1,48 +1,53 @@
 defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
   @moduledoc """
   Fetches historical killmail data for specific characters from wanderer-kills SSE service.
-  
+
   Uses the enhanced SSE endpoint to preload up to 90 days of historical data for a character,
   then disconnects once all historical data is received (detected by multiple heartbeats).
   """
-  
+
   require Logger
   alias EveDmv.Api
-  alias EveDmv.Killmails.{KillmailRaw, KillmailEnriched, Participant}
-  
-  @wanderer_kills_base_url Application.compile_env(:eve_dmv, :wanderer_kills_base_url, "http://host.docker.internal:4004")
+  alias EveDmv.Killmails.{KillmailEnriched, KillmailRaw, Participant}
+
+  @wanderer_kills_base_url Application.compile_env(
+                             :eve_dmv,
+                             :wanderer_kills_base_url,
+                             "http://host.docker.internal:4004"
+                           )
   @preload_days 90
   @heartbeat_threshold 3
-  
+
   @doc """
   Fetch historical killmails for a character ID.
-  
+
   Returns {:ok, killmail_count} or {:error, reason}
   """
   @spec fetch_character_history(integer()) :: {:ok, integer()} | {:error, term()}
   def fetch_character_history(character_id) when is_integer(character_id) do
     Logger.info("Fetching historical killmails for character #{character_id}")
-    
+
     url = build_url(character_id)
-    
+
     case HTTPoison.get(url, [], recv_timeout: 120_000, stream_to: self()) do
       {:ok, %HTTPoison.AsyncResponse{id: ref}} ->
         process_stream(ref, character_id)
-        
+
       {:error, reason} = error ->
         Logger.error("Failed to connect to wanderer-kills: #{inspect(reason)}")
         error
     end
   end
-  
+
   @doc """
   Fetch historical killmails for multiple characters concurrently.
   """
   @spec fetch_characters_history([integer()]) :: {:ok, map()} | {:error, term()}
   def fetch_characters_history(character_ids) when is_list(character_ids) do
     Logger.info("Fetching historical killmails for #{length(character_ids)} characters")
-    
-    results = character_ids
+
+    results =
+      character_ids
       |> Enum.map(fn char_id ->
         Task.async(fn ->
           case fetch_character_history(char_id) do
@@ -53,16 +58,16 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
       end)
       |> Enum.map(&Task.await(&1, 180_000))
       |> Map.new()
-    
+
     {:ok, results}
   end
-  
+
   # Private functions
-  
+
   defp build_url(character_id) do
     "#{@wanderer_kills_base_url}/api/v1/kills/stream/enhanced?character_ids=#{character_id}&preload_days=#{@preload_days}"
   end
-  
+
   defp process_stream(ref, character_id) do
     process_stream_loop(ref, character_id, %{
       heartbeat_count: 0,
@@ -72,71 +77,73 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
       buffer: ""
     })
   end
-  
+
   defp process_stream_loop(ref, character_id, state) do
     receive do
       %HTTPoison.AsyncStatus{id: ^ref, code: 200} ->
         Logger.debug("Connected to wanderer-kills SSE stream for character #{character_id}")
         process_stream_loop(ref, character_id, state)
-        
+
       %HTTPoison.AsyncStatus{id: ^ref, code: code} ->
         Logger.error("Wanderer-kills returned status #{code}")
         # No need to explicitly stop - just stop receiving
         {:error, "HTTP status #{code}"}
-        
+
       %HTTPoison.AsyncHeaders{id: ^ref, headers: headers} ->
         Logger.debug("Received headers: #{inspect(headers)}")
         process_stream_loop(ref, character_id, state)
-        
+
       %HTTPoison.AsyncChunk{id: ^ref, chunk: chunk} ->
         new_state = process_chunk(chunk, state, character_id)
-        
+
         # Check if we should disconnect
         if should_disconnect?(new_state) do
-          Logger.info("Received all historical data for character #{character_id} (#{new_state.killmail_count} killmails)")
+          Logger.info(
+            "Received all historical data for character #{character_id} (#{new_state.killmail_count} killmails)"
+          )
+
           # Just return - process will clean up when we stop receiving
           {:ok, new_state.killmail_count}
         else
           process_stream_loop(ref, character_id, new_state)
         end
-        
+
       %HTTPoison.AsyncEnd{id: ^ref} ->
         Logger.info("SSE stream ended for character #{character_id}")
         {:ok, state.killmail_count}
-        
+
       %HTTPoison.Error{id: ^ref, reason: reason} ->
         Logger.error("SSE stream error: #{inspect(reason)}")
         {:error, reason}
-        
     after
       120_000 ->
         Logger.error("Timeout waiting for SSE data")
         {:error, :timeout}
     end
   end
-  
+
   defp process_chunk(chunk, state, character_id) do
     # Append chunk to buffer
     buffer = state.buffer <> chunk
-    
+
     # Process complete events
     {events, remaining_buffer} = parse_sse_events(buffer)
-    
+
     new_state = %{state | buffer: remaining_buffer}
-    
+
     Enum.reduce(events, new_state, fn event, acc_state ->
       process_event(event, acc_state, character_id)
     end)
   end
-  
+
   defp parse_sse_events(buffer) do
     # Split by double newline (event separator)
     parts = String.split(buffer, "\n\n", trim: true)
-    
+
     case parts do
-      [] -> 
+      [] ->
         {[], buffer}
-        
+
       [incomplete] ->
         # Check if this might be a complete event
         if String.ends_with?(buffer, "\n\n") do
@@ -144,24 +151,24 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
         else
           {[], buffer}
         end
-        
+
       parts ->
         # Last part might be incomplete
-        {complete_parts, last_part} = 
+        {complete_parts, last_part} =
           if String.ends_with?(buffer, "\n\n") do
             {parts, ""}
           else
             {Enum.drop(parts, -1), List.last(parts)}
           end
-        
+
         events = Enum.map(complete_parts, &parse_sse_event/1)
         {events, last_part}
     end
   end
-  
+
   defp parse_sse_event(text) do
     lines = String.split(text, "\n", trim: true)
-    
+
     Enum.reduce(lines, %{event: nil, data: nil}, fn line, acc ->
       case String.split(line, ":", parts: 2) do
         ["event", event_type] -> %{acc | event: String.trim(event_type)}
@@ -170,83 +177,94 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
       end
     end)
   end
-  
+
   defp process_event(%{event: "connected", data: data}, state, character_id) do
     case Jason.decode(data) do
       {:ok, info} ->
         Logger.info("Connected to wanderer-kills for character #{character_id}: #{inspect(info)}")
         state
+
       _ ->
         state
     end
   end
-  
+
   defp process_event(%{event: "batch", data: data}, state, character_id) do
     case Jason.decode(data) do
       {:ok, %{"killmails" => killmails, "batch_number" => batch_num, "total_batches" => total}} ->
-        Logger.info("Processing batch #{batch_num}/#{total} for character #{character_id} (#{length(killmails)} killmails)")
-        
+        Logger.info(
+          "Processing batch #{batch_num}/#{total} for character #{character_id} (#{length(killmails)} killmails)"
+        )
+
         # Process killmails
         Enum.each(killmails, &store_killmail/1)
-        
-        %{state | 
-          killmail_count: state.killmail_count + length(killmails),
-          batch_count: state.batch_count + 1,
-          heartbeat_count: 0  # Reset heartbeat count on data
+
+        %{
+          state
+          | killmail_count: state.killmail_count + length(killmails),
+            batch_count: state.batch_count + 1,
+            # Reset heartbeat count on data
+            heartbeat_count: 0
         }
-        
+
       _ ->
         state
     end
   end
-  
+
   defp process_event(%{event: "killmail", data: data}, state, _character_id) do
     case Jason.decode(data) do
       {:ok, killmail} ->
         store_killmail(killmail)
-        %{state | 
-          killmail_count: state.killmail_count + 1,
-          heartbeat_count: 0  # Reset heartbeat count on data
+
+        %{
+          state
+          | killmail_count: state.killmail_count + 1,
+            # Reset heartbeat count on data
+            heartbeat_count: 0
         }
-        
+
       _ ->
         state
     end
   end
-  
+
   defp process_event(%{event: "transition", data: data}, state, character_id) do
     case Jason.decode(data) do
       {:ok, info} ->
-        Logger.info("Transitioned to realtime mode for character #{character_id}: #{inspect(info)}")
+        Logger.info(
+          "Transitioned to realtime mode for character #{character_id}: #{inspect(info)}"
+        )
+
         %{state | is_realtime: true}
-        
+
       _ ->
         state
     end
   end
-  
+
   defp process_event(%{event: "heartbeat", data: _}, state, _character_id) do
     %{state | heartbeat_count: state.heartbeat_count + 1}
   end
-  
+
   defp process_event(%{event: nil, data: data}, state, character_id) when not is_nil(data) do
     # Handle events without explicit event type (default to killmail)
     process_event(%{event: "killmail", data: data}, state, character_id)
   end
-  
+
   defp process_event(_, state, _), do: state
-  
+
   defp should_disconnect?(state) do
     # Disconnect if we're in realtime mode OR we've received multiple heartbeats without data
     state.is_realtime or state.heartbeat_count >= @heartbeat_threshold
   end
-  
+
   defp store_killmail(enriched) do
     # Reuse the same logic from the pipeline for consistency
     raw_changeset = build_raw_changeset(enriched)
     enriched_changeset = build_enriched_changeset(enriched)
     participants = build_participants(enriched)
-    
+
     # Insert with error handling
     with :ok <- insert_raw_killmail(raw_changeset),
          :ok <- insert_enriched_killmail(enriched_changeset),
@@ -258,9 +276,9 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
         error
     end
   end
-  
+
   # Reuse changeset builders from pipeline (simplified versions)
-  
+
   defp build_raw_changeset(enriched) do
     %{
       killmail_id: enriched["killmail_id"],
@@ -276,10 +294,10 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
       source: "wanderer-kills-historical"
     }
   end
-  
+
   defp build_enriched_changeset(enriched) do
     victim = enriched["victim"] || %{}
-    
+
     %{
       killmail_id: enriched["killmail_id"],
       killmail_time: parse_timestamp(enriched["timestamp"] || enriched["kill_time"]),
@@ -306,25 +324,26 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
       price_data_source: "wanderer_kills"
     }
   end
-  
+
   defp build_participants(enriched) do
     victim = enriched["victim"] || %{}
     attackers = enriched["attackers"] || []
-    
-    victim_participants = 
+
+    victim_participants =
       if victim["ship_type_id"] do
         [build_participant(victim, enriched, true)]
       else
         []
       end
-    
-    attacker_participants = attackers
-      |> Enum.filter(&(&1["ship_type_id"]))
+
+    attacker_participants =
+      attackers
+      |> Enum.filter(& &1["ship_type_id"])
       |> Enum.map(&build_participant(&1, enriched, false))
-    
+
     victim_participants ++ attacker_participants
   end
-  
+
   defp build_participant(entity, killmail, is_victim) do
     %{
       killmail_id: killmail["killmail_id"],
@@ -348,90 +367,98 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
       solar_system_id: killmail["solar_system_id"] || killmail["system_id"]
     }
   end
-  
+
   # Database operations
-  
+
   defp insert_raw_killmail(changeset) do
     case Ash.create(KillmailRaw, changeset, action: :ingest_from_source, domain: Api) do
       {:ok, _} -> :ok
       {:error, error} -> {:error, error}
     end
   rescue
-    _ -> :ok  # Ignore duplicates
+    # Ignore duplicates
+    _ -> :ok
   end
-  
+
   defp insert_enriched_killmail(changeset) do
     case Ash.create(KillmailEnriched, changeset, action: :upsert, domain: Api) do
       {:ok, _} -> :ok
       {:error, error} -> {:error, error}
     end
   rescue
-    _ -> :ok  # Ignore duplicates
+    # Ignore duplicates
+    _ -> :ok
   end
-  
+
   defp insert_participants(participants) do
     Enum.each(participants, fn participant ->
       case Ash.create(Participant, participant, action: :create, domain: Api) do
         {:ok, _} -> :ok
-        {:error, _} -> :ok  # Ignore errors (duplicates, etc)
+        # Ignore errors (duplicates, etc)
+        {:error, _} -> :ok
       end
     end)
+
     :ok
   rescue
     _ -> :ok
   end
-  
+
   # Helper functions
-  
+
   defp parse_timestamp(nil), do: DateTime.utc_now()
+
   defp parse_timestamp(timestamp) when is_binary(timestamp) do
     case DateTime.from_iso8601(timestamp) do
       {:ok, dt, _} -> dt
       _ -> DateTime.utc_now()
     end
   end
+
   defp parse_timestamp(%DateTime{} = dt), do: dt
   defp parse_timestamp(_), do: DateTime.utc_now()
-  
+
   defp parse_decimal(nil), do: Decimal.new(0)
   defp parse_decimal(value) when is_integer(value), do: Decimal.new(value)
   defp parse_decimal(value) when is_float(value), do: Decimal.from_float(value)
+
   defp parse_decimal(value) when is_binary(value) do
     case Decimal.parse(value) do
       {decimal, _} -> decimal
       :error -> Decimal.new(0)
     end
   end
+
   defp parse_decimal(_), do: Decimal.new(0)
-  
+
   defp generate_hash(enriched) do
     id = enriched["killmail_id"]
     timestamp = enriched["timestamp"]
     :crypto.hash(:sha256, "#{id}-#{timestamp}") |> Base.encode16(case: :lower)
   end
-  
+
   defp get_final_blow_character_id(enriched) do
     case find_final_blow_attacker(enriched) do
       %{"character_id" => id} -> id
       _ -> nil
     end
   end
-  
+
   defp get_final_blow_character_name(enriched) do
     case find_final_blow_attacker(enriched) do
       %{"character_name" => name} -> name
       _ -> nil
     end
   end
-  
+
   defp find_final_blow_attacker(enriched) do
     attackers = enriched["attackers"] || []
     Enum.find(attackers, fn a -> a["final_blow"] end)
   end
-  
+
   defp determine_kill_category(enriched) do
     attacker_count = length(enriched["attackers"] || [])
-    
+
     case attacker_count do
       1 -> "solo"
       n when n <= 5 -> "small_gang"

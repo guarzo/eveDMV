@@ -12,16 +12,16 @@ defmodule EveDmvWeb.ProfileLive do
   def mount(_params, _session, socket) do
     current_user = socket.assigns[:current_user]
 
-    # Redirect to login if not authenticated
-    unless current_user do
-      {:ok, redirect(socket, to: ~p"/login")}
-    else
+    if current_user do
       socket =
         socket
         |> assign(:page_title, "Profile")
         |> assign(:current_user, current_user)
 
       {:ok, socket}
+    else
+      # Redirect to login if not authenticated
+      {:ok, redirect(socket, to: ~p"/login")}
     end
   end
 

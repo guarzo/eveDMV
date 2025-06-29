@@ -8,7 +8,14 @@ defmodule EveDmvWeb.SurveillanceLive do
 
   use EveDmvWeb, :live_view
   alias EveDmv.Api
-  alias EveDmv.Surveillance.{MatchingEngine, Profile, ProfileMatch, Notification, NotificationService}
+
+  alias EveDmv.Surveillance.{
+    MatchingEngine,
+    Notification,
+    NotificationService,
+    Profile,
+    ProfileMatch
+  }
 
   # Load current user from session on mount
   on_mount {EveDmvWeb.AuthLive, :load_from_session}
@@ -17,10 +24,7 @@ defmodule EveDmvWeb.SurveillanceLive do
   def mount(_params, _session, socket) do
     current_user = socket.assigns[:current_user]
 
-    # Redirect to login if not authenticated
-    unless current_user do
-      {:ok, redirect(socket, to: ~p"/login")}
-    else
+    if current_user do
       # Subscribe to surveillance matches and personal notifications
       if connected?(socket) do
         Phoenix.PubSub.subscribe(EveDmv.PubSub, "surveillance")
@@ -53,6 +57,9 @@ defmodule EveDmvWeb.SurveillanceLive do
         })
 
       {:ok, socket}
+    else
+      # Redirect to login if not authenticated
+      {:ok, redirect(socket, to: ~p"/login")}
     end
   end
 
@@ -148,7 +155,7 @@ defmodule EveDmvWeb.SurveillanceLive do
       {:ok, profile} ->
         require Logger
         Logger.info("Created surveillance profile: #{profile.name} (ID: #{profile.id})")
-        
+
         # Reload matching engine profiles
         try do
           MatchingEngine.reload_profiles()
@@ -191,7 +198,11 @@ defmodule EveDmvWeb.SurveillanceLive do
   def handle_event("toggle_profile", %{"profile_id" => profile_id}, socket) do
     case Ash.get(Profile, profile_id, domain: Api, actor: socket.assigns.current_user) do
       {:ok, profile} ->
-        case Ash.update(profile, action: :toggle_active, domain: Api, actor: socket.assigns.current_user) do
+        case Ash.update(profile,
+               action: :toggle_active,
+               domain: Api,
+               actor: socket.assigns.current_user
+             ) do
           {:ok, _updated_profile} ->
             # Reload matching engine profiles
             MatchingEngine.reload_profiles()
@@ -290,11 +301,19 @@ defmodule EveDmvWeb.SurveillanceLive do
   @impl true
   def handle_event("mark_all_read", _params, socket) do
     # Get all unread notifications for the user
-    case Ash.read(Notification, action: :unread_for_user, input: %{user_id: socket.assigns.user_id}, domain: Api) do
+    case Ash.read(Notification,
+           action: :unread_for_user,
+           input: %{user_id: socket.assigns.user_id},
+           domain: Api
+         ) do
       {:ok, unread_notifications} ->
         # Bulk update them to read
         Enum.each(unread_notifications, fn notification ->
-          Ash.update(notification, action: :mark_read, domain: Api, actor: socket.assigns.current_user)
+          Ash.update(notification,
+            action: :mark_read,
+            domain: Api,
+            actor: socket.assigns.current_user
+          )
         end)
 
         # Reload notifications and update count
@@ -318,7 +337,12 @@ defmodule EveDmvWeb.SurveillanceLive do
   # Private helper functions
 
   defp load_user_profiles(user_id, current_user \\ nil) do
-    case Ash.read(Profile, action: :user_profiles, input: %{user_id: user_id}, domain: Api, actor: current_user) do
+    case Ash.read(Profile,
+           action: :user_profiles,
+           input: %{user_id: user_id},
+           domain: Api,
+           actor: current_user
+         ) do
       {:ok, profiles} -> profiles
       {:error, _} -> []
     end

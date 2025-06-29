@@ -1,7 +1,7 @@
 defmodule EveDmv.Surveillance.NotificationService do
   @moduledoc """
   Service for creating and managing surveillance notifications.
-  
+
   Handles creating notifications for surveillance profile matches,
   managing user notification preferences, and delivering notifications
   via various channels (LiveView, email, webhooks, etc.).
@@ -15,7 +15,8 @@ defmodule EveDmv.Surveillance.NotificationService do
   @doc """
   Create a notification for a surveillance profile match.
   """
-  @spec create_profile_match_notification(String.t(), map(), [String.t()]) :: :ok | {:error, term()}
+  @spec create_profile_match_notification(String.t(), map(), [String.t()]) ::
+          :ok | {:error, term()}
   def create_profile_match_notification(profile_id, killmail, matched_profile_ids) do
     case Ash.get(Profile, profile_id, domain: Api) do
       {:ok, profile} ->
@@ -76,7 +77,8 @@ defmodule EveDmv.Surveillance.NotificationService do
   @doc """
   Create a system notification (not tied to a specific profile).
   """
-  @spec create_system_notification(String.t(), String.t(), String.t(), map(), atom()) :: :ok | {:error, term()}
+  @spec create_system_notification(String.t(), String.t(), String.t(), map(), atom()) ::
+          :ok | {:error, term()}
   def create_system_notification(user_id, title, message, data \\ %{}, priority \\ :normal) do
     notification_data = %{
       user_id: user_id,
@@ -131,7 +133,11 @@ defmodule EveDmv.Surveillance.NotificationService do
   """
   @spec get_recent_notifications(String.t(), integer()) :: [Notification.t()]
   def get_recent_notifications(user_id, hours \\ 24) do
-    case Ash.read(Notification, action: :recent_for_user, input: %{user_id: user_id, hours: hours}, domain: Api) do
+    case Ash.read(Notification,
+           action: :recent_for_user,
+           input: %{user_id: user_id, hours: hours},
+           domain: Api
+         ) do
       {:ok, notifications} -> notifications
       {:error, _} -> []
     end
@@ -143,7 +149,7 @@ defmodule EveDmv.Surveillance.NotificationService do
     victim_name = get_in(killmail, ["victim", "character_name"]) || "Unknown Pilot"
     victim_ship = get_in(killmail, ["victim", "ship_name"]) || "Unknown Ship"
     system_name = killmail["solar_system_name"] || "Unknown System"
-    
+
     value = killmail["total_value"] || get_in(killmail, ["zkb", "totalValue"]) || 0
     value_formatted = format_isk_value(value)
 
@@ -163,10 +169,12 @@ defmodule EveDmv.Surveillance.NotificationService do
 
   defp determine_priority(killmail, profile) do
     value = killmail["total_value"] || get_in(killmail, ["zkb", "totalValue"]) || 0
-    
+
     cond do
-      value > 10_000_000_000 -> :urgent  # 10B+ ISK
-      value > 1_000_000_000 -> :high     # 1B+ ISK
+      # 10B+ ISK
+      value > 10_000_000_000 -> :urgent
+      # 1B+ ISK
+      value > 1_000_000_000 -> :high
       String.contains?(String.downcase(profile.name), ["high"]) -> :high
       true -> :normal
     end
@@ -184,12 +192,12 @@ defmodule EveDmv.Surveillance.NotificationService do
   end
 
   defp create_user_batch_notification(user_id, user_profiles, killmail) do
-    
-    title = if length(user_profiles) == 1 do
-      "Surveillance Alert: #{hd(user_profiles).name}"
-    else
-      "Multiple Surveillance Alerts (#{length(user_profiles)})"
-    end
+    title =
+      if length(user_profiles) == 1 do
+        "Surveillance Alert: #{hd(user_profiles).name}"
+      else
+        "Multiple Surveillance Alerts (#{length(user_profiles)})"
+      end
 
     message = build_batch_message(user_profiles, killmail)
 
@@ -224,7 +232,7 @@ defmodule EveDmv.Surveillance.NotificationService do
     victim_name = get_in(killmail, ["victim", "character_name"]) || "Unknown Pilot"
     victim_ship = get_in(killmail, ["victim", "ship_name"]) || "Unknown Ship"
     system_name = killmail["solar_system_name"] || "Unknown System"
-    
+
     value = killmail["total_value"] || get_in(killmail, ["zkb", "totalValue"]) || 0
     value_formatted = format_isk_value(value)
 
@@ -236,8 +244,10 @@ defmodule EveDmv.Surveillance.NotificationService do
 
   defp determine_batch_priority(killmail, profiles) do
     value = killmail["total_value"] || get_in(killmail, ["zkb", "totalValue"]) || 0
-    has_urgent_profiles = Enum.any?(profiles, &String.contains?(String.downcase(&1.name), ["urgent", "priority"]))
-    
+
+    has_urgent_profiles =
+      Enum.any?(profiles, &String.contains?(String.downcase(&1.name), ["urgent", "priority"]))
+
     cond do
       value > 10_000_000_000 or has_urgent_profiles -> :urgent
       value > 1_000_000_000 or length(profiles) > 3 -> :high

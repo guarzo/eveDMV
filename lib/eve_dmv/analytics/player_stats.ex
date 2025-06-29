@@ -105,7 +105,7 @@ defmodule EveDmv.Analytics.PlayerStats do
 
   relationships do
     # Note: character_id references EVE character IDs, not User IDs
-    # This is intentionally not a foreign key relationship since 
+    # This is intentionally not a foreign key relationship since
     # we track statistics for characters that may not be registered users
   end
 

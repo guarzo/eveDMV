@@ -1,7 +1,7 @@
 defmodule EveDmv.Surveillance.Notification do
   @moduledoc """
   Notification resource for surveillance profile matches and other system events.
-  
+
   Stores notifications for users about surveillance profile matches, allowing
   for persistent notification history and user notification preferences.
   """
@@ -148,9 +148,9 @@ defmodule EveDmv.Surveillance.Notification do
     # Mark notification as read
     update :mark_read do
       description("Mark a notification as read")
-      
+
       accept([])
-      
+
       change(set_attribute(:is_read, true))
       change(set_attribute(:read_at, &DateTime.utc_now/0))
     end
@@ -158,14 +158,14 @@ defmodule EveDmv.Surveillance.Notification do
     # Bulk mark as read for user
     update :mark_all_read do
       description("Mark all notifications as read for a user")
-      
+
       argument :user_id, :uuid do
         allow_nil?(false)
         description("User ID to mark notifications for")
       end
 
       filter(expr(user_id == ^arg(:user_id) and is_read == false))
-      
+
       change(set_attribute(:is_read, true))
       change(set_attribute(:read_at, &DateTime.utc_now/0))
     end
@@ -235,10 +235,10 @@ defmodule EveDmv.Surveillance.Notification do
   calculations do
     calculate :age_in_minutes, :integer do
       description("Age of notification in minutes")
-      
+
       calculation(fn records, _context ->
         now = DateTime.utc_now()
-        
+
         Enum.map(records, fn record ->
           DateTime.diff(now, record.created_at, :minute)
         end)

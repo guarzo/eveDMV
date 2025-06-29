@@ -13,9 +13,9 @@ defmodule EveDmv.Killmails.KillmailPipeline do
 
   alias Broadway.Message
   alias EveDmv.Api
+  alias EveDmv.Eve.TypeResolver
   alias EveDmv.Killmails.{KillmailEnriched, KillmailRaw, Participant}
   alias EveDmv.Surveillance.{MatchingEngine, NotificationService}
-  alias EveDmv.Eve.TypeResolver
   alias EveDmvWeb.Endpoint
 
   # Broadway configuration
@@ -306,41 +306,44 @@ defmodule EveDmv.Killmails.KillmailPipeline do
       end
 
     # Build victim participant (only if has valid ship_type_id)
-    victim_participants = 
+    victim_participants =
       case victim["ship_type_id"] do
         nil ->
           killmail_id = enriched["killmail_id"]
           victim_name = victim["character_name"] || "Unknown"
           character_id = victim["character_id"]
-          
+
           Logger.debug(
             "Skipping victim with missing ship_type_id: #{victim_name} (character_id: #{character_id}) in killmail #{killmail_id}. " <>
-            "This may be a structure, deployable, or invalid killmail data."
+              "This may be a structure, deployable, or invalid killmail data."
           )
+
           []
-          
+
         ship_type_id when is_integer(ship_type_id) ->
-          [%{
-            killmail_id: enriched["killmail_id"],
-            killmail_time: parse_timestamp(enriched["timestamp"] || enriched["kill_time"]),
-            character_id: victim["character_id"],
-            character_name: victim["character_name"],
-            corporation_id: victim["corporation_id"],
-            corporation_name: victim["corporation_name"],
-            alliance_id: victim["alliance_id"],
-            alliance_name: victim["alliance_name"],
-            faction_id: victim["faction_id"],
-            faction_name: victim["faction_name"],
-            ship_type_id: ship_type_id,
-            ship_name: victim["ship_name"],
-            weapon_type_id: nil,
-            weapon_name: nil,
-            damage_done: victim["damage_taken"] || 0,
-            security_status: victim["security_status"],
-            is_victim: true,
-            final_blow: false,
-            solar_system_id: enriched["solar_system_id"] || enriched["system_id"]
-          }]
+          [
+            %{
+              killmail_id: enriched["killmail_id"],
+              killmail_time: parse_timestamp(enriched["timestamp"] || enriched["kill_time"]),
+              character_id: victim["character_id"],
+              character_name: victim["character_name"],
+              corporation_id: victim["corporation_id"],
+              corporation_name: victim["corporation_name"],
+              alliance_id: victim["alliance_id"],
+              alliance_name: victim["alliance_name"],
+              faction_id: victim["faction_id"],
+              faction_name: victim["faction_name"],
+              ship_type_id: ship_type_id,
+              ship_name: victim["ship_name"],
+              weapon_type_id: nil,
+              weapon_name: nil,
+              damage_done: victim["damage_taken"] || 0,
+              security_status: victim["security_status"],
+              is_victim: true,
+              final_blow: false,
+              solar_system_id: enriched["solar_system_id"] || enriched["system_id"]
+            }
+          ]
       end
 
     # Build attacker participants (only those with valid ship_type_id)
@@ -352,13 +355,14 @@ defmodule EveDmv.Killmails.KillmailPipeline do
             killmail_id = enriched["killmail_id"]
             attacker_name = a["character_name"] || "Unknown"
             character_id = a["character_id"]
-            
+
             Logger.debug(
               "Skipping attacker with missing ship_type_id: #{attacker_name} (character_id: #{character_id}) in killmail #{killmail_id}. " <>
-              "This may be a structure, deployable, or invalid killmail data."
+                "This may be a structure, deployable, or invalid killmail data."
             )
+
             false
-            
+
           ship_type_id when is_integer(ship_type_id) ->
             true
         end
@@ -388,14 +392,17 @@ defmodule EveDmv.Killmails.KillmailPipeline do
       end)
 
     all_participants = victim_participants ++ attacker_participants
-    total_possible = 1 + length(attackers)  # victim + attackers
+    # victim + attackers
+    total_possible = 1 + length(attackers)
     total_valid = length(all_participants)
     skipped_count = total_possible - total_valid
-    
+
     if skipped_count > 0 do
-      Logger.debug("Built #{total_valid} valid participants for killmail #{enriched["killmail_id"]}, skipped #{skipped_count} invalid participants")
+      Logger.debug(
+        "Built #{total_valid} valid participants for killmail #{enriched["killmail_id"]}, skipped #{skipped_count} invalid participants"
+      )
     end
-    
+
     all_participants
   end
 
@@ -596,28 +603,37 @@ defmodule EveDmv.Killmails.KillmailPipeline do
           {:error, error} ->
             # Debug logging for error analysis
             Logger.debug("Participant insertion failed, analyzing error type: #{inspect(error)}")
-            
+
             # Check if it's a missing ship_type_id error
-            if is_ship_type_constraint_error?(error) do
+            if ship_type_constraint_error?(error) do
               ship_type_id = extract_ship_type_id_from_error(error)
-              Logger.info("Detected foreign key constraint error for ship_type_id: #{ship_type_id}")
+
+              Logger.info(
+                "Detected foreign key constraint error for ship_type_id: #{ship_type_id}"
+              )
+
               handle_missing_ship_type(participant, ship_type_id)
             else
-              if is_weapon_type_constraint_error?(error) do
+              if weapon_type_constraint_error?(error) do
                 # Handle missing weapon_type_id error
                 weapon_type_id = extract_weapon_type_id_from_error(error)
-                Logger.info("Detected foreign key constraint error for weapon_type_id: #{weapon_type_id}")
+
+                Logger.info(
+                  "Detected foreign key constraint error for weapon_type_id: #{weapon_type_id}"
+                )
+
                 handle_missing_weapon_type(participant, weapon_type_id)
               else
                 # For any other errors (including required field errors that shouldn't happen now)
                 character_name = participant[:character_name] || "Unknown"
                 character_id = participant[:character_id]
                 killmail_id = participant[:killmail_id]
-                
+
                 Logger.warning(
                   "Unexpected participant error for #{character_name} (character_id: #{character_id}) " <>
-                  "in killmail #{killmail_id}: #{inspect(error)}"
+                    "in killmail #{killmail_id}: #{inspect(error)}"
                 )
+
                 {:error, error}
               end
             end
@@ -637,13 +653,15 @@ defmodule EveDmv.Killmails.KillmailPipeline do
       :error
     else
       skipped_count = length(participants) - length(successes)
-      
+
       if skipped_count > 0 do
-        Logger.info("Successfully inserted #{length(successes)} participants, skipped #{skipped_count} invalid participants")
+        Logger.info(
+          "Successfully inserted #{length(successes)} participants, skipped #{skipped_count} invalid participants"
+        )
       else
         Logger.debug("Successfully inserted #{length(participants)} participants")
       end
-      
+
       :ok
     end
   end
@@ -706,74 +724,85 @@ defmodule EveDmv.Killmails.KillmailPipeline do
 
   # Helper functions for handling missing ship types
 
-  defp is_ship_type_constraint_error?(%Ash.Error.Invalid{errors: errors}) do
-    result = Enum.any?(errors, fn error ->
-      case error do
-        %Ash.Error.Changes.InvalidAttribute{
-          field: :ship_type_id,
-          private_vars: private_vars
-        } ->
-          constraint_name = Keyword.get(private_vars, :constraint)
-          constraint_type = Keyword.get(private_vars, :constraint_type)
-          detail = Keyword.get(private_vars, :detail)
-          
-          Logger.debug("Checking constraint: #{constraint_name}, type: #{constraint_type}")
-          Logger.debug("Detail: #{detail}")
-          
-          # Check if it's a foreign key constraint error by constraint name OR constraint type
-          is_fkey_constraint = constraint_name == "participants_ship_type_id_fkey" or 
-                              constraint_type == :foreign_key
-          
-          # Also check if the detail message contains the expected pattern
-          has_fkey_detail = is_binary(detail) and String.contains?(detail, "is not present in table")
-          
-          result = is_fkey_constraint and has_fkey_detail
-          Logger.debug("Is FK constraint: #{is_fkey_constraint}, has FK detail: #{has_fkey_detail}, result: #{result}")
-          result
+  defp ship_type_constraint_error?(%Ash.Error.Invalid{errors: errors}) do
+    result =
+      Enum.any?(errors, fn error ->
+        case error do
+          %Ash.Error.Changes.InvalidAttribute{
+            field: :ship_type_id,
+            private_vars: private_vars
+          } ->
+            constraint_name = Keyword.get(private_vars, :constraint)
+            constraint_type = Keyword.get(private_vars, :constraint_type)
+            detail = Keyword.get(private_vars, :detail)
 
-        _ ->
-          false
-      end
-    end)
+            Logger.debug("Checking constraint: #{constraint_name}, type: #{constraint_type}")
+            Logger.debug("Detail: #{detail}")
+
+            # Check if it's a foreign key constraint error by constraint name OR constraint type
+            is_fkey_constraint =
+              constraint_name == "participants_ship_type_id_fkey" or
+                constraint_type == :foreign_key
+
+            # Also check if the detail message contains the expected pattern
+            has_fkey_detail =
+              is_binary(detail) and String.contains?(detail, "is not present in table")
+
+            result = is_fkey_constraint and has_fkey_detail
+
+            Logger.debug(
+              "Is FK constraint: #{is_fkey_constraint}, has FK detail: #{has_fkey_detail}, result: #{result}"
+            )
+
+            result
+
+          _ ->
+            false
+        end
+      end)
+
     Logger.debug("Foreign key constraint error detected: #{result}")
     result
   end
 
-  defp is_ship_type_constraint_error?(_), do: false
+  defp ship_type_constraint_error?(_), do: false
 
   defp extract_ship_type_id_from_error(%Ash.Error.Invalid{errors: errors}) do
-    result = Enum.find_value(errors, fn error ->
-      case error do
-        %Ash.Error.Changes.InvalidAttribute{
-          field: :ship_type_id,
-          private_vars: private_vars
-        } ->
-          # Extract ship_type_id from the constraint detail message
-          detail = Keyword.get(private_vars, :detail)
-          Logger.debug("Extracting ship_type_id from detail: #{detail}")
-          
-          case detail do
-            detail when is_binary(detail) ->
-              # Parse "Key (ship_type_id)=(23378) is not present in table \"eve_item_types\"."
-              case Regex.run(~r/Key \(ship_type_id\)=\((\d+)\)/, detail) do
-                [_, ship_type_id_str] -> 
-                  ship_type_id = String.to_integer(ship_type_id_str)
-                  Logger.debug("Extracted ship_type_id: #{ship_type_id}")
-                  ship_type_id
-                _ -> 
-                  Logger.debug("Could not parse ship_type_id from detail")
-                  nil
-              end
+    result =
+      Enum.find_value(errors, fn error ->
+        case error do
+          %Ash.Error.Changes.InvalidAttribute{
+            field: :ship_type_id,
+            private_vars: private_vars
+          } ->
+            # Extract ship_type_id from the constraint detail message
+            detail = Keyword.get(private_vars, :detail)
+            Logger.debug("Extracting ship_type_id from detail: #{detail}")
 
-            _ ->
-              Logger.debug("Detail is not a string: #{inspect(detail)}")
-              nil
-          end
+            case detail do
+              detail when is_binary(detail) ->
+                # Parse "Key (ship_type_id)=(23378) is not present in table \"eve_item_types\"."
+                case Regex.run(~r/Key \(ship_type_id\)=\((\d+)\)/, detail) do
+                  [_, ship_type_id_str] ->
+                    ship_type_id = String.to_integer(ship_type_id_str)
+                    Logger.debug("Extracted ship_type_id: #{ship_type_id}")
+                    ship_type_id
 
-        _ ->
-          nil
-      end
-    end)
+                  _ ->
+                    Logger.debug("Could not parse ship_type_id from detail")
+                    nil
+                end
+
+              _ ->
+                Logger.debug("Detail is not a string: #{inspect(detail)}")
+                nil
+            end
+
+          _ ->
+            nil
+        end
+      end)
+
     Logger.debug("Final extracted ship_type_id: #{result}")
     result
   end
@@ -816,76 +845,88 @@ defmodule EveDmv.Killmails.KillmailPipeline do
     {:error, :missing_ship_type_id}
   end
 
-
   # Weapon type error detection and handling
 
-  defp is_weapon_type_constraint_error?(%Ash.Error.Invalid{errors: errors}) do
-    result = Enum.any?(errors, fn error ->
-      case error do
-        %Ash.Error.Changes.InvalidAttribute{
-          field: :weapon_type_id,
-          private_vars: private_vars
-        } ->
-          constraint_name = Keyword.get(private_vars, :constraint)
-          constraint_type = Keyword.get(private_vars, :constraint_type)
-          detail = Keyword.get(private_vars, :detail)
-          
-          Logger.debug("Checking weapon constraint: #{constraint_name}, type: #{constraint_type}")
-          
-          # Check if it's a foreign key constraint error by constraint name OR constraint type
-          is_fkey_constraint = constraint_name == "participants_weapon_type_id_fkey" or 
-                              constraint_type == :foreign_key
-          
-          # Also check if the detail message contains the expected pattern
-          has_fkey_detail = is_binary(detail) and String.contains?(detail, "is not present in table")
-          
-          result = is_fkey_constraint and has_fkey_detail
-          Logger.debug("Is weapon FK constraint: #{is_fkey_constraint}, has FK detail: #{has_fkey_detail}, result: #{result}")
-          result
+  defp weapon_type_constraint_error?(%Ash.Error.Invalid{errors: errors}) do
+    result =
+      Enum.any?(errors, fn error ->
+        case error do
+          %Ash.Error.Changes.InvalidAttribute{
+            field: :weapon_type_id,
+            private_vars: private_vars
+          } ->
+            constraint_name = Keyword.get(private_vars, :constraint)
+            constraint_type = Keyword.get(private_vars, :constraint_type)
+            detail = Keyword.get(private_vars, :detail)
 
-        _ ->
-          false
-      end
-    end)
+            Logger.debug(
+              "Checking weapon constraint: #{constraint_name}, type: #{constraint_type}"
+            )
+
+            # Check if it's a foreign key constraint error by constraint name OR constraint type
+            is_fkey_constraint =
+              constraint_name == "participants_weapon_type_id_fkey" or
+                constraint_type == :foreign_key
+
+            # Also check if the detail message contains the expected pattern
+            has_fkey_detail =
+              is_binary(detail) and String.contains?(detail, "is not present in table")
+
+            result = is_fkey_constraint and has_fkey_detail
+
+            Logger.debug(
+              "Is weapon FK constraint: #{is_fkey_constraint}, has FK detail: #{has_fkey_detail}, result: #{result}"
+            )
+
+            result
+
+          _ ->
+            false
+        end
+      end)
+
     Logger.debug("Weapon foreign key constraint error detected: #{result}")
     result
   end
 
-  defp is_weapon_type_constraint_error?(_), do: false
+  defp weapon_type_constraint_error?(_), do: false
 
   defp extract_weapon_type_id_from_error(%Ash.Error.Invalid{errors: errors}) do
-    result = Enum.find_value(errors, fn error ->
-      case error do
-        %Ash.Error.Changes.InvalidAttribute{
-          field: :weapon_type_id,
-          private_vars: private_vars
-        } ->
-          # Extract weapon_type_id from the constraint detail message
-          detail = Keyword.get(private_vars, :detail)
-          Logger.debug("Extracting weapon_type_id from detail: #{detail}")
-          
-          case detail do
-            detail when is_binary(detail) ->
-              # Parse "Key (weapon_type_id)=(3638) is not present in table \"eve_item_types\"."
-              case Regex.run(~r/Key \(weapon_type_id\)=\((\d+)\)/, detail) do
-                [_, weapon_type_id_str] -> 
-                  weapon_type_id = String.to_integer(weapon_type_id_str)
-                  Logger.debug("Extracted weapon_type_id: #{weapon_type_id}")
-                  weapon_type_id
-                _ -> 
-                  Logger.debug("Could not parse weapon_type_id from detail")
-                  nil
-              end
+    result =
+      Enum.find_value(errors, fn error ->
+        case error do
+          %Ash.Error.Changes.InvalidAttribute{
+            field: :weapon_type_id,
+            private_vars: private_vars
+          } ->
+            # Extract weapon_type_id from the constraint detail message
+            detail = Keyword.get(private_vars, :detail)
+            Logger.debug("Extracting weapon_type_id from detail: #{detail}")
 
-            _ ->
-              Logger.debug("Weapon detail is not a string: #{inspect(detail)}")
-              nil
-          end
+            case detail do
+              detail when is_binary(detail) ->
+                # Parse "Key (weapon_type_id)=(3638) is not present in table \"eve_item_types\"."
+                case Regex.run(~r/Key \(weapon_type_id\)=\((\d+)\)/, detail) do
+                  [_, weapon_type_id_str] ->
+                    weapon_type_id = String.to_integer(weapon_type_id_str)
+                    Logger.debug("Extracted weapon_type_id: #{weapon_type_id}")
+                    weapon_type_id
 
-        _ ->
-          nil
-      end
-    end)
+                  _ ->
+                    Logger.debug("Could not parse weapon_type_id from detail")
+                    nil
+                end
+
+              _ ->
+                Logger.debug("Weapon detail is not a string: #{inspect(detail)}")
+                nil
+            end
+
+          _ ->
+            nil
+        end
+      end)
+
     Logger.debug("Final extracted weapon_type_id: #{result}")
     result
   end
@@ -903,11 +944,17 @@ defmodule EveDmv.Killmails.KillmailPipeline do
                domain: EveDmv.Api
              ) do
           {:ok, _record} ->
-            Logger.info("Successfully inserted participant after resolving weapon type #{weapon_type_id}")
+            Logger.info(
+              "Successfully inserted participant after resolving weapon type #{weapon_type_id}"
+            )
+
             :ok
 
           {:error, error} ->
-            Logger.error("Failed to insert participant even after resolving weapon type #{weapon_type_id}: #{inspect(error)}")
+            Logger.error(
+              "Failed to insert participant even after resolving weapon type #{weapon_type_id}: #{inspect(error)}"
+            )
+
             {:error, error}
         end
 

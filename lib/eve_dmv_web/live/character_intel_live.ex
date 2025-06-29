@@ -11,11 +11,11 @@ defmodule EveDmvWeb.CharacterIntelLive do
   """
 
   use EveDmvWeb, :live_view
-  
+
   require Logger
 
-  alias EveDmv.Intelligence.{CharacterAnalyzer, CharacterStats}
   alias EveDmv.Eve.EsiClient
+  alias EveDmv.Intelligence.{CharacterAnalyzer, CharacterStats}
   alias EveDmv.Killmails.HistoricalKillmailFetcher
 
   @impl true
@@ -74,26 +74,28 @@ defmodule EveDmvWeb.CharacterIntelLive do
          |> assign(:error, format_error(reason))}
     end
   end
-  
+
   @impl true
   def handle_info({:character_data_loaded, character_info, killmail_count}, socket) do
     # Re-analyze now that we have data
     character_id = socket.assigns.character_id
-    
+
     if killmail_count > 0 do
       # We have killmail data, run analysis
       case CharacterAnalyzer.analyze_character(character_id) do
         {:ok, stats} ->
           enriched_stats = enrich_associates_data(stats)
+
           {:noreply,
            socket
            |> assign(:stats, enriched_stats)
            |> assign(:loading, false)
            |> assign(:error, nil)}
-           
+
         {:error, _reason} ->
           # Show basic info even if analysis fails
           basic_stats = build_basic_stats(character_info)
+
           {:noreply,
            socket
            |> assign(:stats, basic_stats)
@@ -103,6 +105,7 @@ defmodule EveDmvWeb.CharacterIntelLive do
     else
       # No killmail data available
       basic_stats = build_basic_stats(character_info)
+
       {:noreply,
        socket
        |> assign(:stats, basic_stats)
@@ -110,7 +113,7 @@ defmodule EveDmvWeb.CharacterIntelLive do
        |> assign(:error, nil)}
     end
   end
-  
+
   @impl true
   def handle_info({:character_load_failed, reason}, socket) do
     {:noreply,
@@ -261,33 +264,39 @@ defmodule EveDmvWeb.CharacterIntelLive do
     do: "Not enough activity to analyze (minimum 10 kills/losses required)"
 
   defp format_error(:character_not_found), do: "Character not found in killmail database"
-  defp format_error(:esi_unavailable), do: "Unable to fetch character information from EVE servers"
+
+  defp format_error(:esi_unavailable),
+    do: "Unable to fetch character information from EVE servers"
+
   defp format_error(_), do: "Failed to load character intelligence"
-  
+
   defp handle_unknown_character(character_id, socket) do
     parent_pid = self()
-    
+
     Task.start(fn ->
       # Fetch character info from ESI
       with {:ok, character_info} <- EsiClient.get_character(character_id),
            {:ok, corp_info} <- fetch_corporation_info(character_info.corporation_id),
            {:ok, alliance_info} <- fetch_alliance_info(character_info.alliance_id) do
-        
         # Enrich character info
-        enriched_info = character_info
+        enriched_info =
+          character_info
           |> Map.put(:corporation_name, corp_info.name)
           |> Map.put(:corporation_ticker, corp_info.ticker)
           |> Map.put(:alliance_name, alliance_info[:name])
           |> Map.put(:alliance_ticker, alliance_info[:ticker])
-        
+
         # Fetch historical killmails
         Logger.info("Fetching historical killmails for character #{character_id}")
-        
+
         case HistoricalKillmailFetcher.fetch_character_history(character_id) do
           {:ok, killmail_count} ->
-            Logger.info("Fetched #{killmail_count} historical killmails for character #{character_id}")
+            Logger.info(
+              "Fetched #{killmail_count} historical killmails for character #{character_id}"
+            )
+
             send(parent_pid, {:character_data_loaded, enriched_info, killmail_count})
-            
+
           {:error, reason} ->
             Logger.warning("Failed to fetch historical killmails: #{inspect(reason)}")
             # Still show character info even if killmail fetch fails
@@ -296,32 +305,34 @@ defmodule EveDmvWeb.CharacterIntelLive do
       else
         {:error, :not_found} ->
           send(parent_pid, {:character_load_failed, :character_not_found})
-          
+
         {:error, _reason} ->
           send(parent_pid, {:character_load_failed, :esi_unavailable})
       end
     end)
-    
+
     # Keep loading state
     {:noreply, socket}
   end
-  
+
   defp fetch_corporation_info(nil), do: {:ok, %{name: nil, ticker: nil}}
+
   defp fetch_corporation_info(corp_id) do
     case EsiClient.get_corporation(corp_id) do
       {:ok, corp} -> {:ok, corp}
       _ -> {:ok, %{name: "Unknown Corporation", ticker: "???"}}
     end
   end
-  
+
   defp fetch_alliance_info(nil), do: {:ok, %{name: nil, ticker: nil}}
+
   defp fetch_alliance_info(alliance_id) do
     case EsiClient.get_alliance(alliance_id) do
       {:ok, alliance} -> {:ok, alliance}
       _ -> {:ok, %{name: "Unknown Alliance", ticker: "???"}}
     end
   end
-  
+
   defp build_basic_stats(character_info) do
     %{
       character_id: character_info.character_id,

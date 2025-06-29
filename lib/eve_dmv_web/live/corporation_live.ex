@@ -7,10 +7,10 @@ defmodule EveDmvWeb.CorporationLive do
   """
 
   use EveDmvWeb, :live_view
-  alias EveDmv.Api
-  alias EveDmv.Killmails.Participant
   alias EveDmv.Analytics.PlayerStats
+  alias EveDmv.Api
   alias EveDmv.Intelligence.CharacterStats
+  alias EveDmv.Killmails.Participant
 
   # Load current user from session on mount
   on_mount {EveDmvWeb.AuthLive, :load_from_session}
@@ -106,69 +106,65 @@ defmodule EveDmvWeb.CorporationLive do
 
   defp load_corp_members(corporation_id) do
     # Get all unique characters from this corporation
-    try do
-      {:ok, participants} = Ash.read(Participant, domain: Api)
+    {:ok, participants} = Ash.read(Participant, domain: Api)
 
-      corp_members =
-        participants
-        |> Enum.filter(&(&1.corporation_id == corporation_id))
-        |> Enum.group_by(& &1.character_id)
-        |> Enum.map(fn {character_id, participations} ->
-          character_name = participations |> List.first() |> Map.get(:character_name, "Unknown")
+    corp_members =
+      participants
+      |> Enum.filter(&(&1.corporation_id == corporation_id))
+      |> Enum.group_by(& &1.character_id)
+      |> Enum.map(fn {character_id, participations} ->
+        character_name = participations |> List.first() |> Map.get(:character_name, "Unknown")
 
-          # Calculate basic activity stats
-          kills = participations |> Enum.count(&(&1.damage_dealt > 0))
-          losses = participations |> Enum.count(&(&1.damage_dealt == 0))
+        # Calculate basic activity stats
+        kills = participations |> Enum.count(&(&1.damage_dealt > 0))
+        losses = participations |> Enum.count(&(&1.damage_dealt == 0))
 
-          # Get latest activity
-          latest_activity =
-            participations
-            |> Enum.map(& &1.inserted_at)
-            |> Enum.max(Date, fn -> nil end)
+        # Get latest activity
+        latest_activity =
+          participations
+          |> Enum.map(& &1.inserted_at)
+          |> Enum.max(Date, fn -> nil end)
 
-          %{
-            character_id: character_id,
-            character_name: character_name,
-            total_kills: kills,
-            total_losses: losses,
-            total_activity: kills + losses,
-            latest_activity: latest_activity
-          }
-        end)
-        |> Enum.sort_by(& &1.total_activity, :desc)
-        # Limit to top 50 most active members
-        |> Enum.take(50)
+        %{
+          character_id: character_id,
+          character_name: character_name,
+          total_kills: kills,
+          total_losses: losses,
+          total_activity: kills + losses,
+          latest_activity: latest_activity
+        }
+      end)
+      |> Enum.sort_by(& &1.total_activity, :desc)
+      # Limit to top 50 most active members
+      |> Enum.take(50)
 
-      corp_members
-    rescue
-      _ -> []
-    end
+    corp_members
+  rescue
+    _ -> []
   end
 
   defp load_recent_activity(corporation_id) do
     # Get recent killmail activity for the corporation
-    try do
-      {:ok, participants} = Ash.read(Participant, domain: Api)
+    {:ok, participants} = Ash.read(Participant, domain: Api)
 
-      recent =
-        participants
-        |> Enum.filter(&(&1.corporation_id == corporation_id))
-        |> Enum.sort_by(& &1.inserted_at, {:desc, DateTime})
-        |> Enum.take(20)
-        |> Enum.map(fn p ->
-          %{
-            character_name: p.character_name,
-            ship_name: p.ship_name,
-            is_kill: p.damage_dealt > 0,
-            timestamp: p.inserted_at,
-            solar_system_name: p.solar_system_name
-          }
-        end)
+    recent =
+      participants
+      |> Enum.filter(&(&1.corporation_id == corporation_id))
+      |> Enum.sort_by(& &1.inserted_at, {:desc, DateTime})
+      |> Enum.take(20)
+      |> Enum.map(fn p ->
+        %{
+          character_name: p.character_name,
+          ship_name: p.ship_name,
+          is_kill: p.damage_dealt > 0,
+          timestamp: p.inserted_at,
+          solar_system_name: p.solar_system_name
+        }
+      end)
 
-      recent
-    rescue
-      _ -> []
-    end
+    recent
+  rescue
+    _ -> []
   end
 
   defp calculate_corp_stats(members) do
@@ -200,15 +196,15 @@ defmodule EveDmvWeb.CorporationLive do
   end
 
   # Helper functions
-  
+
   defp safe_float_round(value, precision) when is_float(value) do
     Float.round(value, precision)
   end
-  
+
   defp safe_float_round(value, _precision) when is_integer(value) do
     value * 1.0
   end
-  
+
   defp safe_float_round(value, _precision) do
     value
   end

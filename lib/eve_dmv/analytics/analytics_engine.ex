@@ -88,36 +88,32 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
 
   defp get_active_characters(_start_date, _min_activity) do
     # For now, get characters from recent participants
-    try do
-      {:ok, participants} = Ash.read(Participant, domain: Api)
+    {:ok, participants} = Ash.read(Participant, domain: Api)
 
-      participants
-      |> Enum.map(& &1.character_id)
-      |> Enum.filter(&(&1 != nil))
-      |> Enum.uniq()
-      |> Enum.take(100)
-    rescue
-      error ->
-        Logger.error("Failed to get active characters: #{inspect(error)}")
-        []
-    end
+    participants
+    |> Enum.map(& &1.character_id)
+    |> Enum.filter(&(&1 != nil))
+    |> Enum.uniq()
+    |> Enum.take(100)
+  rescue
+    error ->
+      Logger.error("Failed to get active characters: #{inspect(error)}")
+      []
   end
 
   defp get_active_ships(_start_date, _min_usage) do
     # For now, get ship types from recent participants
-    try do
-      {:ok, participants} = Ash.read(Participant, domain: Api)
+    {:ok, participants} = Ash.read(Participant, domain: Api)
 
-      participants
-      |> Enum.map(& &1.ship_type_id)
-      |> Enum.filter(&(&1 != nil))
-      |> Enum.uniq()
-      |> Enum.take(50)
-    rescue
-      error ->
-        Logger.error("Failed to get active ships: #{inspect(error)}")
-        []
-    end
+    participants
+    |> Enum.map(& &1.ship_type_id)
+    |> Enum.filter(&(&1 != nil))
+    |> Enum.uniq()
+    |> Enum.take(50)
+  rescue
+    error ->
+      Logger.error("Failed to get active ships: #{inspect(error)}")
+      []
   end
 
   defp process_player_batch(character_ids, start_date, end_date) do
@@ -163,127 +159,123 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
 
   defp calculate_character_metrics(character_id, _start_date, _end_date) do
     # Get all killmail participation for this character (simplified for now)
-    try do
-      {:ok, all_participants} = Ash.read(Participant, domain: Api)
+    {:ok, all_participants} = Ash.read(Participant, domain: Api)
 
-      participations =
-        all_participants |> Enum.filter(&(&1.character_id == character_id)) |> Enum.take(1000)
+    participations =
+      all_participants |> Enum.filter(&(&1.character_id == character_id)) |> Enum.take(1000)
 
-      if Enum.empty?(participations) do
-        %{}
-      else
-        character_name = participations |> List.first() |> Map.get(:character_name, "Unknown")
+    if Enum.empty?(participations) do
+      %{}
+    else
+      character_name = participations |> List.first() |> Map.get(:character_name, "Unknown")
 
-        # Separate kills from losses
-        {kills, losses} = Enum.split_with(participations, &(&1.damage_dealt > 0))
+      # Separate kills from losses
+      {kills, losses} = Enum.split_with(participations, &(&1.damage_dealt > 0))
 
-        # Calculate basic metrics
-        total_kills = length(kills)
-        total_losses = length(losses)
+      # Calculate basic metrics
+      total_kills = length(kills)
+      total_losses = length(losses)
 
-        # Calculate ISK metrics (placeholder values for now)
-        # Placeholder
-        total_isk_destroyed = total_kills * 50_000_000
-        # Placeholder
-        total_isk_lost = total_losses * 50_000_000
+      # Calculate ISK metrics (placeholder values for now)
+      # Placeholder
+      total_isk_destroyed = total_kills * 50_000_000
+      # Placeholder
+      total_isk_lost = total_losses * 50_000_000
 
-        # Calculate gang vs solo
-        {solo_kills, gang_kills} = Enum.split_with(kills, &((&1.gang_size || 1) == 1))
-        {solo_losses, gang_losses} = Enum.split_with(losses, &((&1.gang_size || 1) == 1))
+      # Calculate gang vs solo
+      {solo_kills, gang_kills} = Enum.split_with(kills, &((&1.gang_size || 1) == 1))
+      {solo_losses, gang_losses} = Enum.split_with(losses, &((&1.gang_size || 1) == 1))
 
-        # Ship diversity
-        ship_types_used = participations |> Enum.map(& &1.ship_type_id) |> Enum.uniq() |> length()
+      # Ship diversity
+      ship_types_used = participations |> Enum.map(& &1.ship_type_id) |> Enum.uniq() |> length()
 
-        # Most used ship
-        ship_usage =
-          participations
-          |> Enum.group_by(& &1.ship_type_id)
-          |> Enum.max_by(fn {_ship_id, uses} -> length(uses) end, fn -> {nil, []} end)
+      # Most used ship
+      ship_usage =
+        participations
+        |> Enum.group_by(& &1.ship_type_id)
+        |> Enum.max_by(fn {_ship_id, uses} -> length(uses) end, fn -> {nil, []} end)
 
-        {favorite_ship_type_id, favorite_uses} = ship_usage
+      {favorite_ship_type_id, favorite_uses} = ship_usage
 
-        favorite_ship_name =
-          if favorite_uses != [], do: List.first(favorite_uses).ship_name, else: nil
+      favorite_ship_name =
+        if favorite_uses != [], do: List.first(favorite_uses).ship_name, else: nil
 
-        # Gang size analysis
-        gang_sizes = participations |> Enum.map(&(&1.gang_size || 1))
+      # Gang size analysis
+      gang_sizes = participations |> Enum.map(&(&1.gang_size || 1))
 
-        avg_gang_size =
-          if total_kills + total_losses > 0 do
-            (gang_sizes |> Enum.sum()) / (total_kills + total_losses)
-          else
-            1.0
-          end
+      avg_gang_size =
+        if total_kills + total_losses > 0 do
+          (gang_sizes |> Enum.sum()) / (total_kills + total_losses)
+        else
+          1.0
+        end
 
-        # Determine preferred gang size
-        preferred_gang_size =
-          cond do
-            length(solo_kills) + length(solo_losses) > (total_kills + total_losses) * 0.6 ->
-              "solo"
+      # Determine preferred gang size
+      preferred_gang_size =
+        cond do
+          length(solo_kills) + length(solo_losses) > (total_kills + total_losses) * 0.6 ->
+            "solo"
 
-            avg_gang_size <= 5 ->
-              "small_gang"
+          avg_gang_size <= 5 ->
+            "small_gang"
 
-            avg_gang_size <= 15 ->
-              "medium_gang"
+          avg_gang_size <= 15 ->
+            "medium_gang"
 
-            true ->
-              "fleet"
-          end
+          true ->
+            "fleet"
+        end
 
-        # Activity analysis
-        # Placeholder
-        first_kill_date = DateTime.utc_now() |> DateTime.add(-30, :day)
-        # Placeholder
-        last_kill_date = DateTime.utc_now()
+      # Activity analysis
+      # Placeholder
+      first_kill_date = DateTime.utc_now() |> DateTime.add(-30, :day)
+      # Placeholder
+      last_kill_date = DateTime.utc_now()
 
-        # Active days calculation (placeholder)
-        active_days = 30
+      # Active days calculation (placeholder)
+      active_days = 30
 
-        # Weekly activity
-        weeks_in_period = 12
-        avg_kills_per_week = if weeks_in_period > 0, do: total_kills / weeks_in_period, else: 0
+      # Weekly activity
+      weeks_in_period = 12
+      avg_kills_per_week = if weeks_in_period > 0, do: total_kills / weeks_in_period, else: 0
 
-        # Danger rating (1-5 based on performance)
-        danger_rating =
-          calculate_danger_rating(total_kills, total_losses, total_isk_destroyed, ship_types_used)
+      # Danger rating (1-5 based on performance)
+      danger_rating =
+        calculate_danger_rating(total_kills, total_losses, total_isk_destroyed, ship_types_used)
 
-        # Primary activity classification
-        primary_activity = classify_primary_activity(solo_kills, gang_kills, participations)
+      # Primary activity classification
+      primary_activity = classify_primary_activity(solo_kills, gang_kills, participations)
 
-        %{
-          character_name: character_name,
-          total_kills: total_kills,
-          total_losses: total_losses,
-          solo_kills: length(solo_kills),
-          solo_losses: length(solo_losses),
-          gang_kills: length(gang_kills),
-          gang_losses: length(gang_losses),
-          total_isk_destroyed: Decimal.new(total_isk_destroyed),
-          total_isk_lost: Decimal.new(total_isk_lost),
-          first_kill_date: first_kill_date,
-          last_kill_date: last_kill_date,
-          active_days: active_days,
-          avg_kills_per_week: Decimal.new(avg_kills_per_week),
-          ship_types_used: ship_types_used,
-          favorite_ship_type_id: favorite_ship_type_id,
-          favorite_ship_name: favorite_ship_name,
-          avg_gang_size: Decimal.new(avg_gang_size),
-          preferred_gang_size: preferred_gang_size,
-          # Simplified for now
-          active_regions: 1,
-          danger_rating: danger_rating,
-          primary_activity: primary_activity
-        }
-      end
-    rescue
-      error ->
-        Logger.error(
-          "Failed to calculate metrics for character #{character_id}: #{inspect(error)}"
-        )
-
-        %{}
+      %{
+        character_name: character_name,
+        total_kills: total_kills,
+        total_losses: total_losses,
+        solo_kills: length(solo_kills),
+        solo_losses: length(solo_losses),
+        gang_kills: length(gang_kills),
+        gang_losses: length(gang_losses),
+        total_isk_destroyed: Decimal.new(total_isk_destroyed),
+        total_isk_lost: Decimal.new(total_isk_lost),
+        first_kill_date: first_kill_date,
+        last_kill_date: last_kill_date,
+        active_days: active_days,
+        avg_kills_per_week: Decimal.new(avg_kills_per_week),
+        ship_types_used: ship_types_used,
+        favorite_ship_type_id: favorite_ship_type_id,
+        favorite_ship_name: favorite_ship_name,
+        avg_gang_size: Decimal.new(avg_gang_size),
+        preferred_gang_size: preferred_gang_size,
+        # Simplified for now
+        active_regions: 1,
+        danger_rating: danger_rating,
+        primary_activity: primary_activity
+      }
     end
+  rescue
+    error ->
+      Logger.error("Failed to calculate metrics for character #{character_id}: #{inspect(error)}")
+
+      %{}
   end
 
   defp process_ship_stats(ship_type_id, start_date, end_date) do
@@ -335,86 +327,84 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
 
   defp calculate_ship_metrics(ship_type_id, _start_date, _end_date) do
     # Get all killmail participation for this ship type (simplified)
-    try do
-      {:ok, all_participants} = Ash.read(Participant, domain: Api)
+    {:ok, all_participants} = Ash.read(Participant, domain: Api)
 
-      participations =
-        all_participants |> Enum.filter(&(&1.ship_type_id == ship_type_id)) |> Enum.take(1000)
+    participations =
+      all_participants |> Enum.filter(&(&1.ship_type_id == ship_type_id)) |> Enum.take(1000)
 
-      if Enum.empty?(participations) do
-        %{}
-      else
-        ship_name = participations |> List.first() |> Map.get(:ship_name, "Unknown")
+    if Enum.empty?(participations) do
+      %{}
+    else
+      ship_name = participations |> List.first() |> Map.get(:ship_name, "Unknown")
 
-        # Separate kills from losses
-        {kills, losses} = Enum.split_with(participations, &(&1.damage_dealt > 0))
+      # Separate kills from losses
+      {kills, losses} = Enum.split_with(participations, &(&1.damage_dealt > 0))
 
-        # Basic metrics
-        total_kills = length(kills)
-        total_losses = length(losses)
-        pilots_flown = participations |> Enum.map(& &1.character_id) |> Enum.uniq() |> length()
+      # Basic metrics
+      total_kills = length(kills)
+      total_losses = length(losses)
+      pilots_flown = participations |> Enum.map(& &1.character_id) |> Enum.uniq() |> length()
 
-        # ISK metrics (placeholder)
-        total_isk_destroyed = total_kills * 50_000_000
-        total_isk_lost = total_losses * 50_000_000
+      # ISK metrics (placeholder)
+      total_isk_destroyed = total_kills * 50_000_000
+      total_isk_lost = total_losses * 50_000_000
 
-        # Damage analysis
-        avg_damage_dealt =
-          if total_kills > 0 do
-            total_damage = kills |> Enum.map(&(&1.damage_dealt || 0)) |> Enum.sum()
-            total_damage / total_kills
-          else
-            0
-          end
+      # Damage analysis
+      avg_damage_dealt =
+        if total_kills > 0 do
+          total_damage = kills |> Enum.map(&(&1.damage_dealt || 0)) |> Enum.sum()
+          total_damage / total_kills
+        else
+          0
+        end
 
-        # Gang size analysis
-        avg_gang_size_killing =
-          if total_kills > 0 do
-            total_gang_size_kills = kills |> Enum.map(&(&1.gang_size || 1)) |> Enum.sum()
-            total_gang_size_kills / total_kills
-          else
-            1.0
-          end
+      # Gang size analysis
+      avg_gang_size_killing =
+        if total_kills > 0 do
+          total_gang_size_kills = kills |> Enum.map(&(&1.gang_size || 1)) |> Enum.sum()
+          total_gang_size_kills / total_kills
+        else
+          1.0
+        end
 
-        avg_gang_size_dying =
-          if total_losses > 0 do
-            total_gang_size_losses = losses |> Enum.map(&(&1.gang_size || 1)) |> Enum.sum()
-            total_gang_size_losses / total_losses
-          else
-            1.0
-          end
+      avg_gang_size_dying =
+        if total_losses > 0 do
+          total_gang_size_losses = losses |> Enum.map(&(&1.gang_size || 1)) |> Enum.sum()
+          total_gang_size_losses / total_losses
+        else
+          1.0
+        end
 
-        # Solo performance
-        solo_kills = kills |> Enum.count(&((&1.gang_size || 1) == 1))
-        solo_kill_percentage = if total_kills > 0, do: solo_kills / total_kills * 100, else: 0
+      # Solo performance
+      solo_kills = kills |> Enum.count(&((&1.gang_size || 1) == 1))
+      solo_kill_percentage = if total_kills > 0, do: solo_kills / total_kills * 100, else: 0
 
-        # Temporal analysis (placeholders)
-        first_seen = DateTime.utc_now() |> DateTime.add(-30, :day)
-        last_seen = DateTime.utc_now()
-        # 18:00 UTC placeholder
-        peak_hour = 18
+      # Temporal analysis (placeholders)
+      first_seen = DateTime.utc_now() |> DateTime.add(-30, :day)
+      last_seen = DateTime.utc_now()
+      # 18:00 UTC placeholder
+      peak_hour = 18
 
-        %{
-          ship_name: ship_name,
-          total_kills: total_kills,
-          total_losses: total_losses,
-          pilots_flown: pilots_flown,
-          total_isk_destroyed: Decimal.new(total_isk_destroyed),
-          total_isk_lost: Decimal.new(total_isk_lost),
-          avg_damage_dealt: Decimal.new(avg_damage_dealt),
-          avg_gang_size_when_killing: Decimal.new(avg_gang_size_killing),
-          avg_gang_size_when_dying: Decimal.new(avg_gang_size_dying),
-          solo_kill_percentage: Decimal.new(solo_kill_percentage),
-          peak_activity_hour: peak_hour,
-          first_seen: first_seen,
-          last_seen: last_seen
-        }
-      end
-    rescue
-      error ->
-        Logger.error("Failed to calculate ship metrics for #{ship_type_id}: #{inspect(error)}")
-        %{}
+      %{
+        ship_name: ship_name,
+        total_kills: total_kills,
+        total_losses: total_losses,
+        pilots_flown: pilots_flown,
+        total_isk_destroyed: Decimal.new(total_isk_destroyed),
+        total_isk_lost: Decimal.new(total_isk_lost),
+        avg_damage_dealt: Decimal.new(avg_damage_dealt),
+        avg_gang_size_when_killing: Decimal.new(avg_gang_size_killing),
+        avg_gang_size_when_dying: Decimal.new(avg_gang_size_dying),
+        solo_kill_percentage: Decimal.new(solo_kill_percentage),
+        peak_activity_hour: peak_hour,
+        first_seen: first_seen,
+        last_seen: last_seen
+      }
     end
+  rescue
+    error ->
+      Logger.error("Failed to calculate ship metrics for #{ship_type_id}: #{inspect(error)}")
+      %{}
   end
 
   defp update_ship_rankings do

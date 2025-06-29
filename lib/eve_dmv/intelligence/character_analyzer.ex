@@ -106,37 +106,37 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
 
   defp get_character_info(character_id) do
     # Try to get the most recent victim record for basic info using Ash
-    query = 
+    query =
       Participant
       |> Ash.Query.new()
       |> Ash.Query.filter(character_id == ^character_id and is_victim == true)
       |> Ash.Query.sort(killmail_time: :desc)
       |> Ash.Query.limit(1)
-      
+
     case Ash.read(query, domain: Api) do
       {:ok, [participant | _]} ->
         extract_basic_info(participant, character_id)
-        
+
       {:ok, []} ->
         # Try non-victim records
-        query = 
+        query =
           Participant
           |> Ash.Query.new()
           |> Ash.Query.filter(character_id == ^character_id)
           |> Ash.Query.sort(killmail_time: :desc)
           |> Ash.Query.limit(1)
-          
+
         case Ash.read(query, domain: Api) do
           {:ok, [participant | _]} ->
             extract_basic_info(participant, character_id)
-            
+
           {:ok, []} ->
             {:error, :character_not_found}
-            
+
           {:error, error} ->
             {:error, error}
         end
-        
+
       {:error, error} ->
         {:error, error}
     end
@@ -163,48 +163,50 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
     cutoff_date = DateTime.add(DateTime.utc_now(), -@analysis_period_days, :day)
 
     # Use Ash to get participants for this character
-    query = 
+    query =
       Participant
       |> Ash.Query.new()
       |> Ash.Query.filter(character_id == ^character_id and killmail_time >= ^cutoff_date)
       |> Ash.Query.sort(killmail_time: :desc)
-      
+
     case Ash.read(query, domain: Api) do
       {:ok, participants} ->
         # Get unique killmail IDs
-        killmail_ids = participants 
-                      |> Enum.map(& &1.killmail_id) 
-                      |> Enum.uniq()
-        
+        killmail_ids =
+          participants
+          |> Enum.map(& &1.killmail_id)
+          |> Enum.uniq()
+
         # Get enriched killmails for these IDs
-        km_query = 
+        km_query =
           KillmailEnriched
           |> Ash.Query.new()
           |> Ash.Query.filter(killmail_id in ^killmail_ids)
           |> Ash.Query.sort(killmail_time: :desc)
-          
+
         case Ash.read(km_query, domain: Api) do
           {:ok, killmails} ->
             if length(killmails) < @min_activity_threshold do
               {:error, :insufficient_activity}
             else
               # Attach participants to killmails manually
-              killmails_with_participants = Enum.map(killmails, fn km ->
-                km_participants = Enum.filter(participants, & &1.killmail_id == km.killmail_id)
-                Map.put(km, :participants, km_participants)
-              end)
+              killmails_with_participants =
+                Enum.map(killmails, fn km ->
+                  km_participants = Enum.filter(participants, &(&1.killmail_id == km.killmail_id))
+                  Map.put(km, :participants, km_participants)
+                end)
+
               {:ok, killmails_with_participants}
             end
-            
+
           {:error, error} ->
             {:error, error}
         end
-        
+
       {:error, error} ->
         {:error, error}
     end
   end
-
 
   defp calculate_statistics(character_id, killmails) do
     stats = %{
@@ -696,11 +698,11 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
       |> Map.put(:data_completeness, calculate_completeness(stats))
 
     # Upsert the stats
-    query = 
+    query =
       CharacterStats
       |> Ash.Query.new()
       |> Ash.Query.filter(character_id == ^attrs.character_id)
-      
+
     case Ash.read_one(query, domain: Api) do
       {:ok, existing} ->
         Ash.update(existing, attrs, domain: Api)

@@ -66,7 +66,7 @@ defmodule EveDmvWeb.Helpers.PriceHelper do
     ship_type_id = get_in(raw_data, ["victim", "ship_type_id"])
 
     # Check if it's a capsule or rookie ship (low value)
-    ship_type_id not in [670, 33328, 588, 596, 601, 606]
+    ship_type_id not in [670, 33_328, 588, 596, 601, 606]
   end
 
   defp calculate_value_async(raw_data) do
