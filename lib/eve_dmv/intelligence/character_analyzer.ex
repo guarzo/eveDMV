@@ -107,14 +107,12 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
     # Try to get the most recent victim record for basic info using Ash
     case Ash.read(Participant, 
            domain: Api,
-           query: [
-             filter: [
-               character_id: character_id,
-               is_victim: true
-             ],
-             sort: [killmail_time: :desc],
-             limit: 1
-           ]) do
+           filter: [
+             character_id: character_id,
+             is_victim: true
+           ],
+           sort: [killmail_time: :desc],
+           limit: 1) do
       {:ok, [participant | _]} ->
         extract_basic_info(participant, character_id)
         
@@ -122,11 +120,9 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
         # Try non-victim records
         case Ash.read(Participant,
                domain: Api,
-               query: [
-                 filter: [character_id: character_id],
-                 sort: [killmail_time: :desc],
-                 limit: 1
-               ]) do
+               filter: [character_id: character_id],
+               sort: [killmail_time: :desc],
+               limit: 1) do
           {:ok, [participant | _]} ->
             extract_basic_info(participant, character_id)
             
@@ -164,14 +160,12 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
 
     # Use Ash to get participants for this character
     case Ash.read(Participant, 
-           domain: Api, 
-           query: [
-             filter: [
-               character_id: character_id,
-               killmail_time: [gte: cutoff_date]
-             ],
-             sort: [killmail_time: :desc]
-           ]) do
+           domain: Api,
+           filter: [
+             character_id: character_id,
+             killmail_time: [gte: cutoff_date]
+           ],
+           sort: [killmail_time: :desc]) do
       {:ok, participants} ->
         # Get unique killmail IDs
         killmail_ids = participants 
@@ -181,10 +175,8 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
         # Get enriched killmails for these IDs
         case Ash.read(KillmailEnriched,
                domain: Api,
-               query: [
-                 filter: [killmail_id: [in: killmail_ids]],
-                 sort: [killmail_time: :desc]
-               ]) do
+               filter: [killmail_id: [in: killmail_ids]],
+               sort: [killmail_time: :desc]) do
           {:ok, killmails} ->
             if length(killmails) < @min_activity_threshold do
               {:error, :insufficient_activity}
