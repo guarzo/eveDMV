@@ -111,12 +111,16 @@
                     <div>
                       <div class="flex items-center space-x-2">
                         <h3 class="font-semibold text-gray-200">
-                          <.link
-                            navigate={~p"/intel/#{killmail.victim_character_id}"}
-                            class="hover:text-blue-400 transition-colors"
-                          >
-                            {killmail.victim_character_name}
-                          </.link>
+                          <%= if killmail.victim_character_id do %>
+                            <.link
+                              navigate={~p"/intel/#{killmail.victim_character_id}"}
+                              class="hover:text-blue-400 transition-colors"
+                            >
+                              {killmail.victim_character_name}
+                            </.link>
+                          <% else %>
+                            <span>{killmail.victim_character_name}</span>
+                          <% end %>
                         </h3>
                         <%= if killmail.is_expensive do %>
                           <span class="px-2 py-1 bg-yellow-600 text-yellow-200 text-xs rounded-full">
@@ -149,24 +153,31 @@
                 
 <!-- Kill Stats -->
                 <div class="text-right">
-                  <div class="text-lg font-bold text-red-400">
-                    {format_isk(killmail.total_value)}
-                  </div>
-                  <div class="text-sm text-gray-400">
-                    Ship: {format_isk(killmail.ship_value)}
-                  </div>
+                  <%= if killmail.total_value && killmail.total_value > 0 do %>
+                    <div class="text-lg font-bold text-red-400">
+                      {format_isk(killmail.total_value)}
+                    </div>
+                  <% else %>
+                    <div class="text-lg font-bold text-gray-500">
+                      Value Unknown
+                    </div>
+                  <% end %>
                   <div class="text-xs text-gray-500 mt-1">
                     ⚔️ {killmail.attacker_count} attacker{if killmail.attacker_count != 1, do: "s"}
                   </div>
                   <%= if killmail.final_blow_character_name do %>
                     <div class="text-xs text-blue-400">
                       FB:
-                      <.link
-                        navigate={~p"/intel/#{killmail.final_blow_character_id}"}
-                        class="hover:text-blue-300 transition-colors"
-                      >
-                        {killmail.final_blow_character_name}
-                      </.link>
+                      <%= if killmail.final_blow_character_id do %>
+                        <.link
+                          navigate={~p"/intel/#{killmail.final_blow_character_id}"}
+                          class="hover:text-blue-300 transition-colors"
+                        >
+                          {killmail.final_blow_character_name}
+                        </.link>
+                      <% else %>
+                        <span>{killmail.final_blow_character_name}</span>
+                      <% end %>
                     </div>
                   <% end %>
                 </div>
