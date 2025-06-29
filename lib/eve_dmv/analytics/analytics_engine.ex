@@ -1,48 +1,39 @@
 defmodule EveDmv.Analytics.AnalyticsEngine do
   @moduledoc """
   Analytics engine for calculating player and ship performance statistics.
-
-  This module processes killmail data to generate comprehensive analytics
-  for both individual players and ship types. It provides batch processing
-  capabilities for efficient large-scale analysis.
   """
 
   require Logger
   alias EveDmv.Api
   alias EveDmv.Analytics.{PlayerStats, ShipStats}
-  alias EveDmv.Killmails.{KillmailEnriched, Participant}
-  alias EveDmv.Eve.{ItemType, SolarSystem}
+  alias EveDmv.Eve.ItemType
+  alias EveDmv.Killmails.Participant
+
+  @default_days 90
+  @default_batch_size 100
+  @default_min_activity 5
+  @default_min_usage 10
 
   @doc """
   Calculate and update player statistics for all active characters.
 
-  Options:
-  - days: Number of days to look back (default: 90)
-  - batch_size: Number of characters to process per batch (default: 100)
-  - min_activity: Minimum killmails required to generate stats (default: 5)
+  ## Options
+
+    * `:days`         - days to look back (default: #{@default_days})
+    * `:batch_size`   - characters per batch (default: #{@default_batch_size})
+    * `:min_activity` - minimum killmail count (default: #{@default_min_activity})
   """
   def calculate_player_stats(opts \\ []) do
-    days = Keyword.get(opts, :days, 90)
-    batch_size = Keyword.get(opts, :batch_size, 100)
-    min_activity = Keyword.get(opts, :min_activity, 5)
+    days = Keyword.get(opts, :days, @default_days)
+    batch_size = Keyword.get(opts, :batch_size, @default_batch_size)
+    min_activity = Keyword.get(opts, :min_activity, @default_min_activity)
+    now = DateTime.utc_now()
+    start_date = DateTime.add(now, -days * 86_400, :second)
 
-    Logger.info("Starting player statistics calculation for last #{days} days")
+    Logger.info("Starting player statistics for last #{days} days")
 
-    start_date = DateTime.utc_now() |> DateTime.add(-days, :day)
-
-    # Get all characters with killmail activity in the period
-    active_characters = get_active_characters(start_date, min_activity)
-
-    Logger.info("Found #{length(active_characters)} active characters to process")
-
-    # Process in batches
-    active_characters
-    |> Enum.chunk_every(batch_size)
-    |> Enum.with_index()
-    |> Enum.each(fn {batch, index} ->
-      Logger.debug("Processing player stats batch #{index + 1}")
-      process_player_batch(batch, start_date, DateTime.utc_now())
-    end)
+    participants_ids(:character_id, min_activity)
+    |> chunk_and_process(batch_size, &process_character(&1, start_date, now), "player")
 
     Logger.info("Player statistics calculation completed")
   end
@@ -50,433 +41,347 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
   @doc """
   Calculate and update ship statistics for all ship types.
 
-  Options:
-  - days: Number of days to look back (default: 90)  
-  - min_usage: Minimum kills+losses required to generate stats (default: 10)
+  ## Options
+
+    * `:days`      - days to look back (default: #{@default_days})
+    * `:min_usage` - minimum activity count (default: #{@default_min_usage})
   """
   def calculate_ship_stats(opts \\ []) do
-    days = Keyword.get(opts, :days, 90)
-    min_usage = Keyword.get(opts, :min_usage, 10)
+    days = Keyword.get(opts, :days, @default_days)
+    min_usage = Keyword.get(opts, :min_usage, @default_min_usage)
+    now = DateTime.utc_now()
+    start_date = DateTime.add(now, -days * 86_400, :second)
 
-    Logger.info("Starting ship statistics calculation for last #{days} days")
+    Logger.info("Starting ship statistics for last #{days} days")
 
-    start_date = DateTime.utc_now() |> DateTime.add(-days, :day)
+    participants_ids(:ship_type_id, min_usage)
+    |> Enum.with_index(1)
+    |> Task.async_stream(
+      fn {ship_id, idx} ->
+        if rem(idx, 50) == 1, do: Logger.debug("Processing ship #{idx}")
+        process_ship(ship_id, start_date, now)
+      end,
+      max_concurrency: System.schedulers_online(),
+      ordered: false
+    )
+    |> Stream.run()
 
-    # Get all ship types with activity in the period
-    active_ships = get_active_ships(start_date, min_usage)
-
-    Logger.info("Found #{length(active_ships)} ship types to process")
-
-    # Process each ship type
-    active_ships
-    |> Enum.with_index()
-    |> Enum.each(fn {ship_type_id, index} ->
-      if rem(index, 50) == 0 do
-        Logger.debug("Processing ship #{index + 1}/#{length(active_ships)}")
-      end
-
-      process_ship_stats(ship_type_id, start_date, DateTime.utc_now())
-    end)
-
-    # Calculate rankings and meta tiers
     update_ship_rankings()
-
     Logger.info("Ship statistics calculation completed")
   end
 
-  # Private helper functions
+  # Fetch up to `limit` unique non-nil values of `field` from recent participants
+  defp participants_ids(field, limit) do
+    case Ash.read(Participant, domain: Api) do
+      {:ok, parts} ->
+        parts
+        |> Enum.map(&Map.get(&1, field))
+        |> Enum.filter(& &1)
+        |> Enum.uniq()
+        |> Enum.take(limit)
 
-  defp get_active_characters(_start_date, _min_activity) do
-    # For now, get characters from recent participants
-    {:ok, participants} = Ash.read(Participant, domain: Api)
-
-    participants
-    |> Enum.map(& &1.character_id)
-    |> Enum.filter(&(&1 != nil))
-    |> Enum.uniq()
-    |> Enum.take(100)
-  rescue
-    error ->
-      Logger.error("Failed to get active characters: #{inspect(error)}")
-      []
+      {:error, reason} ->
+        Logger.error("Failed to fetch participants: #{inspect(reason)}")
+        []
+    end
   end
 
-  defp get_active_ships(_start_date, _min_usage) do
-    # For now, get ship types from recent participants
-    {:ok, participants} = Ash.read(Participant, domain: Api)
-
-    participants
-    |> Enum.map(& &1.ship_type_id)
-    |> Enum.filter(&(&1 != nil))
-    |> Enum.uniq()
-    |> Enum.take(50)
-  rescue
-    error ->
-      Logger.error("Failed to get active ships: #{inspect(error)}")
-      []
+  # Split a list into batches and run `fun` on each batch in parallel
+  defp chunk_and_process(items, batch_size, fun, type) do
+    items
+    |> Enum.chunk_every(batch_size)
+    |> Enum.with_index(1)
+    |> Task.async_stream(
+      fn {batch, idx} ->
+        Logger.debug("Processing #{type} batch #{idx}")
+        Enum.each(batch, fun)
+      end,
+      max_concurrency: System.schedulers_online(),
+      ordered: false
+    )
+    |> Stream.run()
   end
 
-  defp process_player_batch(character_ids, start_date, end_date) do
-    Enum.each(character_ids, fn character_id ->
-      process_character_stats(character_id, start_date, end_date)
-    end)
-  end
+  # Process one character’s metrics and upsert into Ash
+  defp process_character(character_id, start_date, end_date) do
+    case calculate_character_metrics(character_id, start_date, end_date) do
+      %{character_name: name} = metrics when is_binary(name) ->
+        attrs =
+          metrics
+          |> Map.put(:character_id, character_id)
+          |> Map.put(:stats_period_start, start_date)
+          |> Map.put(:stats_period_end, end_date)
 
-  defp process_character_stats(character_id, start_date, end_date) do
-    # Get character's killmail participation data
-    stats = calculate_character_metrics(character_id, start_date, end_date)
-
-    case stats do
-      %{character_name: character_name} = metrics when character_name != nil ->
-        # Create or update player stats
-        case Ash.get(PlayerStats, character_id: character_id, domain: Api) do
-          {:ok, existing_stats} ->
-            Ash.update(
-              existing_stats,
-              Map.put(metrics, :stats_period_start, start_date)
-              |> Map.put(:stats_period_end, end_date),
-              domain: Api
-            )
-
-          {:error, _} ->
-            Ash.create(
-              PlayerStats,
-              metrics
-              |> Map.put(:character_id, character_id)
-              |> Map.put(:stats_period_start, start_date)
-              |> Map.put(:stats_period_end, end_date),
-              domain: Api
-            )
-        end
+        upsert(PlayerStats, [character_id: character_id], attrs)
 
       _ ->
         Logger.warning("Insufficient data for character #{character_id}")
     end
   rescue
     error ->
-      Logger.error("Failed to process character #{character_id}: #{inspect(error)}")
+      Logger.error("Error processing character #{character_id}: #{inspect(error)}")
   end
+
+  # Process one ship’s metrics and upsert into Ash
+  defp process_ship(ship_type_id, start_date, end_date) do
+    with {:ok, ship_type} <-
+           Ash.get(ItemType, ship_type_id, domain: Api, load: [:is_capital_ship]),
+         metrics when is_map(metrics) <-
+           calculate_ship_metrics(ship_type_id, start_date, end_date),
+         %{ship_name: _} <- metrics do
+      attrs =
+        metrics
+        |> Map.put(:ship_type_id, ship_type_id)
+        |> Map.put(:ship_category, determine_ship_category(ship_type))
+        |> Map.put(:tech_level, ship_type.tech_level || 1)
+        |> Map.put(:meta_level, ship_type.meta_level || 0)
+        |> Map.put(:is_capital, ship_type.is_capital_ship == true)
+        |> Map.put(:stats_period_start, start_date)
+        |> Map.put(:stats_period_end, end_date)
+
+      upsert(ShipStats, [ship_type_id: ship_type_id], attrs)
+    else
+      _ -> Logger.warning("Insufficient data for ship #{ship_type_id}")
+    end
+  rescue
+    error ->
+      Logger.error("Error processing ship #{ship_type_id}: #{inspect(error)}")
+  end
+
+  # Generic upsert helper (create or update based on filters)
+  defp upsert(schema, filters, attrs) do
+    case Ash.get(schema, filters, domain: Api) do
+      {:ok, existing} -> Ash.update(existing, attrs, domain: Api)
+      _ -> Ash.create(schema, attrs, domain: Api)
+    end
+  end
+
+  # --- Metric calculations ---
 
   defp calculate_character_metrics(character_id, _start_date, _end_date) do
-    # Get all killmail participation for this character (simplified for now)
-    {:ok, all_participants} = Ash.read(Participant, domain: Api)
-
-    participations =
-      all_participants |> Enum.filter(&(&1.character_id == character_id)) |> Enum.take(1000)
-
-    if Enum.empty?(participations) do
-      %{}
+    with {:ok, parts} <- Ash.read(Participant, domain: Api),
+         parts <- Enum.filter(parts, &(&1.character_id == character_id)),
+         parts <- Enum.take(parts, 1_000),
+         [_ | _] <- parts do
+      build_character_metrics(parts)
     else
-      character_name = participations |> List.first() |> Map.get(:character_name, "Unknown")
-
-      # Separate kills from losses
-      {kills, losses} = Enum.split_with(participations, &(&1.damage_dealt > 0))
-
-      # Calculate basic metrics
-      total_kills = length(kills)
-      total_losses = length(losses)
-
-      # Calculate ISK metrics (placeholder values for now)
-      # Placeholder
-      total_isk_destroyed = total_kills * 50_000_000
-      # Placeholder
-      total_isk_lost = total_losses * 50_000_000
-
-      # Calculate gang vs solo
-      {solo_kills, gang_kills} = Enum.split_with(kills, &((&1.gang_size || 1) == 1))
-      {solo_losses, gang_losses} = Enum.split_with(losses, &((&1.gang_size || 1) == 1))
-
-      # Ship diversity
-      ship_types_used = participations |> Enum.map(& &1.ship_type_id) |> Enum.uniq() |> length()
-
-      # Most used ship
-      ship_usage =
-        participations
-        |> Enum.group_by(& &1.ship_type_id)
-        |> Enum.max_by(fn {_ship_id, uses} -> length(uses) end, fn -> {nil, []} end)
-
-      {favorite_ship_type_id, favorite_uses} = ship_usage
-
-      favorite_ship_name =
-        if favorite_uses != [], do: List.first(favorite_uses).ship_name, else: nil
-
-      # Gang size analysis
-      gang_sizes = participations |> Enum.map(&(&1.gang_size || 1))
-
-      avg_gang_size =
-        if total_kills + total_losses > 0 do
-          (gang_sizes |> Enum.sum()) / (total_kills + total_losses)
-        else
-          1.0
-        end
-
-      # Determine preferred gang size
-      preferred_gang_size =
-        cond do
-          length(solo_kills) + length(solo_losses) > (total_kills + total_losses) * 0.6 ->
-            "solo"
-
-          avg_gang_size <= 5 ->
-            "small_gang"
-
-          avg_gang_size <= 15 ->
-            "medium_gang"
-
-          true ->
-            "fleet"
-        end
-
-      # Activity analysis
-      # Placeholder
-      first_kill_date = DateTime.utc_now() |> DateTime.add(-30, :day)
-      # Placeholder
-      last_kill_date = DateTime.utc_now()
-
-      # Active days calculation (placeholder)
-      active_days = 30
-
-      # Weekly activity
-      weeks_in_period = 12
-      avg_kills_per_week = if weeks_in_period > 0, do: total_kills / weeks_in_period, else: 0
-
-      # Danger rating (1-5 based on performance)
-      danger_rating =
-        calculate_danger_rating(total_kills, total_losses, total_isk_destroyed, ship_types_used)
-
-      # Primary activity classification
-      primary_activity = classify_primary_activity(solo_kills, gang_kills, participations)
-
-      %{
-        character_name: character_name,
-        total_kills: total_kills,
-        total_losses: total_losses,
-        solo_kills: length(solo_kills),
-        solo_losses: length(solo_losses),
-        gang_kills: length(gang_kills),
-        gang_losses: length(gang_losses),
-        total_isk_destroyed: Decimal.new(total_isk_destroyed),
-        total_isk_lost: Decimal.new(total_isk_lost),
-        first_kill_date: first_kill_date,
-        last_kill_date: last_kill_date,
-        active_days: active_days,
-        avg_kills_per_week: Decimal.new(avg_kills_per_week),
-        ship_types_used: ship_types_used,
-        favorite_ship_type_id: favorite_ship_type_id,
-        favorite_ship_name: favorite_ship_name,
-        avg_gang_size: Decimal.new(avg_gang_size),
-        preferred_gang_size: preferred_gang_size,
-        # Simplified for now
-        active_regions: 1,
-        danger_rating: danger_rating,
-        primary_activity: primary_activity
-      }
+      _ -> %{}
     end
-  rescue
-    error ->
-      Logger.error("Failed to calculate metrics for character #{character_id}: #{inspect(error)}")
-
-      %{}
-  end
-
-  defp process_ship_stats(ship_type_id, start_date, end_date) do
-    # Get ship type information
-    case Ash.get(ItemType, ship_type_id, domain: Api) do
-      {:ok, ship_type} ->
-        # Calculate ship metrics
-        metrics = calculate_ship_metrics(ship_type_id, start_date, end_date)
-
-        case metrics do
-          %{ship_name: ship_name} when ship_name != nil ->
-            # Create or update ship stats
-            case Ash.get(ShipStats, ship_type_id: ship_type_id, domain: Api) do
-              {:ok, existing_stats} ->
-                Ash.update(
-                  existing_stats,
-                  metrics
-                  |> Map.put(:stats_period_start, start_date)
-                  |> Map.put(:stats_period_end, end_date),
-                  domain: Api
-                )
-
-              {:error, _} ->
-                Ash.create(
-                  ShipStats,
-                  metrics
-                  |> Map.put(:ship_type_id, ship_type_id)
-                  |> Map.put(:ship_category, determine_ship_category(ship_type))
-                  |> Map.put(:tech_level, ship_type.tech_level || 1)
-                  |> Map.put(:meta_level, ship_type.meta_level || 0)
-                  |> Map.put(:is_capital, ship_type.is_capital_ship || false)
-                  |> Map.put(:stats_period_start, start_date)
-                  |> Map.put(:stats_period_end, end_date),
-                  domain: Api
-                )
-            end
-
-          _ ->
-            Logger.warning("Insufficient data for ship type #{ship_type_id}")
-        end
-
-      {:error, _} ->
-        Logger.warning("Ship type #{ship_type_id} not found")
-    end
-  rescue
-    error ->
-      Logger.error("Failed to process ship #{ship_type_id}: #{inspect(error)}")
   end
 
   defp calculate_ship_metrics(ship_type_id, _start_date, _end_date) do
-    # Get all killmail participation for this ship type (simplified)
-    {:ok, all_participants} = Ash.read(Participant, domain: Api)
-
-    participations =
-      all_participants |> Enum.filter(&(&1.ship_type_id == ship_type_id)) |> Enum.take(1000)
-
-    if Enum.empty?(participations) do
-      %{}
+    with {:ok, parts} <- Ash.read(Participant, domain: Api),
+         parts <- Enum.filter(parts, &(&1.ship_type_id == ship_type_id)),
+         parts <- Enum.take(parts, 1_000),
+         [_ | _] <- parts do
+      build_ship_metrics(parts)
     else
-      ship_name = participations |> List.first() |> Map.get(:ship_name, "Unknown")
-
-      # Separate kills from losses
-      {kills, losses} = Enum.split_with(participations, &(&1.damage_dealt > 0))
-
-      # Basic metrics
-      total_kills = length(kills)
-      total_losses = length(losses)
-      pilots_flown = participations |> Enum.map(& &1.character_id) |> Enum.uniq() |> length()
-
-      # ISK metrics (placeholder)
-      total_isk_destroyed = total_kills * 50_000_000
-      total_isk_lost = total_losses * 50_000_000
-
-      # Damage analysis
-      avg_damage_dealt =
-        if total_kills > 0 do
-          total_damage = kills |> Enum.map(&(&1.damage_dealt || 0)) |> Enum.sum()
-          total_damage / total_kills
-        else
-          0
-        end
-
-      # Gang size analysis
-      avg_gang_size_killing =
-        if total_kills > 0 do
-          total_gang_size_kills = kills |> Enum.map(&(&1.gang_size || 1)) |> Enum.sum()
-          total_gang_size_kills / total_kills
-        else
-          1.0
-        end
-
-      avg_gang_size_dying =
-        if total_losses > 0 do
-          total_gang_size_losses = losses |> Enum.map(&(&1.gang_size || 1)) |> Enum.sum()
-          total_gang_size_losses / total_losses
-        else
-          1.0
-        end
-
-      # Solo performance
-      solo_kills = kills |> Enum.count(&((&1.gang_size || 1) == 1))
-      solo_kill_percentage = if total_kills > 0, do: solo_kills / total_kills * 100, else: 0
-
-      # Temporal analysis (placeholders)
-      first_seen = DateTime.utc_now() |> DateTime.add(-30, :day)
-      last_seen = DateTime.utc_now()
-      # 18:00 UTC placeholder
-      peak_hour = 18
-
-      %{
-        ship_name: ship_name,
-        total_kills: total_kills,
-        total_losses: total_losses,
-        pilots_flown: pilots_flown,
-        total_isk_destroyed: Decimal.new(total_isk_destroyed),
-        total_isk_lost: Decimal.new(total_isk_lost),
-        avg_damage_dealt: Decimal.new(avg_damage_dealt),
-        avg_gang_size_when_killing: Decimal.new(avg_gang_size_killing),
-        avg_gang_size_when_dying: Decimal.new(avg_gang_size_dying),
-        solo_kill_percentage: Decimal.new(solo_kill_percentage),
-        peak_activity_hour: peak_hour,
-        first_seen: first_seen,
-        last_seen: last_seen
-      }
+      _ -> %{}
     end
-  rescue
-    error ->
-      Logger.error("Failed to calculate ship metrics for #{ship_type_id}: #{inspect(error)}")
-      %{}
   end
 
+  # Build character-level metrics map
+  defp build_character_metrics(ps) do
+    character_name = List.first(ps).character_name || "Unknown"
+    {kills, losses} = split_kills_losses(ps)
+    {solo_kills, gang_kills, solo_losses, gang_losses} = split_solo_gang(kills, losses)
+
+    basic_stats = calculate_basic_stats(kills, losses)
+    ship_stats = calculate_ship_stats(ps)
+    gang_stats = calculate_gang_stats(ps, basic_stats.total_kills, basic_stats.total_losses)
+    time_stats = calculate_time_stats(basic_stats.total_kills)
+
+    Map.merge(basic_stats, %{
+      character_name: character_name,
+      solo_kills: length(solo_kills),
+      solo_losses: length(solo_losses),
+      gang_kills: length(gang_kills),
+      gang_losses: length(gang_losses),
+      ship_types_used: ship_stats.diversity,
+      favorite_ship_type_id: ship_stats.fav_id,
+      favorite_ship_name: ship_stats.fav_name,
+      avg_gang_size: Decimal.from_float(gang_stats.avg_size),
+      preferred_gang_size: gang_stats.preferred_size,
+      first_kill_date: time_stats.first_kill,
+      last_kill_date: time_stats.last_kill,
+      active_days: time_stats.active_days,
+      avg_kills_per_week: Decimal.from_float(time_stats.avg_per_week),
+      active_regions: 1,
+      danger_rating:
+        calculate_danger_rating(
+          basic_stats.total_kills,
+          basic_stats.total_losses,
+          basic_stats.total_isk_destroyed,
+          ship_stats.diversity
+        ),
+      primary_activity: classify_primary_activity(solo_kills, gang_kills)
+    })
+  end
+
+  defp split_kills_losses(ps) do
+    Enum.split_with(ps, &((&1.damage_dealt || 0) > 0))
+  end
+
+  defp split_solo_gang(kills, losses) do
+    {solo_kills, gang_kills} = Enum.split_with(kills, &((&1.gang_size || 1) == 1))
+    {solo_losses, gang_losses} = Enum.split_with(losses, &((&1.gang_size || 1) == 1))
+    {solo_kills, gang_kills, solo_losses, gang_losses}
+  end
+
+  defp calculate_basic_stats(kills, losses) do
+    total_kills = length(kills)
+    total_losses = length(losses)
+
+    %{
+      total_kills: total_kills,
+      total_losses: total_losses,
+      total_isk_destroyed: Decimal.new(total_kills * 50_000_000),
+      total_isk_lost: Decimal.new(total_losses * 50_000_000)
+    }
+  end
+
+  defp calculate_gang_stats(ps, total_kills, total_losses) do
+    gang_sizes = Enum.map(ps, &(&1.gang_size || 1))
+
+    avg_size =
+      if total_kills + total_losses > 0 do
+        Enum.sum(gang_sizes) / (total_kills + total_losses)
+      else
+        1.0
+      end
+
+    preferred_size = determine_preferred_gang_size(avg_size)
+
+    %{avg_size: avg_size, preferred_size: preferred_size}
+  end
+
+  defp determine_preferred_gang_size(avg_gang_size) do
+    cond do
+      avg_gang_size <= 1.2 -> :solo
+      avg_gang_size <= 5 -> :small_gang
+      avg_gang_size <= 15 -> :medium_gang
+      true -> :fleet
+    end
+  end
+
+  defp calculate_time_stats(total_kills) do
+    now = DateTime.utc_now()
+    weeks = 12
+    avg_per_week = if weeks > 0, do: total_kills / weeks, else: 0
+
+    %{
+      first_kill: DateTime.add(now, -30 * 86_400, :second),
+      last_kill: now,
+      active_days: 30,
+      avg_per_week: avg_per_week
+    }
+  end
+
+  # Build ship-level metrics map
+  defp build_ship_metrics(ps) do
+    ship_name = List.first(ps).ship_name || "Unknown"
+
+    {kills, losses} =
+      Enum.split_with(ps, &((&1.damage_dealt || 0) > 0))
+
+    total_kills = length(kills)
+    total_losses = length(losses)
+    pilots = ps |> Enum.map(& &1.character_id) |> Enum.uniq() |> length()
+
+    total_isk_out = Decimal.new(total_kills * 50_000_000)
+    total_isk_in = Decimal.new(total_losses * 50_000_000)
+
+    avg_damage_dealt =
+      if total_kills > 0,
+        do: Enum.sum(Enum.map(kills, &(&1.damage_dealt || 0))) / total_kills,
+        else: 0
+
+    avg_gang_kill =
+      if total_kills > 0,
+        do: Enum.sum(Enum.map(kills, &(&1.gang_size || 1))) / total_kills,
+        else: 1.0
+
+    avg_gang_loss =
+      if total_losses > 0,
+        do: Enum.sum(Enum.map(losses, &(&1.gang_size || 1))) / total_losses,
+        else: 1.0
+
+    solo_kills = Enum.count(kills, &((&1.gang_size || 1) == 1))
+    solo_pct = if total_kills > 0, do: solo_kills / total_kills * 100, else: 0
+
+    now = DateTime.utc_now()
+    first = DateTime.add(now, -30 * 86_400, :second)
+    last = now
+    peak_utc = 18
+
+    %{
+      ship_name: ship_name,
+      total_kills: total_kills,
+      total_losses: total_losses,
+      pilots_flown: pilots,
+      total_isk_destroyed: total_isk_out,
+      total_isk_lost: total_isk_in,
+      avg_damage_dealt: Decimal.from_float(avg_damage_dealt),
+      avg_gang_size_when_killing: Decimal.from_float(avg_gang_kill),
+      avg_gang_size_when_dying: Decimal.from_float(avg_gang_loss),
+      solo_kill_percentage: Decimal.from_float(solo_pct),
+      peak_activity_hour: peak_utc,
+      first_seen: first,
+      last_seen: last
+    }
+  end
+
+  # Update usage + effectiveness rankings, then assign meta-tiers
   defp update_ship_rankings do
-    # Get all ship stats to calculate rankings
     case Ash.read(ShipStats, domain: Api) do
-      {:ok, all_ships} ->
-        # Rank by usage (total activity)
+      {:ok, ships} ->
         usage_ranked =
-          all_ships
+          ships
           |> Enum.sort_by(&(&1.total_kills + &1.total_losses), :desc)
           |> Enum.with_index(1)
 
-        # Rank by effectiveness (K/D ratio)
-        effectiveness_ranked =
-          all_ships
-          # Min usage threshold
+        eff_ranked =
+          ships
           |> Enum.filter(&(&1.total_kills + &1.total_losses >= 25))
           |> Enum.sort_by(& &1.kill_death_ratio, :desc)
           |> Enum.with_index(1)
 
-        # Update usage rankings
-        Enum.each(usage_ranked, fn {ship, rank} ->
-          Ash.update(ship, %{usage_rank: rank}, domain: Api)
-        end)
+        for {ship, rank} <- usage_ranked, do: Ash.update(ship, %{usage_rank: rank}, domain: Api)
 
-        # Update effectiveness rankings
-        Enum.each(effectiveness_ranked, fn {ship, rank} ->
-          Ash.update(ship, %{effectiveness_rank: rank}, domain: Api)
-        end)
+        for {ship, rank} <- eff_ranked,
+            do: Ash.update(ship, %{effectiveness_rank: rank}, domain: Api)
 
-        # Calculate meta tiers based on performance
-        calculate_meta_tiers(effectiveness_ranked)
+        calculate_meta_tiers(eff_ranked)
 
-      {:error, error} ->
-        Logger.error("Failed to read ship stats: #{inspect(error)}")
+      {:error, reason} ->
+        Logger.error("Failed reading ship stats: #{inspect(reason)}")
     end
   rescue
-    error ->
-      Logger.error("Failed to update ship rankings: #{inspect(error)}")
+    error -> Logger.error("Error updating rankings: #{inspect(error)}")
   end
 
-  defp calculate_meta_tiers(effectiveness_ranked) do
-    total_ships = length(effectiveness_ranked)
+  defp calculate_meta_tiers(ranked) do
+    total = length(ranked)
 
-    effectiveness_ranked
-    |> Enum.each(fn {ship, rank} ->
+    for {ship, rank} <- ranked do
       tier =
         cond do
-          # Top 5%
-          rank <= max(1, div(total_ships, 20)) -> "S"
-          # Top 10%
-          rank <= max(1, div(total_ships, 10)) -> "A"
-          # Top 20%
-          rank <= max(1, div(total_ships, 5)) -> "B"
-          # Top 50%
-          rank <= max(1, div(total_ships, 2)) -> "C"
+          rank <= max(1, div(total, 20)) -> "S"
+          rank <= max(1, div(total, 10)) -> "A"
+          rank <= max(1, div(total, 5)) -> "B"
+          rank <= max(1, div(total, 2)) -> "C"
           true -> "D"
         end
 
       Ash.update(ship, %{meta_tier: tier}, domain: Api)
-    end)
+    end
   rescue
-    error ->
-      Logger.error("Failed to calculate meta tiers: #{inspect(error)}")
+    error -> Logger.error("Error calculating meta tiers: #{inspect(error)}")
   end
 
-  # Helper functions for classification
-
-  defp calculate_danger_rating(kills, losses, isk_destroyed, ship_diversity) do
+  defp calculate_danger_rating(kills, losses, isk_destroyed, diversity) do
     kd_ratio = if losses > 0, do: kills / losses, else: kills
 
-    # Base score from K/D ratio
     base_score =
       cond do
         kd_ratio >= 5.0 -> 4
@@ -485,37 +390,39 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
         true -> 1
       end
 
-    # Bonus for high ISK destroyed
-    # 10B ISK
-    isk_bonus = if isk_destroyed > 10_000_000_000, do: 1, else: 0
+    bonus_isk = if isk_destroyed > 10_000_000_000, do: 1, else: 0
+    bonus_div = if diversity > 10, do: 1, else: 0
 
-    # Bonus for ship diversity (experienced pilot)
-    diversity_bonus = if ship_diversity > 10, do: 1, else: 0
-
-    min(5, base_score + isk_bonus + diversity_bonus)
+    min(5, base_score + bonus_isk + bonus_div)
   end
 
-  defp classify_primary_activity(solo_kills, gang_kills, _all_participations) do
-    total_kills = length(solo_kills) + length(gang_kills)
+  defp classify_primary_activity(solo, gang) do
+    total = length(solo) + length(gang)
 
     cond do
-      length(solo_kills) > total_kills * 0.7 -> "solo_pvp"
-      length(gang_kills) > total_kills * 0.8 -> "small_gang"
+      length(solo) > total * 0.7 -> "solo_pvp"
+      length(gang) > total * 0.8 -> "small_gang"
       true -> "fleet_pvp"
     end
   end
 
-  defp determine_ship_category(ship_type) do
-    group_name = ship_type.group_name || ""
+  @spec determine_ship_category(ItemType.t()) :: String.t()
+  defp determine_ship_category(%ItemType{is_capital_ship: is_cap, group_name: group_name}) do
+    if is_cap do
+      "capital"
+    else
+      categorize_by_group(group_name || "")
+    end
+  end
 
+  defp categorize_by_group(group) do
     cond do
-      ship_type.is_capital_ship -> "capital"
-      group_name =~ ~r/frigate/i -> "frigate"
-      group_name =~ ~r/destroyer/i -> "destroyer"
-      group_name =~ ~r/cruiser/i and not (group_name =~ ~r/battle/i) -> "cruiser"
-      group_name =~ ~r/battlecruiser/i -> "battlecruiser"
-      group_name =~ ~r/battleship/i -> "battleship"
-      group_name =~ ~r/industrial/i -> "industrial"
+      group =~ ~r/battlecruiser/i -> "battlecruiser"
+      group =~ ~r/battleship/i -> "battleship"
+      group =~ ~r/cruiser/i -> "cruiser"
+      group =~ ~r/destroyer/i -> "destroyer"
+      group =~ ~r/frigate/i -> "frigate"
+      group =~ ~r/industrial/i -> "industrial"
       true -> "special"
     end
   end

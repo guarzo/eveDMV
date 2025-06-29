@@ -336,7 +336,7 @@ defmodule EveDmvWeb.SurveillanceLive do
 
   # Private helper functions
 
-  defp load_user_profiles(user_id, current_user \\ nil) do
+  defp load_user_profiles(user_id, current_user) do
     case Ash.read(Profile,
            action: :user_profiles,
            input: %{user_id: user_id},

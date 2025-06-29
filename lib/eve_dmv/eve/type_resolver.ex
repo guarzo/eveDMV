@@ -43,7 +43,7 @@ defmodule EveDmv.Eve.TypeResolver do
       iex> TypeResolver.resolve_item_types([23378, 32970, 79520])
       {:ok, [%ItemType{...}, %ItemType{...}, %ItemType{...}]}
   """
-  @spec resolve_item_types([integer()]) :: {:ok, [ItemType.t()]} | {:error, term()}
+  @spec resolve_item_types([integer()]) :: {:ok, [ItemType.t()]}
   def resolve_item_types(type_ids) when is_list(type_ids) do
     # Check which ones already exist
     unique_type_ids = Enum.uniq(type_ids)
@@ -55,14 +55,9 @@ defmodule EveDmv.Eve.TypeResolver do
       {:ok, existing_types}
     else
       # Fetch missing types from ESI
-      case fetch_and_create_item_types(missing_ids) do
-        {:ok, new_types} ->
-          all_types = existing_types ++ new_types
-          {:ok, all_types}
-
-        error ->
-          error
-      end
+      {:ok, new_types} = fetch_and_create_item_types(missing_ids)
+      all_types = existing_types ++ new_types
+      {:ok, all_types}
     end
   end
 
@@ -72,7 +67,7 @@ defmodule EveDmv.Eve.TypeResolver do
   This is the main function to call when you need to ensure a type exists
   before creating a record that references it.
   """
-  @spec ensure_item_type(integer()) :: :ok | {:error, term()}
+  @spec ensure_item_type(integer()) :: :ok | {:error, :not_found | String.t() | map()}
   def ensure_item_type(type_id) when is_integer(type_id) do
     case resolve_item_type(type_id) do
       {:ok, _item_type} -> :ok

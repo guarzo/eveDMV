@@ -42,7 +42,7 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
   @doc """
   Fetch historical killmails for multiple characters concurrently.
   """
-  @spec fetch_characters_history([integer()]) :: {:ok, map()} | {:error, term()}
+  @spec fetch_characters_history([integer()]) :: {:ok, map()}
   def fetch_characters_history(character_ids) when is_list(character_ids) do
     Logger.info("Fetching historical killmails for #{length(character_ids)} characters")
 

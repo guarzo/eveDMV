@@ -277,18 +277,22 @@ defmodule EveDmvWeb.PlayerProfileLive do
       total_losses: intel.total_losses || 0,
       solo_kills: intel.solo_kills || 0,
       solo_losses: intel.solo_losses || 0,
-      gang_kills: (intel.total_kills || 0) - (intel.solo_kills || 0),
-      gang_losses: (intel.total_losses || 0) - (intel.solo_losses || 0),
+      gang_kills: calculate_gang_kills(intel),
+      gang_losses: calculate_gang_losses(intel),
       total_isk_destroyed: intel.total_isk_destroyed || Decimal.new(0),
       total_isk_lost: intel.total_isk_lost || Decimal.new(0),
       danger_rating: intel.danger_rating || 1,
-      ship_types_used: intel.ship_usage |> Map.keys() |> length(),
+      ship_types_used: get_ship_types_count(intel),
       avg_gang_size: intel.avg_gang_size || Decimal.new(1),
       preferred_gang_size: determine_gang_preference(intel.avg_gang_size),
       primary_activity: classify_activity(intel),
       last_updated: DateTime.utc_now()
     }
   end
+
+  defp calculate_gang_kills(intel), do: (intel.total_kills || 0) - (intel.solo_kills || 0)
+  defp calculate_gang_losses(intel), do: (intel.total_losses || 0) - (intel.solo_losses || 0)
+  defp get_ship_types_count(intel), do: intel.ship_usage |> Map.keys() |> length()
 
   defp determine_gang_preference(avg_gang_size) when is_nil(avg_gang_size), do: "solo"
 

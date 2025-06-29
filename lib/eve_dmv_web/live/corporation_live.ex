@@ -2,14 +2,12 @@ defmodule EveDmvWeb.CorporationLive do
   @moduledoc """
   LiveView for displaying corporation overview and member activity.
 
-  Shows corporation statistics, member list, recent activity, and 
+  Shows corporation statistics, member list, recent activity, and
   top performing pilots within the corporation.
   """
 
   use EveDmvWeb, :live_view
-  alias EveDmv.Analytics.PlayerStats
   alias EveDmv.Api
-  alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Killmails.Participant
 
   # Load current user from session on mount
@@ -203,10 +201,6 @@ defmodule EveDmvWeb.CorporationLive do
 
   defp safe_float_round(value, _precision) when is_integer(value) do
     value * 1.0
-  end
-
-  defp safe_float_round(value, _precision) do
-    value
   end
 
   # Template helper functions

@@ -169,42 +169,35 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
       |> Ash.Query.filter(character_id == ^character_id and killmail_time >= ^cutoff_date)
       |> Ash.Query.sort(killmail_time: :desc)
 
-    case Ash.read(query, domain: Api) do
-      {:ok, participants} ->
-        # Get unique killmail IDs
-        killmail_ids =
-          participants
-          |> Enum.map(& &1.killmail_id)
-          |> Enum.uniq()
+    with {:ok, participants} <- Ash.read(query, domain: Api),
+         {:ok, killmails} <- fetch_killmails_for_participants(participants) do
+      build_killmails_with_participants(killmails, participants)
+    end
+  end
 
-        # Get enriched killmails for these IDs
-        km_query =
-          KillmailEnriched
-          |> Ash.Query.new()
-          |> Ash.Query.filter(killmail_id in ^killmail_ids)
-          |> Ash.Query.sort(killmail_time: :desc)
+  defp fetch_killmails_for_participants(participants) do
+    killmail_ids = participants |> Enum.map(& &1.killmail_id) |> Enum.uniq()
 
-        case Ash.read(km_query, domain: Api) do
-          {:ok, killmails} ->
-            if length(killmails) < @min_activity_threshold do
-              {:error, :insufficient_activity}
-            else
-              # Attach participants to killmails manually
-              killmails_with_participants =
-                Enum.map(killmails, fn km ->
-                  km_participants = Enum.filter(participants, &(&1.killmail_id == km.killmail_id))
-                  Map.put(km, :participants, km_participants)
-                end)
+    km_query =
+      KillmailEnriched
+      |> Ash.Query.new()
+      |> Ash.Query.filter(killmail_id in ^killmail_ids)
+      |> Ash.Query.sort(killmail_time: :desc)
 
-              {:ok, killmails_with_participants}
-            end
+    Ash.read(km_query, domain: Api)
+  end
 
-          {:error, error} ->
-            {:error, error}
-        end
+  defp build_killmails_with_participants(killmails, participants) do
+    if length(killmails) < @min_activity_threshold do
+      {:error, :insufficient_activity}
+    else
+      killmails_with_participants =
+        Enum.map(killmails, fn km ->
+          km_participants = Enum.filter(participants, &(&1.killmail_id == km.killmail_id))
+          Map.put(km, :participants, km_participants)
+        end)
 
-      {:error, error} ->
-        {:error, error}
+      {:ok, killmails_with_participants}
     end
   end
 

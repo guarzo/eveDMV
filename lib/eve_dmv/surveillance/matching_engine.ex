@@ -834,8 +834,7 @@ defmodule EveDmv.Surveillance.MatchingEngine do
           end)
 
         # Bulk create matches for better performance
-        case Ash.bulk_create(ProfileMatch, match_records,
-               action: :create,
+        case Ash.bulk_create(match_records, ProfileMatch, :create,
                domain: Api,
                return_errors?: true
              ) do
