@@ -653,4 +653,25 @@ defmodule EveDmvWeb.CoreComponents do
   end
 
   def translate_error(msg), do: msg
+
+  # Safe route helpers to prevent nil parameter errors
+  
+  @doc """
+  Creates a safe character intelligence link that handles nil character IDs gracefully.
+  """
+  attr :character_id, :integer, required: true, doc: "Character ID (can be nil)"
+  attr :character_name, :string, required: true, doc: "Character name to display"
+  attr :class, :string, default: "hover:text-blue-400 transition-colors", doc: "CSS classes"
+  
+  def safe_character_link(assigns) do
+    ~H"""
+    <%= if @character_id do %>
+      <.link navigate={~p"/intel/#{@character_id}"} class={@class}>
+        {@character_name}
+      </.link>
+    <% else %>
+      <span class="text-gray-400">{@character_name}</span>
+    <% end %>
+    """
+  end
 end
