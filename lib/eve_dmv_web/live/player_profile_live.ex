@@ -7,9 +7,14 @@ defmodule EveDmvWeb.PlayerProfileLive do
   """
 
   use EveDmvWeb, :live_view
+  
+  require Logger
+  
   alias EveDmv.Api
   alias EveDmv.Analytics.{PlayerStats, AnalyticsEngine}
   alias EveDmv.Intelligence.{CharacterStats, CharacterAnalyzer}
+  alias EveDmv.Eve.EsiClient
+  alias EveDmv.Killmails.HistoricalKillmailFetcher
 
   # Load current user from session on mount
   on_mount {EveDmvWeb.AuthLive, :load_from_session}
@@ -18,18 +23,19 @@ defmodule EveDmvWeb.PlayerProfileLive do
   def mount(%{"character_id" => character_id_str}, _session, socket) do
     case Integer.parse(character_id_str) do
       {character_id, ""} ->
-        # Load player statistics
-        player_stats = load_player_stats(character_id)
-        character_intel = load_character_intel(character_id)
-
         socket =
           socket
           |> assign(:character_id, character_id)
-          |> assign(:player_stats, player_stats)
-          |> assign(:character_intel, character_intel)
-          |> assign(:loading, false)
+          |> assign(:player_stats, nil)
+          |> assign(:character_intel, nil)
+          |> assign(:character_info, nil)
+          |> assign(:loading, true)
           |> assign(:error, nil)
+          |> assign(:no_data, false)
 
+        # Load data asynchronously
+        send(self(), {:load_character_data, character_id})
+        
         {:ok, socket}
 
       _ ->
@@ -42,6 +48,86 @@ defmodule EveDmvWeb.PlayerProfileLive do
     end
   end
 
+  @impl true
+  def handle_info({:load_character_data, character_id}, socket) do
+    # Try to load from our database first
+    player_stats = load_player_stats(character_id)
+    character_intel = load_character_intel(character_id)
+    
+    if player_stats || character_intel do
+      # We have some data in our database
+      {:noreply,
+       socket
+       |> assign(:player_stats, player_stats)
+       |> assign(:character_intel, character_intel)
+       |> assign(:loading, false)}
+    else
+      # No data found, fetch from ESI and historical killmails
+      handle_unknown_character(character_id, socket)
+    end
+  end
+  
+  @impl true
+  def handle_info({:character_esi_loaded, character_info, killmail_count}, socket) do
+    character_id = socket.assigns.character_id
+    
+    if killmail_count > 0 do
+      # We have killmail data, try to analyze
+      case CharacterAnalyzer.analyze_character(character_id) do
+        {:ok, analysis} ->
+          # Create player stats from analysis
+          case create_player_stats_from_analysis(character_id, analysis) do
+            {:ok, player_stats} ->
+              character_intel = load_character_intel(character_id)
+              
+              {:noreply,
+               socket
+               |> assign(:player_stats, player_stats)
+               |> assign(:character_intel, character_intel)
+               |> assign(:character_info, character_info)
+               |> assign(:loading, false)}
+               
+            {:error, _} ->
+              # Show basic info only
+              {:noreply,
+               socket
+               |> assign(:character_info, character_info)
+               |> assign(:no_data, true)
+               |> assign(:loading, false)}
+          end
+          
+        {:error, _} ->
+          # Analysis failed but we have ESI info
+          {:noreply,
+           socket
+           |> assign(:character_info, character_info)
+           |> assign(:no_data, true)
+           |> assign(:loading, false)}
+      end
+    else
+      # No killmail data available
+      {:noreply,
+       socket
+       |> assign(:character_info, character_info)
+       |> assign(:no_data, true)
+       |> assign(:loading, false)}
+    end
+  end
+  
+  @impl true
+  def handle_info({:character_load_failed, reason}, socket) do
+    error_msg = case reason do
+      :character_not_found -> "Character not found in EVE"
+      :esi_unavailable -> "Unable to fetch character information from EVE servers"
+      _ -> "Failed to load character data"
+    end
+    
+    {:noreply,
+     socket
+     |> assign(:loading, false)
+     |> assign(:error, error_msg)}
+  end
+  
   @impl true
   def handle_event("refresh_stats", _params, socket) do
     character_id = socket.assigns.character_id
@@ -106,12 +192,74 @@ defmodule EveDmvWeb.PlayerProfileLive do
     # Analyze the character and create player stats
     case CharacterAnalyzer.analyze_character(character_id) do
       {:ok, analysis} ->
-        # Convert intelligence data to player stats format
-        player_data = convert_intel_to_stats(character_id, analysis)
-        Ash.create(PlayerStats, player_data, domain: Api)
+        create_player_stats_from_analysis(character_id, analysis)
 
       error ->
         error
+    end
+  end
+  
+  defp create_player_stats_from_analysis(character_id, analysis) do
+    # Convert intelligence data to player stats format
+    player_data = convert_intel_to_stats(character_id, analysis)
+    Ash.create(PlayerStats, player_data, domain: Api)
+  end
+  
+  defp handle_unknown_character(character_id, socket) do
+    parent_pid = self()
+    
+    Task.start(fn ->
+      # Fetch character info from ESI
+      with {:ok, character_info} <- EsiClient.get_character(character_id),
+           {:ok, corp_info} <- fetch_corporation_info(character_info.corporation_id),
+           {:ok, alliance_info} <- fetch_alliance_info(character_info.alliance_id) do
+        
+        # Enrich character info
+        enriched_info = character_info
+          |> Map.put(:corporation_name, corp_info.name)
+          |> Map.put(:corporation_ticker, corp_info.ticker)
+          |> Map.put(:alliance_name, alliance_info[:name])
+          |> Map.put(:alliance_ticker, alliance_info[:ticker])
+        
+        # Fetch historical killmails
+        Logger.info("Fetching historical killmails for character #{character_id}")
+        
+        case HistoricalKillmailFetcher.fetch_character_history(character_id) do
+          {:ok, killmail_count} ->
+            Logger.info("Fetched #{killmail_count} historical killmails for character #{character_id}")
+            send(parent_pid, {:character_esi_loaded, enriched_info, killmail_count})
+            
+          {:error, reason} ->
+            Logger.warning("Failed to fetch historical killmails: #{inspect(reason)}")
+            # Still show character info even if killmail fetch fails
+            send(parent_pid, {:character_esi_loaded, enriched_info, 0})
+        end
+      else
+        {:error, :not_found} ->
+          send(parent_pid, {:character_load_failed, :character_not_found})
+          
+        {:error, _reason} ->
+          send(parent_pid, {:character_load_failed, :esi_unavailable})
+      end
+    end)
+    
+    # Keep loading state
+    {:noreply, socket}
+  end
+  
+  defp fetch_corporation_info(nil), do: {:ok, %{name: nil, ticker: nil}}
+  defp fetch_corporation_info(corp_id) do
+    case EsiClient.get_corporation(corp_id) do
+      {:ok, corp} -> {:ok, corp}
+      _ -> {:ok, %{name: "Unknown Corporation", ticker: "???"}}
+    end
+  end
+  
+  defp fetch_alliance_info(nil), do: {:ok, %{name: nil, ticker: nil}}
+  defp fetch_alliance_info(alliance_id) do
+    case EsiClient.get_alliance(alliance_id) do
+      {:ok, alliance} -> {:ok, alliance}
+      _ -> {:ok, %{name: "Unknown Alliance", ticker: "???"}}
     end
   end
 
