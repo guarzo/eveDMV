@@ -1,0 +1,499 @@
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <%= if @loading do %>
+    <div class="flex items-center justify-center h-64">
+      <div class="text-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4">
+        </div>
+        <p class="text-gray-500">Analyzing character intelligence...</p>
+      </div>
+    </div>
+  <% else %>
+    <%= if @error do %>
+      <div class="bg-red-900/20 border border-red-500 rounded-lg p-4 mb-6">
+        <p class="text-red-400">{@error}</p>
+      </div>
+    <% else %>
+      <!-- Character Header -->
+      <div class="bg-gray-800 rounded-lg p-6 mb-6">
+        <div class="flex items-start justify-between">
+          <div>
+            <h1 class="text-3xl font-bold text-white mb-2">
+              {@stats.character_name}
+            </h1>
+            <div class="text-gray-400">
+              <span class="text-white">{@stats.corporation_name || "Unknown Corp"}</span>
+              <%= if @stats.alliance_name do %>
+                <span class="mx-2">|</span>
+                <span class="text-white">{@stats.alliance_name}</span>
+              <% end %>
+            </div>
+            
+<!-- Quick Stats -->
+            <div class="mt-4 flex flex-wrap gap-6">
+              <div>
+                <span class="text-gray-500 text-sm">Danger Rating</span>
+                <div class={"text-2xl font-bold #{danger_color(@stats.dangerous_rating)}"}>
+                  {String.duplicate("★", @stats.dangerous_rating)}{String.duplicate(
+                    "☆",
+                    5 - @stats.dangerous_rating
+                  )}
+                </div>
+              </div>
+              <div>
+                <span class="text-gray-500 text-sm">K/D Ratio</span>
+                <div class="text-2xl font-bold text-white">{@stats.kill_death_ratio}</div>
+              </div>
+              <div>
+                <span class="text-gray-500 text-sm">ISK Efficiency</span>
+                <div class="text-2xl font-bold text-white">{@stats.isk_efficiency}%</div>
+              </div>
+              <div>
+                <span class="text-gray-500 text-sm">Total Kills</span>
+                <div class="text-2xl font-bold text-white">{@stats.total_kills}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="text-right">
+            <button phx-click="refresh" class="btn btn-primary mb-2">
+              🔄 Refresh Intel
+            </button>
+            <div class="text-xs text-gray-500">
+              Last updated: {Calendar.strftime(
+                @stats.last_calculated_at || DateTime.utc_now(),
+                "%Y-%m-%d %H:%M"
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+      
+<!-- Navigation Tabs -->
+      <div class="border-b border-gray-700 mb-6">
+        <nav class="-mb-px flex space-x-8">
+          <button
+            phx-click="change_tab"
+            phx-value-tab="overview"
+            class={[
+              "whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm",
+              if(@tab == :overview,
+                do: "border-blue-500 text-blue-500",
+                else: "border-transparent text-gray-400 hover:text-gray-300"
+              )
+            ]}
+          >
+            Overview
+          </button>
+          <button
+            phx-click="change_tab"
+            phx-value-tab="ships"
+            class={[
+              "whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm",
+              if(@tab == :ships,
+                do: "border-blue-500 text-blue-500",
+                else: "border-transparent text-gray-400 hover:text-gray-300"
+              )
+            ]}
+          >
+            Ships & Fits
+          </button>
+          <button
+            phx-click="change_tab"
+            phx-value-tab="associates"
+            class={[
+              "whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm",
+              if(@tab == :associates,
+                do: "border-blue-500 text-blue-500",
+                else: "border-transparent text-gray-400 hover:text-gray-300"
+              )
+            ]}
+          >
+            Associates
+          </button>
+          <button
+            phx-click="change_tab"
+            phx-value-tab="geography"
+            class={[
+              "whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm",
+              if(@tab == :geography,
+                do: "border-blue-500 text-blue-500",
+                else: "border-transparent text-gray-400 hover:text-gray-300"
+              )
+            ]}
+          >
+            Geography
+          </button>
+          <button
+            phx-click="change_tab"
+            phx-value-tab="weaknesses"
+            class={[
+              "whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm",
+              if(@tab == :weaknesses,
+                do: "border-blue-500 text-blue-500",
+                else: "border-transparent text-gray-400 hover:text-gray-300"
+              )
+            ]}
+          >
+            Weaknesses
+          </button>
+        </nav>
+      </div>
+      
+<!-- Tab Content -->
+      <div class="space-y-6">
+        <%= case @tab do %>
+          <% :overview -> %>
+            <!-- Overview Tab -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <!-- Activity Pattern -->
+              <div class="bg-gray-800 rounded-lg p-6">
+                <h3 class="text-lg font-semibold mb-4">Activity Pattern</h3>
+                <dl class="space-y-3">
+                  <div class="flex justify-between">
+                    <dt class="text-gray-400">Prime Time</dt>
+                    <dd class="text-white font-medium">{@stats.prime_timezone || "Unknown"}</dd>
+                  </div>
+                  <div class="flex justify-between">
+                    <dt class="text-gray-400">Home System</dt>
+                    <dd class="text-white font-medium">{@stats.home_system_name || "Unknown"}</dd>
+                  </div>
+                  <div class="flex justify-between">
+                    <dt class="text-gray-400">Average Gang Size</dt>
+                    <% {label, color} = gang_size_label(@stats.avg_gang_size) %>
+                    <dd class={"font-medium #{color}"}>{@stats.avg_gang_size} ({label})</dd>
+                  </div>
+                  <div class="flex justify-between">
+                    <dt class="text-gray-400">Solo Rate</dt>
+                    <dd class="text-white font-medium">
+                      {if @stats.total_kills > 0,
+                        do: "#{round(@stats.solo_kills / @stats.total_kills * 100)}%",
+                        else: "0%"}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+              
+<!-- Engagement Profile -->
+              <div class="bg-gray-800 rounded-lg p-6">
+                <h3 class="text-lg font-semibold mb-4">Engagement Profile</h3>
+                <dl class="space-y-3">
+                  <div class="flex justify-between">
+                    <dt class="text-gray-400">Aggression Index</dt>
+                    <dd class="text-white font-medium">{@stats.aggression_index}/10</dd>
+                  </div>
+                  <div class="flex justify-between">
+                    <dt class="text-gray-400">Uses Cynos</dt>
+                    <dd class={"font-medium #{if @stats.uses_cynos, do: "text-red-400", else: "text-green-400"}"}>
+                      {if @stats.uses_cynos, do: "Yes ⚠️", else: "No"}
+                    </dd>
+                  </div>
+                  <div class="flex justify-between">
+                    <dt class="text-gray-400">Has Logi Support</dt>
+                    <dd class={"font-medium #{if @stats.has_logi_support, do: "text-yellow-400", else: "text-gray-400"}"}>
+                      {if @stats.has_logi_support, do: "Yes", else: "No"}
+                    </dd>
+                  </div>
+                  <div class="flex justify-between">
+                    <dt class="text-gray-400">Batphone Risk</dt>
+                    <dd class={[
+                      "font-medium",
+                      case @stats.batphone_probability do
+                        "high" -> "text-red-400"
+                        "medium" -> "text-yellow-400"
+                        _ -> "text-green-400"
+                      end
+                    ]}>
+                      {String.capitalize(@stats.batphone_probability || "low")}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+            
+<!-- Quick Decision Matrix -->
+            <div class="bg-gray-800 rounded-lg p-6">
+              <h3 class="text-lg font-semibold mb-4">Hunter's Quick Decision</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h4 class="text-green-400 font-medium mb-2">✓ Engage If:</h4>
+                  <ul class="space-y-1 text-sm text-gray-300">
+                    <%= if "weak_to_neuts" in (@stats.identified_weaknesses["technical"] || []) do %>
+                      <li>• You have neut pressure</li>
+                    <% end %>
+                    <li>• Outside prime time ({@stats.prime_timezone || "Unknown"})</li>
+                    <li>• Away from home system</li>
+                    <%= if @stats.avg_gang_size <= 3 do %>
+                      <li>• You have similar numbers</li>
+                    <% end %>
+                  </ul>
+                </div>
+                <div>
+                  <h4 class="text-red-400 font-medium mb-2">✗ Avoid If:</h4>
+                  <ul class="space-y-1 text-sm text-gray-300">
+                    <%= if @stats.uses_cynos do %>
+                      <li>• Cyno ship in system</li>
+                    <% end %>
+                    <%= if @stats.has_logi_support do %>
+                      <li>• Known logi alts nearby</li>
+                    <% end %>
+                    <%= if @stats.dangerous_rating >= 4 do %>
+                      <li>• You're outclassed in ship/skills</li>
+                    <% end %>
+                    <li>• Multiple blues in local</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          <% :ships -> %>
+            <!-- Ships Tab -->
+            <div class="bg-gray-800 rounded-lg overflow-hidden">
+              <table class="min-w-full divide-y divide-gray-700">
+                <thead>
+                  <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Ship
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Times Used
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Success Rate
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Avg Gang
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      K/L
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-700">
+                  <%= for {_type_id, ship} <- @stats.ship_usage |> Enum.sort_by(fn {_, s} -> -s["times_used"] end) do %>
+                    <tr>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
+                        {ship["ship_name"]}
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                        {ship["times_used"]}
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <span class={ship_success_color(ship["success_rate"])}>
+                          {round(ship["success_rate"] * 100)}%
+                        </span>
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                        {ship["avg_gang_size"]}
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                        {ship["kills"]}/{ship["losses"]}
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          <% :associates -> %>
+            <!-- Associates Tab -->
+            <div class="bg-gray-800 rounded-lg overflow-hidden">
+              <table class="min-w-full divide-y divide-gray-700">
+                <thead>
+                  <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Pilot
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Corporation
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Times Together
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Ships They Fly
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-700">
+                  <%= for {char_id, associate} <- @stats.frequent_associates |> Enum.sort_by(fn {_, a} -> -a["times_together"] end) |> Enum.take(20) do %>
+                    <tr>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <.link
+                          navigate={~p"/intel/#{char_id}"}
+                          class="text-blue-400 hover:text-blue-300"
+                        >
+                          {associate["name"]}
+                        </.link>
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                        {NameResolver.corporation_name(associate["corp_id"])}
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                        {associate["times_together"]}
+                        <%= if associate["name"] =~ ~r/logi|guardian|deacon|scimi/i do %>
+                          <span class="text-yellow-400 ml-2">⚕️</span>
+                        <% end %>
+                      </td>
+                      <td class="px-6 py-4 text-sm text-gray-300">
+                        {Enum.join(associate["ships_flown"] || [], ", ")}
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          <% :geography -> %>
+            <!-- Geography Tab -->
+            <div class="bg-gray-800 rounded-lg overflow-hidden">
+              <table class="min-w-full divide-y divide-gray-700">
+                <thead>
+                  <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      System
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Security
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Activity
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Kills
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Losses
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Last Seen
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-700">
+                  <%= for {_system_id, system} <- @stats.active_systems |> Enum.sort_by(fn {_, s} -> -s["total_activity"] end) do %>
+                    <tr>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
+                        {system["system_name"]}
+                        <%= if system["system_name"] == @stats.home_system_name do %>
+                          <span class="text-blue-400 ml-2">🏠</span>
+                        <% end %>
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <span class={security_color(system["security_class"])}>
+                          {Float.round(system["security"], 1)}
+                        </span>
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                          <div class="flex-1 bg-gray-700 rounded-full h-2 max-w-[100px]">
+                            <div
+                              class="bg-blue-500 h-2 rounded-full"
+                              style={"width: #{min(100, system["total_activity"] * 2)}%"}
+                            >
+                            </div>
+                          </div>
+                          <span class="ml-2 text-sm text-gray-400">
+                            {system["total_activity"]}
+                          </span>
+                        </div>
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-green-400">
+                        {system["kills"]}
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-red-400">
+                        {system["losses"]}
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        {Calendar.strftime(system["last_seen"], "%m-%d %H:%M")}
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          <% :weaknesses -> %>
+            <!-- Weaknesses Tab -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <!-- Behavioral Weaknesses -->
+              <div class="bg-gray-800 rounded-lg p-6">
+                <h3 class="text-lg font-semibold mb-4 text-red-400">Behavioral Weaknesses</h3>
+                <%= if length(@stats.identified_weaknesses["behavioral"] || []) > 0 do %>
+                  <ul class="space-y-3">
+                    <%= for weakness <- @stats.identified_weaknesses["behavioral"] || [] do %>
+                      <li class="flex items-start">
+                        <span class="text-2xl mr-3">{weakness_icon(weakness)}</span>
+                        <div>
+                          <div class="font-medium text-white">{weakness_label(weakness)}</div>
+                          <div class="text-sm text-gray-400">
+                            <%= case weakness do %>
+                              <% "predictable_schedule" -> %>
+                                Most active during {@stats.prime_timezone}
+                              <% "overconfident" -> %>
+                                Takes fights when outnumbered
+                              <% _ -> %>
+                                Identified pattern in recent losses
+                            <% end %>
+                          </div>
+                        </div>
+                      </li>
+                    <% end %>
+                  </ul>
+                <% else %>
+                  <p class="text-gray-500">No behavioral weaknesses identified</p>
+                <% end %>
+              </div>
+              
+<!-- Technical Weaknesses -->
+              <div class="bg-gray-800 rounded-lg p-6">
+                <h3 class="text-lg font-semibold mb-4 text-red-400">Technical Weaknesses</h3>
+                <%= if length(@stats.identified_weaknesses["technical"] || []) > 0 do %>
+                  <ul class="space-y-3">
+                    <%= for weakness <- @stats.identified_weaknesses["technical"] || [] do %>
+                      <li class="flex items-start">
+                        <span class="text-2xl mr-3">{weakness_icon(weakness)}</span>
+                        <div>
+                          <div class="font-medium text-white">{weakness_label(weakness)}</div>
+                          <div class="text-sm text-gray-400">
+                            <%= case weakness do %>
+                              <% "weak_to_neuts" -> %>
+                                Dies to capacitor warfare
+                              <% _ -> %>
+                                Vulnerability identified from losses
+                            <% end %>
+                          </div>
+                        </div>
+                      </li>
+                    <% end %>
+                  </ul>
+                <% else %>
+                  <p class="text-gray-500">No technical weaknesses identified</p>
+                <% end %>
+              </div>
+              
+<!-- Recent Losses -->
+              <div class="bg-gray-800 rounded-lg p-6 lg:col-span-2">
+                <h3 class="text-lg font-semibold mb-4">Recent Losses</h3>
+                <%= if length(@stats.identified_weaknesses["loss_patterns"] || []) > 0 do %>
+                  <div class="space-y-2">
+                    <%= for loss <- @stats.identified_weaknesses["loss_patterns"] || [] do %>
+                      <div class="flex items-center justify-between text-sm">
+                        <div class="flex items-center space-x-4">
+                          <span class="text-red-400">{loss["ship"]}</span>
+                          <span class="text-gray-500">{loss["system"]}</span>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                          <span class="text-red-400">{format_isk(loss["value"])}</span>
+                          <span class="text-gray-500">
+                            {Calendar.strftime(loss["date"], "%Y-%m-%d")}
+                          </span>
+                        </div>
+                      </div>
+                    <% end %>
+                  </div>
+                <% else %>
+                  <p class="text-gray-500">No recent losses to analyze</p>
+                <% end %>
+              </div>
+            </div>
+        <% end %>
+      </div>
+    <% end %>
+  <% end %>
+</div>

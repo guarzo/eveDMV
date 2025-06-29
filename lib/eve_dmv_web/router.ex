@@ -29,6 +29,7 @@ defmodule EveDmvWeb.Router do
     live "/dashboard", DashboardLive
     live "/profile", ProfileLive
     live "/login", AuthLive.SignIn
+    live "/intel/:character_id", CharacterIntelLive
   end
 
   # Authentication routes

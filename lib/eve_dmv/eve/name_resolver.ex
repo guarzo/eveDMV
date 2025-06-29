@@ -8,7 +8,7 @@ defmodule EveDmv.Eve.NameResolver do
 
   require Logger
 
-  alias EveDmv.Eve.{ItemType, SolarSystem}
+  alias EveDmv.Eve.{EsiClient, ItemType, SolarSystem}
 
   # ETS table for caching lookups
   @table_name :eve_name_cache
@@ -124,6 +124,81 @@ defmodule EveDmv.Eve.NameResolver do
   end
 
   @doc """
+  Resolves a character ID to a character name using ESI.
+
+  ## Examples
+
+      iex> NameResolver.character_name(95465499)
+      "CCP Falcon"
+      
+      iex> NameResolver.character_name(999999999)
+      "Unknown Character (999999999)"
+  """
+  @spec character_name(integer()) :: String.t()
+  def character_name(character_id) when is_integer(character_id) do
+    case get_cached_or_fetch(:character, character_id) do
+      {:ok, name} -> name
+      {:error, _} -> "Unknown Character (#{character_id})"
+    end
+  end
+
+  @doc """
+  Resolves a corporation ID to a corporation name using ESI.
+
+  ## Examples
+
+      iex> NameResolver.corporation_name(98388312)
+      "CCP Games"
+      
+      iex> NameResolver.corporation_name(999999999)
+      "Unknown Corporation (999999999)"
+  """
+  @spec corporation_name(integer()) :: String.t()
+  def corporation_name(corporation_id) when is_integer(corporation_id) do
+    case get_cached_or_fetch(:corporation, corporation_id) do
+      {:ok, name} -> name
+      {:error, _} -> "Unknown Corporation (#{corporation_id})"
+    end
+  end
+
+  @doc """
+  Resolves an alliance ID to an alliance name using ESI.
+
+  ## Examples
+
+      iex> NameResolver.alliance_name(99005338)
+      "Pandemic Horde"
+      
+      iex> NameResolver.alliance_name(999999999)
+      "Unknown Alliance (999999999)"
+  """
+  @spec alliance_name(integer() | nil) :: String.t() | nil
+  def alliance_name(nil), do: nil
+
+  def alliance_name(alliance_id) when is_integer(alliance_id) do
+    case get_cached_or_fetch(:alliance, alliance_id) do
+      {:ok, name} -> name
+      {:error, _} -> "Unknown Alliance (#{alliance_id})"
+    end
+  end
+
+  @doc """
+  Resolves multiple character IDs to names efficiently.
+  """
+  @spec character_names(list(integer())) :: map()
+  def character_names(character_ids) when is_list(character_ids) do
+    batch_resolve(:character, character_ids, &character_name/1)
+  end
+
+  @doc """
+  Resolves multiple corporation IDs to names efficiently.
+  """
+  @spec corporation_names(list(integer())) :: map()
+  def corporation_names(corporation_ids) when is_list(corporation_ids) do
+    batch_resolve(:corporation, corporation_ids, &corporation_name/1)
+  end
+
+  @doc """
   Gets the security class and color for a solar system.
 
   ## Examples
@@ -153,7 +228,11 @@ defmodule EveDmv.Eve.NameResolver do
         %{
           class: security_class,
           color: color,
-          status: system.security_status || 0.0
+          status:
+            case system.security_status do
+              %Decimal{} = decimal -> Decimal.to_float(decimal)
+              value -> value || 0.0
+            end
         }
 
       {:error, _} ->
@@ -193,6 +272,23 @@ defmodule EveDmv.Eve.NameResolver do
     # Jita, Amarr, Dodixie, Rens
     trade_hubs = [30_000_142, 30_002_187, 30_002_659, 30_002_510]
     system_names(trade_hubs)
+
+    # Pre-load well-known NPCs and corporations
+    # CCP, CONCORD, major NPC corps
+    npc_corps = [
+      # Caldari Business Tribunal
+      1_000_001,
+      # Garoun Investment Bank
+      1_000_002,
+      # Amarr Trade Registry
+      1_000_003,
+      # Core Complexion Inc.
+      1_000_004,
+      # CONCORD
+      1_000_125
+    ]
+
+    corporation_names(npc_corps)
 
     Logger.info("Cache warming complete")
     :ok
@@ -267,6 +363,39 @@ defmodule EveDmv.Eve.NameResolver do
     error ->
       Logger.warning("Failed to fetch solar system #{system_id}: #{inspect(error)}")
       {:error, :database_error}
+  end
+
+  defp fetch_from_database(:character, character_id) do
+    case EsiClient.get_character(character_id) do
+      {:ok, character} -> {:ok, character.name}
+      {:error, _} -> {:error, :not_found}
+    end
+  rescue
+    error ->
+      Logger.warning("Failed to fetch character #{character_id} from ESI: #{inspect(error)}")
+      {:error, :esi_error}
+  end
+
+  defp fetch_from_database(:corporation, corporation_id) do
+    case EsiClient.get_corporation(corporation_id) do
+      {:ok, corporation} -> {:ok, corporation.name}
+      {:error, _} -> {:error, :not_found}
+    end
+  rescue
+    error ->
+      Logger.warning("Failed to fetch corporation #{corporation_id} from ESI: #{inspect(error)}")
+      {:error, :esi_error}
+  end
+
+  defp fetch_from_database(:alliance, alliance_id) do
+    case EsiClient.get_alliance(alliance_id) do
+      {:ok, alliance} -> {:ok, alliance.name}
+      {:error, _} -> {:error, :not_found}
+    end
+  rescue
+    error ->
+      Logger.warning("Failed to fetch alliance #{alliance_id} from ESI: #{inspect(error)}")
+      {:error, :esi_error}
   end
 
   defp batch_resolve(type, ids, fallback_fn) do

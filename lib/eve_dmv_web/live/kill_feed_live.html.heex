@@ -111,7 +111,12 @@
                     <div>
                       <div class="flex items-center space-x-2">
                         <h3 class="font-semibold text-gray-200">
-                          {killmail.victim_character_name}
+                          <.link
+                            navigate={~p"/intel/#{killmail.victim_character_id}"}
+                            class="hover:text-blue-400 transition-colors"
+                          >
+                            {killmail.victim_character_name}
+                          </.link>
                         </h3>
                         <%= if killmail.is_expensive do %>
                           <span class="px-2 py-1 bg-yellow-600 text-yellow-200 text-xs rounded-full">
@@ -129,7 +134,14 @@
 
                       <div class="text-sm text-gray-500 mt-1">
                         Lost {killmail.victim_ship_name} in
-                        <span class="text-orange-400">{killmail.solar_system_name}</span>
+                        <span class={killmail.security_color || "text-orange-400"}>
+                          {killmail.solar_system_name}
+                        </span>
+                        <%= if killmail.security_status do %>
+                          <span class="text-gray-400 text-xs">
+                            ({Float.round(killmail.security_status, 1)})
+                          </span>
+                        <% end %>
                       </div>
                     </div>
                   </div>
@@ -148,7 +160,13 @@
                   </div>
                   <%= if killmail.final_blow_character_name do %>
                     <div class="text-xs text-blue-400">
-                      FB: {killmail.final_blow_character_name}
+                      FB:
+                      <.link
+                        navigate={~p"/intel/#{killmail.final_blow_character_id}"}
+                        class="hover:text-blue-300 transition-colors"
+                      >
+                        {killmail.final_blow_character_name}
+                      </.link>
                     </div>
                   <% end %>
                 </div>

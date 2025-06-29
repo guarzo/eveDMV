@@ -91,7 +91,21 @@ defmodule EveDmv.Killmails.KillmailPipeline do
 
     # The wanderer-kills data has victim directly in the main structure, not participants
     victim_name = enriched["victim"]["character_name"] || "Unknown Pilot"
-    system_name = enriched["solar_system_name"] || "Unknown System"
+
+    # Use name resolution for system name in logs too
+    system_id = enriched["solar_system_id"] || enriched["system_id"]
+
+    system_name =
+      case enriched["solar_system_name"] do
+        name when name in [nil, "", "Unknown System"] and not is_nil(system_id) ->
+          EveDmv.Eve.NameResolver.system_name(system_id)
+
+        name when not is_nil(name) ->
+          name
+
+        _ ->
+          "Unknown System"
+      end
 
     Logger.info("⚔️  Processing killmail #{killmail_id}: #{victim_name} in #{system_name}")
 
@@ -181,41 +195,76 @@ defmodule EveDmv.Killmails.KillmailPipeline do
   end
 
   defp build_enriched_changeset(enriched) do
+    price_values = calculate_price_values(enriched)
+    victim_data = extract_victim_data(enriched)
+    system_data = extract_system_data(enriched)
+
+    Map.merge(
+      victim_data,
+      Map.merge(system_data, %{
+        killmail_id: enriched["killmail_id"],
+        killmail_time: parse_timestamp(enriched["timestamp"] || enriched["kill_time"]),
+        total_value: price_values.total_value,
+        ship_value: price_values.ship_value,
+        destroyed_value: price_values.destroyed_value,
+        dropped_value: price_values.dropped_value,
+        fitted_value:
+          parse_decimal(get_in(enriched, ["zkb", "fittedValue"]) || enriched["fitted_value"]),
+        attacker_count: count_attackers(enriched),
+        final_blow_character_id: get_final_blow_character_id(enriched),
+        final_blow_character_name: get_final_blow_character_name(enriched),
+        kill_category: determine_kill_category(enriched),
+        victim_ship_category: determine_ship_category(enriched),
+        module_tags: enriched["module_tags"] || [],
+        noteworthy_modules: enriched["noteworthy_modules"] || [],
+        price_data_source: price_values.price_data_source
+      })
+    )
+  end
+
+  defp calculate_price_values(enriched) do
+    price_result = EveDmv.Market.PriceService.calculate_killmail_value(enriched)
+
     %{
-      killmail_id: enriched["killmail_id"],
-      killmail_time: parse_timestamp(enriched["timestamp"] || enriched["kill_time"]),
+      total_value: parse_decimal(price_result.total_value),
+      ship_value: parse_decimal(price_result.ship_value),
+      destroyed_value: parse_decimal(price_result.destroyed_value),
+      dropped_value: parse_decimal(price_result.dropped_value),
+      price_data_source: Atom.to_string(price_result.price_source)
+    }
+  end
+
+  defp extract_victim_data(enriched) do
+    %{
       victim_character_id: get_victim_character_id(enriched),
       victim_character_name: get_victim_character_name(enriched),
       victim_corporation_id: get_victim_corporation_id(enriched),
       victim_corporation_name: get_victim_corporation_name(enriched),
       victim_alliance_id: get_victim_alliance_id(enriched),
       victim_alliance_name: get_victim_alliance_name(enriched),
-      solar_system_id: enriched["solar_system_id"] || enriched["system_id"],
-      solar_system_name: enriched["solar_system_name"] || "Unknown System",
       victim_ship_type_id:
         get_in(enriched, ["ship", "type_id"]) || get_victim_ship_type_id(enriched),
-      victim_ship_name: get_in(enriched, ["ship", "name"]) || get_victim_ship_name(enriched),
-      total_value:
-        parse_decimal(get_in(enriched, ["zkb", "totalValue"]) || enriched["total_value"]),
-      ship_value:
-        parse_decimal(get_in(enriched, ["zkb", "destroyedValue"]) || enriched["ship_value"]),
-      fitted_value:
-        parse_decimal(get_in(enriched, ["zkb", "fittedValue"]) || enriched["fitted_value"]),
-      attacker_count: count_attackers(enriched),
-      final_blow_character_id: get_final_blow_character_id(enriched),
-      final_blow_character_name: get_final_blow_character_name(enriched),
-      kill_category: determine_kill_category(enriched),
-      victim_ship_category: determine_ship_category(enriched),
-      module_tags: enriched["module_tags"] || [],
-      noteworthy_modules: enriched["noteworthy_modules"] || [],
-      price_data_source: enriched["price_data_source"] || "wanderer-kills"
+      victim_ship_name: get_in(enriched, ["ship", "name"]) || get_victim_ship_name(enriched)
+    }
+  end
+
+  defp extract_system_data(enriched) do
+    %{
+      solar_system_id: enriched["solar_system_id"] || enriched["system_id"],
+      solar_system_name: enriched["solar_system_name"] || "Unknown System"
     }
   end
 
   defp build_participants(enriched) do
     # Wanderer-kills has separate victim and attackers structures
     victim = enriched["victim"] || %{}
-    attackers = enriched["attackers"] || []
+
+    attackers =
+      case enriched["attackers"] do
+        nil -> []
+        attackers when is_list(attackers) -> attackers
+        _ -> []
+      end
 
     # Build victim participant
     victim_participant = %{

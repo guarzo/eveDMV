@@ -85,7 +85,9 @@
       "Bash(PIPELINE_ENABLED=true LOG_LEVEL=debug timeout 10s mix phx.server 2 >& 1)",
       "Bash(PIPELINE_ENABLED=true LOG_LEVEL=debug timeout 10s mix phx.server 2>&1)",
       "Bash(PHX_PORT=4010 PIPELINE_ENABLED=true LOG_LEVEL=debug timeout 10s mix phx.server)",
-      "Bash(iex:*)"
+      "Bash(iex:*)",
+      "mcp__ide__executeCode",
+      "Bash(mkdir:*)"
     ],
     "deny": []
   }

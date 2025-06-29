@@ -617,10 +617,21 @@ defmodule EveDmv.Eve.StaticDataLoader do
   defp parse_float(value) when is_binary(value) and value != "" do
     case Float.parse(value) do
       {float, ""} ->
-        # Cap extremely large values to avoid database overflow
-        # (precision 15, scale 4 means max value ~10^11)
-        max_value = 99_999_999_999.0
-        min(float, max_value)
+        # Cap extremely large coordinate values to avoid database overflow
+        # For coordinates: precision 25, scale 2 means max value ~10^23
+        # For other values: precision 15, scale 4 means max value ~10^11
+        cond do
+          abs(float) > 1.0e22 ->
+            # Cap coordinate values
+            if float > 0, do: 1.0e22, else: -1.0e22
+
+          abs(float) > 99_999_999_999.0 ->
+            # Cap other numeric values
+            if float > 0, do: 99_999_999_999.0, else: -99_999_999_999.0
+
+          true ->
+            float
+        end
 
       _ ->
         0.0

@@ -10,6 +10,13 @@ defmodule EveDmv.Application do
     # Initialize EVE name resolver cache early
     :ok = EveDmv.Eve.NameResolver.start_cache()
 
+    # Load static data if not already present (in background to not block startup)
+    Task.start(fn ->
+      # Wait a bit for the app to fully start
+      Process.sleep(5000)
+      ensure_static_data_loaded()
+    end)
+
     children = [
       EveDmvWeb.Telemetry,
       EveDmv.Repo,
@@ -17,6 +24,10 @@ defmodule EveDmv.Application do
       {Phoenix.PubSub, name: EveDmv.PubSub},
       # Start the Finch HTTP client for sending emails
       {Finch, name: EveDmv.Finch},
+      # Start the price cache
+      EveDmv.Market.PriceCache,
+      # Start the ESI cache
+      EveDmv.Eve.EsiCache,
       # Start mock SSE server in development
       maybe_start_mock_sse_server(),
       # Start the killmail ingestion pipeline
@@ -67,5 +78,33 @@ defmodule EveDmv.Application do
   def config_change(changed, _new, removed) do
     EveDmvWeb.Endpoint.config_change(changed, removed)
     :ok
+  end
+
+  # Ensure static data is loaded, but don't block application startup
+  defp ensure_static_data_loaded do
+    alias EveDmv.Eve.StaticDataLoader
+    require Logger
+
+    case StaticDataLoader.static_data_loaded?() do
+      %{item_types: true, solar_systems: true} ->
+        Logger.info("Static data already loaded")
+
+      _ ->
+        Logger.info("Static data not found, loading EVE static data in background...")
+
+        case StaticDataLoader.load_all_static_data() do
+          {:ok, %{item_types: item_count, solar_systems: system_count}} ->
+            Logger.info(
+              "Successfully loaded #{item_count} item types and #{system_count} solar systems"
+            )
+
+            # Warm the cache after loading
+            EveDmv.Eve.NameResolver.warm_cache()
+            Logger.info("Name resolver cache warmed")
+
+          {:error, reason} ->
+            Logger.error("Failed to load static data: #{inspect(reason)}")
+        end
+    end
   end
 end

@@ -193,11 +193,11 @@ defmodule EveDmv.Killmails.Participant do
       description("Ship type information")
     end
 
-    # belongs_to :weapon_type, EveDmv.Eve.ItemType do
-    #   source_attribute(:weapon_type_id)
-    #   destination_attribute(:type_id)
-    #   description("Weapon type information")
-    # end
+    belongs_to :weapon_type, EveDmv.Eve.ItemType do
+      source_attribute(:weapon_type_id)
+      destination_attribute(:type_id)
+      description("Weapon type information")
+    end
   end
 
   # Actions

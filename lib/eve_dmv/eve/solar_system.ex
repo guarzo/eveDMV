@@ -84,7 +84,7 @@ defmodule EveDmv.Eve.SolarSystem do
     # Security information
     attribute :security_status, :decimal do
       allow_nil?(true)
-      constraints(precision: 10, scale: 6)
+      constraints(precision: 15, scale: 10)
       description("Security status (-1.0 to 1.0)")
     end
 
@@ -97,19 +97,19 @@ defmodule EveDmv.Eve.SolarSystem do
     # Physical properties
     attribute :x, :decimal do
       allow_nil?(true)
-      constraints(precision: 20, scale: 6)
+      constraints(precision: 25, scale: 2)
       description("X coordinate in universe")
     end
 
     attribute :y, :decimal do
       allow_nil?(true)
-      constraints(precision: 20, scale: 6)
+      constraints(precision: 25, scale: 2)
       description("Y coordinate in universe")
     end
 
     attribute :z, :decimal do
       allow_nil?(true)
-      constraints(precision: 20, scale: 6)
+      constraints(precision: 25, scale: 2)
       description("Z coordinate in universe")
     end
 

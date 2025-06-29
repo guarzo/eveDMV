@@ -32,6 +32,25 @@ if config_env() == :dev do
       System.get_env("WANDERER_KILLS_BASE_URL", "http://host.docker.internal:4004"),
     pipeline_enabled: System.get_env("PIPELINE_ENABLED", "true") == "true",
     mock_sse_server_enabled: System.get_env("MOCK_SSE_SERVER_ENABLED", "false") == "true"
+
+  # Janice API configuration
+  config :eve_dmv, :janice,
+    api_key: System.get_env("JANICE_API_KEY"),
+    base_url: System.get_env("JANICE_BASE_URL", "https://janice.e-351.com/api")
+
+  # Mutamarket API configuration
+  config :eve_dmv, :mutamarket,
+    api_key: System.get_env("MUTAMARKET_API_KEY"),
+    base_url: System.get_env("MUTAMARKET_BASE_URL", "https://mutamarket.com/api/v1")
+
+  # ESI API configuration
+  config :eve_dmv, :esi,
+    client_id: System.get_env("EVE_SSO_CLIENT_ID"),
+    base_url: System.get_env("ESI_BASE_URL", "https://esi.evetech.net")
+
+  # Price cache configuration
+  config :eve_dmv,
+    price_cache_ttl_hours: String.to_integer(System.get_env("PRICE_CACHE_TTL_HOURS", "24"))
 end
 
 # Test environment specific configuration
@@ -39,6 +58,11 @@ if config_env() == :test do
   config :eve_dmv,
     pipeline_enabled: false,
     mock_sse_server_enabled: false
+
+  # Ensure test database uses sandbox pool regardless of DATABASE_URL
+  config :eve_dmv, EveDmv.Repo,
+    pool: Ecto.Adapters.SQL.Sandbox,
+    pool_size: System.schedulers_online() * 2
 end
 
 # config/runtime.exs is executed for all environments, including
@@ -90,6 +114,30 @@ if config_env() == :prod do
       port: port
     ],
     secret_key_base: secret_key_base
+
+  # Production configuration for external services
+  config :eve_dmv,
+    wanderer_kills_sse_url: System.get_env("WANDERER_KILLS_SSE_URL"),
+    pipeline_enabled: System.get_env("PIPELINE_ENABLED", "true") == "true"
+
+  # Janice API configuration
+  config :eve_dmv, :janice,
+    api_key: System.get_env("JANICE_API_KEY"),
+    base_url: System.get_env("JANICE_BASE_URL", "https://janice.e-351.com/api")
+
+  # Mutamarket API configuration
+  config :eve_dmv, :mutamarket,
+    api_key: System.get_env("MUTAMARKET_API_KEY"),
+    base_url: System.get_env("MUTAMARKET_BASE_URL", "https://mutamarket.com/api/v1")
+
+  # ESI API configuration
+  config :eve_dmv, :esi,
+    client_id: System.get_env("EVE_SSO_CLIENT_ID"),
+    base_url: System.get_env("ESI_BASE_URL", "https://esi.evetech.net")
+
+  # Price cache configuration
+  config :eve_dmv,
+    price_cache_ttl_hours: String.to_integer(System.get_env("PRICE_CACHE_TTL_HOURS", "24"))
 
   # ## SSL Support
   #
