@@ -32,7 +32,10 @@ defmodule EveDmvWeb.KillFeedLive do
     {:ok, socket}
   end
 
-  def handle_info({:new_kill, killmail_data}, socket) do
+  def handle_info(
+        %Phoenix.Socket.Broadcast{topic: "kill_feed", event: "new_kill", payload: killmail_data},
+        socket
+      ) do
     # Add new killmail to the stream
     new_killmail = build_killmail_display(killmail_data)
 
@@ -159,48 +162,40 @@ defmodule EveDmvWeb.KillFeedLive do
   end
 
   defp build_killmail_display(killmail_data) do
-    participants = killmail_data["participants"] || []
-    victim = find_victim(participants)
-    final_blow = find_final_blow(participants)
+    # Handle wanderer-kills format with separate victim and attackers
+    victim = killmail_data["victim"] || %{}
+    attackers = killmail_data["attackers"] || []
+    final_blow = Enum.find(attackers, & &1["final_blow"])
 
     %{
       id: generate_killmail_id(killmail_data),
       killmail_id: killmail_data["killmail_id"],
-      killmail_time: DateTime.utc_now(),
-      victim_character_name: extract_victim_name(victim),
-      victim_corporation_name: extract_victim_corp(victim),
-      victim_alliance_name: get_in(victim, ["alliance_name"]),
-      victim_ship_name: extract_ship_name(killmail_data),
-      solar_system_id: killmail_data["solar_system_id"] || 30_000_142,
+      killmail_time: parse_killmail_timestamp(killmail_data),
+      victim_character_name: victim["character_name"] || "Unknown Pilot",
+      victim_corporation_name: victim["corporation_name"] || "Unknown Corp",
+      victim_alliance_name: victim["alliance_name"],
+      victim_ship_name: victim["ship_name"] || "Unknown Ship",
+      solar_system_id: extract_solar_system_id(killmail_data),
       solar_system_name: killmail_data["solar_system_name"] || "Unknown System",
-      total_value: Decimal.new(killmail_data["total_value"] || 0),
-      ship_value: Decimal.new(killmail_data["ship_value"] || 0),
-      attacker_count: count_attackers(participants),
+      total_value: extract_total_value(killmail_data),
+      ship_value: extract_ship_value(killmail_data),
+      attacker_count: killmail_data["attacker_count"] || length(attackers),
       final_blow_character_name: get_in(final_blow, ["character_name"]),
       age_minutes: 0,
-      is_expensive: expensive_kill?(killmail_data)
+      is_expensive: expensive_kill_wanderer(killmail_data)
     }
-  end
-
-  defp find_victim(participants), do: Enum.find(participants, & &1["is_victim"])
-
-  defp find_final_blow(participants) do
-    Enum.find(participants, &(&1["final_blow"] && !&1["is_victim"]))
   end
 
   defp generate_killmail_id(killmail_data) do
     "#{killmail_data["killmail_id"]}-#{DateTime.utc_now() |> DateTime.to_unix()}"
   end
 
-  defp extract_victim_name(victim), do: get_in(victim, ["character_name"]) || "Unknown Pilot"
+  defp expensive_kill_wanderer(killmail_data) do
+    total_value =
+      get_in(killmail_data, ["zkb", "totalValue"]) || killmail_data["total_value"] || 0
 
-  defp extract_victim_corp(victim), do: get_in(victim, ["corporation_name"]) || "Unknown Corp"
-
-  defp extract_ship_name(killmail_data), do: killmail_data["ship"]["name"] || "Unknown Ship"
-
-  defp count_attackers(participants), do: length(Enum.filter(participants, &(!&1["is_victim"])))
-
-  defp expensive_kill?(killmail_data), do: (killmail_data["total_value"] || 0) > 100_000_000
+    total_value > 100_000_000
+  end
 
   defp find_victim_in_raw(raw_data) do
     Enum.find(raw_data["participants"] || [], & &1["is_victim"])
@@ -265,6 +260,38 @@ defmodule EveDmvWeb.KillFeedLive do
     Enum.reduce(killmails, Decimal.new(0), fn kill, acc ->
       Decimal.add(acc, kill.total_value)
     end)
+  end
+
+  # Helper functions for build_killmail_display
+
+  defp parse_killmail_timestamp(killmail_data) do
+    case killmail_data["kill_time"] || killmail_data["timestamp"] do
+      nil ->
+        DateTime.utc_now()
+
+      timestamp when is_binary(timestamp) ->
+        case DateTime.from_iso8601(timestamp) do
+          {:ok, dt, _} -> dt
+          _ -> DateTime.utc_now()
+        end
+
+      _ ->
+        DateTime.utc_now()
+    end
+  end
+
+  defp extract_solar_system_id(killmail_data) do
+    killmail_data["solar_system_id"] || killmail_data["system_id"] || 30_000_142
+  end
+
+  defp extract_total_value(killmail_data) do
+    Decimal.new(get_in(killmail_data, ["zkb", "totalValue"]) || killmail_data["total_value"] || 0)
+  end
+
+  defp extract_ship_value(killmail_data) do
+    Decimal.new(
+      get_in(killmail_data, ["zkb", "destroyedValue"]) || killmail_data["ship_value"] || 0
+    )
   end
 
   # Template helper functions

@@ -3,6 +3,32 @@ defmodule EveDmvWeb.AuthLive do
   Authentication LiveView modules for handling user sign-in flows.
   """
 
+  import Phoenix.LiveView
+  import Phoenix.Component
+
+  def on_mount(:load_from_session, _params, session, socket) do
+    socket = assign_current_user(socket, session)
+    {:cont, socket}
+  end
+
+  defp assign_current_user(socket, session) do
+    # Get current user from session using user ID
+    current_user =
+      case Map.get(session, "current_user_id") do
+        nil ->
+          nil
+
+        user_id ->
+          # Load user by ID from database
+          case Ash.get(EveDmv.Users.User, user_id, domain: EveDmv.Api) do
+            {:ok, user} -> user
+            _ -> nil
+          end
+      end
+
+    assign(socket, current_user: current_user)
+  end
+
   defmodule SignIn do
     @moduledoc """
     LiveView for the sign-in page with EVE SSO authentication.

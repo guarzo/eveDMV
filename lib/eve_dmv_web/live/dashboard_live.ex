@@ -5,18 +5,26 @@ defmodule EveDmvWeb.DashboardLive do
 
   use EveDmvWeb, :live_view
 
+  # Load current user from session on mount
+  on_mount {EveDmvWeb.AuthLive, :load_from_session}
+
   @impl true
   def mount(_params, _session, socket) do
     current_user = socket.assigns[:current_user]
 
-    socket =
-      socket
-      |> assign(:page_title, "Dashboard")
-      |> assign(:current_user, current_user)
-      |> assign(:killmail_count, get_killmail_count())
-      |> assign(:recent_kills, get_recent_kills())
+    # Redirect to login if not authenticated
+    if current_user do
+      socket =
+        socket
+        |> assign(:page_title, "Dashboard")
+        |> assign(:current_user, current_user)
+        |> assign(:killmail_count, get_killmail_count())
+        |> assign(:recent_kills, get_recent_kills())
 
-    {:ok, socket}
+      {:ok, socket}
+    else
+      {:ok, redirect(socket, to: ~p"/login")}
+    end
   end
 
   @impl true

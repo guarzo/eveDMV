@@ -7,6 +7,9 @@ defmodule EveDmv.Application do
 
   @impl true
   def start(_type, _args) do
+    # Initialize EVE name resolver cache early
+    :ok = EveDmv.Eve.NameResolver.start_cache()
+
     children = [
       EveDmvWeb.Telemetry,
       EveDmv.Repo,

@@ -38,8 +38,14 @@ defmodule EveDmvWeb.Router do
     # AshAuthentication routes for EVE SSO
     sign_in_route()
     sign_out_route(AuthController)
-    auth_routes_for(EveDmv.Users.User, to: AuthController)
     reset_route([])
+  end
+
+  # OAuth routes need to be outside /auth scope to avoid double prefix
+  scope "/", EveDmvWeb do
+    pipe_through :browser
+
+    auth_routes_for(EveDmv.Users.User, to: AuthController)
   end
 
   # Other scopes may use custom stacks.

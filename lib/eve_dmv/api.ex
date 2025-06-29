@@ -22,6 +22,7 @@ defmodule EveDmv.Api do
 
     # Static EVE data
     resource(EveDmv.Eve.ItemType)
+    resource(EveDmv.Eve.SolarSystem)
   end
 
   # Authorization configuration
