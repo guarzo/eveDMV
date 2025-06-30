@@ -109,6 +109,8 @@ jobs:
 
     - name: Generate coverage report
       run: mix test.coverage
+      env:
+        DATABASE_URL: postgres://postgres:postgres@localhost:5432/eve_tracker_test
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
