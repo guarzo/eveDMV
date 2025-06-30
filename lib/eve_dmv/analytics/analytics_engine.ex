@@ -220,9 +220,9 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
     {solo_kills, gang_kills, solo_losses, gang_losses} = split_solo_gang(kills, losses)
 
     basic_stats = calculate_basic_stats(kills, losses)
-    ship_stats = calculate_ship_stats(ps)
+    ship_stats = calculate_participant_ship_stats(ps)
     gang_stats = calculate_gang_stats(ps, basic_stats.total_kills, basic_stats.total_losses)
-    time_stats = calculate_time_stats(basic_stats.total_kills)
+    time_stats = calculate_time_stats(ps)
 
     Map.merge(basic_stats, %{
       character_name: character_name,
@@ -240,14 +240,13 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
       active_days: time_stats.active_days,
       avg_kills_per_week: Decimal.from_float(time_stats.avg_per_week),
       active_regions: 1,
-      danger_rating:
-        calculate_danger_rating(
+      danger_rating: calculate_character_danger_rating(
           basic_stats.total_kills,
           basic_stats.total_losses,
           basic_stats.total_isk_destroyed,
           ship_stats.diversity
         ),
-      primary_activity: classify_primary_activity(solo_kills, gang_kills)
+      primary_activity: classify_character_activity(solo_kills, gang_kills)
     })
   end
 
@@ -284,6 +283,22 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
     }
   end
 
+  defp calculate_participant_ship_stats(participants) do
+    ship_groups = Enum.group_by(participants, & &1.ship_type_id)
+    
+    diversity = map_size(ship_groups)
+    
+    {fav_id, fav_name} = 
+      ship_groups
+      |> Enum.map(fn {ship_type_id, ship_participants} ->
+        {ship_type_id, List.first(ship_participants).ship_name || "Unknown", length(ship_participants)}
+      end)
+      |> Enum.max_by(fn {_id, _name, count} -> count end, fn -> {nil, "Unknown", 0} end)
+      |> then(fn {id, name, _count} -> {id, name} end)
+    
+    %{diversity: diversity, fav_id: fav_id, fav_name: fav_name}
+  end
+
   defp calculate_gang_stats(ps, total_kills, total_losses) do
     gang_sizes = Enum.map(ps, &(&1.gang_size || 1))
 
@@ -308,8 +323,12 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
     end
   end
 
-  defp calculate_time_stats(total_kills) do
+  defp calculate_time_stats(participants) do
     now = DateTime.utc_now()
+    
+    kill_participants = Enum.filter(participants, &((&1.damage_dealt || 0) > 0))
+    total_kills = length(kill_participants)
+    
     weeks = 12
     avg_per_week = if weeks > 0, do: total_kills / weeks, else: 0
 
@@ -321,66 +340,130 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
     }
   end
 
+  defp calculate_character_danger_rating(kills, losses, isk_destroyed, diversity) do
+    kd_ratio = if losses > 0, do: kills / losses, else: kills * 1.0
+    isk_efficiency = Decimal.to_float(isk_destroyed) / 1_000_000_000  # billions destroyed
+    
+    base_rating = 50
+    kd_modifier = min(20, kd_ratio * 5)
+    isk_modifier = min(20, isk_efficiency * 2)
+    diversity_modifier = min(10, diversity * 2)
+    
+    rating = base_rating + kd_modifier + isk_modifier + diversity_modifier
+    
+    cond do
+      rating >= 90 -> :extremely_dangerous
+      rating >= 75 -> :very_dangerous
+      rating >= 60 -> :dangerous
+      rating >= 40 -> :moderate
+      true -> :low
+    end
+  end
+
+  defp classify_character_activity(solo_kills, gang_kills) do
+    solo_count = length(solo_kills)
+    gang_count = length(gang_kills)
+    total = solo_count + gang_count
+    
+    cond do
+      total == 0 -> :inactive
+      solo_count > gang_count * 2 -> :solo_hunter
+      gang_count > solo_count * 2 -> :fleet_pilot
+      true -> :mixed
+    end
+  end
+
   # Build ship-level metrics map
   defp build_ship_metrics(ps) do
     ship_name = List.first(ps).ship_name || "Unknown"
+    {kills, losses} = Enum.split_with(ps, &((&1.damage_dealt || 0) > 0))
 
-    {kills, losses} =
-      Enum.split_with(ps, &((&1.damage_dealt || 0) > 0))
+    basic_metrics = calculate_basic_metrics(kills, losses, ps)
+    isk_metrics = calculate_isk_metrics(kills, losses)
+    combat_metrics = calculate_combat_metrics(kills, losses)
+    time_metrics = calculate_time_metrics()
 
-    total_kills = length(kills)
-    total_losses = length(losses)
-    pilots = ps |> Enum.map(& &1.character_id) |> Enum.uniq() |> length()
+    Map.merge(basic_metrics, isk_metrics)
+    |> Map.merge(combat_metrics)
+    |> Map.merge(time_metrics)
+    |> Map.put(:ship_name, ship_name)
+  end
 
-    # Calculate actual ISK values from participant data instead of hardcoded multipliers
-    total_isk_out =
-      kills
-      |> Enum.map(&(&1.ship_value || Decimal.new(0)))
-      |> Enum.reduce(Decimal.new(0), &Decimal.add/2)
+  defp calculate_basic_metrics(kills, losses, ps) do
+    %{
+      total_kills: length(kills),
+      total_losses: length(losses),
+      pilots_flown: ps |> Enum.map(& &1.character_id) |> Enum.uniq() |> length()
+    }
+  end
 
-    total_isk_in =
-      losses
-      |> Enum.map(&(&1.ship_value || Decimal.new(0)))
-      |> Enum.reduce(Decimal.new(0), &Decimal.add/2)
-
-    avg_damage_dealt =
-      if total_kills > 0,
-        do: Enum.sum(Enum.map(kills, &(&1.damage_dealt || 0))) / total_kills,
-        else: 0
-
-    avg_gang_kill =
-      if total_kills > 0,
-        do: Enum.sum(Enum.map(kills, &(&1.gang_size || 1))) / total_kills,
-        else: 1.0
-
-    avg_gang_loss =
-      if total_losses > 0,
-        do: Enum.sum(Enum.map(losses, &(&1.gang_size || 1))) / total_losses,
-        else: 1.0
-
-    solo_kills = Enum.count(kills, &((&1.gang_size || 1) == 1))
-    solo_pct = if total_kills > 0, do: solo_kills / total_kills * 100, else: 0
-
-    now = DateTime.utc_now()
-    first = DateTime.add(now, -30 * 86_400, :second)
-    last = now
-    peak_utc = 18
+  defp calculate_isk_metrics(kills, losses) do
+    total_isk_out = sum_ship_values(kills)
+    total_isk_in = sum_ship_values(losses)
 
     %{
-      ship_name: ship_name,
-      total_kills: total_kills,
-      total_losses: total_losses,
-      pilots_flown: pilots,
       total_isk_destroyed: total_isk_out,
-      total_isk_lost: total_isk_in,
+      total_isk_lost: total_isk_in
+    }
+  end
+
+  defp calculate_combat_metrics(kills, losses) do
+    total_kills = length(kills)
+    total_losses = length(losses)
+
+    avg_damage_dealt = calculate_average_damage(kills, total_kills)
+    avg_gang_kill = calculate_average_gang_size(kills, total_kills)
+    avg_gang_loss = calculate_average_gang_size(losses, total_losses)
+    solo_pct = calculate_solo_percentage(kills, total_kills)
+
+    %{
       avg_damage_dealt: Decimal.from_float(avg_damage_dealt),
       avg_gang_size_when_killing: Decimal.from_float(avg_gang_kill),
       avg_gang_size_when_dying: Decimal.from_float(avg_gang_loss),
-      solo_kill_percentage: Decimal.from_float(solo_pct),
-      peak_activity_hour: peak_utc,
-      first_seen: first,
-      last_seen: last
+      solo_kill_percentage: Decimal.from_float(solo_pct)
     }
+  end
+
+  defp calculate_time_metrics do
+    now = DateTime.utc_now()
+    first = DateTime.add(now, -30 * 86_400, :second)
+
+    %{
+      peak_activity_hour: 18,
+      first_seen: first,
+      last_seen: now
+    }
+  end
+
+  defp sum_ship_values(participants) do
+    participants
+    |> Enum.map(&(&1.ship_value || Decimal.new(0)))
+    |> Enum.reduce(Decimal.new(0), &Decimal.add/2)
+  end
+
+  defp calculate_average_damage(kills, total_kills) do
+    if total_kills > 0 do
+      Enum.sum(Enum.map(kills, &(&1.damage_dealt || 0))) / total_kills
+    else
+      0
+    end
+  end
+
+  defp calculate_average_gang_size(participants, total_count) do
+    if total_count > 0 do
+      Enum.sum(Enum.map(participants, &(&1.gang_size || 1))) / total_count
+    else
+      1.0
+    end
+  end
+
+  defp calculate_solo_percentage(kills, total_kills) do
+    if total_kills > 0 do
+      solo_kills = Enum.count(kills, &((&1.gang_size || 1) == 1))
+      solo_kills / total_kills * 100
+    else
+      0
+    end
   end
 
   # Update usage + effectiveness rankings, then assign meta-tiers
@@ -431,32 +514,6 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
     error -> Logger.error("Error calculating meta tiers: #{inspect(error)}")
   end
 
-  defp calculate_danger_rating(kills, losses, isk_destroyed, diversity) do
-    kd_ratio = if losses > 0, do: kills / losses, else: kills
-
-    base_score =
-      cond do
-        kd_ratio >= 5.0 -> 4
-        kd_ratio >= 2.0 -> 3
-        kd_ratio >= 1.0 -> 2
-        true -> 1
-      end
-
-    bonus_isk = if isk_destroyed > 10_000_000_000, do: 1, else: 0
-    bonus_div = if diversity > 10, do: 1, else: 0
-
-    min(5, base_score + bonus_isk + bonus_div)
-  end
-
-  defp classify_primary_activity(solo, gang) do
-    total = length(solo) + length(gang)
-
-    cond do
-      length(solo) > total * 0.7 -> "solo_pvp"
-      length(gang) > total * 0.8 -> "small_gang"
-      true -> "fleet_pvp"
-    end
-  end
 
   @spec determine_ship_category(ItemType.t()) :: String.t()
   defp determine_ship_category(%ItemType{is_capital_ship: is_cap, group_name: group_name}) do

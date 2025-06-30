@@ -9,7 +9,6 @@ defmodule EveDmv.Intelligence.ThreatAnalyzer do
   require Logger
   alias EveDmv.Api
   alias EveDmv.Intelligence.{CharacterStats, SystemInhabitant}
-  alias EveDmv.Killmails.KillmailEnriched
 
   @doc """
   Analyze a pilot and return threat assessment data.
@@ -60,7 +59,7 @@ defmodule EveDmv.Intelligence.ThreatAnalyzer do
   Update threat assessment for a system inhabitant.
   """
   def update_inhabitant_threat(inhabitant_id) do
-    case Api.read(SystemInhabitant, inhabitant_id) do
+    case Ash.get(SystemInhabitant, inhabitant_id, domain: Api) do
       {:ok, inhabitant} ->
         analysis =
           analyze_pilot(
@@ -69,11 +68,11 @@ defmodule EveDmv.Intelligence.ThreatAnalyzer do
             inhabitant.alliance_id
           )
 
-        Api.update(inhabitant, %{
+        Ash.update(inhabitant, %{
           threat_level: analysis.threat_level,
           threat_score: analysis.threat_score,
           bait_probability: analysis.bait_probability
-        })
+        }, domain: Api)
 
       {:error, reason} ->
         Logger.error(
@@ -87,7 +86,7 @@ defmodule EveDmv.Intelligence.ThreatAnalyzer do
   # Private Functions
 
   defp get_character_stats(character_id) do
-    case Api.read(CharacterStats, character_id: character_id) do
+    case Ash.read(CharacterStats, filter: [character_id: character_id], domain: Api) do
       {:ok, [stats]} -> stats
       {:ok, []} -> nil
       {:error, _} -> nil
@@ -174,65 +173,59 @@ defmodule EveDmv.Intelligence.ThreatAnalyzer do
   end
 
   defp calculate_threat_score(character_stats, recent_activity) do
-    # Neutral starting point
     base_score = 50
 
-    # Factor in character stats if available
-    stats_modifier =
-      if character_stats do
-        dangerous_score = character_stats.dangerous_score || 0
-        solo_kill_percentage = character_stats.solo_kill_percentage || 0
-
-        # Higher dangerous score and solo activity increases threat
-        dangerous_score * 0.3 + solo_kill_percentage * 0.2
-      else
-        0
-      end
-
-    # Factor in recent activity
-    activity_modifier =
-      cond do
-        # Very active killer
-        recent_activity.recent_kills > 10 -> 20
-        # Active killer
-        recent_activity.recent_kills > 5 -> 10
-        # Some kills
-        recent_activity.recent_kills > 0 -> 5
-        # No recent kills
-        true -> -10
-      end
-
-    # Factor in kill/death ratio
-    kd_modifier =
-      cond do
-        # Very skilled
-        recent_activity.kill_death_ratio > 5.0 -> 15
-        # Skilled
-        recent_activity.kill_death_ratio > 2.0 -> 10
-        # Above average
-        recent_activity.kill_death_ratio > 1.0 -> 5
-        # Average
-        recent_activity.kill_death_ratio > 0.5 -> 0
-        # Below average
-        true -> -5
-      end
-
-    # Factor in ship value patterns (expensive losses might indicate wealth/bait)
-    value_modifier =
-      if recent_activity.avg_loss_value > 1_000_000_000 do
-        # High value losses could indicate bait
-        10
-      else
-        0
-      end
+    stats_modifier = calculate_stats_modifier(character_stats)
+    activity_modifier = calculate_activity_modifier(recent_activity)
+    kd_modifier = calculate_kd_modifier(recent_activity)
+    value_modifier = calculate_value_modifier(recent_activity)
 
     final_score = base_score + stats_modifier + activity_modifier + kd_modifier + value_modifier
-
-    # Clamp to 0-100 range
-    max(0, min(100, round(final_score)))
+    clamp_score(final_score)
   end
 
-  defp calculate_bait_probability(character_id, associates, recent_activity) do
+  defp calculate_stats_modifier(character_stats) do
+    if character_stats do
+      dangerous_score = character_stats.dangerous_score || 0
+      solo_kill_percentage = character_stats.solo_kill_percentage || 0
+      dangerous_score * 0.3 + solo_kill_percentage * 0.2
+    else
+      0
+    end
+  end
+
+  defp calculate_activity_modifier(recent_activity) do
+    cond do
+      recent_activity.recent_kills > 10 -> 20
+      recent_activity.recent_kills > 5 -> 10
+      recent_activity.recent_kills > 0 -> 5
+      true -> -10
+    end
+  end
+
+  defp calculate_kd_modifier(recent_activity) do
+    cond do
+      recent_activity.kill_death_ratio > 5.0 -> 15
+      recent_activity.kill_death_ratio > 2.0 -> 10
+      recent_activity.kill_death_ratio > 1.0 -> 5
+      recent_activity.kill_death_ratio > 0.5 -> 0
+      true -> -5
+    end
+  end
+
+  defp calculate_value_modifier(recent_activity) do
+    if recent_activity.avg_loss_value > 1_000_000_000 do
+      10
+    else
+      0
+    end
+  end
+
+  defp clamp_score(score) do
+    max(0, min(100, round(score)))
+  end
+
+  defp calculate_bait_probability(_character_id, associates, recent_activity) do
     # Start with 25% base chance
     base_probability = 25
 
@@ -284,11 +277,10 @@ defmodule EveDmv.Intelligence.ThreatAnalyzer do
     max(0, min(100, round(final_probability)))
   end
 
-  defp determine_threat_level(threat_score, corporation_id, alliance_id) do
+  defp determine_threat_level(threat_score, _corporation_id, _alliance_id) do
     # Check for known friendly/hostile corporations
+    # TODO: Implement corporation/alliance standings check
     cond do
-      known_friendly?(corporation_id, alliance_id) -> :friendly
-      known_hostile?(corporation_id, alliance_id) -> :hostile
       threat_score >= 80 -> :hostile
       # Treat high threats as neutral until confirmed
       threat_score >= 60 -> :neutral
@@ -297,18 +289,9 @@ defmodule EveDmv.Intelligence.ThreatAnalyzer do
     end
   end
 
-  defp known_friendly?(_corporation_id, _alliance_id) do
-    # This would check against a corporation's blue list or standings
-    false
-  end
-
-  defp known_hostile?(_corporation_id, _alliance_id) do
-    # This would check against known hostile entities
-    false
-  end
 
   defp calculate_kd_ratio(kills, deaths) when deaths == 0 and kills > 0, do: kills * 1.0
-  defp calculate_kd_ratio(kills, deaths) when deaths == 0, do: 0.0
+  defp calculate_kd_ratio(_kills, deaths) when deaths == 0, do: 0.0
   defp calculate_kd_ratio(kills, deaths), do: kills / deaths
 
   defp build_analysis_reason(threat_level, threat_score, bait_probability) do
@@ -316,7 +299,6 @@ defmodule EveDmv.Intelligence.ThreatAnalyzer do
       case threat_level do
         :hostile -> "High threat pilot"
         :neutral -> "Unknown threat level"
-        :friendly -> "Friendly pilot"
         :unknown -> "Insufficient data"
       end
 

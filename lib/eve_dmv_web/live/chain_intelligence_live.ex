@@ -187,7 +187,7 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
     user = socket.assigns.user
     corporation_id = user.corporation_id || 1
 
-    case Api.read(ChainTopology, %{corporation_id: corporation_id, monitoring_enabled: true}) do
+    case Ash.read(ChainTopology, filter: [corporation_id: corporation_id, monitoring_enabled: true], domain: Api) do
       {:ok, chains} ->
         assign(socket, :monitored_chains, chains)
 
@@ -199,7 +199,7 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
   end
 
   defp load_chain_data(socket, map_id) do
-    case Api.read(ChainTopology, %{map_id: map_id}) do
+    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
       {:ok, [topology]} ->
         inhabitants = load_chain_inhabitants(topology.id)
         connections = load_chain_connections(topology.id)
@@ -226,14 +226,14 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
   end
 
   defp load_chain_inhabitants(chain_topology_id) do
-    case Api.read(SystemInhabitant, %{chain_topology_id: chain_topology_id, present: true}) do
+    case Ash.read(SystemInhabitant, filter: [chain_topology_id: chain_topology_id, present: true], domain: Api) do
       {:ok, inhabitants} -> inhabitants
       {:error, _} -> []
     end
   end
 
   defp load_chain_connections(chain_topology_id) do
-    case Api.read(ChainConnection, %{chain_topology_id: chain_topology_id}) do
+    case Ash.read(ChainConnection, filter: [chain_topology_id: chain_topology_id], domain: Api) do
       {:ok, connections} -> connections
       {:error, _} -> []
     end

@@ -21,8 +21,7 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
   alias EveDmv.Api
   alias EveDmv.Enrichment.RealTimePriceUpdater
   alias EveDmv.Eve.NameResolver
-  alias EveDmv.Killmails.{KillmailEnriched, KillmailRaw}
-  alias EveDmv.Market.PriceService
+  alias EveDmv.Killmails.KillmailEnriched
 
   # Default configuration
   @default_config %{

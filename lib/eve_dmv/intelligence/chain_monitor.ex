@@ -14,8 +14,6 @@ defmodule EveDmv.Intelligence.ChainMonitor do
 
   # Sync every 30 seconds
   @sync_interval_ms 30_000
-  # 5 minutes
-  @stale_threshold_ms 300_000
 
   defstruct [
     :monitored_chains,
@@ -128,6 +126,16 @@ defmodule EveDmv.Intelligence.ChainMonitor do
   end
 
   @impl true
+  def handle_cast({:wanderer_event, map_id, event_type, event_data}, state) do
+    # Handle real-time events from Wanderer WebSocket
+    if MapSet.member?(state.monitored_chains, map_id) do
+      spawn_task(fn -> process_wanderer_event(map_id, event_type, event_data) end)
+    end
+
+    {:noreply, state}
+  end
+
+  @impl true
   def handle_info(:schedule_sync, state) do
     timer = Process.send_after(self(), :sync_chains, @sync_interval_ms)
     {:noreply, %{state | sync_timer: timer}}
@@ -141,16 +149,6 @@ defmodule EveDmv.Intelligence.ChainMonitor do
     timer = Process.send_after(self(), :sync_chains, @sync_interval_ms)
 
     {:noreply, %{new_state | sync_timer: timer, last_sync: DateTime.utc_now()}}
-  end
-
-  @impl true
-  def handle_cast({:wanderer_event, map_id, event_type, event_data}, state) do
-    # Handle real-time events from Wanderer WebSocket
-    if MapSet.member?(state.monitored_chains, map_id) do
-      spawn_task(fn -> process_wanderer_event(map_id, event_type, event_data) end)
-    end
-
-    {:noreply, state}
   end
 
   @impl true
@@ -282,7 +280,7 @@ defmodule EveDmv.Intelligence.ChainMonitor do
   end
 
   defp update_system_inhabitants(map_id, inhabitants_data) do
-    case Api.read(ChainTopology, %{map_id: map_id}) do
+    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
       {:ok, [topology]} ->
         # Mark all current inhabitants as departed
         mark_all_departed(topology.id)
@@ -301,13 +299,13 @@ defmodule EveDmv.Intelligence.ChainMonitor do
 
   defp mark_all_departed(chain_topology_id) do
     {:ok, inhabitants} =
-      Api.read(SystemInhabitant, %{
+      Ash.read(SystemInhabitant, filter: [
         chain_topology_id: chain_topology_id,
         present: true
-      })
+      ], domain: Api)
 
     Enum.each(inhabitants, fn inhabitant ->
-      Api.update(inhabitant, %{present: false, departure_time: DateTime.utc_now()})
+      Ash.update(inhabitant, %{present: false, departure_time: DateTime.utc_now()}, domain: Api)
     end)
   end
 
@@ -315,23 +313,23 @@ defmodule EveDmv.Intelligence.ChainMonitor do
     character_id = Map.get(inhabitant_data, "character_id")
     system_id = Map.get(inhabitant_data, "system_id")
 
-    case Api.read(SystemInhabitant, %{
+    case Ash.read(SystemInhabitant, filter: [
            chain_topology_id: chain_topology_id,
            character_id: character_id,
            system_id: system_id
-         }) do
+         ], domain: Api) do
       {:ok, [inhabitant]} ->
         # Update existing inhabitant
-        Api.update(inhabitant, %{
+        Ash.update(inhabitant, %{
           present: true,
           last_seen_at: DateTime.utc_now(),
           ship_type_id: Map.get(inhabitant_data, "ship_type_id"),
           departure_time: nil
-        })
+        }, domain: Api)
 
       {:ok, []} ->
         # Create new inhabitant
-        Api.create(SystemInhabitant, %{
+        Ash.create(SystemInhabitant, %{
           chain_topology_id: chain_topology_id,
           character_id: character_id,
           character_name: Map.get(inhabitant_data, "character_name", "Unknown"),
@@ -341,12 +339,12 @@ defmodule EveDmv.Intelligence.ChainMonitor do
           system_name: Map.get(inhabitant_data, "system_name", "Unknown"),
           ship_type_id: Map.get(inhabitant_data, "ship_type_id"),
           present: true
-        })
+        }, domain: Api)
     end
   end
 
   defp update_chain_connections(map_id, connections_data) do
-    case Api.read(ChainTopology, %{map_id: map_id}) do
+    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
       {:ok, [topology]} ->
         Enum.each(connections_data, fn connection ->
           update_or_create_connection(topology.id, connection)
@@ -363,24 +361,24 @@ defmodule EveDmv.Intelligence.ChainMonitor do
     source_system_id = Map.get(connection_data, "source_system_id")
     target_system_id = Map.get(connection_data, "target_system_id")
 
-    case Api.read(ChainConnection, %{
+    case Ash.read(ChainConnection, filter: [
            chain_topology_id: chain_topology_id,
            source_system_id: source_system_id,
            target_system_id: target_system_id
-         }) do
+         ], domain: Api) do
       {:ok, [connection]} ->
         # Update existing connection
-        Api.update(connection, %{
+        Ash.update(connection, %{
           mass_status: parse_mass_status(Map.get(connection_data, "mass_status")),
           time_status: parse_time_status(Map.get(connection_data, "time_status")),
           is_eol: Map.get(connection_data, "is_eol", false),
           signature_id: Map.get(connection_data, "signature_id"),
           wormhole_type: Map.get(connection_data, "wormhole_type")
-        })
+        }, domain: Api)
 
       {:ok, []} ->
         # Create new connection
-        Api.create(ChainConnection, %{
+        Ash.create(ChainConnection, %{
           chain_topology_id: chain_topology_id,
           source_system_id: source_system_id,
           source_system_name: Map.get(connection_data, "source_system_name", "Unknown"),
@@ -391,7 +389,7 @@ defmodule EveDmv.Intelligence.ChainMonitor do
           mass_status: parse_mass_status(Map.get(connection_data, "mass_status")),
           time_status: parse_time_status(Map.get(connection_data, "time_status")),
           is_eol: Map.get(connection_data, "is_eol", false)
-        })
+        }, domain: Api)
     end
   end
 
@@ -410,8 +408,8 @@ defmodule EveDmv.Intelligence.ChainMonitor do
     # Extract system and inhabitant updates
     system_data = Map.get(data, "systems", [])
 
-    case Api.read(ChainTopology, %{map_id: map_id}) do
-      {:ok, [topology]} ->
+    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
+      {:ok, [_topology]} ->
         update_system_inhabitants(map_id, system_data)
 
         # Broadcast specific system update
@@ -429,7 +427,7 @@ defmodule EveDmv.Intelligence.ChainMonitor do
   defp process_connection_update(map_id, data) do
     Logger.debug("Processing connection update for #{map_id}: #{inspect(data)}")
 
-    case Api.read(ChainTopology, %{map_id: map_id}) do
+    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
       {:ok, [topology]} ->
         # Update specific connection
         connection_data = Map.get(data, "connection", %{})
@@ -452,10 +450,55 @@ defmodule EveDmv.Intelligence.ChainMonitor do
       "Processing Wanderer event #{event_type} for map #{map_id}: #{inspect(event_data)}"
     )
 
-    case event_type do
-      "add_system" ->
-        handle_system_added(map_id, event_data)
+    handle_event_by_type(map_id, event_type, event_data)
+    broadcast_event_update(map_id, event_type, event_data)
+  end
 
+  defp handle_event_by_type(map_id, event_type, event_data) do
+    cond do
+      character_event?(event_type) ->
+        handle_character_event(map_id, event_type, event_data)
+
+      system_event?(event_type) ->
+        handle_system_event(map_id, event_type, event_data)
+
+      connection_event?(event_type) ->
+        handle_connection_event(map_id, event_type, event_data)
+
+      signature_event?(event_type) ->
+        handle_signature_event(map_id, event_type, event_data)
+
+      event_type == "map_kill" ->
+        handle_map_kill(map_id, event_data)
+
+      true ->
+        Logger.debug("Unhandled Wanderer event type: #{event_type}")
+    end
+  end
+
+  defp character_event?(event_type) do
+    event_type in [
+      "character_location_changed",
+      "character_ship_changed",
+      "character_online_status_changed",
+      "character_ready_status_changed"
+    ]
+  end
+
+  defp system_event?(event_type) do
+    event_type in ["add_system", "deleted_system", "system_metadata_changed"]
+  end
+
+  defp connection_event?(event_type) do
+    event_type in ["connection_added", "connection_removed", "connection_updated"]
+  end
+
+  defp signature_event?(event_type) do
+    event_type in ["signature_added", "signature_removed", "signatures_updated"]
+  end
+
+  defp handle_character_event(map_id, event_type, event_data) do
+    case event_type do
       "character_location_changed" ->
         handle_character_location_changed(map_id, event_data)
 
@@ -467,40 +510,34 @@ defmodule EveDmv.Intelligence.ChainMonitor do
 
       "character_ready_status_changed" ->
         handle_character_ready_status_changed(map_id, event_data)
-
-      "map_kill" ->
-        handle_map_kill(map_id, event_data)
-
-      # Legacy event types (from previous WebSocket implementation)
-      "deleted_system" ->
-        handle_system_deleted(map_id, event_data)
-
-      "system_metadata_changed" ->
-        handle_system_changed(map_id, event_data)
-
-      "connection_added" ->
-        handle_connection_added(map_id, event_data)
-
-      "connection_removed" ->
-        handle_connection_removed(map_id, event_data)
-
-      "connection_updated" ->
-        handle_connection_updated(map_id, event_data)
-
-      "signature_added" ->
-        handle_signature_added(map_id, event_data)
-
-      "signature_removed" ->
-        handle_signature_removed(map_id, event_data)
-
-      "signatures_updated" ->
-        handle_signatures_updated(map_id, event_data)
-
-      _ ->
-        Logger.debug("Unhandled Wanderer event type: #{event_type}")
     end
+  end
 
-    # Broadcast the specific event for UI updates
+  defp handle_system_event(map_id, event_type, event_data) do
+    case event_type do
+      "add_system" -> handle_system_added(map_id, event_data)
+      "deleted_system" -> handle_system_deleted(map_id, event_data)
+      "system_metadata_changed" -> handle_system_changed(map_id, event_data)
+    end
+  end
+
+  defp handle_connection_event(map_id, event_type, event_data) do
+    case event_type do
+      "connection_added" -> handle_connection_added(map_id, event_data)
+      "connection_removed" -> handle_connection_removed(map_id, event_data)
+      "connection_updated" -> handle_connection_updated(map_id, event_data)
+    end
+  end
+
+  defp handle_signature_event(map_id, event_type, event_data) do
+    case event_type do
+      "signature_added" -> handle_signature_added(map_id, event_data)
+      "signature_removed" -> handle_signature_removed(map_id, event_data)
+      "signatures_updated" -> handle_signatures_updated(map_id, event_data)
+    end
+  end
+
+  defp broadcast_event_update(map_id, event_type, event_data) do
     Phoenix.PubSub.broadcast(
       EveDmv.PubSub,
       "chain_intelligence:#{map_id}",
@@ -512,13 +549,13 @@ defmodule EveDmv.Intelligence.ChainMonitor do
 
   defp handle_system_added(map_id, payload) do
     # Payload example: %{"solar_system_id" => 31000001, "name" => "J123456", "type" => "wormhole", "class" => "C3"}
-    case Api.read(ChainTopology, %{map_id: map_id}) do
+    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
       {:ok, [topology]} ->
         # Update system count
-        Api.update(topology, %{
+        Ash.update(topology, %{
           system_count: topology.system_count + 1,
           last_activity_at: DateTime.utc_now()
-        })
+        }, domain: Api)
 
         Logger.info("System #{payload["name"]} added to map #{map_id}")
 
@@ -528,26 +565,26 @@ defmodule EveDmv.Intelligence.ChainMonitor do
   end
 
   defp handle_system_deleted(map_id, payload) do
-    case Api.read(ChainTopology, %{map_id: map_id}) do
+    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
       {:ok, [topology]} ->
         # Remove any inhabitants from this system
         system_id = payload["solar_system_id"]
 
         {:ok, inhabitants} =
-          Api.read(SystemInhabitant, %{
+          Ash.read(SystemInhabitant, filter: [
             chain_topology_id: topology.id,
             system_id: system_id
-          })
+          ], domain: Api)
 
         Enum.each(inhabitants, fn inhabitant ->
-          Api.destroy(inhabitant)
+          Ash.destroy(inhabitant, domain: Api)
         end)
 
         # Update system count
-        Api.update(topology, %{
+        Ash.update(topology, %{
           system_count: max(0, topology.system_count - 1),
           last_activity_at: DateTime.utc_now()
-        })
+        }, domain: Api)
 
         Logger.info("System #{payload["name"]} deleted from map #{map_id}")
 
@@ -556,11 +593,11 @@ defmodule EveDmv.Intelligence.ChainMonitor do
     end
   end
 
-  defp handle_system_changed(map_id, payload) do
+  defp handle_system_changed(map_id, _payload) do
     # System metadata changed - mark activity
-    case Api.read(ChainTopology, %{map_id: map_id}) do
+    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
       {:ok, [topology]} ->
-        Api.update(topology, %{last_activity_at: DateTime.utc_now()})
+        Ash.update(topology, %{last_activity_at: DateTime.utc_now()}, domain: Api)
 
       {:error, reason} ->
         Logger.error("Failed to update topology for system change: #{inspect(reason)}")
@@ -569,7 +606,7 @@ defmodule EveDmv.Intelligence.ChainMonitor do
 
   defp handle_connection_added(map_id, payload) do
     # Payload should contain connection details
-    case Api.read(ChainTopology, %{map_id: map_id}) do
+    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
       {:ok, [topology]} ->
         # Create or update the connection
         connection_data = %{
@@ -584,13 +621,13 @@ defmodule EveDmv.Intelligence.ChainMonitor do
           is_eol: false
         }
 
-        Api.create(ChainConnection, connection_data)
+        Ash.create(ChainConnection, connection_data, domain: Api)
 
         # Update connection count
-        Api.update(topology, %{
+        Ash.update(topology, %{
           connection_count: topology.connection_count + 1,
           last_activity_at: DateTime.utc_now()
-        })
+        }, domain: Api)
 
         Logger.info(
           "Connection added to map #{map_id}: #{payload["from_name"]} -> #{payload["to_name"]}"
@@ -602,25 +639,25 @@ defmodule EveDmv.Intelligence.ChainMonitor do
   end
 
   defp handle_connection_removed(map_id, payload) do
-    case Api.read(ChainTopology, %{map_id: map_id}) do
+    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
       {:ok, [topology]} ->
         # Find and remove the connection
         source_id = payload["source_system_id"]
         target_id = payload["target_system_id"]
 
-        case Api.read(ChainConnection, %{
+        case Ash.read(ChainConnection, filter: [
                chain_topology_id: topology.id,
                source_system_id: source_id,
                target_system_id: target_id
-             }) do
+             ], domain: Api) do
           {:ok, [connection]} ->
-            Api.destroy(connection)
+            Ash.destroy(connection, domain: Api)
 
             # Update connection count
-            Api.update(topology, %{
+            Ash.update(topology, %{
               connection_count: max(0, topology.connection_count - 1),
               last_activity_at: DateTime.utc_now()
-            })
+            }, domain: Api)
 
             Logger.info("Connection removed from map #{map_id}")
 
@@ -635,22 +672,22 @@ defmodule EveDmv.Intelligence.ChainMonitor do
 
   defp handle_connection_updated(map_id, payload) do
     # Update connection status (mass, time, EOL)
-    case Api.read(ChainTopology, %{map_id: map_id}) do
+    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
       {:ok, [topology]} ->
         source_id = payload["source_system_id"]
         target_id = payload["target_system_id"]
 
-        case Api.read(ChainConnection, %{
+        case Ash.read(ChainConnection, filter: [
                chain_topology_id: topology.id,
                source_system_id: source_id,
                target_system_id: target_id
-             }) do
+             ], domain: Api) do
           {:ok, [connection]} ->
-            Api.update(connection, %{
+            Ash.update(connection, %{
               mass_status: parse_mass_status(payload["mass_status"]),
               time_status: parse_time_status(payload["time_status"]),
               is_eol: payload["is_eol"] || false
-            })
+            }, domain: Api)
 
             Logger.debug("Connection updated in map #{map_id}")
 
@@ -665,9 +702,9 @@ defmodule EveDmv.Intelligence.ChainMonitor do
 
   defp handle_signature_added(map_id, _payload) do
     # Mark activity for signature events
-    case Api.read(ChainTopology, %{map_id: map_id}) do
+    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
       {:ok, [topology]} ->
-        Api.update(topology, %{last_activity_at: DateTime.utc_now()})
+        Ash.update(topology, %{last_activity_at: DateTime.utc_now()}, domain: Api)
 
       _ ->
         :ok
@@ -676,9 +713,9 @@ defmodule EveDmv.Intelligence.ChainMonitor do
 
   defp handle_signature_removed(map_id, _payload) do
     # Mark activity for signature events
-    case Api.read(ChainTopology, %{map_id: map_id}) do
+    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
       {:ok, [topology]} ->
-        Api.update(topology, %{last_activity_at: DateTime.utc_now()})
+        Ash.update(topology, %{last_activity_at: DateTime.utc_now()}, domain: Api)
 
       _ ->
         :ok
@@ -687,9 +724,9 @@ defmodule EveDmv.Intelligence.ChainMonitor do
 
   defp handle_signatures_updated(map_id, _payload) do
     # Mark activity for signature events
-    case Api.read(ChainTopology, %{map_id: map_id}) do
+    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
       {:ok, [topology]} ->
-        Api.update(topology, %{last_activity_at: DateTime.utc_now()})
+        Ash.update(topology, %{last_activity_at: DateTime.utc_now()}, domain: Api)
 
       _ ->
         :ok
@@ -698,9 +735,9 @@ defmodule EveDmv.Intelligence.ChainMonitor do
 
   defp handle_map_kill(map_id, payload) do
     # Payload: %{"killmail_id" => 12345678, "system_name" => "J123456", "victim" => %{...}, "value" => 250000000}
-    case Api.read(ChainTopology, %{map_id: map_id}) do
+    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
       {:ok, [topology]} ->
-        Api.update(topology, %{last_activity_at: DateTime.utc_now()})
+        Ash.update(topology, %{last_activity_at: DateTime.utc_now()}, domain: Api)
 
         # Broadcast kill event for alerts
         Phoenix.PubSub.broadcast(
@@ -725,6 +762,7 @@ defmodule EveDmv.Intelligence.ChainMonitor do
     location = payload["current_location"]
     system_name = location["solar_system_name"]
     system_id = location["solar_system_id"]
+
     update_or_create_inhabitant(map_id, %{
       character_name: character_name,
       solar_system_id: system_id,
@@ -838,7 +876,7 @@ defmodule EveDmv.Intelligence.ChainMonitor do
     end
   end
 
-  defp find_character_inhabitant(map_id, character_name) do
+  defp find_character_inhabitant(_map_id, character_name) do
     case Ash.read!(SystemInhabitant,
            domain: Api,
            filter: [character_name: character_name, present: true]

@@ -62,19 +62,13 @@ defmodule EveDmv.Intelligence.WandererSSE do
     if MapSet.member?(state.monitored_maps, map_id) do
       {:reply, {:ok, :already_monitoring}, state}
     else
-      case start_sse_connection(map_id, state) do
-        {:ok, connection_pid} ->
-          new_monitored = MapSet.put(state.monitored_maps, map_id)
-          new_connections = Map.put(state.sse_connections, map_id, connection_pid)
+      {:ok, connection_pid} = start_sse_connection(map_id, state)
+      new_monitored = MapSet.put(state.monitored_maps, map_id)
+      new_connections = Map.put(state.sse_connections, map_id, connection_pid)
 
-          new_state = %{state | monitored_maps: new_monitored, sse_connections: new_connections}
+      new_state = %{state | monitored_maps: new_monitored, sse_connections: new_connections}
 
-          {:reply, :ok, new_state}
-
-        {:error, reason} ->
-          Logger.error("Failed to start SSE connection for map #{map_id}: #{inspect(reason)}")
-          {:reply, {:error, reason}, state}
-      end
+      {:reply, :ok, new_state}
     end
   end
 
@@ -132,22 +126,14 @@ defmodule EveDmv.Intelligence.WandererSSE do
   def handle_info({:reconnect_map, map_id}, state) do
     Logger.info("Attempting to reconnect SSE for map #{map_id}")
 
-    case start_sse_connection(map_id, state) do
-      {:ok, connection_pid} ->
-        new_monitored = MapSet.put(state.monitored_maps, map_id)
-        new_connections = Map.put(state.sse_connections, map_id, connection_pid)
+    {:ok, connection_pid} = start_sse_connection(map_id, state)
+    new_monitored = MapSet.put(state.monitored_maps, map_id)
+    new_connections = Map.put(state.sse_connections, map_id, connection_pid)
 
-        new_state = %{state | monitored_maps: new_monitored, sse_connections: new_connections}
+    new_state = %{state | monitored_maps: new_monitored, sse_connections: new_connections}
 
-        Logger.info("Successfully reconnected SSE for map #{map_id}")
-        {:noreply, new_state}
-
-      {:error, reason} ->
-        Logger.error("Failed to reconnect SSE for map #{map_id}: #{inspect(reason)}")
-        # Try again in 10 seconds
-        Process.send_after(self(), {:reconnect_map, map_id}, 10_000)
-        {:noreply, state}
-    end
+    Logger.info("Successfully reconnected SSE for map #{map_id}")
+    {:noreply, new_state}
   end
 
   @impl true

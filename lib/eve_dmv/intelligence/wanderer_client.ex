@@ -9,18 +9,11 @@ defmodule EveDmv.Intelligence.WandererClient do
   use GenServer
   require Logger
 
-  alias EveDmv.Intelligence.{ChainConnection, ChainTopology, SystemInhabitant}
-
   @base_url Application.compile_env(
               :eve_dmv,
               :wanderer_base_url,
               "http://host.docker.internal:4004"
             )
-  @ws_url Application.compile_env(
-            :eve_dmv,
-            :wanderer_ws_url,
-            "ws://host.docker.internal:4004/socket"
-          )
   @api_timeout 30_000
   @max_retries 3
   @retry_delay 5_000
@@ -191,17 +184,9 @@ defmodule EveDmv.Intelligence.WandererClient do
 
   @impl true
   def handle_info(:connect_websocket, state) do
-    case connect_websocket(state.auth_token) do
-      {:ok, ws_pid} ->
-        Logger.info("Connected to Wanderer WebSocket")
-        {:noreply, %{state | websocket_pid: ws_pid, connection_state: :connected}}
-
-      {:error, reason} ->
-        Logger.error("Failed to connect to Wanderer WebSocket: #{inspect(reason)}")
-        # Retry connection in 30 seconds
-        Process.send_after(self(), :connect_websocket, 30_000)
-        {:noreply, %{state | connection_state: :error}}
-    end
+    {:ok, ws_pid} = connect_websocket(state.auth_token)
+    Logger.info("Connected to Wanderer WebSocket")
+    {:noreply, %{state | websocket_pid: ws_pid, connection_state: :connected}}
   end
 
   @impl true
@@ -218,7 +203,7 @@ defmodule EveDmv.Intelligence.WandererClient do
 
   @impl true
   def handle_info({:websocket_closed, _reason}, state) do
-    Logger.warn("Wanderer WebSocket connection closed, reconnecting...")
+    Logger.warning("Wanderer WebSocket connection closed, reconnecting...")
     Process.send_after(self(), :connect_websocket, 5_000)
     {:noreply, %{state | websocket_pid: nil, connection_state: :reconnecting}}
   end
@@ -235,7 +220,7 @@ defmodule EveDmv.Intelligence.WandererClient do
         {:ok, data}
 
       {:error, reason} when retries < @max_retries ->
-        Logger.warn(
+        Logger.warning(
           "API request failed (attempt #{retries + 1}), retrying in #{@retry_delay}ms: #{inspect(reason)}"
         )
 
@@ -342,19 +327,19 @@ defmodule EveDmv.Intelligence.WandererClient do
     {:ok, spawn_link(fn -> websocket_loop(auth_token) end)}
   end
 
-  defp websocket_loop(_auth_token) do
+  defp websocket_loop(auth_token) do
     # Placeholder for WebSocket connection loop
     # This would handle the actual WebSocket protocol
     receive do
       {:send_message, message} ->
         # Send message to WebSocket
         Logger.debug("Sending WebSocket message: #{inspect(message)}")
-        websocket_loop(_auth_token)
+        websocket_loop(auth_token)
 
       {:websocket_data, data} ->
         # Forward received data to the main process
         send(__MODULE__, {:websocket_message, data})
-        websocket_loop(_auth_token)
+        websocket_loop(auth_token)
 
       :close ->
         Logger.info("WebSocket connection closed")
