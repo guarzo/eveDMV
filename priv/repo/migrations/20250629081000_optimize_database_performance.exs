@@ -35,13 +35,9 @@ defmodule EveDmv.Repo.Migrations.OptimizeDatabasePerformance do
       comment: "Optimizes high-value killmail queries"
     )
 
-    # Partial index for recent killmails (last 6 months for relevance)
-    # Using relative date calculation that evaluates at runtime
-    execute """
-    CREATE INDEX killmails_enriched_recent_value_idx 
-    ON killmails_enriched (total_value) 
-    WHERE killmail_time > CURRENT_DATE - INTERVAL '6 months'
-    """
+    # Note: Removed problematic date-based partial index
+    # CURRENT_DATE is not immutable and causes PostgreSQL CI errors
+    # The killmails_enriched_time_value_idx above provides similar optimization
 
     # Composite indexes for participant analysis
     create index(:participants, [:character_id, :killmail_time, :is_victim], 
@@ -97,8 +93,7 @@ defmodule EveDmv.Repo.Migrations.OptimizeDatabasePerformance do
     # Drop the expression index
     execute "DROP INDEX IF EXISTS killmails_enriched_timestamp_epoch_idx"
     
-    # Drop the recent value index
-    execute "DROP INDEX IF EXISTS killmails_enriched_recent_value_idx"
+    # Note: No need to drop killmails_enriched_recent_value_idx since it's no longer created
 
     # Drop all the indexes we created
     drop_if_exists index(:killmails_enriched, [:module_tags], 
