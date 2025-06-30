@@ -43,8 +43,9 @@ database_config =
     ]
   end
 
-config :eve_dmv, EveDmv.Repo,
-  Keyword.merge(database_config,
-    pool: Ecto.Adapters.SQL.Sandbox,
-    pool_size: System.schedulers_online() * 2
-  )
+config :eve_dmv,
+       EveDmv.Repo,
+       Keyword.merge(database_config,
+         pool: Ecto.Adapters.SQL.Sandbox,
+         pool_size: System.schedulers_online() * 2
+       )
