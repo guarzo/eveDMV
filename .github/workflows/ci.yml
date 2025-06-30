@@ -69,6 +69,11 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-plt-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-
 
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libbz2-dev
+
     - name: Install dependencies
       run: |
         mix local.hex --force

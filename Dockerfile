@@ -9,7 +9,8 @@ RUN apk add --no-cache \
     build-base \
     git \
     nodejs \
-    npm
+    npm \
+    bzip2-dev
 
 # Create app directory
 WORKDIR /app
@@ -51,7 +52,8 @@ RUN apk add --no-cache \
     libgcc \
     libstdc++ \
     ncurses-libs \
-    openssl
+    openssl \
+    bzip2-libs
 
 # Create app user
 RUN addgroup -g 1000 -S appgroup && \

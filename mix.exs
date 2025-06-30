@@ -89,7 +89,7 @@ defmodule EveDmv.MixProject do
       {:httpoison, "~> 2.0"},
       {:dotenvy, "~> 1.1"},
       {:nimble_csv, "~> 1.2"},
-      # For native bzip2 decompression
+      # For native bzip2 decompression (requires libbz2-dev/bzip2-dev system package)
       {:bzip2, "~> 0.3.0"},
       {:cowboy, "~> 2.9", only: [:dev, :test]},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
