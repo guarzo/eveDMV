@@ -240,7 +240,8 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
       active_days: time_stats.active_days,
       avg_kills_per_week: Decimal.from_float(time_stats.avg_per_week),
       active_regions: 1,
-      danger_rating: calculate_character_danger_rating(
+      danger_rating:
+        calculate_character_danger_rating(
           basic_stats.total_kills,
           basic_stats.total_losses,
           basic_stats.total_isk_destroyed,
@@ -285,17 +286,18 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
 
   defp calculate_participant_ship_stats(participants) do
     ship_groups = Enum.group_by(participants, & &1.ship_type_id)
-    
+
     diversity = map_size(ship_groups)
-    
-    {fav_id, fav_name} = 
+
+    {fav_id, fav_name} =
       ship_groups
       |> Enum.map(fn {ship_type_id, ship_participants} ->
-        {ship_type_id, List.first(ship_participants).ship_name || "Unknown", length(ship_participants)}
+        {ship_type_id, List.first(ship_participants).ship_name || "Unknown",
+         length(ship_participants)}
       end)
       |> Enum.max_by(fn {_id, _name, count} -> count end, fn -> {nil, "Unknown", 0} end)
       |> then(fn {id, name, _count} -> {id, name} end)
-    
+
     %{diversity: diversity, fav_id: fav_id, fav_name: fav_name}
   end
 
@@ -325,10 +327,10 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
 
   defp calculate_time_stats(participants) do
     now = DateTime.utc_now()
-    
+
     kill_participants = Enum.filter(participants, &((&1.damage_dealt || 0) > 0))
     total_kills = length(kill_participants)
-    
+
     weeks = 12
     avg_per_week = if weeks > 0, do: total_kills / weeks, else: 0
 
@@ -342,15 +344,16 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
 
   defp calculate_character_danger_rating(kills, losses, isk_destroyed, diversity) do
     kd_ratio = if losses > 0, do: kills / losses, else: kills * 1.0
-    isk_efficiency = Decimal.to_float(isk_destroyed) / 1_000_000_000  # billions destroyed
-    
+    # billions destroyed
+    isk_efficiency = Decimal.to_float(isk_destroyed) / 1_000_000_000
+
     base_rating = 50
     kd_modifier = min(20, kd_ratio * 5)
     isk_modifier = min(20, isk_efficiency * 2)
     diversity_modifier = min(10, diversity * 2)
-    
+
     rating = base_rating + kd_modifier + isk_modifier + diversity_modifier
-    
+
     cond do
       rating >= 90 -> :extremely_dangerous
       rating >= 75 -> :very_dangerous
@@ -364,7 +367,7 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
     solo_count = length(solo_kills)
     gang_count = length(gang_kills)
     total = solo_count + gang_count
-    
+
     cond do
       total == 0 -> :inactive
       solo_count > gang_count * 2 -> :solo_hunter
@@ -513,7 +516,6 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
   rescue
     error -> Logger.error("Error calculating meta tiers: #{inspect(error)}")
   end
-
 
   @spec determine_ship_category(ItemType.t()) :: String.t()
   defp determine_ship_category(%ItemType{is_capital_ship: is_cap, group_name: group_name}) do

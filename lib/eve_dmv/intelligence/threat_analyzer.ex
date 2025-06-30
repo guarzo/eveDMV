@@ -68,11 +68,15 @@ defmodule EveDmv.Intelligence.ThreatAnalyzer do
             inhabitant.alliance_id
           )
 
-        Ash.update(inhabitant, %{
-          threat_level: analysis.threat_level,
-          threat_score: analysis.threat_score,
-          bait_probability: analysis.bait_probability
-        }, domain: Api)
+        Ash.update(
+          inhabitant,
+          %{
+            threat_level: analysis.threat_level,
+            threat_score: analysis.threat_score,
+            bait_probability: analysis.bait_probability
+          },
+          domain: Api
+        )
 
       {:error, reason} ->
         Logger.error(
@@ -288,7 +292,6 @@ defmodule EveDmv.Intelligence.ThreatAnalyzer do
       true -> :unknown
     end
   end
-
 
   defp calculate_kd_ratio(kills, deaths) when deaths == 0 and kills > 0, do: kills * 1.0
   defp calculate_kd_ratio(_kills, deaths) when deaths == 0, do: 0.0
