@@ -28,11 +28,23 @@ config :phoenix_live_view,
 # The MIX_TEST_PARTITION environment variable can be used
 # to provide built-in test partitioning in CI environment.
 # Run `mix help test` for more information.
+
+# Use DATABASE_URL if provided (CI environment), otherwise use local Docker configuration
+database_config =
+  if database_url = System.get_env("DATABASE_URL") do
+    [url: database_url]
+  else
+    [
+      username: "postgres",
+      password: "postgres",
+      hostname: "db",
+      database: "eve_tracker_test#{System.get_env("MIX_TEST_PARTITION")}",
+      port: 5432
+    ]
+  end
+
 config :eve_dmv, EveDmv.Repo,
-  username: "postgres",
-  password: "postgres",
-  hostname: "db",
-  database: "eve_tracker_test#{System.get_env("MIX_TEST_PARTITION")}",
-  port: 5432,
-  pool: Ecto.Adapters.SQL.Sandbox,
-  pool_size: System.schedulers_online() * 2
+  Keyword.merge(database_config,
+    pool: Ecto.Adapters.SQL.Sandbox,
+    pool_size: System.schedulers_online() * 2
+  )
