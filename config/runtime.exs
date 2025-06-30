@@ -66,6 +66,11 @@ if config_env() == :dev do
       System.get_env("WANDERER_KILLS_WS_URL", "ws://localhost:4004/socket"),
     wanderer_kills_base_url:
       System.get_env("WANDERER_KILLS_BASE_URL", "http://host.docker.internal:4004"),
+    # Wanderer Map Integration
+    wanderer_base_url: System.get_env("WANDERER_BASE_URL", "http://host.docker.internal:4004"),
+    wanderer_ws_url:
+      System.get_env("WANDERER_WS_URL", "ws://host.docker.internal:4004/socket/events"),
+    wanderer_api_token: System.get_env("WANDERER_API_TOKEN"),
     pipeline_enabled: System.get_env("PIPELINE_ENABLED", "true") == "true",
     mock_sse_server_enabled: System.get_env("MOCK_SSE_SERVER_ENABLED", "false") == "true"
 
@@ -126,7 +131,8 @@ if config_env() == :prod do
       """
 
   host = System.get_env("PHX_HOST") || "example.com"
-  port = 
+
+  port =
     case Integer.parse(System.get_env("PHX_PORT") || System.get_env("PORT") || "4010") do
       {port_num, ""} -> port_num
       _ -> 4010

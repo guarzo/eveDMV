@@ -36,13 +36,12 @@ defmodule EveDmv.Repo.Migrations.OptimizeDatabasePerformance do
     )
 
     # Partial index for recent killmails (last 6 months for relevance)
-    # Note: Using fixed date instead of now() to ensure IMMUTABLE constraint
-    recent_date = DateTime.utc_now() |> DateTime.add(-180, :day) |> DateTime.to_iso8601()
-    create index(:killmails_enriched, [:total_value], 
-      name: "killmails_enriched_recent_value_idx", 
-      where: "killmail_time > '#{recent_date}'::timestamp",
-      comment: "Optimizes recent killmail value queries (last ~6 months from migration date)"
-    )
+    # Using relative date calculation that evaluates at runtime
+    execute """
+    CREATE INDEX killmails_enriched_recent_value_idx 
+    ON killmails_enriched (total_value) 
+    WHERE killmail_time > CURRENT_DATE - INTERVAL '6 months'
+    """
 
     # Composite indexes for participant analysis
     create index(:participants, [:character_id, :killmail_time, :is_victim], 
@@ -97,6 +96,9 @@ defmodule EveDmv.Repo.Migrations.OptimizeDatabasePerformance do
   def down do
     # Drop the expression index
     execute "DROP INDEX IF EXISTS killmails_enriched_timestamp_epoch_idx"
+    
+    # Drop the recent value index
+    execute "DROP INDEX IF EXISTS killmails_enriched_recent_value_idx"
 
     # Drop all the indexes we created
     drop_if_exists index(:killmails_enriched, [:module_tags], 
@@ -116,9 +118,6 @@ defmodule EveDmv.Repo.Migrations.OptimizeDatabasePerformance do
 
     drop_if_exists index(:participants, [:character_id, :killmail_time, :is_victim], 
       name: "participants_character_analysis_idx")
-
-    drop_if_exists index(:killmails_enriched, [:total_value], 
-      name: "killmails_enriched_recent_value_idx")
 
     drop_if_exists index(:killmails_enriched, [:killmail_time], 
       name: "killmails_enriched_high_value_time_idx")

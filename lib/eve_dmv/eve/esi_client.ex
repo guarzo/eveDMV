@@ -340,10 +340,11 @@ defmodule EveDmv.Eve.EsiClient do
     with_rate_limit(fn ->
       case get_request(path, params) do
         {:ok, data} when is_list(data) ->
-          history = 
+          history =
             data
             |> Enum.map(&parse_market_history/1)
             |> Enum.reject(&is_nil/1)
+
           {:ok, history}
 
         {:ok, _} ->
@@ -377,11 +378,11 @@ defmodule EveDmv.Eve.EsiClient do
   @spec get_type(integer()) :: {:ok, map()} | {:error, term()}
   def get_type(type_id) when is_integer(type_id) do
     cache_key = "type_#{type_id}"
-    
+
     case EsiCache.get(cache_key) do
       {:ok, cached_data} ->
         {:ok, cached_data}
-        
+
       {:error, :not_found} ->
         path = "/#{@universe_api_version}/universe/types/#{type_id}/"
 
@@ -416,11 +417,11 @@ defmodule EveDmv.Eve.EsiClient do
   @spec get_group(integer()) :: {:ok, map()} | {:error, term()}
   def get_group(group_id) when is_integer(group_id) do
     cache_key = "group_#{group_id}"
-    
+
     case EsiCache.get(cache_key) do
       {:ok, cached_data} ->
         {:ok, cached_data}
-        
+
       {:error, :not_found} ->
         path = "/#{@universe_api_version}/universe/groups/#{group_id}/"
 
@@ -454,11 +455,11 @@ defmodule EveDmv.Eve.EsiClient do
   @spec get_category(integer()) :: {:ok, map()} | {:error, term()}
   def get_category(category_id) when is_integer(category_id) do
     cache_key = "category_#{category_id}"
-    
+
     case EsiCache.get(cache_key) do
       {:ok, cached_data} ->
         {:ok, cached_data}
-        
+
       {:error, :not_found} ->
         path = "/#{@universe_api_version}/universe/categories/#{category_id}/"
 

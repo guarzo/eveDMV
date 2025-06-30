@@ -32,7 +32,10 @@ defmodule EveDmvWeb.Router do
     live "/intel/:character_id", CharacterIntelLive
     live "/player/:character_id", PlayerProfileLive
     live "/corp/:corporation_id", CorporationLive
+    live "/alliance/:alliance_id", AllianceLive
     live "/surveillance", SurveillanceLive
+    live "/chain-intelligence", ChainIntelligenceLive
+    live "/chain-intelligence/:map_id", ChainIntelligenceLive
   end
 
   # Authentication routes

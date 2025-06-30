@@ -207,4 +207,146 @@ Document and fix bugs for EVE DMV:
 
 ---
 
+## Generic Sprint Planning Prompt Template
+
+### Prompt: Review Project and Plan Next Sprint
+
+```
+You are joining the EVE DMV project as an AI assistant. Your task is to review the existing documentation and codebase, understand the project state, and plan the next sprint based on the strategic roadmap.
+
+## Your Review Process
+
+### 1. Project Understanding Phase
+Review these key documents in order:
+1. `/workspace/README.md` - Project overview and setup
+2. `/workspace/CLAUDE.md` - AI assistant instructions and project conventions
+3. `/workspace/docs/project-management/project-overview.md` - Comprehensive project summary
+4. `/workspace/docs/project-management/goals-personas-usecases.md` - Target users and objectives
+5. `/workspace/docs/project-management/prioritized-roadmap.md` - Development roadmap
+
+### 2. Current State Analysis
+Examine the current project status:
+1. `/workspace/docs/project-management/project-status.md` - What's been completed
+2. `/workspace/docs/sprints/` - Review all previous sprint documentation
+3. Check for any sprint-X-bug-fixes.md files
+4. Note which sprint was last completed
+
+### 3. Technical Architecture Review
+Understand the technical implementation:
+1. `/workspace/docs/architecture/DESIGN.md` - System architecture
+2. `/workspace/docs/implementation/` - Feature specifications
+3. Review key code patterns in:
+   - `/workspace/lib/eve_dmv/` - Core business logic (Ash resources)
+   - `/workspace/lib/eve_dmv_web/live/` - LiveView modules
+   - `/workspace/test/` - Testing patterns
+
+### 4. Identify Next Sprint
+Based on your review:
+1. Determine which sprint number is next
+2. Find the corresponding sprint plan in the roadmap
+3. Check if there are any outstanding bugs or technical debt
+4. Consider any shifts in project focus or priorities
+
+### 5. Create Sprint Plan
+Create `/workspace/docs/sprints/sprint-[N].md` with:
+
+```markdown
+# Sprint [N]: [Theme Name]
+
+## Sprint Overview
+- **Sprint Number**: [N]
+- **Duration**: 2 weeks (Weeks [X-Y])
+- **Theme**: [Brief theme description]
+- **Goal**: [Primary sprint objective]
+
+## Context from Previous Sprints
+[Summary of what was completed and any relevant carryover]
+
+## User Stories
+
+### Story 1: [Feature Name] ([X] pts)
+**As a** [persona]
+**I want** [functionality]
+**So that** [benefit]
+
+**Acceptance Criteria:**
+- [ ] Criterion 1
+- [ ] Criterion 2
+- [ ] Criterion 3
+
+**Technical Tasks:**
+- [ ] Create Ash resources for [entity]
+- [ ] Implement LiveView for [feature]
+- [ ] Add tests for [functionality]
+- [ ] Update documentation
+
+[Repeat for each story]
+
+## Technical Considerations
+- [Any special technical requirements]
+- [Integration points]
+- [Performance considerations]
+
+## Success Metrics
+- [How we'll measure sprint success]
+- [Key performance indicators]
+
+## Dependencies
+- [External dependencies]
+- [Internal prerequisites]
+
+## Risks and Mitigation
+- [Identified risks]
+- [Mitigation strategies]
+```
+
+### 6. Update Project Documentation
+1. Update `/workspace/docs/project-management/project-status.md`:
+   - Add new sprint section
+   - Update "Next Immediate Tasks"
+   
+2. Create `/workspace/docs/sprints/sprint-[N]-bug-fixes.md`:
+   ```markdown
+   # Sprint [N] Bug Fixes
+   
+   ## Bug Tracking
+   
+   [This file will track bugs discovered during Sprint [N]]
+   ```
+
+### 7. Begin Implementation
+After planning is complete:
+1. Review the highest priority user story
+2. Check existing code patterns for similar features
+3. Design the implementation approach
+4. Start with database schema/Ash resources if needed
+5. Follow TDD practices
+
+## Important Project-Specific Notes
+- **Framework**: Phoenix 1.7.21 with LiveView
+- **Data Layer**: Ash Framework 3.4 (NOT traditional Ecto)
+- **Real-time**: Broadway for killmail pipeline
+- **Focus**: Wormhole corporations (J-space)
+- **Integration**: Wanderer map is primary integration
+
+## Questions to Answer During Review
+1. What features were completed in the last sprint?
+2. Are there any outstanding bugs or issues?
+3. What's the next priority according to the roadmap?
+4. Has the project focus shifted since the roadmap was created?
+5. Are there any technical debts that should be addressed?
+6. What patterns have been established that should be followed?
+
+## Output Expected
+1. A clear understanding of project state
+2. Sprint [N] documentation created
+3. Project status updated
+4. Clear plan for first feature to implement
+5. Any questions or clarifications needed
+
+Please proceed with reviewing the project documentation and planning the next sprint.
+```
+
+---
+
 *These prompts ensure consistent sprint management and maintain project momentum with proper documentation.*

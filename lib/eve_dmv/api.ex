@@ -26,6 +26,9 @@ defmodule EveDmv.Api do
 
     # Intelligence data
     resource(EveDmv.Intelligence.CharacterStats)
+    resource(EveDmv.Intelligence.ChainTopology)
+    resource(EveDmv.Intelligence.SystemInhabitant)
+    resource(EveDmv.Intelligence.ChainConnection)
 
     # Surveillance profiles
     resource(EveDmv.Surveillance.Profile)

@@ -29,6 +29,14 @@ defmodule EveDmv.Application do
       EveDmv.Surveillance.MatchingEngine,
       # Start the re-enrichment worker
       EveDmv.Enrichment.ReEnrichmentWorker,
+      # Start the real-time price updater
+      EveDmv.Enrichment.RealTimePriceUpdater,
+      # Start the Wanderer API client for chain intelligence
+      EveDmv.Intelligence.WandererClient,
+      # Start the Wanderer SSE client for real-time events
+      EveDmv.Intelligence.WandererSSE,
+      # Start the chain monitoring system
+      EveDmv.Intelligence.ChainMonitor,
       # Start mock SSE server in development
       maybe_start_mock_sse_server(),
       # Start the killmail ingestion pipeline

@@ -4,6 +4,7 @@ defmodule EveDmvWeb.DashboardLive do
   """
 
   use EveDmvWeb, :live_view
+  alias EveDmvWeb.PriceMonitorComponent
 
   # Load current user from session on mount
   on_mount {EveDmvWeb.AuthLive, :load_from_session}
@@ -127,36 +128,42 @@ defmodule EveDmvWeb.DashboardLive do
       </div>
     </div>
 
-    <!-- Recent Activity Section -->
-    <div class="bg-gray-800 rounded-lg p-6">
-      <h2 class="text-xl font-semibold text-white mb-4">Recent Activity</h2>
-      <div class="text-center py-12">
-        <svg
-          class="mx-auto h-12 w-12 text-gray-400 mb-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-          />
-        </svg>
-        <h3 class="text-lg font-medium text-gray-300 mb-2">No activity yet</h3>
-        <p class="text-gray-400">
-          <%= if @killmail_count > 0 do %>
-            Check out the
-            <.link navigate={~p"/feed"} class="text-blue-400 hover:text-blue-300 underline">
-              live kill feed
-            </.link>
-            to see the latest activity.
-          <% else %>
-            Killmail data is being ingested. Check back soon!
-          <% end %>
-        </p>
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <!-- Recent Activity Section -->
+      <div class="bg-gray-800 rounded-lg p-6">
+        <h2 class="text-xl font-semibold text-white mb-4">Recent Activity</h2>
+        <div class="text-center py-12">
+          <svg
+            class="mx-auto h-12 w-12 text-gray-400 mb-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
+          </svg>
+          <h3 class="text-lg font-medium text-gray-300 mb-2">No activity yet</h3>
+          <p class="text-gray-400">
+            <%= if @killmail_count > 0 do %>
+              Check out the
+              <.link navigate={~p"/feed"} class="text-blue-400 hover:text-blue-300 underline">
+                live kill feed
+              </.link>
+              to see the latest activity.
+            <% else %>
+              Killmail data is being ingested. Check back soon!
+            <% end %>
+          </p>
+        </div>
       </div>
+      
+    <!-- Real-time Price Monitor -->
+      <.live_component module={PriceMonitorComponent} id="price-monitor" />
     </div>
 
     <!-- Quick Links -->
@@ -174,7 +181,9 @@ defmodule EveDmvWeb.DashboardLive do
         <div class="bg-gray-800 rounded-lg p-4">
           <h3 class="text-lg font-medium text-white mb-2">Character Intelligence</h3>
           <p class="text-gray-400 text-sm">Analyze pilot behavior and combat patterns</p>
-          <p class="text-gray-500 text-xs mt-2">Enter a character ID in the URL: /intel/CHARACTER_ID</p>
+          <p class="text-gray-500 text-xs mt-2">
+            Enter a character ID in the URL: /intel/CHARACTER_ID
+          </p>
         </div>
 
         <.link

@@ -324,7 +324,7 @@ defmodule EveDmvWeb.PlayerProfileLive do
 
   # Template helper functions
 
-  def generate_stats_button_html(nil) do
+  def generate_stats_button_html(nil, assigns) do
     ~H"""
     <button
       phx-click="generate_stats"
@@ -335,27 +335,31 @@ defmodule EveDmvWeb.PlayerProfileLive do
     """
   end
 
-  def generate_stats_button_html(_), do: ~H""
+  def generate_stats_button_html(_, assigns), do: ~H""
 
   def format_avg_gang_size(nil), do: "1.0"
   def format_avg_gang_size(size), do: format_number(size)
 
   def safe_security_status(nil), do: "0.00"
-  def safe_security_status(status) when is_number(status), do: Float.round(status, 2) |> to_string()
+
+  def safe_security_status(status) when is_number(status),
+    do: Float.round(status, 2) |> to_string()
+
   def safe_security_status(_), do: "0.00"
 
   def safe_character_age(nil), do: "Unknown"
+
   def safe_character_age(birthday) do
-    try do
-      days = DateTime.diff(DateTime.utc_now(), birthday, :day)
-      if days >= 0 do
-        (days / 365) |> trunc() |> to_string() <> " years"
-      else
-        "Unknown"
-      end
-    rescue
-      _ -> "Unknown"
+    days = DateTime.diff(DateTime.utc_now(), birthday, :day)
+
+    if days >= 0 do
+      years = (days / 365) |> trunc()
+      "#{years} years"
+    else
+      "Unknown"
     end
+  rescue
+    _ -> "Unknown"
   end
 
   def format_net_isk(destroyed, lost) do
@@ -501,7 +505,7 @@ defmodule EveDmvWeb.PlayerProfileLive do
         </div>
       </div>
       
-<!-- Solo vs Gang Stats -->
+    <!-- Solo vs Gang Stats -->
       <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
         <h3 class="text-lg font-bold mb-4 text-purple-400">Solo vs Gang Performance</h3>
 
@@ -543,7 +547,7 @@ defmodule EveDmvWeb.PlayerProfileLive do
         </div>
       </div>
       
-<!-- ISK Statistics -->
+    <!-- ISK Statistics -->
       <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
         <h3 class="text-lg font-bold mb-4 text-yellow-400">ISK Performance</h3>
 
@@ -564,8 +568,8 @@ defmodule EveDmvWeb.PlayerProfileLive do
 
           <div class="flex justify-between">
             <span class="text-gray-400">Net ISK:</span>
-            <span class={"font-medium #{net_isk_class(@player_stats.total_isk_destroyed, @player_stats.total_isk_lost)}"}>>
-              {format_net_isk(@player_stats.total_isk_destroyed, @player_stats.total_isk_lost)}
+            <span class={"font-medium #{net_isk_class(@player_stats.total_isk_destroyed, @player_stats.total_isk_lost)}"}>
+              > {format_net_isk(@player_stats.total_isk_destroyed, @player_stats.total_isk_lost)}
             </span>
           </div>
 
@@ -578,8 +582,8 @@ defmodule EveDmvWeb.PlayerProfileLive do
         </div>
       </div>
     </div>
-    
-<!-- Additional Information -->
+
+    <!-- Additional Information -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
       <!-- Activity & Behavior -->
       <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
@@ -590,9 +594,7 @@ defmodule EveDmvWeb.PlayerProfileLive do
             <span class="text-gray-400">Danger Rating:</span>
             <div>
               <% {stars, badge_class} = danger_badge(@player_stats.danger_rating) %>
-              <span class={"px-2 py-1 rounded text-sm font-medium #{badge_class}"}>>
-                {stars}
-              </span>
+              <span class={"px-2 py-1 rounded text-sm font-medium #{badge_class}"}>> {stars}</span>
             </div>
           </div>
 
@@ -601,8 +603,8 @@ defmodule EveDmvWeb.PlayerProfileLive do
             <div>
               <% {activity_text, activity_class} =
                 activity_badge(@player_stats.primary_activity) %>
-              <span class={"px-2 py-1 rounded text-sm font-medium #{activity_class}"}>>
-                {activity_text}
+              <span class={"px-2 py-1 rounded text-sm font-medium #{activity_class}"}>
+                > {activity_text}
               </span>
             </div>
           </div>
@@ -611,9 +613,7 @@ defmodule EveDmvWeb.PlayerProfileLive do
             <span class="text-gray-400">Gang Preference:</span>
             <div>
               <% {gang_text, gang_class} = gang_size_badge(@player_stats.preferred_gang_size) %>
-              <span class={"px-2 py-1 rounded text-sm font-medium #{gang_class}"}>>
-                {gang_text}
-              </span>
+              <span class={"px-2 py-1 rounded text-sm font-medium #{gang_class}"}>> {gang_text}</span>
             </div>
           </div>
 
@@ -631,7 +631,7 @@ defmodule EveDmvWeb.PlayerProfileLive do
         </div>
       </div>
       
-<!-- Ship Information -->
+    <!-- Ship Information -->
       <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
         <h3 class="text-lg font-bold mb-4 text-orange-400">Ship Usage</h3>
 
@@ -668,8 +668,8 @@ defmodule EveDmvWeb.PlayerProfileLive do
         </div>
       </div>
     </div>
-    
-<!-- Time Information -->
+
+    <!-- Time Information -->
     <%= if @player_stats.last_updated do %>
       <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
         <div class="flex justify-between items-center text-sm text-gray-400">
@@ -744,12 +744,7 @@ defmodule EveDmvWeb.PlayerProfileLive do
     <!-- No Statistics Available -->
     <div class="bg-gray-800 rounded-lg p-8 border border-gray-700 text-center">
       <div class="text-gray-400 mb-4">
-        <svg
-          class="w-16 h-16 mx-auto mb-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
+        <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             stroke-linecap="round"
             stroke-linejoin="round"

@@ -50,6 +50,9 @@ defmodule EveDmvWeb.SurveillanceLive do
         |> assign(:unread_count, unread_count)
         |> assign(:show_create_modal, false)
         |> assign(:show_notifications, false)
+        |> assign(:show_batch_modal, false)
+        |> assign(:selected_profiles, MapSet.new())
+        |> assign(:batch_mode, false)
         |> assign(:new_profile_form, %{
           "name" => "",
           "description" => "",
@@ -266,6 +269,183 @@ defmodule EveDmvWeb.SurveillanceLive do
   end
 
   @impl true
+  def handle_event("toggle_batch_mode", _params, socket) do
+    batch_mode = not socket.assigns.batch_mode
+
+    socket =
+      socket
+      |> assign(:batch_mode, batch_mode)
+      |> assign(:selected_profiles, MapSet.new())
+      |> put_flash(:info, if(batch_mode, do: "Batch mode enabled", else: "Batch mode disabled"))
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("toggle_profile_selection", %{"profile_id" => profile_id}, socket) do
+    selected = socket.assigns.selected_profiles
+
+    updated_selected =
+      if MapSet.member?(selected, profile_id) do
+        MapSet.delete(selected, profile_id)
+      else
+        MapSet.put(selected, profile_id)
+      end
+
+    socket = assign(socket, :selected_profiles, updated_selected)
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("select_all_profiles", _params, socket) do
+    all_profile_ids =
+      socket.assigns.profiles
+      |> Enum.map(& &1.id)
+      |> MapSet.new()
+
+    socket = assign(socket, :selected_profiles, all_profile_ids)
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("deselect_all_profiles", _params, socket) do
+    socket = assign(socket, :selected_profiles, MapSet.new())
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("show_batch_modal", _params, socket) do
+    if MapSet.size(socket.assigns.selected_profiles) > 0 do
+      socket = assign(socket, :show_batch_modal, true)
+      {:noreply, socket}
+    else
+      socket = put_flash(socket, :warning, "Please select at least one profile")
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("hide_batch_modal", _params, socket) do
+    socket = assign(socket, :show_batch_modal, false)
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("batch_delete", _params, socket) do
+    selected_ids = MapSet.to_list(socket.assigns.selected_profiles)
+
+    results = batch_delete_profiles(selected_ids, socket.assigns.current_user)
+
+    # Reload matching engine profiles
+    MatchingEngine.reload_profiles()
+
+    # Reload user profiles
+    profiles = load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
+
+    socket =
+      socket
+      |> assign(:profiles, profiles)
+      |> assign(:selected_profiles, MapSet.new())
+      |> assign(:batch_mode, false)
+      |> assign(:show_batch_modal, false)
+      |> put_flash(:info, "Deleted #{results.success} profiles, #{results.failed} failed")
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("batch_enable", _params, socket) do
+    selected_ids = MapSet.to_list(socket.assigns.selected_profiles)
+
+    results = batch_update_profiles(selected_ids, true, socket.assigns.current_user)
+
+    # Reload matching engine profiles
+    MatchingEngine.reload_profiles()
+
+    # Reload user profiles
+    profiles = load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
+
+    socket =
+      socket
+      |> assign(:profiles, profiles)
+      |> assign(:selected_profiles, MapSet.new())
+      |> assign(:batch_mode, false)
+      |> assign(:show_batch_modal, false)
+      |> put_flash(:info, "Enabled #{results.success} profiles, #{results.failed} failed")
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("batch_disable", _params, socket) do
+    selected_ids = MapSet.to_list(socket.assigns.selected_profiles)
+
+    results = batch_update_profiles(selected_ids, false, socket.assigns.current_user)
+
+    # Reload matching engine profiles
+    MatchingEngine.reload_profiles()
+
+    # Reload user profiles
+    profiles = load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
+
+    socket =
+      socket
+      |> assign(:profiles, profiles)
+      |> assign(:selected_profiles, MapSet.new())
+      |> assign(:batch_mode, false)
+      |> assign(:show_batch_modal, false)
+      |> put_flash(:info, "Disabled #{results.success} profiles, #{results.failed} failed")
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("export_profiles", _params, socket) do
+    selected_ids =
+      if MapSet.size(socket.assigns.selected_profiles) > 0 do
+        MapSet.to_list(socket.assigns.selected_profiles)
+      else
+        Enum.map(socket.assigns.profiles, & &1.id)
+      end
+
+    export_data = export_profiles_json(selected_ids, socket.assigns.current_user)
+
+    socket =
+      socket
+      |> push_event("download", %{
+        filename: "surveillance_profiles_#{Date.utc_today()}.json",
+        content: Jason.encode!(export_data, pretty: true),
+        mimetype: "application/json"
+      })
+      |> put_flash(:info, "Exported #{length(export_data["profiles"])} profiles")
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("import_profiles", %{"profiles_json" => json_data}, socket) do
+    case import_profiles_from_json(json_data, socket.assigns.user_id, socket.assigns.current_user) do
+      {:ok, count} ->
+        # Reload matching engine profiles
+        MatchingEngine.reload_profiles()
+
+        # Reload user profiles
+        profiles = load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
+
+        socket =
+          socket
+          |> assign(:profiles, profiles)
+          |> put_flash(:info, "Successfully imported #{count} profiles")
+
+        {:noreply, socket}
+
+      {:error, reason} ->
+        socket = put_flash(socket, :error, "Import failed: #{reason}")
+        {:noreply, socket}
+    end
+  end
+
+  @impl true
   def handle_event("show_notifications", _params, socket) do
     socket = assign(socket, :show_notifications, true)
     {:noreply, socket}
@@ -422,6 +602,106 @@ defmodule EveDmvWeb.SurveillanceLive do
       %{message: msg} -> msg
       %{field: field} -> "#{field} is invalid"
       _ -> inspect(err)
+    end
+  end
+
+  # Batch operation helpers
+
+  defp batch_delete_profiles(profile_ids, actor) do
+    results = %{success: 0, failed: 0}
+
+    Enum.reduce(profile_ids, results, fn profile_id, acc ->
+      case Ash.get(Profile, profile_id, domain: Api, actor: actor) do
+        {:ok, profile} ->
+          case Ash.destroy(profile, domain: Api, actor: actor) do
+            :ok ->
+              %{acc | success: acc.success + 1}
+
+            {:error, _} ->
+              %{acc | failed: acc.failed + 1}
+          end
+
+        {:error, _} ->
+          %{acc | failed: acc.failed + 1}
+      end
+    end)
+  end
+
+  defp batch_update_profiles(profile_ids, is_active, actor) do
+    results = %{success: 0, failed: 0}
+
+    Enum.reduce(profile_ids, results, fn profile_id, acc ->
+      case Ash.get(Profile, profile_id, domain: Api, actor: actor) do
+        {:ok, profile} ->
+          case Ash.update(profile, %{is_active: is_active}, domain: Api, actor: actor) do
+            {:ok, _} ->
+              %{acc | success: acc.success + 1}
+
+            {:error, _} ->
+              %{acc | failed: acc.failed + 1}
+          end
+
+        {:error, _} ->
+          %{acc | failed: acc.failed + 1}
+      end
+    end)
+  end
+
+  defp export_profiles_json(profile_ids, actor) do
+    profiles =
+      Enum.reduce(profile_ids, [], fn profile_id, acc ->
+        case Ash.get(Profile, profile_id, domain: Api, actor: actor) do
+          {:ok, profile} ->
+            exported = %{
+              "name" => profile.name,
+              "description" => profile.description,
+              "filter_tree" => profile.filter_tree,
+              "is_active" => profile.is_active,
+              "notification_settings" => profile.notification_settings
+            }
+
+            [exported | acc]
+
+          {:error, _} ->
+            acc
+        end
+      end)
+      |> Enum.reverse()
+
+    %{
+      "version" => "1.0",
+      "exported_at" => DateTime.utc_now(),
+      "profiles" => profiles
+    }
+  end
+
+  defp import_profiles_from_json(json_data, user_id, actor) do
+    case Jason.decode(json_data) do
+      {:ok, %{"profiles" => profiles}} when is_list(profiles) ->
+        imported_count =
+          Enum.reduce(profiles, 0, fn profile_data, count ->
+            profile_attrs = %{
+              name: profile_data["name"] || "Imported Profile",
+              description: profile_data["description"] || "",
+              filter_tree: profile_data["filter_tree"] || sample_filter_tree(),
+              is_active: profile_data["is_active"] || false,
+              notification_settings: profile_data["notification_settings"] || %{},
+              user_id: user_id
+            }
+
+            case Ash.create(Profile, profile_attrs, domain: Api, actor: actor) do
+              {:ok, _} -> count + 1
+              {:error, _} -> count
+            end
+          end)
+
+        {:ok, imported_count}
+
+      {:ok, _} ->
+        {:error, "Invalid format: missing profiles array"}
+
+      {:error, _} ->
+        {:error, "Invalid JSON data"}
     end
   end
 end

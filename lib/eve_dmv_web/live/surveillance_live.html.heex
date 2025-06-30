@@ -8,12 +8,58 @@
       </div>
 
       <div class="flex items-center space-x-4">
+        <%= if @batch_mode do %>
+          <div class="flex items-center space-x-2 text-sm">
+            <span class="text-gray-400">{MapSet.size(@selected_profiles)} selected</span>
+            <button
+              phx-click="select_all_profiles"
+              class="px-2 py-1 bg-gray-600 hover:bg-gray-700 rounded text-xs"
+            >
+              Select All
+            </button>
+            <button
+              phx-click="deselect_all_profiles"
+              class="px-2 py-1 bg-gray-600 hover:bg-gray-700 rounded text-xs"
+            >
+              Clear
+            </button>
+          </div>
+        <% end %>
+
+        <button
+          phx-click="toggle_batch_mode"
+          class={"px-3 py-2 rounded-lg text-sm transition-colors " <>
+                 if(@batch_mode, 
+                    do: "bg-yellow-600 hover:bg-yellow-700", 
+                    else: "bg-gray-600 hover:bg-gray-700")}
+        >
+          {if @batch_mode, do: "✓ Batch Mode", else: "📋 Batch Mode"}
+        </button>
+
+        <%= if @batch_mode && MapSet.size(@selected_profiles) > 0 do %>
+          <button
+            phx-click="show_batch_modal"
+            class="px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm transition-colors"
+          >
+            ⚡ Batch Actions
+          </button>
+        <% end %>
+
+        <button
+          phx-click="export_profiles"
+          title="Export profiles"
+          class="px-3 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg text-sm transition-colors"
+        >
+          📥 Export
+        </button>
+
         <button
           phx-click="refresh_stats"
           class="px-3 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg text-sm transition-colors"
         >
           🔄 Refresh
         </button>
+
         <button
           phx-click="show_create_modal"
           class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors"
@@ -97,14 +143,28 @@
         <%= if length(@profiles) > 0 do %>
           <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             <%= for profile <- @profiles do %>
-              <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+              <div class={"bg-gray-800 border rounded-lg p-6 transition-all " <>
+                          if(@batch_mode && MapSet.member?(@selected_profiles, profile.id),
+                             do: "border-purple-500 ring-2 ring-purple-500",
+                             else: "border-gray-700")}>
                 <!-- Profile Header -->
                 <div class="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 class="text-lg font-semibold text-gray-200">{profile.name}</h3>
-                    <%= if profile.description do %>
-                      <p class="text-sm text-gray-400 mt-1">{profile.description}</p>
+                  <div class="flex items-start space-x-3">
+                    <%= if @batch_mode do %>
+                      <input
+                        type="checkbox"
+                        checked={MapSet.member?(@selected_profiles, profile.id)}
+                        phx-click="toggle_profile_selection"
+                        phx-value-profile_id={profile.id}
+                        class="mt-1 w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
+                      />
                     <% end %>
+                    <div>
+                      <h3 class="text-lg font-semibold text-gray-200">{profile.name}</h3>
+                      <%= if profile.description do %>
+                        <p class="text-sm text-gray-400 mt-1">{profile.description}</p>
+                      <% end %>
+                    </div>
                   </div>
                   <div class="text-sm">
                     {profile_status_badge(profile.is_active)}
@@ -260,4 +320,72 @@
       </div>
     </div>
   <% end %>
+  
+<!-- Batch Actions Modal -->
+  <%= if @show_batch_modal do %>
+    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-xl font-semibold text-gray-200">Batch Actions</h2>
+          <button phx-click="hide_batch_modal" class="text-gray-400 hover:text-gray-200 text-xl">
+            ✕
+          </button>
+        </div>
+
+        <div class="mb-4 text-center">
+          <p class="text-gray-400">
+            {MapSet.size(@selected_profiles)} profile{if MapSet.size(@selected_profiles) != 1,
+              do: "s"} selected
+          </p>
+        </div>
+
+        <div class="space-y-3">
+          <button
+            phx-click="batch_enable"
+            class="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+          >
+            ✓ Enable Selected
+          </button>
+
+          <button
+            phx-click="batch_disable"
+            class="w-full px-4 py-3 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-medium transition-colors"
+          >
+            ⏸ Disable Selected
+          </button>
+
+          <button
+            phx-click="batch_delete"
+            data-confirm={"Are you sure you want to delete #{MapSet.size(@selected_profiles)} profiles?"}
+            class="w-full px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+          >
+            🗑 Delete Selected
+          </button>
+
+          <button
+            phx-click="hide_batch_modal"
+            class="w-full px-4 py-3 bg-gray-600 hover:bg-gray-700 text-gray-200 rounded-lg font-medium transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  <% end %>
 </div>
+
+<script>
+  // Handle file downloads
+  window.addEventListener("phx:download", (e) => {
+    const { filename, content, mimetype } = e.detail;
+    const blob = new Blob([content], { type: mimetype });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+</script>

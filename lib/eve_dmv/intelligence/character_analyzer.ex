@@ -262,14 +262,16 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
 
       gang_sizes =
         uses
-        |> Enum.map(fn {_, _, km, _} -> max(0, length(km.participants) - 1) end)  # Subtract 1 to exclude victim
+        # Subtract 1 to exclude victim
+        |> Enum.map(fn {_, _, km, _} -> max(0, length(km.participants) - 1) end)
         |> Enum.filter(&(&1 >= 0))
 
       avg_gang_size =
         if length(gang_sizes) > 0 do
           Enum.sum(gang_sizes) / length(gang_sizes)
         else
-          0.0  # No gang if excluding victim results in 0
+          # No gang if excluding victim results in 0
+          0.0
         end
 
       {Integer.to_string(type_id),
@@ -378,7 +380,8 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
     avg_victim_gang_size =
       killmails
       |> Enum.filter(fn km -> not victim_is_character?(km, character_id) end)
-      |> Enum.map(&max(0, length(&1.participants) - 1))  # Subtract 1 to exclude victim
+      # Subtract 1 to exclude victim
+      |> Enum.map(&max(0, length(&1.participants) - 1))
       |> average()
 
     %{

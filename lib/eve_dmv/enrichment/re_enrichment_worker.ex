@@ -19,6 +19,7 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
   use GenServer
   require Logger
   alias EveDmv.Api
+  alias EveDmv.Enrichment.RealTimePriceUpdater
   alias EveDmv.Eve.NameResolver
   alias EveDmv.Killmails.{KillmailEnriched, KillmailRaw}
   alias EveDmv.Market.PriceService
@@ -283,64 +284,16 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
   defp update_prices_for_batch(killmails) do
     Logger.debug("Updating prices for batch of #{length(killmails)} killmails")
 
-    result = %{processed: 0, updated: 0, errors: 0}
+    # Use the RealTimePriceUpdater to process the batch with automatic broadcasting
+    case RealTimePriceUpdater.update_batch_with_broadcast(killmails) do
+      %{processed: _, updated: _, broadcast_count: _, errors: _} = result ->
+        Logger.debug("Batch price update completed: #{inspect(result)}")
+        result
 
-    Enum.reduce(killmails, result, fn killmail, acc ->
-      try do
-        # Get the raw killmail data to recalculate prices
-        case get_raw_killmail_data(killmail.killmail_id, killmail.killmail_time) do
-          {:ok, raw_data} ->
-            # Recalculate prices using current market data
-            price_result = PriceService.calculate_killmail_value(raw_data)
-
-            # Check if prices have changed significantly (>5%)
-            old_value =
-              case killmail.total_value do
-                nil -> 0.0
-                value -> Decimal.to_float(value)
-              end
-
-            new_value = price_result.total_value
-
-            if old_value > 0 and abs(new_value - old_value) / max(old_value, 1) > 0.05 do
-              # Update the enriched killmail with new prices
-              update_data = %{
-                total_value: price_result.total_value,
-                ship_value: price_result.ship_value,
-                fitted_value: price_result.fitted_value,
-                price_data_source: Atom.to_string(price_result.price_source)
-              }
-
-              case Ash.update(killmail, update_data, domain: Api) do
-                {:ok, _} ->
-                  Logger.debug("Updated prices for killmail #{killmail.killmail_id}")
-                  %{acc | processed: acc.processed + 1, updated: acc.updated + 1}
-
-                {:error, error} ->
-                  Logger.warning(
-                    "Failed to update killmail #{killmail.killmail_id}: #{inspect(error)}"
-                  )
-
-                  %{acc | processed: acc.processed + 1, errors: acc.errors + 1}
-              end
-            else
-              # Prices haven't changed significantly
-              %{acc | processed: acc.processed + 1}
-            end
-
-          {:error, _} ->
-            Logger.debug("No raw data found for killmail #{killmail.killmail_id}")
-            %{acc | processed: acc.processed + 1}
-        end
-      rescue
-        error ->
-          Logger.error(
-            "Error updating prices for killmail #{killmail.killmail_id}: #{inspect(error)}"
-          )
-
-          %{acc | processed: acc.processed + 1, errors: acc.errors + 1}
-      end
-    end)
+      error ->
+        Logger.error("Failed to update batch prices: #{inspect(error)}")
+        %{processed: 0, updated: 0, errors: length(killmails)}
+    end
   end
 
   defp update_names_for_batch(killmails) do
@@ -439,17 +392,6 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
         )
 
         %{acc | processed: acc.processed + 1, errors: acc.errors + 1}
-    end
-  end
-
-  defp get_raw_killmail_data(killmail_id, killmail_time) do
-    # Try to get the raw killmail using the primary key
-    case Ash.get(KillmailRaw, [killmail_id, killmail_time], domain: Api) do
-      {:ok, raw_killmail} when not is_nil(raw_killmail) ->
-        {:ok, raw_killmail.raw_data}
-
-      _ ->
-        {:error, :not_found}
     end
   end
 end

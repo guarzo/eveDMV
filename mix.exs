@@ -69,6 +69,10 @@ defmodule EveDmv.MixProject do
       {:dns_cluster, "~> 0.2"},
       {:bandit, "~> 1.5"},
 
+      # WebSocket client for Wanderer integration
+      {:websockex, "~> 0.4.3"},
+      {:slipstream, "~> 1.2"},
+
       # Ash Framework
       {:ash, "~> 3.4"},
       {:ash_postgres, "~> 2.4"},

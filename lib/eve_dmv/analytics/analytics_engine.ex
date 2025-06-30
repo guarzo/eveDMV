@@ -36,7 +36,7 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
       {:error, reason} ->
         Logger.error("Failed to calculate player stats: #{inspect(reason)}")
         {:error, reason}
-      
+
       ids ->
         chunk_and_process(ids, batch_size, &process_character(&1, start_date, now), "player")
         Logger.info("Player statistics calculation completed")
@@ -64,7 +64,7 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
       {:error, reason} ->
         Logger.error("Failed to calculate ship stats: #{inspect(reason)}")
         {:error, reason}
-      
+
       ids ->
         ids
         |> Enum.with_index(1)
@@ -173,15 +173,17 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
   # --- Metric calculations ---
 
   defp calculate_character_metrics(character_id, _start_date, _end_date) do
-    case Ash.read(Participant, 
-      filter: %{character_id: character_id},
-      limit: 1_000,
-      domain: Api
-    ) do
+    case Ash.read(Participant,
+           filter: %{character_id: character_id},
+           limit: 1_000,
+           domain: Api
+         ) do
       {:ok, [_ | _] = parts} ->
         build_character_metrics(parts)
+
       {:ok, []} ->
         %{}
+
       {:error, reason} ->
         Logger.error("Failed to fetch character metrics: #{inspect(reason)}")
         %{}
@@ -189,15 +191,17 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
   end
 
   defp calculate_ship_metrics(ship_type_id, _start_date, _end_date) do
-    case Ash.read(Participant, 
-      filter: %{ship_type_id: ship_type_id},
-      limit: 1_000,
-      domain: Api
-    ) do
+    case Ash.read(Participant,
+           filter: %{ship_type_id: ship_type_id},
+           limit: 1_000,
+           domain: Api
+         ) do
       {:ok, [_ | _] = parts} ->
         build_ship_metrics(parts)
+
       {:ok, []} ->
         %{}
+
       {:error, reason} ->
         Logger.error("Failed to fetch ship metrics: #{inspect(reason)}")
         %{}
@@ -206,11 +210,12 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
 
   # Build character-level metrics map
   defp build_character_metrics(ps) do
-    character_name = 
+    character_name =
       case List.first(ps) do
         %{character_name: name} when is_binary(name) -> name
         _ -> "Unknown"
       end
+
     {kills, losses} = split_kills_losses(ps)
     {solo_kills, gang_kills, solo_losses, gang_losses} = split_solo_gang(kills, losses)
 
@@ -260,19 +265,17 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
     total_kills = length(kills)
     total_losses = length(losses)
 
-    # Calculate actual ISK values from participant data instead of hardcoded multipliers
-    total_isk_destroyed = 
-      ps
-      |> Enum.filter(&(not &1.is_victim))
-      |> Enum.map(&(&1.ship_value || Decimal.new(0)))
+    # Calculate actual ISK values from killmail data
+    total_isk_destroyed =
+      kills
+      |> Enum.map(&(&1.total_value || Decimal.new(0)))
       |> Enum.reduce(Decimal.new(0), &Decimal.add/2)
-    
-    total_isk_lost = 
-      ps
-      |> Enum.filter(& &1.is_victim)
-      |> Enum.map(&(&1.ship_value || Decimal.new(0)))
+
+    total_isk_lost =
+      losses
+      |> Enum.map(&(&1.total_value || Decimal.new(0)))
       |> Enum.reduce(Decimal.new(0), &Decimal.add/2)
-    
+
     %{
       total_kills: total_kills,
       total_losses: total_losses,
@@ -330,12 +333,12 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
     pilots = ps |> Enum.map(& &1.character_id) |> Enum.uniq() |> length()
 
     # Calculate actual ISK values from participant data instead of hardcoded multipliers
-    total_isk_out = 
+    total_isk_out =
       kills
       |> Enum.map(&(&1.ship_value || Decimal.new(0)))
       |> Enum.reduce(Decimal.new(0), &Decimal.add/2)
-    
-    total_isk_in = 
+
+    total_isk_in =
       losses
       |> Enum.map(&(&1.ship_value || Decimal.new(0)))
       |> Enum.reduce(Decimal.new(0), &Decimal.add/2)

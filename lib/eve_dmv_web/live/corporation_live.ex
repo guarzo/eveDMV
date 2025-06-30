@@ -70,11 +70,11 @@ defmodule EveDmvWeb.CorporationLive do
 
   defp load_corporation_info(corporation_id) do
     # Get corporation info from recent killmail data using database filtering
-    case Ash.read(Participant, 
-      filter: %{corporation_id: corporation_id},
-      limit: 1,
-      domain: Api
-    ) do
+    case Ash.read(Participant,
+           filter: %{corporation_id: corporation_id},
+           limit: 1,
+           domain: Api
+         ) do
       {:ok, [corp_data | _]} ->
         %{
           corporation_id: corporation_id,
@@ -82,7 +82,7 @@ defmodule EveDmvWeb.CorporationLive do
           alliance_id: corp_data.alliance_id,
           alliance_name: corp_data.alliance_name
         }
-      
+
       {:ok, []} ->
         %{
           corporation_id: corporation_id,
@@ -90,7 +90,7 @@ defmodule EveDmvWeb.CorporationLive do
           alliance_id: nil,
           alliance_name: nil
         }
-        
+
       {:error, _} ->
         %{
           corporation_id: corporation_id,
@@ -103,10 +103,10 @@ defmodule EveDmvWeb.CorporationLive do
 
   defp load_corp_members(corporation_id) do
     # Get corporation participants filtered at database level
-    case Ash.read(Participant, 
-      filter: %{corporation_id: corporation_id},
-      domain: Api
-    ) do
+    case Ash.read(Participant,
+           filter: %{corporation_id: corporation_id},
+           domain: Api
+         ) do
       {:ok, participants} ->
         corp_members =
           participants
@@ -138,32 +138,35 @@ defmodule EveDmvWeb.CorporationLive do
           |> Enum.take(50)
 
         corp_members
-        
-      {:error, _} -> []
+
+      {:error, _} ->
+        []
     end
   end
 
   defp load_recent_activity(corporation_id) do
     # Get recent killmail activity filtered and sorted at database level
-    case Ash.read(Participant, 
-      filter: %{corporation_id: corporation_id},
-      sort: %{inserted_at: :desc},
-      limit: 20,
-      domain: Api
-    ) do
+    case Ash.read(Participant,
+           filter: %{corporation_id: corporation_id},
+           sort: %{inserted_at: :desc},
+           limit: 20,
+           domain: Api
+         ) do
       {:ok, participants} ->
         participants
         |> Enum.map(fn p ->
           %{
             character_name: p.character_name,
             ship_name: p.ship_name,
-            is_kill: not p.is_victim,  # Use is_victim flag instead of damage_dealt
+            # Use is_victim flag instead of damage_dealt
+            is_kill: not p.is_victim,
             timestamp: p.inserted_at,
             solar_system_name: p.solar_system_name
           }
         end)
-        
-      {:error, _} -> []
+
+      {:error, _} ->
+        []
     end
   end
 

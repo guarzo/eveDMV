@@ -63,7 +63,7 @@
 - [x] Display top pilots and recent kills
 - [x] Foundation for Sprint 3's deeper corp analytics
 
-## 🚀 Sprint 2 Complete! Bonus Tasks Added
+## 🚀 Sprint 2 Complete! All Features Delivered
 
 ### Bonus Tasks Completed
 #### 9. Foreign Key Error Resolution (3 pts) ✅ COMPLETE
@@ -77,6 +77,27 @@
 - [x] Optimize candidate finding with inverted indexes
 - [x] Add parallel evaluation for large candidate sets
 - [x] Implement profile prioritization and cache cleanup
+
+#### 11. Alliance Analytics Dashboard (6 pts) ✅ COMPLETE
+- [x] Create AllianceLive LiveView module
+- [x] Display alliance statistics and member corporations
+- [x] Show activity trends with weekly data
+- [x] List top pilots by efficiency score
+- [x] Add recent activity feed across all corporations
+
+#### 12. Value Enrichment with Real-time Pricing (4 pts) ✅ COMPLETE
+- [x] Create RealTimePriceUpdater GenServer
+- [x] Implement PubSub broadcasting for price changes
+- [x] Build PriceMonitorComponent for dashboard
+- [x] Integrate with ReEnrichmentWorker for batch updates
+- [x] Add 5% threshold for significant price changes
+
+#### 13. Batch Profile Management Tools (3 pts) ✅ COMPLETE
+- [x] Add batch mode toggle to surveillance UI
+- [x] Implement multi-select with checkboxes
+- [x] Create batch actions modal (enable/disable/delete)
+- [x] Add export profiles to JSON functionality
+- [x] Implement import profiles from JSON
 
 ## Timeline
 

@@ -1,0 +1,358 @@
+<div class="min-h-screen bg-gray-900 text-white">
+  <!-- Header -->
+  <div class="bg-gray-800 border-b border-gray-700">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center space-x-4">
+          <h1 class="text-xl font-bold">Alliance Analytics Dashboard</h1>
+          <%= if @alliance_info do %>
+            <span class="text-gray-400 text-lg">
+              {@alliance_info.alliance_name}
+            </span>
+          <% end %>
+        </div>
+
+        <button
+          phx-click="refresh"
+          class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
+        >
+          🔄 Refresh
+        </button>
+      </div>
+    </div>
+  </div>
+  
+<!-- Error State -->
+  <%= if @error do %>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="bg-red-600 text-white p-4 rounded-lg">
+        <h2 class="text-lg font-bold">Error</h2>
+        <p>{@error}</p>
+      </div>
+    </div>
+  <% else %>
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <!-- Alliance Header -->
+      <%= if @alliance_info do %>
+        <div class="bg-gray-800 rounded-lg p-6 mb-8 border border-gray-700">
+          <div class="flex items-start justify-between">
+            <div>
+              <h2 class="text-3xl font-bold text-white mb-2">
+                {@alliance_info.alliance_name}
+              </h2>
+              <div class="text-gray-400">
+                Alliance ID: {@alliance_info.alliance_id}
+              </div>
+            </div>
+
+            <%= if @alliance_stats && @alliance_stats.efficiency_rating do %>
+              <div class="text-right">
+                <div class="text-sm text-gray-400 mb-1">Efficiency Rating</div>
+                <% {rating_text, rating_class} =
+                  efficiency_badge(@alliance_stats.kill_death_ratio) %>
+                <span class={"px-3 py-1 rounded text-sm font-medium #{rating_class}"}>
+                  {rating_text}
+                </span>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+      
+<!-- Alliance Statistics -->
+      <%= if @alliance_stats do %>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+          <!-- Corporations -->
+          <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <div class="flex items-center">
+              <div class="text-3xl mr-3">🏢</div>
+              <div>
+                <p class="text-2xl font-bold text-white">
+                  {format_number(@alliance_stats.total_corporations)}
+                </p>
+                <p class="text-gray-400 text-sm">Corporations</p>
+                <p class="text-xs text-green-400">
+                  {@alliance_stats.active_corporations} active
+                </p>
+              </div>
+            </div>
+          </div>
+          
+<!-- Members -->
+          <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <div class="flex items-center">
+              <div class="text-3xl mr-3">👥</div>
+              <div>
+                <p class="text-2xl font-bold text-white">
+                  {format_number(@alliance_stats.total_members)}
+                </p>
+                <p class="text-gray-400 text-sm">Total Members</p>
+                <p class="text-xs text-gray-500">
+                  Avg: {format_number(@alliance_stats.avg_activity_per_member)}/member
+                </p>
+              </div>
+            </div>
+          </div>
+          
+<!-- Total Kills -->
+          <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <div class="flex items-center">
+              <div class="text-3xl mr-3">🎯</div>
+              <div>
+                <p class="text-2xl font-bold text-green-400">
+                  {format_number(@alliance_stats.total_kills)}
+                </p>
+                <p class="text-gray-400 text-sm">Total Kills</p>
+                <p class="text-xs text-gray-500">
+                  K/D: {@alliance_stats.kill_death_ratio}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+<!-- Total Losses -->
+          <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <div class="flex items-center">
+              <div class="text-3xl mr-3">💀</div>
+              <div>
+                <p class="text-2xl font-bold text-red-400">
+                  {format_number(@alliance_stats.total_losses)}
+                </p>
+                <p class="text-gray-400 text-sm">Total Losses</p>
+                <p class="text-xs text-gray-500">
+                  Per Corp: {format_number(@alliance_stats.avg_activity_per_corp)}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+<!-- Activity Trend -->
+          <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <div class="flex items-center">
+              <div class="text-3xl mr-3">📊</div>
+              <div>
+                <p class="text-2xl font-bold text-yellow-400">
+                  {format_number(@alliance_stats.total_activity)}
+                </p>
+                <p class="text-gray-400 text-sm">Total Activity</p>
+                <%= if @activity_trends do %>
+                  <% {trend_text, trend_class} = trend_indicator(@activity_trends.trend_direction) %>
+                  <p class={"text-xs #{trend_class}"}>
+                    {trend_text}
+                  </p>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+      
+<!-- Activity Trends Chart -->
+      <%= if @activity_trends && @activity_trends.weekly_data do %>
+        <div class="bg-gray-800 rounded-lg p-6 mb-8 border border-gray-700">
+          <h3 class="text-lg font-bold text-white mb-4">Weekly Activity Trends</h3>
+          <div class="grid grid-cols-4 gap-4">
+            <%= for week <- Enum.reverse(@activity_trends.weekly_data) do %>
+              <div class="text-center">
+                <div class="text-sm text-gray-400 mb-2">{week.week_label}</div>
+                <div class="bg-gray-700 rounded p-3">
+                  <div class="text-lg font-bold text-white">{week.total}</div>
+                  <div class="text-xs text-gray-400">
+                    <span class="text-green-400">{week.kills}K</span>
+                    / <span class="text-red-400">{week.losses}L</span>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+      
+<!-- Main Content Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Member Corporations -->
+        <div class="lg:col-span-2 bg-gray-800 rounded-lg border border-gray-700">
+          <div class="p-6 border-b border-gray-700">
+            <h3 class="text-lg font-bold text-white">Member Corporations</h3>
+            <p class="text-gray-400 text-sm">Ranked by total activity</p>
+          </div>
+
+          <div class="p-6">
+            <%= if @corporations && length(@corporations) > 0 do %>
+              <div class="space-y-3 max-h-96 overflow-y-auto">
+                <%= for corp <- @corporations do %>
+                  <div class="flex items-center justify-between p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
+                    <div class="flex items-center space-x-3">
+                      <% {indicator, color_class} =
+                        corporation_activity_indicator(corp.total_activity) %>
+                      <span class={"text-lg #{color_class}"}>{indicator}</span>
+
+                      <div>
+                        <a
+                          href={~p"/corp/#{corp.corporation_id}"}
+                          class="font-medium text-white hover:text-blue-400 transition-colors"
+                        >
+                          {corp.corporation_name}
+                        </a>
+                        <div class="text-xs text-gray-400">
+                          {corp.member_count} members • Last active: {time_ago(
+                            corp.latest_activity
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="text-right">
+                      <div class="text-sm font-medium text-white">
+                        {corp.total_activity} activities
+                      </div>
+                      <div class="text-xs">
+                        <span class="text-green-400">{corp.total_kills}K</span>
+                        / <span class="text-red-400">{corp.total_losses}L</span>
+                        <span class="text-gray-400 ml-1">
+                          ({format_number(corp.kill_death_ratio)} K/D)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+
+              <%= if @alliance_stats.most_active_corp do %>
+                <div class="mt-4 p-3 bg-blue-900 bg-opacity-50 rounded-lg border border-blue-700">
+                  <div class="text-sm">
+                    <span class="text-blue-400">🏆 Most Active:</span>
+                    <span class="text-white font-medium">
+                      {@alliance_stats.most_active_corp.corporation_name}
+                    </span>
+                    <span class="text-gray-400">
+                      ({@alliance_stats.most_active_corp.total_activity} activities)
+                    </span>
+                  </div>
+                </div>
+              <% end %>
+            <% else %>
+              <div class="text-center py-8 text-gray-400">
+                <div class="text-4xl mb-2">🚫</div>
+                <p>No corporation data available</p>
+                <p class="text-sm">
+                  Corporations will appear here once they generate killmail activity
+                </p>
+              </div>
+            <% end %>
+          </div>
+        </div>
+        
+<!-- Top Pilots -->
+        <div class="bg-gray-800 rounded-lg border border-gray-700">
+          <div class="p-6 border-b border-gray-700">
+            <h3 class="text-lg font-bold text-white">Top Alliance Pilots</h3>
+            <p class="text-gray-400 text-sm">By efficiency score</p>
+          </div>
+
+          <div class="p-6">
+            <%= if @top_pilots && length(@top_pilots) > 0 do %>
+              <div class="space-y-3">
+                <%= for {pilot, index} <- Enum.with_index(@top_pilots) do %>
+                  <div class="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                      <div class="text-lg font-bold text-gray-400">
+                        #{index + 1}
+                      </div>
+                      <div>
+                        <a
+                          href={~p"/player/#{pilot.character_id}"}
+                          class="font-medium text-white hover:text-blue-400 transition-colors"
+                        >
+                          {pilot.character_name}
+                        </a>
+                        <div class="text-xs text-gray-400">
+                          {pilot.corporation_name}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="text-right">
+                      <div class="text-sm font-medium">
+                        {format_number(pilot.kill_death_ratio)} K/D
+                      </div>
+                      <div class="text-xs text-gray-400">
+                        <span class="text-green-400">{pilot.total_kills}K</span>
+                        / <span class="text-red-400">{pilot.total_losses}L</span>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            <% else %>
+              <div class="text-center py-8 text-gray-400">
+                <div class="text-4xl mb-2">📊</div>
+                <p>No pilot data available</p>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+      
+<!-- Recent Activity Feed -->
+      <div class="mt-8 bg-gray-800 rounded-lg border border-gray-700">
+        <div class="p-6 border-b border-gray-700">
+          <h3 class="text-lg font-bold text-white">Recent Alliance Activity</h3>
+          <p class="text-gray-400 text-sm">Latest killmail activity across all corporations</p>
+        </div>
+
+        <div class="p-6">
+          <%= if @recent_activity && length(@recent_activity) > 0 do %>
+            <div class="space-y-2 max-h-64 overflow-y-auto">
+              <%= for activity <- @recent_activity do %>
+                <div class="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                  <div class="flex items-center space-x-3">
+                    <% {type_text, type_class} = activity_type_badge(activity.is_kill) %>
+                    <span class={"px-2 py-1 rounded text-xs font-medium #{type_class}"}>
+                      {type_text}
+                    </span>
+
+                    <div>
+                      <span class="font-medium text-white">
+                        {activity.character_name}
+                      </span>
+                      <span class="text-gray-400 text-sm">
+                        ({activity.corporation_name})
+                      </span>
+                      <div class="text-xs text-gray-400">
+                        {activity.ship_name}
+                        <%= if activity.solar_system_name do %>
+                          in {activity.solar_system_name}
+                        <% end %>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="text-xs text-gray-400">
+                    {time_ago(activity.timestamp)}
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="text-center py-8 text-gray-400">
+              <div class="text-4xl mb-2">📭</div>
+              <p>No recent activity</p>
+              <p class="text-sm">Activity will appear here once members generate killmails</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+      
+<!-- Additional Information -->
+      <div class="mt-8 bg-gray-800 rounded-lg p-4 border border-gray-700">
+        <div class="text-center text-sm text-gray-400">
+          <p>Alliance analytics are based on killmail activity tracked by EVE DMV</p>
+          <p>Data includes all PvP activity from member corporations and pilots</p>
+          <p>Efficiency scores consider both K/D ratio and total activity volume</p>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

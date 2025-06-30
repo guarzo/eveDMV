@@ -125,6 +125,17 @@ defmodule EveDmv.Killmails.PipelineTest do
 
   # Private helper functions
 
+  defp create_with_error_handling(resource, changeset, label) do
+    case Ash.create(resource, changeset, domain: Api) do
+      {:ok, result} ->
+        result
+
+      {:error, error} ->
+        Logger.error("Failed to create #{label}: #{inspect(error)}")
+        raise "Failed to create #{label}: #{inspect(error)}"
+    end
+  end
+
   defp insert_single_killmail(killmail) do
     # Use the same logic as the pipeline
     raw_changeset = build_raw_changeset(killmail)
@@ -133,34 +144,19 @@ defmodule EveDmv.Killmails.PipelineTest do
 
     Repo.transaction(fn ->
       # Insert raw killmail
-      case Ash.create(KillmailRaw, raw_changeset, domain: Api) do
-        {:ok, raw} ->
-          Logger.debug("Created raw killmail: #{raw.killmail_id}")
+      raw = create_with_error_handling(KillmailRaw, raw_changeset, "raw killmail")
+      Logger.debug("Created raw killmail: #{raw.killmail_id}")
 
-        {:error, error} ->
-          Logger.error("Failed to create raw killmail: #{inspect(error)}")
-          raise "Failed to create raw killmail: #{inspect(error)}"
-      end
+      # Insert enriched killmail
+      enriched =
+        create_with_error_handling(KillmailEnriched, enriched_changeset, "enriched killmail")
 
-      case Ash.create(KillmailEnriched, enriched_changeset, domain: Api) do
-        {:ok, enriched} ->
-          Logger.debug("Created enriched killmail: #{enriched.killmail_id}")
-
-        {:error, error} ->
-          Logger.error("Failed to create enriched killmail: #{inspect(error)}")
-          raise "Failed to create enriched killmail: #{inspect(error)}"
-      end
+      Logger.debug("Created enriched killmail: #{enriched.killmail_id}")
 
       # Insert participants
       Enum.each(participants, fn participant_data ->
-        case Ash.create(Participant, participant_data, domain: Api) do
-          {:ok, participant} ->
-            Logger.debug("Created participant: #{participant.character_id}")
-
-          {:error, error} ->
-            Logger.error("Failed to create participant: #{inspect(error)}")
-            raise "Failed to create participant: #{inspect(error)}"
-        end
+        participant = create_with_error_handling(Participant, participant_data, "participant")
+        Logger.debug("Created participant: #{participant.character_id}")
       end)
 
       :ok
