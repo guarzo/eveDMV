@@ -121,6 +121,7 @@ defmodule EveDmv.Intelligence.ChainTopology do
 
     update :update_topology do
       description("Update topology data from Wanderer API")
+      require_atomic?(false)
 
       accept([:topology_data, :system_count, :connection_count, :last_activity_at])
 
@@ -131,6 +132,7 @@ defmodule EveDmv.Intelligence.ChainTopology do
 
     update :mark_activity do
       description("Mark chain as having recent activity")
+      require_atomic?(false)
 
       accept([])
 

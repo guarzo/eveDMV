@@ -171,6 +171,7 @@ defmodule EveDmv.Intelligence.ChainConnection do
 
     update :update do
       primary?(true)
+      require_atomic?(false)
 
       accept([
         :connection_type,
@@ -192,6 +193,7 @@ defmodule EveDmv.Intelligence.ChainConnection do
 
     update :update_mass_status do
       description("Update mass and time status")
+      require_atomic?(false)
 
       accept([:mass_status, :time_status, :is_eol, :mass_remaining_percent, :estimated_eol_time])
 
@@ -202,6 +204,7 @@ defmodule EveDmv.Intelligence.ChainConnection do
 
     update :record_transit do
       description("Record a ship transit through this connection")
+      require_atomic?(false)
 
       accept([])
 

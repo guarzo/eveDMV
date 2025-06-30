@@ -185,6 +185,7 @@ defmodule EveDmv.Intelligence.SystemInhabitant do
 
     update :mark_present do
       description("Update pilot as currently present")
+      require_atomic?(false)
 
       accept([:ship_type_id, :ship_type_name])
 
@@ -198,6 +199,7 @@ defmodule EveDmv.Intelligence.SystemInhabitant do
 
     update :mark_departed do
       description("Mark pilot as having left the system")
+      require_atomic?(false)
 
       accept([])
 
