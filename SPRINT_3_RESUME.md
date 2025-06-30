@@ -117,3 +117,4 @@ The Sprint 3 implementation is **complete and ready for integration** once you a
 ### Threat Analyzer TODOs
 - **Blue List Checking**: Implement corporation/alliance blue list checking in `is_known_friendly/2`
 - **Red List Checking**: Implement known hostile entities checking in `is_known_hostile/2`
+- **Corporation/Alliance Standings**: Implement corporation/alliance standings check in `determine_threat_level/3` (threat_analyzer.ex:286)

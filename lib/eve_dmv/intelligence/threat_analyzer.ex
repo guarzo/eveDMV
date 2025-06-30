@@ -283,7 +283,6 @@ defmodule EveDmv.Intelligence.ThreatAnalyzer do
 
   defp determine_threat_level(threat_score, _corporation_id, _alliance_id) do
     # Check for known friendly/hostile corporations
-    # TODO: Implement corporation/alliance standings check
     cond do
       threat_score >= 80 -> :hostile
       # Treat high threats as neutral until confirmed
