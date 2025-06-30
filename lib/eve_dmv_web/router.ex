@@ -29,6 +29,13 @@ defmodule EveDmvWeb.Router do
     live "/dashboard", DashboardLive
     live "/profile", ProfileLive
     live "/login", AuthLive.SignIn
+    live "/intel/:character_id", CharacterIntelLive
+    live "/player/:character_id", PlayerProfileLive
+    live "/corp/:corporation_id", CorporationLive
+    live "/alliance/:alliance_id", AllianceLive
+    live "/surveillance", SurveillanceLive
+    live "/chain-intelligence", ChainIntelligenceLive
+    live "/chain-intelligence/:map_id", ChainIntelligenceLive
   end
 
   # Authentication routes
@@ -38,8 +45,14 @@ defmodule EveDmvWeb.Router do
     # AshAuthentication routes for EVE SSO
     sign_in_route()
     sign_out_route(AuthController)
-    auth_routes_for(EveDmv.Users.User, to: AuthController)
     reset_route([])
+  end
+
+  # OAuth routes need to be outside /auth scope to avoid double prefix
+  scope "/", EveDmvWeb do
+    pipe_through :browser
+
+    auth_routes_for(EveDmv.Users.User, to: AuthController)
   end
 
   # Other scopes may use custom stacks.

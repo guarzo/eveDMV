@@ -59,6 +59,7 @@
       className: null,
     },
     repaint = function () {
+      if (!canvas) return;
       canvas.width = window.innerWidth;
       canvas.height = options.barThickness * 5; // space for shadow
 
@@ -130,18 +131,19 @@
         currentProgress = to > 1 ? 1 : to;
         repaint();
         if (currentProgress === 1) {
-          canvas.style.display = "block";
+          if (canvas) canvas.style.display = "block";
         } else if (currentProgress >= 0) {
           (function loop() {
             if (showing) {
               if (currentProgress < 1) {
-                var newProgress = currentProgress + 0.05 * Math.pow(1 - Math.sqrt(currentProgress), 2);
-                topbar.progress(newProgress > 0.95 ? 0.95 : newProgress);
+                const newProgress = currentProgress + 0.05 * Math.pow(1 - Math.sqrt(currentProgress), 2);
+                currentProgress = newProgress > 0.95 ? 0.95 : newProgress;
+                repaint();
                 progressTimerId = setTimeout(loop, 100);
               }
             }
           })();
-          canvas.style.display = "block";
+          if (canvas) canvas.style.display = "block";
         }
       },
       hide: function () {
@@ -161,7 +163,9 @@
             repaint();
             fadeTimerId = setTimeout(loop, 100);
           } else {
-            canvas.style.display = "none";
+            if (canvas) {
+              canvas.style.display = "none";
+            }
             fadeTimerId = null;
           }
         })();

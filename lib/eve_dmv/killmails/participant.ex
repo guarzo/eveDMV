@@ -186,6 +186,7 @@ defmodule EveDmv.Killmails.Participant do
     # Note: Composite foreign key relationships removed for now
     # Will be implemented using manual queries in Epic 2
 
+    # Re-enabled now that EVE static data is loaded
     belongs_to :ship_type, EveDmv.Eve.ItemType do
       source_attribute(:ship_type_id)
       destination_attribute(:type_id)

@@ -22,6 +22,22 @@ defmodule EveDmv.Api do
 
     # Static EVE data
     resource(EveDmv.Eve.ItemType)
+    resource(EveDmv.Eve.SolarSystem)
+
+    # Intelligence data
+    resource(EveDmv.Intelligence.CharacterStats)
+    resource(EveDmv.Intelligence.ChainTopology)
+    resource(EveDmv.Intelligence.SystemInhabitant)
+    resource(EveDmv.Intelligence.ChainConnection)
+
+    # Surveillance profiles
+    resource(EveDmv.Surveillance.Profile)
+    resource(EveDmv.Surveillance.ProfileMatch)
+    resource(EveDmv.Surveillance.Notification)
+
+    # Analytics resources
+    resource(EveDmv.Analytics.PlayerStats)
+    resource(EveDmv.Analytics.ShipStats)
   end
 
   # Authorization configuration

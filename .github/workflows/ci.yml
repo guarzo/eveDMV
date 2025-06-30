@@ -8,8 +8,8 @@ on:
 
 env:
   MIX_ENV: test
-  ELIXIR_VERSION: "1.15.8"
-  OTP_VERSION: "26.2"
+  ELIXIR_VERSION: "1.17.2"
+  OTP_VERSION: "27.0"
 
 jobs:
   build_and_test:
@@ -69,6 +69,11 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-plt-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-
 
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libbz2-dev
+
     - name: Install dependencies
       run: |
         mix local.hex --force
@@ -104,6 +109,8 @@ jobs:
 
     - name: Generate coverage report
       run: mix test.coverage
+      env:
+        DATABASE_URL: postgres://postgres:postgres@localhost:5432/eve_tracker_test
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3

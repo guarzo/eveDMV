@@ -1,0 +1,296 @@
+<div class="min-h-screen bg-gray-900 text-white">
+  <!-- Header -->
+  <div class="bg-gray-800 border-b border-gray-700">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center space-x-4">
+          <h1 class="text-2xl font-bold text-purple-400">🌀 Chain Intelligence</h1>
+          <span class="text-sm text-gray-400">Real-time Wormhole Surveillance</span>
+        </div>
+
+        <div class="flex items-center space-x-4">
+          <%= if @selected_chain do %>
+            <button
+              phx-click="refresh_chain"
+              phx-value-map_id={@selected_chain}
+              class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm"
+            >
+              🔄 Refresh
+            </button>
+          <% end %>
+
+          <div class="text-sm text-gray-400">
+            User: <span class="text-white">{@user.character_name}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <!-- Chain Selection Sidebar -->
+      <div class="lg:col-span-1">
+        <div class="bg-gray-800 rounded-lg border border-gray-700 p-4">
+          <h2 class="text-lg font-semibold mb-4 text-purple-400">Monitored Chains</h2>
+
+          <%= if Enum.empty?(@monitored_chains) do %>
+            <div class="text-gray-400 text-sm text-center py-8">
+              <p>No chains being monitored</p>
+              <p class="mt-2">Add a Wanderer map ID to start monitoring</p>
+            </div>
+          <% else %>
+            <div class="space-y-2">
+              <%= for chain <- @monitored_chains do %>
+                <div class="p-3 bg-gray-700 rounded border border-gray-600 hover:border-purple-500 transition-colors">
+                  <.link navigate={~p"/chain-intelligence/#{chain.map_id}"} class="block">
+                    <div class="font-medium text-white">
+                      {chain.map_name || "Chain #{String.slice(chain.map_id, 0, 8)}"}
+                    </div>
+                    <div class="text-sm text-gray-400 mt-1">
+                      {chain.system_count} systems • {chain.connection_count} connections
+                    </div>
+                    <div class="text-xs text-gray-500 mt-1">
+                      Last activity: {time_since(chain.last_activity_at)}
+                    </div>
+                  </.link>
+
+                  <button
+                    phx-click="stop_monitoring"
+                    phx-value-map_id={chain.map_id}
+                    class="mt-2 text-xs text-red-400 hover:text-red-300"
+                  >
+                    Stop monitoring
+                  </button>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+          
+<!-- Add New Chain Form -->
+          <div class="mt-6 pt-4 border-t border-gray-700">
+            <h3 class="text-sm font-medium text-gray-300 mb-2">Monitor New Chain</h3>
+            <form phx-submit="monitor_chain" class="space-y-2">
+              <input
+                type="text"
+                name="map_id"
+                placeholder="Wanderer Map ID"
+                class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none"
+                required
+              />
+              <button
+                type="submit"
+                class="w-full px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded text-sm font-medium"
+              >
+                Start Monitoring
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+      
+<!-- Main Chain View -->
+      <div class="lg:col-span-3">
+        <%= if @selected_chain and @chain_data[:topology] do %>
+          <!-- Chain Overview -->
+          <div class="bg-gray-800 rounded-lg border border-gray-700 p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-xl font-semibold text-purple-400">
+                {@chain_data.topology.map_name || "Chain #{String.slice(@selected_chain, 0, 8)}"}
+              </h2>
+              <div class="flex items-center space-x-4 text-sm text-gray-400">
+                <span>{length(@chain_data.inhabitants || [])} pilots online</span>
+                <span>{length(@chain_data.connections || [])} connections</span>
+                <span>Updated: {time_since(@chain_data.last_updated)}</span>
+              </div>
+            </div>
+            
+<!-- Chain Statistics -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div class="bg-gray-700 rounded p-3 text-center">
+                <div class="text-2xl font-bold text-green-400">
+                  {Enum.count(@chain_data.inhabitants || [], &(&1.threat_level == :friendly))}
+                </div>
+                <div class="text-sm text-gray-400">Friendlies</div>
+              </div>
+              <div class="bg-gray-700 rounded p-3 text-center">
+                <div class="text-2xl font-bold text-yellow-400">
+                  {Enum.count(@chain_data.inhabitants || [], &(&1.threat_level == :neutral))}
+                </div>
+                <div class="text-sm text-gray-400">Neutrals</div>
+              </div>
+              <div class="bg-gray-700 rounded p-3 text-center">
+                <div class="text-2xl font-bold text-red-400">
+                  {Enum.count(@chain_data.inhabitants || [], &(&1.threat_level == :hostile))}
+                </div>
+                <div class="text-sm text-gray-400">Hostiles</div>
+              </div>
+              <div class="bg-gray-700 rounded p-3 text-center">
+                <div class="text-2xl font-bold text-gray-400">
+                  {Enum.count(@chain_data.inhabitants || [], &(&1.threat_level == :unknown))}
+                </div>
+                <div class="text-sm text-gray-400">Unknown</div>
+              </div>
+            </div>
+          </div>
+          
+<!-- System Inhabitants -->
+          <div class="bg-gray-800 rounded-lg border border-gray-700 p-6 mb-6">
+            <h3 class="text-lg font-semibold text-purple-400 mb-4">Current Inhabitants</h3>
+
+            <%= if Enum.empty?(@chain_data.inhabitants || []) do %>
+              <div class="text-gray-400 text-center py-8">
+                No pilots currently detected in the chain
+              </div>
+            <% else %>
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead>
+                    <tr class="border-b border-gray-700">
+                      <th class="text-left py-2 px-3 text-gray-400">Pilot</th>
+                      <th class="text-left py-2 px-3 text-gray-400">Corporation</th>
+                      <th class="text-left py-2 px-3 text-gray-400">System</th>
+                      <th class="text-left py-2 px-3 text-gray-400">Ship</th>
+                      <th class="text-left py-2 px-3 text-gray-400">Threat</th>
+                      <th class="text-left py-2 px-3 text-gray-400">Present</th>
+                      <th class="text-left py-2 px-3 text-gray-400">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <%= for inhabitant <- @chain_data.inhabitants do %>
+                      <tr class="border-b border-gray-700 hover:bg-gray-700">
+                        <td class="py-2 px-3">
+                          <div class="font-medium text-white">{inhabitant.character_name}</div>
+                          <%= if inhabitant.threat_analysis do %>
+                            <div class="text-xs text-gray-400 mt-1">
+                              Score: {inhabitant.threat_analysis.threat_score}/100
+                              | Bait: {inhabitant.threat_analysis.bait_probability}%
+                            </div>
+                          <% end %>
+                        </td>
+                        <td class="py-2 px-3">
+                          <div class="text-white">{inhabitant.corporation_name}</div>
+                          <%= if inhabitant.alliance_name do %>
+                            <div class="text-xs text-gray-400">{inhabitant.alliance_name}</div>
+                          <% end %>
+                        </td>
+                        <td class="py-2 px-3 text-white">{inhabitant.system_name}</td>
+                        <td class="py-2 px-3 text-white">
+                          {inhabitant.ship_type_name || "Unknown"}
+                        </td>
+                        <td class="py-2 px-3">
+                          <span class={"px-2 py-1 rounded text-xs font-medium #{threat_level_class(inhabitant.threat_level)}"}>
+                            {threat_level_icon(inhabitant.threat_level)} {String.capitalize(
+                              to_string(inhabitant.threat_level)
+                            )}
+                          </span>
+                        </td>
+                        <td class="py-2 px-3 text-white">
+                          <%= if inhabitant.present do %>
+                            <span class="text-green-400">
+                              ✓ {inhabitant.display_status}
+                            </span>
+                          <% else %>
+                            <span class="text-gray-400">
+                              ✗ {time_since(inhabitant.departure_time)}
+                            </span>
+                          <% end %>
+                        </td>
+                        <td class="py-2 px-3">
+                          <button
+                            phx-click="analyze_pilot"
+                            phx-value-character_id={inhabitant.character_id}
+                            class="px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs"
+                          >
+                            🔍 Analyze
+                          </button>
+                        </td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            <% end %>
+          </div>
+          
+<!-- Chain Connections -->
+          <div class="bg-gray-800 rounded-lg border border-gray-700 p-6">
+            <h3 class="text-lg font-semibold text-purple-400 mb-4">Chain Connections</h3>
+
+            <%= if Enum.empty?(@chain_data.connections || []) do %>
+              <div class="text-gray-400 text-center py-8">
+                No connections mapped yet
+              </div>
+            <% else %>
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead>
+                    <tr class="border-b border-gray-700">
+                      <th class="text-left py-2 px-3 text-gray-400">From</th>
+                      <th class="text-left py-2 px-3 text-gray-400">To</th>
+                      <th class="text-left py-2 px-3 text-gray-400">Type</th>
+                      <th class="text-left py-2 px-3 text-gray-400">Signature</th>
+                      <th class="text-left py-2 px-3 text-gray-400">Mass Status</th>
+                      <th class="text-left py-2 px-3 text-gray-400">Time Status</th>
+                      <th class="text-left py-2 px-3 text-gray-400">Last Transit</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <%= for connection <- @chain_data.connections do %>
+                      <tr class="border-b border-gray-700 hover:bg-gray-700">
+                        <td class="py-2 px-3 text-white">{connection.source_system_name}</td>
+                        <td class="py-2 px-3 text-white">{connection.target_system_name}</td>
+                        <td class="py-2 px-3 text-white">
+                          {connection.wormhole_type || "Unknown"}
+                        </td>
+                        <td class="py-2 px-3 text-white">{connection.signature_id || "-"}</td>
+                        <td class="py-2 px-3">
+                          <span class={"font-medium #{mass_status_class(connection.mass_status)}"}>
+                            {String.capitalize(to_string(connection.mass_status))}
+                          </span>
+                        </td>
+                        <td class="py-2 px-3">
+                          <%= if connection.is_eol do %>
+                            <span class="text-red-400 font-medium">EOL</span>
+                          <% else %>
+                            <span class="text-green-400">Stable</span>
+                          <% end %>
+                        </td>
+                        <td class="py-2 px-3 text-white">
+                          {time_since(connection.last_transit_at)}
+                        </td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <!-- No Chain Selected -->
+          <div class="bg-gray-800 rounded-lg border border-gray-700 p-12 text-center">
+            <div class="text-6xl mb-4">🌀</div>
+            <h2 class="text-xl font-semibold text-white mb-2">Chain Intelligence Dashboard</h2>
+            <p class="text-gray-400 mb-6">
+              Select a monitored chain from the sidebar or add a new Wanderer map to begin surveillance.
+            </p>
+
+            <%= if Enum.empty?(@monitored_chains) do %>
+              <div class="text-sm text-gray-500">
+                <p>
+                  Chain intelligence provides real-time surveillance of wormhole systems including:
+                </p>
+                <ul class="mt-2 space-y-1">
+                  <li>• System inhabitant tracking</li>
+                  <li>• Threat assessment and bait detection</li>
+                  <li>• Connection status monitoring</li>
+                  <li>• Real-time alerts for hostile activity</li>
+                </ul>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

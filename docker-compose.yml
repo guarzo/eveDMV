@@ -46,11 +46,11 @@ services:
       - DATABASE_URL=ecto://postgres:postgres@db/eve_tracker_dev
       - REDIS_URL=redis://redis:6379
       - PHX_HOST=localhost
-      - PHX_PORT=4000
-    env_file: 
+      - PHX_PORT=4010
+    env_file:
       - .env
     ports:
-      - "4010:4000"
+      - "4010:4010"
     depends_on:
       db:
         condition: service_healthy

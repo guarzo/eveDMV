@@ -1,5 +1,41 @@
 import Config
 
+# Helper function for safe environment variable handling
+defmodule ConfigHelper do
+  def safe_string_to_integer(value, default) when is_binary(value) do
+    try do
+      String.to_integer(value)
+    rescue
+      ArgumentError ->
+        IO.warn("Invalid integer value '#{value}', using default: #{default}")
+        default
+    end
+  end
+
+  def safe_string_to_integer(nil, default), do: default
+
+  def configure_external_apis do
+    [
+      {:janice,
+       [
+         api_key: System.get_env("JANICE_API_KEY"),
+         base_url: System.get_env("JANICE_BASE_URL", "https://janice.e-351.com/api"),
+         enabled: System.get_env("JANICE_ENABLED", "true") == "true"
+       ]},
+      {:mutamarket,
+       [
+         api_key: System.get_env("MUTAMARKET_API_KEY"),
+         base_url: System.get_env("MUTAMARKET_BASE_URL", "https://mutamarket.com/api/v1")
+       ]},
+      {:esi,
+       [
+         client_id: System.get_env("EVE_SSO_CLIENT_ID"),
+         base_url: System.get_env("ESI_BASE_URL", "https://esi.evetech.net")
+       ]}
+    ]
+  end
+end
+
 # Load .env files if they exist (but not in test environment)
 unless config_env() == :test do
   env_files = [
@@ -30,8 +66,23 @@ if config_env() == :dev do
       System.get_env("WANDERER_KILLS_WS_URL", "ws://localhost:4004/socket"),
     wanderer_kills_base_url:
       System.get_env("WANDERER_KILLS_BASE_URL", "http://host.docker.internal:4004"),
+    # Wanderer Map Integration
+    wanderer_base_url: System.get_env("WANDERER_BASE_URL", "http://host.docker.internal:4004"),
+    wanderer_ws_url:
+      System.get_env("WANDERER_WS_URL", "ws://host.docker.internal:4004/socket/events"),
+    wanderer_api_token: System.get_env("WANDERER_API_TOKEN"),
     pipeline_enabled: System.get_env("PIPELINE_ENABLED", "true") == "true",
     mock_sse_server_enabled: System.get_env("MOCK_SSE_SERVER_ENABLED", "false") == "true"
+
+  # External API configurations
+  for {api_name, api_config} <- ConfigHelper.configure_external_apis() do
+    config :eve_dmv, api_name, api_config
+  end
+
+  # Price cache configuration
+  config :eve_dmv,
+    price_cache_ttl_hours:
+      ConfigHelper.safe_string_to_integer(System.get_env("PRICE_CACHE_TTL_HOURS"), 24)
 end
 
 # Test environment specific configuration
@@ -39,6 +90,11 @@ if config_env() == :test do
   config :eve_dmv,
     pipeline_enabled: false,
     mock_sse_server_enabled: false
+
+  # Ensure test database uses sandbox pool regardless of DATABASE_URL
+  config :eve_dmv, EveDmv.Repo,
+    pool: Ecto.Adapters.SQL.Sandbox,
+    pool_size: System.schedulers_online() * 2
 end
 
 # config/runtime.exs is executed for all environments, including
@@ -75,7 +131,12 @@ if config_env() == :prod do
       """
 
   host = System.get_env("PHX_HOST") || "example.com"
-  port = String.to_integer(System.get_env("PORT") || "4000")
+
+  port =
+    case Integer.parse(System.get_env("PHX_PORT") || System.get_env("PORT") || "4010") do
+      {port_num, ""} -> port_num
+      _ -> 4010
+    end
 
   config :eve_dmv, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
@@ -90,6 +151,21 @@ if config_env() == :prod do
       port: port
     ],
     secret_key_base: secret_key_base
+
+  # Production configuration for external services
+  config :eve_dmv,
+    wanderer_kills_sse_url: System.get_env("WANDERER_KILLS_SSE_URL"),
+    pipeline_enabled: System.get_env("PIPELINE_ENABLED", "true") == "true"
+
+  # External API configurations
+  for {api_name, api_config} <- ConfigHelper.configure_external_apis() do
+    config :eve_dmv, api_name, api_config
+  end
+
+  # Price cache configuration
+  config :eve_dmv,
+    price_cache_ttl_hours:
+      ConfigHelper.safe_string_to_integer(System.get_env("PRICE_CACHE_TTL_HOURS"), 24)
 
   # ## SSL Support
   #

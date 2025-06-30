@@ -237,23 +237,34 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
   end
 
   defp parse_sse_data(data) do
-    # Split data by double newlines to separate events
-    events_data = String.split(data, ~r/\r?\n\r?\n/)
+    # SSE events are separated by double newlines
+    # Check if we have any complete events (ending with double newline)
+    if String.contains?(data, "\n\n") or String.contains?(data, "\r\n\r\n") do
+      # Split data by double newlines to separate events
+      events_data = String.split(data, ~r/\r?\n\r?\n/)
 
-    # The last part might be incomplete, so keep it in the buffer
-    {complete_events, remaining} =
-      case events_data do
-        [] -> {[], ""}
-        [single] -> {[], single}
-        events -> {Enum.drop(events, -1), List.last(events)}
+      # The last part might be incomplete, so keep it in the buffer
+      {complete_events, remaining} =
+        case events_data do
+          [] -> {[], ""}
+          [single] -> {[], single}
+          events -> {Enum.drop(events, -1), List.last(events)}
+        end
+
+      events =
+        complete_events
+        |> Enum.map(&parse_single_event/1)
+        |> Enum.filter(&(&1 != nil))
+
+      if length(events) > 0 do
+        Logger.debug("Parsed #{length(events)} SSE events from chunk")
       end
 
-    events =
-      complete_events
-      |> Enum.map(&parse_single_event/1)
-      |> Enum.filter(&(&1 != nil))
-
-    {events, remaining}
+      {events, remaining}
+    else
+      # No complete events yet, keep everything in buffer
+      {[], data}
+    end
   end
 
   defp to_broadway_message(%{event: "killmail", data: payload}) do
@@ -263,7 +274,8 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
 
         %Message{
           data: enriched,
-          acknowledger: Broadway.NoopAcknowledger.init()
+          acknowledger: Broadway.NoopAcknowledger.init(),
+          batcher: :db_insert
         }
 
       {:ok, _other_json} ->
@@ -288,7 +300,8 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
         |> Enum.map(fn km ->
           %Message{
             data: km,
-            acknowledger: Broadway.NoopAcknowledger.init()
+            acknowledger: Broadway.NoopAcknowledger.init(),
+            batcher: :db_insert
           }
         end)
         |> then(&{:batch, &1})
@@ -320,7 +333,69 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
     nil
   end
 
-  defp to_broadway_message(_), do: nil
+  # Handle events with no explicit event type (default "message" events)
+  # This is the case with wanderer-kills SSE stream
+  defp to_broadway_message(%{event: nil, data: payload}) do
+    Logger.debug("Processing SSE event with no event type, data_length=#{String.length(payload)}")
+
+    case Jason.decode(payload) do
+      {:ok, %{"killmail_id" => killmail_id} = enriched} ->
+        Logger.info("📡 Received killmail #{killmail_id} from HTTPoison SSE (default event)")
+
+        %Message{
+          data: enriched,
+          acknowledger: Broadway.NoopAcknowledger.init(),
+          batcher: :db_insert
+        }
+
+      {:ok, _other_json} ->
+        Logger.debug("Received non-killmail JSON data from default event: #{inspect(payload)}")
+        nil
+
+      {:error, reason} ->
+        Logger.warning("Failed to decode JSON from default event: #{inspect(reason)}")
+        nil
+    end
+  rescue
+    error ->
+      Logger.error("Failed to convert default SSE event to Broadway message: #{inspect(error)}")
+      nil
+  end
+
+  # Handle "message" event type (SSE standard default)
+  defp to_broadway_message(%{event: "message", data: payload}) do
+    Logger.debug(
+      "Processing SSE event with 'message' type, data_length=#{String.length(payload)}"
+    )
+
+    case Jason.decode(payload) do
+      {:ok, %{"killmail_id" => killmail_id} = enriched} ->
+        Logger.info("📡 Received killmail #{killmail_id} from HTTPoison SSE (message event)")
+
+        %Message{
+          data: enriched,
+          acknowledger: Broadway.NoopAcknowledger.init(),
+          batcher: :db_insert
+        }
+
+      {:ok, _other_json} ->
+        Logger.debug("Received non-killmail JSON data from message event: #{inspect(payload)}")
+        nil
+
+      {:error, reason} ->
+        Logger.warning("Failed to decode JSON from message event: #{inspect(reason)}")
+        nil
+    end
+  rescue
+    error ->
+      Logger.error("Failed to convert message SSE event to Broadway message: #{inspect(error)}")
+      nil
+  end
+
+  defp to_broadway_message(event) do
+    Logger.debug("Unhandled SSE event: #{inspect(event)}")
+    nil
+  end
 
   defp parse_single_event(event_data) do
     lines = String.split(event_data, ~r/\r?\n/)
@@ -336,14 +411,16 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
 
     cond do
       trimmed_line == "" -> acc
+      # SSE comment, ignore
+      String.starts_with?(trimmed_line, ":") -> acc
       String.contains?(line, ":") -> parse_field_line(line, acc)
       true -> acc
     end
   end
 
   defp parse_field_line(line, acc) do
-    case String.split(line, ":") do
-      [field, value | _rest] -> update_event_field(field, value, acc)
+    case String.split(line, ":", parts: 2) do
+      [field, value] -> update_event_field(field, value, acc)
       [field] -> handle_field_only(field, acc)
       _ -> acc
     end
@@ -361,7 +438,9 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
 
   defp update_data_field(value, acc) do
     current_data = if acc.data == "", do: "", else: acc.data <> "\n"
-    %{acc | data: current_data <> String.trim(value)}
+    # Only trim leading space after the colon, preserve the rest of the value
+    trimmed_value = String.trim_leading(value)
+    %{acc | data: current_data <> trimmed_value}
   end
 
   defp update_retry_field(value, acc) do
@@ -379,6 +458,14 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
   end
 
   defp validate_parsed_event(parsed_event) do
-    if parsed_event.data != "", do: parsed_event, else: nil
+    if parsed_event.data != "" do
+      Logger.debug(
+        "Parsed SSE event: event=#{inspect(parsed_event.event)}, data_length=#{String.length(parsed_event.data)}, first_100_chars=#{String.slice(parsed_event.data, 0..100)}"
+      )
+
+      parsed_event
+    else
+      nil
+    end
   end
 end

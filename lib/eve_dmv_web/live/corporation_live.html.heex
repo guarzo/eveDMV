@@ -1,0 +1,254 @@
+<div class="min-h-screen bg-gray-900 text-white">
+  <!-- Header -->
+  <div class="bg-gray-800 border-b border-gray-700">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center space-x-4">
+          <h1 class="text-xl font-bold">Corporation Overview</h1>
+          <%= if @corp_info do %>
+            <span class="text-gray-400">
+              {@corp_info.corporation_name}
+              <%= if @corp_info.alliance_name do %>
+                ({@corp_info.alliance_name})
+              <% end %>
+            </span>
+          <% end %>
+        </div>
+
+        <button
+          phx-click="refresh"
+          class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
+        >
+          🔄 Refresh
+        </button>
+      </div>
+    </div>
+  </div>
+  
+<!-- Error State -->
+  <%= if @error do %>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="bg-red-600 text-white p-4 rounded-lg">
+        <h2 class="text-lg font-bold">Error</h2>
+        <p>{@error}</p>
+      </div>
+    </div>
+  <% else %>
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <!-- Corporation Header -->
+      <%= if @corp_info do %>
+        <div class="bg-gray-800 rounded-lg p-6 mb-8 border border-gray-700">
+          <div class="flex items-start justify-between">
+            <div>
+              <h2 class="text-2xl font-bold text-white mb-2">
+                {@corp_info.corporation_name}
+              </h2>
+
+              <%= if @corp_info.alliance_name do %>
+                <div class="text-lg text-blue-400 mb-4">
+                  Alliance: {@corp_info.alliance_name}
+                </div>
+              <% end %>
+
+              <div class="text-gray-400">
+                Corporation ID: {@corp_info.corporation_id}
+              </div>
+            </div>
+            
+<!-- Quick Actions -->
+            <div class="flex space-x-2">
+              <!-- Corporation intelligence not yet implemented -->
+            </div>
+          </div>
+        </div>
+      <% end %>
+      
+<!-- Corporation Statistics -->
+      <%= if @corp_stats do %>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <!-- Members -->
+          <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <div class="flex items-center">
+              <div class="text-3xl mr-3">👥</div>
+              <div>
+                <p class="text-2xl font-bold text-white">
+                  {format_number(@corp_stats.total_members)}
+                </p>
+                <p class="text-gray-400 text-sm">Total Members</p>
+                <p class="text-xs text-green-400">
+                  {@corp_stats.active_members} active
+                </p>
+              </div>
+            </div>
+          </div>
+          
+<!-- Total Kills -->
+          <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <div class="flex items-center">
+              <div class="text-3xl mr-3">🎯</div>
+              <div>
+                <p class="text-2xl font-bold text-green-400">
+                  {format_number(@corp_stats.total_kills)}
+                </p>
+                <p class="text-gray-400 text-sm">Total Kills</p>
+                <p class="text-xs text-gray-500">
+                  Avg: {format_number(@corp_stats.avg_activity_per_member)} per member
+                </p>
+              </div>
+            </div>
+          </div>
+          
+<!-- Total Losses -->
+          <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <div class="flex items-center">
+              <div class="text-3xl mr-3">💀</div>
+              <div>
+                <p class="text-2xl font-bold text-red-400">
+                  {format_number(@corp_stats.total_losses)}
+                </p>
+                <p class="text-gray-400 text-sm">Total Losses</p>
+                <p class="text-xs text-gray-500">
+                  K/D: {@corp_stats.kill_death_ratio}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+<!-- Activity -->
+          <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <div class="flex items-center">
+              <div class="text-3xl mr-3">⚡</div>
+              <div>
+                <p class="text-2xl font-bold text-yellow-400">
+                  {format_number(@corp_stats.total_activity)}
+                </p>
+                <p class="text-gray-400 text-sm">Total Activity</p>
+                <%= if @corp_stats.most_active_member do %>
+                  <p class="text-xs text-blue-400">
+                    Top: {@corp_stats.most_active_member.character_name}
+                  </p>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+      
+<!-- Main Content Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Members List -->
+        <div class="bg-gray-800 rounded-lg border border-gray-700">
+          <div class="p-6 border-b border-gray-700">
+            <h3 class="text-lg font-bold text-white">Active Members</h3>
+            <p class="text-gray-400 text-sm">Top members by activity</p>
+          </div>
+
+          <div class="p-6">
+            <%= if @members && length(@members) > 0 do %>
+              <div class="space-y-3 max-h-96 overflow-y-auto">
+                <%= for member <- @members do %>
+                  <div class="flex items-center justify-between p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
+                    <div class="flex items-center space-x-3">
+                      <% {indicator, color_class} = activity_indicator(member.total_activity) %>
+                      <span class={"text-lg #{color_class}"}>{indicator}</span>
+
+                      <div>
+                        <a
+                          href={~p"/player/#{member.character_id}"}
+                          class="font-medium text-white hover:text-blue-400 transition-colors"
+                        >
+                          {member.character_name}
+                        </a>
+                        <div class="text-xs text-gray-400">
+                          {activity_level(member.total_activity)} • Last seen: {time_ago(
+                            member.latest_activity
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="text-right">
+                      <div class="text-sm font-medium text-white">
+                        {member.total_activity} activities
+                      </div>
+                      <div class="text-xs text-gray-400">
+                        <span class="text-green-400">{member.total_kills}K</span>
+                        / <span class="text-red-400">{member.total_losses}L</span>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            <% else %>
+              <div class="text-center py-8 text-gray-400">
+                <div class="text-4xl mb-2">🚫</div>
+                <p>No member data available</p>
+                <p class="text-sm">
+                  Members will appear here once they generate killmail activity
+                </p>
+              </div>
+            <% end %>
+          </div>
+        </div>
+        
+<!-- Recent Activity -->
+        <div class="bg-gray-800 rounded-lg border border-gray-700">
+          <div class="p-6 border-b border-gray-700">
+            <h3 class="text-lg font-bold text-white">Recent Activity</h3>
+            <p class="text-gray-400 text-sm">Latest killmail activity</p>
+          </div>
+
+          <div class="p-6">
+            <%= if @recent_activity && length(@recent_activity) > 0 do %>
+              <div class="space-y-3 max-h-96 overflow-y-auto">
+                <%= for activity <- @recent_activity do %>
+                  <div class="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                      <% {type_text, type_class} = activity_type_badge(activity.is_kill) %>
+                      <span class={"px-2 py-1 rounded text-xs font-medium #{type_class}"}>
+                        {type_text}
+                      </span>
+
+                      <div>
+                        <div class="font-medium text-white">
+                          {activity.character_name}
+                        </div>
+                        <div class="text-xs text-gray-400">
+                          {activity.ship_name}
+                          <%= if activity.solar_system_name do %>
+                            in {activity.solar_system_name}
+                          <% end %>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="text-right">
+                      <div class="text-xs text-gray-400">
+                        {time_ago(activity.timestamp)}
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            <% else %>
+              <div class="text-center py-8 text-gray-400">
+                <div class="text-4xl mb-2">📭</div>
+                <p>No recent activity</p>
+                <p class="text-sm">Activity will appear here once members generate killmails</p>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+      
+<!-- Additional Information -->
+      <div class="mt-8 bg-gray-800 rounded-lg p-4 border border-gray-700">
+        <div class="text-center text-sm text-gray-400">
+          <p>Corporation data is based on killmail activity tracked by EVE DMV</p>
+          <p>Member list includes only characters with recorded PvP activity</p>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

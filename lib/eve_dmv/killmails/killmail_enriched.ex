@@ -241,6 +241,41 @@ defmodule EveDmv.Killmails.KillmailEnriched do
       change(set_attribute(:enriched_at, &DateTime.utc_now/0))
     end
 
+    # Upsert action for handling duplicates gracefully
+    create :upsert do
+      description("Create or update enriched killmail data (handles duplicates)")
+      upsert?(true)
+      upsert_identity(:unique_killmail)
+
+      accept([
+        :killmail_id,
+        :killmail_time,
+        :victim_character_id,
+        :victim_character_name,
+        :victim_corporation_id,
+        :victim_corporation_name,
+        :victim_alliance_id,
+        :victim_alliance_name,
+        :solar_system_id,
+        :solar_system_name,
+        :victim_ship_type_id,
+        :victim_ship_name,
+        :total_value,
+        :ship_value,
+        :fitted_value,
+        :attacker_count,
+        :final_blow_character_id,
+        :final_blow_character_name,
+        :kill_category,
+        :victim_ship_category,
+        :module_tags,
+        :noteworthy_modules,
+        :price_data_source
+      ])
+
+      change(set_attribute(:enriched_at, &DateTime.utc_now/0))
+    end
+
     # Read actions for different queries
     read :by_system do
       description("Get enriched killmails for a specific solar system")

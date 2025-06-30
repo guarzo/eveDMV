@@ -168,10 +168,76 @@ defmodule EveDmv.Users.User do
 
       change(fn changeset, _context ->
         user_info = Ash.Changeset.get_argument(changeset, :user_info)
+        oauth_tokens = Ash.Changeset.get_argument(changeset, :oauth_tokens)
+
+        # EVE SSO provides user_info and oauth_tokens
+
+        # Extract EVE SSO data using helper function
+        %{
+          character_id: character_id,
+          character_name: character_name,
+          access_token: access_token,
+          refresh_token: refresh_token,
+          expires_at: expires_at
+        } = extract_eve_sso_data(user_info, oauth_tokens)
 
         changeset
+        |> Ash.Changeset.change_attribute(:eve_character_id, character_id)
+        |> Ash.Changeset.change_attribute(:eve_character_name, character_name)
+        |> Ash.Changeset.change_attribute(:access_token, access_token)
+        |> Ash.Changeset.change_attribute(:refresh_token, refresh_token)
+        |> Ash.Changeset.change_attribute(:token_expires_at, expires_at)
         |> Ash.Changeset.change_attribute(:last_login_at, DateTime.utc_now())
         |> maybe_update_corporation_info(user_info)
+      end)
+    end
+
+    # Sign in action for existing users
+    create :sign_in_with_eve_sso do
+      description("Sign in an existing user via EVE SSO")
+      upsert?(true)
+      upsert_identity(:unique_eve_character)
+
+      accept([
+        :eve_character_id,
+        :eve_character_name,
+        :access_token,
+        :refresh_token,
+        :token_expires_at
+      ])
+
+      argument :user_info, :map do
+        allow_nil?(false)
+        description("User info from OAuth2 provider")
+      end
+
+      argument :oauth_tokens, :map do
+        allow_nil?(false)
+        description("OAuth2 tokens from provider")
+      end
+
+      change(AshAuthentication.GenerateTokenChange)
+
+      change(fn changeset, _context ->
+        user_info = Ash.Changeset.get_argument(changeset, :user_info)
+        oauth_tokens = Ash.Changeset.get_argument(changeset, :oauth_tokens)
+
+        # Extract EVE SSO data using helper function
+        %{
+          character_id: character_id,
+          character_name: character_name,
+          access_token: access_token,
+          refresh_token: refresh_token,
+          expires_at: expires_at
+        } = extract_eve_sso_data(user_info, oauth_tokens)
+
+        changeset
+        |> Ash.Changeset.change_attribute(:eve_character_id, character_id)
+        |> Ash.Changeset.change_attribute(:eve_character_name, character_name)
+        |> Ash.Changeset.change_attribute(:access_token, access_token)
+        |> Ash.Changeset.change_attribute(:refresh_token, refresh_token)
+        |> Ash.Changeset.change_attribute(:token_expires_at, expires_at)
+        |> Ash.Changeset.change_attribute(:last_login_at, DateTime.utc_now())
       end)
     end
 
@@ -222,22 +288,61 @@ defmodule EveDmv.Users.User do
   end
 
   def signing_secret(_resource, _opts) do
-    Application.get_env(:eve_dmv, :token_signing_secret) ||
-      raise "You must configure :token_signing_secret in your application config"
+    case Application.get_env(:eve_dmv, :token_signing_secret) do
+      nil -> {:error, "You must configure :token_signing_secret in your application config"}
+      secret -> {:ok, secret}
+    end
   end
 
-  defp get_eve_sso_config(:client_id, _) do
-    Application.get_env(:eve_dmv, :eve_sso)[:client_id] ||
-      raise "You must configure :eve_sso client_id in your application config"
+  # Helper function to extract EVE SSO data from user_info and oauth_tokens
+  defp extract_eve_sso_data(user_info, oauth_tokens) do
+    # Extract character info from EVE SSO response
+    character_id = Map.get(user_info, "CharacterID") || Map.get(user_info, "character_id")
+    character_name = Map.get(user_info, "CharacterName") || Map.get(user_info, "character_name")
+
+    # Extract token info
+    access_token = Map.get(oauth_tokens, "access_token")
+    refresh_token = Map.get(oauth_tokens, "refresh_token")
+
+    expires_at =
+      case Map.get(oauth_tokens, "expires_in") do
+        nil ->
+          nil
+
+        expires_in when is_integer(expires_in) ->
+          DateTime.utc_now() |> DateTime.add(expires_in, :second)
+
+        _ ->
+          nil
+      end
+
+    %{
+      character_id: character_id,
+      character_name: character_name,
+      access_token: access_token,
+      refresh_token: refresh_token,
+      expires_at: expires_at
+    }
   end
 
-  defp get_eve_sso_config(:client_secret, _) do
-    Application.get_env(:eve_dmv, :eve_sso)[:client_secret] ||
-      raise "You must configure :eve_sso client_secret in your application config"
+  defp get_eve_sso_config([:authentication, :strategies, :eve_sso, :client_id], _) do
+    case System.get_env("EVE_SSO_CLIENT_ID") do
+      nil -> {:error, "You must configure EVE_SSO_CLIENT_ID environment variable"}
+      value -> {:ok, value}
+    end
   end
 
-  defp get_eve_sso_config(:redirect_uri, _) do
-    Application.get_env(:eve_dmv, :eve_sso)[:redirect_uri] ||
-      raise "You must configure :eve_sso redirect_uri in your application config"
+  defp get_eve_sso_config([:authentication, :strategies, :eve_sso, :client_secret], _) do
+    case System.get_env("EVE_SSO_CLIENT_SECRET") do
+      nil -> {:error, "You must configure EVE_SSO_CLIENT_SECRET environment variable"}
+      value -> {:ok, value}
+    end
+  end
+
+  defp get_eve_sso_config([:authentication, :strategies, :eve_sso, :redirect_uri], _) do
+    case System.get_env("EVE_SSO_REDIRECT_URI") do
+      nil -> {:error, "You must configure EVE_SSO_REDIRECT_URI environment variable"}
+      value -> {:ok, value}
+    end
   end
 end

@@ -1,6 +1,15 @@
-# EVE PvP Tracker
+# EVE DMV
 
 A real-time PvP activity tracking platform for EVE Online that provides actionable intelligence for fleet commanders, recruiters, and PvP enthusiasts.
+
+## 📚 Documentation
+
+- **[Project Overview](./docs/project-management/project-overview.md)** - Start here for project vision and architecture
+- **[Product Requirements](./docs/product-requirements.md)** - Detailed feature specifications
+- **[Development Setup](./docs/development/devcontainer.md)** - Get started with development
+- **[Current Roadmap](./docs/project-management/prioritized-roadmap.md)** - See what we're building next
+
+For complete documentation, see the [/docs directory](./docs/README.md).
 
 ## Features
 
@@ -33,7 +42,7 @@ A real-time PvP activity tracking platform for EVE Online that provides actionab
 
 3. **Configure EVE SSO (Required):**
    - Go to [CCP Developers Portal](https://developers.eveonline.com/)
-   - Create a new application with callback URL: `http://localhost:4000/auth/eve/callback`
+   - Create a new application with callback URL: `http://localhost:4010/auth/eve/callback`
    - Update `.env` with your `EVE_SSO_CLIENT_ID` and `EVE_SSO_CLIENT_SECRET`
 
 4. **Generate Phoenix secret:**
@@ -52,7 +61,7 @@ A real-time PvP activity tracking platform for EVE Online that provides actionab
 
 6. **Wait for setup to complete:**
    - The container will automatically install dependencies and set up the database
-   - Phoenix server will start automatically on http://localhost:4000
+   - Phoenix server will start automatically on http://localhost:4010
 
 ### Manual Setup (Alternative)
 

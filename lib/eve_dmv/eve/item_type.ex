@@ -35,6 +35,9 @@ defmodule EveDmv.Eve.ItemType do
       index([:published], name: "eve_item_types_published_idx")
       index([:is_ship], name: "eve_item_types_ship_idx")
       index([:is_module], name: "eve_item_types_module_idx")
+
+      # GIN index for search_keywords array
+      index([:search_keywords], name: "eve_item_types_search_keywords_gin_idx", using: "gin")
     end
   end
 
@@ -217,6 +220,7 @@ defmodule EveDmv.Eve.ItemType do
 
     # Custom create/upsert for SDE imports
     create :create do
+      primary?(true)
       description("Create or update item type from SDE")
 
       accept([
