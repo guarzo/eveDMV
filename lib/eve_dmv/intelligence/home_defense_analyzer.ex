@@ -7,6 +7,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
   """
 
   require Logger
+  alias EveDmv.Eve.EsiClient
   alias EveDmv.Intelligence.{CharacterStats, HomeDefenseAnalytics}
 
   @doc """
@@ -96,29 +97,92 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
 
   # Corporation information retrieval
   defp get_corporation_info(corporation_id) do
-    # This would integrate with ESI to get corporation details
-    # For now, using placeholder data
-    {:ok,
-     %{
-       corporation_name: "Corporation #{corporation_id}",
-       alliance_id: nil,
-       alliance_name: nil,
-       home_system_id: 31_000_142,
-       home_system_name: "J123456"
-     }}
+    case EsiClient.get_corporation(corporation_id) do
+      {:ok, corp_data} ->
+        # Get alliance info if the corporation is in one
+        alliance_info =
+          if corp_data.alliance_id do
+            case EsiClient.get_alliance(corp_data.alliance_id) do
+              {:ok, alliance} ->
+                %{alliance_id: alliance.alliance_id, alliance_name: alliance.name}
+
+              _ ->
+                %{alliance_id: nil, alliance_name: nil}
+            end
+          else
+            %{alliance_id: nil, alliance_name: nil}
+          end
+
+        {:ok,
+         %{
+           corporation_name: corp_data.name,
+           alliance_id: alliance_info.alliance_id,
+           alliance_name: alliance_info.alliance_name,
+           # Home system would need to be configured elsewhere, as ESI doesn't provide this directly
+           home_system_id: corp_data.home_station_id || 31_000_142,
+           # This would need a mapping or configuration
+           home_system_name: "J123456"
+         }}
+
+      {:error, reason} ->
+        Logger.warning(
+          "Failed to fetch corporation info for #{corporation_id}: #{inspect(reason)}"
+        )
+
+        # Fallback to placeholder data
+        {:ok,
+         %{
+           corporation_name: "Corporation #{corporation_id}",
+           alliance_id: nil,
+           alliance_name: nil,
+           home_system_id: 31_000_142,
+           home_system_name: "J123456"
+         }}
+    end
   end
 
   # Get corporation members
   defp get_corporation_members(corporation_id) do
-    # Get all characters associated with this corporation
-    case Ash.read(CharacterStats, domain: EveDmv.Api) do
-      {:ok, all_stats} ->
-        members = Enum.filter(all_stats, fn stats -> stats.corporation_id == corporation_id end)
-        {:ok, members}
+    # First try to get member IDs from ESI
+    with {:ok, member_ids} <- EsiClient.get_corporation_members(corporation_id),
+         {:ok, all_stats} <- Ash.read(CharacterStats, domain: EveDmv.Api) do
+      # Cross-reference with our character stats
+      members =
+        all_stats
+        |> Enum.filter(fn stats ->
+          stats.character_id in member_ids || stats.corporation_id == corporation_id
+        end)
+        |> Enum.map(fn stats ->
+          # Ensure we have the latest character info
+          case EsiClient.get_character(stats.character_id) do
+            {:ok, char_data} ->
+              %{
+                stats
+                | character_name: char_data.name,
+                  corporation_id: char_data.corporation_id,
+                  alliance_id: char_data.alliance_id
+              }
 
+            _ ->
+              stats
+          end
+        end)
+
+      {:ok, members}
+    else
       {:error, reason} ->
-        Logger.warning("Could not load character stats: #{inspect(reason)}")
-        {:ok, []}
+        Logger.warning("Could not load corporation members from ESI: #{inspect(reason)}")
+        # Fallback to local data only
+        case Ash.read(CharacterStats, domain: EveDmv.Api) do
+          {:ok, all_stats} ->
+            members =
+              Enum.filter(all_stats, fn stats -> stats.corporation_id == corporation_id end)
+
+            {:ok, members}
+
+          _ ->
+            {:ok, []}
+        end
     end
   rescue
     error ->

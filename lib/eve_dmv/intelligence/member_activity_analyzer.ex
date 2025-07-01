@@ -7,6 +7,7 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
   """
 
   require Logger
+  alias EveDmv.Eve.EsiClient
   alias EveDmv.Intelligence.{CharacterStats, MemberActivityIntelligence}
   alias EveDmv.Killmails.Participant
 
@@ -155,12 +156,60 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
 
   # Helper functions for analysis
   defp get_character_info(character_id) do
-    # This would integrate with ESI to get character details
-    # For now, using placeholder data
-    case Ash.read(CharacterStats, domain: EveDmv.Api) do
-      {:ok, all_stats} ->
-        case Enum.find(all_stats, fn stats -> stats.character_id == character_id end) do
-          nil ->
+    # First try ESI for the most up-to-date information
+    with {:ok, char_data} <- EsiClient.get_character(character_id),
+         {:ok, corp_data} <- EsiClient.get_corporation(char_data.corporation_id) do
+      # Get alliance info if applicable
+      alliance_info =
+        if char_data.alliance_id do
+          case EsiClient.get_alliance(char_data.alliance_id) do
+            {:ok, alliance} -> %{alliance_id: alliance.alliance_id, alliance_name: alliance.name}
+            _ -> %{alliance_id: nil, alliance_name: nil}
+          end
+        else
+          %{alliance_id: nil, alliance_name: nil}
+        end
+
+      {:ok,
+       %{
+         character_name: char_data.name,
+         corporation_id: char_data.corporation_id,
+         corporation_name: corp_data.name,
+         alliance_id: alliance_info.alliance_id,
+         alliance_name: alliance_info.alliance_name
+       }}
+    else
+      {:error, reason} ->
+        Logger.warning(
+          "Could not fetch character info from ESI for #{character_id}: #{inspect(reason)}"
+        )
+
+        # Fallback to local character stats
+        case Ash.read(CharacterStats, domain: EveDmv.Api) do
+          {:ok, all_stats} ->
+            case Enum.find(all_stats, fn stats -> stats.character_id == character_id end) do
+              nil ->
+                {:ok,
+                 %{
+                   character_name: "Character #{character_id}",
+                   corporation_id: 98_000_001,
+                   corporation_name: "Unknown Corporation",
+                   alliance_id: nil,
+                   alliance_name: nil
+                 }}
+
+              stats ->
+                {:ok,
+                 %{
+                   character_name: stats.character_name,
+                   corporation_id: stats.corporation_id,
+                   corporation_name: stats.corporation_name || "Unknown Corporation",
+                   alliance_id: stats.alliance_id,
+                   alliance_name: stats.alliance_name
+                 }}
+            end
+
+          {:error, _} ->
             {:ok,
              %{
                character_name: "Character #{character_id}",
@@ -169,29 +218,7 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
                alliance_id: nil,
                alliance_name: nil
              }}
-
-          stats ->
-            {:ok,
-             %{
-               character_name: stats.character_name,
-               corporation_id: stats.corporation_id,
-               corporation_name: stats.corporation_name || "Unknown Corporation",
-               alliance_id: stats.alliance_id,
-               alliance_name: stats.alliance_name
-             }}
         end
-
-      {:error, reason} ->
-        Logger.warning("Could not load character stats: #{inspect(reason)}")
-
-        {:ok,
-         %{
-           character_name: "Character #{character_id}",
-           corporation_id: 98_000_001,
-           corporation_name: "Unknown Corporation",
-           alliance_id: nil,
-           alliance_name: nil
-         }}
     end
   end
 

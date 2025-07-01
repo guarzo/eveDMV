@@ -402,6 +402,202 @@ defmodule EveDmv.Eve.EsiClient do
   end
 
   @doc """
+  Get corporation members by corporation ID.
+
+  ## Examples
+
+      iex> EsiClient.get_corporation_members(98388312)
+      {:ok, [95465499, 90267367, 12345678]}
+  """
+  @spec get_corporation_members(integer()) :: {:ok, [integer()]} | {:error, term()}
+  def get_corporation_members(corporation_id) when is_integer(corporation_id) do
+    cache_key = "corp_members_#{corporation_id}"
+
+    case EsiCache.get(cache_key) do
+      {:ok, cached_data} ->
+        {:ok, cached_data}
+
+      {:error, :not_found} ->
+        path = "/#{@corporation_api_version}/corporations/#{corporation_id}/members/"
+
+        with_rate_limit(fn ->
+          case get_request(path) do
+            {:ok, data} when is_list(data) ->
+              # Cache for 1 hour (member lists change frequently)
+              EsiCache.put(cache_key, data, ttl: 3_600)
+              {:ok, data}
+
+            {:ok, _} ->
+              {:error, "Invalid response format"}
+
+            error ->
+              error
+          end
+        end)
+    end
+  end
+
+  @doc """
+  Get character employment history by character ID.
+
+  ## Examples
+
+      iex> EsiClient.get_character_employment_history(95465499)
+      {:ok, [
+        %{
+          corporation_id: 98388312,
+          start_date: ~U[2020-01-01 00:00:00Z],
+          is_deleted: false
+        },
+        %{
+          corporation_id: 98356193,
+          start_date: ~U[2013-09-06 15:14:00Z],
+          is_deleted: false
+        }
+      ]}
+  """
+  @spec get_character_employment_history(integer()) :: {:ok, [map()]} | {:error, term()}
+  def get_character_employment_history(character_id) when is_integer(character_id) do
+    cache_key = "employment_history_#{character_id}"
+
+    case EsiCache.get(cache_key) do
+      {:ok, cached_data} ->
+        {:ok, cached_data}
+
+      {:error, :not_found} ->
+        path = "/v1/characters/#{character_id}/corporationhistory/"
+
+        with_rate_limit(fn ->
+          case get_request(path) do
+            {:ok, data} when is_list(data) ->
+              history = Enum.map(data, &parse_employment_history_entry/1)
+              # Cache for 24 hours (employment history changes rarely)
+              EsiCache.put(cache_key, history, ttl: 86_400)
+              {:ok, history}
+
+            {:ok, _} ->
+              {:error, "Invalid response format"}
+
+            error ->
+              error
+          end
+        end)
+    end
+  end
+
+  @doc """
+  Get character skills by character ID. Requires authentication with appropriate scopes.
+
+  ## Examples
+
+      iex> EsiClient.get_character_skills(95465499, "auth_token_here")
+      {:ok, %{
+        total_sp: 50000000,
+        skills: [
+          %{
+            skill_id: 3319,
+            trained_skill_level: 5,
+            active_skill_level: 5,
+            skillpoints_in_skill: 1280000
+          },
+          ...
+        ]
+      }}
+  """
+  @spec get_character_skills(integer(), String.t()) :: {:ok, map()} | {:error, term()}
+  def get_character_skills(character_id, auth_token)
+      when is_integer(character_id) and is_binary(auth_token) do
+    cache_key = "character_skills_#{character_id}"
+
+    case EsiCache.get(cache_key) do
+      {:ok, cached_data} ->
+        {:ok, cached_data}
+
+      {:error, :not_found} ->
+        path = "/v4/characters/#{character_id}/skills/"
+
+        with_rate_limit(fn ->
+          case get_authenticated_request(path, auth_token) do
+            {:ok, data} ->
+              skills_data = parse_skills_response(data)
+              # Cache for 1 hour (skills can change with injectors)
+              EsiCache.put(cache_key, skills_data, ttl: 3_600)
+              {:ok, skills_data}
+
+            error ->
+              error
+          end
+        end)
+    end
+  end
+
+  @doc """
+  Get character assets by character ID. Requires authentication with appropriate scopes.
+
+  ## Examples
+
+      iex> EsiClient.get_character_assets(95465499, "auth_token_here")
+      {:ok, [
+        %{
+          item_id: 1234567890,
+          type_id: 587,
+          location_id: 60003760,
+          location_type: "station",
+          quantity: 1,
+          is_singleton: true
+        },
+        ...
+      ]}
+  """
+  @spec get_character_assets(integer(), String.t()) :: {:ok, [map()]} | {:error, term()}
+  def get_character_assets(character_id, auth_token)
+      when is_integer(character_id) and is_binary(auth_token) do
+    cache_key = "character_assets_#{character_id}"
+
+    case EsiCache.get(cache_key) do
+      {:ok, cached_data} ->
+        {:ok, cached_data}
+
+      {:error, :not_found} ->
+        # Assets can be paginated, need to handle multiple pages
+        fetch_all_character_assets(character_id, auth_token, 1, [])
+    end
+  end
+
+  @doc """
+  Get corporation assets by corporation ID. Requires authentication with appropriate scopes.
+
+  ## Examples
+
+      iex> EsiClient.get_corporation_assets(98388312, "auth_token_here")
+      {:ok, [
+        %{
+          item_id: 1234567890,
+          type_id: 587,
+          location_id: 60003760,
+          location_type: "station",
+          quantity: 10,
+          is_singleton: false
+        },
+        ...
+      ]}
+  """
+  @spec get_corporation_assets(integer(), String.t()) :: {:ok, [map()]} | {:error, term()}
+  def get_corporation_assets(corporation_id, auth_token)
+      when is_integer(corporation_id) and is_binary(auth_token) do
+    cache_key = "corporation_assets_#{corporation_id}"
+
+    case EsiCache.get(cache_key) do
+      {:ok, cached_data} ->
+        {:ok, cached_data}
+
+      {:error, :not_found} ->
+        # Assets can be paginated, need to handle multiple pages
+        fetch_all_corporation_assets(corporation_id, auth_token, 1, [])
+    end
+  end
+
+  @doc """
   Get group information by ID from ESI.
 
   ## Examples
@@ -516,6 +712,41 @@ defmodule EveDmv.Eve.EsiClient do
 
   # Private functions
 
+  defp get_authenticated_request(path, auth_token, params \\ %{}) do
+    url = build_url(path)
+    headers = build_authenticated_headers(auth_token)
+
+    # Add datasource to params
+    params = Map.put(params, "datasource", @default_datasource)
+
+    with_retry(fn ->
+      case HTTPoison.get(url, headers, params: params, recv_timeout: @http_timeout) do
+        {:ok, %{status_code: 200, body: body}} ->
+          Jason.decode(body)
+
+        {:ok, %{status_code: 304}} ->
+          {:error, :not_modified}
+
+        {:ok, %{status_code: 401}} ->
+          {:error, :unauthorized}
+
+        {:ok, %{status_code: 403}} ->
+          {:error, :forbidden}
+
+        {:ok, %{status_code: 404}} ->
+          {:error, :not_found}
+
+        {:ok, %{status_code: status, body: body}} ->
+          Logger.error("ESI authenticated request failed with status #{status}: #{body}")
+          {:error, "ESI returned status #{status}"}
+
+        {:error, reason} = error ->
+          Logger.error("ESI authenticated request failed: #{inspect(reason)}")
+          error
+      end
+    end)
+  end
+
   defp get_request(path, params \\ %{}) do
     url = build_url(path)
     headers = build_headers()
@@ -555,6 +786,14 @@ defmodule EveDmv.Eve.EsiClient do
     [
       {"Accept", "application/json"},
       {"User-Agent", "EveDmv/1.0"}
+    ]
+  end
+
+  defp build_authenticated_headers(auth_token) do
+    [
+      {"Accept", "application/json"},
+      {"User-Agent", "EveDmv/1.0"},
+      {"Authorization", "Bearer #{auth_token}"}
     ]
   end
 
@@ -663,6 +902,118 @@ defmodule EveDmv.Eve.EsiClient do
       {:ok, datetime, _} -> datetime
       _ -> nil
     end
+  end
+
+  defp parse_employment_history_entry(data) do
+    %{
+      corporation_id: data["corporation_id"],
+      start_date: parse_datetime(data["start_date"]),
+      is_deleted: data["is_deleted"] || false,
+      record_id: data["record_id"]
+    }
+  end
+
+  defp parse_skills_response(data) do
+    %{
+      total_sp: data["total_sp"] || 0,
+      unallocated_sp: data["unallocated_sp"] || 0,
+      skills: Enum.map(data["skills"] || [], &parse_skill_entry/1)
+    }
+  end
+
+  defp parse_skill_entry(data) do
+    %{
+      skill_id: data["skill_id"],
+      trained_skill_level: data["trained_skill_level"] || 0,
+      active_skill_level: data["active_skill_level"] || 0,
+      skillpoints_in_skill: data["skillpoints_in_skill"] || 0
+    }
+  end
+
+  defp parse_asset_entry(data) do
+    %{
+      item_id: data["item_id"],
+      type_id: data["type_id"],
+      location_id: data["location_id"],
+      location_type: data["location_type"],
+      location_flag: data["location_flag"],
+      quantity: data["quantity"] || 1,
+      is_singleton: data["is_singleton"] || false,
+      is_blueprint_copy: data["is_blueprint_copy"] || false
+    }
+  end
+
+  defp fetch_all_character_assets(character_id, auth_token, page, accumulated) do
+    path = "/v5/characters/#{character_id}/assets/"
+    params = %{"page" => page}
+
+    with_rate_limit(fn ->
+      case get_authenticated_request(path, auth_token, params) do
+        {:ok, data} when is_list(data) and length(data) > 0 ->
+          assets = Enum.map(data, &parse_asset_entry/1)
+          # ESI returns max 1000 items per page
+          if length(data) == 1000 do
+            fetch_all_character_assets(character_id, auth_token, page + 1, accumulated ++ assets)
+          else
+            all_assets = accumulated ++ assets
+            # Cache for 30 minutes
+            cache_key = "character_assets_#{character_id}"
+            EsiCache.put(cache_key, all_assets, ttl: 1_800)
+            {:ok, all_assets}
+          end
+
+        {:ok, []} ->
+          # No more pages
+          cache_key = "character_assets_#{character_id}"
+          EsiCache.put(cache_key, accumulated, ttl: 1_800)
+          {:ok, accumulated}
+
+        {:ok, _} ->
+          {:error, "Invalid response format"}
+
+        error ->
+          error
+      end
+    end)
+  end
+
+  defp fetch_all_corporation_assets(corporation_id, auth_token, page, accumulated) do
+    path = "/v5/corporations/#{corporation_id}/assets/"
+    params = %{"page" => page}
+
+    with_rate_limit(fn ->
+      case get_authenticated_request(path, auth_token, params) do
+        {:ok, data} when is_list(data) and length(data) > 0 ->
+          assets = Enum.map(data, &parse_asset_entry/1)
+          # ESI returns max 1000 items per page
+          if length(data) == 1000 do
+            fetch_all_corporation_assets(
+              corporation_id,
+              auth_token,
+              page + 1,
+              accumulated ++ assets
+            )
+          else
+            all_assets = accumulated ++ assets
+            # Cache for 30 minutes
+            cache_key = "corporation_assets_#{corporation_id}"
+            EsiCache.put(cache_key, all_assets, ttl: 1_800)
+            {:ok, all_assets}
+          end
+
+        {:ok, []} ->
+          # No more pages
+          cache_key = "corporation_assets_#{corporation_id}"
+          EsiCache.put(cache_key, accumulated, ttl: 1_800)
+          {:ok, accumulated}
+
+        {:ok, _} ->
+          {:error, "Invalid response format"}
+
+        error ->
+          error
+      end
+    end)
   end
 
   defp fetch_characters_parallel(character_ids) do

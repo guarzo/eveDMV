@@ -246,6 +246,7 @@ Based on your review:
 2. Find the corresponding sprint plan in the roadmap
 3. Check if there are any outstanding bugs or technical debt
 4. Consider any shifts in project focus or priorities
+5. Determine if you need any additional information such as api specs, or user feedback -- if so -- pause and ask
 
 ### 5. Create Sprint Plan
 Create `/workspace/docs/sprints/sprint-[N].md` with:
@@ -321,6 +322,9 @@ After planning is complete:
 3. Design the implementation approach
 4. Start with database schema/Ash resources if needed
 5. Follow TDD practices
+6. Ensure every new feature has at least one non-trivial test
+7. Ensure you create a manual test script for new functionality, and ask for QA review before you mark your work as done
+8. Always ensure credo, build, and test complete cleanly before marking a task as done
 
 ## Important Project-Specific Notes
 - **Framework**: Phoenix 1.7.21 with LiveView

@@ -7,19 +7,26 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
   """
 
   require Logger
-  alias EveDmv.Intelligence.{CharacterStats, WHFleetComposition}
+  alias EveDmv.Eve.EsiClient
+  alias EveDmv.Intelligence.{AssetAnalyzer, CharacterStats, WHFleetComposition}
 
   @doc """
   Analyze and optimize a fleet composition for wormhole operations.
 
+  Options:
+  - auth_token: ESI auth token for asset tracking (optional)
+
   Returns {:ok, composition_record} or {:error, reason}
   """
-  def analyze_fleet_composition(composition_id, _options \\ []) do
+  def analyze_fleet_composition(composition_id, options \\ []) do
     Logger.info("Starting fleet composition analysis for composition #{composition_id}")
+
+    auth_token = Keyword.get(options, :auth_token)
 
     with {:ok, composition} <- get_composition_record(composition_id),
          {:ok, available_pilots} <- get_available_pilots(composition.corporation_id),
          {:ok, ship_data} <- get_ship_data(composition.doctrine_template),
+         {:ok, asset_data} <- get_asset_availability(composition, auth_token),
          {:ok, skill_analysis} <-
            analyze_skill_requirements(composition.doctrine_template, available_pilots),
          {:ok, mass_analysis} <-
@@ -46,6 +53,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
         skill_gaps: skill_analysis,
         mass_calculations: mass_analysis,
         optimization_results: optimization_results,
+        asset_availability: asset_data,
         current_readiness_percent: readiness_metrics.readiness_percent,
         pilots_available: readiness_metrics.pilots_available,
         pilots_required: readiness_metrics.pilots_required,
@@ -132,14 +140,42 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
   end
 
   defp get_corporation_info(corporation_id) do
-    # This would integrate with ESI to get corporation details
-    # For now, using placeholder data
-    {:ok,
-     %{
-       corporation_name: "Corporation #{corporation_id}",
-       alliance_id: nil,
-       alliance_name: nil
-     }}
+    case EsiClient.get_corporation(corporation_id) do
+      {:ok, corp_data} ->
+        # Get alliance info if applicable
+        alliance_info =
+          if corp_data.alliance_id do
+            case EsiClient.get_alliance(corp_data.alliance_id) do
+              {:ok, alliance} ->
+                %{alliance_id: alliance.alliance_id, alliance_name: alliance.name}
+
+              _ ->
+                %{alliance_id: nil, alliance_name: nil}
+            end
+          else
+            %{alliance_id: nil, alliance_name: nil}
+          end
+
+        {:ok,
+         %{
+           corporation_name: corp_data.name,
+           alliance_id: alliance_info.alliance_id,
+           alliance_name: alliance_info.alliance_name
+         }}
+
+      {:error, reason} ->
+        Logger.warning(
+          "Failed to fetch corporation info from ESI for #{corporation_id}: #{inspect(reason)}"
+        )
+
+        # Fallback to placeholder data
+        {:ok,
+         %{
+           corporation_name: "Corporation #{corporation_id}",
+           alliance_id: nil,
+           alliance_name: nil
+         }}
+    end
   end
 
   defp get_available_pilots(corporation_id) do
@@ -175,7 +211,49 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
     {:ok, ship_data}
   end
 
-  defp get_ship_data(_), do: {:ok, %{}}
+  defp get_ship_data(doctrine_template) do
+    # Extract ship types from doctrine and get their data
+    ship_types = extract_ship_types_from_doctrine(doctrine_template)
+
+    ship_data =
+      ship_types
+      |> Enum.map(fn ship_name ->
+        {ship_name, get_ship_info(ship_name)}
+      end)
+      |> Enum.into(%{})
+
+    {:ok, ship_data}
+  end
+
+  defp get_asset_availability(_composition, nil) do
+    # No auth token provided, return placeholder data
+    {:ok,
+     %{
+       "asset_tracking_enabled" => false,
+       "ship_availability" => %{},
+       "readiness_score" => 0,
+       "message" => "Asset tracking requires authentication token"
+     }}
+  end
+
+  defp get_asset_availability(composition, auth_token) do
+    # Use AssetAnalyzer to get real asset data
+    case AssetAnalyzer.analyze_fleet_assets(composition.id, auth_token) do
+      {:ok, asset_analysis} ->
+        {:ok, Map.put(asset_analysis, "asset_tracking_enabled", true)}
+
+      {:error, reason} ->
+        Logger.warning("Failed to fetch asset data: #{inspect(reason)}")
+        # Return empty asset data on failure
+        {:ok,
+         %{
+           "asset_tracking_enabled" => false,
+           "ship_availability" => %{},
+           "readiness_score" => 0,
+           "error" => "Failed to fetch asset data"
+         }}
+    end
+  end
 
   defp analyze_skill_requirements(doctrine_template, available_pilots) do
     skill_analysis = %{
@@ -315,18 +393,77 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
   end
 
   defp get_ship_info(ship_name) do
-    # This would look up ship data from static data or ESI
-    # Placeholder implementation with common WH ships
-    ship_data = %{
-      "Guardian" => %{mass_kg: 13_500_000, estimated_cost: 120_000_000},
-      "Legion" => %{mass_kg: 15_000_000, estimated_cost: 180_000_000},
-      "Damnation" => %{mass_kg: 17_500_000, estimated_cost: 250_000_000},
-      "Interceptor" => %{mass_kg: 1_300_000, estimated_cost: 15_000_000},
-      "Heavy Interdictor" => %{mass_kg: 12_000_000, estimated_cost: 85_000_000},
-      "Assault Frigate" => %{mass_kg: 1_400_000, estimated_cost: 25_000_000}
+    # Map common ship names to EVE type IDs
+    ship_name_to_type_id = %{
+      "Guardian" => 11_987,
+      "Legion" => 29_986,
+      "Damnation" => 22_474,
+      # Crow as example
+      "Interceptor" => 11_379,
+      # Broadsword as example
+      "Heavy Interdictor" => 12_013,
+      # Jaguar as example
+      "Assault Frigate" => 11_184,
+      "Loki" => 29_990,
+      "Proteus" => 29_988,
+      "Tengu" => 29_984,
+      "Devoter" => 12_017,
+      "Phobos" => 12_021,
+      "Onyx" => 12_013,
+      "Sabre" => 22_456,
+      "Flycatcher" => 22_464,
+      "Heretic" => 22_452,
+      "Eris" => 22_460
     }
 
-    ship_data[ship_name] || %{mass_kg: 10_000_000, estimated_cost: 50_000_000}
+    type_id = ship_name_to_type_id[ship_name]
+
+    if type_id do
+      case EsiClient.get_type(type_id) do
+        {:ok, type_data} ->
+          # Get current market price for cost estimation
+          cost = estimate_ship_cost(type_id)
+
+          %{
+            mass_kg: type_data.mass || 10_000_000,
+            estimated_cost: cost,
+            type_id: type_id,
+            actual_name: type_data.name
+          }
+
+        {:error, _reason} ->
+          # Fallback to cached/hardcoded data
+          fallback_ship_data = %{
+            "Guardian" => %{mass_kg: 13_500_000, estimated_cost: 120_000_000},
+            "Legion" => %{mass_kg: 15_000_000, estimated_cost: 180_000_000},
+            "Damnation" => %{mass_kg: 17_500_000, estimated_cost: 250_000_000},
+            "Interceptor" => %{mass_kg: 1_300_000, estimated_cost: 15_000_000},
+            "Heavy Interdictor" => %{mass_kg: 12_000_000, estimated_cost: 85_000_000},
+            "Assault Frigate" => %{mass_kg: 1_400_000, estimated_cost: 25_000_000}
+          }
+
+          fallback_ship_data[ship_name] || %{mass_kg: 10_000_000, estimated_cost: 50_000_000}
+      end
+    else
+      # Unknown ship name, use default values
+      %{mass_kg: 10_000_000, estimated_cost: 50_000_000}
+    end
+  end
+
+  defp estimate_ship_cost(type_id) do
+    # Get market prices for Jita (The Forge region)
+    case EsiClient.get_market_orders(type_id, 10_000_002, :sell) do
+      {:ok, [_ | _] = orders} ->
+        # Get the lowest sell price
+        orders
+        |> Enum.map(& &1.price)
+        |> Enum.min()
+        |> round()
+
+      _ ->
+        # Fallback to a reasonable estimate based on ship class
+        50_000_000
+    end
   end
 
   defp calculate_total_fleet_mass(doctrine_template, ship_data) do
@@ -490,11 +627,47 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
     suitable_pilots
   end
 
-  defp pilot_meets_skill_requirements?(pilot, _required_skills) do
+  defp pilot_meets_skill_requirements?(pilot, required_skills) do
     # Check if pilot meets the skill requirements
-    # This would check actual character skills via ESI
-    # For now, assume pilots with good stats meet requirements
-    pilot.total_kills + pilot.total_losses >= 10
+    # Note: This would require authenticated ESI access to get actual skills
+    # For now, we use heuristics based on pilot's killmail activity
+
+    # If no specific skill requirements, check general competence
+    if Enum.empty?(required_skills) do
+      pilot.total_kills + pilot.total_losses >= 10
+    else
+      # Use killmail data as proxy for skills
+      # Pilots who fly certain ships likely have the required skills
+      case hd(required_skills) do
+        "Logistics V" ->
+          # Check if they've flown logistics ships
+          pilot.ship_groups_flown
+          |> Map.get("Logistics", 0)
+          |> Kernel.>(0)
+
+        "HAC V" ->
+          # Check if they've flown Heavy Assault Cruisers
+          pilot.ship_groups_flown
+          |> Map.get("Heavy Assault Cruisers", 0)
+          |> Kernel.>(0)
+
+        "Interceptors V" ->
+          # Check if they've flown interceptors
+          pilot.ship_groups_flown
+          |> Map.get("Interceptors", 0)
+          |> Kernel.>(0)
+
+        "Command Ships V" ->
+          # Check if they've flown command ships
+          pilot.ship_groups_flown
+          |> Map.get("Command Ships", 0)
+          |> Kernel.>(0)
+
+        _ ->
+          # Generic competence check for unknown skills
+          pilot.total_kills + pilot.total_losses >= 20
+      end
+    end
   end
 
   defp calculate_pilot_suitability_score(pilot, role) do

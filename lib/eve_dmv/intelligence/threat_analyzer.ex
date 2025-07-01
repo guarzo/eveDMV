@@ -28,14 +28,27 @@ defmodule EveDmv.Intelligence.ThreatAnalyzer do
     bait_probability = calculate_bait_probability(character_id, associates, recent_activity)
     threat_level = determine_threat_level(threat_score, corporation_id, alliance_id)
 
+    # Check standings for additional context
+    corp_standing = if corporation_id, do: check_corporation_standing(corporation_id), else: nil
+    alliance_standing = if alliance_id, do: check_alliance_standing(alliance_id), else: nil
+
     %{
       threat_level: threat_level,
       threat_score: threat_score,
       bait_probability: bait_probability,
-      analysis_reason: build_analysis_reason(threat_level, threat_score, bait_probability),
+      analysis_reason:
+        build_analysis_reason(
+          threat_level,
+          threat_score,
+          bait_probability,
+          corp_standing,
+          alliance_standing
+        ),
       character_stats: character_stats,
       recent_activity: recent_activity,
-      known_associates: length(associates)
+      known_associates: length(associates),
+      corporation_standing: corp_standing,
+      alliance_standing: alliance_standing
     }
   end
 
@@ -281,37 +294,186 @@ defmodule EveDmv.Intelligence.ThreatAnalyzer do
     max(0, min(100, round(final_probability)))
   end
 
-  defp determine_threat_level(threat_score, _corporation_id, _alliance_id) do
-    # Check for known friendly/hostile corporations
-    cond do
-      threat_score >= 80 -> :hostile
-      # Treat high threats as neutral until confirmed
-      threat_score >= 60 -> :neutral
-      threat_score >= 40 -> :neutral
-      true -> :unknown
+  defp determine_threat_level(threat_score, corporation_id, alliance_id) do
+    # Check blue/red lists first
+    corp_standing = check_corporation_standing(corporation_id)
+    alliance_standing = check_alliance_standing(alliance_id)
+
+    # Determine threat based on standings
+    standing_threat =
+      cond do
+        corp_standing == :red or alliance_standing == :red -> :hostile
+        corp_standing == :blue or alliance_standing == :blue -> :friendly
+        true -> nil
+      end
+
+    # If we have a standing-based determination, use it
+    if standing_threat do
+      standing_threat
+    else
+      # Fall back to score-based determination
+      cond do
+        threat_score >= 80 -> :hostile
+        threat_score >= 60 -> :neutral
+        threat_score >= 40 -> :neutral
+        threat_score < 20 -> :friendly
+        true -> :unknown
+      end
     end
+  end
+
+  defp check_corporation_standing(nil), do: nil
+
+  defp check_corporation_standing(corporation_id) do
+    # Check against known hostile corporations
+    hostile_corps = get_red_list_corporations()
+    friendly_corps = get_blue_list_corporations()
+
+    cond do
+      corporation_id in hostile_corps -> :red
+      corporation_id in friendly_corps -> :blue
+      true -> check_corporation_history(corporation_id)
+    end
+  end
+
+  defp check_alliance_standing(nil), do: nil
+
+  defp check_alliance_standing(alliance_id) do
+    # Check against known hostile alliances
+    hostile_alliances = get_red_list_alliances()
+    friendly_alliances = get_blue_list_alliances()
+
+    cond do
+      alliance_id in hostile_alliances -> :red
+      alliance_id in friendly_alliances -> :blue
+      true -> nil
+    end
+  end
+
+  defp check_corporation_history(corporation_id) do
+    # Check if corporation has history of hostility
+    case check_killmail_history_for_hostility(corporation_id) do
+      :hostile -> :red
+      _ -> nil
+    end
+  end
+
+  defp check_killmail_history_for_hostility(corporation_id) do
+    # Query to check if this corp has killed our members recently
+    cutoff_date = DateTime.add(DateTime.utc_now(), -90, :day)
+    blue_corps = get_blue_list_corporations()
+
+    if Enum.empty?(blue_corps) do
+      # No blue list configured, can't determine hostility from killmails
+      nil
+    else
+      query = """
+      SELECT COUNT(DISTINCT k.killmail_id) as kills_against_us
+      FROM killmails_enriched k
+      JOIN participants p ON k.killmail_id = p.killmail_id 
+                         AND k.killmail_time = p.killmail_time
+      WHERE p.corporation_id = $1
+        AND k.killmail_time > $2
+        AND k.victim_corporation_id = ANY($3)
+        AND p.is_victim = false
+      """
+
+      case EveDmv.Repo.query(query, [corporation_id, cutoff_date, blue_corps]) do
+        {:ok, %{rows: [[kills_against_us]]}} when kills_against_us > 5 ->
+          :hostile
+
+        _ ->
+          :neutral
+      end
+    end
+  end
+
+  # Configuration functions - these would typically be stored in a database
+  # or configuration file in production
+
+  defp get_red_list_corporations do
+    # Known hostile wormhole eviction groups and gankers
+    # These are example IDs - replace with actual hostile corp IDs
+    [
+      # Hard Knocks Citizens
+      99_005_839,
+      # Lazerhawks
+      98_134_538,
+      # Hole Control
+      98_517_658,
+      # Holesale
+      98_477_920,
+      # Vydra Relolded
+      98_600_614,
+      # Example hostile corp
+      98_388_312
+    ]
+  end
+
+  defp get_blue_list_corporations do
+    # Friendly corporations - typically your own corp and blues
+    # These should be configurable
+    Application.get_env(:eve_dmv, :blue_corporations, [])
+  end
+
+  defp get_red_list_alliances do
+    # Known hostile alliances
+    [
+      # Add hostile alliance IDs here
+    ]
+  end
+
+  defp get_blue_list_alliances do
+    # Friendly alliances
+    Application.get_env(:eve_dmv, :blue_alliances, [])
   end
 
   defp calculate_kd_ratio(kills, deaths) when deaths == 0 and kills > 0, do: kills * 1.0
   defp calculate_kd_ratio(_kills, deaths) when deaths == 0, do: 0.0
   defp calculate_kd_ratio(kills, deaths), do: kills / deaths
 
-  defp build_analysis_reason(threat_level, threat_score, bait_probability) do
-    threat_desc =
-      case threat_level do
-        :hostile -> "High threat pilot"
-        :neutral -> "Unknown threat level"
-        :unknown -> "Insufficient data"
-      end
+  defp build_analysis_reason(
+         threat_level,
+         threat_score,
+         bait_probability,
+         corp_standing,
+         alliance_standing
+       ) do
+    standing_desc = build_standing_description(corp_standing, alliance_standing)
+    threat_desc = build_threat_description(threat_level)
+    bait_desc = build_bait_description(bait_probability)
 
-    bait_desc =
-      cond do
-        bait_probability >= 70 -> "High bait probability"
-        bait_probability >= 50 -> "Moderate bait probability"
-        bait_probability >= 30 -> "Low bait probability"
-        true -> "Unlikely to be bait"
-      end
+    "#{standing_desc}#{threat_desc} (#{threat_score}/100). #{bait_desc} (#{bait_probability}%)."
+  end
 
-    "#{threat_desc} (#{threat_score}/100). #{bait_desc} (#{bait_probability}%)."
+  defp build_standing_description(corp_standing, alliance_standing) do
+    cond do
+      corp_standing == :red or alliance_standing == :red ->
+        "RED STANDING - Known hostile entity. "
+
+      corp_standing == :blue or alliance_standing == :blue ->
+        "BLUE STANDING - Friendly entity. "
+
+      true ->
+        ""
+    end
+  end
+
+  defp build_threat_description(threat_level) do
+    case threat_level do
+      :hostile -> "High threat pilot"
+      :friendly -> "Friendly pilot"
+      :neutral -> "Unknown threat level"
+      :unknown -> "Insufficient data"
+    end
+  end
+
+  defp build_bait_description(bait_probability) do
+    cond do
+      bait_probability >= 70 -> "High bait probability"
+      bait_probability >= 50 -> "Moderate bait probability"
+      bait_probability >= 30 -> "Low bait probability"
+      true -> "Unlikely to be bait"
+    end
   end
 end

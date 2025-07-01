@@ -273,4 +273,51 @@ EveDmv.ESI.
 
 ---
 
+## Technical Debt & Code Quality Items
+
+### High Priority Issues
+1. **Authentication Security** - Missing auth mount on WH vetting route (router.ex:39)
+2. **ESI Integration Gaps** - Multiple placeholder functions need real ESI implementation:
+   - Character search in wh_vetting_live.ex
+   - Employment history analysis in wh_vetting_analyzer.ex  
+   - Wormhole skill assessment integration
+   - Skill requirement validation in fleet analyzer
+
+### Medium Priority Refactoring
+3. **Code Organization** - Large modules need decomposition:
+   - HomeDefenseAnalyzer (671 lines) → split into focused modules
+   - Extract formatting helpers into shared VettingFormatter module
+   
+4. **Configuration Management** - Move hardcoded values to config:
+   - Eviction group names in wh_vetting_analyzer.ex
+   - Recommendation thresholds and magic numbers
+   - Ship data in wh_fleet_analyzer.ex
+
+5. **Error Handling Improvements**:
+   - Sanitize user-facing error messages  
+   - Replace Task.start/1 with supervised tasks
+   - Improve error propagation vs silent failures
+   - Replace generic rescue clauses with specific handling
+
+6. **Performance & User Experience**:
+   - Implement search debouncing to reduce API calls
+   - Add search timer management
+   - Fix participation rate calculation logic
+   - Add validation constraints for score attributes
+
+### Low Priority Polish
+7. **Code Documentation** - Add TODO comments for placeholder functions
+8. **Database Optimization** - Review GIN indexes for actual usage patterns  
+9. **UI Robustness** - Add nil checks for optional fields in templates
+10. **Naming Clarity** - Improve ambiguous attribute comments
+
+### Implementation Strategy
+- **Week 1**: Focus on high-priority security and ESI integration items
+- **Week 2**: Address medium-priority refactoring and error handling
+- **Ongoing**: Low-priority items can be tackled during regular development
+
+This technical debt cleanup will improve code maintainability, security, and user experience while establishing patterns for future development.
+
+---
+
 *Sprint 4.5 bridges the gap between placeholder data and production-ready ESI integration, providing the foundation for accurate intelligence analysis and fleet management.*

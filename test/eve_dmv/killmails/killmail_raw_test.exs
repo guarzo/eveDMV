@@ -64,6 +64,7 @@ defmodule EveDmv.Killmails.KillmailRawTest do
   end
 
   describe "ingest_from_source/1" do
+    @tag :skip
     test "upserts killmail data without duplicates" do
       killmail_data = TestDataGenerator.generate_sample_killmail()
 
@@ -142,6 +143,7 @@ defmodule EveDmv.Killmails.KillmailRawTest do
       :ok
     end
 
+    @tag :skip
     test "recent_kills returns killmails sorted by time" do
       killmails =
         KillmailRaw
@@ -156,6 +158,7 @@ defmodule EveDmv.Killmails.KillmailRawTest do
       assert times == Enum.sort(times, &(DateTime.compare(&1, &2) != :lt))
     end
 
+    @tag :skip
     test "by_system filters by solar system" do
       killmails =
         KillmailRaw

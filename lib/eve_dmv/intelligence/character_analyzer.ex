@@ -12,7 +12,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
 
   require Logger
   alias EveDmv.Api
-  alias EveDmv.Eve.{ItemType, NameResolver}
+  alias EveDmv.Eve.{EsiClient, ItemType, NameResolver}
   alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Killmails.{KillmailEnriched, Participant}
   require Ash.Query
@@ -99,6 +99,53 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
   # Private functions
 
   defp get_character_info(character_id) do
+    # First try to get current info from ESI
+    case EsiClient.get_character(character_id) do
+      {:ok, char_data} ->
+        # Get corporation and alliance info
+        corp_info =
+          case EsiClient.get_corporation(char_data.corporation_id) do
+            {:ok, corp} ->
+              %{
+                corporation_name: corp.name,
+                alliance_id: corp.alliance_id
+              }
+
+            _ ->
+              %{
+                corporation_name: "Unknown Corporation",
+                alliance_id: nil
+              }
+          end
+
+        alliance_name =
+          if corp_info.alliance_id do
+            case EsiClient.get_alliance(corp_info.alliance_id) do
+              {:ok, alliance} -> alliance.name
+              _ -> nil
+            end
+          else
+            nil
+          end
+
+        {:ok,
+         %{
+           character_id: character_id,
+           character_name: char_data.name,
+           corporation_id: char_data.corporation_id,
+           corporation_name: corp_info.corporation_name,
+           alliance_id: corp_info.alliance_id,
+           alliance_name: alliance_name,
+           security_status: char_data.security_status
+         }}
+
+      {:error, _reason} ->
+        # Fallback to killmail participant data
+        get_character_info_from_killmails(character_id)
+    end
+  end
+
+  defp get_character_info_from_killmails(character_id) do
     # Try to get the most recent victim record for basic info using Ash
     query =
       Participant

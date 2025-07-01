@@ -9,6 +9,7 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
   require Logger
 
   alias EveDmv.Api
+  alias EveDmv.Eve.EsiClient
   alias EveDmv.Intelligence.{CharacterStats, WHVetting}
   alias EveDmv.Killmails.{KillmailEnriched, Participant}
 
@@ -95,18 +96,52 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
 
   # Character information retrieval
   defp get_character_info(character_id) do
-    # For now, use a placeholder implementation
-    # In production this would integrate with ESI
-    character_stats = get_or_create_character_stats(character_id)
+    # Try ESI first for the most current data
+    case EsiClient.get_character(character_id) do
+      {:ok, char_data} ->
+        # Get corporation and alliance info
+        corp_info =
+          case EsiClient.get_corporation(char_data.corporation_id) do
+            {:ok, corp} -> %{corporation_name: corp.name, alliance_id: corp.alliance_id}
+            _ -> %{corporation_name: "Unknown Corporation", alliance_id: nil}
+          end
 
-    {:ok,
-     %{
-       character_name: character_stats.character_name || "Character #{character_id}",
-       corporation_id: character_stats.corporation_id,
-       corporation_name: character_stats.corporation_name,
-       alliance_id: character_stats.alliance_id,
-       alliance_name: character_stats.alliance_name
-     }}
+        alliance_info =
+          if corp_info.alliance_id do
+            case EsiClient.get_alliance(corp_info.alliance_id) do
+              {:ok, alliance} -> %{alliance_name: alliance.name}
+              _ -> %{alliance_name: nil}
+            end
+          else
+            %{alliance_name: nil}
+          end
+
+        {:ok,
+         %{
+           character_name: char_data.name,
+           corporation_id: char_data.corporation_id,
+           corporation_name: corp_info.corporation_name,
+           alliance_id: corp_info.alliance_id,
+           alliance_name: alliance_info.alliance_name
+         }}
+
+      {:error, reason} ->
+        Logger.warning(
+          "Failed to fetch character info from ESI for #{character_id}: #{inspect(reason)}"
+        )
+
+        # Fallback to local character stats
+        character_stats = get_or_create_character_stats(character_id)
+
+        {:ok,
+         %{
+           character_name: character_stats.character_name || "Character #{character_id}",
+           corporation_id: character_stats.corporation_id,
+           corporation_name: character_stats.corporation_name,
+           alliance_id: character_stats.alliance_id,
+           alliance_name: character_stats.alliance_name
+         }}
+    end
   end
 
   # J-space activity analysis
@@ -219,17 +254,146 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
   end
 
   # Employment history analysis
-  defp analyze_employment_history(_character_id) do
-    # This would integrate with ESI to get employment history
-    # For now, we'll use placeholder data
-    history = %{
-      "corp_changes" => 3,
-      "avg_tenure_days" => 245,
-      "suspicious_patterns" => [],
-      "history" => []
-    }
+  defp analyze_employment_history(character_id) do
+    case EsiClient.get_character_employment_history(character_id) do
+      {:ok, history_entries} ->
+        # Sort by start date (newest first)
+        sorted_history = Enum.sort_by(history_entries, & &1.start_date, {:desc, DateTime})
 
-    {:ok, history}
+        # Calculate corp changes (excluding NPC starter corps)
+        npc_starter_corps = [
+          1_000_165,
+          1_000_166,
+          1_000_167,
+          1_000_168,
+          1_000_169,
+          1_000_170,
+          1_000_171,
+          1_000_172
+        ]
+
+        corp_changes =
+          history_entries
+          |> Enum.reject(fn entry -> entry.corporation_id in npc_starter_corps end)
+          |> length()
+          # Subtract 1 to get number of changes
+          |> Kernel.-(1)
+          |> max(0)
+
+        # Calculate average tenure (excluding current corp)
+        tenures =
+          if length(sorted_history) > 1 do
+            sorted_history
+            |> Enum.chunk_every(2, 1, :discard)
+            |> Enum.map(fn [newer, older] ->
+              days = DateTime.diff(newer.start_date, older.start_date, :day)
+              %{corporation_id: older.corporation_id, days: days}
+            end)
+          else
+            []
+          end
+
+        avg_tenure_days =
+          if length(tenures) > 0 do
+            tenures
+            |> Enum.map(& &1.days)
+            |> Enum.sum()
+            |> div(length(tenures))
+          else
+            # If only one corp or new character, calculate from first corp to now
+            case List.last(sorted_history) do
+              nil -> 0
+              first_corp -> DateTime.diff(DateTime.utc_now(), first_corp.start_date, :day)
+            end
+          end
+
+        # Detect suspicious patterns
+        suspicious_patterns = detect_suspicious_employment_patterns(sorted_history, tenures)
+
+        # Get corporation details for history
+        history_with_details =
+          sorted_history
+          |> Enum.map(fn entry ->
+            corp_name =
+              case EsiClient.get_corporation(entry.corporation_id) do
+                {:ok, corp} -> corp.name
+                _ -> "Unknown Corporation"
+              end
+
+            %{
+              "corporation_id" => entry.corporation_id,
+              "corporation_name" => corp_name,
+              "start_date" => DateTime.to_iso8601(entry.start_date),
+              "is_deleted" => entry.is_deleted
+            }
+          end)
+
+        history = %{
+          "corp_changes" => corp_changes,
+          "avg_tenure_days" => avg_tenure_days,
+          "suspicious_patterns" => suspicious_patterns,
+          "history" => history_with_details
+        }
+
+        {:ok, history}
+
+      {:error, reason} ->
+        Logger.warning(
+          "Failed to fetch employment history from ESI for #{character_id}: #{inspect(reason)}"
+        )
+
+        # Return placeholder data as fallback
+        history = %{
+          "corp_changes" => 0,
+          "avg_tenure_days" => 0,
+          "suspicious_patterns" => ["Unable to verify employment history"],
+          "history" => []
+        }
+
+        {:ok, history}
+    end
+  end
+
+  defp detect_suspicious_employment_patterns(history, tenures) do
+    patterns = []
+
+    # Pattern 1: Corp hopping (many short tenures)
+    short_tenures = Enum.count(tenures, fn t -> t.days < 30 end)
+
+    patterns =
+      if short_tenures >= 3 do
+        ["Multiple short corporation tenures (#{short_tenures} corps < 30 days)" | patterns]
+      else
+        patterns
+      end
+
+    # Pattern 2: Rapid recent changes
+    recent_changes =
+      history
+      |> Enum.take(3)
+      |> Enum.filter(fn entry ->
+        DateTime.diff(DateTime.utc_now(), entry.start_date, :day) < 90
+      end)
+      |> length()
+
+    patterns =
+      if recent_changes >= 3 do
+        ["#{recent_changes} corporation changes in last 90 days" | patterns]
+      else
+        patterns
+      end
+
+    # Pattern 3: Deleted corporations
+    deleted_count = Enum.count(history, & &1.is_deleted)
+
+    patterns =
+      if deleted_count > 0 do
+        ["#{deleted_count} deleted corporation(s) in history" | patterns]
+      else
+        patterns
+      end
+
+    patterns
   end
 
   # Helper functions for specific analyses
