@@ -246,6 +246,8 @@ defmodule EveDmv.Killmails.KillmailEnriched do
       description("Create or update enriched killmail data (handles duplicates)")
       upsert?(true)
       upsert_identity(:unique_killmail)
+      # Don't update fields on conflict - just ignore duplicates
+      upsert_fields([])
 
       accept([
         :killmail_id,
@@ -272,6 +274,45 @@ defmodule EveDmv.Killmails.KillmailEnriched do
         :noteworthy_modules,
         :price_data_source
       ])
+
+      change(set_attribute(:enriched_at, &DateTime.utc_now/0))
+    end
+
+    # Bulk create for pipeline ingestion
+    create :ingest_from_pipeline do
+      description("Bulk insert enriched killmails from pipeline")
+
+      accept([
+        :killmail_id,
+        :killmail_time,
+        :victim_character_id,
+        :victim_character_name,
+        :victim_corporation_id,
+        :victim_corporation_name,
+        :victim_alliance_id,
+        :victim_alliance_name,
+        :solar_system_id,
+        :solar_system_name,
+        :victim_ship_type_id,
+        :victim_ship_name,
+        :total_value,
+        :ship_value,
+        :fitted_value,
+        :attacker_count,
+        :final_blow_character_id,
+        :final_blow_character_name,
+        :kill_category,
+        :victim_ship_category,
+        :module_tags,
+        :noteworthy_modules,
+        :price_data_source
+      ])
+
+      # Upsert behavior - ignore duplicates
+      upsert?(true)
+      upsert_identity(:unique_killmail)
+      # Don't update any fields on conflict
+      upsert_fields([])
 
       change(set_attribute(:enriched_at, &DateTime.utc_now/0))
     end

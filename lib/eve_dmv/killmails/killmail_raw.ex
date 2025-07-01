@@ -151,6 +151,8 @@ defmodule EveDmv.Killmails.KillmailRaw do
       # Upsert behavior - if killmail already exists, do nothing
       upsert?(true)
       upsert_identity(:unique_killmail)
+      # Don't update any fields on conflict - just ignore duplicates
+      upsert_fields([])
     end
 
     # Custom read actions for common queries

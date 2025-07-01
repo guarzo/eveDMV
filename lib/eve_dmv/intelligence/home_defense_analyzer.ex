@@ -96,6 +96,8 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
   end
 
   # Corporation information retrieval
+  defp get_corporation_info(nil), do: {:error, "Invalid corporation ID"}
+
   defp get_corporation_info(corporation_id) do
     case EsiClient.get_corporation(corporation_id) do
       {:ok, corp_data} ->

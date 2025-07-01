@@ -171,40 +171,45 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
   end
 
   defp get_character_info_from_killmails(character_id) do
-    # Try to get the most recent victim record for basic info using Ash
-    query =
-      Participant
-      |> Ash.Query.new()
-      |> Ash.Query.filter(character_id == ^character_id and is_victim == true)
-      |> Ash.Query.sort(killmail_time: :desc)
-      |> Ash.Query.limit(1)
+    # Return error immediately if character_id is invalid
+    if not is_integer(character_id) or character_id <= 0 do
+      {:error, "Invalid character ID"}
+    else
+      # Try to get the most recent victim record for basic info using Ash
+      query =
+        Participant
+        |> Ash.Query.new()
+        |> Ash.Query.filter(character_id == ^character_id and is_victim == true)
+        |> Ash.Query.sort(killmail_time: :desc)
+        |> Ash.Query.limit(1)
 
-    case Ash.read(query, domain: Api) do
-      {:ok, [participant | _]} ->
-        extract_basic_info(participant, character_id)
+      case Ash.read(query, domain: Api) do
+        {:ok, [participant | _]} ->
+          extract_basic_info(participant, character_id)
 
-      {:ok, []} ->
-        # Try non-victim records
-        query =
-          Participant
-          |> Ash.Query.new()
-          |> Ash.Query.filter(character_id == ^character_id)
-          |> Ash.Query.sort(killmail_time: :desc)
-          |> Ash.Query.limit(1)
+        {:ok, []} ->
+          # Try non-victim records
+          query =
+            Participant
+            |> Ash.Query.new()
+            |> Ash.Query.filter(character_id == ^character_id)
+            |> Ash.Query.sort(killmail_time: :desc)
+            |> Ash.Query.limit(1)
 
-        case Ash.read(query, domain: Api) do
-          {:ok, [participant | _]} ->
-            extract_basic_info(participant, character_id)
+          case Ash.read(query, domain: Api) do
+            {:ok, [participant | _]} ->
+              extract_basic_info(participant, character_id)
 
-          {:ok, []} ->
-            {:error, :character_not_found}
+            {:ok, []} ->
+              {:error, :character_not_found}
 
-          {:error, error} ->
-            {:error, error}
-        end
+            {:error, error} ->
+              {:error, error}
+          end
 
-      {:error, error} ->
-        {:error, error}
+        {:error, error} ->
+          {:error, error}
+      end
     end
   end
 
@@ -774,35 +779,68 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
     end
   end
 
-  defp calculate_danger_rating(stats) do
-    points = []
+  @doc """
+  Calculate danger rating on a scale of 1-5 based on combat statistics.
+  """
+  def calculate_danger_rating(stats) when is_map(stats) do
+    combat_metrics = extract_combat_metrics(stats)
+    score = calculate_danger_score(combat_metrics)
+    convert_score_to_rating(score)
+  end
 
-    # High K/D ratio
-    points =
-      if stats.basic_stats.kill_death_ratio > 5 do
-        [2 | points]
-      else
-        if stats.basic_stats.kill_death_ratio > 3, do: [1 | points], else: points
-      end
+  defp extract_combat_metrics(stats) do
+    %{
+      total_kills: stats[:total_kills] || stats.total_kills || 0,
+      total_losses: stats[:total_losses] || stats.total_losses || 0,
+      solo_kills: stats[:solo_kills] || stats.solo_kills || 0,
+      isk_destroyed: stats[:isk_destroyed] || stats.isk_destroyed || 0,
+      avg_gang_size: stats[:avg_gang_size] || stats.avg_gang_size || 1.0
+    }
+  end
 
-    # High ISK efficiency
-    points = if stats.basic_stats.isk_efficiency > 80, do: [1 | points], else: points
+  defp calculate_danger_score(%{total_kills: total_kills, total_losses: total_losses,
+                                solo_kills: solo_kills, isk_destroyed: isk_destroyed,
+                                avg_gang_size: avg_gang_size}) do
+    kd_score = calculate_kd_score(total_kills, total_losses)
+    solo_score = calculate_solo_score(solo_kills, total_kills)
+    isk_score = calculate_isk_score(isk_destroyed)
+    gang_score = calculate_gang_score(avg_gang_size)
+    activity_score = calculate_activity_score(total_kills)
 
-    # High activity
-    points = if stats.basic_stats.total_kills > 100, do: [1 | points], else: points
+    kd_score + solo_score + isk_score + gang_score + activity_score
+  end
 
-    # Uses dangerous ships
-    dangerous_ships = ["Loki", "Legion", "Proteus", "Tengu"]
+  defp calculate_kd_score(total_kills, total_losses) do
+    kd_ratio = if total_losses > 0, do: total_kills / total_losses, else: total_kills
+    min(kd_ratio * 2, 20)
+  end
 
-    points =
-      if Enum.any?(Map.values(stats.ship_usage), fn ship ->
-           ship["ship_name"] in dangerous_ships and ship["times_used"] > 10
-         end),
-         do: [1 | points],
-         else: points
+  defp calculate_solo_score(solo_kills, total_kills) do
+    solo_percentage = if total_kills > 0, do: solo_kills / total_kills, else: 0
+    solo_percentage * 15
+  end
 
-    score = Enum.sum(points)
-    min(5, max(1, score))
+  defp calculate_isk_score(isk_destroyed) do
+    isk_billions = isk_destroyed / 1_000_000_000
+    min(isk_billions / 10, 15)
+  end
+
+  defp calculate_gang_score(avg_gang_size) do
+    max(0, 10 - avg_gang_size)
+  end
+
+  defp calculate_activity_score(total_kills) do
+    min(total_kills / 100, 10)
+  end
+
+  defp convert_score_to_rating(score) do
+    cond do
+      score >= 45 -> 5  # Extremely dangerous
+      score >= 35 -> 4  # Very dangerous
+      score >= 25 -> 3  # Moderately dangerous
+      score >= 15 -> 2  # Slightly dangerous
+      true -> 1         # Low threat
+    end
   end
 
   defp calculate_completeness(stats) do
@@ -878,6 +916,93 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
   end
 
   # Additional public API functions expected by tests
+
+  @doc """
+  Analyze geographic patterns from killmail data.
+  """
+  def analyze_geographic_patterns(killmails) when is_list(killmails) do
+    if Enum.empty?(killmails) do
+      %{
+        active_systems: %{},
+        security_preferences: %{},
+        home_system_id: nil,
+        regional_activity: %{}
+      }
+    else
+      # Group by solar system
+      system_activity =
+        killmails
+        |> Enum.group_by(fn km ->
+          {Map.get(km, :solar_system_id), Map.get(km, :solar_system_name)}
+        end)
+        |> Enum.map(fn {{system_id, system_name}, kms} ->
+          {system_id,
+           %{
+             "system_name" => system_name || "Unknown",
+             "activity_count" => length(kms),
+             "security_status" => Map.get(List.first(kms), :security_status, 0.0),
+             "last_seen" =>
+               kms
+               |> Enum.map(&Map.get(&1, :killmail_time, DateTime.utc_now()))
+               |> Enum.max(DateTime, fn -> DateTime.utc_now() end)
+           }}
+        end)
+        |> Enum.into(%{})
+
+      # Find home system (most active)
+      home_system_id =
+        system_activity
+        |> Enum.max_by(fn {_id, data} -> data["activity_count"] end, fn -> {nil, nil} end)
+        |> elem(0)
+
+      # Calculate security preferences
+      security_prefs =
+        killmails
+        |> Enum.group_by(fn km ->
+          sec_status = Map.get(km, :security_status, 0.0)
+
+          cond do
+            sec_status >= 0.5 -> "highsec"
+            sec_status > 0.0 -> "lowsec"
+            sec_status == 0.0 -> "nullsec"
+            sec_status < 0.0 -> "wormhole"
+            true -> "unknown"
+          end
+        end)
+        |> Enum.map(fn {sec_type, kms} -> {sec_type, length(kms)} end)
+        |> Enum.into(%{})
+        |> normalize_percentages()
+
+      # Regional activity (simplified)
+      regional_activity = %{
+        "domain" => Map.get(security_prefs, "highsec", 0),
+        "providence" => Map.get(security_prefs, "nullsec", 0),
+        "j_space" => Map.get(security_prefs, "wormhole", 0)
+      }
+
+      %{
+        active_systems: system_activity,
+        security_preferences: security_prefs,
+        home_system_id: home_system_id,
+        regional_activity: regional_activity
+      }
+    end
+  end
+
+  @doc """
+  Determine timezone from activity hours.
+  """
+  def determine_timezone_from_activity(active_hours) when is_list(active_hours) do
+    cond do
+      # Peak activity around 18-22 UTC suggests EUTZ
+      Enum.any?(active_hours, fn h -> h in 18..22 end) -> "EUTZ"
+      # Peak activity around 1-5 UTC suggests USTZ
+      Enum.any?(active_hours, fn h -> h in 1..5 end) -> "USTZ"
+      # Peak activity around 10-14 UTC suggests AUTZ
+      Enum.any?(active_hours, fn h -> h in 10..14 end) -> "AUTZ"
+      true -> "Unknown"
+    end
+  end
 
   @doc """
   Calculate ship preferences from killmail data.
@@ -980,6 +1105,10 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
   def analyze_temporal_patterns(killmails) when is_list(killmails) do
     if Enum.empty?(killmails) do
       %{
+        active_hours: [],
+        prime_timezone: "Unknown",
+        activity_consistency: 0.0,
+        weekend_vs_weekday: 0.0,
         hourly_distribution: %{},
         daily_distribution: %{},
         peak_activity_hours: [],
@@ -1028,10 +1157,42 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
         |> Enum.take(3)
         |> Enum.map(&elem(&1, 0))
 
+      # Get active hours (all hours with activity)
+      active_hours = hourly_dist |> Map.keys() |> Enum.sort()
+
       # Estimate timezone based on peak activity
       timezone_estimate = estimate_timezone_from_peaks(peak_hours)
 
+      # Calculate activity consistency (how spread out activity is)
+      hour_variance =
+        if length(active_hours) > 1 do
+          mean_hour = Enum.sum(active_hours) / length(active_hours)
+
+          variance =
+            Enum.sum(Enum.map(active_hours, &:math.pow(&1 - mean_hour, 2))) / length(active_hours)
+
+          # 144 = 12^2 (max spread)
+          max(0.0, 1.0 - variance / 144.0)
+        else
+          1.0
+        end
+
+      # Calculate weekend vs weekday ratio
+      weekend_activity = Enum.count(times, fn {_hour, day} -> day >= 6 end)
+      weekday_activity = length(times) - weekend_activity
+
+      weekend_ratio =
+        if weekday_activity > 0 do
+          weekend_activity / weekday_activity
+        else
+          if weekend_activity > 0, do: 2.0, else: 0.0
+        end
+
       %{
+        active_hours: active_hours,
+        prime_timezone: timezone_estimate,
+        activity_consistency: Float.round(hour_variance, 2),
+        weekend_vs_weekday: Float.round(weekend_ratio, 2),
         hourly_distribution: hourly_dist,
         daily_distribution: daily_dist,
         peak_activity_hours: peak_hours,
@@ -1067,17 +1228,19 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
     #{format_ship_usage_summary(ship_usage)}
     """
 
-    # Create structured summary
+    # Create structured summary with expected test format
     %{
-      summary_text: String.trim(summary_text),
-      key_metrics: %{
-        kills: total_kills,
-        losses: total_losses,
-        threat_level: dangerous_rating,
-        associate_count: map_size(associates)
+      pilot_profile: String.trim(summary_text),
+      threat_assessment: %{
+        level: dangerous_rating,
+        description: assess_threat_level(dangerous_rating, total_kills),
+        metrics: %{
+          kills: total_kills,
+          losses: total_losses,
+          associate_count: map_size(associates)
+        }
       },
-      threat_assessment: assess_threat_level(dangerous_rating, total_kills),
-      recommendations: generate_counter_recommendations(analysis)
+      tactical_notes: generate_counter_recommendations(analysis)
     }
   end
 
@@ -1105,6 +1268,66 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
     day_of_week = Date.day_of_week(date)
     # Saturday or Sunday
     day_of_week == 6 or day_of_week == 7
+  end
+
+  @doc """
+  Check if a date is a weekend (alias for weekend?/1).
+  """
+  def weekend_day?(date), do: weekend?(date)
+
+  @doc """
+  Extract hour from datetime.
+  """
+  def extract_hour_from_datetime(%DateTime{} = datetime), do: datetime.hour
+
+  @doc """
+  Calculate success rate from kills and losses.
+  """
+  def calculate_success_rate(0, 0), do: 0.0
+  def calculate_success_rate(_kills, 0), do: 1.0
+
+  def calculate_success_rate(kills, losses) when kills >= 0 and losses >= 0 do
+    kills / (kills + losses)
+  end
+
+  @doc """
+  Identify weaknesses from character data.
+  """
+  def identify_weaknesses(character_data) when is_map(character_data) do
+    behavioral_weaknesses = []
+    technical_weaknesses = []
+
+    # Check ship usage patterns for poor success rates
+    ship_usage = Map.get(character_data, :ship_usage, %{})
+    most_used_ships = Map.get(ship_usage, :most_used_ships, [])
+
+    behavioral_weaknesses =
+      if Enum.any?(most_used_ships, fn ship ->
+           Map.get(ship, :success_rate, 1.0) < 0.3
+         end) do
+        ["overconfident_ship_choices" | behavioral_weaknesses]
+      else
+        behavioral_weaknesses
+      end
+
+    # Check target preferences for high-risk behavior
+    target_prefs = Map.get(character_data, :target_preferences, %{})
+    hunting_patterns = Map.get(target_prefs, :hunting_patterns, %{})
+    solo_hunting = Map.get(hunting_patterns, :solo_hunting, 0.0)
+
+    behavioral_weaknesses =
+      if solo_hunting > 0.8 do
+        ["excessive_solo_hunting" | behavioral_weaknesses]
+      else
+        behavioral_weaknesses
+      end
+
+    %{
+      behavioral_weaknesses: behavioral_weaknesses,
+      technical_weaknesses: technical_weaknesses,
+      summary:
+        "#{length(behavioral_weaknesses)} behavioral, #{length(technical_weaknesses)} technical weaknesses identified"
+    }
   end
 
   # Helper functions for the new API functions
@@ -1230,6 +1453,72 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
       ["Standard engagement protocols apply"]
     else
       recommendations
+    end
+  end
+
+  @doc """
+  Calculate target preferences based on killmail data.
+  """
+  def calculate_target_preferences(killmails) when is_list(killmails) do
+    # Filter only kills (not losses)
+    kills = Enum.filter(killmails, &(!&1.is_victim))
+
+    if Enum.empty?(kills) do
+      %{
+        preferred_target_types: %{},
+        avg_target_value: 0,
+        target_size_preference: "unknown",
+        hunting_patterns: %{
+          solo_hunting: 0.0,
+          small_gang: 0.0,
+          fleet_hunting: 0.0
+        }
+      }
+    else
+      # Use victim_ship_name instead of ship_name
+      target_types =
+        kills
+        |> Enum.group_by(
+          &(Map.get(&1, :victim_ship_name) || Map.get(&1, :ship_name) || "Unknown")
+        )
+        |> Enum.map(fn {ship, occurrences} -> {ship, length(occurrences)} end)
+        |> Enum.into(%{})
+
+      avg_value =
+        kills
+        |> Enum.map(&Map.get(&1, :total_value, 0))
+        |> Enum.sum()
+        |> Kernel./(length(kills))
+        |> Float.round(0)
+
+      # Analyze gang sizes for hunting patterns
+      gang_sizes = Enum.map(kills, &Map.get(&1, :attacker_count, 1))
+      solo_count = Enum.count(gang_sizes, &(&1 == 1))
+      small_gang_count = Enum.count(gang_sizes, &(&1 in 2..5))
+      fleet_count = Enum.count(gang_sizes, &(&1 > 5))
+      total = length(gang_sizes)
+
+      hunting_patterns = %{
+        solo_hunting: if(total > 0, do: solo_count / total, else: 0.0),
+        small_gang: if(total > 0, do: small_gang_count / total, else: 0.0),
+        fleet_hunting: if(total > 0, do: fleet_count / total, else: 0.0)
+      }
+
+      # Determine target size preference
+      target_size_preference =
+        cond do
+          solo_count / total > 0.6 -> "solo_targets"
+          small_gang_count / total > 0.4 -> "small_groups"
+          fleet_count / total > 0.3 -> "large_groups"
+          true -> "mixed"
+        end
+
+      %{
+        preferred_target_types: target_types,
+        avg_target_value: avg_value,
+        target_size_preference: target_size_preference,
+        hunting_patterns: hunting_patterns
+      }
     end
   end
 end

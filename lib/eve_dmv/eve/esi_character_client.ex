@@ -22,6 +22,9 @@ defmodule EveDmv.Eve.EsiCharacterClient do
     end)
   end
 
+  def get_character(nil), do: {:error, :invalid_character_id}
+  def get_character(_), do: {:error, :invalid_character_id}
+
   defp get_character_with_fallback(character_id) do
     cache_key = "character:#{character_id}"
 
@@ -179,6 +182,11 @@ defmodule EveDmv.Eve.EsiCharacterClient do
   def get_character_assets(character_id, auth_token)
       when is_integer(character_id) and is_binary(auth_token) do
     fetch_all_character_assets(character_id, auth_token, 1, [])
+  end
+
+  def get_character_assets(character_id) when is_integer(character_id) do
+    # For backward compatibility, return an error indicating auth is required
+    {:error, :authentication_required}
   end
 
   # Private helper functions

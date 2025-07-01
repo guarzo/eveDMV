@@ -35,6 +35,8 @@ defmodule EveDmvWeb.AuthLive do
     """
     use EveDmvWeb, :live_view
 
+    on_mount {EveDmvWeb.AuthLive, :load_from_session}
+
     @impl true
     def mount(_params, _session, socket) do
       # If user is already authenticated, redirect to dashboard

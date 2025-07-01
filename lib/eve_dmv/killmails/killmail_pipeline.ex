@@ -523,14 +523,14 @@ defmodule EveDmv.Killmails.KillmailPipeline do
            return_errors?: true,
            stop_on_error?: false
          ) do
-      %Ash.BulkResult{status: :success} = result ->
-        success_count = result.records |> length()
+      %Ash.BulkResult{status: :success} ->
+        success_count = length(raw_changesets)
         Logger.debug("Successfully bulk inserted #{success_count} raw killmails")
         :ok
 
       %Ash.BulkResult{status: :partial_success} = result ->
-        success_count = result.records |> length()
         error_count = result.errors |> length()
+        success_count = length(raw_changesets) - error_count
 
         Logger.warning(
           "Bulk insert partially successful: #{success_count} succeeded, #{error_count} failed"
@@ -573,14 +573,14 @@ defmodule EveDmv.Killmails.KillmailPipeline do
            return_errors?: true,
            stop_on_error?: false
          ) do
-      %Ash.BulkResult{status: :success} = result ->
-        success_count = result.records |> length()
+      %Ash.BulkResult{status: :success} ->
+        success_count = length(enriched_changesets)
         Logger.debug("Successfully bulk inserted #{success_count} enriched killmails")
         :ok
 
       %Ash.BulkResult{status: :partial_success} = result ->
-        success_count = result.records |> length()
         error_count = result.errors |> length()
+        success_count = length(enriched_changesets) - error_count
 
         Logger.warning(
           "Enriched killmail bulk insert partially successful: #{success_count} succeeded, #{error_count} failed"
@@ -609,8 +609,10 @@ defmodule EveDmv.Killmails.KillmailPipeline do
     end
   end
 
-  defp insert_participants(participants_lists) do
-    participants = List.flatten(participants_lists)
+  defp insert_participants(participants_lists) when is_list(participants_lists) do
+    # Filter out any nil values before flattening
+    valid_lists = Enum.filter(participants_lists, &(&1 != nil))
+    participants = List.flatten(valid_lists)
     Logger.debug("Inserting #{length(participants)} participants using bulk operation")
 
     # Filter out any invalid participants before bulk operation
@@ -627,8 +629,8 @@ defmodule EveDmv.Killmails.KillmailPipeline do
              return_errors?: true,
              stop_on_error?: false
            ) do
-        %Ash.BulkResult{status: :success} = result ->
-          success_count = result.records |> length()
+        %Ash.BulkResult{status: :success} ->
+          success_count = length(valid_participants)
           skipped_count = length(participants) - length(valid_participants)
 
           if skipped_count > 0 do
@@ -642,8 +644,8 @@ defmodule EveDmv.Killmails.KillmailPipeline do
           :ok
 
         %Ash.BulkResult{status: :partial_success} = result ->
-          success_count = result.records |> length()
           error_count = result.errors |> length()
+          success_count = length(valid_participants) - error_count
 
           Logger.warning(
             "Bulk participant insert partially successful: #{success_count} succeeded, #{error_count} failed"
@@ -699,13 +701,14 @@ defmodule EveDmv.Killmails.KillmailPipeline do
   defp check_surveillance_matches(messages) do
     Logger.debug("Checking surveillance matches for #{length(messages)} killmails")
 
-    for %Message{data: killmail_data} <- messages do
+    for %Message{data: {raw_changeset, _enriched_changeset, _participants}} <- messages do
       try do
+        # Extract killmail ID from the raw changeset map
+        killmail_id = Map.get(raw_changeset, :killmail_id)
+
         # This would integrate with the surveillance matching engine
         # For now, just log that we would check for matches
-        Logger.debug(
-          "Would check surveillance matches for killmail #{killmail_data["killmail_id"]}"
-        )
+        Logger.debug("Would check surveillance matches for killmail #{killmail_id}")
       rescue
         error ->
           Logger.warning("Failed to check surveillance matches: #{inspect(error)}")

@@ -8,6 +8,9 @@ defmodule EveDmv.Killmails.TestDataGenerator do
   from wanderer-kills SSE feed.
   """
   def generate_sample_killmail(opts \\ []) do
+    # Handle both keyword lists and maps for flexibility
+    opts = if is_map(opts), do: Map.to_list(opts), else: opts
+
     killmail_id = Keyword.get(opts, :killmail_id, Enum.random(100_000_000..999_999_999))
     timestamp = Keyword.get(opts, :timestamp, DateTime.utc_now())
 

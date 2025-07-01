@@ -89,6 +89,7 @@ jobs:
         echo "Baseline coverage: $BASELINE%"
 
     - name: Run tests with coverage
+      id: run-tests
       env:
         DATABASE_URL: postgres://postgres:postgres@localhost:5432/eve_tracker_test
         WANDERER_KILLS_SSE_URL: http://localhost:4004/api/v1/kills/stream
@@ -99,17 +100,22 @@ jobs:
         PIPELINE_ENABLED: false
         MOCK_SSE_SERVER_ENABLED: true
       run: |
-        mix test --cover
-        
-        # Extract coverage percentage from ExCoveralls output
+        # Run tests with coverage and capture output
         mix test --cover 2>&1 | tee coverage_output.txt
         
-        # Parse coverage percentage (adjust based on your coveralls config)
-        CURRENT_COVERAGE=$(grep -o '[0-9]*\.[0-9]*%' coverage_output.txt | tail -1 | sed 's/%//')
+        # Parse coverage percentage from the [TOTAL] line
+        CURRENT_COVERAGE=$(grep '\[TOTAL\]' coverage_output.txt | grep -o '[0-9]*\.[0-9]*%' | sed 's/%//')
         
         if [ -z "$CURRENT_COVERAGE" ]; then
-          echo "Could not parse coverage percentage"
-          exit 1
+          echo "Could not parse coverage percentage from output"
+          echo "Searching for alternative coverage patterns..."
+          # Fallback parsing methods
+          CURRENT_COVERAGE=$(grep -o '[0-9]*\.[0-9]*%' coverage_output.txt | tail -1 | sed 's/%//')
+        fi
+        
+        if [ -z "$CURRENT_COVERAGE" ]; then
+          echo "Still could not parse coverage percentage, using 0.0"
+          CURRENT_COVERAGE="0.0"
         fi
         
         echo "Current coverage: $CURRENT_COVERAGE%"
@@ -142,8 +148,8 @@ jobs:
         CURRENT="${{ steps.run-tests.outputs.current_coverage }}"
         BASELINE="${{ steps.baseline.outputs.baseline }}"
         
-        # Only update baseline if coverage improved
-        if [ "$(echo "$CURRENT > $BASELINE" | bc -l)" -eq 1 ]; then
+        # Only update baseline if coverage improved or if baseline file doesn't exist
+        if [ ! -f coverage_baseline.txt ] || [ "$(echo "$CURRENT > $BASELINE" | bc -l)" -eq 1 ]; then
           echo "$CURRENT" > coverage_baseline.txt
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"

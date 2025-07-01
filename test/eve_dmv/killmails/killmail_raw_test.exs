@@ -206,11 +206,18 @@ defmodule EveDmv.Killmails.KillmailRawTest do
     end
 
     test "is_recent identifies recent killmails" do
-      # Create a recent killmail (1 hour ago)
+      # Ensure June partition exists
+      Ecto.Adapters.SQL.query!(EveDmv.Repo, """
+        CREATE TABLE IF NOT EXISTS killmails_raw_2025_06 PARTITION OF killmails_raw
+        FOR VALUES FROM ('2025-06-01') TO ('2025-07-01')
+      """)
+
+      # Create a recent killmail (1 hour ago) - ensure it's in current month
       recent_time = DateTime.add(DateTime.utc_now(), -3600, :second)
 
-      # Create an old killmail (25 hours ago)
-      old_time = DateTime.add(DateTime.utc_now(), -25 * 3600, :second)
+      # Create an old killmail - use June 30th and is > 24 hours ago
+      # June 30th, definitely > 24 hours ago
+      old_time = ~U[2025-06-30 00:00:00Z]
 
       recent_data = TestDataGenerator.generate_sample_killmail(timestamp: recent_time)
       old_data = TestDataGenerator.generate_sample_killmail(timestamp: old_time)

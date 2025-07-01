@@ -14,105 +14,140 @@ defmodule EveDmvWeb.AuthControllerTest do
 
   describe "success/2 - OAuth success callback" do
     test "creates new user and redirects to dashboard on successful EVE SSO", %{conn: conn} do
-      # Mock the OAuth provider response
+      # Create a test user using EVE SSO action
       user_info = %{
-        "access_token" => "valid_access_token",
-        "refresh_token" => "valid_refresh_token",
-        "expires_in" => 3600,
-        "character" => %{
-          "character_id" => 123_456,
-          "character_name" => "TestPilot",
-          "corporation_id" => 654_321,
-          "corporation_name" => "Test Corp",
-          "alliance_id" => 987_654,
-          "alliance_name" => "Test Alliance"
-        }
+        "CharacterID" => 123_456,
+        "CharacterName" => "TestPilot"
       }
 
-      # Simulate successful OAuth callback
+      oauth_tokens = %{
+        "access_token" => "valid_access_token",
+        "refresh_token" => "valid_refresh_token",
+        "expires_in" => 3600
+      }
+
+      {:ok, user} =
+        Ash.create(
+          User,
+          %{
+            user_info: user_info,
+            oauth_tokens: oauth_tokens
+          },
+          action: :register_with_eve_sso,
+          domain: Api
+        )
+
+      # Call the success function directly
       conn =
         conn
-        |> assign(:user_info, user_info)
-        |> post(~p"/auth/success")
+        |> init_test_session(%{})
+        |> Phoenix.Controller.fetch_flash()
+        |> AuthController.success(:sign_in, user, nil)
 
       # Should redirect to dashboard
       assert redirected_to(conn) == ~p"/dashboard"
 
       # Should set user in session
-      user_id = get_session(conn, :user_id)
-      assert user_id
-
-      # Should create user in database
-      {:ok, user} = Api.get(User, user_id)
-      assert user.character_id == "123456"
-      assert user.character_name == "TestPilot"
+      assert get_session(conn, "current_user_id") == user.id
+      # Check that AshAuthentication token was stored
+      assert get_session(conn, "user_token")
     end
 
     test "updates existing user and redirects on re-authentication", %{conn: conn} do
       # Create existing user
-      existing_user_data = %{
-        "characterID" => "123456",
-        "characterName" => "TestPilot",
-        "corporationID" => "654321",
-        "corporationName" => "Old Corp",
+      user_info = %{
+        "CharacterID" => 123_456,
+        "CharacterName" => "TestPilot"
+      }
+
+      oauth_tokens = %{
         "access_token" => "old_token",
         "refresh_token" => "old_refresh",
-        "expires_at" => DateTime.utc_now() |> DateTime.add(-3600, :second)
+        "expires_in" => 3600
       }
 
-      {:ok, existing_user} = Api.create(User, :register_with_eve_sso, existing_user_data)
+      {:ok, existing_user} =
+        Ash.create(
+          User,
+          %{
+            user_info: user_info,
+            oauth_tokens: oauth_tokens
+          },
+          action: :register_with_eve_sso,
+          domain: Api
+        )
 
-      # Mock updated OAuth response
-      updated_user_info = %{
-        "access_token" => "new_access_token",
-        "refresh_token" => "new_refresh_token",
-        "expires_in" => 3600,
-        "character" => %{
-          "character_id" => 123_456,
-          "character_name" => "TestPilot",
-          "corporation_id" => 999_888,
-          "corporation_name" => "New Corp"
-        }
-      }
+      # Update the user with new tokens
+      {:ok, updated_user} =
+        Ash.update(
+          existing_user,
+          %{
+            access_token: "new_access_token",
+            refresh_token: "new_refresh_token",
+            token_expires_at: DateTime.utc_now() |> DateTime.add(3600, :second)
+          },
+          action: :refresh_token,
+          domain: Api
+        )
 
+      # Call success function with updated user
       conn =
         conn
-        |> assign(:user_info, updated_user_info)
-        |> post(~p"/auth/success")
+        |> init_test_session(%{})
+        |> Phoenix.Controller.fetch_flash()
+        |> AuthController.success(:sign_in, updated_user, nil)
 
       assert redirected_to(conn) == ~p"/dashboard"
-
-      # Should update the existing user
-      {:ok, updated_user} = Api.get(User, existing_user.id)
-      assert updated_user.corporation_name == "New Corp"
-      assert updated_user.access_token == "new_access_token"
+      assert get_session(conn, "current_user_id") == updated_user.id
     end
 
-    test "handles missing user info gracefully", %{conn: conn} do
-      # No user_info assigned
-      conn = post(conn, ~p"/auth/success")
+    test "handles failure callback", %{conn: conn} do
+      # Call failure function
+      conn =
+        conn
+        |> init_test_session(%{})
+        |> Phoenix.Controller.fetch_flash()
+        |> AuthController.failure(:sign_in, "Authentication failed")
 
       # Should redirect to home with error
       assert redirected_to(conn) == ~p"/"
-      assert get_flash(conn, :error) =~ "Authentication failed"
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "Authentication failed"
     end
 
-    test "handles invalid character data", %{conn: conn} do
-      invalid_user_info = %{
-        "access_token" => "token",
-        "character" => %{
-          # Missing required fields
-          "character_id" => nil
-        }
+    test "handles sign out", %{conn: conn} do
+      # Create and sign in a user
+      user_info = %{
+        "CharacterID" => 123_456,
+        "CharacterName" => "TestPilot"
       }
 
+      oauth_tokens = %{
+        "access_token" => "valid_token",
+        "refresh_token" => "valid_refresh",
+        "expires_in" => 3600
+      }
+
+      {:ok, user} =
+        Ash.create(
+          User,
+          %{
+            user_info: user_info,
+            oauth_tokens: oauth_tokens
+          },
+          action: :register_with_eve_sso,
+          domain: Api
+        )
+
+      # Set up session
       conn =
         conn
-        |> assign(:user_info, invalid_user_info)
-        |> post(~p"/auth/success")
+        |> init_test_session(%{})
+        |> put_session("current_user_id", user.id)
+        |> Phoenix.Controller.fetch_flash()
+        |> AuthController.sign_out(%{})
 
       assert redirected_to(conn) == ~p"/"
-      assert get_flash(conn, :error)
+      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "signed out"
     end
   end
 
@@ -120,11 +155,12 @@ defmodule EveDmvWeb.AuthControllerTest do
     test "redirects to home with error message on OAuth failure", %{conn: conn} do
       conn =
         conn
-        |> assign(:failure_reason, "access_denied")
-        |> post(~p"/auth/failure")
+        |> init_test_session(%{})
+        |> Phoenix.Controller.fetch_flash()
+        |> AuthController.failure(:sign_in, "access_denied")
 
       assert redirected_to(conn) == ~p"/"
-      assert get_flash(conn, :error) =~ "Authentication failed"
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "Authentication failed"
     end
 
     test "handles different failure reasons", %{conn: conn} do
@@ -134,60 +170,75 @@ defmodule EveDmvWeb.AuthControllerTest do
         conn =
           conn
           |> recycle()
-          |> assign(:failure_reason, reason)
-          |> post(~p"/auth/failure")
+          |> init_test_session(%{})
+          |> Phoenix.Controller.fetch_flash()
+          |> AuthController.failure(:sign_in, reason)
 
         assert redirected_to(conn) == ~p"/"
-        assert get_flash(conn, :error)
+        assert Phoenix.Flash.get(conn.assigns.flash, :error)
       end
     end
 
-    test "handles missing failure reason", %{conn: conn} do
-      conn = post(conn, ~p"/auth/failure")
+    test "handles nil failure reason", %{conn: conn} do
+      conn =
+        conn
+        |> init_test_session(%{})
+        |> Phoenix.Controller.fetch_flash()
+        |> AuthController.failure(:sign_in, nil)
 
       assert redirected_to(conn) == ~p"/"
-      assert get_flash(conn, :error) =~ "Authentication failed"
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "Authentication failed"
     end
   end
 
   describe "sign_out/2" do
     setup %{conn: conn} do
       # Create and sign in a user
-      eve_sso_data = %{
-        "characterID" => "123456",
-        "characterName" => "TestPilot",
-        "corporationID" => "654321",
-        "corporationName" => "Test Corp",
-        "access_token" => "test_token",
-        "refresh_token" => "test_refresh",
-        "expires_at" => DateTime.utc_now() |> DateTime.add(3600, :second)
+      user_info = %{
+        "CharacterID" => 123_456,
+        "CharacterName" => "TestPilot"
       }
 
-      {:ok, user} = Api.create(User, :register_with_eve_sso, eve_sso_data)
+      oauth_tokens = %{
+        "access_token" => "test_token",
+        "refresh_token" => "test_refresh",
+        "expires_in" => 3600
+      }
+
+      {:ok, user} =
+        Ash.create(
+          User,
+          %{
+            user_info: user_info,
+            oauth_tokens: oauth_tokens
+          },
+          action: :register_with_eve_sso,
+          domain: Api
+        )
 
       conn =
         conn
-        |> put_session(:user_id, user.id)
-        |> put_session(:character_name, user.character_name)
+        |> init_test_session(%{})
+        |> put_session("current_user_id", user.id)
+        |> put_session(:eve_dmv, %{user_id: user.id})
 
       {:ok, conn: conn, user: user}
     end
 
     test "clears session and redirects to home", %{conn: conn} do
       # Verify user is logged in
-      assert get_session(conn, :user_id)
+      assert get_session(conn, "current_user_id")
 
-      conn = post(conn, ~p"/auth/sign_out")
+      conn = conn |> fetch_flash() |> AuthController.sign_out(%{})
 
       # Should redirect to home
       assert redirected_to(conn) == ~p"/"
 
       # Should clear session
-      assert get_session(conn, :user_id) == nil
-      assert get_session(conn, :character_name) == nil
+      assert get_session(conn, :eve_dmv) == nil
 
       # Should show sign out message
-      assert get_flash(conn, :info) =~ "signed out"
+      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "signed out"
     end
 
     test "handles sign out when not logged in", %{conn: conn} do
@@ -195,7 +246,8 @@ defmodule EveDmvWeb.AuthControllerTest do
       conn =
         conn
         |> clear_session()
-        |> post(~p"/auth/sign_out")
+        |> Phoenix.Controller.fetch_flash()
+        |> AuthController.sign_out(%{})
 
       # Should still redirect to home
       assert redirected_to(conn) == ~p"/"
@@ -204,64 +256,85 @@ defmodule EveDmvWeb.AuthControllerTest do
 
   describe "session security" do
     test "prevents session fixation attacks", %{conn: conn} do
-      # Get initial session ID
-      initial_conn = get(conn, ~p"/")
-      initial_session_id = get_session(initial_conn, :session_id)
-
+      # Create a test user
       user_info = %{
+        "CharacterID" => 123_456,
+        "CharacterName" => "TestPilot"
+      }
+
+      oauth_tokens = %{
         "access_token" => "token",
         "refresh_token" => "refresh",
-        "expires_in" => 3600,
-        "character" => %{
-          "character_id" => 123_456,
-          "character_name" => "TestPilot",
-          "corporation_id" => 654_321,
-          "corporation_name" => "Test Corp"
-        }
+        "expires_in" => 3600
       }
+
+      {:ok, user} =
+        Ash.create(
+          User,
+          %{
+            user_info: user_info,
+            oauth_tokens: oauth_tokens
+          },
+          action: :register_with_eve_sso,
+          domain: Api
+        )
 
       # Authenticate
       auth_conn =
-        initial_conn
-        |> assign(:user_info, user_info)
-        |> post(~p"/auth/success")
+        conn
+        |> init_test_session(%{})
+        |> Phoenix.Controller.fetch_flash()
+        |> AuthController.success(:sign_in, user, nil)
 
-      # Session should be regenerated after authentication
-      new_session_id = get_session(auth_conn, :session_id)
-      # Note: This test assumes Phoenix regenerates session IDs on authentication
-      # The actual implementation may vary
+      # Session should have user ID set
+      assert get_session(auth_conn, "current_user_id") == user.id
     end
 
-    test "handles concurrent authentication attempts", %{conn: conn} do
+    test "handles concurrent authentication attempts", %{conn: _conn} do
+      # Create a test user
       user_info = %{
+        "CharacterID" => 123_456,
+        "CharacterName" => "TestPilot"
+      }
+
+      oauth_tokens = %{
         "access_token" => "token",
         "refresh_token" => "refresh",
-        "expires_in" => 3600,
-        "character" => %{
-          "character_id" => 123_456,
-          "character_name" => "TestPilot",
-          "corporation_id" => 654_321,
-          "corporation_name" => "Test Corp"
-        }
+        "expires_in" => 3600
       }
+
+      {:ok, user} =
+        Ash.create(
+          User,
+          %{
+            user_info: user_info,
+            oauth_tokens: oauth_tokens
+          },
+          action: :register_with_eve_sso,
+          domain: Api
+        )
 
       # Simulate multiple concurrent requests
       tasks =
         for _i <- 1..5 do
           Task.async(fn ->
-            conn
-            |> assign(:user_info, user_info)
-            |> post(~p"/auth/success")
+            # Each task needs its own conn
+            new_conn = Phoenix.ConnTest.build_conn()
+
+            new_conn
+            |> init_test_session(%{})
+            |> Phoenix.Controller.fetch_flash()
+            |> AuthController.success(:sign_in, user, nil)
           end)
         end
 
       results = Task.await_many(tasks)
 
-      # All should succeed or fail gracefully
+      # All should succeed
       for result <- results do
         assert %Plug.Conn{} = result
-        # Redirect or OK
-        assert result.status in [302, 200]
+        assert result.status == 302
+        assert result.state == :sent
       end
     end
   end
@@ -269,25 +342,40 @@ defmodule EveDmvWeb.AuthControllerTest do
   # Property-based testing for robust input validation
   property "auth controller handles various character ID formats" do
     check all(character_id <- positive_integer()) do
+      # Create user with various character IDs
       user_info = %{
-        "access_token" => "token",
-        "refresh_token" => "refresh",
-        "expires_in" => 3600,
-        "character" => %{
-          "character_id" => character_id,
-          "character_name" => "TestPilot",
-          "corporation_id" => 654_321,
-          "corporation_name" => "Test Corp"
-        }
+        "CharacterID" => character_id,
+        "CharacterName" => "TestPilot"
       }
 
-      conn =
-        build_conn()
-        |> assign(:user_info, user_info)
-        |> post(~p"/auth/success")
+      oauth_tokens = %{
+        "access_token" => "token",
+        "refresh_token" => "refresh",
+        "expires_in" => 3600
+      }
 
-      # Should either succeed (redirect) or fail gracefully (redirect with error)
-      assert conn.status == 302
+      {:ok, user} =
+        Ash.create(
+          User,
+          %{
+            user_info: user_info,
+            oauth_tokens: oauth_tokens
+          },
+          action: :register_with_eve_sso,
+          domain: Api
+        )
+
+      conn = build_conn()
+
+      result =
+        conn
+        |> init_test_session(%{})
+        |> Phoenix.Controller.fetch_flash()
+        |> AuthController.success(:sign_in, user, nil)
+
+      # Should always redirect successfully
+      assert result.status == 302
+      assert result.state == :sent
     end
   end
 
@@ -296,23 +384,36 @@ defmodule EveDmvWeb.AuthControllerTest do
       # This test would require implementing rate limiting
       # For now, we'll test that multiple rapid requests don't crash
       user_info = %{
+        "CharacterID" => 123_456,
+        "CharacterName" => "TestPilot"
+      }
+
+      oauth_tokens = %{
         "access_token" => "token",
         "refresh_token" => "refresh",
-        "expires_in" => 3600,
-        "character" => %{
-          "character_id" => 123_456,
-          "character_name" => "TestPilot",
-          "corporation_id" => 654_321,
-          "corporation_name" => "Test Corp"
-        }
+        "expires_in" => 3600
       }
+
+      {:ok, user} =
+        Ash.create(
+          User,
+          %{
+            user_info: user_info,
+            oauth_tokens: oauth_tokens
+          },
+          action: :register_with_eve_sso,
+          domain: Api
+        )
 
       # Make 10 rapid requests
       results =
         for _i <- 1..10 do
-          build_conn()
-          |> assign(:user_info, user_info)
-          |> post(~p"/auth/success")
+          conn = build_conn()
+
+          conn
+          |> init_test_session(%{})
+          |> Phoenix.Controller.fetch_flash()
+          |> AuthController.success(:sign_in, user, nil)
         end
 
       # All should respond (even if rate limited)

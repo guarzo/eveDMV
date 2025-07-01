@@ -116,7 +116,7 @@ defmodule EveDmv.TestMocks do
     }
   end
 
-  def mock_employment_history(character_id \\ 123_456) do
+  def mock_employment_history(_character_id \\ 123_456) do
     [
       %{
         corporation_id: 98_000_001,

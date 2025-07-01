@@ -236,6 +236,8 @@ defmodule EveDmv.Killmails.Participant do
       # Upsert to handle duplicate processing
       upsert?(true)
       upsert_identity(:unique_participant_per_killmail)
+      # Don't update any fields on conflict - just ignore duplicates
+      upsert_fields([])
     end
 
     # Read actions for specific queries

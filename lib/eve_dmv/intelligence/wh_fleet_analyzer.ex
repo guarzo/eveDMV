@@ -1541,7 +1541,8 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
         shield_ships / total_ships >= 0.6 -> "shield_cruiser"
         armor_ships > shield_ships -> "armor"
         shield_ships > armor_ships -> "shield"
-        true -> "mixed"
+        # If no clear doctrine, return unknown
+        true -> "unknown"
       end
     end
   end
