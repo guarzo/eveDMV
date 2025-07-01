@@ -91,6 +91,55 @@ defmodule EveDmvWeb.KillFeedLive do
 
   # Private helper functions
 
+  defp preload_killmail_names(killmails) do
+    # Extract all unique IDs that need name resolution
+    ship_type_ids =
+      killmails
+      |> Enum.map(& &1.victim_ship_type_id)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+
+    system_ids =
+      killmails
+      |> Enum.map(& &1.solar_system_id)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+
+    # Bulk preload all names into cache
+    NameResolver.ship_names(ship_type_ids)
+    NameResolver.system_names(system_ids)
+
+    # Preload system security data too
+    Enum.each(system_ids, &NameResolver.system_security/1)
+  end
+
+  defp preload_raw_killmail_names(raw_killmails) do
+    # Extract IDs from raw killmail data
+    ship_type_ids =
+      raw_killmails
+      |> Enum.map(fn raw ->
+        victim = find_victim_in_raw(raw.raw_data)
+        get_in(victim, ["ship_type_id"])
+      end)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+
+    system_ids =
+      raw_killmails
+      |> Enum.map(fn raw ->
+        get_in(raw.raw_data, ["solar_system_id"])
+      end)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+
+    # Bulk preload all names into cache
+    NameResolver.ship_names(ship_type_ids)
+    NameResolver.system_names(system_ids)
+
+    # Preload system security data
+    Enum.each(system_ids, &NameResolver.system_security/1)
+  end
+
   defp load_recent_killmails do
     # Try to load from enriched killmails first
     enriched =
@@ -101,6 +150,8 @@ defmodule EveDmvWeb.KillFeedLive do
       |> Ash.read!(domain: Api)
 
     if length(enriched) > 0 do
+      # Preload all names in bulk to avoid N+1 queries
+      preload_killmail_names(enriched)
       Enum.map(enriched, &build_killmail_from_enriched/1)
     else
       # Fallback to raw killmails if no enriched data
@@ -111,6 +162,8 @@ defmodule EveDmvWeb.KillFeedLive do
         |> Ash.Query.limit(@feed_limit)
         |> Ash.read!(domain: Api)
 
+      # Preload names for raw killmails too
+      preload_raw_killmail_names(raw)
       Enum.map(raw, &build_killmail_from_raw/1)
     end
   rescue

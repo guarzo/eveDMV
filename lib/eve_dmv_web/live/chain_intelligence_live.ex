@@ -18,28 +18,23 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
     ThreatAnalyzer
   }
 
+  on_mount {EveDmvWeb.AuthLive, :load_from_session}
+
   @impl true
-  def mount(_params, session, socket) do
-    user = session["user"]
+  def mount(_params, _session, socket) do
+    # Subscribe to chain intelligence updates
+    Phoenix.PubSub.subscribe(EveDmv.PubSub, "chain_intelligence:*")
 
-    if user do
-      # Subscribe to chain intelligence updates
-      Phoenix.PubSub.subscribe(EveDmv.PubSub, "chain_intelligence:*")
+    socket =
+      socket
+      |> assign(:monitored_chains, [])
+      |> assign(:selected_chain, nil)
+      |> assign(:chain_data, %{})
+      |> assign(:loading, false)
+      |> assign(:error, nil)
+      |> load_user_chains()
 
-      socket =
-        socket
-        |> assign(:user, user)
-        |> assign(:monitored_chains, [])
-        |> assign(:selected_chain, nil)
-        |> assign(:chain_data, %{})
-        |> assign(:loading, false)
-        |> assign(:error, nil)
-        |> load_user_chains()
-
-      {:ok, socket}
-    else
-      {:ok, redirect(socket, to: ~p"/")}
-    end
+    {:ok, socket}
   end
 
   @impl true
@@ -59,7 +54,7 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
 
   @impl true
   def handle_event("monitor_chain", %{"map_id" => map_id}, socket) do
-    user = socket.assigns.user
+    user = socket.assigns.current_user
     # Default corp if not set
     corporation_id = user.corporation_id || 1
 
@@ -184,7 +179,7 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
   # Private Functions
 
   defp load_user_chains(socket) do
-    user = socket.assigns.user
+    user = socket.assigns.current_user
     corporation_id = user.corporation_id || 1
 
     case Ash.read(ChainTopology,

@@ -10,11 +10,11 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
   alias EveDmv.Api
   alias EveDmv.Killmails.{KillmailEnriched, KillmailRaw, Participant}
 
-  @wanderer_kills_base_url Application.compile_env(
-                             :eve_dmv,
-                             :wanderer_kills_base_url,
-                             "http://host.docker.internal:4004"
-                           )
+  # Get base URL at runtime for better configuration flexibility
+  defp wanderer_kills_base_url do
+    Application.get_env(:eve_dmv, :wanderer_kills_base_url, "http://host.docker.internal:4004")
+  end
+
   @preload_days 90
   @heartbeat_threshold 3
 
@@ -65,7 +65,7 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
   # Private functions
 
   defp build_url(character_id) do
-    "#{@wanderer_kills_base_url}/api/v1/kills/stream/enhanced?character_ids=#{character_id}&preload_days=#{@preload_days}"
+    "#{wanderer_kills_base_url()}/api/v1/kills/stream/enhanced?character_ids=#{character_id}&preload_days=#{@preload_days}"
   end
 
   defp process_stream(ref, character_id) do

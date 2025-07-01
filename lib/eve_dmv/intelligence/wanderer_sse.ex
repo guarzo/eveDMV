@@ -4,7 +4,7 @@ defmodule EveDmv.Intelligence.WandererSSE do
 
   Connects to Wanderer's SSE API to receive real-time map events:
   - Character events (pilots entering/leaving systems)
-  - System events (systems added/removed from maps)  
+  - System events (systems added/removed from maps)
   - Connection events (wormhole connections created/destroyed)
 
   Reuses the existing SSE infrastructure from wanderer-kills integration.

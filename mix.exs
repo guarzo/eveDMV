@@ -13,6 +13,28 @@ defmodule EveDmv.MixProject do
       # Test coverage
       test_coverage: [tool: ExCoveralls],
       preferred_cli_coveralls_env: :test,
+      excoveralls: [
+        minimum_coverage: 4.0,
+        output_dir: "cover",
+        skip_files: [
+          # Test files
+          "test/",
+          # Generated files
+          "_build/",
+          "deps/",
+          # Configuration files
+          "config/",
+          # Migration files (infrastructure, not business logic)
+          "priv/repo/migrations/",
+          # Mock and test support files
+          "test/support/",
+          # Auto-generated files
+          "lib/eve_dmv_web/gettext.ex",
+          "lib/eve_dmv_web/endpoint.ex"
+        ],
+        stop_on_missing_beam_file: false,
+        treat_no_relevant_lines_as_covered: true
+      ],
       # Dialyzer configuration
       dialyzer: [
         plt_file: {:no_warn, "priv/plts/dialyzer.plt"},
@@ -96,6 +118,9 @@ defmodule EveDmv.MixProject do
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:mix_audit, "~> 2.1", only: [:dev, :test], runtime: false},
       {:excoveralls, "~> 0.18", only: :test},
+      # Additional test dependencies for comprehensive testing
+      {:bypass, "~> 1.0", only: :test},
+      {:mox, "~> 1.0", only: :test},
       {:picosat_elixir, "~> 0.2"}
     ]
   end
@@ -113,6 +138,8 @@ defmodule EveDmv.MixProject do
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
       "test.coverage": ["coveralls.html"],
+      "test.coverage.console": ["coveralls"],
+      "test.coverage.json": ["coveralls.json"],
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
       "assets.build": ["tailwind eve_dmv", "esbuild eve_dmv"],
       "assets.deploy": [

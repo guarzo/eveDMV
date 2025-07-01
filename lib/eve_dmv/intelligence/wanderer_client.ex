@@ -9,11 +9,11 @@ defmodule EveDmv.Intelligence.WandererClient do
   use GenServer
   require Logger
 
-  @base_url Application.compile_env(
-              :eve_dmv,
-              :wanderer_base_url,
-              "http://host.docker.internal:4004"
-            )
+  # Get base URL at runtime for better configuration flexibility
+  defp base_url do
+    Application.get_env(:eve_dmv, :wanderer_base_url, "http://host.docker.internal:4004")
+  end
+
   @api_timeout 30_000
   @max_retries 3
   @retry_delay 5_000
@@ -233,7 +233,7 @@ defmodule EveDmv.Intelligence.WandererClient do
   end
 
   defp get_systems_api(map_id, auth_token) do
-    url = "#{@base_url}/api/maps/#{map_id}/systems"
+    url = "#{base_url()}/api/maps/#{map_id}/systems"
     headers = build_headers(auth_token)
 
     case HTTPoison.get(url, headers, timeout: @api_timeout) do
@@ -249,7 +249,7 @@ defmodule EveDmv.Intelligence.WandererClient do
   end
 
   defp get_connections_api(map_id, auth_token) do
-    url = "#{@base_url}/api/maps/#{map_id}/connections"
+    url = "#{base_url()}/api/maps/#{map_id}/connections"
     headers = build_headers(auth_token)
 
     case HTTPoison.get(url, headers, timeout: @api_timeout) do

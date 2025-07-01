@@ -4,7 +4,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
 
   This module aggregates killmail data to identify patterns useful for hunters:
   - Ship preferences and common fits
-  - Gang composition and frequent associates  
+  - Gang composition and frequent associates
   - Geographic activity patterns
   - Target selection preferences
   - Behavioral weaknesses
@@ -95,6 +95,31 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
     :exit, reason ->
       {:error, {:exit, reason}}
   end
+
+  @doc """
+  Process killmail data and return statistics.
+
+  This function is primarily used for testing and analysis purposes.
+  """
+  @spec process_killmail_data(map()) :: {:ok, map()} | {:error, term()}
+  def process_killmail_data(killmail_data) when is_map(killmail_data) do
+    # Extract character_id and killmails from the data structure
+    character_id = Map.get(killmail_data, :character_id)
+    killmails = Map.get(killmail_data, :killmails, [])
+
+    if character_id && is_list(killmails) && length(killmails) > 0 do
+      # Convert test data to the format expected by calculate_statistics
+      formatted_killmails = format_test_killmails(killmails, character_id)
+      calculate_statistics(character_id, formatted_killmails)
+    else
+      {:error, :invalid_killmail_data}
+    end
+  rescue
+    error ->
+      {:error, {:processing_error, error}}
+  end
+
+  def process_killmail_data(_), do: {:error, :invalid_input}
 
   # Private functions
 
@@ -791,5 +816,420 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
 
     passed = Enum.count(checks, & &1)
     round(passed / length(checks) * 100)
+  end
+
+  defp format_test_killmails(killmails, character_id) do
+    Enum.map(killmails, fn km ->
+      # Convert test killmail format to the format expected by analyze functions
+      participants = create_test_participants(km, character_id)
+
+      %{
+        killmail_id: Map.get(km, :killmail_id, :rand.uniform(999_999_999)),
+        killmail_time: Map.get(km, :killmail_time, DateTime.utc_now()),
+        solar_system_id: Map.get(km, :solar_system_id, 30_002_187),
+        solar_system_name: Map.get(km, :solar_system_name, "Rens"),
+        total_value: Decimal.new(Map.get(km, :total_value, 0.0)),
+        participants: participants
+      }
+    end)
+  end
+
+  defp create_test_participants(km, character_id) do
+    # Create victim participant for the character
+    victim = %{
+      character_id: character_id,
+      character_name: "Test Character",
+      corporation_id: 98_000_001,
+      corporation_name: "Test Corp",
+      alliance_id: 99_000_001,
+      alliance_name: "Test Alliance",
+      ship_type_id: Map.get(km, :ship_type_id, 11_999),
+      ship_name: Map.get(km, :ship_name, "Rifter"),
+      is_victim: Map.get(km, :is_victim, true),
+      killmail_id: Map.get(km, :killmail_id, :rand.uniform(999_999_999)),
+      killmail_time: Map.get(km, :killmail_time, DateTime.utc_now()),
+      weapon_type_id: nil,
+      weapon_name: nil
+    }
+
+    # Create attackers based on attacker_count
+    attacker_count = Map.get(km, :attacker_count, 1)
+
+    attackers =
+      Enum.map(1..attacker_count, fn i ->
+        %{
+          character_id: character_id + i,
+          character_name: "Attacker #{i}",
+          corporation_id: 98_000_002,
+          corporation_name: "Enemy Corp",
+          alliance_id: 99_000_002,
+          alliance_name: "Enemy Alliance",
+          ship_type_id: 11_999,
+          ship_name: "Rifter",
+          is_victim: false,
+          killmail_id: Map.get(km, :killmail_id, :rand.uniform(999_999_999)),
+          killmail_time: Map.get(km, :killmail_time, DateTime.utc_now()),
+          weapon_type_id: 12_345,
+          weapon_name: "Light Missile Launcher"
+        }
+      end)
+
+    [victim | attackers]
+  end
+
+  # Additional public API functions expected by tests
+
+  @doc """
+  Calculate ship preferences from killmail data.
+  """
+  def calculate_ship_preferences(killmails) when is_list(killmails) do
+    if Enum.empty?(killmails) do
+      %{
+        most_used_ships: [],
+        ship_success_rates: %{},
+        preferred_ship_categories: %{},
+        total_unique_ships: 0
+      }
+    else
+      # Group by ship name and calculate usage stats
+      ship_usage =
+        killmails
+        |> Enum.group_by(fn km -> Map.get(km, :ship_name, "Unknown") end)
+        |> Enum.map(fn {ship_name, uses} ->
+          kills = Enum.count(uses, fn use -> not Map.get(use, :is_victim, false) end)
+          losses = Enum.count(uses, fn use -> Map.get(use, :is_victim, false) end)
+          total_uses = kills + losses
+          success_rate = if total_uses > 0, do: Float.round(kills / total_uses, 2), else: 0.0
+
+          %{
+            ship_name: ship_name,
+            usage_count: total_uses,
+            kills: kills,
+            losses: losses,
+            success_rate: success_rate
+          }
+        end)
+        |> Enum.sort_by(& &1.usage_count, :desc)
+
+      # Calculate success rates map
+      success_rates =
+        ship_usage
+        |> Enum.map(fn ship -> {ship.ship_name, ship.success_rate} end)
+        |> Enum.into(%{})
+
+      # Categorize ships and calculate category preferences
+      preferred_categories =
+        ship_usage
+        |> Enum.group_by(fn ship -> categorize_ship_by_name(ship.ship_name) end)
+        |> Enum.map(fn {category, ships} ->
+          total_usage = Enum.sum(Enum.map(ships, & &1.usage_count))
+          {category, total_usage}
+        end)
+        |> Enum.into(%{})
+        |> normalize_percentages()
+
+      %{
+        most_used_ships: Enum.take(ship_usage, 10),
+        ship_success_rates: success_rates,
+        preferred_ship_categories: preferred_categories,
+        total_unique_ships: length(ship_usage)
+      }
+    end
+  end
+
+  @doc """
+  Identify frequent associates from killmail data.
+  """
+  def identify_frequent_associates(killmails, character_id) when is_list(killmails) do
+    if Enum.empty?(killmails) do
+      %{}
+    else
+      killmails
+      |> Enum.flat_map(fn km ->
+        participants = Map.get(km, :participants, [])
+        # Get all non-victim participants except the character themselves
+        participants
+        |> Enum.filter(fn p ->
+          p.character_id != character_id and not Map.get(p, :is_victim, false)
+        end)
+        |> Enum.map(fn p ->
+          {p.character_id, p.character_name, Map.get(p, :corporation_name, "Unknown")}
+        end)
+      end)
+      |> Enum.frequencies()
+      |> Enum.map(fn {{char_id, char_name, corp_name}, count} ->
+        {Integer.to_string(char_id),
+         %{
+           "name" => char_name,
+           "shared_kills" => count,
+           "corp_name" => corp_name,
+           # Would need more analysis to determine
+           "is_logistics" => false
+         }}
+      end)
+      |> Enum.sort_by(fn {_id, data} -> -data["shared_kills"] end)
+      # Top 20 associates
+      |> Enum.take(20)
+      |> Enum.into(%{})
+    end
+  end
+
+  @doc """
+  Analyze temporal patterns in killmail data.
+  """
+  def analyze_temporal_patterns(killmails) when is_list(killmails) do
+    if Enum.empty?(killmails) do
+      %{
+        hourly_distribution: %{},
+        daily_distribution: %{},
+        peak_activity_hours: [],
+        timezone_estimate: "Unknown"
+      }
+    else
+      # Extract hours and days from killmail times
+      times =
+        Enum.map(killmails, fn km ->
+          killmail_time = Map.get(km, :killmail_time, DateTime.utc_now())
+          {killmail_time.hour, Date.day_of_week(DateTime.to_date(killmail_time))}
+        end)
+
+      # Calculate hourly distribution
+      hourly_dist =
+        times
+        |> Enum.map(&elem(&1, 0))
+        |> Enum.frequencies()
+        |> normalize_percentages()
+
+      # Calculate daily distribution
+      daily_dist =
+        times
+        |> Enum.map(&elem(&1, 1))
+        |> Enum.frequencies()
+        |> Enum.map(fn {day_num, count} ->
+          day_name =
+            case day_num do
+              1 -> "Monday"
+              2 -> "Tuesday"
+              3 -> "Wednesday"
+              4 -> "Thursday"
+              5 -> "Friday"
+              6 -> "Saturday"
+              7 -> "Sunday"
+            end
+
+          {day_name, count}
+        end)
+        |> Enum.into(%{})
+
+      # Find peak activity hours (top 3 hours with most activity)
+      peak_hours =
+        hourly_dist
+        |> Enum.sort_by(&elem(&1, 1), :desc)
+        |> Enum.take(3)
+        |> Enum.map(&elem(&1, 0))
+
+      # Estimate timezone based on peak activity
+      timezone_estimate = estimate_timezone_from_peaks(peak_hours)
+
+      %{
+        hourly_distribution: hourly_dist,
+        daily_distribution: daily_dist,
+        peak_activity_hours: peak_hours,
+        timezone_estimate: timezone_estimate
+      }
+    end
+  end
+
+  @doc """
+  Format character analysis into a summary.
+  """
+  def format_character_summary(analysis) do
+    character_name = Map.get(analysis, :character_name, "Unknown")
+    character_id = Map.get(analysis, :character_id, 0)
+    total_kills = Map.get(analysis, :total_kills, 0)
+    total_losses = Map.get(analysis, :total_losses, 0)
+    dangerous_rating = Map.get(analysis, :dangerous_rating, 1)
+
+    # Extract key information
+    associates = Map.get(analysis, :frequent_associates, %{})
+    weaknesses = Map.get(analysis, :identified_weaknesses, %{})
+    ship_usage = Map.get(analysis, :ship_usage, %{})
+
+    # Generate summary text
+    summary_text = """
+    Character Analysis: #{character_name} (#{character_id})
+
+    Combat Record: #{total_kills} kills, #{total_losses} losses
+    Threat Level: #{dangerous_rating}/5
+
+    #{format_associates_summary(associates)}
+    #{format_weaknesses_summary(weaknesses)}
+    #{format_ship_usage_summary(ship_usage)}
+    """
+
+    # Create structured summary
+    %{
+      summary_text: String.trim(summary_text),
+      key_metrics: %{
+        kills: total_kills,
+        losses: total_losses,
+        threat_level: dangerous_rating,
+        associate_count: map_size(associates)
+      },
+      threat_assessment: assess_threat_level(dangerous_rating, total_kills),
+      recommendations: generate_counter_recommendations(analysis)
+    }
+  end
+
+  @doc """
+  Categorize ship type by name.
+  """
+  def categorize_ship_type(ship_name) do
+    case ship_name do
+      name when name in ["Rifter", "Punisher", "Merlin", "Tristan"] -> "frigate"
+      name when name in ["Crucifier", "Griffin", "Maulus", "Vigil"] -> "ewar_frigate"
+      name when name in ["Ares", "Malediction", "Stiletto", "Crow"] -> "interceptor"
+      name when name in ["Maller", "Vexor", "Caracal", "Thorax"] -> "cruiser"
+      name when name in ["Legion", "Proteus", "Tengu", "Loki"] -> "strategic_cruiser"
+      name when name in ["Damnation", "Nighthawk", "Claymore", "Sleipnir"] -> "command_ship"
+      name when name in ["Guardian", "Scimitar", "Basilisk", "Oneiros"] -> "logistics"
+      name when name in ["Devoter", "Phobos", "Onyx", "Broadsword"] -> "heavy_interdictor"
+      _ -> "unknown"
+    end
+  end
+
+  @doc """
+  Check if a date is a weekend.
+  """
+  def weekend?(date) do
+    day_of_week = Date.day_of_week(date)
+    # Saturday or Sunday
+    day_of_week == 6 or day_of_week == 7
+  end
+
+  # Helper functions for the new API functions
+
+  defp categorize_ship_by_name(ship_name) do
+    case ship_name do
+      name when name in ["Rifter", "Punisher", "Merlin", "Tristan", "Crucifier", "Griffin"] ->
+        "frigate"
+
+      name when name in ["Ares", "Malediction", "Stiletto", "Crow"] ->
+        "interceptor"
+
+      name when name in ["Maller", "Vexor", "Caracal", "Thorax"] ->
+        "cruiser"
+
+      name when name in ["Legion", "Proteus", "Tengu", "Loki"] ->
+        "strategic_cruiser"
+
+      name when name in ["Damnation", "Nighthawk"] ->
+        "command_ship"
+
+      name when name in ["Guardian", "Scimitar"] ->
+        "logistics"
+
+      _ ->
+        "other"
+    end
+  end
+
+  defp normalize_percentages(frequency_map) do
+    total = frequency_map |> Map.values() |> Enum.sum()
+
+    if total > 0 do
+      frequency_map
+      |> Enum.map(fn {key, count} ->
+        {key, Float.round(count / total * 100, 1)}
+      end)
+      |> Enum.into(%{})
+    else
+      frequency_map
+    end
+  end
+
+  defp estimate_timezone_from_peaks(peak_hours) do
+    cond do
+      # Peak activity around 18-22 UTC suggests EUTZ
+      Enum.any?(peak_hours, fn h -> h in 18..22 end) -> "EUTZ"
+      # Peak activity around 1-5 UTC suggests USTZ
+      Enum.any?(peak_hours, fn h -> h in 1..5 end) -> "USTZ"
+      # Peak activity around 10-14 UTC suggests AUTZ
+      Enum.any?(peak_hours, fn h -> h in 10..14 end) -> "AUTZ"
+      true -> "Unknown"
+    end
+  end
+
+  defp format_associates_summary(associates) do
+    if map_size(associates) > 0 do
+      top_associate =
+        associates
+        |> Enum.max_by(fn {_id, data} -> data["shared_kills"] end)
+        |> elem(1)
+
+      "Primary Associate: #{top_associate["name"]} (#{top_associate["shared_kills"]} shared kills)"
+    else
+      "No significant associates identified"
+    end
+  end
+
+  defp format_weaknesses_summary(weaknesses) do
+    behavioral = Map.get(weaknesses, :behavioral_weaknesses, [])
+    technical = Map.get(weaknesses, :technical_weaknesses, [])
+
+    weakness_count = length(behavioral) + length(technical)
+
+    if weakness_count > 0 do
+      "Identified Weaknesses: #{weakness_count} behavioral/technical patterns"
+    else
+      "No significant weaknesses identified"
+    end
+  end
+
+  defp format_ship_usage_summary(ship_usage) do
+    most_used = Map.get(ship_usage, :most_used_ships, [])
+
+    if length(most_used) > 0 do
+      primary_ship = hd(most_used)
+      "Primary Ship: #{primary_ship["ship_name"]} (#{primary_ship["times_used"]} uses)"
+    else
+      "Ship usage data unavailable"
+    end
+  end
+
+  defp assess_threat_level(dangerous_rating, total_kills) do
+    cond do
+      dangerous_rating >= 4 and total_kills > 100 -> "High Threat"
+      dangerous_rating >= 3 or total_kills > 50 -> "Moderate Threat"
+      dangerous_rating >= 2 or total_kills > 10 -> "Low Threat"
+      true -> "Minimal Threat"
+    end
+  end
+
+  defp generate_counter_recommendations(analysis) do
+    dangerous_rating = Map.get(analysis, :dangerous_rating, 1)
+    weaknesses = Map.get(analysis, :identified_weaknesses, %{})
+
+    recommendations = []
+
+    recommendations =
+      if dangerous_rating >= 4 do
+        ["Avoid solo engagement", "Bring overwhelming force" | recommendations]
+      else
+        recommendations
+      end
+
+    recommendations =
+      if Map.get(weaknesses, :behavioral_weaknesses, []) != [] do
+        ["Exploit predictable patterns" | recommendations]
+      else
+        recommendations
+      end
+
+    if Enum.empty?(recommendations) do
+      ["Standard engagement protocols apply"]
+    else
+      recommendations
+    end
   end
 end

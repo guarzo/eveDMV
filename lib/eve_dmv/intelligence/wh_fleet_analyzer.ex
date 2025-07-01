@@ -239,9 +239,6 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
   defp get_asset_availability(composition, auth_token) do
     # Use AssetAnalyzer to get real asset data
     case AssetAnalyzer.analyze_fleet_assets(composition.id, auth_token) do
-      {:ok, asset_analysis} ->
-        {:ok, Map.put(asset_analysis, "asset_tracking_enabled", true)}
-
       {:error, reason} ->
         Logger.warning("Failed to fetch asset data: #{inspect(reason)}")
         # Return empty asset data on failure
@@ -252,6 +249,9 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
            "readiness_score" => 0,
            "error" => "Failed to fetch asset data"
          }}
+
+      {:ok, asset_analysis} ->
+        {:ok, Map.put(asset_analysis, "asset_tracking_enabled", true)}
     end
   end
 
@@ -453,14 +453,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
   defp estimate_ship_cost(type_id) do
     # Get market prices for Jita (The Forge region)
     case EsiClient.get_market_orders(type_id, 10_000_002, :sell) do
-      {:ok, [_ | _] = orders} ->
-        # Get the lowest sell price
-        orders
-        |> Enum.map(& &1.price)
-        |> Enum.min()
-        |> round()
-
-      _ ->
+      {:error, _reason} ->
         # Fallback to a reasonable estimate based on ship class
         50_000_000
     end
@@ -973,5 +966,630 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
         "priority" => 2
       }
     }
+  end
+
+  # Public API functions expected by tests
+
+  @doc """
+  Analyze fleet composition from member data.
+  """
+  def analyze_fleet_composition_from_members(members) when is_list(members) do
+    if Enum.empty?(members) do
+      %{
+        total_members: 0,
+        ship_categories: %{},
+        total_mass: 0,
+        doctrine_compliance: 0,
+        role_distribution: %{}
+      }
+    else
+      # Aggregate ship categories
+      ship_categories =
+        members
+        |> Enum.group_by(& &1.ship_category)
+        |> Enum.map(fn {category, ships} -> {category, length(ships)} end)
+        |> Enum.into(%{})
+
+      # Calculate total mass
+      total_mass = calculate_total_fleet_mass(members)
+
+      # Analyze doctrine compliance
+      doctrine_compliance = analyze_doctrine_compliance(members).compliance_score
+
+      # Analyze role distribution
+      role_distribution =
+        members
+        |> Enum.group_by(&Map.get(&1, :role, categorize_ship_role(&1.ship_name)))
+        |> Enum.map(fn {role, ships} -> {role, length(ships)} end)
+        |> Enum.into(%{})
+
+      %{
+        total_members: length(members),
+        ship_categories: ship_categories,
+        total_mass: total_mass,
+        doctrine_compliance: doctrine_compliance,
+        role_distribution: role_distribution
+      }
+    end
+  end
+
+  @doc """
+  Calculate wormhole viability for a fleet.
+  """
+  def calculate_wormhole_viability(fleet_data, wormhole) do
+    total_mass = Map.get(fleet_data, :total_mass, 0)
+    ship_count = Map.get(fleet_data, :ship_count, 0)
+    avg_ship_mass = Map.get(fleet_data, :average_ship_mass, 0)
+
+    max_mass = Map.get(wormhole, :max_mass, 0)
+    max_ship_mass = Map.get(wormhole, :max_ship_mass, 0)
+
+    # Check if individual ships can jump
+    ships_that_can_jump = if avg_ship_mass <= max_ship_mass, do: ship_count, else: 0
+
+    # Check if fleet can jump
+    can_jump = total_mass <= max_mass and avg_ship_mass <= max_ship_mass
+
+    # Calculate mass efficiency (how much of the wormhole capacity we use)
+    mass_efficiency = if max_mass > 0, do: min(100, total_mass / max_mass * 100), else: 0
+
+    # Generate recommended jump order
+    jump_order =
+      if can_jump do
+        # Simple recommendation: heaviest ships first
+        ["Heavy ships first", "Medium ships next", "Light ships last"]
+      else
+        []
+      end
+
+    %{
+      can_jump: can_jump,
+      mass_efficiency: mass_efficiency,
+      ships_that_can_jump: ships_that_can_jump,
+      recommended_jump_order: jump_order
+    }
+  end
+
+  @doc """
+  Analyze doctrine compliance of a fleet.
+  """
+  def analyze_doctrine_compliance(fleet_members) when is_list(fleet_members) do
+    if Enum.empty?(fleet_members) do
+      %{
+        compliance_score: 0,
+        doctrine_ships: 0,
+        off_doctrine_ships: 0,
+        identified_doctrine: nil
+      }
+    else
+      # Identify the primary doctrine
+      identified_doctrine = identify_fleet_doctrine(fleet_members)
+
+      # Count doctrine vs off-doctrine ships
+      {doctrine_ships, off_doctrine_ships} =
+        Enum.reduce(fleet_members, {0, 0}, fn member, {doctrine, off_doctrine} ->
+          ship_name = Map.get(member, :ship_name, "Unknown")
+
+          if doctrine_ship?(ship_name, identified_doctrine) do
+            {doctrine + 1, off_doctrine}
+          else
+            {doctrine, off_doctrine + 1}
+          end
+        end)
+
+      total_ships = length(fleet_members)
+
+      compliance_score =
+        if total_ships > 0, do: round(doctrine_ships / total_ships * 100), else: 0
+
+      %{
+        compliance_score: compliance_score,
+        doctrine_ships: doctrine_ships,
+        off_doctrine_ships: off_doctrine_ships,
+        identified_doctrine: identified_doctrine
+      }
+    end
+  end
+
+  @doc """
+  Calculate fleet effectiveness metrics.
+  """
+  def calculate_fleet_effectiveness(fleet_analysis) do
+    total_members = Map.get(fleet_analysis, :total_members, 0)
+    ship_categories = Map.get(fleet_analysis, :ship_categories, %{})
+    role_distribution = Map.get(fleet_analysis, :role_distribution, %{})
+    doctrine_compliance = Map.get(fleet_analysis, :doctrine_compliance, 0)
+
+    # Calculate DPS rating based on DPS ships
+    dps_ships =
+      Map.get(role_distribution, "dps", 0) + Map.get(ship_categories, "strategic_cruiser", 0)
+
+    dps_rating = if total_members > 0, do: min(100, dps_ships / total_members * 150), else: 0
+
+    # Calculate survivability rating based on logistics
+    logi_ships =
+      Map.get(role_distribution, "logistics", 0) + Map.get(ship_categories, "logistics", 0)
+
+    survivability_rating =
+      if total_members > 0 do
+        # Logistics is critical
+        base_survival = logi_ships / max(1, total_members) * 300
+        min(100, base_survival)
+      else
+        0
+      end
+
+    # Calculate flexibility rating based on ship diversity
+    flexibility_rating =
+      if total_members > 0 do
+        ship_type_count = map_size(ship_categories)
+        base_flex = ship_type_count / max(1, total_members) * 200
+        min(100, base_flex)
+      else
+        0
+      end
+
+    # Check FC capability
+    fc_capable =
+      Map.get(role_distribution, "fc", 0) > 0 or Map.get(ship_categories, "command_ship", 0) > 0
+
+    # Calculate overall effectiveness
+    overall_effectiveness =
+      round((dps_rating + survivability_rating + flexibility_rating + doctrine_compliance) / 4)
+
+    %{
+      overall_effectiveness: overall_effectiveness,
+      dps_rating: round(dps_rating),
+      survivability_rating: round(survivability_rating),
+      flexibility_rating: round(flexibility_rating),
+      fc_capability: fc_capable
+    }
+  end
+
+  @doc """
+  Recommend fleet improvements.
+  """
+  def recommend_fleet_improvements(fleet_data) do
+    effectiveness = Map.get(fleet_data, :effectiveness_metrics, %{})
+    role_distribution = Map.get(fleet_data, :role_distribution, %{})
+    doctrine_compliance = Map.get(fleet_data, :doctrine_compliance, 0)
+
+    # Check survivability
+    survivability = Map.get(effectiveness, :survivability_rating, 0)
+    logi_count = Map.get(role_distribution, "logistics", 0)
+
+    {priority_improvements, suggested_additions} =
+      cond do
+        survivability < 50 and logi_count == 0 ->
+          {["Add logistics ships immediately"], ["Guardian", "Scimitar"]}
+
+        survivability < 50 ->
+          {["Increase logistics count"], []}
+
+        true ->
+          {[], []}
+      end
+
+    # Check FC capability
+    fc_capable = Map.get(effectiveness, :fc_capability, false)
+
+    {priority_improvements_2, suggested_additions_2} =
+      if fc_capable do
+        {priority_improvements, suggested_additions}
+      else
+        {["Add fleet commander ship" | priority_improvements],
+         ["Damnation", "Nighthawk" | suggested_additions]}
+      end
+
+    # Check doctrine compliance
+    doctrine_suggestions =
+      if doctrine_compliance < 70 do
+        ["Standardize ship types", "Remove off-doctrine ships"]
+      else
+        []
+      end
+
+    # Role recommendations
+    role_recommendations = %{
+      "logistics" => "Increase to 20-25% of fleet",
+      "dps" => "Should be 60-70% of fleet",
+      "tackle" => "Add fast tackle for mobility",
+      "ewar" => "Consider EWAR for force multiplication"
+    }
+
+    %{
+      priority_improvements: priority_improvements_2,
+      suggested_additions: suggested_additions_2,
+      role_recommendations: role_recommendations,
+      doctrine_suggestions: doctrine_suggestions
+    }
+  end
+
+  @doc """
+  Calculate optimal jump sequence for mass management.
+  """
+  def calculate_jump_mass_sequence(ships, wormhole) do
+    max_mass = Map.get(wormhole, :max_mass, 0)
+    max_ship_mass = Map.get(wormhole, :max_ship_mass, 0)
+    current_mass = Map.get(wormhole, :current_mass, 0)
+
+    # Filter ships that can jump individually
+    jumpable_ships =
+      Enum.filter(ships, fn ship ->
+        ship_mass = Map.get(ship, :ship_mass, 0)
+        ship_mass <= max_ship_mass
+      end)
+
+    # Calculate remaining capacity
+    _remaining_capacity = max_mass - current_mass
+
+    # Sort ships by mass (heaviest first for optimal utilization)
+    sorted_ships = Enum.sort_by(jumpable_ships, &Map.get(&1, :ship_mass, 0), :desc)
+
+    # Create jump order that fits within mass limits
+    {jump_order, used_mass} =
+      Enum.reduce_while(sorted_ships, {[], current_mass}, fn ship, {order, mass} ->
+        ship_mass = Map.get(ship, :ship_mass, 0)
+
+        if mass + ship_mass <= max_mass do
+          ship_info = %{
+            character_name: Map.get(ship, :character_name, "Unknown"),
+            ship_name: Map.get(ship, :ship_name, "Unknown"),
+            ship_mass: ship_mass
+          }
+
+          {:cont, {[ship_info | order], mass + ship_mass}}
+        else
+          {:halt, {order, mass}}
+        end
+      end)
+
+    # Calculate utilization percentage
+    mass_utilization = if max_mass > 0, do: used_mass / max_mass * 100, else: 0
+
+    %{
+      jump_order: Enum.reverse(jump_order),
+      mass_utilization: round(mass_utilization),
+      remaining_capacity: max_mass - used_mass
+    }
+  end
+
+  @doc """
+  Analyze fleet roles and balance.
+  """
+  def analyze_fleet_roles(fleet_members) when is_list(fleet_members) do
+    if Enum.empty?(fleet_members) do
+      %{
+        role_balance: %{},
+        missing_roles: [],
+        role_coverage: %{},
+        recommended_ratio: %{}
+      }
+    else
+      # Categorize each member by role
+      role_counts =
+        fleet_members
+        |> Enum.group_by(fn member ->
+          ship_name = Map.get(member, :ship_name, "Unknown")
+          categorize_ship_role(ship_name)
+        end)
+        |> Enum.map(fn {role, members} -> {role, length(members)} end)
+        |> Enum.into(%{})
+
+      total_members = length(fleet_members)
+
+      # Calculate role coverage percentages
+      role_coverage =
+        role_counts
+        |> Enum.map(fn {role, count} ->
+          {role, round(count / total_members * 100)}
+        end)
+        |> Enum.into(%{})
+
+      # Define recommended ratios
+      recommended_ratio = %{
+        "dps" => 60,
+        "logistics" => 20,
+        "fc" => 10,
+        "tackle" => 5,
+        "ewar" => 5
+      }
+
+      # Identify missing critical roles
+      missing_roles = []
+
+      missing_roles =
+        if Map.get(role_counts, "logistics", 0) == 0,
+          do: ["logistics" | missing_roles],
+          else: missing_roles
+
+      missing_roles =
+        if Map.get(role_counts, "fc", 0) == 0, do: ["fc" | missing_roles], else: missing_roles
+
+      missing_roles =
+        if Map.get(role_counts, "tackle", 0) == 0,
+          do: ["tackle" | missing_roles],
+          else: missing_roles
+
+      %{
+        role_balance: role_counts,
+        missing_roles: missing_roles,
+        role_coverage: role_coverage,
+        recommended_ratio: recommended_ratio
+      }
+    end
+  end
+
+  # Ship role mapping
+  @ship_roles %{
+    # Fleet Command
+    "Damnation" => "fc",
+    "Nighthawk" => "fc",
+    "Claymore" => "fc",
+    "Sleipnir" => "fc",
+    # DPS
+    "Legion" => "dps",
+    "Proteus" => "dps",
+    "Tengu" => "dps",
+    "Loki" => "dps",
+    "Muninn" => "dps",
+    "Cerberus" => "dps",
+    # Logistics
+    "Guardian" => "logistics",
+    "Scimitar" => "logistics",
+    "Basilisk" => "logistics",
+    "Oneiros" => "logistics",
+    # Tackle
+    "Ares" => "tackle",
+    "Malediction" => "tackle",
+    "Stiletto" => "tackle",
+    "Crow" => "tackle",
+    "Interceptor" => "tackle",
+    # EWAR
+    "Crucifier" => "ewar",
+    "Maulus" => "ewar",
+    "Vigil" => "ewar",
+    "Griffin" => "ewar"
+  }
+
+  @doc """
+  Categorize ship role based on ship name.
+  """
+  def categorize_ship_role(ship_name) do
+    Map.get(@ship_roles, ship_name, "unknown")
+  end
+
+  @doc """
+  Calculate ship mass based on ship name.
+  """
+  def calculate_ship_mass(ship_name) do
+    ship_masses = %{
+      # Command Ships
+      "Damnation" => 13_500_000,
+      "Nighthawk" => 13_200_000,
+      "Claymore" => 13_800_000,
+      "Sleipnir" => 13_600_000,
+
+      # Strategic Cruisers
+      "Legion" => 13_000_000,
+      "Proteus" => 12_800_000,
+      "Tengu" => 12_900_000,
+      "Loki" => 13_100_000,
+
+      # Logistics
+      "Guardian" => 11_800_000,
+      "Scimitar" => 12_000_000,
+      "Basilisk" => 11_900_000,
+      "Oneiros" => 12_100_000,
+
+      # Heavy Assault Cruisers
+      "Muninn" => 12_200_000,
+      "Cerberus" => 12_000_000,
+      "Zealot" => 12_400_000,
+      "Eagle" => 12_100_000,
+
+      # Interceptors
+      "Ares" => 1_200_000,
+      "Malediction" => 1_100_000,
+      "Stiletto" => 1_150_000,
+      "Crow" => 1_180_000,
+
+      # EWAR Frigates
+      "Crucifier" => 1_300_000,
+      "Maulus" => 1_250_000,
+      "Vigil" => 1_280_000,
+      "Griffin" => 1_220_000,
+
+      # Common ships
+      "Rifter" => 1_400_000,
+      "Punisher" => 1_350_000,
+      "Bantam" => 1_300_000,
+      "Maller" => 11_500_000,
+      "Drake" => 14_500_000
+    }
+
+    # Default to 10M kg
+    Map.get(ship_masses, ship_name, 10_000_000)
+  end
+
+  @doc """
+  Check if ship is part of a specific doctrine.
+  """
+  def doctrine_ship?(ship_name, doctrine) do
+    doctrine_ships = %{
+      "armor_cruiser" => [
+        "Legion",
+        "Proteus",
+        "Damnation",
+        "Guardian",
+        "Zealot",
+        "Muninn",
+        "Ares",
+        "Crucifier"
+      ],
+      "armor" => [
+        "Legion",
+        "Proteus",
+        "Damnation",
+        "Guardian",
+        "Zealot",
+        "Muninn",
+        "Ares",
+        "Crucifier"
+      ],
+      "shield_cruiser" => [
+        "Tengu",
+        "Loki",
+        "Nighthawk",
+        "Scimitar",
+        "Cerberus",
+        "Eagle",
+        "Stiletto",
+        "Griffin"
+      ],
+      "shield" => [
+        "Tengu",
+        "Loki",
+        "Nighthawk",
+        "Scimitar",
+        "Cerberus",
+        "Eagle",
+        "Stiletto",
+        "Griffin"
+      ],
+      "unknown" => [],
+      "mixed" => []
+    }
+
+    ships = Map.get(doctrine_ships, doctrine, [])
+    ship_name in ships
+  end
+
+  @doc """
+  Calculate logistics ratio for a fleet.
+  """
+  def calculate_logistics_ratio(fleet_data) do
+    total_members = Map.get(fleet_data, :total_members, 0)
+    ship_categories = Map.get(fleet_data, :ship_categories, %{})
+    logi_count = Map.get(ship_categories, "logistics", 0)
+
+    if total_members > 0, do: logi_count / total_members, else: 0.0
+  end
+
+  @doc """
+  Get wormhole mass limit by type.
+  """
+  def wormhole_mass_limit(wormhole_type) do
+    mass_limits = %{
+      # Frigate holes
+      "D382" => 20_000_000,
+      "C125" => 20_000_000,
+
+      # Small holes
+      "D845" => 90_000_000,
+      "A982" => 90_000_000,
+
+      # Medium holes
+      # C3 static
+      "O477" => 300_000_000,
+      # C2 static
+      "L477" => 300_000_000,
+      # C1 static
+      "Z971" => 300_000_000,
+
+      # Large holes
+      # C4 static
+      "B041" => 1_800_000_000,
+      # C5 static
+      "A641" => 1_800_000_000,
+      # C6 static
+      "X702" => 1_800_000_000,
+
+      # Null/K-space connections
+      "K162" => 3_000_000_000
+    }
+
+    # Default to medium hole
+    Map.get(mass_limits, wormhole_type, 300_000_000)
+  end
+
+  @doc """
+  Identify the primary doctrine of a fleet.
+  """
+  def identify_fleet_doctrine(fleet_members) when is_list(fleet_members) do
+    if Enum.empty?(fleet_members) do
+      "unknown"
+    else
+      # Count ships by potential doctrine
+      armor_ships =
+        Enum.count(fleet_members, fn member ->
+          ship_name = Map.get(member, :ship_name, "Unknown")
+          doctrine_ship?(ship_name, "armor_cruiser")
+        end)
+
+      shield_ships =
+        Enum.count(fleet_members, fn member ->
+          ship_name = Map.get(member, :ship_name, "Unknown")
+          doctrine_ship?(ship_name, "shield_cruiser")
+        end)
+
+      total_ships = length(fleet_members)
+
+      # Determine primary doctrine based on majority
+      cond do
+        armor_ships / total_ships >= 0.6 -> "armor_cruiser"
+        shield_ships / total_ships >= 0.6 -> "shield_cruiser"
+        armor_ships > shield_ships -> "armor"
+        shield_ships > armor_ships -> "shield"
+        true -> "mixed"
+      end
+    end
+  end
+
+  @doc """
+  Calculate total fleet mass.
+  """
+  def calculate_total_fleet_mass(fleet_members) when is_list(fleet_members) do
+    fleet_members
+    |> Enum.map(fn member ->
+      case Map.get(member, :ship_mass) do
+        nil ->
+          ship_name = Map.get(member, :ship_name, "Unknown")
+          calculate_ship_mass(ship_name)
+
+        mass when is_number(mass) ->
+          mass
+
+        # Default
+        _ ->
+          10_000_000
+      end
+    end)
+    |> Enum.sum()
+  end
+
+  @doc """
+  Calculate average ship mass.
+  """
+  def calculate_average_ship_mass(fleet_members) when is_list(fleet_members) do
+    if Enum.empty?(fleet_members) do
+      0
+    else
+      total_mass = calculate_total_fleet_mass(fleet_members)
+      round(total_mass / length(fleet_members))
+    end
+  end
+
+  @doc """
+  Check if fleet is compatible with wormhole.
+  """
+  def fleet_wormhole_compatible?(fleet_data, wormhole) do
+    fleet_total_mass = Map.get(fleet_data, :total_mass, 0)
+    fleet_max_ship_mass = Map.get(fleet_data, :max_ship_mass, 0)
+
+    wh_max_mass = Map.get(wormhole, :max_mass, 0)
+    wh_max_ship_mass = Map.get(wormhole, :max_ship_mass, 0)
+
+    fleet_total_mass <= wh_max_mass and fleet_max_ship_mass <= wh_max_ship_mass
   end
 end

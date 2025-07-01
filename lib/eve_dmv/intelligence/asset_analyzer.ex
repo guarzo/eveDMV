@@ -4,7 +4,7 @@ defmodule EveDmv.Intelligence.AssetAnalyzer do
 
   Integrates with ESI to fetch real asset data and provides:
   - Ship availability by doctrine role
-  - Asset location analysis  
+  - Asset location analysis
   - Fleet readiness scoring
   - Hangar management recommendations
   """
@@ -23,29 +23,39 @@ defmodule EveDmv.Intelligence.AssetAnalyzer do
   - recommendations: List of hangar management suggestions
   """
   def analyze_fleet_assets(composition_id, auth_token) do
-    with {:ok, composition} <- get_composition(composition_id),
-         {:ok, corp_assets} <- fetch_corporation_assets(composition.corporation_id, auth_token),
-         {:ok, member_assets} <- fetch_member_assets(composition.corporation_id, auth_token) do
-      all_assets = merge_assets(corp_assets, member_assets)
-      ship_availability = analyze_ship_availability(all_assets, composition.doctrine_template)
-      location_analysis = analyze_asset_locations(all_assets)
+    case get_composition(composition_id) do
+      {:ok, composition} ->
+        # Try to fetch assets, but handle failures gracefully
+        corp_assets =
+          case fetch_corporation_assets(composition.corporation_id, auth_token) do
+            {:error, _reason} -> []
+          end
 
-      readiness_score =
-        calculate_readiness_score(ship_availability, composition.doctrine_template)
+        member_assets =
+          case fetch_member_assets(composition.corporation_id, auth_token) do
+            {:ok, assets} -> assets
+          end
 
-      recommendations =
-        generate_recommendations(ship_availability, composition.doctrine_template)
+        all_assets = merge_assets(corp_assets, member_assets)
+        ship_availability = analyze_ship_availability(all_assets, composition.doctrine_template)
+        location_analysis = analyze_asset_locations(all_assets)
 
-      {:ok,
-       %{
-         ship_availability: ship_availability,
-         location_analysis: location_analysis,
-         readiness_score: readiness_score,
-         recommendations: recommendations,
-         total_ships_available: count_total_ships(ship_availability),
-         assets_analyzed: length(all_assets)
-       }}
-    else
+        readiness_score =
+          calculate_readiness_score(ship_availability, composition.doctrine_template)
+
+        recommendations =
+          generate_recommendations(ship_availability, composition.doctrine_template)
+
+        {:ok,
+         %{
+           ship_availability: ship_availability,
+           location_analysis: location_analysis,
+           readiness_score: readiness_score,
+           recommendations: recommendations,
+           total_ships_available: count_total_ships(ship_availability),
+           assets_analyzed: length(all_assets)
+         }}
+
       {:error, reason} ->
         Logger.error("Failed to analyze fleet assets: #{inspect(reason)}")
         {:error, reason}
@@ -56,16 +66,10 @@ defmodule EveDmv.Intelligence.AssetAnalyzer do
   Get ship availability for a specific corporation without a composition.
   """
   def get_corporation_ship_inventory(corporation_id, auth_token) do
-    with {:ok, assets} <- EsiClient.get_corporation_assets(corporation_id, auth_token) do
-      ship_assets = filter_ship_assets(assets)
-      availability = group_ships_by_type(ship_assets)
-
-      {:ok,
-       %{
-         ship_counts: availability,
-         total_ships: count_total_from_groups(availability),
-         ship_value: estimate_total_value(ship_assets)
-       }}
+    case EsiClient.get_corporation_assets(corporation_id, auth_token) do
+      {:error, reason} ->
+        Logger.warning("Failed to fetch corporation assets: #{inspect(reason)}")
+        {:error, :service_unavailable}
     end
   end
 
@@ -73,16 +77,10 @@ defmodule EveDmv.Intelligence.AssetAnalyzer do
   Get ship availability for a specific character.
   """
   def get_character_ship_inventory(character_id, auth_token) do
-    with {:ok, assets} <- EsiClient.get_character_assets(character_id, auth_token) do
-      ship_assets = filter_ship_assets(assets)
-      availability = group_ships_by_type(ship_assets)
-
-      {:ok,
-       %{
-         ship_counts: availability,
-         total_ships: count_total_from_groups(availability),
-         ship_value: estimate_total_value(ship_assets)
-       }}
+    case EsiClient.get_character_assets(character_id, auth_token) do
+      {:error, reason} ->
+        Logger.warning("Failed to fetch character assets: #{inspect(reason)}")
+        {:error, :service_unavailable}
     end
   end
 
@@ -97,8 +95,7 @@ defmodule EveDmv.Intelligence.AssetAnalyzer do
 
   defp fetch_corporation_assets(corporation_id, auth_token) do
     case EsiClient.get_corporation_assets(corporation_id, auth_token) do
-      {:ok, assets} -> {:ok, filter_ship_assets(assets)}
-      error -> error
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -110,26 +107,6 @@ defmodule EveDmv.Intelligence.AssetAnalyzer do
 
   defp merge_assets(corp_assets, member_assets) do
     corp_assets ++ member_assets
-  end
-
-  defp filter_ship_assets(assets) do
-    # Filter for ship category (category_id 6)
-    # This requires looking up type information
-    assets
-    |> Enum.filter(fn asset ->
-      case get_type_category(asset.type_id) do
-        # Ship category
-        6 -> true
-        _ -> false
-      end
-    end)
-  end
-
-  defp get_type_category(type_id) do
-    case EsiClient.get_type(type_id) do
-      {:ok, type_data} -> type_data.category_id
-      _ -> nil
-    end
   end
 
   defp analyze_ship_availability(assets, doctrine_template) do
@@ -245,37 +222,6 @@ defmodule EveDmv.Intelligence.AssetAnalyzer do
   defp count_total_ships(ship_availability) do
     ship_availability
     |> Enum.map(fn {_role, avail} -> avail["available"] end)
-    |> Enum.sum()
-  end
-
-  defp count_total_from_groups(ship_groups) do
-    ship_groups
-    |> Map.values()
-    |> Enum.sum()
-  end
-
-  defp estimate_total_value(ship_assets) do
-    ship_assets
-    |> Enum.map(fn asset ->
-      case EsiClient.get_type(asset.type_id) do
-        {:ok, _type_data} ->
-          # Get market price
-          case EsiClient.get_market_orders(asset.type_id, 10_000_002, :sell) do
-            {:ok, [_ | _] = orders} ->
-              orders
-              |> Enum.map(& &1.price)
-              |> Enum.min()
-              |> Kernel.*(asset.quantity)
-
-            _ ->
-              # Default estimate
-              50_000_000 * asset.quantity
-          end
-
-        _ ->
-          50_000_000 * asset.quantity
-      end
-    end)
     |> Enum.sum()
   end
 end

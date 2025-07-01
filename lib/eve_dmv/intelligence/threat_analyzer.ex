@@ -115,13 +115,13 @@ defmodule EveDmv.Intelligence.ThreatAnalyzer do
 
     # Get recent kills and losses
     kills_query = """
-    SELECT COUNT(*) as kill_count, 
+    SELECT COUNT(*) as kill_count,
            AVG(total_value) as avg_kill_value,
            MAX(killmail_time) as last_kill
     FROM killmails_enriched k
-    JOIN participants p ON k.killmail_id = p.killmail_id 
+    JOIN participants p ON k.killmail_id = p.killmail_id
                        AND k.killmail_time = p.killmail_time
-    WHERE p.character_id = $1 
+    WHERE p.character_id = $1
       AND k.killmail_time > $2
       AND p.final_blow = true
     """
@@ -162,9 +162,9 @@ defmodule EveDmv.Intelligence.ThreatAnalyzer do
     query = """
     SELECT p2.character_id, p2.character_name, COUNT(*) as shared_kills
     FROM participants p1
-    JOIN participants p2 ON p1.killmail_id = p2.killmail_id 
+    JOIN participants p2 ON p1.killmail_id = p2.killmail_id
                         AND p1.killmail_time = p2.killmail_time
-    JOIN killmails_enriched k ON p1.killmail_id = k.killmail_id 
+    JOIN killmails_enriched k ON p1.killmail_id = k.killmail_id
                              AND p1.killmail_time = k.killmail_time
     WHERE p1.character_id = $1
       AND p2.character_id != $1
@@ -370,7 +370,7 @@ defmodule EveDmv.Intelligence.ThreatAnalyzer do
       query = """
       SELECT COUNT(DISTINCT k.killmail_id) as kills_against_us
       FROM killmails_enriched k
-      JOIN participants p ON k.killmail_id = p.killmail_id 
+      JOIN participants p ON k.killmail_id = p.killmail_id
                          AND k.killmail_time = p.killmail_time
       WHERE p.corporation_id = $1
         AND k.killmail_time > $2

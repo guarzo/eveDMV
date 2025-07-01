@@ -14,6 +14,8 @@ defmodule EveDmv.Application do
       EveDmvWeb.Telemetry,
       # Task supervisor for background tasks (start early)
       {Task.Supervisor, name: EveDmv.TaskSupervisor},
+      # ESI reliability supervisor (includes Registry and circuit breakers)
+      EveDmv.Eve.ReliabilitySupervisor,
       EveDmv.Repo,
       {DNSCluster, query: Application.get_env(:eve_dmv, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: EveDmv.PubSub},

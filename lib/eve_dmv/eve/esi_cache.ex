@@ -11,11 +11,14 @@ defmodule EveDmv.Eve.EsiCache do
   @character_table :esi_character_cache
   @corporation_table :esi_corporation_cache
   @alliance_table :esi_alliance_cache
+  @universe_table :esi_universe_cache
 
   # Cache TTLs
   @character_ttl_minutes 10
   @corporation_ttl_minutes 60
   @alliance_ttl_minutes 60
+  # 1 day for universe data
+  @universe_ttl_minutes 1440
   @cleanup_interval_minutes 30
 
   # Client API
@@ -103,6 +106,70 @@ defmodule EveDmv.Eve.EsiCache do
   end
 
   @doc """
+  Get a system from cache.
+  """
+  @spec get_system(integer()) :: {:ok, map()} | :miss
+  def get_system(system_id) do
+    get_from_cache(@universe_table, {:system, system_id})
+  end
+
+  @doc """
+  Store a system in cache.
+  """
+  @spec put_system(integer(), map()) :: :ok
+  def put_system(system_id, system_data) do
+    put_in_cache(@universe_table, {:system, system_id}, system_data, @universe_ttl_minutes)
+  end
+
+  @doc """
+  Get a type from cache.
+  """
+  @spec get_type(integer()) :: {:ok, map()} | :miss
+  def get_type(type_id) do
+    get_from_cache(@universe_table, {:type, type_id})
+  end
+
+  @doc """
+  Store a type in cache.
+  """
+  @spec put_type(integer(), map()) :: :ok
+  def put_type(type_id, type_data) do
+    put_in_cache(@universe_table, {:type, type_id}, type_data, @universe_ttl_minutes)
+  end
+
+  @doc """
+  Get a group from cache.
+  """
+  @spec get_group(integer()) :: {:ok, map()} | :miss
+  def get_group(group_id) do
+    get_from_cache(@universe_table, {:group, group_id})
+  end
+
+  @doc """
+  Store a group in cache.
+  """
+  @spec put_group(integer(), map()) :: :ok
+  def put_group(group_id, group_data) do
+    put_in_cache(@universe_table, {:group, group_id}, group_data, @universe_ttl_minutes)
+  end
+
+  @doc """
+  Get a category from cache.
+  """
+  @spec get_category(integer()) :: {:ok, map()} | :miss
+  def get_category(category_id) do
+    get_from_cache(@universe_table, {:category, category_id})
+  end
+
+  @doc """
+  Store a category in cache.
+  """
+  @spec put_category(integer(), map()) :: :ok
+  def put_category(category_id, category_data) do
+    put_in_cache(@universe_table, {:category, category_id}, category_data, @universe_ttl_minutes)
+  end
+
+  @doc """
   Clear all caches.
   """
   @spec clear_all() :: :ok
@@ -110,6 +177,7 @@ defmodule EveDmv.Eve.EsiCache do
     :ets.delete_all_objects(@character_table)
     :ets.delete_all_objects(@corporation_table)
     :ets.delete_all_objects(@alliance_table)
+    :ets.delete_all_objects(@universe_table)
     :ok
   end
 
@@ -119,13 +187,15 @@ defmodule EveDmv.Eve.EsiCache do
   @spec stats() :: %{
           characters: %{size: non_neg_integer(), memory_bytes: number()},
           corporations: %{size: non_neg_integer(), memory_bytes: number()},
-          alliances: %{size: non_neg_integer(), memory_bytes: number()}
+          alliances: %{size: non_neg_integer(), memory_bytes: number()},
+          universe: %{size: non_neg_integer(), memory_bytes: number()}
         }
   def stats do
     %{
       characters: table_stats(@character_table),
       corporations: table_stats(@corporation_table),
-      alliances: table_stats(@alliance_table)
+      alliances: table_stats(@alliance_table),
+      universe: table_stats(@universe_table)
     }
   end
 
@@ -158,6 +228,14 @@ defmodule EveDmv.Eve.EsiCache do
       write_concurrency: true
     ])
 
+    :ets.new(@universe_table, [
+      :set,
+      :public,
+      :named_table,
+      read_concurrency: true,
+      write_concurrency: true
+    ])
+
     # Schedule periodic cleanup
     schedule_cleanup()
 
@@ -169,6 +247,7 @@ defmodule EveDmv.Eve.EsiCache do
     cleanup_expired_entries(@character_table, "character")
     cleanup_expired_entries(@corporation_table, "corporation")
     cleanup_expired_entries(@alliance_table, "alliance")
+    cleanup_expired_entries(@universe_table, "universe")
 
     schedule_cleanup()
     {:noreply, state}

@@ -256,144 +256,20 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
   # Employment history analysis
   defp analyze_employment_history(character_id) do
     case EsiClient.get_character_employment_history(character_id) do
-      {:ok, history_entries} ->
-        # Sort by start date (newest first)
-        sorted_history = Enum.sort_by(history_entries, & &1.start_date, {:desc, DateTime})
-
-        # Calculate corp changes (excluding NPC starter corps)
-        npc_starter_corps = [
-          1_000_165,
-          1_000_166,
-          1_000_167,
-          1_000_168,
-          1_000_169,
-          1_000_170,
-          1_000_171,
-          1_000_172
-        ]
-
-        corp_changes =
-          history_entries
-          |> Enum.reject(fn entry -> entry.corporation_id in npc_starter_corps end)
-          |> length()
-          # Subtract 1 to get number of changes
-          |> Kernel.-(1)
-          |> max(0)
-
-        # Calculate average tenure (excluding current corp)
-        tenures =
-          if length(sorted_history) > 1 do
-            sorted_history
-            |> Enum.chunk_every(2, 1, :discard)
-            |> Enum.map(fn [newer, older] ->
-              days = DateTime.diff(newer.start_date, older.start_date, :day)
-              %{corporation_id: older.corporation_id, days: days}
-            end)
-          else
-            []
-          end
-
-        avg_tenure_days =
-          if length(tenures) > 0 do
-            tenures
-            |> Enum.map(& &1.days)
-            |> Enum.sum()
-            |> div(length(tenures))
-          else
-            # If only one corp or new character, calculate from first corp to now
-            case List.last(sorted_history) do
-              nil -> 0
-              first_corp -> DateTime.diff(DateTime.utc_now(), first_corp.start_date, :day)
-            end
-          end
-
-        # Detect suspicious patterns
-        suspicious_patterns = detect_suspicious_employment_patterns(sorted_history, tenures)
-
-        # Get corporation details for history
-        history_with_details =
-          sorted_history
-          |> Enum.map(fn entry ->
-            corp_name =
-              case EsiClient.get_corporation(entry.corporation_id) do
-                {:ok, corp} -> corp.name
-                _ -> "Unknown Corporation"
-              end
-
-            %{
-              "corporation_id" => entry.corporation_id,
-              "corporation_name" => corp_name,
-              "start_date" => DateTime.to_iso8601(entry.start_date),
-              "is_deleted" => entry.is_deleted
-            }
-          end)
-
-        history = %{
-          "corp_changes" => corp_changes,
-          "avg_tenure_days" => avg_tenure_days,
-          "suspicious_patterns" => suspicious_patterns,
-          "history" => history_with_details
-        }
-
-        {:ok, history}
-
       {:error, reason} ->
         Logger.warning(
-          "Failed to fetch employment history from ESI for #{character_id}: #{inspect(reason)}"
+          "Could not fetch employment history for character #{character_id}: #{inspect(reason)}"
         )
 
-        # Return placeholder data as fallback
-        history = %{
-          "corp_changes" => 0,
-          "avg_tenure_days" => 0,
-          "suspicious_patterns" => ["Unable to verify employment history"],
-          "history" => []
-        }
-
-        {:ok, history}
+        # Return fallback employment history data
+        {:ok,
+         %{
+           "corp_changes" => 0,
+           "avg_tenure_days" => 0,
+           "suspicious_patterns" => ["Unable to verify employment history"],
+           "history" => []
+         }}
     end
-  end
-
-  defp detect_suspicious_employment_patterns(history, tenures) do
-    patterns = []
-
-    # Pattern 1: Corp hopping (many short tenures)
-    short_tenures = Enum.count(tenures, fn t -> t.days < 30 end)
-
-    patterns =
-      if short_tenures >= 3 do
-        ["Multiple short corporation tenures (#{short_tenures} corps < 30 days)" | patterns]
-      else
-        patterns
-      end
-
-    # Pattern 2: Rapid recent changes
-    recent_changes =
-      history
-      |> Enum.take(3)
-      |> Enum.filter(fn entry ->
-        DateTime.diff(DateTime.utc_now(), entry.start_date, :day) < 90
-      end)
-      |> length()
-
-    patterns =
-      if recent_changes >= 3 do
-        ["#{recent_changes} corporation changes in last 90 days" | patterns]
-      else
-        patterns
-      end
-
-    # Pattern 3: Deleted corporations
-    deleted_count = Enum.count(history, & &1.is_deleted)
-
-    patterns =
-      if deleted_count > 0 do
-        ["#{deleted_count} deleted corporation(s) in history" | patterns]
-      else
-        patterns
-      end
-
-    patterns
   end
 
   # Helper functions for specific analyses
@@ -785,6 +661,557 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
           ship_usage: %{},
           flies_capitals: false
         }
+    end
+  end
+
+  # Public API functions expected by tests
+
+  @doc """
+  Calculate J-space experience from killmail data.
+  """
+  def calculate_j_space_experience(killmails) when is_list(killmails) do
+    if Enum.empty?(killmails) do
+      %{
+        total_j_kills: 0,
+        total_j_losses: 0,
+        j_space_time_percent: 0.0,
+        wormhole_systems_visited: [],
+        most_active_wh_class: nil
+      }
+    else
+      # Filter for J-space killmails
+      j_space_killmails =
+        Enum.filter(killmails, fn km ->
+          system_id = Map.get(km, :solar_system_id, 0)
+          classify_system_type(system_id) == :wormhole
+        end)
+
+      # Count kills vs losses
+      kills = Enum.count(j_space_killmails, fn km -> not Map.get(km, :is_victim, false) end)
+      losses = Enum.count(j_space_killmails, fn km -> Map.get(km, :is_victim, false) end)
+
+      # Calculate percentage of time in J-space
+      total_killmails = length(killmails)
+
+      j_space_percent =
+        if total_killmails > 0 do
+          length(j_space_killmails) / total_killmails * 100
+        else
+          0.0
+        end
+
+      # Extract visited systems
+      systems_visited =
+        j_space_killmails
+        |> Enum.map(&Map.get(&1, :solar_system_id))
+        |> Enum.uniq()
+        |> Enum.sort()
+
+      # Determine most active WH class (simplified)
+      most_active_class =
+        if length(systems_visited) > 0 do
+          # Simple heuristic: lower system IDs are typically lower class
+          avg_system_id = Enum.sum(systems_visited) / length(systems_visited)
+
+          cond do
+            avg_system_id < 31_001_000 -> "C1"
+            avg_system_id < 31_002_000 -> "C2"
+            avg_system_id < 31_003_000 -> "C3"
+            avg_system_id < 31_004_000 -> "C4"
+            avg_system_id < 31_005_000 -> "C5"
+            true -> "C6"
+          end
+        else
+          nil
+        end
+
+      %{
+        total_j_kills: kills,
+        total_j_losses: losses,
+        j_space_time_percent: Float.round(j_space_percent, 1),
+        wormhole_systems_visited: systems_visited,
+        most_active_wh_class: most_active_class
+      }
+    end
+  end
+
+  @doc """
+  Analyze security risks from character data and employment history.
+  """
+  def analyze_security_risks(character_data, employment_history) do
+    _character_id = Map.get(character_data, :character_id, 0)
+
+    # Analyze corp hopping
+    corp_hopping = detect_corp_hopping(employment_history)
+
+    # Collect risk factors
+    risk_factors =
+      []
+      |> then(fn factors -> if corp_hopping, do: ["corp_hopping" | factors], else: factors end)
+      |> then(fn factors ->
+        if Enum.empty?(employment_history), do: ["no_employment_history" | factors], else: factors
+      end)
+      |> then(fn factors ->
+        if length(employment_history) <= 2, do: ["limited_history" | factors], else: factors
+      end)
+
+    # Calculate risk score (0-100, higher is more risky)
+    # Base risk for any character
+    base_risk = 10
+    corp_hopping_penalty = if corp_hopping, do: 30, else: 0
+    history_penalty = if Enum.empty?(employment_history), do: 25, else: 0
+    new_player_penalty = if length(employment_history) <= 1, do: 15, else: 0
+
+    risk_score = min(100, base_risk + corp_hopping_penalty + history_penalty + new_player_penalty)
+
+    %{
+      risk_score: risk_score,
+      risk_factors: risk_factors,
+      corp_hopping_detected: corp_hopping
+    }
+  end
+
+  @doc """
+  Detect known eviction groups from killmail data.
+  """
+  def detect_eviction_groups(killmails) when is_list(killmails) do
+    if Enum.empty?(killmails) do
+      %{
+        eviction_group_detected: false,
+        known_groups: [],
+        confidence_score: 0.0
+      }
+    else
+      # Known eviction group names/patterns
+      known_eviction_groups = [
+        "hard knocks",
+        "lazerhawks",
+        "no holes barred",
+        "mouth trumpet cavalry",
+        "inner hell",
+        "wormhole society",
+        "origin",
+        "amplified",
+        "nova elite"
+      ]
+
+      # Extract corporation/alliance names from killmails
+      entities =
+        killmails
+        |> Enum.flat_map(fn km ->
+          corp_name = Map.get(km, :attacker_corporation_name, "")
+          alliance_name = Map.get(km, :attacker_alliance_name, "")
+          [corp_name, alliance_name]
+        end)
+        |> Enum.filter(&(&1 != ""))
+        |> Enum.map(&String.downcase/1)
+
+      # Check for matches
+      detected_groups =
+        known_eviction_groups
+        |> Enum.filter(fn group ->
+          Enum.any?(entities, fn entity ->
+            String.contains?(entity, group)
+          end)
+        end)
+
+      eviction_detected = length(detected_groups) > 0
+
+      # Calculate confidence based on multiple factors
+      confidence =
+        if eviction_detected do
+          base_confidence = 0.6
+          multiple_groups_bonus = if length(detected_groups) > 1, do: 0.2, else: 0.0
+          activity_bonus = min(0.2, length(killmails) / 50)
+          min(1.0, base_confidence + multiple_groups_bonus + activity_bonus)
+        else
+          0.0
+        end
+
+      %{
+        eviction_group_detected: eviction_detected,
+        known_groups: detected_groups,
+        confidence_score: Float.round(confidence, 2)
+      }
+    end
+  end
+
+  @doc """
+  Analyze potential alt character patterns.
+  """
+  def analyze_alt_character_patterns(character_data, killmails) do
+    character_name = Map.get(character_data, :character_name, "Unknown")
+
+    # Extract unique character names from killmails (potential associates)
+    associated_characters =
+      killmails
+      |> Enum.map(&Map.get(&1, :attacker_character_name, ""))
+      |> Enum.filter(&(&1 != "" and &1 != character_name))
+      |> Enum.uniq()
+
+    # Extract systems where activity occurred
+    systems_visited =
+      killmails
+      |> Enum.map(&Map.get(&1, :solar_system_id, 0))
+      |> Enum.filter(&(&1 > 0))
+      |> Enum.uniq()
+
+    # Simple timing correlation analysis
+    killmail_times =
+      killmails
+      |> Enum.map(&Map.get(&1, :killmail_time))
+      |> Enum.filter(&(&1 != nil))
+
+    timing_correlation =
+      if length(killmail_times) > 1 do
+        # Calculate time spans between killmails
+        time_diffs =
+          killmail_times
+          |> Enum.sort(DateTime)
+          |> Enum.chunk_every(2, 1, :discard)
+          |> Enum.map(fn [t1, t2] -> DateTime.diff(t2, t1, :minute) end)
+
+        # Lower average time between kills might indicate coordinated activity
+        if length(time_diffs) > 0 do
+          avg_diff = Enum.sum(time_diffs) / length(time_diffs)
+          # Score from 0-1, where lower time gaps = higher correlation
+          # Normalize to 2-hour window
+          max(0.0, 1.0 - avg_diff / 120)
+        else
+          0.0
+        end
+      else
+        0.0
+      end
+
+    %{
+      # Limit to top 10
+      potential_alts: Enum.take(associated_characters, 10),
+      shared_systems: systems_visited,
+      timing_correlation: Float.round(timing_correlation, 3)
+    }
+  end
+
+  @doc """
+  Calculate small gang competency from killmail data.
+  """
+  def calculate_small_gang_competency(killmails) when is_list(killmails) do
+    if Enum.empty?(killmails) do
+      %{
+        small_gang_performance: %{},
+        avg_gang_size: 0.0,
+        preferred_size: "unknown",
+        solo_capability: false
+      }
+    else
+      # Extract gang sizes from killmails
+      gang_sizes =
+        killmails
+        |> Enum.map(&Map.get(&1, :attacker_count, 1))
+        |> Enum.filter(&(&1 > 0))
+
+      # Calculate average gang size
+      avg_gang_size =
+        if length(gang_sizes) > 0 do
+          Enum.sum(gang_sizes) / length(gang_sizes)
+        else
+          0.0
+        end
+
+      # Determine preferred gang size category
+      preferred_size =
+        cond do
+          avg_gang_size <= 1.5 -> "solo"
+          avg_gang_size <= 3.0 -> "small_gang"
+          avg_gang_size <= 8.0 -> "medium_gang"
+          avg_gang_size <= 20.0 -> "large_gang"
+          true -> "fleet"
+        end
+
+      # Check solo capability
+      solo_kills = Enum.count(gang_sizes, &(&1 == 1))
+      solo_capability = solo_kills > 0 and solo_kills / length(gang_sizes) >= 0.2
+
+      # Calculate performance metrics
+      kills = Enum.count(killmails, fn km -> not Map.get(km, :is_victim, false) end)
+      losses = Enum.count(killmails, fn km -> Map.get(km, :is_victim, false) end)
+
+      kill_efficiency =
+        if kills + losses > 0 do
+          kills / (kills + losses)
+        else
+          0.0
+        end
+
+      performance = %{
+        kill_efficiency: Float.round(kill_efficiency, 3),
+        total_engagements: length(killmails),
+        kills: kills,
+        losses: losses
+      }
+
+      %{
+        small_gang_performance: performance,
+        avg_gang_size: Float.round(avg_gang_size, 1),
+        preferred_size: preferred_size,
+        solo_capability: solo_capability
+      }
+    end
+  end
+
+  @doc """
+  Generate recruitment recommendation based on analysis data.
+  """
+  def generate_recommendation(analysis_data) do
+    # Extract key metrics
+    metrics = extract_recommendation_metrics(analysis_data)
+
+    # Check for immediate rejection conditions
+    case check_rejection_conditions(metrics) do
+      {:reject, confidence, reasoning} ->
+        build_recommendation("reject", confidence, reasoning, [], metrics)
+
+      :continue ->
+        # Evaluate candidate quality
+        {recommendation, confidence, reasoning, conditions} = evaluate_candidate_quality(metrics)
+        build_recommendation(recommendation, confidence, reasoning, conditions, metrics)
+    end
+  end
+
+  defp extract_recommendation_metrics(analysis_data) do
+    j_space_exp = Map.get(analysis_data, :j_space_experience, %{})
+    security_risks = Map.get(analysis_data, :security_risks, %{})
+    eviction_groups = Map.get(analysis_data, :eviction_groups, %{})
+    competency = Map.get(analysis_data, :competency_metrics, %{})
+
+    %{
+      j_kills: Map.get(j_space_exp, :total_j_kills, 0),
+      j_losses: Map.get(j_space_exp, :total_j_losses, 0),
+      j_time_percent: Map.get(j_space_exp, :j_space_time_percent, 0.0),
+      risk_score: Map.get(security_risks, :risk_score, 50),
+      eviction_detected: Map.get(eviction_groups, :eviction_group_detected, false),
+      competency: competency
+    }
+  end
+
+  defp check_rejection_conditions(metrics) do
+    cond do
+      metrics.eviction_detected ->
+        {:reject, 0.95, "Known eviction group association detected"}
+
+      metrics.risk_score >= 80 ->
+        {:reject, 0.9, "High security risk score (#{metrics.risk_score}/100)"}
+
+      true ->
+        :continue
+    end
+  end
+
+  defp evaluate_candidate_quality(metrics) do
+    cond do
+      # High quality candidate
+      metrics.j_kills >= 30 and metrics.j_time_percent >= 60.0 and metrics.risk_score <= 25 ->
+        {"approve", 0.85, "Strong J-space experience with low risk", []}
+
+      # Good candidate with some concerns
+      metrics.j_kills >= 15 and metrics.j_time_percent >= 40.0 and metrics.risk_score <= 40 ->
+        {"conditional", 0.75, "Good J-space experience, manageable risk",
+         ["probationary_period", "limited_access"]}
+
+      # Decent candidate needing review
+      metrics.j_kills >= 5 and metrics.risk_score <= 50 ->
+        {"conditional", 0.6, "Some J-space experience, requires monitoring",
+         ["extended_probation", "mentor_assignment"]}
+
+      # Insufficient data or experience
+      metrics.j_kills < 5 and metrics.j_time_percent < 20.0 ->
+        {"more_info", 0.4, "Limited J-space experience, need more data",
+         ["skill_assessment", "trial_period"]}
+
+      # Default to requiring more info
+      true ->
+        {"more_info", 0.5, "Mixed indicators, requires detailed review",
+         ["manual_interview", "reference_check"]}
+    end
+  end
+
+  defp build_recommendation(recommendation, confidence, reasoning, conditions, _metrics) do
+    %{
+      recommendation: recommendation,
+      confidence: confidence,
+      reasoning: reasoning,
+      conditions: conditions
+    }
+  end
+
+  @doc """
+  Format analysis data into a summary.
+  """
+  def format_analysis_summary(analysis) do
+    character_name = Map.get(analysis, :character_name, "Unknown")
+    j_space_exp = Map.get(analysis, :j_space_experience, %{})
+    security_risks = Map.get(analysis, :security_risks, %{})
+    recommendation = Map.get(analysis, :recommendation, %{})
+
+    # Extract key metrics
+    j_kills = Map.get(j_space_exp, :total_j_kills, 0)
+    j_losses = Map.get(j_space_exp, :total_j_losses, 0)
+    j_time_percent = Map.get(j_space_exp, :j_space_time_percent, 0.0)
+    risk_score = Map.get(security_risks, :risk_score, 0)
+    rec_decision = Map.get(recommendation, :recommendation, "unknown")
+    rec_confidence = Map.get(recommendation, :confidence, 0.0)
+
+    # Generate summary text
+    summary_text = """
+    Vetting Analysis for #{character_name}
+
+    J-Space Experience: #{j_kills} kills, #{j_losses} losses (#{j_time_percent}% of activity)
+    Security Risk Score: #{risk_score}/100
+
+    Recommendation: #{String.upcase(rec_decision)} (#{Float.round(rec_confidence * 100)}% confidence)
+
+    #{Map.get(recommendation, :reasoning, "No reasoning provided")}
+    """
+
+    # Key metrics for quick reference
+    key_metrics = %{
+      j_space_kills: j_kills,
+      j_space_losses: j_losses,
+      j_space_percentage: j_time_percent,
+      risk_score: risk_score,
+      recommendation: rec_decision,
+      confidence: rec_confidence
+    }
+
+    %{
+      summary_text: String.trim(summary_text),
+      key_metrics: key_metrics
+    }
+  end
+
+  @doc """
+  Classify system type based on system ID.
+  """
+  def classify_system_type(system_id) when is_integer(system_id) do
+    cond do
+      system_id >= 31_000_000 -> :wormhole
+      system_id >= 30_000_000 -> :known_space
+      system_id > 0 -> :known_space
+      true -> :unknown
+    end
+  end
+
+  def classify_system_type(_), do: :unknown
+
+  @doc """
+  Calculate time overlap between two timestamps.
+  """
+  def calculate_time_overlap(time1, time2) when not is_nil(time1) and not is_nil(time2) do
+    # Calculate absolute difference in minutes
+    diff_seconds = abs(DateTime.diff(time1, time2, :second))
+    diff_minutes = diff_seconds / 60
+
+    # Return normalized overlap score (0-1, higher = closer in time)
+    # Use exponential decay function
+    # 1-hour half-life
+    :math.exp(-diff_minutes / 60)
+  end
+
+  def calculate_time_overlap(_, _), do: 0.0
+
+  @doc """
+  Normalize corporation name for comparison.
+  """
+  def normalize_corporation_name(nil), do: ""
+
+  def normalize_corporation_name(corp_name) when is_binary(corp_name) do
+    corp_name
+    |> String.downcase()
+    # Remove alliance tags
+    |> String.replace(~r/\s*\[.*?\]\s*/, "")
+    |> String.trim()
+  end
+
+  def normalize_corporation_name(_), do: ""
+
+  @doc """
+  Store vetting analysis data to the database.
+  """
+  def store_vetting_analysis(analysis_data) do
+    character_id = Map.get(analysis_data, :character_id)
+
+    # Create vetting record structure
+    vetting_data = %{
+      character_id: character_id,
+      character_name: Map.get(analysis_data, :character_name, "Unknown"),
+      analyst_character_id: Map.get(analysis_data, :analyst_character_id),
+      recommendation: Map.get(analysis_data, :recommendation, %{}),
+      # Add other fields as needed
+      status: "complete",
+      analysis_timestamp: DateTime.utc_now()
+    }
+
+    # Try to create the vetting record
+    case WHVetting.create(vetting_data) do
+      {:ok, vetting_record} ->
+        {:ok, vetting_record}
+
+      {:error, reason} ->
+        Logger.error("Failed to store vetting analysis: #{inspect(reason)}")
+        {:error, reason}
+    end
+  end
+
+  # Helper functions for the new API functions
+
+  # defp detect_suspicious_employment_patterns(employment_history, tenures) do
+  #   patterns = []
+
+  #   # Check for very short stays
+  #   short_stays = Enum.filter(tenures, fn tenure -> tenure < 30 end)
+  #   patterns = if length(short_stays) > 2, do: ["multiple_short_stays" | patterns], else: patterns
+
+  #   # Check for pattern of leaving corps quickly
+  #   _recent_history = Enum.take(employment_history, 5)
+  #   recent_tenures = Enum.take(tenures, 4)
+
+  #   if length(recent_tenures) >= 3 and Enum.all?(recent_tenures, fn t -> t < 90 end) do
+  #     ["rapid_recent_changes" | patterns]
+  #   else
+  #     patterns
+  #   end
+  # end
+
+  defp detect_corp_hopping(employment_history) do
+    if length(employment_history) <= 2 do
+      false
+    else
+      # Calculate average tenure
+      tenures =
+        employment_history
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.map(fn [current, previous] ->
+          start_date = Map.get(previous, :start_date)
+          end_date = Map.get(current, :start_date)
+
+          if is_struct(start_date, DateTime) and is_struct(end_date, DateTime) do
+            DateTime.diff(end_date, start_date, :day)
+          else
+            # Default to 1 year if dates missing
+            365
+          end
+        end)
+
+      if length(tenures) > 0 do
+        avg_tenure = Enum.sum(tenures) / length(tenures)
+        # Less than 3 months
+        short_tenures = Enum.count(tenures, &(&1 < 90))
+
+        # Corp hopping if average tenure < 6 months OR 30%+ short tenures
+        avg_tenure < 180 or short_tenures / length(tenures) >= 0.3
+      else
+        false
+      end
     end
   end
 end

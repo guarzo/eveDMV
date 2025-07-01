@@ -72,7 +72,7 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libbz2-dev
+        sudo apt-get install -y libbz2-dev bc
 
     - name: Install dependencies
       run: |
@@ -102,13 +102,25 @@ jobs:
       env:
         DATABASE_URL: postgres://postgres:postgres@localhost:5432/eve_tracker_test
 
-    - name: Run tests
-      run: mix test --cover
+    - name: Run tests with coverage
+      run: mix coveralls.json
       env:
         DATABASE_URL: postgres://postgres:postgres@localhost:5432/eve_tracker_test
 
-    - name: Generate coverage report
-      run: mix test.coverage
+    - name: Check coverage threshold
+      run: |
+        COVERAGE=$(grep '"coverage":' cover/excoveralls.json | sed 's/.*"coverage":\([0-9.]*\).*/\1/')
+        echo "Current coverage: ${COVERAGE}%"
+        
+        # Set minimum coverage threshold (start low and increase gradually)
+        MIN_COVERAGE=4.0
+        
+        if (( $(echo "$COVERAGE < $MIN_COVERAGE" | bc -l) )); then
+          echo "❌ Coverage ${COVERAGE}% is below minimum threshold of ${MIN_COVERAGE}%"
+          exit 1
+        else
+          echo "✅ Coverage ${COVERAGE}% meets minimum threshold of ${MIN_COVERAGE}%"
+        fi
       env:
         DATABASE_URL: postgres://postgres:postgres@localhost:5432/eve_tracker_test
 

@@ -18,6 +18,8 @@ defmodule EveDmvWeb.CharacterIntelLive do
   alias EveDmv.Intelligence.{CharacterAnalyzer, CharacterStats}
   alias EveDmv.Killmails.HistoricalKillmailFetcher
 
+  on_mount {EveDmvWeb.AuthLive, :load_from_session}
+
   @impl true
   def mount(%{"character_id" => character_id_str}, _session, socket) do
     case Integer.parse(character_id_str) do
@@ -223,21 +225,34 @@ defmodule EveDmvWeb.CharacterIntelLive do
   defp enrich_associates_data(stats) do
     enriched_associates =
       stats.frequent_associates
-      |> Enum.map(fn {char_id, associate} ->
-        # Add corporation name
-        corp_name = EveDmv.Eve.NameResolver.corporation_name(associate["corp_id"])
+      |> then(fn associates ->
+        # Collect all unique corporation IDs first to avoid N+1 queries
+        corp_ids =
+          associates
+          |> Enum.map(fn {_, associate} -> associate["corp_id"] end)
+          |> Enum.reject(&is_nil/1)
+          |> Enum.uniq()
 
-        # Detect logistics ships
-        is_logistics = logistics_pilot?(associate["name"], associate["ships_flown"] || [])
+        # Bulk load corporation names in single operation
+        corp_names = EveDmv.Eve.NameResolver.corporation_names(corp_ids)
 
-        enriched_associate =
-          associate
-          |> Map.put("corp_name", corp_name)
-          |> Map.put("is_logistics", is_logistics)
+        # Now enrich each associate with cached data
+        associates
+        |> Enum.map(fn {char_id, associate} ->
+          corp_name = corp_names[associate["corp_id"]] || "Unknown Corporation"
 
-        {char_id, enriched_associate}
+          # Detect logistics ships
+          is_logistics = logistics_pilot?(associate["name"], associate["ships_flown"] || [])
+
+          enriched_associate =
+            associate
+            |> Map.put("corp_name", corp_name)
+            |> Map.put("is_logistics", is_logistics)
+
+          {char_id, enriched_associate}
+        end)
+        |> Map.new()
       end)
-      |> Map.new()
 
     # Update the stats with enriched associates
     Map.put(stats, :frequent_associates, enriched_associates)

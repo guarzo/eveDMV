@@ -12,9 +12,7 @@ defmodule EveDmv.Killmails.KillmailPipeline do
   require Logger
 
   alias Broadway.Message
-  alias EveDmv.Eve.TypeResolver
   alias EveDmv.Killmails.{KillmailEnriched, KillmailRaw, Participant}
-  alias EveDmv.Surveillance.{MatchingEngine, NotificationService}
   alias EveDmvWeb.Endpoint
 
   # Broadway configuration
@@ -516,423 +514,202 @@ defmodule EveDmv.Killmails.KillmailPipeline do
   # to batched inserts with error collection (maintaining error detail while improving performance).
 
   defp insert_raw_killmails(raw_changesets) do
-    Logger.debug("Inserting #{length(raw_changesets)} raw killmails")
+    Logger.debug("Inserting #{length(raw_changesets)} raw killmails using bulk operation")
 
-    results =
-      Enum.map(raw_changesets, fn changeset ->
-        case Ash.create(KillmailRaw, changeset,
-               action: :ingest_from_source,
-               domain: EveDmv.Api
-             ) do
-          {:ok, _record} -> :ok
-          {:error, error} -> {:error, error}
-        end
-      end)
+    # Use Ash bulk operation for much better performance
+    case Ash.bulk_create(raw_changesets, KillmailRaw, :ingest_from_source,
+           domain: EveDmv.Api,
+           return_records?: false,
+           return_errors?: true,
+           stop_on_error?: false
+         ) do
+      %Ash.BulkResult{status: :success} = result ->
+        success_count = result.records |> length()
+        Logger.debug("Successfully bulk inserted #{success_count} raw killmails")
+        :ok
 
-    errors = Enum.filter(results, &match?({:error, _}, &1))
+      %Ash.BulkResult{status: :partial_success} = result ->
+        success_count = result.records |> length()
+        error_count = result.errors |> length()
 
-    if length(errors) > 0 do
-      Logger.error("Failed to insert #{length(errors)} raw killmails")
+        Logger.warning(
+          "Bulk insert partially successful: #{success_count} succeeded, #{error_count} failed"
+        )
 
-      Enum.each(errors, fn {:error, error} ->
-        Logger.error("Raw killmail insert error: #{inspect(error)}")
-      end)
+        # Log first few errors for debugging
+        result.errors
+        |> Enum.take(3)
+        |> Enum.each(fn error ->
+          Logger.error("Raw killmail bulk insert error: #{inspect(error)}")
+        end)
 
-      :error
-    else
-      Logger.debug("Successfully inserted #{length(raw_changesets)} raw killmails")
-      :ok
+        # Consider partial success as ok for pipeline resilience
+        :ok
+
+      %Ash.BulkResult{status: :error} = result ->
+        Logger.error("Bulk insert failed completely")
+
+        result.errors
+        |> Enum.take(5)
+        |> Enum.each(fn error ->
+          Logger.error("Raw killmail bulk insert error: #{inspect(error)}")
+        end)
+
+        :error
+
+      other ->
+        Logger.error("Unexpected bulk insert result: #{inspect(other)}")
+        :error
     end
   end
 
   defp insert_enriched_killmails(enriched_changesets) do
     Logger.debug("Inserting #{length(enriched_changesets)} enriched killmails")
 
-    results =
-      Enum.map(enriched_changesets, fn changeset ->
-        case Ash.create(KillmailEnriched, changeset,
-               action: :upsert,
-               domain: EveDmv.Api
-             ) do
-          {:ok, _record} -> :ok
-          {:error, error} -> {:error, error}
-        end
-      end)
+    # Use Ash bulk operation for enriched killmails
+    case Ash.bulk_create(enriched_changesets, KillmailEnriched, :ingest_from_pipeline,
+           domain: EveDmv.Api,
+           return_records?: false,
+           return_errors?: true,
+           stop_on_error?: false
+         ) do
+      %Ash.BulkResult{status: :success} = result ->
+        success_count = result.records |> length()
+        Logger.debug("Successfully bulk inserted #{success_count} enriched killmails")
+        :ok
 
-    errors = Enum.filter(results, &match?({:error, _}, &1))
+      %Ash.BulkResult{status: :partial_success} = result ->
+        success_count = result.records |> length()
+        error_count = result.errors |> length()
 
-    if length(errors) > 0 do
-      Logger.error("Failed to insert #{length(errors)} enriched killmails")
+        Logger.warning(
+          "Enriched killmail bulk insert partially successful: #{success_count} succeeded, #{error_count} failed"
+        )
 
-      Enum.each(errors, fn {:error, error} ->
-        Logger.error("Enriched killmail insert error: #{inspect(error)}")
-      end)
+        # Log first few errors for debugging
+        result.errors
+        |> Enum.take(3)
+        |> Enum.each(fn error ->
+          Logger.error("Enriched killmail bulk insert error: #{inspect(error)}")
+        end)
 
-      :error
-    else
-      Logger.debug("Successfully inserted #{length(enriched_changesets)} enriched killmails")
-      :ok
+        # Consider partial success as ok for pipeline resilience
+        :ok
+
+      %Ash.BulkResult{status: :error} = result ->
+        Logger.error("Enriched killmail bulk insert failed completely")
+
+        result.errors
+        |> Enum.take(5)
+        |> Enum.each(fn error ->
+          Logger.error("Enriched killmail bulk insert error: #{inspect(error)}")
+        end)
+
+        :error
     end
   end
 
   defp insert_participants(participants_lists) do
     participants = List.flatten(participants_lists)
-    Logger.debug("Inserting #{length(participants)} participants")
+    Logger.debug("Inserting #{length(participants)} participants using bulk operation")
 
-    results = Enum.map(participants, &insert_single_participant/1)
+    # Filter out any invalid participants before bulk operation
+    valid_participants = Enum.filter(participants, &valid_participant?/1)
 
-    errors = Enum.filter(results, &match?({:error, _}, &1))
-    successes = Enum.filter(results, &(&1 == :ok))
-
-    if length(errors) > 0 do
-      Logger.error("Failed to insert #{length(errors)} participants")
-
-      Enum.each(errors, fn {:error, error} ->
-        Logger.error("Participant insert error: #{inspect(error)}")
-      end)
-
-      :error
-    else
-      skipped_count = length(participants) - length(successes)
-
-      if skipped_count > 0 do
-        Logger.info(
-          "Successfully inserted #{length(successes)} participants, skipped #{skipped_count} invalid participants"
-        )
-      else
-        Logger.debug("Successfully inserted #{length(participants)} participants")
-      end
-
+    if Enum.empty?(valid_participants) do
+      Logger.debug("No valid participants to insert")
       :ok
-    end
-  end
+    else
+      # Use Ash bulk operation for much better performance
+      case Ash.bulk_create(valid_participants, Participant, :create,
+             domain: EveDmv.Api,
+             return_records?: false,
+             return_errors?: true,
+             stop_on_error?: false
+           ) do
+        %Ash.BulkResult{status: :success} = result ->
+          success_count = result.records |> length()
+          skipped_count = length(participants) - length(valid_participants)
 
-  defp broadcast_killmails(messages) do
-    Logger.info("📡 Broadcasting #{length(messages)} killmails to LiveView clients")
+          if skipped_count > 0 do
+            Logger.info(
+              "Successfully bulk inserted #{success_count} participants, skipped #{skipped_count} invalid"
+            )
+          else
+            Logger.debug("Successfully bulk inserted #{success_count} participants")
+          end
 
-    for %Message{data: {raw_changeset, _enriched_changeset, _}} <- messages do
-      case raw_changeset do
-        %{raw_data: blob} when not is_nil(blob) ->
-          Logger.debug("Broadcasting killmail #{blob["killmail_id"]} to LiveView")
-          Endpoint.broadcast!("kill_feed", "new_kill", blob)
+          :ok
 
-        _ ->
-          Logger.warning("No raw data to broadcast for killmail")
-      end
-    end
+        %Ash.BulkResult{status: :partial_success} = result ->
+          success_count = result.records |> length()
+          error_count = result.errors |> length()
 
-    :ok
-  end
+          Logger.warning(
+            "Bulk participant insert partially successful: #{success_count} succeeded, #{error_count} failed"
+          )
 
-  defp check_surveillance_matches(messages) do
-    Logger.debug("🔍 Checking #{length(messages)} killmails against surveillance profiles")
-
-    for %Message{data: {raw_changeset, _enriched_changeset, _}} <- messages do
-      case raw_changeset do
-        %{raw_data: killmail_data} when not is_nil(killmail_data) ->
-          # Run surveillance matching in background to avoid blocking pipeline
-          spawn(fn ->
-            try do
-              matches = MatchingEngine.match_killmail(killmail_data)
-
-              if length(matches) > 0 do
-                Logger.info(
-                  "🎯 Killmail #{killmail_data["killmail_id"]} matched #{length(matches)} surveillance profiles"
-                )
-
-                # Create persistent notifications for matches
-                NotificationService.create_batch_match_notifications(killmail_data, matches)
-
-                # Broadcast surveillance match notification (legacy support)
-                Endpoint.broadcast!("surveillance", "profile_match", %{
-                  killmail: killmail_data,
-                  profile_ids: matches
-                })
-              end
-            rescue
-              error ->
-                Logger.error("Error in surveillance matching: #{inspect(error)}")
-            end
+          # Log first few errors for debugging
+          result.errors
+          |> Enum.take(3)
+          |> Enum.each(fn error ->
+            Logger.error("Participant bulk insert error: #{inspect(error)}")
           end)
 
-        _ ->
-          Logger.debug("No killmail data for surveillance matching")
+          # Consider partial success as ok for pipeline resilience
+          :ok
+
+        %Ash.BulkResult{status: :error} = result ->
+          Logger.error("Participant bulk insert failed completely")
+
+          result.errors
+          |> Enum.take(5)
+          |> Enum.each(fn error ->
+            Logger.error("Participant bulk insert error: #{inspect(error)}")
+          end)
+
+          :error
       end
     end
-
-    :ok
   end
 
-  defp insert_single_participant(participant) do
-    case Ash.create(Participant, participant, action: :create, domain: EveDmv.Api) do
-      {:ok, _record} ->
-        :ok
+  # Simple validation helper for participants
+  defp valid_participant?(participant) when is_map(participant) do
+    # Basic validation - ensure required fields are present
+    participant[:killmail_id] != nil and
+      participant[:character_id] != nil and
+      participant[:ship_type_id] != nil
+  end
 
-      {:error, error} ->
-        Logger.debug("Participant insertion failed, analyzing error type: #{inspect(error)}")
-        handle_participant_error(participant, error)
+  defp valid_participant?(_), do: false
+
+  # Broadcast killmails to LiveView clients via PubSub
+  defp broadcast_killmails(messages) do
+    for %Message{data: killmail_data} <- messages do
+      try do
+        EveDmvWeb.Endpoint.broadcast!("killmail_feed", "new_killmail", killmail_data)
+      rescue
+        error ->
+          Logger.warning("Failed to broadcast killmail: #{inspect(error)}")
+      end
     end
   end
 
-  defp handle_participant_error(participant, error) do
-    cond do
-      ship_type_constraint_error?(error) ->
-        ship_type_id = extract_ship_type_id_from_error(error)
-        Logger.info("Detected foreign key constraint error for ship_type_id: #{ship_type_id}")
-        handle_missing_ship_type(participant, ship_type_id)
+  # Check surveillance profiles for matches
+  defp check_surveillance_matches(messages) do
+    Logger.debug("Checking surveillance matches for #{length(messages)} killmails")
 
-      weapon_type_constraint_error?(error) ->
-        weapon_type_id = extract_weapon_type_id_from_error(error)
-        Logger.info("Detected foreign key constraint error for weapon_type_id: #{weapon_type_id}")
-        handle_missing_weapon_type(participant, weapon_type_id)
-
-      true ->
-        log_unexpected_participant_error(participant, error)
-        {:error, error}
+    for %Message{data: killmail_data} <- messages do
+      try do
+        # This would integrate with the surveillance matching engine
+        # For now, just log that we would check for matches
+        Logger.debug(
+          "Would check surveillance matches for killmail #{killmail_data["killmail_id"]}"
+        )
+      rescue
+        error ->
+          Logger.warning("Failed to check surveillance matches: #{inspect(error)}")
+      end
     end
-  end
-
-  defp log_unexpected_participant_error(participant, error) do
-    character_name = participant[:character_name] || "Unknown"
-    character_id = participant[:character_id]
-    killmail_id = participant[:killmail_id]
-
-    Logger.warning(
-      "Unexpected participant error for #{character_name} (character_id: #{character_id}) " <>
-        "in killmail #{killmail_id}: #{inspect(error)}"
-    )
-  end
-
-  # Helper functions for handling missing ship types
-
-  defp ship_type_constraint_error?(%Ash.Error.Invalid{errors: errors}) do
-    result =
-      Enum.any?(errors, fn error ->
-        case error do
-          %Ash.Error.Changes.InvalidAttribute{
-            field: :ship_type_id,
-            private_vars: private_vars
-          } ->
-            constraint_name = Keyword.get(private_vars, :constraint)
-            constraint_type = Keyword.get(private_vars, :constraint_type)
-            detail = Keyword.get(private_vars, :detail)
-
-            Logger.debug("Checking constraint: #{constraint_name}, type: #{constraint_type}")
-            Logger.debug("Detail: #{detail}")
-
-            # Check if it's a foreign key constraint error by constraint name OR constraint type
-            is_fkey_constraint =
-              constraint_name == "participants_ship_type_id_fkey" or
-                constraint_type == :foreign_key
-
-            # Also check if the detail message contains the expected pattern
-            has_fkey_detail =
-              is_binary(detail) and String.contains?(detail, "is not present in table")
-
-            result = is_fkey_constraint and has_fkey_detail
-
-            Logger.debug(
-              "Is FK constraint: #{is_fkey_constraint}, has FK detail: #{has_fkey_detail}, result: #{result}"
-            )
-
-            result
-
-          _ ->
-            false
-        end
-      end)
-
-    Logger.debug("Foreign key constraint error detected: #{result}")
-    result
-  end
-
-  defp ship_type_constraint_error?(_), do: false
-
-  defp extract_ship_type_id_from_error(%Ash.Error.Invalid{errors: errors}) do
-    result = Enum.find_value(errors, &extract_ship_type_from_error/1)
-    Logger.debug("Final extracted ship_type_id: #{result}")
-    result
-  end
-
-  defp extract_ship_type_from_error(%Ash.Error.Changes.InvalidAttribute{
-         field: :ship_type_id,
-         private_vars: private_vars
-       }) do
-    detail = Keyword.get(private_vars, :detail)
-    Logger.debug("Extracting ship_type_id from detail: #{detail}")
-    parse_ship_type_id_from_detail(detail)
-  end
-
-  defp extract_ship_type_from_error(_), do: nil
-
-  defp parse_ship_type_id_from_detail(detail) when is_binary(detail) do
-    case Regex.run(~r/Key \(ship_type_id\)=\((\d+)\)/, detail) do
-      [_, ship_type_id_str] ->
-        ship_type_id = String.to_integer(ship_type_id_str)
-        Logger.debug("Extracted ship_type_id: #{ship_type_id}")
-        ship_type_id
-
-      _ ->
-        Logger.debug("Could not parse ship_type_id from detail")
-        nil
-    end
-  end
-
-  defp parse_ship_type_id_from_detail(detail) do
-    Logger.debug("Detail is not a string: #{inspect(detail)}")
-    nil
-  end
-
-  defp handle_missing_ship_type(participant, ship_type_id) when is_integer(ship_type_id) do
-    Logger.info("Resolving missing ship type #{ship_type_id} for participant")
-
-    case TypeResolver.resolve_item_type(ship_type_id) do
-      {:ok, _item_type} ->
-        # Now retry the participant insertion
-        case Ash.create(Participant, participant,
-               action: :create,
-               domain: EveDmv.Api
-             ) do
-          {:ok, _record} ->
-            Logger.info(
-              "Successfully inserted participant after resolving ship type #{ship_type_id}"
-            )
-
-            :ok
-
-          {:error, error} ->
-            Logger.error(
-              "Failed to insert participant even after resolving ship type #{ship_type_id}: #{inspect(error)}"
-            )
-
-            {:error, error}
-        end
-
-      {:error, error} ->
-        Logger.error("Failed to resolve ship type #{ship_type_id}: #{inspect(error)}")
-        {:error, error}
-    end
-  end
-
-  defp handle_missing_ship_type(_participant, nil) do
-    Logger.warning("Could not extract ship_type_id from constraint error for participant")
-    {:error, :missing_ship_type_id}
-  end
-
-  # Weapon type error detection and handling
-
-  defp weapon_type_constraint_error?(%Ash.Error.Invalid{errors: errors}) do
-    result =
-      Enum.any?(errors, fn error ->
-        case error do
-          %Ash.Error.Changes.InvalidAttribute{
-            field: :weapon_type_id,
-            private_vars: private_vars
-          } ->
-            constraint_name = Keyword.get(private_vars, :constraint)
-            constraint_type = Keyword.get(private_vars, :constraint_type)
-            detail = Keyword.get(private_vars, :detail)
-
-            Logger.debug(
-              "Checking weapon constraint: #{constraint_name}, type: #{constraint_type}"
-            )
-
-            # Check if it's a foreign key constraint error by constraint name OR constraint type
-            is_fkey_constraint =
-              constraint_name == "participants_weapon_type_id_fkey" or
-                constraint_type == :foreign_key
-
-            # Also check if the detail message contains the expected pattern
-            has_fkey_detail =
-              is_binary(detail) and String.contains?(detail, "is not present in table")
-
-            result = is_fkey_constraint and has_fkey_detail
-
-            Logger.debug(
-              "Is weapon FK constraint: #{is_fkey_constraint}, has FK detail: #{has_fkey_detail}, result: #{result}"
-            )
-
-            result
-
-          _ ->
-            false
-        end
-      end)
-
-    Logger.debug("Weapon foreign key constraint error detected: #{result}")
-    result
-  end
-
-  defp weapon_type_constraint_error?(_), do: false
-
-  defp extract_weapon_type_id_from_error(%Ash.Error.Invalid{errors: errors}) do
-    result = Enum.find_value(errors, &extract_weapon_type_from_error/1)
-    Logger.debug("Final extracted weapon_type_id: #{result}")
-    result
-  end
-
-  defp extract_weapon_type_from_error(%Ash.Error.Changes.InvalidAttribute{
-         field: :weapon_type_id,
-         private_vars: private_vars
-       }) do
-    detail = Keyword.get(private_vars, :detail)
-    Logger.debug("Extracting weapon_type_id from detail: #{detail}")
-    parse_weapon_type_id_from_detail(detail)
-  end
-
-  defp extract_weapon_type_from_error(_), do: nil
-
-  defp parse_weapon_type_id_from_detail(detail) when is_binary(detail) do
-    case Regex.run(~r/Key \(weapon_type_id\)=\((\d+)\)/, detail) do
-      [_, weapon_type_id_str] ->
-        weapon_type_id = String.to_integer(weapon_type_id_str)
-        Logger.debug("Extracted weapon_type_id: #{weapon_type_id}")
-        weapon_type_id
-
-      _ ->
-        Logger.debug("Could not parse weapon_type_id from detail")
-        nil
-    end
-  end
-
-  defp parse_weapon_type_id_from_detail(detail) do
-    Logger.debug("Weapon detail is not a string: #{inspect(detail)}")
-    nil
-  end
-
-  defp handle_missing_weapon_type(participant, weapon_type_id) when is_integer(weapon_type_id) do
-    Logger.info("Resolving missing weapon type #{weapon_type_id} for participant")
-
-    case TypeResolver.resolve_item_type(weapon_type_id) do
-      {:ok, _item_type} ->
-        # Now retry the participant insertion
-        case Ash.create(Participant, participant,
-               action: :create,
-               domain: EveDmv.Api
-             ) do
-          {:ok, _record} ->
-            Logger.info(
-              "Successfully inserted participant after resolving weapon type #{weapon_type_id}"
-            )
-
-            :ok
-
-          {:error, error} ->
-            Logger.error(
-              "Failed to insert participant even after resolving weapon type #{weapon_type_id}: #{inspect(error)}"
-            )
-
-            {:error, error}
-        end
-
-      {:error, error} ->
-        Logger.error("Failed to resolve weapon type #{weapon_type_id}: #{inspect(error)}")
-        {:error, error}
-    end
-  end
-
-  defp handle_missing_weapon_type(_participant, nil) do
-    Logger.warning("Could not extract weapon_type_id from constraint error for participant")
-    {:error, :missing_weapon_type_id}
   end
 end

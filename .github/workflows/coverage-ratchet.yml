@@ -1,0 +1,237 @@
+name: Test Coverage Ratchet
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  MIX_ENV: test
+  ELIXIR_VERSION: "1.17.3"
+  OTP_VERSION: "27.1"
+
+jobs:
+  test-coverage:
+    name: Test Coverage with Ratcheting
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: eve_tracker_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Need full history for coverage comparison
+
+    - name: Set up Elixir
+      uses: erlef/setup-beam@v1
+      with:
+        elixir-version: ${{ env.ELIXIR_VERSION }}
+        otp-version: ${{ env.OTP_VERSION }}
+
+    - name: Cache deps
+      uses: actions/cache@v4
+      with:
+        path: |
+          deps
+          _build
+        key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-mix-
+
+    - name: Install dependencies
+      run: |
+        mix local.hex --force
+        mix local.rebar --force
+        mix deps.get
+
+    - name: Compile code (warnings as errors)
+      run: mix compile --warnings-as-errors
+
+    - name: Check formatting
+      run: mix format --check-formatted
+
+    - name: Run Credo
+      run: mix credo --strict
+
+    - name: Setup test database
+      env:
+        DATABASE_URL: postgres://postgres:postgres@localhost:5432/eve_tracker_test
+      run: |
+        mix ecto.create
+        mix ecto.migrate
+
+    - name: Get baseline coverage
+      id: baseline
+      run: |
+        # Try to get coverage from previous successful run
+        if [ -f coverage_baseline.txt ]; then
+          BASELINE=$(cat coverage_baseline.txt)
+        else
+          # Set initial baseline based on current project phase
+          BASELINE=10.0  # Current estimated coverage
+        fi
+        echo "baseline=$BASELINE" >> $GITHUB_OUTPUT
+        echo "Baseline coverage: $BASELINE%"
+
+    - name: Run tests with coverage
+      env:
+        DATABASE_URL: postgres://postgres:postgres@localhost:5432/eve_tracker_test
+        WANDERER_KILLS_SSE_URL: http://localhost:4004/api/v1/kills/stream
+        WANDERER_KILLS_BASE_URL: http://localhost:4004
+        EVE_SSO_CLIENT_ID: test_client_id
+        EVE_SSO_CLIENT_SECRET: test_client_secret
+        SECRET_KEY_BASE: test_secret_key_base_for_ci_testing_only_not_production
+        PIPELINE_ENABLED: false
+        MOCK_SSE_SERVER_ENABLED: true
+      run: |
+        mix test --cover
+        
+        # Extract coverage percentage from ExCoveralls output
+        mix test --cover 2>&1 | tee coverage_output.txt
+        
+        # Parse coverage percentage (adjust based on your coveralls config)
+        CURRENT_COVERAGE=$(grep -o '[0-9]*\.[0-9]*%' coverage_output.txt | tail -1 | sed 's/%//')
+        
+        if [ -z "$CURRENT_COVERAGE" ]; then
+          echo "Could not parse coverage percentage"
+          exit 1
+        fi
+        
+        echo "Current coverage: $CURRENT_COVERAGE%"
+        echo "current_coverage=$CURRENT_COVERAGE" >> $GITHUB_OUTPUT
+
+    - name: Coverage Ratchet Check
+      env:
+        BASELINE: ${{ steps.baseline.outputs.baseline }}
+        CURRENT: ${{ steps.run-tests.outputs.current_coverage }}
+      run: |
+        echo "Baseline: $BASELINE%"
+        echo "Current:  $CURRENT%"
+        
+        # Use bc for floating point comparison
+        if [ "$(echo "$CURRENT < $BASELINE" | bc -l)" -eq 1 ]; then
+          echo "❌ Coverage regression detected!"
+          echo "Current coverage ($CURRENT%) is below baseline ($BASELINE%)"
+          echo "Please add tests to maintain or improve coverage."
+          exit 1
+        elif [ "$(echo "$CURRENT > $BASELINE" | bc -l)" -eq 1 ]; then
+          echo "✅ Coverage improved from $BASELINE% to $CURRENT%"
+          echo "New baseline will be set to $CURRENT%"
+        else
+          echo "✅ Coverage maintained at $CURRENT%"
+        fi
+
+    - name: Update coverage baseline
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      run: |
+        CURRENT="${{ steps.run-tests.outputs.current_coverage }}"
+        BASELINE="${{ steps.baseline.outputs.baseline }}"
+        
+        # Only update baseline if coverage improved
+        if [ "$(echo "$CURRENT > $BASELINE" | bc -l)" -eq 1 ]; then
+          echo "$CURRENT" > coverage_baseline.txt
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add coverage_baseline.txt
+          git commit -m "Update coverage baseline to $CURRENT%" || exit 0
+          git push
+        fi
+
+    - name: Coverage Milestone Check
+      env:
+        CURRENT: ${{ steps.run-tests.outputs.current_coverage }}
+      run: |
+        # Define phase milestones
+        PHASE_1_TARGET=25.0  # Critical security & data integrity
+        PHASE_2_TARGET=35.0  # Core business logic  
+        PHASE_3_TARGET=40.0  # Feature reliability
+        MAINTENANCE_TARGET=40.0  # Long-term maintenance
+        
+        echo "Coverage Milestone Status:"
+        
+        if [ "$(echo "$CURRENT >= $PHASE_3_TARGET" | bc -l)" -eq 1 ]; then
+          echo "🎉 Phase 3 Complete: Feature Reliability ($CURRENT% >= $PHASE_3_TARGET%)"
+        elif [ "$(echo "$CURRENT >= $PHASE_2_TARGET" | bc -l)" -eq 1 ]; then
+          echo "🚀 Phase 2 Complete: Core Business Logic ($CURRENT% >= $PHASE_2_TARGET%)"
+          echo "📋 Next: Phase 3 Target - $PHASE_3_TARGET%"
+        elif [ "$(echo "$CURRENT >= $PHASE_1_TARGET" | bc -l)" -eq 1 ]; then
+          echo "✅ Phase 1 Complete: Critical Security ($CURRENT% >= $PHASE_1_TARGET%)"  
+          echo "📋 Next: Phase 2 Target - $PHASE_2_TARGET%"
+        else
+          echo "📈 Phase 1 In Progress: ($CURRENT% / $PHASE_1_TARGET%)"
+          echo "🎯 Focus: Authentication & Killmail Pipeline"
+        fi
+
+    - name: Generate Coverage Report
+      if: always()
+      run: |
+        echo "## Test Coverage Report" > coverage_report.md
+        echo "" >> coverage_report.md
+        echo "- **Current Coverage**: ${{ steps.run-tests.outputs.current_coverage }}%" >> coverage_report.md
+        echo "- **Baseline Coverage**: ${{ steps.baseline.outputs.baseline }}%" >> coverage_report.md
+        echo "- **Trend**: $([ "$(echo "${{ steps.run-tests.outputs.current_coverage }} > ${{ steps.baseline.outputs.baseline }}" | bc -l)" -eq 1 ] && echo "📈 Improving" || echo "📊 Stable")" >> coverage_report.md
+        echo "" >> coverage_report.md
+        echo "### Next Milestones" >> coverage_report.md
+        echo "- Phase 1 (Critical): 25%" >> coverage_report.md  
+        echo "- Phase 2 (Core Logic): 35%" >> coverage_report.md
+        echo "- Phase 3 (Features): 40%" >> coverage_report.md
+
+    - name: Comment PR with Coverage
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const coverage = '${{ steps.run-tests.outputs.current_coverage }}';
+          const baseline = '${{ steps.baseline.outputs.baseline }}';
+          
+          const trend = parseFloat(coverage) > parseFloat(baseline) ? '📈' : '📊';
+          const status = parseFloat(coverage) >= parseFloat(baseline) ? '✅' : '❌';
+          
+          const comment = `## ${status} Test Coverage Report
+          
+          - **Current**: ${coverage}%
+          - **Baseline**: ${baseline}%  
+          - **Trend**: ${trend} ${parseFloat(coverage) > parseFloat(baseline) ? 'Improved' : 'Stable'}
+          
+          ### Coverage Milestones
+          - Phase 1 (Critical Security): 25% ${parseFloat(coverage) >= 25 ? '✅' : '⏳'}
+          - Phase 2 (Core Business Logic): 35% ${parseFloat(coverage) >= 35 ? '✅' : '⏳'}
+          - Phase 3 (Feature Reliability): 40% ${parseFloat(coverage) >= 40 ? '✅' : '⏳'}
+          
+          ${parseFloat(coverage) < parseFloat(baseline) ? 
+            '⚠️ **Coverage regression detected!** Please add tests before merging.' : 
+            '✅ Coverage requirements met.'}`;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+
+    - name: Upload coverage artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: |
+          cover/
+          coverage_output.txt
+          coverage_report.md
+        retention-days: 30

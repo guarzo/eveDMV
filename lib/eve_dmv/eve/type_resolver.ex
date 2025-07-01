@@ -120,10 +120,6 @@ defmodule EveDmv.Eve.TypeResolver do
           {:error, error}
       end
     else
-      {:error, :not_found} ->
-        Logger.warning("Item type #{type_id} not found in ESI")
-        {:error, :not_found}
-
       {:error, error} ->
         Logger.error("Failed to fetch item type #{type_id} from ESI: #{inspect(error)}")
         {:error, error}

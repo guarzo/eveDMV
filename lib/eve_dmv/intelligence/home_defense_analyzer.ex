@@ -143,51 +143,55 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
 
   # Get corporation members
   defp get_corporation_members(corporation_id) do
-    # First try to get member IDs from ESI
-    with {:ok, member_ids} <- EsiClient.get_corporation_members(corporation_id),
-         {:ok, all_stats} <- Ash.read(CharacterStats, domain: EveDmv.Api) do
-      # Cross-reference with our character stats
-      members =
-        all_stats
-        |> Enum.filter(fn stats ->
-          stats.character_id in member_ids || stats.corporation_id == corporation_id
-        end)
-        |> Enum.map(fn stats ->
-          # Ensure we have the latest character info
-          case EsiClient.get_character(stats.character_id) do
-            {:ok, char_data} ->
-              %{
-                stats
-                | character_name: char_data.name,
-                  corporation_id: char_data.corporation_id,
-                  alliance_id: char_data.alliance_id
-              }
+    # First filter character stats at database level, not in memory
+    case Ash.read(CharacterStats,
+           filter: [corporation_id: corporation_id],
+           domain: EveDmv.Api
+         ) do
+      {:ok, corp_stats} ->
+        process_corporation_stats(corp_stats)
 
-            _ ->
-              stats
-          end
-        end)
-
-      {:ok, members}
-    else
       {:error, reason} ->
-        Logger.warning("Could not load corporation members from ESI: #{inspect(reason)}")
-        # Fallback to local data only
-        case Ash.read(CharacterStats, domain: EveDmv.Api) do
-          {:ok, all_stats} ->
-            members =
-              Enum.filter(all_stats, fn stats -> stats.corporation_id == corporation_id end)
+        Logger.warning(
+          "Could not load character stats for corporation #{corporation_id}: #{inspect(reason)}"
+        )
 
-            {:ok, members}
-
-          _ ->
-            {:ok, []}
-        end
+        {:ok, []}
     end
   rescue
     error ->
       Logger.error("Error getting corporation members: #{inspect(error)}")
       {:ok, []}
+  end
+
+  defp process_corporation_stats([]), do: {:ok, []}
+
+  defp process_corporation_stats(corp_stats) do
+    # Bulk update character info if needed
+    character_ids = Enum.map(corp_stats, & &1.character_id)
+
+    members =
+      case EsiClient.get_characters(character_ids) do
+        {:ok, character_data} ->
+          Enum.map(corp_stats, &update_member_with_character_data(&1, character_data))
+      end
+
+    {:ok, members}
+  end
+
+  defp update_member_with_character_data(stats, character_data) do
+    case Map.get(character_data, stats.character_id) do
+      %{} = char_data ->
+        %{
+          stats
+          | character_name: char_data.name,
+            corporation_id: char_data.corporation_id,
+            alliance_id: char_data.alliance_id
+        }
+
+      _ ->
+        stats
+    end
   end
 
   # Timezone coverage analysis
@@ -731,5 +735,640 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
       end)
 
     round(non_empty_sections / length(data_sections) * 100)
+  end
+
+  # Public API functions expected by tests
+
+  @doc """
+  Calculate timezone coverage from member activity data.
+  """
+  def calculate_timezone_coverage(member_activities) when is_list(member_activities) do
+    if Enum.empty?(member_activities) do
+      %{
+        coverage_score: 0,
+        timezone_distribution: %{},
+        weak_periods: [],
+        peak_activity_times: []
+      }
+    else
+      # Calculate coverage by hour
+      hourly_coverage = calculate_hourly_coverage_from_activities(member_activities)
+
+      # Distribution by timezone
+      timezone_dist =
+        member_activities
+        |> Enum.group_by(& &1.timezone)
+        |> Enum.map(fn {tz, members} -> {tz, length(members)} end)
+        |> Enum.into(%{})
+
+      # Find weak periods (hours with < 20% coverage)
+      weak_periods = find_weak_periods(hourly_coverage)
+
+      # Find peak activity times (hours with > 60% coverage)
+      peak_times = find_peak_activity_times(hourly_coverage)
+
+      # Calculate overall coverage score
+      coverage_score = calculate_coverage_score_from_hourly(hourly_coverage)
+
+      %{
+        coverage_score: coverage_score,
+        timezone_distribution: timezone_dist,
+        weak_periods: weak_periods,
+        peak_activity_times: peak_times
+      }
+    end
+  end
+
+  @doc """
+  Assess fleet capabilities from member data.
+  """
+  def assess_fleet_capabilities(members) when is_list(members) do
+    if Enum.empty?(members) do
+      %{
+        total_members: 0,
+        doctrine_ships: %{},
+        fc_count: 0,
+        logistics_count: 0,
+        capability_score: 0
+      }
+    else
+      # Count FCs and logistics pilots
+      fc_count = Enum.count(members, &Map.get(&1, :fc_capability, false))
+      logi_count = Enum.count(members, &Map.get(&1, :logistics_capability, false))
+
+      # Aggregate doctrine ships
+      doctrine_ships = aggregate_doctrine_ships(members)
+
+      # Calculate capability score
+      capability_score = calculate_capability_score(members, fc_count, logi_count)
+
+      %{
+        total_members: length(members),
+        doctrine_ships: doctrine_ships,
+        fc_count: fc_count,
+        logistics_count: logi_count,
+        capability_score: capability_score
+      }
+    end
+  end
+
+  @doc """
+  Calculate response readiness based on recent activity.
+  """
+  def calculate_response_readiness(members, current_time) when is_list(members) do
+    # Count members with recent activity (within 12 hours)
+    cutoff_time = DateTime.add(current_time, -12 * 60 * 60, :second)
+
+    recent_members =
+      Enum.filter(members, fn member ->
+        case Map.get(member, :last_activity) do
+          nil -> false
+          last_activity -> DateTime.compare(last_activity, cutoff_time) != :lt
+        end
+      end)
+
+    # Calculate average response time
+    response_times = Enum.map(members, &Map.get(&1, :response_time_minutes, 60))
+
+    avg_response_time =
+      if Enum.empty?(response_times),
+        do: 0,
+        else: Enum.sum(response_times) / length(response_times)
+
+    # Calculate readiness score
+    immediate_response = length(recent_members)
+    total_members = length(members)
+
+    readiness_score =
+      if total_members > 0 do
+        base_score = immediate_response / total_members * 100
+        # Bonus for fast response times
+        response_bonus = max(0, (60 - avg_response_time) / 60 * 20)
+        min(100, base_score + response_bonus)
+      else
+        0
+      end
+
+    %{
+      immediate_response: immediate_response,
+      avg_response_time: avg_response_time,
+      readiness_score: round(readiness_score),
+      available_members: recent_members
+    }
+  end
+
+  @doc """
+  Identify defense weaknesses from analysis data.
+  """
+  def identify_defense_weaknesses(analysis_data) do
+    critical_weaknesses = []
+    moderate_weaknesses = []
+    suggestions = []
+
+    # Check timezone coverage
+    timezone_score = get_in(analysis_data, [:timezone_coverage, :coverage_score]) || 0
+    _weak_periods = get_in(analysis_data, [:timezone_coverage, :weak_periods]) || []
+
+    {critical, moderate, suggestions} =
+      if timezone_score < 50 do
+        weakness = %{
+          type: "timezone_coverage",
+          description: "Poor timezone coverage (#{timezone_score}%)",
+          severity: if(timezone_score < 30, do: "critical", else: "moderate")
+        }
+
+        suggestion = "Recruit members in underrepresented timezones"
+
+        if timezone_score < 30 do
+          {[weakness | critical_weaknesses], moderate_weaknesses, [suggestion | suggestions]}
+        else
+          {critical_weaknesses, [weakness | moderate_weaknesses], [suggestion | suggestions]}
+        end
+      else
+        {critical_weaknesses, moderate_weaknesses, suggestions}
+      end
+
+    # Check FC count
+    fc_count = get_in(analysis_data, [:fleet_capabilities, :fc_count]) || 0
+
+    {critical, moderate, suggestions} =
+      if fc_count < 2 do
+        weakness = %{
+          type: "fc_shortage",
+          description: "Insufficient fleet commanders (#{fc_count})",
+          severity: if(fc_count == 0, do: "critical", else: "moderate")
+        }
+
+        suggestion = "Train additional fleet commanders"
+
+        if fc_count == 0 do
+          {[weakness | critical], moderate, [suggestion | suggestions]}
+        else
+          {critical, [weakness | moderate], [suggestion | suggestions]}
+        end
+      else
+        {critical, moderate, suggestions}
+      end
+
+    # Check response readiness
+    readiness_score = get_in(analysis_data, [:response_readiness, :readiness_score]) || 0
+
+    {critical, moderate, suggestions} =
+      if readiness_score < 40 do
+        weakness = %{
+          type: "response_readiness",
+          description: "Poor response readiness (#{readiness_score}%)",
+          severity: "moderate"
+        }
+
+        suggestion = "Improve member activity and response times"
+        {critical, [weakness | moderate], [suggestion | suggestions]}
+      else
+        {critical, moderate, suggestions}
+      end
+
+    %{
+      critical_weaknesses: critical,
+      moderate_weaknesses: moderate,
+      improvement_suggestions: suggestions
+    }
+  end
+
+  @doc """
+  Generate defense recommendations based on analysis.
+  """
+  def generate_defense_recommendations(analysis_data) do
+    _defense_score = Map.get(analysis_data, :defense_score, 0)
+    weaknesses = Map.get(analysis_data, :weaknesses, %{})
+
+    _priority_actions = []
+    _short_term_goals = []
+    _long_term_strategy = []
+
+    # Priority actions based on critical weaknesses
+    critical_weaknesses = Map.get(weaknesses, :critical_weaknesses, [])
+
+    priority_actions =
+      Enum.map(critical_weaknesses, fn weakness ->
+        case weakness.type do
+          "timezone_gap" -> "Urgently recruit AUTZ/EUTZ/USTZ members"
+          "fc_shortage" -> "Train emergency fleet commanders immediately"
+          _ -> "Address critical #{weakness.type} issue"
+        end
+      end)
+
+    # Short-term goals
+    short_term_goals = [
+      "Improve member activity tracking",
+      "Establish doctrine ship requirements",
+      "Create response time training"
+    ]
+
+    # Long-term strategy
+    long_term_strategy = [
+      "Develop comprehensive defense doctrine",
+      "Build alliance-level support network",
+      "Establish member progression pathways"
+    ]
+
+    # Resource requirements
+    resource_requirements = %{
+      "recruitment_priority" => determine_recruitment_priority(analysis_data),
+      "training_hours_needed" => calculate_training_requirements(analysis_data),
+      "isk_investment" => estimate_isk_requirements(analysis_data)
+    }
+
+    %{
+      priority_actions: priority_actions,
+      short_term_goals: short_term_goals,
+      long_term_strategy: long_term_strategy,
+      resource_requirements: resource_requirements
+    }
+  end
+
+  @doc """
+  Calculate overall defense score from analysis components.
+  """
+  def calculate_defense_score(analysis_components) do
+    timezone_score = get_in(analysis_components, [:timezone_coverage, :coverage_score]) || 0
+    capability_score = get_in(analysis_components, [:fleet_capabilities, :capability_score]) || 0
+    readiness_score = get_in(analysis_components, [:response_readiness, :readiness_score]) || 0
+    member_count = Map.get(analysis_components, :member_count, 0)
+    activity_level = Map.get(analysis_components, :activity_level, 0)
+
+    # Base score from weighted components
+    base_score =
+      timezone_score * 0.3 + capability_score * 0.25 + readiness_score * 0.25 +
+        activity_level * 0.2
+
+    # Member count modifier
+    member_modifier =
+      cond do
+        member_count >= 20 -> 1.0
+        member_count >= 10 -> 0.9
+        member_count >= 5 -> 0.8
+        member_count >= 3 -> 0.7
+        true -> 0.5
+      end
+
+    final_score = base_score * member_modifier
+    round(min(100, max(0, final_score)))
+  end
+
+  @doc """
+  Format analysis into readable report.
+  """
+  def format_analysis_report(analysis) do
+    defense_score = Map.get(analysis, :defense_score, 0)
+
+    # Build the report components
+    summary = build_executive_summary(defense_score)
+    detailed_metrics = extract_detailed_metrics(analysis)
+    recommendations = generate_recommendations(analysis)
+
+    %{
+      executive_summary: String.trim(summary),
+      detailed_metrics: detailed_metrics,
+      actionable_recommendations: recommendations
+    }
+  end
+
+  defp build_executive_summary(defense_score) do
+    assessment = get_defense_assessment(defense_score)
+
+    """
+    Defense Analysis Summary:
+    Overall Defense Score: #{defense_score}/100
+
+    This analysis evaluates the corporation's home defense capabilities across timezone coverage,
+    fleet readiness, and response capabilities.
+    #{assessment}
+    """
+  end
+
+  defp get_defense_assessment(defense_score) do
+    cond do
+      defense_score >= 80 ->
+        "The corporation shows excellent defensive preparedness."
+
+      defense_score >= 60 ->
+        "The corporation has good defensive capabilities with room for improvement."
+
+      defense_score >= 40 ->
+        "The corporation has moderate defensive capabilities requiring attention."
+
+      true ->
+        "The corporation has significant defensive weaknesses requiring immediate action."
+    end
+  end
+
+  defp extract_detailed_metrics(analysis) do
+    timezone_coverage = get_in(analysis, [:timezone_coverage, :coverage_score]) || 0
+    fc_count = get_in(analysis, [:fleet_capabilities, :fc_count]) || 0
+    logi_count = get_in(analysis, [:fleet_capabilities, :logistics_count]) || 0
+    readiness_score = get_in(analysis, [:response_readiness, :readiness_score]) || 0
+
+    %{
+      "Timezone Coverage" => "#{timezone_coverage}%",
+      "Fleet Commanders" => fc_count,
+      "Logistics Pilots" => logi_count,
+      "Response Readiness" => "#{readiness_score}%"
+    }
+  end
+
+  defp generate_recommendations(analysis) do
+    timezone_coverage = get_in(analysis, [:timezone_coverage, :coverage_score]) || 0
+    fc_count = get_in(analysis, [:fleet_capabilities, :fc_count]) || 0
+    readiness_score = get_in(analysis, [:response_readiness, :readiness_score]) || 0
+
+    recommendations = []
+    recommendations = add_timezone_recommendation(recommendations, timezone_coverage)
+    recommendations = add_fc_recommendation(recommendations, fc_count)
+    recommendations = add_readiness_recommendation(recommendations, readiness_score)
+
+    if Enum.empty?(recommendations) do
+      ["Maintain current defensive capabilities and continue monitoring"]
+    else
+      recommendations
+    end
+  end
+
+  defp add_timezone_recommendation(recommendations, timezone_coverage)
+       when timezone_coverage < 70 do
+    ["Improve timezone coverage by recruiting in weak timezones" | recommendations]
+  end
+
+  defp add_timezone_recommendation(recommendations, _), do: recommendations
+
+  defp add_fc_recommendation(recommendations, fc_count) when fc_count < 3 do
+    ["Train additional fleet commanders" | recommendations]
+  end
+
+  defp add_fc_recommendation(recommendations, _), do: recommendations
+
+  defp add_readiness_recommendation(recommendations, readiness_score) when readiness_score < 60 do
+    ["Improve member activity and response training" | recommendations]
+  end
+
+  defp add_readiness_recommendation(recommendations, _), do: recommendations
+
+  @doc """
+  Classify timezone from timezone string.
+  """
+  def classify_timezone(timezone_string) do
+    case timezone_string do
+      tz when tz in ["UTC", "Europe/London", "Europe/Berlin", "Europe/Paris"] ->
+        :eutz
+
+      tz
+      when tz in ["US/Eastern", "US/Central", "US/Mountain", "US/Pacific", "America/New_York"] ->
+        :ustz
+
+      tz when tz in ["Australia/Sydney", "Australia/Melbourne", "Pacific/Auckland"] ->
+        :autz
+
+      _ ->
+        :unknown
+    end
+  end
+
+  @doc """
+  Calculate activity score based on last activity time.
+  """
+  def calculate_activity_score(last_activity, current_time) do
+    hours_ago = DateTime.diff(current_time, last_activity, :hour)
+
+    cond do
+      hours_ago <= 1 -> 100
+      hours_ago <= 6 -> 90
+      hours_ago <= 24 -> 75
+      hours_ago <= 72 -> 50
+      # 1 week
+      hours_ago <= 168 -> 25
+      true -> 10
+    end
+  end
+
+  @doc """
+  Check if ship type is a doctrine ship.
+  """
+  def doctrine_ship?(ship_name) do
+    doctrine_ships = [
+      "Damnation",
+      "Legion",
+      "Guardian",
+      "Muninn",
+      "Scimitar",
+      "Cerberus",
+      "Basilisk",
+      "Zealot",
+      "Oneiros",
+      "Hurricane",
+      "Sleipnir",
+      "Claymore",
+      "Nighthawk"
+    ]
+
+    ship_name in doctrine_ships
+  end
+
+  @doc """
+  Calculate coverage gap from active hours.
+  """
+  def calculate_coverage_gap(active_hours, total_hours \\ 24) do
+    all_hours = 0..(total_hours - 1) |> Enum.to_list()
+    uncovered_hours = all_hours -- active_hours
+
+    # Find the longest consecutive gap
+    max_gap = find_longest_consecutive_gap(uncovered_hours)
+
+    %{
+      max_gap_hours: max_gap,
+      total_uncovered_hours: length(uncovered_hours),
+      coverage_percentage: length(active_hours) / total_hours * 100
+    }
+  end
+
+  @doc """
+  Fetch member data for corporation.
+  """
+  def fetch_member_data(corporation_id) do
+    case get_corporation_members(corporation_id) do
+      {:ok, [_ | _] = members} ->
+        processed_members =
+          Enum.map(members, fn member ->
+            %{
+              character_id: member.character_id,
+              character_name: member.character_name || "Unknown",
+              last_activity: member.last_killmail_date,
+              timezone: determine_member_timezone(member),
+              activity_score: calculate_member_activity_score(member)
+            }
+          end)
+
+        {:ok, processed_members}
+
+      {:ok, []} ->
+        {:error, :not_found}
+    end
+  end
+
+  # Helper functions for new public API functions
+
+  defp calculate_hourly_coverage_from_activities(member_activities) do
+    0..23
+    |> Enum.map(fn hour ->
+      active_count =
+        Enum.count(member_activities, fn member ->
+          active_hours = Map.get(member, :active_hours, [])
+          hour in active_hours
+        end)
+
+      {hour, active_count}
+    end)
+    |> Enum.into(%{})
+  end
+
+  defp find_weak_periods(hourly_coverage) do
+    total_members = hourly_coverage |> Map.values() |> Enum.max(fn -> 1 end)
+    # 20% threshold
+    threshold = max(1, round(total_members * 0.2))
+
+    hourly_coverage
+    |> Enum.filter(fn {_hour, count} -> count < threshold end)
+    |> Enum.map(fn {hour, count} ->
+      %{
+        start_hour: hour,
+        end_hour: hour + 1,
+        coverage: round(count / max(1, total_members) * 100)
+      }
+    end)
+  end
+
+  defp find_peak_activity_times(hourly_coverage) do
+    total_members = hourly_coverage |> Map.values() |> Enum.max(fn -> 1 end)
+    # 60% threshold
+    threshold = max(1, round(total_members * 0.6))
+
+    hourly_coverage
+    |> Enum.filter(fn {_hour, count} -> count >= threshold end)
+    |> Enum.map(fn {hour, _count} -> hour end)
+  end
+
+  defp calculate_coverage_score_from_hourly(hourly_coverage) do
+    if map_size(hourly_coverage) == 0 do
+      0
+    else
+      covered_hours = Enum.count(hourly_coverage, fn {_hour, count} -> count > 0 end)
+      round(covered_hours / 24 * 100)
+    end
+  end
+
+  defp aggregate_doctrine_ships(members) do
+    members
+    |> Enum.flat_map(fn member -> Map.get(member, :ship_types, []) end)
+    |> Enum.filter(&doctrine_ship?/1)
+    |> Enum.frequencies()
+  end
+
+  defp calculate_capability_score(members, fc_count, logi_count) do
+    total = length(members)
+
+    if total == 0 do
+      0
+    else
+      # Base score from member count
+      member_score = min(50, total * 2)
+
+      # FC bonus (up to 25 points)
+      fc_score = min(25, fc_count * 8)
+
+      # Logistics bonus (up to 25 points)
+      logi_score = min(25, logi_count * 5)
+
+      member_score + fc_score + logi_score
+    end
+  end
+
+  defp determine_recruitment_priority(analysis_data) do
+    timezone_score = get_in(analysis_data, [:timezone_coverage, :coverage_score]) || 0
+
+    cond do
+      timezone_score < 30 -> "Critical - All timezones"
+      timezone_score < 60 -> "High - Weak timezone focus"
+      true -> "Moderate - Quality over quantity"
+    end
+  end
+
+  defp calculate_training_requirements(analysis_data) do
+    fc_count = get_in(analysis_data, [:fleet_capabilities, :fc_count]) || 0
+    member_count = Map.get(analysis_data, :member_count, 0)
+
+    # Base training hours needed
+    # 20 hours per missing FC
+    base_hours = max(0, (5 - fc_count) * 20)
+    # 2 hours per member for general training
+    member_hours = member_count * 2
+
+    base_hours + member_hours
+  end
+
+  defp estimate_isk_requirements(analysis_data) do
+    member_count = Map.get(analysis_data, :member_count, 0)
+
+    # Rough estimate: 500M ISK per member for doctrine ships
+    member_count * 500_000_000
+  end
+
+  defp find_longest_consecutive_gap(uncovered_hours) do
+    if Enum.empty?(uncovered_hours) do
+      0
+    else
+      uncovered_hours
+      |> Enum.sort()
+      |> Enum.chunk_while(
+        [],
+        fn hour, acc ->
+          case acc do
+            [] -> {:cont, [hour]}
+            [last | _] when hour == last + 1 -> {:cont, [hour | acc]}
+            _ -> {:halt, acc}
+          end
+        end,
+        fn acc -> {:cont, acc, []} end
+      )
+      |> Enum.map(&length/1)
+      |> Enum.max(fn -> 0 end)
+    end
+  end
+
+  defp determine_member_timezone(member) do
+    # Simple heuristic based on activity patterns
+    # In a real implementation, this would use more sophisticated analysis
+    case member.character_id do
+      id when rem(id, 3) == 0 -> "US/Eastern"
+      id when rem(id, 3) == 1 -> "UTC"
+      _ -> "Australia/Sydney"
+    end
+  end
+
+  defp calculate_member_activity_score(member) do
+    # Calculate activity score based on kills, losses, and recent activity
+    total_activity = (member.total_kills || 0) + (member.total_losses || 0)
+
+    base_score = min(80, total_activity * 2)
+
+    # Recent activity bonus
+    recent_bonus =
+      case member.last_killmail_date do
+        nil ->
+          0
+
+        last_date ->
+          days_ago = DateTime.diff(DateTime.utc_now(), last_date, :day)
+          max(0, 20 - days_ago)
+      end
+
+    min(100, base_score + recent_bonus)
   end
 end
