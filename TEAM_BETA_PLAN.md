@@ -36,7 +36,82 @@ git add -A && git commit -m "descriptive message"
 ### **Week 1: WAIT FOR TEAM ALPHA** ⏸️
 **IMPORTANT**: Do not start until Team Alpha completes security fixes
 
-#### Task 1.1: Clean Up Dead Code While Waiting
+#### Task 1.1: Configure Unique Development Ports
+**IMPORTANT**: Configure unique ports for Team Beta devcontainer to avoid conflicts with other teams.
+
+**File**: `.devcontainer/devcontainer.json` (Beta worktree)
+```json
+{
+  "name": "EVE DMV Beta Team Dev Container",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspace",
+  "shutdownAction": "stopCompose",
+  "forwardPorts": [4012, 5435, 6382],
+  "portsAttributes": {
+    "4012": {
+      "label": "Phoenix Server (Beta)",
+      "onAutoForward": "notify"
+    },
+    "5435": {
+      "label": "PostgreSQL (Beta)"
+    },
+    "6382": {
+      "label": "Redis (Beta)"
+    }
+  }
+}
+```
+
+**File**: `docker-compose.yml` (Beta worktree)
+```yaml
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: eve_tracker_db_beta
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: eve_tracker_beta
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - postgres_data_beta:/var/lib/postgresql/data
+    ports:
+      - "5435:5432"
+
+  redis:
+    image: redis:7-alpine
+    container_name: eve_tracker_redis_beta
+    volumes:
+      - redis_data_beta:/data
+    ports:
+      - "6382:6379"
+
+  app:
+    container_name: eve_tracker_app_beta
+    environment:
+      - DATABASE_URL=ecto://postgres:postgres@db/eve_tracker_beta
+      - REDIS_URL=redis://redis:6379
+      - PHX_HOST=localhost
+      - PHX_PORT=4012
+    ports:
+      - "4012:4012"
+
+volumes:
+  postgres_data_beta:
+  redis_data_beta:
+  mix_deps_beta:
+  mix_build_beta:
+```
+
+**File**: `config/dev.exs` (Beta worktree)
+```elixir
+config :eve_dmv, EveDmvWeb.Endpoint,
+  http: [ip: {127, 0, 0, 1}, port: 4012],
+  # ... rest of config
+```
+
+#### Task 1.2: Clean Up Dead Code While Waiting
 **Safe files to clean (no dependencies)**:
 
 Move test files to proper locations:

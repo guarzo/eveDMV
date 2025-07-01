@@ -38,7 +38,82 @@ git add -A && git commit -m "descriptive message"
 ### **Week 1: WAIT FOR TEAM ALPHA** ⏸️
 **IMPORTANT**: Do not start until Team Alpha completes security fixes
 
-#### Task 1.1: File Organization While Waiting
+#### Task 1.1: Configure Unique Development Ports
+**IMPORTANT**: Configure unique ports for Team Gamma devcontainer to avoid conflicts with other teams.
+
+**File**: `.devcontainer/devcontainer.json` (Gamma worktree)
+```json
+{
+  "name": "EVE DMV Gamma Team Dev Container",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspace",
+  "shutdownAction": "stopCompose",
+  "forwardPorts": [4013, 5436, 6383],
+  "portsAttributes": {
+    "4013": {
+      "label": "Phoenix Server (Gamma)",
+      "onAutoForward": "notify"
+    },
+    "5436": {
+      "label": "PostgreSQL (Gamma)"
+    },
+    "6383": {
+      "label": "Redis (Gamma)"
+    }
+  }
+}
+```
+
+**File**: `docker-compose.yml` (Gamma worktree)
+```yaml
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: eve_tracker_db_gamma
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: eve_tracker_gamma
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - postgres_data_gamma:/var/lib/postgresql/data
+    ports:
+      - "5436:5432"
+
+  redis:
+    image: redis:7-alpine
+    container_name: eve_tracker_redis_gamma
+    volumes:
+      - redis_data_gamma:/data
+    ports:
+      - "6383:6379"
+
+  app:
+    container_name: eve_tracker_app_gamma
+    environment:
+      - DATABASE_URL=ecto://postgres:postgres@db/eve_tracker_gamma
+      - REDIS_URL=redis://redis:6379
+      - PHX_HOST=localhost
+      - PHX_PORT=4013
+    ports:
+      - "4013:4013"
+
+volumes:
+  postgres_data_gamma:
+  redis_data_gamma:
+  mix_deps_gamma:
+  mix_build_gamma:
+```
+
+**File**: `config/dev.exs` (Gamma worktree)
+```elixir
+config :eve_dmv, EveDmvWeb.Endpoint,
+  http: [ip: {127, 0, 0, 1}, port: 4013],
+  # ... rest of config
+```
+
+#### Task 1.2: File Organization While Waiting
 **Safe tasks with no dependencies**:
 
 Remove duplicate function definitions:
@@ -264,7 +339,263 @@ end
 
 ### **Week 4: Continue Module Splitting** 📦
 
-#### Task 4.1: Split WH Fleet Analyzer
+#### Task 4.1: Create Team Coordination Scripts
+Create shell scripts for managing multi-team git workflow with worktrees.
+
+**File**: `scripts/merge_team_branch.sh`
+```bash
+#!/bin/bash
+set -e
+
+# Script to merge a team's branch into gamma (integration branch)
+# Usage: ./scripts/merge_team_branch.sh [team_name]
+# Example: ./scripts/merge_team_branch.sh alpha
+
+TEAM_NAME="${1}"
+
+if [ -z "$TEAM_NAME" ]; then
+    echo "Usage: $0 [team_name]"
+    echo "Available teams: alpha, beta, delta"
+    exit 1
+fi
+
+# Validate team name
+if [[ ! "$TEAM_NAME" =~ ^(alpha|beta|delta)$ ]]; then
+    echo "Error: Invalid team name. Must be one of: alpha, beta, delta"
+    exit 1
+fi
+
+# Get worktree paths dynamically
+GAMMA_PATH=$(git worktree list | grep "\[gamma\]" | awk '{print $1}')
+TEAM_PATH=$(git worktree list | grep "\[${TEAM_NAME}\]" | awk '{print $1}')
+
+if [ -z "$GAMMA_PATH" ]; then
+    echo "Error: Gamma worktree not found"
+    exit 1
+fi
+
+if [ -z "$TEAM_PATH" ]; then
+    echo "Error: ${TEAM_NAME} worktree not found"
+    exit 1
+fi
+
+echo "🔄 Merging ${TEAM_NAME} branch into gamma..."
+echo "Gamma path: $GAMMA_PATH"
+echo "Team path: $TEAM_PATH"
+
+# Switch to gamma worktree
+cd "$GAMMA_PATH"
+
+# Ensure we're on gamma branch
+git checkout gamma
+
+# Fetch latest changes
+git fetch origin
+
+# Ensure gamma is up to date
+git pull origin gamma
+
+# Switch to team worktree to get latest changes
+cd "$TEAM_PATH"
+git checkout "$TEAM_NAME"
+git pull origin "$TEAM_NAME"
+
+# Get the latest commit hash from team branch
+TEAM_COMMIT=$(git rev-parse HEAD)
+
+# Switch back to gamma
+cd "$GAMMA_PATH"
+
+# Merge team branch into gamma
+echo "📝 Merging commit $TEAM_COMMIT from $TEAM_NAME into gamma"
+git merge --no-ff "$TEAM_NAME" -m "Merge team $TEAM_NAME into gamma
+
+Weekly integration merge from $TEAM_NAME team.
+Commit: $TEAM_COMMIT
+
+🤖 Generated merge via team coordination script"
+
+# Run quality checks after merge
+echo "🔍 Running quality checks after merge..."
+mix format
+mix credo --strict
+
+# Check if tests pass
+echo "🧪 Running tests..."
+if mix test --warnings-as-errors; then
+    echo "✅ All tests pass after merge"
+else
+    echo "❌ Tests failed after merge - manual intervention required"
+    exit 1
+fi
+
+echo "✅ Successfully merged $TEAM_NAME into gamma"
+echo "📋 Next steps:"
+echo "  1. Review the merged changes"
+echo "  2. Run ./scripts/rebase_gamma_to_teams.sh to update other teams"
+echo "  3. Push gamma branch: git push origin gamma"
+```
+
+**File**: `scripts/rebase_gamma_to_teams.sh`
+```bash
+#!/bin/bash
+set -e
+
+# Script to rebase gamma changes to all team branches
+# Usage: ./scripts/rebase_gamma_to_teams.sh
+# This updates all team branches with the latest gamma integration
+
+echo "🔄 Rebasing gamma changes to all team branches..."
+
+# Get gamma worktree path
+GAMMA_PATH=$(git worktree list | grep "\[gamma\]" | awk '{print $1}')
+
+if [ -z "$GAMMA_PATH" ]; then
+    echo "Error: Gamma worktree not found"
+    exit 1
+fi
+
+# Get all team worktrees dynamically (exclude main branches)
+TEAM_WORKTREES=$(git worktree list | grep -E "\[(alpha|beta|delta)\]" | awk '{print $1 ":" $NF}' | sed 's/\[//g' | sed 's/\]//g')
+
+if [ -z "$TEAM_WORKTREES" ]; then
+    echo "Warning: No team worktrees found"
+    exit 0
+fi
+
+# Ensure gamma is up to date
+cd "$GAMMA_PATH"
+git checkout gamma
+git fetch origin
+git pull origin gamma
+
+GAMMA_COMMIT=$(git rev-parse HEAD)
+echo "📍 Rebasing from gamma commit: $GAMMA_COMMIT"
+
+# Rebase each team branch
+echo "$TEAM_WORKTREES" | while IFS=':' read -r WORKTREE_PATH BRANCH_NAME; do
+    echo ""
+    echo "🔄 Processing team: $BRANCH_NAME"
+    echo "   Path: $WORKTREE_PATH"
+    
+    # Switch to team worktree
+    cd "$WORKTREE_PATH"
+    
+    # Ensure we're on the correct branch
+    git checkout "$BRANCH_NAME"
+    
+    # Fetch latest changes
+    git fetch origin
+    
+    # Check if branch has uncommitted changes
+    if ! git diff --quiet || ! git diff --cached --quiet; then
+        echo "⚠️  Warning: $BRANCH_NAME has uncommitted changes - skipping rebase"
+        echo "   Please commit or stash changes in $WORKTREE_PATH"
+        continue
+    fi
+    
+    # Get current commit before rebase
+    BEFORE_COMMIT=$(git rev-parse HEAD)
+    
+    # Perform rebase
+    echo "📝 Rebasing $BRANCH_NAME onto gamma..."
+    if git rebase gamma; then
+        AFTER_COMMIT=$(git rev-parse HEAD)
+        
+        if [ "$BEFORE_COMMIT" != "$AFTER_COMMIT" ]; then
+            echo "✅ Successfully rebased $BRANCH_NAME"
+            echo "   Before: $BEFORE_COMMIT"
+            echo "   After:  $AFTER_COMMIT"
+            
+            # Run quality checks after rebase
+            echo "🔍 Running quick quality check..."
+            if command -v mix >/dev/null 2>&1; then
+                mix format --check-formatted || {
+                    echo "⚠️  Formatting issues detected in $BRANCH_NAME - please run 'mix format'"
+                }
+            fi
+        else
+            echo "ℹ️  $BRANCH_NAME already up to date with gamma"
+        fi
+    else
+        echo "❌ Rebase failed for $BRANCH_NAME - manual intervention required"
+        echo "   Path: $WORKTREE_PATH"
+        echo "   Please resolve conflicts manually and run 'git rebase --continue'"
+        
+        # Abort the failed rebase
+        git rebase --abort
+        continue
+    fi
+done
+
+echo ""
+echo "✅ Rebase operation completed"
+echo "📋 Summary:"
+git worktree list
+echo ""
+echo "📝 Next steps for each team:"
+echo "  1. Review rebased changes in their worktree"
+echo "  2. Run quality checks: mix format && mix credo && mix test"
+echo "  3. Push updated branches: git push origin [branch-name]"
+echo ""
+echo "⚠️  Note: Teams should verify their changes still work after rebase"
+```
+
+**File**: `scripts/setup_team_worktrees.sh` (bonus utility)
+```bash
+#!/bin/bash
+set -e
+
+# Script to set up team worktrees for the first time
+# Usage: ./scripts/setup_team_worktrees.sh
+
+BASE_DIR="$(dirname "$(pwd)")"
+TEAMS=("alpha" "beta" "gamma" "delta")
+
+echo "🏗️  Setting up team worktrees..."
+echo "Base directory: $BASE_DIR"
+
+for TEAM in "${TEAMS[@]}"; do
+    WORKTREE_PATH="$BASE_DIR/$TEAM"
+    
+    if [ -d "$WORKTREE_PATH" ]; then
+        echo "⚠️  Worktree already exists: $WORKTREE_PATH"
+        continue
+    fi
+    
+    echo "📁 Creating worktree for team $TEAM at $WORKTREE_PATH"
+    
+    # Create branch if it doesn't exist
+    if ! git show-ref --verify --quiet "refs/heads/$TEAM"; then
+        echo "🌿 Creating branch: $TEAM"
+        git branch "$TEAM"
+    fi
+    
+    # Create worktree
+    git worktree add "$WORKTREE_PATH" "$TEAM"
+    
+    echo "✅ Created worktree for $TEAM"
+done
+
+echo ""
+echo "✅ All team worktrees set up successfully"
+echo "📋 Worktree list:"
+git worktree list
+echo ""
+echo "📝 Teams can now work in their respective directories:"
+for TEAM in "${TEAMS[@]}"; do
+    echo "  Team $TEAM: $BASE_DIR/$TEAM"
+done
+```
+
+Make all scripts executable:
+```bash
+chmod +x scripts/merge_team_branch.sh
+chmod +x scripts/rebase_gamma_to_teams.sh
+chmod +x scripts/setup_team_worktrees.sh
+```
+
+#### Task 4.2: Split WH Fleet Analyzer
 **File**: `lib/eve_dmv/intelligence/wh_fleet_analyzer.ex` (1,596 lines)
 
 Break into focused modules:
