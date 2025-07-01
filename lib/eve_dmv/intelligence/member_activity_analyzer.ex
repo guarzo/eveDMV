@@ -579,10 +579,13 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
         total_historical_activity =
           Enum.sum(Enum.map(member_activities, &Map.get(&1, :killmail_count, 0)))
 
-        activity_change_percent = calculate_activity_change_percent(
-          total_recent_activity, recent_activities,
-          total_historical_activity, member_activities
-        )
+        activity_change_percent =
+          calculate_activity_change_percent(
+            total_recent_activity,
+            recent_activities,
+            total_historical_activity,
+            member_activities
+          )
 
         {trend_direction, trend_strength} = determine_trend_direction(activity_change_percent)
 
@@ -1315,8 +1318,12 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
     end)
   end
 
-  defp calculate_activity_change_percent(total_recent_activity, recent_activities,
-                                        total_historical_activity, member_activities) do
+  defp calculate_activity_change_percent(
+         total_recent_activity,
+         recent_activities,
+         total_historical_activity,
+         member_activities
+       ) do
     if total_historical_activity > 0 do
       (total_recent_activity / max(1, length(recent_activities)) -
          total_historical_activity / max(1, length(member_activities))) /

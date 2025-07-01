@@ -798,9 +798,13 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
     }
   end
 
-  defp calculate_danger_score(%{total_kills: total_kills, total_losses: total_losses,
-                                solo_kills: solo_kills, isk_destroyed: isk_destroyed,
-                                avg_gang_size: avg_gang_size}) do
+  defp calculate_danger_score(%{
+         total_kills: total_kills,
+         total_losses: total_losses,
+         solo_kills: solo_kills,
+         isk_destroyed: isk_destroyed,
+         avg_gang_size: avg_gang_size
+       }) do
     kd_score = calculate_kd_score(total_kills, total_losses)
     solo_score = calculate_solo_score(solo_kills, total_kills)
     isk_score = calculate_isk_score(isk_destroyed)
@@ -835,11 +839,16 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
 
   defp convert_score_to_rating(score) do
     cond do
-      score >= 45 -> 5  # Extremely dangerous
-      score >= 35 -> 4  # Very dangerous
-      score >= 25 -> 3  # Moderately dangerous
-      score >= 15 -> 2  # Slightly dangerous
-      true -> 1         # Low threat
+      # Extremely dangerous
+      score >= 45 -> 5
+      # Very dangerous
+      score >= 35 -> 4
+      # Moderately dangerous
+      score >= 25 -> 3
+      # Slightly dangerous
+      score >= 15 -> 2
+      # Low threat
+      true -> 1
     end
   end
 
