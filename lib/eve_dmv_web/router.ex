@@ -36,6 +36,7 @@ defmodule EveDmvWeb.Router do
     live "/surveillance", SurveillanceLive
     live "/chain-intelligence", ChainIntelligenceLive
     live "/chain-intelligence/:map_id", ChainIntelligenceLive
+    live "/wh-vetting", WHVettingLive
   end
 
   # Authentication routes
