@@ -19,7 +19,8 @@ echo "📊 Baseline coverage: $BASELINE%"
 
 # Run tests with coverage
 echo "🔍 Running tests with coverage..."
-MIX_ENV=test mix test --cover 2>&1 | tee coverage_output.txt
+export MIX_ENV=test
+mix test --cover 2>&1 | tee coverage_output.txt
 
 # Parse coverage percentage
 CURRENT_COVERAGE=$(grep '\[TOTAL\]' coverage_output.txt | grep -o '[0-9]*\.[0-9]*%' | sed 's/%//')

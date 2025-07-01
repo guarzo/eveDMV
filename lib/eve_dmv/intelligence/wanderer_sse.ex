@@ -161,6 +161,9 @@ defmodule EveDmv.Intelligence.WandererSSE do
 
     parent_pid = self()
 
+    # Note: Current approach uses spawn_link which ensures the SSE connection
+    # is terminated if the parent GenServer crashes. This is acceptable
+    # for SSE connections as they need to be tightly coupled to their parent.
     connection_pid =
       spawn_link(fn ->
         sse_loop(map_id, url, headers, parent_pid)

@@ -37,7 +37,7 @@ config :eve_dmv, EveDmvWeb.Endpoint,
   # Bind to 0.0.0.0 to expose the server to the docker host machine.
   # This makes make the service accessible from any network interface.
   # Change to `ip: {127, 0, 0, 1}` to allow access only from the server machine.
-  http: [ip: {0, 0, 0, 0}, port: String.to_integer(System.get_env("PHX_PORT") || "4010")],
+  http: [ip: {0, 0, 0, 0}, port: String.to_integer(System.get_env("PHX_PORT") || "4014")],
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
@@ -107,7 +107,7 @@ config :eve_dmv, EveDmv.Repo,
   username: "postgres",
   password: "postgres",
   hostname: "db",
-  database: "eve_tracker_dev",
+  database: "eve_tracker_delta",
   port: 5432,
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,

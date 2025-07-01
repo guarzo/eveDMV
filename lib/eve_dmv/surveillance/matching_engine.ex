@@ -47,6 +47,15 @@ defmodule EveDmv.Surveillance.MatchingEngine do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
+  def child_spec(opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [opts]},
+      # 15 seconds for batch processing
+      shutdown: 15_000
+    }
+  end
+
   @doc """
   Match a killmail against all active surveillance profiles.
 
