@@ -21,8 +21,8 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
       frequent_associates: identify_frequent_associates(character_id, killmail_data),
       success_rate:
         calculate_success_rate(
-          get_in(basic_info, [:kills, :count], 0),
-          get_in(basic_info, [:losses, :count], 0)
+          Map.get(Map.get(basic_info, :kills, %{}), :count, 0),
+          Map.get(Map.get(basic_info, :losses, %{}), :count, 0)
         )
     }
   end

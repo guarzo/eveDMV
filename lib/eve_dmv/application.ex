@@ -33,6 +33,8 @@ defmodule EveDmv.Application do
       EveDmv.Telemetry.QueryMonitor,
       # Start the query result cache
       EveDmv.Database.QueryCache,
+      # Start the intelligent cache warmer
+      EveDmv.Database.CacheWarmer,
       # Start the re-enrichment worker
       EveDmv.Enrichment.ReEnrichmentWorker,
       # Start the real-time price updater

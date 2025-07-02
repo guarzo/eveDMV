@@ -12,21 +12,59 @@ defmodule EveDmvWeb.AuthLive do
   end
 
   defp assign_current_user(socket, session) do
-    # Get current user from session using user ID
+    # Check session timeout first
     current_user =
-      case Map.get(session, "current_user_id") do
-        nil ->
+      case check_session_timeout(session) do
+        :timeout ->
           nil
 
-        user_id ->
-          # Load user by ID from database
-          case Ash.get(EveDmv.Users.User, user_id, domain: EveDmv.Api) do
-            {:ok, user} -> user
-            _ -> nil
+        :valid ->
+          # Get current user from session using user ID
+          case Map.get(session, "current_user_id") do
+            nil ->
+              nil
+
+            user_id ->
+              # Load user by ID from database
+              case Ash.get(EveDmv.Users.User, user_id, domain: EveDmv.Api) do
+                {:ok, user} -> user
+                _ -> nil
+              end
           end
       end
 
-    assign(socket, current_user: current_user)
+    socket = assign(socket, current_user: current_user)
+
+    # If session timed out, schedule a timeout message
+    if current_user == nil and Map.get(session, "current_user_id") do
+      Process.send_after(self(), :session_timeout, 100)
+    end
+
+    socket
+  end
+
+  # Check if the session has timed out based on last activity.
+  defp check_session_timeout(session) do
+    session_timeout = Application.get_env(:eve_dmv, :session_timeout_hours, 24) * 60 * 60 * 1000
+
+    case Map.get(session, "last_activity") do
+      nil ->
+        # No last activity timestamp, consider valid for now
+        :valid
+
+      last_activity when is_integer(last_activity) ->
+        current_time = System.system_time(:millisecond)
+
+        if current_time - last_activity > session_timeout do
+          :timeout
+        else
+          :valid
+        end
+
+      _ ->
+        # Invalid timestamp format, consider timed out
+        :timeout
+    end
   end
 
   defmodule SignIn do
@@ -45,6 +83,14 @@ defmodule EveDmvWeb.AuthLive do
       else
         {:ok, assign(socket, :page_title, "Sign In")}
       end
+    end
+
+    @impl true
+    def handle_info(:session_timeout, socket) do
+      {:noreply,
+       socket
+       |> put_flash(:error, "Your session has expired. Please sign in again.")
+       |> push_navigate(to: ~p"/login")}
     end
 
     @impl true

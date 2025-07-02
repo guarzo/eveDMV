@@ -319,16 +319,21 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
     cutoff_date = DateTime.add(DateTime.utc_now(), -365, :day)
 
     participant_query =
-      Participant
-      |> Ash.Query.new()
-      |> Ash.Query.filter(character_id == ^character_id)
-      |> Ash.Query.filter(updated_at >= ^cutoff_date)
-      |> Ash.Query.filter(
-        case type do
-          :kills -> is_victim == false
-          :losses -> is_victim == true
-        end
-      )
+      case type do
+        :kills ->
+          Participant
+          |> Ash.Query.new()
+          |> Ash.Query.filter(character_id == ^character_id)
+          |> Ash.Query.filter(updated_at >= ^cutoff_date)
+          |> Ash.Query.filter(is_victim == false)
+
+        :losses ->
+          Participant
+          |> Ash.Query.new()
+          |> Ash.Query.filter(character_id == ^character_id)
+          |> Ash.Query.filter(updated_at >= ^cutoff_date)
+          |> Ash.Query.filter(is_victim == true)
+      end
 
     case Ash.count(participant_query, domain: Api) do
       {:ok, count} ->

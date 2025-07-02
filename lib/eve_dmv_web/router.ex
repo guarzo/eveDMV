@@ -14,12 +14,26 @@ defmodule EveDmvWeb.Router do
     plug :protect_from_forgery
     plug :put_secure_browser_headers
     plug EveDmvWeb.Plugs.SecurityHeaders
+    plug EveDmvWeb.Plugs.SessionActivity
     plug :load_from_session
   end
 
   pipeline :api do
     plug :accepts, ["json"]
     plug :load_from_bearer
+  end
+
+  pipeline :auth do
+    plug :accepts, ["html"]
+    plug :fetch_session
+    plug :fetch_live_flash
+    plug :put_root_layout, html: {EveDmvWeb.Layouts, :root}
+    plug :protect_from_forgery
+    plug :put_secure_browser_headers
+    plug EveDmvWeb.Plugs.SecurityHeaders
+    plug EveDmvWeb.Plugs.AuthRateLimiter
+    plug EveDmvWeb.Plugs.SessionActivity
+    plug :load_from_session
   end
 
   scope "/", EveDmvWeb do
@@ -29,7 +43,6 @@ defmodule EveDmvWeb.Router do
     live "/feed", KillFeedLive
     live "/dashboard", DashboardLive
     live "/profile", ProfileLive
-    live "/login", AuthLive.SignIn
     live "/intel/:character_id", CharacterIntelLive
     live "/player/:character_id", PlayerProfileLive
     live "/corp/:corporation_id", CorporationLive
@@ -42,7 +55,7 @@ defmodule EveDmvWeb.Router do
 
   # Authentication routes
   scope "/auth", EveDmvWeb do
-    pipe_through :browser
+    pipe_through :auth
 
     # AshAuthentication routes for EVE SSO
     sign_in_route()
@@ -50,9 +63,16 @@ defmodule EveDmvWeb.Router do
     reset_route([])
   end
 
+  # Login page with rate limiting
+  scope "/", EveDmvWeb do
+    pipe_through :auth
+
+    live "/login", AuthLive.SignIn
+  end
+
   # OAuth routes need to be outside /auth scope to avoid double prefix
   scope "/", EveDmvWeb do
-    pipe_through :browser
+    pipe_through :auth
 
     auth_routes_for(EveDmv.Users.User, to: AuthController)
   end
