@@ -7,6 +7,7 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
   """
 
   require Logger
+  require Ash.Query
 
   alias EveDmv.Api
   alias EveDmv.Eve.EsiClient
@@ -279,51 +280,68 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
 
   # Helper functions for specific analyses
   defp get_j_space_killmails(character_id, type) do
-    # J-space systems typically have negative security or are in specific regions
-    # This is a simplified implementation
-    case Ash.read(KillmailEnriched, domain: Api) do
-      {:ok, killmails} ->
-        case type do
-          :kills ->
-            Enum.filter(killmails, fn km ->
-              has_character_participation?(km, character_id, :attacker) and
-                j_space_system?(km.system_id)
-            end)
+    # Query actual J-space killmails for the character
+    cutoff_date = DateTime.add(DateTime.utc_now(), -365, :day)
 
-          :losses ->
-            Enum.filter(killmails, fn km ->
-              has_character_participation?(km, character_id, :victim) and
-                j_space_system?(km.system_id)
-            end)
-        end
+    participant_query =
+      Participant
+      |> Ash.Query.new()
+      |> Ash.Query.filter(character_id == ^character_id)
+      |> Ash.Query.filter(updated_at >= ^cutoff_date)
+      |> Ash.Query.load(:killmail_enriched)
 
-      {:error, _} ->
+    case Ash.read(participant_query, domain: Api) do
+      {:ok, participants} ->
+        participants
+        |> Enum.filter(fn p ->
+          km = p.killmail_enriched
+
+          km && j_space_system?(km.solar_system_id) &&
+            case type do
+              :kills -> not p.is_victim
+              :losses -> p.is_victim
+            end
+        end)
+        |> Enum.map(& &1.killmail_enriched)
+        |> Enum.uniq_by(& &1.killmail_id)
+
+      {:error, reason} ->
+        Logger.error("Failed to get J-space killmails: #{inspect(reason)}")
         []
     end
   rescue
-    _ -> []
+    error ->
+      Logger.error("Error getting J-space killmails: #{inspect(error)}")
+      []
   end
 
   defp get_total_killmails(character_id, type) do
-    case Ash.read(KillmailEnriched, domain: Api) do
-      {:ok, killmails} ->
+    cutoff_date = DateTime.add(DateTime.utc_now(), -365, :day)
+
+    participant_query =
+      Participant
+      |> Ash.Query.new()
+      |> Ash.Query.filter(character_id == ^character_id)
+      |> Ash.Query.filter(updated_at >= ^cutoff_date)
+      |> Ash.Query.filter(
         case type do
-          :kills ->
-            Enum.count(killmails, fn km ->
-              has_character_participation?(km, character_id, :attacker)
-            end)
-
-          :losses ->
-            Enum.count(killmails, fn km ->
-              has_character_participation?(km, character_id, :victim)
-            end)
+          :kills -> is_victim == false
+          :losses -> is_victim == true
         end
+      )
 
-      {:error, _} ->
+    case Ash.count(participant_query, domain: Api) do
+      {:ok, count} ->
+        count
+
+      {:error, reason} ->
+        Logger.error("Failed to count killmails: #{inspect(reason)}")
         0
     end
   rescue
-    _ -> 0
+    error ->
+      Logger.error("Error counting killmails: #{inspect(error)}")
+      0
   end
 
   defp has_character_participation?(killmail, character_id, role) do
@@ -358,25 +376,132 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
     end
   end
 
-  defp extract_wh_classes(_killmails) do
-    # Extract wormhole classes from system data
-    # Placeholder implementation
-    [1, 2, 3, 4, 5]
+  defp extract_wh_classes(killmails) do
+    # Extract wormhole classes from system IDs
+    killmails
+    |> Enum.map(& &1.solar_system_id)
+    |> Enum.uniq()
+    |> Enum.map(&determine_wh_class/1)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+    |> Enum.sort()
   end
 
-  defp identify_home_holes(_killmails) do
-    # Identify likely home wormhole systems
-    # Placeholder implementation
-    []
+  defp determine_wh_class(system_id) do
+    # Determine WH class based on system ID ranges
+    # This is a simplified mapping - real implementation would use static data
+    cond do
+      system_id >= 31_000_000 and system_id < 31_001_000 -> 1
+      system_id >= 31_001_000 and system_id < 31_002_000 -> 2
+      system_id >= 31_002_000 and system_id < 31_003_000 -> 3
+      system_id >= 31_003_000 and system_id < 31_004_000 -> 4
+      system_id >= 31_004_000 and system_id < 31_005_000 -> 5
+      system_id >= 31_005_000 and system_id < 31_006_000 -> 6
+      # Shattered and special wormholes
+      system_id >= 31_006_000 and system_id < 31_007_000 -> "shattered"
+      # Thera
+      system_id == 31_000_005 -> "thera"
+      true -> nil
+    end
   end
 
-  defp analyze_rolling_patterns(_character_id) do
+  defp identify_home_holes(killmails) do
+    # Identify likely home wormhole systems based on activity patterns
+    killmails
+    |> Enum.filter(&j_space_system?(&1.solar_system_id))
+    |> Enum.group_by(&{&1.solar_system_id, &1.solar_system_name})
+    |> Enum.map(fn {{system_id, system_name}, system_kms} ->
+      # Calculate home hole indicators
+      total_activity = length(system_kms)
+
+      # Group by month to see consistency
+      monthly_activity =
+        system_kms
+        |> Enum.group_by(fn km ->
+          {km.killmail_time.year, km.killmail_time.month}
+        end)
+        |> map_size()
+
+      # Time spread (days between first and last activity)
+      {oldest, newest} =
+        system_kms
+        |> Enum.map(& &1.killmail_time)
+        |> Enum.min_max(DateTime)
+
+      time_spread = DateTime.diff(newest, oldest, :day)
+
+      # Home hole score based on activity density and consistency
+      score = total_activity * monthly_activity / max(1, time_spread / 30)
+
+      %{
+        system_id: system_id,
+        system_name: system_name || "J#{rem(system_id, 100_000)}",
+        activity_count: total_activity,
+        months_active: monthly_activity,
+        home_score: Float.round(score, 2)
+      }
+    end)
+    |> Enum.sort_by(& &1.home_score, :desc)
+    |> Enum.take(3)
+  end
+
+  defp analyze_rolling_patterns(character_id) do
     # Analyze participation in wormhole rolling activities
-    %{
-      "times_rolled" => 0,
-      "times_helped_roll" => 0,
-      "rolling_competency" => 0.0
-    }
+    cutoff_date = DateTime.add(DateTime.utc_now(), -180, :day)
+
+    # Get killmails where character was involved
+    participant_query =
+      Participant
+      |> Ash.Query.new()
+      |> Ash.Query.filter(character_id == ^character_id)
+      |> Ash.Query.filter(updated_at >= ^cutoff_date)
+      |> Ash.Query.load(:killmail_enriched)
+
+    case Ash.read(participant_query, domain: Api) do
+      {:ok, participants} ->
+        # Group by system and time to identify rolling patterns
+        rolling_events =
+          participants
+          |> Enum.filter(fn p ->
+            p.killmail_enriched && j_space_system?(p.killmail_enriched.solar_system_id)
+          end)
+          |> Enum.group_by(fn p ->
+            # Group by system and hour
+            km = p.killmail_enriched
+            {km.solar_system_id, DateTime.truncate(km.killmail_time, :hour)}
+          end)
+          |> Enum.filter(fn {_key, group} ->
+            # Multiple kills in same system/hour suggests rolling
+            length(group) >= 3
+          end)
+
+        # Check for rolling ship usage (high mass ships)
+        rolling_ships = ["Megathron", "Armageddon", "Scorpion", "Hyperion", "Abaddon", "Rokh"]
+
+        times_in_rolling_ship =
+          participants
+          |> Enum.count(fn p ->
+            p.ship_name in rolling_ships
+          end)
+
+        %{
+          "times_rolled" => map_size(rolling_events),
+          "times_helped_roll" => times_in_rolling_ship,
+          "rolling_competency" =>
+            if times_in_rolling_ship > 0 do
+              min(1.0, times_in_rolling_ship / 10)
+            else
+              0.0
+            end
+        }
+
+      {:error, _} ->
+        %{
+          "times_rolled" => 0,
+          "times_helped_roll" => 0,
+          "rolling_competency" => 0.0
+        }
+    end
   end
 
   defp analyze_scanning_patterns(_killmails) do
@@ -388,9 +513,61 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
     }
   end
 
-  defp find_eviction_group_connections(_character_id, _known_groups) do
-    # Check for connections to known eviction groups
-    []
+  defp find_eviction_group_connections(character_id, known_groups) do
+    # Check for connections to known eviction groups through shared killmails
+    # 2 years
+    cutoff_date = DateTime.add(DateTime.utc_now(), -730, :day)
+
+    # Get all killmails involving this character
+    participant_query =
+      Participant
+      |> Ash.Query.new()
+      |> Ash.Query.filter(character_id == ^character_id)
+      |> Ash.Query.filter(updated_at >= ^cutoff_date)
+      |> Ash.Query.load(:killmail_enriched)
+
+    case Ash.read(participant_query, domain: Api) do
+      {:ok, participants} ->
+        # Get all killmail IDs
+        killmail_ids =
+          participants
+          |> Enum.map(& &1.killmail_id)
+          |> Enum.uniq()
+
+        # Find other participants in those killmails
+        co_participants_query =
+          Participant
+          |> Ash.Query.new()
+          |> Ash.Query.filter(killmail_id in ^killmail_ids)
+          |> Ash.Query.filter(character_id != ^character_id)
+
+        case Ash.read(co_participants_query, domain: Api) do
+          {:ok, co_participants} ->
+            # Check for eviction group members
+            co_participants
+            |> Enum.filter(fn p ->
+              p.corporation_name in known_groups or
+                p.alliance_name in known_groups
+            end)
+            |> Enum.group_by(fn p ->
+              p.corporation_name || p.alliance_name
+            end)
+            |> Enum.map(fn {group, members} ->
+              %{
+                group_name: group,
+                shared_killmails: length(members),
+                first_interaction: members |> Enum.map(& &1.updated_at) |> Enum.min(DateTime),
+                last_interaction: members |> Enum.map(& &1.updated_at) |> Enum.max(DateTime)
+              }
+            end)
+
+          {:error, _} ->
+            []
+        end
+
+      {:error, _} ->
+        []
+    end
   end
 
   defp analyze_eviction_participation(_character_id, _known_groups) do
@@ -482,12 +659,116 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
     }
   end
 
-  defp identify_security_flags(_character_id) do
-    []
+  defp identify_security_flags(character_id) do
+    # Identify security-related red flags
+    flags = []
+
+    # Check character stats if available
+    case get_or_create_character_stats(character_id) do
+      stats when not is_nil(stats) ->
+        flags =
+          flags
+          |> maybe_add_flag(
+            stats.dangerous_rating > 8,
+            "high_threat_rating"
+          )
+          |> maybe_add_flag(
+            stats.awox_probability > 0.3,
+            "awox_history"
+          )
+          |> maybe_add_flag(
+            stats.npc_corp_time > 0.8,
+            "excessive_npc_corp_time"
+          )
+
+        # Check employment history for rapid corp changes
+        case EsiClient.get_character_employment_history(character_id) do
+          {:ok, history} when is_list(history) ->
+            recent_changes =
+              history
+              |> Enum.take(10)
+              |> Enum.count()
+
+            flags
+            |> maybe_add_flag(
+              recent_changes > 5,
+              "rapid_corp_changes"
+            )
+
+          _ ->
+            flags
+        end
+
+      _ ->
+        flags
+    end
   end
 
-  defp identify_behavioral_red_flags(_character_id) do
-    []
+  defp maybe_add_flag(flags, true, flag), do: [flag | flags]
+  defp maybe_add_flag(flags, false, _flag), do: flags
+
+  defp identify_behavioral_red_flags(character_id) do
+    # Identify behavioral patterns that might indicate risk
+    flags = []
+
+    # Get recent activity patterns
+    cutoff_date = DateTime.add(DateTime.utc_now(), -90, :day)
+
+    participant_query =
+      Participant
+      |> Ash.Query.new()
+      |> Ash.Query.filter(character_id == ^character_id)
+      |> Ash.Query.filter(updated_at >= ^cutoff_date)
+      |> Ash.Query.load(:killmail_enriched)
+
+    case Ash.read(participant_query, domain: Api) do
+      {:ok, participants} ->
+        # Check for suspicious patterns
+
+        # 1. Excessive structure bashing
+        structure_kills =
+          participants
+          |> Enum.filter(fn p ->
+            not p.is_victim and
+              p.killmail_enriched &&
+              String.contains?(p.ship_name || "", ["Citadel", "Engineering", "Refinery"])
+          end)
+          |> length()
+
+        flags = maybe_add_flag(flags, structure_kills > 20, "structure_basher")
+
+        # 2. Blue killing patterns
+        same_alliance_kills =
+          participants
+          |> Enum.filter(fn p ->
+            not p.is_victim and
+              p.killmail_enriched &&
+              Enum.any?(p.killmail_enriched.participants || [], fn victim ->
+                victim.is_victim and
+                  victim.alliance_id == p.alliance_id and
+                  victim.alliance_id != nil
+              end)
+          end)
+          |> length()
+
+        flags = maybe_add_flag(flags, same_alliance_kills > 0, "blue_killer")
+
+        # 3. Exclusively highsec activity  
+        highsec_only =
+          participants
+          |> Enum.all?(fn p ->
+            # Not J-space
+            p.killmail_enriched &&
+              p.killmail_enriched.solar_system_id < 31_000_000
+          end)
+
+        flags = maybe_add_flag(flags, highsec_only, "no_wh_experience")
+
+        flags
+
+      {:error, _} ->
+        flags
+    end
   end
 
   defp assess_awox_risk(_character_id, _security_flags, _behavioral_flags) do
