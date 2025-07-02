@@ -624,21 +624,31 @@ defmodule EveDmv.Eve.StaticDataLoader do
   # ============================================================================
 
   defp bulk_create_item_types(item_data) do
-    # Use individual creates for now until we get the bulk API right
-    records =
-      Enum.map(item_data, fn item ->
-        case Ash.create(ItemType, item, action: :create, domain: EveDmv.Api, authorize?: false) do
-          {:ok, record} ->
-            record
+    case Ash.bulk_create(item_data, ItemType, :create,
+           domain: EveDmv.Api,
+           return_records?: false,
+           return_errors?: true,
+           stop_on_error?: false,
+           authorize?: false,
+           batch_size: 500
+         ) do
+      %{records: _records, errors: []} ->
+        {:ok, length(item_data)}
 
-          {:error, error} ->
-            Logger.warning("Failed to create item #{item.type_id}: #{inspect(error)}")
-            nil
-        end
-      end)
+      %{records: records, errors: errors} when errors != [] ->
+        created_count = length(records || [])
+        Logger.warning("Created #{created_count} item types, #{length(errors)} failed")
 
-    created_count = records |> Enum.reject(&is_nil/1) |> length()
-    {:ok, created_count}
+        # Log first few errors for debugging
+        errors
+        |> Enum.take(5)
+        |> Enum.each(fn {changeset, _error} ->
+          type_id = Ash.Changeset.get_attribute(changeset, :type_id)
+          Logger.warning("Failed to create item type #{type_id}")
+        end)
+
+        {:ok, created_count}
+    end
   rescue
     error ->
       Logger.error("Failed to bulk create item types: #{inspect(error)}")
@@ -646,25 +656,31 @@ defmodule EveDmv.Eve.StaticDataLoader do
   end
 
   defp bulk_create_solar_systems(system_data) do
-    # Use individual creates for now until we get the bulk API right
-    records =
-      Enum.map(system_data, fn system ->
-        case Ash.create(SolarSystem, system,
-               action: :create,
-               domain: EveDmv.Api,
-               authorize?: false
-             ) do
-          {:ok, record} ->
-            record
+    case Ash.bulk_create(system_data, SolarSystem, :create,
+           domain: EveDmv.Api,
+           return_records?: false,
+           return_errors?: true,
+           stop_on_error?: false,
+           authorize?: false,
+           batch_size: 500
+         ) do
+      %{records: _records, errors: []} ->
+        {:ok, length(system_data)}
 
-          {:error, error} ->
-            Logger.warning("Failed to create system #{system.system_id}: #{inspect(error)}")
-            nil
-        end
-      end)
+      %{records: records, errors: errors} when errors != [] ->
+        created_count = length(records || [])
+        Logger.warning("Created #{created_count} solar systems, #{length(errors)} failed")
 
-    created_count = records |> Enum.reject(&is_nil/1) |> length()
-    {:ok, created_count}
+        # Log first few errors for debugging
+        errors
+        |> Enum.take(5)
+        |> Enum.each(fn {changeset, _error} ->
+          system_id = Ash.Changeset.get_attribute(changeset, :system_id)
+          Logger.warning("Failed to create solar system #{system_id}")
+        end)
+
+        {:ok, created_count}
+    end
   rescue
     error ->
       Logger.error("Failed to bulk create solar systems: #{inspect(error)}")

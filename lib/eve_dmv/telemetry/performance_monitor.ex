@@ -121,27 +121,115 @@ defmodule EveDmv.Telemetry.PerformanceMonitor do
   Get performance metrics summary.
   """
   def get_performance_summary do
-    # This would integrate with telemetry metrics collection
-    # For now, return a basic structure
     %{
-      database_queries: %{
-        total_count: 0,
-        avg_duration: 0,
-        slow_queries: 0
-      },
-      api_calls: %{
-        total_count: 0,
-        avg_duration: 0,
-        timeout_count: 0
-      },
-      cache_performance: %{
-        hit_rate: 0.0,
-        miss_rate: 0.0
-      },
-      bulk_operations: %{
-        total_records: 0,
-        avg_throughput: 0
-      }
+      database: get_database_metrics(),
+      query_performance: get_slow_queries(),
+      connection_pool: get_pool_metrics(),
+      cache_hit_rates: get_cache_metrics()
     }
+  end
+
+  defp get_database_metrics do
+    # Query actual database performance stats
+    query = """
+    SELECT 
+      schemaname,
+      tablename,
+      n_tup_ins,
+      n_tup_upd,
+      n_tup_del,
+      n_live_tup,
+      n_dead_tup,
+      last_vacuum,
+      last_autovacuum
+    FROM pg_stat_user_tables
+    WHERE schemaname = 'public'
+    ORDER BY n_live_tup DESC
+    LIMIT 10
+    """
+
+    case Ecto.Adapters.SQL.query(EveDmv.Repo, query) do
+      {:ok, %{rows: rows, columns: columns}} ->
+        Enum.map(rows, fn row ->
+          Enum.zip(columns, row) |> Map.new()
+        end)
+
+      {:error, _} ->
+        []
+    end
+  end
+
+  defp get_slow_queries do
+    # Get slowest queries from pg_stat_statements if available
+    query = """
+    SELECT 
+      query,
+      calls,
+      mean_exec_time,
+      total_exec_time,
+      rows
+    FROM pg_stat_statements
+    WHERE query NOT LIKE '%pg_stat_statements%'
+    ORDER BY mean_exec_time DESC
+    LIMIT 10
+    """
+
+    case Ecto.Adapters.SQL.query(EveDmv.Repo, query) do
+      {:ok, %{rows: rows}} ->
+        Enum.map(rows, fn [query, calls, mean_time, total_time, rows] ->
+          %{
+            query: String.slice(query, 0..100),
+            calls: calls,
+            mean_time_ms: Float.round(mean_time, 2),
+            total_time_ms: Float.round(total_time, 2),
+            rows: rows
+          }
+        end)
+
+      {:error, _} ->
+        # pg_stat_statements not available, return empty
+        []
+    end
+  end
+
+  defp get_pool_metrics do
+    # Get connection pool stats from Ecto
+    pool_info = :ets.info(EveDmv.Repo.Pool)
+
+    if pool_info do
+      %{
+        size: Keyword.get(pool_info, :size, 0),
+        memory: Keyword.get(pool_info, :memory, 0)
+      }
+    else
+      %{size: 0, memory: 0}
+    end
+  end
+
+  defp get_cache_metrics do
+    # Get cache metrics from name resolver cache
+    case Process.whereis(EveDmv.Eve.NameResolver) do
+      nil ->
+        %{hit_rate: 0.0, miss_rate: 0.0}
+
+      pid ->
+        case GenServer.call(pid, :get_stats, 5000) do
+          {:ok, stats} ->
+            total = stats[:hits] + stats[:misses]
+
+            if total > 0 do
+              %{
+                hit_rate: Float.round(stats[:hits] / total * 100, 2),
+                miss_rate: Float.round(stats[:misses] / total * 100, 2),
+                total_requests: total
+              }
+            else
+              %{hit_rate: 0.0, miss_rate: 0.0, total_requests: 0}
+            end
+
+          _ ->
+            %{hit_rate: 0.0, miss_rate: 0.0}
+        end
+    end
   end
 end
