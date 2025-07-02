@@ -35,6 +35,8 @@ defmodule EveDmv.Application do
       EveDmv.Database.QueryCache,
       # Start the intelligent cache warmer
       EveDmv.Database.CacheWarmer,
+      # Start the connection pool monitor
+      EveDmv.Database.ConnectionPoolMonitor,
       # Start the re-enrichment worker
       EveDmv.Enrichment.ReEnrichmentWorker,
       # Start the real-time price updater
