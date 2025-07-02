@@ -19,7 +19,7 @@ defmodule EveDmvWeb.KillFeedLiveTest do
       assert html =~ "Kill Feed"
       assert html =~ "Total Kills Today"
       assert html =~ "ISK Destroyed"
-      
+
       # Check that killmails are displayed
       assert html =~ "Rifter"
       assert html =~ "Jita"
@@ -30,7 +30,7 @@ defmodule EveDmvWeb.KillFeedLiveTest do
 
       # Verify subscription by sending a broadcast
       killmail_data = build_test_killmail()
-      
+
       Phoenix.PubSub.broadcast(
         EveDmv.PubSub,
         "kill_feed",
@@ -68,7 +68,7 @@ defmodule EveDmvWeb.KillFeedLiveTest do
       # Send multiple killmail updates
       for i <- 1..3 do
         killmail = build_test_killmail(killmail_id: 90_000_000 + i)
-        
+
         Phoenix.PubSub.broadcast(
           EveDmv.PubSub,
           "kill_feed",
@@ -84,7 +84,7 @@ defmodule EveDmvWeb.KillFeedLiveTest do
       :timer.sleep(100)
 
       html = render(view)
-      
+
       # Check all new kills are displayed
       assert html =~ "90000001"
       assert html =~ "90000002"
@@ -99,7 +99,7 @@ defmodule EveDmvWeb.KillFeedLiveTest do
 
       # Send high-value kill
       expensive_kill = build_test_killmail(total_value: 1_000_000_000)
-      
+
       Phoenix.PubSub.broadcast(
         EveDmv.PubSub,
         "kill_feed",
@@ -115,20 +115,20 @@ defmodule EveDmvWeb.KillFeedLiveTest do
       # ISK destroyed should have increased
       updated_html = render(view)
       updated_isk = extract_isk_value(updated_html)
-      
+
       assert updated_isk > initial_isk
     end
 
     test "maintains feed limit when adding new kills", %{conn: conn} do
       # Start with 50 kills
       create_test_killmails(50)
-      
+
       {:ok, view, _html} = live(conn, ~p"/feed")
 
       # Add 10 more kills
       for i <- 1..10 do
         killmail = build_test_killmail(killmail_id: 91_000_000 + i)
-        
+
         Phoenix.PubSub.broadcast(
           EveDmv.PubSub,
           "kill_feed",
@@ -166,11 +166,12 @@ defmodule EveDmvWeb.KillFeedLiveTest do
       {:ok, view, _html} = live(conn, ~p"/feed")
 
       # Send kill in new system
-      podion_kill = build_test_killmail(
-        solar_system_id: 30_003_715,
-        solar_system_name: "Podion"
-      )
-      
+      podion_kill =
+        build_test_killmail(
+          solar_system_id: 30_003_715,
+          solar_system_name: "Podion"
+        )
+
       Phoenix.PubSub.broadcast(
         EveDmv.PubSub,
         "kill_feed",
@@ -206,7 +207,7 @@ defmodule EveDmvWeb.KillFeedLiveTest do
     test "shows relative timestamps", %{conn: conn} do
       # Create kill from 5 minutes ago
       five_min_ago = DateTime.add(DateTime.utc_now(), -300, :second)
-      
+
       create(:killmail_enriched, %{
         killmail_id: 95_000_002,
         killmail_time: five_min_ago
@@ -275,7 +276,7 @@ defmodule EveDmvWeb.KillFeedLiveTest do
       # Send 20 kills rapidly
       for i <- 1..20 do
         killmail = build_test_killmail(killmail_id: 96_000_000 + i)
-        
+
         Phoenix.PubSub.broadcast(
           EveDmv.PubSub,
           "kill_feed",
@@ -285,7 +286,7 @@ defmodule EveDmvWeb.KillFeedLiveTest do
             payload: killmail
           }
         )
-        
+
         # Small delay between broadcasts
         :timer.sleep(10)
       end
@@ -301,26 +302,30 @@ defmodule EveDmvWeb.KillFeedLiveTest do
       # Create maximum number of killmails
       create_test_killmails(50)
 
-      {time_microseconds, {:ok, view, _html}} = :timer.tc(fn ->
-        live(conn, ~p"/feed")
-      end)
+      {time_microseconds, {:ok, view, _html}} =
+        :timer.tc(fn ->
+          live(conn, ~p"/feed")
+        end)
 
       time_ms = time_microseconds / 1000
-      
+
       # Should load within reasonable time
       assert time_ms < 500, "Initial load took #{time_ms}ms"
 
       # Test update performance
-      {update_time, _} = :timer.tc(fn ->
-        new_kill = build_test_killmail()
-        send(view.pid, %Phoenix.Socket.Broadcast{
-          topic: "kill_feed",
-          event: "new_kill",
-          payload: new_kill
-        })
-        :timer.sleep(50)
-        render(view)
-      end)
+      {update_time, _} =
+        :timer.tc(fn ->
+          new_kill = build_test_killmail()
+
+          send(view.pid, %Phoenix.Socket.Broadcast{
+            topic: "kill_feed",
+            event: "new_kill",
+            payload: new_kill
+          })
+
+          :timer.sleep(50)
+          render(view)
+        end)
 
       update_time_ms = update_time / 1000
       assert update_time_ms < 100, "Update took #{update_time_ms}ms"
@@ -396,12 +401,14 @@ defmodule EveDmvWeb.KillFeedLiveTest do
     case Regex.run(~r/(\d+(?:\.\d+)?)\s*([BMK]?)\s*ISK/, html) do
       [_, number, suffix] ->
         value = String.to_float(number)
+
         case suffix do
           "B" -> value * 1_000_000_000
           "M" -> value * 1_000_000
           "K" -> value * 1_000
           _ -> value
         end
+
       _ ->
         0
     end

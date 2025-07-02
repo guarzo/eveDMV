@@ -26,7 +26,7 @@ defmodule EveDmv.Quality.MetricsCollector do
   """
   def generate_quality_report(metrics \\ nil) do
     metrics = metrics || collect_metrics()
-    
+
     %{
       overall_score: calculate_overall_quality_score(metrics),
       grade: calculate_quality_grade(metrics),
@@ -41,7 +41,7 @@ defmodule EveDmv.Quality.MetricsCollector do
   """
   def export_metrics(format \\ :json, metrics \\ nil) do
     metrics = metrics || collect_metrics()
-    
+
     case format do
       :json -> Jason.encode!(metrics, pretty: true)
       :csv -> export_to_csv(metrics)
@@ -72,6 +72,7 @@ defmodule EveDmv.Quality.MetricsCollector do
         |> String.split("\n")
         |> Enum.filter(&String.contains?(&1, "test"))
         |> length()
+
       _ ->
         0
     end
@@ -83,10 +84,11 @@ defmodule EveDmv.Quality.MetricsCollector do
     case File.read("cover/excoveralls.json") do
       {:ok, content} ->
         case Jason.decode(content) do
-          {:ok, data} -> 
+          {:ok, data} ->
             %{
               overall: Map.get(data, "coverage", 0),
-              files: Map.get(data, "files", [])
+              files:
+                Map.get(data, "files", [])
                 |> Enum.map(fn file ->
                   %{
                     name: Map.get(file, "name"),
@@ -94,20 +96,24 @@ defmodule EveDmv.Quality.MetricsCollector do
                   }
                 end)
             }
-          _ -> %{overall: 0, files: []}
+
+          _ ->
+            %{overall: 0, files: []}
         end
-      _ -> 
+
+      _ ->
         %{overall: 0, files: []}
     end
   end
 
   defp measure_test_execution_time do
     start_time = System.monotonic_time(:millisecond)
-    
+
     case System.cmd("mix", ["test", "--trace"], stderr_to_stdout: true) do
       {_output, 0} ->
         end_time = System.monotonic_time(:millisecond)
         end_time - start_time
+
       _ ->
         nil
     end
@@ -122,7 +128,7 @@ defmodule EveDmv.Quality.MetricsCollector do
   defp analyze_critical_path_coverage do
     critical_modules = [
       "EveDmv.Intelligence.CharacterAnalyzer",
-      "EveDmv.Intelligence.HomeDefenseAnalyzer", 
+      "EveDmv.Intelligence.HomeDefenseAnalyzer",
       "EveDmv.Intelligence.WHVettingAnalyzer",
       "EveDmv.Intelligence.WHFleetAnalyzer",
       "EveDmv.Killmails.KillmailPipeline",
@@ -130,17 +136,22 @@ defmodule EveDmv.Quality.MetricsCollector do
     ]
 
     coverage_data = get_test_coverage()
-    
-    critical_coverage = coverage_data.files
-    |> Enum.filter(fn file ->
-      Enum.any?(critical_modules, &String.contains?(file.name, &1))
-    end)
-    |> Enum.map(& &1.coverage)
+
+    critical_coverage =
+      coverage_data.files
+      |> Enum.filter(fn file ->
+        Enum.any?(critical_modules, &String.contains?(file.name, &1))
+      end)
+      |> Enum.map(& &1.coverage)
 
     %{
       modules_count: length(critical_modules),
       covered_modules: length(critical_coverage),
-      average_coverage: if(length(critical_coverage) > 0, do: Enum.sum(critical_coverage) / length(critical_coverage), else: 0),
+      average_coverage:
+        if(length(critical_coverage) > 0,
+          do: Enum.sum(critical_coverage) / length(critical_coverage),
+          else: 0
+        ),
       min_coverage: if(length(critical_coverage) > 0, do: Enum.min(critical_coverage), else: 0)
     }
   end
@@ -162,6 +173,7 @@ defmodule EveDmv.Quality.MetricsCollector do
     case System.cmd("grep", ["-r", "@tag :skip", "test/"], stderr_to_stdout: true) do
       {output, 0} ->
         output |> String.split("\n") |> Enum.reject(&(&1 == "")) |> length()
+
       _ ->
         0
     end
@@ -197,14 +209,17 @@ defmodule EveDmv.Quality.MetricsCollector do
         case Jason.decode(output) do
           {:ok, data} ->
             issues = Map.get(data, "issues", [])
+
             %{
               total_issues: length(issues),
               issues_by_category: group_issues_by_category(issues),
               issues_by_priority: group_issues_by_priority(issues)
             }
+
           _ ->
             %{total_issues: 0, issues_by_category: %{}, issues_by_priority: %{}}
         end
+
       _ ->
         %{total_issues: 0, issues_by_category: %{}, issues_by_priority: %{}}
     end
@@ -215,14 +230,17 @@ defmodule EveDmv.Quality.MetricsCollector do
   defp run_dialyzer_analysis do
     case System.cmd("mix", ["dialyzer", "--format", "short"], stderr_to_stdout: true) do
       {output, _} ->
-        warnings = output 
-        |> String.split("\n")
-        |> Enum.filter(&String.contains?(&1, "Warning:"))
-        
+        warnings =
+          output
+          |> String.split("\n")
+          |> Enum.filter(&String.contains?(&1, "Warning:"))
+
         %{
           warning_count: length(warnings),
-          warnings: Enum.take(warnings, 10) # Limit for performance
+          # Limit for performance
+          warnings: Enum.take(warnings, 10)
         }
+
       _ ->
         %{warning_count: 0, warnings: []}
     end
@@ -233,15 +251,17 @@ defmodule EveDmv.Quality.MetricsCollector do
   defp analyze_code_complexity do
     # Simplified complexity analysis
     elixir_files = Path.wildcard("lib/**/*.ex")
-    
-    total_lines = elixir_files
-    |> Enum.map(&count_lines_in_file/1)
-    |> Enum.sum()
+
+    total_lines =
+      elixir_files
+      |> Enum.map(&count_lines_in_file/1)
+      |> Enum.sum()
 
     %{
       total_files: length(elixir_files),
       total_lines_of_code: total_lines,
-      average_file_size: if(length(elixir_files) > 0, do: div(total_lines, length(elixir_files)), else: 0),
+      average_file_size:
+        if(length(elixir_files) > 0, do: div(total_lines, length(elixir_files)), else: 0),
       large_files: elixir_files |> Enum.filter(&(count_lines_in_file(&1) > 300)) |> length()
     }
   end
@@ -249,15 +269,17 @@ defmodule EveDmv.Quality.MetricsCollector do
   defp analyze_dependencies do
     case File.read("mix.lock") do
       {:ok, content} ->
-        deps = content
-        |> String.split("\n")
-        |> Enum.filter(&String.starts_with?(&1, "  \""))
-        |> length()
+        deps =
+          content
+          |> String.split("\n")
+          |> Enum.filter(&String.starts_with?(&1, "  \""))
+          |> length()
 
         %{
           total_dependencies: deps,
           outdated_dependencies: check_outdated_dependencies()
         }
+
       _ ->
         %{total_dependencies: 0, outdated_dependencies: 0}
     end
@@ -266,7 +288,8 @@ defmodule EveDmv.Quality.MetricsCollector do
   defp analyze_code_duplication do
     # Simplified duplication detection
     %{
-      estimated_duplication_percentage: 0, # Placeholder
+      # Placeholder
+      estimated_duplication_percentage: 0,
       duplicate_blocks: []
     }
   end
@@ -275,18 +298,18 @@ defmodule EveDmv.Quality.MetricsCollector do
     # Simplified maintainability calculation
     code_metrics = analyze_code_complexity()
     test_metrics = collect_test_metrics()
-    
+
     base_score = 100
-    
+
     # Deduct points for complexity
     complexity_penalty = min(code_metrics.large_files * 2, 20)
-    
+
     # Add points for test coverage
     coverage_bonus = (test_metrics.test_coverage.overall || 0) / 10
-    
+
     # Add points for having tests
     test_bonus = min(test_metrics.total_tests / 10, 15)
-    
+
     max(0, base_score - complexity_penalty + coverage_bonus + test_bonus)
   end
 
@@ -311,7 +334,7 @@ defmodule EveDmv.Quality.MetricsCollector do
 
   defp collect_benchmark_results do
     benchmark_files = Path.wildcard("test/benchmarks/**/*.exs")
-    
+
     %{
       benchmark_count: length(benchmark_files),
       last_run_results: load_last_benchmark_results()
@@ -350,12 +373,14 @@ defmodule EveDmv.Quality.MetricsCollector do
     case System.cmd("mix", ["deps.audit"], stderr_to_stdout: true) do
       {_output, 0} ->
         %{status: "passed", vulnerabilities: 0}
+
       {output, _} ->
-        vulnerability_count = output 
-        |> String.split("\n")
-        |> Enum.filter(&String.contains?(&1, "vulnerability"))
-        |> length()
-        
+        vulnerability_count =
+          output
+          |> String.split("\n")
+          |> Enum.filter(&String.contains?(&1, "vulnerability"))
+          |> length()
+
         %{status: "failed", vulnerabilities: vulnerability_count}
     end
   rescue
@@ -383,18 +408,20 @@ defmodule EveDmv.Quality.MetricsCollector do
   defp scan_for_secrets do
     # Scan for potential secrets in code
     secret_patterns = ["password", "secret", "key", "token"]
-    
-    findings = Path.wildcard("lib/**/*.ex")
-    |> Enum.flat_map(fn file ->
-      case File.read(file) do
-        {:ok, content} ->
-          secret_patterns
-          |> Enum.filter(&String.contains?(String.downcase(content), &1))
-          |> Enum.map(&{file, &1})
-        _ ->
-          []
-      end
-    end)
+
+    findings =
+      Path.wildcard("lib/**/*.ex")
+      |> Enum.flat_map(fn file ->
+        case File.read(file) do
+          {:ok, content} ->
+            secret_patterns
+            |> Enum.filter(&String.contains?(String.downcase(content), &1))
+            |> Enum.map(&{file, &1})
+
+          _ ->
+            []
+        end
+      end)
 
     %{
       potential_secrets_count: length(findings),
@@ -420,9 +447,12 @@ defmodule EveDmv.Quality.MetricsCollector do
           exists: true,
           length: String.length(content),
           sections: count_markdown_sections(content),
-          has_setup_instructions: String.contains?(content, "setup") or String.contains?(content, "installation"),
-          has_usage_examples: String.contains?(content, "usage") or String.contains?(content, "example")
+          has_setup_instructions:
+            String.contains?(content, "setup") or String.contains?(content, "installation"),
+          has_usage_examples:
+            String.contains?(content, "usage") or String.contains?(content, "example")
         }
+
       _ ->
         %{exists: false, length: 0, sections: 0}
     end
@@ -430,19 +460,24 @@ defmodule EveDmv.Quality.MetricsCollector do
 
   defp analyze_code_documentation do
     elixir_files = Path.wildcard("lib/**/*.ex")
-    
-    documented_files = elixir_files
-    |> Enum.count(fn file ->
-      case File.read(file) do
-        {:ok, content} -> String.contains?(content, "@moduledoc") or String.contains?(content, "@doc")
-        _ -> false
-      end
-    end)
+
+    documented_files =
+      elixir_files
+      |> Enum.count(fn file ->
+        case File.read(file) do
+          {:ok, content} ->
+            String.contains?(content, "@moduledoc") or String.contains?(content, "@doc")
+
+          _ ->
+            false
+        end
+      end)
 
     %{
       total_files: length(elixir_files),
       documented_files: documented_files,
-      documentation_percentage: if(length(elixir_files) > 0, do: documented_files / length(elixir_files) * 100, else: 0)
+      documentation_percentage:
+        if(length(elixir_files) > 0, do: documented_files / length(elixir_files) * 100, else: 0)
     }
   end
 
@@ -456,9 +491,10 @@ defmodule EveDmv.Quality.MetricsCollector do
 
   defp check_architecture_docs do
     architecture_files = ["ARCHITECTURE.md", "docs/architecture.md", "TEAM_DELTA_PLAN.md"]
-    
-    existing_docs = architecture_files
-    |> Enum.filter(&File.exists?/1)
+
+    existing_docs =
+      architecture_files
+      |> Enum.filter(&File.exists?/1)
 
     %{
       architecture_docs_count: length(existing_docs),
@@ -480,7 +516,7 @@ defmodule EveDmv.Quality.MetricsCollector do
 
   defp analyze_github_actions do
     workflow_files = Path.wildcard(".github/workflows/*.yml")
-    
+
     %{
       workflow_count: length(workflow_files),
       has_ci_workflow: Enum.any?(workflow_files, &String.contains?(&1, "ci")),
@@ -490,21 +526,28 @@ defmodule EveDmv.Quality.MetricsCollector do
 
   defp analyze_scripts_quality do
     script_files = Path.wildcard("scripts/*.sh")
-    
-    quality_checks = script_files
-    |> Enum.map(fn file ->
-      case File.read(file) do
-        {:ok, content} ->
-          %{
-            file: file,
-            has_error_handling: String.contains?(content, "set -e"),
-            has_documentation: String.contains?(content, "#"),
-            is_executable: rem(File.stat!(file).mode, 2) == 1
-          }
-        _ ->
-          %{file: file, has_error_handling: false, has_documentation: false, is_executable: false}
-      end
-    end)
+
+    quality_checks =
+      script_files
+      |> Enum.map(fn file ->
+        case File.read(file) do
+          {:ok, content} ->
+            %{
+              file: file,
+              has_error_handling: String.contains?(content, "set -e"),
+              has_documentation: String.contains?(content, "#"),
+              is_executable: rem(File.stat!(file).mode, 2) == 1
+            }
+
+          _ ->
+            %{
+              file: file,
+              has_error_handling: false,
+              has_documentation: false,
+              is_executable: false
+            }
+        end
+      end)
 
     %{
       script_count: length(script_files),
@@ -552,17 +595,18 @@ defmodule EveDmv.Quality.MetricsCollector do
       ci_cd_metrics: calculate_ci_cd_score(metrics.ci_cd_metrics)
     }
 
-    weighted_score = weights
-    |> Enum.reduce(0, fn {category, weight}, acc ->
-      acc + (scores[category] * weight)
-    end)
+    weighted_score =
+      weights
+      |> Enum.reduce(0, fn {category, weight}, acc ->
+        acc + scores[category] * weight
+      end)
 
     round(weighted_score)
   end
 
   defp calculate_quality_grade(metrics) do
     score = calculate_overall_quality_score(metrics)
-    
+
     cond do
       score >= 90 -> "A+"
       score >= 85 -> "A"
@@ -590,6 +634,7 @@ defmodule EveDmv.Quality.MetricsCollector do
         |> String.split("\n")
         |> Enum.reject(&(String.trim(&1) == "" or String.starts_with?(String.trim(&1), "#")))
         |> length()
+
       _ ->
         0
     end
@@ -616,6 +661,7 @@ defmodule EveDmv.Quality.MetricsCollector do
         |> String.split("\n")
         |> Enum.filter(&String.contains?(&1, "Update available"))
         |> length()
+
       _ ->
         0
     end
@@ -651,51 +697,62 @@ defmodule EveDmv.Quality.MetricsCollector do
   end
 
   defp calculate_code_quality_score(code_metrics) do
-    credo_score = max(0, 100 - (code_metrics.credo_analysis.total_issues * 2))
-    dialyzer_score = max(0, 100 - (code_metrics.dialyzer_analysis.warning_count * 5))
+    credo_score = max(0, 100 - code_metrics.credo_analysis.total_issues * 2)
+    dialyzer_score = max(0, 100 - code_metrics.dialyzer_analysis.warning_count * 5)
     (credo_score + dialyzer_score) / 2
   end
 
-  defp calculate_performance_score(_performance_metrics), do: 85 # Placeholder
-  defp calculate_security_score(_security_metrics), do: 80 # Placeholder
+  # Placeholder
+  defp calculate_performance_score(_performance_metrics), do: 85
+  # Placeholder
+  defp calculate_security_score(_security_metrics), do: 80
+
   defp calculate_documentation_score(doc_metrics) do
     doc_metrics.code_documentation.documentation_percentage || 50
   end
-  defp calculate_ci_cd_score(_ci_cd_metrics), do: 90 # Placeholder
+
+  # Placeholder
+  defp calculate_ci_cd_score(_ci_cd_metrics), do: 90
 
   defp generate_quality_summary(metrics) do
     score = calculate_overall_quality_score(metrics)
     grade = calculate_quality_grade(metrics)
-    
+
     "Overall Quality Score: #{score}/100 (Grade: #{grade})"
   end
 
   defp generate_recommendations(metrics) do
     recommendations = []
-    
+
     # Test coverage recommendations
     coverage = metrics.test_metrics.test_coverage.overall || 0
-    recommendations = if coverage < 70 do
-      ["Increase test coverage to at least 70% (currently #{coverage}%)" | recommendations]
-    else
-      recommendations
-    end
+
+    recommendations =
+      if coverage < 70 do
+        ["Increase test coverage to at least 70% (currently #{coverage}%)" | recommendations]
+      else
+        recommendations
+      end
 
     # Code quality recommendations
     credo_issues = metrics.code_quality_metrics.credo_analysis.total_issues
-    recommendations = if credo_issues > 5 do
-      ["Address #{credo_issues} code quality issues identified by Credo" | recommendations]
-    else
-      recommendations
-    end
+
+    recommendations =
+      if credo_issues > 5 do
+        ["Address #{credo_issues} code quality issues identified by Credo" | recommendations]
+      else
+        recommendations
+      end
 
     # Security recommendations
     vulns = metrics.security_metrics.dependency_audit.vulnerabilities
-    recommendations = if vulns > 0 do
-      ["Fix #{vulns} security vulnerabilities in dependencies" | recommendations]
-    else
-      recommendations
-    end
+
+    recommendations =
+      if vulns > 0 do
+        ["Fix #{vulns} security vulnerabilities in dependencies" | recommendations]
+      else
+        recommendations
+      end
 
     if length(recommendations) == 0 do
       ["Great job! All quality metrics are within acceptable thresholds."]
@@ -707,10 +764,10 @@ defmodule EveDmv.Quality.MetricsCollector do
   defp export_to_csv(metrics) do
     # Simplified CSV export
     "Category,Metric,Value\n" <>
-    "Test,Coverage,#{metrics.test_metrics.test_coverage.overall}\n" <>
-    "Test,Total Tests,#{metrics.test_metrics.total_tests}\n" <>
-    "Quality,Credo Issues,#{metrics.code_quality_metrics.credo_analysis.total_issues}\n" <>
-    "Security,Vulnerabilities,#{metrics.security_metrics.dependency_audit.vulnerabilities}\n"
+      "Test,Coverage,#{metrics.test_metrics.test_coverage.overall}\n" <>
+      "Test,Total Tests,#{metrics.test_metrics.total_tests}\n" <>
+      "Quality,Credo Issues,#{metrics.code_quality_metrics.credo_analysis.total_issues}\n" <>
+      "Security,Vulnerabilities,#{metrics.security_metrics.dependency_audit.vulnerabilities}\n"
   end
 
   defp export_to_html(metrics) do

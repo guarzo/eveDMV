@@ -124,6 +124,12 @@ jobs:
       env:
         DATABASE_URL: postgres://postgres:postgres@localhost:5432/eve_tracker_test
 
+    - name: Upload coverage report artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: cover/
+
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
       with:
@@ -159,6 +165,175 @@ jobs:
     if: always()
     
     steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Elixir
+      uses: erlef/setup-beam@v1
+      with:
+        elixir-version: ${{ env.ELIXIR_VERSION }}
+        otp-version: ${{ env.OTP_VERSION }}
+
+    - name: Cache dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          deps
+          _build
+        key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-mix-
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y jq
+
+    - name: Install dependencies
+      run: |
+        mix local.hex --force
+        mix local.rebar --force
+        mix deps.get
+
+    - name: Download coverage report
+      uses: actions/download-artifact@v4
+      with:
+        name: coverage-report
+        path: cover/
+
+    - name: Collect quality metrics
+      id: metrics
+      run: |
+        # Run quality metrics collector
+        mix run -e "EveDmv.Quality.MetricsCollector.collect_metrics()"
+        
+        # Read the generated metrics
+        if [ -f "quality_metrics.json" ]; then
+          echo "## 📊 Quality Metrics Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Extract key metrics using jq
+          COVERAGE=$(jq -r '.test_metrics.overall_coverage' quality_metrics.json)
+          TOTAL_TESTS=$(jq -r '.test_metrics.total_tests' quality_metrics.json)
+          PASSING_TESTS=$(jq -r '.test_metrics.passing_tests' quality_metrics.json)
+          QUALITY_SCORE=$(jq -r '.summary.quality_score' quality_metrics.json)
+          QUALITY_GRADE=$(jq -r '.summary.quality_grade' quality_metrics.json)
+          
+          # Display summary
+          echo "### Overall Quality: $QUALITY_GRADE ($QUALITY_SCORE/100)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "#### Test Metrics" >> $GITHUB_STEP_SUMMARY
+          echo "- **Coverage**: ${COVERAGE}%" >> $GITHUB_STEP_SUMMARY
+          echo "- **Total Tests**: $TOTAL_TESTS" >> $GITHUB_STEP_SUMMARY
+          echo "- **Passing Tests**: $PASSING_TESTS" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Code quality
+          CREDO_ISSUES=$(jq -r '.code_quality_metrics.credo_issues' quality_metrics.json)
+          DIALYZER_WARNINGS=$(jq -r '.code_quality_metrics.dialyzer_warnings' quality_metrics.json)
+          
+          echo "#### Code Quality" >> $GITHUB_STEP_SUMMARY
+          echo "- **Credo Issues**: $CREDO_ISSUES" >> $GITHUB_STEP_SUMMARY
+          echo "- **Dialyzer Warnings**: $DIALYZER_WARNINGS" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Performance metrics if available
+          if [ "$(jq -r '.performance_metrics | length' quality_metrics.json)" -gt "0" ]; then
+            echo "#### Performance" >> $GITHUB_STEP_SUMMARY
+            jq -r '.performance_metrics | to_entries[] | "- **\(.key)**: \(.value)"' quality_metrics.json >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Store quality score for badge
+          echo "quality_score=$QUALITY_SCORE" >> $GITHUB_OUTPUT
+          echo "quality_grade=$QUALITY_GRADE" >> $GITHUB_OUTPUT
+        else
+          echo "::warning::Quality metrics file not found"
+        fi
+
+    - name: Upload quality metrics artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: quality-metrics
+        path: |
+          quality_metrics.json
+          quality_metrics.csv
+          quality_metrics.html
+
+    - name: Comment PR with quality metrics
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          
+          try {
+            const metrics = JSON.parse(fs.readFileSync('quality_metrics.json', 'utf8'));
+            
+            const comment = `## 📊 Quality Metrics Report
+            
+            **Overall Quality**: ${metrics.summary.quality_grade} (${metrics.summary.quality_score}/100)
+            
+            ### Test Metrics
+            - **Coverage**: ${metrics.test_metrics.overall_coverage}%
+            - **Total Tests**: ${metrics.test_metrics.total_tests}
+            - **Passing Tests**: ${metrics.test_metrics.passing_tests}
+            
+            ### Code Quality
+            - **Credo Issues**: ${metrics.code_quality_metrics.credo_issues}
+            - **Dialyzer Warnings**: ${metrics.code_quality_metrics.dialyzer_warnings}
+            - **Format Check**: ${metrics.code_quality_metrics.format_check_passed ? '✅ Passed' : '❌ Failed'}
+            
+            ### Team Delta Standards
+            ${metrics.summary.quality_score >= 90 ? '✅ Exceeds standards' : 
+              metrics.summary.quality_score >= 80 ? '✅ Meets standards' :
+              metrics.summary.quality_score >= 70 ? '⚠️ Below standards' :
+              '❌ Significantly below standards'}
+            
+            <details>
+            <summary>View detailed metrics</summary>
+            
+            \`\`\`json
+            ${JSON.stringify(metrics, null, 2)}
+            \`\`\`
+            
+            </details>`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+          } catch (error) {
+            console.error('Failed to post quality metrics comment:', error);
+          }
+
+    - name: Generate quality badge
+      if: github.ref == 'refs/heads/main'
+      run: |
+        SCORE="${{ steps.metrics.outputs.quality_score }}"
+        GRADE="${{ steps.metrics.outputs.quality_grade }}"
+        
+        # Determine badge color based on grade
+        if [ "$GRADE" = "A" ]; then
+          COLOR="brightgreen"
+        elif [ "$GRADE" = "B" ]; then
+          COLOR="green"
+        elif [ "$GRADE" = "C" ]; then
+          COLOR="yellow"
+        elif [ "$GRADE" = "D" ]; then
+          COLOR="orange"
+        else
+          COLOR="red"
+        fi
+        
+        # Create badge JSON
+        echo "{\"schemaVersion\": 1, \"label\": \"quality\", \"message\": \"$GRADE ($SCORE/100)\", \"color\": \"$COLOR\"}" > quality-badge.json
+        
+        echo "Quality badge generated: $GRADE ($SCORE/100) - $COLOR"
+
     - name: Check build status
       run: |
         if [ "${{ needs.build_and_test.result }}" != "success" ]; then

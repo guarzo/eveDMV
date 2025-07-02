@@ -441,14 +441,14 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
   defp get_ship_info(ship_name) do
     # Use centralized ShipDatabase for ship data
     mass_kg = ShipDatabase.get_ship_mass(ship_name)
-    
+
     # Get ship role and category for cost estimation
     role = ShipDatabase.get_ship_role(ship_name)
     category = ShipDatabase.get_ship_category(ship_name)
-    
+
     # Estimate cost based on ship category and role
     estimated_cost = estimate_ship_cost_by_category(category, role)
-    
+
     %{
       mass_kg: mass_kg,
       estimated_cost: estimated_cost,
@@ -461,27 +461,34 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
 
   defp estimate_ship_cost_by_category(category, role) do
     # Estimate cost based on ship category and role
-    base_cost = case category do
-      "Frigate" -> 15_000_000
-      "Destroyer" -> 25_000_000
-      "Cruiser" -> 100_000_000
-      "Battlecruiser" -> 150_000_000
-      "Battleship" -> 200_000_000
-      "Capital" -> 2_000_000_000
-      "Supercapital" -> 20_000_000_000
-      _ -> 50_000_000
-    end
-    
+    base_cost =
+      case category do
+        "Frigate" -> 15_000_000
+        "Destroyer" -> 25_000_000
+        "Cruiser" -> 100_000_000
+        "Battlecruiser" -> 150_000_000
+        "Battleship" -> 200_000_000
+        "Capital" -> 2_000_000_000
+        "Supercapital" -> 20_000_000_000
+        _ -> 50_000_000
+      end
+
     # Apply role multipliers
-    role_multiplier = case role do
-      "fc" -> 2.5  # Command ships are expensive
-      "logistics" -> 1.8  # Logistics ships cost more
-      "dps" -> 1.5  # T3/HACs are pricey
-      "tackle" -> 1.0  # Interceptors are base cost
-      "ewar" -> 1.2  # EWAR ships moderate cost
-      _ -> 1.0
-    end
-    
+    role_multiplier =
+      case role do
+        # Command ships are expensive
+        "fc" -> 2.5
+        # Logistics ships cost more
+        "logistics" -> 1.8
+        # T3/HACs are pricey
+        "dps" -> 1.5
+        # Interceptors are base cost
+        "tackle" -> 1.0
+        # EWAR ships moderate cost
+        "ewar" -> 1.2
+        _ -> 1.0
+      end
+
     round(base_cost * role_multiplier)
   end
 
@@ -1132,7 +1139,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
         # Get wormhole restrictions from ShipDatabase
         ship_class = ShipDatabase.get_ship_class(ship_name)
         wh_restrictions = ShipDatabase.get_wormhole_restrictions(ship_class)
-        
+
         # Use a hash of ship_name as type_id for demo purposes
         type_id = :erlang.phash2(ship_name) |> Integer.to_string()
 
@@ -1170,7 +1177,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
   Provides detailed ship-by-ship analysis with wormhole suitability.
   """
   def analyze_enhanced_fleet_composition(ship_list) when is_list(ship_list) do
-    ship_analysis = 
+    ship_analysis =
       ship_list
       |> Enum.map(&analyze_individual_ship/1)
       |> Enum.reject(&is_nil/1)
@@ -1194,14 +1201,15 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
       ship_class: ShipDatabase.get_ship_class(ship_name),
       wormhole_suitable: ShipDatabase.wormhole_suitable?(ship_name),
       is_capital: ShipDatabase.is_capital?(ship_name),
-      wh_restrictions: ShipDatabase.get_wormhole_restrictions(ShipDatabase.get_ship_class(ship_name))
+      wh_restrictions:
+        ShipDatabase.get_wormhole_restrictions(ShipDatabase.get_ship_class(ship_name))
     }
   end
 
   defp analyze_composition_balance(ship_analysis) do
     role_counts = Enum.frequencies_by(ship_analysis, & &1.role)
     total = length(ship_analysis)
-    
+
     %{
       dps_ratio: Map.get(role_counts, "dps", 0) / total,
       logistics_ratio: Map.get(role_counts, "logistics", 0) / total,
@@ -1214,11 +1222,11 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
 
   defp analyze_fleet_wh_compatibility(ship_analysis) do
     total_mass = Enum.sum(Enum.map(ship_analysis, & &1.mass_kg))
-    
+
     small_compatible = Enum.count(ship_analysis, & &1.wh_restrictions.can_pass_small)
     medium_compatible = Enum.count(ship_analysis, & &1.wh_restrictions.can_pass_medium)
     large_compatible = Enum.count(ship_analysis, & &1.wh_restrictions.can_pass_large)
-    
+
     %{
       total_mass: total_mass,
       small_wh_ships: small_compatible,
@@ -1232,20 +1240,22 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
   defp analyze_ship_doctrine_compliance(ship_analysis) do
     # Check compliance with common WH doctrines
     doctrines = ["armor", "shield", "armor_cruiser", "shield_cruiser"]
-    
-    doctrine_scores = 
+
+    doctrine_scores =
       doctrines
       |> Enum.map(fn doctrine ->
-        compliant_ships = Enum.count(ship_analysis, &ShipDatabase.doctrine_ship?(&1.name, doctrine))
+        compliant_ships =
+          Enum.count(ship_analysis, &ShipDatabase.doctrine_ship?(&1.name, doctrine))
+
         {doctrine, compliant_ships / length(ship_analysis)}
       end)
       |> Map.new()
-    
-    best_doctrine = 
+
+    best_doctrine =
       doctrine_scores
       |> Enum.max_by(fn {_doctrine, score} -> score end)
       |> elem(0)
-    
+
     %{
       doctrine_scores: doctrine_scores,
       recommended_doctrine: best_doctrine,
@@ -1262,54 +1272,59 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
       "ewar" => 0.05,
       "fc" => 0.05
     }
-    
-    actual_ratios = 
+
+    actual_ratios =
       role_counts
       |> Enum.map(fn {role, count} -> {role, count / total} end)
       |> Map.new()
-    
+
     # Calculate deviation from ideal
-    deviations = 
+    deviations =
       ideal_ratios
       |> Enum.map(fn {role, ideal} ->
         actual = Map.get(actual_ratios, role, 0.0)
         abs(ideal - actual)
       end)
-    
+
     # Lower deviation = higher score
     max(0.0, 1.0 - Enum.sum(deviations))
   end
 
   defp generate_enhanced_suggestions(ship_analysis) do
     suggestions = []
-    
+
     # Mass optimization suggestions
     total_mass = Enum.sum(Enum.map(ship_analysis, & &1.mass_kg))
-    suggestions = if total_mass > 90_000_000 do
-      ["Consider lighter ships for better wormhole mobility" | suggestions]
-    else
-      suggestions
-    end
-    
+
+    suggestions =
+      if total_mass > 90_000_000 do
+        ["Consider lighter ships for better wormhole mobility" | suggestions]
+      else
+        suggestions
+      end
+
     # Role balance suggestions
     role_counts = Enum.frequencies_by(ship_analysis, & &1.role)
     logi_count = Map.get(role_counts, "logistics", 0)
     dps_count = Map.get(role_counts, "dps", 0)
-    
-    suggestions = if logi_count == 0 and dps_count > 2 do
-      ["Add logistics ships for fleet sustainability" | suggestions]
-    else
-      suggestions
-    end
-    
+
+    suggestions =
+      if logi_count == 0 and dps_count > 2 do
+        ["Add logistics ships for fleet sustainability" | suggestions]
+      else
+        suggestions
+      end
+
     # Capital ship warnings
     capital_count = Enum.count(ship_analysis, & &1.is_capital)
-    suggestions = if capital_count > 0 do
-      ["Capital ships restrict wormhole movement - ensure XL wormhole access" | suggestions]
-    else
-      suggestions
-    end
-    
+
+    suggestions =
+      if capital_count > 0 do
+        ["Capital ships restrict wormhole movement - ensure XL wormhole access" | suggestions]
+      else
+        suggestions
+      end
+
     if Enum.empty?(suggestions) do
       ["Fleet composition appears well-balanced for wormhole operations"]
     else

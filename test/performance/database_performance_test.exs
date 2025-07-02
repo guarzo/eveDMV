@@ -11,7 +11,8 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
 
   require Ash.Query
 
-  @max_query_time 200  # milliseconds
+  # milliseconds
+  @max_query_time 200
   @max_bulk_insert_time 1000
   @max_complex_query_time 500
   @bulk_insert_size 100
@@ -23,12 +24,13 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
       create(:killmail_raw, %{killmail_id: killmail_id})
 
       # Test query performance
-      {time_microseconds, result} = :timer.tc(fn ->
-        KillmailRaw
-        |> Ash.Query.new()
-        |> Ash.Query.filter(killmail_id == ^killmail_id)
-        |> Ash.read_one(domain: Api)
-      end)
+      {time_microseconds, result} =
+        :timer.tc(fn ->
+          KillmailRaw
+          |> Ash.Query.new()
+          |> Ash.Query.filter(killmail_id == ^killmail_id)
+          |> Ash.read_one(domain: Api)
+        end)
 
       time_ms = time_microseconds / 1000
 
@@ -41,12 +43,13 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
       character_id = 95_000_100
       create(:character_stats, %{character_id: character_id})
 
-      {time_microseconds, result} = :timer.tc(fn ->
-        CharacterStats
-        |> Ash.Query.new()
-        |> Ash.Query.filter(character_id == ^character_id)
-        |> Ash.read_one(domain: Api)
-      end)
+      {time_microseconds, result} =
+        :timer.tc(fn ->
+          CharacterStats
+          |> Ash.Query.new()
+          |> Ash.Query.filter(character_id == ^character_id)
+          |> Ash.read_one(domain: Api)
+        end)
 
       time_ms = time_microseconds / 1000
 
@@ -64,13 +67,14 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
         })
       end
 
-      {time_microseconds, result} = :timer.tc(fn ->
-        KillmailEnriched
-        |> Ash.Query.new()
-        |> Ash.Query.sort(killmail_time: :desc)
-        |> Ash.Query.limit(20)
-        |> Ash.read(domain: Api)
-      end)
+      {time_microseconds, result} =
+        :timer.tc(fn ->
+          KillmailEnriched
+          |> Ash.Query.new()
+          |> Ash.Query.sort(killmail_time: :desc)
+          |> Ash.Query.limit(20)
+          |> Ash.read(domain: Api)
+        end)
 
       time_ms = time_microseconds / 1000
 
@@ -83,7 +87,7 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
   describe "complex query performance" do
     test "character killmail aggregation query" do
       character_id = 95_000_200
-      
+
       # Create 30 killmails for character
       for i <- 1..30 do
         create(:killmail_raw, %{
@@ -93,26 +97,27 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
         })
       end
 
-      {time_microseconds, result} = :timer.tc(fn ->
-        # Simulate character analysis aggregation query
-        query = """
-        SELECT 
-          COUNT(*) as total_kills,
-          COUNT(CASE WHEN km.killmail_data->'victim'->>'character_id' = $1 THEN 1 END) as losses,
-          COUNT(CASE WHEN EXISTS(
-            SELECT 1 FROM jsonb_array_elements(km.killmail_data->'attackers') attacker 
-            WHERE attacker->>'character_id' = $1
-          ) THEN 1 END) as kills
-        FROM killmails_raw km
-        WHERE km.killmail_data->'victim'->>'character_id' = $1
-           OR EXISTS(
-             SELECT 1 FROM jsonb_array_elements(km.killmail_data->'attackers') attacker 
-             WHERE attacker->>'character_id' = $1
-           )
-        """
-        
-        Ecto.Adapters.SQL.query!(Repo, query, [to_string(character_id)])
-      end)
+      {time_microseconds, result} =
+        :timer.tc(fn ->
+          # Simulate character analysis aggregation query
+          query = """
+          SELECT 
+            COUNT(*) as total_kills,
+            COUNT(CASE WHEN km.killmail_data->'victim'->>'character_id' = $1 THEN 1 END) as losses,
+            COUNT(CASE WHEN EXISTS(
+              SELECT 1 FROM jsonb_array_elements(km.killmail_data->'attackers') attacker 
+              WHERE attacker->>'character_id' = $1
+            ) THEN 1 END) as kills
+          FROM killmails_raw km
+          WHERE km.killmail_data->'victim'->>'character_id' = $1
+             OR EXISTS(
+               SELECT 1 FROM jsonb_array_elements(km.killmail_data->'attackers') attacker 
+               WHERE attacker->>'character_id' = $1
+             )
+          """
+
+          Ecto.Adapters.SQL.query!(Repo, query, [to_string(character_id)])
+        end)
 
       time_ms = time_microseconds / 1000
 
@@ -122,7 +127,7 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
 
     test "system activity aggregation query" do
       system_id = 30_000_142
-      
+
       # Create killmails in system
       for i <- 1..40 do
         create(:killmail_enriched, %{
@@ -133,25 +138,26 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
         })
       end
 
-      {time_microseconds, result} = :timer.tc(fn ->
-        query = """
-        SELECT 
-          solar_system_id,
-          COUNT(*) as kill_count,
-          SUM(total_value) as total_isk,
-          AVG(total_value) as avg_isk,
-          MAX(killmail_time) as latest_kill
-        FROM killmails_enriched 
-        WHERE solar_system_id = $1
-          AND killmail_time >= $2
-        GROUP BY solar_system_id
-        """
-        
-        Ecto.Adapters.SQL.query!(Repo, query, [
-          system_id,
-          DateTime.add(DateTime.utc_now(), -86400, :second)
-        ])
-      end)
+      {time_microseconds, result} =
+        :timer.tc(fn ->
+          query = """
+          SELECT 
+            solar_system_id,
+            COUNT(*) as kill_count,
+            SUM(total_value) as total_isk,
+            AVG(total_value) as avg_isk,
+            MAX(killmail_time) as latest_kill
+          FROM killmails_enriched 
+          WHERE solar_system_id = $1
+            AND killmail_time >= $2
+          GROUP BY solar_system_id
+          """
+
+          Ecto.Adapters.SQL.query!(Repo, query, [
+            system_id,
+            DateTime.add(DateTime.utc_now(), -86400, :second)
+          ])
+        end)
 
       time_ms = time_microseconds / 1000
 
@@ -166,33 +172,34 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
       # Test queries across partitioned tables
       current_month = Date.beginning_of_month(Date.utc_today())
       last_month = Date.add(current_month, -1)
-      
+
       # Create killmails across multiple months
       for i <- 1..30 do
         month_offset = if i <= 15, do: 0, else: -30
         kill_time = DateTime.add(DateTime.utc_now(), month_offset * 86400, :second)
-        
+
         create(:killmail_raw, %{
           killmail_id: 99_400_000 + i,
           killmail_time: kill_time
         })
       end
 
-      {time_microseconds, result} = :timer.tc(fn ->
-        query = """
-        SELECT 
-          DATE_TRUNC('month', killmail_time) as month,
-          COUNT(*) as kill_count
-        FROM killmails_raw 
-        WHERE killmail_time >= $1
-        GROUP BY DATE_TRUNC('month', killmail_time)
-        ORDER BY month
-        """
-        
-        Ecto.Adapters.SQL.query!(Repo, query, [
-          DateTime.add(DateTime.utc_now(), -60 * 86400, :second)
-        ])
-      end)
+      {time_microseconds, result} =
+        :timer.tc(fn ->
+          query = """
+          SELECT 
+            DATE_TRUNC('month', killmail_time) as month,
+            COUNT(*) as kill_count
+          FROM killmails_raw 
+          WHERE killmail_time >= $1
+          GROUP BY DATE_TRUNC('month', killmail_time)
+          ORDER BY month
+          """
+
+          Ecto.Adapters.SQL.query!(Repo, query, [
+            DateTime.add(DateTime.utc_now(), -60 * 86400, :second)
+          ])
+        end)
 
       time_ms = time_microseconds / 1000
 
@@ -203,27 +210,29 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
 
   describe "bulk operations performance" do
     test "bulk killmail insertion" do
-      killmails = for i <- 1..@bulk_insert_size do
-        %{
-          killmail_id: 99_500_000 + i,
-          killmail_time: DateTime.add(DateTime.utc_now(), -i * 60, :second),
-          solar_system_id: 30_000_142,
-          killmail_data: %{
-            "killmail_id" => 99_500_000 + i,
-            "victim" => %{"character_id" => 95_000_000 + i},
-            "attackers" => [%{"character_id" => 95_100_000 + i}]
-          },
-          source: "performance_test"
-        }
-      end
+      killmails =
+        for i <- 1..@bulk_insert_size do
+          %{
+            killmail_id: 99_500_000 + i,
+            killmail_time: DateTime.add(DateTime.utc_now(), -i * 60, :second),
+            solar_system_id: 30_000_142,
+            killmail_data: %{
+              "killmail_id" => 99_500_000 + i,
+              "victim" => %{"character_id" => 95_000_000 + i},
+              "attackers" => [%{"character_id" => 95_100_000 + i}]
+            },
+            source: "performance_test"
+          }
+        end
 
-      {time_microseconds, result} = :timer.tc(fn ->
-        Ash.bulk_create(killmails, KillmailRaw, :create,
-          domain: Api,
-          return_errors?: false,
-          batch_size: 50
-        )
-      end)
+      {time_microseconds, result} =
+        :timer.tc(fn ->
+          Ash.bulk_create(killmails, KillmailRaw, :create,
+            domain: Api,
+            return_errors?: false,
+            batch_size: 50
+          )
+        end)
 
       time_ms = time_microseconds / 1000
 
@@ -231,9 +240,12 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
       assert time_ms < @max_bulk_insert_time, "Bulk insert took #{time_ms}ms"
 
       # Verify all records were inserted
-      count_query = KillmailRaw
+      count_query =
+        KillmailRaw
         |> Ash.Query.new()
-        |> Ash.Query.filter(killmail_id >= 99_500_001 and killmail_id <= 99_500_000 + @bulk_insert_size)
+        |> Ash.Query.filter(
+          killmail_id >= 99_500_001 and killmail_id <= 99_500_000 + @bulk_insert_size
+        )
 
       assert {:ok, inserted} = Ash.read(count_query, domain: Api)
       assert length(inserted) == @bulk_insert_size
@@ -243,39 +255,43 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
       character_ids = for i <- 1..50, do: 95_000_300 + i
 
       # Create initial stats
-      initial_stats = for character_id <- character_ids do
-        %{
-          character_id: character_id,
-          dangerous_rating: 0,
-          kill_count: 0,
-          loss_count: 0,
-          analysis_data: "{}"
-        }
-      end
+      initial_stats =
+        for character_id <- character_ids do
+          %{
+            character_id: character_id,
+            dangerous_rating: 0,
+            kill_count: 0,
+            loss_count: 0,
+            analysis_data: "{}"
+          }
+        end
 
       # Insert initial data
-      {:ok, _} = Ash.bulk_create(initial_stats, CharacterStats, :create,
-        domain: Api,
-        return_errors?: false
-      )
+      {:ok, _} =
+        Ash.bulk_create(initial_stats, CharacterStats, :create,
+          domain: Api,
+          return_errors?: false
+        )
 
       # Update all stats
-      updates = for character_id <- character_ids do
-        %{
-          character_id: character_id,
-          dangerous_rating: Enum.random(1..5),
-          kill_count: Enum.random(10..100),
-          loss_count: Enum.random(1..20)
-        }
-      end
+      updates =
+        for character_id <- character_ids do
+          %{
+            character_id: character_id,
+            dangerous_rating: Enum.random(1..5),
+            kill_count: Enum.random(10..100),
+            loss_count: Enum.random(1..20)
+          }
+        end
 
-      {time_microseconds, result} = :timer.tc(fn ->
-        Ash.bulk_update(CharacterStats, :update, updates,
-          domain: Api,
-          return_errors?: false,
-          batch_size: 25
-        )
-      end)
+      {time_microseconds, result} =
+        :timer.tc(fn ->
+          Ash.bulk_update(CharacterStats, :update, updates,
+            domain: Api,
+            return_errors?: false,
+            batch_size: 25
+          )
+        end)
 
       time_ms = time_microseconds / 1000
 
@@ -295,32 +311,35 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
       end
 
       # Test concurrent reads
-      {time_microseconds, results} = :timer.tc(fn ->
-        tasks = for _i <- 1..10 do
-          Task.async(fn ->
-            KillmailEnriched
-            |> Ash.Query.new()
-            |> Ash.Query.sort(killmail_time: :desc)
-            |> Ash.Query.limit(20)
-            |> Ash.read(domain: Api)
-          end)
-        end
+      {time_microseconds, results} =
+        :timer.tc(fn ->
+          tasks =
+            for _i <- 1..10 do
+              Task.async(fn ->
+                KillmailEnriched
+                |> Ash.Query.new()
+                |> Ash.Query.sort(killmail_time: :desc)
+                |> Ash.Query.limit(20)
+                |> Ash.read(domain: Api)
+              end)
+            end
 
-        Task.await_many(tasks, 5000)
-      end)
+          Task.await_many(tasks, 5000)
+        end)
 
       time_ms = time_microseconds / 1000
 
       # All queries should succeed
       assert Enum.all?(results, fn
-        {:ok, killmails} -> length(killmails) == 20
-        _ -> false
-      end)
+               {:ok, killmails} -> length(killmails) == 20
+               _ -> false
+             end)
 
       # Average time per query should be reasonable
       avg_time_per_query = time_ms / 10
-      assert avg_time_per_query < @max_query_time * 2, 
-        "Concurrent reads averaged #{avg_time_per_query}ms per query"
+
+      assert avg_time_per_query < @max_query_time * 2,
+             "Concurrent reads averaged #{avg_time_per_query}ms per query"
     end
 
     test "mixed read/write performance" do
@@ -333,7 +352,7 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
             |> Ash.Query.new()
             |> Ash.Query.limit(10)
             |> Ash.read(domain: Api)
-            
+
             :timer.sleep(50)
           end
         end),
@@ -345,7 +364,7 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
               killmail_id: 99_700_000 + i,
               killmail_time: DateTime.utc_now()
             })
-            
+
             :timer.sleep(25)
           end
         end),
@@ -357,19 +376,20 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
             SELECT COUNT(*) FROM killmails_enriched 
             WHERE killmail_time >= $1
             """
-            
+
             Ecto.Adapters.SQL.query!(Repo, query, [
               DateTime.add(DateTime.utc_now(), -3600, :second)
             ])
-            
+
             :timer.sleep(100)
           end
         end)
       ]
 
-      {time_microseconds, _results} = :timer.tc(fn ->
-        Task.await_many(tasks, 10_000)
-      end)
+      {time_microseconds, _results} =
+        :timer.tc(fn ->
+          Task.await_many(tasks, 10_000)
+        end)
 
       time_ms = time_microseconds / 1000
 
@@ -381,11 +401,11 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
   describe "index performance" do
     test "character_id index effectiveness" do
       character_id = 95_000_400
-      
+
       # Create many killmails for different characters
       for i <- 1..200 do
         char_id = if rem(i, 10) == 0, do: character_id, else: 95_000_000 + i
-        
+
         create(:killmail_raw, %{
           killmail_id: 99_800_000 + i,
           killmail_data: %{
@@ -396,14 +416,15 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
       end
 
       # Query should be fast due to index
-      {time_microseconds, result} = :timer.tc(fn ->
-        query = """
-        SELECT COUNT(*) FROM killmails_raw 
-        WHERE killmail_data->'victim'->>'character_id' = $1
-        """
-        
-        Ecto.Adapters.SQL.query!(Repo, query, [to_string(character_id)])
-      end)
+      {time_microseconds, result} =
+        :timer.tc(fn ->
+          query = """
+          SELECT COUNT(*) FROM killmails_raw 
+          WHERE killmail_data->'victim'->>'character_id' = $1
+          """
+
+          Ecto.Adapters.SQL.query!(Repo, query, [to_string(character_id)])
+        end)
 
       time_ms = time_microseconds / 1000
 
@@ -414,11 +435,12 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
     test "time-based index performance" do
       # Create killmails across time range
       base_time = DateTime.utc_now()
-      
+
       for i <- 1..150 do
-        time_offset = -i * 3600 # Hours back
+        # Hours back
+        time_offset = -i * 3600
         kill_time = DateTime.add(base_time, time_offset, :second)
-        
+
         create(:killmail_enriched, %{
           killmail_id: 99_900_000 + i,
           killmail_time: kill_time
@@ -426,15 +448,16 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
       end
 
       # Time-range query should be fast
-      {time_microseconds, result} = :timer.tc(fn ->
-        start_time = DateTime.add(base_time, -24 * 3600, :second)
-        end_time = DateTime.add(base_time, -12 * 3600, :second)
-        
-        KillmailEnriched
-        |> Ash.Query.new()
-        |> Ash.Query.filter(killmail_time >= ^start_time and killmail_time <= ^end_time)
-        |> Ash.read(domain: Api)
-      end)
+      {time_microseconds, result} =
+        :timer.tc(fn ->
+          start_time = DateTime.add(base_time, -24 * 3600, :second)
+          end_time = DateTime.add(base_time, -12 * 3600, :second)
+
+          KillmailEnriched
+          |> Ash.Query.new()
+          |> Ash.Query.filter(killmail_time >= ^start_time and killmail_time <= ^end_time)
+          |> Ash.read(domain: Api)
+        end)
 
       time_ms = time_microseconds / 1000
 
@@ -459,7 +482,8 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
       initial_memory = :erlang.memory(:processes)
 
       # Perform memory-intensive operation
-      {:ok, _killmails} = KillmailEnriched
+      {:ok, _killmails} =
+        KillmailEnriched
         |> Ash.Query.new()
         |> Ash.Query.limit(500)
         |> Ash.read(domain: Api)
@@ -470,8 +494,8 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
       memory_growth = final_memory - initial_memory
 
       # Memory growth should be reasonable (less than 50MB)
-      assert memory_growth < 50_000_000, 
-        "Memory grew by #{memory_growth / 1_000_000}MB for large query"
+      assert memory_growth < 50_000_000,
+             "Memory grew by #{memory_growth / 1_000_000}MB for large query"
     end
   end
 

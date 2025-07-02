@@ -11,13 +11,14 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
 
   setup %{conn: conn} do
     # Create authenticated user
-    user = create(:user, %{
-      character_id: 95_465_499,
-      character_name: "Test User"
-    })
+    user =
+      create(:user, %{
+        character_id: 95_465_499,
+        character_name: "Test User"
+      })
 
     conn = log_in_user(conn, user)
-    
+
     # Create test character with activity
     character_id = 95_000_100
     create_character_with_activity(character_id)
@@ -34,9 +35,9 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
 
       # Wait for analysis to complete
       :timer.sleep(500)
-      
+
       html = render(view)
-      
+
       # Should display character info
       assert html =~ "Character Intelligence"
       assert html =~ "Threat Level"
@@ -79,21 +80,23 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
 
       # Switch to combat stats tab
       view |> element("[phx-click=\"switch_tab\"][phx-value-tab=\"combat\"]") |> render_click()
-      
+
       html = render(view)
       assert html =~ "Combat Statistics"
       assert html =~ "K/D Ratio"
 
       # Switch to activity patterns tab
       view |> element("[phx-click=\"switch_tab\"][phx-value-tab=\"patterns\"]") |> render_click()
-      
+
       html = render(view)
       assert html =~ "Activity Patterns"
       assert html =~ "Timezone Analysis"
 
       # Switch to associations tab
-      view |> element("[phx-click=\"switch_tab\"][phx-value-tab=\"associations\"]") |> render_click()
-      
+      view
+      |> element("[phx-click=\"switch_tab\"][phx-value-tab=\"associations\"]")
+      |> render_click()
+
       html = render(view)
       assert html =~ "Known Associates"
       assert html =~ "Frequent Targets"
@@ -112,7 +115,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
 
       # Broadcast new kill
       new_kill = build_test_killmail(character_id)
-      
+
       Phoenix.PubSub.broadcast(
         EveDmv.PubSub,
         "character:#{character_id}",
@@ -124,7 +127,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
       # Kill count should increase
       updated_html = render(view)
       updated_kills = extract_kill_count(updated_html)
-      
+
       assert updated_kills > initial_kills
     end
 
@@ -135,8 +138,9 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
 
       # Send high-threat activity
       for i <- 1..5 do
-        kill = build_test_killmail(character_id, ship_type_id: 17738) # Machariel
-        
+        # Machariel
+        kill = build_test_killmail(character_id, ship_type_id: 17738)
+
         Phoenix.PubSub.broadcast(
           EveDmv.PubSub,
           "character:#{character_id}",
@@ -147,7 +151,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
       :timer.sleep(300)
 
       html = render(view)
-      
+
       # Threat level should reflect dangerous activity
       assert html =~ "High Threat" or html =~ "Very Dangerous"
     end
@@ -159,7 +163,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
 
       # Disable real-time updates
       view |> element("[phx-click=\"toggle_realtime\"]") |> render_click()
-      
+
       html = render(view)
       assert html =~ "Real-time updates disabled"
 
@@ -174,7 +178,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
 
       # Re-enable real-time updates
       view |> element("[phx-click=\"toggle_realtime\"]") |> render_click()
-      
+
       html = render(view)
       assert html =~ "Real-time updates enabled"
     end
@@ -186,7 +190,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
 
       # Enable auto-refresh
       view |> element("[phx-click=\"toggle_auto_refresh\"]") |> render_click()
-      
+
       html = render(view)
       assert html =~ "Auto-refresh enabled"
       assert html =~ "60 seconds"
@@ -196,10 +200,12 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
       {:ok, view, _html} = live(conn, ~p"/intel/#{character_id}")
 
       # Change interval to 30 seconds
-      view |> element("form[phx-change=\"update_refresh_interval\"]") |> render_change(%{
+      view
+      |> element("form[phx-change=\"update_refresh_interval\"]")
+      |> render_change(%{
         "interval" => "30"
       })
-      
+
       html = render(view)
       assert html =~ "30 seconds"
     end
@@ -214,8 +220,10 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
       create_character_with_activity(comparison_id)
 
       # Add for comparison
-      view |> element("[phx-click=\"add_comparison\"][phx-value-character-id=\"#{comparison_id}\"]") |> render_click()
-      
+      view
+      |> element("[phx-click=\"add_comparison\"][phx-value-character-id=\"#{comparison_id}\"]")
+      |> render_click()
+
       html = render(view)
       assert html =~ "Comparison Added"
       assert html =~ "95000200"
@@ -227,12 +235,16 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
       # Add comparison first
       comparison_id = 95_000_201
       create_character_with_activity(comparison_id)
-      
-      view |> element("[phx-click=\"add_comparison\"][phx-value-character-id=\"#{comparison_id}\"]") |> render_click()
-      
+
+      view
+      |> element("[phx-click=\"add_comparison\"][phx-value-character-id=\"#{comparison_id}\"]")
+      |> render_click()
+
       # Remove comparison
-      view |> element("[phx-click=\"remove_comparison\"][phx-value-character-id=\"#{comparison_id}\"]") |> render_click()
-      
+      view
+      |> element("[phx-click=\"remove_comparison\"][phx-value-character-id=\"#{comparison_id}\"]")
+      |> render_click()
+
       html = render(view)
       refute html =~ "95000201"
     end
@@ -243,10 +255,12 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
       {:ok, view, _html} = live(conn, ~p"/intel/#{character_id}")
 
       # Perform search
-      view |> element("form[phx-submit=\"search_characters\"]") |> render_submit(%{
+      view
+      |> element("form[phx-submit=\"search_characters\"]")
+      |> render_submit(%{
         "search" => %{"query" => "Test"}
       })
-      
+
       :timer.sleep(200)
 
       html = render(view)
@@ -257,10 +271,12 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
       {:ok, view, _html} = live(conn, ~p"/intel/#{character_id}")
 
       # Search for non-existent character
-      view |> element("form[phx-submit=\"search_characters\"]") |> render_submit(%{
+      view
+      |> element("form[phx-submit=\"search_characters\"]")
+      |> render_submit(%{
         "search" => %{"query" => "zzznonexistent"}
       })
-      
+
       :timer.sleep(200)
 
       html = render(view)
@@ -276,7 +292,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
 
       # Click export button
       view |> element("[phx-click=\"export_analysis\"]") |> render_click()
-      
+
       # Should trigger download
       assert_push_event(view, "download", %{
         filename: filename,
@@ -298,7 +314,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
       :timer.sleep(500)
 
       html = render(view)
-      
+
       # Should show correlations
       assert html =~ "Character Correlations"
       assert html =~ "Frequently Flies With"
@@ -317,7 +333,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
       :timer.sleep(500)
 
       html = render(view)
-      
+
       # Should show WH-specific analysis
       assert html =~ "J-Space Experience"
       assert html =~ "Wormhole Activity"
@@ -332,7 +348,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
       :timer.sleep(500)
 
       html = render(view)
-      
+
       # Should show performance metrics
       assert html =~ "Analysis completed in"
       assert html =~ "ms"
@@ -344,9 +360,10 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
       :timer.sleep(500)
 
       # Second load should be faster (cache hit)
-      {time, {:ok, view2, _html}} = :timer.tc(fn ->
-        live(conn, ~p"/intel/#{character_id}")
-      end)
+      {time, {:ok, view2, _html}} =
+        :timer.tc(fn ->
+          live(conn, ~p"/intel/#{character_id}")
+        end)
 
       time_ms = time / 1000
       assert time_ms < 100, "Cached load took #{time_ms}ms"
@@ -374,7 +391,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
 
       # Click retry
       view |> element("[phx-click=\"retry_analysis\"]") |> render_click()
-      
+
       html = render(view)
       assert html =~ "Retrying analysis" or html =~ "Loading"
     end
@@ -397,7 +414,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
   defp create_correlated_activity(character_id) do
     # Create kills with same accomplices
     accomplice_ids = [95_001_000, 95_001_001, 95_001_002]
-    
+
     for i <- 1..10 do
       create(:killmail_raw, %{
         killmail_id: 81_000_000 + i,
@@ -413,7 +430,8 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
       create(:killmail_raw, %{
         killmail_id: 82_000_000 + character_id + i,
         killmail_time: DateTime.add(DateTime.utc_now(), -i * 7200, :second),
-        solar_system_id: Enum.random(31_000_000..31_005_000), # J-space
+        # J-space
+        solar_system_id: Enum.random(31_000_000..31_005_000),
         killmail_data: build_killmail_data(character_id, i)
       })
     end
@@ -440,18 +458,20 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
 
   defp build_killmail_data(character_id, index) do
     is_victim = rem(index, 4) == 0
-    
+
     %{
       "attackers" => [
         %{
-          "character_id" => if(is_victim, do: Enum.random(90_000_000..95_000_000), else: character_id),
+          "character_id" =>
+            if(is_victim, do: Enum.random(90_000_000..95_000_000), else: character_id),
           "corporation_id" => 1_000_000,
           "ship_type_id" => Enum.random([587, 588, 589, 17738]),
           "final_blow" => true
         }
       ],
       "victim" => %{
-        "character_id" => if(is_victim, do: character_id, else: Enum.random(90_000_000..95_000_000)),
+        "character_id" =>
+          if(is_victim, do: character_id, else: Enum.random(90_000_000..95_000_000)),
         "corporation_id" => 2_000_000,
         "ship_type_id" => Enum.random([587, 588, 589])
       }
@@ -466,8 +486,8 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
           "final_blow" => true
         }
         | Enum.map(accomplice_ids, fn id ->
-          %{"character_id" => id, "final_blow" => false}
-        end)
+            %{"character_id" => id, "final_blow" => false}
+          end)
       ],
       "victim" => %{
         "character_id" => Enum.random(90_000_000..95_000_000)
@@ -484,7 +504,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
 
   defp log_in_user(conn, user) do
     token = EveDmvWeb.Auth.generate_user_session_token(user)
-    
+
     conn
     |> Phoenix.ConnTest.init_test_session(%{})
     |> Plug.Conn.put_session(:user_token, token)

@@ -23,7 +23,7 @@ defmodule EveDmv.E2E.UserExperienceTest do
       # Step 2: User initiates EVE SSO login
       conn = get(conn, ~p"/auth/eve_sso")
       assert response(conn, 302)
-      
+
       # Step 3: Simulate successful EVE SSO callback
       user_data = create_mock_eve_user_data()
       user = create_authenticated_user(user_data)
@@ -37,10 +37,10 @@ defmodule EveDmv.E2E.UserExperienceTest do
       # Step 5: User navigates to intelligence section
       {:ok, view, html} = live(conn, ~p"/intel/#{user.character_id}")
       assert html =~ "Character Intelligence"
-      
+
       # Wait for analysis to load
       :timer.sleep(1000)
-      
+
       html = render(view)
       assert html =~ "Analysis" or html =~ "Loading"
 
@@ -52,7 +52,9 @@ defmodule EveDmv.E2E.UserExperienceTest do
       end
 
       # Step 7: User searches for another character
-      view |> element("form[phx-submit=\"search_character\"]") |> render_submit(%{
+      view
+      |> element("form[phx-submit=\"search_character\"]")
+      |> render_submit(%{
         "search" => %{"query" => "Test"}
       })
 
@@ -73,14 +75,14 @@ defmodule EveDmv.E2E.UserExperienceTest do
 
       # Step 1: Analyst searches for target character
       {:ok, view, _html} = live(conn, ~p"/intel/#{target_character_id}")
-      
+
       :timer.sleep(1000)
 
       # Step 2: Review basic intelligence
       html = render(view)
       assert html =~ "Character Intelligence"
       assert html =~ "Threat Level"
-      
+
       # Step 3: Analyze combat patterns
       view |> element("[phx-click=\"change_tab\"][phx-value-tab=\"combat\"]") |> render_click()
       html = render(view)
@@ -94,7 +96,10 @@ defmodule EveDmv.E2E.UserExperienceTest do
       assert html =~ "Geographic" or html =~ "Temporal"
 
       # Step 5: Investigate associations
-      view |> element("[phx-click=\"change_tab\"][phx-value-tab=\"associations\"]") |> render_click()
+      view
+      |> element("[phx-click=\"change_tab\"][phx-value-tab=\"associations\"]")
+      |> render_click()
+
       html = render(view)
       assert html =~ "Known Associates" or html =~ "Frequent Targets"
 
@@ -102,19 +107,24 @@ defmodule EveDmv.E2E.UserExperienceTest do
       comparison_character_id = 95_000_200
       create_comparison_character_activity(comparison_character_id)
 
-      view |> element("[phx-click=\"add_comparison\"][phx-value-character-id=\"#{comparison_character_id}\"]") |> render_click()
-      
+      view
+      |> element(
+        "[phx-click=\"add_comparison\"][phx-value-character-id=\"#{comparison_character_id}\"]"
+      )
+      |> render_click()
+
       :timer.sleep(300)
       html = render(view)
       assert html =~ "Comparison" or html =~ "Added"
 
       # Step 7: Export analysis report
       view |> element("[phx-click=\"export_analysis\"]") |> render_click()
-      
+
       assert_push_event(view, "download", %{
         filename: filename,
         content: _content
       })
+
       assert filename =~ "character_analysis"
     end
 
@@ -132,7 +142,9 @@ defmodule EveDmv.E2E.UserExperienceTest do
       assert html =~ "Enter Character Name"
 
       # Step 2: Submit character for vetting
-      view |> element("form[phx-submit=\"vet_character\"]") |> render_submit(%{
+      view
+      |> element("form[phx-submit=\"vet_character\"]")
+      |> render_submit(%{
         "vetting" => %{"character_name" => "Experienced Pilot"}
       })
 
@@ -149,11 +161,12 @@ defmodule EveDmv.E2E.UserExperienceTest do
       # Step 5: Export vetting report
       if html =~ "export_report" do
         view |> element("[phx-click=\"export_report\"]") |> render_click()
-        
+
         assert_push_event(view, "download", %{
           filename: filename,
           content: _content
         })
+
         assert filename =~ "vetting_report"
       end
 
@@ -180,13 +193,13 @@ defmodule EveDmv.E2E.UserExperienceTest do
       # Step 2: Open character intelligence in another window (simulate)
       target_character_id = 95_000_400
       create_target_character_activity(target_character_id)
-      
+
       {:ok, intel_view, _html} = live(conn, ~p"/intel/#{target_character_id}")
       :timer.sleep(500)
 
       # Step 3: Simulate new kill in feed
       new_kill = create_live_killmail_event(target_character_id)
-      
+
       Phoenix.PubSub.broadcast(
         EveDmv.PubSub,
         "kill_feed",
@@ -226,13 +239,15 @@ defmodule EveDmv.E2E.UserExperienceTest do
 
       # Step 2: Monitor for threats
       threat_character_id = 95_999_999
-      home_system_id = 31_000_001 # J-space system
+      # J-space system
+      home_system_id = 31_000_001
 
       # Step 3: Simulate threat entering system
       location_event = %{
         "character_id" => threat_character_id,
         "solar_system_id" => home_system_id,
-        "ship_type_id" => 17738, # Machariel - dangerous
+        # Machariel - dangerous
+        "ship_type_id" => 17738,
         "timestamp" => DateTime.utc_now()
       }
 
@@ -250,8 +265,12 @@ defmodule EveDmv.E2E.UserExperienceTest do
 
       # Step 5: Investigate threat character
       if html =~ "investigate" do
-        view |> element("[phx-click=\"investigate_threat\"][phx-value-character-id=\"#{threat_character_id}\"]") |> render_click()
-        
+        view
+        |> element(
+          "[phx-click=\"investigate_threat\"][phx-value-character-id=\"#{threat_character_id}\"]"
+        )
+        |> render_click()
+
         :timer.sleep(500)
         html = render(view)
         assert html =~ "Investigation" or html =~ "Character Analysis"
@@ -265,8 +284,9 @@ defmodule EveDmv.E2E.UserExperienceTest do
       conn = log_in_user(conn, user)
 
       # Step 1: Try to access intelligence when service is slow
-      {:ok, view, _html} = live(conn, ~p"/intel/1") # Invalid character
-      
+      # Invalid character
+      {:ok, view, _html} = live(conn, ~p"/intel/1")
+
       :timer.sleep(1000)
 
       # Step 2: Should show error state
@@ -276,7 +296,7 @@ defmodule EveDmv.E2E.UserExperienceTest do
       # Step 3: User can retry
       if html =~ "retry" do
         view |> element("[phx-click=\"retry_analysis\"]") |> render_click()
-        
+
         :timer.sleep(200)
         html = render(view)
         assert html =~ "Retrying" or html =~ "Loading"
@@ -290,19 +310,19 @@ defmodule EveDmv.E2E.UserExperienceTest do
       # Step 1: Start intelligence analysis
       character_id = 95_000_500
       create_target_character_activity(character_id)
-      
+
       {:ok, view, _html} = live(conn, ~p"/intel/#{character_id}")
       :timer.sleep(500)
 
       # Step 2: Simulate connection issues by disabling real-time
       view |> element("[phx-click=\"toggle_real_time\"]") |> render_click()
-      
+
       html = render(view)
       assert html =~ "disabled" or html =~ "Real-time updates disabled"
 
       # Step 3: Re-enable and verify recovery
       view |> element("[phx-click=\"toggle_real_time\"]") |> render_click()
-      
+
       html = render(view)
       assert html =~ "enabled" or html =~ "Real-time updates enabled"
     end
@@ -315,51 +335,58 @@ defmodule EveDmv.E2E.UserExperienceTest do
 
       # Simulate mobile viewport
       {:ok, view, html} = live(conn, ~p"/feed")
-      
+
       # Should render without horizontal scroll
       assert html =~ "Kill Feed"
-      
+
       # Navigation should be mobile-friendly
       assert html =~ "menu" or html =~ "nav"
-      
+
       # Content should be readable
-      refute html =~ "overflow-x" # No horizontal overflow
+      # No horizontal overflow
+      refute html =~ "overflow-x"
     end
   end
 
   describe "performance under user load" do
     test "maintains responsiveness with multiple concurrent users", %{conn: _conn} do
       # Simulate 5 concurrent users
-      users = for i <- 1..5 do
-        user = create_authenticated_user(%{character_id: 95_000_600 + i})
-        create_target_character_activity(user.character_id)
-        user
-      end
+      users =
+        for i <- 1..5 do
+          user = create_authenticated_user(%{character_id: 95_000_600 + i})
+          create_target_character_activity(user.character_id)
+          user
+        end
 
       # Each user performs typical workflow
-      tasks = for user <- users do
-        Task.async(fn ->
-          conn = build_conn() |> log_in_user(user)
-          
-          # Navigate to intelligence
-          {:ok, view, _html} = live(conn, ~p"/intel/#{user.character_id}")
-          :timer.sleep(200)
-          
-          # Switch tabs
-          view |> element("[phx-click=\"change_tab\"][phx-value-tab=\"combat\"]") |> render_click()
-          :timer.sleep(100)
-          
-          # Export analysis
-          view |> element("[phx-click=\"export_analysis\"]") |> render_click()
-          
-          :ok
-        end)
-      end
+      tasks =
+        for user <- users do
+          Task.async(fn ->
+            conn = build_conn() |> log_in_user(user)
+
+            # Navigate to intelligence
+            {:ok, view, _html} = live(conn, ~p"/intel/#{user.character_id}")
+            :timer.sleep(200)
+
+            # Switch tabs
+            view
+            |> element("[phx-click=\"change_tab\"][phx-value-tab=\"combat\"]")
+            |> render_click()
+
+            :timer.sleep(100)
+
+            # Export analysis
+            view |> element("[phx-click=\"export_analysis\"]") |> render_click()
+
+            :ok
+          end)
+        end
 
       # All workflows should complete successfully
-      {time_microseconds, results} = :timer.tc(fn ->
-        Task.await_many(tasks, 30_000)
-      end)
+      {time_microseconds, results} =
+        :timer.tc(fn ->
+          Task.await_many(tasks, 30_000)
+        end)
 
       time_ms = time_microseconds / 1000
 
@@ -383,7 +410,7 @@ defmodule EveDmv.E2E.UserExperienceTest do
 
   defp create_authenticated_user(user_data \\ nil) do
     data = user_data || create_mock_eve_user_data()
-    
+
     create(:user, %{
       character_id: data["character_id"],
       character_name: data["character_name"],
@@ -426,7 +453,7 @@ defmodule EveDmv.E2E.UserExperienceTest do
     for i <- 1..25 do
       is_victim = rem(i, 4) == 0
       system_id = if rem(i, 3) == 0, do: 31_000_001, else: 30_000_142
-      
+
       create(:killmail_raw, %{
         killmail_id: 98_000_000 + character_id + i,
         killmail_time: DateTime.add(DateTime.utc_now(), -i * 3600, :second),
@@ -453,14 +480,18 @@ defmodule EveDmv.E2E.UserExperienceTest do
       create(:killmail_raw, %{
         killmail_id: 98_200_000 + character_id + i,
         killmail_time: DateTime.add(DateTime.utc_now(), -i * 86400, :second),
-        solar_system_id: Enum.random(31_000_000..31_002_000), # J-space
+        # J-space
+        solar_system_id: Enum.random(31_000_000..31_002_000),
         killmail_data: %{
-          "attackers" => [%{
-            "character_id" => character_id,
-            "character_name" => character_name,
-            "ship_type_id" => Enum.random([12011, 12013, 11987]), # WH ships
-            "final_blow" => rem(i, 3) != 0
-          }],
+          "attackers" => [
+            %{
+              "character_id" => character_id,
+              "character_name" => character_name,
+              # WH ships
+              "ship_type_id" => Enum.random([12011, 12013, 11987]),
+              "final_blow" => rem(i, 3) != 0
+            }
+          ],
           "victim" => %{
             "character_id" => Enum.random(90_000_000..95_000_000),
             "ship_type_id" => Enum.random([587, 588, 589])
@@ -488,13 +519,15 @@ defmodule EveDmv.E2E.UserExperienceTest do
         "ship_type_id" => 587,
         "ship_name" => "Rifter"
       },
-      "attackers" => [%{
-        "character_id" => character_id,
-        "character_name" => "Test Character",
-        "ship_type_id" => 22456,
-        "ship_name" => "Sabre",
-        "final_blow" => true
-      }],
+      "attackers" => [
+        %{
+          "character_id" => character_id,
+          "character_name" => "Test Character",
+          "ship_type_id" => 22456,
+          "ship_name" => "Sabre",
+          "final_blow" => true
+        }
+      ],
       "zkb" => %{
         "totalValue" => 15_000_000
       }
@@ -504,11 +537,13 @@ defmodule EveDmv.E2E.UserExperienceTest do
   defp build_activity_killmail_data(character_id, is_victim) do
     if is_victim do
       %{
-        "attackers" => [%{
-          "character_id" => Enum.random(90_000_000..95_000_000),
-          "ship_type_id" => Enum.random([17738, 12011, 22456]),
-          "final_blow" => true
-        }],
+        "attackers" => [
+          %{
+            "character_id" => Enum.random(90_000_000..95_000_000),
+            "ship_type_id" => Enum.random([17738, 12011, 22456]),
+            "final_blow" => true
+          }
+        ],
         "victim" => %{
           "character_id" => character_id,
           "ship_type_id" => Enum.random([587, 588, 589])
@@ -516,11 +551,13 @@ defmodule EveDmv.E2E.UserExperienceTest do
       }
     else
       %{
-        "attackers" => [%{
-          "character_id" => character_id,
-          "ship_type_id" => Enum.random([12011, 12013, 11987]),
-          "final_blow" => true
-        }],
+        "attackers" => [
+          %{
+            "character_id" => character_id,
+            "ship_type_id" => Enum.random([12011, 12013, 11987]),
+            "final_blow" => true
+          }
+        ],
         "victim" => %{
           "character_id" => Enum.random(90_000_000..95_000_000),
           "ship_type_id" => Enum.random([587, 588, 589])
@@ -531,7 +568,7 @@ defmodule EveDmv.E2E.UserExperienceTest do
 
   defp log_in_user(conn, user) do
     token = EveDmvWeb.Auth.generate_user_session_token(user)
-    
+
     conn
     |> Phoenix.ConnTest.init_test_session(%{})
     |> Plug.Conn.put_session(:user_token, token)
