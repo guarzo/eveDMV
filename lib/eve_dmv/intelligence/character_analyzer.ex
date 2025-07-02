@@ -465,6 +465,10 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
 
   # Helper functions
 
+  defp find_victim_participant(participants) do
+    Enum.find(participants, &(&1["is_victim"] == true))
+  end
+
   defp solo_kill?(killmail) do
     non_victim_count = Enum.count(killmail.participants, &(not &1.is_victim))
     non_victim_count == 1

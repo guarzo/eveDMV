@@ -213,7 +213,7 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
       peak_hours: find_peak_activity_hours(hourly_activity),
       quiet_hours: find_quiet_hours(hourly_activity),
       most_active_days: find_most_active_days(daily_activity),
-      weekend_warrior: is_weekend_warrior?(daily_activity),
+      weekend_warrior: weekend_warrior?(daily_activity),
       timezone_estimate: estimate_timezone_from_peaks(hourly_activity),
       activity_consistency: calculate_temporal_consistency(timestamps)
     }
@@ -302,7 +302,7 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
   def calculate_target_preferences(killmail_data) do
     targets =
       killmail_data
-      |> Enum.filter(&is_kill?/1)
+      |> Enum.filter(&kill?/1)
       |> Enum.map(&extract_target_info/1)
       |> Enum.reject(&is_nil/1)
 
@@ -596,7 +596,7 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
     %{
       prefers_weak_targets: prefers_weak_targets?(kills),
       hunts_expensive_targets: hunts_expensive_targets?(kills),
-      opportunistic: is_opportunistic?(kills)
+      opportunistic: opportunistic?(kills)
     }
   end
 
@@ -699,7 +699,7 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
   defp takes_bad_fights?(character_id, killmail_data) do
     losses = Enum.filter(killmail_data, &victim_is_character?(&1, character_id))
 
-    bad_fights = Enum.count(losses, &is_bad_fight?/1)
+    bad_fights = Enum.count(losses, &bad_fight?/1)
     total_fights = length(losses)
 
     if total_fights == 0 do
@@ -709,7 +709,7 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
     end
   end
 
-  defp is_bad_fight?(loss) do
+  defp bad_fight?(loss) do
     attackers = loss["attackers"] || []
     length(attackers) > 5
   end
@@ -772,7 +772,7 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
     |> Enum.map(fn {day, _} -> day_name(day) end)
   end
 
-  defp is_weekend_warrior?(daily_activity) do
+  defp weekend_warrior?(daily_activity) do
     weekend_activity = Map.get(daily_activity, 6, 0) + Map.get(daily_activity, 7, 0)
     total_activity = Enum.sum(Map.values(daily_activity))
 
@@ -785,18 +785,26 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
 
   defp estimate_timezone_from_peaks(hourly_activity) do
     peaks = find_peak_activity_hours(hourly_activity)
-
     avg_peak = if Enum.empty?(peaks), do: 12, else: Enum.sum(peaks) / length(peaks)
 
-    cond do
-      avg_peak >= 22 || avg_peak <= 2 -> "US West"
-      avg_peak >= 2 && avg_peak <= 6 -> "US East"
-      avg_peak >= 6 && avg_peak <= 10 -> "EU West"
-      avg_peak >= 10 && avg_peak <= 14 -> "EU East"
-      avg_peak >= 14 && avg_peak <= 18 -> "RU"
-      avg_peak >= 18 && avg_peak <= 22 -> "AU"
-      true -> "Unknown"
-    end
+    classify_timezone_by_peak(avg_peak)
+  end
+
+  defp classify_timezone_by_peak(avg_peak) do
+    timezone_ranges = [
+      {22, 2, "US West"},
+      {2, 6, "US East"},
+      {6, 10, "EU West"},
+      {10, 14, "EU East"},
+      {14, 18, "RU"},
+      {18, 22, "AU"}
+    ]
+    Enum.find_value(timezone_ranges, "Unknown", fn
+      {start, finish, zone} when start > finish ->
+        if avg_peak >= start || avg_peak <= finish, do: zone
+      {start, finish, zone} ->
+        if avg_peak >= start && avg_peak <= finish, do: zone
+    end)
   end
 
   defp calculate_temporal_consistency(timestamps) do
@@ -829,19 +837,19 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
   defp day_name(_), do: "Unknown"
 
   defp count_kills(killmail_data) do
-    Enum.count(killmail_data, &is_kill?/1)
+    Enum.count(killmail_data, &kill?/1)
   end
 
   defp count_solo_kills(killmail_data) do
     killmail_data
-    |> Enum.filter(&is_kill?/1)
+    |> Enum.filter(&kill?/1)
     |> Enum.count(&solo_kill?/1)
   end
 
   defp count_capital_kills(killmail_data) do
     killmail_data
-    |> Enum.filter(&is_kill?/1)
-    |> Enum.count(&is_capital_kill?/1)
+    |> Enum.filter(&kill?/1)
+    |> Enum.count(&capital_kill?/1)
   end
 
   defp calculate_recent_activity(killmail_data) do
@@ -855,8 +863,8 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
   end
 
   defp calculate_kill_efficiency(killmail_data) do
-    kills = Enum.filter(killmail_data, &is_kill?/1)
-    losses = Enum.reject(killmail_data, &is_kill?/1)
+    kills = Enum.filter(killmail_data, &kill?/1)
+    losses = Enum.reject(killmail_data, &kill?/1)
 
     calculate_efficiency(kills, losses)
   end
@@ -887,39 +895,39 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
     end
   end
 
-  defp is_kill?(killmail) do
+  defp kill?(killmail) do
     # Check if this killmail represents a kill (not a loss) for the perspective character
     # This is simplified - would need character context
     true
   end
 
-  defp is_capital_kill?(killmail) do
+  defp capital_kill?(killmail) do
     victim = find_victim(killmail)
     ship_type_id = victim["ship_type_id"]
 
     # Simplified capital ship detection
     ship_type_id in [
       # Carrier IDs
-      23757,
-      23911,
-      23915,
-      24483,
+      23_757,
+      23_911,
+      23_915,
+      24_483,
       # Dreadnought IDs
-      19720,
-      19722,
-      19724,
-      19726,
+      19_720,
+      19_722,
+      19_724,
+      19_726,
       # Supercarrier IDs
       3514,
-      22852,
-      23913,
-      23917,
-      23919,
+      22_852,
+      23_913,
+      23_917,
+      23_919,
       # Titan IDs
       671,
       3764,
-      11567,
-      23773
+      11_567,
+      23_773
     ]
   end
 
@@ -1064,7 +1072,7 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
     avg_value > 100_000_000
   end
 
-  defp is_opportunistic?(_kills) do
+  defp opportunistic?(_kills) do
     # Would analyze engagement patterns
     true
   end
@@ -1077,65 +1085,65 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
   defp uses_capital_ships?(killmails) do
     Enum.any?(killmails, fn km ->
       participant = find_character_participant(km, nil)
-      participant && is_capital_ship?(participant["ship_type_id"])
+      participant && capital_ship?(participant["ship_type_id"])
     end)
   end
 
   defp uses_support_ships?(killmails) do
     Enum.any?(killmails, fn km ->
       participant = find_character_participant(km, nil)
-      participant && is_support_ship?(participant["ship_type_id"])
+      participant && support_ship?(participant["ship_type_id"])
     end)
   end
 
-  defp is_capital_ship?(ship_type_id) do
+  defp capital_ship?(ship_type_id) do
     ship_type_id in [
       # Carrier IDs
-      23757,
-      23911,
-      23915,
-      24483,
+      23_757,
+      23_911,
+      23_915,
+      24_483,
       # Dreadnought IDs
-      19720,
-      19722,
-      19724,
-      19726,
+      19_720,
+      19_722,
+      19_724,
+      19_726,
       # FAX IDs
-      37604,
-      37605,
-      37606,
-      37607,
+      37_604,
+      37_605,
+      37_606,
+      37_607,
       # Supercarrier IDs
       3514,
-      22852,
-      23913,
-      23917,
-      23919,
+      22_852,
+      23_913,
+      23_917,
+      23_919,
       # Titan IDs
       671,
       3764,
-      11567,
-      23773
+      11_567,
+      23_773
     ]
   end
 
-  defp is_support_ship?(ship_type_id) do
+  defp support_ship?(ship_type_id) do
     ship_type_id in [
       # Logistics Cruisers
-      11985,
-      11987,
-      11989,
-      11993,
+      11_985,
+      11_987,
+      11_989,
+      11_993,
       # Command Ships
-      22442,
-      22444,
-      22446,
-      22448,
+      22_442,
+      22_444,
+      22_446,
+      22_448,
       # Interdictors
-      22452,
-      22456,
-      22460,
-      22464
+      22_452,
+      22_456,
+      22_460,
+      22_464
     ]
   end
 

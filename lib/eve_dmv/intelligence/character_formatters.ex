@@ -295,30 +295,26 @@ defmodule EveDmv.Intelligence.CharacterFormatters do
   end
 
   defp assess_threat_level(score, behavioral) do
-    base_threat =
-      cond do
-        score >= 100 -> "Extreme"
-        score >= 50 -> "Very High"
-        score >= 25 -> "High"
-        score >= 10 -> "Moderate"
-        true -> "Low"
-      end
-
-    # Adjust based on behavioral patterns
-    aggression_modifier =
-      case behavioral.aggression_level do
-        "Very Aggressive" -> 1
-        "Aggressive" -> 0
-        _ -> -1
-      end
-
+    aggression_modifier = get_aggression_modifier(behavioral.aggression_level)
     modified_score = score + score * aggression_modifier * 0.1
 
+    score_to_threat_level(modified_score)
+  end
+
+  defp get_aggression_modifier(aggression_level) do
+    case aggression_level do
+      "Very Aggressive" -> 1
+      "Aggressive" -> 0
+      _ -> -1
+    end
+  end
+
+  defp score_to_threat_level(score) do
     cond do
-      modified_score >= 100 -> "Extreme"
-      modified_score >= 50 -> "Very High"
-      modified_score >= 25 -> "High"
-      modified_score >= 10 -> "Moderate"
+      score >= 100 -> "Extreme"
+      score >= 50 -> "Very High"
+      score >= 25 -> "High"
+      score >= 10 -> "Moderate"
       true -> "Low"
     end
   end

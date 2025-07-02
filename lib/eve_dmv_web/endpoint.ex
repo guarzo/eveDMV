@@ -36,7 +36,7 @@ defmodule EveDmvWeb.Endpoint do
     gzip: false,
     only: EveDmvWeb.static_paths(),
     headers: %{
-      "strict-transport-security" => "max-age=31536000; includeSubDomains",
+      "strict-transport-security" => "max-age=31_536_000; includeSubDomains",
       "x-frame-options" => "DENY",
       "x-content-type-options" => "nosniff",
       "x-xss-protection" => "1; mode=block",
