@@ -795,15 +795,57 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
     }
   end
 
-  defp categorize_threat_types(_battles) do
-    # Categorize threats by type and size
-    # Placeholder implementation
-    %{
-      "solo_hunters" => 8,
-      "small_gangs" => 4,
-      "eviction_scouts" => 1,
-      "major_threats" => 0
-    }
+  defp categorize_threat_types(battles) do
+    # Categorize threats by type and size based on actual battle data
+    threat_counts =
+      Enum.reduce(
+        battles,
+        %{
+          "solo_hunters" => 0,
+          "small_gangs" => 0,
+          "eviction_scouts" => 0,
+          "major_threats" => 0
+        },
+        fn battle, acc ->
+          # Analyze each battle to categorize the threat
+          attacker_count = length(battle.participants || [])
+
+          attacker_corps =
+            battle.participants
+            |> Enum.map(& &1.corporation_id)
+            |> Enum.uniq()
+            |> length()
+
+          threat_type =
+            cond do
+              # Solo hunter: 1 attacker
+              attacker_count == 1 -> "solo_hunters"
+              # Small gang: 2-5 attackers from same corp
+              attacker_count <= 5 and attacker_corps <= 2 -> "small_gangs"
+              # Major threat: 15+ attackers or multiple corps coordinating
+              attacker_count >= 15 or attacker_corps >= 4 -> "major_threats"
+              # Eviction scouts: Medium sized groups with certain ship types
+              attacker_count <= 10 and has_scanning_ships?(battle) -> "eviction_scouts"
+              # Default to small gang
+              true -> "small_gangs"
+            end
+
+          Map.update!(acc, threat_type, &(&1 + 1))
+        end
+      )
+
+    threat_counts
+  end
+
+  defp has_scanning_ships?(battle) do
+    # Check if the battle involved typical scanning/scouting ships
+    scanning_ships = ["Astero", "Stratios", "Buzzard", "Anathema", "Cheetah", "Helios"]
+
+    battle.participants
+    |> Enum.any?(fn participant ->
+      ship_name = participant.ship_type_name || ""
+      Enum.any?(scanning_ships, &String.contains?(ship_name, &1))
+    end)
   end
 
   # Helper functions for member analysis
@@ -853,23 +895,183 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
     end
   end
 
-  defp calculate_activity_by_timezone(_members) do
-    # Calculate activity statistics by timezone
-    %{
-      "US_TZ" => %{"peak_online" => 15, "avg_online" => 12, "min_online" => 6},
-      "EU_TZ" => %{"peak_online" => 12, "avg_online" => 9, "min_online" => 4},
-      "AU_TZ" => %{"peak_online" => 8, "avg_online" => 5, "min_online" => 2}
+  defp calculate_activity_by_timezone(members) do
+    # Calculate activity statistics by timezone based on member activity patterns
+    timezone_data = %{
+      "US_TZ" => %{hours: 18..23, members: []},
+      "EU_TZ" => %{hours: 14..17, members: []},
+      "AU_TZ" => %{hours: 6..13, members: []}
     }
+
+    # Group members by their primary timezone based on activity patterns
+    members_by_tz =
+      Enum.reduce(members, timezone_data, fn member, acc ->
+        primary_tz = determine_member_timezone(member)
+        update_in(acc[primary_tz][:members], &[member | &1])
+      end)
+
+    # Calculate statistics for each timezone
+    Map.new(members_by_tz, fn {tz, data} ->
+      tz_members = data.members
+      member_count = length(tz_members)
+
+      stats = %{
+        "peak_online" => round(member_count * 0.8),
+        "avg_online" => round(member_count * 0.6),
+        "min_online" => round(member_count * 0.3)
+      }
+
+      {tz, stats}
+    end)
   end
 
-  defp calculate_role_coverage(_members) do
-    # Calculate coverage by role type
-    %{
-      "fleet_commanders" => %{"total" => 5, "active" => 4, "coverage_hours" => 16},
-      "logistics_pilots" => %{"total" => 12, "active" => 10, "coverage_hours" => 18},
-      "tackle_specialists" => %{"total" => 18, "active" => 15, "coverage_hours" => 20},
-      "dps_pilots" => %{"total" => 35, "active" => 28, "coverage_hours" => 22}
-    }
+  defp determine_member_timezone(member) do
+    # Determine member's primary timezone based on their activity patterns
+    # This is a simplified heuristic - could be enhanced with more data
+    total_activity = member.total_kills + member.total_losses
+
+    cond do
+      # High activity members more likely US TZ (largest EVE population)
+      total_activity > 100 -> "US_TZ"
+      # Medium activity could be EU
+      total_activity > 30 -> "EU_TZ"
+      # Lower activity could be AU/other
+      true -> "AU_TZ"
+    end
+  end
+
+  defp calculate_role_coverage(members) do
+    # Calculate coverage by role type based on actual member capabilities
+    active_members = Enum.filter(members, &member_active?/1)
+
+    # Categorize members by their detected roles from ship usage
+    role_groups =
+      Enum.reduce(
+        active_members,
+        %{
+          "fleet_commanders" => [],
+          "logistics_pilots" => [],
+          "tackle_specialists" => [],
+          "dps_pilots" => []
+        },
+        fn member, acc ->
+          member_roles = determine_member_roles(member)
+
+          Enum.reduce(member_roles, acc, fn role, role_acc ->
+            Map.update!(role_acc, role, &[member | &1])
+          end)
+        end
+      )
+
+    # Calculate statistics for each role
+    Map.new(role_groups, fn {role, role_members} ->
+      total_count = length(role_members)
+      active_count = length(Enum.filter(role_members, &high_activity_member?/1))
+
+      # Estimate coverage hours based on member count and activity
+      coverage_hours =
+        case total_count do
+          0 -> 0
+          count when count < 3 -> 8
+          count when count < 6 -> 12
+          count when count < 10 -> 16
+          count when count < 15 -> 20
+          _ -> 24
+        end
+
+      stats = %{
+        "total" => total_count,
+        "active" => active_count,
+        "coverage_hours" => coverage_hours
+      }
+
+      {role, stats}
+    end)
+  end
+
+  defp determine_member_roles(member) do
+    # Determine member roles based on ship usage and stats
+    roles = []
+    ship_usage = member.ship_usage || %{}
+
+    # FC detection - high kill count and leadership ships
+    roles =
+      if member.total_kills > 50 and has_command_ships?(ship_usage) do
+        ["fleet_commanders" | roles]
+      else
+        roles
+      end
+
+    # Logistics detection
+    roles =
+      if has_logistics_ships?(ship_usage) do
+        ["logistics_pilots" | roles]
+      else
+        roles
+      end
+
+    # Tackle detection
+    roles =
+      if has_tackle_ships?(ship_usage) do
+        ["tackle_specialists" | roles]
+      else
+        roles
+      end
+
+    # DPS is default if no other specialized roles
+    if Enum.empty?(roles) do
+      ["dps_pilots"]
+    else
+      roles
+    end
+  end
+
+  defp has_command_ships?(ship_usage) do
+    command_ships = ["Command", "Fleet", "Wing", "Eos", "Claymore", "Damnation", "Nighthawk"]
+
+    Enum.any?(ship_usage, fn {ship, _} ->
+      Enum.any?(command_ships, &String.contains?(ship, &1))
+    end)
+  end
+
+  defp has_logistics_ships?(ship_usage) do
+    logi_ships = [
+      "Scimitar",
+      "Basilisk",
+      "Guardian",
+      "Oneiros",
+      "Osprey",
+      "Exequror",
+      "Bantam",
+      "Burst"
+    ]
+
+    Enum.any?(ship_usage, fn {ship, _} ->
+      Enum.any?(logi_ships, &String.contains?(ship, &1))
+    end)
+  end
+
+  defp has_tackle_ships?(ship_usage) do
+    tackle_ships = [
+      "Interceptor",
+      "Dictor",
+      "Hictor",
+      "Sabre",
+      "Devoter",
+      "Onyx",
+      "Broadsword",
+      "Stiletto",
+      "Crow",
+      "Taranis"
+    ]
+
+    Enum.any?(ship_usage, fn {ship, _} ->
+      Enum.any?(tackle_ships, &String.contains?(ship, &1))
+    end)
+  end
+
+  defp high_activity_member?(member) do
+    member.total_kills + member.total_losses > 25
   end
 
   defp assess_engagement_readiness(members) do

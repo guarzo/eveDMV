@@ -799,9 +799,11 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
       {14, 18, "RU"},
       {18, 22, "AU"}
     ]
+
     Enum.find_value(timezone_ranges, "Unknown", fn
       {start, finish, zone} when start > finish ->
         if avg_peak >= start || avg_peak <= finish, do: zone
+
       {start, finish, zone} ->
         if avg_peak >= start && avg_peak <= finish, do: zone
     end)

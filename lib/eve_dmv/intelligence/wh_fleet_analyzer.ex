@@ -888,12 +888,32 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
     List.first(preferred_ships) || "Unknown Ship"
   end
 
-  defp calculate_pilot_skill_readiness(_pilot, required_skills) do
+  defp calculate_pilot_skill_readiness(pilot, required_skills) do
     # Calculate how ready the pilot is skill-wise (0.0-1.0)
-    # This would check actual skill levels via ESI
+    # Based on ship usage patterns as proxy for skill levels
     if length(required_skills) > 0 do
-      # Placeholder: assume 80% readiness
-      0.8
+      pilot_ship_usage = Map.get(pilot, :ship_usage, %{})
+      total_experience = Map.values(pilot_ship_usage) |> Enum.sum()
+
+      # Calculate skill readiness based on ship usage patterns
+      skill_readiness =
+        Enum.map(required_skills, fn skill ->
+          case skill do
+            {:ship_class, class} ->
+              class_experience = Map.get(pilot_ship_usage, class, 0)
+              min(1.0, class_experience / max(1.0, total_experience * 0.1))
+
+            {:role, role} ->
+              pilot_roles = Map.get(pilot, :detected_roles, [])
+              if role in pilot_roles, do: 0.9, else: 0.4
+
+            _ ->
+              0.6
+          end
+        end)
+
+      avg_readiness = Enum.sum(skill_readiness) / length(skill_readiness)
+      Float.round(avg_readiness, 2)
     else
       1.0
     end

@@ -8,15 +8,18 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzerTest do
       # Mock killmail data
       killmails = [
         %{
-          solar_system_id: 31_000_123,  # J-space system
+          # J-space system
+          solar_system_id: 31_000_123,
           is_victim: false
         },
         %{
-          solar_system_id: 31_000_456,  # J-space system
+          # J-space system
+          solar_system_id: 31_000_456,
           is_victim: true
         },
         %{
-          solar_system_id: 30_002_187,  # K-space system
+          # K-space system
+          solar_system_id: 30_002_187,
           is_victim: false
         }
       ]
@@ -24,34 +27,36 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzerTest do
       result = WHVettingAnalyzer.calculate_j_space_experience(killmails)
 
       assert %{
-        total_j_kills: 1,
-        total_j_losses: 1,
-        j_space_time_percent: 66.7,
-        wormhole_systems_visited: [31_000_123, 31_000_456],
-        most_active_wh_class: "C1"
-      } = result
+               total_j_kills: 1,
+               total_j_losses: 1,
+               j_space_time_percent: 66.7,
+               wormhole_systems_visited: [31_000_123, 31_000_456],
+               most_active_wh_class: "C1"
+             } = result
     end
 
     test "handles empty killmail list" do
       result = WHVettingAnalyzer.calculate_j_space_experience([])
 
       assert %{
-        total_j_kills: 0,
-        total_j_losses: 0,
-        j_space_time_percent: 0.0,
-        wormhole_systems_visited: [],
-        most_active_wh_class: nil
-      } = result
+               total_j_kills: 0,
+               total_j_losses: 0,
+               j_space_time_percent: 0.0,
+               wormhole_systems_visited: [],
+               most_active_wh_class: nil
+             } = result
     end
 
     test "handles killmails with no J-space activity" do
       killmails = [
         %{
-          solar_system_id: 30_002_187,  # K-space system
+          # K-space system
+          solar_system_id: 30_002_187,
           is_victim: false
         },
         %{
-          solar_system_id: 30_000_142,  # K-space system
+          # K-space system
+          solar_system_id: 30_000_142,
           is_victim: true
         }
       ]
@@ -59,19 +64,19 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzerTest do
       result = WHVettingAnalyzer.calculate_j_space_experience(killmails)
 
       assert %{
-        total_j_kills: 0,
-        total_j_losses: 0,
-        j_space_time_percent: 0.0,
-        wormhole_systems_visited: [],
-        most_active_wh_class: nil
-      } = result
+               total_j_kills: 0,
+               total_j_losses: 0,
+               j_space_time_percent: 0.0,
+               wormhole_systems_visited: [],
+               most_active_wh_class: nil
+             } = result
     end
   end
 
   describe "analyze_security_risks/2" do
     test "analyzes security risks from character data" do
-      character_data = %{character_id: 95465499}
-      
+      character_data = %{character_id: 95_465_499}
+
       employment_history = [
         %{start_date: ~U[2023-01-01 00:00:00Z], corporation_id: 1001},
         %{start_date: ~U[2023-02-15 00:00:00Z], corporation_id: 1002},
@@ -81,10 +86,10 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzerTest do
       result = WHVettingAnalyzer.analyze_security_risks(character_data, employment_history)
 
       assert %{
-        risk_score: risk_score,
-        risk_factors: risk_factors,
-        corp_hopping_detected: corp_hopping
-      } = result
+               risk_score: risk_score,
+               risk_factors: risk_factors,
+               corp_hopping_detected: corp_hopping
+             } = result
 
       assert is_integer(risk_score)
       assert risk_score >= 0 and risk_score <= 100
@@ -93,32 +98,38 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzerTest do
     end
 
     test "detects corp hopping patterns" do
-      character_data = %{character_id: 95465499}
-      
+      character_data = %{character_id: 95_465_499}
+
       # Create employment history with rapid corp changes
       employment_history = [
         %{start_date: ~U[2023-01-01 00:00:00Z], corporation_id: 1001},
-        %{start_date: ~U[2023-01-15 00:00:00Z], corporation_id: 1002},  # 14 days
-        %{start_date: ~U[2023-02-01 00:00:00Z], corporation_id: 1003},  # 17 days
-        %{start_date: ~U[2023-02-10 00:00:00Z], corporation_id: 1004},  # 9 days
-        %{start_date: ~U[2023-02-20 00:00:00Z], corporation_id: 1005}   # 10 days
+        # 14 days
+        %{start_date: ~U[2023-01-15 00:00:00Z], corporation_id: 1002},
+        # 17 days
+        %{start_date: ~U[2023-02-01 00:00:00Z], corporation_id: 1003},
+        # 9 days
+        %{start_date: ~U[2023-02-10 00:00:00Z], corporation_id: 1004},
+        # 10 days
+        %{start_date: ~U[2023-02-20 00:00:00Z], corporation_id: 1005}
       ]
 
       result = WHVettingAnalyzer.analyze_security_risks(character_data, employment_history)
 
       assert result.corp_hopping_detected == true
       assert "corp_hopping" in result.risk_factors
-      assert result.risk_score > 50  # Should be high risk
+      # Should be high risk
+      assert result.risk_score > 50
     end
 
     test "handles empty employment history" do
-      character_data = %{character_id: 95465499}
+      character_data = %{character_id: 95_465_499}
       employment_history = []
 
       result = WHVettingAnalyzer.analyze_security_risks(character_data, employment_history)
 
       assert "no_employment_history" in result.risk_factors
-      assert result.risk_score > 30  # Should have some risk for no history
+      # Should have some risk for no history
+      assert result.risk_score > 30
     end
   end
 
@@ -178,7 +189,7 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzerTest do
   describe "analyze_alt_character_patterns/2" do
     test "analyzes potential alt character patterns" do
       character_data = %{character_name: "Test Character"}
-      
+
       killmails = [
         %{
           attacker_character_name: "Alt Character 1",
@@ -200,10 +211,10 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzerTest do
       result = WHVettingAnalyzer.analyze_alt_character_patterns(character_data, killmails)
 
       assert %{
-        potential_alts: potential_alts,
-        shared_systems: shared_systems,
-        timing_correlation: timing_correlation
-      } = result
+               potential_alts: potential_alts,
+               shared_systems: shared_systems,
+               timing_correlation: timing_correlation
+             } = result
 
       assert "Alt Character 1" in potential_alts
       assert "Alt Character 2" in potential_alts
@@ -228,28 +239,32 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzerTest do
   describe "calculate_small_gang_competency/1" do
     test "calculates small gang competency from killmails" do
       killmails = [
-        %{attacker_count: 3, is_victim: false},  # Small gang kill
-        %{attacker_count: 1, is_victim: false},  # Solo kill
-        %{attacker_count: 5, is_victim: false},  # Medium gang kill
-        %{attacker_count: 2, is_victim: true}    # Small gang loss
+        # Small gang kill
+        %{attacker_count: 3, is_victim: false},
+        # Solo kill
+        %{attacker_count: 1, is_victim: false},
+        # Medium gang kill
+        %{attacker_count: 5, is_victim: false},
+        # Small gang loss
+        %{attacker_count: 2, is_victim: true}
       ]
 
       result = WHVettingAnalyzer.calculate_small_gang_competency(killmails)
 
       assert %{
-        small_gang_performance: performance,
-        avg_gang_size: avg_size,
-        preferred_size: preferred,
-        solo_capability: solo
-      } = result
+               small_gang_performance: performance,
+               avg_gang_size: avg_size,
+               preferred_size: preferred,
+               solo_capability: solo
+             } = result
 
       assert is_map(performance)
       assert Map.has_key?(performance, :kill_efficiency)
       assert Map.has_key?(performance, :total_engagements)
-      
+
       assert is_float(avg_size)
       assert avg_size > 0
-      
+
       assert preferred in ["solo", "small_gang", "medium_gang", "large_gang", "fleet"]
       assert is_boolean(solo)
     end
@@ -374,9 +389,9 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzerTest do
       result = WHVettingAnalyzer.format_analysis_summary(analysis)
 
       assert %{
-        summary_text: summary,
-        key_metrics: metrics
-      } = result
+               summary_text: summary,
+               key_metrics: metrics
+             } = result
 
       assert is_binary(summary)
       assert String.contains?(summary, "Test Character")
@@ -384,13 +399,13 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzerTest do
       assert String.contains?(summary, "CONDITIONAL")
 
       assert %{
-        j_space_kills: 25,
-        j_space_losses: 5,
-        j_space_percentage: 60.5,
-        risk_score: 35,
-        recommendation: "conditional",
-        confidence: 0.75
-      } = metrics
+               j_space_kills: 25,
+               j_space_losses: 5,
+               j_space_percentage: 60.5,
+               risk_score: 35,
+               recommendation: "conditional",
+               confidence: 0.75
+             } = metrics
     end
   end
 end
