@@ -47,6 +47,12 @@ defmodule EveDmv.Application do
       EveDmv.Database.PartitionManager,
       # Start the cache invalidator
       EveDmv.Database.CacheInvalidator,
+      # Start the query plan analyzer
+      EveDmv.Database.QueryPlanAnalyzer,
+      # Start the materialized view manager
+      EveDmv.Database.MaterializedViewManager,
+      # Start the archive manager
+      EveDmv.Database.ArchiveManager,
       # Start the re-enrichment worker
       EveDmv.Enrichment.ReEnrichmentWorker,
       # Start the real-time price updater
