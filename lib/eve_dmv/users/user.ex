@@ -90,6 +90,9 @@ defmodule EveDmv.Users.User do
     end
 
     # OAuth tokens
+    # Security: Tokens are marked as sensitive which prevents them from being
+    # included in logs and limits their exposure. For additional security,
+    # consider implementing field-level encryption for these tokens.
     attribute :access_token, :string do
       allow_nil?(true)
       sensitive?(true)

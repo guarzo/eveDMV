@@ -4,6 +4,7 @@ defmodule EveDmvWeb.AuthControllerTest do
 
   import Mox
   import Phoenix.ConnTest
+  import StreamData
 
   alias EveDmv.Api
   alias EveDmv.Users.User
@@ -383,7 +384,7 @@ defmodule EveDmvWeb.AuthControllerTest do
 
   defp character_id_generator do
     # EVE character IDs start from 90,000,000
-    StreamData.integer(90_000_000..2_147_483_647)
+    integer(90_000_000..2_147_483_647)
   end
 
   describe "stability testing" do

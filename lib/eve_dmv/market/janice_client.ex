@@ -206,6 +206,8 @@ defmodule EveDmv.Market.JaniceClient do
   end
 
   defp build_headers do
+    # Security: API key is added to headers but never logged
+    # All error logging only includes response bodies and status codes
     case get_config(:api_key) do
       nil ->
         []

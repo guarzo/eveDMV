@@ -26,13 +26,13 @@ defmodule EveDmv.Factories do
   end
 
   def user_factory do
-    character = build(:character)
+    character_id = Enum.random(90_000_000..100_000_000)
 
     %{
-      character_id: character.character_id,
-      character_name: character.character_name,
-      corporation_id: character.corporation_id,
-      alliance_id: character.alliance_id,
+      character_id: character_id,
+      character_name: "Test Character #{System.unique_integer([:positive])}",
+      corporation_id: Enum.random(1_000_000..2_000_000),
+      alliance_id: Enum.random(99_000_000..100_000_000),
       access_token: "test_access_token_#{System.unique_integer([:positive])}",
       refresh_token: "test_refresh_token_#{System.unique_integer([:positive])}",
       token_expires_at: DateTime.utc_now() |> DateTime.add(3600, :second)
@@ -204,17 +204,32 @@ defmodule EveDmv.Factories do
       time_offset = -Enum.random(1..days_back * 24 * 3600)
       killmail_time = DateTime.add(DateTime.utc_now(), time_offset, :second)
 
-      create(:killmail_raw, %{
+      killmail_data = %{
+        "killmail_id" => System.unique_integer([:positive]),
+        "killmail_time" => DateTime.to_iso8601(killmail_time),
+        "solar_system_id" => Enum.random(30_000_000..31_000_000),
+        "victim" => %{"character_id" => character_id},
+        "attackers" => [%{
+          "character_id" => Enum.random(90_000_000..100_000_000),
+          "final_blow" => true
+        }],
+        "zkb" => %{"hash" => generate_hash()}
+      }
+
+      attrs = %{
+        killmail_id: killmail_data["killmail_id"],
         killmail_time: killmail_time,
-        killmail_data: %{
-          "killmail_time" => DateTime.to_iso8601(killmail_time),
-          "victim" => %{"character_id" => character_id},
-          "attackers" => [%{
-            "character_id" => Enum.random(90_000_000..100_000_000),
-            "final_blow" => true
-          }]
-        }
-      })
+        killmail_hash: killmail_data["zkb"]["hash"],
+        solar_system_id: killmail_data["solar_system_id"],
+        victim_character_id: character_id,
+        victim_corporation_id: Enum.random(1_000_000..2_000_000),
+        victim_ship_type_id: Enum.random([587, 588, 589]),
+        attacker_count: 1,
+        raw_data: killmail_data,
+        source: "test"
+      }
+
+      Ash.create!(KillmailRaw, attrs, domain: Api)
     end
   end
 
