@@ -135,7 +135,9 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
   def handle_info(:price_update, state) do
     Logger.debug("Starting scheduled price update")
 
-    spawn(fn -> perform_price_update(state.config) end)
+    Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
+      perform_price_update(state.config)
+    end)
 
     # Schedule next price update
     schedule_price_update(state.config.price_update_interval)
@@ -148,7 +150,9 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
   def handle_info(:name_update, state) do
     Logger.debug("Starting scheduled name resolution update")
 
-    spawn(fn -> perform_name_update(state.config) end)
+    Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
+      perform_name_update(state.config)
+    end)
 
     # Schedule next name update
     schedule_name_update(state.config.name_update_interval)
