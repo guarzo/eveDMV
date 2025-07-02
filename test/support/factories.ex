@@ -103,17 +103,22 @@ defmodule EveDmv.Factories do
       "CharacterID" => user_attrs.eve_character_id,
       "CharacterName" => user_attrs.eve_character_name
     }
-    
+
     oauth_tokens = %{
       "access_token" => user_attrs.access_token,
       "refresh_token" => user_attrs.refresh_token,
       "expires_in" => 3600
     }
 
-    Ash.create!(User, %{
-      user_info: user_info,
-      oauth_tokens: oauth_tokens
-    }, action: :register_with_eve_sso, domain: Api)
+    Ash.create!(
+      User,
+      %{
+        user_info: user_info,
+        oauth_tokens: oauth_tokens
+      },
+      action: :register_with_eve_sso,
+      domain: Api
+    )
   end
 
   defp insert_into_database(%{killmail_id: _} = killmail_attrs) do
