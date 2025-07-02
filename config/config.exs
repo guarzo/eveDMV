@@ -58,6 +58,18 @@ config :logger, :console,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]
 
+# Filter sensitive parameters from logs
+config :phoenix, :filter_parameters, [
+  "password",
+  "token",
+  "secret",
+  "api_key",
+  "client_secret",
+  "access_token",
+  "refresh_token",
+  "authorization"
+]
+
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
@@ -72,8 +84,8 @@ config :eve_dmv, ash_domains: [EveDmv.Api]
 config :ash_postgres, AshPostgres.DataLayer,
   migration_ignore_attributes: [AshPostgres.MigrationGenerator.Reference]
 
-# Token signing secret for authentication
-config :eve_dmv, :token_signing_secret, "your-secret-key-here-replace-in-production"
+# Token signing secret for authentication (loaded from environment)
+config :eve_dmv, :token_signing_secret, System.get_env("TOKEN_SIGNING_SECRET")
 
 # EVE SSO OAuth2 Configuration
 config :eve_dmv, :eve_sso,
@@ -107,6 +119,16 @@ config :eve_dmv, :name_resolver_cache_warming,
     # CONCORD
     1_000_125
   ]
+
+# Database connection pool defaults
+# These can be overridden in environment-specific configs
+config :eve_dmv, EveDmv.Repo,
+  pool_size: 20,
+  queue_target: 50,
+  queue_interval: 1000,
+  timeout: 15_000,
+  ownership_timeout: 20_000,
+  pool_timeout: 5_000
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
