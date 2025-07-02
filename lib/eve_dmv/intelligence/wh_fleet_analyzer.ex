@@ -7,6 +7,9 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
   """
 
   require Logger
+  require Ash.Query
+
+  alias EveDmv.Api
   alias EveDmv.Eve.EsiClient
   alias EveDmv.Intelligence.{AssetAnalyzer, CharacterStats, WHFleetComposition, ShipDatabase}
 
@@ -180,12 +183,18 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
 
   defp get_available_pilots(corporation_id) do
     # Get corporation members who could participate in fleet operations
-    case Ash.read(CharacterStats, domain: EveDmv.Api) do
-      {:ok, all_stats} ->
+    query =
+      CharacterStats
+      |> Ash.Query.new()
+      |> Ash.Query.filter(corporation_id == ^corporation_id)
+
+    case Ash.read(query, domain: EveDmv.Api) do
+      {:ok, stats} ->
+        # Enrich pilot data with additional analysis
         pilots =
-          all_stats
-          |> Enum.filter(fn stats -> stats.corporation_id == corporation_id end)
+          stats
           |> Enum.filter(fn stats -> pilot_available_for_fleet?(stats) end)
+          |> Enum.map(&enrich_pilot_data/1)
 
         {:ok, pilots}
 
@@ -197,6 +206,53 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
     error ->
       Logger.error("Error getting available pilots: #{inspect(error)}")
       {:ok, []}
+  end
+
+  defp enrich_pilot_data(stats) do
+    # Enrich pilot stats with derived ship group data
+    ship_groups = extract_ship_groups_from_stats(stats)
+
+    Map.merge(stats, %{
+      ship_groups_flown: ship_groups,
+      has_logi_support: Map.get(ship_groups, "Logistics", 0) > 0,
+      # Proxy for gang preference
+      avg_gang_size: stats.kd_ratio || 1.0,
+      flies_capitals: Map.get(ship_groups, "Capital", 0) > 0
+    })
+  end
+
+  defp extract_ship_groups_from_stats(stats) do
+    # Extract ship groups from stored analysis data
+    case Jason.decode(stats.analysis_data || "{}") do
+      {:ok, analysis_data} ->
+        ship_usage = Map.get(analysis_data, "ship_usage", %{})
+        ship_categories = Map.get(ship_usage, "ship_categories", %{})
+
+        # Convert to ship group counts
+        ship_categories
+        |> Enum.map(fn {category, count} ->
+          group = map_category_to_group(category)
+          {group, count}
+        end)
+        |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+        |> Enum.map(fn {group, counts} -> {group, Enum.sum(counts)} end)
+        |> Map.new()
+
+      {:error, _} ->
+        %{}
+    end
+  end
+
+  defp map_category_to_group(category) do
+    case String.downcase(category) do
+      "frigate" -> "Frigates"
+      "destroyer" -> "Destroyers"
+      "cruiser" -> "Cruisers"
+      "battlecruiser" -> "Battlecruisers"
+      "battleship" -> "Battleships"
+      "capital" -> "Capital"
+      _ -> "Other"
+    end
   end
 
   defp get_ship_data(doctrine_template) do
@@ -530,7 +586,28 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
   # Pilot analysis functions
   defp pilot_available_for_fleet?(pilot_stats) do
     # Determine if a pilot is suitable for fleet operations
-    pilot_stats.total_kills + pilot_stats.total_losses >= 5
+    # Consider multiple factors for fleet readiness
+
+    # Activity threshold - at least some PvP experience
+    activity_score = pilot_stats.kill_count + pilot_stats.loss_count
+
+    # Recent activity check (if we have last_analyzed_at)
+    recently_active =
+      case pilot_stats.last_analyzed_at do
+        # Assume active if no data
+        nil ->
+          true
+
+        last_date ->
+          days_since = DateTime.diff(DateTime.utc_now(), last_date, :day)
+          # Active within last month
+          days_since <= 30
+      end
+
+    # Fleet experience indicator (not purely solo)
+    has_fleet_experience = pilot_stats.solo_ratio < 0.9
+
+    activity_score >= 5 and recently_active and has_fleet_experience
   end
 
   defp find_critical_skill_gaps(doctrine_template, available_pilots) do
@@ -583,16 +660,90 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
     |> Enum.into(%{})
   end
 
-  defp generate_training_priorities(_doctrine_template, _available_pilots) do
-    # Generate prioritized list of skills that would have the most impact
-    priorities = []
+  defp generate_training_priorities(doctrine_template, available_pilots) do
+    # Analyze which skills would have the most impact if trained
 
-    # This would analyze which skills, if trained, would fill the most gaps
-    priorities ++
-      [
-        %{"skill" => "Logistics V", "pilots_training" => 2, "impact" => "high"},
-        %{"skill" => "HAC V", "pilots_training" => 3, "impact" => "medium"}
-      ]
+    # Count current skill coverage
+    skill_coverage =
+      doctrine_template
+      |> Enum.flat_map(fn {_role, role_data} ->
+        role_data["skills_required"] || []
+      end)
+      |> Enum.uniq()
+      |> Enum.map(fn skill ->
+        qualified_count =
+          Enum.count(available_pilots, fn pilot ->
+            check_skill_via_ship_usage(pilot, skill)
+          end)
+
+        needed_count =
+          doctrine_template
+          |> Enum.filter(fn {_role, role_data} ->
+            skill in (role_data["skills_required"] || [])
+          end)
+          |> Enum.map(fn {_role, role_data} -> role_data["required"] || 1 end)
+          |> Enum.sum()
+
+        gap = max(0, needed_count - qualified_count)
+
+        %{
+          skill: skill,
+          qualified_pilots: qualified_count,
+          needed_pilots: needed_count,
+          gap: gap,
+          impact: determine_skill_impact(skill, gap)
+        }
+      end)
+      |> Enum.filter(fn coverage -> coverage.gap > 0 end)
+      |> Enum.sort_by(fn coverage -> {coverage.impact, coverage.gap} end, :desc)
+      |> Enum.take(5)
+      |> Enum.map(fn coverage ->
+        %{
+          "skill" => coverage.skill,
+          "pilots_training" => find_pilots_close_to_skill(available_pilots, coverage.skill),
+          "impact" => Atom.to_string(coverage.impact)
+        }
+      end)
+
+    skill_coverage
+  end
+
+  defp determine_skill_impact(skill, gap) do
+    cond do
+      String.contains?(skill, ["Logistics", "Command"]) and gap > 0 -> :critical
+      gap >= 3 -> :high
+      gap >= 1 -> :medium
+      true -> :low
+    end
+  end
+
+  defp find_pilots_close_to_skill(pilots, skill) do
+    # Find pilots who are close to qualifying for this skill
+    pilots
+    |> Enum.filter(fn pilot ->
+      not check_skill_via_ship_usage(pilot, skill) and
+        pilot_close_to_skill?(pilot, skill)
+    end)
+    |> length()
+  end
+
+  defp pilot_close_to_skill?(pilot, skill) do
+    # Check if pilot is close to meeting skill requirements
+    ship_groups = Map.get(pilot, :ship_groups_flown, %{})
+
+    case skill do
+      "Logistics" <> _ ->
+        Map.get(ship_groups, "Cruisers", 0) > 3
+
+      "HAC" <> _ ->
+        Map.get(ship_groups, "Cruisers", 0) > 5
+
+      "Interceptors" <> _ ->
+        Map.get(ship_groups, "Frigates", 0) > 8
+
+      _ ->
+        false
+    end
   end
 
   defp assign_pilots_to_role(role, role_data, available_pilots, required_count) do
@@ -609,61 +760,126 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
   end
 
   defp pilot_meets_skill_requirements?(pilot, required_skills) do
-    # Check if pilot meets the skill requirements
-    # Note: This would require authenticated ESI access to get actual skills
-    # For now, we use heuristics based on pilot's killmail activity
+    # Check if pilot meets the skill requirements based on ship usage history
+    # Use killmail data as proxy for skills since we can't access skill API
 
     # If no specific skill requirements, check general competence
     if Enum.empty?(required_skills) do
-      pilot.total_kills + pilot.total_losses >= 10
+      pilot.kill_count + pilot.loss_count >= 10
     else
-      # Use killmail data as proxy for skills
-      # Pilots who fly certain ships likely have the required skills
-      case hd(required_skills) do
-        "Logistics V" ->
-          # Check if they've flown logistics ships
-          pilot.ship_groups_flown
-          |> Map.get("Logistics", 0)
-          |> Kernel.>(0)
+      # Check all required skills
+      Enum.all?(required_skills, fn skill ->
+        check_skill_via_ship_usage(pilot, skill)
+      end)
+    end
+  end
 
-        "HAC V" ->
-          # Check if they've flown Heavy Assault Cruisers
-          pilot.ship_groups_flown
-          |> Map.get("Heavy Assault Cruisers", 0)
-          |> Kernel.>(0)
+  defp check_skill_via_ship_usage(pilot, skill) do
+    ship_groups = Map.get(pilot, :ship_groups_flown, %{})
 
-        "Interceptors V" ->
-          # Check if they've flown interceptors
-          pilot.ship_groups_flown
-          |> Map.get("Interceptors", 0)
-          |> Kernel.>(0)
+    case skill do
+      "Logistics" <> _ ->
+        # Check if they've flown logistics ships
+        # T1 logi experience
+        Map.get(ship_groups, "Logistics", 0) > 0 or
+          Map.get(ship_groups, "Cruisers", 0) > 5
 
-        "Command Ships V" ->
-          # Check if they've flown command ships
-          pilot.ship_groups_flown
-          |> Map.get("Command Ships", 0)
-          |> Kernel.>(0)
+      "HAC" <> _ ->
+        # Heavy Assault Cruisers or significant cruiser experience
+        Map.get(ship_groups, "Heavy Assault Cruisers", 0) > 0 or
+          Map.get(ship_groups, "Cruisers", 0) > 10
 
-        _ ->
-          # Generic competence check for unknown skills
-          pilot.total_kills + pilot.total_losses >= 20
-      end
+      "Interceptors" <> _ ->
+        # Interceptors or significant frigate experience  
+        Map.get(ship_groups, "Interceptors", 0) > 0 or
+          Map.get(ship_groups, "Frigates", 0) > 15
+
+      "Command Ships" <> _ ->
+        # Command ships or battlecruiser experience
+        Map.get(ship_groups, "Command Ships", 0) > 0 or
+          Map.get(ship_groups, "Battlecruisers", 0) > 5
+
+      "Recon Ships" <> _ ->
+        # Recon ships or significant cruiser PvP
+        Map.get(ship_groups, "Recon Ships", 0) > 0 or
+          (Map.get(ship_groups, "Cruisers", 0) > 10 and pilot.kd_ratio > 1.0)
+
+      "Interdictors" <> _ ->
+        # Interdictors or destroyer experience
+        Map.get(ship_groups, "Interdictors", 0) > 0 or
+          Map.get(ship_groups, "Destroyers", 0) > 5
+
+      _ ->
+        # Generic competence check for unknown skills
+        pilot.kill_count + pilot.loss_count >= 20
     end
   end
 
   defp calculate_pilot_suitability_score(pilot, role) do
     # Calculate how suitable a pilot is for a specific role
-    base_score = pilot.total_kills + pilot.total_losses
+    base_score = pilot.kill_count + pilot.loss_count
 
-    # Role-specific bonuses
-    role_bonus =
-      case role do
-        "fleet_commander" -> if pilot.total_kills > 100, do: 50, else: 0
-        "logistics" -> if pilot.has_logi_support, do: 30, else: 0
-        _ -> 0
+    # Activity recency bonus
+    recency_bonus =
+      case pilot.last_analyzed_at do
+        nil ->
+          0
+
+        last_date ->
+          days_ago = DateTime.diff(DateTime.utc_now(), last_date, :day)
+          # Up to 20 point bonus for recent activity
+          max(0, 20 - days_ago)
       end
 
-    base_score + role_bonus
+    # Role-specific scoring
+    role_score =
+      case role do
+        "fleet_commander" ->
+          fc_score = 0
+          fc_score = if pilot.kill_count > 100, do: fc_score + 50, else: fc_score
+          fc_score = if pilot.kd_ratio > 2.0, do: fc_score + 30, else: fc_score
+          fc_score = if pilot.avg_gang_size > 5.0, do: fc_score + 20, else: fc_score
+          fc_score
+
+        "logistics" ->
+          logi_score = 0
+          logi_score = if pilot.has_logi_support, do: logi_score + 50, else: logi_score
+          logi_score = if pilot.efficiency > 0.7, do: logi_score + 20, else: logi_score
+          logi_score
+
+        "tackle" ->
+          tackle_score = 0
+          ship_groups = Map.get(pilot, :ship_groups_flown, %{})
+
+          tackle_score =
+            if Map.get(ship_groups, "Frigates", 0) > 10, do: tackle_score + 30, else: tackle_score
+
+          tackle_score =
+            if Map.get(ship_groups, "Interceptors", 0) > 0,
+              do: tackle_score + 40,
+              else: tackle_score
+
+          tackle_score
+
+        "dps" ->
+          dps_score = 0
+          dps_score = if pilot.kill_count > 50, do: dps_score + 30, else: dps_score
+          dps_score = if pilot.kd_ratio > 1.5, do: dps_score + 20, else: dps_score
+          dps_score
+
+        "ewar" ->
+          # EWAR pilots often have fewer kills but high impact
+          ewar_score = 0
+          ewar_score = if pilot.efficiency > 0.6, do: ewar_score + 30, else: ewar_score
+          # Team players
+          ewar_score = if pilot.solo_ratio < 0.3, do: ewar_score + 20, else: ewar_score
+          ewar_score
+
+        _ ->
+          0
+      end
+
+    base_score + recency_bonus + role_score
   end
 
   defp select_best_ship_for_pilot(_pilot, preferred_ships) do
