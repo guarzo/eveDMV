@@ -570,38 +570,501 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
     end
   end
 
-  defp analyze_eviction_participation(_character_id, _known_groups) do
-    %{
-      "evictions_involved" => 0,
-      "victim_corps" => [],
-      "typical_role" => "unknown"
-    }
+  defp analyze_eviction_participation(character_id, known_groups) do
+    # Analyze character's participation in eviction activities
+    # 2 years
+    cutoff_date = DateTime.add(DateTime.utc_now(), -730, :day)
+
+    # Get all J-space killmails
+    participant_query =
+      Participant
+      |> Ash.Query.new()
+      |> Ash.Query.filter(character_id == ^character_id)
+      |> Ash.Query.filter(updated_at >= ^cutoff_date)
+      |> Ash.Query.load(:killmail_enriched)
+
+    case Ash.read(participant_query, domain: Api) do
+      {:ok, participants} ->
+        # Filter for J-space activity
+        j_space_activity =
+          participants
+          |> Enum.filter(fn p ->
+            p.killmail_enriched && j_space_system?(p.killmail_enriched.solar_system_id)
+          end)
+
+        # Group by victim corporation to identify potential evictions
+        victim_corps =
+          j_space_activity
+          # Character was attacker
+          |> Enum.filter(fn p -> not p.is_victim end)
+          |> Enum.map(fn p ->
+            # Find victim in same killmail
+            victim = find_victim_in_killmail(p.killmail_enriched)
+
+            {victim["corporation_id"], victim["corporation_name"],
+             p.killmail_enriched.killmail_time}
+          end)
+          |> Enum.reject(fn {corp_id, _, _} -> is_nil(corp_id) end)
+          |> Enum.group_by(fn {corp_id, corp_name, _} -> {corp_id, corp_name} end)
+          |> Enum.map(fn {{corp_id, corp_name}, kills} ->
+            # Count kills over time to identify eviction patterns
+            kill_times = Enum.map(kills, fn {_, _, time} -> time end)
+            {first_kill, last_kill} = Enum.min_max_by(kill_times, & &1, DateTime)
+            duration_hours = DateTime.diff(last_kill, first_kill, :hour)
+
+            %{
+              corporation_id: corp_id,
+              corporation_name: corp_name || "Unknown",
+              kill_count: length(kills),
+              duration_hours: duration_hours,
+              # Eviction pattern: many kills in short time
+              # 7 days
+              likely_eviction: length(kills) >= 10 and duration_hours <= 168
+            }
+          end)
+          |> Enum.filter(& &1.likely_eviction)
+
+        # Determine typical role based on ship usage in evictions
+        eviction_ships =
+          j_space_activity
+          |> Enum.filter(fn p ->
+            not p.is_victim and
+              Enum.any?(victim_corps, fn vc ->
+                victim = find_victim_in_killmail(p.killmail_enriched)
+                victim["corporation_id"] == vc.corporation_id
+              end)
+          end)
+          |> Enum.map(& &1.ship_name)
+          |> Enum.frequencies()
+
+        typical_role = determine_eviction_role(eviction_ships)
+
+        %{
+          "evictions_involved" => length(victim_corps),
+          # Top 5
+          "victim_corps" => Enum.take(victim_corps, 5),
+          "typical_role" => typical_role
+        }
+
+      {:error, _} ->
+        %{
+          "evictions_involved" => 0,
+          "victim_corps" => [],
+          "typical_role" => "unknown"
+        }
+    end
   end
 
-  defp analyze_seed_scout_patterns(_character_id) do
-    %{
-      "suspicious_applications" => 0,
-      "timing_patterns" => [],
-      "information_gathering" => false
-    }
+  defp find_victim_in_killmail(killmail) do
+    participants = killmail.participants || []
+
+    victim = Enum.find(participants, & &1.is_victim)
+
+    if victim do
+      %{
+        "character_id" => victim.character_id,
+        "character_name" => victim.character_name,
+        "corporation_id" => victim.corporation_id,
+        "corporation_name" => victim.corporation_name
+      }
+    else
+      %{}
+    end
   end
 
-  defp find_potential_alts(_character_id) do
-    []
+  defp determine_eviction_role(ship_frequencies) do
+    cond do
+      # Structure bashers
+      Enum.any?(ship_frequencies, fn {ship, _} ->
+        String.contains?(ship || "", ["Oracle", "Talos", "Naga", "Tornado"])
+      end) ->
+        "structure_basher"
+
+      # Hole control
+      Enum.any?(ship_frequencies, fn {ship, _} ->
+        String.contains?(ship || "", ["Devoter", "Phobos", "Onyx", "Broadsword"])
+      end) ->
+        "hole_control"
+
+      # Hunter killer
+      Enum.any?(ship_frequencies, fn {ship, _} ->
+        String.contains?(ship || "", ["Sabre", "Loki", "Proteus", "Legion"])
+      end) ->
+        "hunter_killer"
+
+      # Support
+      Enum.any?(ship_frequencies, fn {ship, _} ->
+        String.contains?(ship || "", ["Guardian", "Oneiros", "Scimitar", "Basilisk"])
+      end) ->
+        "support"
+
+      true ->
+        "dps"
+    end
   end
 
-  defp analyze_character_bazaar_signs(_character_id) do
-    %{
-      "likely_purchased" => false,
-      "skill_inconsistencies" => [],
-      "name_history" => []
-    }
+  defp analyze_seed_scout_patterns(character_id) do
+    # Analyze patterns that might indicate seed/scout behavior
+    # 6 months
+    cutoff_date = DateTime.add(DateTime.utc_now(), -180, :day)
+
+    # Get character's corporation history
+    case EsiClient.get_character_employment_history(character_id) do
+      {:ok, history} when is_list(history) ->
+        recent_history =
+          history
+          # Last 10 corps
+          |> Enum.take(10)
+          |> Enum.map(fn entry ->
+            %{
+              corporation_id: entry["corporation_id"],
+              start_date: entry["start_date"],
+              # Calculate days in corp
+              days_in_corp: calculate_days_in_corp(entry)
+            }
+          end)
+
+        # Suspicious patterns
+        short_stays =
+          recent_history
+          |> Enum.filter(fn entry -> entry.days_in_corp < 30 and entry.days_in_corp > 0 end)
+          |> length()
+
+        # Pattern of joining and quickly leaving
+        rapid_changes = length(recent_history) >= 5
+
+        # Check for information gathering behavior (low activity after joining)
+        activity_query =
+          Participant
+          |> Ash.Query.new()
+          |> Ash.Query.filter(character_id == ^character_id)
+          |> Ash.Query.filter(updated_at >= ^cutoff_date)
+
+        recent_activity =
+          case Ash.count(activity_query, domain: Api) do
+            {:ok, count} -> count
+            _ -> 0
+          end
+
+        # Low activity might indicate watching/scouting
+        low_activity = recent_activity < 5
+
+        timing_patterns =
+          if short_stays > 2 do
+            ["multiple_short_corp_stays"]
+          else
+            []
+          end
+
+        timing_patterns =
+          if rapid_changes do
+            ["rapid_corp_changes" | timing_patterns]
+          else
+            timing_patterns
+          end
+
+        %{
+          "suspicious_applications" => short_stays,
+          "timing_patterns" => timing_patterns,
+          "information_gathering" => low_activity and short_stays > 0
+        }
+
+      _ ->
+        %{
+          "suspicious_applications" => 0,
+          "timing_patterns" => [],
+          "information_gathering" => false
+        }
+    end
   end
 
-  defp calculate_account_age(_character_id) do
-    # Calculate days since character creation
-    # Placeholder - would use ESI data
-    365
+  defp calculate_days_in_corp(employment_entry) do
+    start_date = parse_esi_datetime(employment_entry["start_date"])
+
+    end_date =
+      case employment_entry["end_date"] do
+        nil -> DateTime.utc_now()
+        date_str -> parse_esi_datetime(date_str)
+      end
+
+    if start_date && end_date do
+      DateTime.diff(end_date, start_date, :day)
+    else
+      0
+    end
+  end
+
+  defp parse_esi_datetime(nil), do: nil
+
+  defp parse_esi_datetime(datetime_str) do
+    case DateTime.from_iso8601(datetime_str) do
+      {:ok, datetime, _} -> datetime
+      _ -> nil
+    end
+  end
+
+  defp find_potential_alts(character_id) do
+    # Find potential alt characters based on activity patterns
+    # This is a simplified implementation - real detection would be more sophisticated
+
+    # Get character's killmails to find associates
+    cutoff_date = DateTime.add(DateTime.utc_now(), -365, :day)
+
+    participant_query =
+      Participant
+      |> Ash.Query.new()
+      |> Ash.Query.filter(character_id == ^character_id)
+      |> Ash.Query.filter(updated_at >= ^cutoff_date)
+      |> Ash.Query.load(:killmail_enriched)
+
+    case Ash.read(participant_query, domain: Api) do
+      {:ok, participants} ->
+        # Find characters that appear frequently together
+        killmail_ids =
+          participants
+          |> Enum.map(& &1.killmail_id)
+          |> Enum.uniq()
+
+        # Get all participants in those killmails
+        co_participants_query =
+          Participant
+          |> Ash.Query.new()
+          |> Ash.Query.filter(killmail_id in ^killmail_ids)
+          |> Ash.Query.filter(character_id != ^character_id)
+          # Only attackers
+          |> Ash.Query.filter(is_victim == false)
+
+        case Ash.read(co_participants_query, domain: Api) do
+          {:ok, co_participants} ->
+            # Find characters that appear together frequently
+            potential_alts =
+              co_participants
+              |> Enum.group_by(& &1.character_id)
+              |> Enum.map(fn {char_id, appearances} ->
+                %{
+                  character_id: char_id,
+                  character_name: List.first(appearances).character_name,
+                  shared_killmails: length(appearances),
+                  # High correlation suggests alt
+                  correlation_score: length(appearances) / max(1, length(killmail_ids))
+                }
+              end)
+              |> Enum.filter(fn alt ->
+                # High correlation and significant activity
+                alt.correlation_score > 0.7 and alt.shared_killmails > 10
+              end)
+              |> Enum.sort_by(& &1.correlation_score, :desc)
+              |> Enum.take(5)
+
+            potential_alts
+
+          _ ->
+            []
+        end
+
+      _ ->
+        []
+    end
+  end
+
+  defp analyze_character_bazaar_signs(character_id) do
+    # Analyze signs that character might have been purchased on character bazaar
+
+    # Get character info and history
+    case EsiClient.get_character(character_id) do
+      {:ok, character_data} ->
+        character_name = character_data["name"]
+
+        # Check for name patterns common in bazaar characters
+        name_patterns = analyze_character_name(character_name)
+
+        # Get employment history to check for gaps
+        employment_gaps =
+          case EsiClient.get_character_employment_history(character_id) do
+            {:ok, history} when is_list(history) ->
+              detect_employment_gaps(history)
+
+            _ ->
+              []
+          end
+
+        # Check skill patterns (would need authenticated access)
+        # For now, we'll check killmail activity patterns
+        skill_inconsistencies = detect_skill_inconsistencies(character_id)
+
+        # Likely purchased if multiple indicators present
+        likely_purchased =
+          length(name_patterns) > 0 or
+            length(employment_gaps) > 0 or
+            length(skill_inconsistencies) > 0
+
+        %{
+          "likely_purchased" => likely_purchased,
+          "skill_inconsistencies" => skill_inconsistencies,
+          "name_history" => name_patterns
+        }
+
+      _ ->
+        %{
+          "likely_purchased" => false,
+          "skill_inconsistencies" => [],
+          "name_history" => []
+        }
+    end
+  end
+
+  defp analyze_character_name(name) when is_binary(name) do
+    patterns = []
+
+    # Common bazaar naming patterns
+    patterns =
+      if Regex.match?(~r/^[A-Z][a-z]+\s\d+$/, name) do
+        ["generic_name_with_number" | patterns]
+      else
+        patterns
+      end
+
+    patterns =
+      if String.length(name) < 6 do
+        ["unusually_short_name" | patterns]
+      else
+        patterns
+      end
+
+    patterns =
+      if Regex.match?(~r/\d{4,}/, name) do
+        ["multiple_numbers_in_name" | patterns]
+      else
+        patterns
+      end
+
+    patterns
+  end
+
+  defp analyze_character_name(_), do: []
+
+  defp detect_employment_gaps(history) do
+    # Look for suspicious gaps in employment history
+    history
+    |> Enum.chunk_every(2, 1, :discard)
+    |> Enum.filter(fn [newer, older] ->
+      # Check if there's a gap between leaving one corp and joining another
+      older_end = older["end_date"]
+      newer_start = newer["start_date"]
+
+      if older_end && newer_start do
+        gap_days = calculate_date_gap(older_end, newer_start)
+        # More than 30 day gap is suspicious
+        gap_days > 30
+      else
+        false
+      end
+    end)
+    |> Enum.map(fn [newer, _older] ->
+      "employment_gap_before_#{newer["corporation_id"]}"
+    end)
+  end
+
+  defp calculate_date_gap(end_date_str, start_date_str) do
+    with {:ok, end_date, _} <- DateTime.from_iso8601(end_date_str),
+         {:ok, start_date, _} <- DateTime.from_iso8601(start_date_str) do
+      DateTime.diff(start_date, end_date, :day)
+    else
+      _ -> 0
+    end
+  end
+
+  defp detect_skill_inconsistencies(character_id) do
+    # Detect skill inconsistencies from killmail patterns
+    # Characters that suddenly fly ships requiring high SP after long inactivity
+
+    # 2 years
+    cutoff_date = DateTime.add(DateTime.utc_now(), -730, :day)
+
+    participant_query =
+      Participant
+      |> Ash.Query.new()
+      |> Ash.Query.filter(character_id == ^character_id)
+      |> Ash.Query.filter(updated_at >= ^cutoff_date)
+      |> Ash.Query.sort(updated_at: :asc)
+
+    case Ash.read(participant_query, domain: Api) do
+      {:ok, participants} ->
+        # Group ships by time periods
+        ship_progression =
+          participants
+          |> Enum.group_by(fn p ->
+            # Group by 6-month periods
+            date = p.updated_at
+            {date.year, div(date.month - 1, 6)}
+          end)
+          |> Enum.map(fn {period, period_participants} ->
+            ships =
+              period_participants
+              |> Enum.map(& &1.ship_name)
+              |> Enum.uniq()
+              |> Enum.reject(&is_nil/1)
+
+            {period, ships}
+          end)
+          |> Enum.sort()
+
+        # Look for sudden jumps in ship complexity
+        detect_ship_progression_anomalies(ship_progression)
+
+      _ ->
+        []
+    end
+  end
+
+  defp detect_ship_progression_anomalies(ship_progression) do
+    # Simple detection of unusual progression
+    anomalies = []
+
+    # Check if character jumped from T1 frigates to capitals
+    has_frigate_period =
+      Enum.any?(ship_progression, fn {_, ships} ->
+        Enum.any?(
+          ships,
+          &String.contains?(&1 || "", ["Rifter", "Merlin", "Punisher", "Incursus"])
+        )
+      end)
+
+    has_capital_period =
+      Enum.any?(ship_progression, fn {_, ships} ->
+        Enum.any?(ships, &String.contains?(&1 || "", ["Carrier", "Dreadnought", "Titan"]))
+      end)
+
+    if has_frigate_period and has_capital_period and length(ship_progression) < 4 do
+      ["rapid_skill_progression" | anomalies]
+    else
+      anomalies
+    end
+  end
+
+  defp calculate_account_age(character_id) do
+    # Calculate days since character creation using ESI data
+    case EsiClient.get_character(character_id) do
+      {:ok, character_data} ->
+        birthday_str = character_data["birthday"]
+
+        if birthday_str do
+          case DateTime.from_iso8601(birthday_str) do
+            {:ok, birthday, _} ->
+              DateTime.diff(DateTime.utc_now(), birthday, :day)
+
+            _ ->
+              # Fallback
+              365
+          end
+        else
+          365
+        end
+
+      _ ->
+        # Fallback if ESI fails
+        365
+    end
   end
 
   defp assess_main_character_confidence(_character_id, _potential_alts) do
@@ -753,7 +1216,7 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
 
         flags = maybe_add_flag(flags, same_alliance_kills > 0, "blue_killer")
 
-        # 3. Exclusively highsec activity  
+        # 3. Exclusively highsec activity
         highsec_only =
           participants
           |> Enum.all?(fn p ->
