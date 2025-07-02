@@ -14,8 +14,29 @@ defmodule EveDmv.Market.PriceCache do
 
   # Client API
 
-  def start_link(_opts) do
-    GenServer.start_link(__MODULE__, [], name: __MODULE__)
+  def start_link(opts) do
+    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
+  end
+
+  @doc """
+  Child specification with proper shutdown timeout for ETS cleanup.
+  """
+  def child_spec(opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [opts]},
+      # 10 seconds for ETS cleanup
+      shutdown: 10_000
+    }
+  end
+
+  def child_spec(opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [opts]},
+      # 10 seconds for ETS cleanup
+      shutdown: 10_000
+    }
   end
 
   @doc """

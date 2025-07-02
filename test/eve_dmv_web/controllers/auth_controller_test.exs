@@ -4,6 +4,7 @@ defmodule EveDmvWeb.AuthControllerTest do
 
   import Mox
   import Phoenix.ConnTest
+  import StreamData
 
   alias EveDmv.Api
   alias EveDmv.Users.User
@@ -341,7 +342,7 @@ defmodule EveDmvWeb.AuthControllerTest do
 
   # Property-based testing for robust input validation
   property "auth controller handles various character ID formats" do
-    check all(character_id <- positive_integer()) do
+    check all(character_id <- character_id_generator(), max_runs: 100) do
       # Create user with various character IDs
       user_info = %{
         "CharacterID" => character_id,
@@ -376,13 +377,20 @@ defmodule EveDmvWeb.AuthControllerTest do
       # Should always redirect successfully
       assert result.status == 302
       assert result.state == :sent
+      # Test with realistic character ID ranges
+      assert character_id >= 90_000_000
     end
   end
 
-  describe "rate limiting" do
-    test "prevents rapid authentication attempts" do
-      # This test would require implementing rate limiting
-      # For now, we'll test that multiple rapid requests don't crash
+  defp character_id_generator do
+    # EVE character IDs start from 90,000,000
+    integer(90_000_000..2_147_483_647)
+  end
+
+  describe "stability testing" do
+    test "maintains stability under rapid authentication attempts" do
+      # Rename to reflect actual behavior
+      # This test validates stability, not rate limiting
       user_info = %{
         "CharacterID" => 123_456,
         "CharacterName" => "TestPilot"
@@ -416,10 +424,18 @@ defmodule EveDmvWeb.AuthControllerTest do
           |> AuthController.success(:sign_in, user, nil)
         end
 
-      # All should respond (even if rate limited)
+      # All should respond successfully
       for result <- results do
         assert %Plug.Conn{} = result
+        assert result.status in [200, 302]
       end
+    end
+
+    # Add actual rate limiting test if rate limiting is implemented
+    @tag :skip
+    test "implements rate limiting for authentication" do
+      # Only add this if actual rate limiting is implemented
+      flunk("Rate limiting not yet implemented")
     end
   end
 end

@@ -15,7 +15,11 @@ defmodule EveDmvWeb.Endpoint do
     store: :cookie,
     key: "_eve_dmv_key",
     signing_salt: "fTSiD2Eh",
-    same_site: "Lax"
+    same_site: "Lax",
+    secure: true,
+    http_only: true,
+    # 24 hours
+    max_age: 24 * 60 * 60
   ]
 
   socket "/live", Phoenix.LiveView.Socket,
@@ -30,7 +34,14 @@ defmodule EveDmvWeb.Endpoint do
     at: "/",
     from: :eve_dmv,
     gzip: false,
-    only: EveDmvWeb.static_paths()
+    only: EveDmvWeb.static_paths(),
+    headers: %{
+      "strict-transport-security" => "max-age=31_536_000; includeSubDomains",
+      "x-frame-options" => "DENY",
+      "x-content-type-options" => "nosniff",
+      "x-xss-protection" => "1; mode=block",
+      "referrer-policy" => "strict-origin-when-cross-origin"
+    }
 
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.

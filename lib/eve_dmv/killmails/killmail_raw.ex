@@ -9,7 +9,8 @@ defmodule EveDmv.Killmails.KillmailRaw do
   use Ash.Resource,
     otp_app: :eve_dmv,
     domain: EveDmv.Api,
-    data_layer: AshPostgres.DataLayer
+    data_layer: AshPostgres.DataLayer,
+    authorizers: [Ash.Policy.Authorizer]
 
   postgres do
     table("killmails_raw")
@@ -202,23 +203,24 @@ defmodule EveDmv.Killmails.KillmailRaw do
     end
   end
 
-  # Authorization policies - temporarily disabled for compilation
-  # policies do
-  #   # Allow read access for all authenticated users
-  #   policy action_type(:read) do
-  #     authorize_if always()
-  #   end
+  # Authorization policies
+  policies do
+    # Allow read access for all authenticated users
+    policy action_type(:read) do
+      authorize_if(always())
+    end
 
-  #   # Only allow creates from the ingestion system
-  #   policy action_type(:create) do
-  #     authorize_if always() # We'll implement service-level auth later
-  #   end
+    # Only allow creates from the ingestion system
+    policy action_type(:create) do
+      # We'll implement service-level auth later
+      authorize_if(always())
+    end
 
-  #   # No updates or deletes allowed
-  #   policy action_type([:update, :destroy]) do
-  #     forbid_if always()
-  #   end
-  # end
+    # No updates or deletes allowed
+    policy action_type([:update, :destroy]) do
+      forbid_if(always())
+    end
+  end
 
   # Aggregates for common calculations
   aggregates do

@@ -42,6 +42,9 @@ defmodule EveDmv.Api do
     # Analytics resources
     resource(EveDmv.Analytics.PlayerStats)
     resource(EveDmv.Analytics.ShipStats)
+
+    # Security resources
+    resource(EveDmv.Security.ApiAuthentication)
   end
 
   # Authorization configuration

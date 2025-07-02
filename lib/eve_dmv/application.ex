@@ -10,6 +10,12 @@ defmodule EveDmv.Application do
     # Initialize EVE name resolver cache early
     EveDmv.Eve.NameResolver.start_cache()
 
+    # Set up security monitoring handlers
+    EveDmv.Security.AuditLogger.setup_handlers()
+
+    # Set up periodic security headers validation
+    EveDmv.Security.HeadersValidator.setup_periodic_validation()
+
     children = [
       EveDmvWeb.Telemetry,
       # Task supervisor for background tasks (start early)
@@ -29,6 +35,24 @@ defmodule EveDmv.Application do
       {EveDmv.Market.RateLimiter, name: :janice_rate_limiter, max_tokens: 5, refill_rate: 5},
       # Start the surveillance matching engine
       EveDmv.Surveillance.MatchingEngine,
+      # Start the query performance monitor
+      EveDmv.Telemetry.QueryMonitor,
+      # Start the query result cache
+      EveDmv.Database.QueryCache,
+      # Start the intelligent cache warmer
+      EveDmv.Database.CacheWarmer,
+      # Start the connection pool monitor
+      EveDmv.Database.ConnectionPoolMonitor,
+      # Start the partition manager
+      EveDmv.Database.PartitionManager,
+      # Start the cache invalidator
+      EveDmv.Database.CacheInvalidator,
+      # Start the query plan analyzer
+      EveDmv.Database.QueryPlanAnalyzer,
+      # Start the materialized view manager
+      EveDmv.Database.MaterializedViewManager,
+      # Start the archive manager
+      EveDmv.Database.ArchiveManager,
       # Start the re-enrichment worker
       EveDmv.Enrichment.ReEnrichmentWorker,
       # Start the real-time price updater

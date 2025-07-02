@@ -248,7 +248,7 @@ defmodule EveDmv.Eve.EsiParsers do
         }
   def parse_market_history(data) do
     %{
-      date: Date.from_iso8601!(Map.get(data, "date")),
+      date: parse_date(Map.get(data, "date")),
       order_count: Map.get(data, "order_count", 0),
       volume: Map.get(data, "volume", 0),
       highest: Map.get(data, "highest", 0.0),
@@ -269,4 +269,17 @@ defmodule EveDmv.Eve.EsiParsers do
   end
 
   defp parse_datetime(_), do: nil
+
+  defp parse_date(date_string) when is_binary(date_string) do
+    case Date.from_iso8601(date_string) do
+      {:ok, date} ->
+        date
+
+      {:error, _reason} ->
+        Logger.warning("Failed to parse date: #{date_string}")
+        nil
+    end
+  end
+
+  defp parse_date(_), do: nil
 end

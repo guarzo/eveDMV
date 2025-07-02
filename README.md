@@ -52,6 +52,32 @@ For complete documentation, see the [/docs directory](./docs/README.md).
    # Update SECRET_KEY_BASE in .env with the generated value
    ```
 
+### Environment Setup and Secrets
+
+**Important:** Never commit sensitive credentials to version control. The `.env` file is gitignored for security.
+
+1. **Required Environment Variables:**
+   - `EVE_SSO_CLIENT_ID` - Your EVE application client ID
+   - `EVE_SSO_CLIENT_SECRET` - Your EVE application client secret
+   - `SECRET_KEY_BASE` - Phoenix secret key (generate with `mix phx.gen.secret`)
+   - `DATABASE_URL` - PostgreSQL connection string
+
+2. **Optional API Keys:**
+   - `JANICE_API_KEY` - For market price data (get from Janice dashboard)
+   - `MUTAMARKET_API_KEY` - For mutated module prices
+
+3. **Security Best Practices:**
+   - Rotate secrets regularly
+   - Use strong, unique values for each environment
+   - Never reuse production secrets in development
+   - Store production secrets in a secure secret management system
+
+4. **Regenerating Compromised Secrets:**
+   If any secrets are exposed:
+   - Immediately regenerate the affected credentials
+   - Update all environments with new values
+   - Review access logs for any unauthorized usage
+
 5. **Open in VS Code and start dev container:**
    ```bash
    code .

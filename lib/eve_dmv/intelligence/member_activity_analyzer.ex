@@ -11,7 +11,9 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
 
   require Logger
   require Ash.Query
+  alias EveDmv.Api
   alias EveDmv.Eve.EsiClient
+  alias EveDmv.Killmails.Participant
 
   alias EveDmv.Intelligence.{
     CharacterStats,
@@ -292,15 +294,85 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
     {:ok, risk_assessment}
   end
 
-  defp analyze_timezone_patterns(_character_id, _activity_data) do
-    # Analyze when the member is most active
+  defp analyze_timezone_patterns(_character_id, activity_data) do
+    # Analyze when the member is most active based on actual activity
+    hourly_activity = Map.get(activity_data, :hourly_activity, %{})
+
+    # Find peak activity hours
+    total_activity = hourly_activity |> Map.values() |> Enum.sum()
+
+    active_hours =
+      if total_activity > 0 do
+        # Get hours with >5% of total activity
+        threshold = total_activity * 0.05
+
+        hourly_activity
+        |> Enum.filter(fn {_hour, count} -> count >= threshold end)
+        |> Enum.map(&elem(&1, 0))
+        |> Enum.sort()
+      else
+        []
+      end
+
+    # Determine primary timezone based on peak hours
+    primary_timezone = estimate_timezone_from_hours(active_hours)
+
+    # Calculate consistency (how concentrated activity is)
+    timezone_consistency = calculate_timezone_consistency(hourly_activity)
+
     timezone_analysis = %{
-      primary_timezone: "UTC",
-      active_hours: [18, 19, 20, 21, 22, 23],
-      timezone_consistency: 0.8
+      primary_timezone: primary_timezone,
+      active_hours: active_hours,
+      timezone_consistency: timezone_consistency
     }
 
     {:ok, timezone_analysis}
+  end
+
+  defp estimate_timezone_from_hours(active_hours) do
+    if Enum.empty?(active_hours) do
+      "Unknown"
+    else
+      # Find the most likely timezone based on peak hours
+      avg_hour = Enum.sum(active_hours) / length(active_hours)
+
+      cond do
+        # Australian timezone
+        avg_hour >= 22 or avg_hour <= 6 -> "AU TZ"
+        # European timezone
+        avg_hour >= 7 and avg_hour <= 15 -> "EU TZ"
+        # US timezone
+        avg_hour >= 16 and avg_hour <= 21 -> "US TZ"
+        true -> "Mixed TZ"
+      end
+    end
+  end
+
+  defp calculate_timezone_consistency(hourly_activity) do
+    if map_size(hourly_activity) == 0 do
+      0.0
+    else
+      # Calculate how concentrated activity is in a 6-hour window
+      total_activity = hourly_activity |> Map.values() |> Enum.sum()
+
+      max_6h_activity =
+        0..23
+        |> Enum.map(fn start_hour ->
+          0..5
+          |> Enum.map(fn offset ->
+            hour = rem(start_hour + offset, 24)
+            Map.get(hourly_activity, hour, 0)
+          end)
+          |> Enum.sum()
+        end)
+        |> Enum.max()
+
+      if total_activity > 0 do
+        max_6h_activity / total_activity
+      else
+        0.0
+      end
+    end
   end
 
   defp calculate_peer_comparison(_character_id, corporation_id, activity_data) do
@@ -356,9 +428,44 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
 
   # Simplified data collection helpers (would integrate with real data sources)
 
-  defp get_character_killmails(_character_id, _period_start, _period_end) do
-    # This would query the actual killmail database
-    {:ok, []}
+  defp get_character_killmails(character_id, period_start, period_end) do
+    # Query actual killmail data for the character
+    query =
+      Participant
+      |> Ash.Query.new()
+      |> Ash.Query.filter(character_id == ^character_id)
+      |> Ash.Query.filter(updated_at >= ^period_start)
+      |> Ash.Query.filter(updated_at <= ^period_end)
+      |> Ash.Query.load(:killmail_enriched)
+
+    case Ash.read(query, domain: Api) do
+      {:ok, participants} ->
+        # Convert participants to killmail format for compatibility
+        killmails =
+          participants
+          |> Enum.map(fn participant ->
+            %{
+              killmail_id: participant.killmail_id,
+              killmail_time: participant.updated_at,
+              is_victim: participant.is_victim,
+              ship_type_id: participant.ship_type_id,
+              ship_name: participant.ship_name,
+              solar_system_id:
+                participant.killmail_enriched && participant.killmail_enriched.solar_system_id,
+              solar_system_name:
+                participant.killmail_enriched && participant.killmail_enriched.solar_system_name,
+              total_value:
+                participant.killmail_enriched && participant.killmail_enriched.total_value
+            }
+          end)
+          |> Enum.reject(&is_nil(&1.killmail_time))
+
+        {:ok, killmails}
+
+      {:error, reason} ->
+        Logger.error("Failed to fetch character killmails: #{inspect(reason)}")
+        {:ok, []}
+    end
   end
 
   defp count_kills(killmails), do: Enum.count(killmails, &(&1.is_victim == false))
@@ -385,11 +492,143 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
     |> Map.new()
   end
 
-  defp count_home_defense_participation(_character_id, _period_start, _period_end), do: 0
-  defp count_chain_operations(_character_id, _period_start, _period_end), do: 0
-  defp count_fleet_operations(_character_id, _period_start, _period_end), do: 0
-  defp count_solo_activities(_character_id, _period_start, _period_end), do: 0
-  defp calculate_participation_rate(_character_id, _period_start, _period_end), do: 0.5
+  defp count_home_defense_participation(character_id, period_start, period_end) do
+    # Count participation in home system defenses
+    case get_character_killmails(character_id, period_start, period_end) do
+      {:ok, killmails} ->
+        # Identify home systems (systems with most defensive activity)
+        home_systems = identify_character_home_systems(character_id, killmails)
+
+        Enum.count(killmails, fn km ->
+          # Participated as attacker in home system
+          km.solar_system_id in home_systems and
+            km.is_victim == false
+        end)
+
+      _ ->
+        0
+    end
+  end
+
+  defp count_chain_operations(character_id, period_start, period_end) do
+    # Count participation in wormhole chain activities
+    case get_character_killmails(character_id, period_start, period_end) do
+      {:ok, killmails} ->
+        # Chain operations typically involve multiple systems in short time windows
+        killmails
+        |> Enum.group_by(fn km -> DateTime.truncate(km.killmail_time, :hour) end)
+        |> Enum.count(fn {_hour, hour_killmails} ->
+          # Multiple systems in same hour indicates chain activity
+          unique_systems = hour_killmails |> Enum.map(& &1.solar_system_id) |> Enum.uniq()
+          length(unique_systems) >= 2
+        end)
+
+      _ ->
+        0
+    end
+  end
+
+  defp count_fleet_operations(character_id, period_start, period_end) do
+    # Count participation in fleet operations (non-solo activities)
+    case get_character_killmails(character_id, period_start, period_end) do
+      {:ok, killmails} ->
+        # Need to check participant count from enriched data
+        fleet_kills =
+          killmails
+          |> Enum.map(fn km ->
+            # Get full killmail data to check participant count
+            case get_killmail_participants(km.killmail_id) do
+              {:ok, participants} ->
+                attacker_count = Enum.count(participants, &(&1.is_victim == false))
+                {km, attacker_count}
+
+              _ ->
+                {km, 1}
+            end
+          end)
+          |> Enum.count(fn {km, attacker_count} ->
+            km.is_victim == false and attacker_count > 1
+          end)
+
+        fleet_kills
+
+      _ ->
+        0
+    end
+  end
+
+  defp count_solo_activities(character_id, period_start, period_end) do
+    # Count solo kills
+    case get_character_killmails(character_id, period_start, period_end) do
+      {:ok, killmails} ->
+        solo_kills =
+          killmails
+          |> Enum.map(fn km ->
+            case get_killmail_participants(km.killmail_id) do
+              {:ok, participants} ->
+                attacker_count = Enum.count(participants, &(&1.is_victim == false))
+                {km, attacker_count}
+
+              _ ->
+                {km, 1}
+            end
+          end)
+          |> Enum.count(fn {km, attacker_count} ->
+            km.is_victim == false and attacker_count == 1
+          end)
+
+        solo_kills
+
+      _ ->
+        0
+    end
+  end
+
+  defp calculate_participation_rate(character_id, period_start, period_end) do
+    # Calculate overall participation rate in corp activities
+    home_defense = count_home_defense_participation(character_id, period_start, period_end)
+    chain_ops = count_chain_operations(character_id, period_start, period_end)
+    fleet_ops = count_fleet_operations(character_id, period_start, period_end)
+
+    total_activities = home_defense + chain_ops + fleet_ops
+
+    # Normalize to 0-1 scale (assume 10+ activities/month is 100%)
+    days_in_period = DateTime.diff(period_end, period_start, :day)
+    # Expect activity every 3 days
+    expected_activities = max(1, days_in_period / 3)
+
+    min(1.0, total_activities / expected_activities)
+  end
+
+  defp identify_character_home_systems(character_id, killmails) do
+    # Find systems where character is most active defensively
+    killmails
+    |> Enum.filter(&(&1.solar_system_id != nil))
+    |> Enum.group_by(& &1.solar_system_id)
+    |> Enum.map(fn {system_id, system_killmails} ->
+      defensive_activity = Enum.count(system_killmails, &(&1.is_victim == true))
+      offensive_activity = Enum.count(system_killmails, &(&1.is_victim == false))
+
+      # Weight defensive activity higher
+      {system_id, defensive_activity + offensive_activity * 0.5}
+    end)
+    |> Enum.sort_by(&elem(&1, 1), :desc)
+    # Top 3 systems
+    |> Enum.take(3)
+    |> Enum.map(&elem(&1, 0))
+  end
+
+  defp get_killmail_participants(killmail_id) do
+    query =
+      Participant
+      |> Ash.Query.new()
+      |> Ash.Query.filter(killmail_id == ^killmail_id)
+
+    case Ash.read(query, domain: Api) do
+      {:ok, participants} -> {:ok, participants}
+      {:error, _} -> {:ok, []}
+    end
+  end
 
   defp identify_warning_indicators(_activity_data, _participation_data), do: []
   defp get_corporation_activity_scores(_corporation_id), do: {:ok, [50, 60, 70, 80]}

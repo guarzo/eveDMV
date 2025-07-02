@@ -142,16 +142,17 @@ defmodule EveDmv.Eve.EsiCharacterClient do
   Get character employment history.
   """
   @spec get_character_employment_history(integer()) ::
-          {:error, :invalid_response | :service_unavailable}
+          {:ok, list(map())} | {:error, term()}
   def get_character_employment_history(character_id) when is_integer(character_id) do
     path = "/#{@character_api_version}/characters/#{character_id}/corporationhistory/"
 
-    case EsiRequestClient.get_request(path) do
-      {:ok, _} ->
-        {:error, :invalid_response}
+    case EsiRequestClient.public_request("GET", path) do
+      {:ok, response} ->
+        parsed_history = parse_employment_history(response.body)
+        {:ok, parsed_history}
 
-      error ->
-        error
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -178,7 +179,8 @@ defmodule EveDmv.Eve.EsiCharacterClient do
   @doc """
   Get character assets (requires authentication).
   """
-  @spec get_character_assets(integer(), String.t()) :: {:error, :service_unavailable}
+  @spec get_character_assets(integer(), String.t()) ::
+          {:ok, list(map())} | {:error, term()}
   def get_character_assets(character_id, auth_token)
       when is_integer(character_id) and is_binary(auth_token) do
     fetch_all_character_assets(character_id, auth_token, 1, [])
@@ -191,7 +193,50 @@ defmodule EveDmv.Eve.EsiCharacterClient do
 
   # Private helper functions
 
-  defp fetch_all_character_assets(_character_id, _auth_token, _page, _accumulated) do
-    {:error, :service_unavailable}
+  defp fetch_all_character_assets(character_id, auth_token, page, acc) do
+    path = "/#{@character_api_version}/characters/#{character_id}/assets/?page=#{page}"
+
+    case EsiRequestClient.authenticated_request("GET", path, auth_token) do
+      {:ok, %{body: assets, headers: headers}} ->
+        new_acc = acc ++ assets
+
+        if has_more_pages?(headers) do
+          fetch_all_character_assets(character_id, auth_token, page + 1, new_acc)
+        else
+          {:ok, new_acc}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp parse_employment_history(history_data) when is_list(history_data) do
+    Enum.map(history_data, fn entry ->
+      %{
+        corporation_id: entry["corporation_id"],
+        is_deleted: entry["is_deleted"] || false,
+        record_id: entry["record_id"],
+        start_date: entry["start_date"]
+      }
+    end)
+  end
+
+  defp parse_employment_history(_), do: []
+
+  defp has_more_pages?(headers) do
+    # Check for 'pages' header or other pagination indicators
+    case Map.get(headers, "x-pages") do
+      pages_str when is_binary(pages_str) ->
+        try do
+          pages = String.to_integer(pages_str)
+          pages > 1
+        rescue
+          _ -> false
+        end
+
+      _ ->
+        false
+    end
   end
 end

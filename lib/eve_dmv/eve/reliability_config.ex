@@ -112,7 +112,15 @@ defmodule EveDmv.Eve.ReliabilityConfig do
     config = retry_config || get_retry_config()
 
     # Exponential backoff: base_delay * multiplier^(attempt-1)
-    delay = config.base_delay * :math.pow(config.backoff_multiplier, attempt - 1)
+    # Use integer multiplication instead of :math.pow for better performance
+    delay =
+      if config.backoff_multiplier == 2.0 do
+        # Optimize common case of doubling
+        config.base_delay * integer_pow(2, attempt - 1)
+      else
+        config.base_delay * :math.pow(config.backoff_multiplier, attempt - 1)
+      end
+
     delay = min(delay, config.max_delay)
 
     # Add jitter if enabled
@@ -294,5 +302,13 @@ defmodule EveDmv.Eve.ReliabilityConfig do
       true ->
         :ok
     end
+  end
+
+  # Optimized integer power calculation
+  defp integer_pow(_base, 0), do: 1
+  defp integer_pow(base, 1), do: base
+
+  defp integer_pow(base, exponent) when exponent > 0 do
+    base * integer_pow(base, exponent - 1)
   end
 end

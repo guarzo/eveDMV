@@ -1,5 +1,27 @@
 import Config
 
+# Validate required secrets early in runtime configuration
+# This ensures the application fails fast if critical configuration is missing
+required_secrets = [
+  "EVE_SSO_CLIENT_ID",
+  "EVE_SSO_CLIENT_SECRET",
+  "SECRET_KEY_BASE"
+]
+
+# Only validate in production environment
+if config_env() == :prod do
+  for secret <- required_secrets do
+    if is_nil(System.get_env(secret)) do
+      raise """
+      Missing required environment variable: #{secret}
+
+      Please ensure all required secrets are configured before starting the application.
+      See .env.example for the complete list of required environment variables.
+      """
+    end
+  end
+end
+
 # Helper function for safe environment variable handling
 defmodule ConfigHelper do
   def safe_string_to_integer(value, default) when is_binary(value) do
