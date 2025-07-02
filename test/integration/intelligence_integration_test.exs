@@ -9,14 +9,14 @@ defmodule EveDmv.Integration.IntelligenceIntegrationTest do
   use EveDmv.IntelligenceCase, async: false
 
   alias EveDmv.Intelligence.{
+    ChainMonitor,
     CharacterAnalyzer,
     CharacterStats,
-    ChainMonitor,
-    WandererSSE,
-    IntelligenceCoordinator
+    IntelligenceCoordinator,
+    WandererSSE
   }
 
-  alias EveDmv.Killmails.{KillmailPipeline, KillmailEnriched}
+  alias EveDmv.Killmails.{KillmailEnriched, KillmailPipeline}
 
   @moduletag :integration
   @moduletag timeout: 60_000

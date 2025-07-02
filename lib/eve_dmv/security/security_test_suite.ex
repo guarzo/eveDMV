@@ -11,7 +11,7 @@ defmodule EveDmv.Security.SecurityTestSuite do
   """
 
   require Logger
-  alias EveDmv.Security.{AuditLogger, DatabaseSecurityReview, ContainerSecurityReview}
+  alias EveDmv.Security.{AuditLogger, ContainerSecurityReview, DatabaseSecurityReview}
 
   @doc """
   Run the complete security test suite.

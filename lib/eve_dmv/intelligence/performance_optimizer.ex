@@ -10,7 +10,7 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
   require Ash.Query
   alias EveDmv.Api
   alias EveDmv.Killmails.Participant
-  alias EveDmv.Intelligence.{CharacterStats, WHVetting, IntelligenceCache}
+  alias EveDmv.Intelligence.{CharacterStats, IntelligenceCache, WHVetting}
 
   @doc """
   Optimize intelligence queries by batching and parallel processing.
