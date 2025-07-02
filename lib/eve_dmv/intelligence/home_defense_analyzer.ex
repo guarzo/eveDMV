@@ -7,8 +7,11 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
   """
 
   require Logger
+  alias EveDmv.Api
   alias EveDmv.Eve.EsiClient
   alias EveDmv.Intelligence.{CharacterStats, HomeDefenseAnalytics}
+  alias EveDmv.Killmails.{KillmailEnriched, Participant}
+  require Ash.Query
 
   @doc """
   Perform comprehensive home defense analysis for a corporation.
@@ -215,27 +218,274 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
   end
 
   # Rolling participation analysis
-  defp analyze_rolling_participation(_corporation_id, _start_date, _end_date) do
-    # Analyze rage rolling operations and member participation
-    # This would integrate with killmail data and corp activity logs
+  defp analyze_rolling_participation(corporation_id, start_date, end_date) do
+    # Get actual rolling operations from killmail data
+    rolling_systems = get_rolling_systems(corporation_id, start_date, end_date)
 
     participation = %{
-      # Placeholder
-      "total_rolling_ops" => 20,
-      "member_participation" => %{},
-      "rolling_efficiency" => %{
-        "avg_time_per_hole" => 180.0,
-        "success_rate" => 0.92,
-        "incidents" => 1,
-        "collateral_damage" => 5_000_000
-      },
-      "hole_types_rolled" => %{
-        "static_c5" => 15,
-        "wandering_holes" => 5
-      }
+      "total_rolling_ops" => length(rolling_systems),
+      "member_participation" => calculate_member_rolling_participation(rolling_systems),
+      "rolling_efficiency" => calculate_rolling_efficiency(rolling_systems),
+      "success_rate" => calculate_rolling_success_rate(rolling_systems),
+      "hole_types_rolled" => categorize_rolled_systems(rolling_systems)
     }
 
     {:ok, participation}
+  end
+
+  defp get_rolling_systems(corporation_id, start_date, end_date) do
+    # Query killmails in wormhole systems where corporation members were active
+    # Look for patterns indicating rolling operations:
+    # - Multiple jumps through same connection
+    # - Ships typically used for rolling (heavy ships, carriers)
+    # - Time patterns suggesting coordinated rolling
+
+    query =
+      KillmailEnriched
+      |> Ash.Query.new()
+      |> Ash.Query.load(:participants)
+      |> Ash.Query.filter(killmail_time >= ^start_date)
+      |> Ash.Query.filter(killmail_time <= ^end_date)
+      |> Ash.Query.filter(exists(participants, corporation_id == ^corporation_id))
+
+    case Ash.read(query, domain: Api) do
+      {:ok, killmails} ->
+        killmails
+        |> filter_wormhole_systems()
+        |> group_by_system_and_time()
+        |> identify_rolling_patterns()
+
+      {:error, reason} ->
+        Logger.error("Failed to fetch killmails for rolling analysis: #{inspect(reason)}")
+        []
+    end
+  end
+
+  defp filter_wormhole_systems(killmails) do
+    # Filter to only wormhole systems (J-space)
+    # In a real implementation, we'd check against a static data source
+    # For now, we'll use system ID patterns typical of wormhole space
+    Enum.filter(killmails, fn km ->
+      system_id = km.solar_system_id
+      # Wormhole systems typically have IDs in certain ranges
+      # This is a simplified check - real implementation would use static data
+      system_id >= 31_000_000
+    end)
+  end
+
+  defp group_by_system_and_time(killmails) do
+    # Group killmails by system and time windows to identify rolling operations
+    killmails
+    |> Enum.group_by(& &1.solar_system_id)
+    |> Enum.map(fn {system_id, system_killmails} ->
+      # Group by hour to find activity spikes
+      hourly_groups =
+        system_killmails
+        |> Enum.group_by(fn km ->
+          km.killmail_time
+          |> DateTime.truncate(:hour)
+        end)
+
+      %{
+        system_id: system_id,
+        activity_windows: hourly_groups,
+        total_activity: length(system_killmails)
+      }
+    end)
+  end
+
+  defp identify_rolling_patterns(system_groups) do
+    # Identify patterns that suggest rolling operations
+    Enum.filter(system_groups, fn group ->
+      # Look for:
+      # 1. Multiple activity windows (suggesting repeated rolling)
+      # 2. High activity density in short time periods
+      # 3. Involvement of rolling-capable ships
+
+      activity_windows = map_size(group.activity_windows)
+
+      max_hourly_activity =
+        group.activity_windows
+        |> Map.values()
+        |> Enum.map(&length/1)
+        |> Enum.max(fn -> 0 end)
+
+      # Consider it a rolling operation if:
+      # - Multiple time windows of activity OR
+      # - High activity density (5+ kills in one hour)
+      activity_windows >= 2 or max_hourly_activity >= 5
+    end)
+  end
+
+  defp calculate_member_rolling_participation(rolling_systems) do
+    # Calculate individual member participation in rolling ops
+    all_participants =
+      rolling_systems
+      |> Enum.flat_map(fn system ->
+        system.activity_windows
+        |> Map.values()
+        |> List.flatten()
+        |> Enum.flat_map(&(&1.participants || []))
+      end)
+
+    participation_counts =
+      all_participants
+      |> Enum.group_by(& &1.character_id)
+      |> Enum.map(fn {char_id, participations} ->
+        char_name = List.first(participations).character_name || "Unknown"
+
+        %{
+          character_id: char_id,
+          character_name: char_name,
+          rolling_ops_participated: length(participations)
+        }
+      end)
+      |> Enum.sort_by(& &1.rolling_ops_participated, :desc)
+
+    %{
+      "participants" => participation_counts,
+      "total_participants" => length(participation_counts),
+      "avg_participation_per_member" => calculate_avg_participation(participation_counts)
+    }
+  end
+
+  defp calculate_rolling_efficiency(rolling_systems) do
+    if Enum.empty?(rolling_systems) do
+      %{
+        "avg_time_per_hole" => 0.0,
+        "success_rate" => 0.0,
+        "incidents" => 0,
+        "estimated_collateral_damage" => 0
+      }
+    else
+      total_ops = length(rolling_systems)
+
+      # Estimate efficiency metrics based on activity patterns
+      avg_duration = estimate_average_rolling_duration(rolling_systems)
+      incident_count = count_rolling_incidents(rolling_systems)
+      collateral_damage = estimate_collateral_damage(rolling_systems)
+
+      %{
+        "avg_time_per_hole" => avg_duration,
+        "success_rate" => calculate_success_rate_from_incidents(total_ops, incident_count),
+        "incidents" => incident_count,
+        "estimated_collateral_damage" => collateral_damage
+      }
+    end
+  end
+
+  defp calculate_rolling_success_rate(rolling_systems) do
+    if Enum.empty?(rolling_systems) do
+      0.0
+    else
+      # Success rate based on lack of incidents and consistent patterns
+      incidents = count_rolling_incidents(rolling_systems)
+      total_ops = length(rolling_systems)
+
+      max(0.0, (total_ops - incidents) / total_ops)
+    end
+  end
+
+  defp categorize_rolled_systems(rolling_systems) do
+    # Categorize the types of holes that were rolled
+    rolling_systems
+    |> Enum.reduce(%{}, fn system, acc ->
+      # Categorize by system activity level and patterns
+      category = categorize_wormhole_system(system)
+      Map.update(acc, category, 1, &(&1 + 1))
+    end)
+  end
+
+  # Helper functions for rolling analysis
+
+  defp calculate_avg_participation(participation_counts) do
+    if Enum.empty?(participation_counts) do
+      0.0
+    else
+      total = Enum.sum(Enum.map(participation_counts, & &1.rolling_ops_participated))
+      total / length(participation_counts)
+    end
+  end
+
+  defp estimate_average_rolling_duration(rolling_systems) do
+    # Estimate duration based on time spread of activity
+    durations =
+      Enum.map(rolling_systems, fn system ->
+        times =
+          system.activity_windows
+          |> Map.keys()
+          |> Enum.sort()
+
+        if length(times) >= 2 do
+          first = List.first(times)
+          last = List.last(times)
+          DateTime.diff(last, first, :minute)
+        else
+          # Default estimate for single-window operations
+          30
+        end
+      end)
+
+    if Enum.empty?(durations) do
+      0.0
+    else
+      Enum.sum(durations) / length(durations)
+    end
+  end
+
+  defp count_rolling_incidents(rolling_systems) do
+    # Count potential incidents based on unusual activity patterns
+    Enum.count(rolling_systems, fn system ->
+      # Look for signs of incidents:
+      # - Very high activity in short time (suggests losses)
+      # - Prolonged activity periods (suggests complications)
+
+      max_hourly_activity =
+        system.activity_windows
+        |> Map.values()
+        |> Enum.map(&length/1)
+        |> Enum.max(fn -> 0 end)
+
+      activity_spread = map_size(system.activity_windows)
+
+      # Consider it an incident if high activity (10+ kills) in one hour
+      # or activity spread over many hours (4+)
+      max_hourly_activity >= 10 or activity_spread >= 4
+    end)
+  end
+
+  defp estimate_collateral_damage(rolling_systems) do
+    # Estimate ISK value of ships lost during rolling operations
+    rolling_systems
+    |> Enum.flat_map(fn system ->
+      system.activity_windows
+      |> Map.values()
+      |> List.flatten()
+    end)
+    |> Enum.reduce(0, fn km, acc ->
+      value = Decimal.to_integer(km.total_value || Decimal.new(0))
+      acc + value
+    end)
+  end
+
+  defp calculate_success_rate_from_incidents(total_ops, incident_count) do
+    if total_ops == 0 do
+      0.0
+    else
+      max(0.0, (total_ops - incident_count) / total_ops)
+    end
+  end
+
+  defp categorize_wormhole_system(system) do
+    # Categorize wormhole systems by activity level and type
+    total_activity = system.total_activity
+
+    cond do
+      total_activity >= 20 -> "high_activity_hole"
+      total_activity >= 10 -> "static_connection"
+      total_activity >= 5 -> "wandering_hole"
+      true -> "low_activity_hole"
+    end
   end
 
   # Response metrics analysis
@@ -387,22 +637,149 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
   end
 
   # Helper functions for response metrics
-  defp get_home_system_battles(_corporation_id, _start_date, _end_date) do
-    # Get battles that occurred in the corporation's home system
-    # This would filter killmails by home system and date range
-    # Placeholder implementation
-    []
+  defp get_home_system_battles(corporation_id, start_date, end_date) do
+    # Find corporation's home system(s) from activity patterns
+    home_systems = identify_home_systems(corporation_id)
+
+    # Get battles in home systems
+    Enum.flat_map(home_systems, fn system_id ->
+      query =
+        KillmailEnriched
+        |> Ash.Query.new()
+        |> Ash.Query.load(:participants)
+        |> Ash.Query.filter(solar_system_id == ^system_id)
+        |> Ash.Query.filter(killmail_time >= ^start_date)
+        |> Ash.Query.filter(killmail_time <= ^end_date)
+        |> Ash.Query.filter(exists(participants, corporation_id == ^corporation_id))
+
+      case Ash.read(query, domain: Api) do
+        {:ok, killmails} ->
+          killmails
+
+        {:error, reason} ->
+          Logger.error("Failed to fetch home system battles: #{inspect(reason)}")
+          []
+      end
+    end)
   end
 
-  defp calculate_response_times(_battles) do
-    # Calculate response time statistics
-    # Placeholder implementation
-    %{
-      avg_response_time: 180,
-      fastest: 45,
-      slowest: 420,
-      response_rate: 0.85
-    }
+  defp identify_home_systems(corporation_id) do
+    # Analyze where corporation members are most active
+    # Look for systems with high activity density
+    # Consider docking/undocking patterns if available
+
+    # Query recent activity to identify home systems
+    cutoff_date = DateTime.add(DateTime.utc_now(), -90, :day)
+
+    query =
+      KillmailEnriched
+      |> Ash.Query.new()
+      |> Ash.Query.load(:participants)
+      |> Ash.Query.filter(killmail_time >= ^cutoff_date)
+      |> Ash.Query.filter(exists(participants, corporation_id == ^corporation_id))
+
+    case Ash.read(query, domain: Api) do
+      {:ok, killmails} ->
+        # Analyze activity patterns to identify home systems
+        activity_by_system =
+          killmails
+          |> Enum.group_by(& &1.solar_system_id)
+          |> Enum.map(fn {system_id, system_killmails} ->
+            corp_participants =
+              system_killmails
+              |> Enum.flat_map(&(&1.participants || []))
+              |> Enum.filter(&(&1.corporation_id == corporation_id))
+
+            losses = Enum.count(corp_participants, &(&1.is_victim == true))
+            kills = length(corp_participants) - losses
+
+            defensive_ratio = if kills + losses > 0, do: losses / (kills + losses), else: 0
+
+            %{
+              system_id: system_id,
+              frequency: length(system_killmails),
+              defensive_ratio: defensive_ratio,
+              corp_activity: length(corp_participants)
+            }
+          end)
+
+        # Filter for likely home systems
+        activity_by_system
+        |> Enum.filter(fn activity ->
+          # Home systems typically have:
+          # - High activity frequency (10+ killmails)
+          # - Significant defensive activity (20%+ losses)
+          # - Regular corp member participation
+          activity.frequency >= 10 and
+            activity.defensive_ratio >= 0.2 and
+            activity.corp_activity >= 5
+        end)
+        |> Enum.sort_by(& &1.frequency, :desc)
+        # Top 3 most likely home systems
+        |> Enum.take(3)
+        |> Enum.map(& &1.system_id)
+
+      {:error, reason} ->
+        Logger.error("Failed to identify home systems: #{inspect(reason)}")
+        []
+    end
+  end
+
+  defp calculate_response_times(battles) do
+    response_times =
+      Enum.map(battles, &calculate_battle_response_time/1)
+      |> Enum.reject(&is_nil/1)
+
+    if Enum.empty?(response_times) do
+      %{
+        avg_response_time: 0,
+        fastest_response: 0,
+        slowest_response: 0,
+        response_rate: 0.0
+      }
+    else
+      %{
+        avg_response_time: Enum.sum(response_times) / length(response_times),
+        fastest_response: Enum.min(response_times),
+        slowest_response: Enum.max(response_times),
+        response_rate: length(response_times) / length(battles)
+      }
+    end
+  end
+
+  defp calculate_battle_response_time(battle) do
+    # Calculate time from first hostile contact to first defender response
+    participants = battle.participants || []
+
+    # Find hostile and friendly participants
+    hostile_participants =
+      Enum.reject(
+        participants,
+        &(&1.corporation_id == battle.participants |> List.first() |> Map.get(:corporation_id))
+      )
+
+    friendly_participants =
+      Enum.filter(
+        participants,
+        &(&1.corporation_id == battle.participants |> List.first() |> Map.get(:corporation_id))
+      )
+
+    # For simplicity, we'll estimate response time based on attacker count
+    # In a real implementation, we'd analyze damage timestamps
+    attacker_count = length(hostile_participants)
+    defender_count = length(friendly_participants)
+
+    cond do
+      # No response
+      defender_count == 0 -> nil
+      # Quick response to small threat
+      attacker_count <= 2 and defender_count >= attacker_count -> 120
+      # Moderate response  
+      attacker_count <= 5 and defender_count >= attacker_count / 2 -> 300
+      # Slow response
+      defender_count > 0 -> 600
+      true -> nil
+    end
   end
 
   defp calculate_defense_success_rate(battles) do
