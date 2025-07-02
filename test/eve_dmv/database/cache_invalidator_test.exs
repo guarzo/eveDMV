@@ -35,7 +35,7 @@ defmodule EveDmv.Database.CacheInvalidatorTest do
 
     test "can invalidate by type" do
       # Setup cache entries for a character
-      character_id = 12345
+      character_id = 12_345
       QueryCache.put("character_intel_#{character_id}", %{analysis: "data"})
       QueryCache.put("character_stats_#{character_id}", %{kills: 10})
       QueryCache.put("character_analysis_#{character_id}", %{threat: "low"})
@@ -92,9 +92,9 @@ defmodule EveDmv.Database.CacheInvalidatorTest do
   describe "related invalidation" do
     test "can invalidate related entities" do
       # Setup cache for a killmail and related entities
-      killmail_id = 98765
-      character_id = 12345
-      alliance_id = 54321
+      killmail_id = 98_765
+      character_id = 12_345
+      alliance_id = 54_321
 
       QueryCache.put("killmail_enriched_#{killmail_id}", %{value: 1_000_000})
       QueryCache.put("character_intel_#{character_id}", %{analysis: "data"})
@@ -153,7 +153,7 @@ defmodule EveDmv.Database.CacheInvalidatorTest do
 
   describe "convenience functions" do
     test "character intelligence invalidation" do
-      character_id = 12345
+      character_id = 12_345
       QueryCache.put("character_intel_#{character_id}", %{data: "test"})
 
       CacheInvalidator.invalidate_character_intelligence(character_id)
@@ -203,7 +203,7 @@ defmodule EveDmv.Database.CacheInvalidatorTest do
       log =
         capture_log(fn ->
           # Unknown cache type should not crash
-          CacheInvalidator.invalidate_by_type(:unknown_type, 12345)
+          CacheInvalidator.invalidate_by_type(:unknown_type, 12_345)
           Process.sleep(50)
         end)
 

@@ -5,7 +5,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
 
   require Logger
   alias EveDmv.Api
-  alias EveDmv.Eve.{EsiClient, ItemType, NameResolver}
+  alias EveDmv.Eve.EsiClient
   alias EveDmv.Intelligence.{CharacterFormatters, CharacterMetrics, CharacterStats}
   alias EveDmv.Killmails.{KillmailEnriched, Participant}
   require Ash.Query
@@ -322,260 +322,256 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
 
   # Moved to CharacterMetrics module
 
-  defp identify_weaknesses(character_id, killmails) do
-    losses = Enum.filter(killmails, &victim_is_character?(&1, character_id))
+  # defp identify_weaknesses(character_id, killmails) do
+  #   losses = Enum.filter(killmails, &victim_is_character?(&1, character_id))
 
-    behavioral = []
-    technical = []
+  #   behavioral = []
+  #   technical = []
 
-    # Check for predictable timing
-    behavioral =
-      if concentrated_activity?(killmails) do
-        ["predictable_schedule" | behavioral]
-      else
-        behavioral
-      end
+  #   # Check for predictable timing
+  #   behavioral =
+  #     if concentrated_activity?(killmails) do
+  #       ["predictable_schedule" | behavioral]
+  #     else
+  #       behavioral
+  #     end
 
-    # Check for overconfidence
-    behavioral =
-      if takes_bad_fights?(character_id, losses) do
-        ["overconfident" | behavioral]
-      else
-        behavioral
-      end
+  #   # Check for overconfidence
+  #   behavioral =
+  #     if takes_bad_fights?(character_id, losses) do
+  #       ["overconfident" | behavioral]
+  #     else
+  #       behavioral
+  #     end
 
-    # Check technical weaknesses from losses
-    technical = technical ++ analyze_loss_patterns(losses)
+  #   # Check technical weaknesses from losses
+  #   technical = technical ++ analyze_loss_patterns(losses)
 
-    %{
-      "behavioral" => behavioral,
-      "technical" => technical,
-      "loss_patterns" => summarize_losses(losses)
-    }
-  end
+  #   %{
+  #     "behavioral" => behavioral,
+  #     "technical" => technical,
+  #     "loss_patterns" => summarize_losses(losses)
+  #   }
+  # end
 
   # Helper functions
 
-  defp find_victim_participant(participants) do
-    Enum.find(participants, &(&1["is_victim"] == true))
-  end
+  # defp solo_kill?(killmail) do
+  #   non_victim_count = Enum.count(killmail.participants, &(not &1.is_victim))
+  #   non_victim_count == 1
+  # end
 
-  defp solo_kill?(killmail) do
-    non_victim_count = Enum.count(killmail.participants, &(not &1.is_victim))
-    non_victim_count == 1
-  end
+  # defp solo_loss?(killmail) do
+  #   # Character died to a single attacker
+  #   non_victim_count = Enum.count(killmail.participants, &(not &1.is_victim))
+  #   non_victim_count == 1
+  # end
 
-  defp solo_loss?(killmail) do
-    # Character died to a single attacker
-    non_victim_count = Enum.count(killmail.participants, &(not &1.is_victim))
-    non_victim_count == 1
-  end
+  # defp calculate_kd_ratio(kills, losses) do
+  #   Float.round(kills / max(1, losses), 2)
+  # end
 
-  defp calculate_kd_ratio(kills, losses) do
-    Float.round(kills / max(1, losses), 2)
-  end
+  # defp categorize_ship(type_id) do
+  #   case Ash.get(ItemType, type_id, domain: Api) do
+  #     {:ok, item_type} ->
+  #       determine_ship_category(item_type)
 
-  defp categorize_ship(type_id) do
-    case Ash.get(ItemType, type_id, domain: Api) do
-      {:ok, item_type} ->
-        determine_ship_category(item_type)
+  #     {:error, _} ->
+  #       "unknown"
+  #   end
+  # rescue
+  #   _ -> "unknown"
+  # end
 
-      {:error, _} ->
-        "unknown"
-    end
-  rescue
-    _ -> "unknown"
-  end
+  # # Batch version to avoid N+1 queries
+  # defp batch_categorize_ships(type_ids) when is_list(type_ids) do
+  #   case Ash.read(ItemType,
+  #          filter: [type_id: [in: type_ids]],
+  #          domain: Api
+  #        ) do
+  #     {:ok, item_types} ->
+  #       item_types
+  #       |> Enum.map(fn item_type ->
+  #         {item_type.type_id, determine_ship_category(item_type)}
+  #       end)
+  #       |> Map.new()
 
-  # Batch version to avoid N+1 queries
-  defp batch_categorize_ships(type_ids) when is_list(type_ids) do
-    case Ash.read(ItemType,
-           filter: [type_id: [in: type_ids]],
-           domain: Api
-         ) do
-      {:ok, item_types} ->
-        item_types
-        |> Enum.map(fn item_type ->
-          {item_type.type_id, determine_ship_category(item_type)}
-        end)
-        |> Map.new()
+  #     {:error, _} ->
+  #       # Fallback to individual queries if batch fails
+  #       type_ids
+  #       |> Enum.map(fn type_id -> {type_id, categorize_ship(type_id)} end)
+  #       |> Map.new()
+  #   end
+  # rescue
+  #   _ ->
+  #     # Return unknown for all if something goes wrong
+  #     type_ids |> Enum.map(fn type_id -> {type_id, "unknown"} end) |> Map.new()
+  # end
 
-      {:error, _} ->
-        # Fallback to individual queries if batch fails
-        type_ids
-        |> Enum.map(fn type_id -> {type_id, categorize_ship(type_id)} end)
-        |> Map.new()
-    end
-  rescue
-    _ ->
-      # Return unknown for all if something goes wrong
-      type_ids |> Enum.map(fn type_id -> {type_id, "unknown"} end) |> Map.new()
-  end
+  # # Determine ship category based on group name and other attributes
+  # defp determine_ship_category(item_type) do
+  #   case item_type.group_name do
+  #     name
+  #     when name in [
+  #            "Frigate",
+  #            "Assault Frigate",
+  #            "Covert Ops",
+  #            "Electronic Attack Ship",
+  #            "Interceptor",
+  #            "Stealth Bomber"
+  #          ] ->
+  #       "frigate"
 
-  # Determine ship category based on group name and other attributes
-  defp determine_ship_category(item_type) do
-    case item_type.group_name do
-      name
-      when name in [
-             "Frigate",
-             "Assault Frigate",
-             "Covert Ops",
-             "Electronic Attack Ship",
-             "Interceptor",
-             "Stealth Bomber"
-           ] ->
-        "frigate"
+  #     name
+  #     when name in [
+  #            "Cruiser",
+  #            "Heavy Assault Cruiser",
+  #            "Logistics",
+  #            "Recon Ship",
+  #            "Strategic Cruiser"
+  #          ] ->
+  #       "cruiser"
 
-      name
-      when name in [
-             "Cruiser",
-             "Heavy Assault Cruiser",
-             "Logistics",
-             "Recon Ship",
-             "Strategic Cruiser"
-           ] ->
-        "cruiser"
+  #     name when name in ["Battleship", "Black Ops", "Marauder"] ->
+  #       "battleship"
 
-      name when name in ["Battleship", "Black Ops", "Marauder"] ->
-        "battleship"
+  #     name when name in ["Destroyer", "Interdictor", "Command Destroyer", "Tactical Destroyer"] ->
+  #       "destroyer"
 
-      name when name in ["Destroyer", "Interdictor", "Command Destroyer", "Tactical Destroyer"] ->
-        "destroyer"
+  #     name
+  #     when name in [
+  #            "Battlecruiser",
+  #            "Combat Battlecruiser",
+  #            "Attack Battlecruiser",
+  #            "Command Ship"
+  #          ] ->
+  #       "battlecruiser"
 
-      name
-      when name in [
-             "Battlecruiser",
-             "Combat Battlecruiser",
-             "Attack Battlecruiser",
-             "Command Ship"
-           ] ->
-        "battlecruiser"
+  #     name
+  #     when name in [
+  #            "Carrier",
+  #            "Dreadnought",
+  #            "Supercarrier",
+  #            "Titan",
+  #            "Capital Industrial Ship",
+  #            "Jump Freighter",
+  #            "Force Auxiliary"
+  #          ] ->
+  #       "capital"
 
-      name
-      when name in [
-             "Carrier",
-             "Dreadnought",
-             "Supercarrier",
-             "Titan",
-             "Capital Industrial Ship",
-             "Jump Freighter",
-             "Force Auxiliary"
-           ] ->
-        "capital"
+  #     name
+  #     when name in ["Industrial", "Mining Barge", "Exhumer", "Freighter", "Transport Ship"] ->
+  #       "industrial"
 
-      name
-      when name in ["Industrial", "Mining Barge", "Exhumer", "Freighter", "Transport Ship"] ->
-        "industrial"
+  #     _ ->
+  #       if item_type.is_ship, do: "unknown", else: "unknown"
+  #   end
+  # end
 
-      _ ->
-        if item_type.is_ship, do: "unknown", else: "unknown"
-    end
-  end
+  # defp average_kill_value(victim_list) do
+  #   values =
+  #     victim_list
+  #     |> Enum.map(fn {_, km} -> Decimal.to_float(km.total_value) end)
 
-  defp average_kill_value(victim_list) do
-    values =
-      victim_list
-      |> Enum.map(fn {_, km} -> Decimal.to_float(km.total_value) end)
+  #   if length(values) > 0 do
+  #     Enum.sum(values) / length(values)
+  #   else
+  #     0.0
+  #   end
+  # end
 
-    if length(values) > 0 do
-      Enum.sum(values) / length(values)
-    else
-      0.0
-    end
-  end
+  # defp average(list) when length(list) > 0 do
+  #   Enum.sum(list) / length(list)
+  # end
 
-  defp average(list) when length(list) > 0 do
-    Enum.sum(list) / length(list)
-  end
+  # defp average(_), do: 0.0
 
-  defp average(_), do: 0.0
+  # defp find_prime_timezone(hour_frequencies) do
+  #   # Find the 4-hour window with most activity
+  #   max_window =
+  #     0..23
+  #     |> Enum.map(fn start_hour ->
+  #       total =
+  #         0..3
+  #         |> Enum.map(fn offset ->
+  #           Map.get(hour_frequencies, rem(start_hour + offset, 24), 0)
+  #         end)
+  #         |> Enum.sum()
 
-  defp find_prime_timezone(hour_frequencies) do
-    # Find the 4-hour window with most activity
-    max_window =
-      0..23
-      |> Enum.map(fn start_hour ->
-        total =
-          0..3
-          |> Enum.map(fn offset ->
-            Map.get(hour_frequencies, rem(start_hour + offset, 24), 0)
-          end)
-          |> Enum.sum()
+  #       {start_hour, total}
+  #     end)
+  #     |> Enum.max_by(&elem(&1, 1))
 
-        {start_hour, total}
-      end)
-      |> Enum.max_by(&elem(&1, 1))
+  #   start = elem(max_window, 0)
+  #   {start, rem(start + 4, 24)}
+  # end
 
-    start = elem(max_window, 0)
-    {start, rem(start + 4, 24)}
-  end
+  # defp concentrated_activity?(killmails) do
+  #   # Check if >70% of activity is in a 6-hour window
+  #   hours = Enum.map(killmails, fn km -> km.killmail_time.hour end)
+  #   hour_counts = Enum.frequencies(hours)
 
-  defp concentrated_activity?(killmails) do
-    # Check if >70% of activity is in a 6-hour window
-    hours = Enum.map(killmails, fn km -> km.killmail_time.hour end)
-    hour_counts = Enum.frequencies(hours)
+  #   max_6h_window =
+  #     0..23
+  #     |> Enum.map(fn start ->
+  #       0..5
+  #       |> Enum.map(fn offset -> Map.get(hour_counts, rem(start + offset, 24), 0) end)
+  #       |> Enum.sum()
+  #     end)
+  #     |> Enum.max()
 
-    max_6h_window =
-      0..23
-      |> Enum.map(fn start ->
-        0..5
-        |> Enum.map(fn offset -> Map.get(hour_counts, rem(start + offset, 24), 0) end)
-        |> Enum.sum()
-      end)
-      |> Enum.max()
+  #   max_6h_window / length(killmails) > 0.7
+  # end
 
-    max_6h_window / length(killmails) > 0.7
-  end
+  # defp takes_bad_fights?(_character_id, losses) do
+  #   # Check if they often die when outnumbered
+  #   bad_losses =
+  #     Enum.count(losses, fn km ->
+  #       attackers = Enum.count(km.participants, &(not &1.is_victim))
+  #       # Died to 3+ attackers
+  #       attackers > 3
+  #     end)
 
-  defp takes_bad_fights?(_character_id, losses) do
-    # Check if they often die when outnumbered
-    bad_losses =
-      Enum.count(losses, fn km ->
-        attackers = Enum.count(km.participants, &(not &1.is_victim))
-        # Died to 3+ attackers
-        attackers > 3
-      end)
+  #   bad_losses / max(1, length(losses)) > 0.4
+  # end
 
-    bad_losses / max(1, length(losses)) > 0.4
-  end
+  # defp analyze_loss_patterns(losses) do
+  #   patterns = []
 
-  defp analyze_loss_patterns(losses) do
-    patterns = []
+  #   # Check for neut vulnerability
+  #   neut_deaths =
+  #     Enum.count(losses, fn km ->
+  #       Enum.any?(km.participants, fn p ->
+  #         not p.is_victim and
+  #           p.weapon_name && String.contains?(String.downcase(p.weapon_name), "neutralizer")
+  #       end)
+  #     end)
 
-    # Check for neut vulnerability
-    neut_deaths =
-      Enum.count(losses, fn km ->
-        Enum.any?(km.participants, fn p ->
-          not p.is_victim and
-            p.weapon_name && String.contains?(String.downcase(p.weapon_name), "neutralizer")
-        end)
-      end)
+  #   patterns =
+  #     if neut_deaths / max(1, length(losses)) > 0.2 do
+  #       ["weak_to_neuts" | patterns]
+  #     else
+  #       patterns
+  #     end
 
-    patterns =
-      if neut_deaths / max(1, length(losses)) > 0.2 do
-        ["weak_to_neuts" | patterns]
-      else
-        patterns
-      end
+  #   patterns
+  # end
 
-    patterns
-  end
+  # defp summarize_losses(losses) do
+  #   losses
+  #   # Last 5 losses
+  #   |> Enum.take(5)
+  #   |> Enum.map(fn km ->
+  #     victim = Enum.find(km.participants, & &1.is_victim)
 
-  defp summarize_losses(losses) do
-    losses
-    # Last 5 losses
-    |> Enum.take(5)
-    |> Enum.map(fn km ->
-      victim = Enum.find(km.participants, & &1.is_victim)
-
-      %{
-        "ship" => victim.ship_name,
-        "value" => Decimal.to_float(km.total_value),
-        "date" => km.killmail_time,
-        "system" => km.solar_system_name
-      }
-    end)
-  end
+  #     %{
+  #       "ship" => victim.ship_name,
+  #       "value" => Decimal.to_float(km.total_value),
+  #       "date" => km.killmail_time,
+  #       "system" => km.solar_system_name
+  #     }
+  #   end)
+  # end
 
   @doc """
   Calculate danger rating on a scale of 1-5 based on combat statistics.
@@ -647,10 +643,10 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
 
   # Missing helper functions
 
-  defp victim_is_character?(killmail, character_id) do
-    victim = Enum.find(killmail.participants || killmail["participants"] || [], & &1.is_victim)
-    victim && (victim.character_id == character_id || victim["character_id"] == character_id)
-  end
+  # defp victim_is_character?(killmail, character_id) do
+  #   victim = Enum.find(killmail.participants || killmail["participants"] || [], & &1.is_victim)
+  #   victim && (victim.character_id == character_id || victim["character_id"] == character_id)
+  # end
 
   defp extract_combat_metrics(stats) do
     %{

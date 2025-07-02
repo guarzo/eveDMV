@@ -1137,31 +1137,30 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
 
   defp assess_main_character_confidence(character_id, potential_alts) do
     # Assess confidence that this is the main character based on various factors
-    with {:ok, character_stats} <- CharacterStats.get_by_character_id(character_id) do
-      case character_stats do
-        [stats] ->
-          # Calculate confidence based on activity level, age, and alt patterns
-          activity_score = min(1.0, (stats.total_kills + stats.total_losses) / 100.0)
+    case CharacterStats.get_by_character_id(character_id) do
+      {:ok, [stats]} ->
+        # Calculate confidence based on activity level, age, and alt patterns
+        activity_score = min(1.0, (stats.total_kills + stats.total_losses) / 100.0)
 
-          # Main characters typically have more diverse activity
-          diversity_score = calculate_activity_diversity(stats)
+        # Main characters typically have more diverse activity
+        diversity_score = calculate_activity_diversity(stats)
 
-          # Check if character name/creation patterns suggest it's an alt
-          alt_indicators = length(potential_alts)
-          alt_penalty = min(0.3, alt_indicators * 0.1)
+        # Check if character name/creation patterns suggest it's an alt
+        alt_indicators = length(potential_alts)
+        alt_penalty = min(0.3, alt_indicators * 0.1)
 
-          # Combine factors
-          base_confidence = activity_score * 0.4 + diversity_score * 0.4 + 0.2
-          final_confidence = max(0.1, base_confidence - alt_penalty)
+        # Combine factors
+        base_confidence = activity_score * 0.4 + diversity_score * 0.4 + 0.2
+        final_confidence = max(0.1, base_confidence - alt_penalty)
 
-          Float.round(final_confidence, 2)
+        Float.round(final_confidence, 2)
 
-        [] ->
-          # No character stats available, lower confidence
-          0.3
-      end
-    else
-      {:error, _} -> 0.4
+      {:ok, []} ->
+        # No character stats available, lower confidence
+        0.3
+
+      {:error, _} ->
+        0.4
     end
   end
 

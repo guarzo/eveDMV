@@ -9,7 +9,7 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
   require Logger
   require Ash.Query
   alias EveDmv.Api
-  alias EveDmv.Killmails.{KillmailEnriched, Participant}
+  alias EveDmv.Killmails.Participant
   alias EveDmv.Intelligence.{CharacterStats, WHVetting, IntelligenceCache}
 
   @doc """
@@ -62,7 +62,7 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
       |> Ash.Query.filter(character_id: character_id)
       |> Ash.Query.load(:killmail_enriched)
       # Prevent runaway queries
-      |> Ash.Query.limit(10000)
+      |> Ash.Query.limit(10_000)
 
     case Ash.read(participant_query, domain: Api) do
       {:ok, participants} ->

@@ -8,8 +8,8 @@ defmodule EveDmv.Intelligence.CharacterAnalyzerSimplified do
 
   require Logger
   alias EveDmv.Api
-  alias EveDmv.Eve.{EsiClient, NameResolver}
-  alias EveDmv.Intelligence.{CharacterFormatters, CharacterMetrics, CharacterStats}
+  # alias EveDmv.Eve.{EsiClient, NameResolver}
+  alias EveDmv.Intelligence.{CharacterMetrics, CharacterStats}
   alias EveDmv.Killmails.{KillmailEnriched, Participant}
   require Ash.Query
 
@@ -266,9 +266,9 @@ defmodule EveDmv.Intelligence.CharacterAnalyzerSimplified do
     Enum.sum(scores)
   end
 
-  defp victim_is_character?(killmail, character_id) do
-    Enum.any?(killmail.participants || [], fn p ->
-      p.is_victim && p.character_id == character_id
-    end)
-  end
+  # defp victim_is_character?(killmail, character_id) do
+  #   Enum.any?(killmail.participants || [], fn p ->
+  #     p.is_victim && p.character_id == character_id
+  #   end)
+  # end
 end

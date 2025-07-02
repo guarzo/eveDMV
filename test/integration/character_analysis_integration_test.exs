@@ -8,16 +8,17 @@ defmodule EveDmv.Integration.CharacterAnalysisIntegrationTest do
 
   use EveDmv.IntelligenceCase, async: false
 
+  alias EveDmv.Api
+  alias EveDmv.Eve.{CircuitBreaker, EsiClient}
+
   alias EveDmv.Intelligence.{
     CharacterAnalyzer,
+    CharacterFormatters,
     CharacterMetrics,
-    CharacterStats,
-    CharacterFormatters
+    CharacterStats
   }
 
-  alias EveDmv.Eve.{EsiClient, CircuitBreaker}
   alias EveDmv.Killmails.{KillmailEnriched, Participant}
-  alias EveDmv.Api
 
   @moduletag :integration
   @moduletag timeout: 120_000
@@ -148,7 +149,7 @@ defmodule EveDmv.Integration.CharacterAnalysisIntegrationTest do
       activity_periods = [
         # 30 kills 90 days ago
         {90, 30},
-        # 20 kills 60 days ago  
+        # 20 kills 60 days ago
         {60, 20},
         # 40 kills 30 days ago
         {30, 40},
@@ -183,7 +184,7 @@ defmodule EveDmv.Integration.CharacterAnalysisIntegrationTest do
       ship_patterns = [
         # T1 Frigate
         {587, "Rifter", 20},
-        # Interceptor  
+        # Interceptor
         {11_174, "Interceptor", 15},
         # T3 Cruiser
         {17_738, "Loki", 10},

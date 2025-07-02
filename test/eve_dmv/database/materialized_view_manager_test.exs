@@ -106,7 +106,7 @@ defmodule EveDmv.Database.MaterializedViewManagerTest do
 
     test "utility functions handle missing data gracefully" do
       # Test character activity lookup
-      result = MaterializedViewManager.get_character_activity(12345)
+      result = MaterializedViewManager.get_character_activity(12_345)
       assert is_tuple(result)
 
       case result do
