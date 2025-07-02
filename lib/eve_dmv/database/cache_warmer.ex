@@ -152,23 +152,7 @@ defmodule EveDmv.Database.CacheWarmer do
         characters
         |> Enum.map(& &1.character_id)
         |> Enum.chunk_every(10)
-        |> Enum.each(fn batch ->
-          Enum.each(batch, fn character_id ->
-            cache_key = "character_intel_#{character_id}"
-
-            # Pre-compute and cache character analysis
-            QueryCache.get_or_compute(
-              cache_key,
-              fn ->
-                case CharacterAnalyzer.analyze_character(character_id) do
-                  {:ok, analysis} -> analysis
-                  _ -> nil
-                end
-              end,
-              :timer.hours(1)
-            )
-          end)
-        end)
+        |> Enum.each(&warm_character_batch/1)
 
         length(characters)
 
@@ -190,20 +174,7 @@ defmodule EveDmv.Database.CacheWarmer do
         system_ids
         |> Enum.uniq()
         |> Enum.take(@batch_size)
-        |> Enum.each(fn system_id ->
-          cache_key = "system_info_#{system_id}"
-
-          QueryCache.get_or_compute(
-            cache_key,
-            fn ->
-              case Ash.get(SolarSystem, system_id, domain: Api) do
-                {:ok, system} -> system
-                _ -> nil
-              end
-            end,
-            :timer.hours(24)
-          )
-        end)
+        |> Enum.each(&warm_system_info/1)
 
         length(system_ids)
 
@@ -283,22 +254,7 @@ defmodule EveDmv.Database.CacheWarmer do
     # Warm item type data
     popular_ship_ids
     |> Enum.chunk_every(10)
-    |> Enum.each(fn batch ->
-      Enum.each(batch, fn type_id ->
-        cache_key = "item_type_#{type_id}"
-
-        QueryCache.get_or_compute(
-          cache_key,
-          fn ->
-            case Ash.get(ItemType, type_id, domain: Api) do
-              {:ok, item} -> item
-              _ -> nil
-            end
-          end,
-          :timer.hours(48)
-        )
-      end)
-    end)
+    |> Enum.each(&warm_item_type_batch/1)
 
     length(popular_ship_ids)
   end
@@ -380,6 +336,56 @@ defmodule EveDmv.Database.CacheWarmer do
   end
 
   defp warm_specific_items(_, _), do: :ok
+
+  defp warm_character_batch(character_ids) do
+    Enum.each(character_ids, fn character_id ->
+      cache_key = "character_intel_#{character_id}"
+
+      # Pre-compute and cache character analysis
+      QueryCache.get_or_compute(
+        cache_key,
+        fn ->
+          case CharacterAnalyzer.analyze_character(character_id) do
+            {:ok, analysis} -> analysis
+            _ -> nil
+          end
+        end,
+        :timer.hours(1)
+      )
+    end)
+  end
+
+  defp warm_system_info(system_id) do
+    cache_key = "system_info_#{system_id}"
+
+    QueryCache.get_or_compute(
+      cache_key,
+      fn ->
+        case Ash.get(SolarSystem, system_id, domain: Api) do
+          {:ok, system} -> system
+          _ -> nil
+        end
+      end,
+      :timer.hours(24)
+    )
+  end
+
+  defp warm_item_type_batch(type_ids) do
+    Enum.each(type_ids, fn type_id ->
+      cache_key = "item_type_#{type_id}"
+
+      QueryCache.get_or_compute(
+        cache_key,
+        fn ->
+          case Ash.get(ItemType, type_id, domain: Api) do
+            {:ok, item} -> item
+            _ -> nil
+          end
+        end,
+        :timer.hours(48)
+      )
+    end)
+  end
 
   defp compute_alliance_stats(alliance_id) do
     # Get kill/loss stats for alliance

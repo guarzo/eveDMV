@@ -79,14 +79,14 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
       :timer.sleep(300)
 
       # Switch to combat stats tab
-      view |> element("[phx-click=\"switch_tab\"][phx-value-tab=\"combat\"]") |> render_click()
+      view |> element(~s([phx-click="switch_tab"][phx-value-tab="combat"])) |> render_click()
 
       html = render(view)
       assert html =~ "Combat Statistics"
       assert html =~ "K/D Ratio"
 
       # Switch to activity patterns tab
-      view |> element("[phx-click=\"switch_tab\"][phx-value-tab=\"patterns\"]") |> render_click()
+      view |> element(~s([phx-click="switch_tab"][phx-value-tab="patterns"])) |> render_click()
 
       html = render(view)
       assert html =~ "Activity Patterns"
@@ -94,7 +94,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
 
       # Switch to associations tab
       view
-      |> element("[phx-click=\"switch_tab\"][phx-value-tab=\"associations\"]")
+      |> element(~s([phx-click="switch_tab"][phx-value-tab="associations"]))
       |> render_click()
 
       html = render(view)
@@ -221,7 +221,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
 
       # Add for comparison
       view
-      |> element("[phx-click=\"add_comparison\"][phx-value-character-id=\"#{comparison_id}\"]")
+      |> element(~s([phx-click="add_comparison"][phx-value-character-id="#{comparison_id}"]))
       |> render_click()
 
       html = render(view)
@@ -237,12 +237,12 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
       create_character_with_activity(comparison_id)
 
       view
-      |> element("[phx-click=\"add_comparison\"][phx-value-character-id=\"#{comparison_id}\"]")
+      |> element(~s([phx-click="add_comparison"][phx-value-character-id="#{comparison_id}"]))
       |> render_click()
 
       # Remove comparison
       view
-      |> element("[phx-click=\"remove_comparison\"][phx-value-character-id=\"#{comparison_id}\"]")
+      |> element(~s([phx-click="remove_comparison"][phx-value-character-id="#{comparison_id}"]))
       |> render_click()
 
       html = render(view)

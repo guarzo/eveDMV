@@ -46,7 +46,7 @@ defmodule EveDmv.E2E.UserExperienceTest do
 
       # Step 6: User explores different intelligence tabs
       for tab <- ["combat", "patterns", "associations"] do
-        view |> element("[phx-click=\"change_tab\"][phx-value-tab=\"#{tab}\"]") |> render_click()
+        view |> element(~s([phx-click="change_tab"][phx-value-tab="#{tab}"])) |> render_click()
         html = render(view)
         assert html =~ String.capitalize(tab)
       end
@@ -84,20 +84,20 @@ defmodule EveDmv.E2E.UserExperienceTest do
       assert html =~ "Threat Level"
 
       # Step 3: Analyze combat patterns
-      view |> element("[phx-click=\"change_tab\"][phx-value-tab=\"combat\"]") |> render_click()
+      view |> element(~s([phx-click="change_tab"][phx-value-tab="combat"])) |> render_click()
       html = render(view)
       assert html =~ "Combat Statistics"
       assert html =~ "Ship Usage" or html =~ "K/D Ratio"
 
       # Step 4: Check activity patterns
-      view |> element("[phx-click=\"change_tab\"][phx-value-tab=\"patterns\"]") |> render_click()
+      view |> element(~s([phx-click="change_tab"][phx-value-tab="patterns"])) |> render_click()
       html = render(view)
       assert html =~ "Activity Patterns"
       assert html =~ "Geographic" or html =~ "Temporal"
 
       # Step 5: Investigate associations
       view
-      |> element("[phx-click=\"change_tab\"][phx-value-tab=\"associations\"]")
+      |> element(~s([phx-click="change_tab"][phx-value-tab="associations"]))
       |> render_click()
 
       html = render(view)
@@ -109,7 +109,7 @@ defmodule EveDmv.E2E.UserExperienceTest do
 
       view
       |> element(
-        "[phx-click=\"add_comparison\"][phx-value-character-id=\"#{comparison_character_id}\"]"
+        ~s([phx-click="add_comparison"][phx-value-character-id="#{comparison_character_id}"])
       )
       |> render_click()
 
@@ -267,7 +267,7 @@ defmodule EveDmv.E2E.UserExperienceTest do
       if html =~ "investigate" do
         view
         |> element(
-          "[phx-click=\"investigate_threat\"][phx-value-character-id=\"#{threat_character_id}\"]"
+          ~s([phx-click="investigate_threat"][phx-value-character-id="#{threat_character_id}"])
         )
         |> render_click()
 
@@ -370,7 +370,7 @@ defmodule EveDmv.E2E.UserExperienceTest do
 
             # Switch tabs
             view
-            |> element("[phx-click=\"change_tab\"][phx-value-tab=\"combat\"]")
+            |> element(~s([phx-click="change_tab"][phx-value-tab="combat"]))
             |> render_click()
 
             :timer.sleep(100)

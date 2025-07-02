@@ -73,47 +73,27 @@ defmodule EveDmvWeb.Plugs.ApiAuth do
 
   defp get_api_key_from_headers(conn) do
     case get_req_header(conn, "authorization") do
-      ["Bearer " <> api_key] ->
-        if valid_api_key_format?(api_key) do
-          {:ok, api_key}
-        else
-          {:error, :invalid_format}
-        end
+      ["Bearer " <> api_key] -> validate_api_key(api_key)
+      ["ApiKey " <> api_key] -> validate_api_key(api_key)
+      [api_key] -> validate_api_key(api_key)
+      [] -> check_query_params(conn)
+      _ -> {:error, :invalid_format}
+    end
+  end
 
-      ["ApiKey " <> api_key] ->
-        if valid_api_key_format?(api_key) do
-          {:ok, api_key}
-        else
-          {:error, :invalid_format}
-        end
+  defp validate_api_key(api_key) do
+    if valid_api_key_format?(api_key) do
+      {:ok, api_key}
+    else
+      {:error, :invalid_format}
+    end
+  end
 
-      [api_key] ->
-        # Support direct API key in header
-        if valid_api_key_format?(api_key) do
-          {:ok, api_key}
-        else
-          {:error, :invalid_format}
-        end
-
-      [] ->
-        # Check for API key in query parameters as fallback
-        case conn.params["api_key"] do
-          nil ->
-            {:error, :missing}
-
-          api_key when is_binary(api_key) ->
-            if valid_api_key_format?(api_key) do
-              {:ok, api_key}
-            else
-              {:error, :invalid_format}
-            end
-
-          _ ->
-            {:error, :invalid_format}
-        end
-
-      _ ->
-        {:error, :invalid_format}
+  defp check_query_params(conn) do
+    case conn.params["api_key"] do
+      nil -> {:error, :missing}
+      api_key when is_binary(api_key) -> validate_api_key(api_key)
+      _ -> {:error, :invalid_format}
     end
   end
 

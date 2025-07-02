@@ -12,7 +12,7 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
   alias EveDmv.Api
   alias EveDmv.Eve.EsiClient
   alias EveDmv.Intelligence.{CharacterStats, WHVetting}
-  alias EveDmv.Killmails.{KillmailEnriched, Participant}
+  alias EveDmv.Killmails.Participant
 
   @doc """
   Perform comprehensive vetting analysis for a character.
@@ -349,23 +349,24 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
       0
   end
 
-  defp has_character_participation?(killmail, character_id, role) do
-    case Ash.read(Participant, domain: Api) do
-      {:ok, participants} ->
-        relevant_participants =
-          Enum.filter(participants, fn p -> p.killmail_id == killmail.killmail_id end)
+  # Currently unused but may be useful for future eviction detection
+  # defp has_character_participation?(killmail, character_id, role) do
+  #   case Ash.read(Participant, domain: Api) do
+  #     {:ok, participants} ->
+  #       relevant_participants =
+  #         Enum.filter(participants, fn p -> p.killmail_id == killmail.killmail_id end)
 
-        Enum.any?(relevant_participants, fn p ->
-          p.character_id == character_id and
-            ((role == :attacker and not p.is_victim) or (role == :victim and p.is_victim))
-        end)
+  #       Enum.any?(relevant_participants, fn p ->
+  #         p.character_id == character_id and
+  #           ((role == :attacker and not p.is_victim) or (role == :victim and p.is_victim))
+  #       end)
 
-      {:error, _} ->
-        false
-    end
-  rescue
-    _ -> false
-  end
+  #     {:error, _} ->
+  #       false
+  #   end
+  # rescue
+  #   _ -> false
+  # end
 
   defp j_space_system?(system_id) do
     # Wormhole systems typically have IDs in the 31000000+ range
@@ -641,7 +642,7 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
     end
   end
 
-  defp analyze_eviction_participation(character_id, known_groups) do
+  defp analyze_eviction_participation(character_id, _known_groups) do
     # Analyze character's participation in eviction activities
     # 2 years
     cutoff_date = DateTime.add(DateTime.utc_now(), -730, :day)
@@ -1494,15 +1495,18 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
       end
 
     # Check employment history for corp hopping
-    case get_or_create_character_stats(character_id) do
-      stats ->
-        employment_changes = stats.corp_changes || 0
+    {indicators, base_probability} =
+      case get_or_create_character_stats(character_id) do
+        stats ->
+          employment_changes = stats.corp_changes || 0
 
-        if employment_changes > 5 do
-          indicators = ["Frequent corporation changes (#{employment_changes})" | indicators]
-          base_probability = base_probability + 0.1
-        end
-    end
+          if employment_changes > 5 do
+            {["Frequent corporation changes (#{employment_changes})" | indicators],
+             base_probability + 0.1}
+          else
+            {indicators, base_probability}
+          end
+      end
 
     # Calculate final probability
     risk_modifiers = length(indicators) * 0.05
