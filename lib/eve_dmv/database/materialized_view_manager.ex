@@ -9,8 +9,8 @@ defmodule EveDmv.Database.MaterializedViewManager do
   use GenServer
   require Logger
 
-  alias EveDmv.Repo
   alias EveDmv.Database.CacheInvalidator
+  alias EveDmv.Repo
 
   @refresh_interval :timer.hours(4)
   @incremental_refresh_interval :timer.minutes(30)

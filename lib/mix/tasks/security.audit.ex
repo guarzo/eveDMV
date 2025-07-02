@@ -16,7 +16,7 @@ defmodule Mix.Tasks.Security.Audit do
   use Mix.Task
   require Logger
 
-  alias EveDmv.Security.{DatabaseSecurityReview, ContainerSecurityReview}
+  alias EveDmv.Security.{ContainerSecurityReview, DatabaseSecurityReview}
 
   @shortdoc "Run security audits for database and container infrastructure"
 
@@ -158,7 +158,7 @@ defmodule Mix.Tasks.Security.Audit do
         report
       end
 
-    # Container audit section  
+    # Container audit section
     report =
       if audit_results.container_audit do
         report ++ generate_container_text_section(audit_results.container_audit)

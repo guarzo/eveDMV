@@ -9,16 +9,16 @@ defmodule EveDmv.Intelligence.AlertSystem do
   use GenServer
   require Logger
 
-  alias EveDmv.Intelligence.{CharacterStats, WHVetting, IntelligenceCoordinator}
-  alias EveDmv.Killmails.{KillmailEnriched, Participant}
-  alias EveDmv.Api
+  # alias EveDmv.Intelligence.{CharacterStats, WHVetting, IntelligenceCoordinator}
+  # alias EveDmv.Killmails.{KillmailEnriched, Participant}
+  # alias EveDmv.Api
 
   # Alert configuration
   @critical_threat_threshold 8
   @high_risk_vetting_threshold 80
-  @eviction_group_threshold 0.8
-  @alt_correlation_threshold 0.9
-  @new_member_monitoring_days 30
+  # @eviction_group_threshold 0.8
+  # @alt_correlation_threshold 0.9
+  # @new_member_monitoring_days 30
 
   ## Public API
 
@@ -250,7 +250,7 @@ defmodule EveDmv.Intelligence.AlertSystem do
 
     # Check for blue killing (friendly fire)
     alerts =
-      if is_blue_kill?(killmail) do
+      if blue_kill?(killmail) do
         [create_incident_alert(killmail, "blue_kill") | alerts]
       else
         alerts
@@ -258,7 +258,7 @@ defmodule EveDmv.Intelligence.AlertSystem do
 
     # Check for capital ship losses in home systems
     alerts =
-      if is_capital_loss_in_home?(killmail) do
+      if capital_loss_in_home?(killmail) do
         [create_incident_alert(killmail, "capital_loss_home") | alerts]
       else
         alerts
@@ -266,7 +266,7 @@ defmodule EveDmv.Intelligence.AlertSystem do
 
     # Check for structure losses
     alerts =
-      if is_structure_loss?(killmail) do
+      if structure_loss?(killmail) do
         [create_incident_alert(killmail, "structure_loss") | alerts]
       else
         alerts
@@ -304,24 +304,20 @@ defmodule EveDmv.Intelligence.AlertSystem do
 
   defp monitor_correlation_patterns do
     # Look for suspicious correlation patterns
-    try do
-      # This would analyze recent correlation data for anomalies
-      Logger.debug("Monitoring correlation patterns")
-    rescue
-      error ->
-        Logger.error("Failed to monitor correlation patterns: #{inspect(error)}")
-    end
+    # This would analyze recent correlation data for anomalies
+    Logger.debug("Monitoring correlation patterns")
+  rescue
+    error ->
+      Logger.error("Failed to monitor correlation patterns: #{inspect(error)}")
   end
 
   defp monitor_activity_anomalies do
     # Monitor for unusual activity patterns
-    try do
-      # This would analyze recent activity for anomalies
-      Logger.debug("Monitoring activity anomalies")
-    rescue
-      error ->
-        Logger.error("Failed to monitor activity anomalies: #{inspect(error)}")
-    end
+    # This would analyze recent activity for anomalies
+    Logger.debug("Monitoring activity anomalies")
+  rescue
+    error ->
+      Logger.error("Failed to monitor activity anomalies: #{inspect(error)}")
   end
 
   ## Alert Creation Functions
@@ -597,18 +593,18 @@ defmodule EveDmv.Intelligence.AlertSystem do
 
   # Killmail analysis functions
 
-  defp is_blue_kill?(killmail) do
+  defp blue_kill?(_killmail) do
     # Simplified logic - would need more sophisticated alliance/blue list checking
     false
   end
 
-  defp is_capital_loss_in_home?(killmail) do
+  defp capital_loss_in_home?(_killmail) do
     # Check if capital ship was lost in a home system
     # Simplified implementation
     false
   end
 
-  defp is_structure_loss?(killmail) do
+  defp structure_loss?(killmail) do
     # Check if killmail involves a structure
     ship_name = killmail.ship_name || ""
     String.contains?(ship_name, ["Citadel", "Engineering", "Refinery", "Station"])

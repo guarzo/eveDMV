@@ -7,7 +7,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzerTest do
   describe "query analysis" do
     test "can analyze simple SELECT query" do
       query = "SELECT COUNT(*) FROM participants WHERE character_id = $1"
-      params = [12345]
+      params = [12_345]
 
       result = QueryPlanAnalyzer.analyze_query(query, params)
 

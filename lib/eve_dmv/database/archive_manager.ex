@@ -20,7 +20,7 @@ defmodule EveDmv.Database.ArchiveManager do
       archive_after_days: 365,
       archive_table: "killmails_raw_archive",
       date_column: "killmail_time",
-      batch_size: 10000,
+      batch_size: 10_000,
       compression: true,
       retention_years: 7
     },
@@ -38,7 +38,7 @@ defmodule EveDmv.Database.ArchiveManager do
       archive_after_days: 365,
       archive_table: "participants_archive",
       date_column: "updated_at",
-      batch_size: 50000,
+      batch_size: 50_000,
       compression: true,
       retention_years: 7,
       cascade_tables: ["killmails_raw", "killmails_enriched"]
@@ -48,7 +48,7 @@ defmodule EveDmv.Database.ArchiveManager do
       archive_after_days: 90,
       archive_table: "character_stats_archive",
       date_column: "last_calculated_at",
-      batch_size: 10000,
+      batch_size: 10_000,
       compression: false,
       retention_years: 2
     }

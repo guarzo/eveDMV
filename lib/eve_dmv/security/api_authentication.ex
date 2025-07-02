@@ -11,6 +11,7 @@ defmodule EveDmv.Security.ApiAuthentication do
     data_layer: AshPostgres.DataLayer
 
   require Logger
+  require Ash.Query
   alias EveDmv.Security.AuditLogger
 
   postgres do
@@ -208,7 +209,7 @@ defmodule EveDmv.Security.ApiAuthentication do
   @spec list_character_api_keys(integer()) :: {:ok, [map()]} | {:error, term()}
   def list_character_api_keys(character_id) do
     __MODULE__
-    |> Ash.Query.filter(created_by_character_id == character_id)
+    |> Ash.Query.filter(created_by_character_id: character_id)
     |> Ash.Query.sort(inserted_at: :desc)
     |> Ash.read(domain: EveDmv.Api)
     |> case do

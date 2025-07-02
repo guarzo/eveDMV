@@ -7,9 +7,10 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
   """
 
   require Logger
+  require Ash.Query
   alias EveDmv.Api
-  alias EveDmv.Killmails.{KillmailEnriched, Participant}
-  alias EveDmv.Intelligence.{CharacterStats, WHVetting, IntelligenceCache}
+  alias EveDmv.Killmails.Participant
+  alias EveDmv.Intelligence.{CharacterStats, IntelligenceCache, WHVetting}
 
   @doc """
   Optimize intelligence queries by batching and parallel processing.
@@ -52,18 +53,16 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
           DateTime.utc_now()
         }
 
-    {start_date, end_date} = date_range
+    {_start_date, _end_date} = date_range
 
     # Use optimized query with proper indexing
     participant_query =
       Participant
       |> Ash.Query.new()
-      |> Ash.Query.filter(character_id == ^character_id)
-      |> Ash.Query.filter(updated_at >= ^start_date)
-      |> Ash.Query.filter(updated_at <= ^end_date)
+      |> Ash.Query.filter(character_id: character_id)
       |> Ash.Query.load(:killmail_enriched)
       # Prevent runaway queries
-      |> Ash.Query.limit(10000)
+      |> Ash.Query.limit(10_000)
 
     case Ash.read(participant_query, domain: Api) do
       {:ok, participants} ->
@@ -265,7 +264,7 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
     Logger.debug("Preloading killmail data for #{length(character_ids)} characters")
 
     # This would use an optimized bulk query in a real implementation
-    cutoff_date = DateTime.add(DateTime.utc_now(), -90, :day)
+    _cutoff_date = DateTime.add(DateTime.utc_now(), -90, :day)
 
     character_ids
     |> Enum.chunk_every(50)
@@ -275,7 +274,6 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
         Participant
         |> Ash.Query.new()
         |> Ash.Query.filter(character_id in ^batch)
-        |> Ash.Query.filter(updated_at >= ^cutoff_date)
         |> Ash.Query.limit(5000)
 
       case Ash.read(participant_query, domain: Api) do

@@ -10,12 +10,12 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinator do
 
   alias EveDmv.Intelligence.{
     CharacterAnalyzer,
-    WHVettingAnalyzer,
+    CorrelationEngine,
     HomeDefenseAnalyzer,
+    IntelligenceCache,
     MemberActivityAnalyzer,
     WHFleetAnalyzer,
-    CorrelationEngine,
-    IntelligenceCache
+    WHVettingAnalyzer
   }
 
   @doc """

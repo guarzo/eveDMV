@@ -11,13 +11,14 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
 
   alias EveDmv.Intelligence.{
     CharacterAnalyzer,
-    WHVettingAnalyzer,
+    CharacterStats,
     HomeDefenseAnalyzer,
     MemberActivityAnalyzer,
-    WHFleetAnalyzer
+    WHFleetAnalyzer,
+    WHVetting,
+    WHVettingAnalyzer
   }
 
-  alias EveDmv.Intelligence.{CharacterStats, WHVetting}
   alias EveDmv.Api
 
   @doc """

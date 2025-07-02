@@ -10,8 +10,12 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
 
   require Logger
 
-  alias EveDmv.Intelligence.{IntelligenceCoordinator, IntelligenceCache}
-  alias EveDmv.Intelligence.{CharacterStats, WHVetting}
+  alias EveDmv.Intelligence.{
+    CharacterStats,
+    IntelligenceCache,
+    IntelligenceCoordinator,
+    WHVetting
+  }
 
   on_mount {EveDmvWeb.AuthLive, :load_from_session}
 
@@ -312,8 +316,8 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
     cond do
       diff_seconds < 60 -> "#{diff_seconds}s ago"
       diff_seconds < 3600 -> "#{div(diff_seconds, 60)}m ago"
-      diff_seconds < 86400 -> "#{div(diff_seconds, 3600)}h ago"
-      true -> "#{div(diff_seconds, 86400)}d ago"
+      diff_seconds < 86_400 -> "#{div(diff_seconds, 3600)}h ago"
+      true -> "#{div(diff_seconds, 86_400)}d ago"
     end
   end
 

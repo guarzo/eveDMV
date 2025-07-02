@@ -20,7 +20,7 @@ defmodule EveDmv.Database.CacheInvalidator do
       "character_stats_*",
       "character_analysis_*"
     ],
-    # Killmail-related invalidations  
+    # Killmail-related invalidations
     killmail: [
       "killmail_enriched_*",
       "killmail_participants_*",

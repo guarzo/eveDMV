@@ -208,7 +208,7 @@ defmodule EveDmv.Database.PartitionUtils do
   end
 
   defp calculate_health_score(partition_stats) do
-    if length(partition_stats) == 0 do
+    if Enum.empty?(partition_stats) do
       0
     else
       # Calculate based on size distribution and row counts
@@ -227,7 +227,7 @@ defmodule EveDmv.Database.PartitionUtils do
   end
 
   defp calculate_variance(values, mean) do
-    if length(values) == 0 do
+    if Enum.empty?(values) do
       0
     else
       sum_of_squares = Enum.sum(Enum.map(values, &((&1 - mean) * (&1 - mean))))
@@ -239,7 +239,7 @@ defmodule EveDmv.Database.PartitionUtils do
     recommendations = []
 
     recommendations =
-      if length(empty_partitions) > 0 do
+      unless Enum.empty?(empty_partitions) do
         [
           "Consider dropping #{length(empty_partitions)} empty partitions to save space"
           | recommendations
@@ -268,7 +268,7 @@ defmodule EveDmv.Database.PartitionUtils do
         recommendations
       end
 
-    if length(recommendations) == 0 do
+    if Enum.empty?(recommendations) do
       ["Partition health is good - no immediate action required"]
     else
       recommendations

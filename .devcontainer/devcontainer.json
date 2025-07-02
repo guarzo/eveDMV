@@ -1,20 +1,25 @@
 {
-  "name": "EVE DMV Delta Team Dev Container",
+  "name": "EVE DMV Gamma Team Dev Container",
   "dockerComposeFile": "../docker-compose.yml",
   "service": "app",
   "workspaceFolder": "/workspace",
   "shutdownAction": "stopCompose",
-  "forwardPorts": [4014, 5437, 6384],
+  "forwardPorts": [4013, 5436, 6383],
   "portsAttributes": {
+<<<<<<< HEAD
     "4014": {
       "label": "Phoenix Server (Delta)",
+=======
+    "4013": {
+      "label": "Phoenix Server (Gamma)",
+>>>>>>> gamma
       "onAutoForward": "notify"
     },
-    "5437": {
-      "label": "PostgreSQL (Delta)"
+    "5436": {
+      "label": "PostgreSQL (Gamma)"
     },
-    "6384": {
-      "label": "Redis (Delta)"
+    "6383": {
+      "label": "Redis (Gamma)"
     }
   },
   "postCreateCommand": "echo 'Waiting for services...' && sleep 5 && mix deps.get && mix ecto.create --quiet && mix ecto.migrate && mix assets.setup && echo 'Dev container setup complete!'",
