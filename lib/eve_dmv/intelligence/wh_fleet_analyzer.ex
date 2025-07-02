@@ -11,7 +11,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
 
   alias EveDmv.Api
   alias EveDmv.Eve.EsiClient
-  alias EveDmv.Intelligence.{AssetAnalyzer, CharacterStats, WHFleetComposition, ShipDatabase}
+  alias EveDmv.Intelligence.{AssetAnalyzer, CharacterStats, ShipDatabase, WHFleetComposition}
 
   @doc """
   Analyze and optimize a fleet composition for wormhole operations.
@@ -790,7 +790,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
           Map.get(ship_groups, "Cruisers", 0) > 10
 
       "Interceptors" <> _ ->
-        # Interceptors or significant frigate experience  
+        # Interceptors or significant frigate experience
         Map.get(ship_groups, "Interceptors", 0) > 0 or
           Map.get(ship_groups, "Frigates", 0) > 15
 

@@ -8,7 +8,13 @@ defmodule EveDmvWeb.AuthController do
   use EveDmvWeb, :controller
   use AshAuthentication.Phoenix.Controller
 
+  alias EveDmv.Security.AuditLogger
+
   def success(conn, _activity, user, _token) do
+    # Log successful authentication
+    client_ip = get_client_ip(conn)
+    AuditLogger.log_auth_attempt(user.id, client_ip, true)
+
     conn
     |> store_in_session(user)
     |> assign(:current_user, user)
@@ -19,6 +25,10 @@ defmodule EveDmvWeb.AuthController do
   end
 
   def failure(conn, _activity, _reason) do
+    # Log failed authentication
+    client_ip = get_client_ip(conn)
+    AuditLogger.log_auth_attempt(nil, client_ip, false)
+
     conn
     |> put_flash(:error, "Authentication failed. Please try again.")
     |> redirect(to: ~p"/")
@@ -29,5 +39,21 @@ defmodule EveDmvWeb.AuthController do
     |> clear_session(:eve_dmv)
     |> put_flash(:info, "You have been signed out.")
     |> redirect(to: ~p"/")
+  end
+
+  # Helper function to extract client IP address
+  defp get_client_ip(conn) do
+    case get_req_header(conn, "x-forwarded-for") do
+      [forwarded_ips] ->
+        forwarded_ips
+        |> String.split(",")
+        |> List.first()
+        |> String.trim()
+
+      [] ->
+        conn.remote_ip
+        |> :inet.ntoa()
+        |> to_string()
+    end
   end
 end
