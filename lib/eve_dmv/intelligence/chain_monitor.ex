@@ -788,7 +788,7 @@ defmodule EveDmv.Intelligence.ChainMonitor do
   end
 
   defp handle_map_kill(map_id, payload) do
-    # Payload: %{"killmail_id" => 12345678, "system_name" => "J123456", "victim" => %{...}, "value" => 250000000}
+    # Payload: %{"killmail_id" => 12345678, "system_name" => "J123456", "victim" => %{...}, "value" => 250_000_000}
     case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
       {:ok, [topology]} ->
         Ash.update(topology, %{last_activity_at: DateTime.utc_now()}, domain: Api)

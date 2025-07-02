@@ -6,7 +6,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
   require Logger
   alias EveDmv.Api
   alias EveDmv.Eve.{EsiClient, ItemType, NameResolver}
-  alias EveDmv.Intelligence.{CharacterStats, CharacterMetrics, CharacterFormatters}
+  alias EveDmv.Intelligence.{CharacterFormatters, CharacterMetrics, CharacterStats}
   alias EveDmv.Killmails.{KillmailEnriched, Participant}
   require Ash.Query
 
@@ -468,6 +468,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
   defp find_victim_participant(participants) do
     Enum.find(participants, &(&1["is_victim"] == true))
   end
+
   defp solo_kill?(killmail) do
     non_victim_count = Enum.count(killmail.participants, &(not &1.is_victim))
     non_victim_count == 1

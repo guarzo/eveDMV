@@ -4,7 +4,7 @@ defmodule EveDmv.IntelligenceCase do
   """
 
   use ExUnit.CaseTemplate
-  
+
   import EveDmv.Factories
 
   using do
@@ -193,5 +193,4 @@ defmodule EveDmv.IntelligenceCase do
 
     List.flatten(all_members)
   end
-
 end

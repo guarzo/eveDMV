@@ -132,13 +132,13 @@ defmodule EveDmv.Intelligence.ShipDatabase do
 
       # Destroyers
       # Corax
-      16219 => :destroyer,
+      16_219 => :destroyer,
       # Algos
-      16227 => :destroyer,
+      16_227 => :destroyer,
       # Catalyst
-      16236 => :destroyer,
+      16_236 => :destroyer,
       # Thrasher
-      16242 => :destroyer,
+      16_242 => :destroyer,
 
       # Cruisers
       # Arbitrator
@@ -172,73 +172,73 @@ defmodule EveDmv.Intelligence.ShipDatabase do
 
       # Strategic Cruisers
       # Tengu
-      29984 => :strategic_cruiser,
+      29_984 => :strategic_cruiser,
       # Legion
-      29986 => :strategic_cruiser,
+      29_986 => :strategic_cruiser,
       # Proteus
-      29988 => :strategic_cruiser,
+      29_988 => :strategic_cruiser,
       # Loki
-      29990 => :strategic_cruiser,
+      29_990 => :strategic_cruiser,
 
       # Command Ships
       # Damnation
-      22442 => :command_ship,
+      22_442 => :command_ship,
       # Nighthawk
-      22444 => :command_ship,
+      22_444 => :command_ship,
       # Claymore
-      22446 => :command_ship,
+      22_446 => :command_ship,
       # Sleipnir
-      22448 => :command_ship,
+      22_448 => :command_ship,
 
       # Logistics
       # Guardian
-      11985 => :logistics,
+      11_985 => :logistics,
       # Basilisk
-      11987 => :logistics,
+      11_987 => :logistics,
       # Oneiros
-      11989 => :logistics,
+      11_989 => :logistics,
       # Scimitar
-      11993 => :logistics,
+      11_993 => :logistics,
 
       # Interceptors
       # Ares
-      11174 => :interceptor,
+      11_174 => :interceptor,
       # Stiletto
-      11176 => :interceptor,
+      11_176 => :interceptor,
       # Crow
-      11178 => :interceptor,
+      11_178 => :interceptor,
       # Malediction
-      11180 => :interceptor,
+      11_180 => :interceptor,
 
       # Capitals
       # Revelation
-      19720 => :dreadnought,
+      19_720 => :dreadnought,
       # Naglfar
-      19722 => :dreadnought,
+      19_722 => :dreadnought,
       # Moros
-      19724 => :dreadnought,
+      19_724 => :dreadnought,
       # Phoenix
-      19726 => :dreadnought,
+      19_726 => :dreadnought,
       # Archon
-      23757 => :carrier,
+      23_757 => :carrier,
       # Chimera
-      23911 => :carrier,
+      23_911 => :carrier,
       # Thanatos
-      23913 => :carrier,
+      23_913 => :carrier,
       # Nidhoggur
-      23915 => :carrier,
+      23_915 => :carrier,
 
       # Supercarriers
       # Nyx
       3514 => :supercarrier,
       # Aeon
-      22852 => :supercarrier,
+      22_852 => :supercarrier,
       # Thanatos
-      23913 => :supercarrier,
+      23_913 => :supercarrier,
       # Wyvern
-      23917 => :supercarrier,
+      23_917 => :supercarrier,
       # Hel
-      23919 => :supercarrier,
+      23_919 => :supercarrier,
 
       # Titans
       # Erebus
@@ -246,9 +246,9 @@ defmodule EveDmv.Intelligence.ShipDatabase do
       # Leviathan
       3764 => :titan,
       # Avatar
-      11567 => :titan,
+      11_567 => :titan,
       # Ragnarok
-      23773 => :titan
+      23_773 => :titan
     }
   end
 
@@ -256,63 +256,63 @@ defmodule EveDmv.Intelligence.ShipDatabase do
     %{
       # Strategic Cruisers
       # Tengu
-      29984 => 12_900_000,
+      29_984 => 12_900_000,
       # Legion
-      29986 => 13_000_000,
+      29_986 => 13_000_000,
       # Proteus
-      29988 => 12_800_000,
+      29_988 => 12_800_000,
       # Loki
-      29990 => 13_100_000,
+      29_990 => 13_100_000,
 
       # Command Ships
       # Damnation
-      22442 => 13_500_000,
+      22_442 => 13_500_000,
       # Nighthawk
-      22444 => 13_200_000,
+      22_444 => 13_200_000,
       # Claymore
-      22446 => 13_800_000,
+      22_446 => 13_800_000,
       # Sleipnir
-      22448 => 13_600_000,
+      22_448 => 13_600_000,
 
       # Logistics Cruisers
       # Guardian
-      11985 => 11_800_000,
+      11_985 => 11_800_000,
       # Basilisk
-      11987 => 11_900_000,
+      11_987 => 11_900_000,
       # Oneiros
-      11989 => 12_100_000,
+      11_989 => 12_100_000,
       # Scimitar
-      11993 => 12_000_000,
+      11_993 => 12_000_000,
 
       # Heavy Assault Cruisers
       # Muninn
-      12003 => 12_200_000,
+      12_003 => 12_200_000,
       # Cerberus
-      12005 => 12_000_000,
+      12_005 => 12_000_000,
       # Zealot
-      12011 => 12_400_000,
+      12_011 => 12_400_000,
       # Eagle
-      12015 => 12_100_000,
+      12_015 => 12_100_000,
 
       # Interceptors
       # Ares
-      11174 => 1_200_000,
+      11_174 => 1_200_000,
       # Stiletto
-      11176 => 1_150_000,
+      11_176 => 1_150_000,
       # Crow
-      11178 => 1_180_000,
+      11_178 => 1_180_000,
       # Malediction
-      11180 => 1_100_000,
+      11_180 => 1_100_000,
 
       # EWAR Frigates
       # Crucifier
-      11192 => 1_300_000,
+      11_192 => 1_300_000,
       # Maulus
-      11200 => 1_250_000,
+      11_200 => 1_250_000,
       # Vigil
-      11202 => 1_280_000,
+      11_202 => 1_280_000,
       # Griffin
-      11196 => 1_220_000,
+      11_196 => 1_220_000,
 
       # Common ships
       # Rifter
@@ -593,25 +593,25 @@ defmodule EveDmv.Intelligence.ShipDatabase do
       597,
       598,
       599,
-      11174,
-      11176,
-      11178,
-      11180,
-      11182,
-      11184,
-      11186,
-      11188,
-      11192,
-      11194,
-      11196,
-      11198,
-      11200,
-      11202
+      11_174,
+      11_176,
+      11_178,
+      11_180,
+      11_182,
+      11_184,
+      11_186,
+      11_188,
+      11_192,
+      11_194,
+      11_196,
+      11_198,
+      11_200,
+      11_202
     ]
   end
 
   defp destroyer_ids do
-    [16219, 16227, 16236, 16242, 4302, 4306, 4308, 4310]
+    [16_219, 16_227, 16_236, 16_242, 4302, 4306, 4308, 4310]
   end
 
   defp cruiser_ids do
@@ -626,22 +626,22 @@ defmodule EveDmv.Intelligence.ShipDatabase do
       628,
       629,
       630,
-      11985,
-      11987,
-      11989,
-      11993,
-      12003,
-      12005,
-      12011,
-      12015,
-      29984,
-      29986,
-      29988,
-      29990,
-      22442,
-      22444,
-      22446,
-      22448
+      11_985,
+      11_987,
+      11_989,
+      11_993,
+      12_003,
+      12_005,
+      12_011,
+      12_015,
+      29_984,
+      29_986,
+      29_988,
+      29_990,
+      22_442,
+      22_444,
+      22_446,
+      22_448
     ]
   end
 
@@ -650,24 +650,24 @@ defmodule EveDmv.Intelligence.ShipDatabase do
   end
 
   defp battleship_ids do
-    [643, 644, 645, 646, 647, 648, 16231, 17738, 17740, 17918, 17920, 24688]
+    [643, 644, 645, 646, 647, 648, 16_231, 17_738, 17_740, 17_918, 17_920, 24_688]
   end
 
   defp capital_ids do
     [
-      19720,
-      19722,
-      19724,
-      19726,
-      23757,
-      23911,
-      23913,
-      23915,
+      19_720,
+      19_722,
+      19_724,
+      19_726,
+      23_757,
+      23_911,
+      23_913,
+      23_915,
       # FAX ships
-      37604,
-      37605,
-      37606,
-      37607
+      37_604,
+      37_605,
+      37_606,
+      37_607
     ]
   end
 
@@ -675,14 +675,14 @@ defmodule EveDmv.Intelligence.ShipDatabase do
     # Supercarriers
     [
       3514,
-      22852,
-      23917,
-      23919,
+      22_852,
+      23_917,
+      23_919,
       # Titans
       671,
       3764,
-      11567,
-      23773
+      11_567,
+      23_773
     ]
   end
 end

@@ -774,7 +774,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
       defender_count == 0 -> nil
       # Quick response to small threat
       attacker_count <= 2 and defender_count >= attacker_count -> 120
-      # Moderate response  
+      # Moderate response
       attacker_count <= 5 and defender_count >= attacker_count / 2 -> 300
       # Slow response
       defender_count > 0 -> 600
