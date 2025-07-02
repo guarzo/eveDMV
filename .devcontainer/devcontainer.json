@@ -1,23 +1,23 @@
 {
-  "name": "EVE PvP Tracker Dev Container",
+  "name": "EVE DMV Delta Team Dev Container",
   "dockerComposeFile": "../docker-compose.yml",
   "service": "app",
   "workspaceFolder": "/workspace",
   "shutdownAction": "stopCompose",
-  "forwardPorts": [4010, 5433, 6380],
+  "forwardPorts": [4014, 5437, 6384],
   "portsAttributes": {
     "*/tcp": {
       "onAutoForward": "ignore"
     },
-    "4010": {
-      "label": "Phoenix Server",
+    "4014": {
+      "label": "Phoenix Server (Delta)",
       "onAutoForward": "notify"
     },
-    "5433": {
-      "label": "PostgreSQL"
+    "5437": {
+      "label": "PostgreSQL (Delta)"
     },
-    "6380": {
-      "label": "Redis"
+    "6384": {
+      "label": "Redis (Delta)"
     }
   },
   "postCreateCommand": "echo 'Waiting for services...' && sleep 5 && mix deps.get && mix ecto.create --quiet && mix ecto.migrate && mix assets.setup && echo 'Dev container setup complete!'",
@@ -72,4 +72,4 @@
       ]
     }
   }
-} 
+}
