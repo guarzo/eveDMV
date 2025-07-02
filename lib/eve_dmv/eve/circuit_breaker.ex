@@ -59,28 +59,19 @@ defmodule EveDmv.Eve.CircuitBreaker do
   def call(service_name, fun, opts \\ []) do
     timeout = Keyword.get(opts, :timeout, @default_timeout)
 
-    case get_state(service_name) do
-      @open ->
-        {:error, :circuit_open}
-
-      state when state in [@closed, @half_open] ->
+    case GenServer.whereis(via_tuple(service_name)) do
+      nil ->
+        # No circuit breaker started, execute directly
         try do
-          # Execute with timeout
           task = Task.async(fun)
-          result = Task.await(task, timeout)
-
-          # Record success
-          record_success(service_name)
-          {:ok, result}
+          {:ok, Task.await(task, timeout)}
         catch
-          :exit, {:timeout, _} ->
-            record_failure(service_name, :timeout)
-            {:error, :timeout}
-
-          kind, reason ->
-            record_failure(service_name, {kind, reason})
-            {:error, {kind, reason}}
+          :exit, {:timeout, _} -> {:error, :timeout}
+          kind, reason -> {:error, {kind, reason}}
         end
+
+      pid ->
+        GenServer.call(pid, {:execute_request, fun, timeout}, timeout + 1000)
     end
   end
 
@@ -119,20 +110,6 @@ defmodule EveDmv.Eve.CircuitBreaker do
   end
 
   # Private client functions
-
-  defp record_success(service_name) do
-    case GenServer.whereis(via_tuple(service_name)) do
-      nil -> :ok
-      pid -> GenServer.cast(pid, :success)
-    end
-  end
-
-  defp record_failure(service_name, reason) do
-    case GenServer.whereis(via_tuple(service_name)) do
-      nil -> :ok
-      pid -> GenServer.cast(pid, {:failure, reason})
-    end
-  end
 
   defp via_tuple(service_name) do
     {:via, Registry, {EveDmv.Registry, {__MODULE__, service_name}}}
@@ -204,6 +181,19 @@ defmodule EveDmv.Eve.CircuitBreaker do
   end
 
   @impl true
+  def handle_call({:execute_request, fun, timeout}, _from, state) do
+    current_state = determine_current_state(state)
+
+    case current_state do
+      @open ->
+        {:reply, {:error, :circuit_open}, %{state | state: current_state}}
+
+      state_val when state_val in [@closed, @half_open] ->
+        execute_and_handle_result(fun, timeout, %{state | state: current_state})
+    end
+  end
+
+  @impl true
   def handle_cast(:success, state) do
     new_state = handle_success(state)
     {:noreply, new_state}
@@ -216,6 +206,26 @@ defmodule EveDmv.Eve.CircuitBreaker do
   end
 
   # Private server functions
+
+  defp execute_and_handle_result(fun, timeout, state) do
+    try do
+      # Execute with timeout
+      task = Task.async(fun)
+      result = Task.await(task, timeout)
+
+      # Record success
+      new_state = handle_success(state)
+      {:reply, {:ok, result}, new_state}
+    catch
+      :exit, {:timeout, _} ->
+        new_state = handle_failure(state, :timeout)
+        {:reply, {:error, :timeout}, new_state}
+
+      kind, reason ->
+        new_state = handle_failure(state, {kind, reason})
+        {:reply, {:error, {kind, reason}}, new_state}
+    end
+  end
 
   defp determine_current_state(state) do
     case state.state do
