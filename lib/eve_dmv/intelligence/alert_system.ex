@@ -597,12 +597,12 @@ defmodule EveDmv.Intelligence.AlertSystem do
 
   # Killmail analysis functions
 
-  defp is_blue_kill?(killmail) do
+  defp is_blue_kill?(_killmail) do
     # Simplified logic - would need more sophisticated alliance/blue list checking
     false
   end
 
-  defp is_capital_loss_in_home?(killmail) do
+  defp is_capital_loss_in_home?(_killmail) do
     # Check if capital ship was lost in a home system
     # Simplified implementation
     false

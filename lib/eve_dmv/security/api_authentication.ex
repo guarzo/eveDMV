@@ -11,6 +11,7 @@ defmodule EveDmv.Security.ApiAuthentication do
     data_layer: AshPostgres.DataLayer
 
   require Logger
+  require Ash.Query
   alias EveDmv.Security.AuditLogger
 
   postgres do
