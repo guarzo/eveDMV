@@ -29,6 +29,8 @@ defmodule EveDmv.Application do
       {EveDmv.Market.RateLimiter, name: :janice_rate_limiter, max_tokens: 5, refill_rate: 5},
       # Start the surveillance matching engine
       EveDmv.Surveillance.MatchingEngine,
+      # Start the query performance monitor
+      EveDmv.Telemetry.QueryMonitor,
       # Start the re-enrichment worker
       EveDmv.Enrichment.ReEnrichmentWorker,
       # Start the real-time price updater
