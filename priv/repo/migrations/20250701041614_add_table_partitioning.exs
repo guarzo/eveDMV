@@ -3,13 +3,18 @@ defmodule EveDmv.Repo.Migrations.AddTablePartitioning do
 
   def up do
     # Convert killmails_raw to partitioned table
+    # Partitioning by killmail_time improves query performance for time-based queries
+    # and enables efficient data archival/deletion of old partitions
     
-    # Drop existing indexes
+    # Drop existing indexes - they will be recreated on the partitioned table
+    # Indexes on partitioned tables are automatically propagated to child partitions
     execute "DROP INDEX IF EXISTS killmails_raw_killmail_id_index"
     execute "DROP INDEX IF EXISTS killmails_raw_unique_hash_time_index"
     execute "DROP INDEX IF EXISTS killmails_raw_unique_killmail_index"
     
     # Create new partitioned table
+    # Using RANGE partitioning on killmail_time for optimal time-series query performance
+    # Primary key includes partition key (killmail_time) for proper constraint enforcement
     execute """
     CREATE TABLE killmails_raw_partitioned (
       killmail_id bigint NOT NULL,
@@ -28,23 +33,26 @@ defmodule EveDmv.Repo.Migrations.AddTablePartitioning do
     ) PARTITION BY RANGE (killmail_time)
     """
     
-    # Copy data from old table
+    # Copy existing data to preserve historical killmails
     execute "INSERT INTO killmails_raw_partitioned SELECT * FROM killmails_raw"
     
-    # Drop old table
+    # Drop old table using CASCADE to handle dependent objects
     execute "DROP TABLE killmails_raw CASCADE"
     
-    # Rename new table
+    # Rename partitioned table to original name for transparent application usage
     execute "ALTER TABLE killmails_raw_partitioned RENAME TO killmails_raw"
     
-    # Recreate indexes
+    # Recreate indexes on partitioned table
+    # These indexes will be automatically created on all child partitions
     execute "CREATE UNIQUE INDEX killmails_raw_unique_hash_time_index ON killmails_raw (killmail_hash, killmail_time)"
     execute "CREATE UNIQUE INDEX killmails_raw_unique_killmail_index ON killmails_raw (killmail_id, killmail_time)"
     execute "CREATE INDEX killmails_raw_killmail_id_index ON killmails_raw (killmail_id)"
 
     # Convert killmails_enriched to partitioned table
+    # This table contains processed killmail data with names resolved and values calculated
     
-    # Create new partitioned table
+    # Create new partitioned table with same structure as original
+    # Partitioning enables efficient queries on recent data and easy archival
     execute """
     CREATE TABLE killmails_enriched_partitioned (
       killmail_id bigint NOT NULL,
@@ -77,32 +85,46 @@ defmodule EveDmv.Repo.Migrations.AddTablePartitioning do
     ) PARTITION BY RANGE (killmail_time)
     """
     
-    # Copy data from old table
+    # Migrate existing enriched data to preserve intelligence history
     execute "INSERT INTO killmails_enriched_partitioned SELECT * FROM killmails_enriched"
     
-    # Drop old table
+    # Drop old table with CASCADE to handle dependent views/functions
     execute "DROP TABLE killmails_enriched CASCADE"
     
-    # Rename new table
+    # Rename to maintain compatibility with existing queries
     execute "ALTER TABLE killmails_enriched_partitioned RENAME TO killmails_enriched"
     
-    # Recreate indexes
+    # Recreate all performance-critical indexes
+    # Unique constraint on killmail_id with partition key
     execute "CREATE UNIQUE INDEX killmails_enriched_unique_killmail_index ON killmails_enriched (killmail_id, killmail_time)"
+    # Value-based filtering for high-value kill detection
     execute "CREATE INDEX killmails_enriched_value_idx ON killmails_enriched (total_value)"
+    # Location-based queries for system activity
     execute "CREATE INDEX killmails_enriched_system_idx ON killmails_enriched (solar_system_id)"
+    # Alliance warfare tracking
     execute "CREATE INDEX killmails_enriched_victim_alliance_idx ON killmails_enriched (victim_alliance_id)"
+    # Corporation member loss tracking
     execute "CREATE INDEX killmails_enriched_victim_corp_idx ON killmails_enriched (victim_corporation_id)"
+    # Individual pilot activity tracking
     execute "CREATE INDEX killmails_enriched_victim_character_idx ON killmails_enriched (victim_character_id)"
+    # Time-based queries for activity feeds
     execute "CREATE INDEX killmails_enriched_time_idx ON killmails_enriched (killmail_time)"
+    # Composite indexes for common query patterns
     execute "CREATE INDEX killmails_enriched_killmail_time_total_value_index ON killmails_enriched (killmail_time, total_value)"
     execute "CREATE INDEX killmails_enriched_solar_system_id_killmail_time_index ON killmails_enriched (solar_system_id, killmail_time)"
     execute "CREATE INDEX killmails_enriched_victim_character_id_killmail_time_index ON killmails_enriched (victim_character_id, killmail_time)"
+    # Partial index for expensive kills (>100M ISK)
     execute "CREATE INDEX killmails_enriched_killmail_time_index ON killmails_enriched (killmail_time) WHERE total_value > 100000000"
+    # Expression index for epoch-based time calculations
     execute "CREATE INDEX killmails_enriched_timestamp_epoch_idx ON killmails_enriched (EXTRACT(EPOCH FROM killmail_time))"
+    # GIN index for fast module/fitting searches
     execute "CREATE INDEX killmails_enriched_module_tags_index ON killmails_enriched USING gin (module_tags)"
 
     # Create initial partitions for current and next few months
-    # Create partitions for killmails_raw
+    # Partitions are created monthly to balance query performance and maintenance overhead
+    
+    # Create partitions for killmails_raw - January through March 2025
+    # Each partition holds one month of raw killmail data
     execute """
     CREATE TABLE IF NOT EXISTS killmails_raw_2025_01 PARTITION OF killmails_raw
     FOR VALUES FROM ('2025-01-01') TO ('2025-02-01')
@@ -118,7 +140,8 @@ defmodule EveDmv.Repo.Migrations.AddTablePartitioning do
     FOR VALUES FROM ('2025-03-01') TO ('2025-04-01')
     """
     
-    # Create partitions for killmails_enriched
+    # Create matching partitions for killmails_enriched
+    # Ensures enriched data is partitioned identically to raw data
     execute """
     CREATE TABLE IF NOT EXISTS killmails_enriched_2025_01 PARTITION OF killmails_enriched
     FOR VALUES FROM ('2025-01-01') TO ('2025-02-01')
@@ -135,6 +158,7 @@ defmodule EveDmv.Repo.Migrations.AddTablePartitioning do
     """
     
     # Create a function to automatically create monthly partitions
+    # This utility function simplifies partition management and prevents gaps
     execute """
     CREATE OR REPLACE FUNCTION create_monthly_partitions(table_name text, start_date date, num_months int)
     RETURNS void AS $$
@@ -147,7 +171,7 @@ defmodule EveDmv.Repo.Migrations.AddTablePartitioning do
             partition_date := start_date + (i || ' months')::interval;
             partition_name := table_name || '_' || to_char(partition_date, 'YYYY_MM');
             
-            -- Check if partition already exists
+            -- Check if partition already exists to avoid errors
             IF NOT EXISTS (
                 SELECT 1 FROM pg_class c
                 JOIN pg_namespace n ON n.oid = c.relnamespace
@@ -168,11 +192,14 @@ defmodule EveDmv.Repo.Migrations.AddTablePartitioning do
     """
     
     # Create a maintenance function to ensure partitions exist for next 3 months
+    # Should be called periodically (e.g., via cron or scheduled job) to create partitions ahead of time
+    # This prevents INSERT failures when new months begin
     execute """
     CREATE OR REPLACE FUNCTION maintain_partitions()
     RETURNS void AS $$
     BEGIN
         -- Create partitions for next 3 months for both tables
+        -- This ensures smooth operation across month boundaries
         PERFORM create_monthly_partitions('killmails_raw', date_trunc('month', CURRENT_DATE), 3);
         PERFORM create_monthly_partitions('killmails_enriched', date_trunc('month', CURRENT_DATE), 3);
     END;
@@ -182,11 +209,14 @@ defmodule EveDmv.Repo.Migrations.AddTablePartitioning do
 
   def down do
     # Note: This is a destructive operation and would lose partition structure
+    # All data from partitions will be consolidated into regular tables
+    
     # Drop partition maintenance functions
     execute "DROP FUNCTION IF EXISTS maintain_partitions()"
     execute "DROP FUNCTION IF EXISTS create_monthly_partitions(text, date, int)"
     
     # Convert killmails_raw back to regular table
+    # This consolidates all partition data into a single table
     execute "CREATE TABLE killmails_raw_regular AS SELECT * FROM killmails_raw"
     execute "DROP TABLE killmails_raw CASCADE"
     execute "ALTER TABLE killmails_raw_regular RENAME TO killmails_raw"
@@ -196,12 +226,14 @@ defmodule EveDmv.Repo.Migrations.AddTablePartitioning do
     execute "CREATE UNIQUE INDEX killmails_raw_unique_killmail_index ON killmails_raw (killmail_id, killmail_time)"
     execute "CREATE INDEX killmails_raw_killmail_id_index ON killmails_raw (killmail_id)"
     
-    # Convert killmails_enriched back to regular table  
+    # Convert killmails_enriched back to regular table
+    # This consolidates all partition data into a single table
     execute "CREATE TABLE killmails_enriched_regular AS SELECT * FROM killmails_enriched"
     execute "DROP TABLE killmails_enriched CASCADE"
     execute "ALTER TABLE killmails_enriched_regular RENAME TO killmails_enriched"
     
-    # Recreate indexes on regular table
+    # Recreate basic indexes on regular table
+    # Note: Not all indexes from up() are recreated to match original schema
     execute "CREATE UNIQUE INDEX killmails_enriched_unique_killmail_index ON killmails_enriched (killmail_id, killmail_time)"
     execute "CREATE INDEX killmails_enriched_value_idx ON killmails_enriched (total_value)"
     execute "CREATE INDEX killmails_enriched_system_idx ON killmails_enriched (solar_system_id)"
