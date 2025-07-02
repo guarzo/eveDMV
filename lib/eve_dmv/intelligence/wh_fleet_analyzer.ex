@@ -11,7 +11,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
 
   alias EveDmv.Api
   alias EveDmv.Eve.EsiClient
-  alias EveDmv.Intelligence.{AssetAnalyzer, CharacterStats, WHFleetComposition, ShipDatabase}
+  alias EveDmv.Intelligence.{AssetAnalyzer, CharacterStats, ShipDatabase, WHFleetComposition}
 
   @doc """
   Analyze and optimize a fleet composition for wormhole operations.

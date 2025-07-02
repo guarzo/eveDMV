@@ -9,6 +9,8 @@ defmodule EveDmvWeb.Plugs.AuthRateLimiter do
   import Plug.Conn
   require Logger
 
+  alias EveDmv.Security.AuditLogger
+
   # Default configuration
   @default_max_attempts 5
   @default_window_minutes 15
@@ -50,6 +52,9 @@ defmodule EveDmvWeb.Plugs.AuthRateLimiter do
         conn
 
       {:blocked, remaining_time} ->
+        # Log rate limiting event
+        AuditLogger.log_rate_limit_exceeded(client_ip, conn.request_path, max_attempts)
+
         Logger.warning("Authentication rate limit exceeded", %{
           ip: client_ip,
           path: conn.request_path,
