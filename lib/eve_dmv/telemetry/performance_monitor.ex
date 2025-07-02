@@ -94,6 +94,17 @@ defmodule EveDmv.Telemetry.PerformanceMonitor do
   end
 
   @doc """
+  Track database metrics like connection pool stats.
+  """
+  def track_database_metric(metric_name, value) do
+    :telemetry.execute(
+      [:eve_dmv, :database, :metric],
+      %{value: value},
+      %{metric: metric_name}
+    )
+  end
+
+  @doc """
   Track LiveView rendering performance.
   """
   def track_liveview_render(view_name, fun) when is_function(fun) do

@@ -686,39 +686,6 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
     end)
   end
 
-  defp save_character_stats(basic_info, stats) do
-    # Calculate derived fields
-    dangerous_rating = calculate_danger_rating(stats)
-
-    # Build the complete stats record
-    attrs =
-      basic_info
-      |> Map.merge(stats.basic_stats)
-      |> Map.merge(stats.behavioral_patterns)
-      |> Map.put(:ship_usage, stats.ship_usage)
-      |> Map.put(:frequent_associates, stats.gang_composition)
-      |> Map.put(:active_systems, stats.geographic_patterns)
-      |> Map.put(:target_profile, stats.target_profile)
-      |> Map.put(:identified_weaknesses, stats.weaknesses)
-      |> Map.put(:dangerous_rating, dangerous_rating)
-      |> Map.put(:last_calculated_at, DateTime.utc_now())
-      |> Map.put(:data_completeness, calculate_completeness(stats))
-
-    # Upsert the stats
-    query =
-      CharacterStats
-      |> Ash.Query.new()
-      |> Ash.Query.filter(character_id == ^attrs.character_id)
-
-    case Ash.read_one(query, domain: Api) do
-      {:ok, existing} ->
-        Ash.update(existing, attrs, domain: Api)
-
-      {:error, _} ->
-        Ash.create(CharacterStats, attrs, domain: Api)
-    end
-  end
-
   @doc """
   Calculate danger rating on a scale of 1-5 based on combat statistics.
   """
@@ -726,22 +693,6 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
     combat_metrics = extract_combat_metrics(stats)
     score = calculate_danger_score(combat_metrics)
     convert_score_to_rating(score)
-  end
-
-  defp participant_to_map(participant) do
-    %{
-      "character_id" => participant.character_id,
-      "character_name" => participant.character_name,
-      "corporation_id" => participant.corporation_id,
-      "corporation_name" => participant.corporation_name,
-      "alliance_id" => participant.alliance_id,
-      "alliance_name" => participant.alliance_name,
-      "ship_type_id" => participant.ship_type_id,
-      "ship_name" => participant.ship_name,
-      "damage_done" => participant.damage_done,
-      "final_blow" => participant.final_blow,
-      "is_victim" => participant.is_victim
-    }
   end
 
   defp find_victim_in_participants(participants) do
@@ -800,6 +751,49 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
       total_activity >= 25 -> "Fair"
       total_activity >= 10 -> "Limited"
       true -> "Poor"
+    end
+  end
+
+  # Missing helper functions
+
+  defp victim_is_character?(killmail, character_id) do
+    victim = Enum.find(killmail.participants || killmail["participants"] || [], & &1.is_victim)
+    victim && (victim.character_id == character_id || victim["character_id"] == character_id)
+  end
+
+  defp extract_combat_metrics(stats) do
+    %{
+      kills:
+        Map.get(stats, :basic_stats, %{}) |> Map.get(:kills, %{count: 0}) |> Map.get(:count, 0),
+      losses:
+        Map.get(stats, :basic_stats, %{}) |> Map.get(:losses, %{count: 0}) |> Map.get(:count, 0),
+      solo_kills: Map.get(stats, :basic_stats, %{}) |> Map.get(:kills, %{}) |> Map.get(:solo, 0),
+      efficiency: Map.get(stats, :basic_stats, %{}) |> Map.get(:efficiency, 50.0),
+      kd_ratio: Map.get(stats, :basic_stats, %{}) |> Map.get(:kd_ratio, 1.0)
+    }
+  end
+
+  defp calculate_danger_score(combat_metrics) do
+    # Calculate a danger score from 0-100 based on combat metrics
+    # Max 40 points for K/D
+    kd_weight = min(combat_metrics.kd_ratio * 20, 40)
+    # Max 30 points for solo kills
+    solo_weight = min(combat_metrics.solo_kills * 2, 30)
+    # Max 20 points for activity
+    activity_weight = min(combat_metrics.kills / 10, 20)
+    # Max 10 points for efficiency
+    efficiency_weight = combat_metrics.efficiency / 10
+
+    kd_weight + solo_weight + activity_weight + efficiency_weight
+  end
+
+  defp convert_score_to_rating(score) do
+    cond do
+      score >= 80 -> 5
+      score >= 60 -> 4
+      score >= 40 -> 3
+      score >= 20 -> 2
+      true -> 1
     end
   end
 

@@ -109,6 +109,17 @@ defmodule EveDmv.Eve.EsiClient do
   defdelegate search(search_string, categories), to: EsiUniverseClient
 
   @doc """
+  Search for entities - alias for search/2 for consistency.
+  """
+  @spec search_entities(String.t(), [atom()]) ::
+          {:ok, map()} | {:error, :search_too_short | :service_unavailable}
+  def search_entities(search_string, categories) when is_list(categories) do
+    # Convert atom categories to strings
+    string_categories = Enum.map(categories, &Atom.to_string/1)
+    search(search_string, string_categories)
+  end
+
+  @doc """
   Get type information by ID.
   """
   @spec get_type(integer()) :: {:ok, map()} | {:error, :service_unavailable}
