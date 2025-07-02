@@ -58,7 +58,6 @@ defmodule EveDmv.Factories do
   defp build_realistic_killmail_data do
     # Create realistic killmail JSON structure
     victim_character_id = Enum.random(90_000_000..100_000_000)
-    attacker_character_id = Enum.random(90_000_000..100_000_000)
 
     %{
       "killmail_id" => System.unique_integer([:positive]),
@@ -70,20 +69,12 @@ defmodule EveDmv.Factories do
         "alliance_id" => Enum.random(99_000_000..100_000_000),
         # Rifter, Rupture, Stabber
         "ship_type_id" => Enum.random([587, 588, 589]),
-        "damage_taken" => Enum.random(1000..5000)
+        "damage_taken" => Enum.random(1000..50000),
+        "items" => build_random_items()
       },
-      "attackers" => [
-        %{
-          "character_id" => attacker_character_id,
-          "corporation_id" => Enum.random(1_000_000..2_000_000),
-          "alliance_id" => Enum.random(99_000_000..100_000_000),
-          "ship_type_id" => Enum.random([587, 588, 589]),
-          "final_blow" => true,
-          "damage_done" => Enum.random(1000..5000),
-          "security_status" => Enum.random(-10..10) / 1,
-          "weapon_type_id" => Enum.random([1000..2000])
-        }
-      ],
+      "attackers" => build_random_attackers(),
+      "moon_id" => nil,
+      "war_id" => nil,
       "zkb" => %{
         "locationID" => Enum.random(1_000_000_000..1_100_000_000),
         "hash" => generate_hash(),
@@ -149,6 +140,50 @@ defmodule EveDmv.Factories do
 
   defp generate_hash do
     :crypto.strong_rand_bytes(16) |> Base.encode16(case: :lower)
+  end
+
+  defp build_random_items do
+    item_count = Enum.random(0..10)
+
+    for _i <- 1..item_count do
+      %{
+        # Various modules
+        "item_type_id" => Enum.random([2185, 1541, 438, 215]),
+        "singleton" => 0,
+        "flag" => Enum.random(11..34),
+        "quantity_destroyed" => Enum.random(0..5),
+        "quantity_dropped" => Enum.random(0..5)
+      }
+    end
+  end
+
+  defp build_random_attackers do
+    attacker_count = Enum.random(1..5)
+
+    attackers =
+      for i <- 1..attacker_count do
+        %{
+          "character_id" => Enum.random(90_000_000..100_000_000),
+          "corporation_id" => Enum.random(1_000_000..2_000_000),
+          "alliance_id" => Enum.random(99_000_000..100_000_000),
+          # Rifter, Rupture, Stabber, Loki
+          "ship_type_id" => Enum.random([587, 588, 589, 17738]),
+          # Various weapons
+          "weapon_type_id" => Enum.random([2185, 2873, 3074]),
+          "damage_done" => Enum.random(100..10000),
+          "final_blow" => false,
+          # -5.0 to 5.0
+          "security_status" => :rand.uniform() * 10 - 5
+        }
+      end
+
+    # Ensure one attacker has final_blow
+    if attacker_count > 0 do
+      [first | rest] = attackers
+      [Map.put(first, "final_blow", true) | rest]
+    else
+      attackers
+    end
   end
 
   # Specialized factory functions for specific test scenarios
@@ -266,5 +301,129 @@ defmodule EveDmv.Factories do
   def random_datetime_in_past(days_back) do
     seconds_back = Enum.random(1..(days_back * 24 * 3600))
     DateTime.add(DateTime.utc_now(), -seconds_back, :second)
+  end
+
+  # Helper functions for creating specific patterns
+
+  def create_killmails_for_character(character_id, count, opts \\ []) do
+    for _i <- 1..count do
+      killmail_data = build_realistic_killmail_data()
+
+      # Determine if character is victim or attacker
+      if Keyword.get(opts, :as_victim, false) do
+        killmail_data = put_in(killmail_data, ["victim", "character_id"], character_id)
+      else
+        # Add character as an attacker
+        attackers = killmail_data["attackers"]
+
+        new_attacker = %{
+          "character_id" => character_id,
+          "corporation_id" => Enum.random(1_000_000..2_000_000),
+          "alliance_id" => Enum.random(99_000_000..100_000_000),
+          "ship_type_id" => Enum.random([587, 588, 589, 17738]),
+          "weapon_type_id" => Enum.random([2185, 2873, 3074]),
+          "damage_done" => Enum.random(100..10000),
+          "final_blow" => Keyword.get(opts, :final_blow, false),
+          "security_status" => :rand.uniform() * 10 - 5
+        }
+
+        killmail_data = Map.put(killmail_data, "attackers", [new_attacker | attackers])
+      end
+
+      # Override solar system if specified
+      killmail_data =
+        if system_id = Keyword.get(opts, :solar_system_id) do
+          Map.put(killmail_data, "solar_system_id", system_id)
+        else
+          killmail_data
+        end
+
+      # Create the killmail
+      create(:killmail_raw, %{killmail_data: killmail_data})
+    end
+  end
+
+  def create_wormhole_activity(character_id, wh_class, opts \\ []) do
+    # Wormhole system IDs are in specific ranges
+    system_id =
+      case wh_class do
+        1 -> Enum.random(31_000_001..31_000_100)
+        2 -> Enum.random(31_000_101..31_000_200)
+        3 -> Enum.random(31_000_201..31_000_300)
+        4 -> Enum.random(31_000_301..31_000_400)
+        5 -> Enum.random(31_000_401..31_000_500)
+        6 -> Enum.random(31_000_501..31_000_600)
+        _ -> Enum.random(31_000_001..31_000_600)
+      end
+
+    # Use appropriate ship types for WH space
+    ship_types =
+      case wh_class do
+        # Smaller ships
+        c when c in [1, 2, 3] -> [587, 588, 589, 624]
+        # T3 cruisers, Tengu
+        c when c in [4, 5] -> [17738, 22428, 11993]
+        # Dreads and carriers
+        6 -> [23917, 23919, 24483]
+        _ -> [587, 588, 589]
+      end
+
+    create_killmails_for_character(
+      character_id,
+      1,
+      Keyword.merge(
+        [
+          solar_system_id: system_id,
+          ship_type_id: Enum.random(ship_types)
+        ],
+        opts
+      )
+    )
+  end
+
+  def create_high_threat_pattern(character_id, opts \\ []) do
+    # Create pattern indicating dangerous player
+    count = Keyword.get(opts, :count, 20)
+
+    for _i <- 1..count do
+      killmail_data = %{
+        "killmail_id" => System.unique_integer([:positive]),
+        "killmail_time" =>
+          DateTime.utc_now()
+          |> DateTime.add(-Enum.random(1..86400), :second)
+          |> DateTime.to_iso8601(),
+        "solar_system_id" => Enum.random(30_000_000..31_000_000),
+        "attackers" => [
+          %{
+            "character_id" => character_id,
+            "corporation_id" => Enum.random(1_000_000..2_000_000),
+            "alliance_id" => Enum.random(99_000_000..100_000_000),
+            # Loki (T3 cruiser)
+            "ship_type_id" => 17738,
+            "weapon_type_id" => 2873,
+            "damage_done" => Enum.random(5000..15000),
+            "final_blow" => true,
+            "security_status" => -5.0
+          }
+        ],
+        "victim" => %{
+          "character_id" => Enum.random(90_000_000..95_000_000),
+          "corporation_id" => Enum.random(1_000_000..2_000_000),
+          # Cheap ships
+          "ship_type_id" => Enum.random([587, 588, 589]),
+          "damage_taken" => Enum.random(5000..15000),
+          "items" => []
+        },
+        "moon_id" => nil,
+        "war_id" => nil,
+        "zkb" => %{
+          "hash" => generate_hash(),
+          "points" => Enum.random(50..100),
+          "solo" => true
+        }
+      }
+
+      create(:killmail_raw, %{killmail_data: killmail_data})
+    end
   end
 end
