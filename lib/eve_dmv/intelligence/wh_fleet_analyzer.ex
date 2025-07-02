@@ -8,7 +8,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
 
   require Logger
   alias EveDmv.Eve.EsiClient
-  alias EveDmv.Intelligence.{AssetAnalyzer, CharacterStats, WHFleetComposition}
+  alias EveDmv.Intelligence.{AssetAnalyzer, CharacterStats, WHFleetComposition, ShipDatabase}
 
   @doc """
   Analyze and optimize a fleet composition for wormhole operations.
@@ -1308,149 +1308,27 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
     end
   end
 
-  # Ship role mapping
-  @ship_roles %{
-    # Fleet Command
-    "Damnation" => "fc",
-    "Nighthawk" => "fc",
-    "Claymore" => "fc",
-    "Sleipnir" => "fc",
-    # DPS
-    "Legion" => "dps",
-    "Proteus" => "dps",
-    "Tengu" => "dps",
-    "Loki" => "dps",
-    "Muninn" => "dps",
-    "Cerberus" => "dps",
-    # Logistics
-    "Guardian" => "logistics",
-    "Scimitar" => "logistics",
-    "Basilisk" => "logistics",
-    "Oneiros" => "logistics",
-    # Tackle
-    "Ares" => "tackle",
-    "Malediction" => "tackle",
-    "Stiletto" => "tackle",
-    "Crow" => "tackle",
-    "Interceptor" => "tackle",
-    # EWAR
-    "Crucifier" => "ewar",
-    "Maulus" => "ewar",
-    "Vigil" => "ewar",
-    "Griffin" => "ewar"
-  }
+  # Ship data now handled by ShipDatabase module
 
   @doc """
   Categorize ship role based on ship name.
   """
   def categorize_ship_role(ship_name) do
-    Map.get(@ship_roles, ship_name, "unknown")
+    ShipDatabase.get_ship_role(ship_name)
   end
 
   @doc """
   Calculate ship mass based on ship name.
   """
   def calculate_ship_mass(ship_name) do
-    ship_masses = %{
-      # Command Ships
-      "Damnation" => 13_500_000,
-      "Nighthawk" => 13_200_000,
-      "Claymore" => 13_800_000,
-      "Sleipnir" => 13_600_000,
-
-      # Strategic Cruisers
-      "Legion" => 13_000_000,
-      "Proteus" => 12_800_000,
-      "Tengu" => 12_900_000,
-      "Loki" => 13_100_000,
-
-      # Logistics
-      "Guardian" => 11_800_000,
-      "Scimitar" => 12_000_000,
-      "Basilisk" => 11_900_000,
-      "Oneiros" => 12_100_000,
-
-      # Heavy Assault Cruisers
-      "Muninn" => 12_200_000,
-      "Cerberus" => 12_000_000,
-      "Zealot" => 12_400_000,
-      "Eagle" => 12_100_000,
-
-      # Interceptors
-      "Ares" => 1_200_000,
-      "Malediction" => 1_100_000,
-      "Stiletto" => 1_150_000,
-      "Crow" => 1_180_000,
-
-      # EWAR Frigates
-      "Crucifier" => 1_300_000,
-      "Maulus" => 1_250_000,
-      "Vigil" => 1_280_000,
-      "Griffin" => 1_220_000,
-
-      # Common ships
-      "Rifter" => 1_400_000,
-      "Punisher" => 1_350_000,
-      "Bantam" => 1_300_000,
-      "Maller" => 11_500_000,
-      "Drake" => 14_500_000
-    }
-
-    # Default to 10M kg
-    Map.get(ship_masses, ship_name, 10_000_000)
+    ShipDatabase.get_ship_mass(ship_name)
   end
 
   @doc """
   Check if ship is part of a specific doctrine.
   """
   def doctrine_ship?(ship_name, doctrine) do
-    doctrine_ships = %{
-      "armor_cruiser" => [
-        "Legion",
-        "Proteus",
-        "Damnation",
-        "Guardian",
-        "Zealot",
-        "Muninn",
-        "Ares",
-        "Crucifier"
-      ],
-      "armor" => [
-        "Legion",
-        "Proteus",
-        "Damnation",
-        "Guardian",
-        "Zealot",
-        "Muninn",
-        "Ares",
-        "Crucifier"
-      ],
-      "shield_cruiser" => [
-        "Tengu",
-        "Loki",
-        "Nighthawk",
-        "Scimitar",
-        "Cerberus",
-        "Eagle",
-        "Stiletto",
-        "Griffin"
-      ],
-      "shield" => [
-        "Tengu",
-        "Loki",
-        "Nighthawk",
-        "Scimitar",
-        "Cerberus",
-        "Eagle",
-        "Stiletto",
-        "Griffin"
-      ],
-      "unknown" => [],
-      "mixed" => []
-    }
-
-    ships = Map.get(doctrine_ships, doctrine, [])
-    ship_name in ships
+    ShipDatabase.doctrine_ship?(ship_name, doctrine)
   end
 
   @doc """
