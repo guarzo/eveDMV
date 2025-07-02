@@ -1,16 +1,16 @@
 services:
   db:
     image: postgres:17-alpine
-    container_name: eve_tracker_db_delta
+    container_name: eve_tracker_db_gamma
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: eve_tracker_delta
+      POSTGRES_DB: eve_tracker_gamma
       POSTGRES_HOST_AUTH_METHOD: trust
     volumes:
-      - postgres_data_delta:/var/lib/postgresql/data
+      - postgres_data_gamma:/var/lib/postgresql/data
     ports:
-      - "5437:5432"
+      - "5436:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -19,12 +19,12 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: eve_tracker_redis_delta
+    container_name: eve_tracker_redis_gamma
     command: ["redis-server", "--save", "900", "1", "--loglevel", "warning"]
     volumes:
-      - redis_data_delta:/data
+      - redis_data_gamma:/data
     ports:
-      - "6384:6379"
+      - "6383:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -35,22 +35,22 @@ services:
     build:
       context: .
       dockerfile: .devcontainer/Dockerfile
-    container_name: eve_tracker_app_delta
+    container_name: eve_tracker_app_gamma
     volumes:
       - .:/workspace:cached
-      - mix_deps_delta:/workspace/deps
-      - mix_build_delta:/workspace/_build
+      - mix_deps_gamma:/workspace/deps
+      - mix_build_gamma:/workspace/_build
     working_dir: /workspace
     environment:
       - MIX_ENV=dev
-      - DATABASE_URL=ecto://postgres:postgres@db/eve_tracker_delta
+      - DATABASE_URL=ecto://postgres:postgres@db/eve_tracker_gamma
       - REDIS_URL=redis://redis:6379
       - PHX_HOST=localhost
-      - PHX_PORT=4014
+      - PHX_PORT=4013
     env_file:
       - .env
     ports:
-      - "4014:4014"
+      - "4013:4013"
     depends_on:
       db:
         condition: service_healthy
@@ -63,11 +63,11 @@ services:
     command: sleep infinity
 
 volumes:
-  postgres_data_delta:
+  postgres_data_gamma:
     driver: local
-  redis_data_delta:
+  redis_data_gamma:
     driver: local
-  mix_deps_delta:
+  mix_deps_gamma:
     driver: local
-  mix_build_delta:
+  mix_build_gamma:
     driver: local 

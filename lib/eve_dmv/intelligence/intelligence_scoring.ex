@@ -119,31 +119,32 @@ defmodule EveDmv.Intelligence.IntelligenceScoring do
 
       if length(individual_scores) >= 2 do
         # Calculate fleet synergy
-        with {:ok, correlation_analysis} <-
-               AdvancedAnalytics.advanced_character_correlation(character_ids) do
-          fleet_metrics = %{
-            individual_competency: calculate_fleet_individual_competency(individual_scores),
-            role_balance: calculate_fleet_role_balance(individual_scores),
-            synergy_factor: calculate_fleet_synergy(correlation_analysis),
-            command_structure: assess_fleet_command_structure(individual_scores),
-            tactical_coherence: assess_tactical_coherence(individual_scores),
-            operational_reliability: assess_operational_reliability(individual_scores)
-          }
+        case AdvancedAnalytics.advanced_character_correlation(character_ids) do
+          {:ok, correlation_analysis} ->
+            fleet_metrics = %{
+              individual_competency: calculate_fleet_individual_competency(individual_scores),
+              role_balance: calculate_fleet_role_balance(individual_scores),
+              synergy_factor: calculate_fleet_synergy(correlation_analysis),
+              command_structure: assess_fleet_command_structure(individual_scores),
+              tactical_coherence: assess_tactical_coherence(individual_scores),
+              operational_reliability: assess_operational_reliability(individual_scores)
+            }
 
-          fleet_score = calculate_overall_fleet_score(fleet_metrics)
-          fleet_grade = assign_fleet_grade(fleet_score)
+            fleet_score = calculate_overall_fleet_score(fleet_metrics)
+            fleet_grade = assign_fleet_grade(fleet_score)
 
-          {:ok,
-           %{
-             fleet_readiness_score: fleet_score,
-             fleet_grade: fleet_grade,
-             fleet_metrics: fleet_metrics,
-             character_count: length(individual_scores),
-             optimization_suggestions: suggest_fleet_optimizations(fleet_metrics),
-             analysis_timestamp: DateTime.utc_now()
-           }}
-        else
-          {:error, "Could not analyze character correlations"}
+            {:ok,
+             %{
+               fleet_readiness_score: fleet_score,
+               fleet_grade: fleet_grade,
+               fleet_metrics: fleet_metrics,
+               character_count: length(individual_scores),
+               optimization_suggestions: suggest_fleet_optimizations(fleet_metrics),
+               analysis_timestamp: DateTime.utc_now()
+             }}
+
+          _ ->
+            {:error, "Could not analyze character correlations"}
         end
       else
         {:error, "Insufficient valid character data for fleet analysis"}

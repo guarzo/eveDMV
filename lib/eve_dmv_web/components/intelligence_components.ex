@@ -1,7 +1,7 @@
 defmodule EveDmvWeb.IntelligenceComponents do
   @moduledoc """
   Enhanced UI components for displaying intelligence analysis results.
-  
+
   Provides sophisticated visualization components for character analysis,
   threat assessment, and intelligence scoring with improved user experience.
   """
@@ -21,18 +21,18 @@ defmodule EveDmvWeb.IntelligenceComponents do
       <div class="score-header">
         <div class="score-grade-display">
           <span class={"grade-badge grade-#{String.downcase(@score_data.score_grade)}"}>
-            <%= @score_data.score_grade %>
+            {@score_data.score_grade}
           </span>
           <div class="score-details">
-            <div class="overall-score"><%= Float.round(@score_data.overall_score * 100, 1) %>%</div>
+            <div class="overall-score">{Float.round(@score_data.overall_score * 100, 1)}%</div>
             <div class="confidence-level">
-              Confidence: <%= Float.round(@score_data.confidence_level * 100, 1) %>%
+              Confidence: {Float.round(@score_data.confidence_level * 100, 1)}%
             </div>
           </div>
         </div>
-        
+
         <div class="score-methodology">
-          <small class="text-muted"><%= @score_data.scoring_methodology %></small>
+          <small class="text-muted">{@score_data.scoring_methodology}</small>
         </div>
       </div>
 
@@ -40,9 +40,9 @@ defmodule EveDmvWeb.IntelligenceComponents do
         <h4>Component Analysis</h4>
         <div class="score-components">
           <%= for {component, score} <- @score_data.component_scores do %>
-            <.score_component_bar 
-              label={humanize_component(component)} 
-              score={score} 
+            <.score_component_bar
+              label={humanize_component(component)}
+              score={score}
               component={component}
             />
           <% end %>
@@ -55,7 +55,7 @@ defmodule EveDmvWeb.IntelligenceComponents do
           <%= for recommendation <- @score_data.recommendations do %>
             <li class="recommendation-item">
               <i class="icon-info"></i>
-              <%= recommendation %>
+              {recommendation}
             </li>
           <% end %>
         </ul>
@@ -63,7 +63,7 @@ defmodule EveDmvWeb.IntelligenceComponents do
 
       <div class="analysis-timestamp">
         <small class="text-muted">
-          Analysis completed: <%= format_timestamp(@score_data.analysis_timestamp) %>
+          Analysis completed: {format_timestamp(@score_data.analysis_timestamp)}
         </small>
       </div>
     </div>
@@ -81,14 +81,11 @@ defmodule EveDmvWeb.IntelligenceComponents do
     ~H"""
     <div class="score-component">
       <div class="component-label">
-        <span class="label-text"><%= @label %></span>
-        <span class="score-value"><%= Float.round(@score * 100, 1) %>%</span>
+        <span class="label-text">{@label}</span>
+        <span class="score-value">{Float.round(@score * 100, 1)}%</span>
       </div>
       <div class="progress-bar-container">
-        <div 
-          class={"progress-bar progress-#{score_color(@score)}"} 
-          style={"width: #{@score * 100}%"}
-        >
+        <div class={"progress-bar progress-#{score_color(@score)}"} style={"width: #{@score * 100}%"}>
         </div>
       </div>
     </div>
@@ -107,25 +104,30 @@ defmodule EveDmvWeb.IntelligenceComponents do
       <div class="threat-header">
         <div class={"threat-level-indicator threat-#{@threat_data.threat_level}"}>
           <div class="threat-icon">
-            <%= threat_level_icon(@threat_data.threat_level) %>
+            {threat_level_icon(@threat_data.threat_level)}
           </div>
           <div class="threat-details">
-            <h3>Threat Level: <%= String.upcase(@threat_data.threat_level) %></h3>
+            <h3>Threat Level: {String.upcase(@threat_data.threat_level)}</h3>
             <div class="threat-score">
-              Score: <%= Float.round(@threat_data.threat_score * 100, 1) %>%
+              Score: {Float.round(@threat_data.threat_score * 100, 1)}%
             </div>
           </div>
         </div>
-        
-        <button 
+
+        <button
           class="expand-toggle"
-          phx-click={JS.toggle(to: "#threat-details-#{:crypto.hash(:md5, inspect(@threat_data)) |> Base.encode16(case: :lower)}")}
+          phx-click={
+            JS.toggle(
+              to:
+                "#threat-details-#{:crypto.hash(:md5, inspect(@threat_data)) |> Base.encode16(case: :lower)}"
+            )
+          }
         >
-          <%= if @expanded, do: "Hide Details", else: "Show Details" %>
+          {if @expanded, do: "Hide Details", else: "Show Details"}
         </button>
       </div>
 
-      <div 
+      <div
         id={"threat-details-#{:crypto.hash(:md5, inspect(@threat_data)) |> Base.encode16(case: :lower)}"}
         class={if @expanded, do: "threat-details expanded", else: "threat-details"}
       >
@@ -134,10 +136,10 @@ defmodule EveDmvWeb.IntelligenceComponents do
           <div class="indicators-grid">
             <%= for {indicator, score} <- @threat_data.threat_indicators do %>
               <div class="threat-indicator">
-                <div class="indicator-label"><%= humanize_component(indicator) %></div>
+                <div class="indicator-label">{humanize_component(indicator)}</div>
                 <div class="indicator-value">
                   <.threat_indicator_meter score={score} />
-                  <span class="score-text"><%= Float.round(score * 100, 1) %>%</span>
+                  <span class="score-text">{Float.round(score * 100, 1)}%</span>
                 </div>
               </div>
             <% end %>
@@ -150,7 +152,7 @@ defmodule EveDmvWeb.IntelligenceComponents do
             <%= for strategy <- @threat_data.mitigation_strategies do %>
               <li class="mitigation-item">
                 <i class="icon-shield"></i>
-                <%= strategy %>
+                {strategy}
               </li>
             <% end %>
           </ul>
@@ -172,11 +174,11 @@ defmodule EveDmvWeb.IntelligenceComponents do
       <div class="patterns-header">
         <h3>Behavioral Pattern Analysis</h3>
         <div class="character-info">
-          <span class="character-name"><%= @character_name %></span>
+          <span class="character-name">{@character_name}</span>
           <div class="confidence-indicator">
             <span class="confidence-label">Analysis Confidence:</span>
             <div class={"confidence-badge confidence-#{confidence_level(@pattern_data.confidence_score)}"}>
-              <%= Float.round(@pattern_data.confidence_score * 100, 1) %>%
+              {Float.round(@pattern_data.confidence_score * 100, 1)}%
             </div>
           </div>
         </div>
@@ -210,7 +212,7 @@ defmodule EveDmvWeb.IntelligenceComponents do
           <%= for recommendation <- @pattern_data.recommendations do %>
             <div class="recommendation-card">
               <i class="icon-lightbulb"></i>
-              <span><%= recommendation %></span>
+              <span>{recommendation}</span>
             </div>
           <% end %>
         </div>
@@ -231,13 +233,13 @@ defmodule EveDmvWeb.IntelligenceComponents do
       <div class="fitness-header">
         <div class={"recruitment-decision recruitment-#{@fitness_data.recruitment_recommendation.decision}"}>
           <div class="decision-badge">
-            <%= String.upcase(@fitness_data.recruitment_recommendation.decision) %>
+            {String.upcase(@fitness_data.recruitment_recommendation.decision)}
           </div>
           <div class="fitness-score">
-            Fitness Score: <%= Float.round(@fitness_data.recruitment_score * 100, 1) %>%
+            Fitness Score: {Float.round(@fitness_data.recruitment_score * 100, 1)}%
           </div>
           <div class="priority-indicator">
-            Priority: <%= String.upcase(@fitness_data.recruitment_recommendation.priority) %>
+            Priority: {String.upcase(@fitness_data.recruitment_recommendation.priority)}
           </div>
         </div>
       </div>
@@ -246,9 +248,9 @@ defmodule EveDmvWeb.IntelligenceComponents do
         <h4>Fitness Components</h4>
         <div class="fitness-components">
           <%= for {component, score} <- @fitness_data.fitness_components do %>
-            <.fitness_component_display 
-              component={component} 
-              score={score} 
+            <.fitness_component_display
+              component={component}
+              score={score}
               is_key_factor={component in @fitness_data.decision_factors}
             />
           <% end %>
@@ -261,19 +263,19 @@ defmodule EveDmvWeb.IntelligenceComponents do
           <%= for {requirement, met} <- @fitness_data.requirement_scores do %>
             <div class={"requirement-item requirement-#{if met, do: "met", else: "not-met"}"}>
               <i class={if met, do: "icon-check", else: "icon-x"}></i>
-              <span><%= humanize_component(requirement) %></span>
+              <span>{humanize_component(requirement)}</span>
             </div>
           <% end %>
         </div>
       </div>
 
-      <div class="probation-terms" :if={length(@fitness_data.probation_recommendations) > 0}>
+      <div :if={length(@fitness_data.probation_recommendations) > 0} class="probation-terms">
         <h4>Recommended Probation Terms</h4>
         <ul class="probation-list">
           <%= for term <- @fitness_data.probation_recommendations do %>
             <li class="probation-term">
               <i class="icon-clock"></i>
-              <%= term %>
+              {term}
             </li>
           <% end %>
         </ul>
@@ -282,7 +284,7 @@ defmodule EveDmvWeb.IntelligenceComponents do
       <div class="recruitment-notes">
         <div class="notes-content">
           <strong>Assessment Notes:</strong>
-          <p><%= @fitness_data.recruitment_recommendation.notes %></p>
+          <p>{@fitness_data.recruitment_recommendation.notes}</p>
         </div>
       </div>
     </div>
@@ -302,47 +304,43 @@ defmodule EveDmvWeb.IntelligenceComponents do
         <h2>Intelligence Operations Dashboard</h2>
         <div class="dashboard-controls">
           <div class="update-indicator">
-            <span class={"status-dot status-#{if @live_updates, do: "active", else: "inactive"}"}></span>
+            <span class={"status-dot status-#{if @live_updates, do: "active", else: "inactive"}"}>
+            </span>
             <span class="status-text">
-              <%= if @live_updates, do: "Live Updates Active", else: "Updates Paused" %>
+              {if @live_updates, do: "Live Updates Active", else: "Updates Paused"}
             </span>
           </div>
-          <button 
-            class="refresh-button"
-            phx-click="refresh_dashboard"
-            title="Refresh Dashboard"
-          >
-            <i class="icon-refresh"></i>
-            Refresh
+          <button class="refresh-button" phx-click="refresh_dashboard" title="Refresh Dashboard">
+            <i class="icon-refresh"></i> Refresh
           </button>
         </div>
       </div>
 
       <div class="dashboard-metrics">
         <div class="metrics-grid">
-          <.metric_card 
+          <.metric_card
             title="Active Analyses"
             value={@dashboard_data.active_analyses}
             icon="icon-activity"
             trend={@dashboard_data.analysis_trend}
           />
-          
-          <.metric_card 
+
+          <.metric_card
             title="Threat Alerts"
             value={@dashboard_data.threat_alerts}
             icon="icon-alert-triangle"
             trend={@dashboard_data.alert_trend}
             alert_level={@dashboard_data.max_threat_level}
           />
-          
-          <.metric_card 
+
+          <.metric_card
             title="Cache Performance"
             value={"#{@dashboard_data.cache_hit_ratio}%"}
             icon="icon-database"
             trend={@dashboard_data.cache_trend}
           />
-          
-          <.metric_card 
+
+          <.metric_card
             title="System Performance"
             value={"#{@dashboard_data.avg_response_time}ms"}
             icon="icon-cpu"
@@ -382,11 +380,11 @@ defmodule EveDmvWeb.IntelligenceComponents do
       </div>
       <div class="rhythm-metric">
         <span class="metric-label">Peak Period:</span>
-        <span class="metric-value"><%= @rhythm.peak_activity_period %></span>
+        <span class="metric-value">{@rhythm.peak_activity_period}</span>
       </div>
       <div class="rhythm-metric">
         <span class="metric-label">Frequency:</span>
-        <span class="metric-value"><%= Float.round(@rhythm.engagement_frequency, 2) %>/day</span>
+        <span class="metric-value">{Float.round(@rhythm.engagement_frequency, 2)}/day</span>
       </div>
     </div>
     """
@@ -407,7 +405,7 @@ defmodule EveDmvWeb.IntelligenceComponents do
         <span class="metric-label">Tactical Preferences:</span>
         <div class="tactical-tags">
           <%= for preference <- @patterns.tactical_preferences do %>
-            <span class="tactical-tag"><%= preference %></span>
+            <span class="tactical-tag">{preference}</span>
           <% end %>
         </div>
       </div>
@@ -426,7 +424,7 @@ defmodule EveDmvWeb.IntelligenceComponents do
         <span class="metric-label">Leadership Indicators:</span>
         <div class="leadership-indicators">
           <%= for indicator <- @patterns.leadership_indicators do %>
-            <span class="indicator-badge"><%= indicator %></span>
+            <span class="indicator-badge">{indicator}</span>
           <% end %>
         </div>
       </div>
@@ -443,19 +441,20 @@ defmodule EveDmvWeb.IntelligenceComponents do
     <div class="anomaly-detection">
       <div class="anomaly-summary">
         <div class={"anomaly-count anomaly-#{@anomalies.severity}"}>
-          <span class="count-number"><%= @anomalies.anomaly_count %></span>
+          <span class="count-number">{@anomalies.anomaly_count}</span>
           <span class="count-label">Anomalies</span>
         </div>
         <div class="severity-indicator">
-          Severity: <span class={"severity-#{@anomalies.severity}"}><%= String.upcase(@anomalies.severity) %></span>
+          Severity:
+          <span class={"severity-#{@anomalies.severity}"}>{String.upcase(@anomalies.severity)}</span>
         </div>
       </div>
-      
-      <div class="anomaly-list" :if={length(@anomalies.anomalies_detected) > 0}>
+
+      <div :if={length(@anomalies.anomalies_detected) > 0} class="anomaly-list">
         <%= for anomaly <- @anomalies.anomalies_detected do %>
           <div class="anomaly-item">
             <i class="icon-alert-circle"></i>
-            <span><%= anomaly %></span>
+            <span>{anomaly}</span>
           </div>
         <% end %>
       </div>
@@ -468,18 +467,19 @@ defmodule EveDmvWeb.IntelligenceComponents do
     <div class={"fitness-component #{if @is_key_factor, do: "key-factor", else: ""}"}>
       <div class="component-header">
         <span class="component-name">
-          <%= humanize_component(@component) %>
+          {humanize_component(@component)}
           <%= if @is_key_factor do %>
             <i class="icon-star key-factor-icon" title="Key Decision Factor"></i>
           <% end %>
         </span>
-        <span class="component-score"><%= Float.round(@score * 100, 1) %>%</span>
+        <span class="component-score">{Float.round(@score * 100, 1)}%</span>
       </div>
       <div class="component-bar">
-        <div 
-          class={"progress-fill fitness-#{fitness_score_color(@score)}"} 
+        <div
+          class={"progress-fill fitness-#{fitness_score_color(@score)}"}
           style={"width: #{@score * 100}%"}
-        ></div>
+        >
+        </div>
       </div>
     </div>
     """
@@ -492,11 +492,11 @@ defmodule EveDmvWeb.IntelligenceComponents do
         <i class={@icon}></i>
       </div>
       <div class="metric-content">
-        <div class="metric-title"><%= @title %></div>
-        <div class="metric-value"><%= @value %></div>
+        <div class="metric-title">{@title}</div>
+        <div class="metric-value">{@value}</div>
         <div class={"metric-trend trend-#{@trend}"}>
           <i class={"icon-#{trend_icon(@trend)}"}></i>
-          <span><%= trend_text(@trend) %></span>
+          <span>{trend_text(@trend)}</span>
         </div>
       </div>
     </div>
@@ -510,9 +510,9 @@ defmodule EveDmvWeb.IntelligenceComponents do
         <div class="timeline-item">
           <div class="timeline-marker"></div>
           <div class="timeline-content">
-            <div class="activity-type"><%= activity.type %></div>
-            <div class="activity-description"><%= activity.description %></div>
-            <div class="activity-timestamp"><%= format_relative_time(activity.timestamp) %></div>
+            <div class="activity-type">{activity.type}</div>
+            <div class="activity-description">{activity.description}</div>
+            <div class="activity-timestamp">{format_relative_time(activity.timestamp)}</div>
           </div>
         </div>
       <% end %>
@@ -527,24 +527,25 @@ defmodule EveDmvWeb.IntelligenceComponents do
         <%= for {level, count} <- @threats do %>
           <div class="legend-item">
             <span class={"legend-color threat-#{level}"}></span>
-            <span class="legend-label"><%= String.upcase(level) %></span>
-            <span class="legend-count"><%= count %></span>
+            <span class="legend-label">{String.upcase(level)}</span>
+            <span class="legend-count">{count}</span>
           </div>
         <% end %>
       </div>
-      
+
       <div class="chart-visualization">
         <!-- Simplified threat distribution chart -->
         <%= for {level, count} <- @threats do %>
           <div class="threat-bar">
-            <div class="bar-label"><%= String.upcase(level) %></div>
+            <div class="bar-label">{String.upcase(level)}</div>
             <div class="bar-container">
-              <div 
-                class={"bar-fill threat-#{level}"} 
+              <div
+                class={"bar-fill threat-#{level}"}
                 style={"width: #{calculate_bar_width(@threats, count)}%"}
-              ></div>
+              >
+              </div>
             </div>
-            <div class="bar-count"><%= count %></div>
+            <div class="bar-count">{count}</div>
           </div>
         <% end %>
       </div>
@@ -558,8 +559,8 @@ defmodule EveDmvWeb.IntelligenceComponents do
       <div class="metrics-row">
         <%= for {metric, value} <- @metrics do %>
           <div class="performance-metric">
-            <div class="metric-name"><%= humanize_component(metric) %></div>
-            <div class="metric-value"><%= format_metric_value(metric, value) %></div>
+            <div class="metric-name">{humanize_component(metric)}</div>
+            <div class="metric-value">{format_metric_value(metric, value)}</div>
           </div>
         <% end %>
       </div>
@@ -570,10 +571,11 @@ defmodule EveDmvWeb.IntelligenceComponents do
   defp threat_indicator_meter(assigns) do
     ~H"""
     <div class="threat-meter">
-      <div 
-        class={"meter-fill threat-meter-#{threat_meter_color(@score)}"} 
+      <div
+        class={"meter-fill threat-meter-#{threat_meter_color(@score)}"}
         style={"width: #{@score * 100}%"}
-      ></div>
+      >
+      </div>
     </div>
     """
   end
@@ -581,10 +583,11 @@ defmodule EveDmvWeb.IntelligenceComponents do
   defp mini_progress_bar(assigns) do
     ~H"""
     <div class="mini-progress-bar">
-      <div 
-        class={"mini-progress-fill progress-#{score_color(@score)}"} 
+      <div
+        class={"mini-progress-fill progress-#{score_color(@score)}"}
         style={"width: #{@score * 100}%"}
-      ></div>
+      >
+      </div>
     </div>
     """
   end
@@ -644,7 +647,7 @@ defmodule EveDmvWeb.IntelligenceComponents do
 
   defp calculate_bar_width(threats, count) do
     max_count = threats |> Enum.map(fn {_, c} -> c end) |> Enum.max(fn -> 1 end)
-    if max_count > 0, do: (count / max_count) * 100, else: 0
+    if max_count > 0, do: count / max_count * 100, else: 0
   end
 
   defp format_timestamp(timestamp) do
@@ -655,7 +658,7 @@ defmodule EveDmvWeb.IntelligenceComponents do
 
   defp format_relative_time(timestamp) do
     diff = DateTime.diff(DateTime.utc_now(), timestamp, :second)
-    
+
     cond do
       diff < 60 -> "#{diff}s ago"
       diff < 3600 -> "#{div(diff, 60)}m ago"
