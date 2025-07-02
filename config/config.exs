@@ -120,6 +120,16 @@ config :eve_dmv, :name_resolver_cache_warming,
     1_000_125
   ]
 
+# Database connection pool defaults
+# These can be overridden in environment-specific configs
+config :eve_dmv, EveDmv.Repo,
+  pool_size: 20,
+  queue_target: 50,
+  queue_interval: 1000,
+  timeout: 15_000,
+  ownership_timeout: 20_000,
+  pool_timeout: 5_000
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"
