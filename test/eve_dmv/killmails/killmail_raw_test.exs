@@ -3,8 +3,7 @@ defmodule EveDmv.Killmails.KillmailRawTest do
   Tests for KillmailRaw resource operations.
   """
 
-  use ExUnit.Case, async: true
-  import EveDmv.TestHelpers
+  use EveDmv.DataCase, async: true
   import Ash.Expr, only: [expr: 1]
   require Ash.Query
 
@@ -12,8 +11,36 @@ defmodule EveDmv.Killmails.KillmailRawTest do
   alias EveDmv.Killmails.{KillmailRaw, TestDataGenerator}
 
   setup do
-    setup_database()
+    # Create necessary partitions for test data
+    create_test_partitions()
     :ok
+  end
+
+  defp create_test_partitions do
+    # Create monthly partitions for the current and next month
+    current_date = Date.utc_today()
+    next_month = Date.add(current_date, 30)
+
+    for date <- [current_date, next_month] do
+      partition_name = "killmails_raw_#{Calendar.strftime(date, "%Y_%m")}"
+      create_partition_if_not_exists("killmails_raw", partition_name, date)
+    end
+  end
+
+  defp create_partition_if_not_exists(table_name, partition_name, date) do
+    start_date = Date.beginning_of_month(date)
+    end_date = Date.add(Date.beginning_of_month(Date.add(date, 32)), -1)
+    next_month_start = Date.add(end_date, 1)
+
+    query = """
+    CREATE TABLE IF NOT EXISTS #{partition_name} PARTITION OF #{table_name}
+    FOR VALUES FROM ('#{start_date}') TO ('#{next_month_start}')
+    """
+
+    Ecto.Adapters.SQL.query!(EveDmv.Repo, query)
+  rescue
+    # Partition might already exist, ignore error
+    Postgrex.Error -> :ok
   end
 
   describe "create/1" do
@@ -64,7 +91,6 @@ defmodule EveDmv.Killmails.KillmailRawTest do
   end
 
   describe "ingest_from_source/1" do
-    @tag :skip
     test "upserts killmail data without duplicates" do
       killmail_data = TestDataGenerator.generate_sample_killmail()
 
@@ -143,7 +169,6 @@ defmodule EveDmv.Killmails.KillmailRawTest do
       :ok
     end
 
-    @tag :skip
     test "recent_kills returns killmails sorted by time" do
       killmails =
         KillmailRaw
@@ -158,7 +183,6 @@ defmodule EveDmv.Killmails.KillmailRawTest do
       assert times == Enum.sort(times, &(DateTime.compare(&1, &2) != :lt))
     end
 
-    @tag :skip
     test "by_system filters by solar system" do
       killmails =
         KillmailRaw
@@ -172,7 +196,6 @@ defmodule EveDmv.Killmails.KillmailRawTest do
   end
 
   describe "calculations" do
-    @tag :skip
     test "age_in_hours calculates correct age" do
       # Create a killmail from 2 hours ago
       two_hours_ago = DateTime.add(DateTime.utc_now(), -2 * 3600, :second)

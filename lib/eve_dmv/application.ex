@@ -31,6 +31,8 @@ defmodule EveDmv.Application do
       EveDmv.Surveillance.MatchingEngine,
       # Start the query performance monitor
       EveDmv.Telemetry.QueryMonitor,
+      # Start the query result cache
+      EveDmv.Database.QueryCache,
       # Start the re-enrichment worker
       EveDmv.Enrichment.ReEnrichmentWorker,
       # Start the real-time price updater
