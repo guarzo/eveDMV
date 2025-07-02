@@ -9,7 +9,7 @@ defmodule EveDmv.Eve.EsiRequestClient do
 
   require Logger
   alias EveDmv.Eve.{CircuitBreaker, ErrorClassifier, FallbackStrategy, ReliabilityConfig}
-  alias EveDmv.Telemetry.PerformanceMonitor
+  alias EveDmv.Telemetry.{PerformanceMonitor, RequestMonitor}
 
   @default_base_url "https://esi.evetech.net"
   @default_datasource "tranquility"
@@ -136,27 +136,46 @@ defmodule EveDmv.Eve.EsiRequestClient do
   end
 
   defp execute_http_request(path, headers, params, timeout) do
-    case HTTPoison.get(build_url(path), headers,
-           timeout: timeout,
-           recv_timeout: timeout,
-           params: params
-         ) do
-      {:ok, %HTTPoison.Response{status_code: status_code, body: body, headers: resp_headers}}
-      when status_code in 200..299 ->
-        case Jason.decode(body) do
-          {:ok, data} ->
-            {:ok, %{body: data, status_code: status_code, headers: Map.new(resp_headers)}}
+    start_time = System.monotonic_time(:microsecond)
+    service = detect_service_from_path(path)
 
-          {:error, reason} ->
-            {:error, {:json_error, reason}}
-        end
+    result =
+      case HTTPoison.get(build_url(path), headers,
+             timeout: timeout,
+             recv_timeout: timeout,
+             params: params
+           ) do
+        {:ok, %HTTPoison.Response{status_code: status_code, body: body, headers: resp_headers}}
+        when status_code in 200..299 ->
+          case Jason.decode(body) do
+            {:ok, data} ->
+              {:ok, %{body: data, status_code: status_code, headers: Map.new(resp_headers)}}
 
-      {:ok, %HTTPoison.Response{status_code: status_code}} ->
-        {:error, {:http_error, status_code}}
+            {:error, reason} ->
+              {:error, {:json_error, reason}}
+          end
 
-      {:error, %HTTPoison.Error{reason: reason}} ->
-        {:error, {:connection_error, reason}}
-    end
+        {:ok, %HTTPoison.Response{status_code: status_code}} ->
+          {:error, {:http_error, status_code}}
+
+        {:error, %HTTPoison.Error{reason: reason}} ->
+          {:error, {:connection_error, reason}}
+      end
+
+    # Track request metrics
+    duration = System.monotonic_time(:microsecond) - start_time
+
+    status =
+      case result do
+        {:ok, _} -> :success
+        {:error, {:http_error, code}} when code in [420, 429] -> :rate_limited
+        {:error, {:connection_error, :timeout}} -> :timeout
+        _ -> :failure
+      end
+
+    RequestMonitor.track_request(service, duration, status)
+
+    result
   end
 
   defp handle_request_error(error, classification, path, cache_key, opts) do
@@ -266,6 +285,20 @@ defmodule EveDmv.Eve.EsiRequestClient do
       String.contains?(path, "/alliances/") -> :alliance
       String.contains?(path, "/killmails/") -> :killmail
       String.contains?(path, "/universe/") -> :universe
+      true -> :unknown
+    end
+  end
+
+  defp detect_service_from_path(path) do
+    # Same as detect_data_type but also includes market and search
+    cond do
+      String.contains?(path, "/characters/") -> :character
+      String.contains?(path, "/corporations/") -> :corporation
+      String.contains?(path, "/alliances/") -> :alliance
+      String.contains?(path, "/killmails/") -> :killmail
+      String.contains?(path, "/universe/") -> :universe
+      String.contains?(path, "/markets/") -> :market
+      String.contains?(path, "/search/") -> :search
       true -> :unknown
     end
   end
