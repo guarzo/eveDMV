@@ -15,7 +15,12 @@ defmodule EveDmvWeb.Endpoint do
     store: :cookie,
     key: "_eve_dmv_key",
     signing_salt: "fTSiD2Eh",
-    same_site: "Lax"
+    same_site: "Lax",
+    # Enable in production
+    secure: true,
+    http_only: true,
+    # 24 hours
+    max_age: 24 * 60 * 60
   ]
 
   socket "/live", Phoenix.LiveView.Socket,

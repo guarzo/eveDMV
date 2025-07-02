@@ -1,20 +1,20 @@
 defmodule EveDmvWeb.Plugs.SecurityHeaders do
   @moduledoc """
   Plug for adding security headers to HTTP responses.
-  
+
   This plug adds Content Security Policy and other security-related headers
   to protect against common web vulnerabilities.
   """
-  
+
   @behaviour Plug
-  
+
   def init(opts), do: opts
-  
+
   def call(conn, _opts) do
     conn
     |> Plug.Conn.put_resp_header("content-security-policy", csp_header())
   end
-  
+
   defp csp_header do
     """
     default-src 'self';
