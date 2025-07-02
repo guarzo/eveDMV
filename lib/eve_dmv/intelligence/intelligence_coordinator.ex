@@ -212,40 +212,21 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinator do
 
   defp get_specialized_analysis(character_id, use_cache) do
     # Gather specialized analysis from different modules
-    vetting_result =
-      if use_cache do
-        IntelligenceCache.get_vetting_analysis(character_id)
-      else
-        WHVettingAnalyzer.analyze_character(character_id)
-      end
+    vetting_result = get_vetting_analysis(character_id, use_cache)
 
     # Get other specialized analyses (without caching for now)
     activity_result =
-      try do
-        {:ok, MemberActivityAnalyzer.analyze_member_activity(character_id)}
-      rescue
-        error ->
-          Logger.warning("Member activity analysis failed for #{character_id}: #{inspect(error)}")
-          {:ok, nil}
-      end
+      safe_analyze(:activity, character_id, &MemberActivityAnalyzer.analyze_member_activity/1)
 
     fleet_result =
-      try do
-        {:ok, WHFleetAnalyzer.analyze_pilot_performance(character_id)}
-      rescue
-        error ->
-          Logger.warning("Fleet analysis failed for #{character_id}: #{inspect(error)}")
-          {:ok, nil}
-      end
+      safe_analyze(:fleet, character_id, &WHFleetAnalyzer.analyze_pilot_performance/1)
 
     home_defense_result =
-      try do
-        {:ok, HomeDefenseAnalyzer.analyze_character_home_defense(character_id)}
-      rescue
-        error ->
-          Logger.warning("Home defense analysis failed for #{character_id}: #{inspect(error)}")
-          {:ok, nil}
-      end
+      safe_analyze(
+        :home_defense,
+        character_id,
+        &HomeDefenseAnalyzer.analyze_character_home_defense/1
+      )
 
     # Combine results
     case {vetting_result, activity_result, fleet_result, home_defense_result} do
@@ -286,6 +267,22 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinator do
 
         {:ok, specialized}
     end
+  end
+
+  defp get_vetting_analysis(character_id, use_cache) do
+    if use_cache do
+      IntelligenceCache.get_vetting_analysis(character_id)
+    else
+      WHVettingAnalyzer.analyze_character(character_id)
+    end
+  end
+
+  defp safe_analyze(type, character_id, analysis_fn) do
+    {:ok, analysis_fn.(character_id)}
+  rescue
+    error ->
+      Logger.warning("#{type} analysis failed for #{character_id}: #{inspect(error)}")
+      {:ok, nil}
   end
 
   defp get_correlations(character_id, use_cache, include_correlations) do

@@ -9,7 +9,6 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
   require Logger
   require Ash.Query
 
-  alias EveDmv.Api
   alias EveDmv.Eve.EsiClient
   alias EveDmv.Intelligence.{AssetAnalyzer, CharacterStats, ShipDatabase, WHFleetComposition}
 
@@ -460,36 +459,40 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
   end
 
   defp estimate_ship_cost_by_category(category, role) do
-    # Estimate cost based on ship category and role
-    base_cost =
-      case category do
-        "Frigate" -> 15_000_000
-        "Destroyer" -> 25_000_000
-        "Cruiser" -> 100_000_000
-        "Battlecruiser" -> 150_000_000
-        "Battleship" -> 200_000_000
-        "Capital" -> 2_000_000_000
-        "Supercapital" -> 20_000_000_000
-        _ -> 50_000_000
-      end
-
-    # Apply role multipliers
-    role_multiplier =
-      case role do
-        # Command ships are expensive
-        "fc" -> 2.5
-        # Logistics ships cost more
-        "logistics" -> 1.8
-        # T3/HACs are pricey
-        "dps" -> 1.5
-        # Interceptors are base cost
-        "tackle" -> 1.0
-        # EWAR ships moderate cost
-        "ewar" -> 1.2
-        _ -> 1.0
-      end
-
+    base_cost = get_base_cost_by_category(category)
+    role_multiplier = get_role_multiplier(role)
     round(base_cost * role_multiplier)
+  end
+
+  defp get_base_cost_by_category(category) do
+    category_costs = %{
+      "Frigate" => 15_000_000,
+      "Destroyer" => 25_000_000,
+      "Cruiser" => 100_000_000,
+      "Battlecruiser" => 150_000_000,
+      "Battleship" => 200_000_000,
+      "Capital" => 2_000_000_000,
+      "Supercapital" => 20_000_000_000
+    }
+
+    Map.get(category_costs, category, 50_000_000)
+  end
+
+  defp get_role_multiplier(role) do
+    role_multipliers = %{
+      # Command ships are expensive
+      "fc" => 2.5,
+      # Logistics ships cost more
+      "logistics" => 1.8,
+      # T3/HACs are pricey
+      "dps" => 1.5,
+      # Interceptors are base cost
+      "tackle" => 1.0,
+      # EWAR ships moderate cost
+      "ewar" => 1.2
+    }
+
+    Map.get(role_multipliers, role, 1.0)
   end
 
   defp calculate_total_fleet_mass(doctrine_template, ship_data) do
@@ -768,40 +771,47 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
   defp check_skill_via_ship_usage(pilot, skill) do
     ship_groups = Map.get(pilot, :ship_groups_flown, %{})
 
-    case skill do
-      "Logistics" <> _ ->
-        # Check if they've flown logistics ships
-        # T1 logi experience
-        Map.get(ship_groups, "Logistics", 0) > 0 or
-          Map.get(ship_groups, "Cruisers", 0) > 5
+    skill_requirements()
+    |> Map.get(skill_prefix(skill), :generic)
+    |> check_skill_requirement(pilot, ship_groups)
+  end
 
-      "HAC" <> _ ->
-        # Heavy Assault Cruisers or significant cruiser experience
-        Map.get(ship_groups, "Heavy Assault Cruisers", 0) > 0 or
-          Map.get(ship_groups, "Cruisers", 0) > 10
+  defp skill_prefix(skill) do
+    cond do
+      String.starts_with?(skill, "Logistics") -> :logistics
+      String.starts_with?(skill, "HAC") -> :hac
+      String.starts_with?(skill, "Interceptors") -> :interceptors
+      String.starts_with?(skill, "Command Ships") -> :command_ships
+      String.starts_with?(skill, "Recon Ships") -> :recon_ships
+      String.starts_with?(skill, "Interdictors") -> :interdictors
+      true -> :generic
+    end
+  end
 
-      "Interceptors" <> _ ->
-        # Interceptors or significant frigate experience
-        Map.get(ship_groups, "Interceptors", 0) > 0 or
-          Map.get(ship_groups, "Frigates", 0) > 15
+  defp skill_requirements do
+    %{
+      logistics: {:either, [{"Logistics", 0}, {"Cruisers", 5}]},
+      hac: {:either, [{"Heavy Assault Cruisers", 0}, {"Cruisers", 10}]},
+      interceptors: {:either, [{"Interceptors", 0}, {"Frigates", 15}]},
+      command_ships: {:either, [{"Command Ships", 0}, {"Battlecruisers", 5}]},
+      recon_ships: {:complex_recon},
+      interdictors: {:either, [{"Interdictors", 0}, {"Destroyers", 5}]},
+      generic: {:generic}
+    }
+  end
 
-      "Command Ships" <> _ ->
-        # Command ships or battlecruiser experience
-        Map.get(ship_groups, "Command Ships", 0) > 0 or
-          Map.get(ship_groups, "Battlecruisers", 0) > 5
+  defp check_skill_requirement(requirement, pilot, ship_groups) do
+    case requirement do
+      {:either, options} ->
+        Enum.any?(options, fn {ship_type, min_count} ->
+          Map.get(ship_groups, ship_type, 0) > min_count
+        end)
 
-      "Recon Ships" <> _ ->
-        # Recon ships or significant cruiser PvP
+      :complex_recon ->
         Map.get(ship_groups, "Recon Ships", 0) > 0 or
           (Map.get(ship_groups, "Cruisers", 0) > 10 and pilot.kd_ratio > 1.0)
 
-      "Interdictors" <> _ ->
-        # Interdictors or destroyer experience
-        Map.get(ship_groups, "Interdictors", 0) > 0 or
-          Map.get(ship_groups, "Destroyers", 0) > 5
-
-      _ ->
-        # Generic competence check for unknown skills
+      :generic ->
         pilot.kill_count + pilot.loss_count >= 20
     end
   end
@@ -811,13 +821,15 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
     base_score = pilot.kill_count + pilot.loss_count
     recency_bonus = calculate_recency_bonus(pilot.last_analyzed_at)
     role_score = calculate_role_specific_score(pilot, role)
-    
+
     base_score + recency_bonus + role_score
   end
 
   defp calculate_recency_bonus(last_analyzed_at) do
     case last_analyzed_at do
-      nil -> 0
+      nil ->
+        0
+
       last_date ->
         days_ago = DateTime.diff(DateTime.utc_now(), last_date, :day)
         # Up to 20 point bonus for recent activity
@@ -852,7 +864,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
   defp calculate_tackle_score(pilot) do
     ship_groups = Map.get(pilot, :ship_groups_flown, %{})
     score = 0
-    
+
     score = if Map.get(ship_groups, "Frigates", 0) > 10, do: score + 30, else: score
     if Map.get(ship_groups, "Interceptors", 0) > 0, do: score + 40, else: score
   end
@@ -886,7 +898,10 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
 
       # Calculate skill readiness based on ship usage patterns
       skill_readiness =
-        Enum.map(required_skills, &assess_skill_readiness(&1, pilot, pilot_ship_usage, total_experience))
+        Enum.map(
+          required_skills,
+          &assess_skill_readiness(&1, pilot, pilot_ship_usage, total_experience)
+        )
 
       avg_readiness = Enum.sum(skill_readiness) / length(skill_readiness)
       Float.round(avg_readiness, 2)

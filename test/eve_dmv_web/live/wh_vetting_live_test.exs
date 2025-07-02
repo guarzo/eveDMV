@@ -276,7 +276,7 @@ defmodule EveDmvWeb.WHVettingLiveTest do
 
       # Click on history item
       view
-      |> element("[phx-click=\"load_vetting\"][phx-value-character-id=\"#{character_id}\"]")
+      |> element(~s([phx-click="load_vetting"][phx-value-character-id="#{character_id}"]))
       |> render_click()
 
       html = render(view)

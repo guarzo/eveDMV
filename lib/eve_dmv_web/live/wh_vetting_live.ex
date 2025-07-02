@@ -169,7 +169,7 @@ defmodule EveDmvWeb.WHVettingLive do
   end
 
   defp process_character_search_results([]), do: {:ok, []}
-  
+
   defp process_character_search_results(character_ids) do
     # Fetch character details for the found IDs
     case EveDmv.Eve.EsiClient.get_characters(character_ids) do

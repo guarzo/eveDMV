@@ -175,41 +175,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzerSimplified do
   end
 
   defp save_character_stats(basic_info, metrics) do
-    # Convert metrics to character stats format
-    combat_metrics = Map.get(metrics, :combat_metrics, %{})
-    ship_usage = Map.get(metrics, :ship_usage, %{})
-    geographic = Map.get(metrics, :geographic_patterns, %{})
-    temporal = Map.get(metrics, :temporal_patterns, %{})
-    danger = Map.get(metrics, :dangerous_rating, %{})
-    associates = Map.get(metrics, :associate_analysis, %{})
-
-    attrs = %{
-      character_id: basic_info.character_id,
-      character_name: basic_info.character_name,
-      corporation_id: basic_info.corporation_id,
-      corporation_name: basic_info.corporation_name,
-      alliance_id: basic_info.alliance_id,
-      alliance_name: basic_info.alliance_name,
-      total_kills: combat_metrics.total_kills || 0,
-      total_losses: combat_metrics.total_losses || 0,
-      kd_ratio: combat_metrics.kd_ratio || 0.0,
-      solo_kills: combat_metrics.solo_kills || 0,
-      solo_losses: combat_metrics.solo_losses || 0,
-      dangerous_rating: danger.score || 0.0,
-      solo_ratio: combat_metrics.solo_kills / max(1, combat_metrics.total_kills),
-      avg_gang_size: associates.typical_gang_size || 0.0,
-      efficiency: calculate_efficiency(combat_metrics),
-      recent_activity_score: calculate_recent_activity_score(metrics),
-      primary_timezone: temporal.prime_timezone || "Unknown",
-      most_active_regions: geographic.most_active_regions || [],
-      most_active_systems: geographic.most_active_systems || [],
-      ship_usage: format_ship_usage(ship_usage),
-      ship_diversity_score: ship_usage.ship_diversity_score || 0.0,
-      analysis_data: Jason.encode!(metrics),
-      analysis_timestamp: DateTime.utc_now(),
-      completeness_score: calculate_completeness_score(metrics),
-      last_seen: DateTime.utc_now()
-    }
+    attrs = build_character_stats_attrs(basic_info, metrics)
 
     case Ash.create(CharacterStats, attrs,
            domain: Api,
@@ -237,6 +203,43 @@ defmodule EveDmv.Intelligence.CharacterAnalyzerSimplified do
     else
       Float.round(kills / (kills + losses) * 100, 1)
     end
+  end
+
+  defp build_character_stats_attrs(basic_info, metrics) do
+    combat_metrics = Map.get(metrics, :combat_metrics, %{})
+    ship_usage = Map.get(metrics, :ship_usage, %{})
+    geographic = Map.get(metrics, :geographic_patterns, %{})
+    temporal = Map.get(metrics, :temporal_patterns, %{})
+    danger = Map.get(metrics, :dangerous_rating, %{})
+    associates = Map.get(metrics, :associate_analysis, %{})
+
+    %{
+      character_id: basic_info.character_id,
+      character_name: basic_info.character_name,
+      corporation_id: basic_info.corporation_id,
+      corporation_name: basic_info.corporation_name,
+      alliance_id: basic_info.alliance_id,
+      alliance_name: basic_info.alliance_name,
+      total_kills: combat_metrics.total_kills || 0,
+      total_losses: combat_metrics.total_losses || 0,
+      kd_ratio: combat_metrics.kd_ratio || 0.0,
+      solo_kills: combat_metrics.solo_kills || 0,
+      solo_losses: combat_metrics.solo_losses || 0,
+      dangerous_rating: danger.score || 0.0,
+      solo_ratio: combat_metrics.solo_kills / max(1, combat_metrics.total_kills),
+      avg_gang_size: associates.typical_gang_size || 0.0,
+      efficiency: calculate_efficiency(combat_metrics),
+      recent_activity_score: calculate_recent_activity_score(metrics),
+      primary_timezone: temporal.prime_timezone || "Unknown",
+      most_active_regions: geographic.most_active_regions || [],
+      most_active_systems: geographic.most_active_systems || [],
+      ship_usage: format_ship_usage(ship_usage),
+      ship_diversity_score: ship_usage.ship_diversity_score || 0.0,
+      analysis_data: Jason.encode!(metrics),
+      analysis_timestamp: DateTime.utc_now(),
+      completeness_score: calculate_completeness_score(metrics),
+      last_seen: DateTime.utc_now()
+    }
   end
 
   defp calculate_recent_activity_score(metrics) do

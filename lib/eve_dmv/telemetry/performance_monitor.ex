@@ -485,39 +485,42 @@ defmodule EveDmv.Telemetry.PerformanceMonitor do
 
     case Ecto.Adapters.SQL.query(EveDmv.Repo, query) do
       {:ok, %{rows: [[total, active, idle, idle_tx, waiting, longest_query]]}} ->
-        pool_config = EveDmv.Repo.config()
-        pool_size = Keyword.get(pool_config, :pool_size, 10)
-
-        issues = []
-
-        # Check for connection pool exhaustion
-        issues = if total >= pool_size * 0.9, do: ["near_pool_limit" | issues], else: issues
-
-        # Check for idle in transaction
-        issues = if idle_tx > 0, do: ["idle_in_transaction" | issues], else: issues
-
-        # Check for long running queries
-        issues =
-          if longest_query && longest_query > 300,
-            do: ["long_running_queries" | issues],
-            else: issues
-
-        %{
-          total: total || 0,
-          active: active || 0,
-          idle: idle || 0,
-          idle_in_transaction: idle_tx || 0,
-          waiting: waiting || 0,
-          longest_query_seconds: longest_query,
-          pool_size: pool_size,
-          utilization_percent: Float.round((total || 0) / pool_size * 100, 2),
-          has_issues: length(issues) > 0,
-          issues: issues
-        }
+        build_connection_health_metrics(total, active, idle, idle_tx, waiting, longest_query)
 
       {:error, _} ->
         %{has_issues: true, issues: ["failed_to_query_connections"]}
     end
+  end
+
+  defp build_connection_health_metrics(total, active, idle, idle_tx, waiting, longest_query) do
+    pool_config = EveDmv.Repo.config()
+    pool_size = Keyword.get(pool_config, :pool_size, 10)
+
+    issues = detect_connection_issues(total, idle_tx, longest_query, pool_size)
+
+    %{
+      total: total || 0,
+      active: active || 0,
+      idle: idle || 0,
+      idle_in_transaction: idle_tx || 0,
+      waiting: waiting || 0,
+      longest_query_seconds: longest_query,
+      pool_size: pool_size,
+      utilization_percent: Float.round((total || 0) / pool_size * 100, 2),
+      has_issues: length(issues) > 0,
+      issues: issues
+    }
+  end
+
+  defp detect_connection_issues(total, idle_tx, longest_query, pool_size) do
+    []
+    |> add_if_issue(total >= pool_size * 0.9, "near_pool_limit")
+    |> add_if_issue(idle_tx > 0, "idle_in_transaction")
+    |> add_if_issue(longest_query && longest_query > 300, "long_running_queries")
+  end
+
+  defp add_if_issue(issues, condition, issue) do
+    if condition, do: [issue | issues], else: issues
   end
 
   defp monitor_query_health do

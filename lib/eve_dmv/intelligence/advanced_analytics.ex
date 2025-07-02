@@ -259,39 +259,55 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   end
 
   defp detect_behavioral_anomalies(stats) do
-    # Statistical anomaly detection
-    anomalies = []
-
-    # Check for unusual activity spikes
-    activity_score = (stats.total_kills || 0) + (stats.total_losses || 0)
-
-    if activity_score > 500 and (stats.character_age_days || 365) < 180 do
-      anomalies = ["Unusually high activity for character age" | anomalies]
-    end
-
-    # Check for extreme ratios
-    kd_ratio = stats.kd_ratio || 1.0
-
-    if kd_ratio > 10.0 do
-      anomalies = ["Extremely high K/D ratio" | anomalies]
-    end
-
-    if kd_ratio < 0.1 and activity_score > 50 do
-      anomalies = ["Unusually low K/D ratio for activity level" | anomalies]
-    end
-
-    # Check for solo vs group inconsistencies
-    solo_ratio = stats.solo_ratio || 0.5
-
-    if solo_ratio > 0.9 and (stats.avg_gang_size || 1.0) > 5.0 do
-      anomalies = ["Inconsistent solo vs group activity patterns" | anomalies]
-    end
+    anomalies =
+      []
+      |> check_activity_anomalies(stats)
+      |> check_ratio_anomalies(stats)
+      |> check_pattern_inconsistencies(stats)
 
     %{
       anomalies_detected: anomalies,
       anomaly_count: length(anomalies),
       severity: categorize_anomaly_severity(anomalies)
     }
+  end
+
+  defp check_activity_anomalies(anomalies, stats) do
+    activity_score = (stats.total_kills || 0) + (stats.total_losses || 0)
+    character_age = stats.character_age_days || 365
+
+    if activity_score > 500 and character_age < 180 do
+      ["Unusually high activity for character age" | anomalies]
+    else
+      anomalies
+    end
+  end
+
+  defp check_ratio_anomalies(anomalies, stats) do
+    kd_ratio = stats.kd_ratio || 1.0
+    activity_score = (stats.total_kills || 0) + (stats.total_losses || 0)
+
+    anomalies
+    |> add_if(kd_ratio > 10.0, "Extremely high K/D ratio")
+    |> add_if(
+      kd_ratio < 0.1 and activity_score > 50,
+      "Unusually low K/D ratio for activity level"
+    )
+  end
+
+  defp check_pattern_inconsistencies(anomalies, stats) do
+    solo_ratio = stats.solo_ratio || 0.5
+    avg_gang_size = stats.avg_gang_size || 1.0
+
+    add_if(
+      anomalies,
+      solo_ratio > 0.9 and avg_gang_size > 5.0,
+      "Inconsistent solo vs group activity patterns"
+    )
+  end
+
+  defp add_if(list, condition, item) do
+    if condition, do: [item | list], else: list
   end
 
   defp calculate_pattern_confidence(patterns) do
