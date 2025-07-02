@@ -6,8 +6,8 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
 
   import Phoenix.LiveViewTest
 
-  alias EveDmv.Intelligence.{CharacterAnalyzer, IntelligenceCache}
   alias EveDmv.Accounts.User
+  alias EveDmv.Intelligence.{CharacterAnalyzer, IntelligenceCache}
 
   setup %{conn: conn} do
     # Create authenticated user

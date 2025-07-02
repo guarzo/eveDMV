@@ -167,10 +167,10 @@ defmodule EveDmv.Factories do
           "corporation_id" => Enum.random(1_000_000..2_000_000),
           "alliance_id" => Enum.random(99_000_000..100_000_000),
           # Rifter, Rupture, Stabber, Loki
-          "ship_type_id" => Enum.random([587, 588, 589, 17738]),
+          "ship_type_id" => Enum.random([587, 588, 589, 17_738]),
           # Various weapons
           "weapon_type_id" => Enum.random([2185, 2873, 3074]),
-          "damage_done" => Enum.random(100..10000),
+          "damage_done" => Enum.random(100..10_000),
           "final_blow" => false,
           # -5.0 to 5.0
           "security_status" => :rand.uniform() * 10 - 5
@@ -399,7 +399,7 @@ defmodule EveDmv.Factories do
             "corporation_id" => Enum.random(1_000_000..2_000_000),
             "alliance_id" => Enum.random(99_000_000..100_000_000),
             # Loki (T3 cruiser)
-            "ship_type_id" => 17738,
+            "ship_type_id" => 17_738,
             "weapon_type_id" => 2873,
             "damage_done" => Enum.random(5000..15_000),
             "final_blow" => true,

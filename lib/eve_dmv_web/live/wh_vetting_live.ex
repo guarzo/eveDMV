@@ -159,57 +159,55 @@ defmodule EveDmvWeb.WHVettingLive do
     # Search for characters using ESI search API
     case EveDmv.Eve.EsiClient.search_entities(query, [:character]) do
       {:ok, results} ->
-        # Get character details for search results
         character_ids = Map.get(results, "character", [])
-
-        if Enum.empty?(character_ids) do
-          {:ok, []}
-        else
-          # Fetch character details for the found IDs
-          case EveDmv.Eve.EsiClient.get_characters(character_ids) do
-            {:ok, character_details} ->
-              # Format results for display
-              formatted_results =
-                character_details
-                |> Enum.map(fn {char_id, char_data} ->
-                  %{
-                    character_id: char_id,
-                    character_name: char_data["name"] || "Unknown",
-                    corporation_id: char_data["corporation_id"],
-                    corporation_name: char_data["corporation_name"],
-                    alliance_id: char_data["alliance_id"],
-                    alliance_name: char_data["alliance_name"]
-                  }
-                end)
-                # Limit to 10 results
-                |> Enum.take(10)
-
-              {:ok, formatted_results}
-
-            {:error, _reason} ->
-              # Fallback to basic results without corporation info
-              basic_results =
-                character_ids
-                |> Enum.take(10)
-                |> Enum.map(fn char_id ->
-                  %{
-                    character_id: char_id,
-                    character_name: "Character #{char_id}",
-                    corporation_id: nil,
-                    corporation_name: nil,
-                    alliance_id: nil,
-                    alliance_name: nil
-                  }
-                end)
-
-              {:ok, basic_results}
-          end
-        end
+        process_character_search_results(character_ids)
 
       {:error, reason} ->
         Logger.warning("Character search failed: #{inspect(reason)}")
         {:ok, []}
     end
+  end
+
+  defp process_character_search_results([]), do: {:ok, []}
+  
+  defp process_character_search_results(character_ids) do
+    # Fetch character details for the found IDs
+    case EveDmv.Eve.EsiClient.get_characters(character_ids) do
+      {:ok, character_details} ->
+        formatted_results = format_character_details(character_details)
+        {:ok, Enum.take(formatted_results, 10)}
+
+      {:error, _reason} ->
+        # Fallback to basic results without corporation info
+        basic_results = create_basic_character_results(character_ids)
+        {:ok, Enum.take(basic_results, 10)}
+    end
+  end
+
+  defp format_character_details(character_details) do
+    Enum.map(character_details, fn {char_id, char_data} ->
+      %{
+        character_id: char_id,
+        character_name: char_data["name"] || "Unknown",
+        corporation_id: char_data["corporation_id"],
+        corporation_name: char_data["corporation_name"],
+        alliance_id: char_data["alliance_id"],
+        alliance_name: char_data["alliance_name"]
+      }
+    end)
+  end
+
+  defp create_basic_character_results(character_ids) do
+    Enum.map(character_ids, fn char_id ->
+      %{
+        character_id: char_id,
+        character_name: "Character #{char_id}",
+        corporation_id: nil,
+        corporation_name: nil,
+        alliance_id: nil,
+        alliance_name: nil
+      }
+    end)
   end
 
   defp get_current_user_character_id(user) do

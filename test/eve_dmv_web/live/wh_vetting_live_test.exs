@@ -6,8 +6,8 @@ defmodule EveDmvWeb.WHVettingLiveTest do
 
   import Phoenix.LiveViewTest
 
-  alias EveDmv.Intelligence.WHVettingAnalyzer
   alias EveDmv.Accounts.User
+  alias EveDmv.Intelligence.WHVettingAnalyzer
 
   setup %{conn: conn} do
     # Create authenticated user

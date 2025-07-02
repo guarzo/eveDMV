@@ -300,7 +300,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzerTest do
       # Create threats with different danger levels
       threats = [
         # High threat - many kills in Loki
-        {95_999_001, 10, 17738},
+        {95_999_001, 10, 17_738},
         # Medium threat - some kills in Rifter
         {95_999_002, 5, 587},
         # Low threat - one kill
@@ -399,7 +399,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzerTest do
 
   defp create_timezone_distributed_activity(corporation_id, home_system_id) do
     # USTZ: 00:00 - 08:00 EVE time
-    # EUTZ: 08:00 - 16:00 EVE time  
+    # EUTZ: 08:00 - 16:00 EVE time
     # AUTZ: 16:00 - 24:00 EVE time
 
     timezones = [
@@ -419,7 +419,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzerTest do
         kill_time =
           DateTime.utc_now()
           # Past week
-          |> DateTime.add(-Enum.random(1..7) * 86400, :second)
+          |> DateTime.add(-Enum.random(1..7) * 86_400, :second)
           |> Map.put(:hour, hour)
           |> Map.put(:minute, Enum.random(0..59))
 
