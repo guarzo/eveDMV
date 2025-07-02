@@ -13,6 +13,7 @@ defmodule EveDmvWeb.AuthController do
     |> store_in_session(user)
     |> assign(:current_user, user)
     |> put_session("current_user_id", user.id)
+    |> put_session("last_activity", System.system_time(:millisecond))
     |> put_flash(:info, "Welcome back, #{user.eve_character_name || "pilot"}!")
     |> redirect(to: ~p"/dashboard")
   end

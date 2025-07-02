@@ -682,7 +682,6 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
     end)
   end
 
-
   @doc """
   Calculate danger rating on a scale of 1-5 based on combat statistics.
   """
@@ -752,36 +751,42 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
   end
 
   # Missing helper functions
-  
+
   defp victim_is_character?(killmail, character_id) do
     victim = Enum.find(killmail.participants || killmail["participants"] || [], & &1.is_victim)
     victim && (victim.character_id == character_id || victim["character_id"] == character_id)
   end
-  
+
   defp extract_combat_metrics(stats) do
     %{
-      kills: Map.get(stats, :basic_stats, %{}) |> Map.get(:kills, %{count: 0}) |> Map.get(:count, 0),
-      losses: Map.get(stats, :basic_stats, %{}) |> Map.get(:losses, %{count: 0}) |> Map.get(:count, 0),
+      kills:
+        Map.get(stats, :basic_stats, %{}) |> Map.get(:kills, %{count: 0}) |> Map.get(:count, 0),
+      losses:
+        Map.get(stats, :basic_stats, %{}) |> Map.get(:losses, %{count: 0}) |> Map.get(:count, 0),
       solo_kills: Map.get(stats, :basic_stats, %{}) |> Map.get(:kills, %{}) |> Map.get(:solo, 0),
       efficiency: Map.get(stats, :basic_stats, %{}) |> Map.get(:efficiency, 50.0),
       kd_ratio: Map.get(stats, :basic_stats, %{}) |> Map.get(:kd_ratio, 1.0)
     }
   end
-  
+
   defp calculate_danger_score(combat_metrics) do
     # Calculate a danger score from 0-100 based on combat metrics
-    kd_weight = min(combat_metrics.kd_ratio * 20, 40) # Max 40 points for K/D
-    solo_weight = min(combat_metrics.solo_kills * 2, 30) # Max 30 points for solo kills
-    activity_weight = min(combat_metrics.kills / 10, 20) # Max 20 points for activity
-    efficiency_weight = combat_metrics.efficiency / 10 # Max 10 points for efficiency
-    
+    # Max 40 points for K/D
+    kd_weight = min(combat_metrics.kd_ratio * 20, 40)
+    # Max 30 points for solo kills
+    solo_weight = min(combat_metrics.solo_kills * 2, 30)
+    # Max 20 points for activity
+    activity_weight = min(combat_metrics.kills / 10, 20)
+    # Max 10 points for efficiency
+    efficiency_weight = combat_metrics.efficiency / 10
+
     kd_weight + solo_weight + activity_weight + efficiency_weight
   end
-  
+
   defp convert_score_to_rating(score) do
     cond do
       score >= 80 -> 5
-      score >= 60 -> 4  
+      score >= 60 -> 4
       score >= 40 -> 3
       score >= 20 -> 2
       true -> 1

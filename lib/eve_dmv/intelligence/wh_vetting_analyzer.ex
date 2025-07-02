@@ -326,7 +326,7 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
           |> Ash.Query.filter(character_id == ^character_id)
           |> Ash.Query.filter(updated_at >= ^cutoff_date)
           |> Ash.Query.filter(is_victim == false)
-        
+
         :losses ->
           Participant
           |> Ash.Query.new()
