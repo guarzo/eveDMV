@@ -322,15 +322,30 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
   end
 
   defp analyze_ship_usage(character_id, killmails) do
+    # Pre-collect all ship type IDs to batch resolve names
+    ship_type_ids =
+      killmails
+      |> Enum.flat_map(fn km ->
+        km.participants
+        |> Enum.filter(&(&1.character_id == character_id))
+        |> Enum.map(& &1.ship_type_id)
+      end)
+      |> Enum.uniq()
+
+    # Batch resolve ship names to avoid N+1 queries
+    ship_names = NameResolver.ship_names(ship_type_ids)
+
     killmails
     |> Enum.flat_map(fn km ->
       # Get ships used by character in this killmail
       km.participants
       |> Enum.filter(&(&1.character_id == character_id))
-      |> Enum.map(
-        &{&1.ship_type_id, &1.ship_name || NameResolver.ship_name(&1.ship_type_id), km,
-         &1.is_victim}
-      )
+      |> Enum.map(fn participant ->
+        ship_name =
+          participant.ship_name || Map.get(ship_names, participant.ship_type_id, "Unknown")
+
+        {participant.ship_type_id, ship_name, km, participant.is_victim}
+      end)
     end)
     |> Enum.group_by(fn {type_id, name, _km, _is_victim} -> {type_id, name} end)
     |> Enum.map(fn {{type_id, name}, uses} ->
@@ -442,9 +457,15 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
       end)
       |> Enum.reject(fn {victim, _} -> is_nil(victim) end)
 
+    # Pre-load ship types to avoid N+1 queries
+    ship_type_ids = victims |> Enum.map(fn {victim, _} -> victim.ship_type_id end) |> Enum.uniq()
+    ship_categories_map = batch_categorize_ships(ship_type_ids)
+
     ship_categories =
       victims
-      |> Enum.group_by(fn {victim, _} -> categorize_ship(victim.ship_type_id) end)
+      |> Enum.group_by(fn {victim, _} ->
+        Map.get(ship_categories_map, victim.ship_type_id, "unknown")
+      end)
       |> Enum.map(fn {category, victim_list} ->
         {category,
          %{
@@ -579,6 +600,31 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
     end
   rescue
     _ -> "unknown"
+  end
+
+  # Batch version to avoid N+1 queries
+  defp batch_categorize_ships(type_ids) when is_list(type_ids) do
+    case Ash.read(ItemType,
+           filter: [type_id: [in: type_ids]],
+           domain: Api
+         ) do
+      {:ok, item_types} ->
+        item_types
+        |> Enum.map(fn item_type ->
+          {item_type.type_id, determine_ship_category(item_type)}
+        end)
+        |> Map.new()
+
+      {:error, _} ->
+        # Fallback to individual queries if batch fails
+        type_ids
+        |> Enum.map(fn type_id -> {type_id, categorize_ship(type_id)} end)
+        |> Map.new()
+    end
+  rescue
+    _ ->
+      # Return unknown for all if something goes wrong
+      type_ids |> Enum.map(fn type_id -> {type_id, "unknown"} end) |> Map.new()
   end
 
   # Determine ship category based on group name and other attributes

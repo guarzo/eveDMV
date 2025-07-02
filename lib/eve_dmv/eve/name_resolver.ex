@@ -496,13 +496,104 @@ defmodule EveDmv.Eve.NameResolver do
   end
 
   defp batch_resolve(type, ids, fallback_fn) do
-    ids
-    |> Enum.uniq()
-    |> Enum.into(%{}, fn id ->
-      case get_cached_or_fetch(type, id) do
-        {:ok, name} -> {id, name}
-        {:error, _} -> {id, fallback_fn.(id)}
+    unique_ids = Enum.uniq(ids)
+
+    # Split cached and missing IDs to prevent N+1 queries
+    {cached, missing} = split_cached_and_missing(unique_ids, type)
+
+    # Batch load missing names from database to prevent N+1
+    missing_results =
+      if length(missing) > 0 do
+        batch_fetch_from_database(type, missing)
+      else
+        %{}
       end
+
+    # Combine cached and fresh results
+    all_results = Map.merge(cached, missing_results)
+
+    # Fill in any remaining missing with fallback
+    Enum.into(unique_ids, %{}, fn id ->
+      case Map.get(all_results, id) do
+        nil -> {id, fallback_fn.(id)}
+        name -> {id, name}
+      end
+    end)
+  end
+
+  defp split_cached_and_missing(ids, type) do
+    Enum.reduce(ids, {%{}, []}, fn id, {cached, missing} ->
+      case get_from_cache(type, id) do
+        {:ok, name} -> {Map.put(cached, id, name), missing}
+        :miss -> {cached, [id | missing]}
+      end
+    end)
+  end
+
+  defp get_from_cache(type, id) do
+    cache_key = {type, id}
+    current_time = :os.system_time(:millisecond)
+
+    case :ets.lookup(@table_name, cache_key) do
+      [{^cache_key, value, expires_at}] when expires_at > current_time ->
+        {:ok, value}
+
+      _ ->
+        :miss
+    end
+  end
+
+  defp batch_fetch_from_database(type, ids) when type in [:item_type, :ship_type] do
+    case Ash.read(ItemType,
+           filter: [type_id: [in: ids]],
+           domain: EveDmv.Api,
+           authorize?: false
+         ) do
+      {:ok, items} ->
+        results = Enum.into(items, %{}, fn item -> {item.type_id, item.type_name} end)
+        cache_batch_results(type, results)
+        results
+
+      {:error, _} ->
+        Logger.warning("Failed to batch fetch #{type} for IDs: #{inspect(ids)}")
+        %{}
+    end
+  rescue
+    error ->
+      Logger.warning("Error in batch fetch #{type}: #{inspect(error)}")
+      %{}
+  end
+
+  defp batch_fetch_from_database(:solar_system, ids) do
+    case Ash.read(SolarSystem,
+           filter: [system_id: [in: ids]],
+           domain: EveDmv.Api,
+           authorize?: false
+         ) do
+      {:ok, systems} ->
+        results = Enum.into(systems, %{}, fn system -> {system.system_id, system.system_name} end)
+        cache_batch_results(:solar_system, results)
+        results
+
+      {:error, _} ->
+        Logger.warning("Failed to batch fetch solar systems for IDs: #{inspect(ids)}")
+        %{}
+    end
+  rescue
+    error ->
+      Logger.warning("Error in batch fetch solar systems: #{inspect(error)}")
+      %{}
+  end
+
+  defp batch_fetch_from_database(_type, _ids), do: %{}
+
+  defp cache_batch_results(type, results) do
+    ttl = get_ttl_for_type(type)
+    expires_at = :os.system_time(:millisecond) + ttl
+
+    Enum.each(results, fn {id, name} ->
+      cache_key = {type, id}
+      :ets.insert(@table_name, {cache_key, name, expires_at})
     end)
   end
 

@@ -9,7 +9,8 @@ defmodule EveDmv.Killmails.KillmailRaw do
   use Ash.Resource,
     otp_app: :eve_dmv,
     domain: EveDmv.Api,
-    data_layer: AshPostgres.DataLayer
+    data_layer: AshPostgres.DataLayer,
+    authorizers: [Ash.Policy.Authorizer]
 
   postgres do
     table("killmails_raw")
