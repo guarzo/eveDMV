@@ -199,18 +199,6 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
       {:ok, []}
   end
 
-  defp get_ship_data(doctrine_template) when is_map(doctrine_template) do
-    # Extract ship types from doctrine and get their data
-    ship_types = extract_ship_types_from_doctrine(doctrine_template)
-
-    ship_data =
-      Enum.reduce(ship_types, %{}, fn ship_name, acc ->
-        Map.put(acc, ship_name, get_ship_info(ship_name))
-      end)
-
-    {:ok, ship_data}
-  end
-
   defp get_ship_data(doctrine_template) do
     # Extract ship types from doctrine and get their data
     ship_types = extract_ship_types_from_doctrine(doctrine_template)
