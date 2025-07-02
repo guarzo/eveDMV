@@ -11,13 +11,14 @@ defmodule EveDmvWeb.WHVettingLiveTest do
 
   setup %{conn: conn} do
     # Create authenticated user
-    user = create(:user, %{
-      character_id: 95_465_499,
-      character_name: "WH Corp Recruiter"
-    })
+    user =
+      create(:user, %{
+        character_id: 95_465_499,
+        character_name: "WH Corp Recruiter"
+      })
 
     conn = log_in_user(conn, user)
-    
+
     %{conn: conn, user: user}
   end
 
@@ -33,7 +34,7 @@ defmodule EveDmvWeb.WHVettingLiveTest do
     test "requires authentication", %{conn: conn} do
       # Log out user
       conn = conn |> Phoenix.ConnTest.recycle() |> Phoenix.ConnTest.init_test_session(%{})
-      
+
       # Should redirect to login
       assert {:error, {:redirect, %{to: "/login"}}} = live(conn, ~p"/wh-vetting")
     end
@@ -48,14 +49,16 @@ defmodule EveDmvWeb.WHVettingLiveTest do
       {:ok, view, _html} = live(conn, ~p"/wh-vetting")
 
       # Submit character for vetting
-      view |> element("form[phx-submit=\"vet_character\"]") |> render_submit(%{
+      view
+      |> element("form[phx-submit=\"vet_character\"]")
+      |> render_submit(%{
         "vetting" => %{"character_name" => "Test Pilot"}
       })
 
       :timer.sleep(500)
 
       html = render(view)
-      
+
       # Should show analysis results
       assert html =~ "Vetting Analysis Complete"
       assert html =~ "J-Space Experience"
@@ -67,7 +70,9 @@ defmodule EveDmvWeb.WHVettingLiveTest do
       {:ok, view, _html} = live(conn, ~p"/wh-vetting")
 
       # Submit non-existent character
-      view |> element("form[phx-submit=\"vet_character\"]") |> render_submit(%{
+      view
+      |> element("form[phx-submit=\"vet_character\"]")
+      |> render_submit(%{
         "vetting" => %{"character_name" => "NonExistentPilot123"}
       })
 
@@ -84,7 +89,9 @@ defmodule EveDmvWeb.WHVettingLiveTest do
       {:ok, view, _html} = live(conn, ~p"/wh-vetting")
 
       # Start vetting
-      view |> element("form[phx-submit=\"vet_character\"]") |> render_submit(%{
+      view
+      |> element("form[phx-submit=\"vet_character\"]")
+      |> render_submit(%{
         "vetting" => %{"character_name" => "Progress Test"}
       })
 
@@ -102,14 +109,16 @@ defmodule EveDmvWeb.WHVettingLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/wh-vetting")
 
-      view |> element("form[phx-submit=\"vet_character\"]") |> render_submit(%{
+      view
+      |> element("form[phx-submit=\"vet_character\"]")
+      |> render_submit(%{
         "vetting" => %{"character_name" => "Experienced Pilot"}
       })
 
       :timer.sleep(500)
 
       html = render(view)
-      
+
       assert html =~ "Recommendation: Approve" or html =~ "Recommended for Approval"
       assert html =~ "High J-Space Experience"
       assert html =~ "Low Security Risk"
@@ -121,14 +130,16 @@ defmodule EveDmvWeb.WHVettingLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/wh-vetting")
 
-      view |> element("form[phx-submit=\"vet_character\"]") |> render_submit(%{
+      view
+      |> element("form[phx-submit=\"vet_character\"]")
+      |> render_submit(%{
         "vetting" => %{"character_name" => "Eviction Pilot"}
       })
 
       :timer.sleep(500)
 
       html = render(view)
-      
+
       assert html =~ "Recommendation: Reject" or html =~ "Not Recommended"
       assert html =~ "Eviction Group Detected" or html =~ "Hard Knocks"
     end
@@ -139,14 +150,16 @@ defmodule EveDmvWeb.WHVettingLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/wh-vetting")
 
-      view |> element("form[phx-submit=\"vet_character\"]") |> render_submit(%{
+      view
+      |> element("form[phx-submit=\"vet_character\"]")
+      |> render_submit(%{
         "vetting" => %{"character_name" => "Moderate Pilot"}
       })
 
       :timer.sleep(500)
 
       html = render(view)
-      
+
       assert html =~ "Conditional" or html =~ "Further Review"
       assert html =~ "Moderate Risk"
     end
@@ -159,14 +172,16 @@ defmodule EveDmvWeb.WHVettingLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/wh-vetting")
 
-      view |> element("form[phx-submit=\"vet_character\"]") |> render_submit(%{
+      view
+      |> element("form[phx-submit=\"vet_character\"]")
+      |> render_submit(%{
         "vetting" => %{"character_name" => "WH Pilot"}
       })
 
       :timer.sleep(500)
 
       html = render(view)
-      
+
       # J-space metrics
       assert html =~ "Total J-Space Kills"
       assert html =~ "J-Space Time Percentage"
@@ -180,14 +195,16 @@ defmodule EveDmvWeb.WHVettingLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/wh-vetting")
 
-      view |> element("form[phx-submit=\"vet_character\"]") |> render_submit(%{
+      view
+      |> element("form[phx-submit=\"vet_character\"]")
+      |> render_submit(%{
         "vetting" => %{"character_name" => "Corp Hopper"}
       })
 
       :timer.sleep(500)
 
       html = render(view)
-      
+
       # Risk factors
       assert html =~ "Risk Score"
       assert html =~ "Corp Hopping Detected"
@@ -200,14 +217,16 @@ defmodule EveDmvWeb.WHVettingLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/wh-vetting")
 
-      view |> element("form[phx-submit=\"vet_character\"]") |> render_submit(%{
+      view
+      |> element("form[phx-submit=\"vet_character\"]")
+      |> render_submit(%{
         "vetting" => %{"character_name" => "Small Gang Expert"}
       })
 
       :timer.sleep(500)
 
       html = render(view)
-      
+
       # Small gang metrics
       assert html =~ "Small Gang Performance"
       assert html =~ "Average Gang Size"
@@ -223,7 +242,9 @@ defmodule EveDmvWeb.WHVettingLiveTest do
       {:ok, view, _html} = live(conn, ~p"/wh-vetting")
 
       # Perform vetting
-      view |> element("form[phx-submit=\"vet_character\"]") |> render_submit(%{
+      view
+      |> element("form[phx-submit=\"vet_character\"]")
+      |> render_submit(%{
         "vetting" => %{"character_name" => "History Test"}
       })
 
@@ -231,7 +252,7 @@ defmodule EveDmvWeb.WHVettingLiveTest do
 
       # Check history tab
       view |> element("[phx-click=\"show_history\"]") |> render_click()
-      
+
       html = render(view)
       assert html =~ "Vetting History"
       assert html =~ "History Test"
@@ -245,15 +266,19 @@ defmodule EveDmvWeb.WHVettingLiveTest do
       {:ok, view, _html} = live(conn, ~p"/wh-vetting")
 
       # First vetting
-      view |> element("form[phx-submit=\"vet_character\"]") |> render_submit(%{
+      view
+      |> element("form[phx-submit=\"vet_character\"]")
+      |> render_submit(%{
         "vetting" => %{"character_name" => "Previous Result"}
       })
 
       :timer.sleep(500)
 
       # Click on history item
-      view |> element("[phx-click=\"load_vetting\"][phx-value-character-id=\"#{character_id}\"]") |> render_click()
-      
+      view
+      |> element("[phx-click=\"load_vetting\"][phx-value-character-id=\"#{character_id}\"]")
+      |> render_click()
+
       html = render(view)
       assert html =~ "Previous Result"
       assert html =~ "Loaded from history"
@@ -267,7 +292,9 @@ defmodule EveDmvWeb.WHVettingLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/wh-vetting")
 
-      view |> element("form[phx-submit=\"vet_character\"]") |> render_submit(%{
+      view
+      |> element("form[phx-submit=\"vet_character\"]")
+      |> render_submit(%{
         "vetting" => %{"character_name" => "Export Test"}
       })
 
@@ -275,7 +302,7 @@ defmodule EveDmvWeb.WHVettingLiveTest do
 
       # Export report
       view |> element("[phx-click=\"export_report\"]") |> render_click()
-      
+
       assert_push_event(view, "download", %{
         filename: filename,
         content: content
@@ -292,7 +319,9 @@ defmodule EveDmvWeb.WHVettingLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/wh-vetting")
 
-      view |> element("form[phx-submit=\"vet_character\"]") |> render_submit(%{
+      view
+      |> element("form[phx-submit=\"vet_character\"]")
+      |> render_submit(%{
         "vetting" => %{"character_name" => "Share Test"}
       })
 
@@ -300,7 +329,7 @@ defmodule EveDmvWeb.WHVettingLiveTest do
 
       # Generate share link
       view |> element("[phx-click=\"share_result\"]") |> render_click()
-      
+
       html = render(view)
       assert html =~ "Share Link"
       assert html =~ "/wh-vetting/result/"
@@ -310,30 +339,34 @@ defmodule EveDmvWeb.WHVettingLiveTest do
   describe "batch vetting" do
     test "vets multiple characters", %{conn: conn} do
       # Create multiple characters
-      characters = for i <- 1..3 do
-        char_id = 95_000_200 + i
-        name = "Batch Pilot #{i}"
-        create_wormhole_character(char_id, name)
-        name
-      end
+      characters =
+        for i <- 1..3 do
+          char_id = 95_000_200 + i
+          name = "Batch Pilot #{i}"
+          create_wormhole_character(char_id, name)
+          name
+        end
 
       {:ok, view, _html} = live(conn, ~p"/wh-vetting")
 
       # Switch to batch mode
       view |> element("[phx-click=\"toggle_batch_mode\"]") |> render_click()
-      
+
       # Submit batch
-      view |> element("form[phx-submit=\"batch_vet\"]") |> render_submit(%{
+      view
+      |> element("form[phx-submit=\"batch_vet\"]")
+      |> render_submit(%{
         "batch" => %{"character_names" => Enum.join(characters, "\n")}
       })
 
       :timer.sleep(1000)
 
       html = render(view)
-      
+
       # Should show all results
       assert html =~ "Batch Results"
       assert html =~ "3 characters analyzed"
+
       Enum.each(characters, fn name ->
         assert html =~ name
       end)
@@ -347,7 +380,9 @@ defmodule EveDmvWeb.WHVettingLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/wh-vetting")
 
-      view |> element("form[phx-submit=\"vet_character\"]") |> render_submit(%{
+      view
+      |> element("form[phx-submit=\"vet_character\"]")
+      |> render_submit(%{
         "vetting" => %{"character_name" => "Realtime Test"}
       })
 
@@ -367,7 +402,7 @@ defmodule EveDmvWeb.WHVettingLiveTest do
 
       updated_html = render(view)
       updated_kills = extract_kill_count(updated_html)
-      
+
       assert updated_kills > initial_kills
       assert updated_html =~ "Updated"
     end
@@ -380,7 +415,7 @@ defmodule EveDmvWeb.WHVettingLiveTest do
     for i <- 1..15 do
       create(:killmail_raw, %{
         killmail_id: 80_000_000 + character_id + i,
-        killmail_time: DateTime.add(DateTime.utc_now(), -i * 86400, :second),
+        killmail_time: DateTime.add(DateTime.utc_now(), -i * 86_400, :second),
         solar_system_id: Enum.random(31_000_000..31_002_000),
         killmail_data: build_wh_killmail_data(character_id, name, i)
       })
@@ -398,7 +433,7 @@ defmodule EveDmvWeb.WHVettingLiveTest do
     for i <- 1..50 do
       create(:killmail_raw, %{
         killmail_id: 81_000_000 + character_id + i,
-        killmail_time: DateTime.add(DateTime.utc_now(), -i * 43200, :second),
+        killmail_time: DateTime.add(DateTime.utc_now(), -i * 43_200, :second),
         solar_system_id: Enum.random(31_000_000..31_005_000),
         killmail_data: build_wh_killmail_data(character_id, name, i, is_victim: rem(i, 10) == 0)
       })
@@ -429,15 +464,18 @@ defmodule EveDmvWeb.WHVettingLiveTest do
   defp create_moderate_risk_character(character_id, name) do
     # Some J-space activity, some K-space
     for i <- 1..20 do
-      system_id = if rem(i, 2) == 0 do
-        Enum.random(31_000_000..31_002_000)  # J-space
-      else
-        Enum.random(30_000_000..30_005_000)  # K-space
-      end
+      system_id =
+        if rem(i, 2) == 0 do
+          # J-space
+          Enum.random(31_000_000..31_002_000)
+        else
+          # K-space
+          Enum.random(30_000_000..30_005_000)
+        end
 
       create(:killmail_raw, %{
         killmail_id: 83_000_000 + character_id + i,
-        killmail_time: DateTime.add(DateTime.utc_now(), -i * 86400, :second),
+        killmail_time: DateTime.add(DateTime.utc_now(), -i * 86_400, :second),
         solar_system_id: system_id,
         killmail_data: build_wh_killmail_data(character_id, name, i)
       })
@@ -451,15 +489,15 @@ defmodule EveDmvWeb.WHVettingLiveTest do
 
   defp create_corp_hopper_character(character_id, name) do
     create_wormhole_character(character_id, name)
-    
+
     # Create employment history with many corps
     base_date = ~U[2023-01-01 00:00:00Z]
-    
+
     for i <- 0..10 do
       create(:employment_history, %{
         character_id: character_id,
         corporation_id: 1000 + i,
-        start_date: DateTime.add(base_date, i * 20 * 86400, :second)
+        start_date: DateTime.add(base_date, i * 20 * 86_400, :second)
       })
     end
   end
@@ -468,7 +506,7 @@ defmodule EveDmvWeb.WHVettingLiveTest do
     # Create small gang kills
     for i <- 1..25 do
       gang_size = Enum.random(2..5)
-      
+
       create(:killmail_raw, %{
         killmail_id: 84_000_000 + character_id + i,
         killmail_time: DateTime.utc_now(),
@@ -485,39 +523,48 @@ defmodule EveDmvWeb.WHVettingLiveTest do
 
   defp build_wh_killmail_data(character_id, name, index, opts \\ []) do
     is_victim = Keyword.get(opts, :is_victim, rem(index, 5) == 0)
-    
+
     %{
-      "attackers" => if is_victim do
-        [%{
-          "character_id" => Enum.random(90_000_000..95_000_000),
-          "character_name" => "Enemy Pilot",
-          "corporation_id" => 2_000_000,
-          "ship_type_id" => 17738,  # Machariel
-          "final_blow" => true
-        }]
-      else
-        [%{
-          "character_id" => character_id,
-          "character_name" => name,
-          "corporation_id" => 1_000_000,
-          "ship_type_id" => Enum.random([12011, 12013, 11987]),  # T3Cs and Logi
-          "final_blow" => true
-        }]
-      end,
-      "victim" => if is_victim do
-        %{
-          "character_id" => character_id,
-          "character_name" => name,
-          "corporation_id" => 1_000_000,
-          "ship_type_id" => 12011  # Legion
-        }
-      else
-        %{
-          "character_id" => Enum.random(90_000_000..95_000_000),
-          "corporation_id" => 2_000_000,
-          "ship_type_id" => Enum.random([587, 588, 589])
-        }
-      end
+      "attackers" =>
+        if is_victim do
+          [
+            %{
+              "character_id" => Enum.random(90_000_000..95_000_000),
+              "character_name" => "Enemy Pilot",
+              "corporation_id" => 2_000_000,
+              # Machariel
+              "ship_type_id" => 17_738,
+              "final_blow" => true
+            }
+          ]
+        else
+          [
+            %{
+              "character_id" => character_id,
+              "character_name" => name,
+              "corporation_id" => 1_000_000,
+              # T3Cs and Logi
+              "ship_type_id" => Enum.random([12_011, 12_013, 11_987]),
+              "final_blow" => true
+            }
+          ]
+        end,
+      "victim" =>
+        if is_victim do
+          %{
+            "character_id" => character_id,
+            "character_name" => name,
+            "corporation_id" => 1_000_000,
+            # Legion
+            "ship_type_id" => 12_011
+          }
+        else
+          %{
+            "character_id" => Enum.random(90_000_000..95_000_000),
+            "corporation_id" => 2_000_000,
+            "ship_type_id" => Enum.random([587, 588, 589])
+          }
+        end
     }
   end
 
@@ -527,37 +574,40 @@ defmodule EveDmvWeb.WHVettingLiveTest do
         %{
           "character_id" => character_id,
           "character_name" => name,
-          "corporation_id" => 98_000_000,  # HK corp ID
+          # HK corp ID
+          "corporation_id" => 98_000_000,
           "corporation_name" => "Hard Knocks Citizens",
           "alliance_id" => 99_000_000,
           "alliance_name" => "Hard Knocks Citizens",
-          "ship_type_id" => 12013,
+          "ship_type_id" => 12_013,
           "final_blow" => true
         }
       ],
       "victim" => %{
         "character_id" => Enum.random(90_000_000..95_000_000),
-        "structure_type_id" => 35832  # Astrahus
+        # Astrahus
+        "structure_type_id" => 35_832
       }
     }
   end
 
   defp build_small_gang_killmail_data(character_id, name, gang_size) do
-    attackers = for i <- 1..gang_size do
-      if i == 1 do
-        %{
-          "character_id" => character_id,
-          "character_name" => name,
-          "final_blow" => true
-        }
-      else
-        %{
-          "character_id" => 95_000_000 + i,
-          "character_name" => "Gang Member #{i}",
-          "final_blow" => false
-        }
+    attackers =
+      for i <- 1..gang_size do
+        if i == 1 do
+          %{
+            "character_id" => character_id,
+            "character_name" => name,
+            "final_blow" => true
+          }
+        else
+          %{
+            "character_id" => 95_000_000 + i,
+            "character_name" => "Gang Member #{i}",
+            "final_blow" => false
+          }
+        end
       end
-    end
 
     %{
       "attackers" => attackers,
@@ -575,7 +625,7 @@ defmodule EveDmvWeb.WHVettingLiveTest do
       "attackers" => [
         %{
           "character_id" => character_id,
-          "ship_type_id" => 12011,
+          "ship_type_id" => 12_011,
           "final_blow" => true
         }
       ],
@@ -594,7 +644,7 @@ defmodule EveDmvWeb.WHVettingLiveTest do
 
   defp log_in_user(conn, user) do
     token = EveDmvWeb.Auth.generate_user_session_token(user)
-    
+
     conn
     |> Phoenix.ConnTest.init_test_session(%{})
     |> Plug.Conn.put_session(:user_token, token)

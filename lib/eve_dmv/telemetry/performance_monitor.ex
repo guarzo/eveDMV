@@ -244,47 +244,45 @@ defmodule EveDmv.Telemetry.PerformanceMonitor do
 
   defp get_pool_metrics do
     # Get connection pool stats using Ecto telemetry
-    try do
-      # Get pool configuration
-      config = EveDmv.Repo.config()
-      pool_size = Keyword.get(config, :pool_size, 10)
+    # Get pool configuration
+    config = EveDmv.Repo.config()
+    pool_size = Keyword.get(config, :pool_size, 10)
 
-      # Query database for connection stats
-      query = """
-      SELECT 
-        count(*) as total_connections,
-        count(*) FILTER (WHERE state = 'active') as active_connections,
-        count(*) FILTER (WHERE state = 'idle') as idle_connections,
-        count(*) FILTER (WHERE wait_event IS NOT NULL) as waiting_connections
-      FROM pg_stat_activity 
-      WHERE datname = current_database()
-      """
+    # Query database for connection stats
+    query = """
+    SELECT 
+      count(*) as total_connections,
+      count(*) FILTER (WHERE state = 'active') as active_connections,
+      count(*) FILTER (WHERE state = 'idle') as idle_connections,
+      count(*) FILTER (WHERE wait_event IS NOT NULL) as waiting_connections
+    FROM pg_stat_activity 
+    WHERE datname = current_database()
+    """
 
-      case Ecto.Adapters.SQL.query(EveDmv.Repo, query) do
-        {:ok, %{rows: [[total, active, idle, waiting]]}} ->
-          %{
-            pool_size: pool_size,
-            total_connections: total || 0,
-            active_connections: active || 0,
-            idle_connections: idle || 0,
-            waiting_connections: waiting || 0,
-            utilization:
-              if(pool_size > 0, do: Float.round((active || 0) / pool_size * 100, 2), else: 0.0)
-          }
+    case Ecto.Adapters.SQL.query(EveDmv.Repo, query) do
+      {:ok, %{rows: [[total, active, idle, waiting]]}} ->
+        %{
+          pool_size: pool_size,
+          total_connections: total || 0,
+          active_connections: active || 0,
+          idle_connections: idle || 0,
+          waiting_connections: waiting || 0,
+          utilization:
+            if(pool_size > 0, do: Float.round((active || 0) / pool_size * 100, 2), else: 0.0)
+        }
 
-        _ ->
-          %{
-            pool_size: pool_size,
-            total_connections: 0,
-            active_connections: 0,
-            idle_connections: 0,
-            waiting_connections: 0,
-            utilization: 0.0
-          }
-      end
-    rescue
-      _ -> %{error: "Failed to get pool metrics"}
+      _ ->
+        %{
+          pool_size: pool_size,
+          total_connections: 0,
+          active_connections: 0,
+          idle_connections: 0,
+          waiting_connections: 0,
+          utilization: 0.0
+        }
     end
+  rescue
+    _ -> %{error: "Failed to get pool metrics"}
   end
 
   defp get_cache_metrics do

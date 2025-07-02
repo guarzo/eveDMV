@@ -69,7 +69,7 @@ defmodule EveDmv.Factories do
         "alliance_id" => Enum.random(99_000_000..100_000_000),
         # Rifter, Rupture, Stabber
         "ship_type_id" => Enum.random([587, 588, 589]),
-        "damage_taken" => Enum.random(1000..50000),
+        "damage_taken" => Enum.random(1000..50_000),
         "items" => build_random_items()
       },
       "attackers" => build_random_attackers(),
@@ -320,9 +320,9 @@ defmodule EveDmv.Factories do
           "character_id" => character_id,
           "corporation_id" => Enum.random(1_000_000..2_000_000),
           "alliance_id" => Enum.random(99_000_000..100_000_000),
-          "ship_type_id" => Enum.random([587, 588, 589, 17738]),
+          "ship_type_id" => Enum.random([587, 588, 589, 17_738]),
           "weapon_type_id" => Enum.random([2185, 2873, 3074]),
-          "damage_done" => Enum.random(100..10000),
+          "damage_done" => Enum.random(100..10_000),
           "final_blow" => Keyword.get(opts, :final_blow, false),
           "security_status" => :rand.uniform() * 10 - 5
         }
@@ -362,9 +362,9 @@ defmodule EveDmv.Factories do
         # Smaller ships
         c when c in [1, 2, 3] -> [587, 588, 589, 624]
         # T3 cruisers, Tengu
-        c when c in [4, 5] -> [17738, 22428, 11993]
+        c when c in [4, 5] -> [17_738, 22_428, 11_993]
         # Dreads and carriers
-        6 -> [23917, 23919, 24483]
+        6 -> [23_917, 23_919, 24_483]
         _ -> [587, 588, 589]
       end
 
@@ -390,7 +390,7 @@ defmodule EveDmv.Factories do
         "killmail_id" => System.unique_integer([:positive]),
         "killmail_time" =>
           DateTime.utc_now()
-          |> DateTime.add(-Enum.random(1..86400), :second)
+          |> DateTime.add(-Enum.random(1..86_400), :second)
           |> DateTime.to_iso8601(),
         "solar_system_id" => Enum.random(30_000_000..31_000_000),
         "attackers" => [
@@ -401,7 +401,7 @@ defmodule EveDmv.Factories do
             # Loki (T3 cruiser)
             "ship_type_id" => 17738,
             "weapon_type_id" => 2873,
-            "damage_done" => Enum.random(5000..15000),
+            "damage_done" => Enum.random(5000..15_000),
             "final_blow" => true,
             "security_status" => -5.0
           }
@@ -411,7 +411,7 @@ defmodule EveDmv.Factories do
           "corporation_id" => Enum.random(1_000_000..2_000_000),
           # Cheap ships
           "ship_type_id" => Enum.random([587, 588, 589]),
-          "damage_taken" => Enum.random(5000..15000),
+          "damage_taken" => Enum.random(5000..15_000),
           "items" => []
         },
         "moon_id" => nil,

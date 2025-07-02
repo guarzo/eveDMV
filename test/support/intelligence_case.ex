@@ -63,9 +63,9 @@ defmodule EveDmv.IntelligenceCase do
         # Frigates, cruisers
         c when c in ["C1", "C2", "C3"] -> [587, 588, 589, 624, 622]
         # T3 cruisers
-        c when c in ["C4", "C5"] -> [17738, 29984, 29986, 29988]
+        c when c in ["C4", "C5"] -> [17_738, 29_984, 29_986, 29_988]
         # Capitals
-        "C6" -> [23917, 23919, 24483, 19720]
+        "C6" -> [23_917, 23_919, 24_483, 19_720]
         _ -> [587, 588, 589]
       end
 

@@ -239,13 +239,13 @@ defmodule EveDmv.Database.PartitionUtils do
     recommendations = []
 
     recommendations =
-      unless Enum.empty?(empty_partitions) do
+      if Enum.empty?(empty_partitions) do
+        recommendations
+      else
         [
           "Consider dropping #{length(empty_partitions)} empty partitions to save space"
           | recommendations
         ]
-      else
-        recommendations
       end
 
     recommendations =

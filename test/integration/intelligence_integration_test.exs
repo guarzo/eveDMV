@@ -248,9 +248,10 @@ defmodule EveDmv.Integration.IntelligenceIntegrationTest do
 
       # Test individual module analyses
       {:ok, character_analysis} = CharacterAnalyzer.analyze_character(character_id)
-      
+
       # Test coordinated analysis
-      {:ok, comprehensive_analysis} = IntelligenceCoordinator.analyze_character_comprehensive(character_id)
+      {:ok, comprehensive_analysis} =
+        IntelligenceCoordinator.analyze_character_comprehensive(character_id)
 
       # Verify cross-module consistency
       assert character_analysis.character_id == character_id
@@ -265,21 +266,24 @@ defmodule EveDmv.Integration.IntelligenceIntegrationTest do
     test "correlates character capabilities with fleet analysis" do
       # Create fleet members with different skill levels
       fleet_members = create_diverse_fleet_members()
-      
+
       # Analyze individual capabilities
-      character_analyses = for member <- fleet_members do
-        {:ok, analysis} = CharacterAnalyzer.analyze_character(member.character_id)
-        {member.character_id, analysis}
-      end
+      character_analyses =
+        for member <- fleet_members do
+          {:ok, analysis} = CharacterAnalyzer.analyze_character(member.character_id)
+          {member.character_id, analysis}
+        end
 
       # Check that dangerous characters correlate with fleet threat assessment
-      dangerous_characters = Enum.filter(character_analyses, fn {_id, analysis} ->
-        analysis.dangerous_rating >= 7
-      end)
+      dangerous_characters =
+        Enum.filter(character_analyses, fn {_id, analysis} ->
+          analysis.dangerous_rating >= 7
+        end)
 
-      experienced_pilots = Enum.count(character_analyses, fn {_id, analysis} ->
-        analysis.kill_count >= 20
-      end)
+      experienced_pilots =
+        Enum.count(character_analyses, fn {_id, analysis} ->
+          analysis.kill_count >= 20
+        end)
 
       # Fleet with experienced pilots should be more effective
       assert experienced_pilots > 0
@@ -287,7 +291,7 @@ defmodule EveDmv.Integration.IntelligenceIntegrationTest do
 
     test "cross-references employment patterns with activity" do
       character_id = 95_000_101
-      
+
       # Create character with corp changes and corresponding activity
       create_character_with_corp_changes(character_id)
 
@@ -301,21 +305,25 @@ defmodule EveDmv.Integration.IntelligenceIntegrationTest do
 
     test "maintains performance under concurrent analysis" do
       # Create multiple characters for concurrent analysis
-      character_ids = for i <- 1..5 do
-        char_id = 95_000_400 + i
-        create_moderate_character_activity(char_id)
-        char_id
-      end
+      character_ids =
+        for i <- 1..5 do
+          char_id = 95_000_400 + i
+          create_moderate_character_activity(char_id)
+          char_id
+        end
 
       # Time concurrent comprehensive analysis
-      {time_microseconds, results} = :timer.tc(fn ->
-        tasks = Enum.map(character_ids, fn char_id ->
-          Task.async(fn ->
-            IntelligenceCoordinator.analyze_character_comprehensive(char_id)
-          end)
+      {time_microseconds, results} =
+        :timer.tc(fn ->
+          tasks =
+            Enum.map(character_ids, fn char_id ->
+              Task.async(fn ->
+                IntelligenceCoordinator.analyze_character_comprehensive(char_id)
+              end)
+            end)
+
+          Task.await_many(tasks, 30_000)
         end)
-        Task.await_many(tasks, 30_000)
-      end)
 
       time_ms = time_microseconds / 1000
 
@@ -324,9 +332,9 @@ defmodule EveDmv.Integration.IntelligenceIntegrationTest do
 
       # All analyses should succeed
       assert Enum.all?(results, fn
-        {:ok, _} -> true
-        _ -> false
-      end)
+               {:ok, _} -> true
+               _ -> false
+             end)
     end
   end
 
@@ -372,20 +380,24 @@ defmodule EveDmv.Integration.IntelligenceIntegrationTest do
   defp create_comprehensive_character_activity(character_id, corporation_id, home_system_id) do
     # Mixed K-space and J-space activity
     systems = [
-      home_system_id,     # Home system activity
-      30_002_187,         # Amarr (K-space)
-      31_000_001,         # J-space
-      31_000_002          # More J-space
+      # Home system activity
+      home_system_id,
+      # Amarr (K-space)
+      30_002_187,
+      # J-space
+      31_000_001,
+      # More J-space
+      31_000_002
     ]
 
     # Create 30 killmails across different contexts
     for i <- 1..30 do
       system_id = Enum.at(systems, rem(i, length(systems)))
       is_victim = rem(i, 4) == 0
-      
+
       create(:killmail_raw, %{
         killmail_id: 85_000_000 + character_id + i,
-        killmail_time: DateTime.add(DateTime.utc_now(), -i * 86400, :second),
+        killmail_time: DateTime.add(DateTime.utc_now(), -i * 86_400, :second),
         solar_system_id: system_id,
         killmail_data: build_killmail_data(character_id, is_victim)
       })
@@ -394,12 +406,30 @@ defmodule EveDmv.Integration.IntelligenceIntegrationTest do
 
   defp create_diverse_fleet_members do
     [
-      %{character_id: 95_100_001, character_name: "FC Alpha", ship_name: "Damnation", 
-        ship_category: "command_ship", role: "fc", mass: 13_500_000},
-      %{character_id: 95_100_002, character_name: "DPS Heavy", ship_name: "Legion", 
-        ship_category: "strategic_cruiser", role: "dps", mass: 13_000_000},
-      %{character_id: 95_100_003, character_name: "Logi Primary", ship_name: "Guardian", 
-        ship_category: "logistics", role: "logistics", mass: 11_800_000}
+      %{
+        character_id: 95_100_001,
+        character_name: "FC Alpha",
+        ship_name: "Damnation",
+        ship_category: "command_ship",
+        role: "fc",
+        mass: 13_500_000
+      },
+      %{
+        character_id: 95_100_002,
+        character_name: "DPS Heavy",
+        ship_name: "Legion",
+        ship_category: "strategic_cruiser",
+        role: "dps",
+        mass: 13_000_000
+      },
+      %{
+        character_id: 95_100_003,
+        character_name: "Logi Primary",
+        ship_name: "Guardian",
+        ship_category: "logistics",
+        role: "logistics",
+        mass: 11_800_000
+      }
     ]
     |> tap(fn members ->
       # Create character activity for each member
@@ -412,24 +442,26 @@ defmodule EveDmv.Integration.IntelligenceIntegrationTest do
   defp create_character_with_corp_changes(character_id) do
     # Create employment history with changes
     corps = [1_000_001, 1_000_002, 1_000_003]
-    base_date = DateTime.add(DateTime.utc_now(), -365 * 86400, :second)
+    base_date = DateTime.add(DateTime.utc_now(), -365 * 86_400, :second)
 
     for {corp_id, i} <- Enum.with_index(corps) do
-      start_date = DateTime.add(base_date, i * 60 * 86400, :second)
-      
+      start_date = DateTime.add(base_date, i * 60 * 86_400, :second)
+
       # Create killmails during this corp period
       for j <- 1..5 do
-        kill_date = DateTime.add(start_date, j * 10 * 86400, :second)
-        
+        kill_date = DateTime.add(start_date, j * 10 * 86_400, :second)
+
         create(:killmail_raw, %{
-          killmail_id: 86_000_000 + character_id + (i * 10) + j,
+          killmail_id: 86_000_000 + character_id + i * 10 + j,
           killmail_time: kill_date,
           killmail_data: %{
-            "attackers" => [%{
-              "character_id" => character_id,
-              "corporation_id" => corp_id,
-              "final_blow" => true
-            }],
+            "attackers" => [
+              %{
+                "character_id" => character_id,
+                "corporation_id" => corp_id,
+                "final_blow" => true
+              }
+            ],
             "victim" => %{"character_id" => Enum.random(90_000_000..95_000_000)}
           }
         })
@@ -442,7 +474,7 @@ defmodule EveDmv.Integration.IntelligenceIntegrationTest do
     for i <- 1..15 do
       create(:killmail_raw, %{
         killmail_id: 89_000_000 + character_id + i,
-        killmail_time: DateTime.add(DateTime.utc_now(), -i * 86400, :second),
+        killmail_time: DateTime.add(DateTime.utc_now(), -i * 86_400, :second),
         solar_system_id: Enum.random([30_000_142, 31_000_001]),
         killmail_data: build_killmail_data(character_id, rem(i, 5) == 0)
       })
@@ -450,29 +482,36 @@ defmodule EveDmv.Integration.IntelligenceIntegrationTest do
   end
 
   defp create_character_with_role_activity(character_id, role) do
-    ship_types = case role do
-      "fc" -> [12013] # Command ships
-      "dps" -> [12011, 12010, 12012] # T3Cs
-      "logistics" -> [11987, 11989] # Logistics
-      _ -> [587, 588, 589] # Basic ships
-    end
+    ship_types =
+      case role do
+        # Command ships
+        "fc" -> [12_013]
+        # T3Cs
+        "dps" -> [12_011, 12_010, 12_012]
+        # Logistics
+        "logistics" -> [11_987, 11_989]
+        # Basic ships
+        _ -> [587, 588, 589]
+      end
 
     # Create activity that reflects the role
     for i <- 1..10 do
       is_dangerous = role in ["fc", "dps"] and i > 7
-      
+
       create(:killmail_raw, %{
         killmail_id: 90_000_000 + character_id + i,
-        killmail_time: DateTime.add(DateTime.utc_now(), -i * 86400, :second),
+        killmail_time: DateTime.add(DateTime.utc_now(), -i * 86_400, :second),
         killmail_data: %{
-          "attackers" => [%{
-            "character_id" => character_id,
-            "ship_type_id" => Enum.random(ship_types),
-            "final_blow" => is_dangerous
-          }],
+          "attackers" => [
+            %{
+              "character_id" => character_id,
+              "ship_type_id" => Enum.random(ship_types),
+              "final_blow" => is_dangerous
+            }
+          ],
           "victim" => %{
             "character_id" => Enum.random(90_000_000..95_000_000),
-            "ship_type_id" => if(is_dangerous, do: 17738, else: 587)
+            "ship_type_id" => if(is_dangerous, do: 17_738, else: 587)
           }
         }
       })
@@ -482,20 +521,24 @@ defmodule EveDmv.Integration.IntelligenceIntegrationTest do
   defp build_killmail_data(character_id, is_victim) do
     if is_victim do
       %{
-        "attackers" => [%{
-          "character_id" => Enum.random(90_000_000..95_000_000),
-          "final_blow" => true
-        }],
+        "attackers" => [
+          %{
+            "character_id" => Enum.random(90_000_000..95_000_000),
+            "final_blow" => true
+          }
+        ],
         "victim" => %{
           "character_id" => character_id
         }
       }
     else
       %{
-        "attackers" => [%{
-          "character_id" => character_id,
-          "final_blow" => true
-        }],
+        "attackers" => [
+          %{
+            "character_id" => character_id,
+            "final_blow" => true
+          }
+        ],
         "victim" => %{
           "character_id" => Enum.random(90_000_000..95_000_000)
         }
