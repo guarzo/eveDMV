@@ -6,8 +6,8 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
   use EveDmv.DataCase, async: false
 
   alias EveDmv.{Api, Repo}
-  alias EveDmv.Killmails.{KillmailRaw, KillmailEnriched}
   alias EveDmv.Intelligence.CharacterStats
+  alias EveDmv.Killmails.{KillmailRaw, KillmailEnriched}
 
   require Ash.Query
 
@@ -155,7 +155,7 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
 
           Ecto.Adapters.SQL.query!(Repo, query, [
             system_id,
-            DateTime.add(DateTime.utc_now(), -86400, :second)
+            DateTime.add(DateTime.utc_now(), -86_400, :second)
           ])
         end)
 
@@ -176,7 +176,7 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
       # Create killmails across multiple months
       for i <- 1..30 do
         month_offset = if i <= 15, do: 0, else: -30
-        kill_time = DateTime.add(DateTime.utc_now(), month_offset * 86400, :second)
+        kill_time = DateTime.add(DateTime.utc_now(), month_offset * 86_400, :second)
 
         create(:killmail_raw, %{
           killmail_id: 99_400_000 + i,
@@ -197,7 +197,7 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
           """
 
           Ecto.Adapters.SQL.query!(Repo, query, [
-            DateTime.add(DateTime.utc_now(), -60 * 86400, :second)
+            DateTime.add(DateTime.utc_now(), -60 * 86_400, :second)
           ])
         end)
 

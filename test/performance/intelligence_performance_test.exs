@@ -324,7 +324,7 @@ defmodule EveDmv.Performance.IntelligencePerformanceTest do
           "character_id" =>
             if(is_victim, do: Enum.random(90_000_000..95_000_000), else: character_id),
           "corporation_id" => Enum.random(1_000_000..2_000_000),
-          "ship_type_id" => Enum.random([587, 588, 589, 17738]),
+          "ship_type_id" => Enum.random([587, 588, 589, 17_738]),
           "final_blow" => true
         }
       ],
@@ -344,7 +344,7 @@ defmodule EveDmv.Performance.IntelligencePerformanceTest do
         %{
           "character_id" => Enum.random(95_000_000..95_000_010),
           "corporation_id" => corp_id,
-          "ship_type_id" => Enum.random([587, 588, 589, 17738]),
+          "ship_type_id" => Enum.random([587, 588, 589, 17_738]),
           "final_blow" => true
         }
       ],

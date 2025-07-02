@@ -247,7 +247,7 @@ defmodule EveDmv.E2E.UserExperienceTest do
         "character_id" => threat_character_id,
         "solar_system_id" => home_system_id,
         # Machariel - dangerous
-        "ship_type_id" => 17738,
+        "ship_type_id" => 17_738,
         "timestamp" => DateTime.utc_now()
       }
 
@@ -479,7 +479,7 @@ defmodule EveDmv.E2E.UserExperienceTest do
     for i <- 1..30 do
       create(:killmail_raw, %{
         killmail_id: 98_200_000 + character_id + i,
-        killmail_time: DateTime.add(DateTime.utc_now(), -i * 86400, :second),
+        killmail_time: DateTime.add(DateTime.utc_now(), -i * 86_400, :second),
         # J-space
         solar_system_id: Enum.random(31_000_000..31_002_000),
         killmail_data: %{
@@ -488,7 +488,7 @@ defmodule EveDmv.E2E.UserExperienceTest do
               "character_id" => character_id,
               "character_name" => character_name,
               # WH ships
-              "ship_type_id" => Enum.random([12011, 12013, 11987]),
+              "ship_type_id" => Enum.random([12_011, 12_013, 11_987]),
               "final_blow" => rem(i, 3) != 0
             }
           ],
@@ -523,7 +523,7 @@ defmodule EveDmv.E2E.UserExperienceTest do
         %{
           "character_id" => character_id,
           "character_name" => "Test Character",
-          "ship_type_id" => 22456,
+          "ship_type_id" => 22_456,
           "ship_name" => "Sabre",
           "final_blow" => true
         }
@@ -540,7 +540,7 @@ defmodule EveDmv.E2E.UserExperienceTest do
         "attackers" => [
           %{
             "character_id" => Enum.random(90_000_000..95_000_000),
-            "ship_type_id" => Enum.random([17738, 12011, 22456]),
+            "ship_type_id" => Enum.random([17_738, 12_011, 22_456]),
             "final_blow" => true
           }
         ],
@@ -554,7 +554,7 @@ defmodule EveDmv.E2E.UserExperienceTest do
         "attackers" => [
           %{
             "character_id" => character_id,
-            "ship_type_id" => Enum.random([12011, 12013, 11987]),
+            "ship_type_id" => Enum.random([12_011, 12_013, 11_987]),
             "final_blow" => true
           }
         ],

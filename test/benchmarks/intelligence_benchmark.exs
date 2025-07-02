@@ -130,17 +130,17 @@ defmodule EveDmv.IntelligenceBenchmark do
             "character_id" =>
               if(rem(i, 3) == 0, do: Enum.random(90_000_000..95_000_000), else: character_id),
             "corporation_id" => Enum.random(1_000_000..2_000_000),
-            "ship_type_id" => Enum.random([587, 588, 589, 17738, 29984]),
+            "ship_type_id" => Enum.random([587, 588, 589, 17_738, 29_984]),
             "final_blow" => true,
-            "damage_done" => Enum.random(1000..10000)
+            "damage_done" => Enum.random(1000..10_000)
           }
         ],
         "victim" => %{
           "character_id" =>
             if(rem(i, 3) == 0, do: character_id, else: Enum.random(90_000_000..95_000_000)),
           "corporation_id" => Enum.random(1_000_000..2_000_000),
-          "ship_type_id" => Enum.random([587, 588, 589, 17738, 29984]),
-          "damage_taken" => Enum.random(1000..10000)
+          "ship_type_id" => Enum.random([587, 588, 589, 17_738, 29_984]),
+          "damage_taken" => Enum.random(1000..10_000)
         }
       }
 
@@ -174,7 +174,7 @@ defmodule EveDmv.IntelligenceBenchmark do
           %{
             "character_id" => Enum.random(95_000_000..95_000_010),
             "corporation_id" => corporation_id,
-            "ship_type_id" => Enum.random([587, 588, 589, 17738]),
+            "ship_type_id" => Enum.random([587, 588, 589, 17_738]),
             "final_blow" => true
           }
         ],
@@ -208,7 +208,7 @@ defmodule EveDmv.IntelligenceBenchmark do
       %{
         character_id: 123,
         character_name: "FC Pilot",
-        ship_type_id: 12013,
+        ship_type_id: 12_013,
         ship_name: "Damnation",
         ship_category: "command_ship",
         mass: 13_500_000,
@@ -217,7 +217,7 @@ defmodule EveDmv.IntelligenceBenchmark do
       %{
         character_id: 456,
         character_name: "DPS Pilot 1",
-        ship_type_id: 12011,
+        ship_type_id: 12_011,
         ship_name: "Legion",
         ship_category: "strategic_cruiser",
         mass: 13_000_000,
@@ -226,7 +226,7 @@ defmodule EveDmv.IntelligenceBenchmark do
       %{
         character_id: 789,
         character_name: "DPS Pilot 2",
-        ship_type_id: 12011,
+        ship_type_id: 12_011,
         ship_name: "Legion",
         ship_category: "strategic_cruiser",
         mass: 13_000_000,
@@ -235,7 +235,7 @@ defmodule EveDmv.IntelligenceBenchmark do
       %{
         character_id: 101,
         character_name: "Logi Pilot 1",
-        ship_type_id: 11987,
+        ship_type_id: 11_987,
         ship_name: "Guardian",
         ship_category: "logistics",
         mass: 11_800_000,
@@ -244,7 +244,7 @@ defmodule EveDmv.IntelligenceBenchmark do
       %{
         character_id: 102,
         character_name: "Logi Pilot 2",
-        ship_type_id: 11987,
+        ship_type_id: 11_987,
         ship_name: "Guardian",
         ship_category: "logistics",
         mass: 11_800_000,
@@ -253,7 +253,7 @@ defmodule EveDmv.IntelligenceBenchmark do
       %{
         character_id: 103,
         character_name: "Tackle Pilot",
-        ship_type_id: 11379,
+        ship_type_id: 11_379,
         ship_name: "Sabre",
         ship_category: "interdictor",
         mass: 2_000_000,

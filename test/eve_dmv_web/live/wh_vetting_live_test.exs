@@ -415,7 +415,7 @@ defmodule EveDmvWeb.WHVettingLiveTest do
     for i <- 1..15 do
       create(:killmail_raw, %{
         killmail_id: 80_000_000 + character_id + i,
-        killmail_time: DateTime.add(DateTime.utc_now(), -i * 86400, :second),
+        killmail_time: DateTime.add(DateTime.utc_now(), -i * 86_400, :second),
         solar_system_id: Enum.random(31_000_000..31_002_000),
         killmail_data: build_wh_killmail_data(character_id, name, i)
       })
@@ -433,7 +433,7 @@ defmodule EveDmvWeb.WHVettingLiveTest do
     for i <- 1..50 do
       create(:killmail_raw, %{
         killmail_id: 81_000_000 + character_id + i,
-        killmail_time: DateTime.add(DateTime.utc_now(), -i * 43200, :second),
+        killmail_time: DateTime.add(DateTime.utc_now(), -i * 43_200, :second),
         solar_system_id: Enum.random(31_000_000..31_005_000),
         killmail_data: build_wh_killmail_data(character_id, name, i, is_victim: rem(i, 10) == 0)
       })
@@ -475,7 +475,7 @@ defmodule EveDmvWeb.WHVettingLiveTest do
 
       create(:killmail_raw, %{
         killmail_id: 83_000_000 + character_id + i,
-        killmail_time: DateTime.add(DateTime.utc_now(), -i * 86400, :second),
+        killmail_time: DateTime.add(DateTime.utc_now(), -i * 86_400, :second),
         solar_system_id: system_id,
         killmail_data: build_wh_killmail_data(character_id, name, i)
       })
@@ -497,7 +497,7 @@ defmodule EveDmvWeb.WHVettingLiveTest do
       create(:employment_history, %{
         character_id: character_id,
         corporation_id: 1000 + i,
-        start_date: DateTime.add(base_date, i * 20 * 86400, :second)
+        start_date: DateTime.add(base_date, i * 20 * 86_400, :second)
       })
     end
   end
@@ -533,7 +533,7 @@ defmodule EveDmvWeb.WHVettingLiveTest do
               "character_name" => "Enemy Pilot",
               "corporation_id" => 2_000_000,
               # Machariel
-              "ship_type_id" => 17738,
+              "ship_type_id" => 17_738,
               "final_blow" => true
             }
           ]
@@ -544,7 +544,7 @@ defmodule EveDmvWeb.WHVettingLiveTest do
               "character_name" => name,
               "corporation_id" => 1_000_000,
               # T3Cs and Logi
-              "ship_type_id" => Enum.random([12011, 12013, 11987]),
+              "ship_type_id" => Enum.random([12_011, 12_013, 11_987]),
               "final_blow" => true
             }
           ]
@@ -556,7 +556,7 @@ defmodule EveDmvWeb.WHVettingLiveTest do
             "character_name" => name,
             "corporation_id" => 1_000_000,
             # Legion
-            "ship_type_id" => 12011
+            "ship_type_id" => 12_011
           }
         else
           %{
@@ -579,14 +579,14 @@ defmodule EveDmvWeb.WHVettingLiveTest do
           "corporation_name" => "Hard Knocks Citizens",
           "alliance_id" => 99_000_000,
           "alliance_name" => "Hard Knocks Citizens",
-          "ship_type_id" => 12013,
+          "ship_type_id" => 12_013,
           "final_blow" => true
         }
       ],
       "victim" => %{
         "character_id" => Enum.random(90_000_000..95_000_000),
         # Astrahus
-        "structure_type_id" => 35832
+        "structure_type_id" => 35_832
       }
     }
   end
@@ -625,7 +625,7 @@ defmodule EveDmvWeb.WHVettingLiveTest do
       "attackers" => [
         %{
           "character_id" => character_id,
-          "ship_type_id" => 12011,
+          "ship_type_id" => 12_011,
           "final_blow" => true
         }
       ],

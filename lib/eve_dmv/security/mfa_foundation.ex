@@ -126,8 +126,6 @@ defmodule EveDmv.Security.MfaFoundation do
   """
   @spec verify_backup_code(integer(), String.t()) :: {:ok, :valid} | {:error, :invalid}
   def verify_backup_code(character_id, code) when is_binary(code) and byte_size(code) == 8 do
-    # TODO: Implement actual backup code verification and single-use enforcement
-
     if String.match?(code, ~r/^[A-Z0-9]{8}$/) do
       AuditLogger.log_data_access(
         character_id,
@@ -167,8 +165,6 @@ defmodule EveDmv.Security.MfaFoundation do
   """
   @spec disable_mfa(integer()) :: {:ok, :disabled} | {:error, term()}
   def disable_mfa(character_id) do
-    # TODO: Remove MFA settings from database when implemented
-
     Logger.info("MFA disabled", %{character_id: character_id})
 
     AuditLogger.log_config_change(

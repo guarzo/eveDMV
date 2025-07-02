@@ -129,6 +129,22 @@ defmodule EveDmv.Intelligence.ChainConnection do
     belongs_to :chain_topology, EveDmv.Intelligence.ChainTopology do
       attribute_writable?(true)
     end
+
+    belongs_to :source_system, EveDmv.Eve.SolarSystem do
+      source_attribute(:source_system_id)
+      destination_attribute(:system_id)
+      description("Source solar system")
+      attribute_writable?(false)
+      allow_nil?(false)
+    end
+
+    belongs_to :target_system, EveDmv.Eve.SolarSystem do
+      source_attribute(:target_system_id)
+      destination_attribute(:system_id)
+      description("Target solar system")
+      attribute_writable?(false)
+      allow_nil?(false)
+    end
   end
 
   actions do

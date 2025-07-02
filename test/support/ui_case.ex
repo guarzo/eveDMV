@@ -211,7 +211,7 @@ defmodule EveDmv.UICase do
       killmail_time: DateTime.utc_now(),
       solar_system_id: 30_000_142,
       solar_system_name: "Jita",
-      total_value: Decimal.new("50000000"),
+      total_value: Decimal.new("50_000_000"),
       victim_character_id: Enum.random(90_000_000..99_999_999),
       victim_character_name: "Test Victim",
       victim_ship_name: "Rifter"

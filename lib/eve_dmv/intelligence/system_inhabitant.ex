@@ -131,6 +131,22 @@ defmodule EveDmv.Intelligence.SystemInhabitant do
     belongs_to :chain_topology, EveDmv.Intelligence.ChainTopology do
       attribute_writable?(true)
     end
+
+    belongs_to :ship_type, EveDmv.Eve.ItemType do
+      source_attribute(:ship_type_id)
+      destination_attribute(:type_id)
+      description("Ship type information")
+      attribute_writable?(false)
+      allow_nil?(true)
+    end
+
+    belongs_to :solar_system, EveDmv.Eve.SolarSystem do
+      source_attribute(:system_id)
+      destination_attribute(:system_id)
+      description("Solar system information")
+      attribute_writable?(false)
+      allow_nil?(true)
+    end
   end
 
   actions do

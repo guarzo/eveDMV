@@ -6,13 +6,8 @@
   "shutdownAction": "stopCompose",
   "forwardPorts": [4013, 5436, 6383],
   "portsAttributes": {
-<<<<<<< HEAD
-    "4014": {
-      "label": "Phoenix Server (Delta)",
-=======
     "4013": {
       "label": "Phoenix Server (Gamma)",
->>>>>>> gamma
       "onAutoForward": "notify"
     },
     "5436": {

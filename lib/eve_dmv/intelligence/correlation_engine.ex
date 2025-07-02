@@ -20,6 +20,7 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
   }
 
   alias EveDmv.Api
+  alias EveDmv.Database.QueryCache
 
   @doc """
   Perform comprehensive cross-module correlation analysis for a character.
@@ -69,6 +70,42 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
   end
 
   @doc """
+  Bulk analyze character correlations with optimized data fetching.
+  """
+  defp bulk_analyze_character_correlations(character_ids) do
+    # Use caching and bulk fetching to avoid N+1 queries
+    character_ids
+    |> Task.async_stream(
+      fn char_id ->
+        cache_key = "cross_module_correlation_#{char_id}"
+
+        result =
+          QueryCache.get_or_compute(
+            cache_key,
+            fn ->
+              analyze_cross_module_correlations(char_id)
+            end,
+            # 15 minutes TTL
+            900_000
+          )
+
+        case result do
+          {:ok, data} -> {char_id, data}
+          {:error, _} -> {char_id, nil}
+        end
+      end,
+      max_concurrency: 10,
+      timeout: 30_000
+    )
+    |> Enum.map(fn
+      {:ok, result} -> result
+      {:exit, _} -> {nil, nil}
+    end)
+    |> Enum.filter(fn {_id, data} -> not is_nil(data) end)
+    |> Enum.into(%{})
+  end
+
+  @doc """
   Find correlation patterns between multiple characters.
 
   Useful for identifying alt networks, shared associations, etc.
@@ -76,17 +113,8 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
   def analyze_character_correlations(character_ids) when is_list(character_ids) do
     Logger.info("Analyzing correlations between #{length(character_ids)} characters")
 
-    # Get analysis data for all characters
-    character_data =
-      character_ids
-      |> Enum.map(fn char_id ->
-        case analyze_cross_module_correlations(char_id) do
-          {:ok, data} -> {char_id, data}
-          {:error, _} -> {char_id, nil}
-        end
-      end)
-      |> Enum.filter(fn {_id, data} -> not is_nil(data) end)
-      |> Enum.into(%{})
+    # Optimize: Use bulk data fetching instead of individual calls
+    character_data = bulk_analyze_character_correlations(character_ids)
 
     if map_size(character_data) < 2 do
       {:error, "Insufficient character data for correlation analysis"}

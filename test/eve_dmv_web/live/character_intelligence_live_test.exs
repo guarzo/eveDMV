@@ -139,7 +139,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
       # Send high-threat activity
       for i <- 1..5 do
         # Machariel
-        kill = build_test_killmail(character_id, ship_type_id: 17738)
+        kill = build_test_killmail(character_id, ship_type_id: 17_738)
 
         Phoenix.PubSub.broadcast(
           EveDmv.PubSub,
@@ -465,7 +465,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
           "character_id" =>
             if(is_victim, do: Enum.random(90_000_000..95_000_000), else: character_id),
           "corporation_id" => 1_000_000,
-          "ship_type_id" => Enum.random([587, 588, 589, 17738]),
+          "ship_type_id" => Enum.random([587, 588, 589, 17_738]),
           "final_blow" => true
         }
       ],
