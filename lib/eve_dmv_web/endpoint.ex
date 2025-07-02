@@ -30,7 +30,14 @@ defmodule EveDmvWeb.Endpoint do
     at: "/",
     from: :eve_dmv,
     gzip: false,
-    only: EveDmvWeb.static_paths()
+    only: EveDmvWeb.static_paths(),
+    headers: %{
+      "strict-transport-security" => "max-age=31536000; includeSubDomains",
+      "x-frame-options" => "DENY",
+      "x-content-type-options" => "nosniff",
+      "x-xss-protection" => "1; mode=block",
+      "referrer-policy" => "strict-origin-when-cross-origin"
+    }
 
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.

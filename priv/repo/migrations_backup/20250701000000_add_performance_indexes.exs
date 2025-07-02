@@ -47,6 +47,5 @@ defmodule EveDmv.Repo.Migrations.AddPerformanceIndexes do
     drop_if_exists index(:participants, [:killmail_id])
     drop_if_exists index(:character_stats, [:character_id, :last_calculated_at])
     drop_if_exists index(:participants, [:corporation_id, :character_id, :killmail_time])
-    drop_if_exists index(:solar_systems, [:system_id, :security_status])
   end
 end
