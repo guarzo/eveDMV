@@ -391,15 +391,16 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
   end
 
   defp insert_participants(participants) do
-    Enum.each(participants, fn participant ->
-      case Ash.create(Participant, participant, action: :create, domain: Api) do
-        {:ok, _} -> :ok
-        # Ignore errors (duplicates, etc)
-        {:error, _} -> :ok
-      end
-    end)
-
-    :ok
+    case Ash.bulk_create(participants, Participant, :create,
+           domain: Api,
+           return_records?: false,
+           return_errors?: false,
+           stop_on_error?: false,
+           batch_size: 500
+         ) do
+      %{records: _records} -> :ok
+      _ -> :ok
+    end
   rescue
     _ -> :ok
   end

@@ -285,10 +285,8 @@ defmodule EveDmv.Intelligence.ChainMonitor do
         # Mark all current inhabitants as departed
         mark_all_departed(topology.id)
 
-        # Process new inhabitant data
-        Enum.each(inhabitants_data, fn inhabitant ->
-          update_or_create_inhabitant(topology.id, inhabitant)
-        end)
+        # Process new inhabitant data in bulk
+        bulk_update_or_create_inhabitants(topology.id, inhabitants_data)
 
         :ok
 
@@ -307,9 +305,19 @@ defmodule EveDmv.Intelligence.ChainMonitor do
         domain: Api
       )
 
-    Enum.each(inhabitants, fn inhabitant ->
-      Ash.update(inhabitant, %{present: false, departure_time: DateTime.utc_now()}, domain: Api)
-    end)
+    # Bulk update all inhabitants to mark as departed
+    updates =
+      Enum.map(inhabitants, fn inhabitant ->
+        %{id: inhabitant.id, present: false, departure_time: DateTime.utc_now()}
+      end)
+
+    Ash.bulk_update(updates, SystemInhabitant, :update,
+      domain: Api,
+      return_records?: false,
+      return_errors?: false,
+      stop_on_error?: false,
+      batch_size: 500
+    )
   end
 
   defp update_or_create_inhabitant(chain_topology_id, inhabitant_data) do
@@ -357,12 +365,83 @@ defmodule EveDmv.Intelligence.ChainMonitor do
     end
   end
 
+  defp bulk_update_or_create_inhabitants(chain_topology_id, inhabitants_data) do
+    # Get all existing inhabitants for this chain
+    {:ok, existing} =
+      Ash.read(SystemInhabitant,
+        filter: [chain_topology_id: chain_topology_id],
+        domain: Api
+      )
+
+    existing_map =
+      Map.new(existing, fn inhabitant ->
+        {inhabitant.character_id, inhabitant}
+      end)
+
+    # Prepare bulk data
+    {updates, creates} =
+      inhabitants_data
+      |> Enum.reduce({[], []}, fn inhabitant_data, {updates, creates} ->
+        character_id = Map.get(inhabitant_data, "character_id")
+        system_id = Map.get(inhabitant_data, "system_id")
+
+        attrs = %{
+          chain_topology_id: chain_topology_id,
+          character_id: character_id,
+          character_name: Map.get(inhabitant_data, "character_name", "Unknown"),
+          corporation_id: Map.get(inhabitant_data, "corporation_id", 1),
+          corporation_name: Map.get(inhabitant_data, "corporation_name", "Unknown"),
+          system_id: system_id,
+          system_name: Map.get(inhabitant_data, "system_name", "Unknown"),
+          ship_type_id: Map.get(inhabitant_data, "ship_type_id"),
+          present: true
+        }
+
+        case Map.get(existing_map, character_id) do
+          nil ->
+            # New inhabitant - add to creates
+            {updates, [attrs | creates]}
+
+          existing ->
+            # Existing inhabitant - add to updates if changed
+            if existing.system_id != system_id or not existing.present do
+              update_attrs = Map.put(attrs, :id, existing.id)
+              {[update_attrs | updates], creates}
+            else
+              {updates, creates}
+            end
+        end
+      end)
+
+    # Perform bulk operations
+    if creates != [] do
+      Ash.bulk_create(creates, SystemInhabitant, :create,
+        domain: Api,
+        return_records?: false,
+        return_errors?: false,
+        stop_on_error?: false,
+        batch_size: 500
+      )
+    end
+
+    if updates != [] do
+      Ash.bulk_update(updates, SystemInhabitant, :update,
+        domain: Api,
+        return_records?: false,
+        return_errors?: false,
+        stop_on_error?: false,
+        batch_size: 500
+      )
+    end
+
+    :ok
+  end
+
   defp update_chain_connections(map_id, connections_data) do
     case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
       {:ok, [topology]} ->
-        Enum.each(connections_data, fn connection ->
-          update_or_create_connection(topology.id, connection)
-        end)
+        # Process connections in bulk
+        bulk_update_or_create_connections(topology.id, connections_data)
 
         :ok
 
@@ -416,6 +495,75 @@ defmodule EveDmv.Intelligence.ChainMonitor do
           domain: Api
         )
     end
+  end
+
+  defp bulk_update_or_create_connections(chain_topology_id, connections_data) do
+    # Get all existing connections for this chain
+    {:ok, existing} =
+      Ash.read(ChainConnection,
+        filter: [chain_topology_id: chain_topology_id],
+        domain: Api
+      )
+
+    existing_map =
+      Map.new(existing, fn conn ->
+        {{conn.source_system_id, conn.target_system_id}, conn}
+      end)
+
+    # Prepare bulk data
+    {updates, creates} =
+      connections_data
+      |> Enum.reduce({[], []}, fn connection_data, {updates, creates} ->
+        source_system_id = Map.get(connection_data, "source_system_id")
+        target_system_id = Map.get(connection_data, "target_system_id")
+
+        attrs = %{
+          chain_topology_id: chain_topology_id,
+          source_system_id: source_system_id,
+          source_system_name: Map.get(connection_data, "source_system_name", "Unknown"),
+          target_system_id: target_system_id,
+          target_system_name: Map.get(connection_data, "target_system_name", "Unknown"),
+          signature_id: Map.get(connection_data, "signature_id"),
+          wormhole_type: Map.get(connection_data, "wormhole_type"),
+          mass_status: parse_mass_status(Map.get(connection_data, "mass_status")),
+          time_status: parse_time_status(Map.get(connection_data, "time_status")),
+          is_eol: Map.get(connection_data, "is_eol", false)
+        }
+
+        case Map.get(existing_map, {source_system_id, target_system_id}) do
+          nil ->
+            # New connection - add to creates
+            {updates, [attrs | creates]}
+
+          existing ->
+            # Existing connection - add to updates
+            update_attrs = Map.put(attrs, :id, existing.id)
+            {[update_attrs | updates], creates}
+        end
+      end)
+
+    # Perform bulk operations
+    if creates != [] do
+      Ash.bulk_create(creates, ChainConnection, :create,
+        domain: Api,
+        return_records?: false,
+        return_errors?: false,
+        stop_on_error?: false,
+        batch_size: 500
+      )
+    end
+
+    if updates != [] do
+      Ash.bulk_update(updates, ChainConnection, :update,
+        domain: Api,
+        return_records?: false,
+        return_errors?: false,
+        stop_on_error?: false,
+        batch_size: 500
+      )
+    end
+
+    :ok
   end
 
   defp parse_mass_status("stable"), do: :stable
@@ -608,9 +756,15 @@ defmodule EveDmv.Intelligence.ChainMonitor do
             domain: Api
           )
 
-        Enum.each(inhabitants, fn inhabitant ->
-          Ash.destroy(inhabitant, domain: Api)
-        end)
+        # Bulk destroy inhabitants
+        if inhabitants != [] do
+          Ash.bulk_destroy(inhabitants, :destroy,
+            domain: Api,
+            return_records?: false,
+            return_errors?: false,
+            batch_size: 500
+          )
+        end
 
         # Update system count
         Ash.update(

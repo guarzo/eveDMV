@@ -484,10 +484,33 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
           |> Enum.sort_by(& &1.kill_death_ratio, :desc)
           |> Enum.with_index(1)
 
-        for {ship, rank} <- usage_ranked, do: Ash.update(ship, %{usage_rank: rank}, domain: Api)
+        # Bulk update usage ranks
+        usage_updates =
+          Enum.map(usage_ranked, fn {ship, rank} ->
+            %{id: ship.id, usage_rank: rank}
+          end)
 
-        for {ship, rank} <- eff_ranked,
-            do: Ash.update(ship, %{effectiveness_rank: rank}, domain: Api)
+        Ash.bulk_update(usage_updates, ShipTypeStats, :update,
+          domain: Api,
+          return_records?: false,
+          return_errors?: false,
+          stop_on_error?: false,
+          batch_size: 500
+        )
+
+        # Bulk update effectiveness ranks
+        eff_updates =
+          Enum.map(eff_ranked, fn {ship, rank} ->
+            %{id: ship.id, effectiveness_rank: rank}
+          end)
+
+        Ash.bulk_update(eff_updates, ShipTypeStats, :update,
+          domain: Api,
+          return_records?: false,
+          return_errors?: false,
+          stop_on_error?: false,
+          batch_size: 500
+        )
 
         calculate_meta_tiers(eff_ranked)
 
@@ -501,18 +524,27 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
   defp calculate_meta_tiers(ranked) do
     total = length(ranked)
 
-    for {ship, rank} <- ranked do
-      tier =
-        cond do
-          rank <= max(1, div(total, 20)) -> "S"
-          rank <= max(1, div(total, 10)) -> "A"
-          rank <= max(1, div(total, 5)) -> "B"
-          rank <= max(1, div(total, 2)) -> "C"
-          true -> "D"
-        end
+    tier_updates =
+      Enum.map(ranked, fn {ship, rank} ->
+        tier =
+          cond do
+            rank <= max(1, div(total, 20)) -> "S"
+            rank <= max(1, div(total, 10)) -> "A"
+            rank <= max(1, div(total, 5)) -> "B"
+            rank <= max(1, div(total, 2)) -> "C"
+            true -> "D"
+          end
 
-      Ash.update(ship, %{meta_tier: tier}, domain: Api)
-    end
+        %{id: ship.id, meta_tier: tier}
+      end)
+
+    Ash.bulk_update(tier_updates, ShipTypeStats, :update,
+      domain: Api,
+      return_records?: false,
+      return_errors?: false,
+      stop_on_error?: false,
+      batch_size: 500
+    )
   rescue
     error -> Logger.error("Error calculating meta tiers: #{inspect(error)}")
   end
