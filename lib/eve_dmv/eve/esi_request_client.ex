@@ -62,7 +62,7 @@ defmodule EveDmv.Eve.EsiRequestClient do
   Make a public request to ESI API with reliability features.
   """
   @spec public_request(String.t(), String.t(), map()) :: {:ok, map()} | {:error, term()}
-  def public_request(method, path, params \\ %{}) do
+  def public_request(_method, path, params \\ %{}) do
     get_request(path, params, [])
   end
 
@@ -71,7 +71,7 @@ defmodule EveDmv.Eve.EsiRequestClient do
   """
   @spec authenticated_request(String.t(), String.t(), String.t()) ::
           {:ok, map()} | {:error, term()}
-  def authenticated_request(method, path, auth_token) do
+  def authenticated_request(_method, path, auth_token) do
     get_authenticated_request(path, auth_token, %{}, [])
   end
 
