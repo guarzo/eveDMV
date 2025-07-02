@@ -111,7 +111,13 @@ config :eve_dmv, EveDmv.Repo,
   port: 5432,
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
-  pool_size: 10
+  # Connection pool configuration
+  pool_size: 20,
+  queue_target: 50,
+  queue_interval: 1000,
+  timeout: 15_000,
+  ownership_timeout: 20_000,
+  pool_timeout: 5_000
 
 # Development-specific killmail pipeline configuration
 # Note: These will be overridden by runtime.exs if .env files exist

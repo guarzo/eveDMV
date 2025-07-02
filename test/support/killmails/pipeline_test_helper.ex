@@ -1,4 +1,4 @@
-defmodule EveDmv.Killmails.PipelineTest do
+defmodule EveDmv.Killmails.PipelineTestHelper do
   @moduledoc """
   Helper module for manually testing the killmail ingestion pipeline.
   """

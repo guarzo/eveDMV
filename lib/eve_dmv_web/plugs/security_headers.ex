@@ -1,9 +1,9 @@
 defmodule EveDmvWeb.Plugs.SecurityHeaders do
   @moduledoc """
-  Plug for adding security headers to HTTP responses.
+  Plug to add Content Security Policy and other security headers to HTTP responses.
 
-  This plug adds Content Security Policy and other security-related headers
-  to protect against common web vulnerabilities.
+  This plug sets comprehensive security headers including CSP to protect against
+  XSS attacks, clickjacking, and other common web vulnerabilities.
   """
 
   @behaviour Plug
@@ -13,15 +13,40 @@ defmodule EveDmvWeb.Plugs.SecurityHeaders do
   def call(conn, _opts) do
     conn
     |> Plug.Conn.put_resp_header("content-security-policy", csp_header())
+    |> Plug.Conn.put_resp_header("permissions-policy", permissions_policy())
   end
 
   defp csp_header do
+    # Content Security Policy tailored for Phoenix LiveView applications
     """
     default-src 'self';
-    script-src 'self' 'unsafe-inline';
+    script-src 'self' 'unsafe-inline' 'unsafe-eval';
     style-src 'self' 'unsafe-inline';
-    img-src 'self' data: https:;
-    connect-src 'self' wss: https:;
+    img-src 'self' data: https: blob:;
+    font-src 'self' data:;
+    connect-src 'self' wss: ws: https:;
+    media-src 'none';
+    object-src 'none';
+    frame-ancestors 'none';
+    base-uri 'self';
+    form-action 'self';
+    upgrade-insecure-requests;
+    """
+    |> String.replace("\n", " ")
+    |> String.trim()
+  end
+
+  defp permissions_policy do
+    # Restrict access to browser features
+    """
+    accelerometer=(),
+    camera=(),
+    geolocation=(),
+    gyroscope=(),
+    magnetometer=(),
+    microphone=(),
+    payment=(),
+    usb=()
     """
     |> String.replace("\n", " ")
     |> String.trim()

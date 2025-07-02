@@ -16,7 +16,6 @@ defmodule EveDmvWeb.Endpoint do
     key: "_eve_dmv_key",
     signing_salt: "fTSiD2Eh",
     same_site: "Lax",
-    # Enable in production
     secure: true,
     http_only: true,
     # 24 hours
