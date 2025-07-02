@@ -1,31 +1,26 @@
 {
-  "name": "EVE DMV Delta Team Dev Container",
+  "name": "EVE DMV Beta Team Dev Container",
   "dockerComposeFile": "../docker-compose.yml",
   "service": "app",
   "workspaceFolder": "/workspace",
   "shutdownAction": "stopCompose",
-  "forwardPorts": [4014, 5437, 6384],
+  "forwardPorts": [4012, 5435, 6382],
   "portsAttributes": {
-    "*/tcp": {
-      "onAutoForward": "ignore"
-    },
-    "4014": {
-      "label": "Phoenix Server (Delta)",
+    "4012": {
+      "label": "Phoenix Server (Beta)",
       "onAutoForward": "notify"
     },
-    "5437": {
-      "label": "PostgreSQL (Delta)"
+    "5435": {
+      "label": "PostgreSQL (Beta)"
     },
-    "6384": {
-      "label": "Redis (Delta)"
+    "6382": {
+      "label": "Redis (Beta)"
     }
   },
   "postCreateCommand": "echo 'Waiting for services...' && sleep 5 && mix deps.get && mix ecto.create --quiet && mix ecto.migrate && mix assets.setup && echo 'Dev container setup complete!'",
   "remoteUser": "vscode",
   "mounts": [
-    "source=${localWorkspaceFolder}/.devcontainer/.bash_history,target=/home/vscode/.bash_history,type=bind,consistency=cached",
-    "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached",
-    "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached"
+    "source=${localWorkspaceFolder}/.devcontainer/.bash_history,target=/home/vscode/.bash_history,type=bind,consistency=cached"
   ],
   "features": {
     "ghcr.io/devcontainers/features/common-utils:2": {
@@ -33,10 +28,6 @@
       "configureZshAsDefaultShell": "true",
       "installOhMyZsh": "true",
       "networkArgs": ["--add-host=host.docker.internal:host-gateway"]
-    },
-    "ghcr.io/devcontainers/features/git:1": {
-      "ppa": false,
-      "version": "latest"
     }
   },
   "customizations": {
@@ -72,4 +63,4 @@
       ]
     }
   }
-}
+} 
