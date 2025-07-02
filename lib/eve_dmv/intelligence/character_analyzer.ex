@@ -179,7 +179,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
       |> Ash.Query.new()
       |> Ash.Query.filter(character_id == ^character_id)
       |> Ash.Query.filter(updated_at >= ^cutoff_date)
-      |> Ash.Query.load(:killmail_enriched)
+      |> Ash.Query.load([:ship_type, :weapon_type])
 
     case Ash.read(participants_query, domain: Api) do
       {:ok, participants} ->
@@ -201,6 +201,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
     KillmailEnriched
     |> Ash.Query.new()
     |> Ash.Query.filter(killmail_id in ^killmail_ids)
+    |> Ash.Query.load([:victim_ship_type, :solar_system])
     |> Ash.read!(domain: Api)
   end
 

@@ -517,12 +517,13 @@ defmodule EveDmvWeb.SurveillanceLive do
   # Private helper functions
 
   defp load_user_profiles(user_id, current_user) do
-    case Ash.read(Profile,
-           action: :user_profiles,
-           input: %{user_id: user_id},
-           domain: Api,
-           actor: current_user
-         ) do
+    query =
+      Profile
+      |> Ash.Query.new()
+      |> Ash.Query.for_read(:user_profiles, %{user_id: user_id})
+      |> Ash.Query.load(:matches)
+
+    case Ash.read(query, domain: Api, actor: current_user) do
       {:ok, profiles} -> profiles
       {:error, _} -> []
     end
