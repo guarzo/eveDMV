@@ -431,11 +431,111 @@ defmodule EveDmvWeb.AuthControllerTest do
       end
     end
 
-    # Add actual rate limiting test if rate limiting is implemented
-    @tag :skip
-    test "implements rate limiting for authentication" do
-      # Only add this if actual rate limiting is implemented
-      flunk("Rate limiting not yet implemented")
+    test "handles concurrent authentication attempts" do
+      # Test concurrent access to ensure thread safety
+      user_info = %{
+        "CharacterID" => 123_457,
+        "CharacterName" => "ConcurrentPilot"
+      }
+
+      oauth_tokens = %{
+        "access_token" => "concurrent_token",
+        "refresh_token" => "concurrent_refresh",
+        "expires_in" => 3600
+      }
+
+      {:ok, user} =
+        Ash.create(
+          User,
+          %{
+            user_info: user_info,
+            oauth_tokens: oauth_tokens
+          },
+          action: :register_with_eve_sso,
+          domain: Api
+        )
+
+      # Launch concurrent authentication attempts
+      tasks =
+        for i <- 1..5 do
+          Task.async(fn ->
+            conn =
+              build_conn()
+              |> init_test_session(%{})
+              |> Phoenix.Controller.fetch_flash()
+              |> AuthController.success(:sign_in, user, nil)
+
+            {i, conn.status}
+          end)
+        end
+
+      # Collect all results
+      results = Task.await_many(tasks, 5000)
+
+      # All requests should complete successfully
+      for {_index, status} <- results do
+        assert status in [200, 302]
+      end
+
+      # Verify we got results from all tasks
+      assert length(results) == 5
+    end
+
+    test "session isolation between concurrent users" do
+      # Test that concurrent sessions don't interfere with each other
+      users =
+        for i <- 1..3 do
+          user_info = %{
+            "CharacterID" => 200_000 + i,
+            "CharacterName" => "IsolatedPilot#{i}"
+          }
+
+          oauth_tokens = %{
+            "access_token" => "isolated_token_#{i}",
+            "refresh_token" => "isolated_refresh_#{i}",
+            "expires_in" => 3600
+          }
+
+          {:ok, user} =
+            Ash.create(
+              User,
+              %{
+                user_info: user_info,
+                oauth_tokens: oauth_tokens
+              },
+              action: :register_with_eve_sso,
+              domain: Api
+            )
+
+          user
+        end
+
+      # Process users concurrently
+      tasks =
+        Enum.map(users, fn user ->
+          Task.async(fn ->
+            conn =
+              build_conn()
+              |> init_test_session(%{})
+              |> Phoenix.Controller.fetch_flash()
+              |> AuthController.success(:sign_in, user, nil)
+
+            # Extract session data
+            session_user_id = get_session(conn, :user_id)
+            {user.character_id, session_user_id}
+          end)
+        end)
+
+      results = Task.await_many(tasks, 5000)
+
+      # Each user should have their own session
+      for {character_id, session_user_id} <- results do
+        assert session_user_id == character_id
+      end
+
+      # No session cross-contamination
+      unique_sessions = results |> Enum.map(fn {_, sid} -> sid end) |> Enum.uniq()
+      assert length(unique_sessions) == 3
     end
   end
 end

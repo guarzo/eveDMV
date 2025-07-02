@@ -149,7 +149,8 @@ defmodule EveDmv.Intelligence.CharacterAnalyzerTest do
     property "dangerous rating is always between 0 and 5" do
       check all(
               killmail_count <- StreamData.integer(10..100),
-              victim_ratio <- StreamData.float(min: 0.0, max: 1.0)
+              victim_ratio <- StreamData.float(min: 0.0, max: 1.0),
+              max_runs: 100
             ) do
         character_id = System.unique_integer([:positive]) + 90_000_000
         create_killmails_with_ratio(character_id, killmail_count, victim_ratio)
@@ -157,6 +158,30 @@ defmodule EveDmv.Intelligence.CharacterAnalyzerTest do
         {:ok, stats} = CharacterAnalyzer.analyze_character(character_id)
         assert stats.dangerous_rating >= 0
         assert stats.dangerous_rating <= 5
+      end
+    end
+
+    property "dangerous rating increases with kill count and K/D ratio" do
+      check all(
+              base_kills <- StreamData.integer(10..50),
+              kill_multiplier <- StreamData.integer(1..5),
+              max_runs: 50
+            ) do
+        character_id_1 = System.unique_integer([:positive]) + 90_000_000
+        character_id_2 = System.unique_integer([:positive]) + 90_000_000
+
+        # Create two characters with different kill counts
+        create_pvp_pattern(character_id_1, :hunter, count: base_kills)
+        create_pvp_pattern(character_id_1, :victim, count: 10)
+
+        create_pvp_pattern(character_id_2, :hunter, count: base_kills * kill_multiplier)
+        create_pvp_pattern(character_id_2, :victim, count: 10)
+
+        {:ok, stats1} = CharacterAnalyzer.analyze_character(character_id_1)
+        {:ok, stats2} = CharacterAnalyzer.analyze_character(character_id_2)
+
+        # Character with more kills should have higher or equal rating
+        assert stats2.dangerous_rating >= stats1.dangerous_rating
       end
     end
   end
@@ -266,6 +291,159 @@ defmodule EveDmv.Intelligence.CharacterAnalyzerTest do
 
       rating = CharacterAnalyzer.calculate_danger_rating(stats)
       assert rating >= 4
+    end
+
+    test "calculates medium danger rating for average PvP character" do
+      stats = %{
+        basic_stats: %{
+          kills: %{count: 50, solo: 25, total_value: 1_000_000_000},
+          losses: %{count: 30, solo: 10, total_value: 600_000_000},
+          kd_ratio: 1.67,
+          solo_ratio: 0.5,
+          efficiency: 62.5
+        },
+        danger_rating: %{score: 3.0}
+      }
+
+      rating = CharacterAnalyzer.calculate_danger_rating(stats)
+      assert rating >= 2.5
+      assert rating <= 3.5
+    end
+  end
+
+  describe "ship usage analysis" do
+    test "correctly identifies ship preferences" do
+      character_id = 95_465_510
+
+      # Create usage pattern with specific ships
+      ship_usage = %{
+        # Loki (T3)
+        17738 => 20,
+        # Rifter
+        587 => 15,
+        # Crow (Interceptor)
+        11174 => 10,
+        # Thanatos (Carrier)
+        22852 => 2
+      }
+
+      for {ship_type_id, count} <- ship_usage do
+        for _i <- 1..count do
+          create(:killmail_raw, %{
+            killmail_data: %{
+              "attackers" => [
+                %{
+                  "character_id" => character_id,
+                  "ship_type_id" => ship_type_id,
+                  "final_blow" => true
+                }
+              ],
+              "victim" => %{
+                "character_id" => Enum.random(90_000_000..95_000_000),
+                "ship_type_id" => Enum.random([587, 588, 589])
+              }
+            }
+          })
+        end
+      end
+
+      assert {:ok, character_stats} = CharacterAnalyzer.analyze_character(character_id)
+
+      # Verify ship usage data
+      {:ok, analysis_data} = Jason.decode(character_stats.analysis_data)
+      ship_usage_data = Map.get(analysis_data, "ship_usage", %{})
+      favorite_ships = Map.get(ship_usage_data, "favorite_ships", [])
+
+      # Loki should be the most used ship
+      assert List.first(favorite_ships)["ship_type_id"] == 17738
+    end
+
+    test "detects capital ship usage" do
+      character_id = 95_465_511
+
+      # Create kills with capital ships
+      # Carrier, Dread, etc.
+      capital_ships = [22852, 23917, 23919, 24483]
+
+      for ship_type_id <- capital_ships do
+        create(:killmail_raw, %{
+          killmail_data: %{
+            "attackers" => [
+              %{
+                "character_id" => character_id,
+                "ship_type_id" => ship_type_id,
+                "final_blow" => true
+              }
+            ],
+            "victim" => %{
+              "character_id" => Enum.random(90_000_000..95_000_000)
+            }
+          }
+        })
+      end
+
+      assert {:ok, character_stats} = CharacterAnalyzer.analyze_character(character_id)
+
+      # Verify capital usage is detected
+      {:ok, analysis_data} = Jason.decode(character_stats.analysis_data)
+      ship_usage = Map.get(analysis_data, "ship_usage", %{})
+      ship_categories = Map.get(ship_usage, "ship_categories", %{})
+
+      assert Map.get(ship_categories, "capital", 0) > 0
+    end
+  end
+
+  describe "frequent systems analysis" do
+    test "correctly identifies home system" do
+      character_id = 95_465_512
+      # Amarr
+      home_system_id = 30_002_187
+
+      # Create 60% of activity in home system
+      for _i <- 1..30 do
+        create(:killmail_raw, %{
+          solar_system_id: home_system_id,
+          killmail_data: %{
+            "solar_system_id" => home_system_id,
+            "victim" => %{"character_id" => character_id}
+          }
+        })
+      end
+
+      # Create 40% in other systems
+      for _i <- 1..20 do
+        create(:killmail_raw, %{
+          solar_system_id: Enum.random(30_000_000..31_000_000),
+          killmail_data: %{
+            "victim" => %{"character_id" => character_id}
+          }
+        })
+      end
+
+      assert {:ok, character_stats} = CharacterAnalyzer.analyze_character(character_id)
+
+      # Verify home system detection
+      {:ok, analysis_data} = Jason.decode(character_stats.analysis_data)
+      geographic_patterns = Map.get(analysis_data, "geographic_patterns", %{})
+      detected_home = Map.get(geographic_patterns, "home_system", %{})
+
+      assert Map.get(detected_home, "system_id") == home_system_id
+    end
+
+    test "identifies wormhole activity patterns" do
+      character_id = 95_465_513
+
+      # Create wormhole kills in J-space
+      create_wormhole_activity(character_id, "C5", count: 25, role: :hunter)
+
+      assert {:ok, character_stats} = CharacterAnalyzer.analyze_character(character_id)
+
+      # Verify wormhole activity is detected
+      {:ok, analysis_data} = Jason.decode(character_stats.analysis_data)
+      geographic_patterns = Map.get(analysis_data, "geographic_patterns", %{})
+      security_dist = Map.get(geographic_patterns, "security_distribution", %{})
+
+      assert Map.get(security_dist, "wormhole", 0) > 0
     end
   end
 

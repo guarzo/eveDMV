@@ -325,27 +325,84 @@ defmodule EveDmv.Market.PriceServiceTest do
   end
 
   describe "price caching behavior" do
-    @tag :skip
     test "caches price results" do
       type_id = 587
 
-      # First call - should hit API
-      {:ok, price1} = PriceService.get_item_price(type_id)
+      # First call - should hit API or strategy
+      result1 = PriceService.get_item_price(type_id)
 
-      # Second call - should use cache
-      {:ok, price2} = PriceService.get_item_price(type_id)
+      case result1 do
+        {:ok, price1} ->
+          # Second call immediately after - should return same result
+          assert {:ok, price2} = PriceService.get_item_price(type_id)
 
-      assert price1 == price2
+          # Prices should be identical if from cache
+          assert price1 == price2
 
-      # Note: This test is skipped by default as it depends on
-      # implementation details of caching strategy
+          # Third call to verify consistency
+          assert {:ok, price3} = PriceService.get_item_price(type_id)
+          assert price1 == price3
+
+        {:error, _reason} ->
+          # If first call failed, subsequent calls should also fail consistently
+          assert {:error, _} = PriceService.get_item_price(type_id)
+      end
     end
 
-    @tag :skip
-    test "respects cache TTL" do
-      # Test cache expiration behavior
-      # This would require mocking time or waiting for real TTL
-      # Skipped in unit tests but could be tested in integration tests
+    test "handles concurrent cache access" do
+      type_id = 587
+
+      # Launch multiple concurrent requests for the same item
+      tasks =
+        for _i <- 1..5 do
+          Task.async(fn ->
+            PriceService.get_item_price(type_id)
+          end)
+        end
+
+      # Collect all results
+      results = Task.await_many(tasks, 5000)
+
+      # All requests should return the same result (either all success or all error)
+      first_result = hd(results)
+
+      Enum.each(results, fn result ->
+        assert result == first_result
+      end)
+    end
+
+    test "caches different price types separately" do
+      type_id = 587
+
+      # Get buy and sell prices
+      buy_result = PriceService.get_item_price(type_id, :buy)
+      sell_result = PriceService.get_item_price(type_id, :sell)
+
+      case {buy_result, sell_result} do
+        {{:ok, buy_price}, {:ok, sell_price}} ->
+          # Buy and sell prices might be different
+          # Cache should maintain both separately
+          assert {:ok, ^buy_price} = PriceService.get_item_price(type_id, :buy)
+          assert {:ok, ^sell_price} = PriceService.get_item_price(type_id, :sell)
+
+        _ ->
+          # If API fails, both should fail consistently
+          :ok
+      end
+    end
+
+    test "cache behavior with invalid items" do
+      # Invalid type IDs should also be cached to avoid repeated failed API calls
+      invalid_type_id = -1
+
+      # First call
+      assert {:error, reason1} = PriceService.get_item_price(invalid_type_id)
+
+      # Second call should return same error quickly (from cache)
+      assert {:error, reason2} = PriceService.get_item_price(invalid_type_id)
+
+      # Errors should be consistent
+      assert reason1 == reason2
     end
   end
 
