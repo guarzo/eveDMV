@@ -25,6 +25,7 @@ defmodule EveDmv.Repo.Migrations.AddIntelligenceSpecificIndexes do
     
     # Optimize alliance-based intelligence queries
     create index(:participants, [:alliance_id, :killmail_time], 
+      name: "participants_alliance_killmail_time_intel_idx",
       where: "alliance_id IS NOT NULL",
       comment: "Speeds up alliance intelligence analysis")
     
@@ -35,28 +36,26 @@ defmodule EveDmv.Repo.Migrations.AddIntelligenceSpecificIndexes do
     
     # Optimize character statistics lookups
     create index(:character_stats, [:character_id, :last_calculated_at],
+      name: "character_stats_character_last_calc_intel_idx",
       comment: "Speeds up character intelligence data retrieval")
     
     create index(:character_stats, [:corporation_id, :dangerous_rating],
       comment: "Optimizes corporation threat assessment queries")
     
     # Optimize system inhabitant intelligence
-    create index(:system_inhabitants, [:solar_system_id, :last_seen_at],
+    create index(:system_inhabitants, [:system_id, :last_seen_at],
       comment: "Speeds up system inhabitant intelligence queries")
     
-    create index(:system_inhabitants, [:character_id, :last_seen_at],
-      comment: "Optimizes character location tracking")
+    # Note: character_id, last_seen_at index already exists in initial schema
     
     # Optimize chain intelligence queries
-    create index(:chain_connections, [:from_system_id, :to_system_id],
+    create index(:chain_connections, [:source_system_id, :target_system_id],
       comment: "Speeds up wormhole chain navigation queries")
     
-    create index(:chain_topologies, [:updated_at],
-      comment: "Optimizes chain topology freshness queries")
+    # Note: chain_topologies[:updated_at] index already exists in initial schema
     
     # Optimize surveillance profile matching
-    create index(:surveillance_profile_matches, [:profile_id, :matched_at],
-      comment: "Speeds up surveillance match history queries")
+    # Note: profile_id, matched_at index already exists as profile_matches_profile_time_idx
     
     create index(:surveillance_profile_matches, [:killmail_id],
       comment: "Optimizes killmail-to-surveillance lookups")

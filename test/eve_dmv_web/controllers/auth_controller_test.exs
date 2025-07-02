@@ -521,16 +521,16 @@ defmodule EveDmvWeb.AuthControllerTest do
               |> AuthController.success(:sign_in, user, nil)
 
             # Extract session data
-            session_user_id = get_session(conn, :user_id)
-            {user.character_id, session_user_id}
+            session_user_id = get_session(conn, "current_user_id")
+            {user.id, session_user_id}
           end)
         end)
 
       results = Task.await_many(tasks, 5000)
 
       # Each user should have their own session
-      for {character_id, session_user_id} <- results do
-        assert session_user_id == character_id
+      for {user_id, session_user_id} <- results do
+        assert session_user_id == user_id
       end
 
       # No session cross-contamination

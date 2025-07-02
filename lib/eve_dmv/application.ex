@@ -10,13 +10,16 @@ defmodule EveDmv.Application do
     # Initialize EVE name resolver cache early
     EveDmv.Eve.NameResolver.start_cache()
 
-    # Set up security monitoring handlers
-    EveDmv.Security.AuditLogger.setup_handlers()
+    # Only set up security handlers in non-test environments
+    if Mix.env() != :test do
+      # Set up security monitoring handlers
+      EveDmv.Security.AuditLogger.setup_handlers()
 
-    # Set up periodic security headers validation
-    EveDmv.Security.HeadersValidator.setup_periodic_validation()
+      # Set up periodic security headers validation
+      EveDmv.Security.HeadersValidator.setup_periodic_validation()
+    end
 
-    children = [
+    base_children = [
       EveDmvWeb.Telemetry,
       # Task supervisor for background tasks (start early)
       {Task.Supervisor, name: EveDmv.TaskSupervisor},
@@ -34,35 +37,15 @@ defmodule EveDmv.Application do
       # Start rate limiter for Janice API (5 requests per second)
       {EveDmv.Market.RateLimiter, name: :janice_rate_limiter, max_tokens: 5, refill_rate: 5},
       # Start the surveillance matching engine
-      EveDmv.Surveillance.MatchingEngine,
-      # Start the query performance monitor
-      EveDmv.Telemetry.QueryMonitor,
-      # Start the query result cache
-      EveDmv.Database.QueryCache,
-      # Start the intelligent cache warmer
-      EveDmv.Database.CacheWarmer,
-      # Start the connection pool monitor
-      EveDmv.Database.ConnectionPoolMonitor,
-      # Start the partition manager
-      EveDmv.Database.PartitionManager,
-      # Start the cache invalidator
-      EveDmv.Database.CacheInvalidator,
-      # Start the query plan analyzer
-      EveDmv.Database.QueryPlanAnalyzer,
-      # Start the materialized view manager
-      EveDmv.Database.MaterializedViewManager,
-      # Start the archive manager
-      EveDmv.Database.ArchiveManager,
-      # Start the re-enrichment worker
-      EveDmv.Enrichment.ReEnrichmentWorker,
-      # Start the real-time price updater
-      EveDmv.Enrichment.RealTimePriceUpdater,
+      maybe_start_surveillance_engine(),
+      # Conditionally start database-dependent processes
+      maybe_start_database_processes(),
       # Start the Wanderer API client for chain intelligence
-      EveDmv.Intelligence.WandererClient,
+      maybe_start_process(EveDmv.Intelligence.WandererClient),
       # Start the Wanderer SSE client for real-time events
-      EveDmv.Intelligence.WandererSSE,
+      maybe_start_process(EveDmv.Intelligence.WandererSSE),
       # Start the chain monitoring system
-      EveDmv.Intelligence.ChainMonitor,
+      maybe_start_process(EveDmv.Intelligence.ChainMonitor),
       # Start mock SSE server in development
       maybe_start_mock_sse_server(),
       # Start the killmail ingestion pipeline
@@ -75,10 +58,54 @@ defmodule EveDmv.Application do
       EveDmvWeb.Endpoint
     ]
 
+    children = List.flatten(base_children)
+
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: EveDmv.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+
+  # Conditionally start database-dependent processes
+  defp maybe_start_database_processes do
+    if Mix.env() != :test do
+      [
+        EveDmv.Telemetry.QueryMonitor,
+        EveDmv.Database.QueryCache,
+        EveDmv.Database.CacheWarmer,
+        EveDmv.Database.ConnectionPoolMonitor,
+        EveDmv.Database.PartitionManager,
+        EveDmv.Database.CacheInvalidator,
+        EveDmv.Database.QueryPlanAnalyzer,
+        EveDmv.Database.MaterializedViewManager,
+        EveDmv.Database.ArchiveManager,
+        EveDmv.Enrichment.ReEnrichmentWorker,
+        EveDmv.Enrichment.RealTimePriceUpdater
+      ]
+    else
+      []
+    end
+  end
+
+  # Conditionally start surveillance engine
+  defp maybe_start_surveillance_engine do
+    if Mix.env() != :test do
+      EveDmv.Surveillance.MatchingEngine
+    else
+      %{
+        id: EveDmv.Surveillance.MatchingEngine,
+        start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}
+      }
+    end
+  end
+
+  # Conditionally start a process based on environment
+  defp maybe_start_process(module) do
+    if Mix.env() != :test do
+      module
+    else
+      %{id: module, start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}}
+    end
   end
 
   # Conditionally start the mock SSE server in development
@@ -111,21 +138,28 @@ defmodule EveDmv.Application do
 
   # Spec for background static data loader
   defp static_data_loader_spec do
-    %{
-      id: :static_data_loader,
-      start: {
-        Task,
-        :start_link,
-        [
-          fn ->
-            delay_ms = Application.get_env(:eve_dmv, :static_data_load_delay, 5000)
-            Process.sleep(delay_ms)
-            ensure_static_data_loaded()
-          end
-        ]
-      },
-      restart: :transient
-    }
+    if Mix.env() != :test do
+      %{
+        id: :static_data_loader,
+        start: {
+          Task,
+          :start_link,
+          [
+            fn ->
+              delay_ms = Application.get_env(:eve_dmv, :static_data_load_delay, 5000)
+              Process.sleep(delay_ms)
+              ensure_static_data_loaded()
+            end
+          ]
+        },
+        restart: :transient
+      }
+    else
+      %{
+        id: :static_data_loader_noop,
+        start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}
+      }
+    end
   end
 
   # Tell Phoenix to update the endpoint configuration

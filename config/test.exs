@@ -49,3 +49,20 @@ config :eve_dmv,
          pool: Ecto.Adapters.SQL.Sandbox,
          pool_size: 10
        )
+
+# Authentication configuration for tests
+config :eve_dmv, :token_signing_secret, "test_signing_secret_at_least_32_characters_long!"
+
+# EVE SSO OAuth2 Test Configuration
+config :eve_dmv, :eve_sso,
+  client_id: "test_client_id",
+  client_secret: "test_client_secret",
+  redirect_uri: "http://localhost:4002/auth/user/eve_sso/callback"
+
+# Disable external service connections in tests
+config :eve_dmv,
+  pipeline_enabled: false,
+  mock_sse_server_enabled: false,
+  wanderer_kills_sse_url: "http://localhost:8080/sse",
+  wanderer_kills_websocket_url: "ws://localhost:4004/socket",
+  wanderer_kills_base_url: "http://localhost:4004"

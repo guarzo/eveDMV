@@ -338,7 +338,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
   end
 
   defp fetch_character_details([]), do: {:ok, []}
-  
+
   defp fetch_character_details(character_ids) do
     case EsiClient.get_characters(character_ids) do
       {:ok, character_details} ->

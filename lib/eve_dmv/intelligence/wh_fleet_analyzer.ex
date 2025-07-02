@@ -811,13 +811,15 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
     base_score = pilot.kill_count + pilot.loss_count
     recency_bonus = calculate_recency_bonus(pilot.last_analyzed_at)
     role_score = calculate_role_specific_score(pilot, role)
-    
+
     base_score + recency_bonus + role_score
   end
 
   defp calculate_recency_bonus(last_analyzed_at) do
     case last_analyzed_at do
-      nil -> 0
+      nil ->
+        0
+
       last_date ->
         days_ago = DateTime.diff(DateTime.utc_now(), last_date, :day)
         # Up to 20 point bonus for recent activity
@@ -852,7 +854,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
   defp calculate_tackle_score(pilot) do
     ship_groups = Map.get(pilot, :ship_groups_flown, %{})
     score = 0
-    
+
     score = if Map.get(ship_groups, "Frigates", 0) > 10, do: score + 30, else: score
     if Map.get(ship_groups, "Interceptors", 0) > 0, do: score + 40, else: score
   end
@@ -886,7 +888,10 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
 
       # Calculate skill readiness based on ship usage patterns
       skill_readiness =
-        Enum.map(required_skills, &assess_skill_readiness(&1, pilot, pilot_ship_usage, total_experience))
+        Enum.map(
+          required_skills,
+          &assess_skill_readiness(&1, pilot, pilot_ship_usage, total_experience)
+        )
 
       avg_readiness = Enum.sum(skill_readiness) / length(skill_readiness)
       Float.round(avg_readiness, 2)

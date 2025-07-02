@@ -8,6 +8,18 @@ defmodule EveDmv.UICase do
 
   use ExUnit.CaseTemplate
 
+  # Import necessary functions at module level
+  import Phoenix.ConnTest
+  import Phoenix.LiveViewTest
+  import EveDmv.Factories
+  import Plug.Conn, only: [get_resp_header: 2]
+
+  @endpoint EveDmvWeb.Endpoint
+
+  # Default test timeouts
+  @default_timeout 5_000
+  @long_timeout 15_000
+
   using do
     quote do
       # Import ConnTest for HTTP testing

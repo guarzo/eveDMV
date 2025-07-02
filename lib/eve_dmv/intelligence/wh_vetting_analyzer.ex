@@ -395,22 +395,22 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
   defp determine_wh_class(system_id) do
     # Determine WH class based on system ID ranges
     # This is a simplified mapping - real implementation would use static data
-    
+
     # Special cases first
     if system_id == 31_000_005, do: "thera", else: check_wh_class_range(system_id)
   end
-  
+
   defp check_wh_class_range(system_id) when system_id >= 31_000_000 and system_id < 31_007_000 do
     # Calculate class based on range
     class_number = div(system_id - 31_000_000, 1000) + 1
-    
+
     case class_number do
       n when n in 1..6 -> n
       7 -> "shattered"
       _ -> nil
     end
   end
-  
+
   defp check_wh_class_range(_system_id), do: nil
 
   defp identify_home_holes(killmails) do
@@ -1244,7 +1244,7 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
   defp classify_ship_class(ship_type) do
     # Convert ship type names to general classes
     downcased = String.downcase(ship_type)
-    
+
     ship_class_mappings()
     |> Enum.find_value("other", fn {keywords, class} ->
       if Enum.any?(keywords, &String.contains?(downcased, &1)), do: class
@@ -1527,21 +1527,21 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
   defp assess_spy_risk(character_id, security_flags, behavioral_flags) do
     # Assess espionage risk based on character patterns and history
     base_probability = 0.08
-    
+
     # Collect all risk indicators
     behavioral_indicators = collect_behavioral_indicators(behavioral_flags)
     security_indicators = collect_security_indicators(security_flags)
-    
+
     # Check character age and experience
     {age_indicators, age_probability_modifier} = assess_character_age_risk(character_id)
-    
+
     # Combine all indicators
     all_indicators = behavioral_indicators ++ security_indicators ++ age_indicators
-    
+
     # Calculate final probability
     risk_modifiers = length(all_indicators) * 0.1
     final_probability = min(0.9, base_probability + age_probability_modifier + risk_modifiers)
-    
+
     # Determine mitigations based on risk level
     mitigations = determine_spy_risk_mitigations(final_probability)
 
@@ -1554,13 +1554,14 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
 
   defp collect_behavioral_indicators(behavioral_flags) do
     indicators = []
-    
-    indicators = if "seed_scout" in behavioral_flags do
-      ["Potential seed scout behavior detected" | indicators]
-    else
-      indicators
-    end
-    
+
+    indicators =
+      if "seed_scout" in behavioral_flags do
+        ["Potential seed scout behavior detected" | indicators]
+      else
+        indicators
+      end
+
     if "infiltration_patterns" in behavioral_flags do
       ["Infiltration activity patterns detected" | indicators]
     else
@@ -1581,16 +1582,16 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
       stats ->
         char_age_days = stats.character_age_days || 365
         total_activity = (stats.total_kills || 0) + (stats.total_losses || 0)
-        
+
         cond do
           # Young character with limited activity could be spy alt
           char_age_days < 90 and total_activity < 10 ->
             {["Young character with minimal activity"], 0.15}
-          
+
           # Very experienced character with no clear progression could be purchased
           char_age_days > 1000 and total_activity < 50 ->
             {["Experienced character with minimal recent activity"], 0.1}
-          
+
           true ->
             {[], 0.0}
         end
@@ -1601,13 +1602,13 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
     cond do
       final_probability > 0.4 ->
         ["reject_application", "too_high_risk"]
-      
+
       final_probability > 0.25 ->
         ["information_compartmentalization", "no_critical_roles", "background_verification"]
-      
+
       final_probability > 0.15 ->
         ["information_compartmentalization", "gradual_access_increase"]
-      
+
       true ->
         ["standard_information_security"]
     end
