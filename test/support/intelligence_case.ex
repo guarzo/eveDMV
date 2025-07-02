@@ -45,112 +45,103 @@ defmodule EveDmv.IntelligenceCase do
     # :hunter, :victim, :mixed
     role = Keyword.get(opts, :role, :mixed)
 
-    # J-space system IDs for different wormhole classes
-    wh_system_id =
-      case wh_class do
-        "C1" -> Enum.random(31_000_000..31_001_000)
-        "C2" -> Enum.random(31_001_000..31_002_000)
-        "C3" -> Enum.random(31_002_000..31_003_000)
-        "C4" -> Enum.random(31_003_000..31_004_000)
-        "C5" -> Enum.random(31_004_000..31_005_000)
-        "C6" -> Enum.random(31_005_000..31_006_000)
-        _ -> Enum.random(31_000_000..31_006_000)
-      end
-
-    # Select appropriate ship types for WH class
-    ship_types =
-      case wh_class do
-        # Frigates, cruisers
-        c when c in ["C1", "C2", "C3"] -> [587, 588, 589, 624, 622]
-        # T3 cruisers
-        c when c in ["C4", "C5"] -> [17_738, 29_984, 29_986, 29_988]
-        # Capitals
-        "C6" -> [23_917, 23_919, 24_483, 19_720]
-        _ -> [587, 588, 589]
-      end
+    wh_system_id = get_wh_system_id(wh_class)
+    ship_types = get_wh_ship_types(wh_class)
 
     for _i <- 1..count do
       killmail_time = random_datetime_in_past(days_back)
-
-      killmail_data =
-        case role do
-          :hunter ->
-            %{
-              "victim" => %{
-                "character_id" => Enum.random(90_000_000..100_000_000),
-                "ship_type_id" => Enum.random(ship_types)
-              },
-              "attackers" => [
-                %{
-                  "character_id" => character_id,
-                  "ship_type_id" => Enum.random(ship_types),
-                  "final_blow" => true
-                }
-              ],
-              "killmail_time" => DateTime.to_iso8601(killmail_time),
-              "solar_system_id" => wh_system_id
-            }
-
-          :victim ->
-            %{
-              "victim" => %{
-                "character_id" => character_id,
-                "ship_type_id" => Enum.random(ship_types)
-              },
-              "attackers" => [
-                %{
-                  "character_id" => Enum.random(90_000_000..100_000_000),
-                  "ship_type_id" => Enum.random(ship_types),
-                  "final_blow" => true
-                }
-              ],
-              "killmail_time" => DateTime.to_iso8601(killmail_time),
-              "solar_system_id" => wh_system_id
-            }
-
-          :mixed ->
-            if Enum.random([true, false]) do
-              # As attacker
-              %{
-                "victim" => %{
-                  "character_id" => Enum.random(90_000_000..100_000_000),
-                  "ship_type_id" => Enum.random(ship_types)
-                },
-                "attackers" => [
-                  %{
-                    "character_id" => character_id,
-                    "ship_type_id" => Enum.random(ship_types),
-                    "final_blow" => true
-                  }
-                ],
-                "killmail_time" => DateTime.to_iso8601(killmail_time),
-                "solar_system_id" => wh_system_id
-              }
-            else
-              # As victim
-              %{
-                "victim" => %{
-                  "character_id" => character_id,
-                  "ship_type_id" => Enum.random(ship_types)
-                },
-                "attackers" => [
-                  %{
-                    "character_id" => Enum.random(90_000_000..100_000_000),
-                    "ship_type_id" => Enum.random(ship_types),
-                    "final_blow" => true
-                  }
-                ],
-                "killmail_time" => DateTime.to_iso8601(killmail_time),
-                "solar_system_id" => wh_system_id
-              }
-            end
-        end
+      
+      killmail_data = build_wh_killmail_data(
+        character_id, 
+        role, 
+        ship_types, 
+        wh_system_id, 
+        killmail_time
+      )
 
       create(:killmail_raw, %{
         solar_system_id: wh_system_id,
         killmail_time: killmail_time,
         killmail_data: killmail_data
       })
+    end
+  end
+
+  defp get_wh_system_id(wh_class) do
+    # J-space system IDs for different wormhole classes
+    case wh_class do
+      "C1" -> Enum.random(31_000_000..31_001_000)
+      "C2" -> Enum.random(31_001_000..31_002_000)
+      "C3" -> Enum.random(31_002_000..31_003_000)
+      "C4" -> Enum.random(31_003_000..31_004_000)
+      "C5" -> Enum.random(31_004_000..31_005_000)
+      "C6" -> Enum.random(31_005_000..31_006_000)
+      _ -> Enum.random(31_000_000..31_006_000)
+    end
+  end
+
+  defp get_wh_ship_types(wh_class) do
+    # Select appropriate ship types for WH class
+    case wh_class do
+      # Frigates, cruisers
+      c when c in ["C1", "C2", "C3"] -> [587, 588, 589, 624, 622]
+      # T3 cruisers
+      c when c in ["C4", "C5"] -> [17_738, 29_984, 29_986, 29_988]
+      # Capitals
+      "C6" -> [23_917, 23_919, 24_483, 19_720]
+      _ -> [587, 588, 589]
+    end
+  end
+
+  defp build_wh_killmail_data(character_id, role, ship_types, wh_system_id, killmail_time) do
+    case role do
+      :hunter -> build_hunter_killmail(character_id, ship_types, wh_system_id, killmail_time)
+      :victim -> build_victim_killmail(character_id, ship_types, wh_system_id, killmail_time)
+      :mixed -> build_mixed_killmail(character_id, ship_types, wh_system_id, killmail_time)
+    end
+  end
+
+  defp build_hunter_killmail(character_id, ship_types, wh_system_id, killmail_time) do
+    %{
+      "victim" => %{
+        "character_id" => Enum.random(90_000_000..100_000_000),
+        "ship_type_id" => Enum.random(ship_types)
+      },
+      "attackers" => [
+        %{
+          "character_id" => character_id,
+          "ship_type_id" => Enum.random(ship_types),
+          "final_blow" => true
+        }
+      ],
+      "killmail_time" => DateTime.to_iso8601(killmail_time),
+      "solar_system_id" => wh_system_id
+    }
+  end
+
+  defp build_victim_killmail(character_id, ship_types, wh_system_id, killmail_time) do
+    %{
+      "victim" => %{
+        "character_id" => character_id,
+        "ship_type_id" => Enum.random(ship_types)
+      },
+      "attackers" => [
+        %{
+          "character_id" => Enum.random(90_000_000..100_000_000),
+          "ship_type_id" => Enum.random(ship_types),
+          "final_blow" => true
+        }
+      ],
+      "killmail_time" => DateTime.to_iso8601(killmail_time),
+      "solar_system_id" => wh_system_id
+    }
+  end
+
+  defp build_mixed_killmail(character_id, ship_types, wh_system_id, killmail_time) do
+    if Enum.random([true, false]) do
+      build_hunter_killmail(character_id, ship_types, wh_system_id, killmail_time)
+    else
+      build_victim_killmail(character_id, ship_types, wh_system_id, killmail_time)
     end
   end
 

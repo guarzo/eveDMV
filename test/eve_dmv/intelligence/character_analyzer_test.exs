@@ -318,13 +318,13 @@ defmodule EveDmv.Intelligence.CharacterAnalyzerTest do
       # Create usage pattern with specific ships
       ship_usage = %{
         # Loki (T3)
-        17738 => 20,
+        17_738 => 20,
         # Rifter
         587 => 15,
         # Crow (Interceptor)
-        11174 => 10,
+        11_174 => 10,
         # Thanatos (Carrier)
-        22852 => 2
+        22_852 => 2
       }
 
       for {ship_type_id, count} <- ship_usage do
@@ -355,7 +355,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzerTest do
       favorite_ships = Map.get(ship_usage_data, "favorite_ships", [])
 
       # Loki should be the most used ship
-      assert List.first(favorite_ships)["ship_type_id"] == 17738
+      assert List.first(favorite_ships)["ship_type_id"] == 17_738
     end
 
     test "detects capital ship usage" do
@@ -363,7 +363,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzerTest do
 
       # Create kills with capital ships
       # Carrier, Dread, etc.
-      capital_ships = [22852, 23917, 23919, 24483]
+      capital_ships = [22_852, 23_917, 23_919, 24_483]
 
       for ship_type_id <- capital_ships do
         create(:killmail_raw, %{

@@ -809,68 +809,66 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
   defp calculate_pilot_suitability_score(pilot, role) do
     # Calculate how suitable a pilot is for a specific role
     base_score = pilot.kill_count + pilot.loss_count
-
-    # Activity recency bonus
-    recency_bonus =
-      case pilot.last_analyzed_at do
-        nil ->
-          0
-
-        last_date ->
-          days_ago = DateTime.diff(DateTime.utc_now(), last_date, :day)
-          # Up to 20 point bonus for recent activity
-          max(0, 20 - days_ago)
-      end
-
-    # Role-specific scoring
-    role_score =
-      case role do
-        "fleet_commander" ->
-          fc_score = 0
-          fc_score = if pilot.kill_count > 100, do: fc_score + 50, else: fc_score
-          fc_score = if pilot.kd_ratio > 2.0, do: fc_score + 30, else: fc_score
-          fc_score = if pilot.avg_gang_size > 5.0, do: fc_score + 20, else: fc_score
-          fc_score
-
-        "logistics" ->
-          logi_score = 0
-          logi_score = if pilot.has_logi_support, do: logi_score + 50, else: logi_score
-          logi_score = if pilot.efficiency > 0.7, do: logi_score + 20, else: logi_score
-          logi_score
-
-        "tackle" ->
-          tackle_score = 0
-          ship_groups = Map.get(pilot, :ship_groups_flown, %{})
-
-          tackle_score =
-            if Map.get(ship_groups, "Frigates", 0) > 10, do: tackle_score + 30, else: tackle_score
-
-          tackle_score =
-            if Map.get(ship_groups, "Interceptors", 0) > 0,
-              do: tackle_score + 40,
-              else: tackle_score
-
-          tackle_score
-
-        "dps" ->
-          dps_score = 0
-          dps_score = if pilot.kill_count > 50, do: dps_score + 30, else: dps_score
-          dps_score = if pilot.kd_ratio > 1.5, do: dps_score + 20, else: dps_score
-          dps_score
-
-        "ewar" ->
-          # EWAR pilots often have fewer kills but high impact
-          ewar_score = 0
-          ewar_score = if pilot.efficiency > 0.6, do: ewar_score + 30, else: ewar_score
-          # Team players
-          ewar_score = if pilot.solo_ratio < 0.3, do: ewar_score + 20, else: ewar_score
-          ewar_score
-
-        _ ->
-          0
-      end
-
+    recency_bonus = calculate_recency_bonus(pilot.last_analyzed_at)
+    role_score = calculate_role_specific_score(pilot, role)
+    
     base_score + recency_bonus + role_score
+  end
+
+  defp calculate_recency_bonus(last_analyzed_at) do
+    case last_analyzed_at do
+      nil -> 0
+      last_date ->
+        days_ago = DateTime.diff(DateTime.utc_now(), last_date, :day)
+        # Up to 20 point bonus for recent activity
+        max(0, 20 - days_ago)
+    end
+  end
+
+  defp calculate_role_specific_score(pilot, role) do
+    case role do
+      "fleet_commander" -> calculate_fc_score(pilot)
+      "logistics" -> calculate_logi_score(pilot)
+      "tackle" -> calculate_tackle_score(pilot)
+      "dps" -> calculate_dps_score(pilot)
+      "ewar" -> calculate_ewar_score(pilot)
+      _ -> 0
+    end
+  end
+
+  defp calculate_fc_score(pilot) do
+    score = 0
+    score = if pilot.kill_count > 100, do: score + 50, else: score
+    score = if pilot.kd_ratio > 2.0, do: score + 30, else: score
+    if pilot.avg_gang_size > 5.0, do: score + 20, else: score
+  end
+
+  defp calculate_logi_score(pilot) do
+    score = 0
+    score = if pilot.has_logi_support, do: score + 50, else: score
+    if pilot.efficiency > 0.7, do: score + 20, else: score
+  end
+
+  defp calculate_tackle_score(pilot) do
+    ship_groups = Map.get(pilot, :ship_groups_flown, %{})
+    score = 0
+    
+    score = if Map.get(ship_groups, "Frigates", 0) > 10, do: score + 30, else: score
+    if Map.get(ship_groups, "Interceptors", 0) > 0, do: score + 40, else: score
+  end
+
+  defp calculate_dps_score(pilot) do
+    score = 0
+    score = if pilot.kill_count > 50, do: score + 30, else: score
+    if pilot.kd_ratio > 1.5, do: score + 20, else: score
+  end
+
+  defp calculate_ewar_score(pilot) do
+    # EWAR pilots often have fewer kills but high impact
+    score = 0
+    score = if pilot.efficiency > 0.6, do: score + 30, else: score
+    # Team players
+    if pilot.solo_ratio < 0.3, do: score + 20, else: score
   end
 
   defp select_best_ship_for_pilot(_pilot, preferred_ships) do
@@ -888,25 +886,27 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
 
       # Calculate skill readiness based on ship usage patterns
       skill_readiness =
-        Enum.map(required_skills, fn skill ->
-          case skill do
-            {:ship_class, class} ->
-              class_experience = Map.get(pilot_ship_usage, class, 0)
-              min(1.0, class_experience / max(1.0, total_experience * 0.1))
-
-            {:role, role} ->
-              pilot_roles = Map.get(pilot, :detected_roles, [])
-              if role in pilot_roles, do: 0.9, else: 0.4
-
-            _ ->
-              0.6
-          end
-        end)
+        Enum.map(required_skills, &assess_skill_readiness(&1, pilot, pilot_ship_usage, total_experience))
 
       avg_readiness = Enum.sum(skill_readiness) / length(skill_readiness)
       Float.round(avg_readiness, 2)
     else
       1.0
+    end
+  end
+
+  defp assess_skill_readiness(skill, pilot, pilot_ship_usage, total_experience) do
+    case skill do
+      {:ship_class, class} ->
+        class_experience = Map.get(pilot_ship_usage, class, 0)
+        min(1.0, class_experience / max(1.0, total_experience * 0.1))
+
+      {:role, role} ->
+        pilot_roles = Map.get(pilot, :detected_roles, [])
+        if role in pilot_roles, do: 0.9, else: 0.4
+
+      _ ->
+        0.6
     end
   end
 

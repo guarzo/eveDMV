@@ -329,37 +329,37 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
     case EsiClient.search_entities(query, [:character]) do
       {:ok, results} ->
         character_ids = Map.get(results, "character", [])
-
-        if Enum.empty?(character_ids) do
-          {:ok, []}
-        else
-          case EsiClient.get_characters(character_ids) do
-            {:ok, character_details} ->
-              formatted_results =
-                character_details
-                |> Enum.map(fn {char_id, char_data} ->
-                  %{
-                    character_id: char_id,
-                    character_name: char_data["name"] || "Unknown",
-                    corporation_id: char_data["corporation_id"],
-                    corporation_name: char_data["corporation_name"]
-                  }
-                end)
-                # Limit results
-                |> Enum.take(5)
-
-              {:ok, formatted_results}
-
-            {:error, reason} ->
-              Logger.warning("Failed to get character details: #{inspect(reason)}")
-              {:ok, []}
-          end
-        end
+        fetch_character_details(character_ids)
 
       {:error, reason} ->
         Logger.warning("Character search failed: #{inspect(reason)}")
         {:error, reason}
     end
+  end
+
+  defp fetch_character_details([]), do: {:ok, []}
+  
+  defp fetch_character_details(character_ids) do
+    case EsiClient.get_characters(character_ids) do
+      {:ok, character_details} ->
+        formatted_results = format_search_results(character_details)
+        {:ok, Enum.take(formatted_results, 5)}
+
+      {:error, reason} ->
+        Logger.warning("Failed to get character details: #{inspect(reason)}")
+        {:ok, []}
+    end
+  end
+
+  defp format_search_results(character_details) do
+    Enum.map(character_details, fn {char_id, char_data} ->
+      %{
+        character_id: char_id,
+        character_name: char_data["name"] || "Unknown",
+        corporation_id: char_data["corporation_id"],
+        corporation_name: char_data["corporation_name"]
+      }
+    end)
   end
 
   defp get_current_user_character_id(user) do

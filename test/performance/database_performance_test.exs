@@ -7,7 +7,7 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
 
   alias EveDmv.{Api, Repo}
   alias EveDmv.Intelligence.CharacterStats
-  alias EveDmv.Killmails.{KillmailRaw, KillmailEnriched}
+  alias EveDmv.Killmails.{KillmailEnriched, KillmailRaw}
 
   require Ash.Query
 

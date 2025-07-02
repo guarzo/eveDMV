@@ -208,23 +208,25 @@ defmodule EveDmv.Eve.CircuitBreaker do
   # Private server functions
 
   defp execute_and_handle_result(fun, timeout, state) do
-    try do
-      # Execute with timeout
-      task = Task.async(fun)
-      result = Task.await(task, timeout)
+    # Execute with timeout
+    task = Task.async(fun)
+    result = Task.await(task, timeout)
 
-      # Record success
-      new_state = handle_success(state)
-      {:reply, {:ok, result}, new_state}
-    catch
-      :exit, {:timeout, _} ->
-        new_state = handle_failure(state, :timeout)
-        {:reply, {:error, :timeout}, new_state}
+    # Record success
+    new_state = handle_success(state)
+    {:reply, {:ok, result}, new_state}
+  rescue
+    e ->
+      new_state = handle_failure(state, e)
+      {:reply, {:error, e}, new_state}
+  catch
+    :exit, {:timeout, _} ->
+      new_state = handle_failure(state, :timeout)
+      {:reply, {:error, :timeout}, new_state}
 
-      kind, reason ->
-        new_state = handle_failure(state, {kind, reason})
-        {:reply, {:error, {kind, reason}}, new_state}
-    end
+    kind, reason ->
+      new_state = handle_failure(state, {kind, reason})
+      {:reply, {:error, {kind, reason}}, new_state}
   end
 
   defp determine_current_state(state) do
