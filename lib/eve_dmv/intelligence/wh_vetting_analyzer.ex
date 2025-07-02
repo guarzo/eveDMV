@@ -509,12 +509,75 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
     end
   end
 
-  defp analyze_scanning_patterns(_killmails) do
-    # Analyze probe usage and scanning competency
+  defp analyze_scanning_patterns(killmails) do
+    # Analyze probe usage and scanning competency from ship usage and activity patterns
+    scanning_ships = [
+      "Astero",
+      "Stratios",
+      "Anathema",
+      "Buzzard",
+      "Cheetah",
+      "Helios",
+      "Tengu",
+      "Proteus",
+      "Legion",
+      "Loki"
+    ]
+
+    # Count scanning ship usage
+    scanning_activity =
+      killmails
+      |> Enum.filter(fn km ->
+        ship_name = km.ship_type_name || ""
+        Enum.any?(scanning_ships, &String.contains?(ship_name, &1))
+      end)
+      |> length()
+
+    total_killmails = length(killmails)
+
+    # Calculate probe usage percentage
+    probe_usage =
+      if total_killmails > 0 do
+        min(100, round(scanning_activity / total_killmails * 100))
+      else
+        0
+      end
+
+    # Estimate scan success rate based on scanning ship survival
+    scanning_losses =
+      killmails
+      |> Enum.filter(fn km ->
+        ship_name = km.ship_type_name || ""
+        km.is_victim && Enum.any?(scanning_ships, &String.contains?(ship_name, &1))
+      end)
+      |> length()
+
+    scan_success_rate =
+      if scanning_activity > 0 do
+        survival_rate = (scanning_activity - scanning_losses) / scanning_activity
+        Float.round(max(0.0, survival_rate), 2)
+      else
+        0.0
+      end
+
+    # Deep safe usage indicator - T3 cruiser or cloaky ship usage suggests advanced scanning
+    deep_safe_usage =
+      killmails
+      |> Enum.any?(fn km ->
+        ship_name = km.ship_type_name || ""
+
+        String.contains?(ship_name, "Tengu") or
+          String.contains?(ship_name, "Proteus") or
+          String.contains?(ship_name, "Legion") or
+          String.contains?(ship_name, "Loki") or
+          String.contains?(ship_name, "Astero") or
+          String.contains?(ship_name, "Stratios")
+      end)
+
     %{
-      "probe_usage" => 0,
-      "scan_success_rate" => 0.0,
-      "deep_safe_usage" => false
+      "probe_usage" => probe_usage,
+      "scan_success_rate" => scan_success_rate,
+      "deep_safe_usage" => deep_safe_usage
     }
   end
 
@@ -1072,8 +1135,56 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
     end
   end
 
-  defp assess_main_character_confidence(_character_id, _potential_alts) do
-    0.8
+  defp assess_main_character_confidence(character_id, potential_alts) do
+    # Assess confidence that this is the main character based on various factors
+    with {:ok, character_stats} <- CharacterStats.get_by_character_id(character_id) do
+      case character_stats do
+        [stats] ->
+          # Calculate confidence based on activity level, age, and alt patterns
+          activity_score = min(1.0, (stats.total_kills + stats.total_losses) / 100.0)
+
+          # Main characters typically have more diverse activity
+          diversity_score = calculate_activity_diversity(stats)
+
+          # Check if character name/creation patterns suggest it's an alt
+          alt_indicators = length(potential_alts)
+          alt_penalty = min(0.3, alt_indicators * 0.1)
+
+          # Combine factors
+          base_confidence = activity_score * 0.4 + diversity_score * 0.4 + 0.2
+          final_confidence = max(0.1, base_confidence - alt_penalty)
+
+          Float.round(final_confidence, 2)
+
+        [] ->
+          # No character stats available, lower confidence
+          0.3
+      end
+    else
+      {:error, _} -> 0.4
+    end
+  end
+
+  defp calculate_activity_diversity(stats) do
+    # Calculate diversity score based on various activity metrics
+    ship_diversity =
+      if stats.ship_usage && map_size(stats.ship_usage) > 0 do
+        # More ship types used = higher diversity
+        min(1.0, map_size(stats.ship_usage) / 10.0)
+      else
+        0.2
+      end
+
+    # Geographic diversity (if available)
+    geo_diversity =
+      if stats.most_active_regions && length(stats.most_active_regions) > 0 do
+        min(1.0, length(stats.most_active_regions) / 5.0)
+      else
+        0.3
+      end
+
+    # Average the diversity metrics
+    (ship_diversity + geo_diversity) / 2.0
   end
 
   defp analyze_small_gang_performance(character_id) do
@@ -1111,20 +1222,138 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
     }
   end
 
-  defp extract_primary_ship_classes(_ship_usage) do
+  defp extract_primary_ship_classes(ship_usage) do
     # Analyze ship usage to determine primary classes
-    # Placeholder implementation
-    ["frigates"]
+    if map_size(ship_usage) == 0 do
+      ["unknown"]
+    else
+      # Sort ship usage by frequency and extract primary classes
+      ship_usage
+      |> Enum.sort_by(fn {_ship, count} -> count end, :desc)
+      # Top 3 most used ship types
+      |> Enum.take(3)
+      |> Enum.map(fn {ship_type, _count} ->
+        classify_ship_class(ship_type)
+      end)
+      |> Enum.uniq()
+    end
   end
 
-  defp assess_wh_skills(_character_id) do
-    # Would integrate with ESI to check actual skills
-    %{
-      "probe_scanning" => 0,
-      "cloaking" => 0,
-      "covops" => 0,
-      "t3_cruisers" => 0
-    }
+  defp classify_ship_class(ship_type) do
+    # Convert ship type names to general classes
+    cond do
+      String.contains?(String.downcase(ship_type), "frigate") -> "frigates"
+      String.contains?(String.downcase(ship_type), "destroyer") -> "destroyers"
+      String.contains?(String.downcase(ship_type), "cruiser") -> "cruisers"
+      String.contains?(String.downcase(ship_type), "battlecruiser") -> "battlecruisers"
+      String.contains?(String.downcase(ship_type), "battleship") -> "battleships"
+      String.contains?(String.downcase(ship_type), "industrial") -> "industrials"
+      String.contains?(String.downcase(ship_type), "interceptor") -> "frigates"
+      String.contains?(String.downcase(ship_type), "assault") -> "frigates"
+      String.contains?(String.downcase(ship_type), "stealth") -> "frigates"
+      String.contains?(String.downcase(ship_type), "strategic") -> "cruisers"
+      String.contains?(String.downcase(ship_type), "heavy assault") -> "cruisers"
+      String.contains?(String.downcase(ship_type), "recon") -> "cruisers"
+      String.contains?(String.downcase(ship_type), "logistics") -> "logistics"
+      String.contains?(String.downcase(ship_type), "command") -> "command_ships"
+      true -> "other"
+    end
+  end
+
+  defp assess_wh_skills(character_id) do
+    # Assess WH-relevant skills based on ship usage patterns and activity
+    case get_or_create_character_stats(character_id) do
+      stats ->
+        ship_usage = stats.ship_usage || %{}
+
+        # Infer skills from ship usage patterns
+        scanning_skill = estimate_scanning_skill(ship_usage, stats)
+        cloaking_skill = estimate_cloaking_skill(ship_usage)
+        covops_skill = estimate_covops_skill(ship_usage)
+        t3_skill = estimate_t3_skill(ship_usage)
+
+        %{
+          "probe_scanning" => scanning_skill,
+          "cloaking" => cloaking_skill,
+          "covops" => covops_skill,
+          "t3_cruisers" => t3_skill
+        }
+    end
+  end
+
+  defp estimate_scanning_skill(ship_usage, stats) do
+    # Estimate scanning skill based on exploration activity and ship usage
+    exploration_ships = ["Astero", "Stratios", "Anathema", "Buzzard", "Cheetah", "Helios"]
+
+    exploration_usage =
+      ship_usage
+      |> Enum.filter(fn {ship, _} ->
+        Enum.any?(exploration_ships, &String.contains?(ship, &1))
+      end)
+      |> Enum.map(fn {_, count} -> count end)
+      |> Enum.sum()
+
+    # Higher exploration ship usage suggests better scanning skills
+    base_skill = min(5, exploration_usage / 10)
+
+    # Bonus for overall experience
+    experience_bonus = if stats.total_kills + stats.total_losses > 100, do: 1, else: 0
+
+    round(base_skill + experience_bonus)
+  end
+
+  defp estimate_cloaking_skill(ship_usage) do
+    # Estimate cloaking skill based on cloaky ship usage
+    cloaky_ships = ["Astero", "Stratios", "Pilgrim", "Falcon", "Rook", "Blackbird", "Recon"]
+
+    cloaky_usage =
+      ship_usage
+      |> Enum.filter(fn {ship, _} ->
+        Enum.any?(cloaky_ships, &String.contains?(ship, &1))
+      end)
+      |> Enum.map(fn {_, count} -> count end)
+      |> Enum.sum()
+
+    min(5, cloaky_usage / 15)
+  end
+
+  defp estimate_covops_skill(ship_usage) do
+    # Estimate covert ops skill based on covops ship usage
+    covops_ships = [
+      "Anathema",
+      "Buzzard",
+      "Cheetah",
+      "Helios",
+      "Pilgrim",
+      "Falcon",
+      "Rook",
+      "Arazu"
+    ]
+
+    covops_usage =
+      ship_usage
+      |> Enum.filter(fn {ship, _} ->
+        Enum.any?(covops_ships, &String.contains?(ship, &1))
+      end)
+      |> Enum.map(fn {_, count} -> count end)
+      |> Enum.sum()
+
+    min(5, covops_usage / 20)
+  end
+
+  defp estimate_t3_skill(ship_usage) do
+    # Estimate T3 cruiser skill based on T3 ship usage
+    t3_ships = ["Legion", "Loki", "Proteus", "Tengu"]
+
+    t3_usage =
+      ship_usage
+      |> Enum.filter(fn {ship, _} ->
+        Enum.any?(t3_ships, &String.contains?(ship, &1))
+      end)
+      |> Enum.map(fn {_, count} -> count end)
+      |> Enum.sum()
+
+    min(5, t3_usage / 25)
   end
 
   defp identify_security_flags(character_id) do
@@ -1239,19 +1468,129 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
     end
   end
 
-  defp assess_awox_risk(_character_id, _security_flags, _behavioral_flags) do
+  defp assess_awox_risk(character_id, security_flags, behavioral_flags) do
+    # Assess AWOX (attacking own teammates) risk based on behavior patterns
+    indicators = []
+    base_probability = 0.05
+
+    # Check for blue killer behavior
+    indicators =
+      if "blue_killer" in behavioral_flags do
+        ["Previously killed friendly targets" | indicators]
+      else
+        indicators
+      end
+
+    # Check for high threat rating
+    indicators =
+      if "high_threat" in security_flags do
+        ["High threat character profile" | indicators]
+      else
+        indicators
+      end
+
+    # Check employment history for corp hopping
+    case get_or_create_character_stats(character_id) do
+      stats ->
+        employment_changes = stats.corp_changes || 0
+
+        if employment_changes > 5 do
+          indicators = ["Frequent corporation changes (#{employment_changes})" | indicators]
+          base_probability = base_probability + 0.1
+        end
+    end
+
+    # Calculate final probability
+    risk_modifiers = length(indicators) * 0.05
+    final_probability = min(0.8, base_probability + risk_modifiers)
+
+    # Determine mitigations based on risk level
+    mitigations =
+      cond do
+        final_probability > 0.3 -> ["reject_application", "too_high_risk"]
+        final_probability > 0.15 -> ["probation_period", "limited_roles", "close_monitoring"]
+        final_probability > 0.05 -> ["limited_roles", "probation_period"]
+        true -> ["standard_vetting"]
+      end
+
     %{
-      "probability" => 0.1,
-      "indicators" => [],
-      "mitigations" => ["limited_roles", "probation_period"]
+      "probability" => Float.round(final_probability, 2),
+      "indicators" => indicators,
+      "mitigations" => mitigations
     }
   end
 
-  defp assess_spy_risk(_character_id, _security_flags, _behavioral_flags) do
+  defp assess_spy_risk(character_id, security_flags, behavioral_flags) do
+    # Assess espionage risk based on character patterns and history
+    indicators = []
+    base_probability = 0.08
+
+    # Check for suspicious patterns
+    indicators =
+      if "seed_scout" in behavioral_flags do
+        ["Potential seed scout behavior detected" | indicators]
+      else
+        indicators
+      end
+
+    indicators =
+      if "infiltration_patterns" in behavioral_flags do
+        ["Infiltration activity patterns detected" | indicators]
+      else
+        indicators
+      end
+
+    # Check for recent corp changes during conflicts
+    indicators =
+      if "conflict_corp_hopping" in security_flags do
+        ["Corporation changes during conflict periods" | indicators]
+      else
+        indicators
+      end
+
+    # Check character age and experience
+    case get_or_create_character_stats(character_id) do
+      stats ->
+        char_age_days = stats.character_age_days || 365
+        total_activity = (stats.total_kills || 0) + (stats.total_losses || 0)
+
+        # Young character with limited activity could be spy alt
+        if char_age_days < 90 and total_activity < 10 do
+          indicators = ["Young character with minimal activity" | indicators]
+          base_probability = base_probability + 0.15
+        end
+
+        # Very experienced character with no clear progression could be purchased
+        if char_age_days > 1000 and total_activity < 50 do
+          indicators = ["Experienced character with minimal recent activity" | indicators]
+          base_probability = base_probability + 0.1
+        end
+    end
+
+    # Calculate final probability
+    risk_modifiers = length(indicators) * 0.1
+    final_probability = min(0.9, base_probability + risk_modifiers)
+
+    # Determine mitigations based on risk level
+    mitigations =
+      cond do
+        final_probability > 0.4 ->
+          ["reject_application", "too_high_risk"]
+
+        final_probability > 0.25 ->
+          ["information_compartmentalization", "no_critical_roles", "background_verification"]
+
+        final_probability > 0.15 ->
+          ["information_compartmentalization", "gradual_access_increase"]
+
+        true ->
+          ["standard_information_security"]
+      end
+
     %{
-      "probability" => 0.15,
-      "indicators" => [],
-      "mitigations" => ["information_compartmentalization"]
+      "probability" => Float.round(final_probability, 2),
+      "indicators" => indicators,
+      "mitigations" => mitigations
     }
   end
 

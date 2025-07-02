@@ -12,7 +12,7 @@ defmodule EveDmv.Application do
 
     # Set up security monitoring handlers
     EveDmv.Security.AuditLogger.setup_handlers()
-    
+
     # Set up periodic security headers validation
     EveDmv.Security.HeadersValidator.setup_periodic_validation()
 
