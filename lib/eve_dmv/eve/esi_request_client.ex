@@ -59,6 +59,23 @@ defmodule EveDmv.Eve.EsiRequestClient do
   end
 
   @doc """
+  Make a public request to ESI API with reliability features.
+  """
+  @spec public_request(String.t(), String.t(), map()) :: {:ok, map()} | {:error, term()}
+  def public_request(method, path, params \\ %{}) do
+    get_request(path, params, [])
+  end
+
+  @doc """
+  Make an authenticated request to ESI API with reliability features.
+  """
+  @spec authenticated_request(String.t(), String.t(), String.t()) ::
+          {:ok, map()} | {:error, term()}
+  def authenticated_request(method, path, auth_token) do
+    get_authenticated_request(path, auth_token, %{}, [])
+  end
+
+  @doc """
   Make a public GET request to ESI API with reliability features.
   """
   @spec get_request(String.t(), map(), keyword()) :: {:ok, map()} | {:error, term()}
@@ -124,13 +141,17 @@ defmodule EveDmv.Eve.EsiRequestClient do
            recv_timeout: timeout,
            params: params
          ) do
-      {:ok, %{status_code: 200, body: body}} ->
+      {:ok, %HTTPoison.Response{status_code: status_code, body: body, headers: resp_headers}}
+      when status_code in 200..299 ->
         case Jason.decode(body) do
-          {:ok, data} -> {:ok, data}
-          {:error, reason} -> {:error, {:json_error, reason}}
+          {:ok, data} ->
+            {:ok, %{body: data, status_code: status_code, headers: Map.new(resp_headers)}}
+
+          {:error, reason} ->
+            {:error, {:json_error, reason}}
         end
 
-      {:ok, %{status_code: status_code}} ->
+      {:ok, %HTTPoison.Response{status_code: status_code}} ->
         {:error, {:http_error, status_code}}
 
       {:error, %HTTPoison.Error{reason: reason}} ->
@@ -175,7 +196,7 @@ defmodule EveDmv.Eve.EsiRequestClient do
     Logger.info("Retrying ESI request after #{delay}ms", %{
       path: path,
       attempt: attempt + 1,
-      error: error
+      error: sanitize_error_for_logging(error)
     })
 
     :timer.sleep(delay)
@@ -274,5 +295,32 @@ defmodule EveDmv.Eve.EsiRequestClient do
   defp get_config(key, default) do
     Application.get_env(:eve_dmv, :esi, [])
     |> Keyword.get(key, default)
+  end
+
+  # Remove auth_token from error data before logging
+  defp sanitize_error_for_logging(error) do
+    case error do
+      %{auth_token: _} = error_map ->
+        Map.delete(error_map, :auth_token)
+
+      tuple when is_tuple(tuple) ->
+        # Handle tuples that might contain sensitive data
+        tuple |> Tuple.to_list() |> sanitize_list_for_logging() |> List.to_tuple()
+
+      list when is_list(list) ->
+        sanitize_list_for_logging(list)
+
+      _ ->
+        error
+    end
+  end
+
+  defp sanitize_list_for_logging(list) do
+    Enum.map(list, fn item ->
+      case item do
+        %{auth_token: _} = map -> Map.delete(map, :auth_token)
+        other -> other
+      end
+    end)
   end
 end

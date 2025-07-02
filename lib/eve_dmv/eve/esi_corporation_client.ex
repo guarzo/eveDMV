@@ -39,21 +39,25 @@ defmodule EveDmv.Eve.EsiCorporationClient do
   Get corporation members (requires authentication).
   """
   @spec get_corporation_members(integer(), String.t()) ::
-          {:error, :invalid_response | :service_unavailable}
+          {:ok, list(map())} | {:error, term()}
   def get_corporation_members(corporation_id, auth_token)
       when is_integer(corporation_id) and is_binary(auth_token) do
     path = "/#{@corporation_api_version}/corporations/#{corporation_id}/members/"
 
-    case EsiRequestClient.get_authenticated_request(path, auth_token) do
-      error ->
-        error
+    case EsiRequestClient.authenticated_request("GET", path, auth_token) do
+      {:ok, response} ->
+        {:ok, response.body}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
   @doc """
   Get corporation assets (requires authentication).
   """
-  @spec get_corporation_assets(integer(), String.t()) :: {:error, :service_unavailable}
+  @spec get_corporation_assets(integer(), String.t()) ::
+          {:ok, list(map())} | {:error, term()}
   def get_corporation_assets(corporation_id, auth_token)
       when is_integer(corporation_id) and is_binary(auth_token) do
     fetch_all_corporation_assets(corporation_id, auth_token, 1, [])
@@ -61,7 +65,37 @@ defmodule EveDmv.Eve.EsiCorporationClient do
 
   # Private helper functions
 
-  defp fetch_all_corporation_assets(_corporation_id, _auth_token, _page, _accumulated) do
-    {:error, :service_unavailable}
+  defp fetch_all_corporation_assets(corporation_id, auth_token, page, acc) do
+    path = "/#{@corporation_api_version}/corporations/#{corporation_id}/assets/?page=#{page}"
+
+    case EsiRequestClient.authenticated_request("GET", path, auth_token) do
+      {:ok, %{body: assets, headers: headers}} ->
+        new_acc = acc ++ assets
+
+        if has_more_pages?(headers) do
+          fetch_all_corporation_assets(corporation_id, auth_token, page + 1, new_acc)
+        else
+          {:ok, new_acc}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp has_more_pages?(headers) do
+    # Check for 'pages' header or other pagination indicators
+    case Map.get(headers, "x-pages") do
+      pages_str when is_binary(pages_str) ->
+        try do
+          pages = String.to_integer(pages_str)
+          pages > 1
+        rescue
+          _ -> false
+        end
+
+      _ ->
+        false
+    end
   end
 end
