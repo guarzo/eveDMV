@@ -37,6 +37,10 @@ defmodule EveDmv.Application do
       EveDmv.Database.CacheWarmer,
       # Start the connection pool monitor
       EveDmv.Database.ConnectionPoolMonitor,
+      # Start the partition manager
+      EveDmv.Database.PartitionManager,
+      # Start the cache invalidator
+      EveDmv.Database.CacheInvalidator,
       # Start the re-enrichment worker
       EveDmv.Enrichment.ReEnrichmentWorker,
       # Start the real-time price updater
