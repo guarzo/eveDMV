@@ -82,6 +82,25 @@ defmodule EveDmvWeb.Router do
     pipe_through :api
   end
 
+  # Authenticated API endpoints
+  scope "/api/v1", EveDmvWeb.Api do
+    pipe_through [:api, :load_from_bearer]
+
+    # API key management (requires user authentication)
+    resources "/api_keys", ApiKeysController, only: [:index, :create, :delete] do
+      post "/validate", ApiKeysController, :validate
+    end
+  end
+
+  # Internal API endpoints (requires API key authentication)
+  scope "/api/internal", EveDmvWeb.Api do
+    pipe_through [:api, {EveDmvWeb.Plugs.ApiAuth, permissions: ["internal"]}]
+
+    # Internal endpoints would go here
+    # get "/health", HealthController, :check
+    # get "/metrics", MetricsController, :index
+  end
+
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:eve_dmv, :dev_routes) do
     # If you want to use the LiveDashboard in production, you should put
