@@ -38,7 +38,7 @@ database_config =
       username: "postgres",
       password: "postgres",
       hostname: "db",
-      database: "eve_tracker_test#{System.get_env("MIX_TEST_PARTITION")}",
+      database: "eve_dmv_test#{System.get_env("MIX_TEST_PARTITION")}",
       port: 5432
     ]
   end
@@ -47,5 +47,5 @@ config :eve_dmv,
        EveDmv.Repo,
        Keyword.merge(database_config,
          pool: Ecto.Adapters.SQL.Sandbox,
-         pool_size: System.schedulers_online() * 2
+         pool_size: 10
        )
