@@ -724,7 +724,7 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
         value > 100_000_000
       end)
 
-    if length(solo_losses) == 0 do
+    if Enum.empty?(solo_losses) do
       0.0
     else
       expensive_solo_losses / length(solo_losses) * 100

@@ -6,6 +6,8 @@ defmodule EveDmvWeb.AuthLive do
   import Phoenix.LiveView
   import Phoenix.Component
 
+  alias EveDmv.Security.AuditLogger
+
   def on_mount(:load_from_session, _params, session, socket) do
     socket = assign_current_user(socket, session)
     {:cont, socket}
@@ -87,6 +89,16 @@ defmodule EveDmvWeb.AuthLive do
 
     @impl true
     def handle_info(:session_timeout, socket) do
+      # Log session timeout event
+      case socket.assigns[:current_user] do
+        %{id: character_id} ->
+          session_timeout_hours = Application.get_env(:eve_dmv, :session_timeout_hours, 24)
+          AuditLogger.log_session_timeout(character_id, session_timeout_hours * 3600)
+
+        _ ->
+          :ok
+      end
+
       {:noreply,
        socket
        |> put_flash(:error, "Your session has expired. Please sign in again.")

@@ -10,6 +10,12 @@ defmodule EveDmv.Application do
     # Initialize EVE name resolver cache early
     EveDmv.Eve.NameResolver.start_cache()
 
+    # Set up security monitoring handlers
+    EveDmv.Security.AuditLogger.setup_handlers()
+    
+    # Set up periodic security headers validation
+    EveDmv.Security.HeadersValidator.setup_periodic_validation()
+
     children = [
       EveDmvWeb.Telemetry,
       # Task supervisor for background tasks (start early)
