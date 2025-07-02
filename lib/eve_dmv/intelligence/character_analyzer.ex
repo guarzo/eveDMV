@@ -5,7 +5,8 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
 
   require Logger
   alias EveDmv.Api
-  alias EveDmv.Eve.EsiClient
+  alias EveDmv.Database.QueryCache
+  alias EveDmv.Eve.{EsiClient, ItemType, NameResolver}
   alias EveDmv.Intelligence.{CharacterFormatters, CharacterMetrics, CharacterStats}
   alias EveDmv.Killmails.{KillmailEnriched, Participant}
   require Ash.Query
@@ -14,12 +15,36 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
   @min_activity_threshold 10
 
   @doc """
+  Invalidate cached data for a character when their data changes.
+  """
+  def invalidate_character_cache(character_id) do
+    QueryCache.invalidate_pattern("character_*_#{character_id}")
+    QueryCache.invalidate_pattern("character_analysis_#{character_id}")
+    QueryCache.invalidate_pattern("character_killmails_#{character_id}_*")
+    Logger.debug("Invalidated cache for character #{character_id}")
+  end
+
+  @doc """
   Analyze a character and create/update their intelligence profile.
   """
   @spec analyze_character(integer()) :: {:ok, CharacterStats.t()} | {:error, term()}
   def analyze_character(character_id) do
     Logger.info("Analyzing character #{character_id}")
 
+    # Cache the complete analysis for 30 minutes
+    cache_key = "character_analysis_#{character_id}"
+
+    QueryCache.get_or_compute(
+      cache_key,
+      fn ->
+        analyze_character_uncached(character_id)
+      end,
+      # 30 minutes TTL
+      1_800_000
+    )
+  end
+
+  defp analyze_character_uncached(character_id) do
     with {:ok, basic_info} <- get_character_info(character_id),
          {:ok, killmail_data} <- get_recent_killmails(character_id),
          {:ok, metrics} <- calculate_all_metrics(character_id, killmail_data),
@@ -171,6 +196,20 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
   end
 
   defp get_recent_killmails(character_id) do
+    # Cache killmail data for 10 minutes since it's expensive to compute
+    cache_key = "character_killmails_#{character_id}_#{@analysis_period_days}d"
+
+    QueryCache.get_or_compute(
+      cache_key,
+      fn ->
+        get_recent_killmails_uncached(character_id)
+      end,
+      # 10 minutes TTL
+      600_000
+    )
+  end
+
+  defp get_recent_killmails_uncached(character_id) do
     cutoff_date = DateTime.add(DateTime.utc_now(), -@analysis_period_days, :day)
 
     # Get killmails where character was involved
@@ -179,7 +218,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
       |> Ash.Query.new()
       |> Ash.Query.filter(character_id == ^character_id)
       |> Ash.Query.filter(updated_at >= ^cutoff_date)
-      |> Ash.Query.load(:killmail_enriched)
+      |> Ash.Query.load([:ship_type, :weapon_type])
 
     case Ash.read(participants_query, domain: Api) do
       {:ok, participants} ->
@@ -201,6 +240,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
     KillmailEnriched
     |> Ash.Query.new()
     |> Ash.Query.filter(killmail_id in ^killmail_ids)
+    |> Ash.Query.load([:victim_ship_type, :solar_system])
     |> Ash.read!(domain: Api)
   end
 

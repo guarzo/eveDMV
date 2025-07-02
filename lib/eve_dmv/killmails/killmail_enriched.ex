@@ -200,6 +200,23 @@ defmodule EveDmv.Killmails.KillmailEnriched do
   relationships do
     # Note: Composite foreign key relationships removed for now
     # Will be implemented using manual queries in Epic 2
+
+    # Simple foreign key relationships that don't involve composite keys
+    belongs_to :victim_ship_type, EveDmv.Eve.ItemType do
+      source_attribute(:victim_ship_type_id)
+      destination_attribute(:type_id)
+      description("Victim's ship type")
+      attribute_writable?(false)
+      allow_nil?(false)
+    end
+
+    belongs_to :solar_system, EveDmv.Eve.SolarSystem do
+      source_attribute(:solar_system_id)
+      destination_attribute(:system_id)
+      description("Solar system where kill occurred")
+      attribute_writable?(false)
+      allow_nil?(false)
+    end
   end
 
   # Actions
