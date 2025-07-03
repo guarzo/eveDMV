@@ -13,9 +13,23 @@ defmodule EveDmv.Market.PriceService do
   """
 
   require Logger
-  alias EveDmv.Market.StrategyRegistry
+
+  alias EveDmv.Market.Strategies.{
+    BasePriceStrategy,
+    EsiStrategy,
+    JaniceStrategy,
+    MutamarketStrategy
+  }
 
   # @default_market_hub "jita"  # Reserved for future use
+
+  # Static list of pricing strategies in priority order
+  @pricing_strategies [
+    BasePriceStrategy,
+    EsiStrategy,
+    JaniceStrategy,
+    MutamarketStrategy
+  ]
 
   # Public API
 
@@ -65,7 +79,7 @@ defmodule EveDmv.Market.PriceService do
   @spec get_item_price_data(integer()) :: {:ok, map()} | {:error, String.t()}
   def get_item_price_data(type_id, item_attributes \\ nil) do
     # Get all strategies that can handle this item type
-    strategies = StrategyRegistry.strategies_for(type_id, item_attributes)
+    strategies = strategies_for_item(type_id, item_attributes)
 
     # Try each strategy in priority order
     case try_strategies(strategies, type_id, item_attributes) do
@@ -120,7 +134,15 @@ defmodule EveDmv.Market.PriceService do
   """
   @spec strategy_info() :: [%{module: atom(), name: String.t(), priority: integer()}]
   def strategy_info do
-    StrategyRegistry.strategy_info()
+    @pricing_strategies
+    |> Enum.sort_by(& &1.priority())
+    |> Enum.map(fn strategy ->
+      %{
+        name: strategy.name(),
+        priority: strategy.priority(),
+        module: strategy
+      }
+    end)
   end
 
   @doc """
@@ -152,6 +174,12 @@ defmodule EveDmv.Market.PriceService do
   end
 
   # Private functions
+
+  defp strategies_for_item(type_id, item_attributes) do
+    @pricing_strategies
+    |> Enum.sort_by(& &1.priority())
+    |> Enum.filter(& &1.supports?(type_id, item_attributes))
+  end
 
   defp calculate_ship_value(killmail, prices) do
     case get_in(killmail, ["victim", "ship_type_id"]) do
