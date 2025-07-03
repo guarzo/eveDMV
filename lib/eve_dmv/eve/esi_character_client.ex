@@ -72,11 +72,18 @@ defmodule EveDmv.Eve.EsiCharacterClient do
   @doc """
   Get multiple characters efficiently using parallel requests with fallback.
   """
-  @spec get_characters([integer()]) :: {:ok, map()} | {:ok, map(), :partial}
+  @spec get_characters([integer()]) :: {:ok, map()} | {:ok, map(), :partial} | {:error, any()}
   def get_characters(character_ids) when is_list(character_ids) do
-    PerformanceMonitor.track_bulk_operation("character_bulk_lookup", length(character_ids), fn ->
-      get_characters_with_fallback(character_ids)
-    end)
+    case PerformanceMonitor.track_bulk_operation(
+           "character_bulk_lookup",
+           length(character_ids),
+           fn ->
+             get_characters_with_fallback(character_ids)
+           end
+         ) do
+      {:ok, result} -> result
+      {:error, _} = error -> error
+    end
   end
 
   defp get_characters_with_fallback(character_ids) do
