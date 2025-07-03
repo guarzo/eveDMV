@@ -10,7 +10,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
   alias EveDmv.Api
   alias EveDmv.Database.QueryUtils
   alias EveDmv.Eve.EsiClient
-  alias EveDmv.Intelligence.{CharacterStats, HomeDefenseAnalytics}
+  alias EveDmv.Intelligence.HomeDefenseAnalytics
   alias EveDmv.Killmails.KillmailEnriched
   require Ash.Query
 

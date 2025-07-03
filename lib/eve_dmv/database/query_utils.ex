@@ -9,8 +9,8 @@ defmodule EveDmv.Database.QueryUtils do
   require Ash.Query
 
   alias EveDmv.Api
-  alias EveDmv.Killmails.{KillmailEnriched, Participant}
   alias EveDmv.Intelligence.CharacterStats
+  alias EveDmv.Killmails.{KillmailEnriched, Participant}
 
   @doc """
   Query killmails by corporation within a date range.
