@@ -269,7 +269,7 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
     {:ok, participation_data}
   end
 
-  defp assess_member_risks(character_id, activity_data, participation_data) do
+  defp assess_member_risks(_character_id, activity_data, participation_data) do
     # Get trend data for risk assessment
     trend_data = MemberActivityMetrics.determine_activity_trend(activity_data)
     timezone_data = %{primary_timezone: "UTC", corp_distribution: %{"UTC" => 0.5}}
@@ -405,7 +405,7 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
     end
   end
 
-  defp analyze_corporation_trends(member_analyses) do
+  defp analyze_corporation_trends(_member_analyses) do
     trends = %{
       overall_direction: :stable,
       member_count_trend: :stable,
