@@ -14,6 +14,19 @@ defmodule EveDmv.Database.QueryCache do
   @max_cache_size 1000
 
   @doc """
+  Child specification for supervision tree.
+  """
+  def child_spec(opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [opts]},
+      type: :worker,
+      restart: :permanent,
+      shutdown: 5000
+    }
+  end
+
+  @doc """
   Start the query cache.
   """
   def start_link(_opts \\ []) do

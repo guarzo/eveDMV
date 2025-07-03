@@ -5,7 +5,6 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
   """
   use EveDmv.DataCase, async: false
 
-  @moduletag :skip
 
   alias EveDmv.{Api, Repo}
   alias EveDmv.Intelligence.CharacterStats
@@ -95,7 +94,7 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
         create(:killmail_raw, %{
           killmail_id: 99_200_000 + i,
           killmail_time: DateTime.add(DateTime.utc_now(), -i * 3600, :second),
-          killmail_data: build_character_killmail_data(character_id, rem(i, 3) == 0)
+          raw_data: build_character_killmail_data(character_id, rem(i, 3) == 0)
         })
       end
 
@@ -218,7 +217,7 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
             killmail_id: 99_500_000 + i,
             killmail_time: DateTime.add(DateTime.utc_now(), -i * 60, :second),
             solar_system_id: 30_000_142,
-            killmail_data: %{
+            raw_data: %{
               "killmail_id" => 99_500_000 + i,
               "victim" => %{"character_id" => 95_000_000 + i},
               "attackers" => [%{"character_id" => 95_100_000 + i}]
@@ -410,7 +409,7 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
 
         create(:killmail_raw, %{
           killmail_id: 99_800_000 + i,
-          killmail_data: %{
+          raw_data: %{
             "victim" => %{"character_id" => char_id},
             "attackers" => [%{"character_id" => char_id + 1000}]
           }

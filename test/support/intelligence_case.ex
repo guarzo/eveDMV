@@ -30,10 +30,8 @@ defmodule EveDmv.IntelligenceCase do
 
     for _i <- 1..count do
       create(:killmail_raw, %{
-        killmail_data: %{
-          "victim" => %{"character_id" => character_id},
-          "killmail_time" => random_datetime_in_past(days_back)
-        }
+        victim_character_id: character_id,
+        killmail_time: random_datetime_in_past(days_back)
       })
     end
   end
@@ -63,7 +61,8 @@ defmodule EveDmv.IntelligenceCase do
       create(:killmail_raw, %{
         solar_system_id: wh_system_id,
         killmail_time: killmail_time,
-        killmail_data: killmail_data
+        raw_data: killmail_data,
+        victim_character_id: character_id
       })
     end
   end

@@ -9,7 +9,8 @@ defmodule EveDmv.Intelligence.CharacterAnalysis.CharacterAnalyzerSimplified do
   require Logger
   alias EveDmv.Api
   # alias EveDmv.Eve.{EsiClient, NameResolver}
-  alias EveDmv.Intelligence.{CharacterMetrics, CharacterStats}
+  alias EveDmv.Intelligence.CharacterStats
+  alias EveDmv.Intelligence.CharacterAnalysis.CharacterMetrics
   alias EveDmv.Killmails.{KillmailEnriched, Participant}
   require Ash.Query
 

@@ -3,7 +3,6 @@ defmodule EveDmvWeb.WHVettingLiveTest do
   Comprehensive tests for WHVettingLive LiveView component.
   """
   use EveDmvWeb.ConnCase, async: true
-  @moduletag :skip
 
   import Phoenix.LiveViewTest
   import EveDmv.Factories
@@ -433,7 +432,7 @@ defmodule EveDmvWeb.WHVettingLiveTest do
         killmail_id: 80_000_000 + character_id + i,
         killmail_time: DateTime.add(DateTime.utc_now(), -i * 86_400, :second),
         solar_system_id: Enum.random(31_000_000..31_002_000),
-        killmail_data: build_wh_killmail_data(character_id, name, i)
+        raw_data: build_wh_killmail_data(character_id, name, i)
       })
     end
 
@@ -451,7 +450,7 @@ defmodule EveDmvWeb.WHVettingLiveTest do
         killmail_id: 81_000_000 + character_id + i,
         killmail_time: DateTime.add(DateTime.utc_now(), -i * 43_200, :second),
         solar_system_id: Enum.random(31_000_000..31_005_000),
-        killmail_data: build_wh_killmail_data(character_id, name, i, is_victim: rem(i, 10) == 0)
+        raw_data: build_wh_killmail_data(character_id, name, i, is_victim: rem(i, 10) == 0)
       })
     end
 
@@ -467,7 +466,7 @@ defmodule EveDmvWeb.WHVettingLiveTest do
       create(:killmail_raw, %{
         killmail_id: 82_000_000 + character_id + i,
         killmail_time: DateTime.utc_now(),
-        killmail_data: build_eviction_killmail_data(character_id, name)
+        raw_data: build_eviction_killmail_data(character_id, name)
       })
     end
 
@@ -493,7 +492,7 @@ defmodule EveDmvWeb.WHVettingLiveTest do
         killmail_id: 83_000_000 + character_id + i,
         killmail_time: DateTime.add(DateTime.utc_now(), -i * 86_400, :second),
         solar_system_id: system_id,
-        killmail_data: build_wh_killmail_data(character_id, name, i)
+        raw_data: build_wh_killmail_data(character_id, name, i)
       })
     end
 
@@ -527,7 +526,7 @@ defmodule EveDmvWeb.WHVettingLiveTest do
         killmail_id: 84_000_000 + character_id + i,
         killmail_time: DateTime.utc_now(),
         solar_system_id: Enum.random(31_000_000..31_002_000),
-        killmail_data: build_small_gang_killmail_data(character_id, name, gang_size)
+        raw_data: build_small_gang_killmail_data(character_id, name, gang_size)
       })
     end
 

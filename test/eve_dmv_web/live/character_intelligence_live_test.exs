@@ -3,7 +3,6 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
   Comprehensive tests for CharacterIntelligenceLive LiveView component.
   """
   use EveDmvWeb.ConnCase, async: true
-  @moduletag :skip
 
   import Phoenix.LiveViewTest
   import EveDmv.Factories
@@ -412,7 +411,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
         killmail_id: 80_000_000 + character_id + i,
         killmail_time: DateTime.add(DateTime.utc_now(), -i * 3600, :second),
         solar_system_id: Enum.random(30_000_000..30_005_000),
-        killmail_data: build_killmail_data(character_id, i)
+        raw_data: build_killmail_data(character_id, i)
       })
     end
   end
@@ -425,7 +424,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
       create(:killmail_raw, %{
         killmail_id: 81_000_000 + i,
         killmail_time: DateTime.utc_now(),
-        killmail_data: build_fleet_killmail_data(character_id, accomplice_ids)
+        raw_data: build_fleet_killmail_data(character_id, accomplice_ids)
       })
     end
   end
@@ -438,7 +437,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
         killmail_time: DateTime.add(DateTime.utc_now(), -i * 7200, :second),
         # J-space
         solar_system_id: Enum.random(31_000_000..31_005_000),
-        killmail_data: build_killmail_data(character_id, i)
+        raw_data: build_killmail_data(character_id, i)
       })
     end
   end

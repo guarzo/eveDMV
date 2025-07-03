@@ -21,6 +21,19 @@ defmodule EveDmv.Eve.EsiCache do
   @universe_ttl_ms 24 * 60 * 60 * 1000
 
   @doc """
+  Child specification for supervised processes.
+  """
+  def child_spec(opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [opts]},
+      type: :worker,
+      restart: :permanent,
+      shutdown: 5000
+    }
+  end
+
+  @doc """
   Start the ESI cache.
   """
   def start_link(_opts) do

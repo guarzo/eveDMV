@@ -5,7 +5,6 @@ defmodule EveDmv.E2E.UserExperienceTest do
   """
   use EveDmvWeb.ConnCase, async: false
 
-  @moduletag :skip
 
   import Phoenix.LiveViewTest
   import EveDmv.Factories
@@ -461,7 +460,7 @@ defmodule EveDmv.E2E.UserExperienceTest do
         killmail_id: 98_000_000 + character_id + i,
         killmail_time: DateTime.add(DateTime.utc_now(), -i * 3600, :second),
         solar_system_id: system_id,
-        killmail_data: build_activity_killmail_data(character_id, is_victim)
+        raw_data: build_activity_killmail_data(character_id, is_victim)
       })
     end
   end
@@ -472,7 +471,7 @@ defmodule EveDmv.E2E.UserExperienceTest do
       create(:killmail_raw, %{
         killmail_id: 98_100_000 + character_id + i,
         killmail_time: DateTime.add(DateTime.utc_now(), -i * 7200, :second),
-        killmail_data: build_activity_killmail_data(character_id, rem(i, 5) == 0)
+        raw_data: build_activity_killmail_data(character_id, rem(i, 5) == 0)
       })
     end
   end
@@ -485,7 +484,7 @@ defmodule EveDmv.E2E.UserExperienceTest do
         killmail_time: DateTime.add(DateTime.utc_now(), -i * 86_400, :second),
         # J-space
         solar_system_id: Enum.random(31_000_000..31_002_000),
-        killmail_data: %{
+        raw_data: %{
           "attackers" => [
             %{
               "character_id" => character_id,

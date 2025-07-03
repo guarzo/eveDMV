@@ -1,6 +1,5 @@
 defmodule EveDmv.Market.PriceServiceTest do
   use EveDmv.DataCase, async: true
-  @moduletag :skip
 
   alias EveDmv.Market.PriceService
 

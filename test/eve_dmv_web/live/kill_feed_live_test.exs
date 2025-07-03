@@ -3,7 +3,6 @@ defmodule EveDmvWeb.KillFeedLiveTest do
   Comprehensive tests for KillFeedLive LiveView component.
   """
   use EveDmvWeb.ConnCase, async: true
-  @moduletag :skip
 
   import Phoenix.LiveViewTest
   import EveDmv.Factories

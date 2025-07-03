@@ -7,7 +7,6 @@ defmodule EveDmv.Integration.CharacterAnalysisIntegrationTest do
   """
 
   use EveDmv.IntelligenceCase, async: false
-  @moduletag :skip
 
   alias EveDmv.Api
   alias EveDmv.Eve.{CircuitBreaker, EsiClient}
@@ -394,7 +393,7 @@ defmodule EveDmv.Integration.CharacterAnalysisIntegrationTest do
     # Create activity pattern indicating dangerous player
     for _i <- 1..50 do
       create(:killmail_raw, %{
-        killmail_data: %{
+        raw_data: %{
           "participants" => [
             %{
               "character_id" => character_id,
@@ -476,7 +475,7 @@ defmodule EveDmv.Integration.CharacterAnalysisIntegrationTest do
       kill_time = DateTime.add(base_time, variance, :second)
 
       create(:killmail_raw, %{
-        killmail_data: %{
+        raw_data: %{
           "killmail_time" => DateTime.to_iso8601(kill_time),
           "participants" => [
             %{
@@ -497,7 +496,7 @@ defmodule EveDmv.Integration.CharacterAnalysisIntegrationTest do
   defp create_ship_usage_pattern(character_id, ship_type_id, ship_name, usage_count) do
     for _i <- 1..usage_count do
       create(:killmail_raw, %{
-        killmail_data: %{
+        raw_data: %{
           "participants" => [
             %{
               "character_id" => character_id,
@@ -520,7 +519,7 @@ defmodule EveDmv.Integration.CharacterAnalysisIntegrationTest do
     for _i <- 1..activity_count do
       create(:killmail_raw, %{
         solar_system_id: system_id,
-        killmail_data: %{
+        raw_data: %{
           "solar_system_id" => system_id,
           "participants" => [
             %{
@@ -543,7 +542,7 @@ defmodule EveDmv.Integration.CharacterAnalysisIntegrationTest do
     # Just above minimum threshold
     for _i <- 1..12 do
       create(:killmail_raw, %{
-        killmail_data: %{
+        raw_data: %{
           "participants" => [
             %{
               "character_id" => character_id,

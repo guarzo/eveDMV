@@ -267,7 +267,7 @@ defmodule EveDmv.Performance.IntelligencePerformanceTest do
           killmail_id: 90_000_000 + character_id + i,
           killmail_time: perf_random_datetime_in_past(90),
           solar_system_id: Enum.random(30_000_000..31_005_000),
-          killmail_data: build_killmail_data(character_id, i),
+          raw_data: build_killmail_data(character_id, i),
           source: "performance_test"
         }
       end
@@ -285,7 +285,7 @@ defmodule EveDmv.Performance.IntelligencePerformanceTest do
           killmail_id: 91_000_000 + i,
           killmail_time: random_datetime_in_past(7),
           solar_system_id: system_id,
-          killmail_data: build_defense_killmail_data(corp_id, system_id),
+          raw_data: build_defense_killmail_data(corp_id, system_id),
           source: "performance_test"
         }
       end
@@ -305,7 +305,7 @@ defmodule EveDmv.Performance.IntelligencePerformanceTest do
           killmail_id: 92_000_000 + i,
           killmail_time: random_datetime_in_past(3),
           solar_system_id: system_id,
-          killmail_data: build_fleet_killmail_data(corp_id, fleet_members),
+          raw_data: build_fleet_killmail_data(corp_id, fleet_members),
           source: "performance_test"
         }
       end

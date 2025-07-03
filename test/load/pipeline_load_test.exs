@@ -12,7 +12,6 @@ defmodule EveDmv.Load.PipelineLoadTest do
 
   use EveDmv.DataCase, async: false
 
-  @moduletag :skip
 
   alias EveDmv.Killmails.{KillmailPipeline, KillmailRaw, SSEProducer}
   alias EveDmv.Intelligence.{CharacterAnalyzer, IntelligenceCoordinator}

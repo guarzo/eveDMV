@@ -1,6 +1,5 @@
 defmodule EveDmv.Intelligence.HomeDefenseAnalyzerTest do
   use EveDmv.IntelligenceCase, async: true
-  @moduletag :skip
 
   alias EveDmv.Intelligence.HomeDefenseAnalyzer
 
@@ -37,7 +36,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzerTest do
         for _i <- 1..5 do
           create(:killmail_raw, %{
             solar_system_id: home_system_id,
-            killmail_data: %{
+            raw_data: %{
               "solar_system_id" => home_system_id,
               "attackers" => [
                 %{
@@ -90,7 +89,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzerTest do
           solar_system_id: home_system_id,
           # 1 hour ago
           killmail_time: DateTime.add(DateTime.utc_now(), -3600, :second),
-          killmail_data: %{
+          raw_data: %{
             "solar_system_id" => home_system_id,
             "attackers" => [
               %{
@@ -166,7 +165,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzerTest do
       create(:killmail_raw, %{
         solar_system_id: home_system_id,
         killmail_time: threat_time,
-        killmail_data: %{
+        raw_data: %{
           "attackers" => [
             %{
               "character_id" => threat_character_id,
@@ -190,7 +189,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzerTest do
         create(:killmail_raw, %{
           solar_system_id: home_system_id,
           killmail_time: response_time,
-          killmail_data: %{
+          raw_data: %{
             "attackers" => [
               %{
                 "character_id" => defender_id,
@@ -245,7 +244,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzerTest do
         create(:killmail_raw, %{
           solar_system_id: home_system_id,
           killmail_time: kill_time,
-          killmail_data: %{
+          raw_data: %{
             "attackers" =>
               Enum.map(fleet_members, fn member_id ->
                 %{
@@ -317,7 +316,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzerTest do
         for _i <- 1..kill_count do
           create(:killmail_raw, %{
             solar_system_id: home_system_id,
-            killmail_data: %{
+            raw_data: %{
               "attackers" => [
                 %{
                   "character_id" => threat_id,
@@ -353,7 +352,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzerTest do
 
       create(:killmail_raw, %{
         solar_system_id: home_system_id,
-        killmail_data: %{
+        raw_data: %{
           "solar_system_id" => home_system_id,
           "attackers" => [
             %{
@@ -386,7 +385,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzerTest do
         create(:killmail_raw, %{
           solar_system_id: home_system_id,
           killmail_time: response_time,
-          killmail_data: %{
+          raw_data: %{
             "attackers" => [
               %{
                 "character_id" => defender_id,
@@ -432,7 +431,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzerTest do
         create(:killmail_raw, %{
           solar_system_id: home_system_id,
           killmail_time: kill_time,
-          killmail_data: %{
+          raw_data: %{
             "attackers" => [
               %{
                 "character_id" => Enum.random(95_000_000..95_000_100),
@@ -471,7 +470,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzerTest do
       create(:killmail_raw, %{
         solar_system_id: home_system_id,
         killmail_time: kill_time,
-        killmail_data: %{
+        raw_data: %{
           "attackers" => attackers,
           "victim" => %{
             "character_id" => victim_id,

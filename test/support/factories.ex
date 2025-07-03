@@ -16,12 +16,20 @@ defmodule EveDmv.Factories do
 
   def killmail_raw_factory do
     killmail_time = DateTime.utc_now() |> DateTime.add(-Enum.random(1..3600), :second)
+    killmail_data = build_realistic_killmail_data()
 
     %{
       killmail_id: System.unique_integer([:positive]),
       killmail_time: killmail_time,
+      killmail_hash: "test_hash_#{System.unique_integer([:positive])}",
       solar_system_id: Enum.random(30_000_000..31_000_000),
-      killmail_data: build_realistic_killmail_data()
+      victim_character_id: get_in(killmail_data, ["victim", "character_id"]),
+      victim_corporation_id: get_in(killmail_data, ["victim", "corporation_id"]),
+      victim_alliance_id: get_in(killmail_data, ["victim", "alliance_id"]),
+      victim_ship_type_id: get_in(killmail_data, ["victim", "ship_type_id"]),
+      attacker_count: length(Map.get(killmail_data, "attackers", [])),
+      raw_data: killmail_data,
+      source: "wanderer-kills"
     }
   end
 

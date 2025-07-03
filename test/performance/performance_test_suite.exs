@@ -528,7 +528,7 @@ defmodule EveDmv.Performance.PerformanceTestSuite do
       kill_time = DateTime.add(DateTime.utc_now(), -days_ago * 24 * 3600, :second)
 
       create(:killmail_raw, %{
-        killmail_data: %{
+        raw_data: %{
           "killmail_time" => DateTime.to_iso8601(kill_time),
           "participants" => [
             %{

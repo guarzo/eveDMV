@@ -152,7 +152,7 @@ defmodule EveDmv.IntelligenceBenchmark do
             killmail_id: killmail_data["killmail_id"],
             killmail_time: killmail_data["killmail_time"],
             solar_system_id: killmail_data["solar_system_id"],
-            killmail_data: killmail_data,
+            raw_data: killmail_data,
             source: "benchmark"
           }
         ],
@@ -192,7 +192,7 @@ defmodule EveDmv.IntelligenceBenchmark do
             killmail_id: killmail_data["killmail_id"],
             killmail_time: killmail_data["killmail_time"],
             solar_system_id: home_system_id,
-            killmail_data: killmail_data,
+            raw_data: killmail_data,
             source: "benchmark"
           }
         ],

@@ -1,6 +1,5 @@
 defmodule EveDmv.Intelligence.CharacterAnalyzerTest do
   use EveDmv.IntelligenceCase, async: true
-  @moduletag :skip
 
   alias EveDmv.Intelligence.CharacterAnalyzer
   alias EveDmv.Intelligence.CharacterStats
@@ -54,7 +53,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzerTest do
       for _i <- 1..20 do
         create(:killmail_raw, %{
           solar_system_id: system_id,
-          killmail_data: %{
+          raw_data: %{
             "victim" => %{"character_id" => character_id},
             "solar_system_id" => system_id
           }
@@ -106,7 +105,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzerTest do
         victim_id = Enum.random(90_000_000..100_000_000)
 
         create(:killmail_raw, %{
-          killmail_data: %{
+          raw_data: %{
             "victim" => %{"character_id" => victim_id},
             "attackers" => [
               %{
@@ -123,7 +122,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzerTest do
         victim_id = Enum.random(90_000_000..100_000_000)
 
         create(:killmail_raw, %{
-          killmail_data: %{
+          raw_data: %{
             "victim" => %{"character_id" => victim_id},
             "attackers" => [
               %{
@@ -345,7 +344,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzerTest do
       for {ship_type_id, count} <- ship_usage do
         for _i <- 1..count do
           create(:killmail_raw, %{
-            killmail_data: %{
+            raw_data: %{
               "attackers" => [
                 %{
                   "character_id" => character_id,
@@ -382,7 +381,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzerTest do
 
       for ship_type_id <- capital_ships do
         create(:killmail_raw, %{
-          killmail_data: %{
+          raw_data: %{
             "attackers" => [
               %{
                 "character_id" => character_id,
@@ -418,7 +417,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzerTest do
       for _i <- 1..30 do
         create(:killmail_raw, %{
           solar_system_id: home_system_id,
-          killmail_data: %{
+          raw_data: %{
             "solar_system_id" => home_system_id,
             "victim" => %{"character_id" => character_id}
           }
@@ -429,7 +428,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzerTest do
       for _i <- 1..20 do
         create(:killmail_raw, %{
           solar_system_id: Enum.random(30_000_000..31_000_000),
-          killmail_data: %{
+          raw_data: %{
             "victim" => %{"character_id" => character_id}
           }
         })
@@ -471,7 +470,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzerTest do
     # Create pattern indicating dangerous player
     for _i <- 1..20 do
       create(:killmail_raw, %{
-        killmail_data: %{
+        raw_data: %{
           "attackers" => [
             %{
               "character_id" => character_id,

@@ -7,7 +7,6 @@ defmodule EveDmv.Integration.IntelligenceIntegrationTest do
   """
 
   use EveDmv.IntelligenceCase, async: false
-  @moduletag :skip
 
   alias EveDmv.Intelligence.{
     ChainMonitor,
@@ -402,7 +401,7 @@ defmodule EveDmv.Integration.IntelligenceIntegrationTest do
         killmail_id: 85_000_000 + character_id + i,
         killmail_time: DateTime.add(DateTime.utc_now(), -i * 86_400, :second),
         solar_system_id: system_id,
-        killmail_data: build_killmail_data(character_id, is_victim)
+        raw_data: build_killmail_data(character_id, is_victim)
       })
     end
   end
@@ -457,7 +456,7 @@ defmodule EveDmv.Integration.IntelligenceIntegrationTest do
         create(:killmail_raw, %{
           killmail_id: 86_000_000 + character_id + i * 10 + j,
           killmail_time: kill_date,
-          killmail_data: %{
+          raw_data: %{
             "attackers" => [
               %{
                 "character_id" => character_id,
@@ -479,7 +478,7 @@ defmodule EveDmv.Integration.IntelligenceIntegrationTest do
         killmail_id: 89_000_000 + character_id + i,
         killmail_time: DateTime.add(DateTime.utc_now(), -i * 86_400, :second),
         solar_system_id: Enum.random([30_000_142, 31_000_001]),
-        killmail_data: build_killmail_data(character_id, rem(i, 5) == 0)
+        raw_data: build_killmail_data(character_id, rem(i, 5) == 0)
       })
     end
   end
@@ -504,7 +503,7 @@ defmodule EveDmv.Integration.IntelligenceIntegrationTest do
       create(:killmail_raw, %{
         killmail_id: 90_000_000 + character_id + i,
         killmail_time: DateTime.add(DateTime.utc_now(), -i * 86_400, :second),
-        killmail_data: %{
+        raw_data: %{
           "attackers" => [
             %{
               "character_id" => character_id,
@@ -590,7 +589,7 @@ defmodule EveDmv.Integration.IntelligenceIntegrationTest do
     # Create killmail with missing/invalid data
     create(:killmail_raw, %{
       character_id: character_id,
-      killmail_data: %{
+      raw_data: %{
         # Invalid participants
         "participants" => nil,
         "killmail_time" => "invalid_date",
