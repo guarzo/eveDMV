@@ -12,7 +12,7 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
   require Logger
   require Ash.Query
   alias EveDmv.Api
-  alias EveDmv.Eve.EsiClient
+  alias EveDmv.Eve.{EsiClient, EsiUtils}
   alias EveDmv.Killmails.Participant
   alias EveDmv.Utils.TimeUtils
 
@@ -199,29 +199,18 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
   # Helper functions for core analysis logic
 
   defp get_character_info(character_id) do
-    # First try ESI for the most up-to-date information
-    with {:ok, char_data} <- EsiClient.get_character(character_id),
-         {:ok, corp_data} <- EsiClient.get_corporation(char_data.corporation_id) do
-      # Get alliance info if applicable
-      alliance_info =
-        if char_data.alliance_id do
-          case EsiClient.get_alliance(char_data.alliance_id) do
-            {:ok, alliance} -> %{alliance_id: alliance.alliance_id, alliance_name: alliance.name}
-            _ -> %{alliance_id: nil, alliance_name: nil}
-          end
-        else
-          %{alliance_id: nil, alliance_name: nil}
-        end
+    # Use the optimized EsiUtils function that consolidates all ESI calls
+    case EsiUtils.fetch_character_corporation_alliance(character_id) do
+      {:ok, character_data} ->
+        {:ok,
+         %{
+           character_name: character_data.character_name,
+           corporation_id: character_data.corporation_id,
+           corporation_name: character_data.corporation_name,
+           alliance_id: character_data.alliance_id,
+           alliance_name: character_data.alliance_name
+         }}
 
-      {:ok,
-       %{
-         character_name: char_data.name,
-         corporation_id: char_data.corporation_id,
-         corporation_name: corp_data.name,
-         alliance_id: alliance_info.alliance_id,
-         alliance_name: alliance_info.alliance_name
-       }}
-    else
       {:error, reason} ->
         Logger.warning(
           "Could not fetch character info from ESI for #{character_id}: #{inspect(reason)}"

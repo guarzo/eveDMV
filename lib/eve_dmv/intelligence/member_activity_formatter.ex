@@ -202,7 +202,10 @@ defmodule EveDmv.Intelligence.MemberActivityFormatter do
   def format_relative_time(nil), do: "Unknown"
 
   def format_relative_time(datetime) do
-    case DateTime.diff(DateTime.utc_now(), datetime, :second) do
+    # Cache current time to ensure consistency across calculations
+    now = DateTime.utc_now()
+
+    case DateTime.diff(now, datetime, :second) do
       diff when diff < 3600 ->
         minutes = div(diff, 60)
         "#{minutes} minutes ago"

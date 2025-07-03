@@ -65,6 +65,8 @@ defmodule EveDmv.Killmails.DisplayService do
   end
 
   def build_killmail_from_enriched(enriched) do
+    # Cache current time to ensure consistency across all age calculations
+    now = DateTime.utc_now()
     # Use name resolution for ship and system names if not already provided
     victim_ship_name =
       resolve_name_if_unknown(
@@ -101,7 +103,7 @@ defmodule EveDmv.Killmails.DisplayService do
       attacker_count: enriched.attacker_count || 0,
       final_blow_character_id: enriched.final_blow_character_id,
       final_blow_character_name: enriched.final_blow_character_name,
-      age_minutes: DateTime.diff(DateTime.utc_now(), enriched.killmail_time, :minute),
+      age_minutes: DateTime.diff(now, enriched.killmail_time, :minute),
       is_expensive: Decimal.gt?(enriched.total_value || Decimal.new(0), Decimal.new(100_000_000))
     }
   end
@@ -215,6 +217,8 @@ defmodule EveDmv.Killmails.DisplayService do
   end
 
   defp build_killmail_from_raw(raw) do
+    # Cache current time to ensure consistency
+    now = DateTime.utc_now()
     victim = find_victim_in_raw(raw.raw_data)
     final_blow = find_final_blow_in_raw(raw.raw_data)
 
@@ -254,7 +258,7 @@ defmodule EveDmv.Killmails.DisplayService do
       attacker_count: raw.attacker_count,
       final_blow_character_id: get_in(final_blow, ["character_id"]),
       final_blow_character_name: get_in(final_blow, ["character_name"]),
-      age_minutes: DateTime.diff(DateTime.utc_now(), raw.killmail_time, :minute),
+      age_minutes: DateTime.diff(now, raw.killmail_time, :minute),
       is_expensive: (raw.raw_data["total_value"] || 0) > 100_000_000
     }
   end
@@ -269,9 +273,12 @@ defmodule EveDmv.Killmails.DisplayService do
 
   defp generate_sample_killmails(limit) do
     # Generate sample data for demo purposes
+    # Cache current time for consistent sample data generation
+    now = DateTime.utc_now()
+
     1..limit
     |> Enum.map(fn i ->
-      timestamp = DateTime.add(DateTime.utc_now(), -i * 60, :second)
+      timestamp = DateTime.add(now, -i * 60, :second)
       value = Enum.random(10_000_000..1_000_000_000)
       system_id = Enum.random([30_000_142, 30_000_144, 30_002_187, 30_002_659])
 
@@ -303,7 +310,9 @@ defmodule EveDmv.Killmails.DisplayService do
   end
 
   defp generate_killmail_id(killmail_data) do
-    "#{killmail_data["killmail_id"]}-#{DateTime.utc_now() |> DateTime.to_unix()}"
+    # Use current timestamp for ID generation
+    now = DateTime.utc_now()
+    "#{killmail_data["killmail_id"]}-#{DateTime.to_unix(now)}"
   end
 
   defp expensive_kill_wanderer(killmail_data) do
@@ -314,18 +323,21 @@ defmodule EveDmv.Killmails.DisplayService do
   end
 
   defp parse_killmail_timestamp(killmail_data) do
+    # Cache fallback time to avoid multiple calls
+    fallback_time = DateTime.utc_now()
+
     case killmail_data["kill_time"] || killmail_data["timestamp"] do
       nil ->
-        DateTime.utc_now()
+        fallback_time
 
       timestamp when is_binary(timestamp) ->
         case DateTime.from_iso8601(timestamp) do
           {:ok, dt, _} -> dt
-          _ -> DateTime.utc_now()
+          _ -> fallback_time
         end
 
       _ ->
-        DateTime.utc_now()
+        fallback_time
     end
   end
 
