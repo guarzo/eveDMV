@@ -135,11 +135,11 @@ defmodule EveDmv.Intelligence.IntelligenceCache do
   # Private functions - Data generation delegates
 
   defp generate_character_analysis(character_id) do
-    EveDmv.Intelligence.CharacterAnalyzer.analyze_character(character_id)
+    EveDmv.Intelligence.CharacterAnalysis.CharacterAnalyzer.analyze_character(character_id)
   end
 
   defp generate_vetting_analysis(character_id) do
-    EveDmv.Intelligence.WHVettingAnalyzer.analyze_character(character_id)
+    EveDmv.Intelligence.WhSpace.VettingAnalyzer.analyze_character(character_id)
   end
 
   defp generate_correlation_analysis(character_id) do

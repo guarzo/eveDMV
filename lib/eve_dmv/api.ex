@@ -25,13 +25,13 @@ defmodule EveDmv.Api do
     resource(EveDmv.Eve.SolarSystem)
 
     # Intelligence data
-    resource(EveDmv.Intelligence.CharacterStats)
-    resource(EveDmv.Intelligence.ChainTopology)
+    resource(EveDmv.Intelligence.CharacterAnalysis.CharacterStats)
+    resource(EveDmv.Intelligence.ChainAnalysis.ChainTopology)
     resource(EveDmv.Intelligence.SystemInhabitant)
-    resource(EveDmv.Intelligence.ChainConnection)
-    resource(EveDmv.Intelligence.WHVetting)
+    resource(EveDmv.Intelligence.ChainAnalysis.ChainConnection)
+    resource(EveDmv.Intelligence.WhSpace.Vetting)
     resource(EveDmv.Intelligence.HomeDefenseAnalytics)
-    resource(EveDmv.Intelligence.WHFleetComposition)
+    resource(EveDmv.Intelligence.WhSpace.FleetComposition)
     resource(EveDmv.Intelligence.MemberActivityIntelligence)
 
     # Surveillance profiles

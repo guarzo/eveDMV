@@ -1697,8 +1697,8 @@ defmodule EveDmv.Intelligence.WhSpace.VettingAnalyzer do
         stats
 
       _ ->
-        # Create basic stats if none exist
-        %CharacterStats{
+        # Create basic stats if none exist - use map instead of struct to avoid circular dependency
+        %{
           character_id: character_id,
           character_name: "Unknown",
           total_kills: 0,

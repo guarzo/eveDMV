@@ -11,9 +11,10 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
   require Logger
 
   alias EveDmv.Intelligence.{
-    IntelligenceCoordinator,
-    WHVettingAnalyzer
+    IntelligenceCoordinator
   }
+
+  alias EveDmv.Intelligence.WhSpace.VettingAnalyzer, as: WHVettingAnalyzer
 
   alias EveDmv.Eve.EsiClient
 

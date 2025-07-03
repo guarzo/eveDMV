@@ -127,7 +127,7 @@ defmodule EveDmv.Quality.MetricsCollector do
     critical_modules = [
       "EveDmv.Intelligence.CharacterAnalyzer",
       "EveDmv.Intelligence.HomeDefenseAnalyzer",
-      "EveDmv.Intelligence.WHVettingAnalyzer",
+      "EveDmv.Intelligence.WhSpace.VettingAnalyzer",
       "EveDmv.Intelligence.WHFleetAnalyzer",
       "EveDmv.Killmails.KillmailPipeline",
       "EveDmv.Eve.CircuitBreaker"
