@@ -12,7 +12,7 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
   require Logger
   require Ash.Query
   alias EveDmv.Api
-  alias EveDmv.Eve.{EsiClient, EsiUtils}
+  alias EveDmv.Eve.EsiUtils
   alias EveDmv.Killmails.Participant
   alias EveDmv.Utils.TimeUtils
 
@@ -395,11 +395,11 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
     end
   end
 
-  defp analyze_corporation_trends(member_analyses) do
+  defp analyze_corporation_trends(_member_analyses) do
     trends = %{
-      overall_direction: determine_overall_trend_direction(member_analyses),
-      member_count_trend: calculate_member_count_trend(member_analyses),
-      engagement_trend: calculate_engagement_trend(member_analyses)
+      overall_direction: :stable,
+      member_count_trend: :stable,
+      engagement_trend: :stable
     }
 
     {:ok, trends}
@@ -630,10 +630,6 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
       (analysis.engagement_score || 0) > 30
     end)
   end
-
-  defp determine_overall_trend_direction(_member_analyses), do: :stable
-  defp calculate_member_count_trend(_member_analyses), do: :stable
-  defp calculate_engagement_trend(_member_analyses), do: :stable
 
   defp calculate_average_engagement(member_analyses) do
     if length(member_analyses) > 0 do

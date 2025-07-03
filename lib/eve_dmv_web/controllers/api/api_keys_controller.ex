@@ -11,7 +11,7 @@ defmodule EveDmvWeb.Api.ApiKeysController do
 
   alias EveDmv.Security.{ApiAuthentication, AuditLogger}
 
-  # action_fallback EveDmvWeb.FallbackController
+  action_fallback(EveDmvWeb.FallbackController)
 
   @doc """
   List API keys for the current user.

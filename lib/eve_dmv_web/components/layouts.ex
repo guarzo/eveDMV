@@ -7,7 +7,7 @@ defmodule EveDmvWeb.Layouts do
   """
   use EveDmvWeb, :html
 
-  embed_templates "layouts/*"
+  embed_templates("layouts/*")
 
   def get_csrf_token do
     Plug.CSRFProtection.get_csrf_token()

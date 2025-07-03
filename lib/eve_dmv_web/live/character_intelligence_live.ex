@@ -17,7 +17,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
 
   alias EveDmv.Eve.EsiClient
 
-  on_mount {EveDmvWeb.AuthLive, :load_from_session}
+  on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
   @impl true
   def mount(params, _session, socket) do

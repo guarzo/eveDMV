@@ -7,7 +7,7 @@ defmodule EveDmvWeb.DashboardLive do
   alias EveDmvWeb.PriceMonitorComponent
 
   # Load current user from session on mount
-  on_mount {EveDmvWeb.AuthLive, :load_from_session}
+  on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
   @impl true
   def mount(_params, _session, socket) do

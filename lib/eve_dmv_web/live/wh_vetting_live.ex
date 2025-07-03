@@ -17,7 +17,7 @@ defmodule EveDmvWeb.WHVettingLive do
   alias EveDmv.Api
   alias EveDmv.Intelligence.{WHVetting, WHVettingAnalyzer}
 
-  on_mount {EveDmvWeb.AuthLive, :load_from_session}
+  on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
   @impl true
   def mount(_params, _session, socket) do

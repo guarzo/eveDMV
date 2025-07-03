@@ -3,8 +3,6 @@ defmodule EveDmv.Intelligence.CharacterAnalysis.CharacterMetrics do
   Character analysis calculations and scoring
   """
 
-  require Logger
-
   def calculate_all_metrics(character_id, killmail_data) do
     basic_info = extract_basic_info_from_killmails(character_id, killmail_data)
 
@@ -125,7 +123,7 @@ defmodule EveDmv.Intelligence.CharacterAnalysis.CharacterMetrics do
 
     regions =
       killmail_data
-      |> Enum.map(&get_region_from_system(&1["solar_system_id"]))
+      |> Enum.map(fn _ -> "Unknown Region" end)
       |> Enum.reject(&is_nil/1)
       |> Enum.frequencies()
 
@@ -175,8 +173,8 @@ defmodule EveDmv.Intelligence.CharacterAnalysis.CharacterMetrics do
       target_selection: analyze_target_selection(kills),
       engagement_profile: analyze_engagement_profile(kills, losses),
       activity_consistency: calculate_activity_consistency(killmail_data),
-      preferred_engagement_range: estimate_preferred_range(kills),
-      bait_susceptibility: calculate_bait_susceptibility(losses)
+      preferred_engagement_range: "Unknown",
+      bait_susceptibility: "Unknown"
     }
   end
 
@@ -493,11 +491,6 @@ defmodule EveDmv.Intelligence.CharacterAnalysis.CharacterMetrics do
     |> elem(0)
   end
 
-  defp get_region_from_system(_system_id) do
-    # This would normally query static data
-    "Unknown Region"
-  end
-
   defp get_top_locations(locations, limit) do
     locations
     |> Enum.sort_by(fn {_, count} -> count end, :desc)
@@ -631,7 +624,7 @@ defmodule EveDmv.Intelligence.CharacterAnalysis.CharacterMetrics do
 
   defp analyze_engagement_profile(kills, losses) do
     %{
-      preferred_range: estimate_preferred_range(kills),
+      preferred_range: "Unknown",
       engagement_duration: estimate_engagement_duration(kills ++ losses),
       uses_capital_ships: uses_capital_ships?(kills ++ losses),
       uses_support_ships: uses_support_ships?(kills ++ losses)
@@ -659,16 +652,6 @@ defmodule EveDmv.Intelligence.CharacterAnalysis.CharacterMetrics do
         true -> "Sporadic"
       end
     end
-  end
-
-  defp estimate_preferred_range(_kills) do
-    # Would analyze weapon types used in kills
-    "Unknown"
-  end
-
-  defp calculate_bait_susceptibility(_losses) do
-    # Would analyze loss scenarios
-    "Unknown"
   end
 
   defp analyze_loss_patterns(losses) do
