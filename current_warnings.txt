@@ -1,0 +1,77 @@
+     warning: EsiCache.get_type/1 is undefined (module EsiCache is not available or is yet to be defined)
+     │
+ 215 │       case EsiCache.get_type(asset.type_id) do
+     │                     ~
+     │
+     └─ lib/eve_dmv/intelligence/asset_analyzer.ex:215:21: EveDmv.Intelligence.AssetAnalyzer.group_ships_by_type/1
+
+     warning: variable "character_id" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     │
+ 272 │   defp assess_member_risks(character_id, activity_data, participation_data) do
+     │                            ~~~~~~~~~~~~
+     │
+     └─ lib/eve_dmv/intelligence/member_activity_analyzer.ex:272:28: EveDmv.Intelligence.MemberActivityAnalyzer.assess_member_risks/3
+
+Finding suitable PLTs
+Checking PLT...
+[:ash, :ash_authentication, :ash_authentication_phoenix, :ash_json_api, :ash_phoenix, :ash_postgres, :ash_sql, :asn1, :assent, :bandit, :bcrypt_elixir, :broadway, :bzip2, :cachex, :castore, :certifi, :comeonin, :compiler, :conv_case, :cowboy, :cowlib, :crypto, :db_connection, :decimal, :dns_cluster, :dotenvy, :ecto, :ecto_sql, :eex, :elixir, :esbuild, :eternal, :ets, :eve_dmv, :ex_hash_ring, :ex_unit, :expo, :file_system, :finch, :gen_stage, :gettext, :gun, :hackney, :hpax, :httpoison, :idna, :inets, :iterex, :jason, :joken, ...]
+Looking up modules in dialyzer.plt
+Finding applications for dialyzer.plt
+Finding modules for dialyzer.plt
+Checking 907 modules in dialyzer.plt
+Adding 3906 modules to dialyzer.plt
+done in 4m33.89s
+No :ignore_warnings opt specified in mix.exs. Using default: .dialyzer_ignore.exs.
+
+Starting Dialyzer
+[
+  check_plt: false,
+  init_plt: ~c"/workspace/priv/plts/dialyzer.plt",
+  files: [~c"/workspace/_build/dev/lib/eve_dmv/ebin/Elixir.EveDmv.Market.RateLimiter.beam",
+   ~c"/workspace/_build/dev/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Killmails.KillmailEnriched.beam",
+   ~c"/workspace/_build/dev/lib/eve_dmv/ebin/Elixir.EveDmv.Database.HealthCheck.beam",
+   ~c"/workspace/_build/dev/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Intelligence.SystemInhabitant.beam",
+   ~c"/workspace/_build/dev/lib/eve_dmv/ebin/Elixir.EveDmv.Killmails.KillmailRaw.beam",
+   ...],
+  warnings: [:error_handling, :underspecs, :unknown]
+]
+Total errors: 5, Skipped: 1, Unnecessary Skips: 0
+done in 0m32.5s
+lib/eve_dmv/eve/esi_character_client.ex:75:extra_range
+The type specification has too many types for the function.
+
+Function:
+EveDmv.Eve.EsiCharacterClient.get_characters/1
+
+Extra type:
+{:ok, map(), :partial}
+
+Success typing:
+{:error, %{:__exception__ => true, :__struct__ => atom(), atom() => _}} | {:ok, _}
+
+________________________________________________________________________________
+lib/eve_dmv/intelligence/asset_analyzer.ex:38:pattern_match
+The pattern can never match the type.
+
+Pattern:
+{:error, __reason}
+
+Type:
+{:ok, []}
+
+________________________________________________________________________________
+lib/eve_dmv/intelligence/asset_analyzer.ex:215:unknown_function
+Function EsiCache.get_type/1 does not exist.
+________________________________________________________________________________
+lib/eve_dmv/intelligence/home_defense_analyzer.ex:175:pattern_match
+The pattern can never match the type.
+
+Pattern:
+{:error, _reason}
+
+Type:
+{:ok, map()}
+
+________________________________________________________________________________
+done (warnings were emitted)
+Halting VM with exit status 2

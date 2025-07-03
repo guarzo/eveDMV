@@ -10,6 +10,7 @@ defmodule EveDmv.Intelligence.AssetAnalyzer do
   """
 
   require Logger
+  alias EveDmv.Eve.EsiCache
   alias EveDmv.Eve.EsiClient
   alias EveDmv.Intelligence.WHFleetComposition
 
@@ -35,7 +36,6 @@ defmodule EveDmv.Intelligence.AssetAnalyzer do
         member_assets =
           case fetch_member_assets(composition.corporation_id, auth_token) do
             {:ok, assets} -> assets
-            {:error, _reason} -> []
           end
 
         all_assets = merge_assets(corp_assets, member_assets)
@@ -230,7 +230,7 @@ defmodule EveDmv.Intelligence.AssetAnalyzer do
       {location_id,
        %{
          ship_count: length(location_assets),
-         ship_types: location_assets |> Enum.map(& &1.type_id) |> Enum.uniq() |> length()
+         ship_types: location_assets |> Stream.map(& &1.type_id) |> Enum.uniq() |> length()
        }}
     end)
     |> Enum.into(%{})

@@ -15,10 +15,51 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
   alias EveDmv.Killmails.Participant
 
   @doc """
-  Perform comprehensive vetting analysis for a character.
+  Analyzes character vetting information for security assessment.
 
-  Returns {:ok, vetting_record} or {:error, reason}
+  Performs comprehensive analysis of character background including:
+  - Character age and creation patterns
+  - Corporation history and employment gaps
+  - J-space activity and competency assessment
+  - Eviction group connections and participation
+  - Rolling activity and wormhole operations
+
+  ## Parameters
+
+  - `character_id` - The EVE Online character ID to analyze
+  - `requested_by_id` - Optional character ID of requester (for audit trail)
+
+  ## Returns
+
+  - `{:ok, vetting_analysis}` - Complete vetting analysis
+  - `{:error, :character_not_found}` - Character does not exist in ESI
+  - `{:error, :insufficient_data}` - Not enough data for meaningful analysis
+  - `{:error, reason}` - Other analysis errors
+
+  ## Vetting Analysis Structure
+
+  ```elixir
+  %{
+    character_id: integer(),
+    threat_score: float(),        # 0.0 - 10.0
+    confidence_score: float(),    # 0.0 - 1.0
+    recommendation: atom(),       # :accept, :reject, :investigate
+    risk_factors: [String.t()],
+    competency_assessment: map(),
+    activity_summary: map()
+  }
+  ```
+
+  ## Examples
+
+      # Basic vetting
+      {:ok, vetting} = WHVettingAnalyzer.analyze_character(123456)
+      
+      # With audit trail
+      {:ok, vetting} = WHVettingAnalyzer.analyze_character(123456, 789012)
   """
+  @spec analyze_character(pos_integer(), pos_integer() | nil) ::
+          {:ok, map()} | {:error, atom() | String.t()}
   def analyze_character(character_id, requested_by_id \\ nil) do
     with {:ok, character_info} <- validate_and_get_character_info(character_id),
          {:ok, analysis_data} <- collect_all_analysis_data(character_id),

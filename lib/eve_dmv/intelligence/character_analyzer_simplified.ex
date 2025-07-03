@@ -137,7 +137,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzerSimplified do
     case Ash.read(participants_query, domain: Api) do
       {:ok, participants} ->
         # Get enriched killmails for these participants
-        killmail_ids = participants |> Enum.map(& &1.killmail_id) |> Enum.uniq()
+        killmail_ids = participants |> Stream.map(& &1.killmail_id) |> Enum.uniq()
         fetch_killmails_for_participants(killmail_ids, cutoff_date)
 
       {:error, reason} ->
