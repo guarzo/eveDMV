@@ -10,7 +10,7 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
   require Ash.Query
 
   alias EveDmv.Api
-  alias EveDmv.Eve.EsiClient
+  alias EveDmv.Eve.{EsiClient, EsiUtils}
   alias EveDmv.Intelligence.{CharacterStats, WHVetting}
   alias EveDmv.Killmails.Participant
 
@@ -167,34 +167,9 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
 
   # Character information retrieval
   defp get_character_info(character_id) do
-    # Try ESI first for the most current data
-    case EsiClient.get_character(character_id) do
+    case EsiUtils.fetch_character_corporation_alliance(character_id) do
       {:ok, char_data} ->
-        # Get corporation and alliance info
-        corp_info =
-          case EsiClient.get_corporation(char_data.corporation_id) do
-            {:ok, corp} -> %{corporation_name: corp.name, alliance_id: corp.alliance_id}
-            _ -> %{corporation_name: "Unknown Corporation", alliance_id: nil}
-          end
-
-        alliance_info =
-          if corp_info.alliance_id do
-            case EsiClient.get_alliance(corp_info.alliance_id) do
-              {:ok, alliance} -> %{alliance_name: alliance.name}
-              _ -> %{alliance_name: nil}
-            end
-          else
-            %{alliance_name: nil}
-          end
-
-        {:ok,
-         %{
-           character_name: char_data.name,
-           corporation_id: char_data.corporation_id,
-           corporation_name: corp_info.corporation_name,
-           alliance_id: corp_info.alliance_id,
-           alliance_name: alliance_info.alliance_name
-         }}
+        {:ok, char_data}
 
       {:error, reason} ->
         Logger.warning(
@@ -326,21 +301,7 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
 
   # Employment history analysis
   defp analyze_employment_history(character_id) do
-    case EsiClient.get_character_employment_history(character_id) do
-      {:error, reason} ->
-        Logger.warning(
-          "Could not fetch employment history for character #{character_id}: #{inspect(reason)}"
-        )
-
-        # Return fallback employment history data
-        {:ok,
-         %{
-           "corp_changes" => 0,
-           "avg_tenure_days" => 0,
-           "suspicious_patterns" => ["Unable to verify employment history"],
-           "history" => []
-         }}
-    end
+    EsiUtils.fetch_employment_history_with_fallback(character_id)
   end
 
   # Helper functions for specific analyses
@@ -922,9 +883,9 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
     # Analyze signs that character might have been purchased on character bazaar
 
     # Get character info and history
-    case EsiClient.get_character(character_id) do
+    case EsiUtils.fetch_character_with_fallback(character_id) do
       {:ok, character_data} ->
-        character_name = character_data["name"]
+        character_name = character_data.character_name
 
         # Check for name patterns common in bazaar characters
         name_patterns = analyze_character_name(character_name)
@@ -1057,7 +1018,10 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
 
   defp calculate_account_age(character_id) do
     # Calculate days since character creation using ESI data
-    case EsiClient.get_character(character_id) do
+    EsiUtils.safe_esi_call("character", fn ->
+      EsiClient.get_character(character_id)
+    end)
+    |> case do
       {:ok, character_data} ->
         birthday_str = character_data["birthday"]
 
