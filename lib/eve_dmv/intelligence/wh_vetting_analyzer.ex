@@ -1,4 +1,4 @@
-defmodule EveDmv.Intelligence.WhSpace.VettingAnalyzer do
+defmodule EveDmv.Intelligence.WHVettingAnalyzer do
   @moduledoc """
   Comprehensive vetting analysis for wormhole corporation recruitment.
 
@@ -1697,16 +1697,31 @@ defmodule EveDmv.Intelligence.WhSpace.VettingAnalyzer do
         stats
 
       _ ->
-        # Create basic stats if none exist
-        %CharacterStats{
-          character_id: character_id,
-          character_name: "Unknown",
-          total_kills: 0,
-          total_losses: 0,
-          avg_gang_size: 1.0,
-          ship_usage: %{},
-          flies_capitals: false
-        }
+        # Create basic stats if none exist using Ash resource creation
+        case CharacterStats.create(%{
+               character_id: character_id,
+               character_name: "Unknown",
+               total_kills: 0,
+               total_losses: 0,
+               avg_gang_size: 1.0,
+               ship_usage: %{},
+               flies_capitals: false
+             }) do
+          {:ok, stats} ->
+            stats
+
+          {:error, _reason} ->
+            # Return a map with default values if creation fails
+            %{
+              character_id: character_id,
+              character_name: "Unknown",
+              total_kills: 0,
+              total_losses: 0,
+              avg_gang_size: 1.0,
+              ship_usage: %{},
+              flies_capitals: false
+            }
+        end
     end
   end
 

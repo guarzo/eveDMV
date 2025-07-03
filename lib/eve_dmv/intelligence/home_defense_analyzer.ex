@@ -9,7 +9,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
   require Logger
   alias EveDmv.Api
   alias EveDmv.Database.QueryUtils
-  alias EveDmv.Eve.EsiClient
+  alias EveDmv.Eve.EsiUtils
   alias EveDmv.Intelligence.HomeDefenseAnalytics
   alias EveDmv.Killmails.KillmailEnriched
   require Ash.Query
@@ -153,29 +153,16 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
   defp get_corporation_info(nil), do: {:error, "Invalid corporation ID"}
 
   defp get_corporation_info(corporation_id) do
-    case EsiClient.get_corporation(corporation_id) do
+    # Use the consolidated EsiUtils for better error handling  
+    case EsiUtils.fetch_corporation_with_alliance(corporation_id) do
       {:ok, corp_data} ->
-        # Get alliance info if the corporation is in one
-        alliance_info =
-          if corp_data.alliance_id do
-            case EsiClient.get_alliance(corp_data.alliance_id) do
-              {:ok, alliance} ->
-                %{alliance_id: alliance.alliance_id, alliance_name: alliance.name}
-
-              _ ->
-                %{alliance_id: nil, alliance_name: nil}
-            end
-          else
-            %{alliance_id: nil, alliance_name: nil}
-          end
-
         {:ok,
          %{
-           corporation_name: corp_data.name,
-           alliance_id: alliance_info.alliance_id,
-           alliance_name: alliance_info.alliance_name,
+           corporation_name: corp_data.corporation_name,
+           alliance_id: corp_data.alliance_id,
+           alliance_name: corp_data.alliance_name,
            # Home system would need to be configured elsewhere, as ESI doesn't provide this directly
-           home_system_id: corp_data.home_station_id || 31_000_142,
+           home_system_id: corp_data.corporation_id || 31_000_142,
            # This would need a mapping or configuration
            home_system_name: "J123456"
          }}
@@ -215,13 +202,19 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
     # Bulk update character info if needed
     character_ids = Enum.map(corp_stats, & &1.character_id)
 
-    members =
-      case EsiClient.get_characters(character_ids) do
-        {:ok, character_data} ->
-          Enum.map(corp_stats, &update_member_with_character_data(&1, character_data))
-      end
+    case EsiUtils.fetch_characters_bulk(character_ids) do
+      {:ok, character_data} ->
+        members = Enum.map(corp_stats, &update_member_with_character_data(&1, character_data))
+        {:ok, members}
 
-    {:ok, members}
+      {:error, reason} ->
+        Logger.warning(
+          "Failed to fetch character data, using stats without ESI enrichment: #{inspect(reason)}"
+        )
+
+        # Return corp_stats without ESI enrichment rather than failing
+        {:ok, corp_stats}
+    end
   end
 
   defp update_member_with_character_data(stats, character_data) do
@@ -260,17 +253,31 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
   # Rolling participation analysis
   defp analyze_rolling_participation(corporation_id, start_date, end_date) do
     # Get actual rolling operations from killmail data
-    rolling_systems = get_rolling_systems(corporation_id, start_date, end_date)
+    case get_rolling_systems(corporation_id, start_date, end_date) do
+      {:ok, rolling_systems} ->
+        participation = %{
+          "total_rolling_ops" => length(rolling_systems),
+          "member_participation" => calculate_member_rolling_participation(rolling_systems),
+          "rolling_efficiency" => calculate_rolling_efficiency(rolling_systems),
+          "success_rate" => calculate_rolling_success_rate(rolling_systems),
+          "hole_types_rolled" => categorize_rolled_systems(rolling_systems)
+        }
 
-    participation = %{
-      "total_rolling_ops" => length(rolling_systems),
-      "member_participation" => calculate_member_rolling_participation(rolling_systems),
-      "rolling_efficiency" => calculate_rolling_efficiency(rolling_systems),
-      "success_rate" => calculate_rolling_success_rate(rolling_systems),
-      "hole_types_rolled" => categorize_rolled_systems(rolling_systems)
-    }
+        {:ok, participation}
 
-    {:ok, participation}
+      {:error, reason} ->
+        Logger.warning("Rolling participation analysis failed: #{inspect(reason)}")
+
+        # Return empty participation data rather than failing completely
+        {:ok,
+         %{
+           "total_rolling_ops" => 0,
+           "member_participation" => %{},
+           "rolling_efficiency" => 0.0,
+           "success_rate" => 0.0,
+           "hole_types_rolled" => %{}
+         }}
+    end
   end
 
   defp get_rolling_systems(corporation_id, start_date, end_date) do
@@ -282,14 +289,17 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
 
     case QueryUtils.query_killmails_by_corporation(corporation_id, start_date, end_date) do
       {:ok, killmails} ->
-        killmails
-        |> QueryUtils.filter_wormhole_killmails()
-        |> group_by_system_and_time()
-        |> identify_rolling_patterns()
+        rolling_systems =
+          killmails
+          |> QueryUtils.filter_wormhole_killmails()
+          |> group_by_system_and_time()
+          |> identify_rolling_patterns()
+
+        {:ok, rolling_systems}
 
       {:error, reason} ->
-        Logger.error("Failed to fetch killmails for rolling analysis: #{inspect(reason)}")
-        []
+        Logger.warning("Failed to fetch killmails for rolling analysis: #{inspect(reason)}")
+        {:ok, []}
     end
   end
 
@@ -510,35 +520,64 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
   # Response metrics analysis
   defp analyze_response_metrics(corporation_id, start_date, end_date) do
     # Analyze response times to threats and home defense battles
-    home_system_battles = get_home_system_battles(corporation_id, start_date, end_date)
+    case get_home_system_battles(corporation_id, start_date, end_date) do
+      {:ok, home_system_battles} ->
+        response_times = calculate_response_times(home_system_battles)
+        defense_success_rate = calculate_defense_success_rate(home_system_battles)
 
-    response_times = calculate_response_times(home_system_battles)
-    defense_success_rate = calculate_defense_success_rate(home_system_battles)
+        metrics = %{
+          "threat_responses" => %{
+            "avg_response_time_seconds" => response_times.avg_response_time,
+            "fastest_response_seconds" => response_times.fastest,
+            "slowest_response_seconds" => response_times.slowest,
+            "response_rate" => response_times.response_rate
+          },
+          "home_defense_battles" => %{
+            "total_defenses" => length(home_system_battles),
+            "successful_defenses" => defense_success_rate.successful,
+            "failed_defenses" => defense_success_rate.failed,
+            "evaded_threats" => defense_success_rate.evaded,
+            "success_rate" => defense_success_rate.success_rate
+          },
+          "escalation_patterns" => %{
+            "batphone_calls" => 3,
+            "alliance_support" => 2,
+            "successful_escalations" => 4,
+            "avg_escalation_time" => 360
+          },
+          "threat_types_faced" => categorize_threat_types(home_system_battles)
+        }
 
-    metrics = %{
-      "threat_responses" => %{
-        "avg_response_time_seconds" => response_times.avg_response_time,
-        "fastest_response_seconds" => response_times.fastest,
-        "slowest_response_seconds" => response_times.slowest,
-        "response_rate" => response_times.response_rate
-      },
-      "home_defense_battles" => %{
-        "total_defenses" => length(home_system_battles),
-        "successful_defenses" => defense_success_rate.successful,
-        "failed_defenses" => defense_success_rate.failed,
-        "evaded_threats" => defense_success_rate.evaded,
-        "success_rate" => defense_success_rate.success_rate
-      },
-      "escalation_patterns" => %{
-        "batphone_calls" => 3,
-        "alliance_support" => 2,
-        "successful_escalations" => 4,
-        "avg_escalation_time" => 360
-      },
-      "threat_types_faced" => categorize_threat_types(home_system_battles)
-    }
+        {:ok, metrics}
 
-    {:ok, metrics}
+      {:error, reason} ->
+        Logger.warning("Response metrics analysis failed: #{inspect(reason)}")
+
+        # Return empty metrics rather than failing completely
+        {:ok,
+         %{
+           "threat_responses" => %{
+             "avg_response_time_seconds" => 0,
+             "fastest_response_seconds" => 0,
+             "slowest_response_seconds" => 0,
+             "response_rate" => 0.0
+           },
+           "home_defense_battles" => %{
+             "total_defenses" => 0,
+             "successful_defenses" => 0,
+             "failed_defenses" => 0,
+             "evaded_threats" => 0,
+             "success_rate" => 0.0
+           },
+           "escalation_patterns" => %{
+             "batphone_calls" => 0,
+             "alliance_support" => 0,
+             "successful_escalations" => 0,
+             "avg_escalation_time" => 0
+           },
+           "threat_types_faced" => []
+         }}
+    end
   end
 
   # Member activity patterns analysis
@@ -658,28 +697,39 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
   # Helper functions for response metrics
   defp get_home_system_battles(corporation_id, start_date, end_date) do
     # Find corporation's home system(s) from activity patterns
-    home_systems = identify_home_systems(corporation_id)
+    case identify_home_systems(corporation_id) do
+      [] ->
+        Logger.info("No home systems identified for corporation #{corporation_id}")
+        {:ok, []}
 
-    # Get battles in home systems
-    Enum.flat_map(home_systems, fn system_id ->
-      query =
-        KillmailEnriched
-        |> Ash.Query.new()
-        |> Ash.Query.load(:participants)
-        |> Ash.Query.filter(solar_system_id == ^system_id)
-        |> Ash.Query.filter(killmail_time >= ^start_date)
-        |> Ash.Query.filter(killmail_time <= ^end_date)
-        |> Ash.Query.filter(exists(participants, corporation_id == ^corporation_id))
+      home_systems ->
+        # Get battles in home systems
+        battles =
+          Enum.flat_map(home_systems, fn system_id ->
+            query =
+              KillmailEnriched
+              |> Ash.Query.new()
+              |> Ash.Query.load(:participants)
+              |> Ash.Query.filter(solar_system_id == ^system_id)
+              |> Ash.Query.filter(killmail_time >= ^start_date)
+              |> Ash.Query.filter(killmail_time <= ^end_date)
+              |> Ash.Query.filter(exists(participants, corporation_id == ^corporation_id))
 
-      case Ash.read(query, domain: Api) do
-        {:ok, killmails} ->
-          killmails
+            case Ash.read(query, domain: Api) do
+              {:ok, killmails} ->
+                killmails
 
-        {:error, reason} ->
-          Logger.error("Failed to fetch home system battles: #{inspect(reason)}")
-          []
-      end
-    end)
+              {:error, reason} ->
+                Logger.warning(
+                  "Failed to fetch home system battles for system #{system_id}: #{inspect(reason)}"
+                )
+
+                []
+            end
+          end)
+
+        {:ok, battles}
+    end
   end
 
   defp identify_home_systems(corporation_id) do
@@ -739,7 +789,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
         |> Enum.map(& &1.system_id)
 
       {:error, reason} ->
-        Logger.error("Failed to identify home systems: #{inspect(reason)}")
+        Logger.warning("Failed to identify home systems: #{inspect(reason)}")
         []
     end
   end

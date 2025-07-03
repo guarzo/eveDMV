@@ -354,11 +354,13 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
 
   defp correlate_skill_progression(character_analysis, fleet_data)
        when is_map(character_analysis) and is_map(fleet_data) do
-    # Currently fleet_data always has status: :not_implemented
-    # This is a placeholder for future implementation
+    # Analyze skill progression consistency and detect anomalies
+    progression_consistency = analyze_ship_progression_consistency(character_analysis, fleet_data)
+    progression_anomalies = detect_progression_anomalies(character_analysis, fleet_data)
+
     %{
-      skill_ship_consistency: 0.5,
-      progression_flags: []
+      skill_ship_consistency: progression_consistency,
+      progression_flags: progression_anomalies
     }
   end
 
@@ -634,17 +636,195 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
     end
   end
 
-  # defp analyze_ship_progression_consistency(_character_analysis, _fleet_data) do
-  #   # Analyze if ship progression makes sense
-  #   # Placeholder
-  #   0.7
-  # end
-  #
-  # defp detect_progression_anomalies(_character_analysis, _fleet_data) do
-  #   # Detect anomalies in skill/ship progression
-  #   # Placeholder
-  #   []
-  # end
+  defp analyze_ship_progression_consistency(character_analysis, fleet_data)
+       when is_map(character_analysis) and is_map(fleet_data) do
+    # Analyze if ship progression makes logical sense based on character age and skills
+    ship_usage = Map.get(character_analysis, :ship_usage, %{})
+    character_age_days = calculate_character_age_days(character_analysis)
+
+    # Evaluate ship progression consistency
+    ship_categories = categorize_ships_by_complexity(ship_usage)
+    progression_score = calculate_progression_score(ship_categories, character_age_days)
+
+    max(0.0, min(1.0, progression_score))
+  end
+
+  defp analyze_ship_progression_consistency(_character_analysis, _fleet_data) do
+    # Default when data is unavailable
+    0.5
+  end
+
+  defp detect_progression_anomalies(character_analysis, fleet_data)
+       when is_map(character_analysis) and is_map(fleet_data) do
+    # Detect anomalies in skill/ship progression
+    anomalies = []
+
+    ship_usage = Map.get(character_analysis, :ship_usage, %{})
+    character_age_days = calculate_character_age_days(character_analysis)
+
+    anomalies
+    |> maybe_add_rapid_progression_anomaly(ship_usage, character_age_days)
+    |> maybe_add_skill_mismatch_anomaly(character_analysis, ship_usage)
+    |> maybe_add_regression_anomaly(ship_usage, character_age_days)
+  end
+
+  defp detect_progression_anomalies(_character_analysis, _fleet_data) do
+    # Default when data is unavailable
+    []
+  end
+
+  defp calculate_character_age_days(character_analysis) do
+    case Map.get(character_analysis, :character_created) do
+      %DateTime{} = creation_date ->
+        DateTime.diff(DateTime.utc_now(), creation_date, :day)
+
+      _ ->
+        # Default to 365 days if creation date unknown
+        365
+    end
+  end
+
+  defp categorize_ships_by_complexity(ship_usage) do
+    # Categorize ships by training time and complexity
+    complexity_categories = %{
+      # Frigates, destroyers
+      beginner: [],
+      # Cruisers, battlecruisers  
+      intermediate: [],
+      # Battleships, T2 ships
+      advanced: [],
+      # Capital ships, T3 ships
+      specialist: []
+    }
+
+    Enum.reduce(ship_usage, complexity_categories, fn {ship_type, count}, acc ->
+      category = determine_ship_complexity(ship_type)
+      %{acc | category => [{ship_type, count} | Map.get(acc, category, [])]}
+    end)
+  end
+
+  defp determine_ship_complexity(ship_type) when is_atom(ship_type) do
+    ship_name = Atom.to_string(ship_type) |> String.downcase()
+
+    cond do
+      String.contains?(ship_name, ["frigate", "destroyer"]) ->
+        :beginner
+
+      String.contains?(ship_name, ["cruiser", "battlecruiser"]) ->
+        :intermediate
+
+      String.contains?(ship_name, ["battleship", "t2", "tech2"]) ->
+        :advanced
+
+      String.contains?(ship_name, ["capital", "t3", "tech3", "carrier", "dreadnought"]) ->
+        :specialist
+
+      true ->
+        :intermediate
+    end
+  end
+
+  defp determine_ship_complexity(_ship_type), do: :intermediate
+
+  defp calculate_progression_score(ship_categories, character_age_days) do
+    # Calculate logical progression score based on age and ship complexity
+    base_score = 0.5
+
+    # Younger characters should primarily use simpler ships
+    age_factor =
+      cond do
+        # Very new
+        character_age_days < 30 -> 1.0
+        # New  
+        character_age_days < 90 -> 0.8
+        # Intermediate
+        character_age_days < 365 -> 0.6
+        # Experienced
+        true -> 0.4
+      end
+
+    # Check if ship usage matches expected progression
+    total_ships = calculate_total_ship_usage(ship_categories)
+
+    if total_ships == 0 do
+      base_score
+    else
+      specialist_ratio = length(ship_categories.specialist) / total_ships
+      advanced_ratio = length(ship_categories.advanced) / total_ships
+
+      # Penalize new characters using too many advanced ships
+      progression_penalty =
+        cond do
+          character_age_days < 90 and (specialist_ratio > 0.1 or advanced_ratio > 0.3) -> -0.3
+          character_age_days < 30 and advanced_ratio > 0.1 -> -0.5
+          true -> 0.0
+        end
+
+      base_score + progression_penalty + age_factor * 0.2
+    end
+  end
+
+  defp calculate_total_ship_usage(ship_categories) do
+    ship_categories
+    |> Map.values()
+    |> List.flatten()
+    |> length()
+  end
+
+  defp maybe_add_rapid_progression_anomaly(anomalies, ship_usage, character_age_days) do
+    specialist_ships = count_specialist_ships(ship_usage)
+
+    if character_age_days < 60 and specialist_ships > 2 do
+      ["rapid_capital_progression" | anomalies]
+    else
+      anomalies
+    end
+  end
+
+  defp maybe_add_skill_mismatch_anomaly(anomalies, character_analysis, ship_usage) do
+    # Check for ships that require skills the character shouldn't have yet
+    skill_points = Map.get(character_analysis, :total_skill_points, 0)
+    specialist_ships = count_specialist_ships(ship_usage)
+
+    # Capital ships typically require 20M+ skill points
+    if skill_points < 20_000_000 and specialist_ships > 0 do
+      ["skill_point_ship_mismatch" | anomalies]
+    else
+      anomalies
+    end
+  end
+
+  defp maybe_add_regression_anomaly(anomalies, ship_usage, character_age_days) do
+    # Check if experienced character is only using very basic ships (possible sale/transfer)
+    # 2+ years
+    if character_age_days > 730 do
+      advanced_ships = count_advanced_ships(ship_usage)
+      total_ships = map_size(ship_usage)
+
+      if total_ships > 5 and advanced_ships == 0 do
+        ["experienced_character_basic_ships_only" | anomalies]
+      else
+        anomalies
+      end
+    else
+      anomalies
+    end
+  end
+
+  defp count_specialist_ships(ship_usage) do
+    ship_usage
+    |> Enum.count(fn {ship_type, _count} ->
+      determine_ship_complexity(ship_type) == :specialist
+    end)
+  end
+
+  defp count_advanced_ships(ship_usage) do
+    ship_usage
+    |> Enum.count(fn {ship_type, _count} ->
+      complexity = determine_ship_complexity(ship_type)
+      complexity in [:advanced, :specialist]
+    end)
+  end
 
   defp calculate_connectivity_score(connections) do
     # Calculate social connectivity score

@@ -1,4 +1,4 @@
-defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
+defmodule EveDmv.Intelligence.ChainMonitor do
   @moduledoc """
   Monitors and synchronizes chain topology data from Wanderer API.
 
