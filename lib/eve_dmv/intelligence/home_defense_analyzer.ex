@@ -8,6 +8,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
 
   require Logger
   alias EveDmv.Api
+  alias EveDmv.Database.QueryUtils
   alias EveDmv.Eve.EsiClient
   alias EveDmv.Intelligence.{CharacterStats, HomeDefenseAnalytics}
   alias EveDmv.Killmails.KillmailEnriched
@@ -33,8 +34,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
     Logger.info("Starting home defense analysis for corporation #{corporation_id}")
 
     period_days = Keyword.get(options, :period_days, 90)
-    end_date = DateTime.utc_now()
-    start_date = DateTime.add(end_date, -period_days * 24 * 60 * 60, :second)
+    {start_date, end_date} = QueryUtils.calculate_precise_date_range(period_days)
     requested_by = Keyword.get(options, :requested_by)
 
     {:ok,
@@ -192,10 +192,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
   # Get corporation members
   defp get_corporation_members(corporation_id) do
     # First filter character stats at database level, not in memory
-    case Ash.read(CharacterStats,
-           filter: [corporation_id: corporation_id],
-           domain: EveDmv.Api
-         ) do
+    case QueryUtils.query_corporation_members(corporation_id) do
       {:ok, corp_stats} ->
         process_corporation_stats(corp_stats)
 
@@ -287,18 +284,10 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
     # - Ships typically used for rolling (heavy ships, carriers)
     # - Time patterns suggesting coordinated rolling
 
-    query =
-      KillmailEnriched
-      |> Ash.Query.new()
-      |> Ash.Query.load(:participants)
-      |> Ash.Query.filter(killmail_time >= ^start_date)
-      |> Ash.Query.filter(killmail_time <= ^end_date)
-      |> Ash.Query.filter(exists(participants, corporation_id == ^corporation_id))
-
-    case Ash.read(query, domain: Api) do
+    case QueryUtils.query_killmails_by_corporation(corporation_id, start_date, end_date) do
       {:ok, killmails} ->
         killmails
-        |> filter_wormhole_systems()
+        |> QueryUtils.filter_wormhole_killmails()
         |> group_by_system_and_time()
         |> identify_rolling_patterns()
 
@@ -306,18 +295,6 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
         Logger.error("Failed to fetch killmails for rolling analysis: #{inspect(reason)}")
         []
     end
-  end
-
-  defp filter_wormhole_systems(killmails) do
-    # Filter to only wormhole systems (J-space)
-    # In a real implementation, we'd check against a static data source
-    # For now, we'll use system ID patterns typical of wormhole space
-    Enum.filter(killmails, fn km ->
-      system_id = km.solar_system_id
-      # Wormhole systems typically have IDs in certain ranges
-      # This is a simplified check - real implementation would use static data
-      system_id >= 31_000_000
-    end)
   end
 
   defp group_by_system_and_time(killmails) do
@@ -1297,8 +1274,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
     active = member_activity_patterns["active_members"] || 0
     total = member_activity_patterns["total_members"] || 1
 
-    participation_rate = active / total
-    round(participation_rate * 100)
+    round(QueryUtils.safe_percentage(active, total))
   end
 
   defp calculate_overall_defense_score(
