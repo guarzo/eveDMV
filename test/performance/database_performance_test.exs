@@ -8,7 +8,7 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
   @moduletag :skip
 
   alias EveDmv.{Api, Repo}
-  alias EveDmv.Intelligence.CharacterStats
+  alias EveDmv.Intelligence.CharacterAnalysis.CharacterStats
   alias EveDmv.Killmails.{KillmailEnriched, KillmailRaw}
 
   require Ash.Query

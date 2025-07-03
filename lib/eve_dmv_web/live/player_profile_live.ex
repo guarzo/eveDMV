@@ -13,7 +13,7 @@ defmodule EveDmvWeb.PlayerProfileLive do
   alias EveDmv.Api
   alias EveDmv.Analytics.{AnalyticsEngine, PlayerStats}
   alias EveDmv.Eve.EsiClient
-  alias EveDmv.Intelligence.{CharacterAnalyzer, CharacterStats}
+  alias EveDmv.Intelligence.CharacterAnalysis.{CharacterAnalyzer, CharacterStats}
   alias EveDmv.Killmails.HistoricalKillmailFetcher
 
   # Load current user from session on mount

@@ -15,7 +15,8 @@ defmodule EveDmv.Load.PipelineLoadTest do
   @moduletag :skip
 
   alias EveDmv.Killmails.{KillmailPipeline, KillmailRaw, SSEProducer}
-  alias EveDmv.Intelligence.{CharacterAnalyzer, IntelligenceCoordinator}
+  alias EveDmv.Intelligence.CharacterAnalysis.CharacterAnalyzer
+  alias EveDmv.Intelligence.IntelligenceCoordinator
 
   @moduletag :load_test
   # 10 minutes for load tests

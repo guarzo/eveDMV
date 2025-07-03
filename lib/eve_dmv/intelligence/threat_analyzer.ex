@@ -8,7 +8,8 @@ defmodule EveDmv.Intelligence.ThreatAnalyzer do
 
   require Logger
   alias EveDmv.Api
-  alias EveDmv.Intelligence.{CharacterStats, SystemInhabitant}
+  alias EveDmv.Intelligence.CharacterAnalysis.CharacterStats
+  alias EveDmv.Intelligence.SystemInhabitant
 
   @doc """
   Analyze a pilot and return threat assessment data.

@@ -4,7 +4,7 @@ defmodule EveDmv.Integration.KillmailPipelineTest do
   @moduletag :skip
 
   alias EveDmv.Api
-  alias EveDmv.Intelligence.CharacterAnalyzer
+  alias EveDmv.Intelligence.CharacterAnalysis.CharacterAnalyzer
   alias EveDmv.Killmails
   alias EveDmv.Killmails.{KillmailEnriched, KillmailPipeline, KillmailRaw, Participant}
 

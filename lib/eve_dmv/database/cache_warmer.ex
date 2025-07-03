@@ -12,7 +12,7 @@ defmodule EveDmv.Database.CacheWarmer do
 
   alias EveDmv.Api
   alias EveDmv.Database.QueryCache
-  alias EveDmv.Intelligence.{CharacterAnalyzer, CharacterStats}
+  alias EveDmv.Intelligence.CharacterAnalysis.{CharacterAnalyzer, CharacterStats}
   alias EveDmv.Killmails.KillmailEnriched
   alias EveDmv.Eve.{ItemType, SolarSystem}
 

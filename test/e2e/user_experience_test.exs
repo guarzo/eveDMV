@@ -11,7 +11,8 @@ defmodule EveDmv.E2E.UserExperienceTest do
   import EveDmv.Factories
 
   alias EveDmv.Accounts.User
-  alias EveDmv.Intelligence.{CharacterAnalyzer, WHVettingAnalyzer}
+  alias EveDmv.Intelligence.CharacterAnalysis.CharacterAnalyzer
+  alias EveDmv.Intelligence.WhSpace.VettingAnalyzer, as: WHVettingAnalyzer
 
   @moduletag :e2e
   @moduletag timeout: 120_000

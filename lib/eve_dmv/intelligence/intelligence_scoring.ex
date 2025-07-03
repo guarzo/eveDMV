@@ -7,7 +7,11 @@ defmodule EveDmv.Intelligence.IntelligenceScoring do
   """
 
   require Logger
-  alias EveDmv.Intelligence.{AdvancedAnalytics, CharacterStats, WHVetting}
+  require Ash.Query
+  alias EveDmv.Api
+  alias EveDmv.Intelligence.AdvancedAnalytics
+  alias EveDmv.Intelligence.CharacterAnalysis.CharacterStats
+  alias EveDmv.Intelligence.WhSpace.Vetting, as: WHVetting
 
   @doc """
   Calculate comprehensive intelligence score for a character.
@@ -193,14 +197,18 @@ defmodule EveDmv.Intelligence.IntelligenceScoring do
   # Private helper functions
 
   defp gather_base_metrics(character_id) do
-    case CharacterStats.get_by_character_id(character_id) do
-      {:ok, [stats]} -> {:ok, stats}
+    case Ash.get(CharacterStats, character_id, domain: Api) do
+      {:ok, stats} -> {:ok, stats}
       _ -> {:error, "Character statistics not available"}
     end
   end
 
   defp get_vetting_data(character_id) do
-    case WHVetting.get_by_character(character_id) do
+    case WHVetting
+         |> Ash.Query.new()
+         |> Ash.Query.filter(character_id: character_id)
+         |> Ash.Query.limit(1)
+         |> Ash.read(domain: Api) do
       {:ok, [vetting]} -> {:ok, vetting}
       # Return empty map if no vetting data
       _ -> {:ok, %{}}
