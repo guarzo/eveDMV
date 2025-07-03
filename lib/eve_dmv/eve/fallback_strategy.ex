@@ -296,12 +296,14 @@ defmodule EveDmv.Eve.FallbackStrategy do
     case get_cache_with_timestamp(cache_key) do
       {:ok, data, timestamp} ->
         age_seconds = DateTime.diff(DateTime.utc_now(), timestamp, :second)
+
         if age_seconds <= max_stale_age do
           {:ok, data, :stale}
         else
           :miss
         end
-      :miss -> 
+
+      :miss ->
         :miss
     end
   end
@@ -312,6 +314,7 @@ defmodule EveDmv.Eve.FallbackStrategy do
     case :ets.lookup(:esi_character_cache, cache_key) do
       [{^cache_key, data, expires_at}] ->
         {:ok, data, expires_at}
+
       [] ->
         :miss
     end

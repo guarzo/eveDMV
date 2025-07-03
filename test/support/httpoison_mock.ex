@@ -1,15 +1,15 @@
 defmodule HTTPoisonMock do
   @moduledoc """
   HTTPoison mock for testing SSE (Server-Sent Events) producers and API calls.
-  
+
   This mock module provides standardized response helpers for testing HTTP interactions
   in EVE DMV, particularly for the killmail pipeline's SSE producer and external API
   integrations with services like ESI, Janice, and Mutamarket.
-  
+
   ## Usage
-  
+
   In your test, set up expectations using Mox:
-  
+
       test "handles successful SSE stream" do
         HTTPoisonMock
         |> expect(:get!, fn _url, _headers, _opts ->
@@ -48,18 +48,18 @@ defmodule HTTPoisonMock do
       "killmail_id" => 12345,
       "killmail_time" => "2025-01-01T00:00:00Z",
       "killmail_hash" => "abc123def456",
-      "solar_system_id" => 30000142,
+      "solar_system_id" => 30_000_142,
       "victim" => %{
-        "character_id" => 95465499,
-        "corporation_id" => 1000001,
-        "alliance_id" => 99005065,
+        "character_id" => 95_465_499,
+        "corporation_id" => 1_000_001,
+        "alliance_id" => 99_005_065,
         "ship_type_id" => 671,
         "damage_taken" => 1000
       },
       "attackers" => [
         %{
-          "character_id" => 95465500,
-          "corporation_id" => 1000002,
+          "character_id" => 95_465_500,
+          "corporation_id" => 1_000_002,
           "ship_type_id" => 17918,
           "weapon_type_id" => 2456,
           "damage_done" => 1000,
@@ -72,17 +72,18 @@ defmodule HTTPoisonMock do
   @doc """
   Generate mock ESI API response for character info.
   """
-  def mock_esi_character_response(character_id \\ 95465499) do
+  def mock_esi_character_response(character_id \\ 95_465_499) do
     %HTTPoison.Response{
       status_code: 200,
       headers: [{"content-type", "application/json"}],
-      body: Jason.encode!(%{
-        "character_id" => character_id,
-        "name" => "Test Character",
-        "corporation_id" => 1000001,
-        "alliance_id" => 99005065,
-        "birthday" => "2010-01-01T00:00:00Z"
-      })
+      body:
+        Jason.encode!(%{
+          "character_id" => character_id,
+          "name" => "Test Character",
+          "corporation_id" => 1_000_001,
+          "alliance_id" => 99_005_065,
+          "birthday" => "2010-01-01T00:00:00Z"
+        })
     }
   end
 
@@ -93,9 +94,10 @@ defmodule HTTPoisonMock do
     %HTTPoison.Response{
       status_code: status_code,
       headers: [{"content-type", "application/json"}],
-      body: Jason.encode!(%{
-        "error" => "not found"
-      })
+      body:
+        Jason.encode!(%{
+          "error" => "not found"
+        })
     }
   end
 
@@ -106,14 +108,15 @@ defmodule HTTPoisonMock do
     %HTTPoison.Response{
       status_code: 200,
       headers: [{"content-type", "application/json"}],
-      body: Jason.encode!(%{
-        "671" => %{
-          "average" => 15000000.0,
-          "highest" => 16000000.0,
-          "lowest" => 14000000.0,
-          "percentile" => 15500000.0
-        }
-      })
+      body:
+        Jason.encode!(%{
+          "671" => %{
+            "average" => 15_000_000.0,
+            "highest" => 16_000_000.0,
+            "lowest" => 14_000_000.0,
+            "percentile" => 15_500_000.0
+          }
+        })
     }
   end
 

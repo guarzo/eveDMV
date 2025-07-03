@@ -26,7 +26,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor do
   """
   def track_query(query_name, fun) when is_function(fun) do
     threshold = get_threshold(:slow_query_ms)
-    
+
     execute_with_timing(
       query_name,
       fun,
@@ -43,7 +43,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor do
   def track_api_call(service_name, endpoint, fun) when is_function(fun) do
     threshold = get_threshold(:slow_api_call_ms)
     operation_name = "#{service_name}/#{endpoint}"
-    
+
     execute_with_timing(
       operation_name,
       fun,
@@ -60,24 +60,24 @@ defmodule EveDmv.Telemetry.PerformanceMonitor do
   def track_bulk_operation(operation_name, record_count, fun) when is_function(fun) do
     safe_execute(fn ->
       start_time = System.monotonic_time(:millisecond)
-      
+
       result = fun.()
-      
+
       end_time = System.monotonic_time(:millisecond)
       duration = end_time - start_time
-      
+
       throughput = calculate_throughput(record_count, duration)
-      
+
       :telemetry.execute(
         [:eve_dmv, :bulk, :operation],
         %{duration: duration, record_count: record_count, throughput: throughput},
         %{operation: operation_name}
       )
-      
+
       Logger.info(
         "Bulk operation #{operation_name}: #{record_count} records in #{duration}ms (#{Float.round(throughput, 1)} records/sec)"
       )
-      
+
       result
     end)
   end
@@ -109,7 +109,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor do
   """
   def track_liveview_render(view_name, fun) when is_function(fun) do
     threshold = get_threshold(:slow_liveview_render_ms)
-    
+
     execute_with_timing(
       view_name,
       fun,
@@ -613,25 +613,25 @@ defmodule EveDmv.Telemetry.PerformanceMonitor do
   # Execute function with timing, telemetry, and logging.
   defp execute_with_timing(operation_name, fun, telemetry_event, metadata, threshold, log_prefix) do
     case safe_execute(fn ->
-      start_time = System.monotonic_time(:millisecond)
-      
-      result = fun.()
-      
-      end_time = System.monotonic_time(:millisecond)
-      duration = end_time - start_time
-      
-      :telemetry.execute(
-        telemetry_event,
-        %{duration: duration},
-        metadata
-      )
-      
-      if duration > threshold do
-        Logger.warning("#{log_prefix}: #{operation_name} took #{duration}ms")
-      end
-      
-      result
-    end) do
+           start_time = System.monotonic_time(:millisecond)
+
+           result = fun.()
+
+           end_time = System.monotonic_time(:millisecond)
+           duration = end_time - start_time
+
+           :telemetry.execute(
+             telemetry_event,
+             %{duration: duration},
+             metadata
+           )
+
+           if duration > threshold do
+             Logger.warning("#{log_prefix}: #{operation_name} took #{duration}ms")
+           end
+
+           result
+         end) do
       {:ok, result} -> result
       {:error, error} -> {:error, error}
     end

@@ -705,18 +705,20 @@ defmodule EveDmv.Killmails.KillmailPipeline do
       try do
         # Extract killmail data for surveillance matching
         killmail_data = build_killmail_data_for_matching(raw_changeset, enriched_changeset)
-        
+
         # Use the surveillance matching engine to find matching profiles
         case EveDmv.Surveillance.MatchingEngine.match_killmail(killmail_data) do
           matched_profiles when is_list(matched_profiles) and length(matched_profiles) > 0 ->
-            Logger.info("🎯 Killmail #{killmail_data["killmail_id"]} matched #{length(matched_profiles)} surveillance profiles")
-            
+            Logger.info(
+              "🎯 Killmail #{killmail_data["killmail_id"]} matched #{length(matched_profiles)} surveillance profiles"
+            )
+
             # Send notifications for matched profiles (handled by the matching engine internally)
             :ok
-            
+
           [] ->
             Logger.debug("No surveillance matches for killmail #{killmail_data["killmail_id"]}")
-            
+
           error ->
             Logger.warning("Surveillance matching returned unexpected result: #{inspect(error)}")
         end
@@ -738,7 +740,7 @@ defmodule EveDmv.Killmails.KillmailPipeline do
       "attackers" => raw_changeset[:attackers] || [],
       "attacker_count" => length(raw_changeset[:attackers] || [])
     }
-    
+
     # Add enriched data if available
     enriched_data = %{
       "total_value" => enriched_changeset[:total_value],
@@ -748,7 +750,7 @@ defmodule EveDmv.Killmails.KillmailPipeline do
       "module_tags" => enriched_changeset[:module_tags] || [],
       "noteworthy_modules" => enriched_changeset[:noteworthy_modules] || []
     }
-    
+
     Map.merge(base_data, enriched_data)
   end
 

@@ -34,15 +34,16 @@ defmodule EveDmv.Intelligence.MemberActivityFormatter do
 
     # Define recommendation conditions and messages
     recommendation_rules = [
-      {high_risk_count > 0, "Immediate attention needed for #{high_risk_count} high-risk members"},
-      {low_engagement_count > total_members * 0.3, 
+      {high_risk_count > 0,
+       "Immediate attention needed for #{high_risk_count} high-risk members"},
+      {low_engagement_count > total_members * 0.3,
        "Review engagement programs - #{low_engagement_count} members show low engagement"},
-      {declining_trend_count > 0, 
+      {declining_trend_count > 0,
        "Monitor #{declining_trend_count} members showing declining activity trends"}
     ]
 
     # Build recommendations functionally
-    recommendations = 
+    recommendations =
       recommendation_rules
       |> Enum.filter(fn {condition, _message} -> condition end)
       |> Enum.map(fn {_condition, message} -> message end)

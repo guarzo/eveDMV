@@ -239,13 +239,19 @@ defmodule EveDmv.Eve.EsiRequestClient do
       cache_key_str = if is_binary(cache_key), do: cache_key, else: to_string(cache_key)
 
       case FallbackStrategy.execute_with_stale_cache(
-             fn -> 
+             fn ->
                # Attempt the actual ESI request that may fail
                case Keyword.get(opts, :auth_token) do
                  nil ->
                    get_request(path, Keyword.get(opts, :params, %{}), opts)
+
                  auth_token ->
-                   get_authenticated_request(path, auth_token, Keyword.get(opts, :params, %{}), opts)
+                   get_authenticated_request(
+                     path,
+                     auth_token,
+                     Keyword.get(opts, :params, %{}),
+                     opts
+                   )
                end
              end,
              cache_key_str

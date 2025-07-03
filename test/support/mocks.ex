@@ -89,13 +89,14 @@ defmodule EveDmv.TestMocks do
       is_victim: nil,
       total_value: nil
     }
-    
+
     config = Map.merge(defaults, opts)
-    
+
     %{
       killmail_id: :rand.uniform(999_999_999),
       killmail_time: DateTime.add(DateTime.utc_now(), -:rand.uniform(86_400), :second),
-      solar_system_id: config.solar_system_id || Enum.random([30_002_187, 30_000_142, 31_000_001]),
+      solar_system_id:
+        config.solar_system_id || Enum.random([30_002_187, 30_000_142, 31_000_001]),
       is_victim: config.is_victim || Enum.random([true, false]),
       ship_type_id: config.ship_type_id || Enum.random([11_999, 12_003, 670]),
       ship_name: Enum.random(["Rifter", "Crucifier", "Capsule"]),
@@ -124,9 +125,9 @@ defmodule EveDmv.TestMocks do
       timezone: nil,
       activity_score: nil
     }
-    
+
     config = Map.merge(defaults, opts)
-    
+
     %{
       character_id: character_id,
       character_name: config.character_name,
@@ -148,9 +149,9 @@ defmodule EveDmv.TestMocks do
       previous_corp_id: 98_000_002,
       previous_corp_name: "Previous Corp"
     }
-    
+
     config = Map.merge(defaults, opts)
-    
+
     [
       %{
         corporation_id: config.current_corp_id,

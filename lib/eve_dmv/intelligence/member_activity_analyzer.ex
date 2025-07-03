@@ -56,8 +56,7 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
         solo_activities: participation_data.solo_count,
         engagement_score:
           MemberActivityMetrics.calculate_engagement_score(activity_data, participation_data),
-        activity_trend:
-          MemberActivityMetrics.determine_activity_trend(activity_data),
+        activity_trend: MemberActivityMetrics.determine_activity_trend(activity_data),
         burnout_risk_score: risk_assessment.burnout_risk,
         disengagement_risk_score: risk_assessment.disengagement_risk,
         activity_patterns: MemberActivityMetrics.build_activity_patterns(activity_data),
