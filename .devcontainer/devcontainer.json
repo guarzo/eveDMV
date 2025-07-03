@@ -1,20 +1,20 @@
 {
-  "name": "EVE PvP Tracker Dev Container",
+  "name": "EVE DMV Cleanup Gamma Team Dev Container",
   "dockerComposeFile": "../docker-compose.yml",
   "service": "app",
   "workspaceFolder": "/workspace",
   "shutdownAction": "stopCompose",
-  "forwardPorts": [4010, 5433, 6380],
+  "forwardPorts": [4022, 5442, 6392],
   "portsAttributes": {
-    "4010": {
-      "label": "Phoenix Server",
+    "4022": {
+      "label": "Phoenix Server (Cleanup Gamma)",
       "onAutoForward": "notify"
     },
-    "5433": {
-      "label": "PostgreSQL"
+    "5442": {
+      "label": "PostgreSQL (Cleanup Gamma)"
     },
-    "6380": {
-      "label": "Redis"
+    "6392": {
+      "label": "Redis (Cleanup Gamma)"
     }
   },
   "postCreateCommand": "echo 'Waiting for services...' && sleep 5 && mix deps.get && mix ecto.create --quiet && mix ecto.migrate && mix assets.setup && git config --global core.editor vim && echo \"alias vi='vim'\" >> ~/.bashrc && echo 'Dev container setup complete!'",
