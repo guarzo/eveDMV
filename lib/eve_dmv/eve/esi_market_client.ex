@@ -6,7 +6,6 @@ defmodule EveDmv.Eve.EsiMarketClient do
   market orders, market history, and price calculations.
   """
 
-  require Logger
   alias EveDmv.Eve.EsiRequestClient
 
   @market_api_version "v1"

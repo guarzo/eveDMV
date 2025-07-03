@@ -17,7 +17,7 @@ defmodule EveDmvWeb.PlayerProfileLive do
   alias EveDmv.Killmails.HistoricalKillmailFetcher
 
   # Load current user from session on mount
-  on_mount {EveDmvWeb.AuthLive, :load_from_session}
+  on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
   @impl true
   def mount(%{"character_id" => character_id_str}, _session, socket) do

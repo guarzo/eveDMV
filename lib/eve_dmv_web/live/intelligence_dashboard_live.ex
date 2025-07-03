@@ -16,7 +16,7 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
     WHVetting
   }
 
-  on_mount {EveDmvWeb.AuthLive, :load_from_session}
+  on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
   @impl true
   def mount(_params, _session, socket) do

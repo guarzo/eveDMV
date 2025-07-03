@@ -6,7 +6,6 @@ defmodule EveDmv.Eve.EsiUniverseClient do
   solar systems, types, groups, categories, alliances, and search.
   """
 
-  require Logger
   alias EveDmv.Eve.{EsiCache, EsiParsers, EsiRequestClient}
 
   @universe_api_version "v4"

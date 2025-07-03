@@ -1,82 +1,68 @@
 defmodule EveDmv.Market.PriceCache do
   @moduledoc """
-  In-memory cache for market prices using ETS.
+  Market price cache adapter using the unified cache system.
 
-  Prices are cached with a configurable TTL (default 24 hours).
+  This module maintains the same interface as before but delegates
+  to the unified cache implementation.
   """
 
-  use GenServer
-  require Logger
+  alias EveDmv.Utils.Cache
 
-  @table_name :eve_price_cache
+  @cache_name :eve_price_cache
   @default_ttl_hours 24
-  @cleanup_interval_minutes 60
 
-  # Client API
+  @doc """
+  Start the price cache.
+  """
+  def start_link(_opts) do
+    cache_opts = [
+      name: @cache_name,
+      ttl_ms: get_ttl_ms(),
+      # Prices for up to 10k items
+      max_size: 10_000,
+      # 1 hour
+      cleanup_interval_ms: 60 * 60 * 1000
+    ]
 
-  def start_link(opts) do
-    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
+    Cache.start_link(cache_opts)
   end
 
   @doc """
-  Child specification with proper shutdown timeout for ETS cleanup.
+  Child specification for supervision tree.
   """
   def child_spec(opts) do
     %{
       id: __MODULE__,
       start: {__MODULE__, :start_link, [opts]},
-      # 10 seconds for ETS cleanup
-      shutdown: 10_000
+      type: :worker,
+      restart: :permanent
     }
   end
 
   @doc """
   Get a single item price from cache.
-
-  Returns {:ok, price_data} if found and not expired, :miss otherwise.
   """
   @spec get_item(integer()) :: {:ok, map()} | :miss
   def get_item(type_id) do
-    case :ets.lookup(@table_name, type_id) do
-      [{^type_id, price_data, expires_at}] ->
-        if DateTime.compare(DateTime.utc_now(), expires_at) == :lt do
-          {:ok, price_data}
-        else
-          # Expired, remove it
-          :ets.delete(@table_name, type_id)
-          :miss
-        end
-
-      [] ->
-        :miss
-    end
+    Cache.get(@cache_name, type_id)
   end
 
   @doc """
   Get multiple items from cache.
-
-  Returns {cached_map, missing_list} where cached_map contains found items
-  and missing_list contains type_ids not found or expired.
   """
   @spec get_items([integer()]) :: {map(), [integer()]}
   def get_items(type_ids) do
-    now = DateTime.utc_now()
+    {found, missing} = Cache.get_many(@cache_name, type_ids)
 
-    Enum.reduce(type_ids, {%{}, []}, fn type_id, {cached, missing} ->
-      case :ets.lookup(@table_name, type_id) do
-        [{^type_id, price_data, expires_at}] ->
-          if DateTime.compare(now, expires_at) == :lt do
-            {Map.put(cached, Integer.to_string(type_id), price_data), missing}
-          else
-            # Expired
-            :ets.delete(@table_name, type_id)
-            {cached, [type_id | missing]}
-          end
+    # Convert keys to strings to match original interface
+    string_found =
+      found
+      |> Enum.map(fn {type_id, value} ->
+        {Integer.to_string(type_id), value}
+      end)
+      |> Enum.into(%{})
 
-        [] ->
-          {cached, [type_id | missing]}
-      end
-    end)
+    {string_found, missing}
   end
 
   @doc """
@@ -84,20 +70,14 @@ defmodule EveDmv.Market.PriceCache do
   """
   @spec put_item(integer(), map()) :: :ok
   def put_item(type_id, price_data) do
-    expires_at = calculate_expiry()
-    :ets.insert(@table_name, {type_id, price_data, expires_at})
-    :ok
+    Cache.put(@cache_name, type_id, price_data, ttl_ms: get_ttl_ms())
   end
 
   @doc """
   Store multiple item prices in cache.
-
-  Expects a map with string keys (type_ids) and price data values.
   """
   @spec put_items(map()) :: :ok
   def put_items(prices_map) do
-    expires_at = calculate_expiry()
-
     entries =
       Enum.map(prices_map, fn {type_id_str, price_data} ->
         type_id =
@@ -106,11 +86,10 @@ defmodule EveDmv.Market.PriceCache do
             id when is_integer(id) -> id
           end
 
-        {type_id, price_data, expires_at}
+        {type_id, price_data}
       end)
 
-    :ets.insert(@table_name, entries)
-    :ok
+    Cache.put_many(@cache_name, entries, ttl_ms: get_ttl_ms())
   end
 
   @doc """
@@ -118,8 +97,7 @@ defmodule EveDmv.Market.PriceCache do
   """
   @spec clear() :: :ok
   def clear do
-    :ets.delete_all_objects(@table_name)
-    :ok
+    Cache.clear(@cache_name)
   end
 
   @doc """
@@ -131,76 +109,17 @@ defmodule EveDmv.Market.PriceCache do
           ttl_hours: number()
         }
   def stats do
-    size = :ets.info(@table_name, :size)
-    memory = :ets.info(@table_name, :memory)
-
-    %{
-      size: size,
-      memory_bytes: memory * :erlang.system_info(:wordsize),
-      ttl_hours: get_ttl_hours()
-    }
-  end
-
-  # Server callbacks
-
-  @impl true
-  def init(_args) do
-    # Create ETS table
-    :ets.new(@table_name, [
-      :set,
-      :public,
-      :named_table,
-      read_concurrency: true,
-      write_concurrency: true
-    ])
-
-    # Schedule periodic cleanup
-    schedule_cleanup()
-
-    {:ok, %{}}
-  end
-
-  @impl true
-  def handle_info(:cleanup_expired, state) do
-    cleanup_expired_entries()
-    schedule_cleanup()
-    {:noreply, state}
+    cache_stats = Cache.stats(@cache_name)
+    Map.put(cache_stats, :ttl_hours, get_ttl_hours())
   end
 
   # Private functions
-
-  defp calculate_expiry do
-    ttl_hours = get_ttl_hours()
-    DateTime.add(DateTime.utc_now(), ttl_hours * 3600, :second)
-  end
 
   defp get_ttl_hours do
     Application.get_env(:eve_dmv, :price_cache_ttl_hours, @default_ttl_hours)
   end
 
-  defp schedule_cleanup do
-    Process.send_after(self(), :cleanup_expired, @cleanup_interval_minutes * 60 * 1000)
-  end
-
-  defp cleanup_expired_entries do
-    now = DateTime.utc_now()
-
-    expired_count =
-      :ets.foldl(
-        fn {type_id, _price_data, expires_at}, count ->
-          if DateTime.compare(now, expires_at) == :gt do
-            :ets.delete(@table_name, type_id)
-            count + 1
-          else
-            count
-          end
-        end,
-        0,
-        @table_name
-      )
-
-    if expired_count > 0 do
-      Logger.info("Cleaned up #{expired_count} expired price cache entries")
-    end
+  defp get_ttl_ms do
+    get_ttl_hours() * 60 * 60 * 1000
   end
 end

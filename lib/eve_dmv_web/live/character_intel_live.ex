@@ -18,7 +18,7 @@ defmodule EveDmvWeb.CharacterIntelLive do
   alias EveDmv.Intelligence.{CharacterAnalyzer, CharacterStats}
   alias EveDmv.Killmails.HistoricalKillmailFetcher
 
-  on_mount {EveDmvWeb.AuthLive, :load_from_session}
+  on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
   @impl true
   def mount(%{"character_id" => character_id_str}, _session, socket) do

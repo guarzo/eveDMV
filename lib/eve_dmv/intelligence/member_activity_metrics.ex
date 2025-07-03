@@ -6,8 +6,6 @@ defmodule EveDmv.Intelligence.MemberActivityMetrics do
   and metric derivations for member activity intelligence.
   """
 
-  require Logger
-
   @doc """
   Calculate overall engagement score from activity and participation data.
   """

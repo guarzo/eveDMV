@@ -10,8 +10,7 @@ defmodule EveDmv.Intelligence.AssetAnalyzer do
   """
 
   require Logger
-  alias EveDmv.Eve.EsiCache
-  alias EveDmv.Eve.EsiClient
+  alias EveDmv.Eve.{EsiCache, EsiClient}
   alias EveDmv.Intelligence.WHFleetComposition
 
   @doc """

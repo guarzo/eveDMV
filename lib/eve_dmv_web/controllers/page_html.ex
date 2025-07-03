@@ -6,5 +6,5 @@ defmodule EveDmvWeb.PageHTML do
   """
   use EveDmvWeb, :html
 
-  embed_templates "page_html/*"
+  embed_templates("page_html/*")
 end

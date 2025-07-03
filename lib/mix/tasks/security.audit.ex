@@ -14,7 +14,6 @@ defmodule Mix.Tasks.Security.Audit do
   """
 
   use Mix.Task
-  require Logger
 
   alias EveDmv.Security.{ContainerSecurityReview, DatabaseSecurityReview}
 

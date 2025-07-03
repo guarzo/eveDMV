@@ -43,7 +43,7 @@ defmodule EveDmv.Eve.EsiClient do
   @doc """
   Get multiple characters efficiently using parallel requests.
   """
-  @spec get_characters([integer()]) :: {:ok, map()}
+  @spec get_characters([integer()]) :: {:ok, map()} | {:ok, map(), :partial} | {:error, any()}
   defdelegate get_characters(character_ids), to: EsiCharacterClient
 
   @doc """

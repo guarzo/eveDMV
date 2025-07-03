@@ -1,4 +1,4 @@
-defmodule EveDmv.Intelligence.CharacterFormatters do
+defmodule EveDmv.Intelligence.CharacterAnalysis.CharacterFormatters do
   @moduledoc """
   Character analysis display formatting
   """

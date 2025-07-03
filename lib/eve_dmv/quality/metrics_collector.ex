@@ -4,8 +4,6 @@ defmodule EveDmv.Quality.MetricsCollector do
   Collects comprehensive quality metrics across all aspects of the codebase.
   """
 
-  require Logger
-
   @doc """
   Collects comprehensive quality metrics for the application.
   """

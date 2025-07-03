@@ -1,4 +1,4 @@
-defmodule EveDmv.Intelligence.WHFleetAnalyzer do
+defmodule EveDmv.Intelligence.WhSpace.FleetAnalyzer do
   @moduledoc """
   Wormhole fleet composition analysis and optimization engine.
 
