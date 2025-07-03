@@ -131,8 +131,9 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
     Logger.info("Analyzing corporation intelligence patterns for corp #{corporation_id}")
 
     # Get all corporation members from recent activity
+    # Note: Currently get_corporation_members_from_activity always returns {:ok, []}
     case get_corporation_members_from_activity(corporation_id) do
-      {:ok, members} when members == [] ->
+      {:ok, []} ->
         {:error, "No recent activity found for corporation"}
 
       {:ok, members} ->
@@ -556,9 +557,11 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
     0.0
   end
 
-  defp get_corporation_members_from_activity(_corporation_id) do
+  defp get_corporation_members_from_activity(corporation_id) do
     # Get corporation members from recent activity data
-    # Placeholder implementation
+    # This is a placeholder that should eventually query real data
+    Logger.debug("Fetching corporation members for #{corporation_id}")
+    # Always returns empty list for now
     {:ok, []}
   end
 
