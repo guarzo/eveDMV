@@ -8,8 +8,6 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
 
   use EveDmvWeb, :live_view
 
-  require Logger
-
   alias EveDmv.Intelligence.{
     IntelligenceCoordinator,
     WHVettingAnalyzer
