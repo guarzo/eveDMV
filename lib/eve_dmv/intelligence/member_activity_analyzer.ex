@@ -701,7 +701,7 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
       create_empty_engagement_result()
     else
       member_engagement_data = calculate_individual_member_scores(member_activities)
-      avg_engagement = calculate_average_engagement(member_engagement_data)
+      avg_engagement = calculate_average_engagement_score(member_engagement_data)
       grouped_members = group_members_by_engagement(member_engagement_data)
       distribution = create_engagement_distribution(grouped_members)
 
@@ -736,7 +736,7 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
     end)
   end
 
-  defp calculate_average_engagement(member_engagement_data) do
+  defp calculate_average_engagement_score(member_engagement_data) do
     engagement_scores = Enum.map(member_engagement_data, fn {_member, score} -> score end)
 
     if length(engagement_scores) > 0,
