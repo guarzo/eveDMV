@@ -377,15 +377,4 @@ defmodule EveDmv.Eve.EsiRequestClient do
     end)
   end
 
-  # Additional security function to sanitize request options before logging
-  defp log_request_details(method, url, opts) do
-    # Remove sensitive data before logging
-    safe_opts =
-      opts
-      |> Keyword.delete(:auth_token)
-      |> Keyword.delete(:api_key)
-      |> Keyword.delete(:secret)
-
-    Logger.debug("ESI Request: #{method} #{url}", safe_opts: safe_opts)
-  end
 end

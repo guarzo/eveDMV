@@ -12,7 +12,7 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
   require Logger
   require Ash.Query
   alias EveDmv.Api
-  alias EveDmv.Eve.{EsiClient, EsiUtils}
+  alias EveDmv.Eve.EsiUtils
   alias EveDmv.Killmails.Participant
   alias EveDmv.Utils.TimeUtils
 
