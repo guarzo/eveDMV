@@ -1,4 +1,4 @@
-defmodule EveDmv.Intelligence.CharacterAnalysis.CharacterAnalyzer do
+defmodule EveDmv.Intelligence.CharacterAnalyzer do
   @moduledoc """
   Core character analysis coordination
   """

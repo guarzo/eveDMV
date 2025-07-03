@@ -3,7 +3,7 @@ defmodule EveDmv.Eve.EsiRequestClient do
   Enhanced HTTP request utilities for EVE ESI API with reliability features.
 
   This module handles all low-level HTTP communication with ESI,
-  including circuit breakers, intelligent retries, rate limiting, 
+  including circuit breakers, intelligent retries, rate limiting,
   error classification, and fallback strategies.
   """
 
