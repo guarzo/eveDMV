@@ -14,6 +14,7 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
   alias EveDmv.Api
   alias EveDmv.Eve.EsiClient
   alias EveDmv.Killmails.Participant
+  alias EveDmv.Utils.TimeUtils
 
   alias EveDmv.Intelligence.{
     CharacterStats,
@@ -516,7 +517,7 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
         # Chain operations typically involve multiple systems in short time windows
         killmails
         |> Enum.group_by(fn km ->
-          %{km.killmail_time | minute: 0, second: 0, microsecond: {0, 6}}
+          TimeUtils.truncate_to_hour(km.killmail_time)
         end)
         |> Enum.count(fn {_hour, hour_killmails} ->
           # Multiple systems in same hour indicates chain activity
@@ -594,7 +595,7 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
     total_activities = home_defense + chain_ops + fleet_ops
 
     # Normalize to 0-1 scale (assume 10+ activities/month is 100%)
-    days_in_period = DateTime.diff(period_end, period_start, :day)
+    days_in_period = TimeUtils.days_between(period_start, period_end)
     # Expect activity every 3 days
     expected_activities = max(1, days_in_period / 3)
 
@@ -1268,14 +1269,14 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
 
     days_since_activity =
       if last_activity do
-        DateTime.diff(current_time, last_activity, :day)
+        TimeUtils.days_between(last_activity, current_time)
       else
         999
       end
 
     days_since_join =
       if join_date do
-        DateTime.diff(current_time, join_date, :day)
+        TimeUtils.days_between(join_date, current_time)
       else
         365
       end
@@ -1442,7 +1443,7 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
           0
 
         last_date ->
-          days_ago = DateTime.diff(DateTime.utc_now(), last_date, :day)
+          days_ago = TimeUtils.days_since(last_date)
           max(0, 20 - days_ago)
       end
 
