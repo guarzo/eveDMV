@@ -208,26 +208,26 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
 
   # Character information retrieval
   defp get_character_info(character_id) do
-    case EsiUtils.fetch_character_corporation_alliance(character_id) do
-      {:ok, char_data} ->
-        {:ok, char_data}
+    # EsiUtils.fetch_character_corporation_alliance always returns {:ok, ...}
+    # even in error cases (with default values), so no error handling needed
+    {:ok, char_data} = EsiUtils.fetch_character_corporation_alliance(character_id)
 
-      {:error, reason} ->
-        Logger.warning(
-          "Failed to fetch character info from ESI for #{character_id}: #{inspect(reason)}"
-        )
+    # If the data has nil corporation_id, try to use local character stats
+    if is_nil(char_data.corporation_id) do
+      character_stats = get_or_create_character_stats(character_id)
 
-        # Fallback to local character stats
-        character_stats = get_or_create_character_stats(character_id)
-
-        {:ok,
-         %{
-           character_name: character_stats.character_name || "Character #{character_id}",
-           corporation_id: character_stats.corporation_id,
-           corporation_name: character_stats.corporation_name,
-           alliance_id: character_stats.alliance_id,
-           alliance_name: character_stats.alliance_name
-         }}
+      {:ok,
+       %{
+         character_name:
+           character_stats.character_name || char_data.character_name ||
+             "Character #{character_id}",
+         corporation_id: character_stats.corporation_id,
+         corporation_name: character_stats.corporation_name || char_data.corporation_name,
+         alliance_id: character_stats.alliance_id,
+         alliance_name: character_stats.alliance_name || char_data.alliance_name
+       }}
+    else
+      {:ok, char_data}
     end
   end
 
