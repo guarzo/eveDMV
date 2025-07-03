@@ -1,4 +1,4 @@
-defmodule EveDmv.Intelligence.CharacterMetrics do
+defmodule EveDmv.Intelligence.CharacterAnalysis.CharacterMetrics do
   @moduledoc """
   Character analysis calculations and scoring
   """

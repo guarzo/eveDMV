@@ -1,4 +1,4 @@
-defmodule EveDmv.Intelligence.WHVettingAnalyzer do
+defmodule EveDmv.Intelligence.WhSpace.VettingAnalyzer do
   @moduledoc """
   Comprehensive vetting analysis for wormhole corporation recruitment.
 

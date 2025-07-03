@@ -1,4 +1,4 @@
-defmodule EveDmv.Intelligence.CharacterStats do
+defmodule EveDmv.Intelligence.CharacterAnalysis.CharacterStats do
   @moduledoc """
   Aggregated character statistics for hunter intelligence.
 

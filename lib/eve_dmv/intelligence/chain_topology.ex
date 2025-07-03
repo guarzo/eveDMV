@@ -1,4 +1,4 @@
-defmodule EveDmv.Intelligence.ChainTopology do
+defmodule EveDmv.Intelligence.ChainAnalysis.ChainTopology do
   @moduledoc """
   Represents a wormhole chain topology with systems and connections.
 
