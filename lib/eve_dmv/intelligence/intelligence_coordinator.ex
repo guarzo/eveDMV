@@ -1,9 +1,35 @@
 defmodule EveDmv.Intelligence.IntelligenceCoordinator do
   @moduledoc """
-  Central coordinator for all intelligence analysis operations.
+  Coordinates character intelligence analysis across multiple specialized analyzers.
 
-  Orchestrates analysis across multiple intelligence modules,
-  manages caching, and provides unified intelligence insights.
+  This module serves as the central orchestrator for character intelligence gathering,
+  combining data from multiple sources:
+
+  - Character analysis (basic info, corporation history)
+  - Vetting analysis (threat assessment, eviction participation)
+  - Activity analysis (fleet participation, communication patterns)
+  - Correlation analysis (cross-module pattern detection)
+
+  ## Usage
+
+      {:ok, analysis} = IntelligenceCoordinator.coordinate_character_analysis(character_id)
+
+  ## Analysis Structure
+
+  The returned analysis contains:
+  - `character_analysis`: Basic character information and metrics
+  - `vetting_analysis`: Security and threat assessment
+  - `activity_analysis`: Behavioral pattern analysis
+  - `correlation_data`: Cross-module correlations and insights
+  - `recommendations`: Actionable intelligence recommendations
+
+  ## Configuration
+
+  Configure analysis modules in `config.exs`:
+
+      config :eve_dmv, :intelligence,
+        analysis_timeout: 30_000,
+        correlation_enabled: true
   """
 
   require Logger

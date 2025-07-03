@@ -8,6 +8,8 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
 
   use EveDmvWeb, :live_view
 
+  require Logger
+
   alias EveDmv.Intelligence.{
     IntelligenceCache,
     IntelligenceCoordinator,

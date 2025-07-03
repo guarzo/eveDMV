@@ -9,6 +9,7 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
   require Logger
   alias EveDmv.Api
   alias EveDmv.Killmails.{KillmailEnriched, KillmailRaw, Participant}
+  alias EveDmv.Utils.ParsingUtils
 
   # Get base URL at runtime for better configuration flexibility
   defp wanderer_kills_base_url do
@@ -419,18 +420,7 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
   defp parse_timestamp(%DateTime{} = dt), do: dt
   defp parse_timestamp(_), do: DateTime.utc_now()
 
-  defp parse_decimal(nil), do: Decimal.new(0)
-  defp parse_decimal(value) when is_integer(value), do: Decimal.new(value)
-  defp parse_decimal(value) when is_float(value), do: Decimal.from_float(value)
-
-  defp parse_decimal(value) when is_binary(value) do
-    case Decimal.parse(value) do
-      {decimal, _} -> decimal
-      :error -> Decimal.new(0)
-    end
-  end
-
-  defp parse_decimal(_), do: Decimal.new(0)
+  defp parse_decimal(value), do: ParsingUtils.parse_decimal(value)
 
   defp generate_hash(enriched) do
     id = enriched["killmail_id"]

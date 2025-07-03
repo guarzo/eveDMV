@@ -13,6 +13,7 @@ defmodule EveDmv.Killmails.KillmailPipeline do
 
   alias Broadway.Message
   alias EveDmv.Killmails.{KillmailEnriched, KillmailRaw, Participant}
+  alias EveDmv.Utils.ParsingUtils
   alias EveDmvWeb.Endpoint
 
   # Broadway configuration
@@ -403,18 +404,7 @@ defmodule EveDmv.Killmails.KillmailPipeline do
   defp parse_timestamp(%DateTime{} = dt), do: dt
   defp parse_timestamp(_), do: DateTime.utc_now()
 
-  defp parse_decimal(nil), do: Decimal.new(0)
-  defp parse_decimal(value) when is_integer(value), do: Decimal.new(value)
-  defp parse_decimal(value) when is_float(value), do: Decimal.from_float(value)
-
-  defp parse_decimal(value) when is_binary(value) do
-    case Decimal.parse(value) do
-      {decimal, _} -> decimal
-      :error -> Decimal.new(0)
-    end
-  end
-
-  defp parse_decimal(_), do: Decimal.new(0)
+  defp parse_decimal(value), do: ParsingUtils.parse_decimal(value)
 
   defp generate_hash(enriched) do
     # Generate a simple hash from killmail_id and timestamp

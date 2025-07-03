@@ -10,143 +10,224 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
   require Ash.Query
 
   alias EveDmv.Api
-  alias EveDmv.Eve.EsiClient
+  alias EveDmv.Eve.{EsiClient, EsiUtils}
   alias EveDmv.Intelligence.{CharacterStats, WHVetting}
   alias EveDmv.Killmails.Participant
 
   @doc """
-  Perform comprehensive vetting analysis for a character.
+  Analyzes character vetting information for security assessment.
 
-  Returns {:ok, vetting_record} or {:error, reason}
+  Performs comprehensive analysis of character background including:
+  - Character age and creation patterns
+  - Corporation history and employment gaps
+  - J-space activity and competency assessment
+  - Eviction group connections and participation
+  - Rolling activity and wormhole operations
+
+  ## Parameters
+
+  - `character_id` - The EVE Online character ID to analyze
+  - `requested_by_id` - Optional character ID of requester (for audit trail)
+
+  ## Returns
+
+  - `{:ok, vetting_analysis}` - Complete vetting analysis
+  - `{:error, :character_not_found}` - Character does not exist in ESI
+  - `{:error, :insufficient_data}` - Not enough data for meaningful analysis
+  - `{:error, reason}` - Other analysis errors
+
+  ## Vetting Analysis Structure
+
+  ```elixir
+  %{
+    character_id: integer(),
+    threat_score: float(),        # 0.0 - 10.0
+    confidence_score: float(),    # 0.0 - 1.0
+    recommendation: atom(),       # :accept, :reject, :investigate
+    risk_factors: [String.t()],
+    competency_assessment: map(),
+    activity_summary: map()
+  }
+  ```
+
+  ## Examples
+
+      # Basic vetting
+      {:ok, vetting} = WHVettingAnalyzer.analyze_character(123456)
+      
+      # With audit trail
+      {:ok, vetting} = WHVettingAnalyzer.analyze_character(123456, 789012)
   """
+  @spec analyze_character(pos_integer(), pos_integer() | nil) ::
+          {:ok, map()} | {:error, atom() | String.t()}
   def analyze_character(character_id, requested_by_id \\ nil) do
-    # Handle nil character_id early
+    with {:ok, character_info} <- validate_and_get_character_info(character_id),
+         {:ok, analysis_data} <- collect_all_analysis_data(character_id),
+         {:ok, scores} <- calculate_all_scores(analysis_data),
+         {:ok, recommendation} <- generate_recommendation_data(scores, analysis_data.risk_factors) do
+      create_vetting_record(
+        character_id,
+        character_info,
+        analysis_data,
+        scores,
+        recommendation,
+        requested_by_id
+      )
+    end
+  end
+
+  defp validate_and_get_character_info(character_id) do
     if is_nil(character_id) do
       {:error, "Character ID cannot be nil"}
     else
       Logger.info("Starting WH vetting analysis for character #{character_id}")
-
-      with {:ok, character_info} <- get_character_info(character_id),
-           {:ok, j_space_activity} <- analyze_j_space_activity(character_id),
-           {:ok, eviction_associations} <- analyze_eviction_associations(character_id),
-           {:ok, alt_analysis} <- analyze_alt_patterns(character_id),
-           {:ok, competency_metrics} <- analyze_small_gang_competency(character_id),
-           {:ok, risk_factors} <- analyze_risk_factors(character_id),
-           {:ok, employment_history} <- analyze_employment_history(character_id) do
-        scores =
-          calculate_scores(
-            j_space_activity,
-            eviction_associations,
-            alt_analysis,
-            competency_metrics,
-            risk_factors,
-            employment_history
-          )
-
-        recommendation = generate_recommendation(scores, risk_factors)
-        auto_summary = generate_auto_summary(character_info, scores, risk_factors)
-
-        vetting_data = %{
-          character_id: character_id,
-          character_name: character_info.character_name,
-          corporation_id: character_info.corporation_id,
-          corporation_name: character_info.corporation_name,
-          alliance_id: character_info.alliance_id,
-          alliance_name: character_info.alliance_name,
-          vetting_requested_by: requested_by_id,
-          overall_risk_score: scores.overall_risk_score,
-          wh_experience_score: scores.wh_experience_score,
-          competency_score: scores.competency_score,
-          security_score: scores.security_score,
-          j_space_activity: j_space_activity,
-          eviction_associations: eviction_associations,
-          alt_analysis: alt_analysis,
-          competency_metrics: competency_metrics,
-          risk_factors: risk_factors,
-          employment_history: employment_history,
-          recommendation: recommendation.decision,
-          recommendation_confidence: recommendation.confidence,
-          auto_generated_summary: auto_summary,
-          requires_manual_review: recommendation.requires_manual_review,
-          data_completeness_percent:
-            calculate_data_completeness([
-              j_space_activity,
-              eviction_associations,
-              alt_analysis,
-              competency_metrics
-            ]),
-          status: "complete"
-        }
-
-        # Create or update vetting record
-        case WHVetting.get_by_character(character_id) do
-          {:ok, [existing]} ->
-            WHVetting.update_analysis(existing, vetting_data)
-
-          {:ok, []} ->
-            WHVetting.create(vetting_data)
-
-          {:error, _} ->
-            WHVetting.create(vetting_data)
-        end
-      else
-        {:error, reason} ->
-          Logger.error(
-            "WH vetting analysis failed for character #{character_id}: #{inspect(reason)}"
-          )
-
-          {:error, reason}
-      end
+      get_character_info(character_id)
     end
+  end
+
+  defp collect_all_analysis_data(character_id) do
+    with {:ok, j_space_activity} <- analyze_j_space_activity(character_id),
+         {:ok, eviction_associations} <- analyze_eviction_associations(character_id),
+         {:ok, alt_analysis} <- analyze_alt_patterns(character_id),
+         {:ok, competency_metrics} <- analyze_small_gang_competency(character_id),
+         {:ok, risk_factors} <- analyze_risk_factors(character_id),
+         {:ok, employment_history} <- analyze_employment_history(character_id) do
+      {:ok,
+       %{
+         j_space_activity: j_space_activity,
+         eviction_associations: eviction_associations,
+         alt_analysis: alt_analysis,
+         competency_metrics: competency_metrics,
+         risk_factors: risk_factors,
+         employment_history: employment_history
+       }}
+    end
+  end
+
+  defp calculate_all_scores(analysis_data) do
+    scores =
+      calculate_scores(
+        analysis_data.j_space_activity,
+        analysis_data.eviction_associations,
+        analysis_data.alt_analysis,
+        analysis_data.competency_metrics,
+        analysis_data.risk_factors,
+        analysis_data.employment_history
+      )
+
+    {:ok, scores}
+  end
+
+  defp generate_recommendation_data(scores, risk_factors) do
+    recommendation = generate_recommendation(scores, risk_factors)
+    {:ok, recommendation}
+  end
+
+  defp create_vetting_record(
+         character_id,
+         character_info,
+         analysis_data,
+         scores,
+         recommendation,
+         requested_by_id
+       ) do
+    auto_summary = generate_auto_summary(character_info, scores, analysis_data.risk_factors)
+
+    vetting_data =
+      build_vetting_data(
+        character_id,
+        character_info,
+        analysis_data,
+        scores,
+        recommendation,
+        auto_summary,
+        requested_by_id
+      )
+
+    save_vetting_record(character_id, vetting_data)
+  end
+
+  defp build_vetting_data(
+         character_id,
+         character_info,
+         analysis_data,
+         scores,
+         recommendation,
+         auto_summary,
+         requested_by_id
+       ) do
+    %{
+      character_id: character_id,
+      character_name: character_info.character_name,
+      corporation_id: character_info.corporation_id,
+      corporation_name: character_info.corporation_name,
+      alliance_id: character_info.alliance_id,
+      alliance_name: character_info.alliance_name,
+      vetting_requested_by: requested_by_id,
+      overall_risk_score: scores.overall_risk_score,
+      wh_experience_score: scores.wh_experience_score,
+      competency_score: scores.competency_score,
+      security_score: scores.security_score,
+      j_space_activity: analysis_data.j_space_activity,
+      eviction_associations: analysis_data.eviction_associations,
+      alt_analysis: analysis_data.alt_analysis,
+      competency_metrics: analysis_data.competency_metrics,
+      risk_factors: analysis_data.risk_factors,
+      employment_history: analysis_data.employment_history,
+      recommendation: recommendation.decision,
+      recommendation_confidence: recommendation.confidence,
+      auto_generated_summary: auto_summary,
+      requires_manual_review: recommendation.requires_manual_review,
+      data_completeness_percent:
+        calculate_data_completeness([
+          analysis_data.j_space_activity,
+          analysis_data.eviction_associations,
+          analysis_data.alt_analysis,
+          analysis_data.competency_metrics
+        ]),
+      status: "complete"
+    }
+  end
+
+  defp save_vetting_record(character_id, vetting_data) do
+    case WHVetting.get_by_character(character_id) do
+      {:ok, [existing]} ->
+        WHVetting.update_analysis(existing, vetting_data)
+
+      {:ok, []} ->
+        WHVetting.create(vetting_data)
+
+      {:error, _} ->
+        WHVetting.create(vetting_data)
+    end
+  rescue
+    error ->
+      Logger.error("WH vetting analysis failed for character #{character_id}: #{inspect(error)}")
+      {:error, error}
   end
 
   # Character information retrieval
   defp get_character_info(character_id) do
-    # Try ESI first for the most current data
-    case EsiClient.get_character(character_id) do
-      {:ok, char_data} ->
-        # Get corporation and alliance info
-        corp_info =
-          case EsiClient.get_corporation(char_data.corporation_id) do
-            {:ok, corp} -> %{corporation_name: corp.name, alliance_id: corp.alliance_id}
-            _ -> %{corporation_name: "Unknown Corporation", alliance_id: nil}
-          end
+    # EsiUtils.fetch_character_corporation_alliance always returns {:ok, ...}
+    # even in error cases (with default values), so no error handling needed
+    {:ok, char_data} = EsiUtils.fetch_character_corporation_alliance(character_id)
 
-        alliance_info =
-          if corp_info.alliance_id do
-            case EsiClient.get_alliance(corp_info.alliance_id) do
-              {:ok, alliance} -> %{alliance_name: alliance.name}
-              _ -> %{alliance_name: nil}
-            end
-          else
-            %{alliance_name: nil}
-          end
+    # If the data has nil corporation_id, try to use local character stats
+    if is_nil(char_data.corporation_id) do
+      character_stats = get_or_create_character_stats(character_id)
 
-        {:ok,
-         %{
-           character_name: char_data.name,
-           corporation_id: char_data.corporation_id,
-           corporation_name: corp_info.corporation_name,
-           alliance_id: corp_info.alliance_id,
-           alliance_name: alliance_info.alliance_name
-         }}
-
-      {:error, reason} ->
-        Logger.warning(
-          "Failed to fetch character info from ESI for #{character_id}: #{inspect(reason)}"
-        )
-
-        # Fallback to local character stats
-        character_stats = get_or_create_character_stats(character_id)
-
-        {:ok,
-         %{
-           character_name: character_stats.character_name || "Character #{character_id}",
-           corporation_id: character_stats.corporation_id,
-           corporation_name: character_stats.corporation_name,
-           alliance_id: character_stats.alliance_id,
-           alliance_name: character_stats.alliance_name
-         }}
+      {:ok,
+       %{
+         character_name:
+           character_stats.character_name || char_data.character_name ||
+             "Character #{character_id}",
+         corporation_id: character_stats.corporation_id,
+         corporation_name: character_stats.corporation_name || char_data.corporation_name,
+         alliance_id: character_stats.alliance_id,
+         alliance_name: character_stats.alliance_name || char_data.alliance_name
+       }}
+    else
+      {:ok, char_data}
     end
   end
 
@@ -261,21 +342,7 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
 
   # Employment history analysis
   defp analyze_employment_history(character_id) do
-    case EsiClient.get_character_employment_history(character_id) do
-      {:error, reason} ->
-        Logger.warning(
-          "Could not fetch employment history for character #{character_id}: #{inspect(reason)}"
-        )
-
-        # Return fallback employment history data
-        {:ok,
-         %{
-           "corp_changes" => 0,
-           "avg_tenure_days" => 0,
-           "suspicious_patterns" => ["Unable to verify employment history"],
-           "history" => []
-         }}
-    end
+    EsiUtils.fetch_employment_history_with_fallback(character_id)
   end
 
   # Helper functions for specific analyses
@@ -857,9 +924,9 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
     # Analyze signs that character might have been purchased on character bazaar
 
     # Get character info and history
-    case EsiClient.get_character(character_id) do
+    case EsiUtils.fetch_character_with_fallback(character_id) do
       {:ok, character_data} ->
-        character_name = character_data["name"]
+        character_name = character_data.character_name
 
         # Check for name patterns common in bazaar characters
         name_patterns = analyze_character_name(character_name)
@@ -992,28 +1059,23 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
 
   defp calculate_account_age(character_id) do
     # Calculate days since character creation using ESI data
-    case EsiClient.get_character(character_id) do
-      {:ok, character_data} ->
-        birthday_str = character_data["birthday"]
-
-        if birthday_str do
-          case DateTime.from_iso8601(birthday_str) do
-            {:ok, birthday, _} ->
-              DateTime.diff(DateTime.utc_now(), birthday, :day)
-
-            _ ->
-              # Fallback
-              365
-          end
-        else
-          365
-        end
-
-      _ ->
-        # Fallback if ESI fails
-        365
+    case EsiUtils.safe_esi_call("character", fn -> EsiClient.get_character(character_id) end) do
+      {:ok, character_data} -> parse_character_age(character_data)
+      # Fallback if ESI fails
+      _ -> 365
     end
   end
+
+  defp parse_character_age(%{"birthday" => birthday_str}) when is_binary(birthday_str) do
+    case DateTime.from_iso8601(birthday_str) do
+      {:ok, birthday, _} -> DateTime.diff(DateTime.utc_now(), birthday, :day)
+      # Fallback for invalid date format
+      _ -> 365
+    end
+  end
+
+  # Fallback for missing birthday
+  defp parse_character_age(_character_data), do: 365
 
   defp assess_main_character_confidence(character_id, potential_alts) do
     # Assess confidence that this is the main character based on various factors
@@ -1419,17 +1481,22 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
   end
 
   defp collect_behavioral_indicators(behavioral_flags) do
-    indicators = []
+    []
+    |> maybe_add_indicator(
+      "seed_scout",
+      behavioral_flags,
+      "Potential seed scout behavior detected"
+    )
+    |> maybe_add_indicator(
+      "infiltration_patterns",
+      behavioral_flags,
+      "Infiltration activity patterns detected"
+    )
+  end
 
-    indicators =
-      if "seed_scout" in behavioral_flags do
-        ["Potential seed scout behavior detected" | indicators]
-      else
-        indicators
-      end
-
-    if "infiltration_patterns" in behavioral_flags do
-      ["Infiltration activity patterns detected" | indicators]
+  defp maybe_add_indicator(indicators, flag, behavioral_flags, message) do
+    if flag in behavioral_flags do
+      [message | indicators]
     else
       indicators
     end
@@ -1464,20 +1531,20 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
     end
   end
 
-  defp determine_spy_risk_mitigations(final_probability) do
-    cond do
-      final_probability > 0.4 ->
-        ["reject_application", "too_high_risk"]
+  defp determine_spy_risk_mitigations(final_probability) when final_probability > 0.4 do
+    ["reject_application", "too_high_risk"]
+  end
 
-      final_probability > 0.25 ->
-        ["information_compartmentalization", "no_critical_roles", "background_verification"]
+  defp determine_spy_risk_mitigations(final_probability) when final_probability > 0.25 do
+    ["information_compartmentalization", "no_critical_roles", "background_verification"]
+  end
 
-      final_probability > 0.15 ->
-        ["information_compartmentalization", "gradual_access_increase"]
+  defp determine_spy_risk_mitigations(final_probability) when final_probability > 0.15 do
+    ["information_compartmentalization", "gradual_access_increase"]
+  end
 
-      true ->
-        ["standard_information_security"]
-    end
+  defp determine_spy_risk_mitigations(_final_probability) do
+    ["standard_information_security"]
   end
 
   # Scoring calculations
@@ -2005,32 +2072,49 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
   end
 
   defp evaluate_candidate_quality(metrics) do
-    cond do
-      # High quality candidate
-      metrics.j_kills >= 30 and metrics.j_time_percent >= 60.0 and metrics.risk_score <= 25 ->
+    case {classify_experience(metrics), classify_risk(metrics.risk_score)} do
+      {:high_experience, :low_risk} ->
         {"approve", 0.85, "Strong J-space experience with low risk", []}
 
-      # Good candidate with some concerns
-      metrics.j_kills >= 15 and metrics.j_time_percent >= 40.0 and metrics.risk_score <= 40 ->
+      {:good_experience, :low_risk} ->
         {"conditional", 0.75, "Good J-space experience, manageable risk",
          ["probationary_period", "limited_access"]}
 
-      # Decent candidate needing review
-      metrics.j_kills >= 5 and metrics.risk_score <= 50 ->
+      {:good_experience, :medium_risk} ->
+        {"conditional", 0.75, "Good J-space experience, manageable risk",
+         ["probationary_period", "limited_access"]}
+
+      {:some_experience, :low_risk} ->
         {"conditional", 0.6, "Some J-space experience, requires monitoring",
          ["extended_probation", "mentor_assignment"]}
 
-      # Insufficient data or experience
-      metrics.j_kills < 5 and metrics.j_time_percent < 20.0 ->
+      {:some_experience, :medium_risk} ->
+        {"conditional", 0.6, "Some J-space experience, requires monitoring",
+         ["extended_probation", "mentor_assignment"]}
+
+      {:limited_experience, _} ->
         {"more_info", 0.4, "Limited J-space experience, need more data",
          ["skill_assessment", "trial_period"]}
 
-      # Default to requiring more info
-      true ->
+      _ ->
         {"more_info", 0.5, "Mixed indicators, requires detailed review",
          ["manual_interview", "reference_check"]}
     end
   end
+
+  defp classify_experience(%{j_kills: kills, j_time_percent: time_percent}) do
+    cond do
+      kills >= 30 and time_percent >= 60.0 -> :high_experience
+      kills >= 15 and time_percent >= 40.0 -> :good_experience
+      kills >= 5 -> :some_experience
+      kills < 5 and time_percent < 20.0 -> :limited_experience
+      true -> :mixed_experience
+    end
+  end
+
+  defp classify_risk(risk_score) when risk_score <= 25, do: :low_risk
+  defp classify_risk(risk_score) when risk_score <= 50, do: :medium_risk
+  defp classify_risk(_risk_score), do: :high_risk
 
   defp build_recommendation(recommendation, confidence, reasoning, conditions, _metrics) do
     %{

@@ -8,6 +8,8 @@ defmodule EveDmv.Eve.EsiParsers do
 
   require Logger
 
+  alias EveDmv.Utils.ParsingUtils
+
   @doc """
   Parse character information response from ESI.
   """
@@ -261,16 +263,7 @@ defmodule EveDmv.Eve.EsiParsers do
 
   # Helper functions
 
-  defp parse_datetime(nil), do: nil
-
-  defp parse_datetime(datetime_string) when is_binary(datetime_string) do
-    case DateTime.from_iso8601(datetime_string) do
-      {:ok, datetime, _} -> datetime
-      _ -> nil
-    end
-  end
-
-  defp parse_datetime(_), do: nil
+  defp parse_datetime(datetime_string), do: ParsingUtils.parse_datetime(datetime_string)
 
   defp parse_date(date_string) when is_binary(date_string) do
     case Date.from_iso8601(date_string) do

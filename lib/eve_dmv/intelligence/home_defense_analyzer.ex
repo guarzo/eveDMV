@@ -8,8 +8,9 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
 
   require Logger
   alias EveDmv.Api
+  alias EveDmv.Database.QueryUtils
   alias EveDmv.Eve.EsiClient
-  alias EveDmv.Intelligence.{CharacterStats, HomeDefenseAnalytics}
+  alias EveDmv.Intelligence.HomeDefenseAnalytics
   alias EveDmv.Killmails.KillmailEnriched
   require Ash.Query
 
@@ -19,83 +20,133 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
   Returns {:ok, analytics_record} or {:error, reason}
   """
   def analyze_corporation(corporation_id, options \\ []) do
+    with {:ok, analysis_config} <- setup_analysis_configuration(corporation_id, options),
+         {:ok, raw_data} <- collect_analysis_data(analysis_config),
+         {:ok, processed_data} <- process_analysis_data(raw_data),
+         {:ok, analytics_record} <- persist_analysis_results(corporation_id, processed_data) do
+      {:ok, analytics_record}
+    else
+      {:error, reason} -> handle_analysis_error(corporation_id, reason)
+    end
+  end
+
+  defp setup_analysis_configuration(corporation_id, options) do
     Logger.info("Starting home defense analysis for corporation #{corporation_id}")
 
-    # Set analysis period (default to last 90 days)
     period_days = Keyword.get(options, :period_days, 90)
-    end_date = DateTime.utc_now()
-    start_date = DateTime.add(end_date, -period_days * 24 * 60 * 60, :second)
-
+    {start_date, end_date} = QueryUtils.calculate_precise_date_range(period_days)
     requested_by = Keyword.get(options, :requested_by)
 
-    with {:ok, corp_info} <- get_corporation_info(corporation_id),
-         {:ok, members} <- get_corporation_members(corporation_id),
-         {:ok, timezone_coverage} <- analyze_timezone_coverage(members, start_date, end_date),
+    {:ok,
+     %{
+       corporation_id: corporation_id,
+       start_date: start_date,
+       end_date: end_date,
+       requested_by: requested_by
+     }}
+  end
+
+  defp collect_analysis_data(config) do
+    with {:ok, corp_info} <- get_corporation_info(config.corporation_id),
+         {:ok, members} <- get_corporation_members(config.corporation_id),
+         {:ok, timezone_coverage} <-
+           analyze_timezone_coverage(members, config.start_date, config.end_date),
          {:ok, rolling_participation} <-
-           analyze_rolling_participation(corporation_id, start_date, end_date),
+           analyze_rolling_participation(
+             config.corporation_id,
+             config.start_date,
+             config.end_date
+           ),
          {:ok, response_metrics} <-
-           analyze_response_metrics(corporation_id, start_date, end_date),
+           analyze_response_metrics(config.corporation_id, config.start_date, config.end_date),
          {:ok, member_activity_patterns} <-
-           analyze_member_activity_patterns(members, start_date, end_date),
-         {:ok, defensive_capabilities} <- analyze_defensive_capabilities(corporation_id, members),
+           analyze_member_activity_patterns(members, config.start_date, config.end_date),
+         {:ok, defensive_capabilities} <-
+           analyze_defensive_capabilities(config.corporation_id, members),
          {:ok, coverage_gaps} <-
            identify_coverage_gaps(timezone_coverage, response_metrics, member_activity_patterns) do
-      scores =
-        calculate_defense_scores(
-          timezone_coverage,
-          rolling_participation,
-          response_metrics,
-          member_activity_patterns,
-          defensive_capabilities
-        )
-
-      analytics_data = %{
-        corporation_id: corporation_id,
-        corporation_name: corp_info.corporation_name,
-        alliance_id: corp_info.alliance_id,
-        alliance_name: corp_info.alliance_name,
-        home_system_id: corp_info.home_system_id,
-        home_system_name: corp_info.home_system_name,
-        analysis_period_start: start_date,
-        analysis_period_end: end_date,
-        analysis_requested_by: requested_by,
-        overall_defense_score: scores.overall_defense_score,
-        timezone_coverage_score: scores.timezone_coverage_score,
-        response_time_score: scores.response_time_score,
-        rolling_competency_score: scores.rolling_competency_score,
-        member_participation_score: scores.member_participation_score,
-        timezone_coverage: timezone_coverage,
-        rolling_participation: rolling_participation,
-        response_metrics: response_metrics,
-        member_activity_patterns: member_activity_patterns,
-        defensive_capabilities: defensive_capabilities,
-        coverage_gaps: coverage_gaps,
-        total_members_analyzed: length(members),
-        active_members_count: count_active_members(members),
-        critical_gaps_count: count_critical_gaps(coverage_gaps),
-        data_completeness_percent:
-          calculate_data_completeness([timezone_coverage, rolling_participation, response_metrics])
-      }
-
-      # Create or update analytics record
-      case HomeDefenseAnalytics.get_by_corporation(corporation_id) do
-        {:ok, [existing]} ->
-          HomeDefenseAnalytics.update_analysis(existing, analytics_data)
-
-        {:ok, []} ->
-          HomeDefenseAnalytics.create(analytics_data)
-
-        {:error, _} ->
-          HomeDefenseAnalytics.create(analytics_data)
-      end
-    else
-      {:error, reason} ->
-        Logger.error(
-          "Home defense analysis failed for corporation #{corporation_id}: #{inspect(reason)}"
-        )
-
-        {:error, reason}
+      {:ok,
+       %{
+         corp_info: corp_info,
+         members: members,
+         timezone_coverage: timezone_coverage,
+         rolling_participation: rolling_participation,
+         response_metrics: response_metrics,
+         member_activity_patterns: member_activity_patterns,
+         defensive_capabilities: defensive_capabilities,
+         coverage_gaps: coverage_gaps,
+         config: config
+       }}
     end
+  end
+
+  defp process_analysis_data(raw_data) do
+    scores =
+      calculate_defense_scores(
+        raw_data.timezone_coverage,
+        raw_data.rolling_participation,
+        raw_data.response_metrics,
+        raw_data.member_activity_patterns,
+        raw_data.defensive_capabilities
+      )
+
+    analytics_data = build_analytics_data(raw_data, scores)
+    {:ok, analytics_data}
+  end
+
+  defp build_analytics_data(raw_data, scores) do
+    %{
+      corporation_id: raw_data.config.corporation_id,
+      corporation_name: raw_data.corp_info.corporation_name,
+      alliance_id: raw_data.corp_info.alliance_id,
+      alliance_name: raw_data.corp_info.alliance_name,
+      home_system_id: raw_data.corp_info.home_system_id,
+      home_system_name: raw_data.corp_info.home_system_name,
+      analysis_period_start: raw_data.config.start_date,
+      analysis_period_end: raw_data.config.end_date,
+      analysis_requested_by: raw_data.config.requested_by,
+      overall_defense_score: scores.overall_defense_score,
+      timezone_coverage_score: scores.timezone_coverage_score,
+      response_time_score: scores.response_time_score,
+      rolling_competency_score: scores.rolling_competency_score,
+      member_participation_score: scores.member_participation_score,
+      timezone_coverage: raw_data.timezone_coverage,
+      rolling_participation: raw_data.rolling_participation,
+      response_metrics: raw_data.response_metrics,
+      member_activity_patterns: raw_data.member_activity_patterns,
+      defensive_capabilities: raw_data.defensive_capabilities,
+      coverage_gaps: raw_data.coverage_gaps,
+      total_members_analyzed: length(raw_data.members),
+      active_members_count: count_active_members(raw_data.members),
+      critical_gaps_count: count_critical_gaps(raw_data.coverage_gaps),
+      data_completeness_percent:
+        calculate_data_completeness([
+          raw_data.timezone_coverage,
+          raw_data.rolling_participation,
+          raw_data.response_metrics
+        ])
+    }
+  end
+
+  defp persist_analysis_results(corporation_id, analytics_data) do
+    case HomeDefenseAnalytics.get_by_corporation(corporation_id) do
+      {:ok, [existing]} ->
+        HomeDefenseAnalytics.update_analysis(existing, analytics_data)
+
+      {:ok, []} ->
+        HomeDefenseAnalytics.create(analytics_data)
+
+      {:error, _} ->
+        HomeDefenseAnalytics.create(analytics_data)
+    end
+  end
+
+  defp handle_analysis_error(corporation_id, reason) do
+    Logger.error(
+      "Home defense analysis failed for corporation #{corporation_id}: #{inspect(reason)}"
+    )
+
+    {:error, reason}
   end
 
   # Corporation information retrieval
@@ -141,10 +192,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
   # Get corporation members
   defp get_corporation_members(corporation_id) do
     # First filter character stats at database level, not in memory
-    case Ash.read(CharacterStats,
-           filter: [corporation_id: corporation_id],
-           domain: EveDmv.Api
-         ) do
+    case QueryUtils.query_corporation_members(corporation_id) do
       {:ok, corp_stats} ->
         process_corporation_stats(corp_stats)
 
@@ -171,10 +219,6 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
       case EsiClient.get_characters(character_ids) do
         {:ok, character_data} ->
           Enum.map(corp_stats, &update_member_with_character_data(&1, character_data))
-
-        {:error, reason} ->
-          Logger.warning("Failed to fetch character data: #{inspect(reason)}")
-          corp_stats
       end
 
     {:ok, members}
@@ -236,18 +280,10 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
     # - Ships typically used for rolling (heavy ships, carriers)
     # - Time patterns suggesting coordinated rolling
 
-    query =
-      KillmailEnriched
-      |> Ash.Query.new()
-      |> Ash.Query.load(:participants)
-      |> Ash.Query.filter(killmail_time >= ^start_date)
-      |> Ash.Query.filter(killmail_time <= ^end_date)
-      |> Ash.Query.filter(exists(participants, corporation_id == ^corporation_id))
-
-    case Ash.read(query, domain: Api) do
+    case QueryUtils.query_killmails_by_corporation(corporation_id, start_date, end_date) do
       {:ok, killmails} ->
         killmails
-        |> filter_wormhole_systems()
+        |> QueryUtils.filter_wormhole_killmails()
         |> group_by_system_and_time()
         |> identify_rolling_patterns()
 
@@ -255,18 +291,6 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
         Logger.error("Failed to fetch killmails for rolling analysis: #{inspect(reason)}")
         []
     end
-  end
-
-  defp filter_wormhole_systems(killmails) do
-    # Filter to only wormhole systems (J-space)
-    # In a real implementation, we'd check against a static data source
-    # For now, we'll use system ID patterns typical of wormhole space
-    Enum.filter(killmails, fn km ->
-      system_id = km.solar_system_id
-      # Wormhole systems typically have IDs in certain ranges
-      # This is a simplified check - real implementation would use static data
-      system_id >= 31_000_000
-    end)
   end
 
   defp group_by_system_and_time(killmails) do
@@ -1246,8 +1270,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
     active = member_activity_patterns["active_members"] || 0
     total = member_activity_patterns["total_members"] || 1
 
-    participation_rate = active / total
-    round(participation_rate * 100)
+    round(QueryUtils.safe_percentage(active, total))
   end
 
   defp calculate_overall_defense_score(

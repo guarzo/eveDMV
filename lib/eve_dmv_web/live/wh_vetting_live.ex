@@ -12,6 +12,8 @@ defmodule EveDmvWeb.WHVettingLive do
 
   use EveDmvWeb, :live_view
 
+  require Logger
+
   alias EveDmv.Api
   alias EveDmv.Intelligence.{WHVetting, WHVettingAnalyzer}
 

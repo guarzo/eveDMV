@@ -6,6 +6,7 @@ defmodule EveDmv.Killmails.DisplayService do
   alias EveDmv.Api
   alias EveDmv.Eve.NameResolver
   alias EveDmv.Killmails.{KillmailEnriched, KillmailRaw}
+  alias EveDmv.Utils.ParsingUtils
 
   @feed_limit 50
 
@@ -343,16 +344,7 @@ defmodule EveDmv.Killmails.DisplayService do
   end
 
   # Helper function to safely create Decimal from various number types
-  defp safe_decimal_new(value) when is_integer(value), do: Decimal.new(value)
-  defp safe_decimal_new(value) when is_float(value), do: Decimal.from_float(value)
-
-  defp safe_decimal_new(value) when is_binary(value) do
-    Decimal.new(value)
-  rescue
-    _ -> Decimal.new(0)
-  end
-
-  defp safe_decimal_new(_), do: Decimal.new(0)
+  defp safe_decimal_new(value), do: ParsingUtils.parse_decimal(value)
 
   # Helper function to resolve names if they are unknown/empty
   defp resolve_name_if_unknown(name, fallback_values, resolver_fn)

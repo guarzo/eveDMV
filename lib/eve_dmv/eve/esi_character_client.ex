@@ -119,7 +119,7 @@ defmodule EveDmv.Eve.EsiCharacterClient do
         {:ok, results, :partial} ->
           fetched = build_character_map(missing, results)
           all_characters = Map.merge(cached, fetched)
-          {:ok, all_characters, :partial}
+          {:ok, all_characters}
 
         {:error, reason} ->
           Logger.error("Failed to fetch characters in parallel", %{
@@ -128,7 +128,7 @@ defmodule EveDmv.Eve.EsiCharacterClient do
           })
 
           # Return cached data only
-          {:ok, cached, :partial}
+          {:ok, cached}
       end
     end
   end
