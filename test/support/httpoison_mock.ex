@@ -45,7 +45,7 @@ defmodule HTTPoisonMock do
   """
   def mock_killmail_json do
     Jason.encode!(%{
-      "killmail_id" => 12345,
+      "killmail_id" => 12_345,
       "killmail_time" => "2025-01-01T00:00:00Z",
       "killmail_hash" => "abc123def456",
       "solar_system_id" => 30_000_142,
@@ -60,7 +60,7 @@ defmodule HTTPoisonMock do
         %{
           "character_id" => 95_465_500,
           "corporation_id" => 1_000_002,
-          "ship_type_id" => 17918,
+          "ship_type_id" => 17_918,
           "weapon_type_id" => 2456,
           "damage_done" => 1000,
           "final_blow" => true

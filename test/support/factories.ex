@@ -3,7 +3,7 @@ defmodule EveDmv.Factories do
   Test data factories for EVE DMV testing
   """
 
-  alias EveDmv.{Api, Killmails.KillmailRaw, Killmails.KillmailEnriched, Users.User}
+  alias EveDmv.{Api, Killmails.KillmailEnriched, Killmails.KillmailRaw, Users.User}
 
   def character_factory do
     %{
