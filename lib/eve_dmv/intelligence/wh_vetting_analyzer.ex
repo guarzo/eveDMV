@@ -699,8 +699,8 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
               %{
                 group_name: group,
                 shared_killmails: length(members),
-                first_interaction: members |> Enum.map(& &1.updated_at) |> Enum.min(DateTime),
-                last_interaction: members |> Enum.map(& &1.updated_at) |> Enum.max(DateTime)
+                first_interaction: members |> Stream.map(& &1.updated_at) |> Enum.min(DateTime),
+                last_interaction: members |> Stream.map(& &1.updated_at) |> Enum.max(DateTime)
               }
             end)
 

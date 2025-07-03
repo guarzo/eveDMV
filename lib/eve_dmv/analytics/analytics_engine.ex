@@ -396,7 +396,7 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
     %{
       total_kills: length(kills),
       total_losses: length(losses),
-      pilots_flown: ps |> Enum.map(& &1.character_id) |> Enum.uniq() |> length()
+      pilots_flown: ps |> Stream.map(& &1.character_id) |> Enum.uniq() |> length()
     }
   end
 

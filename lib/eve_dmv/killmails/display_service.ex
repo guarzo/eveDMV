@@ -46,14 +46,14 @@ defmodule EveDmv.Killmails.DisplayService do
     # Extract all unique IDs that need name resolution
     ship_type_ids =
       killmails
-      |> Enum.map(& &1.victim_ship_type_id)
-      |> Enum.reject(&is_nil/1)
+      |> Stream.map(& &1.victim_ship_type_id)
+      |> Stream.reject(&is_nil/1)
       |> Enum.uniq()
 
     system_ids =
       killmails
-      |> Enum.map(& &1.solar_system_id)
-      |> Enum.reject(&is_nil/1)
+      |> Stream.map(& &1.solar_system_id)
+      |> Stream.reject(&is_nil/1)
       |> Enum.uniq()
 
     # Bulk preload all names into cache

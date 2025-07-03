@@ -255,7 +255,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
         "killmail_id" => killmail.killmail_id,
         "killmail_time" => DateTime.to_iso8601(killmail.killmail_time),
         "solar_system_id" => killmail.solar_system_id,
-        "participants" => Enum.map(km_participants, &participant_to_map/1),
+        "participants" => km_participants |> Stream.map(&participant_to_map/1) |> Enum.to_list(),
         "victim" => find_victim_in_participants(km_participants),
         "attackers" => find_attackers_in_participants(km_participants),
         "zkb" => %{

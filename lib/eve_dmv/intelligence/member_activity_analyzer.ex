@@ -516,14 +516,15 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
       {:ok, killmails} ->
         # Chain operations typically involve multiple systems in short time windows
         killmails
-        |> Enum.group_by(fn km ->
+        |> Stream.chunk_by(fn km ->
           TimeUtils.truncate_to_hour(km.killmail_time)
         end)
-        |> Enum.count(fn {_hour, hour_killmails} ->
+        |> Stream.map(fn hour_killmails ->
           # Multiple systems in same hour indicates chain activity
-          unique_systems = hour_killmails |> Enum.map(& &1.solar_system_id) |> Enum.uniq()
+          unique_systems = hour_killmails |> Stream.map(& &1.solar_system_id) |> Enum.uniq()
           length(unique_systems) >= 2
         end)
+        |> Enum.count(& &1)
 
       {:error, _} ->
         0
