@@ -20,84 +20,149 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
   Returns {:ok, vetting_record} or {:error, reason}
   """
   def analyze_character(character_id, requested_by_id \\ nil) do
-    # Handle nil character_id early
+    with {:ok, character_info} <- validate_and_get_character_info(character_id),
+         {:ok, analysis_data} <- collect_all_analysis_data(character_id),
+         {:ok, scores} <- calculate_all_scores(analysis_data),
+         {:ok, recommendation} <- generate_recommendation_data(scores, analysis_data.risk_factors) do
+      create_vetting_record(
+        character_id,
+        character_info,
+        analysis_data,
+        scores,
+        recommendation,
+        requested_by_id
+      )
+    end
+  end
+
+  defp validate_and_get_character_info(character_id) do
     if is_nil(character_id) do
       {:error, "Character ID cannot be nil"}
     else
       Logger.info("Starting WH vetting analysis for character #{character_id}")
-
-      with {:ok, character_info} <- get_character_info(character_id),
-           {:ok, j_space_activity} <- analyze_j_space_activity(character_id),
-           {:ok, eviction_associations} <- analyze_eviction_associations(character_id),
-           {:ok, alt_analysis} <- analyze_alt_patterns(character_id),
-           {:ok, competency_metrics} <- analyze_small_gang_competency(character_id),
-           {:ok, risk_factors} <- analyze_risk_factors(character_id),
-           {:ok, employment_history} <- analyze_employment_history(character_id) do
-        scores =
-          calculate_scores(
-            j_space_activity,
-            eviction_associations,
-            alt_analysis,
-            competency_metrics,
-            risk_factors,
-            employment_history
-          )
-
-        recommendation = generate_recommendation(scores, risk_factors)
-        auto_summary = generate_auto_summary(character_info, scores, risk_factors)
-
-        vetting_data = %{
-          character_id: character_id,
-          character_name: character_info.character_name,
-          corporation_id: character_info.corporation_id,
-          corporation_name: character_info.corporation_name,
-          alliance_id: character_info.alliance_id,
-          alliance_name: character_info.alliance_name,
-          vetting_requested_by: requested_by_id,
-          overall_risk_score: scores.overall_risk_score,
-          wh_experience_score: scores.wh_experience_score,
-          competency_score: scores.competency_score,
-          security_score: scores.security_score,
-          j_space_activity: j_space_activity,
-          eviction_associations: eviction_associations,
-          alt_analysis: alt_analysis,
-          competency_metrics: competency_metrics,
-          risk_factors: risk_factors,
-          employment_history: employment_history,
-          recommendation: recommendation.decision,
-          recommendation_confidence: recommendation.confidence,
-          auto_generated_summary: auto_summary,
-          requires_manual_review: recommendation.requires_manual_review,
-          data_completeness_percent:
-            calculate_data_completeness([
-              j_space_activity,
-              eviction_associations,
-              alt_analysis,
-              competency_metrics
-            ]),
-          status: "complete"
-        }
-
-        # Create or update vetting record
-        case WHVetting.get_by_character(character_id) do
-          {:ok, [existing]} ->
-            WHVetting.update_analysis(existing, vetting_data)
-
-          {:ok, []} ->
-            WHVetting.create(vetting_data)
-
-          {:error, _} ->
-            WHVetting.create(vetting_data)
-        end
-      else
-        {:error, reason} ->
-          Logger.error(
-            "WH vetting analysis failed for character #{character_id}: #{inspect(reason)}"
-          )
-
-          {:error, reason}
-      end
+      get_character_info(character_id)
     end
+  end
+
+  defp collect_all_analysis_data(character_id) do
+    with {:ok, j_space_activity} <- analyze_j_space_activity(character_id),
+         {:ok, eviction_associations} <- analyze_eviction_associations(character_id),
+         {:ok, alt_analysis} <- analyze_alt_patterns(character_id),
+         {:ok, competency_metrics} <- analyze_small_gang_competency(character_id),
+         {:ok, risk_factors} <- analyze_risk_factors(character_id),
+         {:ok, employment_history} <- analyze_employment_history(character_id) do
+      {:ok,
+       %{
+         j_space_activity: j_space_activity,
+         eviction_associations: eviction_associations,
+         alt_analysis: alt_analysis,
+         competency_metrics: competency_metrics,
+         risk_factors: risk_factors,
+         employment_history: employment_history
+       }}
+    end
+  end
+
+  defp calculate_all_scores(analysis_data) do
+    scores =
+      calculate_scores(
+        analysis_data.j_space_activity,
+        analysis_data.eviction_associations,
+        analysis_data.alt_analysis,
+        analysis_data.competency_metrics,
+        analysis_data.risk_factors,
+        analysis_data.employment_history
+      )
+
+    {:ok, scores}
+  end
+
+  defp generate_recommendation_data(scores, risk_factors) do
+    recommendation = generate_recommendation(scores, risk_factors)
+    {:ok, recommendation}
+  end
+
+  defp create_vetting_record(
+         character_id,
+         character_info,
+         analysis_data,
+         scores,
+         recommendation,
+         requested_by_id
+       ) do
+    auto_summary = generate_auto_summary(character_info, scores, analysis_data.risk_factors)
+
+    vetting_data =
+      build_vetting_data(
+        character_id,
+        character_info,
+        analysis_data,
+        scores,
+        recommendation,
+        auto_summary,
+        requested_by_id
+      )
+
+    save_vetting_record(character_id, vetting_data)
+  end
+
+  defp build_vetting_data(
+         character_id,
+         character_info,
+         analysis_data,
+         scores,
+         recommendation,
+         auto_summary,
+         requested_by_id
+       ) do
+    %{
+      character_id: character_id,
+      character_name: character_info.character_name,
+      corporation_id: character_info.corporation_id,
+      corporation_name: character_info.corporation_name,
+      alliance_id: character_info.alliance_id,
+      alliance_name: character_info.alliance_name,
+      vetting_requested_by: requested_by_id,
+      overall_risk_score: scores.overall_risk_score,
+      wh_experience_score: scores.wh_experience_score,
+      competency_score: scores.competency_score,
+      security_score: scores.security_score,
+      j_space_activity: analysis_data.j_space_activity,
+      eviction_associations: analysis_data.eviction_associations,
+      alt_analysis: analysis_data.alt_analysis,
+      competency_metrics: analysis_data.competency_metrics,
+      risk_factors: analysis_data.risk_factors,
+      employment_history: analysis_data.employment_history,
+      recommendation: recommendation.decision,
+      recommendation_confidence: recommendation.confidence,
+      auto_generated_summary: auto_summary,
+      requires_manual_review: recommendation.requires_manual_review,
+      data_completeness_percent:
+        calculate_data_completeness([
+          analysis_data.j_space_activity,
+          analysis_data.eviction_associations,
+          analysis_data.alt_analysis,
+          analysis_data.competency_metrics
+        ]),
+      status: "complete"
+    }
+  end
+
+  defp save_vetting_record(character_id, vetting_data) do
+    case WHVetting.get_by_character(character_id) do
+      {:ok, [existing]} ->
+        WHVetting.update_analysis(existing, vetting_data)
+
+      {:ok, []} ->
+        WHVetting.create(vetting_data)
+
+      {:error, _} ->
+        WHVetting.create(vetting_data)
+    end
+  rescue
+    error ->
+      Logger.error("WH vetting analysis failed for character #{character_id}: #{inspect(error)}")
+      {:error, error}
   end
 
   # Character information retrieval
