@@ -9,9 +9,8 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
 
   require Logger
 
-  alias EveDmv.Intelligence.{
-    MemberActivityAnalyzer
-  }
+  alias EveDmv.Intelligence.MemberActivityAnalyzer
+
   alias EveDmv.Intelligence.CharacterAnalysis.{CharacterAnalyzer, CharacterStats}
   alias EveDmv.Intelligence.WhSpace.Vetting, as: WHVetting
 
@@ -688,7 +687,7 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
     complexity_categories = %{
       # Frigates, destroyers
       beginner: [],
-      # Cruisers, battlecruisers  
+      # Cruisers, battlecruisers
       intermediate: [],
       # Battleships, T2 ships
       advanced: [],
@@ -734,7 +733,7 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
       cond do
         # Very new
         character_age_days < 30 -> 1.0
-        # New  
+        # New
         character_age_days < 90 -> 0.8
         # Intermediate
         character_age_days < 365 -> 0.6

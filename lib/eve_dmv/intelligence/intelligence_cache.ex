@@ -15,7 +15,7 @@ defmodule EveDmv.Intelligence.IntelligenceCache do
   # Cache TTLs (in milliseconds)
   # 12 hours
   @character_analysis_ttl 12 * 60 * 60 * 1000
-  # 24 hours  
+  # 24 hours
   @vetting_ttl 24 * 60 * 60 * 1000
   # 4 hours
   @correlation_ttl 4 * 60 * 60 * 1000

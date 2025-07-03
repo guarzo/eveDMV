@@ -13,7 +13,7 @@ defmodule EveDmv.Eve.EsiCache do
   # Cache TTLs
   # 10 minutes
   @character_ttl_ms 10 * 60 * 1000
-  # 60 minutes  
+  # 60 minutes
   @corporation_ttl_ms 60 * 60 * 1000
   # 60 minutes
   @alliance_ttl_ms 60 * 60 * 1000

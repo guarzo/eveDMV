@@ -7,8 +7,8 @@ defmodule EveDmv.Intelligence.CharacterAnalysis.CharacterAnalyzer do
   alias EveDmv.Api
   alias EveDmv.Database.QueryCache
   alias EveDmv.Eve.EsiUtils
-  alias EveDmv.Intelligence.{CharacterFormatters, CharacterMetrics}
   alias EveDmv.Intelligence.CharacterAnalysis.CharacterStats
+  alias EveDmv.Intelligence.{CharacterFormatters, CharacterMetrics}
   alias EveDmv.Killmails.{KillmailEnriched, Participant}
   require Ash.Query
 
