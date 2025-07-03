@@ -132,12 +132,13 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
 
     # Get all corporation members from recent activity
     # Note: Currently get_corporation_members_from_activity always returns {:ok, []}
-    case get_corporation_members_from_activity(corporation_id) do
-      {:ok, []} ->
-        {:error, "No recent activity found for corporation"}
+    # This is a placeholder implementation
+    {:ok, members} = get_corporation_members_from_activity(corporation_id)
 
-      {:ok, members} ->
-        {:ok, %{corporation_id: corporation_id, members: members, analysis: "not_implemented"}}
+    if members == [] do
+      {:error, "No recent activity found for corporation"}
+    else
+      {:ok, %{corporation_id: corporation_id, members: members, analysis: "not_implemented"}}
     end
   end
 
