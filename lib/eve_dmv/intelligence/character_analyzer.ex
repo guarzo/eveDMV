@@ -116,26 +116,28 @@ defmodule EveDmv.Intelligence.CharacterAnalysis.CharacterAnalyzer do
 
   defp get_character_info(character_id) do
     # Use the optimized EsiUtils function that consolidates all ESI calls
-    case EsiUtils.fetch_character_corporation_alliance(character_id) do
-      {:ok, character_data} ->
-        basic_info = %{
-          character_id: character_id,
-          character_name: character_data.character_name,
-          corporation_id: character_data.corporation_id,
-          corporation_name: character_data.corporation_name,
-          alliance_id: character_data.alliance_id,
-          alliance_name: character_data.alliance_name,
-          # Not available in consolidated call
-          security_status: nil,
-          # Not available in consolidated call
-          birthday: nil
-        }
+    # This function always returns {:ok, data} with fallback values on error
+    {:ok, character_data} = EsiUtils.fetch_character_corporation_alliance(character_id)
+    
+    basic_info = %{
+      character_id: character_id,
+      character_name: character_data.character_name,
+      corporation_id: character_data.corporation_id,
+      corporation_name: character_data.corporation_name,
+      alliance_id: character_data.alliance_id,
+      alliance_name: character_data.alliance_name,
+      # Not available in consolidated call
+      security_status: nil,
+      # Not available in consolidated call
+      birthday: nil
+    }
 
-        {:ok, basic_info}
-
-      {:error, reason} ->
-        Logger.warning("Failed to get character info from ESI: #{inspect(reason)}")
-        get_character_info_from_killmails(character_id)
+    # If we got fallback data (Unknown Character), try killmails
+    if character_data.character_name == "Unknown Character" do
+      Logger.warning("Got fallback data from ESI for character #{character_id}, trying killmails")
+      get_character_info_from_killmails(character_id)
+    else
+      {:ok, basic_info}
     end
   end
 
