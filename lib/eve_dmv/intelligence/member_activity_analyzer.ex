@@ -18,6 +18,7 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
 
   alias EveDmv.Intelligence.{
     CharacterStats,
+    EngagementCalculator,
     MemberActivityFormatter,
     MemberActivityIntelligence,
     MemberActivityMetrics
@@ -626,44 +627,19 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
   defp get_corporation_activity_scores(_corporation_id), do: {:ok, [50, 60, 70, 80]}
 
   defp count_active_members(member_analyses) do
-    Enum.count(member_analyses, fn analysis ->
-      (analysis.engagement_score || 0) > 30
-    end)
+    EngagementCalculator.count_active_members(member_analyses, 30)
   end
 
   defp calculate_average_engagement(member_analyses) do
-    if length(member_analyses) > 0 do
-      total_engagement = Enum.sum(Enum.map(member_analyses, &(&1.engagement_score || 0)))
-      total_engagement / length(member_analyses)
-    else
-      0
-    end
+    EngagementCalculator.calculate_average_engagement(member_analyses)
   end
 
   defp calculate_at_risk_percentage(member_analyses) do
-    if length(member_analyses) > 0 do
-      at_risk_count =
-        Enum.count(member_analyses, fn analysis ->
-          max(analysis.burnout_risk_score || 0, analysis.disengagement_risk_score || 0) > 50
-        end)
-
-      at_risk_count / length(member_analyses) * 100
-    else
-      0
-    end
+    EngagementCalculator.calculate_at_risk_percentage(member_analyses)
   end
 
   defp calculate_high_performers_percentage(member_analyses) do
-    if length(member_analyses) > 0 do
-      high_performer_count =
-        Enum.count(member_analyses, fn analysis ->
-          (analysis.engagement_score || 0) > 80
-        end)
-
-      high_performer_count / length(member_analyses) * 100
-    else
-      0
-    end
+    EngagementCalculator.calculate_high_performers_percentage(member_analyses, 80)
   end
 
   # Public API functions expected by tests
@@ -672,12 +648,7 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
   Calculate engagement score for a single member.
   """
   def calculate_engagement_score(member_data) when is_map(member_data) do
-    killmail_score = min(50, Map.get(member_data, :killmail_count, 0) * 2)
-    participation_score = Map.get(member_data, :fleet_participation, 0.0) * 30
-    communication_score = min(20, Map.get(member_data, :communication_activity, 0))
-
-    total_score = killmail_score + participation_score + communication_score
-    min(100, total_score)
+    EngagementCalculator.calculate_overall_score(member_data)
   end
 
   @doc """
@@ -712,13 +683,7 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
 
   defp calculate_individual_member_scores(member_activities) do
     Enum.map(member_activities, fn member ->
-      killmail_score = min(50, Map.get(member, :killmail_count, 0) * 2)
-      participation_score = Map.get(member, :fleet_participation, 0.0) * 30
-      communication_score = min(20, Map.get(member, :communication_activity, 0))
-
-      total_score = killmail_score + participation_score + communication_score
-      final_score = min(100, total_score)
-
+      final_score = EngagementCalculator.calculate_overall_score(member)
       {member, final_score}
     end)
   end

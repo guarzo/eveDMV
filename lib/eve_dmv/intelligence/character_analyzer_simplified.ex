@@ -169,7 +169,7 @@ defmodule EveDmv.Intelligence.CharacterAnalysis.CharacterAnalyzerSimplified do
 
       {:error, :insufficient_data}
     else
-      # Delegate all metric calculations to CharacterMetrics
+      # Use the comprehensive CharacterMetrics module
       metrics = CharacterMetrics.calculate_all_metrics(character_id, killmail_data)
       {:ok, metrics}
     end
