@@ -698,83 +698,92 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
   """
   def calculate_member_engagement(member_activities) when is_list(member_activities) do
     if Enum.empty?(member_activities) do
-      %{
-        avg_engagement_score: 0,
-        high_engagement_count: 0,
-        low_engagement_count: 0,
-        engagement_distribution: %{},
-        # Also provide the expected field names for tests
-        highly_engaged: [],
-        moderately_engaged: [],
-        low_engagement: [],
-        inactive_members: [],
-        overall_engagement_score: 0
-      }
+      create_empty_engagement_result()
     else
-      # Calculate engagement scores for each member with member data
-      member_engagement_data =
-        Enum.map(member_activities, fn member ->
-          killmail_score = min(50, Map.get(member, :killmail_count, 0) * 2)
-          participation_score = Map.get(member, :fleet_participation, 0.0) * 30
-          communication_score = min(20, Map.get(member, :communication_activity, 0))
+      member_engagement_data = calculate_individual_member_scores(member_activities)
+      avg_engagement = calculate_average_engagement(member_engagement_data)
+      grouped_members = group_members_by_engagement(member_engagement_data)
+      distribution = create_engagement_distribution(grouped_members)
 
-          total_score = killmail_score + participation_score + communication_score
-          final_score = min(100, total_score)
-
-          {member, final_score}
-        end)
-
-      engagement_scores = Enum.map(member_engagement_data, fn {_member, score} -> score end)
-
-      avg_engagement =
-        if length(engagement_scores) > 0,
-          do: Enum.sum(engagement_scores) / length(engagement_scores),
-          else: 0
-
-      # Group members by engagement level
-      highly_engaged_members =
-        member_engagement_data
-        |> Enum.filter(fn {_member, score} -> score >= 70 end)
-        |> Enum.map(fn {member, _score} -> member end)
-
-      moderately_engaged_members =
-        member_engagement_data
-        |> Enum.filter(fn {_member, score} -> score >= 30 and score < 70 end)
-        |> Enum.map(fn {member, _score} -> member end)
-
-      low_engaged_members =
-        member_engagement_data
-        |> Enum.filter(fn {_member, score} -> score >= 10 and score < 30 end)
-        |> Enum.map(fn {member, _score} -> member end)
-
-      inactive_members =
-        member_engagement_data
-        |> Enum.filter(fn {_member, score} -> score < 10 end)
-        |> Enum.map(fn {member, _score} -> member end)
-
-      high_engagement_count = length(highly_engaged_members)
-      low_engagement_count = length(low_engaged_members)
-
-      # Create distribution buckets
-      distribution = %{
-        "high" => high_engagement_count,
-        "medium" => length(moderately_engaged_members),
-        "low" => low_engagement_count
-      }
-
-      %{
-        avg_engagement_score: Float.round(avg_engagement, 1),
-        high_engagement_count: high_engagement_count,
-        low_engagement_count: low_engagement_count,
-        engagement_distribution: distribution,
-        # Also provide the expected field names for tests
-        highly_engaged: highly_engaged_members,
-        moderately_engaged: moderately_engaged_members,
-        low_engagement: low_engaged_members,
-        inactive_members: inactive_members,
-        overall_engagement_score: Float.round(avg_engagement, 1)
-      }
+      build_engagement_result(avg_engagement, grouped_members, distribution)
     end
+  end
+
+  defp create_empty_engagement_result do
+    %{
+      avg_engagement_score: 0,
+      high_engagement_count: 0,
+      low_engagement_count: 0,
+      engagement_distribution: %{},
+      highly_engaged: [],
+      moderately_engaged: [],
+      low_engagement: [],
+      inactive_members: [],
+      overall_engagement_score: 0
+    }
+  end
+
+  defp calculate_individual_member_scores(member_activities) do
+    Enum.map(member_activities, fn member ->
+      killmail_score = min(50, Map.get(member, :killmail_count, 0) * 2)
+      participation_score = Map.get(member, :fleet_participation, 0.0) * 30
+      communication_score = min(20, Map.get(member, :communication_activity, 0))
+
+      total_score = killmail_score + participation_score + communication_score
+      final_score = min(100, total_score)
+
+      {member, final_score}
+    end)
+  end
+
+  defp calculate_average_engagement(member_engagement_data) do
+    engagement_scores = Enum.map(member_engagement_data, fn {_member, score} -> score end)
+
+    if length(engagement_scores) > 0,
+      do: Enum.sum(engagement_scores) / length(engagement_scores),
+      else: 0
+  end
+
+  defp group_members_by_engagement(member_engagement_data) do
+    highly_engaged = filter_members_by_score_range(member_engagement_data, 70, 100)
+    moderately_engaged = filter_members_by_score_range(member_engagement_data, 30, 69)
+    low_engaged = filter_members_by_score_range(member_engagement_data, 10, 29)
+    inactive = filter_members_by_score_range(member_engagement_data, 0, 9)
+
+    %{
+      highly_engaged: highly_engaged,
+      moderately_engaged: moderately_engaged,
+      low_engaged: low_engaged,
+      inactive: inactive
+    }
+  end
+
+  defp filter_members_by_score_range(member_engagement_data, min_score, max_score) do
+    member_engagement_data
+    |> Enum.filter(fn {_member, score} -> score >= min_score and score <= max_score end)
+    |> Enum.map(fn {member, _score} -> member end)
+  end
+
+  defp create_engagement_distribution(grouped_members) do
+    %{
+      "high" => length(grouped_members.highly_engaged),
+      "medium" => length(grouped_members.moderately_engaged),
+      "low" => length(grouped_members.low_engaged)
+    }
+  end
+
+  defp build_engagement_result(avg_engagement, grouped_members, distribution) do
+    %{
+      avg_engagement_score: Float.round(avg_engagement, 1),
+      high_engagement_count: length(grouped_members.highly_engaged),
+      low_engagement_count: length(grouped_members.low_engaged),
+      engagement_distribution: distribution,
+      highly_engaged: grouped_members.highly_engaged,
+      moderately_engaged: grouped_members.moderately_engaged,
+      low_engagement: grouped_members.low_engaged,
+      inactive_members: grouped_members.inactive,
+      overall_engagement_score: Float.round(avg_engagement, 1)
+    }
   end
 
   @doc """
@@ -782,62 +791,79 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
   """
   def analyze_activity_trends(member_activities, days) when is_list(member_activities) do
     if Enum.empty?(member_activities) or days <= 0 do
-      %{
-        trend_direction: :stable,
-        trend_strength: 0.0,
-        activity_change_percent: 0.0,
-        growth_rate: 0.0,
-        member_count: 0
-      }
+      create_empty_trend_result()
     else
-      # Calculate trend based on activity history if available
       activity_series = extract_activity_series(member_activities, days)
 
       if length(activity_series) >= 2 do
-        {trend_direction, growth_rate} = calculate_trend_from_series(activity_series)
-        _trend_strength = abs(growth_rate)
-
-        # Calculate activity peaks and seasonal patterns
-        activity_peaks = identify_activity_peaks(activity_series)
-        seasonal_patterns = analyze_seasonal_patterns(member_activities, days)
-
-        %{
-          trend_direction: trend_direction,
-          growth_rate: Float.round(growth_rate, 2),
-          activity_peaks: activity_peaks,
-          seasonal_patterns: seasonal_patterns
-        }
+        perform_advanced_trend_analysis(activity_series, member_activities, days)
       else
-        # Fallback to simple analysis
-        cutoff_date = DateTime.add(DateTime.utc_now(), -days, :day)
-
-        recent_activities = filter_recent_activities(member_activities, cutoff_date)
-
-        total_recent_activity =
-          Enum.sum(Enum.map(recent_activities, &Map.get(&1, :killmail_count, 0)))
-
-        total_historical_activity =
-          Enum.sum(Enum.map(member_activities, &Map.get(&1, :killmail_count, 0)))
-
-        activity_change_percent =
-          calculate_activity_change_percent(
-            total_recent_activity,
-            recent_activities,
-            total_historical_activity,
-            member_activities
-          )
-
-        {trend_direction, trend_strength} = determine_trend_direction(activity_change_percent)
-
-        %{
-          trend_direction: trend_direction,
-          trend_strength: Float.round(abs(trend_strength), 2),
-          activity_change_percent: Float.round(activity_change_percent, 1),
-          growth_rate: Float.round(activity_change_percent, 2),
-          member_count: length(member_activities)
-        }
+        perform_simple_trend_analysis(member_activities, days)
       end
     end
+  end
+
+  defp create_empty_trend_result do
+    %{
+      trend_direction: :stable,
+      trend_strength: 0.0,
+      activity_change_percent: 0.0,
+      growth_rate: 0.0,
+      member_count: 0
+    }
+  end
+
+  defp perform_advanced_trend_analysis(activity_series, member_activities, days) do
+    {trend_direction, growth_rate} = calculate_trend_from_series(activity_series)
+    activity_peaks = identify_activity_peaks(activity_series)
+    seasonal_patterns = analyze_seasonal_patterns(member_activities, days)
+
+    %{
+      trend_direction: trend_direction,
+      growth_rate: Float.round(growth_rate, 2),
+      activity_peaks: activity_peaks,
+      seasonal_patterns: seasonal_patterns
+    }
+  end
+
+  defp perform_simple_trend_analysis(member_activities, days) do
+    cutoff_date = DateTime.add(DateTime.utc_now(), -days, :day)
+    recent_activities = filter_recent_activities(member_activities, cutoff_date)
+
+    activity_metrics = calculate_activity_metrics(member_activities, recent_activities)
+
+    {trend_direction, trend_strength} =
+      determine_trend_direction(activity_metrics.activity_change_percent)
+
+    %{
+      trend_direction: trend_direction,
+      trend_strength: Float.round(abs(trend_strength), 2),
+      activity_change_percent: Float.round(activity_metrics.activity_change_percent, 1),
+      growth_rate: Float.round(activity_metrics.activity_change_percent, 2),
+      member_count: length(member_activities)
+    }
+  end
+
+  defp calculate_activity_metrics(member_activities, recent_activities) do
+    total_recent_activity =
+      Enum.sum(Enum.map(recent_activities, &Map.get(&1, :killmail_count, 0)))
+
+    total_historical_activity =
+      Enum.sum(Enum.map(member_activities, &Map.get(&1, :killmail_count, 0)))
+
+    activity_change_percent =
+      calculate_activity_change_percent(
+        total_recent_activity,
+        recent_activities,
+        total_historical_activity,
+        member_activities
+      )
+
+    %{
+      total_recent_activity: total_recent_activity,
+      total_historical_activity: total_historical_activity,
+      activity_change_percent: activity_change_percent
+    }
   end
 
   @doc """
