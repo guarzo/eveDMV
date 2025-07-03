@@ -52,7 +52,13 @@ defmodule EveDmv.Security.HeadersValidator do
   @doc """
   Generate a security headers report for monitoring and compliance.
   """
-  @spec generate_report(String.t()) :: map()
+  @spec generate_report(String.t()) :: %{
+          required(:status) => :pass | :fail,
+          required(:message) => String.t(),
+          required(:timestamp) => DateTime.t(),
+          required(:url) => String.t(),
+          optional(:errors) => [String.t()]
+        }
   def generate_report(url \\ "http://localhost:4010") do
     case test_security_headers(url) do
       {:ok, :valid} ->

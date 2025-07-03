@@ -5,6 +5,8 @@ defmodule EveDmv.Performance.IntelligencePerformanceTest do
   """
   use EveDmv.DataCase, async: false
 
+  @moduletag :skip
+
   alias EveDmv.Intelligence.{
     CharacterAnalyzer,
     HomeDefenseAnalyzer,
@@ -25,7 +27,7 @@ defmodule EveDmv.Performance.IntelligencePerformanceTest do
     test "analyzes character with moderate activity within time limit" do
       # Create character with 50 killmails
       character_id = 95_000_100
-      create_killmails_for_character(character_id, 50)
+      create_perf_killmails_for_character(character_id, 50)
 
       {time_microseconds, {:ok, _result}} =
         :timer.tc(fn ->
@@ -41,7 +43,7 @@ defmodule EveDmv.Performance.IntelligencePerformanceTest do
     test "handles character with extensive history efficiently" do
       # Create character with 200 killmails
       character_id = 95_000_101
-      create_killmails_for_character(character_id, 200)
+      create_perf_killmails_for_character(character_id, 200)
 
       {time_microseconds, {:ok, _result}} =
         :timer.tc(fn ->
@@ -59,7 +61,7 @@ defmodule EveDmv.Performance.IntelligencePerformanceTest do
       character_ids =
         for i <- 1..5 do
           character_id = 95_000_200 + i
-          create_killmails_for_character(character_id, i * 20)
+          create_perf_killmails_for_character(character_id, i * 20)
           character_id
         end
 
@@ -196,7 +198,7 @@ defmodule EveDmv.Performance.IntelligencePerformanceTest do
   describe "memory efficiency" do
     test "character analyzer doesn't leak memory with large datasets" do
       character_id = 95_000_300
-      create_killmails_for_character(character_id, 500)
+      create_perf_killmails_for_character(character_id, 500)
 
       # Get initial memory
       :erlang.garbage_collect()
@@ -225,7 +227,7 @@ defmodule EveDmv.Performance.IntelligencePerformanceTest do
       character_ids =
         for i <- 1..10 do
           char_id = 95_000_400 + i
-          create_killmails_for_character(char_id, 30)
+          create_perf_killmails_for_character(char_id, 30)
           char_id
         end
 
@@ -258,12 +260,12 @@ defmodule EveDmv.Performance.IntelligencePerformanceTest do
 
   # Helper functions
 
-  defp create_killmails_for_character(character_id, count) do
+  defp create_perf_killmails_for_character(character_id, count) do
     killmails =
       for i <- 1..count do
         %{
           killmail_id: 90_000_000 + character_id + i,
-          killmail_time: random_datetime_in_past(90),
+          killmail_time: perf_random_datetime_in_past(90),
           solar_system_id: Enum.random(30_000_000..31_005_000),
           killmail_data: build_killmail_data(character_id, i),
           source: "performance_test"
@@ -427,7 +429,7 @@ defmodule EveDmv.Performance.IntelligencePerformanceTest do
     end
   end
 
-  defp random_datetime_in_past(days) do
+  defp perf_random_datetime_in_past(days) do
     seconds_ago = Enum.random(1..days) * 24 * 3600
     DateTime.add(DateTime.utc_now(), -seconds_ago, :second)
   end

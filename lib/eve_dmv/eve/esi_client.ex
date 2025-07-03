@@ -64,7 +64,8 @@ defmodule EveDmv.Eve.EsiClient do
   @doc """
   Get character assets (requires authentication).
   """
-  @spec get_character_assets(integer(), String.t()) :: {:error, :service_unavailable}
+  @spec get_character_assets(integer(), binary()) ::
+          {:ok, [map()]} | {:error, :service_unavailable}
   defdelegate get_character_assets(character_id, auth_token), to: EsiCharacterClient
 
   # Corporation Operations
@@ -84,7 +85,8 @@ defmodule EveDmv.Eve.EsiClient do
   @doc """
   Get corporation assets (requires authentication).
   """
-  @spec get_corporation_assets(integer(), String.t()) :: {:error, :service_unavailable}
+  @spec get_corporation_assets(integer(), binary()) ::
+          {:ok, [map()]} | {:error, :service_unavailable}
   defdelegate get_corporation_assets(corporation_id, auth_token), to: EsiCorporationClient
 
   # Universe Operations
@@ -155,6 +157,6 @@ defmodule EveDmv.Eve.EsiClient do
   @doc """
   Get market prices for multiple types efficiently.
   """
-  @spec get_market_prices([integer()], integer()) :: {:ok, any()}
+  @spec get_market_prices([integer()], integer()) :: {:ok, map()}
   defdelegate get_market_prices(type_ids, region_id \\ 10_000_002), to: EsiMarketClient
 end

@@ -69,9 +69,6 @@ defmodule EveDmv.Intelligence.ShipDatabase do
     end
   end
 
-  @doc """
-  Get ship category by ship name.
-  """
   def get_ship_category(ship_name) when is_binary(ship_name) do
     ship_name_to_category()[ship_name] || "Unknown"
   end
@@ -233,8 +230,6 @@ defmodule EveDmv.Intelligence.ShipDatabase do
       3514 => :supercarrier,
       # Aeon
       22_852 => :supercarrier,
-      # Thanatos
-      23_913 => :supercarrier,
       # Wyvern
       23_917 => :supercarrier,
       # Hel

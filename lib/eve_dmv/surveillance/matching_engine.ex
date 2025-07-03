@@ -57,18 +57,6 @@ defmodule EveDmv.Surveillance.MatchingEngine do
   end
 
   @doc """
-  Child specification with proper shutdown timeout for batch processing.
-  """
-  def child_spec(opts) do
-    %{
-      id: __MODULE__,
-      start: {__MODULE__, :start_link, [opts]},
-      # 15 seconds for batch processing
-      shutdown: 15_000
-    }
-  end
-
-  @doc """
   Match a killmail against all active surveillance profiles.
 
   Returns a list of profile IDs that matched the killmail.
@@ -113,8 +101,16 @@ defmodule EveDmv.Surveillance.MatchingEngine do
       last_batch_record: System.monotonic_time(:millisecond)
     }
 
-    # Initial profile load
-    profiles_count = load_active_profiles()
+    # Initial profile load - delay slightly to allow database to be ready
+    profiles_count =
+      if Mix.env() == :test do
+        # In test environment, skip initial load
+        0
+      else
+        # Schedule a delayed load in production/dev
+        Process.send_after(self(), :initial_profile_load, 1000)
+        0
+      end
 
     # Schedule periodic batch recording
     schedule_batch_recording()
@@ -226,6 +222,13 @@ defmodule EveDmv.Surveillance.MatchingEngine do
   end
 
   @impl true
+  def handle_info(:initial_profile_load, state) do
+    Logger.info("Performing initial surveillance profile load")
+    profiles_count = load_active_profiles()
+    {:noreply, %{state | profiles_loaded: profiles_count}}
+  end
+
+  @impl true
   def handle_info(msg, state) do
     Logger.debug("Unexpected message: #{inspect(msg)}")
     {:noreply, state}
@@ -316,13 +319,20 @@ defmodule EveDmv.Surveillance.MatchingEngine do
     :ets.delete_all_objects(@profile_metadata)
 
     # Load active profiles from database
-    case Ash.read(Profile, action: :active_profiles, domain: Api) do
-      {:ok, profiles} ->
-        Enum.each(profiles, &process_profile/1)
-        length(profiles)
+    try do
+      case Ash.read(Profile, action: :active_profiles, domain: Api) do
+        {:ok, profiles} ->
+          Enum.each(profiles, &process_profile/1)
+          length(profiles)
 
-      {:error, error} ->
-        Logger.error("Failed to load surveillance profiles: #{inspect(error)}")
+        {:error, error} ->
+          Logger.error("Failed to load surveillance profiles: #{inspect(error)}")
+          0
+      end
+    rescue
+      error ->
+        # Handle database not ready errors gracefully during startup
+        Logger.warning("Database may not be ready yet, skipping profile load: #{inspect(error)}")
         0
     end
   end

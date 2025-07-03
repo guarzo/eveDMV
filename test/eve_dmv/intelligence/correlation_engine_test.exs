@@ -1,8 +1,15 @@
 defmodule EveDmv.Intelligence.CorrelationEngineTest do
-  use EveDmv.DataCase, async: true
+  use EveDmv.DataCase, async: false
 
+  alias EveDmv.Database.QueryCache
   alias EveDmv.Intelligence.CorrelationEngine
   alias EveDmv.Intelligence.{CharacterStats, WHVetting}
+
+  setup do
+    # Start QueryCache for this test since it's not started in test environment
+    start_supervised!(QueryCache)
+    :ok
+  end
 
   describe "analyze_cross_module_correlations/1" do
     test "analyzes correlations between intelligence modules" do

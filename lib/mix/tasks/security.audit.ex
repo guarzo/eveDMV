@@ -84,29 +84,17 @@ defmodule Mix.Tasks.Security.Audit do
   defp run_database_audit do
     Mix.shell().info("📊 Running Database Security Audit...")
 
-    case DatabaseSecurityReview.audit_database_security() do
-      {:ok, results} ->
-        Mix.shell().info("✅ Database audit completed")
-        results
-
-      {:error, reason} ->
-        Mix.shell().error("❌ Database audit failed: #{inspect(reason)}")
-        nil
-    end
+    {:ok, results} = DatabaseSecurityReview.audit_database_security()
+    Mix.shell().info("✅ Database audit completed")
+    results
   end
 
   defp run_container_audit do
     Mix.shell().info("🐳 Running Container Security Audit...")
 
-    case ContainerSecurityReview.audit_container_security() do
-      {:ok, results} ->
-        Mix.shell().info("✅ Container audit completed")
-        results
-
-      {:error, reason} ->
-        Mix.shell().error("❌ Container audit failed: #{inspect(reason)}")
-        nil
-    end
+    {:ok, results} = ContainerSecurityReview.audit_container_security()
+    Mix.shell().info("✅ Container audit completed")
+    results
   end
 
   defp output_text_report(audit_results, output_file) do

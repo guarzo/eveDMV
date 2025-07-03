@@ -6,6 +6,8 @@ defmodule EveDmv.Eve.EsiParsers do
   into normalized data structures used by the application.
   """
 
+  require Logger
+
   @doc """
   Parse character information response from ESI.
   """

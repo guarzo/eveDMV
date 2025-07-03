@@ -10,8 +10,6 @@ defmodule EveDmv.Intelligence.IntelligenceCache do
   use GenServer
 
   # Cache configuration
-  # 6 hours default TTL
-  @default_ttl :timer.hours(6)
   # Character analysis cached longer
   @character_analysis_ttl :timer.hours(12)
   # Vetting results cached longest

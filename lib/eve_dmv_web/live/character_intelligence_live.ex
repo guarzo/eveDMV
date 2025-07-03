@@ -11,8 +11,6 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
   require Logger
 
   alias EveDmv.Intelligence.{
-    CharacterAnalyzer,
-    IntelligenceCache,
     IntelligenceCoordinator,
     WHVettingAnalyzer
   }
@@ -304,7 +302,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
   end
 
   @impl true
-  def handle_info({:vetting_complete, vetting_record}, socket) do
+  def handle_info({:vetting_complete, _vetting_record}, socket) do
     # Vetting analysis completed
     socket =
       socket
@@ -340,18 +338,12 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
   defp fetch_character_details([]), do: {:ok, []}
 
   defp fetch_character_details(character_ids) do
-    case EsiClient.get_characters(character_ids) do
-      {:ok, character_details} ->
-        formatted_results = format_search_results(character_details)
-        {:ok, Enum.take(formatted_results, 5)}
-
-      {:error, reason} ->
-        Logger.warning("Failed to get character details: #{inspect(reason)}")
-        {:ok, []}
-    end
+    {:ok, character_details} = EsiClient.get_characters(character_ids)
+    formatted_results = format_search_results(character_details)
+    {:ok, Enum.take(formatted_results, 5)}
   end
 
-  defp format_search_results(character_details) do
+  defp format_search_results(character_details) when is_map(character_details) do
     Enum.map(character_details, fn {char_id, char_data} ->
       %{
         character_id: char_id,
@@ -366,112 +358,6 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
     case user do
       %{"character_id" => character_id} -> character_id
       _ -> nil
-    end
-  end
-
-  defp format_threat_level(comprehensive_analysis) do
-    if comprehensive_analysis.basic_analysis do
-      rating = comprehensive_analysis.basic_analysis.dangerous_rating || 0
-
-      cond do
-        rating >= 9 -> {"Critical", "text-red-600 bg-red-100"}
-        rating >= 7 -> {"High", "text-orange-600 bg-orange-100"}
-        rating >= 5 -> {"Medium", "text-yellow-600 bg-yellow-100"}
-        rating >= 3 -> {"Low", "text-blue-600 bg-blue-100"}
-        true -> {"Minimal", "text-green-600 bg-green-100"}
-      end
-    else
-      {"Unknown", "text-gray-600 bg-gray-100"}
-    end
-  end
-
-  defp format_confidence(confidence) when is_number(confidence) do
-    percentage = round(confidence * 100)
-
-    color =
-      cond do
-        percentage >= 90 -> "text-green-600"
-        percentage >= 70 -> "text-blue-600"
-        percentage >= 50 -> "text-yellow-600"
-        percentage >= 30 -> "text-orange-600"
-        true -> "text-red-600"
-      end
-
-    {percentage, color}
-  end
-
-  defp format_confidence(_), do: {0, "text-gray-600"}
-
-  defp format_vetting_status(specialized_analysis) do
-    if specialized_analysis.vetting do
-      case specialized_analysis.vetting.recommendation do
-        "approve" -> {"Approved", "bg-green-100 text-green-800"}
-        "conditional" -> {"Conditional", "bg-yellow-100 text-yellow-800"}
-        "reject" -> {"Rejected", "bg-red-100 text-red-800"}
-        "more_info" -> {"More Info Needed", "bg-blue-100 text-blue-800"}
-        _ -> {"Pending", "bg-gray-100 text-gray-800"}
-      end
-    else
-      {"Not Vetted", "bg-gray-100 text-gray-800"}
-    end
-  end
-
-  defp format_relative_time(datetime) when is_struct(datetime, DateTime) do
-    now = DateTime.utc_now()
-    diff_seconds = DateTime.diff(now, datetime, :second)
-
-    cond do
-      diff_seconds < 60 -> "#{diff_seconds}s ago"
-      diff_seconds < 3600 -> "#{div(diff_seconds, 60)}m ago"
-      diff_seconds < 86_400 -> "#{div(diff_seconds, 3600)}h ago"
-      true -> "#{div(diff_seconds, 86_400)}d ago"
-    end
-  end
-
-  defp format_relative_time(_), do: "Unknown"
-
-  defp get_correlation_strength_color(correlations) do
-    if correlations && correlations.confidence_score do
-      strength = correlations.confidence_score
-
-      cond do
-        strength >= 0.8 -> "text-green-600"
-        strength >= 0.6 -> "text-blue-600"
-        strength >= 0.4 -> "text-yellow-600"
-        strength >= 0.2 -> "text-orange-600"
-        true -> "text-red-600"
-      end
-    else
-      "text-gray-600"
-    end
-  end
-
-  defp get_analysis_completeness(comprehensive_analysis) do
-    if comprehensive_analysis.specialized_analysis do
-      available_modules =
-        Enum.count(
-          [
-            comprehensive_analysis.specialized_analysis.vetting,
-            comprehensive_analysis.specialized_analysis.activity,
-            comprehensive_analysis.specialized_analysis.fleet,
-            comprehensive_analysis.specialized_analysis.home_defense
-          ],
-          &(!is_nil(&1))
-        )
-
-      percentage = round(available_modules / 4.0 * 100)
-
-      color =
-        cond do
-          percentage >= 75 -> "text-green-600"
-          percentage >= 50 -> "text-blue-600"
-          percentage >= 25 -> "text-yellow-600"
-          true -> "text-red-600"
-        end
-
-      {percentage, color}
-    else
-      {0, "text-gray-600"}
     end
   end
 end

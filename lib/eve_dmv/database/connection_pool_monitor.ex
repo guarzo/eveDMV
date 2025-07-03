@@ -117,10 +117,10 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
     # Extract key metrics
     stats = %{
       pool_size: pool_size,
-      checked_out: Map.get(pool_stats, :checked_out, 0),
-      checked_in: Map.get(pool_stats, :checked_in, 0),
-      available: Map.get(pool_stats, :available, 0),
-      queue_length: Map.get(pool_stats, :queue_length, 0),
+      checked_out: get_pool_stat(pool_stats, :checked_out),
+      checked_in: get_pool_stat(pool_stats, :checked_in),
+      available: get_pool_stat(pool_stats, :available),
+      queue_length: get_pool_stat(pool_stats, :queue_length),
       max_connections: pool_size,
       queue_target: queue_target,
       queue_interval: queue_interval,
@@ -146,9 +146,8 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
   end
 
   defp calculate_utilization(pool_stats, pool_size) do
-    checked_out = Map.get(pool_stats, :checked_out, 0)
-
-    if pool_size > 0 do
+    if is_map(pool_stats) and pool_size > 0 do
+      checked_out = Map.get(pool_stats, :checked_out, 0)
       checked_out / pool_size
     else
       0.0
@@ -156,8 +155,11 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
   end
 
   defp pool_stressed?(stats) do
-    high_utilization = stats.utilization > @pool_size_warning_threshold
-    high_queue = stats.queue_length > @queue_length_warning_threshold
+    utilization = Map.get(stats, :utilization, 0.0)
+    queue_length = Map.get(stats, :queue_length, 0)
+
+    high_utilization = utilization > @pool_size_warning_threshold
+    high_queue = queue_length > @queue_length_warning_threshold
 
     high_utilization or high_queue
   end
@@ -332,6 +334,15 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
 
       true ->
         ["Pool is operating within normal parameters"]
+    end
+  end
+
+  # Helper function to safely extract pool statistics
+  defp get_pool_stat(pool_stats, key) do
+    if is_map(pool_stats) do
+      Map.get(pool_stats, key, 0)
+    else
+      0
     end
   end
 end

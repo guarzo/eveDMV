@@ -14,7 +14,19 @@ defmodule EveDmv.Security.DatabaseSecurityReview do
 
   Returns a detailed report of security findings and recommendations.
   """
-  @spec audit_database_security() :: {:ok, map()} | {:error, term()}
+  @spec audit_database_security() ::
+          {:ok,
+           %{
+             timestamp: DateTime.t(),
+             connection_security: map(),
+             access_controls: map(),
+             data_encryption: map(),
+             sql_injection_protection: map(),
+             logging_and_monitoring: map(),
+             backup_security: map(),
+             sensitive_data_handling: map(),
+             recommendations: [map(), ...]
+           }}
   def audit_database_security do
     Logger.info("Starting database security audit")
 
@@ -48,7 +60,17 @@ defmodule EveDmv.Security.DatabaseSecurityReview do
   @doc """
   Validate database connection security settings.
   """
-  @spec audit_connection_security() :: map()
+  @spec audit_connection_security() :: %{
+          certificate_validation: %{message: String.t(), status: :info},
+          connection_encryption: %{
+            message: String.t(),
+            status: :info | :secure | :warning
+          },
+          connection_timeout: %{message: String.t(), status: :secure | :warning},
+          idle_timeout: %{message: String.t(), status: :info},
+          max_connections: %{message: String.t(), status: :secure | :warning},
+          ssl_enabled: %{message: String.t(), status: :secure | :warning}
+        }
   def audit_connection_security do
     %{
       ssl_enabled: check_ssl_connection(),
@@ -63,7 +85,13 @@ defmodule EveDmv.Security.DatabaseSecurityReview do
   @doc """
   Audit database access controls and permissions.
   """
-  @spec audit_access_controls() :: map()
+  @spec audit_access_controls() :: %{
+          function_privileges: %{message: String.t(), status: :info},
+          role_based_access: %{message: String.t(), status: :info},
+          schema_permissions: %{message: String.t(), status: :info},
+          superuser_access: %{message: String.t(), status: :info},
+          user_privileges: %{message: String.t(), status: :info}
+        }
   def audit_access_controls do
     %{
       user_privileges: check_user_privileges(),
@@ -77,7 +105,16 @@ defmodule EveDmv.Security.DatabaseSecurityReview do
   @doc """
   Check data encryption settings.
   """
-  @spec audit_data_encryption() :: map()
+  @spec audit_data_encryption() :: %{
+          encryption_at_rest: %{message: String.t(), status: :info},
+          encryption_in_transit: %{message: String.t(), status: :info},
+          key_management: %{message: String.t(), status: :info},
+          sensitive_fields: %{
+            fields: [String.t(), ...],
+            message: String.t(),
+            status: :info
+          }
+        }
   def audit_data_encryption do
     %{
       encryption_at_rest: check_encryption_at_rest(),
@@ -90,7 +127,12 @@ defmodule EveDmv.Security.DatabaseSecurityReview do
   @doc """
   Audit backup security configuration.
   """
-  @spec audit_backup_security() :: map()
+  @spec audit_backup_security() :: %{
+          backup_access_controls: %{message: String.t(), status: :info},
+          backup_encryption: %{message: String.t(), status: :info},
+          backup_retention: %{message: String.t(), status: :info},
+          backup_testing: %{message: String.t(), status: :info}
+        }
   def audit_backup_security do
     %{
       backup_encryption: check_backup_encryption(),
@@ -103,7 +145,12 @@ defmodule EveDmv.Security.DatabaseSecurityReview do
   @doc """
   Check SQL injection protection measures.
   """
-  @spec audit_sql_injection_protection() :: map()
+  @spec audit_sql_injection_protection() :: %{
+          input_validation: %{message: String.t(), status: :info},
+          orm_usage: %{message: String.t(), status: :secure},
+          parameterized_queries: %{message: String.t(), status: :secure},
+          query_sanitization: %{message: String.t(), status: :secure}
+        }
   def audit_sql_injection_protection do
     %{
       parameterized_queries: check_parameterized_queries(),
@@ -116,7 +163,16 @@ defmodule EveDmv.Security.DatabaseSecurityReview do
   @doc """
   Audit sensitive data handling practices.
   """
-  @spec audit_sensitive_data_handling() :: map()
+  @spec audit_sensitive_data_handling() :: %{
+          data_classification: %{message: String.t(), status: :info},
+          data_masking: %{message: String.t(), status: :info},
+          data_retention: %{message: String.t(), status: :info},
+          pii_protection: %{
+            fields: [String.t(), ...],
+            message: String.t(),
+            status: :warning
+          }
+        }
   def audit_sensitive_data_handling do
     %{
       data_classification: check_data_classification(),
@@ -129,7 +185,13 @@ defmodule EveDmv.Security.DatabaseSecurityReview do
   @doc """
   Check database logging and monitoring configuration.
   """
-  @spec audit_database_logging() :: map()
+  @spec audit_database_logging() :: %{
+          connection_logging: %{message: String.t(), status: :info},
+          error_logging: %{message: String.t(), status: :secure},
+          log_retention: %{message: String.t(), status: :info},
+          query_logging: %{message: String.t(), status: :info},
+          security_event_logging: %{message: String.t(), status: :info}
+        }
   def audit_database_logging do
     %{
       query_logging: check_query_logging(),

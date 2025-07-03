@@ -231,8 +231,14 @@ defmodule EveDmv.Killmails.KillmailRaw do
 
   # Calculations for derived values
   calculations do
-    calculate :age_in_hours, :integer, expr(datetime_diff(now(), killmail_time, :hour)) do
+    calculate :age_in_hours, :integer do
       description("Age of the killmail in hours")
+
+      calculation(fn records, _context ->
+        Enum.map(records, fn record ->
+          DateTime.diff(DateTime.utc_now(), record.killmail_time, :hour)
+        end)
+      end)
     end
 
     calculate(:is_recent, :boolean,

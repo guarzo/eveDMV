@@ -7,10 +7,11 @@ defmodule EveDmvWeb.Api.ApiKeysController do
   """
 
   use EveDmvWeb, :controller
+  require Logger
 
   alias EveDmv.Security.{ApiAuthentication, AuditLogger}
 
-  action_fallback EveDmvWeb.FallbackController
+  # action_fallback EveDmvWeb.FallbackController
 
   @doc """
   List API keys for the current user.
@@ -44,7 +45,7 @@ defmodule EveDmvWeb.Api.ApiKeysController do
       created_by_character_id: character_id
     }
 
-    case ApiAuthentication.create(api_key_params, domain: EveDmv.Api) do
+    case Ash.create(ApiAuthentication, api_key_params, domain: EveDmv.Api) do
       {:ok, api_key} ->
         # Get the generated key from the context
         generated_key = get_generated_key_from_context(api_key)
@@ -139,11 +140,16 @@ defmodule EveDmvWeb.Api.ApiKeysController do
   defp parse_expiration(_), do: nil
 
   defp get_generated_key_from_context(api_key) do
-    # This would retrieve the generated key from the Ash context
-    # For demonstration purposes, we'll return a placeholder
+    # Retrieve the generated key from the Ash context
+    # If not available, this indicates a system error
     case Map.get(api_key.__context__ || %{}, :generated_key) do
-      nil -> "edv_demo123_" <> Base.encode64(:crypto.strong_rand_bytes(32), padding: false)
-      key -> key
+      nil ->
+        Logger.error("Generated API key not found in Ash context for API key #{api_key.id}")
+        # Generate a new key as fallback, but this should be investigated
+        Base.encode64(:crypto.strong_rand_bytes(32), padding: false)
+
+      key ->
+        key
     end
   end
 

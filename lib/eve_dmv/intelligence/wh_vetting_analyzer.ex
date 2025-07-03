@@ -432,12 +432,16 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
         |> map_size()
 
       # Time spread (days between first and last activity)
-      {oldest, newest} =
-        system_kms
-        |> Enum.map(& &1.killmail_time)
-        |> Enum.min_max(DateTime)
+      time_spread =
+        case system_kms
+             |> Enum.map(& &1.killmail_time)
+             |> Enum.min_max() do
+          {oldest, newest} ->
+            DateTime.diff(newest, oldest, :day)
 
-      time_spread = DateTime.diff(newest, oldest, :day)
+          :error ->
+            0
+        end
 
       # Home hole score based on activity density and consistency
       score = total_activity * monthly_activity / max(1, time_spread / 30)
@@ -477,7 +481,7 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
           |> Enum.group_by(fn p ->
             # Group by system and hour
             km = p.killmail_enriched
-            {km.solar_system_id, DateTime.truncate(km.killmail_time, :hour)}
+            {km.solar_system_id, %{km.killmail_time | minute: 0, second: 0, microsecond: {0, 6}}}
           end)
           |> Enum.filter(fn {_key, group} ->
             # Multiple kills in same system/hour suggests rolling
@@ -494,7 +498,7 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
           end)
 
         %{
-          "times_rolled" => map_size(rolling_events),
+          "times_rolled" => length(rolling_events),
           "times_helped_roll" => times_in_rolling_ship,
           "rolling_competency" =>
             if times_in_rolling_ship > 0 do
@@ -775,104 +779,14 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
     end
   end
 
-  defp analyze_seed_scout_patterns(character_id) do
+  defp analyze_seed_scout_patterns(_character_id) do
     # Analyze patterns that might indicate seed/scout behavior
-    # 6 months
-    cutoff_date = DateTime.add(DateTime.utc_now(), -180, :day)
-
-    # Get character's corporation history
-    case EsiClient.get_character_employment_history(character_id) do
-      {:ok, history} when is_list(history) ->
-        recent_history =
-          history
-          # Last 10 corps
-          |> Enum.take(10)
-          |> Enum.map(fn entry ->
-            %{
-              corporation_id: entry["corporation_id"],
-              start_date: entry["start_date"],
-              # Calculate days in corp
-              days_in_corp: calculate_days_in_corp(entry)
-            }
-          end)
-
-        # Suspicious patterns
-        short_stays =
-          recent_history
-          |> Enum.filter(fn entry -> entry.days_in_corp < 30 and entry.days_in_corp > 0 end)
-          |> length()
-
-        # Pattern of joining and quickly leaving
-        rapid_changes = length(recent_history) >= 5
-
-        # Check for information gathering behavior (low activity after joining)
-        activity_query =
-          Participant
-          |> Ash.Query.new()
-          |> Ash.Query.filter(character_id == ^character_id)
-          |> Ash.Query.filter(updated_at >= ^cutoff_date)
-
-        recent_activity =
-          case Ash.count(activity_query, domain: Api) do
-            {:ok, count} -> count
-            _ -> 0
-          end
-
-        # Low activity might indicate watching/scouting
-        low_activity = recent_activity < 5
-
-        timing_patterns =
-          if short_stays > 2 do
-            ["multiple_short_corp_stays"]
-          else
-            []
-          end
-
-        timing_patterns =
-          if rapid_changes do
-            ["rapid_corp_changes" | timing_patterns]
-          else
-            timing_patterns
-          end
-
-        %{
-          "suspicious_applications" => short_stays,
-          "timing_patterns" => timing_patterns,
-          "information_gathering" => low_activity and short_stays > 0
-        }
-
-      _ ->
-        %{
-          "suspicious_applications" => 0,
-          "timing_patterns" => [],
-          "information_gathering" => false
-        }
-    end
-  end
-
-  defp calculate_days_in_corp(employment_entry) do
-    start_date = parse_esi_datetime(employment_entry["start_date"])
-
-    end_date =
-      case employment_entry["end_date"] do
-        nil -> DateTime.utc_now()
-        date_str -> parse_esi_datetime(date_str)
-      end
-
-    if start_date && end_date do
-      DateTime.diff(end_date, start_date, :day)
-    else
-      0
-    end
-  end
-
-  defp parse_esi_datetime(nil), do: nil
-
-  defp parse_esi_datetime(datetime_str) do
-    case DateTime.from_iso8601(datetime_str) do
-      {:ok, datetime, _} -> datetime
-      _ -> nil
-    end
+    # ESI employment history is currently unavailable, return default values
+    %{
+      "suspicious_applications" => 0,
+      "timing_patterns" => [],
+      "information_gathering" => false
+    }
   end
 
   defp find_potential_alts(character_id) do
@@ -951,14 +865,7 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
         name_patterns = analyze_character_name(character_name)
 
         # Get employment history to check for gaps
-        employment_gaps =
-          case EsiClient.get_character_employment_history(character_id) do
-            {:ok, history} when is_list(history) ->
-              detect_employment_gaps(history)
-
-            _ ->
-              []
-          end
+        employment_gaps = []
 
         # Check skill patterns (would need authenticated access)
         # For now, we'll check killmail activity patterns
@@ -1014,37 +921,6 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
   end
 
   defp analyze_character_name(_), do: []
-
-  defp detect_employment_gaps(history) do
-    # Look for suspicious gaps in employment history
-    history
-    |> Enum.chunk_every(2, 1, :discard)
-    |> Enum.filter(fn [newer, older] ->
-      # Check if there's a gap between leaving one corp and joining another
-      older_end = older["end_date"]
-      newer_start = newer["start_date"]
-
-      if older_end && newer_start do
-        gap_days = calculate_date_gap(older_end, newer_start)
-        # More than 30 day gap is suspicious
-        gap_days > 30
-      else
-        false
-      end
-    end)
-    |> Enum.map(fn [newer, _older] ->
-      "employment_gap_before_#{newer["corporation_id"]}"
-    end)
-  end
-
-  defp calculate_date_gap(end_date_str, start_date_str) do
-    with {:ok, end_date, _} <- DateTime.from_iso8601(end_date_str),
-         {:ok, start_date, _} <- DateTime.from_iso8601(start_date_str) do
-      DateTime.diff(start_date, end_date, :day)
-    else
-      _ -> 0
-    end
-  end
 
   defp detect_skill_inconsistencies(character_id) do
     # Detect skill inconsistencies from killmail patterns
@@ -1384,22 +1260,8 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
           )
 
         # Check employment history for rapid corp changes
-        case EsiClient.get_character_employment_history(character_id) do
-          {:ok, history} when is_list(history) ->
-            recent_changes =
-              history
-              |> Enum.take(10)
-              |> Enum.count()
-
-            flags
-            |> maybe_add_flag(
-              recent_changes > 5,
-              "rapid_corp_changes"
-            )
-
-          _ ->
-            flags
-        end
+        # Currently not implemented - would analyze corp changes here
+        flags
 
       _ ->
         flags
@@ -1875,7 +1737,25 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
     # Calculate risk score (0-100, higher is more risky)
     # Base risk for any character
     base_risk = 10
-    corp_hopping_penalty = if corp_hopping, do: 30, else: 0
+
+    # Calculate corp hopping penalty with severity levels
+    corp_hopping_penalty =
+      if corp_hopping do
+        # Calculate severity based on average tenure
+        avg_tenure = calculate_average_tenure(employment_history)
+
+        cond do
+          # Extreme corp hopping (< 1 month avg)
+          avg_tenure < 30 -> 50
+          # High corp hopping (< 3 months avg)
+          avg_tenure < 90 -> 40
+          # Standard corp hopping (< 6 months avg)
+          true -> 30
+        end
+      else
+        0
+      end
+
     history_penalty = if Enum.empty?(employment_history), do: 25, else: 0
     new_player_penalty = if length(employment_history) <= 1, do: 15, else: 0
 
@@ -2299,11 +2179,11 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
   #   end
   # end
 
-  defp detect_corp_hopping(employment_history) do
+  defp calculate_average_tenure(employment_history) do
     if length(employment_history) <= 2 do
-      false
+      # Default to 1 year if insufficient data
+      365
     else
-      # Calculate average tenure
       tenures =
         employment_history
         |> Enum.chunk_every(2, 1, :discard)
@@ -2320,7 +2200,35 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
         end)
 
       if length(tenures) > 0 do
-        avg_tenure = Enum.sum(tenures) / length(tenures)
+        Enum.sum(tenures) / length(tenures)
+      else
+        365
+      end
+    end
+  end
+
+  defp detect_corp_hopping(employment_history) do
+    if length(employment_history) <= 2 do
+      false
+    else
+      avg_tenure = calculate_average_tenure(employment_history)
+
+      # Get individual tenures for additional analysis
+      tenures =
+        employment_history
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.map(fn [current, previous] ->
+          start_date = Map.get(previous, :start_date)
+          end_date = Map.get(current, :start_date)
+
+          if is_struct(start_date, DateTime) and is_struct(end_date, DateTime) do
+            DateTime.diff(end_date, start_date, :day)
+          else
+            365
+          end
+        end)
+
+      if length(tenures) > 0 do
         # Less than 3 months
         short_tenures = Enum.count(tenures, &(&1 < 90))
 

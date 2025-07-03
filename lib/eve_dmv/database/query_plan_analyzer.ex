@@ -121,7 +121,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer do
         Logger.info("pg_stat_statements extension is available")
         :ok
 
-      {:ok, %{rows: [[false]]}} ->
+      {:ok, %{rows: [[_]]}} ->
         Logger.warning(
           "pg_stat_statements extension not available - limited analysis capabilities"
         )
@@ -697,8 +697,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer do
         health_score >= 80 -> "Excellent"
         health_score >= 60 -> "Good"
         health_score >= 40 -> "Fair"
-        health_score >= 20 -> "Poor"
-        true -> "Critical"
+        true -> "Poor"
       end
 
     %{

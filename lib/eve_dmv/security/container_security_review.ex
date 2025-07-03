@@ -14,7 +14,81 @@ defmodule EveDmv.Security.ContainerSecurityReview do
 
   Returns a detailed report of container security findings and recommendations.
   """
-  @spec audit_container_security() :: {:ok, map()} | {:error, term()}
+  @spec audit_container_security() ::
+          {:ok,
+           %{
+             timestamp: DateTime.t(),
+             dockerfile_security: %{
+               base_image_security: %{message: String.t(), status: :info | :secure | :warning},
+               dockerfile_exists: %{
+                 message: String.t(),
+                 path: String.t(),
+                 status: :info | :secure
+               },
+               exposed_ports: %{message: String.t(), status: :info | :warning, ports: list(any())},
+               health_checks: %{message: String.t(), status: :info | :secure | :warning},
+               layer_optimization: %{
+                 message: String.t(),
+                 status: :info | :secure | :warning,
+                 run_commands: non_neg_integer()
+               },
+               secret_handling: %{message: String.t(), status: :info | :secure | :warning},
+               user_privileges: %{message: String.t(), status: :info | :secure | :warning}
+             },
+             image_security: %{
+               image_provenance: %{message: String.t(), status: :info},
+               image_signing: %{
+                 message: String.t(),
+                 status: :info,
+                 technologies: list(String.t())
+               },
+               minimal_images: %{message: String.t(), status: :info},
+               registry_security: %{
+                 considerations: list(String.t()),
+                 message: String.t(),
+                 status: :info
+               },
+               vulnerability_scanning: %{
+                 message: String.t(),
+                 status: :info,
+                 tools: list(String.t())
+               }
+             },
+             monitoring_logging: %{
+               alerting: %{message: String.t(), status: :info},
+               log_aggregation: %{message: String.t(), status: :info},
+               metrics_collection: %{message: String.t(), status: :info},
+               security_monitoring: %{message: String.t(), status: :info}
+             },
+             network_security: %{
+               ingress_security: %{message: String.t(), status: :info},
+               network_policies: %{message: String.t(), status: :info},
+               network_segmentation: %{message: String.t(), status: :info},
+               service_mesh: %{message: String.t(), status: :info},
+               tls_encryption: %{message: String.t(), status: :info}
+             },
+             recommendations: list(map()),
+             resource_limits: %{
+               cpu_limits: %{message: String.t(), status: :info},
+               disk_quotas: %{message: String.t(), status: :info},
+               memory_limits: %{message: String.t(), status: :info},
+               process_limits: %{message: String.t(), status: :info}
+             },
+             runtime_security: %{
+               apparmor_selinux: %{message: String.t(), status: :info},
+               capabilities: %{message: String.t(), status: :info},
+               privilege_escalation: %{message: String.t(), status: :info},
+               read_only_filesystem: %{message: String.t(), status: :info},
+               seccomp_profiles: %{message: String.t(), status: :info},
+               security_contexts: %{message: String.t(), status: :info}
+             },
+             secrets_management: %{
+               environment_variables: %{message: String.t(), status: :warning},
+               secrets_access: %{message: String.t(), status: :info},
+               secrets_rotation: %{message: String.t(), status: :info},
+               secrets_storage: %{message: String.t(), status: :info}
+             }
+           }}
   def audit_container_security do
     Logger.info("Starting container security audit")
 
@@ -48,7 +122,39 @@ defmodule EveDmv.Security.ContainerSecurityReview do
   @doc """
   Audit Dockerfile security best practices.
   """
-  @spec audit_dockerfile_security() :: map()
+  @spec audit_dockerfile_security() :: %{
+          base_image_security: %{
+            message: String.t(),
+            status: :info | :secure | :warning
+          },
+          dockerfile_exists: %{
+            message: String.t(),
+            path: String.t(),
+            status: :info | :secure
+          },
+          exposed_ports: %{
+            message: String.t(),
+            status: :info | :warning,
+            ports: list(any())
+          },
+          health_checks: %{
+            message: String.t(),
+            status: :info | :secure | :warning
+          },
+          layer_optimization: %{
+            message: String.t(),
+            status: :info | :secure | :warning,
+            run_commands: non_neg_integer()
+          },
+          secret_handling: %{
+            message: String.t(),
+            status: :info | :secure | :warning
+          },
+          user_privileges: %{
+            message: String.t(),
+            status: :info | :secure | :warning
+          }
+        }
   def audit_dockerfile_security do
     dockerfile_path = "Dockerfile"
 
@@ -66,7 +172,25 @@ defmodule EveDmv.Security.ContainerSecurityReview do
   @doc """
   Audit container image security.
   """
-  @spec audit_image_security() :: map()
+  @spec audit_image_security() :: %{
+          image_provenance: %{message: String.t(), status: :info},
+          image_signing: %{
+            message: String.t(),
+            status: :info,
+            technologies: list(String.t())
+          },
+          minimal_images: %{message: String.t(), status: :info},
+          registry_security: %{
+            considerations: list(String.t()),
+            message: String.t(),
+            status: :info
+          },
+          vulnerability_scanning: %{
+            message: String.t(),
+            status: :info,
+            tools: list(String.t())
+          }
+        }
   def audit_image_security do
     %{
       vulnerability_scanning: check_vulnerability_scanning(),
@@ -80,7 +204,14 @@ defmodule EveDmv.Security.ContainerSecurityReview do
   @doc """
   Audit container runtime security.
   """
-  @spec audit_runtime_security() :: map()
+  @spec audit_runtime_security() :: %{
+          apparmor_selinux: %{message: String.t(), status: :info},
+          capabilities: %{message: String.t(), status: :info},
+          privilege_escalation: %{message: String.t(), status: :info},
+          read_only_filesystem: %{message: String.t(), status: :info},
+          seccomp_profiles: %{message: String.t(), status: :info},
+          security_contexts: %{message: String.t(), status: :info}
+        }
   def audit_runtime_security do
     %{
       privilege_escalation: check_privilege_escalation(),
@@ -95,7 +226,13 @@ defmodule EveDmv.Security.ContainerSecurityReview do
   @doc """
   Audit container network security.
   """
-  @spec audit_network_security() :: map()
+  @spec audit_network_security() :: %{
+          ingress_security: %{message: String.t(), status: :info},
+          network_policies: %{message: String.t(), status: :info},
+          network_segmentation: %{message: String.t(), status: :info},
+          service_mesh: %{message: String.t(), status: :info},
+          tls_encryption: %{message: String.t(), status: :info}
+        }
   def audit_network_security do
     %{
       network_policies: check_network_policies(),
@@ -109,7 +246,12 @@ defmodule EveDmv.Security.ContainerSecurityReview do
   @doc """
   Audit secrets management in containers.
   """
-  @spec audit_secrets_management() :: map()
+  @spec audit_secrets_management() :: %{
+          environment_variables: %{message: String.t(), status: :warning},
+          secrets_access: %{message: String.t(), status: :info},
+          secrets_rotation: %{message: String.t(), status: :info},
+          secrets_storage: %{message: String.t(), status: :info}
+        }
   def audit_secrets_management do
     %{
       environment_variables: check_environment_secrets(),
@@ -122,7 +264,12 @@ defmodule EveDmv.Security.ContainerSecurityReview do
   @doc """
   Audit container resource limits and quotas.
   """
-  @spec audit_resource_limits() :: map()
+  @spec audit_resource_limits() :: %{
+          cpu_limits: %{message: String.t(), status: :info},
+          disk_quotas: %{message: String.t(), status: :info},
+          memory_limits: %{message: String.t(), status: :info},
+          process_limits: %{message: String.t(), status: :info}
+        }
   def audit_resource_limits do
     %{
       memory_limits: check_memory_limits(),
@@ -135,7 +282,12 @@ defmodule EveDmv.Security.ContainerSecurityReview do
   @doc """
   Audit container monitoring and logging.
   """
-  @spec audit_container_monitoring() :: map()
+  @spec audit_container_monitoring() :: %{
+          alerting: %{message: String.t(), status: :info},
+          log_aggregation: %{message: String.t(), status: :info},
+          metrics_collection: %{message: String.t(), status: :info},
+          security_monitoring: %{message: String.t(), status: :info}
+        }
   def audit_container_monitoring do
     %{
       log_aggregation: check_log_aggregation(),

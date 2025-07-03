@@ -17,7 +17,7 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
       behavioral_patterns: analyze_behavioral_patterns(character_id, killmail_data),
       weaknesses: identify_weaknesses(character_id, killmail_data),
       temporal_patterns: analyze_temporal_patterns(killmail_data),
-      danger_rating: calculate_danger_rating(killmail_data),
+      danger_rating: calculate_danger_rating(killmail_data, character_id),
       frequent_associates: identify_frequent_associates(character_id, killmail_data),
       success_rate:
         calculate_success_rate(
@@ -219,13 +219,13 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
     }
   end
 
-  def calculate_danger_rating(killmail_data) do
+  def calculate_danger_rating(killmail_data, character_id \\ nil) do
     metrics = %{
-      kill_count: count_kills(killmail_data),
-      solo_kills: count_solo_kills(killmail_data),
-      capital_kills: count_capital_kills(killmail_data),
+      kill_count: count_kills(killmail_data, character_id),
+      solo_kills: count_solo_kills(killmail_data, character_id),
+      capital_kills: count_capital_kills(killmail_data, character_id),
       recent_activity: calculate_recent_activity(killmail_data),
-      kill_efficiency: calculate_kill_efficiency(killmail_data)
+      kill_efficiency: calculate_kill_efficiency(killmail_data, character_id)
     }
 
     base_score = calculate_base_danger_score(metrics)
@@ -502,7 +502,7 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
     locations
     |> Enum.sort_by(fn {_, count} -> count end, :desc)
     |> Enum.take(limit)
-    |> Enum.map(fn {location, count} -> %{location: location, count: count} end)
+    |> Enum.map(fn {location, count} -> %{system_id: location, activity_count: count} end)
   end
 
   defp calculate_activity_spread(systems) do
@@ -516,24 +516,52 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
     end
   end
 
-  defp calculate_wormhole_activity(_systems) do
-    # Would check against actual wormhole system IDs
-    0.0
+  defp calculate_wormhole_activity(systems) do
+    total_activity = Enum.sum(Map.values(systems))
+
+    wh_activity =
+      systems
+      |> Enum.filter(fn {system_id, _} -> system_id >= 31_000_000 end)
+      |> Enum.map(fn {_, count} -> count end)
+      |> Enum.sum()
+
+    if total_activity > 0, do: wh_activity / total_activity * 100, else: 0.0
   end
 
-  defp calculate_nullsec_activity(_systems) do
-    # Would check against actual nullsec system IDs
-    0.0
+  defp calculate_nullsec_activity(systems) do
+    total_activity = Enum.sum(Map.values(systems))
+
+    nullsec_activity =
+      systems
+      |> Enum.filter(fn {system_id, _} -> system_id == 30_000_001 end)
+      |> Enum.map(fn {_, count} -> count end)
+      |> Enum.sum()
+
+    if total_activity > 0, do: nullsec_activity / total_activity * 100, else: 0.0
   end
 
-  defp calculate_lowsec_activity(_systems) do
-    # Would check against actual lowsec system IDs
-    0.0
+  defp calculate_lowsec_activity(systems) do
+    total_activity = Enum.sum(Map.values(systems))
+
+    lowsec_activity =
+      systems
+      |> Enum.filter(fn {system_id, _} -> system_id == 30_002_812 end)
+      |> Enum.map(fn {_, count} -> count end)
+      |> Enum.sum()
+
+    if total_activity > 0, do: lowsec_activity / total_activity * 100, else: 0.0
   end
 
-  defp calculate_highsec_activity(_systems) do
-    # Would check against actual highsec system IDs
-    0.0
+  defp calculate_highsec_activity(systems) do
+    total_activity = Enum.sum(Map.values(systems))
+
+    highsec_activity =
+      systems
+      |> Enum.filter(fn {system_id, _} -> system_id == 30_000_142 or system_id == 30_002_187 end)
+      |> Enum.map(fn {_, count} -> count end)
+      |> Enum.sum()
+
+    if total_activity > 0, do: highsec_activity / total_activity * 100, else: 0.0
   end
 
   defp analyze_target_ship_preferences(targets) do
@@ -569,6 +597,7 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
     avg_loss_value = average_kill_value(losses)
 
     cond do
+      Enum.empty?(losses) and not Enum.empty?(kills) -> "High Risk Aversion"
       avg_loss_value == 0 -> "Unknown"
       avg_kill_value / avg_loss_value > 2 -> "High Risk Aversion"
       avg_kill_value / avg_loss_value > 1 -> "Moderate Risk Aversion"
@@ -632,12 +661,12 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
     end
   end
 
-  defp estimate_preferred_range(kills) do
+  defp estimate_preferred_range(_kills) do
     # Would analyze weapon types used in kills
     "Unknown"
   end
 
-  defp calculate_bait_susceptibility(losses) do
+  defp calculate_bait_susceptibility(_losses) do
     # Would analyze loss scenarios
     "Unknown"
   end
@@ -838,20 +867,36 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
   defp day_name(7), do: "Sunday"
   defp day_name(_), do: "Unknown"
 
-  defp count_kills(killmail_data) do
-    Enum.count(killmail_data, &kill?/1)
+  defp count_kills(killmail_data, character_id) do
+    if character_id do
+      Enum.count(killmail_data, &victim_is_not_character?(&1, character_id))
+    else
+      Enum.count(killmail_data, &kill?/1)
+    end
   end
 
-  defp count_solo_kills(killmail_data) do
-    killmail_data
-    |> Enum.filter(&kill?/1)
-    |> Enum.count(&solo_kill?/1)
+  defp count_solo_kills(killmail_data, character_id) do
+    if character_id do
+      killmail_data
+      |> Enum.filter(&victim_is_not_character?(&1, character_id))
+      |> Enum.count(&solo_kill?/1)
+    else
+      killmail_data
+      |> Enum.filter(&kill?/1)
+      |> Enum.count(&solo_kill?/1)
+    end
   end
 
-  defp count_capital_kills(killmail_data) do
-    killmail_data
-    |> Enum.filter(&kill?/1)
-    |> Enum.count(&capital_kill?/1)
+  defp count_capital_kills(killmail_data, character_id) do
+    if character_id do
+      killmail_data
+      |> Enum.filter(&victim_is_not_character?(&1, character_id))
+      |> Enum.count(&capital_kill?/1)
+    else
+      killmail_data
+      |> Enum.filter(&kill?/1)
+      |> Enum.count(&capital_kill?/1)
+    end
   end
 
   defp calculate_recent_activity(killmail_data) do
@@ -864,18 +909,28 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
     recent / max(length(killmail_data), 1) * 100
   end
 
-  defp calculate_kill_efficiency(killmail_data) do
-    kills = Enum.filter(killmail_data, &kill?/1)
-    losses = Enum.reject(killmail_data, &kill?/1)
+  defp calculate_kill_efficiency(killmail_data, character_id) do
+    if character_id do
+      kills = Enum.count(killmail_data, &victim_is_not_character?(&1, character_id))
+      losses = Enum.count(killmail_data, &victim_is_character?(&1, character_id))
 
-    calculate_efficiency(kills, losses)
+      if kills + losses > 0 do
+        kills / (kills + losses) * 100
+      else
+        0.0
+      end
+    else
+      kills = Enum.filter(killmail_data, &kill?/1)
+      losses = Enum.reject(killmail_data, &kill?/1)
+      calculate_efficiency(kills, losses)
+    end
   end
 
   defp calculate_base_danger_score(metrics) do
-    kill_score = metrics.kill_count * 1.0
-    solo_score = metrics.solo_kills * 2.0
-    capital_score = metrics.capital_kills * 5.0
-    efficiency_score = metrics.kill_efficiency / 10
+    kill_score = metrics.kill_count * 0.2
+    solo_score = metrics.solo_kills * 0.4
+    capital_score = metrics.capital_kills * 1.0
+    efficiency_score = metrics.kill_efficiency / 50
 
     kill_score + solo_score + capital_score + efficiency_score
   end
@@ -897,7 +952,7 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
     end
   end
 
-  defp kill?(killmail) do
+  defp kill?(_killmail) do
     # Check if this killmail represents a kill (not a loss) for the perspective character
     # This is simplified - would need character context
     true
@@ -1042,7 +1097,7 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
     end
   end
 
-  defp analyze_target_risk_profile(targets) do
+  defp analyze_target_risk_profile(_targets) do
     # Analyze whether pilot picks easy or hard targets
     "Balanced"
   end

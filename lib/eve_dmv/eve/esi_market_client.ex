@@ -100,8 +100,6 @@ defmodule EveDmv.Eve.EsiMarketClient do
     }
   end
 
-  defp calculate_best_prices(_), do: nil
-
   defp get_highest_price([]), do: nil
 
   defp get_highest_price(orders) do

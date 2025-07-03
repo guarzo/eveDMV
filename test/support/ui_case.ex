@@ -18,7 +18,7 @@ defmodule EveDmv.UICase do
 
   # Default test timeouts
   @default_timeout 5_000
-  @long_timeout 15_000
+  # @long_timeout 15_000
 
   using do
     quote do
@@ -86,8 +86,8 @@ defmodule EveDmv.UICase do
 
     conn
     |> Phoenix.ConnTest.init_test_session(%{})
-    |> Phoenix.ConnTest.put_session(:user_token, token.access_token)
-    |> Phoenix.ConnTest.put_session(:current_user, user)
+    |> Plug.Conn.put_session(:user_token, token.access_token)
+    |> Plug.Conn.put_session(:current_user, user)
   end
 
   @doc """
@@ -103,7 +103,7 @@ defmodule EveDmv.UICase do
   @doc """
   Navigates to a LiveView and waits for it to load.
   """
-  def navigate_to_liveview(conn, path, timeout \\ @default_timeout) do
+  def navigate_to_liveview(conn, path, _timeout \\ @default_timeout) do
     {:ok, view, html} = live(conn, path)
 
     # Wait for initial render
@@ -432,7 +432,7 @@ defmodule EveDmv.UICase do
   @doc """
   Performance testing helper for LiveView rendering.
   """
-  def measure_render_performance(view, action_fn, iterations \\ 10) do
+  def measure_render_performance(_view, action_fn, iterations \\ 10) do
     times =
       for _i <- 1..iterations do
         {time, _result} = :timer.tc(action_fn)

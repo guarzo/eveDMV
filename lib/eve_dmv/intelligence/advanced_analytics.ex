@@ -7,7 +7,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   """
 
   require Logger
-  alias EveDmv.Intelligence.{CharacterStats, CorrelationEngine, WHVetting}
+  alias EveDmv.Intelligence.{CharacterStats, WHVetting}
 
   @doc """
   Perform advanced behavioral pattern analysis on a character.
@@ -324,23 +324,26 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   end
 
   defp generate_pattern_recommendations(patterns) do
-    recommendations = []
+    []
+    |> maybe_add_recommendation(
+      patterns.activity_rhythm.consistency_score < 0.5,
+      "Monitor for irregular activity patterns"
+    )
+    |> maybe_add_recommendation(
+      patterns.anomaly_detection.anomaly_count > 2,
+      "Investigate behavioral anomalies further"
+    )
+    |> maybe_add_recommendation(
+      patterns.social_patterns.cooperation_index < 0.3,
+      "Consider teamwork assessment"
+    )
+  end
 
-    # Activity pattern recommendations
-    if patterns.activity_rhythm.consistency_score < 0.5 do
-      recommendations = ["Monitor for irregular activity patterns" | recommendations]
-    end
+  defp maybe_add_recommendation(recommendations, true, recommendation) do
+    [recommendation | recommendations]
+  end
 
-    # Anomaly recommendations
-    if patterns.anomaly_detection.anomaly_count > 2 do
-      recommendations = ["Investigate behavioral anomalies further" | recommendations]
-    end
-
-    # Social pattern recommendations
-    if patterns.social_patterns.cooperation_index < 0.3 do
-      recommendations = ["Consider teamwork assessment" | recommendations]
-    end
-
+  defp maybe_add_recommendation(recommendations, false, _recommendation) do
     recommendations
   end
 
@@ -472,9 +475,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   end
 
   defp suggest_mitigation_strategies(threat_level, threat_indicators) do
-    strategies = []
-
-    strategies =
+    base_strategies =
       case threat_level do
         "critical" -> ["Reject application", "Monitor all activities", "Alert security team"]
         "high" -> ["Restricted access", "Enhanced monitoring", "Regular reviews"]
@@ -484,14 +485,22 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
       end
 
     # Add specific strategies based on indicators
-    if threat_indicators.combat_effectiveness > 0.7 do
-      strategies = ["Combat threat protocols" | strategies]
-    end
+    base_strategies
+    |> maybe_add_strategy(
+      threat_indicators.combat_effectiveness > 0.7,
+      "Combat threat protocols"
+    )
+    |> maybe_add_strategy(
+      threat_indicators.intelligence_gathering > 0.6,
+      "Counter-intelligence measures"
+    )
+  end
 
-    if threat_indicators.intelligence_gathering > 0.6 do
-      strategies = ["Counter-intelligence measures" | strategies]
-    end
+  defp maybe_add_strategy(strategies, true, strategy) do
+    [strategy | strategies]
+  end
 
+  defp maybe_add_strategy(strategies, false, _strategy) do
     strategies
   end
 
@@ -587,16 +596,16 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   end
 
   defp identify_leadership_indicators(stats) do
-    indicators = []
+    []
+    |> maybe_add_indicator((stats.total_kills || 0) > 100, "high_activity")
+    |> maybe_add_indicator((stats.avg_gang_size || 1.0) > 5.0, "large_gang_leader")
+  end
 
-    if (stats.total_kills || 0) > 100 do
-      indicators = ["high_activity" | indicators]
-    end
+  defp maybe_add_indicator(indicators, true, indicator) do
+    [indicator | indicators]
+  end
 
-    if (stats.avg_gang_size || 1.0) > 5.0 do
-      indicators = ["large_gang_leader" | indicators]
-    end
-
+  defp maybe_add_indicator(indicators, false, _indicator) do
     indicators
   end
 

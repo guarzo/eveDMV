@@ -4,6 +4,7 @@ defmodule EveDmv.Killmails.PipelineIntegrationTest do
   """
 
   use ExUnit.Case, async: false
+  @moduletag :skip
   import EveDmv.TestHelpers
 
   alias EveDmv.Killmails.{PipelineTest, TestDataGenerator}

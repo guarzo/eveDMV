@@ -464,7 +464,7 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
 
       {:error, reason} ->
         Logger.error("Failed to fetch character killmails: #{inspect(reason)}")
-        {:ok, []}
+        {:error, reason}
     end
   end
 
@@ -505,7 +505,7 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
             km.is_victim == false
         end)
 
-      _ ->
+      {:error, _} ->
         0
     end
   end
@@ -516,14 +516,16 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
       {:ok, killmails} ->
         # Chain operations typically involve multiple systems in short time windows
         killmails
-        |> Enum.group_by(fn km -> DateTime.truncate(km.killmail_time, :hour) end)
+        |> Enum.group_by(fn km ->
+          %{km.killmail_time | minute: 0, second: 0, microsecond: {0, 6}}
+        end)
         |> Enum.count(fn {_hour, hour_killmails} ->
           # Multiple systems in same hour indicates chain activity
           unique_systems = hour_killmails |> Enum.map(& &1.solar_system_id) |> Enum.uniq()
           length(unique_systems) >= 2
         end)
 
-      _ ->
+      {:error, _} ->
         0
     end
   end
@@ -552,7 +554,7 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
 
         fleet_kills
 
-      _ ->
+      {:error, _} ->
         0
     end
   end
@@ -579,7 +581,7 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
 
         solo_kills
 
-      _ ->
+      {:error, _} ->
         0
     end
   end
@@ -600,7 +602,7 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
     min(1.0, total_activities / expected_activities)
   end
 
-  defp identify_character_home_systems(character_id, killmails) do
+  defp identify_character_home_systems(_character_id, killmails) do
     # Find systems where character is most active defensively
     killmails
     |> Enum.filter(&(&1.solar_system_id != nil))
@@ -626,7 +628,7 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
 
     case Ash.read(query, domain: Api) do
       {:ok, participants} -> {:ok, participants}
-      {:error, _} -> {:ok, []}
+      {:error, reason} -> {:error, reason}
     end
   end
 

@@ -12,14 +12,10 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
   alias EveDmv.Intelligence.{
     CharacterAnalyzer,
     CharacterStats,
-    HomeDefenseAnalyzer,
     MemberActivityAnalyzer,
-    WHFleetAnalyzer,
-    WHVetting,
-    WHVettingAnalyzer
+    WHVetting
   }
 
-  alias EveDmv.Api
   alias EveDmv.Database.QueryCache
 
   @doc """
@@ -69,9 +65,6 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
     end
   end
 
-  @doc """
-  Bulk analyze character correlations with optimized data fetching.
-  """
   defp bulk_analyze_character_correlations(character_ids) do
     # Use caching and bulk fetching to avoid N+1 queries
     character_ids
@@ -139,25 +132,11 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
 
     # Get all corporation members from recent activity
     case get_corporation_members_from_activity(corporation_id) do
-      {:ok, member_ids} when length(member_ids) > 0 ->
-        # Analyze patterns across corporation members
-        member_analyses = get_bulk_character_analyses(member_ids)
-
-        patterns = %{
-          recruitment_patterns: analyze_recruitment_patterns(member_analyses),
-          activity_coordination: analyze_activity_coordination(member_analyses),
-          skill_distribution: analyze_corp_skill_distribution(member_analyses),
-          risk_distribution: analyze_corp_risk_distribution(member_analyses),
-          doctrine_adherence: analyze_doctrine_adherence(member_analyses)
-        }
-
-        {:ok, patterns}
-
-      {:ok, []} ->
+      {:ok, members} when members == [] ->
         {:error, "No recent activity found for corporation"}
 
-      {:error, reason} ->
-        {:error, reason}
+      {:ok, members} ->
+        {:ok, %{corporation_id: corporation_id, members: members, analysis: "not_implemented"}}
     end
   end
 
@@ -190,52 +169,37 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
   end
 
   defp get_activity_data(character_id) do
-    # Get recent activity summary
-    activity_summary = MemberActivityAnalyzer.analyze_member_activity(character_id)
-    {:ok, activity_summary}
+    # Get recent activity summary using proper function signature
+    # Use 30 days ago as default period
+    period_start = DateTime.utc_now() |> DateTime.add(-30 * 24 * 3600, :second)
+    period_end = DateTime.utc_now()
+
+    case MemberActivityAnalyzer.analyze_member_activity(character_id, period_start, period_end) do
+      {:ok, activity_summary} -> {:ok, activity_summary}
+      {:error, _reason} -> {:ok, nil}
+    end
   rescue
     error ->
       Logger.warning("Failed to get activity data for #{character_id}: #{inspect(error)}")
       {:ok, nil}
   end
 
-  defp get_fleet_data(character_id) do
-    # Get fleet performance data
-    fleet_summary = WHFleetAnalyzer.analyze_pilot_performance(character_id)
-    {:ok, fleet_summary}
-  rescue
-    error ->
-      Logger.warning("Failed to get fleet data for #{character_id}: #{inspect(error)}")
-      {:ok, nil}
+  defp get_fleet_data(_character_id) do
+    # Fleet performance analysis not yet implemented
+    # Return placeholder data structure
+    {:ok,
+     %{
+       analysis_type: :fleet_performance,
+       status: :not_implemented,
+       message: "Fleet performance analysis coming soon"
+     }}
   end
 
   defp correlate_threat_indicators(character_analysis, vetting_data) do
-    threats = []
-
-    # Correlate dangerous rating with vetting risk factors
     threats =
-      if character_analysis && character_analysis.dangerous_rating > 7 do
-        if vetting_data && length(vetting_data.risk_factors["security_flags"] || []) > 0 do
-          ["high_threat_confirmed_by_vetting" | threats]
-        else
-          ["high_threat_rating_unconfirmed" | threats]
-        end
-      else
-        threats
-      end
-
-    # Correlate awox probability with vetting behavioral flags
-    threats =
-      if character_analysis && character_analysis.awox_probability > 0.3 do
-        if vetting_data &&
-             "blue_killer" in (vetting_data.risk_factors["behavioral_red_flags"] || []) do
-          ["awox_risk_confirmed" | threats]
-        else
-          threats
-        end
-      else
-        threats
-      end
+      []
+      |> add_dangerous_rating_threats(character_analysis, vetting_data)
+      |> add_awox_probability_threats(character_analysis, vetting_data)
 
     %{
       threat_indicators: threats,
@@ -244,42 +208,55 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
     }
   end
 
+  defp add_dangerous_rating_threats(threats, character_analysis, vetting_data) do
+    if dangerous_rating_high?(character_analysis) do
+      if vetting_confirms_security_risk?(vetting_data) do
+        ["high_threat_confirmed_by_vetting" | threats]
+      else
+        ["high_threat_rating_unconfirmed" | threats]
+      end
+    else
+      threats
+    end
+  end
+
+  defp add_awox_probability_threats(threats, character_analysis, vetting_data) do
+    if awox_probability_high?(character_analysis) do
+      if vetting_confirms_awox_risk?(vetting_data) do
+        ["awox_risk_confirmed" | threats]
+      else
+        threats
+      end
+    else
+      threats
+    end
+  end
+
+  defp dangerous_rating_high?(character_analysis) do
+    is_map(character_analysis) && Map.get(character_analysis, :dangerous_rating, 0) > 7
+  end
+
+  defp vetting_confirms_security_risk?(vetting_data) do
+    is_map(vetting_data) &&
+      is_map(Map.get(vetting_data, :risk_factors)) &&
+      length(get_in(vetting_data, [:risk_factors, "security_flags"]) || []) > 0
+  end
+
+  defp awox_probability_high?(character_analysis) do
+    is_map(character_analysis) && Map.get(character_analysis, :awox_probability, 0) > 0.3
+  end
+
+  defp vetting_confirms_awox_risk?(vetting_data) do
+    is_map(vetting_data) &&
+      is_map(Map.get(vetting_data, :risk_factors)) &&
+      "blue_killer" in (get_in(vetting_data, [:risk_factors, "behavioral_red_flags"]) || [])
+  end
+
   defp correlate_competency_metrics(character_analysis, fleet_data, activity_data) do
-    correlations = []
-
-    # Correlate activity level with fleet performance
-    if character_analysis && fleet_data && activity_data do
-      activity_level = get_activity_level(activity_data)
-      fleet_performance = get_fleet_performance_score(fleet_data)
-
-      correlation = calculate_correlation_coefficient(activity_level, fleet_performance)
-
-      correlations = [
-        %{
-          type: "activity_fleet_performance",
-          correlation: correlation,
-          strength: abs(correlation)
-        }
-        | correlations
-      ]
-    end
-
-    # Correlate ship usage with combat effectiveness
-    if character_analysis && fleet_data do
-      ship_diversity = calculate_ship_diversity(character_analysis.ship_usage || %{})
-      combat_effectiveness = get_combat_effectiveness(character_analysis)
-
-      correlation = calculate_correlation_coefficient(ship_diversity, combat_effectiveness)
-
-      correlations = [
-        %{
-          type: "ship_diversity_effectiveness",
-          correlation: correlation,
-          strength: abs(correlation)
-        }
-        | correlations
-      ]
-    end
+    correlations =
+      []
+      |> maybe_add_activity_correlation(character_analysis, fleet_data, activity_data)
+      |> maybe_add_ship_diversity_correlation(character_analysis, fleet_data)
 
     %{
       competency_correlations: correlations,
@@ -287,22 +264,57 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
     }
   end
 
+  defp maybe_add_activity_correlation(correlations, character_analysis, fleet_data, activity_data)
+       when is_map(character_analysis) and is_map(fleet_data) and is_map(activity_data) do
+    activity_level = get_activity_level(activity_data)
+    fleet_performance = get_fleet_performance_score(fleet_data)
+    correlation = calculate_correlation_coefficient(activity_level, fleet_performance)
+
+    [
+      %{
+        type: "activity_fleet_performance",
+        correlation: correlation,
+        strength: abs(correlation)
+      }
+      | correlations
+    ]
+  end
+
+  defp maybe_add_activity_correlation(
+         correlations,
+         _character_analysis,
+         _fleet_data,
+         _activity_data
+       ) do
+    correlations
+  end
+
+  defp maybe_add_ship_diversity_correlation(correlations, character_analysis, fleet_data)
+       when is_map(character_analysis) and is_map(fleet_data) do
+    ship_usage = Map.get(character_analysis, :ship_usage, %{})
+    ship_diversity = calculate_ship_diversity(ship_usage)
+    combat_effectiveness = get_combat_effectiveness(character_analysis)
+    correlation = calculate_correlation_coefficient(ship_diversity, combat_effectiveness)
+
+    [
+      %{
+        type: "ship_diversity_effectiveness",
+        correlation: correlation,
+        strength: abs(correlation)
+      }
+      | correlations
+    ]
+  end
+
+  defp maybe_add_ship_diversity_correlation(correlations, _character_analysis, _fleet_data) do
+    correlations
+  end
+
   defp correlate_behavioral_patterns(vetting_data, activity_data) do
-    patterns = []
-
-    if vetting_data && activity_data do
-      # Correlate corp hopping with activity patterns
-      if "rapid_corp_changes" in (vetting_data.risk_factors["security_flags"] || []) do
-        patterns = ["corp_hopping_confirmed" | patterns]
-      end
-
-      # Correlate scanning skills with J-space activity
-      j_space_activity = get_j_space_activity_level(activity_data)
-
-      if j_space_activity > 0.5 and vetting_data.j_space_activity do
-        patterns = ["j_space_activity_correlation" | patterns]
-      end
-    end
+    patterns =
+      []
+      |> maybe_add_corp_hopping_pattern(vetting_data, activity_data)
+      |> maybe_add_j_space_pattern(vetting_data, activity_data)
 
     %{
       behavioral_patterns: patterns,
@@ -310,43 +322,63 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
     }
   end
 
-  defp correlate_skill_progression(character_analysis, fleet_data) do
-    if character_analysis && fleet_data do
-      # Analyze if character's skill progression matches their ship usage
-      ship_progression = analyze_ship_progression_consistency(character_analysis, fleet_data)
+  defp maybe_add_corp_hopping_pattern(patterns, vetting_data, activity_data)
+       when is_map(vetting_data) and is_map(activity_data) do
+    risk_factors = Map.get(vetting_data, :risk_factors, %{})
+    security_flags = Map.get(risk_factors, "security_flags", [])
 
-      %{
-        skill_ship_consistency: ship_progression,
-        progression_flags: detect_progression_anomalies(character_analysis, fleet_data)
-      }
+    if "rapid_corp_changes" in security_flags do
+      ["corp_hopping_confirmed" | patterns]
     else
-      %{
-        skill_ship_consistency: 0.5,
-        progression_flags: []
-      }
+      patterns
     end
   end
 
-  defp correlate_social_connections(character_analysis, vetting_data, activity_data) do
+  defp maybe_add_corp_hopping_pattern(patterns, _vetting_data, _activity_data), do: patterns
+
+  defp maybe_add_j_space_pattern(patterns, vetting_data, activity_data)
+       when is_map(vetting_data) and is_map(activity_data) do
+    j_space_activity = get_j_space_activity_level(activity_data)
+    has_j_space = Map.get(vetting_data, :j_space_activity, false)
+
+    if j_space_activity > 0.5 and has_j_space do
+      ["j_space_activity_correlation" | patterns]
+    else
+      patterns
+    end
+  end
+
+  defp maybe_add_j_space_pattern(patterns, _vetting_data, _activity_data), do: patterns
+
+  defp correlate_skill_progression(character_analysis, fleet_data)
+       when is_map(character_analysis) and is_map(fleet_data) do
+    # Currently fleet_data always has status: :not_implemented
+    # This is a placeholder for future implementation
+    %{
+      skill_ship_consistency: 0.5,
+      progression_flags: []
+    }
+  end
+
+  defp correlate_skill_progression(_character_analysis, _fleet_data) do
+    %{
+      skill_ship_consistency: 0.5,
+      progression_flags: []
+    }
+  end
+
+  defp correlate_social_connections(character_analysis, vetting_data, _activity_data) do
     connections = []
 
-    # Correlate potential alts with shared activity patterns
-    if vetting_data && vetting_data.alt_analysis do
-      potential_alts = vetting_data.alt_analysis["potential_alts"] || []
+    connections =
+      if is_map(vetting_data),
+        do: maybe_add_alts_connection(connections, vetting_data),
+        else: connections
 
-      if length(potential_alts) > 0 do
-        connections = ["potential_alts_detected" | connections]
-      end
-    end
-
-    # Correlate associates with corp membership patterns
-    if character_analysis && character_analysis.associate_characters do
-      associate_count = length(character_analysis.associate_characters)
-
-      if associate_count > 10 do
-        connections = ["high_social_connectivity" | connections]
-      end
-    end
+    connections =
+      if is_map(character_analysis),
+        do: maybe_add_associates_connection(connections, character_analysis),
+        else: connections
 
     %{
       social_connections: connections,
@@ -354,29 +386,55 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
     }
   end
 
-  defp correlate_risk_factors(character_analysis, vetting_data, activity_data) do
-    risk_factors = []
-    combined_risk_score = 0
+  defp maybe_add_alts_connection(connections, vetting_data) when is_map(vetting_data) do
+    case Map.get(vetting_data, :alt_analysis) do
+      %{} = alt_analysis ->
+        potential_alts = alt_analysis["potential_alts"] || []
 
+        if length(potential_alts) > 0 do
+          ["potential_alts_detected" | connections]
+        else
+          connections
+        end
+
+      _ ->
+        connections
+    end
+  end
+
+  defp maybe_add_alts_connection(connections, _vetting_data), do: connections
+
+  defp maybe_add_associates_connection(connections, character_analysis)
+       when is_map(character_analysis) do
+    case Map.get(character_analysis, :associate_characters) do
+      associates when is_list(associates) ->
+        if length(associates) > 10 do
+          ["high_social_connectivity" | connections]
+        else
+          connections
+        end
+
+      _ ->
+        connections
+    end
+  end
+
+  defp maybe_add_associates_connection(connections, _character_analysis), do: connections
+
+  defp correlate_risk_factors(character_analysis, vetting_data, _activity_data) do
     # Combine risk indicators from all modules
-    if character_analysis do
-      combined_risk_score = combined_risk_score + (character_analysis.dangerous_rating || 0)
-    end
+    char_risk =
+      if is_map(character_analysis),
+        do: Map.get(character_analysis, :dangerous_rating, 0),
+        else: 0
 
-    if vetting_data do
-      vetting_risk = vetting_data.overall_risk_score || 0
-      combined_risk_score = combined_risk_score + vetting_risk
-    end
+    vet_risk = if is_map(vetting_data), do: Map.get(vetting_data, :overall_risk_score, 0), else: 0
+    combined_risk_score = char_risk + vet_risk
 
     # Detect contradictory risk indicators
-    if character_analysis && vetting_data do
-      char_risk = character_analysis.dangerous_rating || 0
-      vet_risk = vetting_data.overall_risk_score || 0
-
-      if abs(char_risk - vet_risk) > 30 do
-        risk_factors = ["contradictory_risk_indicators" | risk_factors]
-      end
-    end
+    risk_factors =
+      []
+      |> maybe_add_contradictory_risk(character_analysis, vetting_data)
 
     %{
       # Average of sources
@@ -386,39 +444,28 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
     }
   end
 
+  defp maybe_add_contradictory_risk(risk_factors, character_analysis, vetting_data)
+       when is_map(character_analysis) and is_map(vetting_data) do
+    char_risk = Map.get(character_analysis, :dangerous_rating, 0)
+    vet_risk = Map.get(vetting_data, :overall_risk_score, 0)
+
+    if abs(char_risk - vet_risk) > 30 do
+      ["contradictory_risk_indicators" | risk_factors]
+    else
+      risk_factors
+    end
+  end
+
+  defp maybe_add_contradictory_risk(risk_factors, _character_analysis, _vetting_data),
+    do: risk_factors
+
   defp generate_correlation_summary(correlations) do
     # Generate human-readable summary of correlations
-    summary_points = []
-
-    # Threat assessment summary
-    threat_count = length(correlations.threat_assessment.threat_indicators)
-
-    if threat_count > 0 do
-      summary_points = [
-        "#{threat_count} threat indicators confirmed across modules" | summary_points
-      ]
-    end
-
-    # Competency correlation summary
-    comp_correlation = correlations.competency_correlation.overall_correlation
-
-    if comp_correlation > 0.7 do
-      summary_points = ["Strong competency correlation across analysis modules" | summary_points]
-    end
-
-    # Risk factor summary
-    combined_risk = correlations.risk_factors.combined_risk_score
-
-    cond do
-      combined_risk > 70 ->
-        summary_points = ["High combined risk score across all modules" | summary_points]
-
-      combined_risk > 40 ->
-        summary_points = ["Moderate combined risk identified" | summary_points]
-
-      true ->
-        summary_points = ["Low risk profile confirmed across modules" | summary_points]
-    end
+    summary_points =
+      []
+      |> maybe_add_threat_summary(correlations.threat_assessment.threat_indicators)
+      |> maybe_add_competency_summary(correlations.competency_correlation.overall_correlation)
+      |> add_risk_summary(correlations.risk_factors.combined_risk_score)
 
     if Enum.empty?(summary_points) do
       "No significant cross-module correlations detected."
@@ -427,25 +474,47 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
     end
   end
 
+  defp maybe_add_threat_summary(summary_points, threat_indicators) do
+    threat_count = length(threat_indicators)
+
+    if threat_count > 0 do
+      ["#{threat_count} threat indicators confirmed across modules" | summary_points]
+    else
+      summary_points
+    end
+  end
+
+  defp maybe_add_competency_summary(summary_points, comp_correlation) do
+    if comp_correlation > 0.7 do
+      ["Strong competency correlation across analysis modules" | summary_points]
+    else
+      summary_points
+    end
+  end
+
+  defp add_risk_summary(summary_points, combined_risk) do
+    risk_message =
+      cond do
+        combined_risk > 70 -> "High combined risk score across all modules"
+        combined_risk > 40 -> "Moderate combined risk identified"
+        true -> "Low risk profile confirmed across modules"
+      end
+
+    [risk_message | summary_points]
+  end
+
   defp calculate_correlation_confidence(correlations) do
     # Calculate overall confidence in correlation analysis
-    confidence_factors = []
-
-    # Factor in number of threat indicators
-    threat_factor = min(1.0, length(correlations.threat_assessment.threat_indicators) / 3.0)
-    confidence_factors = [threat_factor | confidence_factors]
-
-    # Factor in competency correlation strength
-    comp_factor = correlations.competency_correlation.overall_correlation
-    confidence_factors = [comp_factor | confidence_factors]
-
-    # Factor in behavioral consistency
-    behavior_factor = correlations.behavioral_patterns.consistency_score
-    confidence_factors = [behavior_factor | confidence_factors]
-
-    # Factor in risk consistency
-    risk_factor = correlations.risk_factors.risk_consistency
-    confidence_factors = [risk_factor | confidence_factors]
+    confidence_factors = [
+      # Factor in number of threat indicators
+      min(1.0, length(correlations.threat_assessment.threat_indicators) / 3.0),
+      # Factor in competency correlation strength
+      correlations.competency_correlation.overall_correlation,
+      # Factor in behavioral consistency
+      correlations.behavioral_patterns.consistency_score,
+      # Factor in risk consistency
+      correlations.risk_factors.risk_consistency
+    ]
 
     # Calculate weighted average
     if Enum.empty?(confidence_factors) do
@@ -457,88 +526,55 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
 
   # Additional helper functions for specific correlation types
 
-  defp find_temporal_correlations(character_data) do
+  defp find_temporal_correlations(_character_data) do
     # Find characters with similar activity timing patterns
     # Placeholder implementation
     []
   end
 
-  defp find_geographic_correlations(character_data) do
+  defp find_geographic_correlations(_character_data) do
     # Find characters with overlapping system activity
     # Placeholder implementation
     []
   end
 
-  defp find_behavioral_correlations(character_data) do
+  defp find_behavioral_correlations(_character_data) do
     # Find characters with similar behavioral patterns
     # Placeholder implementation
     []
   end
 
-  defp build_social_network(character_data) do
+  defp build_social_network(_character_data) do
     # Build social network graph from character associations
     # Placeholder implementation
     %{nodes: [], edges: []}
   end
 
-  defp calculate_alt_likelihood(character_data) do
+  defp calculate_alt_likelihood(_character_data) do
     # Calculate likelihood that characters are alts of each other
     # Placeholder implementation
     0.0
   end
 
-  defp get_corporation_members_from_activity(corporation_id) do
+  defp get_corporation_members_from_activity(_corporation_id) do
     # Get corporation members from recent activity data
     # Placeholder implementation
     {:ok, []}
   end
 
-  defp get_bulk_character_analyses(member_ids) do
-    # Get character analyses for multiple members
-    # Placeholder implementation
-    []
-  end
-
-  defp analyze_recruitment_patterns(_member_analyses) do
-    %{pattern_type: "unknown", confidence: 0.0}
-  end
-
-  defp analyze_activity_coordination(_member_analyses) do
-    %{coordination_level: "low", evidence: []}
-  end
-
-  defp analyze_corp_skill_distribution(_member_analyses) do
-    %{distribution_type: "normal", specializations: []}
-  end
-
-  defp analyze_corp_risk_distribution(_member_analyses) do
-    %{risk_level: "medium", outliers: []}
-  end
-
-  defp analyze_doctrine_adherence(_member_analyses) do
-    %{adherence_score: 0.5, deviations: []}
-  end
-
   # Utility functions for calculations
 
-  defp get_activity_level(activity_data) do
+  defp get_activity_level(activity_data) when is_map(activity_data) do
     # Extract activity level from activity data
-    if activity_data do
-      # Placeholder calculation
-      0.5
-    else
-      0.0
-    end
+    # Placeholder calculation
+    0.5
   end
 
-  defp get_fleet_performance_score(fleet_data) do
+  defp get_fleet_performance_score(fleet_data) when is_map(fleet_data) do
     # Extract fleet performance score
-    if fleet_data do
-      # Placeholder calculation
-      0.6
-    else
-      0.0
-    end
+    # Currently all fleet data has status: :not_implemented
+    # This is a placeholder for future implementation
+    0.0
   end
 
   defp calculate_correlation_coefficient(x, y) do
@@ -555,10 +591,12 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
     end
   end
 
-  defp get_combat_effectiveness(character_analysis) do
+  defp get_combat_effectiveness(character_analysis) when is_map(character_analysis) do
     # Calculate combat effectiveness from character analysis
-    if character_analysis.kill_death_ratio do
-      min(1.0, character_analysis.kill_death_ratio / 5.0)
+    kdr = Map.get(character_analysis, :kill_death_ratio)
+
+    if kdr do
+      min(1.0, kdr / 5.0)
     else
       0.5
     end
@@ -575,7 +613,7 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
     end
   end
 
-  defp get_j_space_activity_level(activity_data) do
+  defp get_j_space_activity_level(_activity_data) do
     # Extract J-space activity level
     # Placeholder
     0.5
@@ -592,17 +630,17 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
     end
   end
 
-  defp analyze_ship_progression_consistency(character_analysis, fleet_data) do
-    # Analyze if ship progression makes sense
-    # Placeholder
-    0.7
-  end
-
-  defp detect_progression_anomalies(character_analysis, fleet_data) do
-    # Detect anomalies in skill/ship progression
-    # Placeholder
-    []
-  end
+  # defp analyze_ship_progression_consistency(_character_analysis, _fleet_data) do
+  #   # Analyze if ship progression makes sense
+  #   # Placeholder
+  #   0.7
+  # end
+  #
+  # defp detect_progression_anomalies(_character_analysis, _fleet_data) do
+  #   # Detect anomalies in skill/ship progression
+  #   # Placeholder
+  #   []
+  # end
 
   defp calculate_connectivity_score(connections) do
     # Calculate social connectivity score
@@ -611,9 +649,9 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
 
   defp calculate_risk_consistency(character_analysis, vetting_data) do
     # Calculate consistency between risk assessments
-    if character_analysis && vetting_data do
-      char_risk = character_analysis.dangerous_rating || 0
-      vet_risk = vetting_data.overall_risk_score || 0
+    if is_map(character_analysis) && is_map(vetting_data) do
+      char_risk = Map.get(character_analysis, :dangerous_rating, 0)
+      vet_risk = Map.get(vetting_data, :overall_risk_score, 0)
 
       # Calculate consistency (lower difference = higher consistency)
       difference = abs(char_risk - vet_risk)

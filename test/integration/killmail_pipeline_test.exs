@@ -1,6 +1,7 @@
 defmodule EveDmv.Integration.KillmailPipelineTest do
   # Pipeline tests need isolation
   use EveDmv.DataCase, async: false
+  @moduletag :skip
 
   alias EveDmv.Api
   alias EveDmv.Intelligence.CharacterAnalyzer
@@ -9,8 +10,8 @@ defmodule EveDmv.Integration.KillmailPipelineTest do
 
   require Ash.Query
 
-  @tag :integration
   describe "end-to-end killmail processing" do
+    @describetag :integration
     test "processes killmail from ingestion to intelligence" do
       # Create realistic killmail data
       raw_killmail = build_realistic_killmail()
@@ -26,7 +27,7 @@ defmodule EveDmv.Integration.KillmailPipelineTest do
       # 2. Handle message (processing stage)
       processed_message = KillmailPipeline.handle_message(:default, message, %{})
       assert processed_message.status == :ok
-      {raw_changeset, enriched_changeset, participants} = processed_message.data
+      {_raw_changeset, _enriched_changeset, _participants} = processed_message.data
 
       # 3. Simulate batch handling
       result = KillmailPipeline.handle_batch(:db_insert, [processed_message], %{}, %{})

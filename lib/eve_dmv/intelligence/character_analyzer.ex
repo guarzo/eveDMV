@@ -6,7 +6,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
   require Logger
   alias EveDmv.Api
   alias EveDmv.Database.QueryCache
-  alias EveDmv.Eve.{EsiClient, ItemType, NameResolver}
+  alias EveDmv.Eve.EsiClient
   alias EveDmv.Intelligence.{CharacterFormatters, CharacterMetrics, CharacterStats}
   alias EveDmv.Killmails.{KillmailEnriched, Participant}
   require Ash.Query
@@ -114,11 +114,11 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
   end
 
   defp get_character_info(character_id) do
-    case EsiClient.get_character_info(character_id) do
+    case EsiClient.get_character(character_id) do
       {:ok, character_data} ->
         # Get corporation and alliance info
         corp_info =
-          case EsiClient.get_corporation_info(character_data["corporation_id"]) do
+          case EsiClient.get_corporation(character_data["corporation_id"]) do
             {:ok, corp} -> corp
             {:error, _} -> %{"name" => "Unknown Corporation"}
           end
@@ -129,7 +129,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
               nil
 
             alliance_id ->
-              case EsiClient.get_alliance_info(alliance_id) do
+              case EsiClient.get_alliance(alliance_id) do
                 {:ok, alliance} -> alliance
                 {:error, _} -> %{"name" => "Unknown Alliance"}
               end
@@ -311,26 +311,14 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
       analysis_data: Jason.encode!(metrics)
     }
 
-    case CharacterStats.create(stats_params, domain: Api) do
+    case Ash.create(CharacterStats, stats_params, domain: Api) do
       {:ok, character_stats} ->
         Logger.info("Successfully saved character stats for #{basic_info.character_id}")
         {:ok, character_stats}
 
       {:error, reason} ->
         Logger.error("Failed to save character stats: #{inspect(reason)}")
-
-        # Try to update existing record instead
-        case CharacterStats.update_by_character_id(basic_info.character_id, stats_params,
-               domain: Api
-             ) do
-          {:ok, character_stats} ->
-            Logger.info("Successfully updated character stats for #{basic_info.character_id}")
-            {:ok, character_stats}
-
-          {:error, update_reason} ->
-            Logger.error("Failed to update character stats: #{inspect(update_reason)}")
-            {:error, update_reason}
-        end
+        {:error, reason}
     end
   end
 

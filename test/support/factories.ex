@@ -3,7 +3,7 @@ defmodule EveDmv.Factories do
   Test data factories for EVE DMV testing
   """
 
-  alias EveDmv.{Api, Killmails.KillmailRaw, Users.User}
+  alias EveDmv.{Api, Killmails.KillmailRaw, Killmails.KillmailEnriched, Users.User}
 
   def character_factory do
     %{
@@ -39,6 +39,32 @@ defmodule EveDmv.Factories do
     }
   end
 
+  def killmail_enriched_factory do
+    killmail_time = DateTime.utc_now() |> DateTime.add(-Enum.random(1..3600), :second)
+    victim_character_id = Enum.random(90_000_000..100_000_000)
+
+    %{
+      killmail_id: System.unique_integer([:positive]),
+      killmail_time: killmail_time,
+      victim_character_id: victim_character_id,
+      victim_character_name: "Test Victim #{System.unique_integer([:positive])}",
+      victim_corporation_id: Enum.random(1_000_000..2_000_000),
+      victim_corporation_name: "Test Corp #{System.unique_integer([:positive])}",
+      victim_alliance_id: Enum.random(99_000_000..100_000_000),
+      victim_alliance_name: "Test Alliance #{System.unique_integer([:positive])}",
+      solar_system_id: Enum.random(30_000_000..31_000_000),
+      solar_system_name: "Test System #{System.unique_integer([:positive])}",
+      victim_ship_type_id: Enum.random([587, 588, 589]),
+      victim_ship_name: "Rifter",
+      total_value: Decimal.new("10000000.50"),
+      ship_value: Decimal.new("5000000.25"),
+      fitted_value: Decimal.new("5000000.25"),
+      attacker_count: Enum.random(1..10),
+      # Add a marker so we can distinguish this from KillmailRaw
+      _enriched_marker: true
+    }
+  end
+
   def build(factory_name, attrs \\ %{}) do
     factory_name
     |> build_factory()
@@ -53,6 +79,7 @@ defmodule EveDmv.Factories do
 
   defp build_factory(:character), do: character_factory()
   defp build_factory(:killmail_raw), do: killmail_raw_factory()
+  defp build_factory(:killmail_enriched), do: killmail_enriched_factory()
   defp build_factory(:user), do: user_factory()
 
   defp build_realistic_killmail_data do
@@ -88,7 +115,13 @@ defmodule EveDmv.Factories do
     }
   end
 
-  defp insert_into_database(%{eve_character_id: _} = user_attrs) do
+  defp insert_into_database(%{eve_character_id: _} = character_attrs)
+       when not is_map_key(character_attrs, :access_token) do
+    # This is a character, not a user - just return the attrs for now since we don't have a Character resource
+    character_attrs
+  end
+
+  defp insert_into_database(%{eve_character_id: _, access_token: _} = user_attrs) do
     # Insert user data using Ash with proper action and arguments
     user_info = %{
       "CharacterID" => user_attrs.eve_character_id,
@@ -110,6 +143,12 @@ defmodule EveDmv.Factories do
       action: :register_with_eve_sso,
       domain: Api
     )
+  end
+
+  defp insert_into_database(%{_enriched_marker: true} = enriched_attrs) do
+    # This is a KillmailEnriched - remove the marker and insert
+    enriched_attrs = Map.delete(enriched_attrs, :_enriched_marker)
+    Ash.create!(KillmailEnriched, enriched_attrs, domain: Api)
   end
 
   defp insert_into_database(%{killmail_id: _} = killmail_attrs) do
@@ -161,7 +200,7 @@ defmodule EveDmv.Factories do
     attacker_count = Enum.random(1..5)
 
     attackers =
-      for i <- 1..attacker_count do
+      for _i <- 1..attacker_count do
         %{
           "character_id" => Enum.random(90_000_000..100_000_000),
           "corporation_id" => Enum.random(1_000_000..2_000_000),
@@ -311,7 +350,7 @@ defmodule EveDmv.Factories do
 
       # Determine if character is victim or attacker
       if Keyword.get(opts, :as_victim, false) do
-        killmail_data = put_in(killmail_data, ["victim", "character_id"], character_id)
+        _killmail_data = put_in(killmail_data, ["victim", "character_id"], character_id)
       else
         # Add character as an attacker
         attackers = killmail_data["attackers"]
@@ -327,7 +366,7 @@ defmodule EveDmv.Factories do
           "security_status" => :rand.uniform() * 10 - 5
         }
 
-        killmail_data = Map.put(killmail_data, "attackers", [new_attacker | attackers])
+        _killmail_data = Map.put(killmail_data, "attackers", [new_attacker | attackers])
       end
 
       # Override solar system if specified

@@ -186,7 +186,7 @@ defmodule EveDmv.Security.ApiAuthentication do
   def revoke_api_key(api_key_id, revoked_by_character_id) do
     case Ash.get(__MODULE__, api_key_id, domain: EveDmv.Api) do
       {:ok, api_key} ->
-        result = Ash.update(api_key, :update, %{is_active: false}, domain: EveDmv.Api)
+        result = Ash.update(api_key, %{is_active: false}, domain: EveDmv.Api)
 
         # Log the revocation
         AuditLogger.log_config_change(
@@ -294,7 +294,6 @@ defmodule EveDmv.Security.ApiAuthentication do
       try do
         Ash.update(
           api_key,
-          :record_usage,
           %{
             last_used_at: DateTime.utc_now(),
             last_used_ip: client_ip

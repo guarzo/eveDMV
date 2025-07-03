@@ -172,16 +172,9 @@ defmodule EveDmvWeb.WHVettingLive do
 
   defp process_character_search_results(character_ids) do
     # Fetch character details for the found IDs
-    case EveDmv.Eve.EsiClient.get_characters(character_ids) do
-      {:ok, character_details} ->
-        formatted_results = format_character_details(character_details)
-        {:ok, Enum.take(formatted_results, 10)}
-
-      {:error, _reason} ->
-        # Fallback to basic results without corporation info
-        basic_results = create_basic_character_results(character_ids)
-        {:ok, Enum.take(basic_results, 10)}
-    end
+    {:ok, character_details} = EveDmv.Eve.EsiClient.get_characters(character_ids)
+    formatted_results = format_character_details(character_details)
+    {:ok, Enum.take(formatted_results, 10)}
   end
 
   defp format_character_details(character_details) do
@@ -193,19 +186,6 @@ defmodule EveDmvWeb.WHVettingLive do
         corporation_name: char_data["corporation_name"],
         alliance_id: char_data["alliance_id"],
         alliance_name: char_data["alliance_name"]
-      }
-    end)
-  end
-
-  defp create_basic_character_results(character_ids) do
-    Enum.map(character_ids, fn char_id ->
-      %{
-        character_id: char_id,
-        character_name: "Character #{char_id}",
-        corporation_id: nil,
-        corporation_name: nil,
-        alliance_id: nil,
-        alliance_name: nil
       }
     end)
   end

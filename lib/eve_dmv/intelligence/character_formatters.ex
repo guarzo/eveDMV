@@ -612,24 +612,12 @@ defmodule EveDmv.Intelligence.CharacterFormatters do
   end
 
   defp count_identified_weaknesses(weaknesses) do
-    count = 0
-    count = if weaknesses.takes_bad_fights, do: count + 1, else: count
-
-    count =
-      if weaknesses.vulnerable_times && length(weaknesses.vulnerable_times) > 0,
-        do: count + 1,
-        else: count
-
-    count =
-      if weaknesses.vulnerable_to_ship_types && length(weaknesses.vulnerable_to_ship_types) > 0,
-        do: count + 1,
-        else: count
-
-    count =
-      if weaknesses.repeated_mistakes && length(weaknesses.repeated_mistakes) > 0,
-        do: count + 1,
-        else: count
-
-    count
+    [
+      weaknesses.takes_bad_fights,
+      weaknesses.vulnerable_times && length(weaknesses.vulnerable_times) > 0,
+      weaknesses.vulnerable_to_ship_types && length(weaknesses.vulnerable_to_ship_types) > 0,
+      weaknesses.repeated_mistakes && length(weaknesses.repeated_mistakes) > 0
+    ]
+    |> Enum.count(& &1)
   end
 end

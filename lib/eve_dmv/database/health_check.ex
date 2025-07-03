@@ -187,14 +187,27 @@ defmodule EveDmv.Database.HealthCheck do
   defp check_connection_pool do
     pool_info = DBConnection.get_connection_metrics(EveDmv.Repo)
 
-    pool_size = Map.get(pool_info, :pool_size, 0)
-    checked_out = Map.get(pool_info, :checked_out, 0)
+    # pool_info is a list of connection metrics, extract relevant data
+    total_ready_connections =
+      pool_info
+      |> Enum.map(& &1.ready_conn_count)
+      |> Enum.sum()
 
+    total_queue_length =
+      pool_info
+      |> Enum.map(& &1.checkout_queue_length)
+      |> Enum.sum()
+
+    # Get pool size from config since it's not in the metrics
+    pool_config = Application.get_env(:eve_dmv, EveDmv.Repo, [])
+    pool_size = Keyword.get(pool_config, :pool_size, 10)
+
+    checked_out = pool_size - total_ready_connections
     utilization = if pool_size > 0, do: checked_out / pool_size, else: 0
 
     cond do
-      utilization < 0.7 -> :healthy
-      utilization < 0.9 -> :warning
+      utilization < 0.7 and total_queue_length < 5 -> :healthy
+      utilization < 0.9 and total_queue_length < 10 -> :warning
       true -> :critical
     end
   rescue

@@ -11,10 +11,7 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinator do
   alias EveDmv.Intelligence.{
     CharacterAnalyzer,
     CorrelationEngine,
-    HomeDefenseAnalyzer,
     IntelligenceCache,
-    MemberActivityAnalyzer,
-    WHFleetAnalyzer,
     WHVettingAnalyzer
   }
 
@@ -128,21 +125,9 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinator do
   def analyze_corporation_intelligence(corporation_id, options \\ []) do
     Logger.info("Analyzing corporation intelligence for corp #{corporation_id}")
 
-    use_cache = Keyword.get(options, :use_cache, true)
+    _use_cache = Keyword.get(options, :use_cache, true)
 
     case CorrelationEngine.analyze_corporation_intelligence_patterns(corporation_id) do
-      {:ok, corp_patterns} ->
-        corp_analysis = %{
-          corporation_id: corporation_id,
-          analysis_timestamp: DateTime.utc_now(),
-          intelligence_patterns: corp_patterns,
-          corp_summary: generate_corp_summary(corp_patterns),
-          security_assessment: assess_corp_security(corp_patterns),
-          recommendations: generate_corp_recommendations(corp_patterns)
-        }
-
-        {:ok, corp_analysis}
-
       {:error, reason} ->
         Logger.error(
           "Corporation intelligence analysis failed for corp #{corporation_id}: #{inspect(reason)}"
@@ -215,18 +200,17 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinator do
     vetting_result = get_vetting_analysis(character_id, use_cache)
 
     # Get other specialized analyses (without caching for now)
+    # Activity analysis requires time range, skip for now
     activity_result =
-      safe_analyze(:activity, character_id, &MemberActivityAnalyzer.analyze_member_activity/1)
+      {:ok, nil}
 
+    # Fleet analysis requires multiple characters, skip for individual analysis
     fleet_result =
-      safe_analyze(:fleet, character_id, &WHFleetAnalyzer.analyze_pilot_performance/1)
+      {:ok, nil}
 
+    # Home defense analysis not applicable for individual character
     home_defense_result =
-      safe_analyze(
-        :home_defense,
-        character_id,
-        &HomeDefenseAnalyzer.analyze_character_home_defense/1
-      )
+      {:ok, nil}
 
     # Combine results
     case {vetting_result, activity_result, fleet_result, home_defense_result} do
@@ -243,26 +227,13 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinator do
       _ ->
         # Partial success - include what we can get
         specialized = %{
-          vetting:
-            case vetting_result do
-              {:ok, v} -> v
-              _ -> nil
-            end,
-          activity:
-            case activity_result do
-              {:ok, a} -> a
-              _ -> nil
-            end,
-          fleet:
-            case fleet_result do
-              {:ok, f} -> f
-              _ -> nil
-            end,
-          home_defense:
-            case home_defense_result do
-              {:ok, h} -> h
-              _ -> nil
-            end
+          vetting: nil,
+          # Always nil based on line 205
+          activity: nil,
+          # Always nil based on line 209
+          fleet: nil,
+          # Always nil based on line 213
+          home_defense: nil
         }
 
         {:ok, specialized}
@@ -275,14 +246,6 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinator do
     else
       WHVettingAnalyzer.analyze_character(character_id)
     end
-  end
-
-  defp safe_analyze(type, character_id, analysis_fn) do
-    {:ok, analysis_fn.(character_id)}
-  rescue
-    error ->
-      Logger.warning("#{type} analysis failed for #{character_id}: #{inspect(error)}")
-      {:ok, nil}
   end
 
   defp get_correlations(character_id, use_cache, include_correlations) do
@@ -298,40 +261,11 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinator do
   end
 
   defp generate_intelligence_summary(basic_analysis, specialized_analysis, correlations) do
-    summary_points = []
-
-    # Basic analysis summary
-    if basic_analysis do
-      threat_level = assess_threat_level(basic_analysis)
-      summary_points = ["Threat Level: #{threat_level}" | summary_points]
-
-      if basic_analysis.dangerous_rating > 7 do
-        summary_points = [
-          "High threat rating detected (#{basic_analysis.dangerous_rating}/10)" | summary_points
-        ]
-      end
-    end
-
-    # Vetting summary
-    if specialized_analysis.vetting do
-      vetting = specialized_analysis.vetting
-      summary_points = ["Vetting Status: #{vetting.recommendation}" | summary_points]
-
-      if vetting.overall_risk_score > 70 do
-        summary_points = [
-          "High vetting risk score (#{vetting.overall_risk_score}/100)" | summary_points
-        ]
-      end
-    end
-
-    # Correlation summary
-    if correlations do
-      correlation_strength = correlations.confidence_score
-
-      if correlation_strength > 0.8 do
-        summary_points = ["Strong cross-module correlations detected" | summary_points]
-      end
-    end
+    summary_points =
+      []
+      |> add_basic_analysis_summary(basic_analysis)
+      |> add_vetting_summary(specialized_analysis.vetting)
+      |> add_correlation_summary(correlations)
 
     if Enum.empty?(summary_points) do
       "Standard intelligence profile - no significant concerns detected."
@@ -340,16 +274,60 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinator do
     end
   end
 
-  defp calculate_overall_confidence(basic_analysis, specialized_analysis, correlations) do
-    confidence_factors = []
+  defp add_basic_analysis_summary(summary_points, nil), do: summary_points
 
-    # Basic analysis confidence
-    if basic_analysis do
-      # High confidence in basic analysis
-      confidence_factors = [0.8 | confidence_factors]
+  defp add_basic_analysis_summary(summary_points, basic_analysis) do
+    threat_level = assess_threat_level(basic_analysis)
+    points = ["Threat Level: #{threat_level}" | summary_points]
+
+    if basic_analysis.dangerous_rating > 7 do
+      ["High threat rating detected (#{basic_analysis.dangerous_rating}/10)" | points]
+    else
+      points
     end
+  end
 
-    # Specialized analysis confidence
+  defp add_vetting_summary(summary_points, nil), do: summary_points
+
+  defp add_vetting_summary(summary_points, vetting) do
+    points = ["Vetting Status: #{vetting.recommendation}" | summary_points]
+
+    if vetting.overall_risk_score > 70 do
+      ["High vetting risk score (#{vetting.overall_risk_score}/100)" | points]
+    else
+      points
+    end
+  end
+
+  defp add_correlation_summary(summary_points, nil), do: summary_points
+
+  defp add_correlation_summary(summary_points, correlations) do
+    if correlations.confidence_score > 0.8 do
+      ["Strong cross-module correlations detected" | summary_points]
+    else
+      summary_points
+    end
+  end
+
+  defp calculate_overall_confidence(basic_analysis, specialized_analysis, correlations) do
+    confidence_factors =
+      []
+      |> add_basic_confidence(basic_analysis)
+      |> add_module_confidence(specialized_analysis)
+      |> add_correlation_confidence(correlations)
+
+    if Enum.empty?(confidence_factors) do
+      # Default confidence
+      0.5
+    else
+      Enum.sum(confidence_factors) / length(confidence_factors)
+    end
+  end
+
+  defp add_basic_confidence(factors, nil), do: factors
+  defp add_basic_confidence(factors, _basic_analysis), do: [0.8 | factors]
+
+  defp add_module_confidence(factors, specialized_analysis) do
     available_modules =
       Enum.count(
         [
@@ -362,61 +340,64 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinator do
       )
 
     if available_modules > 0 do
-      module_confidence = available_modules / 4.0
-      confidence_factors = [module_confidence | confidence_factors]
-    end
-
-    # Correlation confidence
-    if correlations do
-      confidence_factors = [correlations.confidence_score | confidence_factors]
-    end
-
-    if Enum.empty?(confidence_factors) do
-      # Default confidence
-      0.5
+      [available_modules / 4.0 | factors]
     else
-      Enum.sum(confidence_factors) / length(confidence_factors)
+      factors
     end
   end
 
+  defp add_correlation_confidence(factors, nil), do: factors
+
+  defp add_correlation_confidence(factors, correlations),
+    do: [correlations.confidence_score | factors]
+
   defp generate_unified_recommendations(basic_analysis, specialized_analysis, correlations) do
-    recommendations = []
-
-    # Basic analysis recommendations
-    if basic_analysis && basic_analysis.dangerous_rating > 8 do
-      recommendations = ["Monitor closely due to high threat rating" | recommendations]
-    end
-
-    # Vetting recommendations
-    if specialized_analysis.vetting do
-      case specialized_analysis.vetting.recommendation do
-        "reject" ->
-          recommendations = ["Recommend rejection based on vetting analysis" | recommendations]
-
-        "conditional" ->
-          recommendations = ["Consider conditional acceptance with monitoring" | recommendations]
-
-        "more_info" ->
-          recommendations = ["Gather additional information before decision" | recommendations]
-
-        _ ->
-          recommendations
-      end
-    end
-
-    # Correlation-based recommendations
-    if correlations do
-      threat_indicators = correlations.correlations.threat_assessment.threat_indicators
-
-      if length(threat_indicators) > 2 do
-        recommendations = [
-          "Multiple threat indicators confirmed across modules" | recommendations
-        ]
-      end
-    end
+    recommendations =
+      []
+      |> add_basic_recommendations(basic_analysis)
+      |> add_vetting_recommendations(specialized_analysis.vetting)
+      |> add_correlation_recommendations(correlations)
 
     if Enum.empty?(recommendations) do
       ["Standard monitoring and periodic review"]
+    else
+      recommendations
+    end
+  end
+
+  defp add_basic_recommendations(recommendations, basic_analysis) do
+    if basic_analysis && basic_analysis.dangerous_rating > 8 do
+      ["Monitor closely due to high threat rating" | recommendations]
+    else
+      recommendations
+    end
+  end
+
+  defp add_vetting_recommendations(recommendations, nil), do: recommendations
+
+  defp add_vetting_recommendations(recommendations, vetting) do
+    case vetting.recommendation do
+      "reject" ->
+        ["Recommend rejection based on vetting analysis" | recommendations]
+
+      "conditional" ->
+        ["Consider conditional acceptance with monitoring" | recommendations]
+
+      "more_info" ->
+        ["Gather additional information before decision" | recommendations]
+
+      _ ->
+        recommendations
+    end
+  end
+
+  defp add_correlation_recommendations(recommendations, nil), do: recommendations
+
+  defp add_correlation_recommendations(recommendations, correlations) do
+    threat_indicators = correlations.correlations.threat_assessment.threat_indicators
+
+    if length(threat_indicators) > 2 do
+      ["Multiple threat indicators confirmed across modules" | recommendations]
     else
       recommendations
     end
@@ -439,7 +420,7 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinator do
     summary =
       "Group analysis of #{analysis_count} characters. Average threat level: #{Float.round(avg_threat, 1)}/10."
 
-    if group_correlations && group_correlations.alt_likelihood > 0.7 do
+    if Map.get(group_correlations, :alt_likelihood, 0) > 0.7 do
       summary <> " High probability of alt character relationships detected."
     else
       summary
@@ -447,8 +428,6 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinator do
   end
 
   defp generate_group_recommendations(individual_analyses, group_correlations) do
-    recommendations = []
-
     # Check for high-risk individuals in group
     high_risk_count =
       individual_analyses
@@ -457,18 +436,10 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinator do
         basic && basic.dangerous_rating > 7
       end)
 
-    if high_risk_count > 0 do
-      recommendations = [
-        "#{high_risk_count} high-risk individuals identified in group" | recommendations
-      ]
-    end
-
-    # Group correlation recommendations
-    if group_correlations && group_correlations.alt_likelihood > 0.8 do
-      recommendations = [
-        "Strong alt character correlations - consider as single entity" | recommendations
-      ]
-    end
+    recommendations =
+      []
+      |> add_high_risk_recommendation(high_risk_count)
+      |> add_group_correlation_recommendation(group_correlations)
 
     if Enum.empty?(recommendations) do
       ["Group shows normal intelligence patterns"]
@@ -477,38 +448,15 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinator do
     end
   end
 
-  defp generate_corp_summary(corp_patterns) do
-    "Corporation intelligence analysis completed. Risk distribution: #{corp_patterns.risk_distribution.risk_level}."
+  defp add_high_risk_recommendation(recommendations, 0), do: recommendations
+
+  defp add_high_risk_recommendation(recommendations, high_risk_count) do
+    ["#{high_risk_count} high-risk individuals identified in group" | recommendations]
   end
 
-  defp assess_corp_security(corp_patterns) do
-    risk_level = corp_patterns.risk_distribution.risk_level
-
-    %{
-      overall_risk: risk_level,
-      security_concerns: corp_patterns.risk_distribution.outliers || [],
-      recruitment_assessment: corp_patterns.recruitment_patterns.pattern_type
-    }
-  end
-
-  defp generate_corp_recommendations(corp_patterns) do
-    recommendations = []
-
-    case corp_patterns.risk_distribution.risk_level do
-      "high" -> recommendations = ["Implement additional security measures" | recommendations]
-      "medium" -> recommendations = ["Monitor identified risk outliers" | recommendations]
-      _ -> recommendations
-    end
-
-    if length(corp_patterns.risk_distribution.outliers || []) > 0 do
-      recommendations = [
-        "Review high-risk individuals: #{length(corp_patterns.risk_distribution.outliers)} identified"
-        | recommendations
-      ]
-    end
-
-    if Enum.empty?(recommendations) do
-      ["Corporation security appears nominal"]
+  defp add_group_correlation_recommendation(recommendations, group_correlations) do
+    if Map.get(group_correlations, :alt_likelihood, 0) > 0.8 do
+      ["Strong alt character correlations - consider as single entity" | recommendations]
     else
       recommendations
     end
@@ -526,7 +474,7 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinator do
     end
   end
 
-  defp get_recent_intelligence_activity(timeframe) do
+  defp get_recent_intelligence_activity(_timeframe) do
     # Placeholder - would query recent analysis records
     %{
       total_analyses: 0,

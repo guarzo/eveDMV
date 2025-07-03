@@ -111,6 +111,8 @@ defmodule EveDmv.Intelligence.CharacterStats do
     attribute(:uses_cynos, :boolean, default: false, public?: true)
     attribute(:flies_capitals, :boolean, default: false, public?: true)
     attribute(:has_logi_support, :boolean, default: false, public?: true)
+    # 0.0-1.0 probability of awoxing (attacking own team)
+    attribute(:awox_probability, :float, default: 0.0, public?: true)
     # low/medium/high
     attribute(:batphone_probability, :string, default: "low", public?: true)
 

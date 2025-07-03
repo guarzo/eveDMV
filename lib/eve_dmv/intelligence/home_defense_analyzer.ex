@@ -10,7 +10,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
   alias EveDmv.Api
   alias EveDmv.Eve.EsiClient
   alias EveDmv.Intelligence.{CharacterStats, HomeDefenseAnalytics}
-  alias EveDmv.Killmails.{KillmailEnriched, Participant}
+  alias EveDmv.Killmails.KillmailEnriched
   require Ash.Query
 
   @doc """
@@ -134,15 +134,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
           "Failed to fetch corporation info for #{corporation_id}: #{inspect(reason)}"
         )
 
-        # Fallback to placeholder data
-        {:ok,
-         %{
-           corporation_name: "Corporation #{corporation_id}",
-           alliance_id: nil,
-           alliance_name: nil,
-           home_system_id: 31_000_142,
-           home_system_name: "J123456"
-         }}
+        {:error, reason}
     end
   end
 
@@ -282,8 +274,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
       hourly_groups =
         system_killmails
         |> Enum.group_by(fn km ->
-          km.killmail_time
-          |> DateTime.truncate(:hour)
+          %{km.killmail_time | minute: 0, second: 0, microsecond: {0, 6}}
         end)
 
       %{
@@ -1920,16 +1911,6 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
       )
       |> Enum.map(&length/1)
       |> Enum.max(fn -> 0 end)
-    end
-  end
-
-  defp determine_member_timezone(member) do
-    # Simple heuristic based on activity patterns
-    # In a real implementation, this would use more sophisticated analysis
-    case member.character_id do
-      id when rem(id, 3) == 0 -> "US/Eastern"
-      id when rem(id, 3) == 1 -> "UTC"
-      _ -> "Australia/Sydney"
     end
   end
 

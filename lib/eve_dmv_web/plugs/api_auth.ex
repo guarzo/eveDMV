@@ -112,8 +112,6 @@ defmodule EveDmvWeb.Plugs.ApiAuth do
     end
   end
 
-  defp valid_api_key_format?(_), do: false
-
   defp authenticate_api_key(conn, api_key, opts) do
     client_ip = get_client_ip(conn)
 

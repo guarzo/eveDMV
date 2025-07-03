@@ -340,7 +340,7 @@ defmodule EveDmv.Database.ArchiveManager do
   defp archive_table_data(policy, cutoff_date, total_count) do
     batch_size = policy.batch_size
     batches = div(total_count, batch_size) + 1
-    batch_id = UUID.uuid4()
+    batch_id = Base.encode16(:crypto.strong_rand_bytes(16), case: :lower)
 
     Logger.info("Archiving #{total_count} records from #{policy.table} in #{batches} batches")
 

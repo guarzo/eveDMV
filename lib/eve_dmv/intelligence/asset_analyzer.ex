@@ -67,9 +67,14 @@ defmodule EveDmv.Intelligence.AssetAnalyzer do
   """
   def get_corporation_ship_inventory(corporation_id, auth_token) do
     case EsiClient.get_corporation_assets(corporation_id, auth_token) do
+      {:ok, assets} ->
+        # Filter for ships and return inventory
+        ships = Enum.filter(assets, &ship_asset?/1)
+        {:ok, ships}
+
       {:error, reason} ->
         Logger.warning("Failed to fetch corporation assets: #{inspect(reason)}")
-        {:error, :service_unavailable}
+        {:error, reason}
     end
   end
 
@@ -78,13 +83,76 @@ defmodule EveDmv.Intelligence.AssetAnalyzer do
   """
   def get_character_ship_inventory(character_id, auth_token) do
     case EsiClient.get_character_assets(character_id, auth_token) do
+      {:ok, assets} ->
+        # Filter for ships and return inventory
+        ships = Enum.filter(assets, &ship_asset?/1)
+        {:ok, ships}
+
       {:error, reason} ->
         Logger.warning("Failed to fetch character assets: #{inspect(reason)}")
-        {:error, :service_unavailable}
+        {:error, reason}
     end
   end
 
   # Private functions
+
+  defp ship_asset?(asset) do
+    # Ships are typically in groups 25 (Frigate), 26 (Cruiser), 27 (Battleship), etc.
+    # This is a simplified check - in practice you'd need to look up the type_id
+    # in the EVE static data to determine if it's a ship
+    Map.get(asset, "group_id", 0) in [
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      237,
+      324,
+      358,
+      380,
+      419,
+      420,
+      463,
+      485,
+      513,
+      540,
+      541,
+      543,
+      547,
+      659,
+      830,
+      831,
+      832,
+      833,
+      834,
+      883,
+      893,
+      894,
+      898,
+      900,
+      902,
+      906,
+      941,
+      963,
+      1022,
+      1201,
+      1202,
+      1283,
+      1305,
+      1527,
+      1534,
+      1538,
+      1540,
+      1972,
+      1973,
+      1974,
+      1975,
+      1976,
+      2016
+    ]
+  end
 
   defp get_composition(composition_id) do
     case Ash.get(WHFleetComposition, composition_id, domain: EveDmv.Api) do

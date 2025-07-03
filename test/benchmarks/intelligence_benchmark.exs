@@ -4,6 +4,8 @@ defmodule EveDmv.IntelligenceBenchmark do
   Tests the performance of critical intelligence analysis functions.
   """
 
+  alias EveDmv.Api
+
   alias EveDmv.Intelligence.{
     CharacterAnalyzer,
     HomeDefenseAnalyzer,
@@ -12,7 +14,6 @@ defmodule EveDmv.IntelligenceBenchmark do
   }
 
   alias EveDmv.Killmails.KillmailRaw
-  alias EveDmv.Api
 
   def run do
     # Setup test data

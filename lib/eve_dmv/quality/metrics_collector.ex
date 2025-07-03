@@ -219,9 +219,6 @@ defmodule EveDmv.Quality.MetricsCollector do
           _ ->
             %{total_issues: 0, issues_by_category: %{}, issues_by_priority: %{}}
         end
-
-      _ ->
-        %{total_issues: 0, issues_by_category: %{}, issues_by_priority: %{}}
     end
   rescue
     _ -> %{total_issues: 0, issues_by_category: %{}, issues_by_priority: %{}}
@@ -240,9 +237,6 @@ defmodule EveDmv.Quality.MetricsCollector do
           # Limit for performance
           warnings: Enum.take(warnings, 10)
         }
-
-      _ ->
-        %{warning_count: 0, warnings: []}
     end
   rescue
     _ -> %{warning_count: 0, warnings: []}
@@ -661,9 +655,6 @@ defmodule EveDmv.Quality.MetricsCollector do
         |> String.split("\n")
         |> Enum.filter(&String.contains?(&1, "Update available"))
         |> length()
-
-      _ ->
-        0
     end
   rescue
     _ -> 0
@@ -754,7 +745,7 @@ defmodule EveDmv.Quality.MetricsCollector do
         recommendations
       end
 
-    if length(recommendations) == 0 do
+    if Enum.empty?(recommendations) do
       ["Great job! All quality metrics are within acceptable thresholds."]
     else
       recommendations

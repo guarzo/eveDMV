@@ -64,6 +64,9 @@ defmodule EveDmv.Intelligence.CharacterMetricsTest do
               %{"character_id" => Enum.random(90_000_000..100_000_000), "is_victim" => true},
               %{"character_id" => character_id, "is_victim" => false}
             ],
+            "attackers" => [
+              %{"character_id" => character_id, "is_victim" => false}
+            ],
             "zkb" => %{"totalValue" => 10_000_000}
           }
         end
@@ -75,6 +78,10 @@ defmodule EveDmv.Intelligence.CharacterMetricsTest do
             "killmail_id" => System.unique_integer([:positive]),
             "participants" => [
               %{"character_id" => Enum.random(90_000_000..100_000_000), "is_victim" => true},
+              %{"character_id" => character_id, "is_victim" => false},
+              %{"character_id" => Enum.random(90_000_000..100_000_000), "is_victim" => false}
+            ],
+            "attackers" => [
               %{"character_id" => character_id, "is_victim" => false},
               %{"character_id" => Enum.random(90_000_000..100_000_000), "is_victim" => false}
             ],
@@ -307,7 +314,7 @@ defmodule EveDmv.Intelligence.CharacterMetricsTest do
       kills = create_kills_for_character(character_id, 5)
 
       killmail_data = losses ++ kills
-      danger_rating = CharacterMetrics.calculate_danger_rating(killmail_data)
+      danger_rating = CharacterMetrics.calculate_danger_rating(killmail_data, character_id)
 
       assert danger_rating.score < 2.5
       assert danger_rating.factors != nil
@@ -320,7 +327,7 @@ defmodule EveDmv.Intelligence.CharacterMetricsTest do
       losses = create_losses_for_character(character_id, 2)
 
       killmail_data = kills ++ losses
-      danger_rating = CharacterMetrics.calculate_danger_rating(killmail_data)
+      danger_rating = CharacterMetrics.calculate_danger_rating(killmail_data, character_id)
 
       assert danger_rating.score > 3.5
       assert danger_rating.factors != nil
@@ -507,6 +514,13 @@ defmodule EveDmv.Intelligence.CharacterMetricsTest do
           %{
             "character_id" => Enum.random(90_000_000..100_000_000),
             "is_victim" => false,
+            "ship_type_id" => attacker_ship_type_id,
+            "ship_name" => attacker_ship_name
+          }
+        ],
+        "attackers" => [
+          %{
+            "character_id" => Enum.random(90_000_000..100_000_000),
             "ship_type_id" => attacker_ship_type_id,
             "ship_name" => attacker_ship_name
           }

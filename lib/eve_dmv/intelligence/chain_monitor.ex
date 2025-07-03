@@ -306,18 +306,11 @@ defmodule EveDmv.Intelligence.ChainMonitor do
       )
 
     # Bulk update all inhabitants to mark as departed
-    updates =
-      Enum.map(inhabitants, fn inhabitant ->
-        %{id: inhabitant.id, present: false, departure_time: DateTime.utc_now()}
-      end)
+    departure_time = DateTime.utc_now()
 
-    Ash.bulk_update(updates, SystemInhabitant, :update,
-      domain: Api,
-      return_records?: false,
-      return_errors?: false,
-      stop_on_error?: false,
-      batch_size: 500
-    )
+    Enum.each(inhabitants, fn inhabitant ->
+      Ash.update!(inhabitant, %{present: false, departure_time: departure_time}, domain: Api)
+    end)
   end
 
   defp update_or_create_inhabitant(chain_topology_id, inhabitant_data) do
@@ -425,13 +418,17 @@ defmodule EveDmv.Intelligence.ChainMonitor do
     end
 
     if updates != [] do
-      Ash.bulk_update(updates, SystemInhabitant, :update,
-        domain: Api,
-        return_records?: false,
-        return_errors?: false,
-        stop_on_error?: false,
-        batch_size: 500
-      )
+      Enum.each(updates, fn update_attrs ->
+        case Ash.get(SystemInhabitant, update_attrs.id, domain: Api) do
+          {:ok, record} ->
+            update_data = Map.delete(update_attrs, :id)
+            Ash.update!(record, update_data, domain: Api)
+
+          {:error, _} ->
+            # Record not found, skip
+            :ok
+        end
+      end)
     end
 
     :ok
@@ -554,13 +551,17 @@ defmodule EveDmv.Intelligence.ChainMonitor do
     end
 
     if updates != [] do
-      Ash.bulk_update(updates, ChainConnection, :update,
-        domain: Api,
-        return_records?: false,
-        return_errors?: false,
-        stop_on_error?: false,
-        batch_size: 500
-      )
+      Enum.each(updates, fn update_attrs ->
+        case Ash.get(ChainConnection, update_attrs.id, domain: Api) do
+          {:ok, record} ->
+            update_data = Map.delete(update_attrs, :id)
+            Ash.update!(record, update_data, domain: Api)
+
+          {:error, _} ->
+            # Record not found, skip
+            :ok
+        end
+      end)
     end
 
     :ok
@@ -758,12 +759,9 @@ defmodule EveDmv.Intelligence.ChainMonitor do
 
         # Bulk destroy inhabitants
         if inhabitants != [] do
-          Ash.bulk_destroy(inhabitants, :destroy,
-            domain: Api,
-            return_records?: false,
-            return_errors?: false,
-            batch_size: 500
-          )
+          Enum.each(inhabitants, fn inhabitant ->
+            Ash.destroy!(inhabitant, domain: Api)
+          end)
         end
 
         # Update system count

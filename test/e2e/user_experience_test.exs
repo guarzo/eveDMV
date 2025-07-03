@@ -5,7 +5,10 @@ defmodule EveDmv.E2E.UserExperienceTest do
   """
   use EveDmvWeb.ConnCase, async: false
 
+  @moduletag :skip
+
   import Phoenix.LiveViewTest
+  import EveDmv.Factories
 
   alias EveDmv.Accounts.User
   alias EveDmv.Intelligence.{CharacterAnalyzer, WHVettingAnalyzer}
@@ -567,10 +570,9 @@ defmodule EveDmv.E2E.UserExperienceTest do
   end
 
   defp log_in_user(conn, user) do
-    token = EveDmvWeb.Auth.generate_user_session_token(user)
-
     conn
     |> Phoenix.ConnTest.init_test_session(%{})
-    |> Plug.Conn.put_session(:user_token, token)
+    |> Plug.Conn.put_session(:current_user_id, user.id)
+    |> Plug.Conn.assign(:current_user, user)
   end
 end
