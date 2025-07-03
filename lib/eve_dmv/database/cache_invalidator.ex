@@ -314,17 +314,17 @@ defmodule EveDmv.Database.CacheInvalidator do
 
   defp extract_character_ids(killmail) do
     participants = killmail.participants || []
-    Enum.map(participants, & &1.character_id) |> Enum.reject(&is_nil/1)
+    participants |> Stream.map(& &1.character_id) |> Stream.reject(&is_nil/1) |> Enum.to_list()
   end
 
   defp extract_alliance_ids(killmail) do
     participants = killmail.participants || []
-    Enum.map(participants, & &1.alliance_id) |> Enum.reject(&is_nil/1) |> Enum.uniq()
+    participants |> Stream.map(& &1.alliance_id) |> Stream.reject(&is_nil/1) |> Enum.uniq()
   end
 
   defp extract_corp_ids(killmail) do
     participants = killmail.participants || []
-    Enum.map(participants, & &1.corporation_id) |> Enum.reject(&is_nil/1) |> Enum.uniq()
+    participants |> Stream.map(& &1.corporation_id) |> Stream.reject(&is_nil/1) |> Enum.uniq()
   end
 
   defp get_killmail_system_id(_killmail_id) do

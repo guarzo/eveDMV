@@ -1,6 +1,6 @@
 defmodule EveDmv.Database.ConnectionPoolMonitorTest do
   use ExUnit.Case, async: false
-  @moduletag :skip
+  # Connection pool monitor tests enabled - database monitoring testing
   import ExUnit.CaptureLog
 
   alias EveDmv.Database.ConnectionPoolMonitor

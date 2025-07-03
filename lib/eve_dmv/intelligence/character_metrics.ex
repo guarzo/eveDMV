@@ -26,10 +26,10 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
   end
 
   def calculate_basic_stats(character_id, killmail_data) do
-    kills = Enum.filter(killmail_data, &victim_is_not_character?(&1, character_id))
-    losses = Enum.filter(killmail_data, &victim_is_character?(&1, character_id))
-    solo_kills = Enum.filter(kills, &solo_kill?/1)
-    solo_losses = Enum.filter(losses, &solo_loss?/1)
+    # Single pass categorization to avoid multiple filters on same data
+    {kills, losses} = Enum.split_with(killmail_data, &victim_is_not_character?(&1, character_id))
+    {solo_kills, _group_kills} = Enum.split_with(kills, &solo_kill?/1)
+    {solo_losses, _group_losses} = Enum.split_with(losses, &solo_loss?/1)
 
     %{
       kills: %{

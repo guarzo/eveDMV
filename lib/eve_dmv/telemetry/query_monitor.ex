@@ -215,7 +215,7 @@ defmodule EveDmv.Telemetry.QueryMonitor do
     analysis = %{
       query_count: map_size(state.execution_stats),
       total_executions:
-        state.execution_stats |> Map.values() |> Enum.map(& &1.count) |> Enum.sum(),
+        state.execution_stats |> Map.values() |> Stream.map(& &1.count) |> Enum.sum(),
       slowest_patterns: get_slowest_patterns(state.execution_stats),
       most_frequent: get_most_frequent_patterns(state.execution_stats),
       n_plus_one_count: length(state.n_plus_one_alerts),

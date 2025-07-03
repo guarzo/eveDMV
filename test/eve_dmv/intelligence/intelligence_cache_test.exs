@@ -1,7 +1,7 @@
 defmodule EveDmv.Intelligence.IntelligenceCacheTest do
   # Not async due to GenServer state
   use ExUnit.Case, async: false
-  @moduletag :skip
+  # Cache tests enabled - simple GenServer state testing
 
   alias EveDmv.Intelligence.IntelligenceCache
 

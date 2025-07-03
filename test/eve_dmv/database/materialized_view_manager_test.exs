@@ -1,6 +1,6 @@
 defmodule EveDmv.Database.MaterializedViewManagerTest do
   use ExUnit.Case, async: false
-  @moduletag :skip
+  # Materialized view tests enabled - database utility testing
   import ExUnit.CaptureLog
 
   alias EveDmv.Database.MaterializedViewManager

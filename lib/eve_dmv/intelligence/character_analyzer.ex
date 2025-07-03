@@ -6,7 +6,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
   require Logger
   alias EveDmv.Api
   alias EveDmv.Database.QueryCache
-  alias EveDmv.Eve.EsiClient
+  alias EveDmv.Eve.{EsiClient, EsiUtils}
   alias EveDmv.Intelligence.{CharacterFormatters, CharacterMetrics, CharacterStats}
   alias EveDmv.Killmails.{KillmailEnriched, Participant}
   require Ash.Query
@@ -114,43 +114,23 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
   end
 
   defp get_character_info(character_id) do
-    case EsiClient.get_character(character_id) do
+    # Use the optimized EsiUtils function that consolidates all ESI calls
+    case EsiUtils.fetch_character_corporation_alliance(character_id) do
       {:ok, character_data} ->
-        # Get corporation and alliance info
-        corp_info =
-          case EsiClient.get_corporation(character_data["corporation_id"]) do
-            {:ok, corp} -> corp
-            {:error, _} -> %{"name" => "Unknown Corporation"}
-          end
-
-        alliance_info =
-          case character_data["alliance_id"] do
-            nil ->
-              nil
-
-            alliance_id ->
-              case EsiClient.get_alliance(alliance_id) do
-                {:ok, alliance} -> alliance
-                {:error, _} -> %{"name" => "Unknown Alliance"}
-              end
-          end
-
         basic_info = %{
           character_id: character_id,
-          character_name: character_data["name"],
-          corporation_id: character_data["corporation_id"],
-          corporation_name: corp_info["name"],
-          alliance_id: character_data["alliance_id"],
-          alliance_name: alliance_info && alliance_info["name"],
-          security_status: character_data["security_status"],
-          birthday: character_data["birthday"]
+          character_name: character_data.character_name,
+          corporation_id: character_data.corporation_id,
+          corporation_name: character_data.corporation_name,
+          alliance_id: character_data.alliance_id,
+          alliance_name: character_data.alliance_name,
+          # Not available in consolidated call
+          security_status: nil,
+          # Not available in consolidated call
+          birthday: nil
         }
 
         {:ok, basic_info}
-
-      {:error, :not_found} ->
-        # Try to get character info from killmail data as fallback
-        get_character_info_from_killmails(character_id)
 
       {:error, reason} ->
         Logger.warning("Failed to get character info from ESI: #{inspect(reason)}")
@@ -210,7 +190,9 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
   end
 
   defp get_recent_killmails_uncached(character_id) do
-    cutoff_date = DateTime.add(DateTime.utc_now(), -@analysis_period_days, :day)
+    # Cache the current time to ensure consistency across all date calculations
+    now = DateTime.utc_now()
+    cutoff_date = DateTime.add(now, -@analysis_period_days, :day)
 
     # Get killmails where character was involved
     participants_query =
@@ -255,7 +237,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
         "killmail_id" => killmail.killmail_id,
         "killmail_time" => DateTime.to_iso8601(killmail.killmail_time),
         "solar_system_id" => killmail.solar_system_id,
-        "participants" => Enum.map(km_participants, &participant_to_map/1),
+        "participants" => km_participants |> Stream.map(&participant_to_map/1) |> Enum.to_list(),
         "victim" => find_victim_in_participants(km_participants),
         "attackers" => find_attackers_in_participants(km_participants),
         "zkb" => %{
@@ -283,6 +265,9 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
     # Calculate completeness score based on available data
     completeness = calculate_completeness(metrics)
 
+    # Cache current time for consistency
+    now = DateTime.utc_now()
+
     # Build character stats resource
     stats_params = %{
       character_id: basic_info.character_id,
@@ -306,7 +291,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
       efficiency: metrics.basic_stats.efficiency,
 
       # Analysis metadata
-      last_analyzed_at: DateTime.utc_now(),
+      last_analyzed_at: now,
       completeness_score: completeness,
       data_quality: assess_data_quality(metrics),
 

@@ -55,7 +55,7 @@ defmodule EveDmv.Eve.CircuitBreaker do
   @doc """
   Execute a function with circuit breaker protection.
   """
-  @spec call(atom(), function(), keyword()) :: {:ok, any()} | {:error, any()}
+  @spec call(atom(), (-> term()), keyword()) :: {:ok, term()} | {:error, atom() | binary()}
   def call(service_name, fun, opts \\ []) do
     timeout = Keyword.get(opts, :timeout, @default_timeout)
 
