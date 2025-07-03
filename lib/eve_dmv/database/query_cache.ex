@@ -1,7 +1,7 @@
 defmodule EveDmv.Database.QueryCache do
   @moduledoc """
   Query cache adapter using the unified cache system.
-  
+
   This module maintains the same interface as before but delegates
   to the unified cache implementation.
   """
@@ -9,7 +9,8 @@ defmodule EveDmv.Database.QueryCache do
   alias EveDmv.Utils.Cache
 
   @cache_name :query_cache
-  @default_ttl 300_000  # 5 minutes
+  # 5 minutes
+  @default_ttl 300_000
   @max_cache_size 1000
 
   @doc """
@@ -20,16 +21,18 @@ defmodule EveDmv.Database.QueryCache do
       name: @cache_name,
       ttl_ms: @default_ttl,
       max_size: @max_cache_size,
-      cleanup_interval_ms: 60_000  # 1 minute
+      # 1 minute
+      cleanup_interval_ms: 60_000
     ]
-    
+
     Cache.start_link(cache_opts)
   end
 
   @doc """
   Get a cached result or compute and cache it if not found.
   """
-  def get_or_compute(cache_key, compute_fn, ttl \\ @default_ttl) when is_function(compute_fn, 0) do
+  def get_or_compute(cache_key, compute_fn, ttl \\ @default_ttl)
+      when is_function(compute_fn, 0) do
     Cache.get_or_compute(@cache_name, cache_key, compute_fn, ttl_ms: ttl)
   end
 

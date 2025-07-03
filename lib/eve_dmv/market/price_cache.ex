@@ -1,7 +1,7 @@
 defmodule EveDmv.Market.PriceCache do
   @moduledoc """
   Market price cache adapter using the unified cache system.
-  
+
   This module maintains the same interface as before but delegates
   to the unified cache implementation.
   """
@@ -18,10 +18,12 @@ defmodule EveDmv.Market.PriceCache do
     cache_opts = [
       name: @cache_name,
       ttl_ms: get_ttl_ms(),
-      max_size: 10_000,  # Prices for up to 10k items
-      cleanup_interval_ms: 60 * 60 * 1000  # 1 hour
+      # Prices for up to 10k items
+      max_size: 10_000,
+      # 1 hour
+      cleanup_interval_ms: 60 * 60 * 1000
     ]
-    
+
     Cache.start_link(cache_opts)
   end
 
@@ -51,15 +53,15 @@ defmodule EveDmv.Market.PriceCache do
   @spec get_items([integer()]) :: {map(), [integer()]}
   def get_items(type_ids) do
     {found, missing} = Cache.get_many(@cache_name, type_ids)
-    
+
     # Convert keys to strings to match original interface
-    string_found = 
+    string_found =
       found
-      |> Enum.map(fn {type_id, value} -> 
-        {Integer.to_string(type_id), value} 
+      |> Enum.map(fn {type_id, value} ->
+        {Integer.to_string(type_id), value}
       end)
       |> Enum.into(%{})
-    
+
     {string_found, missing}
   end
 
@@ -76,16 +78,17 @@ defmodule EveDmv.Market.PriceCache do
   """
   @spec put_items(map()) :: :ok
   def put_items(prices_map) do
-    entries = Enum.map(prices_map, fn {type_id_str, price_data} ->
-      type_id = 
-        case type_id_str do
-          id when is_binary(id) -> String.to_integer(id)
-          id when is_integer(id) -> id
-        end
-      
-      {type_id, price_data}
-    end)
-    
+    entries =
+      Enum.map(prices_map, fn {type_id_str, price_data} ->
+        type_id =
+          case type_id_str do
+            id when is_binary(id) -> String.to_integer(id)
+            id when is_integer(id) -> id
+          end
+
+        {type_id, price_data}
+      end)
+
     Cache.put_many(@cache_name, entries, ttl_ms: get_ttl_ms())
   end
 

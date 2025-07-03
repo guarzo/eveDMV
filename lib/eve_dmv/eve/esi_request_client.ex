@@ -367,7 +367,6 @@ defmodule EveDmv.Eve.EsiRequestClient do
     end
   end
 
-
   defp sanitize_list_for_logging(list) do
     Enum.map(list, fn item ->
       case item do
@@ -376,5 +375,4 @@ defmodule EveDmv.Eve.EsiRequestClient do
       end
     end)
   end
-
 end

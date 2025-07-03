@@ -1,7 +1,7 @@
 defmodule EveDmv.Utils.Cache do
   @moduledoc """
   Unified caching module using ETS for various caching needs.
-  
+
   This module replaces multiple GenServer-based caches with a simple, 
   efficient ETS-based implementation. It supports:
   - TTL-based expiration
@@ -12,13 +12,15 @@ defmodule EveDmv.Utils.Cache do
 
   require Logger
 
-  @default_ttl_ms 5 * 60 * 1000  # 5 minutes
-  @cleanup_interval_ms 60 * 1000  # 1 minute
+  # 5 minutes
+  @default_ttl_ms 5 * 60 * 1000
+  # 1 minute
+  @cleanup_interval_ms 60 * 1000
   @default_max_size 1000
 
   @doc """
   Start a new cache with the given name and options.
-  
+
   Options:
   - ttl_ms: Time to live in milliseconds (default: 5 minutes)
   - max_size: Maximum number of entries (default: 1000)
@@ -27,7 +29,7 @@ defmodule EveDmv.Utils.Cache do
   def start_link(opts) do
     name = Keyword.fetch!(opts, :name)
     table_name = cache_table_name(name)
-    
+
     # Create ETS table
     :ets.new(table_name, [
       :set,
@@ -36,12 +38,14 @@ defmodule EveDmv.Utils.Cache do
       read_concurrency: true,
       write_concurrency: true
     ])
-    
+
     # Start cleanup task
     cleanup_interval = Keyword.get(opts, :cleanup_interval_ms, @cleanup_interval_ms)
-    {:ok, _pid} = Task.start_link(fn -> 
-      periodic_cleanup(table_name, cleanup_interval)
-    end)
+
+    {:ok, _pid} =
+      Task.start_link(fn ->
+        periodic_cleanup(table_name, cleanup_interval)
+      end)
   end
 
   @doc """
@@ -49,6 +53,7 @@ defmodule EveDmv.Utils.Cache do
   """
   def child_spec(opts) do
     name = Keyword.fetch!(opts, :name)
+
     %{
       id: {__MODULE__, name},
       start: {__MODULE__, :start_link, [opts]},
@@ -62,12 +67,12 @@ defmodule EveDmv.Utils.Cache do
   """
   def get_or_compute(cache_name, key, compute_fn, opts \\ []) when is_function(compute_fn, 0) do
     ttl_ms = Keyword.get(opts, :ttl_ms, @default_ttl_ms)
-    
+
     case get(cache_name, key) do
       {:ok, value} ->
         track_cache_access(cache_name, :hit)
         value
-        
+
       :miss ->
         track_cache_access(cache_name, :miss)
         value = compute_fn.()
@@ -81,7 +86,7 @@ defmodule EveDmv.Utils.Cache do
   """
   def get(cache_name, key) do
     table_name = cache_table_name(cache_name)
-    
+
     case :ets.lookup(table_name, key) do
       [{^key, value, expires_at}] ->
         if timestamp_ms() < expires_at do
@@ -91,12 +96,13 @@ defmodule EveDmv.Utils.Cache do
           :ets.delete(table_name, key)
           :miss
         end
-        
+
       [] ->
         :miss
     end
   rescue
-    ArgumentError -> :miss  # Table doesn't exist
+    # Table doesn't exist
+    ArgumentError -> :miss
   end
 
   @doc """
@@ -106,7 +112,7 @@ defmodule EveDmv.Utils.Cache do
   def get_many(cache_name, keys) do
     table_name = cache_table_name(cache_name)
     now = timestamp_ms()
-    
+
     Enum.reduce(keys, {%{}, []}, fn key, {found, missing} ->
       case :ets.lookup(table_name, key) do
         [{^key, value, expires_at}] ->
@@ -116,13 +122,14 @@ defmodule EveDmv.Utils.Cache do
             :ets.delete(table_name, key)
             {found, [key | missing]}
           end
-          
+
         [] ->
           {found, [key | missing]}
       end
     end)
   rescue
-    ArgumentError -> {%{}, keys}  # Table doesn't exist
+    # Table doesn't exist
+    ArgumentError -> {%{}, keys}
   end
 
   @doc """
@@ -132,16 +139,17 @@ defmodule EveDmv.Utils.Cache do
     table_name = cache_table_name(cache_name)
     ttl_ms = Keyword.get(opts, :ttl_ms, @default_ttl_ms)
     max_size = Keyword.get(opts, :max_size, @default_max_size)
-    
+
     expires_at = timestamp_ms() + ttl_ms
-    
+
     # Check size limit
     ensure_size_limit(table_name, max_size)
-    
+
     :ets.insert(table_name, {key, value, expires_at})
     :ok
   rescue
-    ArgumentError -> :ok  # Table doesn't exist
+    # Table doesn't exist
+    ArgumentError -> :ok
   end
 
   @doc """
@@ -151,15 +159,17 @@ defmodule EveDmv.Utils.Cache do
     table_name = cache_table_name(cache_name)
     ttl_ms = Keyword.get(opts, :ttl_ms, @default_ttl_ms)
     expires_at = timestamp_ms() + ttl_ms
-    
-    ets_entries = Enum.map(entries, fn {key, value} ->
-      {key, value, expires_at}
-    end)
-    
+
+    ets_entries =
+      Enum.map(entries, fn {key, value} ->
+        {key, value, expires_at}
+      end)
+
     :ets.insert(table_name, ets_entries)
     :ok
   rescue
-    ArgumentError -> :ok  # Table doesn't exist
+    # Table doesn't exist
+    ArgumentError -> :ok
   end
 
   @doc """
@@ -170,7 +180,8 @@ defmodule EveDmv.Utils.Cache do
     :ets.delete(table_name, key)
     :ok
   rescue
-    ArgumentError -> :ok  # Table doesn't exist
+    # Table doesn't exist
+    ArgumentError -> :ok
   end
 
   @doc """
@@ -181,7 +192,8 @@ defmodule EveDmv.Utils.Cache do
     :ets.delete_all_objects(table_name)
     :ok
   rescue
-    ArgumentError -> :ok  # Table doesn't exist
+    # Table doesn't exist
+    ArgumentError -> :ok
   end
 
   @doc """
@@ -191,11 +203,12 @@ defmodule EveDmv.Utils.Cache do
   def invalidate_pattern(cache_name, pattern) do
     table_name = cache_table_name(cache_name)
     regex = pattern_to_regex(pattern)
-    
+
     matching_keys =
       :ets.foldl(
         fn {key, _value, _expires_at}, acc ->
           key_str = to_string(key)
+
           if Regex.match?(regex, key_str) do
             [key | acc]
           else
@@ -205,14 +218,15 @@ defmodule EveDmv.Utils.Cache do
         [],
         table_name
       )
-    
+
     Enum.each(matching_keys, fn key ->
       :ets.delete(table_name, key)
     end)
-    
+
     length(matching_keys)
   rescue
-    ArgumentError -> 0  # Table doesn't exist
+    # Table doesn't exist
+    ArgumentError -> 0
   end
 
   @doc """
@@ -220,10 +234,10 @@ defmodule EveDmv.Utils.Cache do
   """
   def stats(cache_name) do
     table_name = cache_table_name(cache_name)
-    
+
     size = :ets.info(table_name, :size) || 0
     memory = :ets.info(table_name, :memory) || 0
-    
+
     %{
       size: size,
       memory_bytes: memory * :erlang.system_info(:wordsize)
@@ -255,11 +269,11 @@ defmodule EveDmv.Utils.Cache do
 
   defp ensure_size_limit(table_name, max_size) do
     current_size = :ets.info(table_name, :size)
-    
+
     if current_size >= max_size do
       # Simple FIFO eviction - remove oldest 10%
       num_to_remove = div(max_size, 10)
-      
+
       :ets.tab2list(table_name)
       |> Enum.sort_by(fn {_key, _value, expires_at} -> expires_at end)
       |> Enum.take(num_to_remove)
@@ -277,7 +291,7 @@ defmodule EveDmv.Utils.Cache do
 
   defp cleanup_expired(table_name) do
     now = timestamp_ms()
-    
+
     expired_count =
       :ets.foldl(
         fn {key, _value, expires_at}, count ->
@@ -291,11 +305,12 @@ defmodule EveDmv.Utils.Cache do
         0,
         table_name
       )
-    
+
     if expired_count > 0 do
       Logger.info("Cleaned up #{expired_count} expired entries from #{table_name}")
     end
   rescue
-    ArgumentError -> :ok  # Table doesn't exist
+    # Table doesn't exist
+    ArgumentError -> :ok
   end
 end
