@@ -128,7 +128,7 @@ defmodule EveDmv.Intelligence.SystemInhabitant do
   end
 
   relationships do
-    belongs_to :chain_topology, EveDmv.Intelligence.ChainTopology do
+    belongs_to :chain_topology, EveDmv.Intelligence.ChainAnalysis.ChainTopology do
       attribute_writable?(true)
     end
 

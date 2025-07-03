@@ -9,12 +9,10 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
 
   require Logger
 
-  alias EveDmv.Intelligence.{
-    CharacterAnalyzer,
-    CharacterStats,
-    MemberActivityAnalyzer,
-    WHVetting
-  }
+  alias EveDmv.Intelligence.MemberActivityAnalyzer
+
+  alias EveDmv.Intelligence.{CharacterAnalyzer, CharacterStats}
+  alias EveDmv.Intelligence.WhSpace.Vetting, as: WHVetting
 
   alias EveDmv.Database.{QueryCache, QueryUtils}
 

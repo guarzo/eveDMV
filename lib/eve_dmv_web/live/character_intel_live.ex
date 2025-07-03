@@ -15,7 +15,8 @@ defmodule EveDmvWeb.CharacterIntelLive do
   require Logger
 
   alias EveDmv.Eve.EsiClient
-  alias EveDmv.Intelligence.{CharacterAnalyzer, CharacterStats}
+  alias EveDmv.Intelligence.CharacterAnalyzer
+  alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Killmails.HistoricalKillmailFetcher
 
   on_mount({EveDmvWeb.AuthLive, :load_from_session})

@@ -7,7 +7,8 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   """
 
   require Logger
-  alias EveDmv.Intelligence.{CharacterStats, WHVetting}
+  alias EveDmv.Intelligence.CharacterStats
+  alias EveDmv.Intelligence.WhSpace.Vetting, as: WHVetting
 
   @doc """
   Perform advanced behavioral pattern analysis on a character.

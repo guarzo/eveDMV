@@ -18,9 +18,10 @@ defmodule EveDmv.IntelligenceCase do
         CharacterAnalyzer,
         HomeDefenseAnalyzer,
         MemberActivityAnalyzer,
-        WHFleetAnalyzer,
-        WHVettingAnalyzer
+        WHFleetAnalyzer
       }
+
+      alias EveDmv.Intelligence.WHVettingAnalyzer
     end
   end
 

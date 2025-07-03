@@ -1,4 +1,4 @@
-defmodule EveDmv.Intelligence.CharacterAnalysis.CharacterAnalyzerSimplified do
+defmodule EveDmv.Intelligence.CharacterAnalyzerSimplified do
   @moduledoc """
   Core character analysis coordination - simplified version.
 
@@ -10,7 +10,7 @@ defmodule EveDmv.Intelligence.CharacterAnalysis.CharacterAnalyzerSimplified do
   alias EveDmv.Api
   # alias EveDmv.Eve.{EsiClient, NameResolver}
   alias EveDmv.Intelligence.CharacterStats
-  alias EveDmv.Intelligence.CharacterAnalysis.CharacterMetrics
+  alias EveDmv.Intelligence.CharacterMetrics
   alias EveDmv.Killmails.{KillmailEnriched, Participant}
   require Ash.Query
 

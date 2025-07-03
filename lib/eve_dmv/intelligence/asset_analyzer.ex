@@ -11,7 +11,7 @@ defmodule EveDmv.Intelligence.AssetAnalyzer do
 
   require Logger
   alias EveDmv.Eve.{EsiCache, EsiClient}
-  alias EveDmv.Intelligence.WHFleetComposition
+  alias EveDmv.Intelligence.WhSpace.FleetComposition
 
   @doc """
   Analyze asset availability for a fleet composition.
@@ -154,7 +154,7 @@ defmodule EveDmv.Intelligence.AssetAnalyzer do
   end
 
   defp get_composition(composition_id) do
-    case Ash.get(WHFleetComposition, composition_id, domain: EveDmv.Api) do
+    case Ash.get(FleetComposition, composition_id, domain: EveDmv.Api) do
       {:ok, composition} -> {:ok, composition}
       error -> error
     end

@@ -1,4 +1,4 @@
-defmodule EveDmv.Intelligence.ChainTopology do
+defmodule EveDmv.Intelligence.ChainAnalysis.ChainTopology do
   @moduledoc """
   Represents a wormhole chain topology with systems and connections.
 
@@ -81,7 +81,7 @@ defmodule EveDmv.Intelligence.ChainTopology do
       destination_attribute(:chain_topology_id)
     end
 
-    has_many :chain_connections, EveDmv.Intelligence.ChainConnection do
+    has_many :chain_connections, EveDmv.Intelligence.ChainAnalysis.ChainConnection do
       destination_attribute(:chain_topology_id)
     end
   end

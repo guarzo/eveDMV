@@ -11,7 +11,8 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
 
   alias EveDmv.Api
   alias EveDmv.Eve.{EsiClient, EsiUtils}
-  alias EveDmv.Intelligence.{CharacterStats, WHVetting}
+  alias EveDmv.Intelligence.CharacterStats
+  alias EveDmv.Intelligence.WhSpace.Vetting, as: WHVetting
   alias EveDmv.Killmails.Participant
 
   @doc """

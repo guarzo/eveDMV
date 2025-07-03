@@ -1,4 +1,4 @@
-defmodule EveDmv.Intelligence.ChainConnection do
+defmodule EveDmv.Intelligence.ChainAnalysis.ChainConnection do
   @moduledoc """
   Represents wormhole connections within a chain topology.
 
@@ -126,7 +126,7 @@ defmodule EveDmv.Intelligence.ChainConnection do
   end
 
   relationships do
-    belongs_to :chain_topology, EveDmv.Intelligence.ChainTopology do
+    belongs_to :chain_topology, EveDmv.Intelligence.ChainAnalysis.ChainTopology do
       attribute_writable?(true)
     end
 

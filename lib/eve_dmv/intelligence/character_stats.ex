@@ -211,7 +211,9 @@ defmodule EveDmv.Intelligence.CharacterStats do
 
         if character_id do
           # Use the CharacterAnalyzer to recalculate stats
-          case EveDmv.Intelligence.CharacterAnalyzer.analyze_character(character_id) do
+          case EveDmv.Intelligence.CharacterAnalyzer.analyze_character(
+                 character_id
+               ) do
             {:ok, updated_stats} ->
               # Update changeset with fresh statistics
               changeset

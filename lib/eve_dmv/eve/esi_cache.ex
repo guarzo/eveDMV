@@ -36,7 +36,7 @@ defmodule EveDmv.Eve.EsiCache do
   @doc """
   Start the ESI cache.
   """
-  def start_link(_opts) do
+  def start_link(_opts \\ []) do
     cache_opts = [
       name: @cache_name,
       # Default TTL
@@ -49,6 +49,7 @@ defmodule EveDmv.Eve.EsiCache do
 
     Cache.start_link(cache_opts)
   end
+
 
   # Character cache functions
 

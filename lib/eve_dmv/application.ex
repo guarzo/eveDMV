@@ -45,7 +45,7 @@ defmodule EveDmv.Application do
       # Start the Wanderer SSE client for real-time events
       maybe_start_process(EveDmv.Intelligence.WandererSSE),
       # Start the chain monitoring system
-      maybe_start_process(EveDmv.Intelligence.ChainMonitor),
+      maybe_start_process(EveDmv.Intelligence.ChainAnalysis.ChainMonitor),
       # Start mock SSE server in development
       maybe_start_mock_sse_server(),
       # Start the killmail ingestion pipeline

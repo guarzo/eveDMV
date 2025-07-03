@@ -7,7 +7,8 @@ defmodule EveDmv.Intelligence.IntelligenceScoring do
   """
 
   require Logger
-  alias EveDmv.Intelligence.{AdvancedAnalytics, CharacterStats, WHVetting}
+  alias EveDmv.Intelligence.{AdvancedAnalytics, CharacterStats}
+  alias EveDmv.Intelligence.WhSpace.Vetting, as: WHVetting
 
   @doc """
   Calculate comprehensive intelligence score for a character.

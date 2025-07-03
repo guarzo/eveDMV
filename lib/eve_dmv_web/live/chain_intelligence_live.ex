@@ -12,11 +12,11 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
 
   alias EveDmv.Intelligence.{
     ChainConnection,
-    ChainMonitor,
-    ChainTopology,
     SystemInhabitant,
     ThreatAnalyzer
   }
+
+  alias EveDmv.Intelligence.ChainAnalysis.{ChainMonitor, ChainTopology}
 
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 

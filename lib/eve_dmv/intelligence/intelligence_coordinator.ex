@@ -35,11 +35,13 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinator do
   require Logger
 
   alias EveDmv.Intelligence.{
-    CharacterAnalyzer,
     CorrelationEngine,
-    IntelligenceCache,
-    WHVettingAnalyzer
+    IntelligenceCache
   }
+
+  alias EveDmv.Intelligence.CharacterAnalyzer
+
+  alias EveDmv.Intelligence.WHVettingAnalyzer
 
   @doc """
   Perform comprehensive intelligence analysis for a character.

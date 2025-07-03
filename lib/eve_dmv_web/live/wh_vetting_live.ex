@@ -15,7 +15,8 @@ defmodule EveDmvWeb.WHVettingLive do
   require Logger
 
   alias EveDmv.Api
-  alias EveDmv.Intelligence.{WHVetting, WHVettingAnalyzer}
+  alias EveDmv.Intelligence.WhSpace.Vetting, as: WHVetting
+  alias EveDmv.Intelligence.WHVettingAnalyzer
 
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
