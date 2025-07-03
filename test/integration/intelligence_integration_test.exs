@@ -32,7 +32,7 @@ defmodule EveDmv.Integration.IntelligenceIntegrationTest do
       assert {:ok, _} = KillmailPipeline.process_killmail(killmail_data)
 
       # Step 2: Trigger character analysis
-      assert {:ok, character_stats} = CharacterAnalyzer.analyze_character(character_id)
+      assert {:ok, _character_stats} = CharacterAnalyzer.analyze_character(character_id)
 
       # Step 3: Verify intelligence data is generated
       assert character_stats.character_id == character_id
@@ -62,13 +62,13 @@ defmodule EveDmv.Integration.IntelligenceIntegrationTest do
       character_id = 95_465_998
 
       # Create comprehensive test data
-      killmails = EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 30)
+      _killmails = EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 30)
 
-      wh_activity =
+      _wh_activity =
         EveDmv.IntelligenceCase.create_wormhole_activity(character_id, "C5", count: 10)
 
       # Simulate real-time intelligence updates
-      assert {:ok, character_stats} = CharacterAnalyzer.analyze_character(character_id)
+      assert {:ok, _character_stats} = CharacterAnalyzer.analyze_character(character_id)
 
       # Test intelligence aggregation
       intelligence_summary = IntelligenceCoordinator.generate_threat_summary([character_id])
@@ -103,7 +103,7 @@ defmodule EveDmv.Integration.IntelligenceIntegrationTest do
 
       # Create and analyze character
       EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 25)
-      assert {:ok, character_stats} = CharacterAnalyzer.analyze_character(character_id)
+      assert {:ok, _character_stats} = CharacterAnalyzer.analyze_character(character_id)
 
       # Verify data is persisted
       retrieved_stats = CharacterStats.get_by_character_id(character_id)
@@ -278,7 +278,7 @@ defmodule EveDmv.Integration.IntelligenceIntegrationTest do
         end
 
       # Check that dangerous characters correlate with fleet threat assessment
-      dangerous_characters =
+      _dangerous_characters =
         Enum.filter(character_analyses, fn {_id, analysis} ->
           analysis.dangerous_rating >= 7
         end)
@@ -348,7 +348,7 @@ defmodule EveDmv.Integration.IntelligenceIntegrationTest do
       # Create consistent test data
       EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 50)
 
-      assert {:ok, character_stats} = CharacterAnalyzer.analyze_character(character_id)
+      assert {:ok, _character_stats} = CharacterAnalyzer.analyze_character(character_id)
 
       # Verify basic consistency
       assert character_stats.character_id == character_id
@@ -380,7 +380,7 @@ defmodule EveDmv.Integration.IntelligenceIntegrationTest do
 
   # Helper functions for cross-module testing
 
-  defp create_comprehensive_character_activity(character_id, corporation_id, home_system_id) do
+  defp create_comprehensive_character_activity(character_id, _corporation_id, home_system_id) do
     # Mixed K-space and J-space activity
     systems = [
       # Home system activity

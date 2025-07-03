@@ -14,7 +14,10 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinatorTest do
         days_back: 60
       )
 
-      create_wormhole_activity(character_id, "C3", count: 5, role: :hunter)
+      EveDmv.IntelligenceCase.create_wormhole_activity(character_id, "C3",
+        count: 5,
+        role: :hunter
+      )
 
       assert {:ok, analysis} =
                IntelligenceCoordinator.analyze_character_comprehensive(character_id)
@@ -41,7 +44,7 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinatorTest do
 
     test "respects use_cache option" do
       character_id = 123_456_789
-      create_realistic_killmail_set(character_id, count: 5)
+      EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 5)
 
       # First call with caching enabled
       assert {:ok, analysis1} =
@@ -62,7 +65,7 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinatorTest do
 
     test "respects include_correlations option" do
       character_id = 123_456_789
-      create_realistic_killmail_set(character_id, count: 5)
+      EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 5)
 
       # With correlations disabled
       assert {:ok, analysis} =
@@ -81,8 +84,12 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinatorTest do
 
       # Create test data for all characters
       for character_id <- character_ids do
-        create_realistic_killmail_set(character_id, count: 10)
-        create_wormhole_activity(character_id, "C4", count: 3, role: :mixed)
+        EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 10)
+
+        EveDmv.IntelligenceCase.create_wormhole_activity(character_id, "C4",
+          count: 3,
+          role: :mixed
+        )
       end
 
       assert {:ok, group_analysis} =
@@ -109,8 +116,8 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinatorTest do
       character_ids = [123_456_789, 999_999_999, 987_654_321]
 
       # Create data for only some characters
-      create_realistic_killmail_set(123_456_789, count: 5)
-      create_realistic_killmail_set(987_654_321, count: 5)
+      EveDmv.IntelligenceCase.create_realistic_killmail_set(123_456_789, count: 5)
+      EveDmv.IntelligenceCase.create_realistic_killmail_set(987_654_321, count: 5)
 
       assert {:ok, group_analysis} =
                IntelligenceCoordinator.analyze_character_group(character_ids)
@@ -125,7 +132,7 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinatorTest do
   describe "get_intelligence_summary/1" do
     test "returns summary for analyzed character" do
       character_id = 123_456_789
-      create_realistic_killmail_set(character_id, count: 10)
+      EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 10)
 
       assert {:ok, summary} = IntelligenceCoordinator.get_intelligence_summary(character_id)
 
@@ -147,7 +154,7 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinatorTest do
   describe "get_character_correlations/1" do
     test "returns correlations for character" do
       character_id = 123_456_789
-      create_realistic_killmail_set(character_id, count: 15)
+      EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 15)
 
       assert {:ok, correlations} =
                IntelligenceCoordinator.get_character_correlations(character_id)
@@ -179,7 +186,7 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinatorTest do
 
       # Use send to test private function indirectly through public interface
       character_id = 123_456_789
-      create_realistic_killmail_set(character_id, count: 5)
+      EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 5)
 
       assert {:ok, analysis} =
                IntelligenceCoordinator.analyze_character_comprehensive(character_id)

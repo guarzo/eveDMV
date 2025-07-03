@@ -14,7 +14,10 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
         days_back: 90
       )
 
-      create_wormhole_activity(character_id, "C5", count: 8, role: :hunter)
+      EveDmv.IntelligenceCase.create_wormhole_activity(character_id, "C5",
+        count: 8,
+        role: :hunter
+      )
 
       assert {:ok, score_data} = IntelligenceScoring.calculate_comprehensive_score(character_id)
 
@@ -35,7 +38,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
       character_id = 555_666_777
 
       # Create minimal test data
-      create_realistic_killmail_set(character_id, count: 3, days_back: 30)
+      EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 3, days_back: 30)
 
       assert {:ok, score_data} = IntelligenceScoring.calculate_comprehensive_score(character_id)
 
@@ -53,7 +56,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
 
     test "component scores are within valid ranges" do
       character_id = 123_456_789
-      create_realistic_killmail_set(character_id, count: 15)
+      EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 15)
 
       assert {:ok, score_data} = IntelligenceScoring.calculate_comprehensive_score(character_id)
 
@@ -69,8 +72,8 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
   describe "calculate_recruitment_fitness/2" do
     test "calculates recruitment fitness with default requirements" do
       character_id = 123_456_789
-      create_realistic_killmail_set(character_id, count: 15)
-      create_wormhole_activity(character_id, "C4", count: 5, role: :mixed)
+      EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 15)
+      EveDmv.IntelligenceCase.create_wormhole_activity(character_id, "C4", count: 5, role: :mixed)
 
       assert {:ok, fitness_data} = IntelligenceScoring.calculate_recruitment_fitness(character_id)
 
@@ -95,7 +98,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
 
     test "calculates recruitment fitness with custom requirements" do
       character_id = 123_456_789
-      create_realistic_killmail_set(character_id, count: 10)
+      EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 10)
 
       requirements = %{
         minimum_experience_days: 365,
@@ -116,7 +119,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
 
     test "fitness components are within valid ranges" do
       character_id = 123_456_789
-      create_realistic_killmail_set(character_id, count: 10)
+      EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 10)
 
       assert {:ok, fitness_data} = IntelligenceScoring.calculate_recruitment_fitness(character_id)
 
@@ -135,8 +138,12 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
 
       # Create test data for all characters
       for character_id <- character_ids do
-        create_realistic_killmail_set(character_id, count: 12)
-        create_wormhole_activity(character_id, "C4", count: 4, role: :mixed)
+        EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 12)
+
+        EveDmv.IntelligenceCase.create_wormhole_activity(character_id, "C4",
+          count: 4,
+          role: :mixed
+        )
       end
 
       assert {:ok, fleet_data} = IntelligenceScoring.calculate_fleet_readiness(character_ids)
@@ -163,8 +170,8 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
       character_ids = [123_456_789, 999_999_999, 987_654_321]
 
       # Create data for only some characters
-      create_realistic_killmail_set(123_456_789, count: 10)
-      create_realistic_killmail_set(987_654_321, count: 8)
+      EveDmv.IntelligenceCase.create_realistic_killmail_set(123_456_789, count: 10)
+      EveDmv.IntelligenceCase.create_realistic_killmail_set(987_654_321, count: 8)
 
       assert {:ok, fleet_data} = IntelligenceScoring.calculate_fleet_readiness(character_ids)
 
@@ -180,8 +187,12 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
       character_id = 123_456_789
 
       # Create data suggesting good intelligence capabilities
-      create_realistic_killmail_set(character_id, count: 15)
-      create_wormhole_activity(character_id, "C6", count: 6, role: :hunter)
+      EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 15)
+
+      EveDmv.IntelligenceCase.create_wormhole_activity(character_id, "C6",
+        count: 6,
+        role: :hunter
+      )
 
       assert {:ok, intel_data} =
                IntelligenceScoring.calculate_intelligence_suitability(character_id)
@@ -207,7 +218,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
 
     test "intel components are within valid ranges" do
       character_id = 123_456_789
-      create_realistic_killmail_set(character_id, count: 10)
+      EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 10)
 
       assert {:ok, intel_data} =
                IntelligenceScoring.calculate_intelligence_suitability(character_id)
@@ -258,7 +269,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
 
     test "handles single character for fleet analysis" do
       character_id = 123_456_789
-      create_realistic_killmail_set(character_id, count: 10)
+      EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 10)
 
       assert {:error, "Insufficient valid character data for fleet analysis"} =
                IntelligenceScoring.calculate_fleet_readiness([character_id])
@@ -268,7 +279,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
   describe "scoring consistency" do
     test "repeated calls return consistent scores for same character" do
       character_id = 123_456_789
-      create_realistic_killmail_set(character_id, count: 15)
+      EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 15)
 
       assert {:ok, score_data1} = IntelligenceScoring.calculate_comprehensive_score(character_id)
       assert {:ok, score_data2} = IntelligenceScoring.calculate_comprehensive_score(character_id)
@@ -282,11 +293,21 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
       character_id_high = 222_222_222
 
       # Low activity character
-      create_realistic_killmail_set(character_id_low, count: 3, days_back: 90)
+      EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id_low,
+        count: 3,
+        days_back: 90
+      )
 
       # High activity character
-      create_realistic_killmail_set(character_id_high, count: 25, days_back: 30)
-      create_wormhole_activity(character_id_high, "C5", count: 10, role: :hunter)
+      EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id_high,
+        count: 25,
+        days_back: 30
+      )
+
+      EveDmv.IntelligenceCase.create_wormhole_activity(character_id_high, "C5",
+        count: 10,
+        role: :hunter
+      )
 
       assert {:ok, score_low} =
                IntelligenceScoring.calculate_comprehensive_score(character_id_low)

@@ -14,7 +14,11 @@ defmodule EveDmv.IntelligenceWorkflowTest do
         days_back: 120
       )
 
-      create_wormhole_activity(character_id, "C5", count: 8, role: :hunter)
+      EveDmv.IntelligenceCase.create_wormhole_activity(character_id, "C5",
+        count: 8,
+        role: :hunter
+      )
+
       create_pvp_pattern(character_id, :mixed, kill_count: 15, loss_count: 5)
 
       # Test the full workflow through Intelligence Coordinator
@@ -51,7 +55,11 @@ defmodule EveDmv.IntelligenceWorkflowTest do
       character_id = insert_test_character()
 
       # Create test data suggesting security concerns
-      create_wormhole_activity(character_id, "C6", count: 12, role: :hunter)
+      EveDmv.IntelligenceCase.create_wormhole_activity(character_id, "C6",
+        count: 12,
+        role: :hunter
+      )
+
       create_pvp_pattern(character_id, :hunter, count: 20)
 
       # Process through vetting workflow
@@ -82,7 +90,11 @@ defmodule EveDmv.IntelligenceWorkflowTest do
 
       # Create high-threat scenario
       create_pvp_pattern(character_id, :hunter, count: 30)
-      create_wormhole_activity(character_id, "C6", count: 15, role: :hunter)
+
+      EveDmv.IntelligenceCase.create_wormhole_activity(character_id, "C6",
+        count: 15,
+        role: :hunter
+      )
 
       # Analyze character to generate high threat score
       assert {:ok, analysis} =
@@ -123,7 +135,11 @@ defmodule EveDmv.IntelligenceWorkflowTest do
 
       # Create correlated activity patterns
       for character_id <- character_ids do
-        create_wormhole_activity(character_id, "C5", count: 10, role: :hunter)
+        EveDmv.IntelligenceCase.create_wormhole_activity(character_id, "C5",
+          count: 10,
+          role: :hunter
+        )
+
         create_pvp_pattern(character_id, :hunter, count: 12)
       end
 
@@ -153,7 +169,7 @@ defmodule EveDmv.IntelligenceWorkflowTest do
       corporation_id = 98_765_432
 
       # Create test data
-      create_wormhole_activity(character_id, "C4", count: 8, role: :mixed)
+      EveDmv.IntelligenceCase.create_wormhole_activity(character_id, "C4", count: 8, role: :mixed)
 
       # Test chain monitoring integration
       assert :ok = EveDmv.Intelligence.ChainMonitor.monitor_chain(map_id, corporation_id)

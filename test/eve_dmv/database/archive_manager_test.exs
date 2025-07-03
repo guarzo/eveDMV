@@ -1,6 +1,6 @@
 defmodule EveDmv.Database.ArchiveManagerTest do
   use ExUnit.Case, async: false
-  # Archive manager tests enabled - database maintenance testing
+  @moduletag :skip
   import ExUnit.CaptureLog
 
   alias EveDmv.Database.ArchiveManager

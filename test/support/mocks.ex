@@ -142,7 +142,7 @@ defmodule EveDmv.TestMocks do
     }
   end
 
-  def mock_employment_history(character_id \\ 123_456, opts \\ %{}) do
+  def mock_employment_history(_character_id \\ 123_456, opts \\ %{}) do
     defaults = %{
       current_corp_id: 98_000_001,
       current_corp_name: "Current Corp",

@@ -10,7 +10,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzerTest do
       character_id = 95_465_499
 
       # Create realistic test data
-      killmails = EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 50)
+      _killmails = EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 50)
 
       assert {:ok, character_stats} = CharacterAnalyzer.analyze_character(character_id)
 

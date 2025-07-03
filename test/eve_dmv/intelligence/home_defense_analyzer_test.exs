@@ -2,9 +2,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzerTest do
   use EveDmv.IntelligenceCase, async: true
   @moduletag :skip
 
-  alias EveDmv.Api
   alias EveDmv.Intelligence.HomeDefenseAnalyzer
-  alias EveDmv.Killmails.KillmailRaw
 
   describe "analyze_home_defense/2" do
     test "analyzes home system defense patterns" do

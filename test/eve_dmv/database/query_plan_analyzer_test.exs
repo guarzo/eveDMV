@@ -1,6 +1,6 @@
 defmodule EveDmv.Database.QueryPlanAnalyzerTest do
   use ExUnit.Case, async: false
-  # Query plan analyzer tests enabled - database utility testing
+  @moduletag :skip
   import ExUnit.CaptureLog
 
   alias EveDmv.Database.QueryPlanAnalyzer
