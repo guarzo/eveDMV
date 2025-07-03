@@ -93,11 +93,13 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
   def optimize_correlation_analysis(character_ids) when is_list(character_ids) do
     Logger.info("Optimizing correlation analysis for #{length(character_ids)} characters")
 
-    # Pre-load all required data in parallel
+    # Pre-load all required data in parallel with supervised tasks
     data_loading_tasks = [
-      Task.async(fn -> preload_character_stats(character_ids) end),
-      Task.async(fn -> preload_vetting_data(character_ids) end),
-      Task.async(fn -> preload_killmail_data(character_ids) end)
+      Task.Supervisor.async(EveDmv.TaskSupervisor, fn ->
+        preload_character_stats(character_ids)
+      end),
+      Task.Supervisor.async(EveDmv.TaskSupervisor, fn -> preload_vetting_data(character_ids) end),
+      Task.Supervisor.async(EveDmv.TaskSupervisor, fn -> preload_killmail_data(character_ids) end)
     ]
 
     # Wait for all data loading to complete
@@ -183,9 +185,9 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
     Logger.info("Starting database cleanup and optimization")
 
     tasks = [
-      Task.async(fn -> cleanup_old_cache_entries() end),
-      Task.async(fn -> optimize_database_queries() end),
-      Task.async(fn -> cleanup_stale_analysis_data() end)
+      Task.Supervisor.async(EveDmv.TaskSupervisor, fn -> cleanup_old_cache_entries() end),
+      Task.Supervisor.async(EveDmv.TaskSupervisor, fn -> optimize_database_queries() end),
+      Task.Supervisor.async(EveDmv.TaskSupervisor, fn -> cleanup_stale_analysis_data() end)
     ]
 
     results = Task.await_many(tasks, :timer.minutes(5))
