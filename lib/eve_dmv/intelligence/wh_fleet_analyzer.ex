@@ -398,15 +398,13 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
       |> Enum.map(fn {_role, config} -> config["required"] || 1 end)
       |> Enum.sum()
 
-    category =
-      cond do
-        total_pilots <= 5 -> "small"
-        total_pilots <= 15 -> "medium"
-        true -> "large"
-      end
-
+    category = categorize_fleet_size(total_pilots)
     {:ok, category}
   end
+
+  defp categorize_fleet_size(total_pilots) when total_pilots <= 5, do: "small"
+  defp categorize_fleet_size(total_pilots) when total_pilots <= 15, do: "medium"
+  defp categorize_fleet_size(_total_pilots), do: "large"
 
   defp calculate_minimum_pilots(doctrine_template) do
     # Calculate absolute minimum pilots needed (all required roles filled with 1 pilot each)
@@ -702,14 +700,19 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
     skill_coverage
   end
 
-  defp determine_skill_impact(skill, gap) do
-    cond do
-      String.contains?(skill, ["Logistics", "Command"]) and gap > 0 -> :critical
-      gap >= 3 -> :high
-      gap >= 1 -> :medium
-      true -> :low
-    end
+  defp determine_skill_impact(skill, gap) when gap > 0 do
+    if critical_skill?(skill), do: :critical, else: classify_skill_gap(gap)
   end
+
+  defp determine_skill_impact(_skill, gap), do: classify_skill_gap(gap)
+
+  defp critical_skill?(skill) do
+    String.contains?(skill, ["Logistics", "Command"])
+  end
+
+  defp classify_skill_gap(gap) when gap >= 3, do: :high
+  defp classify_skill_gap(gap) when gap >= 1, do: :medium
+  defp classify_skill_gap(_gap), do: :low
 
   defp find_pilots_close_to_skill(pilots, skill) do
     # Find pilots who are close to qualifying for this skill
@@ -1022,15 +1025,14 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzer do
   defp calculate_overall_effectiveness(current_pilots, optimal_pilots) do
     # Overall effectiveness based on pilot fill rate and role balance
     fill_rate = current_pilots / max(1, optimal_pilots)
-
-    cond do
-      fill_rate >= 1.0 -> 0.9
-      fill_rate >= 0.8 -> 0.75
-      fill_rate >= 0.6 -> 0.6
-      fill_rate >= 0.4 -> 0.4
-      true -> 0.2
-    end
+    effectiveness_from_fill_rate(fill_rate)
   end
+
+  defp effectiveness_from_fill_rate(fill_rate) when fill_rate >= 1.0, do: 0.9
+  defp effectiveness_from_fill_rate(fill_rate) when fill_rate >= 0.8, do: 0.75
+  defp effectiveness_from_fill_rate(fill_rate) when fill_rate >= 0.6, do: 0.6
+  defp effectiveness_from_fill_rate(fill_rate) when fill_rate >= 0.4, do: 0.4
+  defp effectiveness_from_fill_rate(_fill_rate), do: 0.2
 
   defp generate_counter_doctrine_analysis(_composition) do
     # Generate analysis of how this doctrine performs against common threats

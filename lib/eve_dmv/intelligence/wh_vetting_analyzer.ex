@@ -1018,31 +1018,23 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
 
   defp calculate_account_age(character_id) do
     # Calculate days since character creation using ESI data
-    EsiUtils.safe_esi_call("character", fn ->
-      EsiClient.get_character(character_id)
-    end)
-    |> case do
-      {:ok, character_data} ->
-        birthday_str = character_data["birthday"]
-
-        if birthday_str do
-          case DateTime.from_iso8601(birthday_str) do
-            {:ok, birthday, _} ->
-              DateTime.diff(DateTime.utc_now(), birthday, :day)
-
-            _ ->
-              # Fallback
-              365
-          end
-        else
-          365
-        end
-
-      _ ->
-        # Fallback if ESI fails
-        365
+    case EsiUtils.safe_esi_call("character", fn -> EsiClient.get_character(character_id) end) do
+      {:ok, character_data} -> parse_character_age(character_data)
+      # Fallback if ESI fails
+      _ -> 365
     end
   end
+
+  defp parse_character_age(%{"birthday" => birthday_str}) when is_binary(birthday_str) do
+    case DateTime.from_iso8601(birthday_str) do
+      {:ok, birthday, _} -> DateTime.diff(DateTime.utc_now(), birthday, :day)
+      # Fallback for invalid date format
+      _ -> 365
+    end
+  end
+
+  # Fallback for missing birthday
+  defp parse_character_age(_character_data), do: 365
 
   defp assess_main_character_confidence(character_id, potential_alts) do
     # Assess confidence that this is the main character based on various factors
@@ -1448,17 +1440,22 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
   end
 
   defp collect_behavioral_indicators(behavioral_flags) do
-    indicators = []
+    []
+    |> maybe_add_indicator(
+      "seed_scout",
+      behavioral_flags,
+      "Potential seed scout behavior detected"
+    )
+    |> maybe_add_indicator(
+      "infiltration_patterns",
+      behavioral_flags,
+      "Infiltration activity patterns detected"
+    )
+  end
 
-    indicators =
-      if "seed_scout" in behavioral_flags do
-        ["Potential seed scout behavior detected" | indicators]
-      else
-        indicators
-      end
-
-    if "infiltration_patterns" in behavioral_flags do
-      ["Infiltration activity patterns detected" | indicators]
+  defp maybe_add_indicator(indicators, flag, behavioral_flags, message) do
+    if flag in behavioral_flags do
+      [message | indicators]
     else
       indicators
     end
@@ -1493,20 +1490,20 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
     end
   end
 
-  defp determine_spy_risk_mitigations(final_probability) do
-    cond do
-      final_probability > 0.4 ->
-        ["reject_application", "too_high_risk"]
+  defp determine_spy_risk_mitigations(final_probability) when final_probability > 0.4 do
+    ["reject_application", "too_high_risk"]
+  end
 
-      final_probability > 0.25 ->
-        ["information_compartmentalization", "no_critical_roles", "background_verification"]
+  defp determine_spy_risk_mitigations(final_probability) when final_probability > 0.25 do
+    ["information_compartmentalization", "no_critical_roles", "background_verification"]
+  end
 
-      final_probability > 0.15 ->
-        ["information_compartmentalization", "gradual_access_increase"]
+  defp determine_spy_risk_mitigations(final_probability) when final_probability > 0.15 do
+    ["information_compartmentalization", "gradual_access_increase"]
+  end
 
-      true ->
-        ["standard_information_security"]
-    end
+  defp determine_spy_risk_mitigations(_final_probability) do
+    ["standard_information_security"]
   end
 
   # Scoring calculations
@@ -2034,32 +2031,49 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
   end
 
   defp evaluate_candidate_quality(metrics) do
-    cond do
-      # High quality candidate
-      metrics.j_kills >= 30 and metrics.j_time_percent >= 60.0 and metrics.risk_score <= 25 ->
+    case {classify_experience(metrics), classify_risk(metrics.risk_score)} do
+      {:high_experience, :low_risk} ->
         {"approve", 0.85, "Strong J-space experience with low risk", []}
 
-      # Good candidate with some concerns
-      metrics.j_kills >= 15 and metrics.j_time_percent >= 40.0 and metrics.risk_score <= 40 ->
+      {:good_experience, :low_risk} ->
         {"conditional", 0.75, "Good J-space experience, manageable risk",
          ["probationary_period", "limited_access"]}
 
-      # Decent candidate needing review
-      metrics.j_kills >= 5 and metrics.risk_score <= 50 ->
+      {:good_experience, :medium_risk} ->
+        {"conditional", 0.75, "Good J-space experience, manageable risk",
+         ["probationary_period", "limited_access"]}
+
+      {:some_experience, :low_risk} ->
         {"conditional", 0.6, "Some J-space experience, requires monitoring",
          ["extended_probation", "mentor_assignment"]}
 
-      # Insufficient data or experience
-      metrics.j_kills < 5 and metrics.j_time_percent < 20.0 ->
+      {:some_experience, :medium_risk} ->
+        {"conditional", 0.6, "Some J-space experience, requires monitoring",
+         ["extended_probation", "mentor_assignment"]}
+
+      {:limited_experience, _} ->
         {"more_info", 0.4, "Limited J-space experience, need more data",
          ["skill_assessment", "trial_period"]}
 
-      # Default to requiring more info
-      true ->
+      _ ->
         {"more_info", 0.5, "Mixed indicators, requires detailed review",
          ["manual_interview", "reference_check"]}
     end
   end
+
+  defp classify_experience(%{j_kills: kills, j_time_percent: time_percent}) do
+    cond do
+      kills >= 30 and time_percent >= 60.0 -> :high_experience
+      kills >= 15 and time_percent >= 40.0 -> :good_experience
+      kills >= 5 -> :some_experience
+      kills < 5 and time_percent < 20.0 -> :limited_experience
+      true -> :mixed_experience
+    end
+  end
+
+  defp classify_risk(risk_score) when risk_score <= 25, do: :low_risk
+  defp classify_risk(risk_score) when risk_score <= 50, do: :medium_risk
+  defp classify_risk(_risk_score), do: :high_risk
 
   defp build_recommendation(recommendation, confidence, reasoning, conditions, _metrics) do
     %{
