@@ -600,14 +600,12 @@ defmodule EveDmv.Telemetry.PerformanceMonitor do
   # Safely execute a function with error handling.
   # Returns {:ok, result} on success or {:error, error} on failure.
   defp safe_execute(fun) when is_function(fun) do
-    try do
-      result = fun.()
-      {:ok, result}
-    rescue
-      error ->
-        Logger.error("Performance monitoring error: #{inspect(error)}")
-        {:error, error}
-    end
+    result = fun.()
+    {:ok, result}
+  rescue
+    error ->
+      Logger.error("Performance monitoring error: #{inspect(error)}")
+      {:error, error}
   end
 
   # Execute function with timing, telemetry, and logging.
@@ -639,14 +637,12 @@ defmodule EveDmv.Telemetry.PerformanceMonitor do
 
   # Calculate throughput safely handling division by zero.
   defp calculate_throughput(record_count, duration) do
-    try do
-      if duration > 0 do
-        record_count * 1000 / duration
-      else
-        0.0
-      end
-    rescue
-      _ -> 0.0
+    if duration > 0 do
+      record_count * 1000 / duration
+    else
+      0.0
     end
+  rescue
+    _ -> 0.0
   end
 end
