@@ -10,7 +10,9 @@ defmodule EveDmv.Intelligence.WhSpace.FleetAnalyzer do
   require Ash.Query
 
   alias EveDmv.Eve.EsiClient
-  alias EveDmv.Intelligence.{AssetAnalyzer, CharacterStats, ShipDatabase, WHFleetComposition}
+  alias EveDmv.Intelligence.{AssetAnalyzer, ShipDatabase}
+  alias EveDmv.Intelligence.CharacterAnalysis.CharacterStats
+  alias EveDmv.Intelligence.WhSpace.FleetComposition
 
   @doc """
   Analyze and optimize a fleet composition for wormhole operations.
@@ -63,7 +65,7 @@ defmodule EveDmv.Intelligence.WhSpace.FleetAnalyzer do
         effectiveness_rating: optimization_results["fleet_effectiveness"]["overall_rating"] || 0.0
       }
 
-      WHFleetComposition.update_doctrine(composition, updated_composition)
+      FleetComposition.update_doctrine(composition, updated_composition)
     else
       {:error, reason} ->
         Logger.error(
@@ -98,7 +100,7 @@ defmodule EveDmv.Intelligence.WhSpace.FleetAnalyzer do
         created_by: Keyword.get(options, :created_by)
       }
 
-      case WHFleetComposition.create(composition_data) do
+      case FleetComposition.create(composition_data) do
         {:ok, composition} ->
           # Immediately analyze the new composition
           analyze_fleet_composition(composition.id)
@@ -135,7 +137,7 @@ defmodule EveDmv.Intelligence.WhSpace.FleetAnalyzer do
 
   # Helper functions for composition analysis
   defp get_composition_record(composition_id) do
-    case Ash.get(WHFleetComposition, composition_id, domain: EveDmv.Api) do
+    case Ash.get(FleetComposition, composition_id, domain: EveDmv.Api) do
       {:ok, composition} -> {:ok, composition}
       {:error, reason} -> {:error, "Composition not found: #{reason}"}
     end

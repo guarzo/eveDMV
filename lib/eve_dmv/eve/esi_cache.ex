@@ -23,7 +23,7 @@ defmodule EveDmv.Eve.EsiCache do
   @doc """
   Start the ESI cache.
   """
-  def start_link(_opts) do
+  def start_link(_opts \\ []) do
     cache_opts = [
       name: @cache_name,
       # Default TTL
@@ -35,6 +35,18 @@ defmodule EveDmv.Eve.EsiCache do
     ]
 
     Cache.start_link(cache_opts)
+  end
+
+  @doc """
+  Child specification for supervision tree.
+  """
+  def child_spec(opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [opts]},
+      type: :worker,
+      restart: :permanent
+    }
   end
 
   # Character cache functions

@@ -11,7 +11,8 @@ defmodule EveDmv.Intelligence.WhSpace.VettingAnalyzer do
 
   alias EveDmv.Api
   alias EveDmv.Eve.{EsiClient, EsiUtils}
-  alias EveDmv.Intelligence.{CharacterStats, WHVetting}
+  alias EveDmv.Intelligence.CharacterAnalysis.CharacterStats
+  alias EveDmv.Intelligence.WhSpace.Vetting, as: WHVetting
   alias EveDmv.Killmails.Participant
 
   @doc """
@@ -1697,16 +1698,31 @@ defmodule EveDmv.Intelligence.WhSpace.VettingAnalyzer do
         stats
 
       _ ->
-        # Create basic stats if none exist - use map instead of struct to avoid circular dependency
-        %{
-          character_id: character_id,
-          character_name: "Unknown",
-          total_kills: 0,
-          total_losses: 0,
-          avg_gang_size: 1.0,
-          ship_usage: %{},
-          flies_capitals: false
-        }
+        # Create basic stats if none exist using Ash resource creation
+        case Ash.create(CharacterStats, %{
+               character_id: character_id,
+               character_name: "Unknown",
+               total_kills: 0,
+               total_losses: 0,
+               avg_gang_size: 1.0,
+               ship_usage: %{},
+               flies_capitals: false
+             }, domain: Api) do
+          {:ok, stats} ->
+            stats
+
+          {:error, _reason} ->
+            # Return a map with default values if creation fails
+            %{
+              character_id: character_id,
+              character_name: "Unknown",
+              total_kills: 0,
+              total_losses: 0,
+              avg_gang_size: 1.0,
+              ship_usage: %{},
+              flies_capitals: false
+            }
+        end
     end
   end
 

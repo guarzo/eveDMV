@@ -29,6 +29,18 @@ defmodule EveDmv.Database.QueryCache do
   end
 
   @doc """
+  Child specification for supervision tree.
+  """
+  def child_spec(opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [opts]},
+      type: :worker,
+      restart: :permanent
+    }
+  end
+
+  @doc """
   Get a cached result or compute and cache it if not found.
   """
   def get_or_compute(cache_key, compute_fn, ttl \\ @default_ttl)

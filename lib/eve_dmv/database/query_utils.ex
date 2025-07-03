@@ -9,7 +9,7 @@ defmodule EveDmv.Database.QueryUtils do
   require Ash.Query
 
   alias EveDmv.Api
-  alias EveDmv.Intelligence.CharacterStats
+  alias EveDmv.Intelligence.CharacterAnalysis.CharacterStats
   alias EveDmv.Killmails.{KillmailEnriched, Participant}
 
   @doc """

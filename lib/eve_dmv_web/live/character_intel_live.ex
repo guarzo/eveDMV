@@ -16,7 +16,7 @@ defmodule EveDmvWeb.CharacterIntelLive do
 
   alias EveDmv.Eve.EsiClient
   alias EveDmv.Intelligence.CharacterAnalysis.CharacterAnalyzer
-  alias EveDmv.Intelligence.CharacterStats
+  alias EveDmv.Intelligence.CharacterAnalysis.CharacterStats
   alias EveDmv.Killmails.HistoricalKillmailFetcher
 
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
