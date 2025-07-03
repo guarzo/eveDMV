@@ -33,10 +33,8 @@ defmodule EveDmv.Intelligence.AssetAnalyzer do
             {:error, _reason} -> []
           end
 
-        member_assets =
-          case fetch_member_assets(composition.corporation_id, auth_token) do
-            {:ok, assets} -> assets
-          end
+        # fetch_member_assets always returns {:ok, []}, no need for error handling
+        {:ok, member_assets} = fetch_member_assets(composition.corporation_id, auth_token)
 
         all_assets = merge_assets(corp_assets, member_assets)
         ship_availability = analyze_ship_availability(all_assets, composition.doctrine_template)
