@@ -1,6 +1,6 @@
 defmodule EveDmv.Database.CacheInvalidatorTest do
   use ExUnit.Case, async: false
-  @moduletag :skip
+  # Cache invalidator tests enabled - cache management testing
   import ExUnit.CaptureLog
 
   alias EveDmv.Database.{CacheInvalidator, QueryCache}

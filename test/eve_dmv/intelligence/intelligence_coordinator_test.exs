@@ -9,7 +9,11 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinatorTest do
       character_id = 123_456_789
 
       # Create test data
-      create_realistic_killmail_set(character_id, count: 15, days_back: 60)
+      EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id,
+        count: 15,
+        days_back: 60
+      )
+
       create_wormhole_activity(character_id, "C3", count: 5, role: :hunter)
 
       assert {:ok, analysis} =

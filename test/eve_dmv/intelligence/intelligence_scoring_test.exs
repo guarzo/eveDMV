@@ -9,7 +9,11 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
       character_id = 123_456_789
 
       # Create realistic test data
-      create_realistic_killmail_set(character_id, count: 20, days_back: 90)
+      EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id,
+        count: 20,
+        days_back: 90
+      )
+
       create_wormhole_activity(character_id, "C5", count: 8, role: :hunter)
 
       assert {:ok, score_data} = IntelligenceScoring.calculate_comprehensive_score(character_id)

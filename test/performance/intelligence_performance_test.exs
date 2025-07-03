@@ -5,7 +5,7 @@ defmodule EveDmv.Performance.IntelligencePerformanceTest do
   """
   use EveDmv.DataCase, async: false
 
-  @moduletag :skip
+  @moduletag :performance
 
   alias EveDmv.Intelligence.{
     CharacterAnalyzer,
