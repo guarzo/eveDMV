@@ -171,10 +171,6 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
       case EsiClient.get_characters(character_ids) do
         {:ok, character_data} ->
           Enum.map(corp_stats, &update_member_with_character_data(&1, character_data))
-
-        {:error, reason} ->
-          Logger.warning("Failed to fetch character data: #{inspect(reason)}")
-          corp_stats
       end
 
     {:ok, members}
