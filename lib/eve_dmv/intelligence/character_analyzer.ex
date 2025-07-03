@@ -246,7 +246,9 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
 
   defp build_killmails_with_participants(killmails, participants) do
     # Convert to format expected by metrics calculations
-    Enum.map(killmails, fn killmail ->
+    # Use Stream for better memory efficiency with large datasets
+    killmails
+    |> Stream.map(fn killmail ->
       km_participants = Enum.filter(participants, &(&1.killmail_id == killmail.killmail_id))
 
       %{
@@ -261,6 +263,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
         }
       }
     end)
+    |> Enum.to_list()
   end
 
   defp calculate_all_metrics(character_id, killmail_data) do

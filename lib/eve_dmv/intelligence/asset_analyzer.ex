@@ -230,7 +230,7 @@ defmodule EveDmv.Intelligence.AssetAnalyzer do
       {location_id,
        %{
          ship_count: length(location_assets),
-         ship_types: location_assets |> Enum.map(& &1.type_id) |> Enum.uniq() |> length()
+         ship_types: location_assets |> Stream.map(& &1.type_id) |> Enum.uniq() |> length()
        }}
     end)
     |> Enum.into(%{})
