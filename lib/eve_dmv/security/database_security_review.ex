@@ -25,7 +25,7 @@ defmodule EveDmv.Security.DatabaseSecurityReview do
              logging_and_monitoring: map(),
              backup_security: map(),
              sensitive_data_handling: map(),
-             recommendations: [map(), ...]
+             recommendations: [map()]
            }}
   def audit_database_security do
     Logger.info("Starting database security audit")
