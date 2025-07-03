@@ -181,9 +181,12 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
     Logger.info("Starting full re-enrichment process")
     start_time = System.monotonic_time(:millisecond)
 
-    # Update prices and names in parallel
-    price_task = Task.async(fn -> perform_price_update(config) end)
-    name_task = Task.async(fn -> perform_name_update(config) end)
+    # Update prices and names in parallel with supervised tasks
+    price_task =
+      Task.Supervisor.async(EveDmv.TaskSupervisor, fn -> perform_price_update(config) end)
+
+    name_task =
+      Task.Supervisor.async(EveDmv.TaskSupervisor, fn -> perform_name_update(config) end)
 
     # Wait for both to complete
     price_result = Task.await(price_task, :timer.minutes(30))

@@ -196,7 +196,7 @@ defmodule EveDmv.Eve.ReliabilityConfig do
   @doc """
   Update configuration at runtime (for testing or dynamic adjustment).
   """
-  @spec update_config(atom(), any()) :: :ok
+  @spec update_config(atom(), keyword() | map()) :: :ok
   def update_config(key, value) do
     current_config = Application.get_env(:eve_dmv, :esi_reliability, %{})
     new_config = Map.put(current_config, key, value)

@@ -111,13 +111,13 @@ defmodule EveDmv.Database.CacheWarmer do
     start_time = System.monotonic_time(:millisecond)
     Logger.info("Starting intelligent cache warming")
 
-    # Warm different cache types concurrently
+    # Warm different cache types concurrently with supervised tasks
     tasks = [
-      Task.async(fn -> warm_hot_characters() end),
-      Task.async(fn -> warm_active_systems() end),
-      Task.async(fn -> warm_recent_killmails() end),
-      Task.async(fn -> warm_frequent_items() end),
-      Task.async(fn -> warm_alliance_stats() end)
+      Task.Supervisor.async(EveDmv.TaskSupervisor, fn -> warm_hot_characters() end),
+      Task.Supervisor.async(EveDmv.TaskSupervisor, fn -> warm_active_systems() end),
+      Task.Supervisor.async(EveDmv.TaskSupervisor, fn -> warm_recent_killmails() end),
+      Task.Supervisor.async(EveDmv.TaskSupervisor, fn -> warm_frequent_items() end),
+      Task.Supervisor.async(EveDmv.TaskSupervisor, fn -> warm_alliance_stats() end)
     ]
 
     results = Task.await_many(tasks, :timer.minutes(5))

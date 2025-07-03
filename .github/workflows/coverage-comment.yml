@@ -111,7 +111,7 @@ jobs:
 EOF
           
           # Extract and process file coverage data efficiently
-          jq -r '.files[] | select(.coverage != null) | "\(.name)|\(.coverage)|\(.relevant_lines)|\(.covered_lines)"' cover/excoveralls.json | \
+          jq -r '.source_files[]? | select(.coverage != null) | "\(.name)|\(.coverage)|\(.relevant_lines // 0)|\(.covered_lines // 0)"' cover/excoveralls.json | \
             sort -t'|' -k2 -n | head -10 | while IFS='|' read -r file coverage relevant covered; do
               file_short="${file#lib/eve_dmv/}"
               file_short="${file_short#lib/eve_dmv_web/}"
@@ -136,7 +136,7 @@ EOF
 ### Intelligence Modules
 EOF
           
-          jq -r '.files[] | select(.name | contains("intelligence")) | select(.coverage != null) | "\(.name | split("/")[-1] | split(".")[0])|\(.coverage)"' cover/excoveralls.json | \
+          jq -r '.source_files[]? | select(.name | contains("intelligence")) | select(.coverage != null) | "\(.name | split("/")[-1] | split(".")[0])|\(.coverage)"' cover/excoveralls.json | \
             sort -t'|' -k2 -nr | head -5 | while IFS='|' read -r module coverage; do
               echo "- **${module}**: ${coverage}%"
             done >> coverage_details.md
@@ -146,7 +146,7 @@ EOF
 ### API Clients
 EOF
           
-          jq -r '.files[] | select(.name | contains("eve/") or contains("market/")) | select(.coverage != null) | "\(.name | split("/")[-1] | split(".")[0])|\(.coverage)"' cover/excoveralls.json | \
+          jq -r '.source_files[]? | select(.name | contains("eve/") or contains("market/")) | select(.coverage != null) | "\(.name | split("/")[-1] | split(".")[0])|\(.coverage)"' cover/excoveralls.json | \
             sort -t'|' -k2 -nr | head -5 | while IFS='|' read -r module coverage; do
               echo "- **${module}**: ${coverage}%"
             done >> coverage_details.md
@@ -156,7 +156,7 @@ EOF
 ### LiveView Components
 EOF
           
-          jq -r '.files[] | select(.name | contains("live/")) | select(.coverage != null) | "\(.name | split("/")[-1] | split(".")[0])|\(.coverage)"' cover/excoveralls.json | \
+          jq -r '.source_files[]? | select(.name | contains("live/")) | select(.coverage != null) | "\(.name | split("/")[-1] | split(".")[0])|\(.coverage)"' cover/excoveralls.json | \
             sort -t'|' -k2 -nr | head -5 | while IFS='|' read -r module coverage; do
               echo "- **${module}**: ${coverage}%"
             done >> coverage_details.md

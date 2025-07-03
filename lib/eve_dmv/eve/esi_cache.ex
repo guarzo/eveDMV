@@ -87,7 +87,7 @@ defmodule EveDmv.Eve.EsiCache do
   @doc """
   Get a value from the generic cache.
   """
-  @spec get(String.t()) :: {:ok, any()} | {:error, :not_found}
+  @spec get(String.t()) :: {:ok, term()} | {:error, :not_found}
   def get(key) do
     case get_from_cache(@character_table, key) do
       {:ok, data} -> {:ok, data}
@@ -98,7 +98,7 @@ defmodule EveDmv.Eve.EsiCache do
   @doc """
   Store a value in the generic cache.
   """
-  @spec put(String.t(), any(), keyword()) :: :ok
+  @spec put(String.t(), term(), keyword()) :: :ok
   def put(key, value, opts \\ []) do
     ttl_seconds = Keyword.get(opts, :ttl, 3600)
     ttl_minutes = div(ttl_seconds, 60)

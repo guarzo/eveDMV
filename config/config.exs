@@ -97,7 +97,6 @@ config :eve_dmv, :eve_sso,
 # Killmail Pipeline Configuration
 config :eve_dmv,
   wanderer_kills_sse_url: System.get_env("WANDERER_KILLS_SSE_URL", "http://localhost:8080/sse"),
-  zkillboard_sse_url: System.get_env("ZKILLBOARD_SSE_URL", "https://zkillboard.com/sse"),
   pipeline_enabled: System.get_env("PIPELINE_ENABLED", "true") == "true"
 
 # Name Resolver Cache Warming Configuration
@@ -120,15 +119,7 @@ config :eve_dmv, :name_resolver_cache_warming,
     1_000_125
   ]
 
-# Database connection pool defaults
-# These can be overridden in environment-specific configs
-config :eve_dmv, EveDmv.Repo,
-  pool_size: 20,
-  queue_target: 50,
-  queue_interval: 1000,
-  timeout: 15_000,
-  ownership_timeout: 20_000,
-  pool_timeout: 5_000
+# Database connection pool configuration moved to environment-specific configs
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

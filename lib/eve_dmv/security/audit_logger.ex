@@ -113,7 +113,7 @@ defmodule EveDmv.Security.AuditLogger do
   - old_value: Previous configuration value (sanitized)
   - new_value: New configuration value (sanitized)
   """
-  @spec log_config_change(String.t(), atom(), any(), any()) :: :ok
+  @spec log_config_change(String.t(), atom(), term(), term()) :: :ok
   def log_config_change(changed_by, config_type, old_value, new_value) do
     :telemetry.execute(
       [:eve_dmv, :security, :config_change],

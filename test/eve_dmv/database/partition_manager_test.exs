@@ -1,6 +1,6 @@
 defmodule EveDmv.Database.PartitionManagerTest do
   use ExUnit.Case, async: false
-  @moduletag :skip
+  # Partition manager tests enabled - database utility testing
   import ExUnit.CaptureLog
 
   alias EveDmv.Database.PartitionManager

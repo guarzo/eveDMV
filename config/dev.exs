@@ -119,13 +119,4 @@ config :eve_dmv, EveDmv.Repo,
   ownership_timeout: 20_000,
   pool_timeout: 5_000
 
-# Development-specific killmail pipeline configuration
-# Note: These will be overridden by runtime.exs if .env files exist
-config :eve_dmv,
-  wanderer_kills_sse_url: System.get_env("WANDERER_KILLS_SSE_URL", "http://localhost:8080/sse"),
-  wanderer_kills_websocket_url:
-    System.get_env("WANDERER_KILLS_WS_URL", "ws://localhost:4004/socket"),
-  wanderer_kills_base_url:
-    System.get_env("WANDERER_KILLS_BASE_URL", "http://host.docker.internal:4004"),
-  pipeline_enabled: System.get_env("PIPELINE_ENABLED", "true") == "true",
-  mock_sse_server_enabled: System.get_env("MOCK_SSE_SERVER_ENABLED", "false") == "true"
+# Development-specific killmail pipeline configuration moved to runtime.exs
