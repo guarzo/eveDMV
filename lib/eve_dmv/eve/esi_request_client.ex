@@ -236,35 +236,40 @@ defmodule EveDmv.Eve.EsiRequestClient do
     fallback_config = ReliabilityConfig.get_fallback_config()
 
     if cache_key and fallback_config.use_stale_cache do
-      cache_key_str = if is_binary(cache_key), do: cache_key, else: to_string(cache_key)
-
-      case FallbackStrategy.execute_with_stale_cache(
-             fn ->
-               # Attempt the actual ESI request that may fail
-               case Keyword.get(opts, :auth_token) do
-                 nil ->
-                   get_request(path, Keyword.get(opts, :params, %{}), opts)
-
-                 auth_token ->
-                   get_authenticated_request(
-                     path,
-                     auth_token,
-                     Keyword.get(opts, :params, %{}),
-                     opts
-                   )
-               end
-             end,
-             cache_key_str
-           ) do
-        {:ok, data} ->
-          Logger.info("Using stale cache data for ESI request", %{path: path})
-          {:ok, data}
-
-        _ ->
-          try_placeholder_fallback(path, opts)
-      end
+      execute_stale_cache_fallback(path, cache_key, opts)
     else
       try_placeholder_fallback(path, opts)
+    end
+  end
+
+  defp execute_stale_cache_fallback(path, cache_key, opts) do
+    cache_key_str = if is_binary(cache_key), do: cache_key, else: to_string(cache_key)
+
+    case FallbackStrategy.execute_with_stale_cache(
+           fn -> execute_esi_request(path, opts) end,
+           cache_key_str
+         ) do
+      {:ok, data} ->
+        Logger.info("Using stale cache data for ESI request", %{path: path})
+        {:ok, data}
+
+      _ ->
+        try_placeholder_fallback(path, opts)
+    end
+  end
+
+  defp execute_esi_request(path, opts) do
+    case Keyword.get(opts, :auth_token) do
+      nil ->
+        get_request(path, Keyword.get(opts, :params, %{}), opts)
+
+      auth_token ->
+        get_authenticated_request(
+          path,
+          auth_token,
+          Keyword.get(opts, :params, %{}),
+          opts
+        )
     end
   end
 

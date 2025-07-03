@@ -23,13 +23,11 @@ defmodule EveDmv.Eve.EsiUtils do
       {:error, :service_unavailable}
   """
   def safe_esi_call(service_name, call_fn) when is_function(call_fn, 0) do
-    try do
-      call_fn.()
-    rescue
-      error ->
-        Logger.error("ESI #{service_name} failed: #{inspect(error)}")
-        {:error, :service_unavailable}
-    end
+    call_fn.()
+  rescue
+    error ->
+      Logger.error("ESI #{service_name} failed: #{inspect(error)}")
+      {:error, :service_unavailable}
   end
 
   @doc """
