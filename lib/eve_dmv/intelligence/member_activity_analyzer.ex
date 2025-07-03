@@ -57,7 +57,7 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
         engagement_score:
           MemberActivityMetrics.calculate_engagement_score(activity_data, participation_data),
         activity_trend:
-          MemberActivityMetrics.determine_activity_trend(character_id, activity_data),
+          MemberActivityMetrics.determine_activity_trend(activity_data),
         burnout_risk_score: risk_assessment.burnout_risk,
         disengagement_risk_score: risk_assessment.disengagement_risk,
         activity_patterns: MemberActivityMetrics.build_activity_patterns(activity_data),
@@ -272,7 +272,7 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
 
   defp assess_member_risks(character_id, activity_data, participation_data) do
     # Get trend data for risk assessment
-    trend_data = MemberActivityMetrics.determine_activity_trend(character_id, activity_data)
+    trend_data = MemberActivityMetrics.determine_activity_trend(activity_data)
     timezone_data = %{primary_timezone: "UTC", corp_distribution: %{"UTC" => 0.5}}
 
     risk_assessment = %{

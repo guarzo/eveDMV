@@ -327,7 +327,7 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzerTest do
       result = MemberActivityAnalyzer.calculate_fleet_participation_metrics([])
 
       assert %{
-               avg_participation_rate: +0.0,
+               avg_participation_rate: 0.0,
                high_participation_members: [],
                leadership_distribution: %{},
                fleet_readiness_score: 0

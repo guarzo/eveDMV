@@ -30,41 +30,25 @@ defmodule EveDmv.Intelligence.MemberActivityFormatter do
     high_risk_count = count_high_risk_members(member_analyses)
     low_engagement_count = count_low_engagement_members(member_analyses)
     declining_trend_count = count_declining_members(member_analyses)
+    total_members = length(member_analyses)
 
-    recommendations = []
+    # Define recommendation conditions and messages
+    recommendation_rules = [
+      {high_risk_count > 0, "Immediate attention needed for #{high_risk_count} high-risk members"},
+      {low_engagement_count > total_members * 0.3, 
+       "Review engagement programs - #{low_engagement_count} members show low engagement"},
+      {declining_trend_count > 0, 
+       "Monitor #{declining_trend_count} members showing declining activity trends"}
+    ]
 
-    recommendations =
-      if high_risk_count > 0 do
-        ["Immediate attention needed for #{high_risk_count} high-risk members" | recommendations]
-      else
-        recommendations
-      end
-
-    recommendations =
-      if low_engagement_count > length(member_analyses) * 0.3 do
-        [
-          "Review engagement programs - #{low_engagement_count} members show low engagement"
-          | recommendations
-        ]
-      else
-        recommendations
-      end
-
-    recommendations =
-      if declining_trend_count > 0 do
-        [
-          "Monitor #{declining_trend_count} members showing declining activity trends"
-          | recommendations
-        ]
-      else
-        recommendations
-      end
-
-    recommendations =
-      if Enum.empty?(recommendations) do
-        ["Member activity levels appear healthy across the corporation"]
-      else
-        recommendations
+    # Build recommendations functionally
+    recommendations = 
+      recommendation_rules
+      |> Enum.filter(fn {condition, _message} -> condition end)
+      |> Enum.map(fn {_condition, message} -> message end)
+      |> case do
+        [] -> ["Member activity levels appear healthy across the corporation"]
+        recs -> recs
       end
 
     %{

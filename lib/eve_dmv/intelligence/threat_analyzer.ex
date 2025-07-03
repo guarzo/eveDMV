@@ -118,21 +118,21 @@ defmodule EveDmv.Intelligence.ThreatAnalyzer do
     SELECT COUNT(*) as kill_count,
            AVG(total_value) as avg_kill_value,
            MAX(killmail_time) as last_kill
-    FROM killmails_enriched k
-    JOIN participants p ON k.killmail_id = p.killmail_id
-                       AND k.killmail_time = p.killmail_time
-    WHERE p.character_id = $1
-      AND k.killmail_time > $2
-      AND p.final_blow = true
+      FROM killmails_enriched k
+      JOIN participants p ON k.killmail_id = p.killmail_id
+                         AND k.killmail_time = p.killmail_time
+     WHERE p.character_id = $1
+       AND k.killmail_time > $2
+       AND p.final_blow = true
     """
 
     losses_query = """
     SELECT COUNT(*) as loss_count,
            AVG(total_value) as avg_loss_value,
            MAX(killmail_time) as last_loss
-    FROM killmails_enriched
-    WHERE victim_character_id = $1
-      AND killmail_time > $2
+      FROM killmails_enriched
+     WHERE victim_character_id = $1
+       AND killmail_time > $2
     """
 
     with {:ok, %{rows: [[kill_count, avg_kill_value, last_kill]]}} <-

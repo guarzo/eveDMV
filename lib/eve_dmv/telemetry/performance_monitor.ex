@@ -8,78 +8,78 @@ defmodule EveDmv.Telemetry.PerformanceMonitor do
 
   require Logger
 
+  # Default performance thresholds (configurable)
+  @default_thresholds %{
+    slow_query_ms: 1000,
+    slow_api_call_ms: 5000,
+    slow_liveview_render_ms: 500
+  }
+
+  # Get threshold values from config or use defaults
+  defp get_threshold(type) do
+    thresholds = Application.get_env(:eve_dmv, :performance_thresholds, @default_thresholds)
+    Map.get(thresholds, type, @default_thresholds[type])
+  end
+
   @doc """
   Track database query performance.
   """
   def track_query(query_name, fun) when is_function(fun) do
-    start_time = System.monotonic_time(:millisecond)
-
-    result = fun.()
-
-    end_time = System.monotonic_time(:millisecond)
-    duration = end_time - start_time
-
-    :telemetry.execute(
+    threshold = get_threshold(:slow_query_ms)
+    
+    execute_with_timing(
+      query_name,
+      fun,
       [:eve_dmv, :database, :query],
-      %{duration: duration},
-      %{query: query_name}
+      %{query: query_name},
+      threshold,
+      "Slow database query"
     )
-
-    if duration > 1000 do
-      Logger.warning("Slow database query: #{query_name} took #{duration}ms")
-    end
-
-    result
   end
 
   @doc """
   Track API call performance (ESI, external services).
   """
   def track_api_call(service_name, endpoint, fun) when is_function(fun) do
-    start_time = System.monotonic_time(:millisecond)
-
-    result = fun.()
-
-    end_time = System.monotonic_time(:millisecond)
-    duration = end_time - start_time
-
-    :telemetry.execute(
+    threshold = get_threshold(:slow_api_call_ms)
+    operation_name = "#{service_name}/#{endpoint}"
+    
+    execute_with_timing(
+      operation_name,
+      fun,
       [:eve_dmv, :api, :call],
-      %{duration: duration},
-      %{service: service_name, endpoint: endpoint}
+      %{service: service_name, endpoint: endpoint},
+      threshold,
+      "Slow API call"
     )
-
-    if duration > 5000 do
-      Logger.warning("Slow API call: #{service_name}/#{endpoint} took #{duration}ms")
-    end
-
-    result
   end
 
   @doc """
   Track bulk operation performance.
   """
   def track_bulk_operation(operation_name, record_count, fun) when is_function(fun) do
-    start_time = System.monotonic_time(:millisecond)
-
-    result = fun.()
-
-    end_time = System.monotonic_time(:millisecond)
-    duration = end_time - start_time
-
-    throughput = if duration > 0, do: record_count * 1000 / duration, else: 0
-
-    :telemetry.execute(
-      [:eve_dmv, :bulk, :operation],
-      %{duration: duration, record_count: record_count, throughput: throughput},
-      %{operation: operation_name}
-    )
-
-    Logger.info(
-      "Bulk operation #{operation_name}: #{record_count} records in #{duration}ms (#{Float.round(throughput, 1)} records/sec)"
-    )
-
-    result
+    safe_execute(fn ->
+      start_time = System.monotonic_time(:millisecond)
+      
+      result = fun.()
+      
+      end_time = System.monotonic_time(:millisecond)
+      duration = end_time - start_time
+      
+      throughput = calculate_throughput(record_count, duration)
+      
+      :telemetry.execute(
+        [:eve_dmv, :bulk, :operation],
+        %{duration: duration, record_count: record_count, throughput: throughput},
+        %{operation: operation_name}
+      )
+      
+      Logger.info(
+        "Bulk operation #{operation_name}: #{record_count} records in #{duration}ms (#{Float.round(throughput, 1)} records/sec)"
+      )
+      
+      result
+    end)
   end
 
   @doc """
@@ -108,24 +108,16 @@ defmodule EveDmv.Telemetry.PerformanceMonitor do
   Track LiveView rendering performance.
   """
   def track_liveview_render(view_name, fun) when is_function(fun) do
-    start_time = System.monotonic_time(:millisecond)
-
-    result = fun.()
-
-    end_time = System.monotonic_time(:millisecond)
-    duration = end_time - start_time
-
-    :telemetry.execute(
+    threshold = get_threshold(:slow_liveview_render_ms)
+    
+    execute_with_timing(
+      view_name,
+      fun,
       [:eve_dmv, :liveview, :render],
-      %{duration: duration},
-      %{view: view_name}
+      %{view: view_name},
+      threshold,
+      "Slow LiveView render"
     )
-
-    if duration > 500 do
-      Logger.warning("Slow LiveView render: #{view_name} took #{duration}ms")
-    end
-
-    result
   end
 
   @doc """
@@ -601,5 +593,60 @@ defmodule EveDmv.Telemetry.PerformanceMonitor do
       lag_bytes: 0,
       lag_seconds: 0
     }
+  end
+
+  # Common helper functions
+
+  # Safely execute a function with error handling.
+  # Returns {:ok, result} on success or {:error, error} on failure.
+  defp safe_execute(fun) when is_function(fun) do
+    try do
+      result = fun.()
+      {:ok, result}
+    rescue
+      error ->
+        Logger.error("Performance monitoring error: #{inspect(error)}")
+        {:error, error}
+    end
+  end
+
+  # Execute function with timing, telemetry, and logging.
+  defp execute_with_timing(operation_name, fun, telemetry_event, metadata, threshold, log_prefix) do
+    case safe_execute(fn ->
+      start_time = System.monotonic_time(:millisecond)
+      
+      result = fun.()
+      
+      end_time = System.monotonic_time(:millisecond)
+      duration = end_time - start_time
+      
+      :telemetry.execute(
+        telemetry_event,
+        %{duration: duration},
+        metadata
+      )
+      
+      if duration > threshold do
+        Logger.warning("#{log_prefix}: #{operation_name} took #{duration}ms")
+      end
+      
+      result
+    end) do
+      {:ok, result} -> result
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  # Calculate throughput safely handling division by zero.
+  defp calculate_throughput(record_count, duration) do
+    try do
+      if duration > 0 do
+        record_count * 1000 / duration
+      else
+        0.0
+      end
+    rescue
+      _ -> 0.0
+    end
   end
 end

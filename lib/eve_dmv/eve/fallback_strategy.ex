@@ -291,12 +291,29 @@ defmodule EveDmv.Eve.FallbackStrategy do
     get_stale_cache_data(cache_key, max_stale_age)
   end
 
-  defp get_stale_cache_data(cache_key, _max_stale_age) do
-    # This would need to be implemented to check for expired cache entries
-    # that are still within the acceptable stale period
-    case EsiCache.get(cache_key) do
-      {:ok, data} -> {:ok, data, :stale}
-      {:error, :not_found} -> :miss
+  defp get_stale_cache_data(cache_key, max_stale_age) do
+    # Check for expired cache entries that are still within the acceptable stale period
+    case get_cache_with_timestamp(cache_key) do
+      {:ok, data, timestamp} ->
+        age_seconds = DateTime.diff(DateTime.utc_now(), timestamp, :second)
+        if age_seconds <= max_stale_age do
+          {:ok, data, :stale}
+        else
+          :miss
+        end
+      :miss -> 
+        :miss
+    end
+  end
+
+  defp get_cache_with_timestamp(cache_key) do
+    # Look for cache entry directly in ETS to get timestamp info
+    # This accesses the character cache table since EsiCache.get/1 uses it for generic keys
+    case :ets.lookup(:esi_character_cache, cache_key) do
+      [{^cache_key, data, expires_at}] ->
+        {:ok, data, expires_at}
+      [] ->
+        :miss
     end
   end
 

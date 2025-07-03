@@ -7,6 +7,11 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
   alias EveDmv.Intelligence.WHFleetAnalyzer
   alias EveDmv.TestMocks
 
+  # Wormhole type constants for testing
+  @c3_static "O477"
+  @c5_static "N432"
+  @c6_static "B274"
+
   describe "analyze_fleet_composition/1" do
     test "analyzes fleet composition with member data" do
       members = [
@@ -86,7 +91,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
       # Test with C3 static (medium mass limit)
       wormhole = %{
         # C3 static
-        type: "O477",
+        type: @c3_static,
         # 300M kg
         max_mass: 300_000_000,
         # 20M kg
@@ -411,7 +416,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
 
     test "wormhole_mass_limit/1 returns correct limits" do
       # C3 static
-      c3_limit = WHFleetAnalyzer.wormhole_mass_limit("O477")
+      c3_limit = WHFleetAnalyzer.wormhole_mass_limit(@c3_static)
       assert is_number(c3_limit)
       # Should be substantial
       assert c3_limit > 100_000_000

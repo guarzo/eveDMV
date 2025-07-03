@@ -111,10 +111,10 @@ jobs:
       run: |
         COVERAGE=$(grep '"coverage":' cover/excoveralls.json | sed 's/.*"coverage":\([0-9.]*\).*/\1/')
         echo "Current coverage: ${COVERAGE}%"
-        
+
         # Set minimum coverage threshold (start low and increase gradually)
         MIN_COVERAGE=4.0
-        
+
         if (( $(echo "$COVERAGE < $MIN_COVERAGE" | bc -l) )); then
           echo "❌ Coverage ${COVERAGE}% is below minimum threshold of ${MIN_COVERAGE}%"
           exit 1

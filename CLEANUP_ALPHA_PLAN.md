@@ -284,6 +284,21 @@ Fix unused variables throughout the file by prefixing with underscore:
 # To: defp get_recent_intelligence_activity(_timeframe) do
 ```
 
+#### Task 4.4: Remove Unused Parameter (Feedback.md Issue)
+**File**: `lib/eve_dmv/intelligence/member_activity_metrics.ex`
+**Priority**: Low Priority (code cleanliness)
+
+Remove unused character_id parameter from function (line 202):
+```elixir
+# Change: def determine_activity_trend(character_id, trend_data) do
+# To: def determine_activity_trend(trend_data) do
+```
+
+Search entire codebase first to ensure no callers need updating:
+```bash
+rg "determine_activity_trend" lib/ test/
+```
+
 **File**: `lib/eve_dmv/database/health_check.ex`
 
 Fix unused variable (line 196):
@@ -343,7 +358,29 @@ mix deps.audit
 rg "TODO|FIXME|XXX|HACK" lib/ || echo "No technical debt markers found"
 ```
 
-#### Task 6.3: Create API Fallback Controller (TODO Item)
+#### Task 6.3: Fix Unconventional Float Syntax (Feedback.md Issue)
+**File**: `test/eve_dmv/intelligence/member_activity_analyzer_test.exs`
+**Priority**: Low Priority (syntax consistency)
+
+Fix unconventional float syntax (line 330):
+```elixir
+# Change: +0.0
+# To: 0.0
+```
+
+#### Task 6.4: Fix SQL Indentation (Feedback.md Issue)
+**File**: `lib/eve_dmv/intelligence/threat_analyzer.ex`
+**Priority**: Low Priority (formatting)
+
+Fix inconsistent SQL query indentation (lines 118-127):
+```elixir
+# Align SELECT clause fields vertically
+# Indent JOIN conditions uniformly under the JOIN statement  
+# Align WHERE conditions consistently
+# Maintain clean and readable structure throughout the query
+```
+
+#### Task 6.5: Create API Fallback Controller (TODO Item)
 **Location**: `lib/eve_dmv_web/controllers/api/api_keys_controller.ex:14`  
 **Priority**: High Priority (affects API reliability)
 
@@ -423,6 +460,9 @@ By the end of 6 weeks, you must achieve:
 - [ ] **Zero TODO/FIXME** comments in lib/
 - [ ] **Clean credo output** with no dead code warnings
 - [ ] **API Fallback Controller** implemented (TODO item)
+- [ ] **Unconventional float syntax** fixed (Feedback.md issue)
+- [ ] **SQL indentation** cleaned up (Feedback.md issue)  
+- [ ] **Unused parameters** removed (Feedback.md issue)
 
 **Final Deliverable**: A pristine codebase with ~500+ lines of dead code removed, ready for other cleanup teams to focus on refactoring and optimization.
 

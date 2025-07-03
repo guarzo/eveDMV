@@ -1,267 +1,207 @@
-# EVE DMV Codebase Feedback and Improvements
-
-This document contains identified issues in the EVE DMV codebase with context and recommendations for improvement.
-
-## Table of Contents
-1. [Resource Snapshots](#resource-snapshots)
-2. [Database Migrations](#database-migrations)
-3. [Telemetry and Performance Monitoring](#telemetry-and-performance-monitoring)
-4. [ESI Client Implementation](#esi-client-implementation)
-5. [Testing Infrastructure](#testing-infrastructure)
-6. [CI/CD Workflows](#cicd-workflows)
-7. [Intelligence Modules](#intelligence-modules)
-8. [Code Quality and Refactoring](#code-quality-and-refactoring)
-
----
-
-## Resource Snapshots
-
-### Issue: Hash Values Changing Without Content Changes
-**Files Affected:**
-- `priv/resource_snapshots/repo/killmails_raw/20250701041612.json` (line 153)
-- `priv/resource_snapshots/repo/surveillance_profile_matches/20250701041612.json` (line 290)
-- `priv/resource_snapshots/repo/participants/20250701041612.json` (line 505)
-
-**Context:** Resource snapshots are part of Ash Framework's migration system. They capture the current state of database resources to generate migrations. The hash is calculated using SHA256 of the inspected snapshot data.
-
-**Analysis:** Upon investigation, this appears to be a false positive. The hashes haven't actually changed - the files were renamed/consolidated with new timestamps during a cleanup operation, but hash values remained stable.
-
-**Recommendation:** No action needed. The snapshot system is working as designed.
-
----
-
-## Database Migrations
-
-### Issue: Inconsistent Down Function in Migration
-**File:** `priv/repo/migrations_backup/20250701000000_add_performance_indexes.exs` (lines 42-51)
-
-**Problem:** The `down` function attempts to drop an index on `solar_systems` table that was never created in the `up` function.
-
-**Fix Required:**
-```elixir
-# Remove this line from the down function:
-drop index(:solar_systems, [:system_id, :security_status])
-```
-
-### Issue: Missing Comments in Performance Migration
-**File:** `priv/repo/migrations/20250701041613_add_performance_optimizations.exs`
-
-**Context:** This migration adds various performance indexes but lacks documentation about which query patterns each index optimizes.
-
-**Recommendation:** Add inline comments explaining the purpose of each index for future maintainability.
-
----
-
-## Telemetry and Performance Monitoring
-
-### Issue: Placeholder Performance Monitor Implementation
-**File:** `lib/eve_dmv/telemetry/performance_monitor.ex`
-
-**Problems Identified:**
-1. `get_performance_summary` (lines 123-146) returns static placeholder data
-2. Missing error handling and configurable thresholds
-3. Duplicated timing/telemetry logic across multiple functions
-4. No actual metric collection implemented
-
-**Context:** This module appears to be scaffolding for future telemetry implementation but currently provides no real monitoring capabilities.
-
-**Recommendations:**
-1. Extract common timing logic into a reusable helper function
-2. Implement actual telemetry collection or remove until ready
-3. Add configurable thresholds for slow operation detection
-4. Implement proper error handling with try-rescue blocks
-
----
-
-## ESI Client Implementation
-
-### Critical Issues in ESI Integration
-
-Despite Sprint 4.5 being marked as 100% complete for "ESI Integration & Technical Debt", multiple ESI client functions are incomplete:
-
-#### 1. Corporation Client Issues
-**File:** `lib/eve_dmv/eve/esi_corporation_client.ex`
-
-- **`get_corporation_members/2`** (lines 43-51): Always returns error, never processes API response
-
-
-#### 2. Market Client Issues
-**File:** `lib/eve_dmv/eve/esi_market_client.ex`
-
-- **`get_market_orders/3`** (lines 22-41): Missing success return type in @spec, only handles errors
-- **`get_market_prices/2`** (lines 62-77): Only handles error cases, all type_ids map to nil
-
-#### 3. Character Client Issues
-**File:** `lib/eve_dmv/eve/esi_character_client.ex`
-
-- **`get_character_employment_history/1`** (lines 144-156): Always returns error even on success
-- **`fetch_all_character_assets/4`** (lines 194-196): Stub returning error
-
-#### 4. Request Client Issues
-**File:** `lib/eve_dmv/eve/esi_request_client.ex`
-
-- **Security Issue** (lines 186-192): `auth_token` passed in opts risks accidental logging
-- **Fallback Strategy** (lines 201-204): Always returns error, prevents cache fallback
-- **Status Code Handling** (lines 127-134): Only accepts 200, not other 2xx success codes
-- **Code Duplication** (lines 21-101): Duplicated logic between authenticated and public requests
-
-**Context:** These ESI clients integrate with EVE Online's official API for game data. The incomplete implementations suggest the sprint was marked complete prematurely or these functions were deemed non-critical.
-
----
-
-## Testing Infrastructure
-
-### Issue: Skipped Partition Tests
-**File:** `test/eve_dmv/killmails/killmail_raw_test.exs`
-
-**Lines:** 67, 146, 161, 175
-
-**Problem:** Tests are skipped due to missing monthly partitions in the test database.
-
-**Fix:** Add partition creation in test setup:
-```elixir
-setup do
-  # Create necessary partitions for test data
-  create_monthly_partition(killmail_timestamp)
-end
-```
-
-### Issue: Low Coverage Threshold
-**File:** `mix.exs` (lines 16-37)
-
-**Problem:** Coverage threshold set to 4.0%
-
-**Context:** This appears to be a temporary baseline. The project uses ExCoveralls with a 70% CI threshold but local development uses 4%.
-
-**Recommendation:** Add comment explaining this is temporary and will be increased progressively.
-
-### Issue: Property Test Character ID Range
-**File:** `test/eve_dmv_web/controllers/auth_controller_test.exs` (lines 343-380)
-
-**Problem:** Generates any positive integer for character IDs, but EVE character IDs start from 90000000.
-
-**Fix:** Update generator to use realistic EVE character ID range.
-
-### Issue: Rate Limiting Test Misleading
-**File:** `test/eve_dmv_web/controllers/auth_controller_test.exs` (lines 382-424)
-
-**Problem:** Test named "prevents rapid authentication attempts" only tests stability, not actual rate limiting.
-
-**Fix:** Either implement rate limit verification or rename test to reflect actual behavior.
-
----
-
-## CI/CD Workflows
-
-### Issue: Shellcheck Warning in Coverage Script
-**File:** `scripts/check_coverage.sh` (line 22)
-
-**Problem:** Inline environment variable assignment causes shellcheck warning.
-
-**Fix:**
-```bash
-export MIX_ENV=test
-mix test --cover
-```
-
-### Issue: GitHub Actions Formatting Issues
-
-**Files:**
-- `.github/workflows/coverage-comment.yml`
-- `.github/workflows/coverage-ratchet.yml`
-
-**Problems:**
-1. Outdated `actions/cache@v3` version
-2. Multiple echo statements that should use here-documents
-3. YAML formatting inconsistencies
-4. Unused variables in shell scripts
-
-**Recommendations:**
-1. Update to `actions/cache@v4`
-2. Use here-documents for multi-line output
-3. Fix YAML indentation
-4. Remove unused variables
-
----
-
-## Intelligence Modules
-
-### Issue: Large Monolithic Modules
-**File:** `lib/eve_dmv/intelligence/character_analyzer.ex` (lines 918-1523)
-
-**Problem:** Module is too large with many responsibilities, harming maintainability.
-
-**Recommendation:** Split into focused modules:
-- `CharacterAnalyzer.Geographic` - Geographic analysis
-- `CharacterAnalyzer.Temporal` - Temporal patterns
-- `CharacterAnalyzer.Combat` - Combat metrics
-- `CharacterAnalyzer.Relationships` - Associate analysis
-
-### Issue: Hardcoded Ship Data
-**File:** `lib/eve_dmv/intelligence/wh_fleet_analyzer.ex` (lines 1324-1466)
-
-**Problem:** Large static mappings for ship data embedded in module.
-
-**Fix:** Extract to `EveDmv.Intelligence.ShipDatabase` module.
-
-### Issue: Placeholder Implementations
-**Files:**
-- `lib/eve_dmv/intelligence/member_activity_analyzer.ex` (lines 388-395)
-- `lib/eve_dmv/killmails/killmail_pipeline.ex` (lines 700-717)
-
-**Problem:** Functions return hardcoded values or only log instead of implementing real functionality.
-
-**Recommendation:** Either implement properly or clearly mark as TODO/placeholder.
-
----
-
-## Code Quality and Refactoring
-
-### Issue: Circuit Breaker Race Condition
-**File:** `lib/eve_dmv/eve/circuit_breaker.ex` (lines 58-85)
-
-**Problem:** Circuit state checked outside GenServer process, risking race conditions.
-
-**Fix:** Move state check inside GenServer.handle_call for atomic operation.
-
-### Issue: Inefficient Power Calculation
-**File:** `lib/eve_dmv/eve/reliability_config.ex` (lines 114-116)
-
-**Problem:** Uses `:math.pow` for integer exponents.
-
-**Fix:** Implement recursive integer multiplication for better performance.
-
-### Issue: Missing Error Handling
-**File:** `lib/eve_dmv/eve/esi_parsers.ex` (lines 249-258)
-
-**Problem:** Uses `Date.from_iso8601!` which raises on malformed dates.
-
-**Fix:** Use safe parsing with pattern matching like other date parsing in the module.
-
-### Issue: Duplicate Function Definition
-**File:** `lib/eve_dmv/intelligence/wh_fleet_analyzer.ex` (lines 214-227)
-
-**Problem:** Duplicate `get_ship_data/1` function definition causes compilation error.
-
-**Fix:** Remove duplicate definition.
-
-### Issue: Formatting Issues
-**File:** `lib/eve_dmv/intelligence/member_activity_analyzer.ex` (lines 1318-1327)
-
-**Problem:** Formatting issues causing CI/CD failures.
-
-**Fix:** Run `mix format` on the file.
-
----
-
-## Summary
-
-The codebase shows signs of incomplete Sprint 4.5 implementation despite being marked complete. Key areas needing attention:
-
-1. **ESI Integration**: Multiple stub implementations need completion
-2. **Security**: Auth token handling needs refactoring
-3. **Testing**: Coverage improvements and partition handling
-4. **Code Organization**: Large modules need splitting
-5. **CI/CD**: Workflow improvements for better maintainability
-
-Most issues are straightforward to fix but indicate a need for better sprint completion criteria and code review processes.
+In priv/resource_snapshots/repo/killmails_raw/20250701041612.json at line 153,
+the hash value has changed in isolation. Verify that this change reflects a
+genuine update in the underlying data or state rather than a nondeterministic or
+transient build artifact. If the hash changes are not deterministic, consider
+locking the snapshot ordering process or excluding these volatile hash values
+from source control to prevent unnecessary diffs.
+
+In priv/resource_snapshots/repo/surveillance_profile_matches/20250701041612.json
+at line 290, the hash value is changing without any actual schema or content
+changes, causing unnecessary snapshot churn. Review the snapshot generation
+pipeline to ensure the hash is computed deterministically based on stable
+content only, or exclude volatile metadata like timestamps or non-deterministic
+fields from the snapshot to prevent these noisy diffs.
+
+In priv/resource_snapshots/repo/participants/20250701041612.json at line 505,
+only the hash field was updated without changes to participant attributes,
+indicating a no-op data change. Verify if any actual participant data changed
+upstream; if not, either stabilize the snapshot generation to produce consistent
+hashes or exclude this hash update from the snapshot to avoid unnecessary review
+noise.
+
+In lib/eve_dmv/telemetry/performance_monitor.ex lines 1 to 10, add a module
+attribute or configuration map defining default slow operation thresholds for
+database queries, API calls, and liveview renders. Also, implement a private
+function safe_execute that wraps function execution in a try-rescue block to
+catch errors, log them using Logger.error with the error details, and return an
+{:error, error} tuple on failure or {:ok, result} on success. This will add
+error handling and make thresholds configurable as suggested.
+
+In lib/eve_dmv/telemetry/performance_monitor.ex lines 38 to 57, the
+track_api_call function duplicates timing and telemetry logic seen elsewhere.
+Refactor by extracting the timing and telemetry execution into a reusable helper
+function, then call this helper from track_api_call to reduce code duplication
+and improve maintainability.
+
+In lib/eve_dmv/telemetry/performance_monitor.ex around lines 99 to 118, the
+function track_liveview_render duplicates timing and telemetry logic that should
+be extracted into a helper function for consistency. Refactor this function to
+call the existing extracted helper that handles timing, telemetry execution, and
+logging, passing the view_name and fun as arguments, to maintain uniformity and
+reduce code duplication.
+
+In lib/eve_dmv/telemetry/performance_monitor.ex around lines 14 to 33, the
+timing and telemetry emission logic is duplicated across multiple functions.
+Refactor by extracting this common timing pattern into a private helper function
+that accepts the query name and a function to execute, performs the timing,
+emits telemetry, logs slow queries, and returns the result. Then update the
+existing functions to call this helper to reduce code duplication.
+
+In lib/eve_dmv/telemetry/performance_monitor.ex lines 62 to 83, extract the
+throughput calculation logic into a separate helper function to simplify
+track_bulk_operation. Add error handling to safely manage division by zero or
+any unexpected errors during throughput calculation. Refactor the main function
+to call this helper and ensure logging and telemetry execution remain intact.
+
+In test/support/httpoison_mock.ex at lines 1 to 4, improve the file by adding
+more detailed documentation explaining the purpose and usage of the
+HTTPoisonMock for SSE producer testing. Additionally, implement common mock
+response helper functions within the module to facilitate reuse and simplify
+test setups.
+
+In .github/workflows/ci.yml around lines 110 to 123, remove any trailing spaces
+at the end of lines within the coverage threshold check step to fix formatting
+issues. Ensure all lines are trimmed of trailing whitespace to maintain clean
+and consistent formatting.
+
+In .github/workflows/coverage-comment.yml from lines 70 to 147, the shell script
+has multiple best practice issues such as inefficient command substitutions,
+repeated use of echo with redirection, and potential quoting problems. To fix
+this, replace multiple echo statements appending to the same file with a single
+block using a here-document for better readability and performance, ensure all
+variables are properly quoted to prevent word splitting, simplify command
+substitutions by avoiding unnecessary pipes or subshells, and use consistent
+indentation and spacing to improve clarity and maintainability.
+
+In test/support/mocks.ex around lines 81 to 117, the mock data generators use
+hardcoded values for fields like corporation_id, corporation_name, alliance_id,
+and alliance_name. To enhance test flexibility, refactor these functions to
+accept optional parameters or configuration maps that allow overriding these
+hardcoded values. This way, tests can customize the mock data as needed without
+changing the function internals.
+
+In .github/workflows/coverage-ratchet.yml around lines 164 to 184, remove any
+variables that are declared but not used in the script to clean up the code.
+Additionally, improve shell scripting practices by quoting variables properly to
+prevent word splitting and globbing, and use consistent indentation and spacing
+for readability. Review the script for any other shell best practice violations
+such as unnecessary use of external commands or inefficient condition checks and
+correct them accordingly.
+
+In lib/eve_dmv/killmails/killmail_pipeline.ex around lines 700 to 717, the
+check_surveillance_matches function currently only logs messages instead of
+performing real surveillance matching. To fix this, replace the placeholder
+logging with actual integration to the surveillance matching engine by calling
+the appropriate matching functions using the extracted killmail_id and related
+data. If the matching logic is not yet available, create a detailed issue to
+track this implementation task for future completion.
+
+In lib/eve_dmv/intelligence/member_activity_formatter.ex lines 29 to 75, the
+current recommendation building logic uses repetitive if-else assignments to
+accumulate recommendations, which reduces maintainability. Refactor this by
+using a more functional approach such as Enum.reduce or Enum.concat to build the
+recommendations list in a single pass, avoiding repeated reassignment and
+improving code clarity.
+
+In docs/test-coverage-implementation-prompt.md around lines 13 to 15 and 190 to
+196, the test coverage targets are inconsistent and below the mandated 70%
+minimum. Update the overall coverage target to 70% to align with Sprint 5
+objectives and ExCoveralls setup, or clearly label the 25% and 40% figures as
+interim milestones leading to the 70% goal. Ensure the document reflects a
+unified and clear coverage target.
+
+In lib/eve_dmv/eve/esi_request_client.ex around lines 201 to 204, the function
+passed to FallbackStrategy.execute_with_stale_cache always returns an error
+tuple, which prevents fallback to cached data. Modify this function to perform
+the actual data fetch or operation that may fail, so that the fallback mechanism
+can properly use the cached data when the primary fetch fails.
+
+In test/eve_dmv/intelligence/wh_fleet_analyzer_test.exs around lines 88 to 95,
+the wormhole type strings like "O477" are hardcoded. Refactor the code to define
+these wormhole types as module attributes or constants at the top of the test
+module, then replace the hardcoded strings with these attributes to improve
+maintainability and reduce the risk of typos.
+
+In lib/eve_dmv/eve/reliability_config.ex around lines 245 to 260, the code uses
+Enum.reduce_while to validate timeout values but this can be simplified by using
+Enum.find to locate the first invalid timeout. Replace the Enum.reduce_while
+block with Enum.find that returns the first timeout entry failing the validation
+checks, then handle the error accordingly. This will make the code more
+idiomatic and concise for validation purposes.
+
+In test/eve_dmv/intelligence/member_activity_analyzer_test.exs at line 330, the
+float value is written as +0.0 which is unconventional. Replace +0.0 with the
+standard float syntax 0.0 to adhere to conventional float representation.
+
+In lib/eve_dmv/eve/fallback_strategy.ex around lines 294 to 301, the function
+get_stale_cache_data/2 does not use the max_stale_age parameter to verify if the
+cached data is still within the acceptable stale period. To fix this, modify the
+function to retrieve both the cached data and its timestamp (using a method like
+EsiCache.get_with_timestamp/1), then compare the current time with the timestamp
+to determine if the data age is less than or equal to max_stale_age. Return
+{:ok, data, :stale} only if the data is within this stale period; otherwise,
+return :miss.
+
+In lib/eve_dmv/intelligence/asset_analyzer.ex around lines 96 to 100, the
+function fetch_corporation_assets only handles the error tuple from
+EsiClient.get_corporation_assets but lacks a clause for the success case. Add a
+pattern match for the success response, typically {:ok, result}, and return it
+appropriately to handle both success and error outcomes.
+
+In lib/eve_dmv/intelligence/asset_analyzer.ex at line 144, replace the call to
+EsiClient.get_type/1 with EsiCache.get_type/1 to ensure type resolution uses the
+cache module as per the codebase conventions.
+
+In lib/eve_dmv/intelligence/asset_analyzer.ex around lines 29 to 38, the pattern
+matching for fetching assets is incomplete: corp_assets only handles the error
+tuple and member_assets only handles the ok tuple. Update both case expressions
+to handle both {:ok, assets} and {:error, reason} tuples, returning the assets
+on success and an empty list or appropriate fallback on error to ensure all
+possible outcomes are covered.
+
+In lib/eve_dmv/intelligence/home_defense_analyzer.ex around lines 175 to 182,
+the case expression handling the result of EsiClient.get_characters/1 only
+covers the success tuple {:ok, character_data} and lacks error handling for
+failure cases. Add a clause to handle error tuples such as {:error, reason} to
+properly manage and respond to failures when fetching character data, ensuring
+the function does not crash or return incomplete data.
+
+In lib/eve_dmv/intelligence/threat_analyzer.ex around lines 118 to 127, the SQL
+query indentation is inconsistent, reducing readability. Adjust the indentation
+so that all SELECT clause fields align vertically, JOIN conditions are indented
+uniformly under the JOIN statement, and WHERE conditions are aligned
+consistently, maintaining a clean and readable structure throughout the query.
+
+In lib/eve_dmv/intelligence/member_activity_metrics.ex at line 202, the function
+determine_activity_trend has an unused parameter character_id. Remove the
+character_id parameter from the function definition since it is not used
+anywhere in the function to clean up the code and avoid confusion.
+
+In lib/eve_dmv/intelligence/member_activity_metrics.ex around lines 262 to 264,
+replace the use of Enum.with_index with Enum.map since the index parameter is
+not used. Change the function call to Enum.map(x_values, fn x -> y_mean + slope
+
+- (x - x_mean) end) to simplify and clarify the code.
+
+Fix test coverage report, as it currently shows bad data
+Test coverage Report Shows null for all metrics
+Overall Coverage: null% (null/null lines)
+
+📈 Coverage Summary
+Metric Value
+Lines Covered null
+Lines Relevant null
+Total Lines null
+Coverage % null%
+🎯 Coverage Goals
+Current: null%
+Minimum Threshold: 4.0%
+Sprint 5 Target: 70%
+Status: ❌ Below minimum
+$(cat coverage_details.md)
+
+🔄 How to Improve Coverage
+Add unit tests for modules with 0% coverage
+Focus on business logic in intelligence and market modules
+Test error paths and edge cases
+Mock external dependencies (ESI, databases) in

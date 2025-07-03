@@ -543,14 +543,33 @@ mix test --cover # Check coverage improvement
 
 ### **Week 11: Test Coverage Verification** ✅
 
-#### Task 11.1: Measure Coverage Improvement
+#### Task 11.1: Fix Test Coverage Report Null Data (Feedback.md Issue)
+**Priority**: High Priority (CI pipeline fix)
+
+Fix test coverage report showing null data:
+```bash
+# Current issue: Test coverage Report Shows null for all metrics
+# Overall Coverage: null% (null/null lines)
+# Coverage Summary shows null for all values
+
+# Investigation steps:
+# 1. Check ExCoveralls configuration in mix.exs
+# 2. Verify coverage files are being generated correctly  
+# 3. Fix any issues with coverage data parsing
+# 4. Ensure CI pipeline properly generates coverage reports
+```
+
+**File**: `mix.exs` - Verify ExCoveralls configuration
+**File**: `.github/workflows/coverage-comment.yml` - Check coverage parsing logic
+
+#### Task 11.2: Measure Coverage Improvement
 ```bash
 mix test --cover
 # Target: 70%+ overall coverage
 # Critical modules should have 80%+ coverage
 ```
 
-#### Task 11.2: Add Missing Edge Case Tests
+#### Task 11.3: Add Missing Edge Case Tests
 Fill in any remaining gaps in test coverage for critical business logic.
 
 ### **Week 12: Documentation & Final Cleanup** 📖

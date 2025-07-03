@@ -701,18 +701,69 @@ defmodule EveDmv.Killmails.KillmailPipeline do
   defp check_surveillance_matches(messages) do
     Logger.debug("Checking surveillance matches for #{length(messages)} killmails")
 
-    for %Message{data: {raw_changeset, _enriched_changeset, _participants}} <- messages do
+    for %Message{data: {raw_changeset, enriched_changeset, _participants}} <- messages do
       try do
-        # Extract killmail ID from the raw changeset map
-        killmail_id = Map.get(raw_changeset, :killmail_id)
-
-        # This would integrate with the surveillance matching engine
-        # For now, just log that we would check for matches
-        Logger.debug("Would check surveillance matches for killmail #{killmail_id}")
+        # Extract killmail data for surveillance matching
+        killmail_data = build_killmail_data_for_matching(raw_changeset, enriched_changeset)
+        
+        # Use the surveillance matching engine to find matching profiles
+        case EveDmv.Surveillance.MatchingEngine.match_killmail(killmail_data) do
+          matched_profiles when is_list(matched_profiles) and length(matched_profiles) > 0 ->
+            Logger.info("🎯 Killmail #{killmail_data["killmail_id"]} matched #{length(matched_profiles)} surveillance profiles")
+            
+            # Send notifications for matched profiles (handled by the matching engine internally)
+            :ok
+            
+          [] ->
+            Logger.debug("No surveillance matches for killmail #{killmail_data["killmail_id"]}")
+            
+          error ->
+            Logger.warning("Surveillance matching returned unexpected result: #{inspect(error)}")
+        end
       rescue
         error ->
           Logger.warning("Failed to check surveillance matches: #{inspect(error)}")
       end
     end
+  end
+
+  # Build killmail data structure compatible with surveillance matching engine
+  defp build_killmail_data_for_matching(raw_changeset, enriched_changeset) do
+    # Combine data from both raw and enriched changesets
+    base_data = %{
+      "killmail_id" => raw_changeset[:killmail_id],
+      "killmail_time" => raw_changeset[:killmail_time],
+      "solar_system_id" => raw_changeset[:solar_system_id],
+      "victim" => build_victim_data(raw_changeset, enriched_changeset),
+      "attackers" => raw_changeset[:attackers] || [],
+      "attacker_count" => length(raw_changeset[:attackers] || [])
+    }
+    
+    # Add enriched data if available
+    enriched_data = %{
+      "total_value" => enriched_changeset[:total_value],
+      "ship_value" => enriched_changeset[:ship_value],
+      "fitted_value" => enriched_changeset[:fitted_value],
+      "solar_system_name" => enriched_changeset[:solar_system_name],
+      "module_tags" => enriched_changeset[:module_tags] || [],
+      "noteworthy_modules" => enriched_changeset[:noteworthy_modules] || []
+    }
+    
+    Map.merge(base_data, enriched_data)
+  end
+
+  # Build victim data structure for surveillance matching
+  defp build_victim_data(raw_changeset, enriched_changeset) do
+    %{
+      "character_id" => raw_changeset[:victim_character_id],
+      "corporation_id" => raw_changeset[:victim_corporation_id],
+      "alliance_id" => raw_changeset[:victim_alliance_id],
+      "ship_type_id" => raw_changeset[:victim_ship_type_id],
+      "damage_taken" => raw_changeset[:damage_taken],
+      "character_name" => enriched_changeset[:victim_character_name],
+      "corporation_name" => enriched_changeset[:victim_corporation_name],
+      "alliance_name" => enriched_changeset[:victim_alliance_name],
+      "ship_name" => enriched_changeset[:victim_ship_name]
+    }
   end
 end

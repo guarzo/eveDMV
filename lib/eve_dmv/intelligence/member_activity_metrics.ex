@@ -199,7 +199,7 @@ defmodule EveDmv.Intelligence.MemberActivityMetrics do
   @doc """
   Determine activity trend direction and strength.
   """
-  def determine_activity_trend(_character_id, activity_data) do
+  def determine_activity_trend(activity_data) do
     # Get historical activity data (simplified for now)
     daily_activities = activity_data[:daily_activity] || %{}
 
@@ -259,7 +259,7 @@ defmodule EveDmv.Intelligence.MemberActivityMetrics do
 
     # Calculate R-squared for confidence
     y_pred =
-      Enum.with_index(x_values, fn x, _ ->
+      Enum.map(x_values, fn x ->
         y_mean + slope * (x - x_mean)
       end)
 

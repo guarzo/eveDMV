@@ -77,57 +77,91 @@ defmodule EveDmv.TestMocks do
     end
   end
 
-  # Mock data generators
-  def mock_killmail(character_id \\ 123_456_789) do
-    %{
-      killmail_id: :rand.uniform(999_999_999),
-      killmail_time: DateTime.add(DateTime.utc_now(), -:rand.uniform(86_400), :second),
-      solar_system_id: Enum.random([30_002_187, 30_000_142, 31_000_001]),
-      is_victim: Enum.random([true, false]),
-      ship_type_id: Enum.random([11_999, 12_003, 670]),
-      ship_name: Enum.random(["Rifter", "Crucifier", "Capsule"]),
-      character_id: character_id,
-      character_name: "Test Pilot #{character_id}",
+  # Mock data generators with configurable options
+  def mock_killmail(character_id \\ 123_456_789, opts \\ %{}) do
+    defaults = %{
       corporation_id: 98_000_001,
       corporation_name: "Test Corp",
       alliance_id: 99_000_001,
       alliance_name: "Test Alliance",
+      solar_system_id: nil,
+      ship_type_id: nil,
+      is_victim: nil,
+      total_value: nil
+    }
+    
+    config = Map.merge(defaults, opts)
+    
+    %{
+      killmail_id: :rand.uniform(999_999_999),
+      killmail_time: DateTime.add(DateTime.utc_now(), -:rand.uniform(86_400), :second),
+      solar_system_id: config.solar_system_id || Enum.random([30_002_187, 30_000_142, 31_000_001]),
+      is_victim: config.is_victim || Enum.random([true, false]),
+      ship_type_id: config.ship_type_id || Enum.random([11_999, 12_003, 670]),
+      ship_name: Enum.random(["Rifter", "Crucifier", "Capsule"]),
+      character_id: character_id,
+      character_name: "Test Pilot #{character_id}",
+      corporation_id: config.corporation_id,
+      corporation_name: config.corporation_name,
+      alliance_id: config.alliance_id,
+      alliance_name: config.alliance_name,
       attacker_count: :rand.uniform(10),
-      total_value: :rand.uniform(100_000_000)
+      total_value: config.total_value || :rand.uniform(100_000_000)
     }
   end
 
-  def mock_killmails(character_id, count \\ 10) do
-    Enum.map(1..count, fn _ -> mock_killmail(character_id) end)
+  def mock_killmails(character_id, count \\ 10, opts \\ %{}) do
+    Enum.map(1..count, fn _ -> mock_killmail(character_id, opts) end)
   end
 
-  def mock_member_activity(character_id \\ 123_456) do
+  def mock_member_activity(character_id \\ 123_456, opts \\ %{}) do
+    defaults = %{
+      character_name: "Member #{character_id}",
+      corporation_id: 98_000_001,
+      corporation_name: "Test Corp",
+      alliance_id: 99_000_001,
+      alliance_name: "Test Alliance",
+      timezone: nil,
+      activity_score: nil
+    }
+    
+    config = Map.merge(defaults, opts)
+    
     %{
       character_id: character_id,
-      character_name: "Member #{character_id}",
+      character_name: config.character_name,
       last_seen: DateTime.add(DateTime.utc_now(), -:rand.uniform(86_400), :second),
       killmail_count: :rand.uniform(100),
       fleet_participation: :rand.uniform() * 0.8 + 0.1,
       communication_activity: :rand.uniform(50),
       days_since_join: :rand.uniform(365),
-      timezone: Enum.random(["UTC", "US/Eastern", "Australia/Sydney"]),
+      timezone: config.timezone || Enum.random(["UTC", "US/Eastern", "Australia/Sydney"]),
       active_hours: Enum.take_random(0..23, :rand.uniform(8) + 4),
-      activity_score: :rand.uniform(100)
+      activity_score: config.activity_score || :rand.uniform(100)
     }
   end
 
-  def mock_employment_history(_character_id \\ 123_456) do
+  def mock_employment_history(character_id \\ 123_456, opts \\ %{}) do
+    defaults = %{
+      current_corp_id: 98_000_001,
+      current_corp_name: "Current Corp",
+      previous_corp_id: 98_000_002,
+      previous_corp_name: "Previous Corp"
+    }
+    
+    config = Map.merge(defaults, opts)
+    
     [
       %{
-        corporation_id: 98_000_001,
-        corporation_name: "Current Corp",
+        corporation_id: config.current_corp_id,
+        corporation_name: config.current_corp_name,
         start_date: DateTime.add(DateTime.utc_now(), -365, :day),
         end_date: nil,
         is_deleted: false
       },
       %{
-        corporation_id: 98_000_002,
-        corporation_name: "Previous Corp",
+        corporation_id: config.previous_corp_id,
+        corporation_name: config.previous_corp_name,
         start_date: DateTime.add(DateTime.utc_now(), -730, :day),
         end_date: DateTime.add(DateTime.utc_now(), -365, :day),
         is_deleted: false

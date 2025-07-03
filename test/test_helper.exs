@@ -20,6 +20,9 @@ defmodule TestHelper do
   end
 end
 
+# Set up Mox for testing
+Mox.defmock(HTTPoisonMock, for: HTTPoison.Base)
+
 # Helper module for common test utilities
 defmodule EveDmv.TestHelpers do
   @moduledoc """

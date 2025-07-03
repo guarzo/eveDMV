@@ -14,7 +14,7 @@ You are an AI assistant tasked with implementing comprehensive test coverage for
 
 ## Primary Objectives
 
-### Phase 1: Critical Security & Data Integrity (Target: 25% coverage)
+### Phase 1: Critical Security & Data Integrity (Target: 70% coverage - Sprint 5 Objective)
 **Priority: CRITICAL - Complete within 1 week**
 
 1. **Authentication System** (`lib/eve_dmv/users/`) - 0% → 80%
@@ -35,7 +35,7 @@ You are an AI assistant tasked with implementing comprehensive test coverage for
    # - Memory management under high load
    ```
 
-### Phase 2: Core Business Logic (Target: 35% coverage)
+### Phase 2: Comprehensive Coverage (Target: 70% overall coverage - Sprint 5 Milestone)
 **Priority: HIGH - Complete within 2-3 weeks**
 
 3. **Surveillance Engine** (`lib/eve_dmv/surveillance/`) - 0% → 60%
@@ -192,7 +192,7 @@ jobs:
 ## Success Metrics
 
 ### Technical Metrics
-- **Coverage**: 3.9% → 40% overall (10x improvement target)
+- **Coverage**: 3.9% → 70% overall (Sprint 5 target per ExCoveralls configuration)
 - **Critical Modules**: All identified high-risk areas >60% coverage
 - **CI Stability**: Green test suite with coverage ratcheting
 - **Performance**: No regression in test suite execution time

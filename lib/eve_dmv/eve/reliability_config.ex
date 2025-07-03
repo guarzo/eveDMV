@@ -250,22 +250,27 @@ defmodule EveDmv.Eve.ReliabilityConfig do
   defp validate_timeouts do
     timeouts = get_config(:timeouts, @default_timeouts)
 
-    Enum.reduce_while(timeouts, :ok, fn {key, value}, :ok ->
-      cond do
-        not is_integer(value) ->
-          {:halt, {:error, "Timeout #{key} must be an integer, got: #{inspect(value)}"}}
+    case Enum.find(timeouts, &validate_timeout_entry/1) do
+      nil -> :ok
+      {key, error_msg} -> {:error, "Timeout #{key} #{error_msg}"}
+    end
+  end
 
-        value <= 0 ->
-          {:halt, {:error, "Timeout #{key} must be positive, got: #{value}"}}
+  defp validate_timeout_entry({key, value}) do
+    cond do
+      not is_integer(value) ->
+        {key, "must be an integer, got: #{inspect(value)}"}
 
-        # 5 minutes max
-        value > 300_000 ->
-          {:halt, {:error, "Timeout #{key} too large (max 5 minutes), got: #{value}"}}
+      value <= 0 ->
+        {key, "must be positive, got: #{value}"}
 
-        true ->
-          {:cont, :ok}
-      end
-    end)
+      # 5 minutes max
+      value > 300_000 ->
+        {key, "too large (max 5 minutes), got: #{value}"}
+
+      true ->
+        nil
+    end
   end
 
   defp validate_retry_config do

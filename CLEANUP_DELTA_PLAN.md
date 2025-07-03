@@ -108,7 +108,86 @@ Fix impossible pattern match (line 590):
 # Analyze the types and fix the logic
 ```
 
-#### Task 12.2: Fix Correlation Engine Pattern Matches
+#### Task 12.2: Fix Asset Analyzer Pattern Matching (Feedback.md Issue)
+**File**: `lib/eve_dmv/intelligence/asset_analyzer.ex`
+**Priority**: High Priority (pattern matching fixes)
+
+Fix incomplete pattern matching issues:
+
+**Lines 29-38**: Corp and member asset fetching pattern matching:
+```elixir
+# BEFORE (incomplete patterns):
+corp_assets = case fetch_corporation_assets(corporation_id) do
+  {:error, reason} -> []  # Only handles error case
+end
+
+member_assets = case fetch_member_assets(member_ids) do  
+  {:ok, assets} -> assets  # Only handles success case
+end
+
+# AFTER (complete patterns):
+corp_assets = case fetch_corporation_assets(corporation_id) do
+  {:ok, assets} -> assets
+  {:error, reason} -> 
+    Logger.warning("Failed to fetch corp assets: #{inspect(reason)}")
+    []
+end
+
+member_assets = case fetch_member_assets(member_ids) do  
+  {:ok, assets} -> assets
+  {:error, reason} ->
+    Logger.warning("Failed to fetch member assets: #{inspect(reason)}")
+    []
+end
+```
+
+**Lines 96-100**: Fix function that only handles error tuple:
+```elixir
+# Add pattern match for success case in fetch_corporation_assets/1
+def fetch_corporation_assets(corporation_id) do
+  case EsiClient.get_corporation_assets(corporation_id) do
+    {:ok, result} -> {:ok, result}  # Add this missing clause
+    {:error, reason} -> {:error, reason}
+  end
+end
+```
+
+**Line 144**: Fix EsiClient call to use proper caching:
+```elixir
+# Change: EsiClient.get_type/1  
+# To: EsiCache.get_type/1
+```
+
+#### Task 12.3: Fix Stale Cache Data Age Verification (Feedback.md Issue)
+**File**: `lib/eve_dmv/eve/fallback_strategy.ex`
+**Priority**: High Priority (cache functionality)
+
+Fix get_stale_cache_data/2 not using max_stale_age parameter (lines 294-301):
+```elixir
+# BEFORE (ignores max_stale_age):
+defp get_stale_cache_data(cache_key, max_stale_age) do
+  case EsiCache.get(cache_key) do
+    {:ok, data} -> {:ok, data, :stale}
+    :miss -> :miss
+  end
+end
+
+# AFTER (properly checks age):
+defp get_stale_cache_data(cache_key, max_stale_age) do
+  case EsiCache.get_with_timestamp(cache_key) do
+    {:ok, data, timestamp} ->
+      age_seconds = DateTime.diff(DateTime.utc_now(), timestamp, :second)
+      if age_seconds <= max_stale_age do
+        {:ok, data, :stale}
+      else
+        :miss
+      end
+    :miss -> :miss
+  end
+end
+```
+
+#### Task 12.4: Fix Correlation Engine Pattern Matches
 **File**: `lib/eve_dmv/intelligence/correlation_engine.ex`
 
 Fix multiple impossible patterns:
@@ -137,7 +216,7 @@ case get_member_ids(corporation_id) do
 end
 ```
 
-#### Task 12.3: Fix Member Activity Analyzer Patterns
+#### Task 12.5: Fix Member Activity Analyzer Patterns
 **File**: `lib/eve_dmv/intelligence/member_activity_analyzer.ex`
 
 Fix multiple pattern match coverage issues:

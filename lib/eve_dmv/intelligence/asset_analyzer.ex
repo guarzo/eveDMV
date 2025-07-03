@@ -28,12 +28,14 @@ defmodule EveDmv.Intelligence.AssetAnalyzer do
         # Try to fetch assets, but handle failures gracefully
         corp_assets =
           case fetch_corporation_assets(composition.corporation_id, auth_token) do
+            {:ok, assets} -> assets
             {:error, _reason} -> []
           end
 
         member_assets =
           case fetch_member_assets(composition.corporation_id, auth_token) do
             {:ok, assets} -> assets
+            {:error, _reason} -> []
           end
 
         all_assets = merge_assets(corp_assets, member_assets)
@@ -163,6 +165,7 @@ defmodule EveDmv.Intelligence.AssetAnalyzer do
 
   defp fetch_corporation_assets(corporation_id, auth_token) do
     case EsiClient.get_corporation_assets(corporation_id, auth_token) do
+      {:ok, assets} -> {:ok, assets}
       {:error, reason} -> {:error, reason}
     end
   end
@@ -209,7 +212,7 @@ defmodule EveDmv.Intelligence.AssetAnalyzer do
   defp group_ships_by_type(assets) do
     assets
     |> Enum.group_by(fn asset ->
-      case EsiClient.get_type(asset.type_id) do
+      case EsiCache.get_type(asset.type_id) do
         {:ok, type_data} -> type_data.name
         _ -> "Unknown Ship"
       end
