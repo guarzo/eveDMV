@@ -12,8 +12,8 @@ defmodule EveDmvWeb.IntelligenceComponents do
   @doc """
   Displays a comprehensive intelligence score card with visual indicators.
   """
-  attr :score_data, :map, required: true
-  attr :class, :string, default: ""
+  attr(:score_data, :map, required: true)
+  attr(:class, :string, default: "")
 
   def intelligence_score_card(assigns) do
     ~H"""
@@ -73,9 +73,9 @@ defmodule EveDmvWeb.IntelligenceComponents do
   @doc """
   Displays a horizontal score bar for individual components.
   """
-  attr :label, :string, required: true
-  attr :score, :float, required: true
-  attr :component, :atom, required: true
+  attr(:label, :string, required: true)
+  attr(:score, :float, required: true)
+  attr(:component, :atom, required: true)
 
   def score_component_bar(assigns) do
     ~H"""
@@ -95,8 +95,8 @@ defmodule EveDmvWeb.IntelligenceComponents do
   @doc """
   Advanced threat assessment display with visual threat level indicators.
   """
-  attr :threat_data, :map, required: true
-  attr :expanded, :boolean, default: false
+  attr(:threat_data, :map, required: true)
+  attr(:expanded, :boolean, default: false)
 
   def threat_assessment_display(assigns) do
     ~H"""
@@ -165,8 +165,8 @@ defmodule EveDmvWeb.IntelligenceComponents do
   @doc """
   Displays behavioral pattern analysis with visual pattern indicators.
   """
-  attr :pattern_data, :map, required: true
-  attr :character_name, :string, default: "Unknown"
+  attr(:pattern_data, :map, required: true)
+  attr(:character_name, :string, default: "Unknown")
 
   def behavioral_patterns_display(assigns) do
     ~H"""
@@ -224,8 +224,8 @@ defmodule EveDmvWeb.IntelligenceComponents do
   @doc """
   Recruitment fitness assessment display with decision factors.
   """
-  attr :fitness_data, :map, required: true
-  attr :character_id, :integer, required: true
+  attr(:fitness_data, :map, required: true)
+  attr(:character_id, :integer, required: true)
 
   def recruitment_fitness_display(assigns) do
     ~H"""
@@ -294,8 +294,8 @@ defmodule EveDmvWeb.IntelligenceComponents do
   @doc """
   Interactive intelligence dashboard with real-time updates.
   """
-  attr :dashboard_data, :map, required: true
-  attr :live_updates, :boolean, default: false
+  attr(:dashboard_data, :map, required: true)
+  attr(:live_updates, :boolean, default: false)
 
   def intelligence_dashboard(assigns) do
     ~H"""

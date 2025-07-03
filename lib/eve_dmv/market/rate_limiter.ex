@@ -7,7 +7,6 @@ defmodule EveDmv.Market.RateLimiter do
   """
 
   use GenServer
-  require Logger
 
   @default_max_tokens 10
   # tokens per second

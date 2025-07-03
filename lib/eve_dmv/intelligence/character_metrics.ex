@@ -3,8 +3,6 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
   Character analysis calculations and scoring
   """
 
-  require Logger
-
   def calculate_all_metrics(character_id, killmail_data) do
     basic_info = extract_basic_info_from_killmails(character_id, killmail_data)
 

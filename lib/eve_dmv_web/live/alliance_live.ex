@@ -11,7 +11,7 @@ defmodule EveDmvWeb.AllianceLive do
   alias EveDmv.Killmails.Participant
 
   # Load current user from session on mount
-  on_mount {EveDmvWeb.AuthLive, :load_from_session}
+  on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
   @impl true
   def mount(%{"alliance_id" => alliance_id_str}, _session, socket) do
