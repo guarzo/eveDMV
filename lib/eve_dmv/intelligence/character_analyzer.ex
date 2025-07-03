@@ -256,6 +256,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
 
       {:error, :insufficient_data}
     else
+      # Use the comprehensive CharacterMetrics module
       metrics = CharacterMetrics.calculate_all_metrics(character_id, killmail_data)
       {:ok, metrics}
     end
@@ -700,7 +701,12 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
     end
   end
 
-  # Delegation to formatters
-  defdelegate format_character_summary(analysis_results), to: CharacterFormatters
-  defdelegate format_analysis_summary(character_stats), to: CharacterFormatters
+  # Character formatting functions - delegated to CharacterFormatters module
+  def format_character_summary(analysis_results) do
+    CharacterFormatters.format_character_summary(analysis_results)
+  end
+
+  def format_analysis_summary(character_stats) do
+    CharacterFormatters.format_analysis_summary(character_stats)
+  end
 end
