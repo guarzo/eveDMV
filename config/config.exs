@@ -97,7 +97,6 @@ config :eve_dmv, :eve_sso,
 # Killmail Pipeline Configuration
 config :eve_dmv,
   wanderer_kills_sse_url: System.get_env("WANDERER_KILLS_SSE_URL", "http://localhost:8080/sse"),
-  zkillboard_sse_url: System.get_env("ZKILLBOARD_SSE_URL", "https://zkillboard.com/sse"),
   pipeline_enabled: System.get_env("PIPELINE_ENABLED", "true") == "true"
 
 # Name Resolver Cache Warming Configuration
