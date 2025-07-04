@@ -9,10 +9,10 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
   require Logger
   require Ash.Query
   alias EveDmv.Api
-  alias EveDmv.Killmails.Participant
   alias EveDmv.Intelligence.CharacterAnalysis.CharacterStats
   alias EveDmv.Intelligence.IntelligenceCache
   alias EveDmv.Intelligence.WhSpace.Vetting, as: WHVetting
+  alias EveDmv.Killmails.Participant
 
   @doc """
   Optimize intelligence queries by batching and parallel processing.

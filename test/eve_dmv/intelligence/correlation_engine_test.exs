@@ -2,8 +2,8 @@ defmodule EveDmv.Intelligence.CorrelationEngineTest do
   use EveDmv.DataCase, async: false
 
   alias EveDmv.Database.QueryCache
-  alias EveDmv.Intelligence.CorrelationEngine
   alias EveDmv.Intelligence.CharacterAnalysis.CharacterStats
+  alias EveDmv.Intelligence.CorrelationEngine
   alias EveDmv.Intelligence.WHVetting
 
   setup do

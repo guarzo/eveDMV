@@ -10,6 +10,7 @@ defmodule EveDmv.Intelligence.CharacterAnalysis.CharacterAnalyzer do
   alias EveDmv.Intelligence.CharacterAnalysis.CharacterStats
   alias EveDmv.Intelligence.{CharacterFormatters, CharacterMetrics}
   alias EveDmv.Killmails.{KillmailEnriched, Participant}
+  alias EveDmv.Utils.KillmailUtils
   require Ash.Query
 
   @analysis_period_days 90
@@ -118,7 +119,7 @@ defmodule EveDmv.Intelligence.CharacterAnalysis.CharacterAnalyzer do
     # Use the optimized EsiUtils function that consolidates all ESI calls
     # This function always returns {:ok, data} with fallback values on error
     {:ok, character_data} = EsiUtils.fetch_character_corporation_alliance(character_id)
-    
+
     basic_info = %{
       character_id: character_id,
       character_name: character_data.character_name,
@@ -317,7 +318,7 @@ defmodule EveDmv.Intelligence.CharacterAnalysis.CharacterAnalyzer do
   # Helper functions
 
   defp find_victim_participant(participants) do
-    Enum.find(participants, &(&1["is_victim"] == true))
+    KillmailUtils.find_victim_participant(participants)
   end
 
   defp participant_to_map(participant) do
