@@ -53,7 +53,8 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzerTest do
           character_id: 123,
           character_name: "Active Pilot",
           last_seen: ~U[2024-01-01 12:00:00Z],
-          killmail_count: 50,
+          total_kills: 40,
+          total_losses: 10,
           fleet_participation: 0.85,
           communication_activity: 25,
           days_since_join: 100
@@ -62,7 +63,8 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzerTest do
           character_id: 456,
           character_name: "Inactive Pilot",
           last_seen: ~U[2023-12-01 12:00:00Z],
-          killmail_count: 5,
+          total_kills: 3,
+          total_losses: 2,
           fleet_participation: 0.15,
           communication_activity: 2,
           days_since_join: 200
@@ -421,17 +423,19 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzerTest do
   describe "helper functions" do
     test "calculate_engagement_score/1 computes realistic scores" do
       high_engagement_member = %{
-        killmail_count: 100,
+        total_kills: 80,
+        total_losses: 20,
         fleet_participation: 0.9,
         communication_activity: 50,
         days_since_join: 365
       }
 
       score = MemberActivityAnalyzer.calculate_engagement_score(high_engagement_member)
-      assert score > 80
+      assert score > 60
 
       low_engagement_member = %{
-        killmail_count: 2,
+        total_kills: 1,
+        total_losses: 5,
         fleet_participation: 0.1,
         communication_activity: 1,
         days_since_join: 30

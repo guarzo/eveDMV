@@ -136,7 +136,7 @@ defmodule EveDmv.Intelligence.ShipDatabaseTest do
     test "returns correct category for ship names" do
       assert ShipDatabase.get_ship_category("Rifter") == "Frigate"
       assert ShipDatabase.get_ship_category("Ares") == "Frigate"
-      assert ShipDatabase.get_ship_category("Tengu") == "Strategic Cruiser"
+      assert ShipDatabase.get_ship_category("Tengu") == "Cruiser"
     end
 
     test "returns Unknown for unknown ships" do

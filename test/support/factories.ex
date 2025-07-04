@@ -68,6 +68,13 @@ defmodule EveDmv.Factories do
       ship_value: Decimal.new("5000000.25"),
       fitted_value: Decimal.new("5000000.25"),
       attacker_count: Enum.random(1..10),
+      final_blow_character_id: Enum.random(90_000_000..100_000_000),
+      final_blow_character_name: "Test Attacker #{System.unique_integer([:positive])}",
+      kill_category: "solo",
+      victim_ship_category: "Frigate",
+      module_tags: ["pvp", "solo"],
+      noteworthy_modules: ["Warp Scrambler I"],
+      price_data_source: "test",
       # Add a marker so we can distinguish this from KillmailRaw
       _enriched_marker: true
     }
@@ -90,6 +97,31 @@ defmodule EveDmv.Factories do
   defp build_factory(:killmail_enriched), do: killmail_enriched_factory()
   defp build_factory(:participant), do: participant_factory()
   defp build_factory(:user), do: user_factory()
+
+  def participant_factory do
+    killmail_time = DateTime.utc_now() |> DateTime.add(-Enum.random(1..3600), :second)
+    
+    %{
+      killmail_id: System.unique_integer([:positive]),
+      killmail_time: killmail_time,
+      character_id: Enum.random(90_000_000..100_000_000),
+      character_name: "Test Character #{System.unique_integer([:positive])}",
+      corporation_id: Enum.random(1_000_000..2_000_000),
+      corporation_name: "Test Corp #{System.unique_integer([:positive])}",
+      alliance_id: Enum.random(99_000_000..100_000_000),
+      alliance_name: "Test Alliance #{System.unique_integer([:positive])}",
+      ship_type_id: Enum.random([587, 588, 589, 622]),
+      ship_name: "Test Ship",
+      weapon_type_id: Enum.random([2185, 2873, 3074]),
+      weapon_name: "Test Weapon",
+      damage_done: Enum.random(100..10_000),
+      security_status: Decimal.new("0.5"),
+      is_victim: false,
+      final_blow: false,
+      is_npc: false,
+      solar_system_id: Enum.random(30_000_000..31_000_000)
+    }
+  end
 
   defp build_realistic_killmail_data do
     # Create realistic killmail JSON structure

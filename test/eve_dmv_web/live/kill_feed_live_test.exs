@@ -224,14 +224,14 @@ defmodule EveDmvWeb.KillFeedLiveTest do
       create(:killmail_enriched, %{
         killmail_id: 95_000_003,
         victim_ship_name: "Loki",
-        final_blow_ship_name: "Sabre",
+        final_blow_character_name: "Sabre Pilot",
         killmail_time: DateTime.utc_now()
       })
 
       {:ok, _view, html} = live(conn, ~p"/feed")
 
       assert html =~ "Loki"
-      assert html =~ "Sabre"
+      assert html =~ "Sabre Pilot"
     end
   end
 
