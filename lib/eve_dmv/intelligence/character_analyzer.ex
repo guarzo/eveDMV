@@ -10,6 +10,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
   alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Intelligence.{CharacterFormatters, CharacterMetrics}
   alias EveDmv.Killmails.{KillmailEnriched, Participant}
+  alias EveDmv.Utils.KillmailUtils
   require Ash.Query
 
   @analysis_period_days 90
@@ -317,7 +318,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
   # Helper functions
 
   defp find_victim_participant(participants) do
-    Enum.find(participants, &(&1["is_victim"] == true))
+    KillmailUtils.find_victim_participant(participants)
   end
 
   defp participant_to_map(participant) do

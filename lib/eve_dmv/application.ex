@@ -80,7 +80,9 @@ defmodule EveDmv.Application do
         EveDmv.Database.MaterializedViewManager,
         EveDmv.Database.ArchiveManager,
         EveDmv.Enrichment.ReEnrichmentWorker,
-        EveDmv.Enrichment.RealTimePriceUpdater
+        EveDmv.Enrichment.RealTimePriceUpdater,
+        # Intelligence analysis supervisor for managing analysis tasks
+        EveDmv.Intelligence.Supervisor
       ]
     else
       []

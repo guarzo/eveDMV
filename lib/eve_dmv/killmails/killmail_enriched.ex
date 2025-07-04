@@ -217,6 +217,9 @@ defmodule EveDmv.Killmails.KillmailEnriched do
       attribute_writable?(false)
       allow_nil?(false)
     end
+
+    # Note: Participants relationship will be handled via manual queries
+    # due to composite foreign key limitations in Ash
   end
 
   # Actions
@@ -390,6 +393,9 @@ defmodule EveDmv.Killmails.KillmailEnriched do
     calculate :is_high_value, :boolean, expr(total_value > 1_000_000_000) do
       description("Whether this is considered a high-value kill (>1B ISK)")
     end
+
+    # Note: Participants will be loaded via EnrichedParticipantLoader
+    # when needed, due to composite foreign key limitations
   end
 
   # Authorization policies
