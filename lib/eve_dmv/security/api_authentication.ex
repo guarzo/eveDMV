@@ -290,7 +290,7 @@ defmodule EveDmv.Security.ApiAuthentication do
 
   defp record_key_usage(api_key, client_ip) do
     # Update last used timestamp and IP in the background
-    Task.start(fn ->
+    Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
       try do
         Ash.update(
           api_key,

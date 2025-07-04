@@ -26,19 +26,10 @@ defmodule EveDmv.Market.JaniceClient do
 
   require Logger
   alias EveDmv.Market.{PriceCache, RateLimiter}
+  alias EveDmv.Config.{Api, Http}
 
-  @default_base_url "https://janice.e-351.com/api"
-  # 30 seconds
-  @http_timeout 30_000
-  @retry_attempts 3
-  # 1 second
-  @retry_delay 1_000
   # Rate limiter name for Janice API
   @rate_limiter :janice_rate_limiter
-
-  # Janice API endpoints
-  @item_endpoint "/v2/prices"
-  @appraisal_endpoint "/v2/appraisal"
 
   # Public API
 
@@ -138,7 +129,7 @@ defmodule EveDmv.Market.JaniceClient do
     }
 
     with_retry(fn ->
-      case post_request(@appraisal_endpoint, body) do
+      case post_request(Api.janice_endpoints()[:appraisal], body) do
         {:ok, %HTTPoison.Response{status_code: 200, body: response_body}} ->
           parse_appraisal_response(response_body)
 
@@ -165,7 +156,7 @@ defmodule EveDmv.Market.JaniceClient do
         }
 
         with_retry(fn ->
-          case get_request(@item_endpoint, params) do
+          case get_request(Api.janice_endpoints()[:items], params) do
             {:ok, %HTTPoison.Response{status_code: 200, body: response_body}} ->
               parse_price_response(response_body)
 
@@ -189,7 +180,7 @@ defmodule EveDmv.Market.JaniceClient do
     url = build_url(endpoint)
     headers = build_headers()
 
-    HTTPoison.get(url, headers, params: params, recv_timeout: @http_timeout)
+    HTTPoison.get(url, headers, params: params, recv_timeout: Http.janice_timeout())
   end
 
   defp post_request(endpoint, body) do
@@ -197,11 +188,11 @@ defmodule EveDmv.Market.JaniceClient do
     headers = build_headers() ++ [{"Content-Type", "application/json"}]
     json_body = Jason.encode!(body)
 
-    HTTPoison.post(url, json_body, headers, recv_timeout: @http_timeout)
+    HTTPoison.post(url, json_body, headers, recv_timeout: Http.janice_timeout())
   end
 
   defp build_url(endpoint) do
-    base_url = get_config(:base_url, @default_base_url)
+    base_url = get_config(:base_url, Api.janice_base_url())
     base_url <> endpoint
   end
 
@@ -275,11 +266,15 @@ defmodule EveDmv.Market.JaniceClient do
     end)
   end
 
-  defp with_retry(fun, attempts \\ @retry_attempts, base_delay \\ @retry_delay) do
+  defp with_retry(fun, attempts \\ nil, base_delay \\ nil) do
+    attempts = attempts || Http.retry_attempts()
+    base_delay = base_delay || Http.retry_delay()
+
     case fun.() do
       {:error, _reason} = _error when attempts > 1 ->
         # Exponential backoff: double the delay each time, with jitter
-        retry_attempt = @retry_attempts - attempts + 1
+        max_attempts = Http.retry_attempts()
+        retry_attempt = max_attempts - attempts + 1
         exponential_delay = base_delay * :math.pow(2, retry_attempt - 1)
 
         # Add random jitter (±25% of the delay) to prevent thundering herd
@@ -288,7 +283,7 @@ defmodule EveDmv.Market.JaniceClient do
         final_delay = max(trunc(exponential_delay + jitter), 100)
 
         Logger.debug(
-          "Retrying Janice API call in #{final_delay}ms (attempt #{retry_attempt}/#{@retry_attempts})"
+          "Retrying Janice API call in #{final_delay}ms (attempt #{retry_attempt}/#{max_attempts})"
         )
 
         Process.sleep(final_delay)

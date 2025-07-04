@@ -71,7 +71,7 @@ defmodule EveDmvWeb.Helpers.PriceHelper do
 
   defp calculate_value_async(raw_data) do
     # Return immediately with 0, but trigger async calculation
-    Task.start(fn ->
+    Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
       case PriceService.calculate_killmail_value(raw_data) do
         %{total_value: value} when value > 0 ->
           Logger.debug("Calculated killmail value: #{value}")

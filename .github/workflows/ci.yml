@@ -107,6 +107,16 @@ jobs:
       env:
         DATABASE_URL: postgres://postgres:postgres@localhost:5432/eve_tracker_test
 
+    - name: Run E2E tests
+      run: mix test --only e2e
+      env:
+        DATABASE_URL: postgres://postgres:postgres@localhost:5432/eve_tracker_test
+
+    - name: Run integration tests
+      run: mix test --only integration
+      env:
+        DATABASE_URL: postgres://postgres:postgres@localhost:5432/eve_tracker_test
+
     - name: Check coverage threshold
       run: |
         COVERAGE=$(grep '"coverage":' cover/excoveralls.json | sed 's/.*"coverage":\([0-9.]*\).*/\1/')

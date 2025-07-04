@@ -111,7 +111,10 @@ defmodule EveDmv.Database.CacheInvalidator do
 
   def handle_cast({:invalidate_pattern, pattern}, state) do
     if state.enabled do
-      Task.start(fn -> perform_pattern_invalidation(pattern) end)
+      Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
+        perform_pattern_invalidation(pattern)
+      end)
+
       new_state = update_stats(state, :pattern, pattern)
       {:noreply, new_state}
     else
@@ -121,7 +124,10 @@ defmodule EveDmv.Database.CacheInvalidator do
 
   def handle_cast({:invalidate_type, cache_type, entity_id}, state) do
     if state.enabled do
-      Task.start(fn -> perform_type_invalidation(cache_type, entity_id, state.hooks) end)
+      Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
+        perform_type_invalidation(cache_type, entity_id, state.hooks)
+      end)
+
       new_state = update_stats(state, :type, {cache_type, entity_id})
       {:noreply, new_state}
     else
@@ -131,7 +137,10 @@ defmodule EveDmv.Database.CacheInvalidator do
 
   def handle_cast({:invalidate_related, entity_type, entity_id, related_types}, state) do
     if state.enabled do
-      Task.start(fn -> perform_related_invalidation(entity_type, entity_id, related_types) end)
+      Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
+        perform_related_invalidation(entity_type, entity_id, related_types)
+      end)
+
       new_state = update_stats(state, :related, {entity_type, entity_id})
       {:noreply, new_state}
     else
@@ -141,7 +150,10 @@ defmodule EveDmv.Database.CacheInvalidator do
 
   def handle_cast({:bulk_invalidate, patterns}, state) do
     if state.enabled do
-      Task.start(fn -> perform_bulk_invalidation(patterns) end)
+      Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
+        perform_bulk_invalidation(patterns)
+      end)
+
       new_state = update_stats(state, :bulk, length(patterns))
       {:noreply, new_state}
     else
@@ -161,7 +173,9 @@ defmodule EveDmv.Database.CacheInvalidator do
   def handle_info({:data_updated, entity_type, entity_id}, state) do
     # Auto-invalidation based on data changes
     if state.enabled do
-      Task.start(fn -> handle_data_update(entity_type, entity_id) end)
+      Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
+        handle_data_update(entity_type, entity_id)
+      end)
     end
 
     {:noreply, state}
@@ -170,7 +184,9 @@ defmodule EveDmv.Database.CacheInvalidator do
   def handle_info({:killmail_processed, killmail}, state) do
     # Invalidate caches when new killmails are processed
     if state.enabled do
-      Task.start(fn -> handle_killmail_update(killmail) end)
+      Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
+        handle_killmail_update(killmail)
+      end)
     end
 
     {:noreply, state}
@@ -348,7 +364,7 @@ defmodule EveDmv.Database.CacheInvalidator do
 
   defp execute_hooks(hooks, cache_type, entity_id) do
     # Execute registered invalidation hooks
-    Task.start(fn ->
+    Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
       Enum.each(hooks, fn {module, function} ->
         try do
           apply(module, function, [cache_type, entity_id])
