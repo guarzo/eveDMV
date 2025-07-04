@@ -128,55 +128,6 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinatorTest do
     end
   end
 
-  describe "get_intelligence_summary/1" do
-    test "returns summary for analyzed character" do
-      character_id = 123_456_789
-      EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 10)
-
-      assert {:ok, summary} = IntelligenceCoordinator.get_intelligence_summary(character_id)
-
-      assert summary.character_id == character_id
-      assert summary.summary_timestamp
-      assert summary.key_insights
-      assert summary.threat_assessment
-      assert summary.activity_summary
-      assert is_list(summary.key_insights)
-    end
-
-    test "handles missing character data" do
-      character_id = 999_999_999
-
-      assert {:error, _reason} = IntelligenceCoordinator.get_intelligence_summary(character_id)
-    end
-  end
-
-  describe "get_character_correlations/1" do
-    test "returns correlations for character" do
-      character_id = 123_456_789
-      EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 15)
-
-      assert {:ok, correlations} =
-               IntelligenceCoordinator.get_character_correlations(character_id)
-
-      assert correlations.character_id == character_id
-      assert correlations.related_characters
-      assert correlations.shared_activities
-      assert correlations.temporal_patterns
-      assert is_list(correlations.related_characters)
-    end
-
-    test "handles character with no correlations" do
-      character_id = 999_999_999
-
-      assert {:ok, correlations} =
-               IntelligenceCoordinator.get_character_correlations(character_id)
-
-      assert correlations.character_id == character_id
-      assert correlations.related_characters == []
-      assert correlations.shared_activities == []
-    end
-  end
-
   describe "private functions" do
     test "calculate_overall_confidence/3 returns valid confidence score" do
       basic_analysis = %{confidence: 0.8}

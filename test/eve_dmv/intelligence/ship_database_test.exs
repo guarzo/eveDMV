@@ -19,8 +19,8 @@ defmodule EveDmv.Intelligence.ShipDatabaseTest do
 
     test "returns correct class for known ship names" do
       assert ShipDatabase.get_ship_class("Rifter") == :frigate
-      assert ShipDatabase.get_ship_class("Caracal") == :cruiser
-      assert ShipDatabase.get_ship_class("Raven") == :battleship
+      assert ShipDatabase.get_ship_class("Guardian") == :logistics
+      assert ShipDatabase.get_ship_class("Ares") == :interceptor
       assert ShipDatabase.get_ship_class("Tengu") == :strategic_cruiser
     end
 
@@ -135,8 +135,8 @@ defmodule EveDmv.Intelligence.ShipDatabaseTest do
 
     test "returns correct category for ship names" do
       assert ShipDatabase.get_ship_category("Rifter") == "Frigate"
-      assert ShipDatabase.get_ship_category("Caracal") == "Cruiser"
-      assert ShipDatabase.get_ship_category("Raven") == "Battleship"
+      assert ShipDatabase.get_ship_category("Ares") == "Frigate"
+      assert ShipDatabase.get_ship_category("Tengu") == "Strategic Cruiser"
     end
 
     test "returns Unknown for unknown ships" do

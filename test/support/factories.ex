@@ -88,6 +88,7 @@ defmodule EveDmv.Factories do
   defp build_factory(:character), do: character_factory()
   defp build_factory(:killmail_raw), do: killmail_raw_factory()
   defp build_factory(:killmail_enriched), do: killmail_enriched_factory()
+  defp build_factory(:participant), do: participant_factory()
   defp build_factory(:user), do: user_factory()
 
   defp build_realistic_killmail_data do
