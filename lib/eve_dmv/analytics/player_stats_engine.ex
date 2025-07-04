@@ -164,45 +164,49 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
 
   # Build character-level metrics map
   defp build_character_metrics(ps) do
-    character_name =
-      case List.first(ps) do
-        %{character_name: name} when is_binary(name) -> name
-        _ -> "Unknown"
-      end
+    if Enum.empty?(ps) do
+      %{character_name: "Unknown"}
+    else
+      character_name =
+        case List.first(ps) do
+          %{character_name: name} when is_binary(name) -> name
+          _ -> "Unknown"
+        end
 
-    {kills, losses} = split_kills_losses(ps)
-    {solo_kills, gang_kills, solo_losses, gang_losses} = split_solo_gang(kills, losses)
+      {kills, losses} = split_kills_losses(ps)
+      {solo_kills, gang_kills, solo_losses, gang_losses} = split_solo_gang(kills, losses)
 
-    basic_stats = calculate_basic_stats(kills, losses)
-    ship_stats = calculate_participant_ship_stats(ps)
-    gang_stats = calculate_gang_stats(ps, basic_stats.total_kills, basic_stats.total_losses)
-    time_stats = calculate_time_stats(ps)
+      basic_stats = calculate_basic_stats(kills, losses)
+      ship_stats = calculate_participant_ship_stats(ps)
+      gang_stats = calculate_gang_stats(ps, basic_stats.total_kills, basic_stats.total_losses)
+      time_stats = calculate_time_stats(ps)
 
-    Map.merge(basic_stats, %{
-      character_name: character_name,
-      solo_kills: length(solo_kills),
-      solo_losses: length(solo_losses),
-      gang_kills: length(gang_kills),
-      gang_losses: length(gang_losses),
-      ship_types_used: ship_stats.diversity,
-      favorite_ship_type_id: ship_stats.fav_id,
-      favorite_ship_name: ship_stats.fav_name,
-      avg_gang_size: Decimal.from_float(gang_stats.avg_size),
-      preferred_gang_size: gang_stats.preferred_size,
-      first_kill_date: time_stats.first_kill,
-      last_kill_date: time_stats.last_kill,
-      active_days: time_stats.active_days,
-      avg_kills_per_week: Decimal.from_float(time_stats.avg_per_week),
-      active_regions: 1,
-      danger_rating:
-        calculate_character_danger_rating(
-          basic_stats.total_kills,
-          basic_stats.total_losses,
-          basic_stats.total_isk_destroyed,
-          ship_stats.diversity
-        ),
-      primary_activity: classify_character_activity(solo_kills, gang_kills)
-    })
+      Map.merge(basic_stats, %{
+        character_name: character_name,
+        solo_kills: length(solo_kills),
+        solo_losses: length(solo_losses),
+        gang_kills: length(gang_kills),
+        gang_losses: length(gang_losses),
+        ship_types_used: ship_stats.diversity,
+        favorite_ship_type_id: ship_stats.fav_id,
+        favorite_ship_name: ship_stats.fav_name,
+        avg_gang_size: Decimal.from_float(gang_stats.avg_size),
+        preferred_gang_size: gang_stats.preferred_size,
+        first_kill_date: time_stats.first_kill,
+        last_kill_date: time_stats.last_kill,
+        active_days: time_stats.active_days,
+        avg_kills_per_week: Decimal.from_float(time_stats.avg_per_week),
+        active_regions: 1,
+        danger_rating:
+          calculate_character_danger_rating(
+            basic_stats.total_kills,
+            basic_stats.total_losses,
+            basic_stats.total_isk_destroyed,
+            ship_stats.diversity
+          ),
+        primary_activity: classify_character_activity(solo_kills, gang_kills)
+      })
+    end
   end
 
   defp split_kills_losses(ps) do
@@ -239,35 +243,43 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
   end
 
   defp calculate_participant_ship_stats(participants) do
-    ship_groups = Enum.group_by(participants, & &1.ship_type_id)
+    if Enum.empty?(participants) do
+      %{diversity: 0, fav_id: nil, fav_name: "Unknown"}
+    else
+      ship_groups = Enum.group_by(participants, & &1.ship_type_id)
 
-    diversity = map_size(ship_groups)
+      diversity = map_size(ship_groups)
 
-    {fav_id, fav_name} =
-      ship_groups
-      |> Enum.map(fn {ship_type_id, ship_participants} ->
-        {ship_type_id, List.first(ship_participants).ship_name || "Unknown",
-         length(ship_participants)}
-      end)
-      |> Enum.max_by(fn {_id, _name, count} -> count end, fn -> {nil, "Unknown", 0} end)
-      |> then(fn {id, name, _count} -> {id, name} end)
+      {fav_id, fav_name} =
+        ship_groups
+        |> Enum.map(fn {ship_type_id, ship_participants} ->
+          {ship_type_id, List.first(ship_participants).ship_name || "Unknown",
+           length(ship_participants)}
+        end)
+        |> Enum.max_by(fn {_id, _name, count} -> count end, fn -> {nil, "Unknown", 0} end)
+        |> then(fn {id, name, _count} -> {id, name} end)
 
-    %{diversity: diversity, fav_id: fav_id, fav_name: fav_name}
+      %{diversity: diversity, fav_id: fav_id, fav_name: fav_name}
+    end
   end
 
   defp calculate_gang_stats(ps, total_kills, total_losses) do
-    gang_sizes = Enum.map(ps, &(&1.gang_size || 1))
+    if Enum.empty?(ps) or total_kills + total_losses == 0 do
+      %{avg_size: 1.0, preferred_size: :solo}
+    else
+      gang_sizes = Enum.map(ps, &(&1.gang_size || 1))
 
-    avg_size =
-      if total_kills + total_losses > 0 do
-        Enum.sum(gang_sizes) / (total_kills + total_losses)
-      else
-        1.0
-      end
+      avg_size =
+        if total_kills + total_losses > 0 do
+          Enum.sum(gang_sizes) / (total_kills + total_losses)
+        else
+          1.0
+        end
 
-    preferred_size = determine_preferred_gang_size(avg_size)
+      preferred_size = determine_preferred_gang_size(avg_size)
 
-    %{avg_size: avg_size, preferred_size: preferred_size}
+      %{avg_size: avg_size, preferred_size: preferred_size}
+    end
   end
 
   defp determine_preferred_gang_size(avg_gang_size) do
@@ -282,18 +294,27 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
   defp calculate_time_stats(participants) do
     now = DateTime.utc_now()
 
-    kill_participants = Enum.filter(participants, &((&1.damage_dealt || 0) > 0))
-    total_kills = length(kill_participants)
+    if Enum.empty?(participants) do
+      %{
+        first_kill: now,
+        last_kill: now,
+        active_days: 0,
+        avg_per_week: 0
+      }
+    else
+      kill_participants = Enum.filter(participants, &((&1.damage_dealt || 0) > 0))
+      total_kills = length(kill_participants)
 
-    weeks = 12
-    avg_per_week = if weeks > 0, do: total_kills / weeks, else: 0
+      weeks = 12
+      avg_per_week = if weeks > 0, do: total_kills / weeks, else: 0
 
-    %{
-      first_kill: DateTime.add(now, -30 * 86_400, :second),
-      last_kill: now,
-      active_days: 30,
-      avg_per_week: avg_per_week
-    }
+      %{
+        first_kill: DateTime.add(now, -30 * 86_400, :second),
+        last_kill: now,
+        active_days: 30,
+        avg_per_week: avg_per_week
+      }
+    end
   end
 
   defp calculate_character_danger_rating(kills, losses, isk_destroyed, diversity) do
