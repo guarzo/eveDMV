@@ -296,11 +296,11 @@ defmodule EveDmv.Intelligence.AnalysisCache do
       limit: Cache.analysis_cache_size(),
 
       # TTL policy with periodic cleanup
-      expiration: [
+      expiration: Cachex.Spec.expiration(
         default: Cache.character_analysis_ttl(),
         interval: Cache.analysis_cleanup_interval(),
         lazy: true
-      ],
+      ),
 
       # Statistics tracking
       stats: true,
@@ -438,6 +438,10 @@ defmodule EveDmv.Intelligence.AnalysisCache.TelemetryHook do
   def timeout, do: 5000
   def type, do: :post
   def provisions, do: []
+
+  def init(_args) do
+    {:ok, %{}}
+  end
 
   def handle_notify({:get, cache_key}, _result, state) do
     :telemetry.execute([:intelligence, :cache, :get], %{}, %{key: cache_key})

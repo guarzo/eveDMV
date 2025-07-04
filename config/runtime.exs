@@ -1,4 +1,5 @@
 import Config
+require Logger
 
 # Validate required secrets early in runtime configuration
 # This ensures the application fails fast if critical configuration is missing
@@ -29,7 +30,7 @@ defmodule ConfigHelper do
       String.to_integer(value)
     rescue
       ArgumentError ->
-        IO.warn("Invalid integer value '#{value}', using default: #{default}")
+        Logger.warning("Invalid integer value '#{value}', using default: #{default}")
         default
     end
   end
@@ -71,10 +72,10 @@ unless config_env() == :test do
     if File.exists?(env_file) do
       try do
         Dotenvy.source([env_file])
-        IO.puts("Loaded environment variables from #{env_file}")
+        Logger.info("Loaded environment variables from #{env_file}")
       rescue
         error ->
-          IO.warn("Failed to load #{env_file}: #{inspect(error)}")
+          Logger.warning("Failed to load #{env_file}: #{inspect(error)}")
       end
     end
   end
