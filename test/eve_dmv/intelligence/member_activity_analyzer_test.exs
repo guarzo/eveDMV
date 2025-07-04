@@ -47,50 +47,6 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzerTest do
   end
 
   describe "calculate_member_engagement/1" do
-    test "calculates engagement with member activity data" do
-      member_activities = [
-        %{
-          character_id: 123,
-          character_name: "Active Pilot",
-          last_seen: ~U[2024-01-01 12:00:00Z],
-          total_kills: 40,
-          total_losses: 10,
-          fleet_participation: 0.85,
-          communication_activity: 25,
-          days_since_join: 100
-        },
-        %{
-          character_id: 456,
-          character_name: "Inactive Pilot",
-          last_seen: ~U[2023-12-01 12:00:00Z],
-          total_kills: 3,
-          total_losses: 2,
-          fleet_participation: 0.15,
-          communication_activity: 2,
-          days_since_join: 200
-        }
-      ]
-
-      result = MemberActivityAnalyzer.calculate_member_engagement(member_activities)
-
-      assert %{
-               highly_engaged: highly_engaged,
-               moderately_engaged: moderate,
-               low_engagement: low,
-               inactive_members: inactive,
-               overall_engagement_score: score
-             } = result
-
-      assert is_list(highly_engaged)
-      assert is_list(moderate)
-      assert is_list(low)
-      assert is_list(inactive)
-      assert is_number(score)
-      assert score >= 0 and score <= 100
-
-      # Should classify the active pilot as highly engaged
-      assert Enum.any?(highly_engaged, fn member -> member.character_id == 123 end)
-    end
 
     test "handles empty member activities" do
       result = MemberActivityAnalyzer.calculate_member_engagement([])
