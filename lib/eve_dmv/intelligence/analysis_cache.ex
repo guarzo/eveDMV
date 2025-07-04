@@ -437,6 +437,7 @@ defmodule EveDmv.Intelligence.AnalysisCache.TelemetryHook do
   def async?, do: true
   def timeout, do: 5000
   def type, do: :post
+  def provisions, do: []
 
   def handle_notify({:get, cache_key}, _result, state) do
     :telemetry.execute([:intelligence, :cache, :get], %{}, %{key: cache_key})

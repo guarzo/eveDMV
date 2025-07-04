@@ -72,7 +72,7 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
   defp process_ship(ship_type_id, start_date, end_date) do
     with {:ok, ship_type} <-
            Ash.get(ItemType, ship_type_id, domain: Api, load: [:is_capital_ship]),
-         metrics when is_map(metrics) <-
+         {:ok, metrics} <-
            calculate_ship_metrics(ship_type_id, start_date, end_date),
          %{ship_name: _} <- metrics do
       attrs =
@@ -87,11 +87,18 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
 
       upsert(ShipStats, [ship_type_id: ship_type_id], attrs)
     else
-      _ -> Logger.warning("Insufficient data for ship #{ship_type_id}")
+      {:error, reason} ->
+        Logger.warning("Failed to process ship #{ship_type_id}: #{inspect(reason)}")
+        {:error, reason}
+
+      _ ->
+        Logger.warning("Insufficient data for ship #{ship_type_id}")
+        {:error, "Insufficient data"}
     end
   rescue
     error ->
       Logger.error("Error processing ship #{ship_type_id}: #{inspect(error)}")
+      {:error, error}
   end
 
   # Generic upsert helper (create or update based on filters)
@@ -112,14 +119,14 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
       {:ok, [_ | _] = parts} ->
         # Enrich participants with gang_size information
         enriched_parts = enrich_participants_with_gang_size(parts)
-        build_ship_metrics(enriched_parts)
+        {:ok, build_ship_metrics(enriched_parts)}
 
       {:ok, []} ->
-        %{}
+        {:error, "No participants found for ship type #{ship_type_id}"}
 
       {:error, reason} ->
         Logger.error("Failed to fetch ship metrics: #{inspect(reason)}")
-        %{}
+        {:error, reason}
     end
   end
 
@@ -279,13 +286,19 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
           Ash.update!(ship, %{effectiveness_rank: rank}, domain: Api)
         end)
 
-        calculate_meta_tiers(eff_ranked)
+        case calculate_meta_tiers(eff_ranked) do
+          {:ok, _} -> {:ok, :rankings_updated}
+          {:error, reason} -> {:error, reason}
+        end
 
       {:error, reason} ->
         Logger.error("Failed reading ship stats: #{inspect(reason)}")
+        {:error, reason}
     end
   rescue
-    error -> Logger.error("Error updating rankings: #{inspect(error)}")
+    error ->
+      Logger.error("Error updating rankings: #{inspect(error)}")
+      {:error, error}
   end
 
   defp calculate_meta_tiers(ranked) do
@@ -303,8 +316,12 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
 
       Ash.update!(ship, %{meta_tier: tier}, domain: Api)
     end)
+
+    {:ok, :meta_tiers_calculated}
   rescue
-    error -> Logger.error("Error calculating meta tiers: #{inspect(error)}")
+    error ->
+      Logger.error("Error calculating meta tiers: #{inspect(error)}")
+      {:error, error}
   end
 
   @spec determine_ship_category(ItemType.t()) :: String.t()

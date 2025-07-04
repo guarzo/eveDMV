@@ -78,14 +78,26 @@ defmodule EveDmvWeb.KillFeedLive do
   end
 
   def handle_event("filter_by_system", %{"system_id" => system_id}, socket) do
-    system_id = String.to_integer(system_id)
-    filtered_killmails = Enum.filter(socket.assigns.killmails, &(&1.solar_system_id == system_id))
+    case Integer.parse(system_id) do
+      {system_id_int, ""} ->
+        filtered_killmails =
+          Enum.filter(socket.assigns.killmails, &(&1.solar_system_id == system_id_int))
 
-    socket =
-      socket
-      |> stream(:killmail_stream, filtered_killmails, reset: true)
+        socket =
+          socket
+          |> stream(:killmail_stream, filtered_killmails, reset: true)
 
-    {:noreply, socket}
+        {:noreply, socket}
+
+      _ ->
+        # Invalid system ID format, show all killmails
+        socket =
+          socket
+          |> stream(:killmail_stream, socket.assigns.killmails, reset: true)
+          |> put_flash(:error, "Invalid system ID")
+
+        {:noreply, socket}
+    end
   end
 
   # Delegate formatting to the Formatters module

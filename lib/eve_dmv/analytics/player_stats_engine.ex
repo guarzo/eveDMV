@@ -77,7 +77,7 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
   # Process one character's metrics and upsert into Ash
   defp process_character(character_id, start_date, end_date) do
     case calculate_character_metrics(character_id, start_date, end_date) do
-      %{character_name: name} = metrics when is_binary(name) ->
+      {:ok, %{character_name: name} = metrics} when is_binary(name) ->
         attrs =
           metrics
           |> Map.put(:character_id, character_id)
@@ -86,12 +86,18 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
 
         upsert(PlayerStats, [character_id: character_id], attrs)
 
+      {:error, reason} ->
+        Logger.warning("Failed to process character #{character_id}: #{inspect(reason)}")
+        {:error, reason}
+
       _ ->
         Logger.warning("Insufficient data for character #{character_id}")
+        {:error, "Insufficient data"}
     end
   rescue
     error ->
       Logger.error("Error processing character #{character_id}: #{inspect(error)}")
+      {:error, error}
   end
 
   # Generic upsert helper (create or update based on filters)
@@ -112,14 +118,14 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
       {:ok, [_ | _] = parts} ->
         # Enrich participants with gang_size information
         enriched_parts = enrich_participants_with_gang_size(parts)
-        build_character_metrics(enriched_parts)
+        {:ok, build_character_metrics(enriched_parts)}
 
       {:ok, []} ->
-        %{}
+        {:error, "No participants found for character #{character_id}"}
 
       {:error, reason} ->
         Logger.error("Failed to fetch character metrics: #{inspect(reason)}")
-        %{}
+        {:error, reason}
     end
   end
 
@@ -296,8 +302,8 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
 
   defp calculate_character_danger_rating(kills, losses, isk_destroyed, diversity) do
     kd_ratio = if losses > 0, do: kills / losses, else: kills * 1.0
-    # billions destroyed
-    isk_efficiency = Decimal.to_float(isk_destroyed) / 1_000_000_000
+    # Calculate ISK efficiency in billions using centralized constant
+    isk_efficiency = EveDmv.Constants.Isk.to_billions(isk_destroyed)
 
     base_rating = 50
     kd_modifier = min(20, kd_ratio * 5)

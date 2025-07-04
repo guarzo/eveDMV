@@ -58,7 +58,7 @@ defmodule EveDmv.Database.MaterializedViewManager do
         COUNT(DISTINCT p.alliance_id) as unique_alliances,
         COUNT(DISTINCT DATE_TRUNC('day', ke.killmail_time)) as active_days,
         MAX(ke.killmail_time) as last_activity,
-        COUNT(*) FILTER (WHERE ke.total_value > 1000000000) as expensive_kills
+        COUNT(*) FILTER (WHERE ke.total_value > #{EveDmv.Constants.Isk.billion()}) as expensive_kills
       FROM killmails_enriched ke
       JOIN participants p ON ke.killmail_id = p.killmail_id
       LEFT JOIN solar_systems ss ON ke.solar_system_id = ss.system_id
@@ -114,8 +114,8 @@ defmodule EveDmv.Database.MaterializedViewManager do
         SUM(total_value) as total_value_destroyed,
         AVG(total_value) as avg_killmail_value,
         COUNT(DISTINCT solar_system_id) as systems_active,
-        COUNT(*) FILTER (WHERE total_value > 1000000000) as expensive_kills,
-        COUNT(*) FILTER (WHERE total_value > 10000000000) as super_expensive_kills
+        COUNT(*) FILTER (WHERE total_value > #{EveDmv.Constants.Isk.billion()}) as expensive_kills,
+        COUNT(*) FILTER (WHERE total_value > #{EveDmv.Constants.Isk.billion() * 10}) as super_expensive_kills
       FROM killmails_enriched
       WHERE killmail_time >= NOW() - INTERVAL '3 months'
       GROUP BY DATE_TRUNC('day', killmail_time)

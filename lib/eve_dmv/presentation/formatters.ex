@@ -3,21 +3,16 @@ defmodule EveDmv.Presentation.Formatters do
   Formatting utilities for UI presentation
   """
 
+  alias EveDmv.Constants.Isk
+
   def format_isk(decimal_value) when is_struct(decimal_value, Decimal) do
-    # Move ISK formatting logic here from templates
-    decimal_value
-    |> Decimal.to_float()
-    |> format_isk()
+    # Delegate to the centralized ISK formatting utility
+    Isk.format_isk(decimal_value)
   end
 
   def format_isk(value) when is_number(value) do
-    cond do
-      value >= 1_000_000_000_000 -> "#{Float.round(value / 1_000_000_000_000, 1)}T ISK"
-      value >= 1_000_000_000 -> "#{Float.round(value / 1_000_000_000, 1)}B ISK"
-      value >= 1_000_000 -> "#{Float.round(value / 1_000_000, 1)}M ISK"
-      value >= 1_000 -> "#{Float.round(value / 1_000, 1)}K ISK"
-      true -> "#{trunc(value)} ISK"
-    end
+    # Delegate to the centralized ISK formatting utility
+    Isk.format_isk(value)
   end
 
   def format_isk(_), do: "0 ISK"

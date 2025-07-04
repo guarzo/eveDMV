@@ -17,8 +17,8 @@ defmodule EveDmv.Eve.EsiCache do
   @corporation_ttl_ms 60 * 60 * 1000
   # 60 minutes
   @alliance_ttl_ms 60 * 60 * 1000
-  # 24 hours
-  @universe_ttl_ms 24 * 60 * 60 * 1000
+  # 1 week - universe data is static and rarely changes
+  @universe_ttl_ms 7 * 24 * 60 * 60 * 1000
 
   @doc """
   Child specification for supervised processes.

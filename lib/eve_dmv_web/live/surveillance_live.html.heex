@@ -10,7 +10,7 @@
       <div class="flex items-center space-x-4">
         <%= if @batch_mode do %>
           <div class="flex items-center space-x-2 text-sm">
-            <span class="text-gray-400">{MapSet.size(@selected_profiles)} selected</span>
+            <span class="text-gray-400"><%= MapSet.size(@selected_profiles) %> selected</span>
             <button
               phx-click="select_all_profiles"
               class="px-2 py-1 bg-gray-600 hover:bg-gray-700 rounded text-xs"
@@ -33,7 +33,7 @@
                     do: "bg-yellow-600 hover:bg-yellow-700", 
                     else: "bg-gray-600 hover:bg-gray-700")}
         >
-          {if @batch_mode, do: "✓ Batch Mode", else: "📋 Batch Mode"}
+          <%= if @batch_mode, do: "✓ Batch Mode", else: "📋 Batch Mode" %>
         </button>
 
         <%= if @batch_mode && MapSet.size(@selected_profiles) > 0 do %>
@@ -89,7 +89,7 @@
             <div class="flex justify-between">
               <span class="text-gray-400">Last Reload:</span>
               <span class="text-yellow-400 text-xs">
-                {format_datetime(@engine_stats.last_reload)}
+                <%= format_datetime(@engine_stats.last_reload) %>
               </span>
             </div>
           <% end %>
@@ -105,17 +105,17 @@
               <div class="bg-gray-700 rounded-lg p-3">
                 <div class="flex items-center justify-between mb-2">
                   <div class="text-sm font-medium text-green-400">
-                    🎯 {length(match.profile_ids)} matches
+                    🎯 <%= length(match.profile_ids) %> matches
                   </div>
                   <div class="text-xs text-gray-400">
-                    {format_datetime(match.matched_at)}
+                    <%= format_datetime(match.matched_at) %>
                   </div>
                 </div>
                 <div class="text-sm text-gray-300">
-                  {get_in(match, [:killmail, "victim", "character_name"]) || "Unknown Pilot"}
+                  <%= get_in(match, [:killmail, "victim", "character_name"]) || "Unknown Pilot" %>
                 </div>
                 <div class="text-xs text-gray-500">
-                  {get_in(match, [:killmail, "solar_system_name"]) || "Unknown System"}
+                  <%= get_in(match, [:killmail, "solar_system_name"]) || "Unknown System" %>
                 </div>
               </div>
             <% end %>
@@ -135,7 +135,7 @@
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-xl font-semibold text-gray-200">Your Profiles</h2>
           <div class="text-sm text-gray-400">
-            {length(@profiles)} profile{if length(@profiles) != 1, do: "s"}
+            <%= length(@profiles) %> profile<%= if length(@profiles) != 1, do: "s" %>
           </div>
         </div>
         
@@ -160,21 +160,21 @@
                       />
                     <% end %>
                     <div>
-                      <h3 class="text-lg font-semibold text-gray-200">{profile.name}</h3>
+                      <h3 class="text-lg font-semibold text-gray-200"><%= profile.name %></h3>
                       <%= if profile.description do %>
-                        <p class="text-sm text-gray-400 mt-1">{profile.description}</p>
+                        <p class="text-sm text-gray-400 mt-1"><%= profile.description %></p>
                       <% end %>
                     </div>
                   </div>
                   <div class="text-sm">
-                    {profile_status_badge(profile.is_active)}
+                    <%= profile_status_badge(profile.is_active) %>
                   </div>
                 </div>
                 
 <!-- Profile Stats -->
                 <div class="grid grid-cols-2 gap-4 mb-4">
                   <div class="text-center">
-                    <div class="text-lg font-bold text-blue-400">{profile.match_count}</div>
+                    <div class="text-lg font-bold text-blue-400"><%= profile.match_count %></div>
                     <div class="text-xs text-gray-500">Matches</div>
                   </div>
                   <div class="text-center">
@@ -193,7 +193,7 @@
                   <div class="text-sm font-medium text-gray-300 mb-2">Filter Rules:</div>
                   <div class="bg-gray-900 rounded p-3">
                     <code class="text-xs text-gray-400">
-                      {String.slice(format_filter_tree(profile.filter_tree), 0, 100)}...
+                      <%= String.slice(format_filter_tree(profile.filter_tree), 0, 100) %>...
                     </code>
                   </div>
                 </div>
@@ -208,7 +208,7 @@
                               do: "bg-yellow-600 hover:bg-yellow-700 text-white", 
                               else: "bg-green-600 hover:bg-green-700 text-white")}
                   >
-                    {if profile.is_active, do: "Pause", else: "Activate"}
+                    <%= if profile.is_active, do: "Pause", else: "Activate" %>
                   </button>
                   <button
                     phx-click="delete_profile"
@@ -293,7 +293,7 @@
               required
               class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
               placeholder="Enter filter rules in JSON format"
-            >{format_filter_tree(@new_profile_form["filter_tree"])}</textarea>
+            ><%= format_filter_tree(@new_profile_form["filter_tree"]) %></textarea>
             <div class="mt-2 text-sm text-gray-400">
               <strong>Example:</strong>
               The default filter matches killmails > 100M ISK in Jita or Amarr
@@ -334,8 +334,8 @@
 
         <div class="mb-4 text-center">
           <p class="text-gray-400">
-            {MapSet.size(@selected_profiles)} profile{if MapSet.size(@selected_profiles) != 1,
-              do: "s"} selected
+            <%= MapSet.size(@selected_profiles) %> profile<%= if MapSet.size(@selected_profiles) != 1,
+              do: "s" %> selected
           </p>
         </div>
 

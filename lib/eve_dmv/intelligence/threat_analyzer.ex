@@ -235,7 +235,8 @@ defmodule EveDmv.Intelligence.ThreatAnalyzer do
   end
 
   defp calculate_value_modifier(recent_activity) do
-    if recent_activity.avg_loss_value > 1_000_000_000 do
+    # Check if average loss value indicates high-value target (>1B ISK)
+    if recent_activity.avg_loss_value > EveDmv.Constants.Isk.billion() do
       10
     else
       0

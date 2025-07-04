@@ -105,17 +105,23 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
 
   @impl true
   def handle_event("analyze_pilot", %{"character_id" => character_id}, socket) do
-    character_id = String.to_integer(character_id)
+    case Integer.parse(character_id) do
+      {character_id_int, ""} ->
+        # Spawn async analysis to avoid blocking UI
+        pid = self()
 
-    # Spawn async analysis to avoid blocking UI
-    pid = self()
+        Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
+          analysis = ThreatAnalyzer.analyze_pilot(character_id_int)
+          send(pid, {:pilot_analysis, character_id_int, analysis})
+        end)
 
-    Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
-      analysis = ThreatAnalyzer.analyze_pilot(character_id)
-      send(pid, {:pilot_analysis, character_id, analysis})
-    end)
+        {:noreply, socket}
 
-    {:noreply, socket}
+      _ ->
+        # Invalid character ID format
+        socket = put_flash(socket, :error, "Invalid character ID")
+        {:noreply, socket}
+    end
   end
 
   @impl true
