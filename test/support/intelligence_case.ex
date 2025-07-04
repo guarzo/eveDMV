@@ -272,4 +272,80 @@ defmodule EveDmv.IntelligenceCase do
 
     List.flatten(all_members)
   end
+
+  def create_character_stats(character_id, opts \\ []) do
+    alias EveDmv.Intelligence.CharacterStats
+    alias EveDmv.Api
+
+    # First create the basic character record (only fields accepted by create action)
+    basic_params = %{
+      character_id: character_id,
+      character_name: Keyword.get(opts, :character_name, "Test Character #{character_id}"),
+      corporation_id: Keyword.get(opts, :corporation_id, 98_000_001),
+      corporation_name: Keyword.get(opts, :corporation_name, "Test Corporation"),
+      alliance_id: Keyword.get(opts, :alliance_id, 99_000_001),
+      alliance_name: Keyword.get(opts, :alliance_name, "Test Alliance")
+    }
+
+    character_stats = Ash.create!(CharacterStats, basic_params, domain: Api)
+
+    # Then update with the actual stats data (using correct field names)
+    update_params = %{
+      total_kills: Keyword.get(opts, :kill_count, 10),
+      total_losses: Keyword.get(opts, :loss_count, 5),
+      solo_kills: Keyword.get(opts, :solo_kill_count, 3),
+      solo_losses: Keyword.get(opts, :solo_loss_count, 2),
+      dangerous_rating: Keyword.get(opts, :dangerous_rating, 3),
+
+      # Performance metrics that exist in the schema
+      isk_efficiency: Keyword.get(opts, :efficiency, 66.7),
+      kill_death_ratio: Keyword.get(opts, :kd_ratio, 2.0),
+
+      # Behavioral metrics
+      aggression_index: Keyword.get(opts, :aggression_index, 5.0),
+      avg_gang_size: Keyword.get(opts, :avg_gang_size, 2.5),
+
+      # Analysis metadata
+      last_calculated_at: DateTime.utc_now(),
+      data_completeness: Keyword.get(opts, :completeness_score, 85)
+    }
+
+    Ash.update!(character_stats, update_params, domain: Api)
+  end
+
+  def create_mock_analytics_data(character_id) do
+    # Create mock data that AdvancedAnalytics functions would return
+    # This prevents the "Insufficient data" errors in tests
+
+    # Mock behavioral analysis data
+    behavioral_analysis = %{
+      confidence_score: 0.8,
+      patterns: %{
+        anomaly_detection: %{anomaly_count: 2},
+        activity_rhythm: %{consistency_score: 0.7},
+        operational_patterns: %{strategic_thinking: 0.6},
+        risk_progression: %{stability_score: 0.75}
+      }
+    }
+
+    # Mock threat assessment data  
+    threat_assessment = %{
+      threat_indicators: %{
+        combat_effectiveness: 0.7,
+        tactical_sophistication: 0.6
+      }
+    }
+
+    # Mock risk analysis data
+    risk_analysis = %{
+      advanced_risk_score: 0.3
+    }
+
+    # Store these in a simple cache/store for the test
+    Process.put(:"behavioral_analysis_#{character_id}", behavioral_analysis)
+    Process.put(:"threat_assessment_#{character_id}", threat_assessment)
+    Process.put(:"risk_analysis_#{character_id}", risk_analysis)
+
+    {behavioral_analysis, threat_assessment, risk_analysis}
+  end
 end

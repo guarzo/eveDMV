@@ -133,7 +133,7 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
     case get_corporation_members_from_activity(corporation_id) do
       {:ok, []} ->
         {:error, "No recent activity found for corporation"}
-      
+
       {:ok, members} ->
         perform_actual_corporation_analysis(members, corporation_id)
     end
@@ -1070,7 +1070,6 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
 
     min(1.0, max(0.0, total_score))
   end
-
 
   defp calculate_behavioral_consistency(patterns) do
     # Calculate consistency score from behavioral patterns

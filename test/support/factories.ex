@@ -360,8 +360,24 @@ defmodule EveDmv.Factories do
   end
 
   def random_datetime_in_past(days_back) do
-    seconds_back = Enum.random(1..(days_back * 24 * 3600))
-    DateTime.add(DateTime.utc_now(), -seconds_back, :second)
+    # Limit to current month to avoid partition issues
+    now = DateTime.utc_now()
+    start_of_month = %{now | day: 1, hour: 0, minute: 0, second: 0, microsecond: {0, 0}}
+
+    # Get seconds from start of month to now
+    max_seconds = DateTime.diff(now, start_of_month, :second)
+
+    # Limit days_back to current month to avoid partition errors
+    max_days_in_month = max_seconds / (24 * 3600)
+    actual_days_back = min(days_back, trunc(max_days_in_month))
+
+    if actual_days_back > 0 do
+      seconds_back = Enum.random(1..(actual_days_back * 24 * 3600))
+      DateTime.add(now, -seconds_back, :second)
+    else
+      # If we can't go back, just use a few hours ago
+      DateTime.add(now, -Enum.random(1..3600), :second)
+    end
   end
 
   # Helper functions for creating specific patterns

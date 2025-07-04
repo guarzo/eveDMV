@@ -118,7 +118,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
     # Use the optimized EsiUtils function that consolidates all ESI calls
     # This function always returns {:ok, data} with fallback values on error
     {:ok, character_data} = EsiUtils.fetch_character_corporation_alliance(character_id)
-    
+
     basic_info = %{
       character_id: character_id,
       character_name: character_data.character_name,

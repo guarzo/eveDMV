@@ -18,6 +18,9 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
         role: :hunter
       )
 
+      # Create character stats that the scoring functions need
+      EveDmv.IntelligenceCase.create_character_stats(character_id)
+
       assert {:ok, score_data} = IntelligenceScoring.calculate_comprehensive_score(character_id)
 
       assert is_float(score_data.overall_score)
@@ -39,6 +42,9 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
       # Create minimal test data
       EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 3, days_back: 30)
 
+      # Create character stats that the scoring functions need
+      EveDmv.IntelligenceCase.create_character_stats(character_id, kill_count: 3, loss_count: 2)
+
       assert {:ok, score_data} = IntelligenceScoring.calculate_comprehensive_score(character_id)
 
       assert is_float(score_data.overall_score)
@@ -57,6 +63,9 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
       character_id = 123_456_789
       EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 15)
 
+      # Create character stats that the scoring functions need
+      EveDmv.IntelligenceCase.create_character_stats(character_id)
+
       assert {:ok, score_data} = IntelligenceScoring.calculate_comprehensive_score(character_id)
 
       # Each component score should be 0-10
@@ -73,6 +82,9 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
       character_id = 123_456_789
       EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 15)
       EveDmv.IntelligenceCase.create_wormhole_activity(character_id, "C4", count: 5, role: :mixed)
+
+      # Create character stats that the scoring functions need
+      EveDmv.IntelligenceCase.create_character_stats(character_id)
 
       assert {:ok, fitness_data} = IntelligenceScoring.calculate_recruitment_fitness(character_id)
 
@@ -99,6 +111,9 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
       character_id = 123_456_789
       EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 10)
 
+      # Create character stats that the scoring functions need
+      EveDmv.IntelligenceCase.create_character_stats(character_id)
+
       requirements = %{
         minimum_experience_days: 365,
         minimum_pvp_score: 5.0,
@@ -119,6 +134,9 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
     test "fitness components are within valid ranges" do
       character_id = 123_456_789
       EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 10)
+
+      # Create character stats that the scoring functions need
+      EveDmv.IntelligenceCase.create_character_stats(character_id)
 
       assert {:ok, fitness_data} = IntelligenceScoring.calculate_recruitment_fitness(character_id)
 
@@ -145,7 +163,8 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
         )
       end
 
-      assert {:ok, fleet_data} = IntelligenceScoring.calculate_fleet_readiness(character_ids)
+      assert {:ok, fleet_data} =
+               IntelligenceScoring.calculate_fleet_readiness_score(character_ids)
 
       assert is_float(fleet_data.fleet_readiness_score)
       assert fleet_data.fleet_readiness_score >= 0.0
@@ -172,7 +191,8 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
       EveDmv.IntelligenceCase.create_realistic_killmail_set(123_456_789, count: 10)
       EveDmv.IntelligenceCase.create_realistic_killmail_set(987_654_321, count: 8)
 
-      assert {:ok, fleet_data} = IntelligenceScoring.calculate_fleet_readiness(character_ids)
+      assert {:ok, fleet_data} =
+               IntelligenceScoring.calculate_fleet_readiness_score(character_ids)
 
       # Should only include characters with valid data
       assert map_size(fleet_data.individual_scores) >= 2
@@ -263,7 +283,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
 
     test "handles empty character ID list for fleet analysis" do
       assert {:error, "Insufficient valid character data for fleet analysis"} =
-               IntelligenceScoring.calculate_fleet_readiness([])
+               IntelligenceScoring.calculate_fleet_readiness_score([])
     end
 
     test "handles single character for fleet analysis" do
@@ -271,7 +291,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
       EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 10)
 
       assert {:error, "Insufficient valid character data for fleet analysis"} =
-               IntelligenceScoring.calculate_fleet_readiness([character_id])
+               IntelligenceScoring.calculate_fleet_readiness_score([character_id])
     end
   end
 

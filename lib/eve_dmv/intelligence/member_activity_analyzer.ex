@@ -203,7 +203,7 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
     # Use the optimized EsiUtils function that consolidates all ESI calls
     # This function always returns {:ok, data} with fallback values
     {:ok, character_data} = EsiUtils.fetch_character_corporation_alliance(character_id)
-    
+
     {:ok,
      %{
        character_name: character_data.character_name,

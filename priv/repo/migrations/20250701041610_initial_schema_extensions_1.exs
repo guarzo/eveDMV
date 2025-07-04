@@ -11,6 +11,7 @@ defmodule EveDmv.Repo.Migrations.InitialSchemaExtensions1 do
     execute("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"")
     execute("CREATE EXTENSION IF NOT EXISTS \"citext\"")
     execute("CREATE EXTENSION IF NOT EXISTS \"pg_trgm\"")
+    execute("CREATE EXTENSION IF NOT EXISTS \"pg_stat_statements\"")
 
     execute("""
     CREATE OR REPLACE FUNCTION ash_elixir_or(left BOOLEAN, in right ANYCOMPATIBLE, out f1 ANYCOMPATIBLE)
@@ -150,6 +151,7 @@ defmodule EveDmv.Repo.Migrations.InitialSchemaExtensions1 do
     # execute("DROP EXTENSION IF EXISTS \"uuid-ossp\"")
     # execute("DROP EXTENSION IF EXISTS \"citext\"")
     # execute("DROP EXTENSION IF EXISTS \"pg_trgm\"")
+    # execute("DROP EXTENSION IF EXISTS \"pg_stat_statements\"")
     execute(
       "DROP FUNCTION IF EXISTS uuid_generate_v7(), timestamp_from_uuid_v7(uuid), ash_raise_error(jsonb), ash_raise_error(jsonb, ANYCOMPATIBLE), ash_elixir_and(BOOLEAN, ANYCOMPATIBLE), ash_elixir_and(ANYCOMPATIBLE, ANYCOMPATIBLE), ash_elixir_or(ANYCOMPATIBLE, ANYCOMPATIBLE), ash_elixir_or(BOOLEAN, ANYCOMPATIBLE), ash_trim_whitespace(text[])"
     )

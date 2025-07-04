@@ -163,12 +163,12 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
     # Use the consolidated EsiUtils for better error handling
     # This function always returns {:ok, data} with fallback values
     {:ok, corp_data} = EsiUtils.fetch_corporation_with_alliance(corporation_id)
-    
+
     # Check if we got fallback data
     if corp_data.corporation_name == "Unknown Corporation" do
       Logger.warning("Got fallback data for corporation #{corporation_id}")
     end
-    
+
     {:ok,
      %{
        corporation_name: corp_data.corporation_name,
@@ -259,7 +259,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
   defp analyze_rolling_participation(corporation_id, start_date, end_date) do
     # Get actual rolling operations from killmail data
     {:ok, rolling_systems} = get_rolling_systems(corporation_id, start_date, end_date)
-    
+
     participation = %{
       "total_rolling_ops" => length(rolling_systems),
       "member_participation" => calculate_member_rolling_participation(rolling_systems),
@@ -512,7 +512,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
   defp analyze_response_metrics(corporation_id, start_date, end_date) do
     # Analyze response times to threats and home defense battles
     {:ok, home_system_battles} = get_home_system_battles(corporation_id, start_date, end_date)
-    
+
     response_times = calculate_response_times(home_system_battles)
     defense_success_rate = calculate_defense_success_rate(home_system_battles)
 
