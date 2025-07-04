@@ -201,32 +201,17 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzer do
 
   defp get_character_info(character_id) do
     # Use the optimized EsiUtils function that consolidates all ESI calls
-    case EsiUtils.fetch_character_corporation_alliance(character_id) do
-      {:ok, character_data} ->
-        {:ok,
-         %{
-           character_name: character_data.character_name,
-           corporation_id: character_data.corporation_id,
-           corporation_name: character_data.corporation_name,
-           alliance_id: character_data.alliance_id,
-           alliance_name: character_data.alliance_name
-         }}
-
-      {:error, reason} ->
-        Logger.warning(
-          "Could not fetch character info from ESI for #{character_id}: #{inspect(reason)}"
-        )
-
-        # Fallback to placeholder data
-        {:ok,
-         %{
-           character_name: "Character #{character_id}",
-           corporation_id: 98_000_001,
-           corporation_name: "Unknown Corporation",
-           alliance_id: nil,
-           alliance_name: nil
-         }}
-    end
+    # This function always returns {:ok, data} with fallback values
+    {:ok, character_data} = EsiUtils.fetch_character_corporation_alliance(character_id)
+    
+    {:ok,
+     %{
+       character_name: character_data.character_name,
+       corporation_id: character_data.corporation_id,
+       corporation_name: character_data.corporation_name,
+       alliance_id: character_data.alliance_id,
+       alliance_name: character_data.alliance_name
+     }}
   end
 
   defp collect_activity_data(character_id, period_start, period_end) do

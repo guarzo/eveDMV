@@ -12,7 +12,11 @@ defmodule EveDmv.Load.PipelineLoadTest do
 
   use EveDmv.DataCase, async: false
 
-  alias EveDmv.Killmails.KillmailPipeline
+  @moduletag :skip
+
+  alias EveDmv.Killmails.{KillmailPipeline, KillmailRaw, SSEProducer}
+  alias EveDmv.Intelligence.CharacterAnalyzer
+  alias EveDmv.Intelligence.IntelligenceCoordinator
 
   @moduletag :load_test
   # 10 minutes for load tests

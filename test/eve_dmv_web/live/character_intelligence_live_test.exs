@@ -8,7 +8,8 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
   import EveDmv.Factories
 
   alias EveDmv.Accounts.User
-  alias EveDmv.Intelligence.{CharacterAnalyzer, IntelligenceCache}
+  alias EveDmv.Intelligence.CharacterAnalyzer
+  alias EveDmv.Intelligence.IntelligenceCache
 
   setup %{conn: conn} do
     # Create authenticated user

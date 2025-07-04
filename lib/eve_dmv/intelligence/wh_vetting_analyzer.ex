@@ -1080,7 +1080,11 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
 
   defp assess_main_character_confidence(character_id, potential_alts) do
     # Assess confidence that this is the main character based on various factors
-    case CharacterStats.get_by_character_id(character_id) do
+    case CharacterStats
+         |> Ash.Query.new()
+         |> Ash.Query.filter(character_id: character_id)
+         |> Ash.Query.limit(1)
+         |> Ash.read(domain: Api) do
       {:ok, [stats]} ->
         # Calculate confidence based on activity level, age, and alt patterns
         activity_score = min(1.0, (stats.total_kills + stats.total_losses) / 100.0)
@@ -1693,7 +1697,11 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
   end
 
   defp get_or_create_character_stats(character_id) do
-    case CharacterStats.get_by_character_id(character_id) do
+    case CharacterStats
+         |> Ash.Query.new()
+         |> Ash.Query.filter(character_id: character_id)
+         |> Ash.Query.limit(1)
+         |> Ash.read(domain: Api) do
       {:ok, [stats]} ->
         stats
 

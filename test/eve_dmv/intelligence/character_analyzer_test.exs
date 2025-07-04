@@ -2,6 +2,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzerTest do
   use EveDmv.IntelligenceCase, async: true
 
   alias EveDmv.Intelligence.CharacterAnalyzer
+  alias EveDmv.Intelligence.CharacterStats
 
   describe "analyze_character/1" do
     test "analyzes character with killmail history" do

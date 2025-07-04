@@ -7,6 +7,8 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   """
 
   require Logger
+  require Ash.Query
+  alias EveDmv.Api
   alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Intelligence.WhSpace.Vetting, as: WHVetting
 
@@ -18,8 +20,8 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   def analyze_behavioral_patterns(character_id) do
     Logger.info("Performing advanced behavioral pattern analysis for character #{character_id}")
 
-    with {:ok, character_stats} <- CharacterStats.get_by_character_id(character_id),
-         {:ok, vetting_data} <- WHVetting.get_by_character(character_id) do
+    with {:ok, character_stats} <- get_character_stats(character_id),
+         {:ok, vetting_data} <- get_vetting_data(character_id) do
       case {character_stats, vetting_data} do
         {[stats], [vetting]} ->
           patterns = %{
@@ -86,7 +88,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
       "Predicting future behavior for character #{character_id} over #{prediction_horizon_days} days"
     )
 
-    case CharacterStats.get_by_character_id(character_id) do
+    case get_character_stats(character_id) do
       {:ok, [stats]} ->
         # Time series analysis of activity patterns
         activity_trends = analyze_activity_trends(stats)
@@ -129,7 +131,11 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
     # Load character data
     character_data =
       Enum.map(character_ids, fn char_id ->
-        case CharacterStats.get_by_character_id(char_id) do
+        case CharacterStats
+             |> Ash.Query.new()
+             |> Ash.Query.filter(character_id: char_id)
+             |> Ash.Query.limit(1)
+             |> Ash.read(domain: Api) do
           {:ok, [stats]} -> {char_id, stats}
           _ -> {char_id, nil}
         end
@@ -349,7 +355,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   end
 
   defp assess_combat_effectiveness(character_id) do
-    case CharacterStats.get_by_character_id(character_id) do
+    case get_character_stats(character_id) do
       {:ok, [stats]} ->
         kill_efficiency =
           if (stats.total_losses || 0) > 0 do
@@ -367,7 +373,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   end
 
   defp assess_tactical_sophistication(character_id) do
-    case CharacterStats.get_by_character_id(character_id) do
+    case get_character_stats(character_id) do
       {:ok, [stats]} ->
         # Based on ship diversity and gang size patterns
         ship_diversity =
@@ -392,7 +398,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   end
 
   defp assess_intelligence_capabilities(character_id) do
-    case CharacterStats.get_by_character_id(character_id) do
+    case get_character_stats(character_id) do
       {:ok, [stats]} ->
         # Assess based on scanning ships and exploration activity
         if stats.ship_usage do
@@ -414,7 +420,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   end
 
   defp assess_network_influence(character_id) do
-    case CharacterStats.get_by_character_id(character_id) do
+    case get_character_stats(character_id) do
       {:ok, [stats]} ->
         # Assess based on kill participation and leadership indicators
         activity_influence = min(1.0, (stats.total_kills || 0) / 100.0)
@@ -428,7 +434,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   end
 
   defp assess_operational_security(character_id) do
-    case CharacterStats.get_by_character_id(character_id) do
+    case get_character_stats(character_id) do
       {:ok, [stats]} ->
         # Assess based on loss patterns and ship choices
         survival_rate =
@@ -772,5 +778,21 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
     # Confidence based on data quality and quantity
     data_quality = length(character_data) / 10.0
     min(1.0, data_quality)
+  end
+
+  # Helper functions to query Ash resources
+  defp get_character_stats(character_id) do
+    case Ash.get(CharacterStats, character_id, domain: Api) do
+      {:ok, stats} -> {:ok, [stats]}
+      {:error, _} -> {:ok, []}
+    end
+  end
+
+  defp get_vetting_data(character_id) do
+    WHVetting
+    |> Ash.Query.new()
+    |> Ash.Query.filter(character_id: character_id)
+    |> Ash.Query.limit(1)
+    |> Ash.read(domain: Api)
   end
 end

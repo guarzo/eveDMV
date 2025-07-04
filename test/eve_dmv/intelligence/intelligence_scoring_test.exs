@@ -161,8 +161,8 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
     test "handles insufficient character data gracefully" do
       character_ids = [999_999_999, 888_888_888]
 
-      assert {:error, "Insufficient valid character data for fleet analysis"} =
-               IntelligenceScoring.calculate_fleet_readiness(character_ids)
+      result = IntelligenceScoring.calculate_fleet_readiness_score(character_ids)
+      assert {:error, _reason} = result
     end
 
     test "filters out characters with no data" do

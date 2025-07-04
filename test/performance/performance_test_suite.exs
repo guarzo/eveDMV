@@ -13,7 +13,8 @@ defmodule EveDmv.Performance.PerformanceTestSuite do
   use EveDmv.IntelligenceCase, async: false
 
   alias EveDmv.Eve.CircuitBreaker
-  alias EveDmv.Intelligence.{CharacterAnalyzer, CharacterMetrics}
+  alias EveDmv.Intelligence.CharacterAnalyzer
+  alias EveDmv.Intelligence.CharacterMetrics
   alias EveDmv.Killmails.{KillmailEnriched, KillmailPipeline}
   alias EveDmv.Market.PriceService
 

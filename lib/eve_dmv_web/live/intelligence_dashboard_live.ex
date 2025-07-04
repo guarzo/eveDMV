@@ -86,15 +86,10 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
 
   @impl true
   def handle_event("clear_cache", _params, socket) do
-    case IntelligenceCache.clear_cache() do
-      :ok ->
-        socket = put_flash(socket, :info, "Intelligence cache cleared successfully")
-        send(self(), :load_dashboard)
-        {:noreply, assign(socket, :loading, true)}
-
-      {:error, reason} ->
-        {:noreply, put_flash(socket, :error, "Failed to clear cache: #{reason}")}
-    end
+    IntelligenceCache.clear_cache()
+    socket = put_flash(socket, :info, "Intelligence cache cleared successfully")
+    send(self(), :load_dashboard)
+    {:noreply, assign(socket, :loading, true)}
   end
 
   @impl true

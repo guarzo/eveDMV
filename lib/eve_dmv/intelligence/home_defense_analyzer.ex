@@ -161,26 +161,24 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
 
   defp get_corporation_info(corporation_id) do
     # Use the consolidated EsiUtils for better error handling
-    case EsiUtils.fetch_corporation_with_alliance(corporation_id) do
-      {:ok, corp_data} ->
-        {:ok,
-         %{
-           corporation_name: corp_data.corporation_name,
-           alliance_id: corp_data.alliance_id,
-           alliance_name: corp_data.alliance_name,
-           # Home system would need to be configured elsewhere, as ESI doesn't provide this directly
-           home_system_id: corp_data.corporation_id || 31_000_142,
-           # This would need a mapping or configuration
-           home_system_name: "J123456"
-         }}
-
-      {:error, reason} ->
-        Logger.warning(
-          "Failed to fetch corporation info for #{corporation_id}: #{inspect(reason)}"
-        )
-
-        {:error, reason}
+    # This function always returns {:ok, data} with fallback values
+    {:ok, corp_data} = EsiUtils.fetch_corporation_with_alliance(corporation_id)
+    
+    # Check if we got fallback data
+    if corp_data.corporation_name == "Unknown Corporation" do
+      Logger.warning("Got fallback data for corporation #{corporation_id}")
     end
+    
+    {:ok,
+     %{
+       corporation_name: corp_data.corporation_name,
+       alliance_id: corp_data.alliance_id,
+       alliance_name: corp_data.alliance_name,
+       # Home system would need to be configured elsewhere, as ESI doesn't provide this directly
+       home_system_id: corp_data.corporation_id || 31_000_142,
+       # This would need a mapping or configuration
+       home_system_name: "J123456"
+     }}
   end
 
   # Get corporation members
@@ -260,31 +258,17 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
   # Rolling participation analysis
   defp analyze_rolling_participation(corporation_id, start_date, end_date) do
     # Get actual rolling operations from killmail data
-    case get_rolling_systems(corporation_id, start_date, end_date) do
-      {:ok, rolling_systems} ->
-        participation = %{
-          "total_rolling_ops" => length(rolling_systems),
-          "member_participation" => calculate_member_rolling_participation(rolling_systems),
-          "rolling_efficiency" => calculate_rolling_efficiency(rolling_systems),
-          "success_rate" => calculate_rolling_success_rate(rolling_systems),
-          "hole_types_rolled" => categorize_rolled_systems(rolling_systems)
-        }
+    {:ok, rolling_systems} = get_rolling_systems(corporation_id, start_date, end_date)
+    
+    participation = %{
+      "total_rolling_ops" => length(rolling_systems),
+      "member_participation" => calculate_member_rolling_participation(rolling_systems),
+      "rolling_efficiency" => calculate_rolling_efficiency(rolling_systems),
+      "success_rate" => calculate_rolling_success_rate(rolling_systems),
+      "hole_types_rolled" => categorize_rolled_systems(rolling_systems)
+    }
 
-        {:ok, participation}
-
-      {:error, reason} ->
-        Logger.warning("Rolling participation analysis failed: #{inspect(reason)}")
-
-        # Return empty participation data rather than failing completely
-        {:ok,
-         %{
-           "total_rolling_ops" => 0,
-           "member_participation" => %{},
-           "rolling_efficiency" => 0.0,
-           "success_rate" => 0.0,
-           "hole_types_rolled" => %{}
-         }}
-    end
+    {:ok, participation}
   end
 
   defp get_rolling_systems(corporation_id, start_date, end_date) do
@@ -527,64 +511,35 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
   # Response metrics analysis
   defp analyze_response_metrics(corporation_id, start_date, end_date) do
     # Analyze response times to threats and home defense battles
-    case get_home_system_battles(corporation_id, start_date, end_date) do
-      {:ok, home_system_battles} ->
-        response_times = calculate_response_times(home_system_battles)
-        defense_success_rate = calculate_defense_success_rate(home_system_battles)
+    {:ok, home_system_battles} = get_home_system_battles(corporation_id, start_date, end_date)
+    
+    response_times = calculate_response_times(home_system_battles)
+    defense_success_rate = calculate_defense_success_rate(home_system_battles)
 
-        metrics = %{
-          "threat_responses" => %{
-            "avg_response_time_seconds" => response_times.avg_response_time,
-            "fastest_response_seconds" => response_times.fastest,
-            "slowest_response_seconds" => response_times.slowest,
-            "response_rate" => response_times.response_rate
-          },
-          "home_defense_battles" => %{
-            "total_defenses" => length(home_system_battles),
-            "successful_defenses" => defense_success_rate.successful,
-            "failed_defenses" => defense_success_rate.failed,
-            "evaded_threats" => defense_success_rate.evaded,
-            "success_rate" => defense_success_rate.success_rate
-          },
-          "escalation_patterns" => %{
-            "batphone_calls" => 3,
-            "alliance_support" => 2,
-            "successful_escalations" => 4,
-            "avg_escalation_time" => 360
-          },
-          "threat_types_faced" => categorize_threat_types(home_system_battles)
-        }
+    metrics = %{
+      "threat_responses" => %{
+        "avg_response_time_seconds" => response_times.avg_response_time,
+        "fastest_response_seconds" => response_times.fastest,
+        "slowest_response_seconds" => response_times.slowest,
+        "response_rate" => response_times.response_rate
+      },
+      "home_defense_battles" => %{
+        "total_defenses" => length(home_system_battles),
+        "successful_defenses" => defense_success_rate.successful,
+        "failed_defenses" => defense_success_rate.failed,
+        "evaded_threats" => defense_success_rate.evaded,
+        "success_rate" => defense_success_rate.success_rate
+      },
+      "escalation_patterns" => %{
+        "batphone_calls" => 3,
+        "alliance_support" => 2,
+        "successful_escalations" => 4,
+        "avg_escalation_time" => 360
+      },
+      "threat_types_faced" => categorize_threat_types(home_system_battles)
+    }
 
-        {:ok, metrics}
-
-      {:error, reason} ->
-        Logger.warning("Response metrics analysis failed: #{inspect(reason)}")
-
-        # Return empty metrics rather than failing completely
-        {:ok,
-         %{
-           "threat_responses" => %{
-             "avg_response_time_seconds" => 0,
-             "fastest_response_seconds" => 0,
-             "slowest_response_seconds" => 0,
-             "response_rate" => 0.0
-           },
-           "home_defense_battles" => %{
-             "total_defenses" => 0,
-             "successful_defenses" => 0,
-             "failed_defenses" => 0,
-             "evaded_threats" => 0,
-             "success_rate" => 0.0
-           },
-           "escalation_patterns" => %{
-             "batphone_calls" => 0,
-             "alliance_support" => 0,
-             "successful_escalations" => 0,
-             "avg_escalation_time" => 0
-           },
-           "threat_types_faced" => []
-         }}
-    end
+    {:ok, metrics}
   end
 
   # Member activity patterns analysis

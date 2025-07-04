@@ -8,7 +8,9 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
   """
 
   require Logger
+  require Ash.Query
 
+  alias EveDmv.Api
   alias EveDmv.Intelligence.MemberActivityAnalyzer
 
   alias EveDmv.Intelligence.{CharacterAnalyzer, CharacterStats}
@@ -128,19 +130,23 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
   def analyze_corporation_intelligence_patterns(corporation_id) do
     Logger.info("Analyzing corporation intelligence patterns for corp #{corporation_id}")
 
-    with {:ok, members} <- get_corporation_members_from_activity(corporation_id),
-         {:ok, analysis} <- perform_actual_corporation_analysis(members, corporation_id) do
-      {:ok, analysis}
-    else
-      {:ok, []} -> {:error, "No recent activity found for corporation"}
-      {:error, reason} -> {:error, reason}
+    case get_corporation_members_from_activity(corporation_id) do
+      {:ok, []} ->
+        {:error, "No recent activity found for corporation"}
+      
+      {:ok, members} ->
+        perform_actual_corporation_analysis(members, corporation_id)
     end
   end
 
   # Private helper functions
 
   defp get_character_analysis(character_id) do
-    case CharacterStats.get_by_character_id(character_id) do
+    case CharacterStats
+         |> Ash.Query.new()
+         |> Ash.Query.filter(character_id: character_id)
+         |> Ash.Query.limit(1)
+         |> Ash.read(domain: Api) do
       {:ok, [stats]} ->
         {:ok, stats}
 
@@ -1065,10 +1071,6 @@ defmodule EveDmv.Intelligence.CorrelationEngine do
     min(1.0, max(0.0, total_score))
   end
 
-  defp get_j_space_activity_level(_activity_data) do
-    # Default when activity data is not available or not a map
-    0.0
-  end
 
   defp calculate_behavioral_consistency(patterns) do
     # Calculate consistency score from behavioral patterns

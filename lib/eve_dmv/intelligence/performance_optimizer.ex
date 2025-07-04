@@ -10,7 +10,8 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
   require Ash.Query
   alias EveDmv.Api
   alias EveDmv.Killmails.Participant
-  alias EveDmv.Intelligence.{CharacterStats, IntelligenceCache}
+  alias EveDmv.Intelligence.CharacterStats
+  alias EveDmv.Intelligence.IntelligenceCache
   alias EveDmv.Intelligence.WhSpace.Vetting, as: WHVetting
 
   @doc """
@@ -237,7 +238,11 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
     |> Enum.flat_map(fn batch ->
       # This would be an optimized batch query in a real implementation
       Enum.map(batch, fn char_id ->
-        case CharacterStats.get_by_character_id(char_id) do
+        case CharacterStats
+             |> Ash.Query.new()
+             |> Ash.Query.filter(character_id: char_id)
+             |> Ash.Query.limit(1)
+             |> Ash.read(domain: Api) do
           {:ok, [stats]} -> {char_id, stats}
           _ -> {char_id, nil}
         end

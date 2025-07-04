@@ -4,6 +4,7 @@ defmodule EveDmv.Integration.KillmailPipelineTest do
 
   alias EveDmv.Api
   alias EveDmv.Intelligence.CharacterAnalyzer
+  alias EveDmv.Killmails
   alias EveDmv.Killmails.{KillmailEnriched, KillmailPipeline, KillmailRaw, Participant}
 
   require Ash.Query
