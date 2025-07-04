@@ -8,17 +8,10 @@ defmodule EveDmv.Intelligence.IntelligenceCache do
   """
 
   require Logger
+  alias EveDmv.Config.Cache, as: CacheConfig
   alias EveDmv.Utils.Cache
 
   @cache_name :intelligence_cache
-
-  # Cache TTLs (in milliseconds)
-  # 12 hours
-  @character_analysis_ttl 12 * 60 * 60 * 1000
-  # 24 hours
-  @vetting_ttl 24 * 60 * 60 * 1000
-  # 4 hours
-  @correlation_ttl 4 * 60 * 60 * 1000
 
   @doc """
   Start the intelligence cache.
@@ -27,11 +20,11 @@ defmodule EveDmv.Intelligence.IntelligenceCache do
     cache_opts = [
       name: @cache_name,
       # Default TTL
-      ttl_ms: @character_analysis_ttl,
+      ttl_ms: CacheConfig.character_analysis_ttl(),
       # Cache for up to 10k analyses
-      max_size: 10_000,
-      # 30 minutes
-      cleanup_interval_ms: 30 * 60 * 1000
+      max_size: CacheConfig.intelligence_cache_size(),
+      # Cleanup interval
+      cleanup_interval_ms: CacheConfig.intelligence_cleanup_interval()
     ]
 
     Cache.start_link(cache_opts)
@@ -47,7 +40,7 @@ defmodule EveDmv.Intelligence.IntelligenceCache do
       @cache_name,
       cache_key,
       fn -> generate_character_analysis(character_id) end,
-      ttl_ms: @character_analysis_ttl
+      ttl_ms: CacheConfig.character_analysis_ttl()
     )
   end
 
@@ -61,7 +54,7 @@ defmodule EveDmv.Intelligence.IntelligenceCache do
       @cache_name,
       cache_key,
       fn -> generate_vetting_analysis(character_id) end,
-      ttl_ms: @vetting_ttl
+      ttl_ms: CacheConfig.vetting_analysis_ttl()
     )
   end
 
@@ -75,7 +68,7 @@ defmodule EveDmv.Intelligence.IntelligenceCache do
       @cache_name,
       cache_key,
       fn -> generate_correlation_analysis(character_id) end,
-      ttl_ms: @correlation_ttl
+      ttl_ms: CacheConfig.correlation_analysis_ttl()
     )
   end
 
