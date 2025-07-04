@@ -1,7 +1,6 @@
 defmodule EveDmv.Integration.KillmailPipelineTest do
   # Pipeline tests need isolation
   use EveDmv.DataCase, async: false
-  @moduletag :skip
 
   alias EveDmv.Api
   alias EveDmv.Intelligence.CharacterAnalysis.CharacterAnalyzer

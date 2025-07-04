@@ -49,7 +49,10 @@ defmodule EveDmv.Telemetry.QueryMonitor do
   end
 
   def handle_event([:eve_dmv, :repo, :query], measurements, metadata, _config) do
-    query_time = measurements.duration
+    # Handle different measurement formats from Ecto
+    query_time =
+      measurements[:duration] || measurements[:query_time] || measurements[:total_time] || 0
+
     query_sql = metadata.query || "Unknown"
     source = metadata.source || "Unknown"
 

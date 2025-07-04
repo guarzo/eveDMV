@@ -5,8 +5,6 @@ defmodule EveDmv.E2E.UserExperienceTest do
   """
   use EveDmvWeb.ConnCase, async: false
 
-  @moduletag :skip
-
   import Phoenix.LiveViewTest
   import EveDmv.Factories
 

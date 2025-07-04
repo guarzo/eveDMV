@@ -7,7 +7,6 @@ defmodule EveDmv.Integration.CharacterAnalysisIntegrationTest do
   """
 
   use EveDmv.IntelligenceCase, async: false
-  @moduletag :skip
 
   alias EveDmv.Api
   alias EveDmv.Eve.{CircuitBreaker, EsiClient}

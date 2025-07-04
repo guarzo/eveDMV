@@ -257,11 +257,9 @@ defmodule EveDmv.Eve.SolarSystem do
       authorize_if(always())
     end
 
-    # Only authenticated admins can modify system data
+    # Only authenticated admin users can modify system data
     policy action_type([:create, :update, :destroy]) do
-      # For now, allow all authenticated users
-      # In production, this would be admin-only
-      authorize_if(actor_present())
+      authorize_if(actor_attribute_equals(:is_admin, true))
     end
   end
 end
