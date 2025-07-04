@@ -52,29 +52,13 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinator do
   def analyze_character_comprehensive(character_id, options \\ []) do
     Logger.info("Starting comprehensive intelligence analysis for character #{character_id}")
 
-    use_cache = Keyword.get(options, :use_cache, true)
-    include_correlations = Keyword.get(options, :include_correlations, true)
+    options = parse_analysis_options(options)
 
-    with {:ok, basic_analysis} <- get_basic_analysis(character_id, use_cache),
-         {:ok, specialized_analysis} <- get_specialized_analysis(character_id, use_cache),
-         {:ok, correlations} <- get_correlations(character_id, use_cache, include_correlations) do
-      # Combine all analysis results
-      comprehensive_analysis = %{
-        character_id: character_id,
-        analysis_timestamp: DateTime.utc_now(),
-        basic_analysis: basic_analysis,
-        specialized_analysis: specialized_analysis,
-        correlations: correlations,
-        intelligence_summary:
-          generate_intelligence_summary(basic_analysis, specialized_analysis, correlations),
-        confidence_score:
-          calculate_overall_confidence(basic_analysis, specialized_analysis, correlations),
-        recommendations:
-          generate_unified_recommendations(basic_analysis, specialized_analysis, correlations)
-      }
+    case gather_analysis_components(character_id, options) do
+      {:ok, analysis_components} ->
+        comprehensive_analysis = build_comprehensive_analysis(character_id, analysis_components)
+        {:ok, comprehensive_analysis}
 
-      {:ok, comprehensive_analysis}
-    else
       {:error, reason} ->
         Logger.error(
           "Comprehensive analysis failed for character #{character_id}: #{inspect(reason)}"
@@ -92,58 +76,11 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinator do
 
     use_cache = Keyword.get(options, :use_cache, true)
 
-    # Analyze each character individually
-    individual_analyses =
-      character_ids
-      |> Enum.map(fn char_id ->
-        case analyze_character_comprehensive(char_id,
-               use_cache: use_cache,
-               include_correlations: false
-             ) do
-          {:ok, analysis} ->
-            {char_id, analysis}
-
-          {:error, reason} ->
-            Logger.warning("Failed to analyze character #{char_id}: #{inspect(reason)}")
-            {char_id, nil}
-        end
-      end)
-      |> Enum.filter(fn {_id, analysis} -> not is_nil(analysis) end)
-      |> Enum.into(%{})
-
-    if map_size(individual_analyses) < 2 do
-      {:error, "Insufficient character data for group analysis"}
+    with {:ok, individual_analyses} <- gather_individual_analyses(character_ids, use_cache),
+         {:ok, group_data} <- perform_group_analysis(character_ids, individual_analyses) do
+      {:ok, group_data}
     else
-      # Perform group-level correlations
-      case CorrelationEngine.analyze_character_correlations(Map.keys(individual_analyses)) do
-        {:ok, group_correlations} ->
-          group_analysis = %{
-            character_ids: character_ids,
-            analysis_timestamp: DateTime.utc_now(),
-            individual_analyses: individual_analyses,
-            group_correlations: group_correlations,
-            group_summary: generate_group_summary(individual_analyses, group_correlations),
-            group_recommendations:
-              generate_group_recommendations(individual_analyses, group_correlations)
-          }
-
-          {:ok, group_analysis}
-
-        {:error, reason} ->
-          Logger.warning("Group correlation analysis failed: #{inspect(reason)}")
-
-          # Return individual analyses without correlations
-          group_analysis = %{
-            character_ids: character_ids,
-            analysis_timestamp: DateTime.utc_now(),
-            individual_analyses: individual_analyses,
-            group_correlations: nil,
-            group_summary: "Group correlation analysis unavailable",
-            group_recommendations: []
-          }
-
-          {:ok, group_analysis}
-      end
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -215,6 +152,129 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinator do
 
   ## Private Helper Functions
 
+  defp parse_analysis_options(options) do
+    %{
+      use_cache: Keyword.get(options, :use_cache, true),
+      include_correlations: Keyword.get(options, :include_correlations, true)
+    }
+  end
+
+  defp gather_analysis_components(character_id, options) do
+    with {:ok, basic_analysis} <- get_basic_analysis(character_id, options.use_cache),
+         {:ok, specialized_analysis} <- get_specialized_analysis(character_id, options.use_cache),
+         {:ok, correlations} <-
+           get_correlations(character_id, options.use_cache, options.include_correlations) do
+      analysis_components = %{
+        basic_analysis: basic_analysis,
+        specialized_analysis: specialized_analysis,
+        correlations: correlations
+      }
+
+      {:ok, analysis_components}
+    end
+  end
+
+  defp build_comprehensive_analysis(character_id, analysis_components) do
+    %{
+      character_id: character_id,
+      analysis_timestamp: DateTime.utc_now(),
+      basic_analysis: analysis_components.basic_analysis,
+      specialized_analysis: analysis_components.specialized_analysis,
+      correlations: analysis_components.correlations,
+      intelligence_summary: build_intelligence_summary(analysis_components),
+      confidence_score: calculate_confidence_score(analysis_components),
+      recommendations: build_unified_recommendations(analysis_components)
+    }
+  end
+
+  defp build_intelligence_summary(%{
+         basic_analysis: basic,
+         specialized_analysis: specialized,
+         correlations: correlations
+       }) do
+    generate_intelligence_summary(basic, specialized, correlations)
+  end
+
+  defp calculate_confidence_score(%{
+         basic_analysis: basic,
+         specialized_analysis: specialized,
+         correlations: correlations
+       }) do
+    calculate_overall_confidence(basic, specialized, correlations)
+  end
+
+  defp build_unified_recommendations(%{
+         basic_analysis: basic,
+         specialized_analysis: specialized,
+         correlations: correlations
+       }) do
+    generate_unified_recommendations(basic, specialized, correlations)
+  end
+
+  defp gather_individual_analyses(character_ids, use_cache) do
+    individual_analyses =
+      character_ids
+      |> Enum.map(fn char_id ->
+        case analyze_character_comprehensive(char_id,
+               use_cache: use_cache,
+               include_correlations: false
+             ) do
+          {:ok, analysis} ->
+            {char_id, analysis}
+
+          {:error, reason} ->
+            Logger.warning("Failed to analyze character #{char_id}: #{inspect(reason)}")
+            {char_id, nil}
+        end
+      end)
+      |> Enum.filter(fn {_id, analysis} -> not is_nil(analysis) end)
+      |> Enum.into(%{})
+
+    if map_size(individual_analyses) < 2 do
+      {:error, "Insufficient character data for group analysis"}
+    else
+      {:ok, individual_analyses}
+    end
+  end
+
+  defp perform_group_analysis(character_ids, individual_analyses) do
+    case CorrelationEngine.analyze_character_correlations(Map.keys(individual_analyses)) do
+      {:ok, group_correlations} ->
+        group_analysis =
+          build_successful_group_analysis(character_ids, individual_analyses, group_correlations)
+
+        {:ok, group_analysis}
+
+      {:error, reason} ->
+        Logger.warning("Group correlation analysis failed: #{inspect(reason)}")
+        group_analysis = build_fallback_group_analysis(character_ids, individual_analyses)
+        {:ok, group_analysis}
+    end
+  end
+
+  defp build_successful_group_analysis(character_ids, individual_analyses, group_correlations) do
+    %{
+      character_ids: character_ids,
+      analysis_timestamp: DateTime.utc_now(),
+      individual_analyses: individual_analyses,
+      group_correlations: group_correlations,
+      group_summary: generate_group_summary(individual_analyses, group_correlations),
+      group_recommendations:
+        generate_group_recommendations(individual_analyses, group_correlations)
+    }
+  end
+
+  defp build_fallback_group_analysis(character_ids, individual_analyses) do
+    %{
+      character_ids: character_ids,
+      analysis_timestamp: DateTime.utc_now(),
+      individual_analyses: individual_analyses,
+      group_correlations: nil,
+      group_summary: "Group correlation analysis unavailable",
+      group_recommendations: []
+    }
+  end
+
   defp get_basic_analysis(character_id, use_cache) do
     if use_cache do
       IntelligenceCache.get_character_analysis(character_id)
@@ -224,48 +284,46 @@ defmodule EveDmv.Intelligence.IntelligenceCoordinator do
   end
 
   defp get_specialized_analysis(character_id, use_cache) do
-    # Gather specialized analysis from different modules
-    vetting_result = get_vetting_analysis(character_id, use_cache)
+    analysis_modules = gather_specialized_analysis_modules(character_id, use_cache)
+    specialized_results = build_specialized_analysis_results(analysis_modules)
+    {:ok, specialized_results}
+  end
 
-    # Get other specialized analyses (without caching for now)
+  defp gather_specialized_analysis_modules(character_id, use_cache) do
+    %{
+      vetting: get_vetting_analysis(character_id, use_cache),
+      activity: get_activity_analysis(character_id, use_cache),
+      fleet: get_fleet_analysis(character_id, use_cache),
+      home_defense: get_home_defense_analysis(character_id, use_cache)
+    }
+  end
+
+  defp build_specialized_analysis_results(analysis_modules) do
+    %{
+      vetting: extract_analysis_result(analysis_modules.vetting),
+      activity: extract_analysis_result(analysis_modules.activity),
+      fleet: extract_analysis_result(analysis_modules.fleet),
+      home_defense: extract_analysis_result(analysis_modules.home_defense)
+    }
+  end
+
+  defp extract_analysis_result({:ok, result}), do: result
+  defp extract_analysis_result({:error, _reason}), do: nil
+  defp extract_analysis_result(nil), do: nil
+
+  defp get_activity_analysis(_character_id, _use_cache) do
     # Activity analysis requires time range, skip for now
-    activity_result =
-      {:ok, nil}
+    {:ok, nil}
+  end
 
+  defp get_fleet_analysis(_character_id, _use_cache) do
     # Fleet analysis requires multiple characters, skip for individual analysis
-    fleet_result =
-      {:ok, nil}
+    {:ok, nil}
+  end
 
+  defp get_home_defense_analysis(_character_id, _use_cache) do
     # Home defense analysis not applicable for individual character
-    home_defense_result =
-      {:ok, nil}
-
-    # Combine results
-    case {vetting_result, activity_result, fleet_result, home_defense_result} do
-      {{:ok, vetting}, {:ok, activity}, {:ok, fleet}, {:ok, home_defense}} ->
-        specialized = %{
-          vetting: vetting,
-          activity: activity,
-          fleet: fleet,
-          home_defense: home_defense
-        }
-
-        {:ok, specialized}
-
-      _ ->
-        # Partial success - include what we can get
-        specialized = %{
-          vetting: nil,
-          # Always nil based on line 205
-          activity: nil,
-          # Always nil based on line 209
-          fleet: nil,
-          # Always nil based on line 213
-          home_defense: nil
-        }
-
-        {:ok, specialized}
-    end
+    {:ok, nil}
   end
 
   defp get_vetting_analysis(character_id, use_cache) do
