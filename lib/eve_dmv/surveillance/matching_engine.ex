@@ -762,7 +762,19 @@ defmodule EveDmv.Surveillance.MatchingEngine do
               try do
                 if compiled_fn.(killmail), do: profile_id, else: nil
               rescue
-                _ -> nil
+                error in [FunctionClauseError, ArgumentError, BadFunctionError] ->
+                  Logger.warning(
+                    "Surveillance profile #{profile_id} matching error: #{inspect(error)}"
+                  )
+
+                  nil
+
+                error ->
+                  Logger.error(
+                    "Unexpected error in surveillance profile #{profile_id}: #{inspect(error)}"
+                  )
+
+                  nil
               end
 
             [] ->
@@ -834,7 +846,16 @@ defmodule EveDmv.Surveillance.MatchingEngine do
           try do
             compiled_fn.(killmail)
           rescue
-            _ -> false
+            error in [FunctionClauseError, ArgumentError, BadFunctionError] ->
+              Logger.warning("Surveillance profile #{profile_id} filter error: #{inspect(error)}")
+              false
+
+            error ->
+              Logger.error(
+                "Unexpected error in surveillance profile #{profile_id} filter: #{inspect(error)}"
+              )
+
+              false
           end
 
         [] ->

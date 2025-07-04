@@ -11,6 +11,8 @@ defmodule EveDmv.Analytics.ShipStats do
     domain: EveDmv.Api,
     data_layer: AshPostgres.DataLayer
 
+  alias EveDmv.Analytics.PerformanceCalculator
+
   postgres do
     table("ship_stats")
     repo(EveDmv.Repo)
@@ -39,6 +41,7 @@ defmodule EveDmv.Analytics.ShipStats do
     # Basic Combat Statistics
     attribute(:total_kills, :integer, default: 0)
     attribute(:total_losses, :integer, default: 0)
+    attribute(:solo_kills, :integer, default: 0)
     # Unique pilots who flew this ship
     attribute(:pilots_flown, :integer, default: 0)
 
@@ -154,6 +157,7 @@ defmodule EveDmv.Analytics.ShipStats do
         :is_capital,
         :total_kills,
         :total_losses,
+        :solo_kills,
         :pilots_flown,
         :total_isk_destroyed,
         :total_isk_lost,
@@ -185,35 +189,20 @@ defmodule EveDmv.Analytics.ShipStats do
         total_isk_lost =
           Ash.Changeset.get_argument_or_attribute(changeset, :total_isk_lost) || 0.0
 
-        # Calculate performance metrics
+        # Calculate performance metrics using shared calculator
         kill_death_ratio =
-          if total_losses > 0,
-            do: Decimal.div(total_kills, total_losses),
-            else: Decimal.new(total_kills)
-
-        total_isk = Decimal.add(total_isk_destroyed, total_isk_lost)
+          PerformanceCalculator.calculate_kill_death_ratio(total_kills, total_losses)
 
         isk_efficiency =
-          if Decimal.gt?(total_isk, 0) do
-            Decimal.mult(Decimal.div(total_isk_destroyed, total_isk), 100)
-          else
-            Decimal.new(0)
-          end
+          PerformanceCalculator.calculate_isk_efficiency(total_isk_destroyed, total_isk_lost)
 
-        survival_rate =
-          if total_kills + total_losses > 0 do
-            Decimal.mult(Decimal.div(total_kills, total_kills + total_losses), 100)
-          else
-            Decimal.new(0)
-          end
+        survival_rate = PerformanceCalculator.calculate_survival_rate(total_kills, total_losses)
 
         avg_kill_value =
-          if total_kills > 0,
-            do: Decimal.div(total_isk_destroyed, total_kills),
-            else: Decimal.new(0)
+          PerformanceCalculator.calculate_average_kill_value(total_isk_destroyed, total_kills)
 
         avg_loss_value =
-          if total_losses > 0, do: Decimal.div(total_isk_lost, total_losses), else: Decimal.new(0)
+          PerformanceCalculator.calculate_average_loss_value(total_isk_lost, total_losses)
 
         changeset
         |> Ash.Changeset.change_attribute(:kill_death_ratio, kill_death_ratio)
@@ -232,6 +221,7 @@ defmodule EveDmv.Analytics.ShipStats do
       accept([
         :total_kills,
         :total_losses,
+        :solo_kills,
         :pilots_flown,
         :total_isk_destroyed,
         :total_isk_lost,
@@ -266,45 +256,26 @@ defmodule EveDmv.Analytics.ShipStats do
         total_isk_lost =
           Ash.Changeset.get_argument_or_attribute(changeset, :total_isk_lost) || 0.0
 
-        # Recalculate performance metrics
+        # Recalculate performance metrics using shared calculator
         kill_death_ratio =
-          if total_losses > 0,
-            do: Decimal.div(total_kills, total_losses),
-            else: Decimal.new(total_kills)
-
-        total_isk = Decimal.add(total_isk_destroyed, total_isk_lost)
+          PerformanceCalculator.calculate_kill_death_ratio(total_kills, total_losses)
 
         isk_efficiency =
-          if Decimal.gt?(total_isk, 0) do
-            Decimal.mult(Decimal.div(total_isk_destroyed, total_isk), 100)
-          else
-            Decimal.new(0)
-          end
+          PerformanceCalculator.calculate_isk_efficiency(total_isk_destroyed, total_isk_lost)
 
-        survival_rate =
-          if total_kills + total_losses > 0 do
-            Decimal.mult(Decimal.div(total_kills, total_kills + total_losses), 100)
-          else
-            Decimal.new(0)
-          end
+        survival_rate = PerformanceCalculator.calculate_survival_rate(total_kills, total_losses)
 
         avg_kill_value =
-          if total_kills > 0,
-            do: Decimal.div(total_isk_destroyed, total_kills),
-            else: Decimal.new(0)
+          PerformanceCalculator.calculate_average_kill_value(total_isk_destroyed, total_kills)
 
         avg_loss_value =
-          if total_losses > 0, do: Decimal.div(total_isk_lost, total_losses), else: Decimal.new(0)
+          PerformanceCalculator.calculate_average_loss_value(total_isk_lost, total_losses)
 
-        # Calculate solo kill percentage
+        # Calculate solo kill percentage using shared calculator
         solo_kills = Ash.Changeset.get_argument_or_attribute(changeset, :solo_kills) || 0
 
         solo_kill_percentage =
-          if total_kills > 0 do
-            Decimal.mult(Decimal.div(solo_kills, total_kills), 100)
-          else
-            Decimal.new(0)
-          end
+          PerformanceCalculator.calculate_solo_kill_percentage(solo_kills, total_kills)
 
         changeset
         |> Ash.Changeset.change_attribute(:kill_death_ratio, kill_death_ratio)

@@ -90,10 +90,6 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
       {:error, reason} ->
         Logger.warning("Failed to process ship #{ship_type_id}: #{inspect(reason)}")
         {:error, reason}
-
-      _ ->
-        Logger.warning("Insufficient data for ship #{ship_type_id}")
-        {:error, "Insufficient data"}
     end
   rescue
     error ->
@@ -169,18 +165,22 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
 
   # Build ship-level metrics map
   defp build_ship_metrics(ps) do
-    ship_name = List.first(ps).ship_name || "Unknown"
-    {kills, losses} = Enum.split_with(ps, &((&1.damage_dealt || 0) > 0))
+    if Enum.empty?(ps) do
+      %{ship_name: "Unknown"}
+    else
+      ship_name = List.first(ps).ship_name || "Unknown"
+      {kills, losses} = Enum.split_with(ps, fn p -> not (p.is_victim || false) end)
 
-    basic_metrics = calculate_basic_metrics(kills, losses, ps)
-    isk_metrics = calculate_isk_metrics(kills, losses)
-    combat_metrics = calculate_combat_metrics(kills, losses)
-    time_metrics = calculate_time_metrics()
+      basic_metrics = calculate_basic_metrics(kills, losses, ps)
+      isk_metrics = calculate_isk_metrics(kills, losses)
+      combat_metrics = calculate_combat_metrics(kills, losses)
+      time_metrics = calculate_time_metrics()
 
-    Map.merge(basic_metrics, isk_metrics)
-    |> Map.merge(combat_metrics)
-    |> Map.merge(time_metrics)
-    |> Map.put(:ship_name, ship_name)
+      Map.merge(basic_metrics, isk_metrics)
+      |> Map.merge(combat_metrics)
+      |> Map.merge(time_metrics)
+      |> Map.put(:ship_name, ship_name)
+    end
   end
 
   defp calculate_basic_metrics(kills, losses, ps) do
@@ -231,33 +231,37 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
   end
 
   defp sum_ship_values(participants) do
-    participants
-    |> Enum.map(&(&1.ship_value || Decimal.new(0)))
-    |> Enum.reduce(Decimal.new(0), &Decimal.add/2)
+    if Enum.empty?(participants) do
+      Decimal.new(0)
+    else
+      participants
+      |> Enum.map(&(&1.ship_value || Decimal.new(0)))
+      |> Enum.reduce(Decimal.new(0), &Decimal.add/2)
+    end
   end
 
   defp calculate_average_damage(kills, total_kills) do
-    if total_kills > 0 do
-      Enum.sum(Enum.map(kills, &(&1.damage_dealt || 0))) / total_kills
-    else
+    if Enum.empty?(kills) or total_kills == 0 do
       0
+    else
+      Enum.sum(Enum.map(kills, &(&1.damage_dealt || 0))) / total_kills
     end
   end
 
   defp calculate_average_gang_size(participants, total_count) do
-    if total_count > 0 do
-      Enum.sum(Enum.map(participants, &(&1.gang_size || 1))) / total_count
-    else
+    if Enum.empty?(participants) or total_count == 0 do
       1.0
+    else
+      Enum.sum(Enum.map(participants, &(&1.gang_size || 1))) / total_count
     end
   end
 
   defp calculate_solo_percentage(kills, total_kills) do
-    if total_kills > 0 do
+    if Enum.empty?(kills) or total_kills == 0 do
+      0
+    else
       solo_kills = Enum.count(kills, &((&1.gang_size || 1) == 1))
       solo_kills / total_kills * 100
-    else
-      0
     end
   end
 
@@ -265,30 +269,44 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
   defp update_ship_rankings do
     case Ash.read(ShipStats, domain: Api) do
       {:ok, ships} ->
-        usage_ranked =
-          ships
-          |> Enum.sort_by(&(&1.total_kills + &1.total_losses), :desc)
-          |> Enum.with_index(1)
+        if Enum.empty?(ships) do
+          Logger.info("No ship statistics found to rank")
+          {:ok, :no_ships_to_rank}
+        else
+          usage_ranked =
+            ships
+            |> Enum.sort_by(&(&1.total_kills + &1.total_losses), :desc)
+            |> Enum.with_index(1)
 
-        eff_ranked =
-          ships
-          |> Enum.filter(&(&1.total_kills + &1.total_losses >= 25))
-          |> Enum.sort_by(& &1.kill_death_ratio, :desc)
-          |> Enum.with_index(1)
+          eff_ranked =
+            ships
+            |> Enum.filter(&(&1.total_kills + &1.total_losses >= 25))
+            |> Enum.sort_by(& &1.kill_death_ratio, :desc)
+            |> Enum.with_index(1)
 
-        # Bulk update usage ranks
-        Enum.each(usage_ranked, fn {ship, rank} ->
-          Ash.update!(ship, %{usage_rank: rank}, domain: Api)
-        end)
+          # Bulk update usage ranks
+          Enum.each(usage_ranked, fn {ship, rank} ->
+            Ash.update!(ship, %{usage_rank: rank}, domain: Api)
+          end)
 
-        # Bulk update effectiveness ranks
-        Enum.each(eff_ranked, fn {ship, rank} ->
-          Ash.update!(ship, %{effectiveness_rank: rank}, domain: Api)
-        end)
+          # Bulk update effectiveness ranks
+          Enum.each(eff_ranked, fn {ship, rank} ->
+            Ash.update!(ship, %{effectiveness_rank: rank}, domain: Api)
+          end)
 
-        case calculate_meta_tiers(eff_ranked) do
-          {:ok, _} -> {:ok, :rankings_updated}
-          {:error, reason} -> {:error, reason}
+          # Only calculate meta tiers if we have effectiveness rankings
+          if Enum.empty?(eff_ranked) do
+            Logger.info(
+              "No ships qualified for effectiveness ranking (minimum 25 total activity)"
+            )
+
+            {:ok, :rankings_updated_no_meta_tiers}
+          else
+            case calculate_meta_tiers(eff_ranked) do
+              {:ok, _} -> {:ok, :rankings_updated}
+              {:error, reason} -> {:error, reason}
+            end
+          end
         end
 
       {:error, reason} ->

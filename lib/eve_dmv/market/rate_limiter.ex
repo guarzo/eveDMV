@@ -24,6 +24,9 @@ defmodule EveDmv.Market.RateLimiter do
   @doc """
   Acquire tokens from the bucket. Blocks if insufficient tokens available.
 
+  Each request uses its own timeout value, allowing for different timeout
+  requirements per request.
+
   Options:
     - tokens: number of tokens to acquire (default: 1)
     - timeout: max time to wait in ms (default: 5000)
@@ -32,7 +35,7 @@ defmodule EveDmv.Market.RateLimiter do
     tokens = Keyword.get(opts, :tokens, 1)
     timeout = Keyword.get(opts, :timeout, 5000)
 
-    GenServer.call(server, {:acquire, tokens}, timeout)
+    GenServer.call(server, {:acquire, tokens, timeout}, timeout)
   end
 
   @doc """
@@ -74,7 +77,7 @@ defmodule EveDmv.Market.RateLimiter do
   end
 
   @impl true
-  def handle_call({:acquire, tokens}, from, state) do
+  def handle_call({:acquire, tokens, timeout}, from, state) do
     state = refill_tokens(state)
 
     if state.current_tokens >= tokens do
@@ -82,12 +85,21 @@ defmodule EveDmv.Market.RateLimiter do
       new_state = %{state | current_tokens: state.current_tokens - tokens}
       {:reply, {:ok, new_state.current_tokens}, new_state}
     else
-      # Queue the request
+      # Queue the request with per-request timeout info
       new_queue =
-        :queue.in({from, tokens, System.monotonic_time(:millisecond)}, state.waiting_queue)
+        :queue.in(
+          {from, tokens, System.monotonic_time(:millisecond), timeout},
+          state.waiting_queue
+        )
 
       {:noreply, %{state | waiting_queue: new_queue}}
     end
+  end
+
+  # Backward compatibility for old acquire signature
+  @impl true
+  def handle_call({:acquire, tokens}, from, state) do
+    handle_call({:acquire, tokens, 5000}, from, state)
   end
 
   @impl true
@@ -132,7 +144,7 @@ defmodule EveDmv.Market.RateLimiter do
     # Remove timed out request from queue
     new_queue =
       :queue.filter(
-        fn {req_from, _, _} -> req_from != from end,
+        fn {req_from, _, _, _} -> req_from != from end,
         state.waiting_queue
       )
 
@@ -158,9 +170,9 @@ defmodule EveDmv.Market.RateLimiter do
 
   defp process_waiting_queue(state) do
     case :queue.out(state.waiting_queue) do
-      {{:value, {from, tokens, enqueued_at}}, rest_queue} ->
-        # Check if request has timed out
-        if System.monotonic_time(:millisecond) - enqueued_at > 5000 do
+      {{:value, {from, tokens, enqueued_at, timeout}}, rest_queue} ->
+        # Check if request has timed out using per-request timeout value
+        if System.monotonic_time(:millisecond) - enqueued_at > timeout do
           GenServer.reply(from, {:error, :timeout})
           process_waiting_queue(%{state | waiting_queue: rest_queue})
         else

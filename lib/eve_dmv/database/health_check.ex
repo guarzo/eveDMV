@@ -139,7 +139,13 @@ defmodule EveDmv.Database.HealthCheck do
         :warning
     end
   rescue
-    _ -> :warning
+    error in [Ecto.QueryError, DBConnection.ConnectionError, Postgrex.Error] ->
+      Logger.warning("Database error in index usage check: #{inspect(error)}")
+      :warning
+
+    error ->
+      Logger.error("Unexpected error in index usage check: #{inspect(error)}")
+      :warning
   end
 
   defp check_vacuum_stats do
