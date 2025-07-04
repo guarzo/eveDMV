@@ -100,7 +100,7 @@ defmodule EveDmv.Factories do
 
   def participant_factory do
     killmail_time = DateTime.utc_now() |> DateTime.add(-Enum.random(1..3600), :second)
-    
+
     %{
       killmail_id: System.unique_integer([:positive]),
       killmail_time: killmail_time,

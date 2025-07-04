@@ -35,7 +35,8 @@ defmodule EveDmv.Application do
       # Start the ESI cache
       EveDmv.Eve.EsiCache,
       # Start rate limiter for Janice API (5 requests per second)
-      {EveDmv.Market.RateLimiter, [name: :janice_rate_limiter] ++ EveDmv.Config.RateLimit.janice_rate_limit()},
+      {EveDmv.Market.RateLimiter,
+       [name: :janice_rate_limiter] ++ EveDmv.Config.RateLimit.janice_rate_limit()},
       # Start the surveillance matching engine
       maybe_start_surveillance_engine(),
       # Conditionally start database-dependent processes

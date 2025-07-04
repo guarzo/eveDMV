@@ -274,8 +274,8 @@ defmodule EveDmv.IntelligenceCase do
   end
 
   def create_character_stats(character_id, opts \\ []) do
-    alias EveDmv.Intelligence.CharacterStats
     alias EveDmv.Api
+    alias EveDmv.Intelligence.CharacterStats
 
     # First create the basic character record (only fields accepted by create action)
     basic_params = %{
@@ -328,7 +328,7 @@ defmodule EveDmv.IntelligenceCase do
       }
     }
 
-    # Mock threat assessment data  
+    # Mock threat assessment data
     threat_assessment = %{
       threat_indicators: %{
         combat_effectiveness: 0.7,

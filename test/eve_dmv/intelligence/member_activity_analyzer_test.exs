@@ -47,7 +47,6 @@ defmodule EveDmv.Intelligence.MemberActivityAnalyzerTest do
   end
 
   describe "calculate_member_engagement/1" do
-
     test "handles empty member activities" do
       result = MemberActivityAnalyzer.calculate_member_engagement([])
 
