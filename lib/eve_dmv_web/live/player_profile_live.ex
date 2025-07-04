@@ -120,6 +120,7 @@ defmodule EveDmvWeb.PlayerProfileLive do
       case reason do
         :character_not_found -> "Character not found in EVE"
         :esi_unavailable -> "Unable to fetch character information from EVE servers"
+        :esi_timeout -> "Request timed out while fetching character information"
         _ -> "Failed to load character data"
       end
 
@@ -210,8 +211,14 @@ defmodule EveDmvWeb.PlayerProfileLive do
     parent_pid = self()
 
     Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
-      # Fetch character info from ESI
-      with {:ok, character_info} <- EsiClient.get_character(character_id),
+      # Fetch character info from ESI with timeout
+      character_result =
+        case Task.yield(Task.async(fn -> EsiClient.get_character(character_id) end), 10_000) do
+          {:ok, result} -> result
+          nil -> {:error, :timeout}
+        end
+
+      with {:ok, character_info} <- character_result,
            {:ok, corp_info} <- fetch_corporation_info(character_info.corporation_id),
            {:ok, alliance_info} <- fetch_alliance_info(character_info.alliance_id) do
         # Enrich character info
@@ -242,6 +249,9 @@ defmodule EveDmvWeb.PlayerProfileLive do
         {:error, :not_found} ->
           send(parent_pid, {:character_load_failed, :character_not_found})
 
+        {:error, :timeout} ->
+          send(parent_pid, {:character_load_failed, :esi_timeout})
+
         {:error, _reason} ->
           send(parent_pid, {:character_load_failed, :esi_unavailable})
       end
@@ -254,19 +264,29 @@ defmodule EveDmvWeb.PlayerProfileLive do
   defp fetch_corporation_info(nil), do: {:ok, %{name: nil, ticker: nil}}
 
   defp fetch_corporation_info(corp_id) do
-    case EsiClient.get_corporation(corp_id) do
-      {:ok, corp} -> {:ok, corp}
-      _ -> {:ok, %{name: "Unknown Corporation", ticker: "???"}}
+    task = Task.async(fn -> EsiClient.get_corporation(corp_id) end)
+
+    case Task.yield(task, 10_000) || Task.shutdown(task) do
+      {:ok, {:ok, corp}} -> {:ok, corp}
+      {:ok, {:error, _}} -> {:ok, %{name: "Unknown Corporation", ticker: "???"}}
+      nil -> {:ok, %{name: "Unknown Corporation", ticker: "???"}}
     end
+  rescue
+    _ -> {:ok, %{name: "Unknown Corporation", ticker: "???"}}
   end
 
   defp fetch_alliance_info(nil), do: {:ok, %{name: nil, ticker: nil}}
 
   defp fetch_alliance_info(alliance_id) do
-    case EsiClient.get_alliance(alliance_id) do
-      {:ok, alliance} -> {:ok, alliance}
-      _ -> {:ok, %{name: "Unknown Alliance", ticker: "???"}}
+    task = Task.async(fn -> EsiClient.get_alliance(alliance_id) end)
+
+    case Task.yield(task, 10_000) || Task.shutdown(task) do
+      {:ok, {:ok, alliance}} -> {:ok, alliance}
+      {:ok, {:error, _}} -> {:ok, %{name: "Unknown Alliance", ticker: "???"}}
+      nil -> {:ok, %{name: "Unknown Alliance", ticker: "???"}}
     end
+  rescue
+    _ -> {:ok, %{name: "Unknown Alliance", ticker: "???"}}
   end
 
   defp convert_intel_to_stats(character_id, intel) do

@@ -169,7 +169,7 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
       %{ship_name: "Unknown"}
     else
       ship_name = List.first(ps).ship_name || "Unknown"
-      {kills, losses} = Enum.split_with(ps, &((&1.damage_dealt || 0) > 0))
+      {kills, losses} = Enum.split_with(ps, fn p -> not (p.is_victim || false) end)
 
       basic_metrics = calculate_basic_metrics(kills, losses, ps)
       isk_metrics = calculate_isk_metrics(kills, losses)

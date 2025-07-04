@@ -487,29 +487,44 @@ defmodule EveDmvWeb.SurveillanceLive do
            domain: Api
          ) do
       {:ok, unread_notifications} ->
-        # Bulk update them to read
-        Enum.each(unread_notifications, fn notification ->
-          Ash.update(notification,
-            action: :mark_read,
-            domain: Api,
-            actor: socket.assigns.current_user
-          )
-        end)
+        # Bulk update them to read with individual error handling
+        results =
+          Enum.reduce(unread_notifications, %{success: 0, failed: 0}, fn notification, acc ->
+            case Ash.update(notification,
+                   action: :mark_read,
+                   domain: Api,
+                   actor: socket.assigns.current_user
+                 ) do
+              {:ok, _} ->
+                %{acc | success: acc.success + 1}
+
+              {:error, _} ->
+                %{acc | failed: acc.failed + 1}
+            end
+          end)
 
         # Reload notifications and update count
         notifications = load_user_notifications(socket.assigns.user_id)
-        unread_count = 0
+        unread_count = NotificationService.get_unread_count(socket.assigns.user_id)
+
+        # Provide feedback based on results
+        flash_message =
+          if results.failed > 0 do
+            "Marked #{results.success} notifications as read, #{results.failed} failed"
+          else
+            "All #{results.success} notifications marked as read"
+          end
 
         socket =
           socket
           |> assign(:notifications, notifications)
           |> assign(:unread_count, unread_count)
-          |> put_flash(:info, "All notifications marked as read")
+          |> put_flash(:info, flash_message)
 
         {:noreply, socket}
 
       {:error, _} ->
-        socket = put_flash(socket, :error, "Failed to mark all notifications as read")
+        socket = put_flash(socket, :error, "Failed to load unread notifications")
         {:noreply, socket}
     end
   end
