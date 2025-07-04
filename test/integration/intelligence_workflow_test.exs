@@ -1,6 +1,5 @@
 defmodule EveDmv.IntelligenceWorkflowTest do
-  use EveDmv.DataCase, async: false
-  use EveDmv.IntelligenceCase
+  use EveDmv.IntelligenceCase, async: false
 
   @moduletag :integration
 
@@ -97,7 +96,7 @@ defmodule EveDmv.IntelligenceWorkflowTest do
       )
 
       # Analyze character to generate high threat score
-      assert {:ok, analysis} =
+      assert {:ok, _analysis} =
                EveDmv.Intelligence.IntelligenceCoordinator.analyze_character_comprehensive(
                  character_id
                )

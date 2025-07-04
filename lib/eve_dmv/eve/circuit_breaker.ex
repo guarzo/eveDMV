@@ -109,6 +109,17 @@ defmodule EveDmv.Eve.CircuitBreaker do
     end
   end
 
+  @doc """
+  Set circuit breaker state for testing purposes.
+  """
+  @spec set_state(atom(), atom()) :: :ok
+  def set_state(service_name, new_state) when new_state in [:open, :closed, :half_open] do
+    case GenServer.whereis(via_tuple(service_name)) do
+      nil -> :ok
+      pid -> GenServer.call(pid, {:set_state, new_state})
+    end
+  end
+
   # Private client functions
 
   defp via_tuple(service_name) do
@@ -178,6 +189,14 @@ defmodule EveDmv.Eve.CircuitBreaker do
     }
 
     {:reply, :ok, new_state}
+  end
+
+  @impl true
+  def handle_call({:set_state, new_state}, _from, state) do
+    Logger.info("Circuit breaker state set to #{new_state} for service: #{state.service_name}")
+
+    updated_state = %{state | state: new_state}
+    {:reply, :ok, updated_state}
   end
 
   @impl true

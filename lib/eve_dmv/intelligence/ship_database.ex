@@ -106,11 +106,15 @@ defmodule EveDmv.Intelligence.ShipDatabase do
     logi_count = Enum.count(roles, &(&1 == "logistics"))
 
     cond do
-      logi_count >= 2 && dps_count >= 5 -> "medium_gang"
-      logi_count >= 1 && dps_count >= 3 -> "small_gang"
-      dps_count >= 2 -> "micro_gang"
-      true -> "solo"
+      logi_count >= 2 && dps_count >= 5 -> 8
+      logi_count >= 1 && dps_count >= 3 -> 5
+      dps_count >= 2 -> 3
+      true -> 1
     end
+  end
+
+  def get_optimal_gang_size(ship_composition) do
+    optimal_gang_size(ship_composition)
   end
 
   # Private data functions
@@ -366,7 +370,8 @@ defmodule EveDmv.Intelligence.ShipDatabase do
       "Punisher" => 1_350_000,
       "Bantam" => 1_300_000,
       "Maller" => 11_500_000,
-      "Drake" => 14_500_000
+      "Drake" => 14_500_000,
+      "Stabber" => 10_500_000
     }
   end
 
@@ -405,12 +410,24 @@ defmodule EveDmv.Intelligence.ShipDatabase do
       "Crucifier" => "ewar",
       "Maulus" => "ewar",
       "Vigil" => "ewar",
-      "Griffin" => "ewar"
+      "Griffin" => "ewar",
+
+      # Common ships
+      "Rifter" => "dps",
+      "Punisher" => "dps",
+      "Stabber" => "dps",
+      "Drake" => "dps"
     }
   end
 
   defp ship_name_to_class do
     %{
+      # Frigates
+      "Rifter" => :frigate,
+      "Punisher" => :frigate,
+      "Merlin" => :frigate,
+      "Incursus" => :frigate,
+
       # Strategic Cruisers
       "Tengu" => :strategic_cruiser,
       "Legion" => :strategic_cruiser,
@@ -475,7 +492,37 @@ defmodule EveDmv.Intelligence.ShipDatabase do
       "Drake" => "Battlecruiser",
       "Harbinger" => "Battlecruiser",
       "Ferox" => "Battlecruiser",
-      "Myrmidon" => "Battlecruiser"
+      "Myrmidon" => "Battlecruiser",
+
+      # Capital Ships - Dreadnoughts
+      "Revelation" => "Capital",
+      "Naglfar" => "Capital",
+      "Moros" => "Capital",
+      "Phoenix" => "Capital",
+
+      # Capital Ships - Carriers
+      "Archon" => "Capital",
+      "Chimera" => "Capital",
+      "Thanatos" => "Capital",
+      "Nidhoggur" => "Capital",
+
+      # Capital Ships - Force Auxiliaries
+      "Apostle" => "Capital",
+      "Minokawa" => "Capital",
+      "Ninazu" => "Capital",
+      "Lif" => "Capital",
+
+      # Supercarriers
+      "Nyx" => "Supercapital",
+      "Aeon" => "Supercapital",
+      "Wyvern" => "Supercapital",
+      "Hel" => "Supercapital",
+
+      # Titans
+      "Erebus" => "Supercapital",
+      "Leviathan" => "Supercapital",
+      "Avatar" => "Supercapital",
+      "Ragnarok" => "Supercapital"
     }
   end
 

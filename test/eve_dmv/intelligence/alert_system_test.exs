@@ -1,6 +1,5 @@
 defmodule EveDmv.Intelligence.AlertSystemTest do
-  use EveDmv.DataCase, async: false
-  use EveDmv.IntelligenceCase
+  use EveDmv.IntelligenceCase, async: false
 
   alias EveDmv.Intelligence.AlertSystem
 

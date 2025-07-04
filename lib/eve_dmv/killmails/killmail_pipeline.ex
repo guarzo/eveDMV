@@ -46,6 +46,44 @@ defmodule EveDmv.Killmails.KillmailPipeline do
     )
   end
 
+  @doc """
+  Process a single killmail for testing and direct ingestion.
+  """
+  def process_killmail(killmail_data) when is_map(killmail_data) do
+    try do
+      # Create a fake SSE message
+      sse_message = %{event: "killmail", data: Jason.encode!(killmail_data)}
+
+      # Transform to Broadway message
+      messages = transform_sse(sse_message, [])
+
+      case messages do
+        [%Message{data: enriched} = msg] ->
+          # Process the message through the pipeline
+          case handle_message(:default, msg, %{}) do
+            %Message{status: :ok} = processed_msg ->
+              # Insert to database
+              case handle_batch(:db_insert, [processed_msg], %{}, %{}) do
+                [%Message{status: :ok}] -> {:ok, enriched}
+                [%Message{status: {:failed, reason}}] -> {:error, reason}
+                _ -> {:error, :batch_processing_failed}
+              end
+
+            %Message{status: {:failed, reason}} ->
+              {:error, reason}
+          end
+
+        [] ->
+          {:error, :invalid_killmail_data}
+
+        _ ->
+          {:error, :unexpected_message_count}
+      end
+    rescue
+      e -> {:error, e}
+    end
+  end
+
   # Transform SSE events into Broadway messages (public for Broadway transformer)
   def transform_sse(%{event: event, data: payload}, _opts) do
     # Only process killmail events

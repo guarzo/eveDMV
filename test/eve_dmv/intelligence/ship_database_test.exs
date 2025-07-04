@@ -285,7 +285,7 @@ defmodule EveDmv.Intelligence.ShipDatabaseTest do
     test "returns numeric gang size for ship compositions" do
       composition = ["Rifter", "Caracal", "Guardian"]
 
-      result = ShipDatabase.get_optimal_gang_size(composition)
+      result = ShipDatabase.optimal_gang_size(composition)
       assert is_integer(result)
       assert result > 0
       # Reasonable gang size limit
@@ -313,7 +313,7 @@ defmodule EveDmv.Intelligence.ShipDatabaseTest do
     test "handles unknown ships in composition" do
       composition = ["Unknown Ship", "Fake Ship"]
 
-      result = ShipDatabase.get_optimal_gang_size(composition)
+      result = ShipDatabase.optimal_gang_size(composition)
       assert is_integer(result)
       assert result > 0
     end

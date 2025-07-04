@@ -7,6 +7,7 @@ defmodule EveDmv.Eve.NameResolver do
   """
 
   require Logger
+  require Ash.Query
 
   alias EveDmv.Eve.{EsiClient, ItemType, SolarSystem}
 
@@ -544,11 +545,9 @@ defmodule EveDmv.Eve.NameResolver do
   end
 
   defp batch_fetch_from_database(type, ids) when type in [:item_type, :ship_type] do
-    case Ash.read(ItemType,
-           filter: [type_id: [in: ids]],
-           domain: EveDmv.Api,
-           authorize?: false
-         ) do
+    case ItemType
+         |> Ash.Query.filter(type_id in ^ids)
+         |> Ash.read(domain: EveDmv.Api, authorize?: false) do
       {:ok, items} ->
         results = Enum.into(items, %{}, fn item -> {item.type_id, item.type_name} end)
         cache_batch_results(type, results)
@@ -565,11 +564,9 @@ defmodule EveDmv.Eve.NameResolver do
   end
 
   defp batch_fetch_from_database(:solar_system, ids) do
-    case Ash.read(SolarSystem,
-           filter: [system_id: [in: ids]],
-           domain: EveDmv.Api,
-           authorize?: false
-         ) do
+    case SolarSystem
+         |> Ash.Query.filter(system_id in ^ids)
+         |> Ash.read(domain: EveDmv.Api, authorize?: false) do
       {:ok, systems} ->
         results = Enum.into(systems, %{}, fn system -> {system.system_id, system.system_name} end)
         cache_batch_results(:solar_system, results)

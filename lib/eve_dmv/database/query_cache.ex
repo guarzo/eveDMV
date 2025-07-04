@@ -41,7 +41,6 @@ defmodule EveDmv.Database.QueryCache do
     Cache.start_link(cache_opts)
   end
 
-
   @doc """
   Get a cached result or compute and cache it if not found.
   """

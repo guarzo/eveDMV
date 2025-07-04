@@ -8,9 +8,11 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
 
   use GenServer
   require Logger
+  require Ash.Query
 
   alias EveDmv.Api
-  alias EveDmv.Intelligence.{ChainConnection, ChainTopology, SystemInhabitant, WandererClient}
+  alias EveDmv.Intelligence.{SystemInhabitant, WandererClient}
+  alias EveDmv.Intelligence.ChainAnalysis.{ChainConnection, ChainTopology}
 
   # Sync every 30 seconds
   @sync_interval_ms 30_000
@@ -229,7 +231,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
 
   defp create_or_update_chain_topology(map_id, corporation_id) do
     # Try to find existing topology
-    case Ash.read!(ChainTopology, domain: Api, filter: [map_id: map_id]) do
+    case ChainTopology |> Ash.Query.filter(map_id == ^map_id) |> Ash.read!(domain: Api) do
       [topology] ->
         # Chain already exists, update monitoring status
         Ash.update!(topology, %{monitoring_enabled: true}, domain: Api)
@@ -256,7 +258,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
   end
 
   defp update_chain_topology(map_id, topology_data) do
-    case Ash.read!(ChainTopology, domain: Api, filter: [map_id: map_id]) do
+    case ChainTopology |> Ash.Query.filter(map_id == ^map_id) |> Ash.read!(domain: Api) do
       [topology] ->
         Ash.update!(
           topology,
@@ -280,7 +282,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
   end
 
   defp update_system_inhabitants(map_id, inhabitants_data) do
-    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
+    case ChainTopology |> Ash.Query.filter(map_id == ^map_id) |> Ash.read(domain: Api) do
       {:ok, [topology]} ->
         # Mark all current inhabitants as departed
         mark_all_departed(topology.id)
@@ -297,13 +299,9 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
 
   defp mark_all_departed(chain_topology_id) do
     {:ok, inhabitants} =
-      Ash.read(SystemInhabitant,
-        filter: [
-          chain_topology_id: chain_topology_id,
-          present: true
-        ],
-        domain: Api
-      )
+      SystemInhabitant
+      |> Ash.Query.filter(chain_topology_id == ^chain_topology_id and present == true)
+      |> Ash.read(domain: Api)
 
     # Bulk update all inhabitants to mark as departed
     departure_time = DateTime.utc_now()
@@ -317,14 +315,12 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
     character_id = Map.get(inhabitant_data, "character_id")
     system_id = Map.get(inhabitant_data, "system_id")
 
-    case Ash.read(SystemInhabitant,
-           filter: [
-             chain_topology_id: chain_topology_id,
-             character_id: character_id,
-             system_id: system_id
-           ],
-           domain: Api
-         ) do
+    case SystemInhabitant
+         |> Ash.Query.filter(
+           chain_topology_id == ^chain_topology_id and character_id == ^character_id and
+             system_id == ^system_id
+         )
+         |> Ash.read(domain: Api) do
       {:ok, [inhabitant]} ->
         # Update existing inhabitant
         Ash.update(
@@ -361,10 +357,9 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
   defp bulk_update_or_create_inhabitants(chain_topology_id, inhabitants_data) do
     # Get all existing inhabitants for this chain
     {:ok, existing} =
-      Ash.read(SystemInhabitant,
-        filter: [chain_topology_id: chain_topology_id],
-        domain: Api
-      )
+      SystemInhabitant
+      |> Ash.Query.filter(chain_topology_id == ^chain_topology_id)
+      |> Ash.read(domain: Api)
 
     existing_map =
       Map.new(existing, fn inhabitant ->
@@ -435,7 +430,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
   end
 
   defp update_chain_connections(map_id, connections_data) do
-    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
+    case ChainTopology |> Ash.Query.filter(map_id == ^map_id) |> Ash.read(domain: Api) do
       {:ok, [topology]} ->
         # Process connections in bulk
         bulk_update_or_create_connections(topology.id, connections_data)
@@ -451,14 +446,12 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
     source_system_id = Map.get(connection_data, "source_system_id")
     target_system_id = Map.get(connection_data, "target_system_id")
 
-    case Ash.read(ChainConnection,
-           filter: [
-             chain_topology_id: chain_topology_id,
-             source_system_id: source_system_id,
-             target_system_id: target_system_id
-           ],
-           domain: Api
-         ) do
+    case ChainConnection
+         |> Ash.Query.filter(
+           chain_topology_id == ^chain_topology_id and source_system_id == ^source_system_id and
+             target_system_id == ^target_system_id
+         )
+         |> Ash.read(domain: Api) do
       {:ok, [connection]} ->
         # Update existing connection
         Ash.update(
@@ -497,10 +490,9 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
   defp bulk_update_or_create_connections(chain_topology_id, connections_data) do
     # Get all existing connections for this chain
     {:ok, existing} =
-      Ash.read(ChainConnection,
-        filter: [chain_topology_id: chain_topology_id],
-        domain: Api
-      )
+      ChainConnection
+      |> Ash.Query.filter(chain_topology_id == ^chain_topology_id)
+      |> Ash.read(domain: Api)
 
     existing_map =
       Map.new(existing, fn conn ->
@@ -582,7 +574,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
     # Extract system and inhabitant updates
     system_data = Map.get(data, "systems", [])
 
-    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
+    case ChainTopology |> Ash.Query.filter(map_id == ^map_id) |> Ash.read(domain: Api) do
       {:ok, [_topology]} ->
         update_system_inhabitants(map_id, system_data)
 
@@ -601,7 +593,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
   defp process_connection_update(map_id, data) do
     Logger.debug("Processing connection update for #{map_id}: #{inspect(data)}")
 
-    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
+    case ChainTopology |> Ash.Query.filter(map_id == ^map_id) |> Ash.read(domain: Api) do
       {:ok, [topology]} ->
         # Update specific connection
         connection_data = Map.get(data, "connection", %{})
@@ -723,7 +715,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
 
   defp handle_system_added(map_id, payload) do
     # Payload example: %{"solar_system_id" => 31000001, "name" => "J123456", "type" => "wormhole", "class" => "C3"}
-    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
+    case ChainTopology |> Ash.Query.filter(map_id == ^map_id) |> Ash.read(domain: Api) do
       {:ok, [topology]} ->
         # Update system count
         Ash.update(
@@ -743,19 +735,15 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
   end
 
   defp handle_system_deleted(map_id, payload) do
-    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
+    case ChainTopology |> Ash.Query.filter(map_id == ^map_id) |> Ash.read(domain: Api) do
       {:ok, [topology]} ->
         # Remove any inhabitants from this system
         system_id = payload["solar_system_id"]
 
         {:ok, inhabitants} =
-          Ash.read(SystemInhabitant,
-            filter: [
-              chain_topology_id: topology.id,
-              system_id: system_id
-            ],
-            domain: Api
-          )
+          SystemInhabitant
+          |> Ash.Query.filter(chain_topology_id == ^topology.id and system_id == ^system_id)
+          |> Ash.read(domain: Api)
 
         # Bulk destroy inhabitants
         if inhabitants != [] do
@@ -783,7 +771,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
 
   defp handle_system_changed(map_id, _payload) do
     # System metadata changed - mark activity
-    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
+    case ChainTopology |> Ash.Query.filter(map_id == ^map_id) |> Ash.read(domain: Api) do
       {:ok, [topology]} ->
         Ash.update(topology, %{last_activity_at: DateTime.utc_now()}, domain: Api)
 
@@ -794,7 +782,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
 
   defp handle_connection_added(map_id, payload) do
     # Payload should contain connection details
-    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
+    case ChainTopology |> Ash.Query.filter(map_id == ^map_id) |> Ash.read(domain: Api) do
       {:ok, [topology]} ->
         # Create or update the connection
         connection_data = %{
@@ -831,20 +819,18 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
   end
 
   defp handle_connection_removed(map_id, payload) do
-    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
+    case ChainTopology |> Ash.Query.filter(map_id == ^map_id) |> Ash.read(domain: Api) do
       {:ok, [topology]} ->
         # Find and remove the connection
         source_id = payload["source_system_id"]
         target_id = payload["target_system_id"]
 
-        case Ash.read(ChainConnection,
-               filter: [
-                 chain_topology_id: topology.id,
-                 source_system_id: source_id,
-                 target_system_id: target_id
-               ],
-               domain: Api
-             ) do
+        case ChainConnection
+             |> Ash.Query.filter(
+               chain_topology_id == ^topology.id and source_system_id == ^source_id and
+                 target_system_id == ^target_id
+             )
+             |> Ash.read(domain: Api) do
           {:ok, [connection]} ->
             Ash.destroy(connection, domain: Api)
 
@@ -871,19 +857,17 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
 
   defp handle_connection_updated(map_id, payload) do
     # Update connection status (mass, time, EOL)
-    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
+    case ChainTopology |> Ash.Query.filter(map_id == ^map_id) |> Ash.read(domain: Api) do
       {:ok, [topology]} ->
         source_id = payload["source_system_id"]
         target_id = payload["target_system_id"]
 
-        case Ash.read(ChainConnection,
-               filter: [
-                 chain_topology_id: topology.id,
-                 source_system_id: source_id,
-                 target_system_id: target_id
-               ],
-               domain: Api
-             ) do
+        case ChainConnection
+             |> Ash.Query.filter(
+               chain_topology_id == ^topology.id and source_system_id == ^source_id and
+                 target_system_id == ^target_id
+             )
+             |> Ash.read(domain: Api) do
           {:ok, [connection]} ->
             Ash.update(
               connection,
@@ -908,7 +892,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
 
   defp handle_signature_added(map_id, _payload) do
     # Mark activity for signature events
-    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
+    case ChainTopology |> Ash.Query.filter(map_id == ^map_id) |> Ash.read(domain: Api) do
       {:ok, [topology]} ->
         Ash.update(topology, %{last_activity_at: DateTime.utc_now()}, domain: Api)
 
@@ -919,7 +903,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
 
   defp handle_signature_removed(map_id, _payload) do
     # Mark activity for signature events
-    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
+    case ChainTopology |> Ash.Query.filter(map_id == ^map_id) |> Ash.read(domain: Api) do
       {:ok, [topology]} ->
         Ash.update(topology, %{last_activity_at: DateTime.utc_now()}, domain: Api)
 
@@ -930,7 +914,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
 
   defp handle_signatures_updated(map_id, _payload) do
     # Mark activity for signature events
-    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
+    case ChainTopology |> Ash.Query.filter(map_id == ^map_id) |> Ash.read(domain: Api) do
       {:ok, [topology]} ->
         Ash.update(topology, %{last_activity_at: DateTime.utc_now()}, domain: Api)
 
@@ -941,7 +925,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
 
   defp handle_map_kill(map_id, payload) do
     # Payload: %{"killmail_id" => 12345678, "system_name" => "J123456", "victim" => %{...}, "value" => 250_000_000}
-    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
+    case ChainTopology |> Ash.Query.filter(map_id == ^map_id) |> Ash.read(domain: Api) do
       {:ok, [topology]} ->
         Ash.update(topology, %{last_activity_at: DateTime.utc_now()}, domain: Api)
 
@@ -1083,10 +1067,9 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
   end
 
   defp find_character_inhabitant(_map_id, character_name) do
-    case Ash.read!(SystemInhabitant,
-           domain: Api,
-           filter: [character_name: character_name, present: true]
-         ) do
+    case SystemInhabitant
+         |> Ash.Query.filter(character_name == ^character_name and present == true)
+         |> Ash.read!(domain: Api) do
       [inhabitant | _] -> {:ok, inhabitant}
       [] -> {:error, :not_found}
     end

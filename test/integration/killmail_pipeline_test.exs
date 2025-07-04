@@ -4,7 +4,6 @@ defmodule EveDmv.Integration.KillmailPipelineTest do
 
   alias EveDmv.Api
   alias EveDmv.Intelligence.CharacterAnalyzer
-  alias EveDmv.Killmails
   alias EveDmv.Killmails.{KillmailEnriched, KillmailPipeline, KillmailRaw, Participant}
 
   require Ash.Query
@@ -345,18 +344,6 @@ defmodule EveDmv.Integration.KillmailPipelineTest do
         "awox" => false
       }
     }
-  end
-
-  defp get_enriched_killmail(killmail_id) do
-    query =
-      KillmailEnriched
-      |> Ash.Query.new()
-      |> Ash.Query.filter(killmail_id == ^killmail_id)
-
-    case Ash.read_one(query, domain: Api) do
-      {:ok, killmail} -> killmail
-      _ -> nil
-    end
   end
 
   defp create_minimum_activity_for_character(character_id) do

@@ -3,7 +3,7 @@ defmodule EveDmv.Intelligence.CorrelationEngineTest do
 
   alias EveDmv.Database.QueryCache
   alias EveDmv.Intelligence.CorrelationEngine
-  alias EveDmv.Intelligence.{CharacterStats, WHVetting}
+  alias EveDmv.Intelligence.CharacterStats
 
   setup do
     # Start QueryCache for this test since it's not started in test environment
@@ -16,7 +16,7 @@ defmodule EveDmv.Intelligence.CorrelationEngineTest do
       character_id = 95_465_499
 
       # Mock character stats
-      character_stats = %CharacterStats{
+      _character_stats = %CharacterStats{
         character_id: character_id,
         character_name: "Test Character",
         dangerous_rating: 8,
@@ -83,9 +83,9 @@ defmodule EveDmv.Intelligence.CorrelationEngineTest do
   describe "private correlation functions" do
     test "threat correlation logic" do
       # Test that correlation functions handle nil inputs gracefully
-      character_analysis = %{dangerous_rating: 9, awox_probability: 0.8}
+      _character_analysis = %{dangerous_rating: 9, awox_probability: 0.8}
 
-      vetting_data = %{
+      _vetting_data = %{
         risk_factors: %{
           "security_flags" => ["high_threat"],
           "behavioral_red_flags" => ["blue_killer"]

@@ -1699,10 +1699,14 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
 
       _ ->
         # Create basic stats if none exist using Ash resource creation
-        case Ash.create(CharacterStats, %{
-               character_id: character_id,
-               character_name: "Unknown"
-             }, domain: EveDmv.Api) do
+        case Ash.create(
+               CharacterStats,
+               %{
+                 character_id: character_id,
+                 character_name: "Unknown"
+               },
+               domain: EveDmv.Api
+             ) do
           {:ok, stats} ->
             stats
 

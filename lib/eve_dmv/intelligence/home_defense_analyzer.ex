@@ -30,6 +30,13 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalyzer do
     end
   end
 
+  @doc """
+  Alias for analyze_corporation/2 for backward compatibility.
+  """
+  def analyze_home_defense(corporation_id, home_system_id) do
+    analyze_corporation(corporation_id, home_system_id: home_system_id)
+  end
+
   defp setup_analysis_configuration(corporation_id, options) do
     Logger.info("Starting home defense analysis for corporation #{corporation_id}")
 

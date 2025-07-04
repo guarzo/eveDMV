@@ -7,9 +7,6 @@ defmodule EveDmvWeb.WHVettingLiveTest do
   import Phoenix.LiveViewTest
   import EveDmv.Factories
 
-  alias EveDmv.Accounts.User
-  alias EveDmv.Intelligence.WHVettingAnalyzer
-
   setup %{conn: conn} do
     # Create authenticated user
     user =
@@ -26,7 +23,7 @@ defmodule EveDmvWeb.WHVettingLiveTest do
   describe "mount/3" do
     @tag :skip
     test "renders vetting interface", %{conn: conn} do
-      {:ok, view, html} = live(conn, ~p"/wh-vetting")
+      {:ok, _view, html} = live(conn, ~p"/wh-vetting")
 
       assert html =~ "Wormhole Vetting Analysis"
       assert html =~ "Enter Character Name"

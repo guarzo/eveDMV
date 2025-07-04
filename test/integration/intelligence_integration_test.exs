@@ -16,7 +16,7 @@ defmodule EveDmv.Integration.IntelligenceIntegrationTest do
     WandererSSE
   }
 
-  alias EveDmv.Killmails.{KillmailEnriched, KillmailPipeline}
+  alias EveDmv.Killmails.KillmailPipeline
 
   @moduletag :integration
   @moduletag timeout: 60_000
@@ -31,7 +31,7 @@ defmodule EveDmv.Integration.IntelligenceIntegrationTest do
       assert {:ok, _} = KillmailPipeline.process_killmail(killmail_data)
 
       # Step 2: Trigger character analysis
-      assert {:ok, _character_stats} = CharacterAnalyzer.analyze_character(character_id)
+      assert {:ok, character_stats} = CharacterAnalyzer.analyze_character(character_id)
 
       # Step 3: Verify intelligence data is generated
       assert character_stats.character_id == character_id
@@ -102,7 +102,7 @@ defmodule EveDmv.Integration.IntelligenceIntegrationTest do
 
       # Create and analyze character
       EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 25)
-      assert {:ok, _character_stats} = CharacterAnalyzer.analyze_character(character_id)
+      assert {:ok, character_stats} = CharacterAnalyzer.analyze_character(character_id)
 
       # Verify data is persisted
       retrieved_stats = CharacterStats.get_by_character_id(character_id)
@@ -347,7 +347,7 @@ defmodule EveDmv.Integration.IntelligenceIntegrationTest do
       # Create consistent test data
       EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 50)
 
-      assert {:ok, _character_stats} = CharacterAnalyzer.analyze_character(character_id)
+      assert {:ok, character_stats} = CharacterAnalyzer.analyze_character(character_id)
 
       # Verify basic consistency
       assert character_stats.character_id == character_id

@@ -1,8 +1,8 @@
 defmodule EveDmv.Intelligence.ChainMonitorTest do
-  use EveDmv.DataCase, async: false
-  use EveDmv.IntelligenceCase
+  use EveDmv.IntelligenceCase, async: false
+  require Ash.Query
 
-  alias EveDmv.Intelligence.ChainMonitor
+  alias EveDmv.Intelligence.ChainAnalysis.ChainMonitor
 
   setup do
     # Ensure the chain monitor is started for testing
@@ -57,10 +57,9 @@ defmodule EveDmv.Intelligence.ChainMonitorTest do
 
       # Verify topology was created
       assert {:ok, topologies} =
-               Ash.read(EveDmv.Intelligence.ChainTopology,
-                 filter: [map_id: map_id],
-                 domain: EveDmv.Api
-               )
+               EveDmv.Intelligence.ChainTopology
+               |> Ash.Query.filter(map_id == ^map_id)
+               |> Ash.read(domain: EveDmv.Api)
 
       assert length(topologies) == 1
       topology = hd(topologies)
@@ -229,10 +228,9 @@ defmodule EveDmv.Intelligence.ChainMonitorTest do
 
       # Verify topology record was created with proper structure
       assert {:ok, topologies} =
-               Ash.read(EveDmv.Intelligence.ChainTopology,
-                 filter: [map_id: map_id],
-                 domain: EveDmv.Api
-               )
+               EveDmv.Intelligence.ChainTopology
+               |> Ash.Query.filter(map_id == ^map_id)
+               |> Ash.read(domain: EveDmv.Api)
 
       assert length(topologies) == 1
       topology = hd(topologies)

@@ -7,6 +7,7 @@
 #   3. Run: ManualTestingDataGenerator.setup_complete_testing_environment()
 
 defmodule ManualTestingDataGenerator do
+  require Ash.Query
   alias EveDmv.Api
   alias EveDmv.Intelligence.CharacterMetrics
   alias EveDmv.Killmails.{KillmailRaw, Participant}
@@ -185,12 +186,10 @@ defmodule ManualTestingDataGenerator do
   def count_recent_killmails(minutes) do
     cutoff = DateTime.add(DateTime.utc_now(), -minutes * 60, :second)
 
-    query = [
-      filter: [killmail_time: [gte: cutoff]],
-      limit: 1000
-    ]
-
-    case Ash.read(KillmailRaw, action: :read, domain: Api, query: query) do
+    case KillmailRaw
+         |> Ash.Query.filter(killmail_time >= ^cutoff)
+         |> Ash.Query.limit(1000)
+         |> Ash.read(domain: Api) do
       {:ok, killmails} -> length(killmails)
       _ -> 0
     end
@@ -411,13 +410,11 @@ defmodule ManualTestingDataGenerator do
   def show_recent_activity(minutes \\ 10) do
     cutoff = DateTime.add(DateTime.utc_now(), -minutes * 60, :second)
 
-    query = [
-      filter: [killmail_time: [gte: cutoff]],
-      sort: [killmail_time: :desc],
-      limit: 20
-    ]
-
-    case Ash.read(KillmailRaw, action: :read, domain: Api, query: query) do
+    case KillmailRaw
+         |> Ash.Query.filter(killmail_time >= ^cutoff)
+         |> Ash.Query.sort(killmail_time: :desc)
+         |> Ash.Query.limit(20)
+         |> Ash.read(domain: Api) do
       {:ok, killmails} ->
         IO.puts("🎯 Recent Killmail Activity (last #{minutes} minutes):")
         IO.puts("Total: #{length(killmails)} killmails")

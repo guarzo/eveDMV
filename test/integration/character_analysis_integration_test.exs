@@ -8,17 +8,12 @@ defmodule EveDmv.Integration.CharacterAnalysisIntegrationTest do
 
   use EveDmv.IntelligenceCase, async: false
 
-  alias EveDmv.Api
-  alias EveDmv.Eve.{CircuitBreaker, EsiClient}
+  alias EveDmv.Eve.CircuitBreaker
 
   alias EveDmv.Intelligence.{
     CharacterAnalyzer,
-    CharacterFormatters,
-    CharacterMetrics,
-    CharacterStats
+    CharacterFormatters
   }
-
-  alias EveDmv.Killmails.{KillmailEnriched, Participant}
 
   @moduletag :integration
   @moduletag timeout: 120_000
@@ -448,7 +443,7 @@ defmodule EveDmv.Integration.CharacterAnalysisIntegrationTest do
     })
   end
 
-  defp get_corporation_analysis(corporation_id) do
+  defp get_corporation_analysis(_corporation_id) do
     # Aggregate analysis for corporation members
     %{
       "member_count" => 5,
@@ -515,7 +510,7 @@ defmodule EveDmv.Integration.CharacterAnalysisIntegrationTest do
     end
   end
 
-  defp create_geographic_activity(character_id, system_id, system_name, activity_count) do
+  defp create_geographic_activity(character_id, system_id, _system_name, activity_count) do
     for _i <- 1..activity_count do
       create(:killmail_raw, %{
         solar_system_id: system_id,

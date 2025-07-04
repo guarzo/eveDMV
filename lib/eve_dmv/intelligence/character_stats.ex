@@ -211,9 +211,7 @@ defmodule EveDmv.Intelligence.CharacterStats do
 
         if character_id do
           # Use the CharacterAnalyzer to recalculate stats
-          case EveDmv.Intelligence.CharacterAnalyzer.analyze_character(
-                 character_id
-               ) do
+          case EveDmv.Intelligence.CharacterAnalyzer.analyze_character(character_id) do
             {:ok, updated_stats} ->
               # Update changeset with fresh statistics
               changeset
@@ -288,11 +286,20 @@ defmodule EveDmv.Intelligence.CharacterStats do
 
       prepare(build(sort: [dangerous_rating: :desc]))
     end
+
+    read :by_corporation do
+      description("Find all characters in a corporation")
+
+      argument(:corporation_id, :integer, allow_nil?: false)
+
+      filter(expr(corporation_id == ^arg(:corporation_id)))
+    end
   end
 
   code_interface do
     define(:get_by_character, action: :by_character, args: [:character_id])
     define(:get_by_character_id, action: :get_by_character_id, args: [:character_id])
+    define(:get_by_corporation, action: :by_corporation, args: [:corporation_id])
     define(:list_dangerous, action: :dangerous_characters)
     define(:refresh, action: :refresh_stats)
   end

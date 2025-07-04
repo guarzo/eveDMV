@@ -50,7 +50,6 @@ defmodule EveDmv.Eve.EsiCache do
     Cache.start_link(cache_opts)
   end
 
-
   # Character cache functions
 
   @doc """

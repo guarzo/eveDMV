@@ -4,13 +4,11 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
   """
   use EveDmv.DataCase, async: true
 
-  alias EveDmv.Intelligence.WHFleetAnalyzer
+  alias EveDmv.Intelligence.WhSpace.FleetAnalyzer, as: WHFleetAnalyzer
   alias EveDmv.TestMocks
 
   # Wormhole type constants for testing
   @c3_static "O477"
-  @c5_static "N432"
-  @c6_static "B274"
 
   describe "analyze_fleet_composition/1" do
     test "analyzes fleet composition with member data" do

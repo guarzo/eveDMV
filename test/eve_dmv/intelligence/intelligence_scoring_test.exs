@@ -1,6 +1,5 @@
 defmodule EveDmv.Intelligence.IntelligenceScoringTest do
-  use EveDmv.DataCase, async: true
-  use EveDmv.IntelligenceCase
+  use EveDmv.IntelligenceCase, async: true
 
   alias EveDmv.Intelligence.IntelligenceScoring
 

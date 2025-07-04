@@ -7,6 +7,7 @@ defmodule EveDmv.Intelligence.ThreatAnalyzer do
   """
 
   require Logger
+  require Ash.Query
   alias EveDmv.Api
   alias EveDmv.Intelligence.{CharacterStats, SystemInhabitant}
 
@@ -103,7 +104,9 @@ defmodule EveDmv.Intelligence.ThreatAnalyzer do
   # Private Functions
 
   defp get_character_stats(character_id) do
-    case Ash.read(CharacterStats, filter: [character_id: character_id], domain: Api) do
+    case CharacterStats
+         |> Ash.Query.filter(character_id == ^character_id)
+         |> Ash.read(domain: Api) do
       {:ok, [stats]} -> stats
       {:ok, []} -> nil
       {:error, _} -> nil

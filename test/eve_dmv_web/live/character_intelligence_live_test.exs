@@ -65,7 +65,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
     end
 
     test "handles invalid character ID", %{conn: conn} do
-      {:ok, view, html} = live(conn, ~p"/intel/999999999")
+      {:ok, view, _html} = live(conn, ~p"/intel/999999999")
 
       :timer.sleep(200)
 

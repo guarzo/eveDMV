@@ -41,7 +41,7 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzerTest do
       assert %{
                total_j_kills: 0,
                total_j_losses: 0,
-               j_space_time_percent: 0.0,
+               j_space_time_percent: +0.0,
                wormhole_systems_visited: [],
                most_active_wh_class: nil
              } = result
@@ -66,7 +66,7 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzerTest do
       assert %{
                total_j_kills: 0,
                total_j_losses: 0,
-               j_space_time_percent: 0.0,
+               j_space_time_percent: +0.0,
                wormhole_systems_visited: [],
                most_active_wh_class: nil
              } = result
@@ -174,7 +174,7 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzerTest do
 
       assert result.eviction_group_detected == false
       assert Enum.empty?(result.known_groups)
-      assert result.confidence_score == 0.0
+      assert result.confidence_score == +0.0
     end
 
     test "handles empty killmail list" do
@@ -182,7 +182,7 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzerTest do
 
       assert result.eviction_group_detected == false
       assert Enum.empty?(result.known_groups)
-      assert result.confidence_score == 0.0
+      assert result.confidence_score == +0.0
     end
   end
 
@@ -232,7 +232,7 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzerTest do
 
       assert Enum.empty?(result.potential_alts)
       assert Enum.empty?(result.shared_systems)
-      assert result.timing_correlation == 0.0
+      assert result.timing_correlation == +0.0
     end
   end
 
@@ -272,7 +272,7 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzerTest do
     test "handles empty killmail list" do
       result = WHVettingAnalyzer.calculate_small_gang_competency([])
 
-      assert result.avg_gang_size == 0.0
+      assert result.avg_gang_size == +0.0
       assert result.preferred_size == "unknown"
       assert result.solo_capability == false
     end

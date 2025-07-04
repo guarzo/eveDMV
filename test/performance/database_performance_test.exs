@@ -5,7 +5,6 @@ defmodule EveDmv.Performance.DatabasePerformanceTest do
   """
   use EveDmv.DataCase, async: false
 
-
   alias EveDmv.{Api, Repo}
   alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Killmails.{KillmailEnriched, KillmailRaw}

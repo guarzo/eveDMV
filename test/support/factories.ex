@@ -162,18 +162,31 @@ defmodule EveDmv.Factories do
   defp insert_into_database(%{killmail_id: _} = killmail_attrs) do
     # Extract required fields for KillmailRaw resource
     # Support both old 'killmail_data' and new 'raw_data' attribute names
-    killmail_data = Map.get(killmail_attrs, :raw_data) || Map.get(killmail_attrs, :killmail_data, %{})
+    killmail_data =
+      Map.get(killmail_attrs, :raw_data) || Map.get(killmail_attrs, :killmail_data, %{})
 
     attrs = %{
       killmail_id: killmail_attrs.killmail_id,
       killmail_time: killmail_attrs.killmail_time,
-      killmail_hash: Map.get(killmail_attrs, :killmail_hash) || get_in(killmail_data, ["zkb", "hash"]) || generate_hash(),
+      killmail_hash:
+        Map.get(killmail_attrs, :killmail_hash) || get_in(killmail_data, ["zkb", "hash"]) ||
+          generate_hash(),
       solar_system_id: killmail_attrs.solar_system_id,
-      victim_character_id: Map.get(killmail_attrs, :victim_character_id) || get_in(killmail_data, ["victim", "character_id"]),
-      victim_corporation_id: Map.get(killmail_attrs, :victim_corporation_id) || get_in(killmail_data, ["victim", "corporation_id"]),
-      victim_alliance_id: Map.get(killmail_attrs, :victim_alliance_id) || get_in(killmail_data, ["victim", "alliance_id"]),
-      victim_ship_type_id: Map.get(killmail_attrs, :victim_ship_type_id) || get_in(killmail_data, ["victim", "ship_type_id"]),
-      attacker_count: Map.get(killmail_attrs, :attacker_count) || length(Map.get(killmail_data, "attackers", [])),
+      victim_character_id:
+        Map.get(killmail_attrs, :victim_character_id) ||
+          get_in(killmail_data, ["victim", "character_id"]),
+      victim_corporation_id:
+        Map.get(killmail_attrs, :victim_corporation_id) ||
+          get_in(killmail_data, ["victim", "corporation_id"]),
+      victim_alliance_id:
+        Map.get(killmail_attrs, :victim_alliance_id) ||
+          get_in(killmail_data, ["victim", "alliance_id"]),
+      victim_ship_type_id:
+        Map.get(killmail_attrs, :victim_ship_type_id) ||
+          get_in(killmail_data, ["victim", "ship_type_id"]),
+      attacker_count:
+        Map.get(killmail_attrs, :attacker_count) ||
+          length(Map.get(killmail_data, "attackers", [])),
       raw_data: killmail_data,
       source: Map.get(killmail_attrs, :source, "test")
     }

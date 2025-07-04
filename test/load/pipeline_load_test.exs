@@ -12,9 +12,7 @@ defmodule EveDmv.Load.PipelineLoadTest do
 
   use EveDmv.DataCase, async: false
 
-
-  alias EveDmv.Killmails.{KillmailPipeline, KillmailRaw, SSEProducer}
-  alias EveDmv.Intelligence.{CharacterAnalyzer, IntelligenceCoordinator}
+  alias EveDmv.Killmails.KillmailPipeline
 
   @moduletag :load_test
   # 10 minutes for load tests
@@ -588,7 +586,7 @@ defmodule EveDmv.Load.PipelineLoadTest do
     spawn(fn -> load_generator_loop_with_delay(config, metrics) end)
   end
 
-  defp load_generator_loop(config, _metrics) do
+  defp load_generator_loop(config, metrics) do
     interval_ms = 1_000 / config.rate_per_second
 
     receive do
@@ -615,7 +613,7 @@ defmodule EveDmv.Load.PipelineLoadTest do
             :ok
         end
 
-        load_generator_loop(config, _metrics)
+        load_generator_loop(config, metrics)
     end
   end
 
