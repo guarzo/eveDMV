@@ -27,7 +27,21 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
       assert is_float(score_data.overall_score)
       assert score_data.overall_score >= 0.0
       assert score_data.overall_score <= 10.0
-      assert score_data.score_grade in ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D", "F"]
+
+      assert score_data.score_grade in [
+               "A+",
+               "A",
+               "A-",
+               "B+",
+               "B",
+               "B-",
+               "C+",
+               "C",
+               "C-",
+               "D",
+               "F"
+             ]
+
       assert is_map(score_data.component_scores)
       assert score_data.scoring_methodology
       assert is_float(score_data.confidence_level)
@@ -44,27 +58,33 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
       EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 3, days_back: 30)
 
       # Create character stats that the scoring functions need with inconsistent data for high variance
-      EveDmv.IntelligenceCase.create_character_stats(character_id, 
-        kill_count: 3, 
+      EveDmv.IntelligenceCase.create_character_stats(character_id,
+        kill_count: 3,
         loss_count: 2,
         # Create inconsistent patterns to increase variance in component scores
-        aggression_index: 1.0,  # Very low
-        avg_gang_size: 1.0,     # Solo player
-        isk_efficiency: 30.0,   # Poor efficiency
-        dangerous_rating: 1     # Low danger
+        # Very low
+        aggression_index: 1.0,
+        # Solo player
+        avg_gang_size: 1.0,
+        # Poor efficiency
+        isk_efficiency: 30.0,
+        # Low danger
+        dangerous_rating: 1
       )
-      
+
       # Create mock analytics data with lower confidence for limited data
       limited_behavioral_analysis = %{
-        confidence_score: 0.2,  # Very low confidence for limited data
+        # Very low confidence for limited data
+        confidence_score: 0.2,
         patterns: %{
-          anomaly_detection: %{anomaly_count: 3},  # More anomalies = lower confidence
+          # More anomalies = lower confidence
+          anomaly_detection: %{anomaly_count: 3},
           activity_rhythm: %{consistency_score: 0.1},
           operational_patterns: %{strategic_thinking: 0.1},
           risk_progression: %{stability_score: 0.1}
         }
       }
-      
+
       limited_threat_assessment = %{
         threat_score: 0.2,
         threat_level: "low",
@@ -73,11 +93,11 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
           tactical_sophistication: 0.2
         }
       }
-      
+
       limited_risk_analysis = %{
         advanced_risk_score: 0.2
       }
-      
+
       Process.put(:"behavioral_analysis_#{character_id}", limited_behavioral_analysis)
       Process.put(:"threat_assessment_#{character_id}", limited_threat_assessment)
       Process.put(:"risk_analysis_#{character_id}", limited_risk_analysis)
@@ -131,7 +151,13 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
       assert fitness_data.recruitment_score <= 10.0
 
       assert is_map(fitness_data.recruitment_recommendation)
-      assert fitness_data.recruitment_recommendation.decision in ["approve", "conditional", "probation", "reject"]
+
+      assert fitness_data.recruitment_recommendation.decision in [
+               "approve",
+               "conditional",
+               "probation",
+               "reject"
+             ]
 
       assert is_map(fitness_data.fitness_components)
       assert is_map(fitness_data.requirement_scores)
@@ -195,7 +221,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
           count: 4,
           role: :mixed
         )
-        
+
         EveDmv.IntelligenceCase.create_character_stats(character_id)
         EveDmv.IntelligenceCase.create_mock_analytics_data(character_id)
       end
@@ -206,7 +232,21 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
       assert is_float(fleet_data.fleet_readiness_score)
       assert fleet_data.fleet_readiness_score >= 0.0
       assert fleet_data.fleet_readiness_score <= 10.0
-      assert fleet_data.fleet_grade in ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D", "F"]
+
+      assert fleet_data.fleet_grade in [
+               "A+",
+               "A",
+               "A-",
+               "B+",
+               "B",
+               "B-",
+               "C+",
+               "C",
+               "C-",
+               "D",
+               "F"
+             ]
+
       assert is_map(fleet_data.fleet_metrics)
       assert fleet_data.character_count == length(character_ids)
       assert is_list(fleet_data.optimization_suggestions)
@@ -252,7 +292,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
         count: 6,
         role: :hunter
       )
-      
+
       EveDmv.IntelligenceCase.create_character_stats(character_id)
 
       assert {:ok, intel_data} =
@@ -261,14 +301,22 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
       assert is_float(intel_data.intelligence_suitability_score)
       assert intel_data.intelligence_suitability_score >= 0.0
       assert intel_data.intelligence_suitability_score <= 10.0
-      assert intel_data.suitability_level in ["highly_suitable", "suitable", "conditionally_suitable", "limited_suitability", "not_suitable"]
+
+      assert intel_data.suitability_level in [
+               "highly_suitable",
+               "suitable",
+               "conditionally_suitable",
+               "limited_suitability",
+               "not_suitable"
+             ]
+
       assert is_map(intel_data.intel_components)
       assert is_list(intel_data.recommended_roles)
       assert is_list(intel_data.training_recommendations)
 
       assert intel_data.security_clearance_level in [
                "secret",
-               "confidential", 
+               "confidential",
                "restricted",
                "public"
              ]
@@ -363,7 +411,11 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
         count: 3,
         days_back: 90
       )
-      EveDmv.IntelligenceCase.create_character_stats(character_id_low, kill_count: 3, loss_count: 2)
+
+      EveDmv.IntelligenceCase.create_character_stats(character_id_low,
+        kill_count: 3,
+        loss_count: 2
+      )
 
       # High activity character
       EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id_high,
@@ -375,7 +427,11 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
         count: 10,
         role: :hunter
       )
-      EveDmv.IntelligenceCase.create_character_stats(character_id_high, kill_count: 25, loss_count: 5)
+
+      EveDmv.IntelligenceCase.create_character_stats(character_id_high,
+        kill_count: 25,
+        loss_count: 5
+      )
 
       assert {:ok, score_low} =
                IntelligenceScoring.calculate_comprehensive_score(character_id_low)
