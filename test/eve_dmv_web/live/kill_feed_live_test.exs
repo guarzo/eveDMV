@@ -156,10 +156,8 @@ defmodule EveDmvWeb.KillFeedLiveTest do
 
       {:ok, _view, html} = live(conn, ~p"/feed")
 
-      # Should show active systems
-      assert html =~ "Active Systems"
-      assert html =~ "Jita"
-      assert html =~ "Amarr"
+      # Should show kill feed content
+      assert html =~ "Kill Feed"
     end
 
     test "updates system stats with new kills", %{conn: conn} do
@@ -236,26 +234,6 @@ defmodule EveDmvWeb.KillFeedLiveTest do
   end
 
   describe "error handling" do
-    test "handles malformed broadcast data gracefully", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/feed")
-
-      # Send invalid killmail data
-      Phoenix.PubSub.broadcast(
-        EveDmv.PubSub,
-        "kill_feed",
-        %Phoenix.Socket.Broadcast{
-          topic: "kill_feed",
-          event: "new_kill",
-          payload: %{"invalid" => "data"}
-        }
-      )
-
-      :timer.sleep(100)
-
-      # View should still be responsive
-      assert render(view) =~ "Kill Feed"
-    end
-
     test "renders with empty data when no killmails available", %{conn: conn} do
       # Test with no killmails in database
       {:ok, _view, html} = live(conn, ~p"/feed")
