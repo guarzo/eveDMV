@@ -109,7 +109,7 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
     # Spawn async analysis to avoid blocking UI
     pid = self()
 
-    Task.start(fn ->
+    Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
       analysis = ThreatAnalyzer.analyze_pilot(character_id)
       send(pid, {:pilot_analysis, character_id, analysis})
     end)

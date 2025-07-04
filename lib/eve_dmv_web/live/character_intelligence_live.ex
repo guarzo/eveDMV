@@ -204,7 +204,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
     current_user_id = get_current_user_character_id(socket.assigns.current_user)
 
     # Start vetting analysis asynchronously
-    Task.start(fn ->
+    Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
       case WHVettingAnalyzer.analyze_character(character_id, current_user_id) do
         {:ok, vetting_record} ->
           # Broadcast update

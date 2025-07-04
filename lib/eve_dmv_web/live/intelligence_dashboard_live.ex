@@ -114,7 +114,7 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
     case Integer.parse(character_id_str) do
       {character_id, ""} ->
         # Start comprehensive analysis asynchronously
-        Task.start(fn ->
+        Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
           case IntelligenceCoordinator.analyze_character_comprehensive(character_id) do
             {:ok, analysis} ->
               # Broadcast update to dashboard

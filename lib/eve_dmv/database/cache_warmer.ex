@@ -61,7 +61,7 @@ defmodule EveDmv.Database.CacheWarmer do
 
   def handle_cast(:warm_cache, state) do
     if state.enabled do
-      Task.start(fn -> perform_warming(self()) end)
+      Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn -> perform_warming(self()) end)
     end
 
     {:noreply, state}
@@ -69,7 +69,9 @@ defmodule EveDmv.Database.CacheWarmer do
 
   def handle_cast({:warm_specific, cache_type, ids}, state) do
     if state.enabled do
-      Task.start(fn -> warm_specific_items(cache_type, ids) end)
+      Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
+        warm_specific_items(cache_type, ids)
+      end)
     end
 
     {:noreply, state}
@@ -81,7 +83,7 @@ defmodule EveDmv.Database.CacheWarmer do
 
   def handle_info(:scheduled_warm, state) do
     if state.enabled do
-      Task.start(fn -> perform_warming(self()) end)
+      Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn -> perform_warming(self()) end)
       schedule_warming()
     end
 

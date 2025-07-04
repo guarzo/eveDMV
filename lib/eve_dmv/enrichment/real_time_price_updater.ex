@@ -80,7 +80,7 @@ defmodule EveDmv.Enrichment.RealTimePriceUpdater do
 
   @impl true
   def handle_cast({:check_prices, killmail_ids}, state) do
-    Task.start(fn ->
+    Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
       check_and_broadcast_prices(killmail_ids)
     end)
 
@@ -103,7 +103,7 @@ defmodule EveDmv.Enrichment.RealTimePriceUpdater do
   @impl true
   def handle_info(:check_recent, state) do
     # Check prices for killmails from the last hour
-    Task.start(fn ->
+    Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
       check_recent_killmails()
     end)
 

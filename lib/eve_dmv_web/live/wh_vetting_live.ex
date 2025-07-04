@@ -73,7 +73,7 @@ defmodule EveDmvWeb.WHVettingLive do
         socket = assign(socket, :analysis_in_progress, true)
 
         # Start vetting analysis asynchronously
-        Task.start(fn ->
+        Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
           send(
             self(),
             {:vetting_complete, character_id,
