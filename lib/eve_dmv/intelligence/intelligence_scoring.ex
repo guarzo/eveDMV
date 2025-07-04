@@ -543,7 +543,8 @@ defmodule EveDmv.Intelligence.IntelligenceScoring do
 
   defp calculate_engagement_frequency(stats) do
     activity = (stats.total_kills || 0) + (stats.total_losses || 0)
-    age_days = max(1, stats.character_age_days || 365)
+    # Use a default age if character_age_days field doesn't exist
+    age_days = max(1, Map.get(stats, :character_age_days, 365))
 
     # Normalize to monthly frequency
     min(1.0, activity / age_days * 30)
@@ -590,7 +591,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring do
 
   defp assess_commitment_level(stats) do
     # Commitment based on character age and activity
-    age_factor = min(1.0, (stats.character_age_days || 365) / 1000.0)
+    age_factor = min(1.0, Map.get(stats, :character_age_days, 365) / 1000.0)
     activity_factor = min(1.0, ((stats.total_kills || 0) + (stats.total_losses || 0)) / 100.0)
 
     (age_factor + activity_factor) / 2.0

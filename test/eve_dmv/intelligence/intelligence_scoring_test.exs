@@ -20,6 +20,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
 
       # Create character stats that the scoring functions need
       EveDmv.IntelligenceCase.create_character_stats(character_id)
+      EveDmv.IntelligenceCase.create_mock_analytics_data(character_id)
 
       assert {:ok, score_data} = IntelligenceScoring.calculate_comprehensive_score(character_id)
 
@@ -190,6 +191,8 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
       # Create data for only some characters
       EveDmv.IntelligenceCase.create_realistic_killmail_set(123_456_789, count: 10)
       EveDmv.IntelligenceCase.create_realistic_killmail_set(987_654_321, count: 8)
+      EveDmv.IntelligenceCase.create_character_stats(123_456_789)
+      EveDmv.IntelligenceCase.create_character_stats(987_654_321)
 
       assert {:ok, fleet_data} =
                IntelligenceScoring.calculate_fleet_readiness_score(character_ids)
@@ -212,6 +215,8 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
         count: 6,
         role: :hunter
       )
+      
+      EveDmv.IntelligenceCase.create_character_stats(character_id)
 
       assert {:ok, intel_data} =
                IntelligenceScoring.calculate_intelligence_suitability(character_id)
@@ -238,6 +243,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
     test "intel components are within valid ranges" do
       character_id = 123_456_789
       EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 10)
+      EveDmv.IntelligenceCase.create_character_stats(character_id)
 
       assert {:ok, intel_data} =
                IntelligenceScoring.calculate_intelligence_suitability(character_id)
@@ -299,6 +305,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
     test "repeated calls return consistent scores for same character" do
       character_id = 123_456_789
       EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id, count: 15)
+      EveDmv.IntelligenceCase.create_character_stats(character_id)
 
       assert {:ok, score_data1} = IntelligenceScoring.calculate_comprehensive_score(character_id)
       assert {:ok, score_data2} = IntelligenceScoring.calculate_comprehensive_score(character_id)
@@ -316,6 +323,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
         count: 3,
         days_back: 90
       )
+      EveDmv.IntelligenceCase.create_character_stats(character_id_low, kill_count: 3, loss_count: 2)
 
       # High activity character
       EveDmv.IntelligenceCase.create_realistic_killmail_set(character_id_high,
@@ -327,6 +335,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
         count: 10,
         role: :hunter
       )
+      EveDmv.IntelligenceCase.create_character_stats(character_id_high, kill_count: 25, loss_count: 5)
 
       assert {:ok, score_low} =
                IntelligenceScoring.calculate_comprehensive_score(character_id_low)
