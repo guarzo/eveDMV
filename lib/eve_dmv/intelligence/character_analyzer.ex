@@ -107,8 +107,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
   # Private implementation functions
 
   defp analyze_character_with_timeout(character_id) do
-    Task.async(fn -> analyze_character(character_id) end)
-    |> Task.await(25_000)
+    analyze_character(character_id)
   rescue
     error ->
       Logger.error("Error analyzing character #{character_id}: #{inspect(error)}")

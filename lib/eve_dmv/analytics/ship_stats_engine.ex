@@ -110,7 +110,9 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
            domain: Api
          ) do
       {:ok, [_ | _] = parts} ->
-        build_ship_metrics(parts)
+        # Enrich participants with gang_size information
+        enriched_parts = enrich_participants_with_gang_size(parts)
+        build_ship_metrics(enriched_parts)
 
       {:ok, []} ->
         %{}
@@ -119,6 +121,43 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
         Logger.error("Failed to fetch ship metrics: #{inspect(reason)}")
         %{}
     end
+  end
+
+  # Enrich participants with gang_size information from killmail data
+  defp enrich_participants_with_gang_size(participants) do
+    # Group participants by killmail to batch lookup attacker counts
+    killmail_groups = Enum.group_by(participants, &{&1.killmail_id, &1.killmail_time})
+
+    # Get attacker counts for each unique killmail
+    attacker_counts = get_attacker_counts_for_killmails(Map.keys(killmail_groups))
+
+    # Add gang_size to each participant based on their killmail's attacker count
+    Enum.flat_map(killmail_groups, fn {killmail_key, parts} ->
+      gang_size = Map.get(attacker_counts, killmail_key, 1)
+      Enum.map(parts, &Map.put(&1, :gang_size, gang_size))
+    end)
+  end
+
+  # Get attacker counts for a list of killmails (excluding victims)
+  defp get_attacker_counts_for_killmails(killmail_keys) do
+    killmail_keys
+    |> Enum.map(fn {killmail_id, killmail_time} ->
+      case Ash.read(Participant,
+             filter: %{
+               killmail_id: killmail_id,
+               killmail_time: killmail_time,
+               is_victim: false
+             },
+             domain: Api
+           ) do
+        {:ok, attackers} ->
+          {{killmail_id, killmail_time}, length(attackers)}
+
+        {:error, _} ->
+          {{killmail_id, killmail_time}, 1}
+      end
+    end)
+    |> Map.new()
   end
 
   # Build ship-level metrics map

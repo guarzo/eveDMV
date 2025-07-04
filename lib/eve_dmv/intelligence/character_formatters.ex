@@ -4,6 +4,7 @@ defmodule EveDmv.Intelligence.CharacterFormatters do
   """
 
   alias EveDmv.Presentation.Formatters
+  alias EveDmv.Utils.MathUtils
 
   def format_analysis_summary(character_stats) do
     %{
@@ -55,7 +56,7 @@ defmodule EveDmv.Intelligence.CharacterFormatters do
     Combat Performance:
     - Kills: #{basic_stats.kills.count} (#{basic_stats.kills.solo} solo)
     - Losses: #{basic_stats.losses.count} (#{basic_stats.losses.solo} solo)
-    - K/D Ratio: #{Float.round(basic_stats.kd_ratio, 2)}
+    - K/D Ratio: #{MathUtils.safe_round(basic_stats.kd_ratio, 2)}
     - ISK Efficiency: #{Formatters.format_percentage(basic_stats.efficiency)}
     - Average Kill Value: #{Formatters.format_isk(basic_stats.kills.average_value)}
     """
@@ -181,10 +182,10 @@ defmodule EveDmv.Intelligence.CharacterFormatters do
     %{
       kills: stats.kills.count,
       losses: stats.losses.count,
-      kd_ratio: Float.round(stats.kd_ratio, 2),
+      kd_ratio: MathUtils.safe_round(stats.kd_ratio, 2),
       efficiency: Formatters.format_percentage(stats.efficiency),
       solo_percentage: Formatters.format_percentage(stats.solo_ratio * 100),
-      avg_gang_size: Float.round(analysis_results.gang_composition.average_gang_size, 1)
+      avg_gang_size: MathUtils.safe_round(analysis_results.gang_composition.average_gang_size, 1)
     }
   end
 
@@ -467,7 +468,7 @@ defmodule EveDmv.Intelligence.CharacterFormatters do
       %{
         name: ship.ship_name,
         usage_count: ship.count,
-        effectiveness: Float.round(ship.effectiveness || 0.0, 1)
+        effectiveness: MathUtils.safe_round(ship.effectiveness || 0.0, 1)
       }
     end)
   end
@@ -488,7 +489,7 @@ defmodule EveDmv.Intelligence.CharacterFormatters do
         ship: ship.ship_name,
         kills: ship.kills,
         losses: ship.losses,
-        effectiveness: Float.round(ship.effectiveness, 1)
+        effectiveness: MathUtils.safe_round(ship.effectiveness, 1)
       }
     end)
   end
@@ -563,7 +564,7 @@ defmodule EveDmv.Intelligence.CharacterFormatters do
       end
 
     %{
-      average_effectiveness: Float.round(avg_effectiveness, 1),
+      average_effectiveness: MathUtils.safe_round(avg_effectiveness, 1),
       best_performing: Enum.take(effectiveness_data, 3),
       worst_performing: effectiveness_data |> Enum.reverse() |> Enum.take(3)
     }

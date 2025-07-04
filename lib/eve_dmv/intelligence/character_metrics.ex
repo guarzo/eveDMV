@@ -8,6 +8,8 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
 
   require Logger
 
+  alias EveDmv.Utils.MathUtils
+
   @doc """
   Calculate all character metrics from killmail data.
 
@@ -933,8 +935,8 @@ defmodule EveDmv.Intelligence.CharacterMetrics do
 
     factors = [
       "High kill count: #{combat_metrics.total_kills}",
-      "Solo capability: #{Float.round(combat_metrics.solo_kill_ratio * 100.0, 1)}%",
-      "K/D ratio: #{if is_float(combat_metrics.kill_death_ratio), do: Float.round(combat_metrics.kill_death_ratio, 2), else: combat_metrics.kill_death_ratio}"
+      "Solo capability: #{MathUtils.safe_round(combat_metrics.solo_kill_ratio * 100.0, 1)}%",
+      "K/D ratio: #{MathUtils.safe_round(combat_metrics.kill_death_ratio, 2)}"
     ]
 
     %{

@@ -431,4 +431,27 @@ defmodule EveDmv.Utils.MathUtils do
       nil -> :maximum
     end
   end
+
+  @doc """
+  Safely round a number to specified decimal places, handling integer inputs.
+
+  Ensures the input is a float before calling Float.round to prevent runtime errors.
+
+  ## Examples
+
+      iex> MathUtils.safe_round(3.14159, 2)
+      3.14
+
+      iex> MathUtils.safe_round(42, 1)
+      42.0
+
+      iex> MathUtils.safe_round(nil, 2)
+      0.0
+  """
+  @spec safe_round(number() | nil, integer()) :: float()
+  def safe_round(nil, _precision), do: 0.0
+  def safe_round(value, _precision) when is_integer(value), do: value * 1.0
+  def safe_round(value, precision) when is_float(value), do: Float.round(value, precision)
+  def safe_round(value, precision) when is_number(value), do: Float.round(value / 1, precision)
+  def safe_round(_value, _precision), do: 0.0
 end

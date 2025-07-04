@@ -14,6 +14,7 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
   alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Intelligence.WhSpace.Vetting, as: WHVetting
   alias EveDmv.Killmails.Participant
+  alias EveDmv.Utils.MathUtils
 
   @doc """
   Analyzes character vetting information for security assessment.
@@ -519,7 +520,7 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
         system_name: system_name || "J#{rem(system_id, 100_000)}",
         activity_count: total_activity,
         months_active: monthly_activity,
-        home_score: Float.round(score, 2)
+        home_score: MathUtils.safe_round(score, 2)
       }
     end)
     |> Enum.sort_by(& &1.home_score, :desc)
@@ -1918,7 +1919,7 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
       %{
         eviction_group_detected: eviction_detected,
         known_groups: detected_groups,
-        confidence_score: Float.round(confidence, 2)
+        confidence_score: MathUtils.safe_round(confidence, 2)
       }
     end
   end
@@ -2172,7 +2173,7 @@ defmodule EveDmv.Intelligence.WHVettingAnalyzer do
     J-Space Experience: #{j_kills} kills, #{j_losses} losses (#{j_time_percent}% of activity)
     Security Risk Score: #{risk_score}/100
 
-    Recommendation: #{String.upcase(rec_decision)} (#{Float.round(rec_confidence * 100)}% confidence)
+    Recommendation: #{String.upcase(rec_decision)} (#{MathUtils.safe_round(rec_confidence * 100, 0)}% confidence)
 
     #{Map.get(recommendation, :reasoning, "No reasoning provided")}
     """
