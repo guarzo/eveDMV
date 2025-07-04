@@ -89,10 +89,6 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
       {:error, reason} ->
         Logger.warning("Failed to process character #{character_id}: #{inspect(reason)}")
         {:error, reason}
-
-      _ ->
-        Logger.warning("Insufficient data for character #{character_id}")
-        {:error, "Insufficient data"}
     end
   rescue
     error ->

@@ -90,10 +90,6 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
       {:error, reason} ->
         Logger.warning("Failed to process ship #{ship_type_id}: #{inspect(reason)}")
         {:error, reason}
-
-      _ ->
-        Logger.warning("Insufficient data for ship #{ship_type_id}")
-        {:error, "Insufficient data"}
     end
   rescue
     error ->
