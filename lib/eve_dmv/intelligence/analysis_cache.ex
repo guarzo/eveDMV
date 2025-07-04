@@ -32,7 +32,7 @@ defmodule EveDmv.Intelligence.AnalysisCache do
     cache_key = {:character_analysis, character_id}
 
     get_or_compute(cache_key, Cache.character_analysis_ttl(), fn ->
-      case EveDmv.Intelligence.CharacterAnalysis.CharacterAnalyzer.analyze_character(character_id) do
+      case EveDmv.Intelligence.CharacterAnalyzer.analyze_character(character_id) do
         {:ok, _result} = success -> success
         error -> error
       end
@@ -47,7 +47,7 @@ defmodule EveDmv.Intelligence.AnalysisCache do
     cache_key = {:vetting_analysis, character_id}
 
     get_or_compute(cache_key, Cache.vetting_analysis_ttl(), fn ->
-      case EveDmv.Intelligence.WhVettingAnalyzer.analyze_character(character_id) do
+      case EveDmv.Intelligence.WHVettingAnalyzer.analyze_character(character_id) do
         {:ok, _result} = success -> success
         error -> error
       end
@@ -74,7 +74,7 @@ defmodule EveDmv.Intelligence.AnalysisCache do
     cache_key = {:threat_analysis, character_id}
 
     get_or_compute(cache_key, Cache.threat_analysis_ttl(), fn ->
-      case EveDmv.Intelligence.ThreatAnalyzer.analyze_threat(character_id) do
+      case EveDmv.Intelligence.ThreatAnalyzer.analyze_pilot(character_id) do
         {:ok, _result} = success -> success
         error -> error
       end
@@ -89,7 +89,15 @@ defmodule EveDmv.Intelligence.AnalysisCache do
     cache_key = {:member_activity, character_id}
 
     get_or_compute(cache_key, Cache.member_activity_ttl(), fn ->
-      case EveDmv.Intelligence.MemberActivityAnalyzer.analyze_member(character_id) do
+      # Member activity analysis requires time period, using last 30 days as default
+      period_start = DateTime.add(DateTime.utc_now(), -30, :day)
+      period_end = DateTime.utc_now()
+
+      case EveDmv.Intelligence.MemberActivityAnalyzer.analyze_member_activity(
+             character_id,
+             period_start,
+             period_end
+           ) do
         {:ok, _result} = success -> success
         error -> error
       end
@@ -104,7 +112,9 @@ defmodule EveDmv.Intelligence.AnalysisCache do
     cache_key = {:home_defense, system_id}
 
     get_or_compute(cache_key, Cache.home_defense_ttl(), fn ->
-      case EveDmv.Intelligence.HomeDefenseAnalyzer.analyze_defense(system_id) do
+      # Home defense analysis requires corporation context - this is a placeholder
+      # In a real scenario, we'd need to determine the corporation from the system
+      case EveDmv.Intelligence.HomeDefenseAnalyzer.analyze_home_defense(nil, system_id) do
         {:ok, _result} = success -> success
         error -> error
       end
@@ -131,7 +141,7 @@ defmodule EveDmv.Intelligence.AnalysisCache do
       missing_ids
       |> Task.async_stream(
         fn id ->
-          case EveDmv.Intelligence.CharacterAnalysis.CharacterAnalyzer.analyze_character(id) do
+          case EveDmv.Intelligence.CharacterAnalyzer.analyze_character(id) do
             {:ok, result} ->
               # Cache the result
               Cachex.put(@cache_name, {:character_analysis, id}, result,

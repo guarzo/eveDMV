@@ -46,6 +46,78 @@ defmodule EveDmv.MixProject do
         plt_add_apps: [:mix, :ex_unit],
         list_unused_filters: true,
         flags: [:error_handling, :underspecs]
+      ],
+      # Documentation configuration
+      docs: [
+        main: "EveDmv",
+        name: "EVE DMV",
+        source_url: "https://github.com/wanderer-industries/eve-dmv",
+        homepage_url: "https://github.com/wanderer-industries/eve-dmv",
+        extras: [
+          "README.md",
+          "CLAUDE.md": [title: "Development Guide"]
+        ],
+        groups_for_modules: [
+          "Intelligence Analysis": [
+            EveDmv.Intelligence,
+            EveDmv.Intelligence.AnalysisCache,
+            EveDmv.Intelligence.IntelligenceCache,
+            EveDmv.Intelligence.IntelligenceCoordinator,
+            EveDmv.Intelligence.CharacterAnalysis,
+            EveDmv.Intelligence.WhSpace,
+            EveDmv.Intelligence.CorrelationEngine
+          ],
+          "Killmail Processing": [
+            EveDmv.Killmails,
+            EveDmv.Killmails.KillmailPipeline,
+            EveDmv.Killmails.SSEProducer,
+            EveDmv.Killmails.MockSSEServer
+          ],
+          "Market Data": [
+            EveDmv.Market,
+            EveDmv.Market.JaniceClient,
+            EveDmv.Market.MutamarketClient,
+            EveDmv.Market.PriceCache,
+            EveDmv.Market.RateLimiter
+          ],
+          "EVE API Integration": [
+            EveDmv.Eve,
+            EveDmv.Eve.EsiClient,
+            EveDmv.Eve.EsiUtils,
+            EveDmv.Eve.NameResolver,
+            EveDmv.Eve.StaticDataLoader
+          ],
+          Configuration: [
+            EveDmv.Config,
+            EveDmv.Config.Cache,
+            EveDmv.Config.Http,
+            EveDmv.Config.RateLimit,
+            EveDmv.Config.CircuitBreaker,
+            EveDmv.Config.Pipeline,
+            EveDmv.Config.Api
+          ],
+          "Database & Resources": [
+            EveDmv.Api,
+            EveDmv.Database,
+            EveDmv.Enrichment,
+            EveDmv.Users,
+            EveDmv.Characters,
+            EveDmv.Corporations
+          ],
+          "Web Interface": [
+            EveDmvWeb,
+            EveDmvWeb.Endpoint,
+            EveDmvWeb.Router,
+            EveDmvWeb.AuthLive,
+            EveDmvWeb.CoreComponents
+          ],
+          Utilities: [
+            EveDmv.Utils,
+            EveDmv.Utils.Cache,
+            EveDmv.Utils.MathUtils,
+            EveDmv.Utils.KillmailUtils
+          ]
+        ]
       ]
     ]
   end
@@ -123,6 +195,8 @@ defmodule EveDmv.MixProject do
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:mix_audit, "~> 2.1", only: [:dev, :test], runtime: false},
       {:excoveralls, "~> 0.18", only: :test},
+      # Documentation
+      {:ex_doc, "~> 0.32", only: :dev, runtime: false},
       # Additional test dependencies for comprehensive testing
       {:bypass, "~> 1.0", only: :test},
       {:mox, "~> 1.0", only: :test},
@@ -159,13 +233,18 @@ defmodule EveDmv.MixProject do
         "deps.audit",
         "compile --warnings-as-errors",
         "credo --strict",
-        "dialyzer"
+        "dialyzer",
+        "docs.check"
       ],
       "quality.fix": [
         "format",
         "deps.clean --unused",
         "deps.get"
-      ]
+      ],
+      # Documentation aliases
+      "docs.check": ["docs"],
+      "docs.build": ["docs"],
+      "docs.open": ["docs", "cmd open doc/index.html"]
     ]
   end
 end

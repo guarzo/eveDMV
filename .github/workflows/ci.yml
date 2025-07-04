@@ -95,6 +95,12 @@ jobs:
     - name: Run Dialyzer
       run: mix dialyzer
 
+    - name: Check for missing @moduledoc attributes
+      run: elixir scripts/check_moduledocs.exs
+      
+    - name: Generate documentation
+      run: mix docs
+
     - name: Setup database
       run: |
         mix ecto.create
