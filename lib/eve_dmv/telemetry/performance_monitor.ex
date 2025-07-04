@@ -149,7 +149,13 @@ defmodule EveDmv.Telemetry.PerformanceMonitor do
         try do
           EveDmv.Telemetry.QueryMonitor.get_performance_analysis()
         rescue
-          _ -> %{error: "Failed to get query analysis"}
+          error in [FunctionClauseError, UndefinedFunctionError, ArgumentError] ->
+            Logger.warning("Query analysis error: #{inspect(error)}")
+            %{error: "Failed to get query analysis"}
+
+          error ->
+            Logger.error("Unexpected error in query analysis: #{inspect(error)}")
+            %{error: "Failed to get query analysis"}
         end
     end
   end
@@ -166,7 +172,13 @@ defmodule EveDmv.Telemetry.PerformanceMonitor do
         try do
           EveDmv.Telemetry.QueryMonitor.get_n_plus_one_alerts()
         rescue
-          _ -> []
+          error in [FunctionClauseError, UndefinedFunctionError, ArgumentError] ->
+            Logger.warning("N+1 detection error: #{inspect(error)}")
+            []
+
+          error ->
+            Logger.error("Unexpected error in N+1 detection: #{inspect(error)}")
+            []
         end
     end
   end
@@ -274,7 +286,13 @@ defmodule EveDmv.Telemetry.PerformanceMonitor do
         }
     end
   rescue
-    _ -> %{error: "Failed to get pool metrics"}
+    error in [Ecto.QueryError, DBConnection.ConnectionError, Postgrex.Error] ->
+      Logger.warning("Database query error in pool metrics: #{inspect(error)}")
+      %{error: "Failed to get pool metrics"}
+
+    error ->
+      Logger.error("Unexpected error in pool metrics: #{inspect(error)}")
+      %{error: "Failed to get pool metrics"}
   end
 
   defp get_cache_metrics do
@@ -643,6 +661,12 @@ defmodule EveDmv.Telemetry.PerformanceMonitor do
       0.0
     end
   rescue
-    _ -> 0.0
+    error in [ArithmeticError, ArgumentError] ->
+      Logger.warning("Arithmetic error in throughput calculation: #{inspect(error)}")
+      0.0
+
+    error ->
+      Logger.error("Unexpected error in throughput calculation: #{inspect(error)}")
+      0.0
   end
 end

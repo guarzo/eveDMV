@@ -666,7 +666,13 @@ defmodule EveDmv.Eve.NameResolver do
 
     {:ok, results}
   rescue
-    _ -> {:error, :parallel_fetch_failed}
+    error in [FunctionClauseError, ArgumentError, RuntimeError] ->
+      Logger.warning("Parallel fetch error: #{inspect(error)}")
+      {:error, :parallel_fetch_failed}
+
+    error ->
+      Logger.error("Unexpected error in parallel fetch: #{inspect(error)}")
+      {:error, :parallel_fetch_failed}
   end
 
   defp bulk_esi_lookup(:alliance, alliance_ids) when length(alliance_ids) <= 50 do
@@ -690,7 +696,13 @@ defmodule EveDmv.Eve.NameResolver do
 
     {:ok, results}
   rescue
-    _ -> {:error, :parallel_fetch_failed}
+    error in [FunctionClauseError, ArgumentError, RuntimeError] ->
+      Logger.warning("Parallel fetch error: #{inspect(error)}")
+      {:error, :parallel_fetch_failed}
+
+    error ->
+      Logger.error("Unexpected error in parallel fetch: #{inspect(error)}")
+      {:error, :parallel_fetch_failed}
   end
 
   # If too many IDs, chunk them appropriately
