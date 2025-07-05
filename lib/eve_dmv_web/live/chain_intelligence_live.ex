@@ -11,13 +11,16 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
 
   alias EveDmv.Api
 
-  alias EveDmv.Intelligence.{
-    ChainConnection,
-    SystemInhabitant,
-    ThreatAnalyzer
-  }
+  alias EveDmv.Intelligence.ChainConnection
+  alias EveDmv.Intelligence.SystemInhabitant
+  alias EveDmv.IntelligenceEngine
 
   alias EveDmv.Intelligence.ChainAnalysis.{ChainMonitor, ChainTopology}
+  
+  # Import reusable components
+  import EveDmvWeb.Components.PageHeaderComponent
+  import EveDmvWeb.Components.StatsGridComponent
+  import EveDmvWeb.Components.EmptyStateComponent
 
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
@@ -111,8 +114,11 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
         pid = self()
 
         Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
-          analysis = ThreatAnalyzer.analyze_pilot(character_id_int)
-          send(pid, {:pilot_analysis, character_id_int, analysis})
+          # Use Intelligence Engine for threat analysis
+          case IntelligenceEngine.analyze(:threat, character_id_int, scope: :basic) do
+            {:ok, analysis} -> send(pid, {:pilot_analysis, character_id_int, analysis})
+            {:error, reason} -> send(pid, {:pilot_analysis_failed, character_id_int, reason})
+          end
         end)
 
         {:noreply, socket}
@@ -126,13 +132,16 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
 
   @impl true
   def handle_info({:pilot_analysis, character_id, analysis}, socket) do
-    # Update the chain data with pilot analysis
+    # Update the chain data with pilot analysis from Intelligence Engine
     chain_data = socket.assigns.chain_data
+
+    # Transform Intelligence Engine result to format expected by UI
+    threat_summary = transform_threat_analysis(analysis)
 
     updated_inhabitants =
       Enum.map(chain_data.inhabitants || [], fn inhabitant ->
         if inhabitant.character_id == character_id do
-          Map.merge(inhabitant, %{threat_analysis: analysis})
+          Map.merge(inhabitant, %{threat_analysis: threat_summary})
         else
           inhabitant
         end
@@ -144,6 +153,18 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
       socket
       |> assign(:chain_data, updated_chain_data)
       |> put_flash(:info, "Pilot analysis complete")
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:pilot_analysis_failed, character_id, reason}, socket) do
+    socket =
+      socket
+      |> put_flash(
+        :error,
+        "Pilot analysis failed for character #{character_id}: #{inspect(reason)}"
+      )
 
     {:noreply, socket}
   end
@@ -184,6 +205,34 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
   end
 
   # Private Functions
+
+  defp transform_threat_analysis(intelligence_result) do
+    # Transform Intelligence Engine threat analysis to format expected by chain UI
+    threat_data = get_in(intelligence_result, [:analysis, :vulnerability_scan]) || %{}
+
+    # Extract key threat metrics
+    %{
+      threat_level: determine_threat_level(threat_data),
+      risk_score: Map.get(threat_data, :risk_score, 0),
+      eviction_group: Map.get(threat_data, :eviction_group_member, false),
+      known_hostile: Map.get(threat_data, :known_hostile, false),
+      suspicious_activity: Map.get(threat_data, :suspicious_activity, false),
+      last_analysis: intelligence_result.metadata.generated_at
+    }
+  end
+
+  defp determine_threat_level(threat_data) do
+    risk_score = Map.get(threat_data, :risk_score, 0)
+
+    cond do
+      Map.get(threat_data, :known_hostile, false) -> :hostile
+      Map.get(threat_data, :eviction_group_member, false) -> :hostile
+      risk_score >= 70 -> :hostile
+      risk_score >= 40 -> :neutral
+      risk_score >= 20 -> :friendly
+      true -> :unknown
+    end
+  end
 
   defp load_user_chains(socket) do
     user = socket.assigns.current_user

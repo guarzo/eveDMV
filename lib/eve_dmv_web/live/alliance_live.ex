@@ -9,6 +9,12 @@ defmodule EveDmvWeb.AllianceLive do
   use EveDmvWeb, :live_view
   alias EveDmv.Api
   alias EveDmv.Killmails.Participant
+  
+  # Import reusable components
+  import EveDmvWeb.Components.PageHeaderComponent
+  import EveDmvWeb.Components.StatsGridComponent
+  import EveDmvWeb.Components.ErrorStateComponent
+  import EveDmvWeb.Components.EmptyStateComponent
 
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})

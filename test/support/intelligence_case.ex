@@ -21,7 +21,7 @@ defmodule EveDmv.IntelligenceCase do
         WHFleetAnalyzer
       }
 
-      alias EveDmv.Intelligence.WHVettingAnalyzer
+      alias EveDmv.Intelligence.Analyzers.WHVettingAnalyzer
     end
   end
 

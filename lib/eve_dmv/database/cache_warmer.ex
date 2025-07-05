@@ -12,7 +12,8 @@ defmodule EveDmv.Database.CacheWarmer do
 
   alias EveDmv.Api
   alias EveDmv.Database.QueryCache
-  alias EveDmv.Intelligence.{CharacterAnalyzer, CharacterStats}
+  alias EveDmv.IntelligenceEngine
+  alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Killmails.KillmailEnriched
   alias EveDmv.Eve.{ItemType, SolarSystem}
 
@@ -305,7 +306,7 @@ defmodule EveDmv.Database.CacheWarmer do
       QueryCache.get_or_compute(
         cache_key,
         fn ->
-          case CharacterAnalyzer.analyze_character(character_id) do
+          case IntelligenceEngine.analyze(:character, character_id, scope: :basic) do
             {:ok, analysis} -> analysis
             _ -> nil
           end
@@ -347,7 +348,7 @@ defmodule EveDmv.Database.CacheWarmer do
       QueryCache.get_or_compute(
         cache_key,
         fn ->
-          case CharacterAnalyzer.analyze_character(character_id) do
+          case IntelligenceEngine.analyze(:character, character_id, scope: :basic) do
             {:ok, analysis} -> analysis
             _ -> nil
           end

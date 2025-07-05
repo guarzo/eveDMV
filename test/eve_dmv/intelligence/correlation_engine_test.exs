@@ -3,7 +3,7 @@ defmodule EveDmv.Intelligence.CorrelationEngineTest do
 
   alias EveDmv.Database.QueryCache
   alias EveDmv.Intelligence.CharacterStats
-  alias EveDmv.Intelligence.CorrelationEngine
+  alias EveDmv.Intelligence.Core.CorrelationEngine
   alias EveDmv.Intelligence.WHVetting
 
   setup do

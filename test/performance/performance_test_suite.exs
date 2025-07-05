@@ -14,7 +14,7 @@ defmodule EveDmv.Performance.PerformanceTestSuite do
 
   alias EveDmv.Eve.CircuitBreaker
   alias EveDmv.Intelligence.CharacterAnalyzer
-  alias EveDmv.Intelligence.CharacterMetrics
+  alias EveDmv.Intelligence.Metrics.CharacterMetrics
   alias EveDmv.Killmails.{KillmailEnriched, KillmailPipeline}
   alias EveDmv.Market.PriceService
 

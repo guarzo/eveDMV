@@ -61,12 +61,9 @@ defmodule EveDmv.Intelligence.AnalysisWorker do
     task =
       Task.async(fn ->
         try do
-          # Use the telemetry wrapper if available, otherwise call analyze directly
-          if function_exported?(analyzer_module, :analyze_with_telemetry, 2) do
-            analyzer_module.analyze_with_telemetry(entity_id, opts)
-          else
-            analyzer_module.analyze(entity_id, opts)
-          end
+          # All analyzers now implement the Intelligence.Analyzer behavior
+          # Use the standardized behavior interface with built-in telemetry
+          analyzer_module.analyze_with_telemetry(entity_id, opts)
         rescue
           error ->
             Logger.error("Analysis task #{task_id} failed with error: #{inspect(error)}")
@@ -102,6 +99,8 @@ defmodule EveDmv.Intelligence.AnalysisWorker do
       {:ok, analysis_result} ->
         Logger.info("Analysis task #{task_id} completed successfully in #{duration_ms}ms")
 
+        # Analysis telemetry is now handled by the behavior interface
+        # Worker-level telemetry for task management
         :telemetry.execute(
           [:eve_dmv, :intelligence, :analysis_worker, :success],
           %{duration_ms: duration_ms},
@@ -118,6 +117,8 @@ defmodule EveDmv.Intelligence.AnalysisWorker do
       {:error, reason} ->
         Logger.error("Analysis task #{task_id} failed after #{duration_ms}ms: #{inspect(reason)}")
 
+        # Analysis telemetry is now handled by the behavior interface
+        # Worker-level telemetry for task management
         :telemetry.execute(
           [:eve_dmv, :intelligence, :analysis_worker, :error],
           %{duration_ms: duration_ms},

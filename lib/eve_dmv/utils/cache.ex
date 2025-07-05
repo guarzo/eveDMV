@@ -2,19 +2,53 @@ defmodule EveDmv.Utils.Cache do
   @moduledoc """
   Unified caching module using ETS for various caching needs.
 
-  This module replaces multiple GenServer-based caches with a simple, 
-  efficient ETS-based implementation. It supports:
-  - TTL-based expiration
-  - Pattern-based invalidation
+  This module provides a single interface for all caching in the EVE DMV application,
+  supporting three specialized cache types:
+  - :hot_data - Fast access for frequently used data (characters, systems, items)
+  - :api_responses - External API responses with longer TTL (ESI, Janice, Mutamarket)
+  - :analysis - Intelligence analysis results with domain-specific TTL
+
+  Features:
+  - TTL-based expiration with per-cache-type defaults
+  - Pattern-based invalidation with wildcard support
   - Size limits with FIFO eviction
   - Multiple named caches
+  - Telemetry integration for monitoring
+  - Bulk operations for performance
   """
 
   require Logger
 
-  # 5 minutes
+  # Cache type defaults
+  @cache_type_defaults %{
+    hot_data: %{
+      # 30 minutes
+      ttl_ms: 30 * 60 * 1000,
+      # Large for frequently accessed data
+      max_size: 50_000,
+      # 5 minutes
+      cleanup_interval_ms: 5 * 60 * 1000
+    },
+    api_responses: %{
+      # 24 hours
+      ttl_ms: 24 * 60 * 60 * 1000,
+      # Medium for API responses
+      max_size: 25_000,
+      # 30 minutes
+      cleanup_interval_ms: 30 * 60 * 1000
+    },
+    analysis: %{
+      # 12 hours
+      ttl_ms: 12 * 60 * 60 * 1000,
+      # Smaller for analysis results
+      max_size: 10_000,
+      # 1 hour
+      cleanup_interval_ms: 60 * 60 * 1000
+    }
+  }
+
+  # Legacy defaults for backward compatibility
   @default_ttl_ms 5 * 60 * 1000
-  # 1 minute
   @cleanup_interval_ms 60 * 1000
   @default_max_size 1000
 
@@ -60,6 +94,32 @@ defmodule EveDmv.Utils.Cache do
       type: :worker,
       restart: :permanent
     }
+  end
+
+  @doc """
+  Start cache with cache type defaults.
+
+  Cache types:
+  - :hot_data - Fast access for frequently used data 
+  - :api_responses - External API responses with longer TTL
+  - :analysis - Intelligence analysis results
+  """
+  def start_cache_type(cache_type, name, opts \\ []) do
+    defaults = Map.get(@cache_type_defaults, cache_type, %{})
+
+    cache_opts = [
+      name: name,
+      ttl_ms: Keyword.get(opts, :ttl_ms, defaults[:ttl_ms] || @default_ttl_ms),
+      max_size: Keyword.get(opts, :max_size, defaults[:max_size] || @default_max_size),
+      cleanup_interval_ms:
+        Keyword.get(
+          opts,
+          :cleanup_interval_ms,
+          defaults[:cleanup_interval_ms] || @cleanup_interval_ms
+        )
+    ]
+
+    start_link(cache_opts)
   end
 
   @doc """
@@ -263,7 +323,13 @@ defmodule EveDmv.Utils.Cache do
   end
 
   defp track_cache_access(cache_name, type) do
-    # Integration point for telemetry if needed
+    # Telemetry integration
+    :telemetry.execute(
+      [:eve_dmv, :cache, :access],
+      %{count: 1},
+      %{cache_name: cache_name, type: type}
+    )
+
     Logger.debug("Cache #{cache_name} #{type}")
   end
 
@@ -307,6 +373,13 @@ defmodule EveDmv.Utils.Cache do
       )
 
     if expired_count > 0 do
+      # Telemetry for cleanup
+      :telemetry.execute(
+        [:eve_dmv, :cache, :cleanup],
+        %{expired_count: expired_count},
+        %{table_name: table_name}
+      )
+
       Logger.info("Cleaned up #{expired_count} expired entries from #{table_name}")
     end
   rescue

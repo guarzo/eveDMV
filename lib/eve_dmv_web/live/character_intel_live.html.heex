@@ -1,18 +1,10 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-  <%= if @loading do %>
-    <div class="flex items-center justify-center h-64">
-      <div class="text-center">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4">
-        </div>
-        <p class="text-gray-500">Analyzing character intelligence...</p>
-      </div>
-    </div>
-  <% else %>
-    <%= if @error do %>
-      <div class="bg-red-900/20 border border-red-500 rounded-lg p-4 mb-6">
-        <p class="text-red-400">{@error}</p>
-      </div>
-    <% else %>
+  <.loading_state :if={@loading} message="Analyzing character intelligence..." />
+  
+  <%= if !@loading do %>
+    <.error_state :if={@error} message={@error} />
+    
+    <%= if !@error do %>
       <%= if Map.get(@stats, :no_killmail_data, false) do %>
         <!-- No Killmail Data Notice -->
         <div class="bg-yellow-900/20 border border-yellow-500 rounded-lg p-4 mb-6">
@@ -23,130 +15,47 @@
       <% end %>
       
 <!-- Character Header -->
-      <div class="bg-gray-800 rounded-lg p-6 mb-6">
-        <div class="flex items-start justify-between">
-          <div>
-            <h1 class="text-3xl font-bold text-white mb-2">
-              {@stats.character_name}
-            </h1>
-            <div class="text-gray-400">
-              <span class="text-white">{@stats.corporation_name || "Unknown Corp"}</span>
-              <%= if @stats.alliance_name do %>
-                <span class="mx-2">|</span>
-                <span class="text-white">{@stats.alliance_name}</span>
-              <% end %>
-            </div>
-            
-<!-- Quick Stats -->
-            <div class="mt-4 flex flex-wrap gap-6">
-              <div>
-                <span class="text-gray-500 text-sm">Danger Rating</span>
-                <div class={"text-2xl font-bold #{danger_color(@stats.dangerous_rating)}"}>
-                  {String.duplicate("★", @stats.dangerous_rating)}{String.duplicate(
-                    "☆",
-                    5 - @stats.dangerous_rating
-                  )}
-                </div>
-              </div>
-              <div>
-                <span class="text-gray-500 text-sm">K/D Ratio</span>
-                <div class="text-2xl font-bold text-white">{@stats.kill_death_ratio}</div>
-              </div>
-              <div>
-                <span class="text-gray-500 text-sm">ISK Efficiency</span>
-                <div class="text-2xl font-bold text-white">{@stats.isk_efficiency}%</div>
-              </div>
-              <div>
-                <span class="text-gray-500 text-sm">Total Kills</span>
-                <div class="text-2xl font-bold text-white">{@stats.total_kills}</div>
-              </div>
-            </div>
+      <.page_header 
+        title={@stats.character_name}
+        subtitle={"#{@stats.corporation_name || "Unknown Corp"}#{if @stats.alliance_name, do: " | #{@stats.alliance_name}", else: ""}"}
+      >
+        <:action>
+          <button phx-click="refresh" class="btn btn-primary">
+            🔄 Refresh Intel
+          </button>
+        </:action>
+      </.page_header>
+      
+      <!-- Quick Stats -->
+      <.stats_grid class="mb-6">
+        <:stat icon="⚠️" label="Danger Rating" format="custom">
+          <div class={"text-2xl font-bold #{danger_color(@stats.dangerous_rating)}"}>
+            {String.duplicate("★", @stats.dangerous_rating)}{String.duplicate(
+              "☆",
+              5 - @stats.dangerous_rating
+            )}
           </div>
-
-          <div class="text-right">
-            <button phx-click="refresh" class="btn btn-primary mb-2">
-              🔄 Refresh Intel
-            </button>
-            <div class="text-xs text-gray-500">
-              Last updated: {Calendar.strftime(
-                @stats.last_calculated_at || DateTime.utc_now(),
-                "%Y-%m-%d %H:%M"
-              )}
-            </div>
-          </div>
-        </div>
+        </:stat>
+        <:stat icon="📊" label="K/D Ratio" value={@stats.kill_death_ratio} />
+        <:stat icon="💰" label="ISK Efficiency" value={"#{@stats.isk_efficiency}%"} color="text-green-400" />
+        <:stat icon="🎯" label="Total Kills" value={@stats.total_kills} format="number" />
+      </.stats_grid>
+      
+      <div class="text-xs text-gray-500 mb-6">
+        Last updated: {Calendar.strftime(
+          @stats.last_calculated_at || DateTime.utc_now(),
+          "%Y-%m-%d %H:%M"
+        )}
       </div>
       
-<!-- Navigation Tabs -->
-      <div class="border-b border-gray-700 mb-6">
-        <nav class="-mb-px flex space-x-8">
-          <button
-            phx-click="change_tab"
-            phx-value-tab="overview"
-            class={[
-              "whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm",
-              if(@tab == :overview,
-                do: "border-blue-500 text-blue-500",
-                else: "border-transparent text-gray-400 hover:text-gray-300"
-              )
-            ]}
-          >
-            Overview
-          </button>
-          <button
-            phx-click="change_tab"
-            phx-value-tab="ships"
-            class={[
-              "whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm",
-              if(@tab == :ships,
-                do: "border-blue-500 text-blue-500",
-                else: "border-transparent text-gray-400 hover:text-gray-300"
-              )
-            ]}
-          >
-            Ships & Fits
-          </button>
-          <button
-            phx-click="change_tab"
-            phx-value-tab="associates"
-            class={[
-              "whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm",
-              if(@tab == :associates,
-                do: "border-blue-500 text-blue-500",
-                else: "border-transparent text-gray-400 hover:text-gray-300"
-              )
-            ]}
-          >
-            Associates
-          </button>
-          <button
-            phx-click="change_tab"
-            phx-value-tab="geography"
-            class={[
-              "whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm",
-              if(@tab == :geography,
-                do: "border-blue-500 text-blue-500",
-                else: "border-transparent text-gray-400 hover:text-gray-300"
-              )
-            ]}
-          >
-            Geography
-          </button>
-          <button
-            phx-click="change_tab"
-            phx-value-tab="weaknesses"
-            class={[
-              "whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm",
-              if(@tab == :weaknesses,
-                do: "border-blue-500 text-blue-500",
-                else: "border-transparent text-gray-400 hover:text-gray-300"
-              )
-            ]}
-          >
-            Weaknesses
-          </button>
-        </nav>
-      </div>
+      <!-- Navigation Tabs -->
+      <.tab_navigation current_tab={@tab} on_change="change_tab">
+        <:tab key="overview" label="Overview" />
+        <:tab key="ships" label="Ships & Fits" />
+        <:tab key="associates" label="Associates" />
+        <:tab key="geography" label="Geography" />
+        <:tab key="weaknesses" label="Weaknesses" />
+      </.tab_navigation>
       
 <!-- Tab Content -->
       <div class="space-y-6">

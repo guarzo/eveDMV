@@ -63,6 +63,29 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
     {:ok, results}
   end
 
+  @doc """
+  Get cached killmail count for a character.
+
+  Returns the count of participants for this character from cached data.
+  """
+  @spec get_cached_killmail_count(integer()) :: integer()
+  def get_cached_killmail_count(character_id) when is_integer(character_id) do
+    # Query participant count for this character
+    case Ash.read(Participant,
+           actor: nil,
+           filter: [character_id: character_id],
+           action: :read,
+           domain: Api
+         ) do
+      {:ok, participants} when is_list(participants) -> length(participants)
+      {:ok, %{results: results}} -> length(results)
+      {:ok, page} when is_map(page) -> Map.get(page, :count, 0)
+      _ -> 0
+    end
+  rescue
+    _ -> 0
+  end
+
   # Private functions
 
   defp build_url(character_id) do

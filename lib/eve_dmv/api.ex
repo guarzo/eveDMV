@@ -29,9 +29,9 @@ defmodule EveDmv.Api do
     resource(EveDmv.Intelligence.ChainAnalysis.ChainTopology)
     resource(EveDmv.Intelligence.SystemInhabitant)
     resource(EveDmv.Intelligence.ChainAnalysis.ChainConnection)
-    resource(EveDmv.Intelligence.WhSpace.Vetting)
+    resource(EveDmv.Intelligence.Wormhole.Vetting)
     resource(EveDmv.Intelligence.HomeDefenseAnalytics)
-    resource(EveDmv.Intelligence.WhSpace.FleetComposition)
+    resource(EveDmv.Intelligence.Wormhole.FleetComposition)
     resource(EveDmv.Intelligence.MemberActivityIntelligence)
 
     # Surveillance profiles

@@ -2,33 +2,27 @@ defmodule EveDmv.Market.PriceCache do
   @moduledoc """
   Market price cache adapter using the unified cache system.
 
-  This module maintains the same interface as before but delegates
-  to the unified cache implementation.
+  This module provides a backward-compatible interface for price caching
+  while using the new unified cache system with the :api_responses cache type.
   """
 
-  alias EveDmv.Utils.Cache
+  alias EveDmv.Cache
 
-  @cache_name :eve_price_cache
   @default_ttl_hours 24
 
   @doc """
   Start the price cache.
+
+  This is now a no-op since the unified cache system handles initialization.
   """
   def start_link(_opts) do
-    cache_opts = [
-      name: @cache_name,
-      ttl_ms: get_ttl_ms(),
-      # Prices for up to 10k items
-      max_size: 10_000,
-      # 1 hour
-      cleanup_interval_ms: 60 * 60 * 1000
-    ]
-
-    Cache.start_link(cache_opts)
+    {:ok, spawn(fn -> :ok end)}
   end
 
   @doc """
   Child specification for supervision tree.
+
+  This is now a no-op since the unified cache system handles supervision.
   """
   def child_spec(opts) do
     %{
@@ -44,7 +38,7 @@ defmodule EveDmv.Market.PriceCache do
   """
   @spec get_item(integer()) :: {:ok, map()} | :miss
   def get_item(type_id) do
-    Cache.get(@cache_name, type_id)
+    Cache.get_price_data(type_id)
   end
 
   @doc """
@@ -52,15 +46,18 @@ defmodule EveDmv.Market.PriceCache do
   """
   @spec get_items([integer()]) :: {map(), [integer()]}
   def get_items(type_ids) do
-    {found, missing} = Cache.get_many(@cache_name, type_ids)
+    keys = Enum.map(type_ids, &{:price, &1})
+    {found, missing_keys} = Cache.get_many(:api_responses, keys)
 
     # Convert keys to strings to match original interface
     string_found =
       found
-      |> Enum.map(fn {type_id, value} ->
+      |> Enum.map(fn {{:price, type_id}, value} ->
         {Integer.to_string(type_id), value}
       end)
       |> Enum.into(%{})
+
+    missing = Enum.map(missing_keys, fn {:price, type_id} -> type_id end)
 
     {string_found, missing}
   end
@@ -70,7 +67,7 @@ defmodule EveDmv.Market.PriceCache do
   """
   @spec put_item(integer(), map()) :: :ok
   def put_item(type_id, price_data) do
-    Cache.put(@cache_name, type_id, price_data, ttl_ms: get_ttl_ms())
+    Cache.put_price_data(type_id, price_data)
   end
 
   @doc """
@@ -86,10 +83,10 @@ defmodule EveDmv.Market.PriceCache do
             id when is_integer(id) -> id
           end
 
-        {type_id, price_data}
+        {{:price, type_id}, price_data}
       end)
 
-    Cache.put_many(@cache_name, entries, ttl_ms: get_ttl_ms())
+    Cache.put_many(:api_responses, entries, ttl_ms: get_ttl_ms())
   end
 
   @doc """
@@ -97,7 +94,8 @@ defmodule EveDmv.Market.PriceCache do
   """
   @spec clear() :: :ok
   def clear do
-    Cache.clear(@cache_name)
+    Cache.invalidate_pattern(:api_responses, "price_*")
+    :ok
   end
 
   @doc """
@@ -109,7 +107,7 @@ defmodule EveDmv.Market.PriceCache do
           ttl_hours: number()
         }
   def stats do
-    cache_stats = Cache.stats(@cache_name)
+    cache_stats = Cache.stats(:api_responses)
     Map.put(cache_stats, :ttl_hours, get_ttl_hours())
   end
 

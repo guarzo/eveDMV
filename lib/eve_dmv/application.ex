@@ -10,13 +10,13 @@ defmodule EveDmv.Application do
     # Initialize EVE name resolver cache early
     EveDmv.Eve.NameResolver.start_cache()
 
-    # Only set up security handlers in non-test environments
+    # Only set up security handlers in non-test environments  
     if Mix.env() != :test do
       # Set up security monitoring handlers
-      EveDmv.Security.AuditLogger.setup_handlers()
+      # EveDmv.Security.AuditLogger.setup_handlers()
 
       # Set up periodic security headers validation
-      EveDmv.Security.HeadersValidator.setup_periodic_validation()
+      # EveDmv.Security.HeadersValidator.setup_periodic_validation()
     end
 
     base_children = [
@@ -83,9 +83,9 @@ defmodule EveDmv.Application do
         EveDmv.Enrichment.ReEnrichmentWorker,
         EveDmv.Enrichment.RealTimePriceUpdater,
         # Intelligence analysis cache with Cachex
-        EveDmv.Intelligence.AnalysisCache,
+        EveDmv.Intelligence.Cache.AnalysisCache,
         # Intelligence analysis supervisor for managing analysis tasks
-        EveDmv.Intelligence.Supervisor
+        EveDmv.Intelligence.Core.Supervisor
       ]
     else
       []

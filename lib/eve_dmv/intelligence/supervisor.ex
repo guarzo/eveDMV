@@ -1,143 +1,244 @@
 defmodule EveDmv.Intelligence.Supervisor do
   @moduledoc """
-  Supervisor for intelligence analysis operations.
+  Supervisor for the Intelligence system.
 
-  Manages analysis jobs using DynamicSupervisor to allow for
-  concurrent analysis tasks with proper supervision and fault tolerance.
+  Manages all intelligence-related processes including cache workers,
+  analysis task supervisors, and monitoring processes.
+
+  Provides fault tolerance and process lifecycle management for
+  the unified intelligence analyzer architecture.
   """
 
   use Supervisor
-
   require Logger
 
-  alias EveDmv.Intelligence.{AnalysisWorker, TaskRegistry}
-
+  @doc """
+  Start the Intelligence supervisor.
+  """
   def start_link(opts \\ []) do
     Supervisor.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
   @impl true
   def init(_opts) do
-    children = [
-      # Registry for tracking analysis tasks
-      {Registry, keys: :unique, name: TaskRegistry},
+    Logger.info("Starting Intelligence system supervisor")
 
-      # DynamicSupervisor for analysis workers
-      {DynamicSupervisor, strategy: :one_for_one, name: EveDmv.Intelligence.AnalysisSupervisor}
+    children = [
+      # Intelligence cache for analyzer results
+      {EveDmv.Intelligence.Cache.IntelligenceCache, []},
+
+      # Task supervisor for concurrent analysis operations
+      {Task.Supervisor, name: EveDmv.Intelligence.TaskSupervisor},
+
+      # Dynamic supervisor for analyzer processes
+      {DynamicSupervisor,
+       name: EveDmv.Intelligence.AnalyzerSupervisor, strategy: :one_for_one, max_children: 50},
+
+      # Telemetry reporter for intelligence metrics
+      {EveDmv.Intelligence.TelemetryReporter, []},
+
+      # Cache cleanup worker
+      {EveDmv.Intelligence.CacheCleanupWorker, []},
+
+      # Analysis scheduler for background tasks
+      {EveDmv.Intelligence.AnalysisScheduler, []}
     ]
 
-    Supervisor.init(children, strategy: :one_for_one)
+    # Supervisor strategy: restart failed processes but don't restart too frequently
+    opts = [
+      strategy: :one_for_one,
+      max_restarts: 5,
+      max_seconds: 60
+    ]
+
+    Supervisor.init(children, opts)
   end
 
   @doc """
-  Start a supervised analysis task.
+  Start an analyzer process for a specific entity.
 
-  Returns {:ok, pid} if the task starts successfully, {:error, reason} otherwise.
+  Returns {:ok, pid} or {:error, reason}
   """
-  def start_analysis_task(analyzer_module, entity_id, opts \\ %{}) do
-    task_id = generate_task_id(analyzer_module, entity_id)
+  def start_analyzer(analyzer_module, entity_id, opts \\ %{}) do
+    child_spec = %{
+      id: {analyzer_module, entity_id},
+      start: {analyzer_module, :start_link, [entity_id, opts]},
+      restart: :temporary,
+      type: :worker
+    }
 
-    case Registry.lookup(TaskRegistry, task_id) do
-      [] ->
-        # No existing task, start a new one
-        worker_spec = {AnalysisWorker, {analyzer_module, entity_id, opts, task_id}}
-
-        case DynamicSupervisor.start_child(EveDmv.Intelligence.AnalysisSupervisor, worker_spec) do
-          {:ok, pid} ->
-            Logger.info("Started analysis task #{task_id} with pid #{inspect(pid)}")
-            {:ok, pid}
-
-          {:error, reason} = error ->
-            Logger.error("Failed to start analysis task #{task_id}: #{inspect(reason)}")
-            error
-        end
-
-      [{pid, _}] ->
-        # Task already running
-        Logger.debug("Analysis task #{task_id} already running with pid #{inspect(pid)}")
+    case DynamicSupervisor.start_child(EveDmv.Intelligence.AnalyzerSupervisor, child_spec) do
+      {:ok, pid} ->
+        Logger.debug("Started analyzer #{analyzer_module} for entity #{entity_id}")
         {:ok, pid}
+
+      {:error, {:already_started, pid}} ->
+        Logger.debug("Analyzer #{analyzer_module} for entity #{entity_id} already running")
+        {:ok, pid}
+
+      {:error, reason} ->
+        Logger.warning(
+          "Failed to start analyzer #{analyzer_module} for entity #{entity_id}: #{inspect(reason)}"
+        )
+
+        {:error, reason}
     end
   end
 
   @doc """
-  Stop a running analysis task.
+  Stop an analyzer process for a specific entity.
   """
-  def stop_analysis_task(analyzer_module, entity_id) do
-    task_id = generate_task_id(analyzer_module, entity_id)
-
-    case Registry.lookup(TaskRegistry, task_id) do
+  def stop_analyzer(analyzer_module, entity_id) do
+    case Registry.lookup(EveDmv.Intelligence.AnalyzerRegistry, {analyzer_module, entity_id}) do
       [{pid, _}] ->
-        DynamicSupervisor.terminate_child(EveDmv.Intelligence.AnalysisSupervisor, pid)
-        Logger.info("Stopped analysis task #{task_id}")
+        DynamicSupervisor.terminate_child(EveDmv.Intelligence.AnalyzerSupervisor, pid)
+        Logger.debug("Stopped analyzer #{analyzer_module} for entity #{entity_id}")
         :ok
 
       [] ->
-        Logger.debug("No analysis task found for #{task_id}")
+        Logger.debug("Analyzer #{analyzer_module} for entity #{entity_id} not running")
         :ok
     end
   end
 
   @doc """
-  List all currently running analysis tasks.
+  Get the status of all running analyzers.
   """
-  def list_running_tasks do
-    Registry.select(TaskRegistry, [{{:"$1", :"$2", :"$3"}, [], [{{:"$1", :"$2"}}]}])
+  def analyzer_status do
+    children = DynamicSupervisor.which_children(EveDmv.Intelligence.AnalyzerSupervisor)
+
+    %{
+      total_analyzers: length(children),
+      running_analyzers: Enum.count(children, fn {_, pid, _, _} -> Process.alive?(pid) end),
+      analyzer_breakdown: build_analyzer_breakdown(children)
+    }
   end
 
   @doc """
-  Get the status of a specific analysis task.
+  Get intelligence system health status.
   """
-  def get_task_status(analyzer_module, entity_id) do
-    task_id = generate_task_id(analyzer_module, entity_id)
+  def health_status do
+    cache_status = get_cache_health()
+    task_supervisor_status = get_task_supervisor_health()
+    analyzer_status = analyzer_status()
 
-    case Registry.lookup(TaskRegistry, task_id) do
-      [{pid, _}] when is_pid(pid) ->
-        if Process.alive?(pid) do
-          {:running, pid}
-        else
-          :not_running
-        end
+    overall_health =
+      determine_overall_health([
+        cache_status.status,
+        task_supervisor_status.status,
+        if(analyzer_status.running_analyzers > 0, do: :healthy, else: :idle)
+      ])
 
-      [] ->
-        :not_running
+    %{
+      overall_health: overall_health,
+      cache: cache_status,
+      task_supervisor: task_supervisor_status,
+      analyzers: analyzer_status,
+      telemetry: get_telemetry_health(),
+      uptime_seconds: get_uptime_seconds()
+    }
+  end
+
+  @doc """
+  Restart all intelligence processes.
+
+  Use with caution - will interrupt ongoing analyses.
+  """
+  def restart_intelligence_system do
+    Logger.warning("Restarting Intelligence system - ongoing analyses will be interrupted")
+
+    # Stop all analyzer processes
+    DynamicSupervisor.which_children(EveDmv.Intelligence.AnalyzerSupervisor)
+    |> Enum.each(fn {_, pid, _, _} ->
+      DynamicSupervisor.terminate_child(EveDmv.Intelligence.AnalyzerSupervisor, pid)
+    end)
+
+    # Clear cache
+    EveDmv.Intelligence.Cache.IntelligenceCache.clear_cache()
+
+    Logger.info("Intelligence system restart completed")
+    :ok
+  end
+
+  # Private helper functions
+
+  defp build_analyzer_breakdown(children) do
+    children
+    |> Enum.group_by(fn {id, _pid, _type, _modules} ->
+      case id do
+        {analyzer_module, _entity_id} -> analyzer_module
+        _ -> :unknown
+      end
+    end)
+    |> Enum.map(fn {analyzer_module, analyzer_children} ->
+      {analyzer_module, length(analyzer_children)}
+    end)
+    |> Map.new()
+  end
+
+  defp get_cache_health do
+    try do
+      stats = EveDmv.Intelligence.Cache.IntelligenceCache.get_cache_stats()
+
+      %{
+        status: :healthy,
+        cache_size: stats.cache_size,
+        memory_usage: "#{stats.cache_size} entries"
+      }
+    rescue
+      error ->
+        Logger.error("Cache health check failed: #{inspect(error)}")
+
+        %{
+          status: :unhealthy,
+          error: inspect(error)
+        }
     end
   end
 
-  @doc """
-  Start multiple analysis tasks concurrently.
+  defp get_task_supervisor_health do
+    try do
+      children = Task.Supervisor.children(EveDmv.Intelligence.TaskSupervisor)
 
-  Returns a map of task_id => {:ok, pid} | {:error, reason}
-  """
-  def start_batch_analysis(tasks) when is_list(tasks) do
-    Logger.info("Starting batch analysis for #{length(tasks)} tasks")
+      %{
+        status: :healthy,
+        active_tasks: length(children)
+      }
+    rescue
+      error ->
+        Logger.error("Task supervisor health check failed: #{inspect(error)}")
 
-    results =
-      tasks
-      |> Task.async_stream(
-        fn {analyzer_module, entity_id, opts} ->
-          task_id = generate_task_id(analyzer_module, entity_id)
-          result = start_analysis_task(analyzer_module, entity_id, opts)
-          {task_id, result}
-        end,
-        max_concurrency: 10,
-        timeout: 5000
-      )
-      |> Enum.map(fn
-        {:ok, {task_id, result}} -> {task_id, result}
-        {:exit, reason} -> {:error, reason}
-      end)
-      |> Map.new()
-
-    successful = Enum.count(results, fn {_, result} -> match?({:ok, _}, result) end)
-    failed = length(tasks) - successful
-
-    Logger.info("Batch analysis started: #{successful} successful, #{failed} failed")
-
-    results
+        %{
+          status: :unhealthy,
+          error: inspect(error)
+        }
+    end
   end
 
-  defp generate_task_id(analyzer_module, entity_id) do
-    analyzer_name = analyzer_module |> Module.split() |> List.last() |> String.downcase()
-    "#{analyzer_name}_#{entity_id}"
+  defp get_telemetry_health do
+    # Simple telemetry health check
+    %{
+      status: :healthy,
+      events_registered: true
+    }
+  end
+
+  defp get_uptime_seconds do
+    case Process.info(self(), :dictionary) do
+      {:dictionary, dict} ->
+        start_time = Keyword.get(dict, :start_time, System.monotonic_time())
+        System.convert_time_unit(System.monotonic_time() - start_time, :native, :second)
+
+      _ ->
+        0
+    end
+  end
+
+  defp determine_overall_health(statuses) do
+    cond do
+      Enum.any?(statuses, &(&1 == :unhealthy)) -> :unhealthy
+      Enum.all?(statuses, &(&1 in [:healthy, :idle])) -> :healthy
+      true -> :degraded
+    end
   end
 end

@@ -1,7 +1,7 @@
-defmodule EveDmv.Intelligence.WHVettingAnalyzerTest do
+defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzerTest do
   use EveDmv.DataCase, async: true
 
-  alias EveDmv.Intelligence.WHVettingAnalyzer
+  alias EveDmv.Intelligence.Analyzers.WHVettingAnalyzer
 
   describe "calculate_j_space_experience/1" do
     test "calculates J-space experience from killmails" do

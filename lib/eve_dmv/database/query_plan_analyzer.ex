@@ -11,6 +11,15 @@ defmodule EveDmv.Database.QueryPlanAnalyzer do
   require Logger
 
   alias EveDmv.Repo
+  
+  # Extracted modules
+  alias EveDmv.Database.QueryPlanAnalyzer.{
+    PlanAnalyzer,
+    BufferAnalyzer,
+    IndexAnalyzer,
+    SlowQueryDetector,
+    TableStatsAnalyzer
+  }
 
   @analysis_interval :timer.hours(1)
   @slow_query_threshold_ms 1000
@@ -168,249 +177,31 @@ defmodule EveDmv.Database.QueryPlanAnalyzer do
   end
 
   defp analyze_execution_plan(json_plan, execution_time) do
+    analysis = PlanAnalyzer.analyze_execution_plan(json_plan, execution_time)
     plan = Jason.decode!(json_plan)
     root_node = List.first(plan)["Plan"]
 
-    %{
-      total_cost: root_node["Total Cost"],
-      actual_time: root_node["Actual Total Time"],
-      actual_rows: root_node["Actual Rows"],
-      planned_rows: root_node["Plan Rows"],
-      execution_time_ms: execution_time,
-      node_types: extract_node_types(root_node),
-      expensive_operations: find_expensive_operations(root_node),
-      row_estimation_errors: calculate_row_estimation_errors(root_node),
-      buffer_usage: extract_buffer_usage(root_node),
-      index_usage: extract_index_usage(root_node)
-    }
+    Map.merge(analysis, %{
+      buffer_usage: BufferAnalyzer.extract_buffer_usage(root_node),
+      index_usage: IndexAnalyzer.extract_index_usage(root_node)
+    })
   end
 
-  defp extract_node_types(node, types \\ []) do
-    current_type = node["Node Type"]
-    types_with_current = [current_type | types]
-
-    case node["Plans"] do
-      nil ->
-        types_with_current
-
-      plans when is_list(plans) ->
-        Enum.reduce(plans, types_with_current, &extract_node_types/2)
-    end
-  end
-
-  defp find_expensive_operations(node, expensive \\ []) do
-    current_cost = node["Total Cost"] || 0
-    actual_time = node["Actual Total Time"] || 0
-
-    expensive_with_current =
-      if current_cost > 1000 or actual_time > 100 do
-        [
-          %{
-            node_type: node["Node Type"],
-            cost: current_cost,
-            actual_time: actual_time,
-            relation: node["Relation Name"]
-          }
-          | expensive
-        ]
-      else
-        expensive
-      end
-
-    case node["Plans"] do
-      nil ->
-        expensive_with_current
-
-      plans when is_list(plans) ->
-        Enum.reduce(plans, expensive_with_current, &find_expensive_operations/2)
-    end
-  end
-
-  defp calculate_row_estimation_errors(node, errors \\ []) do
-    actual_rows = node["Actual Rows"] || 0
-    planned_rows = node["Plan Rows"] || 1
-
-    error_ratio = if planned_rows > 0, do: actual_rows / planned_rows, else: 1.0
-
-    errors_with_current =
-      if abs(error_ratio - 1.0) > 0.5 and actual_rows > 10 do
-        [
-          %{
-            node_type: node["Node Type"],
-            planned_rows: planned_rows,
-            actual_rows: actual_rows,
-            error_ratio: error_ratio,
-            relation: node["Relation Name"]
-          }
-          | errors
-        ]
-      else
-        errors
-      end
-
-    case node["Plans"] do
-      nil ->
-        errors_with_current
-
-      plans when is_list(plans) ->
-        Enum.reduce(plans, errors_with_current, &calculate_row_estimation_errors/2)
-    end
-  end
-
-  defp extract_buffer_usage(node, usage \\ %{}) do
-    shared_hit = node["Shared Hit Blocks"] || 0
-    shared_read = node["Shared Read Blocks"] || 0
-    temp_read = node["Temp Read Blocks"] || 0
-    temp_written = node["Temp Written Blocks"] || 0
-
-    current_usage = %{
-      shared_hit: shared_hit,
-      shared_read: shared_read,
-      temp_read: temp_read,
-      temp_written: temp_written,
-      cache_hit_ratio:
-        if(shared_hit + shared_read > 0,
-          do: shared_hit / (shared_hit + shared_read),
-          else: 1.0
-        )
-    }
-
-    merged_usage = merge_buffer_usage(usage, current_usage)
-
-    case node["Plans"] do
-      nil ->
-        merged_usage
-
-      plans when is_list(plans) ->
-        Enum.reduce(plans, merged_usage, &extract_buffer_usage/2)
-    end
-  end
-
-  defp merge_buffer_usage(usage1, usage2) do
-    %{
-      shared_hit: (usage1[:shared_hit] || 0) + usage2.shared_hit,
-      shared_read: (usage1[:shared_read] || 0) + usage2.shared_read,
-      temp_read: (usage1[:temp_read] || 0) + usage2.temp_read,
-      temp_written: (usage1[:temp_written] || 0) + usage2.temp_written,
-      cache_hit_ratio: calculate_combined_cache_ratio(usage1, usage2)
-    }
-  end
-
-  defp calculate_combined_cache_ratio(usage1, usage2) do
-    total_hit = (usage1[:shared_hit] || 0) + usage2.shared_hit
-    total_read = (usage1[:shared_read] || 0) + usage2.shared_read
-
-    if total_hit + total_read > 0 do
-      total_hit / (total_hit + total_read)
-    else
-      1.0
-    end
-  end
-
-  defp extract_index_usage(node, indexes \\ []) do
-    index_info =
-      case node["Node Type"] do
-        "Index Scan" ->
-          [
-            %{
-              type: "Index Scan",
-              index_name: node["Index Name"],
-              relation: node["Relation Name"],
-              cost: node["Total Cost"],
-              rows: node["Actual Rows"]
-            }
-          ]
-
-        "Index Only Scan" ->
-          [
-            %{
-              type: "Index Only Scan",
-              index_name: node["Index Name"],
-              relation: node["Relation Name"],
-              cost: node["Total Cost"],
-              rows: node["Actual Rows"]
-            }
-          ]
-
-        "Bitmap Index Scan" ->
-          [
-            %{
-              type: "Bitmap Index Scan",
-              index_name: node["Index Name"],
-              relation: node["Relation Name"],
-              cost: node["Total Cost"],
-              rows: node["Actual Rows"]
-            }
-          ]
-
-        _ ->
-          []
-      end
-
-    indexes_with_current = index_info ++ indexes
-
-    case node["Plans"] do
-      nil ->
-        indexes_with_current
-
-      plans when is_list(plans) ->
-        Enum.reduce(plans, indexes_with_current, &extract_index_usage/2)
-    end
-  end
+  # Delegation to extracted modules
+  defdelegate extract_node_types(node, types \\ []), to: PlanAnalyzer
+  defdelegate find_expensive_operations(node, expensive \\ []), to: PlanAnalyzer
+  defdelegate calculate_row_estimation_errors(node, errors \\ []), to: PlanAnalyzer
+  defdelegate extract_buffer_usage(node, usage \\ %{}), to: BufferAnalyzer
+  defdelegate merge_buffer_usage(usage1, usage2), to: BufferAnalyzer
+  defdelegate calculate_combined_cache_ratio(usage1, usage2), to: BufferAnalyzer
+  defdelegate extract_index_usage(node, indexes \\ []), to: IndexAnalyzer
 
   defp generate_query_recommendations(analysis) do
-    recommendations = []
-
-    # Low cache hit ratio
-    recommendations =
-      if analysis.buffer_usage.cache_hit_ratio < 0.9 do
-        [
-          "Consider increasing shared_buffers or optimizing query to reduce disk I/O"
-          | recommendations
-        ]
-      else
-        recommendations
-      end
-
-    # Row estimation errors
-    recommendations =
-      if length(analysis.row_estimation_errors) > 0 do
-        ["Update table statistics with ANALYZE to improve query planning" | recommendations]
-      else
-        recommendations
-      end
-
-    # Sequential scans on large tables
-    recommendations =
-      if Enum.any?(analysis.node_types, &(&1 == "Seq Scan")) do
-        [
-          "Sequential scans detected - consider adding indexes for frequently queried columns"
-          | recommendations
-        ]
-      else
-        recommendations
-      end
-
-    # Expensive sorts
-    recommendations =
-      if Enum.any?(analysis.expensive_operations, &(&1.node_type == "Sort")) do
-        ["Expensive sort operations - consider adding indexes to avoid sorting" | recommendations]
-      else
-        recommendations
-      end
-
-    # Nested loops with high cost
-    recommendations =
-      if Enum.any?(analysis.expensive_operations, &(&1.node_type == "Nested Loop")) do
-        [
-          "Expensive nested loop joins - consider optimizing join conditions or adding indexes"
-          | recommendations
-        ]
-      else
-        recommendations
-      end
-
-    recommendations
+    buffer_recommendations = BufferAnalyzer.generate_buffer_recommendations(analysis.buffer_usage)
+    plan_recommendations = PlanAnalyzer.generate_plan_recommendations(analysis)
+    index_recommendations = IndexAnalyzer.generate_index_recommendations(IndexAnalyzer.analyze_index_patterns(analysis.index_usage))
+    
+    buffer_recommendations ++ plan_recommendations ++ index_recommendations
   end
 
   defp perform_periodic_analysis(state) do
@@ -445,167 +236,11 @@ defmodule EveDmv.Database.QueryPlanAnalyzer do
     %{state | slow_queries: slow_queries, analysis_stats: new_stats}
   end
 
-  defp detect_slow_queries do
-    query = """
-    SELECT 
-      query,
-      calls,
-      total_time,
-      mean_time,
-      rows,
-      100.0 * shared_blks_hit / nullif(shared_blks_hit + shared_blks_read, 0) AS hit_percent
-    FROM pg_stat_statements
-    WHERE mean_time > $1
-    ORDER BY mean_time DESC
-    LIMIT 20
-    """
+  defdelegate detect_slow_queries(), to: SlowQueryDetector
 
-    case Ecto.Adapters.SQL.query(Repo, query, [@slow_query_threshold_ms]) do
-      {:ok, %{rows: rows}} ->
-        Enum.map(rows, fn [query_text, calls, total_time, mean_time, row_count, hit_percent] ->
-          %{
-            query: String.slice(query_text, 0, 500),
-            calls: calls,
-            total_time_ms: total_time,
-            mean_time_ms: mean_time,
-            rows: row_count,
-            cache_hit_percent: hit_percent || 0.0,
-            detected_at: DateTime.utc_now()
-          }
-        end)
+  defdelegate analyze_critical_tables(), to: TableStatsAnalyzer
 
-      {:error, error} ->
-        Logger.warning("Failed to detect slow queries: #{inspect(error)}")
-        []
-    end
-  end
-
-  defp analyze_critical_tables do
-    critical_tables = [
-      "killmails_raw",
-      "killmails_enriched",
-      "participants",
-      "character_stats"
-    ]
-
-    Enum.map(critical_tables, &analyze_table_statistics/1)
-    |> Enum.reject(&is_nil/1)
-  end
-
-  defp analyze_table_statistics(table_name) do
-    # Get table size and row count
-    size_query = """
-    SELECT 
-      schemaname,
-      tablename,
-      attname,
-      n_distinct,
-      correlation,
-      most_common_vals,
-      most_common_freqs
-    FROM pg_stats 
-    WHERE tablename = $1 
-    AND schemaname = 'public'
-    """
-
-    stats_query = """
-    SELECT 
-      schemaname,
-      tablename,
-      seq_scan,
-      seq_tup_read,
-      idx_scan,
-      idx_tup_fetch,
-      n_tup_ins,
-      n_tup_upd,
-      n_tup_del,
-      n_live_tup,
-      n_dead_tup
-    FROM pg_stat_user_tables 
-    WHERE tablename = $1 
-    AND schemaname = 'public'
-    """
-
-    with {:ok, %{rows: stats_rows}} <- Ecto.Adapters.SQL.query(Repo, stats_query, [table_name]),
-         {:ok, %{rows: size_rows}} <- Ecto.Adapters.SQL.query(Repo, size_query, [table_name]) do
-      case stats_rows do
-        [
-          [
-            _schema,
-            table,
-            seq_scan,
-            seq_tup_read,
-            idx_scan,
-            idx_tup_fetch,
-            n_tup_ins,
-            n_tup_upd,
-            n_tup_del,
-            n_live_tup,
-            n_dead_tup
-          ]
-        ] ->
-          %{
-            table_name: table,
-            sequential_scans: seq_scan,
-            sequential_tuples_read: seq_tup_read,
-            index_scans: idx_scan,
-            index_tuples_fetched: idx_tup_fetch,
-            tuples_inserted: n_tup_ins,
-            tuples_updated: n_tup_upd,
-            tuples_deleted: n_tup_del,
-            live_tuples: n_live_tup,
-            dead_tuples: n_dead_tup,
-            bloat_ratio:
-              if(n_live_tup > 0, do: n_dead_tup / (n_live_tup + n_dead_tup), else: 0.0),
-            column_stats: parse_column_stats(size_rows),
-            recommendations:
-              generate_table_recommendations(seq_scan, idx_scan, n_dead_tup, n_live_tup)
-          }
-
-        _ ->
-          nil
-      end
-    else
-      {:error, error} ->
-        Logger.warning("Failed to analyze table #{table_name}: #{inspect(error)}")
-        nil
-    end
-  end
-
-  defp parse_column_stats(rows) do
-    Enum.map(rows, fn [_schema, _table, column, n_distinct, correlation, _vals, _freqs] ->
-      %{
-        column_name: column,
-        distinct_values: n_distinct,
-        correlation: correlation
-      }
-    end)
-  end
-
-  defp generate_table_recommendations(seq_scan, idx_scan, dead_tuples, live_tuples) do
-    recommendations = []
-
-    # High sequential scan ratio
-    recommendations =
-      if seq_scan > 0 and idx_scan > 0 and seq_scan / (seq_scan + idx_scan) > 0.1 do
-        ["Table has high sequential scan ratio - consider adding indexes" | recommendations]
-      else
-        recommendations
-      end
-
-    # High bloat ratio
-    recommendations =
-      if live_tuples > 0 and dead_tuples / (live_tuples + dead_tuples) > 0.1 do
-        [
-          "Table has high bloat ratio (#{Float.round(dead_tuples / (live_tuples + dead_tuples) * 100, 1)}%) - consider VACUUM FULL"
-          | recommendations
-        ]
-      else
-        recommendations
-      end
-
-    recommendations
-  end
+  defdelegate analyze_table_statistics(table_name), to: TableStatsAnalyzer
 
   defp generate_index_suggestions do
     # Analyze query patterns to suggest indexes
@@ -736,31 +371,5 @@ defmodule EveDmv.Database.QueryPlanAnalyzer do
     end)
   end
 
-  def get_query_performance_metrics do
-    query = """
-    SELECT 
-      'total_queries' as metric,
-      sum(calls) as value
-    FROM pg_stat_statements
-    UNION ALL
-    SELECT 
-      'avg_query_time_ms' as metric,
-      avg(mean_time) as value
-    FROM pg_stat_statements
-    UNION ALL
-    SELECT 
-      'slow_queries' as metric,
-      count(*) as value
-    FROM pg_stat_statements
-    WHERE mean_time > $1
-    """
-
-    case Ecto.Adapters.SQL.query(Repo, query, [@slow_query_threshold_ms]) do
-      {:ok, %{rows: rows}} ->
-        Map.new(rows, fn [metric, value] -> {metric, value} end)
-
-      {:error, _} ->
-        %{}
-    end
-  end
+  defdelegate get_query_performance_metrics(), to: SlowQueryDetector
 end

@@ -175,4 +175,72 @@ defmodule EveDmv.Config.Cache do
   def warm_on_startup? do
     Config.get(:eve_dmv, :cache_warm_on_startup, true)
   end
+
+  # Unified cache type configurations
+
+  @doc """
+  Get hot data cache TTL in milliseconds.
+
+  For frequently accessed data like characters, systems, items.
+  Environment: EVE_DMV_CACHE_HOT_DATA_TTL_MINUTES (default: 30)
+  """
+  @spec hot_data_ttl() :: pos_integer()
+  def hot_data_ttl do
+    minutes = Config.get(:eve_dmv, :cache_hot_data_ttl_minutes, 30)
+    :timer.minutes(minutes)
+  end
+
+  @doc """
+  Get API responses cache TTL in milliseconds.
+
+  For external API responses (ESI, Janice, Mutamarket).
+  Environment: EVE_DMV_CACHE_API_RESPONSES_TTL_HOURS (default: 24)
+  """
+  @spec api_responses_ttl() :: pos_integer()
+  def api_responses_ttl do
+    hours = Config.get(:eve_dmv, :cache_api_responses_ttl_hours, 24)
+    :timer.hours(hours)
+  end
+
+  @doc """
+  Get analysis cache TTL in milliseconds.
+
+  For intelligence analysis results.
+  Environment: EVE_DMV_CACHE_ANALYSIS_TTL_HOURS (default: 12)
+  """
+  @spec analysis_ttl() :: pos_integer()
+  def analysis_ttl do
+    hours = Config.get(:eve_dmv, :cache_analysis_ttl_hours, 12)
+    :timer.hours(hours)
+  end
+
+  @doc """
+  Get hot data cache max size.
+
+  Environment: EVE_DMV_CACHE_HOT_DATA_MAX_SIZE (default: 50000)
+  """
+  @spec hot_data_max_size() :: pos_integer()
+  def hot_data_max_size do
+    Config.get(:eve_dmv, :cache_hot_data_max_size, 50_000)
+  end
+
+  @doc """
+  Get API responses cache max size.
+
+  Environment: EVE_DMV_CACHE_API_RESPONSES_MAX_SIZE (default: 25000)
+  """
+  @spec api_responses_max_size() :: pos_integer()
+  def api_responses_max_size do
+    Config.get(:eve_dmv, :cache_api_responses_max_size, 25_000)
+  end
+
+  @doc """
+  Get analysis cache max size.
+
+  Environment: EVE_DMV_CACHE_ANALYSIS_MAX_SIZE (default: 10000)
+  """
+  @spec analysis_max_size() :: pos_integer()
+  def analysis_max_size do
+    Config.get(:eve_dmv, :cache_analysis_max_size, 10_000)
+  end
 end

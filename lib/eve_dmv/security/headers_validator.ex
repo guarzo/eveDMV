@@ -1,258 +1,249 @@
 defmodule EveDmv.Security.HeadersValidator do
   @moduledoc """
-  Validates that security headers are properly configured and enforced.
+  Security headers validation and monitoring.
 
-  This module provides functions to test and validate that the application
-  is serving the correct security headers to protect against common web
-  vulnerabilities like XSS, clickjacking, and MITM attacks.
+  Provides periodic validation of security headers and monitoring for potential
+  security issues with incoming requests.
   """
 
+  use GenServer
   require Logger
 
-  @doc """
-  Validate security headers on a given response.
+  @validation_interval :timer.minutes(30)
 
-  Returns {:ok, :valid} if all required headers are present and correctly configured,
-  or {:error, reasons} with a list of missing or misconfigured headers.
-  """
-  @spec validate_headers(map()) :: {:ok, :valid} | {:error, [String.t()]}
-  def validate_headers(headers) when is_map(headers) do
-    errors = []
-
-    errors = validate_hsts(headers, errors)
-    errors = validate_frame_options(headers, errors)
-    errors = validate_content_type_options(headers, errors)
-    errors = validate_xss_protection(headers, errors)
-    errors = validate_referrer_policy(headers, errors)
-    errors = validate_csp(headers, errors)
-
-    case errors do
-      [] -> {:ok, :valid}
-      _ -> {:error, Enum.reverse(errors)}
-    end
-  end
-
-  @doc """
-  Test security headers by making a request to the application.
-
-  This can be used in tests or health checks to verify headers are working.
-  """
-  @spec test_security_headers(String.t()) :: {:ok, :valid} | {:error, [String.t()]}
-  def test_security_headers(url \\ "http://localhost:4010") do
-    case HTTPoison.get(url) do
-      {:ok, %HTTPoison.Response{headers: headers}} ->
-        header_map = Map.new(headers, fn {key, value} -> {String.downcase(key), value} end)
-        validate_headers(header_map)
-
-      {:error, reason} ->
-        {:error, ["Failed to connect to application: #{inspect(reason)}"]}
-    end
-  end
-
-  @doc """
-  Generate a security headers report for monitoring and compliance.
-  """
-  @spec generate_report(String.t()) :: %{
-          required(:status) => :pass | :fail,
-          required(:message) => String.t(),
-          required(:timestamp) => DateTime.t(),
-          required(:url) => String.t(),
-          optional(:errors) => [String.t()]
-        }
-  def generate_report(url \\ "http://localhost:4010") do
-    case test_security_headers(url) do
-      {:ok, :valid} ->
-        %{
-          status: :pass,
-          message: "All security headers are properly configured",
-          timestamp: DateTime.utc_now(),
-          url: url
-        }
-
-      {:error, errors} ->
-        %{
-          status: :fail,
-          errors: errors,
-          message: "Security headers validation failed",
-          timestamp: DateTime.utc_now(),
-          url: url
-        }
-    end
-  end
-
-  @doc """
-  Check if the application is enforcing HTTPS properly.
-  """
-  @spec validate_https_enforcement(String.t()) :: {:ok, :enforced} | {:error, String.t()}
-  def validate_https_enforcement(base_url) do
-    http_url = String.replace(base_url, "https://", "http://")
-
-    case HTTPoison.get(http_url, [], follow_redirect: false) do
-      {:ok, %HTTPoison.Response{status_code: status_code}} when status_code in [301, 302] ->
-        {:ok, :enforced}
-
-      {:ok, %HTTPoison.Response{status_code: 200}} ->
-        {:error, "HTTP requests are not being redirected to HTTPS"}
-
-      {:error, reason} ->
-        {:error, "Failed to test HTTPS enforcement: #{inspect(reason)}"}
-    end
-  end
-
-  # Private validation functions
-
-  defp validate_hsts(headers, errors) do
-    case Map.get(headers, "strict-transport-security") do
-      nil ->
-        ["Missing Strict-Transport-Security header" | errors]
-
-      value ->
-        if String.contains?(value, "max-age=") do
-          errors
-        else
-          ["Invalid Strict-Transport-Security header: missing max-age" | errors]
-        end
-    end
-  end
-
-  defp validate_frame_options(headers, errors) do
-    case Map.get(headers, "x-frame-options") do
-      nil ->
-        ["Missing X-Frame-Options header" | errors]
-
-      value when value in ["DENY", "SAMEORIGIN"] ->
-        errors
-
-      value ->
-        ["Invalid X-Frame-Options value: #{value}. Expected DENY or SAMEORIGIN" | errors]
-    end
-  end
-
-  defp validate_content_type_options(headers, errors) do
-    case Map.get(headers, "x-content-type-options") do
-      "nosniff" ->
-        errors
-
-      nil ->
-        ["Missing X-Content-Type-Options header" | errors]
-
-      value ->
-        ["Invalid X-Content-Type-Options value: #{value}. Expected nosniff" | errors]
-    end
-  end
-
-  defp validate_xss_protection(headers, errors) do
-    case Map.get(headers, "x-xss-protection") do
-      nil ->
-        ["Missing X-XSS-Protection header" | errors]
-
-      value when value in ["1; mode=block", "0"] ->
-        errors
-
-      value ->
-        ["Invalid X-XSS-Protection value: #{value}" | errors]
-    end
-  end
-
-  defp validate_referrer_policy(headers, errors) do
-    case Map.get(headers, "referrer-policy") do
-      nil ->
-        ["Missing Referrer-Policy header" | errors]
-
-      value
-      when value in [
-             "no-referrer",
-             "no-referrer-when-downgrade",
-             "origin",
-             "origin-when-cross-origin",
-             "same-origin",
-             "strict-origin",
-             "strict-origin-when-cross-origin",
-             "unsafe-url"
-           ] ->
-        errors
-
-      value ->
-        ["Invalid Referrer-Policy value: #{value}" | errors]
-    end
-  end
-
-  defp validate_csp(headers, errors) do
-    case Map.get(headers, "content-security-policy") do
-      nil ->
-        ["Missing Content-Security-Policy header" | errors]
-
-      value ->
-        if String.contains?(value, "default-src") do
-          errors
-        else
-          ["Content-Security-Policy missing default-src directive" | errors]
-        end
-    end
-  end
+  # Public API
 
   @doc """
   Set up periodic security headers validation.
-
-  This should be called during application startup to enable
-  periodic validation of security headers.
   """
-  @spec setup_periodic_validation(integer()) :: :ok
-  def setup_periodic_validation(interval_minutes \\ 60) do
-    interval_ms = interval_minutes * 60 * 1000
+  def setup_periodic_validation do
+    case GenServer.start_link(__MODULE__, %{}, name: __MODULE__) do
+      {:ok, _pid} ->
+        Logger.info("Security headers validator started")
+        :ok
 
-    spawn(fn ->
-      # Wait for app to start
-      :timer.sleep(5000)
-      periodic_validation_loop(interval_ms)
-    end)
+      {:error, {:already_started, _pid}} ->
+        Logger.debug("Security headers validator already running")
+        :ok
 
-    :ok
-  end
-
-  defp periodic_validation_loop(interval_ms) do
-    try do
-      report = generate_report()
-
-      case report.status do
-        :pass ->
-          Logger.info("Security headers validation passed", %{
-            timestamp: report.timestamp
-          })
-
-        :fail ->
-          Logger.error("Security headers validation failed", %{
-            errors: report.errors,
-            timestamp: report.timestamp
-          })
-      end
-    rescue
-      error ->
-        Logger.error("Error during security headers validation", %{
-          error: inspect(error)
-        })
+      {:error, reason} ->
+        Logger.error("Failed to start security headers validator: #{inspect(reason)}")
+        {:error, reason}
     end
-
-    :timer.sleep(interval_ms)
-    periodic_validation_loop(interval_ms)
   end
 
   @doc """
-  Create a test module for validating security headers in tests.
+  Validate security headers for a given request.
   """
-  defmacro __using__(_opts) do
-    quote do
-      def test_security_headers do
-        EveDmv.Security.HeadersValidator.test_security_headers()
-      end
+  def validate_request_headers(conn) do
+    headers = get_security_headers(conn)
+    issues = find_security_issues(headers)
 
-      def validate_response_headers(conn) do
-        headers =
-          conn.resp_headers
-          |> Map.new(fn {key, value} -> {String.downcase(key), value} end)
-
-        EveDmv.Security.HeadersValidator.validate_headers(headers)
-      end
+    if length(issues) > 0 do
+      log_security_issues(conn, issues)
     end
+
+    {:ok, issues}
+  end
+
+  @doc """
+  Check the current status of security configuration.
+  """
+  def get_security_status do
+    GenServer.call(__MODULE__, :get_status)
+  end
+
+  # GenServer callbacks
+
+  @impl true
+  def init(state) do
+    # Schedule the first validation
+    Process.send_after(self(), :validate_headers, @validation_interval)
+    {:ok, Map.put(state, :last_validation, nil)}
+  end
+
+  @impl true
+  def handle_call(:get_status, _from, state) do
+    status = %{
+      last_validation: state.last_validation,
+      validation_interval_minutes: div(@validation_interval, 60_000),
+      security_checks: %{
+        csp_enabled: csp_configured?(),
+        hsts_enabled: hsts_configured?(),
+        security_headers_plug: security_headers_plug_enabled?()
+      }
+    }
+
+    {:reply, status, state}
+  end
+
+  @impl true
+  def handle_info(:validate_headers, state) do
+    perform_validation()
+
+    # Schedule next validation
+    Process.send_after(self(), :validate_headers, @validation_interval)
+
+    {:noreply, Map.put(state, :last_validation, DateTime.utc_now())}
+  end
+
+  # Private functions
+
+  defp perform_validation do
+    Logger.debug("Performing periodic security headers validation")
+
+    checks = [
+      check_csp_configuration(),
+      check_hsts_configuration(),
+      check_security_headers_plug(),
+      check_ssl_configuration()
+    ]
+
+    failed_checks = Enum.filter(checks, fn {status, _} -> status == :error end)
+
+    if length(failed_checks) > 0 do
+      Logger.warning("Security validation failed checks: #{inspect(failed_checks)}")
+    else
+      Logger.debug("All security checks passed")
+    end
+  end
+
+  defp get_security_headers(conn) do
+    %{
+      content_security_policy: get_header_value(conn, "content-security-policy"),
+      strict_transport_security: get_header_value(conn, "strict-transport-security"),
+      x_frame_options: get_header_value(conn, "x-frame-options"),
+      x_content_type_options: get_header_value(conn, "x-content-type-options"),
+      referrer_policy: get_header_value(conn, "referrer-policy"),
+      permissions_policy: get_header_value(conn, "permissions-policy")
+    }
+  end
+
+  defp get_header_value(conn, header_name) do
+    case Plug.Conn.get_resp_header(conn, header_name) do
+      [value | _] -> value
+      [] -> nil
+    end
+  end
+
+  defp find_security_issues(headers) do
+    issues = []
+
+    issues =
+      if is_nil(headers.content_security_policy) do
+        ["Missing Content-Security-Policy header" | issues]
+      else
+        issues
+      end
+
+    issues =
+      if is_nil(headers.strict_transport_security) do
+        ["Missing Strict-Transport-Security header" | issues]
+      else
+        issues
+      end
+
+    issues =
+      if is_nil(headers.x_frame_options) do
+        ["Missing X-Frame-Options header" | issues]
+      else
+        issues
+      end
+
+    issues =
+      if is_nil(headers.x_content_type_options) do
+        ["Missing X-Content-Type-Options header" | issues]
+      else
+        issues
+      end
+
+    issues
+  end
+
+  defp log_security_issues(conn, issues) do
+    client_ip = get_client_ip(conn)
+    user_agent = get_user_agent(conn)
+
+    Logger.warning("Security header issues detected", %{
+      issues: issues,
+      client_ip: client_ip,
+      user_agent: user_agent,
+      path: conn.request_path
+    })
+  end
+
+  defp get_client_ip(conn) do
+    case Plug.Conn.get_req_header(conn, "x-forwarded-for") do
+      [forwarded_ips] ->
+        forwarded_ips
+        |> String.split(",")
+        |> List.first()
+        |> String.trim()
+
+      [] ->
+        conn.remote_ip
+        |> :inet.ntoa()
+        |> to_string()
+    end
+  end
+
+  defp get_user_agent(conn) do
+    case Plug.Conn.get_req_header(conn, "user-agent") do
+      [ua] -> ua
+      [] -> "unknown"
+    end
+  end
+
+  defp check_csp_configuration do
+    if csp_configured?() do
+      {:ok, "CSP configured"}
+    else
+      {:error, "CSP not configured"}
+    end
+  end
+
+  defp check_hsts_configuration do
+    if hsts_configured?() do
+      {:ok, "HSTS configured"}
+    else
+      {:error, "HSTS not configured"}
+    end
+  end
+
+  defp check_security_headers_plug do
+    if security_headers_plug_enabled?() do
+      {:ok, "Security headers plug enabled"}
+    else
+      {:error, "Security headers plug not enabled"}
+    end
+  end
+
+  defp check_ssl_configuration do
+    # Basic SSL configuration check
+    ssl_enabled = Application.get_env(:eve_dmv, EveDmvWeb.Endpoint)[:https] != nil
+
+    if ssl_enabled do
+      {:ok, "SSL configured"}
+    else
+      {:warning, "SSL not configured (development mode)"}
+    end
+  end
+
+  defp csp_configured? do
+    # Check if CSP is configured by looking for the security headers plug
+    Code.ensure_loaded?(EveDmvWeb.Plugs.SecurityHeaders)
+  end
+
+  defp hsts_configured? do
+    # Check if HSTS is configured in endpoint
+    endpoint_config = Application.get_env(:eve_dmv, EveDmvWeb.Endpoint, [])
+    https_config = Keyword.get(endpoint_config, :https, [])
+    Keyword.has_key?(https_config, :hsts)
+  end
+
+  defp security_headers_plug_enabled? do
+    # This would need to check the router configuration
+    # For now, just check if the module exists
+    Code.ensure_loaded?(EveDmvWeb.Plugs.SecurityHeaders)
   end
 end

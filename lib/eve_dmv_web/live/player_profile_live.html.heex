@@ -34,12 +34,12 @@
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <%= if @player_stats do %>
-        <.player_stats_section player_stats={@player_stats} character_id={@character_id} />
+        <.live_component module={PlayerStatsComponent} id="player-stats" player_stats={@player_stats} character_id={@character_id} />
       <% else %>
         <%= if @character_info do %>
-          <.character_info_section character_info={@character_info} />
+          <.live_component module={CharacterInfoComponent} id="character-info" character_info={@character_info} />
         <% else %>
-          <.no_data_section character_intel={@character_intel} character_id={@character_id} />
+          <.live_component module={NoDataComponent} id="no-data" character_intel={@character_intel} character_id={@character_id} />
         <% end %>
       <% end %>
     </div>

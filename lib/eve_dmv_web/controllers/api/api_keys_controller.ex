@@ -17,166 +17,162 @@ defmodule EveDmvWeb.Api.ApiKeysController do
   List API keys for the current user.
   """
   def index(conn, _params) do
-    character_id = get_current_character_id(conn)
-
-    case ApiAuthentication.list_character_api_keys(character_id) do
-      {:ok, api_keys} ->
-        json(conn, %{data: api_keys})
+    with character_id when not is_nil(character_id) <- get_current_character_id(conn),
+         {:ok, api_keys} <- ApiAuthentication.list_character_api_keys(character_id) do
+      conn
+      |> put_status(:ok)
+      |> json(%{api_keys: Enum.map(api_keys, &format_api_key/1)})
+    else
+      nil ->
+        conn
+        |> put_status(:unauthorized)
+        |> json(%{error: "Authentication required"})
 
       {:error, reason} ->
         conn
         |> put_status(:internal_server_error)
-        |> json(%{error: "Failed to fetch API keys", reason: inspect(reason)})
+        |> json(%{error: "Failed to retrieve API keys: #{reason}"})
     end
   end
 
   @doc """
   Create a new API key.
   """
-  def create(conn, %{"name" => name} = params) do
-    character_id = get_current_character_id(conn)
-    permissions = Map.get(params, "permissions", [])
-    expires_at = parse_expiration(Map.get(params, "expires_at"))
+  def create(conn, params) do
+    with character_id when not is_nil(character_id) <- get_current_character_id(conn),
+         {:ok, api_key} <-
+           ApiAuthentication.create_api_key(
+             character_id,
+             Map.get(params, "name", "API Key"),
+             Map.get(params, "permissions", []),
+             parse_expires_at(Map.get(params, "expires_at"))
+           ) do
+      # Log the creation
+      AuditLogger.log_api_key_event(:key_created, api_key.id, character_id)
 
-    api_key_params = %{
-      name: name,
-      permissions: permissions,
-      expires_at: expires_at,
-      created_by_character_id: character_id
-    }
-
-    case Ash.create(ApiAuthentication, api_key_params, domain: EveDmv.Api) do
-      {:ok, api_key} ->
-        # Get the generated key from the context
-        generated_key = get_generated_key_from_context(api_key)
-
-        # Log API key creation
-        AuditLogger.log_config_change(
-          "character_#{character_id}",
-          :api_key_creation,
-          nil,
-          %{name: name, permissions: permissions}
-        )
-
+      conn
+      |> put_status(:created)
+      |> json(%{api_key: format_api_key(api_key)})
+    else
+      nil ->
         conn
-        |> put_status(:created)
-        |> json(%{
-          data: format_created_api_key(api_key, generated_key),
-          message:
-            "API key created successfully. Store this key securely - it cannot be retrieved again."
-        })
+        |> put_status(:unauthorized)
+        |> json(%{error: "Authentication required"})
 
       {:error, reason} ->
         conn
         |> put_status(:bad_request)
-        |> json(%{error: "Failed to create API key", reason: inspect(reason)})
+        |> json(%{error: "Failed to create API key: #{inspect(reason)}"})
     end
   end
 
   @doc """
-  Revoke an API key.
+  Delete/revoke an API key.
   """
   def delete(conn, %{"id" => api_key_id}) do
-    character_id = get_current_character_id(conn)
+    with character_id when not is_nil(character_id) <- get_current_character_id(conn),
+         {:ok, _api_key} <- ApiAuthentication.revoke_api_key(api_key_id, character_id) do
+      # Log the revocation
+      AuditLogger.log_api_key_event(:key_revoked, api_key_id, character_id)
 
-    case ApiAuthentication.revoke_api_key(api_key_id, character_id) do
-      {:ok, _api_key} ->
-        json(conn, %{message: "API key revoked successfully"})
+      conn
+      |> put_status(:no_content)
+      |> json(%{})
+    else
+      nil ->
+        conn
+        |> put_status(:unauthorized)
+        |> json(%{error: "Authentication required"})
+
+      {:error, :not_found} ->
+        conn
+        |> put_status(:not_found)
+        |> json(%{error: "API key not found"})
 
       {:error, reason} ->
         conn
-        |> put_status(:bad_request)
-        |> json(%{error: "Failed to revoke API key", reason: inspect(reason)})
+        |> put_status(:internal_server_error)
+        |> json(%{error: "Failed to revoke API key: #{inspect(reason)}"})
     end
   end
 
   @doc """
-  Validate an API key (for testing purposes).
+  Validate an API key.
   """
   def validate(conn, %{"api_key" => api_key}) do
     client_ip = get_client_ip(conn)
+    required_permissions = Map.get(conn.params, "permissions", [])
 
-    case ApiAuthentication.validate_api_key(api_key, client_ip) do
-      {:ok, api_key_record} ->
-        json(conn, %{
+    case ApiAuthentication.validate_api_key(api_key, client_ip, required_permissions) do
+      {:ok, key_record} ->
+        conn
+        |> put_status(:ok)
+        |> json(%{
           valid: true,
-          data: %{
-            name: api_key_record.name,
-            permissions: api_key_record.permissions,
-            last_used_at: api_key_record.last_used_at,
-            expires_at: api_key_record.expires_at
-          }
+          character_id: key_record.character_id,
+          permissions: key_record.permissions
         })
+
+      {:error, :invalid_api_key} ->
+        conn
+        |> put_status(:unauthorized)
+        |> json(%{valid: false, error: "Invalid API key"})
+
+      {:error, :expired} ->
+        conn
+        |> put_status(:unauthorized)
+        |> json(%{valid: false, error: "API key has expired"})
+
+      {:error, :insufficient_permissions} ->
+        conn
+        |> put_status(:forbidden)
+        |> json(%{valid: false, error: "Insufficient permissions"})
 
       {:error, reason} ->
-        json(conn, %{
-          valid: false,
-          error: inspect(reason)
-        })
+        conn
+        |> put_status(:internal_server_error)
+        |> json(%{valid: false, error: "Validation failed: #{inspect(reason)}"})
     end
   end
 
-  # Private helper functions
-
+  # Helper functions
   defp get_current_character_id(conn) do
-    # This would typically come from the authenticated user session
-    # For now, we'll use a placeholder
-    case conn.assigns[:current_user] do
-      %{id: user_id} -> user_id
-      _ -> nil
+    # Extract character ID from session or token
+    case get_session(conn, :current_user_id) do
+      nil -> nil
+      user_id -> user_id
     end
   end
 
-  defp parse_expiration(nil), do: nil
-  defp parse_expiration(""), do: nil
+  defp get_client_ip(conn) do
+    case Plug.Conn.get_req_header(conn, "x-forwarded-for") do
+      [ip | _] -> ip
+      [] -> to_string(:inet_parse.ntoa(conn.remote_ip))
+    end
+  end
 
-  defp parse_expiration(expiration_string) when is_binary(expiration_string) do
-    case DateTime.from_iso8601(expiration_string) do
-      {:ok, datetime, _offset} -> datetime
+  defp parse_expires_at(nil), do: nil
+
+  defp parse_expires_at(expires_at) when is_binary(expires_at) do
+    case DateTime.from_iso8601(expires_at) do
+      {:ok, datetime, _} -> datetime
       {:error, _} -> nil
     end
   end
 
-  defp parse_expiration(_), do: nil
+  defp parse_expires_at(%DateTime{} = datetime), do: datetime
+  defp parse_expires_at(_), do: nil
 
-  defp get_generated_key_from_context(api_key) do
-    # Retrieve the generated key from the Ash context
-    # If not available, this indicates a system error
-    case Map.get(api_key.__context__ || %{}, :generated_key) do
-      nil ->
-        Logger.error("Generated API key not found in Ash context for API key #{api_key.id}")
-        # Generate a new key as fallback, but this should be investigated
-        Base.encode64(:crypto.strong_rand_bytes(32), padding: false)
-
-      key ->
-        key
-    end
-  end
-
-  defp format_created_api_key(api_key, generated_key) do
+  defp format_api_key(api_key) do
     %{
       id: api_key.id,
       name: api_key.name,
-      api_key: generated_key,
-      prefix: api_key.prefix,
       permissions: api_key.permissions,
+      last_used_at: api_key.last_used_at,
       expires_at: api_key.expires_at,
-      created_at: api_key.inserted_at
+      created_at: api_key.created_at,
+      is_active: api_key.is_active
+      # Note: Never include the actual API key in responses
     }
-  end
-
-  defp get_client_ip(conn) do
-    case get_req_header(conn, "x-forwarded-for") do
-      [forwarded_ips] ->
-        forwarded_ips
-        |> String.split(",")
-        |> List.first()
-        |> String.trim()
-
-      [] ->
-        conn.remote_ip
-        |> :inet.ntoa()
-        |> to_string()
-    end
   end
 end

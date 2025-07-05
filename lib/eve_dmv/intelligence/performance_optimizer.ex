@@ -10,8 +10,8 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
   require Ash.Query
   alias EveDmv.Api
   alias EveDmv.Intelligence.CharacterStats
-  alias EveDmv.Intelligence.IntelligenceCache
-  alias EveDmv.Intelligence.WhSpace.Vetting, as: WHVetting
+  alias EveDmv.Intelligence.Cache.IntelligenceCache
+  alias EveDmv.Intelligence.Wormhole.Vetting, as: WHVetting
   alias EveDmv.Killmails.Participant
 
   @doc """
@@ -225,7 +225,7 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
       IntelligenceCache.get_character_analysis(character_id)
     else
       # Fallback to direct analysis
-      EveDmv.Intelligence.CharacterAnalyzer.analyze_character(character_id)
+      EveDmv.Intelligence.Analyzers.CharacterAnalyzer.analyze_character(character_id)
     end
   end
 

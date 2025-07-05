@@ -4,7 +4,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
   """
   use EveDmv.DataCase, async: true
 
-  alias EveDmv.Intelligence.WhSpace.FleetAnalyzer, as: WHFleetAnalyzer
+  alias EveDmv.Intelligence.Analyzers.WhFleetAnalyzer
   alias EveDmv.TestMocks
 
   # Wormhole type constants for testing
@@ -45,7 +45,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
         }
       ]
 
-      result = WHFleetAnalyzer.analyze_fleet_composition_from_members(members)
+      result = WhFleetAnalyzer.analyze_fleet_composition_from_members(members)
 
       assert %{
                total_members: 3,
@@ -65,7 +65,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
     end
 
     test "handles empty fleet" do
-      result = WHFleetAnalyzer.analyze_fleet_composition_from_members([])
+      result = WhFleetAnalyzer.analyze_fleet_composition_from_members([])
 
       assert %{
                total_members: 0,
@@ -97,7 +97,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
         stability: "stable"
       }
 
-      result = WHFleetAnalyzer.calculate_wormhole_viability(fleet_data, wormhole)
+      result = WhFleetAnalyzer.calculate_wormhole_viability(fleet_data, wormhole)
 
       assert %{
                can_jump: can_jump,
@@ -130,7 +130,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
         stability: "stable"
       }
 
-      result = WHFleetAnalyzer.calculate_wormhole_viability(fleet_data, wormhole)
+      result = WhFleetAnalyzer.calculate_wormhole_viability(fleet_data, wormhole)
 
       # Should indicate ships can't jump
       assert result.ships_that_can_jump == 0
@@ -150,7 +150,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
         %{ship_name: "Rifter", ship_category: "frigate"}
       ]
 
-      result = WHFleetAnalyzer.analyze_doctrine_compliance(fleet_members)
+      result = WhFleetAnalyzer.analyze_doctrine_compliance(fleet_members)
 
       assert %{
                compliance_score: score,
@@ -174,7 +174,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
         %{ship_name: "Bantam", ship_category: "frigate"}
       ]
 
-      result = WHFleetAnalyzer.analyze_doctrine_compliance(mixed_fleet)
+      result = WhFleetAnalyzer.analyze_doctrine_compliance(mixed_fleet)
 
       # Should be low for unknown doctrine
       assert result.compliance_score < 50
@@ -202,7 +202,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
         }
       }
 
-      result = WHFleetAnalyzer.calculate_fleet_effectiveness(fleet_analysis)
+      result = WhFleetAnalyzer.calculate_fleet_effectiveness(fleet_analysis)
 
       assert %{
                overall_effectiveness: overall,
@@ -229,7 +229,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
         role_distribution: %{"dps" => 5}
       }
 
-      result = WHFleetAnalyzer.calculate_fleet_effectiveness(unbalanced_fleet)
+      result = WhFleetAnalyzer.calculate_fleet_effectiveness(unbalanced_fleet)
 
       # Should have lower survivability due to no logistics
       assert result.survivability_rating < 50
@@ -258,7 +258,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
         }
       }
 
-      result = WHFleetAnalyzer.recommend_fleet_improvements(fleet_data)
+      result = WhFleetAnalyzer.recommend_fleet_improvements(fleet_data)
 
       assert %{
                priority_improvements: priority,
@@ -297,7 +297,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
         current_mass: 0
       }
 
-      result = WHFleetAnalyzer.calculate_jump_mass_sequence(ships, wormhole)
+      result = WhFleetAnalyzer.calculate_jump_mass_sequence(ships, wormhole)
 
       assert %{
                jump_order: order,
@@ -326,7 +326,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
         current_mass: 0
       }
 
-      result = WHFleetAnalyzer.calculate_jump_mass_sequence(heavy_ships, small_wh)
+      result = WhFleetAnalyzer.calculate_jump_mass_sequence(heavy_ships, small_wh)
 
       # Should show no ships can jump
       assert Enum.empty?(result.jump_order)
@@ -345,7 +345,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
         %{character_name: "EWAR", ship_name: "Crucifier", ship_category: "frigate"}
       ]
 
-      result = WHFleetAnalyzer.analyze_fleet_roles(fleet_members)
+      result = WhFleetAnalyzer.analyze_fleet_roles(fleet_members)
 
       assert %{
                role_balance: balance,
@@ -368,32 +368,32 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
 
   describe "helper functions" do
     test "categorize_ship_role/1 correctly identifies ship roles" do
-      assert WHFleetAnalyzer.categorize_ship_role("Damnation") == "fc"
-      assert WHFleetAnalyzer.categorize_ship_role("Legion") == "dps"
-      assert WHFleetAnalyzer.categorize_ship_role("Guardian") == "logistics"
-      assert WHFleetAnalyzer.categorize_ship_role("Ares") == "tackle"
-      assert WHFleetAnalyzer.categorize_ship_role("Crucifier") == "ewar"
-      assert WHFleetAnalyzer.categorize_ship_role("Unknown Ship") == "unknown"
+      assert WhFleetAnalyzer.categorize_ship_role("Damnation") == "fc"
+      assert WhFleetAnalyzer.categorize_ship_role("Legion") == "dps"
+      assert WhFleetAnalyzer.categorize_ship_role("Guardian") == "logistics"
+      assert WhFleetAnalyzer.categorize_ship_role("Ares") == "tackle"
+      assert WhFleetAnalyzer.categorize_ship_role("Crucifier") == "ewar"
+      assert WhFleetAnalyzer.categorize_ship_role("Unknown Ship") == "unknown"
     end
 
     test "calculate_ship_mass/1 returns realistic masses" do
       # Test with known ship types
-      damnation_mass = WHFleetAnalyzer.calculate_ship_mass("Damnation")
+      damnation_mass = WhFleetAnalyzer.calculate_ship_mass("Damnation")
       assert is_number(damnation_mass)
       # Should be heavy
       assert damnation_mass > 10_000_000
 
-      rifter_mass = WHFleetAnalyzer.calculate_ship_mass("Rifter")
+      rifter_mass = WhFleetAnalyzer.calculate_ship_mass("Rifter")
       assert is_number(rifter_mass)
       # Should be light
       assert rifter_mass < 5_000_000
     end
 
     test "doctrine_ship?/2 identifies doctrine compliance" do
-      assert WHFleetAnalyzer.doctrine_ship?("Legion", "armor_cruiser") == true
-      assert WHFleetAnalyzer.doctrine_ship?("Guardian", "armor_cruiser") == true
-      assert WHFleetAnalyzer.doctrine_ship?("Rifter", "armor_cruiser") == false
-      assert WHFleetAnalyzer.doctrine_ship?("Unknown", "any_doctrine") == false
+      assert WhFleetAnalyzer.doctrine_ship?("Legion", "armor_cruiser") == true
+      assert WhFleetAnalyzer.doctrine_ship?("Guardian", "armor_cruiser") == true
+      assert WhFleetAnalyzer.doctrine_ship?("Rifter", "armor_cruiser") == false
+      assert WhFleetAnalyzer.doctrine_ship?("Unknown", "any_doctrine") == false
     end
 
     test "calculate_logistics_ratio/1 computes correct ratios" do
@@ -407,20 +407,20 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
         }
       }
 
-      ratio = WHFleetAnalyzer.calculate_logistics_ratio(fleet_data)
+      ratio = WhFleetAnalyzer.calculate_logistics_ratio(fleet_data)
       # 2/10 = 20%
       assert ratio == 0.2
     end
 
     test "wormhole_mass_limit/1 returns correct limits" do
       # C3 static
-      c3_limit = WHFleetAnalyzer.wormhole_mass_limit(@c3_static)
+      c3_limit = WhFleetAnalyzer.wormhole_mass_limit(@c3_static)
       assert is_number(c3_limit)
       # Should be substantial
       assert c3_limit > 100_000_000
 
       # Frigate hole
-      frigate_limit = WHFleetAnalyzer.wormhole_mass_limit("D382")
+      frigate_limit = WhFleetAnalyzer.wormhole_mass_limit("D382")
       assert is_number(frigate_limit)
       # Should be smaller
       assert frigate_limit < c3_limit
@@ -436,7 +436,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
         %{ship_name: "Guardian", ship_category: "logistics"}
       ]
 
-      doctrine = WHFleetAnalyzer.identify_fleet_doctrine(armor_fleet)
+      doctrine = WhFleetAnalyzer.identify_fleet_doctrine(armor_fleet)
       assert doctrine == "armor_cruiser" or doctrine == "armor"
     end
 
@@ -447,7 +447,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
         %{ship_name: "Scimitar", ship_category: "logistics"}
       ]
 
-      doctrine = WHFleetAnalyzer.identify_fleet_doctrine(shield_fleet)
+      doctrine = WhFleetAnalyzer.identify_fleet_doctrine(shield_fleet)
       assert doctrine == "shield_cruiser" or doctrine == "shield"
     end
 
@@ -458,7 +458,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
         %{ship_name: "Drake", ship_category: "battlecruiser"}
       ]
 
-      doctrine = WHFleetAnalyzer.identify_fleet_doctrine(mixed_fleet)
+      doctrine = WhFleetAnalyzer.identify_fleet_doctrine(mixed_fleet)
       assert doctrine == "unknown" or doctrine == "mixed"
     end
   end
@@ -471,12 +471,12 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
         %{ship_mass: 8_000_000}
       ]
 
-      total_mass = WHFleetAnalyzer.calculate_total_fleet_mass(fleet)
+      total_mass = WhFleetAnalyzer.calculate_total_fleet_mass(fleet)
       assert total_mass == 33_000_000
     end
 
     test "handles empty fleet mass calculation" do
-      total_mass = WHFleetAnalyzer.calculate_total_fleet_mass([])
+      total_mass = WhFleetAnalyzer.calculate_total_fleet_mass([])
       assert total_mass == 0
     end
 
@@ -486,7 +486,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
         %{ship_mass: 20_000_000}
       ]
 
-      avg_mass = WHFleetAnalyzer.calculate_average_ship_mass(fleet)
+      avg_mass = WhFleetAnalyzer.calculate_average_ship_mass(fleet)
       assert avg_mass == 15_000_000
     end
   end
@@ -499,14 +499,14 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
       # Frigate wormhole
       frigate_wh = %{max_mass: 100_000_000, max_ship_mass: 15_000_000}
 
-      assert WHFleetAnalyzer.fleet_wormhole_compatible?(light_fleet, frigate_wh) == true
-      assert WHFleetAnalyzer.fleet_wormhole_compatible?(heavy_fleet, frigate_wh) == false
+      assert WhFleetAnalyzer.fleet_wormhole_compatible?(light_fleet, frigate_wh) == true
+      assert WhFleetAnalyzer.fleet_wormhole_compatible?(heavy_fleet, frigate_wh) == false
 
       # Large wormhole
       large_wh = %{max_mass: 500_000_000, max_ship_mass: 50_000_000}
 
-      assert WHFleetAnalyzer.fleet_wormhole_compatible?(light_fleet, large_wh) == true
-      assert WHFleetAnalyzer.fleet_wormhole_compatible?(heavy_fleet, large_wh) == true
+      assert WhFleetAnalyzer.fleet_wormhole_compatible?(light_fleet, large_wh) == true
+      assert WhFleetAnalyzer.fleet_wormhole_compatible?(heavy_fleet, large_wh) == true
     end
   end
 
@@ -534,7 +534,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
         })
       ]
 
-      result = WHFleetAnalyzer.analyze_fleet_composition_from_members(fleet_members)
+      result = WhFleetAnalyzer.analyze_fleet_composition_from_members(fleet_members)
 
       assert result.total_members == 3
       assert result.total_mass > 35_000_000

@@ -141,7 +141,21 @@ defmodule EveDmv.Intelligence.Analyzer do
         invalidate_cache(entity_id)
       end
 
-      # Provide default implementations that can be overridden
+      # Default implementations that can be overridden
+      def analyze(_entity_id, _opts) do
+        {:error, "analyze/2 not implemented"}
+      end
+
+      def invalidate_cache(_entity_id) do
+        Logger.debug("invalidate_cache/1 not implemented")
+        :ok
+      end
+
+      def analysis_type do
+        :generic
+      end
+
+      # Make functions overridable
       defoverridable analyze: 2, invalidate_cache: 1, analysis_type: 0
     end
   end

@@ -51,7 +51,6 @@ defmodule EveDmvWeb.Router do
     live("/chain-intelligence", ChainIntelligenceLive)
     live("/chain-intelligence/:map_id", ChainIntelligenceLive)
     live("/wh-vetting", WHVettingLive)
-    live("/character-intelligence/:character_id", CharacterIntelligenceLive)
     live("/intelligence-dashboard", IntelligenceDashboardLive)
   end
 

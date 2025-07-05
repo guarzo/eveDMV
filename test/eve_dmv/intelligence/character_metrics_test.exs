@@ -1,7 +1,7 @@
 defmodule EveDmv.Intelligence.CharacterMetricsTest do
   use EveDmv.IntelligenceCase, async: true
 
-  alias EveDmv.Intelligence.CharacterMetrics
+  alias EveDmv.Intelligence.Metrics.CharacterMetrics
 
   describe "calculate_all_metrics/2" do
     test "returns complete metrics structure for character with activity" do

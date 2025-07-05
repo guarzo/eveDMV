@@ -1,10 +1,10 @@
-defmodule EveDmv.Intelligence.MemberActivityAnalyzerTest do
+defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzerTest do
   @moduledoc """
   Comprehensive tests for MemberActivityAnalyzer module.
   """
   use EveDmv.DataCase, async: true
 
-  alias EveDmv.Intelligence.MemberActivityAnalyzer
+  alias EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer
 
   describe "analyze_corporation_activity/1" do
     test "analyzes corporation member activity patterns" do

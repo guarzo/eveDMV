@@ -1,24 +1,12 @@
 defmodule EveDmv.Eve.EsiCache do
   @moduledoc """
-  ESI cache adapter using the unified cache system with prefixed keys.
+  ESI cache adapter using the unified cache system.
 
-  This module maintains the same interface as before but uses a single
-  cache with prefixed keys instead of multiple ETS tables.
+  This module provides a backward-compatible interface for ESI caching
+  while using the new unified cache system with appropriate cache types.
   """
 
-  alias EveDmv.Utils.Cache
-
-  @cache_name :esi_cache
-
-  # Cache TTLs
-  # 10 minutes
-  @character_ttl_ms 10 * 60 * 1000
-  # 60 minutes
-  @corporation_ttl_ms 60 * 60 * 1000
-  # 60 minutes
-  @alliance_ttl_ms 60 * 60 * 1000
-  # 1 week - universe data is static and rarely changes
-  @universe_ttl_ms 7 * 24 * 60 * 60 * 1000
+  alias EveDmv.Cache
 
   @doc """
   Child specification for supervised processes.
@@ -35,19 +23,11 @@ defmodule EveDmv.Eve.EsiCache do
 
   @doc """
   Start the ESI cache.
+
+  This is now a no-op since the unified cache system handles initialization.
   """
   def start_link(_opts \\ []) do
-    cache_opts = [
-      name: @cache_name,
-      # Default TTL
-      ttl_ms: @character_ttl_ms,
-      # Large cache for all ESI data
-      max_size: 50_000,
-      # 30 minutes
-      cleanup_interval_ms: 30 * 60 * 1000
-    ]
-
-    Cache.start_link(cache_opts)
+    {:ok, spawn(fn -> :ok end)}
   end
 
   # Character cache functions
@@ -57,7 +37,7 @@ defmodule EveDmv.Eve.EsiCache do
   """
   @spec get_character(integer()) :: {:ok, map()} | :miss
   def get_character(character_id) do
-    Cache.get(@cache_name, {:character, character_id})
+    Cache.get_esi_response(:character, character_id)
   end
 
   @doc """
@@ -66,16 +46,16 @@ defmodule EveDmv.Eve.EsiCache do
   """
   @spec get_characters([integer()]) :: {map(), [integer()]}
   def get_characters(character_ids) do
-    keys = Enum.map(character_ids, &{:character, &1})
-    {found, missing_keys} = Cache.get_many(@cache_name, keys)
+    keys = Enum.map(character_ids, &{:esi, :character, &1})
+    {found, missing_keys} = Cache.get_many(:api_responses, keys)
 
     # Convert back to character_id => data format
     found_map =
       found
-      |> Enum.map(fn {{:character, id}, data} -> {id, data} end)
+      |> Enum.map(fn {{:esi, :character, id}, data} -> {id, data} end)
       |> Enum.into(%{})
 
-    missing_ids = Enum.map(missing_keys, fn {:character, id} -> id end)
+    missing_ids = Enum.map(missing_keys, fn {:esi, :character, id} -> id end)
 
     {found_map, missing_ids}
   end
@@ -85,7 +65,7 @@ defmodule EveDmv.Eve.EsiCache do
   """
   @spec put_character(integer(), map()) :: :ok
   def put_character(character_id, character_data) do
-    Cache.put(@cache_name, {:character, character_id}, character_data, ttl_ms: @character_ttl_ms)
+    Cache.put_esi_response(:character, character_id, character_data)
   end
 
   # Corporation cache functions
@@ -95,7 +75,7 @@ defmodule EveDmv.Eve.EsiCache do
   """
   @spec get_corporation(integer()) :: {:ok, map()} | :miss
   def get_corporation(corporation_id) do
-    Cache.get(@cache_name, {:corporation, corporation_id})
+    Cache.get_esi_response(:corporation, corporation_id)
   end
 
   @doc """
@@ -103,9 +83,7 @@ defmodule EveDmv.Eve.EsiCache do
   """
   @spec put_corporation(integer(), map()) :: :ok
   def put_corporation(corporation_id, corporation_data) do
-    Cache.put(@cache_name, {:corporation, corporation_id}, corporation_data,
-      ttl_ms: @corporation_ttl_ms
-    )
+    Cache.put_esi_response(:corporation, corporation_id, corporation_data)
   end
 
   # Alliance cache functions
@@ -115,7 +93,7 @@ defmodule EveDmv.Eve.EsiCache do
   """
   @spec get_alliance(integer()) :: {:ok, map()} | :miss
   def get_alliance(alliance_id) do
-    Cache.get(@cache_name, {:alliance, alliance_id})
+    Cache.get_esi_response(:alliance, alliance_id)
   end
 
   @doc """
@@ -123,7 +101,7 @@ defmodule EveDmv.Eve.EsiCache do
   """
   @spec put_alliance(integer(), map()) :: :ok
   def put_alliance(alliance_id, alliance_data) do
-    Cache.put(@cache_name, {:alliance, alliance_id}, alliance_data, ttl_ms: @alliance_ttl_ms)
+    Cache.put_esi_response(:alliance, alliance_id, alliance_data)
   end
 
   # Generic cache functions (for backward compatibility)
@@ -133,7 +111,7 @@ defmodule EveDmv.Eve.EsiCache do
   """
   @spec get(String.t()) :: {:ok, term()} | {:error, :not_found}
   def get(key) do
-    case Cache.get(@cache_name, {:generic, key}) do
+    case Cache.get(:api_responses, {:esi, :generic, key}) do
       {:ok, data} -> {:ok, data}
       :miss -> {:error, :not_found}
     end
@@ -146,7 +124,7 @@ defmodule EveDmv.Eve.EsiCache do
   def put(key, value, opts \\ []) do
     ttl_seconds = Keyword.get(opts, :ttl, 3600)
     ttl_ms = ttl_seconds * 1000
-    Cache.put(@cache_name, {:generic, key}, value, ttl_ms: ttl_ms)
+    Cache.put(:api_responses, {:esi, :generic, key}, value, ttl_ms: ttl_ms)
   end
 
   # Universe cache functions
@@ -156,7 +134,7 @@ defmodule EveDmv.Eve.EsiCache do
   """
   @spec get_system(integer()) :: {:ok, map()} | :miss
   def get_system(system_id) do
-    Cache.get(@cache_name, {:universe, :system, system_id})
+    Cache.get(:hot_data, {:universe, :system, system_id})
   end
 
   @doc """
@@ -164,7 +142,7 @@ defmodule EveDmv.Eve.EsiCache do
   """
   @spec put_system(integer(), map()) :: :ok
   def put_system(system_id, system_data) do
-    Cache.put(@cache_name, {:universe, :system, system_id}, system_data, ttl_ms: @universe_ttl_ms)
+    Cache.put(:hot_data, {:universe, :system, system_id}, system_data)
   end
 
   @doc """
@@ -172,7 +150,7 @@ defmodule EveDmv.Eve.EsiCache do
   """
   @spec get_type(integer()) :: {:ok, map()} | :miss
   def get_type(type_id) do
-    Cache.get(@cache_name, {:universe, :type, type_id})
+    Cache.get(:hot_data, {:universe, :type, type_id})
   end
 
   @doc """
@@ -180,7 +158,7 @@ defmodule EveDmv.Eve.EsiCache do
   """
   @spec put_type(integer(), map()) :: :ok
   def put_type(type_id, type_data) do
-    Cache.put(@cache_name, {:universe, :type, type_id}, type_data, ttl_ms: @universe_ttl_ms)
+    Cache.put(:hot_data, {:universe, :type, type_id}, type_data)
   end
 
   @doc """
@@ -188,7 +166,7 @@ defmodule EveDmv.Eve.EsiCache do
   """
   @spec get_group(integer()) :: {:ok, map()} | :miss
   def get_group(group_id) do
-    Cache.get(@cache_name, {:universe, :group, group_id})
+    Cache.get(:hot_data, {:universe, :group, group_id})
   end
 
   @doc """
@@ -196,7 +174,7 @@ defmodule EveDmv.Eve.EsiCache do
   """
   @spec put_group(integer(), map()) :: :ok
   def put_group(group_id, group_data) do
-    Cache.put(@cache_name, {:universe, :group, group_id}, group_data, ttl_ms: @universe_ttl_ms)
+    Cache.put(:hot_data, {:universe, :group, group_id}, group_data)
   end
 
   @doc """
@@ -204,7 +182,7 @@ defmodule EveDmv.Eve.EsiCache do
   """
   @spec get_category(integer()) :: {:ok, map()} | :miss
   def get_category(category_id) do
-    Cache.get(@cache_name, {:universe, :category, category_id})
+    Cache.get(:hot_data, {:universe, :category, category_id})
   end
 
   @doc """
@@ -212,9 +190,7 @@ defmodule EveDmv.Eve.EsiCache do
   """
   @spec put_category(integer(), map()) :: :ok
   def put_category(category_id, category_data) do
-    Cache.put(@cache_name, {:universe, :category, category_id}, category_data,
-      ttl_ms: @universe_ttl_ms
-    )
+    Cache.put(:hot_data, {:universe, :category, category_id}, category_data)
   end
 
   # Utility functions
@@ -224,7 +200,8 @@ defmodule EveDmv.Eve.EsiCache do
   """
   @spec clear_all() :: :ok
   def clear_all do
-    Cache.clear(@cache_name)
+    Cache.invalidate_pattern(:api_responses, "esi_*")
+    :ok
   end
 
   @doc """
@@ -238,7 +215,7 @@ defmodule EveDmv.Eve.EsiCache do
         }
   def stats do
     # Get overall stats
-    overall_stats = Cache.stats(@cache_name)
+    overall_stats = Cache.stats(:api_responses)
 
     # For compatibility, return the same structure but with estimated values
     # In reality, all data is in one table now

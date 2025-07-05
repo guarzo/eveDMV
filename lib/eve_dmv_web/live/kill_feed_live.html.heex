@@ -1,25 +1,24 @@
 <div class="min-h-screen bg-gray-900 text-gray-100">
   <!-- Header -->
-  <div class="bg-gray-800 border-b border-gray-700 px-6 py-4">
-    <div class="flex items-center justify-between">
-      <div class="flex items-center space-x-4">
-        <h1 class="text-2xl font-bold text-blue-400">EVE DMV</h1>
-        <div class="text-sm text-gray-400">Live Kill Feed</div>
+  <.page_header 
+    title="EVE DMV" 
+    subtitle="Live Kill Feed"
+    current_user={assigns[:current_user]}
+  >
+    <:action>
+      <button
+        phx-click="refresh_feed"
+        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors"
+      >
+        Refresh Feed
+      </button>
+    </:action>
+    <:info>
+      <div class="text-sm text-gray-400">
+        <span class="text-green-400">{@total_kills_today}</span> kills today
       </div>
-
-      <div class="flex items-center space-x-4">
-        <button
-          phx-click="refresh_feed"
-          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors"
-        >
-          Refresh Feed
-        </button>
-        <div class="text-sm text-gray-400">
-          <span class="text-green-400">{@total_kills_today}</span> kills today
-        </div>
-      </div>
-    </div>
-  </div>
+    </:info>
+  </.page_header>
 
   <div class="flex">
     <!-- Sidebar -->
@@ -27,26 +26,16 @@
       <!-- Today's Stats -->
       <div class="p-6 border-b border-gray-700">
         <h2 class="text-lg font-semibold text-gray-200 mb-4">Today's Statistics</h2>
-        <div class="space-y-3">
-          <div class="flex justify-between">
-            <span class="text-gray-400">Total Kills:</span>
-            <span class="text-green-400 font-mono">{@total_kills_today}</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-gray-400">ISK Destroyed:</span>
-            <span class="text-red-400 font-mono">{format_isk(@total_isk_destroyed)}</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-gray-400">Avg Value:</span>
-            <span class="text-yellow-400 font-mono">
-              <%= if @total_kills_today > 0 do %>
-                {format_isk(Decimal.div(@total_isk_destroyed, @total_kills_today))}
-              <% else %>
-                0 ISK
-              <% end %>
-            </span>
-          </div>
-        </div>
+        <.stats_grid columns={1} class="space-y-3">
+          <:stat label="Total Kills" value={@total_kills_today} color="green" />
+          <:stat label="ISK Destroyed" value={@total_isk_destroyed} format="isk" color="red" />
+          <:stat 
+            label="Avg Value" 
+            value={if @total_kills_today > 0, do: Decimal.div(@total_isk_destroyed, @total_kills_today), else: 0} 
+            format="isk" 
+            color="yellow" 
+          />
+        </.stats_grid>
       </div>
       
 <!-- Hot Systems -->
@@ -112,12 +101,10 @@
                       <div class="flex items-center space-x-2">
                         <h3 class="font-semibold text-gray-200">
                           <%= if killmail.victim_character_id do %>
-                            <.link
-                              navigate={~p"/intel/#{killmail.victim_character_id}"}
-                              class="hover:text-blue-400 transition-colors"
-                            >
-                              {killmail.victim_character_name}
-                            </.link>
+                            <.character_link 
+                              character_id={killmail.victim_character_id} 
+                              character_name={killmail.victim_character_name} 
+                            />
                           <% else %>
                             <span>{killmail.victim_character_name}</span>
                           <% end %>
@@ -169,12 +156,11 @@
                     <div class="text-xs text-blue-400">
                       FB:
                       <%= if killmail.final_blow_character_id do %>
-                        <.link
-                          navigate={~p"/intel/#{killmail.final_blow_character_id}"}
-                          class="hover:text-blue-300 transition-colors"
-                        >
-                          {killmail.final_blow_character_name}
-                        </.link>
+                        <.character_link 
+                          character_id={killmail.final_blow_character_id} 
+                          character_name={killmail.final_blow_character_name} 
+                          class="text-xs"
+                        />
                       <% else %>
                         <span>{killmail.final_blow_character_name}</span>
                       <% end %>
@@ -198,11 +184,11 @@
         
 <!-- Empty State -->
         <%= if length(@killmails) == 0 do %>
-          <div class="text-center py-12">
-            <div class="text-4xl text-gray-600 mb-4">🛸</div>
-            <h3 class="text-lg font-medium text-gray-400 mb-2">No kills yet</h3>
-            <p class="text-gray-500">Kill data will appear here as it's processed</p>
-          </div>
+          <.empty_state 
+            icon="🛸"
+            title="No kills yet"
+            message="Kill data will appear here as it's processed"
+          />
         <% end %>
       </div>
     </div>

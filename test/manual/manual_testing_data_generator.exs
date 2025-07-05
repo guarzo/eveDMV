@@ -9,7 +9,7 @@
 defmodule ManualTestingDataGenerator do
   require Ash.Query
   alias EveDmv.Api
-  alias EveDmv.Intelligence.CharacterMetrics
+  alias EveDmv.Intelligence.Metrics.CharacterMetrics
   alias EveDmv.Killmails.{KillmailRaw, Participant}
   alias EveDmv.Surveillance.NotificationService
   alias EveDmv.Surveillance.Profile
