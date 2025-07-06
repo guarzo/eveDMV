@@ -37,8 +37,6 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager do
 
   use EveDmv.Intelligence.Analyzer
 
-  alias EveDmv.Intelligence.{ShipDatabase}
-  alias EveDmv.Intelligence.Analyzers.{AssetAnalyzer, MassCalculator}
 
   # Extracted modules
   alias EveDmv.Intelligence.Analyzers.FleetAssetManager.{
@@ -74,7 +72,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager do
 
   # Custom error handling for asset management
   @impl EveDmv.ErrorHandler
-  def handle_error(error, context) do
+  def handle_error(error, _context) do
     case error.code do
       :esi_api_error ->
         # Provide fallback asset data when ESI is unavailable

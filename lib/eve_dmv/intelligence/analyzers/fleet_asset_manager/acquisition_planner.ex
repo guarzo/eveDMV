@@ -181,7 +181,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.AcquisitionPlanner do
     missing_assets
     |> Enum.map(fn asset ->
       role = Map.get(asset, "role", "")
-      cost = Map.get(asset, "estimated_cost", 0)
+      _cost = Map.get(asset, "estimated_cost", 0)
       importance = ShipCostCalculator.role_importance_score(role)
 
       priority_level =

@@ -32,11 +32,6 @@
    - Doctrine effectiveness tracking
    - Fleet performance analytics
 
-3. **Advanced Vetting & Recruitment** (5 pts) - 🔴 Not Started
-   - Public recruitment dashboard
-   - Automated application processing
-   - Integration with EVE forums/Discord
-
 ### Sprint 5 Technical Debt Tasks
 - ✅ **GenServer Simplification** - Complete
   - Simplified 4 over-engineered caching GenServers

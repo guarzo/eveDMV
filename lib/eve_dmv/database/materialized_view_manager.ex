@@ -10,7 +10,6 @@ defmodule EveDmv.Database.MaterializedViewManager do
   require Logger
 
   alias EveDmv.Database.CacheInvalidator
-  alias EveDmv.Database.MaterializedViewManager.ViewDefinitions
   alias EveDmv.Database.MaterializedViewManager.ViewLifecycle
   alias EveDmv.Database.MaterializedViewManager.ViewRefreshScheduler
   alias EveDmv.Database.MaterializedViewManager.ViewQueryService

@@ -65,7 +65,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
   # GenServer Callbacks
 
   @impl GenServer
-  def init(opts) do
+  def init(_opts) do
     state = %__MODULE__{
       monitored_chains: MapSet.new(),
       sync_timer: nil,

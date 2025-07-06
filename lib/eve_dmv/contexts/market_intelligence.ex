@@ -15,7 +15,7 @@ defmodule EveDmv.Contexts.MarketIntelligence do
   use Supervisor
 
   alias EveDmv.Contexts.MarketIntelligence.{Api, Domain, Infrastructure}
-  alias EveDmv.DomainEvents.{StaticDataUpdated, PriceUpdated}
+  alias EveDmv.DomainEvents.StaticDataUpdated
 
   # Supervisor implementation
 

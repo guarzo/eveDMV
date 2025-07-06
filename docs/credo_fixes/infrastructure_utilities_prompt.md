@@ -1,8 +1,8 @@
 # Infrastructure & Utilities Code Quality Fixes
 
-## Issues Overview - PROGRESS UPDATE
-- **Error Count**: Reduced to ~150 errors (was 200+) ✅ **25% improvement**
-- **Remaining Issues**: Pipe chain structure, some single-function pipelines, performance warnings
+## Issues Overview - COMPLETE REMAINING WORK
+- **Error Count**: ~200 errors still remain across infrastructure modules
+- **Major Categories**: Single-function pipelines (60+), trailing whitespace (50+), alias organization (30+), variable redeclaration (20+), pipe chain structure (15+)
 - **Files Affected**: 
   - `lib/eve_dmv/workers/*`
   - `lib/eve_dmv/telemetry/*`
@@ -18,9 +18,10 @@
 
 Address current infrastructure and utility code quality issues:
 
-### 1. **Single-Function Pipelines** (Medium Priority - ~20 remaining)
-**Progress**: ✅ Significant reduction achieved (was 50+, now ~20)
-**Remaining**: Convert final single-function pipelines to direct function calls:
+### 1. **Single-Function Pipelines** (HIGH PRIORITY - 60+ remaining)
+**Status**: ❌ Major work still required across infrastructure modules
+**Scope**: Worker supervisors, telemetry, security, analytics, test utilities
+**Task**: Convert ALL single-function pipelines to direct function calls:
 ```elixir
 # Bad
 result |> SomeModule.process()
@@ -36,11 +37,16 @@ SomeModule.process(result)
 - Quality metrics collection
 - Test helper utilities
 
-### 2. **Code Formatting** (Critical - 100+ instances)
-**Automated fixes needed**:
-- Remove trailing whitespace from all lines
-- Add final newlines to files
-- Format large numbers: `1000000` → `1_000_000`
+### 2. **Trailing Whitespace** (CRITICAL - 50+ instances in infrastructure)
+**Status**: ❌ Widespread formatting issue requiring automated fix
+**Solution**: Run code formatter on all infrastructure modules
+**Impact**: Easy automated fix for immediate error reduction
+
+### 3. **Alias Organization** (HIGH PRIORITY - 30+ instances)
+**Issues**:
+- `alias` statements must appear before `require`
+- Grouped aliases `alias {A, B}` must be individual lines
+- Need alphabetical ordering within import groups
 
 ### 3. **@impl Annotations** (High Priority - 30+ instances)
 Replace generic `@impl true` with specific behavior names:

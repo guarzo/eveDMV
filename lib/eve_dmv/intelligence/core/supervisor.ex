@@ -17,7 +17,7 @@ defmodule EveDmv.Intelligence.Core.Supervisor do
   end
 
   @impl true
-  def init(opts) do
+  def init(_opts) do
     children = [
       # Registry for tracking analysis tasks
       {Registry, keys: :unique, name: TaskRegistry},

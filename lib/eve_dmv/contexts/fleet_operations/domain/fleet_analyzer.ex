@@ -451,7 +451,8 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
     {:ok,
      %{
        recommendations: optimization_recommendations,
-       priority_recommendations: filter_high_priority_recommendations(optimization_recommendations),
+       priority_recommendations:
+         filter_high_priority_recommendations(optimization_recommendations),
        improvement_score: calculate_improvement_potential(fleet_data)
      }}
   end

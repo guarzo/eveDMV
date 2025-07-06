@@ -219,6 +219,80 @@ defmodule EveDmv.DomainEvents do
 
   # Wormhole Operations Events
 
+  defmodule ChainThreatDetected do
+    @moduledoc """
+    Published when a threat is detected in the wormhole chain.
+    """
+    @enforce_keys [:map_id, :system_id, :threat_level]
+    defstruct [
+      :map_id,
+      :system_id,
+      :threat_level,
+      :pilot_count,
+      :hostile_count,
+      :threat_details,
+      :timestamp
+    ]
+
+    @type t :: %__MODULE__{
+            map_id: String.t(),
+            system_id: integer(),
+            threat_level: :low | :medium | :high | :critical,
+            pilot_count: integer() | nil,
+            hostile_count: integer() | nil,
+            threat_details: map() | nil,
+            timestamp: DateTime.t()
+          }
+  end
+
+  defmodule HostileMovement do
+    @moduledoc """
+    Published when hostile movement is detected in the wormhole chain.
+    """
+    @enforce_keys [:system_id, :character_id]
+    defstruct [
+      :system_id,
+      :character_id,
+      :character_name,
+      :movement_type,
+      :threat_level,
+      :timestamp
+    ]
+
+    @type t :: %__MODULE__{
+            system_id: integer(),
+            character_id: integer(),
+            character_name: String.t() | nil,
+            movement_type: :jump | :dock | :undock | :warp,
+            threat_level: :low | :medium | :high | :critical,
+            timestamp: DateTime.t()
+          }
+  end
+
+  defmodule ChainActivityPrediction do
+    @moduledoc """
+    Published when chain activity predictions are updated.
+    """
+    @enforce_keys [:map_id, :prediction_type]
+    defstruct [
+      :map_id,
+      :prediction_type,
+      :predicted_activity,
+      :confidence_score,
+      :time_window,
+      :timestamp
+    ]
+
+    @type t :: %__MODULE__{
+            map_id: String.t(),
+            prediction_type: :traffic | :threat | :opportunity,
+            predicted_activity: map(),
+            confidence_score: float() | nil,
+            time_window: map() | nil,
+            timestamp: DateTime.t()
+          }
+  end
+
   defmodule ChainUpdated do
     @moduledoc """
     Published when wormhole chain topology is updated.

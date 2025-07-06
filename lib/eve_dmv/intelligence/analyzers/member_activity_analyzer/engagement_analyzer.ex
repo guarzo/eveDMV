@@ -192,11 +192,6 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.EngagementAnalyze
     end
   end
 
-  defp filter_members_by_score_range(member_engagement_data, min_score, max_score) do
-    member_engagement_data
-    |> Enum.filter(fn {_member_id, score} -> score >= min_score and score < max_score end)
-    |> Enum.map(fn {member_id, score} -> %{member_id: member_id, score: score} end)
-  end
 
   defp create_engagement_distribution(grouped_members) do
     %{

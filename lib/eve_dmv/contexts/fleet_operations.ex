@@ -18,7 +18,7 @@ defmodule EveDmv.Contexts.FleetOperations do
   use Supervisor
 
   alias EveDmv.Contexts.FleetOperations.{Api, Domain, Infrastructure}
-  alias EveDmv.DomainEvents.{KillmailEnriched, FleetEngagement, FleetAnalysisComplete}
+  alias EveDmv.DomainEvents.KillmailEnriched
 
   # Supervisor implementation
 

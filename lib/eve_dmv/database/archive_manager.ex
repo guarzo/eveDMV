@@ -12,7 +12,6 @@ defmodule EveDmv.Database.ArchiveManager do
   alias EveDmv.Database.ArchiveManager.MaintenanceScheduler
   alias EveDmv.Database.ArchiveManager.PartitionManager
   alias EveDmv.Database.ArchiveManager.RestoreOperations
-  alias EveDmv.Repo
 
   require Logger
 

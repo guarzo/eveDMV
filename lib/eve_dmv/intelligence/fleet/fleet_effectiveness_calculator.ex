@@ -30,8 +30,7 @@ defmodule EveDmv.Intelligence.Fleet.FleetEffectivenessCalculator do
   def calculate_dps_rating(composition, pilot_assignments) do
     # Calculate DPS effectiveness based on ship composition
     dps_pilots =
-      pilot_assignments
-      |> Enum.count(fn {_id, pilot_data} ->
+      Enum.count(pilot_assignments, fn {_id, pilot_data} ->
         pilot_data["assigned_role"] in ["dps", "fleet_commander"]
       end)
 
@@ -44,8 +43,9 @@ defmodule EveDmv.Intelligence.Fleet.FleetEffectivenessCalculator do
   def calculate_tank_rating(composition, pilot_assignments) do
     # Calculate tank/survivability rating
     logi_pilots =
-      pilot_assignments
-      |> Enum.count(fn {_id, pilot_data} -> pilot_data["assigned_role"] == "logistics" end)
+      Enum.count(pilot_assignments, fn {_id, pilot_data} ->
+        pilot_data["assigned_role"] == "logistics"
+      end)
 
     min(1.0, logi_pilots / max(1, composition.optimal_pilots * 0.25))
   end
@@ -56,8 +56,9 @@ defmodule EveDmv.Intelligence.Fleet.FleetEffectivenessCalculator do
   def calculate_mobility_rating(composition, pilot_assignments) do
     # Calculate mobility/tackle rating
     tackle_pilots =
-      pilot_assignments
-      |> Enum.count(fn {_id, pilot_data} -> pilot_data["assigned_role"] == "tackle" end)
+      Enum.count(pilot_assignments, fn {_id, pilot_data} ->
+        pilot_data["assigned_role"] == "tackle"
+      end)
 
     min(1.0, tackle_pilots / max(1, composition.optimal_pilots * 0.2))
   end
@@ -68,8 +69,9 @@ defmodule EveDmv.Intelligence.Fleet.FleetEffectivenessCalculator do
   def calculate_utility_rating(composition, pilot_assignments) do
     # Calculate utility/EWAR rating
     utility_pilots =
-      pilot_assignments
-      |> Enum.count(fn {_id, pilot_data} -> pilot_data["assigned_role"] in ["ewar", "support"] end)
+      Enum.count(pilot_assignments, fn {_id, pilot_data} ->
+        pilot_data["assigned_role"] in ["ewar", "support"]
+      end)
 
     # Utility is optional, so base rating is higher
     0.7 + min(0.3, utility_pilots / max(1, composition.optimal_pilots * 0.15))

@@ -2,26 +2,32 @@
 
 This directory contains AI assistant prompts for fixing code quality issues identified by Credo static analysis.
 
-## Overview - POST WORKSTREAM UPDATE ✅
+## Overview - COMPLETE REMAINING WORK SCOPE
 
-- **Total Errors**: **925 errors** (reduced from 1,700+) - **47% improvement**
-- **Remaining Critical Issues**: Excessive dependencies (1), duplicate code (3), pipe chains (~20)
-- **Source**: Updated analysis after workstream completion - December 2024
-- **Status**: Major progress achieved, focus on critical issues
+- **Total Errors**: **925 errors** (reduced from 1,700+) - **47% improvement achieved**
+- **MAJOR REMAINING WORK**: Single-function pipelines (223), trailing whitespace (220), alias organization (121), variable redeclaration (76), pipe chain structure (58)
+- **Source**: Complete analysis after workstream completion - December 2024
+- **Status**: Significant progress made, but substantial work remains across ALL categories
 
-## URGENT - Critical Issues Remaining
+## COMPLETE REMAINING WORK - ALL CATEGORIES
 
-1. **[Current Status Summary](current_status_summary.md)** - Complete progress overview
-   - 47% total error reduction achieved
-   - Critical issues identified for next phase
+### **🚀 AUTOMATED FIXES AVAILABLE (High Impact)**
+1. **[Automated Fixes](automated_fixes_prompt.md)** - 440+ errors can be fixed automatically
+   - **Trailing Whitespace**: 220 errors (mix format)
+   - **Single-Function Pipelines**: 223 errors (semi-automated)
+   - **Alias Organization**: 121 errors (scripted)
+   - **Impact**: 53% error reduction possible with automation
 
-2. **[Surveillance Dependencies](surveillance_prompt.md)** - 1 CRITICAL issue
-   - Services module has 16 dependencies (max 15)
-   - Must split into focused service modules
+### **📋 COMPLETE SCOPE**
+2. **[Complete Remaining Work](complete_remaining_work.md)** - Full breakdown
+   - 925 total errors across ALL categories and modules
+   - Detailed implementation strategy by category
 
-3. **[Duplicate Code](player_profile_prompt.md)** - 3 CRITICAL duplications
-   - `calculate_current_metrics` duplicated in analyzer modules
-   - 36 lines of duplicate code to extract
+### **🔧 MANUAL FIXES REQUIRED**  
+3. **Domain-Specific Issues** - Logic and architectural fixes:
+   - **Variable Redeclaration**: 76 errors in analysis modules
+   - **Pipe Chain Structure**: 58 errors in database/infrastructure  
+   - **Dependencies & Duplicate Code**: Critical architectural issues
 
 ## Domain-Specific Error Categories (UPDATED)
 

@@ -53,6 +53,8 @@ defmodule EveDmvWeb.Router do
     live("/chain-intelligence/:map_id", ChainIntelligenceLive)
     live("/wh-vetting", WHVettingLive)
     live("/intelligence-dashboard", IntelligenceDashboardLive)
+    live("/battle", BattleAnalysisLive)
+    live("/battle/:battle_id", BattleAnalysisLive)
   end
 
   # Authentication routes

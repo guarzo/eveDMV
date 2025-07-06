@@ -27,6 +27,10 @@ defmodule EveDmv.Api do
 
     # Core intelligence resources
     resource(EveDmv.Intelligence.CharacterStats)
+
+    # Analytics resources
+    resource(EveDmv.Analytics.ShipStats)
+    resource(EveDmv.Analytics.PlayerStats)
   end
 
   # Authorization configuration

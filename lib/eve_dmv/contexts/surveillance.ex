@@ -16,7 +16,7 @@ defmodule EveDmv.Contexts.Surveillance do
   use Supervisor
 
   alias EveDmv.Contexts.Surveillance.{Api, Domain, Infrastructure}
-  alias EveDmv.DomainEvents.{KillmailReceived, KillmailEnriched}
+  alias EveDmv.DomainEvents.KillmailReceived
 
   # Supervisor implementation
 

@@ -12,7 +12,6 @@ defmodule EveDmv.Intelligence.IntelligenceScoring do
   alias EveDmv.Api
   alias EveDmv.Intelligence.AdvancedAnalytics
   alias EveDmv.Intelligence.CharacterStats
-  alias EveDmv.Intelligence.WhSpace.Vetting, as: WHVetting
 
   # Extracted scoring modules
   alias EveDmv.Intelligence.IntelligenceScoring.CombatScoring
@@ -116,17 +115,6 @@ defmodule EveDmv.Intelligence.IntelligenceScoring do
     end
   end
 
-  defp get_vetting_data(character_id) do
-    case WHVetting
-         |> Ash.Query.new()
-         |> Ash.Query.filter(character_id: character_id)
-         |> Ash.Query.limit(1)
-         |> Ash.read(domain: Api) do
-      {:ok, [vetting]} -> {:ok, vetting}
-      # Return empty map if no vetting data
-      _ -> {:ok, %{}}
-    end
-  end
 
   defp calculate_weighted_overall_score(component_scores) do
     # Strategic weighting of different score components
