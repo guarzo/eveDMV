@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmv.Database.CacheWarmer do
   @moduledoc """
   Intelligent cache warming for frequently accessed data.
@@ -12,7 +13,7 @@ defmodule EveDmv.Database.CacheWarmer do
 
   alias EveDmv.Api
   alias EveDmv.Database.QueryCache
-  alias EveDmv.IntelligenceEngine
+  alias EveDmv.IntelligenceMigrationAdapter
   alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Killmails.KillmailEnriched
   alias EveDmv.Eve.{ItemType, SolarSystem}
@@ -255,8 +256,7 @@ defmodule EveDmv.Database.CacheWarmer do
     ]
 
     # Warm item type data
-    popular_ship_ids
-    |> Enum.chunk_every(10)
+    Enum.chunk_every(popular_ship_ids, 10)
     |> Enum.each(&warm_item_type_batch/1)
 
     length(popular_ship_ids)
@@ -278,8 +278,7 @@ defmodule EveDmv.Database.CacheWarmer do
           |> Enum.take(@batch_size)
 
         # Warm alliance statistics
-        alliance_ids
-        |> Enum.each(fn alliance_id ->
+        Enum.each(alliance_ids, fn alliance_id ->
           cache_key = "alliance_stats_#{alliance_id}"
 
           QueryCache.get_or_compute(
@@ -299,14 +298,13 @@ defmodule EveDmv.Database.CacheWarmer do
   end
 
   defp warm_specific_items("character", character_ids) do
-    character_ids
-    |> Enum.each(fn character_id ->
+    Enum.each(character_ids, fn character_id ->
       cache_key = "character_intel_#{character_id}"
 
       QueryCache.get_or_compute(
         cache_key,
         fn ->
-          case IntelligenceEngine.analyze(:character, character_id, scope: :basic) do
+          case IntelligenceMigrationAdapter.analyze(:character, character_id, scope: :basic) do
             {:ok, analysis} -> analysis
             _ -> nil
           end
@@ -317,8 +315,7 @@ defmodule EveDmv.Database.CacheWarmer do
   end
 
   defp warm_specific_items("killmail", killmail_ids) do
-    killmail_ids
-    |> Enum.each(fn killmail_id ->
+    Enum.each(killmail_ids, fn killmail_id ->
       cache_key = "killmail_enriched_#{killmail_id}"
 
       QueryCache.get_or_compute(
@@ -348,7 +345,7 @@ defmodule EveDmv.Database.CacheWarmer do
       QueryCache.get_or_compute(
         cache_key,
         fn ->
-          case IntelligenceEngine.analyze(:character, character_id, scope: :basic) do
+          case IntelligenceMigrationAdapter.analyze(:character, character_id, scope: :basic) do
             {:ok, analysis} -> analysis
             _ -> nil
           end

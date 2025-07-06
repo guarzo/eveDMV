@@ -10,6 +10,7 @@ defmodule EveDmv.Database.CacheInvalidator do
   require Logger
 
   alias EveDmv.Database.QueryCache
+  alias EveDmv.Database.CacheWarmer
   alias Phoenix.PubSub
 
   @pubsub_topic "cache_invalidation"
@@ -414,6 +415,6 @@ defmodule EveDmv.Database.CacheInvalidator do
 
   def warm_after_invalidation(cache_type, entity_id) do
     # Trigger cache warming after invalidation
-    EveDmv.Database.CacheWarmer.warm_specific(to_string(cache_type), [entity_id])
+    CacheWarmer.warm_specific(to_string(cache_type), [entity_id])
   end
 end

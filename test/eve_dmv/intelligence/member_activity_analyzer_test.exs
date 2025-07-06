@@ -396,8 +396,8 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzerTest do
         days_since_join: 30
       }
 
-      score = MemberActivityAnalyzer.calculate_engagement_score(low_engagement_member)
-      assert score < 40
+      low_score = MemberActivityAnalyzer.calculate_engagement_score(low_engagement_member)
+      assert low_score < 40
     end
 
     test "classify_activity_level/1 correctly categorizes members" do

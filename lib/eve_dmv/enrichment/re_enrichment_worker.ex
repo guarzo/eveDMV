@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmv.Enrichment.ReEnrichmentWorker do
   @moduledoc """
   Background worker for re-enriching killmail data.
@@ -72,7 +73,7 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
 
   # GenServer callbacks
 
-  @impl true
+  @impl GenServer
   def init(opts) do
     Logger.info("Starting killmail re-enrichment worker")
 
@@ -94,7 +95,7 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
     {:ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast(:trigger_re_enrichment, state) do
     Logger.info("Manual re-enrichment triggered")
 
@@ -105,7 +106,7 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
     {:noreply, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast(:trigger_price_update, state) do
     Logger.info("Manual price update triggered")
 
@@ -117,7 +118,7 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
     {:noreply, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_stats, _from, state) do
     stats = %{
       last_price_update: state.last_price_update,
@@ -131,7 +132,7 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
     {:reply, stats, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:price_update, state) do
     Logger.debug("Starting scheduled price update")
 
@@ -146,7 +147,7 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
     {:noreply, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:name_update, state) do
     Logger.debug("Starting scheduled name resolution update")
 
@@ -161,7 +162,7 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
     {:noreply, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(msg, state) do
     Logger.debug("Unexpected message: #{inspect(msg)}")
     {:noreply, state}

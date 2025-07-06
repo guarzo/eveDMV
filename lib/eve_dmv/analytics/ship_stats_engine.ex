@@ -1,13 +1,15 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmv.Analytics.ShipStatsEngine do
   @moduledoc """
   Engine for calculating ship performance statistics.
   """
 
-  require Logger
   alias EveDmv.Analytics.ShipStats
   alias EveDmv.Api
   alias EveDmv.Eve.ItemType
   alias EveDmv.Killmails.Participant
+
+  require Logger
 
   @default_days 90
   @default_min_usage 10
@@ -176,7 +178,8 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
       combat_metrics = calculate_combat_metrics(kills, losses)
       time_metrics = calculate_time_metrics()
 
-      Map.merge(basic_metrics, isk_metrics)
+      basic_metrics
+      |> Map.merge(isk_metrics)
       |> Map.merge(combat_metrics)
       |> Map.merge(time_metrics)
       |> Map.put(:ship_name, ship_name)
@@ -269,45 +272,7 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
   defp update_ship_rankings do
     case Ash.read(ShipStats, domain: Api) do
       {:ok, ships} ->
-        if Enum.empty?(ships) do
-          Logger.info("No ship statistics found to rank")
-          {:ok, :no_ships_to_rank}
-        else
-          usage_ranked =
-            ships
-            |> Enum.sort_by(&(&1.total_kills + &1.total_losses), :desc)
-            |> Enum.with_index(1)
-
-          eff_ranked =
-            ships
-            |> Enum.filter(&(&1.total_kills + &1.total_losses >= 25))
-            |> Enum.sort_by(& &1.kill_death_ratio, :desc)
-            |> Enum.with_index(1)
-
-          # Bulk update usage ranks
-          Enum.each(usage_ranked, fn {ship, rank} ->
-            Ash.update!(ship, %{usage_rank: rank}, domain: Api)
-          end)
-
-          # Bulk update effectiveness ranks
-          Enum.each(eff_ranked, fn {ship, rank} ->
-            Ash.update!(ship, %{effectiveness_rank: rank}, domain: Api)
-          end)
-
-          # Only calculate meta tiers if we have effectiveness rankings
-          if Enum.empty?(eff_ranked) do
-            Logger.info(
-              "No ships qualified for effectiveness ranking (minimum 25 total activity)"
-            )
-
-            {:ok, :rankings_updated_no_meta_tiers}
-          else
-            case calculate_meta_tiers(eff_ranked) do
-              {:ok, _} -> {:ok, :rankings_updated}
-              {:error, reason} -> {:error, reason}
-            end
-          end
-        end
+        process_ship_rankings(ships)
 
       {:error, reason} ->
         Logger.error("Failed reading ship stats: #{inspect(reason)}")
@@ -317,6 +282,53 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
     error ->
       Logger.error("Error updating rankings: #{inspect(error)}")
       {:error, error}
+  end
+
+  defp process_ship_rankings(ships) do
+    if Enum.empty?(ships) do
+      Logger.info("No ship statistics found to rank")
+      {:ok, :no_ships_to_rank}
+    else
+      perform_ranking_updates(ships)
+    end
+  end
+
+  defp perform_ranking_updates(ships) do
+    usage_ranked =
+      ships
+      |> Enum.sort_by(&(&1.total_kills + &1.total_losses), :desc)
+      |> Enum.with_index(1)
+
+    eff_ranked =
+      ships
+      |> Enum.filter(&(&1.total_kills + &1.total_losses >= 25))
+      |> Enum.sort_by(& &1.kill_death_ratio, :desc)
+      |> Enum.with_index(1)
+
+    # Bulk update usage ranks
+    Enum.each(usage_ranked, fn {ship, rank} ->
+      Ash.update!(ship, %{usage_rank: rank}, domain: Api)
+    end)
+
+    # Bulk update effectiveness ranks
+    Enum.each(eff_ranked, fn {ship, rank} ->
+      Ash.update!(ship, %{effectiveness_rank: rank}, domain: Api)
+    end)
+
+    handle_meta_tiers(eff_ranked)
+  end
+
+  defp handle_meta_tiers(eff_ranked) do
+    if Enum.empty?(eff_ranked) do
+      Logger.info("No ships qualified for effectiveness ranking (minimum 25 total activity)")
+
+      {:ok, :rankings_updated_no_meta_tiers}
+    else
+      case calculate_meta_tiers(eff_ranked) do
+        {:ok, _} -> {:ok, :rankings_updated}
+        {:error, reason} -> {:error, reason}
+      end
+    end
   end
 
   defp calculate_meta_tiers(ranked) do

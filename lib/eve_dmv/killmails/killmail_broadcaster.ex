@@ -9,6 +9,7 @@ defmodule EveDmv.Killmails.KillmailBroadcaster do
   require Logger
 
   alias Broadway.Message
+  alias EveDmv.Surveillance.MatchingEngine
   alias EveDmvWeb.Endpoint
 
   @doc """
@@ -47,7 +48,7 @@ defmodule EveDmv.Killmails.KillmailBroadcaster do
         killmail_data = build_killmail_data_for_matching(raw_changeset, enriched_changeset)
 
         # Use the surveillance matching engine to find matching profiles
-        case EveDmv.Surveillance.MatchingEngine.match_killmail(killmail_data) do
+        case MatchingEngine.match_killmail(killmail_data) do
           matched_profiles when is_list(matched_profiles) and length(matched_profiles) > 0 ->
             Logger.info(
               "🎯 Killmail #{killmail_data["killmail_id"]} matched #{length(matched_profiles)} surveillance profiles"

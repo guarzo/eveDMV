@@ -235,8 +235,10 @@ defmodule EveDmv.Intelligence.Metrics.MemberActivityMetrics do
     x_mean = Enum.sum(x_values) / n
     y_mean = Enum.sum(y_values) / n
 
+    zipped_xy = Enum.zip(x_values, y_values)
+
     numerator =
-      Enum.zip(x_values, y_values)
+      zipped_xy
       |> Enum.reduce(0, fn {x, y}, acc ->
         acc + (x - x_mean) * (y - y_mean)
       end)
@@ -261,8 +263,10 @@ defmodule EveDmv.Intelligence.Metrics.MemberActivityMetrics do
         y_mean + slope * (x - x_mean)
       end)
 
+    zipped_values = Enum.zip(y_values, y_pred)
+
     ss_res =
-      Enum.zip(y_values, y_pred)
+      zipped_values
       |> Enum.reduce(0, fn {y, y_p}, acc ->
         acc + :math.pow(y - y_p, 2)
       end)

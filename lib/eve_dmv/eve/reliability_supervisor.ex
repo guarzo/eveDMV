@@ -80,7 +80,7 @@ defmodule EveDmv.Eve.ReliabilitySupervisor do
          success_threshold: config.success_threshold,
          timeout: ReliabilityConfig.get_timeout(service_name)
        ]},
-      id: :"circuit_breaker_#{service_name}"
+      id: "circuit_breaker_#{service_name}"
     )
   end
 end

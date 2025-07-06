@@ -77,7 +77,7 @@ defmodule EveDmvWeb.AuthLive do
 
     on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
-    @impl true
+    @impl Phoenix.LiveView
     def mount(_params, _session, socket) do
       # If user is already authenticated, redirect to dashboard
       if socket.assigns[:current_user] do
@@ -87,7 +87,7 @@ defmodule EveDmvWeb.AuthLive do
       end
     end
 
-    @impl true
+    @impl Phoenix.LiveView
     def handle_info(:session_timeout, socket) do
       # Log session timeout event
       case socket.assigns[:current_user] do
@@ -105,7 +105,7 @@ defmodule EveDmvWeb.AuthLive do
        |> push_navigate(to: ~p"/login")}
     end
 
-    @impl true
+    @impl Phoenix.LiveView
     def render(assigns) do
       ~H"""
       <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">

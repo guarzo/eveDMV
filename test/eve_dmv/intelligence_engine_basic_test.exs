@@ -159,15 +159,15 @@ defmodule EveDmv.IntelligenceEngineBasicTest do
   describe "Data validation and preparation" do
     test "validates entity IDs correctly" do
       # Valid entity IDs
-      assert Pipeline.validate_entity_id(12345) == :ok
-      assert Pipeline.validate_entity_id([12345, 67890]) == :ok
+      assert Pipeline.validate_entity_id(12_345) == :ok
+      assert Pipeline.validate_entity_id([12_345, 67_890]) == :ok
 
       # Invalid entity IDs
       assert {:error, _} = Pipeline.validate_entity_id(0)
       assert {:error, _} = Pipeline.validate_entity_id(-1)
       assert {:error, _} = Pipeline.validate_entity_id("invalid")
       assert {:error, _} = Pipeline.validate_entity_id([])
-      assert {:error, _} = Pipeline.validate_entity_id([0, 12345])
+      assert {:error, _} = Pipeline.validate_entity_id([0, 12_345])
     end
 
     test "validates analysis domains correctly" do
@@ -184,7 +184,7 @@ defmodule EveDmv.IntelligenceEngineBasicTest do
     end
 
     test "prepares base data structure correctly" do
-      entity_id = 12345
+      entity_id = 12_345
       domain = :character
       opts = [scope: :basic]
 

@@ -51,24 +51,12 @@ defmodule EveDmv.Killmails.PipelineTestHelper do
     enriched_count = count_killmails_enriched()
     participants_count = count_participants()
 
-    IO.puts("""
-    Database Status:
-    ================
-    Raw Killmails: #{raw_count}
-    Enriched Killmails: #{enriched_count}
-    Participants: #{participants_count}
-    """)
+    # Database status: #{raw_count} raw, #{enriched_count} enriched, #{participants_count} participants
 
     # Show recent killmails
     recent_killmails = get_recent_killmails(5)
 
-    if length(recent_killmails) > 0 do
-      IO.puts("\nRecent Killmails:")
-
-      Enum.each(recent_killmails, fn km ->
-        IO.puts("  #{km.killmail_id} - #{km.killmail_time} - #{km.source}")
-      end)
-    end
+    # Recent killmails: #{length(recent_killmails)} found
 
     {:ok,
      %{

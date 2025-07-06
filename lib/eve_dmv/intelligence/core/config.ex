@@ -17,7 +17,7 @@ defmodule EveDmv.Intelligence.Core.Config do
       # 2 hours - corp data is more stable
       corporation: 7200,
       # 4 hours - alliance data changes rarely
-      alliance: 14400,
+      alliance: 14_400,
       # 30 minutes - threat analysis needs frequent updates
       threat: 1800,
       # 1 hour - activity patterns change regularly

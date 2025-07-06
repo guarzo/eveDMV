@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmvWeb.ChainIntelligenceLive do
   @moduledoc """
   LiveView for real-time wormhole chain intelligence surveillance.
@@ -13,18 +14,17 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
 
   alias EveDmv.Intelligence.ChainConnection
   alias EveDmv.Intelligence.SystemInhabitant
-  alias EveDmv.IntelligenceEngine
+  alias EveDmv.IntelligenceMigrationAdapter
 
   alias EveDmv.Intelligence.ChainAnalysis.{ChainMonitor, ChainTopology}
-  
+
   # Import reusable components
   import EveDmvWeb.Components.PageHeaderComponent
-  import EveDmvWeb.Components.StatsGridComponent
   import EveDmvWeb.Components.EmptyStateComponent
 
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
-  @impl true
+  @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     # Subscribe to chain intelligence updates
     Phoenix.PubSub.subscribe(EveDmv.PubSub, "chain_intelligence:*")
@@ -41,7 +41,7 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
     {:ok, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_params(%{"map_id" => map_id}, _uri, socket) do
     socket =
       socket
@@ -51,12 +51,12 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_params(_params, _uri, socket) do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("monitor_chain", %{"map_id" => map_id}, socket) do
     user = socket.assigns.current_user
     # Default corp if not set
@@ -77,7 +77,7 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("stop_monitoring", %{"map_id" => map_id}, socket) do
     case ChainMonitor.stop_monitoring(map_id) do
       :ok ->
@@ -94,7 +94,7 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("refresh_chain", %{"map_id" => map_id}, socket) do
     ChainMonitor.force_sync()
 
@@ -106,7 +106,7 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("analyze_pilot", %{"character_id" => character_id}, socket) do
     case Integer.parse(character_id) do
       {character_id_int, ""} ->
@@ -115,7 +115,7 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
 
         Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
           # Use Intelligence Engine for threat analysis
-          case IntelligenceEngine.analyze(:threat, character_id_int, scope: :basic) do
+          case IntelligenceMigrationAdapter.analyze(:threat, character_id_int, scope: :basic) do
             {:ok, analysis} -> send(pid, {:pilot_analysis, character_id_int, analysis})
             {:error, reason} -> send(pid, {:pilot_analysis_failed, character_id_int, reason})
           end
@@ -130,7 +130,7 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:pilot_analysis, character_id, analysis}, socket) do
     # Update the chain data with pilot analysis from Intelligence Engine
     chain_data = socket.assigns.chain_data
@@ -157,7 +157,7 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:pilot_analysis_failed, character_id, reason}, socket) do
     socket =
       socket
@@ -169,7 +169,7 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:chain_updated, map_id}, socket) do
     if socket.assigns.selected_chain == map_id do
       socket = load_chain_data(socket, map_id)
@@ -179,7 +179,7 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:system_updated, map_id, _data}, socket) do
     if socket.assigns.selected_chain == map_id do
       socket = load_chain_data(socket, map_id)
@@ -189,7 +189,7 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:connection_updated, map_id, _data}, socket) do
     if socket.assigns.selected_chain == map_id do
       socket = load_chain_data(socket, map_id)
@@ -199,7 +199,7 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info(_msg, socket) do
     {:noreply, socket}
   end

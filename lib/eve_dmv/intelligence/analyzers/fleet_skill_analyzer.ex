@@ -142,7 +142,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetSkillAnalyzer do
             "impact" => if(role_data["priority"] <= 2, do: "critical", else: "high")
           }
 
-          acc ++ [gap_info]
+          [gap_info | acc]
         else
           acc
         end
@@ -371,7 +371,8 @@ defmodule EveDmv.Intelligence.Analyzers.FleetSkillAnalyzer do
     # Based on ship usage patterns as proxy for skill levels
     if length(required_skills) > 0 do
       pilot_ship_usage = Map.get(pilot, :ship_usage, %{})
-      total_experience = Map.values(pilot_ship_usage) |> Enum.sum()
+      ship_usage_values = Map.values(pilot_ship_usage)
+      total_experience = Enum.sum(ship_usage_values)
 
       # Calculate skill readiness based on ship usage patterns
       skill_readiness =

@@ -14,8 +14,7 @@ defmodule EveDmv.Killmails.KillmailPipeline do
   alias Broadway.Message
 
   alias EveDmv.Killmails.{
-    KillmailDataTransformer,
-    ParticipantBuilder,
+    DataProcessor,
     DatabaseInserter,
     KillmailBroadcaster
   }
@@ -45,6 +44,11 @@ defmodule EveDmv.Killmails.KillmailPipeline do
           concurrency: 1,
           batch_size: Application.get_env(:eve_dmv, :pubsub_batch_size, 1),
           batch_timeout: Application.get_env(:eve_dmv, :pubsub_batch_timeout, 100)
+        ],
+        surveillance: [
+          concurrency: 2,
+          batch_size: Application.get_env(:eve_dmv, :surveillance_batch_size, 5),
+          batch_timeout: Application.get_env(:eve_dmv, :surveillance_batch_timeout, 2000)
         ]
       ]
     )
@@ -64,13 +68,16 @@ defmodule EveDmv.Killmails.KillmailPipeline do
       [%Message{data: enriched} = msg] ->
         # Process the message through the pipeline
         case handle_message(:default, msg, %{}) do
-          %Message{status: :ok} = processed_msg ->
-            # Insert to database
+          [%Message{status: :ok} = processed_msg | _] ->
+            # Insert to database (take first message since we create multiple for batchers)
             case handle_batch(:db_insert, [processed_msg], %{}, %{}) do
               [%Message{status: :ok}] -> {:ok, enriched}
               [%Message{status: {:failed, reason}}] -> {:error, reason}
               _ -> {:error, :batch_processing_failed}
             end
+
+          [%Message{status: {:failed, reason}} | _] ->
+            {:error, reason}
 
           %Message{status: {:failed, reason}} ->
             {:error, reason}
@@ -124,68 +131,66 @@ defmodule EveDmv.Killmails.KillmailPipeline do
       []
   end
 
-  @impl true
+  @impl Broadway
   def handle_message(:default, %Message{data: enriched} = msg, _ctx) do
     start_time = System.monotonic_time(:microsecond)
-    killmail_id = enriched["killmail_id"]
 
-    # The wanderer-kills data has victim directly in the main structure, not participants
-    victim_name = enriched["victim"]["character_name"] || "Unknown Pilot"
+    case DataProcessor.process_killmail(enriched) do
+      {:ok, processed_data} ->
+        killmail_id = DataProcessor.get_killmail_id(processed_data)
+        {victim_name, system_name} = DataProcessor.get_victim_info(processed_data)
 
-    # Use name resolution for system name in logs too
-    system_id = enriched["solar_system_id"] || enriched["system_id"]
+        Logger.info("⚔️  Processing killmail #{killmail_id}: #{victim_name} in #{system_name}")
 
-    system_name =
-      case enriched["solar_system_name"] do
-        name when name in [nil, "", "Unknown System"] and not is_nil(system_id) ->
-          EveDmv.Eve.NameResolver.system_name(system_id)
+        # Emit telemetry for successful processing
+        processing_time = System.monotonic_time(:microsecond) - start_time
 
-        name when not is_nil(name) ->
-          name
+        :telemetry.execute(
+          [:eve_dmv, :killmail, :processing_time],
+          %{duration: processing_time},
+          %{
+            killmail_id: killmail_id
+          }
+        )
 
-        _ ->
-          "Unknown System"
-      end
+        :telemetry.execute([:eve_dmv, :killmail, :processed], %{count: 1}, %{})
 
-    Logger.info("⚔️  Processing killmail #{killmail_id}: #{victim_name} in #{system_name}")
+        # Route to multiple batchers for parallel processing
+        [
+          msg
+          |> Message.update_data(fn _ -> processed_data end)
+          |> Message.put_batcher(:db_insert),
+          msg
+          |> Message.update_data(fn _ -> DataProcessor.extract_broadcast_data(processed_data) end)
+          |> Message.put_batcher(:pubsub),
+          msg
+          |> Message.update_data(fn _ -> DataProcessor.extract_broadcast_data(processed_data) end)
+          |> Message.put_batcher(:surveillance)
+        ]
 
-    try do
-      # Normalize common fields for DB insertion using extracted modules
-      raw_changeset = KillmailDataTransformer.build_raw_changeset(enriched)
-      enriched_changeset = KillmailDataTransformer.build_enriched_changeset(enriched)
-      participants = ParticipantBuilder.build_participants(enriched)
-
-      # Emit telemetry for successful processing
-      processing_time = System.monotonic_time(:microsecond) - start_time
-
-      :telemetry.execute([:eve_dmv, :killmail, :processing_time], %{duration: processing_time}, %{
-        killmail_id: killmail_id
-      })
-
-      :telemetry.execute([:eve_dmv, :killmail, :processed], %{count: 1}, %{})
-
-      msg
-      |> Message.update_data(fn _ -> {raw_changeset, enriched_changeset, participants} end)
-    rescue
-      error ->
+      {:error, error} ->
         # Emit telemetry for failed processing
         :telemetry.execute([:eve_dmv, :killmail, :failed], %{count: 1}, %{error: inspect(error)})
-        Logger.error("Failed to parse killmail: #{inspect(error)}")
+        Logger.error("Failed to process killmail: #{inspect(error)}")
         Message.failed(msg, error)
     end
   end
 
-  @impl true
+  @impl Broadway
   def handle_batch(:db_insert, messages, _batch_info, _ctx) do
     batch_start_time = System.monotonic_time(:microsecond)
     batch_size = length(messages)
 
     Logger.info("💾 Inserting batch of #{batch_size} killmails to database")
 
-    # Extract data from messages
-    raw_changesets = Enum.map(messages, &elem(&1.data, 0))
-    enriched_changesets = Enum.map(messages, &elem(&1.data, 1))
-    participants_lists = Enum.map(messages, &elem(&1.data, 2))
+    # Extract data from messages using DataProcessor helper
+    {raw_changesets, enriched_changesets, participants_lists} =
+      messages
+      |> Enum.map(fn message -> DataProcessor.extract_database_changesets(message.data) end)
+      |> Enum.reduce({[], [], []}, fn {raw, enriched, participants},
+                                      {raw_acc, enriched_acc, part_acc} ->
+        {raw_acc ++ raw, enriched_acc ++ enriched, part_acc ++ participants}
+      end)
 
     try do
       # Insert all database records using DatabaseInserter
@@ -202,13 +207,7 @@ defmodule EveDmv.Killmails.KillmailPipeline do
         "✅ Successfully processed #{length(raw_changesets)} killmails (raw + enriched + participants)"
       )
 
-      # Broadcast to LiveView clients using KillmailBroadcaster
-      KillmailBroadcaster.broadcast_killmails(messages)
-
-      # Check surveillance profiles for matches using KillmailBroadcaster
-      KillmailBroadcaster.check_surveillance_matches(messages)
-
-      # Return messages for Broadway
+      # Database insertion complete - return messages
       messages
     rescue
       error ->
@@ -225,22 +224,37 @@ defmodule EveDmv.Killmails.KillmailPipeline do
     end
   end
 
-  @impl true
+  @impl Broadway
   def handle_batch(:pubsub, messages, _batch_info, _ctx) do
     Logger.info("📡 Broadcasting #{length(messages)} killmails to LiveView clients")
-    Logger.debug("PubSub batch received with #{length(messages)} messages")
 
-    for %Message{data: {raw_changeset, _enriched_changeset, _}} <- messages do
-      # Broadcast the original raw data which contains all the enriched info
-      case raw_changeset do
-        %{raw_data: blob} when not is_nil(blob) ->
-          EveDmvWeb.Endpoint.broadcast!("kill_feed", "new_kill", blob)
-
-        _ ->
-          Logger.warning("No raw data to broadcast for killmail")
-      end
+    try do
+      # Broadcast killmails to LiveView clients
+      KillmailBroadcaster.broadcast_killmails(messages)
+      messages
+    rescue
+      error ->
+        Logger.error("Failed to broadcast killmails: #{inspect(error)}")
+        # Don't fail the pipeline for broadcasting issues
+        messages
     end
+  end
 
-    {:ok, messages}
+  @impl Broadway
+  def handle_batch(:surveillance, messages, _batch_info, _ctx) do
+    Logger.info("🔍 Checking #{length(messages)} killmails for surveillance matches")
+
+    # Run surveillance matching asynchronously to avoid blocking
+    Task.start(fn ->
+      try do
+        KillmailBroadcaster.check_surveillance_matches(messages)
+      rescue
+        error ->
+          Logger.error("Failed to check surveillance matches: #{inspect(error)}")
+      end
+    end)
+
+    # Return immediately - surveillance matching doesn't affect pipeline success
+    messages
   end
 end

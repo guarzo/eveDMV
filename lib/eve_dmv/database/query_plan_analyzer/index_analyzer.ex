@@ -1,7 +1,7 @@
 defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
   @moduledoc """
   Index usage analysis module for PostgreSQL query plans.
-  
+
   Analyzes index usage patterns, identifies missing indexes, and provides
   optimization recommendations for query performance improvement.
   """
@@ -10,7 +10,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
 
   @doc """
   Extracts index usage information from an execution plan node.
-  
+
   Recursively traverses the plan tree to collect all index scan operations
   including regular index scans, index-only scans, and bitmap index scans.
   """
@@ -75,7 +75,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
 
   @doc """
   Analyzes index usage patterns and effectiveness.
-  
+
   Examines index usage statistics to identify underutilized indexes,
   missing indexes, and optimization opportunities.
   """
@@ -93,55 +93,55 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
   Generates index optimization recommendations based on usage analysis.
   """
   def generate_index_recommendations(analysis, sequential_scans \\ []) do
-    recommendations = []
+    base_recommendations = []
 
     # Missing indexes for sequential scans
-    recommendations =
+    scan_index_recommendations =
       if length(sequential_scans) > 0 do
-        scan_recommendations = 
+        scan_suggestions =
           sequential_scans
           |> Enum.map(&suggest_index_for_scan/1)
           |> Enum.reject(&is_nil/1)
-        
-        scan_recommendations ++ recommendations
+
+        scan_suggestions ++ base_recommendations
       else
-        recommendations
+        base_recommendations
       end
 
     # Index-only scan opportunities
-    recommendations =
+    covering_index_recommendations =
       if has_regular_index_scans_with_heap_fetches(analysis) do
         [
           "Consider covering indexes to enable index-only scans and reduce heap fetches"
-          | recommendations
+          | scan_index_recommendations
         ]
       else
-        recommendations
+        scan_index_recommendations
       end
 
     # Bitmap scan optimization
-    recommendations =
+    bitmap_scan_recommendations =
       if has_expensive_bitmap_scans(analysis) do
         [
           "Expensive bitmap index scans detected - consider composite indexes or query restructuring"
-          | recommendations
+          | covering_index_recommendations
         ]
       else
-        recommendations
+        covering_index_recommendations
       end
 
     # Unused index cleanup
-    recommendations =
+    cleanup_recommendations =
       if length(analysis.potentially_unused_indexes) > 0 do
         [
           "Consider removing unused indexes: #{Enum.join(analysis.potentially_unused_indexes, ", ")}"
-          | recommendations
+          | bitmap_scan_recommendations
         ]
       else
-        recommendations
+        bitmap_scan_recommendations
       end
 
-    recommendations
+    cleanup_recommendations
   end
 
   @doc """
@@ -216,8 +216,8 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
   """
   def suggest_index_creation(table, columns, scan_info) do
     filter_selectivity = calculate_filter_selectivity(scan_info)
-    
-    index_type = 
+
+    index_type =
       cond do
         length(columns) == 1 -> "btree"
         has_range_conditions(scan_info) -> "btree"
@@ -226,9 +226,10 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
       end
 
     column_list = Enum.join(columns, ", ")
-    
+
     %{
-      sql: "CREATE INDEX CONCURRENTLY idx_#{table}_#{Enum.join(columns, "_")} ON #{table} USING #{index_type} (#{column_list});",
+      sql:
+        "CREATE INDEX CONCURRENTLY idx_#{table}_#{Enum.join(columns, "_")} ON #{table} USING #{index_type} (#{column_list});",
       estimated_benefit: estimate_index_benefit(scan_info, filter_selectivity),
       reasoning: build_index_reasoning(scan_info, columns, filter_selectivity)
     }
@@ -258,14 +259,14 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
   end
 
   defp calculate_index_efficiency(index_usage) do
-    if length(index_usage) == 0 do
+    if index_usage == [] do
       0.0
     else
-      total_efficiency = 
+      total_efficiency =
         index_usage
         |> Enum.map(&calculate_single_index_efficiency/1)
         |> Enum.sum()
-      
+
       total_efficiency / length(index_usage)
     end
   end
@@ -291,7 +292,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
 
   defp find_high_cost_indexes(index_usage) do
     index_usage
-    |> Enum.filter(& &1.cost > 1000)
+    |> Enum.filter(&(&1.cost > 1000))
     |> Enum.sort_by(& &1.cost, :desc)
   end
 
@@ -299,7 +300,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
     if scan.filter and scan.rows_scanned > 1000 do
       # Extract column names from filter condition (simplified)
       columns = extract_columns_from_filter(scan.filter)
-      
+
       if length(columns) > 0 do
         "CREATE INDEX ON #{scan.relation} (#{Enum.join(columns, ", ")}) -- for filter: #{scan.filter}"
       end
@@ -310,30 +311,32 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
     # Very simplified column extraction - in practice this would need more sophisticated parsing
     filter
     |> String.split(~r/[=<>!\s]+/)
-    |> Enum.filter(fn part -> 
-      String.match?(part, ~r/^[a-zA-Z][a-zA-Z0-9_]*$/) and 
-      not String.match?(part, ~r/^(AND|OR|NOT|NULL|TRUE|FALSE)$/i)
+    |> Enum.filter(fn part ->
+      String.match?(part, ~r/^[a-zA-Z][a-zA-Z0-9_]*$/) and
+        not String.match?(part, ~r/^(AND|OR|NOT|NULL|TRUE|FALSE)$/i)
     end)
-    |> Enum.take(3)  # Limit to 3 columns for composite index
+    # Limit to 3 columns for composite index
+    |> Enum.take(3)
   end
 
   defp extract_columns_from_filter(_), do: []
 
   defp has_regular_index_scans_with_heap_fetches(analysis) do
     Map.get(analysis.index_types, "Index Only Scan", 0) == 0 and
-    Map.get(analysis.index_types, "Index Scan", 0) > 0
+      Map.get(analysis.index_types, "Index Scan", 0) > 0
   end
 
   defp has_expensive_bitmap_scans(analysis) do
     Map.get(analysis.index_types, "Bitmap Index Scan", 0) > 0 and
-    length(analysis.high_cost_indexes) > 0
+      length(analysis.high_cost_indexes) > 0
   end
 
   defp calculate_filter_selectivity(scan_info) do
     if scan_info.rows_removed && scan_info.rows_scanned > 0 do
       (scan_info.rows_scanned - scan_info.rows_removed) / scan_info.rows_scanned
     else
-      0.5  # Default moderate selectivity
+      # Default moderate selectivity
+      0.5
     end
   end
 
@@ -348,8 +351,9 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
   end
 
   defp estimate_index_benefit(scan_info, selectivity) do
-    cost_reduction = scan_info.cost * selectivity * 0.8  # Estimated 80% reduction
-    
+    # Estimated 80% reduction
+    cost_reduction = scan_info.cost * selectivity * 0.8
+
     cond do
       cost_reduction > 1000 -> "High"
       cost_reduction > 100 -> "Medium"
@@ -360,8 +364,8 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
 
   defp build_index_reasoning(scan_info, columns, selectivity) do
     "Sequential scan on #{scan_info.relation} with #{length(columns)} column filter " <>
-    "(selectivity: #{Float.round(selectivity * 100, 1)}%). " <>
-    "Index could reduce cost from #{scan_info.cost} significantly."
+      "(selectivity: #{Float.round(selectivity * 100, 1)}%). " <>
+      "Index could reduce cost from #{scan_info.cost} significantly."
   end
 
   defp calculate_usage_frequency(_index) do
@@ -386,7 +390,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
 
   defp determine_health_status(index) do
     efficiency = calculate_efficiency_score(index)
-    
+
     cond do
       efficiency > 10 -> "Healthy"
       efficiency > 1 -> "Fair"

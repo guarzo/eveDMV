@@ -49,12 +49,12 @@
       </div>
       
       <!-- Navigation Tabs -->
-      <.tab_navigation current_tab={@tab} on_change="change_tab">
-        <:tab key="overview" label="Overview" />
-        <:tab key="ships" label="Ships & Fits" />
-        <:tab key="associates" label="Associates" />
-        <:tab key="geography" label="Geography" />
-        <:tab key="weaknesses" label="Weaknesses" />
+      <.tab_navigation active_tab={@tab}>
+        <:tab id="overview" label="Overview" />
+        <:tab id="ships" label="Ships & Fits" />
+        <:tab id="associates" label="Associates" />
+        <:tab id="geography" label="Geography" />
+        <:tab id="weaknesses" label="Weaknesses" />
       </.tab_navigation>
       
 <!-- Tab Content -->

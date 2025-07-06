@@ -128,7 +128,7 @@ defmodule EveDmv.Eve.CircuitBreaker do
 
   # Server callbacks
 
-  @impl true
+  @impl GenServer
   def init(opts) do
     service_name = Keyword.fetch!(opts, :service_name)
     failure_threshold = Keyword.get(opts, :failure_threshold, @default_failure_threshold)
@@ -152,13 +152,13 @@ defmodule EveDmv.Eve.CircuitBreaker do
     {:ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_state, _from, state) do
     current_state = determine_current_state(state)
     {:reply, current_state, %{state | state: current_state}}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_stats, _from, state) do
     current_state = determine_current_state(state)
 
@@ -176,7 +176,7 @@ defmodule EveDmv.Eve.CircuitBreaker do
     {:reply, stats, %{state | state: current_state}}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:reset, _from, state) do
     Logger.info("Circuit breaker reset for service: #{state.service_name}")
 
@@ -191,7 +191,7 @@ defmodule EveDmv.Eve.CircuitBreaker do
     {:reply, :ok, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:set_state, new_state}, _from, state) do
     Logger.info("Circuit breaker state set to #{new_state} for service: #{state.service_name}")
 
@@ -199,7 +199,7 @@ defmodule EveDmv.Eve.CircuitBreaker do
     {:reply, :ok, updated_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:execute_request, fun, timeout}, _from, state) do
     current_state = determine_current_state(state)
 
@@ -212,13 +212,13 @@ defmodule EveDmv.Eve.CircuitBreaker do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast(:success, state) do
     new_state = handle_success(state)
     {:noreply, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast({:failure, reason}, state) do
     new_state = handle_failure(state, reason)
     {:noreply, new_state}

@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
   @moduledoc """
   Monitors and synchronizes chain topology data from Wanderer API.
@@ -12,6 +13,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
 
   alias EveDmv.Intelligence.WandererClient
   alias EveDmv.Intelligence.ChainAnalysis.{ChainDataSync, ChainEventHandlers}
+  alias EveDmv.Intelligence.WandererSSE
 
   # Sync every 30 seconds
   @sync_interval_ms 30_000
@@ -62,8 +64,8 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
 
   # GenServer Callbacks
 
-  @impl true
-  def init(_opts) do
+  @impl GenServer
+  def init(opts) do
     state = %__MODULE__{
       monitored_chains: MapSet.new(),
       sync_timer: nil,
@@ -80,7 +82,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
     {:ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:monitor_chain, map_id, corporation_id}, _from, state) do
     case ChainDataSync.create_or_update_chain_topology(map_id, corporation_id) do
       {:ok, _topology} ->
@@ -88,7 +90,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
         WandererClient.monitor_map(map_id)
 
         # Subscribe to real-time SSE events
-        EveDmv.Intelligence.WandererSSE.monitor_map(map_id)
+        WandererSSE.monitor_map(map_id)
 
         new_monitored = MapSet.put(state.monitored_chains, map_id)
         {:reply, :ok, %{state | monitored_chains: new_monitored}}
@@ -99,16 +101,16 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:stop_monitoring, map_id}, _from, state) do
     WandererClient.unmonitor_map(map_id)
-    EveDmv.Intelligence.WandererSSE.stop_monitoring(map_id)
+    WandererSSE.stop_monitoring(map_id)
 
     new_monitored = MapSet.delete(state.monitored_chains, map_id)
     {:reply, :ok, %{state | monitored_chains: new_monitored}}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:status, _from, state) do
     status = %{
       monitored_chains: MapSet.to_list(state.monitored_chains),
@@ -120,13 +122,13 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
     {:reply, status, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast(:force_sync, state) do
     send(self(), :sync_chains)
     {:noreply, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast({:wanderer_event, map_id, event_type, event_data}, state) do
     # Handle real-time events from Wanderer WebSocket
     if MapSet.member?(state.monitored_chains, map_id) do
@@ -138,13 +140,13 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
     {:noreply, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:schedule_sync, state) do
     timer = Process.send_after(self(), :sync_chains, @sync_interval_ms)
     {:noreply, %{state | sync_timer: timer}}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:sync_chains, state) do
     new_state = perform_chain_sync(state)
 
@@ -154,7 +156,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
     {:noreply, %{new_state | sync_timer: timer, last_sync: DateTime.utc_now()}}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info({:system_update, data}, state) do
     # Legacy handler - keeping for backward compatibility
     map_id = Map.get(data, "map_id")
@@ -166,7 +168,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
     {:noreply, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info({:connection_update, data}, state) do
     # Legacy handler - keeping for backward compatibility
     map_id = Map.get(data, "map_id")
@@ -178,7 +180,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
     {:noreply, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(_msg, state) do
     {:noreply, state}
   end

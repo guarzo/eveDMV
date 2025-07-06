@@ -206,7 +206,7 @@ defmodule EveDmv.Market.MutamarketClient do
 
   defp post_request(path, body, params \\ %{}) do
     url = build_url(path)
-    headers = build_headers() ++ [{"Content-Type", "application/json"}]
+    headers = [{"Content-Type", "application/json"} | build_headers()]
     json_body = Jason.encode!(body)
 
     HTTPoison.post(url, json_body, headers, params: params, recv_timeout: @http_timeout)

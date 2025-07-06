@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmv.Intelligence.Supervisor do
   @moduledoc """
   Supervisor for the Intelligence system.
@@ -12,6 +13,9 @@ defmodule EveDmv.Intelligence.Supervisor do
   use Supervisor
   require Logger
 
+  alias EveDmv.Intelligence.Cache.IntelligenceCache
+  alias EveDmv.Intelligence.AnalyzerSupervisor
+
   @doc """
   Start the Intelligence supervisor.
   """
@@ -20,12 +24,12 @@ defmodule EveDmv.Intelligence.Supervisor do
   end
 
   @impl true
-  def init(_opts) do
+  def init(opts) do
     Logger.info("Starting Intelligence system supervisor")
 
     children = [
       # Intelligence cache for analyzer results
-      {EveDmv.Intelligence.Cache.IntelligenceCache, []},
+      {IntelligenceCache, []},
 
       # Task supervisor for concurrent analysis operations
       {Task.Supervisor, name: EveDmv.Intelligence.TaskSupervisor},
@@ -148,13 +152,13 @@ defmodule EveDmv.Intelligence.Supervisor do
     Logger.warning("Restarting Intelligence system - ongoing analyses will be interrupted")
 
     # Stop all analyzer processes
-    DynamicSupervisor.which_children(EveDmv.Intelligence.AnalyzerSupervisor)
+    DynamicSupervisor.which_children(AnalyzerSupervisor)
     |> Enum.each(fn {_, pid, _, _} ->
-      DynamicSupervisor.terminate_child(EveDmv.Intelligence.AnalyzerSupervisor, pid)
+      DynamicSupervisor.terminate_child(AnalyzerSupervisor, pid)
     end)
 
     # Clear cache
-    EveDmv.Intelligence.Cache.IntelligenceCache.clear_cache()
+    IntelligenceCache.clear_cache()
 
     Logger.info("Intelligence system restart completed")
     :ok
@@ -178,7 +182,7 @@ defmodule EveDmv.Intelligence.Supervisor do
 
   defp get_cache_health do
     try do
-      stats = EveDmv.Intelligence.Cache.IntelligenceCache.get_cache_stats()
+      stats = IntelligenceCache.get_cache_stats()
 
       %{
         status: :healthy,

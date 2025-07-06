@@ -7,6 +7,7 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
   """
 
   require Logger
+  require Ash.Query
   alias EveDmv.Eve.{ItemType, SolarSystem}
   alias EveDmv.Eve.NameResolver.{CacheManager, BatchProcessor}
 

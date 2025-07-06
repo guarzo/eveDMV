@@ -514,20 +514,17 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
     test "processes fleet composition with realistic data" do
       # Use mock data to test with realistic fleet composition
       fleet_members = [
-        TestMocks.mock_member_activity(123)
-        |> Map.merge(%{
+        Map.merge(TestMocks.mock_member_activity(123), %{
           ship_name: "Damnation",
           ship_category: "command_ship",
           ship_mass: 13_500_000
         }),
-        TestMocks.mock_member_activity(456)
-        |> Map.merge(%{
+        Map.merge(TestMocks.mock_member_activity(456), %{
           ship_name: "Legion",
           ship_category: "strategic_cruiser",
           ship_mass: 13_000_000
         }),
-        TestMocks.mock_member_activity(789)
-        |> Map.merge(%{
+        Map.merge(TestMocks.mock_member_activity(789), %{
           ship_name: "Guardian",
           ship_category: "logistics",
           ship_mass: 11_800_000

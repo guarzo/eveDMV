@@ -8,6 +8,7 @@ defmodule EveDmvWeb.KillFeedLiveTest do
   import EveDmv.Factories
 
   describe "mount/3" do
+    # Skip: Test depends on factories that need to be updated for current schema
     @tag :skip
     test "renders kill feed with initial data", %{conn: conn} do
       # Create test killmails
@@ -56,7 +57,7 @@ defmodule EveDmvWeb.KillFeedLiveTest do
       {:ok, _view, html} = live(conn, ~p"/feed")
 
       # Should only show 50 killmails (the limit)
-      killmail_elements = html |> Floki.find("[data-killmail-id]")
+      killmail_elements = Floki.find(html, "[data-killmail-id]")
       assert length(killmail_elements) <= 50
     end
   end
@@ -144,7 +145,7 @@ defmodule EveDmvWeb.KillFeedLiveTest do
 
       # Should still only show 50 killmails
       html = render(view)
-      killmail_elements = html |> Floki.find("[data-killmail-id]")
+      killmail_elements = Floki.find(html, "[data-killmail-id]")
       assert length(killmail_elements) <= 50
     end
   end
@@ -188,6 +189,7 @@ defmodule EveDmvWeb.KillFeedLiveTest do
   end
 
   describe "display formatting" do
+    # Skip: Test depends on factories that need to be updated for current schema
     @tag :skip
     test "formats ISK values correctly", %{conn: conn} do
       # Create kill with specific value
@@ -349,7 +351,7 @@ defmodule EveDmvWeb.KillFeedLiveTest do
   defp build_test_killmail(opts \\ []) do
     %{
       "killmail_id" => Keyword.get(opts, :killmail_id, 90_000_000),
-      "killmail_time" => DateTime.utc_now() |> DateTime.to_iso8601(),
+      "killmail_time" => DateTime.to_iso8601(DateTime.utc_now()),
       "solar_system_id" => Keyword.get(opts, :solar_system_id, 30_000_142),
       "solar_system_name" => Keyword.get(opts, :solar_system_name, "Jita"),
       "victim" => %{

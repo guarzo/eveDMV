@@ -146,7 +146,7 @@ defmodule EveDmv.Database.QueryUtils do
     exclude_character = Keyword.get(opts, :exclude_character)
     load_assocs = Keyword.get(opts, :load, [])
 
-    query =
+    base_query =
       Participant
       |> Ash.Query.new()
       |> Ash.Query.filter(killmail_id in ^killmail_ids)
@@ -154,9 +154,9 @@ defmodule EveDmv.Database.QueryUtils do
 
     query =
       if exclude_character do
-        Ash.Query.filter(query, character_id != ^exclude_character)
+        Ash.Query.filter(base_query, character_id != ^exclude_character)
       else
-        query
+        base_query
       end
 
     Ash.read(query, domain: Api)
@@ -179,7 +179,7 @@ defmodule EveDmv.Database.QueryUtils do
     load_assocs = Keyword.get(opts, :load, [])
     active_only = Keyword.get(opts, :active_only, false)
 
-    query =
+    base_query =
       CharacterStats
       |> Ash.Query.new()
       |> Ash.Query.filter(corporation_id == ^corporation_id)
@@ -189,9 +189,9 @@ defmodule EveDmv.Database.QueryUtils do
       if active_only do
         # Add filter for active members (example: last seen within 30 days)
         cutoff_date = DateTime.add(DateTime.utc_now(), -30, :day)
-        Ash.Query.filter(query, last_seen >= ^cutoff_date)
+        Ash.Query.filter(base_query, last_seen >= ^cutoff_date)
       else
-        query
+        base_query
       end
 
     Ash.read(query, domain: Api)

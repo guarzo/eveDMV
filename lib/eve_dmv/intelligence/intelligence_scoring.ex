@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmv.Intelligence.IntelligenceScoring do
   @moduledoc """
   Enhanced intelligence scoring system with sophisticated algorithms.

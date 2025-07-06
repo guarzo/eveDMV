@@ -4,8 +4,10 @@ defmodule EveDmv.Killmails.DisplayService do
   """
 
   alias EveDmv.Api
+  alias EveDmv.Constants.Isk
   alias EveDmv.Eve.NameResolver
-  alias EveDmv.Killmails.{KillmailEnriched, KillmailRaw}
+  alias EveDmv.Killmails.KillmailEnriched
+  alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Utils.ParsingUtils
 
   @feed_limit 50
@@ -107,7 +109,7 @@ defmodule EveDmv.Killmails.DisplayService do
       is_expensive:
         Decimal.gt?(
           enriched.total_value || Decimal.new(0),
-          Decimal.new(EveDmv.Constants.Isk.million() * 100)
+          Decimal.new(Isk.million() * 100)
         )
     }
   end
@@ -263,7 +265,7 @@ defmodule EveDmv.Killmails.DisplayService do
       final_blow_character_id: get_in(final_blow, ["character_id"]),
       final_blow_character_name: get_in(final_blow, ["character_name"]),
       age_minutes: DateTime.diff(now, raw.killmail_time, :minute),
-      is_expensive: (raw.raw_data["total_value"] || 0) > EveDmv.Constants.Isk.million() * 100
+      is_expensive: (raw.raw_data["total_value"] || 0) > Isk.million() * 100
     }
   end
 
@@ -308,7 +310,7 @@ defmodule EveDmv.Killmails.DisplayService do
         attacker_count: Enum.random(1..5),
         final_blow_character_name: "Attacker #{i}",
         age_minutes: i,
-        is_expensive: value > EveDmv.Constants.Isk.million() * 100
+        is_expensive: value > Isk.million() * 100
       }
     end)
   end
@@ -323,7 +325,7 @@ defmodule EveDmv.Killmails.DisplayService do
     total_value =
       get_in(killmail_data, ["zkb", "totalValue"]) || killmail_data["total_value"] || 0
 
-    total_value > EveDmv.Constants.Isk.million() * 100
+    total_value > Isk.million() * 100
   end
 
   defp parse_killmail_timestamp(killmail_data) do

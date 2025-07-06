@@ -1,20 +1,21 @@
 defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
   @moduledoc """
   Slow query detection and monitoring module.
-  
+
   Detects slow-running queries using pg_stat_statements, analyzes their
   patterns, and provides recommendations for performance optimization.
   """
 
   require Logger
   alias EveDmv.Repo
+  alias Ecto.Adapters.SQL
 
   @slow_query_threshold_ms 1000
   @expensive_query_threshold_ms 5000
 
   @doc """
   Detects slow queries from pg_stat_statements.
-  
+
   Queries the pg_stat_statements view to find queries that exceed
   the configured slow query threshold.
   """
@@ -36,9 +37,19 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
     LIMIT 20
     """
 
-    case Ecto.Adapters.SQL.query(Repo, query, [threshold_ms]) do
+    case SQL.query(Repo, query, [threshold_ms]) do
       {:ok, %{rows: rows}} ->
-        Enum.map(rows, fn [query_text, calls, total_time, mean_time, row_count, hit_percent, stddev_time, min_time, max_time] ->
+        Enum.map(rows, fn [
+                            query_text,
+                            calls,
+                            total_time,
+                            mean_time,
+                            row_count,
+                            hit_percent,
+                            stddev_time,
+                            min_time,
+                            max_time
+                          ] ->
           %{
             query: String.slice(query_text, 0, 500),
             calls: calls,
@@ -78,44 +89,44 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
   Generates recommendations for slow query optimization.
   """
   def generate_slow_query_recommendations(analysis) do
-    recommendations = []
+    base_recommendations = []
 
     # Cache hit ratio recommendations
-    recommendations =
+    cache_recommendations =
       if analysis.cache_performance.avg_hit_ratio < 0.9 do
         [
           "Average cache hit ratio is #{Float.round(analysis.cache_performance.avg_hit_ratio * 100, 1)}% - consider increasing shared_buffers"
-          | recommendations
+          | base_recommendations
         ]
       else
-        recommendations
+        base_recommendations
       end
 
     # High variability recommendations
-    recommendations =
+    variability_recommendations =
       if analysis.performance_trends.high_variability_queries > 0 do
         [
           "#{analysis.performance_trends.high_variability_queries} queries show high execution time variability - investigate for parameter sniffing or plan instability"
-          | recommendations
+          | cache_recommendations
         ]
       else
-        recommendations
+        cache_recommendations
       end
 
     # Critical query recommendations
-    recommendations =
+    critical_query_recommendations =
       if analysis.severity_distribution.critical > 0 do
         [
           "#{analysis.severity_distribution.critical} critical slow queries detected - immediate optimization required"
-          | recommendations
+          | variability_recommendations
         ]
       else
-        recommendations
+        variability_recommendations
       end
 
     # Pattern-based recommendations
     pattern_recommendations = generate_pattern_recommendations(analysis.query_patterns)
-    recommendations ++ pattern_recommendations
+    critical_query_recommendations ++ pattern_recommendations
   end
 
   @doc """
@@ -136,7 +147,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
     LIMIT 24
     """
 
-    case Ecto.Adapters.SQL.query(Repo, query, [@slow_query_threshold_ms]) do
+    case SQL.query(Repo, query, [@slow_query_threshold_ms]) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [hour, avg_mean, max_mean, query_count, total_calls] ->
           %{
@@ -175,7 +186,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
     LIMIT 10
     """
 
-    case Ecto.Adapters.SQL.query(Repo, query, [@slow_query_threshold_ms]) do
+    case SQL.query(Repo, query, [@slow_query_threshold_ms]) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [query_text, mean_time, stddev_time, cov, calls] ->
           %{
@@ -222,10 +233,13 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
     WHERE mean_time > $2
     """
 
-    case Ecto.Adapters.SQL.query(Repo, query, [@slow_query_threshold_ms, @expensive_query_threshold_ms]) do
+    case SQL.query(Repo, query, [
+           @slow_query_threshold_ms,
+           @expensive_query_threshold_ms
+         ]) do
       {:ok, %{rows: rows}} ->
         metrics = Map.new(rows, fn [metric, value] -> {metric, value} end)
-        
+
         Map.merge(metrics, %{
           "slow_query_ratio" => calculate_slow_query_ratio(metrics),
           "performance_health_score" => calculate_health_score(metrics)
@@ -249,7 +263,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
 
   defp analyze_severity_distribution(slow_queries) do
     distribution = Enum.group_by(slow_queries, & &1.severity)
-    
+
     %{
       critical: length(Map.get(distribution, "Critical", [])),
       high: length(Map.get(distribution, "High", [])),
@@ -261,11 +275,12 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
   defp analyze_cache_performance(slow_queries) do
     if length(slow_queries) > 0 do
       hit_ratios = Enum.map(slow_queries, & &1.cache_hit_percent) |> Enum.reject(&is_nil/1)
-      
+
       %{
-        avg_hit_ratio: if(length(hit_ratios) > 0, do: Enum.sum(hit_ratios) / length(hit_ratios) / 100, else: 0),
+        avg_hit_ratio:
+          if(length(hit_ratios) > 0, do: Enum.sum(hit_ratios) / length(hit_ratios) / 100, else: 0),
         min_hit_ratio: if(length(hit_ratios) > 0, do: Enum.min(hit_ratios) / 100, else: 0),
-        queries_with_poor_cache: Enum.count(hit_ratios, & &1 < 80)
+        queries_with_poor_cache: Enum.count(hit_ratios, &(&1 < 80))
       }
     else
       %{avg_hit_ratio: 1.0, min_hit_ratio: 1.0, queries_with_poor_cache: 0}
@@ -284,7 +299,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
 
     Enum.reduce(slow_queries, patterns, fn query, acc ->
       query_text = String.upcase(query.query)
-      
+
       acc
       |> update_if_pattern(query_text, :select_queries, "SELECT")
       |> update_if_pattern(query_text, :insert_queries, "INSERT")
@@ -327,14 +342,19 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
   end
 
   defp analyze_performance_trends(slow_queries) do
-    high_variability = Enum.count(slow_queries, fn query ->
-      query.stddev_time_ms > 0 and query.mean_time_ms > 0 and
-      query.stddev_time_ms / query.mean_time_ms > 0.5
-    end)
+    high_variability =
+      Enum.count(slow_queries, fn query ->
+        query.stddev_time_ms > 0 and query.mean_time_ms > 0 and
+          query.stddev_time_ms / query.mean_time_ms > 0.5
+      end)
 
     %{
       high_variability_queries: high_variability,
-      avg_execution_time: if(length(slow_queries) > 0, do: Enum.sum(Enum.map(slow_queries, & &1.mean_time_ms)) / length(slow_queries), else: 0),
+      avg_execution_time:
+        if(length(slow_queries) > 0,
+          do: Enum.sum(Enum.map(slow_queries, & &1.mean_time_ms)) / length(slow_queries),
+          else: 0
+        ),
       total_execution_time: Enum.sum(Enum.map(slow_queries, & &1.total_time_ms))
     }
   end
@@ -344,21 +364,30 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
 
     recommendations =
       if patterns.join_heavy_queries > patterns.select_queries * 0.5 do
-        ["High ratio of JOIN-heavy queries - review query design and indexing strategy" | recommendations]
+        [
+          "High ratio of JOIN-heavy queries - review query design and indexing strategy"
+          | recommendations
+        ]
       else
         recommendations
       end
 
     recommendations =
       if patterns.aggregation_queries > 5 do
-        ["Multiple slow aggregation queries - consider summary tables or materialized views" | recommendations]
+        [
+          "Multiple slow aggregation queries - consider summary tables or materialized views"
+          | recommendations
+        ]
       else
         recommendations
       end
 
     recommendations =
       if patterns.update_queries + patterns.delete_queries > patterns.select_queries * 0.3 do
-        ["High ratio of slow write operations - review locking and indexing on modified tables" | recommendations]
+        [
+          "High ratio of slow write operations - review locking and indexing on modified tables"
+          | recommendations
+        ]
       else
         recommendations
       end
@@ -369,14 +398,24 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
   defp calculate_performance_score(avg_mean, max_mean, query_count) do
     # Simple scoring: lower is better
     base_score = 100
-    avg_penalty = if avg_mean > @slow_query_threshold_ms, do: (avg_mean - @slow_query_threshold_ms) / 100, else: 0
-    max_penalty = if max_mean > @expensive_query_threshold_ms, do: (max_mean - @expensive_query_threshold_ms) / 500, else: 0
+
+    avg_penalty =
+      if avg_mean > @slow_query_threshold_ms,
+        do: (avg_mean - @slow_query_threshold_ms) / 100,
+        else: 0
+
+    max_penalty =
+      if max_mean > @expensive_query_threshold_ms,
+        do: (max_mean - @expensive_query_threshold_ms) / 500,
+        else: 0
+
     count_penalty = query_count * 2
-    
+
     max(0, base_score - avg_penalty - max_penalty - count_penalty)
   end
 
-  defp classify_regression_risk(coefficient_of_variation, calls) when is_number(coefficient_of_variation) do
+  defp classify_regression_risk(coefficient_of_variation, calls)
+       when is_number(coefficient_of_variation) do
     cond do
       coefficient_of_variation > 1.0 and calls > 100 -> "High"
       coefficient_of_variation > 0.7 and calls > 50 -> "Medium"
@@ -390,14 +429,14 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
   defp calculate_slow_query_ratio(metrics) do
     total = Map.get(metrics, "total_queries", 0)
     slow = Map.get(metrics, "slow_queries", 0)
-    
+
     if total > 0, do: slow / total * 100, else: 0
   end
 
   defp calculate_health_score(metrics) do
     slow_ratio = calculate_slow_query_ratio(metrics)
     avg_time = Map.get(metrics, "avg_query_time_ms", 0)
-    
+
     cond do
       slow_ratio < 1 and avg_time < 100 -> 95
       slow_ratio < 5 and avg_time < 500 -> 80

@@ -7,6 +7,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TrendAnaly
   """
 
   require Logger
+  alias EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityHelpers
 
   @doc """
   Analyze activity trends over time for member activities.
@@ -162,7 +163,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TrendAnaly
 
   defp perform_advanced_trend_analysis(activity_series, member_activities, days) do
     {trend_direction, growth_rate} = calculate_trend_from_series(activity_series)
-    activity_peaks = identify_activity_peaks(activity_series)
+    activity_peaks = ActivityHelpers.identify_activity_peaks(activity_series)
     seasonal_patterns = analyze_seasonal_patterns(member_activities, days)
 
     %{
@@ -255,20 +256,6 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TrendAnaly
       end
 
     {trend_direction, growth_rate}
-  end
-
-  defp identify_activity_peaks(activity_series) do
-    # Simple peak detection - find values above average
-    if length(activity_series) > 2 do
-      avg = Enum.sum(activity_series) / length(activity_series)
-
-      activity_series
-      |> Enum.with_index()
-      |> Enum.filter(fn {value, _index} -> value > avg * 1.2 end)
-      |> Enum.map(fn {_value, index} -> index end)
-    else
-      []
-    end
   end
 
   defp analyze_seasonal_patterns(member_activities, _days) do

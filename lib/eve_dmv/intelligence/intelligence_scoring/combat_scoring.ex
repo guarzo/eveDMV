@@ -164,7 +164,8 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.CombatScoring do
 
   defp assess_operational_versatility(stats) do
     # Assess ability to fulfill different operational roles
-    role_variety = Map.get(stats, :operational_roles, []) |> length() |> min(5) |> Kernel./(5)
+    operational_roles = Map.get(stats, :operational_roles, [])
+    role_variety = operational_roles |> length() |> min(5) |> Kernel./(5)
     cross_training = Map.get(stats, :cross_training_score, 0.5)
 
     (role_variety + cross_training) / 2.0

@@ -17,8 +17,8 @@ defmodule EveDmv.Intelligence.TelemetryReporter do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  @impl true
-  def init(_opts) do
+  @impl GenServer
+  def init(opts) do
     Logger.info("Starting Intelligence telemetry reporter")
 
     # Attach to intelligence telemetry events
@@ -38,13 +38,13 @@ defmodule EveDmv.Intelligence.TelemetryReporter do
     {:ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info({:telemetry_event, event_name, measurements, metadata}, state) do
     updated_state = process_telemetry_event(event_name, measurements, metadata, state)
     {:noreply, updated_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_metrics, _from, state) do
     metrics = %{
       uptime_seconds: get_uptime_seconds(state.start_time),

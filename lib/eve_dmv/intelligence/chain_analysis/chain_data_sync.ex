@@ -10,8 +10,10 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainDataSync do
   require Ash.Query
 
   alias EveDmv.Api
-  alias EveDmv.Intelligence.{SystemInhabitant, WandererClient}
-  alias EveDmv.Intelligence.ChainAnalysis.{ChainConnection, ChainTopology}
+  alias EveDmv.Intelligence.ChainAnalysis.ChainConnection
+  alias EveDmv.Intelligence.ChainAnalysis.ChainTopology
+  alias EveDmv.Intelligence.SystemInhabitant
+  alias EveDmv.Intelligence.WandererClient
 
   @doc """
   Sync all data for a specific chain from Wanderer API.

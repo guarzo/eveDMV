@@ -89,7 +89,7 @@ defmodule EveDmv.Workers.CacheWarmingWorker do
 
   ## GenServer Callbacks
 
-  @impl true
+  @impl GenServer
   def init(opts) do
     warming_interval = Keyword.get(opts, :warming_interval, @default_warming_interval)
     priority_interval = Keyword.get(opts, :priority_interval, @priority_warming_interval)
@@ -119,7 +119,7 @@ defmodule EveDmv.Workers.CacheWarmingWorker do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast(:warm_critical_now, state) do
     if state.warming_enabled do
       Logger.info("Starting immediate critical cache warming")
@@ -129,7 +129,7 @@ defmodule EveDmv.Workers.CacheWarmingWorker do
     {:noreply, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast(:warm_full_now, state) do
     if state.warming_enabled do
       Logger.info("Starting immediate full cache warming")
@@ -139,7 +139,7 @@ defmodule EveDmv.Workers.CacheWarmingWorker do
     {:noreply, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast({:set_warming_enabled, enabled}, state) do
     Logger.info("Cache warming #{if enabled, do: "enabled", else: "disabled"}")
 
@@ -155,7 +155,7 @@ defmodule EveDmv.Workers.CacheWarmingWorker do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_stats, _from, state) do
     stats = %{
       warming_enabled: state.warming_enabled,
@@ -174,14 +174,14 @@ defmodule EveDmv.Workers.CacheWarmingWorker do
     {:reply, stats, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:update_config, config}, _from, state) do
     new_state = apply_config_updates(state, config)
     Logger.info("Updated cache warming configuration")
     {:reply, :ok, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:scheduled_warming, state) do
     if state.warming_enabled and MapSet.size(state.active_batches) < state.max_concurrent do
       spawn_warming_task(:scheduled, state)
@@ -192,7 +192,7 @@ defmodule EveDmv.Workers.CacheWarmingWorker do
     {:noreply, %{state | warming_timer: warming_timer}}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:priority_warming, state) do
     if state.warming_enabled and MapSet.size(state.active_batches) < state.max_concurrent do
       spawn_warming_task(:priority, state)
@@ -203,7 +203,7 @@ defmodule EveDmv.Workers.CacheWarmingWorker do
     {:noreply, %{state | priority_timer: priority_timer}}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info({:warming_completed, batch_id, result}, state) do
     Logger.debug("Cache warming batch #{batch_id} completed: #{inspect(result)}")
 
@@ -223,7 +223,7 @@ defmodule EveDmv.Workers.CacheWarmingWorker do
     {:noreply, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info({:warming_failed, batch_id, error}, state) do
     Logger.warning("Cache warming batch #{batch_id} failed: #{inspect(error)}")
 
@@ -367,16 +367,9 @@ defmodule EveDmv.Workers.CacheWarmingWorker do
   defp warm_full_cache_data(batch_size) do
     Logger.info("Starting full cache warming cycle")
 
-    # Delegate to original cache warmer for comprehensive warming
-    # This preserves the existing logic while wrapping it in our worker
-    # TODO: Fix these undefined functions in CacheWarmer
-    # CacheWarmer.warm_hot_characters(batch_size)
-    # CacheWarmer.warm_hot_systems()
-    # CacheWarmer.warm_popular_killmails()
-    # CacheWarmer.warm_popular_items()
-    # CacheWarmer.warm_active_alliances()
-
-    # Use the available function for now
+    # Delegate to CacheWarmer for comprehensive warming
+    # This triggers all cache warming functions including hot characters,
+    # active systems, recent killmails, frequent items, and alliance stats
     CacheWarmer.warm_cache()
 
     :ok
@@ -388,31 +381,31 @@ defmodule EveDmv.Workers.CacheWarmingWorker do
     # Get most frequently accessed character IDs
     # This would typically query analytics or cache hit statistics
     # Placeholder
-    1..limit |> Enum.to_list()
+    Enum.to_list(1..limit)
   end
 
   defp get_critical_system_ids(limit) do
     # Get most active system IDs
     # Placeholder
-    1..limit |> Enum.to_list()
+    Enum.to_list(1..limit)
   end
 
   defp get_priority_alliance_ids(limit) do
     # Get recently active alliance IDs
     # Placeholder
-    1..limit |> Enum.to_list()
+    Enum.to_list(1..limit)
   end
 
   defp get_priority_item_ids(limit) do
     # Get frequently traded item IDs
     # Placeholder
-    1..limit |> Enum.to_list()
+    Enum.to_list(1..limit)
   end
 
   defp get_random_character_ids(limit) do
     # Get random sampling of character IDs
     # Placeholder
-    1..limit |> Enum.to_list()
+    Enum.to_list(1..limit)
   end
 
   # Batch warming functions

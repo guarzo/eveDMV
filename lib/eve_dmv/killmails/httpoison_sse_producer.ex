@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
   @moduledoc """
   Broadway producer using HTTPoison's built-in streaming - the industry standard approach.
@@ -94,7 +95,7 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
             {messages ++ batch_messages, count + length(batch_messages)}
 
           message when is_struct(message, Message) ->
-            {messages ++ [message], count + 1}
+            {[message | messages], count + 1}
 
           nil ->
             {messages, count}

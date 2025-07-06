@@ -2,37 +2,95 @@ defmodule EveDmv.Eve.NameResolver.CacheManager do
   @moduledoc """
   Cache management module for EVE name resolution.
 
-  Handles ETS cache operations, TTL management, atomic operations,
-  and cache lifecycle management for the name resolver system.
+  This module has been migrated from direct ETS usage to use the unified EveDmv.Cache system
+  for better consistency and centralized cache management.
   """
 
   require Logger
 
-  # ETS table for caching lookups
-  @table_name :eve_name_cache
+  alias EveDmv.Cache
 
   # Different TTLs for different data types
   # Ship/item names rarely change
   @static_data_ttl :timer.hours(24)
-  # Character/corp names can change
+  # Character/corp names can change  
   @dynamic_data_ttl :timer.hours(4)
   # ESI data more frequent updates
   @esi_data_ttl :timer.minutes(30)
 
   @doc """
-  Starts the name resolver cache.
-  Called during application startup.
+  Gets a cached name for the given ID and type, with appropriate TTL.
   """
-  def start_cache do
-    case :ets.whereis(@table_name) do
-      :undefined ->
-        :ets.new(@table_name, [:set, :public, :named_table])
-        Logger.info("Started EVE name resolver cache")
+  @spec get_cached_name(integer(), atom()) :: {:ok, String.t()} | {:error, :not_found}
+  def get_cached_name(id, type) when is_integer(id) and is_atom(type) do
+    cache_key = {type, id}
 
-      _pid ->
-        Logger.debug("EVE name resolver cache already started")
+    case Cache.get(:hot_data, cache_key) do
+      {:ok, name} -> {:ok, name}
+      :miss -> {:error, :not_found}
     end
+  end
 
+  @doc """
+  Caches a name with the appropriate TTL based on type.
+  """
+  @spec cache_name(integer(), atom(), String.t()) :: :ok
+  def cache_name(id, type, name) when is_integer(id) and is_atom(type) and is_binary(name) do
+    cache_key = {type, id}
+    ttl = get_ttl_for_type(type)
+
+    Cache.put(:hot_data, cache_key, name, ttl: ttl)
+    :ok
+  end
+
+  @doc """
+  Checks if a name is cached for the given ID and type.
+  """
+  @spec cached?(integer(), atom()) :: boolean()
+  def cached?(id, type) when is_integer(id) and is_atom(type) do
+    cache_key = {type, id}
+
+    case Cache.get(:hot_data, cache_key) do
+      {:ok, _name} -> true
+      :miss -> false
+    end
+  end
+
+  @doc """
+  Caches multiple names in a batch operation.
+  """
+  @spec cache_names([{integer(), atom(), String.t()}]) :: :ok
+  def cache_names(name_tuples) when is_list(name_tuples) do
+    entries =
+      Enum.map(name_tuples, fn {id, type, name} ->
+        cache_key = {type, id}
+        ttl = get_ttl_for_type(type)
+        {cache_key, name, ttl}
+      end)
+
+    Cache.put_many(:hot_data, entries)
+    Logger.debug("Cached #{length(name_tuples)} names in batch")
+    :ok
+  end
+
+  @doc """
+  Invalidates cached name for the given ID and type.
+  """
+  @spec invalidate_name(integer(), atom()) :: :ok
+  def invalidate_name(id, type) when is_integer(id) and is_atom(type) do
+    cache_key = {type, id}
+    Cache.delete(:hot_data, cache_key)
+    :ok
+  end
+
+  @doc """
+  Invalidates all cached names for a specific type.
+  """
+  @spec invalidate_type(atom()) :: :ok
+  def invalidate_type(type) when is_atom(type) do
+    # Pattern-based invalidation not available, would need custom implementation
+    # For now, log a warning and do nothing
+    Logger.warning("Pattern-based cache invalidation not implemented for type: #{type}")
     :ok
   end
 
@@ -40,136 +98,117 @@ defmodule EveDmv.Eve.NameResolver.CacheManager do
   Clears all cached names. Useful for development/testing.
   """
   def clear_cache do
-    case :ets.whereis(@table_name) do
-      :undefined ->
-        :ok
+    Cache.clear(:hot_data)
+    Logger.info("Cleared EVE name resolver cache")
+    :ok
+  end
 
-      _pid ->
-        :ets.delete_all_objects(@table_name)
-        Logger.info("Cleared EVE name resolver cache")
-    end
+  @doc """
+  Gets cache statistics for monitoring.
+  """
+  @spec get_cache_stats() :: map()
+  def get_cache_stats do
+    Cache.stats(:hot_data)
+  end
+
+  @doc """
+  Warms the cache with commonly accessed names.
+  """
+  @spec warm_cache([{integer(), atom()}]) :: :ok
+  def warm_cache(id_type_pairs) when is_list(id_type_pairs) do
+    Logger.info("Warming name resolver cache for #{length(id_type_pairs)} entities")
+
+    # This would typically trigger async resolution for uncached names
+    # For now, we'll just check what's already cached
+    cached_count = Enum.count(id_type_pairs, fn {id, type} -> cached?(id, type) end)
+    Logger.debug("#{cached_count}/#{length(id_type_pairs)} names already cached")
 
     :ok
   end
 
   @doc """
-  Gets a value from cache or fetches it using the provided fetch function.
-  Handles cache expiration and atomic updates.
+  Gets the appropriate TTL for a given type.
   """
-  def get_cached_or_fetch(type, id, fetch_fn) do
-    cache_key = {type, id}
+  @spec get_ttl_for_type(atom()) :: non_neg_integer()
+  def get_ttl_for_type(type) do
+    case type do
+      # Static data types (ships, items, systems, etc.)
+      type
+      when type in [:ship, :item, :system, :constellation, :region, :station, :structure_type] ->
+        @static_data_ttl
 
-    case :ets.lookup(@table_name, cache_key) do
-      [{^cache_key, value, expires_at}] ->
-        if :os.system_time(:millisecond) < expires_at do
-          {:ok, value}
-        else
-          # Cache expired, fetch fresh data
-          :ets.delete(@table_name, cache_key)
-          fetch_and_cache_atomic(type, id, fetch_fn)
-        end
+      # Dynamic data types (characters, corporations, alliances)  
+      type when type in [:character, :corporation, :alliance] ->
+        @dynamic_data_ttl
 
-      [] ->
-        fetch_and_cache_atomic(type, id, fetch_fn)
-    end
-  end
+      # ESI-sourced data with frequent updates
+      type when type in [:structure, :esi_character, :esi_corporation, :esi_alliance] ->
+        @esi_data_ttl
 
-  @doc """
-  Gets a value from cache without fetching if missing.
-  Returns :miss if not found or expired.
-  """
-  def get_from_cache(type, id) do
-    cache_key = {type, id}
-    current_time = :os.system_time(:millisecond)
-
-    case :ets.lookup(@table_name, cache_key) do
-      [{^cache_key, value, expires_at}] when expires_at > current_time ->
-        {:ok, value}
-
+      # Default TTL for unknown types
       _ ->
-        :miss
+        @dynamic_data_ttl
     end
   end
 
   @doc """
-  Caches batch results with appropriate TTL.
+  Legacy compatibility function - no longer needs to start anything.
   """
-  def cache_batch_results(type, results) do
-    ttl = get_ttl_for_type(type)
-    expires_at = :os.system_time(:millisecond) + ttl
-
-    Enum.each(results, fn {id, name} ->
-      cache_key = {type, id}
-      :ets.insert(@table_name, {cache_key, name, expires_at})
-    end)
+  def start_cache do
+    Logger.debug("EVE name resolver cache using unified cache system")
+    :ok
   end
+
+  # Adapter methods for backward compatibility
 
   @doc """
-  Caches a single result with appropriate TTL.
+  Gets a cached value or fetches it using the provided function if not cached.
+  This is an adapter method for backward compatibility.
   """
-  def cache_result(type, id, value) do
-    ttl = get_ttl_for_type(type)
-    expires_at = :os.system_time(:millisecond) + ttl
-    cache_key = {type, id}
-    :ets.insert(@table_name, {cache_key, value, expires_at})
-  end
+  @spec get_cached_or_fetch(atom(), integer(), function()) :: {:ok, String.t()} | {:error, term()}
+  def get_cached_or_fetch(type, id, fetch_fn)
+      when is_atom(type) and is_integer(id) and is_function(fetch_fn, 0) do
+    case get_cached_name(id, type) do
+      {:ok, name} ->
+        {:ok, name}
 
-  @doc """
-  Gets the appropriate TTL for a given data type.
-  """
-  def get_ttl_for_type(type)
-      when type in [:item_type, :ship_type, :solar_system, :solar_system_full] do
-    @static_data_ttl
-  end
+      {:error, :not_found} ->
+        case fetch_fn.() do
+          {:ok, name} = result ->
+            cache_name(id, type, name)
+            result
 
-  def get_ttl_for_type(type) when type in [:character, :corporation, :alliance] do
-    @esi_data_ttl
-  end
-
-  def get_ttl_for_type(_type), do: @dynamic_data_ttl
-
-  # Private helper functions
-
-  # Atomic cache insertion to prevent race conditions
-  defp fetch_and_cache_atomic(type, id, fetch_fn) do
-    cache_key = {type, id}
-
-    case fetch_fn.() do
-      {:ok, value} ->
-        ttl = get_ttl_for_type(type)
-        expires_at = :os.system_time(:millisecond) + ttl
-        cache_entry = {cache_key, value, expires_at}
-
-        # Use insert_new to atomically insert only if key doesn't exist
-        case :ets.insert_new(@table_name, cache_entry) do
-          true ->
-            {:ok, value}
-
-          false ->
-            handle_cache_collision(cache_key, cache_entry, value)
+          error ->
+            error
         end
-
-      error ->
-        error
     end
   end
 
-  defp handle_cache_collision(cache_key, cache_entry, value) do
-    # Another process already inserted this key, use their value
-    case :ets.lookup(@table_name, cache_key) do
-      [{^cache_key, existing_value, existing_expires}] ->
-        if :os.system_time(:millisecond) < existing_expires do
-          {:ok, existing_value}
-        else
-          # Their entry expired too, replace it
-          :ets.insert(@table_name, cache_entry)
-          {:ok, value}
-        end
+  @doc """
+  Caches multiple results in batch format.
+  This is an adapter method for backward compatibility.
+  """
+  @spec cache_batch_results(atom(), map()) :: :ok
+  def cache_batch_results(type, results) when is_atom(type) and is_map(results) do
+    name_tuples = Enum.map(results, fn {id, name} -> {id, type, name} end)
+    cache_names(name_tuples)
+  end
 
-      [] ->
-        # Edge case: they deleted it between insert_new and lookup
-        :ets.insert(@table_name, cache_entry)
-        {:ok, value}
-    end
+  @doc """
+  Retrieves a single cached value.
+  This is an adapter method for backward compatibility.
+  """
+  @spec get_from_cache(atom(), integer()) :: {:ok, String.t()} | {:error, :not_found}
+  def get_from_cache(type, id) when is_atom(type) and is_integer(id) do
+    get_cached_name(id, type)
+  end
+
+  @doc """
+  Caches a single result.
+  This is an adapter method for backward compatibility.
+  """
+  @spec cache_result(atom(), integer(), String.t()) :: :ok
+  def cache_result(type, id, name) when is_atom(type) and is_integer(id) and is_binary(name) do
+    cache_name(id, type, name)
   end
 end

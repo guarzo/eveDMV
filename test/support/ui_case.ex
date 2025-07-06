@@ -14,6 +14,8 @@ defmodule EveDmv.UICase do
   import EveDmv.Factories
   import Plug.Conn, only: [get_resp_header: 2]
 
+  alias Ecto.Adapters.SQL.Sandbox
+
   @endpoint EveDmvWeb.Endpoint
 
   # Default test timeouts
@@ -43,10 +45,10 @@ defmodule EveDmv.UICase do
 
   setup tags do
     # Set up database
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(EveDmv.Repo)
+    :ok = Sandbox.checkout(EveDmv.Repo)
 
     unless tags[:async] do
-      Ecto.Adapters.SQL.Sandbox.mode(EveDmv.Repo, {:shared, self()})
+      Sandbox.mode(EveDmv.Repo, {:shared, self()})
     end
 
     # Create test user if needed

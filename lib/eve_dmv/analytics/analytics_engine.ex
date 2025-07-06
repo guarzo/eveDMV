@@ -6,7 +6,8 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
   code organization and maintainability.
   """
 
-  alias EveDmv.Analytics.{PlayerStatsEngine, ShipStatsEngine}
+  alias EveDmv.Analytics.PlayerStatsEngine
+  alias EveDmv.Analytics.ShipStatsEngine
 
   @doc """
   Calculate and update player statistics for all active characters.

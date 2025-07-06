@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmv.Market.JaniceClient do
   @moduledoc """
   Client for interacting with the Janice API for EVE Online market prices.
@@ -185,7 +186,7 @@ defmodule EveDmv.Market.JaniceClient do
 
   defp post_request(endpoint, body) do
     url = build_url(endpoint)
-    headers = build_headers() ++ [{"Content-Type", "application/json"}]
+    headers = [{"Content-Type", "application/json"} | build_headers()]
     json_body = Jason.encode!(body)
 
     HTTPoison.post(url, json_body, headers, recv_timeout: Http.janice_timeout())

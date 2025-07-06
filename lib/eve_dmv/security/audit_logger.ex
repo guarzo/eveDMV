@@ -120,6 +120,25 @@ defmodule EveDmv.Security.AuditLogger do
   end
 
   @doc """
+  Log a rate limit exceeded event.
+  """
+  def log_rate_limit_exceeded(client_ip, request_path, max_attempts) do
+    :telemetry.execute(
+      [:eve_dmv, :security, :rate_limit_exceeded],
+      %{max_attempts: max_attempts},
+      %{
+        client_ip: client_ip,
+        request_path: request_path,
+        timestamp: DateTime.utc_now()
+      }
+    )
+
+    Logger.warning(
+      "Rate limit exceeded: #{client_ip} exceeded #{max_attempts} attempts on #{request_path}"
+    )
+  end
+
+  @doc """
   Log an API key event.
   """
   def log_api_key_event(event_type, api_key_id, character_id, metadata \\ %{}) do
@@ -179,8 +198,8 @@ defmodule EveDmv.Security.AuditLogger do
   end
 
   defp store_security_event(_event) do
-    # TODO: Implement database storage for security events if needed
-    # This could be useful for local security analysis and reporting
+    # Security events are currently handled through telemetry and logging
+    # Database storage can be implemented when persistence requirements are defined
     :ok
   end
 end

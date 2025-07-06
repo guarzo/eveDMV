@@ -7,6 +7,7 @@ defmodule EveDmv.Surveillance.Matching.ProfileCompiler do
   """
 
   require Logger
+  alias KillmailFieldExtractor
 
   @doc """
   Compile a filter tree into an executable function.
@@ -97,11 +98,11 @@ defmodule EveDmv.Surveillance.Matching.ProfileCompiler do
   # Equality operators
 
   defp compile_equality_operator("eq", field, value) do
-    fn km -> EveDmv.Surveillance.Matching.KillmailFieldExtractor.get_field(km, field) == value end
+    fn km -> KillmailFieldExtractor.get_field(km, field) == value end
   end
 
   defp compile_equality_operator("ne", field, value) do
-    fn km -> EveDmv.Surveillance.Matching.KillmailFieldExtractor.get_field(km, field) != value end
+    fn km -> KillmailFieldExtractor.get_field(km, field) != value end
   end
 
   # Numeric operators
@@ -109,7 +110,7 @@ defmodule EveDmv.Surveillance.Matching.ProfileCompiler do
   defp compile_numeric_operator("gt", field, value) do
     fn km ->
       compare_numeric(
-        EveDmv.Surveillance.Matching.KillmailFieldExtractor.get_field(km, field),
+        KillmailFieldExtractor.get_field(km, field),
         value,
         :gt
       )
@@ -119,7 +120,7 @@ defmodule EveDmv.Surveillance.Matching.ProfileCompiler do
   defp compile_numeric_operator("lt", field, value) do
     fn km ->
       compare_numeric(
-        EveDmv.Surveillance.Matching.KillmailFieldExtractor.get_field(km, field),
+        KillmailFieldExtractor.get_field(km, field),
         value,
         :lt
       )
@@ -129,7 +130,7 @@ defmodule EveDmv.Surveillance.Matching.ProfileCompiler do
   defp compile_numeric_operator("gte", field, value) do
     fn km ->
       compare_numeric(
-        EveDmv.Surveillance.Matching.KillmailFieldExtractor.get_field(km, field),
+        KillmailFieldExtractor.get_field(km, field),
         value,
         :gte
       )
@@ -139,7 +140,7 @@ defmodule EveDmv.Surveillance.Matching.ProfileCompiler do
   defp compile_numeric_operator("lte", field, value) do
     fn km ->
       compare_numeric(
-        EveDmv.Surveillance.Matching.KillmailFieldExtractor.get_field(km, field),
+        KillmailFieldExtractor.get_field(km, field),
         value,
         :lte
       )
@@ -149,12 +150,12 @@ defmodule EveDmv.Surveillance.Matching.ProfileCompiler do
   # List operators
 
   defp compile_list_operator("in", field, value) do
-    fn km -> EveDmv.Surveillance.Matching.KillmailFieldExtractor.get_field(km, field) in value end
+    fn km -> KillmailFieldExtractor.get_field(km, field) in value end
   end
 
   defp compile_list_operator("not_in", field, value) do
     fn km ->
-      EveDmv.Surveillance.Matching.KillmailFieldExtractor.get_field(km, field) not in value
+      KillmailFieldExtractor.get_field(km, field) not in value
     end
   end
 
@@ -162,21 +163,21 @@ defmodule EveDmv.Surveillance.Matching.ProfileCompiler do
 
   defp compile_array_operator("contains_any", field, value) do
     fn km ->
-      field_value = EveDmv.Surveillance.Matching.KillmailFieldExtractor.get_field(km, field) || []
+      field_value = KillmailFieldExtractor.get_field(km, field) || []
       is_list(field_value) and not MapSet.disjoint?(MapSet.new(field_value), MapSet.new(value))
     end
   end
 
   defp compile_array_operator("contains_all", field, value) do
     fn km ->
-      field_value = EveDmv.Surveillance.Matching.KillmailFieldExtractor.get_field(km, field) || []
+      field_value = KillmailFieldExtractor.get_field(km, field) || []
       is_list(field_value) and MapSet.subset?(MapSet.new(value), MapSet.new(field_value))
     end
   end
 
   defp compile_array_operator("not_contains", field, value) do
     fn km ->
-      field_value = EveDmv.Surveillance.Matching.KillmailFieldExtractor.get_field(km, field) || []
+      field_value = KillmailFieldExtractor.get_field(km, field) || []
       is_list(field_value) and MapSet.disjoint?(MapSet.new(field_value), MapSet.new(value))
     end
   end

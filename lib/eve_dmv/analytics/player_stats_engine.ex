@@ -3,10 +3,12 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
   Engine for calculating player performance statistics.
   """
 
-  require Logger
   alias EveDmv.Analytics.PlayerStats
   alias EveDmv.Api
   alias EveDmv.Killmails.Participant
+  alias EveDmv.Constants.Isk
+
+  require Logger
 
   @default_days 90
   @default_batch_size 100
@@ -320,7 +322,7 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
   defp calculate_character_danger_rating(kills, losses, isk_destroyed, diversity) do
     kd_ratio = if losses > 0, do: kills / losses, else: kills * 1.0
     # Calculate ISK efficiency in billions using centralized constant
-    isk_efficiency = EveDmv.Constants.Isk.to_billions(isk_destroyed)
+    isk_efficiency = Isk.to_billions(isk_destroyed)
 
     base_rating = 50
     kd_modifier = min(20, kd_ratio * 5)

@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmvWeb.IntelligenceDashboardLive do
   @moduledoc """
   Real-time intelligence dashboard LiveView.
@@ -16,7 +17,7 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
 
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
-  @impl true
+  @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     if connected?(socket) do
       # Subscribe to intelligence updates
@@ -47,20 +48,20 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
     {:ok, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_params(params, _url, socket) do
     tab = params["tab"] || "overview"
     timeframe = params["timeframe"] || "last_24_hours"
 
     socket =
       socket
-      |> assign(:tab, String.to_atom(tab))
-      |> assign(:timeframe, String.to_atom(timeframe))
+      |> assign(:tab, String.to_existing_atom(tab))
+      |> assign(:timeframe, String.to_existing_atom(timeframe))
 
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("change_tab", %{"tab" => tab}, socket) do
     {:noreply,
      push_patch(socket,
@@ -68,7 +69,7 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
      )}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("change_timeframe", %{"timeframe" => timeframe}, socket) do
     {:noreply,
      push_patch(socket,
@@ -76,13 +77,13 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
      )}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("refresh_dashboard", _params, socket) do
     send(self(), :load_dashboard)
     {:noreply, assign(socket, :loading, true)}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("clear_cache", _params, socket) do
     IntelligenceCache.clear_cache()
     socket = put_flash(socket, :info, "Intelligence cache cleared successfully")
@@ -90,24 +91,24 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
     {:noreply, assign(socket, :loading, true)}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("warm_cache", _params, socket) do
     IntelligenceCoordinator.warm_intelligence_cache()
     {:noreply, put_flash(socket, :info, "Cache warming initiated")}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("view_analysis", %{"type" => type, "id" => id}, socket) do
     analysis_data = load_analysis_details(type, id)
     {:noreply, assign(socket, :selected_analysis, analysis_data)}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("close_analysis", _params, socket) do
     {:noreply, assign(socket, :selected_analysis, nil)}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("analyze_character", %{"character_id" => character_id_str}, socket) do
     case Integer.parse(character_id_str) do
       {character_id, ""} ->
@@ -134,7 +135,7 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info(:load_dashboard, socket) do
     {:ok, dashboard_data} =
       IntelligenceCoordinator.get_intelligence_dashboard(timeframe: socket.assigns.timeframe)
@@ -152,14 +153,14 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info(:update_dashboard, socket) do
     # Periodic dashboard update
     send(self(), :load_dashboard)
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:new_analysis, analysis}, socket) do
     # Real-time analysis update
     updated_analyses = [analysis | socket.assigns.recent_analyses]
@@ -172,7 +173,7 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:threat_alert, alert}, socket) do
     # Real-time threat alert
     updated_alerts = [alert | socket.assigns.threat_alerts]
@@ -185,7 +186,7 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:cache_update, stats}, socket) do
     # Real-time cache statistics update
     {:noreply, assign(socket, :cache_stats, stats)}

@@ -2,49 +2,31 @@ defmodule EveDmv.Api do
   @moduledoc """
   The main Ash API for the EVE PvP Tracker application.
 
-  This API contains all the resources and is the central point for interacting
-  with our domain data including users, killmails, participants, and EVE item types.
+  This API contains core resources needed for the application's primary
+  functionality. Additional specialized resources are managed through
+  focused sub-domains to reduce complexity and dependencies.
   """
 
   use Ash.Domain,
     otp_app: :eve_dmv
 
-  # Domain resources
+  # Core application resources
   resources do
-    # User management
+    # Essential user and authentication
     resource(EveDmv.Users.User)
     resource(EveDmv.Users.Token)
 
-    # Killmail data
+    # Primary killmail data
     resource(EveDmv.Killmails.KillmailRaw)
     resource(EveDmv.Killmails.KillmailEnriched)
     resource(EveDmv.Killmails.Participant)
 
-    # Static EVE data
+    # Essential EVE static data
     resource(EveDmv.Eve.ItemType)
     resource(EveDmv.Eve.SolarSystem)
 
-    # Intelligence data
+    # Core intelligence resources
     resource(EveDmv.Intelligence.CharacterStats)
-    resource(EveDmv.Intelligence.ChainAnalysis.ChainTopology)
-    resource(EveDmv.Intelligence.SystemInhabitant)
-    resource(EveDmv.Intelligence.ChainAnalysis.ChainConnection)
-    resource(EveDmv.Intelligence.Wormhole.Vetting)
-    resource(EveDmv.Intelligence.HomeDefenseAnalytics)
-    resource(EveDmv.Intelligence.Wormhole.FleetComposition)
-    resource(EveDmv.Intelligence.MemberActivityIntelligence)
-
-    # Surveillance profiles
-    resource(EveDmv.Surveillance.Profile)
-    resource(EveDmv.Surveillance.ProfileMatch)
-    resource(EveDmv.Surveillance.Notification)
-
-    # Analytics resources
-    resource(EveDmv.Analytics.PlayerStats)
-    resource(EveDmv.Analytics.ShipStats)
-
-    # Security resources
-    resource(EveDmv.Security.ApiAuthentication)
   end
 
   # Authorization configuration

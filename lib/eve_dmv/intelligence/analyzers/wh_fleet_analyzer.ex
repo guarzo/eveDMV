@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer do
   @moduledoc """
   Wormhole fleet composition analysis and optimization engine.
@@ -18,6 +19,7 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer do
 
   alias EveDmv.Intelligence.Fleet.FleetReadinessCalculator
   alias EveDmv.Intelligence.Wormhole.FleetComposition
+  alias EveDmv.Intelligence.Core.TimeoutHelper
 
   alias EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.{
     DoctrineManager,
@@ -40,27 +42,27 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer do
     auth_token = Keyword.get(options, :auth_token)
 
     with {:ok, composition} <-
-           EveDmv.Intelligence.Core.TimeoutHelper.with_default_timeout(
+           TimeoutHelper.with_default_timeout(
              fn -> get_composition_record(composition_id) end,
              :query
            ),
          {:ok, available_pilots} <-
-           EveDmv.Intelligence.Core.TimeoutHelper.with_default_timeout(
+           TimeoutHelper.with_default_timeout(
              fn -> FleetPilotAnalyzer.get_available_pilots(composition.corporation_id) end,
              :analysis
            ),
          {:ok, ship_data} <-
-           EveDmv.Intelligence.Core.TimeoutHelper.with_default_timeout(
+           TimeoutHelper.with_default_timeout(
              fn -> get_ship_data(composition.doctrine_template) end,
              :query
            ),
          {:ok, asset_data} <-
-           EveDmv.Intelligence.Core.TimeoutHelper.with_default_timeout(
+           TimeoutHelper.with_default_timeout(
              fn -> FleetAssetManager.get_asset_availability(composition, auth_token) end,
              :api
            ),
          {:ok, skill_analysis} <-
-           EveDmv.Intelligence.Core.TimeoutHelper.with_default_timeout(
+           TimeoutHelper.with_default_timeout(
              fn ->
                FleetSkillAnalyzer.analyze_skill_requirements(
                  composition.doctrine_template,
@@ -70,14 +72,14 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer do
              :analysis
            ),
          {:ok, mass_analysis} <-
-           EveDmv.Intelligence.Core.TimeoutHelper.with_default_timeout(
+           TimeoutHelper.with_default_timeout(
              fn ->
                MassCalculator.calculate_mass_efficiency(composition.doctrine_template, ship_data)
              end,
              :analysis
            ),
          {:ok, pilot_assignments} <-
-           EveDmv.Intelligence.Core.TimeoutHelper.with_default_timeout(
+           TimeoutHelper.with_default_timeout(
              fn ->
                FleetPilotAnalyzer.optimize_pilot_assignments(
                  composition.doctrine_template,
@@ -88,7 +90,7 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer do
              :analysis
            ),
          {:ok, optimization_results} <-
-           EveDmv.Intelligence.Core.TimeoutHelper.with_default_timeout(
+           TimeoutHelper.with_default_timeout(
              fn ->
                FleetOptimizer.generate_optimization_recommendations(
                  composition,

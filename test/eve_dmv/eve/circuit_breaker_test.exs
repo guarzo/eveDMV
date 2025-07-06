@@ -6,7 +6,7 @@ defmodule EveDmv.Eve.CircuitBreakerTest do
   describe "circuit breaker functionality" do
     @describetag :skip
     test "opens circuit after failure threshold" do
-      service = :"test_service_#{System.unique_integer([:positive])}"
+      service = "test_service_#{System.unique_integer([:positive])}"
 
       # Start circuit breaker for this service
       {:ok, _pid} = CircuitBreaker.start_link(service_name: service, failure_threshold: 5)
@@ -30,7 +30,7 @@ defmodule EveDmv.Eve.CircuitBreakerTest do
     end
 
     test "closes circuit after successful recovery" do
-      service = :"test_service_#{System.unique_integer([:positive])}"
+      service = "test_service_#{System.unique_integer([:positive])}"
 
       # Start with short recovery timeout for testing
       {:ok, _pid} =
@@ -63,7 +63,7 @@ defmodule EveDmv.Eve.CircuitBreakerTest do
     end
 
     test "tracks metrics correctly" do
-      service = :"test_service_#{System.unique_integer([:positive])}"
+      service = "test_service_#{System.unique_integer([:positive])}"
 
       {:ok, _pid} = CircuitBreaker.start_link(service_name: service)
 
@@ -82,7 +82,7 @@ defmodule EveDmv.Eve.CircuitBreakerTest do
     end
 
     test "respects timeout configuration" do
-      service = :"test_service_#{System.unique_integer([:positive])}"
+      service = "test_service_#{System.unique_integer([:positive])}"
 
       {:ok, _pid} =
         CircuitBreaker.start_link(
@@ -109,7 +109,7 @@ defmodule EveDmv.Eve.CircuitBreakerTest do
     end
 
     test "resets circuit breaker state" do
-      service = :"test_service_#{System.unique_integer([:positive])}"
+      service = "test_service_#{System.unique_integer([:positive])}"
 
       {:ok, _pid} =
         CircuitBreaker.start_link(
@@ -138,7 +138,7 @@ defmodule EveDmv.Eve.CircuitBreakerTest do
     end
 
     test "handles half-open state correctly" do
-      service = :"test_service_#{System.unique_integer([:positive])}"
+      service = "test_service_#{System.unique_integer([:positive])}"
 
       {:ok, _pid} =
         CircuitBreaker.start_link(
@@ -171,7 +171,7 @@ defmodule EveDmv.Eve.CircuitBreakerTest do
     end
 
     test "returns to open state on failure during half-open" do
-      service = :"test_service_#{System.unique_integer([:positive])}"
+      service = "test_service_#{System.unique_integer([:positive])}"
 
       {:ok, _pid} =
         CircuitBreaker.start_link(
@@ -197,7 +197,7 @@ defmodule EveDmv.Eve.CircuitBreakerTest do
     end
 
     test "works without explicit start_link" do
-      service = :"unstarted_service_#{System.unique_integer([:positive])}"
+      service = "unstarted_service_#{System.unique_integer([:positive])}"
 
       # Should default to closed state
       assert CircuitBreaker.get_state(service) == :closed
@@ -213,37 +213,37 @@ defmodule EveDmv.Eve.CircuitBreakerTest do
     end
 
     test "handles exceptions and returns" do
-      service = :"test_service_#{System.unique_integer([:positive])}"
+      service = "test_service_#{System.unique_integer([:positive])}"
 
       {:ok, _pid} = CircuitBreaker.start_link(service_name: service)
 
       # Test with exception
-      result =
+      exception_result =
         CircuitBreaker.call(service, fn ->
           raise ArgumentError, "test error"
         end)
 
-      assert {:error, {:error, %ArgumentError{message: "test error"}}} = result
+      assert {:error, {:error, %ArgumentError{message: "test error"}}} = exception_result
 
       # Test with throw
-      result =
+      throw_result =
         CircuitBreaker.call(service, fn ->
           throw(:test_throw)
         end)
 
-      assert {:error, {:throw, :test_throw}} = result
+      assert {:error, {:throw, :test_throw}} = throw_result
 
       # Test with exit
-      result =
+      exit_result =
         CircuitBreaker.call(service, fn ->
           exit(:test_exit)
         end)
 
-      assert {:error, {:exit, :test_exit}} = result
+      assert {:error, {:exit, :test_exit}} = exit_result
     end
 
     test "prevents cascading failures" do
-      service = :"test_service_#{System.unique_integer([:positive])}"
+      service = "test_service_#{System.unique_integer([:positive])}"
 
       {:ok, _pid} =
         CircuitBreaker.start_link(
@@ -280,7 +280,7 @@ defmodule EveDmv.Eve.CircuitBreakerTest do
 
   describe "configuration" do
     test "uses default configuration when not specified" do
-      service = :"test_service_#{System.unique_integer([:positive])}"
+      service = "test_service_#{System.unique_integer([:positive])}"
 
       {:ok, _pid} = CircuitBreaker.start_link(service_name: service)
 
@@ -292,7 +292,7 @@ defmodule EveDmv.Eve.CircuitBreakerTest do
     end
 
     test "accepts custom configuration" do
-      service = :"test_service_#{System.unique_integer([:positive])}"
+      service = "test_service_#{System.unique_integer([:positive])}"
 
       {:ok, _pid} =
         CircuitBreaker.start_link(
@@ -314,7 +314,7 @@ defmodule EveDmv.Eve.CircuitBreakerTest do
   describe "concurrent access" do
     @describetag :skip
     test "handles concurrent calls correctly" do
-      service = :"test_service_#{System.unique_integer([:positive])}"
+      service = "test_service_#{System.unique_integer([:positive])}"
 
       {:ok, _pid} =
         CircuitBreaker.start_link(

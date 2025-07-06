@@ -68,8 +68,8 @@ defmodule EveDmv.Eve.EsiMarketClient do
   def get_market_prices(type_ids, region_id \\ 10_000_002) when is_list(type_ids) do
     results =
       type_ids
-      |> Enum.map(fn type_id ->
-        Task.async(fn ->
+      |> Task.async_stream(
+        fn type_id ->
           case get_market_orders(type_id, region_id) do
             {:ok, orders} ->
               # Calculate best prices from orders
@@ -79,9 +79,10 @@ defmodule EveDmv.Eve.EsiMarketClient do
             {:error, _} ->
               {type_id, nil}
           end
-        end)
-      end)
-      |> Enum.map(&Task.await(&1, 30_000))
+        end,
+        timeout: 30_000
+      )
+      |> Enum.map(fn {:ok, result} -> result end)
       |> Enum.into(%{})
 
     {:ok, results}

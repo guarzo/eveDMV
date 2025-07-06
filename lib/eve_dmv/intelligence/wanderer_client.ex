@@ -86,7 +86,7 @@ defmodule EveDmv.Intelligence.WandererClient do
 
   # GenServer Callbacks
 
-  @impl true
+  @impl GenServer
   def init(opts) do
     auth_token = Keyword.get(opts, :auth_token) || get_auth_token_from_env()
 
@@ -104,7 +104,7 @@ defmodule EveDmv.Intelligence.WandererClient do
     {:ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:get_chain_topology, map_id}, _from, state) do
     case fetch_with_retry(fn -> get_systems_api(map_id, state.auth_token) end) do
       {:ok, data} ->
@@ -117,7 +117,7 @@ defmodule EveDmv.Intelligence.WandererClient do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:get_system_inhabitants, map_id}, _from, state) do
     # This would typically come from Wanderer's fleet/inhabitant tracking
     # For now, we'll extract from the systems data
@@ -132,7 +132,7 @@ defmodule EveDmv.Intelligence.WandererClient do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:get_connections, map_id}, _from, state) do
     case fetch_with_retry(fn -> get_connections_api(map_id, state.auth_token) end) do
       {:ok, data} ->
@@ -145,7 +145,7 @@ defmodule EveDmv.Intelligence.WandererClient do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:connection_status, _from, state) do
     status = %{
       websocket: state.connection_state,
@@ -156,7 +156,7 @@ defmodule EveDmv.Intelligence.WandererClient do
     {:reply, status, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast({:monitor_map, map_id}, state) do
     new_monitored = MapSet.put(state.monitored_maps, map_id)
 
@@ -169,7 +169,7 @@ defmodule EveDmv.Intelligence.WandererClient do
     {:noreply, %{state | monitored_maps: new_monitored}}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast({:unmonitor_map, map_id}, state) do
     new_monitored = MapSet.delete(state.monitored_maps, map_id)
 
@@ -182,14 +182,14 @@ defmodule EveDmv.Intelligence.WandererClient do
     {:noreply, %{state | monitored_maps: new_monitored}}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:connect_websocket, state) do
     {:ok, ws_pid} = connect_websocket(state.auth_token)
     Logger.info("Connected to Wanderer WebSocket")
     {:noreply, %{state | websocket_pid: ws_pid, connection_state: :connected}}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info({:websocket_message, message}, state) do
     case Jason.decode(message) do
       {:ok, data} ->
@@ -201,7 +201,7 @@ defmodule EveDmv.Intelligence.WandererClient do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_info({:websocket_closed, _reason}, state) do
     Logger.warning("Wanderer WebSocket connection closed, reconnecting...")
     Process.send_after(self(), :connect_websocket, 5_000)

@@ -6,7 +6,9 @@ defmodule EveDmv.Eve.EsiCorporationClient do
   basic corporation information, members, and assets.
   """
 
-  alias EveDmv.Eve.{EsiCache, EsiParsers, EsiRequestClient}
+  alias EveDmv.Eve.EsiCache
+  alias EveDmv.Eve.EsiParsers
+  alias EveDmv.Eve.EsiRequestClient
 
   @corporation_api_version "v4"
 

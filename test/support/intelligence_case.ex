@@ -342,9 +342,9 @@ defmodule EveDmv.IntelligenceCase do
     }
 
     # Store these in a simple cache/store for the test
-    Process.put(:"behavioral_analysis_#{character_id}", behavioral_analysis)
-    Process.put(:"threat_assessment_#{character_id}", threat_assessment)
-    Process.put(:"risk_analysis_#{character_id}", risk_analysis)
+    Process.put("behavioral_analysis_#{character_id}", behavioral_analysis)
+    Process.put("threat_assessment_#{character_id}", threat_assessment)
+    Process.put("risk_analysis_#{character_id}", risk_analysis)
 
     {behavioral_analysis, threat_assessment, risk_analysis}
   end

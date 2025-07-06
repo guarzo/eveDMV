@@ -236,7 +236,8 @@ defmodule EveDmv.Surveillance.NotificationService do
     value = killmail["total_value"] || get_in(killmail, ["zkb", "totalValue"]) || 0
     value_formatted = format_isk_value(value)
 
-    profile_names = Enum.map(profiles, & &1.name) |> Enum.take(3) |> Enum.join(", ")
+    mapped_names = Enum.map(profiles, & &1.name)
+    profile_names = mapped_names |> Enum.take(3) |> Enum.join(", ")
     more_text = if length(profiles) > 3, do: " and #{length(profiles) - 3} more", else: ""
 
     "#{victim_name} lost a #{victim_ship} (#{value_formatted} ISK) in #{system_name} - matched profiles: #{profile_names}#{more_text}"

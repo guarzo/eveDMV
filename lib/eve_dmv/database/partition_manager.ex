@@ -10,6 +10,7 @@ defmodule EveDmv.Database.PartitionManager do
   require Logger
 
   alias EveDmv.Repo
+  alias Ecto.Adapters.SQL
 
   @partition_check_interval :timer.hours(24)
   @partitioned_tables [
@@ -208,7 +209,7 @@ defmodule EveDmv.Database.PartitionManager do
     )
     """
 
-    case Ecto.Adapters.SQL.query(Repo, query, [partition_name]) do
+    case SQL.query(Repo, query, [partition_name]) do
       {:ok, %{rows: [[true]]}} -> true
       _ -> false
     end
@@ -228,7 +229,7 @@ defmodule EveDmv.Database.PartitionManager do
     FOR VALUES FROM ('#{start_datetime}') TO ('#{end_datetime}')
     """
 
-    case Ecto.Adapters.SQL.query(Repo, sql, []) do
+    case SQL.query(Repo, sql, []) do
       {:ok, _} ->
         Logger.info("Created partition #{partition_name} for table #{table}")
         create_partition_indexes(table, partition_name)
@@ -262,7 +263,7 @@ defmodule EveDmv.Database.PartitionManager do
     ]
 
     Enum.each(indexes, fn sql ->
-      case Ecto.Adapters.SQL.query(Repo, sql, []) do
+      case SQL.query(Repo, sql, []) do
         {:ok, _} ->
           :ok
 
@@ -281,7 +282,7 @@ defmodule EveDmv.Database.PartitionManager do
     ]
 
     Enum.each(indexes, fn sql ->
-      case Ecto.Adapters.SQL.query(Repo, sql, []) do
+      case SQL.query(Repo, sql, []) do
         {:ok, _} ->
           :ok
 
@@ -314,7 +315,7 @@ defmodule EveDmv.Database.PartitionManager do
 
     pattern = "#{table}_y%"
 
-    case Ecto.Adapters.SQL.query(Repo, query, [pattern]) do
+    case SQL.query(Repo, query, [pattern]) do
       {:ok, %{rows: rows}} ->
         rows
         # Get table name
@@ -343,7 +344,7 @@ defmodule EveDmv.Database.PartitionManager do
   defp drop_partition(partition_name) do
     sql = "DROP TABLE IF EXISTS #{partition_name}"
 
-    case Ecto.Adapters.SQL.query(Repo, sql, []) do
+    case SQL.query(Repo, sql, []) do
       {:ok, _} ->
         Logger.info("Dropped old partition #{partition_name}")
         {:ok, partition_name}
@@ -365,7 +366,7 @@ defmodule EveDmv.Database.PartitionManager do
 
     pattern = "#{table}_y%"
 
-    case Ecto.Adapters.SQL.query(Repo, query, [pattern]) do
+    case SQL.query(Repo, query, [pattern]) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, &Enum.at(&1, 0))
 
@@ -424,7 +425,7 @@ defmodule EveDmv.Database.PartitionManager do
     AND (tablename LIKE 'killmails_raw_y%' OR tablename LIKE 'killmails_enriched_y%')
     """
 
-    case Ecto.Adapters.SQL.query(Repo, query, []) do
+    case SQL.query(Repo, query, []) do
       {:ok, %{rows: [[count]]}} -> count
       _ -> 0
     end
@@ -443,7 +444,7 @@ defmodule EveDmv.Database.PartitionManager do
     LIMIT 10
     """
 
-    case Ecto.Adapters.SQL.query(Repo, query, []) do
+    case SQL.query(Repo, query, []) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [_schema, table, size] -> %{table: table, size: size} end)
 
@@ -462,7 +463,7 @@ defmodule EveDmv.Database.PartitionManager do
     LIMIT 1
     """
 
-    case Ecto.Adapters.SQL.query(Repo, query, []) do
+    case SQL.query(Repo, query, []) do
       {:ok, %{rows: [[table_name]]}} -> table_name
       _ -> nil
     end
@@ -478,7 +479,7 @@ defmodule EveDmv.Database.PartitionManager do
     LIMIT 1
     """
 
-    case Ecto.Adapters.SQL.query(Repo, query, []) do
+    case SQL.query(Repo, query, []) do
       {:ok, %{rows: [[table_name]]}} -> table_name
       _ -> nil
     end

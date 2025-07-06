@@ -7,7 +7,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainTopology do
   """
 
   use Ash.Resource,
-    domain: EveDmv.Api,
+    domain: EveDmv.Domains.Intelligence,
     data_layer: AshPostgres.DataLayer
 
   postgres do

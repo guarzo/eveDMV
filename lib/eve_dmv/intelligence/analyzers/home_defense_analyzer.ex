@@ -93,8 +93,8 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
     else
       hourly_activity = calculate_hourly_activity(killmails)
 
-      active_hours =
-        Map.keys(hourly_activity) |> Enum.filter(&(Map.get(hourly_activity, &1, 0) > 0))
+      activity_keys = Map.keys(hourly_activity)
+      active_hours = Enum.filter(activity_keys, &(Map.get(hourly_activity, &1, 0) > 0))
 
       %{
         coverage_score: calculate_coverage_score(active_hours),

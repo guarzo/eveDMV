@@ -33,7 +33,7 @@ defmodule EveDmv.Quality.MetricsCollector.TestMetrics do
   # Test counting functions
 
   defp count_total_tests do
-    case System.cmd("mix", ["test", "--dry-run"], stderr_to_stdout: true) do
+    case System.cmd("mix", ["test", "--dry-run"], stderr_to_stdout: true, env: %{}) do
       {output, 0} ->
         output
         |> String.split("\n")
@@ -48,11 +48,11 @@ defmodule EveDmv.Quality.MetricsCollector.TestMetrics do
   end
 
   defp count_test_files do
-    Path.wildcard("test/**/*_test.exs") |> length()
+    length(Path.wildcard("test/**/*_test.exs"))
   end
 
   defp count_skipped_tests do
-    case System.cmd("grep", ["-r", "@tag :skip", "test/"], stderr_to_stdout: true) do
+    case System.cmd("grep", ["-r", "@tag :skip", "test/"], stderr_to_stdout: true, env: %{}) do
       {output, 0} ->
         output |> String.split("\n") |> Enum.reject(&(&1 == "")) |> length()
 
@@ -134,11 +134,12 @@ defmodule EveDmv.Quality.MetricsCollector.TestMetrics do
       live_view: count_files_in_pattern("test/eve_dmv_web/live/**/*_test.exs")
     }
 
-    Map.put(test_categories, :total, Map.values(test_categories) |> Enum.sum())
+    total = Enum.sum(Map.values(test_categories))
+    Map.put(test_categories, :total, total)
   end
 
   defp count_files_in_pattern(pattern) do
-    Path.wildcard(pattern) |> length()
+    length(Path.wildcard(pattern))
   end
 
   # Performance measurement
@@ -146,7 +147,7 @@ defmodule EveDmv.Quality.MetricsCollector.TestMetrics do
   defp measure_test_execution_time do
     start_time = System.monotonic_time(:millisecond)
 
-    case System.cmd("mix", ["test", "--trace"], stderr_to_stdout: true) do
+    case System.cmd("mix", ["test", "--trace"], stderr_to_stdout: true, env: %{}) do
       {_output, 0} ->
         end_time = System.monotonic_time(:millisecond)
         end_time - start_time

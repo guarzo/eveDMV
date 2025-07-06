@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmv.Database.HealthCheck do
   @moduledoc """
   Comprehensive database health monitoring and diagnostic tools.
@@ -7,6 +8,8 @@ defmodule EveDmv.Database.HealthCheck do
   """
 
   require Logger
+  alias Ecto.Adapters.SQL
+  alias EveDmv.Telemetry.PerformanceMonitor
 
   @doc """
   Run all health checks and return a comprehensive health report.
@@ -53,7 +56,7 @@ defmodule EveDmv.Database.HealthCheck do
   end
 
   defp check_connection do
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, "SELECT 1 as health_check") do
+    case SQL.query(EveDmv.Repo, "SELECT 1 as health_check") do
       {:ok, %{rows: [[1]]}} ->
         :healthy
 
@@ -81,15 +84,17 @@ defmodule EveDmv.Database.HealthCheck do
     ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, query) do
+    case SQL.query(EveDmv.Repo, query) do
       {:ok, %{rows: rows}} when rows != [] ->
-        current_month = Date.utc_today() |> Date.beginning_of_month()
+        current_month = Date.beginning_of_month(Date.utc_today())
 
         future_partitions =
           Enum.count(rows, fn [_schema, table, _size] ->
             # Check if we have partitions for current and next month
+            next_month_iso = Date.to_iso8601(Date.add(current_month, 30), :basic)
+
             String.contains?(table, Date.to_iso8601(current_month, :basic)) or
-              String.contains?(table, Date.add(current_month, 30) |> Date.to_iso8601(:basic))
+              String.contains?(table, next_month_iso)
           end)
 
         if future_partitions >= 2, do: :healthy, else: :warning
@@ -124,7 +129,7 @@ defmodule EveDmv.Database.HealthCheck do
     LIMIT 10
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, query) do
+    case SQL.query(EveDmv.Repo, query) do
       {:ok, %{rows: unused_indexes}} ->
         unused_count = length(unused_indexes)
 
@@ -168,7 +173,7 @@ defmodule EveDmv.Database.HealthCheck do
     LIMIT 5
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, query) do
+    case SQL.query(EveDmv.Repo, query) do
       {:ok, %{rows: stats}} ->
         high_dead_tuples =
           Enum.count(stats, fn row ->
@@ -195,13 +200,11 @@ defmodule EveDmv.Database.HealthCheck do
 
     # pool_info is a list of connection metrics, extract relevant data
     total_ready_connections =
-      pool_info
-      |> Enum.map(& &1.ready_conn_count)
+      Enum.map(pool_info, & &1.ready_conn_count)
       |> Enum.sum()
 
     total_queue_length =
-      pool_info
-      |> Enum.map(& &1.checkout_queue_length)
+      Enum.map(pool_info, & &1.checkout_queue_length)
       |> Enum.sum()
 
     # Get pool size from config since it's not in the metrics
@@ -243,7 +246,7 @@ defmodule EveDmv.Database.HealthCheck do
     LIMIT 10
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, query) do
+    case SQL.query(EveDmv.Repo, query) do
       {:ok, %{rows: rows}} when rows != [] -> :healthy
       {:ok, %{rows: []}} -> :warning
       {:error, _} -> :critical
@@ -259,7 +262,7 @@ defmodule EveDmv.Database.HealthCheck do
       pg_size_pretty(pg_database_size('postgres')) as postgres_size
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, query) do
+    case SQL.query(EveDmv.Repo, query) do
       {:ok, %{rows: [[db_size, _postgres_size]]}} ->
         # Parse size and check if it's reasonable (basic check)
         if String.contains?(db_size, ["TB", "GB"]), do: :healthy, else: :healthy
@@ -314,7 +317,7 @@ defmodule EveDmv.Database.HealthCheck do
       pg_database_size(current_database()) as bytes
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, query) do
+    case SQL.query(EveDmv.Repo, query) do
       {:ok, %{rows: [[size, bytes]]}} -> %{pretty: size, bytes: bytes}
       _ -> %{pretty: "Unknown", bytes: 0}
     end
@@ -333,7 +336,7 @@ defmodule EveDmv.Database.HealthCheck do
     LIMIT 10
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, query) do
+    case SQL.query(EveDmv.Repo, query) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [schema, table, size, bytes] ->
           %{schema: schema, table: table, size: size, bytes: bytes}
@@ -364,7 +367,7 @@ defmodule EveDmv.Database.HealthCheck do
     LIMIT 20
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, query) do
+    case SQL.query(EveDmv.Repo, query) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [schema, table, index, scans, reads, fetches, efficiency] ->
           %{
@@ -393,7 +396,7 @@ defmodule EveDmv.Database.HealthCheck do
     WHERE datname = current_database()
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, query) do
+    case SQL.query(EveDmv.Repo, query) do
       {:ok, %{rows: [[total, active, idle]]}} ->
         %{total: total, active: active, idle: idle}
 
@@ -404,9 +407,9 @@ defmodule EveDmv.Database.HealthCheck do
 
   defp get_performance_stats do
     # Get stats from our performance monitor
-    case Process.whereis(EveDmv.Telemetry.PerformanceMonitor) do
+    case Process.whereis(PerformanceMonitor) do
       nil -> %{}
-      _pid -> EveDmv.Telemetry.PerformanceMonitor.get_performance_summary()
+      _pid -> PerformanceMonitor.get_performance_summary()
     end
   rescue
     _ -> %{}

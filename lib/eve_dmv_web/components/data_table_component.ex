@@ -1,17 +1,17 @@
 defmodule EveDmvWeb.Components.DataTableComponent do
   @moduledoc """
   Reusable data table component with consistent dark theme styling.
-  
+
   Provides sortable columns, responsive design, and hover effects.
   """
-  
+
   use Phoenix.Component
-  
+
   @doc """
   Renders a data table with configurable columns and rows.
-  
+
   ## Examples
-  
+
       <.data_table rows={@killmails} row_id={&"killmail-\#{&1.id}"}>
         <:col :let={killmail} label="Victim" sortable>
           <%= killmail.victim_character_name %>
@@ -24,18 +24,18 @@ defmodule EveDmvWeb.Components.DataTableComponent do
         </:col>
       </.data_table>
   """
-  attr :rows, :list, required: true
-  attr :row_id, :any, default: nil, doc: "Function to generate row ID"
-  attr :row_click, :any, default: nil, doc: "Function called when row is clicked"
-  attr :class, :string, default: ""
-  attr :empty_message, :string, default: "No data available"
-  
+  attr(:rows, :list, required: true)
+  attr(:row_id, :any, default: nil, doc: "Function to generate row ID")
+  attr(:row_click, :any, default: nil, doc: "Function called when row is clicked")
+  attr(:class, :string, default: "")
+  attr(:empty_message, :string, default: "No data available")
+
   slot :col, required: true do
-    attr :label, :string, required: true
-    attr :sortable, :boolean
-    attr :class, :string
+    attr(:label, :string, required: true)
+    attr(:sortable, :boolean)
+    attr(:class, :string)
   end
-  
+
   def data_table(assigns) do
     ~H"""
     <div class={"overflow-x-auto #{@class}"}>

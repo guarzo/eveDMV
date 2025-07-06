@@ -36,7 +36,7 @@ defmodule EveDmv.Workers.BackgroundTaskSupervisor do
   end
 
   @impl true
-  def init(_opts) do
+  def init(opts) do
     Logger.info("Started Background Task Supervisor")
     DynamicSupervisor.init(strategy: :one_for_one, max_children: @max_concurrent)
   end
@@ -77,12 +77,12 @@ defmodule EveDmv.Workers.BackgroundTaskSupervisor do
           {:ok, pid}
 
         {:error, reason} ->
-          Logger.warn("Failed to start background task '#{description}': #{inspect(reason)}")
+          Logger.warning("Failed to start background task '#{description}': #{inspect(reason)}")
           {:error, reason}
       end
     else
       {:error, :limit_exceeded} = error ->
-        Logger.warn("Background task limit exceeded for '#{description}'")
+        Logger.warning("Background task limit exceeded for '#{description}'")
         error
     end
   end
@@ -146,7 +146,7 @@ defmodule EveDmv.Workers.BackgroundTaskSupervisor do
   Force terminate long-running or stuck tasks.
   """
   def terminate_task(supervisor \\ __MODULE__, pid, reason \\ :shutdown) do
-    Logger.warn("Force terminating background task: #{inspect(pid)} (reason: #{reason})")
+    Logger.warning("Force terminating background task: #{inspect(pid)} (reason: #{reason})")
 
     case DynamicSupervisor.terminate_child(supervisor, pid) do
       :ok ->
@@ -233,7 +233,7 @@ defmodule EveDmv.Workers.BackgroundTaskSupervisor do
     end
   end
 
-  defp track_background_task(pid, description, priority) do
+  defp track_background_task(_pid, description, priority) do
     start_time = System.monotonic_time(:millisecond)
     # Store tracking info if needed
     # Could use ETS table or process dictionary

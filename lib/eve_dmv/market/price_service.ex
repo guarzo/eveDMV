@@ -277,8 +277,9 @@ defmodule EveDmv.Market.PriceService do
       |> Enum.frequencies()
 
     # Return the most common source
-    sources
-    |> Enum.max_by(fn {_source, count} -> count end, fn -> {:unknown, 0} end)
-    |> elem(0)
+    {preferred_source, _count} =
+      Enum.max_by(sources, fn {_source, count} -> count end, fn -> {:unknown, 0} end)
+
+    preferred_source
   end
 end

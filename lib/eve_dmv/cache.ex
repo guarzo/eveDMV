@@ -23,8 +23,8 @@ defmodule EveDmv.Cache do
       EveDmv.Cache.put(:analysis, {:character_intel, 123}, intel_data)
   """
 
-  alias EveDmv.Utils.Cache
   alias EveDmv.CacheSupervisor
+  alias EveDmv.Utils.Cache
 
   @type cache_type :: :hot_data | :api_responses | :analysis
   @type cache_key :: term()

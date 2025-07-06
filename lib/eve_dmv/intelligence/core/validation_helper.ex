@@ -99,7 +99,7 @@ defmodule EveDmv.Intelligence.Core.ValidationHelper do
   @spec validate_batch_analysis([entity_id()], analysis_options()) :: validation_result()
   def validate_batch_analysis(entity_ids, opts) when is_list(entity_ids) do
     cond do
-      length(entity_ids) == 0 ->
+      Enum.empty?(entity_ids) ->
         {:error, "Entity ID list cannot be empty"}
 
       length(entity_ids) > 100 ->

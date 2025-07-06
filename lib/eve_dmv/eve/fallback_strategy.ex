@@ -10,7 +10,7 @@ defmodule EveDmv.Eve.FallbackStrategy do
   """
 
   require Logger
-  alias EveDmv.Eve.{ErrorClassifier, EsiCache, ReliabilityConfig}
+  alias EveDmv.Eve.{CircuitBreaker, ErrorClassifier, EsiCache, ReliabilityConfig}
 
   @type fallback_result ::
           {:ok, any()}
@@ -141,7 +141,7 @@ defmodule EveDmv.Eve.FallbackStrategy do
   @spec get_service_mode(atom()) :: :normal | :degraded
   def get_service_mode(service) do
     # Check circuit breaker state
-    case EveDmv.Eve.CircuitBreaker.get_state(service) do
+    case CircuitBreaker.get_state(service) do
       :open ->
         :degraded
 

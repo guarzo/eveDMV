@@ -55,14 +55,14 @@ defmodule EveDmv.Security.HeadersValidator do
 
   # GenServer callbacks
 
-  @impl true
+  @impl GenServer
   def init(state) do
     # Schedule the first validation
     Process.send_after(self(), :validate_headers, @validation_interval)
     {:ok, Map.put(state, :last_validation, nil)}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_status, _from, state) do
     status = %{
       last_validation: state.last_validation,
@@ -77,7 +77,7 @@ defmodule EveDmv.Security.HeadersValidator do
     {:reply, status, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:validate_headers, state) do
     perform_validation()
 
@@ -127,37 +127,37 @@ defmodule EveDmv.Security.HeadersValidator do
   end
 
   defp find_security_issues(headers) do
-    issues = []
+    initial_issues = []
 
-    issues =
+    csp_issues =
       if is_nil(headers.content_security_policy) do
-        ["Missing Content-Security-Policy header" | issues]
+        ["Missing Content-Security-Policy header" | initial_issues]
       else
-        issues
+        initial_issues
       end
 
-    issues =
+    sts_issues =
       if is_nil(headers.strict_transport_security) do
-        ["Missing Strict-Transport-Security header" | issues]
+        ["Missing Strict-Transport-Security header" | csp_issues]
       else
-        issues
+        csp_issues
       end
 
-    issues =
+    frame_issues =
       if is_nil(headers.x_frame_options) do
-        ["Missing X-Frame-Options header" | issues]
+        ["Missing X-Frame-Options header" | sts_issues]
       else
-        issues
+        sts_issues
       end
 
-    issues =
+    content_type_issues =
       if is_nil(headers.x_content_type_options) do
-        ["Missing X-Content-Type-Options header" | issues]
+        ["Missing X-Content-Type-Options header" | frame_issues]
       else
-        issues
+        frame_issues
       end
 
-    issues
+    content_type_issues
   end
 
   defp log_security_issues(conn, issues) do

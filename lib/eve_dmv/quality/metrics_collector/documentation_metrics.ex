@@ -259,7 +259,7 @@ defmodule EveDmv.Quality.MetricsCollector.DocumentationMetrics do
       "PROJECT_STATUS.md"
     ]
 
-    existing_count = existing_docs |> Enum.count(&(&1 in expected_docs))
+    existing_count = Enum.count(existing_docs, &(&1 in expected_docs))
     round(existing_count / length(expected_docs) * 100)
   end
 end

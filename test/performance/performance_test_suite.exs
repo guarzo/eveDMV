@@ -14,7 +14,7 @@ defmodule EveDmv.Performance.PerformanceTestSuite do
 
   alias EveDmv.Eve.CircuitBreaker
   alias EveDmv.Intelligence.CharacterAnalyzer
-  alias EveDmv.Intelligence.Metrics.CharacterMetrics
+  alias EveDmv.Intelligence.Metrics.CharacterMetricsAdapter, as: CharacterMetrics
   alias EveDmv.Killmails.{KillmailEnriched, KillmailPipeline}
   alias EveDmv.Market.PriceService
 
@@ -51,7 +51,7 @@ defmodule EveDmv.Performance.PerformanceTestSuite do
       assert character_stats.completeness_score > 70
       assert character_stats.dangerous_rating >= 0
 
-      IO.puts("Character analysis performance: #{time_ms}ms")
+      # IO.puts("Character analysis performance: #{time_ms}ms")
     end
 
     test "batch character analysis performance" do
@@ -75,7 +75,7 @@ defmodule EveDmv.Performance.PerformanceTestSuite do
       successful_count = Enum.count(results, &match?({:ok, _}, &1))
       assert successful_count >= 8, "Expected at least 8 successful analyses"
 
-      IO.puts("Batch analysis performance: #{time_ms}ms for #{length(character_ids)} characters")
+      # IO.puts("Batch analysis performance: #{time_ms}ms for #{length(character_ids)} characters")
     end
 
     test "character metrics calculation performance" do
@@ -102,7 +102,7 @@ defmodule EveDmv.Performance.PerformanceTestSuite do
         assert time_ms < 2_000,
                "#{metric_name} calculation took #{time_ms}ms, expected < 2000ms"
 
-        IO.puts("#{metric_name} performance: #{time_ms}ms")
+        # IO.puts("#{metric_name} performance: #{time_ms}ms")
       end
     end
 
@@ -129,9 +129,9 @@ defmodule EveDmv.Performance.PerformanceTestSuite do
       assert memory_growth < @memory_growth_threshold_mb,
              "Memory growth #{memory_growth}MB exceeded threshold #{@memory_growth_threshold_mb}MB"
 
-      IO.puts(
-        "Memory usage: #{initial_memory}MB -> #{final_memory}MB (growth: #{memory_growth}MB)"
-      )
+      # IO.puts(
+      #   "Memory usage: #{initial_memory}MB -> #{final_memory}MB (growth: #{memory_growth}MB)"
+      # )
     end
 
     test "concurrent analysis performance" do
@@ -172,9 +172,9 @@ defmodule EveDmv.Performance.PerformanceTestSuite do
         assert successful_count >= concurrency - 1,
                "Expected at least #{concurrency - 1} successful analyses"
 
-        IO.puts(
-          "Concurrency #{concurrency}: #{time_ms}ms, #{successful_count}/#{concurrency} successful"
-        )
+        # IO.puts(
+        #   "Concurrency #{concurrency}: #{time_ms}ms, #{successful_count}/#{concurrency} successful"
+        # )
 
         # Update base ID for next test
         character_base_id = character_base_id + concurrency + 10
@@ -197,7 +197,7 @@ defmodule EveDmv.Performance.PerformanceTestSuite do
 
       assert match?({:ok, _}, result), "Killmail processing failed"
 
-      IO.puts("Killmail processing performance: #{time_ms}ms")
+      # IO.puts("Killmail processing performance: #{time_ms}ms")
     end
 
     test "bulk killmail processing performance" do
@@ -225,9 +225,9 @@ defmodule EveDmv.Performance.PerformanceTestSuite do
       assert throughput > 50, "Throughput #{throughput} km/s below expected minimum of 50 km/s"
       assert successful_count >= 95, "Expected at least 95% success rate"
 
-      IO.puts(
-        "Bulk processing: #{time_ms}ms, #{throughput} km/s, #{successful_count}/#{length(killmail_batch)} successful"
-      )
+      # IO.puts(
+      #   "Bulk processing: #{time_ms}ms, #{throughput} km/s, #{successful_count}/#{length(killmail_batch)} successful"
+      # )
     end
 
     test "database write performance" do
@@ -239,7 +239,8 @@ defmodule EveDmv.Performance.PerformanceTestSuite do
       {time_microseconds, _result} =
         :timer.tc(fn ->
           # Use Ash bulk operations for performance
-          Enum.chunk_every(killmails, 100)
+          killmails
+          |> Enum.chunk_every(100)
           |> Enum.each(fn batch ->
             EveDmv.Killmails.KillmailRaw.bulk_create(batch)
           end)
@@ -251,7 +252,7 @@ defmodule EveDmv.Performance.PerformanceTestSuite do
 
       assert throughput > 100, "DB write throughput #{throughput} rec/s below expected minimum"
 
-      IO.puts("Database write performance: #{time_ms}ms, #{throughput} records/s")
+      # IO.puts("Database write performance: #{time_ms}ms, #{throughput} records/s")
     end
   end
 
@@ -261,14 +262,16 @@ defmodule EveDmv.Performance.PerformanceTestSuite do
       type_ids = [587, 588, 589, 590, 591]
 
       # Test single price lookup
-      {time_microseconds, _result} = :timer.tc(PriceService, :get_price, [List.first(type_ids)])
-      single_lookup_ms = time_microseconds / 1_000
+      {single_time_microseconds, _result} =
+        :timer.tc(PriceService, :get_price, [List.first(type_ids)])
+
+      single_lookup_ms = single_time_microseconds / 1_000
 
       assert single_lookup_ms < 500, "Single price lookup took #{single_lookup_ms}ms"
 
       # Test batch price lookup
-      {time_microseconds, _results} = :timer.tc(PriceService, :get_prices, [type_ids])
-      batch_lookup_ms = time_microseconds / 1_000
+      {batch_time_microseconds, _results} = :timer.tc(PriceService, :get_prices, [type_ids])
+      batch_lookup_ms = batch_time_microseconds / 1_000
 
       # Batch should be more efficient than individual lookups
       # 50% efficiency gain
@@ -277,7 +280,7 @@ defmodule EveDmv.Performance.PerformanceTestSuite do
       assert batch_lookup_ms < expected_max_batch_time,
              "Batch lookup not efficient: #{batch_lookup_ms}ms vs expected max #{expected_max_batch_time}ms"
 
-      IO.puts("Price service - Single: #{single_lookup_ms}ms, Batch: #{batch_lookup_ms}ms")
+      # IO.puts("Price service - Single: #{single_lookup_ms}ms, Batch: #{batch_lookup_ms}ms")
     end
 
     test "circuit breaker performance impact" do
@@ -301,7 +304,7 @@ defmodule EveDmv.Performance.PerformanceTestSuite do
       # Reset circuit breaker
       CircuitBreaker.set_state(:price_service, :closed)
 
-      IO.puts("Circuit breaker impact - Closed: #{time_closed_ms}ms, Open: #{time_open_ms}ms")
+      # IO.puts("Circuit breaker impact - Closed: #{time_closed_ms}ms, Open: #{time_open_ms}ms")
     end
   end
 
@@ -343,9 +346,9 @@ defmodule EveDmv.Performance.PerformanceTestSuite do
       assert time_batch_ms < time_individual_ms,
              "Batch query should be faster: #{time_batch_ms}ms vs #{time_individual_ms}ms"
 
-      IO.puts(
-        "Query optimization - Individual: #{time_individual_ms}ms, Batch: #{time_batch_ms}ms"
-      )
+      # IO.puts(
+      #   "Query optimization - Individual: #{time_individual_ms}ms, Batch: #{time_batch_ms}ms"
+      # )
     end
 
     test "killmail query performance with date ranges" do
@@ -378,7 +381,7 @@ defmodule EveDmv.Performance.PerformanceTestSuite do
         # Queries should complete quickly even with large datasets
         assert time_ms < 1_000, "Date range query (#{description}) took #{time_ms}ms"
 
-        IO.puts("Date range query (#{description}): #{time_ms}ms")
+        # IO.puts("Date range query (#{description}): #{time_ms}ms")
       end
     end
   end
@@ -411,7 +414,7 @@ defmodule EveDmv.Performance.PerformanceTestSuite do
       # System should handle load reasonably
       assert cpu_increase < 2.0, "CPU load increased too much: #{cpu_increase}"
 
-      IO.puts("CPU usage - Initial: #{initial_cpu}, Final: #{final_cpu}, Time: #{time_ms}ms")
+      # IO.puts("CPU usage - Initial: #{initial_cpu}, Final: #{final_cpu}, Time: #{time_ms}ms")
     end
 
     test "memory cleanup after large operations" do
@@ -443,9 +446,9 @@ defmodule EveDmv.Performance.PerformanceTestSuite do
       cleanup_ratio = (memory_growth - memory_retained) / memory_growth
       assert cleanup_ratio > 0.7, "Insufficient memory cleanup: #{cleanup_ratio * 100}%"
 
-      IO.puts(
-        "Memory cleanup - Growth: #{memory_growth}MB, Retained: #{memory_retained}MB, Cleanup: #{cleanup_ratio * 100}%"
-      )
+      # IO.puts(
+      #   "Memory cleanup - Growth: #{memory_growth}MB, Retained: #{memory_retained}MB, Cleanup: #{cleanup_ratio * 100}%"
+      # )
     end
   end
 

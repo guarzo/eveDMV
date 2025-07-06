@@ -23,7 +23,7 @@ defmodule EveDmv.Intelligence.AnalysisScheduler do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  @impl true
+  @impl GenServer
   def init(opts) do
     check_interval = Keyword.get(opts, :check_interval_ms, @schedule_check_interval_ms)
 
@@ -43,7 +43,7 @@ defmodule EveDmv.Intelligence.AnalysisScheduler do
     {:ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:check_schedule, state) do
     Logger.debug("Checking analysis schedule")
 
@@ -87,7 +87,7 @@ defmodule EveDmv.Intelligence.AnalysisScheduler do
     {:noreply, updated_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:schedule_analysis, entity_id, analyzer_type, schedule_opts}, _from, state) do
     task_id = generate_task_id(entity_id, analyzer_type)
 
@@ -112,7 +112,7 @@ defmodule EveDmv.Intelligence.AnalysisScheduler do
     {:reply, {:ok, task_id}, updated_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:unschedule_analysis, task_id}, _from, state) do
     case Map.get(state.scheduled_tasks, task_id) do
       nil ->
@@ -127,7 +127,7 @@ defmodule EveDmv.Intelligence.AnalysisScheduler do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_scheduled_tasks, _from, state) do
     task_list =
       state.scheduled_tasks
@@ -137,7 +137,7 @@ defmodule EveDmv.Intelligence.AnalysisScheduler do
     {:reply, task_list, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:status, _from, state) do
     status = %{
       total_scheduled: map_size(state.scheduled_tasks),
@@ -220,13 +220,15 @@ defmodule EveDmv.Intelligence.AnalysisScheduler do
   end
 
   defp execute_task_batch(tasks) do
-    Task.async_stream(
-      tasks,
-      &execute_single_task/1,
-      max_concurrency: length(tasks),
-      timeout: Config.get_timeout(:analysis)
-    )
-    |> Enum.reduce(%{completed: 0, failed: 0}, fn
+    stream_results =
+      Task.async_stream(
+        tasks,
+        &execute_single_task/1,
+        max_concurrency: length(tasks),
+        timeout: Config.get_timeout(:analysis)
+      )
+
+    Enum.reduce(stream_results, %{completed: 0, failed: 0}, fn
       {:ok, :ok}, acc -> %{acc | completed: acc.completed + 1}
       {:ok, {:error, _}}, acc -> %{acc | failed: acc.failed + 1}
       {:exit, _}, acc -> %{acc | failed: acc.failed + 1}

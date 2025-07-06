@@ -19,7 +19,7 @@ defmodule EveDmvWeb.PlayerProfileLive do
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
-  @impl true
+  @impl Phoenix.LiveView
   def mount(%{"character_id" => character_id_str}, _session, socket) do
     case Integer.parse(character_id_str) do
       {character_id, ""} ->
@@ -48,7 +48,7 @@ defmodule EveDmvWeb.PlayerProfileLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:load_character_data, character_id}, socket) do
     # Try to load from our database first
     player_stats = load_player_stats(character_id)
@@ -68,7 +68,7 @@ defmodule EveDmvWeb.PlayerProfileLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:character_esi_loaded, character_info, killmail_count}, socket) do
     character_id = socket.assigns.character_id
 
@@ -103,7 +103,7 @@ defmodule EveDmvWeb.PlayerProfileLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:character_load_failed, reason}, socket) do
     error_msg =
       case reason do
@@ -119,7 +119,7 @@ defmodule EveDmvWeb.PlayerProfileLive do
      |> assign(:error, error_msg)}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("refresh_stats", _params, socket) do
     character_id = socket.assigns.character_id
 
@@ -141,7 +141,7 @@ defmodule EveDmvWeb.PlayerProfileLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("generate_stats", _params, socket) do
     character_id = socket.assigns.character_id
 

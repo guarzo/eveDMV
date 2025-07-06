@@ -197,7 +197,7 @@ defmodule EveDmv.Intelligence.Metrics.GeographicAnalysisCalculator do
     case List.first(killmails) do
       killmail when is_map(killmail) ->
         case killmail[:solar_system_name] || killmail["solar_system_name"] do
-          name when not is_nil(name) ->
+          name when name != nil ->
             name
 
           _ ->

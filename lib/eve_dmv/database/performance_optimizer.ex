@@ -260,9 +260,9 @@ defmodule EveDmv.Database.PerformanceOptimizer do
     Logger.info("Starting database performance analysis")
 
     # Collect all statistics with error handling
-    {slow_queries, errors} = safe_execute_with_fallback(&get_slow_queries/1, [limit: 5], [])
-    {index_usage, errors} = safe_execute_with_fallback(&get_index_usage/0, [], errors)
-    {table_stats, errors} = safe_execute_with_fallback(&get_table_sizes/0, [], errors)
+    {slow_queries, errors1} = safe_execute_with_fallback(&get_slow_queries/1, [limit: 5], [])
+    {index_usage, errors2} = safe_execute_with_fallback(&get_index_usage/0, [], errors1)
+    {table_stats, errors3} = safe_execute_with_fallback(&get_table_sizes/0, [], errors2)
 
     # Generate recommendations based on available data
     recommendations = generate_recommendations(slow_queries, index_usage, table_stats)
@@ -273,13 +273,13 @@ defmodule EveDmv.Database.PerformanceOptimizer do
       table_stats: table_stats,
       recommendations: recommendations,
       analyzed_at: DateTime.utc_now(),
-      errors: errors
+      errors: errors3
     }
 
-    if Enum.empty?(errors) do
+    if Enum.empty?(errors3) do
       {:ok, result}
     else
-      Logger.warning("Performance analysis completed with #{length(errors)} errors")
+      Logger.warning("Performance analysis completed with #{length(errors3)} errors")
       # Still return success with partial data
       {:ok, result}
     end

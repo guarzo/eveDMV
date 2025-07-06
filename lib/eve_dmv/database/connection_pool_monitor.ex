@@ -97,9 +97,9 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
 
     # Update state
     new_history =
-      [%{timestamp: DateTime.utc_now(), stats: stats} | state.stats_history]
-      # Keep last 100 checks
-      |> Enum.take(100)
+      Enum.take([%{timestamp: DateTime.utc_now(), stats: stats} | state.stats_history], 100)
+
+    # Keep last 100 checks
 
     %{state | stats_history: new_history, alerts: alerts, last_check: DateTime.utc_now()}
   end
@@ -165,10 +165,10 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
   end
 
   defp check_for_alerts(stats) do
-    alerts = []
+    initial_alerts = []
 
     # Check pool utilization
-    alerts =
+    alerts_after_utilization =
       if stats.utilization > @pool_size_warning_threshold do
         alert = %{
           type: :high_pool_utilization,
@@ -179,13 +179,13 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
           timestamp: DateTime.utc_now()
         }
 
-        [alert | alerts]
+        [alert | initial_alerts]
       else
-        alerts
+        initial_alerts
       end
 
     # Check queue length
-    alerts =
+    alerts_after_queue =
       if stats.queue_length > @queue_length_warning_threshold do
         alert = %{
           type: :high_queue_length,
@@ -196,13 +196,13 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
           timestamp: DateTime.utc_now()
         }
 
-        [alert | alerts]
+        [alert | alerts_after_utilization]
       else
-        alerts
+        alerts_after_utilization
       end
 
     # Check if pool is completely exhausted
-    alerts =
+    final_alerts =
       if stats.available == 0 and stats.queue_length > 0 do
         alert = %{
           type: :pool_exhausted,
@@ -213,12 +213,12 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
           timestamp: DateTime.utc_now()
         }
 
-        [alert | alerts]
+        [alert | alerts_after_queue]
       else
-        alerts
+        alerts_after_queue
       end
 
-    alerts
+    final_alerts
   end
 
   defp track_telemetry_metrics(stats) do

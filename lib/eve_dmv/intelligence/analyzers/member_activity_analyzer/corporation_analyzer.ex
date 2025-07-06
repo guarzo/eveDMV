@@ -1,21 +1,24 @@
 defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.CorporationAnalyzer do
   @moduledoc """
   Corporation-wide activity analysis module for member activity analyzer.
-  
+
   Handles corporation-level analysis including activity reports, member attention lists,
   and overall corporation engagement health assessments.
   """
 
   require Logger
+  require Ash.Query
+  alias EveDmv.Api
   alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Intelligence.MemberActivityIntelligence
   alias EveDmv.Intelligence.Formatters.MemberActivityFormatter
   alias EveDmv.Intelligence.Metrics.MemberActivityMetrics
   alias EveDmv.Intelligence.Analyzers.MemberActivityDataCollector
+  alias EveDmv.Utils.TimeUtils
 
   @doc """
   Generate member activity report for corporation leadership.
-  
+
   Provides comprehensive activity analysis including risk summary, engagement metrics,
   and leadership recommendations for all corporation members.
   """
@@ -50,7 +53,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.CorporationAnalyz
 
   @doc """
   Identify members requiring leadership attention.
-  
+
   Filters corporation members based on risk thresholds and provides
   prioritized list with recommended actions.
   """
@@ -82,7 +85,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.CorporationAnalyz
 
   @doc """
   Analyze corporation-wide activity patterns.
-  
+
   Provides overall corporation activity analysis including trends,
   engagement health, and member participation metrics.
   """
@@ -118,7 +121,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.CorporationAnalyz
     members =
       CharacterStats
       |> Ash.Query.filter(corporation_id: corporation_id)
-      |> Ash.read!(domain: EveDmv.Api)
+      |> Ash.read!(domain: Api)
 
     case members do
       [_ | _] = members ->
@@ -185,7 +188,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.CorporationAnalyz
   end
 
   defp count_active_members(member_analyses) do
-    Enum.count(member_analyses, & &1.engagement_score > 30)
+    Enum.count(member_analyses, &(&1.engagement_score > 30))
   end
 
   defp calculate_average_engagement(member_analyses) do
@@ -199,7 +202,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.CorporationAnalyz
 
   defp calculate_at_risk_percentage(member_analyses) do
     if length(member_analyses) > 0 do
-      at_risk_count = Enum.count(member_analyses, & &1.burnout_risk_score > 60)
+      at_risk_count = Enum.count(member_analyses, &(&1.burnout_risk_score > 60))
       Float.round(at_risk_count / length(member_analyses) * 100, 2)
     else
       0.0
@@ -208,7 +211,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.CorporationAnalyz
 
   defp calculate_high_performers_percentage(member_analyses) do
     if length(member_analyses) > 0 do
-      high_performers = Enum.count(member_analyses, & &1.engagement_score > 80)
+      high_performers = Enum.count(member_analyses, &(&1.engagement_score > 80))
       Float.round(high_performers / length(member_analyses) * 100, 2)
     else
       0.0
@@ -227,7 +230,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.CorporationAnalyz
           0
 
         last_date ->
-          days_ago = EveDmv.Utils.TimeUtils.days_since(last_date)
+          days_ago = TimeUtils.days_since(last_date)
           max(0, 20 - days_ago)
       end
 

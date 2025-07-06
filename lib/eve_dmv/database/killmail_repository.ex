@@ -15,9 +15,16 @@ defmodule EveDmv.Database.KillmailRepository do
   alias EveDmv.Api
   alias EveDmv.Cache
   alias EveDmv.Database.Repository.{QueryBuilder, CacheHelper, TelemetryHelper}
-  alias EveDmv.Killmails.{KillmailEnriched, Participant}
+  alias EveDmv.Killmails.KillmailEnriched
 
   # Specialized query methods for killmail intelligence
+
+  # Helper functions to safely create field atoms
+  defp entity_field(:character), do: :character_id
+  defp entity_field(:corporation), do: :corporation_id
+
+  defp victim_entity_field(:character), do: :victim_character_id
+  defp victim_entity_field(:corporation), do: :victim_corporation_id
 
   @doc """
   Get killmails by character within a date range with efficient preloading.
@@ -152,7 +159,7 @@ defmodule EveDmv.Database.KillmailRepository do
         {:error, "Must specify either character_id or corporation_id"}
 
       entity_type ->
-        entity_id = opts[:"#{entity_type}_id"]
+        entity_id = opts[entity_field(entity_type)]
         cache_key = CacheHelper.build_key("killmail", "stats_#{entity_type}", entity_id, opts)
 
         Cache.get_or_compute(
@@ -205,7 +212,7 @@ defmodule EveDmv.Database.KillmailRepository do
       |> Ash.Query.limit(limit)
 
     # Add character involvement filter
-    query =
+    filtered_query =
       if include_losses do
         Ash.Query.filter(
           query,
@@ -221,9 +228,9 @@ defmodule EveDmv.Database.KillmailRepository do
 
     # Add preloads if requested
     if preload_participants do
-      Ash.Query.load(query, [:participants])
+      Ash.Query.load(filtered_query, [:participants])
     else
-      query
+      filtered_query
     end
   end
 
@@ -244,7 +251,7 @@ defmodule EveDmv.Database.KillmailRepository do
       |> Ash.Query.load([:participants])
 
     # Add corporation involvement filter
-    query =
+    corp_filtered_query =
       if include_losses do
         Ash.Query.filter(
           query,
@@ -260,9 +267,9 @@ defmodule EveDmv.Database.KillmailRepository do
 
     # Add wormhole filter if requested
     if wormhole_only do
-      Ash.Query.filter(query, solar_system_id >= 31_000_000)
+      Ash.Query.filter(corp_filtered_query, solar_system_id >= 31_000_000)
     else
-      query
+      corp_filtered_query
     end
   end
 
@@ -317,8 +324,8 @@ defmodule EveDmv.Database.KillmailRepository do
   end
 
   defp get_killmails_for_stats(entity_type, entity_id, start_date) do
-    field = :"#{entity_type}_id"
-    victim_field = :"victim_#{entity_type}_id"
+    field = entity_field(entity_type)
+    victim_field = victim_entity_field(entity_type)
 
     query =
       KillmailEnriched
@@ -334,8 +341,8 @@ defmodule EveDmv.Database.KillmailRepository do
   end
 
   defp count_kills(killmails, entity_type, entity_id) do
-    field = :"#{entity_type}_id"
-    victim_field = :"victim_#{entity_type}_id"
+    field = entity_field(entity_type)
+    victim_field = victim_entity_field(entity_type)
 
     Enum.count(killmails, fn km ->
       Map.get(km, victim_field) != entity_id and
@@ -344,7 +351,7 @@ defmodule EveDmv.Database.KillmailRepository do
   end
 
   defp count_losses(killmails, entity_type, entity_id) do
-    victim_field = :"victim_#{entity_type}_id"
+    victim_field = victim_entity_field(entity_type)
 
     Enum.count(killmails, fn km ->
       Map.get(km, victim_field) == entity_id
@@ -352,8 +359,8 @@ defmodule EveDmv.Database.KillmailRepository do
   end
 
   defp sum_isk_destroyed(killmails, entity_type, entity_id) do
-    field = :"#{entity_type}_id"
-    victim_field = :"victim_#{entity_type}_id"
+    field = entity_field(entity_type)
+    victim_field = victim_entity_field(entity_type)
 
     killmails
     |> Enum.filter(fn km ->
@@ -365,7 +372,7 @@ defmodule EveDmv.Database.KillmailRepository do
   end
 
   defp sum_isk_lost(killmails, entity_type, entity_id) do
-    victim_field = :"victim_#{entity_type}_id"
+    victim_field = victim_entity_field(entity_type)
 
     killmails
     |> Enum.filter(fn km -> Map.get(km, victim_field) == entity_id end)

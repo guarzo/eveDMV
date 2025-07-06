@@ -16,8 +16,6 @@ defmodule EveDmv.Workers.ReEnrichmentWorker do
   use GenServer
   require Logger
 
-  alias EveDmv.Killmails.ReEnrichmentWorker, as: OriginalWorker
-
   # Configuration
   @default_batch_size 25
   # 30 seconds
@@ -99,7 +97,7 @@ defmodule EveDmv.Workers.ReEnrichmentWorker do
 
   ## GenServer Callbacks
 
-  @impl true
+  @impl GenServer
   def init(opts) do
     batch_size = Keyword.get(opts, :batch_size, @default_batch_size)
     interval = Keyword.get(opts, :processing_interval, @default_interval)
@@ -129,7 +127,7 @@ defmodule EveDmv.Workers.ReEnrichmentWorker do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast(:process_now, state) do
     if state.enabled do
       Logger.info("Starting immediate re-enrichment processing")
@@ -140,7 +138,7 @@ defmodule EveDmv.Workers.ReEnrichmentWorker do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast({:enqueue_killmails, killmail_ids, priority}, state) do
     Logger.debug(
       "Enqueueing #{length(killmail_ids)} killmails for re-enrichment (priority: #{priority})"
@@ -167,7 +165,7 @@ defmodule EveDmv.Workers.ReEnrichmentWorker do
     {:noreply, %{state | retry_queue: new_retry_queue}}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast({:set_enabled, enabled}, state) do
     Logger.info("Re-enrichment processing #{if enabled, do: "enabled", else: "disabled"}")
 
@@ -183,7 +181,7 @@ defmodule EveDmv.Workers.ReEnrichmentWorker do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_stats, _from, state) do
     stats = %{
       enabled: state.enabled,
@@ -203,14 +201,14 @@ defmodule EveDmv.Workers.ReEnrichmentWorker do
     {:reply, stats, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:update_config, config}, _from, state) do
     new_state = apply_config_updates(state, config)
     Logger.info("Updated re-enrichment worker configuration")
     {:reply, :ok, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:scheduled_processing, state) do
     new_state =
       if state.enabled do
@@ -224,7 +222,7 @@ defmodule EveDmv.Workers.ReEnrichmentWorker do
     {:noreply, final_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info({:batch_completed, batch_id, result}, state) do
     Logger.debug("Re-enrichment batch #{inspect(batch_id)} completed: #{inspect(result)}")
 
@@ -244,7 +242,7 @@ defmodule EveDmv.Workers.ReEnrichmentWorker do
     {:noreply, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info({:batch_failed, batch_id, batch_job, error}, state) do
     Logger.warning("Re-enrichment batch #{inspect(batch_id)} failed: #{inspect(error)}")
 
@@ -331,7 +329,7 @@ defmodule EveDmv.Workers.ReEnrichmentWorker do
         perform_batch_enrichment(batch_job, parent_pid)
       end)
 
-    updated_batch_job = %{
+    _updated_batch_job = %{
       batch_job
       | started_at: System.monotonic_time(:millisecond),
         pid: task_pid
@@ -410,7 +408,7 @@ defmodule EveDmv.Workers.ReEnrichmentWorker do
       )
 
       # Schedule retry
-      retry_batch_job = %{batch_job | attempt: batch_job.attempt + 1}
+      _retry_batch_job = %{batch_job | attempt: batch_job.attempt + 1}
 
       spawn(fn ->
         Process.sleep(retry_delay)
@@ -437,7 +435,7 @@ defmodule EveDmv.Workers.ReEnrichmentWorker do
     end
   end
 
-  defp find_enrichment_candidates(batch_size) do
+  defp find_enrichment_candidates(_batch_size) do
     # This would query the database for killmails that need re-enrichment
     # For now, return empty list as placeholder
     []
@@ -445,7 +443,7 @@ defmodule EveDmv.Workers.ReEnrichmentWorker do
 
   defp calculate_retry_delay(attempt) do
     # Exponential backoff: base * 2^(attempt-1)
-    (@retry_backoff_base * :math.pow(2, attempt - 1)) |> round()
+    round(@retry_backoff_base * :math.pow(2, attempt - 1))
   end
 
   defp init_processing_stats do

@@ -10,7 +10,7 @@ defmodule EveDmv.PlayerProfile.StatsGenerator do
   require Logger
   alias EveDmv.Api
   alias EveDmv.Analytics.PlayerStats
-  alias EveDmv.IntelligenceEngine
+  alias EveDmv.IntelligenceMigrationAdapter
 
   @doc """
   Create player statistics from character analysis data.
@@ -18,8 +18,8 @@ defmodule EveDmv.PlayerProfile.StatsGenerator do
   Analyzes character and converts intelligence data to player stats format.
   """
   def create_player_stats(character_id) do
-    # Analyze the character using Intelligence Engine and create player stats
-    case IntelligenceEngine.analyze(:character, character_id, scope: :standard) do
+    # Analyze the character using Migration Adapter (bounded contexts)
+    case IntelligenceMigrationAdapter.analyze(:character, character_id, scope: :standard) do
       {:ok, analysis} ->
         create_player_stats_from_analysis(character_id, analysis)
 
@@ -59,11 +59,11 @@ defmodule EveDmv.PlayerProfile.StatsGenerator do
       solo_losses: Map.get(combat_stats, :solo_losses, 0),
       gang_kills: calculate_gang_kills(combat_stats),
       gang_losses: calculate_gang_losses(combat_stats),
-      total_isk_destroyed: Map.get(combat_stats, :isk_destroyed, 0) |> ensure_decimal(),
-      total_isk_lost: Map.get(combat_stats, :isk_lost, 0) |> ensure_decimal(),
+      total_isk_destroyed: combat_stats |> Map.get(:isk_destroyed, 0) |> ensure_decimal(),
+      total_isk_lost: combat_stats |> Map.get(:isk_lost, 0) |> ensure_decimal(),
       danger_rating: extract_danger_rating(behavioral_patterns),
       ship_types_used: get_ship_types_count(ship_preferences),
-      avg_gang_size: Map.get(behavioral_patterns, :avg_gang_size, 1.0) |> ensure_decimal(),
+      avg_gang_size: behavioral_patterns |> Map.get(:avg_gang_size, 1.0) |> ensure_decimal(),
       preferred_gang_size:
         determine_gang_preference(Map.get(behavioral_patterns, :avg_gang_size)),
       primary_activity: classify_activity(combat_stats, behavioral_patterns),

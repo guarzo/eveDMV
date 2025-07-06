@@ -1,30 +1,30 @@
 defmodule EveDmvWeb.Components.EmptyStateComponent do
   @moduledoc """
   Reusable empty state component for displaying when no data is available.
-  
+
   Provides consistent empty state messaging across the application.
   """
-  
+
   use Phoenix.Component
-  
+
   @doc """
   Renders an empty state with icon, title, and message.
-  
+
   ## Examples
-  
+
       <.empty_state 
         icon="🛸"
         title="No kills yet"
         message="Kill data will appear here as it's processed"
       />
   """
-  attr :icon, :string, default: "📭"
-  attr :title, :string, required: true
-  attr :message, :string, default: nil
-  attr :class, :string, default: ""
-  
-  slot :action, doc: "Optional action button"
-  
+  attr(:icon, :string, default: "📭")
+  attr(:title, :string, required: true)
+  attr(:message, :string, default: nil)
+  attr(:class, :string, default: "")
+
+  slot(:action, doc: "Optional action button")
+
   def empty_state(assigns) do
     ~H"""
     <div class={"text-center py-12 #{@class}"}>

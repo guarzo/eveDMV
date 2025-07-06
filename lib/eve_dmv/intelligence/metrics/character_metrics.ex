@@ -285,7 +285,7 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
       |> Map.values()
       |> Enum.map(& &1.corporation_id)
       |> Enum.uniq()
-      |> length()
+      |> then(&length/1)
 
     min(corporations / 10.0, 1.0)
   end
@@ -297,7 +297,7 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
       |> Enum.map(& &1.alliance_id)
       |> Enum.filter(&(&1 != nil))
       |> Enum.uniq()
-      |> length()
+      |> then(&length/1)
 
     min(alliances / 5.0, 1.0)
   end

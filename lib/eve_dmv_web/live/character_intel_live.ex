@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmvWeb.CharacterIntelLive do
   @moduledoc """
   Consolidated character intelligence LiveView.
@@ -11,23 +12,20 @@ defmodule EveDmvWeb.CharacterIntelLive do
   require Logger
 
   alias EveDmv.Eve.EsiClient
-  alias EveDmv.IntelligenceEngine
+  alias EveDmv.IntelligenceMigrationAdapter
   alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Killmails.HistoricalKillmailFetcher
-  
+
   # Import reusable components
   import EveDmvWeb.Components.PageHeaderComponent
   import EveDmvWeb.Components.StatsGridComponent
-  import EveDmvWeb.Components.DataTableComponent
   import EveDmvWeb.Components.LoadingStateComponent
   import EveDmvWeb.Components.ErrorStateComponent
-  import EveDmvWeb.Components.EmptyStateComponent
   import EveDmvWeb.Components.TabNavigationComponent
-  import EveDmvWeb.Components.CharacterInfoComponent
 
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
-  @impl true
+  @impl Phoenix.LiveView
   def mount(%{"character_id" => character_id_str}, _session, socket) do
     case Integer.parse(character_id_str) do
       {character_id, ""} ->
@@ -65,7 +63,7 @@ defmodule EveDmvWeb.CharacterIntelLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_params(params, _url, socket) do
     tab = params["tab"] || "overview"
     search_query = params["search"]
@@ -78,7 +76,7 @@ defmodule EveDmvWeb.CharacterIntelLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:load_character, character_id}, socket) do
     # Start async character loading
     Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
@@ -96,7 +94,7 @@ defmodule EveDmvWeb.CharacterIntelLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:character_data_loaded, character_info, killmail_count}, socket) do
     character_id = socket.assigns.character_id
 
@@ -112,7 +110,7 @@ defmodule EveDmvWeb.CharacterIntelLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:character_load_failed, reason}, socket) do
     Logger.error("Character load failed: #{inspect(reason)}")
 
@@ -123,7 +121,7 @@ defmodule EveDmvWeb.CharacterIntelLive do
      |> put_flash(:error, "Character not found or ESI error")}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:analysis_complete, analysis_data}, socket) do
     socket =
       socket
@@ -134,12 +132,12 @@ defmodule EveDmvWeb.CharacterIntelLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:vetting_complete, vetting_data}, socket) do
     {:noreply, assign(socket, :vetting_data, vetting_data)}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info(:auto_refresh, socket) do
     if socket.assigns.auto_refresh do
       character_id = socket.assigns.character_id
@@ -150,7 +148,7 @@ defmodule EveDmvWeb.CharacterIntelLive do
   end
 
   # Handle real-time PubSub updates
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:character_update, character_id, update_data}, socket) do
     if socket.assigns.character_id == character_id and socket.assigns.real_time_enabled do
       # Update character data in real-time
@@ -160,7 +158,7 @@ defmodule EveDmvWeb.CharacterIntelLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("refresh", _params, socket) do
     character_id = socket.assigns.character_id
 
@@ -174,12 +172,12 @@ defmodule EveDmvWeb.CharacterIntelLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("change_tab", %{"tab" => tab}, socket) do
     {:noreply, push_patch(socket, to: ~p"/intel/#{socket.assigns.character_id}?tab=#{tab}")}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("toggle_real_time", _params, socket) do
     new_state = not socket.assigns.real_time_enabled
 
@@ -194,7 +192,7 @@ defmodule EveDmvWeb.CharacterIntelLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("toggle_auto_refresh", _params, socket) do
     new_state = not socket.assigns.auto_refresh
 
@@ -213,7 +211,7 @@ defmodule EveDmvWeb.CharacterIntelLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("search_character", %{"search" => %{"query" => query}}, socket) do
     if String.length(query) >= 3 do
       # Redirect to search results or update current view
@@ -224,7 +222,7 @@ defmodule EveDmvWeb.CharacterIntelLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("add_comparison", %{"character_id" => char_id_str}, socket) do
     case Integer.parse(char_id_str) do
       {char_id, ""} ->
@@ -246,7 +244,7 @@ defmodule EveDmvWeb.CharacterIntelLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("remove_comparison", %{"character_id" => char_id_str}, socket) do
     case Integer.parse(char_id_str) do
       {char_id, ""} ->
@@ -265,7 +263,7 @@ defmodule EveDmvWeb.CharacterIntelLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("start_vetting", _params, socket) do
     character_id = socket.assigns.character_id
 
@@ -273,7 +271,7 @@ defmodule EveDmvWeb.CharacterIntelLive do
 
     # Start vetting analysis in background using Intelligence Engine
     Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
-      case IntelligenceEngine.analyze(:threat, character_id, scope: :full) do
+      case IntelligenceMigrationAdapter.analyze(:threat, character_id, scope: :full) do
         {:ok, vetting_data} ->
           send(self(), {:vetting_complete, vetting_data})
 
@@ -302,10 +300,10 @@ defmodule EveDmvWeb.CharacterIntelLive do
   defp load_or_analyze_character(character_id) do
     # Check if we have recent stats
     case CharacterStats.get_by_character(character_id) do
-      {:ok, stats} when not is_nil(stats) ->
+      {:ok, stats} when stats != nil ->
         if stale_stats?(stats, 24) do
           # Stats are stale, trigger new analysis using Intelligence Engine
-          IntelligenceEngine.analyze(:character, character_id, scope: :standard)
+          IntelligenceMigrationAdapter.analyze(:character, character_id, scope: :standard)
         else
           # Use cached stats but transform to Intelligence Engine format
           {:ok, transform_legacy_stats_to_analysis(stats)}

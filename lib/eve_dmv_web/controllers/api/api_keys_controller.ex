@@ -17,7 +17,7 @@ defmodule EveDmvWeb.Api.ApiKeysController do
   List API keys for the current user.
   """
   def index(conn, _params) do
-    with character_id when not is_nil(character_id) <- get_current_character_id(conn),
+    with character_id when character_id != nil <- get_current_character_id(conn),
          {:ok, api_keys} <- ApiAuthentication.list_character_api_keys(character_id) do
       conn
       |> put_status(:ok)
@@ -39,7 +39,7 @@ defmodule EveDmvWeb.Api.ApiKeysController do
   Create a new API key.
   """
   def create(conn, params) do
-    with character_id when not is_nil(character_id) <- get_current_character_id(conn),
+    with character_id when character_id != nil <- get_current_character_id(conn),
          {:ok, api_key} <-
            ApiAuthentication.create_api_key(
              character_id,
@@ -70,7 +70,7 @@ defmodule EveDmvWeb.Api.ApiKeysController do
   Delete/revoke an API key.
   """
   def delete(conn, %{"id" => api_key_id}) do
-    with character_id when not is_nil(character_id) <- get_current_character_id(conn),
+    with character_id when character_id != nil <- get_current_character_id(conn),
          {:ok, _api_key} <- ApiAuthentication.revoke_api_key(api_key_id, character_id) do
       # Log the revocation
       AuditLogger.log_api_key_event(:key_revoked, api_key_id, character_id)

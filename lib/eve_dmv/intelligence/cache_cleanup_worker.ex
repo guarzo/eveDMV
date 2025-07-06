@@ -12,6 +12,8 @@ defmodule EveDmv.Intelligence.CacheCleanupWorker do
   use GenServer
   require Logger
 
+  alias EveDmv.Intelligence.Cache.IntelligenceCache
+
   # Default cleanup interval: 5 minutes
   @default_cleanup_interval_ms 5 * 60 * 1000
 
@@ -22,7 +24,7 @@ defmodule EveDmv.Intelligence.CacheCleanupWorker do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  @impl true
+  @impl GenServer
   def init(opts) do
     cleanup_interval = Keyword.get(opts, :cleanup_interval_ms, @default_cleanup_interval_ms)
 
@@ -41,7 +43,7 @@ defmodule EveDmv.Intelligence.CacheCleanupWorker do
     {:ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:cleanup, state) do
     Logger.debug("Performing Intelligence cache cleanup")
 
@@ -77,7 +79,7 @@ defmodule EveDmv.Intelligence.CacheCleanupWorker do
     {:noreply, updated_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:status, _from, state) do
     status = %{
       last_cleanup: state.last_cleanup,
@@ -89,7 +91,7 @@ defmodule EveDmv.Intelligence.CacheCleanupWorker do
     {:reply, status, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:force_cleanup, _from, state) do
     Logger.info("Forcing Intelligence cache cleanup")
 
@@ -169,12 +171,12 @@ defmodule EveDmv.Intelligence.CacheCleanupWorker do
 
   defp get_cache_stats do
     try do
-      case Process.whereis(EveDmv.Intelligence.Cache.IntelligenceCache) do
+      case Process.whereis(IntelligenceCache) do
         nil ->
           %{cache_size: 0, error: "Cache process not running"}
 
         _pid ->
-          EveDmv.Intelligence.Cache.IntelligenceCache.get_cache_stats()
+          IntelligenceCache.get_cache_stats()
       end
     rescue
       error ->

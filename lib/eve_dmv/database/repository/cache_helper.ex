@@ -130,8 +130,7 @@ defmodule EveDmv.Database.Repository.CacheHelper do
   end
 
   defp build_identifier_part(identifier) when is_list(identifier) do
-    identifier
-    |> Enum.sort()
+    Enum.sort(identifier)
     |> Enum.join(":")
   end
 
@@ -149,8 +148,7 @@ defmodule EveDmv.Database.Repository.CacheHelper do
   end
 
   defp format_opt_value(value) when is_list(value) do
-    value
-    |> Enum.sort()
+    Enum.sort(value)
     |> Enum.join(",")
   end
 
@@ -163,8 +161,7 @@ defmodule EveDmv.Database.Repository.CacheHelper do
 
       filters when is_map(filters) ->
         # Check for time-based or dynamic filters
-        Map.keys(filters)
-        |> Enum.any?(fn key ->
+        Enum.any?(Map.keys(filters), fn key ->
           key in [:inserted_at, :updated_at, :created_at, :last_seen_at]
         end)
 

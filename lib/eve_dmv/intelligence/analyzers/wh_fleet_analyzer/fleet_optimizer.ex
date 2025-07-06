@@ -87,8 +87,7 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetOptimizer do
 
     # Skill-based improvements
     skill_improvements =
-      skill_analysis["critical_gaps"]
-      |> Enum.map(fn gap ->
+      Enum.map(skill_analysis["critical_gaps"], fn gap ->
         %{
           "category" => "skills",
           "current_score" => 60,

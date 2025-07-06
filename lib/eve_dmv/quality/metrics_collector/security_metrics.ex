@@ -40,36 +40,36 @@ defmodule EveDmv.Quality.MetricsCollector.SecurityMetrics do
   Generates security recommendations based on metrics.
   """
   def generate_security_recommendations(security_metrics) do
-    recommendations = []
+    initial_recommendations = []
 
     vulns = security_metrics.dependency_audit.vulnerabilities
 
-    recommendations =
+    vuln_recommendations =
       if vulns > 0 do
-        ["Fix #{vulns} security vulnerabilities in dependencies" | recommendations]
+        ["Fix #{vulns} security vulnerabilities in dependencies" | initial_recommendations]
       else
-        recommendations
+        initial_recommendations
       end
 
     secrets = security_metrics.secrets_detection.potential_secrets_count
 
-    recommendations =
+    final_recommendations =
       if secrets > 0 do
         [
           "Review #{secrets} potential secrets in #{security_metrics.secrets_detection.files_with_secrets} files"
-          | recommendations
+          | vuln_recommendations
         ]
       else
-        recommendations
+        vuln_recommendations
       end
 
-    recommendations
+    final_recommendations
   end
 
   # Dependency auditing
 
   defp run_dependency_audit do
-    case System.cmd("mix", ["deps.audit"], stderr_to_stdout: true) do
+    case System.cmd("mix", ["deps.audit"], stderr_to_stdout: true, env: clean_env()) do
       {_output, 0} ->
         %{status: "passed", vulnerabilities: 0}
 
@@ -200,7 +200,19 @@ defmodule EveDmv.Quality.MetricsCollector.SecurityMetrics do
 
     %{
       potential_secrets_count: length(findings),
-      files_with_secrets: findings |> Enum.map(&elem(&1, 0)) |> Enum.uniq() |> length()
+      files_with_secrets:
+        findings
+        |> Enum.map(&elem(&1, 0))
+        |> Enum.uniq()
+        |> then(&length/1)
+    }
+  end
+
+  defp clean_env do
+    %{
+      "PATH" => System.get_env("PATH", ""),
+      "HOME" => System.get_env("HOME", ""),
+      "MIX_ENV" => System.get_env("MIX_ENV", "dev")
     }
   end
 end

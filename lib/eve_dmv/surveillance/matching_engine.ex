@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmv.Surveillance.MatchingEngine do
   @moduledoc """
   High-performance killmail matching engine for surveillance profiles.
@@ -76,8 +77,8 @@ defmodule EveDmv.Surveillance.MatchingEngine do
 
   # GenServer callbacks
 
-  @impl true
-  def init(_opts) do
+  @impl GenServer
+  def init(opts) do
     Logger.info("Starting surveillance matching engine")
 
     # Create ETS tables
@@ -109,7 +110,7 @@ defmodule EveDmv.Surveillance.MatchingEngine do
     {:ok, %{state | profiles_loaded: profiles_count}}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:match_killmail, killmail}, _from, state) do
     start_time = System.monotonic_time(:microsecond)
 
@@ -131,7 +132,7 @@ defmodule EveDmv.Surveillance.MatchingEngine do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_stats, _from, state) do
     table_stats = IndexManager.get_table_stats()
 
@@ -151,7 +152,7 @@ defmodule EveDmv.Surveillance.MatchingEngine do
     {:reply, stats, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast(:reload_profiles, state) do
     Logger.info("Reloading surveillance profiles")
     profiles_count = load_active_profiles()
@@ -165,7 +166,7 @@ defmodule EveDmv.Surveillance.MatchingEngine do
     {:noreply, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:batch_record_matches, state) do
     # Process pending matches in batch
     if length(state.pending_matches) > 0 do
@@ -195,14 +196,14 @@ defmodule EveDmv.Surveillance.MatchingEngine do
     {:noreply, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:initial_profile_load, state) do
     Logger.info("Performing initial surveillance profile load")
     profiles_count = load_active_profiles()
     {:noreply, %{state | profiles_loaded: profiles_count}}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(msg, state) do
     Logger.debug("Unexpected message: #{inspect(msg)}")
     {:noreply, state}

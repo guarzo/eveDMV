@@ -1,7 +1,7 @@
 defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityHelpers do
   @moduledoc """
   Helper functions for member activity calculations and analysis.
-  
+
   Provides utility functions for fleet participation metrics, communication patterns,
   and general activity calculations used across the member activity analyzer.
   """
@@ -10,10 +10,20 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityHelpers d
   alias EveDmv.Intelligence.MemberActivityIntelligence
   alias EveDmv.Intelligence.Calculators.FleetParticipationCalculator
   alias EveDmv.Intelligence.Analyzers.CommunicationPatternAnalyzer
+  alias EveDmv.Utils.TimeUtils
+
+  # Helper functions to safely create field atoms
+  defp opportunities_field(:fleet), do: :fleet_opportunities
+  defp opportunities_field(:home_defense), do: :home_defense_opportunities
+  defp opportunities_field(:strategic), do: :strategic_opportunities
+
+  defp participated_field(:fleet), do: :fleet_participated
+  defp participated_field(:home_defense), do: :home_defense_participated
+  defp participated_field(:strategic), do: :strategic_participated
 
   @doc """
   Calculate fleet participation metrics for given fleet data.
-  
+
   Analyzes fleet participation patterns including frequency, consistency,
   and role distribution.
   """
@@ -23,7 +33,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityHelpers d
 
   @doc """
   Analyze communication patterns from communication data.
-  
+
   Examines Discord, forum, and in-game communication patterns
   to assess member engagement and social integration.
   """
@@ -57,20 +67,21 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityHelpers d
         # Create analysis for the last 30 days
         end_date = DateTime.utc_now()
         start_date = DateTime.add(end_date, -30, :day)
-        
+
         # This would typically call back to the main analyzer
         # but we avoid circular dependencies by returning an instruction
-        {:create_analysis_needed, %{
-          character_id: character_id,
-          start_date: start_date,
-          end_date: end_date
-        }}
+        {:create_analysis_needed,
+         %{
+           character_id: character_id,
+           start_date: start_date,
+           end_date: end_date
+         }}
     end
   end
 
   @doc """
   Calculate member activity score based on various metrics.
-  
+
   Combines kill/loss data, recent activity, and participation metrics
   into a single activity score.
   """
@@ -86,7 +97,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityHelpers d
           0
 
         last_date ->
-          days_ago = EveDmv.Utils.TimeUtils.days_since(last_date)
+          days_ago = TimeUtils.days_since(last_date)
           max(0, 20 - days_ago)
       end
 
@@ -95,7 +106,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityHelpers d
 
   @doc """
   Extract activity time series data from member activities.
-  
+
   Converts member activity records into a time series format
   suitable for trend analysis.
   """
@@ -260,7 +271,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityHelpers d
   defp calculate_daily_average(activity_data) do
     total_days = Map.get(activity_data, :period_days, 30)
     total_activity = Map.get(activity_data, :total_activity, 0)
-    
+
     if total_days > 0 do
       Float.round(total_activity / total_days, 2)
     else
@@ -286,7 +297,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityHelpers d
   defp calculate_consistency_score(activity_data) do
     # Calculate how consistent the member's activity is
     variance = Map.get(activity_data, :activity_variance, 0)
-    
+
     # Lower variance = higher consistency
     if variance > 0 do
       min(100, 100 / (1 + variance))
@@ -296,9 +307,9 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityHelpers d
   end
 
   defp calculate_participation_rate(participation_data, type) do
-    opportunities = Map.get(participation_data, :"#{type}_opportunities", 0)
-    participated = Map.get(participation_data, :"#{type}_participated", 0)
-    
+    opportunities = Map.get(participation_data, opportunities_field(type), 0)
+    participated = Map.get(participation_data, participated_field(type), 0)
+
     if opportunities > 0 do
       Float.round(participated / opportunities * 100, 1)
     else
@@ -307,16 +318,16 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityHelpers d
   end
 
   defp calculate_overall_participation(participation_data) do
-    total_opportunities = 
+    total_opportunities =
       Map.get(participation_data, :fleet_opportunities, 0) +
-      Map.get(participation_data, :home_defense_opportunities, 0) +
-      Map.get(participation_data, :strategic_opportunities, 0)
-    
+        Map.get(participation_data, :home_defense_opportunities, 0) +
+        Map.get(participation_data, :strategic_opportunities, 0)
+
     total_participated =
       Map.get(participation_data, :fleet_participated, 0) +
-      Map.get(participation_data, :home_defense_participated, 0) +
-      Map.get(participation_data, :strategic_participated, 0)
-    
+        Map.get(participation_data, :home_defense_participated, 0) +
+        Map.get(participation_data, :strategic_participated, 0)
+
     if total_opportunities > 0 do
       Float.round(total_participated / total_opportunities * 100, 1)
     else

@@ -4,14 +4,12 @@ defmodule EveDmv.Quality.MetricsCollector do
   Collects comprehensive quality metrics across all aspects of the codebase.
   """
 
-  alias EveDmv.Quality.MetricsCollector.{
-    TestMetrics,
-    CodeQualityMetrics,
-    PerformanceMetrics,
-    SecurityMetrics,
-    DocumentationMetrics,
-    CiCdMetrics
-  }
+  alias EveDmv.Quality.MetricsCollector.CiCdMetrics
+  alias EveDmv.Quality.MetricsCollector.CodeQualityMetrics
+  alias EveDmv.Quality.MetricsCollector.DocumentationMetrics
+  alias EveDmv.Quality.MetricsCollector.PerformanceMetrics
+  alias EveDmv.Quality.MetricsCollector.SecurityMetrics
+  alias EveDmv.Quality.MetricsCollector.TestMetrics
 
   @doc """
   Collects comprehensive quality metrics for the application.
@@ -115,64 +113,69 @@ defmodule EveDmv.Quality.MetricsCollector do
   end
 
   defp generate_recommendations(metrics) do
-    recommendations = []
+    initial_recommendations = []
 
     # Collect recommendations from each metrics module
-    recommendations = recommendations ++ generate_test_recommendations(metrics.test_metrics)
+    test_recommendations =
+      initial_recommendations ++ generate_test_recommendations(metrics.test_metrics)
 
-    recommendations =
-      recommendations ++
+    code_quality_recommendations =
+      test_recommendations ++
         CodeQualityMetrics.generate_code_quality_recommendations(metrics.code_quality_metrics)
 
-    recommendations =
-      recommendations ++
+    security_recommendations =
+      code_quality_recommendations ++
         SecurityMetrics.generate_security_recommendations(metrics.security_metrics)
 
-    recommendations =
-      recommendations ++
+    documentation_recommendations =
+      security_recommendations ++
         DocumentationMetrics.generate_documentation_recommendations(metrics.documentation_metrics)
 
-    recommendations =
-      recommendations ++
+    performance_recommendations =
+      documentation_recommendations ++
         PerformanceMetrics.generate_performance_recommendations(metrics.performance_metrics)
 
-    recommendations =
-      recommendations ++ CiCdMetrics.generate_ci_cd_recommendations(metrics.ci_cd_metrics)
+    final_recommendations =
+      performance_recommendations ++
+        CiCdMetrics.generate_ci_cd_recommendations(metrics.ci_cd_metrics)
 
-    if Enum.empty?(recommendations) do
+    if Enum.empty?(final_recommendations) do
       ["Great job! All quality metrics are within acceptable thresholds."]
     else
-      recommendations
+      final_recommendations
     end
   end
 
   defp generate_test_recommendations(test_metrics) do
-    recommendations = []
+    initial_recommendations = []
 
     # Test coverage recommendations
     coverage = test_metrics.test_coverage.overall || 0
 
-    recommendations =
+    coverage_recommendations =
       if coverage < 70 do
-        ["Increase test coverage to at least 70% (currently #{coverage}%)" | recommendations]
+        [
+          "Increase test coverage to at least 70% (currently #{coverage}%)"
+          | initial_recommendations
+        ]
       else
-        recommendations
+        initial_recommendations
       end
 
     # Critical path coverage
     critical_coverage = test_metrics.critical_path_coverage
 
-    recommendations =
+    critical_recommendations =
       if critical_coverage.average_coverage < 80 do
         [
           "Improve critical path test coverage (current: #{round(critical_coverage.average_coverage)}%)"
-          | recommendations
+          | coverage_recommendations
         ]
       else
-        recommendations
+        coverage_recommendations
       end
 
-    recommendations
+    critical_recommendations
   end
 
   defp export_to_csv(metrics) do

@@ -150,7 +150,7 @@ defmodule EveDmv.Killmails.DatabaseInserter do
   end
 
   defp handle_participant_partial_success(result, valid_participants) do
-    error_count = result.errors |> length()
+    error_count = length(result.errors)
     success_count = length(valid_participants) - error_count
 
     Logger.warning(
@@ -169,7 +169,7 @@ defmodule EveDmv.Killmails.DatabaseInserter do
   end
 
   defp handle_partial_success(result, changesets, entity_type) do
-    error_count = result.errors |> length()
+    error_count = length(result.errors)
     success_count = length(changesets) - error_count
 
     Logger.warning(

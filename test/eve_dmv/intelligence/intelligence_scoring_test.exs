@@ -98,9 +98,9 @@ defmodule EveDmv.Intelligence.IntelligenceScoringTest do
         advanced_risk_score: 0.2
       }
 
-      Process.put(:"behavioral_analysis_#{character_id}", limited_behavioral_analysis)
-      Process.put(:"threat_assessment_#{character_id}", limited_threat_assessment)
-      Process.put(:"risk_analysis_#{character_id}", limited_risk_analysis)
+      Process.put("behavioral_analysis_#{character_id}", limited_behavioral_analysis)
+      Process.put("threat_assessment_#{character_id}", limited_threat_assessment)
+      Process.put("risk_analysis_#{character_id}", limited_risk_analysis)
 
       assert {:ok, score_data} = IntelligenceScoring.calculate_comprehensive_score(character_id)
 

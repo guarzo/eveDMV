@@ -131,7 +131,7 @@ defmodule EveDmv.Workers.AnalysisWorkerPool do
   """
   def scale_pool(server \\ __MODULE__, target_size)
       when target_size >= @min_pool_size and target_size <= @max_pool_size do
-    GenServer.call(server, {:scale_pool, target_size}, 10000)
+    GenServer.call(server, {:scale_pool, target_size}, 10_000)
   end
 
   @doc """
@@ -143,7 +143,7 @@ defmodule EveDmv.Workers.AnalysisWorkerPool do
 
   ## GenServer Callbacks
 
-  @impl true
+  @impl GenServer
   def init(opts) do
     pool_size = Keyword.get(opts, :pool_size, @default_pool_size)
 
@@ -159,16 +159,16 @@ defmodule EveDmv.Workers.AnalysisWorkerPool do
     }
 
     # Start initial workers
-    {:ok, state} = start_workers(state, pool_size)
+    {:ok, state_with_workers} = start_workers(state, pool_size)
 
     # Schedule periodic scaling check
     scaling_timer = Process.send_after(self(), :check_scaling, @scaling_check_interval)
-    state = %{state | scaling_timer: scaling_timer}
+    final_state = %{state_with_workers | scaling_timer: scaling_timer}
 
-    {:ok, state}
+    {:ok, final_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(
         {:analyze, analysis_type, subject_id, analysis_fun, priority, timeout, cache_key},
         from,
@@ -200,13 +200,13 @@ defmodule EveDmv.Workers.AnalysisWorkerPool do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_stats, _from, state) do
     stats = calculate_current_stats(state)
     {:reply, stats, %{state | stats: stats}}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:scale_pool, target_size}, _from, state) do
     case scale_workers(state, target_size) do
       {:ok, new_state} ->
@@ -221,7 +221,7 @@ defmodule EveDmv.Workers.AnalysisWorkerPool do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:clear_queue, _from, state) do
     queue_size = :queue.len(state.job_queue)
     Logger.warning("Clearing analysis job queue (#{queue_size} jobs discarded)")
@@ -230,7 +230,7 @@ defmodule EveDmv.Workers.AnalysisWorkerPool do
     {:reply, {:ok, queue_size}, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast({:analyze_async, analysis_type, subject_id, analysis_fun, opts}, state) do
     priority = Keyword.get(opts, :priority, :normal)
     timeout = Keyword.get(opts, :timeout, @job_timeout)
@@ -266,7 +266,7 @@ defmodule EveDmv.Workers.AnalysisWorkerPool do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_info({:DOWN, ref, :process, _pid, reason}, state) do
     case find_worker_by_ref(state.workers, ref) do
       {worker_id, worker} ->
@@ -287,7 +287,7 @@ defmodule EveDmv.Workers.AnalysisWorkerPool do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_info({:job_result, worker_id, job_id, result}, state) do
     case Map.get(state.workers, worker_id) do
       %Worker{current_job: %Job{id: ^job_id} = job} = worker ->
@@ -309,7 +309,7 @@ defmodule EveDmv.Workers.AnalysisWorkerPool do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:check_scaling, state) do
     new_state = check_and_scale(state)
 
@@ -355,8 +355,8 @@ defmodule EveDmv.Workers.AnalysisWorkerPool do
 
   defp start_workers(state, count) do
     {new_workers, _} =
-      1..count
-      |> Enum.reduce({state.workers, map_size(state.workers)}, fn _, {workers_acc, id_counter} ->
+      Enum.reduce(1..count, {state.workers, map_size(state.workers)}, fn _,
+                                                                         {workers_acc, id_counter} ->
         worker_id = id_counter + 1
         {:ok, pid} = start_worker(worker_id)
         ref = Process.monitor(pid)
@@ -493,7 +493,7 @@ defmodule EveDmv.Workers.AnalysisWorkerPool do
 
     # Cache result if cache_key provided
     case {result, job} do
-      {{:ok, data}, %Job{cache_key: cache_key}} when not is_nil(cache_key) ->
+      {{:ok, data}, %Job{cache_key: cache_key}} when cache_key != nil ->
         Cache.put(:analysis, cache_key, data)
 
       _ ->
@@ -554,7 +554,7 @@ defmodule EveDmv.Workers.AnalysisWorkerPool do
   defp check_and_scale(state) do
     queue_length = :queue.len(state.job_queue)
     idle_workers = count_idle_workers(state.workers)
-    busy_workers = state.pool_size - idle_workers
+    _busy_workers = state.pool_size - idle_workers
 
     cond do
       # Scale up if queue is building and we're not at max capacity

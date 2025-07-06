@@ -21,7 +21,7 @@ defmodule EveDmv.Workers.WorkerSupervisor do
     Supervisor.start_link(__MODULE__, init_arg, name: __MODULE__)
   end
 
-  @impl true
+  @impl Supervisor
   def init(_init_arg) do
     children = [
       # Maintenance Workers (implemented)
@@ -77,14 +77,15 @@ defmodule EveDmv.Workers.WorkerSupervisor do
   def stop_all_workers do
     Logger.info("Stopping all workers for maintenance")
 
-    Supervisor.which_children(__MODULE__)
+    __MODULE__
+    |> Supervisor.which_children()
     |> Enum.each(fn {id, pid, _type, _modules} ->
       try do
         GenServer.call(pid, :stop_gracefully, 30_000)
         Logger.debug("Gracefully stopped worker: #{id}")
       rescue
         error ->
-          Logger.warn("Failed to gracefully stop worker #{id}: #{inspect(error)}")
+          Logger.warning("Failed to gracefully stop worker #{id}: #{inspect(error)}")
       end
     end)
   end
@@ -95,14 +96,15 @@ defmodule EveDmv.Workers.WorkerSupervisor do
   def restart_all_workers do
     Logger.info("Restarting all workers after maintenance")
 
-    Supervisor.which_children(__MODULE__)
-    |> Enum.each(fn {id, pid, _type, _modules} ->
+    __MODULE__
+    |> Supervisor.which_children()
+    |> Enum.each(fn {id, _pid, _type, _modules} ->
       try do
         Supervisor.restart_child(__MODULE__, id)
         Logger.debug("Restarted worker: #{id}")
       rescue
         error ->
-          Logger.warn("Failed to restart worker #{id}: #{inspect(error)}")
+          Logger.warning("Failed to restart worker #{id}: #{inspect(error)}")
       end
     end)
   end

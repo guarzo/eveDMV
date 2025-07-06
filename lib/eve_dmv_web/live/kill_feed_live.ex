@@ -8,6 +8,12 @@ defmodule EveDmvWeb.KillFeedLive do
   alias EveDmv.Killmails.DisplayService
   alias EveDmv.Presentation.Formatters
 
+  # Import reusable components
+  import EveDmvWeb.Components.StatsGridComponent
+  import EveDmvWeb.Components.EmptyStateComponent
+  import EveDmvWeb.Components.CharacterInfoComponent
+  import EveDmvWeb.Components.PageHeaderComponent
+
   @topic "kill_feed"
   @feed_limit 50
 
@@ -83,9 +89,7 @@ defmodule EveDmvWeb.KillFeedLive do
         filtered_killmails =
           Enum.filter(socket.assigns.killmails, &(&1.solar_system_id == system_id_int))
 
-        socket =
-          socket
-          |> stream(:killmail_stream, filtered_killmails, reset: true)
+        socket = stream(socket, :killmail_stream, filtered_killmails, reset: true)
 
         {:noreply, socket}
 

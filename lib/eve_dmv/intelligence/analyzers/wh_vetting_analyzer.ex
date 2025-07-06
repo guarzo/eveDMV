@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
   @moduledoc """
   Simplified wormhole vetting analysis for corporation recruitment.
@@ -10,26 +11,29 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
 
   use EveDmv.Intelligence.Analyzer
 
-  require Logger
-  require Ash.Query
-
   alias EveDmv.Api
   alias EveDmv.Eve.EsiClient
+  alias EveDmv.Intelligence.Core.CacheHelper
+  alias EveDmv.Intelligence.Core.Config
+  alias EveDmv.Intelligence.Core.TimeoutHelper
+  alias EveDmv.Intelligence.Core.ValidationHelper
   alias EveDmv.Intelligence.WhSpace.Vetting, as: WHVetting
   alias EveDmv.Killmails.Participant
-  alias EveDmv.Intelligence.Core.{CacheHelper, TimeoutHelper, ValidationHelper, Config}
+
+  require Ash.Query
+  require Logger
 
   # Behavior implementations
 
-  @impl true
+  @impl EveDmv.Intelligence.Analyzer
   def analysis_type, do: :vetting
 
-  @impl true
+  @impl EveDmv.Intelligence.Analyzer
   def validate_params(character_id, opts) do
     ValidationHelper.validate_character_analysis(character_id, opts)
   end
 
-  @impl true
+  @impl EveDmv.Intelligence.Analyzer
   def analyze(character_id, opts \\ %{}) do
     cache_ttl = Config.get_cache_ttl(:vetting)
 
@@ -38,7 +42,7 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
     end)
   end
 
-  @impl true
+  @impl EveDmv.Intelligence.Analyzer
   def invalidate_cache(character_id) do
     CacheHelper.invalidate_analysis(:vetting, character_id)
   end
@@ -66,7 +70,7 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
   """
   @spec calculate_j_space_experience(list()) :: map()
   def calculate_j_space_experience(killmails) when is_list(killmails) do
-    j_space_kills = Enum.filter(killmails, &is_j_space_system?(&1.solar_system_id))
+    j_space_kills = Enum.filter(killmails, &j_space_system?(&1.solar_system_id))
 
     if Enum.empty?(j_space_kills) do
       %{
@@ -127,8 +131,7 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
       ])
 
     eviction_activity =
-      killmails
-      |> Enum.filter(fn km ->
+      Enum.filter(killmails, fn km ->
         has_eviction_group_participation?(km.participants, eviction_corps)
       end)
 
@@ -149,7 +152,7 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
     if Enum.empty?(killmails) do
       %{competency_level: :unknown, competency_score: 0}
     else
-      small_gang_kills = Enum.filter(killmails, &is_small_gang_kill?/1)
+      small_gang_kills = Enum.filter(killmails, &small_gang_kill?/1)
       competency_score = calculate_competency_score(small_gang_kills, killmails)
 
       %{
@@ -256,47 +259,45 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
          employment_history,
          requested_by_id
        ) do
-    try do
-      # Perform simplified analysis
-      j_space_experience = calculate_j_space_experience(killmails)
-      security_risks = analyze_security_risks(character_info, employment_history)
-      eviction_groups = detect_eviction_groups(killmails)
-      competency = calculate_small_gang_competency(killmails)
+    # Perform simplified analysis
+    j_space_experience = calculate_j_space_experience(killmails)
+    security_risks = analyze_security_risks(character_info, employment_history)
+    eviction_groups = detect_eviction_groups(killmails)
+    competency = calculate_small_gang_competency(killmails)
 
-      # Generate risk score and recommendation
-      risk_score = calculate_risk_score(j_space_experience, security_risks, eviction_groups)
-      # Create temporary analysis data for recommendation
-      temp_analysis = %{
-        risk_score: risk_score,
-        competency_assessment: competency,
-        j_space_experience: j_space_experience
-      }
+    # Generate risk score and recommendation
+    risk_score = calculate_risk_score(j_space_experience, security_risks, eviction_groups)
+    # Create temporary analysis data for recommendation
+    temp_analysis = %{
+      risk_score: risk_score,
+      competency_assessment: competency,
+      j_space_experience: j_space_experience
+    }
 
-      recommendation = generate_recommendation(temp_analysis)
+    recommendation = generate_recommendation(temp_analysis)
 
-      analysis = %{
-        character_id: character_id,
-        character_name: character_info.name,
-        risk_score: risk_score,
-        recommendation: recommendation,
-        confidence_score: calculate_confidence(killmails, employment_history),
-        j_space_experience: j_space_experience,
-        security_risks: security_risks,
-        eviction_group_detection: eviction_groups,
-        competency_assessment: competency,
-        analysis_timestamp: DateTime.utc_now(),
-        requested_by_id: requested_by_id
-      }
+    analysis = %{
+      character_id: character_id,
+      character_name: character_info.name,
+      risk_score: risk_score,
+      recommendation: recommendation,
+      confidence_score: calculate_confidence(killmails, employment_history),
+      j_space_experience: j_space_experience,
+      security_risks: security_risks,
+      eviction_group_detection: eviction_groups,
+      competency_assessment: competency,
+      analysis_timestamp: DateTime.utc_now(),
+      requested_by_id: requested_by_id
+    }
 
-      # Save analysis to database
-      save_vetting_analysis(analysis)
+    # Save analysis to database
+    save_vetting_analysis(analysis)
 
-      {:ok, analysis}
-    rescue
-      error ->
-        Logger.error("Error in vetting analysis calculation: #{inspect(error)}")
-        {:error, "Vetting analysis calculation failed"}
-    end
+    {:ok, analysis}
+  rescue
+    error ->
+      Logger.error("Error in vetting analysis calculation: #{inspect(error)}")
+      {:error, "Vetting analysis calculation failed"}
   end
 
   defp get_character_info(character_id) do
@@ -339,7 +340,7 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
       {:ok, []}
   end
 
-  defp is_j_space_system?(system_id) do
+  defp j_space_system?(system_id) do
     classify_system_type(system_id) == :j_space
   end
 
@@ -430,7 +431,7 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
     end
   end
 
-  defp is_small_gang_kill?(killmail) do
+  defp small_gang_kill?(killmail) do
     participant_count = length(killmail.participants || [])
     participant_count <= 10
   end

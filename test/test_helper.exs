@@ -12,10 +12,11 @@ Ecto.Adapters.SQL.Sandbox.mode(EveDmv.Repo, :manual)
 # Create a setup that works for async tests
 defmodule TestHelper do
   import ExUnit.Callbacks
+  alias Ecto.Adapters.SQL.Sandbox
 
   def setup_sandbox(tags) do
-    pid = Ecto.Adapters.SQL.Sandbox.start_owner!(EveDmv.Repo, shared: not tags[:async])
-    on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
+    pid = Sandbox.start_owner!(EveDmv.Repo, shared: not tags[:async])
+    on_exit(fn -> Sandbox.stop_owner(pid) end)
     :ok
   end
 end
@@ -30,12 +31,13 @@ defmodule EveDmv.TestHelpers do
   """
 
   alias EveDmv.Repo
+  alias Ecto.Adapters.SQL
 
   def setup_database do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+    :ok = SQL.Sandbox.checkout(Repo)
   end
 
   def cleanup_database do
-    Ecto.Adapters.SQL.Sandbox.checkin(Repo)
+    SQL.Sandbox.checkin(Repo)
   end
 end

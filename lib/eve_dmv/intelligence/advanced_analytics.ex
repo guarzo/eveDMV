@@ -24,7 +24,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
 
     # Return mock data in test environment to prevent "Insufficient data" errors
     if Mix.env() == :test do
-      if mock_data = Process.get(:"behavioral_analysis_#{character_id}") do
+      if mock_data = Process.get("behavioral_analysis_#{character_id}") do
         {:ok, mock_data}
       else
         # Default test data
@@ -80,7 +80,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
 
     # Return mock data in test environment to prevent "Insufficient data" errors
     if Mix.env() == :test do
-      if mock_data = Process.get(:"threat_assessment_#{character_id}") do
+      if mock_data = Process.get("threat_assessment_#{character_id}") do
         {:ok, mock_data}
       else
         # Default test data
@@ -173,19 +173,20 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
       "Performing advanced correlation analysis for #{length(character_ids)} characters"
     )
 
-    # Load character data
+    # Load character data using batch operation to prevent N+1 queries
     character_data =
-      Enum.map(character_ids, fn char_id ->
-        case CharacterStats
-             |> Ash.Query.new()
-             |> Ash.Query.filter(character_id: char_id)
-             |> Ash.Query.limit(1)
-             |> Ash.read(domain: Api) do
-          {:ok, [stats]} -> {char_id, stats}
-          _ -> {char_id, nil}
-        end
-      end)
-      |> Enum.filter(fn {_, stats} -> not is_nil(stats) end)
+      case CharacterStats
+           |> Ash.Query.new()
+           |> Ash.Query.filter(character_id in ^character_ids)
+           |> Ash.read(domain: Api) do
+        {:ok, stats_list} ->
+          stats_list
+          |> Enum.map(fn stats -> {stats.character_id, stats} end)
+          |> Enum.filter(fn {_, stats} -> not is_nil(stats) end)
+
+        _ ->
+          []
+      end
 
     if length(character_data) >= 2 do
       correlations = %{
@@ -220,7 +221,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
 
     # Return mock data in test environment to prevent "Insufficient data" errors
     if Mix.env() == :test do
-      if mock_data = Process.get(:"risk_analysis_#{character_id}") do
+      if mock_data = Process.get("risk_analysis_#{character_id}") do
         {:ok, mock_data}
       else
         # Default test data

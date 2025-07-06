@@ -16,10 +16,10 @@ defmodule EveDmv.Intelligence.Analyzers.CorporationAnalyzer do
 
   # Behavior implementations
 
-  @impl true
+  @impl EveDmv.Intelligence.Analyzer
   def analysis_type, do: :corporation
 
-  @impl true
+  @impl EveDmv.Intelligence.Analyzer
   def validate_params(corporation_id, opts) do
     ValidationHelper.validate_corporation_analysis(corporation_id, opts)
   end
@@ -166,13 +166,17 @@ defmodule EveDmv.Intelligence.Analyzers.CorporationAnalyzer do
         end)
         |> Enum.group_by(& &1.character_id)
         |> Enum.map(fn {character_id, participations} ->
+          participation_damages = Enum.map(participations, &(&1.damage_done || 0))
+          ship_type_ids = Enum.map(participations, & &1.ship_type_id)
+          participation_times = Enum.map(participations, & &1.killmail_time)
+
           %{
             character_id: character_id,
             participation_count: length(participations),
-            total_damage: Enum.sum(Enum.map(participations, &(&1.damage_done || 0))),
-            ship_types: Enum.map(participations, & &1.ship_type_id) |> Enum.uniq(),
-            first_seen: participations |> Enum.map(& &1.killmail_time) |> Enum.min(),
-            last_seen: participations |> Enum.map(& &1.killmail_time) |> Enum.max()
+            total_damage: Enum.sum(participation_damages),
+            ship_types: Enum.uniq(ship_type_ids),
+            first_seen: Enum.min(participation_times),
+            last_seen: Enum.max(participation_times)
           }
         end)
 

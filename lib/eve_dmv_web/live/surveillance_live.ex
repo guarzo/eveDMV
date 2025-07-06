@@ -8,20 +8,18 @@ defmodule EveDmvWeb.SurveillanceLive do
 
   use EveDmvWeb, :live_view
   alias EveDmv.Surveillance.MatchingEngine
-
   alias EveDmvWeb.SurveillanceLive.{
-    BatchOperations,
-    DataLoader,
-    ImportExport,
-    NotificationManager,
-    ProfileManager,
-    ViewHelpers
+    Components,
+    ProfileService,
+    NotificationService,
+    BatchOperationService,
+    ExportImportService
   }
 
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
-  @impl true
+  @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     current_user = socket.assigns[:current_user]
 
@@ -35,11 +33,11 @@ defmodule EveDmvWeb.SurveillanceLive do
       user_id = current_user.id
 
       # Load user's profiles and notifications
-      profiles = ProfileManager.load_user_profiles(user_id, current_user)
-      recent_matches = DataLoader.load_recent_matches()
-      engine_stats = DataLoader.get_engine_stats()
-      notifications = NotificationManager.load_user_notifications(user_id)
-      unread_count = NotificationManager.get_unread_count(user_id)
+      profiles = ProfileService.load_user_profiles(user_id, current_user)
+      recent_matches = Components.load_recent_matches()
+      engine_stats = Components.get_engine_stats()
+      notifications = NotificationService.load_user_notifications(user_id)
+      unread_count = NotificationService.get_unread_count(user_id)
 
       socket =
         socket
@@ -57,7 +55,7 @@ defmodule EveDmvWeb.SurveillanceLive do
         |> assign(:new_profile_form, %{
           "name" => "",
           "description" => "",
-          "filter_tree" => DataLoader.sample_filter_tree()
+          "filter_tree" => Components.sample_filter_tree()
         })
 
       {:ok, socket}
@@ -67,7 +65,7 @@ defmodule EveDmvWeb.SurveillanceLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info(
         %Phoenix.Socket.Broadcast{
           topic: "surveillance",
@@ -94,7 +92,7 @@ defmodule EveDmvWeb.SurveillanceLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info(
         %Phoenix.Socket.Broadcast{
           topic: "user:" <> _user_id,
@@ -105,7 +103,7 @@ defmodule EveDmvWeb.SurveillanceLive do
       ) do
     # New persistent notification - update notifications list and count
     updated_notifications = [payload.notification | socket.assigns.notifications] |> Enum.take(50)
-    unread_count = NotificationManager.get_unread_count(socket.assigns.user_id)
+    unread_count = NotificationService.get_unread_count(socket.assigns.user_id)
 
     socket =
       socket
@@ -116,7 +114,7 @@ defmodule EveDmvWeb.SurveillanceLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:toggle_profile_selection, profile_id}, socket) do
     selected = socket.assigns.selected_profiles
 
@@ -131,41 +129,41 @@ defmodule EveDmvWeb.SurveillanceLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:toggle_profile, profile_id}, socket) do
     handle_event("toggle_profile", %{"profile_id" => profile_id}, socket)
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:delete_profile, profile_id}, socket) do
     handle_event("delete_profile", %{"profile_id" => profile_id}, socket)
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:show_create_modal}, socket) do
     handle_event("show_create_modal", %{}, socket)
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info(_msg, socket) do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("show_create_modal", _params, socket) do
     socket = assign(socket, :show_create_modal, true)
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("hide_create_modal", _params, socket) do
     socket = assign(socket, :show_create_modal, false)
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("create_profile", %{"profile" => profile_params}, socket) do
-    case ProfileManager.create_profile(
+    case ProfileService.create_profile(
            profile_params,
            socket.assigns.user_id,
            socket.assigns.current_user
@@ -173,7 +171,7 @@ defmodule EveDmvWeb.SurveillanceLive do
       {:ok, profile, has_json_error} ->
         # Reload user profiles
         profiles =
-          ProfileManager.load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
+          ProfileService.load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
 
         socket =
           socket
@@ -200,13 +198,13 @@ defmodule EveDmvWeb.SurveillanceLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("toggle_profile", %{"profile_id" => profile_id}, socket) do
-    case ProfileManager.toggle_profile(profile_id, socket.assigns.current_user) do
+    case ProfileService.toggle_profile(profile_id, socket.assigns.current_user) do
       {:ok, _updated_profile} ->
         # Reload user profiles
         profiles =
-          ProfileManager.load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
+          ProfileService.load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
 
         socket =
           socket
@@ -221,13 +219,13 @@ defmodule EveDmvWeb.SurveillanceLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("delete_profile", %{"profile_id" => profile_id}, socket) do
-    case ProfileManager.delete_profile(profile_id, socket.assigns.current_user) do
+    case ProfileService.delete_profile(profile_id, socket.assigns.current_user) do
       :ok ->
         # Reload user profiles
         profiles =
-          ProfileManager.load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
+          ProfileService.load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
 
         socket =
           socket
@@ -242,14 +240,14 @@ defmodule EveDmvWeb.SurveillanceLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("refresh_stats", _params, socket) do
-    engine_stats = DataLoader.get_engine_stats()
+    engine_stats = Components.get_engine_stats()
     socket = assign(socket, :engine_stats, engine_stats)
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("toggle_batch_mode", _params, socket) do
     batch_mode = not socket.assigns.batch_mode
 
@@ -262,7 +260,7 @@ defmodule EveDmvWeb.SurveillanceLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("toggle_profile_selection", %{"profile_id" => profile_id}, socket) do
     selected = socket.assigns.selected_profiles
 
@@ -277,7 +275,7 @@ defmodule EveDmvWeb.SurveillanceLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("select_all_profiles", _params, socket) do
     all_profile_ids =
       socket.assigns.profiles
@@ -288,13 +286,13 @@ defmodule EveDmvWeb.SurveillanceLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("deselect_all_profiles", _params, socket) do
     socket = assign(socket, :selected_profiles, MapSet.new())
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("show_batch_modal", _params, socket) do
     if MapSet.size(socket.assigns.selected_profiles) > 0 do
       socket = assign(socket, :show_batch_modal, true)
@@ -305,21 +303,21 @@ defmodule EveDmvWeb.SurveillanceLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("hide_batch_modal", _params, socket) do
     socket = assign(socket, :show_batch_modal, false)
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("batch_delete", _params, socket) do
     selected_ids = MapSet.to_list(socket.assigns.selected_profiles)
 
-    results = BatchOperations.batch_delete_profiles(selected_ids, socket.assigns.current_user)
+    results = BatchOperationService.batch_delete_profiles(selected_ids, socket.assigns.current_user)
 
     # Reload user profiles
     profiles =
-      ProfileManager.load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
+      ProfileService.load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
 
     socket =
       socket
@@ -332,15 +330,15 @@ defmodule EveDmvWeb.SurveillanceLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("batch_enable", _params, socket) do
     selected_ids = MapSet.to_list(socket.assigns.selected_profiles)
 
-    results = BatchOperations.batch_enable_profiles(selected_ids, socket.assigns.current_user)
+    results = BatchOperationService.batch_enable_profiles(selected_ids, socket.assigns.current_user)
 
     # Reload user profiles
     profiles =
-      ProfileManager.load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
+      ProfileService.load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
 
     socket =
       socket
@@ -353,15 +351,15 @@ defmodule EveDmvWeb.SurveillanceLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("batch_disable", _params, socket) do
     selected_ids = MapSet.to_list(socket.assigns.selected_profiles)
 
-    results = BatchOperations.batch_disable_profiles(selected_ids, socket.assigns.current_user)
+    results = BatchOperationService.batch_disable_profiles(selected_ids, socket.assigns.current_user)
 
     # Reload user profiles
     profiles =
-      ProfileManager.load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
+      ProfileService.load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
 
     socket =
       socket
@@ -374,7 +372,7 @@ defmodule EveDmvWeb.SurveillanceLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("export_profiles", _params, socket) do
     selected_ids =
       if MapSet.size(socket.assigns.selected_profiles) > 0 do
@@ -383,8 +381,8 @@ defmodule EveDmvWeb.SurveillanceLive do
         Enum.map(socket.assigns.profiles, & &1.id)
       end
 
-    export_data = ImportExport.export_profiles_json(selected_ids, socket.assigns.current_user)
-    download_event = ImportExport.prepare_download_event(export_data)
+    export_data = ExportImportService.export_profiles_json(selected_ids, socket.assigns.current_user)
+    download_event = ExportImportService.prepare_download_event(export_data)
 
     socket =
       socket
@@ -394,9 +392,9 @@ defmodule EveDmvWeb.SurveillanceLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("import_profiles", %{"profiles_json" => json_data}, socket) do
-    case ImportExport.import_profiles_from_json(
+    case ExportImportService.import_profiles_from_json(
            json_data,
            socket.assigns.user_id,
            socket.assigns.current_user
@@ -407,7 +405,7 @@ defmodule EveDmvWeb.SurveillanceLive do
 
         # Reload user profiles
         profiles =
-          ProfileManager.load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
+          ProfileService.load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
 
         socket =
           socket
@@ -422,25 +420,25 @@ defmodule EveDmvWeb.SurveillanceLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("show_notifications", _params, socket) do
     socket = assign(socket, :show_notifications, true)
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("hide_notifications", _params, socket) do
     socket = assign(socket, :show_notifications, false)
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("mark_notification_read", %{"notification_id" => notification_id}, socket) do
-    case NotificationManager.mark_notification_read(notification_id) do
+    case NotificationService.mark_notification_read(notification_id) do
       :ok ->
         # Reload notifications and update count
-        notifications = NotificationManager.load_user_notifications(socket.assigns.user_id)
-        unread_count = NotificationManager.get_unread_count(socket.assigns.user_id)
+        notifications = NotificationService.load_user_notifications(socket.assigns.user_id)
+        unread_count = NotificationService.get_unread_count(socket.assigns.user_id)
 
         socket =
           socket
@@ -455,18 +453,18 @@ defmodule EveDmvWeb.SurveillanceLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("mark_all_read", _params, socket) do
-    case NotificationManager.mark_all_notifications_read(
+    case NotificationService.mark_all_notifications_read(
            socket.assigns.user_id,
            socket.assigns.current_user
          ) do
       {:ok, results} ->
         # Reload notifications and update count
-        notifications = NotificationManager.load_user_notifications(socket.assigns.user_id)
-        unread_count = NotificationManager.get_unread_count(socket.assigns.user_id)
+        notifications = NotificationService.load_user_notifications(socket.assigns.user_id)
+        unread_count = NotificationService.get_unread_count(socket.assigns.user_id)
 
-        flash_message = NotificationManager.format_mark_all_message(results)
+        flash_message = NotificationService.format_mark_all_message(results)
 
         socket =
           socket
@@ -484,7 +482,7 @@ defmodule EveDmvWeb.SurveillanceLive do
 
   # Template helper functions - delegate to ViewHelpers module
 
-  defdelegate format_filter_tree(filter_tree), to: ViewHelpers
-  defdelegate format_datetime(datetime), to: ViewHelpers
-  defdelegate profile_status_badge(is_active), to: ViewHelpers
+  defdelegate format_filter_tree(filter_tree), to: Components
+  defdelegate format_datetime(datetime), to: Components
+  defdelegate profile_status_badge(is_active), to: Components
 end

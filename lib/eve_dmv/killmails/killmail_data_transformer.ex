@@ -156,8 +156,7 @@ defmodule EveDmv.Killmails.KillmailDataTransformer do
     killmail_id = enriched["killmail_id"]
     timestamp = enriched["timestamp"] || enriched["kill_time"]
 
-    :crypto.hash(:sha256, "#{killmail_id}:#{timestamp}")
-    |> Base.encode16(case: :lower)
+    Base.encode16(:crypto.hash(:sha256, "#{killmail_id}:#{timestamp}"), case: :lower)
   end
 
   defp get_victim_character_id(enriched) do
@@ -212,10 +211,10 @@ defmodule EveDmv.Killmails.KillmailDataTransformer do
   defp determine_kill_category(enriched) do
     # Determine kill category based on ship type, location, etc.
     cond do
-      is_pod_kill?(enriched) -> "pod"
-      is_structure_kill?(enriched) -> "structure"
-      is_capital_kill?(enriched) -> "capital"
-      is_wormhole_kill?(enriched) -> "wormhole"
+      pod_kill?(enriched) -> "pod"
+      structure_kill?(enriched) -> "structure"
+      capital_kill?(enriched) -> "capital"
+      wormhole_kill?(enriched) -> "wormhole"
       true -> "standard"
     end
   end
@@ -228,33 +227,33 @@ defmodule EveDmv.Killmails.KillmailDataTransformer do
       is_nil(ship_type_id) -> "unknown"
       # Capsule
       ship_type_id in [670] -> "capsule"
-      ship_type_id >= 23757 and ship_type_id <= 23915 -> "frigate"
-      ship_type_id >= 16227 and ship_type_id <= 17920 -> "cruiser"
-      ship_type_id >= 17922 and ship_type_id <= 17932 -> "battlecruiser"
-      ship_type_id >= 17734 and ship_type_id <= 17738 -> "battleship"
+      ship_type_id >= 23_757 and ship_type_id <= 23_915 -> "frigate"
+      ship_type_id >= 16_227 and ship_type_id <= 17_920 -> "cruiser"
+      ship_type_id >= 17_922 and ship_type_id <= 17_932 -> "battlecruiser"
+      ship_type_id >= 17_734 and ship_type_id <= 17_738 -> "battleship"
       true -> "other"
     end
   end
 
-  defp is_pod_kill?(enriched) do
+  defp pod_kill?(enriched) do
     ship_type_id = get_victim_ship_type_id(enriched)
     # Capsule
     ship_type_id == 670
   end
 
-  defp is_structure_kill?(enriched) do
+  defp structure_kill?(enriched) do
     # Structure type IDs typically start in the 35000+ range
     ship_type_id = get_victim_ship_type_id(enriched)
-    ship_type_id && ship_type_id >= 35000
+    ship_type_id && ship_type_id >= 35_000
   end
 
-  defp is_capital_kill?(enriched) do
+  defp capital_kill?(enriched) do
     # Capital ship type IDs (rough approximation)
     ship_type_id = get_victim_ship_type_id(enriched)
-    ship_type_id && ship_type_id >= 19720 and ship_type_id <= 19726
+    ship_type_id && ship_type_id >= 19_720 and ship_type_id <= 19_726
   end
 
-  defp is_wormhole_kill?(enriched) do
+  defp wormhole_kill?(enriched) do
     system_id = enriched["solar_system_id"] || enriched["system_id"]
     system_id && system_id >= 31_000_000 and system_id < 32_000_000
   end

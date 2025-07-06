@@ -11,7 +11,7 @@ defmodule EveDmvWeb.SurveillanceStatsComponent do
   @doc """
   Renders the surveillance stats sidebar with engine statistics and recent matches.
   """
-  @impl true
+  @impl Phoenix.LiveComponent
   def render(assigns) do
     ~H"""
     <div class="w-80 bg-gray-800 border-r border-gray-700 h-screen overflow-y-auto">

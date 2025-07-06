@@ -9,7 +9,7 @@
 defmodule ManualTestingDataGenerator do
   require Ash.Query
   alias EveDmv.Api
-  alias EveDmv.Intelligence.Metrics.CharacterMetrics
+  alias EveDmv.Intelligence.Metrics.CharacterMetricsAdapter, as: CharacterMetrics
   alias EveDmv.Killmails.{KillmailRaw, Participant}
   alias EveDmv.Surveillance.NotificationService
   alias EveDmv.Surveillance.Profile
@@ -19,8 +19,8 @@ defmodule ManualTestingDataGenerator do
   Complete setup for manual testing - creates all necessary test data
   """
   def setup_complete_testing_environment do
-    IO.puts("🚀 Setting up EVE DMV Complete Testing Environment...")
-    IO.puts("=" |> String.duplicate(60))
+    # IO.puts("🚀 Setting up EVE DMV Complete Testing Environment...")
+    # IO.puts("=" |> String.duplicate(60))
 
     # Check system status
     check_system_status()
@@ -31,38 +31,45 @@ defmodule ManualTestingDataGenerator do
     # Print all test URLs and instructions
     print_complete_test_guide()
 
-    IO.puts("✅ Complete testing environment ready!")
-    IO.puts("📋 Open MANUAL_TESTING_PLAN.md and follow the test suites")
+    # IO.puts("✅ Complete testing environment ready!")
+    # IO.puts("📋 Open MANUAL_TESTING_PLAN.md and follow the test suites")
   end
 
   @doc """
   Check system status and requirements
   """
   def check_system_status do
-    IO.puts("\n🔍 System Status Check:")
+    # IO.puts("\n🔍 System Status Check:")
 
     # Check database connectivity
     case Ash.read(KillmailRaw, action: :read, domain: Api, query: [limit: 1]) do
-      {:ok, _} -> IO.puts("  ✅ Database connection working")
-      {:error, _} -> IO.puts("  ❌ Database connection failed")
+      {:ok, _} ->
+        # IO.puts("  ✅ Database connection working")
+        :ok
+
+      {:error, _} ->
+        # IO.puts("  ❌ Database connection failed")
+        :error
     end
 
     # Check recent killmail activity
     recent_count = count_recent_killmails(10)
 
     if recent_count > 0 do
-      IO.puts("  ✅ Pipeline active: #{recent_count} killmails in last 10 minutes")
+      # IO.puts("  ✅ Pipeline active: #{recent_count} killmails in last 10 minutes")
     else
-      IO.puts("  ⚠️  No recent killmails - pipeline may be inactive")
+      # IO.puts("  ⚠️  No recent killmails - pipeline may be inactive")
     end
 
     # Check surveillance engine
     case check_surveillance_engine() do
       {:ok, stats} ->
-        IO.puts("  ✅ Surveillance engine running: #{stats.profiles_loaded} profiles loaded")
+        # IO.puts("  ✅ Surveillance engine running: #{stats.profiles_loaded} profiles loaded")
+        :ok
 
       {:error, _} ->
-        IO.puts("  ⚠️  Surveillance engine not responding")
+        # IO.puts("  ⚠️  Surveillance engine not responding")
+        :error
     end
   end
 
@@ -70,7 +77,7 @@ defmodule ManualTestingDataGenerator do
   Generate comprehensive test data
   """
   def generate_test_data do
-    IO.puts("\n📊 Generating Test Data:")
+    # IO.puts("\n📊 Generating Test Data:")
 
     # Get fresh test IDs from database
     test_data = %{
@@ -80,10 +87,10 @@ defmodule ManualTestingDataGenerator do
       recent_killmail_ids: get_recent_killmail_ids(20)
     }
 
-    IO.puts("  ✅ Collected #{length(test_data.character_ids)} character IDs")
-    IO.puts("  ✅ Collected #{length(test_data.corporation_ids)} corporation IDs")
-    IO.puts("  ✅ Collected #{length(test_data.alliance_ids)} alliance IDs")
-    IO.puts("  ✅ Collected #{length(test_data.recent_killmail_ids)} recent killmail IDs")
+    # IO.puts("  ✅ Collected #{length(test_data.character_ids)} character IDs")
+    # IO.puts("  ✅ Collected #{length(test_data.corporation_ids)} corporation IDs")
+    # IO.puts("  ✅ Collected #{length(test_data.alliance_ids)} alliance IDs")
+    # IO.puts("  ✅ Collected #{length(test_data.recent_killmail_ids)} recent killmail IDs")
 
     # Create sample surveillance profiles (for authenticated users)
     create_sample_surveillance_profiles()
@@ -209,7 +216,7 @@ defmodule ManualTestingDataGenerator do
   Create sample surveillance profiles for testing
   """
   def create_sample_surveillance_profiles do
-    IO.puts("  📋 Creating sample surveillance profiles...")
+    # IO.puts("  📋 Creating sample surveillance profiles...")
 
     # Note: These will only work when a user is authenticated
     # The manual testing plan will include instructions for this
@@ -263,16 +270,16 @@ defmodule ManualTestingDataGenerator do
     # Store profile templates for manual creation
     :ets.insert(:manual_testing_data, {:profile_templates, sample_profiles})
 
-    IO.puts("  ✅ Sample surveillance profile templates ready")
+    # IO.puts("  ✅ Sample surveillance profile templates ready")
   end
 
   @doc """
   Print complete test guide with URLs and instructions
   """
   def print_complete_test_guide do
-    IO.puts(("\n" <> "=") |> String.duplicate(60))
-    IO.puts("🎯 COMPLETE MANUAL TESTING GUIDE")
-    IO.puts("=" |> String.duplicate(60))
+    # IO.puts(("\n" <> "=") |> String.duplicate(60))
+    # IO.puts("🎯 COMPLETE MANUAL TESTING GUIDE")
+    # IO.puts("=" |> String.duplicate(60))
 
     case :ets.lookup(:manual_testing_data, :test_data) do
       [{:test_data, test_data}] ->
@@ -282,7 +289,8 @@ defmodule ManualTestingDataGenerator do
         print_data_verification_instructions()
 
       [] ->
-        IO.puts("❌ Test data not generated. Run setup_complete_testing_environment() first.")
+        nil
+        # IO.puts("❌ Test data not generated. Run setup_complete_testing_environment() first.")
     end
   end
 
@@ -290,96 +298,103 @@ defmodule ManualTestingDataGenerator do
   Print all test URLs organized by category
   """
   def print_test_urls(test_data) do
-    IO.puts("\n🔗 TEST URLS BY CATEGORY:")
-    IO.puts("-" |> String.duplicate(40))
+    # IO.puts("\n🔗 TEST URLS BY CATEGORY:")
+    # IO.puts("-" |> String.duplicate(40))
 
-    IO.puts("\n📄 Public Pages (Test Suite 1):")
-    IO.puts("  Home Page: http://localhost:4010/")
-    IO.puts("  Kill Feed: http://localhost:4010/feed")
+    # IO.puts("\n📄 Public Pages (Test Suite 1):")
+    # IO.puts("  Home Page: http://localhost:4010/")
+    # IO.puts("  Kill Feed: http://localhost:4010/feed")
 
-    IO.puts("\n🔐 Authentication Pages (Test Suite 2):")
-    IO.puts("  Dashboard: http://localhost:4010/dashboard")
-    IO.puts("  Profile: http://localhost:4010/profile")
+    # IO.puts("\n🔐 Authentication Pages (Test Suite 2):")
+    # IO.puts("  Dashboard: http://localhost:4010/dashboard")
+    # IO.puts("  Profile: http://localhost:4010/profile")
 
-    IO.puts("\n🕵️ Character Intelligence (Test Suite 4):")
+    # IO.puts("\n🕵️ Character Intelligence (Test Suite 4):")
 
     test_data.character_ids
     |> Enum.take(5)
     |> Enum.with_index(1)
     |> Enum.each(fn {char_id, i} ->
-      IO.puts("  Character #{i}: http://localhost:4010/intel/#{char_id}")
+      nil
+      # IO.puts("  Character #{i}: http://localhost:4010/intel/#{char_id}")
     end)
 
-    IO.puts("\n👤 Player Profiles (Test Suite 4):")
+    # IO.puts("\n👤 Player Profiles (Test Suite 4):")
 
     test_data.character_ids
     |> Enum.take(3)
     |> Enum.with_index(1)
     |> Enum.each(fn {char_id, i} ->
-      IO.puts("  Player #{i}: http://localhost:4010/player/#{char_id}")
+      nil
+      # IO.puts("  Player #{i}: http://localhost:4010/player/#{char_id}")
     end)
 
-    IO.puts("\n🏢 Corporation Pages (Test Suite 5):")
+    # IO.puts("\n🏢 Corporation Pages (Test Suite 5):")
 
     test_data.corporation_ids
     |> Enum.take(3)
     |> Enum.with_index(1)
     |> Enum.each(fn {corp_id, i} ->
-      IO.puts("  Corporation #{i}: http://localhost:4010/corp/#{corp_id}")
+      nil
+      # IO.puts("  Corporation #{i}: http://localhost:4010/corp/#{corp_id}")
     end)
 
-    IO.puts("\n🌟 Alliance Pages (Test Suite 5):")
+    # IO.puts("\n🌟 Alliance Pages (Test Suite 5):")
 
     test_data.alliance_ids
     |> Enum.take(3)
     |> Enum.with_index(1)
     |> Enum.each(fn {alliance_id, i} ->
-      IO.puts("  Alliance #{i}: http://localhost:4010/alliance/#{alliance_id}")
+      nil
+      # IO.puts("  Alliance #{i}: http://localhost:4010/alliance/#{alliance_id}")
     end)
 
-    IO.puts("\n👁️ Surveillance System (Test Suite 6):")
-    IO.puts("  Surveillance Dashboard: http://localhost:4010/surveillance")
+    # IO.puts("\n👁️ Surveillance System (Test Suite 6):")
+    # IO.puts("  Surveillance Dashboard: http://localhost:4010/surveillance")
 
-    IO.puts("\n🕳️ Wormhole Features (Test Suite 7):")
-    IO.puts("  Chain Intelligence: http://localhost:4010/chain-intelligence")
-    IO.puts("  WH Vetting: http://localhost:4010/wh-vetting")
+    # IO.puts("\n🕳️ Wormhole Features (Test Suite 7):")
+    # IO.puts("  Chain Intelligence: http://localhost:4010/chain-intelligence")
+    # IO.puts("  WH Vetting: http://localhost:4010/wh-vetting")
   end
 
   @doc """
   Print authentication setup instructions
   """
   def print_authentication_instructions do
-    IO.puts("\n🔐 AUTHENTICATION SETUP:")
-    IO.puts("-" |> String.duplicate(40))
-    IO.puts("1. For authenticated tests, you need to:")
-    IO.puts("   a) Click 'Sign in with EVE' on the home page")
-    IO.puts("   b) Complete EVE SSO authentication")
-    IO.puts("   c) Return to EVE DMV with active session")
-    IO.puts("")
-    IO.puts("2. To create surveillance profiles for testing:")
-    IO.puts("   a) Go to http://localhost:4010/surveillance")
-    IO.puts("   b) Click 'Create Profile'")
-    IO.puts("   c) Use the sample profiles listed below")
+    # IO.puts("\n🔐 AUTHENTICATION SETUP:")
+    # IO.puts("-" |> String.duplicate(40))
+    # IO.puts("1. For authenticated tests, you need to:")
+    # IO.puts("   a) Click 'Sign in with EVE' on the home page")
+    # IO.puts("   b) Complete EVE SSO authentication")
+    # IO.puts("   c) Return to EVE DMV with active session")
+    # IO.puts("")
+    # IO.puts("2. To create surveillance profiles for testing:")
+    # IO.puts("   a) Go to http://localhost:4010/surveillance")
+    # IO.puts("   b) Click 'Create Profile'")
+    # IO.puts("   c) Use the sample profiles listed below")
   end
 
   @doc """
   Print surveillance testing instructions
   """
   def print_surveillance_testing_instructions do
-    IO.puts("\n👁️ SURVEILLANCE PROFILE TEMPLATES:")
-    IO.puts("-" |> String.duplicate(40))
+    # IO.puts("\n👁️ SURVEILLANCE PROFILE TEMPLATES:")
+    # IO.puts("-" |> String.duplicate(40))
 
     case :ets.lookup(:manual_testing_data, :profile_templates) do
       [{:profile_templates, profiles}] ->
-        Enum.with_index(profiles, 1)
+        profiles
+        |> Enum.with_index(1)
         |> Enum.each(fn {profile, i} ->
-          IO.puts("\n#{i}. #{profile.name}:")
-          IO.puts("   Description: #{profile.description}")
-          IO.puts("   Filter JSON: #{Jason.encode!(profile.filter_tree)}")
+          nil
+          # IO.puts("\n#{i}. #{profile.name}:")
+          # IO.puts("   Description: #{profile.description}")
+          # IO.puts("   Filter JSON: #{Jason.encode!(profile.filter_tree)}")
         end)
 
       [] ->
-        IO.puts("❌ Profile templates not loaded")
+        nil
+        # IO.puts("❌ Profile templates not loaded")
     end
   end
 
@@ -387,21 +402,21 @@ defmodule ManualTestingDataGenerator do
   Print data verification instructions
   """
   def print_data_verification_instructions do
-    IO.puts("\n📊 DATA VERIFICATION COMMANDS:")
-    IO.puts("-" |> String.duplicate(40))
-    IO.puts("Run these in the IEx console to verify data:")
-    IO.puts("")
-    IO.puts("1. Check recent killmail activity:")
-    IO.puts("   ManualTestingDataGenerator.show_recent_activity(10)")
-    IO.puts("")
-    IO.puts("2. Verify surveillance engine:")
-    IO.puts("   ManualTestingDataGenerator.check_surveillance_engine()")
-    IO.puts("")
-    IO.puts("3. Get fresh test IDs:")
-    IO.puts("   ManualTestingDataGenerator.get_fresh_test_ids()")
-    IO.puts("")
-    IO.puts("4. Reload test data:")
-    IO.puts("   ManualTestingDataGenerator.generate_test_data()")
+    # IO.puts("\n📊 DATA VERIFICATION COMMANDS:")
+    # IO.puts("-" |> String.duplicate(40))
+    # IO.puts("Run these in the IEx console to verify data:")
+    # IO.puts("")
+    # IO.puts("1. Check recent killmail activity:")
+    # IO.puts("   ManualTestingDataGenerator.show_recent_activity(10)")
+    # IO.puts("")
+    # IO.puts("2. Verify surveillance engine:")
+    # IO.puts("   ManualTestingDataGenerator.check_surveillance_engine()")
+    # IO.puts("")
+    # IO.puts("3. Get fresh test IDs:")
+    # IO.puts("   ManualTestingDataGenerator.get_fresh_test_ids()")
+    # IO.puts("")
+    # IO.puts("4. Reload test data:")
+    # IO.puts("   ManualTestingDataGenerator.generate_test_data()")
   end
 
   @doc """
@@ -416,8 +431,8 @@ defmodule ManualTestingDataGenerator do
          |> Ash.Query.limit(20)
          |> Ash.read(domain: Api) do
       {:ok, killmails} ->
-        IO.puts("🎯 Recent Killmail Activity (last #{minutes} minutes):")
-        IO.puts("Total: #{length(killmails)} killmails")
+        # IO.puts("🎯 Recent Killmail Activity (last #{minutes} minutes):")
+        # IO.puts("Total: #{length(killmails)} killmails")
 
         killmails
         |> Enum.take(10)
@@ -425,13 +440,13 @@ defmodule ManualTestingDataGenerator do
           age = DateTime.diff(DateTime.utc_now(), km.killmail_time, :minute)
           system_name = get_system_name(km.solar_system_id)
           value = format_isk(km.total_value || 0)
-          IO.puts("  #{km.killmail_id} - #{system_name} - #{value} ISK - #{age}m ago")
+          # IO.puts("  #{km.killmail_id} - #{system_name} - #{value} ISK - #{age}m ago")
         end)
 
         length(killmails)
 
       _ ->
-        IO.puts("❌ Could not fetch recent activity")
+        # IO.puts("❌ Could not fetch recent activity")
         0
     end
   end
@@ -440,7 +455,7 @@ defmodule ManualTestingDataGenerator do
   Get fresh test IDs for immediate use
   """
   def get_fresh_test_ids do
-    IO.puts("🔄 Getting fresh test IDs...")
+    # IO.puts("🔄 Getting fresh test IDs...")
 
     test_data = %{
       character_ids: get_diverse_character_ids(10),
@@ -448,10 +463,10 @@ defmodule ManualTestingDataGenerator do
       alliance_ids: get_diverse_alliance_ids(3)
     }
 
-    IO.puts("📋 Fresh Test IDs:")
-    IO.puts("Characters: #{Enum.join(test_data.character_ids, ", ")}")
-    IO.puts("Corporations: #{Enum.join(test_data.corporation_ids, ", ")}")
-    IO.puts("Alliances: #{Enum.join(test_data.alliance_ids, ", ")}")
+    # IO.puts("📋 Fresh Test IDs:")
+    # IO.puts("Characters: #{Enum.join(test_data.character_ids, ", ")}")
+    # IO.puts("Corporations: #{Enum.join(test_data.corporation_ids, ", ")}")
+    # IO.puts("Alliances: #{Enum.join(test_data.alliance_ids, ", ")}")
 
     test_data
   end
@@ -460,7 +475,7 @@ defmodule ManualTestingDataGenerator do
   Create a test user and surveillance profile (for development)
   """
   def create_test_user_and_profile do
-    IO.puts("👤 Creating test user and surveillance profile...")
+    # IO.puts("👤 Creating test user and surveillance profile...")
 
     # This is for development/testing only
     # In production, users are created through EVE SSO
@@ -479,7 +494,7 @@ defmodule ManualTestingDataGenerator do
 
     case Ash.create(User, user_data, domain: Api) do
       {:ok, user} ->
-        IO.puts("✅ Created test user: #{user.character_name}")
+        # IO.puts("✅ Created test user: #{user.character_name}")
 
         # Create a test surveillance profile
         profile_data = %{
@@ -501,16 +516,16 @@ defmodule ManualTestingDataGenerator do
 
         case Ash.create(Profile, profile_data, domain: Api) do
           {:ok, profile} ->
-            IO.puts("✅ Created test surveillance profile: #{profile.name}")
+            # IO.puts("✅ Created test surveillance profile: #{profile.name}")
             {user, profile}
 
           {:error, error} ->
-            IO.puts("❌ Failed to create test profile: #{inspect(error)}")
+            # IO.puts("❌ Failed to create test profile: #{inspect(error)}")
             {user, nil}
         end
 
       {:error, error} ->
-        IO.puts("❌ Failed to create test user: #{inspect(error)}")
+        # IO.puts("❌ Failed to create test user: #{inspect(error)}")
         {nil, nil}
     end
   end
@@ -536,11 +551,11 @@ defmodule ManualTestingDataGenerator do
 end
 
 # Auto-setup message
-IO.puts("🚀 EVE DMV Manual Testing Data Generator loaded!")
-IO.puts("📋 Run: ManualTestingDataGenerator.setup_complete_testing_environment()")
-IO.puts("   This will create all test data and print comprehensive testing guide")
-IO.puts("")
-IO.puts("🔧 Other useful commands:")
-IO.puts("   ManualTestingDataGenerator.show_recent_activity(10)")
-IO.puts("   ManualTestingDataGenerator.get_fresh_test_ids()")
-IO.puts("   ManualTestingDataGenerator.check_surveillance_engine()")
+# IO.puts("🚀 EVE DMV Manual Testing Data Generator loaded!")
+# IO.puts("📋 Run: ManualTestingDataGenerator.setup_complete_testing_environment()")
+# IO.puts("   This will create all test data and print comprehensive testing guide")
+# IO.puts("")
+# IO.puts("🔧 Other useful commands:")
+# IO.puts("   ManualTestingDataGenerator.show_recent_activity(10)")
+# IO.puts("   ManualTestingDataGenerator.get_fresh_test_ids()")
+# IO.puts("   ManualTestingDataGenerator.check_surveillance_engine()")

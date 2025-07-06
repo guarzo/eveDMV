@@ -31,7 +31,7 @@ defmodule EveDmv.Quality.MetricsCollector.PerformanceMetrics do
 
     # Penalty for high process count
     process_penalty =
-      if process_count > 10000 do
+      if process_count > 10_000 do
         10
       else
         0
@@ -58,7 +58,7 @@ defmodule EveDmv.Quality.MetricsCollector.PerformanceMetrics do
     process_count = performance_metrics.memory_usage.process_count
 
     recommendations =
-      if process_count > 10000 do
+      if process_count > 10_000 do
         ["High process count (#{process_count}). Review for process leaks." | recommendations]
       else
         recommendations
@@ -111,7 +111,7 @@ defmodule EveDmv.Quality.MetricsCollector.PerformanceMetrics do
 
   defp analyze_test_parallelization do
     # Check if tests are running in parallel
-    case System.cmd("mix", ["test", "--help"], stderr_to_stdout: true) do
+    case System.cmd("mix", ["test", "--help"], stderr_to_stdout: true, env: clean_env()) do
       {output, 0} ->
         max_cases =
           if String.contains?(output, "--max-cases") do
@@ -223,5 +223,13 @@ defmodule EveDmv.Quality.MetricsCollector.PerformanceMetrics do
     else
       %{processes: 0, atom: 0, binary: 0, code: 0, ets: 0}
     end
+  end
+
+  defp clean_env do
+    %{
+      "PATH" => System.get_env("PATH", ""),
+      "HOME" => System.get_env("HOME", ""),
+      "MIX_ENV" => System.get_env("MIX_ENV", "dev")
+    }
   end
 end

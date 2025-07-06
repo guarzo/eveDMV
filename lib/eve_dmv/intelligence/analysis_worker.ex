@@ -17,7 +17,7 @@ defmodule EveDmv.Intelligence.AnalysisWorker do
     GenServer.start_link(__MODULE__, {analyzer_module, entity_id, opts, task_id}, [])
   end
 
-  @impl true
+  @impl GenServer
   def init({analyzer_module, entity_id, opts, task_id}) do
     # Register this worker in the task registry
     Registry.register(TaskRegistry, task_id, %{
@@ -41,7 +41,7 @@ defmodule EveDmv.Intelligence.AnalysisWorker do
     {:ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:start_analysis, state) do
     %{
       analyzer_module: analyzer_module,
@@ -88,12 +88,12 @@ defmodule EveDmv.Intelligence.AnalysisWorker do
     {:noreply, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info({:analysis_complete, result}, state) do
     %{task_id: task_id, started_at: started_at} = state
 
-    duration_ms = System.monotonic_time() - started_at
-    duration_ms = System.convert_time_unit(duration_ms, :native, :millisecond)
+    duration_native = System.monotonic_time() - started_at
+    duration_ms = System.convert_time_unit(duration_native, :native, :millisecond)
 
     case result do
       {:ok, analysis_result} ->
@@ -133,13 +133,13 @@ defmodule EveDmv.Intelligence.AnalysisWorker do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:shutdown, state) do
     Logger.debug("Shutting down analysis worker for task #{state.task_id}")
     {:stop, :normal, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_status, _from, state) do
     status_info = %{
       status: state.status,
@@ -154,7 +154,7 @@ defmodule EveDmv.Intelligence.AnalysisWorker do
     {:reply, status_info, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_result, _from, state) do
     case state.status do
       :completed ->
@@ -168,7 +168,7 @@ defmodule EveDmv.Intelligence.AnalysisWorker do
     end
   end
 
-  @impl true
+  @impl GenServer
   def terminate(reason, state) do
     Logger.debug(
       "Analysis worker terminating for task #{state.task_id}, reason: #{inspect(reason)}"

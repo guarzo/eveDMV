@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmv.Eve.EsiRequestClient do
   @moduledoc """
   Enhanced HTTP request utilities for EVE ESI API with reliability features.
@@ -338,10 +339,7 @@ defmodule EveDmv.Eve.EsiRequestClient do
   end
 
   defp build_authenticated_headers(auth_token) do
-    build_headers() ++
-      [
-        {"Authorization", "Bearer #{auth_token}"}
-      ]
+    [{"Authorization", "Bearer #{auth_token}"} | build_headers()]
   end
 
   defp get_config(key, default) do

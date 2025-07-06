@@ -36,7 +36,7 @@ defmodule EveDmv.Workers.RealtimeTaskSupervisor do
   end
 
   @impl true
-  def init(_opts) do
+  def init(opts) do
     Logger.info("Started Realtime Task Supervisor")
     DynamicSupervisor.init(strategy: :one_for_one, max_children: @max_concurrent)
   end
@@ -77,12 +77,12 @@ defmodule EveDmv.Workers.RealtimeTaskSupervisor do
           {:ok, pid}
 
         {:error, reason} ->
-          Logger.warn("Failed to start realtime task '#{description}': #{inspect(reason)}")
+          Logger.warning("Failed to start realtime task '#{description}': #{inspect(reason)}")
           {:error, reason}
       end
     else
       {:error, :capacity_exceeded} = error ->
-        Logger.warn(
+        Logger.warning(
           "Realtime task capacity exceeded for '#{description}' (priority: #{priority})"
         )
 
@@ -153,10 +153,12 @@ defmodule EveDmv.Workers.RealtimeTaskSupervisor do
   Terminate all normal priority tasks (emergency capacity clearing).
   """
   def clear_normal_priority_tasks(supervisor \\ __MODULE__) do
-    Logger.warn("Clearing normal priority realtime tasks for capacity")
+    Logger.warning("Clearing normal priority realtime tasks for capacity")
+
+    children = DynamicSupervisor.which_children(supervisor)
 
     terminated_count =
-      DynamicSupervisor.which_children(supervisor)
+      children
       |> Enum.filter(fn {_, pid, _, _} ->
         get_task_priority(pid) == :normal
       end)
@@ -189,7 +191,9 @@ defmodule EveDmv.Workers.RealtimeTaskSupervisor do
       duration = System.monotonic_time(:millisecond) - start_time
 
       if duration > @warning_duration do
-        Logger.warn("Realtime task '#{description}' took #{duration}ms (priority: #{priority})")
+        Logger.warning(
+          "Realtime task '#{description}' took #{duration}ms (priority: #{priority})"
+        )
       else
         Logger.debug("Realtime task '#{description}' completed in #{duration}ms")
       end
@@ -281,7 +285,7 @@ defmodule EveDmv.Workers.RealtimeTaskSupervisor do
     end
   end
 
-  defp track_realtime_task(pid, description, priority, event_type) do
+  defp track_realtime_task(_pid, description, priority, event_type) do
     task_info = %{
       description: description,
       priority: priority,

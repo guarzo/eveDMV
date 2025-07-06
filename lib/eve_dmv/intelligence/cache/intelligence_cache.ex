@@ -8,6 +8,9 @@ defmodule EveDmv.Intelligence.Cache.IntelligenceCache do
 
   require Logger
   alias EveDmv.Cache
+  alias EveDmv.Intelligence.Analyzers.CharacterAnalyzer
+  alias EveDmv.Intelligence.Analyzers.WHVettingAnalyzer
+  alias EveDmv.Intelligence.Core.CorrelationEngine
 
   @doc """
   Start the intelligence cache.
@@ -107,14 +110,14 @@ defmodule EveDmv.Intelligence.Cache.IntelligenceCache do
   # Private functions - Data generation delegates
 
   defp generate_character_analysis(character_id) do
-    EveDmv.Intelligence.Analyzers.CharacterAnalyzer.analyze_character(character_id)
+    CharacterAnalyzer.analyze_character(character_id)
   end
 
   defp generate_vetting_analysis(character_id) do
-    EveDmv.Intelligence.Analyzers.WHVettingAnalyzer.analyze_character(character_id)
+    WHVettingAnalyzer.analyze_character(character_id)
   end
 
   defp generate_correlation_analysis(character_id) do
-    EveDmv.Intelligence.Core.CorrelationEngine.analyze_cross_module_correlations(character_id)
+    CorrelationEngine.analyze_cross_module_correlations(character_id)
   end
 end

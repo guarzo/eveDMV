@@ -1,14 +1,14 @@
 defmodule EveDmvWeb.CoreComponents do
   @moduledoc """
   Core components for EVE DMV application.
-  
+
   This module provides the core UI components needed throughout the application,
   including both Phoenix defaults and custom EVE DMV components.
   """
-  
+
   use Phoenix.Component
   alias Phoenix.LiveView.JS
-  
+
   # Import our custom reusable components - commented out to avoid unused import warnings
   # Since these components are imported directly in the LiveViews that use them,
   # we don't need to import them here in CoreComponents
@@ -20,27 +20,27 @@ defmodule EveDmvWeb.CoreComponents do
   # import EveDmvWeb.Components.EmptyStateComponent
   # import EveDmvWeb.Components.TabNavigationComponent
   # import EveDmvWeb.Components.CharacterInfoComponent
-  
+
   # Note: IntelligenceComponents should be imported separately where needed
   # to avoid circular dependencies
-  
+
   # Phoenix default components
-  
+
   @doc """
   Renders flash notices.
-  
+
   ## Examples
-  
+
       <.flash kind={:info} flash={@flash} />
       <.flash kind={:error} flash={@flash} />
   """
-  attr :id, :string, doc: "the optional id of flash container"
-  attr :flash, :map, default: %{}, doc: "the map of flash messages"
-  attr :title, :string, default: nil
-  attr :kind, :atom, values: [:info, :error], doc: "used for styling and flash lookup"
-  attr :rest, :global, doc: "the arbitrary HTML attributes to apply to the flash container"
+  attr(:id, :string, doc: "the optional id of flash container")
+  attr(:flash, :map, default: %{}, doc: "the map of flash messages")
+  attr(:title, :string, default: nil)
+  attr(:kind, :atom, values: [:info, :error], doc: "used for styling and flash lookup")
+  attr(:rest, :global, doc: "the arbitrary HTML attributes to apply to the flash container")
 
-  slot :inner_block, doc: "the optional inner block that renders the flash message"
+  slot(:inner_block, doc: "the optional inner block that renders the flash message")
 
   def flash(assigns) do
     assigns = assign_new(assigns, :id, fn -> "flash-#{assigns.kind}" end)
@@ -80,13 +80,13 @@ defmodule EveDmvWeb.CoreComponents do
 
   @doc """
   Shows the flash group with standard titles and content.
-  
+
   ## Examples
-  
+
       <.flash_group flash={@flash} />
   """
-  attr :flash, :map, required: true, doc: "the map of flash messages"
-  attr :id, :string, default: "flash-group", doc: "the optional id of flash container"
+  attr(:flash, :map, required: true, doc: "the map of flash messages")
+  attr(:id, :string, default: "flash-group", doc: "the optional id of flash container")
 
   def flash_group(assigns) do
     ~H"""
@@ -111,7 +111,7 @@ defmodule EveDmvWeb.CoreComponents do
       }
     )
   end
-  
+
   @doc """
   Helper function to show an element using Phoenix LiveView JS commands.
   """

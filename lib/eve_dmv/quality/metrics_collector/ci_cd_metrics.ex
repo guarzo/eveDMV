@@ -188,7 +188,7 @@ defmodule EveDmv.Quality.MetricsCollector.CiCdMetrics do
           has_error_handling:
             String.contains?(content, "set -e") or String.contains?(content, "set -euo pipefail"),
           has_documentation: count_script_comments(content) >= 5,
-          is_executable: is_executable?(file_path),
+          is_executable: executable?(file_path),
           has_shebang: String.starts_with?(content, "#!/"),
           lines_of_code: count_script_lines(content)
         }
@@ -205,7 +205,7 @@ defmodule EveDmv.Quality.MetricsCollector.CiCdMetrics do
     end
   end
 
-  defp is_executable?(file_path) do
+  defp executable?(file_path) do
     case File.stat(file_path) do
       {:ok, %File.Stat{mode: mode}} ->
         # Check if owner-executable bit is set
@@ -232,7 +232,7 @@ defmodule EveDmv.Quality.MetricsCollector.CiCdMetrics do
   end
 
   defp calculate_average_script_quality(quality_checks) do
-    if length(quality_checks) == 0 do
+    if Enum.empty?(quality_checks) do
       0
     else
       total_score =

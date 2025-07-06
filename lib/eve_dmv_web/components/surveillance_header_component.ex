@@ -11,7 +11,7 @@ defmodule EveDmvWeb.SurveillanceHeaderComponent do
   @doc """
   Renders the surveillance header with batch controls and action buttons.
   """
-  @impl true
+  @impl Phoenix.LiveComponent
   def render(assigns) do
     ~H"""
     <div class="bg-gray-800 border-b border-gray-700 px-6 py-4">
@@ -93,44 +93,44 @@ defmodule EveDmvWeb.SurveillanceHeaderComponent do
     """
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def handle_event("toggle_batch_mode", _params, socket) do
     # Send event to parent LiveView
     send(self(), {:batch_mode_toggled})
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def handle_event("select_all_profiles", _params, socket) do
     send(self(), {:select_all_profiles})
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def handle_event("deselect_all_profiles", _params, socket) do
     send(self(), {:deselect_all_profiles})
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def handle_event("show_batch_modal", _params, socket) do
     send(self(), {:show_batch_modal})
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def handle_event("export_profiles", _params, socket) do
     send(self(), {:export_profiles})
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def handle_event("refresh_stats", _params, socket) do
     send(self(), {:refresh_stats})
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def handle_event("show_create_modal", _params, socket) do
     send(self(), {:show_create_modal})
     {:noreply, socket}

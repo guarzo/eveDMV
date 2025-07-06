@@ -47,7 +47,8 @@ defmodule EveDmv.Presentation.Formatters do
   end
 
   def format_number(value) when is_float(value) do
-    trunc(value) |> format_number()
+    truncated_value = trunc(value)
+    format_number(truncated_value)
   end
 
   def format_number(_), do: "0"
@@ -118,7 +119,7 @@ defmodule EveDmv.Presentation.Formatters do
   def format_duration(_), do: "Unknown"
 
   defp add_duration_part(parts, 0, _unit), do: parts
-  defp add_duration_part(parts, value, unit), do: parts ++ ["#{value}#{unit}"]
+  defp add_duration_part(parts, value, unit), do: ["#{value}#{unit}" | parts]
 
   def format_distance(au) when is_number(au) do
     cond do

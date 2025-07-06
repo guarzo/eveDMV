@@ -6,6 +6,8 @@ defmodule EveDmvWeb.Telemetry do
   use Supervisor
   import Telemetry.Metrics
 
+  alias EveDmv.Surveillance.MatchingEngine
+
   def start_link(arg) do
     Supervisor.start_link(__MODULE__, arg, name: __MODULE__)
   end
@@ -196,7 +198,7 @@ defmodule EveDmvWeb.Telemetry do
   Measure surveillance profile statistics.
   """
   def measure_surveillance_profiles do
-    case EveDmv.Surveillance.MatchingEngine.get_stats() do
+    case MatchingEngine.get_stats() do
       %{profiles_loaded: count} when is_integer(count) ->
         :telemetry.execute([:eve_dmv, :surveillance, :active_profiles], %{}, %{value: count})
 

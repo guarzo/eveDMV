@@ -55,7 +55,7 @@ defmodule EveDmv.Market.RateLimiter do
 
   # Server callbacks
 
-  @impl true
+  @impl GenServer
   def init(opts) do
     max_tokens = Keyword.get(opts, :max_tokens, @default_max_tokens)
     refill_rate = Keyword.get(opts, :refill_rate, @default_refill_rate)
@@ -76,7 +76,7 @@ defmodule EveDmv.Market.RateLimiter do
     {:ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:acquire, tokens, timeout}, from, state) do
     state = refill_tokens(state)
 
@@ -97,12 +97,12 @@ defmodule EveDmv.Market.RateLimiter do
   end
 
   # Backward compatibility for old acquire signature
-  @impl true
+  @impl GenServer
   def handle_call({:acquire, tokens}, from, state) do
     handle_call({:acquire, tokens, 5000}, from, state)
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:try_acquire, tokens}, _from, state) do
     state = refill_tokens(state)
 
@@ -114,7 +114,7 @@ defmodule EveDmv.Market.RateLimiter do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_state, _from, state) do
     state = refill_tokens(state)
 
@@ -128,18 +128,18 @@ defmodule EveDmv.Market.RateLimiter do
     {:reply, reply, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:refill, state) do
-    state = refill_tokens(state)
-    state = process_waiting_queue(state)
+    refilled_state = refill_tokens(state)
+    final_state = process_waiting_queue(refilled_state)
 
     # Schedule next refill
-    schedule_refill(state.refill_interval)
+    schedule_refill(final_state.refill_interval)
 
-    {:noreply, state}
+    {:noreply, final_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info({:timeout, from}, state) do
     # Remove timed out request from queue
     new_queue =

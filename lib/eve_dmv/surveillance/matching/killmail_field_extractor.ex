@@ -130,7 +130,7 @@ defmodule EveDmv.Surveillance.Matching.KillmailFieldExtractor do
       ship_type_id in 419..440 -> "battlecruiser"
       ship_type_id in 641..659 -> "battleship"
       ship_type_id in 547..659 -> "industrial"
-      ship_type_id >= 23757 -> "capital"
+      ship_type_id >= 23_757 -> "capital"
       true -> "other"
     end
   end
@@ -153,7 +153,7 @@ defmodule EveDmv.Surveillance.Matching.KillmailFieldExtractor do
       attacker_count <= 5 -> "small_gang"
       attacker_count <= 20 -> "medium_gang"
       attacker_count > 20 -> "fleet"
-      ship_type_id && ship_type_id >= 23757 -> "capital"
+      ship_type_id && ship_type_id >= 23_757 -> "capital"
       total_value > 1_000_000_000 -> "expensive"
       true -> "standard"
     end

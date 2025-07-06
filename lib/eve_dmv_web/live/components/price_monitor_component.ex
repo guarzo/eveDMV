@@ -9,7 +9,7 @@ defmodule EveDmvWeb.PriceMonitorComponent do
   use EveDmvWeb, :live_component
   alias EveDmv.Enrichment.RealTimePriceUpdater
 
-  @impl true
+  @impl Phoenix.LiveView
   def mount(socket) do
     # Subscribe to all price updates
     if connected?(socket) do
@@ -25,7 +25,7 @@ defmodule EveDmvWeb.PriceMonitorComponent do
     {:ok, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def update(assigns, socket) do
     socket =
       socket
@@ -34,7 +34,7 @@ defmodule EveDmvWeb.PriceMonitorComponent do
     {:ok, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("toggle_monitoring", _params, socket) do
     new_state = not socket.assigns.monitoring_enabled
 
@@ -49,7 +49,7 @@ defmodule EveDmvWeb.PriceMonitorComponent do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("clear_updates", _params, socket) do
     socket =
       socket
@@ -76,7 +76,7 @@ defmodule EveDmvWeb.PriceMonitorComponent do
   # Ignore other messages
   def handle_info(_msg, socket), do: {:noreply, socket}
 
-  @impl true
+  @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
     <div class="bg-gray-800 rounded-lg border border-gray-700 p-4">

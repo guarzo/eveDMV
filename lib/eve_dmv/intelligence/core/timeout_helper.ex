@@ -174,7 +174,7 @@ defmodule EveDmv.Intelligence.Core.TimeoutHelper do
         {:ok, result}
 
       {:error, :timeout} when attempt < max_retries ->
-        backoff_ms = (:math.pow(2, attempt) * 1000) |> round()
+        backoff_ms = round(:math.pow(2, attempt) * 1000)
 
         Logger.debug(
           "Retrying #{operation_type} after #{backoff_ms}ms backoff (attempt #{attempt}/#{max_retries})"

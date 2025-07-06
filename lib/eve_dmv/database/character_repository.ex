@@ -13,7 +13,9 @@ defmodule EveDmv.Database.CharacterRepository do
   require Ash.Query
   alias EveDmv.Api
   alias EveDmv.Cache
-  alias EveDmv.Database.Repository.{QueryBuilder, CacheHelper, TelemetryHelper}
+  alias EveDmv.Database.Repository.CacheHelper
+  alias EveDmv.Database.Repository.QueryBuilder
+  alias EveDmv.Database.Repository.TelemetryHelper
   alias EveDmv.Intelligence.CharacterStats
 
   @doc """

@@ -59,7 +59,7 @@ defmodule EveDmvWeb.FormatHelpers do
     case {kills, losses} do
       {0, 0} -> "0.00"
       {k, 0} -> "#{k}.00"
-      {k, l} -> Float.round(k / l, 2) |> Float.to_string() |> add_commas()
+      {k, l} -> (k / l) |> Float.round(2) |> Float.to_string() |> add_commas()
     end
   end
 

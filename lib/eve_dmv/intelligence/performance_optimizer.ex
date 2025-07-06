@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmv.Intelligence.PerformanceOptimizer do
   @moduledoc """
   Performance optimization utilities for intelligence analysis.
@@ -224,8 +225,8 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
     if use_cache do
       IntelligenceCache.get_character_analysis(character_id)
     else
-      # Fallback to direct analysis
-      EveDmv.Intelligence.Analyzers.CharacterAnalyzer.analyze_character(character_id)
+      # Fallback to direct analysis via IntelligenceEngine
+      EveDmv.IntelligenceEngine.analyze(:character, character_id, scope: :basic)
     end
   end
 

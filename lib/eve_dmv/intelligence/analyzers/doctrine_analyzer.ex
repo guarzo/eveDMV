@@ -101,10 +101,13 @@ defmodule EveDmv.Intelligence.Analyzers.DoctrineAnalyzer do
     if total_usage == 0 do
       :unknown
     else
-      ship_categories =
+      categorized_ships =
         Enum.map(ship_usage, fn {ship_id, count} ->
           {categorize_ship_doctrine(ship_id), count}
         end)
+
+      ship_categories =
+        categorized_ships
         |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
         |> Enum.map(fn {category, counts} -> {category, Enum.sum(counts)} end)
         |> Enum.sort_by(&elem(&1, 1), :desc)
@@ -136,15 +139,17 @@ defmodule EveDmv.Intelligence.Analyzers.DoctrineAnalyzer do
         fn {_ship_id, count} -> count end
       )
 
-    Enum.map(ship_categories, fn {category, counts} ->
-      {category,
-       %{
-         total_usage: Enum.sum(counts),
-         diversity: length(counts),
-         consistency: calculate_category_consistency(counts)
-       }}
-    end)
-    |> Enum.into(%{})
+    mapped_categories =
+      Enum.map(ship_categories, fn {category, counts} ->
+        {category,
+         %{
+           total_usage: Enum.sum(counts),
+           diversity: length(counts),
+           consistency: calculate_category_consistency(counts)
+         }}
+      end)
+
+    Enum.into(mapped_categories, %{})
   end
 
   defp calculate_adherence_score(ship_usage, doctrine_patterns) do

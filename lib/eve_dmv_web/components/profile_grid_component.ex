@@ -11,7 +11,7 @@ defmodule EveDmvWeb.ProfileGridComponent do
   @doc """
   Renders the profile grid with batch selection support.
   """
-  @impl true
+  @impl Phoenix.LiveComponent
   def render(assigns) do
     ~H"""
     <div class="flex-1 h-screen overflow-y-auto">
@@ -131,26 +131,26 @@ defmodule EveDmvWeb.ProfileGridComponent do
     """
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def handle_event("toggle_profile_selection", %{"profile_id" => profile_id}, socket) do
     # Send event to parent LiveView
     send(self(), {:toggle_profile_selection, profile_id})
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def handle_event("toggle_profile", %{"profile_id" => profile_id}, socket) do
     send(self(), {:toggle_profile, profile_id})
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def handle_event("delete_profile", %{"profile_id" => profile_id}, socket) do
     send(self(), {:delete_profile, profile_id})
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def handle_event("show_create_modal", _params, socket) do
     send(self(), {:show_create_modal})
     {:noreply, socket}

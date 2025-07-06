@@ -56,7 +56,19 @@ config :tailwind,
 # Configures Elixir's Logger
 config :logger, :console,
   format: "$time $metadata[$level] $message\n",
-  metadata: [:request_id]
+  metadata: [
+    :request_id,
+    :plugin,
+    :entity_id,
+    :duration_ms,
+    :exception,
+    :reason,
+    :entity_type,
+    :threat_level,
+    :error,
+    :character_id,
+    :corporation_id
+  ]
 
 # Filter sensitive parameters from logs
 config :phoenix, :filter_parameters, [

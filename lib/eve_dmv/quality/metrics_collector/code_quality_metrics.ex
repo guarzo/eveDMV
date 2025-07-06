@@ -68,7 +68,7 @@ defmodule EveDmv.Quality.MetricsCollector.CodeQualityMetrics do
   # Credo analysis
 
   defp run_credo_analysis do
-    case System.cmd("mix", ["credo", "--format", "json"], stderr_to_stdout: true) do
+    case System.cmd("mix", ["credo", "--format", "json"], stderr_to_stdout: true, env: []) do
       {output, _} ->
         case Jason.decode(output) do
           {:ok, data} ->
@@ -105,7 +105,7 @@ defmodule EveDmv.Quality.MetricsCollector.CodeQualityMetrics do
   # Dialyzer analysis
 
   defp run_dialyzer_analysis do
-    case System.cmd("mix", ["dialyzer", "--format", "short"], stderr_to_stdout: true) do
+    case System.cmd("mix", ["dialyzer", "--format", "short"], stderr_to_stdout: true, env: []) do
       {output, _} ->
         warnings =
           output
@@ -137,7 +137,10 @@ defmodule EveDmv.Quality.MetricsCollector.CodeQualityMetrics do
       total_lines_of_code: total_lines,
       average_file_size:
         if(length(elixir_files) > 0, do: div(total_lines, length(elixir_files)), else: 0),
-      large_files: elixir_files |> Enum.filter(&(count_lines_in_file(&1) > 300)) |> length(),
+      large_files:
+        elixir_files
+        |> Enum.filter(&(count_lines_in_file(&1) > 300))
+        |> then(&length/1),
       file_size_distribution: calculate_file_size_distribution(elixir_files)
     }
   end
@@ -194,7 +197,7 @@ defmodule EveDmv.Quality.MetricsCollector.CodeQualityMetrics do
   end
 
   defp check_outdated_dependencies do
-    case System.cmd("mix", ["hex.outdated"], stderr_to_stdout: true) do
+    case System.cmd("mix", ["hex.outdated"], stderr_to_stdout: true, env: clean_env()) do
       {output, _} ->
         output
         |> String.split("\n")
@@ -254,5 +257,13 @@ defmodule EveDmv.Quality.MetricsCollector.CodeQualityMetrics do
       end
 
     max(0, base_score - complexity_penalty - very_large_penalty + small_file_bonus)
+  end
+
+  defp clean_env do
+    %{
+      "PATH" => System.get_env("PATH", ""),
+      "HOME" => System.get_env("HOME", ""),
+      "MIX_ENV" => System.get_env("MIX_ENV", "dev")
+    }
   end
 end

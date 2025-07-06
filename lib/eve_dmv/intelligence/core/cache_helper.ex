@@ -49,8 +49,8 @@ defmodule EveDmv.Intelligence.Core.CacheHelper do
         ttl_ms: ttl_seconds * 1000
       )
 
-    duration_ms = System.monotonic_time() - start_time
-    duration_ms = System.convert_time_unit(duration_ms, :native, :millisecond)
+    duration_native = System.monotonic_time() - start_time
+    duration_ms = System.convert_time_unit(duration_native, :native, :millisecond)
 
     # Emit cache hit/miss telemetry
     cache_status = if duration_ms < 1, do: :hit, else: :computed
@@ -145,8 +145,8 @@ defmodule EveDmv.Intelligence.Core.CacheHelper do
     )
     |> Stream.run()
 
-    duration_ms = System.monotonic_time() - start_time
-    duration_ms = System.convert_time_unit(duration_ms, :native, :millisecond)
+    warm_duration_native = System.monotonic_time() - start_time
+    duration_ms = System.convert_time_unit(warm_duration_native, :native, :millisecond)
 
     Logger.info("Cache warming completed for #{length(entries)} entries in #{duration_ms}ms")
 

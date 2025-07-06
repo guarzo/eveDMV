@@ -10,9 +10,10 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityDataCollector do
   require Logger
   require Ash.Query
   alias EveDmv.Api
-  alias EveDmv.Database.{KillmailRepository, CharacterRepository}
+  alias EveDmv.Database.CharacterRepository
+  alias EveDmv.Database.KillmailRepository
   alias EveDmv.Eve.EsiUtils
-  alias EveDmv.Intelligence.CharacterStats
+  alias EveDmv.Intelligence.MemberActivityIntelligence
   alias EveDmv.Killmails.Participant
   alias EveDmv.Utils.TimeUtils
 
@@ -65,7 +66,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityDataCollector do
   """
   def get_character_killmails(character_id, period_start, period_end) do
     # Use KillmailRepository for optimized character killmail retrieval
-    case EveDmv.Database.KillmailRepository.get_by_character(character_id,
+    case KillmailRepository.get_by_character(character_id,
            start_date: period_start,
            end_date: period_end,
            preload_participants: true
@@ -127,7 +128,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityDataCollector do
   Returns {:ok, member_analyses} with all member activity intelligence records.
   """
   def get_corporation_member_analyses(corporation_id) do
-    case EveDmv.Intelligence.MemberActivityIntelligence.get_by_corporation(corporation_id) do
+    case MemberActivityIntelligence.get_by_corporation(corporation_id) do
       {:ok, analyses} -> {:ok, analyses}
       {:error, reason} -> {:error, reason}
     end

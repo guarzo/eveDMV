@@ -9,6 +9,7 @@ defmodule EveDmv.Killmails.KillmailRawTest do
 
   alias EveDmv.Api
   alias EveDmv.Killmails.{KillmailRaw, TestDataGenerator}
+  alias Ecto.Adapters.SQL
 
   setup do
     # Create necessary partitions for test data
@@ -37,7 +38,7 @@ defmodule EveDmv.Killmails.KillmailRawTest do
     FOR VALUES FROM ('#{start_date}') TO ('#{next_month_start}')
     """
 
-    Ecto.Adapters.SQL.query!(EveDmv.Repo, query)
+    SQL.query!(EveDmv.Repo, query)
   rescue
     # Partition might already exist, ignore error
     Postgrex.Error -> :ok
@@ -49,19 +50,25 @@ defmodule EveDmv.Killmails.KillmailRawTest do
 
       attrs = %{
         killmail_id: killmail_data["killmail_id"],
-        killmail_time: DateTime.from_iso8601(killmail_data["timestamp"]) |> elem(1),
+        killmail_time: elem(DateTime.from_iso8601(killmail_data["timestamp"]), 1),
         killmail_hash: killmail_data["killmail_hash"],
         solar_system_id: killmail_data["solar_system_id"],
         victim_character_id:
-          get_in(killmail_data, ["participants", Access.filter(& &1["is_victim"]), "character_id"])
-          |> List.first(),
+          List.first(
+            get_in(killmail_data, [
+              "participants",
+              Access.filter(& &1["is_victim"]),
+              "character_id"
+            ])
+          ),
         victim_corporation_id:
-          get_in(killmail_data, [
-            "participants",
-            Access.filter(& &1["is_victim"]),
-            "corporation_id"
-          ])
-          |> List.first(),
+          List.first(
+            get_in(killmail_data, [
+              "participants",
+              Access.filter(& &1["is_victim"]),
+              "corporation_id"
+            ])
+          ),
         victim_ship_type_id: killmail_data["ship"]["type_id"],
         attacker_count: length(Enum.filter(killmail_data["participants"], &(!&1["is_victim"]))),
         raw_data: killmail_data,
@@ -96,19 +103,25 @@ defmodule EveDmv.Killmails.KillmailRawTest do
 
       attrs = %{
         killmail_id: killmail_data["killmail_id"],
-        killmail_time: DateTime.from_iso8601(killmail_data["timestamp"]) |> elem(1),
+        killmail_time: elem(DateTime.from_iso8601(killmail_data["timestamp"]), 1),
         killmail_hash: killmail_data["killmail_hash"],
         solar_system_id: killmail_data["solar_system_id"],
         victim_character_id:
-          get_in(killmail_data, ["participants", Access.filter(& &1["is_victim"]), "character_id"])
-          |> List.first(),
+          List.first(
+            get_in(killmail_data, [
+              "participants",
+              Access.filter(& &1["is_victim"]),
+              "character_id"
+            ])
+          ),
         victim_corporation_id:
-          get_in(killmail_data, [
-            "participants",
-            Access.filter(& &1["is_victim"]),
-            "corporation_id"
-          ])
-          |> List.first(),
+          List.first(
+            get_in(killmail_data, [
+              "participants",
+              Access.filter(& &1["is_victim"]),
+              "corporation_id"
+            ])
+          ),
         victim_ship_type_id: killmail_data["ship"]["type_id"],
         attacker_count: length(Enum.filter(killmail_data["participants"], &(!&1["is_victim"]))),
         raw_data: killmail_data,
@@ -140,23 +153,25 @@ defmodule EveDmv.Killmails.KillmailRawTest do
       for killmail_data <- killmails do
         attrs = %{
           killmail_id: killmail_data["killmail_id"],
-          killmail_time: DateTime.from_iso8601(killmail_data["timestamp"]) |> elem(1),
+          killmail_time: elem(DateTime.from_iso8601(killmail_data["timestamp"]), 1),
           killmail_hash: killmail_data["killmail_hash"],
           solar_system_id: killmail_data["solar_system_id"],
           victim_character_id:
-            get_in(killmail_data, [
-              "participants",
-              Access.filter(& &1["is_victim"]),
-              "character_id"
-            ])
-            |> List.first(),
+            List.first(
+              get_in(killmail_data, [
+                "participants",
+                Access.filter(& &1["is_victim"]),
+                "character_id"
+              ])
+            ),
           victim_corporation_id:
-            get_in(killmail_data, [
-              "participants",
-              Access.filter(& &1["is_victim"]),
-              "corporation_id"
-            ])
-            |> List.first(),
+            List.first(
+              get_in(killmail_data, [
+                "participants",
+                Access.filter(& &1["is_victim"]),
+                "corporation_id"
+              ])
+            ),
           victim_ship_type_id: killmail_data["ship"]["type_id"],
           attacker_count: length(Enum.filter(killmail_data["participants"], &(!&1["is_victim"]))),
           raw_data: killmail_data,
@@ -213,7 +228,7 @@ defmodule EveDmv.Killmails.KillmailRawTest do
         source: "test"
       }
 
-      killmail = Ash.create!(KillmailRaw, attrs, domain: Api)
+      killmail = Ash.create!(EveDmv.Killmails.KillmailRaw, attrs, domain: Api)
 
       # Load with calculation
       killmail_with_age =

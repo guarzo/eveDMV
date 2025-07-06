@@ -1,7 +1,7 @@
 defmodule EveDmv.Database.QueryPlanAnalyzer.PlanAnalyzer do
   @moduledoc """
   Query execution plan parsing and analysis module.
-  
+
   Handles parsing PostgreSQL JSON execution plans and extracting performance
   metrics including node types, expensive operations, and row estimation errors.
   """
@@ -10,7 +10,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.PlanAnalyzer do
 
   @doc """
   Analyzes a PostgreSQL execution plan from JSON format.
-  
+
   Extracts key performance metrics including execution time, costs,
   node types, expensive operations, and row estimation accuracy.
   """
@@ -32,7 +32,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.PlanAnalyzer do
 
   @doc """
   Extracts all node types from an execution plan tree.
-  
+
   Recursively traverses the plan tree to collect all operation types
   for analysis of query execution patterns.
   """
@@ -51,7 +51,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.PlanAnalyzer do
 
   @doc """
   Identifies expensive operations in an execution plan.
-  
+
   Finds operations with high cost or execution time that may be
   performance bottlenecks requiring optimization.
   """
@@ -85,7 +85,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.PlanAnalyzer do
 
   @doc """
   Calculates row estimation errors in query planning.
-  
+
   Identifies significant differences between planned and actual row counts
   which can indicate stale statistics or poor query planning.
   """
@@ -133,7 +133,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.PlanAnalyzer do
 
   @doc """
   Identifies sequential scan operations in the plan.
-  
+
   Sequential scans can indicate missing indexes and performance issues.
   """
   def find_sequential_scans(node, scans \\ []) do
@@ -167,7 +167,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.PlanAnalyzer do
 
   @doc """
   Identifies sort operations and their characteristics.
-  
+
   Expensive sorts can often be optimized with appropriate indexes.
   """
   def find_sort_operations(node, sorts \\ []) do
@@ -238,47 +238,53 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.PlanAnalyzer do
   Generates performance recommendations based on plan analysis.
   """
   def generate_plan_recommendations(analysis) do
-    recommendations = []
+    initial_recommendations = []
 
     # Row estimation errors
-    recommendations =
+    statistics_recommendations =
       if length(analysis.row_estimation_errors) > 0 do
-        ["Update table statistics with ANALYZE to improve query planning" | recommendations]
+        [
+          "Update table statistics with ANALYZE to improve query planning"
+          | initial_recommendations
+        ]
       else
-        recommendations
+        initial_recommendations
       end
 
     # Sequential scans
-    recommendations =
+    scan_recommendations =
       if Enum.any?(analysis.node_types, &(&1 == "Seq Scan")) do
         [
           "Sequential scans detected - consider adding indexes for frequently queried columns"
-          | recommendations
+          | statistics_recommendations
         ]
       else
-        recommendations
+        statistics_recommendations
       end
 
     # Expensive sorts
-    recommendations =
+    sort_recommendations =
       if Enum.any?(analysis.expensive_operations, &(&1.node_type == "Sort")) do
-        ["Expensive sort operations - consider adding indexes to avoid sorting" | recommendations]
+        [
+          "Expensive sort operations - consider adding indexes to avoid sorting"
+          | scan_recommendations
+        ]
       else
-        recommendations
+        scan_recommendations
       end
 
     # Nested loops with high cost
-    recommendations =
+    join_recommendations =
       if Enum.any?(analysis.expensive_operations, &(&1.node_type == "Nested Loop")) do
         [
           "Expensive nested loop joins - consider optimizing join conditions or adding indexes"
-          | recommendations
+          | sort_recommendations
         ]
       else
-        recommendations
+        sort_recommendations
       end
 
-    recommendations
+    join_recommendations
   end
 
   # Private helper functions
@@ -308,11 +314,11 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.PlanAnalyzer do
   defp calculate_complexity_score(node) do
     total_nodes = count_total_nodes(node)
     max_depth = calculate_max_depth(node)
-    
+
     # Simple complexity scoring based on nodes and depth
     base_score = total_nodes * 2
     depth_penalty = max_depth * 5
-    
+
     base_score + depth_penalty
   end
 end

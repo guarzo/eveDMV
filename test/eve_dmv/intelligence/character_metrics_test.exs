@@ -1,7 +1,7 @@
 defmodule EveDmv.Intelligence.CharacterMetricsTest do
   use EveDmv.IntelligenceCase, async: true
 
-  alias EveDmv.Intelligence.Metrics.CharacterMetrics
+  alias EveDmv.Intelligence.Metrics.CharacterMetricsAdapter, as: CharacterMetrics
 
   describe "calculate_all_metrics/2" do
     test "returns complete metrics structure for character with activity" do
@@ -346,7 +346,7 @@ defmodule EveDmv.Intelligence.CharacterMetricsTest do
     for _i <- 1..count do
       %{
         "killmail_id" => System.unique_integer([:positive]),
-        "killmail_time" => DateTime.utc_now() |> DateTime.to_iso8601(),
+        "killmail_time" => DateTime.to_iso8601(DateTime.utc_now()),
         "solar_system_id" => 30_000_142,
         "participants" => [
           %{"character_id" => Enum.random(90_000_000..100_000_000), "is_victim" => true},
@@ -361,7 +361,7 @@ defmodule EveDmv.Intelligence.CharacterMetricsTest do
     for _i <- 1..count do
       %{
         "killmail_id" => System.unique_integer([:positive]),
-        "killmail_time" => DateTime.utc_now() |> DateTime.to_iso8601(),
+        "killmail_time" => DateTime.to_iso8601(DateTime.utc_now()),
         "solar_system_id" => 30_000_142,
         "participants" => [
           %{"character_id" => character_id, "is_victim" => true},
@@ -376,7 +376,7 @@ defmodule EveDmv.Intelligence.CharacterMetricsTest do
     for _i <- 1..count do
       %{
         "killmail_id" => System.unique_integer([:positive]),
-        "killmail_time" => DateTime.utc_now() |> DateTime.to_iso8601(),
+        "killmail_time" => DateTime.to_iso8601(DateTime.utc_now()),
         "solar_system_id" => 30_000_142,
         "participants" => [
           %{"character_id" => Enum.random(90_000_000..100_000_000), "is_victim" => true},
@@ -391,7 +391,7 @@ defmodule EveDmv.Intelligence.CharacterMetricsTest do
     for _i <- 1..count do
       %{
         "killmail_id" => System.unique_integer([:positive]),
-        "killmail_time" => DateTime.utc_now() |> DateTime.to_iso8601(),
+        "killmail_time" => DateTime.to_iso8601(DateTime.utc_now()),
         "solar_system_id" => 30_000_142,
         "participants" => [
           %{"character_id" => character_id, "is_victim" => true},
@@ -406,7 +406,7 @@ defmodule EveDmv.Intelligence.CharacterMetricsTest do
     for _i <- 1..count do
       %{
         "killmail_id" => System.unique_integer([:positive]),
-        "killmail_time" => DateTime.utc_now() |> DateTime.to_iso8601(),
+        "killmail_time" => DateTime.to_iso8601(DateTime.utc_now()),
         "solar_system_id" => 30_000_142,
         "participants" => [
           %{"character_id" => Enum.random(90_000_000..100_000_000), "is_victim" => true},
@@ -426,7 +426,7 @@ defmodule EveDmv.Intelligence.CharacterMetricsTest do
     for _i <- 1..count do
       %{
         "killmail_id" => System.unique_integer([:positive]),
-        "killmail_time" => DateTime.utc_now() |> DateTime.to_iso8601(),
+        "killmail_time" => DateTime.to_iso8601(DateTime.utc_now()),
         "solar_system_id" => 30_000_142,
         "participants" => [
           %{
@@ -455,7 +455,7 @@ defmodule EveDmv.Intelligence.CharacterMetricsTest do
 
       %{
         "killmail_id" => System.unique_integer([:positive]),
-        "killmail_time" => DateTime.utc_now() |> DateTime.to_iso8601(),
+        "killmail_time" => DateTime.to_iso8601(DateTime.utc_now()),
         "solar_system_id" => 30_000_142,
         "participants" => [
           %{"character_id" => Enum.random(90_000_000..100_000_000), "is_victim" => true}
@@ -471,7 +471,7 @@ defmodule EveDmv.Intelligence.CharacterMetricsTest do
     for _i <- 1..count do
       %{
         "killmail_id" => System.unique_integer([:positive]),
-        "killmail_time" => DateTime.utc_now() |> DateTime.to_iso8601(),
+        "killmail_time" => DateTime.to_iso8601(DateTime.utc_now()),
         "solar_system_id" => system_id,
         "solar_system_name" => system_name,
         "participants" => [
@@ -487,7 +487,7 @@ defmodule EveDmv.Intelligence.CharacterMetricsTest do
     for _i <- 1..count do
       %{
         "killmail_id" => System.unique_integer([:positive]),
-        "killmail_time" => DateTime.utc_now() |> DateTime.to_iso8601(),
+        "killmail_time" => DateTime.to_iso8601(DateTime.utc_now()),
         "solar_system_id" => 30_000_142,
         "participants" => [
           %{
@@ -507,7 +507,7 @@ defmodule EveDmv.Intelligence.CharacterMetricsTest do
     for _i <- 1..count do
       %{
         "killmail_id" => System.unique_integer([:positive]),
-        "killmail_time" => DateTime.utc_now() |> DateTime.to_iso8601(),
+        "killmail_time" => DateTime.to_iso8601(DateTime.utc_now()),
         "solar_system_id" => 30_000_142,
         "participants" => [
           %{"character_id" => character_id, "is_victim" => true},
@@ -578,7 +578,7 @@ defmodule EveDmv.Intelligence.CharacterMetricsTest do
     for _i <- 1..count do
       %{
         "killmail_id" => System.unique_integer([:positive]),
-        "killmail_time" => DateTime.utc_now() |> DateTime.to_iso8601(),
+        "killmail_time" => DateTime.to_iso8601(DateTime.utc_now()),
         "solar_system_id" => 30_000_142,
         "participants" => [
           %{"character_id" => Enum.random(90_000_000..100_000_000), "is_victim" => true},

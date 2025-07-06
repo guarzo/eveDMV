@@ -37,7 +37,9 @@ defmodule EveDmv.Database.Repository do
 
       alias EveDmv.Api
       alias EveDmv.Cache
-      alias EveDmv.Database.Repository.{QueryBuilder, CacheHelper, TelemetryHelper}
+      alias EveDmv.Database.Repository.CacheHelper
+      alias EveDmv.Database.Repository.QueryBuilder
+      alias EveDmv.Database.Repository.TelemetryHelper
 
       @resource resource
       @cache_type cache_type

@@ -5,14 +5,15 @@ defmodule EveDmvWeb.DashboardLive do
 
   use EveDmvWeb, :live_view
   alias EveDmvWeb.PriceMonitorComponent
-  
+  alias EveDmv.Database.KillmailRepository
+
   # Import reusable components
   import EveDmvWeb.Components.StatsGridComponent
 
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
-  @impl true
+  @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     current_user = socket.assigns[:current_user]
 
@@ -31,7 +32,7 @@ defmodule EveDmvWeb.DashboardLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
     <.flash_group flash={@flash} />
@@ -165,7 +166,7 @@ defmodule EveDmvWeb.DashboardLive do
   end
 
   defp get_recent_kills do
-    case EveDmv.Database.KillmailRepository.get_recent_high_value(limit: 5, hours_back: 24) do
+    case KillmailRepository.get_recent_high_value(limit: 5, hours_back: 24) do
       {:ok, killmails} -> killmails
       {:error, _reason} -> []
     end

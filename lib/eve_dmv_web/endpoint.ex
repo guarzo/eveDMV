@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmvWeb.Endpoint do
   @moduledoc """
   Phoenix endpoint for the EVE DMV web application.

@@ -48,9 +48,12 @@ defmodule EveDmv.Intelligence.Analyzers.StatisticalAnalyzer do
 
       sum_x = Enum.sum(x_values)
       sum_y = Enum.sum(y_values)
-      sum_xy = Enum.zip(x_values, y_values) |> Enum.map(fn {x, y} -> x * y end) |> Enum.sum()
-      sum_x2 = Enum.map(x_values, &(&1 * &1)) |> Enum.sum()
-      sum_y2 = Enum.map(y_values, &(&1 * &1)) |> Enum.sum()
+      zipped_values = Enum.zip(x_values, y_values)
+      sum_xy = zipped_values |> Enum.map(fn {x, y} -> x * y end) |> Enum.sum()
+      squared_x = Enum.map(x_values, &(&1 * &1))
+      sum_x2 = Enum.sum(squared_x)
+      squared_y = Enum.map(y_values, &(&1 * &1))
+      sum_y2 = Enum.sum(squared_y)
 
       numerator = n * sum_xy - sum_x * sum_y
       denominator = :math.sqrt((n * sum_x2 - sum_x * sum_x) * (n * sum_y2 - sum_y * sum_y))

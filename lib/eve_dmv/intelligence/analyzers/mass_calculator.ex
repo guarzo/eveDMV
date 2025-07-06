@@ -131,7 +131,7 @@ defmodule EveDmv.Intelligence.Analyzers.MassCalculator do
 
     suggestions =
       if total_mass > cruiser_limit do
-        suggestions ++ ["Fleet exceeds cruiser hole mass limit"]
+        ["Fleet exceeds cruiser hole mass limit" | suggestions]
       else
         suggestions
       end

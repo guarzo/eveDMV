@@ -21,14 +21,15 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.FleetScoring do
       {:error, "Fleet readiness requires at least 2 characters"}
     else
       # Get individual scores
-      individual_scores =
+      mapped_scores =
         Enum.map(character_ids, fn char_id ->
           case calculate_comprehensive_score(char_id) do
             {:ok, score} -> {char_id, score}
             {:error, _} -> {char_id, nil}
           end
         end)
-        |> Enum.filter(fn {_, score} -> not is_nil(score) end)
+
+      individual_scores = Enum.filter(mapped_scores, fn {_, score} -> not is_nil(score) end)
 
       if length(individual_scores) >= 2 do
         # Calculate fleet synergy

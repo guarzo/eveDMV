@@ -1,17 +1,17 @@
 defmodule EveDmvWeb.Components.CharacterInfoComponent do
   @moduledoc """
   Reusable character information display component.
-  
+
   Shows character details with avatar, name, and additional info.
   """
-  
+
   use Phoenix.Component
-  
+
   @doc """
   Renders character information with avatar and details.
-  
+
   ## Examples
-  
+
       <.character_info 
         character_id={@character.id}
         character_name={@character.name}
@@ -19,16 +19,16 @@ defmodule EveDmvWeb.Components.CharacterInfoComponent do
         alliance_name={@character.alliance_name}
       />
   """
-  attr :character_id, :integer, required: true
-  attr :character_name, :string, required: true
-  attr :corporation_name, :string, default: nil
-  attr :alliance_name, :string, default: nil
-  attr :avatar_size, :string, default: "medium", doc: "small, medium, large"
-  attr :show_links, :boolean, default: true
-  attr :class, :string, default: ""
-  
-  slot :additional_info, doc: "Additional character information"
-  
+  attr(:character_id, :integer, required: true)
+  attr(:character_name, :string, required: true)
+  attr(:corporation_name, :string, default: nil)
+  attr(:alliance_name, :string, default: nil)
+  attr(:avatar_size, :string, default: "medium", doc: "small, medium, large")
+  attr(:show_links, :boolean, default: true)
+  attr(:class, :string, default: "")
+
+  slot(:additional_info, doc: "Additional character information")
+
   def character_info(assigns) do
     ~H"""
     <div class={"flex items-center space-x-3 #{@class}"}>
@@ -63,19 +63,19 @@ defmodule EveDmvWeb.Components.CharacterInfoComponent do
     </div>
     """
   end
-  
+
   @doc """
   Renders a compact character link with optional avatar.
-  
+
   ## Examples
-  
+
       <.character_link character_id={123} character_name="Pilot Name" />
   """
-  attr :character_id, :integer, required: true
-  attr :character_name, :string, required: true
-  attr :show_avatar, :boolean, default: false
-  attr :class, :string, default: ""
-  
+  attr(:character_id, :integer, required: true)
+  attr(:character_name, :string, required: true)
+  attr(:show_avatar, :boolean, default: false)
+  attr(:class, :string, default: "")
+
   def character_link(assigns) do
     ~H"""
     <div class={"flex items-center space-x-2 #{@class}"}>
@@ -95,20 +95,21 @@ defmodule EveDmvWeb.Components.CharacterInfoComponent do
     </div>
     """
   end
-  
+
   # Private helper functions
-  
+
   defp character_avatar_url(character_id, size) do
-    size_param = case size do
-      "small" -> 64
-      "medium" -> 128
-      "large" -> 256
-      _ -> 128
-    end
-    
+    size_param =
+      case size do
+        "small" -> 64
+        "medium" -> 128
+        "large" -> 256
+        _ -> 128
+      end
+
     "https://images.evetech.net/characters/#{character_id}/portrait?size=#{size_param}"
   end
-  
+
   defp avatar_size_class(size) do
     case size do
       "small" -> "w-8 h-8"

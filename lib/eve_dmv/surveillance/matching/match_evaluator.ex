@@ -135,7 +135,8 @@ defmodule EveDmv.Surveillance.Matching.MatchEvaluator do
       length(killmail["attackers"] || [])
     ]
 
-    :crypto.hash(:md5, inspect(key_fields)) |> Base.encode16()
+    hash = :crypto.hash(:md5, inspect(key_fields))
+    Base.encode16(hash)
   end
 
   @doc """

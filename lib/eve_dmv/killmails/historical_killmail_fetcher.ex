@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
   @moduledoc """
   Fetches historical killmail data for specific characters from wanderer-kills SSE service.
@@ -49,15 +50,16 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
 
     results =
       character_ids
-      |> Enum.map(fn char_id ->
-        Task.async(fn ->
+      |> Task.async_stream(
+        fn char_id ->
           case fetch_character_history(char_id) do
             {:ok, count} -> {char_id, {:ok, count}}
             error -> {char_id, error}
           end
-        end)
-      end)
-      |> Enum.map(&Task.await(&1, 180_000))
+        end,
+        timeout: 180_000
+      )
+      |> Enum.map(fn {:ok, result} -> result end)
       |> Map.new()
 
     {:ok, results}
@@ -271,7 +273,7 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
     %{state | heartbeat_count: state.heartbeat_count + 1}
   end
 
-  defp process_event(%{event: nil, data: data}, state, character_id) when not is_nil(data) do
+  defp process_event(%{event: nil, data: data}, state, character_id) when data != nil do
     # Handle events without explicit event type (default to killmail)
     process_event(%{event: "killmail", data: data}, state, character_id)
   end
@@ -448,7 +450,8 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
   defp generate_hash(enriched) do
     id = enriched["killmail_id"]
     timestamp = enriched["timestamp"]
-    :crypto.hash(:sha256, "#{id}-#{timestamp}") |> Base.encode16(case: :lower)
+    hash = :crypto.hash(:sha256, "#{id}-#{timestamp}")
+    Base.encode16(hash, case: :lower)
   end
 
   defp get_final_blow_character_id(enriched) do

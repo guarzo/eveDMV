@@ -6,6 +6,7 @@ defmodule EveDmv.Database.PartitionUtils do
   """
 
   alias EveDmv.Repo
+  alias Ecto.Adapters.SQL
 
   @doc """
   Get the partition name for a specific date and table.
@@ -53,7 +54,7 @@ defmodule EveDmv.Database.PartitionUtils do
 
     pattern = "#{table}_y%"
 
-    case Ecto.Adapters.SQL.query(Repo, query, [pattern]) do
+    case SQL.query(Repo, query, [pattern]) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [_schema, table_name, size, size_bytes] ->
           %{
@@ -150,7 +151,7 @@ defmodule EveDmv.Database.PartitionUtils do
     )
     """
 
-    case Ecto.Adapters.SQL.query(Repo, query, [partition_name]) do
+    case SQL.query(Repo, query, [partition_name]) do
       {:ok, %{rows: [[true]]}} -> true
       _ -> false
     end
@@ -167,7 +168,7 @@ defmodule EveDmv.Database.PartitionUtils do
 
     pattern = "#{table}_y%"
 
-    case Ecto.Adapters.SQL.query(Repo, query, [pattern]) do
+    case SQL.query(Repo, query, [pattern]) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, &Enum.at(&1, 0))
 
@@ -179,7 +180,7 @@ defmodule EveDmv.Database.PartitionUtils do
   defp get_table_row_count(table_name) do
     query = "SELECT COUNT(*) FROM #{table_name}"
 
-    case Ecto.Adapters.SQL.query(Repo, query, []) do
+    case SQL.query(Repo, query, []) do
       {:ok, %{rows: [[count]]}} -> count
       _ -> 0
     end
@@ -203,7 +204,11 @@ defmodule EveDmv.Database.PartitionUtils do
     if length(partitions) <= 3 do
       "Query will scan #{length(partitions)} partition(s): #{Enum.join(partitions, ", ")}"
     else
-      "Query will scan #{length(partitions)} partitions (#{Enum.take(partitions, 2) |> Enum.join(", ")}, ...)"
+      first_two_partitions =
+        Enum.take(partitions, 2)
+        |> Enum.join(", ")
+
+      "Query will scan #{length(partitions)} partitions (#{first_two_partitions}, ...)"
     end
   end
 

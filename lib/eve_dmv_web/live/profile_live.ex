@@ -8,7 +8,7 @@ defmodule EveDmvWeb.ProfileLive do
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
-  @impl true
+  @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     current_user = socket.assigns[:current_user]
 
@@ -25,7 +25,7 @@ defmodule EveDmvWeb.ProfileLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
     <.flash_group flash={@flash} />

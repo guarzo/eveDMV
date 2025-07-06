@@ -7,7 +7,7 @@ defmodule EveDmv.Intelligence.MemberActivityIntelligence do
   """
 
   use Ash.Resource,
-    domain: EveDmv.Api,
+    domain: EveDmv.Domains.Intelligence,
     data_layer: AshPostgres.DataLayer
 
   postgres do
@@ -282,49 +282,55 @@ defmodule EveDmv.Intelligence.MemberActivityIntelligence do
       change(fn changeset, context ->
         activity_type = Ash.Changeset.get_argument(changeset, :activity_type)
 
-        case activity_type do
-          "pvp_kill" ->
-            current_kills = Ash.Changeset.get_attribute(changeset, :total_pvp_kills) || 0
-            Ash.Changeset.change_attribute(changeset, :total_pvp_kills, current_kills + 1)
+        updated_changeset =
+          case activity_type do
+            "pvp_kill" ->
+              current_kills = Ash.Changeset.get_attribute(changeset, :total_pvp_kills) || 0
+              Ash.Changeset.change_attribute(changeset, :total_pvp_kills, current_kills + 1)
 
-          "pvp_loss" ->
-            current_losses = Ash.Changeset.get_attribute(changeset, :total_pvp_losses) || 0
-            Ash.Changeset.change_attribute(changeset, :total_pvp_losses, current_losses + 1)
+            "pvp_loss" ->
+              current_losses = Ash.Changeset.get_attribute(changeset, :total_pvp_losses) || 0
+              Ash.Changeset.change_attribute(changeset, :total_pvp_losses, current_losses + 1)
 
-          "home_defense" ->
-            current_participation =
-              Ash.Changeset.get_attribute(changeset, :home_defense_participations) || 0
+            "home_defense" ->
+              current_participation =
+                Ash.Changeset.get_attribute(changeset, :home_defense_participations) || 0
 
-            Ash.Changeset.change_attribute(
-              changeset,
-              :home_defense_participations,
-              current_participation + 1
-            )
+              Ash.Changeset.change_attribute(
+                changeset,
+                :home_defense_participations,
+                current_participation + 1
+              )
 
-          "fleet_operation" ->
-            current_participation =
-              Ash.Changeset.get_attribute(changeset, :fleet_participations) || 0
+            "fleet_operation" ->
+              current_participation =
+                Ash.Changeset.get_attribute(changeset, :fleet_participations) || 0
 
-            Ash.Changeset.change_attribute(
-              changeset,
-              :fleet_participations,
-              current_participation + 1
-            )
+              Ash.Changeset.change_attribute(
+                changeset,
+                :fleet_participations,
+                current_participation + 1
+              )
 
-          "chain_operation" ->
-            current_participation =
-              Ash.Changeset.get_attribute(changeset, :chain_operations_participations) || 0
+            "chain_operation" ->
+              current_participation =
+                Ash.Changeset.get_attribute(changeset, :chain_operations_participations) || 0
 
-            Ash.Changeset.change_attribute(
-              changeset,
-              :chain_operations_participations,
-              current_participation + 1
-            )
+              Ash.Changeset.change_attribute(
+                changeset,
+                :chain_operations_participations,
+                current_participation + 1
+              )
 
-          _ ->
-            changeset
-        end
-        |> Ash.Changeset.change_attribute(:analysis_generated_at, DateTime.utc_now())
+            _ ->
+              changeset
+          end
+
+        Ash.Changeset.change_attribute(
+          updated_changeset,
+          :analysis_generated_at,
+          DateTime.utc_now()
+        )
       end)
     end
 

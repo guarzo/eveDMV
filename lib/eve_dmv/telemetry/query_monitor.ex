@@ -17,7 +17,7 @@ defmodule EveDmv.Telemetry.QueryMonitor do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  def init(_opts) do
+  def init(opts) do
     # Subscribe to Ecto telemetry events
     :telemetry.attach(
       "eve-dmv-query-monitor",
@@ -132,12 +132,12 @@ defmodule EveDmv.Telemetry.QueryMonitor do
       timestamp: DateTime.utc_now()
     }
 
-    updated_queries = [slow_query | state.slow_queries] |> Enum.take(@max_stored_queries)
+    updated_queries = Enum.take([slow_query | state.slow_queries], @max_stored_queries)
     {:noreply, %{state | slow_queries: updated_queries}}
   end
 
   def handle_cast({:record_slow_query_details, query_info}, state) do
-    updated_queries = [query_info | state.slow_queries] |> Enum.take(@max_stored_queries)
+    updated_queries = Enum.take([query_info | state.slow_queries], @max_stored_queries)
     {:noreply, %{state | slow_queries: updated_queries}}
   end
 
@@ -207,7 +207,7 @@ defmodule EveDmv.Telemetry.QueryMonitor do
   def handle_call(:get_query_stats, _from, state) do
     stats = %{
       total_slow_queries: length(state.slow_queries),
-      slowest_query: state.slow_queries |> Enum.max_by(& &1.duration_ms, fn -> nil end),
+      slowest_query: Enum.max_by(state.slow_queries, & &1.duration_ms, fn -> nil end),
       average_slow_query_time: calculate_average_time(state.slow_queries)
     }
 
@@ -234,14 +234,13 @@ defmodule EveDmv.Telemetry.QueryMonitor do
 
   def handle_call(:get_query_patterns, _from, state) do
     patterns =
-      state.query_patterns
-      |> Enum.map(fn {{query, source}, executions} ->
+      Enum.map(state.query_patterns, fn {{query, source}, executions} ->
         %{
           query: query,
           source: source,
           recent_executions: length(executions),
           avg_duration: calculate_pattern_avg_duration(executions),
-          last_execution: executions |> Enum.map(& &1.timestamp) |> Enum.max(fn -> nil end)
+          last_execution: Enum.max(Enum.map(executions, & &1.timestamp), fn -> nil end)
         }
       end)
 
@@ -326,7 +325,7 @@ defmodule EveDmv.Telemetry.QueryMonitor do
         )
 
         # Keep last 20 alerts
-        [alert | current_alerts] |> Enum.take(20)
+        Enum.take([alert | current_alerts], 20)
       else
         current_alerts
       end
@@ -367,9 +366,9 @@ defmodule EveDmv.Telemetry.QueryMonitor do
     slow_avg_queries =
       state.execution_stats
       |> Enum.filter(fn {_, stats} -> stats.avg_duration > @slow_query_threshold / 2 end)
-      |> length()
+      |> then(&length/1)
 
-    issues =
+    issues_with_slow =
       if slow_avg_queries > 0,
         do: ["#{slow_avg_queries} queries with high average duration" | issues],
         else: issues
@@ -378,18 +377,18 @@ defmodule EveDmv.Telemetry.QueryMonitor do
     frequent_queries =
       state.execution_stats
       |> Enum.filter(fn {_, stats} -> stats.count > 100 end)
-      |> length()
+      |> then(&length/1)
 
-    issues =
+    issues_with_frequent =
       if frequent_queries > 0,
-        do: ["#{frequent_queries} highly frequent queries" | issues],
-        else: issues
+        do: ["#{frequent_queries} highly frequent queries" | issues_with_slow],
+        else: issues_with_slow
 
     # Check for N+1 alerts
-    issues =
+    issues_with_n_plus_one =
       if length(state.n_plus_one_alerts) > 0,
-        do: ["#{length(state.n_plus_one_alerts)} N+1 query alerts" | issues],
-        else: issues
+        do: ["#{length(state.n_plus_one_alerts)} N+1 query alerts" | issues_with_frequent],
+        else: issues_with_frequent
 
     # Check for queries with high duration variance
     high_variance_queries =
@@ -397,13 +396,15 @@ defmodule EveDmv.Telemetry.QueryMonitor do
       |> Enum.filter(fn {_, stats} ->
         stats.max_duration > stats.min_duration * 10 and stats.count > 5
       end)
-      |> length()
+      |> then(&length/1)
 
-    issues =
+    final_issues =
       if high_variance_queries > 0,
-        do: ["#{high_variance_queries} queries with high duration variance" | issues],
-        else: issues
+        do: [
+          "#{high_variance_queries} queries with high duration variance" | issues_with_n_plus_one
+        ],
+        else: issues_with_n_plus_one
 
-    issues
+    final_issues
   end
 end

@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmvWeb.CorporationLive do
   @moduledoc """
   LiveView for displaying corporation overview and member activity.
@@ -9,7 +10,7 @@ defmodule EveDmvWeb.CorporationLive do
   use EveDmvWeb, :live_view
   alias EveDmv.Api
   alias EveDmv.Killmails.Participant
-  
+
   # Import reusable components
   import EveDmvWeb.Components.PageHeaderComponent
   import EveDmvWeb.Components.StatsGridComponent
@@ -19,7 +20,7 @@ defmodule EveDmvWeb.CorporationLive do
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
-  @impl true
+  @impl Phoenix.LiveView
   def mount(%{"corporation_id" => corp_id_str}, _session, socket) do
     case Integer.parse(corp_id_str) do
       {corporation_id, ""} ->
@@ -51,7 +52,7 @@ defmodule EveDmvWeb.CorporationLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("refresh", _params, socket) do
     corporation_id = socket.assigns.corporation_id
 

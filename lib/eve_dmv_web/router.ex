@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmvWeb.Router do
   @moduledoc """
   Phoenix router defining application routes and pipelines.

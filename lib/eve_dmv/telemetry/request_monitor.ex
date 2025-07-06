@@ -153,10 +153,8 @@ defmodule EveDmv.Telemetry.RequestMonitor do
     if duration > 5_000_000 do
       require Logger
 
-      Logger.warning("Slow ESI request detected",
-        service: metadata.service,
-        status: metadata.status,
-        duration_ms: duration / 1000
+      Logger.warning(
+        "Slow ESI request detected - service: #{metadata.service}, status: #{metadata.status}, duration: #{duration / 1000}ms"
       )
     end
   end
@@ -164,10 +162,8 @@ defmodule EveDmv.Telemetry.RequestMonitor do
   defp handle_circuit_breaker_change(_event_name, _measurements, metadata, _config) do
     require Logger
 
-    Logger.warning("Circuit breaker state changed",
-      service: metadata.service,
-      from: metadata.from_state,
-      to: metadata.to_state
+    Logger.warning(
+      "Circuit breaker state changed - service: #{metadata.service}, from: #{metadata.from_state}, to: #{metadata.to_state}"
     )
   end
 
@@ -175,10 +171,8 @@ defmodule EveDmv.Telemetry.RequestMonitor do
     require Logger
 
     if measurements.remaining < 10 do
-      Logger.warning("ESI rate limit warning",
-        service: metadata.service,
-        remaining: measurements.remaining,
-        reset_in: measurements.reset_in
+      Logger.warning(
+        "ESI rate limit warning - service: #{metadata.service}, remaining: #{measurements.remaining}, reset in: #{measurements.reset_in}s"
       )
     end
   end

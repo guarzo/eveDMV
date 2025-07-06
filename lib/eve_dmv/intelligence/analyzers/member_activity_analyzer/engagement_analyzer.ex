@@ -1,7 +1,7 @@
 defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.EngagementAnalyzer do
   @moduledoc """
   Engagement calculation and analysis module for member activity analyzer.
-  
+
   Handles all engagement score calculations, engagement grouping,
   and engagement distribution analysis for EVE Online members.
   """
@@ -10,7 +10,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.EngagementAnalyze
 
   @doc """
   Calculate engagement score for a member based on their activity data.
-  
+
   The engagement score is calculated using multiple factors including
   kills, losses, fleet participation, and communication activity.
   """
@@ -20,33 +20,33 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.EngagementAnalyze
     fleet_score = calculate_fleet_engagement(member_data)
     communication_score = calculate_communication_engagement(member_data)
     consistency_score = calculate_consistency_score(member_data)
-    
+
     # Weight the different components
-    weighted_score = 
+    weighted_score =
       pvp_score * 0.4 +
-      fleet_score * 0.3 +
-      communication_score * 0.1 +
-      consistency_score * 0.2
-    
+        fleet_score * 0.3 +
+        communication_score * 0.1 +
+        consistency_score * 0.2
+
     # Normalize to 0-100 scale
     min(100, max(0, weighted_score))
   end
 
   @doc """
   Calculate engagement metrics for a list of member activities.
-  
+
   Provides comprehensive engagement analysis including average scores,
   distribution, and member groupings.
   """
   def calculate_member_engagement(member_activities) when is_list(member_activities) do
-    if length(member_activities) == 0 do
+    if member_activities == [] do
       create_empty_engagement_result()
     else
       member_engagement_data = calculate_individual_member_scores(member_activities)
       avg_engagement = calculate_average_engagement_score(member_engagement_data)
       grouped_members = group_members_by_engagement(member_engagement_data)
       distribution = create_engagement_distribution(grouped_members)
-      
+
       build_engagement_result(avg_engagement, grouped_members, distribution)
     end
   end
@@ -57,19 +57,19 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.EngagementAnalyze
   def calculate_pvp_engagement(member_data) do
     kills = Map.get(member_data, :total_pvp_kills, 0)
     losses = Map.get(member_data, :total_pvp_losses, 0)
-    
+
     # Activity level
     total_activity = kills + losses
     activity_score = min(50, total_activity * 2)
-    
+
     # Kill/Death ratio bonus
     kd_ratio = if losses > 0, do: kills / losses, else: kills
     kd_bonus = min(25, kd_ratio * 10)
-    
+
     # Solo activity bonus
     solo_kills = Map.get(member_data, :solo_kills, 0)
     solo_bonus = min(25, solo_kills * 5)
-    
+
     activity_score + kd_bonus + solo_bonus
   end
 
@@ -80,16 +80,16 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.EngagementAnalyze
     fleet_count = Map.get(member_data, :fleet_participations, 0)
     strategic_ops = Map.get(member_data, :strategic_op_participations, 0)
     home_defense = Map.get(member_data, :home_defense_participations, 0)
-    
+
     # Base fleet score
     base_score = min(40, fleet_count * 3)
-    
+
     # Strategic ops bonus
     strategic_bonus = min(30, strategic_ops * 10)
-    
+
     # Home defense bonus
     defense_bonus = min(30, home_defense * 8)
-    
+
     base_score + strategic_bonus + defense_bonus
   end
 
@@ -99,11 +99,11 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.EngagementAnalyze
   def calculate_communication_engagement(member_data) do
     discord_activity = Map.get(member_data, :discord_messages, 0)
     forum_activity = Map.get(member_data, :forum_posts, 0)
-    
+
     # Communication score (capped at 100)
     discord_score = min(50, discord_activity * 2)
     forum_score = min(50, forum_activity * 5)
-    
+
     discord_score + forum_score
   end
 
@@ -112,11 +112,11 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.EngagementAnalyze
   """
   def calculate_consistency_score(member_data) do
     activity_patterns = Map.get(member_data, :activity_patterns, %{})
-    
+
     # Check for consistent daily/weekly activity
     daily_consistency = Map.get(activity_patterns, :daily_consistency, 0)
     weekly_consistency = Map.get(activity_patterns, :weekly_consistency, 0)
-    
+
     # Average the consistency metrics
     (daily_consistency + weekly_consistency) / 2
   end
@@ -130,9 +130,10 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.EngagementAnalyze
       classify_engagement_level(score)
     end)
     |> Enum.into(%{}, fn {level, members} ->
-      {level, Enum.map(members, fn {member_id, score} -> 
-        %{member_id: member_id, score: score}
-      end)}
+      {level,
+       Enum.map(members, fn {member_id, score} ->
+         %{member_id: member_id, score: score}
+       end)}
     end)
   end
 
@@ -208,7 +209,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.EngagementAnalyze
   end
 
   defp build_engagement_result(avg_engagement, grouped_members, distribution) do
-    total_members = 
+    total_members =
       Enum.sum(Enum.map(distribution, fn {_level, count} -> count end))
 
     %{
@@ -224,7 +225,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.EngagementAnalyze
     if total_members > 0 do
       highly_engaged_pct = distribution.highly_engaged / total_members * 100
       at_risk_pct = (distribution.low_engagement + distribution.disengaged) / total_members * 100
-      
+
       %{
         highly_engaged_percentage: Float.round(highly_engaged_pct, 1),
         at_risk_percentage: Float.round(at_risk_pct, 1),

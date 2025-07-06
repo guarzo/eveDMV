@@ -146,14 +146,129 @@ defmodule EveDmv.Intelligence.PatternAnalysis do
     end
   end
 
-  defp analyze_target_selection_patterns(_stats) do
-    # Placeholder for target selection analysis
-    %{preferred_targets: ["frigates", "cruisers"], avoidance_patterns: ["capitals"]}
+  defp analyze_target_selection_patterns(stats) do
+    # Analyze what types of targets they prefer
+    %{
+      preferred_targets: determine_preferred_targets(stats),
+      avoidance_patterns: determine_avoided_targets(stats),
+      target_size_preference: analyze_target_size_preference(stats),
+      opportunistic_rating: calculate_opportunistic_rating(stats)
+    }
   end
 
-  defp identify_tactical_preferences(_stats) do
-    # Placeholder for tactical preference analysis
-    %{combat_style: "hit_and_run", engagement_range: "medium"}
+  defp determine_preferred_targets(stats) do
+    # Based on ship classes and engagement patterns
+    cond do
+      stats.top_ship_class in ["Interceptor", "Frigate"] ->
+        ["frigates", "destroyers"]
+
+      stats.top_ship_class in ["Cruiser", "Heavy Assault Cruiser"] ->
+        ["cruisers", "battlecruisers"]
+
+      stats.top_ship_class in ["Battleship", "Marauder"] ->
+        ["battleships", "capitals"]
+
+      # Solo pilots prefer smaller targets
+      stats.solo_ratio > 0.7 ->
+        ["frigates", "cruisers"]
+
+      true ->
+        ["all_sizes"]
+    end
+  end
+
+  defp determine_avoided_targets(stats) do
+    # What they tend to avoid
+    kill_death_ratio = calculate_kill_death_ratio(stats)
+
+    cond do
+      kill_death_ratio < 1.0 -> ["organized_fleets", "capitals"]
+      stats.solo_ratio > 0.8 -> ["large_gangs", "capitals"]
+      stats.avg_ship_value < 100_000_000 -> ["expensive_targets"]
+      true -> []
+    end
+  end
+
+  defp analyze_target_size_preference(stats) do
+    # Preference for target sizes
+    cond do
+      stats.top_ship_class in ["Battleship", "Battlecruiser"] ->
+        :larger_targets
+
+      stats.top_ship_class in ["Interceptor", "Frigate", "Destroyer"] ->
+        :smaller_targets
+
+      true ->
+        :similar_size
+    end
+  end
+
+  defp calculate_opportunistic_rating(stats) do
+    # How opportunistic vs. selective they are
+    total_activity = (stats.total_kills || 0) + (stats.total_losses || 0)
+
+    cond do
+      # High activity = opportunistic
+      total_activity > 1000 -> 0.8
+      total_activity > 500 -> 0.6
+      total_activity > 100 -> 0.4
+      # Low activity = selective
+      true -> 0.2
+    end
+  end
+
+  defp identify_tactical_preferences(stats) do
+    # Identify tactical combat preferences
+    %{
+      combat_style: determine_combat_style(stats),
+      engagement_range: determine_preferred_range(stats),
+      mobility_preference: assess_mobility_preference(stats),
+      positioning_skill: evaluate_positioning_skill(stats)
+    }
+  end
+
+  defp determine_combat_style(stats) do
+    cond do
+      stats.solo_ratio > 0.7 and stats.avg_damage_ratio > 0.8 -> "aggressive_solo"
+      stats.solo_ratio > 0.5 -> "hit_and_run"
+      stats.fleet_ratio > 0.7 -> "fleet_anchor"
+      stats.gang_ratio > 0.5 -> "small_gang_specialist"
+      true -> "opportunistic"
+    end
+  end
+
+  defp determine_preferred_range(stats) do
+    # Based on ship preferences
+    cond do
+      stats.top_ship_class in ["Bomber", "Attack Battlecruiser"] -> "long"
+      stats.top_ship_class in ["Cruiser", "Battlecruiser"] -> "medium"
+      stats.top_ship_class in ["Frigate", "Destroyer"] -> "short"
+      true -> "flexible"
+    end
+  end
+
+  defp assess_mobility_preference(stats) do
+    # How much they value mobility
+    if stats.top_ship_class in ["Interceptor", "Frigate", "Cruiser"] do
+      :high_mobility
+    else
+      :low_mobility
+    end
+  end
+
+  defp evaluate_positioning_skill(stats) do
+    # Estimate positioning skill from survival
+    kd_ratio = calculate_kill_death_ratio(stats)
+    solo_ratio = stats.solo_ratio || 0.5
+
+    score = kd_ratio * 0.6 + solo_ratio * 0.4
+
+    cond do
+      score > 2.0 -> :expert
+      score > 1.5 -> :skilled
+      score > 1.0 -> :competent
+      true -> :learning
+    end
   end
 
   defp assess_risk_tolerance(stats) do
@@ -168,28 +283,92 @@ defmodule EveDmv.Intelligence.PatternAnalysis do
     end
   end
 
-  defp determine_risk_trajectory(_stats, _vetting) do
-    # Placeholder for risk trajectory analysis
-    :stable
+  defp determine_risk_trajectory(stats, vetting) do
+    # Analyze if risk is increasing, decreasing, or stable
+    recent_kd = calculate_kill_death_ratio(stats)
+    security_flags = if is_map(vetting), do: Map.get(vetting, :security_flags, []), else: []
+
+    cond do
+      length(security_flags) > 3 -> :increasing
+      recent_kd < 1.0 and stats.total_losses > 50 -> :increasing
+      recent_kd > 2.0 and Enum.empty?(security_flags) -> :decreasing
+      true -> :stable
+    end
   end
 
   defp count_security_incidents(vetting) do
     # Count security-related incidents in vetting data
     if is_map(vetting) and Map.has_key?(vetting, :security_flags) do
-      Map.get(vetting, :security_flags, []) |> length()
+      security_flags = Map.get(vetting, :security_flags, [])
+      length(security_flags)
     else
       0
     end
   end
 
-  defp assess_improvement_trend(_stats) do
-    # Placeholder for improvement trend analysis
-    :positive
+  defp assess_improvement_trend(stats) do
+    # Assess if pilot is improving over time
+    kd_ratio = calculate_kill_death_ratio(stats)
+    total_activity = (stats.total_kills || 0) + (stats.total_losses || 0)
+
+    cond do
+      total_activity < 50 -> :insufficient_data
+      kd_ratio > 2.0 -> :positive
+      kd_ratio > 1.5 -> :stable_positive
+      kd_ratio > 1.0 -> :stable
+      kd_ratio > 0.5 -> :needs_improvement
+      true -> :negative
+    end
   end
 
-  defp calculate_stability_score(_stats) do
-    # Placeholder for stability scoring
-    0.75
+  defp calculate_stability_score(stats) do
+    # Calculate behavioral stability (0.0 to 1.0)
+    factors = [
+      consistency_factor(stats),
+      activity_regularity_factor(stats),
+      performance_stability_factor(stats)
+    ]
+
+    # Average of all factors
+    Enum.sum(factors) / length(factors)
+  end
+
+  defp consistency_factor(stats) do
+    # How consistent their behavior is
+    solo_ratio = stats.solo_ratio || 0.5
+
+    # More extreme ratios (very solo or very fleet) = more consistent
+    if solo_ratio > 0.8 or solo_ratio < 0.2 do
+      0.9
+    else
+      0.5
+    end
+  end
+
+  defp activity_regularity_factor(stats) do
+    # Based on total activity
+    total_activity = (stats.total_kills || 0) + (stats.total_losses || 0)
+
+    cond do
+      # Very active = regular
+      total_activity > 1000 -> 0.9
+      total_activity > 500 -> 0.7
+      total_activity > 100 -> 0.5
+      true -> 0.3
+    end
+  end
+
+  defp performance_stability_factor(stats) do
+    # Based on K/D ratio stability
+    kd_ratio = calculate_kill_death_ratio(stats)
+
+    cond do
+      # Consistently good
+      kd_ratio > 3.0 -> 0.9
+      kd_ratio > 2.0 -> 0.7
+      kd_ratio > 1.0 -> 0.5
+      true -> 0.3
+    end
   end
 
   defp calculate_cooperation_index(_stats) do
@@ -234,9 +413,33 @@ defmodule EveDmv.Intelligence.PatternAnalysis do
     0.7
   end
 
-  defp assess_strategic_thinking(_stats) do
-    # Placeholder for strategic thinking assessment
-    0.6
+  defp assess_strategic_thinking(stats) do
+    # Assess strategic vs tactical thinking
+    total_kills = stats.total_kills || 0
+    solo_ratio = stats.solo_ratio || 0.5
+    kd_ratio = calculate_kill_death_ratio(stats)
+
+    # High K/D with experience indicates strategy
+    strategy_score = 0.0
+
+    strategy_score =
+      cond do
+        total_kills > 500 and kd_ratio > 2.0 ->
+          strategy_score + 0.4
+
+        total_kills > 200 and kd_ratio > 1.5 ->
+          strategy_score + 0.3
+
+        true ->
+          strategy_score + 0.1
+      end
+
+    # Solo players need more strategy
+    if solo_ratio > 0.7 do
+      strategy_score + 0.2
+    else
+      strategy_score
+    end
   end
 
   defp check_activity_anomalies(anomalies, stats) do
@@ -273,6 +476,18 @@ defmodule EveDmv.Intelligence.PatternAnalysis do
       count >= 2 -> :medium
       count >= 1 -> :low
       true -> :none
+    end
+  end
+
+  defp calculate_kill_death_ratio(stats) do
+    kills = stats.total_kills || 0
+    losses = stats.total_losses || 0
+
+    if losses > 0 do
+      kills / losses
+    else
+      # If no losses, return kills as the ratio (capped at 100 for sanity)
+      min(kills, 100.0)
     end
   end
 end

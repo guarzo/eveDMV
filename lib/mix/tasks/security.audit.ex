@@ -15,7 +15,8 @@ defmodule Mix.Tasks.Security.Audit do
 
   use Mix.Task
 
-  alias EveDmv.Security.{ContainerSecurityReview, DatabaseSecurityReview}
+  # Security review modules not yet implemented
+  # alias EveDmv.Security.{ContainerSecurityReview, DatabaseSecurityReview}
 
   @shortdoc "Run security audits for database and container infrastructure"
 
@@ -48,7 +49,7 @@ defmodule Mix.Tasks.Security.Audit do
     run_container = Keyword.get(opts, :container, true)
 
     # If specific audit is requested, only run that one
-    {run_database, run_container} =
+    {final_run_database, final_run_container} =
       if Keyword.has_key?(opts, :database) or Keyword.has_key?(opts, :container) do
         {Keyword.get(opts, :database, false), Keyword.get(opts, :container, false)}
       else
@@ -60,8 +61,8 @@ defmodule Mix.Tasks.Security.Audit do
 
     audit_results = %{
       timestamp: DateTime.utc_now(),
-      database_audit: if(run_database, do: run_database_audit(), else: nil),
-      container_audit: if(run_container, do: run_container_audit(), else: nil)
+      database_audit: if(final_run_database, do: run_database_audit(), else: nil),
+      container_audit: if(final_run_container, do: run_container_audit(), else: nil)
     }
 
     # Generate and display report
@@ -83,16 +84,28 @@ defmodule Mix.Tasks.Security.Audit do
   defp run_database_audit do
     Mix.shell().info("📊 Running Database Security Audit...")
 
-    {:ok, results} = DatabaseSecurityReview.audit_database_security()
-    Mix.shell().info("✅ Database audit completed")
+    # Database security review implementation deferred pending security requirements
+    results = %{
+      status: :not_implemented,
+      message: "Database security review module not yet implemented",
+      timestamp: DateTime.utc_now()
+    }
+
+    Mix.shell().info("⚠️  Database audit not implemented yet")
     results
   end
 
   defp run_container_audit do
     Mix.shell().info("🐳 Running Container Security Audit...")
 
-    {:ok, results} = ContainerSecurityReview.audit_container_security()
-    Mix.shell().info("✅ Container audit completed")
+    # Container security review implementation deferred pending containerization
+    results = %{
+      status: :not_implemented,
+      message: "Container security review module not yet implemented",
+      timestamp: DateTime.utc_now()
+    }
+
+    Mix.shell().info("⚠️  Container audit not implemented yet")
     results
   end
 
@@ -146,14 +159,16 @@ defmodule Mix.Tasks.Security.Audit do
       end
 
     # Container audit section
-    report =
+    final_report =
       if audit_results.container_audit do
         report ++ generate_container_text_section(audit_results.container_audit)
       else
         report
       end
 
-    Enum.reverse(report) |> Enum.join("\n")
+    final_report
+    |> Enum.reverse()
+    |> Enum.join("\n")
   end
 
   defp generate_database_text_section(db_audit) do
@@ -332,7 +347,7 @@ defmodule Mix.Tasks.Security.Audit do
     total_recommendations = 0
     high_priority = 0
 
-    {total_recommendations, high_priority} =
+    {db_total_recommendations, db_high_priority} =
       if audit_results.database_audit do
         db_recs = length(audit_results.database_audit.recommendations)
 
@@ -347,15 +362,15 @@ defmodule Mix.Tasks.Security.Audit do
         {total_recommendations, high_priority}
       end
 
-    {total_recommendations, high_priority} =
+    {final_total_recommendations, final_high_priority} =
       if audit_results.container_audit do
         container_recs = length(audit_results.container_audit.recommendations)
 
         container_high =
           audit_results.container_audit.recommendations |> Enum.count(&(&1.priority == :high))
 
-        new_total = total_recommendations + container_recs
-        new_high = high_priority + container_high
+        new_total = db_total_recommendations + container_recs
+        new_high = db_high_priority + container_high
 
         Mix.shell().info(
           "Container: #{container_recs} recommendations (#{container_high} high priority)"
@@ -363,16 +378,16 @@ defmodule Mix.Tasks.Security.Audit do
 
         {new_total, new_high}
       else
-        {total_recommendations, high_priority}
+        {db_total_recommendations, db_high_priority}
       end
 
     Mix.shell().info("")
 
     Mix.shell().info(
-      "Total: #{total_recommendations} recommendations (#{high_priority} high priority)"
+      "Total: #{final_total_recommendations} recommendations (#{final_high_priority} high priority)"
     )
 
-    if high_priority > 0 do
+    if final_high_priority > 0 do
       Mix.shell().info("⚠️  Address high priority recommendations first!")
     else
       Mix.shell().info("✅ No high priority security issues found")

@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmv.Enrichment.RealTimePriceUpdater do
   @moduledoc """
   Real-time price update service that monitors for significant price changes
@@ -62,7 +63,7 @@ defmodule EveDmv.Enrichment.RealTimePriceUpdater do
 
   # GenServer callbacks
 
-  @impl true
+  @impl GenServer
   def init(_opts) do
     Logger.info("Starting real-time price updater")
 
@@ -78,7 +79,7 @@ defmodule EveDmv.Enrichment.RealTimePriceUpdater do
     {:ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast({:check_prices, killmail_ids}, state) do
     Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
       check_and_broadcast_prices(killmail_ids)
@@ -87,7 +88,7 @@ defmodule EveDmv.Enrichment.RealTimePriceUpdater do
     {:noreply, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:update_batch, killmails}, _from, state) do
     results = process_batch_updates(killmails)
 
@@ -100,7 +101,7 @@ defmodule EveDmv.Enrichment.RealTimePriceUpdater do
     {:reply, results, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:check_recent, state) do
     # Check prices for killmails from the last hour
     Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
@@ -196,7 +197,7 @@ defmodule EveDmv.Enrichment.RealTimePriceUpdater do
            [killmail.killmail_id, killmail.killmail_time],
            domain: Api
          ) do
-      {:ok, raw_killmail} when not is_nil(raw_killmail) ->
+      {:ok, raw_killmail} ->
         {:ok, raw_killmail.raw_data}
 
       _ ->

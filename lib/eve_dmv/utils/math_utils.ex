@@ -135,9 +135,7 @@ defmodule EveDmv.Utils.MathUtils do
   """
   @spec calculate_standard_deviation([number()], float() | nil) :: float()
   def calculate_standard_deviation(values, mean \\ nil) do
-    values
-    |> calculate_variance(mean)
-    |> :math.sqrt()
+    :math.sqrt(calculate_variance(values, mean))
   end
 
   @doc """
@@ -219,9 +217,7 @@ defmodule EveDmv.Utils.MathUtils do
   """
   @spec clamp_score(number(), number(), number()) :: number()
   def clamp_score(score, min_val \\ 0, max_val \\ 100) do
-    score
-    |> max(min_val)
-    |> min(max_val)
+    min(max(score, min_val), max_val)
   end
 
   @doc """

@@ -7,6 +7,8 @@ defmodule EveDmv.Killmails.MockSSEServer do
   use GenServer
   require Logger
 
+  alias EveDmv.Killmails.TestDataGenerator
+
   @default_port 8080
   # Send an event every 5 seconds
   @default_interval 5000
@@ -45,7 +47,7 @@ defmodule EveDmv.Killmails.MockSSEServer do
 
   def handle_info(:send_event, state) do
     # Generate and send a killmail event to all connected clients
-    event = EveDmv.Killmails.TestDataGenerator.generate_sample_sse_event()
+    event = TestDataGenerator.generate_sample_sse_event()
     broadcast_event(state.clients, event)
 
     # Schedule the next event
@@ -133,6 +135,7 @@ defmodule EveDmv.Killmails.MockSSEServer.SSEHandler do
   """
 
   require Logger
+  alias EveDmv.Killmails.TestDataGenerator
 
   def init(req, state) do
     # Set proper SSE headers and start streaming response
@@ -167,7 +170,7 @@ defmodule EveDmv.Killmails.MockSSEServer.SSEHandler do
 
   defp stream_killmail_events(req) do
     # Generate a killmail event every 10 seconds
-    sample_data = EveDmv.Killmails.TestDataGenerator.generate_sample_killmail()
+    sample_data = TestDataGenerator.generate_sample_killmail()
 
     sse_event = """
     event: killmail

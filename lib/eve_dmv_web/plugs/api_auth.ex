@@ -126,7 +126,7 @@ defmodule EveDmvWeb.Plugs.ApiAuth do
         Logger.warning("API authentication failed", %{
           reason: reason,
           ip: client_ip,
-          user_agent: get_req_header(conn, "user-agent") |> List.first()
+          user_agent: conn |> get_req_header("user-agent") |> List.first()
         })
 
         send_unauthorized(conn, format_error_message(reason))

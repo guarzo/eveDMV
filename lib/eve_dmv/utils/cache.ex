@@ -310,7 +310,7 @@ defmodule EveDmv.Utils.Cache do
   # Private functions
 
   defp cache_table_name(name) when is_atom(name), do: name
-  defp cache_table_name(name), do: String.to_atom("cache_#{name}")
+  defp cache_table_name(name), do: String.to_existing_atom("cache_#{name}")
 
   defp timestamp_ms do
     System.monotonic_time(:millisecond)
@@ -340,7 +340,9 @@ defmodule EveDmv.Utils.Cache do
       # Simple FIFO eviction - remove oldest 10%
       num_to_remove = div(max_size, 10)
 
-      :ets.tab2list(table_name)
+      table_list = :ets.tab2list(table_name)
+
+      table_list
       |> Enum.sort_by(fn {_key, _value, expires_at} -> expires_at end)
       |> Enum.take(num_to_remove)
       |> Enum.each(fn {key, _value, _expires_at} ->

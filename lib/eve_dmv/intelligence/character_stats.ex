@@ -210,8 +210,8 @@ defmodule EveDmv.Intelligence.CharacterStats do
         character_id = Ash.Changeset.get_attribute(changeset, :character_id)
 
         if character_id do
-          # Use the CharacterAnalyzer to recalculate stats
-          case EveDmv.Intelligence.Analyzers.CharacterAnalyzer.analyze_character(character_id) do
+          # Use the IntelligenceEngine to recalculate stats
+          case EveDmv.IntelligenceEngine.analyze(:character, character_id, scope: :full) do
             {:ok, updated_stats} ->
               # Update changeset with fresh statistics
               changeset

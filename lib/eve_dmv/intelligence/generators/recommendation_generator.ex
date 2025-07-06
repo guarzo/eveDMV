@@ -22,7 +22,7 @@ defmodule EveDmv.Intelligence.Generators.RecommendationGenerator do
     recommendations = []
 
     # Activity trend recommendations
-    recommendations =
+    activity_recommendations =
       case Map.get(activity_trends, :trend_direction) do
         :decreasing ->
           ["Implement engagement initiatives to reverse declining activity" | recommendations]
@@ -37,51 +37,54 @@ defmodule EveDmv.Intelligence.Generators.RecommendationGenerator do
     # Engagement recommendations
     overall_engagement = Map.get(engagement_metrics, :overall_engagement_score, 0)
 
-    recommendations =
+    engagement_recommendations =
       if overall_engagement < 50 do
-        ["Plan more engaging fleet operations and events" | recommendations]
+        ["Plan more engaging fleet operations and events" | activity_recommendations]
       else
-        recommendations
+        activity_recommendations
       end
 
     # Fleet participation recommendations
     avg_participation = Map.get(fleet_participation, :avg_participation_rate, 0.0)
 
-    recommendations =
+    fleet_recommendations =
       if avg_participation < 0.5 do
-        ["Improve fleet scheduling to increase participation" | recommendations]
+        ["Improve fleet scheduling to increase participation" | engagement_recommendations]
       else
-        recommendations
+        engagement_recommendations
       end
 
     # Communication recommendations
-    recommendations =
+    communication_recommendations =
       case communication_health do
         :poor ->
-          ["Enhance communication channels and engagement" | recommendations]
+          ["Enhance communication channels and engagement" | fleet_recommendations]
 
         :moderate ->
-          ["Monitor communication patterns for improvement opportunities" | recommendations]
+          ["Monitor communication patterns for improvement opportunities" | fleet_recommendations]
 
         _ ->
-          recommendations
+          fleet_recommendations
       end
 
     # Retention risk recommendations
     high_risk_count = length(Map.get(retention_risks, :high_risk_members, []))
 
-    recommendations =
+    final_recommendations =
       if high_risk_count > 0 do
-        ["Immediate attention needed for #{high_risk_count} at-risk members" | recommendations]
+        [
+          "Immediate attention needed for #{high_risk_count} at-risk members"
+          | communication_recommendations
+        ]
       else
-        recommendations
+        communication_recommendations
       end
 
     %{
-      immediate_actions: Enum.take(recommendations, 2),
-      engagement_strategies: filter_engagement_recommendations(recommendations),
-      retention_initiatives: filter_leadership_recommendations(recommendations),
-      long_term_goals: filter_operational_recommendations(recommendations)
+      immediate_actions: Enum.take(final_recommendations, 2),
+      engagement_strategies: filter_engagement_recommendations(final_recommendations),
+      retention_initiatives: filter_leadership_recommendations(final_recommendations),
+      long_term_goals: filter_operational_recommendations(final_recommendations)
     }
   end
 

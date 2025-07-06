@@ -1,26 +1,26 @@
 defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityTrendAnalyzer do
   @moduledoc """
   Activity trend analysis module for member activity analyzer.
-  
+
   Analyzes activity patterns over time including trend detection,
   seasonal patterns, peak identification, and predictive insights.
   """
 
   require Logger
-  alias EveDmv.Utils.TimeUtils
+  alias EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityHelpers
 
   @doc """
   Analyze activity trends over a specified period.
-  
+
   Provides comprehensive trend analysis including direction, volatility,
   seasonal patterns, and activity peaks.
   """
   def analyze_activity_trends(member_activities, days) when is_list(member_activities) do
-    if length(member_activities) == 0 do
+    if Enum.empty?(member_activities) do
       create_empty_trend_result()
     else
       activity_series = extract_activity_series(member_activities, days)
-      
+
       if length(activity_series) > 7 do
         perform_advanced_trend_analysis(activity_series, member_activities, days)
       else
@@ -31,7 +31,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityTrendAnal
 
   @doc """
   Calculate trend direction from activity data.
-  
+
   Determines if activity is increasing, decreasing, stable, or volatile.
   """
   def calculate_trend_direction(activity_data) when is_list(activity_data) do
@@ -52,23 +52,6 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityTrendAnal
       activity_change_percent < -20 -> {:decreasing, activity_change_percent}
       abs(activity_change_percent) > 10 -> {:volatile, activity_change_percent}
       true -> {:stable, activity_change_percent}
-    end
-  end
-
-  @doc """
-  Identify activity peaks in the data series.
-  """
-  def identify_activity_peaks(activity_series) do
-    # Simple peak detection - find values above average
-    if length(activity_series) > 2 do
-      avg = Enum.sum(activity_series) / length(activity_series)
-
-      activity_series
-      |> Enum.with_index()
-      |> Enum.filter(fn {value, _index} -> value > avg * 1.2 end)
-      |> Enum.map(fn {_value, index} -> index end)
-    else
-      []
     end
   end
 
@@ -107,17 +90,17 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityTrendAnal
   end
 
   defp perform_advanced_trend_analysis(activity_series, member_activities, days) do
-    {trend_direction, growth_rate} = calculate_trend_from_series(activity_series)
-    peaks = identify_activity_peaks(activity_series)
+    {_trend_direction, _growth_rate} = calculate_trend_from_series(activity_series)
+    peaks = ActivityHelpers.identify_activity_peaks(activity_series)
     seasonal = analyze_seasonal_patterns(member_activities, days)
-    
+
     # Recent activity analysis
     recent_cutoff = DateTime.add(DateTime.utc_now(), -7, :day)
     recent_activities = filter_recent_activities(member_activities, recent_cutoff)
     metrics = calculate_activity_metrics(member_activities, recent_activities)
-    
+
     {trend, change_percent} = determine_trend_direction(metrics.activity_change_percent)
-    
+
     %{
       trend_direction: trend,
       activity_change_percent: change_percent,
@@ -134,17 +117,17 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityTrendAnal
     # Simple analysis for limited data
     recent_cutoff = DateTime.add(DateTime.utc_now(), -7, :day)
     recent_activities = filter_recent_activities(member_activities, recent_cutoff)
-    
-    activity_change = 
+
+    activity_change =
       if length(recent_activities) > 0 and length(member_activities) > 0 do
-        (length(recent_activities) / min(7, days) - 
-         length(member_activities) / days) * 100
+        (length(recent_activities) / min(7, days) -
+           length(member_activities) / days) * 100
       else
         0.0
       end
-    
+
     {trend, _} = determine_trend_direction(activity_change)
-    
+
     %{
       trend_direction: trend,
       activity_change_percent: activity_change,
@@ -159,37 +142,42 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityTrendAnal
   end
 
   defp calculate_activity_metrics(member_activities, recent_activities) do
-    total_historical_activity = 
-      Enum.sum(Enum.map(member_activities, fn m ->
-        Map.get(m, :total_activity, 0)
-      end))
-    
-    total_recent_activity = 
-      Enum.sum(Enum.map(recent_activities, fn m ->
-        Map.get(m, :total_activity, 0)
-      end))
-    
-    avg_daily_historical = 
+    total_historical_activity =
+      Enum.sum(
+        Enum.map(member_activities, fn m ->
+          Map.get(m, :total_activity, 0)
+        end)
+      )
+
+    total_recent_activity =
+      Enum.sum(
+        Enum.map(recent_activities, fn m ->
+          Map.get(m, :total_activity, 0)
+        end)
+      )
+
+    avg_daily_historical =
       if length(member_activities) > 0 do
         total_historical_activity / length(member_activities)
       else
         0.0
       end
-    
-    avg_daily_recent = 
+
+    avg_daily_recent =
       if length(recent_activities) > 0 do
         total_recent_activity / length(recent_activities)
       else
         0.0
       end
-    
-    activity_change_percent = calculate_activity_change_percent(
-      total_recent_activity,
-      recent_activities,
-      total_historical_activity,
-      member_activities
-    )
-    
+
+    activity_change_percent =
+      calculate_activity_change_percent(
+        total_recent_activity,
+        recent_activities,
+        total_historical_activity,
+        member_activities
+      )
+
     %{
       total_historical_activity: total_historical_activity,
       total_recent_activity: total_recent_activity,
@@ -270,15 +258,15 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityTrendAnal
   defp calculate_trend_confidence(activity_series) do
     # Confidence based on data volume and consistency
     data_points = length(activity_series)
-    
+
     base_confidence = min(50, data_points * 2)
-    
+
     # Add consistency bonus
     if data_points > 7 do
       variance = calculate_variance(activity_series)
       mean = Enum.sum(activity_series) / data_points
       cv = if mean > 0, do: variance / mean, else: 1.0
-      
+
       consistency_bonus = max(0, 50 - cv * 100)
       min(100, base_confidence + consistency_bonus)
     else
@@ -290,7 +278,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityTrendAnal
     if length(activity_series) > 2 do
       variance = calculate_variance(activity_series)
       mean = Enum.sum(activity_series) / length(activity_series)
-      
+
       if mean > 0 do
         coefficient_of_variation = variance / mean
         min(100, coefficient_of_variation * 100)
@@ -304,18 +292,18 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityTrendAnal
 
   defp calculate_variance(series) do
     mean = Enum.sum(series) / length(series)
-    
-    squared_diffs = 
+
+    squared_diffs =
       series
       |> Enum.map(fn x -> :math.pow(x - mean, 2) end)
       |> Enum.sum()
-    
+
     squared_diffs / length(series)
   end
 
   defp generate_activity_prediction(trend, change_percent, activity_series) do
     confidence = calculate_prediction_confidence(trend, activity_series)
-    
+
     next_7_days_prediction =
       case trend do
         :increasing when change_percent > 30 -> :high_activity
@@ -325,7 +313,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityTrendAnal
         :volatile -> :unpredictable
         _ -> :stable_activity
       end
-    
+
     %{
       next_7_days: next_7_days_prediction,
       confidence: confidence,
@@ -335,7 +323,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityTrendAnal
 
   defp calculate_prediction_confidence(trend, activity_series) do
     data_confidence = min(50, length(activity_series) * 3)
-    
+
     trend_confidence =
       case trend do
         :stable -> 40
@@ -344,7 +332,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityTrendAnal
         :volatile -> 10
         _ -> 20
       end
-    
+
     min(100, data_confidence + trend_confidence)
   end
 

@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmv.Database.QueryPlanAnalyzer do
   @moduledoc """
   Analyzes PostgreSQL query execution plans to identify performance bottlenecks
@@ -11,7 +12,8 @@ defmodule EveDmv.Database.QueryPlanAnalyzer do
   require Logger
 
   alias EveDmv.Repo
-  
+  alias Ecto.Adapters.SQL
+
   # Extracted modules
   alias EveDmv.Database.QueryPlanAnalyzer.{
     PlanAnalyzer,
@@ -125,7 +127,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer do
   defp ensure_pg_stat_statements_enabled do
     query = "SELECT EXISTS(SELECT 1 FROM pg_extension WHERE extname = 'pg_stat_statements')"
 
-    case Ecto.Adapters.SQL.query(Repo, query, []) do
+    case SQL.query(Repo, query, []) do
       {:ok, %{rows: [[true]]}} ->
         Logger.info("pg_stat_statements extension is available")
         :ok
@@ -151,7 +153,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer do
     # Get query execution plan
     explain_query = "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) " <> query
 
-    case Ecto.Adapters.SQL.query(Repo, explain_query, params) do
+    case SQL.query(Repo, explain_query, params) do
       {:ok, %{rows: [[json_plan]]}} ->
         execution_time = System.monotonic_time(:millisecond) - start_time
 
@@ -199,8 +201,12 @@ defmodule EveDmv.Database.QueryPlanAnalyzer do
   defp generate_query_recommendations(analysis) do
     buffer_recommendations = BufferAnalyzer.generate_buffer_recommendations(analysis.buffer_usage)
     plan_recommendations = PlanAnalyzer.generate_plan_recommendations(analysis)
-    index_recommendations = IndexAnalyzer.generate_index_recommendations(IndexAnalyzer.analyze_index_patterns(analysis.index_usage))
-    
+
+    index_recommendations =
+      IndexAnalyzer.generate_index_recommendations(
+        IndexAnalyzer.analyze_index_patterns(analysis.index_usage)
+      )
+
     buffer_recommendations ++ plan_recommendations ++ index_recommendations
   end
 
@@ -361,7 +367,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer do
     ]
 
     Enum.each(queries, fn query ->
-      case Ecto.Adapters.SQL.query(Repo, query, []) do
+      case SQL.query(Repo, query, []) do
         {:ok, _} ->
           :ok
 

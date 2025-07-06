@@ -6,7 +6,7 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
   wormhole compatibility assessment, and doctrine compliance scoring.
   """
 
-  alias EveDmv.Intelligence.{ShipDatabase}
+  alias EveDmv.Intelligence.ShipDatabase
   alias EveDmv.Intelligence.Analyzers.MassCalculator
 
   @doc """
@@ -102,10 +102,7 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
       end)
       |> Map.new()
 
-    best_doctrine =
-      doctrine_scores
-      |> Enum.max_by(fn {_doctrine, score} -> score end)
-      |> elem(0)
+    {best_doctrine, _score} = Enum.max_by(doctrine_scores, fn {_doctrine, score} -> score end)
 
     %{
       doctrine_scores: doctrine_scores,

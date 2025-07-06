@@ -1,3 +1,5 @@
+# credo:disable-for-this-file Credo.Check.Design.DuplicatedCode
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmv.Application do
   # See https://hexdocs.pm/elixir/Application.html
   # for more information on OTP Applications
@@ -5,12 +7,16 @@ defmodule EveDmv.Application do
 
   use Application
 
-  @impl true
+  alias EveDmv.Config.RateLimit
+  alias EveDmv.Eve.NameResolver
+  alias EveDmv.Eve.StaticDataLoader
+
+  @impl Application
   def start(_type, _args) do
     # Initialize EVE name resolver cache early
-    EveDmv.Eve.NameResolver.start_cache()
+    NameResolver.start_cache()
 
-    # Only set up security handlers in non-test environments  
+    # Only set up security handlers in non-test environments
     if Mix.env() != :test do
       # Set up security monitoring handlers
       # EveDmv.Security.AuditLogger.setup_handlers()
@@ -28,6 +34,8 @@ defmodule EveDmv.Application do
       EveDmv.Repo,
       {DNSCluster, query: Application.get_env(:eve_dmv, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: EveDmv.PubSub},
+      # Domain event infrastructure
+      EveDmv.Infrastructure.EventBusSupervisor,
       # Start the Finch HTTP client for sending emails
       {Finch, name: EveDmv.Finch},
       # Start the price cache
@@ -35,8 +43,7 @@ defmodule EveDmv.Application do
       # Start the ESI cache
       EveDmv.Eve.EsiCache,
       # Start rate limiter for Janice API (5 requests per second)
-      {EveDmv.Market.RateLimiter,
-       [name: :janice_rate_limiter] ++ EveDmv.Config.RateLimit.janice_rate_limit()},
+      {EveDmv.Market.RateLimiter, [name: :janice_rate_limiter] ++ RateLimit.janice_rate_limit()},
       # Start the surveillance matching engine
       maybe_start_surveillance_engine(),
       # Conditionally start database-dependent processes
@@ -169,7 +176,7 @@ defmodule EveDmv.Application do
 
   # Tell Phoenix to update the endpoint configuration
   # whenever the application is updated.
-  @impl true
+  @impl Application
   def config_change(changed, _new, removed) do
     EveDmvWeb.Endpoint.config_change(changed, removed)
     :ok
@@ -177,7 +184,7 @@ defmodule EveDmv.Application do
 
   # Ensure static data is loaded, but don't block application startup
   defp ensure_static_data_loaded do
-    alias EveDmv.Eve.StaticDataLoader
+    StaticDataLoader.load_static_data()
     require Logger
 
     case StaticDataLoader.static_data_loaded?() do
@@ -194,7 +201,7 @@ defmodule EveDmv.Application do
             )
 
             # Warm the cache after loading
-            EveDmv.Eve.NameResolver.warm_cache()
+            NameResolver.warm_cache()
             Logger.info("Name resolver cache warmed")
 
           {:error, reason} ->

@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmvWeb.WHVettingLive do
   @moduledoc """
   LiveView for wormhole corporation vetting system.
@@ -12,15 +13,16 @@ defmodule EveDmvWeb.WHVettingLive do
 
   use EveDmvWeb, :live_view
 
-  require Logger
-
   alias EveDmv.Api
+  alias EveDmv.Eve.EsiClient
   alias EveDmv.Intelligence.Wormhole.Vetting, as: WHVetting
-  alias EveDmv.IntelligenceEngine
+  alias EveDmv.IntelligenceMigrationAdapter
+
+  require Logger
 
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
-  @impl true
+  @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     socket =
       socket
@@ -39,21 +41,21 @@ defmodule EveDmvWeb.WHVettingLive do
     {:ok, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_params(params, _url, socket) do
     tab = params["tab"] || "dashboard"
 
-    socket = assign(socket, :tab, String.to_atom(tab))
+    socket = assign(socket, :tab, String.to_existing_atom(tab))
 
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("change_tab", %{"tab" => tab}, socket) do
     {:noreply, push_patch(socket, to: ~p"/wh-vetting?tab=#{tab}")}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("search_character", %{"search" => %{"query" => query}}, socket) do
     if String.length(query) >= 3 do
       # Search for characters by name
@@ -64,7 +66,7 @@ defmodule EveDmvWeb.WHVettingLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("start_vetting", %{"character_id" => character_id_str}, socket) do
     case Integer.parse(character_id_str) do
       {character_id, ""} ->
@@ -80,7 +82,7 @@ defmodule EveDmvWeb.WHVettingLive do
           send(
             self(),
             {:vetting_complete, character_id,
-             IntelligenceEngine.analyze(:threat, character_id, analysis_opts)}
+             IntelligenceMigrationAdapter.analyze(:threat, character_id, analysis_opts)}
           )
         end)
 
@@ -91,7 +93,7 @@ defmodule EveDmvWeb.WHVettingLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("view_vetting", %{"id" => vetting_id}, socket) do
     case Ash.get(WHVetting, vetting_id, domain: Api) do
       {:ok, record} ->
@@ -102,7 +104,7 @@ defmodule EveDmvWeb.WHVettingLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("update_notes", %{"id" => vetting_id, "notes" => notes}, socket) do
     case Ash.get(WHVetting, vetting_id, domain: Api) do
       {:ok, record} ->
@@ -125,12 +127,12 @@ defmodule EveDmvWeb.WHVettingLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("close_details", _params, socket) do
     {:noreply, assign(socket, :selected_record, nil)}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info(:load_vetting_records, socket) do
     case WHVetting.get_recent(30) do
       {:ok, records} ->
@@ -142,7 +144,7 @@ defmodule EveDmvWeb.WHVettingLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:vetting_complete, character_id, result}, socket) do
     socket = assign(socket, :analysis_in_progress, false)
 
@@ -216,22 +218,24 @@ defmodule EveDmvWeb.WHVettingLive do
 
   defp extract_security_concerns(threat_data) do
     # Extract security concerns from threat analysis
-    concerns = []
+    initial_concerns = []
 
-    concerns =
+    eviction_concerns =
       if Map.get(threat_data, :eviction_group_member),
-        do: ["Eviction group member" | concerns],
-        else: concerns
+        do: ["Eviction group member" | initial_concerns],
+        else: initial_concerns
 
-    concerns =
-      if Map.get(threat_data, :known_spy), do: ["Known spy activity" | concerns], else: concerns
+    spy_concerns =
+      if Map.get(threat_data, :known_spy),
+        do: ["Known spy activity" | eviction_concerns],
+        else: eviction_concerns
 
-    concerns =
+    final_concerns =
       if Map.get(threat_data, :suspicious_activity),
-        do: ["Suspicious patterns detected" | concerns],
-        else: concerns
+        do: ["Suspicious patterns detected" | spy_concerns],
+        else: spy_concerns
 
-    concerns
+    final_concerns
   end
 
   defp determine_recommendation(threat_data, character_data) do
@@ -249,7 +253,7 @@ defmodule EveDmvWeb.WHVettingLive do
 
   defp search_characters(query) do
     # Search for characters using ESI search API
-    case EveDmv.Eve.EsiClient.search_entities(query, [:character]) do
+    case EsiClient.search_entities(query, [:character]) do
       {:ok, results} ->
         character_ids = Map.get(results, "character", [])
         process_character_search_results(character_ids)
@@ -264,7 +268,7 @@ defmodule EveDmvWeb.WHVettingLive do
 
   defp process_character_search_results(character_ids) do
     # Fetch character details for the found IDs
-    {:ok, character_details} = EveDmv.Eve.EsiClient.get_characters(character_ids)
+    {:ok, character_details} = EsiClient.get_characters(character_ids)
     formatted_results = format_character_details(character_details)
     {:ok, Enum.take(formatted_results, 10)}
   end

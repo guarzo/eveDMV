@@ -1,0 +1,107 @@
+# Infrastructure & Utilities Code Quality Fixes
+
+## Issues Overview - PROGRESS UPDATE
+- **Error Count**: Reduced to ~150 errors (was 200+) ✅ **25% improvement**
+- **Remaining Issues**: Pipe chain structure, some single-function pipelines, performance warnings
+- **Files Affected**: 
+  - `lib/eve_dmv/workers/*`
+  - `lib/eve_dmv/telemetry/*`
+  - `lib/eve_dmv/surveillance/*`
+  - `lib/eve_dmv/security/*`
+  - `lib/eve_dmv/quality/*`
+  - `lib/eve_dmv/intelligence/*`
+  - `lib/eve_dmv/eve/*`
+  - `lib/eve_dmv/analytics/*`
+  - `test/` files
+
+## AI Assistant Prompt
+
+Address current infrastructure and utility code quality issues:
+
+### 1. **Single-Function Pipelines** (Medium Priority - ~20 remaining)
+**Progress**: ✅ Significant reduction achieved (was 50+, now ~20)
+**Remaining**: Convert final single-function pipelines to direct function calls:
+```elixir
+# Bad
+result |> SomeModule.process()
+
+# Good
+SomeModule.process(result)
+```
+
+**Key Areas**:
+- Worker supervisors and task management
+- Telemetry and monitoring modules  
+- Security authentication and validation
+- Quality metrics collection
+- Test helper utilities
+
+### 2. **Code Formatting** (Critical - 100+ instances)
+**Automated fixes needed**:
+- Remove trailing whitespace from all lines
+- Add final newlines to files
+- Format large numbers: `1000000` → `1_000_000`
+
+### 3. **@impl Annotations** (High Priority - 30+ instances)
+Replace generic `@impl true` with specific behavior names:
+```elixir
+# Bad
+@impl true
+def handle_call(...)
+
+# Good  
+@impl GenServer
+def handle_call(...)
+```
+
+**Common behaviors to specify**:
+- `GenServer`
+- `Supervisor` 
+- `Task`
+- Custom behavior modules
+
+### 4. **Variable Redeclaration** (Medium Priority - 20+ instances)
+Fix repeated variable names with descriptive alternatives:
+- `recommendations` → `initial_recommendations`, `filtered_recommendations`, `final_recommendations`
+- `results` → `query_results`, `analysis_results`, `validation_results`
+- `errors` → `validation_errors`, `processing_errors`, `network_errors`
+
+### 5. **Import Organization** (Medium Priority)
+- Order: `alias` before `require` before `import`
+- No grouped aliases: `alias {A, B}` → separate lines
+- Alphabetize within each group
+
+### 6. **Logger Metadata** (Low Priority)
+Add missing logger metadata keys to config:
+- `entity_type`
+- `threat_level` 
+- `error`
+- `character_id`
+- `corporation_id`
+
+## Implementation Priority
+
+1. **Quick Wins (Do First)**:
+   - Run code formatter for whitespace/formatting
+   - Convert single-function pipelines
+   - Add specific @impl annotations
+
+2. **Code Quality**:
+   - Fix variable redeclaration with descriptive names
+   - Organize imports properly
+   - Address any remaining pipe chain issues
+
+3. **Configuration**:
+   - Update logger metadata configuration
+   - Review module attribute ordering
+
+## Files Requiring Immediate Attention
+
+Based on error frequency:
+- Worker and supervisor modules
+- Security and authentication modules
+- Quality metrics collectors
+- Telemetry and monitoring components
+- Test utilities and helpers
+
+Focus on maintaining all infrastructure functionality while systematically improving code organization.

@@ -8,6 +8,8 @@ defmodule EveDmv.Surveillance.Matching.IndexManager do
 
   require Logger
 
+  alias EveDmv.Surveillance.Matching.KillmailFieldExtractor
+
   # ETS table names
   @compiled_profiles :surveillance_compiled_profiles
   @index_by_tag :surveillance_index_by_tag
@@ -85,7 +87,7 @@ defmodule EveDmv.Surveillance.Matching.IndexManager do
   def find_candidate_profiles_optimized(killmail) do
     # Extract values from killmail for index lookup
     indexable_values =
-      EveDmv.Surveillance.Matching.KillmailFieldExtractor.extract_indexable_values(killmail)
+      KillmailFieldExtractor.extract_indexable_values(killmail)
 
     # Find candidates from each index
     candidates_by_system = find_candidates_by_system(indexable_values.systems)
@@ -220,7 +222,9 @@ defmodule EveDmv.Surveillance.Matching.IndexManager do
 
   defp extract_indexable_criteria(filter_tree) do
     # Recursively walk the filter tree to find indexable criteria
-    extract_criteria_from_node(filter_tree)
+    criteria = extract_criteria_from_node(filter_tree)
+
+    criteria
     |> List.flatten()
     |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
   end
@@ -231,7 +235,7 @@ defmodule EveDmv.Surveillance.Matching.IndexManager do
          "operator" => "eq",
          "value" => value
        }) do
-    if EveDmv.Surveillance.Matching.KillmailFieldExtractor.indexable_field?(field) do
+    if KillmailFieldExtractor.indexable_field?(field) do
       [{field, value}]
     else
       []
@@ -245,7 +249,7 @@ defmodule EveDmv.Surveillance.Matching.IndexManager do
          "value" => values
        })
        when is_list(values) do
-    if EveDmv.Surveillance.Matching.KillmailFieldExtractor.indexable_field?(field) do
+    if KillmailFieldExtractor.indexable_field?(field) do
       Enum.map(values, fn value -> {field, value} end)
     else
       []
@@ -266,7 +270,7 @@ defmodule EveDmv.Surveillance.Matching.IndexManager do
   end
 
   defp build_field_index(profile_id, field, value) do
-    index_table = EveDmv.Surveillance.Matching.KillmailFieldExtractor.get_index_type(field)
+    index_table = KillmailFieldExtractor.get_index_type(field)
 
     if index_table do
       :ets.insert(index_table, {value, profile_id})
@@ -275,15 +279,15 @@ defmodule EveDmv.Surveillance.Matching.IndexManager do
 
   defp find_candidates_by_system(systems) do
     Enum.flat_map(systems, fn system_id ->
-      :ets.lookup(@index_by_system, system_id)
-      |> Enum.map(fn {_system, profile_id} -> profile_id end)
+      system_lookup = :ets.lookup(@index_by_system, system_id)
+      Enum.map(system_lookup, fn {_system, profile_id} -> profile_id end)
     end)
   end
 
   defp find_candidates_by_ship(ships) do
     Enum.flat_map(ships, fn ship_id ->
-      :ets.lookup(@index_by_ship, ship_id)
-      |> Enum.map(fn {_ship, profile_id} -> profile_id end)
+      ship_lookup = :ets.lookup(@index_by_ship, ship_id)
+      Enum.map(ship_lookup, fn {_ship, profile_id} -> profile_id end)
     end)
   end
 
@@ -291,7 +295,9 @@ defmodule EveDmv.Surveillance.Matching.IndexManager do
     # For ISK values, we need range-based lookup
     # This is simplified - production would use more sophisticated range indexing
     Enum.flat_map(isk_values, fn isk_value ->
-      :ets.tab2list(@index_by_isk)
+      isk_list = :ets.tab2list(@index_by_isk)
+
+      isk_list
       |> Enum.filter(fn {indexed_value, _profile_id} ->
         # 10% tolerance
         abs(indexed_value - isk_value) < isk_value * 0.1
@@ -302,8 +308,8 @@ defmodule EveDmv.Surveillance.Matching.IndexManager do
 
   defp find_candidates_by_tag(tags) do
     Enum.flat_map(tags, fn tag ->
-      :ets.lookup(@index_by_tag, tag)
-      |> Enum.map(fn {_tag, profile_id} -> profile_id end)
+      lookup_results = :ets.lookup(@index_by_tag, tag)
+      Enum.map(lookup_results, fn {_tag, profile_id} -> profile_id end)
     end)
   end
 end

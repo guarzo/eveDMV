@@ -233,7 +233,7 @@ defmodule EveDmv.Factories do
   end
 
   defp generate_hash do
-    :crypto.strong_rand_bytes(16) |> Base.encode16(case: :lower)
+    Base.encode16(:crypto.strong_rand_bytes(16), case: :lower)
   end
 
   defp build_random_items do
@@ -441,7 +441,7 @@ defmodule EveDmv.Factories do
       end
 
       # Override solar system if specified
-      killmail_data =
+      final_killmail_data =
         if system_id = Keyword.get(opts, :solar_system_id) do
           Map.put(killmail_data, "solar_system_id", system_id)
         else
@@ -449,7 +449,7 @@ defmodule EveDmv.Factories do
         end
 
       # Create the killmail
-      create(:killmail_raw, %{killmail_data: killmail_data})
+      create(:killmail_raw, %{killmail_data: final_killmail_data})
     end
   end
 

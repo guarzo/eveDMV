@@ -7,7 +7,10 @@ defmodule EveDmv.Eve.EsiCharacterClient do
   """
 
   require Logger
-  alias EveDmv.Eve.{EsiCache, EsiParsers, EsiRequestClient, FallbackStrategy}
+  alias EveDmv.Eve.EsiCache
+  alias EveDmv.Eve.EsiParsers
+  alias EveDmv.Eve.EsiRequestClient
+  alias EveDmv.Eve.FallbackStrategy
   alias EveDmv.Telemetry.PerformanceMonitor
 
   @character_api_version "v4"

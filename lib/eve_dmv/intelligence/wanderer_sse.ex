@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmv.Intelligence.WandererSSE do
   @moduledoc """
   Server-Sent Events (SSE) client for Wanderer map events.
@@ -42,7 +43,7 @@ defmodule EveDmv.Intelligence.WandererSSE do
 
   # GenServer Callbacks
 
-  @impl true
+  @impl GenServer
   def init(opts) do
     base_url = Keyword.get(opts, :base_url) || get_base_url_from_env()
     api_token = Keyword.get(opts, :api_token) || get_api_token_from_env()
@@ -57,7 +58,7 @@ defmodule EveDmv.Intelligence.WandererSSE do
     {:ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:monitor_map, map_id}, _from, state) do
     if MapSet.member?(state.monitored_maps, map_id) do
       {:reply, {:ok, :already_monitoring}, state}
@@ -72,7 +73,7 @@ defmodule EveDmv.Intelligence.WandererSSE do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:stop_monitoring, map_id}, _from, state) do
     case Map.get(state.sse_connections, map_id) do
       nil ->
@@ -89,7 +90,7 @@ defmodule EveDmv.Intelligence.WandererSSE do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:status, _from, state) do
     status = %{
       monitored_maps: MapSet.to_list(state.monitored_maps),
@@ -100,13 +101,13 @@ defmodule EveDmv.Intelligence.WandererSSE do
     {:reply, status, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info({:sse_event, map_id, event_data}, state) do
     process_sse_event(map_id, event_data)
     {:noreply, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info({:sse_connection_closed, map_id, reason}, state) do
     Logger.warning("SSE connection closed for map #{map_id}: #{inspect(reason)}")
 
@@ -122,7 +123,7 @@ defmodule EveDmv.Intelligence.WandererSSE do
     {:noreply, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info({:reconnect_map, map_id}, state) do
     Logger.info("Attempting to reconnect SSE for map #{map_id}")
 
@@ -136,7 +137,7 @@ defmodule EveDmv.Intelligence.WandererSSE do
     {:noreply, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(_msg, state) do
     {:noreply, state}
   end

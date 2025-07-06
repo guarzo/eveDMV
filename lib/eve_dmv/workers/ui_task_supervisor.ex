@@ -35,7 +35,7 @@ defmodule EveDmv.Workers.UITaskSupervisor do
   end
 
   @impl true
-  def init(_opts) do
+  def init(opts) do
     Logger.info("Started UI Task Supervisor")
     DynamicSupervisor.init(strategy: :one_for_one, max_children: @max_concurrent_global)
   end
@@ -69,12 +69,12 @@ defmodule EveDmv.Workers.UITaskSupervisor do
           {:ok, pid}
 
         {:error, reason} ->
-          Logger.warn("Failed to start UI task '#{description}': #{inspect(reason)}")
+          Logger.warning("Failed to start UI task '#{description}': #{inspect(reason)}")
           {:error, reason}
       end
     else
       {:error, :limit_exceeded} = error ->
-        Logger.warn("UI task limit exceeded for '#{description}' (user: #{user_id})")
+        Logger.warning("UI task limit exceeded for '#{description}' (user: #{user_id})")
         error
     end
   end
@@ -101,7 +101,7 @@ defmodule EveDmv.Workers.UITaskSupervisor do
           Task.await(pid, timeout)
         catch
           :exit, {:timeout, _} ->
-            Logger.warn("UI task timed out after #{timeout}ms")
+            Logger.warning("UI task timed out after #{timeout}ms")
             DynamicSupervisor.terminate_child(supervisor, pid)
             {:error, :timeout}
         end
@@ -187,9 +187,9 @@ defmodule EveDmv.Workers.UITaskSupervisor do
     end
   end
 
-  defp check_user_limit(supervisor, nil), do: :ok
+  defp check_user_limit(_supervisor, nil), do: :ok
 
-  defp check_user_limit(supervisor, user_id) do
+  defp check_user_limit(_supervisor, user_id) do
     user_task_count = get_user_task_count(user_id)
 
     if user_task_count >= @max_concurrent_per_user do

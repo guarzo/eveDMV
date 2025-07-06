@@ -1,6 +1,6 @@
 defmodule EveDmv.Security.HeadersValidatorTest do
   use ExUnit.Case, async: true
-  use EveDmvWeb.ConnCase
+  use EveDmvWeb.ConnCase, async: true
 
   alias EveDmv.Security.HeadersValidator
 
@@ -38,13 +38,13 @@ defmodule EveDmv.Security.HeadersValidatorTest do
       assert "Invalid Strict-Transport-Security header: missing max-age" in errors
 
       # Test Frame Options validation
-      headers = %{"x-frame-options" => "ALLOWALL"}
-      assert {:error, errors} = HeadersValidator.validate_headers(headers)
+      frame_headers = %{"x-frame-options" => "ALLOWALL"}
+      assert {:error, errors} = HeadersValidator.validate_headers(frame_headers)
       assert "Invalid X-Frame-Options value: ALLOWALL. Expected DENY or SAMEORIGIN" in errors
 
       # Test Content Type Options validation
-      headers = %{"x-content-type-options" => "allow-sniff"}
-      assert {:error, errors} = HeadersValidator.validate_headers(headers)
+      content_headers = %{"x-content-type-options" => "allow-sniff"}
+      assert {:error, errors} = HeadersValidator.validate_headers(content_headers)
       assert "Invalid X-Content-Type-Options value: allow-sniff. Expected nosniff" in errors
     end
   end
@@ -64,7 +64,6 @@ defmodule EveDmv.Security.HeadersValidatorTest do
 
         {:error, errors} ->
           # Log for debugging but don't fail test in development
-          IO.puts("Security headers validation errors: #{inspect(errors)}")
           :ok
       end
     end

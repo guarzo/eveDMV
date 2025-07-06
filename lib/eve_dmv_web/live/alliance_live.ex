@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmvWeb.AllianceLive do
   @moduledoc """
   LiveView for displaying alliance analytics dashboard.
@@ -9,7 +10,7 @@ defmodule EveDmvWeb.AllianceLive do
   use EveDmvWeb, :live_view
   alias EveDmv.Api
   alias EveDmv.Killmails.Participant
-  
+
   # Import reusable components
   import EveDmvWeb.Components.PageHeaderComponent
   import EveDmvWeb.Components.StatsGridComponent
@@ -19,7 +20,7 @@ defmodule EveDmvWeb.AllianceLive do
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
-  @impl true
+  @impl Phoenix.LiveView
   def mount(%{"alliance_id" => alliance_id_str}, _session, socket) do
     case Integer.parse(alliance_id_str) do
       {alliance_id, ""} ->
@@ -55,7 +56,7 @@ defmodule EveDmvWeb.AllianceLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("refresh", _params, socket) do
     alliance_id = socket.assigns.alliance_id
 
@@ -124,8 +125,8 @@ defmodule EveDmvWeb.AllianceLive do
 
             # Calculate corporation stats
             members = corp_participants |> Enum.map(& &1.character_id) |> Enum.uniq() |> length()
-            kills = corp_participants |> Enum.count(&(not &1.is_victim))
-            losses = corp_participants |> Enum.count(& &1.is_victim)
+            kills = Enum.count(corp_participants, &(not &1.is_victim))
+            losses = Enum.count(corp_participants, & &1.is_victim)
 
             # Get latest activity
             latest_activity =
@@ -164,8 +165,7 @@ defmodule EveDmvWeb.AllianceLive do
            domain: Api
          ) do
       {:ok, participants} ->
-        participants
-        |> Enum.map(fn p ->
+        Enum.map(participants, fn p ->
           %{
             character_name: p.character_name,
             corporation_name: p.corporation_name,
@@ -194,8 +194,8 @@ defmodule EveDmvWeb.AllianceLive do
           character_name = participations |> List.first() |> Map.get(:character_name, "Unknown")
           corp_name = participations |> List.first() |> Map.get(:corporation_name, "Unknown")
 
-          kills = participations |> Enum.count(&(not &1.is_victim))
-          losses = participations |> Enum.count(& &1.is_victim)
+          kills = Enum.count(participations, &(not &1.is_victim))
+          losses = Enum.count(participations, & &1.is_victim)
 
           %{
             character_id: character_id,
@@ -273,8 +273,8 @@ defmodule EveDmvWeb.AllianceLive do
            domain: Api
          ) do
       {:ok, participants} ->
-        kills = participants |> Enum.count(&(not &1.is_victim))
-        losses = participants |> Enum.count(& &1.is_victim)
+        kills = Enum.count(participants, &(not &1.is_victim))
+        losses = Enum.count(participants, & &1.is_victim)
 
         %{
           week_label: "Week -#{weeks_ago}",
