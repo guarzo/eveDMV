@@ -2,7 +2,7 @@ defmodule EveDmv.Intelligence.ShipDatabase.ShipRoleData do
   @moduledoc """
   Ship role data and fleet composition utilities.
 
-  Handles ship roles, fleet composition analysis, and optimal 
+  Handles ship roles, fleet composition analysis, and optimal
   gang size calculations for tactical analysis.
   """
 

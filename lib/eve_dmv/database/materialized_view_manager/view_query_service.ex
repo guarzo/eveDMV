@@ -161,7 +161,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewQueryService do
       case metric do
         :daily_kills ->
           """
-          SELECT 
+          SELECT
             activity_date,
             total_killmails as value
           FROM daily_killmail_summary
@@ -171,7 +171,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewQueryService do
 
         :daily_value ->
           """
-          SELECT 
+          SELECT
             activity_date,
             total_value_destroyed as value
           FROM daily_killmail_summary
@@ -181,7 +181,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewQueryService do
 
         :active_systems ->
           """
-          SELECT 
+          SELECT
             activity_date,
             systems_active as value
           FROM daily_killmail_summary

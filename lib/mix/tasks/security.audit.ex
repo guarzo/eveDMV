@@ -278,7 +278,7 @@ defmodule Mix.Tasks.Security.Audit do
             <h1>🔒 EVE DMV Security Audit Report</h1>
             <p>Generated: #{DateTime.to_string(audit_results.timestamp)}</p>
         </div>
-        
+
         #{if audit_results.database_audit, do: generate_database_html_section(audit_results.database_audit), else: ""}
         #{if audit_results.container_audit, do: generate_container_html_section(audit_results.container_audit), else: ""}
     </body>
@@ -295,7 +295,7 @@ defmodule Mix.Tasks.Security.Audit do
             <li>SSL Enabled: #{format_html_status(db_audit.connection_security.ssl_enabled)}</li>
             <li>Connection Encryption: #{format_html_status(db_audit.connection_security.connection_encryption)}</li>
         </ul>
-        
+
         <h3>Recommendations</h3>
         #{format_html_recommendations(db_audit.recommendations)}
     </div>
@@ -311,7 +311,7 @@ defmodule Mix.Tasks.Security.Audit do
             <li>Vulnerability Scanning: #{format_html_status(container_audit.image_security.vulnerability_scanning)}</li>
             <li>Base Image Security: #{format_html_status(container_audit.dockerfile_security.base_image_security)}</li>
         </ul>
-        
+
         <h3>Recommendations</h3>
         #{format_html_recommendations(container_audit.recommendations)}
     </div>

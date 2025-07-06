@@ -23,7 +23,7 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
 
       iex> EsiEntityResolver.character_name(95465499)
       "CCP Falcon"
-      
+
       iex> EsiEntityResolver.character_name(999999999)
       "Unknown Character (999999999)"
   """
@@ -44,7 +44,7 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
 
       iex> EsiEntityResolver.corporation_name(98388312)
       "CCP Games"
-      
+
       iex> EsiEntityResolver.corporation_name(999999999)
       "Unknown Corporation (999999999)"
   """
@@ -65,7 +65,7 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
 
       iex> EsiEntityResolver.alliance_name(99005338)
       "Pandemic Horde"
-      
+
       iex> EsiEntityResolver.alliance_name(999999999)
       "Unknown Alliance (999999999)"
   """

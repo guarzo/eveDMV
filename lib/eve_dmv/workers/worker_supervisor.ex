@@ -9,7 +9,7 @@ defmodule EveDmv.Workers.WorkerSupervisor do
   ## Worker Categories
 
   - **Maintenance Workers**: Cache warming, cleanup, optimization
-  - **Analysis Workers**: Intelligence analysis, correlation processing  
+  - **Analysis Workers**: Intelligence analysis, correlation processing
   - **Data Workers**: Re-enrichment, price updates, name resolution
   - **Event Workers**: Real-time event processing, surveillance matching
   """

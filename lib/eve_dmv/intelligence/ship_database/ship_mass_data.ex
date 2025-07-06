@@ -2,7 +2,7 @@ defmodule EveDmv.Intelligence.ShipDatabase.ShipMassData do
   @moduledoc """
   Ship mass data and utilities.
 
-  Handles ship mass information for wormhole calculations and 
+  Handles ship mass information for wormhole calculations and
   fleet movement analysis.
   """
 

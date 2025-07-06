@@ -7,7 +7,7 @@ defmodule EveDmv.ErrorCodes do
   ## Categories
 
   - **Validation**: Input validation errors (4xx equivalent)
-  - **Not Found**: Resource not found errors (404 equivalent)  
+  - **Not Found**: Resource not found errors (404 equivalent)
   - **External Service**: External API/service errors
   - **System**: Internal system errors (5xx equivalent)
   - **Business Logic**: Domain-specific business rule violations

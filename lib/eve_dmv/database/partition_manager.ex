@@ -203,8 +203,8 @@ defmodule EveDmv.Database.PartitionManager do
   defp partition_exists?(partition_name) do
     query = """
     SELECT EXISTS (
-      SELECT 1 FROM information_schema.tables 
-      WHERE table_schema = 'public' 
+      SELECT 1 FROM information_schema.tables
+      WHERE table_schema = 'public'
       AND table_name = $1
     )
     """
@@ -224,7 +224,7 @@ defmodule EveDmv.Database.PartitionManager do
     end_datetime = "#{Date.add(end_of_month, 1)} 00:00:00"
 
     sql = """
-    CREATE TABLE IF NOT EXISTS #{partition_name} 
+    CREATE TABLE IF NOT EXISTS #{partition_name}
     PARTITION OF #{table}
     FOR VALUES FROM ('#{start_datetime}') TO ('#{end_datetime}')
     """
@@ -307,9 +307,9 @@ defmodule EveDmv.Database.PartitionManager do
 
   defp find_old_partitions(table, cutoff_date) do
     query = """
-    SELECT schemaname, tablename 
-    FROM pg_tables 
-    WHERE schemaname = 'public' 
+    SELECT schemaname, tablename
+    FROM pg_tables
+    WHERE schemaname = 'public'
     AND tablename LIKE $1
     """
 
@@ -357,9 +357,9 @@ defmodule EveDmv.Database.PartitionManager do
 
   defp list_existing_partitions(table) do
     query = """
-    SELECT tablename 
-    FROM pg_tables 
-    WHERE schemaname = 'public' 
+    SELECT tablename
+    FROM pg_tables
+    WHERE schemaname = 'public'
     AND tablename LIKE $1
     ORDER BY tablename
     """
@@ -419,9 +419,9 @@ defmodule EveDmv.Database.PartitionManager do
 
   defp get_total_partition_count do
     query = """
-    SELECT COUNT(*) 
-    FROM pg_tables 
-    WHERE schemaname = 'public' 
+    SELECT COUNT(*)
+    FROM pg_tables
+    WHERE schemaname = 'public'
     AND (tablename LIKE 'killmails_raw_y%' OR tablename LIKE 'killmails_enriched_y%')
     """
 
@@ -433,12 +433,12 @@ defmodule EveDmv.Database.PartitionManager do
 
   defp get_partition_sizes do
     query = """
-    SELECT 
+    SELECT
       schemaname,
       tablename,
       pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as size
-    FROM pg_tables 
-    WHERE schemaname = 'public' 
+    FROM pg_tables
+    WHERE schemaname = 'public'
     AND (tablename LIKE 'killmails_raw_y%' OR tablename LIKE 'killmails_enriched_y%')
     ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
     LIMIT 10
@@ -455,9 +455,9 @@ defmodule EveDmv.Database.PartitionManager do
 
   defp get_oldest_partition do
     query = """
-    SELECT tablename 
-    FROM pg_tables 
-    WHERE schemaname = 'public' 
+    SELECT tablename
+    FROM pg_tables
+    WHERE schemaname = 'public'
     AND (tablename LIKE 'killmails_raw_y%' OR tablename LIKE 'killmails_enriched_y%')
     ORDER BY tablename ASC
     LIMIT 1
@@ -471,9 +471,9 @@ defmodule EveDmv.Database.PartitionManager do
 
   defp get_newest_partition do
     query = """
-    SELECT tablename 
-    FROM pg_tables 
-    WHERE schemaname = 'public' 
+    SELECT tablename
+    FROM pg_tables
+    WHERE schemaname = 'public'
     AND (tablename LIKE 'killmails_raw_y%' OR tablename LIKE 'killmails_enriched_y%')
     ORDER BY tablename DESC
     LIMIT 1

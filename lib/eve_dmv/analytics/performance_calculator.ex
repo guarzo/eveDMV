@@ -67,7 +67,7 @@ defmodule EveDmv.Analytics.PerformanceCalculator do
   Calculate average ISK value per loss.
 
   Returns:
-  - Decimal average value  
+  - Decimal average value
   - Returns 0 if no losses
   """
   def calculate_average_loss_value(total_isk_lost, total_losses) when is_integer(total_losses) do

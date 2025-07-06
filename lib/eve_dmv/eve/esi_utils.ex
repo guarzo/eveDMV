@@ -18,7 +18,7 @@ defmodule EveDmv.Eve.EsiUtils do
 
       iex> safe_esi_call("character", fn -> EsiClient.get_character(12345) end)
       {:ok, %{name: "Test Character"}}
-      
+
       iex> safe_esi_call("character", fn -> {:error, :not_found} end)
       {:error, :service_unavailable}
   """
@@ -37,7 +37,7 @@ defmodule EveDmv.Eve.EsiUtils do
 
       iex> handle_esi_result({:ok, data}, &process_data/1, fn -> fallback_data() end)
       {:ok, processed_data}
-      
+
       iex> handle_esi_result({:error, :timeout}, &process_data/1, fn -> fallback_data() end)
       {:ok, fallback_data}
   """

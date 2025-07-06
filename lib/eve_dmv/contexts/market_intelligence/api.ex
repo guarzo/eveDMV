@@ -35,7 +35,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Api do
 
       iex> get_price(34)  # Tritanium
       {:ok, %{type_id: 34, price: 5.2, source: :janice, updated_at: ~U[2024-01-01 12:00:00Z]}}
-      
+
       iex> get_price(34, source: :mutamarket, region_id: 10000043)
       {:ok, %{type_id: 34, price: 5.1, source: :mutamarket, updated_at: ~U[2024-01-01 12:00:00Z]}}
   """

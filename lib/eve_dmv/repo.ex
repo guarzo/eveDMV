@@ -3,7 +3,7 @@ defmodule EveDmv.Repo do
   The main repository for EVE DMV application using AshPostgres.
 
   Handles database connections and provides Ash framework integration
-  with PostgreSQL, including support for partitioned tables and 
+  with PostgreSQL, including support for partitioned tables and
   advanced EVE Online data processing features.
   """
 

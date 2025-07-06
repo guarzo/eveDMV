@@ -15,10 +15,10 @@ defmodule EveDmv.Cache do
       # Cache character data (hot data)
       EveDmv.Cache.put(:hot_data, {:character, 123}, character_data)
       {:ok, data} = EveDmv.Cache.get(:hot_data, {:character, 123})
-      
+
       # Cache API response
       EveDmv.Cache.put(:api_responses, {:esi, :character, 123}, esi_response)
-      
+
       # Cache analysis result
       EveDmv.Cache.put(:analysis, {:character_intel, 123}, intel_data)
   """

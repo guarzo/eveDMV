@@ -87,7 +87,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
   def handle_call({:get_prices, type_ids, options}, _from, state) do
     result = do_get_prices(type_ids, options)
 
-    # Update stats  
+    # Update stats
     new_state =
       state
       |> Map.update!(:request_count, &(&1 + length(type_ids)))
@@ -285,7 +285,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
     [
       # Tritanium
       34,
-      # Pyerite  
+      # Pyerite
       35,
       # Mexallon
       36,

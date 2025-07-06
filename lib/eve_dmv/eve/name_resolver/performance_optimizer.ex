@@ -15,7 +15,7 @@ defmodule EveDmv.Eve.NameResolver.PerformanceOptimizer do
   @doc """
   Preloads names for killmail participants to improve UI performance.
 
-  Takes a list of killmails and preloads all character, corporation, 
+  Takes a list of killmails and preloads all character, corporation,
   and alliance names found in the participants.
   """
   def preload_killmail_names(killmails) when is_list(killmails) do

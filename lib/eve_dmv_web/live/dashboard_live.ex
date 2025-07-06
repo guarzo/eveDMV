@@ -111,7 +111,7 @@ defmodule EveDmvWeb.DashboardLive do
           </p>
         </div>
       </div>
-      
+
     <!-- Real-time Price Monitor -->
       <.live_component module={PriceMonitorComponent} id="price-monitor" />
     </div>

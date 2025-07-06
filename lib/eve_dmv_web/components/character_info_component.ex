@@ -12,7 +12,7 @@ defmodule EveDmvWeb.Components.CharacterInfoComponent do
 
   ## Examples
 
-      <.character_info 
+      <.character_info
         character_id={@character.id}
         character_name={@character.name}
         corporation_name={@character.corporation_name}
@@ -32,7 +32,7 @@ defmodule EveDmvWeb.Components.CharacterInfoComponent do
   def character_info(assigns) do
     ~H"""
     <div class={"flex items-center space-x-3 #{@class}"}>
-      <img 
+      <img
         src={character_avatar_url(@character_id, @avatar_size)}
         alt={"#{@character_name} avatar"}
         class={"#{avatar_size_class(@avatar_size)} rounded-full bg-gray-700"}
@@ -79,15 +79,15 @@ defmodule EveDmvWeb.Components.CharacterInfoComponent do
   def character_link(assigns) do
     ~H"""
     <div class={"flex items-center space-x-2 #{@class}"}>
-      <img 
+      <img
         :if={@show_avatar}
         src={character_avatar_url(@character_id, "small")}
         alt={"#{@character_name} avatar"}
         class="w-6 h-6 rounded-full bg-gray-700"
         onerror="this.src='/images/character-placeholder.png'"
       />
-      <.link 
-        navigate={"/intel/#{@character_id}"} 
+      <.link
+        navigate={"/intel/#{@character_id}"}
         class="text-blue-400 hover:text-blue-300 transition-colors truncate"
       >
         <%= @character_name %>

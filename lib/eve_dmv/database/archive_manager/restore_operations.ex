@@ -94,7 +94,7 @@ defmodule EveDmv.Database.ArchiveManager.RestoreOperations do
   def select_archive_records(policy, start_date, end_date) do
     query = """
     SELECT * FROM #{policy.archive_table}
-    WHERE #{policy.date_column} >= $1 
+    WHERE #{policy.date_column} >= $1
     AND #{policy.date_column} <= $2
     ORDER BY #{policy.date_column}
     """
@@ -164,7 +164,7 @@ defmodule EveDmv.Database.ArchiveManager.RestoreOperations do
     placeholders = Enum.map_join(1..length(record_ids), ", ", &"$#{&1}")
 
     update_sql = """
-    UPDATE #{policy.archive_table} 
+    UPDATE #{policy.archive_table}
     SET restored_at = NOW()
     WHERE #{pk_column} IN (#{placeholders})
     """
@@ -200,7 +200,7 @@ defmodule EveDmv.Database.ArchiveManager.RestoreOperations do
     # Check for overlapping data in original table
     overlap_query = """
     SELECT COUNT(*) FROM #{policy.table}
-    WHERE #{policy.date_column} >= $1 
+    WHERE #{policy.date_column} >= $1
     AND #{policy.date_column} <= $2
     """
 

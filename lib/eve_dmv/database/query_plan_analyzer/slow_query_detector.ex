@@ -21,7 +21,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
   """
   def detect_slow_queries(threshold_ms \\ @slow_query_threshold_ms) do
     query = """
-    SELECT 
+    SELECT
       query,
       calls,
       total_time,
@@ -134,7 +134,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
   """
   def monitor_performance_trends do
     query = """
-    SELECT 
+    SELECT
       date_trunc('hour', stats_reset) as hour,
       avg(mean_time) as avg_mean_time,
       max(mean_time) as max_mean_time,
@@ -173,7 +173,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
     # This would compare current performance with historical baselines
     # For now, return queries with very high execution time variance
     query = """
-    SELECT 
+    SELECT
       query,
       mean_time,
       stddev_time,
@@ -210,23 +210,23 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
   """
   def get_query_performance_metrics do
     query = """
-    SELECT 
+    SELECT
       'total_queries' as metric,
       sum(calls) as value
     FROM pg_stat_statements
     UNION ALL
-    SELECT 
+    SELECT
       'avg_query_time_ms' as metric,
       avg(mean_time) as value
     FROM pg_stat_statements
     UNION ALL
-    SELECT 
+    SELECT
       'slow_queries' as metric,
       count(*) as value
     FROM pg_stat_statements
     WHERE mean_time > $1
     UNION ALL
-    SELECT 
+    SELECT
       'critical_queries' as metric,
       count(*) as value
     FROM pg_stat_statements

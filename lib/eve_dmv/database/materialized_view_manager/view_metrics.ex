@@ -44,12 +44,12 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
   """
   def analyze_performance do
     query = """
-    SELECT 
+    SELECT
       schemaname,
       matviewname,
       pg_size_pretty(pg_total_relation_size(schemaname||'.'||matviewname)) as size,
       pg_total_relation_size(schemaname||'.'||matviewname) as size_bytes
-    FROM pg_matviews 
+    FROM pg_matviews
     WHERE schemaname = 'public'
     ORDER BY pg_total_relation_size(schemaname||'.'||matviewname) DESC
     """
@@ -151,12 +151,12 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
   """
   def check_views_health do
     query = """
-    SELECT 
+    SELECT
       matviewname,
       hasindexes,
       ispopulated,
       definition
-    FROM pg_matviews 
+    FROM pg_matviews
     WHERE schemaname = 'public'
     """
 
@@ -215,7 +215,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
 
   defp get_view_size_info(view_name) do
     query = """
-    SELECT 
+    SELECT
       pg_total_relation_size($1) as total_size,
       pg_relation_size($1) as table_size,
       pg_indexes_size($1) as indexes_size,
@@ -241,7 +241,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
 
   defp get_view_index_info(view_name) do
     query = """
-    SELECT 
+    SELECT
       indexname,
       pg_relation_size(indexname::regclass) as size,
       idx_scan,
@@ -279,7 +279,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
 
   defp get_view_column_stats(view_name) do
     query = """
-    SELECT 
+    SELECT
       attname,
       n_distinct,
       null_frac,

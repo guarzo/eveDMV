@@ -37,7 +37,7 @@ defmodule EveDmvWeb.SurveillanceStatsComponent do
           <% end %>
         </div>
       </div>
-      
+
       <!-- Recent Matches -->
       <div class="p-6">
         <h2 class="text-lg font-semibold text-gray-200 mb-4">Recent Matches</h2>

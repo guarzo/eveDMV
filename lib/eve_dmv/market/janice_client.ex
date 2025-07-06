@@ -17,10 +17,10 @@ defmodule EveDmv.Market.JaniceClient do
 
       # Get single item price
       {:ok, price} = JaniceClient.get_item_price(587)  # Rifter
-      
+
       # Get multiple item prices
       {:ok, prices} = JaniceClient.get_item_prices([587, 588, 589])
-      
+
       # Appraise a ship fitting
       {:ok, appraisal} = JaniceClient.appraise_fit(fitting_text)
   """
@@ -41,7 +41,7 @@ defmodule EveDmv.Market.JaniceClient do
 
       iex> JaniceClient.get_item_price(587)
       {:ok, %{type_id: 587, buy_price: 350_000.0, sell_price: 380_000.0}}
-      
+
       iex> JaniceClient.get_item_price(999999)
       {:error, "Item not found"}
   """

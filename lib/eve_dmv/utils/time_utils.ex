@@ -122,7 +122,7 @@ defmodule EveDmv.Utils.TimeUtils do
 
       iex> same_day?(~U[2024-07-01 08:00:00Z], ~U[2024-07-01 20:00:00Z])
       true
-      
+
       iex> same_day?(~U[2024-07-01 23:59:59Z], ~U[2024-07-02 00:00:01Z])
       false
   """
@@ -173,10 +173,10 @@ defmodule EveDmv.Utils.TimeUtils do
 
       iex> to_seconds(5, :minute)
       300
-      
+
       iex> to_seconds(2, :hour)
       7200
-      
+
       iex> to_seconds(1, :day)
       86400
   """
@@ -193,10 +193,10 @@ defmodule EveDmv.Utils.TimeUtils do
 
       iex> format_duration(3661)
       "1h 1m 1s"
-      
+
       iex> format_duration(90)
       "1m 30s"
-      
+
       iex> format_duration(45)
       "45s"
   """
@@ -258,7 +258,7 @@ defmodule EveDmv.Utils.TimeUtils do
 
       iex> within_window?(DateTime.add(DateTime.utc_now(), -1800, :second), 3600)
       true
-      
+
       iex> within_window?(DateTime.add(DateTime.utc_now(), -7200, :second), 3600)
       false
   """

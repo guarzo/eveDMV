@@ -88,7 +88,7 @@ defmodule EveDmv.Intelligence.Cache.AnalysisCache do
            :analysis,
            cache_key,
            fn ->
-             # Member activity analysis - return default result since :member_activity not available  
+             # Member activity analysis - return default result since :member_activity not available
              {:error, :analysis_type_not_available}
            end,
            ttl: CacheConfig.member_activity_ttl()

@@ -13,7 +13,7 @@ defmodule EveDmv.Eve.NameResolver.CacheManager do
   # Different TTLs for different data types
   # Ship/item names rarely change
   @static_data_ttl :timer.hours(24)
-  # Character/corp names can change  
+  # Character/corp names can change
   @dynamic_data_ttl :timer.hours(4)
   # ESI data more frequent updates
   @esi_data_ttl :timer.minutes(30)
@@ -137,7 +137,7 @@ defmodule EveDmv.Eve.NameResolver.CacheManager do
       when type in [:ship, :item, :system, :constellation, :region, :station, :structure_type] ->
         @static_data_ttl
 
-      # Dynamic data types (characters, corporations, alliances)  
+      # Dynamic data types (characters, corporations, alliances)
       type when type in [:character, :corporation, :alliance] ->
         @dynamic_data_ttl
 

@@ -18,7 +18,7 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
 
       iex> StaticDataResolver.ship_name(587)
       "Rifter"
-      
+
       iex> StaticDataResolver.ship_name(999999)
       "Unknown Ship (999999)"
   """
@@ -40,7 +40,7 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
 
       iex> StaticDataResolver.item_name(12058)
       "Medium Shield Extender II"
-      
+
       iex> StaticDataResolver.item_name(999999)
       "Unknown Item (999999)"
   """
@@ -61,7 +61,7 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
 
       iex> StaticDataResolver.system_name(30000142)
       "Jita"
-      
+
       iex> StaticDataResolver.system_name(999999)
       "Unknown System (999999)"
   """

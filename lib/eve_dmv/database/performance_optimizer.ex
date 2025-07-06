@@ -120,15 +120,15 @@ defmodule EveDmv.Database.PerformanceOptimizer do
 
   defp execute_slow_queries_query(duration, limit) do
     query = """
-    SELECT 
+    SELECT
       query,
       calls,
       total_time / 1000 as total_time_seconds,
       mean_time / 1000 as mean_time_seconds,
       (100 * total_time / sum(total_time::numeric) OVER()) AS percentage
-    FROM pg_stat_statements 
+    FROM pg_stat_statements
     WHERE total_time > EXTRACT(EPOCH FROM INTERVAL $1) * 1000
-    ORDER BY total_time DESC 
+    ORDER BY total_time DESC
     LIMIT $2
     """
 
@@ -158,14 +158,14 @@ defmodule EveDmv.Database.PerformanceOptimizer do
   @spec get_table_sizes() :: result([map()])
   def get_table_sizes do
     query = """
-    SELECT 
+    SELECT
       schemaname,
       tablename,
       pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size,
       pg_size_pretty(pg_relation_size(schemaname||'.'||tablename)) AS table_size,
       pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename) - pg_relation_size(schemaname||'.'||tablename)) AS index_size,
       pg_total_relation_size(schemaname||'.'||tablename) AS size_bytes
-    FROM pg_tables 
+    FROM pg_tables
     WHERE schemaname = 'public'
     ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
     """
@@ -197,7 +197,7 @@ defmodule EveDmv.Database.PerformanceOptimizer do
   @spec get_index_usage() :: result([map()])
   def get_index_usage do
     query = """
-    SELECT 
+    SELECT
       t.tablename,
       indexname,
       c.reltuples AS num_rows,
@@ -381,8 +381,8 @@ defmodule EveDmv.Database.PerformanceOptimizer do
        """
          SELECT round(
            100.0 * sum(blks_hit) / (sum(blks_hit) + sum(blks_read)), 2
-         ) as cache_hit_ratio 
-         FROM pg_stat_database 
+         ) as cache_hit_ratio
+         FROM pg_stat_database
          WHERE datname = current_database()
        """}
     ]

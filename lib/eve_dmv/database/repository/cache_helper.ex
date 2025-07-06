@@ -15,7 +15,7 @@ defmodule EveDmv.Database.Repository.CacheHelper do
 
       build_key("killmail", "id", 123, [])
       # => "repo:killmail:id:123"
-      
+
       build_key("killmail", "list", %{status: "active"}, preload: [:participants])
       # => "repo:killmail:list:status:active:preload:participants"
   """

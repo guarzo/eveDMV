@@ -40,7 +40,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
 
   @doc """
   Start monitoring a wormhole chain for intelligence purposes.
-  
+
   Integrates with Wanderer API to track chain topology, inhabitants,
   and generate real-time threat intelligence.
   """
@@ -104,7 +104,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
     # Subscribe to Wanderer real-time updates
     Phoenix.PubSub.subscribe(EveDmv.PubSub, "wanderer:chain_updates")
     Phoenix.PubSub.subscribe(EveDmv.PubSub, "wanderer:inhabitant_updates")
-    
+
     # Subscribe to killmail events for chain activity correlation
     Phoenix.PubSub.subscribe(EveDmv.PubSub, "killmails:enriched")
 
@@ -253,8 +253,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
 
       timeline ->
         cutoff_time = DateTime.add(DateTime.utc_now(), -hours_back * 3600, :second)
-        
-        filtered_timeline = 
+
+        filtered_timeline =
           timeline
           |> Enum.filter(&(DateTime.compare(&1.timestamp, cutoff_time) == :gt))
           |> Enum.sort_by(&(&1.timestamp), {:desc, DateTime})
@@ -276,7 +276,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
 
   @impl GenServer
   def handle_call(:get_all_chains_status, _from, state) do
-    all_status = 
+    all_status =
       state.monitored_chains
       |> Enum.map(fn {map_id, chain_data} ->
         topology = Map.get(state.chain_topologies, map_id, %{})
@@ -333,7 +333,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
         new_timeline = add_to_timeline(state.activity_timelines, map_id, activity_event)
 
         # Trigger immediate threat analysis
-        spawn_task(fn -> 
+        spawn_task(fn ->
           analyze_hostile_report(map_id, system_id, hostile_data, chain_data)
         end)
 
@@ -357,7 +357,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
     |> Enum.each(fn map_id ->
       spawn_task(fn -> perform_threat_analysis(map_id) end)
     end)
-    
+
     schedule_threat_analysis()
     {:noreply, state}
   end
@@ -369,7 +369,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
     |> Enum.each(fn map_id ->
       spawn_task(fn -> generate_activity_predictions(map_id) end)
     end)
-    
+
     schedule_activity_prediction()
     {:noreply, state}
   end
@@ -451,7 +451,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
     # Correlate killmail with monitored chains
     if killmail.system_id do
       monitored_chains_in_system = find_chains_containing_system(state.monitored_chains, killmail.system_id)
-      
+
       Enum.each(monitored_chains_in_system, fn map_id ->
         activity_event = %{
           timestamp: killmail.killmail_time,
@@ -466,7 +466,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
         }
 
         new_timeline = add_to_timeline(state.activity_timelines, map_id, activity_event)
-        
+
         # Update state for this chain
         spawn_task(fn ->
           GenServer.cast(__MODULE__, {:update_timeline, map_id, activity_event})
@@ -521,7 +521,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
     case WandererClient.get_system_inhabitants(map_id) do
       {:ok, inhabitants} ->
         grouped_inhabitants = Enum.group_by(inhabitants, & &1["system_id"])
-        
+
         Enum.each(grouped_inhabitants, fn {system_id, system_inhabitants} ->
           send(self(), {:inhabitant_update, map_id, system_id, system_inhabitants})
         end)
@@ -549,9 +549,9 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
       {:ok, inhabitants} ->
         # Group by system for analysis
         systems_with_inhabitants = Enum.group_by(inhabitants, & &1["system_id"])
-        
+
         # Analyze each system for threats
-        threat_results = 
+        threat_results =
           systems_with_inhabitants
           |> Enum.map(fn {system_id, system_inhabitants} ->
             analyze_system_threats(map_id, system_id, system_inhabitants)
@@ -570,7 +570,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
 
   defp analyze_system_threats(map_id, system_id, inhabitants) do
     # Convert inhabitants to pilot data for threat analysis
-    pilot_list = 
+    pilot_list =
       inhabitants
       |> Enum.map(fn inhabitant ->
         {
@@ -579,7 +579,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
           inhabitant["alliance_id"]
         }
       end)
-      |> Enum.filter(fn {char_id, _corp_id, _alliance_id} -> 
+      |> Enum.filter(fn {char_id, _corp_id, _alliance_id} ->
         char_id && char_id != 0
       end)
 
@@ -660,7 +660,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
   defp check_for_new_hostiles(map_id, system_id, inhabitants) do
     # Quick threat check for new inhabitants
     if length(inhabitants) > 0 do
-      spawn_task(fn -> 
+      spawn_task(fn ->
         case analyze_system_threats(map_id, system_id, inhabitants) do
           %{threat_level: threat_level} = threat_result when threat_level in [:critical, :high] ->
             # Publish hostile movement event
@@ -685,7 +685,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
     # Analyze activity timeline to generate predictions
     # This is a simplified implementation - real prediction would use ML
     timeline = get_activity_timeline(map_id, 168)  # Last 7 days
-    
+
     case timeline do
       {:ok, events} when length(events) > 10 ->
         predictions = %{
@@ -713,7 +713,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
 
   defp predict_next_activity_window(events) do
     # Analyze hourly patterns to predict next likely activity
-    hourly_distribution = 
+    hourly_distribution =
       events
       |> Enum.group_by(&(&1.timestamp.hour))
       |> Enum.map(fn {hour, hour_events} -> {hour, length(hour_events)} end)
@@ -722,7 +722,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
     case hourly_distribution do
       [{peak_hour, _count} | _] ->
         now = DateTime.utc_now()
-        
+
         next_window = if now.hour < peak_hour do
           DateTime.new!(now.date, Time.new!(peak_hour, 0, 0))
         else
@@ -743,13 +743,13 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
 
   defp assess_threat_escalation_risk(events) do
     # Look for patterns indicating escalating threats
-    recent_threats = 
+    recent_threats =
       events
       |> Enum.filter(&(&1.event_type in [:hostile_reported, :killmail_activity]))
       |> Enum.take(10)
 
     threat_trend = length(recent_threats)
-    
+
     cond do
       threat_trend >= 5 -> :high
       threat_trend >= 2 -> :moderate
@@ -759,7 +759,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
 
   defp assess_chain_stability(events) do
     # Assess how stable the chain topology has been
-    topology_changes = 
+    topology_changes =
       events
       |> Enum.count(&(&1.event_type == :topology_update))
 
@@ -825,7 +825,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
   defp topology_changed_significantly?(old_topology, new_topology) do
     old_system_count = length(Map.get(old_topology, :systems, []))
     new_system_count = length(Map.get(new_topology, :systems, []))
-    
+
     # Significant if system count changed by more than 1
     abs(new_system_count - old_system_count) > 1
   end
@@ -853,7 +853,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
   defp summarize_inhabitants(inhabitants) do
     total_inhabitants = count_total_inhabitants(inhabitants)
     systems_with_activity = map_size(inhabitants)
-    
+
     %{
       total_inhabitants: total_inhabitants,
       active_systems: systems_with_activity,
@@ -870,7 +870,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
 
   defp calculate_current_threat_level(inhabitants, predictions) do
     total_inhabitants = count_total_inhabitants(inhabitants)
-    
+
     cond do
       total_inhabitants > 10 -> :high
       total_inhabitants > 5 -> :moderate

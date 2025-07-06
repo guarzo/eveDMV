@@ -85,8 +85,8 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
 
     # Count records to be deleted
     count_query = """
-    SELECT COUNT(*) 
-    FROM #{policy.archive_table} 
+    SELECT COUNT(*)
+    FROM #{policy.archive_table}
     WHERE #{policy.date_column} < $1
     """
 
@@ -206,11 +206,11 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
       1..total_batches
       |> Enum.reduce_while({:ok, 0}, fn batch_num, {:ok, acc_deleted} ->
         delete_sql = """
-        DELETE FROM #{archive_table} 
-        WHERE #{date_column} < $1 
+        DELETE FROM #{archive_table}
+        WHERE #{date_column} < $1
         AND ctid IN (
-          SELECT ctid FROM #{archive_table} 
-          WHERE #{date_column} < $1 
+          SELECT ctid FROM #{archive_table}
+          WHERE #{date_column} < $1
           LIMIT $2
         )
         """
@@ -295,7 +295,7 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
     # Check for null values in critical columns
     query = """
     SELECT COUNT(*) FROM #{policy.archive_table}
-    WHERE #{policy.date_column} IS NULL 
+    WHERE #{policy.date_column} IS NULL
     OR archived_at IS NULL
     """
 
@@ -331,8 +331,8 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
   defp index_exists?(table_name, index_name) do
     query = """
     SELECT EXISTS (
-      SELECT 1 FROM pg_indexes 
-      WHERE tablename = $1 
+      SELECT 1 FROM pg_indexes
+      WHERE tablename = $1
       AND indexname = $2
     )
     """

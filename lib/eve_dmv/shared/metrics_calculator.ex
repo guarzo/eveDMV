@@ -49,7 +49,7 @@ defmodule EveDmv.Shared.MetricsCalculator do
   ## Examples
       iex> EveDmv.Shared.MetricsCalculator.calculate_average([10, 20, 30])
       20.0
-      
+
       iex> EveDmv.Shared.MetricsCalculator.calculate_average([])
       0.0
   """

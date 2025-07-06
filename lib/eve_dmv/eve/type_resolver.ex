@@ -20,7 +20,7 @@ defmodule EveDmv.Eve.TypeResolver do
 
       iex> TypeResolver.resolve_item_type(23378)
       {:ok, %ItemType{type_id: 23378, type_name: "Machariel", ...}}
-      
+
       iex> TypeResolver.resolve_item_type(999999)
       {:error, :not_found}
   """

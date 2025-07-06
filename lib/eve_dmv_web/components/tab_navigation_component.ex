@@ -48,7 +48,7 @@ defmodule EveDmvWeb.Components.TabNavigationComponent do
               <%= tab_icon_path(tab.icon) %>
             </svg>
             <span><%= tab.label %></span>
-            <span 
+            <span
               :if={tab[:count]}
               class={"#{count_badge_class(@variant, @active_tab == tab.id)}"}
             >

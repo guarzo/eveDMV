@@ -65,7 +65,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewDefinitions do
     %{
       name: "character_activity_summary",
       query: """
-      SELECT 
+      SELECT
         character_id,
         character_name,
         COUNT(*) as total_killmails,
@@ -77,7 +77,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewDefinitions do
         COUNT(DISTINCT alliance_id) as alliance_count,
         COUNT(DISTINCT corporation_id) as corp_count,
         COUNT(DISTINCT solar_system_id) as system_count
-      FROM participants 
+      FROM participants
       WHERE updated_at >= NOW() - INTERVAL '1 year'
       GROUP BY character_id, character_name
       HAVING COUNT(*) >= 5
@@ -96,7 +96,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewDefinitions do
     %{
       name: "system_activity_summary",
       query: """
-      SELECT 
+      SELECT
         ke.solar_system_id,
         ss.system_name,
         COUNT(*) as total_killmails,
@@ -128,7 +128,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewDefinitions do
     %{
       name: "alliance_statistics",
       query: """
-      SELECT 
+      SELECT
         p.alliance_id,
         p.alliance_name,
         COUNT(*) as total_killmails,
@@ -162,7 +162,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewDefinitions do
     %{
       name: "daily_killmail_summary",
       query: """
-      SELECT 
+      SELECT
         DATE_TRUNC('day', killmail_time) as activity_date,
         COUNT(*) as total_killmails,
         SUM(total_value) as total_value_destroyed,
@@ -186,7 +186,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewDefinitions do
     %{
       name: "top_hunters_summary",
       query: """
-      SELECT 
+      SELECT
         p.character_id,
         p.character_name,
         COUNT(*) as kill_count,
@@ -200,7 +200,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewDefinitions do
         RANK() OVER (ORDER BY SUM(ke.total_value) DESC) as value_rank
       FROM participants p
       JOIN killmails_enriched ke ON p.killmail_id = ke.killmail_id
-      WHERE NOT p.is_victim 
+      WHERE NOT p.is_victim
       AND ke.killmail_time >= NOW() - INTERVAL '6 months'
       GROUP BY p.character_id, p.character_name
       HAVING COUNT(*) >= 10

@@ -9,11 +9,11 @@ defmodule EveDmv.Error do
 
       # Create a new error
       EveDmv.Error.new(:invalid_input, "Character ID must be positive")
-      
+
       # Create with context
-      EveDmv.Error.new(:database_error, "Connection failed", 
+      EveDmv.Error.new(:database_error, "Connection failed",
         context: %{operation: :select, table: :characters})
-      
+
       # Normalize different error formats
       EveDmv.Error.normalize({:error, "Some error"})
       EveDmv.Error.normalize({:error, :timeout})

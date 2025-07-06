@@ -18,14 +18,14 @@ defmodule EveDmv.Eve.EsiClient do
       # Character operations
       {:ok, character} = EsiClient.get_character(95465499)
       {:ok, characters} = EsiClient.get_characters([95465499, 90267367])
-      
-      # Corporation operations  
+
+      # Corporation operations
       {:ok, corp} = EsiClient.get_corporation(98388312)
-      
+
       # Universe operations
       {:ok, system} = EsiClient.get_solar_system(30002187)
       {:ok, alliance} = EsiClient.get_alliance(99000001)
-      
+
       # Market operations
       {:ok, orders} = EsiClient.get_market_orders(34, 10000002)
   """

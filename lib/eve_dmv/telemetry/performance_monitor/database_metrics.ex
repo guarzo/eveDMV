@@ -16,7 +16,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.DatabaseMetrics do
   """
   def get_database_metrics do
     query = """
-    SELECT 
+    SELECT
       schemaname,
       tablename,
       n_tup_ins,
@@ -49,7 +49,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.DatabaseMetrics do
   """
   def get_slow_queries do
     query = """
-    SELECT 
+    SELECT
       query,
       calls,
       mean_exec_time,
@@ -84,7 +84,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.DatabaseMetrics do
   """
   def get_table_sizes do
     query = """
-    SELECT 
+    SELECT
       schemaname,
       tablename,
       pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as total_size,
@@ -195,7 +195,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.DatabaseMetrics do
   """
   def get_table_query_stats(table_name) do
     query = """
-    SELECT 
+    SELECT
       schemaname,
       tablename,
       seq_scan,
@@ -275,7 +275,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.DatabaseMetrics do
   """
   def check_statistics_freshness do
     query = """
-    SELECT 
+    SELECT
       schemaname,
       tablename,
       last_analyze,

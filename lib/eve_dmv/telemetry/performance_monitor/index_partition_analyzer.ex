@@ -14,7 +14,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer do
   """
   def get_index_usage_stats do
     query = """
-    SELECT 
+    SELECT
       schemaname,
       tablename,
       indexname,
@@ -54,7 +54,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer do
   def check_partition_health do
     query = """
     WITH partition_info AS (
-      SELECT 
+      SELECT
         parent.relname as parent_table,
         child.relname as partition_name,
         pg_size_pretty(pg_relation_size(child.oid)) as partition_size,
@@ -117,7 +117,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer do
   """
   def get_detailed_index_stats do
     query = """
-    SELECT 
+    SELECT
       s.schemaname,
       s.tablename,
       s.indexrelname,
@@ -179,7 +179,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer do
   """
   def get_table_scan_stats do
     query = """
-    SELECT 
+    SELECT
       schemaname,
       tablename,
       seq_scan,
@@ -235,7 +235,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer do
   def analyze_partition_distribution do
     query = """
     WITH partition_stats AS (
-      SELECT 
+      SELECT
         parent.relname as parent_table,
         child.relname as partition_name,
         pg_relation_size(child.oid) as size_bytes,
@@ -246,7 +246,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer do
       JOIN pg_class child ON pg_inherits.inhrelid = child.oid
       WHERE parent.relnamespace = 'public'::regnamespace
     )
-    SELECT 
+    SELECT
       parent_table,
       COUNT(*) as partition_count,
       SUM(size_bytes) as total_size,
@@ -304,10 +304,10 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer do
         indexname,
         pg_relation_size(indexrelid) as actual_size,
         CASE WHEN indisprimary THEN 0
-             ELSE CEIL(n_live_tup * 
-                      (SELECT avg_width FROM pg_stats 
-                       WHERE schemaname = 'public' 
-                       AND tablename = pg_stat_user_indexes.tablename 
+             ELSE CEIL(n_live_tup *
+                      (SELECT avg_width FROM pg_stats
+                       WHERE schemaname = 'public'
+                       AND tablename = pg_stat_user_indexes.tablename
                        LIMIT 1) * 0.5)
         END as estimated_size
       FROM pg_stat_user_indexes
@@ -315,15 +315,15 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer do
       JOIN pg_stat_user_tables USING (schemaname, tablename)
       WHERE schemaname = 'public'
     )
-    SELECT 
+    SELECT
       schemaname,
       tablename,
       indexname,
       pg_size_pretty(actual_size) as actual_size,
       pg_size_pretty(estimated_size) as estimated_size,
-      CASE WHEN estimated_size > 0 
+      CASE WHEN estimated_size > 0
            THEN ROUND((actual_size - estimated_size)::numeric / estimated_size * 100, 2)
-           ELSE 0 
+           ELSE 0
       END as bloat_percent
     FROM index_bloat
     WHERE actual_size > 10485760  -- Only indexes > 10MB
@@ -432,7 +432,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer do
 
   defp find_duplicate_indexes do
     query = """
-    SELECT 
+    SELECT
       indrelid::regclass as table_name,
       array_agg(indexrelid::regclass) as duplicate_indexes
     FROM pg_index

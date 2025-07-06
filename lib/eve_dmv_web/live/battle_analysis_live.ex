@@ -1,13 +1,13 @@
 defmodule EveDmvWeb.BattleAnalysisLive do
   @moduledoc """
   LiveView for battle analysis and tactical intelligence.
-  
+
   Provides real-time battle analysis, fleet composition breakdowns,
   tactical recommendations, and historical battle comparisons.
   """
 
   use EveDmvWeb, :live_view
-  
+
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService
   alias EveDmvWeb.Components.BattleTimelineComponent
   alias Phoenix.PubSub
@@ -15,11 +15,11 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   @impl true
   def mount(params, _session, socket) do
     battle_id = Map.get(params, "battle_id")
-    
+
     # Subscribe to battle analysis updates
     if connected?(socket) do
       PubSub.subscribe(EveDmv.PubSub, "battle_analysis:updates")
-      
+
       if battle_id do
         PubSub.subscribe(EveDmv.PubSub, "battle:#{battle_id}")
       end
@@ -52,7 +52,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   @impl true
   def handle_params(params, _url, socket) do
     battle_id = Map.get(params, "battle_id")
-    
+
     socket =
       if battle_id && battle_id != socket.assigns.battle_id do
         socket
@@ -155,7 +155,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     <div class="battle-overview">
       <!-- Battle summary card -->
       <div class="mb-6">
-        <BattleTimelineComponent.battle_summary_card 
+        <BattleTimelineComponent.battle_summary_card
           battle_analysis={@battle_analysis}
           show_recommendations={false}
         />
@@ -176,7 +176,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
           <%= for {side, performance} <- @battle_analysis.side_performance do %>
             <div class="side-performance-card bg-gray-800 rounded p-4">
               <h4 class="text-md font-semibold mb-3"><%= format_side(side) %></h4>
-              
+
               <div class="performance-stats space-y-2">
                 <div class="stat-row flex justify-between">
                   <span class="text-gray-400">Kills</span>
@@ -394,7 +394,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
               <%= format_winner(@battle_analysis.winner) %>
             </p>
           </div>
-          
+
           <%= if @battle_analysis.victory_factors do %>
             <div class="factors">
               <p class="text-sm text-gray-400 mb-2">Contributing Factors</p>
@@ -537,7 +537,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       <!-- Recent battles -->
       <div class="recent-battles">
         <h2 class="text-xl font-semibold mb-4">Recent Battles</h2>
-        
+
         <%= if @recent_battles && length(@recent_battles) > 0 do %>
           <div class="battles-table">
             <table class="w-full">
@@ -616,7 +616,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       {:ok, analysis} ->
         # Create a temporary battle ID for the live engagement
         temp_battle_id = "live_#{system_id}_#{:os.system_time(:second)}"
-        
+
         socket =
           socket
           |> assign(:battle_id, temp_battle_id)
@@ -706,7 +706,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
         duration: 1200
       },
       %{
-        id: "battle_002", 
+        id: "battle_002",
         timestamp: DateTime.utc_now() |> DateTime.add(-7200, :second),
         scale: :small_gang,
         participant_count: 12,
@@ -722,7 +722,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   defp tab_class(active) do
     base = "px-4 py-2 rounded transition-colors"
-    
+
     if active do
       "#{base} bg-blue-600 text-white"
     else
@@ -732,7 +732,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   defp side_button_class(active) do
     base = "px-6 py-2 rounded transition-colors"
-    
+
     if active do
       "#{base} bg-blue-600 text-white"
     else
@@ -742,7 +742,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   defp render_metric_card(label, value, unit) do
     assigns = %{label: label, value: value, unit: unit}
-    
+
     ~H"""
     <div class="metric-card bg-gray-800 rounded p-4">
       <p class="text-sm text-gray-400 mb-1"><%= @label %></p>
@@ -758,7 +758,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   defp render_ship_effectiveness_chart(effectiveness_data) do
     assigns = %{data: effectiveness_data}
-    
+
     ~H"""
     <div class="effectiveness-bars space-y-3">
       <%= for {ship_class, stats} <- @data do %>
@@ -770,7 +770,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
             </span>
           </div>
           <div class="effectiveness-bar w-full bg-gray-700 rounded-full h-2">
-            <div 
+            <div
               class="h-2 rounded-full bg-gradient-to-r from-red-500 to-green-500"
               style={"width: #{stats.effectiveness * 100}%"}
             ></div>
@@ -797,7 +797,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     hours = div(seconds, 3600)
     minutes = div(rem(seconds, 3600), 60)
     secs = rem(seconds, 60)
-    
+
     cond do
       hours > 0 -> "#{hours}h #{minutes}m"
       minutes > 0 -> "#{minutes}m #{secs}s"
@@ -833,7 +833,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   defp format_relative_time(timestamp) do
     diff = DateTime.diff(DateTime.utc_now(), timestamp)
-    
+
     cond do
       diff < 60 -> "#{diff}s ago"
       diff < 3600 -> "#{div(diff, 60)}m ago"
@@ -926,7 +926,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   defp priority_badge_class(priority) do
     base = "inline-block px-2 py-1 text-xs rounded mt-2"
-    
+
     case priority do
       :critical -> "#{base} bg-red-900 text-red-300"
       :high -> "#{base} bg-orange-900 text-orange-300"

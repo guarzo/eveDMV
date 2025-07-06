@@ -12,14 +12,14 @@ defmodule EveDmv.ErrorHandler do
 
       defmodule MyModule do
         use EveDmv.ErrorHandler
-        
+
         def my_operation(params) do
           with_error_handling fn ->
             # Your operation logic here
             do_something(params)
           end, %{operation: :my_operation, params: params}
         end
-        
+
         # Custom error handling for this module
         def handle_error(error, context) do
           case error.code do
@@ -197,7 +197,7 @@ defmodule EveDmv.ErrorHandler do
           {:database_connection_error, _} ->
             {:retry, 1000}
 
-          # External service issues  
+          # External service issues
           {_, :external_service} when error.code in [:esi_timeout, :janice_timeout] ->
             {:retry, 2000}
 

@@ -156,7 +156,7 @@ defmodule EveDmvWeb.AuthLive do
               </a>
             </div>
           </div>
-          
+
       <!-- Development Info -->
           <div class="mt-8 bg-blue-900 border border-blue-700 rounded-lg p-4">
             <h3 class="text-sm font-medium text-blue-200 mb-2">🚧 Development Status</h3>

@@ -35,7 +35,7 @@ defmodule EveDmv.Database.KillmailRepository do
   ## Options
 
   - `:start_date` - Start of date range (DateTime or Date)
-  - `:end_date` - End of date range (DateTime or Date)  
+  - `:end_date` - End of date range (DateTime or Date)
   - `:limit` - Maximum number of killmails (default: 1000)
   - `:preload_participants` - Whether to preload participants (default: true)
   - `:include_losses` - Include killmails where character was victim (default: true)
@@ -69,7 +69,7 @@ defmodule EveDmv.Database.KillmailRepository do
 
   ## Options
 
-  - `:start_date` - Start of date range  
+  - `:start_date` - Start of date range
   - `:end_date` - End of date range
   - `:limit` - Maximum number of killmails (default: 1000)
   - `:include_losses` - Include corporation losses (default: true)

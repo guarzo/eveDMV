@@ -66,7 +66,7 @@ defmodule EveDmv.Config.RateLimit do
   @doc """
   Get Janice API rate limiting configuration.
 
-  Environment: 
+  Environment:
   - EVE_DMV_JANICE_RATE_LIMIT_MAX_TOKENS (default: 5)
   - EVE_DMV_JANICE_RATE_LIMIT_REFILL_RATE (default: 5)
   """

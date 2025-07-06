@@ -4,7 +4,7 @@ defmodule EveDmv.Intelligence.CacheCleanupWorker do
 
   Performs periodic cache maintenance including:
   - Expired entry cleanup
-  - Memory pressure management  
+  - Memory pressure management
   - Cache statistics reporting
   - Proactive cache warming for popular entities
   """

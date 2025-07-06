@@ -24,7 +24,7 @@ defmodule EveDmv.Workers.UITaskSupervisor do
   # Configuration
   # 30 seconds
   @max_task_duration 30_000
-  # 10 seconds  
+  # 10 seconds
   @warning_duration 10_000
   @max_concurrent_global 100
   @max_concurrent_per_user 20

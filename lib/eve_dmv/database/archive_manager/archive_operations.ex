@@ -18,8 +18,8 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveOperations do
 
     # Check how many records need archiving
     count_query = """
-    SELECT COUNT(*) 
-    FROM #{policy.table} 
+    SELECT COUNT(*)
+    FROM #{policy.table}
     WHERE #{policy.date_column} < $1
     """
 
@@ -105,10 +105,10 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveOperations do
     Repo.transaction(fn ->
       # Select records to archive
       select_query = """
-      SELECT * FROM #{policy.table} 
-      WHERE #{policy.date_column} < $1 
-      ORDER BY #{policy.date_column} 
-      LIMIT $2 
+      SELECT * FROM #{policy.table}
+      WHERE #{policy.date_column} < $1
+      ORDER BY #{policy.date_column}
+      LIMIT $2
       FOR UPDATE
       """
 
@@ -186,7 +186,7 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveOperations do
     all_values = List.flatten(rows)
 
     insert_sql = """
-    INSERT INTO #{policy.archive_table} 
+    INSERT INTO #{policy.archive_table}
     (#{base_columns}, archived_at, archive_batch_id, original_table_name)
     VALUES #{value_placeholders}
     """
@@ -224,7 +224,7 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveOperations do
     placeholders = Enum.map_join(1..length(ids), ", ", &"$#{&1}")
 
     delete_sql = """
-    DELETE FROM #{policy.table} 
+    DELETE FROM #{policy.table}
     WHERE #{pk_column} IN (#{placeholders})
     """
 
@@ -295,8 +295,8 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveOperations do
     cutoff_date = DateTime.add(DateTime.utc_now(), -policy.archive_after_days, :day)
 
     query = """
-    SELECT COUNT(*) 
-    FROM #{policy.table} 
+    SELECT COUNT(*)
+    FROM #{policy.table}
     WHERE #{policy.date_column} < $1
     """
 
@@ -316,7 +316,7 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveOperations do
 
         # Get average row size
         size_query = """
-        SELECT 
+        SELECT
           pg_relation_size($1) as table_size,
           (SELECT count(*) FROM #{table_name}) as total_rows
         """

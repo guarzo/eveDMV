@@ -8,7 +8,7 @@ defmodule EveDmv.Killmails.KillmailProcessor do
   ## Main Functions
 
   - **Data extraction**: Parse and extract structured data from raw killmails
-  - **Validation**: Ensure killmail data integrity and completeness  
+  - **Validation**: Ensure killmail data integrity and completeness
   - **Transformation**: Convert killmail data to database record formats
   - **Price calculation**: Handle ISK value calculations consistently
   - **Name resolution**: Resolve character/corporation/alliance names

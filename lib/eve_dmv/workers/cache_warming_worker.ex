@@ -441,7 +441,7 @@ defmodule EveDmv.Workers.CacheWarmingWorker do
   end
 
   defp warm_items_batch(item_ids) do
-    # Batch warm item data  
+    # Batch warm item data
     Enum.each(item_ids, fn item_id ->
       case fetch_item_data(item_id) do
         {:ok, data} -> Cache.put(:hot_data, {:item, item_id}, data)

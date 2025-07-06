@@ -12,7 +12,7 @@ defmodule EveDmvWeb.PlayerStatsComponent do
   @doc """
   Renders the complete player statistics section with multiple cards:
   - Basic Statistics (kills, losses, K/D, efficiency)
-  - Solo vs Gang Performance 
+  - Solo vs Gang Performance
   - ISK Performance (destroyed, lost, net)
   - Activity & Behavior (danger rating, activity type, gang preference)
   - Ship Usage (favorite ship, diversity, regions)
@@ -60,7 +60,7 @@ defmodule EveDmvWeb.PlayerStatsComponent do
           </div>
         </div>
       </div>
-      
+
       <!-- Solo vs Gang Stats -->
       <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
         <h3 class="text-lg font-bold mb-4 text-purple-400">Solo vs Gang Performance</h3>
@@ -102,7 +102,7 @@ defmodule EveDmvWeb.PlayerStatsComponent do
           </div>
         </div>
       </div>
-      
+
       <!-- ISK Statistics -->
       <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
         <h3 class="text-lg font-bold mb-4 text-yellow-400">ISK Performance</h3>
@@ -186,7 +186,7 @@ defmodule EveDmvWeb.PlayerStatsComponent do
           </div>
         </div>
       </div>
-      
+
       <!-- Ship Information -->
       <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
         <h3 class="text-lg font-bold mb-4 text-orange-400">Ship Usage</h3>

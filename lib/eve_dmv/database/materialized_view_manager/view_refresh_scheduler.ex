@@ -264,9 +264,9 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewRefreshScheduler do
   def check_concurrent_refresh_eligibility(view_name) do
     query = """
     SELECT EXISTS (
-      SELECT 1 
-      FROM pg_indexes 
-      WHERE schemaname = 'public' 
+      SELECT 1
+      FROM pg_indexes
+      WHERE schemaname = 'public'
       AND tablename = $1
       AND indexdef LIKE '%UNIQUE%'
     )

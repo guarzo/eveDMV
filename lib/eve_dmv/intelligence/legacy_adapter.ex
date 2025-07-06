@@ -143,7 +143,7 @@ defmodule EveDmv.Intelligence.LegacyAdapter do
   def get_comprehensive_character_analysis(character_id) do
     case IntelligenceEngine.analyze(:character, character_id, scope: :full) do
       {:ok, analysis_result} ->
-        # The full scope includes combat_stats, behavioral_patterns, ship_preferences, 
+        # The full scope includes combat_stats, behavioral_patterns, ship_preferences,
         # threat_assessment, and alliance_activity plugins
         comprehensive_result = convert_to_comprehensive_character_format(analysis_result)
         {:ok, comprehensive_result}

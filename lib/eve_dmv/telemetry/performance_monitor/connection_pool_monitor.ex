@@ -19,12 +19,12 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.ConnectionPoolMonitor do
 
     # Query database for connection stats
     query = """
-    SELECT 
+    SELECT
       count(*) as total_connections,
       count(*) FILTER (WHERE state = 'active') as active_connections,
       count(*) FILTER (WHERE state = 'idle') as idle_connections,
       count(*) FILTER (WHERE wait_event IS NOT NULL) as waiting_connections
-    FROM pg_stat_activity 
+    FROM pg_stat_activity
     WHERE datname = current_database()
     """
 
@@ -65,14 +65,14 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.ConnectionPoolMonitor do
   """
   def monitor_connection_health do
     query = """
-    SELECT 
+    SELECT
       count(*) as total,
       count(*) FILTER (WHERE state = 'active') as active,
       count(*) FILTER (WHERE state = 'idle') as idle,
       count(*) FILTER (WHERE state = 'idle in transaction') as idle_in_transaction,
       count(*) FILTER (WHERE wait_event IS NOT NULL) as waiting,
       max(EXTRACT(EPOCH FROM (now() - query_start))) as longest_query_seconds
-    FROM pg_stat_activity 
+    FROM pg_stat_activity
     WHERE datname = current_database()
       AND pid != pg_backend_pid()
     """
@@ -91,7 +91,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.ConnectionPoolMonitor do
   """
   def get_connection_details do
     query = """
-    SELECT 
+    SELECT
       pid,
       usename,
       application_name,
@@ -103,7 +103,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.ConnectionPoolMonitor do
       EXTRACT(EPOCH FROM (now() - backend_start)) as connection_age_seconds,
       EXTRACT(EPOCH FROM (now() - query_start)) as query_duration_seconds,
       LEFT(query, 100) as current_query
-    FROM pg_stat_activity 
+    FROM pg_stat_activity
     WHERE datname = current_database()
       AND pid != pg_backend_pid()
     ORDER BY backend_start
@@ -171,13 +171,13 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.ConnectionPoolMonitor do
   """
   def check_idle_transactions do
     query = """
-    SELECT 
+    SELECT
       pid,
       usename,
       application_name,
       EXTRACT(EPOCH FROM (now() - state_change)) as idle_duration_seconds,
       LEFT(query, 100) as last_query
-    FROM pg_stat_activity 
+    FROM pg_stat_activity
     WHERE datname = current_database()
       AND state = 'idle in transaction'
       AND state_change < now() - interval '1 minute'

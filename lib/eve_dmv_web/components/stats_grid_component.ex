@@ -34,8 +34,8 @@ defmodule EveDmvWeb.Components.StatsGridComponent do
   def stats_grid(assigns) do
     ~H"""
     <div class={"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-#{@columns} gap-4 #{@class}"}>
-      <div 
-        :for={stat <- @stat} 
+      <div
+        :for={stat <- @stat}
         class={"bg-gray-800 border border-gray-700 rounded-lg p-4 hover:bg-gray-750 transition-colors"}
       >
         <div class="flex items-center justify-between mb-1">

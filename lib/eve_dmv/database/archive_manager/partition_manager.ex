@@ -52,8 +52,8 @@ defmodule EveDmv.Database.ArchiveManager.PartitionManager do
   def table_exists?(table_name) do
     query = """
     SELECT EXISTS (
-      SELECT 1 FROM information_schema.tables 
-      WHERE table_schema = 'public' 
+      SELECT 1 FROM information_schema.tables
+      WHERE table_schema = 'public'
       AND table_name = $1
     )
     """
@@ -163,7 +163,7 @@ defmodule EveDmv.Database.ArchiveManager.PartitionManager do
     query = """
     SELECT column_name, data_type, is_nullable, column_default
     FROM information_schema.columns
-    WHERE table_schema = 'public' 
+    WHERE table_schema = 'public'
     AND table_name = $1
     AND column_name NOT IN ('archived_at', 'archive_batch_id', 'original_table_name')
     ORDER BY ordinal_position
@@ -193,7 +193,7 @@ defmodule EveDmv.Database.ArchiveManager.PartitionManager do
   """
   def get_archive_table_size(archive_table) do
     query = """
-    SELECT 
+    SELECT
       pg_total_relation_size($1) as total_size,
       pg_relation_size($1) as table_size,
       (SELECT count(*) FROM #{archive_table}) as row_count
@@ -257,7 +257,7 @@ defmodule EveDmv.Database.ArchiveManager.PartitionManager do
     query = """
     SELECT column_name, data_type, is_nullable, column_default
     FROM information_schema.columns
-    WHERE table_schema = 'public' 
+    WHERE table_schema = 'public'
     AND table_name = $1
     ORDER BY ordinal_position
     """

@@ -2,7 +2,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   @moduledoc """
   Advanced analytics and machine learning-style intelligence analysis.
 
-  Provides sophisticated statistical analysis, pattern recognition, and 
+  Provides sophisticated statistical analysis, pattern recognition, and
   predictive modeling for EVE Online intelligence operations.
   """
 

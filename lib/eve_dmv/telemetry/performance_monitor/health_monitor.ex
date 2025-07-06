@@ -36,7 +36,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
   """
   def monitor_query_health do
     query = """
-    SELECT 
+    SELECT
       count(*) FILTER (WHERE state = 'active' AND query_start < now() - interval '1 minute') as slow_queries,
       count(*) FILTER (WHERE state = 'active' AND query_start < now() - interval '5 minutes') as very_slow_queries,
       count(*) FILTER (WHERE waiting) as waiting_queries
@@ -72,7 +72,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
   """
   def monitor_lock_contention do
     query = """
-    SELECT 
+    SELECT
       count(*) as blocked_queries,
       count(DISTINCT blocked.pid) as blocked_pids,
       array_agg(DISTINCT blocking.query ORDER BY blocking.query) as blocking_queries
@@ -110,7 +110,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
   def check_replication_lag do
     # Check if this instance has any replicas
     query = """
-    SELECT 
+    SELECT
       client_addr,
       state,
       sent_lsn,
@@ -198,7 +198,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
   """
   def monitor_long_transactions do
     query = """
-    SELECT 
+    SELECT
       pid,
       usename,
       application_name,
@@ -246,7 +246,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
   """
   def monitor_database_size do
     query = """
-    SELECT 
+    SELECT
       pg_database_size(current_database()) as size_bytes,
       pg_size_pretty(pg_database_size(current_database())) as size_pretty,
       (SELECT count(*) FROM pg_stat_user_tables) as table_count,
@@ -273,7 +273,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
   """
   def monitor_autovacuum do
     query = """
-    SELECT 
+    SELECT
       schemaname,
       tablename,
       last_vacuum,

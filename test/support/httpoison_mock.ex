@@ -19,7 +19,7 @@ defmodule HTTPoisonMock do
             body: HTTPoisonMock.sse_stream_body()
           }
         end)
-        
+
         # Test your SSE consumer
       end
   """
@@ -35,7 +35,7 @@ defmodule HTTPoisonMock do
     event: killmail
     data: #{mock_killmail_json()}
 
-    event: killmail  
+    event: killmail
     data: #{mock_killmail_json()}
     """
   end

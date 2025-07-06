@@ -42,7 +42,7 @@ defmodule EveDmv.Market.PriceService do
 
       iex> PriceService.get_item_price(587)
       {:ok, 350_000.0}
-      
+
       iex> PriceService.get_item_price(587, :sell)
       {:ok, 380_000.0}
   """

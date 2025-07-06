@@ -41,13 +41,13 @@ defmodule EveDmv.Database.PartitionUtils do
   """
   def get_partition_stats(table) do
     query = """
-    SELECT 
+    SELECT
       schemaname,
       tablename,
       pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as size,
       pg_total_relation_size(schemaname||'.'||tablename) as size_bytes
-    FROM pg_tables 
-    WHERE schemaname = 'public' 
+    FROM pg_tables
+    WHERE schemaname = 'public'
     AND tablename LIKE $1
     ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
     """
@@ -145,8 +145,8 @@ defmodule EveDmv.Database.PartitionUtils do
   defp partition_exists?(partition_name) do
     query = """
     SELECT EXISTS (
-      SELECT 1 FROM information_schema.tables 
-      WHERE table_schema = 'public' 
+      SELECT 1 FROM information_schema.tables
+      WHERE table_schema = 'public'
       AND table_name = $1
     )
     """
@@ -159,9 +159,9 @@ defmodule EveDmv.Database.PartitionUtils do
 
   defp list_partitions(table) do
     query = """
-    SELECT tablename 
-    FROM pg_tables 
-    WHERE schemaname = 'public' 
+    SELECT tablename
+    FROM pg_tables
+    WHERE schemaname = 'public'
     AND tablename LIKE $1
     ORDER BY tablename
     """

@@ -39,8 +39,8 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewLifecycle do
   def materialized_view_exists?(view_name) do
     query = """
     SELECT EXISTS (
-      SELECT 1 FROM pg_matviews 
-      WHERE schemaname = 'public' 
+      SELECT 1 FROM pg_matviews
+      WHERE schemaname = 'public'
       AND matviewname = $1
     )
     """
@@ -137,12 +137,12 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewLifecycle do
   """
   def get_all_view_status do
     query = """
-    SELECT 
+    SELECT
       matviewname,
       pg_size_pretty(pg_total_relation_size(schemaname||'.'||matviewname)) as size,
       hasindexes,
       ispopulated
-    FROM pg_matviews 
+    FROM pg_matviews
     WHERE schemaname = 'public'
     ORDER BY matviewname
     """

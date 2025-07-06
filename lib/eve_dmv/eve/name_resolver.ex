@@ -48,7 +48,7 @@ defmodule EveDmv.Eve.NameResolver do
 
       iex> NameResolver.ship_name(587)
       "Rifter"
-      
+
       iex> NameResolver.ship_name(999999)
       "Unknown Ship (999999)"
   """
@@ -62,7 +62,7 @@ defmodule EveDmv.Eve.NameResolver do
 
       iex> NameResolver.item_name(12058)
       "Medium Shield Extender II"
-      
+
       iex> NameResolver.item_name(999999)
       "Unknown Item (999999)"
   """
@@ -75,7 +75,7 @@ defmodule EveDmv.Eve.NameResolver do
 
       iex> NameResolver.system_name(30000142)
       "Jita"
-      
+
       iex> NameResolver.system_name(999999)
       "Unknown System (999999)"
   """
@@ -122,7 +122,7 @@ defmodule EveDmv.Eve.NameResolver do
 
       iex> NameResolver.character_name(95465499)
       "CCP Falcon"
-      
+
       iex> NameResolver.character_name(999999999)
       "Unknown Character (999999999)"
   """
@@ -135,7 +135,7 @@ defmodule EveDmv.Eve.NameResolver do
 
       iex> NameResolver.corporation_name(98388312)
       "CCP Games"
-      
+
       iex> NameResolver.corporation_name(999999999)
       "Unknown Corporation (999999999)"
   """
@@ -148,7 +148,7 @@ defmodule EveDmv.Eve.NameResolver do
 
       iex> NameResolver.alliance_name(99005338)
       "Pandemic Horde"
-      
+
       iex> NameResolver.alliance_name(999999999)
       "Unknown Alliance (999999999)"
   """
@@ -178,7 +178,7 @@ defmodule EveDmv.Eve.NameResolver do
   @doc """
   Preloads names for killmail participants to improve UI performance.
 
-  Takes a list of killmails and preloads all character, corporation, 
+  Takes a list of killmails and preloads all character, corporation,
   and alliance names found in the participants.
   """
   defdelegate preload_killmail_names(killmails), to: PerformanceOptimizer

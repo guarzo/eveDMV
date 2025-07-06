@@ -75,11 +75,11 @@ defmodule EveDmv.Database.HealthCheck do
 
   defp check_partitions do
     query = """
-    SELECT 
+    SELECT
       schemaname,
       tablename,
       pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as size
-    FROM pg_tables 
+    FROM pg_tables
     WHERE tablename LIKE 'killmails_raw_%' OR tablename LIKE 'killmails_enriched_%'
     ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
     """
@@ -115,14 +115,14 @@ defmodule EveDmv.Database.HealthCheck do
 
   defp check_index_usage do
     query = """
-    SELECT 
+    SELECT
       schemaname,
       tablename,
       indexname,
       idx_scan,
       idx_tup_read,
       idx_tup_fetch
-    FROM pg_stat_user_indexes 
+    FROM pg_stat_user_indexes
     WHERE schemaname = 'public'
     AND idx_scan = 0
     ORDER BY idx_tup_read DESC
@@ -155,18 +155,18 @@ defmodule EveDmv.Database.HealthCheck do
 
   defp check_vacuum_stats do
     query = """
-    SELECT 
+    SELECT
       schemaname,
       tablename,
       last_vacuum,
       last_autovacuum,
       n_dead_tup,
       n_live_tup,
-      CASE 
+      CASE
         WHEN n_live_tup > 0 THEN (n_dead_tup::float / n_live_tup::float) * 100
-        ELSE 0 
+        ELSE 0
       END as dead_tuple_percent
-    FROM pg_stat_user_tables 
+    FROM pg_stat_user_tables
     WHERE schemaname = 'public'
     AND n_live_tup > 1000
     ORDER BY dead_tuple_percent DESC
@@ -234,13 +234,13 @@ defmodule EveDmv.Database.HealthCheck do
 
   defp check_table_stats do
     query = """
-    SELECT 
+    SELECT
       schemaname,
       tablename,
       n_live_tup,
       n_dead_tup,
       pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as total_size
-    FROM pg_stat_user_tables 
+    FROM pg_stat_user_tables
     WHERE schemaname = 'public'
     ORDER BY n_live_tup DESC
     LIMIT 10
@@ -257,7 +257,7 @@ defmodule EveDmv.Database.HealthCheck do
 
   defp check_disk_usage do
     query = """
-    SELECT 
+    SELECT
       pg_size_pretty(pg_database_size(current_database())) as db_size,
       pg_size_pretty(pg_database_size('postgres')) as postgres_size
     """
@@ -312,7 +312,7 @@ defmodule EveDmv.Database.HealthCheck do
 
   defp get_database_size do
     query = """
-    SELECT 
+    SELECT
       pg_size_pretty(pg_database_size(current_database())) as size,
       pg_database_size(current_database()) as bytes
     """
@@ -325,12 +325,12 @@ defmodule EveDmv.Database.HealthCheck do
 
   defp get_largest_tables do
     query = """
-    SELECT 
+    SELECT
       schemaname,
       tablename,
       pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as size,
       pg_total_relation_size(schemaname||'.'||tablename) as bytes
-    FROM pg_tables 
+    FROM pg_tables
     WHERE schemaname = 'public'
     ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
     LIMIT 10
@@ -349,18 +349,18 @@ defmodule EveDmv.Database.HealthCheck do
 
   defp get_index_efficiency do
     query = """
-    SELECT 
+    SELECT
       schemaname,
       tablename,
       indexname,
       idx_scan,
       idx_tup_read,
       idx_tup_fetch,
-      CASE 
+      CASE
         WHEN idx_tup_read > 0 THEN round((idx_tup_fetch::numeric / idx_tup_read::numeric) * 100, 2)
-        ELSE 0 
+        ELSE 0
       END as efficiency_percent
-    FROM pg_stat_user_indexes 
+    FROM pg_stat_user_indexes
     WHERE schemaname = 'public'
     AND idx_scan > 0
     ORDER BY idx_scan DESC
@@ -388,11 +388,11 @@ defmodule EveDmv.Database.HealthCheck do
 
   defp get_connection_details do
     query = """
-    SELECT 
+    SELECT
       count(*) as total_connections,
       count(*) FILTER (WHERE state = 'active') as active_connections,
       count(*) FILTER (WHERE state = 'idle') as idle_connections
-    FROM pg_stat_activity 
+    FROM pg_stat_activity
     WHERE datname = current_database()
     """
 

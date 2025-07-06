@@ -120,7 +120,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
   @doc """
   Optimize pilot assignments for a doctrine template.
 
-  Assigns pilots to roles by calculating suitability scores and 
+  Assigns pilots to roles by calculating suitability scores and
   selecting the best pilots for each role requirement.
   """
   def optimize_pilot_assignments(

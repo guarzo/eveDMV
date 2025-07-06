@@ -42,7 +42,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   @doc """
   Analyze a battle or engagement from killmail data.
-  
+
   Provides comprehensive analysis including timeline, fleet composition,
   tactical effectiveness, and strategic recommendations.
   """
@@ -52,7 +52,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   @doc """
   Analyze an ongoing engagement in real-time.
-  
+
   Tracks developing battles and provides live tactical insights.
   """
   def analyze_live_engagement(system_id, opts \\ []) do
@@ -93,7 +93,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   def init(opts) do
     # Subscribe to killmail events for real-time analysis
     Phoenix.PubSub.subscribe(EveDmv.PubSub, "killmails:enriched")
-    
+
     state = %{
       active_engagements: %{},  # system_id -> engagement_data
       battle_cache: %{},  # battle_id -> analysis_cache
@@ -124,39 +124,39 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
                {:ok, fleet_analysis} <- analyze_fleet_compositions(participants, killmails),
                {:ok, tactical_analysis} <- perform_tactical_analysis(timeline, fleet_analysis),
                {:ok, performance_metrics} <- calculate_performance_metrics(killmails, participants) do
-            
+
             analysis = %{
               battle_id: battle_id,
               analyzed_at: DateTime.utc_now(),
-              
+
               # Battle overview
               duration_seconds: calculate_battle_duration(timeline),
               total_participants: map_size(participants),
               total_kills: length(killmails),
               isk_destroyed: calculate_total_isk_destroyed(killmails),
-              
+
               # Classification
               battle_type: classify_battle_type(participants, killmails),
               engagement_scale: classify_engagement_scale(participants),
-              
+
               # Timeline
               timeline: timeline,
               phases: identify_battle_phases(timeline),
-              
+
               # Fleet analysis
               fleet_compositions: fleet_analysis,
               doctrine_effectiveness: evaluate_doctrine_effectiveness(fleet_analysis),
-              
+
               # Tactical analysis
               tactical_patterns: tactical_analysis.patterns,
               key_moments: tactical_analysis.key_moments,
               turning_points: tactical_analysis.turning_points,
-              
+
               # Performance
               side_performance: performance_metrics.by_side,
               ship_class_effectiveness: performance_metrics.by_ship_class,
               top_performers: performance_metrics.top_performers,
-              
+
               # Strategic insights
               winner: determine_battle_winner(performance_metrics),
               victory_factors: analyze_victory_factors(tactical_analysis, performance_metrics)
@@ -208,7 +208,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       with {:ok, recent_kills} <- fetch_recent_system_kills(system_id, 300),
            {:ok, updated_engagement} <- update_engagement_data(engagement, recent_kills),
            {:ok, live_analysis} <- perform_live_analysis(updated_engagement) do
-        
+
         # Update state
         new_engagements = Map.put(state.active_engagements, system_id, updated_engagement)
         new_state = %{state | active_engagements: new_engagements}
@@ -259,7 +259,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     try do
       with {:ok, killmails} <- fetch_battle_killmails(battle_id),
            {:ok, timeline} <- construct_detailed_timeline(killmails, opts) do
-        
+
         timeline_data = %{
           battle_id: battle_id,
           events: timeline,
@@ -285,7 +285,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       # Analyze each battle
       battle_analyses = Enum.map(battle_ids, fn battle_id ->
         case Map.get(state.battle_cache, battle_id) do
-          nil -> 
+          nil ->
             # Trigger analysis if not cached
             {:ok, analysis} = handle_call({:analyze_battle, battle_id, []}, nil, state) |> elem(0)
             analysis
@@ -313,10 +313,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   def handle_call({:get_entity_performance, entity_id, entity_type, opts}, _from, state) do
     try do
       time_range = Keyword.get(opts, :time_range, :last_30_days)
-      
+
       with {:ok, battles} <- fetch_entity_battles(entity_id, entity_type, time_range),
            {:ok, performance_data} <- analyze_entity_performance(entity_id, entity_type, battles) do
-        
+
         {:reply, {:ok, performance_data}, state}
       else
         {:error, _reason} = error -> {:reply, error, state}
@@ -359,8 +359,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   def handle_info(:cleanup_stale_engagements, state) do
     # Remove engagements with no activity for 10 minutes
     cutoff_time = DateTime.add(DateTime.utc_now(), -600, :second)
-    
-    active_engagements = 
+
+    active_engagements =
       state.active_engagements
       |> Enum.filter(fn {_system_id, engagement} ->
         DateTime.compare(engagement.last_activity, cutoff_time) == :gt
@@ -387,7 +387,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   end
 
   defp construct_battle_timeline(killmails) do
-    timeline = 
+    timeline =
       killmails
       |> Enum.sort_by(&(&1.killmail_time))
       |> Enum.map(fn km ->
@@ -410,8 +410,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   defp construct_detailed_timeline(killmails, opts) do
     include_damage_dealt = Keyword.get(opts, :include_damage, true)
-    
-    timeline = 
+
+    timeline =
       killmails
       |> Enum.sort_by(&(&1.killmail_time))
       |> Enum.map(fn km ->
@@ -425,7 +425,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
           isk_destroyed: km.total_value,
           ship_class: classify_ship(km.victim_ship_type_id)
         }
-        
+
         event
       end)
 
@@ -433,7 +433,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   end
 
   defp extract_battle_participants(killmails) do
-    participants = 
+    participants =
       killmails
       |> Enum.reduce(%{}, fn km, acc ->
         # Add victim
@@ -451,7 +451,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
         # Add attackers
         Enum.reduce(km.attackers || [], acc, fn attacker, acc2 ->
           char_id = attacker["character_id"]
-          
+
           if char_id && char_id != 0 do
             existing = Map.get(acc2, char_id, %{
               character_id: char_id,
@@ -483,16 +483,16 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   defp analyze_fleet_compositions(participants, killmails) do
     # Group participants by side
-    sides = 
+    sides =
       participants
       |> Map.values()
       |> Enum.group_by(&(&1.side))
 
-    fleet_comps = 
+    fleet_comps =
       sides
       |> Enum.map(fn {side, side_participants} ->
         ship_composition = analyze_side_ship_composition(side_participants)
-        
+
         {side, %{
           pilot_count: length(side_participants),
           ship_composition: ship_composition,
@@ -522,12 +522,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   defp calculate_performance_metrics(killmails, participants) do
     # Group by side
-    sides = 
+    sides =
       participants
       |> Map.values()
       |> Enum.group_by(&(&1.side))
 
-    by_side = 
+    by_side =
       sides
       |> Enum.map(fn {side, side_participants} ->
         {side, %{
@@ -554,9 +554,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   defp update_engagement_data(engagement, new_kills) do
     # Add new kills to engagement
     all_kills = engagement.killmails ++ new_kills
-    
+
     # Update participants
-    participants = 
+    participants =
       all_kills
       |> Enum.reduce(engagement.participants, fn km, acc ->
         # Similar logic to extract_battle_participants but incremental
@@ -577,7 +577,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     # Quick analysis for live engagement
     participant_count = map_size(engagement.participants)
     kill_rate = calculate_kill_rate(engagement.killmails)
-    
+
     analysis = %{
       system_id: engagement.system_id,
       status: determine_engagement_status(engagement),
@@ -596,7 +596,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     recommendations = []
 
     # Fleet composition recommendations
-    recommendations = recommendations ++ 
+    recommendations = recommendations ++
       if battle_analysis.fleet_compositions do
         analyze_fleet_composition_gaps(battle_analysis.fleet_compositions)
       else
@@ -625,7 +625,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   defp generate_doctrine_recommendations(battle_analysis) do
     fleet_comps = battle_analysis.fleet_compositions
-    
+
     if fleet_comps do
       [
         recommend_doctrine_adjustments(fleet_comps),
@@ -665,7 +665,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   defp classify_battle_type(participants, killmails) do
     participant_count = map_size(participants)
-    
+
     cond do
       participant_count <= @small_gang_max -> :small_gang
       participant_count <= @medium_fleet_max -> :fleet_fight
@@ -675,7 +675,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   defp classify_engagement_scale(participants) do
     count = map_size(participants)
-    
+
     cond do
       count < 5 -> :skirmish
       count < 15 -> :small_gang
@@ -753,7 +753,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   defp calculate_average_efficiency(participants) do
     total_kills = Enum.sum(Enum.map(participants, &(&1.kills)))
     total_losses = Enum.sum(Enum.map(participants, &(&1.losses)))
-    
+
     if total_losses > 0 do
       total_kills / total_losses
     else
@@ -836,7 +836,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       first_kill = List.first(killmails)
       last_kill = List.last(killmails)
       duration_minutes = DateTime.diff(last_kill.killmail_time, first_kill.killmail_time) / 60
-      
+
       if duration_minutes > 0 do
         length(killmails) / duration_minutes
       else
@@ -849,7 +849,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   defp determine_engagement_status(engagement) do
     last_activity_seconds = DateTime.diff(DateTime.utc_now(), engagement.last_activity)
-    
+
     cond do
       last_activity_seconds < 60 -> :active
       last_activity_seconds < 300 -> :winding_down
@@ -860,7 +860,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   defp calculate_engagement_intensity(kill_rate, participant_count) do
     if participant_count > 0 do
       intensity = kill_rate * 10 / participant_count
-      
+
       cond do
         intensity > 2.0 -> :extreme
         intensity > 1.0 -> :high

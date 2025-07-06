@@ -47,7 +47,7 @@ defmodule EveDmv.Workers.RealtimeTaskSupervisor do
   ## Options
   - `:timeout` - Custom timeout (max #{@max_task_duration}ms)
   - `:description` - Task description for logging
-  - `:priority` - Task priority (:high, :normal) 
+  - `:priority` - Task priority (:high, :normal)
   - `:event_type` - Type of event being processed
   """
   def start_task(supervisor \\ __MODULE__, fun, opts \\ []) do

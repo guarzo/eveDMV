@@ -138,7 +138,7 @@ defmodule EveDmv.Database.QueryUtils do
 
       iex> query_killmail_participants([123, 456, 789])
       {:ok, [%Participant{}, ...]}
-      
+
       iex> query_killmail_participants([123], exclude_character: 98765)
       {:ok, [%Participant{}, ...]}
   """
@@ -204,10 +204,10 @@ defmodule EveDmv.Database.QueryUtils do
 
       iex> safe_percentage(75, 100)
       75.0
-      
+
       iex> safe_percentage(1, 3, 2)
       33.33
-      
+
       iex> safe_percentage(5, 0)
       0.0
   """
@@ -255,7 +255,7 @@ defmodule EveDmv.Database.QueryUtils do
 
       iex> wormhole_system?(31000001)
       true
-      
+
       iex> wormhole_system?(30000142)
       false
   """
@@ -270,7 +270,7 @@ defmodule EveDmv.Database.QueryUtils do
 
       iex> group_killmails_by_timeframe(killmails, :day)
       %{"2024-07-01" => [%KillmailEnriched{}, ...], ...}
-      
+
       iex> group_killmails_by_timeframe(killmails, :hour)
       %{0 => [%KillmailEnriched{}, ...], 12 => [...], ...}
   """

@@ -4,7 +4,7 @@ defmodule EveDmv.Eve.ErrorClassifier do
 
   Categorizes errors by:
   - Persistence: transient vs permanent
-  - Severity: critical vs warning vs info  
+  - Severity: critical vs warning vs info
   - Retry strategy: retryable vs not_retryable
   - User impact: user_facing vs system_only
   """

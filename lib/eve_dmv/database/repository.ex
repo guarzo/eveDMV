@@ -8,11 +8,11 @@ defmodule EveDmv.Database.Repository do
   ## Usage
 
       defmodule EveDmv.Database.KillmailRepository do
-        use EveDmv.Database.Repository, 
+        use EveDmv.Database.Repository,
           resource: EveDmv.Killmails.KillmailEnriched,
           cache_type: :hot_data
       end
-      
+
       # Query with automatic caching and monitoring
       KillmailRepository.get_by_id(123456)
       KillmailRepository.list_by_corporation(corp_id, preload: [:participants])
@@ -21,7 +21,7 @@ defmodule EveDmv.Database.Repository do
   ## Features
 
   - **Standardized interfaces**: Consistent query methods across all repositories
-  - **Automatic caching**: Configurable cache integration with TTL management  
+  - **Automatic caching**: Configurable cache integration with TTL management
   - **Performance monitoring**: Built-in telemetry for query tracking
   - **N+1 prevention**: Optimized preloading and batch operations
   - **Query composition**: Composable filters and query building
@@ -88,7 +88,7 @@ defmodule EveDmv.Database.Repository do
       ## Options
 
       - `:filters` - Map of field filters to apply
-      - `:preload` - List of associations to preload  
+      - `:preload` - List of associations to preload
       - `:limit` - Maximum number of records to return
       - `:offset` - Number of records to skip
       - `:order_by` - Field or list of fields to order by

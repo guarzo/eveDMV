@@ -19,7 +19,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
   def analyze_table_statistics(table_name) do
     # Get table size and row count
     size_query = """
-    SELECT 
+    SELECT
       schemaname,
       tablename,
       attname,
@@ -27,13 +27,13 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
       correlation,
       most_common_vals,
       most_common_freqs
-    FROM pg_stats 
-    WHERE tablename = $1 
+    FROM pg_stats
+    WHERE tablename = $1
     AND schemaname = 'public'
     """
 
     stats_query = """
-    SELECT 
+    SELECT
       schemaname,
       tablename,
       seq_scan,
@@ -49,8 +49,8 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
       last_autovacuum,
       last_analyze,
       last_autoanalyze
-    FROM pg_stat_user_tables 
-    WHERE tablename = $1 
+    FROM pg_stat_user_tables
+    WHERE tablename = $1
     AND schemaname = 'public'
     """
 

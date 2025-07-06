@@ -14,10 +14,10 @@ defmodule EveDmv.Utils.MathUtils do
 
       iex> MathUtils.safe_division(10, 2)
       5.0
-      
+
       iex> MathUtils.safe_division(10, 0)
       0.0
-      
+
       iex> MathUtils.safe_division(10, 0, :infinity)
       :infinity
   """
@@ -34,10 +34,10 @@ defmodule EveDmv.Utils.MathUtils do
 
       iex> MathUtils.calculate_kill_death_ratio(10, 2)
       5.0
-      
+
       iex> MathUtils.calculate_kill_death_ratio(10, 0)
       10.0
-      
+
       iex> MathUtils.calculate_kill_death_ratio(0, 5)
       0.0
   """
@@ -53,7 +53,7 @@ defmodule EveDmv.Utils.MathUtils do
 
       iex> MathUtils.calculate_percentage_ratio(25, 100)
       25.0
-      
+
       iex> MathUtils.calculate_percentage_ratio(10, 0)
       0.0
   """
@@ -69,7 +69,7 @@ defmodule EveDmv.Utils.MathUtils do
 
       iex> MathUtils.calculate_mean([1, 2, 3, 4, 5])
       3.0
-      
+
       iex> MathUtils.calculate_mean([])
       0.0
   """
@@ -211,7 +211,7 @@ defmodule EveDmv.Utils.MathUtils do
 
       iex> MathUtils.clamp_score(150, 0, 100)
       100
-      
+
       iex> MathUtils.clamp_score(-10, 0, 100)
       0
   """

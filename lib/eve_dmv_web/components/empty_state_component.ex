@@ -12,7 +12,7 @@ defmodule EveDmvWeb.Components.EmptyStateComponent do
 
   ## Examples
 
-      <.empty_state 
+      <.empty_state
         icon="🛸"
         title="No kills yet"
         message="Kill data will appear here as it's processed"

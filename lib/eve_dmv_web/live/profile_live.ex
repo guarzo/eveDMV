@@ -94,7 +94,7 @@ defmodule EveDmvWeb.ProfileLive do
             </p>
           </div>
         </div>
-        
+
     <!-- Character Information -->
         <div class="lg:col-span-2 bg-gray-800 rounded-lg p-6">
           <h3 class="text-lg font-semibold text-white mb-4">Character Information</h3>
@@ -181,7 +181,7 @@ defmodule EveDmvWeb.ProfileLive do
               </div>
             </div>
           </div>
-          
+
     <!-- Actions -->
           <div class="mt-6 pt-6 border-t border-gray-700">
             <div class="flex space-x-4">
@@ -208,7 +208,7 @@ defmodule EveDmvWeb.ProfileLive do
           </div>
         </div>
       </div>
-      
+
     <!-- Quick Actions -->
       <div class="mt-8 bg-gray-800 rounded-lg p-6">
         <h3 class="text-lg font-semibold text-white mb-4">Quick Actions</h3>

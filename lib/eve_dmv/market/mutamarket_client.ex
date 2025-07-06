@@ -17,7 +17,7 @@ defmodule EveDmv.Market.MutamarketClient do
 
       # Get abyssal module price estimate
       {:ok, price} = MutamarketClient.estimate_abyssal_price(type_id, attributes)
-      
+
       # Search for similar modules
       {:ok, modules} = MutamarketClient.search_similar(type_id, attributes)
   """
@@ -49,7 +49,7 @@ defmodule EveDmv.Market.MutamarketClient do
 
       iex> attributes = %{
       ...>   20 => 15.5,     # CPU usage
-      ...>   30 => 220,      # Power grid usage  
+      ...>   30 => 220,      # Power grid usage
       ...>   554 => 12500    # Damage multiplier
       ...> }
       iex> MutamarketClient.estimate_abyssal_price(47820, attributes)

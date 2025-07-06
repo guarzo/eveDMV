@@ -12,8 +12,8 @@ defmodule EveDmvWeb.Components.PageHeaderComponent do
 
   ## Examples
 
-      <.page_header 
-        title="Kill Feed" 
+      <.page_header
+        title="Kill Feed"
         subtitle="Real-time EVE Online PvP activity"
         current_user={@current_user}
       >
@@ -43,13 +43,13 @@ defmodule EveDmvWeb.Components.PageHeaderComponent do
             <%= render_slot(@info) %>
           </div>
         </div>
-        
+
         <div class="flex items-center space-x-4">
           <!-- User info -->
           <div :if={@current_user} class="text-sm text-gray-300">
             Welcome back, <span class="text-yellow-400"><%= @current_user.character_name %></span>
           </div>
-          
+
           <!-- Action buttons -->
           <div :if={@action != []} class="flex space-x-2">
             <%= render_slot(@action) %>

@@ -46,8 +46,8 @@ defmodule EveDmvWeb.SurveillanceHeaderComponent do
             phx-click="toggle_batch_mode"
             phx-target={@myself}
             class={"px-3 py-2 rounded-lg text-sm transition-colors " <>
-                   if(@batch_mode, 
-                      do: "bg-yellow-600 hover:bg-yellow-700", 
+                   if(@batch_mode,
+                      do: "bg-yellow-600 hover:bg-yellow-700",
                       else: "bg-gray-600 hover:bg-gray-700")}
           >
             <%= if @batch_mode, do: "✓ Batch Mode", else: "📋 Batch Mode" %>

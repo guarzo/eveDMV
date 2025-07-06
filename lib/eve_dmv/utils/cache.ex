@@ -100,7 +100,7 @@ defmodule EveDmv.Utils.Cache do
   Start cache with cache type defaults.
 
   Cache types:
-  - :hot_data - Fast access for frequently used data 
+  - :hot_data - Fast access for frequently used data
   - :api_responses - External API responses with longer TTL
   - :analysis - Intelligence analysis results
   """

@@ -1,7 +1,7 @@
 defmodule EveDmvWeb.Components.BattleTimelineComponent do
   @moduledoc """
   Battle timeline visualization component for EVE DMV.
-  
+
   Displays engagement timelines with interactive features:
   - Kill event markers with hover details
   - Intensity visualization over time
@@ -15,7 +15,7 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
 
   @doc """
   Renders a battle timeline visualization.
-  
+
   ## Props
   - timeline_data: Battle timeline data from BattleAnalysisService
   - height: Height of the timeline (default: 400px)
@@ -170,7 +170,7 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
               <div class="side-composition bg-gray-900 rounded p-2">
                 <p class="text-sm font-semibold mb-1"><%= format_side(side) %></p>
                 <p class="text-xs text-gray-400">
-                  <%= comp.pilot_count %> pilots • 
+                  <%= comp.pilot_count %> pilots •
                   <%= format_percentage(comp.logistics_ratio * 100) %> logi
                 </p>
                 <%= if comp.doctrine_detected do %>
@@ -278,7 +278,7 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
                 <span><%= format_percentage(@fleet_analysis.doctrine_effectiveness * 100) %></span>
               </div>
               <div class="w-full bg-gray-700 rounded-full h-2">
-                <div 
+                <div
                   class="bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 h-2 rounded-full"
                   style={"width: #{@fleet_analysis.doctrine_effectiveness * 100}%"}
                 ></div>
@@ -295,11 +295,11 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
 
   defp render_intensity_curve(assigns) do
     intensity_data = Map.get(assigns.timeline_data, :intensity_curve, [])
-    
+
     if length(intensity_data) > 0 do
       # Convert intensity data to SVG path
       assigns = assign(assigns, :intensity_path, build_intensity_path(intensity_data))
-      
+
       ~H"""
       <svg class="w-full h-full" preserveAspectRatio="none">
         <defs>
@@ -308,7 +308,7 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
             <stop offset="100%" style="stop-color:rgb(239,68,68);stop-opacity:0" />
           </linearGradient>
         </defs>
-        <path 
+        <path
           d={@intensity_path}
           fill="url(#intensityGradient)"
           stroke="rgb(239,68,68)"
@@ -336,14 +336,14 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
   defp render_event_marker(event, index, assigns) do
     # Calculate position based on timestamp
     position = calculate_event_position(event, assigns.timeline_data)
-    
+
     assigns = assigns
     |> assign(:event, event)
     |> assign(:index, index)
     |> assign(:position, position)
-    
+
     ~H"""
-    <div 
+    <div
       class="event-marker absolute"
       style={"left: #{@position}%; bottom: 40px;"}
       phx-hook="Tooltip"
@@ -363,14 +363,14 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
     start_pos = calculate_phase_position(phase.start_time, assigns.timeline_data)
     end_pos = calculate_phase_position(phase.end_time, assigns.timeline_data)
     width = end_pos - start_pos
-    
+
     assigns = assigns
     |> assign(:phase, phase)
     |> assign(:start_pos, start_pos)
     |> assign(:width, width)
-    
+
     ~H"""
-    <div 
+    <div
       class="phase-marker absolute h-full bg-blue-500 opacity-10"
       style={"left: #{@start_pos}%; width: #{@width}%;"}
     >
@@ -383,13 +383,13 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
 
   defp render_key_moment(moment, assigns) do
     position = calculate_event_position(moment, assigns.timeline_data)
-    
+
     assigns = assigns
     |> assign(:moment, moment)
     |> assign(:position, position)
-    
+
     ~H"""
-    <div 
+    <div
       class="key-moment absolute"
       style={"left: #{@position}%; top: 20px;"}
     >
@@ -405,7 +405,7 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
 
   defp render_participant_flow(flow_data) do
     assigns = %{flow_data: flow_data}
-    
+
     ~H"""
     <div class="participant-flow-chart bg-gray-900 rounded p-3">
       <div class="flow-stats grid grid-cols-2 gap-4 text-sm">
@@ -428,12 +428,12 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
 
   defp render_ship_class_bars(ship_composition) do
     total = Enum.sum(Map.values(ship_composition))
-    
+
     assigns = %{
       ship_composition: ship_composition,
       total: total
     }
-    
+
     ~H"""
     <div class="ship-class-bars space-y-2">
       <%= for {ship_class, count} <- Enum.sort_by(@ship_composition, &elem(&1, 1), :desc) do %>
@@ -443,7 +443,7 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
             <span class="text-gray-300"><%= count %></span>
           </div>
           <div class="w-full bg-gray-700 rounded-full h-2">
-            <div 
+            <div
               class="bg-blue-500 h-2 rounded-full"
               style={"width: #{(count / @total) * 100}%"}
             ></div>
@@ -578,7 +578,7 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
     ship_name = Map.get(event.victim, :ship_name, "Unknown")
     character_name = Map.get(event.victim, :character_name, "Unknown")
     isk = format_isk(Map.get(event, :isk_destroyed, 0))
-    
+
     "#{ship_name} - #{character_name}\n#{isk} ISK"
   end
 

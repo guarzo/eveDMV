@@ -22,7 +22,7 @@ defmodule EveDmvWeb.ProfileGridComponent do
             <%= length(@profiles) %> profile<%= if length(@profiles) != 1, do: "s" %>
           </div>
         </div>
-        
+
         <!-- Profiles Grid -->
         <%= if length(@profiles) > 0 do %>
           <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -55,7 +55,7 @@ defmodule EveDmvWeb.ProfileGridComponent do
                     {profile_status_badge(profile.is_active)}
                   </div>
                 </div>
-                
+
                 <!-- Profile Stats -->
                 <div class="grid grid-cols-2 gap-4 mb-4">
                   <div class="text-center">
@@ -72,7 +72,7 @@ defmodule EveDmvWeb.ProfileGridComponent do
                     <% end %>
                   </div>
                 </div>
-                
+
                 <!-- Filter Preview -->
                 <div class="mb-4">
                   <div class="text-sm font-medium text-gray-300 mb-2">Filter Rules:</div>
@@ -82,7 +82,7 @@ defmodule EveDmvWeb.ProfileGridComponent do
                     </code>
                   </div>
                 </div>
-                
+
                 <!-- Actions -->
                 <div class="flex space-x-2">
                   <button
@@ -90,8 +90,8 @@ defmodule EveDmvWeb.ProfileGridComponent do
                     phx-target={@myself}
                     phx-value-profile_id={profile.id}
                     class={"px-3 py-2 rounded text-sm font-medium transition-colors " <>
-                           if(profile.is_active, 
-                              do: "bg-yellow-600 hover:bg-yellow-700 text-white", 
+                           if(profile.is_active,
+                              do: "bg-yellow-600 hover:bg-yellow-700 text-white",
                               else: "bg-green-600 hover:bg-green-700 text-white")}
                   >
                     <%= if profile.is_active, do: "Pause", else: "Activate" %>

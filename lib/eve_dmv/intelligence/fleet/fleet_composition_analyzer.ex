@@ -2,7 +2,7 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
   @moduledoc """
   Fleet composition analysis module for wormhole operations.
 
-  Provides detailed ship-by-ship analysis, role balance evaluation, 
+  Provides detailed ship-by-ship analysis, role balance evaluation,
   wormhole compatibility assessment, and doctrine compliance scoring.
   """
 
