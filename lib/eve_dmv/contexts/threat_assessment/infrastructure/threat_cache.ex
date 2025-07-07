@@ -9,7 +9,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache do
 
   use GenServer
   use EveDmv.ErrorHandler
-  alias EveDmv.Result
+
   require Logger
 
   # Cache configuration
@@ -134,7 +134,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache do
   # GenServer implementation
 
   @impl GenServer
-  def init(opts) do
+  def init(_opts) do
     # Schedule periodic cleanup
     Process.send_after(self(), :cleanup, @cleanup_interval)
 
@@ -210,13 +210,16 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache do
 
     # Check if we need to evict entries
     new_cache =
-      if map_size(state.cache) >= @max_cache_size do
-        # Evict 100 oldest entries
-        evict_oldest_entries(state.cache, 100)
-      else
-        state.cache
-      end
-      |> Map.put(cache_key, cache_entry)
+      Map.put(
+        if map_size(state.cache) >= @max_cache_size do
+          # Evict 100 oldest entries
+          evict_oldest_entries(state.cache, 100)
+        else
+          state.cache
+        end,
+        cache_key,
+        cache_entry
+      )
 
     evictions = if map_size(state.cache) >= @max_cache_size, do: 100, else: 0
 
@@ -363,8 +366,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache do
 
     # Analyze cache contents by type
     type_breakdown =
-      state.cache
-      |> Enum.reduce(%{}, fn {key, _value}, acc ->
+      Enum.reduce(state.cache, %{}, fn {key, _value}, acc ->
         type = key |> String.split(":") |> List.first()
         Map.update(acc, type, 1, &(&1 + 1))
       end)
@@ -394,13 +396,10 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache do
 
   defp estimate_data_size(data) do
     # Rough estimate of data size in memory
-    try do
-      data
-      |> :erlang.term_to_binary()
-      |> byte_size()
-    rescue
-      _ -> :unknown
-    end
+    binary_data = :erlang.term_to_binary(data)
+    byte_size(binary_data)
+  rescue
+    _ -> :unknown
   end
 
   @impl GenServer

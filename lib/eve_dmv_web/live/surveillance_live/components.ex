@@ -6,10 +6,11 @@ defmodule EveDmvWeb.SurveillanceLive.Components do
   interface templates.
   """
 
-  require Logger
-
   alias EveDmv.Api
-  alias EveDmv.Surveillance.{MatchingEngine, ProfileMatch}
+  alias EveDmv.Surveillance.MatchingEngine
+  alias EveDmv.Surveillance.ProfileMatch
+
+  require Logger
 
   # Data Loading Functions
 
@@ -49,7 +50,7 @@ defmodule EveDmvWeb.SurveillanceLive.Components do
 
   Provides a template filter tree structure for users creating new profiles.
   """
-  @spec sample_filter_tree() :: map()
+  @spec sample_filter_tree() :: %{String.t() => any()}
   def sample_filter_tree do
     %{
       "condition" => "and",

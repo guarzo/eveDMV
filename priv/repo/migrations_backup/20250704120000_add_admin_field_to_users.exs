@@ -4,10 +4,10 @@ defmodule EveDmv.Repo.Migrations.AddAdminFieldToUsers do
   def change do
     # Check if column already exists before adding it
     execute """
-      DO $$ 
+      DO $$
       BEGIN
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                       WHERE table_name = 'users' AND column_name = 'is_admin') 
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name = 'users' AND column_name = 'is_admin')
         THEN
           ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE NOT NULL;
           COMMENT ON COLUMN users.is_admin IS 'Whether this user has admin privileges';
@@ -17,9 +17,9 @@ defmodule EveDmv.Repo.Migrations.AddAdminFieldToUsers do
 
     # Create index for admin user lookups (only if it doesn't exist)
     execute """
-      DO $$ 
+      DO $$
       BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'users_is_admin_index') 
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'users_is_admin_index')
         THEN
           CREATE INDEX users_is_admin_index ON users (is_admin) WHERE is_admin = true;
         END IF;

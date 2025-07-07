@@ -8,8 +8,6 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
 
   use GenServer
   use EveDmv.ErrorHandler
-  alias EveDmv.Result
-  alias EveDmv.Contexts.FleetOperations.Infrastructure.FleetRepository
 
   require Logger
 
@@ -84,7 +82,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
   # GenServer implementation
 
   @impl GenServer
-  def init(opts) do
+  def init(_opts) do
     state = %{
       doctrines: %{},
       next_id: 1,
@@ -281,11 +279,13 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
 
     # Calculate estimated mass for typical doctrine composition
     estimated_mass =
-      Enum.sum(ship_requirements, fn {ship_type_id, requirement} ->
-        ship_class = get_ship_class_for_type(ship_type_id)
-        ship_mass = get_estimated_ship_mass(ship_class)
-        ship_mass * requirement[:min_count]
-      end)
+      Enum.sum(
+        Enum.map(ship_requirements, fn {ship_type_id, requirement} ->
+          ship_class = get_ship_class_for_type(ship_type_id)
+          ship_mass = get_estimated_ship_mass(ship_class)
+          ship_mass * requirement[:min_count]
+        end)
+      )
 
     cond do
       # < 100M kg
@@ -680,14 +680,16 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
 
   defp calculate_minimum_fleet_size(doctrine) do
     ship_minimums =
-      Enum.sum(Map.values(doctrine.ship_requirements), fn req ->
-        req[:min_count] || 0
-      end)
+      doctrine.ship_requirements
+      |> Map.values()
+      |> Enum.map(fn req -> req[:min_count] || 0 end)
+      |> Enum.sum()
 
     role_minimums =
-      Enum.sum(Map.values(doctrine.role_requirements), fn req ->
-        req[:min_count] || 0
-      end)
+      doctrine.role_requirements
+      |> Map.values()
+      |> Enum.map(fn req -> req[:min_count] || 0 end)
+      |> Enum.sum()
 
     max(ship_minimums, role_minimums)
   end
@@ -700,10 +702,12 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
   end
 
   defp calculate_fleet_mass(participants) do
-    Enum.sum(participants, fn participant ->
-      ship_class = get_ship_class_for_type(participant.ship_type_id)
-      get_estimated_ship_mass(ship_class)
-    end)
+    Enum.sum(
+      Enum.map(participants, fn participant ->
+        ship_class = get_ship_class_for_type(participant.ship_type_id)
+        get_estimated_ship_mass(ship_class)
+      end)
+    )
   end
 
   defp update_doctrine_usage_statistics(usage_statistics, doctrine_id, compliance_score) do

@@ -18,27 +18,27 @@ defmodule EveDmv.Intelligence.Generators.RecruitmentInsightGenerator do
     retention_risk_count = Map.get(activity_data, :high_risk_count, 0)
 
     # Generate insights based on the data
-    insights = []
+    initial_insights = []
 
-    insights =
+    insights_with_members =
       if member_count < 20 do
-        ["Corporation needs more active members" | insights]
+        ["Corporation needs more active members" | initial_insights]
       else
-        insights
+        initial_insights
       end
 
-    insights =
+    insights_with_engagement =
       if avg_engagement < 50 do
-        ["Member engagement is below healthy levels" | insights]
+        ["Member engagement is below healthy levels" | insights_with_members]
       else
-        insights
+        insights_with_members
       end
 
-    insights =
+    final_insights =
       if retention_risk_count > member_count * 0.2 do
-        ["High number of members at retention risk" | insights]
+        ["High number of members at retention risk" | insights_with_engagement]
       else
-        insights
+        insights_with_engagement
       end
 
     recruitment_priority =
@@ -62,7 +62,7 @@ defmodule EveDmv.Intelligence.Generators.RecruitmentInsightGenerator do
 
     %{
       recruitment_priority: recruitment_priority,
-      insights: insights,
+      insights: final_insights,
       recommended_recruit_count: recommended_recruit_count,
       recommended_recruitment_rate: Float.round(recommended_recruitment_rate, 2),
       focus_areas: determine_recruitment_focus_areas(activity_data),
@@ -111,10 +111,15 @@ defmodule EveDmv.Intelligence.Generators.RecruitmentInsightGenerator do
     avg_engagement = Map.get(activity_data, :avg_engagement_score, 0)
     member_count = Map.get(activity_data, :total_members, 0)
 
-    areas = if avg_engagement < 50, do: ["engagement_improvement" | areas], else: areas
-    areas = if member_count < 15, do: ["active_recruitment" | areas], else: areas
+    areas_with_engagement =
+      if avg_engagement < 50, do: ["engagement_improvement" | areas], else: areas
 
-    if Enum.empty?(areas), do: ["maintain_current"], else: areas
+    final_areas =
+      if member_count < 15,
+        do: ["active_recruitment" | areas_with_engagement],
+        else: areas_with_engagement
+
+    if Enum.empty?(final_areas), do: ["maintain_current"], else: final_areas
   end
 
   defp assess_recruitment_capacity(_activity_data, member_count) do

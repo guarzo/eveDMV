@@ -7,7 +7,9 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.BehavioralPatternsAnalyzer do
   """
 
   use EveDmv.ErrorHandler
+
   alias EveDmv.Result
+
   require Logger
 
   @doc """
@@ -15,31 +17,29 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.BehavioralPatternsAnalyzer do
   """
   @spec analyze(integer(), map()) :: Result.t(map())
   def analyze(character_id, base_data \\ %{}) when is_integer(character_id) do
-    try do
-      character_stats = Map.get(base_data, :character_stats, %{})
-      killmail_stats = Map.get(base_data, :killmail_stats, %{})
+    character_stats = Map.get(base_data, :character_stats, %{})
+    killmail_stats = Map.get(base_data, :killmail_stats, %{})
 
-      behavioral_analysis = %{
-        activity_patterns: analyze_activity_patterns(character_stats),
-        engagement_behavior: analyze_engagement_behavior(character_stats),
-        risk_profile: analyze_risk_profile(character_stats),
-        tactical_patterns: analyze_tactical_patterns(character_stats),
-        social_behavior: analyze_social_behavior(character_stats),
-        consistency_metrics: calculate_consistency_metrics(character_stats, killmail_stats),
-        behavioral_summary: generate_behavioral_summary(character_stats),
-        psychological_profile: generate_psychological_profile(character_stats)
-      }
+    behavioral_analysis = %{
+      activity_patterns: analyze_activity_patterns(character_stats),
+      engagement_behavior: analyze_engagement_behavior(character_stats),
+      risk_profile: analyze_risk_profile(character_stats),
+      tactical_patterns: analyze_tactical_patterns(character_stats),
+      social_behavior: analyze_social_behavior(character_stats),
+      consistency_metrics: calculate_consistency_metrics(character_stats, killmail_stats),
+      behavioral_summary: generate_behavioral_summary(character_stats),
+      psychological_profile: generate_psychological_profile(character_stats)
+    }
 
-      Result.ok(behavioral_analysis)
-    rescue
-      exception ->
-        Logger.error("Behavioral analysis failed",
-          character_id: character_id,
-          error: Exception.format(:error, exception)
-        )
+    Result.ok(behavioral_analysis)
+  rescue
+    exception ->
+      Logger.error("Behavioral analysis failed",
+        character_id: character_id,
+        error: Exception.format(:error, exception)
+      )
 
-        Result.error(:analysis_failed, "Behavioral analysis error: #{inspect(exception)}")
-    end
+      Result.error(:analysis_failed, "Behavioral analysis error: #{inspect(exception)}")
   end
 
   # Core analysis functions
@@ -394,7 +394,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.BehavioralPatternsAnalyzer do
 
   defp analyze_retreat_behavior(character_stats) do
     losses = Map.get(character_stats, :total_losses, 0)
-    kills = Map.get(character_stats, :total_kills, 0)
+    _kills = Map.get(character_stats, :total_kills, 0)
 
     if losses == 0 do
       %{retreat_behavior: "unknown", sample_size: 0}
@@ -811,24 +811,36 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.BehavioralPatternsAnalyzer do
     else
       signs = []
 
-      if Map.get(character_stats, :is_fc, false) == true do
-        signs = ["fleet_commander" | signs]
-      end
+      signs =
+        if Map.get(character_stats, :is_fc, false) == true do
+          ["fleet_commander" | signs]
+        else
+          signs
+        end
 
       fleet_ratio = 1.0 - Map.get(character_stats, :solo_ratio, 0.5)
       kd_ratio = calculate_kill_death_ratio(character_stats)
 
-      if fleet_ratio > 0.7 and kd_ratio > 2.0 do
-        signs = ["experienced_fleet_member" | signs]
-      end
+      signs =
+        if fleet_ratio > 0.7 and kd_ratio > 2.0 do
+          ["experienced_fleet_member" | signs]
+        else
+          signs
+        end
 
-      if Map.get(character_stats, :total_kills, 0) > 500 and fleet_ratio > 0.6 do
-        signs = ["potential_anchor" | signs]
-      end
+      signs =
+        if Map.get(character_stats, :total_kills, 0) > 500 and fleet_ratio > 0.6 do
+          ["potential_anchor" | signs]
+        else
+          signs
+        end
 
-      if Map.get(character_stats, :corp_role) in ["CEO", "Director"] do
-        signs = ["corp_leadership" | signs]
-      end
+      signs =
+        if Map.get(character_stats, :corp_role) in ["CEO", "Director"] do
+          ["corp_leadership" | signs]
+        else
+          signs
+        end
 
       signs
     end
@@ -902,11 +914,9 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.BehavioralPatternsAnalyzer do
     if is_nil(character_stats) do
       0.0
     else
-      factors = []
-
       solo_ratio = Map.get(character_stats, :solo_ratio, 0.5)
       solo_stability = if solo_ratio > 0.8 or solo_ratio < 0.2, do: 0.9, else: 0.5
-      factors = [solo_stability | factors]
+      factors = [solo_stability]
 
       kd_ratio = calculate_kill_death_ratio(character_stats)
 
@@ -989,34 +999,42 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.BehavioralPatternsAnalyzer do
     if is_nil(character_stats) do
       []
     else
-      traits = []
-
       kd_ratio = calculate_kill_death_ratio(character_stats)
       solo_ratio = Map.get(character_stats, :solo_ratio, 0.5)
 
       total_activity =
         Map.get(character_stats, :total_kills, 0) + Map.get(character_stats, :total_losses, 0)
 
-      if kd_ratio > 3.0, do: traits = ["elite_pilot" | traits]
-      if kd_ratio > 2.0, do: traits = ["skilled_combatant" | traits]
+      initial_traits = []
 
-      if solo_ratio > 0.8, do: traits = ["lone_wolf" | traits]
-      if solo_ratio < 0.2, do: traits = ["fleet_specialist" | traits]
+      traits = if kd_ratio > 3.0, do: ["elite_pilot" | initial_traits], else: initial_traits
+      traits = if kd_ratio > 2.0, do: ["skilled_combatant" | traits], else: traits
 
-      if total_activity > 1000, do: traits = ["veteran" | traits]
-      if total_activity > 500, do: traits = ["experienced" | traits]
+      traits = if solo_ratio > 0.8, do: ["lone_wolf" | traits], else: traits
+      traits = if solo_ratio < 0.2, do: ["fleet_specialist" | traits], else: traits
 
-      if Map.get(character_stats, :flies_capitals, false) == true,
-        do: traits = ["capital_pilot" | traits]
+      traits = if total_activity > 1000, do: ["veteran" | traits], else: traits
+      traits = if total_activity > 500, do: ["experienced" | traits], else: traits
 
-      if Map.get(character_stats, :avg_ship_value, 0) > 1_000_000_000,
-        do: traits = ["high_stakes" | traits]
+      traits =
+        if Map.get(character_stats, :flies_capitals, false) == true,
+          do: ["capital_pilot" | traits],
+          else: traits
 
-      if Map.get(character_stats, :nullsec_percentage, 0) > 70,
-        do: traits = ["nullsec_resident" | traits]
+      traits =
+        if Map.get(character_stats, :avg_ship_value, 0) > 1_000_000_000,
+          do: ["high_stakes" | traits],
+          else: traits
 
-      if Map.get(character_stats, :wormhole_percentage, 0) > 50,
-        do: traits = ["wormholer" | traits]
+      traits =
+        if Map.get(character_stats, :nullsec_percentage, 0) > 70,
+          do: ["nullsec_resident" | traits],
+          else: traits
+
+      traits =
+        if Map.get(character_stats, :wormhole_percentage, 0) > 50,
+          do: ["wormholer" | traits],
+          else: traits
 
       Enum.take(traits, 5)
     end
@@ -1208,18 +1226,39 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.BehavioralPatternsAnalyzer do
       indicators = []
 
       kd_ratio = calculate_kill_death_ratio(character_stats)
-      if kd_ratio > 3.0, do: indicators = ["exceptional_kd_ratio" | indicators]
+
+      indicators =
+        if kd_ratio > 3.0 do
+          ["exceptional_kd_ratio" | indicators]
+        else
+          indicators
+        end
 
       solo_ratio = Map.get(character_stats, :solo_ratio, 0.5)
-      if solo_ratio > 0.8, do: indicators = ["strong_solo_preference" | indicators]
+
+      indicators =
+        if solo_ratio > 0.8 do
+          ["strong_solo_preference" | indicators]
+        else
+          indicators
+        end
 
       total_activity =
         Map.get(character_stats, :total_kills, 0) + Map.get(character_stats, :total_losses, 0)
 
-      if total_activity > 1000, do: indicators = ["highly_active" | indicators]
+      indicators =
+        if total_activity > 1000 do
+          ["highly_active" | indicators]
+        else
+          indicators
+        end
 
-      if Map.get(character_stats, :flies_capitals, false),
-        do: indicators = ["capital_capable" | indicators]
+      indicators =
+        if Map.get(character_stats, :flies_capitals, false) do
+          ["capital_capable" | indicators]
+        else
+          indicators
+        end
 
       Enum.take(indicators, 5)
     end

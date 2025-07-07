@@ -1,4 +1,5 @@
 # credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
+# credo:disable-for-this-file Credo.Check.Readability.StrictModuleLayout
 defmodule EveDmvWeb.ChainIntelligenceLive do
   @moduledoc """
   LiveView for real-time wormhole chain intelligence surveillance.
@@ -8,21 +9,22 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
   """
 
   use EveDmvWeb, :live_view
-  require Ash.Query
 
   alias EveDmv.Api
-
+  alias EveDmv.Intelligence.ChainAnalysis.ChainMonitor
+  alias EveDmv.Intelligence.ChainAnalysis.ChainTopology
   alias EveDmv.Intelligence.ChainConnection
   alias EveDmv.Intelligence.SystemInhabitant
   alias EveDmv.IntelligenceMigrationAdapter
+  alias EveDmvWeb.Helpers.TimeFormatter
 
-  alias EveDmv.Intelligence.ChainAnalysis.{ChainMonitor, ChainTopology}
+  require Ash.Query
+
+  on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
   # Import reusable components
   import EveDmvWeb.Components.PageHeaderComponent
   import EveDmvWeb.Components.EmptyStateComponent
-
-  on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
@@ -160,8 +162,8 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
   @impl Phoenix.LiveView
   def handle_info({:pilot_analysis_failed, character_id, reason}, socket) do
     socket =
-      socket
-      |> put_flash(
+      put_flash(
+        socket,
         :error,
         "Pilot analysis failed for character #{character_id}: #{inspect(reason)}"
       )
@@ -312,15 +314,5 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
   defp mass_status_class(:unknown), do: "text-gray-600"
 
   defp time_since(datetime) when is_nil(datetime), do: "Never"
-
-  defp time_since(datetime) do
-    diff = DateTime.diff(DateTime.utc_now(), datetime, :second)
-
-    cond do
-      diff < 60 -> "#{diff}s ago"
-      diff < 3600 -> "#{div(diff, 60)}m ago"
-      diff < 86_400 -> "#{div(diff, 3600)}h ago"
-      true -> "#{div(diff, 86400)}d ago"
-    end
-  end
+  defp time_since(datetime), do: TimeFormatter.format_relative_time(datetime)
 end

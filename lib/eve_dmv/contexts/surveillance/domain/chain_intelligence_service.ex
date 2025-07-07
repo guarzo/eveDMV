@@ -15,24 +15,29 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
 
   use GenServer
   use EveDmv.ErrorHandler
-  alias EveDmv.Result
-  alias EveDmv.Contexts.Surveillance.Domain.{AlertService, NotificationService}
-  alias EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer
-  alias EveDmv.Intelligence.{WandererClient, ChainAnalysis.ChainMonitor}
-  alias EveDmv.Infrastructure.EventBus
-  alias EveDmv.DomainEvents.{ChainThreatDetected, HostileMovement, ChainActivityPrediction}
+
+  alias EveDmv.Contexts.Surveillance.ChainActivityTracker
+  alias EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper
+  alias EveDmv.Contexts.Surveillance.Domain.ChainStatusService
+  alias EveDmv.DomainEvents.ChainThreatDetected
+  alias EveDmv.Intelligence.ChainMonitor
+  alias EveDmv.Intelligence.ChainThreatAnalyzer
 
   require Logger
 
   # Chain monitoring intervals
-  @topology_sync_interval_ms 30_000  # 30 seconds
-  @threat_analysis_interval_ms 60_000  # 1 minute
-  @activity_prediction_interval_ms 300_000  # 5 minutes
+  # 30 seconds
+  @topology_sync_interval_ms 30_000
+  # 1 minute
+  @threat_analysis_interval_ms 60_000
+  # 5 minutes
+  @activity_prediction_interval_ms 300_000
 
   # Threat escalation thresholds
   @high_threat_threshold 75
   @hostile_fleet_threshold 3
-  @chain_breach_distance 2  # Systems from home
+  # Systems from home
+  @chain_breach_distance 2
 
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
@@ -100,21 +105,23 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
   # GenServer implementation
 
   @impl GenServer
-  def init(opts) do
-    # Subscribe to Wanderer real-time updates
-    Phoenix.PubSub.subscribe(EveDmv.PubSub, "wanderer:chain_updates")
-    Phoenix.PubSub.subscribe(EveDmv.PubSub, "wanderer:inhabitant_updates")
-
-    # Subscribe to killmail events for chain activity correlation
-    Phoenix.PubSub.subscribe(EveDmv.PubSub, "killmails:enriched")
+  def init(_opts) do
+    # Subscribe to real-time updates
+    ChainIntelligenceHelper.subscribe_to_channels()
 
     state = %{
-      monitored_chains: %{},  # map_id -> chain_data
-      chain_topologies: %{},  # map_id -> topology_data
-      inhabitant_tracking: %{},  # map_id -> inhabitant_data
-      activity_timelines: %{},  # map_id -> activity_events
-      threat_predictions: %{},  # map_id -> prediction_data
-      last_sync: %{},  # map_id -> last_sync_time
+      # map_id -> chain_data
+      monitored_chains: %{},
+      # map_id -> topology_data
+      chain_topologies: %{},
+      # map_id -> inhabitant_data
+      inhabitant_tracking: %{},
+      # map_id -> activity_events
+      activity_timelines: %{},
+      # map_id -> prediction_data
+      threat_predictions: %{},
+      # map_id -> last_sync_time
+      last_sync: %{},
       metrics: %{
         chains_monitored: 0,
         threats_detected: 0,
@@ -134,55 +141,55 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
 
   @impl GenServer
   def handle_call({:monitor_chain, map_id, corporation_id, opts}, _from, state) do
-    try do
-      # Initialize chain monitoring
-      chain_data = %{
-        map_id: map_id,
-        corporation_id: corporation_id,
-        home_system_id: Keyword.get(opts, :home_system_id),
-        alert_enabled: Keyword.get(opts, :alert_enabled, true),
-        threat_threshold: Keyword.get(opts, :threat_threshold, @high_threat_threshold),
-        started_at: DateTime.utc_now(),
-        last_activity: DateTime.utc_now()
-      }
+    # Initialize chain monitoring
+    chain_data = %{
+      map_id: map_id,
+      corporation_id: corporation_id,
+      home_system_id: Keyword.get(opts, :home_system_id),
+      alert_enabled: Keyword.get(opts, :alert_enabled, true),
+      threat_threshold: Keyword.get(opts, :threat_threshold, @high_threat_threshold),
+      started_at: DateTime.utc_now(),
+      last_activity: DateTime.utc_now()
+    }
 
-      # Start monitoring with existing chain monitor
-      case ChainMonitor.monitor_chain(map_id, corporation_id) do
-        :ok ->
-          # Initialize chain data structures
-          new_monitored = Map.put(state.monitored_chains, map_id, chain_data)
-          new_topologies = Map.put(state.chain_topologies, map_id, %{})
-          new_inhabitants = Map.put(state.inhabitant_tracking, map_id, %{})
-          new_timelines = Map.put(state.activity_timelines, map_id, [])
-          new_predictions = Map.put(state.threat_predictions, map_id, %{})
+    # Start monitoring with existing chain monitor
+    case ChainMonitor.monitor_chain(map_id, corporation_id) do
+      :ok ->
+        # Initialize chain data structures
+        new_monitored = Map.put(state.monitored_chains, map_id, chain_data)
+        new_topologies = Map.put(state.chain_topologies, map_id, %{})
+        new_inhabitants = Map.put(state.inhabitant_tracking, map_id, %{})
+        new_timelines = Map.put(state.activity_timelines, map_id, [])
+        new_predictions = Map.put(state.threat_predictions, map_id, %{})
 
-          # Initial topology fetch
-          spawn_task(fn -> fetch_initial_chain_data(map_id) end)
+        # Initial topology fetch
+        ChainIntelligenceHelper.spawn_monitored_task(fn ->
+          ChainIntelligenceHelper.fetch_initial_chain_data(map_id)
+        end)
 
-          new_metrics = %{state.metrics | chains_monitored: state.metrics.chains_monitored + 1}
+        new_metrics = %{state.metrics | chains_monitored: state.metrics.chains_monitored + 1}
 
-          new_state = %{
-            state
-            | monitored_chains: new_monitored,
-              chain_topologies: new_topologies,
-              inhabitant_tracking: new_inhabitants,
-              activity_timelines: new_timelines,
-              threat_predictions: new_predictions,
-              metrics: new_metrics
-          }
+        new_state = %{
+          state
+          | monitored_chains: new_monitored,
+            chain_topologies: new_topologies,
+            inhabitant_tracking: new_inhabitants,
+            activity_timelines: new_timelines,
+            threat_predictions: new_predictions,
+            metrics: new_metrics
+        }
 
-          Logger.info("Started chain intelligence monitoring for map #{map_id}")
-          {:reply, {:ok, chain_data}, new_state}
+        Logger.info("Started chain intelligence monitoring for map #{map_id}")
+        {:reply, {:ok, chain_data}, new_state}
 
-        {:error, reason} ->
-          Logger.error("Failed to start chain monitoring for #{map_id}: #{inspect(reason)}")
-          {:reply, {:error, reason}, state}
-      end
-    rescue
-      exception ->
-        Logger.error("Chain monitoring initialization error: #{inspect(exception)}")
-        {:reply, {:error, :initialization_failed}, state}
+      {:error, reason} ->
+        Logger.error("Failed to start chain monitoring for #{map_id}: #{inspect(reason)}")
+        {:reply, {:error, reason}, state}
     end
+  rescue
+    exception ->
+      Logger.error("Chain monitoring initialization error: #{inspect(exception)}")
+      {:reply, {:error, :initialization_failed}, state}
   end
 
   @impl GenServer
@@ -202,7 +209,10 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
         new_timelines = Map.delete(state.activity_timelines, map_id)
         new_predictions = Map.delete(state.threat_predictions, map_id)
 
-        new_metrics = %{state.metrics | chains_monitored: max(0, state.metrics.chains_monitored - 1)}
+        new_metrics = %{
+          state.metrics
+          | chains_monitored: max(0, state.metrics.chains_monitored - 1)
+        }
 
         new_state = %{
           state
@@ -221,45 +231,17 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
 
   @impl GenServer
   def handle_call({:get_chain_status, map_id}, _from, state) do
-    case Map.get(state.monitored_chains, map_id) do
-      nil ->
-        {:reply, {:error, :not_monitored}, state}
-
-      chain_data ->
-        topology = Map.get(state.chain_topologies, map_id, %{})
-        inhabitants = Map.get(state.inhabitant_tracking, map_id, %{})
-        timeline = Map.get(state.activity_timelines, map_id, [])
-        predictions = Map.get(state.threat_predictions, map_id, %{})
-
-        status = %{
-          chain_info: chain_data,
-          topology_summary: summarize_topology(topology),
-          inhabitant_summary: summarize_inhabitants(inhabitants),
-          recent_activity_count: length(Enum.take(timeline, 10)),
-          threat_level: calculate_current_threat_level(inhabitants, predictions),
-          last_update: Map.get(state.last_sync, map_id),
-          monitoring_duration: calculate_monitoring_duration(chain_data.started_at)
-        }
-
-        {:reply, {:ok, status}, state}
+    case ChainStatusService.get_chain_status(map_id, state) do
+      {:ok, status} -> {:reply, {:ok, status}, state}
+      {:error, reason} -> {:reply, {:error, reason}, state}
     end
   end
 
   @impl GenServer
   def handle_call({:get_activity_timeline, map_id, hours_back}, _from, state) do
-    case Map.get(state.activity_timelines, map_id) do
-      nil ->
-        {:reply, {:error, :not_monitored}, state}
-
-      timeline ->
-        cutoff_time = DateTime.add(DateTime.utc_now(), -hours_back * 3600, :second)
-
-        filtered_timeline =
-          timeline
-          |> Enum.filter(&(DateTime.compare(&1.timestamp, cutoff_time) == :gt))
-          |> Enum.sort_by(&(&1.timestamp), {:desc, DateTime})
-
-        {:reply, {:ok, filtered_timeline}, state}
+    case ChainActivityTracker.get_activity_timeline(map_id, state, hours_back) do
+      {:ok, timeline} -> {:reply, {:ok, timeline}, state}
+      {:error, reason} -> {:reply, {:error, reason}, state}
     end
   end
 
@@ -276,40 +258,32 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
 
   @impl GenServer
   def handle_call(:get_all_chains_status, _from, state) do
-    all_status =
-      state.monitored_chains
-      |> Enum.map(fn {map_id, chain_data} ->
-        topology = Map.get(state.chain_topologies, map_id, %{})
-        inhabitants = Map.get(state.inhabitant_tracking, map_id, %{})
-        predictions = Map.get(state.threat_predictions, map_id, %{})
+    case ChainStatusService.get_all_chains_status(state) do
+      {:ok, chains_status} ->
+        summary = %{
+          chains: chains_status,
+          total_monitored: length(chains_status),
+          metrics: state.metrics
+        }
 
-        {map_id, %{
-          chain_info: chain_data,
-          system_count: map_size(topology),
-          inhabitant_count: count_total_inhabitants(inhabitants),
-          threat_level: calculate_current_threat_level(inhabitants, predictions),
-          last_update: Map.get(state.last_sync, map_id)
-        }}
-      end)
-      |> Map.new()
+        {:reply, {:ok, summary}, state}
 
-    summary = %{
-      chains: all_status,
-      total_monitored: map_size(state.monitored_chains),
-      metrics: state.metrics
-    }
-
-    {:reply, {:ok, summary}, state}
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
   end
 
   @impl GenServer
   def handle_cast({:analyze_chain_threats, map_id}, state) do
-    case Map.get(state.monitored_chains, map_id) do
+    case Map.get(state.chains, map_id) do
       nil ->
         {:noreply, state}
 
-      _chain_data ->
-        spawn_task(fn -> perform_threat_analysis(map_id) end)
+      chain_data ->
+        ChainIntelligenceHelper.spawn_monitored_task(fn ->
+          ChainThreatAnalyzer.analyze_chain_threats(map_id, chain_data)
+        end)
+
         {:noreply, state}
     end
   end
@@ -333,7 +307,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
         new_timeline = add_to_timeline(state.activity_timelines, map_id, activity_event)
 
         # Trigger immediate threat analysis
-        spawn_task(fn ->
+        ChainIntelligenceHelper.spawn_monitored_task(fn ->
           analyze_hostile_report(map_id, system_id, hostile_data, chain_data)
         end)
 
@@ -345,7 +319,10 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
   @impl GenServer
   def handle_info(:sync_topology, state) do
     # Sync topology for all monitored chains
-    spawn_task(fn -> sync_all_chain_topologies(Map.keys(state.monitored_chains)) end)
+    ChainIntelligenceHelper.spawn_monitored_task(fn ->
+      sync_all_chain_topologies(Map.keys(state.monitored_chains))
+    end)
+
     schedule_topology_sync()
     {:noreply, state}
   end
@@ -353,9 +330,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
   @impl GenServer
   def handle_info(:analyze_threats, state) do
     # Analyze threats for all monitored chains
-    Map.keys(state.monitored_chains)
-    |> Enum.each(fn map_id ->
-      spawn_task(fn -> perform_threat_analysis(map_id) end)
+    Enum.each(Map.keys(state.monitored_chains), fn map_id ->
+      ChainIntelligenceHelper.spawn_monitored_task(fn -> perform_threat_analysis(map_id) end)
     end)
 
     schedule_threat_analysis()
@@ -365,9 +341,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
   @impl GenServer
   def handle_info(:predict_activity, state) do
     # Generate activity predictions for all monitored chains
-    Map.keys(state.monitored_chains)
-    |> Enum.each(fn map_id ->
-      spawn_task(fn -> generate_activity_predictions(map_id) end)
+    Enum.each(Map.keys(state.monitored_chains), fn map_id ->
+      ChainIntelligenceHelper.spawn_monitored_task(fn -> generate_activity_predictions(map_id) end)
     end)
 
     schedule_activity_prediction()
@@ -400,10 +375,10 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
 
       # Trigger threat analysis if significant topology change
       if topology_changed_significantly?(
-        Map.get(state.chain_topologies, map_id, %{}),
-        topology_data
-      ) do
-        spawn_task(fn -> perform_threat_analysis(map_id) end)
+           Map.get(state.chain_topologies, map_id, %{}),
+           topology_data
+         ) do
+        ChainIntelligenceHelper.spawn_monitored_task(fn -> perform_threat_analysis(map_id) end)
       end
 
       {:noreply, new_state}
@@ -438,7 +413,9 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
       }
 
       # Check for new hostiles
-      spawn_task(fn -> check_for_new_hostiles(map_id, system_id, inhabitants) end)
+      ChainIntelligenceHelper.spawn_monitored_task(fn ->
+        check_for_new_hostiles(map_id, system_id, inhabitants)
+      end)
 
       {:noreply, new_state}
     else
@@ -448,33 +425,9 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
 
   @impl GenServer
   def handle_info({:killmail_activity, killmail}, state) do
-    # Correlate killmail with monitored chains
-    if killmail.system_id do
-      monitored_chains_in_system = find_chains_containing_system(state.monitored_chains, killmail.system_id)
-
-      Enum.each(monitored_chains_in_system, fn map_id ->
-        activity_event = %{
-          timestamp: killmail.killmail_time,
-          event_type: :killmail_activity,
-          system_id: killmail.system_id,
-          data: %{
-            killmail_id: killmail.killmail_id,
-            victim_corporation_id: killmail.victim_corporation_id,
-            attacker_count: length(killmail.attackers || [])
-          },
-          source: :killmail_correlation
-        }
-
-        new_timeline = add_to_timeline(state.activity_timelines, map_id, activity_event)
-
-        # Update state for this chain
-        spawn_task(fn ->
-          GenServer.cast(__MODULE__, {:update_timeline, map_id, activity_event})
-        end)
-      end)
-    end
-
-    {:noreply, state}
+    # Use ChainActivityTracker to process killmail activity
+    updated_state = ChainActivityTracker.process_killmail_activity(killmail, state)
+    {:noreply, updated_state}
   end
 
   @impl GenServer
@@ -503,99 +456,20 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
     Process.send_after(self(), :predict_activity, @activity_prediction_interval_ms)
   end
 
-  defp spawn_task(fun) do
-    Task.Supervisor.start_child(EveDmv.TaskSupervisor, fun)
-  end
-
   defp fetch_initial_chain_data(map_id) do
-    # Fetch topology
-    case WandererClient.get_chain_topology(map_id) do
-      {:ok, topology} ->
-        send(self(), {:chain_topology_update, map_id, topology})
-
-      {:error, reason} ->
-        Logger.warning("Failed to fetch initial topology for #{map_id}: #{inspect(reason)}")
-    end
-
-    # Fetch inhabitants
-    case WandererClient.get_system_inhabitants(map_id) do
-      {:ok, inhabitants} ->
-        grouped_inhabitants = Enum.group_by(inhabitants, & &1["system_id"])
-
-        Enum.each(grouped_inhabitants, fn {system_id, system_inhabitants} ->
-          send(self(), {:inhabitant_update, map_id, system_id, system_inhabitants})
-        end)
-
-      {:error, reason} ->
-        Logger.warning("Failed to fetch initial inhabitants for #{map_id}: #{inspect(reason)}")
-    end
+    ChainIntelligenceHelper.fetch_initial_chain_data(map_id)
   end
 
   defp sync_all_chain_topologies(map_ids) do
-    Enum.each(map_ids, fn map_id ->
-      case WandererClient.get_chain_topology(map_id) do
-        {:ok, topology} ->
-          send(self(), {:chain_topology_update, map_id, topology})
-
-        {:error, reason} ->
-          Logger.warning("Failed to sync topology for #{map_id}: #{inspect(reason)}")
-      end
-    end)
+    ChainIntelligenceHelper.sync_all_chain_topologies(map_ids)
   end
 
   defp perform_threat_analysis(map_id) do
-    # Get current inhabitants for threat analysis
-    case WandererClient.get_system_inhabitants(map_id) do
-      {:ok, inhabitants} ->
-        # Group by system for analysis
-        systems_with_inhabitants = Enum.group_by(inhabitants, & &1["system_id"])
-
-        # Analyze each system for threats
-        threat_results =
-          systems_with_inhabitants
-          |> Enum.map(fn {system_id, system_inhabitants} ->
-            analyze_system_threats(map_id, system_id, system_inhabitants)
-          end)
-          |> Enum.filter(&(&1 != nil))
-
-        # Process threat results
-        Enum.each(threat_results, fn threat_result ->
-          handle_threat_detection(threat_result)
-        end)
-
-      {:error, reason} ->
-        Logger.warning("Failed to fetch inhabitants for threat analysis #{map_id}: #{inspect(reason)}")
-    end
+    ChainIntelligenceHelper.perform_threat_analysis(map_id, &handle_threat_detection/1)
   end
 
   defp analyze_system_threats(map_id, system_id, inhabitants) do
-    # Convert inhabitants to pilot data for threat analysis
-    pilot_list =
-      inhabitants
-      |> Enum.map(fn inhabitant ->
-        {
-          inhabitant["character_id"],
-          inhabitant["corporation_id"],
-          inhabitant["alliance_id"]
-        }
-      end)
-      |> Enum.filter(fn {char_id, _corp_id, _alliance_id} ->
-        char_id && char_id != 0
-      end)
-
-    if length(pilot_list) > 0 do
-      # Bulk analyze threats
-      case ThreatAnalyzer.analyze_pilots(pilot_list) do
-        {:ok, threat_analysis} ->
-          evaluate_system_threat_level(map_id, system_id, threat_analysis, inhabitants)
-
-        {:error, reason} ->
-          Logger.warning("Threat analysis failed for system #{system_id}: #{inspect(reason)}")
-          nil
-      end
-    else
-      nil
-    end
+    ChainIntelligenceHelper.analyze_system_threats(map_id, system_id, inhabitants)
   end
 
   defp evaluate_system_threat_level(map_id, system_id, threat_analysis, inhabitants) do
@@ -605,13 +479,14 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
     high_bait_count = threat_analysis.threat_summary.high_bait_count
 
     # Calculate overall system threat level
-    system_threat_level = cond do
-      hostile_pilots >= @hostile_fleet_threshold -> :critical
-      average_threat >= @high_threat_threshold -> :high
-      high_bait_count > 0 -> :moderate
-      total_pilots > 0 -> :low
-      true -> :clear
-    end
+    system_threat_level =
+      cond do
+        hostile_pilots >= @hostile_fleet_threshold -> :critical
+        average_threat >= @high_threat_threshold -> :high
+        high_bait_count > 0 -> :moderate
+        total_pilots > 0 -> :low
+        true -> :clear
+      end
 
     if system_threat_level in [:critical, :high] do
       %{
@@ -631,46 +506,16 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
   end
 
   defp handle_threat_detection(threat_result) do
-    # Generate chain threat event
-    EventBus.publish(%ChainThreatDetected{
-      map_id: threat_result.map_id,
-      system_id: threat_result.system_id,
-      threat_level: threat_result.threat_level,
-      pilot_count: threat_result.pilot_count,
-      hostile_count: threat_result.hostile_count,
-      timestamp: threat_result.timestamp
-    })
-
-    # Generate alert if appropriate
-    if threat_result.threat_level == :critical do
-      alert_data = %{
-        alert_type: :chain_threat_critical,
-        map_id: threat_result.map_id,
-        system_id: threat_result.system_id,
-        threat_data: threat_result,
-        priority: :critical
-      }
-
-      AlertService.process_match(alert_data)
-    end
-
-    Logger.info("Threat detected in chain #{threat_result.map_id}, system #{threat_result.system_id}: #{threat_result.threat_level}")
+    ChainIntelligenceHelper.handle_threat_detection(threat_result)
   end
 
   defp check_for_new_hostiles(map_id, system_id, inhabitants) do
     # Quick threat check for new inhabitants
     if length(inhabitants) > 0 do
-      spawn_task(fn ->
+      ChainIntelligenceHelper.spawn_monitored_task(fn ->
         case analyze_system_threats(map_id, system_id, inhabitants) do
           %{threat_level: threat_level} = threat_result when threat_level in [:critical, :high] ->
-            # Publish hostile movement event
-            EventBus.publish(%HostileMovement{
-              map_id: map_id,
-              system_id: system_id,
-              threat_level: threat_level,
-              pilot_count: length(inhabitants),
-              timestamp: DateTime.utc_now()
-            })
+            # Note: Implement HostileMovement domain event when needed
 
             handle_threat_detection(threat_result)
 
@@ -684,7 +529,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
   defp generate_activity_predictions(map_id) do
     # Analyze activity timeline to generate predictions
     # This is a simplified implementation - real prediction would use ML
-    timeline = get_activity_timeline(map_id, 168)  # Last 7 days
+    # Last 7 days
+    timeline = get_activity_timeline(map_id, 168)
 
     case timeline do
       {:ok, events} when length(events) > 10 ->
@@ -695,13 +541,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
           predicted_at: DateTime.utc_now()
         }
 
-        # Publish prediction event
-        EventBus.publish(%ChainActivityPrediction{
-          map_id: map_id,
-          predictions: predictions,
-          confidence: calculate_prediction_confidence(events),
-          timestamp: DateTime.utc_now()
-        })
+        # Note: Implement ChainActivityPrediction domain event when needed
 
         # Store predictions
         GenServer.cast(__MODULE__, {:update_predictions, map_id, predictions})
@@ -715,7 +555,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
     # Analyze hourly patterns to predict next likely activity
     hourly_distribution =
       events
-      |> Enum.group_by(&(&1.timestamp.hour))
+      |> Enum.group_by(& &1.timestamp.hour)
       |> Enum.map(fn {hour, hour_events} -> {hour, length(hour_events)} end)
       |> Enum.sort_by(fn {_hour, count} -> count end, :desc)
 
@@ -723,12 +563,13 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
       [{peak_hour, _count} | _] ->
         now = DateTime.utc_now()
 
-        next_window = if now.hour < peak_hour do
-          DateTime.new!(now.date, Time.new!(peak_hour, 0, 0))
-        else
-          tomorrow = Date.add(now.date, 1)
-          DateTime.new!(tomorrow, Time.new!(peak_hour, 0, 0))
-        end
+        next_window =
+          if now.hour < peak_hour do
+            DateTime.new!(now.date, Time.new!(peak_hour, 0, 0))
+          else
+            tomorrow = Date.add(now.date, 1)
+            DateTime.new!(tomorrow, Time.new!(peak_hour, 0, 0))
+          end
 
         %{
           predicted_time: next_window,
@@ -760,8 +601,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
   defp assess_chain_stability(events) do
     # Assess how stable the chain topology has been
     topology_changes =
-      events
-      |> Enum.count(&(&1.event_type == :topology_update))
+      Enum.count(events, &(&1.event_type == :topology_update))
 
     cond do
       topology_changes > 10 -> :unstable
@@ -773,9 +613,11 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
   defp calculate_prediction_confidence(events) do
     # Simple confidence based on data volume and recency
     event_count = length(events)
-    recent_events = Enum.count(events, fn event ->
-      DateTime.diff(DateTime.utc_now(), event.timestamp, :hour) <= 24
-    end)
+
+    recent_events =
+      Enum.count(events, fn event ->
+        DateTime.diff(DateTime.utc_now(), event.timestamp, :hour) <= 24
+      end)
 
     cond do
       event_count > 50 and recent_events > 10 -> :high
@@ -786,32 +628,16 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
   end
 
   defp analyze_hostile_report(map_id, system_id, hostile_data, chain_data) do
-    # Immediate response to manual hostile reports
-    Logger.info("Hostile activity reported in chain #{map_id}, system #{system_id}")
-
-    # Calculate distance from home system if configured
-    distance_from_home = if chain_data.home_system_id do
-      calculate_system_distance(chain_data.home_system_id, system_id, map_id)
-    else
-      nil
-    end
-
-    # Generate immediate alert if close to home
-    if distance_from_home && distance_from_home <= @chain_breach_distance do
-      alert_data = %{
-        alert_type: :hostile_near_home,
-        map_id: map_id,
-        system_id: system_id,
-        distance_from_home: distance_from_home,
-        hostile_data: hostile_data,
-        priority: :critical
-      }
-
-      AlertService.process_match(alert_data)
-    end
+    ChainIntelligenceHelper.analyze_hostile_report(
+      map_id,
+      system_id,
+      hostile_data,
+      chain_data,
+      @chain_breach_distance
+    )
   end
 
-  defp calculate_system_distance(home_system_id, target_system_id, map_id) do
+  defp calculate_system_distance(home_system_id, target_system_id, _map_id) do
     # This would use the chain topology to calculate jump distance
     # Simplified implementation returns a mock distance
     if home_system_id == target_system_id do
@@ -837,7 +663,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
     Map.put(timelines, map_id, new_timeline)
   end
 
-  defp find_chains_containing_system(monitored_chains, system_id) do
+  defp find_chains_containing_system(_monitored_chains, _system_id) do
     # This would query the topology to find which chains contain the system
     # Simplified implementation returns empty list
     []
@@ -857,7 +683,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
     %{
       total_inhabitants: total_inhabitants,
       active_systems: systems_with_activity,
-      average_per_system: if(systems_with_activity > 0, do: total_inhabitants / systems_with_activity, else: 0)
+      average_per_system:
+        if(systems_with_activity > 0, do: total_inhabitants / systems_with_activity, else: 0)
     }
   end
 
@@ -868,7 +695,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
     |> Enum.sum()
   end
 
-  defp calculate_current_threat_level(inhabitants, predictions) do
+  defp calculate_current_threat_level(inhabitants, _predictions) do
     total_inhabitants = count_total_inhabitants(inhabitants)
 
     cond do

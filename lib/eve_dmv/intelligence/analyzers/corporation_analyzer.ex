@@ -10,9 +10,12 @@ defmodule EveDmv.Intelligence.Analyzers.CorporationAnalyzer do
 
   use EveDmv.Intelligence.Analyzer
 
-  require Logger
   alias EveDmv.Database.QueryUtils
-  alias EveDmv.Intelligence.Core.{CacheHelper, TimeoutHelper, ValidationHelper, Config}
+  alias EveDmv.Intelligence.Core.CacheHelper
+  alias EveDmv.Intelligence.Core.Config
+  alias EveDmv.Intelligence.Core.TimeoutHelper
+  alias EveDmv.Intelligence.Core.ValidationHelper
+  require Logger
 
   # Behavior implementations
 
@@ -24,7 +27,7 @@ defmodule EveDmv.Intelligence.Analyzers.CorporationAnalyzer do
     ValidationHelper.validate_corporation_analysis(corporation_id, opts)
   end
 
-  @impl true
+  @impl EveDmv.Intelligence.Analyzer
   def analyze(corporation_id, opts \\ %{}) do
     cache_ttl = Config.get_cache_ttl(:corporation)
 
@@ -33,7 +36,7 @@ defmodule EveDmv.Intelligence.Analyzers.CorporationAnalyzer do
     end)
   end
 
-  @impl true
+  @impl EveDmv.Intelligence.Analyzer
   def invalidate_cache(corporation_id) do
     CacheHelper.invalidate_analysis(:corporation, corporation_id)
   end
@@ -138,79 +141,72 @@ defmodule EveDmv.Intelligence.Analyzers.CorporationAnalyzer do
   end
 
   defp get_corporation_killmails(corporation_id, days_back, limit) do
-    try do
-      # Get recent killmails involving the corporation
-      killmails =
-        QueryUtils.query_killmails_by_corporation(
-          corporation_id,
-          DateTime.add(DateTime.utc_now(), -days_back, :day),
-          DateTime.utc_now(),
-          limit
-        )
+    # Get recent killmails involving the corporation
+    killmails =
+      QueryUtils.query_killmails_by_corporation(
+        corporation_id,
+        DateTime.add(DateTime.utc_now(), -days_back, :day),
+        DateTime.utc_now(),
+        limit
+      )
 
-      {:ok, killmails}
-    rescue
-      error ->
-        Logger.error("Error fetching corporation killmails: #{inspect(error)}")
-        {:error, "Failed to fetch killmail data"}
-    end
+    {:ok, killmails}
+  rescue
+    error ->
+      Logger.error("Error fetching corporation killmails: #{inspect(error)}")
+      {:error, "Failed to fetch killmail data"}
   end
 
   defp extract_corporation_members(killmails, corporation_id) do
-    try do
-      members =
-        killmails
-        |> Enum.flat_map(fn killmail ->
-          (killmail.participants || [])
-          |> Enum.filter(&(&1.corporation_id == corporation_id))
-        end)
-        |> Enum.group_by(& &1.character_id)
-        |> Enum.map(fn {character_id, participations} ->
-          participation_damages = Enum.map(participations, &(&1.damage_done || 0))
-          ship_type_ids = Enum.map(participations, & &1.ship_type_id)
-          participation_times = Enum.map(participations, & &1.killmail_time)
+    members =
+      killmails
+      |> Enum.flat_map(fn killmail ->
+        Enum.filter(killmail.participants || [], &(&1.corporation_id == corporation_id))
+      end)
+      |> Enum.group_by(& &1.character_id)
+      |> Enum.map(fn {character_id, participations} ->
+        participation_damages = Enum.map(participations, &(&1.damage_done || 0))
+        ship_type_ids = Enum.map(participations, & &1.ship_type_id)
+        participation_times = Enum.map(participations, & &1.killmail_time)
 
-          %{
-            character_id: character_id,
-            participation_count: length(participations),
-            total_damage: Enum.sum(participation_damages),
-            ship_types: Enum.uniq(ship_type_ids),
-            first_seen: Enum.min(participation_times),
-            last_seen: Enum.max(participation_times)
-          }
-        end)
+        %{
+          character_id: character_id,
+          participation_count: length(participations),
+          total_damage: Enum.sum(participation_damages),
+          ship_types: Enum.uniq(ship_type_ids),
+          first_seen: Enum.min(participation_times),
+          last_seen: Enum.max(participation_times)
+        }
+      end)
 
-      if Enum.empty?(members) do
-        {:error, "No active members found for corporation"}
-      else
-        {:ok, members}
-      end
-    rescue
-      error ->
-        Logger.error("Error extracting corporation members: #{inspect(error)}")
-        {:error, "Failed to extract member data"}
+    if Enum.empty?(members) do
+      {:error, "No active members found for corporation"}
+    else
+      {:ok, members}
     end
+  rescue
+    error ->
+      Logger.error("Error extracting corporation members: #{inspect(error)}")
+      {:error, "Failed to extract member data"}
   end
 
   defp perform_corporation_analysis(members, corporation_id) when is_list(members) do
-    try do
-      analysis = %{
-        corporation_id: corporation_id,
-        member_count: length(members),
-        member_correlations: analyze_member_correlations(members),
-        activity_patterns: analyze_activity_patterns(members),
-        risk_distribution: analyze_risk_distribution(members),
-        coordination_analysis: analyze_coordination(members),
-        analysis_timestamp: DateTime.utc_now(),
-        confidence_score: calculate_analysis_confidence(members)
-      }
+    analysis = %{
+      corporation_id: corporation_id,
+      member_count: length(members),
+      member_correlations: analyze_member_correlations(members),
+      activity_patterns: analyze_activity_patterns(members),
+      risk_distribution: analyze_risk_distribution(members),
+      coordination_analysis: analyze_coordination(members),
+      analysis_timestamp: DateTime.utc_now(),
+      confidence_score: calculate_analysis_confidence(members)
+    }
 
-      {:ok, analysis}
-    rescue
-      error ->
-        Logger.error("Error in corporation analysis calculation: #{inspect(error)}")
-        {:error, "Analysis calculation failed"}
-    end
+    {:ok, analysis}
+  rescue
+    error ->
+      Logger.error("Error in corporation analysis calculation: #{inspect(error)}")
+      {:error, "Analysis calculation failed"}
   end
 
   defp analyze_shared_operations(members) do

@@ -1,0 +1,302 @@
+[F] ↗ lib/eve_dmv/contexts/bounded_context.ex:40:5 Avoid long quote blocks.
+[R] ↘ lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:9 alias must appear before require
+[D] → lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:121:5 Found a TODO tag in a comment: # TODO: Implement search logic
+[D] → lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:127:5 Found a TODO tag in a comment: # TODO: Implement activity pattern analysis
+[D] → lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:133:5 Found a TODO tag in a comment: # TODO: Implement character comparison
+[R] ↘ lib/eve_dmv/contexts/combat_intelligence/domain/corporation_analyzer.ex:13 alias must appear before require
+[D] → lib/eve_dmv/contexts/combat_intelligence/domain/corporation_analyzer.ex:91:5 Found a TODO tag in a comment: # TODO: Implement member activity analysis
+[D] → lib/eve_dmv/contexts/combat_intelligence/domain/corporation_analyzer.ex:97:5 Found a TODO tag in a comment: # TODO: Implement timezone coverage analysis
+[R] ↘ lib/eve_dmv/contexts/combat_intelligence/domain/intelligence_scoring.ex:13 alias must appear before require
+[R] ↘ lib/eve_dmv/contexts/combat_intelligence/domain/threat_assessor.ex:13 alias must appear before require
+[D] → lib/eve_dmv/contexts/combat_intelligence/domain/threat_assessor.ex:101:5 Found a TODO tag in a comment: # TODO: Implement detailed threat factor breakdown
+[R] ↘ lib/eve_dmv/contexts/combat_intelligence/infrastructure/analysis_cache.ex:9 alias must appear before require
+[R] ↘ lib/eve_dmv/contexts/combat_intelligence/infrastructure/killmail_event_processor.ex:9:9 The alias `EveDmv.DomainEvents.KillmailEnriched` is not alphabetically ordered among its group.
+[R] ↘ lib/eve_dmv/contexts/combat_intelligence/infrastructure/killmail_event_processor.ex:9 alias must appear before require
+[W] ↗ lib/eve_dmv/contexts/combat_intelligence/infrastructure/killmail_event_processor.ex:33:65 Logger metadata key killmail_id not found in Logger config.
+[D] → lib/eve_dmv/contexts/combat_intelligence/infrastructure/static_data_event_processor.ex:32:5 Found a TODO tag in a comment: # TODO: Implement actual ship data refresh logic
+[D] → lib/eve_dmv/contexts/fleet_operations/infrastructure/fleet_repository.ex:18:5 Found a TODO tag in a comment: # TODO: Implement doctrine cache refresh
+[W] ↗ lib/eve_dmv/contexts/fleet_operations/infrastructure/killmail_fleet_processor.ex:17:60 Logger metadata key killmail_id not found in Logger config.
+[D] → lib/eve_dmv/contexts/fleet_operations/infrastructure/killmail_fleet_processor.ex:19:5 Found a TODO tag in a comment: # TODO: Implement fleet analysis processing
+[R] ↘ lib/eve_dmv/contexts/killmail_processing/api.ex:10 import must appear before require
+[F] → lib/eve_dmv/contexts/surveillance/domain/chain_intelligence_service.ex:1:11 Module has too many dependencies: 22 (max is 15)
+[F] → lib/eve_dmv/contexts/threat_assessment/analyzers/threat_analyzer.ex:125:26 Function body is nested too deep (max depth is 3, was 4).
+[R] ↘ lib/eve_dmv/contexts/threat_assessment/analyzers/vulnerability_scanner.ex:13 alias must appear before require
+[R] → lib/eve_dmv/contexts/threat_assessment/infrastructure/threat_repository.ex:86:7 Use a pipeline instead of nested function calls.
+[R] ↘ lib/eve_dmv/contexts/wormhole_operations.ex:22:9 The alias `EveDmv.DomainEvents.CharacterAnalyzed` is not alphabetically ordered among its group.
+[D] → lib/eve_dmv/contexts/wormhole_operations/api.ex:15:79 Found a TODO tag in a comment: # TODO: Add back when module is implemented
+[R] ↘ lib/eve_dmv/contexts/wormhole_operations/api.ex:15:121 Line is too long (max is 120, was 121).
+[R] ↘ lib/eve_dmv/contexts/wormhole_operations/api.ex:20:9 The alias `EveDmv.Contexts.WormholeOperations.Infrastructure.VettingRepository` is not alphabetically ordered among its group.
+[R] → lib/eve_dmv/contexts/wormhole_operations/api.ex:105:5 `with` contains only one <- clause and an `else` branch, consider using `case` instead
+[R] → lib/eve_dmv/contexts/wormhole_operations/api.ex:216:5 `with` contains only one <- clause and an `else` branch, consider using `case` instead
+[D] → lib/eve_dmv/database/archive_manager.ex:22:3 Found a TODO tag in a comment: # TODO: Archive policies will be implemented in a future version
+[R] ↗ lib/eve_dmv/database/archive_manager/archive_operations.ex:67:7 Use a function call when a pipeline is only one function long.
+[F] → lib/eve_dmv/database/archive_manager/archive_operations.ex:126:19 Function body is nested too deep (max depth is 3, was 5).
+[R] ↘ lib/eve_dmv/database/archive_manager/maintenance_scheduler.ex:9:9 The alias `EveDmv.Database.ArchiveManager.ArchiveOperations` is not alphabetically ordered among its group.
+[F] → lib/eve_dmv/database/archive_manager/restore_operations.ex:63:15 Function body is nested too deep (max depth is 3, was 4).
+[F] ↗ lib/eve_dmv/database/archive_manager/restore_operations.ex:255:11 `Enum.map_join/3` is more efficient than `Enum.map/2 |> Enum.join/2`.
+[R] ↘ lib/eve_dmv/database/connection_pool_monitor.ex:12 alias must appear before require
+[R] ↘ lib/eve_dmv/database/health_check.ex:11 alias must appear before require
+[R] ↘ lib/eve_dmv/database/killmail_repository.ex:15:9 The alias `EveDmv.Database.Repository.QueryBuilder` is not alphabetically ordered among its group.
+[R] ↘ lib/eve_dmv/database/killmail_repository.ex:15 alias must appear before require
+[R] ↘ lib/eve_dmv/database/materialized_view_manager.ex:12 alias must appear before require
+[R] ↗ lib/eve_dmv/database/materialized_view_manager/view_definitions.ex:45:5 Use a function call when a pipeline is only one function long.
+[R] → lib/eve_dmv/database/materialized_view_manager/view_metrics.ex:195:7 `with` contains only one <- clause and an `else` branch, consider using `case` instead
+[F] ↗ lib/eve_dmv/database/materialized_view_manager/view_query_service.ex:255:9 `Enum.map_join/3` is more efficient than `Enum.map/2 |> Enum.join/2`.
+[R] ↗ lib/eve_dmv/database/materialized_view_manager/view_refresh_scheduler.ex:26:7 Use a function call when a pipeline is only one function long.
+[R] ↗ lib/eve_dmv/database/materialized_view_manager/view_refresh_scheduler.ex:143:9 Use a function call when a pipeline is only one function long.
+[R] ↘ lib/eve_dmv/database/partition_manager.ex:12 alias must appear before require
+[R] ↘ lib/eve_dmv/database/performance_optimizer.ex:13 alias must appear before require
+[R] ↘ lib/eve_dmv/database/performance_optimizer.ex:35 module attribute must appear before private function
+[R] ↘ lib/eve_dmv/database/query_plan_analyzer.ex:14 alias must appear before require
+[R] ↘ lib/eve_dmv/database/query_utils.ex:11:9 The alias `EveDmv.Killmails.KillmailEnriched` is not alphabetically ordered among its group.
+[R] ↘ lib/eve_dmv/database/query_utils.ex:11 alias must appear before require
+[F] ↗ lib/eve_dmv/database/repository.ex:34:5 Avoid long quote blocks.
+[F] ↗ lib/eve_dmv/database/repository/cache_helper.ex:129:5 `Enum.map_join/3` is more efficient than `Enum.map/2 |> Enum.join/2`.
+[F] ↗ lib/eve_dmv/database/repository/cache_helper.ex:148:5 `Enum.map_join/3` is more efficient than `Enum.map/2 |> Enum.join/2`.
+[R] ↘ lib/eve_dmv/domain_events.ex:18 defstruct must appear before module attribute
+[R] ↘ lib/eve_dmv/domain_events.ex:55 defstruct must appear before module attribute
+[R] ↘ lib/eve_dmv/domain_events.ex:75 defstruct must appear before module attribute
+[R] ↘ lib/eve_dmv/domain_events.ex:99 defstruct must appear before module attribute
+[R] ↘ lib/eve_dmv/domain_events.ex:127 defstruct must appear before module attribute
+[R] ↘ lib/eve_dmv/domain_events.ex:151 defstruct must appear before module attribute
+[R] ↘ lib/eve_dmv/domain_events.ex:177 defstruct must appear before module attribute
+[R] ↘ lib/eve_dmv/domain_events.ex:203 defstruct must appear before module attribute
+[R] ↘ lib/eve_dmv/domain_events.ex:233 defstruct must appear before module attribute
+[R] ↘ lib/eve_dmv/domain_events.ex:261 defstruct must appear before module attribute
+[R] ↘ lib/eve_dmv/domain_events.ex:287 defstruct must appear before module attribute
+[R] ↘ lib/eve_dmv/domain_events.ex:313 defstruct must appear before module attribute
+[R] ↘ lib/eve_dmv/domain_events.ex:337 defstruct must appear before module attribute
+[R] ↘ lib/eve_dmv/domain_events.ex:361 defstruct must appear before module attribute
+[R] ↘ lib/eve_dmv/domain_events.ex:387 defstruct must appear before module attribute
+[R] ↘ lib/eve_dmv/domain_events.ex:432 defstruct must appear before module attribute
+[R] ↘ lib/eve_dmv/domain_events.ex:460 defstruct must appear before module attribute
+[R] ↘ lib/eve_dmv/domain_events.ex:488 defstruct must appear before module attribute
+[R] ↘ lib/eve_dmv/domain_events.ex:520 defstruct must appear before module attribute
+[R] ↘ lib/eve_dmv/domain_events.ex:548 defstruct must appear before module attribute
+[R] ↘ lib/eve_dmv/domain_events.ex:576 defstruct must appear before module attribute
+[R] ↘ lib/eve_dmv/domain_events.ex:604 defstruct must appear before module attribute
+[R] ↘ lib/eve_dmv/domain_events.ex:628 defstruct must appear before module attribute
+[R] ↘ lib/eve_dmv/domain_events.ex:656 defstruct must appear before module attribute
+[R] ↘ lib/eve_dmv/enrichment/real_time_price_updater.ex:13 alias must appear before require
+[R] ↘ lib/eve_dmv/error.ex:30 defstruct must appear before type
+[F] ↗ lib/eve_dmv/error_handler.ex:68:5 Avoid long quote blocks.
+[R] ↘ lib/eve_dmv/error_handler.ex:97:9 Prefer using an implicit `try` rather than explicit `try`.
+[R] ↘ lib/eve_dmv/eve/circuit_breaker.ex:33 defstruct must appear before module attribute
+[R] ↘ lib/eve_dmv/eve/esi_request_client.ex:12:9 The alias `EveDmv.Telemetry.PerformanceMonitor` is not alphabetically ordered among its group.
+[R] ↘ lib/eve_dmv/eve/name_resolver.ex:17:9 The alias `EveDmv.Eve.NameResolver.CacheManager` is not alphabetically ordered among its group.
+[R] ↗ lib/eve_dmv/eve/name_resolver/batch_processor.ex:168:5 Use a function call when a pipeline is only one function long.
+[R] ↘ lib/eve_dmv/eve/name_resolver/performance_optimizer.ex:9:9 The alias `EveDmv.Eve.NameResolver.StaticDataResolver` is not alphabetically ordered among its group.
+[R] ↗ lib/eve_dmv/eve/name_resolver/performance_optimizer.ex:33:11 Use a function call when a pipeline is only one function long.
+[R] ↘ lib/eve_dmv/eve/type_resolver.ex:17 import must appear before require
+[R] ↘ lib/eve_dmv/infrastructure/event_bus.ex:21 type must appear before module attribute
+[R] ↘ lib/eve_dmv/infrastructure/event_bus.ex:303:5 Prefer using an implicit `try` rather than explicit `try`.
+[R] ↘ lib/eve_dmv/intelligence/advanced_analytics.ex:12:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/advanced_analytics.ex:12 alias must appear before require
+[R] ↘ lib/eve_dmv/intelligence/advanced_analytics.ex:13:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/advanced_analytics.ex:14:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/advanced_analytics.ex:15:3 `alias` calls should be consecutive within a module.
+[W] ↗ lib/eve_dmv/intelligence/advanced_analytics.ex:265:9 There should be no unused return values for Enum functions.
+[R] ↘ lib/eve_dmv/intelligence/alert_system.ex:12 alias must appear before require
+[R] ↗ lib/eve_dmv/intelligence/alert_system.ex:123:61 Use a function call when a pipeline is only one function long.
+[R] ↘ lib/eve_dmv/intelligence/analysis_scheduler.ex:13:9 The alias `EveDmv.Intelligence.Analyzers.ThreatAnalyzer` is not alphabetically ordered among its group.
+[R] ↘ lib/eve_dmv/intelligence/analysis_scheduler.ex:244:5 Prefer using an implicit `try` rather than explicit `try`.
+[F] ↗ lib/eve_dmv/intelligence/analyzer.ex:48:5 Avoid long quote blocks.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/character_analyzer.ex:16:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/character_analyzer.ex:16 alias must appear before require
+[R] ↘ lib/eve_dmv/intelligence/analyzers/corporation_analyzer.ex:13:9 The alias `EveDmv.Intelligence.Core.CacheHelper` is not alphabetically ordered among its group.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/corporation_analyzer.ex:144:5 Prefer using an implicit `try` rather than explicit `try`.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/corporation_analyzer.ex:163:5 Prefer using an implicit `try` rather than explicit `try`.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/corporation_analyzer.ex:198:5 Prefer using an implicit `try` rather than explicit `try`.
+[W] ↗ lib/eve_dmv/intelligence/analyzers/fleet_asset_manager/acquisition_planner.ex:47:5 There should be no unused return values for Enum functions.
+[R] ↗ lib/eve_dmv/intelligence/analyzers/fleet_asset_manager/acquisition_planner.ex:86:7 Use a function call when a pipeline is only one function long.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/fleet_asset_manager/requirements_builder.ex:10:9 The alias `EveDmv.Intelligence.ShipDatabase` is not alphabetically ordered among its group.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/fleet_pilot_analyzer.ex:12 alias must appear before require
+[R] ↘ lib/eve_dmv/intelligence/analyzers/fleet_pilot_analyzer.ex:114:5 Prefer using an implicit `try` rather than explicit `try`.
+[R] ↗ lib/eve_dmv/intelligence/analyzers/fleet_pilot_analyzer.ex:274:6 Numbers larger than 9999 should be written with underscores: 29_336
+[R] ↗ lib/eve_dmv/intelligence/analyzers/fleet_pilot_analyzer.ex:274:13 Numbers larger than 9999 should be written with underscores: 17_918
+[R] ↗ lib/eve_dmv/intelligence/analyzers/fleet_pilot_analyzer.ex:274:20 Numbers larger than 9999 should be written with underscores: 24_698
+[R] ↗ lib/eve_dmv/intelligence/analyzers/fleet_pilot_analyzer.ex:347:5 Use a function call when a pipeline is only one function long.
+[R] ↗ lib/eve_dmv/intelligence/analyzers/fleet_pilot_analyzer.ex:355:67 Numbers larger than 9999 should be written with underscores: 86_400
+[R] ↗ lib/eve_dmv/intelligence/analyzers/fleet_skill_analyzer.ex:205:7 Use a function call when a pipeline is only one function long.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/home_defense_analyzer.ex:171:5 Prefer using an implicit `try` rather than explicit `try`.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/home_defense_analyzer.ex:189:5 Prefer using an implicit `try` rather than explicit `try`.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/home_defense_analyzer.ex:203:5 Prefer using an implicit `try` rather than explicit `try`.
+[R] ↗ lib/eve_dmv/intelligence/analyzers/home_defense_analyzer.ex:268:7 Use a function call when a pipeline is only one function long.
+[R] ↗ lib/eve_dmv/intelligence/analyzers/home_defense_analyzer.ex:304:7 Use a function call when a pipeline is only one function long.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/member_activity_analyzer.ex:10 Avoid grouping aliases in '{ ... }'; please specify one fully-qualified alias per line.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/member_activity_analyzer/corporation_analyzer.ex:12:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/member_activity_analyzer/corporation_analyzer.ex:12 alias must appear before require
+[R] ↘ lib/eve_dmv/intelligence/analyzers/member_activity_analyzer/corporation_analyzer.ex:13:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/member_activity_analyzer/corporation_analyzer.ex:14:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/member_activity_analyzer/corporation_analyzer.ex:15:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/member_activity_analyzer/corporation_analyzer.ex:16:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/member_activity_analyzer/corporation_analyzer.ex:17:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/member_activity_analyzer/recruitment_retention_analyzer.ex:9:9 The alias `EveDmv.Intelligence.Generators.RecommendationGenerator` is not alphabetically ordered among its group.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/member_activity_data_collector.ex:12:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/member_activity_data_collector.ex:12 alias must appear before require
+[R] ↘ lib/eve_dmv/intelligence/analyzers/member_activity_data_collector.ex:13:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/member_activity_data_collector.ex:14:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/member_activity_data_collector.ex:15:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/member_activity_data_collector.ex:16:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/member_activity_data_collector.ex:17:3 `alias` calls should be consecutive within a module.
+[R] ↗ lib/eve_dmv/intelligence/analyzers/member_activity_data_collector.ex:100:11 Use a function call when a pipeline is only one function long.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/member_activity_pattern_analyzer.ex:19:9 alias must appear before require
+[F] ↗ lib/eve_dmv/intelligence/analyzers/member_activity_pattern_analyzer/timezone_analyzer.ex:34:8 Avoid negated conditions in if-else blocks.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/member_risk_assessment.ex:15 alias must appear before require
+[R] ↘ lib/eve_dmv/intelligence/analyzers/wh_fleet_analyzer.ex:14:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/wh_fleet_analyzer.ex:14 alias must appear before require
+[R] ↘ lib/eve_dmv/intelligence/analyzers/wh_fleet_analyzer.ex:15:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/wh_fleet_analyzer.ex:16:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/wh_fleet_analyzer.ex:18:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/wh_fleet_analyzer.ex:19:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/wh_fleet_analyzer.ex:20:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/wh_fleet_analyzer.ex:22:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/wh_fleet_analyzer.ex:23:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/wh_fleet_analyzer.ex:24:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/wh_fleet_analyzer.ex:25:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/analyzers/wh_fleet_analyzer/fleet_analyzer.ex:9:9 The alias `EveDmv.Intelligence.ShipDatabase` is not alphabetically ordered among its group.
+[R] ↗ lib/eve_dmv/intelligence/analyzers/wh_vetting_analyzer.ex:646:8 Predicate function names should not start with 'is', and should end in a question mark.
+[R] ↘ lib/eve_dmv/intelligence/cache_cleanup_worker.ex:174:5 Prefer using an implicit `try` rather than explicit `try`.
+[R] ↘ lib/eve_dmv/intelligence/chain_monitor.ex:23 defstruct must appear before module attribute
+[R] ↘ lib/eve_dmv/intelligence/core/cache_helper.ex:11 alias must appear before require
+[R] ↘ lib/eve_dmv/intelligence/core/intelligence_coordinator.ex:11 alias must appear before require
+[R] ↗ lib/eve_dmv/intelligence/core/intelligence_coordinator.ex:221:5 Use a function call when a pipeline is only one function long.
+[R] ↘ lib/eve_dmv/intelligence/core/query_helper.ex:11 alias must appear before require
+[R] ↘ lib/eve_dmv/intelligence/core/supervisor.ex:13 alias must appear before require
+[R] ↘ lib/eve_dmv/intelligence/intelligence_scoring.ex:18:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/intelligence_scoring.ex:18:9 alias must appear before require
+[R] ↘ lib/eve_dmv/intelligence/intelligence_scoring.ex:19:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/intelligence_scoring.ex:20:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/intelligence_scoring.ex:21:3 `alias` calls should be consecutive within a module.
+[R] ↘ lib/eve_dmv/intelligence/intelligence_scoring.ex:22:3 `alias` calls should be consecutive within a module.
+[R] → lib/eve_dmv/intelligence/intelligence_scoring.ex:76:5 `with` contains only one <- clause and an `else` branch, consider using `case` instead
+[R] → lib/eve_dmv/intelligence/intelligence_scoring/recruitment_scoring.ex:24:5 `with` contains only one <- clause and an `else` branch, consider using `case` instead
+[R] ↘ lib/eve_dmv/intelligence/legacy_adapter.ex:11 alias must appear before require
+[R] ↗ lib/eve_dmv/intelligence/legacy_adapter.ex:65:11 Use a function call when a pipeline is only one function long.
+[R] ↗ lib/eve_dmv/intelligence/metrics/character_metrics.ex:146:9 Use a function call when a pipeline is only one function long.
+[R] ↗ lib/eve_dmv/intelligence/metrics/character_metrics.ex:193:7 Use a function call when a pipeline is only one function long.
+[R] ↗ lib/eve_dmv/intelligence/metrics/character_metrics.ex:502:37 Use a function call when a pipeline is only one function long.
+[R] ↘ lib/eve_dmv/intelligence/metrics/character_metrics_adapter.ex:70:5 Prefer using an implicit `try` rather than explicit `try`.
+[R] ↘ lib/eve_dmv/intelligence/metrics/character_metrics_adapter.ex:91:5 Prefer using an implicit `try` rather than explicit `try`.
+[R] ↗ lib/eve_dmv/intelligence/metrics/combat_metrics_calculator.ex:163:5 Use a function call when a pipeline is only one function long.
+[R] ↗ lib/eve_dmv/intelligence/metrics/ship_analysis_calculator.ex:54:9 Use a function call when a pipeline is only one function long.
+[R] ↘ lib/eve_dmv/intelligence/supervisor.ex:184:5 Prefer using an implicit `try` rather than explicit `try`.
+[R] ↘ lib/eve_dmv/intelligence/supervisor.ex:204:5 Prefer using an implicit `try` rather than explicit `try`.
+[R] ↘ lib/eve_dmv/intelligence/wanderer_client.ex:17 module attribute must appear before private function
+[R] ↘ lib/eve_dmv/intelligence/wanderer_client.ex:21 defstruct must appear before module attribute
+[R] ↘ lib/eve_dmv/intelligence/wanderer_sse.ex:19 defstruct must appear before module attribute
+[R] ↗ lib/eve_dmv/intelligence_engine/config.ex:44:28 Numbers larger than 9999 should be written with underscores: 30_000
+[R] ↗ lib/eve_dmv/intelligence_engine/config.ex:112:5 Use a function call when a pipeline is only one function long.
+[R] → lib/eve_dmv/intelligence_engine/plugin_registry.ex:37:3 `@impl true` should be `@impl MyBehaviour`.
+[R] → lib/eve_dmv/intelligence_engine/plugin_registry.ex:60:3 `@impl true` should be `@impl MyBehaviour`.
+[R] → lib/eve_dmv/intelligence_engine/plugin_registry.ex:70:3 `@impl true` should be `@impl MyBehaviour`.
+[R] → lib/eve_dmv/intelligence_engine/plugin_registry.ex:78:3 `@impl true` should be `@impl MyBehaviour`.
+[R] → lib/eve_dmv/intelligence_engine/plugin_registry.ex:92:3 `@impl true` should be `@impl MyBehaviour`.
+[D] ↘ lib/eve_dmv/intelligence_engine/plugins/character/combat_stats.ex:31:10 Nested modules could be aliased at the top of the invoking module.
+[R] ↘ lib/eve_dmv/intelligence_migration_adapter.ex:106:5 Prefer using an implicit `try` rather than explicit `try`.
+[R] ↘ lib/eve_dmv/killmails/data_processor.ex:23:5 Prefer using an implicit `try` rather than explicit `try`.
+[R] ↘ lib/eve_dmv/killmails/data_processor.ex:112 typep must appear before public function
+[R] ↘ lib/eve_dmv/killmails/enriched_participant_loader.ex:16 import must appear before require
+[R] ↘ lib/eve_dmv/killmails/historical_killmail_fetcher.ex:23 module attribute must appear before private function
+[R] ↘ lib/eve_dmv/killmails/killmail_pipeline.ex:13:9 The alias `EveDmv.Killmails.DataProcessor` is not alphabetically ordered among its group.
+[R] ↗ lib/eve_dmv/market/mutamarket_client.ex:289:11 Use a function call when a pipeline is only one function long.
+[R] ↘ lib/eve_dmv/market/strategies/esi_strategy.ex:4 moduledoc must appear before module attribute
+[R] ↘ lib/eve_dmv/market/strategies/mutamarket_strategy.ex:6 moduledoc must appear before module attribute
+[F] ↗ lib/eve_dmv/quality/metrics_collector/ci_cd_metrics.ex:67:10 Avoid negated conditions in if-else blocks.
+[F] ↗ lib/eve_dmv/quality/metrics_collector/ci_cd_metrics.ex:77:10 Avoid negated conditions in if-else blocks.
+[R] ↘ lib/eve_dmv/result.ex:178:5 Prefer using an implicit `try` rather than explicit `try`.
+[F] ↗ lib/eve_dmv/shared/error_formatter.ex:42:5 `Enum.map_join/3` is more efficient than `Enum.map/2 |> Enum.join/2`.
+[R] ↗ lib/eve_dmv/shared/ship_database_adapter.ex:120:7 Predicate function names should not start with 'is', and should end in a question mark.
+[R] ↗ lib/eve_dmv/shared/ship_database_service.ex:359:5 Numbers larger than 9999 should be written with underscores: 11_176
+[R] ↗ lib/eve_dmv/shared/ship_database_service.ex:360:5 Numbers larger than 9999 should be written with underscores: 11_182
+[R] ↗ lib/eve_dmv/shared/ship_database_service.ex:361:5 Numbers larger than 9999 should be written with underscores: 29_984
+[R] ↗ lib/eve_dmv/shared/ship_database_service.ex:362:5 Numbers larger than 9999 should be written with underscores: 29_990
+[R] ↘ lib/eve_dmv/surveillance/matching/match_evaluator.ex:9:9 The alias `EveDmv.Surveillance.ProfileMatch` is not alphabetically ordered among its group.
+[R] ↘ lib/eve_dmv/surveillance/matching/profile_compiler.ex:23:5 Prefer using an implicit `try` rather than explicit `try`.
+[D] ↘ lib/eve_dmv/telemetry/performance_monitor/health_monitor.ex:48:10 Nested modules could be aliased at the top of the invoking module.
+[D] ↘ lib/eve_dmv/telemetry/performance_monitor/health_monitor.ex:83:10 Nested modules could be aliased at the top of the invoking module.
+[D] ↘ lib/eve_dmv/telemetry/performance_monitor/health_monitor.ex:126:10 Nested modules could be aliased at the top of the invoking module.
+[D] ↘ lib/eve_dmv/telemetry/performance_monitor/health_monitor.ex:214:10 Nested modules could be aliased at the top of the invoking module.
+[D] ↘ lib/eve_dmv/telemetry/performance_monitor/health_monitor.ex:255:10 Nested modules could be aliased at the top of the invoking module.
+[D] ↘ lib/eve_dmv/telemetry/performance_monitor/health_monitor.ex:290:10 Nested modules could be aliased at the top of the invoking module.
+[F] ↗ lib/eve_dmv/utils/time_utils.ex:289:5 `Enum.map_join/3` is more efficient than `Enum.map/2 |> Enum.join/2`.
+[F] → lib/eve_dmv/workers/analysis_worker_pool.ex:326:8 Function takes too many parameters (arity is 7, max is 6).
+[F] → lib/eve_dmv/workers/analysis_worker_pool.ex:334:8 Function takes too many parameters (arity is 8, max is 6).
+[R] → lib/eve_dmv/workers/background_task_supervisor.ex:60:5 `with` contains only one <- clause and an `else` branch, consider using `case` instead
+[R] ↘ lib/eve_dmv/workers/background_task_supervisor.ex:264:5 Prefer using an implicit `try` rather than explicit `try`.
+[R] → lib/eve_dmv/workers/realtime_task_supervisor.ex:60:5 `with` contains only one <- clause and an `else` branch, consider using `case` instead
+[R] ↘ lib/eve_dmv/workers/realtime_task_supervisor.ex:302:5 Prefer using an implicit `try` rather than explicit `try`.
+[R] ↘ lib/eve_dmv/workers/ui_task_supervisor.ex:220:5 Prefer using an implicit `try` rather than explicit `try`.
+[F] ↗ lib/eve_dmv_web.ex:41:5 Avoid long quote blocks.
+[F] ↗ lib/eve_dmv_web.ex:85:5 Avoid long quote blocks.
+[F] ↗ lib/eve_dmv_web/components/battle_timeline_component.ex:574:5 `Enum.map_join/3` is more efficient than `Enum.map/2 |> Enum.join/2`.
+[F] ↗ lib/eve_dmv_web/components/intelligence_components.ex:603:5 `Enum.map_join/3` is more efficient than `Enum.map/2 |> Enum.join/2`.
+[F] ↗ lib/eve_dmv_web/components/intelligence_components.ex:611:5 `Enum.map_join/3` is more efficient than `Enum.map/2 |> Enum.join/2`.
+[D] ↘ lib/eve_dmv_web/components/intelligence_components.ex:660:9 Nested modules could be aliased at the top of the invoking module.
+[F] ↗ lib/eve_dmv_web/components/reusable_components.ex:25:5 Avoid long quote blocks.
+[D] ↘ lib/eve_dmv_web/live/battle_analysis_live.ex:842:9 Nested modules could be aliased at the top of the invoking module.
+[F] ↗ lib/eve_dmv_web/live/battle_analysis_live.ex:905:5 `Enum.map_join/3` is more efficient than `Enum.map/2 |> Enum.join/2`.
+[F] ↗ lib/eve_dmv_web/live/battle_analysis_live.ex:939:5 `Enum.map_join/3` is more efficient than `Enum.map/2 |> Enum.join/2`.
+[R] ↗ lib/eve_dmv_web/live/chain_intelligence_live.ex:165:7 Use a function call when a pipeline is only one function long.
+[D] ↘ lib/eve_dmv_web/live/chain_intelligence_live.ex:316:34 Nested modules could be aliased at the top of the invoking module.
+[R] ↘ lib/eve_dmv_web/live/surveillance_live/batch_operation_service.ex:9:9 The alias `EveDmv.Surveillance.MatchingEngine` is not alphabetically ordered among its group.
+[R] ↘ lib/eve_dmv_web/live/surveillance_live/batch_operation_service.ex:96:5 Prefer using an implicit `try` rather than explicit `try`.
+[R] ↘ lib/eve_dmv_web/live/surveillance_live/export_import_service.ex:120:5 Prefer using an implicit `try` rather than explicit `try`.
+[R] ↘ lib/eve_dmv_web/live/surveillance_live/profile_service.ex:160:5 Prefer using an implicit `try` rather than explicit `try`.
+[R] ↗ lib/eve_dmv_web/plugs/api_auth.ex:134:9 Use a function call when a pipeline is only one function long.
+[R] ↘ lib/mix/tasks/eve.analyze_performance.ex:10 shortdoc must appear before alias
+[R] ↘ lib/mix/tasks/eve.load_static_data.ex:30 shortdoc must appear before alias
+[R] ↘ lib/mix/tasks/security.audit.ex:22 shortdoc must appear before alias
+[F] ↗ lib/mix/tasks/security.audit.ex:340:5 `Enum.map_join/3` is more efficient than `Enum.map/2 |> Enum.join/2`.
+[R] ↘ test/benchmarks/intelligence_benchmark.exs:9 Avoid grouping aliases in '{ ... }'; please specify one fully-qualified alias per line.
+[R] ↘ test/eve_dmv/intelligence_engine_basic_test.exs:8:36 Avoid grouping aliases in '{ ... }'; please specify one fully-qualified alias per line.
+[R] ↗ test/eve_dmv/intelligence_engine_basic_test.exs:207:54 Numbers larger than 9999 should be written with underscores: 12_345
+[R] ↗ test/eve_dmv/intelligence_engine_basic_test.exs:208:54 Numbers larger than 9999 should be written with underscores: 12_345
+[R] ↗ test/eve_dmv/intelligence_engine_basic_test.exs:218:54 Numbers larger than 9999 should be written with underscores: 12_345
+[R] ↗ test/eve_dmv/intelligence_engine_basic_test.exs:219:54 Numbers larger than 9999 should be written with underscores: 12_345
+[R] ↗ test/eve_dmv/intelligence_engine_basic_test.exs:220:54 Numbers larger than 9999 should be written with underscores: 67_890
+[R] ↗ test/eve_dmv/intelligence_engine_basic_test.exs:221:56 Numbers larger than 9999 should be written with underscores: 12_345
+[R] ↗ test/eve_dmv/intelligence_engine_basic_test.exs:229:54 Numbers larger than 9999 should be written with underscores: 12_345
+[R] ↗ test/eve_dmv/intelligence_engine_basic_test.exs:230:54 Numbers larger than 9999 should be written with underscores: 12_345
+[R] ↗ test/eve_dmv/intelligence_engine_basic_test.exs:231:54 Numbers larger than 9999 should be written with underscores: 12_345
+[R] ↗ test/eve_dmv/intelligence_engine_basic_test.exs:293:11 Numbers larger than 9999 should be written with underscores: 12_345
+[R] ↗ test/eve_dmv/intelligence_engine_basic_test.exs:294:27 Numbers larger than 9999 should be written with underscores: 12_345
+[R] ↗ test/eve_dmv/intelligence_engine_basic_test.exs:303:53 Numbers larger than 9999 should be written with underscores: 12_345
+[R] ↗ test/eve_dmv/intelligence_engine_basic_test.exs:305:37 Numbers larger than 9999 should be written with underscores: 12_345
+[R] ↗ test/eve_dmv/intelligence_engine_basic_test.exs:312:53 Numbers larger than 9999 should be written with underscores: 99_999
+[R] ↘ test/eve_dmv/intelligence_engine_test.exs:9:36 Avoid grouping aliases in '{ ... }'; please specify one fully-qualified alias per line.
+[R] ↗ test/eve_dmv/intelligence_engine_test.exs:97:42 Numbers larger than 9999 should be written with underscores: 12_345
+[R] ↗ test/eve_dmv/intelligence_engine_test.exs:98:43 Numbers larger than 9999 should be written with underscores: 12_345
+[R] ↗ test/eve_dmv/intelligence_engine_test.exs:98:50 Numbers larger than 9999 should be written with underscores: 67_890
+[R] ↗ test/eve_dmv/intelligence_engine_test.exs:105:60 Numbers larger than 9999 should be written with underscores: 12_345
+[R] ↗ test/eve_dmv/intelligence_engine_test.exs:122:19 Numbers larger than 9999 should be written with underscores: 12_345
+[R] ↗ test/eve_dmv/intelligence_engine_test.exs:143:60 Numbers larger than 9999 should be written with underscores: 12_345
+[R] ↗ test/eve_dmv/intelligence_engine_test.exs:159:54 Numbers larger than 9999 should be written with underscores: 12_345
+[R] ↗ test/eve_dmv/intelligence_engine_test.exs:160:54 Numbers larger than 9999 should be written with underscores: 12_345
+[R] ↗ test/eve_dmv/intelligence_engine_test.exs:170:54 Numbers larger than 9999 should be written with underscores: 12_345
+[R] ↗ test/eve_dmv/intelligence_engine_test.exs:171:54 Numbers larger than 9999 should be written with underscores: 12_345
+[R] ↗ test/eve_dmv/intelligence_engine_test.exs:172:54 Numbers larger than 9999 should be written with underscores: 67_890
+[R] ↗ test/eve_dmv/intelligence_engine_test.exs:173:56 Numbers larger than 9999 should be written with underscores: 12_345
+[R] ↘ test/eve_dmv/killmails/killmail_pipeline_test.exs:10 Avoid grouping aliases in '{ ... }'; please specify one fully-qualified alias per line.
+[R] ↘ test/eve_dmv/killmails/killmail_raw_test.exs:10:9 The alias `EveDmv.Killmails` is not alphabetically ordered among its group.
+[R] ↘ test/eve_dmv/killmails/killmail_raw_test.exs:10:27 Avoid grouping aliases in '{ ... }'; please specify one fully-qualified alias per line.
+[R] → test/eve_dmv/killmails/killmail_raw_test.exs:34:16 Use a pipeline instead of nested function calls.
+[D] ↘ test/eve_dmv/killmails/killmail_raw_test.exs:249:7 Nested modules could be aliased at the top of the invoking module.
+[R] ↗ test/eve_dmv/security/headers_validator_test.exs:58:9 Use a function call when a pipeline is only one function long.
+[R] ↗ test/eve_dmv_web/controllers/auth_controller_test.exs:88:50 Use a function call when a pipeline is only one function long.
+[R] ↗ test/eve_dmv_web/helpers/time_formatter_test.exs:89:44 Numbers larger than 9999 should be written with underscores: 90_061
+[R] ↘ test/manual/manual_testing_data_generator.exs:12:27 Avoid grouping aliases in '{ ... }'; please specify one fully-qualified alias per line.
+[D] ↘ test/manual/manual_testing_data_generator.exs:210:13 Nested modules could be aliased at the top of the invoking module.
+[R] ↘ test/performance/performance_test_suite.exs:18:27 Avoid grouping aliases in '{ ... }'; please specify one fully-qualified alias per line.
+[D] ↘ test/performance/performance_test_suite.exs:245:13 Nested modules could be aliased at the top of the invoking module.
+[D] ↘ test/performance/performance_test_suite.exs:332:13 Nested modules could be aliased at the top of the invoking module.
+[D] ↘ test/performance/performance_test_suite.exs:339:11 Nested modules could be aliased at the top of the invoking module.
+[R] ↘ test/performance/performance_test_suite.exs:450:121 Line is too long (max is 120, was 121).
+[F] ↗ test/support/conn_case.ex:21:5 Avoid long quote blocks.
+[R] ↘ test/support/factories.ex:6:17 Avoid grouping aliases in '{ ... }'; please specify one fully-qualified alias per line.
+[F] ↗ test/support/intelligence_case.ex:11:5 Avoid long quote blocks.
+[R] ↘ test/support/intelligence_case.ex:17 Avoid grouping aliases in '{ ... }'; please specify one fully-qualified alias per line.
+[R] ↘ test/support/killmails/pipeline_test_helper.ex:6:17 Avoid grouping aliases in '{ ... }'; please specify one fully-qualified alias per line.
+[R] ↘ test/support/killmails/pipeline_test_helper.ex:7:27 Avoid grouping aliases in '{ ... }'; please specify one fully-qualified alias per line.
+[F] ↗ test/support/ui_case.ex:26:5 Avoid long quote blocks.
+[R] ↘ test/test_helper.exs:21:9 The alias `EveDmv.Repo` is not alphabetically ordered among its group.

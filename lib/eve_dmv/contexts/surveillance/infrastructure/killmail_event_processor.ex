@@ -8,9 +8,9 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.KillmailEventProcessor do
 
   use GenServer
   use EveDmv.ErrorHandler
-  alias EveDmv.Result
   alias EveDmv.Contexts.Surveillance.Domain.MatchingEngine
-  alias EveDmv.DomainEvents.{KillmailReceived, KillmailEnriched}
+  alias EveDmv.DomainEvents.KillmailEnriched
+  alias EveDmv.DomainEvents.KillmailReceived
   alias EveDmv.Infrastructure.EventBus
 
   require Logger
@@ -47,10 +47,10 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.KillmailEventProcessor do
   # GenServer implementation
 
   @impl GenServer
-  def init(opts) do
+  def init(_opts) do
     # Subscribe to killmail events from the event bus
-    EventBus.subscribe(:killmail_received, self())
-    EventBus.subscribe(:killmail_enriched, self())
+    EventBus.subscribe_process(:killmail_received, self())
+    EventBus.subscribe_process(:killmail_enriched, self())
 
     state = %{
       processing_metrics: %{
@@ -293,7 +293,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.KillmailEventProcessor do
 
   # Metrics helpers
 
-  defp update_success_metrics(current_metrics, processing_time) do
+  defp update_success_metrics(current_metrics, _processing_time) do
     %{
       current_metrics
       | total_processed: current_metrics.total_processed + 1,

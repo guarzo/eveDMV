@@ -7,12 +7,12 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
   """
 
   use GenServer
-  require Logger
 
   alias EveDmv.Contexts.MarketIntelligence.Infrastructure
   alias EveDmv.DomainEvents
   alias EveDmv.Infrastructure.EventBus
-  # alias EveDmv.Result
+
+  require Logger
 
   # Client API
 
@@ -89,8 +89,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
 
     # Update stats
     new_state =
-      state
-      |> Map.update!(:request_count, &(&1 + length(type_ids)))
+      Map.update!(state, :request_count, &(&1 + length(type_ids)))
 
     {:reply, result, new_state}
   end
@@ -231,8 +230,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
     case Infrastructure.ExternalPriceClient.get_prices(type_ids, source) do
       {:ok, prices} ->
         # Cache all results
-        prices
-        |> Enum.each(fn {type_id, price_data} ->
+        Enum.each(prices, fn {type_id, price_data} ->
           if force_refresh do
             Infrastructure.PriceCache.put(type_id, price_data, force: true)
           else
@@ -298,11 +296,11 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
       # Megacyte
       40,
       # Morphite
-      11399,
+      11_399,
       # Plex
-      16634,
+      16_634,
       # Skill Injector
-      29668
+      29_668
     ]
   end
 

@@ -7,13 +7,14 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
   and resource management for intelligence operations.
   """
 
-  require Logger
-  require Ash.Query
   alias EveDmv.Api
-  alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Intelligence.Cache.IntelligenceCache
+  alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Intelligence.Wormhole.Vetting, as: WHVetting
   alias EveDmv.Killmails.Participant
+
+  require Logger
+  require Ash.Query
 
   @doc """
   Optimize intelligence queries by batching and parallel processing.
@@ -107,8 +108,7 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
 
     # Wait for all data loading to complete
     [character_stats, vetting_data, killmail_data] =
-      data_loading_tasks
-      |> Task.await_many(:timer.minutes(2))
+      Task.await_many(data_loading_tasks, :timer.minutes(2))
 
     # Perform optimized correlation analysis
     correlations = %{
@@ -319,8 +319,7 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
     # For now, we'll use a placeholder implementation
     top_character_ids = get_top_character_ids(count)
 
-    top_character_ids
-    |> Enum.each(fn char_id ->
+    Enum.each(top_character_ids, fn char_id ->
       spawn(fn ->
         IntelligenceCache.get_character_analysis(char_id)
         IntelligenceCache.get_vetting_analysis(char_id)
@@ -334,8 +333,7 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
     # This would identify recently analyzed characters
     recent_character_ids = get_recent_character_ids(count)
 
-    recent_character_ids
-    |> Enum.each(fn char_id ->
+    Enum.each(recent_character_ids, fn char_id ->
       spawn(fn ->
         IntelligenceCache.get_character_analysis(char_id)
       end)
@@ -348,8 +346,7 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
     # This would identify high-threat or important characters
     critical_character_ids = get_critical_character_ids(count)
 
-    critical_character_ids
-    |> Enum.each(fn char_id ->
+    Enum.each(critical_character_ids, fn char_id ->
       spawn(fn ->
         IntelligenceCache.get_character_analysis(char_id)
         IntelligenceCache.get_vetting_analysis(char_id)
@@ -360,17 +357,17 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
 
   defp get_top_character_ids(count) do
     # Placeholder - would query actual usage statistics
-    1..count |> Enum.map(fn i -> 95_465_499 + i end)
+    Enum.map(1..count, fn i -> 95_465_499 + i end)
   end
 
   defp get_recent_character_ids(count) do
     # Placeholder - would query recent analysis records
-    1..count |> Enum.map(fn i -> 90_267_367 + i end)
+    Enum.map(1..count, fn i -> 90_267_367 + i end)
   end
 
   defp get_critical_character_ids(count) do
     # Placeholder - would query high-threat characters
-    1..count |> Enum.map(fn i -> 88_123_456 + i end)
+    Enum.map(1..count, fn i -> 88_123_456 + i end)
   end
 
   defp analyze_query_performance do
@@ -395,39 +392,42 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
   end
 
   defp generate_performance_recommendations(cache_stats, query_performance, memory_usage) do
-    recommendations = []
+    initial_recommendations = []
 
     # Cache recommendations
-    recommendations =
+    cache_recommendations =
       if cache_stats.hit_ratio < 70 do
-        ["Increase cache warming frequency" | recommendations]
+        ["Increase cache warming frequency" | initial_recommendations]
       else
-        recommendations
+        initial_recommendations
       end
 
     # Query performance recommendations
-    recommendations =
+    query_recommendations =
       if query_performance.avg_query_time_ms > 1000 do
         [
           "Optimize database queries - average time #{query_performance.avg_query_time_ms}ms"
-          | recommendations
+          | cache_recommendations
         ]
       else
-        recommendations
+        cache_recommendations
       end
 
     # Memory recommendations
-    recommendations =
+    final_recommendations =
       if memory_usage.total_mb > 1000 do
-        ["Consider memory optimization - using #{memory_usage.total_mb}MB" | recommendations]
+        [
+          "Consider memory optimization - using #{memory_usage.total_mb}MB"
+          | query_recommendations
+        ]
       else
-        recommendations
+        query_recommendations
       end
 
-    if Enum.empty?(recommendations) do
+    if Enum.empty?(final_recommendations) do
       ["System performance is optimal"]
     else
-      recommendations
+      final_recommendations
     end
   end
 

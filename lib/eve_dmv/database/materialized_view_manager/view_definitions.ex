@@ -32,7 +32,8 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewDefinitions do
   Get view names that have a specific refresh strategy.
   """
   def views_by_strategy(strategy) do
-    Enum.filter(all_views(), &(&1.refresh_strategy == strategy))
+    all_views()
+    |> Enum.filter(&(&1.refresh_strategy == strategy))
     |> Enum.map(& &1.name)
   end
 
@@ -40,8 +41,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewDefinitions do
   Find views affected by changes to specific tables.
   """
   def find_affected_views(table_names) when is_list(table_names) do
-    all_views()
-    |> Enum.filter(fn view_def ->
+    Enum.filter(all_views(), fn view_def ->
       Enum.any?(view_def.dependencies, fn dep -> dep in table_names end)
     end)
   end

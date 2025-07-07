@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.LongQuoteBlocks
 defmodule EveDmv.Database.Repository do
   @moduledoc """
   Base repository pattern for consistent database access across EVE DMV.

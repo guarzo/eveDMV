@@ -98,8 +98,8 @@ defmodule EveDmv.UICase do
   def authenticated_lv_conn(user \\ nil) do
     user = user || create_test_user()
 
-    Phoenix.ConnTest.build_conn()
-    |> log_in_user(user)
+    conn = Phoenix.ConnTest.build_conn()
+    log_in_user(conn, user)
   end
 
   @doc """
@@ -332,7 +332,8 @@ defmodule EveDmv.UICase do
 
     if conn.status == 302 do
       # Check redirect location contains auth
-      location = get_resp_header(conn, "location") |> List.first()
+      location_headers = get_resp_header(conn, "location")
+      location = List.first(location_headers)
       assert location =~ ~r/(login|auth)/i
     end
   end

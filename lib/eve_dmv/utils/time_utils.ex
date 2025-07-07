@@ -285,7 +285,6 @@ defmodule EveDmv.Utils.TimeUtils do
   defp format_duration_parts(parts) do
     parts
     |> Enum.filter(fn {value, _unit} -> value > 0 end)
-    |> Enum.map(fn {value, unit} -> "#{value}#{unit}" end)
-    |> Enum.join(" ")
+    |> Enum.map_join(" ", fn {value, unit} -> "#{value}#{unit}" end)
   end
 end

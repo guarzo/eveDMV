@@ -18,7 +18,7 @@ defmodule EveDmv.Intelligence.TelemetryReporter do
   end
 
   @impl GenServer
-  def init(opts) do
+  def init(_opts) do
     Logger.info("Starting Intelligence telemetry reporter")
 
     # Attach to intelligence telemetry events

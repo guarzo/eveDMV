@@ -12,10 +12,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
 
   use GenServer
   use EveDmv.ErrorHandler
-  alias EveDmv.Result
 
   alias EveDmv.Contexts.WormholeOperations.Infrastructure.VettingRepository
-  alias EveDmv.Contexts.WormholeOperations.Infrastructure.WormholeDataProvider
 
   alias EveDmv.DomainEvents.VettingComplete
   alias EveDmv.Infrastructure.EventBus
@@ -73,7 +71,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
   # GenServer implementation
 
   @impl GenServer
-  def init(opts) do
+  def init(_opts) do
     state = %{
       vetting_cache: %{},
       metrics: %{
@@ -248,7 +246,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
     {:ok, character_data}
   end
 
-  defp analyze_corporation_history(character_data, vetting_criteria) do
+  defp analyze_corporation_history(character_data, _vetting_criteria) do
     corp_history = character_data.corporation_history
 
     # Analyze corporation changes
@@ -284,7 +282,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
     {:ok, corp_analysis}
   end
 
-  defp analyze_killboard_activity(character_data, vetting_criteria) do
+  defp analyze_killboard_activity(character_data, _vetting_criteria) do
     killboard_data = character_data.killboard_data
 
     # Activity metrics
@@ -326,7 +324,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
     {:ok, killboard_analysis}
   end
 
-  defp assess_opsec_risks(character_data, vetting_criteria) do
+  defp assess_opsec_risks(character_data, _vetting_criteria) do
     # Analyze potential OpSec risks
     security_risks = assess_security_status_risks(character_data)
     corp_pattern_risks = assess_corp_pattern_risks(character_data.corporation_history)
@@ -406,7 +404,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
     age_score = calculate_age_score(character_age_days)
 
     # Skill point assessment
-    sp_score = calculate_sp_score(character_data.total_sp, character_age_days)
+    _sp_score = calculate_sp_score(character_data.total_sp, character_age_days)
 
     # Skill focus assessment (simulated)
     skill_focus_score = calculate_skill_focus_score(character_data.total_sp)
@@ -807,7 +805,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
     end
   end
 
-  defp calculate_killboard_score(activity_metrics, ship_analysis, combat_patterns, wh_activity) do
+  defp calculate_killboard_score(activity_metrics, ship_analysis, _combat_patterns, wh_activity) do
     # Activity score component
     # Cap at 20 activities per month
     activity_score = min(1.0, activity_metrics.recent_activity / 20)
@@ -1093,7 +1091,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
     end
   end
 
-  defp identify_red_flags(corp_history, killboard_analysis, opsec_assessment) do
+  defp identify_red_flags(corp_history, _killboard_analysis, opsec_assessment) do
     initial_red_flags = []
 
     # Corporation history red flags
@@ -1175,7 +1173,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
   end
 
   defp generate_detailed_recommendations(vetting_report) do
-    recommendations = []
+    _recommendations = []
 
     case vetting_report.recommendation do
       :approve ->
@@ -1220,7 +1218,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
     end
   end
 
-  defp generate_review_recommendations(vetting_report) do
+  defp generate_review_recommendations(_vetting_report) do
     ["Leadership review of red flags required", "Consider probationary membership"]
   end
 

@@ -8,9 +8,13 @@ defmodule EveDmv.Eve.EsiRequestClient do
   error classification, and fallback strategies.
   """
 
+  alias EveDmv.Eve.CircuitBreaker
+  alias EveDmv.Eve.ErrorClassifier
+  alias EveDmv.Eve.FallbackStrategy
+  alias EveDmv.Eve.ReliabilityConfig
+  alias EveDmv.Telemetry.PerformanceMonitor
+  alias EveDmv.Telemetry.RequestMonitor
   require Logger
-  alias EveDmv.Eve.{CircuitBreaker, ErrorClassifier, FallbackStrategy, ReliabilityConfig}
-  alias EveDmv.Telemetry.{PerformanceMonitor, RequestMonitor}
 
   @default_base_url "https://esi.evetech.net"
   @default_datasource "tranquility"
@@ -343,7 +347,8 @@ defmodule EveDmv.Eve.EsiRequestClient do
   end
 
   defp get_config(key, default) do
-    Application.get_env(:eve_dmv, :esi, [])
+    :eve_dmv
+    |> Application.get_env(:esi, [])
     |> Keyword.get(key, default)
   end
 

@@ -61,14 +61,14 @@
           label="Total Kills" 
           value={format_number(@corp_stats.total_kills)}
           color="text-green-400"
-          description="Avg: #{format_number(@corp_stats.avg_activity_per_member)} per member"
+          subtitle="Avg: #{format_number(@corp_stats.avg_activity_per_member)} per member"
         />
         <:stat 
           icon="💀" 
           label="Total Losses" 
           value={format_number(@corp_stats.total_losses)}
           color="text-red-400"
-          description="K/D: #{@corp_stats.kill_death_ratio}"
+          subtitle="K/D: #{@corp_stats.kill_death_ratio}"
         />
         <:stat icon="⚡" label="Total Activity" format="custom">
           <p class="text-2xl font-bold text-yellow-400">
@@ -130,8 +130,8 @@
             <% else %>
               <.empty_state 
                 icon="🚫"
-                message="No member data available"
-                description="Members will appear here once they generate killmail activity"
+                title="No member data available"
+                message="Members will appear here once they generate killmail activity"
               />
             <% end %>
           </div>
@@ -179,8 +179,8 @@
             <% else %>
               <.empty_state 
                 icon="📭"
-                message="No recent activity"
-                description="Activity will appear here once members generate killmails"
+                title="No recent activity"
+                message="Activity will appear here once members generate killmails"
               />
             <% end %>
           </div>

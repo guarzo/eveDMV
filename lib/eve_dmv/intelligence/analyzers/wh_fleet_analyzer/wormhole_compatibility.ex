@@ -6,9 +6,9 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.WormholeCompatibility do
   wormhole viability, jump sequences, and mass efficiency.
   """
 
-  require Logger
-
   alias EveDmv.Intelligence.Analyzers.MassCalculator
+
+  require Logger
 
   @doc """
   Calculate wormhole viability for a fleet.

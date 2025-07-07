@@ -52,39 +52,42 @@ defmodule EveDmv.Quality.MetricsCollector.PerformanceMetrics do
   Generates performance recommendations.
   """
   def generate_performance_recommendations(performance_metrics) do
-    recommendations = []
-
     # Check for high process count
     process_count = performance_metrics.memory_usage.process_count
 
-    recommendations =
+    process_recommendations =
       if process_count > 10_000 do
-        ["High process count (#{process_count}). Review for process leaks." | recommendations]
+        [
+          "High process count (#{process_count}). Review for process leaks."
+        ]
       else
-        recommendations
+        []
       end
 
     # Check for benchmarks
     benchmark_count = performance_metrics.benchmark_results.benchmark_count
 
-    recommendations =
+    benchmark_recommendations =
       if benchmark_count == 0 do
-        ["Add performance benchmarks to track critical paths" | recommendations]
+        ["Add performance benchmarks to track critical paths" | process_recommendations]
       else
-        recommendations
+        process_recommendations
       end
 
     # Check atom count (potential atom leak)
     atom_count = performance_metrics.memory_usage.atom_count
 
-    recommendations =
+    final_recommendations =
       if atom_count > 1_000_000 do
-        ["High atom count (#{atom_count}). Check for atom generation in loops." | recommendations]
+        [
+          "High atom count (#{atom_count}). Check for atom generation in loops."
+          | benchmark_recommendations
+        ]
       else
-        recommendations
+        benchmark_recommendations
       end
 
-    recommendations
+    final_recommendations
   end
 
   # Test performance analysis

@@ -9,35 +9,31 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
 
   use EveDmv.ErrorHandler
   alias EveDmv.Result
-  alias EveDmv.Contexts.FleetOperations.Infrastructure.FleetRepository
-  alias EveDmv.Shared.ShipDatabaseService
 
   @doc """
   Analyze fleet composition for effectiveness and tactical balance.
   """
-  def analyze(fleet_id, base_data \\ %{}, opts \\ []) when is_integer(fleet_id) do
-    try do
-      with {:ok, fleet_data} <- get_fleet_data(base_data, fleet_id),
-           {:ok, participant_data} <- get_participant_data(base_data, fleet_id) do
-        composition_analysis = %{
-          fleet_overview: analyze_fleet_overview(fleet_data, participant_data),
-          ship_composition: analyze_ship_composition(participant_data),
-          role_distribution: analyze_role_distribution(participant_data),
-          tactical_capabilities: analyze_tactical_capabilities(participant_data),
-          balance_assessment: assess_fleet_balance(participant_data),
-          effectiveness_metrics: calculate_effectiveness_metrics(fleet_data, participant_data),
-          vulnerability_analysis: analyze_fleet_vulnerabilities(participant_data),
-          composition_summary: generate_composition_summary(fleet_data, participant_data)
-        }
+  def analyze(fleet_id, base_data \\ %{}, _opts \\ []) when is_integer(fleet_id) do
+    with {:ok, fleet_data} <- get_fleet_data(base_data, fleet_id),
+         {:ok, participant_data} <- get_participant_data(base_data, fleet_id) do
+      composition_analysis = %{
+        fleet_overview: analyze_fleet_overview(fleet_data, participant_data),
+        ship_composition: analyze_ship_composition(participant_data),
+        role_distribution: analyze_role_distribution(participant_data),
+        tactical_capabilities: analyze_tactical_capabilities(participant_data),
+        balance_assessment: assess_fleet_balance(participant_data),
+        effectiveness_metrics: calculate_effectiveness_metrics(fleet_data, participant_data),
+        vulnerability_analysis: analyze_fleet_vulnerabilities(participant_data),
+        composition_summary: generate_composition_summary(fleet_data, participant_data)
+      }
 
-        Result.ok(composition_analysis)
-      else
-        {:error, _reason} = error -> error
-      end
-    rescue
-      exception ->
-        Result.error(:analysis_failed, "Fleet composition analysis error: #{inspect(exception)}")
+      Result.ok(composition_analysis)
+    else
+      {:error, _reason} = error -> error
     end
+  rescue
+    exception ->
+      Result.error(:analysis_failed, "Fleet composition analysis error: #{inspect(exception)}")
   end
 
   @doc """
@@ -68,9 +64,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
     fleet_duration = calculate_fleet_duration(fleet_data)
 
     total_fleet_value =
-      participant_data
-      |> Enum.map(fn participant -> participant.ship_value || 0 end)
-      |> Enum.sum()
+      Enum.sum(Enum.map(participant_data, fn participant -> participant.ship_value || 0 end))
 
     average_ship_value = safe_divide(total_fleet_value, total_participants)
 
@@ -190,8 +184,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
 
   defp assess_fleet_balance(participant_data) do
     role_distribution =
-      participant_data
-      |> Enum.group_by(fn participant ->
+      Enum.group_by(participant_data, fn participant ->
         categorize_ship_role(participant.ship_group || "Unknown")
       end)
 
@@ -321,8 +314,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
 
   defp identify_fleet_commander(participant_data) do
     commander =
-      participant_data
-      |> Enum.find(fn participant ->
+      Enum.find(participant_data, fn participant ->
         participant.fleet_role == "Fleet Commander" ||
           participant.is_fleet_commander == true
       end)
@@ -357,9 +349,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
 
   defp determine_fleet_type(participant_data) do
     ship_groups =
-      participant_data
-      |> Enum.map(& &1.ship_group)
-      |> Enum.frequencies()
+      Enum.frequencies(Enum.map(participant_data, & &1.ship_group))
 
     cond do
       Map.has_key?(ship_groups, "Dreadnought") or Map.has_key?(ship_groups, "Carrier") ->
@@ -422,8 +412,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
   defp safe_divide(_, _), do: 0.0
 
   defp merge_batch_results(results) do
-    results
-    |> Enum.reduce(%{}, fn {fleet_id, result}, acc ->
+    Enum.reduce(results, %{}, fn {fleet_id, result}, acc ->
       Map.put(acc, fleet_id, result)
     end)
   end

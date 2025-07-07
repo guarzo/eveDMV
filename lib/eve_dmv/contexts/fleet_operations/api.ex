@@ -8,16 +8,13 @@ defmodule EveDmv.Contexts.FleetOperations.Api do
   """
 
   use EveDmv.ErrorHandler
-  alias EveDmv.Result
   alias EveDmv.Utils.ValidationUtils
 
-  alias EveDmv.Contexts.FleetOperations.Domain.{
-    FleetAnalyzer,
-    DoctrineManager,
-    EffectivenessCalculator
-  }
+  alias EveDmv.Contexts.FleetOperations.Domain.DoctrineManager
+  alias EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator
+  alias EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer
 
-  alias EveDmv.Contexts.FleetOperations.Infrastructure.{FleetRepository, EngagementCache}
+  alias EveDmv.Contexts.FleetOperations.Infrastructure.EngagementCache
 
   require Logger
 

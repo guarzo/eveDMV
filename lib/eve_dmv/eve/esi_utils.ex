@@ -7,9 +7,9 @@ defmodule EveDmv.Eve.EsiUtils do
   fallback strategies.
   """
 
-  require Logger
-
   alias EveDmv.Eve.EsiClient
+
+  require Logger
 
   @doc """
   Safely execute an ESI call with standardized error handling.
@@ -58,10 +58,10 @@ defmodule EveDmv.Eve.EsiUtils do
   Falls back to cached data or placeholder if ESI fails.
   """
   def fetch_character_with_fallback(character_id, fallback_name \\ "Unknown Character") do
-    safe_esi_call("character", fn ->
-      EsiClient.get_character(character_id)
-    end)
-    |> handle_esi_result(
+    handle_esi_result(
+      safe_esi_call("character", fn ->
+        EsiClient.get_character(character_id)
+      end),
       fn char_data ->
         {:ok,
          %{
@@ -88,10 +88,12 @@ defmodule EveDmv.Eve.EsiUtils do
   and then conditionally fetching alliance data based on alliance_id.
   """
   def fetch_corporation_with_alliance(corporation_id) do
-    safe_esi_call("corporation", fn ->
-      EsiClient.get_corporation(corporation_id)
-    end)
-    |> case do
+    result =
+      safe_esi_call("corporation", fn ->
+        EsiClient.get_corporation(corporation_id)
+      end)
+
+    case result do
       {:ok, corp_data} ->
         alliance_info = fetch_alliance_info(corp_data.alliance_id)
 
@@ -151,10 +153,13 @@ defmodule EveDmv.Eve.EsiUtils do
   Returns employment history data with fallback structure when ESI fails.
   """
   def fetch_employment_history_with_fallback(character_id) do
-    safe_esi_call("employment_history", fn ->
-      EsiClient.get_character_employment_history(character_id)
-    end)
-    |> handle_esi_result(
+    result =
+      safe_esi_call("employment_history", fn ->
+        EsiClient.get_character_employment_history(character_id)
+      end)
+
+    handle_esi_result(
+      result,
       fn history_data ->
         {:ok, process_employment_history(history_data)}
       end,
@@ -180,10 +185,13 @@ defmodule EveDmv.Eve.EsiUtils do
   Returns empty list if fetching fails rather than propagating errors.
   """
   def fetch_assets_safe(corporation_id, auth_token) do
-    safe_esi_call("corporation_assets", fn ->
-      EsiClient.get_corporation_assets(corporation_id, auth_token)
-    end)
-    |> handle_esi_result(
+    result =
+      safe_esi_call("corporation_assets", fn ->
+        EsiClient.get_corporation_assets(corporation_id, auth_token)
+      end)
+
+    handle_esi_result(
+      result,
       fn assets -> {:ok, assets} end,
       fn ->
         Logger.warning(
@@ -201,10 +209,13 @@ defmodule EveDmv.Eve.EsiUtils do
   Returns successfully fetched character data even if some characters fail.
   """
   def fetch_characters_bulk(character_ids) when is_list(character_ids) do
-    safe_esi_call("characters_bulk", fn ->
-      EsiClient.get_characters(character_ids)
-    end)
-    |> handle_esi_result(
+    result =
+      safe_esi_call("characters_bulk", fn ->
+        EsiClient.get_characters(character_ids)
+      end)
+
+    handle_esi_result(
+      result,
       fn character_data -> {:ok, character_data} end,
       fn ->
         Logger.warning(
@@ -221,10 +232,12 @@ defmodule EveDmv.Eve.EsiUtils do
   defp fetch_alliance_info(nil), do: %{alliance_name: nil}
 
   defp fetch_alliance_info(alliance_id) do
-    safe_esi_call("alliance", fn ->
-      EsiClient.get_alliance(alliance_id)
-    end)
-    |> case do
+    result =
+      safe_esi_call("alliance", fn ->
+        EsiClient.get_alliance(alliance_id)
+      end)
+
+    case result do
       {:ok, alliance_data} ->
         %{alliance_name: alliance_data.name}
 
@@ -235,17 +248,18 @@ defmodule EveDmv.Eve.EsiUtils do
   end
 
   defp process_employment_history(history_data) when is_list(history_data) do
-    corp_changes = length(history_data) - 1
+    history_length = length(history_data)
+    corp_changes = history_length - 1
 
     avg_tenure_days =
       if corp_changes > 0 do
         total_days = calculate_total_tenure_days(history_data)
-        round(total_days / length(history_data))
+        round(total_days / history_length)
       else
         0
       end
 
-    suspicious_patterns = identify_suspicious_patterns(history_data)
+    suspicious_patterns = identify_suspicious_patterns(history_data, history_length)
 
     %{
       "corp_changes" => corp_changes,
@@ -269,9 +283,9 @@ defmodule EveDmv.Eve.EsiUtils do
     length(history) * 90
   end
 
-  defp identify_suspicious_patterns(history) when length(history) > 10 do
-    ["High corp turnover (#{length(history)} corporations)"]
+  defp identify_suspicious_patterns(_history, history_length) when history_length > 10 do
+    ["High corp turnover (#{history_length} corporations)"]
   end
 
-  defp identify_suspicious_patterns(_history), do: []
+  defp identify_suspicious_patterns(_history, _history_length), do: []
 end

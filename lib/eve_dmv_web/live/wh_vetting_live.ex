@@ -151,19 +151,10 @@ defmodule EveDmvWeb.WHVettingLive do
     case result do
       {:ok, analysis_result} ->
         # Transform Intelligence Engine result to vetting record if needed
-        case transform_analysis_to_vetting_record(character_id, analysis_result) do
-          {:ok, _vetting_record} ->
-            socket = put_flash(socket, :info, "Vetting analysis completed successfully")
-            send(self(), :load_vetting_records)
-            {:noreply, socket}
-
-          {:error, transform_reason} ->
-            Logger.error(
-              "Failed to transform vetting analysis for character #{character_id}: #{inspect(transform_reason)}"
-            )
-
-            {:noreply, put_flash(socket, :error, "Vetting analysis processing failed")}
-        end
+        {:ok, _vetting_record} = transform_analysis_to_vetting_record(character_id, analysis_result)
+        socket = put_flash(socket, :info, "Vetting analysis completed successfully")
+        send(self(), :load_vetting_records)
+        {:noreply, socket}
 
       {:error, reason} ->
         Logger.error("Vetting analysis failed for character #{character_id}: #{inspect(reason)}")

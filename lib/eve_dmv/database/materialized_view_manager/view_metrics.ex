@@ -6,9 +6,9 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
   recommendations for optimization.
   """
 
-  alias EveDmv.Repo
-  alias EveDmv.Database.MaterializedViewManager.ViewDefinitions
   alias Ecto.Adapters.SQL
+  alias EveDmv.Database.MaterializedViewManager.ViewDefinitions
+  alias EveDmv.Repo
 
   require Logger
 
@@ -192,14 +192,15 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
   """
   def estimate_refresh_resources do
     Enum.map(ViewDefinitions.all_views(), fn view_def ->
-      with {:ok, size_info} <- get_view_size_info(view_def.name) do
-        %{
-          view_name: view_def.name,
-          estimated_memory_mb: estimate_memory_usage(size_info),
-          estimated_cpu_seconds: estimate_cpu_usage(size_info, view_def),
-          estimated_io_mb: size_info.size_bytes / 1_048_576
-        }
-      else
+      case get_view_size_info(view_def.name) do
+        {:ok, size_info} ->
+          %{
+            view_name: view_def.name,
+            estimated_memory_mb: estimate_memory_usage(size_info),
+            estimated_cpu_seconds: estimate_cpu_usage(size_info, view_def),
+            estimated_io_mb: size_info.size_bytes / 1_048_576
+          }
+
         _ ->
           %{
             view_name: view_def.name,
@@ -333,8 +334,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
 
     # Check for inefficient indexes
     inefficient_indexes =
-      Enum.filter(index_info.indexes, &(&1.efficiency < 0.5))
-      |> Enum.map(& &1.name)
+      Enum.map(Enum.filter(index_info.indexes, &(&1.efficiency < 0.5)), & &1.name)
 
     final_recommendations =
       if length(inefficient_indexes) > 0 do
@@ -358,8 +358,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
   end
 
   defp calculate_total_size(size_analysis) do
-    Enum.map(size_analysis, & &1.size_bytes)
-    |> Enum.sum()
+    Enum.sum(Enum.map(size_analysis, & &1.size_bytes))
   end
 
   defp calculate_failure_rate(refresh_stats) do
@@ -399,7 +398,8 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
   defp calculate_overall_health(health_data) do
     if length(health_data) > 0 do
       avg_score =
-        Enum.map(health_data, & &1.health_score)
+        health_data
+        |> Enum.map(& &1.health_score)
         |> Enum.sum()
         |> Kernel./(length(health_data))
 
@@ -414,8 +414,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
 
     # Check for unpopulated views
     unpopulated =
-      Enum.filter(health_data, &(not &1.is_populated))
-      |> Enum.map(& &1.view)
+      Enum.map(Enum.filter(health_data, &(not &1.is_populated)), & &1.view)
 
     issues_with_unpopulated =
       if length(unpopulated) > 0 do
@@ -426,8 +425,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
 
     # Check for views without indexes
     no_indexes =
-      Enum.filter(health_data, &(not &1.has_indexes))
-      |> Enum.map(& &1.view)
+      Enum.map(Enum.filter(health_data, &(not &1.has_indexes)), & &1.view)
 
     final_issues =
       if length(no_indexes) > 0 do

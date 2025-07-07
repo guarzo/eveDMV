@@ -9,19 +9,16 @@ defmodule EveDmv.Database.QueryPlanAnalyzer do
   """
 
   use GenServer
-  require Logger
 
-  alias EveDmv.Repo
   alias Ecto.Adapters.SQL
+  alias EveDmv.Database.QueryPlanAnalyzer.BufferAnalyzer
+  alias EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer
+  alias EveDmv.Database.QueryPlanAnalyzer.PlanAnalyzer
+  alias EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector
+  alias EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer
+  alias EveDmv.Repo
 
-  # Extracted modules
-  alias EveDmv.Database.QueryPlanAnalyzer.{
-    PlanAnalyzer,
-    BufferAnalyzer,
-    IndexAnalyzer,
-    SlowQueryDetector,
-    TableStatsAnalyzer
-  }
+  require Logger
 
   @analysis_interval :timer.hours(1)
   @slow_query_threshold_ms 1000

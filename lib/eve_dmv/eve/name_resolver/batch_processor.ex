@@ -6,8 +6,10 @@ defmodule EveDmv.Eve.NameResolver.BatchProcessor do
   and parallel processing for both static data and ESI entities.
   """
 
+  alias EveDmv.Eve.NameResolver.CacheManager
+  alias EveDmv.Eve.NameResolver.EsiEntityResolver
+  alias EveDmv.Eve.NameResolver.StaticDataResolver
   require Logger
-  alias EveDmv.Eve.NameResolver.{CacheManager, StaticDataResolver, EsiEntityResolver}
 
   @doc """
   Efficiently resolves multiple IDs of the same type.
@@ -162,8 +164,7 @@ defmodule EveDmv.Eve.NameResolver.BatchProcessor do
   Processes chunked batches with error handling and partial results.
   """
   def process_chunked_batches(type, chunked_ids, processor_fn) do
-    chunked_ids
-    |> Enum.reduce_while({:ok, %{}}, fn chunk, {:ok, acc} ->
+    Enum.reduce_while(chunked_ids, {:ok, %{}}, fn chunk, {:ok, acc} ->
       case processor_fn.(type, chunk) do
         {:ok, results} ->
           {:cont, {:ok, Map.merge(acc, results)}}

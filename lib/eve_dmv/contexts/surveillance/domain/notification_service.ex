@@ -8,8 +8,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
 
   use GenServer
   use EveDmv.ErrorHandler
-  alias EveDmv.Result
   alias EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository
+  alias EveDmv.Result
 
   require Logger
 
@@ -75,7 +75,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
   # GenServer implementation
 
   @impl GenServer
-  def init(opts) do
+  def init(_opts) do
     state = %{
       # notification_id -> notification_data
       notifications: %{},
@@ -326,8 +326,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
   end
 
   defp get_enabled_channels(notification_config) do
-    [@channel_email, @channel_webhook, @channel_in_app]
-    |> Enum.filter(fn channel ->
+    Enum.filter([@channel_email, @channel_webhook, @channel_in_app], fn channel ->
       channel_config = Map.get(notification_config, channel, %{})
       Map.get(channel_config, :enabled, false)
     end)
@@ -440,11 +439,9 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
   end
 
   defp format_matched_criteria_text(matched_criteria) do
-    matched_criteria
-    |> Enum.map(fn criterion ->
+    Enum.map_join(matched_criteria, "\n", fn criterion ->
       "- #{String.capitalize(to_string(criterion.type))}: #{inspect(Map.delete(criterion, :type))}"
     end)
-    |> Enum.join("\n")
   end
 
   defp check_rate_limit(profile_id, rate_limits) do

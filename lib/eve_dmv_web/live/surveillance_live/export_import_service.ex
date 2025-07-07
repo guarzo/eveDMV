@@ -6,10 +6,11 @@ defmodule EveDmvWeb.SurveillanceLive.ExportImportService do
   profiles from JSON data with validation and error handling.
   """
 
-  require Logger
-
   alias EveDmv.Api
-  alias EveDmv.Surveillance.{MatchingEngine, Profile}
+  alias EveDmv.Surveillance.MatchingEngine
+  alias EveDmv.Surveillance.Profile
+
+  require Logger
 
   @doc """
   Export surveillance profiles to JSON format.
@@ -116,11 +117,9 @@ defmodule EveDmvWeb.SurveillanceLive.ExportImportService do
   # Helper Functions
 
   defp reload_matching_engine do
-    try do
-      MatchingEngine.reload()
-    rescue
-      error ->
-        Logger.warning("Failed to reload matching engine: #{inspect(error)}")
-    end
+    MatchingEngine.reload_profiles()
+  rescue
+    error ->
+      Logger.warning("Failed to reload matching engine: #{inspect(error)}")
   end
 end

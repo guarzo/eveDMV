@@ -9,15 +9,12 @@ defmodule EveDmv.Killmails.KillmailPipeline do
 
   use Broadway
 
-  require Logger
-
   alias Broadway.Message
+  alias EveDmv.Killmails.DatabaseInserter
+  alias EveDmv.Killmails.DataProcessor
+  alias EveDmv.Killmails.KillmailBroadcaster
 
-  alias EveDmv.Killmails.{
-    DataProcessor,
-    DatabaseInserter,
-    KillmailBroadcaster
-  }
+  require Logger
 
   # Broadway configuration
   def start_link(_opts) do

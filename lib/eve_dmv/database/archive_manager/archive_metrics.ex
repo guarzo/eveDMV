@@ -6,10 +6,10 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveMetrics do
   storage statistics, and operational insights for monitoring and optimization.
   """
 
+  alias Ecto.Adapters.SQL
   alias EveDmv.Database.ArchiveManager.ArchiveOperations
   alias EveDmv.Database.ArchiveManager.PartitionManager
   alias EveDmv.Repo
-  alias Ecto.Adapters.SQL
 
   require Logger
 
@@ -20,11 +20,12 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveMetrics do
     Logger.info("Collecting archive statistics")
 
     table_stats =
-      archive_policies
-      |> Enum.map(fn policy ->
-        get_single_table_statistics(policy)
-      end)
-      |> Enum.reject(&is_nil/1)
+      Enum.reject(
+        Enum.map(archive_policies, fn policy ->
+          get_single_table_statistics(policy)
+        end),
+        &is_nil/1
+      )
 
     %{
       generated_at: DateTime.utc_now(),
@@ -312,7 +313,8 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveMetrics do
       total_size = Enum.sum(Enum.map(table_stats, & &1.archive_table.total_size))
 
       avg_efficiency =
-        Enum.map(table_stats, & &1.efficiency_metrics.storage_efficiency)
+        table_stats
+        |> Enum.map(& &1.efficiency_metrics.storage_efficiency)
         |> Enum.sum()
         |> Kernel./(length(table_stats))
 
@@ -342,10 +344,11 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveMetrics do
 
   defp get_storage_summary(archive_policies) do
     total_archive_size =
-      Enum.map(archive_policies, fn policy ->
-        PartitionManager.get_archive_table_size(policy.archive_table).total_size
-      end)
-      |> Enum.sum()
+      Enum.sum(
+        Enum.map(archive_policies, fn policy ->
+          PartitionManager.get_archive_table_size(policy.archive_table).total_size
+        end)
+      )
 
     %{
       total_archive_size: total_archive_size,
@@ -366,7 +369,8 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveMetrics do
   defp calculate_overall_efficiency(storage_data) do
     if length(storage_data) > 0 do
       avg_efficiency =
-        Enum.map(storage_data, & &1.efficiency_ratio)
+        storage_data
+        |> Enum.map(& &1.efficiency_ratio)
         |> Enum.sum()
         |> Kernel./(length(storage_data))
 
@@ -437,7 +441,8 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveMetrics do
 
     # Check for low health scores
     low_health_tables =
-      Enum.zip(health_factors, archive_policies)
+      health_factors
+      |> Enum.zip(archive_policies)
       |> Enum.filter(fn {score, _policy} -> score < 60 end)
       |> Enum.map(fn {_score, policy} -> policy.table end)
 

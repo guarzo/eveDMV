@@ -9,11 +9,11 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
 
   use EveDmvWeb, :live_view
 
-  require Logger
-
   alias EveDmv.Intelligence.Cache.IntelligenceCache
   alias EveDmv.Intelligence.Core.IntelligenceCoordinator
   alias EveDmv.Intelligence.Wormhole.Vetting, as: WHVetting
+
+  require Logger
 
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 

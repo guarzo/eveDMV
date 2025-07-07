@@ -47,6 +47,19 @@ defmodule EveDmv.Security.HeadersValidator do
   end
 
   @doc """
+  Validate security headers from a headers map.
+  """
+  def validate_headers(headers) when is_map(headers) do
+    issues = find_security_issues_from_map(headers)
+
+    if length(issues) > 0 do
+      {:error, issues}
+    else
+      {:ok, :valid}
+    end
+  end
+
+  @doc """
   Check the current status of security configuration.
   """
   def get_security_status do
@@ -155,6 +168,86 @@ defmodule EveDmv.Security.HeadersValidator do
         ["Missing X-Content-Type-Options header" | frame_issues]
       else
         frame_issues
+      end
+
+    content_type_issues
+  end
+
+  defp find_security_issues_from_map(headers) do
+    required_headers = [
+      {"content-security-policy", "Content-Security-Policy"},
+      {"strict-transport-security", "Strict-Transport-Security"},
+      {"x-frame-options", "X-Frame-Options"},
+      {"x-content-type-options", "X-Content-Type-Options"},
+      {"x-xss-protection", "X-XSS-Protection"},
+      {"referrer-policy", "Referrer-Policy"}
+    ]
+
+    missing_issues =
+      Enum.reduce(required_headers, [], fn {key, name}, issues ->
+        if Map.has_key?(headers, key) do
+          issues
+        else
+          ["Missing #{name} header" | issues]
+        end
+      end)
+
+    # Check for invalid header values
+    validation_issues = validate_header_values(headers)
+
+    missing_issues ++ validation_issues
+  end
+
+  defp validate_header_values(headers) do
+    issues = []
+
+    # Validate Strict-Transport-Security
+    sts_issues =
+      case Map.get(headers, "strict-transport-security") do
+        nil ->
+          issues
+
+        value when is_binary(value) ->
+          if String.contains?(value, "max-age") do
+            issues
+          else
+            ["Invalid Strict-Transport-Security header: missing max-age" | issues]
+          end
+
+        _ ->
+          ["Invalid Strict-Transport-Security header: missing max-age" | issues]
+      end
+
+    # Validate X-Frame-Options
+    frame_issues =
+      case Map.get(headers, "x-frame-options") do
+        nil ->
+          sts_issues
+
+        value when value in ["DENY", "SAMEORIGIN"] ->
+          sts_issues
+
+        value when is_binary(value) ->
+          ["Invalid X-Frame-Options value: #{value}. Expected DENY or SAMEORIGIN" | sts_issues]
+
+        _ ->
+          ["Invalid X-Frame-Options value. Expected DENY or SAMEORIGIN" | sts_issues]
+      end
+
+    # Validate X-Content-Type-Options
+    content_type_issues =
+      case Map.get(headers, "x-content-type-options") do
+        nil ->
+          frame_issues
+
+        "nosniff" ->
+          frame_issues
+
+        value when is_binary(value) ->
+          ["Invalid X-Content-Type-Options value: #{value}. Expected nosniff" | frame_issues]
+
+        _ ->
+          ["Invalid X-Content-Type-Options value. Expected nosniff" | frame_issues]
       end
 
     content_type_issues

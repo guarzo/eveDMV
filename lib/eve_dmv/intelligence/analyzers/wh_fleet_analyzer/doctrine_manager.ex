@@ -6,12 +6,12 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.DoctrineManager do
   generating counter-doctrines, and managing doctrine templates.
   """
 
-  require Logger
-
   alias EveDmv.Eve.EsiClient
   alias EveDmv.Intelligence.Analyzers.FleetPilotAnalyzer
   alias EveDmv.Intelligence.Fleet.DoctrineTemplateBuilder
   alias EveDmv.Intelligence.Wormhole.FleetComposition
+
+  require Logger
 
   @doc """
   Create a new fleet composition doctrine for a corporation.

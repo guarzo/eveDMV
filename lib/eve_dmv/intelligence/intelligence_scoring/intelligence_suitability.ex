@@ -6,8 +6,8 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability do
   operations, including stealth capability, analytical thinking, and operational security.
   """
 
-  require Logger
   alias EveDmv.Intelligence.AdvancedAnalytics
+  require Logger
 
   @doc """
   Calculate intelligence operation suitability score.
@@ -99,11 +99,9 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability do
     }
 
     # Sort roles by suitability score
+    # Top 3 roles
     sorted_roles =
-      role_assessments
-      |> Enum.sort_by(fn {_role, score} -> score end, :desc)
-      # Top 3 roles
-      |> Enum.take(3)
+      Enum.take(Enum.sort_by(role_assessments, fn {_role, score} -> score end, :desc), 3)
 
     %{
       primary_recommendations: sorted_roles,
@@ -188,7 +186,22 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability do
 
     Enum.reduce(intel_components, 0.0, fn {component, score}, acc ->
       weight = Map.get(weights, component, 0.0)
-      acc + score * weight
+
+      # Extract numeric score from complex data structures
+      numeric_score =
+        case score do
+          %{overall_opsec_score: opsec_score} when component == :operational_security ->
+            opsec_score
+
+          score when is_number(score) ->
+            score
+
+          _ ->
+            # Default fallback score
+            0.5
+        end
+
+      acc + numeric_score * weight
     end)
   end
 
@@ -247,8 +260,15 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability do
 
   defp assess_infiltration_suitability(intel_components) do
     # Infiltration requires high stealth, OPSEC, and discretion
+    opsec_score =
+      case intel_components.operational_security do
+        %{overall_opsec_score: score} -> score
+        score when is_number(score) -> score
+        _ -> 0.5
+      end
+
     intel_components.stealth_capability * 0.4 +
-      intel_components.operational_security * 0.35 +
+      opsec_score * 0.35 +
       intel_components.discretion_level * 0.25
   end
 
@@ -261,9 +281,16 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability do
 
   defp assess_threat_assessment_suitability(intel_components) do
     # Threat assessment combines analysis with operational understanding
+    opsec_score =
+      case intel_components.operational_security do
+        %{overall_opsec_score: score} -> score
+        score when is_number(score) -> score
+        _ -> 0.5
+      end
+
     intel_components.analytical_thinking * 0.4 +
       intel_components.information_gathering * 0.3 +
-      intel_components.operational_security * 0.3
+      opsec_score * 0.3
   end
 
   defp assess_technical_intelligence_suitability(intel_components) do
@@ -275,23 +302,44 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability do
 
   defp assess_counterintelligence_suitability(intel_components) do
     # Counterintelligence requires high OPSEC, discretion, and analytical skills
-    intel_components.operational_security * 0.4 +
+    opsec_score =
+      case intel_components.operational_security do
+        %{overall_opsec_score: score} -> score
+        score when is_number(score) -> score
+        _ -> 0.5
+      end
+
+    opsec_score * 0.4 +
       intel_components.discretion_level * 0.3 +
       intel_components.analytical_thinking * 0.3
   end
 
   defp assess_cyber_operations_suitability(intel_components) do
     # Cyber operations require technical skills and OPSEC
+    opsec_score =
+      case intel_components.operational_security do
+        %{overall_opsec_score: score} -> score
+        score when is_number(score) -> score
+        _ -> 0.5
+      end
+
     intel_components.technical_competency * 0.5 +
-      intel_components.operational_security * 0.3 +
+      opsec_score * 0.3 +
       intel_components.analytical_thinking * 0.2
   end
 
   defp assess_humint_suitability(intel_components) do
     # Human intelligence requires discretion, information gathering, and social skills
+    opsec_score =
+      case intel_components.operational_security do
+        %{overall_opsec_score: score} -> score
+        score when is_number(score) -> score
+        _ -> 0.5
+      end
+
     intel_components.discretion_level * 0.4 +
       intel_components.information_gathering * 0.35 +
-      intel_components.operational_security * 0.25
+      opsec_score * 0.25
   end
 
   # Recommendation and training functions
@@ -316,53 +364,60 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability do
   end
 
   defp suggest_intelligence_training(intel_components) do
-    training_recommendations = []
+    initial_training = []
 
-    training_recommendations =
-      if intel_components.operational_security < 0.6 do
-        ["OPSEC fundamentals", "Information security protocols" | training_recommendations]
-      else
-        training_recommendations
+    opsec_score =
+      case intel_components.operational_security do
+        %{overall_opsec_score: score} -> score
+        score when is_number(score) -> score
+        _ -> 0.5
       end
 
-    training_recommendations =
+    training_with_opsec =
+      if opsec_score < 0.6 do
+        ["OPSEC fundamentals", "Information security protocols" | initial_training]
+      else
+        initial_training
+      end
+
+    training_with_analytical =
       if intel_components.analytical_thinking < 0.6 do
         [
           "Intelligence analysis methods",
-          "Pattern recognition training" | training_recommendations
+          "Pattern recognition training" | training_with_opsec
         ]
       else
-        training_recommendations
+        training_with_opsec
       end
 
-    training_recommendations =
+    training_with_technical =
       if intel_components.technical_competency < 0.5 do
         [
           "Technical skills development",
-          "Intelligence tools and software" | training_recommendations
+          "Intelligence tools and software" | training_with_analytical
         ]
       else
-        training_recommendations
+        training_with_analytical
       end
 
-    training_recommendations =
+    training_with_stealth =
       if intel_components.stealth_capability < 0.6 do
-        ["Stealth and evasion techniques", "Surveillance detection" | training_recommendations]
+        ["Stealth and evasion techniques", "Surveillance detection" | training_with_technical]
       else
-        training_recommendations
+        training_with_technical
       end
 
-    training_recommendations =
+    training_with_discretion =
       if intel_components.discretion_level < 0.7 do
-        ["Confidentiality training", "Social engineering resistance" | training_recommendations]
+        ["Confidentiality training", "Social engineering resistance" | training_with_stealth]
       else
-        training_recommendations
+        training_with_stealth
       end
 
-    if Enum.empty?(training_recommendations) do
+    if Enum.empty?(training_with_discretion) do
       ["Advanced intelligence specialization"]
     else
-      training_recommendations
+      training_with_discretion
     end
   end
 
@@ -378,8 +433,15 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability do
       end
 
     # Adjust based on OPSEC and discretion scores
+    opsec_score =
+      case intel_components.operational_security do
+        %{overall_opsec_score: score} -> score
+        score when is_number(score) -> score
+        _ -> 0.5
+      end
+
     opsec_adjustment =
-      if intel_components.operational_security < 0.6 or intel_components.discretion_level < 0.6 do
+      if opsec_score < 0.6 or intel_components.discretion_level < 0.6 do
         downgrade_clearance(base_clearance)
       else
         base_clearance
@@ -402,80 +464,78 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability do
   end
 
   defp generate_opsec_recommendations(opsec_components) do
-    recommendations = []
+    initial_recommendations = []
 
-    recommendations =
+    recommendations_with_behavior =
       if opsec_components.behavioral_consistency < 0.6 do
-        ["Improve behavioral pattern consistency" | recommendations]
+        ["Improve behavioral pattern consistency" | initial_recommendations]
       else
-        recommendations
+        initial_recommendations
       end
 
-    recommendations =
+    recommendations_with_discipline =
       if opsec_components.information_discipline < 0.7 do
-        ["Enhance information sharing discipline" | recommendations]
+        ["Enhance information sharing discipline" | recommendations_with_behavior]
       else
-        recommendations
+        recommendations_with_behavior
       end
 
-    recommendations =
+    recommendations_with_masking =
       if opsec_components.pattern_masking < 0.6 do
-        ["Develop pattern masking techniques" | recommendations]
+        ["Develop pattern masking techniques" | recommendations_with_discipline]
       else
-        recommendations
+        recommendations_with_discipline
       end
 
-    recommendations =
+    recommendations_with_comms =
       if opsec_components.communication_security < 0.7 do
-        ["Improve communication security practices" | recommendations]
+        ["Improve communication security practices" | recommendations_with_masking]
       else
-        recommendations
+        recommendations_with_masking
       end
 
-    if Enum.empty?(recommendations) do
+    if Enum.empty?(recommendations_with_comms) do
       ["OPSEC practices are satisfactory"]
     else
-      recommendations
+      recommendations_with_comms
     end
   end
 
   defp assess_opsec_risks(opsec_components) do
-    risks = []
+    initial_risks = []
 
-    risks =
+    risks_with_behavior =
       if opsec_components.behavioral_consistency < 0.5 do
-        ["Predictable behavioral patterns" | risks]
+        ["Predictable behavioral patterns" | initial_risks]
       else
-        risks
+        initial_risks
       end
 
-    risks =
+    risks_with_discipline =
       if opsec_components.information_discipline < 0.5 do
-        ["Information leakage risk" | risks]
+        ["Information leakage risk" | risks_with_behavior]
       else
-        risks
+        risks_with_behavior
       end
 
-    risks =
+    risks_with_comms =
       if opsec_components.communication_security < 0.6 do
-        ["Communication intercept vulnerability" | risks]
+        ["Communication intercept vulnerability" | risks_with_discipline]
       else
-        risks
+        risks_with_discipline
       end
 
-    if Enum.empty?(risks) do
+    if Enum.empty?(risks_with_comms) do
       ["Low OPSEC risk profile"]
     else
-      risks
+      risks_with_comms
     end
   end
 
   defp generate_specialization_suggestions(intel_components) do
     # Suggest specialization based on strongest components
     sorted_components =
-      intel_components
-      |> Enum.sort_by(fn {_component, score} -> score end, :desc)
-      |> Enum.take(2)
+      Enum.take(Enum.sort_by(intel_components, fn {_component, score} -> score end, :desc), 2)
 
     specializations =
       Enum.map(sorted_components, fn {component, _score} ->
@@ -495,9 +555,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability do
   defp identify_development_priorities(intel_components) do
     # Identify areas for improvement based on lowest scores
     sorted_components =
-      intel_components
-      |> Enum.sort_by(fn {_component, score} -> score end, :asc)
-      |> Enum.take(2)
+      Enum.take(Enum.sort_by(intel_components, fn {_component, score} -> score end, :asc), 2)
 
     priorities =
       Enum.map(sorted_components, fn {component, _score} ->

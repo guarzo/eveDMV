@@ -17,7 +17,7 @@ defmodule EveDmv.Telemetry.QueryMonitor do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  def init(opts) do
+  def init(_opts) do
     # Subscribe to Ecto telemetry events
     :telemetry.attach(
       "eve-dmv-query-monitor",

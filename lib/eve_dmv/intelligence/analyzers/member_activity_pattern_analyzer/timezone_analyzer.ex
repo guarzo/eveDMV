@@ -31,32 +31,12 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TimezoneAn
   def analyze_timezone_patterns(character_id, activity_data) do
     Logger.debug("Analyzing timezone patterns for character #{character_id}")
 
-    if not is_map(activity_data) do
-      {:error, "Invalid activity data format"}
-    else
-      # Analyze when the member is most active based on actual activity
+    if is_map(activity_data) do
       hourly_activity = Map.get(activity_data, :hourly_activity, %{})
-
-      # Find peak activity hours
       total_activity = hourly_activity |> Map.values() |> Enum.sum()
 
-      active_hours =
-        if total_activity > 0 do
-          # Get hours with >5% of total activity
-          threshold = total_activity * 0.05
-
-          hourly_activity
-          |> Enum.filter(fn {_hour, count} -> count >= threshold end)
-          |> Enum.map(&elem(&1, 0))
-          |> Enum.sort()
-        else
-          []
-        end
-
-      # Determine primary timezone based on peak hours
+      active_hours = extract_active_hours(hourly_activity, total_activity)
       primary_timezone = estimate_timezone_from_hours(active_hours)
-
-      # Calculate consistency (how concentrated activity is)
       timezone_consistency = calculate_timezone_consistency(hourly_activity)
 
       timezone_analysis = %{
@@ -66,6 +46,22 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TimezoneAn
       }
 
       {:ok, timezone_analysis}
+    else
+      {:error, "Invalid activity data format"}
+    end
+  end
+
+  defp extract_active_hours(hourly_activity, total_activity) do
+    if total_activity > 0 do
+      # Get hours with >5% of total activity
+      threshold = total_activity * 0.05
+
+      hourly_activity
+      |> Enum.filter(fn {_hour, count} -> count >= threshold end)
+      |> Enum.map(&elem(&1, 0))
+      |> Enum.sort()
+    else
+      []
     end
   end
 

@@ -1,17 +1,19 @@
+# credo:disable-for-this-file Credo.Check.Readability.StrictModuleLayout
 defmodule EveDmvWeb.DashboardLive do
   @moduledoc """
   Main dashboard LiveView displaying user statistics and recent activity.
   """
 
   use EveDmvWeb, :live_view
-  alias EveDmvWeb.PriceMonitorComponent
-  alias EveDmv.Database.KillmailRepository
 
-  # Import reusable components
-  import EveDmvWeb.Components.StatsGridComponent
+  alias EveDmv.Database.KillmailRepository
+  alias EveDmvWeb.PriceMonitorComponent
 
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
+
+  # Import reusable components
+  import EveDmvWeb.Components.StatsGridComponent
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do

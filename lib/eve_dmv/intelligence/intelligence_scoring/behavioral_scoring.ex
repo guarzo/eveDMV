@@ -60,33 +60,34 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.BehavioralScoring do
   Generate behavioral recommendations for character development.
   """
   def generate_behavioral_recommendations(psychological_profile) do
-    recommendations = []
-
-    recommendations =
+    initial_recommendations =
       if psychological_profile.stability < 0.7 do
-        ["Focus on establishing consistent behavioral patterns" | recommendations]
+        ["Focus on establishing consistent behavioral patterns"]
       else
-        recommendations
+        []
       end
 
-    recommendations =
+    recommendations_with_reliability =
       if psychological_profile.reliability < 0.6 do
-        ["Improve activity consistency and commitment levels" | recommendations]
+        ["Improve activity consistency and commitment levels" | initial_recommendations]
       else
-        recommendations
+        initial_recommendations
       end
 
-    recommendations =
+    recommendations_with_stress =
       if psychological_profile.stress_tolerance < 0.5 do
-        ["Consider stress management training for high-pressure situations" | recommendations]
+        [
+          "Consider stress management training for high-pressure situations"
+          | recommendations_with_reliability
+        ]
       else
-        recommendations
+        recommendations_with_reliability
       end
 
-    if Enum.empty?(recommendations) do
+    if Enum.empty?(recommendations_with_stress) do
       ["Behavioral profile shows strong psychological foundations"]
     else
-      recommendations
+      recommendations_with_stress
     end
   end
 

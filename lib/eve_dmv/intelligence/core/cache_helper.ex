@@ -7,16 +7,17 @@ defmodule EveDmv.Intelligence.Core.CacheHelper do
   cache invalidation strategies.
   """
 
-  require Logger
   alias EveDmv.Utils.Cache
+
+  require Logger
+
+  # Cache name for intelligence operations
+  @cache_name :intelligence_cache
 
   @type cache_key :: String.t()
   @type cache_value :: term()
   @type cache_ttl :: pos_integer()
   @type analysis_type :: atom()
-
-  # Cache name for intelligence operations
-  @cache_name :intelligence_cache
 
   @doc """
   Get or compute cached analysis result with standardized key generation.

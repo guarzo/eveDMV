@@ -7,14 +7,17 @@ defmodule EveDmv.Eve.ReliabilitySupervisor do
   """
 
   use Supervisor
+
+  alias EveDmv.Eve.CircuitBreaker
+  alias EveDmv.Eve.ReliabilityConfig
+
   require Logger
-  alias EveDmv.Eve.{CircuitBreaker, ReliabilityConfig}
 
   def start_link(init_arg) do
     Supervisor.start_link(__MODULE__, init_arg, name: __MODULE__)
   end
 
-  @impl true
+  @impl Supervisor
   def init(_init_arg) do
     # Validate configuration on startup
     case ReliabilityConfig.validate_config() do

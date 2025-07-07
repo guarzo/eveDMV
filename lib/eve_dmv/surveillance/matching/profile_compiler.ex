@@ -6,8 +6,8 @@ defmodule EveDmv.Surveillance.Matching.ProfileCompiler do
   that can be efficiently evaluated against killmail data.
   """
 
+  alias EveDmv.Surveillance.Matching.KillmailFieldExtractor
   require Logger
-  alias KillmailFieldExtractor
 
   @doc """
   Compile a filter tree into an executable function.
@@ -20,14 +20,12 @@ defmodule EveDmv.Surveillance.Matching.ProfileCompiler do
   def compile_filter_tree(nil), do: {:ok, fn _ -> true end}
 
   def compile_filter_tree(filter_tree) when is_map(filter_tree) do
-    try do
-      compiled_fn = compile_node(filter_tree)
-      {:ok, compiled_fn}
-    rescue
-      error ->
-        Logger.error("Failed to compile filter tree: #{inspect(error)}")
-        {:error, "compilation failed: #{inspect(error)}"}
-    end
+    compiled_fn = compile_node(filter_tree)
+    {:ok, compiled_fn}
+  rescue
+    error ->
+      Logger.error("Failed to compile filter tree: #{inspect(error)}")
+      {:error, "compilation failed: #{inspect(error)}"}
   end
 
   def compile_filter_tree(_), do: {:error, "invalid filter tree"}

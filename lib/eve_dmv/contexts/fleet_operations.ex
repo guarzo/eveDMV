@@ -17,7 +17,9 @@ defmodule EveDmv.Contexts.FleetOperations do
   use EveDmv.Contexts.BoundedContext, name: :fleet_operations
   use Supervisor
 
-  alias EveDmv.Contexts.FleetOperations.{Api, Domain, Infrastructure}
+  alias EveDmv.Contexts.FleetOperations.Api
+  alias EveDmv.Contexts.FleetOperations.Domain
+  alias EveDmv.Contexts.FleetOperations.Infrastructure
   alias EveDmv.DomainEvents.KillmailEnriched
 
   # Supervisor implementation
@@ -26,7 +28,7 @@ defmodule EveDmv.Contexts.FleetOperations do
     Supervisor.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  @impl true
+  @impl Supervisor
   def init(_opts) do
     children = [
       # Domain services
@@ -48,7 +50,7 @@ defmodule EveDmv.Contexts.FleetOperations do
   end
 
   # Event subscriptions
-  @impl true
+  @impl EveDmv.Contexts.BoundedContext
   def event_subscriptions do
     [
       {:killmail_enriched, &handle_killmail_enriched/1}

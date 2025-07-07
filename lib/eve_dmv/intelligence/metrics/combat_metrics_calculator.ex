@@ -159,8 +159,7 @@ defmodule EveDmv.Intelligence.Metrics.CombatMetricsCalculator do
   Count solo kills in killmail data.
   """
   def count_solo_kills(killmail_data) do
-    killmail_data
-    |> Enum.count(fn killmail ->
+    Enum.count(killmail_data, fn killmail ->
       participants = get_participants(killmail)
       attackers = Enum.filter(participants, &(!get_is_victim(&1)))
       length(attackers) == 1

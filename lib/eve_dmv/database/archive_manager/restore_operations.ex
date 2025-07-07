@@ -6,10 +6,11 @@ defmodule EveDmv.Database.ArchiveManager.RestoreOperations do
   and safe restoration of archived data when needed.
   """
 
-  require Logger
-  alias EveDmv.Repo
-  alias EveDmv.Database.ArchiveManager.{PartitionManager, ArchiveOperations}
   alias Ecto.Adapters.SQL
+  alias EveDmv.Database.ArchiveManager.ArchiveOperations
+  alias EveDmv.Database.ArchiveManager.PartitionManager
+  alias EveDmv.Repo
+  require Logger
 
   @doc """
   Restore data from archive within a date range.
@@ -50,42 +51,30 @@ defmodule EveDmv.Database.ArchiveManager.RestoreOperations do
         Repo.rollback("Archive table #{policy.archive_table} does not exist")
       end
 
-      # Get records to restore
-      case select_archive_records(policy, start_date, end_date) do
-        {:ok, records} when records != [] ->
-          Logger.info("Found #{length(records)} records to restore")
-
-          # Get original table columns to ensure compatibility
-          case PartitionManager.get_original_table_columns(policy.table) do
-            {:ok, columns} ->
-              # Insert records back into original table
-              case insert_restored_records(policy, records, columns) do
-                {:ok, inserted_count} ->
-                  # Mark records as restored in archive (optional)
-                  mark_records_as_restored(policy, records)
-
-                  Logger.info(
-                    "Successfully restored #{inserted_count} records to #{policy.table}"
-                  )
-
-                  inserted_count
-
-                {:error, error} ->
-                  Repo.rollback("Failed to insert restored records: #{inspect(error)}")
-              end
-
-            {:error, error} ->
-              Repo.rollback("Failed to get table structure: #{inspect(error)}")
-          end
-
+      with {:ok, records} when records != [] <-
+             select_archive_records(policy, start_date, end_date),
+           _ = Logger.info("Found #{length(records)} records to restore"),
+           {:ok, columns} <- PartitionManager.get_original_table_columns(policy.table),
+           {:ok, inserted_count} <- insert_restored_records(policy, records, columns) do
+        handle_successful_restore(policy, records, inserted_count)
+      else
         {:ok, []} ->
           Logger.info("No records found in archive for the specified date range")
           0
 
         {:error, error} ->
-          Repo.rollback("Failed to select archive records: #{inspect(error)}")
+          Repo.rollback("Restore operation failed: #{inspect(error)}")
       end
     end)
+  end
+
+  defp handle_successful_restore(policy, records, inserted_count) do
+    # Mark records as restored in archive (optional)
+    mark_records_as_restored(policy, records)
+
+    Logger.info("Successfully restored #{inserted_count} records to #{policy.table}")
+
+    inserted_count
   end
 
   @doc """
@@ -104,8 +93,7 @@ defmodule EveDmv.Database.ArchiveManager.RestoreOperations do
         # Convert rows to maps for easier handling
         records =
           Enum.map(rows, fn row ->
-            Enum.zip(columns, row)
-            |> Enum.into(%{})
+            Enum.into(Enum.zip(columns, row), %{})
           end)
 
         {:ok, records}
@@ -252,8 +240,7 @@ defmodule EveDmv.Database.ArchiveManager.RestoreOperations do
           end)
 
         row_placeholders =
-          Enum.map(start_param..(start_param + length(column_names) - 1), &"$#{&1}")
-          |> Enum.join(", ")
+          Enum.map_join(start_param..(start_param + length(column_names) - 1), ", ", &"$#{&1}")
 
         {"(#{row_placeholders})", row_values}
       end)

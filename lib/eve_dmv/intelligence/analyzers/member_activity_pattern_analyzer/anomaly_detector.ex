@@ -116,20 +116,31 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.AnomalyDet
   """
   def compare_patterns_for_anomalies(baseline_patterns, recent_patterns, sensitivity) do
     # Compare patterns to detect anomalies
-    anomalies = []
+    base_anomalies = []
 
     # Check activity level changes
-    anomalies =
-      check_activity_level_anomaly(baseline_patterns, recent_patterns, sensitivity, anomalies)
+    activity_anomalies =
+      check_activity_level_anomaly(
+        baseline_patterns,
+        recent_patterns,
+        sensitivity,
+        base_anomalies
+      )
 
     # Check timezone pattern changes
-    anomalies =
-      check_timezone_pattern_anomaly(baseline_patterns, recent_patterns, sensitivity, anomalies)
+    timezone_anomalies =
+      check_timezone_pattern_anomaly(
+        baseline_patterns,
+        recent_patterns,
+        sensitivity,
+        activity_anomalies
+      )
 
     # Check activity variance changes
-    anomalies = check_variance_anomaly(baseline_patterns, recent_patterns, sensitivity, anomalies)
+    final_anomalies =
+      check_variance_anomaly(baseline_patterns, recent_patterns, sensitivity, timezone_anomalies)
 
-    {:ok, anomalies}
+    {:ok, final_anomalies}
   end
 
   @doc """

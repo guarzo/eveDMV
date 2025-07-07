@@ -6,13 +6,14 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   predictive modeling for EVE Online intelligence operations.
   """
 
-  require Logger
-  require Ash.Query
   alias EveDmv.Api
   alias EveDmv.Intelligence.CharacterStats
-  alias EveDmv.Intelligence.WhSpace.Vetting, as: WHVetting
   alias EveDmv.Intelligence.PatternAnalysis
   alias EveDmv.Intelligence.ThreatAssessment
+  alias EveDmv.Intelligence.WhSpace.Vetting, as: WHVetting
+
+  require Ash.Query
+  require Logger
 
   @doc """
   Perform advanced behavioral pattern analysis on a character.
@@ -180,9 +181,8 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
            |> Ash.Query.filter(character_id in ^character_ids)
            |> Ash.read(domain: Api) do
         {:ok, stats_list} ->
-          stats_list
-          |> Enum.map(fn stats -> {stats.character_id, stats} end)
-          |> Enum.filter(fn {_, stats} -> not is_nil(stats) end)
+          character_tuples = Enum.map(stats_list, fn stats -> {stats.character_id, stats} end)
+          Enum.filter(character_tuples, fn {_, stats} -> not is_nil(stats) end)
 
         _ ->
           []
@@ -258,11 +258,12 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
 
         # Calculate weighted risk score
         weighted_score =
-          risk_factors
-          |> Enum.map(fn {_factor, %{score: score, weight: weight}} ->
+          weighted_scores =
+          Enum.map(risk_factors, fn {_factor, %{score: score, weight: weight}} ->
             score * weight
           end)
-          |> Enum.sum()
+
+        _ = Enum.sum(weighted_scores)
 
         risk_level = categorize_risk_level(weighted_score)
 

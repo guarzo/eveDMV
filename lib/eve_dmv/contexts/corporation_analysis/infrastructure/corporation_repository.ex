@@ -33,12 +33,11 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
   @doc """
   Get member statistics for a corporation.
   """
-  def get_member_statistics(corporation_id) do
+  def get_member_statistics(_corporation_id) do
     # Placeholder implementation - would query actual member data
     # Generate sample member statistics
     sample_members =
-      1..20
-      |> Enum.map(fn i ->
+      Enum.map(1..20, fn i ->
         %{
           character_id: 1_000_000 + i,
           character_name: "Member #{i}",
@@ -61,7 +60,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
   @doc """
   Get corporation killmail statistics.
   """
-  def get_killmail_statistics(corporation_id) do
+  def get_killmail_statistics(_corporation_id) do
     # Placeholder implementation
     %{
       total_kills: 450,
@@ -76,7 +75,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
   @doc """
   Get corporation activity timeline.
   """
-  def get_activity_timeline(corporation_id, days_back \\ 30) do
+  def get_activity_timeline(_corporation_id, days_back \\ 30) do
     # Placeholder implementation
     timeline =
       1..days_back

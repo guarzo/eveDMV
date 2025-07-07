@@ -1,25 +1,24 @@
 # Configure ExUnit for async testing and better output
 ExUnit.start(
   capture_log: true,
-  max_failures: 10,
   timeout: 30_000,
   exclude: [:skip]
 )
 
-# Set up the sandbox mode properly
-Ecto.Adapters.SQL.Sandbox.mode(EveDmv.Repo, :manual)
+require Logger
 
-# Create a setup that works for async tests
-defmodule TestHelper do
-  import ExUnit.Callbacks
-  alias Ecto.Adapters.SQL.Sandbox
+# Verify we're using the correct pool for testing
+repo_config = Application.get_env(:eve_dmv, EveDmv.Repo)
+pool_class = Keyword.get(repo_config, :pool)
 
-  def setup_sandbox(tags) do
-    pid = Sandbox.start_owner!(EveDmv.Repo, shared: not tags[:async])
-    on_exit(fn -> Sandbox.stop_owner(pid) end)
-    :ok
-  end
+if pool_class != Ecto.Adapters.SQL.Sandbox do
+  Logger.warning("Test repository is not using SQL Sandbox pool: #{inspect(pool_class)}")
+  Logger.warning("Current repo config: #{inspect(repo_config)}")
+  raise "Test environment requires Ecto.Adapters.SQL.Sandbox pool"
 end
+
+# Set up the sandbox mode for testing
+Ecto.Adapters.SQL.Sandbox.mode(EveDmv.Repo, :manual)
 
 # Set up Mox for testing
 Mox.defmock(HTTPoisonMock, for: HTTPoison.Base)
@@ -30,8 +29,8 @@ defmodule EveDmv.TestHelpers do
   Common test helpers and utilities.
   """
 
-  alias EveDmv.Repo
   alias Ecto.Adapters.SQL
+  alias EveDmv.Repo
 
   def setup_database do
     :ok = SQL.Sandbox.checkout(Repo)

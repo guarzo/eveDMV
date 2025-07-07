@@ -13,12 +13,13 @@ defmodule Mix.Tasks.Security.Audit do
       mix security.audit --format json
   """
 
+  @shortdoc "Run security audits for database and container infrastructure"
+
   use Mix.Task
 
   # Security review modules not yet implemented
-  # alias EveDmv.Security.{ContainerSecurityReview, DatabaseSecurityReview}
-
-  @shortdoc "Run security audits for database and container infrastructure"
+  #   alias EveDmv.Security.ContainerSecurityReview
+  alias EveDmv.Security.DatabaseSecurityReview
 
   @impl Mix.Task
   def run(args) do
@@ -140,30 +141,30 @@ defmodule Mix.Tasks.Security.Audit do
   end
 
   defp generate_text_report(audit_results) do
-    report = []
+    initial_report = []
 
-    report = [
+    summary_report = [
       "🔒 EVE DMV Security Audit Report",
-      "=" |> String.duplicate(50),
+      String.duplicate("=", 50),
       "Generated: #{DateTime.to_string(audit_results.timestamp)}",
       ""
-      | report
+      | initial_report
     ]
 
     # Database audit section
-    report =
+    detailed_report =
       if audit_results.database_audit do
-        report ++ generate_database_text_section(audit_results.database_audit)
+        summary_report ++ generate_database_text_section(audit_results.database_audit)
       else
-        report
+        summary_report
       end
 
     # Container audit section
     final_report =
       if audit_results.container_audit do
-        report ++ generate_container_text_section(audit_results.container_audit)
+        detailed_report ++ generate_container_text_section(audit_results.container_audit)
       else
-        report
+        detailed_report
       end
 
     final_report
@@ -175,7 +176,7 @@ defmodule Mix.Tasks.Security.Audit do
     [
       "",
       "📊 DATABASE SECURITY AUDIT",
-      "-" |> String.duplicate(30),
+      String.duplicate("-", 30),
       "",
       "Connection Security:",
       "  SSL Enabled: #{format_status(db_audit.connection_security.ssl_enabled)}",
@@ -199,7 +200,7 @@ defmodule Mix.Tasks.Security.Audit do
     [
       "",
       "🐳 CONTAINER SECURITY AUDIT",
-      "-" |> String.duplicate(30),
+      String.duplicate("-", 30),
       "",
       "Image Security:",
       "  Vulnerability Scanning: #{format_status(container_audit.image_security.vulnerability_scanning)}",
@@ -324,8 +325,7 @@ defmodule Mix.Tasks.Security.Audit do
   end
 
   defp format_html_recommendations(recommendations) do
-    recommendations
-    |> Enum.map(fn rec ->
+    Enum.map_join(recommendations, "", fn rec ->
       priority_class = "priority-#{rec.priority}"
 
       """
@@ -336,13 +336,12 @@ defmodule Mix.Tasks.Security.Audit do
       </div>
       """
     end)
-    |> Enum.join("")
   end
 
   defp display_audit_summary(audit_results) do
     Mix.shell().info("")
     Mix.shell().info("📋 AUDIT SUMMARY")
-    Mix.shell().info("=" |> String.duplicate(20))
+    Mix.shell().info(String.duplicate("=", 20))
 
     total_recommendations = 0
     high_priority = 0
@@ -352,7 +351,7 @@ defmodule Mix.Tasks.Security.Audit do
         db_recs = length(audit_results.database_audit.recommendations)
 
         db_high =
-          audit_results.database_audit.recommendations |> Enum.count(&(&1.priority == :high))
+          Enum.count(audit_results.database_audit.recommendations, &(&1.priority == :high))
 
         new_total = total_recommendations + db_recs
         new_high = high_priority + db_high
@@ -367,7 +366,7 @@ defmodule Mix.Tasks.Security.Audit do
         container_recs = length(audit_results.container_audit.recommendations)
 
         container_high =
-          audit_results.container_audit.recommendations |> Enum.count(&(&1.priority == :high))
+          Enum.count(audit_results.container_audit.recommendations, &(&1.priority == :high))
 
         new_total = db_total_recommendations + container_recs
         new_high = db_high_priority + container_high

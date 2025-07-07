@@ -6,10 +6,12 @@ defmodule EveDmv.Killmails.DatabaseInserter do
   and participants using Ash bulk operations with proper error handling and logging.
   """
 
-  require Logger
-
   alias EveDmv.Api
-  alias EveDmv.Killmails.{KillmailEnriched, KillmailRaw, Participant}
+  alias EveDmv.Killmails.KillmailEnriched
+  alias EveDmv.Killmails.KillmailRaw
+  alias EveDmv.Killmails.Participant
+
+  require Logger
 
   @doc """
   Insert raw killmail records using bulk operations.

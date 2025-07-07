@@ -62,11 +62,19 @@ defmodule EveDmv.Eve.ErrorClassifier do
     case classification.retry_strategy do
       :retryable ->
         # Simple exponential backoff: 1s, 2s, 4s, 8s (max 10s)
-        min(1000 * :math.pow(2, attempt_number - 1), 10_000) |> round()
+        (attempt_number - 1)
+        |> then(&:math.pow(2, &1))
+        |> then(&(1000 * &1))
+        |> min(10_000)
+        |> round()
 
       :retryable_with_backoff ->
         # Longer backoff for rate limiting: 5s, 10s, 20s, 40s (max 60s)
-        min(5000 * :math.pow(2, attempt_number - 1), 60_000) |> round()
+        (attempt_number - 1)
+        |> then(&:math.pow(2, &1))
+        |> then(&(5000 * &1))
+        |> min(60_000)
+        |> round()
 
       :not_retryable ->
         0

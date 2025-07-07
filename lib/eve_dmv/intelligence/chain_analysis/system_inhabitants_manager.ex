@@ -7,11 +7,11 @@ defmodule EveDmv.Intelligence.ChainAnalysis.SystemInhabitantsManager do
   ship changes.
   """
 
-  require Logger
-  require Ash.Query
-
   alias EveDmv.Api
   alias EveDmv.Intelligence.SystemInhabitant
+
+  require Logger
+  require Ash.Query
 
   @doc """
   Update or create an inhabitant record for a character.
@@ -247,7 +247,10 @@ defmodule EveDmv.Intelligence.ChainAnalysis.SystemInhabitantsManager do
         online_count = Enum.count(inhabitants, & &1.online)
 
         unique_corporations =
-          inhabitants |> Enum.map(& &1.corporation_id) |> Enum.uniq() |> length()
+          inhabitants
+          |> Enum.map(& &1.corporation_id)
+          |> Enum.uniq()
+          |> length()
 
         ship_types =
           inhabitants

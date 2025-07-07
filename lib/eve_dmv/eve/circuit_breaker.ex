@@ -12,6 +12,18 @@ defmodule EveDmv.Eve.CircuitBreaker do
   use GenServer
   require Logger
 
+  defstruct [
+    :service_name,
+    :state,
+    :failure_count,
+    :success_count,
+    :last_failure_time,
+    :failure_threshold,
+    :recovery_timeout,
+    :success_threshold,
+    :timeout
+  ]
+
   # Circuit states
   # Normal operation
   @closed :closed
@@ -29,18 +41,6 @@ defmodule EveDmv.Eve.CircuitBreaker do
   @default_success_threshold 3
   # Request timeout
   @default_timeout 10_000
-
-  defstruct [
-    :service_name,
-    :state,
-    :failure_count,
-    :success_count,
-    :last_failure_time,
-    :failure_threshold,
-    :recovery_timeout,
-    :success_threshold,
-    :timeout
-  ]
 
   # Client API
 

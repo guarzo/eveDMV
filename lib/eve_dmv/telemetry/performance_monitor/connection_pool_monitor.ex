@@ -6,8 +6,8 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.ConnectionPoolMonitor do
   connection-related issues.
   """
 
-  require Logger
   alias Ecto.Adapters.SQL
+  require Logger
 
   @doc """
   Get connection pool metrics.
@@ -276,26 +276,29 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.ConnectionPoolMonitor do
   end
 
   defp generate_pool_recommendations(utilization, metrics) do
-    recommendations = []
+    initial_recommendations = []
 
-    recommendations =
+    recommendations_with_utilization =
       if utilization > 0.8 do
-        ["Consider increasing pool_size - current utilization is above 80%" | recommendations]
+        [
+          "Consider increasing pool_size - current utilization is above 80%"
+          | initial_recommendations
+        ]
       else
-        recommendations
+        initial_recommendations
       end
 
-    recommendations =
+    recommendations_with_waiting =
       if metrics[:waiting_connections] > 0 do
-        ["Connections are waiting for available slots" | recommendations]
+        ["Connections are waiting for available slots" | recommendations_with_utilization]
       else
-        recommendations
+        recommendations_with_utilization
       end
 
-    if Enum.empty?(recommendations) do
+    if Enum.empty?(recommendations_with_waiting) do
       ["Connection pool is healthy"]
     else
-      recommendations
+      recommendations_with_waiting
     end
   end
 
@@ -314,64 +317,60 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.ConnectionPoolMonitor do
   defp generate_idle_recommendations(idle_transactions) do
     critical_count = Enum.count(idle_transactions, &(&1.severity == :critical))
 
-    recommendations = []
+    initial_recommendations = []
 
-    recommendations =
+    critical_recommendations =
       if critical_count > 0 do
         [
           "#{critical_count} connections idle in transaction for over 1 hour - investigate immediately"
-          | recommendations
+          | initial_recommendations
         ]
       else
-        recommendations
+        initial_recommendations
       end
 
-    recommendations =
+    final_recommendations =
       if length(idle_transactions) > 3 do
         [
           "Multiple idle transactions detected - review transaction handling in application"
-          | recommendations
+          | critical_recommendations
         ]
       else
-        recommendations
+        critical_recommendations
       end
 
-    if Enum.empty?(recommendations) do
+    if Enum.empty?(final_recommendations) do
       ["No idle transaction issues detected"]
     else
-      recommendations
+      final_recommendations
     end
   end
 
   defp analyze_and_recommend(metrics, health, pool_size) do
-    recommendations = []
-
     # Check utilization
     utilization = metrics[:utilization] || 0
 
-    recommendations =
+    utilization_recommendations =
       cond do
         utilization > 90 ->
           [
             "URGENT: Pool utilization above 90% - increase pool_size immediately"
-            | recommendations
           ]
 
         utilization > 75 ->
-          ["Pool utilization above 75% - consider increasing pool_size" | recommendations]
+          ["Pool utilization above 75% - consider increasing pool_size"]
 
         utilization < 20 and pool_size > 20 ->
           [
             "Pool utilization below 20% - consider reducing pool_size to save resources"
-            | recommendations
           ]
 
         true ->
-          recommendations
+          []
       end
 
     # Check for issues
-    recommendations =
+    final_recommendations =
       if health[:has_issues] do
         health[:issues]
         |> Enum.map(fn
@@ -380,15 +379,15 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.ConnectionPoolMonitor do
           "long_running_queries" -> "Long running queries detected - review query optimization"
           issue -> issue
         end)
-        |> Enum.concat(recommendations)
+        |> Enum.concat(utilization_recommendations)
       else
-        recommendations
+        utilization_recommendations
       end
 
-    if Enum.empty?(recommendations) do
+    if Enum.empty?(final_recommendations) do
       ["Connection pool configuration is optimal"]
     else
-      recommendations
+      final_recommendations
     end
   end
 end

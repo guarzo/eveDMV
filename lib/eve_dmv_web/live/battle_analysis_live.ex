@@ -10,9 +10,10 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService
   alias EveDmvWeb.Components.BattleTimelineComponent
+  alias EveDmvWeb.Helpers.TimeFormatter
   alias Phoenix.PubSub
 
-  @impl true
+  @impl Phoenix.LiveView
   def mount(params, _session, socket) do
     battle_id = Map.get(params, "battle_id")
 
@@ -40,8 +41,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       |> assign(:live_engagements, %{})
 
     if battle_id do
-      socket
-      |> load_battle_analysis(battle_id)
+      load_battle_analysis(socket, battle_id)
     else
       socket
       |> assign(:loading, false)
@@ -49,7 +49,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_params(params, _url, socket) do
     battle_id = Map.get(params, "battle_id")
 
@@ -65,7 +65,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
     <div class="battle-analysis-page">
@@ -590,27 +590,27 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   # Event handlers
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("set_view_mode", %{"mode" => mode}, socket) do
-    {:noreply, assign(socket, :view_mode, String.to_atom(mode))}
+    {:noreply, assign(socket, :view_mode, String.to_existing_atom(mode))}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("select_side", %{"side" => side}, socket) do
-    {:noreply, assign(socket, :selected_side, String.to_atom(side))}
+    {:noreply, assign(socket, :selected_side, String.to_existing_atom(side))}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("view_side_details", %{"side" => side}, socket) do
     socket =
       socket
       |> assign(:view_mode, :fleets)
-      |> assign(:selected_side, String.to_atom(side))
+      |> assign(:selected_side, String.to_existing_atom(side))
 
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("analyze_live_engagement", %{"system" => system_id}, socket) do
     case BattleAnalysisService.analyze_live_engagement(String.to_integer(system_id)) do
       {:ok, analysis} ->
@@ -632,7 +632,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   # PubSub handlers
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:battle_analysis_complete, battle_id}, socket) do
     if socket.assigns.battle_id == battle_id do
       {:noreply, load_battle_analysis(socket, battle_id)}
@@ -641,13 +641,14 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:live_engagement_update, engagement}, socket) do
-    live_engagements = Map.put(
-      socket.assigns.live_engagements,
-      engagement.system_id,
-      engagement
-    )
+    live_engagements =
+      Map.put(
+        socket.assigns.live_engagements,
+        engagement.system_id,
+        engagement
+      )
 
     {:noreply, assign(socket, :live_engagements, live_engagements)}
   end
@@ -660,24 +661,28 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     case BattleAnalysisService.analyze_battle(battle_id) do
       {:ok, analysis} ->
         # Load timeline data
-        timeline_task = Task.async(fn ->
-          BattleAnalysisService.get_battle_timeline(battle_id)
-        end)
+        timeline_task =
+          Task.async(fn ->
+            BattleAnalysisService.get_battle_timeline(battle_id)
+          end)
 
         # Load recommendations
-        recommendations_task = Task.async(fn ->
-          BattleAnalysisService.generate_tactical_recommendations(analysis)
-        end)
+        recommendations_task =
+          Task.async(fn ->
+            BattleAnalysisService.generate_tactical_recommendations(analysis)
+          end)
 
-        timeline_data = case Task.await(timeline_task, 5000) do
-          {:ok, data} -> data
-          _ -> nil
-        end
+        timeline_data =
+          case Task.await(timeline_task, 5000) do
+            {:ok, data} -> data
+            _ -> nil
+          end
 
-        recommendations = case Task.await(recommendations_task, 5000) do
-          {:ok, recs} -> recs
-          _ -> nil
-        end
+        recommendations =
+          case Task.await(recommendations_task, 5000) do
+            {:ok, recs} -> recs
+            _ -> nil
+          end
 
         socket
         |> assign(:loading, false)
@@ -699,7 +704,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     recent_battles = [
       %{
         id: "battle_001",
-        timestamp: DateTime.utc_now() |> DateTime.add(-3600, :second),
+        timestamp: DateTime.add(DateTime.utc_now(), -3600, :second),
         scale: :fleet,
         participant_count: 47,
         isk_destroyed: 2_450_000_000,
@@ -707,7 +712,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       },
       %{
         id: "battle_002",
-        timestamp: DateTime.utc_now() |> DateTime.add(-7200, :second),
+        timestamp: DateTime.add(DateTime.utc_now(), -7200, :second),
         scale: :small_gang,
         participant_count: 12,
         isk_destroyed: 450_000_000,
@@ -791,6 +796,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       true -> "#{trunc(value)}"
     end
   end
+
   defp format_isk(_), do: "0"
 
   defp format_duration(seconds) when is_number(seconds) do
@@ -804,6 +810,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       true -> "#{secs}s"
     end
   end
+
   defp format_duration(_), do: "0s"
 
   defp format_side(side) do
@@ -825,22 +832,15 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   defp format_percentage(value) when is_number(value) do
     "#{Float.round(value, 1)}%"
   end
+
   defp format_percentage(_), do: "0%"
 
   defp format_timestamp(timestamp) do
     Calendar.strftime(timestamp, "%H:%M:%S")
   end
 
-  defp format_relative_time(timestamp) do
-    diff = DateTime.diff(DateTime.utc_now(), timestamp)
-
-    cond do
-      diff < 60 -> "#{diff}s ago"
-      diff < 3600 -> "#{div(diff, 60)}m ago"
-      diff < 86400 -> "#{div(diff, 3600)}h ago"
-      true -> "#{div(diff, 86400)}d ago"
-    end
-  end
+  defp format_relative_time(timestamp),
+    do: TimeFormatter.format_relative_time(timestamp)
 
   defp format_scale(scale) do
     case scale do
@@ -884,6 +884,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       true -> "text-red-400"
     end
   end
+
   defp effectiveness_color(_), do: "text-gray-400"
 
   defp kd_color(ratio) when is_number(ratio) do
@@ -893,6 +894,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       true -> "text-red-400"
     end
   end
+
   defp kd_color(_), do: "text-gray-400"
 
   defp format_pattern_name(pattern_type) do
@@ -900,18 +902,31 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     |> to_string()
     |> String.replace("_", " ")
     |> String.split()
-    |> Enum.map(&String.capitalize/1)
-    |> Enum.join(" ")
+    |> Enum.map_join(" ", &String.capitalize/1)
   end
 
   defp format_victory_factor(factor) do
     case factor do
-      :superior_numbers -> "Superior Numbers"
-      :better_composition -> "Better Fleet Composition"
-      :tactical_execution -> "Superior Tactics"
-      :logistics_advantage -> "Logistics Advantage"
-      :focus_fire -> "Focus Fire Discipline"
-      _ -> to_string(factor) |> String.replace("_", " ") |> String.capitalize()
+      :superior_numbers ->
+        "Superior Numbers"
+
+      :better_composition ->
+        "Better Fleet Composition"
+
+      :tactical_execution ->
+        "Superior Tactics"
+
+      :logistics_advantage ->
+        "Logistics Advantage"
+
+      :focus_fire ->
+        "Focus Fire Discipline"
+
+      _ ->
+        factor
+        |> to_string()
+        |> String.replace("_", " ")
+        |> String.capitalize()
     end
   end
 
@@ -920,8 +935,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     |> to_string()
     |> String.replace("_", " ")
     |> String.split()
-    |> Enum.map(&String.capitalize/1)
-    |> Enum.join(" ")
+    |> Enum.map_join(" ", &String.capitalize/1)
   end
 
   defp priority_badge_class(priority) do

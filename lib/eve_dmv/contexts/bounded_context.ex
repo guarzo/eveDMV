@@ -2,10 +2,12 @@ defmodule EveDmv.Contexts.BoundedContext do
   @moduledoc """
   Base behaviour for bounded contexts in the EVE DMV system.
 
-  This module defines the contract that all bounded contexts must implement
-  and provides common functionality for context management, event handling,
+  Defines the contract for context management, event handling,
   and anti-corruption layers.
   """
+
+  alias __MODULE__, as: BoundedContext
+  alias EveDmv.Infrastructure.EventBus
 
   @doc """
   Called when the context is starting up.
@@ -36,36 +38,58 @@ defmodule EveDmv.Contexts.BoundedContext do
 
     quote do
       @behaviour EveDmv.Contexts.BoundedContext
-
       @context_name unquote(context_name)
+      unquote(inject_bounded_context_functions())
+    end
+  end
 
+  defp inject_bounded_context_functions do
+    quote do
+      unquote(inject_imports_and_aliases())
+      unquote(inject_context_functions())
+      unquote(inject_overridables())
+    end
+  end
+
+  defp inject_imports_and_aliases do
+    quote do
       import EveDmv.Contexts.BoundedContext, only: [defapi: 2, defcommand: 2, defevent: 2]
-
-      alias EveDmv.Infrastructure.EventBus
+      alias EveDmv.Contexts.BoundedContext
       alias EveDmv.DomainEvents
+      alias EveDmv.Infrastructure.EventBus
+    end
+  end
 
+  defp inject_context_functions do
+    quote do
       def context_name, do: @context_name
-
-      def api_module do
-        __MODULE__
-        |> Module.split()
-        |> List.replace_at(-1, "Api")
-        |> Module.safe_concat()
-      end
-
-      # Default implementations
+      def api_module, do: BoundedContext.build_api_module(__MODULE__)
       def can_handle?(_command), do: true
+      def child_spec(opts), do: BoundedContext.build_child_spec(__MODULE__, opts)
+    end
+  end
 
-      def child_spec(opts) do
-        %{
-          id: __MODULE__,
-          start: {__MODULE__, :start_link, [opts]},
-          type: :supervisor
-        }
-      end
-
+  defp inject_overridables do
+    quote do
       defoverridable can_handle?: 1, child_spec: 1
     end
+  end
+
+  @doc false
+  def build_api_module(module) do
+    module
+    |> Module.split()
+    |> List.replace_at(-1, "Api")
+    |> Module.safe_concat()
+  end
+
+  @doc false
+  def build_child_spec(module, opts) do
+    %{
+      id: module,
+      start: {module, :start_link, [opts]},
+      type: :supervisor
+    }
   end
 
   @doc """

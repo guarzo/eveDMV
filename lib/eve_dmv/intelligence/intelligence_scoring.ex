@@ -7,18 +7,17 @@ defmodule EveDmv.Intelligence.IntelligenceScoring do
   and recruitment vetting using multiple data sources and statistical methods.
   """
 
-  require Logger
-  require Ash.Query
   alias EveDmv.Api
   alias EveDmv.Intelligence.AdvancedAnalytics
   alias EveDmv.Intelligence.CharacterStats
-
-  # Extracted scoring modules
-  alias EveDmv.Intelligence.IntelligenceScoring.CombatScoring
   alias EveDmv.Intelligence.IntelligenceScoring.BehavioralScoring
-  alias EveDmv.Intelligence.IntelligenceScoring.RecruitmentScoring
+  alias EveDmv.Intelligence.IntelligenceScoring.CombatScoring
   alias EveDmv.Intelligence.IntelligenceScoring.FleetScoring
   alias EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability
+  alias EveDmv.Intelligence.IntelligenceScoring.RecruitmentScoring
+
+  require Ash.Query
+  require Logger
 
   @doc """
   Calculate comprehensive intelligence score for a character.
@@ -72,14 +71,16 @@ defmodule EveDmv.Intelligence.IntelligenceScoring do
   Specifically evaluates suitability for recruitment into a corporation.
   """
   def calculate_recruitment_fitness(character_id, corporation_requirements \\ %{}) do
-    with {:ok, comprehensive_score} <- calculate_comprehensive_score(character_id) do
-      RecruitmentScoring.calculate_recruitment_fitness(
-        character_id,
-        comprehensive_score,
-        corporation_requirements
-      )
-    else
-      {:error, reason} -> {:error, reason}
+    case calculate_comprehensive_score(character_id) do
+      {:ok, comprehensive_score} ->
+        RecruitmentScoring.calculate_recruitment_fitness(
+          character_id,
+          comprehensive_score,
+          corporation_requirements
+        )
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -114,7 +115,6 @@ defmodule EveDmv.Intelligence.IntelligenceScoring do
       {:error, reason} -> {:error, reason}
     end
   end
-
 
   defp calculate_weighted_overall_score(component_scores) do
     # Strategic weighting of different score components

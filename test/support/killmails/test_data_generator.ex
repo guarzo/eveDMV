@@ -64,8 +64,7 @@ defmodule EveDmv.Killmails.TestDataGenerator do
   Generates multiple sample killmails for bulk testing.
   """
   def generate_multiple_killmails(count \\ 10) do
-    1..count
-    |> Enum.map(fn i ->
+    Enum.map(1..count, fn i ->
       # Spread timestamps over the last hour
       timestamp = DateTime.add(DateTime.utc_now(), -3600 + i * 360, :second)
       generate_sample_killmail(timestamp: timestamp)
@@ -120,6 +119,7 @@ defmodule EveDmv.Killmails.TestDataGenerator do
 
   defp generate_hash(killmail_id, timestamp) do
     data = "#{killmail_id}-#{DateTime.to_iso8601(timestamp)}"
-    :crypto.hash(:sha256, data) |> Base.encode16(case: :lower)
+    hash = :crypto.hash(:sha256, data)
+    Base.encode16(hash, case: :lower)
   end
 end

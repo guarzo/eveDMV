@@ -7,18 +7,21 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
   then disconnects once all historical data is received (detected by multiple heartbeats).
   """
 
-  require Logger
   alias EveDmv.Api
-  alias EveDmv.Killmails.{KillmailEnriched, KillmailRaw, Participant}
+  alias EveDmv.Killmails.KillmailEnriched
+  alias EveDmv.Killmails.KillmailRaw
+  alias EveDmv.Killmails.Participant
   alias EveDmv.Utils.ParsingUtils
+
+  require Logger
+
+  @preload_days 90
+  @heartbeat_threshold 3
 
   # Get base URL at runtime for better configuration flexibility
   defp wanderer_kills_base_url do
     Application.get_env(:eve_dmv, :wanderer_kills_base_url, "http://host.docker.internal:4004")
   end
-
-  @preload_days 90
-  @heartbeat_threshold 3
 
   @doc """
   Fetch historical killmails for a character ID.

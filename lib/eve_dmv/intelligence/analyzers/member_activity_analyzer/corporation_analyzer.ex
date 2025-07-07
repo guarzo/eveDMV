@@ -6,15 +6,16 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.CorporationAnalyz
   and overall corporation engagement health assessments.
   """
 
-  require Logger
-  require Ash.Query
   alias EveDmv.Api
-  alias EveDmv.Intelligence.CharacterStats
-  alias EveDmv.Intelligence.MemberActivityIntelligence
-  alias EveDmv.Intelligence.Formatters.MemberActivityFormatter
-  alias EveDmv.Intelligence.Metrics.MemberActivityMetrics
   alias EveDmv.Intelligence.Analyzers.MemberActivityDataCollector
+  alias EveDmv.Intelligence.CharacterStats
+  alias EveDmv.Intelligence.Formatters.MemberActivityFormatter
+  alias EveDmv.Intelligence.MemberActivityIntelligence
+  alias EveDmv.Intelligence.Metrics.MemberActivityMetrics
   alias EveDmv.Utils.TimeUtils
+
+  require Ash.Query
+  require Logger
 
   @doc """
   Generate member activity report for corporation leadership.

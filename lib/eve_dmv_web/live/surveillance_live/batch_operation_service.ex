@@ -6,10 +6,11 @@ defmodule EveDmvWeb.SurveillanceLive.BatchOperationService do
   bulk operations on multiple surveillance profiles.
   """
 
-  require Logger
-
   alias EveDmv.Api
-  alias EveDmv.Surveillance.{MatchingEngine, Profile}
+  alias EveDmv.Surveillance.MatchingEngine
+  alias EveDmv.Surveillance.Profile
+
+  require Logger
 
   @type batch_result :: %{success: non_neg_integer(), failed: non_neg_integer()}
 
@@ -92,11 +93,9 @@ defmodule EveDmvWeb.SurveillanceLive.BatchOperationService do
   # Helper Functions
 
   defp reload_matching_engine do
-    try do
-      MatchingEngine.reload()
-    rescue
-      error ->
-        Logger.warning("Failed to reload matching engine: #{inspect(error)}")
-    end
+    MatchingEngine.reload_profiles()
+  rescue
+    error ->
+      Logger.warning("Failed to reload matching engine: #{inspect(error)}")
   end
 end

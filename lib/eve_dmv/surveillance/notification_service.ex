@@ -7,10 +7,12 @@ defmodule EveDmv.Surveillance.NotificationService do
   via various channels (LiveView, email, webhooks, etc.).
   """
 
-  require Logger
   alias EveDmv.Api
-  alias EveDmv.Surveillance.{Notification, Profile}
+  alias EveDmv.Surveillance.Notification
+  alias EveDmv.Surveillance.Profile
   alias EveDmvWeb.Endpoint
+
+  require Logger
 
   @doc """
   Create a notification for a surveillance profile match.

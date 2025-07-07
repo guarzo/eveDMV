@@ -45,44 +45,42 @@ defmodule EveDmv.Quality.MetricsCollector.CiCdMetrics do
   Generates CI/CD recommendations.
   """
   def generate_ci_cd_recommendations(ci_cd_metrics) do
-    recommendations = []
-
     # Check GitHub Actions
     gh_actions = ci_cd_metrics.github_actions
 
-    recommendations =
+    initial_recommendations =
       cond do
         gh_actions.workflow_count == 0 ->
-          ["Add GitHub Actions workflows for CI/CD" | recommendations]
+          ["Add GitHub Actions workflows for CI/CD"]
 
         not gh_actions.has_ci_workflow ->
-          ["Add CI workflow for automated testing" | recommendations]
+          ["Add CI workflow for automated testing"]
 
         true ->
-          recommendations
+          []
       end
 
     # Check deployment config
     deploy_config = ci_cd_metrics.deployment_config
 
-    recommendations =
-      if not deploy_config.has_dockerfile do
-        ["Add Dockerfile for containerized deployments" | recommendations]
+    recommendations_with_deploy =
+      if deploy_config.has_dockerfile do
+        initial_recommendations
       else
-        recommendations
+        ["Add Dockerfile for containerized deployments" | initial_recommendations]
       end
 
     # Check monitoring
     monitoring = ci_cd_metrics.monitoring_setup
 
-    recommendations =
-      if not monitoring.has_health_checks do
-        ["Add health check endpoints for monitoring" | recommendations]
+    recommendations_with_monitoring =
+      if monitoring.has_health_checks do
+        recommendations_with_deploy
       else
-        recommendations
+        ["Add health check endpoints for monitoring" | recommendations_with_deploy]
       end
 
-    recommendations
+    recommendations_with_monitoring
   end
 
   # GitHub Actions analysis
@@ -93,16 +91,18 @@ defmodule EveDmv.Quality.MetricsCollector.CiCdMetrics do
         Path.wildcard(".github/workflows/*.yaml")
 
     workflow_analysis =
-      workflow_files
-      |> Enum.map(&analyze_workflow_file/1)
-      |> Enum.reduce(%{ci: false, cd: false, quality: false, security: false}, fn analysis, acc ->
-        %{
-          ci: acc.ci or analysis.has_test_job,
-          cd: acc.cd or analysis.has_deploy_job,
-          quality: acc.quality or analysis.has_quality_checks,
-          security: acc.security or analysis.has_security_checks
-        }
-      end)
+      Enum.reduce(
+        Enum.map(workflow_files, &analyze_workflow_file/1),
+        %{ci: false, cd: false, quality: false, security: false},
+        fn analysis, acc ->
+          %{
+            ci: acc.ci or analysis.has_test_job,
+            cd: acc.cd or analysis.has_deploy_job,
+            quality: acc.quality or analysis.has_quality_checks,
+            security: acc.security or analysis.has_security_checks
+          }
+        end
+      )
 
     %{
       workflow_count: length(workflow_files),
@@ -167,8 +167,7 @@ defmodule EveDmv.Quality.MetricsCollector.CiCdMetrics do
     script_files = Path.wildcard("scripts/*.sh")
 
     quality_checks =
-      script_files
-      |> Enum.map(&analyze_script_file/1)
+      Enum.map(script_files, &analyze_script_file/1)
 
     %{
       script_count: length(script_files),
@@ -236,16 +235,16 @@ defmodule EveDmv.Quality.MetricsCollector.CiCdMetrics do
       0
     else
       total_score =
-        quality_checks
-        |> Enum.map(fn check ->
-          score = 0
-          score = if check.has_error_handling, do: score + 25, else: score
-          score = if check.has_documentation, do: score + 25, else: score
-          score = if check.is_executable, do: score + 25, else: score
-          score = if check.has_shebang, do: score + 25, else: score
-          score
-        end)
-        |> Enum.sum()
+        Enum.sum(
+          Enum.map(quality_checks, fn check ->
+            score = 0
+            score = if check.has_error_handling, do: score + 25, else: score
+            score = if check.has_documentation, do: score + 25, else: score
+            score = if check.is_executable, do: score + 25, else: score
+            score = if check.has_shebang, do: score + 25, else: score
+            score
+          end)
+        )
 
       round(total_score / length(quality_checks))
     end

@@ -186,15 +186,28 @@ defmodule EveDmv.Intelligence.ShipDatabase.DoctrineData do
   defp identify_missing_roles(current_roles) do
     role_counts = Enum.frequencies(current_roles)
 
-    missing = []
+    initial_missing = []
 
-    missing =
-      if Map.get(role_counts, "logistics", 0) == 0, do: ["logistics" | missing], else: missing
+    missing_with_logistics =
+      if Map.get(role_counts, "logistics", 0) == 0,
+        do: ["logistics" | initial_missing],
+        else: initial_missing
 
-    missing = if Map.get(role_counts, "tackle", 0) == 0, do: ["tackle" | missing], else: missing
-    missing = if Map.get(role_counts, "dps", 0) < 3, do: ["dps" | missing], else: missing
-    missing = if Map.get(role_counts, "ewar", 0) == 0, do: ["ewar" | missing], else: missing
+    missing_with_tackle =
+      if Map.get(role_counts, "tackle", 0) == 0,
+        do: ["tackle" | missing_with_logistics],
+        else: missing_with_logistics
 
-    missing
+    missing_with_dps =
+      if Map.get(role_counts, "dps", 0) < 3,
+        do: ["dps" | missing_with_tackle],
+        else: missing_with_tackle
+
+    missing_with_ewar =
+      if Map.get(role_counts, "ewar", 0) == 0,
+        do: ["ewar" | missing_with_dps],
+        else: missing_with_dps
+
+    missing_with_ewar
   end
 end

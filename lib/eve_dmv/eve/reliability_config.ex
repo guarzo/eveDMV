@@ -128,7 +128,8 @@ defmodule EveDmv.Eve.ReliabilityConfig do
       # 10% jitter
       jitter_amount = delay * 0.1
       jitter = :rand.uniform() * jitter_amount * 2 - jitter_amount
-      max(0, delay + jitter) |> round()
+      adjusted_delay = max(0, delay + jitter)
+      round(adjusted_delay)
     else
       round(delay)
     end
@@ -226,9 +227,8 @@ defmodule EveDmv.Eve.ReliabilityConfig do
   end
 
   defp get_nested_config(config, {key1, key2}, default) do
-    config
-    |> Map.get(key1, %{})
-    |> Map.get(key2, default)
+    nested_config = Map.get(config, key1, %{})
+    Map.get(nested_config, key2, default)
   end
 
   defp get_nested_config(config, key, default) when is_atom(key) do

@@ -21,38 +21,40 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.RecruitmentScoring do
       ) do
     Logger.info("Calculating recruitment fitness score for character #{character_id}")
 
-    with {:ok, vetting_data} <- get_vetting_data(character_id) do
-      # Evaluate against corporation requirements
-      requirement_scores =
-        evaluate_corporation_requirements(comprehensive_score, corporation_requirements)
+    case get_vetting_data(character_id) do
+      {:ok, vetting_data} ->
+        # Evaluate against corporation requirements
+        requirement_scores =
+          evaluate_corporation_requirements(comprehensive_score, corporation_requirements)
 
-      # Calculate fit scores
-      fitness_components = %{
-        skill_fit: calculate_skill_fitness(comprehensive_score),
-        cultural_fit: calculate_cultural_fitness(comprehensive_score, vetting_data),
-        security_fit: calculate_security_fitness(comprehensive_score),
-        operational_fit:
-          calculate_operational_fitness(comprehensive_score, corporation_requirements),
-        growth_potential: calculate_growth_potential(comprehensive_score, vetting_data)
-      }
+        # Calculate fit scores
+        fitness_components = %{
+          skill_fit: calculate_skill_fitness(comprehensive_score),
+          cultural_fit: calculate_cultural_fitness(comprehensive_score, vetting_data),
+          security_fit: calculate_security_fitness(comprehensive_score),
+          operational_fit:
+            calculate_operational_fitness(comprehensive_score, corporation_requirements),
+          growth_potential: calculate_growth_potential(comprehensive_score, vetting_data)
+        }
 
-      recruitment_score = calculate_recruitment_score(fitness_components)
+        recruitment_score = calculate_recruitment_score(fitness_components)
 
-      recruitment_recommendation =
-        generate_recruitment_recommendation(recruitment_score, fitness_components)
+        recruitment_recommendation =
+          generate_recruitment_recommendation(recruitment_score, fitness_components)
 
-      {:ok,
-       %{
-         recruitment_score: recruitment_score,
-         recruitment_recommendation: recruitment_recommendation,
-         fitness_components: fitness_components,
-         requirement_scores: requirement_scores,
-         decision_factors: identify_key_decision_factors(fitness_components),
-         probation_recommendations: suggest_probation_terms(fitness_components),
-         analysis_timestamp: DateTime.utc_now()
-       }}
-    else
-      {:error, reason} -> {:error, reason}
+        {:ok,
+         %{
+           recruitment_score: recruitment_score,
+           recruitment_recommendation: recruitment_recommendation,
+           fitness_components: fitness_components,
+           requirement_scores: requirement_scores,
+           decision_factors: identify_key_decision_factors(fitness_components),
+           probation_recommendations: suggest_probation_terms(fitness_components),
+           analysis_timestamp: DateTime.utc_now()
+         }}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -327,50 +329,49 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.RecruitmentScoring do
   end
 
   defp generate_specific_recommendations(components) do
-    recommendations = []
-
-    recommendations =
+    initial_recommendations =
       if components.security_fit < 0.6 do
-        ["Enhanced security vetting required" | recommendations]
+        ["Enhanced security vetting required"]
       else
-        recommendations
+        []
       end
 
-    recommendations =
+    recommendations_with_culture =
       if components.cultural_fit < 0.5 do
-        ["Cultural integration support recommended" | recommendations]
+        ["Cultural integration support recommended" | initial_recommendations]
       else
-        recommendations
+        initial_recommendations
       end
 
-    recommendations =
+    recommendations_with_skills =
       if components.skill_fit < 0.7 do
-        ["Skills development program recommended" | recommendations]
+        ["Skills development program recommended" | recommendations_with_culture]
       else
-        recommendations
+        recommendations_with_culture
       end
 
-    recommendations
+    recommendations_with_skills
   end
 
   defp assess_recruitment_risks(components) do
-    risks = []
+    # Default to stable
+    behavioral_stability = Map.get(components, :behavioral_stability, 0.7)
 
-    risks =
-      if components.behavioral_stability < 0.6 do
-        ["Behavioral unpredictability risk" | risks]
+    initial_risks =
+      if behavioral_stability < 0.6 do
+        ["Behavioral unpredictability risk"]
       else
-        risks
+        []
       end
 
-    risks =
+    risks_with_security =
       if components.security_fit < 0.7 do
-        ["Security risk concerns" | risks]
+        ["Security risk concerns" | initial_risks]
       else
-        risks
+        initial_risks
       end
 
-    risks
+    risks_with_security
   end
 
   defp suggest_integration_approach(components) do
@@ -418,8 +419,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.RecruitmentScoring do
   defp identify_key_decision_factors(fitness_components) do
     # Sort components by score to identify strengths and weaknesses
     sorted_components =
-      fitness_components
-      |> Enum.sort_by(fn {_component, score} -> score end, :desc)
+      Enum.sort_by(fitness_components, fn {_component, score} -> score end, :desc)
 
     %{
       top_strengths: Enum.take(sorted_components, 2),

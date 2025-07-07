@@ -1,6 +1,4 @@
 defmodule EveDmv.Market.Strategies.EsiStrategy do
-  # Default region ID for The Forge (Jita) - can be overridden by config
-  @default_region_id 10_000_002
   @moduledoc """
   Pricing strategy using EVE ESI market data.
 
@@ -10,22 +8,26 @@ defmodule EveDmv.Market.Strategies.EsiStrategy do
 
   @behaviour EveDmv.Market.PricingStrategy
 
-  require Logger
   alias EveDmv.Eve.EsiClient
 
-  @impl true
+  require Logger
+
+  # Default region ID for The Forge (Jita) - can be overridden by config
+  @default_region_id 10_000_002
+
+  @impl EveDmv.Market.PricingStrategy
   def priority, do: 2
 
-  @impl true
+  @impl EveDmv.Market.PricingStrategy
   def name, do: "ESI Market Data"
 
-  @impl true
+  @impl EveDmv.Market.PricingStrategy
   def supports?(_type_id, _item_attributes) do
     # ESI supports all published items
     true
   end
 
-  @impl true
+  @impl EveDmv.Market.PricingStrategy
   def get_price(type_id, _item_attributes) do
     Logger.debug("Attempting ESI market data lookup for #{type_id}")
 

@@ -18,8 +18,8 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
   """
 
   use EveDmv.ErrorHandler
-  alias EveDmv.Result
   alias EveDmv.Contexts.FleetOperations.Infrastructure.PilotDataProvider
+  alias EveDmv.Result
 
   require Logger
 
@@ -29,58 +29,56 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
   Returns comprehensive pilot analysis including role suitability,
   availability metrics, and assignment recommendations.
   """
-  def analyze(pilot_id, base_data \\ %{}, opts \\ []) when is_integer(pilot_id) do
-    try do
-      with {:ok, pilot_data} <- get_pilot_data(base_data, pilot_id),
-           {:ok, combat_stats} <- get_combat_statistics(base_data, pilot_id),
-           {:ok, fleet_experience} <- analyze_fleet_experience(pilot_data, combat_stats),
-           {:ok, role_suitability} <- assess_role_suitability(pilot_data, combat_stats),
-           {:ok, availability_metrics} <- calculate_availability_metrics(pilot_data) do
-        analysis = %{
-          pilot_id: pilot_id,
-          pilot_name: pilot_data.character_name,
-          corporation_id: pilot_data.corporation_id,
+  def analyze(pilot_id, base_data \\ %{}, _opts \\ []) when is_integer(pilot_id) do
+    with {:ok, pilot_data} <- get_pilot_data(base_data, pilot_id),
+         {:ok, combat_stats} <- get_combat_statistics(base_data, pilot_id),
+         {:ok, fleet_experience} <- analyze_fleet_experience(pilot_data, combat_stats),
+         {:ok, role_suitability} <- assess_role_suitability(pilot_data, combat_stats),
+         {:ok, availability_metrics} <- calculate_availability_metrics(pilot_data) do
+      analysis = %{
+        pilot_id: pilot_id,
+        pilot_name: pilot_data.character_name,
+        corporation_id: pilot_data.corporation_id,
 
-          # Combat statistics
-          total_kills: combat_stats.kill_count,
-          total_losses: combat_stats.loss_count,
-          kill_death_ratio: combat_stats.kd_ratio,
-          efficiency: combat_stats.efficiency,
-          solo_ratio: combat_stats.solo_ratio,
+        # Combat statistics
+        total_kills: combat_stats.kill_count,
+        total_losses: combat_stats.loss_count,
+        kill_death_ratio: combat_stats.kd_ratio,
+        efficiency: combat_stats.efficiency,
+        solo_ratio: combat_stats.solo_ratio,
 
-          # Fleet experience
-          fleet_experience_level: fleet_experience.experience_level,
-          avg_gang_size: fleet_experience.avg_gang_size,
-          preferred_engagement_style: fleet_experience.engagement_style,
-          ships_flown: fleet_experience.ship_groups,
+        # Fleet experience
+        fleet_experience_level: fleet_experience.experience_level,
+        avg_gang_size: fleet_experience.avg_gang_size,
+        preferred_engagement_style: fleet_experience.engagement_style,
+        ships_flown: fleet_experience.ship_groups,
 
-          # Role suitability scores
-          fc_suitability: role_suitability.fleet_commander,
-          logistics_suitability: role_suitability.logistics,
-          dps_suitability: role_suitability.dps,
-          tackle_suitability: role_suitability.tackle,
-          ewar_suitability: role_suitability.ewar,
-          support_suitability: role_suitability.support,
+        # Role suitability scores
+        fc_suitability: role_suitability.fleet_commander,
+        logistics_suitability: role_suitability.logistics,
+        dps_suitability: role_suitability.dps,
+        tackle_suitability: role_suitability.tackle,
+        ewar_suitability: role_suitability.ewar,
+        support_suitability: role_suitability.support,
 
-          # Availability and readiness
-          availability_level: availability_metrics.availability_level,
-          activity_score: availability_metrics.activity_score,
-          recent_activity: availability_metrics.recently_active,
-          fleet_readiness: availability_metrics.fleet_ready,
+        # Availability and readiness
+        availability_level: availability_metrics.availability_level,
+        activity_score: availability_metrics.activity_score,
+        recent_activity: availability_metrics.recently_active,
+        fleet_readiness: availability_metrics.fleet_ready,
 
-          # Derived insights
-          primary_role_recommendation: determine_primary_role(role_suitability),
-          backup_roles: determine_backup_roles(role_suitability),
-          experience_rating: calculate_overall_experience_rating(fleet_experience, combat_stats)
-        }
+        # Derived insights
+        primary_role_recommendation: determine_primary_role(role_suitability),
+        backup_roles: determine_backup_roles(role_suitability),
+        experience_rating: calculate_overall_experience_rating(fleet_experience, combat_stats)
+      }
 
-        Result.ok(analysis)
-      else
-        {:error, _reason} = error -> error
-      end
-    rescue
-      exception -> Result.error(:analysis_failed, "Pilot analysis error: #{inspect(exception)}")
+      Result.ok(analysis)
+    else
+      {:error, _reason} = error -> error
     end
+  rescue
+    exception -> Result.error(:analysis_failed, "Pilot analysis error: #{inspect(exception)}")
   end
 
   @doc """
@@ -89,10 +87,10 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
   Filters pilots based on activity levels, recent activity, and fleet experience.
   Returns enriched pilot data with fleet-relevant information.
   """
-  def get_available_pilots(corporation_id, base_data \\ %{}, opts \\ [])
+  def get_available_pilots(corporation_id, base_data \\ %{}, _opts \\ [])
       when is_integer(corporation_id) do
-    try do
-      with {:ok, corporation_pilots} <- get_corporation_pilots(base_data, corporation_id) do
+    case get_corporation_pilots(base_data, corporation_id) do
+      {:ok, corporation_pilots} ->
         available_pilots =
           corporation_pilots
           |> Enum.filter(&pilot_available_for_fleet?/1)
@@ -105,16 +103,16 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
           available_pilots: length(available_pilots),
           pilot_details: available_pilots
         })
-      else
-        {:error, _reason} = error -> error
-      end
-    rescue
-      exception ->
-        Result.error(
-          :pilots_query_failed,
-          "Failed to get available pilots: #{inspect(exception)}"
-        )
+
+      {:error, _reason} = error ->
+        error
     end
+  rescue
+    exception ->
+      Result.error(
+        :pilots_query_failed,
+        "Failed to get available pilots: #{inspect(exception)}"
+      )
   end
 
   @doc """
@@ -126,45 +124,42 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
   def optimize_pilot_assignments(
         doctrine_template,
         available_pilots,
-        base_data \\ %{},
-        opts \\ []
+        _base_data \\ %{},
+        _opts \\ []
       ) do
-    try do
-      assignments = %{}
+    assignments = %{}
 
-      assignments =
-        doctrine_template
-        |> Enum.reduce(assignments, fn {role, role_data}, acc ->
-          required_count = Map.get(role_data, "required", 1)
+    assignments =
+      Enum.reduce(doctrine_template, assignments, fn {role, role_data}, acc ->
+        required_count = Map.get(role_data, "required", 1)
 
-          assigned_pilots =
-            assign_pilots_to_role(role, role_data, available_pilots, required_count)
+        assigned_pilots =
+          assign_pilots_to_role(role, role_data, available_pilots, required_count)
 
-          Enum.reduce(assigned_pilots, acc, fn pilot, acc2 ->
-            assignment = %{
-              character_name: pilot.character_name,
-              assigned_role: role,
-              assigned_ship:
-                select_best_ship_for_pilot(pilot, Map.get(role_data, "preferred_ships", [])),
-              skill_readiness: calculate_skill_readiness(pilot, role),
-              availability: assess_pilot_availability(pilot),
-              experience_rating: calculate_pilot_experience_rating(pilot, role),
-              backup_roles: find_backup_roles_for_pilot(pilot, doctrine_template),
-              suitability_score: calculate_pilot_suitability_score(pilot, role)
-            }
+        Enum.reduce(assigned_pilots, acc, fn pilot, acc2 ->
+          assignment = %{
+            character_name: pilot.character_name,
+            assigned_role: role,
+            assigned_ship:
+              select_best_ship_for_pilot(pilot, Map.get(role_data, "preferred_ships", [])),
+            skill_readiness: calculate_skill_readiness(pilot, role),
+            availability: assess_pilot_availability(pilot),
+            experience_rating: calculate_pilot_experience_rating(pilot, role),
+            backup_roles: find_backup_roles_for_pilot(pilot, doctrine_template),
+            suitability_score: calculate_pilot_suitability_score(pilot, role)
+          }
 
-            Map.put(acc2, Integer.to_string(pilot.pilot_id), assignment)
-          end)
+          Map.put(acc2, Integer.to_string(pilot.pilot_id), assignment)
         end)
+      end)
 
-      Result.ok(assignments)
-    rescue
-      exception ->
-        Result.error(
-          :assignment_optimization_failed,
-          "Pilot assignment optimization error: #{inspect(exception)}"
-        )
-    end
+    Result.ok(assignments)
+  rescue
+    exception ->
+      Result.error(
+        :assignment_optimization_failed,
+        "Pilot assignment optimization error: #{inspect(exception)}"
+      )
   end
 
   @doc """
@@ -173,43 +168,41 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
   Provides overall fleet readiness assessment including pilot availability,
   skill coverage, and estimated form-up time.
   """
-  def calculate_readiness_metrics(pilot_assignments, base_data \\ %{}, opts \\ []) do
-    try do
-      total_pilots = map_size(pilot_assignments)
+  def calculate_readiness_metrics(pilot_assignments, _base_data \\ %{}, _opts \\ []) do
+    total_pilots = map_size(pilot_assignments)
 
-      if total_pilots == 0 do
-        Result.ok(%{
-          readiness_percent: 0,
-          pilots_available: 0,
-          pilots_required: 0,
-          estimated_form_up_time: 0,
-          skill_coverage: %{},
-          availability_breakdown: %{}
-        })
-      else
-        ready_pilots = count_ready_pilots(pilot_assignments)
-        skill_coverage = calculate_skill_coverage(pilot_assignments)
-        availability_breakdown = calculate_availability_breakdown(pilot_assignments)
-        estimated_form_up_time = estimate_form_up_time(pilot_assignments)
+    if total_pilots == 0 do
+      Result.ok(%{
+        readiness_percent: 0,
+        pilots_available: 0,
+        pilots_required: 0,
+        estimated_form_up_time: 0,
+        skill_coverage: %{},
+        availability_breakdown: %{}
+      })
+    else
+      ready_pilots = count_ready_pilots(pilot_assignments)
+      skill_coverage = calculate_skill_coverage(pilot_assignments)
+      availability_breakdown = calculate_availability_breakdown(pilot_assignments)
+      estimated_form_up_time = estimate_form_up_time(pilot_assignments)
 
-        readiness_percent = Float.round(ready_pilots / total_pilots * 100, 1)
+      readiness_percent = Float.round(ready_pilots / total_pilots * 100, 1)
 
-        Result.ok(%{
-          readiness_percent: readiness_percent,
-          pilots_available: ready_pilots,
-          pilots_required: total_pilots,
-          estimated_form_up_time: estimated_form_up_time,
-          skill_coverage: skill_coverage,
-          availability_breakdown: availability_breakdown
-        })
-      end
-    rescue
-      exception ->
-        Result.error(
-          :readiness_calculation_failed,
-          "Readiness metrics calculation error: #{inspect(exception)}"
-        )
+      Result.ok(%{
+        readiness_percent: readiness_percent,
+        pilots_available: ready_pilots,
+        pilots_required: total_pilots,
+        estimated_form_up_time: estimated_form_up_time,
+        skill_coverage: skill_coverage,
+        availability_breakdown: availability_breakdown
+      })
     end
+  rescue
+    exception ->
+      Result.error(
+        :readiness_calculation_failed,
+        "Readiness metrics calculation error: #{inspect(exception)}"
+      )
   end
 
   # Private implementation functions
@@ -265,7 +258,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
 
   defp calculate_availability_metrics(pilot_data) do
     activity_score = pilot_data.kill_count + pilot_data.loss_count
-    recently_active = is_recently_active?(pilot_data.last_activity_date)
+    recently_active = recently_active?(pilot_data.last_activity_date)
     fleet_ready = pilot_available_for_fleet?(pilot_data)
 
     availability_level =
@@ -282,13 +275,13 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
 
   defp pilot_available_for_fleet?(pilot_data) do
     activity_score = pilot_data.kill_count + pilot_data.loss_count
-    recently_active = is_recently_active?(pilot_data.last_activity_date)
+    recently_active = recently_active?(pilot_data.last_activity_date)
     has_fleet_experience = pilot_data.solo_ratio < 0.9
 
     activity_score >= 5 and recently_active and has_fleet_experience
   end
 
-  defp is_recently_active?(last_activity_date) do
+  defp recently_active?(last_activity_date) do
     case last_activity_date do
       # Assume active if no data
       nil ->
@@ -383,76 +376,96 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
   end
 
   defp calculate_fc_suitability(pilot_data, combat_stats) do
-    score = 0.0
+    base_score = 0.0
 
-    score = if combat_stats.kill_count > 100, do: score + 0.3, else: score
-    score = if combat_stats.kd_ratio > 2.0, do: score + 0.2, else: score
-    score = if pilot_data.avg_gang_size > 5.0, do: score + 0.2, else: score
-    score = if combat_stats.efficiency > 0.7, do: score + 0.2, else: score
-    score = if combat_stats.solo_ratio < 0.5, do: score + 0.1, else: score
+    kill_score = if combat_stats.kill_count > 100, do: base_score + 0.3, else: base_score
+    kd_score = if combat_stats.kd_ratio > 2.0, do: kill_score + 0.2, else: kill_score
+    gang_score = if pilot_data.avg_gang_size > 5.0, do: kd_score + 0.2, else: kd_score
+    efficiency_score = if combat_stats.efficiency > 0.7, do: gang_score + 0.2, else: gang_score
 
-    min(1.0, score)
+    final_score =
+      if combat_stats.solo_ratio < 0.5, do: efficiency_score + 0.1, else: efficiency_score
+
+    min(1.0, final_score)
   end
 
   defp calculate_logistics_suitability(pilot_data, combat_stats) do
-    score = 0.0
+    base_score = 0.0
 
-    score = if pilot_data.has_logi_support, do: score + 0.4, else: score
-    score = if combat_stats.efficiency > 0.7, do: score + 0.3, else: score
-    score = if combat_stats.solo_ratio < 0.4, do: score + 0.2, else: score
-    score = if pilot_data.avg_gang_size > 3.0, do: score + 0.1, else: score
+    logi_score = if pilot_data.has_logi_support, do: base_score + 0.4, else: base_score
+    efficiency_score = if combat_stats.efficiency > 0.7, do: logi_score + 0.3, else: logi_score
 
-    min(1.0, score)
+    solo_score =
+      if combat_stats.solo_ratio < 0.4, do: efficiency_score + 0.2, else: efficiency_score
+
+    final_score = if pilot_data.avg_gang_size > 3.0, do: solo_score + 0.1, else: solo_score
+
+    min(1.0, final_score)
   end
 
   defp calculate_dps_suitability(pilot_data, combat_stats) do
-    score = 0.0
+    base_score = 0.0
 
-    score = if combat_stats.kill_count > 50, do: score + 0.3, else: score
-    score = if combat_stats.kd_ratio > 1.5, do: score + 0.2, else: score
-    score = if combat_stats.efficiency > 0.6, do: score + 0.2, else: score
-    score = if pilot_data.avg_gang_size > 2.0, do: score + 0.2, else: score
-    score = if pilot_data.flies_capitals, do: score + 0.1, else: score
+    kill_score = if combat_stats.kill_count > 50, do: base_score + 0.3, else: base_score
+    kd_score = if combat_stats.kd_ratio > 1.5, do: kill_score + 0.2, else: kill_score
+    efficiency_score = if combat_stats.efficiency > 0.6, do: kd_score + 0.2, else: kd_score
 
-    min(1.0, score)
+    gang_score =
+      if pilot_data.avg_gang_size > 2.0, do: efficiency_score + 0.2, else: efficiency_score
+
+    final_score = if pilot_data.flies_capitals, do: gang_score + 0.1, else: gang_score
+
+    min(1.0, final_score)
   end
 
   defp calculate_tackle_suitability(pilot_data, combat_stats) do
     ship_groups = pilot_data.ship_groups_flown || %{}
-    score = 0.0
+    base_score = 0.0
 
-    score = if Map.get(ship_groups, "Frigates", 0) > 10, do: score + 0.3, else: score
-    score = if Map.get(ship_groups, "Interceptors", 0) > 0, do: score + 0.3, else: score
-    score = if combat_stats.solo_ratio > 0.5, do: score + 0.2, else: score
-    score = if combat_stats.kill_count > 30, do: score + 0.1, else: score
-    score = if pilot_data.avg_gang_size < 5.0, do: score + 0.1, else: score
+    frigate_score =
+      if Map.get(ship_groups, "Frigates", 0) > 10, do: base_score + 0.3, else: base_score
 
-    min(1.0, score)
+    interceptor_score =
+      if Map.get(ship_groups, "Interceptors", 0) > 0, do: frigate_score + 0.3, else: frigate_score
+
+    solo_score =
+      if combat_stats.solo_ratio > 0.5, do: interceptor_score + 0.2, else: interceptor_score
+
+    kill_score = if combat_stats.kill_count > 30, do: solo_score + 0.1, else: solo_score
+    final_score = if pilot_data.avg_gang_size < 5.0, do: kill_score + 0.1, else: kill_score
+
+    min(1.0, final_score)
   end
 
   defp calculate_ewar_suitability(pilot_data, combat_stats) do
     ship_groups = pilot_data.ship_groups_flown || %{}
-    score = 0.0
+    base_score = 0.0
 
-    score = if Map.get(ship_groups, "Recon", 0) > 0, do: score + 0.4, else: score
-    score = if combat_stats.efficiency > 0.6, do: score + 0.2, else: score
-    score = if combat_stats.solo_ratio < 0.3, do: score + 0.2, else: score
-    score = if pilot_data.avg_gang_size > 3.0, do: score + 0.1, else: score
-    score = if combat_stats.kill_count > 20, do: score + 0.1, else: score
+    recon_score = if Map.get(ship_groups, "Recon", 0) > 0, do: base_score + 0.4, else: base_score
+    efficiency_score = if combat_stats.efficiency > 0.6, do: recon_score + 0.2, else: recon_score
 
-    min(1.0, score)
+    solo_score =
+      if combat_stats.solo_ratio < 0.3, do: efficiency_score + 0.2, else: efficiency_score
+
+    gang_score = if pilot_data.avg_gang_size > 3.0, do: solo_score + 0.1, else: solo_score
+    final_score = if combat_stats.kill_count > 20, do: gang_score + 0.1, else: gang_score
+
+    min(1.0, final_score)
   end
 
   defp calculate_support_suitability(pilot_data, combat_stats) do
-    score = 0.0
+    base_score = 0.0
 
-    score = if combat_stats.efficiency > 0.6, do: score + 0.3, else: score
-    score = if combat_stats.solo_ratio < 0.4, do: score + 0.2, else: score
-    score = if pilot_data.avg_gang_size > 2.0, do: score + 0.2, else: score
-    score = if combat_stats.kill_count > 20, do: score + 0.2, else: score
-    score = if pilot_data.has_logi_support, do: score + 0.1, else: score
+    efficiency_score = if combat_stats.efficiency > 0.6, do: base_score + 0.3, else: base_score
 
-    min(1.0, score)
+    solo_score =
+      if combat_stats.solo_ratio < 0.4, do: efficiency_score + 0.2, else: efficiency_score
+
+    gang_score = if pilot_data.avg_gang_size > 2.0, do: solo_score + 0.2, else: solo_score
+    kill_score = if combat_stats.kill_count > 20, do: gang_score + 0.2, else: gang_score
+    final_score = if pilot_data.has_logi_support, do: kill_score + 0.1, else: kill_score
+
+    min(1.0, final_score)
   end
 
   defp determine_primary_role(role_suitability) do
@@ -488,7 +501,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
     end
   end
 
-  defp assign_pilots_to_role(role, role_data, available_pilots, required_count) do
+  defp assign_pilots_to_role(role, _role_data, available_pilots, required_count) do
     available_pilots
     |> Enum.filter(&pilot_suitable_for_role?(&1, role))
     |> Enum.sort_by(fn pilot -> calculate_pilot_suitability_score(pilot, role) end, :desc)
@@ -530,8 +543,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
 
     # Try to match pilot's most flown ship type with preferred ships
     best_match =
-      preferred_ships
-      |> Enum.find(fn ship ->
+      Enum.find(preferred_ships, fn ship ->
         ship_group = determine_ship_group(ship)
         Map.get(ship_groups, ship_group, 0) > 0
       end)
@@ -599,8 +611,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
   end
 
   defp count_ready_pilots(pilot_assignments) do
-    pilot_assignments
-    |> Enum.count(fn {_pilot_id, assignment} ->
+    Enum.count(pilot_assignments, fn {_pilot_id, assignment} ->
       assignment.availability in ["high", "medium"] and assignment.skill_readiness >= 0.7
     end)
   end
@@ -621,9 +632,9 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
   end
 
   defp calculate_availability_breakdown(pilot_assignments) do
-    pilot_assignments
-    |> Enum.map(fn {_pilot_id, assignment} -> assignment.availability end)
-    |> Enum.frequencies()
+    Enum.frequencies(
+      Enum.map(pilot_assignments, fn {_pilot_id, assignment} -> assignment.availability end)
+    )
   end
 
   defp estimate_form_up_time(pilot_assignments) do

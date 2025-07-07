@@ -7,9 +7,10 @@ defmodule EveDmvWeb.Plugs.ApiAuth do
   """
 
   import Plug.Conn
-  require Logger
 
   alias EveDmv.Security.ApiAuthentication
+
+  require Logger
 
   @doc """
   Initialize the plug with options.
@@ -129,7 +130,8 @@ defmodule EveDmvWeb.Plugs.ApiAuth do
           user_agent: conn |> get_req_header("user-agent") |> List.first()
         })
 
-        send_unauthorized(conn, format_error_message(reason))
+        error_message = format_api_error_message(reason)
+        send_unauthorized(conn, error_message)
     end
   end
 
@@ -163,10 +165,10 @@ defmodule EveDmvWeb.Plugs.ApiAuth do
     |> halt()
   end
 
-  defp format_error_message(:not_found), do: "Invalid API key"
-  defp format_error_message(:invalid_key), do: "Invalid API key"
-  defp format_error_message(:expired), do: "API key has expired"
-  defp format_error_message(:inactive), do: "API key has been deactivated"
-  defp format_error_message(:insufficient_permissions), do: "Insufficient permissions"
-  defp format_error_message(_), do: "Authentication failed"
+  defp format_api_error_message(:not_found), do: "Invalid API key"
+  defp format_api_error_message(:invalid_key), do: "Invalid API key"
+  defp format_api_error_message(:expired), do: "API key has expired"
+  defp format_api_error_message(:inactive), do: "API key has been deactivated"
+  defp format_api_error_message(:insufficient_permissions), do: "Insufficient permissions"
+  defp format_api_error_message(_), do: "Authentication failed"
 end

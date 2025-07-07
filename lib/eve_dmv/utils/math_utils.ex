@@ -331,9 +331,7 @@ defmodule EveDmv.Utils.MathUtils do
     sum_x_squared = Enum.sum(Enum.map(x_values, fn x -> x * x end))
 
     sum_xy =
-      data_points
-      |> Enum.map(fn {x, y} -> x * y end)
-      |> Enum.sum()
+      Enum.sum(Enum.map(data_points, fn {x, y} -> x * y end))
 
     # Calculate slope (m) and intercept (b) for y = mx + b
     denominator = n * sum_x_squared - sum_x * sum_x

@@ -6,13 +6,13 @@ defmodule EveDmv.Telemetry.PerformanceMonitor do
   database queries, API calls, and processing times.
   """
 
-  require Logger
-
-  alias EveDmv.Telemetry.PerformanceMonitor.PerformanceTracker
-  alias EveDmv.Telemetry.PerformanceMonitor.DatabaseMetrics
   alias EveDmv.Telemetry.PerformanceMonitor.ConnectionPoolMonitor
-  alias EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer
+  alias EveDmv.Telemetry.PerformanceMonitor.DatabaseMetrics
   alias EveDmv.Telemetry.PerformanceMonitor.HealthMonitor
+  alias EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer
+  alias EveDmv.Telemetry.PerformanceMonitor.PerformanceTracker
+
+  require Logger
 
   # Delegation to PerformanceTracker
   defdelegate track_query(query_name, fun), to: PerformanceTracker

@@ -6,19 +6,20 @@ defmodule EveDmvWeb.SurveillanceLive.ProfileService do
   with proper error handling and matching engine integration.
   """
 
-  require Logger
-
   alias EveDmv.Api
-  alias EveDmv.Surveillance.{MatchingEngine, Profile}
   alias EveDmv.Database.SurveillanceRepository
+  alias EveDmv.Surveillance.MatchingEngine
+  alias EveDmv.Surveillance.Profile
   alias EveDmvWeb.SurveillanceLive.Components
+
+  require Logger
 
   @doc """
   Load all profiles for a specific user.
 
   Returns a list of profiles with their associated matches loaded.
   """
-  @spec load_user_profiles(String.t(), map()) :: [Profile.t()]
+  @spec load_user_profiles(integer(), map()) :: [Profile.t()]
   def load_user_profiles(user_id, current_user) do
     SurveillanceRepository.get_user_profiles(user_id, current_user)
   end
@@ -156,27 +157,31 @@ defmodule EveDmvWeb.SurveillanceLive.ProfileService do
   # Helper Functions
 
   defp reload_matching_engine do
-    try do
-      MatchingEngine.reload()
-    rescue
-      error ->
-        Logger.warning("Failed to reload matching engine: #{inspect(error)}")
-    end
+    MatchingEngine.reload_profiles()
+  rescue
+    error ->
+      Logger.warning("Failed to reload matching engine: #{inspect(error)}")
   end
 
   defp format_error_message(error) do
-    cond do
-      is_binary(error) ->
+    case error do
+      %{__exception__: true, message: message} when is_binary(message) ->
+        message
+
+      %{__exception__: true} = exception ->
+        Exception.message(exception)
+
+      error when is_binary(error) ->
         error
 
-      is_atom(error) ->
+      error when is_atom(error) ->
         Atom.to_string(error)
 
-      is_map(error) ->
+      error when is_map(error) ->
         inspect(error)
 
-      true ->
-        "Unknown error occurred"
+      error ->
+        inspect(error)
     end
   end
 end

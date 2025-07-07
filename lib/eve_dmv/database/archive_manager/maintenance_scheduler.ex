@@ -6,10 +6,11 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
   maintenance tasks to keep the archive system running efficiently.
   """
 
-  require Logger
-  alias EveDmv.Repo
-  alias EveDmv.Database.ArchiveManager.{ArchiveOperations, PartitionManager}
   alias Ecto.Adapters.SQL
+  alias EveDmv.Database.ArchiveManager.ArchiveOperations
+  alias EveDmv.Database.ArchiveManager.PartitionManager
+  alias EveDmv.Repo
+  require Logger
 
   @doc """
   Perform scheduled archive check across all tables.
@@ -181,19 +182,21 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
   # Private helper functions
 
   defp calculate_total_archived(results) do
-    Enum.map(results, fn
-      {_table, {:ok, count}} -> count
-      {_table, {:error, _}} -> 0
-    end)
-    |> Enum.sum()
+    Enum.sum(
+      Enum.map(results, fn
+        {_table, {:ok, count}} -> count
+        {_table, {:error, _}} -> 0
+      end)
+    )
   end
 
   defp calculate_total_deleted(results) do
-    Enum.map(results, fn
-      {_table, {:ok, count}} -> count
-      {_table, {:error, _}} -> 0
-    end)
-    |> Enum.sum()
+    Enum.sum(
+      Enum.map(results, fn
+        {_table, {:ok, count}} -> count
+        {_table, {:error, _}} -> 0
+      end)
+    )
   end
 
   defp delete_in_batches(archive_table, date_column, cutoff_date, total_count) do
@@ -203,8 +206,7 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
     Logger.info("Deleting #{total_count} expired records in #{total_batches} batches")
 
     result =
-      1..total_batches
-      |> Enum.reduce_while({:ok, 0}, fn batch_num, {:ok, acc_deleted} ->
+      Enum.reduce_while(1..total_batches, {:ok, 0}, fn batch_num, {:ok, acc_deleted} ->
         delete_sql = """
         DELETE FROM #{archive_table}
         WHERE #{date_column} < $1
@@ -406,7 +408,8 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
 
   defp get_storage_usage_summary(archive_policies) do
     total_archive_size =
-      Enum.map(archive_policies, fn policy ->
+      archive_policies
+      |> Enum.map(fn policy ->
         PartitionManager.get_archive_table_size(policy.archive_table).total_size
       end)
       |> Enum.sum()

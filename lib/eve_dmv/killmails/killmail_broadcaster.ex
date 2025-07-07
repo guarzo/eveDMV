@@ -6,11 +6,11 @@ defmodule EveDmv.Killmails.KillmailBroadcaster do
   matching for real-time notifications.
   """
 
-  require Logger
-
   alias Broadway.Message
   alias EveDmv.Surveillance.MatchingEngine
   alias EveDmvWeb.Endpoint
+
+  require Logger
 
   @doc """
   Broadcast killmails to LiveView clients via PubSub.

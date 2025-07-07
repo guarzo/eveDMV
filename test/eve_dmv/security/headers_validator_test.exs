@@ -54,8 +54,7 @@ defmodule EveDmv.Security.HeadersValidatorTest do
       conn = get(conn, ~p"/")
 
       headers =
-        conn.resp_headers
-        |> Map.new(fn {key, value} -> {String.downcase(key), value} end)
+        Map.new(conn.resp_headers, fn {key, value} -> {String.downcase(key), value} end)
 
       case HeadersValidator.validate_headers(headers) do
         {:ok, :valid} ->

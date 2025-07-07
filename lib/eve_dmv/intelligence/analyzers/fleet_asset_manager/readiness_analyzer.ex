@@ -31,8 +31,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.ReadinessAnalyzer do
 
     # Calculate readiness for each ship type
     ship_readiness =
-      ship_requirements
-      |> Enum.map(fn {_type_id, ship_data} ->
+      Enum.map(ship_requirements, fn {_type_id, ship_data} ->
         ship_name = Map.get(ship_data, "ship_name", "Unknown")
         needed = Map.get(ship_data, "quantity_needed", 1)
         available = Map.get(ship_data, "quantity_available", 0)
@@ -53,21 +52,26 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.ReadinessAnalyzer do
 
     # Identify missing ships
     missing_ships =
-      ship_readiness
-      |> Enum.filter(fn ship -> ship.available < ship.needed end)
-      |> Enum.map(& &1.ship_name)
+      Enum.map(
+        Enum.filter(ship_readiness, fn ship -> ship.available < ship.needed end),
+        & &1.ship_name
+      )
 
     # Identify surplus ships
     surplus_ships =
-      ship_readiness
-      |> Enum.filter(fn ship -> ship.available > ship.needed end)
-      |> Enum.map(& &1.ship_name)
+      Enum.map(
+        Enum.filter(ship_readiness, fn ship -> ship.available > ship.needed end),
+        & &1.ship_name
+      )
 
     # Identify deployment blockers (critical missing ships)
     deployment_blockers =
-      ship_readiness
-      |> Enum.filter(fn ship -> ship.is_critical and ship.available < ship.needed end)
-      |> Enum.map(& &1.ship_name)
+      Enum.map(
+        Enum.filter(ship_readiness, fn ship ->
+          ship.is_critical and ship.available < ship.needed
+        end),
+        & &1.ship_name
+      )
 
     %{
       overall_readiness: overall_readiness,
@@ -84,8 +88,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.ReadinessAnalyzer do
   """
   def calculate_role_readiness(ship_requirements, role) do
     role_ships =
-      ship_requirements
-      |> Enum.filter(fn {_type_id, ship_data} ->
+      Enum.filter(ship_requirements, fn {_type_id, ship_data} ->
         Map.get(ship_data, "role") == role
       end)
 
@@ -115,13 +118,13 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.ReadinessAnalyzer do
   def generate_readiness_report(ship_requirements) do
     roles = get_unique_roles(ship_requirements)
 
-    role_readiness =
-      roles
-      |> Enum.map(fn role ->
+    role_readiness_list =
+      Enum.map(roles, fn role ->
         readiness = calculate_role_readiness(ship_requirements, role)
         {role, readiness}
       end)
-      |> Map.new()
+
+    role_readiness = Map.new(role_readiness_list)
 
     critical_roles = ["logistics", "fc"]
 
@@ -149,15 +152,13 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.ReadinessAnalyzer do
     requirements = Map.merge(default_minimums, min_requirements)
 
     actual_counts =
-      ship_requirements
-      |> Enum.reduce(%{}, fn {_type_id, ship_data}, acc ->
+      Enum.reduce(ship_requirements, %{}, fn {_type_id, ship_data}, acc ->
         role = Map.get(ship_data, "role", "unknown")
         available = Map.get(ship_data, "quantity_available", 0)
         Map.update(acc, role, available, &(&1 + available))
       end)
 
-    requirements
-    |> Enum.all?(fn {role, min_count} ->
+    Enum.all?(requirements, fn {role, min_count} ->
       Map.get(actual_counts, role, 0) >= min_count
     end)
   end
@@ -167,8 +168,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.ReadinessAnalyzer do
   """
   def calculate_time_to_readiness(ship_requirements, acquisition_rate \\ 1) do
     missing_ships_count =
-      ship_requirements
-      |> Enum.reduce(0, fn {_type_id, ship_data}, acc ->
+      Enum.reduce(ship_requirements, 0, fn {_type_id, ship_data}, acc ->
         needed = Map.get(ship_data, "quantity_needed", 1)
         available = Map.get(ship_data, "quantity_available", 0)
         shortage = max(0, needed - available)
@@ -218,11 +218,12 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.ReadinessAnalyzer do
   defp determine_role_status(_), do: "critical"
 
   defp get_unique_roles(ship_requirements) do
-    ship_requirements
-    |> Enum.map(fn {_type_id, ship_data} ->
-      Map.get(ship_data, "role", "unknown")
-    end)
-    |> Enum.uniq()
+    roles_list =
+      Enum.map(ship_requirements, fn {_type_id, ship_data} ->
+        Map.get(ship_data, "role", "unknown")
+      end)
+
+    Enum.uniq(roles_list)
   end
 
   defp assess_critical_roles(critical_readiness) do
@@ -257,40 +258,38 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.ReadinessAnalyzer do
   end
 
   defp generate_readiness_recommendations(role_readiness) do
-    recommendations = []
-
     # Check for critical role issues
-    recommendations =
+    critical_role_recommendations =
       if has_critical_role_issues?(role_readiness) do
-        ["Prioritize acquiring logistics and FC ships" | recommendations]
+        ["Prioritize acquiring logistics and FC ships"]
       else
-        recommendations
+        []
       end
 
     # Check for low DPS
     dps_readiness = get_in(role_readiness, ["dps", :readiness]) || 100
 
-    recommendations =
+    dps_recommendations =
       if dps_readiness < 70 do
-        ["Increase DPS ship availability for fleet effectiveness" | recommendations]
+        ["Increase DPS ship availability for fleet effectiveness" | critical_role_recommendations]
       else
-        recommendations
+        critical_role_recommendations
       end
 
     # Check for missing tackle
     tackle_readiness = get_in(role_readiness, ["tackle", :readiness]) || 100
 
-    recommendations =
+    final_recommendations =
       if tackle_readiness < 60 do
-        ["Acquire more tackle ships for fleet mobility" | recommendations]
+        ["Acquire more tackle ships for fleet mobility" | dps_recommendations]
       else
-        recommendations
+        dps_recommendations
       end
 
-    if recommendations == [] do
+    if final_recommendations == [] do
       ["Fleet readiness is good - no immediate actions needed"]
     else
-      recommendations
+      final_recommendations
     end
   end
 

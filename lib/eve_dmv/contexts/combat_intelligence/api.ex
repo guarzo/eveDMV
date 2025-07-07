@@ -7,12 +7,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   """
 
   alias EveDmv.Contexts.CombatIntelligence.Domain
-  alias EveDmv.SharedKernel.ValueObjects.{CharacterId, CorporationId, ThreatLevel, TimeRange}
   alias EveDmv.Result
 
   @type analysis_options :: [
           analysis_type: :full | :quick | :threat_only | :activity_only,
-          time_range: TimeRange.t(),
+          time_range: map(),
           include_associates: boolean(),
           include_patterns: boolean(),
           cache_ttl: integer()
@@ -21,7 +20,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   @type intelligence_result :: %{
           character_id: integer(),
           character_name: String.t(),
-          threat_level: ThreatLevel.t(),
+          threat_level: atom(),
           analysis_summary: map(),
           detailed_metrics: map(),
           recommendations: [String.t()],
@@ -49,9 +48,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   """
   @spec analyze_character(integer(), analysis_options()) :: Result.t(intelligence_result())
   def analyze_character(character_id, opts \\ []) do
-    with {:ok, character_id_vo} <- CharacterId.new(character_id),
-         :ok <- validate_analysis_options(opts),
-         {:ok, analysis_result} <- Domain.CharacterAnalyzer.analyze(character_id_vo, opts) do
+    with :ok <- validate_analysis_options(opts),
+         {:ok, analysis_result} <- Domain.CharacterAnalyzer.analyze(character_id, opts) do
       {:ok, analysis_result}
     end
   end
@@ -65,10 +63,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   @spec get_character_intelligence(integer()) ::
           Result.t(intelligence_result()) | Result.t(:not_found)
   def get_character_intelligence(character_id) do
-    with {:ok, character_id_vo} <- CharacterId.new(character_id),
-         {:ok, intelligence} <- Domain.CharacterAnalyzer.get_intelligence(character_id_vo) do
-      {:ok, intelligence}
-    end
+    Domain.CharacterAnalyzer.get_intelligence(character_id)
   end
 
   @doc """
@@ -79,9 +74,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   """
   @spec analyze_corporation(integer(), analysis_options()) :: Result.t(map())
   def analyze_corporation(corporation_id, opts \\ []) do
-    with {:ok, corporation_id_vo} <- CorporationId.new(corporation_id),
-         :ok <- validate_analysis_options(opts),
-         {:ok, analysis_result} <- Domain.CorporationAnalyzer.analyze(corporation_id_vo, opts) do
+    with :ok <- validate_analysis_options(opts),
+         {:ok, analysis_result} <- Domain.CorporationAnalyzer.analyze(corporation_id, opts) do
       {:ok, analysis_result}
     end
   end
@@ -91,10 +85,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   """
   @spec get_corporation_intelligence(integer()) :: Result.t(map()) | Result.t(:not_found)
   def get_corporation_intelligence(corporation_id) do
-    with {:ok, corporation_id_vo} <- CorporationId.new(corporation_id),
-         {:ok, intelligence} <- Domain.CorporationAnalyzer.get_intelligence(corporation_id_vo) do
-      {:ok, intelligence}
-    end
+    Domain.CorporationAnalyzer.get_intelligence(corporation_id)
   end
 
   @doc """
@@ -115,9 +106,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   """
   @spec assess_threat(integer(), atom()) :: Result.t(map())
   def assess_threat(character_id, context \\ :general) do
-    with {:ok, character_id_vo} <- CharacterId.new(character_id),
-         :ok <- validate_threat_context(context),
-         {:ok, assessment} <- Domain.ThreatAssessor.assess_threat(character_id_vo, context) do
+    with :ok <- validate_threat_context(context),
+         {:ok, assessment} <- Domain.ThreatAssessor.assess_threat(character_id, context) do
       {:ok, assessment}
     end
   end
@@ -127,10 +117,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   """
   @spec get_threat_assessment(integer()) :: Result.t(map()) | Result.t(:not_found)
   def get_threat_assessment(character_id) do
-    with {:ok, character_id_vo} <- CharacterId.new(character_id),
-         {:ok, assessment} <- Domain.ThreatAssessor.get_assessment(character_id_vo) do
-      {:ok, assessment}
-    end
+    Domain.ThreatAssessor.get_assessment(character_id)
   end
 
   @doc """
@@ -145,10 +132,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   """
   @spec calculate_intelligence_score(integer(), atom()) :: Result.t(map())
   def calculate_intelligence_score(character_id, scoring_type) do
-    with {:ok, character_id_vo} <- CharacterId.new(character_id),
-         :ok <- validate_scoring_type(scoring_type),
+    with :ok <- validate_scoring_type(scoring_type),
          {:ok, score_result} <-
-           Domain.IntelligenceScoring.calculate_score(character_id_vo, scoring_type) do
+           Domain.IntelligenceScoring.calculate_score(character_id, scoring_type) do
       {:ok, score_result}
     end
   end
@@ -161,10 +147,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   """
   @spec get_character_recommendations(integer()) :: Result.t([map()])
   def get_character_recommendations(character_id) do
-    with {:ok, character_id_vo} <- CharacterId.new(character_id),
-         {:ok, recommendations} <- Domain.IntelligenceScoring.get_recommendations(character_id_vo) do
-      {:ok, recommendations}
-    end
+    Domain.IntelligenceScoring.get_recommendations(character_id)
   end
 
   @doc """
@@ -192,13 +175,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
 
   Returns temporal activity patterns, timezone preferences, and behavioral trends.
   """
-  @spec get_activity_patterns(integer(), TimeRange.t()) :: Result.t(map())
-  def get_activity_patterns(character_id, time_range) do
-    with {:ok, character_id_vo} <- CharacterId.new(character_id),
-         {:ok, patterns} <-
-           Domain.CharacterAnalyzer.get_activity_patterns(character_id_vo, time_range) do
-      {:ok, patterns}
-    end
+  @spec get_activity_patterns(integer(), keyword()) :: Result.t(map())
+  def get_activity_patterns(character_id, opts \\ []) do
+    Domain.CharacterAnalyzer.get_activity_patterns(character_id, opts)
   end
 
   @doc """
@@ -210,12 +189,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   @spec compare_characters([integer()]) :: Result.t(map())
   def compare_characters(character_ids) when is_list(character_ids) do
     with :ok <- validate_character_ids(character_ids),
-         character_id_vos <-
-           Enum.map(character_ids, fn id ->
-             {:ok, vo} = CharacterId.new(id)
-             vo
-           end),
-         {:ok, comparison} <- Domain.CharacterAnalyzer.compare_characters(character_id_vos) do
+         {:ok, comparison} <- Domain.CharacterAnalyzer.compare_characters(character_ids) do
       {:ok, comparison}
     end
   end
@@ -253,7 +227,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   defp validate_analysis_type(_), do: {:error, :invalid_analysis_type}
 
   defp validate_time_range_option(nil), do: :ok
-  defp validate_time_range_option(%TimeRange{}), do: :ok
+  defp validate_time_range_option(time_range) when is_map(time_range), do: :ok
   defp validate_time_range_option(_), do: {:error, :invalid_time_range}
 
   defp validate_boolean_option(opts, key) do

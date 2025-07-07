@@ -14,7 +14,9 @@ defmodule EveDmv.Contexts.MarketIntelligence do
   use EveDmv.Contexts.BoundedContext, name: :market_intelligence
   use Supervisor
 
-  alias EveDmv.Contexts.MarketIntelligence.{Api, Domain, Infrastructure}
+  alias EveDmv.Contexts.MarketIntelligence.Api
+  alias EveDmv.Contexts.MarketIntelligence.Domain
+  alias EveDmv.Contexts.MarketIntelligence.Infrastructure
   alias EveDmv.DomainEvents.StaticDataUpdated
 
   # Supervisor implementation
@@ -23,7 +25,7 @@ defmodule EveDmv.Contexts.MarketIntelligence do
     Supervisor.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  @impl true
+  @impl Supervisor
   def init(_opts) do
     children = [
       # Domain services
@@ -40,7 +42,7 @@ defmodule EveDmv.Contexts.MarketIntelligence do
 
   # Event subscriptions
 
-  @impl true
+  @impl EveDmv.Contexts.BoundedContext
   def event_subscriptions do
     [
       {:static_data_updated, &handle_static_data_updated/1}

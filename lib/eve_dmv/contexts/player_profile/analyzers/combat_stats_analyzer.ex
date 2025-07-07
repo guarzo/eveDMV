@@ -7,8 +7,10 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
   """
 
   use EveDmv.ErrorHandler
-  alias EveDmv.Result
+
   alias EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository
+  alias EveDmv.Result
+
   require Logger
 
   @doc """
@@ -16,29 +18,27 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
   """
   @spec analyze(integer(), map()) :: Result.t(map())
   def analyze(character_id, base_data \\ %{}) when is_integer(character_id) do
-    try do
-      character_stats = Map.get(base_data, :character_stats, %{})
-      killmail_stats = Map.get(base_data, :killmail_stats, %{})
+    character_stats = Map.get(base_data, :character_stats, %{})
+    killmail_stats = Map.get(base_data, :killmail_stats, %{})
 
-      combat_analysis = %{
-        basic_stats: calculate_basic_stats(character_stats, killmail_stats),
-        weapon_analysis: analyze_weapon_preferences(character_stats),
-        engagement_patterns: analyze_engagement_patterns(character_stats),
-        performance_metrics: calculate_performance_metrics(character_stats, killmail_stats),
-        risk_indicators: assess_risk_indicators(character_stats),
-        summary: generate_combat_summary(character_stats, killmail_stats)
-      }
+    combat_analysis = %{
+      basic_stats: calculate_basic_stats(character_stats, killmail_stats),
+      weapon_analysis: analyze_weapon_preferences(character_stats),
+      engagement_patterns: analyze_engagement_patterns(character_stats),
+      performance_metrics: calculate_performance_metrics(character_stats, killmail_stats),
+      risk_indicators: assess_risk_indicators(character_stats),
+      summary: generate_combat_summary(character_stats, killmail_stats)
+    }
 
-      Result.ok(combat_analysis)
-    rescue
-      exception ->
-        Logger.error("Combat analysis failed",
-          character_id: character_id,
-          error: Exception.format(:error, exception)
-        )
+    Result.ok(combat_analysis)
+  rescue
+    exception ->
+      Logger.error("Combat analysis failed",
+        character_id: character_id,
+        error: Exception.format(:error, exception)
+      )
 
-        Result.error(:analysis_failed, "Combat analysis error: #{inspect(exception)}")
-    end
+      Result.error(:analysis_failed, "Combat analysis error: #{inspect(exception)}")
   end
 
   # Core analysis functions
@@ -158,7 +158,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
     }
   end
 
-  defp generate_combat_summary(character_stats, killmail_stats) do
+  defp generate_combat_summary(character_stats, _killmail_stats) do
     total_activity =
       Map.get(character_stats, :total_kills, 0) +
         Map.get(character_stats, :total_losses, 0)
@@ -204,15 +204,15 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
   end
 
   defp extract_weapons_from_ships(ship_usage) do
-    ship_usage
-    |> Enum.flat_map(fn {_ship_id, ship_data} ->
-      fits = Map.get(ship_data, :common_fits, [])
+    Enum.frequencies(
+      Enum.flat_map(ship_usage, fn {_ship_id, ship_data} ->
+        fits = Map.get(ship_data, :common_fits, [])
 
-      Enum.flat_map(fits, fn fit ->
-        Map.get(fit, :weapons, [])
+        Enum.flat_map(fits, fn fit ->
+          Map.get(fit, :weapons, [])
+        end)
       end)
-    end)
-    |> Enum.frequencies()
+    )
   end
 
   defp total_weapon_usage(weapon_stats) do
@@ -324,20 +324,22 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
     total_kills =
       security_stats
       |> Map.values()
-      |> Enum.sum(& &1.kills)
+      |> Enum.map(& &1.kills)
+      |> Enum.sum()
 
-    security_stats
-    |> Enum.map(fn {sec_type, stats} ->
-      percentage =
-        if total_kills > 0 do
-          Float.round(stats.kills / total_kills * 100, 1)
-        else
-          0.0
-        end
+    Enum.into(
+      Enum.map(security_stats, fn {sec_type, stats} ->
+        percentage =
+          if total_kills > 0 do
+            Float.round(stats.kills / total_kills * 100, 1)
+          else
+            0.0
+          end
 
-      {sec_type, Map.put(stats, :percentage, percentage)}
-    end)
-    |> Enum.into(%{})
+        {sec_type, Map.put(stats, :percentage, percentage)}
+      end),
+      %{}
+    )
   end
 
   defp analyze_engagement_timing(character_stats) do
@@ -449,7 +451,8 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
       total_usage =
         ship_usage
         |> Map.values()
-        |> Enum.sum(fn ship_data -> Map.get(ship_data, :times_used, 0) end)
+        |> Enum.map(fn ship_data -> Map.get(ship_data, :times_used, 0) end)
+        |> Enum.sum()
 
       max_usage =
         ship_usage
@@ -718,7 +721,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
   end
 
   defp estimate_timezone(peak_hours) do
-    if length(peak_hours) == 0 do
+    if Enum.empty?(peak_hours) do
       "Unknown"
     else
       # Simple timezone estimation based on peak hours

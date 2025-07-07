@@ -5,9 +5,10 @@ defmodule EveDmv.Killmails.MockSSEServer do
   """
 
   use GenServer
-  require Logger
 
   alias EveDmv.Killmails.TestDataGenerator
+
+  require Logger
 
   @default_port 8080
   # Send an event every 5 seconds
@@ -119,13 +120,16 @@ defmodule EveDmv.Killmails.MockSSEServer do
   end
 
   defp format_sse_event(%{event: event, data: data, id: id}) do
-    parts = []
+    initial_parts = []
 
-    parts = if id != nil, do: ["id: #{id}" | parts], else: parts
-    parts = if event != nil, do: ["event: #{event}" | parts], else: parts
-    parts = ["data: #{data}" | parts]
+    parts_with_id = if id != nil, do: ["id: #{id}" | initial_parts], else: initial_parts
 
-    Enum.join(parts, "\n") <> "\n\n"
+    parts_with_event =
+      if event != nil, do: ["event: #{event}" | parts_with_id], else: parts_with_id
+
+    parts_with_data = ["data: #{data}" | parts_with_event]
+
+    Enum.join(parts_with_data, "\n") <> "\n\n"
   end
 end
 
@@ -134,8 +138,9 @@ defmodule EveDmv.Killmails.MockSSEServer.SSEHandler do
   Cowboy handler for SSE requests.
   """
 
-  require Logger
   alias EveDmv.Killmails.TestDataGenerator
+
+  require Logger
 
   def init(req, state) do
     # Set proper SSE headers and start streaming response

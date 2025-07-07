@@ -20,7 +20,9 @@ defmodule EveDmv.Intelligence.Metrics.MemberActivityMetrics do
     consistency_score = calculate_consistency_score(activity_data)
 
     # Weighted average
-    (activity_score * 0.4 + participation_score * 0.35 + consistency_score * 0.25)
+    weighted_score = activity_score * 0.4 + participation_score * 0.35 + consistency_score * 0.25
+
+    weighted_score
     |> round()
     |> max(0)
     |> min(100)
@@ -138,7 +140,9 @@ defmodule EveDmv.Intelligence.Metrics.MemberActivityMetrics do
         0
       end
 
-    (base_risk + trend_risk + participation_adjustment)
+    total_risk = base_risk + trend_risk + participation_adjustment
+
+    total_risk
     |> max(0)
     |> min(100)
   end
@@ -162,7 +166,9 @@ defmodule EveDmv.Intelligence.Metrics.MemberActivityMetrics do
     # Additional risk factors
     timezone_risk = calculate_timezone_isolation_risk(timezone_data)
 
-    (base_risk + timezone_risk)
+    total_risk = base_risk + timezone_risk
+
+    total_risk
     |> max(0)
     |> min(100)
   end
@@ -204,10 +210,8 @@ defmodule EveDmv.Intelligence.Metrics.MemberActivityMetrics do
     if map_size(daily_activities) < 14 do
       %{direction: :unknown, strength: 0, confidence: :low}
     else
-      activities =
-        daily_activities
-        |> Enum.sort_by(fn {date, _} -> date end)
-        |> Enum.map(fn {_, activity} -> activity end)
+      sorted_activities = Enum.sort_by(daily_activities, fn {date, _} -> date end)
+      activities = Enum.map(sorted_activities, fn {_, activity} -> activity end)
 
       trend = calculate_linear_trend(activities)
 
@@ -238,8 +242,7 @@ defmodule EveDmv.Intelligence.Metrics.MemberActivityMetrics do
     zipped_xy = Enum.zip(x_values, y_values)
 
     numerator =
-      zipped_xy
-      |> Enum.reduce(0, fn {x, y}, acc ->
+      Enum.reduce(zipped_xy, 0, fn {x, y}, acc ->
         acc + (x - x_mean) * (y - y_mean)
       end)
 
@@ -266,8 +269,7 @@ defmodule EveDmv.Intelligence.Metrics.MemberActivityMetrics do
     zipped_values = Enum.zip(y_values, y_pred)
 
     ss_res =
-      zipped_values
-      |> Enum.reduce(0, fn {y, y_p}, acc ->
+      Enum.reduce(zipped_values, 0, fn {y, y_p}, acc ->
         acc + :math.pow(y - y_p, 2)
       end)
 

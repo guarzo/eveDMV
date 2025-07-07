@@ -100,9 +100,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter do
   defp format_temporal_summary(_), do: %{}
 
   defp format_associates_summary(associates) when is_list(associates) do
-    associates
-    |> Enum.take(5)
-    |> Enum.map(fn associate ->
+    Enum.map(Enum.take(associates, 5), fn associate ->
       %{
         character_name: associate.character_name,
         corporation: associate.corporation_name,
@@ -115,9 +113,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter do
   defp format_associates_summary(_), do: []
 
   defp format_weaknesses_summary(weaknesses) when is_list(weaknesses) do
-    weaknesses
-    |> Enum.take(5)
-    |> Enum.map(fn weakness ->
+    Enum.map(Enum.take(weaknesses, 5), fn weakness ->
       %{
         weakness_type: weakness.type,
         severity: weakness.severity,
@@ -142,9 +138,11 @@ defmodule EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter do
     geographic_recommendations =
       generate_geographic_recommendations(character_stats.geographic_patterns)
 
-    (recommendations ++
-       ship_recommendations ++ tactical_recommendations ++ geographic_recommendations)
-    |> Enum.take(5)
+    Enum.take(
+      recommendations ++
+        ship_recommendations ++ tactical_recommendations ++ geographic_recommendations,
+      5
+    )
   end
 
   defp format_threat_assessment(analysis_results) do
@@ -172,8 +170,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter do
   end
 
   defp format_tactical_recommendations(analysis_results) do
-    Map.get(analysis_results, :tactical_recommendations, [])
-    |> Enum.map(fn rec ->
+    Enum.map(Map.get(analysis_results, :tactical_recommendations, []), fn rec ->
       %{
         category: rec.category,
         recommendation: rec.text,
@@ -268,7 +265,8 @@ defmodule EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter do
   end
 
   defp format_preferred_regions(geographic_patterns) do
-    Map.get(geographic_patterns, :region_activity, %{})
+    geographic_patterns
+    |> Map.get(:region_activity, %{})
     |> Enum.sort_by(fn {_region, activity} -> activity end, :desc)
     |> Enum.take(5)
     |> Enum.map(fn {region, activity} -> %{region: region, activity_count: activity} end)
@@ -304,8 +302,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter do
       |> Enum.take(3)
       |> Enum.map(fn {ship_name, _count} -> ship_name end)
 
-    top_ships
-    |> Enum.map(fn ship_name ->
+    Enum.map(top_ships, fn ship_name ->
       %{
         category: :ship_counter,
         text:
@@ -318,11 +315,10 @@ defmodule EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter do
   defp generate_ship_counter_recommendations(_), do: []
 
   defp generate_tactical_recommendations_from_stats(character_stats) do
-    recommendations = []
-
     solo_ratio = character_stats.solo_ratio || 0.5
+    initial_recommendations = []
 
-    recommendations =
+    solo_recommendations =
       if solo_ratio > 0.7 do
         [
           %{
@@ -330,34 +326,37 @@ defmodule EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter do
             text: "Target likely operates solo - consider gang tactics",
             priority: :high
           }
-          | recommendations
+          | initial_recommendations
         ]
       else
-        recommendations
+        initial_recommendations
       end
 
-    if character_stats.combat_effectiveness < 0.5 do
-      [
-        %{
-          category: :tactical,
-          text: "Target shows poor combat performance - aggressive approach viable",
-          priority: :medium
-        }
-        | recommendations
-      ]
-    else
-      recommendations
-    end
+    final_recommendations =
+      if character_stats.combat_effectiveness < 0.5 do
+        [
+          %{
+            category: :tactical,
+            text: "Target shows poor combat performance - aggressive approach viable",
+            priority: :medium
+          }
+          | solo_recommendations
+        ]
+      else
+        solo_recommendations
+      end
+
+    final_recommendations
   end
 
   defp generate_geographic_recommendations(geographic_patterns)
        when is_map(geographic_patterns) do
-    recommendations = []
+    initial_recommendations = []
 
     wh_percentage = Map.get(geographic_patterns, :wormhole_percentage, 0)
     nullsec_percentage = Map.get(geographic_patterns, :nullsec_percentage, 0)
 
-    recommendations =
+    wh_recommendations =
       if wh_percentage > 50 do
         [
           %{
@@ -365,10 +364,10 @@ defmodule EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter do
             text: "Target favors wormhole space - prepare for unknown system tactics",
             priority: :high
           }
-          | recommendations
+          | initial_recommendations
         ]
       else
-        recommendations
+        initial_recommendations
       end
 
     if nullsec_percentage > 70 do
@@ -378,10 +377,10 @@ defmodule EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter do
           text: "Target operates primarily in nullsec - expect advanced tactics",
           priority: :medium
         }
-        | recommendations
+        | wh_recommendations
       ]
     else
-      recommendations
+      wh_recommendations
     end
   end
 
@@ -393,9 +392,12 @@ defmodule EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter do
     relevant_usage =
       ship_types
       |> Enum.map(fn ship_type ->
-        Enum.sum(Map.to_list(ship_usage), fn {ship_name, count} ->
+        ship_usage
+        |> Map.to_list()
+        |> Enum.map(fn {ship_name, count} ->
           if String.contains?(ship_name, ship_type), do: count, else: 0
         end)
+        |> Enum.sum()
       end)
       |> Enum.sum()
 

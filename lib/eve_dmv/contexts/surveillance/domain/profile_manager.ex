@@ -7,8 +7,9 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ProfileManager do
   """
 
   use EveDmv.ErrorHandler
-  alias EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository
+
   alias EveDmv.Contexts.Surveillance.Domain.MatchingEngine
+  alias EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository
 
   require Logger
 

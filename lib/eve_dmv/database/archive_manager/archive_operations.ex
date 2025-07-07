@@ -6,9 +6,9 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveOperations do
   and transaction safety for moving data between tables.
   """
 
-  require Logger
   alias EveDmv.Repo
   alias SQL
+  require Logger
 
   @doc """
   Check if a table needs archiving and perform the archive operation.
@@ -52,7 +52,8 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveOperations do
     total_batches = div(total_count, batch_size) + 1
 
     batch_id =
-      System.unique_integer([:positive])
+      [:positive]
+      |> System.unique_integer()
       |> to_string()
 
     Logger.info(
@@ -62,8 +63,7 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveOperations do
     start_time = System.monotonic_time(:millisecond)
 
     result =
-      1..total_batches
-      |> Enum.reduce_while({:ok, 0}, fn batch_num, {:ok, acc_count} ->
+      Enum.reduce_while(1..total_batches, {:ok, 0}, fn batch_num, {:ok, acc_count} ->
         case archive_batch(policy, cutoff_date, batch_size, batch_id, batch_num) do
           {:ok, batch_count} ->
             if rem(batch_num, 10) == 0 do
@@ -112,40 +112,25 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveOperations do
       FOR UPDATE
       """
 
-      case SQL.query(Repo, select_query, [cutoff_date, batch_size]) do
-        {:ok, %{rows: rows, columns: columns}} when rows != [] ->
-          # Insert into archive table
-          case insert_into_archive(policy, rows, columns, batch_id) do
-            {:ok, inserted_count} ->
-              # Delete from source table
-              ids_to_delete = extract_primary_keys(rows, columns, policy)
-
-              case delete_archived_records(policy, ids_to_delete) do
-                {:ok, deleted_count} ->
-                  if inserted_count == deleted_count do
-                    deleted_count
-                  else
-                    Repo.rollback(
-                      "Mismatch: inserted #{inserted_count}, deleted #{deleted_count}"
-                    )
-                  end
-
-                {:error, error} ->
-                  Repo.rollback("Delete failed: #{inspect(error)}")
-              end
-
-            {:error, error} ->
-              Repo.rollback("Insert failed: #{inspect(error)}")
-          end
-
-        {:ok, %{rows: []}} ->
-          # No more records to archive
-          0
-
-        {:error, error} ->
-          Repo.rollback("Select failed: #{inspect(error)}")
+      with {:ok, %{rows: rows, columns: columns}} when rows != [] <-
+             SQL.query(Repo, select_query, [cutoff_date, batch_size]),
+           {:ok, inserted_count} <- insert_into_archive(policy, rows, columns, batch_id),
+           ids_to_delete = extract_primary_keys(rows, columns, policy),
+           {:ok, deleted_count} <- delete_archived_records(policy, ids_to_delete) do
+        validate_archive_counts(inserted_count, deleted_count)
+      else
+        {:ok, %{rows: []}} -> 0
+        {:error, error} -> Repo.rollback("Archive operation failed: #{inspect(error)}")
       end
     end)
+  end
+
+  defp validate_archive_counts(inserted_count, deleted_count) do
+    if inserted_count == deleted_count do
+      deleted_count
+    else
+      Repo.rollback("Mismatch: inserted #{inserted_count}, deleted #{deleted_count}")
+    end
   end
 
   @doc """

@@ -5,7 +5,8 @@ defmodule EveDmv.IntelligenceEngineBasicTest do
 
   use ExUnit.Case, async: true
 
-  alias EveDmv.IntelligenceEngine.{Config, Pipeline}
+  alias EveDmv.IntelligenceEngine.Config
+  alias EveDmv.IntelligenceEngine.Pipeline
   alias EveDmv.IntelligenceEngine.Plugins.Character.CombatStats
 
   describe "Intelligence Engine Configuration" do
@@ -204,21 +205,21 @@ defmodule EveDmv.IntelligenceEngineBasicTest do
 
   describe "Cache key generation" do
     test "generates consistent cache keys" do
-      key1 = Pipeline.generate_cache_key(:character, 12345, :basic, [])
-      key2 = Pipeline.generate_cache_key(:character, 12345, :basic, [])
+      key1 = Pipeline.generate_cache_key(:character, 12_345, :basic, [])
+      key2 = Pipeline.generate_cache_key(:character, 12_345, :basic, [])
 
       assert key1 == key2
       assert is_binary(key1)
       assert String.contains?(key1, "character")
-      assert String.contains?(key1, "12345")
+      assert String.contains?(key1, "12_345")
       assert String.contains?(key1, "basic")
     end
 
     test "generates different keys for different parameters" do
-      key1 = Pipeline.generate_cache_key(:character, 12345, :basic, [])
-      key2 = Pipeline.generate_cache_key(:character, 12345, :standard, [])
-      key3 = Pipeline.generate_cache_key(:character, 67890, :basic, [])
-      key4 = Pipeline.generate_cache_key(:corporation, 12345, :basic, [])
+      key1 = Pipeline.generate_cache_key(:character, 12_345, :basic, [])
+      key2 = Pipeline.generate_cache_key(:character, 12_345, :standard, [])
+      key3 = Pipeline.generate_cache_key(:character, 67_890, :basic, [])
+      key4 = Pipeline.generate_cache_key(:corporation, 12_345, :basic, [])
 
       # All keys should be different
       keys = [key1, key2, key3, key4]
@@ -226,9 +227,9 @@ defmodule EveDmv.IntelligenceEngineBasicTest do
     end
 
     test "handles options in cache key generation" do
-      key1 = Pipeline.generate_cache_key(:character, 12345, :basic, [])
-      key2 = Pipeline.generate_cache_key(:character, 12345, :basic, parallel: true)
-      key3 = Pipeline.generate_cache_key(:character, 12345, :basic, entity_type: :pilot)
+      key1 = Pipeline.generate_cache_key(:character, 12_345, :basic, [])
+      key2 = Pipeline.generate_cache_key(:character, 12_345, :basic, parallel: true)
+      key3 = Pipeline.generate_cache_key(:character, 12_345, :basic, entity_type: :pilot)
 
       # Keys with different options should be different
       assert key1 != key2
@@ -290,8 +291,8 @@ defmodule EveDmv.IntelligenceEngineBasicTest do
       # Test the helper functions that plugins use
       base_data = %{
         character_stats: %{
-          12345 => %{
-            character_id: 12345,
+          12_345 => %{
+            character_id: 12_345,
             character_name: "Test Character",
             total_kills: 50,
             total_losses: 10
@@ -300,16 +301,16 @@ defmodule EveDmv.IntelligenceEngineBasicTest do
       }
 
       # This simulates what plugins do internally
-      result = get_in(base_data, [:character_stats, 12345])
+      result = get_in(base_data, [:character_stats, 12_345])
       assert is_map(result)
-      assert result.character_id == 12345
+      assert result.character_id == 12_345
       assert result.character_name == "Test Character"
     end
 
     test "handles missing character data gracefully" do
       base_data = %{character_stats: %{}}
 
-      result = get_in(base_data, [:character_stats, 99999])
+      result = get_in(base_data, [:character_stats, 99_999])
       assert result == nil
     end
   end

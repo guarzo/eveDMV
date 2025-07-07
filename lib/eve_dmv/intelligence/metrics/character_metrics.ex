@@ -6,13 +6,13 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
   and metric derivations for character intelligence analysis.
   """
 
-  require Logger
-
-  alias EveDmv.Utils.MathUtils
   alias EveDmv.Intelligence.Metrics.CombatMetricsCalculator
+  alias EveDmv.Intelligence.Metrics.GeographicAnalysisCalculator
   alias EveDmv.Intelligence.Metrics.ShipAnalysisCalculator
   alias EveDmv.Intelligence.Metrics.TemporalAnalysisCalculator
-  alias EveDmv.Intelligence.Metrics.GeographicAnalysisCalculator
+  alias EveDmv.Utils.MathUtils
+
+  require Logger
 
   @doc """
   Calculate all character metrics from killmail data.
@@ -142,8 +142,7 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
       |> Enum.flat_map(fn killmail ->
         participants = get_participants(killmail)
 
-        participants
-        |> Enum.map(fn participant ->
+        Enum.map(participants, fn participant ->
           %{
             character_id: participant[:character_id] || participant["character_id"],
             character_name: participant[:character_name] || participant["character_name"],
@@ -189,8 +188,7 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
     |> Enum.flat_map(fn killmail ->
       participants = get_participants(killmail)
 
-      participants
-      |> Enum.map(fn participant ->
+      Enum.map(participants, fn participant ->
         participant[:character_name] || participant["character_name"]
       end)
     end)
@@ -214,8 +212,7 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
   end
 
   defp count_solo_kills(killmail_data) do
-    killmail_data
-    |> Enum.count(fn killmail ->
+    Enum.count(killmail_data, fn killmail ->
       participants = get_participants(killmail)
       attackers = Enum.filter(participants, &(!get_is_victim(&1)))
       length(attackers) == 1
@@ -226,14 +223,14 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
     if Enum.empty?(killmail_data) do
       1.0
     else
-      total_gang_size =
-        killmail_data
-        |> Enum.map(fn killmail ->
+      gang_sizes =
+        Enum.map(killmail_data, fn killmail ->
           participants = get_participants(killmail)
           attackers = Enum.filter(participants, &(!get_is_victim(&1)))
           length(attackers)
         end)
-        |> Enum.sum()
+
+      total_gang_size = Enum.sum(gang_sizes)
 
       total_gang_size / length(killmail_data)
     end
@@ -285,7 +282,7 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
       |> Map.values()
       |> Enum.map(& &1.corporation_id)
       |> Enum.uniq()
-      |> then(&length/1)
+      |> length()
 
     min(corporations / 10.0, 1.0)
   end
@@ -297,7 +294,7 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
       |> Enum.map(& &1.alliance_id)
       |> Enum.filter(&(&1 != nil))
       |> Enum.uniq()
-      |> then(&length/1)
+      |> length()
 
     min(alliances / 5.0, 1.0)
   end
@@ -489,8 +486,7 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
   defp identify_vulnerable_ship_types(killmail_data, _ship_usage) do
     # Look at losses to identify what ship types this character struggles against
     loss_patterns =
-      killmail_data
-      |> Enum.flat_map(fn killmail ->
+      Enum.flat_map(killmail_data, fn killmail ->
         participants = get_participants(killmail)
         # Find losses for this character
         participants
@@ -519,39 +515,38 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
   end
 
   defp identify_general_vulnerabilities(combat_metrics, ship_usage) do
-    patterns = []
+    base_patterns = []
 
     # Low solo kill ratio suggests vulnerability when alone
-    patterns =
+    solo_patterns =
       if combat_metrics.solo_kill_ratio < 0.3 do
-        ["vulnerable_when_solo" | patterns]
+        ["vulnerable_when_solo" | base_patterns]
       else
-        patterns
+        base_patterns
       end
 
     # Low damage efficiency suggests vulnerability in sustained fights
-    patterns =
+    damage_patterns =
       if combat_metrics.damage_efficiency < 1.0 do
-        ["poor_damage_efficiency" | patterns]
+        ["poor_damage_efficiency" | solo_patterns]
       else
-        patterns
+        solo_patterns
       end
 
     # Limited ship diversity suggests predictability
-    patterns =
+    final_patterns =
       if ship_usage.ship_diversity < 0.3 do
-        ["predictable_ship_choice" | patterns]
+        ["predictable_ship_choice" | damage_patterns]
       else
-        patterns
+        damage_patterns
       end
 
-    patterns
+    final_patterns
   end
 
   # Character-specific counting functions for basic_stats
   defp count_character_kills(character_id, killmail_data) do
-    killmail_data
-    |> Enum.count(fn killmail ->
+    Enum.count(killmail_data, fn killmail ->
       participants = get_participants(killmail)
 
       Enum.any?(participants, fn p ->
@@ -563,8 +558,7 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
   end
 
   defp count_character_losses(character_id, killmail_data) do
-    killmail_data
-    |> Enum.count(fn killmail ->
+    Enum.count(killmail_data, fn killmail ->
       participants = get_participants(killmail)
 
       Enum.any?(participants, fn p ->
@@ -576,8 +570,7 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
   end
 
   defp count_character_solo_kills(character_id, killmail_data) do
-    killmail_data
-    |> Enum.count(fn killmail ->
+    Enum.count(killmail_data, fn killmail ->
       participants = get_participants(killmail)
       # Check if this character is involved as non-victim
       char_involved =

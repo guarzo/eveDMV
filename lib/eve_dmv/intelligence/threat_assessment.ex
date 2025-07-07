@@ -7,10 +7,11 @@ defmodule EveDmv.Intelligence.ThreatAssessment do
   and operational security assessment with mitigation strategy recommendations.
   """
 
-  require Logger
-  require Ash.Query
   alias EveDmv.Api
   alias EveDmv.Intelligence.CharacterStats
+
+  require Logger
+  require Ash.Query
 
   @doc """
   Assess combat effectiveness of a character.

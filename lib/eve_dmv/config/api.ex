@@ -9,7 +9,9 @@ defmodule EveDmv.Config.Api do
   configuration access and environment variable handling.
   """
 
-  alias EveDmv.Config.{Http, RateLimit, UnifiedConfig}
+  alias EveDmv.Config.Http
+  alias EveDmv.Config.RateLimit
+  alias EveDmv.Config.UnifiedConfig
 
   # API endpoints
   @janice_item_endpoint "/v2/prices"

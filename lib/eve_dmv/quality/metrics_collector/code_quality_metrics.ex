@@ -33,36 +33,34 @@ defmodule EveDmv.Quality.MetricsCollector.CodeQualityMetrics do
   Generates code quality recommendations.
   """
   def generate_code_quality_recommendations(code_metrics) do
-    recommendations = []
-
     credo_issues = code_metrics.credo_analysis.total_issues
 
-    recommendations =
+    credo_recommendations =
       if credo_issues > 5 do
-        ["Address #{credo_issues} code quality issues identified by Credo" | recommendations]
+        ["Address #{credo_issues} code quality issues identified by Credo"]
       else
-        recommendations
+        []
       end
 
     dialyzer_warnings = code_metrics.dialyzer_analysis.warning_count
 
-    recommendations =
+    dialyzer_recommendations =
       if dialyzer_warnings > 0 do
-        ["Fix #{dialyzer_warnings} Dialyzer warnings" | recommendations]
+        ["Fix #{dialyzer_warnings} Dialyzer warnings" | credo_recommendations]
       else
-        recommendations
+        credo_recommendations
       end
 
     large_files = code_metrics.code_complexity.large_files
 
-    recommendations =
+    final_recommendations =
       if large_files > 5 do
-        ["Refactor #{large_files} large files (>300 lines)" | recommendations]
+        ["Refactor #{large_files} large files (>300 lines)" | dialyzer_recommendations]
       else
-        recommendations
+        dialyzer_recommendations
       end
 
-    recommendations
+    final_recommendations
   end
 
   # Credo analysis

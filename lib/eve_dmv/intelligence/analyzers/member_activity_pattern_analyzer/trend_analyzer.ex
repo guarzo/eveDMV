@@ -6,8 +6,8 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TrendAnaly
   and behavioral changes in member activity over time.
   """
 
-  require Logger
   alias EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityHelpers
+  require Logger
 
   @doc """
   Analyze activity trends over time for member activities.
@@ -225,8 +225,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TrendAnaly
 
   defp extract_activity_series(member_activities, _days) do
     # Extract activity history from member data
-    member_activities
-    |> Enum.flat_map(fn member ->
+    Enum.flat_map(member_activities, fn member ->
       activity_history = Map.get(member, :activity_history, [])
 
       Enum.map(activity_history, fn day_data ->

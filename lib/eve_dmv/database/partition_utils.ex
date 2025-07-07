@@ -5,8 +5,8 @@ defmodule EveDmv.Database.PartitionUtils do
   Provides helpers for partition-aware queries and partition metadata.
   """
 
-  alias EveDmv.Repo
   alias Ecto.Adapters.SQL
+  alias EveDmv.Repo
 
   @doc """
   Get the partition name for a specific date and table.
@@ -205,8 +205,7 @@ defmodule EveDmv.Database.PartitionUtils do
       "Query will scan #{length(partitions)} partition(s): #{Enum.join(partitions, ", ")}"
     else
       first_two_partitions =
-        Enum.take(partitions, 2)
-        |> Enum.join(", ")
+        Enum.join(Enum.take(partitions, 2), ", ")
 
       "Query will scan #{length(partitions)} partitions (#{first_two_partitions}, ...)"
     end
@@ -241,42 +240,42 @@ defmodule EveDmv.Database.PartitionUtils do
   end
 
   defp generate_recommendations(partition_stats, oversized_partitions, empty_partitions) do
-    recommendations = []
+    initial_recommendations = []
 
-    recommendations =
+    empty_partition_recommendations =
       if Enum.empty?(empty_partitions) do
-        recommendations
+        initial_recommendations
       else
         [
           "Consider dropping #{length(empty_partitions)} empty partitions to save space"
-          | recommendations
+          | initial_recommendations
         ]
       end
 
-    recommendations =
+    oversized_recommendations =
       if length(oversized_partitions) > 0 do
         [
           "Monitor #{length(oversized_partitions)} oversized partitions for performance impact"
-          | recommendations
+          | empty_partition_recommendations
         ]
       else
-        recommendations
+        empty_partition_recommendations
       end
 
-    recommendations =
+    final_recommendations =
       if length(partition_stats) > 36 do
         [
           "Consider implementing automatic cleanup for partitions older than 3 years"
-          | recommendations
+          | oversized_recommendations
         ]
       else
-        recommendations
+        oversized_recommendations
       end
 
-    if Enum.empty?(recommendations) do
+    if Enum.empty?(final_recommendations) do
       ["Partition health is good - no immediate action required"]
     else
-      recommendations
+      final_recommendations
     end
   end
 end

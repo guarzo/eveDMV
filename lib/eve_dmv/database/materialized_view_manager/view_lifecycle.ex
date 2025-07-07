@@ -6,17 +6,17 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewLifecycle do
   including index creation and view status management.
   """
 
-  require Logger
-  alias EveDmv.Repo
-  alias EveDmv.Database.MaterializedViewManager.ViewDefinitions
   alias Ecto.Adapters.SQL
+  alias EveDmv.Database.MaterializedViewManager.ViewDefinitions
+  alias EveDmv.Repo
+  require Logger
 
   @doc """
   Ensures all defined materialized views exist in the database.
   """
   def ensure_all_views_exist do
-    Enum.map(ViewDefinitions.all_views(), &ensure_view_exists/1)
-    |> Enum.into(%{})
+    view_results = Enum.map(ViewDefinitions.all_views(), &ensure_view_exists/1)
+    Enum.into(view_results, %{})
   end
 
   @doc """
@@ -171,16 +171,16 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewLifecycle do
   Validates that all required views exist and are populated.
   """
   def validate_views do
-    expected_views = ViewDefinitions.all_views() |> Enum.map(& &1.name)
+    all_views = ViewDefinitions.all_views()
+    expected_views = Enum.map(all_views, & &1.name)
 
     case get_all_view_status() do
       {:ok, existing_views} ->
         existing_names = Enum.map(existing_views, & &1.name)
         missing_views = expected_views -- existing_names
 
-        unpopulated_views =
-          Enum.filter(existing_views, &(not &1.is_populated))
-          |> Enum.map(& &1.name)
+        filtered_views = Enum.filter(existing_views, &(not &1.is_populated))
+        unpopulated_views = Enum.map(filtered_views, & &1.name)
 
         validation_result = %{
           valid: missing_views == [] and unpopulated_views == [],

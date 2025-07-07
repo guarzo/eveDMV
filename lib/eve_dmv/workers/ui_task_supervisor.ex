@@ -18,6 +18,8 @@ defmodule EveDmv.Workers.UITaskSupervisor do
   - **Restart Strategy**: temporary (failed tasks don't restart)
   """
 
+  @behaviour DynamicSupervisor
+
   use DynamicSupervisor
   require Logger
 
@@ -34,8 +36,8 @@ defmodule EveDmv.Workers.UITaskSupervisor do
     DynamicSupervisor.start_link(__MODULE__, opts, name: name)
   end
 
-  @impl true
-  def init(opts) do
+  @impl DynamicSupervisor
+  def init(_opts) do
     Logger.info("Started UI Task Supervisor")
     DynamicSupervisor.init(strategy: :one_for_one, max_children: @max_concurrent_global)
   end
@@ -217,16 +219,14 @@ defmodule EveDmv.Workers.UITaskSupervisor do
   end
 
   defp get_user_task_counts do
-    try do
-      :ets.foldl(
-        fn {_pid, user_id, _desc, _time}, acc ->
-          Map.update(acc, user_id, 1, &(&1 + 1))
-        end,
-        %{},
-        :ui_task_tracking
-      )
-    rescue
-      _ -> %{}
-    end
+    :ets.foldl(
+      fn {_pid, user_id, _desc, _time}, acc ->
+        Map.update(acc, user_id, 1, &(&1 + 1))
+      end,
+      %{},
+      :ui_task_tracking
+    )
+  rescue
+    _ -> %{}
   end
 end

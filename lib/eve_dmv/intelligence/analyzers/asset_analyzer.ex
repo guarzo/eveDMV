@@ -9,9 +9,11 @@ defmodule EveDmv.Intelligence.Analyzers.AssetAnalyzer do
   - Hangar management recommendations
   """
 
-  require Logger
-  alias EveDmv.Eve.{EsiCache, EsiClient}
+  alias EveDmv.Eve.EsiCache
+  alias EveDmv.Eve.EsiClient
   alias EveDmv.Intelligence.WhSpace.FleetComposition
+
+  require Logger
 
   @doc """
   Analyze asset availability for a fleet composition.
@@ -182,28 +184,29 @@ defmodule EveDmv.Intelligence.Analyzers.AssetAnalyzer do
     available_ships = group_ships_by_type(assets)
 
     # Map doctrine requirements to available ships
-    doctrine_template
-    |> Enum.map(fn {role, role_config} ->
-      preferred_ships = role_config["preferred_ships"] || []
-      required_count = role_config["required"] || 0
+    Enum.into(
+      Enum.map(doctrine_template, fn {role, role_config} ->
+        preferred_ships = role_config["preferred_ships"] || []
+        required_count = role_config["required"] || 0
 
-      # Count available ships for this role
-      available_count =
-        preferred_ships
-        |> Enum.map(fn ship_name ->
-          Map.get(available_ships, ship_name, 0)
-        end)
-        |> Enum.sum()
+        # Count available ships for this role
+        available_count =
+          Enum.sum(
+            Enum.map(preferred_ships, fn ship_name ->
+              Map.get(available_ships, ship_name, 0)
+            end)
+          )
 
-      {role,
-       %{
-         "required" => required_count,
-         "available" => available_count,
-         "shortage" => max(0, required_count - available_count),
-         "preferred_ships" => preferred_ships
-       }}
-    end)
-    |> Enum.into(%{})
+        {role,
+         %{
+           "required" => required_count,
+           "available" => available_count,
+           "shortage" => max(0, required_count - available_count),
+           "preferred_ships" => preferred_ships
+         }}
+      end),
+      %{}
+    )
   end
 
   defp group_ships_by_type(assets) do
@@ -243,16 +246,14 @@ defmodule EveDmv.Intelligence.Analyzers.AssetAnalyzer do
   defp calculate_readiness_score(ship_availability, doctrine_template) do
     # Calculate percentage of doctrine requirements met
     total_required =
-      doctrine_template
-      |> Enum.map(fn {_role, config} -> config["required"] || 0 end)
-      |> Enum.sum()
+      Enum.sum(Enum.map(doctrine_template, fn {_role, config} -> config["required"] || 0 end))
 
     total_available =
-      ship_availability
-      |> Enum.map(fn {_role, availability} ->
-        min(availability["available"], availability["required"])
-      end)
-      |> Enum.sum()
+      Enum.sum(
+        Enum.map(ship_availability, fn {_role, availability} ->
+          min(availability["available"], availability["required"])
+        end)
+      )
 
     if total_required > 0 do
       round(total_available / total_required * 100)
@@ -266,30 +267,30 @@ defmodule EveDmv.Intelligence.Analyzers.AssetAnalyzer do
 
     # Add recommendations for critical shortages
     critical_shortages =
-      ship_availability
-      |> Enum.filter(fn {_role, avail} ->
-        avail["shortage"] > 0 and avail["required"] > 0
-      end)
-      |> Enum.map(fn {role, avail} ->
-        "Critical shortage: Need #{avail["shortage"]} more ships for #{role} role"
-      end)
+      Enum.map(
+        Enum.filter(ship_availability, fn {_role, avail} ->
+          avail["shortage"] > 0 and avail["required"] > 0
+        end),
+        fn {role, avail} ->
+          "Critical shortage: Need #{avail["shortage"]} more ships for #{role} role"
+        end
+      )
 
     # Add recommendations for surplus
     surplus_roles =
-      ship_availability
-      |> Enum.filter(fn {_role, avail} ->
-        avail["available"] > avail["required"] * 1.5
-      end)
-      |> Enum.map(fn {role, avail} ->
-        "Surplus detected: #{avail["available"] - avail["required"]} extra ships for #{role} role"
-      end)
+      Enum.map(
+        Enum.filter(ship_availability, fn {_role, avail} ->
+          avail["available"] > avail["required"] * 1.5
+        end),
+        fn {role, avail} ->
+          "Surplus detected: #{avail["available"] - avail["required"]} extra ships for #{role} role"
+        end
+      )
 
     recommendations ++ critical_shortages ++ surplus_roles
   end
 
   defp count_total_ships(ship_availability) do
-    ship_availability
-    |> Enum.map(fn {_role, avail} -> avail["available"] end)
-    |> Enum.sum()
+    Enum.sum(Enum.map(ship_availability, fn {_role, avail} -> avail["available"] end))
   end
 end

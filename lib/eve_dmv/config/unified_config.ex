@@ -38,9 +38,6 @@ defmodule EveDmv.Config.UnifiedConfig do
 
   require Logger
 
-  @type config_key :: atom() | [atom()]
-  @type config_value :: term()
-
   # Configuration schema with defaults and validation
   @config_schema %{
     database: %{
@@ -155,6 +152,9 @@ defmodule EveDmv.Config.UnifiedConfig do
     "EVE_DMV_HTTP_TIMEOUT_MS" => [:api, :default_timeout_ms]
   }
 
+  @type config_key :: atom() | [atom()]
+  @type config_value :: term()
+
   @doc """
   Get configuration value with optional default.
 
@@ -249,18 +249,16 @@ defmodule EveDmv.Config.UnifiedConfig do
   # Private functions
 
   defp get_from_app_config(key_path) do
-    try do
-      case key_path do
-        [category | rest] ->
-          base_config = Application.get_env(:eve_dmv, category, %{})
-          get_nested_value(base_config, rest)
+    case key_path do
+      [category | rest] ->
+        base_config = Application.get_env(:eve_dmv, category, %{})
+        get_nested_value(base_config, rest)
 
-        [] ->
-          nil
-      end
-    rescue
-      _ -> nil
+      [] ->
+        nil
     end
+  rescue
+    _ -> nil
   end
 
   defp get_from_env(key_path) do
@@ -326,16 +324,14 @@ defmodule EveDmv.Config.UnifiedConfig do
   end
 
   defp build_category_config(category, schema) do
-    schema
-    |> Enum.into(%{}, fn {key, _spec} ->
+    Enum.into(schema, %{}, fn {key, _spec} ->
       value = get([category, key])
       {key, value}
     end)
   end
 
   defp validate_category(category, schema) do
-    schema
-    |> Enum.flat_map(fn {key, {_default, type}} ->
+    Enum.flat_map(schema, fn {key, {_default, type}} ->
       value = get([category, key])
       validate_value([category, key], value, type)
     end)

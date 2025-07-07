@@ -3,7 +3,10 @@ defmodule EveDmv.Factories do
   Test data factories for EVE DMV testing
   """
 
-  alias EveDmv.{Api, Killmails.KillmailEnriched, Killmails.KillmailRaw, Users.User}
+  alias EveDmv.Api
+  alias EveDmv.Killmails.KillmailEnriched
+  alias EveDmv.Killmails.KillmailRaw
+  alias EveDmv.Users.User
 
   def character_factory do
     %{
@@ -15,14 +18,14 @@ defmodule EveDmv.Factories do
   end
 
   def killmail_raw_factory do
-    killmail_time = DateTime.utc_now() |> DateTime.add(-Enum.random(1..3600), :second)
+    killmail_time = DateTime.add(DateTime.utc_now(), -Enum.random(1..3600), :second)
     killmail_data = build_realistic_killmail_data()
 
     %{
       killmail_id: System.unique_integer([:positive]),
       killmail_time: killmail_time,
       killmail_hash: "test_hash_#{System.unique_integer([:positive])}",
-      solar_system_id: Enum.random(30_000_000..31_000_000),
+      solar_system_id: Enum.random([30_000_142, 30_002_187, 30_003_715]),
       victim_character_id: get_in(killmail_data, ["victim", "character_id"]),
       victim_corporation_id: get_in(killmail_data, ["victim", "corporation_id"]),
       victim_alliance_id: get_in(killmail_data, ["victim", "alliance_id"]),
@@ -43,12 +46,12 @@ defmodule EveDmv.Factories do
       eve_alliance_id: Enum.random(99_000_000..100_000_000),
       access_token: "test_access_token_#{System.unique_integer([:positive])}",
       refresh_token: "test_refresh_token_#{System.unique_integer([:positive])}",
-      token_expires_at: DateTime.utc_now() |> DateTime.add(3600, :second)
+      token_expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
     }
   end
 
   def killmail_enriched_factory do
-    killmail_time = DateTime.utc_now() |> DateTime.add(-Enum.random(1..3600), :second)
+    killmail_time = DateTime.add(DateTime.utc_now(), -Enum.random(1..3600), :second)
     victim_character_id = Enum.random(90_000_000..100_000_000)
 
     %{
@@ -60,8 +63,8 @@ defmodule EveDmv.Factories do
       victim_corporation_name: "Test Corp #{System.unique_integer([:positive])}",
       victim_alliance_id: Enum.random(99_000_000..100_000_000),
       victim_alliance_name: "Test Alliance #{System.unique_integer([:positive])}",
-      solar_system_id: Enum.random(30_000_000..31_000_000),
-      solar_system_name: "Test System #{System.unique_integer([:positive])}",
+      solar_system_id: Enum.random([30_000_142, 30_002_187, 30_003_715]),
+      solar_system_name: Enum.random(["Jita", "Amarr", "Dodixie"]),
       victim_ship_type_id: Enum.random([587, 588, 589]),
       victim_ship_name: "Rifter",
       total_value: Decimal.new("10000000.50"),
@@ -99,7 +102,7 @@ defmodule EveDmv.Factories do
   defp build_factory(:user), do: user_factory()
 
   def participant_factory do
-    killmail_time = DateTime.utc_now() |> DateTime.add(-Enum.random(1..3600), :second)
+    killmail_time = DateTime.add(DateTime.utc_now(), -Enum.random(1..3600), :second)
 
     %{
       killmail_id: System.unique_integer([:positive]),
@@ -119,7 +122,7 @@ defmodule EveDmv.Factories do
       is_victim: false,
       final_blow: false,
       is_npc: false,
-      solar_system_id: Enum.random(30_000_000..31_000_000)
+      solar_system_id: Enum.random([30_000_142, 30_002_187, 30_003_715])
     }
   end
 
@@ -129,8 +132,8 @@ defmodule EveDmv.Factories do
 
     %{
       "killmail_id" => System.unique_integer([:positive]),
-      "killmail_time" => DateTime.utc_now() |> DateTime.to_iso8601(),
-      "solar_system_id" => Enum.random(30_000_000..31_000_000),
+      "killmail_time" => DateTime.to_iso8601(DateTime.utc_now()),
+      "solar_system_id" => Enum.random([30_000_142, 30_002_187, 30_003_715]),
       "victim" => %{
         "character_id" => victim_character_id,
         "corporation_id" => Enum.random(1_000_000..2_000_000),
@@ -286,8 +289,8 @@ defmodule EveDmv.Factories do
     build(:killmail_raw, %{
       killmail_data: %{
         "killmail_id" => System.unique_integer([:positive]),
-        "killmail_time" => DateTime.utc_now() |> DateTime.to_iso8601(),
-        "solar_system_id" => Enum.random(30_000_000..31_000_000),
+        "killmail_time" => DateTime.to_iso8601(DateTime.utc_now()),
+        "solar_system_id" => Enum.random([30_000_142, 30_002_187, 30_003_715]),
         "attackers" => [
           %{
             "character_id" => character_id,
@@ -329,7 +332,7 @@ defmodule EveDmv.Factories do
       solar_system_id: wh_system_id,
       killmail_data: %{
         "killmail_id" => System.unique_integer([:positive]),
-        "killmail_time" => DateTime.utc_now() |> DateTime.to_iso8601(),
+        "killmail_time" => DateTime.to_iso8601(DateTime.utc_now()),
         "solar_system_id" => wh_system_id,
         "victim" => %{
           "character_id" => character_id,
@@ -363,7 +366,7 @@ defmodule EveDmv.Factories do
       killmail_data = %{
         "killmail_id" => System.unique_integer([:positive]),
         "killmail_time" => DateTime.to_iso8601(killmail_time),
-        "solar_system_id" => Enum.random(30_000_000..31_000_000),
+        "solar_system_id" => Enum.random([30_000_142, 30_002_187, 30_003_715]),
         "victim" => %{"character_id" => character_id},
         "attackers" => [
           %{
@@ -502,7 +505,7 @@ defmodule EveDmv.Factories do
           DateTime.utc_now()
           |> DateTime.add(-Enum.random(1..86_400), :second)
           |> DateTime.to_iso8601(),
-        "solar_system_id" => Enum.random(30_000_000..31_000_000),
+        "solar_system_id" => Enum.random([30_000_142, 30_002_187, 30_003_715]),
         "attackers" => [
           %{
             "character_id" => character_id,

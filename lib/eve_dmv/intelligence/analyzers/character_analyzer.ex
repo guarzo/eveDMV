@@ -11,8 +11,10 @@ defmodule EveDmv.Intelligence.Analyzers.CharacterAnalyzer do
   - Maintains full backward compatibility via LegacyAdapter
   """
 
-  require Logger
+  alias EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter
   alias EveDmv.Intelligence.LegacyAdapter
+
+  require Logger
 
   @doc """
   Legacy cache invalidation - now delegates to Intelligence Engine.
@@ -115,15 +117,13 @@ defmodule EveDmv.Intelligence.Analyzers.CharacterAnalyzer do
   Format character summary - delegates to formatters.
   """
   def format_character_summary(analysis_results) do
-    alias EveDmv.Intelligence.Formatters.CharacterFormatters
-    CharacterFormatters.format_character_summary(analysis_results)
+    CharacterDisplayFormatter.format_character_summary(analysis_results)
   end
 
   @doc """
   Format analysis summary - delegates to formatters.
   """
   def format_analysis_summary(character_stats) do
-    alias EveDmv.Intelligence.Formatters.CharacterFormatters
-    CharacterFormatters.format_analysis_summary(character_stats)
+    CharacterDisplayFormatter.format_analysis_summary(character_stats)
   end
 end

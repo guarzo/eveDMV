@@ -6,8 +6,8 @@ defmodule EveDmv.Eve.StaticDataLoader.SolarSystemProcessor do
   including security classification and spatial coordinates.
   """
 
-  require Logger
   alias EveDmv.Eve.StaticDataLoader.CsvParser
+  require Logger
 
   @doc """
   Processes solar system data from CSV files.
@@ -128,8 +128,7 @@ defmodule EveDmv.Eve.StaticDataLoader.SolarSystemProcessor do
   end
 
   defp build_system_data(systems, regions_map, constellations_map) do
-    systems
-    |> Enum.map(fn system ->
+    Enum.map(systems, fn system ->
       constellation = Map.get(constellations_map, system.constellation_id, %{})
       region_id = constellation[:region_id]
       region_name = Map.get(regions_map, region_id, %{})[:name]

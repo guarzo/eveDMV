@@ -7,26 +7,20 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer do
   mass calculations, and doctrine effectiveness evaluation for wormhole operations.
   """
 
-  require Logger
-  require Ash.Query
-
-  alias EveDmv.Intelligence.Analyzers.{
-    FleetAssetManager,
-    FleetPilotAnalyzer,
-    FleetSkillAnalyzer,
-    MassCalculator
-  }
-
+  alias EveDmv.Intelligence.Analyzers.FleetAssetManager
+  alias EveDmv.Intelligence.Analyzers.FleetPilotAnalyzer
+  alias EveDmv.Intelligence.Analyzers.FleetSkillAnalyzer
+  alias EveDmv.Intelligence.Analyzers.MassCalculator
+  alias EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.DoctrineManager
+  alias EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetAnalyzer
+  alias EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetOptimizer
+  alias EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.WormholeCompatibility
+  alias EveDmv.Intelligence.Core.TimeoutHelper
   alias EveDmv.Intelligence.Fleet.FleetReadinessCalculator
   alias EveDmv.Intelligence.Wormhole.FleetComposition
-  alias EveDmv.Intelligence.Core.TimeoutHelper
 
-  alias EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.{
-    DoctrineManager,
-    FleetAnalyzer,
-    FleetOptimizer,
-    WormholeCompatibility
-  }
+  require Ash.Query
+  require Logger
 
   @doc """
   Analyze and optimize a fleet composition for wormhole operations.

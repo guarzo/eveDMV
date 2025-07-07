@@ -29,8 +29,8 @@
 
           <.empty_state 
             :if={Enum.empty?(@monitored_chains)}
-            message="No chains being monitored"
-            description="Add a Wanderer map ID to start monitoring"
+            title="No chains being monitored"
+            message="Add a Wanderer map ID to start monitoring"
           />
           <%= if !Enum.empty?(@monitored_chains) do %>
             <div class="space-y-2">

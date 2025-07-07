@@ -16,8 +16,11 @@ defmodule EveDmv.Contexts.CombatIntelligence do
   use EveDmv.Contexts.BoundedContext, name: :combat_intelligence
   use Supervisor
 
-  alias EveDmv.Contexts.CombatIntelligence.{Api, Domain, Infrastructure}
-  alias EveDmv.DomainEvents.{KillmailEnriched, StaticDataUpdated}
+  alias EveDmv.Contexts.CombatIntelligence.Api
+  alias EveDmv.Contexts.CombatIntelligence.Domain
+  alias EveDmv.Contexts.CombatIntelligence.Infrastructure
+  alias EveDmv.DomainEvents.KillmailEnriched
+  alias EveDmv.DomainEvents.StaticDataUpdated
 
   # Supervisor implementation
 
@@ -25,7 +28,7 @@ defmodule EveDmv.Contexts.CombatIntelligence do
     Supervisor.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  @impl true
+  @impl Supervisor
   def init(_opts) do
     children = [
       # Domain services
@@ -47,7 +50,7 @@ defmodule EveDmv.Contexts.CombatIntelligence do
   end
 
   # Event subscriptions
-  @impl true
+  @impl EveDmv.Contexts.BoundedContext
   def event_subscriptions do
     [
       {:killmail_enriched, &handle_killmail_enriched/1},

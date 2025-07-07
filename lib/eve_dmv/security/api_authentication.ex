@@ -113,7 +113,9 @@ defmodule EveDmv.Security.ApiAuthentication do
       expires_at: expires_at
     }
 
-    Ash.create!(__MODULE__, attrs, :create, domain: EveDmv.Api)
+    __MODULE__
+    |> Ash.Changeset.for_create(:create, attrs)
+    |> Ash.create!(domain: EveDmv.Api)
   end
 
   @doc """
@@ -156,7 +158,9 @@ defmodule EveDmv.Security.ApiAuthentication do
          })
          |> Ash.read_one(domain: EveDmv.Api) do
       {:ok, api_key} when api_key != nil ->
-        api_key |> Ash.update!(:deactivate, domain: EveDmv.Api)
+        api_key
+        |> Ash.Changeset.for_update(:deactivate)
+        |> Ash.update!(domain: EveDmv.Api)
 
       {:ok, nil} ->
         {:error, :not_found}
@@ -181,10 +185,10 @@ defmodule EveDmv.Security.ApiAuthentication do
   end
 
   defp generate_api_key do
-    :crypto.strong_rand_bytes(32)
-    |> Base.encode64()
-    |> binary_part(0, 32)
-    |> String.replace(["+", "/", "="], "")
+    random_bytes = :crypto.strong_rand_bytes(32)
+    encoded = Base.encode64(random_bytes)
+    trimmed = binary_part(encoded, 0, 32)
+    String.replace(trimmed, ["+", "/", "="], "")
   end
 
   defp key_expired?(%{expires_at: nil}), do: false
@@ -195,13 +199,10 @@ defmodule EveDmv.Security.ApiAuthentication do
 
   defp update_last_used(key_record, client_ip) do
     key_record
-    |> Ash.update!(
-      :use_api_key,
-      %{
-        last_used_at: DateTime.utc_now(),
-        last_used_ip: client_ip
-      },
-      domain: EveDmv.Api
-    )
+    |> Ash.Changeset.for_update(:use_api_key, %{
+      last_used_at: DateTime.utc_now(),
+      last_used_ip: client_ip
+    })
+    |> Ash.update!(domain: EveDmv.Api)
   end
 end

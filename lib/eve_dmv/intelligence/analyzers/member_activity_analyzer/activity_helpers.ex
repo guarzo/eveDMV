@@ -6,11 +6,11 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityHelpers d
   and general activity calculations used across the member activity analyzer.
   """
 
-  require Logger
-  alias EveDmv.Intelligence.MemberActivityIntelligence
-  alias EveDmv.Intelligence.Calculators.FleetParticipationCalculator
   alias EveDmv.Intelligence.Analyzers.CommunicationPatternAnalyzer
+  alias EveDmv.Intelligence.Calculators.FleetParticipationCalculator
+  alias EveDmv.Intelligence.MemberActivityIntelligence
   alias EveDmv.Utils.TimeUtils
+  require Logger
 
   # Helper functions to safely create field atoms
   defp opportunities_field(:fleet), do: :fleet_opportunities
@@ -112,8 +112,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityHelpers d
   """
   def extract_activity_series(member_activities, _days) do
     # Extract activity history from member data
-    member_activities
-    |> Enum.flat_map(fn member ->
+    Enum.flat_map(member_activities, fn member ->
       activity_history = Map.get(member, :activity_history, [])
 
       Enum.map(activity_history, fn day_data ->

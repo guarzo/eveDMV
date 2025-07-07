@@ -78,7 +78,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
   # GenServer implementation
 
   @impl GenServer
-  def init(opts) do
+  def init(_opts) do
     state = %{
       # match_id -> match_data
       matches: %{},
@@ -119,16 +119,14 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
 
     # Add new match and limit size
     new_profile_matches =
-      [match_id | current_profile_matches]
-      |> Enum.take(@max_matches_per_profile)
+      Enum.take([match_id | current_profile_matches], @max_matches_per_profile)
 
     updated_profile_matches = Map.put(state.profile_matches, profile_id, new_profile_matches)
 
     # Add to recent matches (global)
+    # Keep last 1000 recent matches
     new_recent_matches =
-      [match_id | state.recent_matches]
-      # Keep last 1000 recent matches
-      |> Enum.take(1000)
+      Enum.take([match_id | state.recent_matches], 1000)
 
     # Update statistics
     new_statistics = update_match_statistics(state.match_statistics, match)
@@ -384,10 +382,10 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
   defp calculate_time_range_statistics(state, profile_id, time_range) do
     cutoff_time =
       case time_range do
-        :last_hour -> DateTime.utc_now() |> DateTime.add(-3600, :second)
-        :last_24h -> DateTime.utc_now() |> DateTime.add(-24 * 3600, :second)
-        :last_7d -> DateTime.utc_now() |> DateTime.add(-7 * 24 * 3600, :second)
-        :last_30d -> DateTime.utc_now() |> DateTime.add(-30 * 24 * 3600, :second)
+        :last_hour -> DateTime.add(DateTime.utc_now(), -3600, :second)
+        :last_24h -> DateTime.add(DateTime.utc_now(), -24 * 3600, :second)
+        :last_7d -> DateTime.add(DateTime.utc_now(), -7 * 24 * 3600, :second)
+        :last_30d -> DateTime.add(DateTime.utc_now(), -30 * 24 * 3600, :second)
         {start_time, _end_time} -> start_time
       end
 

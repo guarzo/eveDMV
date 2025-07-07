@@ -175,21 +175,19 @@ defmodule EveDmv.Result do
   """
   @spec safely((-> a)) :: t(a) when a: term()
   def safely(operation) do
-    try do
-      {:ok, operation.()}
-    rescue
-      e in RuntimeError ->
-        error(:runtime_error, Exception.message(e))
+    {:ok, operation.()}
+  rescue
+    e in RuntimeError ->
+      error(:runtime_error, Exception.message(e))
 
-      e ->
-        error(:exception, Exception.message(e), details: %{exception_type: e.__struct__})
-    catch
-      :exit, reason ->
-        error(:process_exit, inspect(reason))
+    e ->
+      error(:exception, Exception.message(e), details: %{exception_type: e.__struct__})
+  catch
+    :exit, reason ->
+      error(:process_exit, inspect(reason))
 
-      :throw, value ->
-        error(:thrown_value, inspect(value))
-    end
+    :throw, value ->
+      error(:thrown_value, inspect(value))
   end
 
   @doc """

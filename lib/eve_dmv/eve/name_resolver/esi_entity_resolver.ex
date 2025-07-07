@@ -7,9 +7,11 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
   and require more frequent cache updates.
   """
 
-  require Logger
   alias EveDmv.Eve.EsiClient
-  alias EveDmv.Eve.NameResolver.{CacheManager, BatchProcessor}
+  alias EveDmv.Eve.NameResolver.BatchProcessor
+  alias EveDmv.Eve.NameResolver.CacheManager
+
+  require Logger
 
   # Configurable timeout and concurrency settings
   # Task timeout is handled by esi_timeout

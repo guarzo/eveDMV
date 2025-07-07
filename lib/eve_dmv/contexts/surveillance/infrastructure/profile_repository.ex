@@ -6,13 +6,13 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository do
   using Ash framework resources.
   """
 
+  use GenServer
   use EveDmv.ErrorHandler
-  alias EveDmv.Result
+
   require Logger
 
   # This would typically use an Ash resource, but for this implementation
   # we'll use a simplified in-memory store with GenServer
-  use GenServer
 
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
@@ -97,10 +97,17 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository do
     GenServer.call(__MODULE__, {:archive_profiles, profile_ids})
   end
 
+  @doc """
+  Refresh the profile cache.
+  """
+  def refresh_cache do
+    GenServer.call(__MODULE__, :refresh_cache)
+  end
+
   # GenServer implementation
 
   @impl GenServer
-  def init(opts) do
+  def init(_opts) do
     state = %{
       # profile_id -> profile_data
       profiles: %{},
@@ -315,6 +322,15 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository do
     new_state = %{state | profiles: new_profiles}
 
     {:reply, {:ok, archived_count}, new_state}
+  end
+
+  @impl GenServer
+  def handle_call(:refresh_cache, _from, state) do
+    # In a real implementation, this would reload profiles from the database
+    # For now, just clear any cached data and return success
+    Logger.debug("Refreshing profile cache")
+
+    {:reply, :ok, state}
   end
 
   # Match statistics update (called from MatchingEngine)

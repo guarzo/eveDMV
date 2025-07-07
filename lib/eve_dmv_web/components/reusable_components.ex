@@ -2,23 +2,8 @@ defmodule EveDmvWeb.Components.ReusableComponents do
   @moduledoc """
   Core reusable components for EVE DMV.
 
-  This module consolidates imports for all reusable components to make them
-  easily available throughout the application.
-
-  ## Usage
-
-  In your LiveView modules:
-
-      use EveDmvWeb, :live_view
-      import EveDmvWeb.Components.CoreComponents
-
-  Then use the components:
-
-      <.page_header title="Dashboard" subtitle="Overview of your activity" />
-      <.stats_grid>
-        <:stat label="Kills" value={@stats.kills} />
-        <:stat label="Deaths" value={@stats.deaths} />
-      </.stats_grid>
+  Consolidates imports for all reusable components including page headers,
+  stats grids, data tables, and various state components.
   """
 
   defmacro __using__(_) do

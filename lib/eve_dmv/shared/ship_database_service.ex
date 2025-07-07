@@ -356,10 +356,10 @@ defmodule EveDmv.Shared.ShipDatabaseService do
     # Add common ship type IDs here as needed
     587 => "Rifter",
     602 => "Merlin",
-    11176 => "Crow",
-    11182 => "Sabre",
-    29984 => "Tengu",
-    29990 => "Loki"
+    11_176 => "Crow",
+    11_182 => "Sabre",
+    29_984 => "Tengu",
+    29_990 => "Loki"
     # ... more type IDs can be added
   }
 
@@ -449,9 +449,7 @@ defmodule EveDmv.Shared.ShipDatabaseService do
   """
   @spec calculate_fleet_mass(list()) :: float()
   def calculate_fleet_mass(ships) when is_list(ships) do
-    ships
-    |> Enum.map(&get_ship_mass/1)
-    |> Enum.sum()
+    Enum.sum(Enum.map(ships, &get_ship_mass/1))
   end
 
   @doc """
@@ -486,7 +484,7 @@ defmodule EveDmv.Shared.ShipDatabaseService do
   @spec calculate_mass_criticality(float(), float(), float()) :: map()
   def calculate_mass_criticality(current_mass, total_mass, ship_mass) do
     remaining = total_mass - current_mass
-    jumps_remaining = div(remaining, ship_mass)
+    jumps_remaining = floor(remaining / ship_mass)
 
     %{
       remaining_mass: remaining,
@@ -500,7 +498,7 @@ defmodule EveDmv.Shared.ShipDatabaseService do
   @doc """
   Estimate ship cost with role modifiers.
   """
-  @spec estimate_ship_cost(String.t(), atom()) :: float()
+  @spec estimate_ship_cost(String.t(), atom()) :: integer()
   def estimate_ship_cost(ship_name, fitting_type \\ :standard) do
     base_cost =
       case Map.get(@ship_database, ship_name) do
@@ -548,7 +546,18 @@ defmodule EveDmv.Shared.ShipDatabaseService do
   @doc """
   Get ship category based on role.
   """
-  @spec get_ship_category(String.t()) :: atom()
+  @spec get_ship_category(String.t()) ::
+          :dps
+          | :tackle
+          | :support
+          | :force_multiplier
+          | :special_ops
+          | :heavy_dps
+          | :flex
+          | :capital_warfare
+          | :strategic
+          | :general
+          | :unknown
   def get_ship_category(ship_name) when is_binary(ship_name) do
     case Map.get(@ship_database, ship_name) do
       nil -> :unknown
@@ -664,7 +673,7 @@ defmodule EveDmv.Shared.ShipDatabaseService do
   end
 
   defp generate_fleet_recommendations(fleet_ships, wh_limits) do
-    recommendations = []
+    initial_recommendations = []
 
     # Check for capitals in low-class wormholes
     capital_ships =
@@ -672,11 +681,14 @@ defmodule EveDmv.Shared.ShipDatabaseService do
         get_ship_class(ship) in [:capital, :super_capital]
       end)
 
-    recommendations =
+    recommendations_with_capitals =
       if length(capital_ships) > 0 and wh_limits.jump < 300_000_000 do
-        ["#{length(capital_ships)} capital ship(s) cannot enter this wormhole" | recommendations]
+        [
+          "#{length(capital_ships)} capital ship(s) cannot enter this wormhole"
+          | initial_recommendations
+        ]
       else
-        recommendations
+        initial_recommendations
       end
 
     # Check for mass-critical ships
@@ -685,20 +697,26 @@ defmodule EveDmv.Shared.ShipDatabaseService do
         get_ship_mass(ship) > wh_limits.jump * 0.5
       end)
 
-    recommendations =
+    recommendations_with_heavy =
       if length(heavy_ships) > 0 do
-        ["#{length(heavy_ships)} ship(s) will significantly impact hole mass" | recommendations]
+        [
+          "#{length(heavy_ships)} ship(s) will significantly impact hole mass"
+          | recommendations_with_capitals
+        ]
       else
-        recommendations
+        recommendations_with_capitals
       end
 
     # Check total mass vs limit
     total_mass = calculate_fleet_mass(fleet_ships)
 
     if total_mass > wh_limits.total * 0.8 do
-      ["Fleet will likely collapse the wormhole (>80% of total mass)" | recommendations]
+      [
+        "Fleet will likely collapse the wormhole (>80% of total mass)"
+        | recommendations_with_heavy
+      ]
     else
-      recommendations
+      recommendations_with_heavy
     end
   end
 end

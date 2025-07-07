@@ -7,7 +7,6 @@ defmodule EveDmv.Shared.ShipDatabaseAdapter do
   """
 
   alias EveDmv.Shared.ShipDatabaseService
-  alias EveDmv.Result
 
   # ============================================================================
   # Legacy EveDmv.Intelligence.ShipDatabase compatibility
@@ -118,7 +117,7 @@ defmodule EveDmv.Shared.ShipDatabaseAdapter do
   @doc """
   Check if ship is capital (legacy API).
   """
-  def is_capital?(ship_identifier) do
+  def capital?(ship_identifier) do
     case ShipDatabaseService.get_ship_info(ship_identifier) do
       {:ok, %{is_capital: is_capital}} -> is_capital
       _ -> false
@@ -129,7 +128,7 @@ defmodule EveDmv.Shared.ShipDatabaseAdapter do
   Check if ship is capital by name (legacy API).
   """
   def is_capital_by_name?(ship_name) when is_binary(ship_name) do
-    is_capital?(ship_name)
+    capital?(ship_name)
   end
 
   @doc """

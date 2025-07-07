@@ -31,9 +31,9 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Formatters.MemberActivityDisplayFo
     declining_count = count_declining_members(member_analyses)
     inactive_count = count_inactive_members(member_analyses)
 
-    recommendations = []
+    initial_recommendations = []
 
-    recommendations =
+    retention_recommendations =
       if high_risk_count > 0 do
         [
           %{
@@ -43,13 +43,13 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Formatters.MemberActivityDisplayFo
             description: "#{high_risk_count} members show signs of disengagement",
             action: "Schedule one-on-one conversations with at-risk members"
           }
-          | recommendations
+          | initial_recommendations
         ]
       else
-        recommendations
+        initial_recommendations
       end
 
-    recommendations =
+    engagement_recommendations =
       if declining_count > 2 do
         [
           %{
@@ -59,13 +59,13 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Formatters.MemberActivityDisplayFo
             description: "#{declining_count} members showing declining participation",
             action: "Review corporation activities and member interests"
           }
-          | recommendations
+          | retention_recommendations
         ]
       else
-        recommendations
+        retention_recommendations
       end
 
-    recommendations =
+    final_recommendations =
       if inactive_count > 5 do
         [
           %{
@@ -75,13 +75,13 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Formatters.MemberActivityDisplayFo
             description: "#{inactive_count} members have been inactive for extended periods",
             action: "Consider member activity review and potential cleanup"
           }
-          | recommendations
+          | engagement_recommendations
         ]
       else
-        recommendations
+        engagement_recommendations
       end
 
-    recommendations
+    final_recommendations
   end
 
   @doc """
@@ -165,8 +165,8 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Formatters.MemberActivityDisplayFo
 
     cond do
       diff_seconds < 3600 -> "#{div(diff_seconds, 60)} minutes ago"
-      diff_seconds < 86400 -> "#{div(diff_seconds, 3600)} hours ago"
-      diff_seconds < 2_592_000 -> "#{div(diff_seconds, 86400)} days ago"
+      diff_seconds < 86_400 -> "#{div(diff_seconds, 3600)} hours ago"
+      diff_seconds < 2_592_000 -> "#{div(diff_seconds, 86_400)} days ago"
       true -> "Over a month ago"
     end
   end

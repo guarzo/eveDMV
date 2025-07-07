@@ -39,12 +39,12 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.AcquisitionPlanner do
 
     # Priority purchases based on role criticality
     priority_purchases =
-      missing_assets
-      |> Enum.filter(fn asset ->
+      Enum.filter(missing_assets, fn asset ->
         role = Map.get(asset, "role", "")
         role in ["logistics", "fc"]
       end)
-      |> Enum.sort_by(& &1["estimated_cost"])
+
+    _ = Enum.sort_by(priority_purchases, & &1["estimated_cost"])
 
     # Budget-constrained recommendations
     budget_recommendations =
@@ -56,8 +56,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.AcquisitionPlanner do
 
     # Alternative ship suggestions
     alternative_ships =
-      missing_assets
-      |> Enum.map(fn asset ->
+      Enum.map(missing_assets, fn asset ->
         ship_name = Map.get(asset, "ship_name", "")
         role = Map.get(asset, "role", "")
         alternatives = find_alternative_ships(ship_name, role)
@@ -82,18 +81,20 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.AcquisitionPlanner do
   """
   def create_budget_optimized_plan(missing_assets, budget_limit) do
     # Sort by cost-effectiveness (role importance / cost)
-    missing_assets
-    |> Enum.map(fn asset ->
-      cost = Map.get(asset, "estimated_cost", 0)
-      role = Map.get(asset, "role", "")
-      shortage = Map.get(asset, "shortage", 1)
+    optimized_assets =
+      Enum.map(missing_assets, fn asset ->
+        cost = Map.get(asset, "estimated_cost", 0)
+        role = Map.get(asset, "role", "")
+        shortage = Map.get(asset, "shortage", 1)
 
-      importance = ShipCostCalculator.role_importance_score(role)
-      total_cost = cost * shortage
-      effectiveness = if total_cost > 0, do: importance / total_cost, else: 0
+        importance = ShipCostCalculator.role_importance_score(role)
+        total_cost = cost * shortage
+        effectiveness = if total_cost > 0, do: importance / total_cost, else: 0
 
-      Map.put(asset, "cost_effectiveness", effectiveness)
-    end)
+        Map.put(asset, "cost_effectiveness", effectiveness)
+      end)
+
+    optimized_assets
     |> Enum.sort_by(& &1["cost_effectiveness"], :desc)
     |> select_within_budget(budget_limit)
   end
@@ -178,25 +179,26 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.AcquisitionPlanner do
   Assess acquisition priorities based on role importance.
   """
   def assess_acquisition_priorities(missing_assets) do
-    missing_assets
-    |> Enum.map(fn asset ->
-      role = Map.get(asset, "role", "")
-      _cost = Map.get(asset, "estimated_cost", 0)
-      importance = ShipCostCalculator.role_importance_score(role)
+    assets_with_priority =
+      Enum.map(missing_assets, fn asset ->
+        role = Map.get(asset, "role", "")
+        _cost = Map.get(asset, "estimated_cost", 0)
+        importance = ShipCostCalculator.role_importance_score(role)
 
-      priority_level =
-        cond do
-          role in ["logistics", "fc"] -> "critical"
-          role == "dps" -> "high"
-          role in ["tackle", "ewar"] -> "medium"
-          true -> "low"
-        end
+        priority_level =
+          cond do
+            role in ["logistics", "fc"] -> "critical"
+            role == "dps" -> "high"
+            role in ["tackle", "ewar"] -> "medium"
+            true -> "low"
+          end
 
-      asset
-      |> Map.put("importance_score", importance)
-      |> Map.put("priority_level", priority_level)
-    end)
-    |> Enum.sort_by(&{&1["priority_level"], -&1["importance_score"]})
+        asset
+        |> Map.put("importance_score", importance)
+        |> Map.put("priority_level", priority_level)
+      end)
+
+    Enum.sort_by(assets_with_priority, &{&1["priority_level"], -&1["importance_score"]})
   end
 
   @doc """
@@ -224,13 +226,14 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.AcquisitionPlanner do
   defp identify_missing_assets(ship_requirements, current_assets) do
     _ship_availability = Map.get(current_assets, "ship_availability", %{})
 
-    ship_requirements
-    |> Enum.filter(fn {_type_id, ship_data} ->
-      needed = Map.get(ship_data, "quantity_needed", 1)
-      available = Map.get(ship_data, "quantity_available", 0)
-      available < needed
-    end)
-    |> Enum.map(fn {_type_id, ship_data} ->
+    missing_assets =
+      Enum.filter(ship_requirements, fn {_type_id, ship_data} ->
+        needed = Map.get(ship_data, "quantity_needed", 1)
+        available = Map.get(ship_data, "quantity_available", 0)
+        available < needed
+      end)
+
+    Enum.map(missing_assets, fn {_type_id, ship_data} ->
       shortage =
         Map.get(ship_data, "quantity_needed", 1) - Map.get(ship_data, "quantity_available", 0)
 
@@ -240,8 +243,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.AcquisitionPlanner do
 
   defp select_within_budget(assets, budget_limit) do
     {selected, _remaining_budget} =
-      assets
-      |> Enum.reduce({[], budget_limit}, fn asset, {selected, remaining_budget} ->
+      Enum.reduce(assets, {[], budget_limit}, fn asset, {selected, remaining_budget} ->
         cost = Map.get(asset, "estimated_cost", 0) * Map.get(asset, "shortage", 1)
 
         if cost <= remaining_budget do

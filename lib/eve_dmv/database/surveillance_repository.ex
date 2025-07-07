@@ -31,9 +31,9 @@ defmodule EveDmv.Database.SurveillanceRepository do
           |> Ash.Query.for_read(:user_profiles, %{user_id: user_id})
           |> Ash.Query.load(:matches)
 
-        case Ash.read(query, domain: Api, actor: actor) do
+        case Ash.read(query, domain: EveDmv.Api, actor: actor) do
           {:ok, profiles} ->
-            Cache.put(@cache_type, cache_key, profiles, :timer.minutes(5))
+            Cache.put(@cache_type, cache_key, profiles, ttl: :timer.minutes(5))
             profiles
 
           {:error, reason} ->
@@ -120,9 +120,9 @@ defmodule EveDmv.Database.SurveillanceRepository do
           |> Ash.Query.for_read(:active)
           |> Ash.Query.load([:matches, :filters])
 
-        case Ash.read(query, domain: Api) do
+        case Ash.read(query, domain: EveDmv.Api) do
           {:ok, profiles} ->
-            Cache.put(@cache_type, cache_key, profiles, :timer.minutes(2))
+            Cache.put(@cache_type, cache_key, profiles, ttl: :timer.minutes(2))
             profiles
 
           {:error, reason} ->

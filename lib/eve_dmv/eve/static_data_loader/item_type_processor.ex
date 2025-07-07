@@ -6,8 +6,8 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessor do
   including ship classification and other item type categorization.
   """
 
-  require Logger
   alias EveDmv.Eve.StaticDataLoader.CsvParser
+  require Logger
 
   @ship_group_ids [
     # Ship category group IDs from EVE SDE
@@ -170,9 +170,9 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessor do
   end
 
   defp build_item_types(types, groups_map, categories_map) do
-    types
-    |> Enum.filter(fn type -> type.published end)
-    |> Enum.map(fn type ->
+    published_types = Enum.filter(types, fn type -> type.published end)
+
+    Enum.map(published_types, fn type ->
       group = Map.get(groups_map, type.group_id, %{})
       category = Map.get(categories_map, group[:category_id], %{})
 
@@ -206,11 +206,12 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessor do
   end
 
   defp build_ship_types(types, groups_map) do
-    types
-    |> Enum.filter(fn type ->
-      type.group_id in @ship_group_ids and type.published
-    end)
-    |> Enum.map(fn type ->
+    ship_types =
+      Enum.filter(types, fn type ->
+        type.group_id in @ship_group_ids and type.published
+      end)
+
+    Enum.map(ship_types, fn type ->
       %{
         type_id: type.type_id,
         type_name: type.name,

@@ -15,9 +15,10 @@ defmodule EveDmv.Workers.AnalysisWorkerPool do
   """
 
   use GenServer
-  require Logger
 
   alias EveDmv.Cache
+
+  require Logger
 
   # Configuration
   @default_pool_size 3
@@ -28,6 +29,18 @@ defmodule EveDmv.Workers.AnalysisWorkerPool do
   @job_timeout 5 * 60 * 1000
   # 30 seconds
   @scaling_check_interval 30_000
+
+  defmodule AnalysisParams do
+    @moduledoc false
+    defstruct [
+      :analysis_type,
+      :subject_id,
+      :analysis_fun,
+      :priority,
+      :timeout,
+      :cache_key
+    ]
+  end
 
   defmodule Job do
     @moduledoc false
@@ -97,18 +110,28 @@ defmodule EveDmv.Workers.AnalysisWorkerPool do
           {:ok, cached_result}
 
         :miss ->
-          submit_job(
-            server,
-            analysis_type,
-            subject_id,
-            analysis_fun,
-            priority,
-            timeout,
-            cache_key
-          )
+          params = %AnalysisParams{
+            analysis_type: analysis_type,
+            subject_id: subject_id,
+            analysis_fun: analysis_fun,
+            priority: priority,
+            timeout: timeout,
+            cache_key: cache_key
+          }
+
+          submit_job(server, params)
       end
     else
-      submit_job(server, analysis_type, subject_id, analysis_fun, priority, timeout, nil)
+      params = %AnalysisParams{
+        analysis_type: analysis_type,
+        subject_id: subject_id,
+        analysis_fun: analysis_fun,
+        priority: priority,
+        timeout: timeout,
+        cache_key: nil
+      }
+
+      submit_job(server, params)
     end
   end
 
@@ -169,22 +192,8 @@ defmodule EveDmv.Workers.AnalysisWorkerPool do
   end
 
   @impl GenServer
-  def handle_call(
-        {:analyze, analysis_type, subject_id, analysis_fun, priority, timeout, cache_key},
-        from,
-        state
-      ) do
-    job =
-      create_job(
-        analysis_type,
-        subject_id,
-        analysis_fun,
-        priority,
-        timeout,
-        from,
-        cache_key,
-        state
-      )
+  def handle_call({:analyze, %AnalysisParams{} = params}, from, state) do
+    job = create_job(params, from, state)
 
     case assign_job_to_worker(job, state) do
       {:ok, new_state} ->
@@ -236,17 +245,16 @@ defmodule EveDmv.Workers.AnalysisWorkerPool do
     timeout = Keyword.get(opts, :timeout, @job_timeout)
     cache_key = Keyword.get(opts, :cache_key)
 
-    job =
-      create_job(
-        analysis_type,
-        subject_id,
-        analysis_fun,
-        priority,
-        timeout,
-        nil,
-        cache_key,
-        state
-      )
+    params = %AnalysisParams{
+      analysis_type: analysis_type,
+      subject_id: subject_id,
+      analysis_fun: analysis_fun,
+      priority: priority,
+      timeout: timeout,
+      cache_key: cache_key
+    }
+
+    job = create_job(params, nil, state)
 
     case assign_job_to_worker(job, state) do
       {:ok, new_state} ->
@@ -322,34 +330,25 @@ defmodule EveDmv.Workers.AnalysisWorkerPool do
 
   # Private functions
 
-  defp submit_job(server, analysis_type, subject_id, analysis_fun, priority, timeout, cache_key) do
+  defp submit_job(server, %AnalysisParams{} = params) do
     GenServer.call(
       server,
-      {:analyze, analysis_type, subject_id, analysis_fun, priority, timeout, cache_key},
-      timeout + 5000
+      {:analyze, params},
+      params.timeout + 5000
     )
   end
 
-  defp create_job(
-         analysis_type,
-         subject_id,
-         analysis_fun,
-         priority,
-         timeout,
-         requester_pid,
-         cache_key,
-         state
-       ) do
+  defp create_job(%AnalysisParams{} = params, requester_pid, state) do
     %Job{
       id: state.job_counter + 1,
-      type: analysis_type,
-      subject_id: subject_id,
-      analysis_fun: analysis_fun,
-      priority: priority,
+      type: params.analysis_type,
+      subject_id: params.subject_id,
+      analysis_fun: params.analysis_fun,
+      priority: params.priority,
       requested_at: System.monotonic_time(:millisecond),
       requester_pid: requester_pid,
-      timeout: timeout,
-      cache_key: cache_key
+      timeout: params.timeout,
+      cache_key: params.cache_key
     }
   end
 

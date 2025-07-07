@@ -8,15 +8,14 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
   """
 
   use GenServer
-  require Logger
-  require Ash.Query
 
+  alias EveDmv.Intelligence.ChainAnalysis.ChainDataSync
+  alias EveDmv.Intelligence.ChainAnalysis.ChainEventHandlers
   alias EveDmv.Intelligence.WandererClient
-  alias EveDmv.Intelligence.ChainAnalysis.{ChainDataSync, ChainEventHandlers}
   alias EveDmv.Intelligence.WandererSSE
 
-  # Sync every 30 seconds
-  @sync_interval_ms 30_000
+  require Logger
+  require Ash.Query
 
   defstruct [
     :monitored_chains,
@@ -24,6 +23,9 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
     :last_sync,
     :sync_errors
   ]
+
+  # Sync every 30 seconds
+  @sync_interval_ms 30_000
 
   # Public API
 
@@ -191,8 +193,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
     errors = %{}
 
     new_errors =
-      state.monitored_chains
-      |> Enum.reduce(errors, fn map_id, acc ->
+      Enum.reduce(state.monitored_chains, errors, fn map_id, acc ->
         case ChainDataSync.sync_chain_data(map_id) do
           :ok ->
             Map.delete(acc, map_id)

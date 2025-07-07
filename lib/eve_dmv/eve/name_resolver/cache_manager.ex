@@ -6,9 +6,9 @@ defmodule EveDmv.Eve.NameResolver.CacheManager do
   for better consistency and centralized cache management.
   """
 
-  require Logger
-
   alias EveDmv.Cache
+
+  require Logger
 
   # Different TTLs for different data types
   # Ship/item names rarely change

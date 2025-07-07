@@ -6,14 +6,12 @@ defmodule EveDmv.Intelligence.ShipDatabase do
   role information, doctrine analysis, and wormhole utilities.
   """
 
+  alias EveDmv.Intelligence.ShipDatabase.ShipClassification
   # Extracted modules
-  alias EveDmv.Intelligence.ShipDatabase.{
-    ShipClassification,
-    ShipMassData,
-    ShipRoleData,
-    DoctrineData,
-    WormholeUtils
-  }
+  alias EveDmv.Intelligence.ShipDatabase.DoctrineData
+  alias EveDmv.Intelligence.ShipDatabase.ShipMassData
+  alias EveDmv.Intelligence.ShipDatabase.ShipRoleData
+  alias EveDmv.Intelligence.ShipDatabase.WormholeUtils
 
   # Ship class functions
   def get_ship_class(ship_name) when is_binary(ship_name) do

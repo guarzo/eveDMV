@@ -8,16 +8,16 @@ defmodule EveDmv.Market.Strategies.JaniceStrategy do
 
   @behaviour EveDmv.Market.PricingStrategy
 
-  require Logger
   alias EveDmv.Market.JaniceClient
+  require Logger
 
-  @impl true
+  @impl EveDmv.Market.PricingStrategy
   def priority, do: 3
 
-  @impl true
+  @impl EveDmv.Market.PricingStrategy
   def name, do: "Janice"
 
-  @impl true
+  @impl EveDmv.Market.PricingStrategy
   def supports?(_type_id, _item_attributes) do
     # Check if Janice is enabled in configuration
     case Application.get_env(:eve_dmv, :janice, []) do
@@ -29,7 +29,7 @@ defmodule EveDmv.Market.Strategies.JaniceStrategy do
     end
   end
 
-  @impl true
+  @impl EveDmv.Market.PricingStrategy
   def get_price(type_id, _item_attributes) do
     Logger.debug("Attempting Janice price lookup for #{type_id}")
 

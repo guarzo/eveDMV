@@ -7,10 +7,13 @@ defmodule EveDmv.Killmails.EnrichedParticipantLoader do
   for enriched killmails.
   """
 
-  alias EveDmv.Api
-  alias EveDmv.Killmails.{KillmailEnriched, Participant}
-  require Ash.Query
   import Ash.Expr
+
+  alias EveDmv.Api
+  alias EveDmv.Killmails.KillmailEnriched
+  alias EveDmv.Killmails.Participant
+
+  require Ash.Query
 
   @doc """
   Load participants for a single KillmailEnriched record.
@@ -93,13 +96,14 @@ defmodule EveDmv.Killmails.EnrichedParticipantLoader do
       # Filter to only the exact killmail keys we want and group by killmail
       killmail_key_set = MapSet.new(killmail_keys)
 
-      participants
-      |> Enum.filter(fn p ->
-        MapSet.member?(killmail_key_set, {p.killmail_id, p.killmail_time})
-      end)
-      |> Enum.group_by(fn p ->
-        {p.killmail_id, p.killmail_time}
-      end)
+      Enum.group_by(
+        Enum.filter(participants, fn p ->
+          MapSet.member?(killmail_key_set, {p.killmail_id, p.killmail_time})
+        end),
+        fn p ->
+          {p.killmail_id, p.killmail_time}
+        end
+      )
     end
   end
 

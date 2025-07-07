@@ -8,18 +8,17 @@ defmodule EveDmv.Contexts.WormholeOperations.Api do
   """
 
   use EveDmv.ErrorHandler
-  alias EveDmv.Result
   alias EveDmv.Utils.ValidationUtils
 
-  alias EveDmv.Contexts.WormholeOperations.Domain.{
-    RecruitmentVetter,
-    HomeDefenseAnalyzer,
-    MassOptimizer,
-    OperationalSecurityMonitor,
-    ChainIntelligenceService
-  }
+  alias EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter
 
-  alias EveDmv.Contexts.WormholeOperations.Infrastructure.{VettingRepository, DefenseMetricsCache}
+  alias EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService
+  alias EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer
+  alias EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer
+  alias EveDmv.Contexts.WormholeOperations.Domain.OperationalSecurityMonitor
+
+  alias EveDmv.Contexts.WormholeOperations.Infrastructure.DefenseMetricsCache
+  alias EveDmv.Contexts.WormholeOperations.Infrastructure.VettingRepository
 
   require Logger
 
@@ -103,11 +102,11 @@ defmodule EveDmv.Contexts.WormholeOperations.Api do
   structure defenses, and response coordination capabilities.
   """
   def analyze_home_defense_capabilities(corporation_id) do
-    with {:ok, defense_analysis} <-
-           HomeDefenseAnalyzer.analyze_defense_capabilities(corporation_id) do
-      Logger.info("Analyzed home defense capabilities for corporation: #{corporation_id}")
-      {:ok, defense_analysis}
-    else
+    case HomeDefenseAnalyzer.analyze_defense_capabilities(corporation_id) do
+      {:ok, defense_analysis} ->
+        Logger.info("Analyzed home defense capabilities for corporation: #{corporation_id}")
+        {:ok, defense_analysis}
+
       {:error, reason} ->
         Logger.warning(
           "Failed to analyze home defense for corp #{corporation_id}: #{inspect(reason)}"
@@ -214,11 +213,11 @@ defmodule EveDmv.Contexts.WormholeOperations.Api do
   and operational security procedures specific to wormhole operations.
   """
   def assess_opsec_compliance(corporation_id) do
-    with {:ok, compliance_assessment} <-
-           OperationalSecurityMonitor.assess_opsec_compliance(corporation_id) do
-      Logger.info("Assessed OpSec compliance for corporation: #{corporation_id}")
-      {:ok, compliance_assessment}
-    else
+    case OperationalSecurityMonitor.assess_opsec_compliance(corporation_id) do
+      {:ok, compliance_assessment} ->
+        Logger.info("Assessed OpSec compliance for corporation: #{corporation_id}")
+        {:ok, compliance_assessment}
+
       {:error, reason} ->
         Logger.warning(
           "Failed to assess OpSec compliance for corp #{corporation_id}: #{inspect(reason)}"
@@ -309,7 +308,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Api do
 
   defp validate_vetting_criteria(criteria) do
     # Vetting criteria are optional with defaults
-    required_fields = []
+    _required_fields = []
 
     with :ok <-
            validate_optional_fields(criteria, [

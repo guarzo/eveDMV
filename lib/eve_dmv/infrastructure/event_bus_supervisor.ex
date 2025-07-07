@@ -12,7 +12,7 @@ defmodule EveDmv.Infrastructure.EventBusSupervisor do
     Supervisor.start_link(__MODULE__, init_arg, name: __MODULE__)
   end
 
-  @impl true
+  @impl Supervisor
   def init(_init_arg) do
     children = [
       # Event bus process

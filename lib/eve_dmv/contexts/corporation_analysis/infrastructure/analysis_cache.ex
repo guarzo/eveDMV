@@ -169,8 +169,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.AnalysisCache do
     current_time = System.monotonic_time(:millisecond)
 
     {expired_entries, valid_entries} =
-      state.cache
-      |> Enum.split_with(fn {_key, %{timestamp: timestamp, ttl: ttl}} ->
+      Enum.split_with(state.cache, fn {_key, %{timestamp: timestamp, ttl: ttl}} ->
         current_time - timestamp >= ttl
       end)
 

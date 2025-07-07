@@ -11,10 +11,11 @@ defmodule EveDmv.Intelligence.Supervisor do
   """
 
   use Supervisor
-  require Logger
 
-  alias EveDmv.Intelligence.Cache.IntelligenceCache
   alias EveDmv.Intelligence.AnalyzerSupervisor
+  alias EveDmv.Intelligence.Cache.IntelligenceCache
+
+  require Logger
 
   @doc """
   Start the Intelligence supervisor.
@@ -23,8 +24,8 @@ defmodule EveDmv.Intelligence.Supervisor do
     Supervisor.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  @impl true
-  def init(opts) do
+  @impl Supervisor
+  def init(_opts) do
     Logger.info("Starting Intelligence system supervisor")
 
     children = [
@@ -152,8 +153,7 @@ defmodule EveDmv.Intelligence.Supervisor do
     Logger.warning("Restarting Intelligence system - ongoing analyses will be interrupted")
 
     # Stop all analyzer processes
-    DynamicSupervisor.which_children(AnalyzerSupervisor)
-    |> Enum.each(fn {_, pid, _, _} ->
+    Enum.each(DynamicSupervisor.which_children(AnalyzerSupervisor), fn {_, pid, _, _} ->
       DynamicSupervisor.terminate_child(AnalyzerSupervisor, pid)
     end)
 
@@ -181,42 +181,38 @@ defmodule EveDmv.Intelligence.Supervisor do
   end
 
   defp get_cache_health do
-    try do
-      stats = IntelligenceCache.get_cache_stats()
+    stats = IntelligenceCache.get_cache_stats()
+
+    %{
+      status: :healthy,
+      cache_size: stats.cache_size,
+      memory_usage: "#{stats.cache_size} entries"
+    }
+  rescue
+    error ->
+      Logger.error("Cache health check failed: #{inspect(error)}")
 
       %{
-        status: :healthy,
-        cache_size: stats.cache_size,
-        memory_usage: "#{stats.cache_size} entries"
+        status: :unhealthy,
+        error: inspect(error)
       }
-    rescue
-      error ->
-        Logger.error("Cache health check failed: #{inspect(error)}")
-
-        %{
-          status: :unhealthy,
-          error: inspect(error)
-        }
-    end
   end
 
   defp get_task_supervisor_health do
-    try do
-      children = Task.Supervisor.children(EveDmv.Intelligence.TaskSupervisor)
+    children = Task.Supervisor.children(EveDmv.Intelligence.TaskSupervisor)
+
+    %{
+      status: :healthy,
+      active_tasks: length(children)
+    }
+  rescue
+    error ->
+      Logger.error("Task supervisor health check failed: #{inspect(error)}")
 
       %{
-        status: :healthy,
-        active_tasks: length(children)
+        status: :unhealthy,
+        error: inspect(error)
       }
-    rescue
-      error ->
-        Logger.error("Task supervisor health check failed: #{inspect(error)}")
-
-        %{
-          status: :unhealthy,
-          error: inspect(error)
-        }
-    end
   end
 
   defp get_telemetry_health do

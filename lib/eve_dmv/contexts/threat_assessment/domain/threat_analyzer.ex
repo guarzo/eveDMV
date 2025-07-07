@@ -9,14 +9,10 @@ defmodule EveDmv.Contexts.ThreatAssessment.Domain.ThreatAnalyzer do
 
   use GenServer
   use EveDmv.ErrorHandler
-  alias EveDmv.Result
-  alias EveDmv.Shared.MetricsCalculator
-  alias EveDmv.Contexts.ThreatAssessment.Infrastructure.{ThreatRepository, ThreatCache}
 
-  # Import analyzers
-  alias EveDmv.Contexts.ThreatAssessment.Analyzers.{
-    VulnerabilityScanner
-  }
+  alias EveDmv.Contexts.ThreatAssessment.Analyzers.VulnerabilityScanner
+  alias EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository
+  alias EveDmv.Shared.MetricsCalculator
 
   require Logger
 
@@ -71,7 +67,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Domain.ThreatAnalyzer do
   # GenServer implementation
 
   @impl GenServer
-  def init(opts) do
+  def init(_opts) do
     state = %{
       analysis_cache: %{},
       metrics: %{
@@ -320,47 +316,47 @@ defmodule EveDmv.Contexts.ThreatAssessment.Domain.ThreatAnalyzer do
   end
 
   defp identify_risk_factors(vulnerability_scan) do
-    risk_factors = []
+    initial_risk_factors = []
 
     # Extract behavioral risk factors
     behavioral = Map.get(vulnerability_scan, :behavioral_vulnerabilities, %{})
-    risk_factors = add_behavioral_risks(risk_factors, behavioral)
+    behavioral_risk_factors = add_behavioral_risks(initial_risk_factors, behavioral)
 
     # Extract tactical risk factors
     tactical = Map.get(vulnerability_scan, :tactical_vulnerabilities, %{})
-    risk_factors = add_tactical_risks(risk_factors, tactical)
+    environmental_risk_factors = add_tactical_risks(behavioral_risk_factors, tactical)
 
     # Extract operational risk factors
     operational = Map.get(vulnerability_scan, :operational_vulnerabilities, %{})
-    risk_factors = add_operational_risks(risk_factors, operational)
+    operational_risk_factors = add_operational_risks(environmental_risk_factors, operational)
 
     # Extract social risk factors
     social = Map.get(vulnerability_scan, :social_vulnerabilities, %{})
-    risk_factors = add_social_risks(risk_factors, social)
+    strategic_risk_factors = add_social_risks(operational_risk_factors, social)
 
-    risk_factors
+    strategic_risk_factors
   end
 
   defp generate_mitigation_recommendations(vulnerability_scan) do
-    recommendations = []
+    initial_recommendations = []
 
     # Behavioral mitigations
     behavioral = Map.get(vulnerability_scan, :behavioral_vulnerabilities, %{})
-    recommendations = add_behavioral_mitigations(recommendations, behavioral)
+    base_recommendations = add_behavioral_mitigations(initial_recommendations, behavioral)
 
     # Tactical mitigations
     tactical = Map.get(vulnerability_scan, :tactical_vulnerabilities, %{})
-    recommendations = add_tactical_mitigations(recommendations, tactical)
+    activity_recommendations = add_tactical_mitigations(base_recommendations, tactical)
 
     # Operational mitigations
     operational = Map.get(vulnerability_scan, :operational_vulnerabilities, %{})
-    recommendations = add_operational_mitigations(recommendations, operational)
+    tactical_recommendations = add_operational_mitigations(activity_recommendations, operational)
 
     # Social mitigations
     social = Map.get(vulnerability_scan, :social_vulnerabilities, %{})
-    recommendations = add_social_mitigations(recommendations, social)
+    strategic_recommendations = add_social_mitigations(tactical_recommendations, social)
 
-    recommendations
+    strategic_recommendations
   end
 
   defp calculate_assessment_confidence(base_data, vulnerability_scan) do
@@ -400,34 +396,49 @@ defmodule EveDmv.Contexts.ThreatAssessment.Domain.ThreatAnalyzer do
   defp extract_key_findings(assessment) do
     vulnerability_analysis = assessment.vulnerability_analysis
 
-    findings = []
+    base_findings = []
 
     # Extract high-priority vulnerabilities
-    if Map.has_key?(vulnerability_analysis, :behavioral_vulnerabilities) do
-      behavioral = vulnerability_analysis.behavioral_vulnerabilities
+    behavioral_findings =
+      if Map.has_key?(vulnerability_analysis, :behavioral_vulnerabilities) do
+        behavioral = vulnerability_analysis.behavioral_vulnerabilities
 
-      if Map.get(behavioral, :behavioral_vulnerability_score, 0) > 70 do
-        findings = ["High behavioral vulnerability score detected" | findings]
+        if Map.get(behavioral, :behavioral_vulnerability_score, 0) > 70 do
+          ["High behavioral vulnerability score detected" | base_findings]
+        else
+          base_findings
+        end
+      else
+        base_findings
       end
-    end
 
-    if Map.has_key?(vulnerability_analysis, :tactical_vulnerabilities) do
-      tactical = vulnerability_analysis.tactical_vulnerabilities
+    tactical_findings =
+      if Map.has_key?(vulnerability_analysis, :tactical_vulnerabilities) do
+        tactical = vulnerability_analysis.tactical_vulnerabilities
 
-      if Map.get(tactical, :tactical_vulnerability_score, 0) > 70 do
-        findings = ["Significant tactical vulnerabilities identified" | findings]
+        if Map.get(tactical, :tactical_vulnerability_score, 0) > 70 do
+          ["Significant tactical vulnerabilities identified" | behavioral_findings]
+        else
+          behavioral_findings
+        end
+      else
+        behavioral_findings
       end
-    end
 
-    if Map.has_key?(vulnerability_analysis, :security_assessment) do
-      security = vulnerability_analysis.security_assessment
+    final_findings =
+      if Map.has_key?(vulnerability_analysis, :security_assessment) do
+        security = vulnerability_analysis.security_assessment
 
-      if Map.get(security, :overall_security_score, 100) < 40 do
-        findings = ["Poor overall security posture" | findings]
+        if Map.get(security, :overall_security_score, 100) < 40 do
+          ["Poor overall security posture" | tactical_findings]
+        else
+          tactical_findings
+        end
+      else
+        tactical_findings
       end
-    end
 
-    findings
+    final_findings
   end
 
   defp create_risk_matrix(assessment) do
@@ -632,7 +643,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Domain.ThreatAnalyzer do
     short_term_count = div(total, 3)
 
     immediate = Enum.take(recommendations, immediate_count)
-    short_term = Enum.take(recommendations, short_term_count) |> Enum.drop(immediate_count)
+    short_term = Enum.slice(recommendations, immediate_count, short_term_count)
     long_term = Enum.drop(recommendations, immediate_count + short_term_count)
 
     {immediate, short_term, long_term}

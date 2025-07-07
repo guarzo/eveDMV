@@ -18,6 +18,8 @@ defmodule EveDmv.Workers.BackgroundTaskSupervisor do
   - **Restart Strategy**: temporary (manual restart required)
   """
 
+  @behaviour DynamicSupervisor
+
   use DynamicSupervisor
   require Logger
 
@@ -35,8 +37,8 @@ defmodule EveDmv.Workers.BackgroundTaskSupervisor do
     DynamicSupervisor.start_link(__MODULE__, opts, name: name)
   end
 
-  @impl true
-  def init(opts) do
+  @impl DynamicSupervisor
+  def init(_opts) do
     Logger.info("Started Background Task Supervisor")
     DynamicSupervisor.init(strategy: :one_for_one, max_children: @max_concurrent)
   end
@@ -57,30 +59,31 @@ defmodule EveDmv.Workers.BackgroundTaskSupervisor do
     memory_limit = Keyword.get(opts, :memory_limit)
 
     # Check concurrent task limit
-    with :ok <- check_concurrent_limit(supervisor) do
-      task_spec = %{
-        id: make_ref(),
-        start:
-          {Task, :start_link,
-           [
-             fn ->
-               run_with_resource_monitoring(fun, description, timeout, priority, memory_limit)
-             end
-           ]},
-        restart: :temporary,
-        type: :worker
-      }
+    case check_concurrent_limit(supervisor) do
+      :ok ->
+        task_spec = %{
+          id: make_ref(),
+          start:
+            {Task, :start_link,
+             [
+               fn ->
+                 run_with_resource_monitoring(fun, description, timeout, priority, memory_limit)
+               end
+             ]},
+          restart: :temporary,
+          type: :worker
+        }
 
-      case DynamicSupervisor.start_child(supervisor, task_spec) do
-        {:ok, pid} ->
-          track_background_task(pid, description, priority)
-          {:ok, pid}
+        case DynamicSupervisor.start_child(supervisor, task_spec) do
+          {:ok, pid} ->
+            track_background_task(pid, description, priority)
+            {:ok, pid}
 
-        {:error, reason} ->
-          Logger.warning("Failed to start background task '#{description}': #{inspect(reason)}")
-          {:error, reason}
-      end
-    else
+          {:error, reason} ->
+            Logger.warning("Failed to start background task '#{description}': #{inspect(reason)}")
+            {:error, reason}
+        end
+
       {:error, :limit_exceeded} = error ->
         Logger.warning("Background task limit exceeded for '#{description}'")
         error
@@ -261,23 +264,21 @@ defmodule EveDmv.Workers.BackgroundTaskSupervisor do
   end
 
   defp get_task_info(pid) do
-    try do
-      case Process.info(pid, [:memory, :current_function]) do
-        [memory: memory, current_function: current_function] ->
-          {:ok,
-           %{
-             pid: pid,
-             memory: memory,
-             current_function: current_function,
-             runtime: get_task_runtime(pid)
-           }}
+    case Process.info(pid, [:memory, :current_function]) do
+      [memory: memory, current_function: current_function] ->
+        {:ok,
+         %{
+           pid: pid,
+           memory: memory,
+           current_function: current_function,
+           runtime: get_task_runtime(pid)
+         }}
 
-        _ ->
-          {:error, :unavailable}
-      end
-    rescue
-      _ -> {:error, :process_dead}
+      _ ->
+        {:error, :unavailable}
     end
+  rescue
+    _ -> {:error, :process_dead}
   end
 
   defp get_task_runtime(pid) do

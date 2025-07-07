@@ -10,7 +10,7 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
   - Key moment highlights
   """
 
-  use EveDmvWeb, :component
+  use Phoenix.Component
   alias Phoenix.HTML
 
   @doc """
@@ -21,10 +21,10 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
   - height: Height of the timeline (default: 400px)
   - interactive: Enable interactive features (default: true)
   """
-  attr :timeline_data, :map, required: true
-  attr :height, :string, default: "400"
-  attr :interactive, :boolean, default: true
-  attr :class, :string, default: ""
+  attr(:timeline_data, :map, required: true)
+  attr(:height, :string, default: "400")
+  attr(:interactive, :boolean, default: true)
+  attr(:class, :string, default: "")
 
   def battle_timeline(assigns) do
     ~H"""
@@ -112,9 +112,9 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
   @doc """
   Renders a compact battle summary card.
   """
-  attr :battle_analysis, :map, required: true
-  attr :show_recommendations, :boolean, default: false
-  attr :class, :string, default: ""
+  attr(:battle_analysis, :map, required: true)
+  attr(:show_recommendations, :boolean, default: false)
+  attr(:class, :string, default: "")
 
   def battle_summary_card(assigns) do
     ~H"""
@@ -219,9 +219,9 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
   @doc """
   Renders fleet composition breakdown.
   """
-  attr :fleet_analysis, :map, required: true
-  attr :side, :atom, required: true
-  attr :class, :string, default: ""
+  attr(:fleet_analysis, :map, required: true)
+  attr(:side, :atom, required: true)
+  attr(:class, :string, default: "")
 
   def fleet_composition_breakdown(assigns) do
     ~H"""
@@ -337,13 +337,15 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
     # Calculate position based on timestamp
     position = calculate_event_position(event, assigns.timeline_data)
 
-    assigns = assigns
-    |> assign(:event, event)
-    |> assign(:index, index)
-    |> assign(:position, position)
+    assigns =
+      assigns
+      |> assign(:event, event)
+      |> assign(:index, index)
+      |> assign(:position, position)
 
     ~H"""
     <div
+      id={"event-marker-#{@index}"}
       class="event-marker absolute"
       style={"left: #{@position}%; bottom: 40px;"}
       phx-hook="Tooltip"
@@ -364,10 +366,11 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
     end_pos = calculate_phase_position(phase.end_time, assigns.timeline_data)
     width = end_pos - start_pos
 
-    assigns = assigns
-    |> assign(:phase, phase)
-    |> assign(:start_pos, start_pos)
-    |> assign(:width, width)
+    assigns =
+      assigns
+      |> assign(:phase, phase)
+      |> assign(:start_pos, start_pos)
+      |> assign(:width, width)
 
     ~H"""
     <div
@@ -384,9 +387,10 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
   defp render_key_moment(moment, assigns) do
     position = calculate_event_position(moment, assigns.timeline_data)
 
-    assigns = assigns
-    |> assign(:moment, moment)
-    |> assign(:position, position)
+    assigns =
+      assigns
+      |> assign(:moment, moment)
+      |> assign(:position, position)
 
     ~H"""
     <div
@@ -461,6 +465,7 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
     secs = rem(trunc(seconds), 60)
     "#{minutes}:#{String.pad_leading(Integer.to_string(secs), 2, "0")}"
   end
+
   defp format_duration(_), do: "0:00"
 
   defp format_timestamp(timestamp) do
@@ -475,6 +480,7 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
       true -> "#{trunc(value)}"
     end
   end
+
   defp format_isk(_), do: "0"
 
   defp format_battle_type(type) do
@@ -529,11 +535,13 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
   defp format_percentage(value) when is_number(value) do
     "#{Float.round(value, 1)}%"
   end
+
   defp format_percentage(_), do: "0%"
 
   defp format_efficiency(value) when is_number(value) do
     "#{Float.round(value, 2)}"
   end
+
   defp format_efficiency(_), do: "0.00"
 
   defp efficiency_color_class(efficiency) when is_number(efficiency) do
@@ -543,6 +551,7 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
       true -> "text-red-400"
     end
   end
+
   defp efficiency_color_class(_), do: "text-gray-400"
 
   defp format_victory_factor(factor) do
@@ -561,8 +570,7 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
     |> to_string()
     |> String.replace("_", " ")
     |> String.split()
-    |> Enum.map(&String.capitalize/1)
-    |> Enum.join(" ")
+    |> Enum.map_join(" ", &String.capitalize/1)
   end
 
   defp event_color_class(event) do
@@ -586,7 +594,7 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
     if timeline_data.duration > 0 do
       first_event = List.first(timeline_data.events)
       event_offset = DateTime.diff(event.timestamp, first_event.timestamp)
-      (event_offset / timeline_data.duration) * 100
+      event_offset / timeline_data.duration * 100
     else
       0
     end
@@ -596,13 +604,13 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
     if timeline_data.duration > 0 && length(timeline_data.events) > 0 do
       first_event = List.first(timeline_data.events)
       offset = DateTime.diff(timestamp, first_event.timestamp)
-      (offset / timeline_data.duration) * 100
+      offset / timeline_data.duration * 100
     else
       0
     end
   end
 
-  defp build_intensity_path(intensity_data) do
+  defp build_intensity_path(_intensity_data) do
     # Build SVG path from intensity data points
     # This is a simplified implementation
     "M 0,100 L 50,20 L 100,100"

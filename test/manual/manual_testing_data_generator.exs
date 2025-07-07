@@ -7,13 +7,16 @@
 #   3. Run: ManualTestingDataGenerator.setup_complete_testing_environment()
 
 defmodule ManualTestingDataGenerator do
-  require Ash.Query
   alias EveDmv.Api
   alias EveDmv.Intelligence.Metrics.CharacterMetricsAdapter, as: CharacterMetrics
-  alias EveDmv.Killmails.{KillmailRaw, Participant}
+  alias EveDmv.Killmails.KillmailRaw
+  alias EveDmv.Killmails.Participant
+  alias EveDmv.Surveillance.MatchingEngine
   alias EveDmv.Surveillance.NotificationService
   alias EveDmv.Surveillance.Profile
   alias EveDmv.Users.User
+
+  require Ash.Query
 
   @doc """
   Complete setup for manual testing - creates all necessary test data
@@ -206,7 +209,7 @@ defmodule ManualTestingDataGenerator do
   Check surveillance engine status
   """
   def check_surveillance_engine do
-    stats = EveDmv.Surveillance.MatchingEngine.get_stats()
+    stats = MatchingEngine.get_stats()
     {:ok, stats}
   rescue
     _ -> {:error, :not_running}

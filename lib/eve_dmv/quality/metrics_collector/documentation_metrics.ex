@@ -29,53 +29,53 @@ defmodule EveDmv.Quality.MetricsCollector.DocumentationMetrics do
   Generates documentation recommendations.
   """
   def generate_documentation_recommendations(doc_metrics) do
-    recommendations = []
-
     # Check README quality
     readme = doc_metrics.readme_quality
 
-    recommendations =
+    readme_recommendations =
       cond do
         not readme.exists ->
-          ["Create a README.md file" | recommendations]
+          ["Create a README.md file"]
 
         not readme.has_setup_instructions ->
-          ["Add setup instructions to README" | recommendations]
+          ["Add setup instructions to README"]
 
         not readme.has_usage_examples ->
-          ["Add usage examples to README" | recommendations]
+          ["Add usage examples to README"]
 
         readme.sections < 5 ->
-          ["Expand README with more sections (current: #{readme.sections})" | recommendations]
+          [
+            "Expand README with more sections (current: #{readme.sections})"
+          ]
 
         true ->
-          recommendations
+          []
       end
 
     # Check code documentation
     code_doc_percentage = doc_metrics.code_documentation.documentation_percentage
 
-    recommendations =
+    code_doc_recommendations =
       if code_doc_percentage < 80 do
         [
           "Increase code documentation coverage (current: #{round(code_doc_percentage)}%)"
-          | recommendations
+          | readme_recommendations
         ]
       else
-        recommendations
+        readme_recommendations
       end
 
     # Check architecture docs
     arch_docs = doc_metrics.architecture_documentation
 
-    recommendations =
+    final_recommendations =
       if arch_docs.architecture_docs_count == 0 do
-        ["Add architecture documentation" | recommendations]
+        ["Add architecture documentation" | code_doc_recommendations]
       else
-        recommendations
+        code_doc_recommendations
       end
 
-    recommendations
+    final_recommendations
   end
 
   # README analysis
@@ -154,17 +154,18 @@ defmodule EveDmv.Quality.MetricsCollector.DocumentationMetrics do
     elixir_files = Path.wildcard("lib/**/*.ex")
 
     doc_analysis =
-      elixir_files
-      |> Enum.map(&analyze_file_documentation/1)
-      |> Enum.reduce(%{total: 0, documented: 0, with_moduledoc: 0, with_doc: 0}, fn file_data,
-                                                                                    acc ->
-        %{
-          total: acc.total + 1,
-          documented: acc.documented + if(file_data.has_docs, do: 1, else: 0),
-          with_moduledoc: acc.with_moduledoc + if(file_data.has_moduledoc, do: 1, else: 0),
-          with_doc: acc.with_doc + if(file_data.has_doc, do: 1, else: 0)
-        }
-      end)
+      Enum.reduce(
+        Enum.map(elixir_files, &analyze_file_documentation/1),
+        %{total: 0, documented: 0, with_moduledoc: 0, with_doc: 0},
+        fn file_data, acc ->
+          %{
+            total: acc.total + 1,
+            documented: acc.documented + if(file_data.has_docs, do: 1, else: 0),
+            with_moduledoc: acc.with_moduledoc + if(file_data.has_moduledoc, do: 1, else: 0),
+            with_doc: acc.with_doc + if(file_data.has_doc, do: 1, else: 0)
+          }
+        end
+      )
 
     %{
       total_files: doc_analysis.total,
@@ -238,8 +239,7 @@ defmodule EveDmv.Quality.MetricsCollector.DocumentationMetrics do
     ]
 
     existing_docs =
-      architecture_files
-      |> Enum.filter(&File.exists?/1)
+      Enum.filter(architecture_files, &File.exists?/1)
 
     %{
       architecture_docs_count: length(existing_docs),

@@ -22,7 +22,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewQueryService do
   """
   def query_view_where(view_name, where_clause, params, limit \\ 100) do
     sql = "SELECT * FROM #{view_name} WHERE #{where_clause} LIMIT $#{length(params) + 1}"
-    execute_query(sql, [limit | params] |> Enum.reverse())
+    execute_query(sql, Enum.reverse([limit | params]))
   end
 
   @doc """
@@ -80,8 +80,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewQueryService do
          {:ok, %{columns: columns, rows: rows}} <- SQL.query(Repo, data_sql, [page_size, offset]) do
       data =
         Enum.map(rows, fn row ->
-          Enum.zip(columns, row)
-          |> Map.new()
+          Map.new(Enum.zip(columns, row))
         end)
 
       {:ok,
@@ -253,11 +252,10 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewQueryService do
 
     rows =
       Enum.map(data, fn row ->
-        Enum.map(Map.values(row), &to_string/1)
-        |> Enum.join(",")
+        Enum.map_join(Map.values(row), ",", &to_string/1)
       end)
 
-    csv_content = [headers | rows] |> Enum.join("\n")
+    csv_content = Enum.join([headers | rows], "\n")
     {:ok, csv_content}
   end
 

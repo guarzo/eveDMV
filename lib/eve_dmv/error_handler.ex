@@ -1,37 +1,14 @@
+# credo:disable-for-this-file Credo.Check.Refactor.LongQuoteBlocks
 defmodule EveDmv.ErrorHandler do
   @moduledoc """
-  Behavior and utilities for consistent error handling across modules.
+  Behavior for consistent error handling across modules.
 
-  Provides a standardized approach to error handling with support for:
-  - Retry logic for transient failures
-  - Fallback values for graceful degradation
-  - Error transformation and context addition
-  - Telemetry and monitoring integration
-
-  ## Usage
-
-      defmodule MyModule do
-        use EveDmv.ErrorHandler
-
-        def my_operation(params) do
-          with_error_handling fn ->
-            # Your operation logic here
-            do_something(params)
-          end, %{operation: :my_operation, params: params}
-        end
-
-        # Custom error handling for this module
-        def handle_error(error, context) do
-          case error.code do
-            :timeout -> {:retry, 1000}
-            :not_found -> {:fallback, default_value()}
-            _ -> {:propagate, error}
-          end
-        end
-      end
+  Provides retry logic, fallback values, error transformation,
+  and telemetry integration for standardized error handling.
   """
 
-  alias EveDmv.{Error, ErrorCodes}
+  alias EveDmv.Error
+  alias EveDmv.ErrorCodes
   require Logger
 
   @type error_action ::
@@ -93,50 +70,48 @@ defmodule EveDmv.ErrorHandler do
       end
 
       defp do_with_error_handling(operation, context, attempt, max_retries, config) do
-        try do
-          case operation.() do
-            {:ok, _} = success ->
-              success
+        case operation.() do
+          {:ok, _} = success ->
+            success
 
-            {:error, reason} ->
-              error = Error.normalize(reason)
-              handle_error_result(error, context, attempt, max_retries, config, operation)
-
-            %Error{} = error ->
-              handle_error_result(error, context, attempt, max_retries, config, operation)
-
-            other ->
-              # Assume non-tuple, non-error returns are success
-              {:ok, other}
-          end
-        rescue
-          e in RuntimeError ->
-            error =
-              Error.new(:runtime_error, Exception.message(e),
-                context: context,
-                stacktrace: __STACKTRACE__
-              )
-
+          {:error, reason} ->
+            error = Error.normalize(reason)
             handle_error_result(error, context, attempt, max_retries, config, operation)
 
-          e ->
-            error =
-              Error.new(:exception, Exception.message(e),
-                context: context,
-                details: %{exception_type: e.__struct__},
-                stacktrace: __STACKTRACE__
-              )
-
-            handle_error_result(error, context, attempt, max_retries, config, operation)
-        catch
-          :exit, reason ->
-            error = Error.new(:process_exit, inspect(reason), context: context)
+          %Error{} = error ->
             handle_error_result(error, context, attempt, max_retries, config, operation)
 
-          :throw, value ->
-            error = Error.new(:thrown_value, inspect(value), context: context)
-            handle_error_result(error, context, attempt, max_retries, config, operation)
+          other ->
+            # Assume non-tuple, non-error returns are success
+            {:ok, other}
         end
+      rescue
+        e in RuntimeError ->
+          error =
+            Error.new(:runtime_error, Exception.message(e),
+              context: context,
+              stacktrace: __STACKTRACE__
+            )
+
+          handle_error_result(error, context, attempt, max_retries, config, operation)
+
+        e ->
+          error =
+            Error.new(:exception, Exception.message(e),
+              context: context,
+              details: %{exception_type: e.__struct__},
+              stacktrace: __STACKTRACE__
+            )
+
+          handle_error_result(error, context, attempt, max_retries, config, operation)
+      catch
+        :exit, reason ->
+          error = Error.new(:process_exit, inspect(reason), context: context)
+          handle_error_result(error, context, attempt, max_retries, config, operation)
+
+        :throw, value ->
+          error = Error.new(:thrown_value, inspect(value), context: context)
+          handle_error_result(error, context, attempt, max_retries, config, operation)
       end
 
       defp handle_error_result(error, context, attempt, max_retries, config, operation) do

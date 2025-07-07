@@ -7,8 +7,6 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityDataCollector do
   It provides a clean separation between data collection and analysis logic.
   """
 
-  require Logger
-  require Ash.Query
   alias EveDmv.Api
   alias EveDmv.Database.CharacterRepository
   alias EveDmv.Database.KillmailRepository
@@ -16,6 +14,9 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityDataCollector do
   alias EveDmv.Intelligence.MemberActivityIntelligence
   alias EveDmv.Killmails.Participant
   alias EveDmv.Utils.TimeUtils
+
+  require Ash.Query
+  require Logger
 
   @doc """
   Fetch character information including corporation and alliance data.
@@ -74,8 +75,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityDataCollector do
       {:ok, killmails} ->
         # Convert killmails to expected format for compatibility
         processed_killmails =
-          killmails
-          |> Enum.flat_map(fn killmail ->
+          Enum.flat_map(killmails, fn killmail ->
             # Find this character's participation in each killmail
             character_participants =
               Enum.filter(killmail.participants || [], fn p ->
@@ -95,9 +95,11 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityDataCollector do
               }
             end)
           end)
-          |> Enum.reject(&is_nil(&1.killmail_time))
 
-        {:ok, processed_killmails}
+        filtered_killmails =
+          Enum.reject(processed_killmails, &is_nil(&1.killmail_time))
+
+        {:ok, filtered_killmails}
 
       {:error, reason} ->
         Logger.error("Failed to fetch character killmails: #{inspect(reason)}")

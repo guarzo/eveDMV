@@ -43,4 +43,26 @@ defmodule EveDmvWeb.Helpers.TimeFormatter do
   end
 
   def format_duration(_), do: "N/A"
+
+  @doc """
+  Formats a DateTime to a friendly, human-readable format.
+
+  Returns "Never" for nil, "Today", "Yesterday", "X days ago",
+  "X weeks ago", or "X months ago" as appropriate.
+  """
+  @spec format_friendly_time(DateTime.t() | nil) :: String.t()
+  def format_friendly_time(nil), do: "Never"
+
+  def format_friendly_time(%DateTime{} = datetime) do
+    now = DateTime.utc_now()
+    diff_days = DateTime.diff(now, datetime, :day)
+
+    cond do
+      diff_days == 0 -> "Today"
+      diff_days == 1 -> "Yesterday"
+      diff_days < 7 -> "#{diff_days} days ago"
+      diff_days < 30 -> "#{div(diff_days, 7)} weeks ago"
+      true -> "#{div(diff_days, 30)} months ago"
+    end
+  end
 end

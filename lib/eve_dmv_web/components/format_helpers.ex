@@ -12,7 +12,7 @@ defmodule EveDmvWeb.FormatHelpers do
   def format_number(nil), do: "0"
 
   def format_number(number) when is_integer(number) do
-    number |> Integer.to_string() |> add_commas()
+    add_commas(Integer.to_string(number))
   end
 
   def format_number(%Decimal{} = number), do: number |> Decimal.to_float() |> format_number()

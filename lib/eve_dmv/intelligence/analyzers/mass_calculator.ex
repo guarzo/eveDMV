@@ -11,7 +11,7 @@ defmodule EveDmv.Intelligence.Analyzers.MassCalculator do
   - Jump sequence optimization
   """
 
-  alias EveDmv.Intelligence.{ShipDatabase}
+  alias EveDmv.Intelligence.ShipDatabase
 
   @doc """
   Calculate mass efficiency for a fleet doctrine.
@@ -127,13 +127,11 @@ defmodule EveDmv.Intelligence.Analyzers.MassCalculator do
     efficiency_rating = min(1.0, cruiser_limit / total_mass)
     wasted_mass_percentage = max(0.0, (total_mass - cruiser_limit) / cruiser_limit * 100)
 
-    suggestions = []
-
     suggestions =
       if total_mass > cruiser_limit do
-        ["Fleet exceeds cruiser hole mass limit" | suggestions]
+        ["Fleet exceeds cruiser hole mass limit"]
       else
-        suggestions
+        []
       end
 
     %{

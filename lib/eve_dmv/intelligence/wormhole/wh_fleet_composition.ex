@@ -244,8 +244,7 @@ defmodule EveDmv.Intelligence.Wormhole.FleetComposition do
       end)
 
       change(fn changeset, _context ->
-        changeset
-        |> Ash.Changeset.change_attribute(:last_updated_at, DateTime.utc_now())
+        Ash.Changeset.change_attribute(changeset, :last_updated_at, DateTime.utc_now())
       end)
     end
 
@@ -268,8 +267,7 @@ defmodule EveDmv.Intelligence.Wormhole.FleetComposition do
       ])
 
       change(fn changeset, _context ->
-        changeset
-        |> Ash.Changeset.change_attribute(:last_updated_at, DateTime.utc_now())
+        Ash.Changeset.change_attribute(changeset, :last_updated_at, DateTime.utc_now())
       end)
     end
 

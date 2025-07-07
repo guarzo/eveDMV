@@ -253,12 +253,10 @@ defmodule EveDmv.Intelligence.CharacterStats do
 
             {:error, _reason} ->
               # If analysis fails, just update the timestamp
-              changeset
-              |> Ash.Changeset.change_attribute(:last_calculated_at, DateTime.utc_now())
+              Ash.Changeset.change_attribute(changeset, :last_calculated_at, DateTime.utc_now())
           end
         else
-          changeset
-          |> Ash.Changeset.change_attribute(:last_calculated_at, DateTime.utc_now())
+          Ash.Changeset.change_attribute(changeset, :last_calculated_at, DateTime.utc_now())
         end
       end)
     end

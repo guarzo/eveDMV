@@ -6,7 +6,7 @@ defmodule EveDmvWeb.Components.StatsGridComponent do
   """
 
   use Phoenix.Component
-  alias EveDmvWeb.Components.FormatHelpers
+  alias EveDmvWeb.FormatHelpers
 
   @doc """
   Renders a grid of statistics cards.

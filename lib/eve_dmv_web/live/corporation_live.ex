@@ -1,4 +1,5 @@
 # credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
+# credo:disable-for-this-file Credo.Check.Readability.StrictModuleLayout
 defmodule EveDmvWeb.CorporationLive do
   @moduledoc """
   LiveView for displaying corporation overview and member activity.
@@ -8,17 +9,18 @@ defmodule EveDmvWeb.CorporationLive do
   """
 
   use EveDmvWeb, :live_view
+
   alias EveDmv.Api
   alias EveDmv.Killmails.Participant
+
+  # Load current user from session on mount
+  on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
   # Import reusable components
   import EveDmvWeb.Components.PageHeaderComponent
   import EveDmvWeb.Components.StatsGridComponent
   import EveDmvWeb.Components.ErrorStateComponent
   import EveDmvWeb.Components.EmptyStateComponent
-
-  # Load current user from session on mount
-  on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
   @impl Phoenix.LiveView
   def mount(%{"corporation_id" => corp_id_str}, _session, socket) do
@@ -122,14 +124,12 @@ defmodule EveDmvWeb.CorporationLive do
             character_name = participations |> List.first() |> Map.get(:character_name, "Unknown")
 
             # Calculate basic activity stats using is_victim flag instead of damage_dealt
-            kills = participations |> Enum.count(&(not &1.is_victim))
-            losses = participations |> Enum.count(& &1.is_victim)
+            kills = Enum.count(participations, &(not &1.is_victim))
+            losses = Enum.count(participations, & &1.is_victim)
 
             # Get latest activity
             latest_activity =
-              participations
-              |> Enum.map(& &1.inserted_at)
-              |> Enum.max(Date, fn -> nil end)
+              Enum.max(Enum.map(participations, & &1.inserted_at), Date, fn -> nil end)
 
             %{
               character_id: character_id,
@@ -160,8 +160,7 @@ defmodule EveDmvWeb.CorporationLive do
            domain: Api
          ) do
       {:ok, participants} ->
-        participants
-        |> Enum.map(fn p ->
+        Enum.map(participants, fn p ->
           %{
             character_name: p.character_name,
             ship_name: p.ship_name,
@@ -188,10 +187,10 @@ defmodule EveDmvWeb.CorporationLive do
     kd_ratio = if total_losses > 0, do: total_kills / total_losses, else: total_kills
 
     # Find most active member
-    most_active = members |> Enum.max_by(& &1.total_activity, fn -> nil end)
+    most_active = Enum.max_by(members, & &1.total_activity, fn -> nil end)
 
     # Calculate activity distribution
-    active_members = members |> Enum.count(&(&1.total_activity > 5))
+    active_members = Enum.count(members, &(&1.total_activity > 5))
 
     %{
       total_members: total_members,
@@ -220,7 +219,7 @@ defmodule EveDmvWeb.CorporationLive do
   def format_number(nil), do: "0"
 
   def format_number(number) when is_integer(number) do
-    number |> Integer.to_string() |> add_commas()
+    add_commas(Integer.to_string(number))
   end
 
   def format_number(number) when is_float(number) do

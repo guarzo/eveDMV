@@ -3,8 +3,12 @@ defmodule EveDmv.Killmails.PipelineTestHelper do
   Helper module for manually testing the killmail ingestion pipeline.
   """
 
-  alias EveDmv.{Api, Repo}
-  alias EveDmv.Killmails.{KillmailEnriched, KillmailRaw, Participant, TestDataGenerator}
+  alias EveDmv.Api
+  alias EveDmv.Killmails.KillmailEnriched
+  alias EveDmv.Killmails.KillmailRaw
+  alias EveDmv.Killmails.Participant
+  alias EveDmv.Killmails.TestDataGenerator
+  alias EveDmv.Repo
 
   require Logger
 
@@ -281,7 +285,7 @@ defmodule EveDmv.Killmails.PipelineTestHelper do
   defp generate_hash(enriched) do
     id = enriched["killmail_id"]
     timestamp = enriched["timestamp"]
-    :crypto.hash(:sha256, "#{id}-#{timestamp}") |> Base.encode16(case: :lower)
+    "#{id}-#{timestamp}" |> :crypto.hash(:sha256) |> Base.encode16(case: :lower)
   end
 
   defp get_victim_character_id(enriched) do

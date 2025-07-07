@@ -6,11 +6,12 @@ defmodule EveDmv.Database.QueryUtils do
   consistent querying interfaces and reduce code duplication.
   """
 
-  require Ash.Query
-
   alias EveDmv.Api
   alias EveDmv.Intelligence.CharacterStats
-  alias EveDmv.Killmails.{KillmailEnriched, Participant}
+  alias EveDmv.Killmails.KillmailEnriched
+  alias EveDmv.Killmails.Participant
+
+  require Ash.Query
 
   @doc """
   Query killmails by corporation within a date range.
@@ -31,7 +32,7 @@ defmodule EveDmv.Database.QueryUtils do
     limit = Keyword.get(opts, :limit)
     order_by = Keyword.get(opts, :order_by, :killmail_time)
 
-    query =
+    base_query =
       KillmailEnriched
       |> Ash.Query.new()
       |> Ash.Query.load(load_assocs)
@@ -40,14 +41,14 @@ defmodule EveDmv.Database.QueryUtils do
       |> Ash.Query.filter(exists(participants, corporation_id == ^corporation_id))
       |> Ash.Query.sort([{order_by, :desc}])
 
-    query =
+    final_query =
       if limit do
-        Ash.Query.limit(query, limit)
+        Ash.Query.limit(base_query, limit)
       else
-        query
+        base_query
       end
 
-    Ash.read(query, domain: Api)
+    Ash.read(final_query, domain: Api)
   end
 
   @doc """
@@ -69,7 +70,7 @@ defmodule EveDmv.Database.QueryUtils do
     limit = Keyword.get(opts, :limit)
     order_by = Keyword.get(opts, :order_by, :killmail_time)
 
-    query =
+    character_query =
       KillmailEnriched
       |> Ash.Query.new()
       |> Ash.Query.load(load_assocs)
@@ -78,14 +79,14 @@ defmodule EveDmv.Database.QueryUtils do
       |> Ash.Query.filter(exists(participants, character_id == ^character_id))
       |> Ash.Query.sort([{order_by, :desc}])
 
-    query =
+    limited_query =
       if limit do
-        Ash.Query.limit(query, limit)
+        Ash.Query.limit(character_query, limit)
       else
-        query
+        character_query
       end
 
-    Ash.read(query, domain: Api)
+    Ash.read(limited_query, domain: Api)
   end
 
   @doc """
@@ -107,7 +108,7 @@ defmodule EveDmv.Database.QueryUtils do
     load_assocs = Keyword.get(opts, :load, [:killmail_enriched])
     limit = Keyword.get(opts, :limit)
 
-    query =
+    participant_query =
       Participant
       |> Ash.Query.new()
       |> Ash.Query.filter(character_id == ^character_id)
@@ -116,14 +117,14 @@ defmodule EveDmv.Database.QueryUtils do
       |> Ash.Query.load(load_assocs)
       |> Ash.Query.sort([{:updated_at, :desc}])
 
-    query =
+    final_participant_query =
       if limit do
-        Ash.Query.limit(query, limit)
+        Ash.Query.limit(participant_query, limit)
       else
-        query
+        participant_query
       end
 
-    Ash.read(query, domain: Api)
+    Ash.read(final_participant_query, domain: Api)
   end
 
   @doc """

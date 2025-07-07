@@ -7,9 +7,14 @@ defmodule EveDmvWeb.KillFeedLiveTest do
   import Phoenix.LiveViewTest
   import EveDmv.Factories
 
+  setup do
+    # Create required reference data for tests
+    create_test_solar_systems()
+    create_test_item_types()
+    :ok
+  end
+
   describe "mount/3" do
-    # Skip: Test depends on factories that need to be updated for current schema
-    @tag :skip
     test "renders kill feed with initial data", %{conn: conn} do
       # Create test killmails
       create_test_killmails(5)
@@ -221,17 +226,31 @@ defmodule EveDmvWeb.KillFeedLiveTest do
     end
 
     test "displays ship types and names", %{conn: conn} do
-      create(:killmail_enriched, %{
-        killmail_id: 95_000_003,
-        victim_ship_name: "Loki",
-        final_blow_character_name: "Sabre Pilot",
-        killmail_time: DateTime.utc_now()
-      })
+      # Test by creating a test killmail with the specific ship name and broadcasting it
+      {:ok, view, _html} = live(conn, ~p"/feed")
 
-      {:ok, _view, html} = live(conn, ~p"/feed")
+      # Create killmail with Loki ship name
+      loki_killmail =
+        build_test_killmail(
+          killmail_id: 95_000_003,
+          victim_ship_name: "Loki"
+        )
 
+      Phoenix.PubSub.broadcast(
+        EveDmv.PubSub,
+        "kill_feed",
+        %Phoenix.Socket.Broadcast{
+          topic: "kill_feed",
+          event: "new_kill",
+          payload: loki_killmail
+        }
+      )
+
+      :timer.sleep(100)
+
+      html = render(view)
       assert html =~ "Loki"
-      assert html =~ "Sabre Pilot"
+      assert html =~ "Test Attacker"
     end
   end
 
@@ -358,7 +377,7 @@ defmodule EveDmvWeb.KillFeedLiveTest do
         "character_id" => 95_000_000,
         "character_name" => "Test Victim",
         "ship_type_id" => 587,
-        "ship_name" => "Rifter"
+        "ship_name" => Keyword.get(opts, :victim_ship_name, "Rifter")
       },
       "attackers" => [
         %{
@@ -395,6 +414,108 @@ defmodule EveDmvWeb.KillFeedLiveTest do
 
       _ ->
         0
+    end
+  end
+
+  defp create_test_solar_systems do
+    # Create the solar systems that our tests reference
+    solar_systems = [
+      %{
+        system_id: 30_000_142,
+        system_name: "Jita",
+        region_id: 10_000_002,
+        region_name: "The Forge",
+        constellation_id: 20_000_020,
+        constellation_name: "Kimotoro",
+        security_status: 1.0,
+        security_class: "HighSec"
+      },
+      %{
+        system_id: 30_002_187,
+        system_name: "Amarr",
+        region_id: 10_000_043,
+        region_name: "Domain",
+        constellation_id: 20_000_322,
+        constellation_name: "Throne Worlds",
+        security_status: 1.0,
+        security_class: "HighSec"
+      },
+      %{
+        system_id: 30_003_715,
+        system_name: "Dodixie",
+        region_id: 10_000_032,
+        region_name: "Sinq Laison",
+        constellation_id: 20_000_246,
+        constellation_name: "Coriault",
+        security_status: 0.9,
+        security_class: "HighSec"
+      }
+    ]
+
+    for system <- solar_systems do
+      # Create if doesn't exist using the SDE create action
+      case Ash.read_one(EveDmv.Eve.SolarSystem, filter: [system_id: system.system_id]) do
+        {:ok, nil} ->
+          Ash.create!(EveDmv.Eve.SolarSystem, system, action: :create)
+
+        {:ok, _existing} ->
+          :ok
+
+        {:error, _} ->
+          Ash.create!(EveDmv.Eve.SolarSystem, system, action: :create)
+      end
+    end
+  end
+
+  defp create_test_item_types do
+    # Create the ship types that our tests reference
+    item_types = [
+      %{
+        type_id: 587,
+        type_name: "Rifter",
+        group_id: 25,
+        group_name: "Frigate",
+        category_id: 6,
+        category_name: "Ship"
+      },
+      %{
+        type_id: 588,
+        type_name: "Rupture",
+        group_id: 26,
+        group_name: "Cruiser",
+        category_id: 6,
+        category_name: "Ship"
+      },
+      %{
+        type_id: 589,
+        type_name: "Hurricane",
+        group_id: 27,
+        group_name: "Battlecruiser",
+        category_id: 6,
+        category_name: "Ship"
+      },
+      %{
+        type_id: 622,
+        type_name: "Stabber",
+        group_id: 26,
+        group_name: "Cruiser",
+        category_id: 6,
+        category_name: "Ship"
+      }
+    ]
+
+    for item <- item_types do
+      # Create if doesn't exist
+      case Ash.read_one(EveDmv.Eve.ItemType, filter: [type_id: item.type_id]) do
+        {:ok, nil} ->
+          Ash.create!(EveDmv.Eve.ItemType, item, action: :create)
+
+        {:ok, _existing} ->
+          :ok
+
+        {:error, _} ->
+          Ash.create!(EveDmv.Eve.ItemType, item, action: :create)
+      end
     end
   end
 end

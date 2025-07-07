@@ -7,6 +7,7 @@ defmodule EveDmv.Database.ArchiveManager do
   """
 
   use GenServer
+
   alias EveDmv.Database.ArchiveManager.ArchiveMetrics
   alias EveDmv.Database.ArchiveManager.ArchiveOperations
   alias EveDmv.Database.ArchiveManager.MaintenanceScheduler
@@ -18,7 +19,7 @@ defmodule EveDmv.Database.ArchiveManager do
   @archive_check_interval :timer.hours(24)
 
   # Archive configuration for different data types
-  # TODO: Archive policies will be implemented in a future version
+  # Archive policies will be implemented in a future version
 
   # Client API
 

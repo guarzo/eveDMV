@@ -80,8 +80,7 @@ defmodule EveDmv.Quality.MetricsCollector do
     }
 
     weighted_score =
-      weights
-      |> Enum.reduce(0, fn {category, weight}, acc ->
+      Enum.reduce(weights, 0, fn {category, weight}, acc ->
         acc + scores[category] * weight
       end)
 

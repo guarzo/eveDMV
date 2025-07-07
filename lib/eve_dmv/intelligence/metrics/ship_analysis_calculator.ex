@@ -14,13 +14,11 @@ defmodule EveDmv.Intelligence.Metrics.ShipAnalysisCalculator do
   """
   def calculate_ship_usage(killmail_data) do
     # Group by ship types used
-    ship_usage =
-      killmail_data
-      |> Enum.flat_map(fn killmail ->
+    ship_usage_raw =
+      Enum.flat_map(killmail_data, fn killmail ->
         participants = get_participants(killmail)
 
-        participants
-        |> Enum.map(fn participant ->
+        Enum.map(participants, fn participant ->
           %{
             ship_type_id: participant[:ship_type_id] || participant["ship_type_id"],
             ship_name: participant[:ship_name] || participant["ship_name"] || "Unknown",
@@ -28,6 +26,9 @@ defmodule EveDmv.Intelligence.Metrics.ShipAnalysisCalculator do
           }
         end)
       end)
+
+    ship_usage =
+      ship_usage_raw
       |> Enum.group_by(& &1.ship_name)
       |> Enum.map(fn {ship_name, usages} ->
         {ship_name,
@@ -174,19 +175,19 @@ defmodule EveDmv.Intelligence.Metrics.ShipAnalysisCalculator do
   def detect_capital_usage(killmail_data) do
     capital_ships = ["Dreadnought", "Carrier", "Supercarrier", "Titan", "Force Auxiliary"]
 
-    killmail_data
-    |> Enum.flat_map(fn killmail ->
-      participants = get_participants(killmail)
+    Enum.any?(
+      Enum.flat_map(killmail_data, fn killmail ->
+        participants = get_participants(killmail)
 
-      participants
-      |> Enum.map(fn participant ->
-        participant[:ship_name] || participant["ship_name"]
-      end)
-    end)
-    |> Enum.any?(fn ship_name ->
-      ship_str = to_string(ship_name)
-      Enum.any?(capital_ships, &String.contains?(ship_str, &1))
-    end)
+        Enum.map(participants, fn participant ->
+          participant[:ship_name] || participant["ship_name"]
+        end)
+      end),
+      fn ship_name ->
+        ship_str = to_string(ship_name)
+        Enum.any?(capital_ships, &String.contains?(ship_str, &1))
+      end
+    )
   end
 
   # Private helper functions

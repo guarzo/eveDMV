@@ -19,6 +19,8 @@ defmodule EveDmv.Error do
       EveDmv.Error.normalize({:error, :timeout})
   """
 
+  defstruct [:code, :message, :details, :context, :stacktrace]
+
   @type t :: %__MODULE__{
           code: atom(),
           message: String.t(),
@@ -26,8 +28,6 @@ defmodule EveDmv.Error do
           context: map(),
           stacktrace: list() | nil
         }
-
-  defstruct [:code, :message, :details, :context, :stacktrace]
 
   @doc """
   Create a new error with consistent structure.

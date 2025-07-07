@@ -113,11 +113,6 @@ if config_env() == :test do
   config :eve_dmv,
     pipeline_enabled: false,
     mock_sse_server_enabled: false
-
-  # Ensure test database uses sandbox pool regardless of DATABASE_URL
-  config :eve_dmv, EveDmv.Repo,
-    pool: Ecto.Adapters.SQL.Sandbox,
-    pool_size: System.schedulers_online() * 2
 end
 
 # config/runtime.exs is executed for all environments, including

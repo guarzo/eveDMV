@@ -9,21 +9,6 @@ defmodule EveDmvWeb.CoreComponents do
   use Phoenix.Component
   alias Phoenix.LiveView.JS
 
-  # Import our custom reusable components - commented out to avoid unused import warnings
-  # Since these components are imported directly in the LiveViews that use them,
-  # we don't need to import them here in CoreComponents
-  # import EveDmvWeb.Components.PageHeaderComponent
-  # import EveDmvWeb.Components.StatsGridComponent
-  # import EveDmvWeb.Components.DataTableComponent
-  # import EveDmvWeb.Components.LoadingStateComponent
-  # import EveDmvWeb.Components.ErrorStateComponent
-  # import EveDmvWeb.Components.EmptyStateComponent
-  # import EveDmvWeb.Components.TabNavigationComponent
-  # import EveDmvWeb.Components.CharacterInfoComponent
-
-  # Note: IntelligenceComponents should be imported separately where needed
-  # to avoid circular dependencies
-
   # Phoenix default components
 
   @doc """

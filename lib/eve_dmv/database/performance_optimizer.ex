@@ -9,8 +9,18 @@ defmodule EveDmv.Database.PerformanceOptimizer do
   4. Suggest optimizations based on usage patterns
   """
 
-  require Logger
   alias EveDmv.Repo
+
+  require Logger
+
+  @allowed_tables [
+    "killmails_raw",
+    "killmails_enriched",
+    "participants",
+    "surveillance_profiles",
+    "surveillance_profile_matches",
+    "character_stats"
+  ]
 
   # Error types for consistent handling
   @type error_type :: :database_error | :validation_error | :query_error | :connection_error
@@ -31,15 +41,6 @@ defmodule EveDmv.Database.PerformanceOptimizer do
   end
 
   defp validate_duration_string(_, default), do: default
-
-  @allowed_tables [
-    "killmails_raw",
-    "killmails_enriched",
-    "participants",
-    "surveillance_profiles",
-    "surveillance_profile_matches",
-    "character_stats"
-  ]
 
   defp validate_table_name(table_name) when table_name in @allowed_tables do
     # Quote the identifier to prevent injection
@@ -462,17 +463,17 @@ defmodule EveDmv.Database.PerformanceOptimizer do
   end
 
   defp generate_recommendations(slow_queries, index_usage, _table_stats) do
-    recommendations = []
+    initial_recommendations = []
 
     # Check for slow queries
-    recommendations =
+    slow_query_recommendations =
       if length(slow_queries) > 0 do
         [
           "Consider optimizing slow queries - #{length(slow_queries)} queries taking >1 second"
-          | recommendations
+          | initial_recommendations
         ]
       else
-        recommendations
+        initial_recommendations
       end
 
     # Check for unused indexes
@@ -481,14 +482,14 @@ defmodule EveDmv.Database.PerformanceOptimizer do
         (idx.number_of_scans || 0) < 10 and idx.index_name != nil
       end)
 
-    recommendations =
+    index_recommendations =
       if length(unused_indexes) > 0 do
         [
           "Consider dropping #{length(unused_indexes)} unused indexes to save space"
-          | recommendations
+          | slow_query_recommendations
         ]
       else
-        recommendations
+        slow_query_recommendations
       end
 
     # Check for missing indexes on frequently accessed tables
@@ -498,20 +499,20 @@ defmodule EveDmv.Database.PerformanceOptimizer do
       |> Enum.map(& &1.table_name)
       |> Enum.uniq()
 
-    recommendations =
+    final_recommendations =
       if length(high_scan_tables) > 0 do
         [
           "Tables with high scan counts may benefit from additional indexes: #{Enum.join(high_scan_tables, ", ")}"
-          | recommendations
+          | index_recommendations
         ]
       else
-        recommendations
+        index_recommendations
       end
 
-    if Enum.empty?(recommendations) do
+    if Enum.empty?(final_recommendations) do
       ["Database performance looks good - no immediate optimizations needed"]
     else
-      recommendations
+      final_recommendations
     end
   end
 end

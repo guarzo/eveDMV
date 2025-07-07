@@ -2,41 +2,11 @@ defmodule EveDmv.Intelligence.Analyzers.FleetSkillAnalyzer do
   @moduledoc """
   Fleet skill analysis engine for EVE Online wormhole operations.
 
-  This module provides comprehensive skill gap analysis, training priority determination,
-  and pilot readiness assessment for fleet doctrines. It analyzes pilot capabilities
-  based on killmail data and ship usage patterns to determine fleet readiness.
+  Provides skill gap analysis, training priorities, and pilot readiness assessment
+  for fleet doctrines. Uses killmail data and ship usage patterns to determine
+  fleet readiness since direct skill API access is limited.
 
-  ## Features
-
-  - **Skill Gap Analysis**: Identifies critical skill gaps preventing doctrine deployment
-  - **Training Priority Calculation**: Determines which skills would have maximum impact
-  - **Pilot Readiness Assessment**: Evaluates individual pilot skill levels for specific roles
-  - **Role Assignment Optimization**: Matches pilots to roles based on skill levels
-  - **Critical Skill Identification**: Highlights mission-critical skills for fleet operations
-
-  ## Key Functions
-
-  - `analyze_skill_requirements/2` - Main analysis function for doctrine skill requirements
-  - `calculate_pilot_skill_readiness/2` - Individual pilot skill assessment
-  - `generate_training_priorities/2` - Priority-ranked skill training recommendations
-  - `find_critical_skill_gaps/2` - Identifies blocking skill shortages
-  - `check_skill_via_ship_usage/2` - Skill verification through ship usage patterns
-
-  ## Usage
-
-  ```elixir
-  # Analyze skill requirements for a fleet doctrine
-  {:ok, analysis} = FleetSkillAnalyzer.analyze_skill_requirements(doctrine_template, pilots)
-
-  # Calculate individual pilot readiness
-  readiness = FleetSkillAnalyzer.calculate_pilot_skill_readiness(pilot, required_skills)
-
-  # Generate training priorities
-  priorities = FleetSkillAnalyzer.generate_training_priorities(doctrine, pilots)
-  ```
-
-  The analyzer uses ship usage patterns from killmail data as a proxy for skill levels,
-  since direct skill API access is limited.
+  See individual function documentation for usage examples.
   """
 
   require Logger
@@ -120,12 +90,9 @@ defmodule EveDmv.Intelligence.Analyzers.FleetSkillAnalyzer do
   """
   def find_critical_skill_gaps(doctrine_template, available_pilots) do
     # Identify critical skill gaps that prevent doctrine deployment
-    gaps = []
-
     # Check each role for skill requirements
     gaps =
-      doctrine_template
-      |> Enum.reduce(gaps, fn {role, role_data}, acc ->
+      Enum.reduce(doctrine_template, [], fn {role, role_data}, acc ->
         required_skills = role_data["skills_required"] || []
         qualified_pilots = count_qualified_pilots_for_role(available_pilots, required_skills)
         required_count = role_data["required"] || 1
@@ -177,20 +144,21 @@ defmodule EveDmv.Intelligence.Analyzers.FleetSkillAnalyzer do
       }
   """
   def calculate_role_shortfalls(doctrine_template, available_pilots) do
-    doctrine_template
-    |> Enum.map(fn {role, role_data} ->
-      required_skills = role_data["skills_required"] || []
-      qualified_pilots = count_qualified_pilots_for_role(available_pilots, required_skills)
-      required_count = role_data["required"] || 1
-      shortage = max(0, required_count - qualified_pilots)
+    role_requirements_list =
+      Enum.map(doctrine_template, fn {role, role_data} ->
+        required_skills = role_data["skills_required"] || []
+        qualified_pilots = count_qualified_pilots_for_role(available_pilots, required_skills)
+        required_count = role_data["required"] || 1
+        shortage = max(0, required_count - qualified_pilots)
 
-      {role,
-       %{
-         "shortage" => shortage,
-         "qualified_pilots" => qualified_pilots
-       }}
-    end)
-    |> Enum.into(%{})
+        {role,
+         %{
+           "shortage" => shortage,
+           "qualified_pilots" => qualified_pilots
+         }}
+      end)
+
+    Enum.into(role_requirements_list, %{})
   end
 
   @doc """
@@ -232,11 +200,13 @@ defmodule EveDmv.Intelligence.Analyzers.FleetSkillAnalyzer do
     # Analyze which skills would have the most impact if trained
 
     # Count current skill coverage
-    skill_coverage =
-      doctrine_template
-      |> Enum.flat_map(fn {_role, role_data} ->
+    all_skills =
+      Enum.flat_map(doctrine_template, fn {_role, role_data} ->
         role_data["skills_required"] || []
       end)
+
+    skill_coverage =
+      all_skills
       |> Enum.uniq()
       |> Enum.map(fn skill ->
         qualified_count =
@@ -581,8 +551,9 @@ defmodule EveDmv.Intelligence.Analyzers.FleetSkillAnalyzer do
   end
 
   defp count_qualified_pilots_for_role(available_pilots, required_skills) do
-    available_pilots
-    |> Enum.count(fn pilot -> pilot_meets_skill_requirements?(pilot, required_skills) end)
+    Enum.count(available_pilots, fn pilot ->
+      pilot_meets_skill_requirements?(pilot, required_skills)
+    end)
   end
 
   defp pilot_meets_skill_requirements?(pilot, required_skills) do

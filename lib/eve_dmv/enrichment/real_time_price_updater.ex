@@ -9,11 +9,13 @@ defmodule EveDmv.Enrichment.RealTimePriceUpdater do
   """
 
   use GenServer
-  require Logger
+
   alias EveDmv.Api
   alias EveDmv.Killmails.KillmailEnriched
   alias EveDmv.Market.PriceService
   alias Phoenix.PubSub
+
+  require Logger
 
   @pubsub EveDmvWeb.PubSub
   @price_update_topic "price_updates"
@@ -312,8 +314,7 @@ defmodule EveDmv.Enrichment.RealTimePriceUpdater do
 
   defp load_enriched_killmails(_killmail_ids) do
     query =
-      KillmailEnriched
-      |> Ash.Query.new()
+      Ash.Query.new(KillmailEnriched)
 
     Ash.read(query, domain: Api)
   end

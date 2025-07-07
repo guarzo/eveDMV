@@ -7,9 +7,11 @@ defmodule EveDmvWeb.Api.ApiKeysController do
   """
 
   use EveDmvWeb, :controller
-  require Logger
 
-  alias EveDmv.Security.{ApiAuthentication, AuditLogger}
+  alias EveDmv.Security.ApiAuthentication
+  alias EveDmv.Security.AuditLogger
+
+  require Logger
 
   action_fallback(EveDmvWeb.FallbackController)
 

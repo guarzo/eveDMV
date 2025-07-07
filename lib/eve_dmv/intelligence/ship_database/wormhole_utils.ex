@@ -6,7 +6,9 @@ defmodule EveDmv.Intelligence.ShipDatabase.WormholeUtils do
   and wormhole-specific tactical analysis.
   """
 
-  alias EveDmv.Intelligence.ShipDatabase.{ShipClassification, ShipMassData, ShipRoleData}
+  alias EveDmv.Intelligence.ShipDatabase.ShipClassification
+  alias EveDmv.Intelligence.ShipDatabase.ShipMassData
+  alias EveDmv.Intelligence.ShipDatabase.ShipRoleData
 
   @doc """
   Get wormhole restrictions for a ship class.
@@ -159,33 +161,39 @@ defmodule EveDmv.Intelligence.ShipDatabase.WormholeUtils do
   end
 
   defp generate_wormhole_recommendations(ship_list, mass_analysis) do
-    recommendations = []
+    initial_recommendations = []
 
-    recommendations =
+    recommendations_with_total_mass =
       if mass_analysis.total_mass > 1_800_000_000 do
-        ["Fleet too heavy for most wormholes - consider lighter ships" | recommendations]
+        ["Fleet too heavy for most wormholes - consider lighter ships" | initial_recommendations]
       else
-        recommendations
+        initial_recommendations
       end
 
-    recommendations =
+    recommendations_with_suitability =
       if Enum.count(ship_list, &wormhole_suitable?/1) < length(ship_list) * 0.7 do
-        ["Consider more wormhole-suitable ships (tackle, ewar, logistics)" | recommendations]
+        [
+          "Consider more wormhole-suitable ships (tackle, ewar, logistics)"
+          | recommendations_with_total_mass
+        ]
       else
-        recommendations
+        recommendations_with_total_mass
       end
 
-    recommendations =
+    recommendations_with_avg_mass =
       if mass_analysis.average_mass > 50_000_000 do
-        ["Average ship mass is high - may limit wormhole options" | recommendations]
+        [
+          "Average ship mass is high - may limit wormhole options"
+          | recommendations_with_suitability
+        ]
       else
-        recommendations
+        recommendations_with_suitability
       end
 
-    if recommendations == [] do
+    if recommendations_with_avg_mass == [] do
       ["Fleet composition suitable for wormhole operations"]
     else
-      recommendations
+      recommendations_with_avg_mass
     end
   end
 end

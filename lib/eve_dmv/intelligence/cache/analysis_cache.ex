@@ -6,10 +6,10 @@ defmodule EveDmv.Intelligence.Cache.AnalysisCache do
   for better consistency and reduced complexity.
   """
 
-  require Logger
-
   alias EveDmv.Cache
   alias EveDmv.Config.Cache, as: CacheConfig
+
+  require Logger
 
   @doc """
   Get character analysis from cache or compute if missing.

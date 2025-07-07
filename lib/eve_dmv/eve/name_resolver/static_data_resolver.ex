@@ -6,10 +6,13 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
   static EVE database data. These entities have stable names that rarely change.
   """
 
-  require Logger
+  alias EveDmv.Eve.ItemType
+  alias EveDmv.Eve.NameResolver.BatchProcessor
+  alias EveDmv.Eve.NameResolver.CacheManager
+  alias EveDmv.Eve.SolarSystem
+
   require Ash.Query
-  alias EveDmv.Eve.{ItemType, SolarSystem}
-  alias EveDmv.Eve.NameResolver.{CacheManager, BatchProcessor}
+  require Logger
 
   @doc """
   Resolves a ship type ID to a ship name.
@@ -118,11 +121,9 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
           status: number()
         }
   def system_security(system_id) when is_integer(system_id) do
-    case CacheManager.get_cached_or_fetch(:solar_system_full, system_id, fn ->
-           fetch_from_database(:solar_system_full, system_id)
-         end) do
+    case fetch_from_database(:solar_system_full, system_id) do
       {:ok, system} ->
-        security_class = system.security_class || "unknown"
+        security_class = String.downcase(system.security_class || "unknown")
 
         color =
           case security_class do
@@ -198,8 +199,11 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
   end
 
   defp fetch_from_database(:item_type, type_id) do
-    case Ash.get(ItemType, type_id, domain: EveDmv.Api, authorize?: false) do
-      {:ok, item} -> {:ok, item.type_name}
+    case ItemType
+         |> Ash.Query.filter(type_id: type_id)
+         |> Ash.read_one(domain: EveDmv.Api, authorize?: false) do
+      {:ok, item} when is_struct(item) -> {:ok, item.type_name}
+      {:ok, nil} -> {:error, :not_found}
       {:error, _} -> {:error, :not_found}
     end
   rescue
@@ -209,8 +213,11 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
   end
 
   defp fetch_from_database(:solar_system, system_id) do
-    case Ash.get(SolarSystem, system_id, domain: EveDmv.Api, authorize?: false) do
-      {:ok, system} -> {:ok, system.system_name}
+    case SolarSystem
+         |> Ash.Query.filter(system_id: system_id)
+         |> Ash.read_one(domain: EveDmv.Api, authorize?: false) do
+      {:ok, system} when is_struct(system) -> {:ok, system.system_name}
+      {:ok, nil} -> {:error, :not_found}
       {:error, _} -> {:error, :not_found}
     end
   rescue
@@ -220,8 +227,11 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
   end
 
   defp fetch_from_database(:solar_system_full, system_id) do
-    case Ash.get(SolarSystem, system_id, domain: EveDmv.Api, authorize?: false) do
-      {:ok, system} -> {:ok, system}
+    case SolarSystem
+         |> Ash.Query.filter(system_id: system_id)
+         |> Ash.read_one(domain: EveDmv.Api, authorize?: false) do
+      {:ok, system} when is_struct(system) -> {:ok, system}
+      {:ok, nil} -> {:error, :not_found}
       {:error, _} -> {:error, :not_found}
     end
   rescue

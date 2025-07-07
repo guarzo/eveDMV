@@ -6,8 +6,8 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.FleetScoring do
   and multi-character collaboration effectiveness.
   """
 
-  require Logger
   alias EveDmv.Intelligence.AdvancedAnalytics
+  require Logger
 
   @doc """
   Calculate fleet readiness score for multiple characters.
@@ -82,40 +82,41 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.FleetScoring do
   Generate fleet optimization recommendations.
   """
   def generate_fleet_optimization_recommendations(fleet_metrics) do
-    recommendations = []
-
-    recommendations =
+    initial_recommendations =
       if fleet_metrics.role_balance < 0.7 do
-        ["Consider diversifying fleet roles for better balance" | recommendations]
+        ["Consider diversifying fleet roles for better balance"]
       else
-        recommendations
+        []
       end
 
-    recommendations =
+    recommendations_with_command =
       if fleet_metrics.command_structure < 0.6 do
-        ["Establish clearer command hierarchy and leadership roles" | recommendations]
+        ["Establish clearer command hierarchy and leadership roles" | initial_recommendations]
       else
-        recommendations
+        initial_recommendations
       end
 
-    recommendations =
+    recommendations_with_tactical =
       if fleet_metrics.tactical_coherence < 0.7 do
-        ["Improve tactical coordination through training exercises" | recommendations]
+        [
+          "Improve tactical coordination through training exercises"
+          | recommendations_with_command
+        ]
       else
-        recommendations
+        recommendations_with_command
       end
 
-    recommendations =
+    recommendations_with_synergy =
       if fleet_metrics.synergy_factor < 0.6 do
-        ["Focus on team building and communication protocols" | recommendations]
+        ["Focus on team building and communication protocols" | recommendations_with_tactical]
       else
-        recommendations
+        recommendations_with_tactical
       end
 
-    if Enum.empty?(recommendations) do
+    if Enum.empty?(recommendations_with_synergy) do
       ["Fleet composition and readiness are optimal"]
     else
-      recommendations
+      recommendations_with_synergy
     end
   end
 
@@ -210,33 +211,33 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.FleetScoring do
   end
 
   defp suggest_fleet_optimizations(fleet_metrics) do
-    optimizations = []
+    initial_optimizations = []
 
-    optimizations =
+    optimizations_with_role =
       if fleet_metrics.role_balance < 0.7 do
-        ["Role diversification needed" | optimizations]
+        ["Role diversification needed" | initial_optimizations]
       else
-        optimizations
+        initial_optimizations
       end
 
-    optimizations =
+    optimizations_with_command =
       if fleet_metrics.command_structure < 0.6 do
-        ["Leadership development required" | optimizations]
+        ["Leadership development required" | optimizations_with_role]
       else
-        optimizations
+        optimizations_with_role
       end
 
-    optimizations =
+    optimizations_with_tactical =
       if fleet_metrics.tactical_coherence < 0.7 do
-        ["Tactical coordination training" | optimizations]
+        ["Tactical coordination training" | optimizations_with_command]
       else
-        optimizations
+        optimizations_with_command
       end
 
-    if Enum.empty?(optimizations) do
+    if Enum.empty?(optimizations_with_tactical) do
       ["Fleet optimization is well-balanced"]
     else
-      optimizations
+      optimizations_with_tactical
     end
   end
 
@@ -248,9 +249,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.FleetScoring do
 
       # Determine primary and secondary role strengths
       sorted_components =
-        component_scores
-        |> Enum.sort_by(fn {_component, score} -> score end, :desc)
-        |> Enum.take(2)
+        Enum.take(Enum.sort_by(component_scores, fn {_component, score} -> score end, :desc), 2)
 
       {char_id, sorted_components}
     end)
@@ -266,15 +265,20 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.FleetScoring do
     ]
 
     covered_roles =
-      role_strengths
-      |> Enum.flat_map(fn {_id, strengths} ->
-        Enum.map(strengths, fn {role, _score} -> role end)
-      end)
-      |> Enum.uniq()
+      Enum.uniq(
+        Enum.flat_map(role_strengths, fn {_id, strengths} ->
+          Enum.map(strengths, fn {role, _score} -> role end)
+        end)
+      )
+
+    required_set = MapSet.new(required_roles)
+    covered_set = MapSet.new(covered_roles)
 
     coverage_ratio =
-      length(MapSet.intersection(MapSet.new(required_roles), MapSet.new(covered_roles))) /
-        length(required_roles)
+      required_set
+      |> MapSet.intersection(covered_set)
+      |> MapSet.size()
+      |> Kernel./(length(required_roles))
 
     min(coverage_ratio, 1.0)
   end
@@ -282,11 +286,11 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.FleetScoring do
   defp assess_role_redundancy(role_strengths) do
     # Assess if there's appropriate redundancy without over-specialization
     role_counts =
-      role_strengths
-      |> Enum.flat_map(fn {_id, strengths} ->
-        Enum.map(strengths, fn {role, _score} -> role end)
-      end)
-      |> Enum.frequencies()
+      Enum.frequencies(
+        Enum.flat_map(role_strengths, fn {_id, strengths} ->
+          Enum.map(strengths, fn {role, _score} -> role end)
+        end)
+      )
 
     total_assignments = Enum.sum(Map.values(role_counts))
     ideal_distribution = total_assignments / map_size(role_counts)
@@ -334,8 +338,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.FleetScoring do
 
   defp count_potential_leaders(leadership_scores) do
     # Count characters with leadership potential (score > 0.7)
-    leadership_scores
-    |> Enum.count(fn {_id, score} -> score > 0.7 end)
+    Enum.count(leadership_scores, fn {_id, score} -> score > 0.7 end)
   end
 
   defp extract_tactical_scores(individual_scores) do
@@ -491,31 +494,32 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.FleetScoring do
     ]
 
     represented_roles =
-      role_assignments
-      |> Enum.flat_map(fn {_id, strengths} ->
-        Enum.map(strengths, fn {role, _score} -> role end)
-      end)
-      |> Enum.uniq()
+      Enum.uniq(
+        Enum.flat_map(role_assignments, fn {_id, strengths} ->
+          Enum.map(strengths, fn {role, _score} -> role end)
+        end)
+      )
 
     all_roles -- represented_roles
   end
 
   defp identify_over_representation(role_assignments) do
     # Identify roles that are over-represented
-    role_counts =
-      role_assignments
-      |> Enum.flat_map(fn {_id, strengths} ->
+    role_list =
+      Enum.flat_map(role_assignments, fn {_id, strengths} ->
         Enum.map(strengths, fn {role, _score} -> role end)
       end)
-      |> Enum.frequencies()
+
+    role_counts = Enum.frequencies(role_list)
 
     fleet_size = length(role_assignments)
     # More than 1/3 of fleet in same role
     threshold = max(1, div(fleet_size, 3))
 
-    role_counts
-    |> Enum.filter(fn {_role, count} -> count > threshold end)
-    |> Enum.map(fn {role, _count} -> role end)
+    Enum.map(Enum.filter(role_counts, fn {_role, count} -> count > threshold end), fn {role,
+                                                                                       _count} ->
+      role
+    end)
   end
 
   defp calculate_quartiles(sorted_scores) do

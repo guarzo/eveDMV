@@ -7,6 +7,7 @@ defmodule EveDmvWeb.IntelligenceComponents do
   """
 
   use Phoenix.Component
+  alias EveDmvWeb.Helpers.TimeFormatter
   alias Phoenix.LiveView.JS
 
   @doc """
@@ -599,16 +600,14 @@ defmodule EveDmvWeb.IntelligenceComponents do
     |> Atom.to_string()
     |> String.replace("_", " ")
     |> String.split()
-    |> Enum.map(&String.capitalize/1)
-    |> Enum.join(" ")
+    |> Enum.map_join(" ", &String.capitalize/1)
   end
 
   defp humanize_component(component) when is_binary(component) do
     component
     |> String.replace("_", " ")
     |> String.split()
-    |> Enum.map(&String.capitalize/1)
-    |> Enum.join(" ")
+    |> Enum.map_join(" ", &String.capitalize/1)
   end
 
   defp score_color(score) when score >= 0.8, do: "excellent"
@@ -656,16 +655,8 @@ defmodule EveDmvWeb.IntelligenceComponents do
     |> DateTime.to_string()
   end
 
-  defp format_relative_time(timestamp) do
-    diff = DateTime.diff(DateTime.utc_now(), timestamp, :second)
-
-    cond do
-      diff < 60 -> "#{diff}s ago"
-      diff < 3600 -> "#{div(diff, 60)}m ago"
-      diff < 86_400 -> "#{div(diff, 3600)}h ago"
-      true -> "#{div(diff, 86_400)}d ago"
-    end
-  end
+  defp format_relative_time(timestamp),
+    do: TimeFormatter.format_relative_time(timestamp)
 
   defp format_metric_value(:response_time_ms, value), do: "#{value}ms"
   defp format_metric_value(:cache_hit_ratio, value), do: "#{value}%"

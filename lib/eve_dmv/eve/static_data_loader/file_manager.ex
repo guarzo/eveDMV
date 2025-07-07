@@ -71,8 +71,7 @@ defmodule EveDmv.Eve.StaticDataLoader.FileManager do
   Gets full paths for all required files.
   """
   def get_file_paths(data_dir, required_files) do
-    required_files
-    |> Enum.into(%{}, fn {key, filename} ->
+    Enum.into(required_files, %{}, fn {key, filename} ->
       {key, Path.join(data_dir, filename)}
     end)
   end
@@ -84,8 +83,7 @@ defmodule EveDmv.Eve.StaticDataLoader.FileManager do
     Logger.info("Downloading missing CSV files from fuzzwork.co.uk")
 
     results =
-      file_names
-      |> Enum.map(&download_single_file(&1, data_dir))
+      Enum.map(file_names, &download_single_file(&1, data_dir))
 
     case Enum.find(results, &match?({:error, _}, &1)) do
       nil -> :ok
@@ -143,7 +141,8 @@ defmodule EveDmv.Eve.StaticDataLoader.FileManager do
 
     if File.exists?(data_dir) do
       files =
-        File.ls!(data_dir)
+        data_dir
+        |> File.ls!()
         |> Enum.filter(&String.ends_with?(&1, ".csv"))
         |> Enum.map(fn file ->
           path = Path.join(data_dir, file)

@@ -6,10 +6,10 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
   and defensive capabilities without over-engineering.
   """
 
-  require Logger
   alias EveDmv.Api
   alias EveDmv.Database.QueryUtils
   alias EveDmv.Intelligence.HomeDefenseAnalytics
+  require Logger
   require Ash.Query
 
   @doc """
@@ -168,51 +168,45 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
 
   defp get_corporation_info(corporation_id) do
     # Simplified corp info retrieval
-    try do
-      # In a real implementation, this would fetch from ESI or cache
-      {:ok,
-       %{
-         id: corporation_id,
-         name: "Corporation #{corporation_id}",
-         # Placeholder
-         member_count: 50
-       }}
-    rescue
-      error ->
-        Logger.error("Failed to get corporation info: #{inspect(error)}")
-        {:error, "Failed to fetch corporation information"}
-    end
+    # In a real implementation, this would fetch from ESI or cache
+    {:ok,
+     %{
+       id: corporation_id,
+       name: "Corporation #{corporation_id}",
+       # Placeholder
+       member_count: 50
+     }}
+  rescue
+    error ->
+      Logger.error("Failed to get corporation info: #{inspect(error)}")
+      {:error, "Failed to fetch corporation information"}
   end
 
   defp get_corporation_members(corporation_id) do
     # Simplified member retrieval
-    try do
-      # In a real implementation, this would fetch from database
-      {:ok,
-       Enum.map(1..10, fn i ->
-         %{character_id: corporation_id * 100 + i, name: "Member #{i}"}
-       end)}
-    rescue
-      error ->
-        Logger.error("Failed to get corporation members: #{inspect(error)}")
-        {:error, "Failed to fetch corporation members"}
-    end
+    # In a real implementation, this would fetch from database
+    {:ok,
+     Enum.map(1..10, fn i ->
+       %{character_id: corporation_id * 100 + i, name: "Member #{i}"}
+     end)}
+  rescue
+    error ->
+      Logger.error("Failed to get corporation members: #{inspect(error)}")
+      {:error, "Failed to fetch corporation members"}
   end
 
   defp get_corporation_killmails(corporation_id, start_date, end_date) do
-    try do
-      # Simplified killmail retrieval
-      case QueryUtils.query_killmails_by_corporation(corporation_id, start_date, end_date,
-             limit: 1000
-           ) do
-        killmails when is_list(killmails) -> {:ok, killmails}
-        _ -> {:ok, []}
-      end
-    rescue
-      error ->
-        Logger.warning("Failed to get corporation killmails: #{inspect(error)}")
-        {:ok, []}
+    # Simplified killmail retrieval
+    case QueryUtils.query_killmails_by_corporation(corporation_id, start_date, end_date,
+           limit: 1000
+         ) do
+      killmails when is_list(killmails) -> {:ok, killmails}
+      _ -> {:ok, []}
     end
+  rescue
+    error ->
+      Logger.warning("Failed to get corporation killmails: #{inspect(error)}")
+      {:ok, []}
   end
 
   defp calculate_hourly_activity(killmails) do
@@ -263,11 +257,13 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
 
   defp identify_rolling_indicators(killmails) do
     # Simplified rolling detection based on system patterns
-    killmails
-    |> Enum.filter(fn km ->
-      # Look for wormhole system kills that might indicate rolling
-      km.solar_system_id >= 31_000_000 and km.solar_system_id < 32_000_000
-    end)
+    filtered_kills =
+      Enum.filter(killmails, fn km ->
+        # Look for wormhole system kills that might indicate rolling
+        km.solar_system_id >= 31_000_000 and km.solar_system_id < 32_000_000
+      end)
+
+    filtered_kills
     |> Enum.group_by(& &1.solar_system_id)
     # Potential rolling activity
     |> Enum.filter(fn {_system, kills} -> length(kills) > 3 end)
@@ -296,10 +292,12 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
   end
 
   defp identify_active_rollers(rolling_indicators) do
-    rolling_indicators
-    |> Enum.flat_map(fn {_system, kills} ->
-      Enum.flat_map(kills, fn km -> km.participants || [] end)
-    end)
+    all_participants =
+      Enum.flat_map(rolling_indicators, fn {_system, kills} ->
+        Enum.flat_map(kills, fn km -> km.participants || [] end)
+      end)
+
+    all_participants
     |> Enum.group_by(& &1.character_id)
     |> Enum.filter(fn {_char_id, participations} -> length(participations) > 2 end)
     |> Enum.map(&elem(&1, 0))
@@ -349,7 +347,11 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
       total_responses: length(response_events),
       avg_participants:
         if(length(response_events) > 0,
-          do: Enum.sum(Enum.map(response_events, & &1.participants)) / length(response_events),
+          do:
+            response_events
+            |> Enum.map(& &1.participants)
+            |> Enum.sum()
+            |> Kernel./(length(response_events)),
           else: 0
         )
     }
@@ -427,11 +429,15 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
     tz_gaps = Map.get(timezone_coverage, :coverage_gaps, [])
     response_events = Map.get(response_metrics, :response_events, 0)
 
-    gaps = []
-    gaps = if length(tz_gaps) > 8, do: ["Significant timezone gaps" | gaps], else: gaps
-    gaps = if response_events < 5, do: ["Low response activity" | gaps], else: gaps
+    base_gaps = []
 
-    gaps
+    timezone_gaps =
+      if length(tz_gaps) > 8, do: ["Significant timezone gaps" | base_gaps], else: base_gaps
+
+    final_gaps =
+      if response_events < 5, do: ["Low response activity" | timezone_gaps], else: timezone_gaps
+
+    final_gaps
   end
 
   defp save_analysis_results(analysis) do

@@ -9,8 +9,8 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetricsAdapter do
   This allows gradual migration of callers to the new system without breaking changes.
   """
 
-  alias EveDmv.IntelligenceV2.DataServices.MetricsCalculator
   alias EveDmv.Intelligence.Metrics.CharacterMetrics
+  alias EveDmv.IntelligenceV2.DataServices.MetricsCalculator
 
   require Logger
 
@@ -67,44 +67,40 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetricsAdapter do
   # Private enhancement functions
 
   defp try_enhance_with_v2_isk_efficiency(legacy_stats, killmail_data) do
-    try do
-      # Extract ISK values from killmails for V2 calculation
-      {total_killed_value, total_lost_value} = extract_isk_values(killmail_data)
+    # Extract ISK values from killmails for V2 calculation
+    {total_killed_value, total_lost_value} = extract_isk_values(killmail_data)
 
-      # Use V2 ISK efficiency calculation if we have meaningful data
-      if total_killed_value > 0 or total_lost_value > 0 do
-        v2_isk_efficiency =
-          MetricsCalculator.calculate_isk_efficiency(total_killed_value, total_lost_value)
+    # Use V2 ISK efficiency calculation if we have meaningful data
+    if total_killed_value > 0 or total_lost_value > 0 do
+      v2_isk_efficiency =
+        MetricsCalculator.calculate_isk_efficiency(total_killed_value, total_lost_value)
 
-        Map.put(legacy_stats, :efficiency, v2_isk_efficiency)
-      else
-        legacy_stats
-      end
-    rescue
-      error ->
-        Logger.debug("V2 ISK efficiency enhancement failed: #{inspect(error)}")
-        legacy_stats
+      Map.put(legacy_stats, :efficiency, v2_isk_efficiency)
+    else
+      legacy_stats
     end
+  rescue
+    error ->
+      Logger.debug("V2 ISK efficiency enhancement failed: #{inspect(error)}")
+      legacy_stats
   end
 
   defp try_enhance_with_v2_metrics(legacy_metrics, killmail_data) do
-    try do
-      # Try to enhance with V2 engagement scoring
-      activity_data = extract_activity_data_for_v2(killmail_data)
-      engagement_score = MetricsCalculator.calculate_engagement_score(activity_data)
+    # Try to enhance with V2 engagement scoring
+    activity_data = extract_activity_data_for_v2(killmail_data)
+    engagement_score = MetricsCalculator.calculate_engagement_score(activity_data)
 
-      # Add V2 engagement score to legacy metrics
-      enhanced_metrics = Map.put(legacy_metrics, :v2_engagement_score, engagement_score)
+    # Add V2 engagement score to legacy metrics
+    enhanced_metrics = Map.put(legacy_metrics, :v2_engagement_score, engagement_score)
 
-      # Try to enhance ISK efficiency if available
-      enhanced_metrics = try_enhance_with_v2_isk_efficiency(enhanced_metrics, killmail_data)
+    # Try to enhance ISK efficiency if available
+    enhanced_metrics = try_enhance_with_v2_isk_efficiency(enhanced_metrics, killmail_data)
 
-      enhanced_metrics
-    rescue
-      error ->
-        Logger.debug("V2 metrics enhancement failed: #{inspect(error)}")
-        legacy_metrics
-    end
+    enhanced_metrics
+  rescue
+    error ->
+      Logger.debug("V2 metrics enhancement failed: #{inspect(error)}")
+      legacy_metrics
   end
 
   defp extract_isk_values(killmail_data) do

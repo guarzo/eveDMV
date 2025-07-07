@@ -6,9 +6,9 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.RequirementsBuilder do
   templates, including mass calculations, cost estimates, and wormhole compatibility.
   """
 
-  alias EveDmv.Intelligence.{ShipDatabase}
-  alias EveDmv.Intelligence.Analyzers.{MassCalculator}
   alias EveDmv.Intelligence.Analyzers.FleetAssetManager.ShipCostCalculator
+  alias EveDmv.Intelligence.Analyzers.MassCalculator
+  alias EveDmv.Intelligence.ShipDatabase
 
   @doc """
   Get detailed ship information including mass, cost, and wormhole suitability.
@@ -83,8 +83,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.RequirementsBuilder do
   - `wormhole_suitability` - Detailed WH compatibility data
   """
   def build_ship_requirements(doctrine_template, ship_data) do
-    doctrine_template
-    |> Enum.reduce(%{}, fn {role, role_config}, acc ->
+    Enum.reduce(doctrine_template, %{}, fn {role, role_config}, acc ->
       preferred_ships = role_config["preferred_ships"] || []
       required_count = role_config["required"] || 1
 
@@ -155,8 +154,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.RequirementsBuilder do
     validation_results =
       Enum.map(doctrine_template, fn {role, role_config} ->
         missing_fields =
-          required_fields
-          |> Enum.reject(&Map.has_key?(role_config, &1))
+          Enum.reject(required_fields, &Map.has_key?(role_config, &1))
 
         if missing_fields == [] do
           {:ok, role}
@@ -178,8 +176,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.RequirementsBuilder do
   Calculate total requirements by role.
   """
   def calculate_requirements_by_role(ship_requirements) do
-    ship_requirements
-    |> Enum.reduce(%{}, fn {_type_id, ship_data}, acc ->
+    Enum.reduce(ship_requirements, %{}, fn {_type_id, ship_data}, acc ->
       role = Map.get(ship_data, "role", "unknown")
       quantity = Map.get(ship_data, "quantity_needed", 1)
 
@@ -191,8 +188,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.RequirementsBuilder do
   Calculate total mass of requirements.
   """
   def calculate_total_requirements_mass(ship_requirements) do
-    ship_requirements
-    |> Enum.reduce(0, fn {_type_id, ship_data}, acc ->
+    Enum.reduce(ship_requirements, 0, fn {_type_id, ship_data}, acc ->
       mass = Map.get(ship_data, "mass_kg", 0)
       quantity = Map.get(ship_data, "quantity_needed", 1)
       acc + mass * quantity
@@ -206,8 +202,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.RequirementsBuilder do
     total_ships = map_size(ship_requirements)
 
     wh_suitable =
-      ship_requirements
-      |> Enum.count(fn {_type_id, ship_data} ->
+      Enum.count(ship_requirements, fn {_type_id, ship_data} ->
         Map.get(ship_data, "wormhole_suitable", false)
       end)
 

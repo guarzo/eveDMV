@@ -6,8 +6,8 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer do
   partition health for optimal database performance.
   """
 
-  require Logger
   alias Ecto.Adapters.SQL
+  require Logger
 
   @doc """
   Monitor index usage to identify unused indexes.
@@ -476,42 +476,42 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer do
   end
 
   defp compile_recommendations(analysis) do
-    recommendations = []
+    initial_recommendations = []
 
-    recommendations =
+    base_recommendations =
       if length(analysis.unused_indexes) > 0 do
         [
           "#{length(analysis.unused_indexes)} unused indexes found - review for removal"
-          | recommendations
+          | initial_recommendations
         ]
       else
-        recommendations
+        initial_recommendations
       end
 
-    recommendations =
+    final_recommendations =
       if length(analysis.inefficient_indexes) > 0 do
         [
           "#{length(analysis.inefficient_indexes)} inefficient indexes detected - consider rebuilding"
-          | recommendations
+          | base_recommendations
         ]
       else
-        recommendations
+        base_recommendations
       end
 
-    recommendations =
+    missing_recommendations =
       if length(analysis.missing_indexes) > 0 do
         [
           "#{length(analysis.missing_indexes)} tables may benefit from additional indexes"
-          | recommendations
+          | final_recommendations
         ]
       else
-        recommendations
+        final_recommendations
       end
 
-    if Enum.empty?(recommendations) do
+    if Enum.empty?(missing_recommendations) do
       ["Index configuration appears optimal"]
     else
-      recommendations
+      missing_recommendations
     end
   end
 

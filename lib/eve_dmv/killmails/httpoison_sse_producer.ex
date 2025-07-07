@@ -7,9 +7,9 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
 
   use GenStage
 
-  require Logger
-
   alias Broadway.Message
+
+  require Logger
 
   @default_retry_delay 1000
   @max_retry_delay 30_000
@@ -86,10 +86,10 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
     {events, new_buffer} = parse_sse_data(state.buffer <> chunk)
 
     # Convert events to Broadway messages and count killmails
+    filtered_events = Enum.reject(events, &is_nil/1)
+
     {broadway_messages, killmail_count} =
-      events
-      |> Enum.reject(&is_nil/1)
-      |> Enum.reduce({[], 0}, fn event, {messages, count} ->
+      Enum.reduce(filtered_events, {[], 0}, fn event, {messages, count} ->
         case to_broadway_message(event) do
           {:batch, batch_messages} ->
             {messages ++ batch_messages, count + length(batch_messages)}
@@ -252,10 +252,8 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
           events -> {Enum.drop(events, -1), List.last(events)}
         end
 
-      events =
-        complete_events
-        |> Enum.map(&parse_single_event/1)
-        |> Enum.filter(&(&1 != nil))
+      parsed_events = Enum.map(complete_events, &parse_single_event/1)
+      events = Enum.filter(parsed_events, &(&1 != nil))
 
       if length(events) > 0 do
         Logger.debug("Parsed #{length(events)} SSE events from chunk")
@@ -402,9 +400,8 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
     lines = String.split(event_data, ~r/\r?\n/)
     initial_event = %{event: nil, data: "", id: nil, retry: nil}
 
-    lines
-    |> Enum.reduce(initial_event, &parse_sse_line/2)
-    |> validate_parsed_event()
+    parsed_event = Enum.reduce(lines, initial_event, &parse_sse_line/2)
+    validate_parsed_event(parsed_event)
   end
 
   defp parse_sse_line(line, acc) do

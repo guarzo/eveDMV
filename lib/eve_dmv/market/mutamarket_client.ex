@@ -285,8 +285,7 @@ defmodule EveDmv.Market.MutamarketClient do
     case Jason.decode(body) do
       {:ok, data} ->
         modules =
-          data["modules"]
-          |> Enum.map(fn module ->
+          Enum.map(data["modules"], fn module ->
             %{
               item_id: module["item_id"],
               type_id: module["type_id"],

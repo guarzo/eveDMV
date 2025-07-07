@@ -1,9 +1,9 @@
 defmodule EveDmv.Intelligence.Analyzer do
   @moduledoc """
-  Behaviour contract for intelligence analyzers with standardized telemetry and logging.
+  Behaviour contract for intelligence analyzers.
 
-  This behaviour defines a consistent interface for all intelligence analysis modules,
-  ensuring proper error handling, telemetry instrumentation, and logging patterns.
+  Defines a consistent interface for analysis modules with
+  standardized telemetry, logging, and error handling.
   """
 
   @type analysis_result :: {:ok, term()} | {:error, term()}
@@ -47,10 +47,30 @@ defmodule EveDmv.Intelligence.Analyzer do
   defmacro __using__(_opts) do
     quote do
       @behaviour EveDmv.Intelligence.Analyzer
+      unquote(inject_analyzer_base())
+      unquote(inject_analyzer_functions())
+      unquote(inject_default_implementations())
+      unquote(inject_overridables())
+    end
+  end
 
-      require Logger
+  defp inject_analyzer_base do
+    quote do
       alias EveDmv.Intelligence.Analyzer
+      require Logger
+    end
+  end
 
+  defp inject_analyzer_functions do
+    quote do
+      unquote(define_analyze_with_telemetry())
+      unquote(define_validate_analysis_params())
+      unquote(define_invalidate_cache_with_logging())
+    end
+  end
+
+  defp define_analyze_with_telemetry do
+    quote do
       @doc """
       Wrapper function that provides standardized telemetry and logging around analysis.
       """
@@ -105,7 +125,11 @@ defmodule EveDmv.Intelligence.Analyzer do
           end
         )
       end
+    end
+  end
 
+  defp define_validate_analysis_params do
+    quote do
       @doc """
       Validate analysis parameters with optional custom validation.
       """
@@ -124,7 +148,11 @@ defmodule EveDmv.Intelligence.Analyzer do
             :ok
         end
       end
+    end
+  end
 
+  defp define_invalidate_cache_with_logging do
+    quote do
       @doc """
       Standardized cache invalidation with logging.
       """
@@ -140,7 +168,11 @@ defmodule EveDmv.Intelligence.Analyzer do
 
         invalidate_cache(entity_id)
       end
+    end
+  end
 
+  defp inject_default_implementations do
+    quote do
       # Default implementations that can be overridden
       def analyze(_entity_id, _opts) do
         {:error, "analyze/2 not implemented"}
@@ -154,7 +186,11 @@ defmodule EveDmv.Intelligence.Analyzer do
       def analysis_type do
         :generic
       end
+    end
+  end
 
+  defp inject_overridables do
+    quote do
       # Make functions overridable
       defoverridable analyze: 2, invalidate_cache: 1, analysis_type: 0
     end

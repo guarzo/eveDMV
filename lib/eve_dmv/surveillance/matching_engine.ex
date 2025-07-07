@@ -21,10 +21,12 @@ defmodule EveDmv.Surveillance.MatchingEngine do
   """
 
   use GenServer
-  require Logger
   alias EveDmv.Api
-  alias EveDmv.Surveillance.{Profile}
-  alias EveDmv.Surveillance.Matching.{IndexManager, MatchEvaluator, ProfileCompiler}
+  alias EveDmv.Surveillance.Matching.IndexManager
+  alias EveDmv.Surveillance.Matching.MatchEvaluator
+  alias EveDmv.Surveillance.Matching.ProfileCompiler
+  alias EveDmv.Surveillance.Profile
+  require Logger
 
   # Performance tuning constants
   @batch_record_interval 5_000
@@ -78,7 +80,7 @@ defmodule EveDmv.Surveillance.MatchingEngine do
   # GenServer callbacks
 
   @impl GenServer
-  def init(opts) do
+  def init(_opts) do
     Logger.info("Starting surveillance matching engine")
 
     # Create ETS tables

@@ -14,7 +14,7 @@ defmodule EveDmv.DomainEvents do
     Published when a new killmail is received from the data feed.
     This is the raw killmail before any enrichment.
     """
-    @enforce_keys [:killmail_id, :hash, :occurred_at]
+
     defstruct [
       :killmail_id,
       :hash,
@@ -23,8 +23,14 @@ defmodule EveDmv.DomainEvents do
       :victim,
       :attackers,
       :zkb_data,
-      :received_at
+      :received_at,
+      :raw_data,
+      :killmail_time,
+      :zkb_total_value,
+      :timestamp
     ]
+
+    @enforce_keys [:killmail_id, :hash, :occurred_at]
 
     @type t :: %__MODULE__{
             killmail_id: integer(),
@@ -34,7 +40,11 @@ defmodule EveDmv.DomainEvents do
             victim: map(),
             attackers: [map()],
             zkb_data: map() | nil,
-            received_at: DateTime.t()
+            received_at: DateTime.t(),
+            raw_data: map() | nil,
+            killmail_time: DateTime.t() | nil,
+            zkb_total_value: integer() | nil,
+            timestamp: DateTime.t() | nil
           }
   end
 
@@ -43,13 +53,15 @@ defmodule EveDmv.DomainEvents do
     Published when a killmail has been fully enriched with additional data
     like names, locations, prices, etc.
     """
-    @enforce_keys [:killmail_id, :enriched_data]
+
     defstruct [
       :killmail_id,
       :enriched_data,
       :enrichment_duration_ms,
       :timestamp
     ]
+
+    @enforce_keys [:killmail_id, :enriched_data]
 
     @type t :: %__MODULE__{
             killmail_id: integer(),
@@ -63,7 +75,7 @@ defmodule EveDmv.DomainEvents do
     @moduledoc """
     Published when killmail processing fails at any stage.
     """
-    @enforce_keys [:killmail_id, :reason, :stage]
+
     defstruct [
       :killmail_id,
       :reason,
@@ -71,6 +83,8 @@ defmodule EveDmv.DomainEvents do
       :error_details,
       :timestamp
     ]
+
+    @enforce_keys [:killmail_id, :reason, :stage]
 
     @type t :: %__MODULE__{
             killmail_id: integer(),
@@ -83,11 +97,67 @@ defmodule EveDmv.DomainEvents do
 
   # Combat Intelligence Events
 
+  defmodule BattleAnalysisComplete do
+    @moduledoc """
+    Published when battle analysis is completed.
+    """
+
+    defstruct [
+      :battle_id,
+      :battle_type,
+      :participant_count,
+      :isk_destroyed,
+      :duration_seconds,
+      :winner,
+      :analysis_results,
+      :timestamp
+    ]
+
+    @enforce_keys [:battle_id, :battle_type, :participant_count, :isk_destroyed]
+
+    @type t :: %__MODULE__{
+            battle_id: String.t(),
+            battle_type: :small_gang | :fleet_fight | :large_scale_battle,
+            participant_count: integer(),
+            isk_destroyed: integer(),
+            duration_seconds: integer() | nil,
+            winner: :side_a | :side_b | :draw | nil,
+            analysis_results: map() | nil,
+            timestamp: DateTime.t()
+          }
+  end
+
+  defmodule TacticalInsightGenerated do
+    @moduledoc """
+    Published when tactical insights are generated from battle analysis.
+    """
+
+    defstruct [
+      :battle_id,
+      :insight_type,
+      :recommendations,
+      :confidence_score,
+      :tactical_patterns,
+      :timestamp
+    ]
+
+    @enforce_keys [:battle_id, :insight_type, :recommendations]
+
+    @type t :: %__MODULE__{
+            battle_id: String.t(),
+            insight_type: :recommendations | :patterns | :weaknesses,
+            recommendations: map(),
+            confidence_score: float() | nil,
+            tactical_patterns: [map()] | nil,
+            timestamp: DateTime.t()
+          }
+  end
+
   defmodule CharacterAnalyzed do
     @moduledoc """
     Published when character intelligence analysis is completed.
     """
-    @enforce_keys [:character_id, :character_name, :analysis_type]
+
     defstruct [
       :character_id,
       :character_name,
@@ -97,6 +167,8 @@ defmodule EveDmv.DomainEvents do
       :recommendations,
       :timestamp
     ]
+
+    @enforce_keys [:character_id, :character_name, :analysis_type]
 
     @type t :: %__MODULE__{
             character_id: integer(),
@@ -113,7 +185,7 @@ defmodule EveDmv.DomainEvents do
     @moduledoc """
     Published when corporation intelligence analysis is completed.
     """
-    @enforce_keys [:corporation_id, :corporation_name]
+
     defstruct [
       :corporation_id,
       :corporation_name,
@@ -123,6 +195,8 @@ defmodule EveDmv.DomainEvents do
       :top_threats,
       :timestamp
     ]
+
+    @enforce_keys [:corporation_id, :corporation_name]
 
     @type t :: %__MODULE__{
             corporation_id: integer(),
@@ -139,7 +213,7 @@ defmodule EveDmv.DomainEvents do
     @moduledoc """
     Published when a significant threat is detected during analysis.
     """
-    @enforce_keys [:threat_id, :threat_type, :severity]
+
     defstruct [
       :threat_id,
       :threat_type,
@@ -150,6 +224,8 @@ defmodule EveDmv.DomainEvents do
       :recommended_actions,
       :timestamp
     ]
+
+    @enforce_keys [:threat_id, :threat_type, :severity]
 
     @type t :: %__MODULE__{
             threat_id: String.t(),
@@ -169,7 +245,7 @@ defmodule EveDmv.DomainEvents do
     @moduledoc """
     Published when fleet composition analysis is completed.
     """
-    @enforce_keys [:fleet_id, :analysis_results]
+
     defstruct [
       :fleet_id,
       :killmail_ids,
@@ -180,6 +256,8 @@ defmodule EveDmv.DomainEvents do
       :analysis_results,
       :timestamp
     ]
+
+    @enforce_keys [:fleet_id, :analysis_results]
 
     @type t :: %__MODULE__{
             fleet_id: String.t(),
@@ -197,7 +275,7 @@ defmodule EveDmv.DomainEvents do
     @moduledoc """
     Published when doctrine compliance validation is completed.
     """
-    @enforce_keys [:doctrine_name, :validation_results]
+
     defstruct [
       :doctrine_name,
       :ships_analyzed,
@@ -206,6 +284,8 @@ defmodule EveDmv.DomainEvents do
       :missing_roles,
       :timestamp
     ]
+
+    @enforce_keys [:doctrine_name, :validation_results]
 
     @type t :: %__MODULE__{
             doctrine_name: String.t(),
@@ -223,7 +303,7 @@ defmodule EveDmv.DomainEvents do
     @moduledoc """
     Published when a threat is detected in the wormhole chain.
     """
-    @enforce_keys [:map_id, :system_id, :threat_level]
+
     defstruct [
       :map_id,
       :system_id,
@@ -233,6 +313,8 @@ defmodule EveDmv.DomainEvents do
       :threat_details,
       :timestamp
     ]
+
+    @enforce_keys [:map_id, :system_id, :threat_level]
 
     @type t :: %__MODULE__{
             map_id: String.t(),
@@ -249,7 +331,7 @@ defmodule EveDmv.DomainEvents do
     @moduledoc """
     Published when hostile movement is detected in the wormhole chain.
     """
-    @enforce_keys [:system_id, :character_id]
+
     defstruct [
       :system_id,
       :character_id,
@@ -258,6 +340,8 @@ defmodule EveDmv.DomainEvents do
       :threat_level,
       :timestamp
     ]
+
+    @enforce_keys [:system_id, :character_id]
 
     @type t :: %__MODULE__{
             system_id: integer(),
@@ -273,7 +357,7 @@ defmodule EveDmv.DomainEvents do
     @moduledoc """
     Published when chain activity predictions are updated.
     """
-    @enforce_keys [:map_id, :prediction_type]
+
     defstruct [
       :map_id,
       :prediction_type,
@@ -282,6 +366,8 @@ defmodule EveDmv.DomainEvents do
       :time_window,
       :timestamp
     ]
+
+    @enforce_keys [:map_id, :prediction_type]
 
     @type t :: %__MODULE__{
             map_id: String.t(),
@@ -297,7 +383,7 @@ defmodule EveDmv.DomainEvents do
     @moduledoc """
     Published when wormhole chain topology is updated.
     """
-    @enforce_keys [:chain_id, :update_type]
+
     defstruct [
       :chain_id,
       :update_type,
@@ -307,6 +393,8 @@ defmodule EveDmv.DomainEvents do
       :chain_depth,
       :timestamp
     ]
+
+    @enforce_keys [:chain_id, :update_type]
 
     @type t :: %__MODULE__{
             chain_id: String.t(),
@@ -323,7 +411,7 @@ defmodule EveDmv.DomainEvents do
     @moduledoc """
     Published when wormhole recruitment vetting is completed.
     """
-    @enforce_keys [:character_id, :character_name, :recommendation]
+
     defstruct [
       :character_id,
       :character_name,
@@ -334,6 +422,8 @@ defmodule EveDmv.DomainEvents do
       :green_flags,
       :timestamp
     ]
+
+    @enforce_keys [:character_id, :character_name, :recommendation]
 
     @type t :: %__MODULE__{
             character_id: integer(),
@@ -349,6 +439,9 @@ defmodule EveDmv.DomainEvents do
 
   # Add alias for VettingComplete (used in code but defined as VettingCompleted)
   defmodule VettingComplete do
+    @moduledoc """
+    Alias for VettingCompleted event for backward compatibility.
+    """
     defstruct [
       :character_id,
       :character_name,
@@ -365,7 +458,7 @@ defmodule EveDmv.DomainEvents do
     @moduledoc """
     Published when fleet analysis is completed.
     """
-    @enforce_keys [:engagement_id, :analysis_type, :results]
+
     defstruct [
       :engagement_id,
       :analysis_type,
@@ -376,6 +469,8 @@ defmodule EveDmv.DomainEvents do
       :effectiveness_score,
       :timestamp
     ]
+
+    @enforce_keys [:engagement_id, :analysis_type, :results]
 
     @type t :: %__MODULE__{
             engagement_id: String.t(),
@@ -393,7 +488,7 @@ defmodule EveDmv.DomainEvents do
     @moduledoc """
     Published when a surveillance profile matches a killmail.
     """
-    @enforce_keys [:profile_id, :killmail_id, :match_type]
+
     defstruct [
       :profile_id,
       :killmail_id,
@@ -404,6 +499,8 @@ defmodule EveDmv.DomainEvents do
       :confidence_score,
       :timestamp
     ]
+
+    @enforce_keys [:profile_id, :killmail_id, :match_type]
 
     @type t :: %__MODULE__{
             profile_id: String.t(),
@@ -421,7 +518,7 @@ defmodule EveDmv.DomainEvents do
     @moduledoc """
     Published when a surveillance alert is triggered.
     """
-    @enforce_keys [:alert_id, :alert_type, :priority]
+
     defstruct [
       :alert_id,
       :alert_type,
@@ -434,6 +531,8 @@ defmodule EveDmv.DomainEvents do
       :match_data,
       :timestamp
     ]
+
+    @enforce_keys [:alert_id, :alert_type, :priority]
 
     @type t :: %__MODULE__{
             alert_id: String.t(),
@@ -453,7 +552,7 @@ defmodule EveDmv.DomainEvents do
     @moduledoc """
     Published when wormhole mass calculations are updated.
     """
-    @enforce_keys [:wormhole_id, :total_mass, :remaining_mass]
+
     defstruct [
       :wormhole_id,
       :connection_id,
@@ -463,6 +562,8 @@ defmodule EveDmv.DomainEvents do
       :ships_passed,
       :timestamp
     ]
+
+    @enforce_keys [:wormhole_id, :total_mass, :remaining_mass]
 
     @type t :: %__MODULE__{
             wormhole_id: String.t(),
@@ -481,7 +582,7 @@ defmodule EveDmv.DomainEvents do
     @moduledoc """
     Published when a surveillance profile matches a killmail.
     """
-    @enforce_keys [:match_id, :profile_id, :killmail_id]
+
     defstruct [
       :match_id,
       :profile_id,
@@ -492,6 +593,8 @@ defmodule EveDmv.DomainEvents do
       :matched_criteria,
       :timestamp
     ]
+
+    @enforce_keys [:match_id, :profile_id, :killmail_id]
 
     @type t :: %__MODULE__{
             match_id: String.t(),
@@ -509,7 +612,7 @@ defmodule EveDmv.DomainEvents do
     @moduledoc """
     Published when a surveillance alert is triggered.
     """
-    @enforce_keys [:alert_id, :alert_type, :severity]
+
     defstruct [
       :alert_id,
       :alert_type,
@@ -519,6 +622,8 @@ defmodule EveDmv.DomainEvents do
       :notification_channels,
       :timestamp
     ]
+
+    @enforce_keys [:alert_id, :alert_type, :severity]
 
     @type t :: %__MODULE__{
             alert_id: String.t(),
@@ -537,7 +642,7 @@ defmodule EveDmv.DomainEvents do
     @moduledoc """
     Published when item prices are updated.
     """
-    @enforce_keys [:type_id, :price_data]
+
     defstruct [
       :type_id,
       :type_name,
@@ -546,6 +651,8 @@ defmodule EveDmv.DomainEvents do
       :region_id,
       :timestamp
     ]
+
+    @enforce_keys [:type_id, :price_data]
 
     @type t :: %__MODULE__{
             type_id: integer(),
@@ -561,7 +668,7 @@ defmodule EveDmv.DomainEvents do
     @moduledoc """
     Published when market analysis is completed.
     """
-    @enforce_keys [:analysis_id, :analysis_type]
+
     defstruct [
       :analysis_id,
       :analysis_type,
@@ -571,6 +678,8 @@ defmodule EveDmv.DomainEvents do
       :recommendations,
       :timestamp
     ]
+
+    @enforce_keys [:analysis_id, :analysis_type]
 
     @type t :: %__MODULE__{
             analysis_id: String.t(),
@@ -589,7 +698,7 @@ defmodule EveDmv.DomainEvents do
     @moduledoc """
     Published when EVE static data is updated.
     """
-    @enforce_keys [:update_type, :affected_count]
+
     defstruct [
       :update_type,
       :affected_count,
@@ -597,6 +706,8 @@ defmodule EveDmv.DomainEvents do
       :categories_updated,
       :timestamp
     ]
+
+    @enforce_keys [:update_type, :affected_count]
 
     @type t :: %__MODULE__{
             update_type: :full | :partial | :patch,
@@ -636,9 +747,7 @@ defmodule EveDmv.DomainEvents do
   def deserialize(data) do
     type = Map.get(data, :__type__) || Map.get(data, "__type__")
 
-    event_module =
-      __MODULE__
-      |> Module.safe_concat(type)
+    event_module = Module.safe_concat(__MODULE__, type)
 
     struct(event_module, data)
   end

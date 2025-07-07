@@ -7,8 +7,10 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
   """
 
   use EveDmv.ErrorHandler
+
   alias EveDmv.Result
   alias EveDmv.Shared.ShipAnalysis
+
   require Logger
 
   @doc """
@@ -16,32 +18,30 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
   """
   @spec analyze(integer(), map()) :: Result.t(map())
   def analyze(character_id, base_data \\ %{}) when is_integer(character_id) do
-    try do
-      character_stats = Map.get(base_data, :character_stats, %{})
+    character_stats = Map.get(base_data, :character_stats, %{})
 
-      ship_analysis = %{
-        ship_usage_patterns: ShipAnalysis.analyze_ship_usage(character_stats),
-        role_specialization: ShipAnalysis.analyze_role_specialization(character_stats),
-        fitting_preferences: analyze_fitting_patterns(character_stats),
-        deployment_patterns: analyze_deployment_patterns(character_stats),
-        ship_value_patterns: analyze_ship_values(character_stats),
-        meta_analysis: analyze_meta_usage(character_stats),
-        progression_tracking: analyze_ship_progression(character_stats),
-        preferences_summary: generate_preferences_summary(character_stats),
-        diversity_metrics: calculate_diversity_metrics(character_stats),
-        specialization: calculate_specialization_metrics(character_stats)
-      }
+    ship_analysis = %{
+      ship_usage_patterns: ShipAnalysis.analyze_ship_usage(character_stats),
+      role_specialization: ShipAnalysis.analyze_role_specialization(character_stats),
+      fitting_preferences: analyze_fitting_patterns(character_stats),
+      deployment_patterns: analyze_deployment_patterns(character_stats),
+      ship_value_patterns: analyze_ship_values(character_stats),
+      meta_analysis: analyze_meta_usage(character_stats),
+      progression_tracking: analyze_ship_progression(character_stats),
+      preferences_summary: generate_preferences_summary(character_stats),
+      diversity_metrics: calculate_diversity_metrics(character_stats),
+      specialization: calculate_specialization_metrics(character_stats)
+    }
 
-      Result.ok(ship_analysis)
-    rescue
-      exception ->
-        Logger.error("Ship preferences analysis failed",
-          character_id: character_id,
-          error: Exception.format(:error, exception)
-        )
+    Result.ok(ship_analysis)
+  rescue
+    exception ->
+      Logger.error("Ship preferences analysis failed",
+        character_id: character_id,
+        error: Exception.format(:error, exception)
+      )
 
-        Result.error(:analysis_failed, "Ship preferences analysis error: #{inspect(exception)}")
-    end
+      Result.error(:analysis_failed, "Ship preferences analysis error: #{inspect(exception)}")
   end
 
   # Core analysis functions
@@ -57,8 +57,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
 
     # Analyze common fitting patterns across ships
     fitting_data =
-      ship_usage
-      |> Enum.flat_map(fn {_ship_id, ship_data} ->
+      Enum.flat_map(ship_usage, fn {_ship_id, ship_data} ->
         Map.get(ship_data, "common_fits", [])
       end)
 
@@ -146,27 +145,30 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
 
     # Analyze meta/tech level preferences
     meta_analysis =
-      ship_usage
-      |> Enum.map(fn {_ship_id, ship_data} ->
-        ship_group = Map.get(ship_data, "ship_group", "")
-        tech_level = determine_tech_level(ship_group)
-        times_used = Map.get(ship_data, "times_used", 0)
+      Enum.reduce(
+        Enum.map(ship_usage, fn {_ship_id, ship_data} ->
+          ship_group = Map.get(ship_data, "ship_group", "")
+          tech_level = determine_tech_level(ship_group)
+          times_used = Map.get(ship_data, "times_used", 0)
 
-        {tech_level, times_used}
-      end)
-      |> Enum.reduce(%{}, fn {tech_level, usage}, acc ->
-        Map.update(acc, tech_level, usage, &(&1 + usage))
-      end)
+          {tech_level, times_used}
+        end),
+        %{},
+        fn {tech_level, usage}, acc ->
+          Map.update(acc, tech_level, usage, &(&1 + usage))
+        end
+      )
 
     total_meta_usage = Enum.sum(Map.values(meta_analysis))
 
     meta_percentages =
-      meta_analysis
-      |> Enum.map(fn {tech_level, usage} ->
-        percentage = if total_meta_usage > 0, do: usage / total_meta_usage, else: 0.0
-        {tech_level, percentage}
-      end)
-      |> Enum.into(%{})
+      Enum.into(
+        Enum.map(meta_analysis, fn {tech_level, usage} ->
+          percentage = if total_meta_usage > 0, do: usage / total_meta_usage, else: 0.0
+          {tech_level, percentage}
+        end),
+        %{}
+      )
 
     %{
       tech_level_distribution: meta_percentages,
@@ -184,8 +186,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
     # For now, we'll infer progression from current usage patterns
 
     ship_sizes =
-      ship_usage
-      |> Enum.reduce(%{}, fn {_ship_id, ship_data}, acc ->
+      Enum.reduce(ship_usage, %{}, fn {_ship_id, ship_data}, acc ->
         ship_group = Map.get(ship_data, "ship_group", "")
         size = determine_ship_size(ship_group)
         times_used = Map.get(ship_data, "times_used", 0)
@@ -460,8 +461,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
 
     # Calculate how focused the character is on specific roles
     role_usage =
-      ship_usage
-      |> Enum.reduce(%{}, fn {_ship_id, ship_data}, acc ->
+      Enum.reduce(ship_usage, %{}, fn {_ship_id, ship_data}, acc ->
         ship_group = Map.get(ship_data, "ship_group", "Unknown")
         role = categorize_ship_role(ship_group)
         times_used = Map.get(ship_data, "times_used", 0)

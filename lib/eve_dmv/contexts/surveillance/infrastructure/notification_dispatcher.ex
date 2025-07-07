@@ -432,7 +432,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.NotificationDispatcher do
 
   # Simulation helpers (would be replaced with real implementations)
 
-  defp simulate_http_request(url, _payload, _headers) do
+  defp simulate_http_request(_url, _payload, _headers) do
     # Simulate HTTP request with occasional failures
     case :rand.uniform() do
       n when n > 0.95 -> {:error, :timeout}

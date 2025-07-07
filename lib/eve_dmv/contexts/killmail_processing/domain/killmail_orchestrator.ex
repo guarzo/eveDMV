@@ -10,12 +10,11 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.KillmailOrchestrator do
   """
 
   use GenServer
-  require Logger
-
   alias EveDmv.Contexts.KillmailProcessing.Domain
   # alias EveDmv.Contexts.KillmailProcessing.Infrastructure
   alias EveDmv.DomainEvents
   alias EveDmv.Infrastructure.EventBus
+  require Logger
 
   # Client API
 

@@ -5,8 +5,8 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
 
   alias EveDmv.Analytics.PlayerStats
   alias EveDmv.Api
-  alias EveDmv.Killmails.Participant
   alias EveDmv.Constants.Isk
+  alias EveDmv.Killmails.Participant
 
   require Logger
 

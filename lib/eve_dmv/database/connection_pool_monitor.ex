@@ -7,10 +7,11 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
   """
 
   use GenServer
-  require Logger
 
   alias EveDmv.Repo
   alias EveDmv.Telemetry.PerformanceMonitor
+
+  require Logger
 
   @check_interval :timer.seconds(30)
   @pool_size_warning_threshold 0.8
@@ -232,7 +233,7 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
   end
 
   defp analyze_pool_health(state) do
-    recent_stats = state.stats_history |> Enum.take(10)
+    recent_stats = Enum.take(state.stats_history, 10)
     recent_alerts = state.alerts
 
     cond do
@@ -253,14 +254,12 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
         }
 
       length(recent_stats) > 5 ->
-        avg_utilization =
+        utilization_values =
           recent_stats
           |> Enum.map(&get_in(&1, [:stats, :utilization]))
           |> Enum.reject(&is_nil/1)
-          |> case do
-            [] -> 0.0
-            values -> Enum.sum(values) / length(values)
-          end
+
+        avg_utilization = calculate_average(utilization_values)
 
         if avg_utilization > 0.6 do
           %{
@@ -345,4 +344,7 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
       0
     end
   end
+
+  defp calculate_average([]), do: 0.0
+  defp calculate_average(values), do: Enum.sum(values) / length(values)
 end

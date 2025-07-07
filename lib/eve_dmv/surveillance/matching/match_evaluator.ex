@@ -6,10 +6,10 @@ defmodule EveDmv.Surveillance.Matching.MatchEvaluator do
   including parallel evaluation for performance and match recording.
   """
 
-  require Logger
   alias EveDmv.Api
-  alias EveDmv.Surveillance.{ProfileMatch}
   alias EveDmv.Surveillance.Matching.IndexManager
+  alias EveDmv.Surveillance.ProfileMatch
+  require Logger
 
   # Performance tuning constants
   @max_candidate_set_size 100
@@ -184,8 +184,7 @@ defmodule EveDmv.Surveillance.Matching.MatchEvaluator do
     required_fields = ["killmail_id", "victim", "attackers"]
 
     missing_fields =
-      required_fields
-      |> Enum.filter(fn field -> is_nil(killmail[field]) end)
+      Enum.filter(required_fields, fn field -> is_nil(killmail[field]) end)
 
     case missing_fields do
       [] -> {:ok, killmail}

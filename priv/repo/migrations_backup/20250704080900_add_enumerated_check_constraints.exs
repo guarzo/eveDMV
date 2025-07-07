@@ -1,7 +1,7 @@
 defmodule EveDmv.Repo.Migrations.AddEnumeratedCheckConstraints do
   @moduledoc """
   Adds check constraints for enumerated fields in analytics and surveillance tables.
-  
+
   This ensures data integrity by restricting certain text fields to predefined values.
   """
 
@@ -72,7 +72,7 @@ defmodule EveDmv.Repo.Migrations.AddEnumeratedCheckConstraints do
       check: "security_class IN ('highsec', 'lowsec', 'nullsec', 'wormhole', 'abyssal', 'unknown') OR security_class IS NULL"
     )
 
-    # Chain Connections enumerations  
+    # Chain Connections enumerations
     create constraint(:chain_connections, :connection_type_check,
       check: "connection_type IN ('wormhole', 'stargate', 'cyno', 'bridge', 'unknown')"
     )

@@ -7,10 +7,11 @@ defmodule EveDmv.PlayerProfile.StatsGenerator do
   classification, and statistical transformations.
   """
 
-  require Logger
-  alias EveDmv.Api
   alias EveDmv.Analytics.PlayerStats
+  alias EveDmv.Api
   alias EveDmv.IntelligenceMigrationAdapter
+
+  require Logger
 
   @doc """
   Create player statistics from character analysis data.

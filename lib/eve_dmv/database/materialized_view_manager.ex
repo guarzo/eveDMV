@@ -7,13 +7,14 @@ defmodule EveDmv.Database.MaterializedViewManager do
   """
 
   use GenServer
-  require Logger
 
   alias EveDmv.Database.CacheInvalidator
   alias EveDmv.Database.MaterializedViewManager.ViewLifecycle
-  alias EveDmv.Database.MaterializedViewManager.ViewRefreshScheduler
-  alias EveDmv.Database.MaterializedViewManager.ViewQueryService
   alias EveDmv.Database.MaterializedViewManager.ViewMetrics
+  alias EveDmv.Database.MaterializedViewManager.ViewQueryService
+  alias EveDmv.Database.MaterializedViewManager.ViewRefreshScheduler
+
+  require Logger
 
   # Client API
 

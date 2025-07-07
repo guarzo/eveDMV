@@ -6,10 +6,10 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.DatabaseMetrics do
   and overall database performance.
   """
 
-  require Logger
-
   alias Ecto.Adapters.SQL
   alias EveDmv.Telemetry.QueryMonitor
+
+  require Logger
 
   @doc """
   Get database performance statistics.
@@ -35,7 +35,8 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.DatabaseMetrics do
     case SQL.query(EveDmv.Repo, query) do
       {:ok, %{rows: rows, columns: columns}} ->
         Enum.map(rows, fn row ->
-          Enum.zip(columns, row)
+          columns
+          |> Enum.zip(row)
           |> Map.new()
         end)
 

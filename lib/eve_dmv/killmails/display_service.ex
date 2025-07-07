@@ -282,8 +282,7 @@ defmodule EveDmv.Killmails.DisplayService do
     # Cache current time for consistent sample data generation
     now = DateTime.utc_now()
 
-    1..limit
-    |> Enum.map(fn i ->
+    Enum.map(1..limit, fn i ->
       timestamp = DateTime.add(now, -i * 60, :second)
       value = Enum.random(10_000_000..1_000_000_000)
       system_id = Enum.random([30_000_142, 30_000_144, 30_002_187, 30_002_659])
@@ -296,6 +295,7 @@ defmodule EveDmv.Killmails.DisplayService do
         id: "demo-#{i}",
         killmail_id: 900_000_000 + i,
         killmail_time: timestamp,
+        victim_character_id: 95_000_000 + i,
         victim_character_name: "Demo Pilot #{i}",
         victim_corporation_name: "Demo Corp #{rem(i, 10)}",
         victim_alliance_name: if(rem(i, 3) == 0, do: "Demo Alliance", else: nil),
@@ -308,6 +308,7 @@ defmodule EveDmv.Killmails.DisplayService do
         total_value: safe_decimal_new(value),
         ship_value: safe_decimal_new(div(value, 3)),
         attacker_count: Enum.random(1..5),
+        final_blow_character_id: 95_100_000 + i,
         final_blow_character_name: "Attacker #{i}",
         age_minutes: i,
         is_expensive: value > Isk.million() * 100

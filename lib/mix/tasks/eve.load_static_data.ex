@@ -23,11 +23,12 @@ defmodule Mix.Tasks.Eve.LoadStaticData do
       Static data loading complete!
   """
 
-  use Mix.Task
-  alias EveDmv.Eve.StaticDataLoader
-  alias EveDmv.Eve.NameResolver
-
   @shortdoc "Load EVE static data if not already present"
+
+  use Mix.Task
+
+  alias EveDmv.Eve.NameResolver
+  alias EveDmv.Eve.StaticDataLoader
 
   @impl Mix.Task
   def run(args) do

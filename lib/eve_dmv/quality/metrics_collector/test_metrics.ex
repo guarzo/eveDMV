@@ -73,8 +73,7 @@ defmodule EveDmv.Quality.MetricsCollector.TestMetrics do
             %{
               overall: Map.get(data, "coverage", 0),
               files:
-                Map.get(data, "files", [])
-                |> Enum.map(fn file ->
+                Enum.map(Map.get(data, "files", []), fn file ->
                   %{
                     name: Map.get(file, "name"),
                     coverage: Map.get(file, "coverage", 0)

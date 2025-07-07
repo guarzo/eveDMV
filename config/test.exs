@@ -29,26 +29,17 @@ config :phoenix_live_view,
 # to provide built-in test partitioning in CI environment.
 # Run `mix help test` for more information.
 
-# Use DATABASE_URL if provided (CI environment), otherwise use local Docker configuration
-database_config =
-  if database_url = System.get_env("DATABASE_URL") do
-    [url: database_url]
-  else
-    [
-      username: "postgres",
-      password: "postgres",
-      hostname: "db",
-      database: "eve_dmv_test#{System.get_env("MIX_TEST_PARTITION")}",
-      port: 5432
-    ]
-  end
-
-config :eve_dmv,
-       EveDmv.Repo,
-       Keyword.merge(database_config,
-         pool: Ecto.Adapters.SQL.Sandbox,
-         pool_size: 10
-       )
+# Force test database configuration - completely override any other settings
+config :eve_dmv, EveDmv.Repo,
+  username: "postgres",
+  password: "postgres",
+  hostname: "db",
+  database: "eve_dmv_test#{System.get_env("MIX_TEST_PARTITION")}",
+  port: 5432,
+  pool: Ecto.Adapters.SQL.Sandbox,
+  pool_size: System.schedulers_online() * 2,
+  ownership_timeout: 60_000,
+  timeout: 60_000
 
 # Authentication configuration for tests
 config :eve_dmv, :token_signing_secret, "test_signing_secret_at_least_32_characters_long!"
@@ -66,3 +57,8 @@ config :eve_dmv,
   wanderer_kills_sse_url: "http://localhost:8080/sse",
   wanderer_kills_websocket_url: "ws://localhost:4004/socket",
   wanderer_kills_base_url: "http://localhost:4004"
+
+# Final override to ensure SQL Sandbox is used - this must be last!
+config :eve_dmv, EveDmv.Repo,
+  database: "eve_dmv_test#{System.get_env("MIX_TEST_PARTITION")}",
+  pool: Ecto.Adapters.SQL.Sandbox

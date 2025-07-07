@@ -16,8 +16,7 @@ defmodule EveDmv.Intelligence.Fleet.DoctrineTemplateBuilder do
 
     # Convert role definitions to standardized format
     template =
-      roles
-      |> Enum.map(fn {role_name, role_config} ->
+      Enum.map(roles, fn {role_name, role_config} ->
         {role_name,
          %{
            "required" => role_config["required"] || 1,
@@ -26,9 +25,10 @@ defmodule EveDmv.Intelligence.Fleet.DoctrineTemplateBuilder do
            "priority" => role_config["priority"] || 5
          }}
       end)
-      |> Enum.into(%{})
 
-    {:ok, template}
+    template_map = Enum.into(template, %{})
+
+    {:ok, template_map}
   end
 
   @doc """
@@ -37,10 +37,10 @@ defmodule EveDmv.Intelligence.Fleet.DoctrineTemplateBuilder do
   Returns {:ok, category} where category is "small", "medium", or "large".
   """
   def determine_size_category(doctrine_template) do
-    total_pilots =
-      doctrine_template
-      |> Enum.map(fn {_role, config} -> config["required"] || 1 end)
-      |> Enum.sum()
+    required_pilots =
+      Enum.map(doctrine_template, fn {_role, config} -> config["required"] || 1 end)
+
+    total_pilots = Enum.sum(required_pilots)
 
     category = categorize_fleet_size(total_pilots)
     {:ok, category}
@@ -72,9 +72,10 @@ defmodule EveDmv.Intelligence.Fleet.DoctrineTemplateBuilder do
   """
   def calculate_optimal_pilots(doctrine_template) do
     # Calculate optimal pilot count (all required roles fully filled)
-    doctrine_template
-    |> Enum.map(fn {_role, config} -> config["required"] || 1 end)
-    |> Enum.sum()
+    required_pilots =
+      Enum.map(doctrine_template, fn {_role, config} -> config["required"] || 1 end)
+
+    Enum.sum(required_pilots)
   end
 
   @doc """

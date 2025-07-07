@@ -7,9 +7,9 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetOptimizer do
   situational variants of fleet compositions.
   """
 
-  require Logger
-
   alias EveDmv.Intelligence.Fleet.FleetEffectivenessCalculator
+
+  require Logger
 
   @doc """
   Generate optimization recommendations for a fleet composition.
@@ -157,24 +157,24 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetOptimizer do
   - Map with detailed improvement recommendations
   """
   def generate_fleet_improvements(fleet_data, effectiveness_metrics, role_analysis) do
-    priority_improvements = []
-    suggested_additions = []
+    initial_priority_improvements = []
+    initial_suggested_additions = []
 
     # Analyze survivability needs
-    {priority_improvements, suggested_additions} =
+    {survivability_priority_improvements, survivability_suggested_additions} =
       analyze_survivability_needs(
         effectiveness_metrics,
         role_analysis,
-        priority_improvements,
-        suggested_additions
+        initial_priority_improvements,
+        initial_suggested_additions
       )
 
     # Analyze command capability
-    {priority_improvements, suggested_additions} =
+    {final_priority_improvements, final_suggested_additions} =
       analyze_command_capability(
         effectiveness_metrics,
-        priority_improvements,
-        suggested_additions
+        survivability_priority_improvements,
+        survivability_suggested_additions
       )
 
     # Analyze doctrine compliance
@@ -184,8 +184,8 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetOptimizer do
     role_recommendations = generate_role_recommendations()
 
     %{
-      priority_improvements: priority_improvements,
-      suggested_additions: suggested_additions,
+      priority_improvements: final_priority_improvements,
+      suggested_additions: final_suggested_additions,
       role_recommendations: role_recommendations,
       doctrine_suggestions: doctrine_suggestions
     }

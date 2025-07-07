@@ -15,7 +15,9 @@ defmodule EveDmv.Contexts.KillmailProcessing do
   use EveDmv.Contexts.BoundedContext, name: :killmail_processing
   use Supervisor
 
-  alias EveDmv.Contexts.KillmailProcessing.{Api, Domain, Infrastructure}
+  alias EveDmv.Contexts.KillmailProcessing.Api
+  alias EveDmv.Contexts.KillmailProcessing.Domain
+  alias EveDmv.Contexts.KillmailProcessing.Infrastructure
   # alias EveDmv.DomainEvents
 
   # Supervisor implementation

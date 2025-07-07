@@ -6,14 +6,14 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainDataSync do
   system inhabitants, and connections from the Wanderer API.
   """
 
-  require Logger
-  require Ash.Query
-
   alias EveDmv.Api
   alias EveDmv.Intelligence.ChainAnalysis.ChainConnection
   alias EveDmv.Intelligence.ChainAnalysis.ChainTopology
   alias EveDmv.Intelligence.SystemInhabitant
   alias EveDmv.Intelligence.WandererClient
+
+  require Logger
+  require Ash.Query
 
   @doc """
   Sync all data for a specific chain from Wanderer API.
@@ -177,8 +177,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainDataSync do
 
     # Prepare bulk data
     {updates, creates} =
-      inhabitants_data
-      |> Enum.reduce({[], []}, fn inhabitant_data, {updates, creates} ->
+      Enum.reduce(inhabitants_data, {[], []}, fn inhabitant_data, {updates, creates} ->
         character_id = Map.get(inhabitant_data, "character_id")
         system_id = Map.get(inhabitant_data, "system_id")
 
@@ -252,8 +251,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainDataSync do
 
     # Prepare bulk data
     {updates, creates} =
-      connections_data
-      |> Enum.reduce({[], []}, fn connection_data, {updates, creates} ->
+      Enum.reduce(connections_data, {[], []}, fn connection_data, {updates, creates} ->
         source_id = Map.get(connection_data, "source_system_id")
         target_id = Map.get(connection_data, "target_system_id")
         connection_key = "#{source_id}-#{target_id}"

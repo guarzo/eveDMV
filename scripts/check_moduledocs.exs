@@ -6,7 +6,7 @@ defmodule ModuledocChecker do
   """
 
   def check_missing_moduledocs do
-    missing_docs = 
+    missing_docs =
       "lib/**/*.ex"
       |> Path.wildcard()
       |> Enum.filter(&is_elixir_module_file?/1)

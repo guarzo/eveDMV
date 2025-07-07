@@ -8,15 +8,15 @@ defmodule EveDmv.Intelligence.Core.TimeoutHelper do
 
   require Logger
 
-  @type timeout_ms :: pos_integer()
-  @type task_result :: {:ok, term()} | {:error, term()}
-  @type async_task :: Task.t()
-
   # Default timeouts for different operation types
   @default_query_timeout 10_000
   @default_api_timeout 15_000
   @default_analysis_timeout 30_000
   @default_batch_timeout 60_000
+
+  @type timeout_ms :: pos_integer()
+  @type task_result :: {:ok, term()} | {:error, term()}
+  @type async_task :: Task.t()
 
   @doc """
   Execute a function with timeout and proper error handling.

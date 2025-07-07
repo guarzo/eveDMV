@@ -6,9 +6,9 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
   comprehensive health status reporting.
   """
 
-  require Logger
   alias Ecto.Adapters.SQL
   alias EveDmv.Telemetry.PerformanceMonitor.ConnectionPoolMonitor
+  require Logger
 
   @doc """
   Monitor real-time database health metrics.
@@ -430,25 +430,25 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
   defp categorize_transaction_severity(_), do: :unknown
 
   defp generate_size_warnings(size_bytes) when is_number(size_bytes) do
-    warnings = []
+    initial_warnings = []
 
     # 100GB
-    warnings =
+    warnings_with_100gb =
       if size_bytes > 100_000_000_000 do
-        ["Database size exceeds 100GB - monitor growth rate" | warnings]
+        ["Database size exceeds 100GB - monitor growth rate" | initial_warnings]
       else
-        warnings
+        initial_warnings
       end
 
     # 500GB
-    warnings =
+    warnings_with_500gb =
       if size_bytes > 500_000_000_000 do
-        ["Database size exceeds 500GB - consider archiving strategy" | warnings]
+        ["Database size exceeds 500GB - consider archiving strategy" | warnings_with_100gb]
       else
-        warnings
+        warnings_with_100gb
       end
 
-    warnings
+    warnings_with_500gb
   end
 
   defp generate_size_warnings(_), do: []
@@ -457,29 +457,29 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
     critical_tables = Enum.filter(tables, &(&1.dead_tuple_percent > 30))
     never_vacuumed = Enum.filter(tables, &(is_nil(&1.last_vacuum) and is_nil(&1.last_autovacuum)))
 
-    recommendations = []
+    initial_recommendations = []
 
-    recommendations =
+    critical_recommendations =
       if length(critical_tables) > 0 do
         [
           "#{length(critical_tables)} tables have > 30% dead tuples - urgent vacuum needed"
-          | recommendations
+          | initial_recommendations
         ]
       else
-        recommendations
+        initial_recommendations
       end
 
-    recommendations =
+    final_recommendations =
       if length(never_vacuumed) > 0 do
-        ["#{length(never_vacuumed)} tables have never been vacuumed" | recommendations]
+        ["#{length(never_vacuumed)} tables have never been vacuumed" | critical_recommendations]
       else
-        recommendations
+        critical_recommendations
       end
 
-    if Enum.empty?(recommendations) do
+    if Enum.empty?(final_recommendations) do
       ["Autovacuum is functioning normally"]
     else
-      recommendations
+      final_recommendations
     end
   end
 end

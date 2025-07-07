@@ -6,8 +6,17 @@ defmodule EveDmv.IntelligenceEngineTest do
   use ExUnit.Case, async: true
 
   alias EveDmv.IntelligenceEngine
-  alias EveDmv.IntelligenceEngine.{Config, Pipeline, PluginRegistry}
+  alias EveDmv.IntelligenceEngine.Config
+  alias EveDmv.IntelligenceEngine.Pipeline
+  alias EveDmv.IntelligenceEngine.PluginRegistry
   alias EveDmv.IntelligenceEngine.Plugins.Character.CombatStats
+  alias EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer
+
+  setup do
+    # Start PlayerAnalyzer for tests that need it
+    {:ok, _pid} = start_supervised(PlayerAnalyzer)
+    :ok
+  end
 
   describe "Intelligence Engine basic functionality" do
     test "config loads successfully" do
@@ -94,15 +103,15 @@ defmodule EveDmv.IntelligenceEngineTest do
   describe "Data preparation and validation" do
     test "validates entity IDs correctly" do
       # Valid entity IDs
-      assert Pipeline.validate_entity_id(12345) == :ok
-      assert Pipeline.validate_entity_id([12345, 67890]) == :ok
+      assert Pipeline.validate_entity_id(12_345) == :ok
+      assert Pipeline.validate_entity_id([12_345, 67_890]) == :ok
 
       # Invalid entity IDs
       assert {:error, _} = Pipeline.validate_entity_id(0)
       assert {:error, _} = Pipeline.validate_entity_id(-1)
       assert {:error, _} = Pipeline.validate_entity_id("invalid")
       assert {:error, _} = Pipeline.validate_entity_id([])
-      assert {:error, _} = Pipeline.validate_entity_id([0, 12345])
+      assert {:error, _} = Pipeline.validate_entity_id([0, 12_345])
     end
 
     test "validates analysis domains correctly" do
@@ -119,7 +128,7 @@ defmodule EveDmv.IntelligenceEngineTest do
     end
 
     test "prepares base data structure correctly" do
-      entity_id = 12345
+      entity_id = 12_345
       domain = :character
       opts = [scope: :basic]
 
@@ -140,7 +149,7 @@ defmodule EveDmv.IntelligenceEngineTest do
   describe "Error handling" do
     test "handles invalid plugin gracefully" do
       # This should fail gracefully if the Intelligence Engine isn't fully running
-      result = IntelligenceEngine.analyze(:invalid_domain, 12345, [])
+      result = IntelligenceEngine.analyze(:invalid_domain, 12_345, [])
 
       # Should return an error, not crash
       assert {:error, _reason} = result
@@ -156,8 +165,8 @@ defmodule EveDmv.IntelligenceEngineTest do
 
   describe "Cache key generation" do
     test "generates consistent cache keys" do
-      key1 = Pipeline.generate_cache_key(:character, 12345, :basic, [])
-      key2 = Pipeline.generate_cache_key(:character, 12345, :basic, [])
+      key1 = Pipeline.generate_cache_key(:character, 12_345, :basic, [])
+      key2 = Pipeline.generate_cache_key(:character, 12_345, :basic, [])
 
       assert key1 == key2
       assert is_binary(key1)
@@ -167,10 +176,10 @@ defmodule EveDmv.IntelligenceEngineTest do
     end
 
     test "generates different keys for different parameters" do
-      key1 = Pipeline.generate_cache_key(:character, 12345, :basic, [])
-      key2 = Pipeline.generate_cache_key(:character, 12345, :standard, [])
-      key3 = Pipeline.generate_cache_key(:character, 67890, :basic, [])
-      key4 = Pipeline.generate_cache_key(:corporation, 12345, :basic, [])
+      key1 = Pipeline.generate_cache_key(:character, 12_345, :basic, [])
+      key2 = Pipeline.generate_cache_key(:character, 12_345, :standard, [])
+      key3 = Pipeline.generate_cache_key(:character, 67_890, :basic, [])
+      key4 = Pipeline.generate_cache_key(:corporation, 12_345, :basic, [])
 
       # All keys should be different
       keys = [key1, key2, key3, key4]

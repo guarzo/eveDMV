@@ -7,16 +7,13 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainEventHandlers do
   chain state accordingly.
   """
 
+  alias EveDmv.Api
+  alias EveDmv.Intelligence.ChainAnalysis.ChainConnection
+  alias EveDmv.Intelligence.ChainAnalysis.ChainTopology
+  alias EveDmv.Intelligence.ChainAnalysis.SystemInhabitantsManager
+
   require Logger
   require Ash.Query
-
-  alias EveDmv.Api
-
-  alias EveDmv.Intelligence.ChainAnalysis.{
-    ChainConnection,
-    ChainTopology,
-    SystemInhabitantsManager
-  }
 
   @doc """
   Process a Wanderer event based on event type.

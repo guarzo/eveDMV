@@ -8,10 +8,9 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
 
   use GenServer
   use EveDmv.ErrorHandler
-  alias EveDmv.Result
-  alias EveDmv.Contexts.Surveillance.Infrastructure.{ProfileRepository, MatchCache}
   alias EveDmv.Contexts.Surveillance.Domain.NotificationService
-  alias EveDmv.DomainEvents.{SurveillanceMatch, SurveillanceAlert}
+  alias EveDmv.DomainEvents.SurveillanceAlert
+  alias EveDmv.DomainEvents.SurveillanceMatch
   alias EveDmv.Infrastructure.EventBus
 
   require Logger
@@ -25,9 +24,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
   # Alert states
   @state_new "new"
   @state_acknowledged "acknowledged"
-  @state_investigating "investigating"
   @state_resolved "resolved"
-  @state_false_positive "false_positive"
 
   # Public API
 
@@ -80,9 +77,9 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
   # GenServer implementation
 
   @impl GenServer
-  def init(opts) do
+  def init(_opts) do
     # Subscribe to surveillance match events
-    EventBus.subscribe(:surveillance_match, self())
+    EventBus.subscribe_process(:surveillance_match, self())
 
     state = %{
       # alert_id -> alert_data
@@ -281,10 +278,10 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
   def handle_info({:event, %SurveillanceMatch{} = match_event}, state) do
     # Convert match event to match structure and process
     match = %{
-      id: match_event.match_id,
+      id: "#{match_event.profile_id}_#{match_event.killmail_id}",
       profile_id: match_event.profile_id,
       killmail_id: match_event.killmail_id,
-      matched_criteria: match_event.matched_criteria,
+      matched_criteria: match_event.match_details,
       confidence_score: match_event.confidence_score,
       timestamp: match_event.timestamp
     }

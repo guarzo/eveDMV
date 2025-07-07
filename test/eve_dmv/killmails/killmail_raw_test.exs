@@ -4,12 +4,15 @@ defmodule EveDmv.Killmails.KillmailRawTest do
   """
 
   use EveDmv.DataCase, async: true
-  import Ash.Expr, only: [expr: 1]
-  require Ash.Query
 
-  alias EveDmv.Api
-  alias EveDmv.Killmails.{KillmailRaw, TestDataGenerator}
+  import Ash.Expr, only: [expr: 1]
+
   alias Ecto.Adapters.SQL
+  alias EveDmv.Api
+  alias EveDmv.Killmails.KillmailRaw
+  alias EveDmv.Killmails.TestDataGenerator
+
+  require Ash.Query
 
   setup do
     # Create necessary partitions for test data
@@ -30,7 +33,13 @@ defmodule EveDmv.Killmails.KillmailRawTest do
 
   defp create_partition_if_not_exists(table_name, partition_name, date) do
     start_date = Date.beginning_of_month(date)
-    end_date = Date.add(Date.beginning_of_month(Date.add(date, 32)), -1)
+
+    end_date =
+      date
+      |> Date.add(32)
+      |> Date.beginning_of_month()
+      |> Date.add(-1)
+
     next_month_start = Date.add(end_date, 1)
 
     query = """
@@ -245,7 +254,7 @@ defmodule EveDmv.Killmails.KillmailRawTest do
 
     test "is_recent identifies recent killmails" do
       # Ensure June partition exists
-      Ecto.Adapters.SQL.query!(EveDmv.Repo, """
+      SQL.query!(EveDmv.Repo, """
         CREATE TABLE IF NOT EXISTS killmails_raw_2025_06 PARTITION OF killmails_raw
         FOR VALUES FROM ('2025-06-01') TO ('2025-07-01')
       """)

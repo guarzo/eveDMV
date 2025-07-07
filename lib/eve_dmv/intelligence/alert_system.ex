@@ -7,11 +7,10 @@ defmodule EveDmv.Intelligence.AlertSystem do
   """
 
   use GenServer
-  require Logger
 
-  # alias EveDmv.Intelligence.{CharacterStats, WHVetting, IntelligenceCoordinator}
-  # alias EveDmv.Killmails.{KillmailEnriched, Participant}
-  # alias EveDmv.Api
+  alias EveDmv.Intelligence.WHVetting
+
+  require Logger
 
   # Alert configuration
   @critical_threat_threshold 8
@@ -122,7 +121,7 @@ defmodule EveDmv.Intelligence.AlertSystem do
         }
 
         new_active_alerts = Map.delete(state.active_alerts, alert_id)
-        new_history = [updated_alert | state.alert_history] |> Enum.take(100)
+        new_history = Enum.take([updated_alert | state.alert_history], 100)
 
         new_state = %{state | active_alerts: new_active_alerts, alert_history: new_history}
 
@@ -140,33 +139,31 @@ defmodule EveDmv.Intelligence.AlertSystem do
   ## Alert Generation Logic
 
   defp check_character_analysis_alerts(analysis) do
-    alerts = []
     character_id = analysis.character_id
 
     # Critical threat rating alert
-    alerts =
+    base_alerts =
       if analysis.dangerous_rating >= @critical_threat_threshold do
         [
           create_threat_alert(character_id, analysis.dangerous_rating, "critical_threat_rating")
-          | alerts
         ]
       else
-        alerts
+        []
       end
 
     # High awox probability alert
-    alerts =
+    awox_alerts =
       if analysis.awox_probability > 0.7 do
         [
           create_threat_alert(character_id, analysis.awox_probability, "high_awox_probability")
-          | alerts
+          | base_alerts
         ]
       else
-        alerts
+        base_alerts
       end
 
     # Suspicious activity patterns
-    alerts =
+    final_alerts =
       if analysis.activity_patterns && length(analysis.activity_patterns.red_flags || []) > 3 do
         [
           create_behavioral_alert(
@@ -174,32 +171,30 @@ defmodule EveDmv.Intelligence.AlertSystem do
             analysis.activity_patterns.red_flags,
             "multiple_red_flags"
           )
-          | alerts
+          | awox_alerts
         ]
       else
-        alerts
+        awox_alerts
       end
 
-    alerts
+    final_alerts
   end
 
   defp check_vetting_analysis_alerts(vetting) do
-    alerts = []
     character_id = vetting.character_id
 
     # High risk vetting score
-    alerts =
+    base_alerts =
       if vetting.overall_risk_score >= @high_risk_vetting_threshold do
         [
           create_vetting_alert(character_id, vetting.overall_risk_score, "high_risk_vetting")
-          | alerts
         ]
       else
-        alerts
+        []
       end
 
     # Eviction group associations
-    alerts =
+    eviction_alerts =
       if vetting.eviction_associations &&
            length(vetting.eviction_associations["known_eviction_groups"] || []) > 0 do
         [
@@ -208,26 +203,26 @@ defmodule EveDmv.Intelligence.AlertSystem do
             vetting.eviction_associations,
             "eviction_group_association"
           )
-          | alerts
+          | base_alerts
         ]
       else
-        alerts
+        base_alerts
       end
 
     # Character bazaar indicators
-    alerts =
+    bazaar_alerts =
       if vetting.alt_analysis &&
            vetting.alt_analysis["character_bazaar_indicators"]["likely_purchased"] do
         [
           create_security_alert(character_id, vetting.alt_analysis, "character_bazaar_purchase")
-          | alerts
+          | eviction_alerts
         ]
       else
-        alerts
+        eviction_alerts
       end
 
     # Seed/scout indicators
-    alerts =
+    final_alerts =
       if vetting.eviction_associations &&
            vetting.eviction_associations["seed_scout_indicators"]["information_gathering"] do
         [
@@ -236,43 +231,41 @@ defmodule EveDmv.Intelligence.AlertSystem do
             vetting.eviction_associations,
             "seed_scout_behavior"
           )
-          | alerts
+          | bazaar_alerts
         ]
       else
-        alerts
+        bazaar_alerts
       end
 
-    alerts
+    final_alerts
   end
 
   defp check_killmail_alerts(killmail) do
-    alerts = []
-
     # Check for blue killing (friendly fire)
-    alerts =
+    base_alerts =
       if blue_kill?(killmail) do
-        [create_incident_alert(killmail, "blue_kill") | alerts]
+        [create_incident_alert(killmail, "blue_kill")]
       else
-        alerts
+        []
       end
 
     # Check for capital ship losses in home systems
-    alerts =
+    capital_alerts =
       if capital_loss_in_home?(killmail) do
-        [create_incident_alert(killmail, "capital_loss_home") | alerts]
+        [create_incident_alert(killmail, "capital_loss_home") | base_alerts]
       else
-        alerts
+        base_alerts
       end
 
     # Check for structure losses
-    alerts =
+    final_alerts =
       if structure_loss?(killmail) do
-        [create_incident_alert(killmail, "structure_loss") | alerts]
+        [create_incident_alert(killmail, "structure_loss") | capital_alerts]
       else
-        alerts
+        capital_alerts
       end
 
-    alerts
+    final_alerts
   end
 
   defp perform_periodic_monitoring do

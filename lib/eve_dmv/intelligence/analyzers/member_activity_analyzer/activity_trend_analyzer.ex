@@ -6,8 +6,8 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityTrendAnal
   seasonal patterns, peak identification, and predictive insights.
   """
 
-  require Logger
   alias EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityHelpers
+  require Logger
 
   @doc """
   Analyze activity trends over a specified period.
@@ -15,6 +15,10 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityTrendAnal
   Provides comprehensive trend analysis including direction, volatility,
   seasonal patterns, and activity peaks.
   """
+  def analyze_trends(member_activities, days) when is_list(member_activities) do
+    {:ok, analyze_activity_trends(member_activities, days)}
+  end
+
   def analyze_activity_trends(member_activities, days) when is_list(member_activities) do
     if Enum.empty?(member_activities) do
       create_empty_trend_result()
@@ -198,8 +202,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityTrendAnal
 
   defp extract_activity_series(member_activities, _days) do
     # Extract activity history from member data
-    member_activities
-    |> Enum.flat_map(fn member ->
+    Enum.flat_map(member_activities, fn member ->
       activity_history = Map.get(member, :activity_history, [])
 
       Enum.map(activity_history, fn day_data ->

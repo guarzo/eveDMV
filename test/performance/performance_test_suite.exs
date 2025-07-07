@@ -14,8 +14,11 @@ defmodule EveDmv.Performance.PerformanceTestSuite do
 
   alias EveDmv.Eve.CircuitBreaker
   alias EveDmv.Intelligence.CharacterAnalyzer
+  alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Intelligence.Metrics.CharacterMetricsAdapter, as: CharacterMetrics
-  alias EveDmv.Killmails.{KillmailEnriched, KillmailPipeline}
+  alias EveDmv.Killmails.KillmailEnriched
+  alias EveDmv.Killmails.KillmailPipeline
+  alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Market.PriceService
 
   @moduletag :performance
@@ -242,7 +245,7 @@ defmodule EveDmv.Performance.PerformanceTestSuite do
           killmails
           |> Enum.chunk_every(100)
           |> Enum.each(fn batch ->
-            EveDmv.Killmails.KillmailRaw.bulk_create(batch)
+            KillmailRaw.bulk_create(batch)
           end)
         end)
 
@@ -329,14 +332,14 @@ defmodule EveDmv.Performance.PerformanceTestSuite do
         :timer.tc(fn ->
           for i <- 1..10 do
             character_id = test_corp_id * 1_000 + i
-            EveDmv.Intelligence.CharacterStats.get_by_character_id(character_id)
+            CharacterStats.get_by_character_id(character_id)
           end
         end)
 
       # Test 2: Batch corporation lookup
       {time_batch, _} =
         :timer.tc(fn ->
-          EveDmv.Intelligence.CharacterStats.get_by_corporation(test_corp_id)
+          CharacterStats.get_by_corporation(test_corp_id)
         end)
 
       time_individual_ms = time_individual / 1_000
@@ -447,7 +450,8 @@ defmodule EveDmv.Performance.PerformanceTestSuite do
       assert cleanup_ratio > 0.7, "Insufficient memory cleanup: #{cleanup_ratio * 100}%"
 
       # IO.puts(
-      #   "Memory cleanup - Growth: #{memory_growth}MB, Retained: #{memory_retained}MB, Cleanup: #{cleanup_ratio * 100}%"
+      #   "Memory cleanup - Growth: #{memory_growth}MB, Retained: #{memory_retained}MB, " <>
+      #   "Cleanup: #{cleanup_ratio * 100}%"
       # )
     end
   end
@@ -462,7 +466,7 @@ defmodule EveDmv.Performance.PerformanceTestSuite do
     Enum.map(1..count, fn _i ->
       %{
         "killmail_id" => System.unique_integer([:positive]),
-        "killmail_time" => random_datetime_in_past(90) |> DateTime.to_iso8601(),
+        "killmail_time" => DateTime.to_iso8601(random_datetime_in_past(90)),
         "solar_system_id" => Enum.random([30_000_142, 30_001_158, 31_000_005]),
         "participants" => [
           %{
@@ -478,7 +482,7 @@ defmodule EveDmv.Performance.PerformanceTestSuite do
   defp create_complex_killmail_data do
     %{
       "killmail_id" => System.unique_integer([:positive]),
-      "killmail_time" => DateTime.utc_now() |> DateTime.to_iso8601(),
+      "killmail_time" => DateTime.to_iso8601(DateTime.utc_now()),
       "solar_system_id" => 30_000_142,
       # Large fleet fight
       "participants" =>
@@ -501,7 +505,7 @@ defmodule EveDmv.Performance.PerformanceTestSuite do
   defp create_simple_killmail_data do
     %{
       "killmail_id" => System.unique_integer([:positive]),
-      "killmail_time" => DateTime.utc_now() |> DateTime.to_iso8601(),
+      "killmail_time" => DateTime.to_iso8601(DateTime.utc_now()),
       "solar_system_id" => 30_000_142,
       "participants" => [
         %{

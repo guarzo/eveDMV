@@ -420,25 +420,25 @@ defmodule EveDmv.Intelligence.PatternAnalysis do
     kd_ratio = calculate_kill_death_ratio(stats)
 
     # High K/D with experience indicates strategy
-    strategy_score = 0.0
+    initial_strategy_score = 0.0
 
-    strategy_score =
+    base_strategy_score =
       cond do
         total_kills > 500 and kd_ratio > 2.0 ->
-          strategy_score + 0.4
+          initial_strategy_score + 0.4
 
         total_kills > 200 and kd_ratio > 1.5 ->
-          strategy_score + 0.3
+          initial_strategy_score + 0.3
 
         true ->
-          strategy_score + 0.1
+          initial_strategy_score + 0.1
       end
 
     # Solo players need more strategy
     if solo_ratio > 0.7 do
-      strategy_score + 0.2
+      base_strategy_score + 0.2
     else
-      strategy_score
+      base_strategy_score
     end
   end
 

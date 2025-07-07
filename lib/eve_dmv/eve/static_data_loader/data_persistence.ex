@@ -6,8 +6,10 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
   with error handling and progress reporting.
   """
 
+  alias EveDmv.Eve.ItemType
+  alias EveDmv.Eve.SolarSystem
+  require Ash.Query
   require Logger
-  alias EveDmv.Eve.{ItemType, SolarSystem}
 
   @doc """
   Bulk creates item types in the database.
@@ -241,7 +243,7 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
 
   defp count_ships do
     case Ash.count(ItemType,
-           query: Ash.Query.filter(ItemType, is_ship: true),
+           query: ItemType |> Ash.Query.new() |> Ash.Query.filter(is_ship: true),
            domain: EveDmv.Api,
            authorize?: false
          ) do
@@ -252,7 +254,7 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
 
   defp count_modules do
     case Ash.count(ItemType,
-           query: Ash.Query.filter(ItemType, is_module: true),
+           query: ItemType |> Ash.Query.new() |> Ash.Query.filter(is_module: true),
            domain: EveDmv.Api,
            authorize?: false
          ) do
@@ -263,7 +265,8 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
 
   defp count_systems_by_security(security_class) do
     case Ash.count(SolarSystem,
-           query: Ash.Query.filter(SolarSystem, security_class: security_class),
+           query:
+             SolarSystem |> Ash.Query.new() |> Ash.Query.filter(security_class: security_class),
            domain: EveDmv.Api,
            authorize?: false
          ) do

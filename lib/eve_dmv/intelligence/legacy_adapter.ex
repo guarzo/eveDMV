@@ -7,8 +7,9 @@ defmodule EveDmv.Intelligence.LegacyAdapter do
   working while we migrate to the new system.
   """
 
-  require Logger
   alias EveDmv.IntelligenceEngine
+
+  require Logger
 
   @doc """
   Analyze a character using the new Intelligence Engine while maintaining the old interface.
@@ -61,8 +62,9 @@ defmodule EveDmv.Intelligence.LegacyAdapter do
 
         # Convert to list format expected by legacy code
         result_list =
-          character_ids
-          |> Enum.map(fn char_id -> Map.get(all_results, char_id, {:error, :not_processed}) end)
+          Enum.map(character_ids, fn char_id ->
+            Map.get(all_results, char_id, {:error, :not_processed})
+          end)
 
         {:ok, result_list}
 

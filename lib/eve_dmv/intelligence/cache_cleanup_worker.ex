@@ -10,9 +10,10 @@ defmodule EveDmv.Intelligence.CacheCleanupWorker do
   """
 
   use GenServer
-  require Logger
 
   alias EveDmv.Intelligence.Cache.IntelligenceCache
+
+  require Logger
 
   # Default cleanup interval: 5 minutes
   @default_cleanup_interval_ms 5 * 60 * 1000
@@ -170,19 +171,17 @@ defmodule EveDmv.Intelligence.CacheCleanupWorker do
   end
 
   defp get_cache_stats do
-    try do
-      case Process.whereis(IntelligenceCache) do
-        nil ->
-          %{cache_size: 0, error: "Cache process not running"}
+    case Process.whereis(IntelligenceCache) do
+      nil ->
+        %{cache_size: 0, error: "Cache process not running"}
 
-        _pid ->
-          IntelligenceCache.get_cache_stats()
-      end
-    rescue
-      error ->
-        Logger.warning("Failed to get cache stats: #{inspect(error)}")
-        %{error: inspect(error)}
+      _pid ->
+        IntelligenceCache.get_cache_stats()
     end
+  rescue
+    error ->
+      Logger.warning("Failed to get cache stats: #{inspect(error)}")
+      %{error: inspect(error)}
   end
 
   defp calculate_memory_freed(initial_stats, final_stats) do

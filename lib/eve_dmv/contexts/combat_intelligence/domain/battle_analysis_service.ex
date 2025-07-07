@@ -16,19 +16,23 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   use GenServer
   use EveDmv.ErrorHandler
-  alias EveDmv.Result
-  alias EveDmv.Contexts.CombatIntelligence.Infrastructure.{KillmailRepository, BattleCache}
-  alias EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer
-  alias EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer
+
+  # alias EveDmv.Contexts.CombatIntelligence.Infrastructure.BattleCache
+  # alias EveDmv.Contexts.CombatIntelligence.Infrastructure.KillmailRepository
+  # alias EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer
+  # alias EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer
+  alias EveDmv.DomainEvents.BattleAnalysisComplete
+  alias EveDmv.DomainEvents.TacticalInsightGenerated
   alias EveDmv.Infrastructure.EventBus
-  alias EveDmv.DomainEvents.{BattleAnalysisComplete, TacticalInsightGenerated}
 
   require Logger
 
   # Analysis thresholds
   @min_participants_for_battle 5
-  @battle_time_window_seconds 300  # 5 minutes
-  @engagement_merge_distance 3  # Systems
+  # 5 minutes
+  @battle_time_window_seconds 300
+  # Systems
+  @engagement_merge_distance 3
   @tactical_confidence_threshold 0.7
 
   # Battle classification thresholds
@@ -90,13 +94,15 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   # GenServer implementation
 
   @impl GenServer
-  def init(opts) do
+  def init(_opts) do
     # Subscribe to killmail events for real-time analysis
     Phoenix.PubSub.subscribe(EveDmv.PubSub, "killmails:enriched")
 
     state = %{
-      active_engagements: %{},  # system_id -> engagement_data
-      battle_cache: %{},  # battle_id -> analysis_cache
+      # system_id -> engagement_data
+      active_engagements: %{},
+      # battle_id -> analysis_cache
+      battle_cache: %{},
       metrics: %{
         battles_analyzed: 0,
         recommendations_generated: 0,
@@ -112,91 +118,89 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   end
 
   @impl GenServer
-  def handle_call({:analyze_battle, battle_id, opts}, _from, state) do
-    try do
-      # Check cache first
-      case Map.get(state.battle_cache, battle_id) do
-        nil ->
-          # Perform full analysis
-          with {:ok, killmails} <- fetch_battle_killmails(battle_id),
-               {:ok, timeline} <- construct_battle_timeline(killmails),
-               {:ok, participants} <- extract_battle_participants(killmails),
-               {:ok, fleet_analysis} <- analyze_fleet_compositions(participants, killmails),
-               {:ok, tactical_analysis} <- perform_tactical_analysis(timeline, fleet_analysis),
-               {:ok, performance_metrics} <- calculate_performance_metrics(killmails, participants) do
+  def handle_call({:analyze_battle, battle_id, _opts}, _from, state) do
+    # Check cache first
+    case Map.get(state.battle_cache, battle_id) do
+      nil ->
+        # Perform full analysis
+        with {:ok, killmails} <- fetch_battle_killmails(battle_id),
+             {:ok, timeline} <- construct_battle_timeline(killmails),
+             {:ok, participants} <- extract_battle_participants(killmails),
+             {:ok, fleet_analysis} <- analyze_fleet_compositions(participants, killmails),
+             {:ok, tactical_analysis} <- perform_tactical_analysis(timeline, fleet_analysis),
+             {:ok, performance_metrics} <-
+               calculate_performance_metrics(killmails, participants) do
+          analysis = %{
+            battle_id: battle_id,
+            analyzed_at: DateTime.utc_now(),
 
-            analysis = %{
-              battle_id: battle_id,
-              analyzed_at: DateTime.utc_now(),
+            # Battle overview
+            duration_seconds: calculate_battle_duration(timeline),
+            total_participants: map_size(participants),
+            total_kills: length(killmails),
+            isk_destroyed: calculate_total_isk_destroyed(killmails),
 
-              # Battle overview
-              duration_seconds: calculate_battle_duration(timeline),
-              total_participants: map_size(participants),
-              total_kills: length(killmails),
-              isk_destroyed: calculate_total_isk_destroyed(killmails),
+            # Classification
+            battle_type: classify_battle_type(participants, killmails),
+            engagement_scale: classify_engagement_scale(participants),
 
-              # Classification
-              battle_type: classify_battle_type(participants, killmails),
-              engagement_scale: classify_engagement_scale(participants),
+            # Timeline
+            timeline: timeline,
+            phases: identify_battle_phases(timeline),
 
-              # Timeline
-              timeline: timeline,
-              phases: identify_battle_phases(timeline),
+            # Fleet analysis
+            fleet_compositions: fleet_analysis,
+            doctrine_effectiveness: evaluate_doctrine_effectiveness(fleet_analysis),
 
-              # Fleet analysis
-              fleet_compositions: fleet_analysis,
-              doctrine_effectiveness: evaluate_doctrine_effectiveness(fleet_analysis),
+            # Tactical analysis
+            tactical_patterns: tactical_analysis.patterns,
+            key_moments: tactical_analysis.key_moments,
+            turning_points: tactical_analysis.turning_points,
 
-              # Tactical analysis
-              tactical_patterns: tactical_analysis.patterns,
-              key_moments: tactical_analysis.key_moments,
-              turning_points: tactical_analysis.turning_points,
+            # Performance
+            side_performance: performance_metrics.by_side,
+            ship_class_effectiveness: performance_metrics.by_ship_class,
+            top_performers: performance_metrics.top_performers,
 
-              # Performance
-              side_performance: performance_metrics.by_side,
-              ship_class_effectiveness: performance_metrics.by_ship_class,
-              top_performers: performance_metrics.top_performers,
+            # Strategic insights
+            winner: determine_battle_winner(performance_metrics),
+            victory_factors: analyze_victory_factors(tactical_analysis, performance_metrics)
+          }
 
-              # Strategic insights
-              winner: determine_battle_winner(performance_metrics),
-              victory_factors: analyze_victory_factors(tactical_analysis, performance_metrics)
-            }
+          # Cache the analysis
+          new_cache = Map.put(state.battle_cache, battle_id, analysis)
+          new_metrics = %{state.metrics | battles_analyzed: state.metrics.battles_analyzed + 1}
+          new_state = %{state | battle_cache: new_cache, metrics: new_metrics}
 
-            # Cache the analysis
-            new_cache = Map.put(state.battle_cache, battle_id, analysis)
-            new_metrics = %{state.metrics | battles_analyzed: state.metrics.battles_analyzed + 1}
-            new_state = %{state | battle_cache: new_cache, metrics: new_metrics}
+          # Publish analysis complete event
+          EventBus.publish(%BattleAnalysisComplete{
+            battle_id: battle_id,
+            battle_type: analysis.battle_type,
+            participant_count: analysis.total_participants,
+            isk_destroyed: analysis.isk_destroyed,
+            timestamp: DateTime.utc_now()
+          })
 
-            # Publish analysis complete event
-            EventBus.publish(%BattleAnalysisComplete{
-              battle_id: battle_id,
-              battle_type: analysis.battle_type,
-              participant_count: analysis.total_participants,
-              isk_destroyed: analysis.isk_destroyed,
-              timestamp: DateTime.utc_now()
-            })
+          {:reply, {:ok, analysis}, new_state}
+        else
+          {:error, _reason} = error -> {:reply, error, state}
+        end
 
-            {:reply, {:ok, analysis}, new_state}
-          else
-            {:error, _reason} = error -> {:reply, error, state}
-          end
-
-        cached_analysis ->
-          # Return cached analysis
-          {:reply, {:ok, cached_analysis}, state}
-      end
-    rescue
-      exception ->
-        Logger.error("Battle analysis error: #{inspect(exception)}")
-        {:reply, {:error, :analysis_failed}, state}
+      cached_analysis ->
+        # Return cached analysis
+        {:reply, {:ok, cached_analysis}, state}
     end
+  rescue
+    exception ->
+      Logger.error("Battle analysis error: #{inspect(exception)}")
+      {:reply, {:error, :analysis_failed}, state}
   end
 
   @impl GenServer
-  def handle_call({:analyze_live_engagement, system_id, opts}, _from, state) do
-    try do
-      # Get or create engagement tracking
-      engagement = Map.get(state.active_engagements, system_id, %{
+  def handle_call({:analyze_live_engagement, system_id, _opts}, _from, state) do
+    # Get or create engagement tracking
+    engagement =
+      Map.get(state.active_engagements, system_id, %{
         system_id: system_id,
         started_at: DateTime.utc_now(),
         killmails: [],
@@ -204,146 +208,144 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
         last_activity: DateTime.utc_now()
       })
 
-      # Fetch recent killmails
-      with {:ok, recent_kills} <- fetch_recent_system_kills(system_id, 300),
-           {:ok, updated_engagement} <- update_engagement_data(engagement, recent_kills),
-           {:ok, live_analysis} <- perform_live_analysis(updated_engagement) do
+    # Fetch recent killmails
+    with {:ok, recent_kills} <- fetch_recent_system_kills(system_id, 300),
+         {:ok, updated_engagement} <- update_engagement_data(engagement, recent_kills),
+         {:ok, live_analysis} <- perform_live_analysis(updated_engagement) do
+      # Update state
+      new_engagements = Map.put(state.active_engagements, system_id, updated_engagement)
+      new_state = %{state | active_engagements: new_engagements}
 
-        # Update state
-        new_engagements = Map.put(state.active_engagements, system_id, updated_engagement)
-        new_state = %{state | active_engagements: new_engagements}
-
-        {:reply, {:ok, live_analysis}, new_state}
-      else
-        {:error, _reason} = error -> {:reply, error, state}
-      end
-    rescue
-      exception ->
-        Logger.error("Live engagement analysis error: #{inspect(exception)}")
-        {:reply, {:error, :live_analysis_failed}, state}
+      {:reply, {:ok, live_analysis}, new_state}
+    else
+      {:error, _reason} = error -> {:reply, error, state}
     end
+  rescue
+    exception ->
+      Logger.error("Live engagement analysis error: #{inspect(exception)}")
+      {:reply, {:error, :live_analysis_failed}, state}
   end
 
   @impl GenServer
   def handle_call({:generate_recommendations, battle_analysis}, _from, state) do
-    try do
-      recommendations = %{
-        tactical: generate_tactical_recommendations(battle_analysis),
-        strategic: generate_strategic_recommendations(battle_analysis),
-        doctrine: generate_doctrine_recommendations(battle_analysis),
-        training: generate_training_recommendations(battle_analysis)
-      }
+    recommendations = %{
+      tactical: do_generate_tactical_recommendations(battle_analysis),
+      strategic: generate_strategic_recommendations(battle_analysis),
+      doctrine: generate_doctrine_recommendations(battle_analysis),
+      training: generate_training_recommendations(battle_analysis)
+    }
 
-      # Update metrics
-      new_metrics = %{state.metrics | recommendations_generated: state.metrics.recommendations_generated + 1}
-      new_state = %{state | metrics: new_metrics}
+    # Update metrics
+    new_metrics = %{
+      state.metrics
+      | recommendations_generated: state.metrics.recommendations_generated + 1
+    }
 
-      # Publish tactical insight event
-      EventBus.publish(%TacticalInsightGenerated{
-        battle_id: battle_analysis.battle_id,
-        insight_type: :recommendations,
-        recommendations: recommendations,
-        timestamp: DateTime.utc_now()
-      })
+    new_state = %{state | metrics: new_metrics}
 
-      {:reply, {:ok, recommendations}, new_state}
-    rescue
-      exception ->
-        Logger.error("Recommendation generation error: #{inspect(exception)}")
-        {:reply, {:error, :recommendation_generation_failed}, state}
-    end
+    # Publish tactical insight event
+    EventBus.publish(%TacticalInsightGenerated{
+      battle_id: battle_analysis.battle_id,
+      insight_type: :recommendations,
+      recommendations: recommendations,
+      timestamp: DateTime.utc_now()
+    })
+
+    {:reply, {:ok, recommendations}, new_state}
+  rescue
+    exception ->
+      Logger.error("Recommendation generation error: #{inspect(exception)}")
+      {:reply, {:error, :recommendation_generation_failed}, state}
   end
 
   @impl GenServer
   def handle_call({:get_battle_timeline, battle_id, opts}, _from, state) do
-    try do
-      with {:ok, killmails} <- fetch_battle_killmails(battle_id),
-           {:ok, timeline} <- construct_detailed_timeline(killmails, opts) do
+    with {:ok, killmails} <- fetch_battle_killmails(battle_id),
+         {:ok, timeline} <- construct_detailed_timeline(killmails, opts) do
+      timeline_data = %{
+        battle_id: battle_id,
+        events: timeline,
+        duration: calculate_timeline_duration(timeline),
+        intensity_curve: calculate_intensity_curve(timeline),
+        participant_flow: track_participant_flow(timeline)
+      }
 
-        timeline_data = %{
-          battle_id: battle_id,
-          events: timeline,
-          duration: calculate_timeline_duration(timeline),
-          intensity_curve: calculate_intensity_curve(timeline),
-          participant_flow: track_participant_flow(timeline)
-        }
-
-        {:reply, {:ok, timeline_data}, state}
-      else
-        {:error, _reason} = error -> {:reply, error, state}
-      end
-    rescue
-      exception ->
-        Logger.error("Timeline generation error: #{inspect(exception)}")
-        {:reply, {:error, :timeline_generation_failed}, state}
+      {:reply, {:ok, timeline_data}, state}
+    else
+      {:error, _reason} = error -> {:reply, error, state}
     end
+  rescue
+    exception ->
+      Logger.error("Timeline generation error: #{inspect(exception)}")
+      {:reply, {:error, :timeline_generation_failed}, state}
   end
 
   @impl GenServer
-  def handle_call({:compare_battles, battle_ids, opts}, _from, state) do
-    try do
-      # Analyze each battle
-      battle_analyses = Enum.map(battle_ids, fn battle_id ->
+  def handle_call({:compare_battles, battle_ids, _opts}, _from, state) do
+    # Analyze each battle
+    battle_analyses =
+      Enum.map(battle_ids, fn battle_id ->
         case Map.get(state.battle_cache, battle_id) do
           nil ->
             # Trigger analysis if not cached
-            {:ok, analysis} = handle_call({:analyze_battle, battle_id, []}, nil, state) |> elem(0)
-            analysis
-          cached -> cached
+            case handle_call({:analyze_battle, battle_id, []}, nil, state) do
+              {:reply, {:ok, analysis}, _state} -> analysis
+              _ -> nil
+            end
+
+          cached ->
+            cached
         end
       end)
 
-      comparison = %{
-        battles: battle_analyses,
-        common_patterns: identify_common_patterns(battle_analyses),
-        tactical_evolution: analyze_tactical_evolution(battle_analyses),
-        effectiveness_trends: compare_effectiveness_trends(battle_analyses),
-        doctrine_comparison: compare_doctrine_usage(battle_analyses)
-      }
+    comparison = %{
+      battles: battle_analyses,
+      common_patterns: identify_common_patterns(battle_analyses),
+      tactical_evolution: analyze_tactical_evolution(battle_analyses),
+      effectiveness_trends: compare_effectiveness_trends(battle_analyses),
+      doctrine_comparison: compare_doctrine_usage(battle_analyses)
+    }
 
-      {:reply, {:ok, comparison}, state}
-    rescue
-      exception ->
-        Logger.error("Battle comparison error: #{inspect(exception)}")
-        {:reply, {:error, :comparison_failed}, state}
-    end
+    {:reply, {:ok, comparison}, state}
+  rescue
+    exception ->
+      Logger.error("Battle comparison error: #{inspect(exception)}")
+      {:reply, {:error, :comparison_failed}, state}
   end
 
   @impl GenServer
   def handle_call({:get_entity_performance, entity_id, entity_type, opts}, _from, state) do
-    try do
-      time_range = Keyword.get(opts, :time_range, :last_30_days)
+    time_range = Keyword.get(opts, :time_range, :last_30_days)
 
-      with {:ok, battles} <- fetch_entity_battles(entity_id, entity_type, time_range),
-           {:ok, performance_data} <- analyze_entity_performance(entity_id, entity_type, battles) do
-
-        {:reply, {:ok, performance_data}, state}
-      else
-        {:error, _reason} = error -> {:reply, error, state}
-      end
-    rescue
-      exception ->
-        Logger.error("Entity performance analysis error: #{inspect(exception)}")
-        {:reply, {:error, :performance_analysis_failed}, state}
+    with {:ok, battles} <- fetch_entity_battles(entity_id, entity_type, time_range),
+         {:ok, performance_data} <- analyze_entity_performance(entity_id, entity_type, battles) do
+      {:reply, {:ok, performance_data}, state}
+    else
+      {:error, _reason} = error -> {:reply, error, state}
     end
+  rescue
+    exception ->
+      Logger.error("Entity performance analysis error: #{inspect(exception)}")
+      {:reply, {:error, :performance_analysis_failed}, state}
   end
 
   @impl GenServer
   def handle_info({:killmail_enriched, killmail}, state) do
     # Track live engagements
     if killmail.system_id do
-      engagement = Map.get(state.active_engagements, killmail.system_id, %{
-        system_id: killmail.system_id,
-        started_at: DateTime.utc_now(),
-        killmails: [],
-        participants: %{},
-        last_activity: DateTime.utc_now()
-      })
+      engagement =
+        Map.get(state.active_engagements, killmail.system_id, %{
+          system_id: killmail.system_id,
+          started_at: DateTime.utc_now(),
+          killmails: [],
+          participants: %{},
+          last_activity: DateTime.utc_now()
+        })
 
       updated_engagement = %{
-        engagement |
-        killmails: [killmail | engagement.killmails],
-        last_activity: DateTime.utc_now()
+        engagement
+        | killmails: [killmail | engagement.killmails],
+          last_activity: DateTime.utc_now()
       }
 
       new_engagements = Map.put(state.active_engagements, killmail.system_id, updated_engagement)
@@ -375,13 +377,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   # Private functions
 
-  defp fetch_battle_killmails(battle_id) do
+  defp fetch_battle_killmails(_battle_id) do
     # This would fetch killmails associated with a battle
     # For now, returning mock data
     {:ok, []}
   end
 
-  defp fetch_recent_system_kills(system_id, seconds_back) do
+  defp fetch_recent_system_kills(_system_id, _seconds_back) do
     # Fetch recent kills from a system
     {:ok, []}
   end
@@ -389,7 +391,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   defp construct_battle_timeline(killmails) do
     timeline =
       killmails
-      |> Enum.sort_by(&(&1.killmail_time))
+      |> Enum.sort_by(& &1.killmail_time)
       |> Enum.map(fn km ->
         %{
           timestamp: km.killmail_time,
@@ -413,7 +415,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
     timeline =
       killmails
-      |> Enum.sort_by(&(&1.killmail_time))
+      |> Enum.sort_by(& &1.killmail_time)
       |> Enum.map(fn km ->
         event = %{
           timestamp: km.killmail_time,
@@ -434,41 +436,42 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   defp extract_battle_participants(killmails) do
     participants =
-      killmails
-      |> Enum.reduce(%{}, fn km, acc ->
+      Enum.reduce(killmails, %{}, fn km, acc ->
         # Add victim
-        acc = Map.put(acc, km.victim_character_id, %{
-          character_id: km.victim_character_id,
-          corporation_id: km.victim_corporation_id,
-          alliance_id: km.victim_alliance_id,
-          side: determine_side(km.victim_corporation_id, km.victim_alliance_id),
-          kills: 0,
-          losses: 1,
-          damage_dealt: 0,
-          ships_used: MapSet.new([km.victim_ship_type_id])
-        })
+        acc =
+          Map.put(acc, km.victim_character_id, %{
+            character_id: km.victim_character_id,
+            corporation_id: km.victim_corporation_id,
+            alliance_id: km.victim_alliance_id,
+            side: determine_side(km.victim_corporation_id, km.victim_alliance_id),
+            kills: 0,
+            losses: 1,
+            damage_dealt: 0,
+            ships_used: MapSet.new([km.victim_ship_type_id])
+          })
 
         # Add attackers
         Enum.reduce(km.attackers || [], acc, fn attacker, acc2 ->
           char_id = attacker["character_id"]
 
           if char_id && char_id != 0 do
-            existing = Map.get(acc2, char_id, %{
-              character_id: char_id,
-              corporation_id: attacker["corporation_id"],
-              alliance_id: attacker["alliance_id"],
-              side: determine_side(attacker["corporation_id"], attacker["alliance_id"]),
-              kills: 0,
-              losses: 0,
-              damage_dealt: 0,
-              ships_used: MapSet.new()
-            })
+            existing =
+              Map.get(acc2, char_id, %{
+                character_id: char_id,
+                corporation_id: attacker["corporation_id"],
+                alliance_id: attacker["alliance_id"],
+                side: determine_side(attacker["corporation_id"], attacker["alliance_id"]),
+                kills: 0,
+                losses: 0,
+                damage_dealt: 0,
+                ships_used: MapSet.new()
+              })
 
             updated = %{
-              existing |
-              kills: existing.kills + if(attacker["final_blow"], do: 1, else: 0),
-              damage_dealt: existing.damage_dealt + (attacker["damage_done"] || 0),
-              ships_used: MapSet.put(existing.ships_used, attacker["ship_type_id"])
+              existing
+              | kills: existing.kills + if(attacker["final_blow"], do: 1, else: 0),
+                damage_dealt: existing.damage_dealt + (attacker["damage_done"] || 0),
+                ships_used: MapSet.put(existing.ships_used, attacker["ship_type_id"])
             }
 
             Map.put(acc2, char_id, updated)
@@ -481,28 +484,27 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     {:ok, participants}
   end
 
-  defp analyze_fleet_compositions(participants, killmails) do
+  defp analyze_fleet_compositions(participants, _killmails) do
     # Group participants by side
     sides =
       participants
       |> Map.values()
-      |> Enum.group_by(&(&1.side))
+      |> Enum.group_by(& &1.side)
 
     fleet_comps =
-      sides
-      |> Enum.map(fn {side, side_participants} ->
+      Map.new(sides, fn {side, side_participants} ->
         ship_composition = analyze_side_ship_composition(side_participants)
 
-        {side, %{
-          pilot_count: length(side_participants),
-          ship_composition: ship_composition,
-          doctrine_detected: detect_doctrine_usage(ship_composition),
-          average_pilot_efficiency: calculate_average_efficiency(side_participants),
-          logistics_ratio: calculate_logistics_ratio(ship_composition),
-          ewar_presence: detect_ewar_presence(ship_composition)
-        }}
+        {side,
+         %{
+           pilot_count: length(side_participants),
+           ship_composition: ship_composition,
+           doctrine_detected: detect_doctrine_usage(ship_composition),
+           average_pilot_efficiency: calculate_average_efficiency(side_participants),
+           logistics_ratio: calculate_logistics_ratio(ship_composition),
+           ewar_presence: detect_ewar_presence(ship_composition)
+         }}
       end)
-      |> Map.new()
 
     {:ok, fleet_comps}
   end
@@ -525,30 +527,32 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     sides =
       participants
       |> Map.values()
-      |> Enum.group_by(&(&1.side))
+      |> Enum.group_by(& &1.side)
 
     by_side =
       sides
       |> Enum.map(fn {side, side_participants} ->
-        {side, %{
-          kills: Enum.sum(Enum.map(side_participants, &(&1.kills))),
-          losses: Enum.sum(Enum.map(side_participants, &(&1.losses))),
-          isk_destroyed: calculate_side_isk_destroyed(side, killmails),
-          isk_lost: calculate_side_isk_lost(side, killmails),
-          efficiency: calculate_side_efficiency(side, killmails),
-          k_d_ratio: calculate_side_kd_ratio(side_participants)
-        }}
+        {side,
+         %{
+           kills: Enum.sum(Enum.map(side_participants, & &1.kills)),
+           losses: Enum.sum(Enum.map(side_participants, & &1.losses)),
+           isk_destroyed: calculate_side_isk_destroyed(side, killmails),
+           isk_lost: calculate_side_isk_lost(side, killmails),
+           efficiency: calculate_side_efficiency(side, killmails),
+           k_d_ratio: calculate_side_kd_ratio(side_participants)
+         }}
       end)
       |> Map.new()
 
     by_ship_class = analyze_ship_class_performance(killmails, participants)
     top_performers = identify_top_performers(participants)
 
-    {:ok, %{
-      by_side: by_side,
-      by_ship_class: by_ship_class,
-      top_performers: top_performers
-    }}
+    {:ok,
+     %{
+       by_side: by_side,
+       by_ship_class: by_ship_class,
+       top_performers: top_performers
+     }}
   end
 
   defp update_engagement_data(engagement, new_kills) do
@@ -557,17 +561,16 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
     # Update participants
     participants =
-      all_kills
-      |> Enum.reduce(engagement.participants, fn km, acc ->
+      Enum.reduce(all_kills, engagement.participants, fn _km, acc ->
         # Similar logic to extract_battle_participants but incremental
         acc
       end)
 
     updated = %{
-      engagement |
-      killmails: all_kills,
-      participants: participants,
-      last_activity: DateTime.utc_now()
+      engagement
+      | killmails: all_kills,
+        participants: participants,
+        last_activity: DateTime.utc_now()
     }
 
     {:ok, updated}
@@ -592,70 +595,78 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     {:ok, analysis}
   end
 
-  defp generate_tactical_recommendations(battle_analysis) do
-    recommendations = []
+  defp do_generate_tactical_recommendations(battle_analysis) do
+    initial_recommendations = []
 
     # Fleet composition recommendations
-    recommendations = recommendations ++
-      if battle_analysis.fleet_compositions do
-        analyze_fleet_composition_gaps(battle_analysis.fleet_compositions)
-      else
-        []
-      end
+    composition_recommendations =
+      initial_recommendations ++
+        if battle_analysis.fleet_compositions do
+          analyze_fleet_composition_gaps(battle_analysis.fleet_compositions)
+        else
+          []
+        end
 
     # Tactical pattern recommendations
-    recommendations = recommendations ++
-      if battle_analysis.tactical_patterns do
-        generate_pattern_based_recommendations(battle_analysis.tactical_patterns)
-      else
-        []
-      end
+    final_recommendations =
+      composition_recommendations ++
+        if battle_analysis.tactical_patterns do
+          generate_pattern_based_recommendations(battle_analysis.tactical_patterns)
+        else
+          []
+        end
 
-    recommendations
+    final_recommendations
   end
 
   defp generate_strategic_recommendations(battle_analysis) do
-    [
-      analyze_strategic_positioning(battle_analysis),
-      recommend_force_multiplication(battle_analysis),
-      suggest_engagement_timing(battle_analysis)
-    ]
-    |> Enum.filter(&(&1 != nil))
+    Enum.filter(
+      [
+        analyze_strategic_positioning(battle_analysis),
+        recommend_force_multiplication(battle_analysis),
+        suggest_engagement_timing(battle_analysis)
+      ],
+      &(&1 != nil)
+    )
   end
 
   defp generate_doctrine_recommendations(battle_analysis) do
     fleet_comps = battle_analysis.fleet_compositions
 
     if fleet_comps do
-      [
-        recommend_doctrine_adjustments(fleet_comps),
-        suggest_counter_doctrines(fleet_comps),
-        identify_doctrine_weaknesses(fleet_comps)
-      ]
-      |> Enum.filter(&(&1 != nil))
+      Enum.filter(
+        [
+          recommend_doctrine_adjustments(fleet_comps),
+          suggest_counter_doctrines(fleet_comps),
+          identify_doctrine_weaknesses(fleet_comps)
+        ],
+        &(&1 != nil)
+      )
     else
       []
     end
   end
 
   defp generate_training_recommendations(battle_analysis) do
-    [
-      identify_skill_gaps(battle_analysis),
-      recommend_practice_scenarios(battle_analysis),
-      suggest_role_specializations(battle_analysis)
-    ]
-    |> Enum.filter(&(&1 != nil))
+    Enum.filter(
+      [
+        identify_skill_gaps(battle_analysis),
+        recommend_practice_scenarios(battle_analysis),
+        suggest_role_specializations(battle_analysis)
+      ],
+      &(&1 != nil)
+    )
   end
 
   # Helper functions
 
   defp calculate_battle_duration(timeline) do
-    if length(timeline) > 0 do
+    if Enum.empty?(timeline) do
+      0
+    else
       first_event = List.first(timeline)
       last_event = List.last(timeline)
       DateTime.diff(last_event.timestamp, first_event.timestamp)
-    else
-      0
     end
   end
 
@@ -663,7 +674,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     Enum.sum(Enum.map(killmails, &(&1.total_value || 0)))
   end
 
-  defp classify_battle_type(participants, killmails) do
+  defp classify_battle_type(participants, _killmails) do
     participant_count = map_size(participants)
 
     cond do
@@ -686,7 +697,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     end
   end
 
-  defp identify_battle_phases(timeline) do
+  defp identify_battle_phases(_timeline) do
     # Identify distinct phases based on kill intensity
     []
   end
@@ -700,11 +711,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   end
 
   defp find_final_blow_attacker(attackers) do
-    attackers
-    |> Enum.find(&(&1["final_blow"] == true))
+    Enum.find(attackers, &(&1["final_blow"] == true))
   end
 
-  defp classify_ship(ship_type_id) do
+  defp classify_ship(_ship_type_id) do
     # This would use ship database to classify
     # Mock implementation
     :cruiser
@@ -724,8 +734,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   end
 
   defp extract_attacker_details(killmail) do
-    killmail.attackers
-    |> Enum.map(fn attacker ->
+    Enum.map(killmail.attackers, fn attacker ->
       %{
         character_id: attacker["character_id"],
         character_name: attacker["character_name"],
@@ -745,14 +754,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     |> Enum.frequencies()
   end
 
-  defp detect_doctrine_usage(ship_composition) do
+  defp detect_doctrine_usage(_ship_composition) do
     # Detect common doctrine patterns
     nil
   end
 
   defp calculate_average_efficiency(participants) do
-    total_kills = Enum.sum(Enum.map(participants, &(&1.kills)))
-    total_losses = Enum.sum(Enum.map(participants, &(&1.losses)))
+    total_kills = Enum.sum(Enum.map(participants, & &1.kills))
+    total_losses = Enum.sum(Enum.map(participants, & &1.losses))
 
     if total_losses > 0 do
       total_kills / total_losses
@@ -761,78 +770,80 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     end
   end
 
-  defp calculate_logistics_ratio(ship_composition) do
+  defp calculate_logistics_ratio(_ship_composition) do
     # Calculate ratio of logistics ships
     0.0
   end
 
-  defp detect_ewar_presence(ship_composition) do
+  defp detect_ewar_presence(_ship_composition) do
     # Detect electronic warfare ships
     false
   end
 
-  defp identify_tactical_patterns(timeline) do
+  defp identify_tactical_patterns(_timeline) do
     []
   end
 
-  defp identify_key_moments(timeline) do
+  defp identify_key_moments(_timeline) do
     []
   end
 
-  defp identify_turning_points(timeline, fleet_analysis) do
+  defp identify_turning_points(_timeline, _fleet_analysis) do
     []
   end
 
-  defp analyze_engagement_flow(timeline) do
+  defp analyze_engagement_flow(_timeline) do
     %{
       phases: [],
       intensity_changes: []
     }
   end
 
-  defp analyze_focus_fire(timeline) do
+  defp analyze_focus_fire(_timeline) do
     %{
       effectiveness: 0.0,
       coordination_score: 0.0
     }
   end
 
-  defp analyze_target_selection(timeline, fleet_analysis) do
+  defp analyze_target_selection(_timeline, _fleet_analysis) do
     %{
       priority_targets_hit: 0.0,
       target_switching_rate: 0.0
     }
   end
 
-  defp calculate_side_isk_destroyed(side, killmails) do
+  defp calculate_side_isk_destroyed(_side, _killmails) do
     0
   end
 
-  defp calculate_side_isk_lost(side, killmails) do
+  defp calculate_side_isk_lost(_side, _killmails) do
     0
   end
 
-  defp calculate_side_efficiency(side, killmails) do
+  defp calculate_side_efficiency(_side, _killmails) do
     100.0
   end
 
-  defp calculate_side_kd_ratio(participants) do
+  defp calculate_side_kd_ratio(_participants) do
     1.0
   end
 
-  defp analyze_ship_class_performance(killmails, participants) do
+  defp analyze_ship_class_performance(_killmails, _participants) do
     %{}
   end
 
   defp identify_top_performers(participants) do
     participants
     |> Map.values()
-    |> Enum.sort_by(&(&1.kills), :desc)
+    |> Enum.sort_by(& &1.kills, :desc)
     |> Enum.take(10)
   end
 
   defp calculate_kill_rate(killmails) do
-    if length(killmails) > 0 do
+    if Enum.empty?(killmails) do
+      0.0
+    else
       first_kill = List.first(killmails)
       last_kill = List.last(killmails)
       duration_minutes = DateTime.diff(last_kill.killmail_time, first_kill.killmail_time) / 60
@@ -842,8 +853,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       else
         0.0
       end
-    else
-      0.0
     end
   end
 
@@ -873,7 +882,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     end
   end
 
-  defp predict_engagement_outcome(engagement) do
+  defp predict_engagement_outcome(_engagement) do
     # Simple prediction based on current kill ratio
     %{
       likely_winner: :undetermined,
@@ -882,21 +891,21 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   end
 
   defp calculate_timeline_duration(timeline) do
-    if length(timeline) > 0 do
+    if Enum.empty?(timeline) do
+      0
+    else
       first = List.first(timeline)
       last = List.last(timeline)
       DateTime.diff(last.timestamp, first.timestamp)
-    else
-      0
     end
   end
 
-  defp calculate_intensity_curve(timeline) do
+  defp calculate_intensity_curve(_timeline) do
     # Calculate kills per minute over time
     []
   end
 
-  defp track_participant_flow(timeline) do
+  defp track_participant_flow(_timeline) do
     # Track when participants join/leave battle
     %{
       joiners: [],
@@ -904,79 +913,156 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     }
   end
 
-  defp identify_common_patterns(battle_analyses) do
+  defp identify_common_patterns(_battle_analyses) do
     []
   end
 
-  defp analyze_tactical_evolution(battle_analyses) do
+  defp analyze_tactical_evolution(_battle_analyses) do
     []
   end
 
-  defp compare_effectiveness_trends(battle_analyses) do
+  defp compare_effectiveness_trends(_battle_analyses) do
     %{}
   end
 
-  defp compare_doctrine_usage(battle_analyses) do
+  defp compare_doctrine_usage(_battle_analyses) do
     %{}
   end
 
-  defp fetch_entity_battles(entity_id, entity_type, time_range) do
+  defp fetch_entity_battles(_entity_id, _entity_type, _time_range) do
     {:ok, []}
   end
 
   defp analyze_entity_performance(entity_id, entity_type, battles) do
-    {:ok, %{
-      entity_id: entity_id,
-      entity_type: entity_type,
-      battle_count: length(battles),
-      win_rate: 0.0,
-      average_efficiency: 100.0,
-      preferred_doctrines: [],
-      performance_trend: :stable
-    }}
+    {:ok,
+     %{
+       entity_id: entity_id,
+       entity_type: entity_type,
+       battle_count: length(battles),
+       win_rate: 0.0,
+       average_efficiency: 100.0,
+       preferred_doctrines: [],
+       performance_trend: :stable
+     }}
   end
 
-  defp analyze_fleet_composition_gaps(fleet_compositions) do
+  defp analyze_fleet_composition_gaps(_fleet_compositions) do
     []
   end
 
-  defp generate_pattern_based_recommendations(patterns) do
+  defp generate_pattern_based_recommendations(_patterns) do
     []
   end
 
-  defp analyze_strategic_positioning(battle_analysis) do
+  defp analyze_strategic_positioning(_battle_analysis) do
     nil
   end
 
-  defp recommend_force_multiplication(battle_analysis) do
+  defp recommend_force_multiplication(_battle_analysis) do
     nil
   end
 
-  defp suggest_engagement_timing(battle_analysis) do
+  defp suggest_engagement_timing(_battle_analysis) do
     nil
   end
 
-  defp recommend_doctrine_adjustments(fleet_comps) do
+  defp recommend_doctrine_adjustments(_fleet_comps) do
     nil
   end
 
-  defp suggest_counter_doctrines(fleet_comps) do
+  defp suggest_counter_doctrines(_fleet_comps) do
     nil
   end
 
-  defp identify_doctrine_weaknesses(fleet_comps) do
+  defp identify_doctrine_weaknesses(_fleet_comps) do
     nil
   end
 
-  defp identify_skill_gaps(battle_analysis) do
+  defp identify_skill_gaps(_battle_analysis) do
     nil
   end
 
-  defp recommend_practice_scenarios(battle_analysis) do
+  defp recommend_practice_scenarios(_battle_analysis) do
     nil
   end
 
-  defp suggest_role_specializations(battle_analysis) do
+  defp suggest_role_specializations(_battle_analysis) do
     nil
+  end
+
+  defp evaluate_doctrine_effectiveness(_fleet_analysis) do
+    %{}
+  end
+
+  defp determine_battle_winner(_performance_metrics) do
+    :undetermined
+  end
+
+  defp analyze_victory_factors(tactical_analysis, performance_metrics) do
+    initial_factors = []
+
+    # Analyze numerical superiority
+    numerical_factors =
+      initial_factors ++
+        case performance_metrics.by_side do
+          nil -> []
+          by_side -> analyze_numerical_factors(by_side)
+        end
+
+    # Analyze tactical effectiveness
+    tactical_factors =
+      numerical_factors ++
+        case tactical_analysis.patterns do
+          nil -> []
+          patterns -> analyze_tactical_factors(patterns)
+        end
+
+    # Analyze engagement control
+    control_factors =
+      tactical_factors ++
+        case tactical_analysis.key_moments do
+          nil -> []
+          key_moments -> analyze_control_factors(key_moments)
+        end
+
+    control_factors
+  end
+
+  defp analyze_numerical_factors(side_performance) do
+    # Analyze if numbers played a decisive role
+    side_counts =
+      Enum.map(side_performance, fn {_side, metrics} ->
+        metrics.kills + metrics.losses
+      end)
+
+    if length(side_counts) >= 2 do
+      [max_count, second_count | _] = Enum.sort(side_counts, :desc)
+
+      if max_count > second_count * 1.5 do
+        ["Numerical superiority was decisive"]
+      else
+        []
+      end
+    else
+      []
+    end
+  end
+
+  defp analyze_tactical_factors(patterns) do
+    # Analyze tactical patterns for victory factors
+    if Enum.any?(patterns, &(&1.type == :coordinated_alpha)) do
+      ["Superior coordination and focus fire"]
+    else
+      []
+    end
+  end
+
+  defp analyze_control_factors(key_moments) do
+    # Analyze battlefield control moments
+    if length(key_moments) > 0 do
+      ["Effective battlefield control"]
+    else
+      []
+    end
   end
 end

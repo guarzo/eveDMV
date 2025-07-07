@@ -27,7 +27,7 @@
       <div class="p-6 border-b border-gray-700">
         <h2 class="text-lg font-semibold text-gray-200 mb-4">Today's Statistics</h2>
         <.stats_grid columns={1} class="space-y-3">
-          <:stat label="Total Kills" value={@total_kills_today} color="green" />
+          <:stat label="Total Kills Today" value={@total_kills_today} color="green" />
           <:stat label="ISK Destroyed" value={@total_isk_destroyed} format="isk" color="red" />
           <:stat 
             label="Avg Value" 

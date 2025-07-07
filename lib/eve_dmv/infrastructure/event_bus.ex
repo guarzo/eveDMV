@@ -9,10 +9,11 @@ defmodule EveDmv.Infrastructure.EventBus do
   """
 
   use GenServer
-  require Logger
 
   alias EveDmv.Contexts
   alias Phoenix.PubSub
+
+  require Logger
 
   @pubsub EveDmv.PubSub
   @event_topic_prefix "domain_event:"
@@ -221,8 +222,7 @@ defmodule EveDmv.Infrastructure.EventBus do
   @impl GenServer
   def handle_call(:list_subscriptions, _from, state) do
     subscriptions =
-      state.subscriptions
-      |> Enum.map(fn {ref, sub} ->
+      Enum.map(state.subscriptions, fn {ref, sub} ->
         {sub.event_type, sub.subscriber_pid, ref}
       end)
 
@@ -263,8 +263,7 @@ defmodule EveDmv.Infrastructure.EventBus do
 
     # Find matching subscriptions
     matching_subs =
-      state.subscriptions
-      |> Enum.filter(fn {_, sub} -> sub.event_type == event_type end)
+      Enum.filter(state.subscriptions, fn {_, sub} -> sub.event_type == event_type end)
 
     # Deliver to handlers
     delivered_count =
@@ -277,8 +276,7 @@ defmodule EveDmv.Infrastructure.EventBus do
 
     # Update stats
     new_stats =
-      state.stats
-      |> Map.update!(:events_delivered, &(&1 + delivered_count))
+      Map.update!(state.stats, :events_delivered, &(&1 + delivered_count))
 
     {:noreply, %{state | stats: new_stats}}
   end
@@ -296,39 +294,39 @@ defmodule EveDmv.Infrastructure.EventBus do
   end
 
   defp get_publishing_context(event_type) do
-    Contexts.publishers_of(event_type) |> List.first()
+    event_type
+    |> Contexts.publishers_of()
+    |> List.first()
   end
 
   defp deliver_event(event, subscription) do
-    try do
-      case subscription.handler do
-        :process ->
-          # For process subscriptions, the process handles the raw message
-          :ok
+    case subscription.handler do
+      :process ->
+        # For process subscriptions, the process handles the raw message
+        :ok
 
-        handler when is_function(handler, 1) ->
-          handler.(event)
-          :ok
+      handler when is_function(handler, 1) ->
+        handler.(event)
+        :ok
 
-        {module, function} ->
-          apply(module, function, [event])
-          :ok
+      {module, function} ->
+        apply(module, function, [event])
+        :ok
 
-        module when is_atom(module) ->
-          module.handle_event(event)
-          :ok
-      end
-    rescue
-      error ->
-        Logger.error("Event handler failed", %{
-          event_type: subscription.event_type,
-          handler: inspect(subscription.handler),
-          error: inspect(error),
-          stacktrace: __STACKTRACE__
-        })
-
-        {:error, error}
+      module when is_atom(module) ->
+        module.handle_event(event)
+        :ok
     end
+  rescue
+    error ->
+      Logger.error("Event handler failed", %{
+        event_type: subscription.event_type,
+        handler: inspect(subscription.handler),
+        error: inspect(error),
+        stacktrace: __STACKTRACE__
+      })
+
+      {:error, error}
   end
 
   defp count_subscriptions_by_event(subscriptions) do

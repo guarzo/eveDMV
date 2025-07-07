@@ -14,14 +14,14 @@ defmodule EveDmv.Intelligence.WandererSSE do
   use GenServer
   require Logger
 
-  @default_base_url "http://localhost:4000"
-
   defstruct [
     :base_url,
     :api_token,
     :monitored_maps,
     :sse_connections
   ]
+
+  @default_base_url "http://localhost:4000"
 
   # Public API
 

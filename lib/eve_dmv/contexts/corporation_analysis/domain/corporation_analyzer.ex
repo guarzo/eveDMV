@@ -8,14 +8,12 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer do
 
   use GenServer
   use EveDmv.ErrorHandler
+  alias EveDmv.Contexts.CorporationAnalysis.Analyzers.MemberActivityAnalyzer
+  alias EveDmv.Contexts.CorporationAnalysis.Infrastructure.AnalysisCache
+  alias EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationRepository
   alias EveDmv.Result
   alias EveDmv.Shared.MetricsCalculator
-  alias EveDmv.Contexts.CorporationAnalysis.Infrastructure.{CorporationRepository, AnalysisCache}
-
   # Import analyzers
-  alias EveDmv.Contexts.CorporationAnalysis.Analyzers.{
-    MemberActivityAnalyzer
-  }
 
   require Logger
 
@@ -64,7 +62,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer do
   # GenServer implementation
 
   @impl GenServer
-  def init(opts) do
+  def init(_opts) do
     state = %{
       analysis_cache: %{},
       metrics: %{
@@ -264,41 +262,41 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer do
   end
 
   defp generate_corporation_recommendations(member_activity) do
-    recommendations = []
+    initial_recommendations = []
 
     # Activity-based recommendations
-    recommendations =
+    activity_recommendations =
       if member_activity.overall_activity.activity_rate < 0.5 do
-        ["Focus on member recruitment and retention" | recommendations]
+        ["Focus on member recruitment and retention" | initial_recommendations]
       else
-        recommendations
+        initial_recommendations
       end
 
     # Engagement recommendations
-    recommendations =
+    engagement_recommendations =
       if member_activity.member_engagement.overall_engagement_score < 50 do
-        ["Implement member engagement programs" | recommendations]
+        ["Implement member engagement programs" | activity_recommendations]
       else
-        recommendations
+        activity_recommendations
       end
 
     # Leadership recommendations
-    recommendations =
+    leadership_recommendations =
       if member_activity.leadership_activity.leadership_health_score < 70 do
-        ["Strengthen leadership team and activities" | recommendations]
+        ["Strengthen leadership team and activities" | engagement_recommendations]
       else
-        recommendations
+        engagement_recommendations
       end
 
     # Timezone coverage recommendations
-    recommendations =
+    final_recommendations =
       if length(member_activity.timezone_coverage.coverage_gaps) > 2 do
-        ["Improve timezone coverage through targeted recruitment" | recommendations]
+        ["Improve timezone coverage through targeted recruitment" | leadership_recommendations]
       else
-        recommendations
+        leadership_recommendations
       end
 
-    recommendations
+    final_recommendations
   end
 
   defp calculate_health_score(corporation_id) do
@@ -328,8 +326,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer do
     case CorporationRepository.get_member_statistics(corporation_id) do
       member_stats ->
         leadership_members =
-          member_stats
-          |> Enum.filter(fn member ->
+          Enum.filter(member_stats, fn member ->
             member.corp_role && member.corp_role in ["CEO", "Director", "Personnel Manager"]
           end)
 

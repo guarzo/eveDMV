@@ -85,7 +85,7 @@ defmodule EveDmvWeb.AuthControllerTest do
           %{
             access_token: "new_access_token",
             refresh_token: "new_refresh_token",
-            token_expires_at: DateTime.utc_now() |> DateTime.add(3600, :second)
+            token_expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
           },
           action: :refresh_token,
           domain: Api

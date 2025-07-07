@@ -8,17 +8,11 @@ defmodule EveDmv.Contexts.Surveillance.Api do
   """
 
   use EveDmv.ErrorHandler
-  alias EveDmv.Result
   alias EveDmv.Utils.ValidationUtils
 
-  alias EveDmv.Contexts.Surveillance.Domain.{
-    ProfileManager,
-    MatchingEngine,
-    AlertService,
-    NotificationService
-  }
-
-  alias EveDmv.Shared.ValueObjects.{CharacterId, CorporationId}
+  alias EveDmv.Contexts.Surveillance.Domain.MatchingEngine
+  alias EveDmv.Contexts.Surveillance.Domain.NotificationService
+  alias EveDmv.Contexts.Surveillance.Domain.ProfileManager
 
   require Logger
 
@@ -69,10 +63,11 @@ defmodule EveDmv.Contexts.Surveillance.Api do
   Delete a surveillance profile.
   """
   def delete_profile(profile_id) do
-    with {:ok, _} <- ProfileManager.delete_profile(profile_id) do
-      Logger.info("Deleted surveillance profile: #{profile_id}")
-      :ok
-    else
+    case ProfileManager.delete_profile(profile_id) do
+      {:ok, _} ->
+        Logger.info("Deleted surveillance profile: #{profile_id}")
+        :ok
+
       {:error, reason} ->
         Logger.warning("Failed to delete surveillance profile #{profile_id}: #{inspect(reason)}")
         {:error, reason}
@@ -103,10 +98,11 @@ defmodule EveDmv.Contexts.Surveillance.Api do
   Enable a surveillance profile.
   """
   def enable_profile(profile_id) do
-    with {:ok, profile} <- ProfileManager.enable_profile(profile_id) do
-      Logger.info("Enabled surveillance profile: #{profile_id}")
-      {:ok, profile}
-    else
+    case ProfileManager.enable_profile(profile_id) do
+      {:ok, profile} ->
+        Logger.info("Enabled surveillance profile: #{profile_id}")
+        {:ok, profile}
+
       {:error, reason} ->
         Logger.warning("Failed to enable surveillance profile #{profile_id}: #{inspect(reason)}")
         {:error, reason}
@@ -117,10 +113,11 @@ defmodule EveDmv.Contexts.Surveillance.Api do
   Disable a surveillance profile.
   """
   def disable_profile(profile_id) do
-    with {:ok, profile} <- ProfileManager.disable_profile(profile_id) do
-      Logger.info("Disabled surveillance profile: #{profile_id}")
-      {:ok, profile}
-    else
+    case ProfileManager.disable_profile(profile_id) do
+      {:ok, profile} ->
+        Logger.info("Disabled surveillance profile: #{profile_id}")
+        {:ok, profile}
+
       {:error, reason} ->
         Logger.warning("Failed to disable surveillance profile #{profile_id}: #{inspect(reason)}")
         {:error, reason}
@@ -236,10 +233,11 @@ defmodule EveDmv.Contexts.Surveillance.Api do
   Sends a test notification to verify delivery configuration.
   """
   def test_notification_delivery(profile_id) do
-    with {:ok, result} <- NotificationService.test_notification_delivery(profile_id) do
-      Logger.info("Test notification sent for profile: #{profile_id}")
-      {:ok, result}
-    else
+    case NotificationService.test_notification_delivery(profile_id) do
+      {:ok, result} ->
+        Logger.info("Test notification sent for profile: #{profile_id}")
+        {:ok, result}
+
       {:error, reason} ->
         Logger.warning(
           "Failed to send test notification for profile #{profile_id}: #{inspect(reason)}"

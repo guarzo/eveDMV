@@ -17,13 +17,14 @@ defmodule EveDmv.Eve.StaticDataLoader do
   ```
   """
 
-  require Logger
-
-  alias EveDmv.Eve.{ItemType, SolarSystem}
+  alias EveDmv.Eve.ItemType
+  alias EveDmv.Eve.SolarSystem
+  alias EveDmv.Eve.StaticDataLoader.DataPersistence
   alias EveDmv.Eve.StaticDataLoader.FileManager
   alias EveDmv.Eve.StaticDataLoader.ItemTypeProcessor
   alias EveDmv.Eve.StaticDataLoader.SolarSystemProcessor
-  alias EveDmv.Eve.StaticDataLoader.DataPersistence
+
+  require Logger
 
   # ============================================================================
   # Public API

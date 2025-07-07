@@ -8,16 +8,13 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
 
   use GenServer
   use EveDmv.ErrorHandler
-  alias EveDmv.Result
-  alias EveDmv.Shared.MetricsCalculator
-  alias EveDmv.Contexts.PlayerProfile.Infrastructure.{PlayerRepository, AnalysisCache}
 
-  # Import analyzers
-  alias EveDmv.Contexts.PlayerProfile.Analyzers.{
-    CombatStatsAnalyzer,
-    BehavioralPatternsAnalyzer,
-    ShipPreferencesAnalyzer
-  }
+  alias EveDmv.Contexts.PlayerProfile.Analyzers.BehavioralPatternsAnalyzer
+  alias EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer
+  alias EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer
+  alias EveDmv.Contexts.PlayerProfile.Infrastructure.AnalysisCache
+  alias EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository
+  alias EveDmv.Shared.MetricsCalculator
 
   require Logger
 
@@ -32,6 +29,33 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
   """
   def analyze_player(character_id, opts \\ []) do
     GenServer.call(__MODULE__, {:analyze_player, character_id, opts}, 30_000)
+  end
+
+  @doc """
+  Analyze character - legacy interface for backwards compatibility.
+
+  This function provides compatibility with the old IntelligenceEngine API.
+  """
+  def analyze_character(character_id, opts \\ []) do
+    # Map to the new analyze_player function for backwards compatibility
+    case analyze_player(character_id, opts) do
+      {:ok, analysis} ->
+        # Transform to expected format for legacy callers
+        {:ok,
+         %{
+           character_id: character_id,
+           analysis_type: :player_profile,
+           combat_stats: Map.get(analysis, :combat, %{}),
+           behavioral_patterns: Map.get(analysis, :behavioral, %{}),
+           ship_preferences: Map.get(analysis, :ships, %{}),
+           archetype: Map.get(analysis, :archetype, :unknown),
+           confidence_score: Map.get(analysis, :confidence, 0.5),
+           analysis_timestamp: DateTime.utc_now()
+         }}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   @doc """
@@ -66,7 +90,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
   # GenServer implementation
 
   @impl GenServer
-  def init(opts) do
+  def init(_opts) do
     state = %{
       analysis_cache: %{},
       metrics: %{
@@ -301,33 +325,31 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
   end
 
   defp generate_recommendations(combat_stats, behavioral, ship_prefs) do
-    recommendations = []
-
     # Combat recommendations
-    recommendations =
+    initial_recommendations =
       if combat_stats.performance_metrics.isk_efficiency < 50 do
-        ["Improve target selection for better ISK efficiency" | recommendations]
+        ["Improve target selection for better ISK efficiency"]
       else
-        recommendations
+        []
       end
 
     # Behavioral recommendations
-    recommendations =
+    behavioral_recommendations =
       if behavioral.consistency_metrics.overall_consistency_score < 0.3 do
-        ["Consider establishing more consistent play patterns" | recommendations]
+        ["Consider establishing more consistent play patterns" | initial_recommendations]
       else
-        recommendations
+        initial_recommendations
       end
 
     # Ship recommendations
-    recommendations =
+    final_recommendations =
       if ship_prefs.diversity_metrics.ship_diversity_index < 0.2 do
-        ["Expand ship repertoire for tactical flexibility" | recommendations]
+        ["Expand ship repertoire for tactical flexibility" | behavioral_recommendations]
       else
-        recommendations
+        behavioral_recommendations
       end
 
-    recommendations
+    final_recommendations
   end
 
   defp generate_cache_key(character_id, opts) do
@@ -400,30 +422,30 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
   end
 
   defp identify_risk_factors(combat_stats, behavioral, ship_prefs) do
-    factors = []
+    base_factors = []
 
-    factors =
+    loss_factors =
       if combat_stats.performance_metrics.average_loss_value > 1_000_000_000 do
-        [{:high_value_losses, "Frequently loses expensive ships"} | factors]
+        [{:high_value_losses, "Frequently loses expensive ships"} | base_factors]
       else
-        factors
+        base_factors
       end
 
-    factors =
+    behavioral_factors =
       if behavioral.risk_profile.tactical_risk_taking.bait_susceptibility == "high" do
-        [{:bait_susceptible, "High susceptibility to bait tactics"} | factors]
+        [{:bait_susceptible, "High susceptibility to bait tactics"} | loss_factors]
       else
-        factors
+        loss_factors
       end
 
-    factors =
+    final_factors =
       if ship_prefs.value_patterns.flies_expensive_ships do
-        [{:expensive_ships, "Regularly flies high-value ships"} | factors]
+        [{:expensive_ships, "Regularly flies high-value ships"} | behavioral_factors]
       else
-        factors
+        behavioral_factors
       end
 
-    factors
+    final_factors
   end
 
   defp generate_risk_mitigation(_combat_stats, behavioral, _ship_prefs) do

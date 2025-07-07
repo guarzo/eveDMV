@@ -15,9 +15,10 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
   """
 
   use EveDmv.ErrorHandler
-  alias EveDmv.Result
-  alias EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatDataProvider
+
   alias EveDmv.Contexts.ThreatAssessment.Infrastructure.StandingsRepository
+  alias EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatDataProvider
+  alias EveDmv.Result
 
   require Logger
 
@@ -38,60 +39,65 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
   activity patterns, and associate analysis.
   """
   def analyze(character_id, base_data \\ %{}, opts \\ []) when is_integer(character_id) do
-    try do
-      corporation_id = Keyword.get(opts, :corporation_id) || Map.get(base_data, :corporation_id)
-      alliance_id = Keyword.get(opts, :alliance_id) || Map.get(base_data, :alliance_id)
+    corporation_id = Keyword.get(opts, :corporation_id) || Map.get(base_data, :corporation_id)
+    alliance_id = Keyword.get(opts, :alliance_id) || Map.get(base_data, :alliance_id)
 
-      with {:ok, character_stats} <- get_character_stats(base_data, character_id),
-           {:ok, recent_activity} <- get_recent_activity(base_data, character_id),
-           {:ok, associates} <- find_known_associates(base_data, character_id),
-           {:ok, standings} <- analyze_standings(corporation_id, alliance_id) do
+    with {:ok, character_stats} <- get_character_stats(base_data, character_id),
+         {:ok, recent_activity} <- get_recent_activity(base_data, character_id),
+         {:ok, associates} <- find_known_associates(base_data, character_id),
+         {:ok, standings} <- analyze_standings(corporation_id, alliance_id) do
+      threat_score = calculate_threat_score(character_stats, recent_activity)
+      bait_probability = calculate_bait_probability(character_id, associates, recent_activity)
+      threat_level = determine_threat_level(threat_score, standings)
 
-        threat_score = calculate_threat_score(character_stats, recent_activity)
-        bait_probability = calculate_bait_probability(character_id, associates, recent_activity)
-        threat_level = determine_threat_level(threat_score, standings)
+      analysis = %{
+        character_id: character_id,
+        corporation_id: corporation_id,
+        alliance_id: alliance_id,
 
-        analysis = %{
-          character_id: character_id,
-          corporation_id: corporation_id,
-          alliance_id: alliance_id,
+        # Core threat assessment
+        threat_level: threat_level,
+        threat_score: threat_score,
+        bait_probability: bait_probability,
 
-          # Core threat assessment
-          threat_level: threat_level,
-          threat_score: threat_score,
-          bait_probability: bait_probability,
+        # Analysis components
+        character_stats: character_stats,
+        recent_activity: recent_activity,
+        known_associates_count: length(associates),
 
-          # Analysis components
-          character_stats: character_stats,
-          recent_activity: recent_activity,
-          known_associates_count: length(associates),
+        # Standings analysis
+        corporation_standing: standings.corporation_standing,
+        alliance_standing: standings.alliance_standing,
+        standing_override: standings.standing_override,
 
-          # Standings analysis
-          corporation_standing: standings.corporation_standing,
-          alliance_standing: standings.alliance_standing,
-          standing_override: standings.standing_override,
+        # Risk factors
+        risk_factors: identify_risk_factors(character_stats, recent_activity, associates),
+        warning_indicators:
+          build_warning_indicators(threat_score, bait_probability, recent_activity),
 
-          # Risk factors
-          risk_factors: identify_risk_factors(character_stats, recent_activity, associates),
-          warning_indicators: build_warning_indicators(threat_score, bait_probability, recent_activity),
+        # Detailed insights
+        analysis_reason:
+          build_comprehensive_analysis_reason(
+            threat_level,
+            threat_score,
+            bait_probability,
+            standings
+          ),
+        behavioral_patterns: analyze_behavioral_patterns(character_stats, recent_activity),
+        threat_confidence:
+          calculate_threat_confidence(character_stats, recent_activity, standings),
 
-          # Detailed insights
-          analysis_reason: build_comprehensive_analysis_reason(threat_level, threat_score, bait_probability, standings),
-          behavioral_patterns: analyze_behavioral_patterns(character_stats, recent_activity),
-          threat_confidence: calculate_threat_confidence(character_stats, recent_activity, standings),
+        # Metadata
+        analysis_timestamp: DateTime.utc_now(),
+        data_quality: assess_data_quality(character_stats, recent_activity)
+      }
 
-          # Metadata
-          analysis_timestamp: DateTime.utc_now(),
-          data_quality: assess_data_quality(character_stats, recent_activity)
-        }
-
-        Result.ok(analysis)
-      else
-        {:error, _reason} = error -> error
-      end
-    rescue
-      exception -> Result.error(:analysis_failed, "Threat analysis error: #{inspect(exception)}")
+      Result.ok(analysis)
+    else
+      {:error, _reason} = error -> error
     end
+  rescue
+    exception -> Result.error(:analysis_failed, "Threat analysis error: #{inspect(exception)}")
   end
 
   @doc """
@@ -101,50 +107,57 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
   multiple pilots simultaneously.
   """
   def analyze_pilots(pilot_list, base_data \\ %{}, opts \\ []) when is_list(pilot_list) do
-    try do
-      batch_size = Keyword.get(opts, :batch_size, 50)
-      include_details = Keyword.get(opts, :include_details, false)
+    batch_size = Keyword.get(opts, :batch_size, 50)
+    include_details = Keyword.get(opts, :include_details, false)
 
-      if length(pilot_list) > batch_size do
-        Logger.warning("Batch size #{length(pilot_list)} exceeds recommended limit #{batch_size}")
-      end
+    if length(pilot_list) > batch_size do
+      Logger.warning("Batch size #{length(pilot_list)} exceeds recommended limit #{batch_size}")
+    end
 
-      # Process pilots in parallel
-      tasks =
-        pilot_list
-        |> Enum.map(fn {character_id, corp_id, alliance_id} ->
-          Task.async(fn ->
-            case analyze(character_id, base_data, corporation_id: corp_id, alliance_id: alliance_id) do
-              {:ok, result} ->
-                analysis = if include_details, do: result, else: summarize_analysis(result)
-                {character_id, {:ok, analysis}}
-              {:error, reason} ->
-                {character_id, {:error, reason}}
-            end
-          end)
-        end)
+    # Process pilots in parallel
+    tasks =
+      Enum.map(pilot_list, fn pilot_data ->
+        Task.async(fn -> analyze_single_pilot(pilot_data, base_data, include_details) end)
+      end)
 
-      # Collect results with timeout
-      results =
-        tasks
-        |> Task.await_many(30_000)
-        |> Enum.filter(fn
-          {_id, {:ok, _result}} -> true
-          {id, {:error, reason}} ->
-            Logger.warning("Failed to analyze pilot #{id}: #{inspect(reason)}")
-            false
-        end)
-        |> Enum.map(fn {id, {:ok, result}} -> {id, result} end)
-        |> Map.new()
+    # Collect results with timeout
+    results =
+      tasks
+      |> Task.await_many(30_000)
+      |> Enum.filter(fn
+        {_id, {:ok, _result}} ->
+          true
 
-      Result.ok(%{
-        total_analyzed: map_size(results),
-        successful_analyses: map_size(results),
-        threat_summary: generate_threat_summary(results),
-        pilot_analyses: results
-      })
-    rescue
-      exception -> Result.error(:bulk_analysis_failed, "Bulk threat analysis error: #{inspect(exception)}")
+        {id, {:error, reason}} ->
+          Logger.warning("Failed to analyze pilot #{id}: #{inspect(reason)}")
+          false
+      end)
+      |> Enum.map(fn {id, {:ok, result}} -> {id, result} end)
+      |> Map.new()
+
+    Result.ok(%{
+      total_analyzed: map_size(results),
+      successful_analyses: map_size(results),
+      threat_summary: generate_threat_summary(results),
+      pilot_analyses: results
+    })
+  rescue
+    exception ->
+      Result.error(:bulk_analysis_failed, "Bulk threat analysis error: #{inspect(exception)}")
+  end
+
+  # Helper function to analyze a single pilot (extracted to reduce nesting)
+  defp analyze_single_pilot({character_id, corp_id, alliance_id}, base_data, include_details) do
+    case analyze(character_id, base_data,
+           corporation_id: corp_id,
+           alliance_id: alliance_id
+         ) do
+      {:ok, result} ->
+        analysis = if include_details, do: result, else: summarize_analysis(result)
+        {character_id, {:ok, analysis}}
+
+      {:error, reason} ->
+        {character_id, {:error, reason}}
     end
   end
 
@@ -155,9 +168,8 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
   in a specific location or context.
   """
   def analyze_system_threats(system_id, inhabitants, base_data \\ %{}, opts \\ []) do
-    try do
-      with {:ok, bulk_analysis} <- analyze_pilots(inhabitants, base_data, opts) do
-
+    case analyze_pilots(inhabitants, base_data, opts) do
+      {:ok, bulk_analysis} ->
         system_analysis = %{
           system_id: system_id,
           total_inhabitants: length(inhabitants),
@@ -165,17 +177,22 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
           dominant_threat_level: determine_dominant_threat_level(bulk_analysis.pilot_analyses),
           bait_risk_assessment: assess_system_bait_risk(bulk_analysis.pilot_analyses),
           coordinated_threat_indicators: detect_coordinated_threats(bulk_analysis.pilot_analyses),
-          recommended_engagement_strategy: recommend_engagement_strategy(bulk_analysis.pilot_analyses),
+          recommended_engagement_strategy:
+            recommend_engagement_strategy(bulk_analysis.pilot_analyses),
           system_threat_score: calculate_system_threat_score(bulk_analysis.pilot_analyses)
         }
 
         Result.ok(system_analysis)
-      else
-        {:error, _reason} = error -> error
-      end
-    rescue
-      exception -> Result.error(:system_analysis_failed, "System threat analysis error: #{inspect(exception)}")
+
+      {:error, _reason} = error ->
+        error
     end
+  rescue
+    exception ->
+      Result.error(
+        :system_analysis_failed,
+        "System threat analysis error: #{inspect(exception)}"
+      )
   end
 
   @doc """
@@ -184,28 +201,28 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
   Efficiently updates threat assessments for multiple pilots
   with optimized data collection and processing.
   """
-  def update_inhabitant_threats(inhabitant_ids, base_data \\ %{}, opts \\ []) when is_list(inhabitant_ids) do
-    try do
-      results =
-        inhabitant_ids
-        |> Enum.map(fn inhabitant_id ->
-          case update_single_inhabitant_threat(inhabitant_id, base_data, opts) do
-            {:ok, result} -> {inhabitant_id, :success, result}
-            {:error, reason} -> {inhabitant_id, :error, reason}
-          end
-        end)
+  def update_inhabitant_threats(inhabitant_ids, base_data \\ %{}, opts \\ [])
+      when is_list(inhabitant_ids) do
+    results =
+      Enum.map(inhabitant_ids, fn inhabitant_id ->
+        case update_single_inhabitant_threat(inhabitant_id, base_data, opts) do
+          {:ok, result} -> {inhabitant_id, :success, result}
+          {:error, reason} -> {inhabitant_id, :error, reason}
+        end
+      end)
 
-      {successful, failed} = Enum.split_with(results, fn {_id, status, _result} -> status == :success end)
+    {successful, failed} =
+      Enum.split_with(results, fn {_id, status, _result} -> status == :success end)
 
-      Result.ok(%{
-        total_processed: length(inhabitant_ids),
-        successful_updates: length(successful),
-        failed_updates: length(failed),
-        update_results: results
-      })
-    rescue
-      exception -> Result.error(:update_failed, "Inhabitant threat update error: #{inspect(exception)}")
-    end
+    Result.ok(%{
+      total_processed: length(inhabitant_ids),
+      successful_updates: length(successful),
+      failed_updates: length(failed),
+      update_results: results
+    })
+  rescue
+    exception ->
+      Result.error(:update_failed, "Inhabitant threat update error: #{inspect(exception)}")
   end
 
   # Private implementation functions
@@ -232,16 +249,22 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
   end
 
   defp analyze_standings(corporation_id, alliance_id) do
-    corp_standing = if corporation_id, do: StandingsRepository.check_corporation_standing(corporation_id), else: nil
-    alliance_standing = if alliance_id, do: StandingsRepository.check_alliance_standing(alliance_id), else: nil
+    corp_standing =
+      if corporation_id,
+        do: StandingsRepository.check_corporation_standing(corporation_id),
+        else: nil
+
+    alliance_standing =
+      if alliance_id, do: StandingsRepository.check_alliance_standing(alliance_id), else: nil
 
     standing_override = determine_standing_override(corp_standing, alliance_standing)
 
-    {:ok, %{
-      corporation_standing: corp_standing,
-      alliance_standing: alliance_standing,
-      standing_override: standing_override
-    }}
+    {:ok,
+     %{
+       corporation_standing: corp_standing,
+       alliance_standing: alliance_standing,
+       standing_override: standing_override
+     }}
   end
 
   defp calculate_threat_score(character_stats, recent_activity) do
@@ -253,7 +276,10 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
     value_modifier = calculate_value_modifier(recent_activity)
     experience_modifier = calculate_experience_modifier(character_stats)
 
-    final_score = base_score + stats_modifier + activity_modifier + kd_modifier + value_modifier + experience_modifier
+    final_score =
+      base_score + stats_modifier + activity_modifier + kd_modifier + value_modifier +
+        experience_modifier
+
     clamp_score(final_score)
   end
 
@@ -300,12 +326,16 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
     avg_kill_value = recent_activity.avg_kill_value || 0
     avg_loss_value = recent_activity.avg_loss_value || 0
 
-    kill_value_bonus = cond do
-      avg_kill_value > 5_000_000_000 -> 15  # >5B ISK kills
-      avg_kill_value > 1_000_000_000 -> 10  # >1B ISK kills
-      avg_kill_value > 500_000_000 -> 5     # >500M ISK kills
-      true -> 0
-    end
+    kill_value_bonus =
+      cond do
+        # >5B ISK kills
+        avg_kill_value > 5_000_000_000 -> 15
+        # >1B ISK kills
+        avg_kill_value > 1_000_000_000 -> 10
+        # >500M ISK kills
+        avg_kill_value > 500_000_000 -> 5
+        true -> 0
+      end
 
     # High value losses might indicate wealth/bait potential
     loss_value_indicator = if avg_loss_value > 1_000_000_000, do: 5, else: 0
@@ -332,7 +362,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
 
   defp clamp_score(score), do: max(0, min(100, round(score)))
 
-  defp calculate_bait_probability(character_id, associates, recent_activity) do
+  defp calculate_bait_probability(_character_id, associates, recent_activity) do
     base_probability = 25
 
     associate_modifier = calculate_associate_modifier(associates)
@@ -341,8 +371,9 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
     activity_spike = calculate_activity_spike_modifier(recent_activity)
     loss_pattern = calculate_loss_pattern_modifier(recent_activity)
 
-    final_probability = base_probability + associate_modifier + solo_but_connected +
-                       bait_pattern + activity_spike + loss_pattern
+    final_probability =
+      base_probability + associate_modifier + solo_but_connected +
+        bait_pattern + activity_spike + loss_pattern
 
     max(0, min(100, round(final_probability)))
   end
@@ -351,17 +382,22 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
     associate_count = length(associates)
 
     cond do
-      associate_count > 30 -> 35  # Very coordinated
-      associate_count > 20 -> 30  # Highly coordinated
-      associate_count > 10 -> 20  # Coordinated
-      associate_count > 5 -> 10   # Some coordination
+      # Very coordinated
+      associate_count > 30 -> 35
+      # Highly coordinated
+      associate_count > 20 -> 30
+      # Coordinated
+      associate_count > 10 -> 20
+      # Some coordination
+      associate_count > 5 -> 10
       true -> 0
     end
   end
 
   defp calculate_solo_connected_modifier(associates, recent_activity) do
     if length(associates) > 5 and recent_activity.recent_kills < 2 do
-      25  # Appears solo but has many associates
+      # Appears solo but has many associates
+      25
     else
       0
     end
@@ -373,7 +409,8 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
     recent_losses = recent_activity.recent_losses || 0
 
     if avg_loss_value > 500_000_000 and recent_kills < recent_losses do
-      20  # Loses expensive ships but doesn't kill much
+      # Loses expensive ships but doesn't kill much
+      20
     else
       0
     end
@@ -384,7 +421,8 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
     recent_losses = recent_activity.recent_losses || 0
 
     if recent_kills == 0 and recent_losses > 0 do
-      15  # Recent losses but no kills
+      # Recent losses but no kills
+      15
     else
       0
     end
@@ -426,77 +464,100 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
   end
 
   defp identify_risk_factors(character_stats, recent_activity, associates) do
-    risk_factors = []
+    initial_risk_factors = []
 
     # High activity risk
-    risk_factors = if recent_activity.recent_kills > 15 do
-      [:high_kill_activity | risk_factors]
-    else
-      risk_factors
-    end
+    base_risk_factors =
+      if recent_activity.recent_kills > 15 do
+        [:high_kill_activity | initial_risk_factors]
+      else
+        initial_risk_factors
+      end
 
     # Coordination risk
-    risk_factors = if length(associates) > 15 do
-      [:high_coordination | risk_factors]
-    else
-      risk_factors
-    end
+    coordination_risk_factors =
+      if length(associates) > 15 do
+        [:high_coordination | base_risk_factors]
+      else
+        base_risk_factors
+      end
 
     # Experience risk
-    risk_factors = if character_stats && character_stats.total_kills > 500 do
-      [:veteran_pilot | risk_factors]
-    else
-      risk_factors
-    end
+    final_risk_factors =
+      if character_stats && character_stats.total_kills > 500 do
+        [:veteran_pilot | coordination_risk_factors]
+      else
+        coordination_risk_factors
+      end
 
     # High value target risk
-    risk_factors = if recent_activity.avg_loss_value > 2_000_000_000 do
-      [:high_value_target | risk_factors]
-    else
-      risk_factors
-    end
+    value_risk_factors =
+      if recent_activity.avg_loss_value > 2_000_000_000 do
+        [:high_value_target | final_risk_factors]
+      else
+        final_risk_factors
+      end
 
     # Solo operator risk
-    risk_factors = if character_stats && character_stats.solo_kill_percentage > 70 do
-      [:solo_operator | risk_factors]
-    else
-      risk_factors
-    end
+    solo_risk_factors =
+      if character_stats && character_stats.solo_kill_percentage > 70 do
+        [:solo_operator | value_risk_factors]
+      else
+        value_risk_factors
+      end
 
-    risk_factors
+    solo_risk_factors
   end
 
   defp build_warning_indicators(threat_score, bait_probability, recent_activity) do
-    warnings = []
+    initial_warnings = []
 
-    warnings = if threat_score >= @hostile_threshold do
-      [%{type: :high_threat, severity: :high, message: "High threat pilot detected"} | warnings]
-    else
-      warnings
-    end
+    threat_warnings =
+      if threat_score >= @hostile_threshold do
+        [
+          %{type: :high_threat, severity: :high, message: "High threat pilot detected"}
+          | initial_warnings
+        ]
+      else
+        initial_warnings
+      end
 
-    warnings = if bait_probability >= @high_bait_threshold do
-      [%{type: :bait_risk, severity: :high, message: "High bait probability"} | warnings]
-    else
-      warnings
-    end
+    bait_warnings =
+      if bait_probability >= @high_bait_threshold do
+        [%{type: :bait_risk, severity: :high, message: "High bait probability"} | threat_warnings]
+      else
+        threat_warnings
+      end
 
-    warnings = if recent_activity.recent_kills > 20 do
-      [%{type: :high_activity, severity: :medium, message: "Very high recent kill activity"} | warnings]
-    else
-      warnings
-    end
+    activity_warnings =
+      if recent_activity.recent_kills > 20 do
+        [
+          %{type: :high_activity, severity: :medium, message: "Very high recent kill activity"}
+          | bait_warnings
+        ]
+      else
+        bait_warnings
+      end
 
-    warnings = if recent_activity.avg_loss_value > 5_000_000_000 do
-      [%{type: :high_value, severity: :medium, message: "Extremely high value losses"} | warnings]
-    else
-      warnings
-    end
+    value_warnings =
+      if recent_activity.avg_loss_value > 5_000_000_000 do
+        [
+          %{type: :high_value, severity: :medium, message: "Extremely high value losses"}
+          | activity_warnings
+        ]
+      else
+        activity_warnings
+      end
 
-    warnings
+    value_warnings
   end
 
-  defp build_comprehensive_analysis_reason(threat_level, threat_score, bait_probability, standings) do
+  defp build_comprehensive_analysis_reason(
+         threat_level,
+         threat_score,
+         bait_probability,
+         standings
+       ) do
     standing_desc = build_standing_description(standings)
     threat_desc = build_threat_description(threat_level)
     bait_desc = build_bait_description(bait_probability)
@@ -512,7 +573,8 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
       standings.corporation_standing == :blue or standings.alliance_standing == :blue ->
         "BLUE STANDING - Friendly entity. "
 
-      true -> ""
+      true ->
+        ""
     end
   end
 
@@ -535,21 +597,33 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
   end
 
   defp analyze_behavioral_patterns(character_stats, recent_activity) do
-    patterns = %{}
+    base_patterns = %{}
 
     # Activity pattern
-    patterns = Map.put(patterns, :activity_pattern, categorize_activity_pattern(recent_activity))
+    activity_patterns =
+      Map.put(base_patterns, :activity_pattern, categorize_activity_pattern(recent_activity))
 
     # Combat style
-    patterns = Map.put(patterns, :combat_style, determine_combat_style(character_stats, recent_activity))
+    combat_patterns =
+      Map.put(
+        activity_patterns,
+        :combat_style,
+        determine_combat_style(character_stats, recent_activity)
+      )
 
     # Target preference
-    patterns = Map.put(patterns, :target_preference, analyze_target_preference(recent_activity))
+    target_patterns =
+      Map.put(combat_patterns, :target_preference, analyze_target_preference(recent_activity))
 
     # Operational pattern
-    patterns = Map.put(patterns, :operational_pattern, determine_operational_pattern(recent_activity))
+    final_patterns =
+      Map.put(
+        target_patterns,
+        :operational_pattern,
+        determine_operational_pattern(recent_activity)
+      )
 
-    patterns
+    final_patterns
   end
 
   defp categorize_activity_pattern(recent_activity) do
@@ -565,7 +639,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
   end
 
   defp determine_combat_style(character_stats, recent_activity) do
-    solo_percentage = character_stats && character_stats.solo_kill_percentage || 0
+    solo_percentage = (character_stats && character_stats.solo_kill_percentage) || 0
     avg_gang_size = calculate_estimated_gang_size(recent_activity)
 
     cond do
@@ -614,36 +688,56 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
   end
 
   defp calculate_threat_confidence(character_stats, recent_activity, standings) do
-    confidence_factors = []
+    initial_confidence_factors = []
 
     # Data availability
-    confidence_factors = if character_stats, do: [0.3 | confidence_factors], else: confidence_factors
-    confidence_factors = if recent_activity.recent_kills > 0, do: [0.2 | confidence_factors], else: confidence_factors
-    confidence_factors = if standings.standing_override, do: [0.3 | confidence_factors], else: confidence_factors
+    stats_confidence_factors =
+      if character_stats, do: [0.3 | initial_confidence_factors], else: initial_confidence_factors
+
+    activity_confidence_factors =
+      if recent_activity.recent_kills > 0,
+        do: [0.2 | stats_confidence_factors],
+        else: stats_confidence_factors
+
+    standings_confidence_factors =
+      if standings.standing_override,
+        do: [0.3 | activity_confidence_factors],
+        else: activity_confidence_factors
 
     # Data recency and volume
     kills = recent_activity.recent_kills || 0
-    confidence_factors = if kills > 5, do: [0.2 | confidence_factors], else: confidence_factors
 
-    total_confidence = Enum.sum(confidence_factors)
+    final_confidence_factors =
+      if kills > 5, do: [0.2 | standings_confidence_factors], else: standings_confidence_factors
+
+    total_confidence = Enum.sum(final_confidence_factors)
     min(1.0, total_confidence)
   end
 
   defp assess_data_quality(character_stats, recent_activity) do
-    quality_score = 0
+    base_quality_score = 0
 
     # Character stats availability
-    quality_score = if character_stats, do: quality_score + 30, else: quality_score
+    stats_quality_score =
+      if character_stats, do: base_quality_score + 30, else: base_quality_score
 
     # Recent activity data
-    quality_score = if recent_activity.recent_kills > 0, do: quality_score + 25, else: quality_score
-    quality_score = if recent_activity.recent_losses >= 0, do: quality_score + 15, else: quality_score
+    kills_quality_score =
+      if recent_activity.recent_kills > 0, do: stats_quality_score + 25, else: stats_quality_score
+
+    losses_quality_score =
+      if recent_activity.recent_losses >= 0,
+        do: kills_quality_score + 15,
+        else: kills_quality_score
 
     # Data completeness
-    quality_score = if recent_activity.avg_kill_value, do: quality_score + 15, else: quality_score
-    quality_score = if recent_activity.last_kill, do: quality_score + 15, else: quality_score
+    value_quality_score =
+      if recent_activity.avg_kill_value, do: losses_quality_score + 15, else: losses_quality_score
 
-    case quality_score do
+    final_quality_score =
+      if recent_activity.last_kill, do: value_quality_score + 15, else: value_quality_score
+
+    case final_quality_score do
       score when score >= 80 -> :excellent
       score when score >= 60 -> :good
       score when score >= 40 -> :fair
@@ -680,7 +774,9 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
     else
       threat_levels = Enum.map(pilot_analyses, fn {_id, analysis} -> analysis.threat_level end)
       threat_scores = Enum.map(pilot_analyses, fn {_id, analysis} -> analysis.threat_score end)
-      bait_probabilities = Enum.map(pilot_analyses, fn {_id, analysis} -> analysis.bait_probability end)
+
+      bait_probabilities =
+        Enum.map(pilot_analyses, fn {_id, analysis} -> analysis.bait_probability end)
 
       %{
         total_pilots: total_pilots,
@@ -694,9 +790,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
   end
 
   defp calculate_threat_distribution(pilot_analyses) do
-    pilot_analyses
-    |> Enum.map(fn {_id, analysis} -> analysis.threat_level end)
-    |> Enum.frequencies()
+    Enum.frequencies(Enum.map(pilot_analyses, fn {_id, analysis} -> analysis.threat_level end))
   end
 
   defp determine_dominant_threat_level(pilot_analyses) do
@@ -714,16 +808,19 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
     if map_size(pilot_analyses) == 0 do
       %{risk_level: :unknown, average_bait_probability: 0, high_bait_pilots: 0}
     else
-      bait_probabilities = Enum.map(pilot_analyses, fn {_id, analysis} -> analysis.bait_probability end)
+      bait_probabilities =
+        Enum.map(pilot_analyses, fn {_id, analysis} -> analysis.bait_probability end)
+
       avg_bait = Enum.sum(bait_probabilities) / length(bait_probabilities)
       high_bait_count = Enum.count(bait_probabilities, &(&1 >= @high_bait_threshold))
 
-      risk_level = cond do
-        avg_bait >= @high_bait_threshold or high_bait_count > 2 -> :high
-        avg_bait >= @moderate_bait_threshold or high_bait_count > 0 -> :moderate
-        avg_bait >= @low_bait_threshold -> :low
-        true -> :minimal
-      end
+      risk_level =
+        cond do
+          avg_bait >= @high_bait_threshold or high_bait_count > 2 -> :high
+          avg_bait >= @moderate_bait_threshold or high_bait_count > 0 -> :moderate
+          avg_bait >= @low_bait_threshold -> :low
+          true -> :minimal
+        end
 
       %{
         risk_level: risk_level,
@@ -738,10 +835,9 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
       %{coordination_detected: false, coordination_score: 0}
     else
       high_associate_pilots =
-        pilot_analyses
-        |> Enum.count(fn {_id, analysis} -> analysis.known_associates_count > 10 end)
+        Enum.count(pilot_analyses, fn {_id, analysis} -> analysis.known_associates_count > 10 end)
 
-      coordination_score = (high_associate_pilots / map_size(pilot_analyses)) * 100
+      coordination_score = high_associate_pilots / map_size(pilot_analyses) * 100
 
       %{
         coordination_detected: coordination_score > 50,
@@ -756,7 +852,9 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
       :insufficient_data
     else
       threat_scores = Enum.map(pilot_analyses, fn {_id, analysis} -> analysis.threat_score end)
-      bait_probabilities = Enum.map(pilot_analyses, fn {_id, analysis} -> analysis.bait_probability end)
+
+      bait_probabilities =
+        Enum.map(pilot_analyses, fn {_id, analysis} -> analysis.bait_probability end)
 
       avg_threat = Enum.sum(threat_scores) / length(threat_scores)
       avg_bait = Enum.sum(bait_probabilities) / length(bait_probabilities)
@@ -780,43 +878,45 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
       avg_threat = Enum.sum(threat_scores) / length(threat_scores)
 
       # Apply multiplier for multiple threats
-      multiplier = case map_size(pilot_analyses) do
-        1 -> 1.0
-        2 -> 1.2
-        3 -> 1.4
-        count when count >= 4 -> 1.6
-      end
+      multiplier =
+        case map_size(pilot_analyses) do
+          1 -> 1.0
+          2 -> 1.2
+          3 -> 1.4
+          count when count >= 4 -> 1.6
+        end
 
       system_score = avg_threat * multiplier
       clamp_score(system_score)
     end
   end
 
-  defp update_single_inhabitant_threat(inhabitant_id, base_data, opts) do
-    try do
-      # This would update threat data for a specific inhabitant
-      # Implementation depends on how inhabitants are stored and managed
-      case ThreatDataProvider.get_inhabitant_details(inhabitant_id) do
-        {:ok, inhabitant} ->
-          case analyze(inhabitant.character_id, base_data,
-                      corporation_id: inhabitant.corporation_id,
-                      alliance_id: inhabitant.alliance_id) do
-            {:ok, analysis} ->
-              # Update inhabitant record with new threat data
-              ThreatDataProvider.update_inhabitant_threat(inhabitant_id, %{
-                threat_level: analysis.threat_level,
-                threat_score: analysis.threat_score,
-                bait_probability: analysis.bait_probability,
-                last_threat_update: DateTime.utc_now()
-              })
+  defp update_single_inhabitant_threat(inhabitant_id, base_data, _opts) do
+    # This would update threat data for a specific inhabitant
+    # Implementation depends on how inhabitants are stored and managed
+    case ThreatDataProvider.get_inhabitant_details(inhabitant_id) do
+      {:ok, inhabitant} ->
+        case analyze(inhabitant.character_id, base_data,
+               corporation_id: inhabitant.corporation_id,
+               alliance_id: inhabitant.alliance_id
+             ) do
+          {:ok, analysis} ->
+            # Update inhabitant record with new threat data
+            ThreatDataProvider.update_inhabitant_threat(inhabitant_id, %{
+              threat_level: analysis.threat_level,
+              threat_score: analysis.threat_score,
+              bait_probability: analysis.bait_probability,
+              last_threat_update: DateTime.utc_now()
+            })
 
-            {:error, reason} -> {:error, reason}
-          end
+          {:error, reason} ->
+            {:error, reason}
+        end
 
-        {:error, reason} -> {:error, reason}
-      end
-    rescue
-      exception -> {:error, "Update failed: #{inspect(exception)}"}
+      {:error, reason} ->
+        {:error, reason}
     end
+  rescue
+    exception -> {:error, "Update failed: #{inspect(exception)}"}
   end
 end

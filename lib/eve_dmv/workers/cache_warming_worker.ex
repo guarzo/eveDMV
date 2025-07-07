@@ -15,10 +15,11 @@ defmodule EveDmv.Workers.CacheWarmingWorker do
   """
 
   use GenServer
-  require Logger
 
   alias EveDmv.Cache
   alias EveDmv.Database.CacheWarmer
+
+  require Logger
 
   # Configuration
   # 15 minutes
@@ -364,7 +365,7 @@ defmodule EveDmv.Workers.CacheWarmingWorker do
     :ok
   end
 
-  defp warm_full_cache_data(batch_size) do
+  defp warm_full_cache_data(_batch_size) do
     Logger.info("Starting full cache warming cycle")
 
     # Delegate to CacheWarmer for comprehensive warming

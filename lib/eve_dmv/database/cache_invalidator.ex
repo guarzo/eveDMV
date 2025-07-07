@@ -7,11 +7,12 @@ defmodule EveDmv.Database.CacheInvalidator do
   """
 
   use GenServer
-  require Logger
 
-  alias EveDmv.Database.QueryCache
   alias EveDmv.Database.CacheWarmer
+  alias EveDmv.Database.QueryCache
   alias Phoenix.PubSub
+
+  require Logger
 
   @pubsub_topic "cache_invalidation"
   @invalidation_patterns %{

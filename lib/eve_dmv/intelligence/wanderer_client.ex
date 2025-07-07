@@ -9,15 +9,6 @@ defmodule EveDmv.Intelligence.WandererClient do
   use GenServer
   require Logger
 
-  # Get base URL at runtime for better configuration flexibility
-  defp base_url do
-    Application.get_env(:eve_dmv, :wanderer_base_url, "http://host.docker.internal:4004")
-  end
-
-  @api_timeout 30_000
-  @max_retries 3
-  @retry_delay 5_000
-
   defstruct [
     :auth_token,
     :websocket_pid,
@@ -25,6 +16,15 @@ defmodule EveDmv.Intelligence.WandererClient do
     :rate_limiter,
     :connection_state
   ]
+
+  @api_timeout 30_000
+  @max_retries 3
+  @retry_delay 5_000
+
+  # Get base URL at runtime for better configuration flexibility
+  defp base_url do
+    Application.get_env(:eve_dmv, :wanderer_base_url, "http://host.docker.internal:4004")
+  end
 
   # Public API
 

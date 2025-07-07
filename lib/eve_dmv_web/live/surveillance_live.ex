@@ -7,14 +7,13 @@ defmodule EveDmvWeb.SurveillanceLive do
   """
 
   use EveDmvWeb, :live_view
+
   alias EveDmv.Surveillance.MatchingEngine
-  alias EveDmvWeb.SurveillanceLive.{
-    Components,
-    ProfileService,
-    NotificationService,
-    BatchOperationService,
-    ExportImportService
-  }
+  alias EveDmvWeb.SurveillanceLive.BatchOperationService
+  alias EveDmvWeb.SurveillanceLive.Components
+  alias EveDmvWeb.SurveillanceLive.ExportImportService
+  alias EveDmvWeb.SurveillanceLive.NotificationService
+  alias EveDmvWeb.SurveillanceLive.ProfileService
 
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
@@ -81,7 +80,7 @@ defmodule EveDmvWeb.SurveillanceLive do
       matched_at: DateTime.utc_now()
     }
 
-    updated_matches = [new_match | socket.assigns.recent_matches] |> Enum.take(50)
+    updated_matches = Enum.take([new_match | socket.assigns.recent_matches], 50)
 
     # Show temporary notification
     socket =
@@ -102,7 +101,7 @@ defmodule EveDmvWeb.SurveillanceLive do
         socket
       ) do
     # New persistent notification - update notifications list and count
-    updated_notifications = [payload.notification | socket.assigns.notifications] |> Enum.take(50)
+    updated_notifications = Enum.take([payload.notification | socket.assigns.notifications], 50)
     unread_count = NotificationService.get_unread_count(socket.assigns.user_id)
 
     socket =
@@ -313,7 +312,8 @@ defmodule EveDmvWeb.SurveillanceLive do
   def handle_event("batch_delete", _params, socket) do
     selected_ids = MapSet.to_list(socket.assigns.selected_profiles)
 
-    results = BatchOperationService.batch_delete_profiles(selected_ids, socket.assigns.current_user)
+    results =
+      BatchOperationService.batch_delete_profiles(selected_ids, socket.assigns.current_user)
 
     # Reload user profiles
     profiles =
@@ -334,7 +334,8 @@ defmodule EveDmvWeb.SurveillanceLive do
   def handle_event("batch_enable", _params, socket) do
     selected_ids = MapSet.to_list(socket.assigns.selected_profiles)
 
-    results = BatchOperationService.batch_enable_profiles(selected_ids, socket.assigns.current_user)
+    results =
+      BatchOperationService.batch_enable_profiles(selected_ids, socket.assigns.current_user)
 
     # Reload user profiles
     profiles =
@@ -355,7 +356,8 @@ defmodule EveDmvWeb.SurveillanceLive do
   def handle_event("batch_disable", _params, socket) do
     selected_ids = MapSet.to_list(socket.assigns.selected_profiles)
 
-    results = BatchOperationService.batch_disable_profiles(selected_ids, socket.assigns.current_user)
+    results =
+      BatchOperationService.batch_disable_profiles(selected_ids, socket.assigns.current_user)
 
     # Reload user profiles
     profiles =
@@ -381,7 +383,9 @@ defmodule EveDmvWeb.SurveillanceLive do
         Enum.map(socket.assigns.profiles, & &1.id)
       end
 
-    export_data = ExportImportService.export_profiles_json(selected_ids, socket.assigns.current_user)
+    export_data =
+      ExportImportService.export_profiles_json(selected_ids, socket.assigns.current_user)
+
     download_event = ExportImportService.prepare_download_event(export_data)
 
     socket =

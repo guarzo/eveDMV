@@ -3,11 +3,11 @@ defmodule Mix.Tasks.Eve.AnalyzePerformance do
   Mix task to analyze database performance and provide optimization recommendations.
   """
 
+  @shortdoc "Analyze database performance and provide optimization recommendations"
+
   use Mix.Task
 
   alias EveDmv.Database.PerformanceOptimizer
-
-  @shortdoc "Analyze database performance and provide optimization recommendations"
 
   @impl Mix.Task
   def run(_args) do

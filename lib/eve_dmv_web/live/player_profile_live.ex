@@ -8,13 +8,17 @@ defmodule EveDmvWeb.PlayerProfileLive do
 
   use EveDmvWeb, :live_view
 
-  require Logger
-
+  alias EveDmv.Analytics.AnalyticsEngine
+  alias EveDmv.Analytics.PlayerStats
   alias EveDmv.Api
-  alias EveDmv.Analytics.{AnalyticsEngine, PlayerStats}
   alias EveDmv.Intelligence.CharacterStats
-  alias EveDmv.PlayerProfile.{DataLoader, StatsGenerator}
-  alias EveDmvWeb.{CharacterInfoComponent, NoDataComponent, PlayerStatsComponent}
+  alias EveDmv.PlayerProfile.DataLoader
+  alias EveDmv.PlayerProfile.StatsGenerator
+  alias EveDmvWeb.CharacterInfoComponent
+  alias EveDmvWeb.NoDataComponent
+  alias EveDmvWeb.PlayerStatsComponent
+
+  require Logger
 
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})

@@ -6,10 +6,18 @@ defmodule EveDmv.Killmails.DataProcessor do
   between pipeline stages and provide a single point of data processing.
   """
 
+  alias EveDmv.Eve.NameResolver
+  alias EveDmv.Killmails.KillmailDataTransformer
+  alias EveDmv.Killmails.ParticipantBuilder
+
   require Logger
 
-  alias EveDmv.Eve.NameResolver
-  alias EveDmv.Killmails.{KillmailDataTransformer, ParticipantBuilder}
+  @typep processed_data :: %{
+           raw_changeset: map(),
+           enriched_changeset: map(),
+           participants: list(),
+           original_data: map()
+         }
 
   @doc """
   Process enriched killmail data into all required formats in a single pass.
@@ -19,21 +27,19 @@ defmodule EveDmv.Killmails.DataProcessor do
   """
   @spec process_killmail(map()) :: {:ok, processed_data()} | {:error, term()}
   def process_killmail(enriched_data) when is_map(enriched_data) do
-    try do
-      # Single pass through the data to create all required formats
-      processed = %{
-        raw_changeset: KillmailDataTransformer.build_raw_changeset(enriched_data),
-        enriched_changeset: KillmailDataTransformer.build_enriched_changeset(enriched_data),
-        participants: ParticipantBuilder.build_participants(enriched_data),
-        original_data: enriched_data
-      }
+    # Single pass through the data to create all required formats
+    processed = %{
+      raw_changeset: KillmailDataTransformer.build_raw_changeset(enriched_data),
+      enriched_changeset: KillmailDataTransformer.build_enriched_changeset(enriched_data),
+      participants: ParticipantBuilder.build_participants(enriched_data),
+      original_data: enriched_data
+    }
 
-      {:ok, processed}
-    rescue
-      error ->
-        Logger.error("Failed to process killmail data: #{inspect(error)}")
-        {:error, error}
-    end
+    {:ok, processed}
+  rescue
+    error ->
+      Logger.error("Failed to process killmail data: #{inspect(error)}")
+      {:error, error}
   end
 
   @doc """
@@ -107,11 +113,4 @@ defmodule EveDmv.Killmails.DataProcessor do
 
     {victim_name, system_name}
   end
-
-  @typep processed_data :: %{
-           raw_changeset: map(),
-           enriched_changeset: map(),
-           participants: list(),
-           original_data: map()
-         }
 end

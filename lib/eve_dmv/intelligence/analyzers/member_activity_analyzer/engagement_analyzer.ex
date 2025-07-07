@@ -192,7 +192,6 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.EngagementAnalyze
     end
   end
 
-
   defp create_engagement_distribution(grouped_members) do
     %{
       highly_engaged: length(Map.get(grouped_members, :highly_engaged, [])),

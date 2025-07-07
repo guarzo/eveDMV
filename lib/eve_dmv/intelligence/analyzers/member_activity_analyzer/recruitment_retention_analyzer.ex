@@ -6,9 +6,10 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.RecruitmentRetent
   recommendations for improving member retention and recruitment strategies.
   """
 
-  require Logger
   alias EveDmv.Intelligence.Analyzers.MemberRiskAssessment
-  alias EveDmv.Intelligence.Generators.{RecommendationGenerator, RecruitmentInsightGenerator}
+  alias EveDmv.Intelligence.Generators.RecommendationGenerator
+  alias EveDmv.Intelligence.Generators.RecruitmentInsightGenerator
+  require Logger
 
   @doc """
   Identify members at risk of leaving the corporation.
@@ -18,8 +19,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.RecruitmentRetent
   """
   def identify_retention_risks(member_data) when is_list(member_data) do
     at_risk_members =
-      member_data
-      |> Enum.map(fn member ->
+      Enum.map(member_data, fn member ->
         risk_score = calculate_retention_risk_score(member)
         risk_factors = identify_risk_factors(member)
 
@@ -34,6 +34,9 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.RecruitmentRetent
           recommended_actions: generate_retention_actions(risk_score, risk_factors)
         }
       end)
+
+    _high_risk_members =
+      at_risk_members
       |> Enum.filter(&(&1.risk_score > 30))
       |> Enum.sort_by(& &1.risk_score, :desc)
 
@@ -107,25 +110,42 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.RecruitmentRetent
   end
 
   defp identify_risk_factors(member) do
-    factors = []
-
     days_inactive = calculate_days_inactive(member)
     engagement_score = Map.get(member, :engagement_score, 0)
 
-    factors = if days_inactive > 14, do: [:prolonged_inactivity | factors], else: factors
-    factors = if days_inactive > 7, do: [:recent_inactivity | factors], else: factors
-    factors = if engagement_score < 30, do: [:low_engagement | factors], else: factors
+    base_factors = []
+
+    inactivity_factors =
+      if days_inactive > 14, do: [:prolonged_inactivity | base_factors], else: base_factors
+
+    recent_factors =
+      if days_inactive > 7,
+        do: [:recent_inactivity | inactivity_factors],
+        else: inactivity_factors
+
+    engagement_factors =
+      if engagement_score < 30, do: [:low_engagement | recent_factors], else: recent_factors
 
     activity_trend = Map.get(member, :activity_trend, :stable)
-    factors = if activity_trend == :decreasing, do: [:declining_activity | factors], else: factors
+
+    trend_factors =
+      if activity_trend == :decreasing,
+        do: [:declining_activity | engagement_factors],
+        else: engagement_factors
 
     fleet_participation = Map.get(member, :fleet_participations, 0)
-    factors = if fleet_participation == 0, do: [:no_fleet_participation | factors], else: factors
+
+    fleet_factors =
+      if fleet_participation == 0,
+        do: [:no_fleet_participation | trend_factors],
+        else: trend_factors
 
     communication_score = Map.get(member, :communication_score, 0)
-    factors = if communication_score < 10, do: [:low_communication | factors], else: factors
 
-    Enum.reverse(factors)
+    final_factors =
+      if communication_score < 10, do: [:low_communication | fleet_factors], else: fleet_factors
+
+    Enum.reverse(final_factors)
   end
 
   defp classify_risk_level(risk_score) do
@@ -185,54 +205,52 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.RecruitmentRetent
   end
 
   defp generate_retention_actions(risk_score, risk_factors) do
-    actions = []
-
-    actions =
+    base_actions =
       if risk_score >= 80 do
-        ["Immediate leadership intervention required" | actions]
+        ["Immediate leadership intervention required"]
       else
-        actions
+        []
       end
 
-    actions =
+    inactivity_actions =
       if :prolonged_inactivity in risk_factors do
-        ["Schedule one-on-one check-in" | actions]
+        ["Schedule one-on-one check-in" | base_actions]
       else
-        actions
+        base_actions
       end
 
-    actions =
+    engagement_actions =
       if :low_engagement in risk_factors do
-        ["Invite to specialized content or roles" | actions]
+        ["Invite to specialized content or roles" | inactivity_actions]
       else
-        actions
+        inactivity_actions
       end
 
-    actions =
+    fleet_actions =
       if :no_fleet_participation in risk_factors do
-        ["Personal fleet invitation from FC" | actions]
+        ["Personal fleet invitation from FC" | engagement_actions]
       else
-        actions
+        engagement_actions
       end
 
-    actions =
+    communication_actions =
       if :low_communication in risk_factors do
-        ["Reach out via preferred communication channel" | actions]
+        ["Reach out via preferred communication channel" | fleet_actions]
       else
-        actions
+        fleet_actions
       end
 
-    actions =
+    final_actions =
       if :declining_activity in risk_factors do
-        ["Discuss any concerns or burnout" | actions]
+        ["Discuss any concerns or burnout" | communication_actions]
       else
-        actions
+        communication_actions
       end
 
-    if actions == [] do
+    if final_actions == [] do
       ["Continue monitoring"]
     else
-      Enum.reverse(actions)
+      Enum.reverse(final_actions)
     end
   end
 

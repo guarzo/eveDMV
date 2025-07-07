@@ -35,22 +35,21 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager do
   ```
   """
 
+  @behaviour EveDmv.Intelligence.Analyzer
+
   use EveDmv.Intelligence.Analyzer
 
-
+  alias EveDmv.Intelligence.Analyzers.FleetAssetManager.AssetAvailability
   # Extracted modules
-  alias EveDmv.Intelligence.Analyzers.FleetAssetManager.{
-    AssetAvailability,
-    ShipCostCalculator,
-    RequirementsBuilder,
-    ReadinessAnalyzer,
-    AcquisitionPlanner
-  }
+  alias EveDmv.Intelligence.Analyzers.FleetAssetManager.AcquisitionPlanner
+  alias EveDmv.Intelligence.Analyzers.FleetAssetManager.ReadinessAnalyzer
+  alias EveDmv.Intelligence.Analyzers.FleetAssetManager.RequirementsBuilder
+  alias EveDmv.Intelligence.Analyzers.FleetAssetManager.ShipCostCalculator
 
-  @impl EveDmv.Intelligence.AnalyzerV2
+  @impl EveDmv.Intelligence.Analyzer
   def analysis_type, do: :fleet_asset_management
 
-  @impl EveDmv.Intelligence.AnalyzerV2
+  @impl EveDmv.Intelligence.Analyzer
   def analyze(_fleet_id, opts) do
     auth_token = Map.get(opts, :auth_token)
     composition = Map.get(opts, :composition)
@@ -61,7 +60,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager do
     end
   end
 
-  @impl EveDmv.Intelligence.AnalyzerV2
+  @impl EveDmv.Intelligence.Analyzer
   def validate_params(_fleet_id, opts) do
     if Map.has_key?(opts, :composition) do
       :ok
@@ -71,7 +70,6 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager do
   end
 
   # Custom error handling for asset management
-  @impl EveDmv.ErrorHandler
   def handle_error(error, _context) do
     case error.code do
       :esi_api_error ->

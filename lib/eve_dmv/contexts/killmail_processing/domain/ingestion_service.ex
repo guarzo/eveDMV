@@ -9,10 +9,11 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.IngestionService do
   - Publishing appropriate domain events
   """
 
-  require Logger
   alias EveDmv.Contexts.KillmailProcessing.Domain
   alias EveDmv.Contexts.KillmailProcessing.Infrastructure
   alias EveDmv.Result
+
+  require Logger
 
   @doc """
   Ingest a raw killmail through the complete processing pipeline.
@@ -127,8 +128,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.IngestionService do
 
     # Analyze results
     {successful, failed} =
-      results
-      |> Enum.split_with(fn
+      Enum.split_with(results, fn
         {:ok, {:ok, _}} -> true
         _ -> false
       end)
@@ -136,8 +136,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.IngestionService do
     successful_results = Enum.map(successful, fn {:ok, {:ok, result}} -> result end)
 
     failed_results =
-      failed
-      |> Enum.map(fn
+      Enum.map(failed, fn
         {:ok, {:error, reason}} -> {:error, reason}
         {:exit, reason} -> {:error, {:timeout, reason}}
       end)

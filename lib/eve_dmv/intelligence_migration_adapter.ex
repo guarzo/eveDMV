@@ -7,10 +7,9 @@ defmodule EveDmv.IntelligenceMigrationAdapter do
   context implementations.
   """
 
-  # alias EveDmv.Result
-  alias EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer
   alias EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer
   alias EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer
+  alias EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer
   alias EveDmv.Contexts.ThreatAssessment.Domain.ThreatAnalyzer
 
   require Logger
@@ -104,21 +103,19 @@ defmodule EveDmv.IntelligenceMigrationAdapter do
   end
 
   defp analyze_fleet(_fleet_id, _opts) do
-    try do
-      # Use Fleet Operations bounded context
-      case FleetAnalyzer.analyze_composition(%{participants: []}) do
-        {:ok, analysis} ->
-          legacy_result = transform_to_legacy_format(:fleet, analysis, [])
-          {:ok, legacy_result}
+    # Use Fleet Operations bounded context
+    case FleetAnalyzer.analyze_composition(%{participants: []}) do
+      {:ok, analysis} ->
+        legacy_result = transform_to_legacy_format(:fleet, analysis, [])
+        {:ok, legacy_result}
 
-        {:error, reason} ->
-          {:error, reason}
-      end
-    rescue
-      exception ->
-        Logger.error("Fleet analysis migration failed: #{inspect(exception)}")
-        {:error, {:analysis_failed, exception}}
+      {:error, reason} ->
+        {:error, reason}
     end
+  rescue
+    exception ->
+      Logger.error("Fleet analysis migration failed: #{inspect(exception)}")
+      {:error, {:analysis_failed, exception}}
   end
 
   defp analyze_threat(entity_id, opts) do

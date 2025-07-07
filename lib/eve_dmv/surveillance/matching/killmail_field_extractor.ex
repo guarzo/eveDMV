@@ -167,20 +167,26 @@ defmodule EveDmv.Surveillance.Matching.KillmailFieldExtractor do
   def extract_indexable_values(killmail) do
     %{
       systems:
-        [
-          killmail["solar_system_id"] || killmail["system_id"]
-        ]
-        |> Enum.filter(&(&1 != nil)),
+        Enum.filter(
+          [
+            killmail["solar_system_id"] || killmail["system_id"]
+          ],
+          &(&1 != nil)
+        ),
       ships:
-        [
-          get_in(killmail, ["victim", "ship_type_id"])
-        ]
-        |> Enum.filter(&(&1 != nil)),
+        Enum.filter(
+          [
+            get_in(killmail, ["victim", "ship_type_id"])
+          ],
+          &(&1 != nil)
+        ),
       isk_values:
-        [
-          get_value_field(killmail, ["total_value", ["zkb", "totalValue"]])
-        ]
-        |> Enum.filter(&(&1 != nil && &1 > 0)),
+        Enum.filter(
+          [
+            get_value_field(killmail, ["total_value", ["zkb", "totalValue"]])
+          ],
+          &(&1 != nil && &1 > 0)
+        ),
       tags:
         [
           get_array_fields(killmail, "module_tags"),

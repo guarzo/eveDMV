@@ -14,12 +14,10 @@ defmodule EveDmv.IntelligenceCase do
       import EveDmv.Factories
       import EveDmv.IntelligenceCase
 
-      alias EveDmv.Intelligence.{
-        CharacterAnalyzer,
-        HomeDefenseAnalyzer,
-        MemberActivityAnalyzer,
-        WHFleetAnalyzer
-      }
+      alias EveDmv.Intelligence.CharacterAnalyzer
+      alias EveDmv.Intelligence.HomeDefenseAnalyzer
+      alias EveDmv.Intelligence.MemberActivityAnalyzer
+      alias EveDmv.Intelligence.WHFleetAnalyzer
 
       alias EveDmv.Intelligence.Analyzers.WHVettingAnalyzer
     end

@@ -25,8 +25,9 @@ defmodule EveDmv.Killmails.KillmailProcessor do
       price_data = KillmailProcessor.calculate_price_values(killmail, source: "janice")
   """
 
-  require Logger
   alias EveDmv.Utils.ParsingUtils
+
+  require Logger
 
   @type killmail_data :: map()
   @type changeset_data :: map()
@@ -238,9 +239,7 @@ defmodule EveDmv.Killmails.KillmailProcessor do
     attackers = Map.get(raw_killmail, "attackers", [])
 
     normalized_attackers =
-      attackers
-      |> Enum.filter(&is_map/1)
-      |> Enum.map(&normalize_participant_data/1)
+      Enum.map(Enum.filter(attackers, &is_map/1), &normalize_participant_data/1)
 
     {:ok, normalized_attackers}
   end

@@ -6,9 +6,9 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.AssetAvailability do
   fallback placeholder data when authentication tokens are not available.
   """
 
-  require Logger
-
   alias EveDmv.Intelligence.Analyzers.AssetAnalyzer
+
+  require Logger
 
   @doc """
   Get asset availability for a fleet composition.

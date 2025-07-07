@@ -14,13 +14,11 @@ defmodule EveDmv.Eve.NameResolver do
   """
 
   # Extracted modules
-  alias EveDmv.Eve.NameResolver.{
-    CacheManager,
-    StaticDataResolver,
-    EsiEntityResolver,
-    BatchProcessor,
-    PerformanceOptimizer
-  }
+  alias EveDmv.Eve.NameResolver.BatchProcessor
+  alias EveDmv.Eve.NameResolver.CacheManager
+  alias EveDmv.Eve.NameResolver.EsiEntityResolver
+  alias EveDmv.Eve.NameResolver.PerformanceOptimizer
+  alias EveDmv.Eve.NameResolver.StaticDataResolver
 
   # ============================================================================
   # Public API - Cache Management

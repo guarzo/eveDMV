@@ -6,9 +6,9 @@ defmodule EveDmv.Surveillance.Matching.IndexManager do
   that enable efficient candidate profile lookup during killmail matching.
   """
 
-  require Logger
-
   alias EveDmv.Surveillance.Matching.KillmailFieldExtractor
+
+  require Logger
 
   # ETS table names
   @compiled_profiles :surveillance_compiled_profiles
@@ -118,7 +118,8 @@ defmodule EveDmv.Surveillance.Matching.IndexManager do
   Get all available profile IDs from the compiled profiles table.
   """
   def get_all_profile_ids do
-    :ets.tab2list(@compiled_profiles)
+    @compiled_profiles
+    |> :ets.tab2list()
     |> Enum.map(fn {profile_id, _fn, _name} -> profile_id end)
   end
 
@@ -207,7 +208,8 @@ defmodule EveDmv.Surveillance.Matching.IndexManager do
     current_time = System.monotonic_time(:microsecond)
 
     expired_keys =
-      :ets.tab2list(@match_cache)
+      @match_cache
+      |> :ets.tab2list()
       |> Enum.filter(fn {_key, _matches, expires_at} -> expires_at <= current_time end)
       |> Enum.map(fn {key, _matches, _expires_at} -> key end)
 

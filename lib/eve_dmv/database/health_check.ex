@@ -7,9 +7,10 @@ defmodule EveDmv.Database.HealthCheck do
   partitions, indexes, and overall system health.
   """
 
-  require Logger
   alias Ecto.Adapters.SQL
   alias EveDmv.Telemetry.PerformanceMonitor
+
+  require Logger
 
   @doc """
   Run all health checks and return a comprehensive health report.
@@ -200,11 +201,13 @@ defmodule EveDmv.Database.HealthCheck do
 
     # pool_info is a list of connection metrics, extract relevant data
     total_ready_connections =
-      Enum.map(pool_info, & &1.ready_conn_count)
+      pool_info
+      |> Enum.map(& &1.ready_conn_count)
       |> Enum.sum()
 
     total_queue_length =
-      Enum.map(pool_info, & &1.checkout_queue_length)
+      pool_info
+      |> Enum.map(& &1.checkout_queue_length)
       |> Enum.sum()
 
     # Get pool size from config since it's not in the metrics

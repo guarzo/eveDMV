@@ -6,9 +6,9 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
   and provides maintenance recommendations for optimal database performance.
   """
 
-  require Logger
-  alias EveDmv.Repo
   alias Ecto.Adapters.SQL
+  alias EveDmv.Repo
+  require Logger
 
   @doc """
   Analyzes statistics for a specific table.
@@ -211,13 +211,13 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
   Generates SQL commands for table maintenance.
   """
   def generate_maintenance_commands(table_name, issues) do
-    maintenance_commands = []
+    base_commands = []
 
     vacuum_commands =
       if "high_bloat" in issues do
-        ["VACUUM FULL #{table_name};" | maintenance_commands]
+        ["VACUUM FULL #{table_name};" | base_commands]
       else
-        maintenance_commands
+        base_commands
       end
 
     analyze_commands =
@@ -234,7 +234,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
         analyze_commands
       end
 
-    scan_optimization_commands =
+    final_commands =
       if "high_sequential_scans" in issues do
         [
           "-- Consider adding indexes to reduce sequential scans on #{table_name}"
@@ -244,7 +244,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
         index_commands
       end
 
-    scan_optimization_commands
+    final_commands
   end
 
   # Private helper functions
@@ -303,14 +303,14 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
   end
 
   defp generate_table_recommendations(seq_scan, idx_scan, dead_tuples, live_tuples, last_analyze) do
-    table_recommendations = []
+    base_recommendations = []
 
     # High sequential scan ratio
     scan_performance_recommendations =
       if seq_scan > 0 and idx_scan > 0 and seq_scan / (seq_scan + idx_scan) > 0.1 do
-        ["Table has high sequential scan ratio - consider adding indexes" | table_recommendations]
+        ["Table has high sequential scan ratio - consider adding indexes" | base_recommendations]
       else
-        table_recommendations
+        base_recommendations
       end
 
     # High bloat ratio
@@ -325,7 +325,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
       end
 
     # Stale statistics
-    statistics_maintenance_recommendations =
+    final_recommendations =
       if stale_statistics?(%{last_analyze: last_analyze}) do
         [
           "Table statistics are stale - run ANALYZE for better query planning"
@@ -335,7 +335,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
         bloat_management_recommendations
       end
 
-    statistics_maintenance_recommendations
+    final_recommendations
   end
 
   defp stale_statistics?(maintenance_info) do
@@ -456,55 +456,62 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
   end
 
   defp calculate_maintenance_priority(table) do
-    priority = 0
+    base_priority = 0
 
-    priority = priority + if table.bloat_ratio > 0.3, do: 30, else: 0
-    priority = priority + if stale_statistics?(table.maintenance_info), do: 20, else: 0
-    priority = priority + if table.usage_patterns.sequential_scan_ratio > 0.5, do: 25, else: 0
+    bloat_priority = base_priority + if table.bloat_ratio > 0.3, do: 30, else: 0
+
+    statistics_priority =
+      bloat_priority + if stale_statistics?(table.maintenance_info), do: 20, else: 0
+
+    scan_priority =
+      statistics_priority + if table.usage_patterns.sequential_scan_ratio > 0.5, do: 25, else: 0
+
     # Large table bonus
-    priority = priority + if table.live_tuples > 1_000_000, do: 15, else: 0
+    final_priority = scan_priority + if table.live_tuples > 1_000_000, do: 15, else: 0
 
-    priority
+    final_priority
   end
 
   defp identify_table_issues(table) do
-    issues = []
+    base_issues = []
 
-    issues = if table.bloat_ratio > 0.2, do: ["high_bloat" | issues], else: issues
+    bloat_issues = if table.bloat_ratio > 0.2, do: ["high_bloat" | base_issues], else: base_issues
 
-    issues =
+    statistics_issues =
       if stale_statistics?(table.maintenance_info),
-        do: ["stale_statistics" | issues],
-        else: issues
+        do: ["stale_statistics" | bloat_issues],
+        else: bloat_issues
 
-    issues =
+    scan_issues =
       if table.usage_patterns.sequential_scan_ratio > 0.3,
-        do: ["high_sequential_scans" | issues],
-        else: issues
+        do: ["high_sequential_scans" | statistics_issues],
+        else: statistics_issues
 
-    issues =
-      if table.column_stats == [], do: ["missing_column_stats" | issues], else: issues
+    final_issues =
+      if table.column_stats == [], do: ["missing_column_stats" | scan_issues], else: scan_issues
 
-    issues
+    final_issues
   end
 
   defp get_maintenance_actions(table) do
-    actions = []
+    base_actions = []
 
-    actions =
-      if table.bloat_ratio > 0.2, do: ["VACUUM #{table.table_name}" | actions], else: actions
+    vacuum_actions =
+      if table.bloat_ratio > 0.2,
+        do: ["VACUUM #{table.table_name}" | base_actions],
+        else: base_actions
 
-    actions =
+    analyze_actions =
       if stale_statistics?(table.maintenance_info),
-        do: ["ANALYZE #{table.table_name}" | actions],
-        else: actions
+        do: ["ANALYZE #{table.table_name}" | vacuum_actions],
+        else: vacuum_actions
 
-    actions =
+    final_actions =
       if table.usage_patterns.sequential_scan_ratio > 0.3,
-        do: ["Review indexing strategy" | actions],
-        else: actions
+        do: ["Review indexing strategy" | analyze_actions],
+        else: analyze_actions
 
-    actions
+    final_actions
   end
 
   defp calculate_index_usage_ratio(table) do
@@ -522,23 +529,23 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
   end
 
   defp generate_index_recommendations_for_table(table) do
-    recommendations = []
+    base_recommendations = []
 
-    recommendations =
+    scan_recommendations =
       if table.usage_patterns.sequential_scan_ratio > 0.3 do
-        ["Add indexes for frequently queried columns" | recommendations]
+        ["Add indexes for frequently queried columns" | base_recommendations]
       else
-        recommendations
+        base_recommendations
       end
 
-    recommendations =
+    final_recommendations =
       if table.usage_patterns.avg_tuples_per_seq_scan > 10_000 do
-        ["Large sequential scans detected - add selective indexes" | recommendations]
+        ["Large sequential scans detected - add selective indexes" | scan_recommendations]
       else
-        recommendations
+        scan_recommendations
       end
 
-    recommendations
+    final_recommendations
   end
 
   defp estimate_daily_growth(table) do
@@ -560,22 +567,22 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
   end
 
   defp generate_storage_recommendations(table, daily_growth) do
-    recommendations = []
+    base_recommendations = []
 
-    recommendations =
+    growth_recommendations =
       if daily_growth > 10_000 do
-        ["Consider partitioning strategy for high-growth table" | recommendations]
+        ["Consider partitioning strategy for high-growth table" | base_recommendations]
       else
-        recommendations
+        base_recommendations
       end
 
-    recommendations =
+    final_recommendations =
       if table.bloat_ratio > 0.1 and daily_growth > 1000 do
-        ["Schedule regular VACUUM to manage bloat in growing table" | recommendations]
+        ["Schedule regular VACUUM to manage bloat in growing table" | growth_recommendations]
       else
-        recommendations
+        growth_recommendations
       end
 
-    recommendations
+    final_recommendations
   end
 end

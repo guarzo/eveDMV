@@ -6,9 +6,9 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
   patterns, and provides recommendations for performance optimization.
   """
 
-  require Logger
-  alias EveDmv.Repo
   alias Ecto.Adapters.SQL
+  alias EveDmv.Repo
+  require Logger
 
   @slow_query_threshold_ms 1000
   @expensive_query_threshold_ms 5000
@@ -274,7 +274,10 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
 
   defp analyze_cache_performance(slow_queries) do
     if length(slow_queries) > 0 do
-      hit_ratios = Enum.map(slow_queries, & &1.cache_hit_percent) |> Enum.reject(&is_nil/1)
+      hit_ratios =
+        slow_queries
+        |> Enum.map(& &1.cache_hit_percent)
+        |> Enum.reject(&is_nil/1)
 
       %{
         avg_hit_ratio:
@@ -360,39 +363,39 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
   end
 
   defp generate_pattern_recommendations(patterns) do
-    recommendations = []
+    base_recommendations = []
 
-    recommendations =
+    join_recommendations =
       if patterns.join_heavy_queries > patterns.select_queries * 0.5 do
         [
           "High ratio of JOIN-heavy queries - review query design and indexing strategy"
-          | recommendations
+          | base_recommendations
         ]
       else
-        recommendations
+        base_recommendations
       end
 
-    recommendations =
+    aggregation_recommendations =
       if patterns.aggregation_queries > 5 do
         [
           "Multiple slow aggregation queries - consider summary tables or materialized views"
-          | recommendations
+          | join_recommendations
         ]
       else
-        recommendations
+        join_recommendations
       end
 
-    recommendations =
+    final_recommendations =
       if patterns.update_queries + patterns.delete_queries > patterns.select_queries * 0.3 do
         [
           "High ratio of slow write operations - review locking and indexing on modified tables"
-          | recommendations
+          | aggregation_recommendations
         ]
       else
-        recommendations
+        aggregation_recommendations
       end
 
-    recommendations
+    final_recommendations
   end
 
   defp calculate_performance_score(avg_mean, max_mean, query_count) do

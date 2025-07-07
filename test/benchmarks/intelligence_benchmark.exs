@@ -6,12 +6,10 @@ defmodule EveDmv.IntelligenceBenchmark do
 
   alias EveDmv.Api
 
-  alias EveDmv.Intelligence.{
-    CharacterAnalyzer,
-    HomeDefenseAnalyzer,
-    WHFleetAnalyzer,
-    WHVettingAnalyzer
-  }
+  alias EveDmv.Intelligence.CharacterAnalyzer
+  alias EveDmv.Intelligence.HomeDefenseAnalyzer
+  alias EveDmv.Intelligence.WHFleetAnalyzer
+  alias EveDmv.Intelligence.WHVettingAnalyzer
 
   alias EveDmv.Killmails.KillmailRaw
 

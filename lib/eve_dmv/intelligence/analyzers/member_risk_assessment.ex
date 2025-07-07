@@ -2,50 +2,19 @@ defmodule EveDmv.Intelligence.Analyzers.MemberRiskAssessment do
   @moduledoc """
   Member risk assessment analyzer for EVE DMV intelligence system.
 
-  This module provides comprehensive risk evaluation capabilities for corporation members,
-  focusing on retention risk evaluation, activity-based risk scoring, and early warning
-  systems for member disengagement.
+  Provides comprehensive risk evaluation for corporation members focusing on
+  retention risk, activity-based scoring, and early warning systems.
 
-  ## Key Features
+  Risk scores (0-100) are calculated using weighted factors:
+  - Inactivity duration (40%), activity decline (30%), participation (20%), communication (10%)
 
-  - **Retention Risk Evaluation**: Identifies members at risk of leaving the corporation
-  - **Activity-Based Risk Scoring**: Calculates risk scores based on member activity patterns
-  - **Warning Indicator Identification**: Detects early warning signs of member disengagement
-  - **Risk Classification**: Categorizes members into different risk levels (high, medium, low)
-  - **Early Warning Systems**: Provides proactive alerts for member retention issues
-
-  ## Risk Assessment Process
-
-  The risk assessment process evaluates multiple factors:
-
-  1. **Activity Patterns**: Recent activity levels and trends
-  2. **Engagement Metrics**: Fleet participation and communication patterns
-  3. **Behavioral Indicators**: Changes in activity frequency and intensity
-  4. **Temporal Factors**: Time since last activity and join date
-  5. **Comparative Analysis**: Performance relative to corp peers
-
-  ## Risk Scoring Algorithm
-
-  Risk scores are calculated using weighted factors:
-  - Inactivity duration (40% weight)
-  - Activity decline rate (30% weight)
-  - Participation levels (20% weight)
-  - Communication patterns (10% weight)
-
-  Scores range from 0-100, with higher scores indicating higher risk.
-
-  ## Integration Points
-
-  This module integrates with:
-  - `MemberActivityAnalyzer` for activity data
-  - `MemberActivityMetrics` for metric calculations
-  - `MemberParticipationAnalyzer` for participation data
-  - `EngagementCalculator` for engagement scoring
+  See individual function documentation for detailed usage examples.
   """
 
-  require Logger
-  alias EveDmv.Utils.TimeUtils
   alias EveDmv.Intelligence.Metrics.MemberActivityMetrics
+  alias EveDmv.Utils.TimeUtils
+
+  require Logger
 
   @doc """
   Assess comprehensive member risks including burnout and disengagement.
@@ -110,47 +79,8 @@ defmodule EveDmv.Intelligence.Analyzers.MemberRiskAssessment do
   @doc """
   Identify members at risk of leaving or becoming inactive.
 
-  Analyzes a list of member data to categorize members by retention risk level
-  and identify specific risk factors affecting the corporation.
-
-  ## Parameters
-
-  - `member_data`: List of member data maps containing activity and engagement metrics
-
-  ## Returns
-
-  Map containing risk categorization and analysis:
-
-  ```elixir
-  %{
-    high_risk_members: [member_summary],
-    medium_risk_members: [member_summary],
-    stable_members: [member_summary],
-    risk_factors: %{risk_category => count},
-    total_members_analyzed: integer
-  }
-  ```
-
-  ## Risk Categorization
-
-  - **High Risk (70-100)**: Immediate attention required
-  - **Medium Risk (40-69)**: Monitor closely
-  - **Stable (0-39)**: Low retention risk
-
-  ## Examples
-
-      iex> member_data = [
-      ...>   %{character_id: 1, engagement_trend: :decreasing, killmail_count: 2},
-      ...>   %{character_id: 2, engagement_trend: :stable, killmail_count: 15}
-      ...> ]
-      iex> identify_retention_risks(member_data)
-      %{
-        high_risk_members: [%{character_id: 1, risk_score: 60}],
-        medium_risk_members: [],
-        stable_members: [%{character_id: 2, risk_score: 20}],
-        risk_factors: %{"high_risk" => 1, "stable" => 1},
-        total_members_analyzed: 2
-      }
+  Categorizes members by retention risk: high (70-100), medium (40-69), stable (0-39).
+  Returns map with categorized members, risk factors, and total count.
   """
   def identify_retention_risks(member_data) when is_list(member_data) do
     if Enum.empty?(member_data) do
@@ -204,51 +134,51 @@ defmodule EveDmv.Intelligence.Analyzers.MemberRiskAssessment do
       ["Low overall activity", "Declining activity trend", "No fleet participation"]
   """
   def identify_warning_indicators(activity_data, participation_data) do
-    indicators = []
+    base_indicators = []
 
     # Activity-based indicators
-    indicators =
+    activity_indicators =
       case Map.get(activity_data, :total_kills, 0) + Map.get(activity_data, :total_losses, 0) do
-        total when total < 3 -> ["Low overall activity" | indicators]
-        _ -> indicators
+        total when total < 3 -> ["Low overall activity" | base_indicators]
+        _ -> base_indicators
       end
 
     # Trend-based indicators
-    indicators =
+    trend_indicators =
       case Map.get(activity_data, :activity_trend) do
-        :decreasing -> ["Declining activity trend" | indicators]
-        :volatile -> ["Inconsistent activity pattern" | indicators]
-        _ -> indicators
+        :decreasing -> ["Declining activity trend" | activity_indicators]
+        :volatile -> ["Inconsistent activity pattern" | activity_indicators]
+        _ -> activity_indicators
       end
 
     # Participation-based indicators
-    indicators =
+    participation_indicators =
       case Map.get(participation_data, :fleet_count, 0) do
-        0 -> ["No fleet participation" | indicators]
-        count when count < 2 -> ["Low fleet participation" | indicators]
-        _ -> indicators
+        0 -> ["No fleet participation" | trend_indicators]
+        count when count < 2 -> ["Low fleet participation" | trend_indicators]
+        _ -> trend_indicators
       end
 
     # Solo activity dominance
     solo_count = Map.get(participation_data, :solo_count, 0)
     fleet_count = Map.get(participation_data, :fleet_count, 0)
 
-    indicators =
+    solo_indicators =
       if solo_count > 0 and fleet_count == 0 do
-        ["Exclusively solo activity" | indicators]
+        ["Exclusively solo activity" | participation_indicators]
       else
-        indicators
+        participation_indicators
       end
 
     # Communication indicators
-    indicators =
+    final_indicators =
       case Map.get(participation_data, :communication_score, 50) do
-        score when score < 20 -> ["Very low communication" | indicators]
-        score when score < 40 -> ["Low communication engagement" | indicators]
-        _ -> indicators
+        score when score < 20 -> ["Very low communication" | solo_indicators]
+        score when score < 40 -> ["Low communication engagement" | solo_indicators]
+        _ -> solo_indicators
       end
 
-    Enum.reverse(indicators)
+    Enum.reverse(final_indicators)
   end
 
   @doc """

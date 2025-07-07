@@ -12,14 +12,12 @@ defmodule EveDmv.Market.PriceService do
   All prices are cached to reduce API calls.
   """
 
-  require Logger
+  alias EveDmv.Market.Strategies.BasePriceStrategy
+  alias EveDmv.Market.Strategies.EsiStrategy
+  alias EveDmv.Market.Strategies.JaniceStrategy
+  alias EveDmv.Market.Strategies.MutamarketStrategy
 
-  alias EveDmv.Market.Strategies.{
-    BasePriceStrategy,
-    EsiStrategy,
-    JaniceStrategy,
-    MutamarketStrategy
-  }
+  require Logger
 
   # @default_market_hub "jita"  # Reserved for future use
 
@@ -194,8 +192,7 @@ defmodule EveDmv.Market.PriceService do
         {0.0, 0.0}
 
       items ->
-        items
-        |> Enum.reduce({0.0, 0.0}, fn item, {destroyed, dropped} ->
+        Enum.reduce(items, {0.0, 0.0}, fn item, {destroyed, dropped} ->
           quantity = item["quantity_destroyed"] || 0
           dropped_qty = item["quantity_dropped"] || 0
           unit_price = get_item_price_from_data(prices, item["item_type_id"])

@@ -59,21 +59,21 @@
           icon="👥" 
           label="Total Members" 
           value={format_number(@alliance_stats.total_members)}
-          description="Avg: #{format_number(@alliance_stats.avg_activity_per_member)}/member"
+          subtitle="Avg: #{format_number(@alliance_stats.avg_activity_per_member)}/member"
         />
         <:stat 
           icon="🎯" 
           label="Total Kills" 
           value={format_number(@alliance_stats.total_kills)}
           color="text-green-400"
-          description="K/D: #{@alliance_stats.kill_death_ratio}"
+          subtitle="K/D: #{@alliance_stats.kill_death_ratio}"
         />
         <:stat 
           icon="💀" 
           label="Total Losses" 
           value={format_number(@alliance_stats.total_losses)}
           color="text-red-400"
-          description="Per Corp: #{format_number(@alliance_stats.avg_activity_per_corp)}"
+          subtitle="Per Corp: #{format_number(@alliance_stats.avg_activity_per_corp)}"
         />
         <:stat icon="📊" label="Total Activity" format="custom">
           <p class="text-2xl font-bold text-yellow-400">
@@ -175,8 +175,8 @@
             <% else %>
               <.empty_state 
                 icon="🚫"
-                message="No corporation data available"
-                description="Corporations will appear here once they generate killmail activity"
+                title="No corporation data available"
+                message="Corporations will appear here once they generate killmail activity"
               />
             <% end %>
           </div>
@@ -226,7 +226,7 @@
             <% else %>
               <.empty_state 
                 icon="📊"
-                message="No pilot data available"
+                title="No pilot data available"
               />
             <% end %>
           </div>
@@ -276,8 +276,8 @@
           <% else %>
             <.empty_state 
               icon="📭"
-              message="No recent activity"
-              description="Activity will appear here once members generate killmails"
+              title="No recent activity"
+              message="Activity will appear here once members generate killmails"
             />
           <% end %>
         </div>

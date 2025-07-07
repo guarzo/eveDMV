@@ -10,8 +10,13 @@ defmodule EveDmv.Intelligence.AnalysisScheduler do
   """
 
   use GenServer
-  require Logger
+  alias EveDmv.Intelligence.Analyzers.CorporationAnalyzer
+  alias EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer
+  alias EveDmv.Intelligence.Analyzers.ThreatAnalyzer
+  alias EveDmv.Intelligence.Analyzers.WhFleetAnalyzer
+  alias EveDmv.Intelligence.Analyzers.WHVettingAnalyzer
   alias EveDmv.Intelligence.Core.Config
+  require Logger
 
   # Default schedule check interval: 1 minute
   @schedule_check_interval_ms 60 * 1000
@@ -236,41 +241,39 @@ defmodule EveDmv.Intelligence.AnalysisScheduler do
   end
 
   defp execute_single_task(task) do
-    try do
-      analyzer_module = get_analyzer_module(task.analyzer_type)
+    analyzer_module = get_analyzer_module(task.analyzer_type)
 
-      case analyzer_module.analyze(task.entity_id, %{scheduled: true}) do
-        {:ok, _result} ->
-          Logger.debug(
-            "Scheduled #{task.analyzer_type} analysis completed for entity #{task.entity_id}"
-          )
-
-          :ok
-
-        {:error, reason} ->
-          Logger.warning(
-            "Scheduled #{task.analyzer_type} analysis failed for entity #{task.entity_id}: #{inspect(reason)}"
-          )
-
-          {:error, reason}
-      end
-    rescue
-      error ->
-        Logger.error(
-          "Scheduled analysis task crashed for entity #{task.entity_id}: #{inspect(error)}"
+    case analyzer_module.analyze(task.entity_id, %{scheduled: true}) do
+      {:ok, _result} ->
+        Logger.debug(
+          "Scheduled #{task.analyzer_type} analysis completed for entity #{task.entity_id}"
         )
 
-        {:error, error}
+        :ok
+
+      {:error, reason} ->
+        Logger.warning(
+          "Scheduled #{task.analyzer_type} analysis failed for entity #{task.entity_id}: #{inspect(reason)}"
+        )
+
+        {:error, reason}
     end
+  rescue
+    error ->
+      Logger.error(
+        "Scheduled analysis task crashed for entity #{task.entity_id}: #{inspect(error)}"
+      )
+
+      {:error, error}
   end
 
   defp get_analyzer_module(analyzer_type) do
     case analyzer_type do
-      :threat -> EveDmv.Intelligence.Analyzers.ThreatAnalyzer
-      :corporation -> EveDmv.Intelligence.Analyzers.CorporationAnalyzer
-      :vetting -> EveDmv.Intelligence.Analyzers.WHVettingAnalyzer
-      :member_activity -> EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer
-      :wh_fleet -> EveDmv.Intelligence.Analyzers.WhFleetAnalyzer
+      :threat -> ThreatAnalyzer
+      :corporation -> CorporationAnalyzer
+      :vetting -> WHVettingAnalyzer
+      :member_activity -> MemberActivityAnalyzer
+      :wh_fleet -> WhFleetAnalyzer
       _ -> raise "Unknown analyzer type: #{analyzer_type}"
     end
   end

@@ -18,6 +18,8 @@ defmodule EveDmv.Workers.RealtimeTaskSupervisor do
   - **Restart Strategy**: temporary (events are ephemeral)
   """
 
+  @behaviour DynamicSupervisor
+
   use DynamicSupervisor
   require Logger
 
@@ -35,8 +37,8 @@ defmodule EveDmv.Workers.RealtimeTaskSupervisor do
     DynamicSupervisor.start_link(__MODULE__, opts, name: name)
   end
 
-  @impl true
-  def init(opts) do
+  @impl DynamicSupervisor
+  def init(_opts) do
     Logger.info("Started Realtime Task Supervisor")
     DynamicSupervisor.init(strategy: :one_for_one, max_children: @max_concurrent)
   end
@@ -57,30 +59,31 @@ defmodule EveDmv.Workers.RealtimeTaskSupervisor do
     event_type = Keyword.get(opts, :event_type, :unknown)
 
     # Check capacity based on priority
-    with :ok <- check_capacity(supervisor, priority) do
-      task_spec = %{
-        id: make_ref(),
-        start:
-          {Task, :start_link,
-           [
-             fn ->
-               run_with_realtime_monitoring(fun, description, timeout, priority, event_type)
-             end
-           ]},
-        restart: :temporary,
-        type: :worker
-      }
+    case check_capacity(supervisor, priority) do
+      :ok ->
+        task_spec = %{
+          id: make_ref(),
+          start:
+            {Task, :start_link,
+             [
+               fn ->
+                 run_with_realtime_monitoring(fun, description, timeout, priority, event_type)
+               end
+             ]},
+          restart: :temporary,
+          type: :worker
+        }
 
-      case DynamicSupervisor.start_child(supervisor, task_spec) do
-        {:ok, pid} ->
-          track_realtime_task(pid, description, priority, event_type)
-          {:ok, pid}
+        case DynamicSupervisor.start_child(supervisor, task_spec) do
+          {:ok, pid} ->
+            track_realtime_task(pid, description, priority, event_type)
+            {:ok, pid}
 
-        {:error, reason} ->
-          Logger.warning("Failed to start realtime task '#{description}': #{inspect(reason)}")
-          {:error, reason}
-      end
-    else
+          {:error, reason} ->
+            Logger.warning("Failed to start realtime task '#{description}': #{inspect(reason)}")
+            {:error, reason}
+        end
+
       {:error, :capacity_exceeded} = error ->
         Logger.warning(
           "Realtime task capacity exceeded for '#{description}' (priority: #{priority})"
@@ -299,20 +302,18 @@ defmodule EveDmv.Workers.RealtimeTaskSupervisor do
   end
 
   defp get_task_priority(pid) do
-    try do
-      case Process.info(pid, :dictionary) do
-        {:dictionary, dict} ->
-          case Keyword.get(dict, :task_info) do
-            %{priority: priority} -> priority
-            _ -> :normal
-          end
+    case Process.info(pid, :dictionary) do
+      {:dictionary, dict} ->
+        case Keyword.get(dict, :task_info) do
+          %{priority: priority} -> priority
+          _ -> :normal
+        end
 
-        _ ->
-          :normal
-      end
-    rescue
-      _ -> :normal
+      _ ->
+        :normal
     end
+  rescue
+    _ -> :normal
   end
 
   defp analyze_running_tasks do

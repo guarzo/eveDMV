@@ -18,8 +18,12 @@ defmodule EveDmv.Contexts.WormholeOperations do
   use EveDmv.Contexts.BoundedContext, name: :wormhole_operations
   use Supervisor
 
-  alias EveDmv.Contexts.WormholeOperations.{Api, Domain, Infrastructure}
-  alias EveDmv.DomainEvents.{CharacterAnalyzed, ThreatDetected, FleetAnalysisComplete}
+  alias EveDmv.Contexts.WormholeOperations.Api
+  alias EveDmv.Contexts.WormholeOperations.Domain
+  alias EveDmv.Contexts.WormholeOperations.Infrastructure
+  alias EveDmv.DomainEvents.CharacterAnalyzed
+  alias EveDmv.DomainEvents.FleetAnalysisComplete
+  alias EveDmv.DomainEvents.ThreatDetected
 
   # Supervisor implementation
 

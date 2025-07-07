@@ -8,15 +8,16 @@ defmodule EveDmv.Intelligence.Core.Supervisor do
 
   use Supervisor
 
-  require Logger
+  alias EveDmv.Intelligence.AnalysisWorker
+  alias EveDmv.Intelligence.TaskRegistry
 
-  alias EveDmv.Intelligence.{AnalysisWorker, TaskRegistry}
+  require Logger
 
   def start_link(opts \\ []) do
     Supervisor.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  @impl true
+  @impl Supervisor
   def init(_opts) do
     children = [
       # Registry for tracking analysis tasks

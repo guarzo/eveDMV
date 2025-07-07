@@ -21,7 +21,7 @@ defmodule EveDmv.Intelligence.Wormhole.Vetting do
       index([:corporation_id])
       index([:overall_risk_score])
       index([:wh_experience_score])
-      index([:created_at])
+      index([:inserted_at])
 
       # GIN indexes for JSONB columns
       index([:j_space_activity], name: "wh_vetting_j_space_activity_gin_idx", using: "gin")
@@ -260,8 +260,7 @@ defmodule EveDmv.Intelligence.Wormhole.Vetting do
       ])
 
       change(fn changeset, _context ->
-        changeset
-        |> Ash.Changeset.change_attribute(:last_updated_at, DateTime.utc_now())
+        Ash.Changeset.change_attribute(changeset, :last_updated_at, DateTime.utc_now())
       end)
 
       validate(fn changeset, _context ->
@@ -295,8 +294,7 @@ defmodule EveDmv.Intelligence.Wormhole.Vetting do
       accept([:recruiter_notes])
 
       change(fn changeset, _context ->
-        changeset
-        |> Ash.Changeset.change_attribute(:last_updated_at, DateTime.utc_now())
+        Ash.Changeset.change_attribute(changeset, :last_updated_at, DateTime.utc_now())
       end)
     end
 

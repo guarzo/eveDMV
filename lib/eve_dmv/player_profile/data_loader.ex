@@ -7,9 +7,9 @@ defmodule EveDmv.PlayerProfile.DataLoader do
   handling and timeout management.
   """
 
-  require Logger
   alias EveDmv.Eve.EsiClient
   alias EveDmv.Killmails.HistoricalKillmailFetcher
+  require Logger
 
   @doc """
   Load complete character data including ESI info and historical killmails.

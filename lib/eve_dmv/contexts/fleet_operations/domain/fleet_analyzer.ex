@@ -8,9 +8,9 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
 
   use GenServer
   use EveDmv.ErrorHandler
-  alias EveDmv.Result
-  alias EveDmv.Contexts.FleetOperations.Infrastructure.{FleetRepository, EngagementCache}
-  alias EveDmv.DomainEvents.{FleetEngagement, FleetAnalysisComplete}
+  alias EveDmv.Contexts.FleetOperations.Infrastructure.EngagementCache
+  alias EveDmv.DomainEvents.FleetAnalysisComplete
+  # alias EveDmv.DomainEvents.FleetEngagement
   alias EveDmv.Infrastructure.EventBus
   alias EveDmv.Shared.ShipDatabaseService
 
@@ -101,7 +101,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
   # GenServer implementation
 
   @impl GenServer
-  def init(opts) do
+  def init(_opts) do
     state = %{
       analysis_cache: %{},
       metrics: %{
@@ -504,10 +504,14 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
 
     # Shannon diversity index adapted for fleet composition
     diversity =
-      -Enum.sum(Map.values(ship_counts), fn count ->
+      ship_counts
+      |> Map.values()
+      |> Enum.map(fn count ->
         proportion = count / total_ships
         proportion * :math.log(proportion)
       end)
+      |> Enum.sum()
+      |> then(&(-&1))
 
     # Normalize to 0-1 range
     max_diversity = :math.log(unique_classes)
@@ -548,7 +552,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
     ShipDatabaseService.calculate_fleet_mass(ships)
   end
 
-  defp determine_wormhole_compatibility(total_mass) do
+  defp determine_wormhole_compatibility(_total_mass) do
     # Check compatibility for standard wormhole classes
     wh_classes = ["C1", "C2", "C3", "C4", "C5", "C6"]
 
@@ -608,28 +612,28 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
 
   defp estimate_fleet_dps(participants) do
     # Rough DPS estimation based on ship classes
-    Enum.sum(participants, fn participant ->
-      case get_ship_class(participant.ship_type_id) do
-        :frigate -> 200
-        :destroyer -> 400
-        :cruiser -> 600
-        :battlecruiser -> 1000
-        :battleship -> 1500
-        :capital -> 8000
-      end
-    end)
+    Enum.sum(
+      Enum.map(participants, fn participant ->
+        case get_ship_class(participant.ship_type_id) do
+          :frigate -> 200
+          :destroyer -> 400
+          :cruiser -> 600
+          :battlecruiser -> 1000
+          :battleship -> 1500
+          :capital -> 8000
+        end
+      end)
+    )
   end
 
   defp categorize_participants(participants, killmails) do
     # Determine friendly vs hostile based on killmail analysis
     # This is simplified - in reality would use corporation/alliance info
 
-    victim_corps =
-      killmails
-      |> Enum.map(fn km -> km.victim.corporation_id end)
-      |> MapSet.new()
+    _victim_corps =
+      MapSet.new(Enum.map(killmails, fn km -> km.victim.corporation_id end))
 
-    attacker_corps =
+    _attacker_corps =
       killmails
       |> Enum.flat_map(fn km -> Enum.map(km.attackers, & &1.corporation_id) end)
       |> MapSet.new()
@@ -649,7 +653,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
     end)
   end
 
-  defp analyze_fleet_performance(participants, killmails, side) do
+  defp analyze_fleet_performance(participants, killmails, _side) do
     participant_ids = MapSet.new(participants, & &1.character_id)
 
     # Count kills and losses for this fleet
@@ -723,27 +727,28 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
     isk_score * isk_weight + kd_score * kd_weight + survival_score * survival_weight
   end
 
-  defp identify_engagement_factors(killmails, friendly_participants, hostile_participants) do
-    factors = []
+  defp identify_engagement_factors(_killmails, friendly_participants, hostile_participants) do
+    initial_factors = []
 
     # Numbers advantage
     friendly_count = length(friendly_participants)
     hostile_count = length(hostile_participants)
 
-    factors =
+    numbers_factors =
       if friendly_count > hostile_count * 1.5 do
         [
           %{type: :numbers_advantage, side: :friendly, ratio: friendly_count / hostile_count}
-          | factors
+          | initial_factors
         ]
       else
-        factors
+        initial_factors
       end
 
     # Ship class advantages
-    factors = analyze_ship_class_factors(factors, friendly_participants, hostile_participants)
+    final_factors =
+      analyze_ship_class_factors(numbers_factors, friendly_participants, hostile_participants)
 
-    factors
+    final_factors
   end
 
   defp analyze_ship_class_factors(factors, friendly_participants, hostile_participants) do
@@ -781,7 +786,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
       "ISK efficiency: #{friendly_performance.isk_efficiency}%."
   end
 
-  defp extract_lessons_learned(friendly_performance, hostile_performance) do
+  defp extract_lessons_learned(friendly_performance, _hostile_performance) do
     base_lessons = []
 
     # ISK efficiency lessons
@@ -839,23 +844,25 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
   end
 
   defp calculate_isk_for_side(killmails, participant_ids, side) do
-    Enum.sum(killmails, fn killmail ->
-      case side do
-        :destroyed ->
-          # ISK destroyed by this fleet
-          attackers_in_fleet =
-            Enum.any?(killmail.attackers, fn attacker ->
-              MapSet.member?(participant_ids, attacker.character_id)
-            end)
+    Enum.sum(
+      Enum.map(killmails, fn killmail ->
+        case side do
+          :destroyed ->
+            # ISK destroyed by this fleet
+            attackers_in_fleet =
+              Enum.any?(killmail.attackers, fn attacker ->
+                MapSet.member?(participant_ids, attacker.character_id)
+              end)
 
-          if attackers_in_fleet, do: killmail.zkb_total_value || 0, else: 0
+            if attackers_in_fleet, do: killmail.zkb_total_value || 0, else: 0
 
-        :lost ->
-          # ISK lost by this fleet
-          victim_in_fleet = MapSet.member?(participant_ids, killmail.victim.character_id)
-          if victim_in_fleet, do: killmail.zkb_total_value || 0, else: 0
-      end
-    end)
+          :lost ->
+            # ISK lost by this fleet
+            victim_in_fleet = MapSet.member?(participant_ids, killmail.victim.character_id)
+            if victim_in_fleet, do: killmail.zkb_total_value || 0, else: 0
+        end
+      end)
+    )
   end
 
   # Recommendation generation helpers
@@ -905,7 +912,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
     recommendations ++ diversity_recommendations
   end
 
-  defp add_mass_recommendations(recommendations, total_mass, participants) do
+  defp add_mass_recommendations(recommendations, total_mass, _participants) do
     mass_recommendations = []
 
     # Check wormhole compatibility
@@ -975,11 +982,11 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
     end
   end
 
-  defp distribute_pilots_to_doctrine(ship_requirements, role_requirements, pilot_count) do
+  defp distribute_pilots_to_doctrine(ship_requirements, _role_requirements, pilot_count) do
     # Simplified pilot distribution algorithm
     # In reality, this would be more sophisticated
 
-    total_min_pilots = Enum.sum(Map.values(ship_requirements), & &1.min_count)
+    total_min_pilots = ship_requirements |> Map.values() |> Enum.map(& &1.min_count) |> Enum.sum()
 
     if pilot_count < total_min_pilots do
       # Not enough pilots for minimum requirements
@@ -1017,11 +1024,13 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
   end
 
   defp calculate_allocation_mass(ship_allocation) do
-    Enum.sum(ship_allocation, fn {ship_type_id, count} ->
-      ship_class = get_ship_class(ship_type_id)
-      ship_mass = Map.get(@ship_masses, to_string(ship_class), 10_000_000)
-      ship_mass * count
-    end)
+    Enum.sum(
+      Enum.map(ship_allocation, fn {ship_type_id, count} ->
+        ship_class = get_ship_class(ship_type_id)
+        ship_mass = Map.get(@ship_masses, to_string(ship_class), 10_000_000)
+        ship_mass * count
+      end)
+    )
   end
 
   defp convert_ships_to_roles(ship_allocation) do
@@ -1040,7 +1049,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
     end)
   end
 
-  defp calculate_doctrine_effectiveness(composition, doctrine) do
+  defp calculate_doctrine_effectiveness(composition, _doctrine) do
     # Calculate how effective this composition would be
     # Based on role balance, ship synergy, and doctrine optimization
 
@@ -1097,11 +1106,11 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
     # This is simplified - real implementation would consider ship bonuses, ranges, etc.
 
     ship_classes =
-      ship_allocation
-      |> Enum.map(fn {ship_type_id, _count} ->
-        get_ship_class(ship_type_id)
-      end)
-      |> Enum.uniq()
+      Enum.uniq(
+        Enum.map(ship_allocation, fn {ship_type_id, _count} ->
+          get_ship_class(ship_type_id)
+        end)
+      )
 
     # More ship class diversity generally means better tactical flexibility
     # Cap at 4 different classes

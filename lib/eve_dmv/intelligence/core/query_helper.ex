@@ -6,9 +6,10 @@ defmodule EveDmv.Intelligence.Core.QueryHelper do
   transformation utilities used across multiple intelligence analyzers.
   """
 
-  require Logger
-  require Ash.Query
   alias EveDmv.Api
+
+  require Ash.Query
+  require Logger
 
   @type query_result :: {:ok, term()} | {:error, term()}
   @type entity_id :: integer()
@@ -195,17 +196,15 @@ defmodule EveDmv.Intelligence.Core.QueryHelper do
   defp get_first_activity_date([]), do: nil
 
   defp get_first_activity_date(killmails) do
-    killmails
-    |> Enum.map(& &1.killmail_time)
-    |> Enum.min(DateTime)
+    killmail_times = Enum.map(killmails, & &1.killmail_time)
+    Enum.min(killmail_times, DateTime)
   end
 
   defp get_last_activity_date([]), do: nil
 
   defp get_last_activity_date(killmails) do
-    killmails
-    |> Enum.map(& &1.killmail_time)
-    |> Enum.max(DateTime)
+    killmail_times = Enum.map(killmails, & &1.killmail_time)
+    Enum.max(killmail_times, DateTime)
   end
 
   defp count_unique_systems(killmails) do

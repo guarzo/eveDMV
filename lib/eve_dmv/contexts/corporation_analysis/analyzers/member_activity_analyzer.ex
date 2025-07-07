@@ -16,31 +16,29 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.MemberActivityAnalyzer d
   """
   @spec analyze(integer(), map()) :: Result.t(map())
   def analyze(corporation_id, base_data \\ %{}) when is_integer(corporation_id) do
-    try do
-      corporation_data = get_corporation_data(base_data, corporation_id)
-      member_stats = get_member_statistics(base_data, corporation_id)
+    corporation_data = get_corporation_data(base_data, corporation_id)
+    member_stats = get_member_statistics(base_data, corporation_id)
 
-      activity_analysis = %{
-        overall_activity: analyze_overall_activity(corporation_data, member_stats),
-        member_engagement: analyze_member_engagement(member_stats),
-        activity_distribution: analyze_activity_distribution(member_stats),
-        timezone_coverage: analyze_timezone_coverage(member_stats),
-        participation_metrics: calculate_participation_metrics(member_stats),
-        retention_indicators: analyze_retention_patterns(corporation_data),
-        leadership_activity: analyze_leadership_activity(corporation_data, member_stats),
-        activity_summary: generate_activity_summary(corporation_data, member_stats)
-      }
+    activity_analysis = %{
+      overall_activity: analyze_overall_activity(corporation_data, member_stats),
+      member_engagement: analyze_member_engagement(member_stats),
+      activity_distribution: analyze_activity_distribution(member_stats),
+      timezone_coverage: analyze_timezone_coverage(member_stats),
+      participation_metrics: calculate_participation_metrics(member_stats),
+      retention_indicators: analyze_retention_patterns(corporation_data),
+      leadership_activity: analyze_leadership_activity(corporation_data, member_stats),
+      activity_summary: generate_activity_summary(corporation_data, member_stats)
+    }
 
-      Result.ok(activity_analysis)
-    rescue
-      exception ->
-        Logger.error("Member activity analysis failed",
-          corporation_id: corporation_id,
-          error: Exception.format(:error, exception)
-        )
+    Result.ok(activity_analysis)
+  rescue
+    exception ->
+      Logger.error("Member activity analysis failed",
+        corporation_id: corporation_id,
+        error: Exception.format(:error, exception)
+      )
 
-        Result.error(:analysis_failed, "Member activity analysis error: #{inspect(exception)}")
-    end
+      Result.error(:analysis_failed, "Member activity analysis error: #{inspect(exception)}")
   end
 
   # Core analysis functions
@@ -70,11 +68,14 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.MemberActivityAnalyzer d
   defp analyze_member_engagement(member_stats) do
     # Categorize members by engagement level
     engagement_categories =
-      member_stats
-      |> Enum.reduce(%{very_high: 0, high: 0, medium: 0, low: 0, inactive: 0}, fn member, acc ->
-        engagement_level = categorize_engagement_level(member)
-        Map.update!(acc, engagement_level, &(&1 + 1))
-      end)
+      Enum.reduce(
+        member_stats,
+        %{very_high: 0, high: 0, medium: 0, low: 0, inactive: 0},
+        fn member, acc ->
+          engagement_level = categorize_engagement_level(member)
+          Map.update!(acc, engagement_level, &(&1 + 1))
+        end
+      )
 
     # Calculate engagement metrics
     total_members = length(member_stats)
@@ -108,24 +109,26 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.MemberActivityAnalyzer d
     # Analyze activity by different dimensions
 
     # By timezone/hour
-    activity_by_hour =
-      member_stats
-      |> Enum.flat_map(fn member ->
+    hourly_activity_data =
+      Enum.flat_map(member_stats, fn member ->
         activity_by_hour = Map.get(member, :activity_by_hour, %{})
         Map.to_list(activity_by_hour)
       end)
-      |> Enum.reduce(%{}, fn {hour, activity}, acc ->
+
+    activity_by_hour =
+      Enum.reduce(hourly_activity_data, %{}, fn {hour, activity}, acc ->
         Map.update(acc, hour, activity, &(&1 + activity))
       end)
 
     # By day of week
-    activity_by_day =
-      member_stats
-      |> Enum.flat_map(fn member ->
+    daily_activity_data =
+      Enum.flat_map(member_stats, fn member ->
         activity_by_day = Map.get(member, :activity_by_day, %{})
         Map.to_list(activity_by_day)
       end)
-      |> Enum.reduce(%{}, fn {day, activity}, acc ->
+
+    activity_by_day =
+      Enum.reduce(daily_activity_data, %{}, fn {day, activity}, acc ->
         Map.update(acc, day, activity, &(&1 + activity))
       end)
 
@@ -240,16 +243,14 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.MemberActivityAnalyzer d
   defp analyze_leadership_activity(_corporation_data, member_stats) do
     # Identify leadership roles
     leadership_members =
-      member_stats
-      |> Enum.filter(fn member ->
+      Enum.filter(member_stats, fn member ->
         corp_role = Map.get(member, :corp_role)
         corp_role && corp_role in ["CEO", "Director", "Personnel Manager"]
       end)
 
     # Analyze leadership activity levels
     leadership_activity =
-      leadership_members
-      |> Enum.map(fn leader ->
+      Enum.map(leadership_members, fn leader ->
         %{
           character_id: Map.get(leader, :character_id),
           character_name: Map.get(leader, :character_name),
@@ -389,9 +390,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.MemberActivityAnalyzer d
     if Enum.empty?(member_stats), do: 0.0
 
     total_score =
-      member_stats
-      |> Enum.map(&calculate_member_activity_score/1)
-      |> Enum.sum()
+      Enum.sum(Enum.map(member_stats, &calculate_member_activity_score/1))
 
     total_score / length(member_stats)
   end

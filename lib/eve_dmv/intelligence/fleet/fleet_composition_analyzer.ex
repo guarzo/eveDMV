@@ -6,8 +6,8 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
   wormhole compatibility assessment, and doctrine compliance scoring.
   """
 
-  alias EveDmv.Intelligence.ShipDatabase
   alias EveDmv.Intelligence.Analyzers.MassCalculator
+  alias EveDmv.Intelligence.ShipDatabase
 
   @doc """
   Enhanced fleet composition analysis using ShipDatabase.
@@ -15,9 +15,7 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
   """
   def analyze_enhanced_fleet_composition(ship_list) when is_list(ship_list) do
     ship_analysis =
-      ship_list
-      |> Enum.map(&analyze_individual_ship/1)
-      |> Enum.reject(&is_nil/1)
+      Enum.reject(Enum.map(ship_list, &analyze_individual_ship/1), &is_nil/1)
 
     %{
       total_ships: length(ship_analysis),
@@ -115,16 +113,14 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
   Generate optimization suggestions for fleet composition.
   """
   def generate_enhanced_suggestions(ship_analysis) do
-    suggestions = []
-
     # Mass optimization suggestions
     total_mass = Enum.sum(Enum.map(ship_analysis, & &1.mass_kg))
 
     suggestions =
       if total_mass > 90_000_000 do
-        ["Consider lighter ships for better wormhole mobility" | suggestions]
+        ["Consider lighter ships for better wormhole mobility"]
       else
-        suggestions
+        []
       end
 
     # Role balance suggestions
@@ -132,7 +128,7 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
     logi_count = Map.get(role_counts, "logistics", 0)
     dps_count = Map.get(role_counts, "dps", 0)
 
-    suggestions =
+    suggestions_with_logi =
       if logi_count == 0 and dps_count > 2 do
         ["Add logistics ships for fleet sustainability" | suggestions]
       else
@@ -142,17 +138,20 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
     # Capital ship warnings
     capital_count = Enum.count(ship_analysis, & &1.is_capital)
 
-    suggestions =
+    final_suggestions =
       if capital_count > 0 do
-        ["Capital ships restrict wormhole movement - ensure XL wormhole access" | suggestions]
+        [
+          "Capital ships restrict wormhole movement - ensure XL wormhole access"
+          | suggestions_with_logi
+        ]
       else
-        suggestions
+        suggestions_with_logi
       end
 
-    if Enum.empty?(suggestions) do
+    if Enum.empty?(final_suggestions) do
       ["Fleet composition appears well-balanced for wormhole operations"]
     else
-      suggestions
+      final_suggestions
     end
   end
 
@@ -169,14 +168,11 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
     }
 
     actual_ratios =
-      role_counts
-      |> Enum.map(fn {role, count} -> {role, count / total} end)
-      |> Map.new()
+      Map.new(Enum.map(role_counts, fn {role, count} -> {role, count / total} end))
 
     # Calculate deviation from ideal
     deviations =
-      ideal_ratios
-      |> Enum.map(fn {role, ideal} ->
+      Enum.map(ideal_ratios, fn {role, ideal} ->
         actual = Map.get(actual_ratios, role, 0.0)
         abs(ideal - actual)
       end)

@@ -10,27 +10,30 @@ defmodule ModuleOrganizationFixer do
 
   def run do
     files = Path.wildcard("lib/**/*.ex") ++ Path.wildcard("lib/**/*.exs")
-    
+
     IO.puts("Processing #{length(files)} files...")
-    
-    results = Enum.map(files, fn file ->
-      case fix_file(file) do
-        :ok -> {:ok, file}
-        {:error, reason} -> {:error, file, reason}
-      end
-    end)
-    
-    {successes, failures} = Enum.split_with(results, fn
-      {:ok, _} -> true
-      _ -> false
-    end)
-    
+
+    results =
+      Enum.map(files, fn file ->
+        case fix_file(file) do
+          :ok -> {:ok, file}
+          {:error, reason} -> {:error, file, reason}
+        end
+      end)
+
+    {successes, failures} =
+      Enum.split_with(results, fn
+        {:ok, _} -> true
+        _ -> false
+      end)
+
     IO.puts("\nCompleted:")
     IO.puts("  ✓ Fixed: #{length(successes)} files")
     IO.puts("  ✗ Failed: #{length(failures)} files")
-    
+
     if length(failures) > 0 do
       IO.puts("\nFailed files:")
+
       Enum.each(failures, fn {:error, file, reason} ->
         IO.puts("  - #{file}: #{reason}")
       end)
@@ -40,7 +43,7 @@ defmodule ModuleOrganizationFixer do
   def fix_file(file_path) do
     try do
       content = File.read!(file_path)
-      
+
       if contains_module_definition?(content) do
         fixed_content = fix_content(content)
         File.write!(file_path, fixed_content)
@@ -64,7 +67,7 @@ defmodule ModuleOrganizationFixer do
         # Process the module body
         {fixed_body, after_end} = process_module_body(module_body)
         before_module <> module_def <> fixed_body <> after_end
-      
+
       _ ->
         # No proper module definition found, return as is
         content
@@ -74,37 +77,39 @@ defmodule ModuleOrganizationFixer do
   defp process_module_body(body) do
     # Find the matching 'end' for the module
     {module_content, after_end} = extract_module_content(body)
-    
+
     # Extract and organize different sections
     sections = extract_sections(module_content)
-    
+
     # Fix and reorder sections
     fixed_sections = fix_sections(sections)
-    
+
     # Reconstruct the module body
     fixed_body = reconstruct_module(fixed_sections)
-    
+
     {fixed_body, after_end}
   end
 
   defp extract_module_content(body) do
     lines = String.split(body, "\n")
     {module_lines, rest} = extract_until_module_end(lines, 0, [])
-    
+
     module_content = Enum.join(Enum.reverse(module_lines), "\n")
     after_end = Enum.join(rest, "\n")
-    
+
     {module_content, after_end}
   end
 
   defp extract_until_module_end([], _depth, acc), do: {acc, []}
+
   defp extract_until_module_end([line | rest], depth, acc) do
-    new_depth = cond do
-      String.match?(line, ~r/\b(do|fn)\s*$/) -> depth + 1
-      String.trim(line) == "end" -> depth - 1
-      true -> depth
-    end
-    
+    new_depth =
+      cond do
+        String.match?(line, ~r/\b(do|fn)\s*$/) -> depth + 1
+        String.trim(line) == "end" -> depth - 1
+        true -> depth
+      end
+
     if new_depth < 0 do
       {acc, [line | rest]}
     else
@@ -114,7 +119,7 @@ defmodule ModuleOrganizationFixer do
 
   defp extract_sections(content) do
     lines = String.split(content, "\n")
-    
+
     %{
       moduledoc: extract_moduledoc(lines),
       behaviours: extract_behaviours(lines),
@@ -166,8 +171,13 @@ defmodule ModuleOrganizationFixer do
 
   defp extract_module_attributes(lines) do
     lines
-    |> Enum.filter(&String.match?(&1, ~r/^\s*@\w+\s+/) and 
-                   not String.match?(&1, ~r/^\s*@(moduledoc|doc|behaviour|type|spec|callback|macrocallback|typep|opaque|typedoc)/))
+    |> Enum.filter(
+      &(String.match?(&1, ~r/^\s*@\w+\s+/) and
+          not String.match?(
+            &1,
+            ~r/^\s*@(moduledoc|doc|behaviour|type|spec|callback|macrocallback|typep|opaque|typedoc)/
+          ))
+    )
   end
 
   defp extract_types(lines) do
@@ -191,7 +201,7 @@ defmodule ModuleOrganizationFixer do
       ~r/^\s*@\w+\s+/,
       ~r/^\s*defstruct/
     ]
-    
+
     lines
     |> Enum.reject(fn line ->
       Enum.any?(special_patterns, &String.match?(line, &1))
@@ -208,13 +218,14 @@ defmodule ModuleOrganizationFixer do
       case Regex.run(~r/^\s*alias\s+([\w\.]+)\.\{([^}]+)\}/, alias_line) do
         [_, base, grouped] ->
           indent = extract_indent(alias_line)
+
           grouped
           |> String.split(",")
           |> Enum.map(&String.trim/1)
           |> Enum.map(fn module ->
             "#{indent}alias #{base}.#{module}"
           end)
-        
+
         _ ->
           [alias_line]
       end

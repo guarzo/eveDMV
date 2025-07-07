@@ -1,4 +1,5 @@
 # credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
+# credo:disable-for-this-file Credo.Check.Readability.StrictModuleLayout
 defmodule EveDmvWeb.CharacterIntelLive do
   @moduledoc """
   Consolidated character intelligence LiveView.
@@ -9,12 +10,14 @@ defmodule EveDmvWeb.CharacterIntelLive do
 
   use EveDmvWeb, :live_view
 
+  alias EveDmv.Eve.EsiClient
+  alias EveDmv.Intelligence.CharacterStats
+  alias EveDmv.IntelligenceMigrationAdapter
+  alias EveDmv.Killmails.HistoricalKillmailFetcher
+
   require Logger
 
-  alias EveDmv.Eve.EsiClient
-  alias EveDmv.IntelligenceMigrationAdapter
-  alias EveDmv.Intelligence.CharacterStats
-  alias EveDmv.Killmails.HistoricalKillmailFetcher
+  on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
   # Import reusable components
   import EveDmvWeb.Components.PageHeaderComponent
@@ -22,8 +25,6 @@ defmodule EveDmvWeb.CharacterIntelLive do
   import EveDmvWeb.Components.LoadingStateComponent
   import EveDmvWeb.Components.ErrorStateComponent
   import EveDmvWeb.Components.TabNavigationComponent
-
-  on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
   @impl Phoenix.LiveView
   def mount(%{"character_id" => character_id_str}, _session, socket) do

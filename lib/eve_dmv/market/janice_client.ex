@@ -25,9 +25,11 @@ defmodule EveDmv.Market.JaniceClient do
       {:ok, appraisal} = JaniceClient.appraise_fit(fitting_text)
   """
 
+  alias EveDmv.Config.Api
+  alias EveDmv.Config.Http
+  alias EveDmv.Market.PriceCache
+  alias EveDmv.Market.RateLimiter
   require Logger
-  alias EveDmv.Market.{PriceCache, RateLimiter}
-  alias EveDmv.Config.{Api, Http}
 
   # Rate limiter name for Janice API
   @rate_limiter :janice_rate_limiter
@@ -213,9 +215,7 @@ defmodule EveDmv.Market.JaniceClient do
     case Jason.decode(body) do
       {:ok, data} ->
         prices =
-          data
-          |> Map.get("prices", %{})
-          |> Enum.reduce(%{}, fn {type_id_str, price_data}, acc ->
+          Enum.reduce(Map.get(data, "prices", %{}), %{}, fn {type_id_str, price_data}, acc ->
             type_id = String.to_integer(type_id_str)
 
             price_info = %{

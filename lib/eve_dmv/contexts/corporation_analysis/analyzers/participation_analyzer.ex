@@ -16,8 +16,8 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
   """
 
   use EveDmv.ErrorHandler
-  alias EveDmv.Result
   alias EveDmv.Contexts.CorporationAnalysis.Infrastructure.ParticipationDataProvider
+  alias EveDmv.Result
 
   require Logger
 
@@ -28,60 +28,72 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
   participation rates, and engagement metrics.
   """
   def analyze(character_id, base_data \\ %{}, opts \\ []) when is_integer(character_id) do
-    try do
-      period_start = get_period_start(opts, base_data)
-      period_end = get_period_end(opts, base_data)
+    period_start = get_period_start(opts, base_data)
+    period_end = get_period_end(opts, base_data)
 
-      with {:ok, participation_data} <- get_participation_data(base_data, character_id, period_start, period_end),
-           {:ok, fleet_activities} <- analyze_fleet_participation(participation_data),
-           {:ok, home_defense} <- analyze_home_defense_participation(participation_data),
-           {:ok, chain_operations} <- analyze_chain_operations(participation_data),
-           {:ok, solo_activities} <- analyze_solo_activities(participation_data) do
+    with {:ok, participation_data} <-
+           get_participation_data(base_data, character_id, period_start, period_end),
+         {:ok, fleet_activities} <- analyze_fleet_participation(participation_data),
+         {:ok, home_defense} <- analyze_home_defense_participation(participation_data),
+         {:ok, chain_operations} <- analyze_chain_operations(participation_data),
+         {:ok, solo_activities} <- analyze_solo_activities(participation_data) do
+      analysis = %{
+        character_id: character_id,
+        analysis_period_start: period_start,
+        analysis_period_end: period_end,
 
-        analysis = %{
-          character_id: character_id,
-          analysis_period_start: period_start,
-          analysis_period_end: period_end,
+        # Activity counts
+        fleet_participation_count: fleet_activities.participation_count,
+        home_defense_count: home_defense.participation_count,
+        chain_operations_count: chain_operations.participation_count,
+        solo_activity_count: solo_activities.activity_count,
 
-          # Activity counts
-          fleet_participation_count: fleet_activities.participation_count,
-          home_defense_count: home_defense.participation_count,
-          chain_operations_count: chain_operations.participation_count,
-          solo_activity_count: solo_activities.activity_count,
+        # Participation rates
+        fleet_participation_rate: fleet_activities.participation_rate,
+        home_defense_rate: home_defense.participation_rate,
+        chain_operations_rate: chain_operations.participation_rate,
+        solo_activity_rate: solo_activities.activity_rate,
 
-          # Participation rates
-          fleet_participation_rate: fleet_activities.participation_rate,
-          home_defense_rate: home_defense.participation_rate,
-          chain_operations_rate: chain_operations.participation_rate,
-          solo_activity_rate: solo_activities.activity_rate,
+        # Activity patterns
+        primary_activity_type:
+          determine_primary_activity_type(
+            fleet_activities,
+            home_defense,
+            chain_operations,
+            solo_activities
+          ),
+        activity_distribution:
+          calculate_activity_distribution(
+            fleet_activities,
+            home_defense,
+            chain_operations,
+            solo_activities
+          ),
+        engagement_pattern: determine_engagement_pattern(fleet_activities, solo_activities),
 
-          # Activity patterns
-          primary_activity_type: determine_primary_activity_type(fleet_activities, home_defense, chain_operations, solo_activities),
-          activity_distribution: calculate_activity_distribution(fleet_activities, home_defense, chain_operations, solo_activities),
-          engagement_pattern: determine_engagement_pattern(fleet_activities, solo_activities),
+        # Detailed metrics
+        fleet_readiness_score: fleet_activities.readiness_score,
+        home_system_identification: home_defense.home_systems,
+        chain_activity_scope: chain_operations.activity_scope,
+        solo_capability_assessment: solo_activities.capability_assessment,
 
-          # Detailed metrics
-          fleet_readiness_score: fleet_activities.readiness_score,
-          home_system_identification: home_defense.home_systems,
-          chain_activity_scope: chain_operations.activity_scope,
-          solo_capability_assessment: solo_activities.capability_assessment,
+        # Trends and insights
+        participation_trend: calculate_participation_trend(participation_data),
+        consistency_score: calculate_consistency_score(participation_data),
+        peak_activity_periods: identify_peak_activity_periods(participation_data),
 
-          # Trends and insights
-          participation_trend: calculate_participation_trend(participation_data),
-          consistency_score: calculate_consistency_score(participation_data),
-          peak_activity_periods: identify_peak_activity_periods(participation_data),
+        # Comparative metrics
+        corp_participation_percentile:
+          calculate_corp_percentile(character_id, fleet_activities, base_data)
+      }
 
-          # Comparative metrics
-          corp_participation_percentile: calculate_corp_percentile(character_id, fleet_activities, base_data)
-        }
-
-        Result.ok(analysis)
-      else
-        {:error, _reason} = error -> error
-      end
-    rescue
-      exception -> Result.error(:analysis_failed, "Participation analysis error: #{inspect(exception)}")
+      Result.ok(analysis)
+    else
+      {:error, _reason} = error -> error
     end
+  rescue
+    exception ->
+      Result.error(:analysis_failed, "Participation analysis error: #{inspect(exception)}")
   end
 
   @doc """
@@ -90,13 +102,18 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
   Provides aggregate participation analysis for all corporation members,
   identifying participation trends and engagement patterns.
   """
-  def analyze_corporation_participation(corporation_id, base_data \\ %{}, opts \\ []) when is_integer(corporation_id) do
-    try do
-      period_start = get_period_start(opts, base_data)
-      period_end = get_period_end(opts, base_data)
+  def analyze_corporation_participation(corporation_id, base_data \\ %{}, opts \\ [])
+      when is_integer(corporation_id) do
+    period_start = get_period_start(opts, base_data)
+    period_end = get_period_end(opts, base_data)
 
-      with {:ok, member_participations} <- get_corporation_member_participations(base_data, corporation_id, period_start, period_end) do
-
+    case get_corporation_member_participations(
+           base_data,
+           corporation_id,
+           period_start,
+           period_end
+         ) do
+      {:ok, member_participations} ->
         analysis = %{
           corporation_id: corporation_id,
           analysis_period_start: period_start,
@@ -104,14 +121,16 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
           total_members_analyzed: length(member_participations),
 
           # Aggregate participation metrics
-          average_fleet_participation: calculate_average_fleet_participation(member_participations),
+          average_fleet_participation:
+            calculate_average_fleet_participation(member_participations),
           total_fleet_operations: calculate_total_fleet_operations(member_participations),
           total_home_defense_ops: calculate_total_home_defense_ops(member_participations),
           total_chain_operations: calculate_total_chain_operations(member_participations),
 
           # Participation distribution
           high_participation_members: count_high_participation_members(member_participations),
-          moderate_participation_members: count_moderate_participation_members(member_participations),
+          moderate_participation_members:
+            count_moderate_participation_members(member_participations),
           low_participation_members: count_low_participation_members(member_participations),
           inactive_members: count_inactive_members(member_participations),
 
@@ -126,12 +145,16 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
         }
 
         Result.ok(analysis)
-      else
-        {:error, _reason} = error -> error
-      end
-    rescue
-      exception -> Result.error(:corp_analysis_failed, "Corporation participation analysis error: #{inspect(exception)}")
+
+      {:error, _reason} = error ->
+        error
     end
+  rescue
+    exception ->
+      Result.error(
+        :corp_analysis_failed,
+        "Corporation participation analysis error: #{inspect(exception)}"
+      )
   end
 
   @doc """
@@ -141,44 +164,61 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
   trends, and actionable recommendations.
   """
   def generate_participation_report(corporation_id, base_data \\ %{}, opts \\ []) do
-    try do
-      include_member_details = Keyword.get(opts, :include_member_details, false)
+    include_member_details = Keyword.get(opts, :include_member_details, false)
 
-      with {:ok, corp_analysis} <- analyze_corporation_participation(corporation_id, base_data, opts),
-           {:ok, member_analyses} <- get_member_participation_analyses(base_data, corporation_id, opts) do
+    with {:ok, corp_analysis} <-
+           analyze_corporation_participation(corporation_id, base_data, opts),
+         {:ok, member_analyses} <-
+           get_member_participation_analyses(base_data, corporation_id, opts) do
+      report = %{
+        corporation_summary: corp_analysis,
+        participation_overview: format_participation_overview(corp_analysis),
+        activity_breakdown: format_activity_breakdown(corp_analysis),
+        member_engagement_analysis: format_member_engagement_analysis(member_analyses),
+        trends_and_patterns: format_trends_and_patterns(corp_analysis),
+        leadership_recommendations: format_leadership_recommendations(corp_analysis),
+        member_details:
+          if(include_member_details,
+            do: format_member_participation_details(member_analyses),
+            else: []
+          )
+      }
 
-        report = %{
-          corporation_summary: corp_analysis,
-          participation_overview: format_participation_overview(corp_analysis),
-          activity_breakdown: format_activity_breakdown(corp_analysis),
-          member_engagement_analysis: format_member_engagement_analysis(member_analyses),
-          trends_and_patterns: format_trends_and_patterns(corp_analysis),
-          leadership_recommendations: format_leadership_recommendations(corp_analysis),
-          member_details: if(include_member_details, do: format_member_participation_details(member_analyses), else: [])
-        }
-
-        Result.ok(report)
-      else
-        {:error, _reason} = error -> error
-      end
-    rescue
-      exception -> Result.error(:report_generation_failed, "Participation report generation error: #{inspect(exception)}")
+      Result.ok(report)
+    else
+      {:error, _reason} = error -> error
     end
+  rescue
+    exception ->
+      Result.error(
+        :report_generation_failed,
+        "Participation report generation error: #{inspect(exception)}"
+      )
   end
 
   # Private implementation functions
 
   defp get_participation_data(base_data, character_id, period_start, period_end) do
     case Map.get(base_data, :participation_data) do
-      nil -> ParticipationDataProvider.get_participation_data(character_id, period_start, period_end)
-      data -> {:ok, data}
+      nil ->
+        ParticipationDataProvider.get_participation_data(character_id, period_start, period_end)
+
+      data ->
+        {:ok, data}
     end
   end
 
   defp get_corporation_member_participations(base_data, corporation_id, period_start, period_end) do
     case Map.get(base_data, :member_participations) do
-      nil -> ParticipationDataProvider.get_corporation_member_participations(corporation_id, period_start, period_end)
-      participations -> {:ok, participations}
+      nil ->
+        ParticipationDataProvider.get_corporation_member_participations(
+          corporation_id,
+          period_start,
+          period_end
+        )
+
+      participations ->
+        {:ok, participations}
     end
   end
 
@@ -199,7 +239,9 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
 
           {:ok, analyses}
         end
-      analyses -> {:ok, analyses}
+
+      analyses ->
+        {:ok, analyses}
     end
   end
 
@@ -207,45 +249,60 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
     fleet_activities = filter_fleet_activities(participation_data)
 
     participation_count = length(fleet_activities)
-    participation_rate = calculate_participation_rate(fleet_activities, participation_data.total_opportunities)
+
+    participation_rate =
+      calculate_participation_rate(fleet_activities, participation_data.total_opportunities)
+
     readiness_score = calculate_fleet_readiness_score(fleet_activities)
 
-    {:ok, %{
-      participation_count: participation_count,
-      participation_rate: participation_rate,
-      readiness_score: readiness_score,
-      activities: fleet_activities
-    }}
+    {:ok,
+     %{
+       participation_count: participation_count,
+       participation_rate: participation_rate,
+       readiness_score: readiness_score,
+       activities: fleet_activities
+     }}
   end
 
   defp analyze_home_defense_participation(participation_data) do
     home_defense_activities = filter_home_defense_activities(participation_data)
 
     participation_count = length(home_defense_activities)
-    participation_rate = calculate_participation_rate(home_defense_activities, participation_data.defensive_opportunities)
+
+    participation_rate =
+      calculate_participation_rate(
+        home_defense_activities,
+        participation_data.defensive_opportunities
+      )
+
     home_systems = identify_home_systems(home_defense_activities)
 
-    {:ok, %{
-      participation_count: participation_count,
-      participation_rate: participation_rate,
-      home_systems: home_systems,
-      activities: home_defense_activities
-    }}
+    {:ok,
+     %{
+       participation_count: participation_count,
+       participation_rate: participation_rate,
+       home_systems: home_systems,
+       activities: home_defense_activities
+     }}
   end
 
   defp analyze_chain_operations(participation_data) do
     chain_activities = filter_chain_activities(participation_data)
 
     participation_count = length(chain_activities)
-    participation_rate = calculate_participation_rate(chain_activities, participation_data.chain_opportunities)
+
+    participation_rate =
+      calculate_participation_rate(chain_activities, participation_data.chain_opportunities)
+
     activity_scope = calculate_chain_activity_scope(chain_activities)
 
-    {:ok, %{
-      participation_count: participation_count,
-      participation_rate: participation_rate,
-      activity_scope: activity_scope,
-      activities: chain_activities
-    }}
+    {:ok,
+     %{
+       participation_count: participation_count,
+       participation_rate: participation_rate,
+       activity_scope: activity_scope,
+       activities: chain_activities
+     }}
   end
 
   defp analyze_solo_activities(participation_data) do
@@ -255,42 +312,41 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
     activity_rate = calculate_activity_rate(solo_activities, participation_data.total_activities)
     capability_assessment = assess_solo_capability(solo_activities)
 
-    {:ok, %{
-      activity_count: activity_count,
-      activity_rate: activity_rate,
-      capability_assessment: capability_assessment,
-      activities: solo_activities
-    }}
+    {:ok,
+     %{
+       activity_count: activity_count,
+       activity_rate: activity_rate,
+       capability_assessment: capability_assessment,
+       activities: solo_activities
+     }}
   end
 
   defp filter_fleet_activities(participation_data) do
-    participation_data.activities
-    |> Enum.filter(&(&1.activity_type == :fleet_operation))
+    Enum.filter(participation_data.activities, &(&1.activity_type == :fleet_operation))
   end
 
   defp filter_home_defense_activities(participation_data) do
-    participation_data.activities
-    |> Enum.filter(&(&1.activity_type == :home_defense))
+    Enum.filter(participation_data.activities, &(&1.activity_type == :home_defense))
   end
 
   defp filter_chain_activities(participation_data) do
-    participation_data.activities
-    |> Enum.filter(&(&1.activity_type == :chain_operation))
+    Enum.filter(participation_data.activities, &(&1.activity_type == :chain_operation))
   end
 
   defp filter_solo_activities(participation_data) do
-    participation_data.activities
-    |> Enum.filter(&(&1.activity_type == :solo_activity))
+    Enum.filter(participation_data.activities, &(&1.activity_type == :solo_activity))
   end
 
   defp calculate_participation_rate(activities, opportunities) when opportunities > 0 do
     Float.round(length(activities) / opportunities * 100, 1)
   end
+
   defp calculate_participation_rate(_activities, _opportunities), do: 0.0
 
   defp calculate_activity_rate(activities, total_activities) when total_activities > 0 do
     Float.round(length(activities) / total_activities * 100, 1)
   end
+
   defp calculate_activity_rate(_activities, _total_activities), do: 0.0
 
   defp calculate_fleet_readiness_score(fleet_activities) do
@@ -309,7 +365,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
 
   defp identify_home_systems(home_defense_activities) do
     home_defense_activities
-    |> Enum.map(&(&1.system_id))
+    |> Enum.map(& &1.system_id)
     |> Enum.frequencies()
     |> Enum.sort_by(fn {_system, count} -> count end, :desc)
     |> Enum.take(3)
@@ -317,8 +373,8 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
   end
 
   defp calculate_chain_activity_scope(chain_activities) do
-    unique_systems = chain_activities |> Enum.map(&(&1.system_id)) |> Enum.uniq() |> length()
-    unique_regions = chain_activities |> Enum.map(&(&1.region_id)) |> Enum.uniq() |> length()
+    unique_systems = chain_activities |> Enum.map(& &1.system_id) |> Enum.uniq() |> length()
+    unique_regions = chain_activities |> Enum.map(& &1.region_id) |> Enum.uniq() |> length()
 
     %{
       unique_systems: unique_systems,
@@ -334,13 +390,14 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
       success_rate = calculate_solo_success_rate(solo_activities)
       avg_value = calculate_average_activity_value(solo_activities)
 
-      capability_level = cond do
-        success_rate >= 80 and avg_value > 100_000_000 -> :expert
-        success_rate >= 70 and avg_value > 50_000_000 -> :advanced
-        success_rate >= 60 and avg_value > 20_000_000 -> :intermediate
-        success_rate >= 40 -> :novice
-        true -> :beginner
-      end
+      capability_level =
+        cond do
+          success_rate >= 80 and avg_value > 100_000_000 -> :expert
+          success_rate >= 70 and avg_value > 50_000_000 -> :advanced
+          success_rate >= 60 and avg_value > 20_000_000 -> :intermediate
+          success_rate >= 40 -> :novice
+          true -> :beginner
+        end
 
       %{
         capability_level: capability_level,
@@ -365,8 +422,9 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
   end
 
   defp calculate_activity_distribution(fleet, home_defense, chain, solo) do
-    total = fleet.participation_count + home_defense.participation_count +
-           chain.participation_count + solo.activity_count
+    total =
+      fleet.participation_count + home_defense.participation_count +
+        chain.participation_count + solo.activity_count
 
     if total > 0 do
       %{
@@ -423,14 +481,15 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
     activities_by_week = group_activities_by_week(participation_data.activities)
 
     if map_size(activities_by_week) < 2 do
-      0.5  # Not enough data
+      # Not enough data
+      0.5
     else
       weekly_counts = Map.values(activities_by_week)
       mean = Enum.sum(weekly_counts) / length(weekly_counts)
       variance = calculate_variance(weekly_counts, mean)
 
       # Convert variance to consistency score (lower variance = higher consistency)
-      consistency = max(0, 1 - (variance / (mean + 1)))
+      consistency = max(0, 1 - variance / (mean + 1))
       Float.round(consistency, 2)
     end
   end
@@ -444,13 +503,16 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
     |> Enum.map(fn {hour, _count} -> format_hour(hour) end)
   end
 
-  defp calculate_corp_percentile(character_id, fleet_activities, base_data) do
+  defp calculate_corp_percentile(_character_id, fleet_activities, base_data) do
     # Compare this member's participation with corporation average
     case Map.get(base_data, :corp_participation_data) do
-      nil -> 50  # Default percentile
+      # Default percentile
+      nil ->
+        50
+
       corp_data ->
         member_score = fleet_activities.participation_count
-        corp_scores = Enum.map(corp_data, &(&1.fleet_participation_count))
+        corp_scores = Enum.map(corp_data, & &1.fleet_participation_count)
 
         calculate_percentile(member_score, corp_scores)
     end
@@ -462,21 +524,21 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
     if Enum.empty?(member_participations) do
       0.0
     else
-      total = Enum.sum(Enum.map(member_participations, &(&1.fleet_participation_count)))
+      total = Enum.sum(Enum.map(member_participations, & &1.fleet_participation_count))
       Float.round(total / length(member_participations), 1)
     end
   end
 
   defp calculate_total_fleet_operations(member_participations) do
-    Enum.sum(Enum.map(member_participations, &(&1.fleet_participation_count)))
+    Enum.sum(Enum.map(member_participations, & &1.fleet_participation_count))
   end
 
   defp calculate_total_home_defense_ops(member_participations) do
-    Enum.sum(Enum.map(member_participations, &(&1.home_defense_count)))
+    Enum.sum(Enum.map(member_participations, & &1.home_defense_count))
   end
 
   defp calculate_total_chain_operations(member_participations) do
-    Enum.sum(Enum.map(member_participations, &(&1.chain_operations_count)))
+    Enum.sum(Enum.map(member_participations, & &1.chain_operations_count))
   end
 
   defp count_high_participation_members(member_participations) do
@@ -484,11 +546,17 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
   end
 
   defp count_moderate_participation_members(member_participations) do
-    Enum.count(member_participations, &(&1.fleet_participation_count >= 5 and &1.fleet_participation_count < 10))
+    Enum.count(
+      member_participations,
+      &(&1.fleet_participation_count >= 5 and &1.fleet_participation_count < 10)
+    )
   end
 
   defp count_low_participation_members(member_participations) do
-    Enum.count(member_participations, &(&1.fleet_participation_count >= 1 and &1.fleet_participation_count < 5))
+    Enum.count(
+      member_participations,
+      &(&1.fleet_participation_count >= 1 and &1.fleet_participation_count < 5)
+    )
   end
 
   defp count_inactive_members(member_participations) do
@@ -523,46 +591,63 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
   defp analyze_corporation_participation_trends(member_participations) do
     # Simplified trend analysis
     %{
-      overall_trend: :stable,  # Would calculate from historical data
-      participation_growth: 0,  # Would calculate growth rate
+      # Would calculate from historical data
+      overall_trend: :stable,
+      # Would calculate growth rate
+      participation_growth: 0,
       member_retention: calculate_member_retention_rate(member_participations)
     }
   end
 
   defp identify_participation_improvement_areas(member_participations) do
-    areas = []
-
     inactive_ratio = count_inactive_members(member_participations) / length(member_participations)
-    low_participation_ratio = count_low_participation_members(member_participations) / length(member_participations)
 
-    areas = if inactive_ratio > 0.3, do: [:member_activation | areas], else: areas
-    areas = if low_participation_ratio > 0.4, do: [:engagement_programs | areas], else: areas
+    low_participation_ratio =
+      count_low_participation_members(member_participations) / length(member_participations)
 
-    if Enum.empty?(areas), do: [:maintain_current_programs], else: areas
+    initial_areas = []
+
+    activation_areas =
+      if inactive_ratio > 0.3, do: [:member_activation | initial_areas], else: initial_areas
+
+    final_areas =
+      if low_participation_ratio > 0.4,
+        do: [:engagement_programs | activation_areas],
+        else: activation_areas
+
+    if Enum.empty?(final_areas), do: [:maintain_current_programs], else: final_areas
   end
 
   defp generate_engagement_recommendations(member_participations) do
     inactive_count = count_inactive_members(member_participations)
     low_participation_count = count_low_participation_members(member_participations)
 
-    recommendations = []
+    base_recommendations = []
 
-    recommendations = if inactive_count > 0 do
-      ["Implement outreach program for #{inactive_count} inactive members" | recommendations]
-    else
-      recommendations
-    end
+    outreach_recommendations =
+      if inactive_count > 0 do
+        [
+          "Implement outreach program for #{inactive_count} inactive members"
+          | base_recommendations
+        ]
+      else
+        base_recommendations
+      end
 
-    recommendations = if low_participation_count > 2 do
-      ["Create mentorship program for #{low_participation_count} low-participation members" | recommendations]
-    else
-      recommendations
-    end
+    final_recommendations =
+      if low_participation_count > 2 do
+        [
+          "Create mentorship program for #{low_participation_count} low-participation members"
+          | outreach_recommendations
+        ]
+      else
+        outreach_recommendations
+      end
 
-    if Enum.empty?(recommendations) do
+    if Enum.empty?(final_recommendations) do
       ["Continue current engagement strategies"]
     else
-      recommendations
+      final_recommendations
     end
   end
 
@@ -570,32 +655,35 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
 
   defp get_period_start(opts, base_data) do
     Keyword.get(opts, :period_start) ||
-    Map.get(base_data, :period_start) ||
-    DateTime.add(DateTime.utc_now(), -30, :day)
+      Map.get(base_data, :period_start) ||
+      DateTime.add(DateTime.utc_now(), -30, :day)
   end
 
   defp get_period_end(opts, base_data) do
     Keyword.get(opts, :period_end) ||
-    Map.get(base_data, :period_end) ||
-    DateTime.utc_now()
+      Map.get(base_data, :period_end) ||
+      DateTime.utc_now()
   end
 
-  defp calculate_average_response_time(fleet_activities) do
+  defp calculate_average_response_time(_fleet_activities) do
     # Simplified response time calculation
     # Would analyze actual response times from activity data
-    75.0  # Placeholder
+    # Placeholder
+    75.0
   end
 
-  defp calculate_consistency(fleet_activities) do
+  defp calculate_consistency(_fleet_activities) do
     # Simplified consistency calculation
     # Would analyze participation regularity
-    80.0  # Placeholder
+    # Placeholder
+    80.0
   end
 
-  defp calculate_effectiveness(fleet_activities) do
+  defp calculate_effectiveness(_fleet_activities) do
     # Simplified effectiveness calculation
     # Would analyze success rates and outcomes
-    70.0  # Placeholder
+    # Placeholder
+    70.0
   end
 
   defp determine_scope_rating(unique_systems, unique_regions) do
@@ -640,13 +728,14 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
   defp count_recent_activities(participation_data, days) do
     cutoff = DateTime.add(DateTime.utc_now(), -days, :day)
 
-    participation_data.activities
-    |> Enum.count(&(DateTime.compare(&1.timestamp, cutoff) == :gt))
+    Enum.count(participation_data.activities, &(DateTime.compare(&1.timestamp, cutoff) == :gt))
   end
 
   defp calculate_historical_average(participation_data) do
     # Simplified historical average calculation
-    total_days = DateTime.diff(participation_data.period_end, participation_data.period_start, :day)
+    total_days =
+      DateTime.diff(participation_data.period_end, participation_data.period_start, :day)
+
     if total_days > 0 do
       length(participation_data.activities) / total_days
     else
@@ -665,7 +754,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
 
   defp group_activities_by_hour(activities) do
     activities
-    |> Enum.group_by(&(&1.timestamp.hour))
+    |> Enum.group_by(& &1.timestamp.hour)
     |> Enum.map(fn {hour, activities} -> {hour, length(activities)} end)
     |> Map.new()
   end
@@ -713,7 +802,11 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
       total_members: corp_analysis.total_members_analyzed,
       participation_health: corp_analysis.participation_health_score,
       most_active_operation: corp_analysis.most_active_operation_type,
-      high_participation_percentage: Float.round(corp_analysis.high_participation_members / corp_analysis.total_members_analyzed * 100, 1)
+      high_participation_percentage:
+        Float.round(
+          corp_analysis.high_participation_members / corp_analysis.total_members_analyzed * 100,
+          1
+        )
     }
   end
 
@@ -753,12 +846,12 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
         consistency: analysis.consistency_score
       }
     end)
-    |> Enum.sort_by(&(&1.participation_score), :desc)
+    |> Enum.sort_by(& &1.participation_score, :desc)
   end
 
   defp calculate_engagement_distribution(member_analyses) do
     member_analyses
-    |> Enum.map(&(&1.engagement_pattern))
+    |> Enum.map(& &1.engagement_pattern)
     |> Enum.frequencies()
   end
 
@@ -768,7 +861,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
     else
       avg_consistency =
         member_analyses
-        |> Enum.map(&(&1.consistency_score))
+        |> Enum.map(& &1.consistency_score)
         |> Enum.sum()
         |> Kernel./(length(member_analyses))
 
@@ -778,22 +871,27 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
 
   defp identify_top_performers(member_analyses) do
     member_analyses
-    |> Enum.sort_by(&calculate_member_participation_score/1, :desc)
-    |> Enum.take(5)
     |> Enum.map(fn analysis ->
+      score = calculate_member_participation_score(analysis)
+      {analysis, score}
+    end)
+    |> Enum.sort_by(fn {_analysis, score} -> score end, :desc)
+    |> Enum.take(5)
+    |> Enum.map(fn {analysis, score} ->
       %{
         character_id: analysis.character_id,
-        score: calculate_member_participation_score(analysis),
+        score: score,
         specialty: analysis.primary_activity_type
       }
     end)
   end
 
   defp calculate_member_participation_score(analysis) do
-    base_score = analysis.fleet_participation_count * 3 +
-                analysis.home_defense_count * 2 +
-                analysis.chain_operations_count * 2 +
-                analysis.solo_activity_count * 1
+    base_score =
+      analysis.fleet_participation_count * 3 +
+        analysis.home_defense_count * 2 +
+        analysis.chain_operations_count * 2 +
+        analysis.solo_activity_count
 
     consistency_bonus = analysis.consistency_score * 10
 

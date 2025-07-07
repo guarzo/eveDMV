@@ -7,8 +7,8 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
   """
 
   use EveDmv.ErrorHandler
-  alias EveDmv.Result
-  alias EveDmv.Contexts.FleetOperations.Infrastructure.{FleetRepository, EngagementCache}
+
+  alias EveDmv.Contexts.FleetOperations.Infrastructure.EngagementCache
 
   require Logger
 
@@ -372,7 +372,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
   end
 
   defp calculate_loss_impact(fleet_losses, participants) do
-    total_isk_lost = Enum.sum(fleet_losses, &(&1.zkb_total_value || 0))
+    total_isk_lost = Enum.sum(Enum.map(fleet_losses, &(&1.zkb_total_value || 0)))
 
     # Calculate role impact
     lost_roles =
@@ -395,16 +395,20 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
   defp calculate_total_damage_dealt(participants, killmails) do
     participant_ids = MapSet.new(participants, & &1.character_id)
 
-    Enum.sum(killmails, fn killmail ->
-      # Sum damage dealt by fleet members in this killmail
-      Enum.sum(killmail.attackers, fn attacker ->
-        if MapSet.member?(participant_ids, attacker.character_id) do
-          attacker.damage_done || 0
-        else
-          0
-        end
+    Enum.sum(
+      Enum.map(killmails, fn killmail ->
+        # Sum damage dealt by fleet members in this killmail
+        Enum.sum(
+          Enum.map(killmail.attackers, fn attacker ->
+            if MapSet.member?(participant_ids, attacker.character_id) do
+              attacker.damage_done || 0
+            else
+              0
+            end
+          end)
+        )
       end)
-    end)
+    )
   end
 
   defp analyze_fleet_coordination(participants, killmails) do
@@ -619,8 +623,8 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
   end
 
   defp calculate_metric_trend(recent_data, earlier_data, metric) do
-    recent_avg = Enum.sum(recent_data, &Map.get(&1, metric, 0)) / length(recent_data)
-    earlier_avg = Enum.sum(earlier_data, &Map.get(&1, metric, 0)) / length(earlier_data)
+    recent_avg = Enum.sum(Enum.map(recent_data, &Map.get(&1, metric, 0))) / length(recent_data)
+    earlier_avg = Enum.sum(Enum.map(earlier_data, &Map.get(&1, metric, 0))) / length(earlier_data)
 
     cond do
       recent_avg > earlier_avg * 1.1 -> :improving
@@ -765,7 +769,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
   end
 
   defp calculate_capability_reduction(role_impact, participants) do
-    total_participants = length(participants)
+    _total_participants = length(participants)
 
     Enum.reduce(role_impact, %{}, fn {role, losses}, acc ->
       current_role_count =
@@ -792,9 +796,11 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
       avg_damage = Enum.sum(damage_values) / length(damage_values)
 
       variance =
-        Enum.sum(damage_values, fn damage ->
-          :math.pow(damage - avg_damage, 2)
-        end) / length(damage_values)
+        Enum.sum(
+          Enum.map(damage_values, fn damage ->
+            :math.pow(damage - avg_damage, 2)
+          end)
+        ) / length(damage_values)
 
       # Normalize variance to 0-1 scale
       normalized_variance = min(1.0, variance / (avg_damage * avg_damage))
@@ -804,7 +810,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
     end
   end
 
-  defp identify_high_risk_factors(fleet_losses, participants) do
+  defp identify_high_risk_factors(fleet_losses, _participants) do
     risk_factors = []
 
     # High value targets lost

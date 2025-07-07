@@ -15,7 +15,9 @@ defmodule EveDmv.Contexts.Surveillance do
   use EveDmv.Contexts.BoundedContext, name: :surveillance
   use Supervisor
 
-  alias EveDmv.Contexts.Surveillance.{Api, Domain, Infrastructure}
+  alias EveDmv.Contexts.Surveillance.Api
+  alias EveDmv.Contexts.Surveillance.Domain
+  alias EveDmv.Contexts.Surveillance.Infrastructure
   alias EveDmv.DomainEvents.KillmailReceived
 
   # Supervisor implementation
@@ -24,7 +26,7 @@ defmodule EveDmv.Contexts.Surveillance do
     Supervisor.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  @impl true
+  @impl Supervisor
   def init(_opts) do
     children = [
       # Domain services
@@ -46,7 +48,7 @@ defmodule EveDmv.Contexts.Surveillance do
   end
 
   # Event subscriptions
-  @impl true
+  @impl EveDmv.Contexts.BoundedContext
   def event_subscriptions do
     [
       {:killmail_received, &handle_killmail_received/1}

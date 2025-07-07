@@ -10,10 +10,12 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
   use GenServer
   use EveDmv.ErrorHandler
-  alias EveDmv.Result
-  alias EveDmv.Contexts.Surveillance.Infrastructure.{ProfileRepository, MatchCache}
-  alias EveDmv.DomainEvents.{SurveillanceMatch, SurveillanceAlert}
+  alias EveDmv.Contexts.Surveillance.Infrastructure.MatchCache
+  alias EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository
+  alias EveDmv.DomainEvents.SurveillanceAlert
+  alias EveDmv.DomainEvents.SurveillanceMatch
   alias EveDmv.Infrastructure.EventBus
+  alias EveDmv.Result
 
   require Logger
 
@@ -463,9 +465,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
       end
 
     matched_criteria =
-      results
-      |> Enum.filter(& &1.matches)
-      |> Enum.flat_map(& &1.matched_criteria)
+      Enum.flat_map(Enum.filter(results, & &1.matches), & &1.matched_criteria)
 
     confidence_score =
       if final_result do

@@ -7,11 +7,14 @@ defmodule EveDmv.Eve.TypeResolver do
   creates the necessary records.
   """
 
-  require Logger
-  require Ash.Query
   import Ash.Expr
+
   alias EveDmv.Api
-  alias EveDmv.Eve.{EsiClient, ItemType}
+  alias EveDmv.Eve.EsiClient
+  alias EveDmv.Eve.ItemType
+
+  require Ash.Query
+  require Logger
 
   @doc """
   Resolve a missing item type by fetching from ESI and adding to database.

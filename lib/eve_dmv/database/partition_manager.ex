@@ -7,10 +7,11 @@ defmodule EveDmv.Database.PartitionManager do
   """
 
   use GenServer
-  require Logger
 
-  alias EveDmv.Repo
   alias Ecto.Adapters.SQL
+  alias EveDmv.Repo
+
+  require Logger
 
   @partition_check_interval :timer.hours(24)
   @partitioned_tables [

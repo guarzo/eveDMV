@@ -14,14 +14,12 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer do
   and provides detailed pattern analysis for member intelligence systems.
   """
 
-  require Logger
+  alias EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.AnomalyDetector
+  alias EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.ConsistencyCalculator
+  alias EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TimezoneAnalyzer
+  alias EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TrendAnalyzer
 
-  alias EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.{
-    AnomalyDetector,
-    ConsistencyCalculator,
-    TimezoneAnalyzer,
-    TrendAnalyzer
-  }
+  require Logger
 
   @doc """
   Analyze timezone patterns for a character based on their activity data.

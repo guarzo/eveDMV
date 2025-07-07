@@ -6,10 +6,10 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewRefreshScheduler do
   automatic refreshes, and handles cache-invalidation-triggered refreshes.
   """
 
-  require Logger
-  alias EveDmv.Repo
-  alias EveDmv.Database.MaterializedViewManager.ViewDefinitions
   alias Ecto.Adapters.SQL
+  alias EveDmv.Database.MaterializedViewManager.ViewDefinitions
+  alias EveDmv.Repo
+  require Logger
 
   @refresh_interval :timer.hours(4)
   @incremental_refresh_interval :timer.minutes(30)
@@ -22,8 +22,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewRefreshScheduler do
     start_time = System.monotonic_time(:millisecond)
 
     refreshed_views =
-      ViewDefinitions.all_views()
-      |> Enum.reduce(%{}, fn view_def, acc ->
+      Enum.reduce(ViewDefinitions.all_views(), %{}, fn view_def, acc ->
         view_name = view_def.name
 
         case refresh_view(view_def) do
@@ -139,8 +138,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewRefreshScheduler do
       Logger.debug("Refreshing #{length(affected_views)} views affected by cache invalidation")
 
       refreshed_views =
-        affected_views
-        |> Enum.reduce(%{}, fn view_def, acc ->
+        Enum.reduce(affected_views, %{}, fn view_def, acc ->
           case refresh_view(view_def) do
             {:ok, refresh_time_ms} ->
               Map.put(acc, view_def.name, %{

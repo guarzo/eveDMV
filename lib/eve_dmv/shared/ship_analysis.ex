@@ -22,8 +22,7 @@ defmodule EveDmv.Shared.ShipAnalysis do
 
     # Analyze top ships by usage
     top_ships =
-      ship_usage
-      |> Enum.map(fn {ship_id, ship_data} ->
+      Enum.map(ship_usage, fn {ship_id, ship_data} ->
         times_used = Map.get(ship_data, "times_used", 0)
         usage_percentage = if total_usage > 0, do: times_used / total_usage, else: 0.0
 
@@ -37,7 +36,8 @@ defmodule EveDmv.Shared.ShipAnalysis do
           last_used: Map.get(ship_data, "last_used")
         }
       end)
-      |> Enum.sort_by(& &1.usage_percentage, :desc)
+
+    sorted_ships = Enum.sort_by(top_ships, & &1.usage_percentage, :desc)
 
     # Calculate specialization metrics
     usage_distribution = Enum.map(top_ships, & &1.usage_percentage)
@@ -46,8 +46,8 @@ defmodule EveDmv.Shared.ShipAnalysis do
     %{
       total_ships_used: map_size(ship_usage),
       total_usage_count: total_usage,
-      top_ships: Enum.take(top_ships, 10),
-      most_used_ship: List.first(top_ships),
+      top_ships: Enum.take(sorted_ships, 10),
+      most_used_ship: List.first(sorted_ships),
       specialization_index: specialization_index,
       ship_diversity: calculate_ship_diversity(ship_usage),
       usage_concentration: calculate_usage_concentration(usage_distribution)
@@ -62,8 +62,7 @@ defmodule EveDmv.Shared.ShipAnalysis do
 
     # Categorize ships by role
     role_usage =
-      ship_usage
-      |> Enum.reduce(%{}, fn {_ship_id, ship_data}, acc ->
+      Enum.reduce(ship_usage, %{}, fn {_ship_id, ship_data}, acc ->
         ship_group = Map.get(ship_data, "ship_group", "Unknown")
         role = categorize_ship_role(ship_group)
         times_used = Map.get(ship_data, "times_used", 0)
@@ -75,17 +74,16 @@ defmodule EveDmv.Shared.ShipAnalysis do
     total_role_usage = Enum.sum(Map.values(role_usage))
 
     role_percentages =
-      role_usage
-      |> Enum.map(fn {role, usage} ->
+      Enum.map(role_usage, fn {role, usage} ->
         percentage = if total_role_usage > 0, do: usage / total_role_usage, else: 0.0
         {role, %{usage: usage, percentage: percentage}}
       end)
-      |> Enum.into(%{})
+
+    # Convert to map format for easier access
 
     # Determine primary and secondary roles
     sorted_roles =
-      role_percentages
-      |> Enum.sort_by(fn {_role, data} -> data.percentage end, :desc)
+      Enum.sort_by(role_percentages, fn {_role, data} -> data.percentage end, :desc)
 
     primary_role =
       case List.first(sorted_roles) do
@@ -199,8 +197,7 @@ defmodule EveDmv.Shared.ShipAnalysis do
   """
   def assess_role_flexibility(role_percentages) do
     roles_with_significant_usage =
-      role_percentages
-      |> Enum.count(fn {_role, data} -> data.percentage > 0.1 end)
+      Enum.count(role_percentages, fn {_role, data} -> data.percentage > 0.1 end)
 
     case roles_with_significant_usage do
       0..1 -> :highly_specialized
@@ -262,23 +259,8 @@ defmodule EveDmv.Shared.ShipAnalysis do
     if map_size(ship_usage) == 0 do
       nil
     else
-      ship_usage
-      |> Enum.max_by(
-        fn {_ship_id, ship_data} ->
-          Map.get(ship_data, "times_used", 0)
-        end,
-        fn -> {nil, %{}} end
-      )
-      |> case do
-        {nil, _} ->
-          nil
-
-        {_ship_id, ship_data} ->
-          %{
-            name: Map.get(ship_data, "ship_name", "Unknown"),
-            usage: Map.get(ship_data, "times_used", 0)
-          }
-      end
+      most_used_ship = find_most_used_ship(ship_usage)
+      format_ship_usage(most_used_ship)
     end
   end
 
@@ -288,8 +270,7 @@ defmodule EveDmv.Shared.ShipAnalysis do
   def flies_capitals?(character_stats) do
     ship_usage = Map.get(character_stats, :ship_usage, %{}) || %{}
 
-    ship_usage
-    |> Enum.any?(fn {_ship_id, ship_data} ->
+    Enum.any?(ship_usage, fn {_ship_id, ship_data} ->
       ship_group = Map.get(ship_data, "ship_group", "")
       String.contains?(ship_group, ["Capital", "Dreadnought", "Titan", "Supercarrier"])
     end)
@@ -333,5 +314,22 @@ defmodule EveDmv.Shared.ShipAnalysis do
       expensive_count = Enum.count(ship_values, &(&1 > 1_000_000_000))
       expensive_count / length(ship_values)
     end
+  end
+
+  defp find_most_used_ship(ship_usage) do
+    Enum.max_by(
+      ship_usage,
+      fn {_ship_id, ship_data} -> Map.get(ship_data, "times_used", 0) end,
+      fn -> {nil, %{}} end
+    )
+  end
+
+  defp format_ship_usage({nil, _}), do: nil
+
+  defp format_ship_usage({_ship_id, ship_data}) do
+    %{
+      name: Map.get(ship_data, "ship_name", "Unknown"),
+      usage: Map.get(ship_data, "times_used", 0)
+    }
   end
 end

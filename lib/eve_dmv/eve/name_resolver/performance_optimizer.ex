@@ -6,8 +6,9 @@ defmodule EveDmv.Eve.NameResolver.PerformanceOptimizer do
   name resolution performance for common use cases and high-traffic scenarios.
   """
 
+  alias EveDmv.Eve.NameResolver.EsiEntityResolver
+  alias EveDmv.Eve.NameResolver.StaticDataResolver
   require Logger
-  alias EveDmv.Eve.NameResolver.{StaticDataResolver, EsiEntityResolver}
 
   # Configurable timeout settings
   @task_timeout Application.compile_env(:eve_dmv, :name_resolver_task_timeout, 30_000)
@@ -29,10 +30,11 @@ defmodule EveDmv.Eve.NameResolver.PerformanceOptimizer do
             km.victim_character_id,
             km.final_blow_character_id
           ]
+          |> List.flatten()
           |> Enum.reject(&is_nil/1)
 
-        new_corps = [km.victim_corporation_id] |> Enum.reject(&is_nil/1)
-        new_alliances = [km.victim_alliance_id] |> Enum.reject(&is_nil/1)
+        new_corps = Enum.reject([km.victim_corporation_id], &is_nil/1)
+        new_alliances = Enum.reject([km.victim_alliance_id], &is_nil/1)
 
         {chars ++ new_chars, corps ++ new_corps, alliances ++ new_alliances}
       end)
@@ -119,7 +121,8 @@ defmodule EveDmv.Eve.NameResolver.PerformanceOptimizer do
 
     # Extract ship and module type IDs
     type_ids =
-      Enum.flat_map(fittings, fn fitting ->
+      fittings
+      |> Enum.flat_map(fn fitting ->
         ship_ids = [fitting.ship_type_id]
         module_ids = Enum.map(fitting.modules || [], & &1.type_id)
         ship_ids ++ module_ids

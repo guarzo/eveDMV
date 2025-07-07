@@ -8,15 +8,17 @@ defmodule EveDmv.Database.CacheWarmer do
   """
 
   use GenServer
-  require Logger
-  require Ash.Query
 
   alias EveDmv.Api
   alias EveDmv.Database.QueryCache
-  alias EveDmv.IntelligenceMigrationAdapter
+  alias EveDmv.Eve.ItemType
+  alias EveDmv.Eve.SolarSystem
   alias EveDmv.Intelligence.CharacterStats
+  alias EveDmv.IntelligenceMigrationAdapter
   alias EveDmv.Killmails.KillmailEnriched
-  alias EveDmv.Eve.{ItemType, SolarSystem}
+
+  require Ash.Query
+  require Logger
 
   @warming_interval :timer.minutes(30)
   @batch_size 100
@@ -256,7 +258,8 @@ defmodule EveDmv.Database.CacheWarmer do
     ]
 
     # Warm item type data
-    Enum.chunk_every(popular_ship_ids, 10)
+    popular_ship_ids
+    |> Enum.chunk_every(10)
     |> Enum.each(&warm_item_type_batch/1)
 
     length(popular_ship_ids)

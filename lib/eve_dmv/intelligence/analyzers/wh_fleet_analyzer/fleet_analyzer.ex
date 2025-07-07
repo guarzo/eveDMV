@@ -6,11 +6,11 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetAnalyzer do
   doctrine compliance, effectiveness metrics, and role distribution.
   """
 
-  require Logger
-
-  alias EveDmv.Intelligence.{ShipDatabase}
   alias EveDmv.Intelligence.Analyzers.MassCalculator
   alias EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer
+  alias EveDmv.Intelligence.ShipDatabase
+
+  require Logger
 
   @doc """
   Enhanced fleet composition analysis using ShipDatabase.

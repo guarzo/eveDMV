@@ -7,6 +7,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
   """
 
   use EveDmv.ErrorHandler
+
   alias EveDmv.Result
 
   @doc """
@@ -50,7 +51,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
   @doc """
   Get security context for entity.
   """
-  def get_security_context(entity_id, entity_type) do
+  def get_security_context(_entity_id, _entity_type) do
     # Placeholder implementation
     %{
       security_clearance: :standard,
@@ -78,11 +79,11 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
   @doc """
   Get historical threat assessments.
   """
-  def get_assessment_history(entity_id, entity_type, days_back \\ 30) do
+  def get_assessment_history(_entity_id, _entity_type, days_back \\ 30) do
     # Placeholder implementation
+    # Weekly assessments
     history =
       1..days_back
-      # Weekly assessments
       |> Enum.take_every(7)
       |> Enum.map(fn days_ago ->
         date = DateTime.add(DateTime.utc_now(), -days_ago, :day)
@@ -160,7 +161,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
     Result.ok(fleet_data)
   end
 
-  defp get_character_related_data(character_id) do
+  defp get_character_related_data(_character_id) do
     %{
       killmail_stats: generate_sample_killmail_stats(),
       corp_data: %{
@@ -172,7 +173,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
     }
   end
 
-  defp get_corporation_related_data(corporation_id) do
+  defp get_corporation_related_data(_corporation_id) do
     %{
       member_stats: generate_sample_member_stats(),
       alliance_data: %{},
@@ -180,7 +181,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
     }
   end
 
-  defp get_fleet_related_data(fleet_id) do
+  defp get_fleet_related_data(_fleet_id) do
     %{
       participants: generate_sample_participants(),
       engagement_data: generate_sample_engagement_data()
@@ -231,22 +232,23 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
   end
 
   defp generate_sample_activity_by_hour do
-    0..23
-    |> Enum.map(fn hour ->
-      # Simulate timezone-based activity patterns
-      activity =
-        case hour do
-          # Peak hours
-          h when h in [12, 13, 14, 19, 20, 21] -> :rand.uniform(20) + 10
-          # Low activity hours
-          h when h in [2, 3, 4, 5, 6] -> :rand.uniform(3)
-          # Normal hours
-          _ -> :rand.uniform(10) + 2
-        end
+    Enum.into(
+      Enum.map(0..23, fn hour ->
+        # Simulate timezone-based activity patterns
+        activity =
+          case hour do
+            # Peak hours
+            h when h in [12, 13, 14, 19, 20, 21] -> :rand.uniform(20) + 10
+            # Low activity hours
+            h when h in [2, 3, 4, 5, 6] -> :rand.uniform(3)
+            # Normal hours
+            _ -> :rand.uniform(10) + 2
+          end
 
-      {hour, activity}
-    end)
-    |> Enum.into(%{})
+        {hour, activity}
+      end),
+      %{}
+    )
   end
 
   defp generate_sample_killmail_stats do
@@ -265,8 +267,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
   end
 
   defp generate_sample_member_stats do
-    1..20
-    |> Enum.map(fn i ->
+    Enum.map(1..20, fn i ->
       %{
         character_id: 1_000_000 + i,
         character_name: "Member #{i}",
@@ -287,8 +288,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
   end
 
   defp generate_sample_participants do
-    1..(:rand.uniform(20) + 5)
-    |> Enum.map(fn i ->
+    Enum.map(1..(:rand.uniform(20) + 5), fn i ->
       %{
         character_id: 2_000_000 + i,
         character_name: "Pilot #{i}",
