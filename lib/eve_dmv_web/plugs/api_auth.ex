@@ -113,6 +113,7 @@ defmodule EveDmvWeb.Plugs.ApiAuth do
     end
   end
 
+  @spec authenticate_api_key(Plug.Conn.t(), String.t(), map()) :: Plug.Conn.t() | no_return()
   defp authenticate_api_key(conn, api_key, opts) do
     client_ip = get_client_ip(conn)
 
@@ -150,6 +151,7 @@ defmodule EveDmvWeb.Plugs.ApiAuth do
     end
   end
 
+  @spec send_unauthorized(Plug.Conn.t(), String.t()) :: no_return()
   defp send_unauthorized(conn, message) do
     conn
     |> put_status(:unauthorized)

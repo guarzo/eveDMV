@@ -151,7 +151,9 @@ defmodule EveDmvWeb.WHVettingLive do
     case result do
       {:ok, analysis_result} ->
         # Transform Intelligence Engine result to vetting record if needed
-        {:ok, _vetting_record} = transform_analysis_to_vetting_record(character_id, analysis_result)
+        {:ok, _vetting_record} =
+          transform_analysis_to_vetting_record(character_id, analysis_result)
+
         socket = put_flash(socket, :info, "Vetting analysis completed successfully")
         send(self(), :load_vetting_records)
         {:noreply, socket}
