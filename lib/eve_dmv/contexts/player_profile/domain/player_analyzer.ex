@@ -12,7 +12,6 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
   alias EveDmv.Contexts.PlayerProfile.Analyzers.BehavioralPatternsAnalyzer
   alias EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer
   alias EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer
-  alias EveDmv.Contexts.PlayerProfile.Infrastructure.AnalysisCache
   alias EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository
   alias EveDmv.Shared.MetricsCalculator
 

@@ -177,9 +177,6 @@ defmodule EveDmvWeb.SurveillanceLive.ProfileService do
       error when is_atom(error) ->
         Atom.to_string(error)
 
-      error when is_map(error) ->
-        inspect(error)
-
       error ->
         inspect(error)
     end

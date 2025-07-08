@@ -7,7 +7,7 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveOperations do
   """
 
   alias EveDmv.Repo
-  alias SQL
+  alias Ecto.Adapters.SQL
   require Logger
 
   @doc """

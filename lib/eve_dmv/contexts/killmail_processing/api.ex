@@ -9,6 +9,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
   import Ash.Expr
 
   alias EveDmv.Contexts.KillmailProcessing.Domain
+  alias EveDmv.Result
   alias EveDmv.SharedKernel.ValueObjects.CharacterId
   alias EveDmv.SharedKernel.ValueObjects.SolarSystemId
   alias EveDmv.SharedKernel.ValueObjects.TimeRange

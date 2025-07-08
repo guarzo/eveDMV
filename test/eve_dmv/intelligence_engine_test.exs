@@ -3,14 +3,14 @@ defmodule EveDmv.IntelligenceEngineTest do
   Test suite for the Intelligence Engine and plugin system.
   """
 
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias EveDmv.IntelligenceEngine
   alias EveDmv.IntelligenceEngine.Config
   alias EveDmv.IntelligenceEngine.Pipeline
   alias EveDmv.IntelligenceEngine.PluginRegistry
-  alias EveDmv.IntelligenceEngine.Plugins.Character.CombatStats
   alias EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer
+  alias EveDmv.IntelligenceEngine.Plugins.Character.CombatStats
 
   setup do
     # Start PlayerAnalyzer for tests that need it
@@ -58,7 +58,7 @@ defmodule EveDmv.IntelligenceEngineTest do
 
     test "plugin supports required callbacks" do
       # Verify the plugin implements required functions
-      assert function_exported?(CombatStats, :analyze, 3)
+      assert function_exported?(CombatStats, :analyze, 2)
       assert function_exported?(CombatStats, :plugin_info, 0)
 
       # Verify optional callbacks

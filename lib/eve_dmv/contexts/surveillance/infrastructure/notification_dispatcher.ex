@@ -8,7 +8,6 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.NotificationDispatcher do
 
   use GenServer
   use EveDmv.ErrorHandler
-  alias EveDmv.Result
 
   require Logger
 
@@ -54,7 +53,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.NotificationDispatcher do
   # GenServer implementation
 
   @impl GenServer
-  def init(opts) do
+  def init(_opts) do
     state = %{
       email_config: load_email_config(),
       webhook_config: load_webhook_config(),

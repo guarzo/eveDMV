@@ -11,11 +11,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
 
   require Logger
 
-  # Doctrine types
-  @doctrine_types [:roam, :defense, :structure, :siege, :escort, :reconnaissance]
-
-  # Mass categories for wormhole operations
-  @mass_categories [:light, :medium, :heavy, :capital]
+  # Note: Doctrine types and mass categories are defined inline where needed
 
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)

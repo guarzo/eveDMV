@@ -138,7 +138,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainThreatAnalyzer do
       timestamp: DateTime.utc_now()
     }
 
-    EventBus.publish_event(event)
+    EventBus.publish(event)
 
     Logger.warning("High threat detected in chain #{map_id}: level #{threat_level}")
   end

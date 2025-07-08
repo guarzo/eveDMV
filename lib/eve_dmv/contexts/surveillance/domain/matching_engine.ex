@@ -12,10 +12,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
   use EveDmv.ErrorHandler
   alias EveDmv.Contexts.Surveillance.Infrastructure.MatchCache
   alias EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository
-  alias EveDmv.DomainEvents.SurveillanceAlert
   alias EveDmv.DomainEvents.SurveillanceMatch
   alias EveDmv.Infrastructure.EventBus
-  alias EveDmv.Result
 
   require Logger
 
@@ -111,7 +109,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
   # GenServer implementation
 
   @impl GenServer
-  def init(opts) do
+  def init(_opts) do
     # Initialize metrics
     state = %{
       processed_killmails: 0,

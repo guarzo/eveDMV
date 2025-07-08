@@ -8,7 +8,6 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
 
   use GenServer
   use EveDmv.ErrorHandler
-  alias EveDmv.Result
 
   require Logger
 

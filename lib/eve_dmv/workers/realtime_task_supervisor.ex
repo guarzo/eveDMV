@@ -18,8 +18,6 @@ defmodule EveDmv.Workers.RealtimeTaskSupervisor do
   - **Restart Strategy**: temporary (events are ephemeral)
   """
 
-  @behaviour DynamicSupervisor
-
   use DynamicSupervisor
   require Logger
 

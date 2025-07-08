@@ -10,7 +10,6 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetricsAdapter do
   """
 
   alias EveDmv.Intelligence.Metrics.CharacterMetrics
-  alias EveDmv.IntelligenceV2.DataServices.MetricsCalculator
 
   require Logger
 
@@ -72,8 +71,13 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetricsAdapter do
 
     # Use V2 ISK efficiency calculation if we have meaningful data
     if total_killed_value > 0 or total_lost_value > 0 do
+      # V2 MetricsCalculator not yet implemented - use fallback calculation
       v2_isk_efficiency =
-        MetricsCalculator.calculate_isk_efficiency(total_killed_value, total_lost_value)
+        if total_killed_value + total_lost_value > 0 do
+          total_killed_value / (total_killed_value + total_lost_value)
+        else
+          0.0
+        end
 
       Map.put(legacy_stats, :efficiency, v2_isk_efficiency)
     else
@@ -88,7 +92,8 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetricsAdapter do
   defp try_enhance_with_v2_metrics(legacy_metrics, killmail_data) do
     # Try to enhance with V2 engagement scoring
     activity_data = extract_activity_data_for_v2(killmail_data)
-    engagement_score = MetricsCalculator.calculate_engagement_score(activity_data)
+    # V2 MetricsCalculator not yet implemented - use fallback calculation
+    engagement_score = calculate_fallback_engagement_score(activity_data)
 
     # Add V2 engagement score to legacy metrics
     enhanced_metrics = Map.put(legacy_metrics, :v2_engagement_score, engagement_score)
@@ -131,5 +136,19 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetricsAdapter do
       # Simplified: activity spread
       days_active: min(30, max(1, div(total_activity, 2)))
     }
+  end
+
+  defp calculate_fallback_engagement_score(activity_data) do
+    # Fallback engagement score calculation until V2 MetricsCalculator is implemented
+    total_kills = Map.get(activity_data, :total_kills, 0)
+    total_losses = Map.get(activity_data, :total_losses, 0)
+    fleet_participations = Map.get(activity_data, :fleet_participations, 0)
+    days_active = Map.get(activity_data, :days_active, 1)
+
+    # Simple engagement score formula
+    base_score = total_kills * 2 + total_losses * 1 + fleet_participations
+    activity_multiplier = min(2.0, days_active / 15.0)
+
+    base_score * activity_multiplier
   end
 end

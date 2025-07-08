@@ -19,7 +19,6 @@ defmodule Mix.Tasks.Security.Audit do
 
   # Security review modules not yet implemented
   #   alias EveDmv.Security.ContainerSecurityReview
-  alias EveDmv.Security.DatabaseSecurityReview
 
   @impl Mix.Task
   def run(args) do

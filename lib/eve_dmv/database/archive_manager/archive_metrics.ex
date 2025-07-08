@@ -476,19 +476,87 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveMetrics do
     end
   end
 
-  defp format_bytes(bytes) when bytes >= 1_073_741_824 do
+  @doc """
+  Get the last archive date for a specific archive table.
+  """
+  def get_last_archive_date(archive_table) do
+    query = """
+    SELECT MAX(archived_at) FROM #{archive_table}
+    """
+
+    case SQL.query(Repo, query, []) do
+      {:ok, %{rows: [[last_date]]}} -> last_date
+      _ -> nil
+    end
+  end
+
+  @doc """
+  Format bytes into human-readable format.
+  """
+  def format_bytes(bytes) when bytes >= 1_073_741_824 do
     "#{Float.round(bytes / 1_073_741_824, 2)} GB"
   end
 
-  defp format_bytes(bytes) when bytes >= 1_048_576 do
+  def format_bytes(bytes) when bytes >= 1_048_576 do
     "#{Float.round(bytes / 1_048_576, 2)} MB"
   end
 
-  defp format_bytes(bytes) when bytes >= 1024 do
+  def format_bytes(bytes) when bytes >= 1024 do
     "#{Float.round(bytes / 1024, 2)} KB"
   end
 
-  defp format_bytes(bytes) do
+  def format_bytes(bytes) do
     "#{bytes} bytes"
+  end
+
+  @doc """
+  Update state with archive operation results.
+  """
+  def update_state_from_archive_results(state, results) do
+    total_archived = results.total_archived || 0
+
+    updated_stats = %{
+      state.archive_stats
+      | total_archived_rows: state.archive_stats.total_archived_rows + total_archived,
+        last_archive_date: DateTime.utc_now(),
+        archive_history: [
+          %{
+            timestamp: DateTime.utc_now(),
+            operation: "archive_check",
+            records_archived: total_archived,
+            duration_ms: results.duration_ms
+          }
+          | Enum.take(state.archive_stats.archive_history, 9)
+        ]
+    }
+
+    %{state | archive_stats: updated_stats, last_archive_check: DateTime.utc_now()}
+  end
+
+  @doc """
+  Update state with archive statistics.
+  """
+  def update_archive_stats(state, result) do
+    case result do
+      {:ok, archived_count} ->
+        updated_stats = %{
+          state.archive_stats
+          | total_archived_rows: state.archive_stats.total_archived_rows + archived_count,
+            last_archive_date: DateTime.utc_now(),
+            archive_history: [
+              %{
+                timestamp: DateTime.utc_now(),
+                operation: "manual_archive",
+                records_archived: archived_count
+              }
+              | Enum.take(state.archive_stats.archive_history, 9)
+            ]
+        }
+
+        %{state | archive_stats: updated_stats}
+
+      _error ->
+        state
+    end
   end
 end

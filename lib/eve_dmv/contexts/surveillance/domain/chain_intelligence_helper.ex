@@ -8,12 +8,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
 
   alias EveDmv.Contexts.Surveillance.Domain.AlertService
   alias EveDmv.Contexts.Surveillance.Domain.ChainActivityTracker
-  alias EveDmv.Contexts.Surveillance.Domain.ChainStatusService
   alias EveDmv.Contexts.Surveillance.Domain.ChainThreatAnalyzer
-  alias EveDmv.Contexts.Surveillance.Domain.NotificationService
-  alias EveDmv.DomainEvents.ChainActivityPrediction
   alias EveDmv.DomainEvents.ChainThreatDetected
-  alias EveDmv.DomainEvents.HostileMovement
   alias EveDmv.Intelligence.WandererClient
 
   require Logger

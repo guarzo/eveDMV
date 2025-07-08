@@ -35,11 +35,10 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager do
   ```
   """
 
-  @behaviour EveDmv.Intelligence.Analyzer
-
   use EveDmv.Intelligence.Analyzer
 
   alias EveDmv.Intelligence.Analyzers.FleetAssetManager.AssetAvailability
+  alias EveDmv.Result
   # Extracted modules
   alias EveDmv.Intelligence.Analyzers.FleetAssetManager.AcquisitionPlanner
   alias EveDmv.Intelligence.Analyzers.FleetAssetManager.ReadinessAnalyzer

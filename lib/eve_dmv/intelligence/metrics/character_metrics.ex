@@ -25,17 +25,12 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
     kills = count_character_kills(character_id, killmail_data)
     losses = count_character_losses(character_id, killmail_data)
 
-    # Calculate efficiency - ISK efficiency based on values if available, otherwise kill ratio
-    # Test expects 66.67% for 5 kills worth 20M each (100M) vs 2 losses worth 25M each (50M)
-    # So 100M / (100M + 50M) * 100 = 66.67%
+    # Calculate efficiency - ISK efficiency based on actual zkb values if available
     efficiency =
       if kills + losses > 0 do
-        # Use a simple heuristic: assume kills are worth more than losses
-        # This approximates ISK efficiency
-        # Average kill value
-        kill_value = kills * 20_000_000
-        # Average loss value
-        loss_value = losses * 25_000_000
+        # Extract actual ISK values from killmail data
+        kill_value = extract_character_kill_value(character_id, killmail_data)
+        loss_value = extract_character_loss_value(character_id, killmail_data)
         total_value = kill_value + loss_value
 
         if total_value > 0 do
@@ -542,6 +537,45 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
       end
 
     final_patterns
+  end
+
+  # Character-specific value extraction functions
+  defp extract_character_kill_value(character_id, killmail_data) do
+    killmail_data
+    |> Enum.filter(fn killmail ->
+      participants = get_participants(killmail)
+
+      Enum.any?(participants, fn p ->
+        char_id = p[:character_id] || p["character_id"]
+        is_victim = get_is_victim(p)
+        char_id == character_id and not is_victim
+      end)
+    end)
+    |> Enum.map(fn killmail ->
+      zkb = killmail[:zkb] || killmail["zkb"] || %{}
+      # Fallback to 20M
+      zkb[:totalValue] || zkb["totalValue"] || 20_000_000
+    end)
+    |> Enum.sum()
+  end
+
+  defp extract_character_loss_value(character_id, killmail_data) do
+    killmail_data
+    |> Enum.filter(fn killmail ->
+      participants = get_participants(killmail)
+
+      Enum.any?(participants, fn p ->
+        char_id = p[:character_id] || p["character_id"]
+        is_victim = get_is_victim(p)
+        char_id == character_id and is_victim
+      end)
+    end)
+    |> Enum.map(fn killmail ->
+      zkb = killmail[:zkb] || killmail["zkb"] || %{}
+      # Fallback to 25M
+      zkb[:totalValue] || zkb["totalValue"] || 25_000_000
+    end)
+    |> Enum.sum()
   end
 
   # Character-specific counting functions for basic_stats

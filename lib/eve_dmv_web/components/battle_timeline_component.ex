@@ -11,7 +11,6 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
   """
 
   use Phoenix.Component
-  alias Phoenix.HTML
 
   @doc """
   Renders a battle timeline visualization.

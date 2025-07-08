@@ -8,7 +8,6 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
 
   use EveDmv.ErrorHandler
 
-  alias EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository
   alias EveDmv.Result
 
   require Logger
@@ -181,17 +180,6 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
   end
 
   defp safe_divide(_, _), do: 0.0
-
-  defp calculate_kill_death_ratio(stats) do
-    kills = Map.get(stats, :total_kills, 0)
-    losses = Map.get(stats, :total_losses, 0)
-
-    if losses > 0 do
-      kills / losses
-    else
-      min(kills, 100.0)
-    end
-  end
 
   defp calculate_activity_level(total_activity) do
     cond do

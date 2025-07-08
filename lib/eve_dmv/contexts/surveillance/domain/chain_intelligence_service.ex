@@ -19,7 +19,6 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
   alias EveDmv.Contexts.Surveillance.ChainActivityTracker
   alias EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper
   alias EveDmv.Contexts.Surveillance.Domain.ChainStatusService
-  alias EveDmv.DomainEvents.ChainThreatDetected
   alias EveDmv.Intelligence.ChainMonitor
   alias EveDmv.Intelligence.ChainThreatAnalyzer
 
@@ -35,7 +34,6 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
 
   # Threat escalation thresholds
   @high_threat_threshold 75
-  @hostile_fleet_threshold 3
   # Systems from home
   @chain_breach_distance 2
 
@@ -456,10 +454,6 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
     Process.send_after(self(), :predict_activity, @activity_prediction_interval_ms)
   end
 
-  defp fetch_initial_chain_data(map_id) do
-    ChainIntelligenceHelper.fetch_initial_chain_data(map_id)
-  end
-
   defp sync_all_chain_topologies(map_ids) do
     ChainIntelligenceHelper.sync_all_chain_topologies(map_ids)
   end
@@ -470,39 +464,6 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
 
   defp analyze_system_threats(map_id, system_id, inhabitants) do
     ChainIntelligenceHelper.analyze_system_threats(map_id, system_id, inhabitants)
-  end
-
-  defp evaluate_system_threat_level(map_id, system_id, threat_analysis, inhabitants) do
-    total_pilots = map_size(threat_analysis.pilot_analyses)
-    hostile_pilots = threat_analysis.threat_summary.high_threat_count
-    average_threat = threat_analysis.threat_summary.average_threat_score
-    high_bait_count = threat_analysis.threat_summary.high_bait_count
-
-    # Calculate overall system threat level
-    system_threat_level =
-      cond do
-        hostile_pilots >= @hostile_fleet_threshold -> :critical
-        average_threat >= @high_threat_threshold -> :high
-        high_bait_count > 0 -> :moderate
-        total_pilots > 0 -> :low
-        true -> :clear
-      end
-
-    if system_threat_level in [:critical, :high] do
-      %{
-        map_id: map_id,
-        system_id: system_id,
-        threat_level: system_threat_level,
-        pilot_count: total_pilots,
-        hostile_count: hostile_pilots,
-        average_threat_score: average_threat,
-        high_bait_count: high_bait_count,
-        inhabitants: inhabitants,
-        timestamp: DateTime.utc_now()
-      }
-    else
-      nil
-    end
   end
 
   defp handle_threat_detection(threat_result) do
@@ -610,23 +571,6 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
     end
   end
 
-  defp calculate_prediction_confidence(events) do
-    # Simple confidence based on data volume and recency
-    event_count = length(events)
-
-    recent_events =
-      Enum.count(events, fn event ->
-        DateTime.diff(DateTime.utc_now(), event.timestamp, :hour) <= 24
-      end)
-
-    cond do
-      event_count > 50 and recent_events > 10 -> :high
-      event_count > 20 and recent_events > 5 -> :moderate
-      event_count > 10 -> :low
-      true -> :very_low
-    end
-  end
-
   defp analyze_hostile_report(map_id, system_id, hostile_data, chain_data) do
     ChainIntelligenceHelper.analyze_hostile_report(
       map_id,
@@ -635,17 +579,6 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
       chain_data,
       @chain_breach_distance
     )
-  end
-
-  defp calculate_system_distance(home_system_id, target_system_id, _map_id) do
-    # This would use the chain topology to calculate jump distance
-    # Simplified implementation returns a mock distance
-    if home_system_id == target_system_id do
-      0
-    else
-      # Mock calculation - real implementation would use graph traversal
-      Enum.random(1..5)
-    end
   end
 
   defp topology_changed_significantly?(old_topology, new_topology) do
@@ -661,52 +594,5 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
     # Keep last 1000 events per chain
     new_timeline = [event | Enum.take(current_timeline, 999)]
     Map.put(timelines, map_id, new_timeline)
-  end
-
-  defp find_chains_containing_system(_monitored_chains, _system_id) do
-    # This would query the topology to find which chains contain the system
-    # Simplified implementation returns empty list
-    []
-  end
-
-  defp summarize_topology(topology) do
-    %{
-      system_count: length(Map.get(topology, :systems, [])),
-      last_updated: Map.get(topology, :last_updated)
-    }
-  end
-
-  defp summarize_inhabitants(inhabitants) do
-    total_inhabitants = count_total_inhabitants(inhabitants)
-    systems_with_activity = map_size(inhabitants)
-
-    %{
-      total_inhabitants: total_inhabitants,
-      active_systems: systems_with_activity,
-      average_per_system:
-        if(systems_with_activity > 0, do: total_inhabitants / systems_with_activity, else: 0)
-    }
-  end
-
-  defp count_total_inhabitants(inhabitants) do
-    inhabitants
-    |> Map.values()
-    |> Enum.map(&length/1)
-    |> Enum.sum()
-  end
-
-  defp calculate_current_threat_level(inhabitants, _predictions) do
-    total_inhabitants = count_total_inhabitants(inhabitants)
-
-    cond do
-      total_inhabitants > 10 -> :high
-      total_inhabitants > 5 -> :moderate
-      total_inhabitants > 0 -> :low
-      true -> :clear
-    end
-  end
-
-  defp calculate_monitoring_duration(started_at) do
-    DateTime.diff(DateTime.utc_now(), started_at, :second)
   end
 end

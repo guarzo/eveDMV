@@ -18,8 +18,6 @@ defmodule EveDmv.Workers.UITaskSupervisor do
   - **Restart Strategy**: temporary (failed tasks don't restart)
   """
 
-  @behaviour DynamicSupervisor
-
   use DynamicSupervisor
   require Logger
 

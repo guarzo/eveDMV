@@ -591,7 +591,7 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
     end
   end
 
-  defp identify_risk_factors(age_risk, employment_risk, pattern_risk, employment_history \\ []) do
+  defp identify_risk_factors(age_risk, employment_risk, pattern_risk, employment_history) do
     corp_hopping = detect_corp_hopping(employment_history)
 
     []

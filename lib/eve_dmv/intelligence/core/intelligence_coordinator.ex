@@ -9,7 +9,6 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
   alias EveDmv.Intelligence.Analyzers.CharacterAnalyzer
   alias EveDmv.Intelligence.Analyzers.WHVettingAnalyzer
   alias EveDmv.Intelligence.Core.CacheHelper
-  alias EveDmv.Intelligence.IntelligenceEngine
 
   require Logger
 
@@ -121,25 +120,16 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
     end)
   end
 
-  defp analyze_character_basic(character_id) do
-    # Try using IntelligenceEngine first, fall back to direct analyzer
-    case IntelligenceEngine.analyze(:character, character_id, scope: :basic) do
+  def analyze_character_basic(character_id) do
+    # Use direct analyzer to avoid circular dependency
+    case CharacterAnalyzer.analyze_character_basic(character_id) do
       {:ok, analysis} ->
         {:ok, analysis}
 
-      {:error, _reason} ->
-        # Fallback to direct analyzer
-        case CharacterAnalyzer.analyze_character_basic(character_id) do
-          {:ok, analysis} ->
-            {:ok, analysis}
+      {:error, reason} ->
+        Logger.warning("Basic character analysis failed, using placeholder: #{inspect(reason)}")
 
-          {:error, reason} ->
-            Logger.warning(
-              "Basic character analysis failed, using placeholder: #{inspect(reason)}"
-            )
-
-            {:ok, get_placeholder_basic_analysis(character_id)}
-        end
+        {:ok, get_placeholder_basic_analysis(character_id)}
     end
   rescue
     error ->

@@ -153,6 +153,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache do
     {:ok, state}
   end
 
+  # All handle_call/3 clauses grouped together
   @impl GenServer
   def handle_call({:get, cache_type, entity_id, entity_type}, _from, state) do
     cache_key = build_cache_key(cache_type, entity_id, entity_type)
@@ -197,6 +198,77 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache do
     {:reply, enhanced_stats, state}
   end
 
+  @impl GenServer
+  def handle_call({:get_entry_details, cache_type, entity_id, entity_type}, _from, state) do
+    cache_key = build_cache_key(cache_type, entity_id, entity_type)
+
+    case Map.get(state.cache, cache_key) do
+      nil ->
+        {:reply, {:error, :not_found}, state}
+
+      entry ->
+        details = %{
+          cache_key: cache_key,
+          stored_at: entry.stored_at,
+          expires_at: entry.expires_at,
+          ttl_remaining: DateTime.diff(entry.expires_at, DateTime.utc_now(), :second),
+          is_expired: DateTime.after?(DateTime.utc_now(), entry.expires_at),
+          data_size: estimate_data_size(entry.data)
+        }
+
+        {:reply, {:ok, details}, state}
+    end
+  end
+
+  @impl GenServer
+  def handle_call({:get_cache_keys, pattern}, _from, state) do
+    keys =
+      if pattern do
+        state.cache
+        |> Map.keys()
+        |> Enum.filter(&String.contains?(&1, pattern))
+      else
+        Map.keys(state.cache)
+      end
+
+    {:reply, keys, state}
+  end
+
+  @impl GenServer
+  def handle_call(:get_detailed_metrics, _from, state) do
+    cache_size = map_size(state.cache)
+
+    # Analyze cache contents by type
+    type_breakdown =
+      Enum.reduce(state.cache, %{}, fn {key, _value}, acc ->
+        type = key |> String.split(":") |> List.first()
+        Map.update(acc, type, 1, &(&1 + 1))
+      end)
+
+    # Calculate cache age distribution
+    now = DateTime.utc_now()
+
+    age_distribution =
+      state.cache
+      |> Enum.map(fn {_key, %{stored_at: stored_at}} ->
+        DateTime.diff(now, stored_at, :second)
+      end)
+      |> calculate_age_stats()
+
+    detailed_metrics = %{
+      basic_stats: state.stats,
+      cache_size: cache_size,
+      hit_rate: calculate_hit_rate(state.stats),
+      cache_utilization: cache_size / @max_cache_size,
+      type_breakdown: type_breakdown,
+      age_distribution: age_distribution,
+      memory_estimate: estimate_total_memory_usage(state.cache)
+    }
+
+    {:reply, detailed_metrics, state}
+  end
+
+  # All handle_cast/2 clauses grouped together
   @impl GenServer
   def handle_cast({:store, cache_type, entity_id, entity_type, data, ttl}, state) do
     cache_key = build_cache_key(cache_type, entity_id, entity_type)
@@ -274,6 +346,21 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache do
   end
 
   @impl GenServer
+  def handle_cast({:warm_cache, entity_specs}, state) do
+    # This would trigger threat assessments for the specified entities
+    # For now, just log the warming request
+    Logger.info("ThreatCache warming requested for #{length(entity_specs)} entities")
+
+    # In a full implementation, this would:
+    # 1. Check if entities are already cached
+    # 2. Trigger background threat assessments for uncached entities
+    # 3. Populate cache with results
+
+    {:noreply, state}
+  end
+
+  # handle_info/2 clause
+  @impl GenServer
   def handle_info(:cleanup, state) do
     # Remove expired entries
     now = DateTime.utc_now()
@@ -324,76 +411,6 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache do
     |> Enum.into(%{})
   end
 
-  @impl GenServer
-  def handle_call({:get_entry_details, cache_type, entity_id, entity_type}, _from, state) do
-    cache_key = build_cache_key(cache_type, entity_id, entity_type)
-
-    case Map.get(state.cache, cache_key) do
-      nil ->
-        {:reply, {:error, :not_found}, state}
-
-      entry ->
-        details = %{
-          cache_key: cache_key,
-          stored_at: entry.stored_at,
-          expires_at: entry.expires_at,
-          ttl_remaining: DateTime.diff(entry.expires_at, DateTime.utc_now(), :second),
-          is_expired: DateTime.after?(DateTime.utc_now(), entry.expires_at),
-          data_size: estimate_data_size(entry.data)
-        }
-
-        {:reply, {:ok, details}, state}
-    end
-  end
-
-  @impl GenServer
-  def handle_call({:get_cache_keys, pattern}, _from, state) do
-    keys =
-      if pattern do
-        state.cache
-        |> Map.keys()
-        |> Enum.filter(&String.contains?(&1, pattern))
-      else
-        Map.keys(state.cache)
-      end
-
-    {:reply, keys, state}
-  end
-
-  @impl GenServer
-  def handle_call(:get_detailed_metrics, _from, state) do
-    cache_size = map_size(state.cache)
-
-    # Analyze cache contents by type
-    type_breakdown =
-      Enum.reduce(state.cache, %{}, fn {key, _value}, acc ->
-        type = key |> String.split(":") |> List.first()
-        Map.update(acc, type, 1, &(&1 + 1))
-      end)
-
-    # Calculate cache age distribution
-    now = DateTime.utc_now()
-
-    age_distribution =
-      state.cache
-      |> Enum.map(fn {_key, %{stored_at: stored_at}} ->
-        DateTime.diff(now, stored_at, :second)
-      end)
-      |> calculate_age_stats()
-
-    detailed_metrics = %{
-      basic_stats: state.stats,
-      cache_size: cache_size,
-      hit_rate: calculate_hit_rate(state.stats),
-      cache_utilization: cache_size / @max_cache_size,
-      type_breakdown: type_breakdown,
-      age_distribution: age_distribution,
-      memory_estimate: estimate_total_memory_usage(state.cache)
-    }
-
-    {:reply, detailed_metrics, state}
-  end
-
   defp estimate_data_size(data) do
     # Rough estimate of data size in memory
     binary_data = :erlang.term_to_binary(data)
@@ -402,18 +419,27 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache do
     _ -> :unknown
   end
 
-  @impl GenServer
-  def handle_cast({:warm_cache, entity_specs}, state) do
-    # This would trigger threat assessments for the specified entities
-    # For now, just log the warming request
-    Logger.info("ThreatCache warming requested for #{length(entity_specs)} entities")
+  defp calculate_age_stats(ages) do
+    if Enum.empty?(ages) do
+      %{min: 0, max: 0, avg: 0, median: 0}
+    else
+      sorted_ages = Enum.sort(ages)
+      count = length(sorted_ages)
 
-    # In a full implementation, this would:
-    # 1. Check if entities are already cached
-    # 2. Trigger background threat assessments for uncached entities
-    # 3. Populate cache with results
+      %{
+        min: List.first(sorted_ages),
+        max: List.last(sorted_ages),
+        avg: Enum.sum(sorted_ages) / count,
+        median: Enum.at(sorted_ages, div(count, 2))
+      }
+    end
+  end
 
-    {:noreply, state}
+  defp estimate_total_memory_usage(cache) do
+    cache
+    |> Enum.map(fn {_key, entry} -> estimate_data_size(entry.data) end)
+    |> Enum.filter(&is_integer/1)
+    |> Enum.sum()
   end
 
   # Public API functions moved after GenServer implementation
@@ -444,28 +470,5 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache do
   """
   def get_detailed_metrics do
     GenServer.call(__MODULE__, :get_detailed_metrics)
-  end
-
-  defp calculate_age_stats(ages) do
-    if Enum.empty?(ages) do
-      %{min: 0, max: 0, avg: 0, median: 0}
-    else
-      sorted_ages = Enum.sort(ages)
-      count = length(sorted_ages)
-
-      %{
-        min: List.first(sorted_ages),
-        max: List.last(sorted_ages),
-        avg: Enum.sum(sorted_ages) / count,
-        median: Enum.at(sorted_ages, div(count, 2))
-      }
-    end
-  end
-
-  defp estimate_total_memory_usage(cache) do
-    cache
-    |> Enum.map(fn {_key, entry} -> estimate_data_size(entry.data) end)
-    |> Enum.filter(&is_integer/1)
-    |> Enum.sum()
   end
 end

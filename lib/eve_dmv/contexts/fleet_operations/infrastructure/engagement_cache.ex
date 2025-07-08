@@ -26,4 +26,11 @@ defmodule EveDmv.Contexts.FleetOperations.Infrastructure.EngagementCache do
   def get_fleet_statistics(_params, _time_range) do
     {:ok, %{total_engagements: 0, avg_effectiveness: 0.0}}
   end
+
+  @doc """
+  Get detailed information about a specific fleet engagement.
+  """
+  def get_engagement_details(_engagement_id) do
+    {:ok, %{}}
+  end
 end

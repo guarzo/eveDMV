@@ -8,7 +8,6 @@ defmodule EveDmv.Intelligence.Analyzers.FleetPilotAnalyzer do
 
   alias EveDmv.Api
   alias EveDmv.Intelligence.CharacterStats
-  alias EveDmv.Intelligence.Core.TimeoutHelper
 
   require Ash.Query
   require Logger

@@ -8,8 +8,6 @@ defmodule EveDmv.Intelligence.AlertSystem do
 
   use GenServer
 
-  alias EveDmv.Intelligence.WHVetting
-
   require Logger
 
   # Alert configuration

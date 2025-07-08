@@ -18,8 +18,6 @@ defmodule EveDmv.Workers.BackgroundTaskSupervisor do
   - **Restart Strategy**: temporary (manual restart required)
   """
 
-  @behaviour DynamicSupervisor
-
   use DynamicSupervisor
   require Logger
 

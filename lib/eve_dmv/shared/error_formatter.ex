@@ -26,9 +26,7 @@ defmodule EveDmv.Shared.ErrorFormatter do
     {:error, "An unexpected error occurred"}
   end
 
-  @doc """
-  Formats Ecto changeset errors into a human-readable string.
-  """
+  # Formats Ecto changeset errors into a human-readable string.
   defp format_changeset_errors(changeset) do
     changeset
     |> Ecto.Changeset.traverse_errors(fn {msg, opts} ->

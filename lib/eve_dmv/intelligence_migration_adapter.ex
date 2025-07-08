@@ -59,6 +59,30 @@ defmodule EveDmv.IntelligenceMigrationAdapter do
     {:ok, results}
   end
 
+  @doc """
+  Invalidate cached analysis for an entity.
+
+  Routes to appropriate bounded context for cache invalidation.
+  """
+  def invalidate_cache(domain, entity_id) do
+    case domain do
+      :character ->
+        invalidate_character_cache(entity_id)
+
+      :corporation ->
+        invalidate_corporation_cache(entity_id)
+
+      :fleet ->
+        invalidate_fleet_cache(entity_id)
+
+      :threat ->
+        invalidate_threat_cache(entity_id)
+
+      _ ->
+        {:error, :unsupported_domain}
+    end
+  end
+
   # Private analysis functions
 
   defp analyze_character(character_id, opts) do
@@ -251,5 +275,98 @@ defmodule EveDmv.IntelligenceMigrationAdapter do
       fleet_operations: function_exported?(FleetAnalyzer, :analyze_composition, 1),
       threat_assessment: function_exported?(ThreatAnalyzer, :assess_threat, 3)
     }
+  end
+
+  # Private cache invalidation functions
+
+  defp invalidate_character_cache(character_id) do
+    try do
+      # Invalidate cache in Combat Intelligence context
+      if Code.ensure_loaded?(EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache) do
+        EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache.invalidate_character(
+          character_id
+        )
+
+        EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache.invalidate_threat_assessment(
+          character_id
+        )
+
+        EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache.invalidate_intelligence_scores(
+          character_id
+        )
+      end
+
+      # Invalidate cache in Threat Assessment context
+      if Code.ensure_loaded?(EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache) do
+        EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache.invalidate_entity(
+          character_id,
+          :character
+        )
+      end
+
+      Logger.debug("Invalidated character cache for #{character_id}")
+      :ok
+    rescue
+      exception ->
+        Logger.error("Failed to invalidate character cache: #{inspect(exception)}")
+        {:error, :cache_invalidation_failed}
+    end
+  end
+
+  defp invalidate_corporation_cache(corporation_id) do
+    try do
+      # Invalidate cache in Combat Intelligence context
+      if Code.ensure_loaded?(EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache) do
+        EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache.invalidate_corporation(
+          corporation_id
+        )
+      end
+
+      # Invalidate cache in Threat Assessment context
+      if Code.ensure_loaded?(EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache) do
+        EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache.invalidate_entity(
+          corporation_id,
+          :corporation
+        )
+      end
+
+      Logger.debug("Invalidated corporation cache for #{corporation_id}")
+      :ok
+    rescue
+      exception ->
+        Logger.error("Failed to invalidate corporation cache: #{inspect(exception)}")
+        {:error, :cache_invalidation_failed}
+    end
+  end
+
+  defp invalidate_fleet_cache(fleet_id) do
+    try do
+      # Fleet operations don't have a dedicated cache yet, so just log for now
+      Logger.debug("Fleet cache invalidation requested for #{fleet_id} (no-op)")
+      :ok
+    rescue
+      exception ->
+        Logger.error("Failed to invalidate fleet cache: #{inspect(exception)}")
+        {:error, :cache_invalidation_failed}
+    end
+  end
+
+  defp invalidate_threat_cache(entity_id) do
+    try do
+      # Invalidate cache in Threat Assessment context
+      if Code.ensure_loaded?(EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache) do
+        EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache.invalidate_entity(
+          entity_id,
+          :character
+        )
+      end
+
+      Logger.debug("Invalidated threat cache for #{entity_id}")
+      :ok
+    rescue
+      exception ->
+        Logger.error("Failed to invalidate threat cache: #{inspect(exception)}")
+        {:error, :cache_invalidation_failed}
+    end
   end
 end

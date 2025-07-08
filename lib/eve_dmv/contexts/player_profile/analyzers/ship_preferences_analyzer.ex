@@ -253,16 +253,6 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
 
   # Helper functions
 
-  # Specialization index calculation delegated to shared module
-  defp calculate_specialization_index(usage_distribution) do
-    ShipAnalysis.calculate_specialization_index(usage_distribution)
-  end
-
-  # Ship diversity calculation delegated to shared module
-  defp calculate_ship_diversity(ship_usage) do
-    ShipAnalysis.calculate_ship_diversity(ship_usage)
-  end
-
   defp calculate_ship_diversity_index(ship_usage) do
     if map_size(ship_usage) == 0, do: 0.0
 
@@ -297,29 +287,9 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
     if max_diversity > 0, do: shannon_diversity / max_diversity, else: 0
   end
 
-  # Usage concentration calculation delegated to shared module
-  defp calculate_usage_concentration(usage_distribution) do
-    ShipAnalysis.calculate_usage_concentration(usage_distribution)
-  end
-
   # Ship role categorization delegated to shared module
   defp categorize_ship_role(ship_group) do
     ShipAnalysis.categorize_ship_role(ship_group)
-  end
-
-  # Role specialization calculation delegated to shared module
-  defp calculate_role_specialization(role_percentages) do
-    ShipAnalysis.calculate_role_specialization(role_percentages)
-  end
-
-  # Role flexibility assessment delegated to shared module
-  defp assess_role_flexibility(role_percentages) do
-    ShipAnalysis.assess_role_flexibility(role_percentages)
-  end
-
-  # Combat focus determination delegated to shared module
-  defp determine_combat_focus(role_percentages) do
-    ShipAnalysis.determine_combat_focus(role_percentages)
   end
 
   # Simplified helper functions that return basic values

@@ -83,7 +83,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainActivityTracker do
           timestamp: DateTime.utc_now()
         }
 
-        EventBus.publish_event(event)
+        EventBus.publish(event)
 
         Logger.debug("Generated activity predictions for chain #{map_id}")
         {:ok, predictions}
@@ -157,18 +157,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainActivityTracker do
       timestamp: killmail.killmail_time
     }
 
-    EventBus.publish_event(event)
-  end
-
-  defp extract_hostile_entities(killmail) do
-    Enum.map(killmail.attackers, fn attacker ->
-      %{
-        character_id: attacker.character_id,
-        corporation_id: attacker.corporation_id,
-        alliance_id: attacker.alliance_id,
-        ship_type: attacker.ship_type_id
-      }
-    end)
+    EventBus.publish(event)
   end
 
   defp analyze_activity_patterns(timeline) do
@@ -181,27 +170,27 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainActivityTracker do
     {:ok, patterns}
   end
 
-  defp calculate_hourly_distribution(timeline) do
+  defp calculate_hourly_distribution(_timeline) do
     # Calculate activity distribution by hour of day
     %{}
   end
 
-  defp calculate_daily_patterns(timeline) do
+  defp calculate_daily_patterns(_timeline) do
     # Calculate activity patterns by day of week
     %{}
   end
 
-  defp analyze_threat_patterns(timeline) do
+  defp analyze_threat_patterns(_timeline) do
     # Analyze patterns in hostile activity
     %{}
   end
 
-  defp predict_future_activity(patterns) do
+  defp predict_future_activity(_patterns) do
     # Generate predictions based on historical patterns
     []
   end
 
-  defp calculate_prediction_confidence(patterns) do
+  defp calculate_prediction_confidence(_patterns) do
     # Calculate confidence in predictions
     0.5
   end

@@ -10,7 +10,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
   use GenServer
 
   alias EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache
-  alias EveDmv.Database.CharacterRepository
 
   require Logger
 
@@ -239,7 +238,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
     }
   end
 
-  defp generate_recommendations(character_id) do
+  defp generate_recommendations(_character_id) do
     [
       %{
         type: :tactical,

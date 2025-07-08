@@ -10,7 +10,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CorporationAnalyzer do
   use GenServer
 
   alias EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache
-  alias EveDmv.Database.CharacterRepository
 
   require Logger
 

@@ -6,7 +6,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   use GenServer
 
   alias EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache
-  alias EveDmv.Database.CharacterRepository
 
   require Logger
 
@@ -118,7 +117,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   end
 
   @impl GenServer
-  def handle_call({:search, criteria}, _from, state) do
+  def handle_call({:search, _criteria}, _from, state) do
     # Placeholder implementation - search criteria processing not yet implemented
     {:reply, {:ok, []}, state}
   end

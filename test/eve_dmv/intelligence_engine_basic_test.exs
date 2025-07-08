@@ -119,8 +119,11 @@ defmodule EveDmv.IntelligenceEngineBasicTest do
     end
 
     test "plugin supports required callbacks" do
+      # Ensure module is loaded before checking exports
+      Code.ensure_loaded!(CombatStats)
+
       # Verify the plugin implements required functions
-      assert function_exported?(CombatStats, :analyze, 3)
+      assert function_exported?(CombatStats, :analyze, 2)
       assert function_exported?(CombatStats, :plugin_info, 0)
 
       # Verify optional callbacks
@@ -211,7 +214,7 @@ defmodule EveDmv.IntelligenceEngineBasicTest do
       assert key1 == key2
       assert is_binary(key1)
       assert String.contains?(key1, "character")
-      assert String.contains?(key1, "12_345")
+      assert String.contains?(key1, "12345")
       assert String.contains?(key1, "basic")
     end
 

@@ -9,7 +9,6 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer do
   use GenServer
   use EveDmv.ErrorHandler
   alias EveDmv.Contexts.CorporationAnalysis.Analyzers.MemberActivityAnalyzer
-  alias EveDmv.Contexts.CorporationAnalysis.Infrastructure.AnalysisCache
   alias EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationRepository
   alias EveDmv.Result
   alias EveDmv.Shared.MetricsCalculator

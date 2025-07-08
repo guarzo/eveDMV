@@ -9,7 +9,6 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
   use GenServer
   use EveDmv.ErrorHandler
   alias EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository
-  alias EveDmv.Result
 
   require Logger
 
