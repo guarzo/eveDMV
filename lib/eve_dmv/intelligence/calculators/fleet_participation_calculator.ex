@@ -66,4 +66,11 @@ defmodule EveDmv.Intelligence.Calculators.FleetParticipationCalculator do
       }
     end
   end
+
+  @doc """
+  Calculate fleet participation metrics (alias for backwards compatibility).
+  """
+  def calculate_metrics(fleet_data) do
+    calculate_fleet_participation_metrics(fleet_data)
+  end
 end

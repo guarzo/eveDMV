@@ -10,6 +10,18 @@ defmodule EveDmvWeb.FormatHelpers do
   Formats numbers with proper comma separators and unit suffixes.
   """
   def format_number(nil), do: "0"
+  
+  def format_number(number) when is_binary(number) do
+    # Handle string inputs by parsing them
+    case Integer.parse(number) do
+      {int_value, ""} -> format_number(int_value)
+      _ -> 
+        case Float.parse(number) do
+          {float_value, ""} -> format_number(float_value)
+          _ -> number  # Return as-is if not parseable
+        end
+    end
+  end
 
   def format_number(number) when is_integer(number) do
     add_commas(Integer.to_string(number))

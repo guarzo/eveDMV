@@ -7,7 +7,7 @@ defmodule EveDmv.Killmails.DatabaseInserter do
   """
 
   alias EveDmv.Api
-  alias EveDmv.Killmails.KillmailEnriched
+  # REMOVED: KillmailEnriched - see /docs/architecture/enriched-raw-analysis.md
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Killmails.Participant
 
@@ -47,35 +47,8 @@ defmodule EveDmv.Killmails.DatabaseInserter do
     end
   end
 
-  @doc """
-  Insert enriched killmail records using bulk operations.
-
-  Uses Ash.bulk_create for efficient insertion of enriched killmail data
-  with comprehensive error handling.
-  """
-  @spec insert_enriched_killmails([map()]) :: :ok | :error
-  def insert_enriched_killmails(enriched_changesets) do
-    Logger.debug("Inserting #{length(enriched_changesets)} enriched killmails")
-
-    # Use Ash bulk operation for enriched killmails
-    case Ash.bulk_create(enriched_changesets, KillmailEnriched, :ingest_from_pipeline,
-           domain: Api,
-           return_records?: false,
-           return_errors?: true,
-           stop_on_error?: false
-         ) do
-      %Ash.BulkResult{status: :success} ->
-        success_count = length(enriched_changesets)
-        Logger.debug("Successfully bulk inserted #{success_count} enriched killmails")
-        :ok
-
-      %Ash.BulkResult{status: :partial_success} = result ->
-        handle_partial_success(result, enriched_changesets, "enriched killmail")
-
-      %Ash.BulkResult{status: :error} = result ->
-        handle_bulk_error(result, "enriched killmail")
-    end
-  end
+  # REMOVED: insert_enriched_killmails function
+  # Enriched table provides no value - see /docs/architecture/enriched-raw-analysis.md
 
   @doc """
   Insert participant records using bulk operations.

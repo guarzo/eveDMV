@@ -14,7 +14,7 @@ defmodule EveDmv.Killmails.DataProcessor do
 
   @typep processed_data :: %{
            raw_changeset: map(),
-           enriched_changeset: map(),
+           # REMOVED: enriched_changeset - see /docs/architecture/enriched-raw-analysis.md
            participants: list(),
            original_data: map()
          }
@@ -30,7 +30,7 @@ defmodule EveDmv.Killmails.DataProcessor do
     # Single pass through the data to create all required formats
     processed = %{
       raw_changeset: KillmailDataTransformer.build_raw_changeset(enriched_data),
-      enriched_changeset: KillmailDataTransformer.build_enriched_changeset(enriched_data),
+      # REMOVED: enriched_changeset - see /docs/architecture/enriched-raw-analysis.md
       participants: ParticipantBuilder.build_participants(enriched_data),
       original_data: enriched_data
     }
@@ -46,11 +46,11 @@ defmodule EveDmv.Killmails.DataProcessor do
   Extract database changesets from processed data.
   """
   @spec extract_database_changesets(processed_data()) ::
-          {[map()], [map()], [list()]}
+          {[map()], [list()]}
   def extract_database_changesets(processed_data) do
     {
       [processed_data.raw_changeset],
-      [processed_data.enriched_changeset],
+      # REMOVED: enriched_changeset - see /docs/architecture/enriched-raw-analysis.md
       [processed_data.participants]
     }
   end
@@ -68,7 +68,7 @@ defmodule EveDmv.Killmails.DataProcessor do
   """
   @spec validate_processed_data(processed_data()) :: :ok | {:error, term()}
   def validate_processed_data(processed_data) do
-    required_fields = [:raw_changeset, :enriched_changeset, :participants, :original_data]
+    required_fields = [:raw_changeset, :participants, :original_data]
 
     missing_fields =
       Enum.filter(required_fields, fn field ->

@@ -38,7 +38,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityHelpers d
   to assess member engagement and social integration.
   """
   def analyze_communication_patterns(communication_data) do
-    CommunicationPatternAnalyzer.analyze_patterns(communication_data)
+    CommunicationPatternAnalyzer.analyze_communication_patterns(communication_data)
   end
 
   @doc """

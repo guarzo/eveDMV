@@ -214,7 +214,7 @@ defmodule EveDmvWeb.ProfileLive do
         <h3 class="text-lg font-semibold text-white mb-4">Quick Actions</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <.link
-            navigate={~p"/intel/#{@current_user.eve_character_id}"}
+            navigate={~p"/character/#{@current_user.eve_character_id}"}
             class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg text-center transition-colors"
           >
             View My Character Intelligence

@@ -1,119 +1,125 @@
-# EVE DMV - Documentation
+# EVE DMV Documentation
 
-This directory contains all project documentation organized into logical categories. Each document serves a specific purpose in the development and understanding of the EVE DMV platform.
+## Project Overview
 
-## 📋 Core Documents
+EVE DMV is an Elixir Phoenix application for tracking EVE Online PvP data. For implementation details, see [CLAUDE.md](/workspace/CLAUDE.md).
 
-| Document | Purpose | Audience |
-|----------|---------|----------|
-| [Product Requirements Document](./product-requirements.md) | Complete functional specification and business requirements | Product owners, stakeholders, developers |
+## Current Project Status
 
-## 🏗️ Architecture
+**Last Updated**: January 2025 (Sprint 3 Complete)
 
+### What Actually Works ✅
+- **Kill Feed** (`/feed`) - Real-time killmail display with SSE integration
+- **Character Analysis** (`/analysis/:character_id`) - Shows real killmail data
+- **Authentication** - EVE SSO OAuth integration
+- **Database Schema** - Partitioned tables for scalability
+- **Broadway Pipeline** - Processes ~50-100 killmails/minute
+- **Static Data** - 49,894 EVE items loaded including all ships
+- **Monitoring Dashboard** (`/monitoring`) - Error tracking and pipeline health
+
+### What Doesn't Work Yet 🚧
+- **Battle Analysis** - Returns empty data
+- **Corporation Intelligence** - Placeholder UI only
+- **Fleet Composition Tools** - Not implemented
+- **Wormhole Features** - All return mock data
+- **Surveillance Profiles** - Database exists but no functionality
+- **Price Integration** - Tables exist but not connected to APIs
+
+### Key Project Status Documents
+
+- **[PROJECT_STATUS.md](/workspace/PROJECT_STATUS.md)** - High-level status overview
+- **[ACTUAL_PROJECT_STATE.md](/workspace/ACTUAL_PROJECT_STATE.md)** - Detailed technical reality
+- **[DEVELOPMENT_PROGRESS_TRACKER.md](/workspace/DEVELOPMENT_PROGRESS_TRACKER.md)** - Sprint tracking
+
+## 📁 Documentation Structure
+
+### 🏗️ Architecture
 Technical design and system architecture documentation.
 
-| Document | Purpose | Key Topics |
-|----------|---------|------------|
-| [Technical Design](./architecture/DESIGN.md) | Complete system architecture and technology stack | Phoenix LiveView, PostgreSQL, Redis, Broadway pipeline |
-| [Database Schema](./architecture/database-schema.md) | Entity relationship diagram and data model | Tables, relationships, indexes |
-| [Database Partitioning](./architecture/database-partitioning.md) | Partitioning strategy for killmail data | Range partitioning, performance optimization |
-| [Caching Strategy](./architecture/caching-strategy.md) | Multi-layer caching approach | ETS tables, Redis, Cachex configuration |
+| Document | Purpose |
+|----------|---------|
+| [Database Schema](./architecture/database-schema.md) | Entity relationships and data model |
+| [Database Partitioning](./architecture/database-partitioning.md) | Partitioning strategy for killmail data |
+| [Caching Strategy](./architecture/caching-strategy.md) | Multi-layer caching approach |
+| [Enriched/Raw Analysis](./architecture/enriched-raw-analysis.md) | Decision to remove enriched table |
 
-## 💻 Development
-
+### 💻 Development
 Development environment setup and best practices.
 
-| Document | Purpose | Key Topics |
-|----------|---------|------------|
-| [Dev Container Setup](./development/devcontainer.md) | Development environment configuration | Docker, VS Code, automatic setup |
-| [Pull Request Checklist](./development/pull-request-checklist.md) | Code review and quality standards | Testing, documentation, performance |
-| [Performance Optimization](./development/performance-optimization.md) | Performance best practices | LiveView optimization, database tuning |
+| Document | Purpose |
+|----------|---------|
+| [Dev Container Setup](./development/devcontainer.md) | Development environment configuration |
+| [Performance Optimization](./development/performance-optimization.md) | Performance best practices |
+| [Pull Request Checklist](./development/pull-request-checklist.md) | Code review standards |
 
-## 🔧 Implementation Guides
+### 🔧 Implementation
+Feature specifications and integration guides.
 
-Detailed implementation specifications for core features.
+| Document | Purpose |
+|----------|---------|
+| [Missed Items](./implementation/missed-items.md) | Honest list of unimplemented ESI features |
+| [ESI Integration Summary](./implementation/esi-integration-summary.md) | EVE ESI integration status |
+| [Service Integration](./implementation/service-integration.md) | External API integration |
+| [Character Intelligence Design](./implementation/character-intelligence-design.md) | Character intel specification |
 
-| Document | Purpose | Key Topics |
-|----------|---------|------------|
-| [Service Integration](./implementation/service-integration.md) | External API integration | wanderer-kills, EVE ESI |
-| [Authentication Edge Cases](./implementation/authentication-edge-cases.md) | Complex authentication scenarios | Corp transfers, token expiration |
-| [Surveillance Profile Matching](./implementation/surveillance-profile-matching.md) | Profile filtering system | JSON schema, performance optimization |
-| [Data Freshness](./implementation/data-freshness.md) | Data freshness management | Retry policies, error handling |
-| [Character Intelligence Design](./implementation/character-intelligence-design.md) | Character intelligence feature specification | Data aggregation, real-time updates |
-| [Character Intelligence Hunter-Focused](./implementation/character-intelligence-hunter-focused.md) | Hunter-focused intelligence features | Tactical data, hunting patterns |
-| [Phase 2 Roadmap](./implementation/phase-2-roadmap.md) | Phase 2 planning and features | Surveillance system, advanced intelligence |
-| [ESI Integration Summary](./implementation/esi-integration-summary.md) | EVE ESI integration details | API endpoints, data flow |
-| [Wormhole Features Specification](./implementation/wormhole-features-specification.md) | WH-specific feature details | Wanderer integration, chain intelligence |
-
-## 📊 Project Management
-
-Project status tracking and management documentation.
-
-| Document | Purpose | Key Topics |
-|----------|---------|------------|
-| [Project Status](./project-management/project-status.md) | Current implementation status | Feature completion, upcoming work |
-| [PR Feedback Sprint 2](./project-management/pr-feedback-sprint-2.md) | Pull request feedback items | Code review comments, action items |
-
-## 🏃 Sprints
-
+### 🏃 Sprints
 Sprint planning and tracking documentation.
 
-| Document | Purpose | Key Topics |
-|----------|---------|------------|
-| [Sprint 2](./sprints/sprint-2.md) | Sprint 2 progress and planning | Tasks, priorities, blockers |
-| [Sprint 2 Bug Fixes](./sprints/sprint-2-bug-fixes.md) | Bug fix summary from Sprint 2 | Resolved issues, remaining bugs |
+```
+sprints/
+├── completed/                     # Finished sprints
+│   ├── REALITY_CHECK_SPRINT_1.md # Stabilization sprint (Dec 2024)
+│   ├── SPRINT_3_PLAN.md         # Polish & Stabilize plan
+│   └── SPRINT_3_PROGRESS.md      # Sprint 3 results (31/30 points)
+├── planned/                      # Future sprints
+│   └── SPRINT_2_CHARACTER_INTELLIGENCE_ENHANCEMENT.md
+└── current/                      # Active sprint work
+```
 
-## 🧪 Testing
-
-Testing guides and procedures.
-
-| Document | Purpose | Key Topics |
-|----------|---------|------------|
-| [Manual Testing Guide](./testing/manual-testing-guide.md) | Manual testing procedures | Test scenarios, validation steps |
-
-## 📚 Reference
-
+### 📚 Reference
 Reference materials and external data specifications.
 
-| Document | Purpose | Key Topics |
-|----------|---------|------------|
-| [External Data Sources](./reference/external-data-sources.md) | Third-party API integrations | Janice, Mutamarket, static EVE data |
-| [Module Tags](./reference/module-tags.md) | Module categorization system | ISK calculations, performance metrics |
+| Document | Purpose |
+|----------|---------|
+| [External Data Sources](./reference/external-data-sources.md) | Third-party API integrations |
+| [Module Tags](./reference/module-tags.md) | Module categorization system |
+
+### 🗄️ Archive
+Historical documents preserved for reference.
+
+- `archive/old-overclaiming-sprints/` - Pre-reality-check sprint documents that claimed features were complete when they were actually stubs
 
 ## 🚀 Getting Started
 
 For new developers joining the project:
 
-1. **Start here:** Read the [Product Requirements Document](./product-requirements.md) to understand what we're building
-2. **Understand the system:** Review the [Technical Design](./architecture/DESIGN.md) for architecture overview
-3. **Set up development:** Follow the [Dev Container Setup](./development/devcontainer.md) guide
-4. **Code standards:** Familiarize yourself with the [Pull Request Checklist](./development/pull-request-checklist.md)
+1. **Understand the reality:** Read [ACTUAL_PROJECT_STATE.md](/workspace/ACTUAL_PROJECT_STATE.md) 
+2. **Set up development:** Follow the [Dev Container Setup](./development/devcontainer.md) guide
+3. **Understand the system:** Review [CLAUDE.md](/workspace/CLAUDE.md) for implementation details
+4. **Check what's missing:** Review [Missed Items](./implementation/missed-items.md)
 
-## 📖 Document Conventions
+## Development Philosophy
 
-### File Naming
-- Use lowercase with hyphens for multi-word filenames
-- Be descriptive: `authentication-edge-cases.md` not `auth.md`
-- Group related files in appropriate subdirectories
+**"If it returns mock data, it's not done."**
 
-### Content Structure
-- Use clear, descriptive headings
-- Include code examples where appropriate
-- Cross-reference related documents
-- Keep information current and accurate
+We only mark features as complete when they:
+- Query real data from the database
+- Use actual algorithms (no hardcoded values)
+- Have tests with real data
+- Include accurate documentation
 
-### Updates
-- Update documentation alongside code changes
-- Use the pull request process for documentation changes
-- Ensure links remain valid after file moves or renames
+## Sprint History
 
-## 🔗 External Links
+### Completed Sprints
+1. **Reality Check Sprint 1** (Dec 2024) - Stabilized core features, fixed Character Intelligence
+2. **Sprint 3: Polish & Stabilize** (Jan 2025) - Fixed runtime errors, removed enriched table complexity
 
-- [EVE ESI Documentation](https://esi.evetech.net/ui/)
-- [Phoenix LiveView Guide](https://hexdocs.pm/phoenix_live_view/)
-- [PostgreSQL Partitioning](https://www.postgresql.org/docs/current/ddl-partitioning.html)
-- [Broadway Documentation](https://hexdocs.pm/broadway/)
+### Next Priorities
+1. Battle Analysis - Group kills into battles
+2. Corporation Intelligence - Basic member activity
+3. Performance optimization
+4. Additional Character Intel features
 
 ---
 
-*Last updated: Reorganized documentation structure - 2025-06-29* 
+*Last updated: Post-Sprint 3 documentation cleanup - January 2025*

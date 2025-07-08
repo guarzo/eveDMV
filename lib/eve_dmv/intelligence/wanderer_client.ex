@@ -57,6 +57,13 @@ defmodule EveDmv.Intelligence.WandererClient do
   end
 
   @doc """
+  Fetch chain inhabitants for a map (alias for get_system_inhabitants).
+  """
+  def get_chain_inhabitants(map_id) do
+    get_system_inhabitants(map_id)
+  end
+
+  @doc """
   Fetch connections for a map.
   """
   def get_connections(map_id) do

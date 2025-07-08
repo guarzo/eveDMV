@@ -1,23 +1,41 @@
 # EVE DMV
 
-A real-time PvP activity tracking platform for EVE Online that provides actionable intelligence for fleet commanders, recruiters, and PvP enthusiasts.
+A real-time PvP activity tracking platform for EVE Online. **Currently in development** - foundation complete, building first intelligence features.
 
 ## 📚 Documentation
 
-- **[Project Overview](./docs/project-management/project-overview.md)** - Start here for project vision and architecture
-- **[Product Requirements](./docs/product-requirements.md)** - Detailed feature specifications
-- **[Development Setup](./docs/development/devcontainer.md)** - Get started with development
-- **[Current Roadmap](./docs/project-management/prioritized-roadmap.md)** - See what we're building next
+### Current Status
+- **[Honest Project Status](./PROJECT_STATUS_REALISTIC.md)** - What actually works vs. what's planned
+- **[Actual Implementation State](./ACTUAL_PROJECT_STATE.md)** - Technical reality assessment  
+- **[Development Progress](./DEVELOPMENT_PROGRESS_TRACKER.md)** - Sprint tracking and metrics
+
+### Development
+- **[Setup Guide](./docs/development/devcontainer.md)** - Get started with development
+- **[Project Instructions](./CLAUDE.md)** - Development guidelines and commands
 
 For complete documentation, see the [/docs directory](./docs/README.md).
 
-## Features
+## Current Features
 
-- 🔴 **Live Kill Feed** - Real-time PvP activity with enriched ISK and fitting data
-- 🔍 **Character Intelligence** - Deep analytics for pilot assessment and recruitment
-- 🚨 **Smart Surveillance** - Custom alerts with advanced filtering and notifications
-- ⚡ **Fleet Optimizer** - Data-driven ship assignment recommendations
-- 📊 **Performance Metrics** - Mass balance, usefulness index, and activity trends
+### ✅ Working Features
+- 🔴 **Live Kill Feed** (`/feed`) - Real-time killmail display from wanderer-kills SSE
+- 🔍 **Character Analysis** (`/analysis/:character_id`) - Real killmail data with ship usage, activity patterns
+- 🔐 **EVE SSO Authentication** - Login/logout with EVE Online account
+- 📊 **Static Data Loading** - Complete EVE universe data (49,894 items including all ships)
+- 🗃️ **Database Infrastructure** - PostgreSQL with Broadway pipeline processing 50-100 killmails/minute
+- 📈 **Monitoring Dashboard** (`/monitoring`) - Error tracking, pipeline health, missing data alerts
+
+### 🚧 Next Priorities
+- ⚔️ **Battle Analysis** - Group kills into battles by time/location
+- 🏢 **Corporation Intelligence** - Member activity and killboard stats
+- 🚨 **Smart Surveillance** - Custom alerts and profile matching
+
+### 📋 Placeholder Features (UI exists but returns mock data)
+- Fleet Composition Tools
+- Wormhole Intelligence  
+- Price Integration
+
+**Note**: This project focuses on delivering working features over placeholder UIs. See [Honest Project Status](./PROJECT_STATUS_REALISTIC.md) for detailed progress.
 
 ## Quick Start with Dev Containers
 

@@ -408,19 +408,10 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
   Fetch corporation members data.
   """
   def fetch_corporation_members(corporation_id) when is_integer(corporation_id) do
-    # This would typically fetch from the database
-    # For now, return mock data for testing
-    case corporation_id do
-      123_456_789 ->
-        {:ok,
-         [
-           %{character_id: 1, character_name: "Member 1", join_date: ~D[2024-01-01]},
-           %{character_id: 2, character_name: "Member 2", join_date: ~D[2024-02-01]}
-         ]}
-
-      _ ->
-        {:error, :corporation_not_found}
-    end
+    # TODO: Implement real corporation member fetching
+    # Requires: Query ESI API for corporation members
+    # Original stub returned: hardcoded test data for corp 123456789
+    {:error, :not_implemented}
   end
 
   def fetch_corporation_members(_invalid_id) do

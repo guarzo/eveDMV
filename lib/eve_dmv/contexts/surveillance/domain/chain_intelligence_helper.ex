@@ -34,8 +34,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
   Analyze chain for threats using collected data.
   """
   def analyze_chain_threats(chain_data, topology, inhabitants) do
-    ChainThreatAnalyzer.analyze_threats(%{
-      chain_data: chain_data,
+    ChainThreatAnalyzer.analyze_chain_threats(chain_data, %{
       topology: topology,
       inhabitants: inhabitants
     })
@@ -109,5 +108,85 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
     }
 
     AlertService.generate_alert(event)
+  end
+
+  @doc """
+  Synchronize all chain topologies.
+  """
+  def sync_all_chain_topologies(map_ids) do
+    # TODO: Implement real topology synchronization
+    # Requires: API calls to sync topology data for all maps
+    Logger.debug("Syncing topologies for #{length(map_ids)} chains")
+    {:error, :not_implemented}
+  end
+
+  @doc """
+  Perform threat analysis for a specific map.
+  """
+  def perform_threat_analysis(map_id, callback_fn) do
+    # TODO: Implement real threat analysis
+    # Requires: Threat detection algorithms, pattern analysis
+    Logger.debug("Performing threat analysis for chain #{map_id}")
+    
+    # Placeholder threat analysis
+    threat_result = %{
+      map_id: map_id,
+      threat_level: :low,
+      threats_detected: [],
+      confidence: 0.5
+    }
+    
+    if is_function(callback_fn, 1) do
+      callback_fn.(threat_result)
+    end
+    
+    {:error, :not_implemented}
+  end
+
+  @doc """
+  Analyze system threats for inhabitants.
+  """
+  def analyze_system_threats(map_id, system_id, inhabitants) do
+    # TODO: Implement real system threat analysis
+    # Requires: Inhabitant analysis, threat classification
+    Logger.debug("Analyzing system threats for #{system_id} in chain #{map_id}")
+    
+    # Placeholder system threat analysis
+    threat_assessment = %{
+      system_id: system_id,
+      inhabitant_count: length(inhabitants),
+      threat_level: :low,
+      hostile_count: 0
+    }
+    
+    {:ok, threat_assessment}
+  end
+
+  @doc """
+  Handle threat detection results.
+  """
+  def handle_threat_detection(threat_result) do
+    # TODO: Implement real threat handling
+    # Requires: Alert generation, notification systems
+    Logger.debug("Handling threat detection: #{inspect(threat_result)}")
+    {:error, :not_implemented}
+  end
+
+  @doc """
+  Analyze hostile reports with context.
+  """
+  def analyze_hostile_report(map_id, system_id, _hostile_data, _contact_info, _context) do
+    # TODO: Implement real hostile report analysis
+    # Requires: Context analysis, threat correlation
+    Logger.debug("Analyzing hostile report for system #{system_id} in chain #{map_id}")
+    
+    # Placeholder hostile analysis
+    analysis = %{
+      threat_level: :medium,
+      confidence: 0.6,
+      recommended_actions: [:monitor, :alert_members]
+    }
+    
+    {:ok, analysis}
   end
 end

@@ -74,6 +74,28 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
     GenServer.call(__MODULE__, {:bulk_acknowledge_alerts, criteria, user_id})
   end
 
+  @doc """
+  Generate an alert from an event.
+  """
+  def generate_alert(event) do
+    # TODO: Implement real alert generation from events
+    # Requires: Alert prioritization, deduplication, formatting
+    Logger.debug("Generating alert from event: #{inspect(event)}")
+    
+    # Placeholder alert generation
+    alert = %{
+      id: System.unique_integer([:positive]),
+      alert_type: :general,
+      priority: @priority_medium,
+      message: "Alert generated from event",
+      event_data: event,
+      created_at: DateTime.utc_now(),
+      state: @state_new
+    }
+    
+    {:ok, alert}
+  end
+
   # GenServer implementation
 
   @impl GenServer

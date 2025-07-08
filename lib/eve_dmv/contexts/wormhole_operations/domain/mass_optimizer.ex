@@ -11,13 +11,10 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
   """
   @spec optimize_fleet_composition(map(), atom()) :: {:ok, map()} | {:error, term()}
   def optimize_fleet_composition(_fleet_composition, _wormhole_class) do
-    {:ok,
-     %{
-       optimized_composition: %{},
-       mass_efficiency: 0.0,
-       suggestions: [],
-       constraints_met: true
-     }}
+    # TODO: Implement real fleet mass optimization
+    # Requires: Calculate optimal ship mix for WH class mass limits
+    # Original stub returned: empty composition with 0% efficiency
+    {:error, :not_implemented}
   end
 
   @doc """
@@ -25,13 +22,10 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
   """
   @spec calculate_mass_efficiency(map()) :: {:ok, map()} | {:error, term()}
   def calculate_mass_efficiency(_fleet_composition) do
-    {:ok,
-     %{
-       total_mass: 0,
-       mass_efficiency: 0.0,
-       utilization_percentage: 0.0,
-       remaining_capacity: 0
-     }}
+    # TODO: Implement real mass efficiency calculation
+    # Requires: Sum ship masses, compare to WH limits
+    # Original stub returned: all zeros
+    {:error, :not_implemented}
   end
 
   @doc """
@@ -39,7 +33,10 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
   """
   @spec generate_optimization_suggestions(map(), atom()) :: {:ok, [map()]} | {:error, term()}
   def generate_optimization_suggestions(_fleet_composition, _wormhole_class) do
-    {:ok, []}
+    # TODO: Implement suggestion generation
+    # Requires: Analyze composition, suggest ship swaps
+    # Original stub returned: empty list
+    {:error, :not_implemented}
   end
 
   @doc """
@@ -47,12 +44,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
   """
   @spec validate_mass_constraints(map(), map()) :: {:ok, map()} | {:error, term()}
   def validate_mass_constraints(_fleet_composition, _constraints) do
-    {:ok,
-     %{
-       valid: true,
-       violations: [],
-       warnings: []
-     }}
+    # TODO: Implement real mass constraint validation
+    # Original stub returned: {:ok, %{valid: true, violations: [], warnings: []}}
+    {:error, :not_implemented}
   end
 
   @doc """
@@ -60,10 +54,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
   """
   @spec get_metrics() :: map()
   def get_metrics do
-    %{
-      optimizations_performed: 0,
-      average_efficiency_improvement: 0.0,
-      constraints_violations_prevented: 0
-    }
+    # TODO: Implement real metrics tracking
+    # Requires: Track actual optimization usage
+    # Original stub returned: all zeros
+    {:error, :not_implemented}
   end
 end

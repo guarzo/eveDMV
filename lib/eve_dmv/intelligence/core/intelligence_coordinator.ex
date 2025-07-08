@@ -122,7 +122,7 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
 
   def analyze_character_basic(character_id) do
     # Use direct analyzer to avoid circular dependency
-    case CharacterAnalyzer.analyze_character_basic(character_id) do
+    case CharacterAnalyzer.analyze_character(character_id) do
       {:ok, analysis} ->
         {:ok, analysis}
 

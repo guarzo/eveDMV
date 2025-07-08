@@ -11,7 +11,7 @@ defmodule EveDmv.Enrichment.RealTimePriceUpdater do
   use GenServer
 
   alias EveDmv.Api
-  alias EveDmv.Killmails.KillmailEnriched
+  alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Market.PriceService
   alias Phoenix.PubSub
 
@@ -304,7 +304,7 @@ defmodule EveDmv.Enrichment.RealTimePriceUpdater do
 
   defp get_recent_enriched_killmails(_since_datetime, limit) do
     query =
-      KillmailEnriched
+      KillmailRaw
       |> Ash.Query.new()
       |> Ash.Query.sort(killmail_time: :desc)
       |> Ash.Query.limit(limit)
@@ -314,7 +314,7 @@ defmodule EveDmv.Enrichment.RealTimePriceUpdater do
 
   defp load_enriched_killmails(_killmail_ids) do
     query =
-      Ash.Query.new(KillmailEnriched)
+      Ash.Query.new(KillmailRaw)
 
     Ash.read(query, domain: Api)
   end

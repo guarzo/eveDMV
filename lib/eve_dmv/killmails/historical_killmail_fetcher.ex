@@ -8,10 +8,10 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
   """
 
   alias EveDmv.Api
-  alias EveDmv.Killmails.KillmailEnriched
+  # REMOVED: KillmailEnriched - see /docs/architecture/enriched-raw-analysis.md
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Killmails.Participant
-  alias EveDmv.Utils.ParsingUtils
+  # REMOVED: ParsingUtils - no longer needed
 
   require Logger
 
@@ -291,12 +291,12 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
   defp store_killmail(enriched) do
     # Reuse the same logic from the pipeline for consistency
     raw_changeset = build_raw_changeset(enriched)
-    enriched_changeset = build_enriched_changeset(enriched)
+    # REMOVED: enriched_changeset - see /docs/architecture/enriched-raw-analysis.md
     participants = build_participants(enriched)
 
     # Insert with error handling
     with :ok <- insert_raw_killmail(raw_changeset),
-         :ok <- insert_enriched_killmail(enriched_changeset),
+         # REMOVED: insert_enriched_killmail - see /docs/architecture/enriched-raw-analysis.md
          :ok <- insert_participants(participants) do
       :ok
     else
@@ -324,35 +324,8 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
     }
   end
 
-  defp build_enriched_changeset(enriched) do
-    victim = enriched["victim"] || %{}
-
-    %{
-      killmail_id: enriched["killmail_id"],
-      killmail_time: parse_timestamp(enriched["timestamp"] || enriched["kill_time"]),
-      total_value: parse_decimal(enriched["total_value"] || enriched["value"] || 0),
-      ship_value: 0.0,
-      fitted_value: 0.0,
-      victim_character_id: victim["character_id"],
-      victim_character_name: victim["character_name"],
-      victim_corporation_id: victim["corporation_id"],
-      victim_corporation_name: victim["corporation_name"],
-      victim_alliance_id: victim["alliance_id"],
-      victim_alliance_name: victim["alliance_name"],
-      victim_ship_type_id: victim["ship_type_id"],
-      victim_ship_name: victim["ship_name"],
-      solar_system_id: enriched["solar_system_id"] || enriched["system_id"],
-      solar_system_name: enriched["solar_system_name"] || "Unknown System",
-      attacker_count: length(enriched["attackers"] || []),
-      final_blow_character_id: get_final_blow_character_id(enriched),
-      final_blow_character_name: get_final_blow_character_name(enriched),
-      kill_category: determine_kill_category(enriched),
-      victim_ship_category: "unknown",
-      module_tags: enriched["module_tags"] || [],
-      noteworthy_modules: enriched["noteworthy_modules"] || [],
-      price_data_source: "wanderer_kills"
-    }
-  end
+  # REMOVED: build_enriched_changeset function
+  # Enriched table provides no value - see /docs/architecture/enriched-raw-analysis.md
 
   defp build_participants(enriched) do
     victim = enriched["victim"] || %{}
@@ -409,15 +382,8 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
     _ -> :ok
   end
 
-  defp insert_enriched_killmail(changeset) do
-    case Ash.create(KillmailEnriched, changeset, action: :upsert, domain: Api) do
-      {:ok, _} -> :ok
-      {:error, error} -> {:error, error}
-    end
-  rescue
-    # Ignore duplicates
-    _ -> :ok
-  end
+  # REMOVED: insert_enriched_killmail function
+  # Enriched table provides no value - see /docs/architecture/enriched-raw-analysis.md
 
   defp insert_participants(participants) do
     case Ash.bulk_create(participants, Participant, :create,
@@ -448,8 +414,6 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
   defp parse_timestamp(%DateTime{} = dt), do: dt
   defp parse_timestamp(_), do: DateTime.utc_now()
 
-  defp parse_decimal(value), do: ParsingUtils.parse_decimal(value)
-
   defp generate_hash(enriched) do
     id = enriched["killmail_id"]
     timestamp = enriched["timestamp"]
@@ -457,33 +421,11 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
     Base.encode16(hash, case: :lower)
   end
 
-  defp get_final_blow_character_id(enriched) do
-    case find_final_blow_attacker(enriched) do
-      %{"character_id" => id} -> id
-      _ -> nil
-    end
-  end
-
-  defp get_final_blow_character_name(enriched) do
-    case find_final_blow_attacker(enriched) do
-      %{"character_name" => name} -> name
-      _ -> nil
-    end
-  end
-
-  defp find_final_blow_attacker(enriched) do
-    attackers = enriched["attackers"] || []
-    Enum.find(attackers, fn a -> a["final_blow"] end)
-  end
-
-  defp determine_kill_category(enriched) do
-    attacker_count = length(enriched["attackers"] || [])
-
-    case attacker_count do
-      1 -> "solo"
-      n when n <= 5 -> "small_gang"
-      n when n <= 20 -> "fleet"
-      _ -> "large_fleet"
-    end
-  end
+  # REMOVED: Helper functions only used by enriched changeset building
+  # - parse_decimal
+  # - get_final_blow_character_id
+  # - get_final_blow_character_name
+  # - find_final_blow_attacker
+  # - determine_kill_category
+  # See /docs/architecture/enriched-raw-analysis.md
 end

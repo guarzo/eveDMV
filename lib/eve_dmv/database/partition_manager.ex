@@ -2,7 +2,7 @@ defmodule EveDmv.Database.PartitionManager do
   @moduledoc """
   Manages automated partition creation, maintenance, and cleanup for time-partitioned tables.
 
-  Handles monthly partitions for killmails_raw and killmails_enriched tables,
+  Handles monthly partitions for killmails_raw table,
   automatically creating future partitions and managing partition lifecycle.
   """
 
@@ -20,12 +20,6 @@ defmodule EveDmv.Database.PartitionManager do
       date_column: "killmail_time",
       partition_interval: :monthly,
       # Keep 3 years of data
-      retention_months: 36
-    },
-    %{
-      table: "killmails_enriched",
-      date_column: "killmail_time",
-      partition_interval: :monthly,
       retention_months: 36
     }
   ]
@@ -248,9 +242,6 @@ defmodule EveDmv.Database.PartitionManager do
       "killmails_raw" ->
         create_killmail_raw_indexes(partition_name)
 
-      "killmails_enriched" ->
-        create_killmail_enriched_indexes(partition_name)
-
       _ ->
         :ok
     end
@@ -274,24 +265,6 @@ defmodule EveDmv.Database.PartitionManager do
     end)
   end
 
-  defp create_killmail_enriched_indexes(partition_name) do
-    indexes = [
-      "CREATE INDEX IF NOT EXISTS #{partition_name}_killmail_time_idx ON #{partition_name} (killmail_time)",
-      "CREATE INDEX IF NOT EXISTS #{partition_name}_killmail_id_idx ON #{partition_name} (killmail_id)",
-      "CREATE INDEX IF NOT EXISTS #{partition_name}_solar_system_idx ON #{partition_name} (solar_system_id)",
-      "CREATE INDEX IF NOT EXISTS #{partition_name}_total_value_idx ON #{partition_name} (total_value)"
-    ]
-
-    Enum.each(indexes, fn sql ->
-      case SQL.query(Repo, sql, []) do
-        {:ok, _} ->
-          :ok
-
-        {:error, error} ->
-          Logger.warning("Failed to create index: #{inspect(error)}")
-      end
-    end)
-  end
 
   defp cleanup_old_partitions_for_table(table) do
     table_config = Enum.find(@partitioned_tables, &(&1.table == table))
@@ -423,7 +396,7 @@ defmodule EveDmv.Database.PartitionManager do
     SELECT COUNT(*)
     FROM pg_tables
     WHERE schemaname = 'public'
-    AND (tablename LIKE 'killmails_raw_y%' OR tablename LIKE 'killmails_enriched_y%')
+    AND tablename LIKE 'killmails_raw_y%'
     """
 
     case SQL.query(Repo, query, []) do
@@ -440,7 +413,7 @@ defmodule EveDmv.Database.PartitionManager do
       pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as size
     FROM pg_tables
     WHERE schemaname = 'public'
-    AND (tablename LIKE 'killmails_raw_y%' OR tablename LIKE 'killmails_enriched_y%')
+    AND tablename LIKE 'killmails_raw_y%'
     ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
     LIMIT 10
     """
@@ -459,7 +432,7 @@ defmodule EveDmv.Database.PartitionManager do
     SELECT tablename
     FROM pg_tables
     WHERE schemaname = 'public'
-    AND (tablename LIKE 'killmails_raw_y%' OR tablename LIKE 'killmails_enriched_y%')
+    AND tablename LIKE 'killmails_raw_y%'
     ORDER BY tablename ASC
     LIMIT 1
     """
@@ -475,7 +448,7 @@ defmodule EveDmv.Database.PartitionManager do
     SELECT tablename
     FROM pg_tables
     WHERE schemaname = 'public'
-    AND (tablename LIKE 'killmails_raw_y%' OR tablename LIKE 'killmails_enriched_y%')
+    AND tablename LIKE 'killmails_raw_y%'
     ORDER BY tablename DESC
     LIMIT 1
     """

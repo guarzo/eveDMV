@@ -27,18 +27,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   require Logger
 
-  # Analysis thresholds
-  @min_participants_for_battle 5
-  # 5 minutes
-  @battle_time_window_seconds 300
-  # Systems
-  @engagement_merge_distance 3
-  @tactical_confidence_threshold 0.7
-
   # Battle classification thresholds
   @small_gang_max 10
   @medium_fleet_max 50
-  @large_fleet_min 50
 
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
@@ -123,13 +114,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     case Map.get(state.battle_cache, battle_id) do
       nil ->
         # Perform full analysis
-        with {:ok, killmails} <- fetch_battle_killmails(battle_id),
-             {:ok, timeline} <- construct_battle_timeline(killmails),
-             {:ok, participants} <- extract_battle_participants(killmails),
-             {:ok, fleet_analysis} <- analyze_fleet_compositions(participants, killmails),
-             {:ok, tactical_analysis} <- perform_tactical_analysis(timeline, fleet_analysis),
-             {:ok, performance_metrics} <-
-               calculate_performance_metrics(killmails, participants) do
+        case fetch_battle_killmails(battle_id) do
+          {:error, :not_implemented} ->
+            {:reply, {:error, :not_implemented}, state}
+          
+          {:ok, killmails} ->
+            with {:ok, timeline} <- construct_battle_timeline(killmails),
+                 {:ok, participants} <- extract_battle_participants(killmails),
+                 {:ok, fleet_analysis} <- analyze_fleet_compositions(participants, killmails),
+                 {:ok, tactical_analysis} <- perform_tactical_analysis(timeline, fleet_analysis),
+                 {:ok, performance_metrics} <-
+                   calculate_performance_metrics(killmails, participants) do
           analysis = %{
             battle_id: battle_id,
             analyzed_at: DateTime.utc_now(),
@@ -181,9 +176,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
             timestamp: DateTime.utc_now()
           })
 
-          {:reply, {:ok, analysis}, new_state}
-        else
-          {:error, _reason} = error -> {:reply, error, state}
+              {:reply, {:ok, analysis}, new_state}
+            else
+              {:error, _reason} = error -> {:reply, error, state}
+            end
         end
 
       cached_analysis ->
@@ -209,16 +205,21 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       })
 
     # Fetch recent killmails
-    with {:ok, recent_kills} <- fetch_recent_system_kills(system_id, 300),
-         {:ok, updated_engagement} <- update_engagement_data(engagement, recent_kills),
-         {:ok, live_analysis} <- perform_live_analysis(updated_engagement) do
-      # Update state
-      new_engagements = Map.put(state.active_engagements, system_id, updated_engagement)
-      new_state = %{state | active_engagements: new_engagements}
+    case fetch_recent_system_kills(system_id, 300) do
+      {:error, :not_implemented} ->
+        {:reply, {:error, :not_implemented}, state}
+      
+      {:ok, recent_kills} ->
+        with {:ok, updated_engagement} <- update_engagement_data(engagement, recent_kills),
+             {:ok, live_analysis} <- perform_live_analysis(updated_engagement) do
+          # Update state
+          new_engagements = Map.put(state.active_engagements, system_id, updated_engagement)
+          new_state = %{state | active_engagements: new_engagements}
 
-      {:reply, {:ok, live_analysis}, new_state}
-    else
-      {:error, _reason} = error -> {:reply, error, state}
+          {:reply, {:ok, live_analysis}, new_state}
+        else
+          {:error, _reason} = error -> {:reply, error, state}
+        end
     end
   rescue
     exception ->
@@ -378,14 +379,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   # Private functions
 
   defp fetch_battle_killmails(_battle_id) do
-    # This would fetch killmails associated with a battle
-    # For now, returning mock data
-    {:ok, []}
+    # TODO: Implement real battle killmail fetching
+    # Requires: Query killmails_raw table for related kills within time/space window
+    # Original stub returned: {:ok, []}
+    {:error, :not_implemented}
   end
 
   defp fetch_recent_system_kills(_system_id, _seconds_back) do
-    # Fetch recent kills from a system
-    {:ok, []}
+    # TODO: Implement real system kill fetching
+    # Requires: Query killmails_raw where system_id matches and kill_time within window
+    # Original stub returned: {:ok, []}
+    {:error, :not_implemented}
   end
 
   defp construct_battle_timeline(killmails) do
@@ -715,9 +719,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   end
 
   defp classify_ship(_ship_type_id) do
-    # This would use ship database to classify
-    # Mock implementation
-    :cruiser
+    # TODO: Implement real ship classification
+    # Requires: Query static_ship_types table and categorize by ship group
+    # Original stub returned: :cruiser
+    :unknown
   end
 
   defp extract_victim_details(killmail) do
@@ -771,8 +776,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   end
 
   defp calculate_logistics_ratio(_ship_composition) do
-    # Calculate ratio of logistics ships
-    0.0
+    # TODO: Implement real logistics ratio calculation
+    # Requires: Identify logistics ships from ship_composition and calculate percentage
+    # Original stub returned: 0.0
+    nil
   end
 
   defp detect_ewar_presence(_ship_composition) do
@@ -781,18 +788,30 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   end
 
   defp identify_tactical_patterns(_timeline) do
+    # TODO: Implement real tactical pattern recognition
+    # Requires: Analyze timeline for common engagement patterns
+    # Original stub returned: []
     []
   end
 
   defp identify_key_moments(_timeline) do
+    # TODO: Implement real key moment identification
+    # Requires: Find turning points, high-value kills, etc.
+    # Original stub returned: []
     []
   end
 
   defp identify_turning_points(_timeline, _fleet_analysis) do
+    # TODO: Implement real turning point analysis
+    # Requires: Analyze momentum shifts in battle
+    # Original stub returned: []
     []
   end
 
   defp analyze_engagement_flow(_timeline) do
+    # TODO: Implement real engagement flow analysis
+    # Requires: Analyze kill clustering and tempo changes
+    # Original stub returned: %{phases: [], intensity_changes: []}
     %{
       phases: [],
       intensity_changes: []
@@ -800,29 +819,44 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   end
 
   defp analyze_focus_fire(_timeline) do
+    # TODO: Implement real focus fire analysis
+    # Requires: Analyze damage concentration patterns
+    # Original stub returned: %{effectiveness: 0.0, coordination_score: 0.0}
     %{
-      effectiveness: 0.0,
-      coordination_score: 0.0
+      effectiveness: nil,
+      coordination_score: nil
     }
   end
 
   defp analyze_target_selection(_timeline, _fleet_analysis) do
+    # TODO: Implement real target selection analysis
+    # Requires: Analyze target prioritization patterns
+    # Original stub returned: %{priority_targets_hit: 0.0, target_switching_rate: 0.0}
     %{
-      priority_targets_hit: 0.0,
-      target_switching_rate: 0.0
+      priority_targets_hit: nil,
+      target_switching_rate: nil
     }
   end
 
   defp calculate_side_isk_destroyed(_side, _killmails) do
-    0
+    # TODO: Implement real ISK destroyed calculation
+    # Requires: Sum total_value for kills by this side
+    # Original stub returned: 0
+    nil
   end
 
   defp calculate_side_isk_lost(_side, _killmails) do
-    0
+    # TODO: Implement real ISK lost calculation
+    # Requires: Sum total_value for losses by this side
+    # Original stub returned: 0
+    nil
   end
 
   defp calculate_side_efficiency(_side, _killmails) do
-    100.0
+    # TODO: Implement real efficiency calculation
+    # Requires: Calculate destroyed/(destroyed + lost) * 100
+    # Original stub returned: 100.0
+    nil
   end
 
   defp calculate_side_kd_ratio(_participants) do

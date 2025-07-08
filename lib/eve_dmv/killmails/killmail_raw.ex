@@ -196,11 +196,8 @@ defmodule EveDmv.Killmails.KillmailRaw do
       description("All participants (attackers and victim) in this killmail")
     end
 
-    has_one :enriched_data, EveDmv.Killmails.KillmailEnriched do
-      source_attribute(:killmail_id)
-      destination_attribute(:killmail_id)
-      description("Enriched analysis data for this killmail")
-    end
+    # REMOVED: enriched_data relationship
+    # Enriched table provides no value - see /docs/architecture/enriched-raw-analysis.md
   end
 
   # Authorization policies

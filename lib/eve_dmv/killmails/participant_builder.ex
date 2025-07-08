@@ -117,10 +117,24 @@ defmodule EveDmv.Killmails.ParticipantBuilder do
   defp log_skipped_participant(type, participant, killmail_id) do
     name = participant["character_name"] || "Unknown"
     character_id = participant["character_id"]
+    ship_type_id = participant["ship_type_id"]
 
     Logger.debug(
       "Skipping #{type} with missing ship_type_id: #{name} (character_id: #{character_id}) in killmail #{killmail_id}. " <>
         "This may be a structure, deployable, or invalid killmail data."
+    )
+
+    # Emit telemetry event for monitoring
+    :telemetry.execute(
+      [:eve_dmv, :killmails, :missing_ship_type],
+      %{count: 1},
+      %{
+        type: type,
+        ship_type_id: ship_type_id,
+        character_id: character_id,
+        character_name: name,
+        killmail_id: killmail_id
+      }
     )
   end
 

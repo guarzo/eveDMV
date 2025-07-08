@@ -170,9 +170,10 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessor do
   end
 
   defp build_item_types(types, groups_map, categories_map) do
-    published_types = Enum.filter(types, fn type -> type.published end)
-
-    Enum.map(published_types, fn type ->
+    # Process all types, not just published ones
+    types
+    |> Enum.filter(&safe_for_bulk_insert?/1)
+    |> Enum.map(fn type ->
       group = Map.get(groups_map, type.group_id, %{})
       category = Map.get(categories_map, group[:category_id], %{})
 
@@ -183,6 +184,9 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessor do
       is_deployable = category[:name] in ["Deployable", "Structure"]
       is_blueprint = category[:name] == "Blueprint"
 
+      # Build search keywords
+      search_keywords = build_search_keywords(type.name, group[:name], category[:name])
+      
       %{
         type_id: type.type_id,
         type_name: type.name,
@@ -200,6 +204,7 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessor do
         is_charge: is_charge,
         is_deployable: is_deployable,
         is_blueprint: is_blueprint,
+        search_keywords: search_keywords,
         sde_version: "latest"
       }
     end)
@@ -270,5 +275,39 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessor do
       categories: item_types |> Enum.map(& &1.category_name) |> Enum.uniq() |> length(),
       groups: item_types |> Enum.map(& &1.group_name) |> Enum.uniq() |> length()
     }
+  end
+  
+  defp build_search_keywords(name, group_name, category_name) do
+    # Extract words from the name
+    name_words = String.split(String.downcase(name || ""), ~r/\s+/)
+    
+    # Add group and category if present
+    keywords = name_words
+    keywords = if group_name, do: keywords ++ [String.downcase(group_name)], else: keywords
+    keywords = if category_name, do: keywords ++ [String.downcase(category_name)], else: keywords
+    
+    # Remove duplicates and empty strings
+    keywords
+    |> Enum.uniq()
+    |> Enum.reject(&(&1 == ""))
+  end
+  
+  defp safe_for_bulk_insert?(type) do
+    # Maximum safe value for numeric(15,4) is 99,999,999,999.9999
+    max_safe_value = 99_999_999_999.0
+    
+    # Check if all numeric values are within safe bounds
+    mass_safe = is_nil(type.mass) or type.mass <= max_safe_value
+    volume_safe = is_nil(type.volume) or type.volume <= max_safe_value
+    capacity_safe = is_nil(type.capacity) or type.capacity <= max_safe_value
+    base_price_safe = is_nil(type.base_price) or type.base_price <= max_safe_value
+    
+    # Skip items with astronomical values (typically celestial objects)
+    if not (mass_safe and volume_safe and capacity_safe and base_price_safe) do
+      Logger.debug("Skipping type_id #{type.type_id} (#{type.name}) due to numeric overflow")
+      false
+    else
+      true
+    end
   end
 end

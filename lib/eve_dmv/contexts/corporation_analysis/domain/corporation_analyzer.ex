@@ -322,27 +322,23 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer do
   end
 
   defp analyze_leadership(corporation_id) do
-    case CorporationRepository.get_member_statistics(corporation_id) do
-      member_stats ->
-        leadership_members =
-          Enum.filter(member_stats, fn member ->
-            member.corp_role && member.corp_role in ["CEO", "Director", "Personnel Manager"]
-          end)
+    member_stats = CorporationRepository.get_member_statistics(corporation_id)
+    
+    leadership_members =
+      Enum.filter(member_stats, fn member ->
+        member.corp_role && member.corp_role in ["CEO", "Director", "Personnel Manager"]
+      end)
 
-        leadership_analysis = %{
-          leadership_count: length(leadership_members),
-          active_leadership_count:
-            Enum.count(leadership_members, fn leader ->
-              (leader.recent_kills || 0) + (leader.recent_losses || 0) > 0
-            end),
-          leadership_activity_score: calculate_leadership_activity_score(leadership_members)
-        }
+    leadership_analysis = %{
+      leadership_count: length(leadership_members),
+      active_leadership_count:
+        Enum.count(leadership_members, fn leader ->
+          (leader.recent_kills || 0) + (leader.recent_losses || 0) > 0
+        end),
+      leadership_activity_score: calculate_leadership_activity_score(leadership_members)
+    }
 
-        Result.ok(leadership_analysis)
-
-      _ ->
-        Result.error(:leadership_analysis_failed, "Unable to get member statistics")
-    end
+    Result.ok(leadership_analysis)
   end
 
   defp calculate_leadership_activity_score(leadership_members) do

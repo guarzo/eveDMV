@@ -11,7 +11,9 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.PriceCache do
   """
   @spec get(integer()) :: {:ok, map()} | {:error, :not_found}
   def get(_type_id) do
-    {:error, :not_found}
+    # TODO: Implement real price cache retrieval
+    # Original stub returned: {:error, :not_found}
+    {:error, :not_implemented}
   end
 
   @doc """
@@ -19,7 +21,9 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.PriceCache do
   """
   @spec put(integer(), map(), keyword()) :: :ok | {:error, term()}
   def put(_type_id, _price_data, _opts \\ []) do
-    :ok
+    # TODO: Implement real price cache storage
+    # Original stub returned: :ok
+    {:error, :not_implemented}
   end
 
   @doc """
@@ -27,7 +31,9 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.PriceCache do
   """
   @spec stats() :: %{size: non_neg_integer(), memory_bytes: non_neg_integer()}
   def stats do
-    %{size: 0, memory_bytes: 0}
+    # TODO: Implement real cache statistics
+    # Original stub returned: %{size: 0, memory_bytes: 0}
+    {:error, :not_implemented}
   end
 
   @doc """
@@ -43,6 +49,8 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.PriceCache do
   """
   @spec get_hot_items(pos_integer()) :: [map()]
   def get_hot_items(_limit) do
-    []
+    # TODO: Implement real hot items tracking
+    # Original stub returned: []
+    {:error, :not_implemented}
   end
 end

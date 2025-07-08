@@ -277,10 +277,10 @@ defmodule EveDmv.Eve.EsiUtils do
       "history" => []
     }
 
-  defp calculate_total_tenure_days(history) do
-    # Basic calculation - in real implementation this would calculate
-    # actual tenure based on start_date fields
-    length(history) * 90
+  defp calculate_total_tenure_days(_history) do
+    # TODO: Implement actual tenure calculation based on start_date fields
+    # Original stub returned: length(history) * 90
+    0
   end
 
   defp identify_suspicious_patterns(_history, history_length) when history_length > 10 do

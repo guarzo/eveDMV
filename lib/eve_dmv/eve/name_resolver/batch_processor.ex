@@ -94,7 +94,7 @@ defmodule EveDmv.Eve.NameResolver.BatchProcessor do
     Enum.reduce(ids, {%{}, []}, fn id, {cached, missing} ->
       case CacheManager.get_from_cache(type, id) do
         {:ok, name} -> {Map.put(cached, id, name), missing}
-        :miss -> {cached, [id | missing]}
+        {:error, :not_found} -> {cached, [id | missing]}
       end
     end)
   end

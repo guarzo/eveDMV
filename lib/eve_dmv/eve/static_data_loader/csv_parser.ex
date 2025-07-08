@@ -134,7 +134,8 @@ defmodule EveDmv.Eve.StaticDataLoader.CsvParser do
             if float > 0, do: 99_999_999_999.0, else: -99_999_999_999.0
 
           true ->
-            float
+            # Round to 4 decimal places for database precision
+            Float.round(float, 4)
         end
 
       _ ->

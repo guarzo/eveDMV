@@ -297,25 +297,25 @@ defmodule EveDmv.ErrorHandler do
       {
         "eve-dmv-validation-errors",
         [:eve_dmv, :error, :validation],
-        &handle_validation_error_telemetry/4,
+        &__MODULE__.handle_validation_error_telemetry/4,
         nil
       },
       {
         "eve-dmv-external-errors",
         [:eve_dmv, :error, :external_service],
-        &handle_external_error_telemetry/4,
+        &__MODULE__.handle_external_error_telemetry/4,
         nil
       },
       {
         "eve-dmv-system-errors",
         [:eve_dmv, :error, :system],
-        &handle_system_error_telemetry/4,
+        &__MODULE__.handle_system_error_telemetry/4,
         nil
       },
       {
         "eve-dmv-security-errors",
         [:eve_dmv, :error, :security],
-        &handle_security_error_telemetry/4,
+        &__MODULE__.handle_security_error_telemetry/4,
         nil
       }
     ]
@@ -326,19 +326,22 @@ defmodule EveDmv.ErrorHandler do
   end
 
   # Telemetry handlers
-  defp handle_validation_error_telemetry(_event, measurements, metadata, _config) do
+  @doc false
+  def handle_validation_error_telemetry(_event, measurements, metadata, _config) do
     Logger.debug(
       "Validation error: #{metadata.error_code}, module: #{metadata[:module]}, measurements: #{inspect(measurements)}"
     )
   end
 
-  defp handle_external_error_telemetry(_event, measurements, metadata, _config) do
+  @doc false
+  def handle_external_error_telemetry(_event, measurements, metadata, _config) do
     Logger.warning(
       "External service error: #{metadata.error_code}, module: #{metadata[:module]}, measurements: #{inspect(measurements)}"
     )
   end
 
-  defp handle_system_error_telemetry(_event, measurements, metadata, _config) do
+  @doc false
+  def handle_system_error_telemetry(_event, measurements, metadata, _config) do
     Logger.error(
       "System error: #{metadata.error_code}, module: #{metadata[:module]}, measurements: #{inspect(measurements)}"
     )
@@ -346,7 +349,8 @@ defmodule EveDmv.ErrorHandler do
     # Could trigger alerts here for critical system errors
   end
 
-  defp handle_security_error_telemetry(_event, measurements, metadata, _config) do
+  @doc false
+  def handle_security_error_telemetry(_event, measurements, metadata, _config) do
     Logger.critical(
       "Security error: #{metadata.error_code}, module: #{metadata[:module]}, measurements: #{inspect(measurements)}"
     )

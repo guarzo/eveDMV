@@ -23,12 +23,39 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
            return_errors?: true,
            stop_on_error?: false,
            authorize?: false,
-           batch_size: 500
+           batch_size: 100,
+           upsert?: true,
+           upsert_identity: :type_id,
+           upsert_fields: [
+             :type_name,
+             :description,
+             :group_id,
+             :group_name,
+             :category_id,
+             :category_name,
+             :market_group_id,
+             :market_group_name,
+             :mass,
+             :volume,
+             :capacity,
+             :base_price,
+             :meta_level,
+             :tech_level,
+             :published,
+             :is_ship,
+             :is_module,
+             :is_charge,
+             :is_blueprint,
+             :is_deployable,
+             :search_keywords,
+             :sde_version,
+             :last_updated
+           ]
          ) do
-      %{records: _records, errors: []} ->
+      %Ash.BulkResult{records: _records, errors: []} ->
         {:ok, length(item_data)}
 
-      %{records: records, errors: errors} when errors != [] ->
+      %Ash.BulkResult{records: records, errors: errors} when errors != [] ->
         created_count = length(records || [])
         Logger.warning("Created #{created_count} item types, #{length(errors)} failed")
 
@@ -36,6 +63,11 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
         log_creation_errors(errors, "item type", :type_id)
 
         {:ok, created_count}
+        
+      %Ash.BulkResult{} = _result ->
+        # Successful bulk create, count may not be tracked
+        Logger.debug("Bulk create completed successfully")
+        {:ok, length(item_data)}
     end
   rescue
     error ->
@@ -55,12 +87,28 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
            return_errors?: true,
            stop_on_error?: false,
            authorize?: false,
-           batch_size: 500
+           batch_size: 100,
+           upsert?: true,
+           upsert_identity: :system_id,
+           upsert_fields: [
+             :system_name,
+             :region_id,
+             :region_name,
+             :constellation_id,
+             :constellation_name,
+             :security_status,
+             :security_class,
+             :x,
+             :y,
+             :z,
+             :sde_version,
+             :last_updated
+           ]
          ) do
-      %{records: _records, errors: []} ->
+      %Ash.BulkResult{records: _records, errors: []} ->
         {:ok, length(system_data)}
 
-      %{records: records, errors: errors} when errors != [] ->
+      %Ash.BulkResult{records: records, errors: errors} when errors != [] ->
         created_count = length(records || [])
         Logger.warning("Created #{created_count} solar systems, #{length(errors)} failed")
 
@@ -68,6 +116,11 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
         log_creation_errors(errors, "solar system", :system_id)
 
         {:ok, created_count}
+        
+      %Ash.BulkResult{} = _result ->
+        # Successful bulk create, count may not be tracked  
+        Logger.debug("Bulk create completed successfully")
+        {:ok, length(system_data)}
     end
   rescue
     error ->
@@ -159,7 +212,7 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
            return_errors?: true,
            stop_on_error?: false,
            authorize?: false,
-           batch_size: 500,
+           batch_size: 100,
            upsert?: true,
            upsert_identity: :primary_key
          ) do
@@ -231,9 +284,14 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
   defp log_creation_errors(errors, type, id_field) do
     errors
     |> Enum.take(5)
-    |> Enum.each(fn {changeset, _error} ->
-      id = Ash.Changeset.get_attribute(changeset, id_field)
-      Logger.warning("Failed to create #{type} #{id}")
+    |> Enum.each(fn error ->
+      case error do
+        {changeset, _error} ->
+          id = Ash.Changeset.get_attribute(changeset, id_field)
+          Logger.warning("Failed to create #{type} #{id}")
+        error ->
+          Logger.warning("Failed to create #{type}: #{inspect(error)}")
+      end
     end)
 
     if length(errors) > 5 do

@@ -92,24 +92,43 @@ When creating or modifying Ash resources:
 3. Generate migration: `mix ash_postgres.create`
 4. Run migration: `mix ash_postgres.migrate`
 
+## 🚨 CRITICAL DEVELOPMENT RULE
+
+### Definition of "Done"
+A feature is **ONLY** considered done when:
+1. ✅ It queries real data from the database
+2. ✅ Calculations use actual algorithms (no hardcoded values)
+3. ✅ No placeholder/mock return values
+4. ✅ Tests exist and pass with real data
+5. ✅ Documentation matches actual implementation
+6. ✅ No TODO comments in the implementation
+
+**If it returns mock data, it's not done. If it's not done, don't ship it.**
+
 ## Current Implementation Status
 
-### 🚀 Sprint 1 In Progress (Day 1 Complete - 22/30 pts)
-See `/workspace/PROJECT_STATUS.md` for current project status
-See `/workspace/SPRINT_1_PROGRESS.md` for detailed Sprint 1 progress
+### 🚀 Reality Check Sprint 1 In Progress
+See `/workspace/ACTUAL_PROJECT_STATE.md` for honest project status
+See `/workspace/REALITY_CHECK_SPRINT_1.md` for current sprint work
 
-### ✅ What's Live
-- **Kill Feed** (`/feed`) - Real-time killmail display with wanderer-kills data
-- **Character Intelligence** (`/intel/:character_id`) - Hunter-focused tactical analysis  
-- **Authentication** - EVE SSO integration working
-- **Static Data** - Automated loading of EVE universe data
-- **External APIs** - Janice, Mutamarket, and ESI integrated
+### ✅ What Actually Works
+- **Kill Feed** (`/feed`) - Real-time killmail display with wanderer-kills SSE
+- **Authentication** - EVE SSO integration
+- **Database Schema** - Tables exist with partitioning
+- **Broadway Pipeline** - Receives killmails
+
+### 🔴 What's Currently Placeholder/Broken
+- **Character Intelligence** - UI exists but most data is stubbed
+- **Battle Analysis** - Returns empty arrays
+- **Fleet Tools** - All calculations return 0
+- **Wormhole Features** - Mock data only
+- **Price Integration** - Not connected
+- **Static Data** - Tables exist but are empty
 
 ### 📋 Documentation
-- **Current Status**: `/workspace/PROJECT_STATUS.md`
-- **Sprint Progress**: `/workspace/SPRINT_1_PROGRESS.md`
-- **Phase 2 Plan**: `/workspace/docs/implementation/phase-2-roadmap.md`
-- **Feature Designs**: `/workspace/docs/implementation/character-intelligence-*.md`
+- **Actual State**: `/workspace/ACTUAL_PROJECT_STATE.md`
+- **Current Sprint**: `/workspace/REALITY_CHECK_SPRINT_1.md`
+- **Legacy Docs**: `/workspace/docs/archive/optimistic-planning/`
 
 ## Environment Configuration
 
@@ -131,6 +150,17 @@ MOCK_SSE_SERVER_ENABLED     # Use mock server for development (true/false)
 ```
 
 ## Common Development Tasks
+
+### Querying the Database
+
+To run SQL queries directly:
+```elixir
+# In IEx:
+{:ok, result} = Ecto.Adapters.SQL.query(EveDmv.Repo, "SELECT * FROM table_name WHERE condition = $1", [value])
+
+# Example:
+{:ok, result} = Ecto.Adapters.SQL.query(EveDmv.Repo, "SELECT type_id, type_name FROM eve_item_types WHERE type_name LIKE $1 LIMIT 10", ["%Abaddon%"])
+```
 
 ### Quality Assurance
 ```bash

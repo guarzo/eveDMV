@@ -29,8 +29,11 @@ defmodule EveDmv.Application do
       EveDmvWeb.Telemetry,
       # Task supervisor for background tasks (start early)
       {Task.Supervisor, name: EveDmv.TaskSupervisor},
+      # Auto-recompilation in dev environment (handled by exsync application)
       # ESI reliability supervisor (includes Registry and circuit breakers)
       EveDmv.Eve.ReliabilitySupervisor,
+      # Error monitoring and recovery supervisor
+      EveDmv.Monitoring.ErrorRecoverySupervisor,
       EveDmv.Repo,
       {DNSCluster, query: Application.get_env(:eve_dmv, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: EveDmv.PubSub},
@@ -42,6 +45,10 @@ defmodule EveDmv.Application do
       EveDmv.Market.PriceCache,
       # Start the ESI cache
       EveDmv.Eve.EsiCache,
+      # Start the analysis cache for character and corporation intelligence
+      EveDmv.Cache.AnalysisCache,
+      # Start the corporation analyzer service
+      EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer,
       # Start rate limiter for Janice API (5 requests per second)
       {EveDmv.Market.RateLimiter, [name: :janice_rate_limiter] ++ RateLimit.janice_rate_limit()},
       # Start the surveillance matching engine
@@ -71,7 +78,17 @@ defmodule EveDmv.Application do
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: EveDmv.Supervisor]
-    Supervisor.start_link(children, opts)
+    
+    # Start the supervisor
+    case Supervisor.start_link(children, opts) do
+      {:ok, pid} ->
+        # Attach global error telemetry handlers
+        EveDmv.ErrorHandler.attach_telemetry_handlers()
+        {:ok, pid}
+        
+      error ->
+        error
+    end
   end
 
   # Conditionally start database-dependent processes
@@ -117,6 +134,7 @@ defmodule EveDmv.Application do
       %{id: module, start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}}
     end
   end
+
 
   # Conditionally start the mock SSE server in development
   defp maybe_start_mock_sse_server do

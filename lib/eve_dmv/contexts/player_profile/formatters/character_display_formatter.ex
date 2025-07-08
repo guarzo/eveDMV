@@ -55,7 +55,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter do
     %{
       total_kills: character_stats.total_kills,
       total_losses: character_stats.total_losses,
-      efficiency: MathUtils.round_to(character_stats.combat_effectiveness, 2),
+      efficiency: MathUtils.safe_round(character_stats.combat_effectiveness, 2),
       favorite_ships: format_top_ships(character_stats.ship_usage),
       preferred_regions: format_top_regions(character_stats.geographic_patterns)
     }

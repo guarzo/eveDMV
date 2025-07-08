@@ -6,42 +6,26 @@ defmodule EveDmv.Killmails.DisplayService do
   alias EveDmv.Api
   alias EveDmv.Constants.Isk
   alias EveDmv.Eve.NameResolver
-  alias EveDmv.Killmails.KillmailEnriched
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Utils.ParsingUtils
+  
+  require Ash.Query
 
   @feed_limit 50
 
   def load_recent_killmails(limit \\ @feed_limit) do
-    # Try to load from enriched killmails first
-    enriched =
-      KillmailEnriched
+    # Always load from raw killmails since enriched data isn't actually enriched
+    # This gives us access to character/corp names from wanderer-kills
+    raw =
+      KillmailRaw
       |> Ash.Query.new()
       |> Ash.Query.sort(killmail_time: :desc)
       |> Ash.Query.limit(limit)
       |> Ash.read!(domain: Api)
 
-    if length(enriched) > 0 do
-      # Preload all names in bulk to avoid N+1 queries
-      preload_killmail_names(enriched)
-      Enum.map(enriched, &build_killmail_from_enriched/1)
-    else
-      # Fallback to raw killmails if no enriched data
-      raw =
-        KillmailRaw
-        |> Ash.Query.new()
-        |> Ash.Query.sort(killmail_time: :desc)
-        |> Ash.Query.limit(limit)
-        |> Ash.read!(domain: Api)
-
-      # Preload names for raw killmails too
-      preload_raw_killmail_names(raw)
-      Enum.map(raw, &build_killmail_from_raw/1)
-    end
-  rescue
-    _ ->
-      # If database is empty, generate sample data for demo
-      generate_sample_killmails(limit)
+    # Preload names for raw killmails
+    preload_raw_killmail_names(raw)
+    Enum.map(raw, &build_killmail_from_raw/1)
   end
 
   def preload_killmail_names(killmails) do
@@ -66,53 +50,8 @@ defmodule EveDmv.Killmails.DisplayService do
     Enum.each(system_ids, &NameResolver.system_security/1)
   end
 
-  def build_killmail_from_enriched(enriched) do
-    # Cache current time to ensure consistency across all age calculations
-    now = DateTime.utc_now()
-    # Use name resolution for ship and system names if not already provided
-    victim_ship_name =
-      resolve_name_if_unknown(
-        enriched.victim_ship_name,
-        ["Unknown Ship"],
-        fn -> NameResolver.ship_name(enriched.victim_ship_type_id) end
-      )
-
-    system_name =
-      resolve_name_if_unknown(
-        enriched.solar_system_name,
-        ["Unknown System"],
-        fn -> NameResolver.system_name(enriched.solar_system_id) end
-      )
-
-    system_security = NameResolver.system_security(enriched.solar_system_id)
-
-    %{
-      id: "#{enriched.killmail_id}-#{DateTime.to_unix(enriched.killmail_time)}",
-      killmail_id: enriched.killmail_id,
-      killmail_time: enriched.killmail_time,
-      victim_character_id: enriched.victim_character_id,
-      victim_character_name: enriched.victim_character_name || "Unknown Pilot",
-      victim_corporation_name: enriched.victim_corporation_name || "Unknown Corp",
-      victim_alliance_name: enriched.victim_alliance_name,
-      victim_ship_name: victim_ship_name,
-      solar_system_id: enriched.solar_system_id,
-      solar_system_name: system_name,
-      security_class: system_security.class,
-      security_color: system_security.color,
-      security_status: system_security.status,
-      total_value: enriched.total_value || Decimal.new(0),
-      ship_value: enriched.ship_value || Decimal.new(0),
-      attacker_count: enriched.attacker_count || 0,
-      final_blow_character_id: enriched.final_blow_character_id,
-      final_blow_character_name: enriched.final_blow_character_name,
-      age_minutes: DateTime.diff(now, enriched.killmail_time, :minute),
-      is_expensive:
-        Decimal.gt?(
-          enriched.total_value || Decimal.new(0),
-          Decimal.new(Isk.million() * 100)
-        )
-    }
-  end
+  # REMOVED: build_killmail_from_enriched function
+  # Enriched table provides no value - see /docs/architecture/enriched-raw-analysis.md
 
   def build_killmail_display(killmail_data) do
     # Handle wanderer-kills format with separate victim and attackers
@@ -229,11 +168,12 @@ defmodule EveDmv.Killmails.DisplayService do
     final_blow = find_final_blow_in_raw(raw.raw_data)
 
     # Use name resolution for ship and system names
+    victim_ship_type_id = get_in(victim, ["ship_type_id"]) || raw.victim_ship_type_id
     victim_ship_name =
       resolve_name_if_unknown(
         get_in(victim, ["ship_name"]),
         ["Unknown Ship"],
-        fn -> NameResolver.ship_name(raw.victim_ship_type_id) end
+        fn -> NameResolver.ship_name(victim_ship_type_id) end
       )
 
     system_name =
@@ -259,62 +199,43 @@ defmodule EveDmv.Killmails.DisplayService do
       security_class: system_security.class,
       security_color: system_security.color,
       security_status: system_security.status,
-      total_value: safe_decimal_new(raw.raw_data["total_value"] || 0),
-      ship_value: safe_decimal_new(raw.raw_data["ship_value"] || 0),
+      total_value: extract_total_value(raw.raw_data),
+      ship_value: extract_ship_value(raw.raw_data),
       attacker_count: raw.attacker_count,
       final_blow_character_id: get_in(final_blow, ["character_id"]),
       final_blow_character_name: get_in(final_blow, ["character_name"]),
       age_minutes: DateTime.diff(now, raw.killmail_time, :minute),
-      is_expensive: (raw.raw_data["total_value"] || 0) > Isk.million() * 100
+      is_expensive: expensive_kill_wanderer(raw.raw_data)
     }
   end
 
   defp find_victim_in_raw(raw_data) do
-    Enum.find(raw_data["participants"] || [], & &1["is_victim"])
+    # Handle wanderer-kills format with separate victim field
+    case raw_data["victim"] do
+      nil ->
+        # Fallback to old participants format
+        Enum.find(raw_data["participants"] || [], & &1["is_victim"])
+      
+      victim ->
+        victim
+    end
   end
 
   defp find_final_blow_in_raw(raw_data) do
-    Enum.find(raw_data["participants"] || [], &(&1["final_blow"] && !&1["is_victim"]))
+    # Handle wanderer-kills format with separate attackers field
+    case raw_data["attackers"] do
+      nil ->
+        # Fallback to old participants format
+        Enum.find(raw_data["participants"] || [], &(&1["final_blow"] && !&1["is_victim"]))
+      
+      attackers when is_list(attackers) ->
+        Enum.find(attackers, & &1["final_blow"])
+      
+      _ ->
+        nil
+    end
   end
 
-  defp generate_sample_killmails(limit) do
-    # Generate sample data for demo purposes
-    # Cache current time for consistent sample data generation
-    now = DateTime.utc_now()
-
-    Enum.map(1..limit, fn i ->
-      timestamp = DateTime.add(now, -i * 60, :second)
-      value = Enum.random(10_000_000..1_000_000_000)
-      system_id = Enum.random([30_000_142, 30_000_144, 30_002_187, 30_002_659])
-
-      # Use name resolution for sample data too
-      system_security = NameResolver.system_security(system_id)
-      system_name = NameResolver.system_name(system_id)
-
-      %{
-        id: "demo-#{i}",
-        killmail_id: 900_000_000 + i,
-        killmail_time: timestamp,
-        victim_character_id: 95_000_000 + i,
-        victim_character_name: "Demo Pilot #{i}",
-        victim_corporation_name: "Demo Corp #{rem(i, 10)}",
-        victim_alliance_name: if(rem(i, 3) == 0, do: "Demo Alliance", else: nil),
-        victim_ship_name: Enum.random(["Rifter", "Punisher", "Merlin", "Venture", "Catalyst"]),
-        solar_system_id: system_id,
-        solar_system_name: system_name,
-        security_class: system_security.class,
-        security_color: system_security.color,
-        security_status: system_security.status,
-        total_value: safe_decimal_new(value),
-        ship_value: safe_decimal_new(div(value, 3)),
-        attacker_count: Enum.random(1..5),
-        final_blow_character_id: 95_100_000 + i,
-        final_blow_character_name: "Attacker #{i}",
-        age_minutes: i,
-        is_expensive: value > Isk.million() * 100
-      }
-    end)
-  end
 
   defp generate_killmail_id(killmail_data) do
     # Use current timestamp for ID generation

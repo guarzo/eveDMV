@@ -11,7 +11,10 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationService do
   """
   @spec calculate_killmail_value(map()) :: {:ok, map()} | {:error, term()}
   def calculate_killmail_value(_killmail) do
-    {:ok, %{total_value: 0, destroyed_value: 0, dropped_value: 0}}
+    # TODO: Implement real killmail valuation
+    # Requires: Query Janice API for item prices, sum destroyed/dropped
+    # Original stub returned: all zeros
+    {:error, :not_implemented}
   end
 
   @doc """
@@ -19,6 +22,9 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationService do
   """
   @spec calculate_fleet_value([map()]) :: {:ok, map()} | {:error, term()}
   def calculate_fleet_value(_ships) do
-    {:ok, %{total_value: 0, ship_values: %{}}}
+    # TODO: Implement real fleet valuation
+    # Requires: Query ship prices, calculate total fleet value
+    # Original stub returned: 0 total with empty ship values
+    {:error, :not_implemented}
   end
 end

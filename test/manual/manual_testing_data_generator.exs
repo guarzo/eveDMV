@@ -339,7 +339,7 @@ defmodule ManualTestingDataGenerator do
     |> Enum.with_index(1)
     |> Enum.each(fn {corp_id, i} ->
       nil
-      # IO.puts("  Corporation #{i}: http://localhost:4010/corp/#{corp_id}")
+      # IO.puts("  Corporation #{i}: http://localhost:4010/corporation/#{corp_id}")
     end)
 
     # IO.puts("\n🌟 Alliance Pages (Test Suite 5):")

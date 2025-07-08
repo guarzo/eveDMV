@@ -35,6 +35,7 @@ defmodule EveDmv.Killmails.Participant do
     define(:create, action: :create)
     define(:by_killmail, args: [:killmail_id, :killmail_time])
     define(:by_character, args: [:character_id])
+    define(:by_corporation, args: [:corporation_id])
     define(:attackers_only, args: [:killmail_id, :killmail_time])
     define(:victims_only, args: [:killmail_id, :killmail_time])
   end

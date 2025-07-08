@@ -79,7 +79,25 @@ defmodule EveDmvWeb.BattleAnalysisLive do
           <div class="loading-spinner"></div>
         </div>
       <% else %>
-        <%= if @battle_id && @battle_analysis do %>
+        <%= if @error do %>
+          <div class="error-state bg-gray-800 rounded p-8 text-center">
+            <div class="text-6xl mb-4">🚧</div>
+            <h2 class="text-xl font-semibold mb-2">
+              <%= if @error =~ "not yet implemented" do %>
+                Coming Soon
+              <% else %>
+                Error Loading Battle Analysis
+              <% end %>
+            </h2>
+            <p class="text-gray-400 mb-4"><%= @error %></p>
+            <%= if @error =~ "not yet implemented" do %>
+              <p class="text-sm text-gray-500">
+                This feature is currently under development. Check back soon!
+              </p>
+            <% end %>
+          </div>
+        <% else %>
+          <%= if @battle_id && @battle_analysis do %>
           <!-- Single Battle Analysis View -->
           <div class="battle-analysis-container">
             <!-- View mode tabs -->
@@ -142,6 +160,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
         <% else %>
           <!-- Battle List / Live Engagements View -->
           <%= render_battle_list(assigns) %>
+        <% end %>
         <% end %>
       <% end %>
     </div>
@@ -625,6 +644,9 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
         {:noreply, socket}
 
+      {:error, :not_implemented} ->
+        {:noreply, put_flash(socket, :error, "Live engagement analysis is not yet implemented")}
+        
       {:error, reason} ->
         {:noreply, put_flash(socket, :error, "Failed to analyze engagement: #{reason}")}
     end
@@ -691,6 +713,11 @@ defmodule EveDmvWeb.BattleAnalysisLive do
         |> assign(:recommendations, recommendations)
         |> assign(:error, nil)
 
+      {:error, :not_implemented} ->
+        socket
+        |> assign(:loading, false)
+        |> assign(:error, "Battle analysis feature is not yet implemented")
+
       {:error, reason} ->
         socket
         |> assign(:loading, false)
@@ -699,26 +726,10 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   end
 
   defp load_recent_battles(socket) do
-    # This would load recent battles from the database
-    # Mock implementation for now
-    recent_battles = [
-      %{
-        id: "battle_001",
-        timestamp: DateTime.add(DateTime.utc_now(), -3600, :second),
-        scale: :fleet,
-        participant_count: 47,
-        isk_destroyed: 2_450_000_000,
-        duration: 1200
-      },
-      %{
-        id: "battle_002",
-        timestamp: DateTime.add(DateTime.utc_now(), -7200, :second),
-        scale: :small_gang,
-        participant_count: 12,
-        isk_destroyed: 450_000_000,
-        duration: 600
-      }
-    ]
+    # TODO: Implement real battle loading from database
+    # Requires: Query killmails and identify battle clusters
+    # For now, showing empty state
+    recent_battles = []
 
     assign(socket, :recent_battles, recent_battles)
   end

@@ -56,7 +56,7 @@ defmodule EveDmvWeb.NoDataComponent do
           </div>
           <div class="mt-2">
             <a
-              href={~p"/intel/#{@character_id}"}
+              href={~p"/character/#{@character_id}"}
               class="text-blue-400 hover:text-blue-300 underline text-sm"
             >
               View Character Intelligence →

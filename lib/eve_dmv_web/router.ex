@@ -44,10 +44,14 @@ defmodule EveDmvWeb.Router do
     live("/feed", KillFeedLive)
     live("/dashboard", DashboardLive)
     live("/profile", ProfileLive)
-    live("/intel/:character_id", CharacterIntelLive)
+    live("/character/:character_id", CharacterAnalysisLive)
     live("/player/:character_id", PlayerProfileLive)
-    live("/corp/:corporation_id", CorporationLive)
+    live("/corporation/:corporation_id", CorporationLive)
     live("/alliance/:alliance_id", AllianceLive)
+    
+    # Redirects for backward compatibility
+    get("/analysis/:character_id", PageController, :redirect_character)
+    get("/corp/:corporation_id", PageController, :redirect_corporation)
     live("/surveillance", SurveillanceLive)
     live("/chain-intelligence", ChainIntelligenceLive)
     live("/chain-intelligence/:map_id", ChainIntelligenceLive)
@@ -55,6 +59,9 @@ defmodule EveDmvWeb.Router do
     live("/intelligence-dashboard", IntelligenceDashboardLive)
     live("/battle", BattleAnalysisLive)
     live("/battle/:battle_id", BattleAnalysisLive)
+    
+    # System monitoring (admin only in production)
+    live("/monitoring", MonitoringDashboardLive)
   end
 
   # Authentication routes

@@ -78,22 +78,22 @@ defmodule EveDmv.Killmails.KillmailProcessor do
   def extract_structured_data(_), do: {:error, :invalid_input}
 
   @doc """
-  Build database changesets for raw and enriched killmail records.
+  Build database changesets for raw killmail records.
 
   Takes structured killmail data and produces changeset maps suitable
-  for insertion into KillmailRaw and KillmailEnriched tables.
+  for insertion into KillmailRaw tables.
 
   ## Examples
 
       structured = %{killmail_id: 123, victim: %{character_id: 456}}
       changesets = KillmailProcessor.build_changesets(structured)
-      %{raw: raw_changeset, enriched: enriched_changeset} = changesets
+      %{raw: raw_changeset} = changesets
   """
-  @spec build_changesets(killmail_data()) :: %{raw: changeset_data(), enriched: changeset_data()}
+  @spec build_changesets(killmail_data()) :: %{raw: changeset_data()}
   def build_changesets(structured_data) do
     %{
-      raw: build_raw_changeset(structured_data),
-      enriched: build_enriched_changeset(structured_data)
+      raw: build_raw_changeset(structured_data)
+      # REMOVED: enriched - see /docs/architecture/enriched-raw-analysis.md
     }
   end
 
@@ -291,36 +291,8 @@ defmodule EveDmv.Killmails.KillmailProcessor do
     }
   end
 
-  defp build_enriched_changeset(structured_data) do
-    price_data = calculate_price_values(structured_data.raw_data)
-    victim = structured_data.victim
-
-    %{
-      killmail_id: structured_data.killmail_id,
-      killmail_time: structured_data.timestamp,
-      victim_character_id: victim.character_id,
-      victim_character_name: victim.character_name,
-      victim_corporation_id: victim.corporation_id,
-      victim_corporation_name: victim.corporation_name,
-      victim_alliance_id: victim.alliance_id,
-      victim_alliance_name: victim.alliance_name,
-      solar_system_id: structured_data.solar_system_id,
-      solar_system_name: "Unknown System",
-      victim_ship_type_id: victim.ship_type_id,
-      victim_ship_name: victim.ship_name,
-      total_value: price_data.total_value,
-      ship_value: price_data.ship_value,
-      fitted_value: price_data.fitted_value,
-      attacker_count: length(structured_data.attackers),
-      final_blow_character_id: get_final_blow_character_id(structured_data),
-      final_blow_character_name: get_final_blow_character_name(structured_data),
-      kill_category: determine_kill_category(structured_data),
-      victim_ship_category: determine_ship_category(victim.ship_type_id),
-      module_tags: [],
-      noteworthy_modules: [],
-      price_data_source: price_data.price_data_source
-    }
-  end
+  # REMOVED: build_enriched_changeset function
+  # Enriched table provides no value - see /docs/architecture/enriched-raw-analysis.md
 
   defp build_victim_participant(structured_data) do
     victim = structured_data.victim
@@ -412,52 +384,12 @@ defmodule EveDmv.Killmails.KillmailProcessor do
     get_in(data, path)
   end
 
-  defp get_final_blow_character_id(structured_data) do
-    final_blow_attacker =
-      Enum.find(structured_data.attackers, fn attacker ->
-        attacker.final_blow
-      end)
-
-    case final_blow_attacker do
-      nil -> nil
-      attacker -> attacker.character_id
-    end
-  end
-
-  defp get_final_blow_character_name(structured_data) do
-    final_blow_attacker =
-      Enum.find(structured_data.attackers, fn attacker ->
-        attacker.final_blow
-      end)
-
-    case final_blow_attacker do
-      nil -> nil
-      attacker -> attacker.character_name
-    end
-  end
-
-  defp determine_kill_category(structured_data) do
-    attacker_count = length(structured_data.attackers)
-
-    cond do
-      attacker_count == 1 -> "solo"
-      attacker_count <= 5 -> "small_gang"
-      attacker_count <= 15 -> "medium_gang"
-      true -> "fleet"
-    end
-  end
-
-  defp determine_ship_category(ship_type_id) when is_integer(ship_type_id) do
-    # Basic ship categorization - could be enhanced with actual ship data
-    cond do
-      ship_type_id in [670] -> "capsule"
-      ship_type_id < 1000 -> "frigate"
-      ship_type_id < 10_000 -> "cruiser"
-      true -> "unknown"
-    end
-  end
-
-  defp determine_ship_category(_), do: "unknown"
+  # REMOVED: Helper functions only used by enriched changeset building
+  # - get_final_blow_character_id
+  # - get_final_blow_character_name
+  # - determine_kill_category
+  # - determine_ship_category
+  # See /docs/architecture/enriched-raw-analysis.md
 
   defp npc_character?(character_id) when is_integer(character_id) do
     # NPC character IDs are typically below this threshold

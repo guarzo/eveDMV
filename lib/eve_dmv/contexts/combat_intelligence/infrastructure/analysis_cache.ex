@@ -132,9 +132,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
   """
   @spec get_intelligence_scores(integer()) :: {:ok, map()} | {:error, :not_found}
   def get_intelligence_scores(_character_id) do
-    # This would need to be implemented to fetch all score types
-    # For now, return a simple response
-    {:ok, %{}}
+    # TODO: Implement fetching all score types for character
+    # Original stub returned: {:ok, %{}}
+    {:error, :not_implemented}
   end
 
   @doc """

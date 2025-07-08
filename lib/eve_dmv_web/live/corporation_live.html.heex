@@ -22,25 +22,66 @@
       <%= if @corp_info do %>
         <div class="bg-gray-800 rounded-lg p-6 mb-8 border border-gray-700">
           <div class="flex items-start justify-between">
-            <div>
-              <h2 class="text-2xl font-bold text-white mb-2">
-                {@corp_info.corporation_name}
-              </h2>
+            <div class="flex items-center space-x-4">
+              <.corporation_logo corporation_id={@corp_info.corporation_id} name={@corp_info.corporation_name} size={64} />
+              
+              <div>
+                <h2 class="text-2xl font-bold text-white mb-2">
+                  {@corp_info.corporation_name}
+                </h2>
 
-              <%= if @corp_info.alliance_name do %>
-                <div class="text-lg text-blue-400 mb-4">
-                  Alliance: {@corp_info.alliance_name}
+                <%= if @corp_info.alliance_name do %>
+                  <div class="flex items-center space-x-2">
+                    <.alliance_logo :if={@corp_info.alliance_id} alliance_id={@corp_info.alliance_id} name={@corp_info.alliance_name} size={24} />
+                    <span class="text-lg text-blue-400">
+                      {@corp_info.alliance_name}
+                    </span>
+                  </div>
+                <% end %>
+
+                <div class="text-gray-400 mt-2">
+                  Corporation ID: {@corp_info.corporation_id}
                 </div>
-              <% end %>
-
-              <div class="text-gray-400">
-                Corporation ID: {@corp_info.corporation_id}
               </div>
             </div>
             
-<!-- Quick Actions -->
-            <div class="flex space-x-2">
-              <!-- Corporation intelligence not yet implemented -->
+            <!-- Quick Intelligence Summary - Right Side -->
+            <div class="flex flex-col space-y-3">
+              <%= if @timezone_data.peak_hours && length(@timezone_data.peak_hours) > 0 do %>
+                <div class="flex items-center space-x-2">
+                  <span class="text-yellow-400">🕐</span>
+                  <div>
+                    <div class="text-xs text-gray-400">Peak Activity</div>
+                    <div class="text-sm text-white font-medium">
+                      {String.pad_leading(Integer.to_string(hd(@timezone_data.peak_hours).hour), 2, "0")}:00 EVE
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+              
+              <%= if @location_stats && length(@location_stats) > 0 do %>
+                <div class="flex items-center space-x-2">
+                  <span class="text-blue-400">🌍</span>
+                  <div>
+                    <div class="text-xs text-gray-400">Top Location</div>
+                    <div class="text-sm text-white font-medium">
+                      {hd(@location_stats).solar_system_name}
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+              
+              <%= if @timezone_data.timezone_coverage.coverage_strengths && length(@timezone_data.timezone_coverage.coverage_strengths) > 0 do %>
+                <div class="flex items-center space-x-2">
+                  <span class="text-green-400">⏰</span>
+                  <div>
+                    <div class="text-xs text-gray-400">Primary TZ</div>
+                    <div class="text-sm text-white font-medium">
+                      {hd(@timezone_data.timezone_coverage.coverage_strengths) |> String.split(" ") |> hd()}
+                    </div>
+                  </div>
+                </div>
+              <% end %>
             </div>
           </div>
         </div>
@@ -61,14 +102,14 @@
           label="Total Kills" 
           value={format_number(@corp_stats.total_kills)}
           color="text-green-400"
-          subtitle="Avg: #{format_number(@corp_stats.avg_activity_per_member)} per member"
+          subtitle={"Avg: #{format_number(@corp_stats.avg_activity_per_member)} per member"}
         />
         <:stat 
           icon="💀" 
           label="Total Losses" 
           value={format_number(@corp_stats.total_losses)}
           color="text-red-400"
-          subtitle="K/D: #{@corp_stats.kill_death_ratio}"
+          subtitle={"K/D: #{@corp_stats.kill_death_ratio}"}
         />
         <:stat icon="⚡" label="Total Activity" format="custom">
           <p class="text-2xl font-bold text-yellow-400">
@@ -100,9 +141,11 @@
                       <% {indicator, color_class} = activity_indicator(member.total_activity) %>
                       <span class={"text-lg #{color_class}"}>{indicator}</span>
 
+                      <.character_portrait character_id={member.character_id} name={member.character_name} size={40} />
+
                       <div>
                         <a
-                          href={~p"/intel/#{member.character_id}"}
+                          href={~p"/character/#{member.character_id}"}
                           class="font-medium text-white hover:text-blue-400 transition-colors"
                         >
                           {member.character_name}
@@ -155,10 +198,15 @@
                         {type_text}
                       </span>
 
+                      <.character_portrait character_id={activity.character_id} name={activity.character_name} size={32} />
+
                       <div>
-                        <div class="font-medium text-white">
+                        <a 
+                          href={~p"/character/#{activity.character_id}"}
+                          class="font-medium text-white hover:text-blue-400 transition-colors"
+                        >
                           {activity.character_name}
-                        </div>
+                        </a>
                         <div class="text-xs text-gray-400">
                           {activity.ship_name}
                           <%= if activity.solar_system_name do %>
@@ -181,6 +229,314 @@
                 icon="📭"
                 title="No recent activity"
                 message="Activity will appear here once members generate killmails"
+              />
+            <% end %>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Participation Metrics -->
+      <div class="mt-8 bg-gray-800 rounded-lg border border-gray-700">
+        <div class="p-6 border-b border-gray-700">
+          <h3 class="text-lg font-bold text-white">Member Participation Metrics</h3>
+          <p class="text-gray-400 text-sm">Corporation-wide engagement statistics</p>
+        </div>
+        
+        <div class="p-6">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- PvP Participation -->
+            <div class="bg-gray-700 rounded-lg p-4">
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-sm font-medium text-gray-400">PvP Participation</span>
+                <span class="text-xs text-gray-500">Last 30 days</span>
+              </div>
+              <div class="text-3xl font-bold text-white mb-1">
+                {round_value(@participation_data.pvp_participation.rate || 0, 1)}%
+              </div>
+              <div class="text-sm text-gray-400">
+                {@participation_data.pvp_participation.participants || 0} of {@corp_stats.total_members} members
+              </div>
+              <div class="mt-3 w-full bg-gray-600 rounded-full h-2">
+                <div 
+                  class="bg-red-600 h-2 rounded-full transition-all duration-300"
+                  style={"width: #{@participation_data.pvp_participation.rate || 0}%"}
+                ></div>
+              </div>
+            </div>
+            
+            <!-- Fleet Participation -->
+            <div class="bg-gray-700 rounded-lg p-4">
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-sm font-medium text-gray-400">Fleet Participation</span>
+                <span class="text-xs text-gray-500">Group activities</span>
+              </div>
+              <div class="text-3xl font-bold text-white mb-1">
+                {round_value(@participation_data.fleet_participation.rate || 0, 1)}%
+              </div>
+              <div class="text-sm text-gray-400">
+                {@participation_data.fleet_participation.participants || 0} fleet pilots
+              </div>
+              <div class="mt-3 w-full bg-gray-600 rounded-full h-2">
+                <div 
+                  class="bg-green-600 h-2 rounded-full transition-all duration-300"
+                  style={"width: #{@participation_data.fleet_participation.rate || 0}%"}
+                ></div>
+              </div>
+            </div>
+            
+            <!-- Corporate Activity -->
+            <div class="bg-gray-700 rounded-lg p-4">
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-sm font-medium text-gray-400">Active Members</span>
+                <span class="text-xs text-gray-500">Activity score > 50</span>
+              </div>
+              <div class="text-3xl font-bold text-white mb-1">
+                {round_value(@participation_data.corporate_activity.rate || 0, 1)}%
+              </div>
+              <div class="text-sm text-gray-400">
+                {@participation_data.corporate_activity.participants || 0} active members
+              </div>
+              <div class="mt-3 w-full bg-gray-600 rounded-full h-2">
+                <div 
+                  class="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={"width: #{@participation_data.corporate_activity.rate || 0}%"}
+                ></div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Overall Participation Score -->
+          <div class="mt-6 bg-gray-700 rounded-lg p-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-sm font-medium text-gray-400">Overall Participation Score</span>
+                <div class="text-2xl font-bold text-white mt-1">
+                  {round_value(@participation_data.overall_participation_score || 0, 1)}
+                </div>
+              </div>
+              <div class="text-right">
+                <% score = @participation_data.overall_participation_score || 0 %>
+                <% {rating_text, rating_class} = 
+                  cond do
+                    score >= 80 -> {"Excellent", "text-green-400"}
+                    score >= 60 -> {"Good", "text-blue-400"}
+                    score >= 40 -> {"Average", "text-yellow-400"}
+                    score >= 20 -> {"Below Average", "text-orange-400"}
+                    true -> {"Needs Improvement", "text-red-400"}
+                  end 
+                %>
+                <span class={"text-lg font-semibold #{rating_class}"}>
+                  {rating_text}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Timezone Analysis -->
+      <div class="mt-8 bg-gray-800 rounded-lg border border-gray-700">
+        <div class="p-6 border-b border-gray-700">
+          <h3 class="text-lg font-bold text-white">Timezone Coverage Analysis</h3>
+          <p class="text-gray-400 text-sm">Member activity distribution across time zones</p>
+        </div>
+        
+        <div class="p-6">
+          <!-- Coverage Score -->
+          <div class="mb-6">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sm font-medium text-gray-400">Overall Coverage Score</span>
+              <span class="text-lg font-bold text-white">
+                {round_value(@timezone_data.overall_coverage_score || 0, 1)}%
+              </span>
+            </div>
+            <div class="w-full bg-gray-700 rounded-full h-2">
+              <div 
+                class="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                style={"width: #{@timezone_data.overall_coverage_score || 0}%"}
+              ></div>
+            </div>
+          </div>
+          
+          <!-- Peak Activity Hours -->
+          <%= if @timezone_data.peak_hours && length(@timezone_data.peak_hours) > 0 do %>
+            <div class="mb-6">
+              <h4 class="text-sm font-medium text-gray-400 mb-3">Peak Activity Hours (EVE Time)</h4>
+              <div class="grid grid-cols-3 gap-3">
+                <%= for peak <- @timezone_data.peak_hours do %>
+                  <div class="bg-gray-700 rounded p-3 text-center">
+                    <div class="text-2xl font-bold text-white">
+                      {String.pad_leading(Integer.to_string(peak.hour), 2, "0")}:00
+                    </div>
+                    <div class="text-xs text-gray-400 mt-1">
+                      {peak.activity} activities
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+          
+          <!-- Hourly Activity Chart -->
+          <div class="mb-6">
+            <h4 class="text-sm font-medium text-gray-400 mb-3">24-Hour Activity Distribution</h4>
+            <div class="relative h-32 bg-gray-700 rounded p-2">
+              <div class="flex items-end justify-between h-full">
+                <% hourly_data = @timezone_data.hourly_distribution || %{} %>
+                <% max_activity = if map_size(hourly_data) > 0, do: hourly_data |> Map.values() |> Enum.max(), else: 1 %>
+                <%= for hour <- 0..23 do %>
+                  <% activity = Map.get(hourly_data, hour, 0) %>
+                  <% height_px = cond do
+                    activity == 0 -> 0
+                    activity == max_activity -> 120  # Full height of container minus padding
+                    true -> max(4, trunc((activity / max_activity) * 120))  # Minimum 4px for visibility
+                  end %>
+                  <div class="flex-1 mx-px">
+                    <div 
+                      class="bg-blue-600 rounded-t hover:bg-blue-500 transition-colors"
+                      style={"height: #{height_px}px"}
+                      title={"#{String.pad_leading(Integer.to_string(hour), 2, "0")}:00 - #{activity} activities"}
+                    ></div>
+                  </div>
+                <% end %>
+              </div>
+              <!-- Hour labels -->
+              <div class="flex justify-between mt-1">
+                <span class="text-xs text-gray-500">00</span>
+                <span class="text-xs text-gray-500">06</span>
+                <span class="text-xs text-gray-500">12</span>
+                <span class="text-xs text-gray-500">18</span>
+                <span class="text-xs text-gray-500">23</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Timezone Recommendations -->
+          <%= if Map.get(@timezone_data.timezone_coverage, :coverage_gaps, []) != [] || 
+                 Map.get(@timezone_data.timezone_coverage, :coverage_strengths, []) != [] do %>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Coverage Strengths -->
+              <%= if Map.get(@timezone_data.timezone_coverage, :coverage_strengths, []) != [] do %>
+                <div class="bg-gray-700 rounded p-4">
+                  <h4 class="text-sm font-medium text-green-400 mb-2">Strong Coverage</h4>
+                  <ul class="space-y-1">
+                    <%= for strength <- Map.get(@timezone_data.timezone_coverage, :coverage_strengths, []) do %>
+                      <li class="text-sm text-gray-300 flex items-center">
+                        <span class="text-green-400 mr-2">✓</span>
+                        {strength}
+                      </li>
+                    <% end %>
+                  </ul>
+                </div>
+              <% end %>
+              
+              <!-- Coverage Gaps -->
+              <%= if Map.get(@timezone_data.timezone_coverage, :coverage_gaps, []) != [] do %>
+                <div class="bg-gray-700 rounded p-4">
+                  <h4 class="text-sm font-medium text-orange-400 mb-2">Coverage Gaps</h4>
+                  <ul class="space-y-1">
+                    <%= for gap <- Map.get(@timezone_data.timezone_coverage, :coverage_gaps, []) do %>
+                      <li class="text-sm text-gray-300 flex items-center">
+                        <span class="text-orange-400 mr-2">!</span>
+                        {gap}
+                      </li>
+                    <% end %>
+                  </ul>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+      
+      <!-- Activity Locations and Top Victim Corporations -->
+      <div class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Activity Locations -->
+        <div class="bg-gray-800 rounded-lg border border-gray-700">
+          <div class="p-6 border-b border-gray-700">
+            <h3 class="text-lg font-bold text-white">Activity Locations</h3>
+            <p class="text-gray-400 text-sm">Top systems by activity (last 30 days)</p>
+          </div>
+          
+          <div class="p-6">
+            <%= if @location_stats && length(@location_stats) > 0 do %>
+              <div class="space-y-3 max-h-96 overflow-y-auto">
+                <%= for location <- Enum.take(@location_stats, 10) do %>
+                  <div class="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                    <div>
+                      <div class="font-medium text-white">
+                        {location.solar_system_name}
+                      </div>
+                      <div class="text-sm text-gray-400 mt-1">
+                        <span class="text-green-400">{location.kills} kills</span>
+                        <%= if location.losses > 0 do %>
+                          <span class="mx-2">•</span>
+                          <span class="text-red-400">{location.losses} losses</span>
+                        <% end %>
+                      </div>
+                    </div>
+                    
+                    <div class="text-right">
+                      <div class="text-lg font-bold text-white">
+                        {location.activity_count}
+                      </div>
+                      <div class="text-xs text-gray-400">
+                        activities
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            <% else %>
+              <.empty_state 
+                icon="🌍"
+                title="No location data"
+                message="Location activity will appear here once available"
+              />
+            <% end %>
+          </div>
+        </div>
+        
+        <!-- Top Victim Corporations -->
+        <div class="bg-gray-800 rounded-lg border border-gray-700">
+          <div class="p-6 border-b border-gray-700">
+            <h3 class="text-lg font-bold text-white">Top Victim Corporations</h3>
+            <p class="text-gray-400 text-sm">Most targeted corporations (last 30 days)</p>
+          </div>
+          
+          <div class="p-6">
+            <%= if @victim_stats && length(@victim_stats) > 0 do %>
+              <div class="space-y-3 max-h-96 overflow-y-auto">
+                <%= for victim <- @victim_stats do %>
+                  <div class="flex items-center justify-between p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
+                    <div class="flex items-center space-x-3">
+                      <.corporation_logo corporation_id={victim.corporation_id} name={victim.corporation_name} size={32} />
+                      <div>
+                        <a 
+                          href={~p"/corporation/#{victim.corporation_id}"}
+                          class="font-medium text-white hover:text-blue-400 transition-colors"
+                        >
+                          {victim.corporation_name}
+                        </a>
+                      </div>
+                    </div>
+                    
+                    <div class="text-right">
+                      <div class="text-lg font-bold text-red-400">
+                        {victim.kill_count}
+                      </div>
+                      <div class="text-xs text-gray-400">
+                        kills
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            <% else %>
+              <.empty_state 
+                icon="🎯"
+                title="No victim data"
+                message="Victim statistics will appear here once available"
               />
             <% end %>
           </div>

@@ -21,7 +21,7 @@ defmodule EveDmv.Intelligence.WandererSSE do
     :sse_connections
   ]
 
-  @default_base_url "http://localhost:4000"
+  @default_base_url "http://localhost:4010"
 
   # Public API
 
