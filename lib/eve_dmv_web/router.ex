@@ -40,7 +40,7 @@ defmodule EveDmvWeb.Router do
   scope "/", EveDmvWeb do
     pipe_through(:browser)
 
-    get("/", PageController, :home)
+    live("/", HomeLive)
     live("/feed", KillFeedLive)
     live("/dashboard", DashboardLive)
     live("/profile", ProfileLive)
@@ -48,6 +48,9 @@ defmodule EveDmvWeb.Router do
     live("/player/:character_id", PlayerProfileLive)
     live("/corporation/:corporation_id", CorporationLive)
     live("/alliance/:alliance_id", AllianceLive)
+    live("/system/:system_id", SystemLive)
+    live("/search/systems", SystemSearchLive)
+    live("/search", UniversalSearchLive)
     
     # Redirects for backward compatibility
     get("/analysis/:character_id", PageController, :redirect_character)

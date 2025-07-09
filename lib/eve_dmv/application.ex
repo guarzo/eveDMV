@@ -24,6 +24,12 @@ defmodule EveDmv.Application do
       # Set up periodic security headers validation
       # EveDmv.Security.HeadersValidator.setup_periodic_validation()
     end
+    
+    # Add logger filter for db_connection noise
+    :logger.add_primary_filter(
+      :db_connection_noise,
+      {&EveDmvWeb.LoggerFilter.filter_db_connection_noise/2, nil}
+    )
 
     base_children = [
       EveDmvWeb.Telemetry,
@@ -67,6 +73,8 @@ defmodule EveDmv.Application do
       maybe_start_pipeline(),
       # Start background static data loader
       static_data_loader_spec(),
+      # Start SDE automatic update service
+      maybe_start_sde_startup_service(),
       # Start a worker by calling: EveDmv.Worker.start_link(arg)
       # {EveDmv.Worker, arg},
       # Start to serve requests, typically the last entry
@@ -186,6 +194,19 @@ defmodule EveDmv.Application do
       # No-op process for tests
       %{
         id: :static_data_loader_noop,
+        start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}
+      }
+    end
+  end
+
+  # Conditionally start the SDE automatic update service
+  defp maybe_start_sde_startup_service do
+    if Mix.env() != :test do
+      EveDmv.Eve.StaticDataLoader.SdeStartupService
+    else
+      # No-op process for tests
+      %{
+        id: :sde_startup_service_noop,
         start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}
       }
     end

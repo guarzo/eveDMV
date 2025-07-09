@@ -15,7 +15,7 @@
     </:action>
     <:info>
       <div class="text-sm text-gray-400">
-        <span class="text-green-400">{@total_kills_today}</span> kills today
+        <span class="text-green-400"><%= @total_kills_today %></span> kills today
       </div>
     </:info>
   </.page_header>
@@ -38,7 +38,7 @@
         </.stats_grid>
       </div>
       
-<!-- Hot Systems -->
+      <!-- Hot Systems -->
       <div class="p-6">
         <h2 class="text-lg font-semibold text-gray-200 mb-4">Hot Systems</h2>
         <div class="space-y-2">
@@ -51,17 +51,17 @@
               <div class="flex items-center justify-between">
                 <div>
                   <div class="font-medium text-gray-200 group-hover:text-blue-400">
-                    {system.system_name}
+                    <%= system.system_name %>
                   </div>
                   <div class="text-sm text-gray-400">
-                    {format_isk(system.total_isk)} destroyed
+                    <%= format_isk(system.total_isk) %> destroyed
                   </div>
                 </div>
                 <div class="text-right">
                   <div class="text-lg font-bold text-orange-400">
-                    {system.kill_count}
+                    <%= system.kill_count %>
                   </div>
-                  <div class="text-xs text-gray-500">#{index + 1}</div>
+                  <div class="text-xs text-gray-500">#<%= index + 1 %></div>
                 </div>
               </div>
             </button>
@@ -70,7 +70,7 @@
       </div>
     </div>
     
-<!-- Main Feed -->
+    <!-- Main Feed -->
     <div class="flex-1 h-screen overflow-y-auto">
       <div class="p-6">
         <div class="flex items-center justify-between mb-6">
@@ -81,108 +81,157 @@
           </div>
         </div>
         
-<!-- Kill Cards Stream -->
+        <!-- Kill Cards Stream -->
         <div id="killmail-stream" phx-update="stream" class="space-y-4">
           <%= for {id, killmail} <- @streams.killmail_stream do %>
             <div
               id={id}
-              class="kill-card bg-gray-800 border border-gray-700 rounded-lg p-4 hover:border-gray-600 transition-colors"
+              class="kill-card bg-gradient-to-r from-gray-800 to-gray-800/50 border border-gray-700 rounded-lg overflow-hidden hover:border-gray-600 hover:shadow-lg transition-all duration-200 group"
             >
-              <div class="flex items-start justify-between">
-                <!-- Victim Info -->
-                <div class="flex-1">
-                  <div class="flex items-center space-x-3">
-                    <!-- Ship Icon Placeholder -->
-                    <div class="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
-                      <div class="text-xs text-gray-400">🚀</div>
-                    </div>
+              <div class="p-4">
+                <div class="flex items-start justify-between">
+                  <!-- Victim Info -->
+                  <div class="flex-1">
+                    <div class="flex items-center space-x-3">
+                      <!-- Character Portrait -->
+                      <%= if killmail.victim_character_id do %>
+                        <.character_portrait
+                          character_id={killmail.victim_character_id}
+                          name={killmail.victim_character_name}
+                          size={48}
+                          class="ring-2 ring-red-600/50"
+                        />
+                      <% else %>
+                        <div class="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center ring-2 ring-red-600/50">
+                          <div class="text-lg">💀</div>
+                        </div>
+                      <% end %>
 
-                    <div>
-                      <div class="flex items-center space-x-2">
-                        <h3 class="font-semibold text-gray-200">
-                          <%= if killmail.victim_character_id do %>
-                            <.character_link 
-                              character_id={killmail.victim_character_id} 
-                              character_name={killmail.victim_character_name} 
-                            />
-                          <% else %>
-                            <span>{killmail.victim_character_name}</span>
+                      <div>
+                        <div class="flex items-center space-x-2">
+                          <h3 class="font-semibold text-gray-200">
+                            <%= if killmail.victim_character_id do %>
+                              <.link 
+                                navigate={~p"/character/#{killmail.victim_character_id}"}
+                                class="hover:text-blue-400 transition-colors"
+                              >
+                                <%= killmail.victim_character_name || "Unknown" %>
+                              </.link>
+                            <% else %>
+                              <span><%= killmail.victim_character_name || "Unknown" %></span>
+                            <% end %>
+                          </h3>
+                          <%= if killmail.is_expensive do %>
+                            <span class="px-2 py-1 bg-gradient-to-r from-yellow-600 to-yellow-500 text-yellow-100 text-xs rounded-full font-medium shadow-sm">
+                              💰 Expensive
+                            </span>
                           <% end %>
-                        </h3>
-                        <%= if killmail.is_expensive do %>
-                          <span class="px-2 py-1 bg-yellow-600 text-yellow-200 text-xs rounded-full">
-                            💰 Expensive
-                          </span>
-                        <% end %>
-                      </div>
+                        </div>
 
-                      <div class="text-sm text-gray-400">
-                        <span>{killmail.victim_corporation_name}</span>
-                        <%= if killmail.victim_alliance_name do %>
-                          <span class="text-blue-400">({killmail.victim_alliance_name})</span>
-                        <% end %>
-                      </div>
+                        <div class="text-sm text-gray-400">
+                          <span><%= killmail.victim_corporation_name || "Unknown Corp" %></span>
+                          <%= if killmail.victim_alliance_name do %>
+                            <span class="text-blue-400">(<%= killmail.victim_alliance_name %>)</span>
+                          <% end %>
+                        </div>
 
-                      <div class="text-sm text-gray-500 mt-1">
-                        Lost {killmail.victim_ship_name} in
-                        <span class={killmail.security_color || "text-orange-400"}>
-                          {killmail.solar_system_name}
-                        </span>
-                        <%= if killmail.security_status do %>
-                          <span class="text-gray-400 text-xs">
-                            ({Float.round(killmail.security_status, 1)})
-                          </span>
-                        <% end %>
+                        <div class="text-sm text-gray-500 mt-1">
+                          <span class="text-red-400">Lost</span> 
+                          <span class="text-gray-300 font-medium"><%= killmail.victim_ship_name %></span> 
+                          <span class="text-gray-500">in</span>
+                          <.link 
+                            navigate={~p"/system/#{killmail.solar_system_id}"}
+                            class={[
+                              "font-medium transition-colors hover:underline",
+                              killmail.security_color || "text-orange-400"
+                            ]}
+                          >
+                            <%= killmail.solar_system_name %>
+                          </.link>
+                          <%= if killmail.security_status do %>
+                            <span class="text-gray-600 text-xs">
+                              (<%= Float.round(killmail.security_status, 1) %>)
+                            </span>
+                          <% end %>
+                        </div>
                       </div>
                     </div>
+                  </div>
+                
+                  <!-- Kill Stats -->
+                  <div class="text-right">
+                    <%= if killmail.total_value && killmail.total_value > 0 do %>
+                      <div class="text-lg font-bold text-red-400">
+                        <%= format_isk(killmail.total_value) %>
+                      </div>
+                    <% else %>
+                      <div class="text-lg font-bold text-gray-500">
+                        Value Unknown
+                      </div>
+                    <% end %>
+                    <div class="text-xs text-gray-500 mt-1">
+                      ⚔️ <%= killmail.attacker_count %> attacker<%= if killmail.attacker_count != 1, do: "s" %>
+                    </div>
+                    <%= if killmail.final_blow_character_name do %>
+                      <div class="text-xs text-gray-400 mt-1">
+                        <span class="text-gray-500">Final blow:</span>
+                        <%= if killmail.final_blow_character_id do %>
+                          <.link 
+                            navigate={~p"/character/#{killmail.final_blow_character_id}"}
+                            class="text-blue-400 hover:text-blue-300 transition-colors"
+                          >
+                            <%= killmail.final_blow_character_name %>
+                          </.link>
+                        <% else %>
+                          <span class="text-blue-400"><%= killmail.final_blow_character_name %></span>
+                        <% end %>
+                      </div>
+                    <% end %>
                   </div>
                 </div>
                 
-<!-- Kill Stats -->
-                <div class="text-right">
-                  <%= if killmail.total_value && killmail.total_value > 0 do %>
-                    <div class="text-lg font-bold text-red-400">
-                      {format_isk(killmail.total_value)}
+                <!-- Bottom Section with Gradient -->
+                <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-700/50">
+                  <div class="flex items-center space-x-4">
+                    <div class="text-xs text-gray-500">
+                      <%= format_time_ago(killmail.age_minutes) %>
                     </div>
-                  <% else %>
-                    <div class="text-lg font-bold text-gray-500">
-                      Value Unknown
-                    </div>
-                  <% end %>
-                  <div class="text-xs text-gray-500 mt-1">
-                    ⚔️ {killmail.attacker_count} attacker{if killmail.attacker_count != 1, do: "s"}
+                    <!-- Attacker Portraits -->
+                    <%= if killmail.final_blow_character_id do %>
+                      <div class="flex items-center -space-x-2">
+                        <div class="relative group">
+                          <.character_portrait
+                            character_id={killmail.final_blow_character_id}
+                            name={killmail.final_blow_character_name}
+                            size={24}
+                            class="ring-2 ring-gray-800"
+                          />
+                          <div class="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full ring-2 ring-gray-800"></div>
+                        </div>
+                      </div>
+                    <% end %>
                   </div>
-                  <%= if killmail.final_blow_character_name do %>
-                    <div class="text-xs text-blue-400">
-                      FB:
-                      <%= if killmail.final_blow_character_id do %>
-                        <.character_link 
-                          character_id={killmail.final_blow_character_id} 
-                          character_name={killmail.final_blow_character_name} 
-                          class="text-xs"
-                        />
-                      <% else %>
-                        <span>{killmail.final_blow_character_name}</span>
-                      <% end %>
-                    </div>
-                  <% end %>
+                  <div class="text-xs text-gray-600">
+                    #<%= killmail.killmail_id %>
+                  </div>
                 </div>
               </div>
               
-<!-- Timestamp -->
-              <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-700">
-                <div class="text-xs text-gray-500">
-                  {format_time_ago(killmail.age_minutes)}
-                </div>
-                <div class="text-xs text-gray-500">
-                  ID: {killmail.killmail_id}
-                </div>
-              </div>
+              <!-- Side Accent Bar -->
+              <div class={[
+                "absolute left-0 top-0 bottom-0 w-1",
+                cond do
+                  killmail.is_expensive -> "bg-gradient-to-b from-yellow-500 to-yellow-600"
+                  killmail.total_value && killmail.total_value > 1_000_000_000 -> "bg-gradient-to-b from-purple-500 to-purple-600"
+                  killmail.total_value && killmail.total_value > 100_000_000 -> "bg-gradient-to-b from-blue-500 to-blue-600"
+                  true -> "bg-gradient-to-b from-gray-500 to-gray-600"
+                end
+              ]}></div>
             </div>
           <% end %>
         </div>
         
-<!-- Empty State -->
+        <!-- Empty State -->
         <%= if length(@killmails) == 0 do %>
           <.empty_state 
             icon="🛸"

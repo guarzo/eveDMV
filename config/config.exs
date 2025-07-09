@@ -111,6 +111,12 @@ config :eve_dmv,
   wanderer_kills_sse_url: System.get_env("WANDERER_KILLS_SSE_URL", "http://localhost:8080/sse"),
   pipeline_enabled: System.get_env("PIPELINE_ENABLED", "true") == "true"
 
+# SDE (Static Data Export) Configuration
+config :eve_dmv,
+  sde_auto_update: System.get_env("SDE_AUTO_UPDATE", "true") == "true",
+  static_data_load_delay: String.to_integer(System.get_env("STATIC_DATA_LOAD_DELAY", "5000")),
+  mock_sse_server_enabled: System.get_env("MOCK_SSE_SERVER_ENABLED", "false") == "true"
+
 # Name Resolver Cache Warming Configuration
 config :eve_dmv, :name_resolver_cache_warming,
   # T1 Frigates: Rifter, Punisher, Tormentor, Merlin, Incursus, Tristan, Kestrel, Atron

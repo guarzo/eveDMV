@@ -1,0 +1,423 @@
+<div class="container mx-auto px-4 py-8">
+  <!-- Header with zkillboard import -->
+  <div class="bg-gray-900 rounded-lg p-6 mb-6">
+    <h1 class="text-3xl font-bold mb-4">Battle Analysis</h1>
+    
+    <!-- zkillboard Import Form -->
+    <form phx-submit="import_zkillboard" class="flex gap-2">
+      <input
+        type="text"
+        name="url"
+        value={@import_url}
+        placeholder="Paste zkillboard URL (e.g., https://zkillboard.com/kill/123456/)"
+        class="flex-1 px-4 py-2 bg-gray-800 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        disabled={@importing}
+      />
+      <button
+        type="submit"
+        disabled={@importing}
+        class="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 text-white rounded-md transition-colors"
+      >
+        <%= if @importing do %>
+          <span class="flex items-center">
+            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Importing...
+          </span>
+        <% else %>
+          Import from zkillboard
+        <% end %>
+      </button>
+    </form>
+    
+    <%= if @error_message do %>
+      <div class="mt-2 text-red-400 text-sm">
+        <%= @error_message %>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <!-- Recent Battles Sidebar -->
+    <div class="lg:col-span-1">
+      <div class="bg-gray-900 rounded-lg p-4">
+        <h2 class="text-xl font-semibold mb-4">Recent Battles</h2>
+        <div class="space-y-2 max-h-96 overflow-y-auto">
+          <%= for battle <- @recent_battles do %>
+            <button
+              phx-click="select_battle"
+              phx-value-battle_id={battle.battle_id}
+              class={"p-3 rounded-md text-left w-full transition-colors " <> 
+                     if @current_battle && @current_battle.battle_id == battle.battle_id do
+                       "bg-blue-900 hover:bg-blue-800"
+                     else
+                       "bg-gray-800 hover:bg-gray-700"
+                     end}
+            >
+              <div class="text-sm font-medium">
+                <%= resolve_system_name(battle.metadata.primary_system) %>
+              </div>
+              <div class="text-xs text-gray-400">
+                <%= battle.metadata.unique_participants %> pilots • 
+                <%= length(battle.killmails) %> kills • 
+                <%= format_duration(battle.metadata.duration_minutes) %>
+              </div>
+            </button>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Battle View -->
+    <div class="lg:col-span-3">
+      <%= if @current_battle do %>
+        <!-- Battle Header -->
+        <div class="bg-gray-900 rounded-lg p-6 mb-6">
+          <div class="flex justify-between items-start">
+            <div>
+              <h2 class="text-2xl font-bold mb-2">
+                Battle in <%= resolve_system_name(@current_battle.metadata.primary_system) %>
+              </h2>
+              <div class="text-gray-400">
+                <span class="mr-4"><%= length(@current_battle.killmails) %> kills</span>
+                <span class="mr-4"><%= @current_battle.metadata.unique_participants %> participants</span>
+                <span><%= format_duration(@current_battle.metadata.duration_minutes) %> duration</span>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-sm text-gray-400">Battle Type</div>
+              <div class="text-lg font-medium capitalize">
+                <%= @current_battle.metadata.battle_type |> to_string() |> String.replace("_", " ") %>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Timeline View Selector -->
+        <div class="bg-gray-900 rounded-lg p-4 mb-6">
+          <div class="flex gap-2 mb-4">
+            <button
+              phx-click="change_timeline_view"
+              phx-value-view="phases"
+              class={"px-4 py-2 rounded-md transition-colors " <> 
+                     if @timeline_view == :phases do
+                       "bg-blue-600 text-white"
+                     else
+                       "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                     end}
+            >
+              Battle Phases
+            </button>
+            <button
+              phx-click="change_timeline_view"
+              phx-value-view="events"
+              class={"px-4 py-2 rounded-md transition-colors " <> 
+                     if @timeline_view == :events do
+                       "bg-blue-600 text-white"
+                     else
+                       "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                     end}
+            >
+              Timeline
+            </button>
+            <button
+              phx-click="change_timeline_view"
+              phx-value-view="fleet"
+              class={"px-4 py-2 rounded-md transition-colors " <> 
+                     if @timeline_view == :fleet do
+                       "bg-blue-600 text-white"
+                     else
+                       "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                     end}
+            >
+              Fleet Composition
+            </button>
+          </div>
+
+          <!-- Timeline Content -->
+          <%= case @timeline_view do %>
+            <% :phases -> %>
+              <!-- Battle Phases View -->
+              <div class="space-y-4">
+                <%= for {phase, index} <- Enum.with_index(@current_battle.timeline.phases) do %>
+                  <div
+                    phx-click="select_phase"
+                    phx-value-phase_index={index}
+                    class={"p-4 rounded-lg cursor-pointer transition-all " <> phase_class(phase.phase_type) <> 
+                           if @selected_phase == phase do
+                             " ring-2 ring-blue-500"
+                           else
+                             " hover:ring-1 hover:ring-gray-600"
+                           end}
+                  >
+                    <div class="flex justify-between items-center">
+                      <div>
+                        <h3 class="text-lg font-medium">
+                          <%= format_phase_type(phase.phase_type) %>
+                        </h3>
+                        <p class="text-sm text-gray-400 mt-1">
+                          <%= phase.description %>
+                        </p>
+                      </div>
+                      <div class="text-right text-sm text-gray-400">
+                        <%= format_timestamp(phase.start_time) %> - 
+                        <%= format_timestamp(phase.end_time) %>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+
+            <% :events -> %>
+              <!-- Timeline Events View -->
+              <div class="relative">
+                <div class="absolute left-8 top-0 bottom-0 w-0.5 bg-gray-700"></div>
+                <div class="space-y-4">
+                  <%= for event <- @current_battle.timeline.events do %>
+                    <div class="flex gap-4">
+                      <div class="w-16 h-16 flex-shrink-0">
+                        <img 
+                          src={character_portrait(event.victim.character_id, 64)} 
+                          alt="Character portrait"
+                          class="w-16 h-16 rounded-full border-2 border-red-600"
+                        />
+                      </div>
+                      <div class="flex-1 bg-gray-800 rounded-lg p-4">
+                        <div class="flex justify-between items-start">
+                          <div class="flex-1">
+                            <div class="flex items-center gap-3 mb-2">
+                              <div>
+                                <div class="font-medium">
+                                  <%= event.victim.character_name || resolve_character_name(event.victim.character_id) %>
+                                </div>
+                                <div class="text-sm text-gray-400">
+                                  <%= event.victim.corporation_name || resolve_corporation_name(event.victim.corporation_id) %>
+                                </div>
+                              </div>
+                              <img 
+                                src={ship_render(event.victim.ship_type_id, 32)} 
+                                alt="Ship"
+                                class="w-8 h-8"
+                              />
+                              <div class="text-sm">
+                                <div class="font-medium"><%= event.victim.ship_name || resolve_ship_name(event.victim.ship_type_id) %></div>
+                                <div class="text-gray-400"><%= event.attacker_count %> attackers</div>
+                              </div>
+                            </div>
+                            
+                            <div class="text-sm text-gray-400">
+                              Total damage: <%= format_number(event.total_damage) %> • 
+                              Final blow: <%= event.final_blow.character_name || resolve_character_name(event.final_blow.character_id) %>
+                              <%= if weapon_name = get_weapon_name(event.final_blow) do %>
+                                • <%= weapon_name %>
+                              <% end %>
+                            </div>
+                          </div>
+                          <div class="text-sm text-gray-400 ml-4">
+                            <%= format_timestamp(event.timestamp) %>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+
+            <% :fleet -> %>
+              <!-- Fleet Composition View -->
+              <div class="space-y-6">
+                <%= for window <- @current_battle.timeline.fleet_composition do %>
+                  <div class="bg-gray-800 rounded-lg p-4">
+                    <div class="mb-4">
+                      <h4 class="font-medium">Time Window: <%= format_timestamp(window.timestamp) %></h4>
+                      <div class="text-sm text-gray-400 mt-1">
+                        <%= window.active_attackers %> active pilots • 
+                        <%= window.active_victims %> losses
+                      </div>
+                    </div>
+                    
+                    <!-- Battle Sides -->
+                    <%= if window[:sides] && length(window.sides) > 0 do %>
+                      <div class="space-y-4">
+                        <h5 class="text-sm font-medium text-gray-400">Battle Sides</h5>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          <%= for side <- window.sides do %>
+                            <div class="bg-gray-900 rounded-lg p-4">
+                              <h6 class="font-medium mb-3 text-blue-400">
+                                <%= String.replace(side.side_id, "_", " ") |> String.capitalize() %>
+                              </h6>
+                              <div class="space-y-2 mb-3">
+                                <%= for corp_id <- Enum.take(side.corporations, 4) do %>
+                                  <div class="flex items-center gap-2">
+                                    <img 
+                                      src={corporation_logo(corp_id, 32)} 
+                                      alt="Corp logo"
+                                      class="w-6 h-6 rounded"
+                                    />
+                                    <span class="text-sm truncate">
+                                      <%= resolve_corporation_name(corp_id) %>
+                                    </span>
+                                  </div>
+                                <% end %>
+                                <%= if length(side.corporations) > 4 do %>
+                                  <div class="text-xs text-gray-400 ml-8">
+                                    +<%= length(side.corporations) - 4 %> more corporations
+                                  </div>
+                                <% end %>
+                              </div>
+                            </div>
+                          <% end %>
+                        </div>
+                      </div>
+                    <% end %>
+                    
+                    <!-- Ship Composition by Side -->
+                    <div class="mt-6">
+                      <h5 class="text-sm font-medium text-gray-400 mb-3">Ship Types in Combat</h5>
+                      <%= if window[:sides] && length(window.sides) > 0 do %>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          <%= for side <- window.sides do %>
+                            <div class="space-y-2">
+                              <h6 class="text-xs font-medium text-blue-400 uppercase">
+                                <%= String.replace(side.side_id, "_", " ") %>
+                              </h6>
+                              <%= for {ship, _index} <- Enum.with_index(Enum.take(window.ship_composition, 6)) do %>
+                                <div class="flex items-center justify-between bg-gray-900 rounded p-2">
+                                  <div class="flex items-center gap-3">
+                                    <img 
+                                      src={ship_render(ship.ship_type_id, 48)} 
+                                      alt="Ship"
+                                      class="w-10 h-10"
+                                    />
+                                    <div>
+                                      <div class="text-sm font-medium">
+                                        <%= resolve_ship_name(ship.ship_type_id) %>
+                                      </div>
+                                      <div class="text-xs text-gray-400">
+                                        <%= EveDmvWeb.BattleAnalysisLive.ship_class_from_id(ship.ship_type_id) %>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <span class="text-sm font-medium text-gray-300">
+                                    x<%= ship.count %>
+                                  </span>
+                                </div>
+                              <% end %>
+                            </div>
+                          <% end %>
+                        </div>
+                      <% else %>
+                        <!-- Fallback: Show all ships without sides -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          <%= for {ship, _index} <- Enum.with_index(Enum.take(window.ship_composition, 12)) do %>
+                            <div class="flex items-center justify-between bg-gray-900 rounded p-2">
+                              <div class="flex items-center gap-3">
+                                <img 
+                                  src={ship_render(ship.ship_type_id, 48)} 
+                                  alt="Ship"
+                                  class="w-10 h-10"
+                                />
+                                <div>
+                                  <div class="text-sm font-medium">
+                                    <%= resolve_ship_name(ship.ship_type_id) %>
+                                  </div>
+                                  <div class="text-xs text-gray-400">
+                                    <%= EveDmvWeb.BattleAnalysisLive.ship_class_from_id(ship.ship_type_id) %>
+                                  </div>
+                                </div>
+                              </div>
+                              <span class="text-sm font-medium text-gray-300">
+                                x<%= ship.count %>
+                              </span>
+                            </div>
+                          <% end %>
+                        </div>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+          <% end %>
+        </div>
+
+        <!-- Key Moments -->
+        <%= if length(@current_battle.timeline.key_moments) > 0 do %>
+          <div class="bg-gray-900 rounded-lg p-6">
+            <h3 class="text-xl font-semibold mb-4">Key Moments</h3>
+            <div class="space-y-4">
+              <%= for moment <- @current_battle.timeline.key_moments do %>
+                <div class="flex items-center gap-4 p-4 bg-gray-800 rounded-md">
+                  <!-- Moment Icon -->
+                  <div class="flex-shrink-0">
+                    <%= case moment.type do %>
+                      <% :first_blood -> %>
+                        <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                      <% :largest_engagement -> %>
+                        <div class="w-3 h-3 bg-orange-500 rounded-full"></div>
+                      <% :kill_streak -> %>
+                        <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                      <% :phase_transition -> %>
+                        <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+                      <% _ -> %>
+                        <div class="w-3 h-3 bg-gray-500 rounded-full"></div>
+                    <% end %>
+                  </div>
+                  
+                  <!-- Character/Ship Images -->
+                  <%= if moment[:event] do %>
+                    <div class="flex items-center gap-2">
+                      <img 
+                        src={character_portrait(moment.event.victim.character_id, 48)} 
+                        alt="Character"
+                        class="w-12 h-12 rounded-full border-2 border-red-600"
+                      />
+                      <img 
+                        src={ship_render(moment.event.victim.ship_type_id, 32)} 
+                        alt="Ship"
+                        class="w-8 h-8"
+                      />
+                    </div>
+                  <% end %>
+                  
+                  <!-- Moment Details -->
+                  <div class="flex-1">
+                    <div class="font-medium capitalize text-white">
+                      <%= moment.type |> to_string() |> String.replace("_", " ") %>
+                    </div>
+                    <div class="text-sm text-gray-400 mt-1">
+                      <%= moment.description %>
+                    </div>
+                    <%= if moment[:event] do %>
+                      <div class="text-sm text-gray-500 mt-1">
+                        <%= moment.event.victim.character_name || resolve_character_name(moment.event.victim.character_id) %> • 
+                        <%= moment.event.victim.ship_name || resolve_ship_name(moment.event.victim.ship_type_id) %>
+                      </div>
+                    <% end %>
+                  </div>
+                  
+                  <!-- Timestamp -->
+                  <div class="text-sm text-gray-400">
+                    <%= format_timestamp(moment.timestamp) %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      <% else %>
+        <!-- No Battle Selected -->
+        <div class="bg-gray-900 rounded-lg p-12 text-center">
+          <svg class="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+          </svg>
+          <h3 class="text-xl font-medium mb-2">No Battle Selected</h3>
+          <p class="text-gray-400 mb-6">
+            Import a battle from zkillboard or select one from recent battles
+          </p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

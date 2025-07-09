@@ -12,8 +12,8 @@ defmodule EveDmvWeb.KillFeedLive do
   # Import reusable components
   import EveDmvWeb.Components.StatsGridComponent
   import EveDmvWeb.Components.EmptyStateComponent
-  import EveDmvWeb.Components.CharacterInfoComponent
   import EveDmvWeb.Components.PageHeaderComponent
+  import EveDmvWeb.EveImageComponents
 
   @topic "kill_feed"
   @feed_limit 50
