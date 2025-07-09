@@ -1,7 +1,7 @@
 defmodule EveDmv.Contexts.WormholeOperations.Infrastructure.WormholeEventProcessor do
   @moduledoc """
   Wormhole event processing infrastructure.
-  
+
   TODO: Implement real wormhole event processing
   - Character vetting for wormhole operations
   - Threat processing for home defense

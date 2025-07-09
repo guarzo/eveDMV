@@ -323,7 +323,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer do
 
   defp analyze_leadership(corporation_id) do
     member_stats = CorporationRepository.get_member_statistics(corporation_id)
-    
+
     leadership_members =
       Enum.filter(member_stats, fn member ->
         member.corp_role && member.corp_role in ["CEO", "Director", "Personnel Manager"]

@@ -101,18 +101,18 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainActivityTracker do
     # TODO: Implement real activity prediction algorithm
     # Requires: Pattern analysis, ML prediction models
     Logger.debug("Predicting activity for chain #{map_id}")
-    
+
     # Placeholder prediction based on recent activity
     recent_events = Enum.take(activity_timeline, 10)
     activity_level = length(recent_events)
-    
+
     prediction = %{
       predicted_activity_level: activity_level,
       confidence: 0.5,
       next_activity_window: DateTime.add(DateTime.utc_now(), 3600, :second),
       risk_assessment: if(activity_level > 5, do: :high, else: :low)
     }
-    
+
     {:ok, prediction}
   end
 

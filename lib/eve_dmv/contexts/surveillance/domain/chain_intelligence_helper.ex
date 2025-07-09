@@ -127,7 +127,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
     # TODO: Implement real threat analysis
     # Requires: Threat detection algorithms, pattern analysis
     Logger.debug("Performing threat analysis for chain #{map_id}")
-    
+
     # Placeholder threat analysis
     threat_result = %{
       map_id: map_id,
@@ -135,11 +135,11 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
       threats_detected: [],
       confidence: 0.5
     }
-    
+
     if is_function(callback_fn, 1) do
       callback_fn.(threat_result)
     end
-    
+
     {:error, :not_implemented}
   end
 
@@ -150,7 +150,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
     # TODO: Implement real system threat analysis
     # Requires: Inhabitant analysis, threat classification
     Logger.debug("Analyzing system threats for #{system_id} in chain #{map_id}")
-    
+
     # Placeholder system threat analysis
     threat_assessment = %{
       system_id: system_id,
@@ -158,7 +158,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
       threat_level: :low,
       hostile_count: 0
     }
-    
+
     {:ok, threat_assessment}
   end
 
@@ -179,14 +179,14 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
     # TODO: Implement real hostile report analysis
     # Requires: Context analysis, threat correlation
     Logger.debug("Analyzing hostile report for system #{system_id} in chain #{map_id}")
-    
+
     # Placeholder hostile analysis
     analysis = %{
       threat_level: :medium,
       confidence: 0.6,
       recommended_actions: [:monitor, :alert_members]
     }
-    
+
     {:ok, analysis}
   end
 end

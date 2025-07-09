@@ -81,7 +81,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
     # TODO: Implement real alert generation from events
     # Requires: Alert prioritization, deduplication, formatting
     Logger.debug("Generating alert from event: #{inspect(event)}")
-    
+
     # Placeholder alert generation
     alert = %{
       id: System.unique_integer([:positive]),
@@ -92,7 +92,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
       created_at: DateTime.utc_now(),
       state: @state_new
     }
-    
+
     {:ok, alert}
   end
 

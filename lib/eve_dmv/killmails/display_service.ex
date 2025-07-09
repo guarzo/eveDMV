@@ -8,7 +8,7 @@ defmodule EveDmv.Killmails.DisplayService do
   alias EveDmv.Eve.NameResolver
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Utils.ParsingUtils
-  
+
   require Ash.Query
 
   @feed_limit 50
@@ -169,6 +169,7 @@ defmodule EveDmv.Killmails.DisplayService do
 
     # Use name resolution for ship and system names
     victim_ship_type_id = get_in(victim, ["ship_type_id"]) || raw.victim_ship_type_id
+
     victim_ship_name =
       resolve_name_if_unknown(
         get_in(victim, ["ship_name"]),
@@ -215,7 +216,7 @@ defmodule EveDmv.Killmails.DisplayService do
       nil ->
         # Fallback to old participants format
         Enum.find(raw_data["participants"] || [], & &1["is_victim"])
-      
+
       victim ->
         victim
     end
@@ -227,15 +228,14 @@ defmodule EveDmv.Killmails.DisplayService do
       nil ->
         # Fallback to old participants format
         Enum.find(raw_data["participants"] || [], &(&1["final_blow"] && !&1["is_victim"]))
-      
+
       attackers when is_list(attackers) ->
         Enum.find(attackers, & &1["final_blow"])
-      
+
       _ ->
         nil
     end
   end
-
 
   defp generate_killmail_id(killmail_data) do
     # Use current timestamp for ID generation

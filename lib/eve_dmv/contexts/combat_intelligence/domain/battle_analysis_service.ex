@@ -117,7 +117,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
         case fetch_battle_killmails(battle_id) do
           {:error, :not_implemented} ->
             {:reply, {:error, :not_implemented}, state}
-          
+
           {:ok, killmails} ->
             with {:ok, timeline} <- construct_battle_timeline(killmails),
                  {:ok, participants} <- extract_battle_participants(killmails),
@@ -125,56 +125,61 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
                  {:ok, tactical_analysis} <- perform_tactical_analysis(timeline, fleet_analysis),
                  {:ok, performance_metrics} <-
                    calculate_performance_metrics(killmails, participants) do
-          analysis = %{
-            battle_id: battle_id,
-            analyzed_at: DateTime.utc_now(),
+              analysis = %{
+                battle_id: battle_id,
+                analyzed_at: DateTime.utc_now(),
 
-            # Battle overview
-            duration_seconds: calculate_battle_duration(timeline),
-            total_participants: map_size(participants),
-            total_kills: length(killmails),
-            isk_destroyed: calculate_total_isk_destroyed(killmails),
+                # Battle overview
+                duration_seconds: calculate_battle_duration(timeline),
+                total_participants: map_size(participants),
+                total_kills: length(killmails),
+                isk_destroyed: calculate_total_isk_destroyed(killmails),
 
-            # Classification
-            battle_type: classify_battle_type(participants, killmails),
-            engagement_scale: classify_engagement_scale(participants),
+                # Classification
+                battle_type: classify_battle_type(participants, killmails),
+                engagement_scale: classify_engagement_scale(participants),
 
-            # Timeline
-            timeline: timeline,
-            phases: identify_battle_phases(timeline),
+                # Timeline
+                timeline: timeline,
+                phases: identify_battle_phases(timeline),
 
-            # Fleet analysis
-            fleet_compositions: fleet_analysis,
-            doctrine_effectiveness: evaluate_doctrine_effectiveness(fleet_analysis),
+                # Fleet analysis
+                fleet_compositions: fleet_analysis,
+                doctrine_effectiveness: evaluate_doctrine_effectiveness(fleet_analysis),
 
-            # Tactical analysis
-            tactical_patterns: tactical_analysis.patterns,
-            key_moments: tactical_analysis.key_moments,
-            turning_points: tactical_analysis.turning_points,
+                # Tactical analysis
+                tactical_patterns: tactical_analysis.patterns,
+                key_moments: tactical_analysis.key_moments,
+                turning_points: tactical_analysis.turning_points,
 
-            # Performance
-            side_performance: performance_metrics.by_side,
-            ship_class_effectiveness: performance_metrics.by_ship_class,
-            top_performers: performance_metrics.top_performers,
+                # Performance
+                side_performance: performance_metrics.by_side,
+                ship_class_effectiveness: performance_metrics.by_ship_class,
+                top_performers: performance_metrics.top_performers,
 
-            # Strategic insights
-            winner: determine_battle_winner(performance_metrics),
-            victory_factors: analyze_victory_factors(tactical_analysis, performance_metrics)
-          }
+                # Strategic insights
+                winner: determine_battle_winner(performance_metrics),
+                victory_factors: analyze_victory_factors(tactical_analysis, performance_metrics)
+              }
 
-          # Cache the analysis
-          new_cache = Map.put(state.battle_cache, battle_id, analysis)
-          new_metrics = %{state.metrics | battles_analyzed: state.metrics.battles_analyzed + 1}
-          new_state = %{state | battle_cache: new_cache, metrics: new_metrics}
+              # Cache the analysis
+              new_cache = Map.put(state.battle_cache, battle_id, analysis)
 
-          # Publish analysis complete event
-          EventBus.publish(%BattleAnalysisComplete{
-            battle_id: battle_id,
-            battle_type: analysis.battle_type,
-            participant_count: analysis.total_participants,
-            isk_destroyed: analysis.isk_destroyed,
-            timestamp: DateTime.utc_now()
-          })
+              new_metrics = %{
+                state.metrics
+                | battles_analyzed: state.metrics.battles_analyzed + 1
+              }
+
+              new_state = %{state | battle_cache: new_cache, metrics: new_metrics}
+
+              # Publish analysis complete event
+              EventBus.publish(%BattleAnalysisComplete{
+                battle_id: battle_id,
+                battle_type: analysis.battle_type,
+                participant_count: analysis.total_participants,
+                isk_destroyed: analysis.isk_destroyed,
+                timestamp: DateTime.utc_now()
+              })
 
               {:reply, {:ok, analysis}, new_state}
             else
@@ -208,7 +213,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     case fetch_recent_system_kills(system_id, 300) do
       {:error, :not_implemented} ->
         {:reply, {:error, :not_implemented}, state}
-      
+
       {:ok, recent_kills} ->
         with {:ok, updated_engagement} <- update_engagement_data(engagement, recent_kills),
              {:ok, live_analysis} <- perform_live_analysis(updated_engagement) do

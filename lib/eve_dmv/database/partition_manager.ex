@@ -265,7 +265,6 @@ defmodule EveDmv.Database.PartitionManager do
     end)
   end
 
-
   defp cleanup_old_partitions_for_table(table) do
     table_config = Enum.find(@partitioned_tables, &(&1.table == table))
 

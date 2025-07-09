@@ -32,11 +32,12 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
     WHERE p.corporation_id = $1
     GROUP BY p.corporation_id, p.corporation_name, p.alliance_id, p.alliance_name
     """
-    
+
     case SQL.query(Repo, query, [corporation_id]) do
       {:ok, %{rows: [row]}} ->
-        [corp_id, corp_name, alliance_id, alliance_name, member_count, first_seen, _last_seen] = row
-        
+        [corp_id, corp_name, alliance_id, alliance_name, member_count, first_seen, _last_seen] =
+          row
+
         corporation_data = %{
           corporation_id: corp_id,
           name: corp_name || "Unknown Corporation",
@@ -46,16 +47,19 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
           creation_date: first_seen,
           ticker: "[#{String.slice(corp_name || "UNK", 0..3)}]",
           description: "Corporation data from killmail analysis",
-          member_history: [],  # Would need ESI for full history
-          recent_joins: [],    # Would need ESI for this
-          recent_departures: [] # Would need ESI for this
+          # Would need ESI for full history
+          member_history: [],
+          # Would need ESI for this
+          recent_joins: [],
+          # Would need ESI for this
+          recent_departures: []
         }
-        
+
         Result.ok(corporation_data)
-        
+
       {:ok, %{rows: []}} ->
         Result.error(:not_found, "Corporation not found in killmail data")
-        
+
       {:error, error} ->
         Logger.error("Failed to get corporation data", error: inspect(error))
         Result.error(:database_error, "Failed to fetch corporation data")
@@ -68,41 +72,45 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
   def get_member_statistics(corporation_id) do
     # Get real member activity data
     case KillmailQueries.execute(
-      KillmailQueries.corporation_members_activity_query(corporation_id, 90),
-      [corporation_id, DateTime.add(DateTime.utc_now(), -90 * 24 * 60 * 60, :second)]
-    ) do
+           KillmailQueries.corporation_members_activity_query(corporation_id, 90),
+           [corporation_id, DateTime.add(DateTime.utc_now(), -90 * 24 * 60 * 60, :second)]
+         ) do
       {:ok, members} ->
         # Get timezone data for each member
-        member_stats = Enum.map(members, fn member ->
-          character_id = Map.get(member, "character_id")
-          
-          # Get hourly activity for timezone analysis
-          {:ok, hourly_data} = get_member_hourly_activity(character_id, 30)
-          timezone_info = ActivityMetrics.analyze_timezone_patterns(hourly_data)
-          
-          %{
-            character_id: character_id,
-            character_name: Map.get(member, "character_name", "Unknown"),
-            corp_role: "Member", # Would need ESI for actual roles
-            recent_kills: Map.get(member, "kills", 0),
-            recent_losses: Map.get(member, "losses", 0),
-            last_active: Map.get(member, "last_activity"),
-            activity_by_hour: Map.new(hourly_data),
-            activity_by_day: %{}, # Could add daily breakdown if needed
-            group_activity_ratio: calculate_group_activity_ratio(character_id, corporation_id),
-            corp_activity_score: ActivityMetrics.calculate_activity_score(
-              Map.get(member, "kills", 0),
-              Map.get(member, "losses", 0),
-              Map.get(member, "last_activity")
-            ),
-            prime_timezone: timezone_info.primary_timezone,
-            isk_destroyed: Map.get(member, "isk_destroyed", 0),
-            isk_lost: Map.get(member, "isk_lost", 0)
-          }
-        end)
-        
+        member_stats =
+          Enum.map(members, fn member ->
+            character_id = Map.get(member, "character_id")
+
+            # Get hourly activity for timezone analysis
+            {:ok, hourly_data} = get_member_hourly_activity(character_id, 30)
+            timezone_info = ActivityMetrics.analyze_timezone_patterns(hourly_data)
+
+            %{
+              character_id: character_id,
+              character_name: Map.get(member, "character_name", "Unknown"),
+              # Would need ESI for actual roles
+              corp_role: "Member",
+              recent_kills: Map.get(member, "kills", 0),
+              recent_losses: Map.get(member, "losses", 0),
+              last_active: Map.get(member, "last_activity"),
+              activity_by_hour: Map.new(hourly_data),
+              # Could add daily breakdown if needed
+              activity_by_day: %{},
+              group_activity_ratio: calculate_group_activity_ratio(character_id, corporation_id),
+              corp_activity_score:
+                ActivityMetrics.calculate_activity_score(
+                  Map.get(member, "kills", 0),
+                  Map.get(member, "losses", 0),
+                  Map.get(member, "last_activity")
+                ),
+              prime_timezone: timezone_info.primary_timezone,
+              isk_destroyed: Map.get(member, "isk_destroyed", 0),
+              isk_lost: Map.get(member, "isk_lost", 0)
+            }
+          end)
+
         member_stats
-        
+
       {:error, error} ->
         Logger.error("Failed to get member statistics", error: inspect(error))
         []
@@ -126,15 +134,15 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
     WHERE p.corporation_id = $1
       AND k.killmail_time >= NOW() - INTERVAL '90 days'
     """
-    
+
     case SQL.query(Repo, query, [corporation_id]) do
       {:ok, %{rows: [row]}} ->
         [total_kills, total_losses, isk_destroyed, isk_lost, avg_ship_value, unique_pilots] = row
-        
+
         # Calculate recent trend
         {:ok, trend_data} = get_activity_trend(corporation_id, 30)
         trend_info = ActivityMetrics.calculate_activity_trend(trend_data)
-        
+
         %{
           total_kills: total_kills || 0,
           total_losses: total_losses || 0,
@@ -145,9 +153,10 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
           unique_pilots: unique_pilots || 0,
           avg_ship_value: Decimal.to_float(avg_ship_value || 0)
         }
-        
+
       {:error, error} ->
         Logger.error("Failed to get killmail statistics", error: inspect(error))
+
         %{
           total_kills: 0,
           total_losses: 0,
@@ -166,11 +175,12 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
   """
   def get_activity_timeline(corporation_id, days_back \\ 30) do
     case KillmailQueries.execute(
-      KillmailQueries.daily_activity_query(:corporation, corporation_id, days_back),
-      [corporation_id, DateTime.add(DateTime.utc_now(), -days_back * 24 * 60 * 60, :second)]
-    ) do
+           KillmailQueries.daily_activity_query(:corporation, corporation_id, days_back),
+           [corporation_id, DateTime.add(DateTime.utc_now(), -days_back * 24 * 60 * 60, :second)]
+         ) do
       {:ok, timeline_data} ->
-        timeline = timeline_data
+        timeline =
+          timeline_data
           |> Enum.map(fn day ->
             %{
               date: Map.get(day, "activity_date"),
@@ -181,38 +191,40 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
             }
           end)
           |> Enum.reverse()
-        
+
         Result.ok(timeline)
-        
+
       {:error, error} ->
         Logger.error("Failed to get activity timeline", error: inspect(error))
         Result.error(:database_error, "Failed to fetch activity timeline")
     end
   end
-  
+
   @doc """
   Get corporation timezone distribution.
   """
   def get_timezone_distribution(corporation_id) do
     case KillmailQueries.execute(
-      KillmailQueries.timezone_activity_query(:corporation, corporation_id, 30),
-      [corporation_id, DateTime.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)]
-    ) do
+           KillmailQueries.timezone_activity_query(:corporation, corporation_id, 30),
+           [corporation_id, DateTime.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)]
+         ) do
       {:ok, hourly_data} ->
         # Convert to hourly activity map
-        hourly_map = hourly_data
-          |> Enum.map(fn row -> 
+        hourly_map =
+          hourly_data
+          |> Enum.map(fn row ->
             {trunc(Map.get(row, "hour", 0)), Map.get(row, "kills", 0) + Map.get(row, "losses", 0)}
           end)
           |> Map.new()
-        
+
         # Ensure all hours are represented
-        full_hourly_data = for hour <- 0..23, into: %{} do
-          {hour, Map.get(hourly_map, hour, 0)}
-        end
-        
+        full_hourly_data =
+          for hour <- 0..23, into: %{} do
+            {hour, Map.get(hourly_map, hour, 0)}
+          end
+
         Result.ok(full_hourly_data)
-        
+
       {:error, error} ->
         Logger.error("Failed to get timezone distribution", error: inspect(error))
         Result.error(:database_error, "Failed to fetch timezone data")
@@ -223,22 +235,23 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
 
   defp get_member_hourly_activity(character_id, days) do
     case KillmailQueries.execute(
-      KillmailQueries.timezone_activity_query(:character, character_id, days),
-      [character_id, DateTime.add(DateTime.utc_now(), -days * 24 * 60 * 60, :second)]
-    ) do
+           KillmailQueries.timezone_activity_query(:character, character_id, days),
+           [character_id, DateTime.add(DateTime.utc_now(), -days * 24 * 60 * 60, :second)]
+         ) do
       {:ok, data} ->
-        hourly_activity = data
-          |> Enum.map(fn row -> 
-            {trunc(Map.get(row, "hour", 0)), 
-             Map.get(row, "kills", 0) + Map.get(row, "losses", 0)}
+        hourly_activity =
+          data
+          |> Enum.map(fn row ->
+            {trunc(Map.get(row, "hour", 0)), Map.get(row, "kills", 0) + Map.get(row, "losses", 0)}
           end)
+
         {:ok, hourly_activity}
-        
+
       {:error, _} ->
         {:ok, []}
     end
   end
-  
+
   defp calculate_group_activity_ratio(character_id, corporation_id) do
     # Calculate ratio of fleet vs solo activity
     query = """
@@ -257,15 +270,16 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
       AND p.is_victim = false
       AND k.killmail_time >= NOW() - INTERVAL '30 days'
     """
-    
+
     case SQL.query(Repo, query, [character_id, corporation_id]) do
       {:ok, %{rows: [[ratio]]}} when not is_nil(ratio) ->
         Decimal.to_float(ratio)
+
       _ ->
         0.0
     end
   end
-  
+
   defp calculate_avg_engagement_size(corporation_id) do
     query = """
     SELECT AVG(participants_per_kill) as avg_size
@@ -279,28 +293,31 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
       GROUP BY k.killmail_id
     ) as engagement_sizes
     """
-    
+
     case SQL.query(Repo, query, [corporation_id]) do
       {:ok, %{rows: [[avg_size]]}} when not is_nil(avg_size) ->
         Float.round(Decimal.to_float(avg_size), 1)
+
       _ ->
         0.0
     end
   end
-  
+
   defp get_activity_trend(corporation_id, days) do
     case KillmailQueries.execute(
-      KillmailQueries.daily_activity_query(:corporation, corporation_id, days),
-      [corporation_id, DateTime.add(DateTime.utc_now(), -days * 24 * 60 * 60, :second)]
-    ) do
+           KillmailQueries.daily_activity_query(:corporation, corporation_id, days),
+           [corporation_id, DateTime.add(DateTime.utc_now(), -days * 24 * 60 * 60, :second)]
+         ) do
       {:ok, data} ->
-        trend_data = Enum.map(data, fn day ->
-          %{
-            total_activity: Map.get(day, "kills", 0) + Map.get(day, "losses", 0)
-          }
-        end)
+        trend_data =
+          Enum.map(data, fn day ->
+            %{
+              total_activity: Map.get(day, "kills", 0) + Map.get(day, "losses", 0)
+            }
+          end)
+
         {:ok, trend_data}
-        
+
       {:error, _} ->
         {:ok, []}
     end

@@ -3,80 +3,83 @@ defmodule EveDmvWeb.SearchComponent do
   Reusable search component for system, character, and corporation searches.
   Can be embedded in any LiveView page.
   """
-  
+
   use EveDmvWeb, :live_component
-  
+
   @impl true
   def mount(socket) do
-    {:ok, assign(socket,
-      query: "",
-      results: [],
-      selected_index: 0,
-      loading: false,
-      show_dropdown: false,
-      focused: false,
-      search_type: :universal  # :universal, :systems, :characters, :corporations
-    )}
+    {:ok,
+     assign(socket,
+       query: "",
+       results: [],
+       selected_index: 0,
+       loading: false,
+       show_dropdown: false,
+       focused: false,
+       # :universal, :systems, :characters, :corporations
+       search_type: :universal
+     )}
   end
-  
+
   @impl true
   def update(assigns, socket) do
     {:ok, assign(socket, assigns)}
   end
-  
+
   @impl true
   def handle_event("search", %{"query" => query}, socket) do
-    socket = 
+    socket =
       socket
       |> assign(query: query)
       |> search(query)
-      
+
     {:noreply, socket}
   end
-  
+
   @impl true
   def handle_event("focus", _params, socket) do
     {:noreply, assign(socket, focused: true, show_dropdown: true)}
   end
-  
+
   @impl true
   def handle_event("blur", _params, socket) do
     send(self(), {:hide_dropdown, socket.assigns.id})
     {:noreply, assign(socket, focused: false)}
   end
-  
+
   @impl true
   def handle_event("select_result", %{"type" => type, "id" => id}, socket) do
-    path = case type do
-      "system" -> ~p"/system/#{id}"
-      "character" -> ~p"/character/#{id}"
-      "corporation" -> ~p"/corporation/#{id}"
-      _ -> "/"
-    end
-    
+    path =
+      case type do
+        "system" -> ~p"/system/#{id}"
+        "character" -> ~p"/character/#{id}"
+        "corporation" -> ~p"/corporation/#{id}"
+        _ -> "/"
+      end
+
     send(self(), {:navigate, path})
     {:noreply, assign(socket, show_dropdown: false, query: "")}
   end
-  
+
   @impl true
   def handle_event("clear_search", _params, socket) do
     {:noreply, assign(socket, query: "", results: [], show_dropdown: false)}
   end
-  
+
   defp search(socket, "") do
     assign(socket, results: [], show_dropdown: false, loading: false)
   end
-  
+
   defp search(socket, query) when byte_size(query) < 2 do
     assign(socket, results: [], show_dropdown: false, loading: false)
   end
-  
+
   defp search(socket, query) do
     # For now, just search systems. Will expand to other types later.
     send(self(), {:search_async, socket.assigns.id, query})
     assign(socket, loading: true, show_dropdown: true)
   end
-  
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -173,7 +176,7 @@ defmodule EveDmvWeb.SearchComponent do
     </div>
     """
   end
-  
+
   defp placeholder_text(:universal), do: "Search systems, characters, corporations..."
   defp placeholder_text(:systems), do: "Search solar systems..."
   defp placeholder_text(:characters), do: "Search characters..."

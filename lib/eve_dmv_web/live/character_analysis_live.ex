@@ -1,53 +1,54 @@
 defmodule EveDmvWeb.CharacterAnalysisLive do
   @moduledoc """
   Live view for character combat analysis.
-  
+
   MVP: Simple kill/death analysis with real data from killmails_raw table.
   This is our first real intelligence feature - no mock data!
   """
-  
+
   use EveDmvWeb, :live_view
-  
+
   alias EveDmv.Repo
   alias EveDmv.Cache.AnalysisCache
   import EveDmvWeb.EveImageComponents
-  
+
   require Logger
-  
+
   @impl true
   def mount(%{"character_id" => character_id}, _session, socket) do
     character_id = String.to_integer(character_id)
-    
+
     # Start with simple loading state
-    socket = 
+    socket =
       socket
       |> assign(:character_id, character_id)
       |> assign(:loading, true)
       |> assign(:analysis, nil)
       |> assign(:error, nil)
-    
+
     # Load analysis asynchronously
     send(self(), :load_analysis)
-    
+
     {:ok, socket}
   end
-  
+
   @impl true
   def handle_info(:load_analysis, socket) do
     character_id = socket.assigns.character_id
-    
+
     # Use cache for character analysis
     case AnalysisCache.get_or_compute(
-      AnalysisCache.char_analysis_key(character_id),
-      fn -> analyze_character(character_id) end,
-      :timer.minutes(10)  # Shorter TTL for character analysis
-    ) do
+           AnalysisCache.char_analysis_key(character_id),
+           fn -> analyze_character(character_id) end,
+           # Shorter TTL for character analysis
+           :timer.minutes(10)
+         ) do
       {:ok, analysis} ->
-        {:noreply, 
+        {:noreply,
          socket
          |> assign(:loading, false)
          |> assign(:analysis, analysis)}
-      
+
       {:error, reason} ->
         {:noreply,
          socket
@@ -55,7 +56,7 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
          |> assign(:error, reason)}
     end
   end
-  
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -336,19 +337,19 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
     </div>
     """
   end
-  
+
   # Character analysis with name resolution using real database queries
   defp analyze_character(character_id) do
     try do
       Logger.info("Starting analysis for character #{character_id}")
-      
+
       # First, try to get character name from killmail data
       character_name = get_character_name(character_id)
       Logger.info("Found character name: #{character_name || "Unknown"}")
-      
+
       # Simple count queries
       ninety_days_ago = DateTime.utc_now() |> DateTime.add(-90, :day)
-      
+
       # Query kills (simplified)
       kills_query = """
       SELECT COUNT(DISTINCT km.killmail_id) as kill_count
@@ -357,7 +358,7 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
       WHERE attacker->>'character_id' = $1
         AND km.killmail_time >= $2
       """
-      
+
       # Query deaths (simplified)
       deaths_query = """
       SELECT COUNT(*) as death_count
@@ -365,47 +366,62 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
       WHERE victim_character_id = $1
         AND killmail_time >= $2
       """
-      
+
       Logger.info("Executing kill query for character #{character_id}")
-      {:ok, %{rows: [[kill_count]]}} = 
+
+      {:ok, %{rows: [[kill_count]]}} =
         Repo.query(kills_query, [to_string(character_id), ninety_days_ago])
-      
+
       Logger.info("Found #{kill_count} kills for character #{character_id}")
-      
-      {:ok, %{rows: [[death_count]]}} = 
+
+      {:ok, %{rows: [[death_count]]}} =
         Repo.query(deaths_query, [character_id, ninety_days_ago])
-        
+
       Logger.info("Found #{death_count} deaths for character #{character_id}")
-      
+
       # Calculate simple metrics
-      kd_ratio = if death_count > 0, do: Float.round(kill_count / death_count, 2), else: kill_count
-      
+      kd_ratio =
+        if death_count > 0, do: Float.round(kill_count / death_count, 2), else: kill_count
+
       # Get ship and weapon preferences
       top_ships = get_ship_preferences(character_id, ninety_days_ago)
       weapon_preferences = get_weapon_preferences(character_id, ninety_days_ago)
       Logger.info("Found ship preferences for character #{character_id}: #{inspect(top_ships)}")
-      Logger.info("Found weapon preferences for character #{character_id}: #{inspect(weapon_preferences)}")
-      
+
+      Logger.info(
+        "Found weapon preferences for character #{character_id}: #{inspect(weapon_preferences)}"
+      )
+
       # Calculate ISK efficiency
       isk_stats = calculate_isk_efficiency(character_id, ninety_days_ago)
-      Logger.info("Calculated ISK efficiency for character #{character_id}: #{inspect(isk_stats)}")
-      
+
+      Logger.info(
+        "Calculated ISK efficiency for character #{character_id}: #{inspect(isk_stats)}"
+      )
+
       # Get external groups analysis (15-day window for more recent activity)
       fifteen_days_ago = DateTime.utc_now() |> DateTime.add(-15, :day)
       external_groups = get_external_groups(character_id, fifteen_days_ago)
-      Logger.info("Found external groups for character #{character_id}: #{inspect(external_groups)}")
-      
+
+      Logger.info(
+        "Found external groups for character #{character_id}: #{inspect(external_groups)}"
+      )
+
       # Get gang size patterns
       gang_size_patterns = get_gang_size_patterns(character_id, ninety_days_ago)
-      Logger.info("Found gang size patterns for character #{character_id}: #{inspect(gang_size_patterns)}")
-      
+
+      Logger.info(
+        "Found gang size patterns for character #{character_id}: #{inspect(gang_size_patterns)}"
+      )
+
       # Calculate activity metrics for the last 30 days
       thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30, :day)
       activity_stats = calculate_activity_stats(character_id, thirty_days_ago)
-      
+
       # Calculate intelligence summary
-      intelligence_summary = calculate_character_intelligence_summary(character_id, ninety_days_ago)
-      
+      intelligence_summary =
+        calculate_character_intelligence_summary(character_id, ninety_days_ago)
+
       analysis = %{
         character_id: character_id,
         character_name: character_name,
@@ -425,17 +441,16 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
         intelligence_summary: intelligence_summary,
         data_points: kill_count + death_count
       }
-      
+
       Logger.info("Analysis complete for character #{character_id}: #{inspect(analysis)}")
       {:ok, analysis}
-      
     rescue
       error ->
         Logger.error("Character analysis failed for #{character_id}: #{inspect(error)}")
         {:error, "Database query failed: #{Exception.message(error)}"}
     end
   end
-  
+
   # Get character name from killmail data (victim or attacker records)
   defp get_character_name(character_id) do
     try do
@@ -447,10 +462,11 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
         AND victim_character_name IS NOT NULL
       LIMIT 1
       """
-      
+
       case Repo.query(victim_query, [character_id]) do
         {:ok, %{rows: [[name]]}} when is_binary(name) ->
           name
+
         _ ->
           # If not found as victim, try as attacker
           attacker_query = """
@@ -461,10 +477,11 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
             AND attacker->>'character_name' IS NOT NULL
           LIMIT 1
           """
-          
+
           case Repo.query(attacker_query, [to_string(character_id)]) do
             {:ok, %{rows: [[name]]}} when is_binary(name) ->
               name
+
             _ ->
               nil
           end
@@ -475,7 +492,7 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
         nil
     end
   end
-  
+
   # Get ship and weapon preferences from killmail data
   defp get_ship_preferences(character_id, ninety_days_ago) do
     try do
@@ -494,7 +511,7 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
       ORDER BY kill_count DESC
       LIMIT 5
       """
-      
+
       # Query ship usage from deaths (victim data)
       deaths_ships_query = """
       SELECT 
@@ -509,44 +526,49 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
       ORDER BY death_count DESC
       LIMIT 5
       """
-      
+
       Logger.info("Querying ship preferences for character #{character_id}")
-      
+
       # Get kill ships
-      {:ok, kill_ships_result} = Repo.query(kills_ships_query, [to_string(character_id), ninety_days_ago])
-      kill_ships = Enum.map(kill_ships_result.rows, fn [ship_name, ship_type_id, count] ->
-        %{ship_name: ship_name, ship_type_id: ship_type_id, kills: count, deaths: 0}
-      end)
-      
+      {:ok, kill_ships_result} =
+        Repo.query(kills_ships_query, [to_string(character_id), ninety_days_ago])
+
+      kill_ships =
+        Enum.map(kill_ships_result.rows, fn [ship_name, ship_type_id, count] ->
+          %{ship_name: ship_name, ship_type_id: ship_type_id, kills: count, deaths: 0}
+        end)
+
       # Get death ships  
       {:ok, death_ships_result} = Repo.query(deaths_ships_query, [character_id, ninety_days_ago])
-      death_ships = Enum.map(death_ships_result.rows, fn [ship_name, ship_type_id, count] ->
-        %{ship_name: ship_name, ship_type_id: ship_type_id, kills: 0, deaths: count}
-      end)
-      
+
+      death_ships =
+        Enum.map(death_ships_result.rows, fn [ship_name, ship_type_id, count] ->
+          %{ship_name: ship_name, ship_type_id: ship_type_id, kills: 0, deaths: count}
+        end)
+
       # Combine and aggregate ship data
-      all_ships = (kill_ships ++ death_ships)
-      |> Enum.group_by(& &1.ship_name)
-      |> Enum.map(fn {ship_name, ships} ->
-        total_kills = Enum.sum(Enum.map(ships, & &1.kills))
-        total_deaths = Enum.sum(Enum.map(ships, & &1.deaths))
-        ship_type_id = ships |> Enum.find(& &1.ship_type_id) |> Map.get(:ship_type_id)
-        
-        {ship_name, %{kills: total_kills, deaths: total_deaths, ship_type_id: ship_type_id}}
-      end)
-      |> Enum.sort_by(fn {_name, stats} -> stats.kills + stats.deaths end, :desc)
-      |> Enum.take(5)
-      
+      all_ships =
+        (kill_ships ++ death_ships)
+        |> Enum.group_by(& &1.ship_name)
+        |> Enum.map(fn {ship_name, ships} ->
+          total_kills = Enum.sum(Enum.map(ships, & &1.kills))
+          total_deaths = Enum.sum(Enum.map(ships, & &1.deaths))
+          ship_type_id = ships |> Enum.find(& &1.ship_type_id) |> Map.get(:ship_type_id)
+
+          {ship_name, %{kills: total_kills, deaths: total_deaths, ship_type_id: ship_type_id}}
+        end)
+        |> Enum.sort_by(fn {_name, stats} -> stats.kills + stats.deaths end, :desc)
+        |> Enum.take(5)
+
       Logger.info("Ship analysis complete: #{inspect(all_ships)}")
       all_ships
-      
     rescue
       error ->
         Logger.error("Failed to get ship preferences for #{character_id}: #{inspect(error)}")
         []
     end
   end
-  
+
   # Get weapon preferences from killmail data
   defp get_weapon_preferences(character_id, ninety_days_ago) do
     try do
@@ -566,32 +588,34 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
       ORDER BY usage_count DESC
       LIMIT 5
       """
-      
+
       Logger.info("Querying weapon preferences for character #{character_id}")
-      
-      {:ok, weapons_result} = Repo.query(weapons_query, [to_string(character_id), ninety_days_ago])
-      
-      weapons = Enum.map(weapons_result.rows, fn [weapon_type_id, ship_name, count] ->
-        # For now, use weapon_type_id as name - we could enhance this with EVE static data later
-        weapon_name = get_weapon_name(weapon_type_id) || "Weapon #{weapon_type_id}"
-        %{
-          weapon_name: weapon_name,
-          weapon_type_id: weapon_type_id,
-          ship_name: ship_name,
-          usage_count: count
-        }
-      end)
-      
+
+      {:ok, weapons_result} =
+        Repo.query(weapons_query, [to_string(character_id), ninety_days_ago])
+
+      weapons =
+        Enum.map(weapons_result.rows, fn [weapon_type_id, ship_name, count] ->
+          # For now, use weapon_type_id as name - we could enhance this with EVE static data later
+          weapon_name = get_weapon_name(weapon_type_id) || "Weapon #{weapon_type_id}"
+
+          %{
+            weapon_name: weapon_name,
+            weapon_type_id: weapon_type_id,
+            ship_name: ship_name,
+            usage_count: count
+          }
+        end)
+
       Logger.info("Weapon analysis complete: #{inspect(weapons)}")
       weapons
-      
     rescue
       error ->
         Logger.error("Failed to get weapon preferences for #{character_id}: #{inspect(error)}")
         []
     end
   end
-  
+
   # Enhanced weapon name resolution using EVE static data
   defp get_weapon_name(weapon_type_id) do
     try do
@@ -602,17 +626,16 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
       WHERE type_id = $1
       LIMIT 1
       """
-      
+
       case Repo.query(weapon_name_query, [String.to_integer(weapon_type_id)]) do
         {:ok, %{rows: [[weapon_name]]}} -> weapon_name
         _ -> nil
       end
-      
     rescue
       _error -> nil
     end
   end
-  
+
   # Calculate ISK efficiency from killmail data
   defp calculate_isk_efficiency(character_id, ninety_days_ago) do
     try do
@@ -625,7 +648,7 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
         AND km.killmail_time >= $2
         AND raw_data->'zkb'->>'totalValue' IS NOT NULL
       """
-      
+
       # Query ISK lost from deaths (where character was victim)
       isk_lost_query = """
       SELECT COALESCE(SUM(CAST(raw_data->'zkb'->>'totalValue' AS DECIMAL)), 0) as total_lost
@@ -634,58 +657,68 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
         AND killmail_time >= $2
         AND raw_data->'zkb'->>'totalValue' IS NOT NULL
       """
-      
+
       Logger.info("Querying ISK destroyed for character #{character_id}")
-      {:ok, destroyed_result} = Repo.query(isk_destroyed_query, [to_string(character_id), ninety_days_ago])
+
+      {:ok, destroyed_result} =
+        Repo.query(isk_destroyed_query, [to_string(character_id), ninety_days_ago])
+
       [[isk_destroyed_decimal]] = destroyed_result.rows
       isk_destroyed = Decimal.to_float(isk_destroyed_decimal)
-      
+
       Logger.info("Querying ISK lost for character #{character_id}")
       {:ok, lost_result} = Repo.query(isk_lost_query, [character_id, ninety_days_ago])
       [[isk_lost_decimal]] = lost_result.rows
       isk_lost = Decimal.to_float(isk_lost_decimal)
-      
+
       # Calculate efficiency percentage
       total_isk = isk_destroyed + isk_lost
-      efficiency = if total_isk > 0 do
-        Float.round((isk_destroyed / total_isk) * 100, 1)
-      else
-        0.0
-      end
-      
-      Logger.info("ISK calculation: destroyed=#{isk_destroyed}, lost=#{isk_lost}, efficiency=#{efficiency}%")
-      
+
+      efficiency =
+        if total_isk > 0 do
+          Float.round(isk_destroyed / total_isk * 100, 1)
+        else
+          0.0
+        end
+
+      Logger.info(
+        "ISK calculation: destroyed=#{isk_destroyed}, lost=#{isk_lost}, efficiency=#{efficiency}%"
+      )
+
       %{
         destroyed: isk_destroyed,
         lost: isk_lost,
         efficiency: efficiency
       }
-      
     rescue
       error ->
         Logger.error("Failed to calculate ISK efficiency for #{character_id}: #{inspect(error)}")
         %{destroyed: 0.0, lost: 0.0, efficiency: 0.0}
     end
   end
-  
+
   # Format ISK values in human-readable format
   defp format_isk(isk_value) when is_float(isk_value) or is_integer(isk_value) do
     cond do
       isk_value >= 1_000_000_000_000 ->
         "#{Float.round(isk_value / 1_000_000_000_000, 1)}T ISK"
+
       isk_value >= 1_000_000_000 ->
         "#{Float.round(isk_value / 1_000_000_000, 1)}B ISK"
+
       isk_value >= 1_000_000 ->
         "#{Float.round(isk_value / 1_000_000, 1)}M ISK"
+
       isk_value >= 1_000 ->
         "#{Float.round(isk_value / 1_000, 1)}K ISK"
+
       true ->
         "#{Float.round(isk_value, 0)} ISK"
     end
   end
-  
+
   defp format_isk(_), do: "0 ISK"
-  
+
   # Get external groups (corps/alliances) the character has flown with
   defp get_external_groups(character_id, since_date) do
     try do
@@ -698,17 +731,20 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
         AND km.killmail_time >= $2
       LIMIT 1
       """
-      
+
       Logger.info("Finding character's own corp/alliance for #{character_id}")
       {:ok, own_group_result} = Repo.query(own_group_query, [to_string(character_id), since_date])
-      
-      {own_corp, own_alliance} = case own_group_result.rows do
-        [[corp, alliance]] -> {corp, alliance}
-        [] -> {nil, nil}
-      end
-      
-      Logger.info("Character #{character_id} belongs to corp: #{own_corp}, alliance: #{own_alliance}")
-      
+
+      {own_corp, own_alliance} =
+        case own_group_result.rows do
+          [[corp, alliance]] -> {corp, alliance}
+          [] -> {nil, nil}
+        end
+
+      Logger.info(
+        "Character #{character_id} belongs to corp: #{own_corp}, alliance: #{own_alliance}"
+      )
+
       # Find external groups they've fought with
       external_groups_query = """
       SELECT 
@@ -734,39 +770,47 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
       ORDER BY shared_kills DESC
       LIMIT 5
       """
-      
+
       Logger.info("Querying external groups for character #{character_id}")
-      {:ok, external_result} = Repo.query(external_groups_query, [
-        to_string(character_id), 
-        since_date, 
-        own_corp
-      ])
-      
-      external_groups = Enum.map(external_result.rows, fn [corp_id, corp_name, alliance_id, alliance_name, shared_kills] ->
-        # Determine if this is truly external (different alliance) or just different corp
-        is_external_alliance = alliance_name != own_alliance
-        group_type = if is_external_alliance, do: :external_alliance, else: :same_alliance
-        
-        %{
-          corp_id: corp_id,
-          corp_name: corp_name,
-          alliance_id: alliance_id,
-          alliance_name: alliance_name,
-          shared_kills: shared_kills,
-          group_type: group_type
-        }
-      end)
-      
+
+      {:ok, external_result} =
+        Repo.query(external_groups_query, [
+          to_string(character_id),
+          since_date,
+          own_corp
+        ])
+
+      external_groups =
+        Enum.map(external_result.rows, fn [
+                                            corp_id,
+                                            corp_name,
+                                            alliance_id,
+                                            alliance_name,
+                                            shared_kills
+                                          ] ->
+          # Determine if this is truly external (different alliance) or just different corp
+          is_external_alliance = alliance_name != own_alliance
+          group_type = if is_external_alliance, do: :external_alliance, else: :same_alliance
+
+          %{
+            corp_id: corp_id,
+            corp_name: corp_name,
+            alliance_id: alliance_id,
+            alliance_name: alliance_name,
+            shared_kills: shared_kills,
+            group_type: group_type
+          }
+        end)
+
       Logger.info("External groups analysis complete: #{inspect(external_groups)}")
       external_groups
-      
     rescue
       error ->
         Logger.error("Failed to get external groups for #{character_id}: #{inspect(error)}")
         []
     end
   end
-  
+
   # Analyze gang size patterns from killmail data
   defp get_gang_size_patterns(character_id, ninety_days_ago) do
     try do
@@ -785,13 +829,16 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
       GROUP BY jsonb_array_length(raw_data->'attackers')
       ORDER BY attacker_count
       """
-      
+
       Logger.info("Querying gang size patterns for character #{character_id}")
-      {:ok, gang_size_result} = Repo.query(gang_size_query, [to_string(character_id), ninety_days_ago])
-      
+
+      {:ok, gang_size_result} =
+        Repo.query(gang_size_query, [to_string(character_id), ninety_days_ago])
+
       # Categorize based on attacker count
-      {solo_kills, small_gang_kills, medium_gang_kills, large_fleet_kills} = 
-        Enum.reduce(gang_size_result.rows, {0, 0, 0, 0}, fn [attacker_count, kill_count], {solo, small, medium, large} ->
+      {solo_kills, small_gang_kills, medium_gang_kills, large_fleet_kills} =
+        Enum.reduce(gang_size_result.rows, {0, 0, 0, 0}, fn [attacker_count, kill_count],
+                                                            {solo, small, medium, large} ->
           case attacker_count do
             1 -> {solo + kill_count, small, medium, large}
             count when count in 2..4 -> {solo, small + kill_count, medium, large}
@@ -800,16 +847,23 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
             _ -> {solo, small, medium, large}
           end
         end)
-      
+
       # Calculate total and percentages
       total_kills = solo_kills + small_gang_kills + medium_gang_kills + large_fleet_kills
-      
+
       # Calculate percentages
-      solo_percentage = if total_kills > 0, do: Float.round(solo_kills / total_kills * 100, 1), else: 0.0
-      small_gang_percentage = if total_kills > 0, do: Float.round(small_gang_kills / total_kills * 100, 1), else: 0.0
-      medium_gang_percentage = if total_kills > 0, do: Float.round(medium_gang_kills / total_kills * 100, 1), else: 0.0
-      large_fleet_percentage = if total_kills > 0, do: Float.round(large_fleet_kills / total_kills * 100, 1), else: 0.0
-      
+      solo_percentage =
+        if total_kills > 0, do: Float.round(solo_kills / total_kills * 100, 1), else: 0.0
+
+      small_gang_percentage =
+        if total_kills > 0, do: Float.round(small_gang_kills / total_kills * 100, 1), else: 0.0
+
+      medium_gang_percentage =
+        if total_kills > 0, do: Float.round(medium_gang_kills / total_kills * 100, 1), else: 0.0
+
+      large_fleet_percentage =
+        if total_kills > 0, do: Float.round(large_fleet_kills / total_kills * 100, 1), else: 0.0
+
       patterns = %{
         solo: %{
           kills: solo_kills,
@@ -829,13 +883,13 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
         },
         total_kills: total_kills
       }
-      
+
       Logger.info("Gang size analysis complete: #{inspect(patterns)}")
       patterns
-      
     rescue
       error ->
         Logger.error("Failed to get gang size patterns for #{character_id}: #{inspect(error)}")
+
         %{
           solo: %{kills: 0, percentage: 0.0},
           small_gang: %{kills: 0, percentage: 0.0},
@@ -845,28 +899,30 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
         }
     end
   end
-  
+
   # Calculate character intelligence summary (peak activity, top location, primary timezone)
   defp calculate_character_intelligence_summary(character_id, since_date) do
     try do
       # Calculate peak activity hour
       peak_activity_hour = calculate_character_peak_activity_hour(character_id, since_date)
-      
+
       # Calculate top location
       top_location = calculate_character_top_location(character_id, since_date)
-      
+
       # Calculate primary timezone
       primary_timezone = calculate_character_primary_timezone(character_id, since_date)
-      
+
       %{
         peak_activity_hour: peak_activity_hour,
         top_location: top_location,
         primary_timezone: primary_timezone
       }
-      
     rescue
       error ->
-        Logger.error("Failed to calculate character intelligence summary for #{character_id}: #{inspect(error)}")
+        Logger.error(
+          "Failed to calculate character intelligence summary for #{character_id}: #{inspect(error)}"
+        )
+
         %{
           peak_activity_hour: nil,
           top_location: nil,
@@ -874,7 +930,7 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
         }
     end
   end
-  
+
   # Calculate peak activity hour for character
   defp calculate_character_peak_activity_hour(character_id, since_date) do
     try do
@@ -897,19 +953,22 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
       ORDER BY activity_count DESC
       LIMIT 1
       """
-      
+
       case Repo.query(peak_hour_query, [character_id, to_string(character_id), since_date]) do
-        {:ok, %{rows: [[hour, _count]]}} -> hour  # Should be an integer now due to CAST
+        # Should be an integer now due to CAST
+        {:ok, %{rows: [[hour, _count]]}} -> hour
         _ -> nil
       end
-      
     rescue
       error ->
-        Logger.error("Failed to calculate peak activity hour for character #{character_id}: #{inspect(error)}")
+        Logger.error(
+          "Failed to calculate peak activity hour for character #{character_id}: #{inspect(error)}"
+        )
+
         nil
     end
   end
-  
+
   # Calculate top location for character
   defp calculate_character_top_location(character_id, since_date) do
     try do
@@ -933,20 +992,24 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
       ORDER BY activity_count DESC
       LIMIT 1
       """
-      
+
       case Repo.query(top_location_query, [character_id, to_string(character_id), since_date]) do
-        {:ok, %{rows: [[system_id, _count]]}} -> 
+        {:ok, %{rows: [[system_id, _count]]}} ->
           get_system_name_from_db(system_id)
-        _ -> nil
+
+        _ ->
+          nil
       end
-      
     rescue
       error ->
-        Logger.error("Failed to calculate top location for character #{character_id}: #{inspect(error)}")
+        Logger.error(
+          "Failed to calculate top location for character #{character_id}: #{inspect(error)}"
+        )
+
         nil
     end
   end
-  
+
   # Calculate primary timezone for character
   defp calculate_character_primary_timezone(character_id, since_date) do
     try do
@@ -968,25 +1031,28 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
       GROUP BY hour
       ORDER BY hour
       """
-      
-      {:ok, hourly_result} = Repo.query(timezone_query, [character_id, to_string(character_id), since_date])
-      
+
+      {:ok, hourly_result} =
+        Repo.query(timezone_query, [character_id, to_string(character_id), since_date])
+
       # Create hourly distribution map (hour should be integer now due to CAST)
-      hourly_distribution = 
+      hourly_distribution =
         hourly_result.rows
         |> Enum.map(fn [hour, count] -> {hour, count} end)
         |> Map.new()
-      
+
       # Analyze timezone based on activity patterns
       analyze_character_timezone(hourly_distribution)
-      
     rescue
       error ->
-        Logger.error("Failed to calculate primary timezone for character #{character_id}: #{inspect(error)}")
+        Logger.error(
+          "Failed to calculate primary timezone for character #{character_id}: #{inspect(error)}"
+        )
+
         nil
     end
   end
-  
+
   # Analyze timezone based on hourly activity distribution
   defp analyze_character_timezone(hourly_distribution) do
     # Define timezone blocks (approximate EVE time zones)
@@ -995,26 +1061,26 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
       "US" => 0..4,
       "AUTZ" => 10..14
     }
-    
+
     # Calculate activity for each timezone
-    timezone_scores = 
+    timezone_scores =
       Enum.map(timezone_blocks, fn {tz_name, hours} ->
-        total_activity = 
+        total_activity =
           Enum.to_list(hours)
           |> Enum.map(&Map.get(hourly_distribution, &1, 0))
           |> Enum.sum()
-        
+
         {tz_name, total_activity}
       end)
       |> Enum.sort_by(&elem(&1, 1), :desc)
-    
+
     # Return the timezone with highest activity, or nil if no significant activity
     case timezone_scores do
       [{tz_name, activity} | _] when activity > 0 -> tz_name
       _ -> nil
     end
   end
-  
+
   # Get system name from database
   defp get_system_name_from_db(system_id) do
     try do
@@ -1024,12 +1090,11 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
       WHERE system_id = $1
       LIMIT 1
       """
-      
+
       case Repo.query(system_name_query, [system_id]) do
         {:ok, %{rows: [[system_name]]}} -> system_name
         _ -> "System #{system_id}"
       end
-      
     rescue
       _error -> "System #{system_id}"
     end
@@ -1056,40 +1121,45 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
       GROUP BY DATE(km.killmail_time)
       ORDER BY daily_kills DESC
       """
-      
+
       Logger.info("Querying activity stats for character #{character_id}")
-      {:ok, activity_result} = Repo.query(activity_query, [character_id, to_string(character_id), since_date])
-      
+
+      {:ok, activity_result} =
+        Repo.query(activity_query, [character_id, to_string(character_id), since_date])
+
       # Extract statistics
       active_days_count = length(activity_result.rows)
-      
-      {most_active_date, most_active_kills} = case activity_result.rows do
-        [[date, kills] | _] -> {date, kills}
-        [] -> {nil, 0}
-      end
-      
+
+      {most_active_date, most_active_kills} =
+        case activity_result.rows do
+          [[date, kills] | _] -> {date, kills}
+          [] -> {nil, 0}
+        end
+
       # Format most active day as "Weekday (X kills)"
-      most_active_day_formatted = if most_active_date do
-        weekday = Calendar.strftime(most_active_date, "%A")
-        "#{weekday} (#{most_active_kills} kills)"
-      else
-        "No activity"
-      end
-      
+      most_active_day_formatted =
+        if most_active_date do
+          weekday = Calendar.strftime(most_active_date, "%A")
+          "#{weekday} (#{most_active_kills} kills)"
+        else
+          "No activity"
+        end
+
       # Count recent kills (last 30 days)
-      recent_kills = activity_result.rows
+      recent_kills =
+        activity_result.rows
         |> Enum.map(fn [_, kills] -> kills end)
         |> Enum.sum()
-      
+
       %{
         recent_kills: recent_kills,
         active_days: active_days_count,
         most_active_day: most_active_day_formatted
       }
-      
     rescue
       error ->
         Logger.error("Failed to calculate activity stats for #{character_id}: #{inspect(error)}")
+
         %{
           recent_kills: 0,
           active_days: 0,

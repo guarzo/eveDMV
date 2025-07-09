@@ -2,62 +2,69 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
   @moduledoc """
   Live dashboard for monitoring system health, errors, and pipeline status.
   """
-  
+
   use EveDmvWeb, :live_view
-  
-  alias EveDmv.Monitoring.{ErrorTracker, PipelineMonitor, AlertDispatcher, ErrorRecoveryWorker, MissingDataTracker}
-  
+
+  alias EveDmv.Monitoring.{
+    ErrorTracker,
+    PipelineMonitor,
+    AlertDispatcher,
+    ErrorRecoveryWorker,
+    MissingDataTracker
+  }
+
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
-  
-  @refresh_interval 5_000 # 5 seconds
-  
+
+  # 5 seconds
+  @refresh_interval 5_000
+
   @impl true
   def mount(_params, _session, socket) do
-    
     if connected?(socket) do
       # Subscribe to monitoring events
       Phoenix.PubSub.subscribe(EveDmv.PubSub, "monitoring:updates")
-      
+
       # Schedule periodic refresh
       :timer.send_interval(@refresh_interval, self(), :refresh)
     end
-    
-    socket = socket
-    |> assign(:page_title, "System Monitoring")
-    |> load_monitoring_data()
-    
+
+    socket =
+      socket
+      |> assign(:page_title, "System Monitoring")
+      |> load_monitoring_data()
+
     {:ok, socket}
   end
-  
+
   @impl true
   def handle_info(:refresh, socket) do
     {:noreply, load_monitoring_data(socket)}
   end
-  
+
   @impl true
   def handle_info({:monitoring_update, _data}, socket) do
     # Real-time updates from monitoring system
     {:noreply, load_monitoring_data(socket)}
   end
-  
+
   @impl true
   def handle_event("clear_errors", _params, socket) do
     ErrorTracker.clear_all()
     {:noreply, load_monitoring_data(socket)}
   end
-  
+
   @impl true
   def handle_event("reset_pipeline_metrics", _params, socket) do
     PipelineMonitor.reset_metrics()
     {:noreply, load_monitoring_data(socket)}
   end
-  
+
   @impl true
   def handle_event("force_recovery_check", _params, socket) do
     ErrorRecoveryWorker.check_now()
     {:noreply, put_flash(socket, :info, "Recovery check initiated")}
   end
-  
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -354,9 +361,9 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
     </div>
     """
   end
-  
+
   # Component helpers
-  
+
   defp metric_card(assigns) do
     ~H"""
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
@@ -375,9 +382,9 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
     </div>
     """
   end
-  
+
   # Private functions
-  
+
   defp load_monitoring_data(socket) do
     pipeline_metrics = PipelineMonitor.get_metrics()
     pipeline_health = PipelineMonitor.get_health_status()
@@ -387,7 +394,7 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
     recent_errors = ErrorTracker.get_recent_errors(5)
     missing_ship_types_count = MissingDataTracker.get_missing_ship_types_count()
     top_missing_ship_types = MissingDataTracker.get_top_missing_ship_types(5)
-    
+
     socket
     |> assign(:pipeline_metrics, pipeline_metrics)
     |> assign(:pipeline_health, pipeline_health)
@@ -398,25 +405,51 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
     |> assign(:missing_ship_types_count, missing_ship_types_count)
     |> assign(:top_missing_ship_types, top_missing_ship_types)
   end
-  
-  defp health_badge_class(:healthy), do: "px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-  defp health_badge_class(:degraded), do: "px-3 py-1 text-sm font-medium rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
-  defp health_badge_class(:unhealthy), do: "px-3 py-1 text-sm font-medium rounded-full bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
-  
-  defp category_badge_class(:validation), do: "px-2 py-1 text-xs rounded bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
-  defp category_badge_class(:external_service), do: "px-2 py-1 text-xs rounded bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400"
-  defp category_badge_class(:system), do: "px-2 py-1 text-xs rounded bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
-  defp category_badge_class(:business_logic), do: "px-2 py-1 text-xs rounded bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400"
-  defp category_badge_class(_), do: "px-2 py-1 text-xs rounded bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
-  
+
+  defp health_badge_class(:healthy),
+    do:
+      "px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+
+  defp health_badge_class(:degraded),
+    do:
+      "px-3 py-1 text-sm font-medium rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
+
+  defp health_badge_class(:unhealthy),
+    do:
+      "px-3 py-1 text-sm font-medium rounded-full bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+
+  defp category_badge_class(:validation),
+    do:
+      "px-2 py-1 text-xs rounded bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
+
+  defp category_badge_class(:external_service),
+    do:
+      "px-2 py-1 text-xs rounded bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400"
+
+  defp category_badge_class(:system),
+    do: "px-2 py-1 text-xs rounded bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+
+  defp category_badge_class(:business_logic),
+    do:
+      "px-2 py-1 text-xs rounded bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400"
+
+  defp category_badge_class(_),
+    do:
+      "px-2 py-1 text-xs rounded bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
+
   defp alert_class(:critical), do: "border-l-4 border-red-400 bg-red-50 dark:bg-red-900/20 p-4"
-  defp alert_class(:high), do: "border-l-4 border-orange-400 bg-orange-50 dark:bg-orange-900/20 p-4"
-  defp alert_class(:medium), do: "border-l-4 border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 p-4"
+
+  defp alert_class(:high),
+    do: "border-l-4 border-orange-400 bg-orange-50 dark:bg-orange-900/20 p-4"
+
+  defp alert_class(:medium),
+    do: "border-l-4 border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 p-4"
+
   defp alert_class(:low), do: "border-l-4 border-blue-400 bg-blue-50 dark:bg-blue-900/20 p-4"
-  
+
   defp render_alert_icon(severity) do
     assigns = %{severity: severity}
-    
+
     ~H"""
     <%= case @severity do %>
       <% :critical -> %>
@@ -438,10 +471,10 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
     <% end %>
     """
   end
-  
+
   defp render_metric_icon(icon_name, color) do
     assigns = %{icon_name: icon_name, color: color}
-    
+
     ~H"""
     <%= case @icon_name do %>
       <% "hero-check-circle" -> %>
@@ -481,11 +514,12 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
     <% end %>
     """
   end
-  
+
   defp format_relative_time(nil), do: "Never"
+
   defp format_relative_time(datetime) do
     minutes = DateTime.diff(DateTime.utc_now(), datetime, :minute)
-    
+
     cond do
       minutes < 1 -> "Just now"
       minutes < 60 -> "#{minutes}m ago"
@@ -493,28 +527,32 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
       true -> "#{div(minutes, 1440)}d ago"
     end
   end
-  
+
   defp format_datetime(nil), do: "Never"
+
   defp format_datetime(datetime) do
     Calendar.strftime(datetime, "%Y-%m-%d %H:%M:%S UTC")
   end
-  
+
   defp humanize_recovery_action(:pipeline_restart), do: "Pipeline Restart"
   defp humanize_recovery_action(:rate_limit_adjustment), do: "Rate Limit Adjustment"
   defp humanize_recovery_action(:health_intervention), do: "Health Intervention"
   defp humanize_recovery_action(:error_spike_response), do: "Error Spike Response"
   defp humanize_recovery_action(action), do: Phoenix.Naming.humanize(action)
-  
+
   defp format_uptime(nil), do: "Unknown"
+
   defp format_uptime(started_at) do
     hours = DateTime.diff(DateTime.utc_now(), started_at, :hour)
-    
+
     cond do
       hours < 1 ->
         minutes = DateTime.diff(DateTime.utc_now(), started_at, :minute)
         "#{minutes}m"
+
       hours < 24 ->
         "#{hours}h #{rem(DateTime.diff(DateTime.utc_now(), started_at, :minute), 60)}m"
+
       true ->
         days = div(hours, 24)
         remaining_hours = rem(hours, 24)

@@ -63,7 +63,7 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
         log_creation_errors(errors, "item type", :type_id)
 
         {:ok, created_count}
-        
+
       %Ash.BulkResult{} = _result ->
         # Successful bulk create, count may not be tracked
         Logger.debug("Bulk create completed successfully")
@@ -116,7 +116,7 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
         log_creation_errors(errors, "solar system", :system_id)
 
         {:ok, created_count}
-        
+
       %Ash.BulkResult{} = _result ->
         # Successful bulk create, count may not be tracked  
         Logger.debug("Bulk create completed successfully")
@@ -289,6 +289,7 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
         {changeset, _error} ->
           id = Ash.Changeset.get_attribute(changeset, id_field)
           Logger.warning("Failed to create #{type} #{id}")
+
         error ->
           Logger.warning("Failed to create #{type}: #{inspect(error)}")
       end

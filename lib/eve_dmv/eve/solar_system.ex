@@ -184,16 +184,16 @@ defmodule EveDmv.Eve.SolarSystem do
     # Custom update action for wormhole data
     update :update_wormhole_data do
       description("Update solar system with wormhole class information")
-      
+
       accept([:wormhole_class_id, :wormhole_effect_type])
-      
+
       change(set_attribute(:last_updated, &DateTime.utc_now/0))
     end
 
     # Custom update action for SDE version tracking
     update :update_sde_version do
       description("Update solar system with SDE version information")
-      
+
       accept([:sde_version, :last_updated])
     end
 
@@ -283,47 +283,64 @@ defmodule EveDmv.Eve.SolarSystem do
       description("Whether this is a wormhole system")
     end
 
-    calculate :wormhole_class_name, :string, expr(
-      cond do
-        wormhole_class_id == 1 -> "C1"
-        wormhole_class_id == 2 -> "C2"
-        wormhole_class_id == 3 -> "C3"
-        wormhole_class_id == 4 -> "C4"
-        wormhole_class_id == 5 -> "C5"
-        wormhole_class_id == 6 -> "C6"
-        wormhole_class_id == 7 -> "High-Sec"
-        wormhole_class_id == 8 -> "Low-Sec"
-        wormhole_class_id == 9 -> "Null-Sec"
-        wormhole_class_id == 12 -> "Thera"
-        wormhole_class_id == 13 -> "Shattered"
-        wormhole_class_id == 14 -> "Sentinel"
-        wormhole_class_id == 15 -> "Barbican"
-        wormhole_class_id == 16 -> "Vidette"
-        wormhole_class_id == 17 -> "Conflux"
-        wormhole_class_id == 18 -> "Redoubt"
-        true -> "Unknown"
-      end
-    ) do
+    calculate :wormhole_class_name,
+              :string,
+              expr(
+                cond do
+                  wormhole_class_id == 1 -> "C1"
+                  wormhole_class_id == 2 -> "C2"
+                  wormhole_class_id == 3 -> "C3"
+                  wormhole_class_id == 4 -> "C4"
+                  wormhole_class_id == 5 -> "C5"
+                  wormhole_class_id == 6 -> "C6"
+                  wormhole_class_id == 7 -> "High-Sec"
+                  wormhole_class_id == 8 -> "Low-Sec"
+                  wormhole_class_id == 9 -> "Null-Sec"
+                  wormhole_class_id == 12 -> "Thera"
+                  wormhole_class_id == 13 -> "Shattered"
+                  wormhole_class_id == 14 -> "Sentinel"
+                  wormhole_class_id == 15 -> "Barbican"
+                  wormhole_class_id == 16 -> "Vidette"
+                  wormhole_class_id == 17 -> "Conflux"
+                  wormhole_class_id == 18 -> "Redoubt"
+                  true -> "Unknown"
+                end
+              ) do
       description("Human-readable wormhole class name")
     end
 
-    calculate :has_wormhole_effect, :boolean, expr(
-      is_not_nil(wormhole_effect_type) and wormhole_effect_type != ""
-    ) do
+    calculate :has_wormhole_effect,
+              :boolean,
+              expr(is_not_nil(wormhole_effect_type) and wormhole_effect_type != "") do
       description("Whether this system has a wormhole environmental effect")
     end
 
-    calculate :wormhole_effect_description, :string, expr(
-      cond do
-        wormhole_effect_type == "Pulsar" -> "Boosts shield capacity and capacitor recharge, reduces armor resists"
-        wormhole_effect_type == "Black Hole" -> "Increases missile velocity, ship velocity, and targeting range"
-        wormhole_effect_type == "Cataclysmic Variable" -> "Enhances remote repair modules and capacitor volume"
-        wormhole_effect_type == "Magnetar" -> "Dramatically increases weapon damage, reduces tracking"
-        wormhole_effect_type == "Red Giant" -> "Boosts smartbomb damage, range, and module overheat effects"
-        wormhole_effect_type == "Wolf Rayet" -> "Enhances armor HP and small weapon damage, reduces shield resists"
-        true -> "No environmental effect"
-      end
-    ) do
+    calculate :wormhole_effect_description,
+              :string,
+              expr(
+                cond do
+                  wormhole_effect_type == "Pulsar" ->
+                    "Boosts shield capacity and capacitor recharge, reduces armor resists"
+
+                  wormhole_effect_type == "Black Hole" ->
+                    "Increases missile velocity, ship velocity, and targeting range"
+
+                  wormhole_effect_type == "Cataclysmic Variable" ->
+                    "Enhances remote repair modules and capacitor volume"
+
+                  wormhole_effect_type == "Magnetar" ->
+                    "Dramatically increases weapon damage, reduces tracking"
+
+                  wormhole_effect_type == "Red Giant" ->
+                    "Boosts smartbomb damage, range, and module overheat effects"
+
+                  wormhole_effect_type == "Wolf Rayet" ->
+                    "Enhances armor HP and small weapon damage, reduces shield resists"
+
+                  true ->
+                    "No environmental effect"
+                end
+              ) do
       description("Description of the wormhole environmental effect")
     end
   end

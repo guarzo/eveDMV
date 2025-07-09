@@ -51,7 +51,7 @@ defmodule EveDmvWeb.Router do
     live("/system/:system_id", SystemLive)
     live("/search/systems", SystemSearchLive)
     live("/search", UniversalSearchLive)
-    
+
     # Redirects for backward compatibility
     get("/analysis/:character_id", PageController, :redirect_character)
     get("/corp/:corporation_id", PageController, :redirect_corporation)
@@ -62,7 +62,7 @@ defmodule EveDmvWeb.Router do
     live("/intelligence-dashboard", IntelligenceDashboardLive)
     live("/battle", BattleAnalysisLive)
     live("/battle/:battle_id", BattleAnalysisLive)
-    
+
     # System monitoring (admin only in production)
     live("/monitoring", MonitoringDashboardLive)
   end

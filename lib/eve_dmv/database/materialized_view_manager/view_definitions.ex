@@ -6,7 +6,6 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewDefinitions do
   indexes, refresh strategies, and dependencies.
   """
 
-
   @doc """
   Get all materialized view definitions.
   """

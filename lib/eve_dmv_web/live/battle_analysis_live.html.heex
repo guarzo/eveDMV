@@ -250,15 +250,41 @@
                               </h6>
                               <div class="space-y-2 mb-3">
                                 <%= for corp_id <- Enum.take(side.corporations, 4) do %>
-                                  <div class="flex items-center gap-2">
-                                    <img 
-                                      src={corporation_logo(corp_id, 32)} 
-                                      alt="Corp logo"
-                                      class="w-6 h-6 rounded"
-                                    />
-                                    <span class="text-sm truncate">
-                                      <%= resolve_corporation_name(corp_id) %>
-                                    </span>
+                                  <div class="flex items-center justify-between gap-2 w-full">
+                                    <div class="flex items-center gap-2 min-w-0">
+                                      <img 
+                                        src={corporation_logo(corp_id, 32)} 
+                                        alt="Corp logo"
+                                        class="w-6 h-6 rounded flex-shrink-0"
+                                      />
+                                      <span class="text-sm truncate">
+                                        <% corp_name = if side.corporations && is_list(side.corporations) && corp_id in side.corporations do
+                                          # Try to get corp name from pilot data
+                                          window.pilot_ships
+                                          |> Enum.find(fn p -> p.corporation_id == corp_id end)
+                                          |> case do
+                                            nil -> nil
+                                            pilot -> pilot.corporation_name
+                                          end
+                                        else
+                                          nil
+                                        end %>
+                                        <%= corp_name || resolve_corporation_name(corp_id) %>
+                                      </span>
+                                    </div>
+                                    <% corp_stats = Map.get(@corp_summaries, corp_id) %>
+                                    <%= if corp_stats do %>
+                                      <div class="flex gap-2 text-xs flex-shrink-0">
+                                        <span class="text-green-400">K:<%= corp_stats.kills %></span>
+                                        <span class="text-red-400">L:<%= corp_stats.losses %></span>
+                                        <%= if corp_stats.isk_destroyed > 0 do %>
+                                          <span class="text-green-300" title="ISK Destroyed">+<%= format_isk_short(corp_stats.isk_destroyed) %></span>
+                                        <% end %>
+                                        <%= if corp_stats.isk_lost > 0 do %>
+                                          <span class="text-red-300" title="ISK Lost">-<%= format_isk_short(corp_stats.isk_lost) %></span>
+                                        <% end %>
+                                      </div>
+                                    <% end %>
                                   </div>
                                 <% end %>
                                 <%= if length(side.corporations) > 4 do %>
@@ -273,66 +299,167 @@
                       </div>
                     <% end %>
                     
-                    <!-- Ship Composition by Side -->
+                    <!-- Ship Composition with Statistics -->
                     <div class="mt-6">
-                      <h5 class="text-sm font-medium text-gray-400 mb-3">Ship Types in Combat</h5>
-                      <%= if window[:sides] && length(window.sides) > 0 do %>
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                          <%= for side <- window.sides do %>
-                            <div class="space-y-2">
-                              <h6 class="text-xs font-medium text-blue-400 uppercase">
-                                <%= String.replace(side.side_id, "_", " ") %>
+                      <div class="flex items-center justify-between mb-3">
+                        <h5 class="text-sm font-medium text-gray-400">Ship Performance Analysis</h5>
+                        <div class="flex items-center gap-2">
+                          <%= if @editing_fleet_sides do %>
+                            <button
+                              phx-click="add_custom_side"
+                              class="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
+                            >
+                              + Add Side
+                            </button>
+                            <button
+                              phx-click="reset_fleet_sides"
+                              class="px-2 py-1 text-xs bg-orange-600 hover:bg-orange-700 text-white rounded transition-colors"
+                            >
+                              Reset
+                            </button>
+                          <% end %>
+                          <button
+                            phx-click="toggle_fleet_edit_mode"
+                            class={"px-3 py-1 text-xs rounded transition-colors " <> 
+                                   if @editing_fleet_sides do
+                                     "bg-blue-600 hover:bg-blue-700 text-white"
+                                   else
+                                     "bg-gray-700 hover:bg-gray-600 text-white"
+                                   end}
+                          >
+                            <%= if @editing_fleet_sides, do: "Done Editing", else: "Edit Sides" %>
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <!-- Group ships by battle sides -->
+                      <%= if window[:pilot_ships] && length(window.pilot_ships) > 0 do %>
+                      <div class="space-y-6">
+                        <!-- Active Sides -->
+                        <div class={"grid grid-cols-1 gap-6 " <> if(length(@custom_sides) == 2, do: "lg:grid-cols-2", else: "lg:grid-cols-3")}>
+                          <%= for side <- @custom_sides do %>
+                            <div class="space-y-3">
+                              <h6 class="text-xs font-medium text-blue-400 uppercase border-b border-blue-800 pb-1">
+                                <%= String.replace(side, "_", " ") |> String.capitalize() %>
                               </h6>
-                              <%= for {ship, _index} <- Enum.with_index(Enum.take(window.ship_composition, 6)) do %>
-                                <div class="flex items-center justify-between bg-gray-900 rounded p-2">
-                                  <div class="flex items-center gap-3">
+                              
+                              <%= for pilot <- EveDmvWeb.BattleAnalysisLive.get_ships_for_side(window.pilot_ships || [], side, @ship_side_assignments) do %>
+                                <div 
+                                  class={"bg-gray-900 rounded-lg p-2 " <> if @editing_fleet_sides, do: "cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all", else: ""}
+                                  phx-click={if @editing_fleet_sides, do: "cycle_ship_side"}
+                                  phx-value-ship_id={if @editing_fleet_sides, do: "pilot_#{pilot.character_id}_#{pilot.ship_type_id}"}
+                                  phx-value-current_side={if @editing_fleet_sides, do: side}
+                                >
+                                  <div class="flex items-center gap-2 h-12">
                                     <img 
-                                      src={ship_render(ship.ship_type_id, 48)} 
+                                      src={ship_render(pilot.ship_type_id, 64)} 
                                       alt="Ship"
-                                      class="w-10 h-10"
+                                      class="w-12 h-12 flex-shrink-0"
+                                      onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 fill=%22%23374151%22/%3E%3Ctext x=%2250%22 y=%2250%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23fff%22 font-size=%2214%22%3EShip%3C/text%3E%3C/svg%3E'"
                                     />
-                                    <div>
-                                      <div class="text-sm font-medium">
-                                        <%= resolve_ship_name(ship.ship_type_id) %>
+                                    <div class="flex-1 min-w-0">
+                                      <div class="flex items-baseline gap-1">
+                                        <span class="text-xs font-medium text-white truncate">
+                                          <%= pilot.character_name || resolve_character_name(pilot.character_id) %>
+                                        </span>
+                                        <span class="text-xs text-gray-500">•</span>
+                                        <span class="text-xs text-gray-400 truncate">
+                                          <%= pilot.ship_name || resolve_ship_name(pilot.ship_type_id) %>
+                                        </span>
                                       </div>
-                                      <div class="text-xs text-gray-400">
-                                        <%= EveDmvWeb.BattleAnalysisLive.ship_class_from_id(ship.ship_type_id) %>
+                                      <div class="text-xs text-gray-500 truncate">
+                                        <%= pilot.corporation_name || resolve_corporation_name(pilot.corporation_id) %>
                                       </div>
                                     </div>
+                                    <div class="flex gap-3 text-xs">
+                                      <%= if pilot.damage_given > 0 do %>
+                                        <div class="text-green-400" title="Damage Given">
+                                          <span class="font-medium"><%= format_number(pilot.damage_given) %></span>
+                                        </div>
+                                      <% end %>
+                                      <%= if pilot.damage_taken > 0 do %>
+                                        <div class="text-red-400" title="Damage Taken">
+                                          <span class="font-medium"><%= format_number(pilot.damage_taken) %></span>
+                                        </div>
+                                      <% end %>
+                                      <%= if pilot.kills > 0 do %>
+                                        <div class="text-orange-400" title="Kills">
+                                          K:<%= pilot.kills %>
+                                        </div>
+                                      <% end %>
+                                      <%= if pilot.losses > 0 do %>
+                                        <div class="text-purple-400" title="Losses">
+                                          L:<%= pilot.losses %>
+                                        </div>
+                                      <% end %>
+                                    </div>
+                                    <%= if @editing_fleet_sides do %>
+                                      <div class="text-xs text-blue-400 px-2">
+                                        <%= String.replace(side, "_", " ") |> String.capitalize() %>
+                                      </div>
+                                    <% end %>
                                   </div>
-                                  <span class="text-sm font-medium text-gray-300">
-                                    x<%= ship.count %>
-                                  </span>
                                 </div>
                               <% end %>
                             </div>
                           <% end %>
                         </div>
-                      <% else %>
-                        <!-- Fallback: Show all ships without sides -->
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                          <%= for {ship, _index} <- Enum.with_index(Enum.take(window.ship_composition, 12)) do %>
-                            <div class="flex items-center justify-between bg-gray-900 rounded p-2">
-                              <div class="flex items-center gap-3">
-                                <img 
-                                  src={ship_render(ship.ship_type_id, 48)} 
-                                  alt="Ship"
-                                  class="w-10 h-10"
-                                />
-                                <div>
-                                  <div class="text-sm font-medium">
-                                    <%= resolve_ship_name(ship.ship_type_id) %>
-                                  </div>
-                                  <div class="text-xs text-gray-400">
-                                    <%= EveDmvWeb.BattleAnalysisLive.ship_class_from_id(ship.ship_type_id) %>
+                        
+                        <!-- Unassigned Ships -->
+                        <% unassigned_pilots = EveDmvWeb.BattleAnalysisLive.get_ships_for_side(window.pilot_ships || [], "unassigned", @ship_side_assignments) %>
+                        <%= if length(unassigned_pilots) > 0 || @editing_fleet_sides do %>
+                          <div class="mt-6">
+                            <h6 class="text-xs font-medium text-gray-400 uppercase border-b border-gray-700 pb-1 mb-3">
+                              Unassigned Ships
+                              <%= if length(unassigned_pilots) > 0 do %>
+                                <span class="text-gray-500">(<%= length(unassigned_pilots) %>)</span>
+                              <% end %>
+                            </h6>
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                              <%= for pilot <- unassigned_pilots do %>
+                                <div 
+                                  class={"bg-gray-800 rounded-lg p-2 " <> if @editing_fleet_sides, do: "cursor-pointer hover:ring-2 hover:ring-yellow-500 transition-all", else: ""}
+                                  phx-click={if @editing_fleet_sides, do: "cycle_ship_side"}
+                                  phx-value-ship_id={if @editing_fleet_sides, do: "pilot_#{pilot.character_id}_#{pilot.ship_type_id}"}
+                                  phx-value-current_side={if @editing_fleet_sides, do: "unassigned"}
+                                >
+                                  <div class="flex items-center gap-2 h-12">
+                                    <img 
+                                      src={ship_render(pilot.ship_type_id, 64)} 
+                                      alt="Ship"
+                                      class="w-12 h-12 flex-shrink-0 opacity-60"
+                                      onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 fill=%22%23374151%22/%3E%3Ctext x=%2250%22 y=%2250%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23fff%22 font-size=%2214%22%3EShip%3C/text%3E%3C/svg%3E'"
+                                    />
+                                    <div class="flex-1 min-w-0">
+                                      <div class="flex items-baseline gap-1">
+                                        <span class="text-xs font-medium text-gray-300 truncate">
+                                          <%= pilot.character_name || resolve_character_name(pilot.character_id) %>
+                                        </span>
+                                        <span class="text-xs text-gray-500">•</span>
+                                        <span class="text-xs text-gray-500 truncate">
+                                          <%= pilot.ship_name || resolve_ship_name(pilot.ship_type_id) %>
+                                        </span>
+                                      </div>
+                                      <div class="text-xs text-gray-600 truncate">
+                                        <%= pilot.corporation_name || resolve_corporation_name(pilot.corporation_id) %>
+                                      </div>
+                                    </div>
+                                    <%= if @editing_fleet_sides do %>
+                                      <div class="text-xs text-yellow-400 px-2">
+                                        Unassigned
+                                      </div>
+                                    <% end %>
                                   </div>
                                 </div>
-                              </div>
-                              <span class="text-sm font-medium text-gray-300">
-                                x<%= ship.count %>
-                              </span>
+                              <% end %>
                             </div>
-                          <% end %>
+                          </div>
+                        <% end %>
+                      </div>
+                      <% else %>
+                        <!-- No ship composition data -->
+                        <div class="text-center text-gray-500 py-4">
+                          No ship data available for this time window
                         </div>
                       <% end %>
                     </div>
@@ -369,14 +496,16 @@
                   <%= if moment[:event] do %>
                     <div class="flex items-center gap-2">
                       <img 
-                        src={character_portrait(moment.event.victim.character_id, 48)} 
+                        src={"https://images.evetech.net/characters/#{moment.event.victim.character_id}/portrait?size=64"} 
                         alt="Character"
                         class="w-12 h-12 rounded-full border-2 border-red-600"
+                        onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%23374151%22/%3E%3Ctext x=%2250%22 y=%2250%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23fff%22 font-size=%2220%22%3E?%3C/text%3E%3C/svg%3E'"
                       />
                       <img 
                         src={ship_render(moment.event.victim.ship_type_id, 32)} 
                         alt="Ship"
                         class="w-8 h-8"
+                        onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 fill=%22%23374151%22/%3E%3Ctext x=%2250%22 y=%2250%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23fff%22 font-size=%2214%22%3EShip%3C/text%3E%3C/svg%3E'"
                       />
                     </div>
                   <% end %>

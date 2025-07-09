@@ -8,11 +8,11 @@ defmodule EveDmvWeb.EveImageComponents do
   @doc """
   Renders a character portrait with fallback.
   """
-  attr :character_id, :integer, required: true
-  attr :name, :string, default: "Character"
-  attr :size, :integer, default: 64
-  attr :class, :string, default: ""
-  
+  attr(:character_id, :integer, required: true)
+  attr(:name, :string, default: "Character")
+  attr(:size, :integer, default: 64)
+  attr(:class, :string, default: "")
+
   def character_portrait(assigns) do
     ~H"""
     <img
@@ -30,11 +30,11 @@ defmodule EveDmvWeb.EveImageComponents do
   @doc """
   Renders a corporation logo.
   """
-  attr :corporation_id, :integer, required: true
-  attr :name, :string, default: "Corporation"
-  attr :size, :integer, default: 32
-  attr :class, :string, default: ""
-  
+  attr(:corporation_id, :integer, required: true)
+  attr(:name, :string, default: "Corporation")
+  attr(:size, :integer, default: 32)
+  attr(:class, :string, default: "")
+
   def corporation_logo(assigns) do
     ~H"""
     <img
@@ -52,11 +52,11 @@ defmodule EveDmvWeb.EveImageComponents do
   @doc """
   Renders an alliance logo.
   """
-  attr :alliance_id, :integer, required: true
-  attr :name, :string, default: "Alliance"
-  attr :size, :integer, default: 32
-  attr :class, :string, default: ""
-  
+  attr(:alliance_id, :integer, required: true)
+  attr(:name, :string, default: "Alliance")
+  attr(:size, :integer, default: 32)
+  attr(:class, :string, default: "")
+
   def alliance_logo(assigns) do
     ~H"""
     <img
@@ -74,19 +74,19 @@ defmodule EveDmvWeb.EveImageComponents do
   @doc """
   Renders a ship render/icon.
   """
-  attr :type_id, :integer, required: true
-  attr :name, :string, default: "Ship"
-  attr :size, :integer, default: 64
-  attr :render, :boolean, default: false
-  attr :class, :string, default: ""
-  
+  attr(:type_id, :integer, required: true)
+  attr(:name, :string, default: "Ship")
+  attr(:size, :integer, default: 64)
+  attr(:render, :boolean, default: false)
+  attr(:class, :string, default: "")
+
   def ship_image(assigns) do
     # Use render for larger images, icon for smaller
-    image_type = if assigns.render, do: "render", else: "icon"
-    
+    assigns = assign(assigns, :image_type, if(assigns.render, do: "render", else: "icon"))
+
     ~H"""
     <img
-      src={"https://images.evetech.net/types/#{@type_id}/#{image_type}"}
+      src={"https://images.evetech.net/types/#{@type_id}/#{@image_type}"}
       alt={@name}
       width={@size}
       height={@size}
@@ -100,24 +100,26 @@ defmodule EveDmvWeb.EveImageComponents do
   @doc """
   Renders a combined character/corp/alliance display.
   """
-  attr :character_id, :integer, required: true
-  attr :character_name, :string, required: true
-  attr :corporation_id, :integer, default: nil
-  attr :corporation_name, :string, default: nil
-  attr :alliance_id, :integer, default: nil
-  attr :alliance_name, :string, default: nil
-  attr :class, :string, default: ""
-  attr :size, :string, default: "md" # sm, md, lg
-  
+  attr(:character_id, :integer, required: true)
+  attr(:character_name, :string, required: true)
+  attr(:corporation_id, :integer, default: nil)
+  attr(:corporation_name, :string, default: nil)
+  attr(:alliance_id, :integer, default: nil)
+  attr(:alliance_name, :string, default: nil)
+  attr(:class, :string, default: "")
+  # sm, md, lg
+  attr(:size, :string, default: "md")
+
   def character_identity(assigns) do
-    sizes = case assigns.size do
-      "sm" -> %{portrait: 32, logo: 24}
-      "lg" -> %{portrait: 96, logo: 48}
-      _ -> %{portrait: 64, logo: 32}
-    end
-    
+    sizes =
+      case assigns.size do
+        "sm" -> %{portrait: 32, logo: 24}
+        "lg" -> %{portrait: 96, logo: 48}
+        _ -> %{portrait: 64, logo: 32}
+      end
+
     assigns = assign(assigns, :sizes, sizes)
-    
+
     ~H"""
     <div class={["flex items-center gap-3", @class]}>
       <.character_portrait 
@@ -154,9 +156,9 @@ defmodule EveDmvWeb.EveImageComponents do
   @doc """
   Renders a pilot card with stats.
   """
-  attr :pilot, :map, required: true
-  attr :class, :string, default: ""
-  
+  attr(:pilot, :map, required: true)
+  attr(:class, :string, default: "")
+
   def pilot_card(assigns) do
     ~H"""
     <div class={["bg-gray-800 rounded-lg p-4 hover:bg-gray-700/50 transition-colors", @class]}>
@@ -207,11 +209,11 @@ defmodule EveDmvWeb.EveImageComponents do
   end
 
   # Helper functions
-  
+
   defp format_kd_ratio(pilot) do
     kills = pilot["kills"] || 0
     deaths = pilot["deaths"] || 0
-    
+
     cond do
       deaths == 0 and kills > 0 -> "∞"
       deaths == 0 -> "0.0"

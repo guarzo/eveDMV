@@ -24,7 +24,7 @@ defmodule EveDmv.Application do
       # Set up periodic security headers validation
       # EveDmv.Security.HeadersValidator.setup_periodic_validation()
     end
-    
+
     # Add logger filter for db_connection noise
     :logger.add_primary_filter(
       :db_connection_noise,
@@ -86,14 +86,14 @@ defmodule EveDmv.Application do
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: EveDmv.Supervisor]
-    
+
     # Start the supervisor
     case Supervisor.start_link(children, opts) do
       {:ok, pid} ->
         # Attach global error telemetry handlers
         EveDmv.ErrorHandler.attach_telemetry_handlers()
         {:ok, pid}
-        
+
       error ->
         error
     end
@@ -142,7 +142,6 @@ defmodule EveDmv.Application do
       %{id: module, start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}}
     end
   end
-
 
   # Conditionally start the mock SSE server in development
   defp maybe_start_mock_sse_server do
