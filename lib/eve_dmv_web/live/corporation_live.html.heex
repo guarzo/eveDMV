@@ -123,7 +123,42 @@
         </:stat>
       </.stats_grid>
       
-<!-- Main Content Grid -->
+      <!-- Tab Navigation -->
+      <div class="border-b border-gray-700 mb-8">
+        <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+          <button
+            phx-click="change_tab"
+            phx-value-tab="overview"
+            class={"px-1 py-4 text-sm font-medium border-b-2 transition-colors " <> 
+              if @active_tab == :overview do
+                "border-blue-500 text-blue-500"
+              else
+                "border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300"
+              end
+            }
+          >
+            Overview
+          </button>
+          <button
+            phx-click="change_tab"
+            phx-value-tab="intelligence"
+            class={"px-1 py-4 text-sm font-medium border-b-2 transition-colors " <> 
+              if @active_tab == :intelligence do
+                "border-blue-500 text-blue-500"
+              else
+                "border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300"
+              end
+            }
+          >
+            Intelligence
+          </button>
+        </nav>
+      </div>
+
+      <!-- Tab Content -->
+      <%= case @active_tab do %>
+        <% :overview -> %>
+          <!-- Main Content Grid -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <!-- Members List -->
         <div class="bg-gray-800 rounded-lg border border-gray-700">
@@ -542,6 +577,224 @@
           </div>
         </div>
       </div>
+      
+        <% :intelligence -> %>
+          <!-- Intelligence Analysis -->
+          <%= if @loading_intelligence do %>
+            <div class="flex justify-center items-center h-64">
+              <div class="text-gray-400">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                <p>Analyzing corporation intelligence...</p>
+              </div>
+            </div>
+          <% else %>
+            <%= if @intelligence_data do %>
+              <div class="space-y-8">
+                <!-- Doctrine Analysis -->
+                <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                  <h3 class="text-xl font-bold text-white mb-4">Combat Doctrine Analysis</h3>
+                  
+                  <%= if @intelligence_data.doctrine_analysis do %>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <!-- Primary Doctrine -->
+                      <div>
+                        <h4 class="text-lg font-medium text-gray-300 mb-3">Primary Doctrine</h4>
+                        <div class="bg-gray-900 rounded-lg p-4">
+                          <div class="flex items-center justify-between mb-2">
+                            <span class="text-xl font-bold text-blue-400">
+                              <%= format_doctrine_name(@intelligence_data.doctrine_analysis.primary_doctrine) %>
+                            </span>
+                            <span class="text-sm text-gray-400">
+                              <%= round(@intelligence_data.doctrine_analysis.doctrine_confidence * 100) %>% confidence
+                            </span>
+                          </div>
+                          <p class="text-sm text-gray-400 mb-3">
+                            <%= get_doctrine_description(@intelligence_data.doctrine_analysis.primary_doctrine) %>
+                          </p>
+                          
+                          <%= if @intelligence_data.doctrine_analysis.fleet_compositions do %>
+                            <div class="mt-3">
+                              <h5 class="text-sm font-medium text-gray-400 mb-2">Typical Fleet Composition</h5>
+                              <div class="space-y-1">
+                                <%= for comp <- Enum.take(@intelligence_data.doctrine_analysis.fleet_compositions, 3) do %>
+                                  <div class="flex justify-between text-sm">
+                                    <span class="text-gray-300"><%= comp.ship_type %></span>
+                                    <span class="text-gray-500"><%= comp.percentage %>%</span>
+                                  </div>
+                                <% end %>
+                              </div>
+                            </div>
+                          <% end %>
+                        </div>
+                      </div>
+                      
+                      <!-- Secondary Doctrines -->
+                      <div>
+                        <h4 class="text-lg font-medium text-gray-300 mb-3">Secondary Doctrines</h4>
+                        <div class="space-y-2">
+                          <%= for doctrine <- (@intelligence_data.doctrine_analysis.secondary_doctrines || []) do %>
+                            <div class="bg-gray-900 rounded-lg p-3">
+                              <span class="text-sm font-medium text-gray-300">
+                                <%= format_doctrine_name(doctrine) %>
+                              </span>
+                            </div>
+                          <% end %>
+                          <%= if Enum.empty?(@intelligence_data.doctrine_analysis.secondary_doctrines || []) do %>
+                            <p class="text-sm text-gray-500">No secondary doctrines identified</p>
+                          <% end %>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Tactical Preferences -->
+                    <%= if @intelligence_data.doctrine_analysis.tactical_preferences do %>
+                      <div class="mt-6">
+                        <h4 class="text-lg font-medium text-gray-300 mb-3">Tactical Preferences</h4>
+                        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                          <div class="bg-gray-900 rounded-lg p-3 text-center">
+                            <p class="text-xs text-gray-400 mb-1">Engagement Range</p>
+                            <p class="text-sm font-medium text-white">
+                              <%= @intelligence_data.doctrine_analysis.tactical_preferences.engagement_range || "Unknown" %>
+                            </p>
+                          </div>
+                          <div class="bg-gray-900 rounded-lg p-3 text-center">
+                            <p class="text-xs text-gray-400 mb-1">Mobility</p>
+                            <p class="text-sm font-medium text-white">
+                              <%= @intelligence_data.doctrine_analysis.tactical_preferences.mobility || "Unknown" %>
+                            </p>
+                          </div>
+                          <div class="bg-gray-900 rounded-lg p-3 text-center">
+                            <p class="text-xs text-gray-400 mb-1">Tank Type</p>
+                            <p class="text-sm font-medium text-white">
+                              <%= @intelligence_data.doctrine_analysis.tactical_preferences.tank_type || "Unknown" %>
+                            </p>
+                          </div>
+                          <div class="bg-gray-900 rounded-lg p-3 text-center">
+                            <p class="text-xs text-gray-400 mb-1">Coordination</p>
+                            <p class="text-sm font-medium text-white">
+                              <%= @intelligence_data.doctrine_analysis.tactical_preferences.coordination_level || "Unknown" %>
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    <% end %>
+                  <% else %>
+                    <p class="text-gray-400">Insufficient data for doctrine analysis</p>
+                  <% end %>
+                </div>
+                
+                <!-- Intelligence Summary -->
+                <%= if @intelligence_data.summary do %>
+                  <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                    <h3 class="text-xl font-bold text-white mb-4">Intelligence Summary</h3>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      <!-- Threat Assessment -->
+                      <div>
+                        <h4 class="text-lg font-medium text-gray-300 mb-3">Threat Assessment</h4>
+                        <div class="bg-gray-900 rounded-lg p-4">
+                          <div class="flex items-center justify-between mb-2">
+                            <span class={"text-lg font-bold #{threat_level_color(@intelligence_data.summary.threat_level)}"}>
+                              <%= @intelligence_data.summary.threat_level %>
+                            </span>
+                            <span class="text-sm text-gray-400">
+                              Avg member: <%= round(@intelligence_data.summary.average_member_threat) %>/100
+                            </span>
+                          </div>
+                          <p class="text-sm text-gray-400">
+                            <%= @intelligence_data.summary.summary %>
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <!-- Key Capabilities -->
+                      <div>
+                        <h4 class="text-lg font-medium text-gray-300 mb-3">Key Capabilities</h4>
+                        <div class="bg-gray-900 rounded-lg p-4">
+                          <ul class="space-y-1">
+                            <%= for capability <- @intelligence_data.summary.key_capabilities do %>
+                              <li class="text-sm text-gray-300 flex items-start">
+                                <span class="text-green-400 mr-2">•</span>
+                                <%= capability %>
+                              </li>
+                            <% end %>
+                          </ul>
+                        </div>
+                      </div>
+                      
+                      <!-- Vulnerabilities -->
+                      <div>
+                        <h4 class="text-lg font-medium text-gray-300 mb-3">Vulnerabilities</h4>
+                        <div class="bg-gray-900 rounded-lg p-4">
+                          <ul class="space-y-1">
+                            <%= for vulnerability <- @intelligence_data.summary.vulnerabilities do %>
+                              <li class="text-sm text-gray-300 flex items-start">
+                                <span class="text-red-400 mr-2">•</span>
+                                <%= vulnerability %>
+                              </li>
+                            <% end %>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Tactical Recommendations -->
+                    <%= if @intelligence_data.summary.recommendations do %>
+                      <div class="mt-6">
+                        <h4 class="text-lg font-medium text-gray-300 mb-3">Tactical Recommendations</h4>
+                        <div class="bg-gray-900 rounded-lg p-4">
+                          <ul class="space-y-2">
+                            <%= for recommendation <- @intelligence_data.summary.recommendations do %>
+                              <li class="text-sm text-gray-300 flex items-start">
+                                <svg class="w-4 h-4 text-yellow-400 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                </svg>
+                                <%= recommendation %>
+                              </li>
+                            <% end %>
+                          </ul>
+                        </div>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
+                
+                <!-- Doctrine Evolution -->
+                <%= if @intelligence_data.doctrine_evolution do %>
+                  <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                    <h3 class="text-xl font-bold text-white mb-4">Doctrine Evolution</h3>
+                    <p class="text-sm text-gray-400 mb-4">
+                      Tracking changes in combat doctrine over time
+                    </p>
+                    
+                    <div class="space-y-3">
+                      <%= for period <- @intelligence_data.doctrine_evolution.periods || [] do %>
+                        <div class="bg-gray-900 rounded-lg p-4">
+                          <div class="flex justify-between items-start mb-2">
+                            <div>
+                              <h5 class="font-medium text-white"><%= period.label %></h5>
+                              <p class="text-sm text-gray-400"><%= period.date_range %></p>
+                            </div>
+                            <span class="text-sm font-medium text-blue-400">
+                              <%= format_doctrine_name(period.primary_doctrine) %>
+                            </span>
+                          </div>
+                          <%= if period.changes do %>
+                            <p class="text-sm text-gray-300"><%= period.changes %></p>
+                          <% end %>
+                        </div>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            <% else %>
+              <div class="bg-gray-800 rounded-lg p-8 text-center border border-gray-700">
+                <p class="text-gray-400">Unable to load intelligence data</p>
+              </div>
+            <% end %>
+          <% end %>
+      <% end %>
       
 <!-- Additional Information -->
       <div class="mt-8 bg-gray-800 rounded-lg p-4 border border-gray-700">

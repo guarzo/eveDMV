@@ -9,6 +9,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   use EveDmvWeb, :live_view
 
   alias EveDmv.Contexts.BattleAnalysis
+  alias EveDmv.Contexts.BattleSharing
   alias EveDmv.Eve.NameResolver
   alias EveDmv.Performance.BatchNameResolver
 
@@ -56,6 +57,16 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       # Battle metrics
       |> assign(:battle_metrics, nil)
       |> assign(:show_metrics_dashboard, true)
+      |> assign(:battle_intelligence, nil)
+      # Battle sharing
+      |> assign(:show_share_modal, false)
+      |> assign(:share_form, %{
+        title: "",
+        description: "",
+        video_url: "",
+        visibility: "public"
+      })
+      |> assign(:battle_reports, [])
       |> allow_upload(:combat_log,
         accept: ~w(.txt),
         max_entries: 1,
@@ -465,6 +476,67 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   end
 
   @impl Phoenix.LiveView
+  def handle_event("toggle_share_modal", _, socket) do
+    {:noreply, assign(socket, :show_share_modal, !socket.assigns.show_share_modal)}
+  end
+
+  @impl Phoenix.LiveView
+  def handle_event("update_share_form", %{"share_form" => params}, socket) do
+    form = Map.merge(socket.assigns.share_form, params)
+    {:noreply, assign(socket, :share_form, form)}
+  end
+
+  @impl Phoenix.LiveView
+  def handle_event("create_battle_report", %{"share_form" => params}, socket) do
+    if socket.assigns.current_battle do
+      # In production, get character_id from session
+      creator_id = 12345  # Mock character ID
+      
+      options = [
+        title: params["title"],
+        description: params["description"],
+        video_urls: if(params["video_url"] != "", do: [params["video_url"]], else: []),
+        visibility: String.to_existing_atom(params["visibility"])
+      ]
+      
+      case BattleSharing.create_battle_report(socket.assigns.current_battle.battle_id, creator_id, options) do
+        {:ok, _report} ->
+          {:noreply,
+           socket
+           |> put_flash(:info, "Battle report created successfully!")
+           |> assign(:show_share_modal, false)
+           |> assign(:share_form, %{title: "", description: "", video_url: "", visibility: "public"})
+           |> load_battle_reports()
+          }
+        
+        {:error, reason} ->
+          {:noreply, put_flash(socket, :error, "Failed to create battle report: #{inspect(reason)}")}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl Phoenix.LiveView
+  def handle_event("rate_battle_report", %{"report_id" => report_id, "rating" => rating}, socket) do
+    # In production, get character_id from session
+    rater_id = 12345  # Mock character ID
+    rating_value = String.to_integer(rating)
+    
+    case BattleSharing.rate_battle_report(report_id, rater_id, rating_value) do
+      {:ok, _} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, "Rating submitted!")
+         |> load_battle_reports()
+        }
+      
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "Failed to submit rating")}
+    end
+  end
+
+  @impl Phoenix.LiveView
   def handle_info({:combat_log_parsed, _combat_log}, socket) do
     socket = load_combat_logs(socket)
     {:noreply, socket}
@@ -558,14 +630,22 @@ defmodule EveDmvWeb.BattleAnalysisLive do
         # Track this battle as recently viewed
         track_recently_viewed_battle(battle)
 
+        # Load intelligence analysis
+        intelligence = case BattleAnalysis.analyze_battle_with_intelligence(battle) do
+          {:ok, intel} -> intel
+          _ -> nil
+        end
+
         socket
         |> assign(:current_battle, battle)
+        |> assign(:battle_intelligence, intelligence)
         |> assign(:selected_phase, nil)
         |> assign(:error_message, nil)
         |> assign(:recently_viewed_battles, load_recently_viewed_battles())
         |> update_battle_sides()
         |> load_combat_logs()
         |> load_battle_metrics()
+        |> load_battle_reports()
 
       {:error, :battle_not_found} ->
         assign(socket, :error_message, "Battle not found")
@@ -617,6 +697,16 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   end
 
   def format_number(_), do: "0"
+
+  def format_distance(distance) when is_number(distance) do
+    cond do
+      distance < 1000 -> "#{round(distance)}m"
+      distance < 10_000 -> "#{Float.round(distance / 1000, 1)}km"
+      true -> "#{round(distance / 1000)}km"
+    end
+  end
+
+  def format_distance(_), do: "0m"
 
   def phase_class(phase_type) do
     case phase_type do
@@ -885,6 +975,19 @@ defmodule EveDmvWeb.BattleAnalysisLive do
         {:ok, metrics} ->
           assign(socket, :battle_metrics, metrics)
 
+        _ ->
+          socket
+      end
+    else
+      socket
+    end
+  end
+
+  defp load_battle_reports(socket) do
+    if socket.assigns.current_battle do
+      case BattleSharing.get_reports_for_battle(socket.assigns.current_battle.battle_id) do
+        {:ok, reports} ->
+          assign(socket, :battle_reports, reports)
         _ ->
           socket
       end

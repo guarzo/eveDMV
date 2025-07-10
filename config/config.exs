@@ -90,7 +90,12 @@ config :ash, :include_embedded_source_by_default?, false
 config :ash, :policies, show_policy_breakdowns?: true
 
 # Configure Ash domains
-config :eve_dmv, ash_domains: [EveDmv.Api]
+config :eve_dmv, ash_domains: [
+  EveDmv.Api,
+  EveDmv.Domains.Analytics,
+  EveDmv.Domains.Intelligence,
+  EveDmv.Domains.Surveillance
+]
 
 # AshPostgres configuration
 config :ash_postgres, AshPostgres.DataLayer,

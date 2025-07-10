@@ -1,0 +1,362 @@
+<div class="container mx-auto px-4 py-8">
+  <%= if @loading do %>
+    <div class="flex justify-center items-center h-64">
+      <div class="text-gray-400">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+        <p>Analyzing character intelligence...</p>
+      </div>
+    </div>
+  <% else %>
+    <%= if @intelligence_report do %>
+      <!-- Character Header -->
+      <div class="bg-gray-800 rounded-lg p-6 mb-6">
+        <div class="flex items-start justify-between">
+          <div class="flex items-center gap-4">
+            <img 
+              src={character_portrait(@character_id, 128)} 
+              alt="Character portrait"
+              class="w-32 h-32 rounded-lg"
+            />
+            <div>
+              <h1 class="text-3xl font-bold mb-2"><%= @intelligence_report.character.name %></h1>
+              <div class="text-gray-400">
+                <p><%= @intelligence_report.character.corporation_name %></p>
+                <%= if @intelligence_report.character.alliance_name do %>
+                  <p class="text-sm"><%= @intelligence_report.character.alliance_name %></p>
+                <% end %>
+              </div>
+              
+              <!-- Threat Summary -->
+              <div class={"mt-4 p-3 rounded-lg border " <> threat_level_bg(@intelligence_report.threat_analysis.threat_score)}>
+                <div class="flex items-center gap-3">
+                  <span class={"text-2xl font-bold " <> threat_level_color(@intelligence_report.threat_analysis.threat_score)}>
+                    <%= @intelligence_report.threat_analysis.threat_score %>/100
+                  </span>
+                  <div>
+                    <p class="font-medium"><%= @intelligence_report.summary.threat_level %> Threat</p>
+                    <p class="text-sm text-gray-400"><%= @intelligence_report.summary.summary %></p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="flex gap-2">
+            <button
+              phx-click="refresh"
+              class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-md transition-colors"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+              </svg>
+            </button>
+            <button
+              phx-click="toggle_comparison"
+              class={"px-4 py-2 rounded-md transition-colors " <> 
+                if @show_comparison do
+                  "bg-blue-600 hover:bg-blue-700"
+                else
+                  "bg-gray-700 hover:bg-gray-600"
+                end
+              }
+            >
+              Compare
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Main Content Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left Column: Threat Dimensions & Behavioral Patterns -->
+        <div class="lg:col-span-2 space-y-6">
+          <!-- Threat Dimensions -->
+          <div class="bg-gray-800 rounded-lg p-6">
+            <h2 class="text-xl font-medium mb-4">Threat Dimensions</h2>
+            <div class="space-y-3">
+              <%= for {dimension, score} <- @intelligence_report.threat_analysis.dimensions do %>
+                <div>
+                  <div class="flex justify-between mb-1">
+                    <span class="text-sm font-medium"><%= format_dimension_name(dimension) %></span>
+                    <span class="text-sm font-mono"><%= score %>/100</span>
+                  </div>
+                  <div class="w-full bg-gray-700 rounded-full h-2">
+                    <div 
+                      class={"h-2 rounded-full transition-all duration-500 " <> 
+                        cond do
+                          score >= 80 -> "bg-red-500"
+                          score >= 60 -> "bg-orange-500"
+                          score >= 40 -> "bg-yellow-500"
+                          score >= 20 -> "bg-blue-500"
+                          true -> "bg-gray-500"
+                        end
+                      }
+                      style={"width: #{score}%"}
+                    ></div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+          
+          <!-- Behavioral Patterns -->
+          <div class="bg-gray-800 rounded-lg p-6">
+            <h2 class="text-xl font-medium mb-4">Behavioral Analysis</h2>
+            
+            <div class="grid grid-cols-2 gap-4 mb-4">
+              <%= for {pattern, confidence} <- @intelligence_report.behavioral_patterns.patterns do %>
+                <div class={"p-4 rounded-lg border " <> 
+                  if pattern == @intelligence_report.behavioral_patterns.primary_pattern do
+                    "bg-blue-900/20 border-blue-700"
+                  else
+                    "bg-gray-900 border-gray-700"
+                  end
+                }>
+                  <div class="flex items-center gap-2 mb-2">
+                    <span class="text-2xl"><%= behavior_pattern_icon(pattern) %></span>
+                    <h3 class="font-medium capitalize">
+                      <%= pattern |> to_string() |> String.replace("_", " ") %>
+                    </h3>
+                  </div>
+                  <div class="text-sm text-gray-400">
+                    Confidence: <%= round(confidence * 100) %>%
+                  </div>
+                </div>
+              <% end %>
+            </div>
+            
+            <%= if @intelligence_report.behavioral_patterns.characteristics do %>
+              <div class="mt-4 p-4 bg-gray-900 rounded-lg">
+                <h4 class="font-medium mb-2">Behavioral Characteristics</h4>
+                <ul class="text-sm text-gray-300 space-y-1">
+                  <%= for characteristic <- @intelligence_report.behavioral_patterns.characteristics do %>
+                    <li class="flex items-start gap-2">
+                      <span class="text-blue-400 mt-0.5">•</span>
+                      <span><%= characteristic %></span>
+                    </li>
+                  <% end %>
+                </ul>
+              </div>
+            <% end %>
+          </div>
+          
+          <!-- Threat Trends -->
+          <%= if @intelligence_report.threat_trends do %>
+            <div class="bg-gray-800 rounded-lg p-6">
+              <h2 class="text-xl font-medium mb-4">Threat Evolution</h2>
+              
+              <div class="space-y-4">
+                <%= for period <- @intelligence_report.threat_trends.periods do %>
+                  <div class="flex items-center justify-between p-3 bg-gray-900 rounded">
+                    <div>
+                      <p class="font-medium"><%= period.label %></p>
+                      <p class="text-sm text-gray-400"><%= period.date_range %></p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                      <span class={"text-2xl font-bold " <> threat_level_color(period.threat_score)}>
+                        <%= period.threat_score %>
+                      </span>
+                      <%= if period.previous_score do %>
+                        <% {arrow, color} = trend_indicator(period.threat_score, period.previous_score) %>
+                        <span class={"text-xl " <> color}><%= arrow %></span>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+              
+              <%= if @intelligence_report.threat_trends.analysis do %>
+                <div class="mt-4 p-4 bg-gray-900 rounded">
+                  <p class="text-sm text-gray-300"><%= @intelligence_report.threat_trends.analysis %></p>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+        
+        <!-- Right Column: Key Strengths & Recommendations -->
+        <div class="space-y-6">
+          <!-- Key Strengths -->
+          <div class="bg-gray-800 rounded-lg p-6">
+            <h2 class="text-xl font-medium mb-4">Key Strengths</h2>
+            <div class="space-y-3">
+              <%= for strength <- @intelligence_report.summary.key_strengths do %>
+                <div class="flex items-center justify-between p-3 bg-gray-900 rounded">
+                  <span class="font-medium"><%= strength.dimension %></span>
+                  <span class={"font-mono font-bold " <> 
+                    if strength.score >= 80 do
+                      "text-red-400"
+                    else
+                      "text-orange-400"
+                    end
+                  }>
+                    <%= strength.score %>
+                  </span>
+                </div>
+              <% end %>
+            </div>
+          </div>
+          
+          <!-- Tactical Recommendations -->
+          <div class="bg-gray-800 rounded-lg p-6">
+            <h2 class="text-xl font-medium mb-4">Tactical Recommendations</h2>
+            <ul class="space-y-2">
+              <%= for recommendation <- @intelligence_report.summary.recommendations do %>
+                <li class="flex items-start gap-2">
+                  <svg class="w-4 h-4 text-yellow-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                  </svg>
+                  <span class="text-sm text-gray-300"><%= recommendation %></span>
+                </li>
+              <% end %>
+            </ul>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Character Comparison -->
+      <%= if @show_comparison do %>
+        <div class="mt-6 bg-gray-800 rounded-lg p-6">
+          <h2 class="text-xl font-medium mb-4">Threat Comparison</h2>
+          
+          <!-- Search for characters to compare -->
+          <div class="mb-4">
+            <div class="relative">
+              <input
+                type="text"
+                phx-keyup="search_character"
+                value={@search_query}
+                placeholder="Search for characters to compare..."
+                class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-md focus:outline-none focus:border-blue-500"
+              />
+              
+              <%= if @search_results != [] do %>
+                <div class="absolute z-10 w-full mt-1 bg-gray-900 border border-gray-700 rounded-md shadow-lg max-h-60 overflow-auto">
+                  <%= for character <- @search_results do %>
+                    <button
+                      phx-click="add_to_comparison"
+                      phx-value-character_id={character.id}
+                      class="w-full px-4 py-2 text-left hover:bg-gray-800 flex items-center gap-2"
+                    >
+                      <img 
+                        src={character_portrait(character.id, 32)} 
+                        alt=""
+                        class="w-8 h-8 rounded-full"
+                      />
+                      <div>
+                        <div class="font-medium"><%= character.name %></div>
+                        <div class="text-xs text-gray-400"><%= character.corporation_name %></div>
+                      </div>
+                    </button>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+          
+          <!-- Comparison Table -->
+          <%= if @comparison_characters != [] do %>
+            <div class="overflow-x-auto">
+              <table class="w-full">
+                <thead>
+                  <tr class="border-b border-gray-700">
+                    <th class="text-left py-2 px-4">Character</th>
+                    <th class="text-center py-2 px-4">Threat Score</th>
+                    <th class="text-center py-2 px-4">Primary Pattern</th>
+                    <th class="text-center py-2 px-4">Combat Skill</th>
+                    <th class="text-center py-2 px-4">Ship Mastery</th>
+                    <th class="text-center py-2 px-4">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- Current character -->
+                  <tr class="border-b border-gray-700 bg-blue-900/10">
+                    <td class="py-3 px-4">
+                      <div class="flex items-center gap-2">
+                        <img 
+                          src={character_portrait(@character_id, 32)} 
+                          alt=""
+                          class="w-8 h-8 rounded-full"
+                        />
+                        <span class="font-medium"><%= @intelligence_report.character.name %></span>
+                      </div>
+                    </td>
+                    <td class="text-center py-3 px-4">
+                      <span class={"font-bold text-lg " <> threat_level_color(@intelligence_report.threat_analysis.threat_score)}>
+                        <%= @intelligence_report.threat_analysis.threat_score %>
+                      </span>
+                    </td>
+                    <td class="text-center py-3 px-4">
+                      <span class="capitalize">
+                        <%= @intelligence_report.behavioral_patterns.primary_pattern |> to_string() |> String.replace("_", " ") %>
+                      </span>
+                    </td>
+                    <td class="text-center py-3 px-4">
+                      <%= @intelligence_report.threat_analysis.dimensions.combat_skill %>
+                    </td>
+                    <td class="text-center py-3 px-4">
+                      <%= @intelligence_report.threat_analysis.dimensions.ship_mastery %>
+                    </td>
+                    <td class="text-center py-3 px-4">
+                      <span class="text-gray-500">Current</span>
+                    </td>
+                  </tr>
+                  
+                  <!-- Comparison characters -->
+                  <%= for char <- @comparison_characters do %>
+                    <tr class="border-b border-gray-700">
+                      <td class="py-3 px-4">
+                        <div class="flex items-center gap-2">
+                          <img 
+                            src={character_portrait(char.character_id, 32)} 
+                            alt=""
+                            class="w-8 h-8 rounded-full"
+                          />
+                          <span class="font-medium"><%= char.name %></span>
+                        </div>
+                      </td>
+                      <td class="text-center py-3 px-4">
+                        <span class={"font-bold text-lg " <> threat_level_color(char.threat_analysis.threat_score)}>
+                          <%= char.threat_analysis.threat_score %>
+                        </span>
+                      </td>
+                      <td class="text-center py-3 px-4">
+                        <span class="capitalize">
+                          <%= (char.threat_analysis[:primary_pattern] || :unknown) |> to_string() |> String.replace("_", " ") %>
+                        </span>
+                      </td>
+                      <td class="text-center py-3 px-4">
+                        <%= char.threat_analysis.dimensions[:combat_skill] || "-" %>
+                      </td>
+                      <td class="text-center py-3 px-4">
+                        <%= char.threat_analysis.dimensions[:ship_mastery] || "-" %>
+                      </td>
+                      <td class="text-center py-3 px-4">
+                        <button
+                          phx-click="remove_from_comparison"
+                          phx-value-character_id={char.character_id}
+                          class="text-red-400 hover:text-red-300"
+                        >
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          <% else %>
+            <p class="text-center text-gray-400 py-8">
+              Search and add characters to compare their threat levels
+            </p>
+          <% end %>
+        </div>
+      <% end %>
+      
+    <% else %>
+      <div class="bg-gray-800 rounded-lg p-8 text-center">
+        <p class="text-red-400 text-lg"><%= @error_message %></p>
+      </div>
+    <% end %>
+  <% end %>
+</div>

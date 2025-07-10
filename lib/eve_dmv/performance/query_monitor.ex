@@ -18,7 +18,7 @@ defmodule EveDmv.Performance.QueryMonitor do
       [
         [:eve_dmv, :repo, :query]
       ],
-      &handle_event/4,
+      &__MODULE__.handle_event/4,
       nil
     )
 

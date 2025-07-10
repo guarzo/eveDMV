@@ -130,8 +130,8 @@ defmodule EveDmv.Database.QueryPlanAnalyzer do
         :ok
 
       {:ok, %{rows: [[_]]}} ->
-        Logger.warning(
-          "pg_stat_statements extension not available - limited analysis capabilities"
+        Logger.info(
+          "pg_stat_statements extension not available - running with basic analysis capabilities"
         )
 
         :not_available

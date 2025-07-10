@@ -13,6 +13,7 @@ defmodule EveDmvWeb.CorporationLive do
   alias EveDmv.Api
   alias EveDmv.Killmails.Participant
   alias EveDmv.Cache.AnalysisCache
+  alias EveDmv.Contexts.CorporationIntelligence
 
   require Ash.Query
   require Logger
@@ -86,6 +87,9 @@ defmodule EveDmvWeb.CorporationLive do
           |> assign(:victim_stats, victim_stats)
           |> assign(:loading, false)
           |> assign(:error, nil)
+          |> assign(:active_tab, :overview)
+          |> assign(:intelligence_data, nil)
+          |> assign(:loading_intelligence, false)
 
         {:ok, socket}
 
@@ -163,7 +167,50 @@ defmodule EveDmvWeb.CorporationLive do
     {:noreply, socket}
   end
 
+  @impl Phoenix.LiveView
+  def handle_event("change_tab", %{"tab" => tab}, socket) do
+    tab_atom = String.to_existing_atom(tab)
+    
+    socket = assign(socket, :active_tab, tab_atom)
+    
+    # Load intelligence data if switching to intelligence tab and not already loaded
+    socket = if tab_atom == :intelligence and is_nil(socket.assigns.intelligence_data) and not socket.assigns.loading_intelligence do
+      load_intelligence_data(socket)
+    else
+      socket
+    end
+    
+    {:noreply, socket}
+  end
+
   # Private helper functions
+  
+  defp load_intelligence_data(socket) do
+    corporation_id = socket.assigns.corporation_id
+    
+    socket = assign(socket, :loading_intelligence, true)
+    
+    # Load intelligence data asynchronously
+    Task.start(fn ->
+      intelligence_data = case CorporationIntelligence.get_corporation_intelligence_report(corporation_id) do
+        {:ok, data} -> data
+        {:error, _reason} -> nil
+      end
+      
+      send(self(), {:intelligence_loaded, intelligence_data})
+    end)
+    
+    socket
+  end
+  
+  @impl Phoenix.LiveView
+  def handle_info({:intelligence_loaded, intelligence_data}, socket) do
+    {:noreply, 
+     socket
+     |> assign(:intelligence_data, intelligence_data)
+     |> assign(:loading_intelligence, false)
+    }
+  end
 
   defp load_corporation_info(corporation_id) do
     # Get corporation info from recent killmail data using Ash
@@ -553,6 +600,34 @@ defmodule EveDmvWeb.CorporationLive do
       overall_participation_score: Float.round(overall_score, 1)
     }
   end
+
+  def format_doctrine_name(doctrine) do
+    doctrine
+    |> to_string()
+    |> String.replace("_", " ")
+    |> String.split()
+    |> Enum.map(&String.capitalize/1)
+    |> Enum.join(" ")
+  end
+
+  def get_doctrine_description(doctrine) do
+    case doctrine do
+      :shield_kiting -> "Long-range shield tanked ships with high mobility and standoff capability"
+      :armor_brawling -> "Close-range armor tanked ships focused on sustained DPS and tank"
+      :ewar_heavy -> "Electronic warfare focused doctrine with force multiplication through disruption"
+      :capital_escalation -> "Doctrine built around capital ship deployment and escalation scenarios"
+      :alpha_strike -> "High alpha damage doctrine focused on quickly eliminating priority targets"
+      :nano_gang -> "High speed, high mobility doctrine for hit-and-run tactics"
+      :logistics_heavy -> "Doctrine emphasizing survivability through extensive logistics support"
+      _ -> "Unknown doctrine pattern"
+    end
+  end
+
+  def threat_level_color("Very High"), do: "text-red-500"
+  def threat_level_color("High"), do: "text-orange-500"
+  def threat_level_color("Moderate"), do: "text-yellow-500"
+  def threat_level_color("Low"), do: "text-blue-500"
+  def threat_level_color(_), do: "text-green-500"
 
   defp analyze_timezone_coverage(hourly_distribution) do
     # Define timezone blocks (approximate)

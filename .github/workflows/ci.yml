@@ -203,7 +203,7 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y jq
+        sudo apt-get install -y libbz2-dev jq
 
     - name: Install dependencies
       run: |
