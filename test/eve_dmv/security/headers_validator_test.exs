@@ -61,7 +61,7 @@ defmodule EveDmv.Security.HeadersValidatorTest do
           # Headers are properly configured
           :ok
 
-        {:error, errors} ->
+        {:error, _errors} ->
           # Log for debugging but don't fail test in development
           :ok
       end

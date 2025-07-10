@@ -4,7 +4,6 @@ defmodule EveDmv.Intelligence.CorrelationEngineTest do
   alias EveDmv.Database.QueryCache
   alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Intelligence.Core.CorrelationEngine
-  alias EveDmv.Intelligence.WHVetting
 
   setup do
     # Start QueryCache for this test since it's not started in test environment
