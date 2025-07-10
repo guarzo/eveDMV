@@ -6,8 +6,8 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
   static EVE database data. These entities have stable names that rarely change.
   """
 
+  alias EveDmv.Cache.StaticDataCache
   alias EveDmv.Eve.ItemType
-  alias EveDmv.Eve.NameResolver.BatchProcessor
   alias EveDmv.Eve.NameResolver.CacheManager
   alias EveDmv.Eve.SolarSystem
 
@@ -27,12 +27,8 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
   """
   @spec ship_name(integer()) :: String.t()
   def ship_name(type_id) when is_integer(type_id) do
-    case CacheManager.get_cached_or_fetch(:ship_type, type_id, fn ->
-           fetch_from_database(:item_type, type_id)
-         end) do
-      {:ok, name} -> name
-      {:error, _} -> "Unknown Ship (#{type_id})"
-    end
+    # Use StaticDataCache for ship names
+    StaticDataCache.resolve_ship_name(type_id)
   end
 
   @doc """
@@ -49,12 +45,8 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
   """
   @spec item_name(integer()) :: String.t()
   def item_name(type_id) when is_integer(type_id) do
-    case CacheManager.get_cached_or_fetch(:item_type, type_id, fn ->
-           fetch_from_database(:item_type, type_id)
-         end) do
-      {:ok, name} -> name
-      {:error, _} -> "Unknown Item (#{type_id})"
-    end
+    # Use StaticDataCache for item names (same as ship for now)
+    StaticDataCache.resolve_ship_name(type_id)
   end
 
   @doc """
@@ -70,12 +62,8 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
   """
   @spec system_name(integer()) :: String.t()
   def system_name(system_id) when is_integer(system_id) do
-    case CacheManager.get_cached_or_fetch(:solar_system, system_id, fn ->
-           fetch_from_database(:solar_system, system_id)
-         end) do
-      {:ok, name} -> name
-      {:error, _} -> "Unknown System (#{system_id})"
-    end
+    # Use StaticDataCache for system names
+    StaticDataCache.resolve_system_name(system_id)
   end
 
   @doc """
@@ -88,7 +76,8 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
   """
   @spec ship_names(list(integer())) :: map()
   def ship_names(type_ids) when is_list(type_ids) do
-    BatchProcessor.batch_resolve(:ship_type, type_ids, &ship_name/1)
+    # Use StaticDataCache for batch ship name resolution
+    StaticDataCache.resolve_ship_names(type_ids)
   end
 
   @doc """
@@ -96,7 +85,8 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
   """
   @spec item_names(list(integer())) :: map()
   def item_names(type_ids) when is_list(type_ids) do
-    BatchProcessor.batch_resolve(:item_type, type_ids, &item_name/1)
+    # Use StaticDataCache for batch item name resolution (same as ship for now)
+    StaticDataCache.resolve_ship_names(type_ids)
   end
 
   @doc """
@@ -104,7 +94,8 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
   """
   @spec system_names(list(integer())) :: map()
   def system_names(system_ids) when is_list(system_ids) do
-    BatchProcessor.batch_resolve(:solar_system, system_ids, &system_name/1)
+    # Use StaticDataCache for batch system name resolution
+    StaticDataCache.resolve_system_names(system_ids)
   end
 
   @doc """
@@ -121,6 +112,17 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
           status: number()
         }
   def system_security(system_id) when is_integer(system_id) do
+    # For now, continue using the old cache for security info
+    # TODO: Add system security caching to StaticDataCache
+    case CacheManager.get_cached_or_fetch(:solar_system_security, system_id, fn ->
+           fetch_system_security(system_id)
+         end) do
+      {:ok, security_info} -> security_info
+      {:error, _} -> %{class: "unknown", color: "text-gray-400", status: 0.0}
+    end
+  end
+  
+  defp fetch_system_security(system_id) do
     case fetch_from_database(:solar_system_full, system_id) do
       {:ok, system} ->
         security_class = String.downcase(system.security_class || "unknown")
@@ -134,7 +136,7 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
             _ -> "text-gray-400"
           end
 
-        %{
+        security_info = %{
           class: security_class,
           color: color,
           status:
@@ -143,9 +145,11 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
               value -> value || 0.0
             end
         }
+        
+        {:ok, security_info}
 
       {:error, _} ->
-        %{class: "unknown", color: "text-gray-400", status: 0.0}
+        {:error, :not_found}
     end
   end
 

@@ -81,7 +81,7 @@ defmodule EveDmv.Database.HealthCheck do
       tablename,
       pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as size
     FROM pg_tables
-    WHERE tablename LIKE 'killmails_raw_%' OR tablename LIKE 'killmails_enriched_%'
+    WHERE tablename LIKE 'killmails_raw_%'
     ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
     """
 

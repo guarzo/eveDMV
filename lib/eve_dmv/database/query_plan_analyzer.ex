@@ -272,12 +272,6 @@ defmodule EveDmv.Database.QueryPlanAnalyzer do
         estimated_benefit: "High"
       },
       %{
-        table: "killmails_enriched",
-        columns: ["solar_system_id", "killmail_time"],
-        reason: "System-based queries with time filters",
-        estimated_benefit: "High"
-      },
-      %{
         table: "character_stats",
         columns: ["last_calculated_at"],
         reason: "Finding stale character stats for updates",
@@ -288,12 +282,6 @@ defmodule EveDmv.Database.QueryPlanAnalyzer do
 
   defp analyze_order_by_patterns do
     [
-      %{
-        table: "killmails_enriched",
-        columns: ["total_value", "killmail_time"],
-        reason: "High-value killmail queries with time ordering",
-        estimated_benefit: "Medium"
-      }
     ]
   end
 

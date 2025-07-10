@@ -13,6 +13,9 @@ defmodule EveDmv.Application do
 
   @impl Application
   def start(_type, _args) do
+    # Initialize ETS table for fitting cache
+    :ets.new(:battle_fitting_cache, [:set, :public, :named_table])
+    
     # Initialize EVE name resolver cache early
     NameResolver.start_cache()
 
@@ -53,6 +56,8 @@ defmodule EveDmv.Application do
       EveDmv.Eve.EsiCache,
       # Start the analysis cache for character and corporation intelligence
       EveDmv.Cache.AnalysisCache,
+      # Start the static data cache for system/ship names
+      EveDmv.Cache.StaticDataCache,
       # Start the corporation analyzer service
       EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer,
       # Start rate limiter for Janice API (5 requests per second)

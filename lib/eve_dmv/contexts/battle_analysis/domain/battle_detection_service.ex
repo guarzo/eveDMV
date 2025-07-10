@@ -7,6 +7,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
   """
 
   require Logger
+  import Ash.Query
   alias EveDmv.Api
   alias EveDmv.Killmails.KillmailRaw
 
@@ -122,24 +123,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
     try do
       query =
         KillmailRaw
-        |> Ash.Query.new()
-        # Get most recent first
-        |> Ash.Query.sort(killmail_time: :desc)
-        # Increased limit for better coverage
-        |> Ash.Query.limit(5000)
+        |> new()
+        |> filter([killmail_time: [gte: start_time, lte: end_time]])
+        |> sort(killmail_time: :asc)
+        |> limit(1000)  # Reasonable limit for battle analysis
 
       case Ash.read(query, domain: Api) do
-        {:ok, killmails} ->
-          # Filter by time range in memory for now
-          filtered_killmails =
-            killmails
-            |> Enum.filter(fn km ->
-              NaiveDateTime.compare(km.killmail_time, start_time) != :lt and
-                NaiveDateTime.compare(km.killmail_time, end_time) != :gt
-            end)
-            # Sort back to ascending for clustering
-            |> Enum.sort_by(& &1.killmail_time)
-
+        {:ok, filtered_killmails} ->
           {:ok, filtered_killmails}
 
         {:error, error} ->
@@ -157,25 +147,14 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
     try do
       query =
         KillmailRaw
-        |> Ash.Query.new()
-        # Get most recent first
-        |> Ash.Query.sort(killmail_time: :desc)
-        # Increased limit for better coverage
-        |> Ash.Query.limit(5000)
+        |> new()
+        |> filter([solar_system_id: system_id])
+        |> filter([killmail_time: [gte: start_time, lte: end_time]])
+        |> sort(killmail_time: :asc)
+        |> limit(500)  # Reasonable limit for single system
 
       case Ash.read(query, domain: Api) do
-        {:ok, killmails} ->
-          # Filter by system and time range in memory for now
-          filtered_killmails =
-            killmails
-            |> Enum.filter(fn km ->
-              km.solar_system_id == system_id and
-                NaiveDateTime.compare(km.killmail_time, start_time) != :lt and
-                NaiveDateTime.compare(km.killmail_time, end_time) != :gt
-            end)
-            # Sort back to ascending for clustering
-            |> Enum.sort_by(& &1.killmail_time)
-
+        {:ok, filtered_killmails} ->
           {:ok, filtered_killmails}
 
         {:error, error} ->
@@ -193,22 +172,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
     try do
       query =
         KillmailRaw
-        |> Ash.Query.new()
-        # Get most recent first
-        |> Ash.Query.sort(killmail_time: :desc)
-        # Increased limit for better coverage
-        |> Ash.Query.limit(5000)
+        |> new()
+        |> filter([killmail_id: [in: killmail_ids]])
+        |> sort(killmail_time: :asc)
 
       case Ash.read(query, domain: Api) do
         {:ok, killmails} ->
-          # Filter by killmail IDs in memory for now
-          filtered_killmails =
-            killmails
-            |> Enum.filter(fn km ->
-              km.killmail_id in killmail_ids
-            end)
-            # Sort back to ascending for clustering
-            |> Enum.sort_by(& &1.killmail_time)
+          filtered_killmails = killmails
 
           {:ok, filtered_killmails}
 

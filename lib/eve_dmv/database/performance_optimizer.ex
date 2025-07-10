@@ -15,7 +15,6 @@ defmodule EveDmv.Database.PerformanceOptimizer do
 
   @allowed_tables [
     "killmails_raw",
-    "killmails_enriched",
     "participants",
     "surveillance_profiles",
     "surveillance_profile_matches",
@@ -261,7 +260,7 @@ defmodule EveDmv.Database.PerformanceOptimizer do
     Logger.info("Starting database performance analysis")
 
     # Collect all statistics with error handling
-    {slow_queries, errors1} = safe_execute_with_fallback(&get_slow_queries/1, [limit: 5], [])
+    {slow_queries, errors1} = safe_execute_with_fallback(&get_slow_queries/1, [[limit: 5]], [])
     {index_usage, errors2} = safe_execute_with_fallback(&get_index_usage/0, [], errors1)
     {table_stats, errors3} = safe_execute_with_fallback(&get_table_sizes/0, [], errors2)
 
