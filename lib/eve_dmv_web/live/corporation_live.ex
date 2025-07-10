@@ -170,46 +170,48 @@ defmodule EveDmvWeb.CorporationLive do
   @impl Phoenix.LiveView
   def handle_event("change_tab", %{"tab" => tab}, socket) do
     tab_atom = String.to_existing_atom(tab)
-    
+
     socket = assign(socket, :active_tab, tab_atom)
-    
+
     # Load intelligence data if switching to intelligence tab and not already loaded
-    socket = if tab_atom == :intelligence and is_nil(socket.assigns.intelligence_data) and not socket.assigns.loading_intelligence do
-      load_intelligence_data(socket)
-    else
-      socket
-    end
-    
+    socket =
+      if tab_atom == :intelligence and is_nil(socket.assigns.intelligence_data) and
+           not socket.assigns.loading_intelligence do
+        load_intelligence_data(socket)
+      else
+        socket
+      end
+
     {:noreply, socket}
   end
 
   # Private helper functions
-  
+
   defp load_intelligence_data(socket) do
     corporation_id = socket.assigns.corporation_id
-    
+
     socket = assign(socket, :loading_intelligence, true)
-    
+
     # Load intelligence data asynchronously
     Task.start(fn ->
-      intelligence_data = case CorporationIntelligence.get_corporation_intelligence_report(corporation_id) do
-        {:ok, data} -> data
-        {:error, _reason} -> nil
-      end
-      
+      intelligence_data =
+        case CorporationIntelligence.get_corporation_intelligence_report(corporation_id) do
+          {:ok, data} -> data
+          {:error, _reason} -> nil
+        end
+
       send(self(), {:intelligence_loaded, intelligence_data})
     end)
-    
+
     socket
   end
-  
+
   @impl Phoenix.LiveView
   def handle_info({:intelligence_loaded, intelligence_data}, socket) do
-    {:noreply, 
+    {:noreply,
      socket
      |> assign(:intelligence_data, intelligence_data)
-     |> assign(:loading_intelligence, false)
-    }
+     |> assign(:loading_intelligence, false)}
   end
 
   defp load_corporation_info(corporation_id) do
@@ -612,14 +614,29 @@ defmodule EveDmvWeb.CorporationLive do
 
   def get_doctrine_description(doctrine) do
     case doctrine do
-      :shield_kiting -> "Long-range shield tanked ships with high mobility and standoff capability"
-      :armor_brawling -> "Close-range armor tanked ships focused on sustained DPS and tank"
-      :ewar_heavy -> "Electronic warfare focused doctrine with force multiplication through disruption"
-      :capital_escalation -> "Doctrine built around capital ship deployment and escalation scenarios"
-      :alpha_strike -> "High alpha damage doctrine focused on quickly eliminating priority targets"
-      :nano_gang -> "High speed, high mobility doctrine for hit-and-run tactics"
-      :logistics_heavy -> "Doctrine emphasizing survivability through extensive logistics support"
-      _ -> "Unknown doctrine pattern"
+      :shield_kiting ->
+        "Long-range shield tanked ships with high mobility and standoff capability"
+
+      :armor_brawling ->
+        "Close-range armor tanked ships focused on sustained DPS and tank"
+
+      :ewar_heavy ->
+        "Electronic warfare focused doctrine with force multiplication through disruption"
+
+      :capital_escalation ->
+        "Doctrine built around capital ship deployment and escalation scenarios"
+
+      :alpha_strike ->
+        "High alpha damage doctrine focused on quickly eliminating priority targets"
+
+      :nano_gang ->
+        "High speed, high mobility doctrine for hit-and-run tactics"
+
+      :logistics_heavy ->
+        "Doctrine emphasizing survivability through extensive logistics support"
+
+      _ ->
+        "Unknown doctrine pattern"
     end
   end
 

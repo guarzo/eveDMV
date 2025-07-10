@@ -110,12 +110,10 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     {:noreply, socket}
   end
 
-  @impl Phoenix.LiveView
   def handle_event("select_battle", %{"battle_id" => battle_id}, socket) do
     {:noreply, load_battle(socket, battle_id)}
   end
 
-  @impl Phoenix.LiveView
   def handle_event("select_phase", %{"phase_index" => phase_index}, socket) do
     phase_idx = String.to_integer(phase_index)
     phase = Enum.at(socket.assigns.current_battle.timeline.phases, phase_idx)
@@ -123,24 +121,20 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     {:noreply, assign(socket, :selected_phase, phase)}
   end
 
-  @impl Phoenix.LiveView
   def handle_event("change_main_view", %{"view" => view}, socket) do
     view_atom = String.to_existing_atom(view)
     {:noreply, assign(socket, :main_view, view_atom)}
   end
 
-  @impl Phoenix.LiveView
   def handle_event("change_timeline_view", %{"view" => view}, socket) do
     view_atom = String.to_existing_atom(view)
     {:noreply, assign(socket, :timeline_view, view_atom)}
   end
 
-  @impl Phoenix.LiveView
   def handle_event("toggle_fleet_edit_mode", _, socket) do
     {:noreply, assign(socket, :editing_fleet_sides, !socket.assigns.editing_fleet_sides)}
   end
 
-  @impl Phoenix.LiveView
   def handle_event(
         "cycle_ship_side",
         %{"ship_id" => pilot_ship_id, "current_side" => current_side},
@@ -163,7 +157,6 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     {:noreply, assign(socket, :ship_side_assignments, ship_side_assignments)}
   end
 
-  @impl Phoenix.LiveView
   def handle_event("add_custom_side", _, socket) do
     new_side_num = length(socket.assigns.custom_sides) + 1
     new_side = "side_#{new_side_num}"
@@ -171,7 +164,6 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     {:noreply, assign(socket, :custom_sides, custom_sides)}
   end
 
-  @impl Phoenix.LiveView
   def handle_event("reset_fleet_sides", _, socket) do
     socket =
       socket
@@ -182,7 +174,6 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     {:noreply, socket}
   end
 
-  @impl Phoenix.LiveView
   def handle_event("toggle_log_upload", _, socket) do
     socket =
       socket
@@ -193,13 +184,11 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     {:noreply, socket}
   end
 
-  @impl Phoenix.LiveView
   def handle_event("validate_log", %{"pilot_name" => pilot_name} = _params, socket) do
     # Store pilot name so it doesn't get cleared
     {:noreply, assign(socket, :pilot_name, pilot_name)}
   end
 
-  @impl Phoenix.LiveView
   def handle_event("filter_pilot_suggestions", %{"value" => search_term}, socket) do
     if String.length(search_term) >= 1 do
       suggestions = get_pilot_suggestions(socket.assigns.current_battle, search_term)
@@ -222,7 +211,6 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     end
   end
 
-  @impl Phoenix.LiveView
   def handle_event("select_pilot_suggestion", %{"pilot_name" => pilot_name}, socket) do
     socket =
       socket
@@ -233,7 +221,6 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     {:noreply, socket}
   end
 
-  @impl Phoenix.LiveView
   def handle_event("upload_log", %{"pilot_name" => pilot_name}, socket) do
     consume_uploaded_entries(socket, :combat_log, fn %{path: path}, entry ->
       # Create the upload record
@@ -331,7 +318,6 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     {:noreply, socket}
   end
 
-  @impl Phoenix.LiveView
   def handle_event("delete_log", %{"log_id" => log_id}, socket) do
     case Ash.get(EveDmv.Contexts.BattleAnalysis.Resources.CombatLog, log_id) do
       {:ok, log} ->
@@ -345,7 +331,6 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     end
   end
 
-  @impl Phoenix.LiveView
   def handle_event(
         "analyze_ship_performance",
         %{"character_id" => char_id, "ship_type_id" => ship_id},
@@ -429,12 +414,10 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     end
   end
 
-  @impl Phoenix.LiveView
   def handle_event("toggle_fitting_import", _, socket) do
     {:noreply, assign(socket, :show_fitting_import, !socket.assigns.show_fitting_import)}
   end
 
-  @impl Phoenix.LiveView
   def handle_event("import_eft_fitting", %{"eft_text" => eft_text}, socket) do
     if socket.assigns.selected_ship do
       case Ash.create(
@@ -475,62 +458,68 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     end
   end
 
-  @impl Phoenix.LiveView
   def handle_event("toggle_share_modal", _, socket) do
     {:noreply, assign(socket, :show_share_modal, !socket.assigns.show_share_modal)}
   end
 
-  @impl Phoenix.LiveView
   def handle_event("update_share_form", %{"share_form" => params}, socket) do
     form = Map.merge(socket.assigns.share_form, params)
     {:noreply, assign(socket, :share_form, form)}
   end
 
-  @impl Phoenix.LiveView
   def handle_event("create_battle_report", %{"share_form" => params}, socket) do
     if socket.assigns.current_battle do
       # In production, get character_id from session
-      creator_id = 12345  # Mock character ID
-      
+      # Mock character ID
+      creator_id = 12345
+
       options = [
         title: params["title"],
         description: params["description"],
         video_urls: if(params["video_url"] != "", do: [params["video_url"]], else: []),
         visibility: String.to_existing_atom(params["visibility"])
       ]
-      
-      case BattleSharing.create_battle_report(socket.assigns.current_battle.battle_id, creator_id, options) do
+
+      case BattleSharing.create_battle_report(
+             socket.assigns.current_battle.battle_id,
+             creator_id,
+             options
+           ) do
         {:ok, _report} ->
           {:noreply,
            socket
            |> put_flash(:info, "Battle report created successfully!")
            |> assign(:show_share_modal, false)
-           |> assign(:share_form, %{title: "", description: "", video_url: "", visibility: "public"})
-           |> load_battle_reports()
-          }
-        
+           |> assign(:share_form, %{
+             title: "",
+             description: "",
+             video_url: "",
+             visibility: "public"
+           })
+           |> load_battle_reports()}
+
         {:error, reason} ->
-          {:noreply, put_flash(socket, :error, "Failed to create battle report: #{inspect(reason)}")}
+          {:noreply,
+           put_flash(socket, :error, "Failed to create battle report: #{inspect(reason)}")}
       end
     else
       {:noreply, socket}
     end
   end
 
-  @impl Phoenix.LiveView
   def handle_event("rate_battle_report", %{"report_id" => report_id, "rating" => rating}, socket) do
     # In production, get character_id from session
-    rater_id = 12345  # Mock character ID
+    # Mock character ID
+    rater_id = 12345
     rating_value = String.to_integer(rating)
-    
+
     case BattleSharing.rate_battle_report(report_id, rater_id, rating_value) do
       {:ok, _} ->
         {:noreply,
          socket
          |> put_flash(:info, "Rating submitted!")
-         |> load_battle_reports()
-        }
-      
+         |> load_battle_reports()}
+
       {:error, _} ->
         {:noreply, put_flash(socket, :error, "Failed to submit rating")}
     end
@@ -542,7 +531,6 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     {:noreply, socket}
   end
 
-  @impl Phoenix.LiveView
   def handle_info({:import_complete, result}, socket) do
     socket =
       socket
@@ -574,7 +562,6 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     {:noreply, socket}
   end
 
-  @impl Phoenix.LiveView
   def handle_info({:reanalyze_with_fitting, fitting}, socket) do
     if socket.assigns.selected_ship do
       # Update ship data with new fitting
@@ -631,10 +618,11 @@ defmodule EveDmvWeb.BattleAnalysisLive do
         track_recently_viewed_battle(battle)
 
         # Load intelligence analysis
-        intelligence = case BattleAnalysis.analyze_battle_with_intelligence(battle) do
-          {:ok, intel} -> intel
-          _ -> nil
-        end
+        intelligence =
+          case BattleAnalysis.analyze_battle_with_intelligence(battle) do
+            {:ok, intel} -> intel
+            _ -> nil
+          end
 
         socket
         |> assign(:current_battle, battle)
@@ -988,6 +976,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       case BattleSharing.get_reports_for_battle(socket.assigns.current_battle.battle_id) do
         {:ok, reports} ->
           assign(socket, :battle_reports, reports)
+
         _ ->
           socket
       end

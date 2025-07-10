@@ -168,11 +168,11 @@ defmodule EveDmv.Contexts.BattleAnalysis do
 
   @doc """
   Performs comprehensive intelligence analysis on a battle.
-  
+
   Includes tactical phase detection, ship performance analysis, and multi-system correlation.
-  
+
   ## Examples
-  
+
       iex> battle = get_battle!(battle_id)
       iex> EveDmv.Contexts.BattleAnalysis.analyze_battle_with_intelligence(battle)
       {:ok, %{
@@ -185,20 +185,23 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   def analyze_battle_with_intelligence(battle) do
     with {:ok, phases} <- TacticalPhaseDetector.detect_tactical_phases(battle),
          {:ok, performance} <- ShipPerformanceAnalyzer.analyze_battle_performance(battle),
-         {:ok, correlated} <- MultiSystemBattleCorrelator.correlate_multi_system_battles([battle]),
-         {:ok, flow_analysis} <- MultiSystemBattleCorrelator.analyze_combat_flow_patterns(correlated) do
-      {:ok, %{
-        tactical_phases: phases,
-        ship_performance: performance,
-        multi_system_context: correlated,
-        battle_flow: flow_analysis
-      }}
+         {:ok, correlated} <-
+           MultiSystemBattleCorrelator.correlate_multi_system_battles([battle]),
+         {:ok, flow_analysis} <-
+           MultiSystemBattleCorrelator.analyze_combat_flow_patterns(correlated) do
+      {:ok,
+       %{
+         tactical_phases: phases,
+         ship_performance: performance,
+         multi_system_context: correlated,
+         battle_flow: flow_analysis
+       }}
     end
   end
 
   @doc """
   Gets correlated battles across multiple systems.
-  
+
   Identifies connected engagements that may be part of a larger conflict.
   """
   def get_multi_system_battle_chain(battle_id) do
@@ -210,25 +213,26 @@ defmodule EveDmv.Contexts.BattleAnalysis do
 
   @doc """
   Gets detailed tactical analysis for a battle.
-  
+
   Returns phase detection, key moments, and tactical patterns.
   """
   def get_tactical_analysis(battle_id) do
     with {:ok, battle} <- get_battle_by_id(battle_id),
          {:ok, phases} <- TacticalPhaseDetector.detect_tactical_phases(battle),
          transitions <- TacticalPhaseDetector.analyze_phase_transitions(phases) do
-      {:ok, %{
-        phases: phases,
-        phase_transitions: transitions,
-        key_moments: extract_key_moments_from_phases(phases),
-        tactical_summary: generate_tactical_summary(phases, transitions)
-      }}
+      {:ok,
+       %{
+         phases: phases,
+         phase_transitions: transitions,
+         key_moments: extract_key_moments_from_phases(phases),
+         tactical_summary: generate_tactical_summary(phases, transitions)
+       }}
     end
   end
 
   @doc """
   Gets comprehensive ship performance report for a battle.
-  
+
   Analyzes DPS efficiency, survivability, and tactical contribution.
   """
   def get_ship_performance_report(battle_id) do
@@ -240,19 +244,20 @@ defmodule EveDmv.Contexts.BattleAnalysis do
 
   @doc """
   Gets a comprehensive intelligence summary for a battle.
-  
+
   Combines all available intelligence analysis into a single report.
   """
   def get_battle_intelligence_summary(battle_id) do
     with {:ok, battle} <- get_battle_by_id(battle_id),
          {:ok, intelligence} <- analyze_battle_with_intelligence(battle),
          timeline <- reconstruct_battle_timeline(battle) do
-      {:ok, %{
-        battle: battle,
-        intelligence: intelligence,
-        timeline: timeline,
-        summary: generate_intelligence_summary(battle, intelligence, timeline)
-      }}
+      {:ok,
+       %{
+         battle: battle,
+         intelligence: intelligence,
+         timeline: timeline,
+         summary: generate_intelligence_summary(battle, intelligence, timeline)
+       }}
     end
   end
 
@@ -320,11 +325,11 @@ defmodule EveDmv.Contexts.BattleAnalysis do
         case Enum.find(battles, fn b -> b.battle_id == battle_id end) do
           nil ->
             {:error, :battle_not_found}
-          
+
           battle ->
             {:ok, battle}
         end
-      
+
       error ->
         error
     end
@@ -349,17 +354,19 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   end
 
   defp summarize_ship_performance(performance) do
-    top_performers = performance
-    |> Map.get(:individual_performance, [])
-    |> Enum.sort_by(& &1.overall_score, :desc)
-    |> Enum.take(3)
-    |> Enum.map(& &1.character_name)
-    
+    top_performers =
+      performance
+      |> Map.get(:individual_performance, [])
+      |> Enum.sort_by(& &1.overall_score, :desc)
+      |> Enum.take(3)
+      |> Enum.map(& &1.character_name)
+
     "Top performers: #{Enum.join(top_performers, ", ")}"
   end
 
   defp summarize_multi_system_context(context) do
     related_count = length(Map.get(context, :related_battles, []))
+
     if related_count > 0 do
       "Part of larger engagement spanning #{related_count + 1} systems"
     else
@@ -370,7 +377,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   defp extract_key_timeline_events(timeline) do
     timeline
     |> Map.get(:events, [])
-    |> Enum.filter(& &1.significance == :high)
+    |> Enum.filter(&(&1.significance == :high))
     |> Enum.take(5)
     |> Enum.map(& &1.description)
   end
@@ -393,17 +400,19 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   end
 
   defp generate_tactical_summary(phases, transitions) do
-    phase_summary = phases
-    |> Enum.map(fn phase ->
-      "#{phase.phase_type} (#{phase.duration_seconds}s): #{phase.characteristics}"
-    end)
-    |> Enum.join(" → ")
-    
-    transition_summary = transitions
-    |> Map.get(:significant_transitions, [])
-    |> Enum.map(& &1.description)
-    |> Enum.join(", ")
-    
+    phase_summary =
+      phases
+      |> Enum.map(fn phase ->
+        "#{phase.phase_type} (#{phase.duration_seconds}s): #{phase.characteristics}"
+      end)
+      |> Enum.join(" → ")
+
+    transition_summary =
+      transitions
+      |> Map.get(:significant_transitions, [])
+      |> Enum.map(& &1.description)
+      |> Enum.join(", ")
+
     %{
       phase_progression: phase_summary,
       key_transitions: transition_summary,
@@ -415,9 +424,9 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   defp detect_combat_style(phases) do
     # Analyze phases to determine combat style
     cond do
-      Enum.any?(phases, & &1.phase_type == :kiting) -> :kiting_engagement
-      Enum.any?(phases, & &1.phase_type == :brawl) -> :close_range_brawl
-      Enum.any?(phases, & &1.phase_type == :siege) -> :siege_warfare
+      Enum.any?(phases, &(&1.phase_type == :kiting)) -> :kiting_engagement
+      Enum.any?(phases, &(&1.phase_type == :brawl)) -> :close_range_brawl
+      Enum.any?(phases, &(&1.phase_type == :siege)) -> :siege_warfare
       true -> :mixed_tactics
     end
   end
@@ -425,7 +434,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   defp classify_engagement_type(phases) do
     # Classify the type of engagement based on phases
     phase_types = Enum.map(phases, & &1.phase_type)
-    
+
     cond do
       :ambush in phase_types -> :ambush
       :chase in phase_types -> :pursuit

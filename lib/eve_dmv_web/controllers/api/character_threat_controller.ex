@@ -1,16 +1,16 @@
 defmodule EveDmvWeb.Api.CharacterThreatController do
   use EveDmvWeb, :controller
-  
+
   alias EveDmv.Contexts.CharacterIntelligence
-  
+
   @doc """
   GET /api/v1/characters/:id/threat_score
-  
+
   Returns threat score analysis for a character.
   """
   def show(conn, %{"id" => character_id_str}) do
     character_id = String.to_integer(character_id_str)
-    
+
     case CharacterIntelligence.analyze_character_threat(character_id) do
       {:ok, threat_analysis} ->
         json(conn, %{
@@ -23,7 +23,7 @@ defmodule EveDmvWeb.Api.CharacterThreatController do
             data_points: threat_analysis.data_points
           }
         })
-      
+
       {:error, _} ->
         conn
         |> put_status(:internal_server_error)

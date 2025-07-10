@@ -1,16 +1,16 @@
 defmodule EveDmvWeb.Api.CorporationDoctrineController do
   use EveDmvWeb, :controller
-  
+
   alias EveDmv.Contexts.CorporationIntelligence
-  
+
   @doc """
   GET /api/v1/corporations/:id/doctrine_analysis
-  
+
   Returns combat doctrine analysis for a corporation.
   """
   def show(conn, %{"id" => corporation_id_str}) do
     corporation_id = String.to_integer(corporation_id_str)
-    
+
     case CorporationIntelligence.analyze_combat_doctrines(corporation_id) do
       {:ok, analysis} ->
         json(conn, %{
@@ -23,11 +23,13 @@ defmodule EveDmvWeb.Api.CorporationDoctrineController do
             tactical_preferences: analysis.tactical_preferences
           }
         })
-      
+
       {:error, _} ->
         conn
         |> put_status(:internal_server_error)
-        |> json(%{error: %{message: "Failed to analyze corporation doctrines", code: "INTERNAL_ERROR"}})
+        |> json(%{
+          error: %{message: "Failed to analyze corporation doctrines", code: "INTERNAL_ERROR"}
+        })
     end
   end
 end

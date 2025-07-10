@@ -105,22 +105,22 @@ defmodule EveDmvWeb.Router do
     resources "/api_keys", ApiKeysController, only: [:index, :create, :delete] do
       post("/validate", ApiKeysController, :validate)
     end
-    
+
     # Sprint 8: Battle Intelligence APIs
-    get "/battles/:id/intelligence", BattleIntelligenceController, :show
-    get "/battles/:id/multi_system", MultiSystemBattleController, :show
-    
+    get("/battles/:id/intelligence", BattleIntelligenceController, :show)
+    get("/battles/:id/multi_system", MultiSystemBattleController, :show)
+
     # Sprint 8: Character Intelligence APIs
-    get "/characters/:id/threat_score", CharacterThreatController, :show
-    get "/characters/:id/behavioral_patterns", CharacterBehaviorController, :show
-    
+    get("/characters/:id/threat_score", CharacterThreatController, :show)
+    get("/characters/:id/behavioral_patterns", CharacterBehaviorController, :show)
+
     # Sprint 8: Corporation Intelligence APIs
-    get "/corporations/:id/doctrine_analysis", CorporationDoctrineController, :show
-    get "/corporations/:id/threat_assessment", CorporationThreatController, :show
-    
+    get("/corporations/:id/doctrine_analysis", CorporationDoctrineController, :show)
+    get("/corporations/:id/threat_assessment", CorporationThreatController, :show)
+
     # Sprint 8: Battle Sharing APIs
-    post "/battles/:id/share", BattleShareController, :create
-    post "/battles/:id/rate", BattleRatingController, :create
+    post("/battles/:id/share", BattleShareController, :create)
+    post("/battles/:id/rate", BattleRatingController, :create)
   end
 
   # Internal API endpoints (requires API key authentication)

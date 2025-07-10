@@ -1,17 +1,17 @@
 defmodule EveDmvWeb.Api.BattleShareController do
   use EveDmvWeb, :controller
-  
+
   alias EveDmv.Contexts.BattleSharing
-  
+
   @doc """
   POST /api/v1/battles/:id/share
-  
+
   Creates a shareable battle report.
   """
   def create(conn, %{"id" => battle_id} = params) do
     # In production, get character_id from authenticated user
     creator_id = conn.assigns[:current_user_id] || 12345
-    
+
     options = [
       title: params["title"],
       description: params["description"],
@@ -19,7 +19,7 @@ defmodule EveDmvWeb.Api.BattleShareController do
       visibility: String.to_existing_atom(params["visibility"] || "public"),
       tags: params["tags"] || []
     ]
-    
+
     case BattleSharing.create_battle_report(battle_id, creator_id, options) do
       {:ok, report} ->
         conn
@@ -32,7 +32,7 @@ defmodule EveDmvWeb.Api.BattleShareController do
             created_at: report.created_at
           }
         })
-      
+
       {:error, reason} ->
         conn
         |> put_status(:unprocessable_entity)
