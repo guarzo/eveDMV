@@ -21,7 +21,10 @@ defmodule EveDmvWeb.SurveillanceLive.ProfileService do
   """
   @spec load_user_profiles(integer(), map()) :: [Profile.t()]
   def load_user_profiles(user_id, current_user) do
-    SurveillanceRepository.get_user_profiles(user_id, current_user)
+    profiles = SurveillanceRepository.get_user_profiles(user_id, current_user)
+    # Preload all profile names to prevent N+1 queries
+    EveDmv.Performance.BatchNameResolver.preload_profile_names(profiles)
+    profiles
   end
 
   @doc """

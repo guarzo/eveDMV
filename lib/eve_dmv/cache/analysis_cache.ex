@@ -157,7 +157,7 @@ defmodule EveDmv.Cache.AnalysisCache do
 
   # GenServer callbacks
 
-  @impl true
+  @impl GenServer
   def init(_opts) do
     # Create ETS table for cache storage
     table =
@@ -176,14 +176,14 @@ defmodule EveDmv.Cache.AnalysisCache do
     {:ok, %{table: table}}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:cleanup_expired, state) do
     cleanup_expired_entries()
     schedule_cleanup()
     {:noreply, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(_msg, state) do
     {:noreply, state}
   end

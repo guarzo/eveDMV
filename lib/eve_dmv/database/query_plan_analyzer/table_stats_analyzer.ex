@@ -124,7 +124,6 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
   def analyze_critical_tables do
     critical_tables = [
       "killmails_raw",
-      "killmails_enriched",
       "participants",
       "character_stats",
       "surveillance_profiles",

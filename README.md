@@ -1,13 +1,12 @@
 # EVE DMV
 
-A real-time PvP activity tracking platform for EVE Online. **Currently in development** - foundation complete, building first intelligence features.
+A real-time PvP activity tracking platform for EVE Online. **Active development** with multiple working intelligence features and advanced analytics in progress.
 
 ## 📚 Documentation
 
 ### Current Status
-- **[Honest Project Status](./PROJECT_STATUS_REALISTIC.md)** - What actually works vs. what's planned
-- **[Actual Implementation State](./ACTUAL_PROJECT_STATE.md)** - Technical reality assessment  
-- **[Development Progress](./DEVELOPMENT_PROGRESS_TRACKER.md)** - Sprint tracking and metrics
+- **[Project Status](./PROJECT_STATUS.md)** - Comprehensive status, features, and technical details
+- **[Development Progress](./DEVELOPMENT_PROGRESS_TRACKER.md)** - Sprint history and metrics
 
 ### Development
 - **[Setup Guide](./docs/development/devcontainer.md)** - Get started with development
@@ -19,23 +18,28 @@ For complete documentation, see the [/docs directory](./docs/README.md).
 
 ### ✅ Working Features
 - 🔴 **Live Kill Feed** (`/feed`) - Real-time killmail display from wanderer-kills SSE
-- 🔍 **Character Analysis** (`/analysis/:character_id`) - Real killmail data with ship usage, activity patterns
+- 🔍 **Character Intelligence** (`/character/:character_id`) - Complete analysis with ship preferences, activity patterns, and intelligence summary
+- 🏢 **Corporation Intelligence** (`/corporation/:corporation_id`) - Member activity analysis, timezone heatmaps, participation metrics
+- 🌍 **System Intelligence** (`/system/:system_id`) - Activity statistics, danger assessment, alliance presence analysis
+- 🔍 **Universal Search** (`/search`) - Auto-completion for characters, corporations, and systems
+- ⚔️ **Battle Analysis** (In Development) - Combat log parsing, ship performance analysis, battle metrics
 - 🔐 **EVE SSO Authentication** - Login/logout with EVE Online account
-- 📊 **Static Data Loading** - Complete EVE universe data (49,894 items including all ships)
+- 📊 **Static Data** - Complete EVE universe data (49,894 items including all ships)
 - 🗃️ **Database Infrastructure** - PostgreSQL with Broadway pipeline processing 50-100 killmails/minute
-- 📈 **Monitoring Dashboard** (`/monitoring`) - Error tracking, pipeline health, missing data alerts
+- 📈 **Monitoring Dashboard** (`/monitoring`) - Error tracking, pipeline health, performance monitoring
 
-### 🚧 Next Priorities
-- ⚔️ **Battle Analysis** - Group kills into battles by time/location
-- 🏢 **Corporation Intelligence** - Member activity and killboard stats
-- 🚨 **Smart Surveillance** - Custom alerts and profile matching
+### 🚧 In Development (Sprint 8)
+- **Advanced Battle Analysis** - Multi-system battle correlation and tactical phase detection
+- **Character Threat Intelligence** - Multi-dimensional threat scoring and behavioral analysis
+- **Battle Sharing System** - Community curation with video link integration
 
-### 📋 Placeholder Features (UI exists but returns mock data)
-- Fleet Composition Tools
-- Wormhole Intelligence  
-- Price Integration
+### 📋 Future Priorities
+- **Price Integration** - Real-time ISK calculations via Janice/Mutamarket APIs
+- **Advanced Surveillance** - Profile matching and smart alert system
+- **Fleet Composition Tools** - Wormhole fleet optimization algorithms
+- **Predictive Analytics** - Machine learning for threat assessment
 
-**Note**: This project focuses on delivering working features over placeholder UIs. See [Honest Project Status](./PROJECT_STATUS_REALISTIC.md) for detailed progress.
+**Note**: All working features use real data and algorithms. No mock data in production features.
 
 ## Quick Start with Dev Containers
 

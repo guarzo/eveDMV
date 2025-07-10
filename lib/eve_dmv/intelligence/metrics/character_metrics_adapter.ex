@@ -146,7 +146,7 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetricsAdapter do
     days_active = Map.get(activity_data, :days_active, 1)
 
     # Simple engagement score formula
-    base_score = total_kills * 2 + total_losses * 1 + fleet_participations
+    base_score = total_kills * 2 + total_losses + fleet_participations
     activity_multiplier = min(2.0, days_active / 15.0)
 
     base_score * activity_multiplier

@@ -144,7 +144,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
   defp identify_battle_phases(events) do
     # Initial engagement phase
     initial_phase = identify_initial_engagement(events)
-    phases = if initial_phase, do: [initial_phase], else: []
 
     # Escalation phases
     escalation_phases =
@@ -154,12 +153,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
         []
       end
 
-    phases = phases ++ escalation_phases
+    initial_phases =
+      if initial_phase, do: [initial_phase | escalation_phases], else: escalation_phases
 
     # Cleanup/final phase - only add if there are events after other phases
     last_phase_end =
-      if length(phases) > 0 do
-        phases |> Enum.map(& &1.end_time) |> Enum.max()
+      if length(initial_phases) > 0 do
+        initial_phases |> Enum.map(& &1.end_time) |> Enum.max()
       else
         nil
       end
@@ -171,9 +171,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
         nil
       end
 
-    phases = if final_phase, do: phases ++ [final_phase], else: phases
+    all_phases =
+      if final_phase, do: [final_phase | initial_phases] |> Enum.reverse(), else: initial_phases
 
-    phases
+    all_phases
     |> Enum.filter(&(&1 != nil))
     |> Enum.sort_by(& &1.start_time)
   end
@@ -588,10 +589,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
   end
 
   defp identify_key_moments(events, phases) do
-    moments = []
+    base_moments = []
 
     # First blood
-    moments =
+    first_blood_moments =
       if first_blood = List.first(events) do
         [
           %{
@@ -600,14 +601,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
             description: "First kill of the battle",
             event: first_blood
           }
-          | moments
         ]
       else
-        moments
+        []
       end
 
     # Largest kill (by attacker count)
-    moments =
+    largest_kill_moments =
       if largest_kill = Enum.max_by(events, & &1.attacker_count, fn -> nil end) do
         [
           %{
@@ -616,15 +616,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
             description: "Largest kill with #{largest_kill.attacker_count} attackers",
             event: largest_kill
           }
-          | moments
         ]
       else
-        moments
+        []
       end
 
     # Identify kill streaks
-    kill_streaks = identify_kill_streaks(events)
-    moments = moments ++ kill_streaks
+    kill_streak_moments = identify_kill_streaks(events)
+
+    # Combine all moments
+    moments = base_moments ++ first_blood_moments ++ largest_kill_moments ++ kill_streak_moments
 
     # Add phase transitions as key moments
     phase_transitions =
@@ -752,12 +753,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
 
   defp determine_connection_type(battle1, battle2) do
     # Analyze the nature of the connection
-    cond do
-      battle1.metadata.primary_system == battle2.metadata.primary_system ->
-        :same_system_continuation
-
-      true ->
-        :roaming_gang
+    if battle1.metadata.primary_system == battle2.metadata.primary_system do
+      :same_system_continuation
+    else
+      :roaming_gang
     end
   end
 
@@ -814,9 +813,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
         from_battle: battle1.battle_id,
         to_battle: battle2.battle_id,
         continuing_participants:
-          MapSet.intersection(participants1, participants2) |> MapSet.size(),
-        new_participants: MapSet.difference(participants2, participants1) |> MapSet.size(),
-        departing_participants: MapSet.difference(participants1, participants2) |> MapSet.size()
+          participants1 |> MapSet.intersection(participants2) |> MapSet.size(),
+        new_participants: participants2 |> MapSet.difference(participants1) |> MapSet.size(),
+        departing_participants: participants1 |> MapSet.difference(participants2) |> MapSet.size()
       }
     end)
   end

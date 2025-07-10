@@ -258,10 +258,23 @@ defmodule EveDmv.Surveillance.MatchingEngine do
 
     # Load active profiles from database
     try do
-      case Ash.read(Profile, action: :active_profiles, domain: Api) do
+      case Ash.read(Profile, action: :active_profiles, domain: Api, load: [:filter_tree]) do
         {:ok, profiles} ->
-          Enum.each(profiles, &process_profile/1)
-          length(profiles)
+          # Preload profile names to avoid N+1 queries
+          EveDmv.Performance.BatchNameResolver.preload_profile_names(profiles)
+
+          # Process profiles in parallel batches for better performance
+          profiles
+          # Process in batches of 10
+          |> Enum.chunk_every(10)
+          |> Task.async_stream(&process_profile_batch/1,
+            max_concurrency: 4,
+            timeout: 30_000
+          )
+          |> Enum.reduce(0, fn
+            {:ok, count}, acc -> acc + count
+            {:error, _}, acc -> acc
+          end)
 
         {:error, error} ->
           Logger.error("Failed to load surveillance profiles: #{inspect(error)}")
@@ -275,6 +288,16 @@ defmodule EveDmv.Surveillance.MatchingEngine do
     end
   end
 
+  defp process_profile_batch(profiles) do
+    # Process a batch of profiles sequentially within this task
+    Enum.reduce(profiles, 0, fn profile, acc ->
+      case process_profile(profile) do
+        :ok -> acc + 1
+        _ -> acc
+      end
+    end)
+  end
+
   defp process_profile(profile) do
     # Compile filter tree to anonymous function
     case ProfileCompiler.compile_filter_tree(profile.filter_tree) do
@@ -286,9 +309,11 @@ defmodule EveDmv.Surveillance.MatchingEngine do
         IndexManager.build_indexes_for_profile(profile)
 
         Logger.debug("Compiled profile #{profile.name} (#{profile.id})")
+        :ok
 
       {:error, reason} ->
         Logger.error("Failed to compile profile #{profile.name}: #{reason}")
+        {:error, reason}
     end
   end
 end

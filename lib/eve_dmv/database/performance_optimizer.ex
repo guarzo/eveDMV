@@ -305,7 +305,6 @@ defmodule EveDmv.Database.PerformanceOptimizer do
 
     tables = [
       "killmails_raw",
-      "killmails_enriched",
       "participants",
       "surveillance_profiles",
       "surveillance_profile_matches",
@@ -346,7 +345,6 @@ defmodule EveDmv.Database.PerformanceOptimizer do
 
     tables = [
       "killmails_raw",
-      "killmails_enriched",
       "participants",
       "surveillance_profiles",
       "surveillance_profile_matches"

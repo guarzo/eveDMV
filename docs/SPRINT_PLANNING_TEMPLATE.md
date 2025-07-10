@@ -118,7 +118,9 @@ New sprint focus: [Battle Analysis / Corporation Intelligence / Performance / et
 ### Code Quality
 - [ ] All features query real data from database
 - [ ] No hardcoded/mock values in completed features
-- [ ] All tests pass
+- [ ] All tests pass (`mix test`)
+- [ ] Static analysis passes (`mix credo`)
+- [ ] Type checking passes (`mix dialyzer`)
 - [ ] No compilation warnings
 - [ ] No TODO comments in completed code
 

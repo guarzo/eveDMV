@@ -266,7 +266,6 @@ defmodule EveDmv.Database.ArchiveManager.RestoreOperations do
     # Simple heuristic - in practice you'd query the schema
     case table_name do
       "killmails_raw" -> "killmail_id"
-      "killmails_enriched" -> "killmail_id"
       "participants" -> "id"
       "character_stats" -> "character_id"
       _ -> "id"

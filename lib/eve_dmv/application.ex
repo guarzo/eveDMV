@@ -10,12 +10,13 @@ defmodule EveDmv.Application do
   alias EveDmv.Config.RateLimit
   alias EveDmv.Eve.NameResolver
   alias EveDmv.Eve.StaticDataLoader
+  alias EveDmv.Performance.RegressionDetector
 
   @impl Application
   def start(_type, _args) do
     # Initialize ETS table for fitting cache
     :ets.new(:battle_fitting_cache, [:set, :public, :named_table])
-    
+
     # Initialize EVE name resolver cache early
     NameResolver.start_cache()
 
@@ -97,6 +98,15 @@ defmodule EveDmv.Application do
       {:ok, pid} ->
         # Attach global error telemetry handlers
         EveDmv.ErrorHandler.attach_telemetry_handlers()
+
+        # Attach query performance monitoring
+        EveDmv.Performance.QueryMonitor.attach_telemetry_handlers()
+
+        # Start performance regression detection
+        if Mix.env() != :test do
+          RegressionDetector.start_link()
+        end
+
         {:ok, pid}
 
       error ->

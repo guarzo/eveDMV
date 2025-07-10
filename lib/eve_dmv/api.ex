@@ -37,7 +37,7 @@ defmodule EveDmv.Api do
     # Analytics resources
     resource(EveDmv.Analytics.ShipStats)
     resource(EveDmv.Analytics.PlayerStats)
-    
+
     # Battle Analysis resources
     resource(EveDmv.Contexts.BattleAnalysis.Resources.CombatLog)
     resource(EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting)

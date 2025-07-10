@@ -1,6 +1,6 @@
 defmodule EveDmv.Contexts.BattleTimelineTest do
   use ExUnit.Case, async: false
-  use EveDmv.DataCase
+  use EveDmv.DataCase, async: false
 
   alias EveDmv.Contexts.BattleAnalysis
 

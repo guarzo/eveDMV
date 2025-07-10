@@ -10,6 +10,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   alias EveDmv.Contexts.BattleAnalysis
   alias EveDmv.Eve.NameResolver
+  alias EveDmv.Performance.BatchNameResolver
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
@@ -135,7 +136,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
         socket
       ) do
     # Get all available sides including "unassigned"
-    all_sides = socket.assigns.custom_sides ++ ["unassigned"]
+    all_sides = ["unassigned" | socket.assigns.custom_sides] |> Enum.reverse()
     current_index = Enum.find_index(all_sides, &(&1 == current_side)) || 0
     next_index = rem(current_index + 1, length(all_sides))
     next_side = Enum.at(all_sides, next_index)
@@ -155,7 +156,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   def handle_event("add_custom_side", _, socket) do
     new_side_num = length(socket.assigns.custom_sides) + 1
     new_side = "side_#{new_side_num}"
-    custom_sides = socket.assigns.custom_sides ++ [new_side]
+    custom_sides = [new_side | socket.assigns.custom_sides] |> Enum.reverse()
     {:noreply, assign(socket, :custom_sides, custom_sides)}
   end
 
@@ -172,11 +173,12 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   @impl Phoenix.LiveView
   def handle_event("toggle_log_upload", _, socket) do
-    socket = 
+    socket =
       socket
       |> assign(:show_log_upload, !socket.assigns.show_log_upload)
-      |> assign(:pilot_name, "")  # Clear pilot name when toggling
-    
+      # Clear pilot name when toggling
+      |> assign(:pilot_name, "")
+
     {:noreply, socket}
   end
 
@@ -190,29 +192,33 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   def handle_event("filter_pilot_suggestions", %{"value" => search_term}, socket) do
     if String.length(search_term) >= 1 do
       suggestions = get_pilot_suggestions(socket.assigns.current_battle, search_term)
-      socket = 
+
+      socket =
         socket
         |> assign(:pilot_suggestions, suggestions)
         |> assign(:show_pilot_suggestions, length(suggestions) > 0)
         |> assign(:pilot_name, search_term)
+
       {:noreply, socket}
     else
-      socket = 
+      socket =
         socket
         |> assign(:pilot_suggestions, [])
         |> assign(:show_pilot_suggestions, false)
         |> assign(:pilot_name, search_term)
+
       {:noreply, socket}
     end
   end
 
   @impl Phoenix.LiveView
   def handle_event("select_pilot_suggestion", %{"pilot_name" => pilot_name}, socket) do
-    socket = 
+    socket =
       socket
       |> assign(:pilot_name, pilot_name)
       |> assign(:show_pilot_suggestions, false)
       |> assign(:pilot_suggestions, [])
+
     {:noreply, socket}
   end
 
@@ -224,73 +230,93 @@ defmodule EveDmvWeb.BattleAnalysisLive do
         path: path,
         filename: entry.client_name
       }
-      
-      battle_id = if socket.assigns.current_battle, do: socket.assigns.current_battle.battle_id, else: nil
-      
-      case Ash.create(EveDmv.Contexts.BattleAnalysis.Resources.CombatLog, %{
-        file_upload: file_upload,
-        pilot_name: pilot_name,
-        battle_id: battle_id
-      }, action: :upload) do
+
+      battle_id =
+        if socket.assigns.current_battle, do: socket.assigns.current_battle.battle_id, else: nil
+
+      case Ash.create(
+             EveDmv.Contexts.BattleAnalysis.Resources.CombatLog,
+             %{
+               file_upload: file_upload,
+               pilot_name: pilot_name,
+               battle_id: battle_id
+             },
+             action: :upload
+           ) do
         {:ok, combat_log} ->
           # Start background parsing
           self = self()
+
           Task.start(fn ->
             # Parse the combat log manually since the action uses a function change
             try do
               # Get the raw content
               compressed = Base.decode64!(combat_log.raw_content)
               content = :zlib.uncompress(compressed)
-              
+
               # Parse the log with ENHANCED parser
-              case EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser.parse_combat_log(content, pilot_name: combat_log.pilot_name) do
-                {:ok, %{events: events, summary: summary, metadata: metadata, tactical_analysis: tactical_analysis, recommendations: recommendations}} ->
+              case EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser.parse_combat_log(
+                     content,
+                     pilot_name: combat_log.pilot_name
+                   ) do
+                {:ok,
+                 %{
+                   events: events,
+                   summary: summary,
+                   metadata: metadata,
+                   tactical_analysis: tactical_analysis,
+                   recommendations: recommendations
+                 }} ->
                   # Update the log with parsed data including tactical analysis
-                  {:ok, updated_log} = Ash.update(combat_log, %{
-                    parsed_data: %{
-                      events: events,
-                      tactical_analysis: tactical_analysis,
-                      recommendations: recommendations
-                    },
-                    summary: summary,
-                    event_count: length(events),
-                    start_time: metadata[:start_time],
-                    end_time: metadata[:end_time],
-                    parse_status: :completed
-                  })
-                  
+                  {:ok, updated_log} =
+                    Ash.update(combat_log, %{
+                      parsed_data: %{
+                        events: events,
+                        tactical_analysis: tactical_analysis,
+                        recommendations: recommendations
+                      },
+                      summary: summary,
+                      event_count: length(events),
+                      start_time: metadata[:start_time],
+                      end_time: metadata[:end_time],
+                      parse_status: :completed
+                    })
+
                   send(self, {:combat_log_parsed, updated_log})
-                  
+
                 {:error, reason} ->
                   # Update with error status
-                  {:ok, _} = Ash.update(combat_log, %{
-                    parse_status: :failed,
-                    parse_error: inspect(reason)
-                  })
+                  {:ok, _} =
+                    Ash.update(combat_log, %{
+                      parse_status: :failed,
+                      parse_error: inspect(reason)
+                    })
               end
             rescue
               error ->
                 # Update with error status
-                {:ok, _} = Ash.update(combat_log, %{
-                  parse_status: :failed,
-                  parse_error: inspect(error)
-                })
+                {:ok, _} =
+                  Ash.update(combat_log, %{
+                    parse_status: :failed,
+                    parse_error: inspect(error)
+                  })
             end
           end)
-          
+
           {:ok, combat_log}
-          
+
         {:error, error} ->
           {:postpone, inspect(error)}
       end
     end)
-    
+
     socket =
       socket
       |> assign(:show_log_upload, false)
-      |> assign(:pilot_name, "")  # Clear pilot name after successful upload
+      # Clear pilot name after successful upload
+      |> assign(:pilot_name, "")
       |> load_combat_logs()
-    
+
     {:noreply, socket}
   end
 
@@ -302,78 +328,91 @@ defmodule EveDmvWeb.BattleAnalysisLive do
           :ok -> {:noreply, load_combat_logs(socket)}
           _ -> {:noreply, socket}
         end
+
       _ ->
         {:noreply, socket}
     end
   end
 
   @impl Phoenix.LiveView
-  def handle_event("analyze_ship_performance", %{"character_id" => char_id, "ship_type_id" => ship_id}, socket) do
+  def handle_event(
+        "analyze_ship_performance",
+        %{"character_id" => char_id, "ship_type_id" => ship_id},
+        socket
+      ) do
     character_id = String.to_integer(char_id)
     ship_type_id = String.to_integer(ship_id)
-    
+
     # Find pilot data from fleet composition to get character name
-    pilot_data = if socket.assigns.current_battle && socket.assigns.current_battle.timeline do
-      socket.assigns.current_battle.timeline.fleet_composition
-      |> Enum.flat_map(& &1[:pilot_ships] || [])
-      |> Enum.find(fn p -> p.character_id == character_id && p.ship_type_id == ship_type_id end)
-    end
-    
+    pilot_data =
+      if socket.assigns.current_battle && socket.assigns.current_battle.timeline do
+        socket.assigns.current_battle.timeline.fleet_composition
+        |> Enum.flat_map(&(&1[:pilot_ships] || []))
+        |> Enum.find(fn p -> p.character_id == character_id && p.ship_type_id == ship_type_id end)
+      end
+
     # Run performance analysis
     ship_data = %{
       character_id: character_id,
       ship_type_id: ship_type_id,
       character_name: pilot_data && pilot_data[:character_name],
-      fitting_data: nil  # Will be populated if fitting exists
+      # Will be populated if fitting exists
+      fitting_data: nil
     }
-    
+
     # CRITICAL: Use ETS + database hybrid cache to preserve fittings
     ship_key = {character_id, ship_type_id}
-    
-    existing_fitting = cond do
-      # First check ETS cache
-      :ets.lookup(:battle_fitting_cache, ship_key) != [] ->
-        [{^ship_key, fitting}] = :ets.lookup(:battle_fitting_cache, ship_key)
-        fitting
-      
-      # Then check database and cache the result
-      true ->
-        case Ash.read(EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting, 
-                      filter: [character_id: character_id, ship_type_id: ship_type_id],
-                      sort: [updated_at: :desc],
-                      limit: 1) do
-          {:ok, [fitting | _]} -> 
-            # Cache the fitting in ETS for future use
-            :ets.insert(:battle_fitting_cache, {ship_key, fitting.parsed_fitting})
-            fitting.parsed_fitting
-          _ -> nil
-        end
-    end
-    
+
+    existing_fitting =
+      cond do
+        # First check ETS cache
+        :ets.lookup(:battle_fitting_cache, ship_key) != [] ->
+          [{^ship_key, fitting}] = :ets.lookup(:battle_fitting_cache, ship_key)
+          fitting
+
+        # Then check database and cache the result
+        true ->
+          case Ash.read(EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting,
+                 filter: [character_id: character_id, ship_type_id: ship_type_id],
+                 sort: [updated_at: :desc],
+                 limit: 1
+               ) do
+            {:ok, [fitting | _]} ->
+              # Cache the fitting in ETS for future use
+              :ets.insert(:battle_fitting_cache, {ship_key, fitting.parsed_fitting})
+              fitting.parsed_fitting
+
+            _ ->
+              nil
+          end
+      end
+
     # Always include fitting data in ship_data
     ship_data = Map.put(ship_data, :fitting_data, existing_fitting)
-    
+
     # Fetch combat log analysis for this pilot if available
-    combat_log_analysis = get_combat_log_analysis_for_pilot(pilot_data && pilot_data[:character_name])
+    combat_log_analysis =
+      get_combat_log_analysis_for_pilot(pilot_data && pilot_data[:character_name])
+
     ship_data = Map.put(ship_data, :combat_log_analysis, combat_log_analysis)
-    
+
     case EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer.analyze_ship_performance(
-      ship_data,
-      socket.assigns.current_battle
-    ) do
+           ship_data,
+           socket.assigns.current_battle
+         ) do
       {:ok, performance} ->
         # Update ETS cache with current fitting
         if existing_fitting do
           :ets.insert(:battle_fitting_cache, {ship_key, existing_fitting})
         end
-        
+
         socket =
           socket
           |> assign(:selected_ship, ship_data)
           |> assign(:ship_performance, performance)
-        
+
         {:noreply, socket}
-        
+
       {:error, _reason} ->
         {:noreply, socket}
     end
@@ -387,29 +426,36 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   @impl Phoenix.LiveView
   def handle_event("import_eft_fitting", %{"eft_text" => eft_text}, socket) do
     if socket.assigns.selected_ship do
-      case Ash.create(EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting, %{
-        eft_text: eft_text,
-        character_id: socket.assigns.selected_ship.character_id
-      }, action: :import_eft) do
+      case Ash.create(
+             EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting,
+             %{
+               eft_text: eft_text,
+               character_id: socket.assigns.selected_ship.character_id
+             },
+             action: :import_eft
+           ) do
         {:ok, fitting} ->
           # Cache the new fitting in ETS immediately
-          ship_key = {socket.assigns.selected_ship.character_id, socket.assigns.selected_ship.ship_type_id}
+          ship_key =
+            {socket.assigns.selected_ship.character_id, socket.assigns.selected_ship.ship_type_id}
+
           :ets.insert(:battle_fitting_cache, {ship_key, fitting.parsed_fitting})
-          
+
           # Update selected ship with new fitting
-          updated_ship = Map.put(socket.assigns.selected_ship, :fitting_data, fitting.parsed_fitting)
-          
+          updated_ship =
+            Map.put(socket.assigns.selected_ship, :fitting_data, fitting.parsed_fitting)
+
           socket =
             socket
             |> assign(:selected_ship, updated_ship)
             |> assign(:show_fitting_import, false)
             |> put_flash(:info, "Fitting imported successfully")
-          
+
           # Re-run analysis with new fitting
           send(self(), {:reanalyze_with_fitting, fitting})
-          
+
           {:noreply, socket}
-          
+
         {:error, _} ->
           {:noreply, put_flash(socket, :error, "Failed to import fitting")}
       end
@@ -461,19 +507,19 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     if socket.assigns.selected_ship do
       # Update ship data with new fitting
       ship_data = Map.put(socket.assigns.selected_ship, :fitting_data, fitting.parsed_fitting)
-      
+
       case EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer.analyze_ship_performance(
-        ship_data,
-        socket.assigns.current_battle
-      ) do
+             ship_data,
+             socket.assigns.current_battle
+           ) do
         {:ok, performance} ->
           socket =
             socket
             |> assign(:selected_ship, ship_data)
             |> assign(:ship_performance, performance)
-          
+
           {:noreply, socket}
-          
+
         {:error, _reason} ->
           {:noreply, socket}
       end
@@ -506,9 +552,12 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   defp load_battle(socket, battle_id) do
     case BattleAnalysis.get_battle_with_timeline(battle_id) do
       {:ok, battle} ->
+        # Preload all names to prevent N+1 queries
+        BatchNameResolver.preload_battle_names(battle)
+
         # Track this battle as recently viewed
         track_recently_viewed_battle(battle)
-        
+
         socket
         |> assign(:current_battle, battle)
         |> assign(:selected_phase, nil)
@@ -812,27 +861,30 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   end
 
   defp load_combat_logs(socket) do
-    logs = if socket.assigns.current_battle do
-      case Ash.read(EveDmv.Contexts.BattleAnalysis.Resources.CombatLog, 
-                    filter: [battle_id: socket.assigns.current_battle.battle_id],
-                    sort: [uploaded_at: :desc]) do
-        {:ok, logs} -> logs
-        _ -> []
+    logs =
+      if socket.assigns.current_battle do
+        case Ash.read(EveDmv.Contexts.BattleAnalysis.Resources.CombatLog,
+               filter: [battle_id: socket.assigns.current_battle.battle_id],
+               sort: [uploaded_at: :desc]
+             ) do
+          {:ok, logs} -> logs
+          _ -> []
+        end
+      else
+        []
       end
-    else
-      []
-    end
-    
+
     assign(socket, :combat_logs, logs)
   end
 
   defp load_battle_metrics(socket) do
     if socket.assigns.current_battle do
       case EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator.calculate_battle_metrics(
-        socket.assigns.current_battle
-      ) do
+             socket.assigns.current_battle
+           ) do
         {:ok, metrics} ->
           assign(socket, :battle_metrics, metrics)
+
         _ ->
           socket
       end
@@ -840,19 +892,20 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       socket
     end
   end
-  
+
   # Recently viewed battles tracking
-  
+
   defp track_recently_viewed_battle(battle) do
     # Use ETS table to track recently viewed battles
     # Store up to 10 recently viewed battles with timestamp
     viewed_key = :recently_viewed_battles
-    
-    current_viewed = case :ets.lookup(:battle_fitting_cache, viewed_key) do
-      [{^viewed_key, battles}] -> battles
-      [] -> []
-    end
-    
+
+    current_viewed =
+      case :ets.lookup(:battle_fitting_cache, viewed_key) do
+        [{^viewed_key, battles}] -> battles
+        [] -> []
+      end
+
     # Add this battle to the front, remove duplicates, limit to 10
     battle_entry = %{
       battle_id: battle.battle_id,
@@ -862,22 +915,22 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       start_time: battle.metadata.start_time,
       viewed_at: DateTime.utc_now()
     }
-    
-    updated_viewed = 
+
+    updated_viewed =
       [battle_entry | current_viewed]
       |> Enum.uniq_by(& &1.battle_id)
       |> Enum.take(10)
-    
+
     :ets.insert(:battle_fitting_cache, {viewed_key, updated_viewed})
   end
-  
+
   defp load_recently_viewed_battles do
     case :ets.lookup(:battle_fitting_cache, :recently_viewed_battles) do
       [{:recently_viewed_battles, battles}] -> battles
       [] -> []
     end
   end
-  
+
   # Helper function to extract ISK value from killmail data
   defp get_killmail_isk_value(killmail) do
     case killmail do
@@ -886,51 +939,58 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       _ -> 0
     end
   end
-  
+
   # Helper function to get combat log analysis for a specific pilot
   defp get_combat_log_analysis_for_pilot(nil), do: nil
+
   defp get_combat_log_analysis_for_pilot(pilot_name) when is_binary(pilot_name) do
     # Find all combat logs for this pilot and use the most recent one with tactical analysis
     case Ash.read(EveDmv.Contexts.BattleAnalysis.Resources.CombatLog) do
       {:ok, all_logs} ->
         # Filter for this pilot and completed status, sort by upload time descending
-        pilot_logs = all_logs
-        |> Enum.filter(fn log -> 
-          log.pilot_name == pilot_name && log.parse_status == :completed
-        end)
-        |> Enum.sort_by(& &1.uploaded_at, {:desc, DateTime})
-        
+        pilot_logs =
+          all_logs
+          |> Enum.filter(fn log ->
+            log.pilot_name == pilot_name && log.parse_status == :completed
+          end)
+          |> Enum.sort_by(& &1.uploaded_at, {:desc, DateTime})
+
         # Find the first log with tactical analysis, or fall back to any log with events
-        combat_log = Enum.find(pilot_logs, fn log ->
-          parsed_data = log.parsed_data || %{}
-          Map.has_key?(parsed_data, "tactical_analysis") || Map.has_key?(parsed_data, :tactical_analysis)
-        end) || List.first(pilot_logs)
-        
+        combat_log =
+          Enum.find(pilot_logs, fn log ->
+            parsed_data = log.parsed_data || %{}
+
+            Map.has_key?(parsed_data, "tactical_analysis") ||
+              Map.has_key?(parsed_data, :tactical_analysis)
+          end) || List.first(pilot_logs)
+
         if combat_log && combat_log.parsed_data do
           extract_tactical_analysis(combat_log)
         else
           nil
         end
-        
+
       _ ->
         nil
     end
   end
-  
+
   # Get pilot suggestions for autocomplete based on current battle participants
   defp get_pilot_suggestions(nil, _search_term), do: []
+
   defp get_pilot_suggestions(battle, search_term) when is_binary(search_term) do
     if battle.timeline && battle.timeline.fleet_composition do
       # Get all unique pilots from the battle
-      all_pilots = battle.timeline.fleet_composition
-      |> Enum.flat_map(fn window ->
-        window[:pilot_ships] || []
-      end)
-      |> Enum.uniq_by(& &1.character_id)
-      
+      all_pilots =
+        battle.timeline.fleet_composition
+        |> Enum.flat_map(fn window ->
+          window[:pilot_ships] || []
+        end)
+        |> Enum.uniq_by(& &1.character_id)
+
       # Filter pilots by search term (case insensitive)
       search_lower = String.downcase(search_term)
-      
+
       all_pilots
       |> Enum.filter(fn pilot ->
         character_name = pilot[:character_name] || resolve_character_name(pilot.character_id)
@@ -941,15 +1001,17 @@ defmodule EveDmvWeb.BattleAnalysisLive do
           character_id: pilot.character_id,
           character_name: pilot[:character_name] || resolve_character_name(pilot.character_id),
           ship_name: pilot[:ship_name] || resolve_ship_name(pilot.ship_type_id),
-          corporation_name: pilot[:corporation_name] || resolve_corporation_name(pilot.corporation_id)
+          corporation_name:
+            pilot[:corporation_name] || resolve_corporation_name(pilot.corporation_id)
         }
       end)
-      |> Enum.take(8)  # Limit to 8 suggestions to keep UI manageable
+      # Limit to 8 suggestions to keep UI manageable
+      |> Enum.take(8)
     else
       []
     end
   end
-  
+
   # Check if a target from combat log actually died in this battle
   defp target_died?(target_name, battle) when is_binary(target_name) and not is_nil(battle) do
     if battle.killmails do
@@ -961,14 +1023,15 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       false
     end
   end
+
   defp target_died?(_, _), do: false
-  
+
   # Helper functions for ship status indicators
-  defp get_all_pilots_from_battle(battle) when not is_nil(battle) do
+  defp get_all_pilots_from_battle(battle) when is_map(battle) do
     battle.killmails
     |> Enum.flat_map(fn killmail ->
       # Get attackers with full data
-      attackers = 
+      attackers =
         case get_in(killmail.raw_data, ["attackers"]) do
           attackers when is_list(attackers) ->
             Enum.map(attackers, fn attacker ->
@@ -982,9 +1045,11 @@ defmodule EveDmvWeb.BattleAnalysisLive do
                 alliance_id: get_in(attacker, ["alliance_id"])
               }
             end)
-          _ -> []
+
+          _ ->
+            []
         end
-      
+
       # Get victim with full data
       victim = %{
         character_id: get_in(killmail.raw_data, ["victim", "character_id"]),
@@ -995,7 +1060,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
         ship_name: get_in(killmail.raw_data, ["victim", "ship_name"]),
         alliance_id: get_in(killmail.raw_data, ["victim", "alliance_id"])
       }
-      
+
       [victim | attackers]
     end)
     # Filter out entries without character_id (NPC corporations, etc.)
@@ -1004,10 +1069,11 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     |> Enum.uniq_by(&{&1.character_id, &1.ship_type_id})
     |> Enum.sort_by(&(&1.character_name || ""))
   end
-  
+
   defp get_all_pilots_from_battle(_), do: []
-  
-  defp has_combat_log?(pilot_name, combat_logs) when is_binary(pilot_name) and is_list(combat_logs) do
+
+  defp has_combat_log?(pilot_name, combat_logs)
+       when is_binary(pilot_name) and is_list(combat_logs) do
     Enum.any?(combat_logs, fn log ->
       case log do
         %{pilot_name: ^pilot_name} -> true
@@ -1016,12 +1082,13 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       end
     end)
   end
-  
+
   defp has_combat_log?(_, _), do: false
-  
+
   defp has_fitting?(pilot_name) when is_binary(pilot_name) do
     # Check ETS fitting cache
     fitting_key = {"battle_fitting", pilot_name}
+
     case :ets.lookup(:battle_fitting_cache, fitting_key) do
       [{^fitting_key, _fitting_data}] -> true
       [] -> false
@@ -1029,26 +1096,27 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   rescue
     _ -> false
   end
-  
+
   defp has_fitting?(_), do: false
-  
-  defp has_fitting?(character_id, ship_type_id) when is_integer(character_id) and is_integer(ship_type_id) do
+
+  defp has_fitting?(character_id, ship_type_id)
+       when is_integer(character_id) and is_integer(ship_type_id) do
     # Convert character_id to character name and check fitting cache
     character_name = resolve_character_name(character_id)
     if character_name, do: has_fitting?(character_name), else: false
   end
-  
+
   defp has_fitting?(_, _), do: false
-  
+
   # Extract tactical analysis from a combat log
   defp extract_tactical_analysis(combat_log) do
     parsed_data = combat_log.parsed_data || %{}
-    
+
     # Handle both string and atom keys
     tactical_analysis = parsed_data["tactical_analysis"] || parsed_data[:tactical_analysis]
     recommendations = parsed_data["recommendations"] || parsed_data[:recommendations] || []
     events = parsed_data["events"] || parsed_data[:events] || []
-    
+
     if tactical_analysis do
       # We have full tactical analysis
       Map.merge(tactical_analysis, %{
@@ -1057,14 +1125,16 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       })
     else
       # Create basic analysis from events
-      damage_received_events = Enum.filter(events, fn event ->
-        (event["type"] == "damage_received" || event[:type] == :damage_received)
-      end)
-      
-      total_damage_received = damage_received_events
-      |> Enum.map(fn event -> event["damage"] || event[:damage] || 0 end)
-      |> Enum.sum()
-      
+      damage_received_events =
+        Enum.filter(events, fn event ->
+          event["type"] == "damage_received" || event[:type] == :damage_received
+        end)
+
+      total_damage_received =
+        damage_received_events
+        |> Enum.map(fn event -> event["damage"] || event[:damage] || 0 end)
+        |> Enum.sum()
+
       %{
         damage_application: %{total_shots: 0, average_application: 0, quality_breakdown: %{}},
         defensive_reactions: %{defensive_activations: 0, average_reaction_time: 0},

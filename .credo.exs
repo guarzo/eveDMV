@@ -18,7 +18,8 @@
           ~r"/deps/",
           ~r"/node_modules/",
           ~r"/assets/",
-          ~r"/priv/static/"
+          ~r"/priv/static/",
+          ~r"/test/manual/"
         ]
       },
       plugins: [],

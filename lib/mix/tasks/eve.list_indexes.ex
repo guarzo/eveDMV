@@ -15,7 +15,7 @@ defmodule Mix.Tasks.Eve.ListIndexes do
 
     Mix.shell().info("📊 Database Indexes")
     Mix.shell().info("=" <> String.duplicate("=", 60))
-    
+
     query = """
     SELECT 
       p.tablename,
@@ -28,30 +28,31 @@ defmodule Mix.Tasks.Eve.ListIndexes do
                         'eve_solar_systems', 'eve_item_types')
     ORDER BY p.tablename, p.indexname
     """
-    
+
     case Repo.query(query) do
       {:ok, %{rows: rows}} ->
         current_table = nil
-        
+
         Enum.each(rows, fn [table, index, indexdef, size] ->
           if table != current_table do
             Mix.shell().info("\n📁 #{table}")
             Mix.shell().info("  " <> String.duplicate("-", 58))
           end
-          
+
           # Extract column names from indexdef
-          columns = case Regex.run(~r/\((.*?)\)/, indexdef) do
-            [_, cols] -> cols
-            _ -> "unknown"
-          end
-          
+          columns =
+            case Regex.run(~r/\((.*?)\)/, indexdef) do
+              [_, cols] -> cols
+              _ -> "unknown"
+            end
+
           Mix.shell().info("  #{index}")
           Mix.shell().info("    Columns: #{columns}")
           Mix.shell().info("    Size: #{size}")
         end)
-        
+
         Mix.shell().info("\n\nTotal indexes: #{length(rows)}")
-        
+
       {:error, error} ->
         Mix.shell().error("Failed to query indexes: #{inspect(error)}")
     end

@@ -12,7 +12,6 @@ defmodule EveDmvWeb.CorporationLive do
 
   alias EveDmv.Api
   alias EveDmv.Killmails.Participant
-  alias EveDmv.Eve.SolarSystem
   alias EveDmv.Cache.AnalysisCache
 
   require Ash.Query
@@ -198,27 +197,39 @@ defmodule EveDmvWeb.CorporationLive do
   end
 
   defp load_corp_members(corporation_id) do
-    # Get corporation members with activity stats using Ash
+    # Get corporation members with activity stats using optimized single query
     thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30, :day)
 
     case Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id})
          |> Ash.Query.filter(killmail_time >= ^thirty_days_ago)
-         |> Ash.Query.limit(50)
+         # Preload killmail data
+         |> Ash.Query.load([:killmail_raw])
+         # Get more data for better aggregation
+         |> Ash.Query.limit(1000)
          |> Ash.read(domain: Api) do
       {:ok, participants} ->
+        # Preload all character names to avoid N+1 queries
+        _character_ids =
+          participants |> Enum.map(& &1.character_id) |> Enum.filter(& &1) |> Enum.uniq()
+
+        EveDmv.Performance.BatchNameResolver.preload_participant_names(participants)
+
         # Group by character and aggregate stats
         participants
-        |> Enum.group_by(&{&1.character_id, &1.character_name})
-        |> Enum.map(fn {{character_id, character_name}, char_participants} ->
+        |> Enum.group_by(& &1.character_id)
+        |> Enum.map(fn {character_id, char_participants} ->
           kills = char_participants |> Enum.count(&(not &1.is_victim))
           losses = char_participants |> Enum.count(& &1.is_victim)
 
           latest_activity =
             char_participants |> Enum.map(& &1.killmail_time) |> Enum.max(DateTime, fn -> nil end)
 
+          # Use cached name resolution
+          character_name = EveDmv.Eve.NameResolver.character_name(character_id)
+
           %{
             character_id: character_id,
-            character_name: character_name || "Unknown",
+            character_name: character_name,
             total_kills: kills,
             total_losses: losses,
             total_activity: kills + losses,
@@ -234,18 +245,23 @@ defmodule EveDmvWeb.CorporationLive do
   end
 
   defp load_recent_activity(corporation_id) do
-    # Get recent killmail activity using Ash
+    # Get recent killmail activity using optimized query
     case Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id})
+         # Preload killmail data
+         |> Ash.Query.load([:killmail_raw])
          |> Ash.Query.limit(20)
          |> Ash.read(domain: Api) do
       {:ok, participants} ->
+        # Preload all names to avoid N+1 queries
+        EveDmv.Performance.BatchNameResolver.preload_participant_names(participants)
+
         # We need to load the killmail data for timestamps
         # For now, let's use the participant data we have
         Enum.map(participants, fn p ->
           %{
             character_id: p.character_id,
-            character_name: p.character_name || "Unknown",
-            ship_name: p.ship_name || "Unknown Ship",
+            character_name: EveDmv.Eve.NameResolver.character_name(p.character_id),
+            ship_name: EveDmv.Eve.NameResolver.ship_name(p.ship_type_id),
             is_kill: not p.is_victim,
             timestamp: p.killmail_time,
             # TODO: Add solar system name lookup
@@ -384,15 +400,20 @@ defmodule EveDmvWeb.CorporationLive do
          |> Ash.read(domain: Api) do
       {:ok, participants} ->
         # Group by solar system and aggregate stats
-        participants
-        |> Enum.group_by(& &1.solar_system_id)
+        system_groups = participants |> Enum.group_by(& &1.solar_system_id)
+
+        # Batch load all system names to avoid N+1 queries
+        system_ids = Map.keys(system_groups) |> Enum.filter(& &1)
+        system_names = get_system_names(system_ids)
+
+        system_groups
         |> Enum.map(fn {system_id, system_participants} ->
           kills = system_participants |> Enum.count(&(not &1.is_victim))
           losses = system_participants |> Enum.count(& &1.is_victim)
 
           %{
             solar_system_id: system_id,
-            solar_system_name: get_system_name(system_id),
+            solar_system_name: Map.get(system_names, system_id, "Unknown System #{system_id}"),
             activity_count: length(system_participants),
             kills: kills,
             losses: losses
@@ -448,12 +469,9 @@ defmodule EveDmvWeb.CorporationLive do
     end
   end
 
-  defp get_system_name(system_id) do
-    case Ash.Query.for_read(SolarSystem, :get_by_id, %{system_id: system_id})
-         |> Ash.read(domain: Api) do
-      {:ok, [system]} -> system.system_name
-      _ -> "System #{system_id}"
-    end
+  defp get_system_names(system_ids) do
+    # Batch load system names to avoid N+1 queries
+    EveDmv.Eve.NameResolver.system_names(system_ids)
   end
 
   defp calculate_timezone_data(corporation_id) do

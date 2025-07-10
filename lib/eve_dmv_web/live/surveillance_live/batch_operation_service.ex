@@ -11,6 +11,7 @@ defmodule EveDmvWeb.SurveillanceLive.BatchOperationService do
   alias EveDmv.Surveillance.Profile
 
   require Logger
+  require Ash.Query
 
   @type batch_result :: %{success: non_neg_integer(), failed: non_neg_integer()}
 
@@ -19,29 +20,49 @@ defmodule EveDmvWeb.SurveillanceLive.BatchOperationService do
   """
   @spec batch_delete_profiles([String.t()], map()) :: batch_result()
   def batch_delete_profiles(profile_ids, actor) do
-    results = %{success: 0, failed: 0}
+    # First, fetch all profiles in a single query
+    profiles_query =
+      Profile
+      |> Ash.Query.filter(id in ^profile_ids)
 
-    final_results =
-      Enum.reduce(profile_ids, results, fn profile_id, acc ->
-        case Ash.get(Profile, profile_id, domain: Api, actor: actor) do
-          {:ok, profile} ->
-            case Ash.destroy(profile, domain: Api, actor: actor) do
-              :ok ->
-                %{acc | success: acc.success + 1}
+    case Ash.read(profiles_query, domain: Api, actor: actor) do
+      {:ok, profiles} ->
+        found_ids = Enum.map(profiles, & &1.id)
+        not_found_ids = profile_ids -- found_ids
 
-              {:error, error} ->
-                Logger.warning("Failed to delete profile #{profile_id}: #{inspect(error)}")
-                %{acc | failed: acc.failed + 1}
-            end
+        # Log any profiles that weren't found
+        Enum.each(not_found_ids, fn id ->
+          Logger.warning("Profile not found for deletion: #{id}")
+        end)
 
-          {:error, error} ->
-            Logger.warning("Failed to find profile #{profile_id}: #{inspect(error)}")
-            %{acc | failed: acc.failed + 1}
+        # Use bulk_destroy for efficient batch deletion
+        case Ash.bulk_destroy(profiles, :destroy, %{},
+               domain: Api,
+               actor: actor,
+               return_errors?: true,
+               batch_size: 100
+             ) do
+          %Ash.BulkResult{errors: [], records: _} = result ->
+            reload_matching_engine()
+            %{success: length(result.records) || length(profiles), failed: length(not_found_ids)}
+
+          %Ash.BulkResult{errors: errors} = result ->
+            Enum.each(errors, fn error ->
+              Logger.warning("Failed to delete profile: #{inspect(error)}")
+            end)
+
+            reload_matching_engine()
+
+            %{
+              success: length(result.records) || 0,
+              failed: length(errors) + length(not_found_ids)
+            }
         end
-      end)
 
-    reload_matching_engine()
-    final_results
+      {:error, error} ->
+        Logger.error("Failed to fetch profiles for deletion: #{inspect(error)}")
+        %{success: 0, failed: length(profile_ids)}
+    end
   end
 
   @doc """
@@ -49,29 +70,49 @@ defmodule EveDmvWeb.SurveillanceLive.BatchOperationService do
   """
   @spec batch_update_profiles([String.t()], map(), map()) :: batch_result()
   def batch_update_profiles(profile_ids, update_data, actor) do
-    results = %{success: 0, failed: 0}
+    # First, fetch all profiles in a single query
+    profiles_query =
+      Profile
+      |> Ash.Query.filter(id in ^profile_ids)
 
-    final_results =
-      Enum.reduce(profile_ids, results, fn profile_id, acc ->
-        case Ash.get(Profile, profile_id, domain: Api, actor: actor) do
-          {:ok, profile} ->
-            case Ash.update(profile, update_data, domain: Api, actor: actor) do
-              {:ok, _} ->
-                %{acc | success: acc.success + 1}
+    case Ash.read(profiles_query, domain: Api, actor: actor) do
+      {:ok, profiles} ->
+        found_ids = Enum.map(profiles, & &1.id)
+        not_found_ids = profile_ids -- found_ids
 
-              {:error, error} ->
-                Logger.warning("Failed to update profile #{profile_id}: #{inspect(error)}")
-                %{acc | failed: acc.failed + 1}
-            end
+        # Log any profiles that weren't found
+        Enum.each(not_found_ids, fn id ->
+          Logger.warning("Profile not found for update: #{id}")
+        end)
 
-          {:error, error} ->
-            Logger.warning("Failed to find profile #{profile_id}: #{inspect(error)}")
-            %{acc | failed: acc.failed + 1}
+        # Use bulk_update for efficient batch updates
+        case Ash.bulk_update(profiles, :update, update_data,
+               domain: Api,
+               actor: actor,
+               return_errors?: true,
+               batch_size: 100
+             ) do
+          %Ash.BulkResult{errors: [], records: _} = result ->
+            reload_matching_engine()
+            %{success: length(result.records) || length(profiles), failed: length(not_found_ids)}
+
+          %Ash.BulkResult{errors: errors} = result ->
+            Enum.each(errors, fn error ->
+              Logger.warning("Failed to update profile: #{inspect(error)}")
+            end)
+
+            reload_matching_engine()
+
+            %{
+              success: length(result.records) || 0,
+              failed: length(errors) + length(not_found_ids)
+            }
         end
-      end)
 
-    reload_matching_engine()
-    final_results
+      {:error, error} ->
+        Logger.error("Failed to fetch profiles for update: #{inspect(error)}")
+        %{success: 0, failed: length(profile_ids)}
+    end
   end
 
   @doc """

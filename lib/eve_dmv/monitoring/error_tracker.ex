@@ -246,7 +246,9 @@ defmodule EveDmv.Monitoring.ErrorTracker do
   # Private functions
 
   defp generate_id do
-    :crypto.strong_rand_bytes(16) |> Base.encode16(case: :lower)
+    16
+    |> :crypto.strong_rand_bytes()
+    |> Base.encode16(case: :lower)
   end
 
   defp update_error_stats(error_code, category) do
@@ -309,7 +311,8 @@ defmodule EveDmv.Monitoring.ErrorTracker do
 
   defp calculate_retry_success_rate do
     stats =
-      :ets.tab2list(:error_stats_ets)
+      :error_stats_ets
+      |> :ets.tab2list()
       |> Enum.map(fn {_code, stats} -> stats end)
       |> Enum.filter(fn stats -> stats.retry_count > 0 end)
 
@@ -349,7 +352,8 @@ defmodule EveDmv.Monitoring.ErrorTracker do
 
     # Remove old error records
     old_records =
-      :ets.tab2list(@table_name)
+      @table_name
+      |> :ets.tab2list()
       |> Enum.filter(fn {_id, record} ->
         DateTime.compare(record.timestamp, cutoff) == :lt
       end)

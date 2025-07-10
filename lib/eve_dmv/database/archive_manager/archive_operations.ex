@@ -239,15 +239,6 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveOperations do
         retention_years: 7
       },
       %{
-        table: "killmails_enriched",
-        archive_after_days: 730,
-        archive_table: "killmails_enriched_archive",
-        date_column: "killmail_time",
-        batch_size: 5000,
-        compression: true,
-        retention_years: 10
-      },
-      %{
         table: "participants",
         archive_after_days: 365,
         archive_table: "participants_archive",
@@ -337,7 +328,6 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveOperations do
     # Simple heuristic - in practice you'd query the schema
     case table_name do
       "killmails_raw" -> "killmail_id"
-      "killmails_enriched" -> "killmail_id"
       "participants" -> "id"
       "character_stats" -> "character_id"
       _ -> "id"

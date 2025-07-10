@@ -6,9 +6,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
   to identify discrete battles from killmail data.
   """
 
-  require Logger
   import Ash.Query
+  require Logger
+
   alias EveDmv.Api
+  alias EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor
   alias EveDmv.Killmails.KillmailRaw
 
   # Battle detection parameters
@@ -124,9 +126,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
       query =
         KillmailRaw
         |> new()
-        |> filter([killmail_time: [gte: start_time, lte: end_time]])
+        |> filter(killmail_time: [gte: start_time, lte: end_time])
         |> sort(killmail_time: :asc)
-        |> limit(1000)  # Reasonable limit for battle analysis
+        # Reasonable limit for battle analysis
+        |> limit(1000)
 
       case Ash.read(query, domain: Api) do
         {:ok, filtered_killmails} ->
@@ -148,10 +151,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
       query =
         KillmailRaw
         |> new()
-        |> filter([solar_system_id: system_id])
-        |> filter([killmail_time: [gte: start_time, lte: end_time]])
+        |> filter(solar_system_id: system_id)
+        |> filter(killmail_time: [gte: start_time, lte: end_time])
         |> sort(killmail_time: :asc)
-        |> limit(500)  # Reasonable limit for single system
+        # Reasonable limit for single system
+        |> limit(500)
 
       case Ash.read(query, domain: Api) do
         {:ok, filtered_killmails} ->
@@ -173,7 +177,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
       query =
         KillmailRaw
         |> new()
-        |> filter([killmail_id: [in: killmail_ids]])
+        |> filter(killmail_id: [in: killmail_ids])
         |> sort(killmail_time: :asc)
 
       case Ash.read(query, domain: Api) do
@@ -260,32 +264,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
   defp count_unique_participants(killmails) do
     participants =
       killmails
-      |> Enum.flat_map(&extract_participants/1)
+      |> Enum.flat_map(&ParticipantExtractor.extract_participants/1)
       |> Enum.uniq()
 
     length(participants)
-  end
-
-  defp extract_participants(killmail) do
-    participants = [killmail.victim_character_id]
-
-    # Extract attacker character IDs from raw_data
-    attackers =
-      case killmail.raw_data do
-        %{"attackers" => attackers} when is_list(attackers) ->
-          attackers
-          |> Enum.map(& &1["character_id"])
-          |> Enum.filter(&(&1 != nil))
-          |> Enum.map(fn
-            id when is_binary(id) -> String.to_integer(id)
-            id when is_integer(id) -> id
-          end)
-
-        _ ->
-          []
-      end
-
-    participants ++ attackers
   end
 
   defp enrich_battle_metadata(clusters) do
@@ -324,7 +306,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
   end
 
   defp analyze_participants(killmails) do
-    all_participants = Enum.flat_map(killmails, &extract_participants/1)
+    all_participants = Enum.flat_map(killmails, &ParticipantExtractor.extract_participants/1)
 
     # Get corporation and alliance data
     corporations =

@@ -283,8 +283,8 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessor do
 
     # Add group and category if present
     keywords = name_words
-    keywords = if group_name, do: keywords ++ [String.downcase(group_name)], else: keywords
-    keywords = if category_name, do: keywords ++ [String.downcase(category_name)], else: keywords
+    keywords = if group_name, do: [String.downcase(group_name) | keywords], else: keywords
+    keywords = if category_name, do: [String.downcase(category_name) | keywords], else: keywords
 
     # Remove duplicates and empty strings
     keywords

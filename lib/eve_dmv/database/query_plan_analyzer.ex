@@ -281,8 +281,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer do
   end
 
   defp analyze_order_by_patterns do
-    [
-    ]
+    []
   end
 
   defp analyze_join_patterns do

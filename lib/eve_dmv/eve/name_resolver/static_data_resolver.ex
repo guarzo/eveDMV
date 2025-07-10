@@ -121,7 +121,7 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
       {:error, _} -> %{class: "unknown", color: "text-gray-400", status: 0.0}
     end
   end
-  
+
   defp fetch_system_security(system_id) do
     case fetch_from_database(:solar_system_full, system_id) do
       {:ok, system} ->
@@ -145,7 +145,7 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
               value -> value || 0.0
             end
         }
-        
+
         {:ok, security_info}
 
       {:error, _} ->
