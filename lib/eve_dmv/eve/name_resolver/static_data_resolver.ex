@@ -6,6 +6,7 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
   static EVE database data. These entities have stable names that rarely change.
   """
 
+  alias EveDmv.Cache
   alias EveDmv.Cache.StaticDataCache
   alias EveDmv.Eve.ItemType
   alias EveDmv.Eve.NameResolver.CacheManager
@@ -112,13 +113,23 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
           status: number()
         }
   def system_security(system_id) when is_integer(system_id) do
-    # For now, continue using the old cache for security info
-    # TODO: Add system security caching to StaticDataCache
-    case CacheManager.get_cached_or_fetch(:solar_system_security, system_id, fn ->
-           fetch_system_security(system_id)
-         end) do
-      {:ok, security_info} -> security_info
-      {:error, _} -> %{class: "unknown", color: "text-gray-400", status: 0.0}
+    # Use a specialized cache key for system security maps
+    cache_key = {:solar_system_security, system_id}
+
+    case Cache.get(:hot_data, cache_key) do
+      {:ok, security_info} ->
+        security_info
+
+      :miss ->
+        case fetch_system_security(system_id) do
+          {:ok, security_info} ->
+            # Cache the security info map directly with appropriate TTL
+            Cache.put(:hot_data, cache_key, security_info, ttl: :timer.hours(24))
+            security_info
+
+          {:error, _} ->
+            %{class: "unknown", color: "text-gray-400", status: 0.0}
+        end
     end
   end
 

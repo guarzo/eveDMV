@@ -4,7 +4,6 @@ defmodule EveDmv.Factories do
   """
 
   alias EveDmv.Api
-  alias EveDmv.Killmails.KillmailEnriched
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Users.User
 
@@ -51,35 +50,75 @@ defmodule EveDmv.Factories do
   end
 
   def killmail_enriched_factory do
+    # Since KillmailEnriched was removed, we create a KillmailRaw with enriched-like data
     killmail_time = DateTime.add(DateTime.utc_now(), -Enum.random(1..3600), :second)
     victim_character_id = Enum.random(90_000_000..100_000_000)
+    victim_corporation_id = Enum.random(1_000_000..2_000_000)
+    victim_alliance_id = Enum.random(99_000_000..100_000_000)
+    victim_ship_type_id = Enum.random([587, 588, 589])
+    attacker_count = Enum.random(1..10)
+
+    # Build realistic killmail data with the victim information
+    raw_data = %{
+      "killmail_id" => System.unique_integer([:positive]),
+      "killmail_time" => DateTime.to_iso8601(killmail_time),
+      "solar_system_id" => Enum.random([30_000_142, 30_002_187, 30_003_715]),
+      "victim" => %{
+        "character_id" => victim_character_id,
+        "corporation_id" => victim_corporation_id,
+        "alliance_id" => victim_alliance_id,
+        "ship_type_id" => victim_ship_type_id,
+        "damage_taken" => Enum.random(1000..50000)
+      },
+      "attackers" =>
+        Enum.map(1..attacker_count, fn _i ->
+          %{
+            "character_id" => Enum.random(90_000_000..100_000_000),
+            "corporation_id" => Enum.random(1_000_000..2_000_000),
+            "alliance_id" => Enum.random(99_000_000..100_000_000),
+            "ship_type_id" => Enum.random([587, 588, 589]),
+            "weapon_type_id" => Enum.random([2185, 2873, 3074]),
+            "damage_done" => Enum.random(100..10000),
+            "final_blow" => false,
+            "security_status" => 0.5
+          }
+        end),
+      "zkb" => %{
+        "locationID" => Enum.random([30_000_142, 30_002_187, 30_003_715]),
+        "hash" => "test_hash_#{System.unique_integer([:positive])}",
+        "fittedValue" => Enum.random(1_000_000..100_000_000),
+        "totalValue" => Enum.random(5_000_000..500_000_000)
+      }
+    }
+
+    # Set one attacker as final blow
+    raw_data =
+      if attacker_count > 0 do
+        attackers = Map.get(raw_data, "attackers", [])
+
+        updated_attackers =
+          case attackers do
+            [first | rest] -> [Map.put(first, "final_blow", true) | rest]
+            [] -> []
+          end
+
+        Map.put(raw_data, "attackers", updated_attackers)
+      else
+        raw_data
+      end
 
     %{
       killmail_id: System.unique_integer([:positive]),
       killmail_time: killmail_time,
-      victim_character_id: victim_character_id,
-      victim_character_name: "Test Victim #{System.unique_integer([:positive])}",
-      victim_corporation_id: Enum.random(1_000_000..2_000_000),
-      victim_corporation_name: "Test Corp #{System.unique_integer([:positive])}",
-      victim_alliance_id: Enum.random(99_000_000..100_000_000),
-      victim_alliance_name: "Test Alliance #{System.unique_integer([:positive])}",
+      killmail_hash: "test_hash_#{System.unique_integer([:positive])}",
       solar_system_id: Enum.random([30_000_142, 30_002_187, 30_003_715]),
-      solar_system_name: Enum.random(["Jita", "Amarr", "Dodixie"]),
-      victim_ship_type_id: Enum.random([587, 588, 589]),
-      victim_ship_name: "Rifter",
-      total_value: Decimal.new("10000000.50"),
-      ship_value: Decimal.new("5000000.25"),
-      fitted_value: Decimal.new("5000000.25"),
-      attacker_count: Enum.random(1..10),
-      final_blow_character_id: Enum.random(90_000_000..100_000_000),
-      final_blow_character_name: "Test Attacker #{System.unique_integer([:positive])}",
-      kill_category: "solo",
-      victim_ship_category: "Frigate",
-      module_tags: ["pvp", "solo"],
-      noteworthy_modules: ["Warp Scrambler I"],
-      price_data_source: "test",
-      # Add a marker so we can distinguish this from KillmailRaw
-      _enriched_marker: true
+      victim_character_id: victim_character_id,
+      victim_corporation_id: victim_corporation_id,
+      victim_alliance_id: victim_alliance_id,
+      victim_ship_type_id: victim_ship_type_id,
+      attacker_count: attacker_count,
+      raw_data: raw_data,
+      source: "test"
     }
   end
 
@@ -189,11 +228,8 @@ defmodule EveDmv.Factories do
     )
   end
 
-  defp insert_into_database(%{_enriched_marker: true} = enriched_attrs) do
-    # This is a KillmailEnriched - remove the marker and insert
-    enriched_attrs = Map.delete(enriched_attrs, :_enriched_marker)
-    Ash.create!(KillmailEnriched, enriched_attrs, domain: Api)
-  end
+  # No longer needed since KillmailEnriched was removed
+  # defp insert_into_database(%{_enriched_marker: true} = enriched_attrs) do
 
   defp insert_into_database(%{killmail_id: _} = killmail_attrs) do
     # Extract required fields for KillmailRaw resource

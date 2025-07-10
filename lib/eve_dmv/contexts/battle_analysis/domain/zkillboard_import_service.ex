@@ -350,9 +350,18 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
 
   defp parse_datetime(_), do: NaiveDateTime.utc_now()
 
-  defp format_timestamp_for_zkb(timestamp) do
-    # Convert to zkillboard format: YYYYMMDDHHMM
+  defp format_timestamp_for_zkb(timestamp) when is_binary(timestamp) do
+    # Already a string, return as-is (assuming it's in YYYYMMDDHHMM format)
     timestamp
-    |> Calendar.strftime("%Y%m%d%H%M")
+  end
+
+  defp format_timestamp_for_zkb(%DateTime{} = timestamp) do
+    # Convert DateTime to zkillboard format: YYYYMMDDHHMM
+    Calendar.strftime(timestamp, "%Y%m%d%H%M")
+  end
+
+  defp format_timestamp_for_zkb(timestamp) do
+    # Fallback for other types, try to convert to string
+    to_string(timestamp)
   end
 end

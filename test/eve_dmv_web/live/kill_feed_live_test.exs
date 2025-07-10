@@ -2,12 +2,15 @@ defmodule EveDmvWeb.KillFeedLiveTest do
   @moduledoc """
   Comprehensive tests for KillFeedLive LiveView component.
   """
-  use EveDmvWeb.ConnCase, async: true
+  use EveDmvWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
   import EveDmv.Factories
 
   setup do
+    # Allow background processes to access the database
+    Ecto.Adapters.SQL.Sandbox.mode(EveDmv.Repo, {:shared, self()})
+
     # Create required reference data for tests
     create_test_solar_systems()
     create_test_item_types()
