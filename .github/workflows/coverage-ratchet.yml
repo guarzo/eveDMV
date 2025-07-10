@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+# Required permissions for the workflow
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  checks: write
+
 env:
   MIX_ENV: test
   ELIXIR_VERSION: "1.17.3"
@@ -204,37 +211,45 @@ jobs:
 
     - name: Comment PR with Coverage
       if: github.event_name == 'pull_request'
+      continue-on-error: true
       uses: actions/github-script@v7
       with:
         script: |
-          const fs = require('fs');
-          const coverage = '${{ steps.run-tests.outputs.current_coverage }}';
-          const baseline = '${{ steps.baseline.outputs.baseline }}';
-          
-          const trend = parseFloat(coverage) > parseFloat(baseline) ? '📈' : '📊';
-          const status = parseFloat(coverage) >= parseFloat(baseline) ? '✅' : '❌';
-          
-          const comment = `## ${status} Test Coverage Report
-          
-          - **Current**: ${coverage}%
-          - **Baseline**: ${baseline}%  
-          - **Trend**: ${trend} ${parseFloat(coverage) > parseFloat(baseline) ? 'Improved' : 'Stable'}
-          
-          ### Coverage Milestones
-          - Phase 1 (Critical Security): 25% ${parseFloat(coverage) >= 25 ? '✅' : '⏳'}
-          - Phase 2 (Core Business Logic): 35% ${parseFloat(coverage) >= 35 ? '✅' : '⏳'}
-          - Phase 3 (Feature Reliability): 40% ${parseFloat(coverage) >= 40 ? '✅' : '⏳'}
-          
-          ${parseFloat(coverage) < parseFloat(baseline) ? 
-            '⚠️ **Coverage regression detected!** Please add tests before merging.' : 
-            '✅ Coverage requirements met.'}`;
-          
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: comment
-          });
+          try {
+            const fs = require('fs');
+            const coverage = '${{ steps.run-tests.outputs.current_coverage }}';
+            const baseline = '${{ steps.baseline.outputs.baseline }}';
+            
+            const trend = parseFloat(coverage) > parseFloat(baseline) ? '📈' : '📊';
+            const status = parseFloat(coverage) >= parseFloat(baseline) ? '✅' : '❌';
+            
+            const comment = `## ${status} Test Coverage Report
+            
+            - **Current**: ${coverage}%
+            - **Baseline**: ${baseline}%  
+            - **Trend**: ${trend} ${parseFloat(coverage) > parseFloat(baseline) ? 'Improved' : 'Stable'}
+            
+            ### Coverage Milestones
+            - Phase 1 (Critical Security): 25% ${parseFloat(coverage) >= 25 ? '✅' : '⏳'}
+            - Phase 2 (Core Business Logic): 35% ${parseFloat(coverage) >= 35 ? '✅' : '⏳'}
+            - Phase 3 (Feature Reliability): 40% ${parseFloat(coverage) >= 40 ? '✅' : '⏳'}
+            
+            ${parseFloat(coverage) < parseFloat(baseline) ? 
+              '⚠️ **Coverage regression detected!** Please add tests before merging.' : 
+              '✅ Coverage requirements met.'}`;
+            
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+            
+            console.log('Successfully posted coverage comment to PR');
+          } catch (error) {
+            console.log('Failed to post coverage comment (this is non-critical):', error.message);
+            console.log('Coverage data is still available in the workflow logs and artifacts');
+          }
 
     - name: Upload coverage artifacts
       if: always()
