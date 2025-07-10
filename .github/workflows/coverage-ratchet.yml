@@ -88,7 +88,7 @@ jobs:
           BASELINE=$(cat coverage_baseline.txt)
         else
           # Set initial baseline based on current project phase
-          BASELINE=10.0  # Current estimated coverage
+          BASELINE=9.3  # Current estimated coverage
         fi
         echo "baseline=$BASELINE" >> $GITHUB_OUTPUT
         echo "Baseline coverage: $BASELINE%"

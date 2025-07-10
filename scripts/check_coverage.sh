@@ -11,7 +11,7 @@ echo "🧪 Running test coverage check..."
 if [ -f coverage_baseline.txt ]; then
   BASELINE=$(cat coverage_baseline.txt)
 else
-  BASELINE=6.0  # Current baseline
+  BASELINE=9.3  # Current baseline
   echo "No baseline found, using default: $BASELINE%"
 fi
 
