@@ -25,8 +25,8 @@ defmodule EveDmv.Eve.EsiCorporationClient do
         path = "/#{@corporation_api_version}/corporations/#{corporation_id}/"
 
         case EsiRequestClient.get_request(path) do
-          {:ok, data} ->
-            corporation = EsiParsers.parse_corporation_response(corporation_id, data)
+          {:ok, response} ->
+            corporation = EsiParsers.parse_corporation_response(corporation_id, response.body)
             EsiCache.put_corporation(corporation_id, corporation)
             {:ok, corporation}
 

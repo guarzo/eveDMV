@@ -374,6 +374,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
         Map.put(att, :_source_killmail, km)
       end)
     end)
+    # Filter out nil character_ids (NPCs/structures)
+    |> Enum.filter(& &1["character_id"])
     |> Enum.group_by(& &1["character_id"])
     |> Enum.map(fn {char_id, attacks} ->
       # Approximate ISK destroyed per attacker
@@ -448,6 +450,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
       end)
     end)
     |> Enum.filter(& &1["final_blow"])
+    # Filter out nil character_ids (NPCs/structures)
+    |> Enum.filter(& &1["character_id"])
     |> Enum.group_by(& &1["character_id"])
     |> Enum.map(fn {char_id, blows} ->
       {char_id,

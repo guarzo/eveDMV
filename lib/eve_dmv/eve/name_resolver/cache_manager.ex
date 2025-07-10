@@ -6,8 +6,6 @@ defmodule EveDmv.Eve.NameResolver.CacheManager do
   for better consistency and centralized cache management.
   """
 
-  alias EveDmv.Cache
-
   require Logger
 
   # Different TTLs for different data types
@@ -18,16 +16,40 @@ defmodule EveDmv.Eve.NameResolver.CacheManager do
   # ESI data more frequent updates
   @esi_data_ttl :timer.minutes(30)
 
+  # ETS table name
+  @table_name :eve_name_resolver_cache
+
+  @doc """
+  Ensures the ETS table exists. Called lazily when needed.
+  """
+  def ensure_table_exists do
+    if :ets.whereis(@table_name) == :undefined do
+      :ets.new(@table_name, [:set, :public, :named_table, read_concurrency: true])
+    end
+
+    :ok
+  end
+
   @doc """
   Gets a cached name for the given ID and type, with appropriate TTL.
   """
   @spec get_cached_name(integer(), atom()) :: {:ok, String.t()} | {:error, :not_found}
   def get_cached_name(id, type) when is_integer(id) and is_atom(type) do
+    ensure_table_exists()
     cache_key = {type, id}
 
-    case Cache.get(:hot_data, cache_key) do
-      {:ok, name} -> {:ok, name}
-      :miss -> {:error, :not_found}
+    case :ets.lookup(@table_name, cache_key) do
+      [{^cache_key, name, expires_at}] ->
+        if System.monotonic_time(:millisecond) < expires_at do
+          {:ok, name}
+        else
+          # Expired, delete and return not found
+          :ets.delete(@table_name, cache_key)
+          {:error, :not_found}
+        end
+
+      [] ->
+        {:error, :not_found}
     end
   end
 
@@ -36,10 +58,12 @@ defmodule EveDmv.Eve.NameResolver.CacheManager do
   """
   @spec cache_name(integer(), atom(), String.t()) :: :ok
   def cache_name(id, type, name) when is_integer(id) and is_atom(type) and is_binary(name) do
+    ensure_table_exists()
     cache_key = {type, id}
     ttl = get_ttl_for_type(type)
+    expires_at = System.monotonic_time(:millisecond) + ttl
 
-    Cache.put(:hot_data, cache_key, name, ttl: ttl)
+    :ets.insert(@table_name, {cache_key, name, expires_at})
     :ok
   end
 
@@ -48,11 +72,15 @@ defmodule EveDmv.Eve.NameResolver.CacheManager do
   """
   @spec cached?(integer(), atom()) :: boolean()
   def cached?(id, type) when is_integer(id) and is_atom(type) do
+    ensure_table_exists()
     cache_key = {type, id}
 
-    case Cache.get(:hot_data, cache_key) do
-      {:ok, _name} -> true
-      :miss -> false
+    case :ets.lookup(@table_name, cache_key) do
+      [{^cache_key, _name, expires_at}] ->
+        System.monotonic_time(:millisecond) < expires_at
+
+      [] ->
+        false
     end
   end
 
@@ -98,8 +126,15 @@ defmodule EveDmv.Eve.NameResolver.CacheManager do
   Clears all cached names. Useful for development/testing.
   """
   def clear_cache do
-    Cache.clear(:hot_data)
-    Logger.info("Cleared EVE name resolver cache")
+    try do
+      :ets.delete_all_objects(:eve_name_resolver_cache)
+      Logger.info("Cleared EVE name resolver cache")
+    rescue
+      ArgumentError ->
+        # Table doesn't exist, that's ok
+        Logger.debug("EVE name resolver cache table doesn't exist")
+    end
+
     :ok
   end
 
@@ -152,10 +187,26 @@ defmodule EveDmv.Eve.NameResolver.CacheManager do
   end
 
   @doc """
-  Legacy compatibility function - no longer needs to start anything.
+  Legacy compatibility function - creates the name resolver ETS table.
   """
   def start_cache do
-    Logger.debug("EVE name resolver cache using unified cache system")
+    # Create a dedicated ETS table for name resolution
+    case :ets.whereis(:eve_name_resolver_cache) do
+      :undefined ->
+        :ets.new(:eve_name_resolver_cache, [
+          :named_table,
+          :public,
+          :set,
+          read_concurrency: true,
+          write_concurrency: true
+        ])
+
+        Logger.debug("Created EVE name resolver cache ETS table")
+
+      _pid ->
+        Logger.debug("EVE name resolver cache ETS table already exists")
+    end
+
     :ok
   end
 

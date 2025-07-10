@@ -187,15 +187,28 @@ defmodule EveDmv.Contexts.BattleAnalysis do
          {:ok, performance} <- ShipPerformanceAnalyzer.analyze_battle_performance(battle),
          {:ok, correlated} <-
            MultiSystemBattleCorrelator.correlate_multi_system_battles([battle]),
+         # Ensure correlated is a list before passing to analyze_combat_flow_patterns
+         true <- is_list(correlated) || {:error, "Correlated battles must be a list"},
          {:ok, flow_analysis} <-
            MultiSystemBattleCorrelator.analyze_combat_flow_patterns(correlated) do
+      # For single-battle analysis, extract the current battle from correlated results
+      current_battle = List.first(correlated)
+      other_battles = Enum.drop(correlated, 1)
+
       {:ok,
        %{
          tactical_phases: phases,
          ship_performance: performance,
-         multi_system_context: correlated,
+         multi_system_context: %{
+           current_battle: current_battle,
+           correlated_battles: other_battles,
+           is_multi_system: length(correlated) > 1
+         },
          battle_flow: flow_analysis
        }}
+    else
+      false -> {:error, "Unexpected data structure in battle analysis"}
+      error -> error
     end
   end
 

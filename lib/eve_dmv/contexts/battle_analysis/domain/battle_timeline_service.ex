@@ -235,7 +235,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
       if duration_seconds > 0 do
         length(events) / (duration_seconds / 60)
       else
-        0
+        0.0
       end
 
     %{

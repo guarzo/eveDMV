@@ -331,7 +331,7 @@ defmodule EveDmv.Eve.EsiRequestClient do
 
   defp build_url(path) do
     base_url = get_config(:base_url, @default_base_url)
-    "#{base_url}/latest#{path}"
+    "#{base_url}#{path}"
   end
 
   defp build_headers do

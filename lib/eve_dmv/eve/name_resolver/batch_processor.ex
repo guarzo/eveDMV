@@ -54,7 +54,7 @@ defmodule EveDmv.Eve.NameResolver.BatchProcessor do
       Enum.reduce(unique_ids, {%{}, []}, fn id, {cached_acc, uncached_acc} ->
         case CacheManager.get_from_cache(type, id) do
           {:ok, name} -> {Map.put(cached_acc, id, name), uncached_acc}
-          :miss -> {cached_acc, [id | uncached_acc]}
+          {:error, :not_found} -> {cached_acc, [id | uncached_acc]}
         end
       end)
 
@@ -107,24 +107,8 @@ defmodule EveDmv.Eve.NameResolver.BatchProcessor do
     StaticDataResolver.batch_fetch_from_database(type, ids)
   end
 
-  def batch_fetch_from_database(type, ids) when type in [:character, :corporation, :alliance] do
-    # ESI entities don't have efficient batch database lookups
-    # They need to be fetched via ESI API
-    case EsiEntityResolver.bulk_esi_lookup(type, ids) do
-      {:ok, results} ->
-        # Cache the results
-        Enum.each(results, fn {id, name} ->
-          CacheManager.cache_result(type, id, name)
-        end)
-
-        results
-
-      {:error, _} ->
-        Logger.warning("Failed to batch fetch #{type} from ESI for IDs: #{inspect(ids)}")
-        %{}
-    end
-  end
-
+  # For ESI entities and unknown types, return empty map
+  # Names should already be cached from killmail data
   def batch_fetch_from_database(_type, _ids), do: %{}
 
   @doc """

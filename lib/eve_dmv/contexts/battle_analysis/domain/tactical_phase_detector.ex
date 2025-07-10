@@ -552,6 +552,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
     # Aggregate all killmails in this phase
     all_killmails = all_windows |> Enum.flat_map(& &1.killmails) |> Enum.uniq_by(& &1.killmail_id)
 
+    characteristics_data = analyze_phase_characteristics(cluster, all_killmails)
+
     %{
       phase_id: phase_index + 1,
       phase_type: phase_type,
@@ -559,7 +561,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
       end_time: end_time,
       duration_seconds: NaiveDateTime.diff(end_time, start_time, :second),
       killmails: all_killmails,
-      characteristics: analyze_phase_characteristics(cluster, all_killmails),
+      characteristics: describe_phase_characteristics(phase_type, characteristics_data),
+      key_metrics: characteristics_data,
       cluster_info: %{
         size: cluster.size,
         centroid: cluster.centroid,
@@ -569,8 +572,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
   end
 
   defp analyze_phase_characteristics(cluster, killmails) do
+    avg_damage_rate = cluster.members |> Enum.map(& &1.damage_rate) |> average()
+
     %{
-      avg_damage_rate: cluster.members |> Enum.map(& &1.damage_rate) |> average(),
+      avg_damage_rate: avg_damage_rate,
+      # For template compatibility
+      damage_rate: avg_damage_rate,
       avg_kill_rate: cluster.members |> Enum.map(& &1.kill_rate) |> average(),
       participant_engagement:
         cluster.members |> Enum.map(& &1.participant_engagement) |> average(),
@@ -578,8 +585,52 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
       ship_diversity: cluster.members |> Enum.map(& &1.ship_diversity) |> average(),
       isk_destruction_rate: cluster.members |> Enum.map(& &1.isk_destruction_rate) |> average(),
       unique_participants: extract_all_participants(killmails) |> length(),
-      dominant_ship_types: analyze_dominant_ship_types(killmails)
+      dominant_ship_types: analyze_dominant_ship_types(killmails),
+      # Additional fields expected by template
+      avg_distance: calculate_average_distance(killmails),
+      intensity_score: calculate_intensity_score(avg_damage_rate)
     }
+  end
+
+  defp describe_phase_characteristics(phase_type, metrics) do
+    kill_rate = metrics.avg_kill_rate
+    participants = metrics.unique_participants
+
+    intensity =
+      cond do
+        kill_rate > 10 -> "High intensity"
+        kill_rate > 5 -> "Moderate intensity"
+        true -> "Low intensity"
+      end
+
+    scale =
+      cond do
+        participants > 50 -> "large-scale"
+        participants > 20 -> "medium-scale"
+        participants > 10 -> "small-gang"
+        true -> "small"
+      end
+
+    "#{intensity} #{scale} #{phase_type |> to_string() |> String.replace("_", " ")} with #{participants} participants"
+  end
+
+  defp calculate_average_distance(killmails) do
+    # For now, return a placeholder since we don't have position data
+    # In a real implementation, this would calculate distances between victims and attackers
+    # 15km default
+    15000
+  end
+
+  defp calculate_intensity_score(avg_damage_rate) do
+    # Convert damage rate to intensity score (0-10)
+    cond do
+      avg_damage_rate > 100_000 -> 10
+      avg_damage_rate > 50000 -> 8
+      avg_damage_rate > 25000 -> 6
+      avg_damage_rate > 10000 -> 4
+      avg_damage_rate > 5000 -> 2
+      true -> 1
+    end
   end
 
   defp analyze_transition(current_phase, next_phase) do
@@ -592,8 +643,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
   end
 
   defp classify_transition_type(current, next) do
-    current_intensity = current.characteristics.avg_damage_rate
-    next_intensity = next.characteristics.avg_damage_rate
+    current_intensity = current.key_metrics.avg_damage_rate
+    next_intensity = next.key_metrics.avg_damage_rate
 
     cond do
       next_intensity > current_intensity * 1.5 -> :escalation
@@ -604,8 +655,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
   end
 
   defp calculate_intensity_change(current, next) do
-    current_intensity = current.characteristics.avg_damage_rate
-    next_intensity = next.characteristics.avg_damage_rate
+    current_intensity = current.key_metrics.avg_damage_rate
+    next_intensity = next.key_metrics.avg_damage_rate
 
     if current_intensity > 0 do
       (next_intensity - current_intensity) / current_intensity
@@ -615,8 +666,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
   end
 
   defp calculate_participant_change(current, next) do
-    current_participants = current.characteristics.unique_participants
-    next_participants = next.characteristics.unique_participants
+    current_participants = current.key_metrics.unique_participants
+    next_participants = next.key_metrics.unique_participants
 
     if current_participants > 0 do
       (next_participants - current_participants) / current_participants

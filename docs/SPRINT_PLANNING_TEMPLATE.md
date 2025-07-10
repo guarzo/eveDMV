@@ -223,6 +223,33 @@ Based on this sprint's outcomes:
 4. Capture evidence (screenshots, test results)
 5. Flag any scope changes immediately
 
+### 🔒 Critical Development Practices
+
+#### Incremental Changes & Validation
+1. **Make Small, Atomic Changes**
+   - One feature or fix at a time
+   - Commit after each working change
+   - Never batch multiple unrelated changes
+
+2. **Validate After Every Change**
+   - Run `mix test` after each code change
+   - Manually test the specific feature modified
+   - Check that existing features still work
+   - Run `mix phx.server` and test in browser
+
+3. **Regression Testing Checklist**
+   - [ ] Kill feed still displays real-time data
+   - [ ] Authentication still works
+   - [ ] Navigation between pages works
+   - [ ] No new compilation warnings
+   - [ ] No runtime errors in console
+
+4. **Before Moving to Next Task**
+   - Current feature works end-to-end
+   - Tests pass
+   - No regressions introduced
+   - Code is committed with clear message
+
 ### Closing a Sprint
 1. Complete all sections of sprint document
 2. Run through completion checklist

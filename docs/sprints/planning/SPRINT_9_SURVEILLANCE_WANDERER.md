@@ -50,6 +50,48 @@ Deliver a comprehensive surveillance system that combines custom alert profiles 
 
 ---
 
+## 🔒 Critical Development Practices
+
+### Incremental Changes & Validation
+To avoid breaking existing functionality, we MUST follow these practices:
+
+1. **Make Small, Atomic Changes**
+   - One feature or fix at a time
+   - Never batch multiple unrelated changes
+   - Commit after each working change with descriptive message
+
+2. **Validate After EVERY Change**
+   ```bash
+   # Run after each code change:
+   mix test                    # All tests must pass
+   mix credo                   # No new warnings
+   mix phx.server             # Start server and test manually
+   ```
+
+3. **Manual Regression Testing**
+   After each change, verify these still work:
+   - [ ] `/feed` - Kill feed displays real-time data
+   - [ ] `/auth/login` - EVE SSO authentication works
+   - [ ] `/battle-analysis` - Page loads without errors
+   - [ ] `/character-intelligence` - Basic page functionality
+   - [ ] Navigation between pages works
+   - [ ] No console errors in browser
+
+4. **Before Moving to Next Task**
+   - [ ] Current feature works end-to-end
+   - [ ] All tests pass
+   - [ ] No regressions introduced
+   - [ ] Code is committed
+
+### Common Pitfalls That Break Things
+1. **Changing multiple files without testing** - Test after each file change
+2. **Assuming cached data is correct** - Clear caches when debugging
+3. **Not checking for nil values** - Always handle edge cases
+4. **Breaking pattern matching** - Ensure all function clauses handle inputs
+5. **Type mismatches** - String IDs vs Integer IDs is a common issue
+
+---
+
 ## 📈 Daily Progress Tracking
 
 ### Day 1 - [Date]
@@ -57,12 +99,14 @@ Deliver a comprehensive surveillance system that combines custom alert profiles 
 - **Completed**: 
 - **Blockers**: 
 - **Reality Check**: ✅ No mock data introduced
+- **Regression Test**: ✅ All existing features still work
 
 ### Day 2 - [Date]
 - **Started**: 
 - **Completed**: 
 - **Blockers**: 
 - **Reality Check**: ✅ All tests passing
+- **Regression Test**: ✅ All existing features still work
 
 [Continue for each day...]
 
