@@ -7,20 +7,18 @@ defmodule EveDmvWeb.SurveillanceLive do
   """
 
   use EveDmvWeb, :live_view
-  alias EveDmv.Api
 
-  alias EveDmv.Surveillance.{
-    MatchingEngine,
-    Notification,
-    NotificationService,
-    Profile,
-    ProfileMatch
-  }
+  alias EveDmv.Surveillance.MatchingEngine
+  alias EveDmvWeb.SurveillanceLive.BatchOperationService
+  alias EveDmvWeb.SurveillanceLive.Components
+  alias EveDmvWeb.SurveillanceLive.ExportImportService
+  alias EveDmvWeb.SurveillanceLive.NotificationService
+  alias EveDmvWeb.SurveillanceLive.ProfileService
 
   # Load current user from session on mount
-  on_mount {EveDmvWeb.AuthLive, :load_from_session}
+  on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
-  @impl true
+  @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     current_user = socket.assigns[:current_user]
 
@@ -34,10 +32,10 @@ defmodule EveDmvWeb.SurveillanceLive do
       user_id = current_user.id
 
       # Load user's profiles and notifications
-      profiles = load_user_profiles(user_id, current_user)
-      recent_matches = load_recent_matches()
-      engine_stats = get_engine_stats()
-      notifications = load_user_notifications(user_id)
+      profiles = ProfileService.load_user_profiles(user_id, current_user)
+      recent_matches = Components.load_recent_matches()
+      engine_stats = Components.get_engine_stats()
+      notifications = NotificationService.load_user_notifications(user_id)
       unread_count = NotificationService.get_unread_count(user_id)
 
       socket =
@@ -56,7 +54,7 @@ defmodule EveDmvWeb.SurveillanceLive do
         |> assign(:new_profile_form, %{
           "name" => "",
           "description" => "",
-          "filter_tree" => sample_filter_tree()
+          "filter_tree" => Components.sample_filter_tree()
         })
 
       {:ok, socket}
@@ -66,7 +64,7 @@ defmodule EveDmvWeb.SurveillanceLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info(
         %Phoenix.Socket.Broadcast{
           topic: "surveillance",
@@ -82,7 +80,7 @@ defmodule EveDmvWeb.SurveillanceLive do
       matched_at: DateTime.utc_now()
     }
 
-    updated_matches = [new_match | socket.assigns.recent_matches] |> Enum.take(50)
+    updated_matches = Enum.take([new_match | socket.assigns.recent_matches], 50)
 
     # Show temporary notification
     socket =
@@ -93,7 +91,7 @@ defmodule EveDmvWeb.SurveillanceLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info(
         %Phoenix.Socket.Broadcast{
           topic: "user:" <> _user_id,
@@ -103,7 +101,7 @@ defmodule EveDmvWeb.SurveillanceLive do
         socket
       ) do
     # New persistent notification - update notifications list and count
-    updated_notifications = [payload.notification | socket.assigns.notifications] |> Enum.take(50)
+    updated_notifications = Enum.take([payload.notification | socket.assigns.notifications], 50)
     unread_count = NotificationService.get_unread_count(socket.assigns.user_id)
 
     socket =
@@ -115,61 +113,64 @@ defmodule EveDmvWeb.SurveillanceLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
+  def handle_info({:toggle_profile_selection, profile_id}, socket) do
+    selected = socket.assigns.selected_profiles
+
+    updated_selected =
+      if MapSet.member?(selected, profile_id) do
+        MapSet.delete(selected, profile_id)
+      else
+        MapSet.put(selected, profile_id)
+      end
+
+    socket = assign(socket, :selected_profiles, updated_selected)
+    {:noreply, socket}
+  end
+
+  @impl Phoenix.LiveView
+  def handle_info({:toggle_profile, profile_id}, socket) do
+    handle_event("toggle_profile", %{"profile_id" => profile_id}, socket)
+  end
+
+  @impl Phoenix.LiveView
+  def handle_info({:delete_profile, profile_id}, socket) do
+    handle_event("delete_profile", %{"profile_id" => profile_id}, socket)
+  end
+
+  @impl Phoenix.LiveView
+  def handle_info({:show_create_modal}, socket) do
+    handle_event("show_create_modal", %{}, socket)
+  end
+
+  @impl Phoenix.LiveView
   def handle_info(_msg, socket) do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("show_create_modal", _params, socket) do
     socket = assign(socket, :show_create_modal, true)
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("hide_create_modal", _params, socket) do
     socket = assign(socket, :show_create_modal, false)
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("create_profile", %{"profile" => profile_params}, socket) do
-    # Parse JSON filter tree
-    {filter_tree, has_json_error} =
-      case Jason.decode(profile_params["filter_tree"] || "{}") do
-        {:ok, parsed} ->
-          {parsed, false}
-
-        {:error, error} ->
-          require Logger
-          Logger.warning("Invalid JSON in filter tree: #{inspect(error)}")
-          {sample_filter_tree(), true}
-      end
-
-    profile_data = %{
-      name: profile_params["name"],
-      description: profile_params["description"],
-      user_id: socket.assigns.user_id,
-      filter_tree: filter_tree,
-      is_active: true
-    }
-
-    case Ash.create(Profile, profile_data, domain: Api, actor: socket.assigns.current_user) do
-      {:ok, profile} ->
-        require Logger
-        Logger.info("Created surveillance profile: #{profile.name} (ID: #{profile.id})")
-
-        # Reload matching engine profiles
-        try do
-          MatchingEngine.reload_profiles()
-          Logger.info("Reloaded matching engine profiles")
-        rescue
-          error ->
-            Logger.error("Failed to reload matching engine: #{inspect(error)}")
-        end
-
+    case ProfileService.create_profile(
+           profile_params,
+           socket.assigns.user_id,
+           socket.assigns.current_user
+         ) do
+      {:ok, profile, has_json_error} ->
         # Reload user profiles
-        profiles = load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
+        profiles =
+          ProfileService.load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
 
         socket =
           socket
@@ -190,85 +191,62 @@ defmodule EveDmvWeb.SurveillanceLive do
 
         {:noreply, socket}
 
-      {:error, error} ->
-        error_message = format_error_message(error)
+      {:error, error_message} ->
         socket = put_flash(socket, :error, error_message)
         {:noreply, socket}
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("toggle_profile", %{"profile_id" => profile_id}, socket) do
-    case Ash.get(Profile, profile_id, domain: Api, actor: socket.assigns.current_user) do
-      {:ok, profile} ->
-        case Ash.update(profile,
-               action: :toggle_active,
-               domain: Api,
-               actor: socket.assigns.current_user
-             ) do
-          {:ok, _updated_profile} ->
-            # Reload matching engine profiles
-            MatchingEngine.reload_profiles()
+    case ProfileService.toggle_profile(profile_id, socket.assigns.current_user) do
+      {:ok, _updated_profile} ->
+        # Reload user profiles
+        profiles =
+          ProfileService.load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
 
-            # Reload user profiles
-            profiles = load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
+        socket =
+          socket
+          |> assign(:profiles, profiles)
+          |> put_flash(:info, "Profile status updated")
 
-            socket =
-              socket
-              |> assign(:profiles, profiles)
-              |> put_flash(:info, "Profile status updated")
+        {:noreply, socket}
 
-            {:noreply, socket}
-
-          {:error, error} ->
-            socket = put_flash(socket, :error, "Failed to update profile: #{inspect(error)}")
-            {:noreply, socket}
-        end
-
-      {:error, _} ->
-        socket = put_flash(socket, :error, "Profile not found")
+      {:error, error_message} ->
+        socket = put_flash(socket, :error, error_message)
         {:noreply, socket}
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("delete_profile", %{"profile_id" => profile_id}, socket) do
-    case Ash.get(Profile, profile_id, domain: Api, actor: socket.assigns.current_user) do
-      {:ok, profile} ->
-        case Ash.destroy(profile, domain: Api, actor: socket.assigns.current_user) do
-          :ok ->
-            # Reload matching engine profiles
-            MatchingEngine.reload_profiles()
+    case ProfileService.delete_profile(profile_id, socket.assigns.current_user) do
+      :ok ->
+        # Reload user profiles
+        profiles =
+          ProfileService.load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
 
-            # Reload user profiles
-            profiles = load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
+        socket =
+          socket
+          |> assign(:profiles, profiles)
+          |> put_flash(:info, "Profile deleted")
 
-            socket =
-              socket
-              |> assign(:profiles, profiles)
-              |> put_flash(:info, "Profile deleted")
+        {:noreply, socket}
 
-            {:noreply, socket}
-
-          {:error, error} ->
-            socket = put_flash(socket, :error, "Failed to delete profile: #{inspect(error)}")
-            {:noreply, socket}
-        end
-
-      {:error, _} ->
-        socket = put_flash(socket, :error, "Profile not found")
+      {:error, error_message} ->
+        socket = put_flash(socket, :error, error_message)
         {:noreply, socket}
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("refresh_stats", _params, socket) do
-    engine_stats = get_engine_stats()
+    engine_stats = Components.get_engine_stats()
     socket = assign(socket, :engine_stats, engine_stats)
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("toggle_batch_mode", _params, socket) do
     batch_mode = not socket.assigns.batch_mode
 
@@ -281,7 +259,7 @@ defmodule EveDmvWeb.SurveillanceLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("toggle_profile_selection", %{"profile_id" => profile_id}, socket) do
     selected = socket.assigns.selected_profiles
 
@@ -296,7 +274,7 @@ defmodule EveDmvWeb.SurveillanceLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("select_all_profiles", _params, socket) do
     all_profile_ids =
       socket.assigns.profiles
@@ -307,13 +285,13 @@ defmodule EveDmvWeb.SurveillanceLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("deselect_all_profiles", _params, socket) do
     socket = assign(socket, :selected_profiles, MapSet.new())
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("show_batch_modal", _params, socket) do
     if MapSet.size(socket.assigns.selected_profiles) > 0 do
       socket = assign(socket, :show_batch_modal, true)
@@ -324,23 +302,22 @@ defmodule EveDmvWeb.SurveillanceLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("hide_batch_modal", _params, socket) do
     socket = assign(socket, :show_batch_modal, false)
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("batch_delete", _params, socket) do
     selected_ids = MapSet.to_list(socket.assigns.selected_profiles)
 
-    results = batch_delete_profiles(selected_ids, socket.assigns.current_user)
-
-    # Reload matching engine profiles
-    MatchingEngine.reload_profiles()
+    results =
+      BatchOperationService.batch_delete_profiles(selected_ids, socket.assigns.current_user)
 
     # Reload user profiles
-    profiles = load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
+    profiles =
+      ProfileService.load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
 
     socket =
       socket
@@ -353,17 +330,16 @@ defmodule EveDmvWeb.SurveillanceLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("batch_enable", _params, socket) do
     selected_ids = MapSet.to_list(socket.assigns.selected_profiles)
 
-    results = batch_update_profiles(selected_ids, true, socket.assigns.current_user)
-
-    # Reload matching engine profiles
-    MatchingEngine.reload_profiles()
+    results =
+      BatchOperationService.batch_enable_profiles(selected_ids, socket.assigns.current_user)
 
     # Reload user profiles
-    profiles = load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
+    profiles =
+      ProfileService.load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
 
     socket =
       socket
@@ -376,17 +352,16 @@ defmodule EveDmvWeb.SurveillanceLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("batch_disable", _params, socket) do
     selected_ids = MapSet.to_list(socket.assigns.selected_profiles)
 
-    results = batch_update_profiles(selected_ids, false, socket.assigns.current_user)
-
-    # Reload matching engine profiles
-    MatchingEngine.reload_profiles()
+    results =
+      BatchOperationService.batch_disable_profiles(selected_ids, socket.assigns.current_user)
 
     # Reload user profiles
-    profiles = load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
+    profiles =
+      ProfileService.load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
 
     socket =
       socket
@@ -399,7 +374,7 @@ defmodule EveDmvWeb.SurveillanceLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("export_profiles", _params, socket) do
     selected_ids =
       if MapSet.size(socket.assigns.selected_profiles) > 0 do
@@ -408,29 +383,33 @@ defmodule EveDmvWeb.SurveillanceLive do
         Enum.map(socket.assigns.profiles, & &1.id)
       end
 
-    export_data = export_profiles_json(selected_ids, socket.assigns.current_user)
+    export_data =
+      ExportImportService.export_profiles_json(selected_ids, socket.assigns.current_user)
+
+    download_event = ExportImportService.prepare_download_event(export_data)
 
     socket =
       socket
-      |> push_event("download", %{
-        filename: "surveillance_profiles_#{Date.utc_today()}.json",
-        content: Jason.encode!(export_data, pretty: true),
-        mimetype: "application/json"
-      })
+      |> push_event("download", download_event)
       |> put_flash(:info, "Exported #{length(export_data["profiles"])} profiles")
 
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("import_profiles", %{"profiles_json" => json_data}, socket) do
-    case import_profiles_from_json(json_data, socket.assigns.user_id, socket.assigns.current_user) do
+    case ExportImportService.import_profiles_from_json(
+           json_data,
+           socket.assigns.user_id,
+           socket.assigns.current_user
+         ) do
       {:ok, count} ->
         # Reload matching engine profiles
         MatchingEngine.reload_profiles()
 
         # Reload user profiles
-        profiles = load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
+        profiles =
+          ProfileService.load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
 
         socket =
           socket
@@ -445,24 +424,24 @@ defmodule EveDmvWeb.SurveillanceLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("show_notifications", _params, socket) do
     socket = assign(socket, :show_notifications, true)
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("hide_notifications", _params, socket) do
     socket = assign(socket, :show_notifications, false)
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("mark_notification_read", %{"notification_id" => notification_id}, socket) do
     case NotificationService.mark_notification_read(notification_id) do
       :ok ->
         # Reload notifications and update count
-        notifications = load_user_notifications(socket.assigns.user_id)
+        notifications = NotificationService.load_user_notifications(socket.assigns.user_id)
         unread_count = NotificationService.get_unread_count(socket.assigns.user_id)
 
         socket =
@@ -472,236 +451,42 @@ defmodule EveDmvWeb.SurveillanceLive do
 
         {:noreply, socket}
 
-      {:error, _} ->
-        socket = put_flash(socket, :error, "Failed to mark notification as read")
+      {:error, error_message} ->
+        socket = put_flash(socket, :error, error_message)
         {:noreply, socket}
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("mark_all_read", _params, socket) do
-    # Get all unread notifications for the user
-    case Ash.read(Notification,
-           action: :unread_for_user,
-           input: %{user_id: socket.assigns.user_id},
-           domain: Api
+    case NotificationService.mark_all_notifications_read(
+           socket.assigns.user_id,
+           socket.assigns.current_user
          ) do
-      {:ok, unread_notifications} ->
-        # Bulk update them to read
-        Enum.each(unread_notifications, fn notification ->
-          Ash.update(notification,
-            action: :mark_read,
-            domain: Api,
-            actor: socket.assigns.current_user
-          )
-        end)
-
+      {:ok, results} ->
         # Reload notifications and update count
-        notifications = load_user_notifications(socket.assigns.user_id)
-        unread_count = 0
+        notifications = NotificationService.load_user_notifications(socket.assigns.user_id)
+        unread_count = NotificationService.get_unread_count(socket.assigns.user_id)
+
+        flash_message = NotificationService.format_mark_all_message(results)
 
         socket =
           socket
           |> assign(:notifications, notifications)
           |> assign(:unread_count, unread_count)
-          |> put_flash(:info, "All notifications marked as read")
+          |> put_flash(:info, flash_message)
 
         {:noreply, socket}
 
-      {:error, _} ->
-        socket = put_flash(socket, :error, "Failed to mark all notifications as read")
+      {:error, error_message} ->
+        socket = put_flash(socket, :error, error_message)
         {:noreply, socket}
     end
   end
 
-  # Private helper functions
+  # Template helper functions - delegate to ViewHelpers module
 
-  defp load_user_profiles(user_id, current_user) do
-    case Ash.read(Profile,
-           action: :user_profiles,
-           input: %{user_id: user_id},
-           domain: Api,
-           actor: current_user
-         ) do
-      {:ok, profiles} -> profiles
-      {:error, _} -> []
-    end
-  end
-
-  defp load_recent_matches do
-    case Ash.read(ProfileMatch, action: :recent_matches, input: %{hours: 24}, domain: Api) do
-      {:ok, matches} -> Enum.take(matches, 20)
-      {:error, _} -> []
-    end
-  end
-
-  defp get_engine_stats do
-    MatchingEngine.get_stats()
-  rescue
-    _ -> %{profiles_loaded: 0, matches_processed: 0}
-  end
-
-  defp load_user_notifications(user_id) do
-    NotificationService.get_recent_notifications(user_id, 24)
-  end
-
-  defp sample_filter_tree do
-    %{
-      "condition" => "and",
-      "rules" => [
-        %{
-          "field" => "total_value",
-          "operator" => "gt",
-          "value" => 100_000_000
-        },
-        %{
-          "field" => "solar_system_id",
-          "operator" => "in",
-          # Jita, Amarr
-          "value" => [30_000_142, 30_002_187]
-        }
-      ]
-    }
-  end
-
-  # Template helper functions
-
-  def format_filter_tree(filter_tree) do
-    Jason.encode!(filter_tree, pretty: true)
-  end
-
-  def format_datetime(datetime) do
-    case datetime do
-      %DateTime{} -> Calendar.strftime(datetime, "%Y-%m-%d %H:%M:%S")
-      _ -> "Unknown"
-    end
-  end
-
-  def profile_status_badge(is_active) do
-    if is_active do
-      "🟢 Active"
-    else
-      "🔴 Inactive"
-    end
-  end
-
-  # Helper function to format error messages and reduce nesting
-  defp format_error_message(error) do
-    case error do
-      %Ash.Error.Invalid{errors: errors} ->
-        errors
-        |> Enum.map_join(", ", &format_validation_error/1)
-
-      _ ->
-        "Failed to create profile: #{inspect(error)}"
-    end
-  end
-
-  defp format_validation_error(err) do
-    case err do
-      %{message: msg} -> msg
-      %{field: field} -> "#{field} is invalid"
-      _ -> inspect(err)
-    end
-  end
-
-  # Batch operation helpers
-
-  defp batch_delete_profiles(profile_ids, actor) do
-    results = %{success: 0, failed: 0}
-
-    Enum.reduce(profile_ids, results, fn profile_id, acc ->
-      case Ash.get(Profile, profile_id, domain: Api, actor: actor) do
-        {:ok, profile} ->
-          case Ash.destroy(profile, domain: Api, actor: actor) do
-            :ok ->
-              %{acc | success: acc.success + 1}
-
-            {:error, _} ->
-              %{acc | failed: acc.failed + 1}
-          end
-
-        {:error, _} ->
-          %{acc | failed: acc.failed + 1}
-      end
-    end)
-  end
-
-  defp batch_update_profiles(profile_ids, is_active, actor) do
-    results = %{success: 0, failed: 0}
-
-    Enum.reduce(profile_ids, results, fn profile_id, acc ->
-      case Ash.get(Profile, profile_id, domain: Api, actor: actor) do
-        {:ok, profile} ->
-          case Ash.update(profile, %{is_active: is_active}, domain: Api, actor: actor) do
-            {:ok, _} ->
-              %{acc | success: acc.success + 1}
-
-            {:error, _} ->
-              %{acc | failed: acc.failed + 1}
-          end
-
-        {:error, _} ->
-          %{acc | failed: acc.failed + 1}
-      end
-    end)
-  end
-
-  defp export_profiles_json(profile_ids, actor) do
-    profiles =
-      Enum.reduce(profile_ids, [], fn profile_id, acc ->
-        case Ash.get(Profile, profile_id, domain: Api, actor: actor) do
-          {:ok, profile} ->
-            exported = %{
-              "name" => profile.name,
-              "description" => profile.description,
-              "filter_tree" => profile.filter_tree,
-              "is_active" => profile.is_active,
-              "notification_settings" => profile.notification_settings
-            }
-
-            [exported | acc]
-
-          {:error, _} ->
-            acc
-        end
-      end)
-      |> Enum.reverse()
-
-    %{
-      "version" => "1.0",
-      "exported_at" => DateTime.utc_now(),
-      "profiles" => profiles
-    }
-  end
-
-  defp import_profiles_from_json(json_data, user_id, actor) do
-    case Jason.decode(json_data) do
-      {:ok, %{"profiles" => profiles}} when is_list(profiles) ->
-        imported_count =
-          Enum.reduce(profiles, 0, fn profile_data, count ->
-            profile_attrs = %{
-              name: profile_data["name"] || "Imported Profile",
-              description: profile_data["description"] || "",
-              filter_tree: profile_data["filter_tree"] || sample_filter_tree(),
-              is_active: profile_data["is_active"] || false,
-              notification_settings: profile_data["notification_settings"] || %{},
-              user_id: user_id
-            }
-
-            case Ash.create(Profile, profile_attrs, domain: Api, actor: actor) do
-              {:ok, _} -> count + 1
-              {:error, _} -> count
-            end
-          end)
-
-        {:ok, imported_count}
-
-      {:ok, _} ->
-        {:error, "Invalid format: missing profiles array"}
-
-      {:error, _} ->
-        {:error, "Invalid JSON data"}
-    end
-  end
+  defdelegate format_filter_tree(filter_tree), to: Components
+  defdelegate format_datetime(datetime), to: Components
+  defdelegate profile_status_badge(is_active), to: Components
 end

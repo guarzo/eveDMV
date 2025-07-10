@@ -7,9 +7,14 @@ defmodule EveDmv.Eve.TypeResolver do
   creates the necessary records.
   """
 
-  require Logger
+  import Ash.Expr
+
   alias EveDmv.Api
-  alias EveDmv.Eve.{EsiClient, ItemType}
+  alias EveDmv.Eve.EsiClient
+  alias EveDmv.Eve.ItemType
+
+  require Ash.Query
+  require Logger
 
   @doc """
   Resolve a missing item type by fetching from ESI and adding to database.
@@ -18,7 +23,7 @@ defmodule EveDmv.Eve.TypeResolver do
 
       iex> TypeResolver.resolve_item_type(23378)
       {:ok, %ItemType{type_id: 23378, type_name: "Machariel", ...}}
-      
+
       iex> TypeResolver.resolve_item_type(999999)
       {:error, :not_found}
   """
@@ -78,14 +83,14 @@ defmodule EveDmv.Eve.TypeResolver do
   # Private functions
 
   defp get_existing_types(type_ids) do
-    type_ids
-    |> Enum.map(fn type_id ->
-      case Ash.get(ItemType, type_id, domain: Api, authorize?: false) do
-        {:ok, item_type} -> item_type
-        {:error, _} -> nil
-      end
-    end)
-    |> Enum.reject(&is_nil/1)
+    # Use bulk query with filtering instead of N+1 individual queries
+    ItemType
+    |> Ash.Query.filter(expr(type_id in ^type_ids))
+    |> Ash.read!(domain: Api, authorize?: false)
+  rescue
+    error ->
+      Logger.error("Failed to bulk query item types: #{inspect(error)}")
+      []
   end
 
   defp fetch_and_create_item_type(type_id) do
@@ -120,10 +125,6 @@ defmodule EveDmv.Eve.TypeResolver do
           {:error, error}
       end
     else
-      {:error, :not_found} ->
-        Logger.warning("Item type #{type_id} not found in ESI")
-        {:error, :not_found}
-
       {:error, error} ->
         Logger.error("Failed to fetch item type #{type_id} from ESI: #{inspect(error)}")
         {:error, error}
@@ -133,36 +134,128 @@ defmodule EveDmv.Eve.TypeResolver do
   defp fetch_and_create_item_types(type_ids) do
     Logger.info("Fetching #{length(type_ids)} missing item types from ESI")
 
+    # First, try to fetch all the data efficiently
     # Process types in parallel with rate limiting
-    results =
+    fetch_results =
       type_ids
       |> Task.async_stream(
-        &fetch_and_create_item_type/1,
+        &fetch_item_type_data/1,
         max_concurrency: 5,
         timeout: 30_000
       )
       |> Enum.map(fn
-        {:ok, {:ok, item_type}} -> {:ok, item_type}
+        {:ok, {:ok, item_data}} -> {:ok, item_data}
         {:ok, error} -> error
         {:exit, reason} -> {:error, {:timeout, reason}}
       end)
 
-    # Separate successful and failed results
-    {successes, failures} =
-      Enum.split_with(results, fn
+    # Separate successful and failed fetch results
+    {successful_fetches, _fetch_failures} =
+      Enum.split_with(fetch_results, fn
         {:ok, _} -> true
         _ -> false
       end)
 
-    successful_types = Enum.map(successes, fn {:ok, item_type} -> item_type end)
+    successful_data = Enum.map(successful_fetches, fn {:ok, data} -> data end)
 
-    if Enum.empty?(failures) do
-      Logger.info("Successfully resolved #{length(successful_types)} item types")
-      {:ok, successful_types}
-    else
-      Logger.error("Failed to resolve some item types: #{inspect(failures)}")
-      # Return partial success
-      {:ok, successful_types}
+    # Use bulk create for better performance
+    case bulk_create_item_types(successful_data) do
+      {:ok, created_types} ->
+        Logger.info("Successfully resolved #{length(created_types)} item types")
+        {:ok, created_types}
+
+      {:error, error} ->
+        Logger.error("Failed to bulk create item types: #{inspect(error)}")
+        # Fallback to individual creation
+        fallback_create_item_types(successful_data)
     end
+  end
+
+  # Fetch item type data from ESI without creating the record
+  defp fetch_item_type_data(type_id) do
+    Logger.debug("Fetching item type data for #{type_id} from ESI")
+
+    with {:ok, type_data} <- EsiClient.get_type(type_id),
+         {:ok, group_data} <- EsiClient.get_group(type_data.group_id),
+         {:ok, category_data} <- EsiClient.get_category(group_data.category_id) do
+      item_type_data = %{
+        type_id: type_id,
+        type_name: type_data.name,
+        description: type_data.description,
+        group_id: type_data.group_id,
+        group_name: group_data.name,
+        category_id: group_data.category_id,
+        category_name: category_data.name,
+        market_group_id: type_data.market_group_id,
+        mass: type_data.mass,
+        volume: type_data.volume,
+        capacity: type_data.capacity,
+        published: type_data.published
+      }
+
+      {:ok, item_type_data}
+    else
+      {:error, error} ->
+        Logger.error("Failed to fetch item type #{type_id} from ESI: #{inspect(error)}")
+        {:error, error}
+    end
+  end
+
+  # Use Ash bulk_create for better performance
+  defp bulk_create_item_types(item_data_list)
+       when is_list(item_data_list) and length(item_data_list) > 0 do
+    Logger.info("Bulk creating #{length(item_data_list)} item types")
+
+    try do
+      # Use Ash.bulk_create for efficient batch insertion
+      case Ash.bulk_create(item_data_list, ItemType, :create,
+             domain: Api,
+             authorize?: false,
+             return_records?: true,
+             return_errors?: true
+           ) do
+        %Ash.BulkResult{records: records, errors: []} ->
+          {:ok, records}
+
+        %Ash.BulkResult{records: records, errors: errors} ->
+          Logger.warning("Bulk create had some errors: #{inspect(errors)}")
+          # If we have significant errors, fallback to individual creation
+          if length(errors) > length(records) do
+            {:error, :too_many_errors}
+          else
+            {:ok, records}
+          end
+
+        error ->
+          Logger.error("Bulk create failed entirely: #{inspect(error)}")
+          {:error, error}
+      end
+    rescue
+      error ->
+        Logger.error("Exception during bulk create: #{inspect(error)}")
+        {:error, error}
+    end
+  end
+
+  defp bulk_create_item_types([]), do: {:ok, []}
+
+  # Fallback to individual creation if bulk fails
+  defp fallback_create_item_types(item_data_list) do
+    Logger.info("Falling back to individual creation for #{length(item_data_list)} item types")
+
+    results =
+      Enum.map(item_data_list, fn item_data ->
+        case Ash.create(ItemType, item_data, domain: Api, authorize?: false) do
+          {:ok, item_type} -> {:ok, item_type}
+          {:error, error} -> {:error, error}
+        end
+      end)
+
+    successful_types =
+      results
+      |> Enum.filter(&match?({:ok, _}, &1))
+      |> Enum.map(fn {:ok, item_type} -> item_type end)
+
+    {:ok, successful_types}
   end
 end

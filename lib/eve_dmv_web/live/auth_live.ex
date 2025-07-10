@@ -6,27 +6,67 @@ defmodule EveDmvWeb.AuthLive do
   import Phoenix.LiveView
   import Phoenix.Component
 
+  alias EveDmv.Security.AuditLogger
+
   def on_mount(:load_from_session, _params, session, socket) do
     socket = assign_current_user(socket, session)
     {:cont, socket}
   end
 
   defp assign_current_user(socket, session) do
-    # Get current user from session using user ID
+    # Check session timeout first
     current_user =
-      case Map.get(session, "current_user_id") do
-        nil ->
+      case check_session_timeout(session) do
+        :timeout ->
           nil
 
-        user_id ->
-          # Load user by ID from database
-          case Ash.get(EveDmv.Users.User, user_id, domain: EveDmv.Api) do
-            {:ok, user} -> user
-            _ -> nil
+        :valid ->
+          # Get current user from session using user ID
+          case Map.get(session, "current_user_id") do
+            nil ->
+              nil
+
+            user_id ->
+              # Load user by ID from database
+              case Ash.get(EveDmv.Users.User, user_id, domain: EveDmv.Api) do
+                {:ok, user} -> user
+                _ -> nil
+              end
           end
       end
 
-    assign(socket, current_user: current_user)
+    socket = assign(socket, current_user: current_user)
+
+    # If session timed out, schedule a timeout message
+    if current_user == nil and Map.get(session, "current_user_id") do
+      Process.send_after(self(), :session_timeout, 100)
+    end
+
+    socket
+  end
+
+  # Check if the session has timed out based on last activity.
+  defp check_session_timeout(session) do
+    session_timeout = Application.get_env(:eve_dmv, :session_timeout_hours, 24) * 60 * 60 * 1000
+
+    case Map.get(session, "last_activity") do
+      nil ->
+        # No last activity timestamp, consider valid for now
+        :valid
+
+      last_activity when is_integer(last_activity) ->
+        current_time = System.system_time(:millisecond)
+
+        if current_time - last_activity > session_timeout do
+          :timeout
+        else
+          :valid
+        end
+
+      _ ->
+        # Invalid timestamp format, consider timed out
+        :timeout
+    end
   end
 
   defmodule SignIn do
@@ -35,7 +75,9 @@ defmodule EveDmvWeb.AuthLive do
     """
     use EveDmvWeb, :live_view
 
-    @impl true
+    on_mount({EveDmvWeb.AuthLive, :load_from_session})
+
+    @impl Phoenix.LiveView
     def mount(_params, _session, socket) do
       # If user is already authenticated, redirect to dashboard
       if socket.assigns[:current_user] do
@@ -45,7 +87,25 @@ defmodule EveDmvWeb.AuthLive do
       end
     end
 
-    @impl true
+    @impl Phoenix.LiveView
+    def handle_info(:session_timeout, socket) do
+      # Log session timeout event
+      case socket.assigns[:current_user] do
+        %{id: character_id} ->
+          session_timeout_hours = Application.get_env(:eve_dmv, :session_timeout_hours, 24)
+          AuditLogger.log_session_timeout(character_id, session_timeout_hours * 3600)
+
+        _ ->
+          :ok
+      end
+
+      {:noreply,
+       socket
+       |> put_flash(:error, "Your session has expired. Please sign in again.")
+       |> push_navigate(to: ~p"/login")}
+    end
+
+    @impl Phoenix.LiveView
     def render(assigns) do
       ~H"""
       <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -96,7 +156,7 @@ defmodule EveDmvWeb.AuthLive do
               </a>
             </div>
           </div>
-          
+
       <!-- Development Info -->
           <div class="mt-8 bg-blue-900 border border-blue-700 rounded-lg p-4">
             <h3 class="text-sm font-medium text-blue-200 mb-2">🚧 Development Status</h3>

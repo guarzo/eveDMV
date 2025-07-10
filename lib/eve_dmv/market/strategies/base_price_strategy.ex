@@ -10,19 +10,19 @@ defmodule EveDmv.Market.Strategies.BasePriceStrategy do
 
   require Logger
 
-  @impl true
+  @impl EveDmv.Market.PricingStrategy
   def priority, do: 4
 
-  @impl true
+  @impl EveDmv.Market.PricingStrategy
   def name, do: "Base Price"
 
-  @impl true
+  @impl EveDmv.Market.PricingStrategy
   def supports?(_type_id, _item_attributes) do
     # Base price strategy supports all items as a last resort
     true
   end
 
-  @impl true
+  @impl EveDmv.Market.PricingStrategy
   def get_price(type_id, _item_attributes) do
     Logger.debug("Attempting base price lookup for #{type_id}")
 

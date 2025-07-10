@@ -29,23 +29,47 @@ config :phoenix_live_view,
 # to provide built-in test partitioning in CI environment.
 # Run `mix help test` for more information.
 
-# Use DATABASE_URL if provided (CI environment), otherwise use local Docker configuration
-database_config =
-  if database_url = System.get_env("DATABASE_URL") do
-    [url: database_url]
-  else
-    [
-      username: "postgres",
-      password: "postgres",
-      hostname: "db",
-      database: "eve_tracker_test#{System.get_env("MIX_TEST_PARTITION")}",
-      port: 5432
-    ]
-  end
+# Check if DATABASE_URL is provided (e.g., in CI)
+database_url = System.get_env("DATABASE_URL")
 
+if database_url do
+  # Use DATABASE_URL if provided (for CI environments)
+  config :eve_dmv, EveDmv.Repo,
+    url: database_url,
+    pool: Ecto.Adapters.SQL.Sandbox,
+    pool_size: System.schedulers_online() * 2,
+    ownership_timeout: 60_000,
+    timeout: 60_000
+else
+  # Default configuration for local development
+  config :eve_dmv, EveDmv.Repo,
+    username: "postgres",
+    password: "postgres",
+    hostname: "db",
+    database: "eve_dmv_test#{System.get_env("MIX_TEST_PARTITION")}",
+    port: 5432,
+    pool: Ecto.Adapters.SQL.Sandbox,
+    pool_size: System.schedulers_online() * 2,
+    ownership_timeout: 60_000,
+    timeout: 60_000
+end
+
+# Authentication configuration for tests
+config :eve_dmv, :token_signing_secret, "test_signing_secret_at_least_32_characters_long!"
+
+# EVE SSO OAuth2 Test Configuration
+config :eve_dmv, :eve_sso,
+  client_id: "test_client_id",
+  client_secret: "test_client_secret",
+  redirect_uri: "http://localhost:4002/auth/user/eve_sso/callback"
+
+# Disable external service connections in tests
 config :eve_dmv,
-       EveDmv.Repo,
-       Keyword.merge(database_config,
-         pool: Ecto.Adapters.SQL.Sandbox,
-         pool_size: System.schedulers_online() * 2
-       )
+  pipeline_enabled: false,
+  mock_sse_server_enabled: false,
+  wanderer_kills_sse_url: "http://localhost:8080/sse",
+  wanderer_kills_websocket_url: "ws://localhost:4004/socket",
+  wanderer_kills_base_url: "http://localhost:4004"
+
+# Final override to ensure SQL Sandbox is used - this must be last!
+# Note: Pool configuration is already set above based on DATABASE_URL presence

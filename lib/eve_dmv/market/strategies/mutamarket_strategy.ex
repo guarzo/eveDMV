@@ -1,8 +1,4 @@
 defmodule EveDmv.Market.Strategies.MutamarketStrategy do
-  # Abyssal module type ID ranges
-  @abyssal_module_range 47_800..49_000
-  # Abyssal filament type ID ranges
-  @abyssal_filament_range 52_227..52_230
   @moduledoc """
   Pricing strategy for abyssal modules using the Mutamarket API.
 
@@ -12,21 +8,27 @@ defmodule EveDmv.Market.Strategies.MutamarketStrategy do
 
   @behaviour EveDmv.Market.PricingStrategy
 
-  require Logger
   alias EveDmv.Market.MutamarketClient
 
-  @impl true
+  require Logger
+
+  # Abyssal module type ID ranges
+  @abyssal_module_range 47_800..49_000
+  # Abyssal filament type ID ranges
+  @abyssal_filament_range 52_227..52_230
+
+  @impl EveDmv.Market.PricingStrategy
   def priority, do: 1
 
-  @impl true
+  @impl EveDmv.Market.PricingStrategy
   def name, do: "Mutamarket"
 
-  @impl true
+  @impl EveDmv.Market.PricingStrategy
   def supports?(type_id, item_attributes) do
     abyssal_item?(type_id, item_attributes)
   end
 
-  @impl true
+  @impl EveDmv.Market.PricingStrategy
   def get_price(type_id, item_attributes) do
     Logger.debug("Attempting Mutamarket price lookup for #{type_id}")
 

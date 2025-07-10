@@ -1,4 +1,27 @@
 import Config
+require Logger
+
+# Validate required secrets early in runtime configuration
+# This ensures the application fails fast if critical configuration is missing
+required_secrets = [
+  "EVE_SSO_CLIENT_ID",
+  "EVE_SSO_CLIENT_SECRET",
+  "SECRET_KEY_BASE"
+]
+
+# Only validate in production environment
+if config_env() == :prod do
+  for secret <- required_secrets do
+    if is_nil(System.get_env(secret)) do
+      raise """
+      Missing required environment variable: #{secret}
+
+      Please ensure all required secrets are configured before starting the application.
+      See .env.example for the complete list of required environment variables.
+      """
+    end
+  end
+end
 
 # Helper function for safe environment variable handling
 defmodule ConfigHelper do
@@ -7,7 +30,7 @@ defmodule ConfigHelper do
       String.to_integer(value)
     rescue
       ArgumentError ->
-        IO.warn("Invalid integer value '#{value}', using default: #{default}")
+        Logger.warning("Invalid integer value '#{value}', using default: #{default}")
         default
     end
   end
@@ -49,10 +72,10 @@ unless config_env() == :test do
     if File.exists?(env_file) do
       try do
         Dotenvy.source([env_file])
-        IO.puts("Loaded environment variables from #{env_file}")
+        Logger.info("Loaded environment variables from #{env_file}")
       rescue
         error ->
-          IO.warn("Failed to load #{env_file}: #{inspect(error)}")
+          Logger.warning("Failed to load #{env_file}: #{inspect(error)}")
       end
     end
   end
@@ -90,11 +113,6 @@ if config_env() == :test do
   config :eve_dmv,
     pipeline_enabled: false,
     mock_sse_server_enabled: false
-
-  # Ensure test database uses sandbox pool regardless of DATABASE_URL
-  config :eve_dmv, EveDmv.Repo,
-    pool: Ecto.Adapters.SQL.Sandbox,
-    pool_size: System.schedulers_online() * 2
 end
 
 # config/runtime.exs is executed for all environments, including

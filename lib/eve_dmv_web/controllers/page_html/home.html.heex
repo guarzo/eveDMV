@@ -29,6 +29,18 @@
                 Live Feed
               </a>
               <a
+                href="/search"
+                class="text-white hover:text-gray-300 px-3 py-2 rounded-md text-sm font-medium"
+              >
+                Search
+              </a>
+              <a
+                href="#character-search"
+                class="text-white hover:text-gray-300 px-3 py-2 rounded-md text-sm font-medium"
+              >
+                Character Intel
+              </a>
+              <a
                 href="/surveillance"
                 class="text-white hover:text-gray-300 px-3 py-2 rounded-md text-sm font-medium"
               >
@@ -99,6 +111,67 @@
                 </svg>
               </a>
             <% end %>
+          </div>
+        </div>
+      </div>
+      
+<!-- Character Search Section -->
+      <div id="character-search" class="py-16 bg-gray-900">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="text-center mb-8">
+            <h2 class="text-3xl font-bold text-white">Character Intelligence</h2>
+            <p class="mt-4 text-lg text-gray-300">
+              Analyze any EVE pilot's combat patterns, ship preferences, and activity data
+            </p>
+          </div>
+          
+          <div class="bg-gray-800 rounded-lg p-8">
+            <form id="character-search-form" class="space-y-6">
+              <div>
+                <label for="character-input" class="block text-sm font-medium text-gray-300 mb-2">
+                  Character Name or ID
+                </label>
+                <div class="flex space-x-3">
+                  <input
+                    type="text"
+                    id="character-input"
+                    name="character-input"
+                    placeholder="Enter character name (e.g., Johhny Maricadie) or ID (e.g., 96218312)"
+                    class="flex-1 px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                  <button
+                    type="submit"
+                    class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors duration-200"
+                  >
+                    Analyze
+                  </button>
+                </div>
+              </div>
+              
+              <div class="text-center">
+                <p class="text-sm text-gray-400">
+                  💡 Try: <button type="button" class="text-indigo-400 hover:text-indigo-300 underline" onclick="document.getElementById('character-input').value='96218312'; document.getElementById('character-search-form').requestSubmit();">Johhny Maricadie</button> 
+                  or search for any EVE pilot
+                </p>
+              </div>
+            </form>
+          </div>
+          
+          <div class="mt-8 text-center">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div class="bg-gray-800 rounded-lg p-6">
+                <div class="text-indigo-400 text-2xl font-bold mb-2">Combat Analysis</div>
+                <p class="text-gray-300 text-sm">Kill/death ratios, ship preferences, and weapon loadouts</p>
+              </div>
+              <div class="bg-gray-800 rounded-lg p-6">
+                <div class="text-purple-400 text-2xl font-bold mb-2">Activity Patterns</div>
+                <p class="text-gray-300 text-sm">Timezone analysis and engagement frequency</p>
+              </div>
+              <div class="bg-gray-800 rounded-lg p-6">
+                <div class="text-pink-400 text-2xl font-bold mb-2">Group Affiliations</div>
+                <p class="text-gray-300 text-sm">Common fleet members and external groups</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -318,5 +391,27 @@
         </div>
       </footer>
     </div>
+    
+    <script>
+      document.getElementById('character-search-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const input = document.getElementById('character-input').value.trim();
+        
+        if (!input) {
+          alert('Please enter a character name or ID');
+          return;
+        }
+        
+        // Check if input is a number (character ID)
+        if (/^\d+$/.test(input)) {
+          // Direct navigation to character analysis with ID
+          window.location.href = `/analysis/${input}`;
+        } else {
+          // Character name - for now, redirect to search (we'll enhance this later)
+          // TODO: Implement character name to ID resolution via ESI
+          alert(`Character name search not yet implemented. Please use character ID for now.\n\nExample: Try "96218312" for Johhny Maricadie`);
+        }
+      });
+    </script>
   </body>
 </html>

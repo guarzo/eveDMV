@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmvWeb do
   @moduledoc """
   The entrypoint for defining your web interface, such
@@ -38,14 +39,23 @@ defmodule EveDmvWeb do
 
   def controller do
     quote do
+      unquote(use_phoenix_controller())
+      unquote(import_controller_helpers())
+    end
+  end
+
+  defp use_phoenix_controller do
+    quote do
       use Phoenix.Controller,
         formats: [:html, :json],
         layouts: [html: EveDmvWeb.Layouts]
+    end
+  end
 
+  defp import_controller_helpers do
+    quote do
       use Gettext, backend: EveDmvWeb.Gettext
-
       import Plug.Conn
-
       unquote(verified_routes())
     end
   end
@@ -70,13 +80,15 @@ defmodule EveDmvWeb do
   def html do
     quote do
       use Phoenix.Component
+      unquote(import_phoenix_controller_helpers())
+      unquote(html_helpers())
+    end
+  end
 
-      # Import convenience functions from controllers
+  defp import_phoenix_controller_helpers do
+    quote do
       import Phoenix.Controller,
         only: [get_flash: 1, get_flash: 2, view_module: 1, view_template: 1]
-
-      # Include general helpers for rendering HTML
-      unquote(html_helpers())
     end
   end
 

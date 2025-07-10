@@ -56,7 +56,31 @@ config :tailwind,
 # Configures Elixir's Logger
 config :logger, :console,
   format: "$time $metadata[$level] $message\n",
-  metadata: [:request_id]
+  metadata: [
+    :request_id,
+    :plugin,
+    :entity_id,
+    :duration_ms,
+    :exception,
+    :reason,
+    :entity_type,
+    :threat_level,
+    :error,
+    :character_id,
+    :corporation_id
+  ]
+
+# Filter sensitive parameters from logs
+config :phoenix, :filter_parameters, [
+  "password",
+  "token",
+  "secret",
+  "api_key",
+  "client_secret",
+  "access_token",
+  "refresh_token",
+  "authorization"
+]
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
@@ -66,14 +90,20 @@ config :ash, :include_embedded_source_by_default?, false
 config :ash, :policies, show_policy_breakdowns?: true
 
 # Configure Ash domains
-config :eve_dmv, ash_domains: [EveDmv.Api]
+config :eve_dmv,
+  ash_domains: [
+    EveDmv.Api,
+    EveDmv.Domains.Analytics,
+    EveDmv.Domains.Intelligence,
+    EveDmv.Domains.Surveillance
+  ]
 
 # AshPostgres configuration
 config :ash_postgres, AshPostgres.DataLayer,
   migration_ignore_attributes: [AshPostgres.MigrationGenerator.Reference]
 
-# Token signing secret for authentication
-config :eve_dmv, :token_signing_secret, "your-secret-key-here-replace-in-production"
+# Token signing secret for authentication (loaded from environment)
+config :eve_dmv, :token_signing_secret, System.get_env("TOKEN_SIGNING_SECRET")
 
 # EVE SSO OAuth2 Configuration
 config :eve_dmv, :eve_sso,
@@ -85,8 +115,13 @@ config :eve_dmv, :eve_sso,
 # Killmail Pipeline Configuration
 config :eve_dmv,
   wanderer_kills_sse_url: System.get_env("WANDERER_KILLS_SSE_URL", "http://localhost:8080/sse"),
-  zkillboard_sse_url: System.get_env("ZKILLBOARD_SSE_URL", "https://zkillboard.com/sse"),
   pipeline_enabled: System.get_env("PIPELINE_ENABLED", "true") == "true"
+
+# SDE (Static Data Export) Configuration
+config :eve_dmv,
+  sde_auto_update: System.get_env("SDE_AUTO_UPDATE", "true") == "true",
+  static_data_load_delay: String.to_integer(System.get_env("STATIC_DATA_LOAD_DELAY", "5000")),
+  mock_sse_server_enabled: System.get_env("MOCK_SSE_SERVER_ENABLED", "false") == "true"
 
 # Name Resolver Cache Warming Configuration
 config :eve_dmv, :name_resolver_cache_warming,
@@ -107,6 +142,8 @@ config :eve_dmv, :name_resolver_cache_warming,
     # CONCORD
     1_000_125
   ]
+
+# Database connection pool configuration moved to environment-specific configs
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

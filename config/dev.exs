@@ -37,7 +37,7 @@ config :eve_dmv, EveDmvWeb.Endpoint,
   # Bind to 0.0.0.0 to expose the server to the docker host machine.
   # This makes make the service accessible from any network interface.
   # Change to `ip: {127, 0, 0, 1}` to allow access only from the server machine.
-  http: [ip: {0, 0, 0, 0}, port: String.to_integer(System.get_env("PHX_PORT") || "4010")],
+  http: [ip: {0, 0, 0, 0}, port: String.to_integer(System.get_env("PHX_PORT") || "4013")],
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
@@ -86,6 +86,13 @@ config :eve_dmv, dev_routes: true
 # Do not include metadata nor timestamps in development logs
 config :logger, :console, format: "[$level] $message\n", level: :debug
 
+# Configure logger to filter out noisy database connection messages
+config :logger,
+  backends: [:console],
+  filters: %{
+    db_connection_noise: {&EveDmvWeb.LoggerFilter.filter_db_connection_noise/2, nil}
+  }
+
 # Set a higher stacktrace during development. Avoid configuring such
 # in production as building large stacktraces may be expensive.
 config :phoenix, :stacktrace_depth, 20
@@ -107,19 +114,16 @@ config :eve_dmv, EveDmv.Repo,
   username: "postgres",
   password: "postgres",
   hostname: "db",
-  database: "eve_tracker_dev",
+  database: "eve_tracker_gamma",
   port: 5432,
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
-  pool_size: 10
+  # Connection pool configuration
+  pool_size: 20,
+  queue_target: 50,
+  queue_interval: 1000,
+  timeout: 15_000,
+  ownership_timeout: 20_000,
+  pool_timeout: 5_000
 
-# Development-specific killmail pipeline configuration
-# Note: These will be overridden by runtime.exs if .env files exist
-config :eve_dmv,
-  wanderer_kills_sse_url: System.get_env("WANDERER_KILLS_SSE_URL", "http://localhost:8080/sse"),
-  wanderer_kills_websocket_url:
-    System.get_env("WANDERER_KILLS_WS_URL", "ws://localhost:4004/socket"),
-  wanderer_kills_base_url:
-    System.get_env("WANDERER_KILLS_BASE_URL", "http://host.docker.internal:4004"),
-  pipeline_enabled: System.get_env("PIPELINE_ENABLED", "true") == "true",
-  mock_sse_server_enabled: System.get_env("MOCK_SSE_SERVER_ENABLED", "false") == "true"
+# Development-specific killmail pipeline configuration moved to runtime.exs

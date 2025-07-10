@@ -1,0 +1,260 @@
+name: Coverage Comment
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  workflow_run:
+    workflows: ["CI/CD Pipeline"]
+    types: [completed]
+
+jobs:
+  coverage-comment:
+    name: Update Coverage Comment
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request')
+    
+    permissions:
+      contents: read
+      pull-requests: write
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        # For workflow_run events, checkout the PR head
+        ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.event.pull_request.head.sha }}
+
+    - name: Set up Elixir
+      uses: erlef/setup-beam@v1
+      with:
+        elixir-version: "1.17.2"
+        otp-version: "27.0"
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y bc jq
+
+    - name: Cache dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          deps
+          _build
+        key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-mix-
+
+    - name: Install dependencies
+      run: |
+        mix local.hex --force
+        mix local.rebar --force
+        mix deps.get
+
+    - name: Setup test database
+      run: |
+        mix ecto.create
+        mix ecto.migrate
+      env:
+        MIX_ENV: test
+        DATABASE_URL: postgres://postgres:postgres@localhost:5432/eve_tracker_test
+
+    - name: Run tests and generate coverage
+      run: mix coveralls.json
+      env:
+        MIX_ENV: test
+        DATABASE_URL: postgres://postgres:postgres@localhost:5432/eve_tracker_test
+
+    - name: Extract coverage data
+      id: coverage
+      run: |
+        if [ -f cover/excoveralls.json ]; then
+          # Extract coverage data from ExCoveralls JSON format
+          LINES_RELEVANT=$(jq '.source_files | map(.coverage) | flatten | map(select(. != null)) | length' cover/excoveralls.json)
+          LINES_COVERED=$(jq '.source_files | map(.coverage) | flatten | map(select(. > 0)) | length' cover/excoveralls.json)
+          LINES_TOTAL=$(jq '.source_files | map(.source | split("\n") | length) | add' cover/excoveralls.json)
+          
+          # Calculate coverage percentage using awk
+          if [ "$LINES_RELEVANT" -gt 0 ]; then
+            COVERAGE=$(awk "BEGIN {printf \"%.1f\", $LINES_COVERED * 100 / $LINES_RELEVANT}")
+          else
+            COVERAGE="0.0"
+          fi
+          
+          # Set GitHub outputs with proper quoting
+          {
+            echo "coverage=${COVERAGE}"
+            echo "lines_total=${LINES_TOTAL}"
+            echo "lines_covered=${LINES_COVERED}"
+            echo "lines_relevant=${LINES_RELEVANT}"
+          } >> "$GITHUB_OUTPUT"
+          
+          # Determine badge color based on coverage
+          if awk "BEGIN {exit !($COVERAGE >= 70)}"; then
+            BADGE_COLOR="green"
+          elif awk "BEGIN {exit !($COVERAGE >= 50)}"; then
+            BADGE_COLOR="yellow"
+          elif awk "BEGIN {exit !($COVERAGE >= 30)}"; then
+            BADGE_COLOR="orange"
+          else
+            BADGE_COLOR="red"
+          fi
+          
+          echo "badge_color=${BADGE_COLOR}" >> "$GITHUB_OUTPUT"
+          
+          # Generate coverage details using here-document for better performance
+          cat > coverage_details.md << 'EOF'
+## 📊 File Coverage Details
+
+| File | Coverage | Lines | Status |
+|------|----------|-------|--------|
+EOF
+          
+          # Extract and process file coverage data efficiently
+          jq -r '.source_files[]? | select(.coverage != null) | "\(.name)|\(.coverage)|\(.relevant_lines // 0)|\(.covered_lines // 0)"' cover/excoveralls.json | \
+            sort -t'|' -k2 -n | head -10 | while IFS='|' read -r file coverage relevant covered; do
+              file_short="${file#lib/eve_dmv/}"
+              file_short="${file_short#lib/eve_dmv_web/}"
+              
+              if awk "BEGIN {exit !($coverage >= 70)}"; then
+                status="✅"
+              elif awk "BEGIN {exit !($coverage >= 50)}"; then
+                status="⚠️"
+              else
+                status="❌"
+              fi
+              
+              echo "| \`${file_short}\` | ${coverage}% | ${covered}/${relevant} | ${status} |"
+            done >> coverage_details.md
+          
+          # Append module analysis using here-document
+          cat >> coverage_details.md << 'EOF'
+
+<details>
+<summary>🎯 Coverage by Module Type</summary>
+
+### Intelligence Modules
+EOF
+          
+          jq -r '.source_files[]? | select(.name | contains("intelligence")) | select(.coverage != null) | "\(.name | split("/")[-1] | split(".")[0])|\(.coverage)"' cover/excoveralls.json | \
+            sort -t'|' -k2 -nr | head -5 | while IFS='|' read -r module coverage; do
+              echo "- **${module}**: ${coverage}%"
+            done >> coverage_details.md
+          
+          cat >> coverage_details.md << 'EOF'
+
+### API Clients
+EOF
+          
+          jq -r '.source_files[]? | select(.name | contains("eve/") or contains("market/")) | select(.coverage != null) | "\(.name | split("/")[-1] | split(".")[0])|\(.coverage)"' cover/excoveralls.json | \
+            sort -t'|' -k2 -nr | head -5 | while IFS='|' read -r module coverage; do
+              echo "- **${module}**: ${coverage}%"
+            done >> coverage_details.md
+          
+          cat >> coverage_details.md << 'EOF'
+
+### LiveView Components
+EOF
+          
+          jq -r '.source_files[]? | select(.name | contains("live/")) | select(.coverage != null) | "\(.name | split("/")[-1] | split(".")[0])|\(.coverage)"' cover/excoveralls.json | \
+            sort -t'|' -k2 -nr | head -5 | while IFS='|' read -r module coverage; do
+              echo "- **${module}**: ${coverage}%"
+            done >> coverage_details.md
+          
+          echo "</details>" >> coverage_details.md
+        else
+          echo "coverage=0" >> "$GITHUB_OUTPUT"
+          echo "❌ Coverage report not found" > coverage_details.md
+        fi
+
+    - name: Get PR number
+      id: pr
+      run: |
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          echo "number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+        else
+          # For workflow_run events, we need to find the PR number
+          PR_NUMBER=$(curl -s \
+            -H "Authorization: token ${{ github.token }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls?head=${{ github.repository_owner }}:${{ github.event.workflow_run.head_branch }}&state=open" | \
+            jq -r '.[0].number // empty')
+          echo "number=${PR_NUMBER}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Find existing coverage comment
+      id: find_comment
+      if: steps.pr.outputs.number != ''
+      run: |
+        COMMENT_ID=$(curl -s \
+          -H "Authorization: token ${{ github.token }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          "https://api.github.com/repos/${{ github.repository }}/issues/${{ steps.pr.outputs.number }}/comments" | \
+          jq -r '.[] | select(.body | contains("🧪 Test Coverage Report")) | .id' | head -1)
+        
+        if [ -n "$COMMENT_ID" ]; then
+          echo "comment_id=${COMMENT_ID}" >> $GITHUB_OUTPUT
+          echo "Found existing coverage comment: $COMMENT_ID"
+        else
+          echo "No existing coverage comment found"
+        fi
+
+    - name: Create or update coverage comment
+      if: steps.pr.outputs.number != ''
+      uses: peter-evans/create-or-update-comment@v3
+      with:
+        token: ${{ github.token }}
+        issue-number: ${{ steps.pr.outputs.number }}
+        comment-id: ${{ steps.find_comment.outputs.comment-id }}
+        body: |
+          ## 🧪 Test Coverage Report
+          
+          ![Coverage](https://img.shields.io/badge/Coverage-${{ steps.coverage.outputs.coverage }}%25-${{ steps.coverage.outputs.badge_color }})
+          
+          **Overall Coverage**: ${{ steps.coverage.outputs.coverage }}% (${{ steps.coverage.outputs.lines_covered }}/${{ steps.coverage.outputs.lines_relevant }} lines)
+          
+          ### 📈 Coverage Summary
+          
+          | Metric | Value |
+          |--------|-------|
+          | **Lines Covered** | ${{ steps.coverage.outputs.lines_covered }} |
+          | **Lines Relevant** | ${{ steps.coverage.outputs.lines_relevant }} |
+          | **Total Lines** | ${{ steps.coverage.outputs.lines_total }} |
+          | **Coverage %** | ${{ steps.coverage.outputs.coverage }}% |
+          
+          ### 🎯 Coverage Goals
+          
+          - **Current**: ${{ steps.coverage.outputs.coverage }}%
+          - **Minimum Threshold**: 4.0%
+          - **Sprint 5 Target**: 70%
+          - **Status**: ${{ steps.coverage.outputs.coverage >= 4.0 && '✅ Above minimum' || '❌ Below minimum' }}
+          
+          $(cat coverage_details.md)
+          
+          ### 🔄 How to Improve Coverage
+          
+          1. **Add unit tests** for modules with 0% coverage
+          2. **Focus on business logic** in intelligence and market modules  
+          3. **Test error paths** and edge cases
+          4. **Mock external dependencies** (ESI, databases) in tests
+          5. **Add integration tests** for critical user flows
+          
+          ---
+          
+          *Coverage report generated by [ExCoveralls](https://github.com/parroty/excoveralls)*
+        edit-mode: replace
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: eve_tracker_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432

@@ -1,3 +1,5 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
+# credo:disable-for-this-file Credo.Check.Readability.StrictModuleLayout
 defmodule EveDmvWeb.ChainIntelligenceLive do
   @moduledoc """
   LiveView for real-time wormhole chain intelligence surveillance.
@@ -9,40 +11,39 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
   use EveDmvWeb, :live_view
 
   alias EveDmv.Api
+  alias EveDmv.Intelligence.ChainAnalysis.ChainMonitor
+  alias EveDmv.Intelligence.ChainAnalysis.ChainTopology
+  alias EveDmv.Intelligence.ChainConnection
+  alias EveDmv.Intelligence.SystemInhabitant
+  alias EveDmv.IntelligenceMigrationAdapter
+  alias EveDmvWeb.Helpers.TimeFormatter
 
-  alias EveDmv.Intelligence.{
-    ChainConnection,
-    ChainMonitor,
-    ChainTopology,
-    SystemInhabitant,
-    ThreatAnalyzer
-  }
+  require Ash.Query
 
-  @impl true
-  def mount(_params, session, socket) do
-    user = session["user"]
+  on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
-    if user do
-      # Subscribe to chain intelligence updates
-      Phoenix.PubSub.subscribe(EveDmv.PubSub, "chain_intelligence:*")
+  # Import reusable components
+  import EveDmvWeb.Components.PageHeaderComponent
+  import EveDmvWeb.Components.EmptyStateComponent
 
-      socket =
-        socket
-        |> assign(:user, user)
-        |> assign(:monitored_chains, [])
-        |> assign(:selected_chain, nil)
-        |> assign(:chain_data, %{})
-        |> assign(:loading, false)
-        |> assign(:error, nil)
-        |> load_user_chains()
+  @impl Phoenix.LiveView
+  def mount(_params, _session, socket) do
+    # Subscribe to chain intelligence updates
+    Phoenix.PubSub.subscribe(EveDmv.PubSub, "chain_intelligence:*")
 
-      {:ok, socket}
-    else
-      {:ok, redirect(socket, to: ~p"/")}
-    end
+    socket =
+      socket
+      |> assign(:monitored_chains, [])
+      |> assign(:selected_chain, nil)
+      |> assign(:chain_data, %{})
+      |> assign(:loading, false)
+      |> assign(:error, nil)
+      |> load_user_chains()
+
+    {:ok, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_params(%{"map_id" => map_id}, _uri, socket) do
     socket =
       socket
@@ -52,14 +53,14 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_params(_params, _uri, socket) do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("monitor_chain", %{"map_id" => map_id}, socket) do
-    user = socket.assigns.user
+    user = socket.assigns.current_user
     # Default corp if not set
     corporation_id = user.corporation_id || 1
 
@@ -78,7 +79,7 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("stop_monitoring", %{"map_id" => map_id}, socket) do
     case ChainMonitor.stop_monitoring(map_id) do
       :ok ->
@@ -95,7 +96,7 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("refresh_chain", %{"map_id" => map_id}, socket) do
     ChainMonitor.force_sync()
 
@@ -107,30 +108,42 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("analyze_pilot", %{"character_id" => character_id}, socket) do
-    character_id = String.to_integer(character_id)
+    case Integer.parse(character_id) do
+      {character_id_int, ""} ->
+        # Spawn async analysis to avoid blocking UI
+        pid = self()
 
-    # Spawn async analysis to avoid blocking UI
-    pid = self()
+        Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
+          # Use Intelligence Engine for threat analysis
+          case IntelligenceMigrationAdapter.analyze(:threat, character_id_int, scope: :basic) do
+            {:ok, analysis} -> send(pid, {:pilot_analysis, character_id_int, analysis})
+            {:error, reason} -> send(pid, {:pilot_analysis_failed, character_id_int, reason})
+          end
+        end)
 
-    Task.start(fn ->
-      analysis = ThreatAnalyzer.analyze_pilot(character_id)
-      send(pid, {:pilot_analysis, character_id, analysis})
-    end)
+        {:noreply, socket}
 
-    {:noreply, socket}
+      _ ->
+        # Invalid character ID format
+        socket = put_flash(socket, :error, "Invalid character ID")
+        {:noreply, socket}
+    end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:pilot_analysis, character_id, analysis}, socket) do
-    # Update the chain data with pilot analysis
+    # Update the chain data with pilot analysis from Intelligence Engine
     chain_data = socket.assigns.chain_data
+
+    # Transform Intelligence Engine result to format expected by UI
+    threat_summary = transform_threat_analysis(analysis)
 
     updated_inhabitants =
       Enum.map(chain_data.inhabitants || [], fn inhabitant ->
         if inhabitant.character_id == character_id do
-          Map.merge(inhabitant, %{threat_analysis: analysis})
+          Map.merge(inhabitant, %{threat_analysis: threat_summary})
         else
           inhabitant
         end
@@ -146,7 +159,19 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
+  def handle_info({:pilot_analysis_failed, character_id, reason}, socket) do
+    socket =
+      put_flash(
+        socket,
+        :error,
+        "Pilot analysis failed for character #{character_id}: #{inspect(reason)}"
+      )
+
+    {:noreply, socket}
+  end
+
+  @impl Phoenix.LiveView
   def handle_info({:chain_updated, map_id}, socket) do
     if socket.assigns.selected_chain == map_id do
       socket = load_chain_data(socket, map_id)
@@ -156,7 +181,7 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:system_updated, map_id, _data}, socket) do
     if socket.assigns.selected_chain == map_id do
       socket = load_chain_data(socket, map_id)
@@ -166,7 +191,7 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:connection_updated, map_id, _data}, socket) do
     if socket.assigns.selected_chain == map_id do
       socket = load_chain_data(socket, map_id)
@@ -176,21 +201,48 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info(_msg, socket) do
     {:noreply, socket}
   end
 
   # Private Functions
 
+  defp transform_threat_analysis(intelligence_result) do
+    # Transform Intelligence Engine threat analysis to format expected by chain UI
+    threat_data = get_in(intelligence_result, [:analysis, :vulnerability_scan]) || %{}
+
+    # Extract key threat metrics
+    %{
+      threat_level: determine_threat_level(threat_data),
+      risk_score: Map.get(threat_data, :risk_score, 0),
+      eviction_group: Map.get(threat_data, :eviction_group_member, false),
+      known_hostile: Map.get(threat_data, :known_hostile, false),
+      suspicious_activity: Map.get(threat_data, :suspicious_activity, false),
+      last_analysis: intelligence_result.metadata.generated_at
+    }
+  end
+
+  defp determine_threat_level(threat_data) do
+    risk_score = Map.get(threat_data, :risk_score, 0)
+
+    cond do
+      Map.get(threat_data, :known_hostile, false) -> :hostile
+      Map.get(threat_data, :eviction_group_member, false) -> :hostile
+      risk_score >= 70 -> :hostile
+      risk_score >= 40 -> :neutral
+      risk_score >= 20 -> :friendly
+      true -> :unknown
+    end
+  end
+
   defp load_user_chains(socket) do
-    user = socket.assigns.user
+    user = socket.assigns.current_user
     corporation_id = user.corporation_id || 1
 
-    case Ash.read(ChainTopology,
-           filter: [corporation_id: corporation_id, monitoring_enabled: true],
-           domain: Api
-         ) do
+    case ChainTopology
+         |> Ash.Query.filter(corporation_id == ^corporation_id and monitoring_enabled == true)
+         |> Ash.read(domain: Api) do
       {:ok, chains} ->
         assign(socket, :monitored_chains, chains)
 
@@ -202,7 +254,7 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
   end
 
   defp load_chain_data(socket, map_id) do
-    case Ash.read(ChainTopology, filter: [map_id: map_id], domain: Api) do
+    case ChainTopology |> Ash.Query.filter(map_id == ^map_id) |> Ash.read(domain: Api) do
       {:ok, [topology]} ->
         inhabitants = load_chain_inhabitants(topology.id)
         connections = load_chain_connections(topology.id)
@@ -229,17 +281,18 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
   end
 
   defp load_chain_inhabitants(chain_topology_id) do
-    case Ash.read(SystemInhabitant,
-           filter: [chain_topology_id: chain_topology_id, present: true],
-           domain: Api
-         ) do
+    case SystemInhabitant
+         |> Ash.Query.filter(chain_topology_id == ^chain_topology_id and present == true)
+         |> Ash.read(domain: Api) do
       {:ok, inhabitants} -> inhabitants
       {:error, _} -> []
     end
   end
 
   defp load_chain_connections(chain_topology_id) do
-    case Ash.read(ChainConnection, filter: [chain_topology_id: chain_topology_id], domain: Api) do
+    case ChainConnection
+         |> Ash.Query.filter(chain_topology_id == ^chain_topology_id)
+         |> Ash.read(domain: Api) do
       {:ok, connections} -> connections
       {:error, _} -> []
     end
@@ -261,15 +314,5 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
   defp mass_status_class(:unknown), do: "text-gray-600"
 
   defp time_since(datetime) when is_nil(datetime), do: "Never"
-
-  defp time_since(datetime) do
-    diff = DateTime.diff(DateTime.utc_now(), datetime, :second)
-
-    cond do
-      diff < 60 -> "#{diff}s ago"
-      diff < 3600 -> "#{div(diff, 60)}m ago"
-      diff < 86_400 -> "#{div(diff, 3600)}h ago"
-      true -> "#{div(diff, 86400)}d ago"
-    end
-  end
+  defp time_since(datetime), do: TimeFormatter.format_relative_time(datetime)
 end

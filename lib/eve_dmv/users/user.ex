@@ -90,6 +90,9 @@ defmodule EveDmv.Users.User do
     end
 
     # OAuth tokens
+    # Security: Tokens are marked as sensitive which prevents them from being
+    # included in logs and limits their exposure. For additional security,
+    # consider implementing field-level encryption for these tokens.
     attribute :access_token, :string do
       allow_nil?(true)
       sensitive?(true)
@@ -117,6 +120,13 @@ defmodule EveDmv.Users.User do
     attribute :last_login_at, :utc_datetime do
       allow_nil?(true)
       description("Last time the user logged in")
+    end
+
+    # Admin privileges
+    attribute :is_admin, :boolean do
+      allow_nil?(false)
+      default(false)
+      description("Whether this user has admin privileges")
     end
 
     # Automatic timestamps
@@ -255,6 +265,12 @@ defmodule EveDmv.Users.User do
 
       accept([:access_token, :refresh_token, :token_expires_at])
     end
+
+    # Admin promotion action (only for existing admins)
+    update :promote_to_admin do
+      description("Promote a user to admin status")
+      accept([:is_admin])
+    end
   end
 
   # Authorization policies
@@ -269,14 +285,20 @@ defmodule EveDmv.Users.User do
       authorize_if(actor_attribute_equals(:id, :id))
     end
 
-    # Users can update their own data
+    # Users can update their own data (except admin promotion)
     policy action_type(:update) do
+      forbid_if(action(:promote_to_admin))
       authorize_if(actor_attribute_equals(:id, :id))
     end
 
-    # Only admins can destroy users (we'll implement admin roles later)
+    # Only admins can promote users to admin
+    policy action(:promote_to_admin) do
+      authorize_if(actor_attribute_equals(:is_admin, true))
+    end
+
+    # Only admins can destroy users
     policy action_type(:destroy) do
-      forbid_if(always())
+      authorize_if(actor_attribute_equals(:is_admin, true))
     end
   end
 
@@ -310,7 +332,7 @@ defmodule EveDmv.Users.User do
           nil
 
         expires_in when is_integer(expires_in) ->
-          DateTime.utc_now() |> DateTime.add(expires_in, :second)
+          DateTime.add(DateTime.utc_now(), expires_in, :second)
 
         _ ->
           nil

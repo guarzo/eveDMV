@@ -6,9 +6,9 @@ defmodule EveDmvWeb.ProfileLive do
   use EveDmvWeb, :live_view
 
   # Load current user from session on mount
-  on_mount {EveDmvWeb.AuthLive, :load_from_session}
+  on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
-  @impl true
+  @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     current_user = socket.assigns[:current_user]
 
@@ -25,7 +25,7 @@ defmodule EveDmvWeb.ProfileLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
     <.flash_group flash={@flash} />
@@ -94,7 +94,7 @@ defmodule EveDmvWeb.ProfileLive do
             </p>
           </div>
         </div>
-        
+
     <!-- Character Information -->
         <div class="lg:col-span-2 bg-gray-800 rounded-lg p-6">
           <h3 class="text-lg font-semibold text-white mb-4">Character Information</h3>
@@ -181,7 +181,7 @@ defmodule EveDmvWeb.ProfileLive do
               </div>
             </div>
           </div>
-          
+
     <!-- Actions -->
           <div class="mt-6 pt-6 border-t border-gray-700">
             <div class="flex space-x-4">
@@ -208,13 +208,13 @@ defmodule EveDmvWeb.ProfileLive do
           </div>
         </div>
       </div>
-      
+
     <!-- Quick Actions -->
       <div class="mt-8 bg-gray-800 rounded-lg p-6">
         <h3 class="text-lg font-semibold text-white mb-4">Quick Actions</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <.link
-            navigate={~p"/intel/#{@current_user.eve_character_id}"}
+            navigate={~p"/character/#{@current_user.eve_character_id}"}
             class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg text-center transition-colors"
           >
             View My Character Intelligence

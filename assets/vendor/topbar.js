@@ -133,14 +133,16 @@
         if (currentProgress === 1) {
           if (canvas) canvas.style.display = "block";
         } else if (currentProgress >= 0) {
+          if (progressTimerId) {
+            clearTimeout(progressTimerId);
+            progressTimerId = null;
+          }
           (function loop() {
-            if (showing) {
-              if (currentProgress < 1) {
-                const newProgress = currentProgress + 0.05 * Math.pow(1 - Math.sqrt(currentProgress), 2);
-                currentProgress = newProgress > 0.95 ? 0.95 : newProgress;
-                repaint();
-                progressTimerId = setTimeout(loop, 100);
-              }
+            if (showing && currentProgress < 1) {
+              const newProgress = currentProgress + 0.05 * Math.pow(1 - Math.sqrt(currentProgress), 2);
+              currentProgress = newProgress > 0.95 ? 0.95 : newProgress;
+              repaint();
+              progressTimerId = setTimeout(loop, 100);
             }
           })();
           if (canvas) canvas.style.display = "block";
@@ -158,8 +160,9 @@
           delayTimerId = null;
         }
         (function loop() {
-          if (currentProgress >= 0) {
+          if (currentProgress > 0) {
             currentProgress -= 0.05;
+            if (currentProgress < 0) currentProgress = 0;
             repaint();
             fadeTimerId = setTimeout(loop, 100);
           } else {

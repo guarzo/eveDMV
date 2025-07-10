@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmv.Enrichment.RealTimePriceUpdater do
   @moduledoc """
   Real-time price update service that monitors for significant price changes
@@ -8,11 +9,13 @@ defmodule EveDmv.Enrichment.RealTimePriceUpdater do
   """
 
   use GenServer
-  require Logger
+
   alias EveDmv.Api
-  alias EveDmv.Killmails.KillmailEnriched
+  alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Market.PriceService
   alias Phoenix.PubSub
+
+  require Logger
 
   @pubsub EveDmvWeb.PubSub
   @price_update_topic "price_updates"
@@ -62,7 +65,7 @@ defmodule EveDmv.Enrichment.RealTimePriceUpdater do
 
   # GenServer callbacks
 
-  @impl true
+  @impl GenServer
   def init(_opts) do
     Logger.info("Starting real-time price updater")
 
@@ -78,16 +81,16 @@ defmodule EveDmv.Enrichment.RealTimePriceUpdater do
     {:ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast({:check_prices, killmail_ids}, state) do
-    Task.start(fn ->
+    Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
       check_and_broadcast_prices(killmail_ids)
     end)
 
     {:noreply, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:update_batch, killmails}, _from, state) do
     results = process_batch_updates(killmails)
 
@@ -100,10 +103,10 @@ defmodule EveDmv.Enrichment.RealTimePriceUpdater do
     {:reply, results, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:check_recent, state) do
     # Check prices for killmails from the last hour
-    Task.start(fn ->
+    Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
       check_recent_killmails()
     end)
 
@@ -196,7 +199,7 @@ defmodule EveDmv.Enrichment.RealTimePriceUpdater do
            [killmail.killmail_id, killmail.killmail_time],
            domain: Api
          ) do
-      {:ok, raw_killmail} when not is_nil(raw_killmail) ->
+      {:ok, raw_killmail} ->
         {:ok, raw_killmail.raw_data}
 
       _ ->
@@ -301,7 +304,7 @@ defmodule EveDmv.Enrichment.RealTimePriceUpdater do
 
   defp get_recent_enriched_killmails(_since_datetime, limit) do
     query =
-      KillmailEnriched
+      KillmailRaw
       |> Ash.Query.new()
       |> Ash.Query.sort(killmail_time: :desc)
       |> Ash.Query.limit(limit)
@@ -311,8 +314,7 @@ defmodule EveDmv.Enrichment.RealTimePriceUpdater do
 
   defp load_enriched_killmails(_killmail_ids) do
     query =
-      KillmailEnriched
-      |> Ash.Query.new()
+      Ash.Query.new(KillmailRaw)
 
     Ash.read(query, domain: Api)
   end

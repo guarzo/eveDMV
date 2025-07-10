@@ -12,13 +12,112 @@ defmodule EveDmv.MixProject do
       deps: deps(),
       # Test coverage
       test_coverage: [tool: ExCoveralls],
-      preferred_cli_coveralls_env: :test,
+      preferred_cli_env: [
+        coveralls: :test,
+        "coveralls.detail": :test,
+        "coveralls.post": :test,
+        "coveralls.html": :test
+      ],
+      excoveralls: [
+        minimum_coverage: 4.0,
+        output_dir: "cover",
+        skip_files: [
+          # Test files
+          "test/",
+          # Generated files
+          "_build/",
+          "deps/",
+          # Configuration files
+          "config/",
+          # Migration files (infrastructure, not business logic)
+          "priv/repo/migrations/",
+          # Mock and test support files
+          "test/support/",
+          # Auto-generated files
+          "lib/eve_dmv_web/gettext.ex",
+          "lib/eve_dmv_web/endpoint.ex"
+        ],
+        stop_on_missing_beam_file: false,
+        treat_no_relevant_lines_as_covered: true
+      ],
       # Dialyzer configuration
       dialyzer: [
         plt_file: {:no_warn, "priv/plts/dialyzer.plt"},
         plt_add_apps: [:mix, :ex_unit],
         list_unused_filters: true,
         flags: [:error_handling, :underspecs]
+      ],
+      # Documentation configuration
+      docs: [
+        main: "EveDmv",
+        name: "EVE DMV",
+        source_url: "https://github.com/wanderer-industries/eve-dmv",
+        homepage_url: "https://github.com/wanderer-industries/eve-dmv",
+        extras: [
+          "README.md",
+          "CLAUDE.md": [title: "Development Guide"]
+        ],
+        groups_for_modules: [
+          "Intelligence Analysis": [
+            EveDmv.Intelligence,
+            EveDmv.Intelligence.AnalysisCache,
+            EveDmv.Intelligence.IntelligenceCache,
+            EveDmv.Intelligence.IntelligenceCoordinator,
+            EveDmv.Intelligence.CharacterAnalysis,
+            EveDmv.Intelligence.WhSpace,
+            EveDmv.Intelligence.CorrelationEngine
+          ],
+          "Killmail Processing": [
+            EveDmv.Killmails,
+            EveDmv.Killmails.KillmailPipeline,
+            EveDmv.Killmails.SSEProducer,
+            EveDmv.Killmails.MockSSEServer
+          ],
+          "Market Data": [
+            EveDmv.Market,
+            EveDmv.Market.JaniceClient,
+            EveDmv.Market.MutamarketClient,
+            EveDmv.Market.PriceCache,
+            EveDmv.Market.RateLimiter
+          ],
+          "EVE API Integration": [
+            EveDmv.Eve,
+            EveDmv.Eve.EsiClient,
+            EveDmv.Eve.EsiUtils,
+            EveDmv.Eve.NameResolver,
+            EveDmv.Eve.StaticDataLoader
+          ],
+          Configuration: [
+            EveDmv.Config,
+            EveDmv.Config.Cache,
+            EveDmv.Config.Http,
+            EveDmv.Config.RateLimit,
+            EveDmv.Config.CircuitBreaker,
+            EveDmv.Config.Pipeline,
+            EveDmv.Config.Api
+          ],
+          "Database & Resources": [
+            EveDmv.Api,
+            EveDmv.Database,
+            EveDmv.Enrichment,
+            EveDmv.Users,
+            EveDmv.Characters,
+            EveDmv.Corporations
+          ],
+          "Web Interface": [
+            EveDmvWeb,
+            EveDmvWeb.Endpoint,
+            EveDmvWeb.Router,
+            EveDmvWeb.AuthLive,
+            EveDmvWeb.CoreComponents
+          ],
+          Utilities: [
+            EveDmv.Utils,
+            EveDmv.Utils.Cache,
+            EveDmv.Utils.MathUtils,
+            EveDmv.Utils.KillmailUtils
+          ]
+        ]
       ]
     ]
   end
@@ -48,6 +147,7 @@ defmodule EveDmv.MixProject do
       {:postgrex, ">= 0.0.0"},
       {:phoenix_html, "~> 4.1"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
+      {:exsync, "~> 0.4", only: :dev},
       {:phoenix_live_view, "~> 1.0"},
       {:floki, ">= 0.30.0", only: :test},
       {:phoenix_live_dashboard, "~> 0.8.3"},
@@ -96,6 +196,11 @@ defmodule EveDmv.MixProject do
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:mix_audit, "~> 2.1", only: [:dev, :test], runtime: false},
       {:excoveralls, "~> 0.18", only: :test},
+      # Documentation
+      {:ex_doc, "~> 0.32", only: :dev, runtime: false},
+      # Additional test dependencies for comprehensive testing
+      {:bypass, "~> 2.1", only: :test},
+      {:mox, "~> 1.0", only: :test},
       {:picosat_elixir, "~> 0.2"}
     ]
   end
@@ -113,6 +218,8 @@ defmodule EveDmv.MixProject do
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
       "test.coverage": ["coveralls.html"],
+      "test.coverage.console": ["coveralls"],
+      "test.coverage.json": ["coveralls.json"],
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
       "assets.build": ["tailwind eve_dmv", "esbuild eve_dmv"],
       "assets.deploy": [
@@ -127,13 +234,18 @@ defmodule EveDmv.MixProject do
         "deps.audit",
         "compile --warnings-as-errors",
         "credo --strict",
-        "dialyzer"
+        "dialyzer",
+        "docs.check"
       ],
       "quality.fix": [
         "format",
         "deps.clean --unused",
         "deps.get"
-      ]
+      ],
+      # Documentation aliases
+      "docs.check": ["docs"],
+      "docs.build": ["docs"],
+      "docs.open": ["docs", "cmd open doc/index.html"]
     ]
   end
 end

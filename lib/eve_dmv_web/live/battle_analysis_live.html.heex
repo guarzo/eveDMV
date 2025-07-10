@@ -1,0 +1,1552 @@
+<div class="container mx-auto px-4 py-8">
+  <!-- Header with zkillboard import -->
+  <div class="bg-gray-900 rounded-lg p-6 mb-6">
+    <h1 class="text-3xl font-bold mb-4">Battle Analysis</h1>
+    
+    <!-- zkillboard Import Form -->
+    <form phx-submit="import_zkillboard" class="flex gap-2">
+      <input
+        type="text"
+        name="url"
+        value={@import_url}
+        placeholder="Paste zkillboard URL (e.g., https://zkillboard.com/kill/123456/)"
+        class="flex-1 px-4 py-2 bg-gray-800 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        disabled={@importing}
+      />
+      <button
+        type="submit"
+        disabled={@importing}
+        class="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 text-white rounded-md transition-colors"
+      >
+        <%= if @importing do %>
+          <span class="flex items-center">
+            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Importing...
+          </span>
+        <% else %>
+          Import from zkillboard
+        <% end %>
+      </button>
+    </form>
+    
+    <%= if @error_message do %>
+      <div class="mt-2 text-red-400 text-sm">
+        <%= @error_message %>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <!-- Recent Battles Sidebar -->
+    <div class="lg:col-span-1">
+      <div class="bg-gray-900 rounded-lg p-4">
+        <h2 class="text-xl font-semibold mb-4">Recent Battles</h2>
+        <div class="space-y-2 max-h-96 overflow-y-auto">
+          <%= for battle <- @recent_battles do %>
+            <button
+              phx-click="select_battle"
+              phx-value-battle_id={battle.battle_id}
+              class={"p-3 rounded-md text-left w-full transition-colors " <> 
+                     if @current_battle && @current_battle.battle_id == battle.battle_id do
+                       "bg-blue-900 hover:bg-blue-800"
+                     else
+                       "bg-gray-800 hover:bg-gray-700"
+                     end}
+            >
+              <div class="text-sm font-medium">
+                <%= resolve_system_name(battle.metadata.primary_system) %>
+              </div>
+              <div class="text-xs text-gray-400">
+                <%= battle.metadata.unique_participants %> pilots • 
+                <%= length(battle.killmails) %> kills • 
+                <%= format_duration(battle.metadata.duration_minutes) %>
+              </div>
+            </button>
+          <% end %>
+        </div>
+      </div>
+      
+      <!-- Recently Viewed Battles -->
+      <%= if length(@recently_viewed_battles) > 0 do %>
+        <div class="bg-gray-900 rounded-lg p-4 mt-4">
+          <h2 class="text-xl font-semibold mb-4">Recently Viewed</h2>
+          <div class="space-y-2 max-h-64 overflow-y-auto">
+            <%= for battle <- @recently_viewed_battles do %>
+              <button
+                phx-click="select_battle"
+                phx-value-battle_id={battle.battle_id}
+                class={"p-3 rounded-md text-left w-full transition-colors " <> 
+                       if @current_battle && @current_battle.battle_id == battle.battle_id do
+                         "bg-blue-900 hover:bg-blue-800"
+                       else
+                         "bg-gray-800 hover:bg-gray-700"
+                       end}
+              >
+                <div class="text-sm font-medium">
+                  <%= battle.system_name %>
+                </div>
+                <div class="text-xs text-gray-400">
+                  <%= battle.participant_count %> pilots • 
+                  <%= format_isk_short(battle.isk_destroyed) %> ISK • 
+                  <%= format_timestamp(battle.viewed_at) %>
+                </div>
+              </button>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- Main Battle View -->
+    <div class="lg:col-span-3">
+      <%= if @current_battle do %>
+        <!-- Battle Header -->
+        <div class="bg-gray-900 rounded-lg p-6 mb-6">
+          <div class="flex justify-between items-start">
+            <div>
+              <h2 class="text-2xl font-bold mb-2">
+                Battle in <%= resolve_system_name(@current_battle.metadata.primary_system) %>
+              </h2>
+              <div class="text-gray-400">
+                <span class="mr-4"><%= length(@current_battle.killmails) %> kills</span>
+                <span class="mr-4"><%= @current_battle.metadata.unique_participants %> participants</span>
+                <span><%= format_duration(@current_battle.metadata.duration_minutes) %> duration</span>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-sm text-gray-400">Battle Type</div>
+              <div class="text-lg font-medium capitalize">
+                <%= @current_battle.metadata.battle_type |> to_string() |> String.replace("_", " ") %>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Main View Selector -->
+        <div class="bg-gray-900 rounded-lg p-4 mb-6">
+          <div class="flex gap-2 mb-4">
+            <button
+              phx-click="change_main_view"
+              phx-value-view="metrics"
+              class={"px-4 py-2 rounded-md transition-colors " <> 
+                     if @main_view == :metrics do
+                       "bg-blue-600 text-white"
+                     else
+                       "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                     end}
+            >
+              Battle Metrics
+            </button>
+            <button
+              phx-click="change_main_view"
+              phx-value-view="timeline"
+              class={"px-4 py-2 rounded-md transition-colors " <> 
+                     if @main_view == :timeline do
+                       "bg-blue-600 text-white"
+                     else
+                       "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                     end}
+            >
+              Timeline
+            </button>
+            <button
+              phx-click="change_main_view"
+              phx-value-view="fleet"
+              class={"px-4 py-2 rounded-md transition-colors " <> 
+                     if @main_view == :fleet do
+                       "bg-blue-600 text-white"
+                     else
+                       "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                     end}
+            >
+              Fleet Composition
+            </button>
+            <button
+              phx-click="change_main_view"
+              phx-value-view="intelligence"
+              class={"px-4 py-2 rounded-md transition-colors " <> 
+                     if @main_view == :intelligence do
+                       "bg-blue-600 text-white"
+                     else
+                       "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                     end}
+            >
+              Intelligence
+            </button>
+            <button
+              phx-click="change_main_view"
+              phx-value-view="combat_logs"
+              class={"px-4 py-2 rounded-md transition-colors " <> 
+                     if @main_view == :combat_logs do
+                       "bg-blue-600 text-white"
+                     else
+                       "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                     end}
+            >
+              Combat Logs
+            </button>
+            <button
+              phx-click="change_main_view"
+              phx-value-view="sharing"
+              class={"px-4 py-2 rounded-md transition-colors " <> 
+                     if @main_view == :sharing do
+                       "bg-blue-600 text-white"
+                     else
+                       "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                     end}
+            >
+              Sharing
+            </button>
+          </div>
+
+          <!-- Main View Content -->
+          <%= case @main_view do %>
+            <% :metrics -> %>
+              <!-- Battle Metrics Dashboard -->
+              <%= if @battle_metrics do %>
+                <div class="space-y-6">
+                  <!-- Overview Section -->
+                  <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                    <div class="bg-gray-800 rounded-lg p-4">
+                      <h3 class="text-lg font-medium mb-2">Total Kills</h3>
+                      <div class="text-2xl font-bold text-blue-400"><%= @battle_metrics.overview.total_kills %></div>
+                    </div>
+                    <div class="bg-gray-800 rounded-lg p-4">
+                      <h3 class="text-lg font-medium mb-2">Duration</h3>
+                      <div class="text-2xl font-bold text-green-400"><%= @battle_metrics.overview.duration_minutes %>m</div>
+                    </div>
+                    <div class="bg-gray-800 rounded-lg p-4">
+                      <h3 class="text-lg font-medium mb-2">Unique Pilots</h3>
+                      <div class="text-2xl font-bold text-purple-400"><%= @battle_metrics.overview.unique_pilots %></div>
+                    </div>
+                    <div class="bg-gray-800 rounded-lg p-4">
+                      <h3 class="text-lg font-medium mb-2">Battle Type</h3>
+                      <div class="text-lg font-bold text-orange-400 capitalize"><%= @battle_metrics.overview.battle_type |> to_string() |> String.replace("_", " ") %></div>
+                    </div>
+                  </div>
+                  
+                  <!-- ISK and Damage Metrics -->
+                  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-gray-800 rounded-lg p-4">
+                      <h4 class="font-medium mb-3">ISK Metrics</h4>
+                      <div class="space-y-2">
+                        <div class="flex justify-between">
+                          <span class="text-gray-400">Total Destroyed:</span>
+                          <span class="font-mono"><%= format_isk_short(@battle_metrics.isk_metrics.total_isk_destroyed) %></span>
+                        </div>
+                        <div class="flex justify-between">
+                          <span class="text-gray-400">Average Loss:</span>
+                          <span class="font-mono"><%= format_isk_short(@battle_metrics.isk_metrics.average_loss_value) %></span>
+                        </div>
+                        <%= if @battle_metrics.isk_metrics.most_expensive_loss do %>
+                          <div class="mt-3 text-sm">
+                            <span class="text-gray-400">Most Expensive Loss:</span>
+                            <div class="text-red-400"><%= @battle_metrics.isk_metrics.most_expensive_loss.character_name %></div>
+                            <div class="text-xs text-gray-500"><%= @battle_metrics.isk_metrics.most_expensive_loss.ship_name %> - <%= format_isk_short(@battle_metrics.isk_metrics.most_expensive_loss.value) %></div>
+                          </div>
+                        <% end %>
+                      </div>
+                    </div>
+                    
+                    <div class="bg-gray-800 rounded-lg p-4">
+                      <h4 class="font-medium mb-3">Damage Metrics</h4>
+                      <div class="space-y-2">
+                        <div class="flex justify-between">
+                          <span class="text-gray-400">Total Damage:</span>
+                          <span class="font-mono"><%= format_number(@battle_metrics.damage_metrics.total_damage_applied) %></span>
+                        </div>
+                        <div class="flex justify-between">
+                          <span class="text-gray-400">Average per Kill:</span>
+                          <span class="font-mono"><%= format_number(@battle_metrics.damage_metrics.average_damage_per_kill) %></span>
+                        </div>
+                        <div class="flex justify-between">
+                          <span class="text-gray-400">Overall DPS:</span>
+                          <span class="font-mono"><%= format_number(@battle_metrics.damage_metrics.dps_overall) %></span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Fleet and Tactical Metrics -->
+                  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-gray-800 rounded-lg p-4">
+                      <h4 class="font-medium mb-3">Fleet Metrics</h4>
+                      <div class="space-y-2">
+                        <div class="flex justify-between">
+                          <span class="text-gray-400">Ship Types Used:</span>
+                          <span><%= @battle_metrics.fleet_metrics.ship_types_used %></span>
+                        </div>
+                        <div class="flex justify-between">
+                          <span class="text-gray-400">Logistics Present:</span>
+                          <span class={if @battle_metrics.fleet_metrics.logistics_presence.logistics_ships_present, do: "text-green-400", else: "text-red-400"}>
+                            <%= if @battle_metrics.fleet_metrics.logistics_presence.logistics_ships_present, do: "Yes (#{@battle_metrics.fleet_metrics.logistics_presence.logistics_pilot_count})", else: "No" %>
+                          </span>
+                        </div>
+                        <div class="flex justify-between">
+                          <span class="text-gray-400">Command Ships:</span>
+                          <span><%= @battle_metrics.fleet_metrics.force_multipliers.command_ships %></span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="bg-gray-800 rounded-lg p-4">
+                      <h4 class="font-medium mb-3">Tactical Assessment</h4>
+                      <div class="space-y-2">
+                        <div class="flex justify-between">
+                          <span class="text-gray-400">Coordination Score:</span>
+                          <span class="font-mono"><%= @battle_metrics.tactical_metrics.coordination_score.score %>/100</span>
+                        </div>
+                        <div class="flex justify-between">
+                          <span class="text-gray-400">Avg Attackers/Kill:</span>
+                          <span class="font-mono"><%= @battle_metrics.tactical_metrics.coordination_score.average_attackers_per_kill %></span>
+                        </div>
+                        <div class="flex justify-between">
+                          <span class="text-gray-400">Mobility Score:</span>
+                          <span class="font-mono"><%= @battle_metrics.tactical_metrics.mobility_score.score %>/100</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              <% else %>
+                <div class="text-center py-8 text-gray-400">
+                  <p>Loading battle metrics...</p>
+                </div>
+              <% end %>
+            
+            <% :timeline -> %>
+              <!-- Timeline Events View -->
+              <div class="relative">
+                <div class="absolute left-8 top-0 bottom-0 w-0.5 bg-gray-700"></div>
+                <div class="space-y-4">
+                  <%= for event <- @current_battle.timeline.events do %>
+                    <div class="flex gap-4">
+                      <div class="w-16 h-16 flex-shrink-0">
+                        <img 
+                          src={character_portrait(event.victim.character_id, 64)} 
+                          alt="Character portrait"
+                          class="w-16 h-16 rounded-full border-2 border-red-600"
+                        />
+                      </div>
+                      <div class="flex-1 bg-gray-800 rounded-lg p-4">
+                        <div class="flex justify-between items-start">
+                          <div class="flex-1">
+                            <div class="flex items-center gap-3 mb-2">
+                              <div>
+                                <div class="font-medium">
+                                  <%= event.victim.character_name || resolve_character_name(event.victim.character_id) %>
+                                </div>
+                                <div class="text-sm text-gray-400">
+                                  <%= event.victim.corporation_name || resolve_corporation_name(event.victim.corporation_id) %>
+                                </div>
+                              </div>
+                              <img 
+                                src={ship_render(event.victim.ship_type_id, 32)} 
+                                alt="Ship"
+                                class="w-8 h-8"
+                              />
+                              <div class="text-sm">
+                                <div class="font-medium"><%= event.victim.ship_name || resolve_ship_name(event.victim.ship_type_id) %></div>
+                                <div class="text-gray-400"><%= event.attacker_count %> attackers</div>
+                              </div>
+                            </div>
+                            
+                            <div class="text-sm text-gray-400">
+                              Total damage: <%= format_number(event.total_damage) %> • 
+                              Final blow: <%= event.final_blow.character_name || resolve_character_name(event.final_blow.character_id) %>
+                              <%= if weapon_name = get_weapon_name(event.final_blow) do %>
+                                • <%= weapon_name %>
+                              <% end %>
+                            </div>
+                          </div>
+                          <div class="text-sm text-gray-400 ml-4">
+                            <%= format_timestamp(event.timestamp) %>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            
+            <% :fleet -> %>
+              <!-- Fleet Composition View -->
+              <div class="space-y-6">
+                <%= for window <- @current_battle.timeline.fleet_composition do %>
+                  <div class="bg-gray-800 rounded-lg p-4">
+                    <div class="mb-4">
+                      <h4 class="font-medium">Time Window: <%= format_timestamp(window.timestamp) %></h4>
+                      <div class="text-sm text-gray-400 mt-1">
+                        <%= window.active_attackers %> active pilots • 
+                        <%= window.active_victims %> losses
+                      </div>
+                    </div>
+                    
+                    <!-- Battle Sides -->
+                    <%= if window[:sides] && length(window.sides) > 0 do %>
+                      <div class="space-y-4">
+                        <h5 class="text-sm font-medium text-gray-400">Battle Sides</h5>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          <%= for side <- window.sides do %>
+                            <div class="bg-gray-900 rounded-lg p-4">
+                              <h6 class="font-medium mb-3 text-blue-400">
+                                <%= String.replace(side.side_id, "_", " ") |> String.capitalize() %>
+                              </h6>
+                              <div class="space-y-2 mb-3">
+                                <%= for corp_id <- Enum.take(side.corporations, 4) do %>
+                                  <div class="flex items-center justify-between gap-2 w-full">
+                                    <div class="flex items-center gap-2 min-w-0">
+                                      <img 
+                                        src={corporation_logo(corp_id, 32)} 
+                                        alt="Corp logo"
+                                        class="w-6 h-6 rounded flex-shrink-0"
+                                      />
+                                      <span class="text-sm truncate">
+                                        <% corp_name = if side.corporations && is_list(side.corporations) && corp_id in side.corporations do
+                                          # Try to get corp name from pilot data
+                                          window.pilot_ships
+                                          |> Enum.find(fn p -> p.corporation_id == corp_id end)
+                                          |> case do
+                                            nil -> nil
+                                            pilot -> pilot.corporation_name
+                                          end
+                                        else
+                                          nil
+                                        end %>
+                                        <%= corp_name || resolve_corporation_name(corp_id) %>
+                                      </span>
+                                    </div>
+                                    <% corp_stats = Map.get(@corp_summaries, corp_id) %>
+                                    <%= if corp_stats do %>
+                                      <div class="flex gap-2 text-xs flex-shrink-0">
+                                        <span class="text-green-400">K:<%= corp_stats.kills %></span>
+                                        <span class="text-red-400">L:<%= corp_stats.losses %></span>
+                                        <%= if corp_stats.isk_destroyed > 0 do %>
+                                          <span class="text-green-300" title="ISK Destroyed">+<%= format_isk_short(corp_stats.isk_destroyed) %></span>
+                                        <% end %>
+                                        <%= if corp_stats.isk_lost > 0 do %>
+                                          <span class="text-red-300" title="ISK Lost">-<%= format_isk_short(corp_stats.isk_lost) %></span>
+                                        <% end %>
+                                      </div>
+                                    <% end %>
+                                  </div>
+                                <% end %>
+                                <%= if length(side.corporations) > 4 do %>
+                                  <div class="text-xs text-gray-400 ml-8">
+                                    +<%= length(side.corporations) - 4 %> more corporations
+                                  </div>
+                                <% end %>
+                              </div>
+                            </div>
+                          <% end %>
+                        </div>
+                      </div>
+                    <% end %>
+                    
+                    <!-- Ship Composition with Statistics -->
+                    <div class="mt-6">
+                      <div class="flex items-center justify-between mb-3">
+                        <h5 class="text-sm font-medium text-gray-400">Ship Performance Analysis</h5>
+                        <div class="flex items-center gap-2">
+                          <%= if @editing_fleet_sides do %>
+                            <button
+                              phx-click="add_custom_side"
+                              class="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
+                            >
+                              + Add Side
+                            </button>
+                            <button
+                              phx-click="reset_fleet_sides"
+                              class="px-2 py-1 text-xs bg-orange-600 hover:bg-orange-700 text-white rounded transition-colors"
+                            >
+                              Reset
+                            </button>
+                          <% end %>
+                          <button
+                            phx-click="toggle_fleet_edit_mode"
+                            class={"px-3 py-1 text-xs rounded transition-colors " <> 
+                                   if @editing_fleet_sides do
+                                     "bg-blue-600 hover:bg-blue-700 text-white"
+                                   else
+                                     "bg-gray-700 hover:bg-gray-600 text-white"
+                                   end}
+                          >
+                            <%= if @editing_fleet_sides, do: "Done Editing", else: "Edit Sides" %>
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <!-- Group ships by battle sides -->
+                      <%= if window[:pilot_ships] && length(window.pilot_ships) > 0 do %>
+                      <div class="space-y-6">
+                        <!-- Active Sides -->
+                        <div class={"grid grid-cols-1 gap-6 " <> if(length(@custom_sides) == 2, do: "lg:grid-cols-2", else: "lg:grid-cols-3")}>
+                          <%= for side <- @custom_sides do %>
+                            <div class="space-y-3">
+                              <h6 class="text-xs font-medium text-blue-400 uppercase border-b border-blue-800 pb-1">
+                                <%= String.replace(side, "_", " ") |> String.capitalize() %>
+                              </h6>
+                              
+                              <%= for pilot <- EveDmvWeb.BattleAnalysisLive.get_ships_for_side(window.pilot_ships || [], side, @ship_side_assignments) do %>
+                                <div 
+                                  class={"bg-gray-900 rounded-lg p-2 cursor-pointer transition-all " <> 
+                                         if @editing_fleet_sides do
+                                           "hover:ring-2 hover:ring-blue-500"
+                                         else
+                                           "hover:bg-gray-800 " <> 
+                                           if @selected_ship && @selected_ship.character_id == pilot.character_id && @selected_ship.ship_type_id == pilot.ship_type_id do
+                                             "ring-2 ring-green-500"
+                                           else
+                                             ""
+                                           end
+                                         end}
+                                  phx-click={if @editing_fleet_sides do
+                                              "cycle_ship_side"
+                                            else
+                                              "analyze_ship_performance"
+                                            end}
+                                  phx-value-ship_id={if @editing_fleet_sides, do: "pilot_#{pilot.character_id}_#{pilot.ship_type_id}"}
+                                  phx-value-current_side={if @editing_fleet_sides, do: side}
+                                  phx-value-character_id={if !@editing_fleet_sides, do: pilot.character_id}
+                                  phx-value-ship_type_id={if !@editing_fleet_sides, do: pilot.ship_type_id}
+                                >
+                                  <div class="flex items-center gap-2 h-12">
+                                    <div class="relative">
+                                      <img 
+                                        src={ship_render(pilot.ship_type_id, 64)} 
+                                        alt="Ship"
+                                        class="w-12 h-12 flex-shrink-0"
+                                        onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 fill=%22%23374151%22/%3E%3Ctext x=%2250%22 y=%2250%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23fff%22 font-size=%2214%22%3EShip%3C/text%3E%3C/svg%3E'"
+                                      />
+                                      <!-- Status indicators -->
+                                      <div class="absolute -top-1 -right-1 flex gap-0.5">
+                                        <%= if has_fitting?(pilot[:character_name] || resolve_character_name(pilot.character_id)) do %>
+                                          <div class="w-3 h-3 bg-blue-500 rounded-full border border-white" title="Fitting Available"></div>
+                                        <% end %>
+                                        <%= if has_combat_log?(pilot[:character_name] || resolve_character_name(pilot.character_id), @combat_logs) do %>
+                                          <div class="w-3 h-3 bg-green-500 rounded-full border border-white" title="Combat Log Available"></div>
+                                        <% end %>
+                                      </div>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                      <div class="flex items-baseline gap-1">
+                                        <span class="text-xs font-medium text-white truncate">
+                                          <%= pilot.character_name || resolve_character_name(pilot.character_id) %>
+                                        </span>
+                                        <span class="text-xs text-gray-500">•</span>
+                                        <span class="text-xs text-gray-400 truncate">
+                                          <%= pilot.ship_name || resolve_ship_name(pilot.ship_type_id) %>
+                                        </span>
+                                      </div>
+                                      <div class="text-xs text-gray-500 truncate">
+                                        <%= pilot.corporation_name || resolve_corporation_name(pilot.corporation_id) %>
+                                      </div>
+                                    </div>
+                                    <div class="flex gap-3 text-xs">
+                                      <%= if pilot.damage_given > 0 do %>
+                                        <div class="text-green-400" title="Damage Given">
+                                          <span class="font-medium"><%= format_number(pilot.damage_given) %></span>
+                                        </div>
+                                      <% end %>
+                                      <%= if pilot.damage_taken > 0 do %>
+                                        <div class="text-red-400" title="Damage Taken">
+                                          <span class="font-medium"><%= format_number(pilot.damage_taken) %></span>
+                                        </div>
+                                      <% end %>
+                                      <%= if pilot.kills > 0 do %>
+                                        <div class="text-orange-400" title="Kills">
+                                          K:<%= pilot.kills %>
+                                        </div>
+                                      <% end %>
+                                      <%= if pilot.losses > 0 do %>
+                                        <div class="text-purple-400" title="Losses">
+                                          L:<%= pilot.losses %>
+                                        </div>
+                                      <% end %>
+                                    </div>
+                                    <%= if @editing_fleet_sides do %>
+                                      <div class="text-xs text-blue-400 px-2">
+                                        <%= String.replace(side, "_", " ") |> String.capitalize() %>
+                                      </div>
+                                    <% end %>
+                                  </div>
+                                </div>
+                              <% end %>
+                            </div>
+                          <% end %>
+                        </div>
+                        
+                        <!-- Unassigned Ships -->
+                        <% unassigned_pilots = EveDmvWeb.BattleAnalysisLive.get_ships_for_side(window.pilot_ships || [], "unassigned", @ship_side_assignments) %>
+                        <%= if length(unassigned_pilots) > 0 || @editing_fleet_sides do %>
+                          <div class="mt-6">
+                            <h6 class="text-xs font-medium text-gray-400 uppercase border-b border-gray-700 pb-1 mb-3">
+                              Unassigned Ships
+                              <%= if length(unassigned_pilots) > 0 do %>
+                                <span class="text-gray-500">(<%= length(unassigned_pilots) %>)</span>
+                              <% end %>
+                            </h6>
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                              <%= for pilot <- unassigned_pilots do %>
+                                <div 
+                                  class={"bg-gray-800 rounded-lg p-2 cursor-pointer transition-all " <> 
+                                         if @editing_fleet_sides do
+                                           "hover:ring-2 hover:ring-yellow-500"
+                                         else
+                                           "hover:bg-gray-700 " <> 
+                                           if @selected_ship && @selected_ship.character_id == pilot.character_id && @selected_ship.ship_type_id == pilot.ship_type_id do
+                                             "ring-2 ring-green-500"
+                                           else
+                                             ""
+                                           end
+                                         end}
+                                  phx-click={if @editing_fleet_sides do
+                                              "cycle_ship_side"
+                                            else
+                                              "analyze_ship_performance"
+                                            end}
+                                  phx-value-ship_id={if @editing_fleet_sides, do: "pilot_#{pilot.character_id}_#{pilot.ship_type_id}"}
+                                  phx-value-current_side={if @editing_fleet_sides, do: "unassigned"}
+                                  phx-value-character_id={if !@editing_fleet_sides, do: pilot.character_id}
+                                  phx-value-ship_type_id={if !@editing_fleet_sides, do: pilot.ship_type_id}
+                                >
+                                  <div class="flex items-center gap-2 h-12">
+                                    <img 
+                                      src={ship_render(pilot.ship_type_id, 64)} 
+                                      alt="Ship"
+                                      class="w-12 h-12 flex-shrink-0 opacity-60"
+                                      onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 fill=%22%23374151%22/%3E%3Ctext x=%2250%22 y=%2250%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23fff%22 font-size=%2214%22%3EShip%3C/text%3E%3C/svg%3E'"
+                                    />
+                                    <div class="flex-1 min-w-0">
+                                      <div class="flex items-baseline gap-1">
+                                        <span class="text-xs font-medium text-gray-300 truncate">
+                                          <%= pilot.character_name || resolve_character_name(pilot.character_id) %>
+                                        </span>
+                                        <span class="text-xs text-gray-500">•</span>
+                                        <span class="text-xs text-gray-500 truncate">
+                                          <%= pilot.ship_name || resolve_ship_name(pilot.ship_type_id) %>
+                                        </span>
+                                      </div>
+                                      <div class="text-xs text-gray-600 truncate">
+                                        <%= pilot.corporation_name || resolve_corporation_name(pilot.corporation_id) %>
+                                      </div>
+                                    </div>
+                                    <%= if @editing_fleet_sides do %>
+                                      <div class="text-xs text-yellow-400 px-2">
+                                        Unassigned
+                                      </div>
+                                    <% end %>
+                                  </div>
+                                </div>
+                              <% end %>
+                            </div>
+                          </div>
+                        <% end %>
+                      </div>
+                      <% else %>
+                        <!-- No ship composition data -->
+                        <div class="text-center text-gray-500 py-4">
+                          No ship data available for this time window
+                        </div>
+                      <% end %>
+                    </div>
+                    
+                    <!-- Ship Performance Analysis -->
+                    <%= if @selected_ship && @ship_performance do %>
+                      <div class="mt-6 bg-gray-800 rounded-lg p-6">
+                        <h3 class="text-lg font-bold mb-4">
+                          <%= @ship_performance.ship_info.character_name %> - 
+                          <%= @ship_performance.ship_info.ship_name %>
+                        </h3>
+                        
+                        <%= if Map.get(@ship_performance.efficiency_metrics, :status) == :no_comparison_available do %>
+                          <div class="text-gray-400 mb-4">
+                            <p>No fitting data available for detailed comparison.</p>
+                            <p class="text-sm mt-2">Import an EFT fitting to enable performance analysis.</p>
+                            
+                            <%= if @show_fitting_import do %>
+                              <form phx-submit="import_eft_fitting" class="mt-4 space-y-3">
+                                <textarea
+                                  name="eft_text"
+                                  placeholder="Paste EFT fitting here..."
+                                  class="w-full h-32 px-3 py-2 bg-gray-700 text-white rounded-md resize-none"
+                                  required
+                                ></textarea>
+                                <div class="flex gap-2">
+                                  <button
+                                    type="submit"
+                                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+                                  >
+                                    Import Fitting
+                                  </button>
+                                  <button
+                                    type="button"
+                                    phx-click="toggle_fitting_import"
+                                    class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md transition-colors"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </form>
+                            <% else %>
+                              <button
+                                phx-click="toggle_fitting_import"
+                                class="mt-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors text-sm"
+                              >
+                                Import EFT Fitting
+                              </button>
+                            <% end %>
+                          </div>
+                        <% else %>
+                          <%= if @selected_ship && @selected_ship.fitting_data do %>
+                            <div class="mb-4 space-y-2">
+                              <div class="p-3 bg-green-900/20 border border-green-700 rounded flex justify-between items-center">
+                                <p class="text-sm text-green-400">
+                                  ✓ Using imported fitting data for performance comparison
+                                </p>
+                                <button
+                                  phx-click="toggle_fitting_import"
+                                  class="text-xs px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
+                                >
+                                  Update Fitting
+                                </button>
+                              </div>
+                              <div class="p-2 bg-gray-700 rounded text-xs text-gray-400">
+                                <strong>Note:</strong> Calculations use simplified estimates. Expected DPS is based on weapon type and ship class. 
+                                For accurate analysis, import combat logs or use a fitting tool like PyFA.
+                              </div>
+                            </div>
+                          <% end %>
+                          
+                          <%= if @show_fitting_import && @selected_ship && @selected_ship.fitting_data do %>
+                            <form phx-submit="import_eft_fitting" class="mb-4 space-y-3">
+                              <textarea
+                                name="eft_text"
+                                placeholder="Paste new EFT fitting here..."
+                                class="w-full h-32 px-3 py-2 bg-gray-700 text-white rounded-md resize-none"
+                                required
+                              ></textarea>
+                              <div class="flex gap-2">
+                                <button
+                                  type="submit"
+                                  class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+                                >
+                                  Update Fitting
+                                </button>
+                                <button
+                                  type="button"
+                                  phx-click="toggle_fitting_import"
+                                  class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </form>
+                          <% end %>
+                          
+                          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div>
+                              <h4 class="font-medium mb-3">Performance Metrics</h4>
+                              <div class="space-y-2">
+                                <div class="flex justify-between">
+                                  <span class="text-gray-400">DPS Efficiency:</span>
+                                  <span class="font-mono"><%= Float.round(@ship_performance.efficiency_metrics.dps_efficiency.percentage, 1) %>%</span>
+                                </div>
+                                <div class="flex justify-between">
+                                  <span class="text-gray-400">Damage Dealt:</span>
+                                  <span class="font-mono"><%= format_number(@ship_performance.actual_performance.damage_dealt.total) %></span>
+                                </div>
+                                <div class="flex justify-between">
+                                  <span class="text-gray-400">Time on Field:</span>
+                                  <span class="font-mono"><%= Float.round(@ship_performance.actual_performance.time_on_field / 60, 1) %>m</span>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <h4 class="font-medium mb-3">Tank Performance</h4>
+                              <div class="space-y-2">
+                                <div class="flex justify-between">
+                                  <span class="text-gray-400">Damage Taken:</span>
+                                  <span class="font-mono"><%= format_number(@ship_performance.actual_performance.damage_taken.total) %></span>
+                                </div>
+                                <div class="flex justify-between">
+                                  <span class="text-gray-400">Tank Used:</span>
+                                  <span class="font-mono"><%= Float.round(@ship_performance.efficiency_metrics.tank_efficiency.used_percentage, 1) %>%</span>
+                                </div>
+                                <div class="flex justify-between">
+                                  <span class="text-gray-400">Survived:</span>
+                                  <span class={if @ship_performance.efficiency_metrics.tank_efficiency.survived, do: "text-green-400", else: "text-red-400"}>
+                                    <%= if @ship_performance.efficiency_metrics.tank_efficiency.survived, do: "Yes", else: "No" %>
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        <% end %>
+                        
+                        <%= if length(@ship_performance.recommendations) > 0 do %>
+                          <div class="mt-6">
+                            <h4 class="font-medium mb-3">Recommendations</h4>
+                            <ul class="space-y-2">
+                              <%= for rec <- @ship_performance.recommendations do %>
+                                <li class="flex items-start gap-2">
+                                  <span class="text-yellow-400 mt-1">•</span>
+                                  <span class="text-sm"><%= rec %></span>
+                                </li>
+                              <% end %>
+                            </ul>
+                          </div>
+                        <% end %>
+                        
+                        <!-- Combat Log Analysis -->
+                        <%= if @selected_ship && @selected_ship.combat_log_analysis do %>
+                          <div class="mt-6 border-t border-gray-700 pt-6">
+                            <h4 class="font-medium mb-4 flex items-center gap-2">
+                              <span class="w-2 h-2 bg-green-400 rounded-full"></span>
+                              Combat Log Analysis
+                            </h4>
+                            
+                            <!-- Combined Performance Metrics -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                              <!-- DPS Performance -->
+                              <div class="bg-gray-700 rounded p-3">
+                                <h6 class="text-xs font-medium text-gray-300 mb-2 flex items-center gap-1">
+                                  DPS Performance
+                                  <%= if @selected_ship.fitting_data do %><span class="w-1.5 h-1.5 bg-blue-400 rounded-full" title="Fitting data available"></span><% end %>
+                                  <%= if @selected_ship.combat_log_analysis do %><span class="w-1.5 h-1.5 bg-green-400 rounded-full" title="Combat log data available"></span><% end %>
+                                </h6>
+                                <div class="text-sm space-y-1">
+                                  <%= if get_in(@selected_ship.combat_log_analysis, ["damage_application", "total_shots"]) do %>
+                                    <div class="flex justify-between">
+                                      <span class="text-gray-400">Shots Fired:</span>
+                                      <span class="font-mono text-green-300"><%= get_in(@selected_ship.combat_log_analysis, ["damage_application", "total_shots"]) %></span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                      <span class="text-gray-400">Application:</span>
+                                      <span class="font-mono text-green-300"><%= get_in(@selected_ship.combat_log_analysis, ["damage_application", "average_application"]) %>%</span>
+                                    </div>
+                                  <% end %>
+                                  <%= if @ship_performance && @ship_performance.efficiency_metrics do %>
+                                    <div class="flex justify-between">
+                                      <span class="text-gray-400">DPS Efficiency:</span>
+                                      <span class="font-mono text-blue-300"><%= Float.round(@ship_performance.efficiency_metrics.dps_efficiency.percentage, 1) %>%</span>
+                                    </div>
+                                  <% end %>
+                                </div>
+                              </div>
+                              
+                              <!-- Survivability -->
+                              <div class="bg-gray-700 rounded p-3">
+                                <h6 class="text-xs font-medium text-gray-300 mb-2">Survivability</h6>
+                                <div class="text-sm space-y-1">
+                                  <%= if get_in(@selected_ship.combat_log_analysis, [:summary, "total_damage_received"]) do %>
+                                    <div class="flex justify-between">
+                                      <span class="text-gray-400">Damage Taken:</span>
+                                      <span class="font-mono text-green-300"><%= format_number(get_in(@selected_ship.combat_log_analysis, [:summary, "total_damage_received"])) %></span>
+                                    </div>
+                                  <% end %>
+                                  <%= if @ship_performance && @ship_performance.efficiency_metrics do %>
+                                    <div class="flex justify-between">
+                                      <span class="text-gray-400">Survived:</span>
+                                      <span class={if @ship_performance.efficiency_metrics.tank_efficiency.survived, do: "text-green-400", else: "text-red-400"}>
+                                        <%= if @ship_performance.efficiency_metrics.tank_efficiency.survived, do: "Yes", else: "No" %>
+                                      </span>
+                                    </div>
+                                  <% end %>
+                                </div>
+                              </div>
+                              
+                              <!-- Target Selection -->
+                              <div class="bg-gray-700 rounded p-3">
+                                <h6 class="text-xs font-medium text-gray-300 mb-2">Target Selection</h6>
+                                <div class="text-sm space-y-1">
+                                  <%= if get_in(@selected_ship.combat_log_analysis, ["target_selection", "targets_engaged"]) do %>
+                                    <div class="flex justify-between">
+                                      <span class="text-gray-400">Targets:</span>
+                                      <span class="font-mono text-green-300"><%= get_in(@selected_ship.combat_log_analysis, ["target_selection", "targets_engaged"]) %></span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                      <span class="text-gray-400">Prioritization:</span>
+                                      <span class="text-gray-300 capitalize"><%= get_in(@selected_ship.combat_log_analysis, ["target_selection", "target_prioritization"]) %></span>
+                                    </div>
+                                  <% end %>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <!-- Tackle & EWAR Usage -->
+                            <%= if get_in(@selected_ship.combat_log_analysis, ["tackle_effectiveness", "tackle_attempts"]) && get_in(@selected_ship.combat_log_analysis, ["tackle_effectiveness", "tackle_attempts"]) > 0 do %>
+                              <div class="mb-6">
+                                <h5 class="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
+                                  <span class="w-2 h-2 bg-yellow-400 rounded-full"></span>
+                                  Tackle & EWAR Effectiveness
+                                </h5>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <!-- Tackle Usage -->
+                                  <div class="bg-gray-700 rounded p-3">
+                                    <h6 class="text-xs font-medium text-yellow-300 mb-2">Tackle Modules</h6>
+                                    <div class="space-y-2">
+                                      <div class="flex justify-between">
+                                        <span class="text-gray-400">Tackle Attempts:</span>
+                                        <span class="font-mono text-yellow-300"><%= get_in(@selected_ship.combat_log_analysis, ["tackle_effectiveness", "tackle_attempts"]) %></span>
+                                      </div>
+                                      <div class="flex justify-between">
+                                        <span class="text-gray-400">Modules Used:</span>
+                                        <span class="text-gray-300 text-xs">
+                                          <%= Enum.join(get_in(@selected_ship.combat_log_analysis, ["tackle_effectiveness", "tackle_modules_used"]) || [], ", ") %>
+                                        </span>
+                                      </div>
+                                      
+                                      <!-- Target Success Analysis -->
+                                      <%= if get_in(@selected_ship.combat_log_analysis, ["target_selection", "target_statistics"]) do %>
+                                        <div class="mt-3 space-y-1">
+                                          <div class="text-xs text-gray-400">Target Outcomes:</div>
+                                          <%= for {target_name, stats} <- get_in(@selected_ship.combat_log_analysis, ["target_selection", "target_statistics"]) do %>
+                                            <div class="flex justify-between text-xs">
+                                              <span class="text-gray-300 truncate max-w-20" title={target_name}><%= target_name %></span>
+                                              <span class="text-gray-400"><%= get_in(stats, ["ship_type"]) %></span>
+                                              <span class={if target_died?(target_name, @current_battle), do: "text-red-400", else: "text-green-400"}>
+                                                <%= if target_died?(target_name, @current_battle), do: "💀", else: "🛡️" %>
+                                              </span>
+                                            </div>
+                                          <% end %>
+                                        </div>
+                                      <% end %>
+                                    </div>
+                                  </div>
+                                  
+                                  <!-- Incoming Tackle -->
+                                  <div class="bg-gray-700 rounded p-3">
+                                    <h6 class="text-xs font-medium text-orange-300 mb-2">Under Tackle</h6>
+                                    <div class="space-y-2">
+                                      <div class="flex justify-between">
+                                        <span class="text-gray-400">Tackle Received:</span>
+                                        <span class="font-mono text-orange-300"><%= get_in(@selected_ship.combat_log_analysis, ["tackle_effectiveness", "tackle_received"]) || 0 %></span>
+                                      </div>
+                                      <div class="flex justify-between">
+                                        <span class="text-gray-400">Defensive Reactions:</span>
+                                        <span class="font-mono text-orange-300"><%= get_in(@selected_ship.combat_log_analysis, ["defensive_reactions", "defensive_activations"]) || 0 %></span>
+                                      </div>
+                                      <%= if get_in(@selected_ship.combat_log_analysis, ["defensive_reactions", "average_reaction_time"]) && get_in(@selected_ship.combat_log_analysis, ["defensive_reactions", "average_reaction_time"]) > 0 do %>
+                                        <div class="flex justify-between">
+                                          <span class="text-gray-400">Reaction Time:</span>
+                                          <span class="font-mono text-orange-300"><%= Float.round(get_in(@selected_ship.combat_log_analysis, ["defensive_reactions", "average_reaction_time"]), 1) %>s</span>
+                                        </div>
+                                      <% end %>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            <% end %>
+                            
+                            <!-- Hit Quality Analysis -->
+                            <%= if get_in(@selected_ship.combat_log_analysis, ["damage_application", "quality_breakdown"]) do %>
+                              <div class="mb-6">
+                                <h5 class="text-sm font-medium text-gray-300 mb-3">Hit Quality Breakdown</h5>
+                                <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                  <%= for {quality, stats} <- (get_in(@selected_ship.combat_log_analysis, ["damage_application", "quality_breakdown"]) || %{}) do %>
+                                    <div class="bg-gray-700 rounded p-2">
+                                      <div class="text-xs text-gray-400 capitalize"><%= to_string(quality) |> String.replace("_", " ") %></div>
+                                      <div class="font-mono text-sm">
+                                        <%= get_in(stats, ["count"]) || stats[:count] %> hits
+                                      </div>
+                                      <div class="text-xs text-gray-400">
+                                        <%= Float.round(get_in(stats, ["percentage"]) || stats[:percentage] || 0, 1) %>%
+                                      </div>
+                                    </div>
+                                  <% end %>
+                                </div>
+                              </div>
+                            <% end %>
+                            
+                            <!-- Tactical Recommendations from Combat Log -->
+                            <%= if @selected_ship.combat_log_analysis[:recommendations] && length(@selected_ship.combat_log_analysis[:recommendations]) > 0 do %>
+                              <div class="mt-4">
+                                <h5 class="text-sm font-medium text-gray-300 mb-3">Combat Log Insights</h5>
+                                <ul class="space-y-2">
+                                  <%= for rec <- @selected_ship.combat_log_analysis[:recommendations] do %>
+                                    <li class="flex items-start gap-2">
+                                      <span class="text-blue-400 mt-1">⚡</span>
+                                      <span class="text-sm text-gray-300"><%= rec %></span>
+                                    </li>
+                                  <% end %>
+                                </ul>
+                              </div>
+                            <% end %>
+                          </div>
+                        <% end %>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+            
+            <% :combat_logs -> %>
+              <!-- Combat Logs Management -->
+              <div class="space-y-6">
+                <!-- Upload Section -->
+                <div class="bg-gray-800 rounded-lg p-6">
+                  <div class="flex justify-between items-center mb-4">
+                    <h4 class="font-medium">Combat Logs</h4>
+                    <button
+                      phx-click="toggle_log_upload"
+                      class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+                    >
+                      <%= if @show_log_upload, do: "Cancel Upload", else: "Upload Combat Log" %>
+                    </button>
+                  </div>
+                  
+                  <%= if @show_log_upload do %>
+                    <form phx-submit="upload_log" phx-change="validate_log" class="space-y-4">
+                      <div>
+                        <label class="block text-sm font-medium mb-2">Pilot Name</label>
+                        <div class="relative">
+                          <input
+                            type="text"
+                            name="pilot_name"
+                            value={@pilot_name || ""}
+                            placeholder="Enter the pilot name for this log"
+                            class="w-full px-3 py-2 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            phx-keyup="filter_pilot_suggestions"
+                            phx-debounce="300"
+                            autocomplete="off"
+                            required
+                          />
+                          
+                          <%= if @show_pilot_suggestions && length(@pilot_suggestions) > 0 do %>
+                            <div class="absolute z-10 w-full mt-1 bg-gray-700 border border-gray-600 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                              <%= for pilot <- @pilot_suggestions do %>
+                                <button
+                                  type="button"
+                                  phx-click="select_pilot_suggestion"
+                                  phx-value-pilot_name={pilot.character_name}
+                                  class="w-full px-3 py-2 text-left hover:bg-gray-600 transition-colors flex items-center gap-2"
+                                >
+                                  <img 
+                                    src={character_portrait(pilot.character_id, 32)} 
+                                    alt=""
+                                    class="w-6 h-6 rounded-full"
+                                  />
+                                  <div>
+                                    <div class="text-white text-sm"><%= pilot.character_name %></div>
+                                    <div class="text-gray-400 text-xs"><%= pilot.ship_name %> • <%= pilot.corporation_name %></div>
+                                  </div>
+                                </button>
+                              <% end %>
+                            </div>
+                          <% end %>
+                        </div>
+                        <div class="text-xs text-gray-400 mt-1">
+                          Start typing to see pilots from this battle
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <label class="block text-sm font-medium mb-2">Combat Log File</label>
+                        <div
+                          phx-drop-target={@uploads.combat_log.ref}
+                          class="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center hover:border-gray-500 transition-colors"
+                        >
+                          <div class="space-y-2">
+                            <svg class="w-8 h-8 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            <div>
+                              <label for={@uploads.combat_log.ref} class="cursor-pointer">
+                                <span class="text-blue-400 hover:text-blue-300">Click to upload</span>
+                                <span class="text-gray-400"> or drag and drop</span>
+                              </label>
+                              <.live_file_input upload={@uploads.combat_log} class="hidden" />
+                            </div>
+                            <p class="text-xs text-gray-400">TXT files up to 10MB</p>
+                          </div>
+                        </div>
+                        
+                        <%= for entry <- @uploads.combat_log.entries do %>
+                          <div class="mt-2 flex items-center justify-between p-2 bg-gray-700 rounded">
+                            <span class="text-sm"><%= entry.client_name %></span>
+                            <span class="text-xs text-gray-400"><%= entry.progress || 0 %>%</span>
+                          </div>
+                        <% end %>
+                        
+                        <%= for err <- upload_errors(@uploads.combat_log) do %>
+                          <div class="mt-2 text-red-400 text-sm"><%= humanize_upload_error(err) %></div>
+                        <% end %>
+                      </div>
+                      
+                      <button
+                        type="submit"
+                        disabled={length(@uploads.combat_log.entries) == 0}
+                        class="w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white rounded-md transition-colors"
+                      >
+                        Upload and Parse Log
+                      </button>
+                    </form>
+                  <% end %>
+                </div>
+                
+                <!-- Ships Data Overview -->
+                <%= if @current_battle && @current_battle.timeline do %>
+                  <div class="bg-gray-800 rounded-lg p-6">
+                    <h4 class="font-medium mb-4">Ships in Battle - Data Status</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      <%= for pilot <- get_all_pilots_from_battle(@current_battle) do %>
+                        <div class="p-3 bg-gray-700 rounded flex items-center gap-3">
+                          <img 
+                            src={character_portrait(pilot.character_id, 32)} 
+                            alt=""
+                            class="w-8 h-8 rounded-full"
+                          />
+                          <div class="flex-1 min-w-0">
+                            <div class="text-sm font-medium text-white truncate">
+                              <%= pilot.character_name || resolve_character_name(pilot.character_id) %>
+                            </div>
+                            <div class="text-xs text-gray-400 truncate">
+                              <%= pilot.ship_name || resolve_ship_name(pilot.ship_type_id) %>
+                            </div>
+                          </div>
+                          <div class="flex items-center gap-1">
+                            <!-- Combat Log Status -->
+                            <%= if has_combat_log?(pilot.character_name || resolve_character_name(pilot.character_id), @combat_logs) do %>
+                              <span class="w-2 h-2 bg-green-400 rounded-full" title="Combat log uploaded"></span>
+                            <% else %>
+                              <span class="w-2 h-2 bg-gray-500 rounded-full" title="No combat log"></span>
+                            <% end %>
+                            
+                            <!-- Fitting Status -->
+                            <%= if has_fitting?(pilot.character_id, pilot.ship_type_id) do %>
+                              <span class="w-2 h-2 bg-blue-400 rounded-full" title="Fitting available"></span>
+                            <% else %>
+                              <span class="w-2 h-2 bg-gray-500 rounded-full" title="No fitting"></span>
+                            <% end %>
+                          </div>
+                        </div>
+                      <% end %>
+                    </div>
+                    
+                    <div class="mt-4 flex items-center gap-4 text-xs text-gray-400">
+                      <div class="flex items-center gap-1">
+                        <span class="w-2 h-2 bg-green-400 rounded-full"></span>
+                        Combat Log
+                      </div>
+                      <div class="flex items-center gap-1">
+                        <span class="w-2 h-2 bg-blue-400 rounded-full"></span>
+                        Fitting Data
+                      </div>
+                      <div class="flex items-center gap-1">
+                        <span class="w-2 h-2 bg-gray-500 rounded-full"></span>
+                        Not Available
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+                
+                <!-- Existing Combat Logs -->
+                <%= if length(@combat_logs) > 0 do %>
+                  <div class="bg-gray-800 rounded-lg p-6">
+                    <h4 class="font-medium mb-4">Uploaded Combat Logs</h4>
+                    <div class="space-y-3">
+                      <%= for log <- @combat_logs do %>
+                        <div class="flex justify-between items-center p-3 bg-gray-700 rounded">
+                          <div>
+                            <div class="font-medium"><%= log.pilot_name %></div>
+                            <div class="text-sm text-gray-400">
+                              Uploaded: <%= Calendar.strftime(log.uploaded_at, "%m/%d/%Y %H:%M") %>
+                              <%= if log.parsed_data do %>
+                                • <%= length(log.parsed_data[:events] || []) %> events parsed
+                              <% end %>
+                            </div>
+                          </div>
+                          <button
+                            phx-click="delete_log"
+                            phx-value-log_id={log.id}
+                            class="px-3 py-1 text-sm bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      <% end %>
+                    </div>
+                  </div>
+                <% else %>
+                  <div class="text-center py-8 text-gray-400">
+                    <p>No combat logs uploaded yet</p>
+                  </div>
+                <% end %>
+              </div>
+            
+            <% :intelligence -> %>
+              <!-- Battle Intelligence Analysis -->
+              <%= if @battle_intelligence do %>
+                <div class="space-y-6">
+                  <!-- Tactical Phase Analysis -->
+                  <div class="bg-gray-800 rounded-lg p-6">
+                    <h3 class="text-xl font-medium mb-4 flex items-center gap-2">
+                      <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                      </svg>
+                      Tactical Phases
+                    </h3>
+                    
+                    <%= if @battle_intelligence.tactical_phases do %>
+                      <div class="space-y-3">
+                        <%= for phase <- @battle_intelligence.tactical_phases do %>
+                          <div class="bg-gray-900 rounded-lg p-4 border border-gray-700">
+                            <div class="flex justify-between items-start mb-2">
+                              <h4 class="font-medium text-lg capitalize">
+                                <%= phase.phase_type |> to_string() |> String.replace("_", " ") %>
+                              </h4>
+                              <span class="text-sm text-gray-400">
+                                <%= div(phase.duration_seconds, 60) %>m <%= rem(phase.duration_seconds, 60) %>s
+                              </span>
+                            </div>
+                            <p class="text-sm text-gray-300 mb-2"><%= phase.characteristics %></p>
+                            
+                            <%= if phase.key_metrics do %>
+                              <div class="grid grid-cols-3 gap-4 text-sm">
+                                <div>
+                                  <span class="text-gray-400">Avg Distance:</span>
+                                  <span class="font-mono ml-1"><%= format_distance(phase.key_metrics.avg_distance) %></span>
+                                </div>
+                                <div>
+                                  <span class="text-gray-400">Damage Rate:</span>
+                                  <span class="font-mono ml-1"><%= format_number(phase.key_metrics.damage_rate) %>/s</span>
+                                </div>
+                                <div>
+                                  <span class="text-gray-400">Intensity:</span>
+                                  <span class="font-mono ml-1"><%= phase.key_metrics.intensity_score %>/10</span>
+                                </div>
+                              </div>
+                            <% end %>
+                          </div>
+                        <% end %>
+                      </div>
+                    <% else %>
+                      <p class="text-gray-400">No tactical phase data available</p>
+                    <% end %>
+                  </div>
+                  
+                  <!-- Multi-System Battle Context -->
+                  <%= if @battle_intelligence.multi_system_context && length(Map.get(@battle_intelligence.multi_system_context, :correlated_battles, [])) > 0 do %>
+                    <div class="bg-gray-800 rounded-lg p-6">
+                      <h3 class="text-xl font-medium mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
+                        </svg>
+                        Multi-System Battle Chain
+                      </h3>
+                      
+                      <div class="space-y-2">
+                        <p class="text-sm text-gray-300 mb-3">
+                          This battle is part of a larger engagement spanning <%= length(@battle_intelligence.multi_system_context.correlated_battles) + 1 %> systems
+                        </p>
+                        
+                        <%= for battle <- @battle_intelligence.multi_system_context.correlated_battles do %>
+                          <div class="bg-gray-900 rounded p-3 text-sm">
+                            <div class="flex justify-between items-center">
+                              <span class="font-medium">System <%= battle.system_id %></span>
+                              <span class="text-gray-400"><%= battle.participant_overlap %>% participant overlap</span>
+                            </div>
+                          </div>
+                        <% end %>
+                        
+                        <%= if @battle_intelligence.battle_flow do %>
+                          <div class="mt-3 p-3 bg-blue-900/20 rounded border border-blue-800">
+                            <p class="text-sm">
+                              <span class="font-medium">Combat Flow Pattern:</span>
+                              <span class="capitalize ml-1">
+                                <%= @battle_intelligence.battle_flow.pattern |> to_string() |> String.replace("_", " ") %>
+                              </span>
+                            </p>
+                          </div>
+                        <% end %>
+                      </div>
+                    </div>
+                  <% end %>
+                  
+                  <!-- Ship Performance Analysis -->
+                  <%= if @battle_intelligence.ship_performance do %>
+                    <div class="bg-gray-800 rounded-lg p-6">
+                      <h3 class="text-xl font-medium mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        Fleet Performance Analysis
+                      </h3>
+                      
+                      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <!-- Top Performers -->
+                        <div>
+                          <h4 class="font-medium mb-3 text-sm text-gray-400">Top Performers</h4>
+                          <div class="space-y-2">
+                            <%= for performer <- Enum.take(@battle_intelligence.ship_performance.top_performers || [], 5) do %>
+                              <div class="flex items-center justify-between bg-gray-900 rounded p-2">
+                                <div class="flex items-center gap-2">
+                                  <img 
+                                    src={character_portrait(performer.character_id, 32)} 
+                                    alt=""
+                                    class="w-8 h-8 rounded-full"
+                                  />
+                                  <div>
+                                    <div class="text-sm font-medium"><%= performer.character_name %></div>
+                                    <div class="text-xs text-gray-400"><%= performer.ship_name %></div>
+                                  </div>
+                                </div>
+                                <div class="text-right">
+                                  <div class="text-sm font-mono font-medium text-green-400">
+                                    <%= performer.performance_score %>/100
+                                  </div>
+                                  <div class="text-xs text-gray-400">Score</div>
+                                </div>
+                              </div>
+                            <% end %>
+                          </div>
+                        </div>
+                        
+                        <!-- Fleet Statistics -->
+                        <div>
+                          <h4 class="font-medium mb-3 text-sm text-gray-400">Fleet Statistics</h4>
+                          <div class="space-y-3 bg-gray-900 rounded p-4">
+                            <div class="flex justify-between">
+                              <span class="text-gray-400">Average DPS Efficiency:</span>
+                              <span class="font-mono"><%= @battle_intelligence.ship_performance.fleet_stats.avg_dps_efficiency %>%</span>
+                            </div>
+                            <div class="flex justify-between">
+                              <span class="text-gray-400">Average Survivability:</span>
+                              <span class="font-mono"><%= @battle_intelligence.ship_performance.fleet_stats.avg_survivability %>%</span>
+                            </div>
+                            <div class="flex justify-between">
+                              <span class="text-gray-400">Fleet Coordination:</span>
+                              <span class="font-mono"><%= @battle_intelligence.ship_performance.fleet_stats.coordination_score %>/10</span>
+                            </div>
+                            <div class="flex justify-between">
+                              <span class="text-gray-400">Tactical Diversity:</span>
+                              <span class="font-mono"><%= @battle_intelligence.ship_performance.fleet_stats.tactical_diversity %>/10</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              <% else %>
+                <div class="bg-gray-800 rounded-lg p-8 text-center">
+                  <p class="text-gray-400">Loading intelligence analysis...</p>
+                </div>
+              <% end %>
+            
+            <% :sharing -> %>
+              <!-- Battle Sharing -->
+              <div class="space-y-6">
+                <!-- Create New Report Button -->
+                <div class="flex justify-between items-center">
+                  <h3 class="text-xl font-medium">Battle Reports</h3>
+                  <button
+                    phx-click="toggle_share_modal"
+                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors flex items-center gap-2"
+                  >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    Create Battle Report
+                  </button>
+                </div>
+                
+                <!-- Existing Battle Reports -->
+                <%= if @battle_reports != [] do %>
+                  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <%= for report <- @battle_reports do %>
+                      <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                        <div class="flex justify-between items-start mb-3">
+                          <h4 class="text-lg font-medium"><%= report.title %></h4>
+                          <span class="px-2 py-1 text-xs bg-gray-700 rounded">
+                            <%= report.visibility %>
+                          </span>
+                        </div>
+                        
+                        <p class="text-sm text-gray-400 mb-4 line-clamp-3">
+                          <%= report.description %>
+                        </p>
+                        
+                        <div class="flex items-center justify-between">
+                          <div class="flex items-center gap-4">
+                            <!-- Rating Display -->
+                            <div class="flex items-center gap-1">
+                              <%= for i <- 1..5 do %>
+                                <button
+                                  phx-click="rate_battle_report"
+                                  phx-value-report_id={report.report_id}
+                                  phx-value-rating={i}
+                                  class={"w-5 h-5 " <> if i <= round(report.ratings.average), do: "text-yellow-400", else: "text-gray-600"}
+                                >
+                                  <svg fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                                  </svg>
+                                </button>
+                              <% end %>
+                              <span class="text-sm text-gray-400 ml-2">
+                                (<%= report.ratings.count %>)
+                              </span>
+                            </div>
+                            
+                            <!-- Tags -->
+                            <div class="flex gap-1">
+                              <%= for tag <- Enum.take(report.tags, 3) do %>
+                                <span class="px-2 py-1 text-xs bg-gray-700 rounded">
+                                  <%= tag %>
+                                </span>
+                              <% end %>
+                            </div>
+                          </div>
+                          
+                          <div class="text-xs text-gray-500">
+                            by <%= report.creator.character_name %>
+                          </div>
+                        </div>
+                        
+                        <!-- Video Links -->
+                        <%= if report.video_links != [] do %>
+                          <div class="mt-3 pt-3 border-t border-gray-700">
+                            <div class="flex items-center gap-2 text-sm">
+                              <svg class="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path>
+                              </svg>
+                              <span class="text-gray-400">Video available</span>
+                            </div>
+                          </div>
+                        <% end %>
+                      </div>
+                    <% end %>
+                  </div>
+                <% else %>
+                  <div class="bg-gray-800 rounded-lg p-8 text-center border border-gray-700">
+                    <p class="text-gray-400 mb-4">No battle reports yet</p>
+                    <p class="text-sm text-gray-500">
+                      Be the first to create a battle report for this engagement
+                    </p>
+                  </div>
+                <% end %>
+                
+                <!-- Share Modal -->
+                <%= if @show_share_modal do %>
+                  <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div class="bg-gray-800 rounded-lg p-6 w-full max-w-2xl mx-4">
+                      <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-medium">Create Battle Report</h3>
+                        <button
+                          phx-click="toggle_share_modal"
+                          class="text-gray-400 hover:text-gray-200"
+                        >
+                          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                          </svg>
+                        </button>
+                      </div>
+                      
+                      <form phx-submit="create_battle_report" phx-change="update_share_form">
+                        <div class="space-y-4">
+                          <!-- Title -->
+                          <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">
+                              Title
+                            </label>
+                            <input
+                              type="text"
+                              name="share_form[title]"
+                              value={@share_form.title}
+                              placeholder="Epic Wormhole Brawl"
+                              class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-md focus:outline-none focus:border-blue-500"
+                              required
+                            />
+                          </div>
+                          
+                          <!-- Description -->
+                          <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">
+                              Description
+                            </label>
+                            <textarea
+                              name="share_form[description]"
+                              value={@share_form.description}
+                              placeholder="Describe the battle, tactics used, key moments..."
+                              rows="4"
+                              class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-md focus:outline-none focus:border-blue-500"
+                            ></textarea>
+                          </div>
+                          
+                          <!-- Video URL -->
+                          <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">
+                              Video URL (YouTube/Twitch)
+                            </label>
+                            <input
+                              type="url"
+                              name="share_form[video_url]"
+                              value={@share_form.video_url}
+                              placeholder="https://youtube.com/watch?v=..."
+                              class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-md focus:outline-none focus:border-blue-500"
+                            />
+                          </div>
+                          
+                          <!-- Visibility -->
+                          <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">
+                              Visibility
+                            </label>
+                            <select
+                              name="share_form[visibility]"
+                              value={@share_form.visibility}
+                              class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-md focus:outline-none focus:border-blue-500"
+                            >
+                              <option value="public">Public</option>
+                              <option value="corporation">Corporation Only</option>
+                              <option value="alliance">Alliance Only</option>
+                              <option value="private">Private</option>
+                            </select>
+                          </div>
+                        </div>
+                        
+                        <div class="flex justify-end gap-3 mt-6">
+                          <button
+                            type="button"
+                            phx-click="toggle_share_modal"
+                            class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+                          >
+                            Create Report
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+              
+          <% end %>
+        </div>
+
+      <% else %>
+        <!-- No Battle Selected -->
+        <div class="bg-gray-900 rounded-lg p-12 text-center">
+          <svg class="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+          </svg>
+          <h3 class="text-xl font-medium mb-2">No Battle Selected</h3>
+          <p class="text-gray-400 mb-6">
+            Import a battle from zkillboard or select one from recent battles
+          </p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

@@ -17,7 +17,7 @@ defmodule EveDmv.Market.MutamarketClient do
 
       # Get abyssal module price estimate
       {:ok, price} = MutamarketClient.estimate_abyssal_price(type_id, attributes)
-      
+
       # Search for similar modules
       {:ok, modules} = MutamarketClient.search_similar(type_id, attributes)
   """
@@ -49,7 +49,7 @@ defmodule EveDmv.Market.MutamarketClient do
 
       iex> attributes = %{
       ...>   20 => 15.5,     # CPU usage
-      ...>   30 => 220,      # Power grid usage  
+      ...>   30 => 220,      # Power grid usage
       ...>   554 => 12500    # Damage multiplier
       ...> }
       iex> MutamarketClient.estimate_abyssal_price(47820, attributes)
@@ -206,7 +206,7 @@ defmodule EveDmv.Market.MutamarketClient do
 
   defp post_request(path, body, params \\ %{}) do
     url = build_url(path)
-    headers = build_headers() ++ [{"Content-Type", "application/json"}]
+    headers = [{"Content-Type", "application/json"} | build_headers()]
     json_body = Jason.encode!(body)
 
     HTTPoison.post(url, json_body, headers, params: params, recv_timeout: @http_timeout)
@@ -285,8 +285,7 @@ defmodule EveDmv.Market.MutamarketClient do
     case Jason.decode(body) do
       {:ok, data} ->
         modules =
-          data["modules"]
-          |> Enum.map(fn module ->
+          Enum.map(data["modules"], fn module ->
             %{
               item_id: module["item_id"],
               type_id: module["type_id"],

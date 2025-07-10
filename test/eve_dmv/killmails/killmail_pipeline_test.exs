@@ -7,10 +7,8 @@ defmodule EveDmv.Killmails.KillmailPipelineTest do
   use ExUnit.Case, async: false
   import EveDmv.TestHelpers
 
-  alias EveDmv.Killmails.{
-    KillmailPipeline,
-    TestDataGenerator
-  }
+  alias EveDmv.Killmails.KillmailPipeline
+  alias EveDmv.Killmails.TestDataGenerator
 
   setup do
     setup_database()

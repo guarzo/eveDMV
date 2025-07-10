@@ -7,7 +7,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalytics do
   """
 
   use Ash.Resource,
-    domain: EveDmv.Api,
+    domain: EveDmv.Domains.Intelligence,
     data_layer: AshPostgres.DataLayer
 
   postgres do
@@ -249,8 +249,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalytics do
       ])
 
       change(fn changeset, _context ->
-        changeset
-        |> Ash.Changeset.change_attribute(:last_updated_at, DateTime.utc_now())
+        Ash.Changeset.change_attribute(changeset, :last_updated_at, DateTime.utc_now())
       end)
     end
 
@@ -277,8 +276,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalytics do
       ])
 
       change(fn changeset, _context ->
-        changeset
-        |> Ash.Changeset.change_attribute(:last_updated_at, DateTime.utc_now())
+        Ash.Changeset.change_attribute(changeset, :last_updated_at, DateTime.utc_now())
       end)
     end
 

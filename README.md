@@ -1,23 +1,45 @@
 # EVE DMV
 
-A real-time PvP activity tracking platform for EVE Online that provides actionable intelligence for fleet commanders, recruiters, and PvP enthusiasts.
+A real-time PvP activity tracking platform for EVE Online. **Active development** with multiple working intelligence features and advanced analytics in progress.
 
 ## 📚 Documentation
 
-- **[Project Overview](./docs/project-management/project-overview.md)** - Start here for project vision and architecture
-- **[Product Requirements](./docs/product-requirements.md)** - Detailed feature specifications
-- **[Development Setup](./docs/development/devcontainer.md)** - Get started with development
-- **[Current Roadmap](./docs/project-management/prioritized-roadmap.md)** - See what we're building next
+### Current Status
+- **[Project Status](./PROJECT_STATUS.md)** - Comprehensive status, features, and technical details
+- **[Development Progress](./DEVELOPMENT_PROGRESS_TRACKER.md)** - Sprint history and metrics
+
+### Development
+- **[Setup Guide](./docs/development/devcontainer.md)** - Get started with development
+- **[Project Instructions](./CLAUDE.md)** - Development guidelines and commands
 
 For complete documentation, see the [/docs directory](./docs/README.md).
 
-## Features
+## Current Features
 
-- 🔴 **Live Kill Feed** - Real-time PvP activity with enriched ISK and fitting data
-- 🔍 **Character Intelligence** - Deep analytics for pilot assessment and recruitment
-- 🚨 **Smart Surveillance** - Custom alerts with advanced filtering and notifications
-- ⚡ **Fleet Optimizer** - Data-driven ship assignment recommendations
-- 📊 **Performance Metrics** - Mass balance, usefulness index, and activity trends
+### ✅ Working Features
+- 🔴 **Live Kill Feed** (`/feed`) - Real-time killmail display from wanderer-kills SSE
+- 🔍 **Character Intelligence** (`/character/:character_id`) - Complete analysis with ship preferences, activity patterns, and intelligence summary
+- 🏢 **Corporation Intelligence** (`/corporation/:corporation_id`) - Member activity analysis, timezone heatmaps, participation metrics
+- 🌍 **System Intelligence** (`/system/:system_id`) - Activity statistics, danger assessment, alliance presence analysis
+- 🔍 **Universal Search** (`/search`) - Auto-completion for characters, corporations, and systems
+- ⚔️ **Battle Analysis** (In Development) - Combat log parsing, ship performance analysis, battle metrics
+- 🔐 **EVE SSO Authentication** - Login/logout with EVE Online account
+- 📊 **Static Data** - Complete EVE universe data (49,894 items including all ships)
+- 🗃️ **Database Infrastructure** - PostgreSQL with Broadway pipeline processing 50-100 killmails/minute
+- 📈 **Monitoring Dashboard** (`/monitoring`) - Error tracking, pipeline health, performance monitoring
+
+### 🚧 In Development (Sprint 8)
+- **Advanced Battle Analysis** - Multi-system battle correlation and tactical phase detection
+- **Character Threat Intelligence** - Multi-dimensional threat scoring and behavioral analysis
+- **Battle Sharing System** - Community curation with video link integration
+
+### 📋 Future Priorities
+- **Price Integration** - Real-time ISK calculations via Janice/Mutamarket APIs
+- **Advanced Surveillance** - Profile matching and smart alert system
+- **Fleet Composition Tools** - Wormhole fleet optimization algorithms
+- **Predictive Analytics** - Machine learning for threat assessment
+
+**Note**: All working features use real data and algorithms. No mock data in production features.
 
 ## Quick Start with Dev Containers
 
@@ -51,6 +73,32 @@ For complete documentation, see the [/docs directory](./docs/README.md).
    mix phx.gen.secret
    # Update SECRET_KEY_BASE in .env with the generated value
    ```
+
+### Environment Setup and Secrets
+
+**Important:** Never commit sensitive credentials to version control. The `.env` file is gitignored for security.
+
+1. **Required Environment Variables:**
+   - `EVE_SSO_CLIENT_ID` - Your EVE application client ID
+   - `EVE_SSO_CLIENT_SECRET` - Your EVE application client secret
+   - `SECRET_KEY_BASE` - Phoenix secret key (generate with `mix phx.gen.secret`)
+   - `DATABASE_URL` - PostgreSQL connection string
+
+2. **Optional API Keys:**
+   - `JANICE_API_KEY` - For market price data (get from Janice dashboard)
+   - `MUTAMARKET_API_KEY` - For mutated module prices
+
+3. **Security Best Practices:**
+   - Rotate secrets regularly
+   - Use strong, unique values for each environment
+   - Never reuse production secrets in development
+   - Store production secrets in a secure secret management system
+
+4. **Regenerating Compromised Secrets:**
+   If any secrets are exposed:
+   - Immediately regenerate the affected credentials
+   - Update all environments with new values
+   - Review access logs for any unauthorized usage
 
 5. **Open in VS Code and start dev container:**
    ```bash

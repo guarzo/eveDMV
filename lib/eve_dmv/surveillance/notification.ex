@@ -17,7 +17,7 @@ defmodule EveDmv.Surveillance.Notification do
     repo(EveDmv.Repo)
 
     custom_indexes do
-      index([:user_id, :created_at], name: "notifications_user_time_idx")
+      index([:user_id, :inserted_at], name: "notifications_user_time_idx")
       index([:is_read], name: "notifications_read_idx")
       index([:notification_type], name: "notifications_type_idx")
       index([:profile_id], name: "notifications_profile_idx")
@@ -180,7 +180,7 @@ defmodule EveDmv.Surveillance.Notification do
       end
 
       filter(expr(user_id == ^arg(:user_id) and is_read == false))
-      prepare(build(sort: [created_at: :desc]))
+      prepare(build(sort: [inserted_at: :desc]))
     end
 
     read :recent_for_user do
@@ -197,8 +197,8 @@ defmodule EveDmv.Surveillance.Notification do
         description("Hours to look back")
       end
 
-      filter(expr(user_id == ^arg(:user_id) and created_at >= ago(^arg(:hours), :hour)))
-      prepare(build(sort: [created_at: :desc], limit: 50))
+      filter(expr(user_id == ^arg(:user_id) and inserted_at >= ago(^arg(:hours), :hour)))
+      prepare(build(sort: [inserted_at: :desc], limit: 50))
     end
 
     read :by_profile do
@@ -210,7 +210,7 @@ defmodule EveDmv.Surveillance.Notification do
       end
 
       filter(expr(profile_id == ^arg(:profile_id)))
-      prepare(build(sort: [created_at: :desc]))
+      prepare(build(sort: [inserted_at: :desc]))
     end
 
     read :by_type do
@@ -227,7 +227,7 @@ defmodule EveDmv.Surveillance.Notification do
       end
 
       filter(expr(notification_type == ^arg(:notification_type)))
-      prepare(build(sort: [created_at: :desc]))
+      prepare(build(sort: [inserted_at: :desc]))
     end
   end
 
@@ -240,7 +240,7 @@ defmodule EveDmv.Surveillance.Notification do
         now = DateTime.utc_now()
 
         Enum.map(records, fn record ->
-          DateTime.diff(now, record.created_at, :minute)
+          DateTime.diff(now, record.inserted_at, :minute)
         end)
       end)
     end

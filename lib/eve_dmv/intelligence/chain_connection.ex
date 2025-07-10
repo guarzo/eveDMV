@@ -1,4 +1,4 @@
-defmodule EveDmv.Intelligence.ChainConnection do
+defmodule EveDmv.Intelligence.ChainAnalysis.ChainConnection do
   @moduledoc """
   Represents wormhole connections within a chain topology.
 
@@ -7,7 +7,7 @@ defmodule EveDmv.Intelligence.ChainConnection do
   """
 
   use Ash.Resource,
-    domain: EveDmv.Api,
+    domain: EveDmv.Domains.Intelligence,
     data_layer: AshPostgres.DataLayer
 
   postgres do
@@ -126,8 +126,24 @@ defmodule EveDmv.Intelligence.ChainConnection do
   end
 
   relationships do
-    belongs_to :chain_topology, EveDmv.Intelligence.ChainTopology do
+    belongs_to :chain_topology, EveDmv.Intelligence.ChainAnalysis.ChainTopology do
       attribute_writable?(true)
+    end
+
+    belongs_to :source_system, EveDmv.Eve.SolarSystem do
+      source_attribute(:source_system_id)
+      destination_attribute(:system_id)
+      description("Source solar system")
+      attribute_writable?(false)
+      allow_nil?(false)
+    end
+
+    belongs_to :target_system, EveDmv.Eve.SolarSystem do
+      source_attribute(:target_system_id)
+      destination_attribute(:system_id)
+      description("Target solar system")
+      attribute_writable?(false)
+      allow_nil?(false)
     end
   end
 

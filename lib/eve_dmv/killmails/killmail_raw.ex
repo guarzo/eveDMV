@@ -9,7 +9,8 @@ defmodule EveDmv.Killmails.KillmailRaw do
   use Ash.Resource,
     otp_app: :eve_dmv,
     domain: EveDmv.Api,
-    data_layer: AshPostgres.DataLayer
+    data_layer: AshPostgres.DataLayer,
+    authorizers: [Ash.Policy.Authorizer]
 
   postgres do
     table("killmails_raw")
@@ -151,6 +152,8 @@ defmodule EveDmv.Killmails.KillmailRaw do
       # Upsert behavior - if killmail already exists, do nothing
       upsert?(true)
       upsert_identity(:unique_killmail)
+      # Don't update any fields on conflict - just ignore duplicates
+      upsert_fields([])
     end
 
     # Custom read actions for common queries
@@ -193,30 +196,28 @@ defmodule EveDmv.Killmails.KillmailRaw do
       description("All participants (attackers and victim) in this killmail")
     end
 
-    has_one :enriched_data, EveDmv.Killmails.KillmailEnriched do
-      source_attribute(:killmail_id)
-      destination_attribute(:killmail_id)
-      description("Enriched analysis data for this killmail")
-    end
+    # REMOVED: enriched_data relationship
+    # Enriched table provides no value - see /docs/architecture/enriched-raw-analysis.md
   end
 
-  # Authorization policies - temporarily disabled for compilation
-  # policies do
-  #   # Allow read access for all authenticated users
-  #   policy action_type(:read) do
-  #     authorize_if always()
-  #   end
+  # Authorization policies
+  policies do
+    # Allow read access for all authenticated users
+    policy action_type(:read) do
+      authorize_if(always())
+    end
 
-  #   # Only allow creates from the ingestion system
-  #   policy action_type(:create) do
-  #     authorize_if always() # We'll implement service-level auth later
-  #   end
+    # Only allow creates from the ingestion system
+    policy action_type(:create) do
+      # We'll implement service-level auth later
+      authorize_if(always())
+    end
 
-  #   # No updates or deletes allowed
-  #   policy action_type([:update, :destroy]) do
-  #     forbid_if always()
-  #   end
-  # end
+    # No updates or deletes allowed
+    policy action_type([:update, :destroy]) do
+      forbid_if(always())
+    end
+  end
 
   # Aggregates for common calculations
   aggregates do
@@ -227,8 +228,14 @@ defmodule EveDmv.Killmails.KillmailRaw do
 
   # Calculations for derived values
   calculations do
-    calculate :age_in_hours, :integer, expr(datetime_diff(now(), killmail_time, :hour)) do
+    calculate :age_in_hours, :integer do
       description("Age of the killmail in hours")
+
+      calculation(fn records, _context ->
+        Enum.map(records, fn record ->
+          DateTime.diff(DateTime.utc_now(), record.killmail_time, :hour)
+        end)
+      end)
     end
 
     calculate(:is_recent, :boolean,

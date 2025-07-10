@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
   @moduledoc """
   Fetches historical killmail data for specific characters from wanderer-kills SSE service.
@@ -6,17 +7,21 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
   then disconnects once all historical data is received (detected by multiple heartbeats).
   """
 
-  require Logger
   alias EveDmv.Api
-  alias EveDmv.Killmails.{KillmailEnriched, KillmailRaw, Participant}
+  # REMOVED: KillmailEnriched - see /docs/architecture/enriched-raw-analysis.md
+  alias EveDmv.Killmails.KillmailRaw
+  alias EveDmv.Killmails.Participant
+  # REMOVED: ParsingUtils - no longer needed
 
-  @wanderer_kills_base_url Application.compile_env(
-                             :eve_dmv,
-                             :wanderer_kills_base_url,
-                             "http://host.docker.internal:4004"
-                           )
+  require Logger
+
   @preload_days 90
   @heartbeat_threshold 3
+
+  # Get base URL at runtime for better configuration flexibility
+  defp wanderer_kills_base_url do
+    Application.get_env(:eve_dmv, :wanderer_kills_base_url, "http://host.docker.internal:4004")
+  end
 
   @doc """
   Fetch historical killmails for a character ID.
@@ -48,24 +53,48 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
 
     results =
       character_ids
-      |> Enum.map(fn char_id ->
-        Task.async(fn ->
+      |> Task.async_stream(
+        fn char_id ->
           case fetch_character_history(char_id) do
             {:ok, count} -> {char_id, {:ok, count}}
             error -> {char_id, error}
           end
-        end)
-      end)
-      |> Enum.map(&Task.await(&1, 180_000))
+        end,
+        timeout: 180_000
+      )
+      |> Enum.map(fn {:ok, result} -> result end)
       |> Map.new()
 
     {:ok, results}
   end
 
+  @doc """
+  Get cached killmail count for a character.
+
+  Returns the count of participants for this character from cached data.
+  """
+  @spec get_cached_killmail_count(integer()) :: integer()
+  def get_cached_killmail_count(character_id) when is_integer(character_id) do
+    # Query participant count for this character
+    case Ash.read(Participant,
+           actor: nil,
+           filter: [character_id: character_id],
+           action: :read,
+           domain: Api
+         ) do
+      {:ok, participants} when is_list(participants) -> length(participants)
+      {:ok, %{results: results}} -> length(results)
+      {:ok, page} when is_map(page) -> Map.get(page, :count, 0)
+      _ -> 0
+    end
+  rescue
+    _ -> 0
+  end
+
   # Private functions
 
   defp build_url(character_id) do
-    "#{@wanderer_kills_base_url}/api/v1/kills/stream/enhanced?character_ids=#{character_id}&preload_days=#{@preload_days}"
+    "#{wanderer_kills_base_url()}/api/v1/kills/stream/enhanced?character_ids=#{character_id}&preload_days=#{@preload_days}"
   end
 
   defp process_stream(ref, character_id) do
@@ -247,7 +276,7 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
     %{state | heartbeat_count: state.heartbeat_count + 1}
   end
 
-  defp process_event(%{event: nil, data: data}, state, character_id) when not is_nil(data) do
+  defp process_event(%{event: nil, data: data}, state, character_id) when data != nil do
     # Handle events without explicit event type (default to killmail)
     process_event(%{event: "killmail", data: data}, state, character_id)
   end
@@ -262,12 +291,12 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
   defp store_killmail(enriched) do
     # Reuse the same logic from the pipeline for consistency
     raw_changeset = build_raw_changeset(enriched)
-    enriched_changeset = build_enriched_changeset(enriched)
+    # REMOVED: enriched_changeset - see /docs/architecture/enriched-raw-analysis.md
     participants = build_participants(enriched)
 
     # Insert with error handling
     with :ok <- insert_raw_killmail(raw_changeset),
-         :ok <- insert_enriched_killmail(enriched_changeset),
+         # REMOVED: insert_enriched_killmail - see /docs/architecture/enriched-raw-analysis.md
          :ok <- insert_participants(participants) do
       :ok
     else
@@ -295,35 +324,8 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
     }
   end
 
-  defp build_enriched_changeset(enriched) do
-    victim = enriched["victim"] || %{}
-
-    %{
-      killmail_id: enriched["killmail_id"],
-      killmail_time: parse_timestamp(enriched["timestamp"] || enriched["kill_time"]),
-      total_value: parse_decimal(enriched["total_value"] || enriched["value"] || 0),
-      ship_value: 0.0,
-      fitted_value: 0.0,
-      victim_character_id: victim["character_id"],
-      victim_character_name: victim["character_name"],
-      victim_corporation_id: victim["corporation_id"],
-      victim_corporation_name: victim["corporation_name"],
-      victim_alliance_id: victim["alliance_id"],
-      victim_alliance_name: victim["alliance_name"],
-      victim_ship_type_id: victim["ship_type_id"],
-      victim_ship_name: victim["ship_name"],
-      solar_system_id: enriched["solar_system_id"] || enriched["system_id"],
-      solar_system_name: enriched["solar_system_name"] || "Unknown System",
-      attacker_count: length(enriched["attackers"] || []),
-      final_blow_character_id: get_final_blow_character_id(enriched),
-      final_blow_character_name: get_final_blow_character_name(enriched),
-      kill_category: determine_kill_category(enriched),
-      victim_ship_category: "unknown",
-      module_tags: enriched["module_tags"] || [],
-      noteworthy_modules: enriched["noteworthy_modules"] || [],
-      price_data_source: "wanderer_kills"
-    }
-  end
+  # REMOVED: build_enriched_changeset function
+  # Enriched table provides no value - see /docs/architecture/enriched-raw-analysis.md
 
   defp build_participants(enriched) do
     victim = enriched["victim"] || %{}
@@ -380,26 +382,20 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
     _ -> :ok
   end
 
-  defp insert_enriched_killmail(changeset) do
-    case Ash.create(KillmailEnriched, changeset, action: :upsert, domain: Api) do
-      {:ok, _} -> :ok
-      {:error, error} -> {:error, error}
-    end
-  rescue
-    # Ignore duplicates
-    _ -> :ok
-  end
+  # REMOVED: insert_enriched_killmail function
+  # Enriched table provides no value - see /docs/architecture/enriched-raw-analysis.md
 
   defp insert_participants(participants) do
-    Enum.each(participants, fn participant ->
-      case Ash.create(Participant, participant, action: :create, domain: Api) do
-        {:ok, _} -> :ok
-        # Ignore errors (duplicates, etc)
-        {:error, _} -> :ok
-      end
-    end)
-
-    :ok
+    case Ash.bulk_create(participants, Participant, :create,
+           domain: Api,
+           return_records?: false,
+           return_errors?: false,
+           stop_on_error?: false,
+           batch_size: 500
+         ) do
+      %{records: _records} -> :ok
+      _ -> :ok
+    end
   rescue
     _ -> :ok
   end
@@ -418,52 +414,18 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
   defp parse_timestamp(%DateTime{} = dt), do: dt
   defp parse_timestamp(_), do: DateTime.utc_now()
 
-  defp parse_decimal(nil), do: Decimal.new(0)
-  defp parse_decimal(value) when is_integer(value), do: Decimal.new(value)
-  defp parse_decimal(value) when is_float(value), do: Decimal.from_float(value)
-
-  defp parse_decimal(value) when is_binary(value) do
-    case Decimal.parse(value) do
-      {decimal, _} -> decimal
-      :error -> Decimal.new(0)
-    end
-  end
-
-  defp parse_decimal(_), do: Decimal.new(0)
-
   defp generate_hash(enriched) do
     id = enriched["killmail_id"]
     timestamp = enriched["timestamp"]
-    :crypto.hash(:sha256, "#{id}-#{timestamp}") |> Base.encode16(case: :lower)
+    hash = :crypto.hash(:sha256, "#{id}-#{timestamp}")
+    Base.encode16(hash, case: :lower)
   end
 
-  defp get_final_blow_character_id(enriched) do
-    case find_final_blow_attacker(enriched) do
-      %{"character_id" => id} -> id
-      _ -> nil
-    end
-  end
-
-  defp get_final_blow_character_name(enriched) do
-    case find_final_blow_attacker(enriched) do
-      %{"character_name" => name} -> name
-      _ -> nil
-    end
-  end
-
-  defp find_final_blow_attacker(enriched) do
-    attackers = enriched["attackers"] || []
-    Enum.find(attackers, fn a -> a["final_blow"] end)
-  end
-
-  defp determine_kill_category(enriched) do
-    attacker_count = length(enriched["attackers"] || [])
-
-    case attacker_count do
-      1 -> "solo"
-      n when n <= 5 -> "small_gang"
-      n when n <= 20 -> "fleet"
-      _ -> "large_fleet"
-    end
-  end
+  # REMOVED: Helper functions only used by enriched changeset building
+  # - parse_decimal
+  # - get_final_blow_character_id
+  # - get_final_blow_character_name
+  # - find_final_blow_attacker
+  # - determine_kill_category
+  # See /docs/architecture/enriched-raw-analysis.md
 end

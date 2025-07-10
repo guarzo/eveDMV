@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmv.Enrichment.ReEnrichmentWorker do
   @moduledoc """
   Background worker for re-enriching killmail data.
@@ -17,11 +18,11 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
   """
 
   use GenServer
-  require Logger
   alias EveDmv.Api
   alias EveDmv.Enrichment.RealTimePriceUpdater
   alias EveDmv.Eve.NameResolver
   alias EveDmv.Killmails.KillmailEnriched
+  require Logger
 
   # Default configuration
   @default_config %{
@@ -72,7 +73,7 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
 
   # GenServer callbacks
 
-  @impl true
+  @impl GenServer
   def init(opts) do
     Logger.info("Starting killmail re-enrichment worker")
 
@@ -94,7 +95,7 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
     {:ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast(:trigger_re_enrichment, state) do
     Logger.info("Manual re-enrichment triggered")
 
@@ -105,7 +106,7 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
     {:noreply, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast(:trigger_price_update, state) do
     Logger.info("Manual price update triggered")
 
@@ -117,7 +118,7 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
     {:noreply, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_stats, _from, state) do
     stats = %{
       last_price_update: state.last_price_update,
@@ -131,11 +132,13 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
     {:reply, stats, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:price_update, state) do
     Logger.debug("Starting scheduled price update")
 
-    spawn(fn -> perform_price_update(state.config) end)
+    Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
+      perform_price_update(state.config)
+    end)
 
     # Schedule next price update
     schedule_price_update(state.config.price_update_interval)
@@ -144,11 +147,13 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
     {:noreply, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:name_update, state) do
     Logger.debug("Starting scheduled name resolution update")
 
-    spawn(fn -> perform_name_update(state.config) end)
+    Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
+      perform_name_update(state.config)
+    end)
 
     # Schedule next name update
     schedule_name_update(state.config.name_update_interval)
@@ -157,7 +162,7 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
     {:noreply, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(msg, state) do
     Logger.debug("Unexpected message: #{inspect(msg)}")
     {:noreply, state}
@@ -177,9 +182,12 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
     Logger.info("Starting full re-enrichment process")
     start_time = System.monotonic_time(:millisecond)
 
-    # Update prices and names in parallel
-    price_task = Task.async(fn -> perform_price_update(config) end)
-    name_task = Task.async(fn -> perform_name_update(config) end)
+    # Update prices and names in parallel with supervised tasks
+    price_task =
+      Task.Supervisor.async(EveDmv.TaskSupervisor, fn -> perform_price_update(config) end)
+
+    name_task =
+      Task.Supervisor.async(EveDmv.TaskSupervisor, fn -> perform_name_update(config) end)
 
     # Wait for both to complete
     price_result = Task.await(price_task, :timer.minutes(30))

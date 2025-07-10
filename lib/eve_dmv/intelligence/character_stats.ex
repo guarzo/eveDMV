@@ -111,6 +111,8 @@ defmodule EveDmv.Intelligence.CharacterStats do
     attribute(:uses_cynos, :boolean, default: false, public?: true)
     attribute(:flies_capitals, :boolean, default: false, public?: true)
     attribute(:has_logi_support, :boolean, default: false, public?: true)
+    # 0.0-1.0 probability of awoxing (attacking own team)
+    attribute(:awox_probability, :float, default: 0.0, public?: true)
     # low/medium/high
     attribute(:batphone_probability, :string, default: "low", public?: true)
 
@@ -208,8 +210,8 @@ defmodule EveDmv.Intelligence.CharacterStats do
         character_id = Ash.Changeset.get_attribute(changeset, :character_id)
 
         if character_id do
-          # Use the CharacterAnalyzer to recalculate stats
-          case EveDmv.Intelligence.CharacterAnalyzer.analyze_character(character_id) do
+          # Use the IntelligenceEngine to recalculate stats
+          case EveDmv.IntelligenceEngine.analyze(:character, character_id, scope: :full) do
             {:ok, updated_stats} ->
               # Update changeset with fresh statistics
               changeset
@@ -251,12 +253,10 @@ defmodule EveDmv.Intelligence.CharacterStats do
 
             {:error, _reason} ->
               # If analysis fails, just update the timestamp
-              changeset
-              |> Ash.Changeset.change_attribute(:last_calculated_at, DateTime.utc_now())
+              Ash.Changeset.change_attribute(changeset, :last_calculated_at, DateTime.utc_now())
           end
         else
-          changeset
-          |> Ash.Changeset.change_attribute(:last_calculated_at, DateTime.utc_now())
+          Ash.Changeset.change_attribute(changeset, :last_calculated_at, DateTime.utc_now())
         end
       end)
     end
@@ -284,11 +284,20 @@ defmodule EveDmv.Intelligence.CharacterStats do
 
       prepare(build(sort: [dangerous_rating: :desc]))
     end
+
+    read :by_corporation do
+      description("Find all characters in a corporation")
+
+      argument(:corporation_id, :integer, allow_nil?: false)
+
+      filter(expr(corporation_id == ^arg(:corporation_id)))
+    end
   end
 
   code_interface do
     define(:get_by_character, action: :by_character, args: [:character_id])
     define(:get_by_character_id, action: :get_by_character_id, args: [:character_id])
+    define(:get_by_corporation, action: :by_corporation, args: [:corporation_id])
     define(:list_dangerous, action: :dangerous_characters)
     define(:refresh, action: :refresh_stats)
   end

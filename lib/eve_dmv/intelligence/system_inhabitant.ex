@@ -7,7 +7,7 @@ defmodule EveDmv.Intelligence.SystemInhabitant do
   """
 
   use Ash.Resource,
-    domain: EveDmv.Api,
+    domain: EveDmv.Domains.Intelligence,
     data_layer: AshPostgres.DataLayer
 
   postgres do
@@ -128,8 +128,24 @@ defmodule EveDmv.Intelligence.SystemInhabitant do
   end
 
   relationships do
-    belongs_to :chain_topology, EveDmv.Intelligence.ChainTopology do
+    belongs_to :chain_topology, EveDmv.Intelligence.ChainAnalysis.ChainTopology do
       attribute_writable?(true)
+    end
+
+    belongs_to :ship_type, EveDmv.Eve.ItemType do
+      source_attribute(:ship_type_id)
+      destination_attribute(:type_id)
+      description("Ship type information")
+      attribute_writable?(false)
+      allow_nil?(true)
+    end
+
+    belongs_to :solar_system, EveDmv.Eve.SolarSystem do
+      source_attribute(:system_id)
+      destination_attribute(:system_id)
+      description("Solar system information")
+      attribute_writable?(false)
+      allow_nil?(true)
     end
   end
 

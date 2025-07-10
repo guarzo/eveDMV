@@ -12,10 +12,22 @@ defmodule EveDmv.Market.PriceService do
   All prices are cached to reduce API calls.
   """
 
+  alias EveDmv.Market.Strategies.BasePriceStrategy
+  alias EveDmv.Market.Strategies.EsiStrategy
+  alias EveDmv.Market.Strategies.JaniceStrategy
+  alias EveDmv.Market.Strategies.MutamarketStrategy
+
   require Logger
-  alias EveDmv.Market.StrategyRegistry
 
   # @default_market_hub "jita"  # Reserved for future use
+
+  # Static list of pricing strategies in priority order
+  @pricing_strategies [
+    BasePriceStrategy,
+    EsiStrategy,
+    JaniceStrategy,
+    MutamarketStrategy
+  ]
 
   # Public API
 
@@ -28,7 +40,7 @@ defmodule EveDmv.Market.PriceService do
 
       iex> PriceService.get_item_price(587)
       {:ok, 350_000.0}
-      
+
       iex> PriceService.get_item_price(587, :sell)
       {:ok, 380_000.0}
   """
@@ -65,7 +77,7 @@ defmodule EveDmv.Market.PriceService do
   @spec get_item_price_data(integer()) :: {:ok, map()} | {:error, String.t()}
   def get_item_price_data(type_id, item_attributes \\ nil) do
     # Get all strategies that can handle this item type
-    strategies = StrategyRegistry.strategies_for(type_id, item_attributes)
+    strategies = strategies_for_item(type_id, item_attributes)
 
     # Try each strategy in priority order
     case try_strategies(strategies, type_id, item_attributes) do
@@ -120,7 +132,15 @@ defmodule EveDmv.Market.PriceService do
   """
   @spec strategy_info() :: [%{module: atom(), name: String.t(), priority: integer()}]
   def strategy_info do
-    StrategyRegistry.strategy_info()
+    @pricing_strategies
+    |> Enum.sort_by(& &1.priority())
+    |> Enum.map(fn strategy ->
+      %{
+        name: strategy.name(),
+        priority: strategy.priority(),
+        module: strategy
+      }
+    end)
   end
 
   @doc """
@@ -153,6 +173,12 @@ defmodule EveDmv.Market.PriceService do
 
   # Private functions
 
+  defp strategies_for_item(type_id, item_attributes) do
+    @pricing_strategies
+    |> Enum.sort_by(& &1.priority())
+    |> Enum.filter(& &1.supports?(type_id, item_attributes))
+  end
+
   defp calculate_ship_value(killmail, prices) do
     case get_in(killmail, ["victim", "ship_type_id"]) do
       nil -> 0.0
@@ -166,8 +192,7 @@ defmodule EveDmv.Market.PriceService do
         {0.0, 0.0}
 
       items ->
-        items
-        |> Enum.reduce({0.0, 0.0}, fn item, {destroyed, dropped} ->
+        Enum.reduce(items, {0.0, 0.0}, fn item, {destroyed, dropped} ->
           quantity = item["quantity_destroyed"] || 0
           dropped_qty = item["quantity_dropped"] || 0
           unit_price = get_item_price_from_data(prices, item["item_type_id"])
@@ -249,8 +274,9 @@ defmodule EveDmv.Market.PriceService do
       |> Enum.frequencies()
 
     # Return the most common source
-    sources
-    |> Enum.max_by(fn {_source, count} -> count end, fn -> {:unknown, 0} end)
-    |> elem(0)
+    {preferred_source, _count} =
+      Enum.max_by(sources, fn {_source, count} -> count end, fn -> {:unknown, 0} end)
+
+    preferred_source
   end
 end

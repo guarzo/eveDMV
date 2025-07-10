@@ -1,10 +1,11 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmv.Intelligence.WandererSSE do
   @moduledoc """
   Server-Sent Events (SSE) client for Wanderer map events.
 
   Connects to Wanderer's SSE API to receive real-time map events:
   - Character events (pilots entering/leaving systems)
-  - System events (systems added/removed from maps)  
+  - System events (systems added/removed from maps)
   - Connection events (wormhole connections created/destroyed)
 
   Reuses the existing SSE infrastructure from wanderer-kills integration.
@@ -13,14 +14,14 @@ defmodule EveDmv.Intelligence.WandererSSE do
   use GenServer
   require Logger
 
-  @default_base_url "http://localhost:4000"
-
   defstruct [
     :base_url,
     :api_token,
     :monitored_maps,
     :sse_connections
   ]
+
+  @default_base_url "http://localhost:4010"
 
   # Public API
 
@@ -42,7 +43,7 @@ defmodule EveDmv.Intelligence.WandererSSE do
 
   # GenServer Callbacks
 
-  @impl true
+  @impl GenServer
   def init(opts) do
     base_url = Keyword.get(opts, :base_url) || get_base_url_from_env()
     api_token = Keyword.get(opts, :api_token) || get_api_token_from_env()
@@ -57,7 +58,7 @@ defmodule EveDmv.Intelligence.WandererSSE do
     {:ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:monitor_map, map_id}, _from, state) do
     if MapSet.member?(state.monitored_maps, map_id) do
       {:reply, {:ok, :already_monitoring}, state}
@@ -72,7 +73,7 @@ defmodule EveDmv.Intelligence.WandererSSE do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:stop_monitoring, map_id}, _from, state) do
     case Map.get(state.sse_connections, map_id) do
       nil ->
@@ -89,7 +90,7 @@ defmodule EveDmv.Intelligence.WandererSSE do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:status, _from, state) do
     status = %{
       monitored_maps: MapSet.to_list(state.monitored_maps),
@@ -100,13 +101,13 @@ defmodule EveDmv.Intelligence.WandererSSE do
     {:reply, status, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info({:sse_event, map_id, event_data}, state) do
     process_sse_event(map_id, event_data)
     {:noreply, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info({:sse_connection_closed, map_id, reason}, state) do
     Logger.warning("SSE connection closed for map #{map_id}: #{inspect(reason)}")
 
@@ -122,7 +123,7 @@ defmodule EveDmv.Intelligence.WandererSSE do
     {:noreply, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info({:reconnect_map, map_id}, state) do
     Logger.info("Attempting to reconnect SSE for map #{map_id}")
 
@@ -136,7 +137,7 @@ defmodule EveDmv.Intelligence.WandererSSE do
     {:noreply, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(_msg, state) do
     {:noreply, state}
   end
@@ -161,6 +162,13 @@ defmodule EveDmv.Intelligence.WandererSSE do
 
     parent_pid = self()
 
+    # NOTE: Using spawn_link for SSE connections is appropriate here because:
+    # 1. SSE connections are long-lived and need to maintain state
+    # 2. They're directly supervised by this GenServer which handles failures
+    # 3. The linked process ensures proper cleanup when the parent dies
+    #
+    # Future improvement: Consider using a DynamicSupervisor for more
+    # granular control over connection lifecycle and restart strategies
     connection_pid =
       spawn_link(fn ->
         sse_loop(map_id, url, headers, parent_pid)

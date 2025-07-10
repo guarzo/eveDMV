@@ -1,35 +1,43 @@
 defmodule EveDmv.Eve.EsiCache do
   @moduledoc """
-  ETS-based cache for ESI API responses.
+  ESI cache adapter using the unified cache system.
 
-  Caches character, corporation, and alliance data with appropriate TTLs.
+  This module provides a backward-compatible interface for ESI caching
+  while using the new unified cache system with appropriate cache types.
   """
 
-  use GenServer
-  require Logger
+  alias EveDmv.Cache
 
-  @character_table :esi_character_cache
-  @corporation_table :esi_corporation_cache
-  @alliance_table :esi_alliance_cache
-
-  # Cache TTLs
-  @character_ttl_minutes 10
-  @corporation_ttl_minutes 60
-  @alliance_ttl_minutes 60
-  @cleanup_interval_minutes 30
-
-  # Client API
-
-  def start_link(_opts) do
-    GenServer.start_link(__MODULE__, [], name: __MODULE__)
+  @doc """
+  Child specification for supervised processes.
+  """
+  def child_spec(opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [opts]},
+      type: :worker,
+      restart: :permanent,
+      shutdown: 5000
+    }
   end
+
+  @doc """
+  Start the ESI cache.
+
+  This is now a no-op since the unified cache system handles initialization.
+  """
+  def start_link(_opts \\ []) do
+    {:ok, spawn(fn -> :ok end)}
+  end
+
+  # Character cache functions
 
   @doc """
   Get a character from cache.
   """
   @spec get_character(integer()) :: {:ok, map()} | :miss
   def get_character(character_id) do
-    get_from_cache(@character_table, character_id)
+    Cache.get_esi_response(:character, character_id)
   end
 
   @doc """
@@ -38,7 +46,18 @@ defmodule EveDmv.Eve.EsiCache do
   """
   @spec get_characters([integer()]) :: {map(), [integer()]}
   def get_characters(character_ids) do
-    get_multiple_from_cache(@character_table, character_ids)
+    keys = Enum.map(character_ids, &{:esi, :character, &1})
+    {found, missing_keys} = Cache.get_many(:api_responses, keys)
+
+    # Convert back to character_id => data format
+    found_map =
+      found
+      |> Enum.map(fn {{:esi, :character, id}, data} -> {id, data} end)
+      |> Enum.into(%{})
+
+    missing_ids = Enum.map(missing_keys, fn {:esi, :character, id} -> id end)
+
+    {found_map, missing_ids}
   end
 
   @doc """
@@ -46,15 +65,17 @@ defmodule EveDmv.Eve.EsiCache do
   """
   @spec put_character(integer(), map()) :: :ok
   def put_character(character_id, character_data) do
-    put_in_cache(@character_table, character_id, character_data, @character_ttl_minutes)
+    Cache.put_esi_response(:character, character_id, character_data)
   end
+
+  # Corporation cache functions
 
   @doc """
   Get a corporation from cache.
   """
   @spec get_corporation(integer()) :: {:ok, map()} | :miss
   def get_corporation(corporation_id) do
-    get_from_cache(@corporation_table, corporation_id)
+    Cache.get_esi_response(:corporation, corporation_id)
   end
 
   @doc """
@@ -62,15 +83,17 @@ defmodule EveDmv.Eve.EsiCache do
   """
   @spec put_corporation(integer(), map()) :: :ok
   def put_corporation(corporation_id, corporation_data) do
-    put_in_cache(@corporation_table, corporation_id, corporation_data, @corporation_ttl_minutes)
+    Cache.put_esi_response(:corporation, corporation_id, corporation_data)
   end
+
+  # Alliance cache functions
 
   @doc """
   Get an alliance from cache.
   """
   @spec get_alliance(integer()) :: {:ok, map()} | :miss
   def get_alliance(alliance_id) do
-    get_from_cache(@alliance_table, alliance_id)
+    Cache.get_esi_response(:alliance, alliance_id)
   end
 
   @doc """
@@ -78,15 +101,17 @@ defmodule EveDmv.Eve.EsiCache do
   """
   @spec put_alliance(integer(), map()) :: :ok
   def put_alliance(alliance_id, alliance_data) do
-    put_in_cache(@alliance_table, alliance_id, alliance_data, @alliance_ttl_minutes)
+    Cache.put_esi_response(:alliance, alliance_id, alliance_data)
   end
+
+  # Generic cache functions (for backward compatibility)
 
   @doc """
   Get a value from the generic cache.
   """
-  @spec get(String.t()) :: {:ok, any()} | {:error, :not_found}
+  @spec get(String.t()) :: {:ok, term()} | {:error, :not_found}
   def get(key) do
-    case get_from_cache(@character_table, key) do
+    case Cache.get(:api_responses, {:esi, :generic, key}) do
       {:ok, data} -> {:ok, data}
       :miss -> {:error, :not_found}
     end
@@ -95,21 +120,87 @@ defmodule EveDmv.Eve.EsiCache do
   @doc """
   Store a value in the generic cache.
   """
-  @spec put(String.t(), any(), keyword()) :: :ok
+  @spec put(String.t(), term(), keyword()) :: :ok
   def put(key, value, opts \\ []) do
     ttl_seconds = Keyword.get(opts, :ttl, 3600)
-    ttl_minutes = div(ttl_seconds, 60)
-    put_in_cache(@character_table, key, value, ttl_minutes)
+    ttl_ms = ttl_seconds * 1000
+    Cache.put(:api_responses, {:esi, :generic, key}, value, ttl_ms: ttl_ms)
   end
+
+  # Universe cache functions
+
+  @doc """
+  Get a system from cache.
+  """
+  @spec get_system(integer()) :: {:ok, map()} | :miss
+  def get_system(system_id) do
+    Cache.get(:hot_data, {:universe, :system, system_id})
+  end
+
+  @doc """
+  Store a system in cache.
+  """
+  @spec put_system(integer(), map()) :: :ok
+  def put_system(system_id, system_data) do
+    Cache.put(:hot_data, {:universe, :system, system_id}, system_data)
+  end
+
+  @doc """
+  Get a type from cache.
+  """
+  @spec get_type(integer()) :: {:ok, map()} | :miss
+  def get_type(type_id) do
+    Cache.get(:hot_data, {:universe, :type, type_id})
+  end
+
+  @doc """
+  Store a type in cache.
+  """
+  @spec put_type(integer(), map()) :: :ok
+  def put_type(type_id, type_data) do
+    Cache.put(:hot_data, {:universe, :type, type_id}, type_data)
+  end
+
+  @doc """
+  Get a group from cache.
+  """
+  @spec get_group(integer()) :: {:ok, map()} | :miss
+  def get_group(group_id) do
+    Cache.get(:hot_data, {:universe, :group, group_id})
+  end
+
+  @doc """
+  Store a group in cache.
+  """
+  @spec put_group(integer(), map()) :: :ok
+  def put_group(group_id, group_data) do
+    Cache.put(:hot_data, {:universe, :group, group_id}, group_data)
+  end
+
+  @doc """
+  Get a category from cache.
+  """
+  @spec get_category(integer()) :: {:ok, map()} | :miss
+  def get_category(category_id) do
+    Cache.get(:hot_data, {:universe, :category, category_id})
+  end
+
+  @doc """
+  Store a category in cache.
+  """
+  @spec put_category(integer(), map()) :: :ok
+  def put_category(category_id, category_data) do
+    Cache.put(:hot_data, {:universe, :category, category_id}, category_data)
+  end
+
+  # Utility functions
 
   @doc """
   Clear all caches.
   """
   @spec clear_all() :: :ok
   def clear_all do
-    :ets.delete_all_objects(@character_table)
-    :ets.delete_all_objects(@corporation_table)
-    :ets.delete_all_objects(@alliance_table)
+    Cache.invalidate_pattern(:api_responses, "esi_*")
     :ok
   end
 
@@ -119,135 +210,26 @@ defmodule EveDmv.Eve.EsiCache do
   @spec stats() :: %{
           characters: %{size: non_neg_integer(), memory_bytes: number()},
           corporations: %{size: non_neg_integer(), memory_bytes: number()},
-          alliances: %{size: non_neg_integer(), memory_bytes: number()}
+          alliances: %{size: non_neg_integer(), memory_bytes: number()},
+          universe: %{size: non_neg_integer(), memory_bytes: number()}
         }
   def stats do
-    %{
-      characters: table_stats(@character_table),
-      corporations: table_stats(@corporation_table),
-      alliances: table_stats(@alliance_table)
+    # Get overall stats
+    overall_stats = Cache.stats(:api_responses)
+
+    # For compatibility, return the same structure but with estimated values
+    # In reality, all data is in one table now
+    per_type_estimate = %{
+      # Rough estimate
+      size: div(overall_stats.size, 4),
+      memory_bytes: div(overall_stats.memory_bytes, 4)
     }
-  end
 
-  # Server callbacks
-
-  @impl true
-  def init(_args) do
-    # Create ETS tables
-    :ets.new(@character_table, [
-      :set,
-      :public,
-      :named_table,
-      read_concurrency: true,
-      write_concurrency: true
-    ])
-
-    :ets.new(@corporation_table, [
-      :set,
-      :public,
-      :named_table,
-      read_concurrency: true,
-      write_concurrency: true
-    ])
-
-    :ets.new(@alliance_table, [
-      :set,
-      :public,
-      :named_table,
-      read_concurrency: true,
-      write_concurrency: true
-    ])
-
-    # Schedule periodic cleanup
-    schedule_cleanup()
-
-    {:ok, %{}}
-  end
-
-  @impl true
-  def handle_info(:cleanup_expired, state) do
-    cleanup_expired_entries(@character_table, "character")
-    cleanup_expired_entries(@corporation_table, "corporation")
-    cleanup_expired_entries(@alliance_table, "alliance")
-
-    schedule_cleanup()
-    {:noreply, state}
-  end
-
-  # Private functions
-
-  defp get_from_cache(table, id) do
-    case :ets.lookup(table, id) do
-      [{^id, data, expires_at}] ->
-        if DateTime.compare(DateTime.utc_now(), expires_at) == :lt do
-          {:ok, data}
-        else
-          # Expired, remove it
-          :ets.delete(table, id)
-          :miss
-        end
-
-      [] ->
-        :miss
-    end
-  end
-
-  defp get_multiple_from_cache(table, ids) do
-    now = DateTime.utc_now()
-
-    Enum.reduce(ids, {%{}, []}, fn id, {found, missing} ->
-      case :ets.lookup(table, id) do
-        [{^id, data, expires_at}] ->
-          if DateTime.compare(now, expires_at) == :lt do
-            {Map.put(found, id, data), missing}
-          else
-            # Expired
-            :ets.delete(table, id)
-            {found, [id | missing]}
-          end
-
-        [] ->
-          {found, [id | missing]}
-      end
-    end)
-  end
-
-  defp put_in_cache(table, id, data, ttl_minutes) do
-    expires_at = DateTime.add(DateTime.utc_now(), ttl_minutes * 60, :second)
-    :ets.insert(table, {id, data, expires_at})
-    :ok
-  end
-
-  defp table_stats(table) do
     %{
-      size: :ets.info(table, :size),
-      memory_bytes: :ets.info(table, :memory) * :erlang.system_info(:wordsize)
+      characters: per_type_estimate,
+      corporations: per_type_estimate,
+      alliances: per_type_estimate,
+      universe: per_type_estimate
     }
-  end
-
-  defp schedule_cleanup do
-    Process.send_after(self(), :cleanup_expired, @cleanup_interval_minutes * 60 * 1000)
-  end
-
-  defp cleanup_expired_entries(table, type) do
-    now = DateTime.utc_now()
-
-    expired_count =
-      :ets.foldl(
-        fn {id, _data, expires_at}, count ->
-          if DateTime.compare(now, expires_at) == :gt do
-            :ets.delete(table, id)
-            count + 1
-          else
-            count
-          end
-        end,
-        0,
-        table
-      )
-
-    if expired_count > 0 do
-      Logger.info("Cleaned up #{expired_count} expired #{type} cache entries")
-    end
   end
 end

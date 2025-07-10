@@ -1,3 +1,5 @@
+# credo:disable-for-this-file Credo.Check.Design.DuplicatedCode
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmv.Application do
   # See https://hexdocs.pm/elixir/Application.html
   # for more information on OTP Applications
@@ -5,54 +7,155 @@ defmodule EveDmv.Application do
 
   use Application
 
-  @impl true
-  def start(_type, _args) do
-    # Initialize EVE name resolver cache early
-    EveDmv.Eve.NameResolver.start_cache()
+  alias EveDmv.Config.RateLimit
+  alias EveDmv.Eve.NameResolver
+  alias EveDmv.Eve.StaticDataLoader
+  alias EveDmv.Performance.RegressionDetector
 
-    children = [
+  @impl Application
+  def start(_type, _args) do
+    # Initialize ETS table for fitting cache
+    :ets.new(:battle_fitting_cache, [:set, :public, :named_table])
+
+    # Initialize EVE name resolver cache early
+    NameResolver.start_cache()
+
+    # Only set up security handlers in non-test environments
+    if Mix.env() != :test do
+      # Set up security monitoring handlers
+      # EveDmv.Security.AuditLogger.setup_handlers()
+
+      # Set up periodic security headers validation
+      # EveDmv.Security.HeadersValidator.setup_periodic_validation()
+    end
+
+    # Add logger filter for db_connection noise
+    :logger.add_primary_filter(
+      :db_connection_noise,
+      {&EveDmvWeb.LoggerFilter.filter_db_connection_noise/2, nil}
+    )
+
+    base_children = [
       EveDmvWeb.Telemetry,
       # Task supervisor for background tasks (start early)
       {Task.Supervisor, name: EveDmv.TaskSupervisor},
+      # Auto-recompilation in dev environment (handled by exsync application)
+      # ESI reliability supervisor (includes Registry and circuit breakers)
+      EveDmv.Eve.ReliabilitySupervisor,
+      # Error monitoring and recovery supervisor
+      EveDmv.Monitoring.ErrorRecoverySupervisor,
       EveDmv.Repo,
       {DNSCluster, query: Application.get_env(:eve_dmv, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: EveDmv.PubSub},
+      # Domain event infrastructure
+      EveDmv.Infrastructure.EventBusSupervisor,
       # Start the Finch HTTP client for sending emails
       {Finch, name: EveDmv.Finch},
       # Start the price cache
       EveDmv.Market.PriceCache,
       # Start the ESI cache
       EveDmv.Eve.EsiCache,
+      # Start the analysis cache for character and corporation intelligence
+      EveDmv.Cache.AnalysisCache,
+      # Start the static data cache for system/ship names
+      EveDmv.Cache.StaticDataCache,
+      # Start the corporation analyzer service
+      EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer,
       # Start rate limiter for Janice API (5 requests per second)
-      {EveDmv.Market.RateLimiter, name: :janice_rate_limiter, max_tokens: 5, refill_rate: 5},
+      {EveDmv.Market.RateLimiter, [name: :janice_rate_limiter] ++ RateLimit.janice_rate_limit()},
       # Start the surveillance matching engine
-      EveDmv.Surveillance.MatchingEngine,
-      # Start the re-enrichment worker
-      EveDmv.Enrichment.ReEnrichmentWorker,
-      # Start the real-time price updater
-      EveDmv.Enrichment.RealTimePriceUpdater,
+      maybe_start_surveillance_engine(),
+      # Conditionally start database-dependent processes
+      maybe_start_database_processes(),
       # Start the Wanderer API client for chain intelligence
-      EveDmv.Intelligence.WandererClient,
+      maybe_start_process(EveDmv.Intelligence.WandererClient),
       # Start the Wanderer SSE client for real-time events
-      EveDmv.Intelligence.WandererSSE,
+      maybe_start_process(EveDmv.Intelligence.WandererSSE),
       # Start the chain monitoring system
-      EveDmv.Intelligence.ChainMonitor,
+      maybe_start_process(EveDmv.Intelligence.ChainAnalysis.ChainMonitor),
       # Start mock SSE server in development
       maybe_start_mock_sse_server(),
       # Start the killmail ingestion pipeline
       maybe_start_pipeline(),
       # Start background static data loader
       static_data_loader_spec(),
+      # Start SDE automatic update service
+      maybe_start_sde_startup_service(),
       # Start a worker by calling: EveDmv.Worker.start_link(arg)
       # {EveDmv.Worker, arg},
       # Start to serve requests, typically the last entry
       EveDmvWeb.Endpoint
     ]
 
+    children = List.flatten(base_children)
+
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: EveDmv.Supervisor]
-    Supervisor.start_link(children, opts)
+
+    # Start the supervisor
+    case Supervisor.start_link(children, opts) do
+      {:ok, pid} ->
+        # Attach global error telemetry handlers
+        EveDmv.ErrorHandler.attach_telemetry_handlers()
+
+        # Attach query performance monitoring
+        EveDmv.Performance.QueryMonitor.attach_telemetry_handlers()
+
+        # Start performance regression detection
+        if Mix.env() != :test do
+          RegressionDetector.start_link()
+        end
+
+        {:ok, pid}
+
+      error ->
+        error
+    end
+  end
+
+  # Conditionally start database-dependent processes
+  defp maybe_start_database_processes do
+    if Mix.env() != :test do
+      [
+        EveDmv.Telemetry.QueryMonitor,
+        EveDmv.Database.QueryCache,
+        EveDmv.Database.CacheWarmer,
+        EveDmv.Database.ConnectionPoolMonitor,
+        EveDmv.Database.PartitionManager,
+        EveDmv.Database.CacheInvalidator,
+        EveDmv.Database.QueryPlanAnalyzer,
+        EveDmv.Database.MaterializedViewManager,
+        EveDmv.Database.ArchiveManager,
+        EveDmv.Enrichment.ReEnrichmentWorker,
+        EveDmv.Enrichment.RealTimePriceUpdater,
+        # Intelligence analysis supervisor for managing analysis tasks
+        EveDmv.Intelligence.Core.Supervisor
+      ]
+    else
+      []
+    end
+  end
+
+  # Conditionally start surveillance engine
+  defp maybe_start_surveillance_engine do
+    if Mix.env() != :test do
+      EveDmv.Surveillance.MatchingEngine
+    else
+      %{
+        id: EveDmv.Surveillance.MatchingEngine,
+        start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}
+      }
+    end
+  end
+
+  # Conditionally start a process based on environment
+  defp maybe_start_process(module) do
+    if Mix.env() != :test do
+      module
+    else
+      %{id: module, start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}}
+    end
   end
 
   # Conditionally start the mock SSE server in development
@@ -85,26 +188,47 @@ defmodule EveDmv.Application do
 
   # Spec for background static data loader
   defp static_data_loader_spec do
-    %{
-      id: :static_data_loader,
-      start: {
-        Task,
-        :start_link,
-        [
-          fn ->
-            delay_ms = Application.get_env(:eve_dmv, :static_data_load_delay, 5000)
-            Process.sleep(delay_ms)
-            ensure_static_data_loaded()
-          end
-        ]
-      },
-      restart: :transient
-    }
+    if Mix.env() != :test do
+      %{
+        id: :static_data_loader,
+        start: {
+          Task,
+          :start_link,
+          [
+            fn ->
+              delay_ms = Application.get_env(:eve_dmv, :static_data_load_delay, 5000)
+              Process.sleep(delay_ms)
+              ensure_static_data_loaded()
+            end
+          ]
+        },
+        restart: :transient
+      }
+    else
+      # No-op process for tests
+      %{
+        id: :static_data_loader_noop,
+        start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}
+      }
+    end
+  end
+
+  # Conditionally start the SDE automatic update service
+  defp maybe_start_sde_startup_service do
+    if Mix.env() != :test do
+      EveDmv.Eve.StaticDataLoader.SdeStartupService
+    else
+      # No-op process for tests
+      %{
+        id: :sde_startup_service_noop,
+        start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}
+      }
+    end
   end
 
   # Tell Phoenix to update the endpoint configuration
   # whenever the application is updated.
-  @impl true
+  @impl Application
   def config_change(changed, _new, removed) do
     EveDmvWeb.Endpoint.config_change(changed, removed)
     :ok
@@ -112,7 +236,6 @@ defmodule EveDmv.Application do
 
   # Ensure static data is loaded, but don't block application startup
   defp ensure_static_data_loaded do
-    alias EveDmv.Eve.StaticDataLoader
     require Logger
 
     case StaticDataLoader.static_data_loaded?() do
@@ -129,7 +252,7 @@ defmodule EveDmv.Application do
             )
 
             # Warm the cache after loading
-            EveDmv.Eve.NameResolver.warm_cache()
+            NameResolver.warm_cache()
             Logger.info("Name resolver cache warmed")
 
           {:error, reason} ->

@@ -23,10 +23,12 @@ defmodule Mix.Tasks.Eve.LoadStaticData do
       Static data loading complete!
   """
 
-  use Mix.Task
-  alias EveDmv.Eve.StaticDataLoader
-
   @shortdoc "Load EVE static data if not already present"
+
+  use Mix.Task
+
+  alias EveDmv.Eve.NameResolver
+  alias EveDmv.Eve.StaticDataLoader
 
   @impl Mix.Task
   def run(args) do
@@ -50,7 +52,7 @@ defmodule Mix.Tasks.Eve.LoadStaticData do
 
           # Warm the cache after loading
           Mix.shell().info("Warming name resolver cache...")
-          EveDmv.Eve.NameResolver.warm_cache()
+          NameResolver.warm_cache()
           Mix.shell().info("Cache warmed successfully!")
 
         {:error, reason} ->

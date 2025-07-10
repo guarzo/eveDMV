@@ -1,38 +1,23 @@
 <div class="min-h-screen bg-gray-900 text-white">
-  <!-- Header -->
-  <div class="bg-gray-800 border-b border-gray-700">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-16">
-        <div class="flex items-center space-x-4">
-          <h1 class="text-xl font-bold">Alliance Analytics Dashboard</h1>
-          <%= if @alliance_info do %>
-            <span class="text-gray-400 text-lg">
-              {@alliance_info.alliance_name}
-            </span>
-          <% end %>
-        </div>
-
-        <button
-          phx-click="refresh"
-          class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
-        >
-          🔄 Refresh
-        </button>
-      </div>
-    </div>
-  </div>
+  <.page_header 
+    title="Alliance Analytics Dashboard"
+    subtitle={if @alliance_info, do: @alliance_info.alliance_name, else: ""}
+  >
+    <:action>
+      <button
+        phx-click="refresh"
+        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
+      >
+        🔄 Refresh
+      </button>
+    </:action>
+  </.page_header>
   
-<!-- Error State -->
-  <%= if @error do %>
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div class="bg-red-600 text-white p-4 rounded-lg">
-        <h2 class="text-lg font-bold">Error</h2>
-        <p>{@error}</p>
-      </div>
-    </div>
-  <% else %>
-    <!-- Main Content -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <!-- Error State -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <.error_state :if={@error} message={@error} />
+    
+    <%= if !@error do %>
       <!-- Alliance Header -->
       <%= if @alliance_info do %>
         <div class="bg-gray-800 rounded-lg p-6 mb-8 border border-gray-700">
@@ -61,92 +46,47 @@
       <% end %>
       
 <!-- Alliance Statistics -->
-      <%= if @alliance_stats do %>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-          <!-- Corporations -->
-          <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <div class="flex items-center">
-              <div class="text-3xl mr-3">🏢</div>
-              <div>
-                <p class="text-2xl font-bold text-white">
-                  {format_number(@alliance_stats.total_corporations)}
-                </p>
-                <p class="text-gray-400 text-sm">Corporations</p>
-                <p class="text-xs text-green-400">
-                  {@alliance_stats.active_corporations} active
-                </p>
-              </div>
-            </div>
-          </div>
-          
-<!-- Members -->
-          <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <div class="flex items-center">
-              <div class="text-3xl mr-3">👥</div>
-              <div>
-                <p class="text-2xl font-bold text-white">
-                  {format_number(@alliance_stats.total_members)}
-                </p>
-                <p class="text-gray-400 text-sm">Total Members</p>
-                <p class="text-xs text-gray-500">
-                  Avg: {format_number(@alliance_stats.avg_activity_per_member)}/member
-                </p>
-              </div>
-            </div>
-          </div>
-          
-<!-- Total Kills -->
-          <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <div class="flex items-center">
-              <div class="text-3xl mr-3">🎯</div>
-              <div>
-                <p class="text-2xl font-bold text-green-400">
-                  {format_number(@alliance_stats.total_kills)}
-                </p>
-                <p class="text-gray-400 text-sm">Total Kills</p>
-                <p class="text-xs text-gray-500">
-                  K/D: {@alliance_stats.kill_death_ratio}
-                </p>
-              </div>
-            </div>
-          </div>
-          
-<!-- Total Losses -->
-          <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <div class="flex items-center">
-              <div class="text-3xl mr-3">💀</div>
-              <div>
-                <p class="text-2xl font-bold text-red-400">
-                  {format_number(@alliance_stats.total_losses)}
-                </p>
-                <p class="text-gray-400 text-sm">Total Losses</p>
-                <p class="text-xs text-gray-500">
-                  Per Corp: {format_number(@alliance_stats.avg_activity_per_corp)}
-                </p>
-              </div>
-            </div>
-          </div>
-          
-<!-- Activity Trend -->
-          <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <div class="flex items-center">
-              <div class="text-3xl mr-3">📊</div>
-              <div>
-                <p class="text-2xl font-bold text-yellow-400">
-                  {format_number(@alliance_stats.total_activity)}
-                </p>
-                <p class="text-gray-400 text-sm">Total Activity</p>
-                <%= if @activity_trends do %>
-                  <% {trend_text, trend_class} = trend_indicator(@activity_trends.trend_direction) %>
-                  <p class={"text-xs #{trend_class}"}>
-                    {trend_text}
-                  </p>
-                <% end %>
-              </div>
-            </div>
-          </div>
-        </div>
-      <% end %>
+      <.stats_grid :if={@alliance_stats} class="mb-8">
+        <:stat icon="🏢" label="Corporations" format="custom">
+          <p class="text-2xl font-bold text-white">
+            {format_number(@alliance_stats.total_corporations)}
+          </p>
+          <p class="text-xs text-green-400">
+            {@alliance_stats.active_corporations} active
+          </p>
+        </:stat>
+        <:stat 
+          icon="👥" 
+          label="Total Members" 
+          value={format_number(@alliance_stats.total_members)}
+          subtitle="Avg: #{format_number(@alliance_stats.avg_activity_per_member)}/member"
+        />
+        <:stat 
+          icon="🎯" 
+          label="Total Kills" 
+          value={format_number(@alliance_stats.total_kills)}
+          color="text-green-400"
+          subtitle="K/D: #{@alliance_stats.kill_death_ratio}"
+        />
+        <:stat 
+          icon="💀" 
+          label="Total Losses" 
+          value={format_number(@alliance_stats.total_losses)}
+          color="text-red-400"
+          subtitle="Per Corp: #{format_number(@alliance_stats.avg_activity_per_corp)}"
+        />
+        <:stat icon="📊" label="Total Activity" format="custom">
+          <p class="text-2xl font-bold text-yellow-400">
+            {format_number(@alliance_stats.total_activity)}
+          </p>
+          <%= if @activity_trends do %>
+            <% {trend_text, trend_class} = trend_indicator(@activity_trends.trend_direction) %>
+            <p class={"text-xs #{trend_class}"}>
+              {trend_text}
+            </p>
+          <% end %>
+        </:stat>
+      </.stats_grid>
       
 <!-- Activity Trends Chart -->
       <%= if @activity_trends && @activity_trends.weekly_data do %>
@@ -190,7 +130,7 @@
 
                       <div>
                         <a
-                          href={~p"/corp/#{corp.corporation_id}"}
+                          href={~p"/corporation/#{corp.corporation_id}"}
                           class="font-medium text-white hover:text-blue-400 transition-colors"
                         >
                           {corp.corporation_name}
@@ -233,13 +173,11 @@
                 </div>
               <% end %>
             <% else %>
-              <div class="text-center py-8 text-gray-400">
-                <div class="text-4xl mb-2">🚫</div>
-                <p>No corporation data available</p>
-                <p class="text-sm">
-                  Corporations will appear here once they generate killmail activity
-                </p>
-              </div>
+              <.empty_state 
+                icon="🚫"
+                title="No corporation data available"
+                message="Corporations will appear here once they generate killmail activity"
+              />
             <% end %>
           </div>
         </div>
@@ -286,10 +224,10 @@
                 <% end %>
               </div>
             <% else %>
-              <div class="text-center py-8 text-gray-400">
-                <div class="text-4xl mb-2">📊</div>
-                <p>No pilot data available</p>
-              </div>
+              <.empty_state 
+                icon="📊"
+                title="No pilot data available"
+              />
             <% end %>
           </div>
         </div>
@@ -336,11 +274,11 @@
               <% end %>
             </div>
           <% else %>
-            <div class="text-center py-8 text-gray-400">
-              <div class="text-4xl mb-2">📭</div>
-              <p>No recent activity</p>
-              <p class="text-sm">Activity will appear here once members generate killmails</p>
-            </div>
+            <.empty_state 
+              icon="📭"
+              title="No recent activity"
+              message="Activity will appear here once members generate killmails"
+            />
           <% end %>
         </div>
       </div>
@@ -353,6 +291,6 @@
           <p>Efficiency scores consider both K/D ratio and total activity volume</p>
         </div>
       </div>
-    </div>
-  <% end %>
+    <% end %>
+  </div>
 </div>

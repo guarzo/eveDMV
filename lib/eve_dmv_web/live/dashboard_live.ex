@@ -1,15 +1,21 @@
+# credo:disable-for-this-file Credo.Check.Readability.StrictModuleLayout
 defmodule EveDmvWeb.DashboardLive do
   @moduledoc """
   Main dashboard LiveView displaying user statistics and recent activity.
   """
 
   use EveDmvWeb, :live_view
+
+  alias EveDmv.Database.KillmailRepository
   alias EveDmvWeb.PriceMonitorComponent
 
   # Load current user from session on mount
-  on_mount {EveDmvWeb.AuthLive, :load_from_session}
+  on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
-  @impl true
+  # Import reusable components
+  import EveDmvWeb.Components.StatsGridComponent
+
+  @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     current_user = socket.assigns[:current_user]
 
@@ -28,7 +34,7 @@ defmodule EveDmvWeb.DashboardLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
     <.flash_group flash={@flash} />
@@ -68,65 +74,11 @@ defmodule EveDmvWeb.DashboardLive do
       </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-      <!-- Stats Cards -->
-      <div class="bg-gray-800 rounded-lg p-6">
-        <div class="flex items-center">
-          <div class="p-3 bg-red-600 rounded-full">
-            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M13 10V3L4 14h7v7l9-11h-7z"
-              />
-            </svg>
-          </div>
-          <div class="ml-4">
-            <h2 class="text-sm font-medium text-gray-400">Total Kills</h2>
-            <p class="text-2xl font-semibold text-white">{@killmail_count}</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="bg-gray-800 rounded-lg p-6">
-        <div class="flex items-center">
-          <div class="p-3 bg-yellow-600 rounded-full">
-            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
-              />
-            </svg>
-          </div>
-          <div class="ml-4">
-            <h2 class="text-sm font-medium text-gray-400">ISK Destroyed</h2>
-            <p class="text-2xl font-semibold text-white">Coming Soon</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="bg-gray-800 rounded-lg p-6">
-        <div class="flex items-center">
-          <div class="p-3 bg-blue-600 rounded-full">
-            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-              />
-            </svg>
-          </div>
-          <div class="ml-4">
-            <h2 class="text-sm font-medium text-gray-400">Fleet Engagements</h2>
-            <p class="text-2xl font-semibold text-white">Coming Soon</p>
-          </div>
-        </div>
-      </div>
-    </div>
+    <.stats_grid class="mb-8">
+      <:stat icon="⚡" label="Total Kills" value={@killmail_count} format="number" />
+      <:stat icon="💰" label="ISK Destroyed" value="Coming Soon" color="text-yellow-400" />
+      <:stat icon="👥" label="Fleet Engagements" value="Coming Soon" color="text-blue-400" />
+    </.stats_grid>
 
     <!-- Main Content Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -161,7 +113,7 @@ defmodule EveDmvWeb.DashboardLive do
           </p>
         </div>
       </div>
-      
+
     <!-- Real-time Price Monitor -->
       <.live_component module={PriceMonitorComponent} id="price-monitor" />
     </div>
@@ -216,11 +168,10 @@ defmodule EveDmvWeb.DashboardLive do
   end
 
   defp get_recent_kills do
-    EveDmv.Killmails.KillmailRaw
-    |> Ash.Query.new()
-    |> Ash.Query.sort(killmail_time: :desc)
-    |> Ash.Query.limit(5)
-    |> Ash.read!(domain: EveDmv.Api)
+    case KillmailRepository.get_recent_high_value(limit: 5, hours_back: 24) do
+      {:ok, killmails} -> killmails
+      {:error, _reason} -> []
+    end
   rescue
     _ -> []
   end

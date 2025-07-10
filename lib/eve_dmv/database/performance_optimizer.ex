@@ -9,8 +9,17 @@ defmodule EveDmv.Database.PerformanceOptimizer do
   4. Suggest optimizations based on usage patterns
   """
 
-  require Logger
   alias EveDmv.Repo
+
+  require Logger
+
+  @allowed_tables [
+    "killmails_raw",
+    "participants",
+    "surveillance_profiles",
+    "surveillance_profile_matches",
+    "character_stats"
+  ]
 
   # Error types for consistent handling
   @type error_type :: :database_error | :validation_error | :query_error | :connection_error
@@ -31,15 +40,6 @@ defmodule EveDmv.Database.PerformanceOptimizer do
   end
 
   defp validate_duration_string(_, default), do: default
-
-  @allowed_tables [
-    "killmails_raw",
-    "killmails_enriched",
-    "participants",
-    "surveillance_profiles",
-    "surveillance_profile_matches",
-    "character_stats"
-  ]
 
   defp validate_table_name(table_name) when table_name in @allowed_tables do
     # Quote the identifier to prevent injection
@@ -120,15 +120,15 @@ defmodule EveDmv.Database.PerformanceOptimizer do
 
   defp execute_slow_queries_query(duration, limit) do
     query = """
-    SELECT 
+    SELECT
       query,
       calls,
       total_time / 1000 as total_time_seconds,
       mean_time / 1000 as mean_time_seconds,
       (100 * total_time / sum(total_time::numeric) OVER()) AS percentage
-    FROM pg_stat_statements 
+    FROM pg_stat_statements
     WHERE total_time > EXTRACT(EPOCH FROM INTERVAL $1) * 1000
-    ORDER BY total_time DESC 
+    ORDER BY total_time DESC
     LIMIT $2
     """
 
@@ -158,14 +158,14 @@ defmodule EveDmv.Database.PerformanceOptimizer do
   @spec get_table_sizes() :: result([map()])
   def get_table_sizes do
     query = """
-    SELECT 
+    SELECT
       schemaname,
       tablename,
       pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size,
       pg_size_pretty(pg_relation_size(schemaname||'.'||tablename)) AS table_size,
       pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename) - pg_relation_size(schemaname||'.'||tablename)) AS index_size,
       pg_total_relation_size(schemaname||'.'||tablename) AS size_bytes
-    FROM pg_tables 
+    FROM pg_tables
     WHERE schemaname = 'public'
     ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
     """
@@ -197,7 +197,7 @@ defmodule EveDmv.Database.PerformanceOptimizer do
   @spec get_index_usage() :: result([map()])
   def get_index_usage do
     query = """
-    SELECT 
+    SELECT
       t.tablename,
       indexname,
       c.reltuples AS num_rows,
@@ -260,9 +260,9 @@ defmodule EveDmv.Database.PerformanceOptimizer do
     Logger.info("Starting database performance analysis")
 
     # Collect all statistics with error handling
-    {slow_queries, errors} = safe_execute_with_fallback(&get_slow_queries/1, [limit: 5], [])
-    {index_usage, errors} = safe_execute_with_fallback(&get_index_usage/0, [], errors)
-    {table_stats, errors} = safe_execute_with_fallback(&get_table_sizes/0, [], errors)
+    {slow_queries, errors1} = safe_execute_with_fallback(&get_slow_queries/1, [[limit: 5]], [])
+    {index_usage, errors2} = safe_execute_with_fallback(&get_index_usage/0, [], errors1)
+    {table_stats, errors3} = safe_execute_with_fallback(&get_table_sizes/0, [], errors2)
 
     # Generate recommendations based on available data
     recommendations = generate_recommendations(slow_queries, index_usage, table_stats)
@@ -273,13 +273,13 @@ defmodule EveDmv.Database.PerformanceOptimizer do
       table_stats: table_stats,
       recommendations: recommendations,
       analyzed_at: DateTime.utc_now(),
-      errors: errors
+      errors: errors3
     }
 
-    if Enum.empty?(errors) do
+    if Enum.empty?(errors3) do
       {:ok, result}
     else
-      Logger.warning("Performance analysis completed with #{length(errors)} errors")
+      Logger.warning("Performance analysis completed with #{length(errors3)} errors")
       # Still return success with partial data
       {:ok, result}
     end
@@ -305,7 +305,6 @@ defmodule EveDmv.Database.PerformanceOptimizer do
 
     tables = [
       "killmails_raw",
-      "killmails_enriched",
       "participants",
       "surveillance_profiles",
       "surveillance_profile_matches",
@@ -346,7 +345,6 @@ defmodule EveDmv.Database.PerformanceOptimizer do
 
     tables = [
       "killmails_raw",
-      "killmails_enriched",
       "participants",
       "surveillance_profiles",
       "surveillance_profile_matches"
@@ -381,8 +379,8 @@ defmodule EveDmv.Database.PerformanceOptimizer do
        """
          SELECT round(
            100.0 * sum(blks_hit) / (sum(blks_hit) + sum(blks_read)), 2
-         ) as cache_hit_ratio 
-         FROM pg_stat_database 
+         ) as cache_hit_ratio
+         FROM pg_stat_database
          WHERE datname = current_database()
        """}
     ]
@@ -462,17 +460,17 @@ defmodule EveDmv.Database.PerformanceOptimizer do
   end
 
   defp generate_recommendations(slow_queries, index_usage, _table_stats) do
-    recommendations = []
+    initial_recommendations = []
 
     # Check for slow queries
-    recommendations =
+    slow_query_recommendations =
       if length(slow_queries) > 0 do
         [
           "Consider optimizing slow queries - #{length(slow_queries)} queries taking >1 second"
-          | recommendations
+          | initial_recommendations
         ]
       else
-        recommendations
+        initial_recommendations
       end
 
     # Check for unused indexes
@@ -481,14 +479,14 @@ defmodule EveDmv.Database.PerformanceOptimizer do
         (idx.number_of_scans || 0) < 10 and idx.index_name != nil
       end)
 
-    recommendations =
+    index_recommendations =
       if length(unused_indexes) > 0 do
         [
           "Consider dropping #{length(unused_indexes)} unused indexes to save space"
-          | recommendations
+          | slow_query_recommendations
         ]
       else
-        recommendations
+        slow_query_recommendations
       end
 
     # Check for missing indexes on frequently accessed tables
@@ -498,20 +496,20 @@ defmodule EveDmv.Database.PerformanceOptimizer do
       |> Enum.map(& &1.table_name)
       |> Enum.uniq()
 
-    recommendations =
+    final_recommendations =
       if length(high_scan_tables) > 0 do
         [
           "Tables with high scan counts may benefit from additional indexes: #{Enum.join(high_scan_tables, ", ")}"
-          | recommendations
+          | index_recommendations
         ]
       else
-        recommendations
+        index_recommendations
       end
 
-    if Enum.empty?(recommendations) do
+    if Enum.empty?(final_recommendations) do
       ["Database performance looks good - no immediate optimizations needed"]
     else
-      recommendations
+      final_recommendations
     end
   end
 end
