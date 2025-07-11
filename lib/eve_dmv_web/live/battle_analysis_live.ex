@@ -111,7 +111,10 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   end
 
   def handle_event("select_battle", %{"battle_id" => battle_id}, socket) do
-    {:noreply, load_battle(socket, battle_id)}
+    {:noreply, 
+     socket
+     |> push_patch(to: ~p"/battle/#{battle_id}")
+    }
   end
 
   def handle_event("select_phase", %{"phase_index" => phase_index}, socket) do
@@ -999,12 +1002,17 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       end
 
     # Add this battle to the front, remove duplicates, limit to 10
+    # Get system_id from metadata or first killmail
+    system_id = battle.metadata[:primary_system] || 
+                (List.first(battle.killmails) && List.first(battle.killmails).solar_system_id) ||
+                0
+    
     battle_entry = %{
       battle_id: battle.battle_id,
-      system_name: resolve_system_name(battle.system_id),
-      participant_count: length(battle.killmails),
+      system_name: resolve_system_name(system_id),
+      participant_count: battle.metadata[:unique_participants] || length(battle.killmails),
       isk_destroyed: battle.killmails |> Enum.map(&get_killmail_isk_value/1) |> Enum.sum(),
-      start_time: battle.metadata.start_time,
+      start_time: battle.metadata[:start_time] || battle.start_time,
       viewed_at: DateTime.utc_now()
     }
 

@@ -614,7 +614,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
     "#{intensity} #{scale} #{phase_type |> to_string() |> String.replace("_", " ")} with #{participants} participants"
   end
 
-  defp calculate_average_distance(killmails) do
+  defp calculate_average_distance(_killmails) do
     # For now, return a placeholder since we don't have position data
     # In a real implementation, this would calculate distances between victims and attackers
     # 15km default

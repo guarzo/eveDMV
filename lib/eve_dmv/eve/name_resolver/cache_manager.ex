@@ -96,7 +96,7 @@ defmodule EveDmv.Eve.NameResolver.CacheManager do
         {cache_key, name, ttl}
       end)
 
-    Cache.put_many(:hot_data, entries)
+    EveDmv.Cache.put_many(:hot_data, entries)
     Logger.debug("Cached #{length(name_tuples)} names in batch")
     :ok
   end
@@ -107,7 +107,7 @@ defmodule EveDmv.Eve.NameResolver.CacheManager do
   @spec invalidate_name(integer(), atom()) :: :ok
   def invalidate_name(id, type) when is_integer(id) and is_atom(type) do
     cache_key = {type, id}
-    Cache.delete(:hot_data, cache_key)
+    EveDmv.Cache.delete(:hot_data, cache_key)
     :ok
   end
 
@@ -143,7 +143,7 @@ defmodule EveDmv.Eve.NameResolver.CacheManager do
   """
   @spec get_cache_stats() :: map()
   def get_cache_stats do
-    Cache.stats(:hot_data)
+    EveDmv.Cache.stats(:hot_data)
   end
 
   @doc """

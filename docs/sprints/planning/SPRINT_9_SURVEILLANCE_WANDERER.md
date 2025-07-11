@@ -150,6 +150,7 @@ To avoid breaking existing functionality, we MUST follow these practices:
 
 ### Testing Evidence
 - [ ] Manual testing completed for all features
+- [ ] Manual validation checklist created and executed
 - [ ] Screenshots/recordings captured
 - [ ] Test coverage maintained or improved
 - [ ] Performance metrics collected

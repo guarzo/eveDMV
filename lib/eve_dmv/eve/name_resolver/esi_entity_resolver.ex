@@ -15,8 +15,8 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
 
   # Configurable timeout and concurrency settings
   # Task timeout is handled by esi_timeout
-  @max_concurrency Application.compile_env(:eve_dmv, :name_resolver_max_concurrency, 10)
-  @esi_timeout Application.compile_env(:eve_dmv, :name_resolver_esi_timeout, 10_000)
+  # @max_concurrency Application.compile_env(:eve_dmv, :name_resolver_max_concurrency, 10)
+  # @esi_timeout Application.compile_env(:eve_dmv, :name_resolver_esi_timeout, 10_000)
 
   @doc """
   Resolves a character ID to a character name using ESI.

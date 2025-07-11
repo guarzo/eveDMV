@@ -42,11 +42,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
   ## Returns
   {:ok, correlated_battles} where each battle may span multiple systems
   """
+  def correlate_multi_system_battles(battle_or_battles, options \\ [])
+  
   def correlate_multi_system_battles(battle, options) when is_map(battle) do
     correlate_multi_system_battles([battle], options)
   end
 
-  def correlate_multi_system_battles(battles, options \\ []) when is_list(battles) do
+  def correlate_multi_system_battles(battles, options) when is_list(battles) do
     max_time_gap = Keyword.get(options, :max_time_gap, @max_multi_system_gap_minutes)
     min_overlap = Keyword.get(options, :min_overlap, @min_participant_overlap_ratio)
     system_connections = Keyword.get(options, :system_connections, %{})

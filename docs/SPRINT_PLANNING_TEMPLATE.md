@@ -133,9 +133,28 @@ New sprint focus: [Battle Analysis / Corporation Intelligence / Performance / et
 
 ### Testing Evidence
 - [ ] Manual testing completed for all features
+- [ ] Manual validation checklist created and executed
 - [ ] Screenshots/recordings captured
 - [ ] Test coverage maintained or improved
 - [ ] Performance metrics collected
+
+---
+
+## 🔍 Manual Validation
+
+### Validation Checklist Creation
+- [ ] Create `manual_validate_sprint_[X].md` by end of sprint
+- [ ] Include test cases for each implemented feature
+- [ ] Add edge cases and error scenarios
+- [ ] Include performance benchmarks
+- [ ] Document known issues to verify fixed
+
+### Validation Execution
+- [ ] Execute full validation checklist
+- [ ] Document any failures with screenshots
+- [ ] Re-test after fixes
+- [ ] Get sign-off from tester
+- [ ] Archive results with sprint documentation
 
 ---
 
@@ -222,6 +241,7 @@ Based on this sprint's outcomes:
 3. Update todo items as completed
 4. Capture evidence (screenshots, test results)
 5. Flag any scope changes immediately
+6. Create manual validation checklist for implemented features
 
 ### 🔒 Critical Development Practices
 
@@ -253,10 +273,12 @@ Based on this sprint's outcomes:
 ### Closing a Sprint
 1. Complete all sections of sprint document
 2. Run through completion checklist
-3. Conduct retrospective
-4. Move document to `/workspace/docs/sprints/completed/`
-5. Update all project status documents
-6. Archive any outdated documentation
+3. Execute manual validation checklist for all features
+4. Conduct retrospective
+5. Move document to `/workspace/docs/sprints/completed/`
+6. Update all project status documents
+7. Archive any outdated documentation
+8. Save manual validation results in sprint folder
 
 ### Documentation Updates Required
 - `/workspace/DEVELOPMENT_PROGRESS_TRACKER.md` - Add sprint summary
