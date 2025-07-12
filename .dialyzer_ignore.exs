@@ -1,5 +1,5 @@
 # Dialyzer ignore patterns
-# Only include patterns for actual warnings from dependencies
+# Only include patterns for actual warnings from dependencies and known false positives
 
 [
   # PlayerStatsEngine pattern match issue - Dialyzer incorrectly infers boolean

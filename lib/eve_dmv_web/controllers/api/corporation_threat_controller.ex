@@ -1,4 +1,11 @@
 defmodule EveDmvWeb.Api.CorporationThreatController do
+  @moduledoc """
+  API controller for corporation threat assessment.
+
+  Provides comprehensive threat analysis and intelligence
+  reports for EVE Online corporations.
+  """
+
   use EveDmvWeb, :controller
 
   alias EveDmv.Contexts.CorporationIntelligence

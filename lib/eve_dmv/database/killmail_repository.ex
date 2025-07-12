@@ -13,9 +13,8 @@ defmodule EveDmv.Database.KillmailRepository do
 
   alias EveDmv.Api
   alias EveDmv.Cache
-  alias EveDmv.Database.Repository.CacheHelper
-  alias EveDmv.Database.Repository.QueryBuilder
-  alias EveDmv.Database.Repository.TelemetryHelper
+  alias EveDmv.Database.Repository, as: Repo
+  alias Repo.{CacheHelper, QueryBuilder, TelemetryHelper}
   alias EveDmv.Killmails.KillmailEnriched
 
   require Ash.Query

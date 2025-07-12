@@ -1,7 +1,7 @@
 # EVE DMV Development Progress Tracker
 
-**Last Updated**: July 10, 2025  
-**Current Sprint**: Sprint 8 - Deep Analytics & Wormhole Intelligence (In Progress)  
+**Last Updated**: July 12, 2025  
+**Current Sprint**: Sprint 9 COMPLETED - Surveillance Profiles & Wanderer Integration  
 **Philosophy**: "Fewer features with sophisticated algorithms - quality over quantity."
 
 ---
@@ -14,6 +14,8 @@
 - **Corporation Intelligence** (`/corporation/:corporation_id`) - Member activity, timezone analysis, participation metrics, activity heatmaps
 - **System Intelligence** (`/system/:system_id`) - Activity statistics, danger assessment, alliance/corp presence analysis
 - **Universal Search** (`/search`) - Auto-completion for characters, corporations, and systems
+- **Surveillance Profiles** (`/surveillance-profiles`) - Complete surveillance system with real-time matching, autocomplete, and chain-aware filtering
+- **Wanderer Integration** - SSE-based real-time chain data with HTTP client for topology and inhabitants
 - **Static Data Updates** - Automatic wormhole class and effect updates from Fuzzwork
 - **Performance Caching** - ETS-based cache for character and corporation analysis (15-min TTL)
 - **Static Data Loading** - 49,894 items including all EVE ships and weapon lookups

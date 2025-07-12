@@ -62,8 +62,8 @@ defmodule EveDmv.Eve.EsiCharacterClient do
            cache_key: "character:#{character_id}",
            fallback_context: character_id
          ) do
-      {:ok, data} ->
-        character = EsiParsers.parse_character_response(character_id, data)
+      {:ok, response} ->
+        character = EsiParsers.parse_character_response(character_id, Map.get(response, :body))
         EsiCache.put_character(character_id, character)
         {:ok, character}
 
@@ -158,7 +158,7 @@ defmodule EveDmv.Eve.EsiCharacterClient do
 
     case EsiRequestClient.public_request("GET", path) do
       {:ok, response} ->
-        parsed_history = parse_employment_history(response.body)
+        parsed_history = parse_employment_history(Map.get(response, :body))
         {:ok, parsed_history}
 
       {:error, reason} ->
@@ -177,8 +177,8 @@ defmodule EveDmv.Eve.EsiCharacterClient do
     path = "/#{@character_api_version}/characters/#{character_id}/skills/"
 
     case EsiRequestClient.get_authenticated_request(path, auth_token) do
-      {:ok, data} ->
-        skills = EsiParsers.parse_skills_response(data)
+      {:ok, response} ->
+        skills = EsiParsers.parse_skills_response(Map.get(response, :body))
         {:ok, skills}
 
       error ->

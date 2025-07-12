@@ -45,30 +45,59 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
     start_time = System.monotonic_time(:millisecond)
 
-    with {:ok, ship_instances} <- extract_ship_instances(battle),
-         {:ok, performance_data} <- calculate_performance_metrics(ship_instances, metrics),
-         {:ok, role_analysis} <- analyze_tactical_roles(performance_data, battle),
-         {:ok, comparative_analysis} <- perform_comparative_analysis(role_analysis),
-         {:ok, final_analysis} <-
-           maybe_generate_recommendations(comparative_analysis, include_recommendations) do
-      # Filter by focus ship if specified
-      filtered_analysis =
-        case focus_ship do
-          nil -> final_analysis
-          ship_type_id -> filter_by_ship_type(final_analysis, ship_type_id)
+    with {:ok, ship_instances} <- extract_ship_instances(battle) do
+      if Enum.empty?(ship_instances) do
+        # Return empty analysis structure when no ships found
+        empty_analysis = %{
+          top_performers: [],
+          fleet_stats: %{
+            avg_dps_efficiency: 0,
+            avg_survivability: 0,
+            coordination_score: 0,
+            tactical_diversity: 0
+          },
+          ship_performances: [],
+          comparative_metrics: %{
+            top_performers: [],
+            role_comparisons: %{},
+            efficiency_rankings: [],
+            survivability_rankings: [],
+            overall_battle_analysis: %{}
+          },
+          battle_summary: %{
+            total_ships_analyzed: 0,
+            average_performance: 0,
+            recommendations: []
+          }
+        }
+
+        {:ok, empty_analysis}
+      else
+        with {:ok, performance_data} <- calculate_performance_metrics(ship_instances, metrics),
+             {:ok, role_analysis} <- analyze_tactical_roles(performance_data, battle),
+             {:ok, comparative_analysis} <- perform_comparative_analysis(role_analysis),
+             {:ok, final_analysis} <-
+               maybe_generate_recommendations(comparative_analysis, include_recommendations) do
+          # Filter by focus ship if specified
+          filtered_analysis =
+            case focus_ship do
+              nil -> final_analysis
+              ship_type_id -> filter_by_ship_type(final_analysis, ship_type_id)
+            end
+
+          end_time = System.monotonic_time(:millisecond)
+          duration_ms = end_time - start_time
+
+          Logger.info("""
+          Ship performance analysis completed in #{duration_ms}ms:
+          - Ships analyzed: #{length(filtered_analysis.ship_performances)}
+          - Metrics calculated: #{metrics}
+          - Battle duration: #{battle.metadata.duration_minutes} minutes
+          """)
+
+          {:ok, filtered_analysis}
         end
-
-      end_time = System.monotonic_time(:millisecond)
-      duration_ms = end_time - start_time
-
-      Logger.info("""
-      Ship performance analysis completed in #{duration_ms}ms:
-      - Ships analyzed: #{length(filtered_analysis.ship_performances)}
-      - Metrics calculated: #{metrics}
-      - Battle duration: #{battle.metadata.duration_minutes} minutes
-      """)
-
-      {:ok, filtered_analysis}
+      end
     end
   end
 
@@ -132,25 +161,46 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   # Private analysis implementation
 
   defp extract_ship_instances(battle) do
-    # Create ship instance records from killmail data
-    ship_instances =
+    # Create ship instance records from BOTH victims AND attackers
+    victim_instances =
       battle.killmails
-      |> Enum.map(&create_ship_instance/1)
+      |> Enum.map(&create_victim_ship_instance/1)
       |> Enum.filter(&(&1 != nil))
 
-    # Add battle context to each instance
-    enhanced_instances =
-      Enum.map(ship_instances, fn instance ->
-        Map.merge(instance, %{
-          battle_context: extract_battle_context(battle, instance),
-          tactical_phases: Map.get(battle.metadata, :battle_phases, [])
-        })
+    attacker_instances =
+      battle.killmails
+      |> Enum.flat_map(&create_attacker_ship_instances/1)
+      |> Enum.filter(&(&1 != nil))
+      # Remove duplicates (same character_id + ship_type_id combo)
+      |> Enum.uniq_by(&{&1.character_id, &1.ship_type_id})
+      # Remove attackers who are already in victims (they died later)
+      |> Enum.reject(fn attacker ->
+        Enum.any?(victim_instances, fn victim ->
+          victim.character_id == attacker.character_id &&
+            victim.ship_type_id == attacker.ship_type_id
+        end)
       end)
 
-    {:ok, enhanced_instances}
+    ship_instances = victim_instances ++ attacker_instances
+
+    if Enum.empty?(ship_instances) do
+      Logger.warning("No valid ship instances found in battle #{battle.battle_id}")
+      {:ok, []}
+    else
+      # Add battle context to each instance
+      enhanced_instances =
+        Enum.map(ship_instances, fn instance ->
+          Map.merge(instance, %{
+            battle_context: extract_battle_context(battle, instance),
+            tactical_phases: Map.get(battle.metadata, :battle_phases, [])
+          })
+        end)
+
+      {:ok, enhanced_instances}
+    end
   end
 
-  defp create_ship_instance(killmail) do
+  defp create_victim_ship_instance(killmail) do
     # Extract comprehensive ship instance data
     %{
       killmail_id: killmail.killmail_id,
@@ -171,6 +221,43 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
       estimated_fitting: estimate_ship_fitting(killmail),
       theoretical_stats: get_theoretical_ship_stats(killmail.victim_ship_type_id)
     }
+  end
+
+  defp create_attacker_ship_instances(killmail) do
+    # Extract ship instances for all attackers who participated
+    case killmail.raw_data do
+      %{"attackers" => attackers} when is_list(attackers) ->
+        attackers
+        |> Enum.filter(fn attacker ->
+          # Only include attackers with character_id and ship_type_id
+          attacker["character_id"] && attacker["ship_type_id"]
+        end)
+        |> Enum.map(fn attacker ->
+          %{
+            killmail_id: killmail.killmail_id,
+            ship_type_id: attacker["ship_type_id"],
+            character_id: attacker["character_id"],
+            corporation_id: attacker["corporation_id"],
+            alliance_id: attacker["alliance_id"],
+            solar_system_id: killmail.solar_system_id,
+            # Attackers survived this engagement
+            death_time: nil,
+
+            # Combat context - their performance in this kill
+            damage_dealt: attacker["damage_done"] || 0,
+            got_final_blow: attacker["final_blow"] || false,
+            weapon_type_id: attacker["weapon_type_id"],
+
+            # Ship characteristics (estimated from type)
+            ship_class: determine_ship_class(attacker["ship_type_id"]),
+            estimated_fitting: estimate_ship_fitting_from_attacker(attacker),
+            theoretical_stats: get_theoretical_ship_stats(attacker["ship_type_id"])
+          }
+        end)
+
+      _ ->
+        []
+    end
   end
 
   defp extract_battle_context(battle, ship_instance) do
@@ -395,13 +482,26 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
     performance_data =
       ship_instances
       |> Enum.map(fn instance ->
+        # Calculate basic metrics first
+        survivability_score = calculate_survivability_score(instance)
+        enhanced_instance = Map.put(instance, :survivability_score, survivability_score)
+
+        dps_efficiency = calculate_dps_efficiency(enhanced_instance)
+        tactical_contribution = calculate_tactical_contribution(enhanced_instance)
+
+        # Add calculated metrics to instance for composite calculations
+        fully_enhanced_instance =
+          enhanced_instance
+          |> Map.put(:dps_efficiency, dps_efficiency)
+          |> Map.put(:tactical_contribution, tactical_contribution)
+
         %{
-          ship_instance: instance,
-          survivability_score: calculate_survivability_score(instance),
-          dps_efficiency: calculate_dps_efficiency(instance),
-          tactical_contribution: calculate_tactical_contribution(instance),
-          role_effectiveness: calculate_role_effectiveness(instance),
-          threat_assessment: calculate_threat_assessment(instance)
+          ship_instance: fully_enhanced_instance,
+          survivability_score: survivability_score,
+          dps_efficiency: dps_efficiency,
+          tactical_contribution: tactical_contribution,
+          role_effectiveness: calculate_role_effectiveness(fully_enhanced_instance),
+          threat_assessment: calculate_threat_assessment(fully_enhanced_instance)
         }
       end)
 
@@ -429,33 +529,50 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   end
 
   defp calculate_survivability_score(instance) do
-    # Calculate how long the ship survived vs expectations
-    battle_start_time = estimate_battle_start_time(instance)
-    actual_survival_time = NaiveDateTime.diff(instance.death_time, battle_start_time, :second)
-    expected_survival_time = instance.theoretical_stats.expected_survival_time
+    # Handle attackers who survived (no death_time)
+    if instance.death_time == nil do
+      # Attackers survived the entire battle
+      battle_duration_seconds = round(instance.battle_context.battle_duration * 60)
+      expected_survival_time = instance.theoretical_stats.expected_survival_time
 
-    base_score =
-      if expected_survival_time > 0 do
-        actual_survival_time / expected_survival_time
-      else
-        1.0
-      end
+      %{
+        # Survived = above average performance
+        raw_score: 1.5,
+        context_adjusted_score: 1.5,
+        normalized_score: 1.0,
+        actual_survival_seconds: battle_duration_seconds,
+        expected_survival_seconds: expected_survival_time,
+        threat_multiplier: 1.0
+      }
+    else
+      # Calculate how long the ship survived vs expectations
+      battle_start_time = estimate_battle_start_time(instance)
+      actual_survival_time = NaiveDateTime.diff(instance.death_time, battle_start_time, :second)
+      expected_survival_time = instance.theoretical_stats.expected_survival_time
 
-    # Adjust for battle context
-    threat_multiplier = calculate_threat_multiplier(instance)
-    context_adjusted_score = base_score / threat_multiplier
+      base_score =
+        if expected_survival_time > 0 do
+          actual_survival_time / expected_survival_time
+        else
+          1.0
+        end
 
-    # Normalize to 0-1 scale
-    normalized_score = min(1.0, max(0.0, context_adjusted_score))
+      # Adjust for battle context
+      threat_multiplier = calculate_threat_multiplier(instance)
+      context_adjusted_score = base_score / threat_multiplier
 
-    %{
-      raw_score: base_score,
-      context_adjusted_score: context_adjusted_score,
-      normalized_score: normalized_score,
-      actual_survival_seconds: actual_survival_time,
-      expected_survival_seconds: expected_survival_time,
-      threat_multiplier: threat_multiplier
-    }
+      # Normalize to 0-1 scale
+      normalized_score = min(1.0, max(0.0, context_adjusted_score))
+
+      %{
+        raw_score: base_score,
+        context_adjusted_score: context_adjusted_score,
+        normalized_score: normalized_score,
+        actual_survival_seconds: actual_survival_time,
+        expected_survival_seconds: expected_survival_time,
+        threat_multiplier: threat_multiplier
+      }
+    end
   end
 
   defp calculate_dps_efficiency(instance) do
@@ -572,9 +689,18 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   defp estimate_battle_start_time(instance) do
     # Estimate when the battle started relative to this ship's death
     # This is a heuristic - in reality we'd use battle detection data
-    # Convert to seconds
-    estimated_battle_duration = instance.battle_context.battle_duration * 60
-    NaiveDateTime.add(instance.death_time, -estimated_battle_duration, :second)
+    # Convert to seconds (ensure integer)
+    estimated_battle_duration = round(instance.battle_context.battle_duration * 60)
+
+    if instance.death_time do
+      NaiveDateTime.add(instance.death_time, -estimated_battle_duration, :second)
+    else
+      # For attackers without death_time, use battle end time minus duration
+      # This is a fallback - ideally we'd have actual battle start time
+      DateTime.utc_now()
+      |> DateTime.to_naive()
+      |> NaiveDateTime.add(-estimated_battle_duration, :second)
+    end
   end
 
   defp calculate_threat_multiplier(instance) do
@@ -825,7 +951,19 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
       overall_battle_analysis: analyze_overall_battle_performance(ship_performances)
     }
 
+    # Calculate fleet statistics for template compatibility
+    fleet_stats = %{
+      avg_dps_efficiency: calculate_avg_dps_efficiency(ship_performances),
+      avg_survivability: calculate_avg_survivability(ship_performances),
+      coordination_score: calculate_coordination_score(ship_performances),
+      tactical_diversity: calculate_tactical_diversity(ship_performances)
+    }
+
     final_analysis = %{
+      # Template-expected fields
+      top_performers: comparative_metrics.top_performers,
+      fleet_stats: fleet_stats,
+      # Additional analysis data
       ship_performances: ship_performances,
       comparative_metrics: comparative_metrics,
       battle_summary: create_battle_performance_summary(ship_performances)
@@ -838,16 +976,45 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
     performances
     |> Enum.sort_by(
       fn perf ->
-        # Composite score based on multiple factors
+        # Composite score prioritizing effectiveness and tactical contribution
+        # Reduce survivability weight since it only applies to ships that died
         survivability = perf.survivability_score.normalized_score
         effectiveness = perf.role_effectiveness.effectiveness_score
         tactical_value = perf.tactical_contribution.tactical_value
 
-        survivability * 0.3 + effectiveness * 0.4 + tactical_value * 0.3
+        # Higher weight on effectiveness and tactical value
+        # Lower weight on survivability to avoid bias toward losses
+        survivability * 0.15 + effectiveness * 0.5 + tactical_value * 0.35
       end,
       :desc
     )
-    |> Enum.take(3)
+    |> Enum.take(5)
+    |> Enum.map(fn perf ->
+      score =
+        perf.survivability_score.normalized_score * 0.15 +
+          perf.role_effectiveness.effectiveness_score * 0.5 +
+          perf.tactical_contribution.tactical_value * 0.35
+
+      # Add a note if this was a ship loss vs survival
+      status =
+        if perf.ship_instance.death_time do
+          "Lost ship"
+        else
+          "Survived"
+        end
+
+      %{
+        character_id: perf.ship_instance.character_id,
+        character_name: NameResolver.character_name(perf.ship_instance.character_id),
+        ship_type_id: perf.ship_instance.ship_type_id,
+        ship_name: NameResolver.ship_name(perf.ship_instance.ship_type_id),
+        performance_score: round(score * 100),
+        role: perf.ship_instance.estimated_fitting.estimated_role,
+        survivability_score: round(perf.survivability_score.normalized_score * 100),
+        effectiveness_score: round(perf.role_effectiveness.effectiveness_score * 100),
+        battle_status: status
+      }
+    end)
   end
 
   defp compare_by_role(performances) do
@@ -1531,15 +1698,39 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
     }
   end
 
-  defp calculate_application_efficiency(_expected, _actual) do
-    # Would calculate hit quality from combat logs
+  defp calculate_application_efficiency(expected, actual) do
+    # Calculate actual application efficiency from real data
+    hit_percentage =
+      if expected.expected_dps > 0 do
+        min(
+          100.0,
+          actual.damage_dealt.total / (expected.expected_dps * actual.time_on_field) * 100.0
+        )
+      else
+        0.0
+      end
+
+    # Estimate optimal range based on damage distribution
+    optimal_range_percentage =
+      if actual.damage_dealt.total > 0 do
+        # Assume better application indicates better range management
+        min(100.0, hit_percentage * 0.9)
+      else
+        0.0
+      end
+
+    # Tracking efficiency is typically related to hit percentage
+    tracking_efficiency =
+      if hit_percentage > 0 do
+        min(100.0, hit_percentage * 0.95)
+      else
+        0.0
+      end
+
     %{
-      # Placeholder
-      hit_percentage: 85.0,
-      # Placeholder
-      optimal_range_percentage: 70.0,
-      # Placeholder
-      tracking_efficiency: 80.0
+      hit_percentage: Float.round(hit_percentage, 1),
+      optimal_range_percentage: Float.round(optimal_range_percentage, 1),
+      tracking_efficiency: Float.round(tracking_efficiency, 1)
     }
   end
 
@@ -1742,5 +1933,104 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp average(values) do
     Enum.sum(values) / length(values)
+  end
+
+  # Fleet statistics calculation functions for template compatibility
+
+  defp calculate_avg_dps_efficiency([]), do: 0
+
+  defp calculate_avg_dps_efficiency(ship_performances) do
+    efficiencies = Enum.map(ship_performances, & &1.dps_efficiency.efficiency_ratio)
+    # Convert to percentage
+    round(average(efficiencies) * 100)
+  end
+
+  defp calculate_avg_survivability([]), do: 0
+
+  defp calculate_avg_survivability(ship_performances) do
+    survivabilities = Enum.map(ship_performances, & &1.survivability_score.normalized_score)
+    # Convert to percentage
+    round(average(survivabilities) * 100)
+  end
+
+  defp calculate_coordination_score([]), do: 0
+
+  defp calculate_coordination_score(ship_performances) do
+    # Coordination score based on role effectiveness and tactical contribution
+    scores =
+      Enum.map(ship_performances, fn perf ->
+        role_score = perf.role_effectiveness.effectiveness_score
+        tactical_score = perf.tactical_contribution.tactical_value
+        (role_score + tactical_score) / 2
+      end)
+
+    # Convert to 0-10 scale
+    round(average(scores) * 10)
+  end
+
+  defp calculate_tactical_diversity([]), do: 0
+
+  defp calculate_tactical_diversity(ship_performances) do
+    # Diversity score based on unique roles and ship types
+    unique_roles =
+      ship_performances
+      |> Enum.map(& &1.ship_instance.estimated_fitting.estimated_role)
+      |> Enum.uniq()
+      |> length()
+
+    unique_ship_types =
+      ship_performances
+      |> Enum.map(& &1.ship_instance.ship_type_id)
+      |> Enum.uniq()
+      |> length()
+
+    total_ships = length(ship_performances)
+
+    if total_ships > 0 do
+      role_diversity = unique_roles / total_ships
+      ship_diversity = unique_ship_types / total_ships
+      # Convert to 0-10 scale
+      round((role_diversity + ship_diversity) / 2 * 10)
+    else
+      0
+    end
+  end
+
+  defp estimate_ship_fitting_from_attacker(attacker) do
+    # Estimate fitting based on weapon type and ship type
+    weapon_type_id = attacker["weapon_type_id"]
+    ship_type_id = attacker["ship_type_id"]
+
+    %{
+      estimated_role: estimate_role_from_ship_and_weapon(ship_type_id, weapon_type_id),
+      high_slots: estimate_high_slots(weapon_type_id),
+      mid_slots: [],
+      low_slots: [],
+      rig_slots: [],
+      estimated_value: 0
+    }
+  end
+
+  defp estimate_role_from_ship_and_weapon(_ship_type_id, weapon_type_id) do
+    # Simple role estimation based on weapon type
+    cond do
+      weapon_type_id == nil -> "Unknown"
+      # Missile launchers
+      weapon_type_id in 2410..2488 -> "DPS"
+      # Turrets
+      weapon_type_id in 2929..2969 -> "DPS"
+      # Tackle modules
+      weapon_type_id in 3520..3540 -> "Tackle"
+      # Remote reps
+      weapon_type_id in 3244..3246 -> "Logistics"
+      true -> "Support"
+    end
+  end
+
+  defp estimate_high_slots(weapon_type_id) when is_nil(weapon_type_id), do: []
+
+  defp estimate_high_slots(weapon_type_id) do
+    # Estimate high slot modules based on weapon
+    [%{type_id: weapon_type_id, quantity: 1}]
   end
 end

@@ -17,7 +17,7 @@ defmodule EveDmv.Enrichment.RealTimePriceUpdater do
 
   require Logger
 
-  @pubsub EveDmvWeb.PubSub
+  @pubsub EveDmv.PubSub
   @price_update_topic "price_updates"
   # 5% change threshold
   @significant_change_threshold 0.05

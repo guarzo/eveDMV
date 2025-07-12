@@ -25,8 +25,24 @@ defmodule EveDmv.Eve.EsiCorporationClient do
         path = "/#{@corporation_api_version}/corporations/#{corporation_id}/"
 
         case EsiRequestClient.get_request(path) do
-          {:ok, data} ->
-            corporation = EsiParsers.parse_corporation_response(corporation_id, data)
+          {:ok, response} ->
+            # Handle double-wrapped response from EsiRequestClient
+            actual_response =
+              case response do
+                # Unwrap if double-wrapped
+                {:ok, resp} -> resp
+                # Use as-is if not double-wrapped
+                resp -> resp
+              end
+
+            # Now extract the body
+            body =
+              case actual_response do
+                %{body: body} -> body
+                other -> other
+              end
+
+            corporation = EsiParsers.parse_corporation_response(corporation_id, body)
             EsiCache.put_corporation(corporation_id, corporation)
             {:ok, corporation}
 
@@ -47,7 +63,7 @@ defmodule EveDmv.Eve.EsiCorporationClient do
 
     case EsiRequestClient.authenticated_request("GET", path, auth_token) do
       {:ok, response} ->
-        {:ok, response.body}
+        {:ok, Map.get(response, :body)}
 
       {:error, reason} ->
         {:error, reason}

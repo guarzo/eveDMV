@@ -146,6 +146,7 @@ defmodule EveDmv.Cache.AnalysisCache do
   def corp_location_key(corporation_id), do: "corp_#{corporation_id}_locations"
   def corp_victims_key(corporation_id), do: "corp_#{corporation_id}_victims"
   def corp_activity_key(corporation_id), do: "corp_#{corporation_id}_activity"
+  def corp_intelligence_key(corporation_id), do: "corp_#{corporation_id}_intelligence"
 
   # Character cache keys
   def char_analysis_key(character_id), do: "char_#{character_id}_analysis"

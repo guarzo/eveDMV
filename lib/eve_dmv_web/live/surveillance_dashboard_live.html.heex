@@ -1,0 +1,334 @@
+<div class="surveillance-dashboard">
+  <!-- Header -->
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-3xl font-bold text-gray-900">Surveillance Performance Dashboard</h1>
+    
+    <div class="flex items-center space-x-3">
+      <!-- Time Range Selector -->
+      <select
+        phx-change="change_time_range"
+        name="time_range"
+        class="px-3 py-2 border border-gray-300 rounded-md text-sm"
+      >
+        <option value="last_hour" selected={@time_range == :last_hour}>Last Hour</option>
+        <option value="last_24h" selected={@time_range == :last_24h}>Last 24 Hours</option>
+        <option value="last_7d" selected={@time_range == :last_7d}>Last 7 Days</option>
+        <option value="last_30d" selected={@time_range == :last_30d}>Last 30 Days</option>
+      </select>
+      
+      <button
+        phx-click="refresh_metrics"
+        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+      >
+        🔄 Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- System Overview Metrics -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <!-- Total Profiles -->
+    <div class="bg-white p-6 rounded-lg shadow-sm border">
+      <div class="flex items-center">
+        <div class="p-3 rounded-lg bg-blue-100">
+          <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+        </div>
+        <div class="ml-4">
+          <p class="text-sm font-medium text-gray-600">Total Profiles</p>
+          <p class="text-2xl font-bold text-gray-900">
+            <%= Map.get(@system_metrics, :total_profiles, 0) %>
+          </p>
+          <p class="text-xs text-gray-500">
+            <%= Map.get(@system_metrics, :active_profiles, 0) %> active
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Total Alerts -->
+    <div class="bg-white p-6 rounded-lg shadow-sm border">
+      <div class="flex items-center">
+        <div class="p-3 rounded-lg bg-red-100">
+          <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.996-.833-2.732 0l-6.928 12c-.77.833.192 2.5 1.732 2.5z"></path>
+          </svg>
+        </div>
+        <div class="ml-4">
+          <p class="text-sm font-medium text-gray-600">Total Alerts</p>
+          <p class="text-2xl font-bold text-gray-900">
+            <%= Map.get(@system_metrics, :total_alerts, 0) %>
+          </p>
+          <p class="text-xs text-gray-500">
+            <%= Map.get(@system_metrics, :alerts_per_hour, 0) %> per hour
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Average Response Time -->
+    <div class="bg-white p-6 rounded-lg shadow-sm border">
+      <div class="flex items-center">
+        <div class="p-3 rounded-lg bg-green-100">
+          <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+        <div class="ml-4">
+          <p class="text-sm font-medium text-gray-600">Avg Response</p>
+          <p class="text-2xl font-bold text-gray-900">
+            <%= Map.get(@system_metrics, :average_response_time, 0) %>ms
+          </p>
+          <p class="text-xs text-gray-500">
+            Target: &lt;200ms
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- System Health -->
+    <div class="bg-white p-6 rounded-lg shadow-sm border">
+      <div class="flex items-center">
+        <div class="p-3 rounded-lg bg-purple-100">
+          <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+          </svg>
+        </div>
+        <div class="ml-4">
+          <p class="text-sm font-medium text-gray-600">System Health</p>
+          <p class="text-2xl font-bold text-gray-900">
+            <%= format_percentage(Map.get(@system_metrics, :cache_hit_rate, 0.0)) %>
+          </p>
+          <p class="text-xs text-gray-500">
+            <%= format_memory_usage(Map.get(@system_metrics, :memory_usage, 0)) %>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Performance Recommendations -->
+  <%= if length(@performance_recommendations) > 0 do %>
+    <div class="bg-white rounded-lg shadow-sm border p-6 mb-8">
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">Performance Recommendations</h2>
+      <div class="space-y-3">
+        <%= for recommendation <- @performance_recommendations do %>
+          <% {priority_text, priority_classes} = format_recommendation_priority(recommendation.priority) %>
+          <div class="flex items-start p-4 border border-gray-200 rounded-lg">
+            <span class={"inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mr-3 border " <> priority_classes}>
+              <%= priority_text %>
+            </span>
+            <div class="flex-1">
+              <h4 class="font-medium text-gray-900"><%= recommendation.title %></h4>
+              <p class="text-sm text-gray-600 mt-1"><%= recommendation.description %></p>
+              <p class="text-sm text-blue-600 mt-2"><strong>Action:</strong> <%= recommendation.action %></p>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Alert Trends Chart -->
+  <%= if length(@alert_trends) > 0 do %>
+    <div class="bg-white rounded-lg shadow-sm border p-6 mb-8">
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">Alert Trends</h2>
+      <div class="h-64 flex items-end space-x-2">
+        <%= for trend <- @alert_trends do %>
+          <div class="flex-1 flex flex-col items-center">
+            <div 
+              class="w-full bg-blue-500 rounded-t"
+              style={"height: #{min(trend.alert_count * 20, 200)}px;"}
+              title={"#{trend.alert_count} alerts at #{trend.hour_label}"}
+            ></div>
+            <div class="text-xs text-gray-500 mt-2 transform -rotate-45">
+              <%= trend.hour_label %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Profile Performance Table -->
+  <div class="bg-white rounded-lg shadow-sm border mb-8">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">Profile Performance Metrics</h2>
+    </div>
+    
+    <%= if length(@profile_metrics) > 0 do %>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Profile</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Alerts</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Match Rate</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Confidence</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">False Positive</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Performance</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Alert</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <%= for profile <- @profile_metrics do %>
+              <tr class="hover:bg-gray-50 cursor-pointer" phx-click="select_profile" phx-value-profile_id={profile.profile_id}>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div>
+                    <div class="text-sm font-medium text-gray-900"><%= profile.profile_name %></div>
+                    <div class="text-sm text-gray-500">
+                      <%= profile.criteria_efficiency.total_conditions %> conditions
+                    </div>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <%= profile.alerts_generated %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <%= format_percentage(profile.match_rate) %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <%= Float.round(profile.avg_confidence * 100, 1) %>%
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <%= format_percentage(profile.false_positive_rate) %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <% {score_text, score_class} = format_performance_score(profile.performance_score) %>
+                  <span class={"font-medium " <> score_class}>
+                    <%= score_text %>
+                  </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <%= if profile.last_alert do %>
+                    <%= EveDmvWeb.SurveillanceProfilesLive.Helpers.format_timestamp(profile.last_alert) %>
+                  <% else %>
+                    Never
+                  <% end %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                  <button
+                    phx-click="optimize_profile"
+                    phx-value-profile_id={profile.profile_id}
+                    class="text-blue-600 hover:text-blue-900"
+                  >
+                    Optimize
+                  </button>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="text-center py-12">
+        <p class="text-gray-500">No profile metrics available</p>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Top Performing Profiles -->
+  <%= if length(@top_performing_profiles) > 0 do %>
+    <div class="bg-white rounded-lg shadow-sm border p-6">
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">Top Performing Profiles</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <%= for profile <- @top_performing_profiles do %>
+          <div class="border border-gray-200 rounded-lg p-4">
+            <div class="flex justify-between items-start mb-2">
+              <h4 class="font-medium text-gray-900 truncate"><%= profile.profile_name %></h4>
+              <% {score_text, score_class} = format_performance_score(profile.performance_score) %>
+              <span class={"text-sm font-bold " <> score_class}>
+                <%= score_text %>
+              </span>
+            </div>
+            
+            <div class="space-y-1 text-sm text-gray-600">
+              <div>Alerts: <span class="font-medium"><%= profile.alerts_generated %></span></div>
+              <div>Confidence: <span class="font-medium"><%= Float.round(profile.avg_confidence * 100, 1) %>%</span></div>
+              <div>Match Rate: <span class="font-medium"><%= format_percentage(profile.match_rate) %></span></div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Profile Details Modal (if selected) -->
+  <%= if @selected_profile && Map.has_key?(assigns, :profile_details) do %>
+    <div class="fixed inset-0 z-50 overflow-y-auto" phx-click="select_profile" phx-value-profile_id="">
+      <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+        
+        <div class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full sm:p-6" onclick="event.stopPropagation()">
+          <div class="flex justify-between items-start mb-4">
+            <h3 class="text-lg font-medium text-gray-900">Profile Details: <%= @selected_profile %></h3>
+            <button phx-click="select_profile" phx-value-profile_id="" class="text-gray-400 hover:text-gray-600">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+          
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Hourly Breakdown -->
+            <div>
+              <h4 class="font-medium text-gray-900 mb-3">24-Hour Alert Distribution</h4>
+              <div class="h-32 flex items-end space-x-1">
+                <%= for hour_data <- @profile_details.hourly_breakdown do %>
+                  <div class="flex-1 flex flex-col items-center">
+                    <div 
+                      class="w-full bg-blue-400 rounded-t"
+                      style={"height: #{min(hour_data.alerts * 15, 100)}px;"}
+                      title={"Hour #{hour_data.hour}: #{hour_data.alerts} alerts"}
+                    ></div>
+                    <%= if rem(hour_data.hour, 4) == 0 do %>
+                      <div class="text-xs text-gray-500 mt-1"><%= hour_data.hour %></div>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+            
+            <!-- Criteria Performance -->
+            <div>
+              <h4 class="font-medium text-gray-900 mb-3">Criteria Performance</h4>
+              <div class="space-y-2">
+                <%= for criteria <- @profile_details.criteria_performance do %>
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-600"><%= criteria.type %></span>
+                    <div class="flex items-center space-x-2">
+                      <span class="text-sm font-medium"><%= criteria.matches %> matches</span>
+                      <div class="w-16 h-2 bg-gray-200 rounded">
+                        <div 
+                          class="h-2 bg-green-500 rounded"
+                          style={"width: #{criteria.performance}%;"}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Optimization Suggestions -->
+          <%= if length(@profile_details.optimization_suggestions) > 0 do %>
+            <div class="mt-6">
+              <h4 class="font-medium text-gray-900 mb-3">Optimization Suggestions</h4>
+              <ul class="space-y-2">
+                <%= for suggestion <- @profile_details.optimization_suggestions do %>
+                  <li class="text-sm text-gray-600 flex items-start">
+                    <span class="text-blue-500 mr-2">•</span>
+                    <%= suggestion %>
+                  </li>
+                <% end %>
+              </ul>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

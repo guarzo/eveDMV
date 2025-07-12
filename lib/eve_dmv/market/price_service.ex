@@ -150,6 +150,31 @@ defmodule EveDmv.Market.PriceService do
   """
   @spec calculate_killmail_value(map()) :: map()
   def calculate_killmail_value(killmail) do
+    # First try to use existing zKillboard value (much faster)
+    case extract_zkb_value(killmail) do
+      {:ok, zkb_value} ->
+        %{
+          total_value: zkb_value,
+          # Estimate ship is ~70% of total
+          ship_value: zkb_value * 0.7,
+          # Total fitting value
+          fitted_value: zkb_value * 0.3,
+          # Estimate destroyed items ~20%
+          destroyed_value: zkb_value * 0.2,
+          # Estimate dropped items ~10%
+          dropped_value: zkb_value * 0.1,
+          price_source: :zkillboard
+        }
+
+      {:error, _reason} ->
+        # Fallback to expensive price calculation
+        Logger.debug("No zKillboard value found, calculating prices manually")
+        calculate_killmail_value_from_market(killmail)
+    end
+  end
+
+  # Fallback method using market price lookups (slow)
+  defp calculate_killmail_value_from_market(killmail) do
     # Get all unique type IDs from victim and items
     type_ids = extract_type_ids(killmail)
 
@@ -173,6 +198,21 @@ defmodule EveDmv.Market.PriceService do
 
   # Private functions
 
+  defp extract_zkb_value(killmail) do
+    case killmail do
+      # Handle Ash resource format
+      %{raw_data: %{"zkb" => %{"totalValue" => value}}} when is_number(value) ->
+        {:ok, value}
+
+      # Handle raw map format  
+      %{"zkb" => %{"totalValue" => value}} when is_number(value) ->
+        {:ok, value}
+
+      _ ->
+        {:error, :no_zkb_value}
+    end
+  end
+
   defp strategies_for_item(type_id, item_attributes) do
     @pricing_strategies
     |> Enum.sort_by(& &1.priority())
@@ -180,14 +220,28 @@ defmodule EveDmv.Market.PriceService do
   end
 
   defp calculate_ship_value(killmail, prices) do
-    case get_in(killmail, ["victim", "ship_type_id"]) do
+    ship_type_id =
+      case killmail do
+        %{raw_data: %{"victim" => victim}} -> victim["ship_type_id"]
+        %{"victim" => victim} -> victim["ship_type_id"]
+        _ -> nil
+      end
+
+    case ship_type_id do
       nil -> 0.0
       ship_type_id -> get_item_price_from_data(prices, ship_type_id)
     end
   end
 
   defp calculate_items_value(killmail, prices) do
-    case get_in(killmail, ["victim", "items"]) do
+    items =
+      case killmail do
+        %{raw_data: %{"victim" => %{"items" => items}}} -> items
+        %{"victim" => %{"items" => items}} -> items
+        _ -> nil
+      end
+
+    case items do
       nil ->
         {0.0, 0.0}
 
@@ -229,14 +283,23 @@ defmodule EveDmv.Market.PriceService do
   end
 
   defp extract_type_ids(killmail) do
-    victim_type = get_in(killmail, ["victim", "ship_type_id"])
+    # Handle both Ash structs and raw maps
+    victim_type =
+      case killmail do
+        %{raw_data: %{"victim" => victim}} -> victim["ship_type_id"]
+        %{"victim" => victim} -> victim["ship_type_id"]
+        _ -> nil
+      end
 
     item_types =
-      case get_in(killmail, ["victim", "items"]) do
-        nil ->
-          []
+      case killmail do
+        %{raw_data: %{"victim" => %{"items" => items}}} when is_list(items) ->
+          items
+          |> Enum.map(& &1["item_type_id"])
+          |> Enum.reject(&is_nil/1)
+          |> Enum.uniq()
 
-        items when is_list(items) ->
+        %{"victim" => %{"items" => items}} when is_list(items) ->
           items
           |> Enum.map(& &1["item_type_id"])
           |> Enum.reject(&is_nil/1)
@@ -247,11 +310,14 @@ defmodule EveDmv.Market.PriceService do
       end
 
     attacker_types =
-      case killmail["attackers"] do
-        nil ->
-          []
+      case killmail do
+        %{raw_data: %{"attackers" => attackers}} when is_list(attackers) ->
+          attackers
+          |> Enum.map(& &1["ship_type_id"])
+          |> Enum.reject(&is_nil/1)
+          |> Enum.uniq()
 
-        attackers when is_list(attackers) ->
+        %{"attackers" => attackers} when is_list(attackers) ->
           attackers
           |> Enum.map(& &1["ship_type_id"])
           |> Enum.reject(&is_nil/1)

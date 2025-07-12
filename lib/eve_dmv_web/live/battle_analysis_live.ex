@@ -9,9 +9,13 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   use EveDmvWeb, :live_view
 
   alias EveDmv.Contexts.BattleAnalysis
+  alias EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser
+  alias EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer
   alias EveDmv.Contexts.BattleSharing
   alias EveDmv.Eve.NameResolver
   alias EveDmv.Performance.BatchNameResolver
+
+  require Logger
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
@@ -111,7 +115,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   end
 
   def handle_event("select_battle", %{"battle_id" => battle_id}, socket) do
-    {:noreply, load_battle(socket, battle_id)}
+    {:noreply, push_patch(socket, to: ~p"/battle/#{battle_id}")}
   end
 
   def handle_event("select_phase", %{"phase_index" => phase_index}, socket) do
@@ -141,7 +145,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
         socket
       ) do
     # Get all available sides including "unassigned"
-    all_sides = ["unassigned" | socket.assigns.custom_sides] |> Enum.reverse()
+    all_sides = Enum.reverse(["unassigned" | socket.assigns.custom_sides])
     current_index = Enum.find_index(all_sides, &(&1 == current_side)) || 0
     next_index = rem(current_index + 1, length(all_sides))
     next_side = Enum.at(all_sides, next_index)
@@ -160,7 +164,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   def handle_event("add_custom_side", _, socket) do
     new_side_num = length(socket.assigns.custom_sides) + 1
     new_side = "side_#{new_side_num}"
-    custom_sides = [new_side | socket.assigns.custom_sides] |> Enum.reverse()
+    custom_sides = Enum.reverse([new_side | socket.assigns.custom_sides])
     {:noreply, assign(socket, :custom_sides, custom_sides)}
   end
 
@@ -253,7 +257,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
               content = :zlib.uncompress(compressed)
 
               # Parse the log with ENHANCED parser
-              case EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser.parse_combat_log(
+              case EnhancedCombatLogParser.parse_combat_log(
                      content,
                      pilot_name: combat_log.pilot_name
                    ) do
@@ -360,39 +364,38 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     ship_key = {character_id, ship_type_id}
 
     existing_fitting =
-      cond do
+      if :ets.lookup(:battle_fitting_cache, ship_key) != [] do
         # First check ETS cache
-        :ets.lookup(:battle_fitting_cache, ship_key) != [] ->
-          [{^ship_key, fitting}] = :ets.lookup(:battle_fitting_cache, ship_key)
-          fitting
-
+        [{^ship_key, fitting}] = :ets.lookup(:battle_fitting_cache, ship_key)
+        fitting
+      else
         # Then check database and cache the result
-        true ->
-          case Ash.read(EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting,
-                 filter: [character_id: character_id, ship_type_id: ship_type_id],
-                 sort: [updated_at: :desc],
-                 limit: 1
-               ) do
-            {:ok, [fitting | _]} ->
-              # Cache the fitting in ETS for future use
-              :ets.insert(:battle_fitting_cache, {ship_key, fitting.parsed_fitting})
-              fitting.parsed_fitting
+        case Ash.read(EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting,
+               filter: [character_id: character_id, ship_type_id: ship_type_id],
+               sort: [updated_at: :desc],
+               limit: 1
+             ) do
+          {:ok, [fitting | _]} ->
+            # Cache the fitting in ETS for future use
+            :ets.insert(:battle_fitting_cache, {ship_key, fitting.parsed_fitting})
+            fitting.parsed_fitting
 
-            _ ->
-              nil
-          end
+          _ ->
+            nil
+        end
       end
 
     # Always include fitting data in ship_data
-    ship_data = Map.put(ship_data, :fitting_data, existing_fitting)
-
     # Fetch combat log analysis for this pilot if available
     combat_log_analysis =
       get_combat_log_analysis_for_pilot(pilot_data && pilot_data[:character_name])
 
-    ship_data = Map.put(ship_data, :combat_log_analysis, combat_log_analysis)
+    ship_data =
+      ship_data
+      |> Map.put(:fitting_data, existing_fitting)
+      |> Map.put(:combat_log_analysis, combat_log_analysis)
 
-    case EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer.analyze_ship_performance(
+    case ShipPerformanceAnalyzer.analyze_ship_performance(
            ship_data,
            socket.assigns.current_battle
          ) do
@@ -471,7 +474,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     if socket.assigns.current_battle do
       # In production, get character_id from session
       # Mock character ID
-      creator_id = 12345
+      creator_id = 12_345
 
       options = [
         title: params["title"],
@@ -480,8 +483,8 @@ defmodule EveDmvWeb.BattleAnalysisLive do
         visibility: String.to_existing_atom(params["visibility"])
       ]
 
-      case BattleSharing.create_battle_report(
-             socket.assigns.current_battle.battle_id,
+      case BattleSharing.create_battle_report_from_data(
+             socket.assigns.current_battle,
              creator_id,
              options
            ) do
@@ -498,9 +501,20 @@ defmodule EveDmvWeb.BattleAnalysisLive do
            })
            |> load_battle_reports()}
 
+        {:error, :battle_not_found} ->
+          {:noreply,
+           socket
+           |> put_flash(
+             :error,
+             "Battle not found. This may be due to battle ID changes. Try refreshing the page."
+           )
+           |> assign(:show_share_modal, false)}
+
         {:error, reason} ->
           {:noreply,
-           put_flash(socket, :error, "Failed to create battle report: #{inspect(reason)}")}
+           socket
+           |> put_flash(:error, "Failed to create battle report: #{inspect(reason)}")
+           |> assign(:show_share_modal, false)}
       end
     else
       {:noreply, socket}
@@ -510,7 +524,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   def handle_event("rate_battle_report", %{"report_id" => report_id, "rating" => rating}, socket) do
     # In production, get character_id from session
     # Mock character ID
-    rater_id = 12345
+    rater_id = 12_345
     rating_value = String.to_integer(rating)
 
     case BattleSharing.rate_battle_report(report_id, rater_id, rating_value) do
@@ -536,28 +550,28 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       socket
       |> assign(:importing, false)
       |> assign(:import_url, "")
+      |> then(fn socket ->
+        case result do
+          {:ok, %{battle_id: _} = battle} ->
+            socket
+            |> assign(:current_battle, battle)
+            |> push_patch(to: ~p"/battle/#{battle.battle_id}")
+            |> load_recent_battles()
 
-    socket =
-      case result do
-        {:ok, %{battle_id: _} = battle} ->
-          socket
-          |> assign(:current_battle, battle)
-          |> push_patch(to: ~p"/battle/#{battle.battle_id}")
-          |> load_recent_battles()
+          {:ok, %{battles: battles}} ->
+            # Multiple battles imported
+            first_battle = List.first(battles)
 
-        {:ok, %{battles: battles}} ->
-          # Multiple battles imported
-          first_battle = List.first(battles)
+            socket
+            |> assign(:current_battle, first_battle)
+            |> push_patch(to: ~p"/battle/#{first_battle.battle_id}")
+            |> load_recent_battles()
 
-          socket
-          |> assign(:current_battle, first_battle)
-          |> push_patch(to: ~p"/battle/#{first_battle.battle_id}")
-          |> load_recent_battles()
-
-        {:error, reason} ->
-          error_msg = format_error(reason)
-          assign(socket, :error_message, error_msg)
-      end
+          {:error, reason} ->
+            error_msg = format_error(reason)
+            assign(socket, :error_message, error_msg)
+        end
+      end)
 
     {:noreply, socket}
   end
@@ -567,7 +581,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       # Update ship data with new fitting
       ship_data = Map.put(socket.assigns.selected_ship, :fitting_data, fitting.parsed_fitting)
 
-      case EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer.analyze_ship_performance(
+      case ShipPerformanceAnalyzer.analyze_ship_performance(
              ship_data,
              socket.assigns.current_battle
            ) do
@@ -609,37 +623,88 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   end
 
   defp load_battle(socket, battle_id) do
-    case BattleAnalysis.get_battle_with_timeline(battle_id) do
-      {:ok, battle} ->
-        # Preload all names to prevent N+1 queries
-        BatchNameResolver.preload_battle_names(battle)
+    # First check if this battle is already in our recent battles list
+    existing_battle =
+      Enum.find(socket.assigns.recent_battles, fn b ->
+        b.battle_id == battle_id
+      end)
 
-        # Track this battle as recently viewed
-        track_recently_viewed_battle(battle)
+    if existing_battle do
+      # Use the battle from our list directly but ensure it has timeline
+      Logger.info("Using cached battle data for #{battle_id}")
 
-        # Load intelligence analysis
-        intelligence =
-          case BattleAnalysis.analyze_battle_with_intelligence(battle) do
-            {:ok, intel} -> intel
-            _ -> nil
-          end
+      # Reconstruct timeline if missing
+      battle_with_timeline =
+        if Map.has_key?(existing_battle, :timeline) do
+          existing_battle
+        else
+          timeline = BattleAnalysis.reconstruct_battle_timeline(existing_battle)
+          Map.put(existing_battle, :timeline, timeline)
+        end
 
-        socket
-        |> assign(:current_battle, battle)
-        |> assign(:battle_intelligence, intelligence)
-        |> assign(:selected_phase, nil)
-        |> assign(:error_message, nil)
-        |> assign(:recently_viewed_battles, load_recently_viewed_battles())
-        |> update_battle_sides()
-        |> load_combat_logs()
-        |> load_battle_metrics()
-        |> load_battle_reports()
+      # Preload all names to prevent N+1 queries
+      BatchNameResolver.preload_battle_names(battle_with_timeline)
 
-      {:error, :battle_not_found} ->
-        assign(socket, :error_message, "Battle not found")
+      # Track this battle as recently viewed
+      track_recently_viewed_battle(battle_with_timeline)
 
-      _ ->
-        assign(socket, :error_message, "Failed to load battle")
+      # Load intelligence analysis
+      intelligence =
+        case BattleAnalysis.analyze_battle_with_intelligence(battle_with_timeline) do
+          {:ok, intel} -> intel
+          _ -> nil
+        end
+
+      socket
+      |> assign(:current_battle, battle_with_timeline)
+      |> assign(:battle_intelligence, intelligence)
+      |> assign(:selected_phase, nil)
+      |> assign(:error_message, nil)
+      |> assign(:recently_viewed_battles, load_recently_viewed_battles())
+      |> update_battle_sides()
+      |> load_combat_logs()
+      |> load_battle_metrics()
+      |> load_battle_reports()
+    else
+      # Try to load from backend
+      case BattleAnalysis.get_battle_with_timeline(battle_id) do
+        {:ok, battle} ->
+          # Preload all names to prevent N+1 queries
+          BatchNameResolver.preload_battle_names(battle)
+
+          # Track this battle as recently viewed
+          track_recently_viewed_battle(battle)
+
+          # Load intelligence analysis
+          intelligence =
+            case BattleAnalysis.analyze_battle_with_intelligence(battle) do
+              {:ok, intel} -> intel
+              _ -> nil
+            end
+
+          socket
+          |> assign(:current_battle, battle)
+          |> assign(:battle_intelligence, intelligence)
+          |> assign(:selected_phase, nil)
+          |> assign(:error_message, nil)
+          |> assign(:recently_viewed_battles, load_recently_viewed_battles())
+          |> update_battle_sides()
+          |> load_combat_logs()
+          |> load_battle_metrics()
+          |> load_battle_reports()
+
+        {:error, :battle_not_found} ->
+          Logger.warning("Battle #{battle_id} not found in backend, showing error")
+
+          assign(
+            socket,
+            :error_message,
+            "Battle not found. It may have been re-detected with a different ID."
+          )
+
+        _ ->
+          assign(socket, :error_message, "Failed to load battle")
+      end
     end
   end
 
@@ -801,9 +866,9 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       type_id in 547..554 -> "Carrier"
       type_id in 671..671 -> "Dreadnought"
       type_id in 3514..3518 -> "Titan"
-      type_id in 11567..12034 -> "Tech 3 Cruiser"
-      type_id in 29984..29990 -> "Tech 3 Destroyer"
-      type_id in 35779..35781 -> "Triglavian"
+      type_id in 11_567..12_034 -> "Tech 3 Cruiser"
+      type_id in 29_984..29_990 -> "Tech 3 Destroyer"
+      type_id in 35_779..35_781 -> "Triglavian"
       true -> "Ship"
     end
   end
@@ -999,12 +1064,18 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       end
 
     # Add this battle to the front, remove duplicates, limit to 10
+    # Get system_id from metadata or first killmail
+    system_id =
+      battle.metadata[:primary_system] ||
+        (List.first(battle.killmails) && List.first(battle.killmails).solar_system_id) ||
+        0
+
     battle_entry = %{
       battle_id: battle.battle_id,
-      system_name: resolve_system_name(battle.system_id),
-      participant_count: length(battle.killmails),
+      system_name: resolve_system_name(system_id),
+      participant_count: battle.metadata[:unique_participants] || length(battle.killmails),
       isk_destroyed: battle.killmails |> Enum.map(&get_killmail_isk_value/1) |> Enum.sum(),
-      start_time: battle.metadata.start_time,
+      start_time: battle.metadata[:start_time] || battle.start_time,
       viewed_at: DateTime.utc_now()
     }
 
@@ -1233,6 +1304,28 @@ defmodule EveDmvWeb.BattleAnalysisLive do
         summary: %{total_damage_received: total_damage_received},
         recommendations: recommendations
       }
+    end
+  end
+
+  # Helper function to format phase descriptions
+  def format_phase_description(phase_type) do
+    case phase_type do
+      # Small battle phase types
+      :gank -> "Single target elimination"
+      :skirmish -> "Small scale engagement (2-3 kills)"
+      :small_engagement -> "Limited engagement (4-5 kills)"
+      # Standard fleet battle phases
+      :opening_engagement -> "Initial fleet contact and positioning"
+      :escalation -> "Reinforcements arrive, battle intensity increases"
+      :peak_combat -> "Maximum engagement with heavy losses"
+      :deescalation -> "One side withdraws or gains decisive advantage"
+      :cleanup -> "Remaining forces eliminate stragglers"
+      :repositioning -> "Fleets maneuver for tactical advantage"
+      :standoff -> "Limited engagement, probing for weaknesses"
+      :setup -> "Initial positioning and EWAR deployment"
+      :engagement -> "Main combat phase"
+      :resolution -> "Battle conclusion"
+      _ -> "Tactical activity phase"
     end
   end
 end

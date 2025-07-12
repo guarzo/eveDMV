@@ -1,4 +1,11 @@
 defmodule EveDmvWeb.Api.MultiSystemBattleController do
+  @moduledoc """
+  API controller for multi-system battle analysis.
+
+  Provides endpoints for analyzing correlated battles across
+  multiple star systems and combat flow patterns.
+  """
+
   use EveDmvWeb, :controller
 
   alias EveDmv.Contexts.BattleAnalysis

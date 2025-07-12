@@ -1,4 +1,11 @@
 defmodule EveDmvWeb.Api.CharacterBehaviorController do
+  @moduledoc """
+  API controller for character behavioral pattern analysis.
+
+  Provides endpoints for analyzing and retrieving behavioral
+  patterns and characteristics of EVE Online characters.
+  """
+
   use EveDmvWeb, :controller
 
   alias EveDmv.Contexts.CharacterIntelligence

@@ -11,7 +11,7 @@ defmodule EveDmv.Market.Strategies.BasePriceStrategy do
   require Logger
 
   @impl EveDmv.Market.PricingStrategy
-  def priority, do: 4
+  def priority, do: 0
 
   @impl EveDmv.Market.PricingStrategy
   def name, do: "Base Price"

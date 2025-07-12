@@ -10,7 +10,13 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
 
   alias EveDmv.Repo
   alias EveDmv.Cache.AnalysisCache
+  alias EveDmv.Contexts.CharacterIntelligence
+  alias EveDmv.Utils.TimezoneAnalyzer
   import EveDmvWeb.EveImageComponents
+  # Components removed - not currently used
+  # import EveDmvWeb.Components.ThreatLevelComponent
+  # import EveDmvWeb.Components.ActivityOverviewComponent
+  # import EveDmvWeb.Components.IskStatsComponent
 
   require Logger
 
@@ -24,7 +30,9 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
       |> assign(:character_id, character_id)
       |> assign(:loading, true)
       |> assign(:analysis, nil)
+      |> assign(:intelligence, nil)
       |> assign(:error, nil)
+      |> assign(:active_tab, :overview)
 
     # Load analysis asynchronously
     send(self(), :load_analysis)
@@ -36,18 +44,37 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
   def handle_info(:load_analysis, socket) do
     character_id = socket.assigns.character_id
 
-    # Use cache for character analysis
-    case AnalysisCache.get_or_compute(
-           AnalysisCache.char_analysis_key(character_id),
-           fn -> analyze_character(character_id) end,
-           # Shorter TTL for character analysis
-           :timer.minutes(10)
-         ) do
-      {:ok, analysis} ->
+    # Load both basic analysis and intelligence data
+    basic_analysis_task =
+      Task.async(fn ->
+        AnalysisCache.get_or_compute(
+          AnalysisCache.char_analysis_key(character_id),
+          fn -> analyze_character(character_id) end,
+          :timer.minutes(10)
+        )
+      end)
+
+    intelligence_task =
+      Task.async(fn ->
+        CharacterIntelligence.get_character_intelligence_report(character_id)
+      end)
+
+    # Wait for both to complete
+    case {Task.await(basic_analysis_task), Task.await(intelligence_task)} do
+      {{:ok, analysis}, {:ok, intelligence}} ->
         {:noreply,
          socket
          |> assign(:loading, false)
-         |> assign(:analysis, analysis)}
+         |> assign(:analysis, analysis)
+         |> assign(:intelligence, intelligence)}
+
+      {{:ok, analysis}, {:error, _}} ->
+        # If intelligence fails, still show basic analysis
+        {:noreply,
+         socket
+         |> assign(:loading, false)
+         |> assign(:analysis, analysis)
+         |> assign(:intelligence, nil)}
 
       {:error, reason} ->
         {:noreply,
@@ -58,11 +85,37 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
   end
 
   @impl true
+  def handle_event("change_tab", %{"tab" => tab}, socket) do
+    {:noreply, assign(socket, :active_tab, String.to_atom(tab))}
+  end
+
+  @impl true
+  def handle_event("force_refresh", _params, socket) do
+    character_id = socket.assigns.character_id
+    # Clear cache for this character
+    AnalysisCache.invalidate_character(character_id)
+
+    # Reload analysis
+    send(self(), :load_analysis)
+
+    {:noreply, assign(socket, :loading, true)}
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
     <div class="container mx-auto px-4 py-8">
-      <div class="mb-6">
+      <div class="mb-6 flex justify-between items-center">
         <h1 class="text-3xl font-bold text-white">Character Combat Analysis</h1>
+        <button
+          phx-click="force_refresh"
+          class="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors"
+          title="Force Refresh"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+          </svg>
+        </button>
       </div>
       
       <%= if @loading do %>
@@ -93,12 +146,64 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
               />
               <div>
                 <h2 class="text-2xl font-bold text-white"><%= @analysis.character_name || "Unknown Pilot" %></h2>
-                <p class="text-gray-400">Character ID: <%= @character_id %></p>
+                <div class="text-gray-400 mt-1">
+                  <%= if @intelligence && @intelligence.character && @intelligence.character.corporation_name do %>
+                    <.link navigate={~p"/corporation/#{@intelligence.character.corporation_id}"} class="text-lg hover:text-blue-400 transition-colors">
+                      <%= @intelligence.character.corporation_name %>
+                    </.link>
+                    <%= if @intelligence.character.alliance_name do %>
+                      <.link navigate={~p"/alliance/#{@intelligence.character.alliance_id}"} class="text-sm text-gray-500 hover:text-blue-400 transition-colors">
+                        [<%= @intelligence.character.alliance_name %>]
+                      </.link>
+                    <% end %>
+                  <% else %>
+                    <%= if Map.get(@analysis, :corporation_name) do %>
+                      <%= if Map.get(@analysis, :corporation_id) do %>
+                        <.link navigate={~p"/corporation/#{@analysis.corporation_id}"} class="text-lg hover:text-blue-400 transition-colors">
+                          <%= @analysis.corporation_name %>
+                        </.link>
+                      <% else %>
+                        <p class="text-lg"><%= @analysis.corporation_name %></p>
+                      <% end %>
+                      <%= if Map.get(@analysis, :alliance_name) do %>
+                        <%= if Map.get(@analysis, :alliance_id) do %>
+                          <.link navigate={~p"/alliance/#{@analysis.alliance_id}"} class="text-sm text-gray-500 hover:text-blue-400 transition-colors">
+                            [<%= @analysis.alliance_name %>]
+                          </.link>
+                        <% else %>
+                          <p class="text-sm text-gray-500">[<%= @analysis.alliance_name %>]</p>
+                        <% end %>
+                      <% end %>
+                    <% end %>
+                  <% end %>
+                </div>
               </div>
             </div>
             
-            <!-- Quick Intelligence Summary - Right Side -->
-            <div class="flex flex-col space-y-3">
+            <!-- Threat Score (if intelligence data available) -->
+            <%= if @intelligence && @intelligence.threat_analysis do %>
+              <div class={"ml-auto px-6 py-3 rounded-lg border " <> threat_level_bg(@intelligence.threat_analysis.threat_score)}>
+                <div class="text-center">
+                  <p class="text-sm text-gray-400 mb-1">Threat Score</p>
+                  <p class={"text-3xl font-bold " <> threat_level_color(@intelligence.threat_analysis.threat_score)}>
+                    <%= @intelligence.threat_analysis.threat_score %>/100
+                  </p>
+                  <p class="text-sm mt-1 capitalize"><%= @intelligence.summary.threat_level %> Threat</p>
+                </div>
+              </div>
+            <% end %>
+            
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          
+          <!-- Intelligence Summary -->
+          <div class="bg-gray-800 rounded-lg p-6">
+            <h3 class="text-white font-semibold mb-4 flex items-center">
+              🧠 Intelligence Summary
+            </h3>
+            <div class="space-y-3">
               <%= if @analysis.intelligence_summary.peak_activity_hour do %>
                 <div class="flex items-center space-x-2">
                   <span class="text-yellow-400">🕐</span>
@@ -136,9 +241,6 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
               <% end %>
             </div>
           </div>
-        </div>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           
           <!-- Basic Stats -->
           <div class="bg-gray-800 rounded-lg p-6">
@@ -333,6 +435,199 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
           </div>
         <% end %>
         
+        <!-- Intelligence Analysis Section -->
+        <%= if @intelligence do %>
+          <div class="mt-8">
+            <h2 class="text-2xl font-bold text-white mb-6">Threat Intelligence Analysis</h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <!-- Left Column: Threat Dimensions & Behavioral Patterns -->
+              <div class="lg:col-span-2 space-y-6">
+                <!-- Threat Dimensions -->
+                <%= if @intelligence.threat_analysis && @intelligence.threat_analysis.dimensions do %>
+                  <div class="bg-gray-800 rounded-lg p-6">
+                    <h3 class="text-xl font-medium mb-4">Threat Dimensions</h3>
+                    <div class="space-y-3">
+                      <%= for {dimension, score} <- @intelligence.threat_analysis.dimensions do %>
+                        <div>
+                          <div class="flex justify-between mb-1">
+                            <span class="text-sm font-medium"><%= format_dimension_name(dimension) %></span>
+                            <span class="text-sm font-mono"><%= score %>/100</span>
+                          </div>
+                          <div class="w-full bg-gray-700 rounded-full h-2">
+                            <div 
+                              class={"h-2 rounded-full transition-all duration-500 " <> 
+                                cond do
+                                  score >= 80 -> "bg-red-500"
+                                  score >= 60 -> "bg-orange-500"
+                                  score >= 40 -> "bg-yellow-500"
+                                  score >= 20 -> "bg-blue-500"
+                                  true -> "bg-gray-500"
+                                end
+                              }
+                              style={"width: #{score}%"}
+                            ></div>
+                          </div>
+                        </div>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+                
+                <!-- Behavioral Patterns -->
+                <%= if @intelligence.behavioral_patterns do %>
+                  <div class="bg-gray-800 rounded-lg p-6">
+                    <h3 class="text-xl font-medium mb-4">Behavioral Analysis</h3>
+                    
+                    <%= if @intelligence.behavioral_patterns.patterns && map_size(@intelligence.behavioral_patterns.patterns) > 0 do %>
+                      <div class="grid grid-cols-2 gap-4 mb-4">
+                        <%= for {pattern, confidence} <- @intelligence.behavioral_patterns.patterns do %>
+                          <div class={"p-4 rounded-lg border " <> 
+                            if pattern == @intelligence.behavioral_patterns.primary_pattern do
+                              "bg-blue-900/20 border-blue-700"
+                            else
+                              "bg-gray-900 border-gray-700"
+                            end
+                          }>
+                            <div class="flex items-center gap-2 mb-2">
+                              <span class="text-2xl"><%= behavior_pattern_icon(pattern) %></span>
+                              <h4 class="font-medium capitalize">
+                                <%= pattern |> to_string() |> String.replace("_", " ") %>
+                              </h4>
+                            </div>
+                            <div class="text-sm text-gray-400">
+                              Confidence: <%= round(confidence * 100) %>%
+                            </div>
+                          </div>
+                        <% end %>
+                      </div>
+                    <% end %>
+                    
+                    <%= if @intelligence.behavioral_patterns.characteristics && length(@intelligence.behavioral_patterns.characteristics) > 0 do %>
+                      <div class="mt-4 p-4 bg-gray-900 rounded-lg">
+                        <h4 class="font-medium mb-2">Behavioral Characteristics</h4>
+                        <ul class="text-sm text-gray-300 space-y-1">
+                          <%= for characteristic <- @intelligence.behavioral_patterns.characteristics do %>
+                            <li class="flex items-start gap-2">
+                              <span class="text-blue-400 mt-0.5">•</span>
+                              <span><%= characteristic %></span>
+                            </li>
+                          <% end %>
+                        </ul>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
+                
+                <!-- Threat Trends -->
+                <%= if @intelligence.threat_trends do %>
+                  <div class="bg-gray-800 rounded-lg p-6">
+                    <h3 class="text-xl font-medium mb-4">Threat Evolution</h3>
+                    
+                    <div class="space-y-4">
+                      <%= if @intelligence.threat_trends[:trend_data] && length(@intelligence.threat_trends.trend_data) > 0 do %>
+                        <%= for period <- @intelligence.threat_trends.trend_data do %>
+                          <div class="flex items-center justify-between p-3 bg-gray-900 rounded">
+                            <div>
+                              <p class="font-medium"><%= period.period %></p>
+                              <p class="text-sm text-gray-400"><%= period.days %> days</p>
+                            </div>
+                            <div class="flex items-center gap-3">
+                              <span class={"text-2xl font-bold " <> threat_level_color(period.threat_score)}>
+                                <%= period.threat_score %>
+                              </span>
+                              <span class="text-sm text-gray-400">
+                                (<%= period.data_points %> kills)
+                              </span>
+                            </div>
+                          </div>
+                        <% end %>
+                      <% else %>
+                        <div class="p-4 bg-gray-900 rounded text-center text-gray-400">
+                          <p>Insufficient data for trend analysis</p>
+                          <p class="text-sm mt-1">At least 5 killmails required</p>
+                        </div>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+              
+              <!-- Right Column: Key Strengths & Recommendations -->
+              <div class="space-y-6">
+                <!-- Combat Statistics from Intelligence -->
+                <%= if @intelligence.combat_stats do %>
+                  <div class="bg-gray-800 rounded-lg p-6">
+                    <h3 class="text-xl font-medium mb-4">Detailed Combat Stats</h3>
+                    <div class="space-y-3">
+                      <div class="flex justify-between">
+                        <span class="text-gray-400">K/D Ratio:</span>
+                        <span class="text-blue-400 font-semibold"><%= @intelligence.combat_stats.kill_death_ratio %></span>
+                      </div>
+                      <div class="flex justify-between">
+                        <span class="text-gray-400">ISK Efficiency:</span>
+                        <span class="text-yellow-400 font-semibold"><%= @intelligence.combat_stats.isk_efficiency %>%</span>
+                      </div>
+                      <div class="border-t border-gray-700 pt-3 mt-3">
+                        <div class="text-sm space-y-2">
+                          <div class="flex justify-between">
+                            <span class="text-gray-500">Last 7 days:</span>
+                            <span class="text-green-400"><%= @intelligence.combat_stats.recent_activity.last_7_days %> kills</span>
+                          </div>
+                          <div class="flex justify-between">
+                            <span class="text-gray-500">Last 30 days:</span>
+                            <span class="text-green-400"><%= @intelligence.combat_stats.recent_activity.last_30_days %> kills</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+                
+                <!-- Key Strengths -->
+                <%= if @intelligence.summary && @intelligence.summary.key_strengths do %>
+                  <div class="bg-gray-800 rounded-lg p-6">
+                    <h3 class="text-xl font-medium mb-4">Key Strengths</h3>
+                    <div class="space-y-3">
+                      <%= for strength <- @intelligence.summary.key_strengths do %>
+                        <div class="flex items-center justify-between p-3 bg-gray-900 rounded">
+                          <span class="font-medium"><%= strength.dimension %></span>
+                          <span class={"font-mono font-bold " <> 
+                            if strength.score >= 80 do
+                              "text-red-400"
+                            else
+                              "text-orange-400"
+                            end
+                          }>
+                            <%= strength.score %>
+                          </span>
+                        </div>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+                
+                <!-- Tactical Recommendations -->
+                <%= if @intelligence.summary && @intelligence.summary.recommendations do %>
+                  <div class="bg-gray-800 rounded-lg p-6">
+                    <h3 class="text-xl font-medium mb-4">Tactical Recommendations</h3>
+                    <ul class="space-y-2">
+                      <%= for recommendation <- @intelligence.summary.recommendations do %>
+                        <li class="flex items-start gap-2">
+                          <svg class="w-4 h-4 text-yellow-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                          </svg>
+                          <span class="text-sm text-gray-300"><%= recommendation %></span>
+                        </li>
+                      <% end %>
+                    </ul>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+        
       <% end %>
     </div>
     """
@@ -422,9 +717,21 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
       intelligence_summary =
         calculate_character_intelligence_summary(character_id, ninety_days_ago)
 
+      # Get corporation and alliance info from killmail data
+      {corp_name, alliance_name, corp_id, alliance_id} =
+        get_corporation_alliance_from_killmails(character_id)
+
+      Logger.info(
+        "Corp/Alliance info for character #{character_id}: #{inspect({corp_name, alliance_name, corp_id, alliance_id})}"
+      )
+
       analysis = %{
         character_id: character_id,
         character_name: character_name,
+        corporation_name: corp_name,
+        corporation_id: corp_id,
+        alliance_name: alliance_name,
+        alliance_id: alliance_id,
         total_kills: kill_count,
         total_deaths: death_count,
         kd_ratio: kd_ratio,
@@ -1042,7 +1349,7 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
         |> Map.new()
 
       # Analyze timezone based on activity patterns
-      analyze_character_timezone(hourly_distribution)
+      TimezoneAnalyzer.analyze_primary_timezone_from_hourly_distribution(hourly_distribution)
     rescue
       error ->
         Logger.error(
@@ -1050,34 +1357,6 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
         )
 
         nil
-    end
-  end
-
-  # Analyze timezone based on hourly activity distribution
-  defp analyze_character_timezone(hourly_distribution) do
-    # Define timezone blocks (approximate EVE time zones)
-    timezone_blocks = %{
-      "EU" => 18..22,
-      "US" => 0..4,
-      "AUTZ" => 10..14
-    }
-
-    # Calculate activity for each timezone
-    timezone_scores =
-      Enum.map(timezone_blocks, fn {tz_name, hours} ->
-        total_activity =
-          Enum.to_list(hours)
-          |> Enum.map(&Map.get(hourly_distribution, &1, 0))
-          |> Enum.sum()
-
-        {tz_name, total_activity}
-      end)
-      |> Enum.sort_by(&elem(&1, 1), :desc)
-
-    # Return the timezone with highest activity, or nil if no significant activity
-    case timezone_scores do
-      [{tz_name, activity} | _] when activity > 0 -> tz_name
-      _ -> nil
     end
   end
 
@@ -1165,6 +1444,89 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
           active_days: 0,
           most_active_day: "No activity"
         }
+    end
+  end
+
+  # Helper functions for threat level styling
+  def threat_level_color(score) when score >= 90, do: "text-red-500"
+  def threat_level_color(score) when score >= 75, do: "text-orange-500"
+  def threat_level_color(score) when score >= 50, do: "text-yellow-500"
+  def threat_level_color(score) when score >= 25, do: "text-blue-500"
+  def threat_level_color(_), do: "text-green-500"
+
+  def threat_level_bg(score) when score >= 90, do: "bg-red-900/20 border-red-800"
+  def threat_level_bg(score) when score >= 75, do: "bg-orange-900/20 border-orange-800"
+  def threat_level_bg(score) when score >= 50, do: "bg-yellow-900/20 border-yellow-800"
+  def threat_level_bg(score) when score >= 25, do: "bg-blue-900/20 border-blue-800"
+  def threat_level_bg(_), do: "bg-green-900/20 border-green-800"
+
+  # Helper functions for behavioral patterns
+  def behavior_pattern_icon(:solo_hunter), do: "🎯"
+  def behavior_pattern_icon(:fleet_anchor), do: "⚓"
+  def behavior_pattern_icon(:specialist), do: "🔧"
+  def behavior_pattern_icon(:opportunist), do: "🎲"
+  def behavior_pattern_icon(_), do: "❓"
+
+  def format_dimension_name(dimension) do
+    dimension
+    |> to_string()
+    |> String.replace("_", " ")
+    |> String.split(" ")
+    |> Enum.map(&String.capitalize/1)
+    |> Enum.join(" ")
+  end
+
+  # Get corporation and alliance names and IDs from killmail data
+  defp get_corporation_alliance_from_killmails(character_id) do
+    try do
+      # Try to find corp/alliance info from victim data first (more reliable)
+      victim_query = """
+      SELECT 
+        raw_data->'victim'->>'corporation_name' as corp_name,
+        raw_data->'victim'->>'alliance_name' as alliance_name,
+        (raw_data->'victim'->>'corporation_id')::bigint as corp_id,
+        (raw_data->'victim'->>'alliance_id')::bigint as alliance_id
+      FROM killmails_raw 
+      WHERE victim_character_id = $1 
+        AND raw_data->'victim'->>'corporation_name' IS NOT NULL
+      ORDER BY killmail_time DESC
+      LIMIT 1
+      """
+
+      case Repo.query(victim_query, [character_id]) do
+        {:ok, %{rows: [[corp_name, alliance_name, corp_id, alliance_id]]}}
+        when is_binary(corp_name) ->
+          {corp_name, alliance_name, corp_id, alliance_id}
+
+        _ ->
+          # If not found as victim, try as attacker
+          attacker_query = """
+          SELECT 
+            attacker->>'corporation_name' as corp_name,
+            attacker->>'alliance_name' as alliance_name,
+            (attacker->>'corporation_id')::bigint as corp_id,
+            (attacker->>'alliance_id')::bigint as alliance_id
+          FROM killmails_raw km,
+               jsonb_array_elements(raw_data->'attackers') as attacker
+          WHERE attacker->>'character_id' = $1
+            AND attacker->>'corporation_name' IS NOT NULL
+          ORDER BY km.killmail_time DESC
+          LIMIT 1
+          """
+
+          case Repo.query(attacker_query, [to_string(character_id)]) do
+            {:ok, %{rows: [[corp_name, alliance_name, corp_id, alliance_id]]}}
+            when is_binary(corp_name) ->
+              {corp_name, alliance_name, corp_id, alliance_id}
+
+            _ ->
+              {nil, nil, nil, nil}
+          end
+      end
+    rescue
+      error ->
+        Logger.error("Failed to get corp/alliance info for #{character_id}: #{inspect(error)}")
+        {nil, nil, nil, nil}
     end
   end
 end

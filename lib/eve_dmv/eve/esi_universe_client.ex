@@ -27,13 +27,16 @@ defmodule EveDmv.Eve.EsiUniverseClient do
         path = "/#{@alliance_api_version}/alliances/#{alliance_id}/"
 
         case EsiRequestClient.get_request(path) do
-          {:ok, data} ->
-            alliance = EsiParsers.parse_alliance_response(alliance_id, data)
+          {:ok, response} when is_map(response) ->
+            alliance = EsiParsers.parse_alliance_response(alliance_id, Map.get(response, :body))
             EsiCache.put_alliance(alliance_id, alliance)
             {:ok, alliance}
 
-          error ->
+          {:error, _} = error ->
             error
+
+          other ->
+            {:error, {:unexpected_response, other}}
         end
     end
   end
@@ -51,13 +54,16 @@ defmodule EveDmv.Eve.EsiUniverseClient do
         path = "/#{@universe_api_version}/universe/systems/#{system_id}/"
 
         case EsiRequestClient.get_request(path) do
-          {:ok, data} ->
-            system = EsiParsers.parse_system_response(system_id, data)
+          {:ok, response} when is_map(response) ->
+            system = EsiParsers.parse_system_response(system_id, Map.get(response, :body))
             EsiCache.put_system(system_id, system)
             {:ok, system}
 
-          error ->
+          {:error, _} = error ->
             error
+
+          other ->
+            {:error, {:unexpected_response, other}}
         end
     end
   end
@@ -97,13 +103,16 @@ defmodule EveDmv.Eve.EsiUniverseClient do
         path = "/#{@universe_api_version}/universe/types/#{type_id}/"
 
         case EsiRequestClient.get_request(path) do
-          {:ok, data} ->
-            type_info = EsiParsers.parse_type_response(type_id, data)
+          {:ok, response} when is_map(response) ->
+            type_info = EsiParsers.parse_type_response(type_id, Map.get(response, :body))
             EsiCache.put_type(type_id, type_info)
             {:ok, type_info}
 
-          error ->
+          {:error, _} = error ->
             error
+
+          other ->
+            {:error, {:unexpected_response, other}}
         end
     end
   end
@@ -121,13 +130,16 @@ defmodule EveDmv.Eve.EsiUniverseClient do
         path = "/#{@universe_api_version}/universe/groups/#{group_id}/"
 
         case EsiRequestClient.get_request(path) do
-          {:ok, data} ->
-            group = EsiParsers.parse_group_response(group_id, data)
+          {:ok, response} when is_map(response) ->
+            group = EsiParsers.parse_group_response(group_id, Map.get(response, :body))
             EsiCache.put_group(group_id, group)
             {:ok, group}
 
-          error ->
+          {:error, _} = error ->
             error
+
+          other ->
+            {:error, {:unexpected_response, other}}
         end
     end
   end
@@ -145,13 +157,16 @@ defmodule EveDmv.Eve.EsiUniverseClient do
         path = "/#{@universe_api_version}/universe/categories/#{category_id}/"
 
         case EsiRequestClient.get_request(path) do
-          {:ok, data} ->
-            category = EsiParsers.parse_category_response(category_id, data)
+          {:ok, response} when is_map(response) ->
+            category = EsiParsers.parse_category_response(category_id, Map.get(response, :body))
             EsiCache.put_category(category_id, category)
             {:ok, category}
 
-          error ->
+          {:error, _} = error ->
             error
+
+          other ->
+            {:error, {:unexpected_response, other}}
         end
     end
   end

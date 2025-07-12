@@ -15,8 +15,8 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
 
   # Configurable timeout and concurrency settings
   # Task timeout is handled by esi_timeout
-  @max_concurrency Application.compile_env(:eve_dmv, :name_resolver_max_concurrency, 10)
-  @esi_timeout Application.compile_env(:eve_dmv, :name_resolver_esi_timeout, 10_000)
+  # @max_concurrency Application.compile_env(:eve_dmv, :name_resolver_max_concurrency, 10)
+  # @esi_timeout Application.compile_env(:eve_dmv, :name_resolver_esi_timeout, 10_000)
 
   @doc """
   Resolves a character ID to a character name using ESI.
@@ -29,7 +29,9 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
       iex> EsiEntityResolver.character_name(999999999)
       "Unknown Character (999999999)"
   """
-  @spec character_name(integer()) :: String.t()
+  @spec character_name(integer() | nil) :: String.t()
+  def character_name(nil), do: "Unknown Character"
+
   def character_name(character_id) when is_integer(character_id) do
     case CacheManager.get_cached_or_fetch(:character, character_id, fn ->
            fetch_from_esi(:character, character_id)
@@ -85,28 +87,29 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
 
   @doc """
   Resolves multiple character IDs to names efficiently.
-  Uses ESI bulk lookup when possible.
+  Names should already be cached from killmail data.
   """
   @spec character_names(list(integer())) :: map()
   def character_names(character_ids) when is_list(character_ids) do
-    BatchProcessor.batch_resolve_with_esi(:character, character_ids, &character_name/1)
+    BatchProcessor.batch_resolve(:character, character_ids, &character_name/1)
   end
 
   @doc """
   Resolves multiple corporation IDs to names efficiently.
-  Uses ESI bulk lookup when possible.
+  Names should already be cached from killmail data.
   """
   @spec corporation_names(list(integer())) :: map()
   def corporation_names(corporation_ids) when is_list(corporation_ids) do
-    BatchProcessor.batch_resolve_with_esi(:corporation, corporation_ids, &corporation_name/1)
+    BatchProcessor.batch_resolve(:corporation, corporation_ids, &corporation_name/1)
   end
 
   @doc """
   Resolves multiple alliance IDs to names efficiently.
+  Names should already be cached from killmail data.
   """
   @spec alliance_names(list(integer())) :: map()
   def alliance_names(alliance_ids) when is_list(alliance_ids) do
-    BatchProcessor.batch_resolve_with_esi(:alliance, alliance_ids, &alliance_name/1)
+    BatchProcessor.batch_resolve(:alliance, alliance_ids, &alliance_name/1)
   end
 
   @doc """
@@ -121,22 +124,11 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
   end
 
   def bulk_esi_lookup(:corporation, corporation_ids) when length(corporation_ids) <= 50 do
+    # Skip ESI calls for corporation names - they should be in killmail data
     results =
       corporation_ids
-      |> Task.async_stream(
-        fn id ->
-          case EsiClient.get_corporation(id) do
-            {:ok, corp} -> {id, corp.name}
-            {:error, _} -> {id, "Unknown Corporation (#{id})"}
-          end
-        end,
-        max_concurrency: @max_concurrency,
-        timeout: @esi_timeout
-      )
-      |> Enum.reduce(%{}, fn
-        {:ok, {id, name}}, acc -> Map.put(acc, id, name)
-        {:exit, _reason}, acc -> acc
-      end)
+      |> Enum.map(fn id -> {id, "Corporation #{id}"} end)
+      |> Map.new()
 
     {:ok, results}
   rescue
@@ -150,22 +142,11 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
   end
 
   def bulk_esi_lookup(:alliance, alliance_ids) when length(alliance_ids) <= 50 do
+    # Skip ESI calls for alliance names - they should be in killmail data
     results =
       alliance_ids
-      |> Task.async_stream(
-        fn id ->
-          case EsiClient.get_alliance(id) do
-            {:ok, alliance} -> {id, alliance.name}
-            {:error, _} -> {id, "Unknown Alliance (#{id})"}
-          end
-        end,
-        max_concurrency: @max_concurrency,
-        timeout: @esi_timeout
-      )
-      |> Enum.reduce(%{}, fn
-        {:ok, {id, name}}, acc -> Map.put(acc, id, name)
-        {:exit, _reason}, acc -> acc
-      end)
+      |> Enum.map(fn id -> {id, "Alliance #{id}"} end)
+      |> Map.new()
 
     {:ok, results}
   rescue

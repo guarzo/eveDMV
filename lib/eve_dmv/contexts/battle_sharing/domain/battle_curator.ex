@@ -15,11 +15,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
   """
 
   require Logger
-  alias EveDmv.Api
-  alias EveDmv.Killmails.KillmailRaw
+  alias EveDmv.Contexts.BattleAnalysis
   alias EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator
   alias EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector
-  alias EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor
 
   # Battle sharing parameters
   # Maximum characters in battle description
@@ -64,6 +62,22 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
   {:ok, battle_report} with comprehensive sharing metadata
   """
   def create_battle_report(battle_id, creator_character_id, options \\ []) do
+    Logger.info(
+      "Creating battle report for battle #{battle_id} by character #{creator_character_id}"
+    )
+
+    with {:ok, battle_data} <- fetch_battle_data(battle_id) do
+      create_battle_report_from_data(battle_data, creator_character_id, options)
+    end
+  end
+
+  @doc """
+  Creates a battle report from already-loaded battle data.
+
+  This is more efficient when the battle data is already available in memory,
+  avoiding redundant database queries.
+  """
+  def create_battle_report_from_data(battle_data, creator_character_id, options \\ []) do
     title = Keyword.get(options, :title)
     description = Keyword.get(options, :description, "")
     video_urls = Keyword.get(options, :video_urls, [])
@@ -74,19 +88,18 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
     allow_ratings = Keyword.get(options, :allow_ratings, true)
 
     Logger.info(
-      "Creating battle report for battle #{battle_id} by character #{creator_character_id}"
+      "Creating battle report from data for battle #{battle_data.battle_id} by character #{creator_character_id}"
     )
 
     start_time = System.monotonic_time(:millisecond)
 
-    with {:ok, battle_data} <- fetch_battle_data(battle_id),
-         {:ok, validated_videos} <- validate_video_urls(video_urls),
+    with {:ok, validated_videos} <- validate_video_urls(video_urls),
          {:ok, processed_highlights} <-
            process_tactical_highlights(tactical_highlights, battle_data),
          {:ok, auto_analysis} <- generate_auto_analysis(battle_data),
          {:ok, battle_report} <-
            create_battle_report_record(
-             battle_id,
+             battle_data.battle_id,
              creator_character_id,
              title,
              description,
@@ -105,7 +118,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
       Logger.info("""
       Battle report created successfully in #{duration_ms}ms:
       - Report ID: #{final_report.report_id}
-      - Battle: #{battle_id}
+      - Battle: #{battle_data.battle_id}
       - Videos: #{length(validated_videos)}
       - Highlights: #{length(processed_highlights)}
       - Visibility: #{visibility}
@@ -256,20 +269,25 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
 
   defp fetch_battle_data(battle_id) do
     # Fetch comprehensive battle data including killmails, analysis, and metadata
-    case Ash.read(KillmailRaw, domain: Api, filter: %{battle_id: battle_id}) do
-      {:ok, killmails} when killmails != [] ->
+    # Note: This is a placeholder - we need to get the actual battle from BattleAnalysis context
+    case BattleAnalysis.get_battle_with_timeline(battle_id) do
+      {:ok, battle} ->
         battle_data = %{
           battle_id: battle_id,
-          killmails: killmails,
-          duration_minutes: calculate_battle_duration(killmails),
-          participant_count: count_unique_participants(killmails),
-          systems_involved: extract_systems_involved(killmails),
-          isk_destroyed: calculate_total_isk_destroyed(killmails)
+          killmails: battle.killmails,
+          duration_minutes: battle.metadata.duration_minutes,
+          participant_count: battle.metadata.unique_participants,
+          systems_involved: [battle.system_id],
+          isk_destroyed: battle.metadata.isk_destroyed
         }
 
         {:ok, battle_data}
 
-      {:ok, []} ->
+      {:error, :battle_not_found} ->
+        Logger.warning(
+          "Battle #{battle_id} not found - it may have been re-detected with a different ID"
+        )
+
         {:error, :battle_not_found}
 
       {:error, reason} ->
@@ -424,8 +442,11 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
   end
 
   defp analyze_multi_system_correlation(battle_data) do
+    # Get systems from battle data
+    systems_involved = get_systems_involved(battle_data)
+
     # Use existing multi-system analysis if multiple systems involved
-    if length(battle_data.systems_involved) > 1 do
+    if length(systems_involved) > 1 do
       MultiSystemBattleCorrelator.correlate_multi_system_battles([battle_data])
     else
       {:ok, %{multi_system: false, correlation_strength: 0.0}}
@@ -437,17 +458,19 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
     battle_struct = %{
       battle_id: battle_data.battle_id,
       killmails: battle_data.killmails,
-      metadata: %{duration_minutes: battle_data.duration_minutes}
+      metadata: %{duration_minutes: get_duration_minutes(battle_data)}
     }
 
     TacticalPhaseDetector.detect_tactical_phases(battle_struct)
   end
 
   defp classify_battle_type(battle_data) do
+    participant_count = get_participant_count(battle_data)
+
     cond do
-      battle_data.participant_count > 50 -> :fleet_battle
-      battle_data.participant_count > 20 -> :gang_warfare
-      battle_data.participant_count > 5 -> :small_gang
+      participant_count > 50 -> :fleet_battle
+      participant_count > 20 -> :gang_warfare
+      participant_count > 5 -> :small_gang
       true -> :skirmish
     end
   end
@@ -455,7 +478,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
   defp generate_tactical_summary(battle_data) do
     %{
       battle_type: classify_battle_type(battle_data),
-      duration_summary: categorize_duration(battle_data.duration_minutes),
+      duration_summary: categorize_duration(get_duration_minutes(battle_data)),
       scale_assessment: assess_battle_scale(battle_data),
       outcome_analysis: analyze_battle_outcome(battle_data)
     }
@@ -471,11 +494,13 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
   end
 
   defp assess_battle_scale(battle_data) do
+    systems_count = length(get_systems_involved(battle_data))
+
     scale_factors = [
-      {:participants, battle_data.participant_count},
-      {:isk_destroyed, battle_data.isk_destroyed},
-      {:duration, battle_data.duration_minutes},
-      {:systems, length(battle_data.systems_involved)}
+      {:participants, get_participant_count(battle_data)},
+      {:isk_destroyed, get_isk_destroyed(battle_data)},
+      {:duration, get_duration_minutes(battle_data)},
+      {:systems, systems_count}
     ]
 
     # Calculate composite scale score
@@ -485,7 +510,8 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
         normalize_scale_factor(factor, value)
       end)
       |> Enum.sum()
-      |> div(length(scale_factors))
+      |> Kernel./(length(scale_factors))
+      |> round()
 
     cond do
       scale_score > 8 -> :epic
@@ -528,8 +554,11 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
 
   defp calculate_efficiency_rating(battle_data) do
     # Simple efficiency calculation based on ISK destroyed vs time
-    if battle_data.duration_minutes > 0 do
-      isk_per_minute = battle_data.isk_destroyed / battle_data.duration_minutes
+    duration_minutes = get_duration_minutes(battle_data)
+    isk_destroyed = get_isk_destroyed(battle_data)
+
+    if duration_minutes > 0 do
+      isk_per_minute = isk_destroyed / duration_minutes
 
       cond do
         isk_per_minute > 100_000_000 -> :very_high
@@ -544,27 +573,33 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
 
   defp extract_key_statistics(battle_data) do
     %{
-      total_participants: battle_data.participant_count,
-      total_killmails: length(battle_data.killmails),
-      isk_destroyed: battle_data.isk_destroyed,
-      duration_minutes: battle_data.duration_minutes,
-      systems_involved: length(battle_data.systems_involved),
+      total_participants: get_participant_count(battle_data),
+      total_killmails: get_killmail_count(battle_data),
+      isk_destroyed: get_isk_destroyed(battle_data),
+      duration_minutes: get_duration_minutes(battle_data),
+      systems_involved: length(get_systems_involved(battle_data)),
       average_ship_value: calculate_average_ship_value(battle_data),
       killmail_frequency: calculate_killmail_frequency(battle_data)
     }
   end
 
   defp calculate_average_ship_value(battle_data) do
-    if length(battle_data.killmails) > 0 do
-      battle_data.isk_destroyed / length(battle_data.killmails)
+    killmail_count = get_killmail_count(battle_data)
+    isk_destroyed = get_isk_destroyed(battle_data)
+
+    if killmail_count > 0 do
+      isk_destroyed / killmail_count
     else
       0
     end
   end
 
   defp calculate_killmail_frequency(battle_data) do
-    if battle_data.duration_minutes > 0 do
-      length(battle_data.killmails) / battle_data.duration_minutes
+    killmail_count = get_killmail_count(battle_data)
+    duration_minutes = get_duration_minutes(battle_data)
+
+    if duration_minutes > 0 do
+      killmail_count / duration_minutes
     else
       0
     end
@@ -774,63 +809,79 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
 
   # Utility functions for battle data processing
 
-  defp calculate_battle_duration(killmails) do
-    if length(killmails) < 2 do
-      0
-    else
-      sorted_killmails = Enum.sort_by(killmails, & &1.killmail_time)
-      first_km = List.first(sorted_killmails)
-      last_km = List.last(sorted_killmails)
-
-      NaiveDateTime.diff(last_km.killmail_time, first_km.killmail_time, :second) / 60
-    end
-  end
-
-  defp count_unique_participants(killmails) do
-    participants =
-      killmails
-      |> Enum.flat_map(&extract_all_participants_from_killmail/1)
-      |> Enum.uniq()
-
-    length(participants)
-  end
-
-  defp extract_all_participants_from_killmail(killmail) do
-    ParticipantExtractor.extract_participants(killmail)
-  end
-
   defp extract_systems_involved(killmails) do
     killmails
     |> Enum.map(& &1.solar_system_id)
     |> Enum.uniq()
   end
 
-  defp calculate_total_isk_destroyed(killmails) do
-    # Simplified ISK calculation - would use actual zkillboard data in production
-    killmails
-    |> Enum.map(&estimate_killmail_value/1)
-    |> Enum.sum()
+  defp get_systems_involved(battle_data) do
+    cond do
+      Map.has_key?(battle_data, :systems_involved) ->
+        battle_data.systems_involved
+
+      Map.has_key?(battle_data, :system_id) ->
+        [battle_data.system_id]
+
+      Map.has_key?(battle_data, :killmails) ->
+        extract_systems_involved(battle_data.killmails)
+
+      true ->
+        []
+    end
   end
 
-  defp estimate_killmail_value(killmail) do
-    # Rough estimates based on ship type - would use actual fitting data
-    ship_type_id = killmail.victim_ship_type_id
-
+  defp get_participant_count(battle_data) do
     cond do
-      # Frigates
-      ship_type_id in 580..700 -> 5_000_000
-      # Destroyers
-      ship_type_id in 420..450 -> 15_000_000
-      # Cruisers
-      ship_type_id in 620..650 -> 50_000_000
-      # Battlecruisers
-      ship_type_id in 540..570 -> 150_000_000
-      # Battleships
-      ship_type_id in 640..670 -> 400_000_000
-      # Capitals
-      ship_type_id in 19720..19740 -> 3_000_000_000
-      # Default
-      true -> 25_000_000
+      Map.has_key?(battle_data, :participant_count) ->
+        battle_data.participant_count
+
+      Map.has_key?(battle_data, :metadata) &&
+          Map.has_key?(battle_data.metadata, :unique_participants) ->
+        battle_data.metadata.unique_participants
+
+      true ->
+        0
+    end
+  end
+
+  defp get_killmail_count(battle_data) do
+    cond do
+      Map.has_key?(battle_data, :killmails) ->
+        length(battle_data.killmails)
+
+      Map.has_key?(battle_data, :metadata) && Map.has_key?(battle_data.metadata, :killmail_count) ->
+        battle_data.metadata.killmail_count
+
+      true ->
+        0
+    end
+  end
+
+  defp get_isk_destroyed(battle_data) do
+    cond do
+      Map.has_key?(battle_data, :isk_destroyed) ->
+        battle_data.isk_destroyed
+
+      Map.has_key?(battle_data, :metadata) && Map.has_key?(battle_data.metadata, :isk_destroyed) ->
+        battle_data.metadata.isk_destroyed
+
+      true ->
+        0
+    end
+  end
+
+  defp get_duration_minutes(battle_data) do
+    cond do
+      Map.has_key?(battle_data, :duration_minutes) ->
+        battle_data.duration_minutes
+
+      Map.has_key?(battle_data, :metadata) &&
+          Map.has_key?(battle_data.metadata, :duration_minutes) ->
+        battle_data.metadata.duration_minutes
+
+      true ->
+        0
     end
   end
 

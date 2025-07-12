@@ -70,6 +70,16 @@ WANDERER_KILLS_SSE_URL=http://wanderer-kills:4004/api/v1/kills/stream
 WANDERER_KILLS_BASE_URL=http://wanderer-kills:4004
 PIPELINE_ENABLED=true
 
+# Wanderer Integration
+WANDERER_KILLS_SSE_URL=https://wanderer.zoolanders.space/api/v1/kills/stream
+WANDERER_KILLS_BASE_URL=https://wanderer.zoolanders.space
+WANDERER_KILLS_WS_URL=ws://wanderer.zoolanders.space/socket
+WANDERER_DEFAULT_MAP_SLUG=flygd
+WANDERER_AUTH_TOKEN=your-wanderer-auth-token
+
+# Surveillance System
+MOCK_SSE_SERVER_ENABLED=false
+
 # Optional: Market Data APIs
 JANICE_API_KEY=your-janice-api-key
 JANICE_ENABLED=true

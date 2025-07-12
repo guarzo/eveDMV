@@ -26,7 +26,9 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
       iex> StaticDataResolver.ship_name(999999)
       "Unknown Ship (999999)"
   """
-  @spec ship_name(integer()) :: String.t()
+  @spec ship_name(integer() | nil) :: String.t()
+  def ship_name(nil), do: "Unknown Ship"
+
   def ship_name(type_id) when is_integer(type_id) do
     # Use StaticDataCache for ship names
     StaticDataCache.resolve_ship_name(type_id)

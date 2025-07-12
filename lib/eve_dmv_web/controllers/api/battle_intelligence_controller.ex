@@ -1,4 +1,11 @@
 defmodule EveDmvWeb.Api.BattleIntelligenceController do
+  @moduledoc """
+  API controller for battle intelligence analysis.
+
+  Provides endpoints for retrieving comprehensive intelligence
+  summaries and analysis for specific battles.
+  """
+
   use EveDmvWeb, :controller
 
   alias EveDmv.Contexts.BattleAnalysis

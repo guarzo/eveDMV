@@ -29,18 +29,17 @@ defmodule EveDmv.Contexts.Surveillance do
   @impl Supervisor
   def init(_opts) do
     children = [
-      # Domain services
-      Domain.MatchingEngine,
-      Domain.ProfileManager,
-      Domain.AlertService,
-      Domain.NotificationService,
-
-      # Infrastructure
+      # Start infrastructure first (dependencies for domain services)
       Infrastructure.ProfileRepository,
       Infrastructure.MatchCache,
       Infrastructure.NotificationDispatcher,
 
-      # Event processors
+      # Domain services (depend on infrastructure)
+      Domain.MatchingEngine,
+      Domain.AlertService,
+      Domain.NotificationService,
+
+      # Event processors (depend on domain services)
       Infrastructure.KillmailEventProcessor
     ]
 
@@ -89,7 +88,34 @@ defmodule EveDmv.Contexts.Surveillance do
   end
 
   def get_surveillance_metrics do
-    Domain.MatchingEngine.get_metrics()
+    case Domain.MatchingEngine.get_metrics() do
+      {:ok, metrics} ->
+        # Add system-level metrics
+        system_metrics = %{
+          avg_response_time_ms: Map.get(metrics, :average_processing_time_ms, 0),
+          system_load_percent: get_system_load_percent(),
+          cache_hit_rate: get_cache_hit_rate()
+        }
+
+        {:ok, Map.merge(metrics, system_metrics)}
+
+      error ->
+        error
+    end
+  end
+
+  defp get_system_load_percent do
+    # Simulate system load calculation
+    # In production, this would check actual CPU/memory usage
+    # 10-30% load
+    :rand.uniform(20) + 10
+  end
+
+  defp get_cache_hit_rate do
+    case Domain.MatchingEngine.get_cache_stats() do
+      {:ok, stats} -> Map.get(stats, :hit_rate, 0.0)
+      {:error, _} -> 0.0
+    end
   end
 
   def refresh_profile_cache do

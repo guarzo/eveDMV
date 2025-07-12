@@ -1,0 +1,159 @@
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+  <!-- Header -->
+  <div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Fleet Operations Analysis</h1>
+    <p class="mt-2 text-gray-600 dark:text-gray-300">
+      Comprehensive fleet composition analysis, effectiveness metrics, and optimization recommendations.
+    </p>
+  </div>
+
+  <!-- Controls -->
+  <%= if @fleet_data && !@loading do %>
+    <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6 mb-6">
+      <div class="flex flex-wrap gap-2">
+        <button
+          phx-click="analyze_fleet"
+          phx-value-type="composition"
+          disabled={@loading}
+          class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+        >
+          Composition Analysis
+        </button>
+
+        <button
+          phx-click="analyze_fleet"
+          phx-value-type="effectiveness"
+          disabled={@loading}
+          class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+        >
+          Effectiveness Analysis
+        </button>
+
+        <button
+          phx-click="analyze_fleet"
+          phx-value-type="performance"
+          disabled={@loading}
+          class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+        >
+          Pilot Performance
+        </button>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Loading Indicator -->
+  <%= if @loading do %>
+    <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-8 mb-6">
+      <div class="flex items-center justify-center">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span class="ml-3 text-gray-600 dark:text-gray-300">Analyzing fleet...</span>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Fleet Data Display -->
+  <%= if @fleet_data && !@loading do %>
+    <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6 mb-6">
+      <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Fleet Overview</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+          <div class="text-sm font-medium text-blue-600 dark:text-blue-400">Fleet Name</div>
+          <div class="text-lg font-semibold text-gray-900 dark:text-white">
+            <%= @fleet_data.fleet_data.fleet_name %>
+          </div>
+        </div>
+        <div class="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+          <div class="text-sm font-medium text-green-600 dark:text-green-400">Total Pilots</div>
+          <div class="text-lg font-semibold text-gray-900 dark:text-white">
+            <%= length(Map.get(@fleet_data.fleet_participants, @fleet_data.fleet_id, [])) %>
+          </div>
+        </div>
+        <div class="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
+          <div class="text-sm font-medium text-purple-600 dark:text-purple-400">Status</div>
+          <div class="text-lg font-semibold text-gray-900 dark:text-white">
+            <%= @fleet_data.fleet_data.engagement_status %>
+          </div>
+        </div>
+        <div class="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg">
+          <div class="text-sm font-medium text-orange-600 dark:text-orange-400">Time</div>
+          <div class="text-lg font-semibold text-gray-900 dark:text-white">
+            <%= @fleet_data.fleet_id %>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Analysis Results -->
+  <%= if @analysis_results && !@loading do %>
+    <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6 mb-6">
+      <%= if @analysis_results.success do %>
+        <div class="flex items-center mb-4">
+          <div class="flex-shrink-0">
+            <div class="w-8 h-8 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
+              <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+              </svg>
+            </div>
+          </div>
+          <div class="ml-3">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+              <%= String.capitalize(@analysis_results.type) %> Analysis Results
+            </h2>
+          </div>
+        </div>
+
+        <!-- Summary -->
+        <%= if @analysis_results.summary do %>
+          <div class="mb-6">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-3">Summary</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <%= for summary_item <- @analysis_results.summary do %>
+                <div class="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                  <span class="text-sm text-gray-600 dark:text-gray-300"><%= summary_item %></span>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <!-- Detailed Results -->
+        <div class="mt-6">
+          <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-3">Detailed Analysis</h3>
+          
+          <%= case @analysis_results.type do %>
+            <% "composition" -> %>
+              <%= render_composition_analysis(@analysis_results.data) %>
+            <% "effectiveness" -> %>
+              <%= render_effectiveness_analysis(@analysis_results.data) %>
+            <% "performance" -> %>
+              <%= render_performance_analysis(@analysis_results.data) %>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <div class="w-8 h-8 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+              <svg class="w-5 h-5 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+              </svg>
+            </div>
+          </div>
+          <div class="ml-3">
+            <h2 class="text-xl font-semibold text-red-900 dark:text-red-400">Analysis Failed</h2>
+            <p class="text-red-700 dark:text-red-300 mt-1"><%= @analysis_results.error %></p>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
+</div>
+
+<!-- Analysis Rendering Functions -->
+<%= if false do %>
+  <%!-- These function definitions are used by the LiveView but not rendered directly --%>
+  <%= render_composition_analysis(%{}) %>
+  <%= render_effectiveness_analysis(%{}) %>
+  <%= render_performance_analysis(%{}) %>
+<% end %>

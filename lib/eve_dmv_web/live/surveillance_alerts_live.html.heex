@@ -1,0 +1,413 @@
+<div class="surveillance-alerts" phx-hook="AlertSounds" id="alert-container">
+  <!-- Header -->
+  <div class="flex justify-between items-center mb-6">
+    <div class="flex items-center">
+      <h1 class="text-3xl font-bold text-gray-900 mr-4">Surveillance Alerts</h1>
+      <%= if @new_alert_count > 0 do %>
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800 animate-pulse">
+          <%= @new_alert_count %> new
+        </span>
+      <% end %>
+    </div>
+    
+    <div class="flex items-center space-x-3">
+      <!-- Settings -->
+      <button
+        phx-click="toggle_sound"
+        class={"px-3 py-2 rounded-md text-sm font-medium " <>
+          if @sound_enabled, do: "bg-blue-100 text-blue-700", else: "bg-gray-100 text-gray-700"}
+        title="Toggle alert sounds"
+      >
+        <%= if @sound_enabled do %>
+          🔊 Sound On
+        <% else %>
+          🔇 Sound Off
+        <% end %>
+      </button>
+      
+      <button
+        phx-click="toggle_auto_acknowledge"
+        class={"px-3 py-2 rounded-md text-sm font-medium " <>
+          if @auto_acknowledge, do: "bg-blue-100 text-blue-700", else: "bg-gray-100 text-gray-700"}
+        title="Auto-acknowledge low priority alerts"
+      >
+        Auto-ACK: <%= if @auto_acknowledge, do: "ON", else: "OFF" %>
+      </button>
+      
+      <button
+        phx-click="bulk_acknowledge"
+        class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+        data-confirm="Acknowledge all new alerts?"
+      >
+        Acknowledge All
+      </button>
+    </div>
+  </div>
+
+  <!-- Metrics Dashboard -->
+  <%= if map_size(@alert_metrics) > 0 do %>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div class="bg-white p-4 rounded-lg shadow-sm border">
+        <div class="text-sm text-gray-600">Total Alerts (24h)</div>
+        <div class="text-2xl font-bold text-gray-900">
+          <%= Map.get(@alert_metrics, :total_alerts, 0) %>
+        </div>
+      </div>
+      
+      <div class="bg-white p-4 rounded-lg shadow-sm border">
+        <div class="text-sm text-gray-600">New Alerts</div>
+        <div class="text-2xl font-bold text-red-600">
+          <%= get_in(@alert_metrics, [:current_counters, :new]) || 0 %>
+        </div>
+      </div>
+      
+      <div class="bg-white p-4 rounded-lg shadow-sm border">
+        <div class="text-sm text-gray-600">Acknowledged</div>
+        <div class="text-2xl font-bold text-yellow-600">
+          <%= get_in(@alert_metrics, [:current_counters, :acknowledged]) || 0 %>
+        </div>
+      </div>
+      
+      <div class="bg-white p-4 rounded-lg shadow-sm border">
+        <div class="text-sm text-gray-600">Resolved</div>
+        <div class="text-2xl font-bold text-green-600">
+          <%= get_in(@alert_metrics, [:current_counters, :resolved]) || 0 %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Filters -->
+  <div class="bg-white rounded-lg shadow-sm border p-4 mb-6">
+    <form phx-change="filter_alerts">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+          <select name="filter[priority]" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+            <option value="">All Priorities</option>
+            <option value="1" selected={@alert_filters.priority == 1}>Critical</option>
+            <option value="2" selected={@alert_filters.priority == 2}>High</option>
+            <option value="3" selected={@alert_filters.priority == 3}>Medium</option>
+            <option value="4" selected={@alert_filters.priority == 4}>Low</option>
+          </select>
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">State</label>
+          <select name="filter[state]" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+            <option value="">All States</option>
+            <option value="new" selected={@alert_filters.state == "new"}>New</option>
+            <option value="acknowledged" selected={@alert_filters.state == "acknowledged"}>Acknowledged</option>
+            <option value="resolved" selected={@alert_filters.state == "resolved"}>Resolved</option>
+          </select>
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Time Range</label>
+          <select name="filter[time_range]" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+            <option value="last_hour" selected={@alert_filters.time_range == :last_hour}>Last Hour</option>
+            <option value="last_24h" selected={@alert_filters.time_range == :last_24h}>Last 24 Hours</option>
+            <option value="last_7d" selected={@alert_filters.time_range == :last_7d}>Last 7 Days</option>
+            <option value="last_30d" selected={@alert_filters.time_range == :last_30d}>Last 30 Days</option>
+          </select>
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Profile</label>
+          <input
+            type="text"
+            name="filter[profile_id]"
+            value={@alert_filters.profile_id || ""}
+            placeholder="Profile ID..."
+            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+          />
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Alert List -->
+  <div class="bg-white rounded-lg shadow-sm border">
+    <%= if length(@alerts) > 0 do %>
+      <div class="divide-y divide-gray-200">
+        <%= for alert <- @alerts do %>
+          <div class="p-4 hover:bg-gray-50 cursor-pointer" phx-click="show_alert_details" phx-value-alert_id={alert.id}>
+            <div class="flex items-start justify-between">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center space-x-3 mb-2">
+                  <!-- Priority Badge -->
+                  <% {priority_text, priority_classes} = format_alert_priority(alert.priority) %>
+                  <span class={"inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border " <> priority_classes}>
+                    <%= priority_text %>
+                  </span>
+                  
+                  <!-- State Badge -->
+                  <% {state_text, state_classes} = format_alert_state(alert.state) %>
+                  <span class={"inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium " <> state_classes}>
+                    <%= state_text %>
+                  </span>
+                  
+                  <!-- Alert Type -->
+                  <span class="text-sm font-medium text-gray-900">
+                    <%= format_alert_type(alert.alert_type) %>
+                  </span>
+                  
+                  <!-- Confidence Score -->
+                  <span class="text-xs text-gray-500">
+                    <%= format_confidence_score(alert.confidence_score) %> confidence
+                  </span>
+                </div>
+                
+                <div class="text-sm text-gray-600 mb-1">
+                  Profile: <span class="font-medium"><%= alert.profile_id %></span>
+                  <%= if alert.killmail_id do %>
+                    | Killmail: <span class="font-medium"><%= alert.killmail_id %></span>
+                  <% end %>
+                </div>
+                
+                <!-- Matched Criteria Preview -->
+                <%= if alert.matched_criteria && length(alert.matched_criteria) > 0 do %>
+                  <div class="text-xs text-gray-500">
+                    Matched: <%= Enum.map_join(Enum.take(alert.matched_criteria, 3), ", ", fn criterion ->
+                      String.capitalize(to_string(criterion.type || "unknown"))
+                    end) %>
+                    <%= if length(alert.matched_criteria) > 3 do %>
+                      + <%= length(alert.matched_criteria) - 3 %> more
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+              
+              <div class="flex items-center space-x-2 ml-4">
+                <div class="text-right">
+                  <div class="text-sm text-gray-900">
+                    <%= format_timestamp(alert.created_at) %>
+                  </div>
+                  <%= if alert.acknowledged_at do %>
+                    <div class="text-xs text-gray-500">
+                      ACK: <%= format_timestamp(alert.acknowledged_at) %>
+                    </div>
+                  <% end %>
+                </div>
+                
+                <!-- Quick Actions -->
+                <div class="flex flex-col space-y-1">
+                  <%= if alert.state == "new" do %>
+                    <button
+                      phx-click="acknowledge_alert"
+                      phx-value-alert_id={alert.id}
+                      class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded hover:bg-yellow-200"
+                      onclick="event.stopPropagation()"
+                    >
+                      ACK
+                    </button>
+                  <% end %>
+                  
+                  <%= if alert.state in ["new", "acknowledged"] do %>
+                    <button
+                      phx-click="resolve_alert"
+                      phx-value-alert_id={alert.id}
+                      class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded hover:bg-green-200"
+                      onclick="event.stopPropagation()"
+                    >
+                      RESOLVE
+                    </button>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="text-center py-12">
+        <div class="text-gray-500 mb-4">
+          <svg class="w-12 h-12 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM12 17l-7-7 7-7v14z"></path>
+          </svg>
+          <p class="text-lg font-medium">No alerts found</p>
+          <p class="text-sm">No surveillance alerts match your current filters</p>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Alert Details Modal -->
+  <%= if @show_alert_details && @selected_alert do %>
+    <div class="fixed inset-0 z-50 overflow-y-auto" phx-click="close_alert_details">
+      <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+        
+        <div class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full sm:p-6" onclick="event.stopPropagation()">
+          <div class="flex justify-between items-start mb-4">
+            <h3 class="text-lg font-medium text-gray-900">Alert Details</h3>
+            <button phx-click="close_alert_details" class="text-gray-400 hover:text-gray-600">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+          
+          <div class="space-y-4">
+            <!-- Alert Overview -->
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700">Alert ID</label>
+                <div class="text-sm text-gray-900 font-mono"><%= @selected_alert.id %></div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700">Created</label>
+                <div class="text-sm text-gray-900"><%= format_timestamp(@selected_alert.created_at) %></div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700">Priority</label>
+                <% {priority_text, priority_classes} = format_alert_priority(@selected_alert.priority) %>
+                <span class={"inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border " <> priority_classes}>
+                  <%= priority_text %>
+                </span>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700">State</label>
+                <% {state_text, state_classes} = format_alert_state(@selected_alert.state) %>
+                <span class={"inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium " <> state_classes}>
+                  <%= state_text %>
+                </span>
+              </div>
+            </div>
+            
+            <!-- Matched Criteria -->
+            <%= if @selected_alert.matched_criteria && length(@selected_alert.matched_criteria) > 0 do %>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Matched Criteria</label>
+                <div class="bg-gray-50 rounded-md p-3">
+                  <%= for criterion <- @selected_alert.matched_criteria do %>
+                    <div class="text-sm mb-2 last:mb-0">
+                      <span class="font-medium"><%= String.capitalize(to_string(criterion.type || "unknown")) %>:</span>
+                      <span class="text-gray-600 ml-2"><%= inspect(Map.delete(criterion, :type)) %></span>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+            
+            <!-- Alert Metadata -->
+            <%= if @selected_alert.metadata do %>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Metadata</label>
+                <div class="bg-gray-50 rounded-md p-3">
+                  <pre class="text-xs text-gray-600"><%= Jason.encode!(@selected_alert.metadata, pretty: true) %></pre>
+                </div>
+              </div>
+            <% end %>
+            
+            <!-- Notes -->
+            <%= if @selected_alert.notes && length(@selected_alert.notes) > 0 do %>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+                <div class="space-y-2">
+                  <%= for note <- @selected_alert.notes do %>
+                    <div class="bg-gray-50 rounded-md p-3">
+                      <div class="flex justify-between items-start mb-1">
+                        <span class="text-sm font-medium"><%= note.user_id %></span>
+                        <span class="text-xs text-gray-500"><%= format_timestamp(note.timestamp) %></span>
+                      </div>
+                      <div class="text-sm text-gray-700"><%= note.content %></div>
+                      <div class="text-xs text-gray-500 mt-1">Action: <%= note.action %></div>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+          
+          <!-- Actions -->
+          <div class="flex justify-end space-x-3 mt-6">
+            <%= if @selected_alert.state == "new" do %>
+              <button
+                phx-click="acknowledge_alert"
+                phx-value-alert_id={@selected_alert.id}
+                class="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
+              >
+                Acknowledge
+              </button>
+            <% end %>
+            
+            <%= if @selected_alert.state in ["new", "acknowledged"] do %>
+              <button
+                phx-click="resolve_alert"
+                phx-value-alert_id={@selected_alert.id}
+                class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+              >
+                Resolve
+              </button>
+            <% end %>
+            
+            <button
+              phx-click="close_alert_details"
+              class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<!-- JavaScript Hook for Alert Sounds -->
+<script>
+window.AlertSounds = {
+  mounted() {
+    // Create audio context for playing alert sounds
+    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // Listen for alert sound events
+    this.handleEvent("play_alert_sound", ({priority, alert_type}) => {
+      this.playAlertSound(priority, alert_type);
+    });
+  },
+  
+  playAlertSound(priority, alert_type) {
+    // Different sounds for different priorities
+    const frequency = this.getFrequencyForPriority(priority);
+    const duration = this.getDurationForPriority(priority);
+    
+    // Create oscillator for beep sound
+    const oscillator = this.audioContext.createOscillator();
+    const gainNode = this.audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(this.audioContext.destination);
+    
+    oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+    oscillator.type = 'sine';
+    
+    gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
+    
+    oscillator.start(this.audioContext.currentTime);
+    oscillator.stop(this.audioContext.currentTime + duration);
+  },
+  
+  getFrequencyForPriority(priority) {
+    switch(priority) {
+      case 1: return 1000; // Critical - high pitch
+      case 2: return 800;  // High - medium-high pitch
+      case 3: return 600;  // Medium - medium pitch
+      case 4: return 400;  // Low - low pitch
+      default: return 500;
+    }
+  },
+  
+  getDurationForPriority(priority) {
+    switch(priority) {
+      case 1: return 0.5; // Critical - longer beep
+      case 2: return 0.3; // High - medium beep
+      case 3: return 0.2; // Medium - short beep
+      case 4: return 0.1; // Low - very short beep
+      default: return 0.2;
+    }
+  }
+};
+</script>

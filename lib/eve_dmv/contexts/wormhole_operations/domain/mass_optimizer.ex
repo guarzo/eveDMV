@@ -45,7 +45,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
   @spec validate_mass_constraints(map(), map()) :: {:ok, map()} | {:error, term()}
   def validate_mass_constraints(_fleet_composition, _constraints) do
     # TODO: Implement real mass constraint validation
-    # Original stub returned: {:ok, %{valid: true, violations: [], warnings: []}}
+    # Requires: Check ship masses against wormhole limits
     {:error, :not_implemented}
   end
 

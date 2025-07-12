@@ -9,6 +9,7 @@ defmodule EveDmv.Eve.FallbackStrategy do
   - Service degradation modes
   """
 
+  alias EveDmv.Cache
   alias EveDmv.Eve.CircuitBreaker
   alias EveDmv.Eve.ErrorClassifier
   alias EveDmv.Eve.EsiCache
@@ -313,13 +314,13 @@ defmodule EveDmv.Eve.FallbackStrategy do
   end
 
   defp get_cache_with_timestamp(cache_key) do
-    # Look for cache entry directly in ETS to get timestamp info
-    # This accesses the character cache table since EsiCache.get/1 uses it for generic keys
-    case :ets.lookup(:esi_character_cache, cache_key) do
-      [{^cache_key, data, expires_at}] ->
-        {:ok, data, expires_at}
+    # Use the unified cache system instead of direct ETS access
+    case Cache.get(:api_responses, cache_key) do
+      {:ok, data} ->
+        # For fallback purposes, assume fresh data (no expiry check needed)
+        {:ok, data, System.system_time(:second) + 3600}
 
-      [] ->
+      :miss ->
         :miss
     end
   end

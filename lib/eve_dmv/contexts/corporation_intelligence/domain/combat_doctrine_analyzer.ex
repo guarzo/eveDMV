@@ -1078,7 +1078,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
     hash_input =
       "#{engagement.start_time}_#{length(engagement.corp_participants)}_#{List.first(engagement.systems)}"
 
-    hash_input |> :crypto.hash(:md5) |> Base.encode16() |> String.slice(0, 8)
+    :crypto.hash(:md5, hash_input) |> Base.encode16() |> String.slice(0, 8)
   end
 
   defp classify_combat_doctrines(fleet_compositions) do

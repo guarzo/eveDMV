@@ -42,36 +42,59 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
   ## Returns
   {:ok, correlated_battles} where each battle may span multiple systems
   """
-  def correlate_multi_system_battles(battles, options \\ []) do
+  def correlate_multi_system_battles(battle_or_battles, options \\ [])
+
+  def correlate_multi_system_battles(battle, options) when is_map(battle) do
+    correlate_multi_system_battles([battle], options)
+  end
+
+  def correlate_multi_system_battles(battles, options) when is_list(battles) do
     max_time_gap = Keyword.get(options, :max_time_gap, @max_multi_system_gap_minutes)
     min_overlap = Keyword.get(options, :min_overlap, @min_participant_overlap_ratio)
     system_connections = Keyword.get(options, :system_connections, %{})
 
-    Logger.info("Correlating #{length(battles)} battles across multiple systems")
+    # Ensure battles is a proper list
+    battles_list =
+      case battles do
+        b when is_list(b) -> b
+        b when is_map(b) -> [b]
+        _ -> []
+      end
+
+    Logger.info("Correlating #{length(battles_list)} battles across multiple systems")
+
+    Logger.debug(
+      "Battles type: #{inspect(is_list(battles_list))}, battles: #{inspect(battles_list, limit: 1)}"
+    )
 
     start_time = System.monotonic_time(:millisecond)
 
     # Step 1: Create temporal clusters of battles
-    temporal_clusters = temporal_clustering(battles, max_time_gap)
+    temporal_clusters = temporal_clustering(battles_list, max_time_gap)
+    Logger.debug("Temporal clusters: #{inspect(length(temporal_clusters))} clusters")
 
     # Step 2: Analyze participant overlap within temporal clusters
     overlap_groups = analyze_participant_overlap(temporal_clusters, min_overlap)
+    Logger.debug("Overlap groups: #{inspect(length(overlap_groups))} groups")
 
     # Step 3: Score system adjacency using wormhole connection data
     adjacency_scored = score_system_adjacency(overlap_groups, system_connections)
+    Logger.debug("Adjacency scored: #{inspect(length(adjacency_scored))} scored groups")
 
     # Step 4: Apply sophisticated correlation algorithm
     correlated_battles = apply_correlation_algorithm(adjacency_scored)
+    Logger.debug("Correlated results: #{inspect(length(correlated_battles))} results")
 
     # Step 5: Merge correlated battles into multi-system narratives
     final_battles = merge_correlated_battles(correlated_battles)
+    Logger.debug("Final battles: #{inspect(length(final_battles))} battles")
 
     end_time = System.monotonic_time(:millisecond)
     duration_ms = end_time - start_time
 
     Logger.info("""
     Multi-system correlation completed in #{duration_ms}ms:
-    - Input battles: #{length(battles)}
+    - Input battles: #{length(battles_list)}
     - Output battles: #{length(final_battles)}
     - Multi-system battles: #{count_multi_system_battles(final_battles)}
     """)
@@ -86,14 +109,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
   through multiple systems, creating complex multi-system narratives.
   """
   def analyze_combat_flow_patterns(correlated_battles) do
-    Enum.map(correlated_battles, fn battle ->
-      if battle.metadata.is_multi_system do
-        flow_pattern = detect_flow_pattern(battle)
-        put_in(battle.metadata.combat_flow, flow_pattern)
-      else
-        battle
-      end
-    end)
+    flow_analyzed =
+      Enum.map(correlated_battles, fn battle ->
+        if Map.get(battle.metadata, :is_multi_system, false) do
+          flow_pattern = detect_flow_pattern(battle)
+          put_in(battle, [:metadata, :combat_flow], flow_pattern)
+        else
+          battle
+        end
+      end)
+
+    {:ok, flow_analyzed}
   end
 
   # Private correlation algorithm implementation
@@ -129,17 +155,24 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
   end
 
   defp analyze_participant_overlap(temporal_clusters, min_overlap) do
-    Enum.map(temporal_clusters, fn cluster ->
-      if length(cluster) > 1 do
-        # Analyze overlap between all pairs in cluster
-        overlap_analysis = calculate_pairwise_overlaps(cluster)
-        group_by_overlap_threshold(cluster, overlap_analysis, min_overlap)
-      else
-        # Single battle cluster - no overlap to analyze
-        [cluster]
-      end
-    end)
-    |> List.flatten()
+    result =
+      Enum.flat_map(temporal_clusters, fn cluster ->
+        if length(cluster) > 1 do
+          # Analyze overlap between all pairs in cluster
+          overlap_analysis = calculate_pairwise_overlaps(cluster)
+          group_by_overlap_threshold(cluster, overlap_analysis, min_overlap)
+        else
+          # Single battle cluster - no overlap to analyze
+          # Keep it as a list of lists for consistency
+          [cluster]
+        end
+      end)
+
+    Logger.debug(
+      "Overlap analysis result: #{inspect(length(result))} groups, each is list: #{inspect(Enum.all?(result, &is_list/1))}"
+    )
+
+    result
   end
 
   defp calculate_pairwise_overlaps(battles) do
@@ -232,14 +265,25 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
   end
 
   defp score_system_adjacency(battle_groups, system_connections) do
+    Logger.debug("Scoring adjacency for #{inspect(length(battle_groups))} groups")
+    Logger.debug("First group type check: #{inspect(List.first(battle_groups) |> is_list())}")
+
     Enum.map(battle_groups, fn group ->
-      if length(group) > 1 do
-        # Calculate system adjacency scores for multi-battle groups
-        adjacency_scores = calculate_system_adjacency_scores(group, system_connections)
-        {group, adjacency_scores}
+      if is_list(group) do
+        Logger.debug("Processing group type: list, size: #{inspect(length(group))}")
+
+        if length(group) > 1 do
+          # Calculate system adjacency scores for multi-battle groups
+          adjacency_scores = calculate_system_adjacency_scores(group, system_connections)
+          {group, adjacency_scores}
+        else
+          # Single battle group - no adjacency to score
+          {group, %{}}
+        end
       else
-        # Single battle group - no adjacency to score
-        {group, %{}}
+        Logger.error("ERROR: Group is not a list! Type: #{inspect(group)}")
+        # Try to recover by wrapping in a list
+        {[group], %{}}
       end
     end)
   end
@@ -296,18 +340,27 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
   end
 
   defp apply_correlation_algorithm(adjacency_scored_groups) do
+    Logger.debug("Applying correlation to #{inspect(length(adjacency_scored_groups))} groups")
+
     Enum.map(adjacency_scored_groups, fn {group, adjacency_scores} ->
-      if length(group) > 1 do
+      # Ensure group is a list
+      group_list = ensure_list(group)
+
+      Logger.debug(
+        "Correlation group type: #{inspect(is_list(group_list))}, size: #{inspect(length(group_list))}"
+      )
+
+      if length(group_list) > 1 do
         # Calculate overall correlation score for the group
-        correlation_score = calculate_group_correlation_score(group, adjacency_scores)
+        correlation_score = calculate_group_correlation_score(group_list, adjacency_scores)
 
         if correlation_score >= @min_correlation_score do
-          {:correlate, group, correlation_score}
+          {:correlate, group_list, correlation_score}
         else
-          {:separate, group}
+          {:separate, group_list}
         end
       else
-        {:separate, group}
+        {:separate, group_list}
       end
     end)
   end
@@ -355,16 +408,22 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
   end
 
   defp create_multi_system_metadata(battles, correlation_score) do
-    base_metadata = create_merged_metadata(battles)
+    # Ensure battles is a list
+    battles_list = ensure_list(battles)
+    base_metadata = create_merged_metadata(battles_list)
 
     Map.merge(base_metadata, %{
       is_multi_system: true,
       correlation_score: correlation_score,
-      systems_count: length(battles),
-      battle_flow: analyze_battle_flow(battles),
-      engagement_type: classify_multi_system_engagement(battles)
+      systems_count: length(battles_list),
+      battle_flow: analyze_battle_flow(battles_list),
+      engagement_type: classify_multi_system_engagement(battles_list)
     })
   end
+
+  defp ensure_list(battles) when is_list(battles), do: battles
+  defp ensure_list(battle) when is_map(battle), do: [battle]
+  defp ensure_list(_), do: []
 
   defp create_merged_metadata(battles) do
     all_killmails = Enum.flat_map(battles, & &1.killmails)
@@ -533,7 +592,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
 
   defp count_unique_participants_across_battles(battles) do
     battles
-    |> Enum.flat_map(&extract_all_participants/1)
+    |> Enum.flat_map(fn battle ->
+      battle.killmails
+      |> Enum.flat_map(&ParticipantExtractor.extract_participants/1)
+    end)
     |> Enum.uniq()
     |> length()
   end

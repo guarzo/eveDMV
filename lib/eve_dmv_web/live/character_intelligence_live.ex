@@ -8,7 +8,11 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
 
   use EveDmvWeb, :live_view
 
+  import EveDmvWeb.Components.ThreatLevelComponent
+
   alias EveDmv.Contexts.CharacterIntelligence
+  # import EveDmvWeb.Components.ActivityOverviewComponent
+  # import EveDmvWeb.Components.IskStatsComponent
 
   @impl Phoenix.LiveView
   def mount(%{"character_id" => character_id_str}, _session, socket) do
@@ -87,7 +91,10 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
 
           {:noreply,
            socket
-           |> assign(:comparison_characters, comparison_characters ++ [character_info])
+           |> assign(
+             :comparison_characters,
+             List.insert_at(comparison_characters, -1, character_info)
+           )
            |> assign(:search_query, "")
            |> assign(:search_results, [])}
 
@@ -159,8 +166,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
     |> to_string()
     |> String.replace("_", " ")
     |> String.split()
-    |> Enum.map(&String.capitalize/1)
-    |> Enum.join(" ")
+    |> Enum.map_join(" ", &String.capitalize/1)
   end
 
   def trend_indicator(current, previous) when current > previous, do: {"↑", "text-red-400"}
@@ -170,4 +176,18 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
   def character_portrait(character_id, size \\ 64) do
     "https://images.evetech.net/characters/#{character_id}/portrait?size=#{size}"
   end
+
+  def format_isk(amount) when amount >= 1_000_000_000 do
+    "#{Float.round(amount / 1_000_000_000, 1)}B"
+  end
+
+  def format_isk(amount) when amount >= 1_000_000 do
+    "#{Float.round(amount / 1_000_000, 1)}M"
+  end
+
+  def format_isk(amount) when amount >= 1_000 do
+    "#{Float.round(amount / 1_000, 1)}K"
+  end
+
+  def format_isk(amount), do: "#{amount}"
 end

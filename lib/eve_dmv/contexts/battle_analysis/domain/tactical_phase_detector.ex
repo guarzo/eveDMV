@@ -94,20 +94,37 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
       battle.killmails
       |> Enum.sort_by(& &1.killmail_time)
 
-    if length(killmails) < 2 do
-      # Single killmail or empty battle - create single window
-      window = %{
-        start_time: List.first(killmails).killmail_time,
-        end_time: List.first(killmails).killmail_time,
-        killmails: killmails,
-        duration_seconds: min_duration
-      }
+    cond do
+      length(killmails) < 2 ->
+        # Single killmail or empty battle - create single window
+        window = %{
+          start_time: List.first(killmails).killmail_time,
+          end_time: List.first(killmails).killmail_time,
+          killmails: killmails,
+          duration_seconds: min_duration
+        }
 
-      {:ok, [window]}
-    else
-      # Create overlapping time windows for analysis
-      windows = create_sliding_windows(killmails, min_duration)
-      {:ok, windows}
+        {:ok, [window]}
+
+      length(killmails) <= 5 ->
+        # Small battle (2-5 kills) - create single phase spanning entire battle
+        first_kill = List.first(killmails)
+        last_kill = List.last(killmails)
+        duration = NaiveDateTime.diff(last_kill.killmail_time, first_kill.killmail_time, :second)
+
+        window = %{
+          start_time: first_kill.killmail_time,
+          end_time: last_kill.killmail_time,
+          killmails: killmails,
+          duration_seconds: max(duration, min_duration)
+        }
+
+        {:ok, [window]}
+
+      true ->
+        # Large battle - use sliding windows for detailed phase analysis
+        windows = create_sliding_windows(killmails, min_duration)
+        {:ok, windows}
     end
   end
 
@@ -516,7 +533,25 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
     avg_ewar = cluster.members |> Enum.map(& &1.ewar_usage) |> average()
     avg_engagement = cluster.members |> Enum.map(& &1.participant_engagement) |> average()
 
+    # Get total kills from all windows in this cluster
+    total_kills =
+      cluster.members
+      |> Enum.flat_map(& &1.window.killmails)
+      |> Enum.uniq_by(& &1.killmail_id)
+      |> length()
+
     cond do
+      # Single phase small battle (<=5 kills) - classify based on characteristics
+      total_phases == 1 and total_kills <= 5 ->
+        cond do
+          # Single kill = gank
+          total_kills == 1 -> :gank
+          # 2-3 kills = small skirmish
+          total_kills <= 3 -> :skirmish
+          # 4-5 kills = small engagement
+          true -> :small_engagement
+        end
+
       # First phase with low damage and high EWAR suggests setup
       phase_index == 0 and avg_damage_rate < 0.3 and avg_ewar > 0.2 ->
         :setup
@@ -552,6 +587,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
     # Aggregate all killmails in this phase
     all_killmails = all_windows |> Enum.flat_map(& &1.killmails) |> Enum.uniq_by(& &1.killmail_id)
 
+    characteristics_data = analyze_phase_characteristics(cluster, all_killmails)
+
     %{
       phase_id: phase_index + 1,
       phase_type: phase_type,
@@ -559,7 +596,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
       end_time: end_time,
       duration_seconds: NaiveDateTime.diff(end_time, start_time, :second),
       killmails: all_killmails,
-      characteristics: analyze_phase_characteristics(cluster, all_killmails),
+      characteristics: describe_phase_characteristics(phase_type, characteristics_data),
+      key_metrics: characteristics_data,
       cluster_info: %{
         size: cluster.size,
         centroid: cluster.centroid,
@@ -569,8 +607,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
   end
 
   defp analyze_phase_characteristics(cluster, killmails) do
+    avg_damage_rate = cluster.members |> Enum.map(& &1.damage_rate) |> average()
+
     %{
-      avg_damage_rate: cluster.members |> Enum.map(& &1.damage_rate) |> average(),
+      avg_damage_rate: avg_damage_rate,
+      # For template compatibility
+      damage_rate: avg_damage_rate,
       avg_kill_rate: cluster.members |> Enum.map(& &1.kill_rate) |> average(),
       participant_engagement:
         cluster.members |> Enum.map(& &1.participant_engagement) |> average(),
@@ -578,8 +620,136 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
       ship_diversity: cluster.members |> Enum.map(& &1.ship_diversity) |> average(),
       isk_destruction_rate: cluster.members |> Enum.map(& &1.isk_destruction_rate) |> average(),
       unique_participants: extract_all_participants(killmails) |> length(),
-      dominant_ship_types: analyze_dominant_ship_types(killmails)
+      dominant_ship_types: analyze_dominant_ship_types(killmails),
+      # Additional fields expected by template
+      avg_distance: calculate_average_distance(killmails),
+      intensity_score: calculate_intensity_score(avg_damage_rate)
     }
+  end
+
+  defp describe_phase_characteristics(phase_type, metrics) do
+    kill_rate = metrics.avg_kill_rate
+    participants = metrics.unique_participants
+
+    intensity =
+      cond do
+        kill_rate > 10 -> "High intensity"
+        kill_rate > 5 -> "Moderate intensity"
+        true -> "Low intensity"
+      end
+
+    scale =
+      cond do
+        participants > 50 -> "large-scale"
+        participants > 20 -> "medium-scale"
+        participants > 10 -> "small-gang"
+        true -> "small"
+      end
+
+    "#{intensity} #{scale} #{phase_type |> to_string() |> String.replace("_", " ")} with #{participants} participants"
+  end
+
+  defp calculate_average_distance(killmails) do
+    # Calculate estimated engagement distance based on weapon types and ship classes
+    # This is an approximation since we don't have position data
+
+    total_distance =
+      killmails
+      |> Enum.map(&estimate_engagement_distance/1)
+      |> Enum.sum()
+
+    killmail_count = length(killmails)
+
+    if killmail_count > 0 do
+      round(total_distance / killmail_count)
+    else
+      # Default fallback
+      15000
+    end
+  end
+
+  defp estimate_engagement_distance(killmail) do
+    # Estimate based on victim ship class and attacker count
+    victim_ship_class = get_ship_class_from_killmail(killmail)
+    attacker_count = get_attacker_count(killmail)
+
+    base_distance =
+      case victim_ship_class do
+        # Close range
+        "Frigate" -> 5000
+        # Close-medium range
+        "Destroyer" -> 8000
+        # Medium range
+        "Cruiser" -> 12000
+        # Medium-long range
+        "Battlecruiser" -> 18000
+        # Long range
+        "Battleship" -> 25000
+        # Very long range
+        "Carrier" -> 40000
+        # Long range
+        "Dreadnought" -> 30000
+        # Extreme range
+        "Titan" -> 50000
+        # Default
+        _ -> 15000
+      end
+
+    # Adjust for fleet size - larger fleets tend to fight at longer ranges
+    fleet_multiplier =
+      cond do
+        attacker_count > 50 -> 1.5
+        attacker_count > 20 -> 1.3
+        attacker_count > 10 -> 1.1
+        true -> 1.0
+      end
+
+    round(base_distance * fleet_multiplier)
+  end
+
+  defp get_ship_class_from_killmail(killmail) do
+    case killmail.raw_data do
+      %{"victim" => %{"ship_type_id" => ship_type_id}} ->
+        get_ship_class_by_type_id(ship_type_id)
+
+      _ ->
+        "Other"
+    end
+  end
+
+  defp get_ship_class_by_type_id(ship_type_id) when is_integer(ship_type_id) do
+    cond do
+      ship_type_id in 582..650 -> "Frigate"
+      ship_type_id in 324..380 -> "Destroyer"
+      ship_type_id in 620..634 -> "Cruiser"
+      ship_type_id in 1201..1310 -> "Battlecruiser"
+      ship_type_id in 638..645 -> "Battleship"
+      ship_type_id in 547..554 -> "Carrier"
+      ship_type_id in 670..673 -> "Dreadnought"
+      ship_type_id in 3514..3518 -> "Titan"
+      true -> "Other"
+    end
+  end
+
+  defp get_ship_class_by_type_id(_), do: "Other"
+
+  defp get_attacker_count(killmail) do
+    case killmail.raw_data do
+      %{"attackers" => attackers} when is_list(attackers) -> length(attackers)
+      _ -> 1
+    end
+  end
+
+  defp calculate_intensity_score(avg_damage_rate) do
+    # Convert damage rate to intensity score (0-10)
+    cond do
+      avg_damage_rate > 100_000 -> 10
+      avg_damage_rate > 50000 -> 8
+      avg_damage_rate > 25000 -> 6
+      avg_damage_rate > 10000 -> 4
+      avg_damage_rate > 5000 -> 2
+      true -> 1
+    end
   end
 
   defp analyze_transition(current_phase, next_phase) do
@@ -592,8 +762,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
   end
 
   defp classify_transition_type(current, next) do
-    current_intensity = current.characteristics.avg_damage_rate
-    next_intensity = next.characteristics.avg_damage_rate
+    current_intensity = current.key_metrics.avg_damage_rate
+    next_intensity = next.key_metrics.avg_damage_rate
 
     cond do
       next_intensity > current_intensity * 1.5 -> :escalation
@@ -604,8 +774,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
   end
 
   defp calculate_intensity_change(current, next) do
-    current_intensity = current.characteristics.avg_damage_rate
-    next_intensity = next.characteristics.avg_damage_rate
+    current_intensity = current.key_metrics.avg_damage_rate
+    next_intensity = next.key_metrics.avg_damage_rate
 
     if current_intensity > 0 do
       (next_intensity - current_intensity) / current_intensity
@@ -615,8 +785,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
   end
 
   defp calculate_participant_change(current, next) do
-    current_participants = current.characteristics.unique_participants
-    next_participants = next.characteristics.unique_participants
+    current_participants = current.key_metrics.unique_participants
+    next_participants = next.key_metrics.unique_participants
 
     if current_participants > 0 do
       (next_participants - current_participants) / current_participants

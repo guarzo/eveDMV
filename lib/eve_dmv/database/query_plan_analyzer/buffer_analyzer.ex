@@ -115,7 +115,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.BufferAnalyzer do
 
     # High temp file usage
     temp_file_recommendations =
-      if buffer_usage.temp_read + buffer_usage.temp_written > 1000 do
+      if buffer_usage.temp_read + buffer_usage.temp_written > 1_000 do
         [
           "High temporary file usage detected - consider increasing work_mem or temp_buffers"
           | cache_hit_recommendations
@@ -149,7 +149,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.BufferAnalyzer do
     total_blocks = shared_hit + shared_read
 
     hotspot_info =
-      if total_blocks > 1000 do
+      if total_blocks > 1_000 do
         [
           %{
             node_type: node["Node Type"],
@@ -212,7 +212,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.BufferAnalyzer do
       cond do
         buffer_usage.temp_read + buffer_usage.temp_written == 0 -> "None"
         buffer_usage.temp_read + buffer_usage.temp_written < 100 -> "Low"
-        buffer_usage.temp_read + buffer_usage.temp_written < 1000 -> "Moderate"
+        buffer_usage.temp_read + buffer_usage.temp_written < 1_000 -> "Moderate"
         buffer_usage.temp_read + buffer_usage.temp_written < 10_000 -> "High"
         true -> "Excessive"
       end
@@ -229,7 +229,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.BufferAnalyzer do
         "Low cache hit ratio indicates memory pressure"
       )
       |> maybe_add_indicator(
-        buffer_usage.temp_read + buffer_usage.temp_written > 5000,
+        buffer_usage.temp_read + buffer_usage.temp_written > 5_000,
         "Excessive temporary file I/O"
       )
 

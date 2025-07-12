@@ -63,8 +63,8 @@ defmodule EveDmv.Application do
       EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer,
       # Start rate limiter for Janice API (5 requests per second)
       {EveDmv.Market.RateLimiter, [name: :janice_rate_limiter] ++ RateLimit.janice_rate_limit()},
-      # Start the surveillance matching engine
-      maybe_start_surveillance_engine(),
+      # Start the surveillance context (includes matching engine, profile repository, etc.)
+      maybe_start_surveillance_context(),
       # Conditionally start database-dependent processes
       maybe_start_database_processes(),
       # Start the Wanderer API client for chain intelligence
@@ -137,13 +137,13 @@ defmodule EveDmv.Application do
     end
   end
 
-  # Conditionally start surveillance engine
-  defp maybe_start_surveillance_engine do
+  # Conditionally start surveillance context
+  defp maybe_start_surveillance_context do
     if Mix.env() != :test do
-      EveDmv.Surveillance.MatchingEngine
+      EveDmv.Contexts.Surveillance
     else
       %{
-        id: EveDmv.Surveillance.MatchingEngine,
+        id: EveDmv.Contexts.Surveillance,
         start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}
       }
     end
@@ -196,7 +196,7 @@ defmodule EveDmv.Application do
           :start_link,
           [
             fn ->
-              delay_ms = Application.get_env(:eve_dmv, :static_data_load_delay, 5000)
+              delay_ms = Application.get_env(:eve_dmv, :static_data_load_delay, 5_000)
               Process.sleep(delay_ms)
               ensure_static_data_loaded()
             end
