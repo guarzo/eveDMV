@@ -33,24 +33,26 @@ Deliver a comprehensive surveillance system that combines custom alert profiles 
 
 ## 📊 Sprint Backlog
 
-| Story ID | Description | Points | Priority | Definition of Done |
-|----------|-------------|---------|----------|-------------------|
-| AUTH-1 | Fix EVE SSO Token Signing Error | 3 | CRITICAL | Authentication works, no InvalidSecret errors, users can login |
-| DATA-1 | Character Intelligence Data Accuracy | 3 | CRITICAL | All metrics query real data, no mocks, accurate calculations |
-| DATA-2 | Corporation Intelligence Data Accuracy | 3 | CRITICAL | Real member/activity data, accurate timezone/doctrine analysis |
-| DATA-3 | Battle Analysis Data Accuracy | 2 | HIGH | Correct ISK values, accurate phase detection, complete participants |
-| DATA-4 | Fleet Operations Data Accuracy | 2 | HIGH | Remove example data, real fleet metrics only |
-| SURV-1 | Core Surveillance Profile Engine | 8 | CRITICAL | Complex filter evaluation with <200ms performance, boolean logic, real data |
-| SURV-2 | Profile Management UI (LiveView) | 5 | CRITICAL | Create/edit/delete profiles, drag-drop filter builder, preview with real kills |
-| SURV-3 | Real-time Alert System | 5 | CRITICAL | Visual/audio notifications, alert history, PubSub integration |
-| WAND-1 | Complete Wanderer HTTP Client | 6 | CRITICAL | Auth working, chain topology/inhabitants fetched, error handling |
-| WAND-2 | Wanderer SSE Real-time Updates | 4 | HIGH | Character movements, system updates processed, events broadcast |
-| SURV-4 | Chain-Aware Filter Implementation | 6 | CRITICAL | "In my chain", distance filters use real Wanderer data |
-| SURV-5 | Corporation Profile Sharing | 3 | HIGH | Corp profiles with permissions, member subscription |
-| SURV-6 | Profile Performance Dashboard | 2 | MEDIUM | Alert statistics, filter metrics, efficiency monitoring |
-| TEST-1 | Integration Testing & Documentation | 3 | HIGH | Full test coverage, user guide, API docs |
+| Story ID | Description | Points | Priority | Status | Definition of Done |
+|----------|-------------|---------|----------|---------|-------------------|
+| AUTH-1 | Fix EVE SSO Token Signing Error | 3 | CRITICAL | ✅ DONE | Authentication works, no InvalidSecret errors, users can login |
+| DATA-1 | Character Intelligence Data Accuracy | 3 | CRITICAL | ✅ DONE | All metrics query real data, no mocks, accurate calculations |
+| DATA-2 | Corporation Intelligence Data Accuracy | 3 | CRITICAL | ✅ DONE | Real member/activity data, accurate timezone/doctrine analysis |
+| DATA-3 | Battle Analysis Data Accuracy | 2 | HIGH | ✅ DONE | Correct ISK values, accurate phase detection, complete participants |
+| DATA-4 | Fleet Operations Data Accuracy | 2 | HIGH | ✅ DONE | Remove example data, real fleet metrics only |
+| SURV-1 | Core Surveillance Profile Engine | 8 | CRITICAL | ✅ DONE | Complex filter evaluation with <200ms performance, boolean logic, real data |
+| SURV-2 | Profile Management UI (LiveView) | 5 | CRITICAL | 🔄 IN PROGRESS | Create/edit/delete profiles, drag-drop filter builder, preview with real kills |
+| SURV-3 | Real-time Alert System | 5 | CRITICAL | ⏳ TODO | Visual/audio notifications, alert history, PubSub integration |
+| WAND-1 | Complete Wanderer HTTP Client | 6 | CRITICAL | ✅ DONE | Auth working, chain topology/inhabitants fetched, error handling |
+| WAND-2 | Wanderer SSE Real-time Updates | 4 | HIGH | ✅ DONE | Character movements, system updates processed, events broadcast |
+| SURV-4 | Chain-Aware Filter Implementation | 6 | CRITICAL | ✅ DONE | "In my chain", distance filters use real Wanderer data |
+| SURV-5 | Corporation Profile Sharing | 3 | HIGH | ⏳ TODO | Corp profiles with permissions, member subscription |
+| SURV-6 | Profile Performance Dashboard | 2 | MEDIUM | ⏳ TODO | Alert statistics, filter metrics, efficiency monitoring |
+| TEST-1 | Integration Testing & Documentation | 3 | HIGH | ⏳ TODO | Full test coverage, user guide, API docs |
 
-**Total Points**: 55 (increased by 10 for data accuracy tasks)
+**Total Points**: 55 (increased by 10 for data accuracy tasks)  
+**Completed Points**: 39/55 (71%)  
+**Remaining Points**: 16 (SURV-2: 5, SURV-3: 5, SURV-5: 3, SURV-6: 2, TEST-1: 3)
 
 ---
 

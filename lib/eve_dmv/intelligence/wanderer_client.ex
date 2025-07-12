@@ -3,7 +3,7 @@ defmodule EveDmv.Intelligence.WandererClient do
   Client for Wanderer Map API integration.
 
   Provides functions to fetch chain topology, system inhabitants,
-  and maintain real-time connections via WebSocket.
+  and maintain real-time connections via Server-Sent Events (SSE).
   """
 
   use GenServer
@@ -11,7 +11,8 @@ defmodule EveDmv.Intelligence.WandererClient do
 
   defstruct [
     :auth_token,
-    :websocket_pid,
+    :sse_pid,
+    :sse_connections,
     :monitored_maps,
     :rate_limiter,
     :connection_state
@@ -24,6 +25,11 @@ defmodule EveDmv.Intelligence.WandererClient do
   # Get base URL at runtime for better configuration flexibility
   defp base_url do
     Application.get_env(:eve_dmv, :wanderer_base_url, "http://host.docker.internal:4004")
+  end
+
+  # Get SSE URL for real-time updates
+  defp sse_url(map_id) do
+    Application.get_env(:eve_dmv, :wanderer_sse_url, "#{base_url()}/api/maps/#{map_id}/events/stream")
   end
 
   # Public API
@@ -99,14 +105,12 @@ defmodule EveDmv.Intelligence.WandererClient do
 
     state = %__MODULE__{
       auth_token: auth_token,
-      websocket_pid: nil,
+      sse_pid: nil,
+      sse_connections: %{},
       monitored_maps: MapSet.new(),
       rate_limiter: :ets.new(:wanderer_rate_limiter, [:set, :private]),
       connection_state: :disconnected
     }
-
-    # Start WebSocket connection
-    send(self(), :connect_websocket)
 
     {:ok, state}
   end
@@ -155,7 +159,7 @@ defmodule EveDmv.Intelligence.WandererClient do
   @impl GenServer
   def handle_call(:connection_status, _from, state) do
     status = %{
-      websocket: state.connection_state,
+      sse: state.connection_state,
       monitored_maps: MapSet.to_list(state.monitored_maps),
       auth_token_present: state.auth_token != nil
     }
@@ -167,52 +171,79 @@ defmodule EveDmv.Intelligence.WandererClient do
   def handle_cast({:monitor_map, map_id}, state) do
     new_monitored = MapSet.put(state.monitored_maps, map_id)
 
-    # Subscribe to WebSocket events for this map
-    send_websocket_message(state.websocket_pid, %{
-      "action" => "subscribe",
-      "map_id" => map_id
-    })
+    # Start individual SSE connection for this map
+    case connect_sse_for_map(map_id, state.auth_token) do
+      {:ok, sse_pid} ->
+        Logger.info("Started SSE monitoring for map #{map_id}")
+        new_sse_connections = Map.put(state.sse_connections || %{}, map_id, sse_pid)
+        {:noreply, %{state | monitored_maps: new_monitored, sse_connections: new_sse_connections}}
 
-    {:noreply, %{state | monitored_maps: new_monitored}}
+      {:error, reason} ->
+        Logger.error("Failed to start SSE for map #{map_id}: #{inspect(reason)}")
+        {:noreply, %{state | monitored_maps: new_monitored}}
+    end
   end
 
   @impl GenServer
   def handle_cast({:unmonitor_map, map_id}, state) do
     new_monitored = MapSet.delete(state.monitored_maps, map_id)
 
-    # Unsubscribe from WebSocket events
-    send_websocket_message(state.websocket_pid, %{
-      "action" => "unsubscribe",
-      "map_id" => map_id
-    })
-
-    {:noreply, %{state | monitored_maps: new_monitored}}
+    # Stop SSE connection for this map
+    if sse_pid = get_in(state.sse_connections || %{}, [map_id]) do
+      send(sse_pid, :close)
+      new_sse_connections = Map.delete(state.sse_connections || %{}, map_id)
+      Logger.info("Stopped SSE monitoring for map #{map_id}")
+      {:noreply, %{state | monitored_maps: new_monitored, sse_connections: new_sse_connections}}
+    else
+      Logger.info("No longer monitoring map #{map_id}")
+      {:noreply, %{state | monitored_maps: new_monitored}}
+    end
   end
 
   @impl GenServer
-  def handle_info(:connect_websocket, state) do
-    {:ok, ws_pid} = connect_websocket(state.auth_token)
-    Logger.info("Connected to Wanderer WebSocket")
-    {:noreply, %{state | websocket_pid: ws_pid, connection_state: :connected}}
-  end
-
-  @impl GenServer
-  def handle_info({:websocket_message, message}, state) do
-    case Jason.decode(message) do
+  def handle_info({:sse_event, map_id, event_data}, state) do
+    case Jason.decode(event_data) do
       {:ok, data} ->
-        handle_websocket_event(data, state)
+        handle_sse_event(data, map_id, state)
 
       {:error, reason} ->
-        Logger.error("Failed to decode WebSocket message: #{inspect(reason)}")
+        Logger.error("Failed to decode SSE message for map #{map_id}: #{inspect(reason)}")
         {:noreply, state}
     end
   end
 
   @impl GenServer
-  def handle_info({:websocket_closed, _reason}, state) do
-    Logger.warning("Wanderer WebSocket connection closed, reconnecting...")
-    Process.send_after(self(), :connect_websocket, 5_000)
-    {:noreply, %{state | websocket_pid: nil, connection_state: :reconnecting}}
+  def handle_info({:sse_closed, map_id, reason}, state) do
+    Logger.warning("Wanderer SSE connection closed for map #{map_id}: #{inspect(reason)}")
+    
+    # Remove from connections and attempt reconnect if still monitoring
+    new_sse_connections = Map.delete(state.sse_connections || %{}, map_id)
+    
+    if MapSet.member?(state.monitored_maps, map_id) do
+      # Retry connection after delay
+      Process.send_after(self(), {:reconnect_sse, map_id}, 5_000)
+    end
+    
+    {:noreply, %{state | sse_connections: new_sse_connections}}
+  end
+
+  @impl GenServer
+  def handle_info({:reconnect_sse, map_id}, state) do
+    if MapSet.member?(state.monitored_maps, map_id) do
+      case connect_sse_for_map(map_id, state.auth_token) do
+        {:ok, sse_pid} ->
+          Logger.info("Reconnected SSE for map #{map_id}")
+          new_sse_connections = Map.put(state.sse_connections, map_id, sse_pid)
+          {:noreply, %{state | sse_connections: new_sse_connections}}
+
+        {:error, reason} ->
+          Logger.error("Failed to reconnect SSE for map #{map_id}: #{inspect(reason)}")
+          Process.send_after(self(), {:reconnect_sse, map_id}, 10_000)
+          {:noreply, state}
+      end
+    else
+      {:noreply, state}
+    end
   end
 
   # Private Functions
@@ -328,71 +359,226 @@ defmodule EveDmv.Intelligence.WandererClient do
     end)
   end
 
-  defp connect_websocket(auth_token) do
-    # This is a simplified WebSocket connection
-    # In reality, you'd use a proper WebSocket client like Gun or WebSockex
-    {:ok, spawn_link(fn -> websocket_loop(auth_token) end)}
+  defp connect_sse_for_map(map_id, auth_token) do
+    # Start SSE connection process for a specific map
+    parent_pid = self()
+    
+    sse_pid = spawn_link(fn -> 
+      sse_loop(parent_pid, map_id, auth_token)
+    end)
+    
+    {:ok, sse_pid}
   end
 
-  defp websocket_loop(auth_token) do
-    # Placeholder for WebSocket connection loop
-    # This would handle the actual WebSocket protocol
-    receive do
-      {:send_message, message} ->
-        # Send message to WebSocket
-        Logger.debug("Sending WebSocket message: #{inspect(message)}")
-        websocket_loop(auth_token)
+  defp sse_loop(parent_pid, map_id, auth_token) do
+    url = sse_url(map_id)
+    headers = build_headers(auth_token)
+    
+    # Add SSE-specific headers
+    headers = headers ++ [
+      {"Accept", "text/event-stream"},
+      {"Cache-Control", "no-cache"}
+    ]
+    
+    case HTTPoison.get(url, headers, 
+      stream_to: self(), 
+      async: :once,
+      timeout: :infinity,
+      recv_timeout: :infinity
+    ) do
+      {:ok, %HTTPoison.AsyncResponse{id: _id}} ->
+        Logger.info("SSE connection established to #{url} for map #{map_id}")
+        sse_receive_loop(parent_pid, map_id)
+        
+      {:error, reason} ->
+        Logger.error("Failed to establish SSE connection for map #{map_id}: #{inspect(reason)}")
+        send(parent_pid, {:sse_closed, map_id, reason})
+    end
+  end
 
-      {:websocket_data, data} ->
-        # Forward received data to the main process
-        send(__MODULE__, {:websocket_message, data})
-        websocket_loop(auth_token)
+  defp sse_receive_loop(parent_pid, map_id) do
+    receive do
+      %HTTPoison.AsyncStatus{code: code} ->
+        if code == 200 do
+          HTTPoison.stream_next(self())
+          sse_receive_loop(parent_pid, map_id)
+        else
+          Logger.error("SSE connection failed with status: #{code} for map #{map_id}")
+          send(parent_pid, {:sse_closed, map_id, {:http_error, code}})
+        end
+
+      %HTTPoison.AsyncHeaders{headers: _headers} ->
+        HTTPoison.stream_next(self())
+        sse_receive_loop(parent_pid, map_id)
+
+      %HTTPoison.AsyncChunk{chunk: chunk} ->
+        process_sse_chunk(chunk, parent_pid, map_id)
+        HTTPoison.stream_next(self())
+        sse_receive_loop(parent_pid, map_id)
+
+      %HTTPoison.AsyncEnd{} ->
+        Logger.info("SSE stream ended for map #{map_id}")
+        send(parent_pid, {:sse_closed, map_id, :stream_ended})
+
+      {:timeout, _} ->
+        # Heartbeat timeout - reconnect
+        Logger.warning("SSE connection timeout for map #{map_id}")
+        send(parent_pid, {:sse_closed, map_id, :timeout})
 
       :close ->
-        Logger.info("WebSocket connection closed")
-        send(__MODULE__, {:websocket_closed, :normal})
+        Logger.info("SSE connection closed by request for map #{map_id}")
+        send(parent_pid, {:sse_closed, map_id, :normal})
+
+    after
+      # Heartbeat timeout - 5 minutes
+      300_000 ->
+        Logger.warning("SSE heartbeat timeout for map #{map_id}")
+        send(parent_pid, {:sse_closed, map_id, :heartbeat_timeout})
     end
   end
 
-  defp send_websocket_message(nil, _message), do: :ok
-
-  defp send_websocket_message(ws_pid, message) when is_pid(ws_pid) do
-    send(ws_pid, {:send_message, message})
+  defp process_sse_chunk(chunk, parent_pid, map_id) do
+    # SSE events are formatted as:
+    # event: event_type\n
+    # data: json_data\n\n
+    
+    chunk
+    |> String.split("\n\n")
+    |> Enum.each(fn event_block ->
+      if String.trim(event_block) != "" do
+        parse_sse_event(event_block, parent_pid, map_id)
+      end
+    end)
   end
 
-  defp handle_websocket_event(%{"event" => "system_update", "data" => data}, state) do
-    # Handle system inhabitant updates
-    map_id = Map.get(data, "map_id")
+  defp parse_sse_event(event_block, parent_pid, map_id) do
+    lines = String.split(event_block, "\n")
+    
+    {_event_type, data} = 
+      Enum.reduce(lines, {nil, nil}, fn line, {event_type, data} ->
+        cond do
+          String.starts_with?(line, "event:") ->
+            {String.trim(String.slice(line, 6..-1//-1)), data}
+          
+          String.starts_with?(line, "data:") ->
+            {event_type, String.trim(String.slice(line, 5..-1//-1))}
+          
+          true ->
+            {event_type, data}
+        end
+      end)
+    
+    if data do
+      send(parent_pid, {:sse_event, map_id, data})
+    end
+  end
 
+  defp handle_sse_event(%{"type" => "add_system", "payload" => payload}, map_id, state) do
+    # Handle system added events
     if MapSet.member?(state.monitored_maps, map_id) do
-      # Process the update and broadcast to subscribers
       Phoenix.PubSub.broadcast(
         EveDmv.PubSub,
-        "chain_intelligence:#{map_id}",
-        {:system_update, data}
+        "wanderer:chain_updates",
+        {:chain_topology_update, map_id, %{"type" => "add_system", "payload" => payload}}
       )
     end
 
     {:noreply, state}
   end
 
-  defp handle_websocket_event(%{"event" => "connection_update", "data" => data}, state) do
-    # Handle connection status updates
-    map_id = Map.get(data, "map_id")
-
+  defp handle_sse_event(%{"type" => "connection_added", "payload" => payload}, map_id, state) do
+    # Handle connection added events
     if MapSet.member?(state.monitored_maps, map_id) do
       Phoenix.PubSub.broadcast(
         EveDmv.PubSub,
-        "chain_intelligence:#{map_id}",
-        {:connection_update, data}
+        "wanderer:chain_updates",
+        {:chain_topology_update, map_id, %{"type" => "connection_added", "payload" => payload}}
       )
     end
 
     {:noreply, state}
   end
 
-  defp handle_websocket_event(data, state) do
-    Logger.debug("Unhandled WebSocket event: #{inspect(data)}")
+  defp handle_sse_event(%{"type" => "connection_removed", "payload" => payload}, map_id, state) do
+    # Handle connection removed events
+    if MapSet.member?(state.monitored_maps, map_id) do
+      Phoenix.PubSub.broadcast(
+        EveDmv.PubSub,
+        "wanderer:chain_updates",
+        {:chain_topology_update, map_id, %{"type" => "connection_removed", "payload" => payload}}
+      )
+    end
+
+    {:noreply, state}
+  end
+
+  defp handle_sse_event(%{"type" => "map_kill", "payload" => payload}, map_id, state) do
+    # Handle kill events
+    if MapSet.member?(state.monitored_maps, map_id) do
+      Phoenix.PubSub.broadcast(
+        EveDmv.PubSub,
+        "killmails:enriched",
+        {:killmail_activity, %{map_id: map_id, payload: payload}}
+      )
+    end
+
+    {:noreply, state}
+  end
+
+  defp handle_sse_event(%{"type" => "signature_added", "payload" => payload}, map_id, state) do
+    # Handle signature added events
+    if MapSet.member?(state.monitored_maps, map_id) do
+      Phoenix.PubSub.broadcast(
+        EveDmv.PubSub,
+        "wanderer:chain_updates",
+        {:chain_topology_update, map_id, %{"type" => "signature_added", "payload" => payload}}
+      )
+    end
+
+    {:noreply, state}
+  end
+
+  defp handle_sse_event(%{"type" => "signature_removed", "payload" => payload}, map_id, state) do
+    # Handle signature removed events
+    if MapSet.member?(state.monitored_maps, map_id) do
+      Phoenix.PubSub.broadcast(
+        EveDmv.PubSub,
+        "wanderer:chain_updates",
+        {:chain_topology_update, map_id, %{"type" => "signature_removed", "payload" => payload}}
+      )
+    end
+
+    {:noreply, state}
+  end
+
+  defp handle_sse_event(%{"type" => "acl_member_added", "payload" => payload}, map_id, state) do
+    # Handle ACL member added events
+    if MapSet.member?(state.monitored_maps, map_id) do
+      Phoenix.PubSub.broadcast(
+        EveDmv.PubSub,
+        "wanderer:inhabitant_updates",
+        {:inhabitant_update, map_id, nil, %{"type" => "acl_member_added", "payload" => payload}}
+      )
+    end
+
+    {:noreply, state}
+  end
+
+  defp handle_sse_event(%{"type" => "acl_member_removed", "payload" => payload}, map_id, state) do
+    # Handle ACL member removed events
+    if MapSet.member?(state.monitored_maps, map_id) do
+      Phoenix.PubSub.broadcast(
+        EveDmv.PubSub,
+        "wanderer:inhabitant_updates",
+        {:inhabitant_update, map_id, nil, %{"type" => "acl_member_removed", "payload" => payload}}
+      )
+    end
+
+    {:noreply, state}
+  end
+
+  defp handle_sse_event(data, map_id, state) do
+    Logger.debug("Unhandled SSE event for map #{map_id}: #{inspect(data)}")
     {:noreply, state}
   end
 end
