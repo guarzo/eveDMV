@@ -63,7 +63,7 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential libbz2-dev bc
+        sudo apt-get install -y build-essential libbz2-dev bc erlang-dev
 
     - name: Install dependencies
       run: |
@@ -85,6 +85,11 @@ jobs:
       with:
         elixir-version: ${{ env.ELIXIR_VERSION }}
         otp-version: ${{ env.OTP_VERSION }}
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libbz2-dev bc erlang-dev
 
     - name: Restore dependencies cache
       uses: actions/cache@v4
@@ -147,6 +152,11 @@ jobs:
       with:
         elixir-version: ${{ env.ELIXIR_VERSION }}
         otp-version: ${{ env.OTP_VERSION }}
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libbz2-dev bc erlang-dev
 
     - name: Restore dependencies cache
       uses: actions/cache@v4
