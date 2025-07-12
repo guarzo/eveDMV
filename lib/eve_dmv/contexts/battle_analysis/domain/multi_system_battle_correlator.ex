@@ -43,7 +43,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
   {:ok, correlated_battles} where each battle may span multiple systems
   """
   def correlate_multi_system_battles(battle_or_battles, options \\ [])
-  
+
   def correlate_multi_system_battles(battle, options) when is_map(battle) do
     correlate_multi_system_battles([battle], options)
   end
@@ -156,17 +156,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
 
   defp analyze_participant_overlap(temporal_clusters, min_overlap) do
     result =
-      Enum.map(temporal_clusters, fn cluster ->
+      Enum.flat_map(temporal_clusters, fn cluster ->
         if length(cluster) > 1 do
           # Analyze overlap between all pairs in cluster
           overlap_analysis = calculate_pairwise_overlaps(cluster)
           group_by_overlap_threshold(cluster, overlap_analysis, min_overlap)
         else
           # Single battle cluster - no overlap to analyze
+          # Keep it as a list of lists for consistency
           [cluster]
         end
       end)
-      |> List.flatten()
 
     Logger.debug(
       "Overlap analysis result: #{inspect(length(result))} groups, each is list: #{inspect(Enum.all?(result, &is_list/1))}"

@@ -23,15 +23,24 @@ defmodule EveDmv.Killmails.DatabaseInserter do
   def insert_raw_killmails(raw_changesets) do
     Logger.debug("Inserting #{length(raw_changesets)} raw killmails using bulk operation")
 
+    # Deduplicate by killmail_id to prevent constraint violations in batch
+    unique_changesets = deduplicate_killmails(raw_changesets)
+
+    if length(unique_changesets) < length(raw_changesets) do
+      Logger.debug(
+        "Deduplicated #{length(raw_changesets)} -> #{length(unique_changesets)} raw killmails"
+      )
+    end
+
     # Use Ash bulk operation for much better performance
-    case Ash.bulk_create(raw_changesets, KillmailRaw, :ingest_from_source,
+    case Ash.bulk_create(unique_changesets, KillmailRaw, :ingest_from_source,
            domain: Api,
            return_records?: false,
            return_errors?: true,
            stop_on_error?: false
          ) do
       %Ash.BulkResult{status: :success} ->
-        success_count = length(raw_changesets)
+        success_count = length(unique_changesets)
         Logger.debug("Successfully bulk inserted #{success_count} raw killmails")
         :ok
 
@@ -70,7 +79,16 @@ defmodule EveDmv.Killmails.DatabaseInserter do
       Logger.debug("No valid participants to insert")
       :ok
     else
-      perform_participant_bulk_insert(participants, valid_participants)
+      # Deduplicate participants to prevent constraint violations in batch
+      unique_participants = deduplicate_participants(valid_participants)
+
+      if length(unique_participants) < length(valid_participants) do
+        Logger.debug(
+          "Deduplicated #{length(valid_participants)} -> #{length(unique_participants)} participants"
+        )
+      end
+
+      perform_participant_bulk_insert(participants, unique_participants)
     end
   end
 
@@ -109,13 +127,13 @@ defmodule EveDmv.Killmails.DatabaseInserter do
     end
   end
 
-  defp handle_participant_success(all_participants, valid_participants) do
-    success_count = length(valid_participants)
-    skipped_count = length(all_participants) - length(valid_participants)
+  defp handle_participant_success(all_participants, unique_participants) do
+    success_count = length(unique_participants)
+    skipped_count = length(all_participants) - length(unique_participants)
 
     if skipped_count > 0 do
       Logger.info(
-        "Successfully bulk inserted #{success_count} participants, skipped #{skipped_count} invalid"
+        "Successfully bulk inserted #{success_count} participants, skipped #{skipped_count} invalid/duplicate"
       )
     else
       Logger.debug("Successfully bulk inserted #{success_count} participants")
@@ -172,5 +190,29 @@ defmodule EveDmv.Killmails.DatabaseInserter do
     end)
 
     :error
+  end
+
+  # Deduplication helpers
+
+  defp deduplicate_killmails(raw_changesets) do
+    raw_changesets
+    |> Enum.uniq_by(fn changeset ->
+      # Deduplicate by killmail_id to prevent constraint violations
+      Map.get(changeset, :killmail_id)
+    end)
+  end
+
+  defp deduplicate_participants(participants) do
+    participants
+    |> Enum.uniq_by(fn participant ->
+      # Deduplicate by unique combination that matches the actual constraint:
+      # unique_participant_per_killmail: [:killmail_id, :killmail_time, :character_id, :ship_type_id]
+      {
+        Map.get(participant, :killmail_id),
+        Map.get(participant, :killmail_time),
+        Map.get(participant, :character_id),
+        Map.get(participant, :ship_type_id)
+      }
+    end)
   end
 end

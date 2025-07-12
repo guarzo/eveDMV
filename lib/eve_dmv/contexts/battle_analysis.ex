@@ -6,7 +6,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   """
 
   require Logger
-  
+
   alias EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService
   alias EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService
   alias EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService
@@ -101,21 +101,34 @@ defmodule EveDmv.Contexts.BattleAnalysis do
     case parse_battle_id(battle_id) do
       {:ok, {system_id, start_time}} ->
         # Detect battles in a narrow time window around this battle
-        end_time = NaiveDateTime.add(start_time, 3600, :second) # 1 hour window
-        
+        # 1 hour window
+        end_time = NaiveDateTime.add(start_time, 3600, :second)
+
         case detect_battles_in_system(system_id, start_time, end_time) do
           {:ok, battles} ->
             Logger.debug("Found #{length(battles)} battles in system #{system_id}")
             Logger.debug("Looking for battle_id: #{battle_id}")
             Logger.debug("Available battle IDs: #{inspect(Enum.map(battles, & &1.battle_id))}")
-            
+            Logger.debug("Battle search window: #{inspect(start_time)} to #{inspect(end_time)}")
+
+            # Log battle details for debugging
+            Enum.each(battles, fn b ->
+              Logger.debug(
+                "Battle #{b.battle_id}: #{length(b.killmails)} kills, " <>
+                  "time range: #{inspect(b.metadata.start_time)} - #{inspect(b.metadata.end_time)}"
+              )
+            end)
+
             case Enum.find(battles, fn b -> b.battle_id == battle_id end) do
               nil ->
                 # Try to find a battle in the same system with similar timestamp
                 similar_battle = find_similar_battle(battles, battle_id, system_id)
+
                 case similar_battle do
-                  nil -> {:error, :battle_not_found}
-                  battle -> 
+                  nil ->
+                    {:error, :battle_not_found}
+
+                  battle ->
                     timeline = reconstruct_battle_timeline(battle)
                     {:ok, Map.put(battle, :timeline, timeline)}
                 end
@@ -124,17 +137,17 @@ defmodule EveDmv.Contexts.BattleAnalysis do
                 timeline = reconstruct_battle_timeline(battle)
                 {:ok, Map.put(battle, :timeline, timeline)}
             end
-            
+
           error ->
             error
         end
-        
+
       _ ->
         # Fallback to old method if parsing fails
         get_battle_with_timeline_legacy(battle_id)
     end
   end
-  
+
   defp parse_battle_id(battle_id) do
     # Battle ID format: "battle_SYSTEMID_YYYYMMDDHHMMSS"
     case String.split(battle_id, "_") do
@@ -147,18 +160,20 @@ defmodule EveDmv.Contexts.BattleAnalysis do
         else
           _ -> :error
         end
+
       _ ->
         :error
     end
   end
-  
+
   defp find_similar_battle(battles, requested_battle_id, system_id) do
     # Extract timestamp from the requested battle ID
     case parse_battle_id(requested_battle_id) do
       {:ok, {_system_id, requested_time}} ->
         # Find battles in the same system within a 10-minute window
-        time_window_seconds = 600  # 10 minutes
-        
+        # 10 minutes
+        time_window_seconds = 600
+
         battles
         |> Enum.filter(fn battle ->
           # Parse each battle's timestamp
@@ -166,29 +181,34 @@ defmodule EveDmv.Contexts.BattleAnalysis do
             {:ok, {^system_id, battle_time}} ->
               time_diff = abs(NaiveDateTime.diff(requested_time, battle_time, :second))
               time_diff <= time_window_seconds
+
             _ ->
               false
           end
         end)
-        |> Enum.min_by(fn battle ->
-          # Find the battle with the closest timestamp
-          case parse_battle_id(battle.battle_id) do
-            {:ok, {^system_id, battle_time}} ->
-              abs(NaiveDateTime.diff(requested_time, battle_time, :second))
-            _ ->
-              :infinity
-          end
-        end, fn -> nil end)
-        
+        |> Enum.min_by(
+          fn battle ->
+            # Find the battle with the closest timestamp
+            case parse_battle_id(battle.battle_id) do
+              {:ok, {^system_id, battle_time}} ->
+                abs(NaiveDateTime.diff(requested_time, battle_time, :second))
+
+              _ ->
+                :infinity
+            end
+          end,
+          fn -> nil end
+        )
+
       _ ->
         nil
     end
   end
-  
+
   defp parse_battle_timestamp(timestamp_str) do
     # Parse YYYYMMDDHHMMSS format
-    with <<year::binary-4, month::binary-2, day::binary-2, 
-           hour::binary-2, minute::binary-2, second::binary-2>> <- timestamp_str,
+    with <<year::binary-4, month::binary-2, day::binary-2, hour::binary-2, minute::binary-2,
+           second::binary-2>> <- timestamp_str,
          {y, ""} <- Integer.parse(year),
          {mo, ""} <- Integer.parse(month),
          {d, ""} <- Integer.parse(day),
@@ -200,8 +220,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
       _ -> :error
     end
   end
-  
-  
+
   defp get_battle_with_timeline_legacy(battle_id) do
     # Fallback: search recent battles
     case detect_recent_battles(48) do

@@ -29,8 +29,31 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   """
   def analyze_character_threat(character_id) do
     case ThreatScoringEngine.calculate_threat_score(character_id) do
-      {:ok, threat_data} -> {:ok, threat_data}
-      error -> error
+      {:ok, threat_data} ->
+        {:ok, threat_data}
+
+      {:error, :insufficient_data} ->
+        # Return a default threat analysis for characters with limited data
+        {:ok,
+         %{
+           threat_score: 0,
+           threat_level: :minimal,
+           dimensions: %{
+             combat_skill: 0,
+             ship_mastery: 0,
+             gang_effectiveness: 0,
+             unpredictability: 0,
+             recent_activity: 0
+           },
+           analysis_metadata: %{
+             data_quality: :insufficient,
+             killmail_count: 0,
+             analysis_window_days: 90
+           }
+         }}
+
+      error ->
+        error
     end
   end
 
@@ -67,8 +90,27 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   """
   def calculate_threat_trends(character_id, days_back \\ 90) do
     case ThreatScoringEngine.analyze_threat_trends(character_id, analysis_window_days: days_back) do
-      {:ok, trends} -> {:ok, trends}
-      error -> error
+      {:ok, trends} ->
+        {:ok, trends}
+
+      {:error, :insufficient_data} ->
+        # Return default trends for characters with limited data
+        {:ok,
+         %{
+           periods: [
+             %{
+               label: "Recent (30 days)",
+               date_range: "Limited data",
+               threat_score: 0,
+               previous_score: nil
+             }
+           ],
+           trend: :stable,
+           analysis: "Insufficient combat data for trend analysis"
+         }}
+
+      error ->
+        error
     end
   end
 
@@ -98,35 +140,181 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Combines threat scoring, behavioral analysis, and performance metrics.
   """
   def get_character_intelligence_report(character_id) do
+    require Logger
+
     with {:ok, threat_analysis} <- analyze_character_threat(character_id),
          {:ok, behavioral_patterns} <- detect_behavioral_patterns(character_id),
          {:ok, threat_trends} <- calculate_threat_trends(character_id),
-         {:ok, character_info} <- get_character_info(character_id) do
+         {:ok, character_info} <- get_character_info(character_id),
+         {:ok, combat_stats} <- get_combat_statistics(character_id) do
       {:ok,
        %{
          character: character_info,
          threat_analysis: threat_analysis,
          behavioral_patterns: behavioral_patterns,
          threat_trends: threat_trends,
+         combat_stats: combat_stats,
          summary: generate_intelligence_summary(threat_analysis, behavioral_patterns)
        }}
+    else
+      {:error, reason} = error ->
+        Logger.error("Failed to get character intelligence report: #{inspect(reason)}")
+        error
+
+      error ->
+        Logger.error("Unexpected error in character intelligence report: #{inspect(error)}")
+        {:error, :unknown_error}
     end
   end
 
   # Private helper functions
 
+  defp get_combat_statistics(character_id) do
+    import Ash.Query
+    alias EveDmv.Api
+    alias EveDmv.Killmails.KillmailRaw
+
+    # Calculate kills where character was attacker
+    kills_query =
+      KillmailRaw
+      |> new()
+      |> sort(killmail_time: :desc)
+      |> limit(1000)
+
+    case Ash.read(kills_query, domain: Api) do
+      {:ok, killmails} ->
+        # Filter for kills where character was attacker
+        kills =
+          Enum.filter(killmails, fn km ->
+            case km.raw_data do
+              %{"attackers" => attackers} when is_list(attackers) ->
+                Enum.any?(attackers, &(&1["character_id"] == character_id))
+
+              _ ->
+                false
+            end
+          end)
+
+        # Count losses where character was victim
+        losses_query =
+          KillmailRaw
+          |> new()
+          |> filter(victim_character_id: character_id)
+
+        losses_count =
+          case Ash.count(losses_query, domain: Api) do
+            {:ok, count} -> count
+            _ -> 0
+          end
+
+        kills_count = length(kills)
+
+        # Calculate ISK destroyed and lost
+        isk_destroyed =
+          Enum.reduce(kills, 0, fn km, acc ->
+            acc + Map.get(km.raw_data["zkb"] || %{}, "totalValue", 0)
+          end)
+
+        # For now, calculate ISK lost from the raw data since total_value might not be populated
+        isk_lost_query =
+          KillmailRaw
+          |> new()
+          |> filter(victim_character_id: character_id)
+
+        isk_lost =
+          case Ash.read(isk_lost_query, domain: Api) do
+            {:ok, loss_killmails} ->
+              Enum.reduce(loss_killmails, 0, fn km, acc ->
+                acc + (get_in(km.raw_data, ["zkb", "totalValue"]) || 0)
+              end)
+
+            _ ->
+              0
+          end
+
+        {:ok,
+         %{
+           total_kills: kills_count,
+           total_losses: losses_count,
+           kill_death_ratio:
+             if(losses_count > 0,
+               do: Float.round(kills_count / losses_count, 2),
+               else: kills_count
+             ),
+           isk_destroyed: isk_destroyed,
+           isk_lost: isk_lost,
+           isk_efficiency:
+             if(isk_lost > 0,
+               do: Float.round(isk_destroyed / (isk_destroyed + isk_lost) * 100, 1),
+               else: 100.0
+             ),
+           recent_activity: %{
+             last_7_days: count_recent_activity(kills, 7),
+             last_30_days: count_recent_activity(kills, 30)
+           }
+         }}
+
+      _ ->
+        {:ok,
+         %{
+           total_kills: 0,
+           total_losses: 0,
+           kill_death_ratio: 0,
+           isk_destroyed: 0,
+           isk_lost: 0,
+           isk_efficiency: 0,
+           recent_activity: %{
+             last_7_days: 0,
+             last_30_days: 0
+           }
+         }}
+    end
+  end
+
+  defp count_recent_activity(kills, days) do
+    cutoff = NaiveDateTime.add(NaiveDateTime.utc_now(), -days * 24 * 60 * 60, :second)
+
+    Enum.count(kills, fn km ->
+      NaiveDateTime.compare(km.killmail_time, cutoff) == :gt
+    end)
+  end
+
   defp get_character_info(character_id) do
-    # For now, just return basic info
-    # In production, this would query the character table or EVE API
-    {:ok,
-     %{
-       character_id: character_id,
-       name: "Character #{character_id}",
-       corporation_id: nil,
-       corporation_name: nil,
-       alliance_id: nil,
-       alliance_name: nil
-     }}
+    alias EveDmv.Eve.NameResolver
+    alias EveDmv.Eve.EsiCharacterClient
+
+    # Get character name
+    character_name = NameResolver.character_name(character_id)
+
+    # Get character's corporation and alliance info from ESI
+    case EsiCharacterClient.get_character(character_id) do
+      {:ok, char_info} ->
+        {:ok,
+         %{
+           character_id: character_id,
+           name: character_name,
+           corporation_id: char_info["corporation_id"],
+           corporation_name: NameResolver.corporation_name(char_info["corporation_id"]),
+           alliance_id: char_info["alliance_id"],
+           alliance_name:
+             if(char_info["alliance_id"],
+               do: NameResolver.alliance_name(char_info["alliance_id"]),
+               else: nil
+             )
+         }}
+
+      {:error, _reason} ->
+        # Fallback to just the character name if ESI fails
+        {:ok,
+         %{
+           character_id: character_id,
+           name: character_name,
+           corporation_id: nil,
+           corporation_name: nil,
+           alliance_id: nil,
+           alliance_name: nil
+         }}
+    end
   end
 
   defp extract_behavioral_patterns(threat_data) do

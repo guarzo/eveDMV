@@ -133,7 +133,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
           # Try to import related kills from the same battle
           import_related_from_killmail(killmail)
         else
-          error -> 
+          error ->
             Logger.warning("Failed to import related kills: #{inspect(error)}")
             # Fallback to just the single kill import
             import_killmail(killmail_id)
@@ -371,7 +371,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
     # Convert DateTime to zkillboard format: YYYYMMDDHHMM
     Calendar.strftime(timestamp, "%Y%m%d%H%M")
   end
-  
+
   defp format_timestamp_for_zkb(%NaiveDateTime{} = timestamp) do
     # Convert NaiveDateTime to zkillboard format: YYYYMMDDHHMM
     Calendar.strftime(timestamp, "%Y%m%d%H%M")
@@ -381,7 +381,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
     # Fallback for other types, try to convert to string
     to_string(timestamp)
   end
-  
+
   defp get_killmail_details(killmail_id) do
     # Fetch the killmail from our database to get system and time info
     case KillmailRaw
@@ -389,17 +389,20 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
          |> Ash.read_one(domain: Api) do
       {:ok, killmail} when killmail != nil ->
         {:ok, killmail}
+
       _ ->
         {:error, :killmail_not_found}
     end
   end
-  
+
   defp import_related_from_killmail(killmail) do
-    Logger.info("Fetching related kills for killmail #{killmail.killmail_id} in system #{killmail.solar_system_id}")
-    
+    Logger.info(
+      "Fetching related kills for killmail #{killmail.killmail_id} in system #{killmail.solar_system_id}"
+    )
+
     # Round the time to nearest 5 minutes for better matching
     rounded_time = round_to_nearest_5_minutes(killmail.killmail_time)
-    
+
     # Import related kills
     case import_related_kills(killmail.solar_system_id, rounded_time) do
       {:ok, imported_ids} ->
@@ -407,25 +410,27 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
         all_ids = Enum.uniq([killmail.killmail_id | imported_ids])
         Logger.info("Imported #{length(all_ids)} total kills (including related)")
         {:ok, all_ids}
-      
+
       error ->
         # If related fails, at least return the original
         Logger.warning("Failed to fetch related kills: #{inspect(error)}")
         {:ok, [killmail.killmail_id]}
     end
   end
-  
+
   defp round_to_nearest_5_minutes(datetime) do
     # Round to nearest 5-minute interval for better zkillboard matching
     # This helps match kills that happened in the same battle window
-    {:ok, dt} = NaiveDateTime.new(
-      datetime.year,
-      datetime.month,
-      datetime.day,
-      datetime.hour,
-      div(datetime.minute, 5) * 5,
-      0
-    )
+    {:ok, dt} =
+      NaiveDateTime.new(
+        datetime.year,
+        datetime.month,
+        datetime.day,
+        datetime.hour,
+        div(datetime.minute, 5) * 5,
+        0
+      )
+
     dt
   end
 end

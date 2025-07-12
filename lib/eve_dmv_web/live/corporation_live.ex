@@ -22,10 +22,11 @@ defmodule EveDmvWeb.CorporationLive do
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
   # Import reusable components
-  import EveDmvWeb.Components.PageHeaderComponent
-  import EveDmvWeb.Components.StatsGridComponent
   import EveDmvWeb.Components.ErrorStateComponent
   import EveDmvWeb.Components.EmptyStateComponent
+  import EveDmvWeb.Components.ThreatLevelComponent
+  import EveDmvWeb.Components.ActivityOverviewComponent
+  import EveDmvWeb.Components.IskStatsComponent
   import EveDmvWeb.EveImageComponents
 
   @impl Phoenix.LiveView
@@ -39,19 +40,21 @@ defmodule EveDmvWeb.CorporationLive do
             fn -> load_corporation_info(corporation_id) end
           )
 
-        {:ok, members} =
-          AnalysisCache.get_or_compute(
-            AnalysisCache.corp_members_key(corporation_id),
-            fn -> load_corp_members(corporation_id) end
-          )
+        # Load members directly for debugging
+        members = load_corp_members(corporation_id)
+        Logger.info("Loaded #{length(members)} members for corp #{corporation_id}")
 
-        {:ok, recent_activity} =
-          AnalysisCache.get_or_compute(
-            AnalysisCache.corp_activity_key(corporation_id),
-            fn -> load_recent_activity(corporation_id) end
-          )
+        # Load recent activity directly for debugging
+        recent_activity = load_recent_activity(corporation_id)
+
+        Logger.info(
+          "Loaded #{length(recent_activity)} recent activities for corp #{corporation_id}"
+        )
 
         corp_stats = calculate_corp_stats(members)
+
+        # Get comprehensive corporation statistics (longer time period)
+        comprehensive_stats = get_comprehensive_corp_stats(corporation_id)
 
         {:ok, location_stats} =
           AnalysisCache.get_or_compute(
@@ -72,7 +75,22 @@ defmodule EveDmvWeb.CorporationLive do
             fn -> calculate_timezone_data(corporation_id) end
           )
 
-        participation_data = calculate_participation_data(members, corp_stats)
+        participation_data = calculate_participation_data(members, corp_info)
+
+        # Load intelligence data directly for debugging
+        intelligence_data =
+          case CorporationIntelligence.get_corporation_intelligence_report(corporation_id) do
+            {:ok, data} ->
+              Logger.info("Successfully loaded intelligence data for corp #{corporation_id}")
+              data
+
+            {:error, reason} ->
+              Logger.error(
+                "Failed to load intelligence data for corp #{corporation_id}: #{inspect(reason)}"
+              )
+
+              nil
+          end
 
         socket =
           socket
@@ -81,15 +99,14 @@ defmodule EveDmvWeb.CorporationLive do
           |> assign(:members, members)
           |> assign(:recent_activity, recent_activity)
           |> assign(:corp_stats, corp_stats)
+          |> assign(:comprehensive_stats, comprehensive_stats)
           |> assign(:timezone_data, timezone_data)
           |> assign(:participation_data, participation_data)
           |> assign(:location_stats, location_stats)
           |> assign(:victim_stats, victim_stats)
+          |> assign(:intelligence_data, intelligence_data)
           |> assign(:loading, false)
           |> assign(:error, nil)
-          |> assign(:active_tab, :overview)
-          |> assign(:intelligence_data, nil)
-          |> assign(:loading_intelligence, false)
 
         {:ok, socket}
 
@@ -117,17 +134,18 @@ defmodule EveDmvWeb.CorporationLive do
         fn -> load_corporation_info(corporation_id) end
       )
 
-    {:ok, members} =
-      AnalysisCache.get_or_compute(
-        AnalysisCache.corp_members_key(corporation_id),
-        fn -> load_corp_members(corporation_id) end
-      )
+    # Load directly for debugging
+    members = load_corp_members(corporation_id)
+    Logger.info("Refresh: Loaded #{length(members)} members for corp #{corporation_id}")
 
-    {:ok, recent_activity} =
-      AnalysisCache.get_or_compute(
-        AnalysisCache.corp_activity_key(corporation_id),
-        fn -> load_recent_activity(corporation_id) end
-      )
+    # Get comprehensive stats first
+    comprehensive_stats = get_comprehensive_corp_stats(corporation_id)
+
+    recent_activity = load_recent_activity(corporation_id)
+
+    Logger.info(
+      "Refresh: Loaded #{length(recent_activity)} recent activities for corp #{corporation_id}"
+    )
 
     corp_stats = calculate_corp_stats(members)
 
@@ -150,7 +168,33 @@ defmodule EveDmvWeb.CorporationLive do
         fn -> calculate_timezone_data(corporation_id) end
       )
 
-    participation_data = calculate_participation_data(members, corp_stats)
+    participation_data = calculate_participation_data(members, corp_info)
+
+    # Reload intelligence data
+    intelligence_data =
+      case AnalysisCache.get_or_compute(
+             AnalysisCache.corp_intelligence_key(corporation_id),
+             fn ->
+               case CorporationIntelligence.get_corporation_intelligence_report(corporation_id) do
+                 {:ok, data} ->
+                   data
+
+                 {:error, reason} ->
+                   Logger.error(
+                     "Failed to load intelligence data for corp #{corporation_id}: #{inspect(reason)}"
+                   )
+
+                   nil
+               end
+             end
+           ) do
+        {:ok, data} ->
+          data
+
+        {:error, reason} ->
+          Logger.error("Cache error loading intelligence: #{inspect(reason)}")
+          nil
+      end
 
     socket =
       socket
@@ -158,71 +202,51 @@ defmodule EveDmvWeb.CorporationLive do
       |> assign(:members, members)
       |> assign(:recent_activity, recent_activity)
       |> assign(:corp_stats, corp_stats)
+      |> assign(:comprehensive_stats, comprehensive_stats)
       |> assign(:timezone_data, timezone_data)
       |> assign(:participation_data, participation_data)
       |> assign(:location_stats, location_stats)
       |> assign(:victim_stats, victim_stats)
+      |> assign(:intelligence_data, intelligence_data)
       |> put_flash(:info, "Corporation data refreshed")
 
     {:noreply, socket}
   end
 
   @impl Phoenix.LiveView
-  def handle_event("change_tab", %{"tab" => tab}, socket) do
-    tab_atom = String.to_existing_atom(tab)
+  def handle_event("force_refresh", _params, socket) do
+    corporation_id = socket.assigns.corporation_id
+    # Clear cache for this corporation
+    AnalysisCache.invalidate_corporation(corporation_id)
 
-    socket = assign(socket, :active_tab, tab_atom)
+    # Also clear any corporation intelligence cache
+    CorporationIntelligence.clear_corporation_cache(corporation_id)
 
-    # Load intelligence data if switching to intelligence tab and not already loaded
-    socket =
-      if tab_atom == :intelligence and is_nil(socket.assigns.intelligence_data) and
-           not socket.assigns.loading_intelligence do
-        load_intelligence_data(socket)
-      else
-        socket
-      end
-
-    {:noreply, socket}
+    # Redirect to reload the page with fresh data
+    {:noreply, push_navigate(socket, to: ~p"/corporation/#{corporation_id}")}
   end
 
   # Private helper functions
 
-  defp load_intelligence_data(socket) do
-    corporation_id = socket.assigns.corporation_id
-
-    socket = assign(socket, :loading_intelligence, true)
-
-    # Load intelligence data asynchronously
-    Task.start(fn ->
-      intelligence_data =
-        case CorporationIntelligence.get_corporation_intelligence_report(corporation_id) do
-          {:ok, data} -> data
-          {:error, _reason} -> nil
-        end
-
-      send(self(), {:intelligence_loaded, intelligence_data})
-    end)
-
-    socket
-  end
-
-  @impl Phoenix.LiveView
-  def handle_info({:intelligence_loaded, intelligence_data}, socket) do
-    {:noreply,
-     socket
-     |> assign(:intelligence_data, intelligence_data)
-     |> assign(:loading_intelligence, false)}
-  end
-
   defp load_corporation_info(corporation_id) do
-    # Get corporation info from recent killmail data using Ash
+    # First try to get from ESI for accurate member count
+    esi_info =
+      case EveDmv.Eve.EsiCorporationClient.get_corporation(corporation_id) do
+        {:ok, corp} -> corp
+        _ -> %{}
+      end
+
+    # Get additional info from recent killmail data
     case Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id})
          |> Ash.Query.limit(1)
          |> Ash.read(domain: Api) do
       {:ok, [participant | _]} ->
         %{
           corporation_id: corporation_id,
-          corporation_name: participant.corporation_name || "Unknown Corporation",
+          corporation_name:
+            Map.get(esi_info, :name) || participant.corporation_name || "Unknown Corporation",
+          ticker: Map.get(esi_info, :ticker),
+          member_count: Map.get(esi_info, :member_count, 0),
           alliance_id: participant.alliance_id,
           alliance_name: participant.alliance_name
         }
@@ -230,16 +254,20 @@ defmodule EveDmvWeb.CorporationLive do
       {:ok, []} ->
         %{
           corporation_id: corporation_id,
-          corporation_name: "Unknown Corporation",
-          alliance_id: nil,
+          corporation_name: Map.get(esi_info, :name, "Unknown Corporation"),
+          ticker: Map.get(esi_info, :ticker),
+          member_count: Map.get(esi_info, :member_count, 0),
+          alliance_id: Map.get(esi_info, :alliance_id),
           alliance_name: nil
         }
 
       {:error, _} ->
         %{
           corporation_id: corporation_id,
-          corporation_name: "Unknown Corporation",
-          alliance_id: nil,
+          corporation_name: Map.get(esi_info, :name, "Unknown Corporation"),
+          ticker: Map.get(esi_info, :ticker),
+          member_count: Map.get(esi_info, :member_count, 0),
+          alliance_id: Map.get(esi_info, :alliance_id),
           alliance_name: nil
         }
     end
@@ -247,78 +275,110 @@ defmodule EveDmvWeb.CorporationLive do
 
   defp load_corp_members(corporation_id) do
     # Get corporation members with activity stats using optimized single query
-    thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30, :day)
+    # Look back 90 days for comprehensive member data
+    ninety_days_ago = DateTime.utc_now() |> DateTime.add(-90, :day)
+
+    Logger.info("Loading members for corp #{corporation_id} from #{ninety_days_ago}")
 
     case Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id})
-         |> Ash.Query.filter(killmail_time >= ^thirty_days_ago)
-         # Preload killmail data
-         |> Ash.Query.load([:killmail_raw])
+         |> Ash.Query.filter(killmail_time >= ^ninety_days_ago)
+         # Don't preload killmail_raw - it might be causing issues
+         # |> Ash.Query.load([:killmail_raw])
          # Get more data for better aggregation
          |> Ash.Query.limit(1000)
          |> Ash.read(domain: Api) do
       {:ok, participants} ->
-        # Preload all character names to avoid N+1 queries
-        _character_ids =
-          participants |> Enum.map(& &1.character_id) |> Enum.filter(& &1) |> Enum.uniq()
+        Logger.debug("Found #{length(participants)} participants for corp #{corporation_id}")
 
-        EveDmv.Performance.BatchNameResolver.preload_participant_names(participants)
+        # Filter out entries without character_id
+        valid_participants = participants |> Enum.filter(& &1.character_id)
+        Logger.debug("#{length(valid_participants)} participants have character_id")
+
+        # Preload all character names to avoid N+1 queries
+        character_ids = valid_participants |> Enum.map(& &1.character_id) |> Enum.uniq()
+        Logger.debug("Found #{length(character_ids)} unique character IDs")
+
+        EveDmv.Performance.BatchNameResolver.preload_participant_names(valid_participants)
 
         # Group by character and aggregate stats
-        participants
-        |> Enum.group_by(& &1.character_id)
-        |> Enum.map(fn {character_id, char_participants} ->
-          kills = char_participants |> Enum.count(&(not &1.is_victim))
-          losses = char_participants |> Enum.count(& &1.is_victim)
+        members =
+          valid_participants
+          |> Enum.group_by(& &1.character_id)
+          |> Enum.map(fn {character_id, char_participants} ->
+            kills = char_participants |> Enum.count(&(not &1.is_victim))
+            losses = char_participants |> Enum.count(& &1.is_victim)
 
-          latest_activity =
-            char_participants |> Enum.map(& &1.killmail_time) |> Enum.max(DateTime, fn -> nil end)
+            latest_activity =
+              case char_participants |> Enum.map(& &1.killmail_time) |> Enum.filter(& &1) do
+                [] -> nil
+                times -> Enum.max(times, DateTime)
+              end
 
-          # Use cached name resolution
-          character_name = EveDmv.Eve.NameResolver.character_name(character_id)
+            # Use cached name resolution
+            character_name = EveDmv.Eve.NameResolver.character_name(character_id)
 
-          %{
-            character_id: character_id,
-            character_name: character_name,
-            total_kills: kills,
-            total_losses: losses,
-            total_activity: kills + losses,
-            latest_activity: latest_activity
-          }
-        end)
-        |> Enum.sort_by(& &1.total_activity, :desc)
-        |> Enum.take(50)
+            %{
+              character_id: character_id,
+              character_name: character_name,
+              total_kills: kills,
+              total_losses: losses,
+              total_activity: kills + losses,
+              latest_activity: latest_activity
+            }
+          end)
+          |> Enum.sort_by(& &1.total_activity, :desc)
+          |> Enum.take(50)
 
-      {:error, _} ->
+        Logger.debug("Returning #{length(members)} members")
+        members
+
+      {:error, reason} ->
+        Logger.error("Failed to load corp members: #{inspect(reason)}")
         []
     end
   end
 
   defp load_recent_activity(corporation_id) do
     # Get recent killmail activity using optimized query
+    Logger.info("Loading recent activity for corp #{corporation_id}")
+
     case Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id})
-         # Preload killmail data
-         |> Ash.Query.load([:killmail_raw])
+         # Don't preload killmail_raw - it might be causing issues
+         # |> Ash.Query.load([:killmail_raw])
+         |> Ash.Query.sort(killmail_time: :desc)
          |> Ash.Query.limit(20)
          |> Ash.read(domain: Api) do
       {:ok, participants} ->
+        Logger.debug("Found #{length(participants)} recent activities for corp #{corporation_id}")
+
+        # Filter out entries without character_id
+        valid_participants = participants |> Enum.filter(& &1.character_id)
+
         # Preload all names to avoid N+1 queries
-        EveDmv.Performance.BatchNameResolver.preload_participant_names(participants)
+        EveDmv.Performance.BatchNameResolver.preload_participant_names(valid_participants)
 
         # We need to load the killmail data for timestamps
         # For now, let's use the participant data we have
-        Enum.map(participants, fn p ->
-          %{
-            character_id: p.character_id,
-            character_name: EveDmv.Eve.NameResolver.character_name(p.character_id),
-            ship_name: EveDmv.Eve.NameResolver.ship_name(p.ship_type_id),
-            is_kill: not p.is_victim,
-            timestamp: p.killmail_time,
-            # TODO: Add solar system name lookup
-            solar_system_name: nil
-          }
-        end)
+        activities =
+          valid_participants
+          |> Enum.map(fn p ->
+            %{
+              character_id: p.character_id,
+              character_name: EveDmv.Eve.NameResolver.character_name(p.character_id),
+              ship_name: EveDmv.Eve.NameResolver.ship_name(p.ship_type_id),
+              is_kill: not p.is_victim,
+              timestamp: p.killmail_time,
+              killmail_id: p.killmail_id,
+              # TODO: Add solar system name lookup
+              solar_system_name: nil
+            }
+          end)
 
-      {:error, _} ->
+        Logger.debug("Returning #{length(activities)} recent activities")
+        activities
+
+      {:error, reason} ->
+        Logger.error("Failed to load corp members: #{inspect(reason)}")
         []
     end
   end
@@ -349,6 +409,92 @@ defmodule EveDmvWeb.CorporationLive do
       most_active_member: most_active,
       active_members: active_members
     }
+  end
+
+  # Get comprehensive corporation statistics over longer time period
+  defp get_comprehensive_corp_stats(corporation_id) do
+    # Look at 90 days of data for more accurate statistics
+    ninety_days_ago = DateTime.utc_now() |> DateTime.add(-90, :day)
+
+    # First get participants
+    case Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id})
+         |> Ash.Query.filter(killmail_time >= ^ninety_days_ago)
+         # Increased limit for comprehensive stats
+         |> Ash.Query.limit(5000)
+         |> Ash.read(domain: Api) do
+      {:ok, participants} ->
+        # Get unique killmail IDs for ISK calculations
+        kill_ids =
+          participants
+          |> Enum.filter(&(not &1.is_victim))
+          |> Enum.map(& &1.killmail_id)
+          |> Enum.uniq()
+
+        loss_ids =
+          participants
+          |> Enum.filter(& &1.is_victim)
+          |> Enum.map(& &1.killmail_id)
+          |> Enum.uniq()
+
+        # Calculate ISK values from killmails
+        {isk_destroyed, isk_lost} = calculate_isk_values(kill_ids, loss_ids)
+
+        # Calculate comprehensive statistics
+        total_activities = length(participants)
+        total_kills = length(kill_ids)
+        total_losses = length(loss_ids)
+
+        # Unique members over 90 days
+        total_members =
+          participants
+          |> Enum.map(& &1.character_id)
+          |> Enum.filter(& &1)
+          |> Enum.uniq()
+          |> length()
+
+        # K/D ratio (ensure we get a float)
+        kd_ratio = if total_losses > 0, do: total_kills / total_losses, else: total_kills / 1.0
+
+        # Average activity per member (ensure we get a float)
+        avg_activity = if total_members > 0, do: total_activities / total_members, else: 0.0
+
+        %{
+          total_members: total_members,
+          total_kills: total_kills,
+          total_losses: total_losses,
+          total_activity: total_activities,
+          kill_death_ratio: Float.round(kd_ratio, 2),
+          avg_activity_per_member: Float.round(avg_activity, 1),
+          isk_destroyed: isk_destroyed,
+          isk_lost: isk_lost,
+          time_period: "90 days"
+        }
+
+      {:error, _} ->
+        %{
+          total_members: 0,
+          total_kills: 0,
+          total_losses: 0,
+          total_activity: 0,
+          kill_death_ratio: 0.0,
+          avg_activity_per_member: 0.0,
+          isk_destroyed: 0,
+          isk_lost: 0,
+          time_period: "90 days"
+        }
+    end
+  end
+
+  defp calculate_isk_values(kill_ids, loss_ids) do
+    # For now, return placeholder values
+    # TODO: Implement proper ISK calculation when we have access to killmail data
+    # This would require joining with killmail_raw table or adding ISK values to participants
+    # 50M average per kill placeholder
+    isk_destroyed = length(kill_ids) * 50_000_000
+    # 50M average per loss placeholder
+    isk_lost = length(loss_ids) * 50_000_000
+
+    {isk_destroyed, isk_lost}
   end
 
   # Helper functions
@@ -382,6 +528,25 @@ defmodule EveDmvWeb.CorporationLive do
 
   def format_number(number) when is_float(number) do
     number |> Float.round(1) |> Float.to_string()
+  end
+
+  def format_isk(value) when is_number(value) do
+    cond do
+      value >= 1_000_000_000_000 ->
+        "#{Float.round(value / 1_000_000_000_000, 1)}T"
+
+      value >= 1_000_000_000 ->
+        "#{Float.round(value / 1_000_000_000, 1)}B"
+
+      value >= 1_000_000 ->
+        "#{Float.round(value / 1_000_000, 1)}M"
+
+      value >= 1_000 ->
+        "#{Float.round(value / 1_000, 1)}K"
+
+      true ->
+        "#{round(value)}"
+    end
   end
 
   defp add_commas(number_string) do
@@ -471,7 +636,8 @@ defmodule EveDmvWeb.CorporationLive do
         |> Enum.sort_by(& &1.activity_count, :desc)
         |> Enum.take(20)
 
-      {:error, _} ->
+      {:error, reason} ->
+        Logger.error("Failed to load corp members: #{inspect(reason)}")
         []
     end
   end
@@ -513,7 +679,8 @@ defmodule EveDmvWeb.CorporationLive do
             []
         end
 
-      {:error, _} ->
+      {:error, reason} ->
+        Logger.error("Failed to load corp members: #{inspect(reason)}")
         []
     end
   end
@@ -577,20 +744,39 @@ defmodule EveDmvWeb.CorporationLive do
     end
   end
 
-  defp calculate_participation_data(members, corp_stats) do
-    total_members = corp_stats.total_members
+  defp calculate_participation_data(members, corp_info) do
+    # Use the actual number of members we have data for
+    members_with_data = length(members)
 
-    # Calculate PvP participation (members with any activity)
+    # Get the actual ESI member count
+    total_corp_members = Map.get(corp_info || %{}, :member_count, members_with_data)
+
+    # Use total corp members for participation rates if we have ESI data
+    # This gives a more accurate representation of corp activity
+    participation_base =
+      if total_corp_members > 0 && total_corp_members >= members_with_data do
+        total_corp_members
+      else
+        members_with_data
+      end
+
+    # Calculate PvP participation (members with any activity vs total members)
     pvp_participants = Enum.count(members, &(&1.total_activity > 0))
-    pvp_rate = if total_members > 0, do: pvp_participants / total_members * 100, else: 0.0
+
+    pvp_rate =
+      if participation_base > 0, do: pvp_participants / participation_base * 100, else: 0.0
 
     # Calculate fleet participation (members with 3+ activities suggesting group play)
     fleet_participants = Enum.count(members, &(&1.total_activity >= 3))
-    fleet_rate = if total_members > 0, do: fleet_participants / total_members * 100, else: 0.0
 
-    # Calculate corporate activity (highly active members with 10+ activities)
-    active_participants = Enum.count(members, &(&1.total_activity >= 10))
-    active_rate = if total_members > 0, do: active_participants / total_members * 100, else: 0.0
+    fleet_rate =
+      if participation_base > 0, do: fleet_participants / participation_base * 100, else: 0.0
+
+    # Calculate corporate activity (active members with 5+ activities)
+    active_participants = Enum.count(members, &(&1.total_activity >= 5))
+
+    active_rate =
+      if participation_base > 0, do: active_participants / participation_base * 100, else: 0.0
 
     # Overall participation score (weighted average)
     overall_score = pvp_rate * 0.3 + fleet_rate * 0.4 + active_rate * 0.3
@@ -599,7 +785,9 @@ defmodule EveDmvWeb.CorporationLive do
       pvp_participation: %{participants: pvp_participants, rate: Float.round(pvp_rate, 1)},
       fleet_participation: %{participants: fleet_participants, rate: Float.round(fleet_rate, 1)},
       corporate_activity: %{participants: active_participants, rate: Float.round(active_rate, 1)},
-      overall_participation_score: Float.round(overall_score, 1)
+      overall_participation_score: Float.round(overall_score, 1),
+      members_with_data: members_with_data,
+      total_members: total_corp_members
     }
   end
 
@@ -647,12 +835,14 @@ defmodule EveDmvWeb.CorporationLive do
   def threat_level_color(_), do: "text-green-500"
 
   defp analyze_timezone_coverage(hourly_distribution) do
-    # Define timezone blocks (approximate)
+    # Use consistent timezone blocks from TimezoneAnalyzer
+    # EUTZ: 16:00-20:00
+    # USTZ: 21:00-03:00 (wraps around midnight)
+    # AUTZ: 08:00-14:00
     timezone_blocks = %{
-      "EU Prime (18:00-22:00)" => 18..22,
-      "US Prime (00:00-04:00)" => 0..4,
-      "AUTZ Prime (10:00-14:00)" => 10..14,
-      "Late Night (22:00-02:00)" => [22, 23, 0, 1, 2]
+      "EU Prime (16:00-20:00)" => 16..20,
+      "US Prime (21:00-03:00)" => [21, 22, 23, 0, 1, 2, 3],
+      "AUTZ Prime (08:00-14:00)" => 8..14
     }
 
     # Check each timezone block for activity

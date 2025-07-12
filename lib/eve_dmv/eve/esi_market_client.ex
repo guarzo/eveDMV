@@ -8,6 +8,8 @@ defmodule EveDmv.Eve.EsiMarketClient do
 
   alias EveDmv.Eve.EsiRequestClient
 
+  require Logger
+
   @market_api_version "v1"
 
   @doc """
@@ -35,7 +37,26 @@ defmodule EveDmv.Eve.EsiMarketClient do
 
     case EsiRequestClient.public_request("GET", path, final_params) do
       {:ok, response} ->
-        {:ok, response.body}
+        # Handle both correct format and double-wrapped format from fallback mechanisms
+        body =
+          case response do
+            %{body: data} when is_list(data) ->
+              data
+
+            {:ok, %{body: data}} when is_list(data) ->
+              Logger.debug("EsiMarketClient: unwrapping double-wrapped response")
+              data
+
+            other ->
+              Logger.warning("EsiMarketClient: unexpected response format: #{inspect(other)}")
+              []
+          end
+
+        Logger.debug(
+          "EsiMarketClient.get_market_orders returning body type: #{inspect(is_list(body))}, length: #{if is_list(body), do: length(body), else: "N/A"}"
+        )
+
+        {:ok, body}
 
       {:error, reason} ->
         {:error, reason}
@@ -54,7 +75,7 @@ defmodule EveDmv.Eve.EsiMarketClient do
 
     case EsiRequestClient.public_request("GET", path, params) do
       {:ok, response} ->
-        {:ok, response.body}
+        {:ok, Map.get(response, :body)}
 
       {:error, reason} ->
         {:error, reason}

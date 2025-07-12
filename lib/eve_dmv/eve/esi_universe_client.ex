@@ -28,7 +28,7 @@ defmodule EveDmv.Eve.EsiUniverseClient do
 
         case EsiRequestClient.get_request(path) do
           {:ok, response} when is_map(response) ->
-            alliance = EsiParsers.parse_alliance_response(alliance_id, response.body)
+            alliance = EsiParsers.parse_alliance_response(alliance_id, Map.get(response, :body))
             EsiCache.put_alliance(alliance_id, alliance)
             {:ok, alliance}
 
@@ -55,7 +55,7 @@ defmodule EveDmv.Eve.EsiUniverseClient do
 
         case EsiRequestClient.get_request(path) do
           {:ok, response} when is_map(response) ->
-            system = EsiParsers.parse_system_response(system_id, response.body)
+            system = EsiParsers.parse_system_response(system_id, Map.get(response, :body))
             EsiCache.put_system(system_id, system)
             {:ok, system}
 
@@ -104,7 +104,7 @@ defmodule EveDmv.Eve.EsiUniverseClient do
 
         case EsiRequestClient.get_request(path) do
           {:ok, response} when is_map(response) ->
-            type_info = EsiParsers.parse_type_response(type_id, response.body)
+            type_info = EsiParsers.parse_type_response(type_id, Map.get(response, :body))
             EsiCache.put_type(type_id, type_info)
             {:ok, type_info}
 
@@ -131,7 +131,7 @@ defmodule EveDmv.Eve.EsiUniverseClient do
 
         case EsiRequestClient.get_request(path) do
           {:ok, response} when is_map(response) ->
-            group = EsiParsers.parse_group_response(group_id, response.body)
+            group = EsiParsers.parse_group_response(group_id, Map.get(response, :body))
             EsiCache.put_group(group_id, group)
             {:ok, group}
 
@@ -158,7 +158,7 @@ defmodule EveDmv.Eve.EsiUniverseClient do
 
         case EsiRequestClient.get_request(path) do
           {:ok, response} when is_map(response) ->
-            category = EsiParsers.parse_category_response(category_id, response.body)
+            category = EsiParsers.parse_category_response(category_id, Map.get(response, :body))
             EsiCache.put_category(category_id, category)
             {:ok, category}
 

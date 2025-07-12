@@ -1,8 +1,8 @@
 # Sprint 9: Surveillance Profiles & Wanderer Integration
 
 **Duration**: 2 weeks (standard)  
-**Start Date**: 2025-07-24  
-**End Date**: 2025-08-07  
+**Start Date**: 2025-01-11  
+**End Date**: 2025-01-25  
 **Sprint Goal**: Implement surveillance profiles with real-time wormhole chain monitoring through Wanderer integration  
 **Philosophy**: "If it returns mock data, it's not done."
 
@@ -36,6 +36,10 @@ Deliver a comprehensive surveillance system that combines custom alert profiles 
 | Story ID | Description | Points | Priority | Definition of Done |
 |----------|-------------|---------|----------|-------------------|
 | AUTH-1 | Fix EVE SSO Token Signing Error | 3 | CRITICAL | Authentication works, no InvalidSecret errors, users can login |
+| DATA-1 | Character Intelligence Data Accuracy | 3 | CRITICAL | All metrics query real data, no mocks, accurate calculations |
+| DATA-2 | Corporation Intelligence Data Accuracy | 3 | CRITICAL | Real member/activity data, accurate timezone/doctrine analysis |
+| DATA-3 | Battle Analysis Data Accuracy | 2 | HIGH | Correct ISK values, accurate phase detection, complete participants |
+| DATA-4 | Fleet Operations Data Accuracy | 2 | HIGH | Remove example data, real fleet metrics only |
 | SURV-1 | Core Surveillance Profile Engine | 8 | CRITICAL | Complex filter evaluation with <200ms performance, boolean logic, real data |
 | SURV-2 | Profile Management UI (LiveView) | 5 | CRITICAL | Create/edit/delete profiles, drag-drop filter builder, preview with real kills |
 | SURV-3 | Real-time Alert System | 5 | CRITICAL | Visual/audio notifications, alert history, PubSub integration |
@@ -46,7 +50,7 @@ Deliver a comprehensive surveillance system that combines custom alert profiles 
 | SURV-6 | Profile Performance Dashboard | 2 | MEDIUM | Alert statistics, filter metrics, efficiency monitoring |
 | TEST-1 | Integration Testing & Documentation | 3 | HIGH | Full test coverage, user guide, API docs |
 
-**Total Points**: 45
+**Total Points**: 55 (increased by 10 for data accuracy tasks)
 
 ---
 
@@ -94,10 +98,10 @@ To avoid breaking existing functionality, we MUST follow these practices:
 
 ## 📈 Daily Progress Tracking
 
-### Day 1 - [Date]
-- **Started**: 
-- **Completed**: 
-- **Blockers**: 
+### Day 1 - 2025-01-11
+- **Started**: Sprint 9 setup, reviewing AUTH-1 (EVE SSO Token Signing Error)
+- **Completed**: Sprint 8 moved to completed, Sprint 9 started
+- **Blockers**: None yet
 - **Reality Check**: ✅ No mock data introduced
 - **Regression Test**: ✅ All existing features still work
 
@@ -115,7 +119,7 @@ To avoid breaking existing functionality, we MUST follow these practices:
 ## 🔍 Mid-Sprint Review (Day 7)
 
 ### Progress Check
-- **Points Completed**: X/42
+- **Points Completed**: X/55
 - **On Track**: YES/NO
 - **Scope Adjustment Needed**: YES/NO
 
@@ -157,12 +161,103 @@ To avoid breaking existing functionality, we MUST follow these practices:
 
 ---
 
+## 🔍 Data Accuracy Review
+
+### Existing Page Audit
+Before implementing new features, we MUST review and fix data accuracy issues on all existing pages:
+
+#### Character Intelligence (`/character-intelligence`)
+- [ ] Review all displayed metrics for accuracy
+- [ ] Verify kill/loss counts match database
+- [ ] Ensure ISK values are calculated correctly
+- [ ] Check that ship usage statistics are real
+- [ ] Validate threat scores use actual algorithms
+- [ ] Remove any placeholder or mock data
+
+#### Corporation Intelligence (`/corporation-intelligence`)  
+- [ ] Audit member lists against actual data
+- [ ] Verify activity metrics are calculated correctly
+- [ ] Ensure timezone analysis uses real login data
+- [ ] Check doctrine detection against real fleet compositions
+- [ ] Validate all statistics query real database
+
+#### Battle Analysis (`/battle`)
+- [ ] Verify battle detection algorithms work correctly
+- [ ] Ensure tactical phases reflect actual combat flow
+- [ ] Check ship performance metrics are accurate
+- [ ] Validate ISK destroyed calculations
+- [ ] Confirm participant lists are complete
+
+#### Kill Feed (`/feed`)
+- [ ] Ensure real-time updates work consistently
+- [ ] Verify all killmail data displays correctly
+- [ ] Check that filtering works properly
+- [ ] Validate ISK values and ship names
+
+#### Fleet Operations (`/fleet-operations`)
+- [ ] Review all fleet metrics for accuracy
+- [ ] Remove any hardcoded example data
+- [ ] Ensure calculations use real killmail data
+- [ ] Verify fleet composition analysis
+
+#### Market Intelligence (`/market-intelligence`)
+- [ ] Audit price data sources
+- [ ] Verify calculations are accurate
+- [ ] Remove any static/mock pricing
+- [ ] Ensure real-time updates work
+
+### Data Accuracy Tasks
+| Task ID | Page | Issue | Priority | Definition of Done |
+|---------|------|-------|----------|-------------------|
+| DATA-1 | Character Intelligence | Review and fix all metrics | HIGH | All data queries DB, no mocks |
+| DATA-2 | Corporation Intelligence | Audit activity calculations | HIGH | Real member/activity data |
+| DATA-3 | Battle Analysis | Verify ISK calculations | MEDIUM | Accurate ISK destroyed values |
+| DATA-4 | Fleet Operations | Remove example data | HIGH | Only real fleet data shown |
+| DATA-5 | All Pages | Consistent number formatting | LOW | Standardized display format |
+
+### Validation Approach
+1. **Screenshot current state** - Document existing issues
+2. **Query database directly** - Verify correct values
+3. **Fix calculations** - Update algorithms as needed
+4. **Add tests** - Ensure accuracy is maintained
+5. **Document changes** - Update any affected docs
+
+---
+
+## 🔍 Manual Validation
+
+### Validation Checklist Creation
+- [ ] Create `manual_validate_sprint_9.md` by end of sprint
+- [ ] Include test cases for each surveillance profile feature
+- [ ] Add Wanderer integration test scenarios
+- [ ] Include performance benchmarks for alert evaluation
+- [ ] Document EVE SSO authentication fix verification
+
+### Validation Execution
+- [ ] Execute full validation checklist
+- [ ] Test with real EVE killmails and chain data
+- [ ] Verify <200ms performance requirement
+- [ ] Document any failures with screenshots
+- [ ] Re-test after fixes
+- [ ] Get sign-off from tester
+- [ ] Archive results with sprint documentation
+
+### Sprint 9 Specific Validation Points
+- [ ] EVE SSO login works without InvalidSecret errors
+- [ ] Complex surveillance filters evaluate correctly
+- [ ] Chain-aware filters use real Wanderer data
+- [ ] Notifications trigger for matched killmails
+- [ ] Corporation profile sharing works with permissions
+- [ ] No regressions in existing features (kill feed, battle analysis)
+
+---
+
 ## 📊 Sprint Metrics
 
 ### Delivery Metrics
-- **Planned Points**: 45
+- **Planned Points**: 55
 - **Completed Points**: [Y]
-- **Completion Rate**: [Y/45 * 100]%
+- **Completion Rate**: [Y/55 * 100]%
 - **Features Delivered**: [List]
 - **Bugs Fixed**: [Count]
 
@@ -213,9 +308,10 @@ Based on this sprint's outcomes:
 - **Team availability**: [Any known issues]
 
 ### Technical Priorities
-1. Fleet Optimizer (final major PRD feature)
-2. Complete Sprint 8 UI integration work
-3. Performance optimization for surveillance at scale
+1. Data accuracy fixes across all existing pages
+2. Fleet Optimizer (final major PRD feature)
+3. Complete Sprint 8 UI integration work
+4. Performance optimization for surveillance at scale
 
 ### Recommended Focus
 **Sprint 10: Fleet Optimizer & Integration Completion**

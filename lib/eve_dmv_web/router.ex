@@ -44,8 +44,10 @@ defmodule EveDmvWeb.Router do
     live("/feed", KillFeedLive)
     live("/dashboard", DashboardLive)
     live("/profile", ProfileLive)
+    live("/character", CharacterSearchLive)
     live("/character/:character_id", CharacterAnalysisLive)
-    live("/character/:character_id/intelligence", CharacterIntelligenceLive)
+    # Redirect old intelligence route to main character page
+    get("/character/:character_id/intelligence", PageController, :redirect_to_character)
     live("/player/:character_id", PlayerProfileLive)
     live("/corporation/:corporation_id", CorporationLive)
     live("/alliance/:alliance_id", AllianceLive)
@@ -63,6 +65,7 @@ defmodule EveDmvWeb.Router do
     live("/intelligence-dashboard", IntelligenceDashboardLive)
     live("/battle", BattleAnalysisLive)
     live("/battle/:battle_id", BattleAnalysisLive)
+    live("/fleet", FleetOperationsLive)
 
     # System monitoring (admin only in production)
     live("/monitoring", MonitoringDashboardLive)

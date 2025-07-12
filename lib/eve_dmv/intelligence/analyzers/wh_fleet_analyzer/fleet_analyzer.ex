@@ -137,50 +137,111 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetAnalyzer do
     role_distribution = Map.get(fleet_analysis, :role_distribution, %{})
     doctrine_compliance = Map.get(fleet_analysis, :doctrine_compliance, 0)
 
-    # Calculate DPS rating based on DPS ships
-    dps_ships =
-      Map.get(role_distribution, "dps", 0) + Map.get(ship_categories, "strategic_cruiser", 0)
+    if total_members == 0 do
+      %{
+        overall_effectiveness: 0,
+        dps_rating: 0,
+        survivability_rating: 0,
+        flexibility_rating: 0,
+        fc_capability: false,
+        estimated_dps: 0,
+        estimated_ehp: 0,
+        logistics_ratio: 0,
+        force_multiplier: 0
+      }
+    else
+      # Calculate DPS ships from multiple sources (be defensive about data types)
+      dps_ships =
+        safe_get_count(role_distribution, "dps") +
+          safe_get_count(role_distribution, :dps) +
+          safe_get_count(ship_categories, "battlecruiser") +
+          safe_get_count(ship_categories, "cruiser") +
+          safe_get_count(ship_categories, "destroyer") +
+          safe_get_count(ship_categories, "frigate")
 
-    dps_rating = if total_members > 0, do: min(100, dps_ships / total_members * 150), else: 0
+      # Calculate logistics ships from multiple sources
+      logi_ships =
+        safe_get_count(role_distribution, "logistics") +
+          safe_get_count(role_distribution, :logistics) +
+          safe_get_count(ship_categories, "logistics")
 
-    # Calculate survivability rating based on logistics
-    logi_ships =
-      Map.get(role_distribution, "logistics", 0) + Map.get(ship_categories, "logistics", 0)
+      # Calculate EWAR ships
+      ewar_ships =
+        safe_get_count(role_distribution, "ewar") +
+          safe_get_count(role_distribution, :ewar)
 
-    survivability_rating =
-      if total_members > 0 do
-        # Logistics is critical
-        base_survival = logi_ships / max(1, total_members) * 300
-        min(100, base_survival)
-      else
-        0
-      end
+      # Calculate tackle ships
+      tackle_ships =
+        safe_get_count(role_distribution, "tackle") +
+          safe_get_count(role_distribution, :tackle)
 
-    # Calculate flexibility rating based on ship diversity
-    flexibility_rating =
-      if total_members > 0 do
-        ship_type_count = map_size(ship_categories)
-        base_flex = ship_type_count / max(1, total_members) * 200
-        min(100, base_flex)
-      else
-        0
-      end
+      # Calculate real DPS rating (60% weight on DPS ships, 40% on support)
+      dps_ratio = dps_ships / total_members
+      support_ratio = (logi_ships + ewar_ships + tackle_ships) / total_members
+      dps_rating = min(100, round(dps_ratio * 60 + support_ratio * 40))
 
-    # Check FC capability
-    fc_capable =
-      Map.get(role_distribution, "fc", 0) > 0 or Map.get(ship_categories, "command_ship", 0) > 0
+      # Calculate survivability (logistics critical, diminishing returns)
+      logi_ratio = logi_ships / total_members
 
-    # Calculate overall effectiveness
-    overall_effectiveness =
-      round((dps_rating + survivability_rating + flexibility_rating + doctrine_compliance) / 4)
+      survivability_rating =
+        cond do
+          # Excellent logistics coverage
+          logi_ratio >= 0.2 -> 90
+          # Good coverage
+          logi_ratio >= 0.15 -> 75
+          # Adequate coverage
+          logi_ratio >= 0.1 -> 60
+          # Minimal coverage
+          logi_ratio >= 0.05 -> 40
+          # Some logistics
+          logi_ships > 0 -> 25
+          # No logistics
+          true -> 10
+        end
 
-    %{
-      overall_effectiveness: overall_effectiveness,
-      dps_rating: round(dps_rating),
-      survivability_rating: round(survivability_rating),
-      flexibility_rating: round(flexibility_rating),
-      fc_capability: fc_capable
-    }
+      # Calculate flexibility based on ship type diversity and roles
+      ship_type_count = map_size(ship_categories)
+      role_count = map_size(role_distribution)
+      base_flexibility = min(100, ship_type_count * 10 + role_count * 15)
+      flexibility_rating = round(base_flexibility)
+
+      # Check FC capability (command ships or designated FCs)
+      fc_capable =
+        safe_get_count(role_distribution, "fc") > 0 or
+          safe_get_count(role_distribution, :fc) > 0 or
+          safe_get_count(ship_categories, "command_ship") > 0
+
+      # Calculate estimated fleet DPS (rough approximation)
+      estimated_dps = calculate_estimated_fleet_dps(dps_ships, ship_categories)
+
+      # Calculate estimated EHP (rough approximation)
+      estimated_ehp = calculate_estimated_fleet_ehp(total_members, logi_ships, ship_categories)
+
+      # Calculate force multiplier (EWAR + logistics effectiveness)
+      force_multiplier = min(100, round((ewar_ships + logi_ships) / max(1, total_members) * 100))
+
+      # Calculate overall effectiveness with weighted factors
+      overall_effectiveness =
+        round(
+          dps_rating * 0.3 +
+            survivability_rating * 0.3 +
+            flexibility_rating * 0.2 +
+            doctrine_compliance * 0.1 +
+            if(fc_capable, do: 10, else: 0)
+        )
+
+      %{
+        overall_effectiveness: min(100, overall_effectiveness),
+        dps_rating: dps_rating,
+        survivability_rating: survivability_rating,
+        flexibility_rating: flexibility_rating,
+        fc_capability: fc_capable,
+        estimated_dps: estimated_dps,
+        estimated_ehp: estimated_ehp,
+        logistics_ratio: round(logi_ratio * 100),
+        force_multiplier: force_multiplier
+      }
+    end
   end
 
   @doc """
@@ -373,6 +434,41 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetAnalyzer do
   ## Returns
   - String representing the identified doctrine
   """
+  # Helper functions for safe data access
+  defp safe_get_count(map, key) when is_map(map) do
+    case Map.get(map, key, 0) do
+      count when is_integer(count) -> count
+      _ -> 0
+    end
+  end
+
+  defp safe_get_count(_, _), do: 0
+
+  defp calculate_estimated_fleet_dps(_dps_ships, ship_categories) do
+    # Rough DPS estimates based on ship classes
+    battleship_dps = safe_get_count(ship_categories, "battleship") * 800
+    battlecruiser_dps = safe_get_count(ship_categories, "battlecruiser") * 600
+    cruiser_dps = safe_get_count(ship_categories, "cruiser") * 400
+    destroyer_dps = safe_get_count(ship_categories, "destroyer") * 300
+    frigate_dps = safe_get_count(ship_categories, "frigate") * 200
+
+    battleship_dps + battlecruiser_dps + cruiser_dps + destroyer_dps + frigate_dps
+  end
+
+  defp calculate_estimated_fleet_ehp(_total_members, logi_ships, ship_categories) do
+    # Base EHP per ship type
+    base_ehp =
+      safe_get_count(ship_categories, "battleship") * 100_000 +
+        safe_get_count(ship_categories, "battlecruiser") * 80_000 +
+        safe_get_count(ship_categories, "cruiser") * 50_000 +
+        safe_get_count(ship_categories, "destroyer") * 15_000 +
+        safe_get_count(ship_categories, "frigate") * 8_000
+
+    # Logistics multiplier (each logi ship increases effective HP)
+    logi_multiplier = 1 + logi_ships * 0.5
+    round(base_ehp * logi_multiplier)
+  end
+
   def identify_fleet_doctrine(fleet_members) when is_list(fleet_members) do
     if Enum.empty?(fleet_members) do
       "unknown"

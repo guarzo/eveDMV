@@ -329,13 +329,43 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
     end)
   end
 
-  defp calculate_side_isk_stats(_killmails, _side) do
-    # Would calculate ISK efficiency for a specific side
+  defp calculate_side_isk_stats(killmails, side) do
+    alias EveDmv.Market.PriceService
+
+    side_killmails = filter_killmails_by_side(killmails, side)
+
+    total_isk_destroyed =
+      side_killmails
+      |> Enum.map(fn killmail ->
+        case PriceService.calculate_killmail_value(killmail) do
+          %{total_value: value} when is_number(value) -> value
+          _ -> 0.0
+        end
+      end)
+      |> Enum.sum()
+
+    # For losses, we need to find killmails where this side lost ships
+    # This would require more sophisticated side detection logic
+    total_isk_lost = 0.0
+
+    efficiency =
+      if total_isk_lost > 0 do
+        total_isk_destroyed / total_isk_lost
+      else
+        if total_isk_destroyed > 0, do: 1.0, else: 0.0
+      end
+
     %{
-      isk_destroyed: 0,
-      isk_lost: 0,
-      efficiency: 0.0
+      isk_destroyed: round(total_isk_destroyed),
+      isk_lost: round(total_isk_lost),
+      efficiency: Float.round(efficiency, 2)
     }
+  end
+
+  defp filter_killmails_by_side(killmails, _side) do
+    # For now, return all killmails since proper side detection 
+    # would require implementing corp/alliance affiliation logic
+    killmails
   end
 
   defp find_most_expensive_loss(killmails) do
@@ -432,15 +462,85 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
     |> Enum.into(%{})
   end
 
-  defp analyze_overkill(_killmails) do
+  defp analyze_overkill(killmails) do
     # Analyze how much damage was "wasted" on already-dead targets
-    # This is simplified - would need ship EHP data for accurate calculation
-    %{
-      # Placeholder
-      average_overkill_percentage: 15.0,
-      most_overkilled_target: nil
-    }
+    overkill_data =
+      killmails
+      |> Enum.map(&calculate_killmail_overkill/1)
+      |> Enum.reject(&is_nil/1)
+
+    if length(overkill_data) > 0 do
+      total_overkill = Enum.sum(Enum.map(overkill_data, & &1.overkill_percentage))
+      average_overkill = total_overkill / length(overkill_data)
+
+      most_overkilled = Enum.max_by(overkill_data, & &1.overkill_percentage, fn -> nil end)
+
+      %{
+        average_overkill_percentage: Float.round(average_overkill, 1),
+        most_overkilled_target: most_overkilled
+      }
+    else
+      %{
+        average_overkill_percentage: 0.0,
+        most_overkilled_target: nil
+      }
+    end
   end
+
+  defp calculate_killmail_overkill(killmail) do
+    case killmail.raw_data do
+      %{"victim" => victim} ->
+        damage_taken = victim["damage_taken"] || 0
+        ship_type_id = victim["ship_type_id"]
+
+        # Estimate ship EHP based on ship class
+        estimated_ehp = estimate_ship_ehp(ship_type_id)
+
+        if estimated_ehp > 0 and damage_taken > estimated_ehp do
+          overkill_damage = damage_taken - estimated_ehp
+          overkill_percentage = overkill_damage / damage_taken * 100.0
+
+          %{
+            killmail_id: killmail.killmail_id,
+            damage_taken: damage_taken,
+            estimated_ehp: estimated_ehp,
+            overkill_damage: overkill_damage,
+            overkill_percentage: overkill_percentage
+          }
+        else
+          nil
+        end
+
+      _ ->
+        nil
+    end
+  end
+
+  defp estimate_ship_ehp(ship_type_id) when is_integer(ship_type_id) do
+    # Rough EHP estimates based on ship class
+    cond do
+      # Frigates
+      ship_type_id in 582..650 -> 5_000
+      # Destroyers
+      ship_type_id in 324..380 -> 12_000
+      # Cruisers
+      ship_type_id in 620..634 -> 25_000
+      # Battlecruisers
+      ship_type_id in 1201..1310 -> 60_000
+      # Battleships
+      ship_type_id in 638..645 -> 120_000
+      # Carriers
+      ship_type_id in 547..554 -> 2_000_000
+      # Dreadnoughts
+      ship_type_id in 670..673 -> 8_000_000
+      # Titans
+      ship_type_id in 3514..3518 -> 25_000_000
+      # Default estimate
+      true -> 30_000
+    end
+  end
+
+  defp estimate_ship_ehp(_), do: 30_000
 
   defp analyze_final_blows(killmails) do
     killmails
@@ -514,14 +614,59 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
     }
   end
 
-  defp analyze_ewar_usage(_battle) do
-    # Would analyze combat logs for EWAR module activations
+  defp analyze_ewar_usage(battle) do
+    # Analyze EWAR ship presence as proxy for EWAR usage
+    killmails = battle.killmails
+
+    # Get all ship types in battle (both victims and attackers)
+    all_ship_types = extract_all_ship_types(killmails)
+
+    # Known EWAR ship type IDs (simplified detection)
+    # Griffin, Blackbird, etc.
+    ecm_ships = [11978, 11979, 634, 635]
+    # Maulus, Celestis, etc.
+    damp_ships = [11989, 11999, 623, 624]
+    # Vigil, Huginn, etc.
+    tracking_disruptor_ships = [11993, 12003, 622, 625]
+    # Crucifier, Pilgrim, etc.
+    target_painter_ships = [11985, 11995, 621, 626]
+
     %{
-      ecm_usage: false,
-      damps_usage: false,
-      tracking_disruption: false,
-      target_painters: false
+      ecm_usage: ship_types_present?(all_ship_types, ecm_ships),
+      damps_usage: ship_types_present?(all_ship_types, damp_ships),
+      tracking_disruption: ship_types_present?(all_ship_types, tracking_disruptor_ships),
+      target_painters: ship_types_present?(all_ship_types, target_painter_ships)
     }
+  end
+
+  defp extract_all_ship_types(killmails) do
+    victim_ships =
+      Enum.map(killmails, fn km ->
+        case km.raw_data do
+          %{"victim" => %{"ship_type_id" => ship_type_id}} -> ship_type_id
+          _ -> nil
+        end
+      end)
+
+    attacker_ships =
+      killmails
+      |> Enum.flat_map(fn km ->
+        case km.raw_data do
+          %{"attackers" => attackers} when is_list(attackers) ->
+            Enum.map(attackers, fn attacker -> attacker["ship_type_id"] end)
+
+          _ ->
+            []
+        end
+      end)
+
+    (victim_ships ++ attacker_ships)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+  end
+
+  defp ship_types_present?(all_ship_types, ewar_ship_types) do
+    Enum.any?(all_ship_types, fn ship_type -> ship_type in ewar_ship_types end)
   end
 
   defp identify_force_multipliers(killmails) do

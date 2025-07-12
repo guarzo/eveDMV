@@ -68,7 +68,28 @@ defmodule EveDmv.Eve.EsiRequestClient do
   """
   @spec public_request(String.t(), String.t(), map()) :: {:ok, map()} | {:error, term()}
   def public_request(_method, path, params \\ %{}) do
-    get_request(path, params, [])
+    result = get_request(path, params, [])
+
+    if String.contains?(path, "/markets/") do
+      Logger.debug(
+        "EsiRequestClient.public_request for #{path} returning: #{inspect(elem(result, 0))}, type: #{inspect(result |> elem(0))}"
+      )
+
+      case result do
+        {:ok, response} ->
+          Logger.debug(
+            "Response is map: #{inspect(is_map(response))}, keys: #{inspect(if is_map(response), do: Map.keys(response), else: "N/A")}"
+          )
+
+        {:error, _} ->
+          Logger.debug("Result is error")
+
+        other ->
+          Logger.debug("Unexpected result type: #{inspect(other)}")
+      end
+    end
+
+    result
   end
 
   @doc """

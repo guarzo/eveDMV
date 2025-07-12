@@ -10,6 +10,10 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
 
   alias EveDmv.Contexts.CharacterIntelligence
 
+  import EveDmvWeb.Components.ThreatLevelComponent
+  # import EveDmvWeb.Components.ActivityOverviewComponent
+  # import EveDmvWeb.Components.IskStatsComponent
+
   @impl Phoenix.LiveView
   def mount(%{"character_id" => character_id_str}, _session, socket) do
     character_id = String.to_integer(character_id_str)
@@ -170,4 +174,18 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
   def character_portrait(character_id, size \\ 64) do
     "https://images.evetech.net/characters/#{character_id}/portrait?size=#{size}"
   end
+
+  def format_isk(amount) when amount >= 1_000_000_000 do
+    "#{Float.round(amount / 1_000_000_000, 1)}B"
+  end
+
+  def format_isk(amount) when amount >= 1_000_000 do
+    "#{Float.round(amount / 1_000_000, 1)}M"
+  end
+
+  def format_isk(amount) when amount >= 1_000 do
+    "#{Float.round(amount / 1_000, 1)}K"
+  end
+
+  def format_isk(amount), do: "#{amount}"
 end

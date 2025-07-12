@@ -355,10 +355,18 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
     |> elem(0)
   end
 
-  defp calculate_total_isk_destroyed(_killmails) do
-    # For now, return 0 as we'd need to implement ship value calculation
-    # This would require integrating with the pricing system
-    0
+  defp calculate_total_isk_destroyed(killmails) do
+    alias EveDmv.Market.PriceService
+
+    killmails
+    |> Enum.map(fn killmail ->
+      case PriceService.calculate_killmail_value(killmail) do
+        %{total_value: value} when is_number(value) -> value
+        _ -> 0.0
+      end
+    end)
+    |> Enum.sum()
+    |> round()
   end
 
   defp analyze_ship_types(killmails) do

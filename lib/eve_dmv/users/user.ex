@@ -310,8 +310,9 @@ defmodule EveDmv.Users.User do
   end
 
   def signing_secret(_resource, _opts) do
-    case Application.get_env(:eve_dmv, :token_signing_secret) do
-      nil -> {:error, "You must configure :token_signing_secret in your application config"}
+    # Always use SECRET_KEY_BASE for token signing
+    case Application.get_env(:eve_dmv, EveDmvWeb.Endpoint)[:secret_key_base] do
+      nil -> {:error, "You must configure SECRET_KEY_BASE"}
       secret -> {:ok, secret}
     end
   end
