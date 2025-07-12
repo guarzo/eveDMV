@@ -10,7 +10,6 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
   use EveDmv.ErrorHandler
   alias EveDmv.Result
   alias EveDmv.Eve.ItemType
-  alias EveDmv.Killmails.KillmailRaw
 
   @doc """
   Analyze fleet composition for effectiveness and tactical balance.
@@ -201,11 +200,11 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
   end
 
   # Analyze ship role based on recent killmail fitting data
-  defp get_role_from_killmail_analysis(ship_type_id) do
+  defp get_role_from_killmail_analysis(_ship_type_id) do
     try do
       # Get recent killmails for this ship type (last 7 days)
-      _end_time = DateTime.utc_now()
-      _start_time = DateTime.add(_end_time, -7, :day)
+      end_time = DateTime.utc_now()
+      _start_time = DateTime.add(end_time, -7, :day)
 
       # For now, disable killmail analysis to avoid query complexity
       # This can be implemented later with proper Ash query syntax
@@ -222,174 +221,6 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
   end
 
   # Analyze fitting patterns from killmail data
-  defp analyze_fitting_patterns(killmails) do
-    killmails
-    |> Enum.map(&extract_fitted_modules/1)
-    |> Enum.map(&classify_ship_role_from_modules/1)
-    |> Enum.frequencies()
-  end
-
-  # Extract fitted modules from killmail raw data
-  defp extract_fitted_modules(killmail) do
-    case killmail.raw_data do
-      %{"victim" => %{"items" => items}} when is_list(items) ->
-        items
-        |> Enum.filter(&is_fitted_module/1)
-        |> Enum.map(&get_module_name/1)
-
-      _ ->
-        []
-    end
-  end
-
-  # Check if an item is a fitted module (not cargo)
-  defp is_fitted_module(item) do
-    flag = item["flag"] || 0
-    # High slots: 27-34, Mid slots: 19-26, Low slots: 11-18, Rigs: 92-94
-    flag in 11..34 or flag in 92..94
-  end
-
-  # Get module name for classification
-  defp get_module_name(item) do
-    item["type_name"] || item["item_name"] || "Unknown Module"
-  end
-
-  # Classify ship role based on fitted modules
-  defp classify_ship_role_from_modules(modules) do
-    role_scores = %{
-      tackle: calculate_tackle_score(modules),
-      logistics: calculate_logistics_score(modules),
-      ewar: calculate_ewar_score(modules),
-      dps: calculate_dps_score(modules),
-      command: calculate_command_score(modules),
-      exploration: calculate_exploration_score(modules)
-    }
-
-    # Return the role with highest score if above threshold
-    {role, score} = Enum.max_by(role_scores, fn {_role, score} -> score end)
-
-    if score > 0.3 do
-      role
-    else
-      # No clear role determined
-      :mixed
-    end
-  end
-
-  # Calculate tackle score based on fitted modules
-  defp calculate_tackle_score(modules) do
-    tackle_indicators = [
-      "Warp Scrambler",
-      "Warp Disruptor",
-      "Stasis Webifier",
-      "Interdiction Sphere Launcher",
-      "Heavy Interdiction",
-      # Tackle rig
-      "Small Processor Overclocking Unit"
-    ]
-
-    count_module_matches(modules, tackle_indicators) / max(1, length(modules))
-  end
-
-  # Calculate logistics score based on fitted modules  
-  defp calculate_logistics_score(modules) do
-    logistics_indicators = [
-      "Remote Shield Booster",
-      "Remote Armor Repairer",
-      "Remote Capacitor Transmitter",
-      "Remote Shield Transporter",
-      "Logistics",
-      "Triage Module"
-    ]
-
-    count_module_matches(modules, logistics_indicators) / max(1, length(modules))
-  end
-
-  # Calculate EWAR score based on fitted modules
-  defp calculate_ewar_score(modules) do
-    ewar_indicators = [
-      "ECM",
-      "Remote Sensor Dampener",
-      "Tracking Disruptor",
-      "Target Painter",
-      "Energy Neutralizer",
-      "Energy Vampire",
-      "Signal Distortion Amplifier"
-    ]
-
-    count_module_matches(modules, ewar_indicators) / max(1, length(modules))
-  end
-
-  # Calculate DPS score based on fitted modules
-  defp calculate_dps_score(modules) do
-    dps_indicators = [
-      "Autocannon",
-      "Artillery",
-      "Railgun",
-      "Blaster",
-      "Pulse Laser",
-      "Beam Laser",
-      "Launcher",
-      "Torpedo",
-      "Cruise",
-      "Heavy Missile",
-      "Drone Damage Amplifier"
-    ]
-
-    count_module_matches(modules, dps_indicators) / max(1, length(modules))
-  end
-
-  # Calculate command score based on fitted modules
-  defp calculate_command_score(modules) do
-    command_indicators = [
-      "Command Burst",
-      "Warfare Link",
-      "Command Processor",
-      "Armored Command",
-      "Information Command",
-      "Skirmish Command"
-    ]
-
-    count_module_matches(modules, command_indicators) / max(1, length(modules))
-  end
-
-  # Calculate exploration score based on fitted modules
-  defp calculate_exploration_score(modules) do
-    exploration_indicators = [
-      "Probe Launcher",
-      "Scan",
-      "Hacking",
-      "Archaeology",
-      "Data Analyzer",
-      "Relic Analyzer",
-      "Covert Ops Cloaking"
-    ]
-
-    count_module_matches(modules, exploration_indicators) / max(1, length(modules))
-  end
-
-  # Count how many modules match the given indicators
-  defp count_module_matches(modules, indicators) do
-    modules
-    |> Enum.count(fn module ->
-      Enum.any?(indicators, &String.contains?(module, &1))
-    end)
-    |> Float.round(2)
-  end
-
-  # Determine primary role from fitting analysis with confidence score
-  defp determine_primary_role_from_fittings(role_frequencies) do
-    total_samples = Enum.sum(Map.values(role_frequencies))
-
-    case Enum.max_by(role_frequencies, fn {_role, count} -> count end, fn -> {:mixed, 0} end) do
-      {role, count} when count > 0 ->
-        confidence = count / total_samples
-        {:ok, role, confidence}
-
-      _ ->
-        {:error, :no_clear_role}
-    end
-  end
 
   # Static classification fallback
   defp get_static_tactical_role(group_name) do
@@ -505,8 +336,6 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
         :other
     end
   end
-
-  defp get_basic_ship_class(_), do: "Unknown Class"
 
   defp analyze_role_distribution(participant_data) do
     role_distribution =

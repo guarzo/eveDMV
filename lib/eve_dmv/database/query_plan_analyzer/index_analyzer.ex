@@ -284,7 +284,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
     index_usage
     |> Enum.filter(fn index ->
       # Consider an index potentially unused if it has very high cost relative to rows
-      index.cost > 1000 and index.rows < 10
+      index.cost > 1_000 and index.rows < 10
     end)
     |> Enum.map(& &1.index_name)
     |> Enum.uniq()
@@ -292,12 +292,12 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
 
   defp find_high_cost_indexes(index_usage) do
     index_usage
-    |> Enum.filter(&(&1.cost > 1000))
+    |> Enum.filter(&(&1.cost > 1_000))
     |> Enum.sort_by(& &1.cost, :desc)
   end
 
   defp suggest_index_for_scan(scan) do
-    if scan.filter and scan.rows_scanned > 1000 do
+    if scan.filter and scan.rows_scanned > 1_000 do
       # Extract column names from filter condition (simplified)
       columns = extract_columns_from_filter(scan.filter)
 
@@ -355,7 +355,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
     cost_reduction = scan_info.cost * selectivity * 0.8
 
     cond do
-      cost_reduction > 1000 -> "High"
+      cost_reduction > 1_000 -> "High"
       cost_reduction > 100 -> "Medium"
       cost_reduction > 10 -> "Low"
       true -> "Minimal"

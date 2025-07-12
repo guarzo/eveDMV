@@ -139,15 +139,28 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
   end
 
   defp load_profiles(socket) do
-    case Surveillance.list_profiles(%{}) do
-      {:ok, profiles} ->
-        assign(socket, :profiles, profiles)
+    try do
+      case Surveillance.list_profiles(%{}) do
+        {:ok, profiles} ->
+          assign(socket, :profiles, profiles)
 
-      {:error, reason} ->
-        Logger.error("Failed to load profiles: #{inspect(reason)}")
+        {:error, reason} ->
+          Logger.error("Failed to load profiles: #{inspect(reason)}")
+
+          socket
+          |> assign(:profiles, [])
+      end
+    rescue
+      error ->
+        Logger.error("Surveillance service unavailable: #{inspect(error)}")
 
         socket
-        |> put_flash(:error, "Failed to load profiles")
+        |> assign(:profiles, [])
+    catch
+      :exit, reason ->
+        Logger.error("Surveillance service process not available: #{inspect(reason)}")
+
+        socket
         |> assign(:profiles, [])
     end
   end
@@ -196,7 +209,7 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
     assign(socket, :alert_trends, trends)
   end
 
-  defp load_top_performing_profiles(socket, time_range) do
+  defp load_top_performing_profiles(socket, _time_range) do
     profile_metrics = socket.assigns.profile_metrics
 
     top_profiles =
@@ -235,9 +248,10 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
   end
 
   defp get_total_alerts(time_range) do
-    case AlertService.get_alert_metrics(time_range) do
+    safe_call(fn -> AlertService.get_alert_metrics(time_range) end)
+    |> case do
       {:ok, metrics} -> Map.get(metrics, :total_alerts, 0)
-      {:error, _} -> 0
+      _ -> 0
     end
   end
 
@@ -257,17 +271,19 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
 
   defp get_average_response_time do
     # Get surveillance engine response time from monitoring
-    case Surveillance.get_surveillance_metrics() do
+    safe_call(fn -> Surveillance.get_surveillance_metrics() end)
+    |> case do
       {:ok, metrics} -> Map.get(metrics, :avg_response_time_ms, 0)
-      {:error, _} -> 0
+      _ -> 0
     end
   end
 
   defp get_system_load do
     # Get current system load percentage
-    case Surveillance.get_surveillance_metrics() do
+    safe_call(fn -> Surveillance.get_surveillance_metrics() end)
+    |> case do
       {:ok, metrics} -> Map.get(metrics, :system_load_percent, 0)
-      {:error, _} -> 0
+      _ -> 0
     end
   end
 
@@ -279,14 +295,16 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
 
   defp get_cache_hit_rate do
     # Get cache hit rate from MatchingEngine
-    case MatchingEngine.get_cache_stats() do
+    safe_call(fn -> MatchingEngine.get_cache_stats() end)
+    |> case do
       {:ok, stats} -> Map.get(stats, :hit_rate, 0.0)
-      {:error, _} -> 0.0
+      _ -> 0.0
     end
   end
 
   defp get_profile_alert_count(profile_id, time_range) do
-    case AlertService.get_recent_alerts(profile_id: profile_id, limit: 1000) do
+    safe_call(fn -> AlertService.get_recent_alerts(profile_id: profile_id, limit: 1000) end)
+    |> case do
       {:ok, alerts} ->
         cutoff_time = get_cutoff_time(time_range)
 
@@ -294,7 +312,7 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
           DateTime.compare(alert.created_at, cutoff_time) == :gt
         end)
 
-      {:error, _} ->
+      _ ->
         0
     end
   end
@@ -318,7 +336,8 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
   defp get_profile_false_positive_rate(profile_id, _time_range) do
     # In a real system, this would track user feedback on alert accuracy
     # For now, simulate based on profile complexity
-    case Surveillance.get_profile(profile_id) do
+    safe_call(fn -> Surveillance.get_profile(profile_id) end)
+    |> case do
       {:ok, profile} ->
         criteria_count = length(Map.get(profile.criteria, :conditions, []))
         # More complex filters tend to have fewer false positives
@@ -328,13 +347,14 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
         complexity_adjustment = min(criteria_count * 2, 8)
         max(base_rate - complexity_adjustment, 1.0)
 
-      {:error, _} ->
+      _ ->
         0.0
     end
   end
 
   defp get_profile_avg_confidence(profile_id, time_range) do
-    case AlertService.get_recent_alerts(profile_id: profile_id, limit: 100) do
+    safe_call(fn -> AlertService.get_recent_alerts(profile_id: profile_id, limit: 100) end)
+    |> case do
       {:ok, alerts} ->
         cutoff_time = get_cutoff_time(time_range)
 
@@ -350,7 +370,7 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
           0.0
         end
 
-      {:error, _} ->
+      _ ->
         0.0
     end
   end
@@ -372,7 +392,8 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
   end
 
   defp get_profile_last_alert(profile_id) do
-    case AlertService.get_recent_alerts(profile_id: profile_id, limit: 1) do
+    safe_call(fn -> AlertService.get_recent_alerts(profile_id: profile_id, limit: 1) end)
+    |> case do
       {:ok, [alert | _]} -> alert.created_at
       _ -> nil
     end
@@ -539,7 +560,8 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
 
   defp generate_optimization_recommendations(profile_id) do
     # Generate specific recommendations for a profile
-    case Surveillance.get_profile(profile_id) do
+    safe_call(fn -> Surveillance.get_profile(profile_id) end)
+    |> case do
       {:ok, profile} ->
         recommendations = []
 
@@ -581,8 +603,8 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
 
         {:ok, recommendations}
 
-      {:error, reason} ->
-        {:error, reason}
+      _ ->
+        {:ok, []}
     end
   end
 
@@ -633,6 +655,21 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
       "Chain filter performance could be improved by caching topology",
       "Participant count filter may be redundant with current criteria"
     ]
+  end
+
+  # Safe call helper for surveillance services
+  defp safe_call(fun) when is_function(fun, 0) do
+    try do
+      fun.()
+    rescue
+      error ->
+        Logger.error("Surveillance service call failed: #{inspect(error)}")
+        {:error, :service_unavailable}
+    catch
+      :exit, reason ->
+        Logger.error("Surveillance service process not available: #{inspect(reason)}")
+        {:error, :service_unavailable}
+    end
   end
 
   # Formatting helpers

@@ -262,7 +262,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
   defp calculate_column_selectivity(n_distinct) when is_number(n_distinct) and n_distinct > 0 do
     # Higher distinct values = better selectivity for indexing
     cond do
-      n_distinct > 1000 -> "High"
+      n_distinct > 1_000 -> "High"
       n_distinct > 100 -> "Medium"
       n_distinct > 10 -> "Low"
       true -> "Very Low"
@@ -558,7 +558,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
   defp classify_growth_trend(daily_growth) do
     cond do
       daily_growth > 10_000 -> "High Growth"
-      daily_growth > 1000 -> "Medium Growth"
+      daily_growth > 1_000 -> "Medium Growth"
       daily_growth > 100 -> "Low Growth"
       daily_growth > 0 -> "Minimal Growth"
       true -> "Stable"
@@ -576,7 +576,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
       end
 
     final_recommendations =
-      if table.bloat_ratio > 0.1 and daily_growth > 1000 do
+      if table.bloat_ratio > 0.1 and daily_growth > 1_000 do
         ["Schedule regular VACUUM to manage bloat in growing table" | growth_recommendations]
       else
         growth_recommendations

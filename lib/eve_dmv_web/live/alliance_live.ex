@@ -21,6 +21,12 @@ defmodule EveDmvWeb.AllianceLive do
   import EveDmvWeb.Components.StatsGridComponent
   import EveDmvWeb.Components.ErrorStateComponent
   import EveDmvWeb.Components.EmptyStateComponent
+  import EveDmvWeb.FormatHelpers
+
+  alias EveDmvWeb.Helpers.TimeFormatter
+
+  # Helper function for template
+  defp time_ago(datetime), do: TimeFormatter.format_relative_time(datetime)
 
   @impl Phoenix.LiveView
   def mount(%{"alliance_id" => alliance_id_str}, _session, socket) do
@@ -331,26 +337,7 @@ defmodule EveDmvWeb.AllianceLive do
     value * 1.0
   end
 
-  # Template helper functions
-
-  def format_number(nil), do: "0"
-
-  def format_number(number) when is_integer(number) do
-    number
-    |> Integer.to_string()
-    |> add_commas()
-  end
-
-  def format_number(number) when is_float(number) do
-    number |> Float.round(1) |> Float.to_string()
-  end
-
-  defp add_commas(number_string) do
-    number_string
-    |> String.reverse()
-    |> String.replace(~r/(\d{3})(?=\d)/, "\\1,")
-    |> String.reverse()
-  end
+  # Template helper functions (using FormatHelpers for numbers)
 
   def corporation_activity_indicator(activity_count) do
     cond do
@@ -380,17 +367,7 @@ defmodule EveDmvWeb.AllianceLive do
     end
   end
 
-  def time_ago(nil), do: "Never"
-
-  def time_ago(datetime) do
-    case DateTime.diff(DateTime.utc_now(), datetime, :day) do
-      0 -> "Today"
-      1 -> "Yesterday"
-      days when days < 7 -> "#{days} days ago"
-      days when days < 30 -> "#{div(days, 7)} weeks ago"
-      days -> "#{div(days, 30)} months ago"
-    end
-  end
+  # Using TimeFormatter.format_friendly_time for time formatting
 
   def activity_type_badge(is_kill) do
     if is_kill do

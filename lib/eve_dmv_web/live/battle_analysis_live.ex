@@ -9,6 +9,8 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   use EveDmvWeb, :live_view
 
   alias EveDmv.Contexts.BattleAnalysis
+  alias EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser
+  alias EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer
   alias EveDmv.Contexts.BattleSharing
   alias EveDmv.Eve.NameResolver
   alias EveDmv.Performance.BatchNameResolver
@@ -113,9 +115,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   end
 
   def handle_event("select_battle", %{"battle_id" => battle_id}, socket) do
-    {:noreply,
-     socket
-     |> push_patch(to: ~p"/battle/#{battle_id}")}
+    {:noreply, push_patch(socket, to: ~p"/battle/#{battle_id}")}
   end
 
   def handle_event("select_phase", %{"phase_index" => phase_index}, socket) do
@@ -145,7 +145,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
         socket
       ) do
     # Get all available sides including "unassigned"
-    all_sides = ["unassigned" | socket.assigns.custom_sides] |> Enum.reverse()
+    all_sides = Enum.reverse(["unassigned" | socket.assigns.custom_sides])
     current_index = Enum.find_index(all_sides, &(&1 == current_side)) || 0
     next_index = rem(current_index + 1, length(all_sides))
     next_side = Enum.at(all_sides, next_index)
@@ -164,7 +164,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   def handle_event("add_custom_side", _, socket) do
     new_side_num = length(socket.assigns.custom_sides) + 1
     new_side = "side_#{new_side_num}"
-    custom_sides = [new_side | socket.assigns.custom_sides] |> Enum.reverse()
+    custom_sides = Enum.reverse([new_side | socket.assigns.custom_sides])
     {:noreply, assign(socket, :custom_sides, custom_sides)}
   end
 
@@ -257,7 +257,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
               content = :zlib.uncompress(compressed)
 
               # Parse the log with ENHANCED parser
-              case EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser.parse_combat_log(
+              case EnhancedCombatLogParser.parse_combat_log(
                      content,
                      pilot_name: combat_log.pilot_name
                    ) do
@@ -364,39 +364,38 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     ship_key = {character_id, ship_type_id}
 
     existing_fitting =
-      cond do
+      if :ets.lookup(:battle_fitting_cache, ship_key) != [] do
         # First check ETS cache
-        :ets.lookup(:battle_fitting_cache, ship_key) != [] ->
-          [{^ship_key, fitting}] = :ets.lookup(:battle_fitting_cache, ship_key)
-          fitting
-
+        [{^ship_key, fitting}] = :ets.lookup(:battle_fitting_cache, ship_key)
+        fitting
+      else
         # Then check database and cache the result
-        true ->
-          case Ash.read(EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting,
-                 filter: [character_id: character_id, ship_type_id: ship_type_id],
-                 sort: [updated_at: :desc],
-                 limit: 1
-               ) do
-            {:ok, [fitting | _]} ->
-              # Cache the fitting in ETS for future use
-              :ets.insert(:battle_fitting_cache, {ship_key, fitting.parsed_fitting})
-              fitting.parsed_fitting
+        case Ash.read(EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting,
+               filter: [character_id: character_id, ship_type_id: ship_type_id],
+               sort: [updated_at: :desc],
+               limit: 1
+             ) do
+          {:ok, [fitting | _]} ->
+            # Cache the fitting in ETS for future use
+            :ets.insert(:battle_fitting_cache, {ship_key, fitting.parsed_fitting})
+            fitting.parsed_fitting
 
-            _ ->
-              nil
-          end
+          _ ->
+            nil
+        end
       end
 
     # Always include fitting data in ship_data
-    ship_data = Map.put(ship_data, :fitting_data, existing_fitting)
-
     # Fetch combat log analysis for this pilot if available
     combat_log_analysis =
       get_combat_log_analysis_for_pilot(pilot_data && pilot_data[:character_name])
 
-    ship_data = Map.put(ship_data, :combat_log_analysis, combat_log_analysis)
+    ship_data =
+      ship_data
+      |> Map.put(:fitting_data, existing_fitting)
+      |> Map.put(:combat_log_analysis, combat_log_analysis)
 
-    case EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer.analyze_ship_performance(
+    case ShipPerformanceAnalyzer.analyze_ship_performance(
            ship_data,
            socket.assigns.current_battle
          ) do
@@ -475,7 +474,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     if socket.assigns.current_battle do
       # In production, get character_id from session
       # Mock character ID
-      creator_id = 12345
+      creator_id = 12_345
 
       options = [
         title: params["title"],
@@ -525,7 +524,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   def handle_event("rate_battle_report", %{"report_id" => report_id, "rating" => rating}, socket) do
     # In production, get character_id from session
     # Mock character ID
-    rater_id = 12345
+    rater_id = 12_345
     rating_value = String.to_integer(rating)
 
     case BattleSharing.rate_battle_report(report_id, rater_id, rating_value) do
@@ -551,28 +550,28 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       socket
       |> assign(:importing, false)
       |> assign(:import_url, "")
+      |> then(fn socket ->
+        case result do
+          {:ok, %{battle_id: _} = battle} ->
+            socket
+            |> assign(:current_battle, battle)
+            |> push_patch(to: ~p"/battle/#{battle.battle_id}")
+            |> load_recent_battles()
 
-    socket =
-      case result do
-        {:ok, %{battle_id: _} = battle} ->
-          socket
-          |> assign(:current_battle, battle)
-          |> push_patch(to: ~p"/battle/#{battle.battle_id}")
-          |> load_recent_battles()
+          {:ok, %{battles: battles}} ->
+            # Multiple battles imported
+            first_battle = List.first(battles)
 
-        {:ok, %{battles: battles}} ->
-          # Multiple battles imported
-          first_battle = List.first(battles)
+            socket
+            |> assign(:current_battle, first_battle)
+            |> push_patch(to: ~p"/battle/#{first_battle.battle_id}")
+            |> load_recent_battles()
 
-          socket
-          |> assign(:current_battle, first_battle)
-          |> push_patch(to: ~p"/battle/#{first_battle.battle_id}")
-          |> load_recent_battles()
-
-        {:error, reason} ->
-          error_msg = format_error(reason)
-          assign(socket, :error_message, error_msg)
-      end
+          {:error, reason} ->
+            error_msg = format_error(reason)
+            assign(socket, :error_message, error_msg)
+        end
+      end)
 
     {:noreply, socket}
   end
@@ -582,7 +581,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       # Update ship data with new fitting
       ship_data = Map.put(socket.assigns.selected_ship, :fitting_data, fitting.parsed_fitting)
 
-      case EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer.analyze_ship_performance(
+      case ShipPerformanceAnalyzer.analyze_ship_performance(
              ship_data,
              socket.assigns.current_battle
            ) do
@@ -867,9 +866,9 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       type_id in 547..554 -> "Carrier"
       type_id in 671..671 -> "Dreadnought"
       type_id in 3514..3518 -> "Titan"
-      type_id in 11567..12034 -> "Tech 3 Cruiser"
-      type_id in 29984..29990 -> "Tech 3 Destroyer"
-      type_id in 35779..35781 -> "Triglavian"
+      type_id in 11_567..12_034 -> "Tech 3 Cruiser"
+      type_id in 29_984..29_990 -> "Tech 3 Destroyer"
+      type_id in 35_779..35_781 -> "Triglavian"
       true -> "Ship"
     end
   end

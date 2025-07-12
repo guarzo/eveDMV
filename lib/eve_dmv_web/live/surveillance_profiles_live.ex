@@ -14,9 +14,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   alias EveDmv.Contexts.Surveillance
   alias EveDmv.Contexts.Surveillance.Domain.MatchingEngine
   alias EveDmv.Intelligence.WandererClient
-  alias EveDmvWeb.SurveillanceProfilesLive.Helpers
-
-  import Helpers
+  import EveDmvWeb.SurveillanceProfilesLive.Helpers
 
   require Logger
 
@@ -38,6 +36,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
       |> assign(:profiles, [])
       |> assign(:editing_profile, nil)
       |> assign(:filter_preview, %{matches: [], count: 0, testing: false})
+      |> assign(:preview_killmail_limit, @preview_killmail_limit)
       |> assign(:chain_status, check_chain_status())
       |> load_profiles()
 
@@ -73,7 +72,8 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
   @impl Phoenix.LiveView
   def handle_event("delete_profile", %{"id" => id}, socket) do
-    case Surveillance.delete_profile(id) do
+    safe_call(fn -> Surveillance.delete_profile(id) end)
+    |> case do
       {:ok, _} ->
         socket =
           socket
@@ -82,8 +82,8 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
         {:noreply, socket}
 
-      {:error, reason} ->
-        socket = put_flash(socket, :error, "Failed to delete profile: #{inspect(reason)}")
+      _ ->
+        socket = put_flash(socket, :error, "Failed to delete profile")
         {:noreply, socket}
     end
   end
@@ -93,7 +93,8 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
     profile = find_profile(socket.assigns.profiles, id)
     enabled = !profile.enabled
 
-    case Surveillance.update_profile(id, %{enabled: enabled}) do
+    safe_call(fn -> Surveillance.update_profile(id, %{enabled: enabled}) end)
+    |> case do
       {:ok, _} ->
         socket =
           socket
@@ -102,18 +103,33 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
         {:noreply, socket}
 
-      {:error, reason} ->
-        socket = put_flash(socket, :error, "Failed to update profile: #{inspect(reason)}")
+      _ ->
+        socket = put_flash(socket, :error, "Failed to update profile")
         {:noreply, socket}
     end
   end
 
   @impl Phoenix.LiveView
   def handle_event("save_profile", %{"profile" => profile_params}, socket) do
-    case socket.assigns.editing_profile do
+    editing_profile = socket.assigns.editing_profile
+
+    # Prepare profile data with our new criteria format
+    profile_data = %{
+      name: Map.get(profile_params, "name", ""),
+      description: Map.get(profile_params, "description", ""),
+      is_active: Map.get(profile_params, "enabled", "true") == "true",
+      criteria: editing_profile.criteria,
+      user_id: get_current_user_id()
+    }
+
+    # Debug logging
+    Logger.debug("Attempting to save profile with data: #{inspect(profile_data)}")
+
+    case editing_profile do
       %{id: nil} ->
         # Create new profile
-        case Surveillance.create_profile(profile_params) do
+        safe_call(fn -> Surveillance.create_profile(profile_data) end)
+        |> case do
           {:ok, _profile} ->
             socket =
               socket
@@ -124,14 +140,15 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
             {:noreply, socket}
 
-          {:error, reason} ->
-            socket = put_flash(socket, :error, "Failed to create profile: #{inspect(reason)}")
+          _ ->
+            socket = put_flash(socket, :error, "Failed to create profile")
             {:noreply, socket}
         end
 
       %{id: id} ->
         # Update existing profile
-        case Surveillance.update_profile(id, profile_params) do
+        safe_call(fn -> Surveillance.update_profile(id, profile_data) end)
+        |> case do
           {:ok, _profile} ->
             socket =
               socket
@@ -142,8 +159,8 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
             {:noreply, socket}
 
-          {:error, reason} ->
-            socket = put_flash(socket, :error, "Failed to update profile: #{inspect(reason)}")
+          _ ->
+            socket = put_flash(socket, :error, "Failed to update profile")
             {:noreply, socket}
         end
     end
@@ -198,24 +215,30 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   end
 
   @impl Phoenix.LiveView
-  def handle_event(
-        "update_filter",
-        %{"index" => index, "field" => field, "value" => value},
-        socket
-      ) do
+  def handle_event("update_filter_field", %{"value" => value} = params, socket) do
     editing_profile = socket.assigns.editing_profile
 
     if editing_profile do
-      {index, _} = Integer.parse(index)
-      updated_criteria = update_filter_in_criteria(editing_profile.criteria, index, field, value)
-      updated_profile = %{editing_profile | criteria: updated_criteria}
+      index = Map.get(params, "index")
+      field = Map.get(params, "field")
 
-      socket =
-        socket
-        |> assign(:editing_profile, updated_profile)
-        |> update_filter_preview(updated_profile)
+      if index && field do
+        {index_int, _} = Integer.parse(index)
 
-      {:noreply, socket}
+        updated_criteria =
+          update_filter_in_criteria(editing_profile.criteria, index_int, field, value)
+
+        updated_profile = %{editing_profile | criteria: updated_criteria}
+
+        socket =
+          socket
+          |> assign(:editing_profile, updated_profile)
+          |> update_filter_preview(updated_profile)
+
+        {:noreply, socket}
+      else
+        {:noreply, socket}
+      end
     else
       {:noreply, socket}
     end
@@ -241,6 +264,114 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
     end
   end
 
+  @impl Phoenix.LiveView
+  def handle_event("update_profile_field", %{"field" => field, "value" => value}, socket) do
+    editing_profile = socket.assigns.editing_profile
+
+    if editing_profile do
+      updated_profile = Map.put(editing_profile, String.to_existing_atom(field), value)
+      socket = assign(socket, :editing_profile, updated_profile)
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl Phoenix.LiveView
+  def handle_event(
+        "search_autocomplete",
+        %{"value" => query, "field" => field, "index" => index},
+        socket
+      ) do
+    if String.length(query) >= 2 do
+      suggestions = search_entity_suggestions(field, query)
+
+      socket =
+        socket
+        |> assign(:autocomplete_suggestions, suggestions)
+        |> assign(:autocomplete_field, field)
+        |> assign(:autocomplete_index, index)
+        |> push_event("show_autocomplete", %{
+          input_id: "filter_#{index}_#{field}",
+          suggestions: suggestions
+        })
+
+      {:noreply, socket}
+    else
+      socket = push_event(socket, "hide_autocomplete", %{})
+      {:noreply, socket}
+    end
+  end
+
+  @impl Phoenix.LiveView
+  def handle_event(
+        "select_suggestion",
+        %{"id" => suggestion_id, "field" => field, "index" => index},
+        socket
+      ) do
+    editing_profile = socket.assigns.editing_profile
+
+    Logger.debug(
+      "HANDLE EVENT select_suggestion: id=#{suggestion_id}, field=#{field}, index=#{index}"
+    )
+
+    if editing_profile do
+      {index_int, _} = Integer.parse(index)
+
+      # Get current filter condition
+      conditions = Map.get(editing_profile.criteria, :conditions, [])
+      Logger.debug("Current conditions: #{inspect(conditions)}")
+
+      if index_int < length(conditions) do
+        condition = Enum.at(conditions, index_int)
+        current_ids = Map.get(condition, String.to_existing_atom(field), [])
+
+        # Convert current IDs to string for display, add new ID
+        current_string = current_ids |> Enum.join(", ")
+
+        new_value =
+          if current_string == "",
+            do: suggestion_id,
+            else: current_string <> ", " <> suggestion_id
+
+        Logger.debug("Current string: '#{current_string}', new value: '#{new_value}'")
+
+        updated_criteria =
+          update_filter_in_criteria(editing_profile.criteria, index_int, field, new_value)
+
+        updated_profile = %{editing_profile | criteria: updated_criteria}
+
+        Logger.debug("Updated profile criteria: #{inspect(updated_profile.criteria)}")
+
+        # Don't trigger preview update immediately to avoid re-rendering during click
+        socket =
+          socket
+          |> assign(:editing_profile, updated_profile)
+          |> push_event("hide_autocomplete", %{})
+
+        # Schedule preview update after a small delay to let the UI settle
+        Process.send_after(self(), {:delayed_preview_update, updated_profile}, 100)
+
+        {:noreply, socket}
+      else
+        Logger.debug(
+          "Index #{index_int} out of bounds for conditions length #{length(conditions)}"
+        )
+
+        {:noreply, socket}
+      end
+    else
+      Logger.debug("No editing profile found")
+      {:noreply, socket}
+    end
+  end
+
+  @impl Phoenix.LiveView
+  def handle_info({:delayed_preview_update, profile}, socket) do
+    socket = update_filter_preview(socket, profile)
+    {:noreply, socket}
+  end
+
   # PubSub handlers
 
   @impl Phoenix.LiveView
@@ -255,6 +386,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
     {:noreply, socket}
   end
 
+  @impl Phoenix.LiveView
   def handle_info({:update_preview, profile}, socket) do
     # Get last 1000 killmails for testing
     preview_result = test_profile_against_killmails(profile)
@@ -271,13 +403,14 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   # Private functions
 
   defp load_profiles(socket) do
-    case Surveillance.list_profiles(%{}) do
+    safe_call(fn -> Surveillance.list_profiles([]) end)
+    |> case do
       {:ok, profiles} ->
-        assign(socket, :profiles, profiles)
+        # Profiles should already be in the correct format since we're not doing backwards compatibility
+        formatted_profiles = Enum.map(profiles, &format_profile_for_ui/1)
+        assign(socket, :profiles, formatted_profiles)
 
-      {:error, reason} ->
-        Logger.error("Failed to load profiles: #{inspect(reason)}")
-
+      _ ->
         socket
         |> put_flash(:error, "Failed to load profiles")
         |> assign(:profiles, [])
@@ -305,7 +438,8 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   defp check_chain_status do
     map_slug = get_default_map_slug()
 
-    case WandererClient.get_chain_topology(map_slug) do
+    safe_call(fn -> WandererClient.get_chain_topology(map_slug) end)
+    |> case do
       {:ok, topology} ->
         %{
           connected: true,
@@ -313,7 +447,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
           system_count: length(Map.get(topology, "systems", []))
         }
 
-      {:error, _reason} ->
+      _ ->
         %{
           connected: false,
           map_slug: map_slug,
@@ -456,14 +590,6 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
     end
   end
 
-  def handle_info({:update_preview, profile}, socket) do
-    # Get last 1000 killmails for testing
-    preview_result = test_profile_against_killmails(profile)
-
-    socket = assign(socket, :filter_preview, preview_result)
-    {:noreply, socket}
-  end
-
   defp test_profile_against_killmails(profile) do
     try do
       # Get recent killmails for testing (simplified - would normally query database)
@@ -511,7 +637,13 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   defp get_recent_killmails_for_testing(limit) do
     # Query recent killmails from the database for testing
     try do
-      case Ash.read(EveDmv.Killmails.KillmailEnriched, limit: limit, sort: [killmail_time: :desc]) do
+      query =
+        EveDmv.Killmails.KillmailRaw
+        |> Ash.Query.new()
+        |> Ash.Query.limit(limit)
+        |> Ash.Query.sort(killmail_time: :desc)
+
+      case Ash.read(query) do
         {:ok, killmails} ->
           # Convert to format expected by matching engine
           Enum.map(killmails, &format_killmail_for_testing/1)
@@ -560,5 +692,134 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
         end),
       raw_data: raw_data
     }
+  end
+
+  defp format_profile_for_ui(profile) do
+    # Simply ensure the profile has the expected UI structure
+    %{
+      id: profile.id,
+      name: profile.name || "",
+      description: profile.description || "",
+      enabled: profile.is_active || false,
+      criteria:
+        profile.criteria ||
+          %{
+            type: :custom_criteria,
+            logic_operator: :and,
+            conditions: []
+          }
+    }
+  end
+
+  defp get_current_user_id do
+    # TODO: Get from session/assigns when authentication is properly integrated
+    # For now, return a placeholder integer
+    1
+  end
+
+  defp search_entity_suggestions(field, query) do
+    # This is a simplified autocomplete - in a real app you'd query the database
+    # For now, return some mock suggestions based on the field type
+    case field do
+      "character_ids" ->
+        mock_character_suggestions(query)
+
+      "corporation_ids" ->
+        mock_corporation_suggestions(query)
+
+      "alliance_ids" ->
+        mock_alliance_suggestions(query)
+
+      "system_ids" ->
+        mock_system_suggestions(query)
+
+      "ship_type_ids" ->
+        mock_ship_suggestions(query)
+
+      _ ->
+        []
+    end
+  end
+
+  defp mock_character_suggestions(query) do
+    all_suggestions = [
+      %{id: 2_116_806_579, name: "Stealthbot"},
+      %{id: 2_119_123_456, name: "TestPilot"},
+      %{id: 2_119_987_654, name: "SpaceMiner"},
+      %{id: 2_120_000_001, name: "PvPWarrior"},
+      %{id: 2_120_111_222, name: "CareBear"}
+    ]
+
+    filter_suggestions(all_suggestions, query)
+  end
+
+  defp mock_corporation_suggestions(query) do
+    all_suggestions = [
+      %{id: 98_000_001, name: "Test Corporation"},
+      %{id: 98_000_002, name: "Mining Consortium"},
+      %{id: 98_000_003, name: "PvP Corporation"},
+      %{id: 98_000_004, name: "Industrial Corp"}
+    ]
+
+    filter_suggestions(all_suggestions, query)
+  end
+
+  defp mock_alliance_suggestions(query) do
+    all_suggestions = [
+      %{id: 99_000_001, name: "Test Alliance"},
+      %{id: 99_000_002, name: "Goonswarm Federation"},
+      %{id: 99_000_003, name: "Pandemic Legion"},
+      %{id: 99_000_004, name: "Northern Coalition"}
+    ]
+
+    filter_suggestions(all_suggestions, query)
+  end
+
+  defp mock_system_suggestions(query) do
+    all_suggestions = [
+      %{id: 30_000_142, name: "Jita"},
+      %{id: 30_002_187, name: "Amarr"},
+      %{id: 30_000_144, name: "Perimeter"},
+      %{id: 30_002_659, name: "Dodixie"}
+    ]
+
+    filter_suggestions(all_suggestions, query)
+  end
+
+  defp mock_ship_suggestions(query) do
+    all_suggestions = [
+      %{id: 587, name: "Rifter"},
+      %{id: 598, name: "Merlin"},
+      %{id: 608, name: "Punisher"},
+      %{id: 615, name: "Incursus"}
+    ]
+
+    filter_suggestions(all_suggestions, query)
+  end
+
+  defp filter_suggestions(suggestions, query) do
+    query_lower = String.downcase(query)
+
+    suggestions
+    |> Enum.filter(fn %{name: name} ->
+      String.contains?(String.downcase(name), query_lower)
+    end)
+    # Limit to 5 suggestions
+    |> Enum.take(5)
+  end
+
+  # Safe call helper for surveillance and other services
+  defp safe_call(fun) when is_function(fun, 0) do
+    try do
+      fun.()
+    rescue
+      error ->
+        Logger.error("Service call failed: #{inspect(error)}")
+        {:error, :service_unavailable}
+    catch
+      :exit, reason ->
+        Logger.error("Service process not available: #{inspect(reason)}")
+        {:error, :service_unavailable}
+    end
   end
 end

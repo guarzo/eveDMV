@@ -78,20 +78,20 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
   Generate an alert from an event.
   """
   def generate_alert(event) do
-    # TODO: Implement real alert generation from events
-    # Requires: Alert prioritization, deduplication, formatting
     Logger.debug("Generating alert from event: #{inspect(event)}")
 
-    # Placeholder alert generation
-    alert = %{
-      id: System.unique_integer([:positive]),
-      alert_type: :general,
-      priority: @priority_medium,
-      message: "Alert generated from event",
-      event_data: event,
-      created_at: DateTime.utc_now(),
-      state: @state_new
+    # Convert event to match structure for processing
+    match = %{
+      id: event[:id] || "event_#{System.unique_integer([:positive])}",
+      profile_id: event[:profile_id] || "unknown",
+      killmail_id: event[:killmail_id] || "unknown",
+      matched_criteria: event[:matched_criteria] || [],
+      confidence_score: event[:confidence_score] || 0.5,
+      timestamp: event[:timestamp] || DateTime.utc_now()
     }
+
+    # Use the existing alert generation logic
+    alert = generate_alert_from_match(match)
 
     {:ok, alert}
   end

@@ -8,13 +8,14 @@ defmodule EveDmvWeb.FleetOperationsLive do
 
   use EveDmvWeb, :live_view
 
+  alias EveDmv.Contexts.BattleAnalysis
   alias EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer
   alias EveDmv.Eve.NameResolver
   alias EveDmv.Intelligence.Analyzers.WhFleetAnalyzer
 
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
-  @impl true
+  @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     socket =
       socket
@@ -28,7 +29,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
     {:ok, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_params(params, _uri, socket) do
     socket =
       case params do
@@ -67,7 +68,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("analyze_fleet", %{"type" => type}, socket) do
     case socket.assigns.fleet_data do
       nil ->
@@ -84,7 +85,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:run_analysis, type, fleet_data}, socket) do
     results =
       case type do
@@ -109,7 +110,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:load_battle_side_data, battle_id, side}, socket) do
     case load_fleet_side_from_battle(battle_id, side) do
       {:ok, fleet_data} ->
@@ -132,7 +133,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:load_battle_fleet_data, battle_id, window_timestamp}, socket) do
     case load_fleet_from_battle(battle_id, window_timestamp) do
       {:ok, fleet_data} ->
@@ -346,7 +347,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
     # Look back 48 hours
     start_time = DateTime.add(end_time, -48, :hour)
 
-    case EveDmv.Contexts.BattleAnalysis.detect_battles(start_time, end_time) do
+    case BattleAnalysis.detect_battles(start_time, end_time) do
       {:ok, battles} ->
         case Enum.find(battles, fn battle ->
                Map.get(battle, :battle_id) == battle_id
@@ -361,15 +362,13 @@ defmodule EveDmvWeb.FleetOperationsLive do
 
                 fleet_data = %{
                   fleet_id: "#{friendly_fleet_id}_#{side}",
-                  fleet_name: "#{String.replace(side, "_", " ") |> String.capitalize()} Fleet",
-                  start_time: get_battle_start_time(battle.killmails) |> DateTime.to_iso8601(),
-                  end_time: get_battle_end_time(battle.killmails) |> DateTime.to_iso8601(),
+                  fleet_name: "#{String.capitalize(String.replace(side, "_", " "))} Fleet",
+                  start_time: DateTime.to_iso8601(get_battle_start_time(battle.killmails)),
+                  end_time: DateTime.to_iso8601(get_battle_end_time(battle.killmails)),
                   engagement_status: "Battle Analysis - #{String.capitalize(side)}"
                 }
 
-                fleet_participants =
-                  side_participants
-                  |> Enum.map(&convert_pilot_to_fleet_member/1)
+                fleet_participants = Enum.map(side_participants, &convert_pilot_to_fleet_member/1)
 
                 {:ok,
                  %{
@@ -397,7 +396,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
     # Look back 48 hours
     start_time = DateTime.add(end_time, -48, :hour)
 
-    case EveDmv.Contexts.BattleAnalysis.detect_battles(start_time, end_time) do
+    case BattleAnalysis.detect_battles(start_time, end_time) do
       {:ok, battles} ->
         case Enum.find(battles, fn battle ->
                Map.get(battle, :battle_id) == battle_id
@@ -445,14 +444,13 @@ defmodule EveDmvWeb.FleetOperationsLive do
           fleet_data = %{
             fleet_id: friendly_fleet_id,
             fleet_name: "Battle Fleet - #{Map.get(main_fleet, :group_id)}",
-            start_time: get_battle_start_time(killmails) |> DateTime.to_iso8601(),
-            end_time: get_battle_end_time(killmails) |> DateTime.to_iso8601(),
+            start_time: DateTime.to_iso8601(get_battle_start_time(killmails)),
+            end_time: DateTime.to_iso8601(get_battle_end_time(killmails)),
             engagement_status: "Battle Analysis"
           }
 
           fleet_participants =
-            Map.get(main_fleet, :pilots, [])
-            |> Enum.map(&convert_pilot_to_fleet_member/1)
+            Enum.map(Map.get(main_fleet, :pilots, []), &convert_pilot_to_fleet_member/1)
 
           {:ok,
            %{
@@ -526,21 +524,6 @@ defmodule EveDmvWeb.FleetOperationsLive do
     |> Enum.filter(fn side -> side.ship_count > 1 end)
   end
 
-  defp extract_ship_types(fleet_side) do
-    pilots = Map.get(fleet_side, :pilots, [])
-
-    pilots
-    |> Enum.group_by(&Map.get(&1, :ship_type_id))
-    |> Enum.map(fn {ship_type_id, pilots_with_ship} ->
-      %{
-        ship_type_id: ship_type_id,
-        count: length(pilots_with_ship),
-        pilots: pilots_with_ship
-      }
-    end)
-    |> Enum.sort_by(& &1.count, :desc)
-  end
-
   defp get_battle_start_time(killmails) do
     killmails
     |> Enum.map(&Map.get(&1, :killmail_time))
@@ -587,24 +570,6 @@ defmodule EveDmvWeb.FleetOperationsLive do
   end
 
   defp format_ehp(_), do: "0"
-
-  # Safe rounding function that handles integers and floats
-  defp safe_round(number, precision) when is_number(number) do
-    Float.round(number / 1, precision)
-  end
-
-  defp safe_round(_, _), do: "0"
-
-  # Safe capitalize function that handles atoms and strings
-  defp safe_capitalize(value) when is_atom(value) do
-    value |> Atom.to_string() |> String.capitalize()
-  end
-
-  defp safe_capitalize(value) when is_binary(value) do
-    String.capitalize(value)
-  end
-
-  defp safe_capitalize(_), do: "Unknown"
 
   # Analysis rendering functions
 
@@ -673,7 +638,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
       count = Map.get(data, :count, 0)
       percentage = Map.get(data, :percentage, 0)
       ship_types = Map.get(data, :ship_types, %{})
-      ship_type_text = ship_types |> Enum.map(fn {name, count} -> "#{count}x #{name}" end) |> Enum.join(", ")
+      ship_type_text = Enum.map_join(ship_types, ", ", fn {name, count} -> "#{count}x #{name}" end)
 
       """
       <div class="bg-white dark:bg-gray-600 p-3 rounded">
@@ -1199,17 +1164,17 @@ defmodule EveDmvWeb.FleetOperationsLive do
     # More comprehensive ship class detection
     cond do
       # T3 Destroyers (specific IDs)
-      ship_type_id in [29248, 29984, 29986, 29988] -> "T3 Destroyer"
+      ship_type_id in [29_248, 29_984, 29_986, 29_988] -> "T3 Destroyer"
       # Frigates
       ship_type_id in 582..650 -> "Frigate"
       # Regular Destroyers  
-      ship_type_id in [16219, 16227, 16236, 16242] -> "Destroyer"
+      ship_type_id in [16_219, 16_227, 16_236, 16_242] -> "Destroyer"
       ship_type_id in 324..380 -> "Destroyer"
       # Cruisers
       ship_type_id in 620..634 -> "Cruiser"
       # T3 Cruisers (Strategic Cruisers)
-      ship_type_id in [29984, 29986, 29988, 29990] -> "T3 Cruiser"
-      ship_type_id in 11567..12034 -> "T3 Cruiser"
+      ship_type_id in [29_984, 29_986, 29_988, 29_990] -> "T3 Cruiser"
+      ship_type_id in 11_567..12_034 -> "T3 Cruiser"
       # Battlecruisers
       ship_type_id in 1201..1310 -> "Battlecruiser"
       # Battleships
@@ -1223,93 +1188,4 @@ defmodule EveDmvWeb.FleetOperationsLive do
   end
 
   defp get_ship_class(_), do: "Other"
-
-  # Simplified wormhole analysis functions that work with our participant data
-  defp analyze_simple_fleet_composition(participants) do
-    total_members = length(participants)
-    ship_groups = Enum.group_by(participants, &Map.get(&1, :ship_group, "Other"))
-
-    ship_breakdown =
-      Enum.map(ship_groups, fn {group, ships} ->
-        %{
-          ship_class: group,
-          count: length(ships),
-          percentage:
-            if(total_members > 0,
-              do: Float.round(length(ships) / total_members * 100, 1),
-              else: 0
-            ),
-          pilots: Enum.map(ships, &Map.get(&1, :character_name, "Unknown"))
-        }
-      end)
-
-    %{
-      total_members: total_members,
-      ship_diversity: length(ship_groups),
-      ship_breakdown: ship_breakdown,
-      estimated_total_value: Enum.sum(Enum.map(participants, &Map.get(&1, :ship_value, 0)))
-    }
-  end
-
-  defp analyze_simple_fleet_roles(participants) do
-    total_members = length(participants)
-    role_groups = Enum.group_by(participants, &Map.get(&1, :fleet_role, "DPS"))
-
-    role_breakdown =
-      Enum.map(role_groups, fn {role, ships} ->
-        %{
-          role: role,
-          count: length(ships),
-          percentage:
-            if(total_members > 0,
-              do: Float.round(length(ships) / total_members * 100, 1),
-              else: 0
-            )
-        }
-      end)
-
-    # Determine missing critical roles
-    present_roles = Map.keys(role_groups)
-    critical_roles = ["FC", "DPS", "Logistics", "Tackle"]
-    missing_roles = Enum.filter(critical_roles, fn role -> role not in present_roles end)
-
-    %{
-      role_breakdown: role_breakdown,
-      missing_roles: missing_roles,
-      role_coverage:
-        Enum.into(role_breakdown, %{}, fn %{role: role, percentage: pct} ->
-          {String.downcase(role), pct}
-        end)
-    }
-  end
-
-  defp analyze_simple_doctrine_compliance(participants) do
-    total_members = length(participants)
-
-    # Simple doctrine analysis based on ship diversity
-    ship_types = Enum.map(participants, &Map.get(&1, :ship_type, "Unknown"))
-    unique_ship_types = Enum.uniq(ship_types) |> length()
-
-    # Calculate compliance score based on ship diversity (lower diversity = higher compliance)
-    compliance_score =
-      if total_members > 0 do
-        diversity_ratio = unique_ship_types / total_members
-        max(0, 100 - diversity_ratio * 100) |> Float.round(1)
-      else
-        0
-      end
-
-    %{
-      compliance_score: compliance_score,
-      unique_ship_types: unique_ship_types,
-      total_pilots: total_members,
-      assessment:
-        cond do
-          compliance_score >= 80 -> "High Compliance"
-          compliance_score >= 60 -> "Moderate Compliance"
-          compliance_score >= 40 -> "Low Compliance"
-          true -> "Poor Compliance"
-        end
-    }
-  end
 end

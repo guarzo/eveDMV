@@ -5,6 +5,8 @@ defmodule EveDmvWeb.SurveillanceProfilesLive.Helpers do
 
   use Phoenix.Component
 
+  alias EveDmvWeb.Helpers.TimeFormatter
+
   def format_filter_type(type) do
     case type do
       :character_watch -> "Character"
@@ -66,19 +68,29 @@ defmodule EveDmvWeb.SurveillanceProfilesLive.Helpers do
       index: index,
       field: field,
       value: value,
-      placeholder: placeholder
+      placeholder: placeholder,
+      input_id: "filter_#{index}_#{field}"
     }
 
     ~H"""
-    <input
-      type="text"
-      phx-blur="update_filter"
-      phx-value-index={@index}
-      phx-value-field={@field}
-      value={@value}
-      placeholder={@placeholder}
-      class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-    />
+    <div class="relative" phx-hook="AutocompleteInput" id={"#{@input_id}_container"} data-index={@index} data-field={@field}>
+      <input
+        id={@input_id}
+        type="text"
+        phx-blur="update_filter_field"
+        phx-keyup="search_autocomplete"
+        phx-value-index={@index}
+        phx-value-field={@field}
+        phx-debounce="300"
+        value={@value}
+        placeholder={@placeholder}
+        class="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-md text-sm text-gray-100 placeholder-gray-400"
+        autocomplete="off"
+      />
+      <div id={"#{@input_id}_suggestions"} class="absolute z-10 w-full bg-gray-700 border border-gray-600 rounded-md mt-1 max-h-40 overflow-y-auto hidden">
+        <!-- Autocomplete suggestions will be populated here -->
+      </div>
+    </div>
     """
   end
 
@@ -97,25 +109,25 @@ defmodule EveDmvWeb.SurveillanceProfilesLive.Helpers do
     ~H"""
     <div class="space-y-3">
       <div>
-        <label class="block text-xs text-gray-600 mb-1">Map ID</label>
+        <label class="block text-xs text-gray-400 mb-1">Map ID</label>
         <input
           type="text"
-          phx-blur="update_filter"
+          phx-blur="update_filter_field"
           phx-value-index={@index}
           phx-value-field="map_id"
           value={@map_id}
           placeholder="Map slug or ID"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+          class="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-md text-sm text-gray-100 placeholder-gray-400"
         />
       </div>
       
       <div>
-        <label class="block text-xs text-gray-600 mb-1">Filter Type</label>
+        <label class="block text-xs text-gray-400 mb-1">Filter Type</label>
         <select
-          phx-change="update_filter"
+          phx-change="update_filter_field"
           phx-value-index={@index}
           phx-value-field="chain_filter_type"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+          class="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-md text-sm text-gray-100"
         >
           <option value="in_chain" selected={@filter_type == :in_chain}>In Chain</option>
           <option value="within_jumps" selected={@filter_type == :within_jumps}>Within X Jumps</option>
@@ -126,16 +138,16 @@ defmodule EveDmvWeb.SurveillanceProfilesLive.Helpers do
       
       <%= if @filter_type == :within_jumps do %>
         <div>
-          <label class="block text-xs text-gray-600 mb-1">Max Jumps</label>
+          <label class="block text-xs text-gray-400 mb-1">Max Jumps</label>
           <input
             type="number"
-            phx-blur="update_filter"
+            phx-blur="update_filter_field"
             phx-value-index={@index}
             phx-value-field="max_jumps"
             value={@max_jumps}
             min="1"
             max="10"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+            class="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-md text-sm text-gray-100"
           />
         </div>
       <% end %>
@@ -156,12 +168,12 @@ defmodule EveDmvWeb.SurveillanceProfilesLive.Helpers do
     ~H"""
     <div class="grid grid-cols-2 gap-3">
       <div>
-        <label class="block text-xs text-gray-600 mb-1">Operator</label>
+        <label class="block text-xs text-gray-400 mb-1">Operator</label>
         <select
-          phx-change="update_filter"
+          phx-change="update_filter_field"
           phx-value-index={@index}
           phx-value-field="operator"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+          class="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-md text-sm text-gray-100"
         >
           <option value="greater_than" selected={@operator == :greater_than}>Greater Than</option>
           <option value="less_than" selected={@operator == :less_than}>Less Than</option>
@@ -170,15 +182,15 @@ defmodule EveDmvWeb.SurveillanceProfilesLive.Helpers do
       </div>
       
       <div>
-        <label class="block text-xs text-gray-600 mb-1">ISK Value</label>
+        <label class="block text-xs text-gray-400 mb-1">ISK Value</label>
         <input
           type="number"
-          phx-blur="update_filter"
+          phx-blur="update_filter_field"
           phx-value-index={@index}
           phx-value-field="value"
           value={@value}
           placeholder="1000000000"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+          class="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-md text-sm text-gray-100 placeholder-gray-400"
         />
       </div>
     </div>
@@ -198,12 +210,12 @@ defmodule EveDmvWeb.SurveillanceProfilesLive.Helpers do
     ~H"""
     <div class="grid grid-cols-2 gap-3">
       <div>
-        <label class="block text-xs text-gray-600 mb-1">Operator</label>
+        <label class="block text-xs text-gray-400 mb-1">Operator</label>
         <select
-          phx-change="update_filter"
+          phx-change="update_filter_field"
           phx-value-index={@index}
           phx-value-field="operator"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+          class="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-md text-sm text-gray-100"
         >
           <option value="greater_than" selected={@operator == :greater_than}>Greater Than</option>
           <option value="less_than" selected={@operator == :less_than}>Less Than</option>
@@ -212,15 +224,15 @@ defmodule EveDmvWeb.SurveillanceProfilesLive.Helpers do
       </div>
       
       <div>
-        <label class="block text-xs text-gray-600 mb-1">Participant Count</label>
+        <label class="block text-xs text-gray-400 mb-1">Participant Count</label>
         <input
           type="number"
-          phx-blur="update_filter"
+          phx-blur="update_filter_field"
           phx-value-index={@index}
           phx-value-field="value"
           value={@value}
           min="1"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+          class="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-md text-sm text-gray-100"
         />
       </div>
     </div>
@@ -260,30 +272,18 @@ defmodule EveDmvWeb.SurveillanceProfilesLive.Helpers do
 
   def format_timestamp(timestamp) when is_binary(timestamp) do
     case DateTime.from_iso8601(timestamp) do
-      {:ok, dt, _} -> format_datetime(dt)
+      {:ok, dt, _} -> TimeFormatter.format_relative_time(dt)
       _ -> timestamp
     end
   end
 
-  def format_timestamp(%DateTime{} = dt), do: format_datetime(dt)
+  def format_timestamp(%DateTime{} = dt), do: TimeFormatter.format_relative_time(dt)
   def format_timestamp(%NaiveDateTime{} = ndt), do: format_naive_datetime(ndt)
   def format_timestamp(_), do: "Unknown"
 
-  defp format_datetime(dt) do
-    now = DateTime.utc_now()
-    diff = DateTime.diff(now, dt, :second)
-
-    cond do
-      diff < 60 -> "#{diff}s ago"
-      diff < 3600 -> "#{div(diff, 60)}m ago"
-      diff < 86400 -> "#{div(diff, 3600)}h ago"
-      true -> "#{div(diff, 86400)}d ago"
-    end
-  end
-
   defp format_naive_datetime(ndt) do
     case DateTime.from_naive(ndt, "Etc/UTC") do
-      {:ok, dt} -> format_datetime(dt)
+      {:ok, dt} -> TimeFormatter.format_relative_time(dt)
       _ -> "Unknown"
     end
   end

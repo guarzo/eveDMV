@@ -320,32 +320,141 @@ defmodule EveDmv.Intelligence.WandererClient do
       {"Accept", "application/json"}
     ]
 
-  defp parse_topology_data(systems_data) do
-    # Transform Wanderer systems data into our topology format
-    %{
-      "systems" => systems_data,
-      "system_count" => length(systems_data),
-      "last_updated" => DateTime.utc_now()
-    }
+  defp parse_topology_data(response_data) do
+    # Transform Wanderer response data into our topology format
+    # Handle the actual API response structure: %{"data" => %{"connections" => [...], "systems" => [...]}}
+
+    case response_data do
+      %{"data" => %{"systems" => systems}} when is_list(systems) ->
+        %{
+          "systems" => systems,
+          "system_count" => length(systems),
+          "last_updated" => DateTime.utc_now()
+        }
+
+      %{"data" => %{"connections" => connections}} when is_list(connections) ->
+        # If only connections are provided, extract unique systems from connections
+        systems = extract_systems_from_connections(connections)
+
+        %{
+          "systems" => systems,
+          "system_count" => length(systems),
+          "last_updated" => DateTime.utc_now()
+        }
+
+      %{"data" => data} when is_map(data) ->
+        # Fallback: try to extract systems from data
+        systems = Map.get(data, "systems", [])
+        connections = Map.get(data, "connections", [])
+
+        all_systems =
+          if length(systems) > 0 do
+            systems
+          else
+            extract_systems_from_connections(connections)
+          end
+
+        %{
+          "systems" => all_systems,
+          "system_count" => length(all_systems),
+          "connections" => connections,
+          "last_updated" => DateTime.utc_now()
+        }
+
+      # Legacy format support
+      systems_list when is_list(systems_list) ->
+        %{
+          "systems" => systems_list,
+          "system_count" => length(systems_list),
+          "last_updated" => DateTime.utc_now()
+        }
+
+      _ ->
+        Logger.warning("Unexpected topology data format: #{inspect(response_data)}")
+
+        %{
+          "systems" => [],
+          "system_count" => 0,
+          "last_updated" => DateTime.utc_now()
+        }
+    end
   end
 
-  defp parse_inhabitants_data(systems_data) do
-    # Extract inhabitant information from systems data
-    # This would depend on Wanderer's actual data structure
-    Enum.flat_map(systems_data, fn system ->
-      inhabitants = Map.get(system, "inhabitants", [])
-
-      Enum.map(inhabitants, fn inhabitant ->
-        %{
-          "character_id" => Map.get(inhabitant, "character_id"),
-          "character_name" => Map.get(inhabitant, "character_name"),
-          "corporation_id" => Map.get(inhabitant, "corporation_id"),
-          "system_id" => Map.get(system, "system_id"),
-          "ship_type_id" => Map.get(inhabitant, "ship_type_id"),
-          "last_seen" => Map.get(inhabitant, "last_seen")
-        }
-      end)
+  defp extract_systems_from_connections(connections) when is_list(connections) do
+    connections
+    |> Enum.flat_map(fn conn ->
+      [
+        Map.get(conn, "solar_system_source"),
+        Map.get(conn, "solar_system_target")
+      ]
     end)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+    |> Enum.map(fn system_id ->
+      %{
+        "id" => system_id,
+        "solar_system_id" => system_id,
+        # Would need EVE name resolution
+        "name" => "System #{system_id}"
+      }
+    end)
+  end
+
+  defp extract_systems_from_connections(_), do: []
+
+  defp parse_inhabitants_data(response_data) do
+    # Extract inhabitant information from response data
+    # Handle the actual API response structure
+    case response_data do
+      %{"data" => %{"systems" => systems}} when is_list(systems) ->
+        Enum.flat_map(systems, fn system ->
+          inhabitants = Map.get(system, "inhabitants", [])
+
+          Enum.map(inhabitants, fn inhabitant ->
+            %{
+              "character_id" => Map.get(inhabitant, "character_id"),
+              "character_name" => Map.get(inhabitant, "character_name"),
+              "corporation_id" => Map.get(inhabitant, "corporation_id"),
+              "system_id" => Map.get(system, "system_id"),
+              "ship_type_id" => Map.get(inhabitant, "ship_type_id"),
+              "last_seen" => Map.get(inhabitant, "last_seen")
+            }
+          end)
+        end)
+
+      %{"data" => %{"inhabitants" => inhabitants}} when is_list(inhabitants) ->
+        Enum.map(inhabitants, fn inhabitant ->
+          %{
+            "character_id" => Map.get(inhabitant, "character_id"),
+            "character_name" => Map.get(inhabitant, "character_name"),
+            "corporation_id" => Map.get(inhabitant, "corporation_id"),
+            "system_id" => Map.get(inhabitant, "system_id"),
+            "ship_type_id" => Map.get(inhabitant, "ship_type_id"),
+            "last_seen" => Map.get(inhabitant, "last_seen")
+          }
+        end)
+
+      # Legacy format support - direct list
+      systems_data when is_list(systems_data) ->
+        Enum.flat_map(systems_data, fn system ->
+          inhabitants = Map.get(system, "inhabitants", [])
+
+          Enum.map(inhabitants, fn inhabitant ->
+            %{
+              "character_id" => Map.get(inhabitant, "character_id"),
+              "character_name" => Map.get(inhabitant, "character_name"),
+              "corporation_id" => Map.get(inhabitant, "corporation_id"),
+              "system_id" => Map.get(system, "system_id"),
+              "ship_type_id" => Map.get(inhabitant, "ship_type_id"),
+              "last_seen" => Map.get(inhabitant, "last_seen")
+            }
+          end)
+        end)
+
+      _ ->
+        Logger.warning("Unexpected inhabitants data format: #{inspect(response_data)}")
+        []
+    end
   end
 
   defp parse_connections_data(connections_data) do

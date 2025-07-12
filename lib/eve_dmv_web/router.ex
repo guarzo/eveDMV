@@ -58,7 +58,8 @@ defmodule EveDmvWeb.Router do
     # Redirects for backward compatibility
     get("/analysis/:character_id", PageController, :redirect_character)
     get("/corp/:corporation_id", PageController, :redirect_corporation)
-    live("/surveillance", SurveillanceLive)
+    # Redirect old surveillance route to new surveillance profiles page
+    get("/surveillance", PageController, :redirect_to_surveillance_profiles)
     live("/surveillance-profiles", SurveillanceProfilesLive)
     live("/surveillance-alerts", SurveillanceAlertsLive)
     live("/surveillance-dashboard", SurveillanceDashboardLive)

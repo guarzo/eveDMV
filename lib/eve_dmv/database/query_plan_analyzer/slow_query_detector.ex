@@ -10,8 +10,8 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
   alias EveDmv.Repo
   require Logger
 
-  @slow_query_threshold_ms 1000
-  @expensive_query_threshold_ms 5000
+  @slow_query_threshold_ms 1_000
+  @expensive_query_threshold_ms 5_000
 
   @doc """
   Detects slow queries from pg_stat_statements.
@@ -443,7 +443,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
     cond do
       slow_ratio < 1 and avg_time < 100 -> 95
       slow_ratio < 5 and avg_time < 500 -> 80
-      slow_ratio < 10 and avg_time < 1000 -> 60
+      slow_ratio < 10 and avg_time < 1_000 -> 60
       slow_ratio < 20 -> 40
       true -> 20
     end

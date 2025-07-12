@@ -38,9 +38,7 @@ defmodule EveDmvWeb.CharacterSearchLive do
     # Save to recent searches
     save_recent_search(character_id)
 
-    {:noreply,
-     socket
-     |> push_navigate(to: ~p"/character/#{character_id}/intelligence")}
+    {:noreply, push_navigate(socket, to: ~p"/character/#{character_id}/intelligence")}
   end
 
   defp perform_search(socket, query) when byte_size(query) < 3 do

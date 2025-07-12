@@ -8,9 +8,9 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
 
   use EveDmvWeb, :live_view
 
-  alias EveDmv.Contexts.CharacterIntelligence
-
   import EveDmvWeb.Components.ThreatLevelComponent
+
+  alias EveDmv.Contexts.CharacterIntelligence
   # import EveDmvWeb.Components.ActivityOverviewComponent
   # import EveDmvWeb.Components.IskStatsComponent
 
@@ -91,7 +91,10 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
 
           {:noreply,
            socket
-           |> assign(:comparison_characters, comparison_characters ++ [character_info])
+           |> assign(
+             :comparison_characters,
+             List.insert_at(comparison_characters, -1, character_info)
+           )
            |> assign(:search_query, "")
            |> assign(:search_results, [])}
 
@@ -163,8 +166,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
     |> to_string()
     |> String.replace("_", " ")
     |> String.split()
-    |> Enum.map(&String.capitalize/1)
-    |> Enum.join(" ")
+    |> Enum.map_join(" ", &String.capitalize/1)
   end
 
   def trend_indicator(current, previous) when current > previous, do: {"↑", "text-red-400"}

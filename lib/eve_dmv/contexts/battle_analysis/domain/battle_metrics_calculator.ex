@@ -4,9 +4,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
   DPS breakdowns, fleet effectiveness, and tactical assessments.
   """
 
-  require Logger
   alias EveDmv.Eve.NameResolver
   alias EveDmv.Performance.BatchNameResolver
+
+  require Logger
 
   @doc """
   Calculates comprehensive battle metrics from battle data.
@@ -65,23 +66,23 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
 
   defp precompute_battle_data(killmails) do
     # Single pass through killmails to extract all needed data
-    Enum.reduce(
-      killmails,
-      %{
-        total_kills: 0,
-        unique_pilots: MapSet.new(),
-        unique_corporations: MapSet.new(),
-        unique_alliances: MapSet.new(),
-        unique_ship_types: MapSet.new(),
-        total_isk_value: 0,
-        total_damage: 0,
-        attackers_by_killmail: %{},
-        ship_classes: %{},
-        weapon_damage: %{},
-        final_blows: [],
-        all_attackers: []
-      },
-      fn km, acc ->
+    initial_acc = %{
+      total_kills: 0,
+      unique_pilots: MapSet.new(),
+      unique_corporations: MapSet.new(),
+      unique_alliances: MapSet.new(),
+      unique_ship_types: MapSet.new(),
+      total_isk_value: 0,
+      total_damage: 0,
+      attackers_by_killmail: %{},
+      ship_classes: %{},
+      weapon_damage: %{},
+      final_blows: [],
+      all_attackers: []
+    }
+
+    acc =
+      Enum.reduce(killmails, initial_acc, fn km, acc ->
         attackers = km.raw_data["attackers"] || []
         _victim = km.raw_data["victim"] || %{}
 
@@ -89,7 +90,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
         victim_char_id = km.victim_character_id
         attacker_char_ids = attackers |> Enum.map(& &1["character_id"]) |> Enum.filter(& &1)
 
-        # Extract corporation IDs  
+        # Extract corporation IDs
         victim_corp_id = km.victim_corporation_id
         attacker_corp_ids = attackers |> Enum.map(& &1["corporation_id"]) |> Enum.filter(& &1)
 
@@ -131,16 +132,18 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
           all_attackers:
             acc.all_attackers ++ Enum.map(attackers, &Map.put(&1, :_source_killmail, km))
         }
-      end
-    )
-    |> then(fn acc ->
-      Map.merge(acc, %{
-        unique_pilots: MapSet.size(acc.unique_pilots),
-        unique_corporations: MapSet.size(acc.unique_corporations),
-        unique_alliances: MapSet.size(acc.unique_alliances),
-        unique_ship_types: MapSet.size(acc.unique_ship_types)
-      })
-    end)
+      end)
+
+    finalize_precomputed_data(acc)
+  end
+
+  defp finalize_precomputed_data(acc) do
+    Map.merge(acc, %{
+      unique_pilots: MapSet.size(acc.unique_pilots),
+      unique_corporations: MapSet.size(acc.unique_corporations),
+      unique_alliances: MapSet.size(acc.unique_alliances),
+      unique_ship_types: MapSet.size(acc.unique_ship_types)
+    })
   end
 
   defp calculate_overview_metrics(battle, precomputed) do
@@ -363,7 +366,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
   end
 
   defp filter_killmails_by_side(killmails, _side) do
-    # For now, return all killmails since proper side detection 
+    # For now, return all killmails since proper side detection
     # would require implementing corp/alliance affiliation logic
     killmails
   end
@@ -549,9 +552,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
         Map.merge(att, %{"_source_killmail" => km})
       end)
     end)
-    |> Enum.filter(& &1["final_blow"])
-    # Filter out nil character_ids (NPCs/structures)
-    |> Enum.filter(& &1["character_id"])
+    # Filter final blows and exclude nil character_ids (NPCs/structures)
+    |> Enum.filter(&(&1["final_blow"] && &1["character_id"]))
     |> Enum.group_by(& &1["character_id"])
     |> Enum.map(fn {char_id, blows} ->
       {char_id,
@@ -588,8 +590,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
   end
 
   defp extract_fleet_sizes(fleet_composition) do
-    fleet_composition
-    |> Enum.map(fn window ->
+    Enum.map(fleet_composition, fn window ->
       %{
         timestamp: window.timestamp,
         active_pilots: window.active_attackers + window.active_victims
@@ -599,7 +600,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
 
   defp detect_logistics_presence(killmails) do
     # Common logi ships
-    logi_ship_ids = [11985, 11987, 11989, 22440, 22442, 22444]
+    logi_ship_ids = [11_985, 11_987, 11_989, 22_440, 22_442, 22_444]
 
     logi_count =
       killmails
@@ -623,13 +624,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
 
     # Known EWAR ship type IDs (simplified detection)
     # Griffin, Blackbird, etc.
-    ecm_ships = [11978, 11979, 634, 635]
+    ecm_ships = [11_978, 11_979, 634, 635]
     # Maulus, Celestis, etc.
-    damp_ships = [11989, 11999, 623, 624]
+    damp_ships = [11_989, 11_999, 623, 624]
     # Vigil, Huginn, etc.
-    tracking_disruptor_ships = [11993, 12003, 622, 625]
+    tracking_disruptor_ships = [11_993, 12_003, 622, 625]
     # Crucifier, Pilgrim, etc.
-    target_painter_ships = [11985, 11995, 621, 626]
+    target_painter_ships = [11_985, 11_995, 621, 626]
 
     %{
       ecm_usage: ship_types_present?(all_ship_types, ecm_ships),
@@ -649,8 +650,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
       end)
 
     attacker_ships =
-      killmails
-      |> Enum.flat_map(fn km ->
+      Enum.flat_map(killmails, fn km ->
         case km.raw_data do
           %{"attackers" => attackers} when is_list(attackers) ->
             Enum.map(attackers, fn attacker -> attacker["ship_type_id"] end)
@@ -672,7 +672,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
   defp identify_force_multipliers(killmails) do
     # Identify command ships, links, etc
     # Command ships
-    command_ship_ids = [22442, 22444, 22446, 22448]
+    command_ship_ids = [22_442, 22_444, 22_446, 22_448]
 
     command_ships =
       killmails
@@ -839,8 +839,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
       ship_type_id in 547..554 -> "Carrier"
       ship_type_id in 670..673 -> "Dreadnought"
       ship_type_id in 3514..3518 -> "Titan"
-      ship_type_id in 11567..12034 -> "T3 Cruiser"
-      ship_type_id in 29984..29990 -> "T3 Destroyer"
+      ship_type_id in 11_567..12_034 -> "T3 Cruiser"
+      ship_type_id in 29_984..29_990 -> "T3 Destroyer"
       true -> "Other"
     end
   end

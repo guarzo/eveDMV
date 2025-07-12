@@ -60,7 +60,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.PlanAnalyzer do
     actual_time = node["Actual Total Time"] || 0
 
     expensive_with_current =
-      if current_cost > 1000 or actual_time > 100 do
+      if current_cost > 1_000 or actual_time > 100 do
         [
           %{
             node_type: node["Node Type"],

@@ -10,10 +10,15 @@ defmodule EveDmvWeb.CorporationLive do
 
   use EveDmvWeb, :live_view
 
+  alias Ecto.Adapters.SQL
   alias EveDmv.Api
-  alias EveDmv.Killmails.Participant
   alias EveDmv.Cache.AnalysisCache
   alias EveDmv.Contexts.CorporationIntelligence
+  alias EveDmv.Eve.EsiCorporationClient
+  alias EveDmv.Eve.NameResolver
+  alias EveDmv.Killmails.Participant
+  alias EveDmv.Performance.BatchNameResolver
+  alias EveDmv.Repo
 
   require Ash.Query
   require Logger
@@ -28,6 +33,9 @@ defmodule EveDmvWeb.CorporationLive do
   import EveDmvWeb.Components.ActivityOverviewComponent
   import EveDmvWeb.Components.IskStatsComponent
   import EveDmvWeb.EveImageComponents
+  import EveDmvWeb.FormatHelpers
+
+  alias EveDmvWeb.Helpers.TimeFormatter
 
   @impl Phoenix.LiveView
   def mount(%{"corporation_id" => corp_id_str}, _session, socket) do
@@ -231,7 +239,7 @@ defmodule EveDmvWeb.CorporationLive do
   defp load_corporation_info(corporation_id) do
     # First try to get from ESI for accurate member count
     esi_info =
-      case EveDmv.Eve.EsiCorporationClient.get_corporation(corporation_id) do
+      case EsiCorporationClient.get_corporation(corporation_id) do
         {:ok, corp} -> corp
         _ -> %{}
       end
@@ -276,7 +284,7 @@ defmodule EveDmvWeb.CorporationLive do
   defp load_corp_members(corporation_id) do
     # Get corporation members with activity stats using optimized single query
     # Look back 90 days for comprehensive member data
-    ninety_days_ago = DateTime.utc_now() |> DateTime.add(-90, :day)
+    ninety_days_ago = DateTime.add(DateTime.utc_now(), -90, :day)
 
     Logger.info("Loading members for corp #{corporation_id} from #{ninety_days_ago}")
 
@@ -291,22 +299,22 @@ defmodule EveDmvWeb.CorporationLive do
         Logger.debug("Found #{length(participants)} participants for corp #{corporation_id}")
 
         # Filter out entries without character_id
-        valid_participants = participants |> Enum.filter(& &1.character_id)
+        valid_participants = Enum.filter(participants, & &1.character_id)
         Logger.debug("#{length(valid_participants)} participants have character_id")
 
         # Preload all character names to avoid N+1 queries
         character_ids = valid_participants |> Enum.map(& &1.character_id) |> Enum.uniq()
         Logger.debug("Found #{length(character_ids)} unique character IDs")
 
-        EveDmv.Performance.BatchNameResolver.preload_participant_names(valid_participants)
+        BatchNameResolver.preload_participant_names(valid_participants)
 
         # Group by character and aggregate stats
         members =
           valid_participants
           |> Enum.group_by(& &1.character_id)
           |> Enum.map(fn {character_id, char_participants} ->
-            kills = char_participants |> Enum.count(&(not &1.is_victim))
-            losses = char_participants |> Enum.count(& &1.is_victim)
+            kills = Enum.count(char_participants, &(not &1.is_victim))
+            losses = Enum.count(char_participants, & &1.is_victim)
 
             latest_activity =
               case char_participants |> Enum.map(& &1.killmail_time) |> Enum.filter(& &1) do
@@ -315,7 +323,7 @@ defmodule EveDmvWeb.CorporationLive do
               end
 
             # Use cached name resolution
-            character_name = EveDmv.Eve.NameResolver.character_name(character_id)
+            character_name = NameResolver.character_name(character_id)
 
             %{
               character_id: character_id,
@@ -352,27 +360,13 @@ defmodule EveDmvWeb.CorporationLive do
         Logger.debug("Found #{length(participants)} recent activities for corp #{corporation_id}")
 
         # Filter out entries without character_id
-        valid_participants = participants |> Enum.filter(& &1.character_id)
+        valid_participants = Enum.filter(participants, & &1.character_id)
 
         # Preload all names to avoid N+1 queries
-        EveDmv.Performance.BatchNameResolver.preload_participant_names(valid_participants)
+        BatchNameResolver.preload_participant_names(valid_participants)
 
-        # We need to load the killmail data for timestamps
-        # For now, let's use the participant data we have
-        activities =
-          valid_participants
-          |> Enum.map(fn p ->
-            %{
-              character_id: p.character_id,
-              character_name: EveDmv.Eve.NameResolver.character_name(p.character_id),
-              ship_name: EveDmv.Eve.NameResolver.ship_name(p.ship_type_id),
-              is_kill: not p.is_victim,
-              timestamp: p.killmail_time,
-              killmail_id: p.killmail_id,
-              # TODO: Add solar system name lookup
-              solar_system_name: nil
-            }
-          end)
+        # Load activities with solar system information
+        activities = load_activities_with_system_info(valid_participants)
 
         Logger.debug("Returning #{length(activities)} recent activities")
         activities
@@ -414,7 +408,7 @@ defmodule EveDmvWeb.CorporationLive do
   # Get comprehensive corporation statistics over longer time period
   defp get_comprehensive_corp_stats(corporation_id) do
     # Look at 90 days of data for more accurate statistics
-    ninety_days_ago = DateTime.utc_now() |> DateTime.add(-90, :day)
+    ninety_days_ago = DateTime.add(DateTime.utc_now(), -90, :day)
 
     # First get participants
     case Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id})
@@ -486,15 +480,37 @@ defmodule EveDmvWeb.CorporationLive do
   end
 
   defp calculate_isk_values(kill_ids, loss_ids) do
-    # For now, return placeholder values
-    # TODO: Implement proper ISK calculation when we have access to killmail data
-    # This would require joining with killmail_raw table or adding ISK values to participants
-    # 50M average per kill placeholder
-    isk_destroyed = length(kill_ids) * 50_000_000
-    # 50M average per loss placeholder
-    isk_lost = length(loss_ids) * 50_000_000
+    # Calculate real ISK values from killmail data
+    isk_destroyed = calculate_isk_for_participants(kill_ids, false)
+    isk_lost = calculate_isk_for_participants(loss_ids, true)
 
     {isk_destroyed, isk_lost}
+  end
+
+  defp calculate_isk_for_participants(participant_ids, is_victim) when is_list(participant_ids) do
+    if Enum.empty?(participant_ids) do
+      0
+    else
+      # Query killmail ISK values for participants
+      query = """
+      SELECT COALESCE(SUM(k.zkb_total_value), 0) as total_isk
+      FROM participants p
+      JOIN killmails_raw k ON p.killmail_id = k.killmail_id AND p.killmail_time = k.killmail_time
+      WHERE p.id = ANY($1) AND p.is_victim = $2
+      """
+
+      case SQL.query(Repo, query, [participant_ids, is_victim]) do
+        {:ok, %{rows: [[isk_value]]}} when is_number(isk_value) ->
+          round(isk_value)
+
+        {:ok, %{rows: [[nil]]}} ->
+          0
+
+        {:error, _reason} ->
+          # Fallback to placeholder calculation if query fails
+          length(participant_ids) * 50_000_000
+      end
+    end
   end
 
   # Helper functions
@@ -518,43 +534,7 @@ defmodule EveDmvWeb.CorporationLive do
     value * 1.0
   end
 
-  # Template helper functions
-
-  def format_number(nil), do: "0"
-
-  def format_number(number) when is_integer(number) do
-    add_commas(Integer.to_string(number))
-  end
-
-  def format_number(number) when is_float(number) do
-    number |> Float.round(1) |> Float.to_string()
-  end
-
-  def format_isk(value) when is_number(value) do
-    cond do
-      value >= 1_000_000_000_000 ->
-        "#{Float.round(value / 1_000_000_000_000, 1)}T"
-
-      value >= 1_000_000_000 ->
-        "#{Float.round(value / 1_000_000_000, 1)}B"
-
-      value >= 1_000_000 ->
-        "#{Float.round(value / 1_000_000, 1)}M"
-
-      value >= 1_000 ->
-        "#{Float.round(value / 1_000, 1)}K"
-
-      true ->
-        "#{round(value)}"
-    end
-  end
-
-  defp add_commas(number_string) do
-    number_string
-    |> String.reverse()
-    |> String.replace(~r/(\d{3})(?=\d)/, "\\1,")
-    |> String.reverse()
-  end
+  # Template helper functions (using FormatHelpers for numbers and ISK)
 
   def activity_indicator(activity_count) do
     cond do
@@ -576,26 +556,7 @@ defmodule EveDmvWeb.CorporationLive do
     end
   end
 
-  def time_ago(nil), do: "Never"
-
-  def time_ago(%DateTime{} = datetime) do
-    case DateTime.diff(DateTime.utc_now(), datetime, :day) do
-      0 -> "Today"
-      1 -> "Yesterday"
-      days when days < 7 -> "#{days} days ago"
-      days when days < 30 -> "#{div(days, 7)} weeks ago"
-      days -> "#{div(days, 30)} months ago"
-    end
-  end
-
-  def time_ago(%NaiveDateTime{} = datetime) do
-    # Convert NaiveDateTime to DateTime (assuming UTC)
-    datetime
-    |> DateTime.from_naive!("Etc/UTC")
-    |> time_ago()
-  end
-
-  def time_ago(_), do: "Unknown"
+  # Using TimeFormatter.format_friendly_time for time formatting
 
   def activity_type_badge(is_kill) do
     if is_kill do
@@ -607,23 +568,23 @@ defmodule EveDmvWeb.CorporationLive do
 
   defp load_location_stats(corporation_id) do
     # Get activity counts by solar system using Ash
-    thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30, :day)
+    thirty_days_ago = DateTime.add(DateTime.utc_now(), -30, :day)
 
     case Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id})
          |> Ash.Query.filter(killmail_time >= ^thirty_days_ago)
          |> Ash.read(domain: Api) do
       {:ok, participants} ->
         # Group by solar system and aggregate stats
-        system_groups = participants |> Enum.group_by(& &1.solar_system_id)
+        system_groups = Enum.group_by(participants, & &1.solar_system_id)
 
         # Batch load all system names to avoid N+1 queries
-        system_ids = Map.keys(system_groups) |> Enum.filter(& &1)
+        system_ids = Enum.filter(Map.keys(system_groups), & &1)
         system_names = get_system_names(system_ids)
 
         system_groups
         |> Enum.map(fn {system_id, system_participants} ->
-          kills = system_participants |> Enum.count(&(not &1.is_victim))
-          losses = system_participants |> Enum.count(& &1.is_victim)
+          kills = Enum.count(system_participants, &(not &1.is_victim))
+          losses = Enum.count(system_participants, & &1.is_victim)
 
           %{
             solar_system_id: system_id,
@@ -644,7 +605,7 @@ defmodule EveDmvWeb.CorporationLive do
 
   defp load_victim_corporation_stats(corporation_id) do
     # Get top victim corporations using Ash
-    thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30, :day)
+    thirty_days_ago = DateTime.add(DateTime.utc_now(), -30, :day)
 
     # First get all our corporation's attackers (is_victim = false)
     case Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id})
@@ -687,12 +648,12 @@ defmodule EveDmvWeb.CorporationLive do
 
   defp get_system_names(system_ids) do
     # Batch load system names to avoid N+1 queries
-    EveDmv.Eve.NameResolver.system_names(system_ids)
+    NameResolver.system_names(system_ids)
   end
 
   defp calculate_timezone_data(corporation_id) do
     # Get all corporation activity with timestamps for timezone analysis
-    thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30, :day)
+    thirty_days_ago = DateTime.add(DateTime.utc_now(), -30, :day)
 
     case Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id})
          |> Ash.Query.filter(killmail_time >= ^thirty_days_ago)
@@ -796,8 +757,7 @@ defmodule EveDmvWeb.CorporationLive do
     |> to_string()
     |> String.replace("_", " ")
     |> String.split()
-    |> Enum.map(&String.capitalize/1)
-    |> Enum.join(" ")
+    |> Enum.map_join(" ", &String.capitalize/1)
   end
 
   def get_doctrine_description(doctrine) do
@@ -864,5 +824,58 @@ defmodule EveDmvWeb.CorporationLive do
       coverage_strengths: Enum.reverse(coverage_strengths),
       coverage_gaps: Enum.reverse(coverage_gaps)
     }
+  end
+
+  defp load_activities_with_system_info(participants) do
+    # Get killmail IDs and times for query
+    killmail_data =
+      participants
+      |> Enum.map(&{&1.killmail_id, &1.killmail_time})
+      |> Enum.uniq()
+
+    # Query for solar system IDs
+    system_lookup = get_solar_systems_for_killmails(killmail_data)
+
+    # Build activities with system info
+    Enum.map(participants, fn p ->
+      solar_system_id = Map.get(system_lookup, p.killmail_id)
+
+      %{
+        character_id: p.character_id,
+        character_name: NameResolver.character_name(p.character_id),
+        ship_name: NameResolver.ship_name(p.ship_type_id),
+        is_kill: not p.is_victim,
+        timestamp: p.killmail_time,
+        killmail_id: p.killmail_id,
+        solar_system_name:
+          if(solar_system_id,
+            do: NameResolver.system_name(solar_system_id),
+            else: "Unknown"
+          )
+      }
+    end)
+  end
+
+  defp get_solar_systems_for_killmails(killmail_data) when is_list(killmail_data) do
+    if Enum.empty?(killmail_data) do
+      %{}
+    else
+      # Build query to get solar system IDs for killmails
+      killmail_ids = Enum.map(killmail_data, &elem(&1, 0))
+
+      query = """
+      SELECT killmail_id, solar_system_id 
+      FROM killmails_raw 
+      WHERE killmail_id = ANY($1)
+      """
+
+      case SQL.query(Repo, query, [killmail_ids]) do
+        {:ok, %{rows: rows}} ->
+          Enum.into(rows, %{}, fn [killmail_id, system_id] -> {killmail_id, system_id} end)
+
+        {:error, _reason} ->
+          %{}
+      end
+    end
   end
 end

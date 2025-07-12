@@ -94,8 +94,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
   defp extract_attacker_details(raw_data) do
     case raw_data do
       %{"attackers" => attackers} when is_list(attackers) ->
-        attackers
-        |> Enum.map(fn attacker ->
+        Enum.map(attackers, fn attacker ->
           %{
             character_id: get_attacker_id(attacker, "character_id"),
             corporation_id: get_attacker_id(attacker, "corporation_id"),
@@ -172,7 +171,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
       end
 
     all_phases =
-      if final_phase, do: [final_phase | initial_phases] |> Enum.reverse(), else: initial_phases
+      if final_phase, do: Enum.reverse([final_phase | initial_phases]), else: initial_phases
 
     all_phases
     |> Enum.filter(&(&1 != nil))
@@ -187,8 +186,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
       [first | _] ->
         # Find the initial burst of activity
         initial_events =
-          events
-          |> Enum.take_while(fn event ->
+          Enum.take_while(events, fn event ->
             time_diff = NaiveDateTime.diff(event.timestamp, first.timestamp, :second)
             # Within 2 minutes of first kill
             time_diff <= 120
@@ -251,8 +249,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
   defp identify_final_phase(events, last_phase_end) do
     # Find events after the last identified phase
     final_events =
-      events
-      |> Enum.filter(fn event ->
+      Enum.filter(events, fn event ->
         NaiveDateTime.compare(event.timestamp, last_phase_end) == :gt
       end)
 
@@ -339,7 +336,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
   end
 
   defp analyze_ship_types_in_window(events, sides_analysis) do
-    # Analyze individual pilots and their ships 
+    # Analyze individual pilots and their ships
     events
     |> Enum.flat_map(fn event ->
       # Add victim as a pilot
@@ -447,14 +444,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
   defp analyze_battle_sides(events) do
     # Build a graph of who attacked whom
     interactions =
-      events
-      |> Enum.flat_map(fn event ->
+      Enum.flat_map(events, fn event ->
         victim_corp = event.victim.corporation_id
         victim_alliance = event.victim.alliance_id
         victim_corp_name = event.victim.corporation_name
 
-        event.attackers
-        |> Enum.map(fn attacker ->
+        Enum.map(event.attackers, fn attacker ->
           %{
             attacker_corp: attacker.corporation_id,
             attacker_alliance: attacker.alliance_id,

@@ -11,9 +11,9 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
 
   use EveDmvWeb, :live_view
 
-  alias EveDmv.Contexts.Surveillance
   alias EveDmv.Contexts.Surveillance.Domain.AlertService
   alias EveDmv.Contexts.Surveillance.Domain.NotificationService
+  alias EveDmvWeb.Helpers.TimeFormatter
 
   require Logger
 
@@ -73,10 +73,11 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
 
   @impl Phoenix.LiveView
   def handle_event("acknowledge_alert", %{"alert_id" => alert_id}, socket) do
-    # TODO: Get current user from session
-    user_id = "current_user"
+    # Get current user from session
+    user_id = get_user_id(socket)
 
-    case AlertService.update_alert_state(alert_id, "acknowledged", user_id) do
+    safe_call(fn -> AlertService.update_alert_state(alert_id, "acknowledged", user_id) end)
+    |> case do
       {:ok, _updated_alert} ->
         socket =
           socket
@@ -85,18 +86,19 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
 
         {:noreply, socket}
 
-      {:error, reason} ->
-        socket = put_flash(socket, :error, "Failed to acknowledge alert: #{inspect(reason)}")
+      _ ->
+        socket = put_flash(socket, :error, "Failed to acknowledge alert")
         {:noreply, socket}
     end
   end
 
   @impl Phoenix.LiveView
   def handle_event("resolve_alert", %{"alert_id" => alert_id}, socket) do
-    # TODO: Get current user from session
-    user_id = "current_user"
+    # Get current user from session
+    user_id = get_user_id(socket)
 
-    case AlertService.update_alert_state(alert_id, "resolved", user_id) do
+    safe_call(fn -> AlertService.update_alert_state(alert_id, "resolved", user_id) end)
+    |> case do
       {:ok, _updated_alert} ->
         socket =
           socket
@@ -105,19 +107,20 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
 
         {:noreply, socket}
 
-      {:error, reason} ->
-        socket = put_flash(socket, :error, "Failed to resolve alert: #{inspect(reason)}")
+      _ ->
+        socket = put_flash(socket, :error, "Failed to resolve alert")
         {:noreply, socket}
     end
   end
 
   @impl Phoenix.LiveView
   def handle_event("bulk_acknowledge", _params, socket) do
-    # TODO: Get current user from session  
-    user_id = "current_user"
+    # Get current user from session
+    user_id = get_user_id(socket)
     criteria = %{state: "new"}
 
-    case AlertService.bulk_acknowledge_alerts(criteria, user_id) do
+    safe_call(fn -> AlertService.bulk_acknowledge_alerts(criteria, user_id) end)
+    |> case do
       {:ok, count} ->
         socket =
           socket
@@ -127,8 +130,8 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
 
         {:noreply, socket}
 
-      {:error, reason} ->
-        socket = put_flash(socket, :error, "Failed to bulk acknowledge: #{inspect(reason)}")
+      _ ->
+        socket = put_flash(socket, :error, "Failed to bulk acknowledge")
         {:noreply, socket}
     end
   end
@@ -193,18 +196,21 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
   @impl Phoenix.LiveView
   def handle_info({:alert_updated, alert_id}, socket) do
     # Alert state changed, refresh list
-    socket = load_alerts(socket)
-
-    # Update details if this alert is currently shown
     socket =
-      if socket.assigns.selected_alert && socket.assigns.selected_alert.id == alert_id do
-        case AlertService.get_alert(alert_id) do
-          {:ok, updated_alert} -> assign(socket, :selected_alert, updated_alert)
-          {:error, _} -> assign(socket, :selected_alert, nil)
+      socket
+      |> load_alerts()
+      |> then(fn socket ->
+        # Update details if this alert is currently shown
+        if socket.assigns.selected_alert && socket.assigns.selected_alert.id == alert_id do
+          safe_call(fn -> AlertService.get_alert(alert_id) end)
+          |> case do
+            {:ok, updated_alert} -> assign(socket, :selected_alert, updated_alert)
+            _ -> assign(socket, :selected_alert, nil)
+          end
+        else
+          socket
         end
-      else
-        socket
-      end
+      end)
 
     {:noreply, socket}
   end
@@ -226,47 +232,46 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
     filters = socket.assigns.alert_filters
 
     # Convert filter map to options list
-    opts =
-      [
-        limit: @alerts_per_page,
-        priority: Map.get(filters, :priority),
-        state: Map.get(filters, :state),
-        profile_id: Map.get(filters, :profile_id)
-      ]
-      |> Enum.reject(fn {_k, v} -> is_nil(v) end)
+    base_opts = [
+      limit: @alerts_per_page,
+      priority: Map.get(filters, :priority),
+      state: Map.get(filters, :state),
+      profile_id: Map.get(filters, :profile_id)
+    ]
 
-    case AlertService.get_recent_alerts(opts) do
+    opts = Enum.reject(base_opts, fn {_k, v} -> is_nil(v) end)
+
+    safe_call(fn -> AlertService.get_recent_alerts(opts) end)
+    |> case do
       {:ok, alerts} ->
         assign(socket, :alerts, alerts)
 
-      {:error, reason} ->
-        Logger.error("Failed to load alerts: #{inspect(reason)}")
-
+      _ ->
         socket
-        |> put_flash(:error, "Failed to load alerts")
         |> assign(:alerts, [])
     end
   end
 
   defp load_alert_metrics(socket) do
-    case AlertService.get_alert_metrics(:last_24h) do
+    safe_call(fn -> AlertService.get_alert_metrics(:last_24h) end)
+    |> case do
       {:ok, metrics} ->
         assign(socket, :alert_metrics, metrics)
 
-      {:error, reason} ->
-        Logger.error("Failed to load alert metrics: #{inspect(reason)}")
+      _ ->
         assign(socket, :alert_metrics, %{})
     end
   end
 
   defp show_alert_details(socket, alert_id) do
-    case AlertService.get_alert(alert_id) do
+    safe_call(fn -> AlertService.get_alert(alert_id) end)
+    |> case do
       {:ok, alert} ->
         socket
         |> assign(:selected_alert, alert)
         |> assign(:show_alert_details, true)
 
-      {:error, _reason} ->
+      _ ->
         socket
         |> put_flash(:error, "Alert not found")
         |> assign(:show_alert_details, false)
@@ -361,30 +366,18 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
 
   def format_timestamp(timestamp) when is_binary(timestamp) do
     case DateTime.from_iso8601(timestamp) do
-      {:ok, dt, _} -> format_datetime(dt)
+      {:ok, dt, _} -> TimeFormatter.format_relative_time(dt)
       _ -> timestamp
     end
   end
 
-  def format_timestamp(%DateTime{} = dt), do: format_datetime(dt)
+  def format_timestamp(%DateTime{} = dt), do: TimeFormatter.format_relative_time(dt)
   def format_timestamp(%NaiveDateTime{} = ndt), do: format_naive_datetime(ndt)
   def format_timestamp(_), do: "Unknown"
 
-  defp format_datetime(dt) do
-    now = DateTime.utc_now()
-    diff = DateTime.diff(now, dt, :second)
-
-    cond do
-      diff < 60 -> "#{diff}s ago"
-      diff < 3600 -> "#{div(diff, 60)}m ago"
-      diff < 86400 -> "#{div(diff, 3600)}h ago"
-      true -> "#{div(diff, 86400)}d ago"
-    end
-  end
-
   defp format_naive_datetime(ndt) do
     case DateTime.from_naive(ndt, "Etc/UTC") do
-      {:ok, dt} -> format_datetime(dt)
+      {:ok, dt} -> TimeFormatter.format_relative_time(dt)
       _ -> "Unknown"
     end
   end
@@ -394,4 +387,28 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
   end
 
   def format_confidence_score(_), do: "N/A"
+
+  # Safe call helper for surveillance services
+  defp safe_call(fun) when is_function(fun, 0) do
+    try do
+      fun.()
+    rescue
+      error ->
+        Logger.error("Surveillance service call failed: #{inspect(error)}")
+        {:error, :service_unavailable}
+    catch
+      :exit, reason ->
+        Logger.error("Surveillance service process not available: #{inspect(reason)}")
+        {:error, :service_unavailable}
+    end
+  end
+
+  # Helper function to get user ID from socket
+  defp get_user_id(socket) do
+    case socket.assigns[:current_user] do
+      %{id: user_id} -> user_id
+      %{eve_character_id: char_id} -> char_id
+      _ -> "anonymous"
+    end
+  end
 end

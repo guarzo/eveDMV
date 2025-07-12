@@ -425,15 +425,14 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetAnalyzer do
     if total_members > 0, do: logi_count / total_members, else: 0.0
   end
 
-  @doc """
-  Identify the primary doctrine of a fleet.
+  # Identify the primary doctrine of a fleet.
 
-  ## Parameters
-  - `fleet_members` - List of fleet members
+  # Parameters
+  # - `fleet_members` - List of fleet members
 
-  ## Returns
-  - String representing the identified doctrine
-  """
+  # Returns
+  # - String representing the identified doctrine
+
   # Helper functions for safe data access
   defp safe_get_count(map, key) when is_map(map) do
     case Map.get(map, key, 0) do

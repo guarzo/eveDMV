@@ -5,14 +5,14 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   This module provides the public API for battle detection, analysis, and reconstruction.
   """
 
-  require Logger
-
   alias EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService
   alias EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService
-  alias EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService
   alias EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator
-  alias EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector
   alias EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer
+  alias EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector
+  alias EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService
+
+  require Logger
 
   @doc """
   Detects battles from killmail data within a time range.
@@ -541,17 +541,14 @@ defmodule EveDmv.Contexts.BattleAnalysis do
 
   defp generate_tactical_summary(phases, transitions) do
     phase_summary =
-      phases
-      |> Enum.map(fn phase ->
+      Enum.map_join(phases, " → ", fn phase ->
         "#{phase.phase_type} (#{phase.duration_seconds}s): #{phase.characteristics}"
       end)
-      |> Enum.join(" → ")
 
     transition_summary =
       transitions
       |> Map.get(:significant_transitions, [])
-      |> Enum.map(& &1.description)
-      |> Enum.join(", ")
+      |> Enum.map_join(", ", & &1.description)
 
     %{
       phase_progression: phase_summary,

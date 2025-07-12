@@ -29,18 +29,17 @@ defmodule EveDmv.Contexts.Surveillance do
   @impl Supervisor
   def init(_opts) do
     children = [
-      # Domain services
-      Domain.MatchingEngine,
-      Domain.ProfileManager,
-      Domain.AlertService,
-      Domain.NotificationService,
-
-      # Infrastructure
+      # Start infrastructure first (dependencies for domain services)
       Infrastructure.ProfileRepository,
       Infrastructure.MatchCache,
       Infrastructure.NotificationDispatcher,
 
-      # Event processors
+      # Domain services (depend on infrastructure)
+      Domain.MatchingEngine,
+      Domain.AlertService,
+      Domain.NotificationService,
+
+      # Event processors (depend on domain services)
       Infrastructure.KillmailEventProcessor
     ]
 

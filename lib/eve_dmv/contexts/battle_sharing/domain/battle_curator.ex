@@ -15,12 +15,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
   """
 
   require Logger
-  alias EveDmv.Api
-  alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Contexts.BattleAnalysis
   alias EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator
   alias EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector
-  alias EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor
 
   # Battle sharing parameters
   # Maximum characters in battle description
@@ -812,31 +809,6 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
 
   # Utility functions for battle data processing
 
-  defp calculate_battle_duration(killmails) do
-    if length(killmails) < 2 do
-      0
-    else
-      sorted_killmails = Enum.sort_by(killmails, & &1.killmail_time)
-      first_km = List.first(sorted_killmails)
-      last_km = List.last(sorted_killmails)
-
-      NaiveDateTime.diff(last_km.killmail_time, first_km.killmail_time, :second) / 60
-    end
-  end
-
-  defp count_unique_participants(killmails) do
-    participants =
-      killmails
-      |> Enum.flat_map(&extract_all_participants_from_killmail/1)
-      |> Enum.uniq()
-
-    length(participants)
-  end
-
-  defp extract_all_participants_from_killmail(killmail) do
-    ParticipantExtractor.extract_participants(killmail)
-  end
-
   defp extract_systems_involved(killmails) do
     killmails
     |> Enum.map(& &1.solar_system_id)
@@ -910,35 +882,6 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
 
       true ->
         0
-    end
-  end
-
-  defp calculate_total_isk_destroyed(killmails) do
-    # Simplified ISK calculation - would use actual zkillboard data in production
-    killmails
-    |> Enum.map(&estimate_killmail_value/1)
-    |> Enum.sum()
-  end
-
-  defp estimate_killmail_value(killmail) do
-    # Rough estimates based on ship type - would use actual fitting data
-    ship_type_id = killmail.victim_ship_type_id
-
-    cond do
-      # Frigates
-      ship_type_id in 580..700 -> 5_000_000
-      # Destroyers
-      ship_type_id in 420..450 -> 15_000_000
-      # Cruisers
-      ship_type_id in 620..650 -> 50_000_000
-      # Battlecruisers
-      ship_type_id in 540..570 -> 150_000_000
-      # Battleships
-      ship_type_id in 640..670 -> 400_000_000
-      # Capitals
-      ship_type_id in 19720..19740 -> 3_000_000_000
-      # Default
-      true -> 25_000_000
     end
   end
 

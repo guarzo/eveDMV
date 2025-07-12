@@ -156,7 +156,7 @@
                           {member.character_name}
                         </a>
                         <div class="text-xs text-gray-400">
-                          {activity_level(member.total_activity)} • Last seen: {time_ago(
+                          {activity_level(member.total_activity)} • Last seen: {TimeFormatter.format_friendly_time(
                             member.latest_activity
                           )}
                         </div>
@@ -227,7 +227,7 @@
 
                     <div class="text-right">
                       <div class="text-xs text-gray-400">
-                        {time_ago(activity.timestamp)}
+                        {TimeFormatter.format_friendly_time(activity.timestamp)}
                       </div>
                     </div>
                   </div>

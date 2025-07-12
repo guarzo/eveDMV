@@ -277,11 +277,69 @@ defmodule EveDmv.Eve.EsiUtils do
       "history" => []
     }
 
-  defp calculate_total_tenure_days(_history) do
-    # TODO: Implement actual tenure calculation based on start_date fields
-    # Original stub returned: length(history) * 90
-    0
+  defp calculate_total_tenure_days(history) when is_list(history) do
+    # Calculate real tenure based on start_date and end_date fields
+    try do
+      # Sort history by start_date to process chronologically
+      sorted_history =
+        Enum.sort_by(history, fn record ->
+          case Map.get(record, "start_date") do
+            date when is_binary(date) -> Date.from_iso8601!(date)
+            %Date{} = date -> date
+            # EVE launch date as fallback
+            _ -> ~D[2003-05-06]
+          end
+        end)
+
+      total_days = calculate_tenure_from_records(sorted_history)
+      max(0, total_days)
+    rescue
+      _error ->
+        # Fallback to simple calculation if date parsing fails
+        length(history) * 90
+    end
   end
+
+  defp calculate_tenure_from_records([]), do: 0
+
+  defp calculate_tenure_from_records(records) do
+    today = Date.utc_today()
+
+    records
+    |> Enum.with_index()
+    |> Enum.reduce(0, fn {record, index}, acc ->
+      start_date = parse_employment_date(Map.get(record, "start_date"))
+
+      # Determine end date
+      end_date =
+        if index == 0 do
+          # Current/most recent employment goes to today
+          today
+        else
+          # Previous employment ends when next one starts
+          next_record = Enum.at(records, index - 1)
+          parse_employment_date(Map.get(next_record, "start_date"))
+        end
+
+      # Calculate days for this employment period
+      if start_date && end_date && Date.compare(start_date, end_date) != :gt do
+        days = Date.diff(end_date, start_date)
+        acc + days
+      else
+        acc
+      end
+    end)
+  end
+
+  defp parse_employment_date(date_string) when is_binary(date_string) do
+    case Date.from_iso8601(date_string) do
+      {:ok, date} -> date
+      {:error, _} -> nil
+    end
+  end
+
+  defp parse_employment_date(%Date{} = date), do: date
+  defp parse_employment_date(_), do: nil
 
   defp identify_suspicious_patterns(_history, history_length) when history_length > 10 do
     ["High corp turnover (#{history_length} corporations)"]

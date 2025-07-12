@@ -22,8 +22,8 @@ defmodule EveDmvWeb.Helpers.TimeFormatter do
 
     cond do
       diff < 60 -> "#{diff}s ago"
-      diff < 3600 -> "#{div(diff, 60)}m ago"
-      diff < 86_400 -> "#{div(diff, 3600)}h ago"
+      diff < 3_600 -> "#{div(diff, 60)}m ago"
+      diff < 86_400 -> "#{div(diff, 3_600)}h ago"
       true -> "#{div(diff, 86_400)}d ago"
     end
   end
@@ -35,8 +35,8 @@ defmodule EveDmvWeb.Helpers.TimeFormatter do
   """
   @spec format_duration(integer()) :: String.t()
   def format_duration(seconds) when is_integer(seconds) do
-    hours = div(seconds, 3600)
-    minutes = div(rem(seconds, 3600), 60)
+    hours = div(seconds, 3_600)
+    minutes = div(rem(seconds, 3_600), 60)
     seconds = rem(seconds, 60)
 
     "#{hours}h #{minutes}m #{seconds}s"
@@ -65,4 +65,13 @@ defmodule EveDmvWeb.Helpers.TimeFormatter do
       true -> "#{div(diff_days, 30)} months ago"
     end
   end
+
+  def format_friendly_time(%NaiveDateTime{} = datetime) do
+    # Convert NaiveDateTime to DateTime (assuming UTC)
+    datetime
+    |> DateTime.from_naive!("Etc/UTC")
+    |> format_friendly_time()
+  end
+
+  def format_friendly_time(_), do: "Unknown"
 end

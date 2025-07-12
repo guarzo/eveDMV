@@ -2,16 +2,46 @@
 
 This document captures ideas for future sprints and improvements that have been identified during development.
 
+---
+
+## ✅ Moved to Sprint 10: Fleet Intelligence & User Experience Polish
+
+**The following sections have been moved to Sprint 10 (July 12-26, 2025):**
+
+### Character Profile Enhancements (MOVED TO SPRINT 10)
+- Character portrait integration with EVE image server
+- Corporation and alliance information display
+- Real ISK destroyed/lost calculations
+- Recent activity feed with real killmail data
+- Profile statistics dashboard with real data
+
+### Dynamic Ship Role Analysis System (MOVED TO SPRINT 10)
+- Killmail-based role classification engine
+- Scheduled analysis job for role pattern detection
+- Real-time fleet analysis with dynamic roles
+- Doctrine recognition and tactical assessment
+- Ship specialization tracking for characters
+
+### Recent Battles Integration (MOVED TO SPRINT 10)
+- Recent battles section for character analysis pages
+- Corporation battle participation tracking
+- System battle activity for system intelligence pages
+- Battle detection and context enhancement
+
+See `/workspace/docs/sprints/current/SPRINT_10_FLEET_INTELLIGENCE_POLISH.md` for full implementation details.
+
+---
+
 ## Dashboard Improvements
 
 ### User Dashboard Fixes
 The logged-in user dashboard (`/dashboard`) needs several data accuracy fixes and feature improvements:
 
 #### ISK Destroyed Section
-- [ ] Calculate real ISK destroyed values from killmail data
+- [x] ~~Calculate real ISK destroyed values from killmail data~~ **MOVED TO SPRINT 10**
 - [ ] Show monthly/weekly/daily breakdowns
-- [ ] Include both kills and losses
-- [ ] Add ISK efficiency ratio (ISK destroyed vs ISK lost)
+- [x] ~~Include both kills and losses~~ **MOVED TO SPRINT 10** 
+- [x] ~~Add ISK efficiency ratio (ISK destroyed vs ISK lost)~~ **MOVED TO SPRINT 10**
 - [ ] Show trending indicators
 
 #### Fleet Engagements
@@ -22,11 +52,11 @@ The logged-in user dashboard (`/dashboard`) needs several data accuracy fixes an
 - [ ] Link to detailed battle analysis
 
 #### Recent Activity
-- [ ] Display actual recent kills/losses from database
-- [ ] Show real timestamps and system information
-- [ ] Include ship types and values
+- [x] ~~Display actual recent kills/losses from database~~ **MOVED TO SPRINT 10**
+- [x] ~~Show real timestamps and system information~~ **MOVED TO SPRINT 10**
+- [x] ~~Include ship types and values~~ **MOVED TO SPRINT 10**
 - [ ] Add activity heatmap by hour/day
-- [ ] Quick links to full killmail details
+- [x] ~~Quick links to full killmail details~~ **MOVED TO SPRINT 10**
 
 #### Real-Time Price Updates
 - [ ] Fix price update subscription system
@@ -41,19 +71,19 @@ The logged-in user dashboard (`/dashboard`) needs several data accuracy fixes an
 The user profile page needs to display comprehensive character information:
 
 #### Character Information
-- [ ] Display character portrait from EVE image server
-- [ ] Show character name, ID, and creation date
-- [ ] Add security status display
+- [x] ~~Display character portrait from EVE image server~~ **MOVED TO SPRINT 10**
+- [x] ~~Show character name, ID, and creation date~~ **MOVED TO SPRINT 10**
+- [x] ~~Add security status display~~ **MOVED TO SPRINT 10**
 - [ ] Include character description/bio
 - [ ] Show skill point count (if authorized)
 
 #### Corporation & Alliance
-- [ ] Display corporation name and ticker
-- [ ] Show corporation logo
-- [ ] Include alliance name and ticker (if applicable)
-- [ ] Display alliance logo
+- [x] ~~Display corporation name and ticker~~ **MOVED TO SPRINT 10**
+- [x] ~~Show corporation logo~~ **MOVED TO SPRINT 10**
+- [x] ~~Include alliance name and ticker (if applicable)~~ **MOVED TO SPRINT 10**
+- [x] ~~Display alliance logo~~ **MOVED TO SPRINT 10**
 - [ ] Show member count and founding date
-- [ ] Link to corporation intelligence page
+- [x] ~~Link to corporation intelligence page~~ **MOVED TO SPRINT 10**
 
 #### EVE SSO Integration
 - [ ] Show authorized scopes with descriptions
@@ -365,8 +395,10 @@ Battle sharing is a valuable feature for community engagement but not critical f
 
 ## Dynamic Ship Role Analysis System
 
-### Killmail-Based Role Classification
-Implement a sophisticated ship role analysis system that determines ship roles based on actual player fitting patterns from killmail data, rather than static ship classifications.
+**✅ MOVED TO SPRINT 10** - See `/workspace/docs/sprints/current/SPRINT_10_FLEET_INTELLIGENCE_POLISH.md`
+
+### ~~Killmail-Based Role Classification~~ 
+~~Implement a sophisticated ship role analysis system that determines ship roles based on actual player fitting patterns from killmail data, rather than static ship classifications.~~
 
 #### Core Features
 - [ ] **Module Classification Engine**: Analyze fitted modules to determine ship roles
@@ -1001,6 +1033,328 @@ Clean up the top navigation bar for better user experience and consistent logged
 
 ### Priority: MEDIUM-HIGH
 Navigation is fundamental to user experience. Clean, consistent navigation builds user confidence and improves overall application usability.
+
+## Application Health & Performance Dashboard
+
+### System Monitoring & Diagnostics Page
+Create a comprehensive health and performance monitoring dashboard for administrators and advanced users to track application performance, system health, and operational metrics.
+
+#### Core Health Metrics
+- [ ] **System Status Overview**: Real-time application health indicators
+  ```elixir
+  defmodule EveDmv.Monitoring.HealthCheck do
+    def system_status do
+      %{
+        database: check_database_connection(),
+        killmail_pipeline: check_pipeline_status(),
+        sse_connection: check_wanderer_connection(),
+        memory_usage: get_memory_metrics(),
+        response_times: get_average_response_times(),
+        error_rates: get_error_rates(),
+        uptime: get_system_uptime()
+      }
+    end
+    
+    defp check_database_connection do
+      case Ecto.Adapters.SQL.query(EveDmv.Repo, "SELECT 1", []) do
+        {:ok, _} -> %{status: :healthy, latency: measure_db_latency()}
+        {:error, reason} -> %{status: :unhealthy, error: reason}
+      end
+    end
+  end
+  ```
+
+- [ ] **Performance Metrics Dashboard**: Key application performance indicators
+  - Average response times by endpoint
+  - Database query performance
+  - Memory and CPU usage trends
+  - Active user sessions
+  - API rate limiting status
+
+#### Killmail Pipeline Monitoring
+- [ ] **Pipeline Health**: Monitor Broadway killmail processing pipeline
+  ```elixir
+  defmodule EveDmv.Monitoring.PipelineMetrics do
+    def pipeline_status do
+      %{
+        producer_status: get_sse_producer_status(),
+        processor_throughput: get_processing_rate(),
+        batch_handler_performance: get_batch_metrics(),
+        error_rate: get_pipeline_error_rate(),
+        backlog_size: get_message_backlog(),
+        last_successful_batch: get_last_batch_time()
+      }
+    end
+    
+    def get_processing_rate do
+      # Calculate killmails processed per minute/hour
+      recent_killmails = KillmailRaw
+        |> where([k], k.inserted_at >= ^Timex.shift(DateTime.utc_now(), minutes: -5))
+        |> Repo.aggregate(:count, :id)
+      
+      %{
+        last_5_minutes: recent_killmails,
+        rate_per_minute: recent_killmails / 5,
+        rate_per_hour: recent_killmails * 12
+      }
+    end
+  end
+  ```
+
+- [ ] **SSE Connection Monitoring**: Track Wanderer-Kills integration health
+  - Connection status and uptime
+  - Message receive rate
+  - Connection error frequency
+  - Reconnection attempts
+  - Data quality metrics
+
+#### Database Performance Monitoring
+- [ ] **Database Health Metrics**: Monitor PostgreSQL performance
+  ```elixir
+  defmodule EveDmv.Monitoring.DatabaseMetrics do
+    def database_performance do
+      %{
+        connection_pool: get_connection_pool_status(),
+        query_performance: get_slow_queries(),
+        table_sizes: get_table_sizes(),
+        index_usage: get_index_efficiency(),
+        partition_health: check_partition_status(),
+        replication_lag: get_replication_metrics()
+      }
+    end
+    
+    def get_slow_queries do
+      # Query pg_stat_statements for slow queries
+      query = """
+      SELECT query, calls, total_time, mean_time, rows
+      FROM pg_stat_statements 
+      WHERE mean_time > 100 
+      ORDER BY mean_time DESC 
+      LIMIT 10
+      """
+      
+      case Ecto.Adapters.SQL.query(EveDmv.Repo, query, []) do
+        {:ok, result} -> format_slow_queries(result)
+        {:error, _} -> []
+      end
+    end
+  end
+  ```
+
+- [ ] **Partition Management**: Monitor table partitioning health
+  - Partition sizes and distribution
+  - Automatic partition creation status
+  - Cleanup job performance
+  - Storage utilization by partition
+
+#### Application Performance Tracking
+- [ ] **Endpoint Performance**: Track Phoenix endpoint metrics
+  ```elixir
+  defmodule EveDmv.Monitoring.EndpointMetrics do
+    def endpoint_performance do
+      %{
+        response_times: get_response_time_percentiles(),
+        request_volume: get_request_rates(),
+        error_rates: get_http_error_rates(),
+        slowest_endpoints: get_slowest_endpoints(),
+        user_sessions: get_active_sessions()
+      }
+    end
+    
+    # Integration with Telemetry for real-time metrics
+    def handle_telemetry_event([:phoenix, :endpoint, :stop], measurements, metadata, _config) do
+      duration = measurements.duration
+      endpoint = metadata.route
+      
+      # Store metrics for dashboard
+      record_endpoint_metric(endpoint, duration)
+    end
+  end
+  ```
+
+- [ ] **Memory and Resource Usage**: System resource monitoring
+  - Erlang VM memory usage
+  - Process count and mailbox sizes
+  - Garbage collection frequency
+  - ETS table sizes
+
+#### Real-Time Monitoring Dashboard
+- [ ] **Live Performance Charts**: Visual performance tracking
+  ```heex
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <!-- System Status Cards -->
+    <div class="bg-gray-800 p-6 rounded-lg">
+      <h3 class="text-lg font-semibold text-white mb-4">System Health</h3>
+      <div class="space-y-2">
+        <div class="flex justify-between">
+          <span class="text-gray-400">Database</span>
+          <span class={status_color(@health.database.status)}>
+            <%= @health.database.status %>
+          </span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-gray-400">Pipeline</span>
+          <span class={status_color(@health.pipeline.status)}>
+            <%= @health.pipeline.status %>
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Performance Metrics -->
+    <div class="bg-gray-800 p-6 rounded-lg">
+      <h3 class="text-lg font-semibold text-white mb-4">Performance</h3>
+      <div class="space-y-2">
+        <div class="flex justify-between">
+          <span class="text-gray-400">Avg Response</span>
+          <span class="text-white"><%= @metrics.avg_response_time %>ms</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-gray-400">Memory Usage</span>
+          <span class="text-white"><%= @metrics.memory_usage %>%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  ```
+
+- [ ] **Real-Time Updates**: Live dashboard with WebSocket updates
+  - Auto-refreshing metrics every 30 seconds
+  - Alert notifications for critical issues
+  - Historical trend charts
+  - Exportable performance reports
+
+#### Error Tracking & Alerting
+- [ ] **Error Monitoring**: Comprehensive error tracking system
+  ```elixir
+  defmodule EveDmv.Monitoring.ErrorTracker do
+    def error_summary do
+      %{
+        recent_errors: get_recent_errors(),
+        error_frequency: calculate_error_rates(),
+        critical_errors: get_critical_errors(),
+        error_trends: get_error_trends()
+      }
+    end
+    
+    def log_error(error, context \\ %{}) do
+      error_data = %{
+        message: Exception.message(error),
+        stacktrace: Exception.format_stacktrace(__STACKTRACE__),
+        context: context,
+        timestamp: DateTime.utc_now(),
+        severity: determine_severity(error)
+      }
+      
+      # Store in database and trigger alerts if critical
+      create_error_log(error_data)
+      maybe_send_alert(error_data)
+    end
+  end
+  ```
+
+- [ ] **Alert System**: Configurable alerting for system issues
+  - Database connection failures
+  - Pipeline processing delays
+  - High error rates
+  - Performance degradation
+  - Memory usage thresholds
+
+#### Operational Insights
+- [ ] **Usage Analytics**: Application usage patterns
+  - Peak usage hours and days
+  - Feature usage statistics
+  - User engagement metrics
+  - Geographic usage distribution
+
+- [ ] **Capacity Planning**: Growth and scaling insights
+  - Database growth rates
+  - Processing capacity utilization
+  - Projected scaling needs
+  - Resource utilization trends
+
+#### Administrative Tools
+- [ ] **System Control Panel**: Administrative actions
+  ```elixir
+  defmodule EveDmvWeb.Admin.SystemControlLive do
+    def render(assigns) do
+      ~H"""
+      <div class="space-y-6">
+        <!-- Pipeline Controls -->
+        <div class="bg-gray-800 p-6 rounded-lg">
+          <h3 class="text-lg font-semibold text-white mb-4">Pipeline Control</h3>
+          <div class="flex space-x-4">
+            <button phx-click="restart_pipeline" class="btn btn-warning">
+              Restart Pipeline
+            </button>
+            <button phx-click="flush_queue" class="btn btn-danger">
+              Flush Queue
+            </button>
+            <button phx-click="toggle_pipeline" class="btn btn-secondary">
+              <%= if @pipeline_enabled, do: "Disable", else: "Enable" %> Pipeline
+            </button>
+          </div>
+        </div>
+        
+        <!-- Cache Management -->
+        <div class="bg-gray-800 p-6 rounded-lg">
+          <h3 class="text-lg font-semibold text-white mb-4">Cache Management</h3>
+          <button phx-click="clear_all_caches" class="btn btn-warning">
+            Clear All Caches
+          </button>
+        </div>
+      </div>
+      """
+    end
+  end
+  ```
+
+- [ ] **Maintenance Tools**: System maintenance utilities
+  - Cache clearing controls
+  - Pipeline restart functionality
+  - Database maintenance triggers
+  - Log file management
+
+#### Security & Access Control
+- [ ] **Admin-Only Access**: Restrict health dashboard to administrators
+  ```elixir
+  # Route protection
+  scope "/admin", EveDmvWeb.Admin, as: :admin do
+    pipe_through [:browser, :require_authenticated_user, :require_admin]
+    
+    live "/health", HealthDashboardLive, :index
+    live "/performance", PerformanceLive, :index
+    live "/system", SystemControlLive, :index
+  end
+  ```
+
+- [ ] **Audit Logging**: Track administrative actions
+  - System control usage
+  - Configuration changes
+  - Access patterns
+  - Security events
+
+#### Implementation Strategy
+**Phase 1**: Core health metrics and basic dashboard (1 week)
+**Phase 2**: Pipeline monitoring and database metrics (1 week)
+**Phase 3**: Real-time updates and error tracking (1 week)
+**Phase 4**: Administrative tools and alerting (1 week)
+
+#### Integration Points
+- [ ] **Phoenix Telemetry**: Leverage built-in metrics collection
+- [ ] **Prometheus/Grafana**: Optional external monitoring integration
+- [ ] **Application Insights**: Performance trend analysis
+- [ ] **Log Aggregation**: Centralized logging and analysis
+
+#### Success Criteria
+- Real-time visibility into application health
+- Proactive identification of performance issues
+- Reduced mean time to resolution for incidents
+- Improved system reliability and uptime
+- Data-driven capacity planning capabilities
+
+### Priority: MEDIUM
+While not user-facing, application health monitoring is crucial for maintaining service reliability and operational excellence, especially as the application scales.
 
 ## Dependencies
 

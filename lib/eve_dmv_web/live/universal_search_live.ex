@@ -346,7 +346,6 @@ defmodule EveDmvWeb.UniversalSearchLive do
     case AnalysisCache.get("recent_searches") do
       {:ok, searches} -> Enum.take(searches, 10)
       :miss -> []
-      _ -> []
     end
   end
 
