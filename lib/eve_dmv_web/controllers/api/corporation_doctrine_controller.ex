@@ -1,4 +1,11 @@
 defmodule EveDmvWeb.Api.CorporationDoctrineController do
+  @moduledoc """
+  API controller for corporation doctrine analysis.
+
+  Provides endpoints for analyzing combat doctrines, fleet
+  compositions, and tactical preferences of corporations.
+  """
+
   use EveDmvWeb, :controller
 
   alias EveDmv.Contexts.CorporationIntelligence
