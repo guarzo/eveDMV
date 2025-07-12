@@ -29,7 +29,11 @@ defmodule EveDmv.Intelligence.WandererClient do
 
   # Get SSE URL for real-time updates
   defp sse_url(map_id) do
-    Application.get_env(:eve_dmv, :wanderer_sse_url, "#{base_url()}/api/maps/#{map_id}/events/stream")
+    Application.get_env(
+      :eve_dmv,
+      :wanderer_sse_url,
+      "#{base_url()}/api/maps/#{map_id}/events/stream"
+    )
   end
 
   # Public API
@@ -215,15 +219,15 @@ defmodule EveDmv.Intelligence.WandererClient do
   @impl GenServer
   def handle_info({:sse_closed, map_id, reason}, state) do
     Logger.warning("Wanderer SSE connection closed for map #{map_id}: #{inspect(reason)}")
-    
+
     # Remove from connections and attempt reconnect if still monitoring
     new_sse_connections = Map.delete(state.sse_connections || %{}, map_id)
-    
+
     if MapSet.member?(state.monitored_maps, map_id) do
       # Retry connection after delay
       Process.send_after(self(), {:reconnect_sse, map_id}, 5_000)
     end
-    
+
     {:noreply, %{state | sse_connections: new_sse_connections}}
   end
 
@@ -362,34 +366,37 @@ defmodule EveDmv.Intelligence.WandererClient do
   defp connect_sse_for_map(map_id, auth_token) do
     # Start SSE connection process for a specific map
     parent_pid = self()
-    
-    sse_pid = spawn_link(fn -> 
-      sse_loop(parent_pid, map_id, auth_token)
-    end)
-    
+
+    sse_pid =
+      spawn_link(fn ->
+        sse_loop(parent_pid, map_id, auth_token)
+      end)
+
     {:ok, sse_pid}
   end
 
   defp sse_loop(parent_pid, map_id, auth_token) do
     url = sse_url(map_id)
     headers = build_headers(auth_token)
-    
+
     # Add SSE-specific headers
-    headers = headers ++ [
-      {"Accept", "text/event-stream"},
-      {"Cache-Control", "no-cache"}
-    ]
-    
-    case HTTPoison.get(url, headers, 
-      stream_to: self(), 
-      async: :once,
-      timeout: :infinity,
-      recv_timeout: :infinity
-    ) do
+    headers =
+      headers ++
+        [
+          {"Accept", "text/event-stream"},
+          {"Cache-Control", "no-cache"}
+        ]
+
+    case HTTPoison.get(url, headers,
+           stream_to: self(),
+           async: :once,
+           timeout: :infinity,
+           recv_timeout: :infinity
+         ) do
       {:ok, %HTTPoison.AsyncResponse{id: _id}} ->
         Logger.info("SSE connection established to #{url} for map #{map_id}")
         sse_receive_loop(parent_pid, map_id)
-        
+
       {:error, reason} ->
         Logger.error("Failed to establish SSE connection for map #{map_id}: #{inspect(reason)}")
         send(parent_pid, {:sse_closed, map_id, reason})
@@ -428,7 +435,6 @@ defmodule EveDmv.Intelligence.WandererClient do
       :close ->
         Logger.info("SSE connection closed by request for map #{map_id}")
         send(parent_pid, {:sse_closed, map_id, :normal})
-
     after
       # Heartbeat timeout - 5 minutes
       300_000 ->
@@ -441,7 +447,7 @@ defmodule EveDmv.Intelligence.WandererClient do
     # SSE events are formatted as:
     # event: event_type\n
     # data: json_data\n\n
-    
+
     chunk
     |> String.split("\n\n")
     |> Enum.each(fn event_block ->
@@ -453,21 +459,21 @@ defmodule EveDmv.Intelligence.WandererClient do
 
   defp parse_sse_event(event_block, parent_pid, map_id) do
     lines = String.split(event_block, "\n")
-    
-    {_event_type, data} = 
+
+    {_event_type, data} =
       Enum.reduce(lines, {nil, nil}, fn line, {event_type, data} ->
         cond do
           String.starts_with?(line, "event:") ->
             {String.trim(String.slice(line, 6..-1//-1)), data}
-          
+
           String.starts_with?(line, "data:") ->
             {event_type, String.trim(String.slice(line, 5..-1//-1))}
-          
+
           true ->
             {event_type, data}
         end
       end)
-    
+
     if data do
       send(parent_pid, {:sse_event, map_id, data})
     end

@@ -216,6 +216,13 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
 
         Logger.info("Updated alert #{alert_id} state: #{alert.state} -> #{new_state}")
 
+        # Broadcast alert state change
+        Phoenix.PubSub.broadcast(
+          EveDmv.PubSub,
+          "surveillance:alerts",
+          {:alert_updated, alert_id}
+        )
+
         {:reply, {:ok, updated_alert}, new_state}
     end
   end

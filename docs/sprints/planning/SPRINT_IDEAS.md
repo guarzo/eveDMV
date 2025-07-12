@@ -499,6 +499,509 @@ This system would provide unprecedented insights into EVE Online fleet meta and 
 - Detection of major meta shifts within 24-48 hours
 - Positive feedback from fleet commanders on tactical insights
 
+## Advanced Charts with LiveCharts
+
+### Live_Charts Integration Investigation
+Investigate using [live_charts](https://github.com/stax3/live_charts) for advanced charting capabilities in the application.
+
+#### Research Tasks
+- [ ] Evaluate live_charts library compatibility with Phoenix LiveView
+- [ ] Test integration with real-time data streams (killmail pipeline)
+- [ ] Compare performance vs current chart solutions
+- [ ] Assess mobile responsiveness and accessibility
+- [ ] Review customization options for EVE Online themed charts
+
+#### Potential Use Cases
+- [ ] **Fleet Composition Pie Charts**: Dynamic ship type distribution with hover details
+- [ ] **ISK Destroyed Timeline**: Real-time line charts showing destruction over time
+- [ ] **Battle Analysis Heatmaps**: System activity visualization
+- [ ] **Chain Activity Graphs**: Wormhole chain activity patterns
+- [ ] **Damage Type Analysis**: Radar charts for weapon effectiveness
+- [ ] **Economic Trends**: Market price movements and volume charts
+
+#### Technical Integration
+```elixir
+# Example integration in LiveView
+defmodule EveDmvWeb.DashboardLive do
+  use EveDmvWeb, :live_view
+  alias LiveCharts.Chart
+
+  def mount(_params, _session, socket) do
+    chart_data = build_isk_destroyed_chart()
+    {:ok, assign(socket, :chart_data, chart_data)}
+  end
+
+  def handle_info({:new_killmail, _killmail}, socket) do
+    # Update chart data in real-time
+    updated_chart = rebuild_chart_data()
+    {:noreply, push_event(socket, "chart-update", updated_chart)}
+  end
+end
+```
+
+#### Chart Types to Investigate
+- [ ] **Line Charts**: Time-series data (ISK over time, activity patterns)
+- [ ] **Bar Charts**: Comparative data (ship types, corporations)
+- [ ] **Pie Charts**: Distribution data (damage types, fleet composition)
+- [ ] **Heatmaps**: Geographic/system activity data
+- [ ] **Radar Charts**: Multi-dimensional analysis (pilot skills, ship capabilities)
+- [ ] **Scatter Plots**: Correlation analysis (ISK vs activity, skill vs performance)
+
+#### Performance Requirements
+- [ ] Real-time updates without full page reloads
+- [ ] Smooth animations for data transitions
+- [ ] Efficient rendering with large datasets (1000+ data points)
+- [ ] Mobile-optimized touch interactions
+- [ ] Accessibility compliance (screen readers, keyboard navigation)
+
+#### Implementation Phases
+**Phase 1**: Basic integration and proof of concept
+- Simple line chart for ISK destroyed over time
+- Test real-time updates via LiveView
+
+**Phase 2**: Advanced chart types
+- Fleet composition pie charts
+- Battle analysis heatmaps
+- Interactive hover details and drill-down
+
+**Phase 3**: Custom EVE Online theming
+- Dark theme matching application design
+- EVE-specific color schemes and iconography
+- Custom tooltips with ship images and names
+
+#### Priority: MEDIUM
+Enhanced visualization would significantly improve user experience and data comprehension, but core functionality takes precedence.
+
+#### Success Criteria
+- Charts render smoothly with real-time data updates
+- Mobile responsiveness maintained across all chart types
+- Performance remains acceptable with large datasets
+- User engagement increases with interactive visualizations
+
+## EVE Ship Intelligence System Enhancement
+
+### Integrate Ship Role Reference Data
+Leverage the comprehensive ship information from `docs/reference/ship_info.md` to enhance our fleet analysis and character intelligence systems with real EVE Online tactical knowledge.
+
+#### Ship Role Classification Database
+- [ ] **Import Ship Reference Data**: Parse ship_info.md to create a comprehensive ship role database
+  ```elixir
+  defmodule EveDmv.StaticData.ShipRoles do
+    @ship_roles %{
+      # Battleships
+      641 => %{name: "Megathron", category: :battleship, primary_role: :dps, 
+              doctrine_fit: :sniper, range: :long, tank_type: :armor},
+      642 => %{name: "Apocalypse", category: :battleship, primary_role: :sniper,
+              doctrine_fit: :beam_laser, range: :extreme, tank_type: :armor},
+      # Command Ships
+      22474 => %{name: "Damnation", category: :command_ship, primary_role: :booster,
+                 boost_type: :armor, survivability: :high, command_capacity: 3},
+      # HACs
+      12015 => %{name: "Muninn", category: :hac, primary_role: :dps,
+                 doctrine_fit: :artillery, range: :long, mobility: :high}
+    }
+  end
+  ```
+
+#### Enhanced Fleet Analysis Features
+- [ ] **Doctrine Recognition**: Automatically identify fleet doctrines based on ship compositions
+  - "Armor BS Doctrine" (Megalathons + Guardians + Damnation)
+  - "Muninn Fleet" (Muninns + Scimitars + Vulture + Sabres)
+  - "Eagle Fleet" (Eagles + Basilisks + interdictors)
+  
+- [ ] **Tactical Assessment**: Provide real tactical insights based on ship roles
+  - "⚠️ No logistics support detected - fleet vulnerable to attrition"
+  - "🎯 Heavy tackle present (Devoter) - likely anti-capital preparation"
+  - "⚡ Fast interceptor screen - high mobility doctrine"
+
+#### Fleet Composition Intelligence
+- [ ] **Role Distribution Analysis**: Calculate optimal vs actual fleet composition
+  ```elixir
+  def analyze_fleet_balance(fleet_ships) do
+    roles = classify_ship_roles(fleet_ships)
+    %{
+      dps_ships: roles.dps / length(fleet_ships),
+      logistics: roles.logi / length(fleet_ships), 
+      tackle: roles.tackle / length(fleet_ships),
+      electronic_warfare: roles.ewar / length(fleet_ships),
+      recommendations: generate_balance_recommendations(roles)
+    }
+  end
+  ```
+
+- [ ] **Doctrine Effectiveness Scoring**: Rate fleet effectiveness based on ship synergies
+  - Logistics ratio (should be ~20% for sustained combat)
+  - Tank type consistency (mixed armor/shield = vulnerability)
+  - Range coherence (all ships effective at same range)
+  - Support ship coverage (tackle, EWAR, boosts)
+
+#### Battle Analysis Enhancements  
+- [ ] **Ship Role Impact Analysis**: Determine which roles were most effective in battles
+  - "Interdictors were crucial - 80% of enemy losses occurred in bubbles"
+  - "Logistics ships suffered 15% losses - insufficient escort"
+  - "Command ships provided 25% effective HP bonus to fleet"
+
+- [ ] **Counter-Doctrine Recommendations**: Suggest effective counters based on enemy fleet
+  ```elixir
+  def suggest_counter_doctrine(enemy_fleet) do
+    dominant_ships = analyze_primary_ships(enemy_fleet)
+    case dominant_ships do
+      %{category: :battleship, range: :long} ->
+        "Consider HAC doctrine for superior mobility and range control"
+      %{primary_role: :sniper, tank_type: :shield} ->
+        "Bombers effective against clustered shield snipers"
+      %{heavy_tackle: true, capitals: true} ->
+        "Bring ECM burst and neut ships to break tackle"
+    end
+  end
+  ```
+
+#### Character Intelligence Integration
+- [ ] **Pilot Doctrine Preferences**: Track what doctrines characters fly most
+  - "Primary Muninn pilot - prefers artillery HAC doctrines"
+  - "Command specialist - frequently flies Damnation/Vulture"
+  - "Interceptor pilot - high mobility tackle role"
+
+- [ ] **Ship Specialization Analysis**: Identify pilot expertise and training focus
+  ```elixir
+  def analyze_pilot_specialization(character_killmails) do
+    ship_usage = group_by_ship_category(character_killmails)
+    %{
+      primary_category: most_flown_category(ship_usage),
+      specialization_score: calculate_focus_score(ship_usage),
+      preferred_doctrines: identify_doctrine_patterns(ship_usage),
+      skill_implications: infer_skill_training(ship_usage)
+    }
+  end
+  ```
+
+#### Database Schema Extensions
+- [ ] **Ship Categories Table**: Store ship role classifications with metadata
+  ```sql
+  CREATE TABLE ship_categories (
+    type_id INTEGER PRIMARY KEY,
+    ship_name VARCHAR(100),
+    hull_category ship_category_enum,
+    primary_role ship_role_enum,
+    tank_type tank_type_enum,
+    optimal_range range_enum,
+    doctrine_classification TEXT[],
+    tactical_notes TEXT
+  );
+  ```
+
+- [ ] **Fleet Doctrine Patterns**: Track common fleet compositions
+  ```sql
+  CREATE TABLE doctrine_patterns (
+    id SERIAL PRIMARY KEY,
+    doctrine_name VARCHAR(100),
+    ship_composition JSONB,
+    effective_range range_enum,
+    primary_tank tank_type_enum,
+    support_requirements JSONB,
+    countered_by TEXT[]
+  );
+  ```
+
+#### Real-Time Battle Intelligence
+- [ ] **Live Doctrine Detection**: Identify enemy doctrines in real-time during battles
+- [ ] **Tactical Alerts**: Warn about specific threats based on ship identification
+  - "🚨 Sabre detected - bubble threat imminent"
+  - "⚡ Rapier uncloaked - heavy webs incoming"
+  - "🎯 Multiple HICs on grid - capital trap likely"
+
+#### Advanced Fleet Metrics
+- [ ] **ISK Efficiency by Role**: Calculate cost-effectiveness of different ship roles
+- [ ] **Survival Rates by Category**: Track which ship types survive longest
+- [ ] **Damage Application Analysis**: Measure effectiveness of different weapon systems
+- [ ] **Support Ship Impact**: Quantify the value of logistics, EWAR, and booster ships
+
+#### Implementation Strategy
+**Phase 1**: Core ship role database and basic classification (1 week)
+**Phase 2**: Fleet composition analysis and doctrine recognition (1-2 weeks)  
+**Phase 3**: Battle analysis integration and tactical recommendations (1 week)
+**Phase 4**: Character intelligence enhancement and specialization tracking (1 week)
+
+#### Integration Points
+- [ ] **Battle Analysis Page**: Enhanced fleet composition breakdown with role details
+- [ ] **Character Intelligence**: Pilot specialization and doctrine preference analysis
+- [ ] **Kill Feed**: Real-time doctrine identification and threat assessment
+- [ ] **Chain Intelligence**: Wormhole fleet composition and threat analysis
+
+#### Success Metrics
+- Accurate doctrine identification (>90% for common fleet types)
+- Useful tactical recommendations validated by experienced FCs
+- Improved user engagement with enhanced analysis features
+- Positive feedback from EVE players on tactical accuracy
+
+### Priority: HIGH
+This enhancement would provide unmatched tactical intelligence by combining real EVE knowledge with live data analysis, making EVE DMV essential for serious fleet commanders and intelligence analysts.
+
+## User Profile Page Enhancements
+
+### Recent Activity & Real-Time Updates Integration
+Enhance the user profile page with comprehensive activity tracking and real-time data integration.
+
+#### Recent Activity Section
+- [ ] **Real Activity Feed**: Display actual recent kills/losses from database
+  ```elixir
+  def get_recent_activity(character_id, limit \\ 10) do
+    KillmailRaw
+    |> where([k], k.victim_character_id == ^character_id or 
+                   fragment("? = ANY(?)", ^character_id, k.attackers_character_ids))
+    |> order_by([k], desc: k.killmail_time)
+    |> limit(^limit)
+    |> preload([:victim_ship_type, :solar_system])
+    |> Repo.all()
+  end
+  ```
+
+- [ ] **Activity Timeline**: Show chronological activity with context
+  - "Destroyed Muninn in J123456 (2 hours ago)"
+  - "Lost Interceptor to Goonswarm Federation in 1DQ1-A (4 hours ago)"
+  - "Participated in 50-pilot battle in Delve (1 day ago)"
+
+- [ ] **Activity Filters**: Allow filtering by activity type
+  - Kills only / Losses only / All activity
+  - Ship category filters (Battleship, HAC, Frigate, etc.)
+  - Time range filters (Last 24h, Week, Month)
+
+#### ISK Destroyed & Fleet Engagement Updates
+- [ ] **Real-Time ISK Calculations**: Connect to live price data and actual killmail values
+  ```elixir
+  def calculate_real_isk_destroyed(character_id, period \\ :last_30_days) do
+    time_filter = case period do
+      :last_24h -> Timex.shift(DateTime.utc_now(), days: -1)
+      :last_7d -> Timex.shift(DateTime.utc_now(), days: -7)
+      :last_30d -> Timex.shift(DateTime.utc_now(), days: -30)
+      :all_time -> ~U[2003-05-06 00:00:00Z] # EVE launch date
+    end
+    
+    KillmailRaw
+    |> where([k], fragment("? = ANY(?)", ^character_id, k.attackers_character_ids))
+    |> where([k], k.killmail_time >= ^time_filter)
+    |> select([k], sum(k.total_value))
+    |> Repo.one() || 0
+  end
+  ```
+
+- [ ] **Fleet Engagement Analysis**: Query real fleet participation data
+  - Identify multi-pilot killmails as fleet engagements
+  - Calculate fleet size and composition from attackers
+  - Track user's role in fleet (DPS, Logi, Tackle, Command)
+  - Show fleet performance metrics (ISK efficiency, survival rate)
+
+- [ ] **Real-Time Price Integration**: Decide on price update strategy
+  **Option A**: EVE ESI Market Data
+  - Query current Jita prices via ESI
+  - Update ISK values hourly
+  - Cache frequently destroyed ships
+  
+  **Option B**: Third-party Price Services
+  - Integrate with EVE-Central or similar
+  - Real-time price feeds
+  - Historical price tracking
+  
+  **Option C**: Static Price Estimates**
+  - Use average historical values
+  - Periodic manual updates
+  - Faster performance, less accuracy
+
+#### Saved Battles & Fleets Section
+- [ ] **Saved Battles Feature**: Allow users to bookmark interesting battles
+  ```elixir
+  defmodule EveDmv.UserContent.SavedBattle do
+    use Ash.Resource,
+      domain: EveDmv.Api,
+      data_layer: AshPostgres.DataLayer
+    
+    attributes do
+      uuid_primary_key :id
+      attribute :user_id, :uuid, allow_nil?: false
+      attribute :battle_id, :string, allow_nil?: false
+      attribute :custom_name, :string
+      attribute :notes, :string
+      attribute :saved_at, :utc_datetime, default: &DateTime.utc_now/0
+    end
+  end
+  ```
+
+- [ ] **Saved Fleets Feature**: Bookmark fleet compositions for analysis
+  ```elixir
+  defmodule EveDmv.UserContent.SavedFleet do
+    use Ash.Resource,
+      domain: EveDmv.Api,
+      data_layer: AshPostgres.DataLayer
+    
+    attributes do
+      uuid_primary_key :id
+      attribute :user_id, :uuid, allow_nil?: false
+      attribute :fleet_name, :string, allow_nil?: false
+      attribute :fleet_composition, :map # JSONB with ship types/counts
+      attribute :doctrine_type, :string
+      attribute :notes, :string
+      attribute :created_at, :utc_datetime, default: &DateTime.utc_now/0
+    end
+  end
+  ```
+
+- [ ] **Quick Access Lists**: Easy access to saved content
+  - Recent saved battles with thumbnails
+  - Fleet comparison tools
+  - Export/share saved battles
+  - Battle replay functionality
+
+#### Profile Statistics Dashboard
+- [ ] **Real Statistics Grid**: Replace placeholder data with calculations
+  - Total Kills/Losses with real counts
+  - ISK Destroyed/Lost with accurate values
+  - Favorite Ship (most flown ship type)
+  - Deadliest System (most kills in)
+  - Recent Performance Trend (improving/declining)
+
+- [ ] **Activity Heatmap**: Visual activity patterns
+  - Activity by hour of day
+  - Activity by day of week
+  - Peak activity periods
+  - Seasonal patterns
+
+### Priority: HIGH
+Profile page is a primary user destination and should showcase real, meaningful data to build user engagement and trust.
+
+## Navigation Bar Cleanup & User Experience
+
+### Consistent Navigation Structure
+Clean up the top navigation bar for better user experience and consistent logged-in state display.
+
+#### Navigation Bar Issues to Address
+- [ ] **Inconsistent Menu Items**: Standardize navigation items across pages
+- [ ] **Logged-in State Visibility**: Always show user is authenticated
+- [ ] **Mobile Responsiveness**: Ensure navigation works on all screen sizes
+- [ ] **Active Page Indication**: Clearly show current page location
+
+#### Proposed Navigation Structure
+```elixir
+# Consistent navigation items for all authenticated users
+@navigation_items [
+  %{name: "Kill Feed", path: "/feed", icon: "zap"},
+  %{name: "Dashboard", path: "/dashboard", icon: "dashboard"},
+  %{name: "Battle Analysis", path: "/battle", icon: "crosshairs"},
+  %{name: "Intelligence", path: "/intelligence", icon: "eye"},
+  %{name: "Chain Intel", path: "/chain-intelligence", icon: "git-branch"}
+]
+
+# User menu (always visible when logged in)
+@user_menu_items [
+  %{name: "Profile", path: "/profile", icon: "user"},
+  %{name: "Settings", path: "/settings", icon: "settings"},
+  %{name: "Sign Out", path: "/auth/logout", icon: "log-out"}
+]
+```
+
+#### Implementation Tasks
+- [ ] **Consistent User Indicator**: Always show logged-in user information
+  ```heex
+  <div class="flex items-center space-x-4">
+    <!-- Character portrait (small) -->
+    <img src={character_portrait_url(@current_user.character_id, 32)} 
+         class="w-8 h-8 rounded-full border-2 border-blue-400" 
+         alt={@current_user.character_name} />
+    
+    <!-- Character name with corporation ticker -->
+    <div class="text-sm">
+      <div class="text-white font-medium"><%= @current_user.character_name %></div>
+      <div class="text-gray-400 text-xs">[<%= @current_user.corporation_ticker %>]</div>
+    </div>
+    
+    <!-- User menu dropdown -->
+    <div class="relative">
+      <!-- Menu trigger and dropdown content -->
+    </div>
+  </div>
+  ```
+
+- [ ] **Active Page Highlighting**: Visual indication of current page
+  ```heex
+  <nav class="flex space-x-6">
+    <%= for item <- @navigation_items do %>
+      <.link navigate={item.path} 
+             class={[
+               "flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors",
+               if(@current_page == item.path, 
+                  do: "bg-blue-600 text-white", 
+                  else: "text-gray-300 hover:text-white hover:bg-gray-700")
+             ]}>
+        <.icon name={item.icon} class="w-4 h-4 mr-2" />
+        <%= item.name %>
+      </.link>
+    <% end %>
+  </nav>
+  ```
+
+- [ ] **Mobile-First Navigation**: Collapsible menu for smaller screens
+  - Hamburger menu for mobile
+  - Slide-out navigation drawer
+  - Touch-friendly menu items
+  - Maintain user info visibility
+
+- [ ] **Navigation Component Refactor**: Create reusable navigation component
+  ```elixir
+  defmodule EveDmvWeb.Components.Navigation do
+    use EveDmvWeb, :live_component
+    
+    def render(assigns) do
+      ~H"""
+      <nav class="bg-gray-800 border-b border-gray-700">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="flex items-center justify-between h-16">
+            <!-- Logo and main navigation -->
+            <div class="flex items-center space-x-8">
+              <.link navigate="/" class="text-xl font-bold text-white">
+                EVE DMV
+              </.link>
+              <.main_navigation current_page={@current_page} />
+            </div>
+            
+            <!-- User menu -->
+            <.user_menu current_user={@current_user} />
+          </div>
+        </div>
+      </nav>
+      """
+    end
+  end
+  ```
+
+#### User Experience Improvements
+- [ ] **Breadcrumb Navigation**: Show navigation path for deep pages
+  - "Intelligence > Character > [Character Name]"
+  - "Battle Analysis > Battle Details > [Battle ID]"
+
+- [ ] **Quick Actions Menu**: Frequently used actions
+  - "New Battle Analysis"
+  - "Search Character"
+  - "Recent Battles"
+
+- [ ] **Notification Indicators**: Show pending items
+  - New killmails since last visit
+  - Battle analysis completion
+  - System alerts or updates
+
+#### Accessibility & Standards
+- [ ] **ARIA Labels**: Proper accessibility attributes
+- [ ] **Keyboard Navigation**: Full keyboard support
+- [ ] **Screen Reader Support**: Proper semantic HTML
+- [ ] **Color Contrast**: Meet WCAG guidelines
+- [ ] **Focus Indicators**: Clear focus states for keyboard users
+
+### Implementation Timeline
+**Week 1**: Navigation structure cleanup and user indicator fixes
+**Week 2**: Mobile responsiveness and component refactoring
+**Week 3**: Accessibility improvements and testing
+
+### Priority: MEDIUM-HIGH
+Navigation is fundamental to user experience. Clean, consistent navigation builds user confidence and improves overall application usability.
+
 ## Dependencies
 
 - EVE ESI API for character/corp/alliance data
