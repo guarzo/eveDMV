@@ -380,7 +380,7 @@
                     </div>
                     
                     <div class="text-sm text-gray-400 mb-2">
-                      <%= EveDmvWeb.FormatHelpers.format_relative_time(Map.get(battle, :battle_time)) %> • 
+                      <%= EveDmvWeb.Helpers.TimeFormatter.format_relative_time(Map.get(battle, :battle_time)) %> • 
                       <%= Map.get(battle, :total_participants, 0) %> participants • 
                       <%= Map.get(battle, :killmail_count, 0) %> killmails
                     </div>
