@@ -32,29 +32,40 @@ config :phoenix_live_view,
 # For tests, always use the dedicated test database configuration
 # DATABASE_URL should only be used if explicitly set for testing (CI environments)
 test_database_url = System.get_env("TEST_DATABASE_URL")
-use_ci_database = System.get_env("CI") && System.get_env("DATABASE_URL")
+ci_database_url = System.get_env("DATABASE_URL")
 
-if test_database_url do
-  # Use explicit test DATABASE_URL if provided
-  config :eve_dmv, EveDmv.Repo,
-    url: test_database_url,
-    pool: Ecto.Adapters.SQL.Sandbox,
-    pool_size: System.schedulers_online() * 2,
-    ownership_timeout: 60_000,
-    timeout: 60_000
-else
-  # Always use local test database for development/testing
-  # Do not use the regular DATABASE_URL from .env for tests
-  config :eve_dmv, EveDmv.Repo,
-    username: "postgres",
-    password: "postgres",
-    hostname: "db",
-    database: "eve_dmv_test#{System.get_env("MIX_TEST_PARTITION")}",
-    port: 5432,
-    pool: Ecto.Adapters.SQL.Sandbox,
-    pool_size: System.schedulers_online() * 2,
-    ownership_timeout: 60_000,
-    timeout: 60_000
+cond do
+  test_database_url ->
+    # Use explicit test DATABASE_URL if provided
+    config :eve_dmv, EveDmv.Repo,
+      url: test_database_url,
+      pool: Ecto.Adapters.SQL.Sandbox,
+      pool_size: System.schedulers_online() * 2,
+      ownership_timeout: 60_000,
+      timeout: 60_000
+
+  ci_database_url ->
+    # Use DATABASE_URL if provided (typically in CI environments)
+    config :eve_dmv, EveDmv.Repo,
+      url: ci_database_url,
+      pool: Ecto.Adapters.SQL.Sandbox,
+      pool_size: System.schedulers_online() * 2,
+      ownership_timeout: 60_000,
+      timeout: 60_000
+
+  true ->
+    # Always use local test database for development/testing
+    # Do not use the regular DATABASE_URL from .env for tests
+    config :eve_dmv, EveDmv.Repo,
+      username: "postgres",
+      password: "postgres",
+      hostname: "db",
+      database: "eve_dmv_test#{System.get_env("MIX_TEST_PARTITION")}",
+      port: 5432,
+      pool: Ecto.Adapters.SQL.Sandbox,
+      pool_size: System.schedulers_online() * 2,
+      ownership_timeout: 60_000,
+      timeout: 60_000
 end
 
 # Authentication configuration for tests
