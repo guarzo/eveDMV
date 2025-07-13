@@ -30,7 +30,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   def analyze_character_threat(character_id) do
     case ThreatScoringEngine.calculate_threat_score(character_id) do
       {:ok, threat_data} ->
-        {:ok, threat_data}
+        # Enhance with ship specialization analysis
+        enhanced_threat_data = enhance_with_ship_intelligence(threat_data, character_id)
+        {:ok, enhanced_threat_data}
 
       {:error, :insufficient_data} ->
         # Return a default threat analysis for characters with limited data
@@ -44,6 +46,12 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
              gang_effectiveness: 0,
              unpredictability: 0,
              recent_activity: 0
+           },
+           ship_specialization: %{
+             preferred_roles: [],
+             ship_mastery: %{},
+             specialization_diversity: 0.0,
+             expertise_level: :unknown
            },
            analysis_metadata: %{
              data_quality: :insufficient,
@@ -165,6 +173,86 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
         Logger.error("Unexpected error in character intelligence report: #{inspect(error)}")
         {:error, :unknown_error}
     end
+  end
+
+  ## Ship Intelligence Integration
+
+  @doc """
+  Get comprehensive ship intelligence for a character.
+
+  Returns ship specialization, role preferences, and tactical insights.
+  """
+  def get_character_ship_intelligence(character_id) do
+    EveDmv.Integrations.ShipIntelligenceBridge.calculate_ship_specialization(character_id)
+  end
+
+  @doc """
+  Get ship preference summary for quick threat assessment.
+  """
+  def get_ship_preferences(character_id) do
+    EveDmv.Integrations.ShipIntelligenceBridge.get_character_ship_preferences(character_id)
+  end
+
+  # Private helper functions
+
+  defp enhance_with_ship_intelligence(threat_data, character_id) do
+    case EveDmv.Integrations.ShipIntelligenceBridge.calculate_ship_specialization(character_id) do
+      {:ok, ship_intelligence} ->
+        # Enhance ship mastery dimension with detailed analysis
+        enhanced_dimensions =
+          Map.update(
+            threat_data.dimensions,
+            :ship_mastery,
+            0,
+            fn base_score ->
+              # Combine base score with specialization insights
+              specialization_bonus = calculate_specialization_bonus(ship_intelligence)
+              min(100, base_score + specialization_bonus)
+            end
+          )
+
+        # Add ship intelligence to threat data
+        threat_data
+        |> Map.put(:ship_specialization, format_ship_specialization(ship_intelligence))
+        |> Map.put(:dimensions, enhanced_dimensions)
+
+      {:error, _reason} ->
+        # Add empty ship specialization data
+        threat_data
+        |> Map.put(:ship_specialization, %{
+          preferred_roles: [],
+          ship_mastery: %{},
+          specialization_diversity: 0.0,
+          expertise_level: :unknown
+        })
+    end
+  end
+
+  defp calculate_specialization_bonus(ship_intelligence) do
+    # Calculate bonus to ship mastery based on specialization depth
+    expertise_bonus =
+      case ship_intelligence.expertise_level do
+        :expert -> 15
+        :experienced -> 10
+        :competent -> 5
+        :novice -> 2
+        _ -> 0
+      end
+
+    # Diversity penalty (specialists get higher scores)
+    diversity_penalty = ship_intelligence.specialization_diversity * 5
+
+    max(0, expertise_bonus - diversity_penalty)
+  end
+
+  defp format_ship_specialization(ship_intelligence) do
+    %{
+      preferred_roles: ship_intelligence.preferred_roles |> Enum.take(3),
+      ship_mastery: ship_intelligence.ship_mastery |> Enum.take(5) |> Enum.into(%{}),
+      specialization_diversity: ship_intelligence.specialization_diversity,
+      expertise_level: ship_intelligence.expertise_level,
+      total_killmails: ship_intelligence.total_killmails || 0
+    }
   end
 
   # Private helper functions

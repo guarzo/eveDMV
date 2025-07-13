@@ -18,6 +18,9 @@ defmodule EveDmvWeb.KillFeedLive do
   @topic "kill_feed"
   @feed_limit 50
 
+  # Load current user from session on mount (optional for public pages)
+  on_mount({EveDmvWeb.AuthLive, :load_from_session_optional})
+
   def mount(_params, _session, socket) do
     # Subscribe to kill feed updates
     if connected?(socket) do

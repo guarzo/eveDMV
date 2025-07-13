@@ -129,6 +129,8 @@ defmodule EveDmv.Application do
         EveDmv.Database.ArchiveManager,
         EveDmv.Enrichment.ReEnrichmentWorker,
         EveDmv.Enrichment.RealTimePriceUpdater,
+        # Ship role analysis worker for continuous fleet intelligence
+        EveDmv.Workers.ShipRoleAnalysisWorker,
         # Intelligence analysis supervisor for managing analysis tasks
         EveDmv.Intelligence.Core.Supervisor
       ]

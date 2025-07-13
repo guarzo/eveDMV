@@ -2,8 +2,20 @@ defmodule EveDmvWeb.SurveillanceAlertsLiveTest do
   use EveDmvWeb.ConnCase
 
   import Phoenix.LiveViewTest
+  import EveDmv.Factories
 
   describe "surveillance alerts live" do
+    setup do
+      user = create(:user)
+
+      conn =
+        Phoenix.ConnTest.build_conn()
+        |> Phoenix.ConnTest.init_test_session(%{})
+        |> Plug.Conn.put_session(:current_user_id, user.id)
+
+      %{conn: conn, user: user}
+    end
+
     test "displays alerts page", %{conn: conn} do
       {:ok, _index_live, html} = live(conn, ~p"/surveillance-alerts")
 
@@ -65,6 +77,17 @@ defmodule EveDmvWeb.SurveillanceAlertsLiveTest do
   end
 
   describe "alert display" do
+    setup do
+      user = create(:user)
+
+      conn =
+        Phoenix.ConnTest.build_conn()
+        |> Phoenix.ConnTest.init_test_session(%{})
+        |> Plug.Conn.put_session(:current_user_id, user.id)
+
+      %{conn: conn, user: user}
+    end
+
     test "shows no alerts message when no alerts present", %{conn: conn} do
       {:ok, _index_live, html} = live(conn, ~p"/surveillance-alerts")
 

@@ -47,6 +47,30 @@ mix ash.codegen <resource_name>   # Generate resource code
 # Variables in .env files override all config defaults
 ```
 
+## Database Configuration
+
+### IMPORTANT: Test Environment Database Setup
+
+The test environment uses SQL Sandbox pool for safe concurrent testing. The configuration is:
+
+**Key Points:**
+- Test environment MUST use `Ecto.Adapters.SQL.Sandbox` pool
+- Test environment ignores .env files and DATABASE_URL
+- Test database name: `eve_dmv_test` (not eve_tracker_*)
+- Development database name: From DATABASE_URL in .env file
+
+**Configuration Flow:**
+1. `config/test.exs` - Sets SQL Sandbox pool for test environment
+2. `test/test_helper.exs` - Validates SQL Sandbox is configured and fails fast if not
+3. `config/runtime.exs` - Applies DATABASE_URL only for dev/prod environments
+4. Test environment explicitly ignores .env files to prevent DATABASE_URL conflicts
+
+**If tests fail with "Test environment requires Ecto.Adapters.SQL.Sandbox pool":**
+- Ensure MIX_ENV=test is set when running tests
+- Verify config/test.exs has pool: Ecto.Adapters.SQL.Sandbox
+- Check that runtime.exs doesn't override test database config
+- Confirm test database exists: `MIX_ENV=test mix ecto.create`
+
 ## Architecture Overview
 
 ### Ash Framework Usage

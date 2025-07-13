@@ -1,11 +1,74 @@
 <div class="min-h-screen bg-gray-900 text-gray-100">
-  <!-- Header -->
-  <.live_component
-    module={EveDmvWeb.SurveillanceHeaderComponent}
-    id="surveillance-header"
-    batch_mode={@batch_mode}
-    selected_profiles={@selected_profiles}
-  />
+  <!-- Page Header -->
+  <div class="bg-gray-800 border-b border-gray-700 px-6 py-4">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-4">
+        <h1 class="text-2xl font-bold text-blue-400">Surveillance Profiles</h1>
+        <div class="text-sm text-gray-400">Target Tracking System</div>
+      </div>
+
+      <div class="flex items-center space-x-4">
+        <%= if @batch_mode do %>
+          <div class="flex items-center space-x-2 text-sm">
+            <span class="text-gray-400"><%= MapSet.size(@selected_profiles) %> selected</span>
+            <button
+              phx-click="select_all_profiles"
+              class="px-2 py-1 bg-gray-600 hover:bg-gray-700 rounded text-xs"
+            >
+              Select All
+            </button>
+            <button
+              phx-click="deselect_all_profiles"
+              class="px-2 py-1 bg-gray-600 hover:bg-gray-700 rounded text-xs"
+            >
+              Clear
+            </button>
+          </div>
+        <% end %>
+
+        <button
+          phx-click="toggle_batch_mode"
+          class={"px-3 py-2 rounded-lg text-sm transition-colors " <>
+                 if(@batch_mode,
+                    do: "bg-yellow-600 hover:bg-yellow-700",
+                    else: "bg-gray-600 hover:bg-gray-700")}
+        >
+          <%= if @batch_mode, do: "✓ Batch Mode", else: "📋 Batch Mode" %>
+        </button>
+
+        <%= if @batch_mode && MapSet.size(@selected_profiles) > 0 do %>
+          <button
+            phx-click="show_batch_modal"
+            class="px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm transition-colors"
+          >
+            ⚡ Batch Actions
+          </button>
+        <% end %>
+
+        <button
+          phx-click="export_profiles"
+          title="Export profiles"
+          class="px-3 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg text-sm transition-colors"
+        >
+          📥 Export
+        </button>
+
+        <button
+          phx-click="refresh_stats"
+          class="px-3 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg text-sm transition-colors"
+        >
+          🔄 Refresh
+        </button>
+
+        <button
+          phx-click="show_create_modal"
+          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors"
+        >
+          ➕ New Profile
+        </button>
+      </div>
+    </div>
+  </div>
 
   <div class="flex">
     <!-- Sidebar - Stats -->

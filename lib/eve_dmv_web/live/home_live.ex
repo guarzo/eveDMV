@@ -7,14 +7,14 @@ defmodule EveDmvWeb.HomeLive do
 
   alias EveDmv.Eve.SolarSystem
 
-  @impl true
-  def mount(_params, session, socket) do
-    current_user = Map.get(session, "current_user")
+  # Load current user from session on mount (optional for public pages)
+  on_mount({EveDmvWeb.AuthLive, :load_from_session_optional})
 
+  @impl true
+  def mount(_params, _session, socket) do
     {:ok,
      assign(socket,
        page_title: "EVE DMV - PvP Intelligence Platform",
-       current_user: current_user,
        search_query: "",
        search_results: %{systems: [], characters: [], corporations: []},
        search_loading: false,

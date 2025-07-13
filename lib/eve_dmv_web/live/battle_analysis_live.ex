@@ -17,6 +17,9 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   require Logger
 
+  # Load current user from session on mount
+  on_mount({EveDmvWeb.AuthLive, :load_from_session})
+
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     socket =

@@ -244,6 +244,300 @@
         </div>
       </div>
       
+      <!-- Corporation Battle History -->
+      <div class="mt-8 bg-gray-800 rounded-lg border border-gray-700">
+        <div class="p-6 border-b border-gray-700">
+          <h3 class="text-lg font-bold text-white">Recent Battles</h3>
+          <p class="text-gray-400 text-sm">Corporation participation in multi-pilot engagements</p>
+        </div>
+        
+        <div class="p-6">
+          <!-- Battle Statistics Row -->
+          <%= if @battle_stats do %>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div class="bg-gray-700 rounded-lg p-3 text-center">
+                <div class="text-2xl font-bold text-white"><%= @battle_stats.total_battles %></div>
+                <div class="text-xs text-gray-400">Total Battles</div>
+              </div>
+              <div class="bg-gray-700 rounded-lg p-3 text-center">
+                <div class="text-2xl font-bold text-green-400"><%= @battle_stats.battles_won %></div>
+                <div class="text-xs text-gray-400">Battles Won</div>
+              </div>
+              <div class="bg-gray-700 rounded-lg p-3 text-center">
+                <div class="text-2xl font-bold text-blue-400"><%= @battle_stats.battle_efficiency %>%</div>
+                <div class="text-xs text-gray-400">Battle Efficiency</div>
+              </div>
+              <div class="bg-gray-700 rounded-lg p-3 text-center">
+                <div class="text-2xl font-bold text-purple-400"><%= @battle_stats.avg_fleet_size %></div>
+                <div class="text-xs text-gray-400">Avg Fleet Size</div>
+              </div>
+            </div>
+            
+            <!-- Fleet Coordination Metrics -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div class="bg-gray-700 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-sm font-medium text-gray-400">Fleet Coordination</span>
+                  <% coordination_color = case @battle_stats.fleet_coordination do
+                    "corp_dominated" -> "text-green-400"
+                    "significant_presence" -> "text-blue-400" 
+                    "active_participation" -> "text-yellow-400"
+                    _ -> "text-gray-400"
+                  end %>
+                  <span class={"text-sm font-medium #{coordination_color}"}>
+                    <%= @battle_stats.fleet_coordination |> String.replace("_", " ") |> String.split() |> Enum.map(&String.capitalize/1) |> Enum.join(" ") %>
+                  </span>
+                </div>
+                <div class="text-sm text-gray-400">
+                  <%= @battle_stats.avg_corp_participation %> corp members per battle
+                </div>
+              </div>
+              
+              <div class="bg-gray-700 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-sm font-medium text-gray-400">Systems Fought</span>
+                  <span class="text-lg font-bold text-white"><%= @battle_stats.systems_fought_in %></span>
+                </div>
+                <div class="text-sm text-gray-400">
+                  Different systems with battles
+                </div>
+              </div>
+              
+              <div class="bg-gray-700 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-sm font-medium text-gray-400">Max Members</span>
+                  <span class="text-lg font-bold text-white"><%= @battle_stats.max_corp_members_in_battle %></span>
+                </div>
+                <div class="text-sm text-gray-400">
+                  Largest corp presence
+                </div>
+              </div>
+            </div>
+          <% end %>
+
+          <!-- Recent Battles List -->
+          <%= if @recent_battles && length(@recent_battles) > 0 do %>
+            <div class="space-y-4">
+              <h4 class="text-sm font-medium text-gray-300 mb-3">Recent Battle Participation</h4>
+              <%= for battle <- @recent_battles do %>
+                <div class="bg-gray-700 rounded-lg p-4 hover:bg-gray-600 transition-colors">
+                  <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                      <div class="flex items-center space-x-3 mb-2">
+                        <!-- Battle Type Badge -->
+                        <% {badge_text, badge_class} = case Map.get(battle, :battle_type, "unknown") do
+                          "major_battle" -> {"Major Battle", "bg-red-600 text-white"}
+                          "fleet_engagement" -> {"Fleet Fight", "bg-orange-600 text-white"}
+                          "medium_engagement" -> {"Medium Fight", "bg-yellow-600 text-white"}
+                          "high_value_fight" -> {"High Value", "bg-purple-600 text-white"}
+                          "extended_skirmish" -> {"Skirmish", "bg-blue-600 text-white"}
+                          _ -> {"Small Gang", "bg-gray-600 text-white"}
+                        end %>
+                        <span class={"px-2 py-1 rounded text-xs font-medium #{badge_class}"}>
+                          <%= badge_text %>
+                        </span>
+                        
+                        <!-- Participation Type -->
+                        <% participation = Map.get(battle, :character_participation, %{}) %>
+                        <% role_color = if Map.get(participation, :role) == "aggressor", do: "text-green-400", else: "text-blue-400" %>
+                        <span class={"text-xs font-medium #{role_color}"}>
+                          <%= Map.get(participation, :role, "participant") |> String.capitalize() %>
+                        </span>
+                        
+                        <!-- Corp Tactical Role -->
+                        <%= if Map.get(battle, :tactical_role) do %>
+                          <span class="text-xs text-purple-400">
+                            (<%= Map.get(battle, :tactical_role) |> String.replace("_", " ") %>)
+                          </span>
+                        <% end %>
+                      </div>
+                      
+                      <div class="text-white font-medium mb-1">
+                        <%= Map.get(battle, :solar_system_name, "Unknown System") %>
+                      </div>
+                      
+                      <div class="text-sm text-gray-400 mb-2">
+                        <%= format_relative_time(Map.get(battle, :battle_time)) %> • 
+                        <%= Map.get(battle, :total_participants, 0) %> participants • 
+                        <%= Map.get(battle, :killmail_count, 0) %> killmails
+                      </div>
+                      
+                      <!-- Battle Context -->
+                      <%= if Map.get(battle, :coordination_level) do %>
+                        <div class="text-xs text-gray-500">
+                          <span>Coordination: <%= Map.get(battle, :coordination_level) |> String.replace("_", " ") %></span>
+                          <%= if Map.get(battle, :fleet_discipline) do %>
+                            • <span>Discipline: <%= Map.get(battle, :fleet_discipline) %></span>
+                          <% end %>
+                        </div>
+                      <% end %>
+                    </div>
+                    
+                    <div class="text-right ml-4">
+                      <div class="text-lg font-bold text-white">
+                        <%= format_isk(Map.get(battle, :total_isk_destroyed, 0)) %>
+                      </div>
+                      <div class="text-xs text-gray-400">
+                        ISK destroyed
+                      </div>
+                      
+                      <!-- Intensity and Duration -->
+                      <%= if Map.get(battle, :intensity_level) do %>
+                        <div class="text-xs text-gray-500 mt-1">
+                          <% intensity_color = case Map.get(battle, :intensity_level) do
+                            "very_high" -> "text-red-400"
+                            "high" -> "text-orange-400"
+                            "medium" -> "text-yellow-400"
+                            _ -> "text-gray-400"
+                          end %>
+                          <span class={intensity_color}>
+                            <%= Map.get(battle, :intensity_level) |> String.replace("_", " ") |> String.capitalize() %> intensity
+                          </span>
+                          <%= if Map.get(battle, :duration_estimate) do %>
+                            <br><%= Map.get(battle, :duration_estimate) %> duration
+                          <% end %>
+                        </div>
+                      <% end %>
+                    </div>
+                  </div>
+                  
+                  <!-- Major Ships Involved -->
+                  <%= if Map.get(battle, :major_ships_involved) && length(Map.get(battle, :major_ships_involved)) > 0 do %>
+                    <div class="mt-3 pt-3 border-t border-gray-600">
+                      <div class="text-xs text-gray-400 mb-1">Major ships involved:</div>
+                      <div class="flex flex-wrap gap-1">
+                        <%= for ship <- Map.get(battle, :major_ships_involved) do %>
+                          <span class="px-2 py-1 bg-gray-600 rounded text-xs text-gray-300">
+                            <%= ship %>
+                          </span>
+                        <% end %>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <.empty_state 
+              icon="⚔️"
+              title="No recent battles"
+              message="Corporation battle participation will appear here once members engage in multi-pilot fights"
+            />
+          <% end %>
+        </div>
+      </div>
+      
+      <!-- Fleet Doctrine Intelligence -->
+      <%= if @fleet_doctrines && length(@fleet_doctrines) > 0 do %>
+        <div class="mt-8 bg-gray-800 rounded-lg border border-gray-700">
+          <div class="p-6 border-b border-gray-700">
+            <h3 class="text-lg font-bold text-white">Fleet Doctrine Analysis</h3>
+            <p class="text-gray-400 text-sm">Ship preferences and fleet composition patterns</p>
+          </div>
+          
+          <div class="p-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+              <%= for doctrine <- @fleet_doctrines do %>
+                <div class="bg-gray-700 rounded-lg p-4">
+                  <div class="flex items-start justify-between mb-3">
+                    <div class="flex items-center space-x-3">
+                      <.ship_image 
+                        type_id={0}
+                        name={doctrine.ship_type}
+                        size={40}
+                      />
+                      <div>
+                        <div class="text-white font-medium"><%= doctrine.ship_type %></div>
+                        <div class="text-xs text-gray-400">
+                          <%= doctrine.usage_count %> instances • Avg fleet: <%= doctrine.avg_fleet_size %>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="text-right">
+                      <% doctrine_color = case doctrine.doctrine_preference do
+                        "capital_doctrine" -> "text-red-400"
+                        "mainline_doctrine" -> "text-blue-400"
+                        "support_doctrine" -> "text-green-400"
+                        "small_gang_doctrine" -> "text-yellow-400"
+                        _ -> "text-gray-400"
+                      end %>
+                      <div class={"text-sm font-medium #{doctrine_color}"}>
+                        <%= doctrine.doctrine_preference |> String.replace("_", " ") |> String.split() |> Enum.map(&String.capitalize/1) |> Enum.join(" ") %>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="mb-3">
+                    <div class="flex justify-between text-xs text-gray-400 mb-1">
+                      <span>Usage frequency</span>
+                      <span><%= doctrine.usage_count %> times</span>
+                    </div>
+                    <div class="w-full bg-gray-600 rounded-full h-2">
+                      <% usage_percentage = min(doctrine.usage_count * 10, 100) %>
+                      <div 
+                        class="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                        style={"width: #{usage_percentage}%"}
+                      ></div>
+                    </div>
+                  </div>
+                  
+                  <div class="text-xs text-gray-500">
+                    Total ISK: <%= format_isk(doctrine.total_isk_involved) %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+            
+            <!-- Doctrine Summary -->
+            <div class="mt-6 bg-gray-700 rounded-lg p-4">
+              <h4 class="text-lg font-medium text-gray-300 mb-3">Doctrine Summary</h4>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="text-center">
+                  <div class="text-2xl font-bold text-white"><%= length(@fleet_doctrines) %></div>
+                  <div class="text-xs text-gray-400">Ship Types Used</div>
+                </div>
+                
+                <div class="text-center">
+                  <% total_usage = @fleet_doctrines |> Enum.map(& &1.usage_count) |> Enum.sum() %>
+                  <div class="text-2xl font-bold text-blue-400"><%= total_usage %></div>
+                  <div class="text-xs text-gray-400">Total Fleet Engagements</div>
+                </div>
+                
+                <div class="text-center">
+                  <% avg_fleet_size = if length(@fleet_doctrines) > 0 do
+                    (@fleet_doctrines |> Enum.map(& &1.avg_fleet_size) |> Enum.sum()) / length(@fleet_doctrines) |> Float.round(1)
+                  else
+                    0
+                  end %>
+                  <div class="text-2xl font-bold text-purple-400"><%= avg_fleet_size %></div>
+                  <div class="text-xs text-gray-400">Average Fleet Size</div>
+                </div>
+              </div>
+              
+              <!-- Top Doctrine Types -->
+              <div class="mt-4">
+                <div class="text-sm text-gray-400 mb-2">Primary Doctrine Classifications:</div>
+                <div class="flex flex-wrap gap-2">
+                  <%= for doctrine_type <- @fleet_doctrines |> Enum.map(& &1.doctrine_preference) |> Enum.uniq() do %>
+                    <% doctrine_color = case doctrine_type do
+                      "capital_doctrine" -> "bg-red-600"
+                      "mainline_doctrine" -> "bg-blue-600"
+                      "support_doctrine" -> "bg-green-600"
+                      "small_gang_doctrine" -> "bg-yellow-600"
+                      _ -> "bg-gray-600"
+                    end %>
+                    <span class={"px-2 py-1 rounded text-xs text-white #{doctrine_color}"}>
+                      <%= doctrine_type |> String.replace("_", " ") |> String.split() |> Enum.map(&String.capitalize/1) |> Enum.join(" ") %>
+                    </span>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+      
       <!-- Participation Metrics -->
       <div class="mt-8 bg-gray-800 rounded-lg border border-gray-700">
         <div class="p-6 border-b border-gray-700">

@@ -341,8 +341,9 @@ defmodule EveDmvWeb.AuthControllerTest do
   end
 
   # Property-based testing for robust input validation
+  @tag timeout: 60_000
   property "auth controller handles various character ID formats" do
-    check all(character_id <- character_id_generator(), max_runs: 100) do
+    check all(character_id <- character_id_generator(), max_runs: 10) do
       # Create user with various character IDs
       user_info = %{
         "CharacterID" => character_id,

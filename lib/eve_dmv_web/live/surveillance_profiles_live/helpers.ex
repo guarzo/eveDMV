@@ -243,10 +243,10 @@ defmodule EveDmvWeb.SurveillanceProfilesLive.Helpers do
     conditions = Map.get(criteria, :conditions, [])
     logic_op = Map.get(criteria, :logic_operator, :and)
 
-    if length(conditions) == 0 do
+    if Enum.empty?(conditions) do
       "No filters configured"
     else
-      count = length(conditions)
+      count = Enum.count(conditions)
       logic_text = if logic_op == :and, do: "ALL", else: "ANY"
       "#{count} filter(s) with #{logic_text} logic"
     end

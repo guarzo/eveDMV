@@ -871,20 +871,83 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   end
 
   defp analyze_tactical_roles(performance_data, battle) do
-    # Enhance performance data with tactical role analysis
-    enhanced_data =
-      Enum.map(performance_data, fn perf ->
-        tactical_analysis = %{
-          role_clarity: assess_role_clarity(perf),
-          role_execution: assess_role_execution(perf),
-          team_coordination: assess_team_coordination(perf, battle),
-          adaptation_score: assess_tactical_adaptation(perf)
-        }
+    # Enhance performance data with advanced ship intelligence
+    try do
+      # Use ship intelligence bridge for enhanced analysis
+      enhanced_performance_data =
+        EveDmv.Integrations.ShipIntelligenceBridge.enhance_ship_performance_data(
+          performance_data,
+          %{fleet_analysis: extract_fleet_context(battle)}
+        )
 
-        Map.put(perf, :tactical_analysis, tactical_analysis)
-      end)
+      # Apply existing tactical analysis with enhancements
+      final_data =
+        Enum.map(enhanced_performance_data, fn perf ->
+          # Original tactical analysis
+          base_tactical_analysis = %{
+            role_clarity: assess_role_clarity(perf),
+            role_execution: assess_role_execution(perf),
+            team_coordination: assess_team_coordination(perf, battle),
+            adaptation_score: assess_tactical_adaptation(perf)
+          }
 
-    {:ok, enhanced_data}
+          # Enhanced tactical analysis from ship intelligence
+          enhanced_tactical = perf[:enhanced_tactical_analysis] || %{}
+
+          # Merge analyses
+          combined_tactical = Map.merge(base_tactical_analysis, enhanced_tactical)
+
+          Map.put(perf, :tactical_analysis, combined_tactical)
+        end)
+
+      {:ok, final_data}
+    rescue
+      error ->
+        Logger.warning(
+          "Ship intelligence enhancement failed, falling back to basic analysis: #{inspect(error)}"
+        )
+
+        # Fallback to original implementation
+        enhanced_data =
+          Enum.map(performance_data, fn perf ->
+            tactical_analysis = %{
+              role_clarity: assess_role_clarity(perf),
+              role_execution: assess_role_execution(perf),
+              team_coordination: assess_team_coordination(perf, battle),
+              adaptation_score: assess_tactical_adaptation(perf)
+            }
+
+            Map.put(perf, :tactical_analysis, tactical_analysis)
+          end)
+
+        {:ok, enhanced_data}
+    end
+  end
+
+  defp extract_fleet_context(battle) do
+    # Extract fleet composition data for enhanced analysis
+    try do
+      ship_types =
+        battle.killmails
+        |> Enum.map(fn killmail ->
+          case killmail do
+            %{"victim" => %{"ship_type_id" => ship_type_id}} -> ship_type_id
+            %{victim: %{ship_type_id: ship_type_id}} -> ship_type_id
+            _ -> nil
+          end
+        end)
+        |> Enum.filter(& &1)
+
+      if length(ship_types) > 0 do
+        EveDmv.Analytics.FleetAnalyzer.analyze_fleet_composition(ship_types)
+      else
+        nil
+      end
+    rescue
+      error ->
+        Logger.debug("Failed to extract fleet context: #{inspect(error)}")
+        nil
+    end
   end
 
   defp assess_role_clarity(performance) do

@@ -15,7 +15,7 @@
     </:action>
     <:action>
       <div class="text-sm text-gray-400">
-        User: <span class="text-white">{@user.character_name}</span>
+        User: <span class="text-white">{@current_user.eve_character_name}</span>
       </div>
     </:action>
   </.page_header>
@@ -84,7 +84,7 @@
       
 <!-- Main Chain View -->
       <div class="lg:col-span-3">
-        <%= if @selected_chain and @chain_data[:topology] do %>
+        <%= if @selected_chain && @chain_data[:topology] do %>
           <!-- Chain Overview -->
           <div class="bg-gray-800 rounded-lg border border-gray-700 p-6 mb-6">
             <div class="flex items-center justify-between mb-4">

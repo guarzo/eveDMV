@@ -1356,6 +1356,653 @@ Create a comprehensive health and performance monitoring dashboard for administr
 ### Priority: MEDIUM
 While not user-facing, application health monitoring is crucial for maintaining service reliability and operational excellence, especially as the application scales.
 
+## Favorites System Implementation
+
+### User Favorites Feature
+Implement a comprehensive favorites/bookmarking system allowing users to mark battles, characters, and corporations as favorites for quick access.
+
+#### Core Features
+- [ ] **Database Schema**: Create user favorites storage system
+  ```sql
+  CREATE TABLE user_favorites (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    entity_type VARCHAR(20) NOT NULL CHECK (entity_type IN ('character', 'corporation', 'battle')),
+    entity_id VARCHAR(100) NOT NULL,
+    entity_name VARCHAR(200) NOT NULL,
+    custom_name VARCHAR(200), -- User-defined name override
+    notes TEXT,
+    tags VARCHAR(50)[], -- Array of tags for organization
+    favorited_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, entity_type, entity_id)
+  );
+  
+  CREATE INDEX idx_user_favorites_user_entity ON user_favorites(user_id, entity_type);
+  CREATE INDEX idx_user_favorites_tags ON user_favorites USING GIN(tags);
+  ```
+
+- [ ] **Ash Resource Definition**: Define favorites as an Ash resource
+  ```elixir
+  defmodule EveDmv.UserContent.Favorite do
+    use Ash.Resource,
+      domain: EveDmv.Api,
+      data_layer: AshPostgres.DataLayer
+    
+    attributes do
+      uuid_primary_key :id
+      attribute :user_id, :uuid, allow_nil?: false
+      attribute :entity_type, :atom, constraints: [one_of: [:character, :corporation, :battle]]
+      attribute :entity_id, :string, allow_nil?: false
+      attribute :entity_name, :string, allow_nil?: false
+      attribute :custom_name, :string
+      attribute :notes, :string
+      attribute :tags, {:array, :string}, default: []
+      attribute :favorited_at, :utc_datetime, default: &DateTime.utc_now/0
+    end
+    
+    actions do
+      defaults [:read, :destroy]
+      
+      create :favorite do
+        argument :entity_type, :atom, allow_nil?: false
+        argument :entity_id, :string, allow_nil?: false
+        argument :entity_name, :string, allow_nil?: false
+        
+        change set_attribute(:entity_type, arg(:entity_type))
+        change set_attribute(:entity_id, arg(:entity_id)) 
+        change set_attribute(:entity_name, arg(:entity_name))
+      end
+      
+      update :update_favorite do
+        accept [:custom_name, :notes, :tags]
+      end
+    end
+    
+    relationships do
+      belongs_to :user, EveDmv.Users.User
+    end
+  end
+  ```
+
+#### User Interface Components
+- [ ] **Star/Bookmark Buttons**: Add to relevant pages
+  ```heex
+  <!-- Character Analysis Page -->
+  <div class="flex items-center space-x-4">
+    <h1 class="text-2xl font-bold text-white"><%= @character.name %></h1>
+    <button 
+      phx-click="toggle_favorite" 
+      phx-value-type="character"
+      phx-value-id={@character.id}
+      phx-value-name={@character.name}
+      class={[
+        "flex items-center px-3 py-1 rounded text-sm transition-colors",
+        if(@is_favorited, 
+           do: "bg-yellow-600 text-white hover:bg-yellow-700", 
+           else: "bg-gray-600 text-gray-300 hover:bg-gray-500")
+      ]}
+    >
+      <svg class="w-4 h-4 mr-1" fill={if @is_favorited, do: "currentColor", else: "none"} 
+           stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+              d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+      </svg>
+      <%= if @is_favorited, do: "Favorited", else: "Add to Favorites" %>
+    </button>
+  </div>
+  ```
+
+- [ ] **Dashboard Integration**: Replace placeholder with real data
+  ```heex
+  <!-- Replace empty favorites section -->
+  <div>
+    <h4 class="text-gray-300 text-sm font-medium mb-2">Recent Favorites</h4>
+    <%= if @user_favorites != [] do %>
+      <div class="space-y-2">
+        <%= for favorite <- @user_favorites do %>
+          <div class="flex items-center justify-between bg-gray-900 rounded p-2">
+            <div class="flex items-center space-x-2">
+              <span class="text-xs text-gray-500 capitalize"><%= favorite.entity_type %></span>
+              <span class="text-white text-sm"><%= favorite.entity_name %></span>
+            </div>
+            <.link navigate={get_entity_url(favorite)} 
+                   class="text-blue-400 hover:text-blue-300 text-xs">
+              View
+            </.link>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="bg-gray-900 rounded p-3 text-center">
+        <p class="text-gray-500 text-xs">No favorites yet</p>
+        <p class="text-gray-600 text-xs mt-1">Star pilots and corps from analysis pages</p>
+      </div>
+    <% end %>
+  </div>
+  ```
+
+#### Implementation Timeline
+**Week 1**: Database schema, Ash resource, basic add/remove functionality
+**Week 2**: UI components, dashboard integration, favorites management page
+**Week 3**: Advanced features, testing, polish
+
+#### Priority: HIGH
+The favorites system is already designed into the dashboard UI but not functional. Users expect to be able to bookmark interesting entities for quick access.
+
+### Success Criteria
+- Users can favorite/unfavorite characters, corporations, and battles
+- Dashboard shows real favorited items instead of placeholder text
+- Dedicated favorites management page provides full control
+- Favorites persist across sessions and are tied to user accounts
+- Performance remains fast even with large numbers of favorites
+
+## Chain Intelligence Polish & Enhancement
+
+### Chain Intelligence Page Improvements
+Polish the wormhole chain intelligence page (`/chain-intelligence`) with better user experience, map management, and real-time monitoring capabilities.
+
+#### Map Selection & Management
+- [ ] **Map Dropdown Selector**: Replace sidebar list with searchable dropdown
+  ```heex
+  <!-- Replace current sidebar with dropdown selector -->
+  <div class="bg-gray-800 rounded-lg border border-gray-700 p-4 mb-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-semibold text-purple-400">Select Chain Map</h2>
+      <button 
+        phx-click="show_add_map_modal"
+        class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm"
+      >
+        ➕ Add Map
+      </button>
+    </div>
+    
+    <!-- Map Selector Dropdown -->
+    <div class="relative">
+      <button 
+        phx-click="toggle_map_dropdown"
+        class="w-full flex items-center justify-between bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-left hover:border-purple-500 transition-colors"
+      >
+        <div class="flex items-center space-x-3">
+          <%= if @selected_chain do %>
+            <div class="w-3 h-3 bg-green-400 rounded-full"></div>
+            <div>
+              <div class="text-white font-medium">
+                <%= get_map_display_name(@selected_chain, @monitored_chains) %>
+              </div>
+              <div class="text-xs text-gray-400">
+                <%= get_map_details(@selected_chain, @monitored_chains) %>
+              </div>
+            </div>
+          <% else %>
+            <div class="w-3 h-3 bg-gray-500 rounded-full"></div>
+            <div class="text-gray-400">Select a map to monitor...</div>
+          <% end %>
+        </div>
+        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+        </svg>
+      </button>
+      
+      <!-- Dropdown Menu -->
+      <%= if @show_map_dropdown do %>
+        <div class="absolute top-full left-0 right-0 mt-1 bg-gray-700 border border-gray-600 rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
+          <!-- Search Filter -->
+          <div class="p-3 border-b border-gray-600">
+            <input 
+              type="text"
+              phx-keyup="filter_maps"
+              phx-value-target="map_dropdown"
+              placeholder="Search maps..."
+              class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none"
+            />
+          </div>
+          
+          <!-- Map List -->
+          <div class="py-2">
+            <%= for map <- @filtered_maps do %>
+              <button 
+                phx-click="select_map"
+                phx-value-map_id={map.map_id}
+                class="w-full px-4 py-3 text-left hover:bg-gray-600 transition-colors flex items-center justify-between"
+              >
+                <div class="flex items-center space-x-3">
+                  <div class={[
+                    "w-3 h-3 rounded-full",
+                    if(map.monitoring_enabled, do: "bg-green-400", else: "bg-gray-500")
+                  ]}></div>
+                  <div>
+                    <div class="text-white font-medium">
+                      <%= map.custom_name || map.map_name || "Map #{String.slice(map.map_id, 0, 8)}" %>
+                    </div>
+                    <div class="text-xs text-gray-400">
+                      <%= map.system_count %> systems • <%= map.connection_count %> connections
+                    </div>
+                  </div>
+                </div>
+                <div class="text-xs text-gray-500">
+                  <%= time_since(map.last_activity_at) %>
+                </div>
+              </button>
+            <% end %>
+            
+            <%= if Enum.empty?(@filtered_maps) do %>
+              <div class="px-4 py-6 text-center text-gray-400">
+                No maps found matching your search
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+  ```
+
+- [ ] **Add Map Configuration Modal**: Comprehensive map setup wizard
+  ```heex
+  <%= if @show_add_map_modal do %>
+    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-gray-800 rounded-lg border border-gray-700 p-6 w-full max-w-2xl mx-4">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-xl font-semibold text-purple-400">Add Chain Map</h2>
+          <button phx-click="hide_add_map_modal" class="text-gray-400 hover:text-white">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <form phx-submit="add_map_configuration">
+          <!-- Map ID -->
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-300 mb-2">
+              Wanderer Map ID *
+            </label>
+            <input
+              type="text"
+              name="map_id"
+              value={@new_map_form["map_id"]}
+              placeholder="Enter Wanderer map ID..."
+              class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none"
+              required
+            />
+            <p class="text-xs text-gray-500 mt-1">
+              Get this from your Wanderer map URL (e.g., the ID in https://wanderer.eveonline.com/map/12345)
+            </p>
+          </div>
+
+          <!-- Custom Name -->
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-300 mb-2">
+              Custom Map Name
+            </label>
+            <input
+              type="text"
+              name="custom_name"
+              value={@new_map_form["custom_name"]}
+              placeholder="e.g., Home Chain, Staging Area, etc."
+              class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none"
+            />
+          </div>
+
+          <!-- Corporation Access -->
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-300 mb-2">
+              Corporation Access
+            </label>
+            <select 
+              name="corporation_access"
+              class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-purple-500 focus:outline-none"
+            >
+              <option value="personal">Personal Access Only</option>
+              <option value="corp" selected>Share with Corporation</option>
+              <option value="alliance">Share with Alliance</option>
+            </select>
+            <p class="text-xs text-gray-500 mt-1">
+              Who can view and monitor this chain map
+            </p>
+          </div>
+
+          <!-- Monitoring Settings -->
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-300 mb-2">
+              Monitoring Settings
+            </label>
+            <div class="space-y-2">
+              <label class="flex items-center">
+                <input 
+                  type="checkbox" 
+                  name="auto_threat_detection"
+                  checked={@new_map_form["auto_threat_detection"]}
+                  class="rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-500"
+                />
+                <span class="ml-2 text-sm text-gray-300">Auto threat detection</span>
+              </label>
+              <label class="flex items-center">
+                <input 
+                  type="checkbox" 
+                  name="hostile_alerts"
+                  checked={@new_map_form["hostile_alerts"]}
+                  class="rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-500"
+                />
+                <span class="ml-2 text-sm text-gray-300">Hostile activity alerts</span>
+              </label>
+              <label class="flex items-center">
+                <input 
+                  type="checkbox" 
+                  name="capital_ship_alerts"
+                  checked={@new_map_form["capital_ship_alerts"]}
+                  class="rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-500"
+                />
+                <span class="ml-2 text-sm text-gray-300">Capital ship movement alerts</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- API Configuration -->
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-300 mb-2">
+              Wanderer API Configuration
+            </label>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs text-gray-400 mb-1">API Endpoint</label>
+                <input
+                  type="url"
+                  name="api_endpoint"
+                  value={@new_map_form["api_endpoint"] || "http://host.docker.internal:4004"}
+                  class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white text-sm focus:border-purple-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label class="block text-xs text-gray-400 mb-1">Update Interval (seconds)</label>
+                <input
+                  type="number"
+                  name="update_interval"
+                  value={@new_map_form["update_interval"] || "30"}
+                  min="10"
+                  max="300"
+                  class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white text-sm focus:border-purple-500 focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Form Actions -->
+          <div class="flex justify-end space-x-3">
+            <button
+              type="button"
+              phx-click="hide_add_map_modal"
+              class="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded text-sm transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              phx-click="test_map_connection"
+              class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded text-sm transition-colors"
+            >
+              Test Connection
+            </button>
+            <button
+              type="submit"
+              class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded text-sm font-medium transition-colors"
+            >
+              Add Map
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  <% end %>
+  ```
+
+#### Enhanced Map Management Features
+- [ ] **Map Configuration Storage**: Database schema for map settings
+  ```sql
+  CREATE TABLE chain_map_configurations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    map_id VARCHAR(100) NOT NULL,
+    custom_name VARCHAR(200),
+    corporation_access VARCHAR(20) DEFAULT 'personal' CHECK (corporation_access IN ('personal', 'corp', 'alliance')),
+    
+    -- Monitoring settings
+    auto_threat_detection BOOLEAN DEFAULT true,
+    hostile_alerts BOOLEAN DEFAULT true,
+    capital_ship_alerts BOOLEAN DEFAULT true,
+    monitoring_enabled BOOLEAN DEFAULT true,
+    
+    -- API configuration
+    api_endpoint VARCHAR(500) DEFAULT 'http://host.docker.internal:4004',
+    update_interval INTEGER DEFAULT 30,
+    last_sync_at TIMESTAMP WITH TIME ZONE,
+    sync_error_count INTEGER DEFAULT 0,
+    
+    -- Metadata
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    UNIQUE(user_id, map_id)
+  );
+  
+  CREATE INDEX idx_chain_map_configs_user ON chain_map_configurations(user_id);
+  CREATE INDEX idx_chain_map_configs_enabled ON chain_map_configurations(monitoring_enabled);
+  ```
+
+- [ ] **Connection Testing**: Validate Wanderer API connectivity
+  ```elixir
+  defmodule EveDmv.ChainIntelligence.MapValidator do
+    def test_map_connection(map_id, api_endpoint) do
+      case WandererClient.get_map_info(map_id, api_endpoint) do
+        {:ok, map_data} ->
+          {:ok, %{
+            map_name: map_data.name,
+            system_count: length(map_data.systems),
+            connection_count: length(map_data.connections),
+            last_activity: map_data.last_activity
+          }}
+          
+        {:error, :not_found} ->
+          {:error, "Map not found. Check the map ID and ensure it's publicly accessible."}
+          
+        {:error, :unauthorized} ->
+          {:error, "Access denied. You may need permission to view this map."}
+          
+        {:error, reason} ->
+          {:error, "Connection failed: #{inspect(reason)}"}
+      end
+    end
+    
+    def validate_api_endpoint(endpoint) do
+      case HTTPoison.get("#{endpoint}/api/health") do
+        {:ok, %{status_code: 200}} -> :ok
+        {:ok, %{status_code: code}} -> {:error, "API returned status #{code}"}
+        {:error, reason} -> {:error, "Cannot reach API: #{inspect(reason)}"}
+      end
+    end
+  end
+  ```
+
+#### User Experience Improvements
+- [ ] **Map Status Indicators**: Visual status for each configured map
+  ```heex
+  <div class="flex items-center space-x-2">
+    <!-- Connection Status -->
+    <div class={[
+      "w-3 h-3 rounded-full",
+      case @map.status do
+        :connected -> "bg-green-400"
+        :connecting -> "bg-yellow-400 animate-pulse"
+        :error -> "bg-red-400"
+        :disabled -> "bg-gray-500"
+      end
+    ]}></div>
+    
+    <!-- Map Info -->
+    <div>
+      <div class="text-white font-medium"><%= @map.display_name %></div>
+      <div class="text-xs text-gray-400">
+        <%= case @map.status do %>
+          <% :connected -> %>
+            <%= @map.system_count %> systems • Last sync: <%= time_since(@map.last_sync_at) %>
+          <% :connecting -> %>
+            Connecting to Wanderer API...
+          <% :error -> %>
+            Connection error (<%= @map.sync_error_count %> failures)
+          <% :disabled -> %>
+            Monitoring disabled
+        <% end %>
+      </div>
+    </div>
+  </div>
+  ```
+
+- [ ] **Quick Actions Menu**: Context menu for map management
+  ```heex
+  <div class="relative">
+    <button 
+      phx-click="toggle_map_menu"
+      phx-value-map_id={@map.map_id}
+      class="p-1 text-gray-400 hover:text-white rounded"
+    >
+      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
+      </svg>
+    </button>
+    
+    <%= if @show_menu == @map.map_id do %>
+      <div class="absolute right-0 mt-2 w-48 bg-gray-700 border border-gray-600 rounded-lg shadow-lg z-40">
+        <button 
+          phx-click="edit_map_config"
+          phx-value-map_id={@map.map_id}
+          class="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-600 hover:text-white"
+        >
+          ⚙️ Edit Configuration
+        </button>
+        <button 
+          phx-click="refresh_map_data"
+          phx-value-map_id={@map.map_id}
+          class="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-600 hover:text-white"
+        >
+          🔄 Force Refresh
+        </button>
+        <button 
+          phx-click="toggle_monitoring"
+          phx-value-map_id={@map.map_id}
+          class="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-600 hover:text-white"
+        >
+          <%= if @map.monitoring_enabled, do: "⏸️ Pause Monitoring", else: "▶️ Resume Monitoring" %>
+        </button>
+        <div class="border-t border-gray-600"></div>
+        <button 
+          phx-click="remove_map"
+          phx-value-map_id={@map.map_id}
+          class="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-gray-600 hover:text-red-300"
+        >
+          🗑️ Remove Map
+        </button>
+      </div>
+    <% end %>
+  </div>
+  ```
+
+#### Advanced Features
+- [ ] **Map Sharing & Permissions**: Corporation and alliance map sharing
+  ```elixir
+  defmodule EveDmv.ChainIntelligence.MapSharing do
+    def share_map_with_corp(map_config, corporation_id) do
+      # Create shared access record
+      create_map_access(%{
+        map_config_id: map_config.id,
+        corporation_id: corporation_id,
+        access_level: :view,
+        granted_by: map_config.user_id
+      })
+    end
+    
+    def get_accessible_maps(user) do
+      # Get maps user owns + maps shared with their corp/alliance
+      own_maps = get_user_maps(user.id)
+      corp_maps = get_corporation_maps(user.eve_corporation_id)
+      alliance_maps = get_alliance_maps(user.eve_alliance_id)
+      
+      combine_and_deduplicate([own_maps, corp_maps, alliance_maps])
+    end
+  end
+  ```
+
+- [ ] **Real-time Status Updates**: Live map status monitoring
+  ```elixir
+  defmodule EveDmv.ChainIntelligence.MapMonitor do
+    use GenServer
+    
+    def start_link(opts) do
+      GenServer.start_link(__MODULE__, opts, name: __MODULE__)
+    end
+    
+    def init(_opts) do
+      # Schedule periodic map checks
+      Process.send_after(self(), :check_all_maps, 30_000)
+      {:ok, %{}}
+    end
+    
+    def handle_info(:check_all_maps, state) do
+      # Check all enabled maps for updates
+      enabled_maps = get_all_enabled_maps()
+      
+      for map <- enabled_maps do
+        Task.start(fn -> check_map_status(map) end)
+      end
+      
+      # Schedule next check
+      Process.send_after(self(), :check_all_maps, 30_000)
+      {:noreply, state}
+    end
+    
+    defp check_map_status(map) do
+      case WandererClient.get_map_systems(map.map_id, map.api_endpoint) do
+        {:ok, data} ->
+          # Update map status and broadcast changes
+          update_map_status(map, :connected, data)
+          broadcast_map_update(map.id, :status_changed, data)
+          
+        {:error, reason} ->
+          increment_error_count(map)
+          broadcast_map_update(map.id, :connection_error, reason)
+      end
+    end
+  end
+  ```
+
+#### Technical Implementation
+- [ ] **Enhanced Database Schema**: Store map configurations and status
+- [ ] **Map Configuration CRUD**: Full management interface
+- [ ] **Connection Health Monitoring**: Track API reliability
+- [ ] **Real-time Status Updates**: WebSocket updates for map status changes
+- [ ] **Error Handling & Retry Logic**: Robust error handling for API failures
+
+#### Implementation Timeline
+**Week 1**: Database schema, basic map configuration CRUD
+**Week 2**: Map dropdown UI, add map modal, connection testing
+**Week 3**: Status monitoring, real-time updates, error handling
+**Week 4**: Advanced features (sharing, permissions), polish and testing
+
+#### Integration Points
+- [ ] **Wanderer API Client**: Enhanced integration with configuration support
+- [ ] **Real-time Updates**: WebSocket/SSE integration for live status
+- [ ] **User Permissions**: Corporation/alliance access control
+- [ ] **Notification System**: Alerts for map status changes
+
+#### Success Criteria
+- Users can easily add and configure new Wanderer maps
+- Map status is clearly visible and updates in real-time
+- Connection issues are handled gracefully with clear error messages
+- Map sharing works correctly for corporation/alliance members
+- Configuration changes take effect immediately
+
+### Priority: HIGH
+Chain intelligence is a core feature for wormhole operations. Better map management significantly improves user experience and operational efficiency.
+
 ## Dependencies
 
 - EVE ESI API for character/corp/alliance data
@@ -1372,3 +2019,18 @@ While not user-facing, application health monitoring is crucial for maintaining 
 - Data export includes all user data
 - Real-time updates work reliably
 - Profile page provides comprehensive character overview
+
+
+### Deferred from Sprint 11 (35 points) - more detail in docs/sprints/planning/quality_details.md
+
+| Story ID | Description | Points | Priority | Definition of Done |
+|----------|-------------|---------|----------|-------------------|
+| QUAL-10 | Remove process dictionary usage | 3 | HIGH | Replace with ETS tables |
+| QUAL-11 | Add structured logging format | 2 | HIGH | JSON/map log format |
+| QUAL-12 | Implement graceful task shutdown | 3 | HIGH | No brutal_kill timeouts |
+| QUAL-14 | Add OpenTelemetry spans | 5 | MEDIUM | Tracing for task supervisors |
+| QUAL-15 | Extract large module utilities | 5 | MEDIUM | Common helpers centralized |
+| QUAL-16 | Refactor massive files (>1000 lines) | 13 | HIGH | Ship performance analyzer split |
+| QUAL-18 | Fix undefined module references | 3 | MEDIUM | All module refs work |
+| QUAL-19 | Implement missing route handlers | 2 | MEDIUM | No broken navigation links |
+| QUAL-20 | Clean up over-abstraction in contexts | 5 | MEDIUM | Simpler CRUD operations |

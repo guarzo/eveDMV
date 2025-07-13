@@ -11,7 +11,9 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
   alias EveDmv.Repo
   alias EveDmv.Cache.AnalysisCache
   alias EveDmv.Contexts.CharacterIntelligence
+  alias EveDmv.Analytics.BattleDetector
   alias EveDmv.Utils.TimezoneAnalyzer
+  alias EveDmv.Integrations.ShipIntelligenceBridge
   import EveDmvWeb.EveImageComponents
   # Components removed - not currently used
   # import EveDmvWeb.Components.ThreatLevelComponent
@@ -31,6 +33,10 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
       |> assign(:loading, true)
       |> assign(:analysis, nil)
       |> assign(:intelligence, nil)
+      |> assign(:recent_battles, [])
+      |> assign(:battle_stats, nil)
+      |> assign(:ship_specialization, nil)
+      |> assign(:ship_preferences, nil)
       |> assign(:error, nil)
       |> assign(:active_tab, :overview)
 
@@ -59,24 +65,51 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
         CharacterIntelligence.get_character_intelligence_report(character_id)
       end)
 
-    # Wait for both to complete
-    case {Task.await(basic_analysis_task), Task.await(intelligence_task)} do
-      {{:ok, analysis}, {:ok, intelligence}} ->
+    battle_data_task =
+      Task.async(fn ->
+        {
+          BattleDetector.detect_character_battles(character_id, 10),
+          BattleDetector.get_character_battle_stats(character_id)
+        }
+      end)
+
+    ship_intelligence_task =
+      Task.async(fn ->
+        {
+          ShipIntelligenceBridge.calculate_ship_specialization(character_id),
+          ShipIntelligenceBridge.get_character_ship_preferences(character_id)
+        }
+      end)
+
+    # Wait for all tasks to complete
+    case {Task.await(basic_analysis_task), Task.await(intelligence_task),
+          Task.await(battle_data_task), Task.await(ship_intelligence_task)} do
+      {{:ok, analysis}, {:ok, intelligence}, {recent_battles, battle_stats},
+       {{:ok, ship_specialization}, ship_preferences}} ->
         {:noreply,
          socket
          |> assign(:loading, false)
          |> assign(:analysis, analysis)
-         |> assign(:intelligence, intelligence)}
+         |> assign(:intelligence, intelligence)
+         |> assign(:recent_battles, recent_battles)
+         |> assign(:battle_stats, battle_stats)
+         |> assign(:ship_specialization, ship_specialization)
+         |> assign(:ship_preferences, ship_preferences)}
 
-      {{:ok, analysis}, {:error, _}} ->
-        # If intelligence fails, still show basic analysis
+      {{:ok, analysis}, {:error, _}, {recent_battles, battle_stats},
+       {{:ok, ship_specialization}, ship_preferences}} ->
+        # If intelligence fails, still show basic analysis, battle data, and ship intelligence
         {:noreply,
          socket
          |> assign(:loading, false)
          |> assign(:analysis, analysis)
-         |> assign(:intelligence, nil)}
+         |> assign(:intelligence, nil)
+         |> assign(:recent_battles, recent_battles)
+         |> assign(:battle_stats, battle_stats)
+         |> assign(:ship_specialization, ship_specialization)
+         |> assign(:ship_preferences, ship_preferences)}
 
-      {:error, reason} ->
+      {{:error, reason}, _, _, _} ->
         {:noreply,
          socket
          |> assign(:loading, false)
@@ -86,7 +119,7 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
 
   @impl true
   def handle_event("change_tab", %{"tab" => tab}, socket) do
-    {:noreply, assign(socket, :active_tab, String.to_atom(tab))}
+    {:noreply, assign(socket, :active_tab, String.to_existing_atom(tab))}
   end
 
   @impl true
@@ -435,6 +468,173 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
           </div>
         <% end %>
         
+        <!-- Recent Battles Section -->
+        <%= if @battle_stats && @battle_stats.total_battles > 0 do %>
+          <div class="mt-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-white font-semibold text-lg flex items-center">
+                ⚔️ Recent Battles (30 days)
+              </h3>
+              <div class="text-sm text-gray-400">
+                <%= @battle_stats.total_battles %> battles detected
+              </div>
+            </div>
+            
+            <!-- Battle Statistics Overview -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div class="bg-gray-800 rounded-lg p-4 text-center">
+                <div class="text-2xl mb-2">🏆</div>
+                <div class="text-white font-medium text-sm">Battles Won</div>
+                <div class="text-green-400 font-semibold text-lg"><%= @battle_stats.battles_won %></div>
+                <div class="text-blue-400 text-xs"><%= @battle_stats.battle_efficiency %>% efficiency</div>
+              </div>
+              
+              <div class="bg-gray-800 rounded-lg p-4 text-center">
+                <div class="text-2xl mb-2">💀</div>
+                <div class="text-white font-medium text-sm">Battles Lost</div>
+                <div class="text-red-400 font-semibold text-lg"><%= @battle_stats.battles_lost %></div>
+                <div class="text-gray-400 text-xs">
+                  <%= if @battle_stats.battles_won + @battle_stats.battles_lost > 0 do %>
+                    <%= round(@battle_stats.battles_lost / (@battle_stats.battles_won + @battle_stats.battles_lost) * 100) %>% of total
+                  <% else %>
+                    0% of total
+                  <% end %>
+                </div>
+              </div>
+              
+              <div class="bg-gray-800 rounded-lg p-4 text-center">
+                <div class="text-2xl mb-2">👥</div>
+                <div class="text-white font-medium text-sm">Avg Fleet Size</div>
+                <div class="text-blue-400 font-semibold text-lg"><%= @battle_stats.avg_fleet_size %></div>
+                <div class="text-gray-400 text-xs">pilots per battle</div>
+              </div>
+              
+              <div class="bg-gray-800 rounded-lg p-4 text-center">
+                <div class="text-2xl mb-2">💰</div>
+                <div class="text-white font-medium text-sm">Battle ISK</div>
+                <div class="text-yellow-400 font-semibold text-lg">
+                  <%= format_isk(@battle_stats.isk_destroyed_in_battles + @battle_stats.isk_lost_in_battles) %>
+                </div>
+                <div class="text-gray-400 text-xs">total involved</div>
+              </div>
+            </div>
+            
+            <!-- Individual Battles List -->
+            <%= if length(@recent_battles) > 0 do %>
+              <div class="space-y-4">
+                <%= for battle <- @recent_battles do %>
+                  <div class="bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition-colors">
+                    <div class="flex items-start justify-between">
+                      <div class="flex-1">
+                        <div class="flex items-center space-x-3 mb-2">
+                          <div class="flex items-center space-x-2">
+                            <span class="text-lg">
+                              <%= case battle.battle_type do %>
+                                <% "major_battle" -> %> 🔥
+                                <% "fleet_engagement" -> %> 🚀
+                                <% "medium_engagement" -> %> ⚔️
+                                <% "high_value_fight" -> %> 💎
+                                <% "extended_skirmish" -> %> 🗡️
+                                <% _ -> %> ⚡
+                              <% end %>
+                            </span>
+                            <h4 class="text-white font-medium">
+                              <%= battle.solar_system_name || "Unknown System" %>
+                            </h4>
+                            <span class={[
+                              "px-2 py-1 rounded text-xs font-medium",
+                              case battle.battle_type do
+                                "major_battle" -> "bg-red-900 text-red-300"
+                                "fleet_engagement" -> "bg-purple-900 text-purple-300"
+                                "medium_engagement" -> "bg-blue-900 text-blue-300"
+                                "high_value_fight" -> "bg-yellow-900 text-yellow-300"
+                                _ -> "bg-gray-700 text-gray-300"
+                              end
+                            ]}>
+                              <%= battle.battle_type |> String.replace("_", " ") |> String.capitalize() %>
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                          <div>
+                            <span class="text-gray-400">Time:</span>
+                            <div class="text-white">
+                              <%= if battle.battle_time do %>
+                                <%= Calendar.strftime(battle.battle_time, "%b %d, %H:%M") %> EVE
+                              <% else %>
+                                Unknown
+                              <% end %>
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <span class="text-gray-400">Participants:</span>
+                            <div class="text-white"><%= battle.total_participants %> pilots</div>
+                          </div>
+                          
+                          <div>
+                            <span class="text-gray-400">ISK Destroyed:</span>
+                            <div class="text-yellow-400"><%= format_isk(battle.total_isk_destroyed) %></div>
+                          </div>
+                          
+                          <div>
+                            <span class="text-gray-400">Duration:</span>
+                            <div class="text-white"><%= battle.duration_estimate %></div>
+                          </div>
+                        </div>
+                        
+                        <div class="mt-3 flex items-center justify-between">
+                          <div class="flex items-center space-x-4 text-sm">
+                            <div class="flex items-center space-x-1">
+                              <span class="text-green-400">+<%= battle.character_participation.kills %></span>
+                              <span class="text-gray-400">kills</span>
+                            </div>
+                            <div class="flex items-center space-x-1">
+                              <span class="text-red-400">-<%= battle.character_participation.losses %></span>
+                              <span class="text-gray-400">losses</span>
+                            </div>
+                            <div class="flex items-center space-x-1">
+                              <span class={[
+                                "font-medium",
+                                case battle.character_participation.role do
+                                  "aggressor" -> "text-orange-400"
+                                  "defender" -> "text-blue-400"
+                                  _ -> "text-gray-400"
+                                end
+                              ]}>
+                                <%= String.capitalize(battle.character_participation.role) %>
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <%= if length(battle.major_ships_involved) > 0 do %>
+                            <div class="text-xs text-gray-400">
+                              Ships: <%= Enum.join(battle.major_ships_involved, ", ") %>
+                            </div>
+                          <% end %>
+                        </div>
+                        
+                        <%= if battle.recommended_analysis do %>
+                          <div class="mt-2 text-xs text-blue-400">
+                            💡 <%= battle.recommended_analysis %>
+                          </div>
+                        <% end %>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            <% else %>
+              <div class="bg-gray-800 rounded-lg p-6 text-center text-gray-400">
+                <div class="text-4xl mb-2">⚔️</div>
+                <p>No recent multi-pilot battles detected</p>
+                <p class="text-sm mt-1">Large engagements (5+ pilots) will appear here</p>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+        
         <!-- Intelligence Analysis Section -->
         <%= if @intelligence do %>
           <div class="mt-8">
@@ -625,6 +825,223 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
                 <% end %>
               </div>
             </div>
+          </div>
+        <% end %>
+        
+        <!-- Ship Intelligence & Specialization Section -->
+        <%= if @ship_specialization do %>
+          <div class="mt-8 bg-gray-800 rounded-lg p-6">
+            <h3 class="text-xl font-medium text-white mb-6 flex items-center">
+              🚀 Ship Intelligence & Specialization
+            </h3>
+            
+            <!-- Ship Specialization Overview -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div class="bg-gray-700 rounded-lg p-4 text-center">
+                <div class="text-2xl font-bold text-white"><%= @ship_specialization.total_killmails %></div>
+                <div class="text-xs text-gray-400">Total Killmails</div>
+                <div class="text-xs text-gray-500"><%= @ship_specialization.analysis_period_days %> days analyzed</div>
+              </div>
+              
+              <div class="bg-gray-700 rounded-lg p-4 text-center">
+                <div class="text-2xl font-bold text-purple-400"><%= map_size(@ship_specialization.specializations) %></div>
+                <div class="text-xs text-gray-400">Ship Types Used</div>
+                <div class="text-xs text-gray-500">Specialization diversity</div>
+              </div>
+              
+              <div class="bg-gray-700 rounded-lg p-4 text-center">
+                <% expertise_color = case @ship_specialization.expertise_level do
+                  :expert -> "text-purple-400"
+                  :experienced -> "text-blue-400"
+                  :competent -> "text-green-400"
+                  :novice -> "text-yellow-400"
+                  _ -> "text-gray-400"
+                end %>
+                <div class={"text-lg font-bold #{expertise_color}"}>
+                  <%= @ship_specialization.expertise_level |> to_string() |> String.capitalize() %>
+                </div>
+                <div class="text-xs text-gray-400">Expertise Level</div>
+              </div>
+              
+              <div class="bg-gray-700 rounded-lg p-4 text-center">
+                <div class="text-2xl font-bold text-orange-400"><%= length(@ship_specialization.preferred_roles) %></div>
+                <div class="text-xs text-gray-400">Preferred Roles</div>
+                <div class="text-xs text-gray-500">Combat specialties</div>
+              </div>
+            </div>
+            
+            <!-- Ship Preferences and Specializations -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <!-- Top Ship Specializations -->
+              <div>
+                <h4 class="text-lg font-medium text-gray-300 mb-4">Ship Specializations</h4>
+                <%= if map_size(@ship_specialization.specializations) > 0 do %>
+                  <div class="space-y-3">
+                    <%= for {ship_type_id, specialization} <- @ship_specialization.specializations |> Enum.take(5) do %>
+                      <div class="bg-gray-700 rounded-lg p-4">
+                        <div class="flex items-center justify-between mb-2">
+                          <div class="flex items-center space-x-3">
+                            <.ship_image 
+                              type_id={ship_type_id}
+                              name="Ship"
+                              size={32}
+                            />
+                            <div>
+                              <div class="text-white font-medium">Ship Type ID: <%= ship_type_id %></div>
+                              <div class="text-xs text-gray-400">
+                                <%= specialization.usage_count %> killmails • 
+                                <%= Float.round(specialization.usage_percentage, 1) %>% of total
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <!-- Mastery Score -->
+                          <%= if Map.has_key?(@ship_specialization.ship_mastery, ship_type_id) do %>
+                            <% mastery_score = @ship_specialization.ship_mastery[ship_type_id] %>
+                            <div class="text-right">
+                              <% mastery_color = cond do
+                                mastery_score >= 0.8 -> "text-purple-400"
+                                mastery_score >= 0.6 -> "text-blue-400"
+                                mastery_score >= 0.4 -> "text-green-400"
+                                mastery_score >= 0.2 -> "text-yellow-400"
+                                true -> "text-gray-400"
+                              end %>
+                              <div class={"text-lg font-bold #{mastery_color}"}>
+                                <%= (mastery_score * 100) |> round() %>%
+                              </div>
+                              <div class="text-xs text-gray-400">Mastery</div>
+                            </div>
+                          <% end %>
+                        </div>
+                        
+                        <!-- Usage Pattern Bar -->
+                        <div class="w-full bg-gray-600 rounded-full h-2">
+                          <div 
+                            class="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                            style={"width: #{min(specialization.usage_percentage, 100)}%"}
+                          ></div>
+                        </div>
+                      </div>
+                    <% end %>
+                  </div>
+                <% else %>
+                  <div class="text-center py-8">
+                    <div class="text-gray-400">No ship specialization data available</div>
+                    <div class="text-xs text-gray-500 mt-1">Need more killmail data for analysis</div>
+                  </div>
+                <% end %>
+              </div>
+              
+              <!-- Tactical Role Preferences -->
+              <div>
+                <h4 class="text-lg font-medium text-gray-300 mb-4">Tactical Role Preferences</h4>
+                <%= if length(@ship_specialization.preferred_roles) > 0 do %>
+                  <div class="space-y-3">
+                    <%= for role_pref <- @ship_specialization.preferred_roles do %>
+                      <div class="bg-gray-700 rounded-lg p-4">
+                        <div class="flex items-center justify-between mb-2">
+                          <div class="flex items-center space-x-3">
+                            <% role_icon = case role_pref.role do
+                              "dps" -> "⚔️"
+                              "logistics" -> "🔧"
+                              "ewar" -> "📡"
+                              "tackle" -> "🎯"
+                              "command" -> "👑"
+                              "support" -> "🛡️"
+                              _ -> "❓"
+                            end %>
+                            <span class="text-2xl"><%= role_icon %></span>
+                            <div>
+                              <div class="text-white font-medium capitalize">
+                                <%= role_pref.role |> String.replace("_", " ") %>
+                              </div>
+                              <div class="text-xs text-gray-400">
+                                <%= role_pref.count %> killmails
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div class="text-right">
+                            <div class="text-lg font-bold text-blue-400">
+                              <%= Float.round(role_pref.percentage, 1) %>%
+                            </div>
+                            <div class="text-xs text-gray-400">Usage</div>
+                          </div>
+                        </div>
+                        
+                        <!-- Role Preference Bar -->
+                        <div class="w-full bg-gray-600 rounded-full h-2">
+                          <div 
+                            class="bg-green-500 h-2 rounded-full transition-all duration-300"
+                            style={"width: #{min(role_pref.percentage, 100)}%"}
+                          ></div>
+                        </div>
+                      </div>
+                    <% end %>
+                  </div>
+                <% else %>
+                  <div class="text-center py-8">
+                    <div class="text-gray-400">No role preference data available</div>
+                    <div class="text-xs text-gray-500 mt-1">Ship intelligence analysis in progress</div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+            
+            <!-- Ship Preferences Summary -->
+            <%= if @ship_preferences do %>
+              <div class="mt-6 bg-gray-700 rounded-lg p-4">
+                <h4 class="text-lg font-medium text-gray-300 mb-4">Ship Intelligence Summary</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div class="text-center">
+                    <div class="text-sm text-gray-400 mb-1">Primary Ship Classes</div>
+                    <div class="text-white font-medium">
+                      <%= if length(@ship_preferences.primary_ship_classes) > 0 do %>
+                        <%= length(@ship_preferences.primary_ship_classes) %> types
+                      <% else %>
+                        Unknown
+                      <% end %>
+                    </div>
+                  </div>
+                  
+                  <div class="text-center">
+                    <div class="text-sm text-gray-400 mb-1">Specialization Diversity</div>
+                    <% diversity_score = @ship_preferences.specialization_diversity * 100 %>
+                    <% diversity_color = cond do
+                      diversity_score >= 70 -> "text-purple-400"
+                      diversity_score >= 50 -> "text-blue-400"
+                      diversity_score >= 30 -> "text-green-400"
+                      diversity_score >= 15 -> "text-yellow-400"
+                      true -> "text-gray-400"
+                    end %>
+                    <div class={"font-medium #{diversity_color}"}>
+                      <%= round(diversity_score) %>%
+                    </div>
+                  </div>
+                  
+                  <div class="text-center">
+                    <div class="text-sm text-gray-400 mb-1">Mastery Level</div>
+                    <% mastery_color = case @ship_preferences.mastery_level do
+                      :expert -> "text-purple-400"
+                      :experienced -> "text-blue-400"
+                      :competent -> "text-green-400"
+                      :novice -> "text-yellow-400"
+                      _ -> "text-gray-400"
+                    end %>
+                    <div class={"font-medium #{mastery_color}"}>
+                      <%= @ship_preferences.mastery_level |> to_string() |> String.capitalize() %>
+                    </div>
+                  </div>
+                  
+                  <div class="text-center">
+                    <div class="text-sm text-gray-400 mb-1">Preferred Roles</div>
+                    <div class="text-white font-medium">
+                      <%= length(@ship_preferences.preferred_roles) %> roles
+                    </div>
+                  </div>
+                </div>
+              </div>
+            <% end %>
           </div>
         <% end %>
         

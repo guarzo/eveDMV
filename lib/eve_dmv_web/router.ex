@@ -37,17 +37,29 @@ defmodule EveDmvWeb.Router do
     plug(:load_from_session)
   end
 
+  pipeline :require_authenticated_user do
+    plug(EveDmvWeb.Plugs.RequireAuth)
+  end
+
+  # Public routes - accessible without authentication
   scope "/", EveDmvWeb do
     pipe_through(:browser)
 
     live("/", HomeLive)
     live("/feed", KillFeedLive)
+  end
+
+  # Authenticated routes - require user login
+  scope "/", EveDmvWeb do
+    pipe_through([:browser, :require_authenticated_user])
+
     live("/dashboard", DashboardLive)
     live("/profile", ProfileLive)
     live("/character", CharacterSearchLive)
     live("/character/:character_id", CharacterAnalysisLive)
     # Redirect old intelligence route to main character page
     get("/character/:character_id/intelligence", PageController, :redirect_to_character)
+    live("/killmail/:killmail_id", KillmailLive)
     live("/player/:character_id", PlayerProfileLive)
     live("/corporation/:corporation_id", CorporationLive)
     live("/alliance/:alliance_id", AllianceLive)
@@ -90,6 +102,7 @@ defmodule EveDmvWeb.Router do
     pipe_through(:auth)
 
     live("/login", AuthLive.SignIn)
+    get("/session/clear", SessionController, :clear)
   end
 
   # OAuth routes need to be outside /auth scope to avoid double prefix
