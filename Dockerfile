@@ -53,7 +53,7 @@ RUN apk add --no-cache \
     libstdc++ \
     ncurses-libs \
     openssl \
-    bzip2-libs
+    libbz2
 
 # Create app user
 RUN addgroup -g 1000 -S appgroup && \

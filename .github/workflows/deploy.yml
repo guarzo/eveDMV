@@ -97,30 +97,6 @@ jobs:
           git push origin "$VERSION"
           
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          
-      - name: Set up Elixir (for build verification)
-        if: steps.params.outputs.ACTION == 'deploy'
-        uses: erlef/setup-beam@v1
-        with:
-          elixir-version: ${{ env.ELIXIR_VERSION }}
-          otp-version: ${{ env.OTP_VERSION }}
-          
-      - name: Install system dependencies
-        if: steps.params.outputs.ACTION == 'deploy'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential libbz2-dev bc erlang-dev
-          
-      - name: Install Elixir dependencies
-        if: steps.params.outputs.ACTION == 'deploy'
-        run: |
-          mix local.hex --force
-          mix local.rebar --force
-          mix deps.get --only prod
-          
-      - name: Compile for production (safety check)
-        if: steps.params.outputs.ACTION == 'deploy'
-        run: MIX_ENV=prod mix compile --warnings-as-errors
         
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -129,8 +105,52 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
           
-      - name: Build and push Docker image
-        if: steps.params.outputs.ACTION == 'deploy'
+      - name: Re-tag and push existing image (deploy only)
+        if: steps.params.outputs.ACTION == 'deploy' && github.event_name == 'workflow_run'
+        run: |
+          # For auto-deploy, reuse the existing CI-built image from Docker Hub
+          # Try multiple possible source tags (SHA and branch)
+          COMMIT_SHA="${{ github.event.workflow_run.head_sha }}"
+          SOURCE_TAG_SHA="${{ env.DOCKER_IMAGE_NAME }}:sha-${COMMIT_SHA:0:7}"
+          SOURCE_TAG_MAIN="${{ env.DOCKER_IMAGE_NAME }}:main"
+          VERSION_TAG="${{ env.DOCKER_IMAGE_NAME }}:${{ steps.params.outputs.VERSION }}"
+          LATEST_TAG="${{ env.DOCKER_IMAGE_NAME }}:latest"
+          
+          echo "🏷️ Re-tagging existing CI image from Docker Hub"
+          echo "  Commit SHA: $COMMIT_SHA"
+          echo "  Trying source tags: $SOURCE_TAG_SHA, $SOURCE_TAG_MAIN"
+          echo "  Target: $VERSION_TAG"
+          
+          # Try to pull the SHA-tagged image first, fall back to main
+          if docker pull $SOURCE_TAG_SHA 2>/dev/null; then
+            SOURCE_TAG="$SOURCE_TAG_SHA"
+            echo "✅ Using SHA-tagged image: $SOURCE_TAG"
+          elif docker pull $SOURCE_TAG_MAIN 2>/dev/null; then
+            SOURCE_TAG="$SOURCE_TAG_MAIN"
+            echo "✅ Using main-tagged image: $SOURCE_TAG"
+          else
+            echo "❌ Could not find CI-built image"
+            echo "📋 Available images in Docker Hub:"
+            docker images "${{ env.DOCKER_IMAGE_NAME }}" || echo "No images found"
+            exit 1
+          fi
+          
+          # Re-tag with version and latest
+          docker tag $SOURCE_TAG $VERSION_TAG
+          docker tag $SOURCE_TAG $LATEST_TAG
+          
+          # Push new tags to Docker Hub
+          docker push $VERSION_TAG
+          docker push $LATEST_TAG
+          
+          echo "✅ Successfully re-tagged and pushed: $VERSION_TAG"
+          
+      - name: Build and push new Docker image (fallback or manual deploy)
+        if: |
+          steps.params.outputs.ACTION == 'deploy' && (
+            github.event_name == 'workflow_dispatch' || 
+            (github.event_name == 'workflow_run' && failure())
+          )
         uses: docker/build-push-action@v5
         with:
           context: .
