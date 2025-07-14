@@ -208,8 +208,7 @@ defmodule EveDmv.MixProject do
       {:ex_doc, "~> 0.32", only: :dev, runtime: false},
       # Additional test dependencies for comprehensive testing
       {:bypass, "~> 2.1", only: :test},
-      {:mox, "~> 1.0", only: :test},
-      {:picosat_elixir, "~> 0.2"}
+      {:mox, "~> 1.0", only: :test}
     ]
   end
 
