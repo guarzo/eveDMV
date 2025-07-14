@@ -8,8 +8,6 @@ ENV MIX_ENV=prod
 RUN apk add --no-cache \
     build-base \
     git \
-    nodejs \
-    npm \
     bzip2-dev \
     linux-headers \
     musl-dev
@@ -37,8 +35,7 @@ COPY assets/ ./assets/
 COPY config/ ./config/
 COPY priv/ ./priv/
 
-# Install node dependencies and build assets
-RUN cd assets && npm install && cd ..
+# Build assets using Elixir tools (no npm needed)
 RUN mix assets.deploy
 
 # Copy source code
