@@ -23,19 +23,25 @@ env:
 
 jobs:
   setup:
-    name: Setup and Cache
+    name: Setup Dependencies
     runs-on: ubuntu-latest
     outputs:
       cache-key: ${{ steps.cache-key.outputs.key }}
+      plt-cache-key: ${{ steps.plt-cache-key.outputs.key }}
       
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Generate cache key
+    - name: Generate cache keys
       id: cache-key
       run: |
         echo "key=${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-${{ env.OTP_VERSION }}-${{ hashFiles('**/mix.lock') }}" >> $GITHUB_OUTPUT
+        
+    - name: Generate PLT cache key
+      id: plt-cache-key
+      run: |
+        echo "key=${{ runner.os }}-plt-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-${{ hashFiles('**/mix.lock') }}" >> $GITHUB_OUTPUT
 
     - name: Set up Elixir
       uses: erlef/setup-beam@v1
@@ -53,14 +59,6 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-${{ env.OTP_VERSION }}-
 
-    - name: Cache PLT files
-      uses: actions/cache@v4
-      with:
-        path: priv/plts
-        key: ${{ runner.os }}-plt-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-${{ hashFiles('**/mix.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-plt-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-
-
     - name: Install system dependencies
       run: |
         sudo apt-get update
@@ -71,27 +69,21 @@ jobs:
         mix local.hex --force
         mix local.rebar --force
         mix deps.get
+        mix deps.compile
 
-  quality:
-    name: Code Quality
+  # Run quality checks in parallel
+  format-check:
+    name: Format Check
     runs-on: ubuntu-latest
     needs: setup
-    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-
     - name: Set up Elixir
       uses: erlef/setup-beam@v1
       with:
         elixir-version: ${{ env.ELIXIR_VERSION }}
         otp-version: ${{ env.OTP_VERSION }}
-
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential libbz2-dev bc erlang-dev
-
     - name: Restore dependencies cache
       uses: actions/cache@v4
       with:
@@ -99,30 +91,78 @@ jobs:
           deps
           _build
         key: ${{ needs.setup.outputs.cache-key }}
-
-    - name: Restore PLT cache
-      uses: actions/cache@v4
-      with:
-        path: priv/plts
-        key: ${{ runner.os }}-plt-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-${{ hashFiles('**/mix.lock') }}
-
     - name: Check formatting
       run: mix format --check-formatted
 
+  credo-check:
+    name: Credo Analysis
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Set up Elixir
+      uses: erlef/setup-beam@v1
+      with:
+        elixir-version: ${{ env.ELIXIR_VERSION }}
+        otp-version: ${{ env.OTP_VERSION }}
+    - name: Restore dependencies cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          deps
+          _build
+        key: ${{ needs.setup.outputs.cache-key }}
+    - name: Run Credo
+      run: mix credo --strict
+
+  compile-check:
+    name: Compile Check
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Set up Elixir
+      uses: erlef/setup-beam@v1
+      with:
+        elixir-version: ${{ env.ELIXIR_VERSION }}
+        otp-version: ${{ env.OTP_VERSION }}
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libbz2-dev bc erlang-dev
+    - name: Restore dependencies cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          deps
+          _build
+        key: ${{ needs.setup.outputs.cache-key }}
     - name: Compile with warnings as errors
       run: mix compile --warnings-as-errors
 
-    - name: Run Credo
-      run: mix credo || true
-
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Set up Elixir
+      uses: erlef/setup-beam@v1
+      with:
+        elixir-version: ${{ env.ELIXIR_VERSION }}
+        otp-version: ${{ env.OTP_VERSION }}
+    - name: Restore dependencies cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          deps
+          _build
+        key: ${{ needs.setup.outputs.cache-key }}
     - name: Security audit
       run: mix deps.audit
-
-    - name: Run Dialyzer
-      run: mix dialyzer || true 
-
-    - name: Check for missing @moduledoc attributes
-      run: elixir scripts/check_moduledocs.exs
 
   test:
     name: Test Suite
@@ -175,7 +215,7 @@ jobs:
         DATABASE_URL: postgres://postgres:postgres@localhost:5432/eve_tracker_test
 
     - name: Run tests with coverage
-      run: MIX_ENV=test mix coveralls.json || true
+      run: MIX_ENV=test mix coveralls.json
       env:
         DATABASE_URL: postgres://postgres:postgres@localhost:5432/eve_tracker_test
         WANDERER_KILLS_SSE_URL: http://localhost:4004/api/v1/kills/stream
@@ -192,6 +232,7 @@ jobs:
         file: ./cover/excoveralls.json
         flags: unittests
         name: codecov-umbrella
+      continue-on-error: true
 
     - name: Upload coverage artifact
       uses: actions/upload-artifact@v4
@@ -199,6 +240,41 @@ jobs:
         name: coverage-report
         path: cover/
         retention-days: 30
+
+  # Dialyzer job - runs on all PRs and main branch
+  dialyzer:
+    name: Dialyzer Analysis
+    runs-on: ubuntu-latest
+    needs: setup
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Set up Elixir
+      uses: erlef/setup-beam@v1
+      with:
+        elixir-version: ${{ env.ELIXIR_VERSION }}
+        otp-version: ${{ env.OTP_VERSION }}
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libbz2-dev bc erlang-dev
+    - name: Restore dependencies cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          deps
+          _build
+        key: ${{ needs.setup.outputs.cache-key }}
+    - name: Cache PLT files
+      uses: actions/cache@v4
+      with:
+        path: priv/plts
+        key: ${{ needs.setup.outputs.plt-cache-key }}
+        restore-keys: |
+          ${{ runner.os }}-plt-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-
+    - name: Run Dialyzer
+      run: mix dialyzer
 
   coverage-comment:
     name: Coverage Comment
@@ -224,11 +300,11 @@ jobs:
         delete-old-comments: true
       continue-on-error: true
 
+  # Docker build - runs on all PRs and main branch
   docker:
     name: Docker Build
     runs-on: ubuntu-latest
-    needs: [quality, test]
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    needs: [format-check, credo-check, compile-check, security-audit, test, dialyzer]
     
     steps:
     - name: Checkout code
@@ -252,13 +328,12 @@ jobs:
         tags: |
           type=ref,event=branch
           type=sha
-          type=ref,event=pr
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
         context: .
-        push: true
+        push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
