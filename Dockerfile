@@ -10,7 +10,13 @@ RUN apk add --no-cache \
     git \
     nodejs \
     npm \
-    bzip2-dev
+    bzip2-dev \
+    linux-headers \
+    musl-dev
+
+# Fix picosat_elixir compilation issue on Alpine
+RUN mkdir -p /usr/include/sys && \
+    ln -sf /usr/include/unistd.h /usr/include/sys/unistd.h
 
 # Create app directory
 WORKDIR /app

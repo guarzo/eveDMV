@@ -208,7 +208,9 @@ defmodule EveDmv.MixProject do
       {:ex_doc, "~> 0.32", only: :dev, runtime: false},
       # Additional test dependencies for comprehensive testing
       {:bypass, "~> 2.1", only: :test},
-      {:mox, "~> 1.0", only: :test}
+      {:mox, "~> 1.0", only: :test},
+      # SAT solver for Ash framework (fast C-based solver)
+      {:picosat_elixir, "~> 0.2"}
     ]
   end
 
