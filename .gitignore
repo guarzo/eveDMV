@@ -31,6 +31,15 @@ eve_dmv-*.tar
 # Ignore digested assets cache.
 /priv/static/cache_manifest.json
 
+# Ignore all digested static files (files with hash suffixes)
+/priv/static/*-*.png
+/priv/static/*-*.svg
+/priv/static/*-*.ico
+/priv/static/*-*.webmanifest
+/priv/static/*-*.js
+/priv/static/*-*.css
+/priv/static/*.gz
+
 # In case you use Node.js/npm, you want to ignore these.
 npm-debug.log
 /assets/node_modules/
