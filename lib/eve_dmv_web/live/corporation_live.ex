@@ -12,6 +12,7 @@ defmodule EveDmvWeb.CorporationLive do
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Api
+  alias EveDmv.Analytics.BattleDetector
   alias EveDmv.Cache.AnalysisCache
   alias EveDmv.Contexts.CorporationIntelligence
   alias EveDmv.Eve.EsiCorporationClient
@@ -36,6 +37,11 @@ defmodule EveDmvWeb.CorporationLive do
   import EveDmvWeb.FormatHelpers
 
   alias EveDmvWeb.Helpers.TimeFormatter
+
+  # Template helper functions
+  def format_relative_time(datetime) do
+    TimeFormatter.format_friendly_time(datetime)
+  end
 
   @impl Phoenix.LiveView
   def mount(%{"corporation_id" => corp_id_str}, _session, socket) do
@@ -100,6 +106,15 @@ defmodule EveDmvWeb.CorporationLive do
               nil
           end
 
+        # Load battle data
+        {recent_battles, battle_stats} = {
+          BattleDetector.detect_corporation_battles(corporation_id, 10),
+          BattleDetector.get_corporation_battle_stats(corporation_id)
+        }
+
+        # Load ship intelligence data for corporation
+        fleet_doctrines = BattleDetector.get_corporation_fleet_doctrines(corporation_id)
+
         socket =
           socket
           |> assign(:corporation_id, corporation_id)
@@ -113,6 +128,9 @@ defmodule EveDmvWeb.CorporationLive do
           |> assign(:location_stats, location_stats)
           |> assign(:victim_stats, victim_stats)
           |> assign(:intelligence_data, intelligence_data)
+          |> assign(:recent_battles, recent_battles)
+          |> assign(:battle_stats, battle_stats)
+          |> assign(:fleet_doctrines, fleet_doctrines)
           |> assign(:loading, false)
           |> assign(:error, nil)
 
@@ -204,6 +222,15 @@ defmodule EveDmvWeb.CorporationLive do
           nil
       end
 
+    # Reload battle data
+    {recent_battles, battle_stats} = {
+      BattleDetector.detect_corporation_battles(corporation_id, 10),
+      BattleDetector.get_corporation_battle_stats(corporation_id)
+    }
+
+    # Reload ship intelligence data
+    fleet_doctrines = BattleDetector.get_corporation_fleet_doctrines(corporation_id)
+
     socket =
       socket
       |> assign(:corp_info, corp_info)
@@ -216,6 +243,9 @@ defmodule EveDmvWeb.CorporationLive do
       |> assign(:location_stats, location_stats)
       |> assign(:victim_stats, victim_stats)
       |> assign(:intelligence_data, intelligence_data)
+      |> assign(:recent_battles, recent_battles)
+      |> assign(:battle_stats, battle_stats)
+      |> assign(:fleet_doctrines, fleet_doctrines)
       |> put_flash(:info, "Corporation data refreshed")
 
     {:noreply, socket}

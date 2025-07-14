@@ -1,53 +1,144 @@
-<header class="px-4 sm:px-6 lg:px-8">
-  <div class="flex items-center justify-between border-b border-gray-700 py-3 text-sm">
-    <div class="flex items-center gap-4">
-      <a href="/">
+<header class="px-4 sm:px-6 lg:px-8 bg-gray-900 shadow-lg">
+  <div class="flex items-center justify-between border-b border-gray-700 py-3">
+    <!-- Logo -->
+    <div class="flex items-center gap-6">
+      <a href="/" class="flex items-center">
         <span class="font-semibold text-xl text-red-400">EVE DMV</span>
-        <span class="text-gray-400">PvP Tracker</span>
+        <span class="text-gray-400 ml-2">PvP Tracker</span>
       </a>
+      
+      <!-- Main Navigation -->
+      <nav class="hidden md:flex items-center gap-6 text-sm font-medium text-gray-300">
+        <.link navigate={~p"/feed"} class="hover:text-gray-100 transition-colors">
+          Kill Feed
+        </.link>
+        <%= if assigns[:current_user] do %>
+          <.link navigate={~p"/dashboard"} class="hover:text-gray-100 transition-colors">
+            Dashboard
+          </.link>
+          <.link navigate={~p"/surveillance"} class="hover:text-gray-100 transition-colors">
+            Surveillance
+          </.link>
+          <.link navigate={~p"/battle"} class="hover:text-gray-100 transition-colors">
+            Battle Analysis
+          </.link>
+          <.link navigate={~p"/chain-intelligence"} class="hover:text-gray-100 transition-colors">
+            Chain Intel
+          </.link>
+        <% end %>
+      </nav>
     </div>
-    <div class="flex items-center gap-4 font-semibold leading-6 text-gray-300">
-      <.link navigate={~p"/feed"} class="hover:text-gray-100">
-        Kill Feed
-      </.link>
-      <.link navigate={~p"/surveillance"} class="hover:text-gray-100">
-        Surveillance
-      </.link>
-      <.link navigate={~p"/battle"} class="hover:text-gray-100">
-        Battle Analysis
-      </.link>
+
+    <!-- Search and User Actions -->
+    <div class="flex items-center gap-4">
+      <!-- Universal Search Bar -->
       <%= if assigns[:current_user] do %>
-        <.link navigate={~p"/chain-intelligence"} class="hover:text-gray-100">
-          Chain Intel
-        </.link>
-        <.link navigate={~p"/dashboard"} class="hover:text-gray-100">
-          Dashboard
-        </.link>
-        <.link navigate={~p"/profile"} class="hover:text-gray-100">
-          Profile
-        </.link>
-        <span class="text-gray-400">|</span>
-        <span class="text-gray-400">
-          {@current_user.eve_character_name}
-        </span>
-        <.link
-          href="/auth/user/eve_sso/sign_out"
-          method="post"
-          class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors duration-200"
-        >
-          Sign Out
-        </.link>
+        <div class="hidden lg:block">
+          <form phx-submit="search" class="relative">
+            <input
+              type="text"
+              name="query"
+              placeholder="Search characters, corporations..."
+              class="bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent w-80"
+            />
+            <button type="submit" class="absolute right-2 top-2 text-gray-400 hover:text-gray-300">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+            </button>
+          </form>
+        </div>
+      <% end %>
+
+      <!-- User Menu -->
+      <%= if assigns[:current_user] do %>
+        <!-- Character Portrait Dropdown -->
+        <div class="relative" data-dropdown>
+          <button 
+            type="button" 
+            class="flex items-center space-x-3 bg-gray-800 hover:bg-gray-700 rounded-lg p-2 transition-colors"
+            onclick="toggleDropdown()"
+          >
+            <img 
+              src={"https://images.evetech.net/characters/#{@current_user.eve_character_id}/portrait?size=32"}
+              alt="Character portrait"
+              class="w-8 h-8 rounded"
+            />
+            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          
+          <!-- Dropdown Menu -->
+          <div 
+            id="user-dropdown" 
+            class="hidden absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-50"
+          >
+            <div class="py-2">
+              <.link navigate={~p"/dashboard"} class="flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors">
+                <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"/>
+                </svg>
+                Dashboard
+              </.link>
+              
+              <.link navigate={~p"/profile"} class="flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors">
+                <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                Settings
+              </.link>
+              
+              <div class="border-t border-gray-700 mt-2 pt-2">
+                <.link
+                  href="/auth/sign-out"
+                  method="get"
+                  class="flex items-center px-4 py-2 text-red-400 hover:bg-gray-700 hover:text-red-300 transition-colors"
+                >
+                  <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                  </svg>
+                  Logout
+                </.link>
+              </div>
+            </div>
+          </div>
+        </div>
       <% else %>
+        <!-- Login Button for Non-Authenticated Users -->
         <.link
           navigate={~p"/login"}
-          class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md transition-colors duration-200"
+          class="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors duration-200"
         >
-          Login with EVE SSO
+          <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 2L3 7v10l7 5 7-5V7l-7-5zM8 8h4v4H8V8z" clip-rule="evenodd"/>
+          </svg>
+          <span class="hidden sm:inline">Login with EVE</span>
+          <span class="sm:hidden">Login</span>
         </.link>
       <% end %>
     </div>
   </div>
 </header>
+
+<!-- JavaScript for dropdown functionality -->
+<script>
+  function toggleDropdown() {
+    const dropdown = document.getElementById('user-dropdown');
+    dropdown.classList.toggle('hidden');
+  }
+  
+  // Close dropdown when clicking outside
+  document.addEventListener('click', function(event) {
+    const dropdown = document.getElementById('user-dropdown');
+    const button = event.target.closest('[data-dropdown]');
+    
+    if (!button && dropdown && !dropdown.contains(event.target)) {
+      dropdown.classList.add('hidden');
+    }
+  });
+</script>
 <main class="px-4 py-20 sm:px-6 lg:px-8">
   <div class="mx-auto max-w-7xl">
     <.flash_group flash={@flash} />

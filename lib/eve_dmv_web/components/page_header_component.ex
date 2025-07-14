@@ -47,7 +47,7 @@ defmodule EveDmvWeb.Components.PageHeaderComponent do
         <div class="flex items-center space-x-4">
           <!-- User info -->
           <div :if={@current_user} class="text-sm text-gray-300">
-            Welcome back, <span class="text-yellow-400"><%= @current_user.character_name %></span>
+            Welcome back, <span class="text-yellow-400"><%= @current_user.eve_character_name %></span>
           </div>
 
           <!-- Action buttons -->

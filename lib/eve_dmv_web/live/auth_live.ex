@@ -13,36 +13,91 @@ defmodule EveDmvWeb.AuthLive do
     {:cont, socket}
   end
 
+  def on_mount(:load_from_session_optional, _params, session, socket) do
+    socket = assign_current_user_optional(socket, session)
+    {:cont, socket}
+  end
+
   defp assign_current_user(socket, session) do
+    require Logger
+
     # Check session timeout first
-    current_user =
-      case check_session_timeout(session) do
-        :timeout ->
-          nil
+    case check_session_timeout(session) do
+      :timeout ->
+        Logger.debug("Session timeout detected")
+        socket = assign(socket, current_user: nil)
+        Process.send_after(self(), :session_timeout, 100)
+        socket
 
-        :valid ->
-          # Get current user from session using user ID
-          case Map.get(session, "current_user_id") do
-            nil ->
-              nil
+      :valid ->
+        # Get current user from session using user ID
+        case Map.get(session, "current_user_id") do
+          nil ->
+            Logger.debug("No current_user_id in session")
+            assign(socket, current_user: nil)
 
-            user_id ->
-              # Load user by ID from database
-              case Ash.get(EveDmv.Users.User, user_id, domain: EveDmv.Api) do
-                {:ok, user} -> user
-                _ -> nil
-              end
-          end
-      end
+          user_id ->
+            Logger.debug("Loading user from database: #{user_id}")
+            # Load user by ID from database
+            case Ash.get(EveDmv.Users.User, user_id, domain: EveDmv.Api) do
+              {:ok, user} ->
+                Logger.debug("User loaded successfully: #{user.eve_character_name}")
+                assign(socket, current_user: user)
 
-    socket = assign(socket, current_user: current_user)
+              {:error, %Ash.Error.Query.NotFound{}} ->
+                Logger.warning(
+                  "User #{user_id} not found in database - invalid session, clearing session"
+                )
 
-    # If session timed out, schedule a timeout message
-    if current_user == nil and Map.get(session, "current_user_id") do
-      Process.send_after(self(), :session_timeout, 100)
+                # Clear the invalid session by not scheduling any timeout
+                assign(socket, current_user: nil)
+
+              {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{}]}} ->
+                Logger.warning(
+                  "User #{user_id} not found in database - invalid session (wrapped), clearing session"
+                )
+
+                # Clear the invalid session by not scheduling any timeout
+                assign(socket, current_user: nil)
+
+              {:error, reason} ->
+                Logger.warning("Failed to load user #{user_id}: #{inspect(reason)}")
+                assign(socket, current_user: nil)
+            end
+        end
     end
+  end
 
-    socket
+  defp assign_current_user_optional(socket, session) do
+    require Logger
+
+    # Check session timeout first
+    case check_session_timeout(session) do
+      :timeout ->
+        Logger.debug("Session timeout detected (optional)")
+        assign(socket, current_user: nil)
+
+      :valid ->
+        # Get current user from session using user ID
+        case Map.get(session, "current_user_id") do
+          nil ->
+            Logger.debug("No current_user_id in session (optional)")
+            assign(socket, current_user: nil)
+
+          user_id ->
+            Logger.debug("Loading user from database (optional): #{user_id}")
+            # Load user by ID from database
+            case Ash.get(EveDmv.Users.User, user_id, domain: EveDmv.Api) do
+              {:ok, user} ->
+                Logger.debug("User loaded successfully (optional): #{user.eve_character_name}")
+                assign(socket, current_user: user)
+
+              _error ->
+                Logger.debug("Failed to load user (optional), continuing without auth")
+                assign(socket, current_user: nil)
+            end
+        end
+    end
   end
 
   # Check if the session has timed out based on last activity.
@@ -78,12 +133,20 @@ defmodule EveDmvWeb.AuthLive do
     on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
     @impl Phoenix.LiveView
-    def mount(_params, _session, socket) do
+    def mount(_params, session, socket) do
       # If user is already authenticated, redirect to dashboard
       if socket.assigns[:current_user] do
-        {:ok, push_navigate(socket, to: ~p"/dashboard")}
+        {:ok, redirect(socket, to: ~p"/dashboard")}
       else
-        {:ok, assign(socket, :page_title, "Sign In")}
+        # Check if we have an invalid session (user ID exists but user doesn't)
+        if Map.get(session, "current_user_id") && !socket.assigns[:current_user] do
+          # Invalid session - redirect to clear it
+          require Logger
+          Logger.warning("Invalid session detected in SignIn, redirecting to clear session")
+          {:ok, redirect(socket, to: ~p"/session/clear")}
+        else
+          {:ok, assign(socket, :page_title, "Sign In")}
+        end
       end
     end
 

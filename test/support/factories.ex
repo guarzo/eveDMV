@@ -139,6 +139,7 @@ defmodule EveDmv.Factories do
   defp build_factory(:killmail_enriched), do: killmail_enriched_factory()
   defp build_factory(:participant), do: participant_factory()
   defp build_factory(:user), do: user_factory()
+  defp build_factory(:token), do: token_factory()
 
   def participant_factory do
     killmail_time = DateTime.add(DateTime.utc_now(), -Enum.random(1..3600), :second)
@@ -574,5 +575,15 @@ defmodule EveDmv.Factories do
 
       create(:killmail_raw, %{killmail_data: killmail_data})
     end
+  end
+
+  def token_factory do
+    %{
+      access_token: "test_access_token_#{System.unique_integer([:positive])}",
+      refresh_token: "test_refresh_token_#{System.unique_integer([:positive])}",
+      expires_at: DateTime.add(DateTime.utc_now(), 3600, :second),
+      character_id: Enum.random(90_000_000..99_999_999),
+      user_id: nil
+    }
   end
 end

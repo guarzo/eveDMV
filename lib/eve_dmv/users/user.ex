@@ -248,6 +248,7 @@ defmodule EveDmv.Users.User do
         |> Ash.Changeset.change_attribute(:refresh_token, refresh_token)
         |> Ash.Changeset.change_attribute(:token_expires_at, expires_at)
         |> Ash.Changeset.change_attribute(:last_login_at, DateTime.utc_now())
+        |> maybe_update_corporation_info(user_info)
       end)
     end
 
@@ -304,10 +305,179 @@ defmodule EveDmv.Users.User do
 
   # Private functions
   defp maybe_update_corporation_info(changeset, _user_info) do
-    # In a real implementation, we'd call EVE ESI here to get corp/alliance info
-    # For now, just pass through the data
-    changeset
+    # Extract character ID to fetch corporation info
+    character_id = Ash.Changeset.get_attribute(changeset, :eve_character_id)
+    access_token = Ash.Changeset.get_attribute(changeset, :access_token)
+
+    require Logger
+
+    Logger.info(
+      "ESI Corp Integration Debug - Character ID: #{character_id}, Has Token: #{!!access_token}"
+    )
+
+    if character_id && access_token do
+      Logger.info("Attempting to fetch corp info for character #{character_id}")
+
+      case fetch_character_corporation_info(character_id, access_token) do
+        {:ok, corp_info} ->
+          Logger.info("Successfully fetched corp info: #{inspect(corp_info)}")
+
+          changeset
+          |> Ash.Changeset.change_attribute(:eve_corporation_id, corp_info.corporation_id)
+          |> Ash.Changeset.change_attribute(:eve_corporation_name, corp_info.corporation_name)
+          |> Ash.Changeset.change_attribute(:eve_alliance_id, corp_info.alliance_id)
+          |> Ash.Changeset.change_attribute(:eve_alliance_name, corp_info.alliance_name)
+
+        {:error, reason} ->
+          Logger.warning(
+            "Failed to fetch corporation info for character #{character_id}: #{inspect(reason)}"
+          )
+
+          changeset
+      end
+    else
+      Logger.warning("Missing character_id (#{character_id}) or access_token for corp fetch")
+      changeset
+    end
   end
+
+  defp fetch_character_corporation_info(character_id, _access_token) do
+    require Logger
+    Logger.info("Fetching corp info from ESI for character #{character_id}")
+
+    # Direct ESI call to avoid fallback strategy issues
+    path = "/v4/characters/#{character_id}/"
+
+    case EveDmv.Eve.EsiRequestClient.public_request("GET", path) do
+      {:ok, character_response} ->
+        Logger.info("Got character response: #{inspect(character_response)}")
+
+        # Handle potential double-wrapping from the request client
+        actual_response =
+          case character_response do
+            {:ok, inner_response} -> inner_response
+            {:error, _} = error -> error
+            response -> response
+          end
+
+        character_data =
+          case actual_response do
+            {:error, _} -> %{}
+            response when is_map(response) -> Map.get(response, :body, %{})
+            _ -> %{}
+          end
+
+        Logger.info(
+          "Character data: #{inspect(Map.take(character_data, ["corporation_id", "name"]))}"
+        )
+
+        corporation_id = Map.get(character_data, "corporation_id")
+
+        if corporation_id do
+          Logger.info("Fetching corporation #{corporation_id}")
+
+          corp_path = "/v4/corporations/#{corporation_id}/"
+
+          case EveDmv.Eve.EsiRequestClient.public_request("GET", corp_path) do
+            {:ok, corp_response} ->
+              # Handle potential double-wrapping from the request client
+              actual_corp_response =
+                case corp_response do
+                  {:ok, inner_response} -> inner_response
+                  {:error, _} = error -> error
+                  response -> response
+                end
+
+              corp_data =
+                case actual_corp_response do
+                  {:error, _} -> %{}
+                  response when is_map(response) -> Map.get(response, :body, %{})
+                  _ -> %{}
+                end
+
+              Logger.info(
+                "Got corporation data: #{inspect(Map.take(corp_data, ["name", "alliance_id"]))}"
+              )
+
+              alliance_id = Map.get(corp_data, "alliance_id")
+
+              alliance_name =
+                if alliance_id do
+                  Logger.info("Fetching alliance info for alliance #{alliance_id}")
+
+                  case fetch_alliance_info(alliance_id) do
+                    {:ok, alliance} ->
+                      name = Map.get(alliance, :name) || Map.get(alliance, "name")
+                      Logger.info("Got alliance name: #{name}")
+                      name
+
+                    error ->
+                      Logger.warning("Failed to fetch alliance info: #{inspect(error)}")
+                      nil
+                  end
+                else
+                  Logger.info("No alliance for this corporation")
+                  nil
+                end
+
+              result = %{
+                corporation_id: corporation_id,
+                corporation_name: Map.get(corp_data, "name"),
+                alliance_id: alliance_id,
+                alliance_name: alliance_name
+              }
+
+              Logger.info("Final corp info result: #{inspect(result)}")
+              {:ok, result}
+
+            error ->
+              Logger.error("Failed to fetch corporation data: #{inspect(error)}")
+              error
+          end
+        else
+          Logger.error("No corporation_id found in character data")
+          {:error, :no_corporation_id}
+        end
+
+      error ->
+        Logger.error("ESI character fetch failed: #{inspect(error)}")
+        error
+    end
+  end
+
+  defp fetch_alliance_info(alliance_id) when is_integer(alliance_id) do
+    # Use ESI to fetch alliance info
+    path = "/v3/alliances/#{alliance_id}/"
+
+    case EveDmv.Eve.EsiRequestClient.get_request(path) do
+      {:ok, response} ->
+        # Handle potential double-wrapping from the request client
+        actual_response =
+          case response do
+            {:ok, inner_response} -> inner_response
+            response -> response
+          end
+
+        body =
+          case actual_response do
+            %{body: body} -> body
+            other -> other
+          end
+
+        alliance = %{
+          alliance_id: alliance_id,
+          name: Map.get(body, "name"),
+          ticker: Map.get(body, "ticker")
+        }
+
+        {:ok, alliance}
+
+      error ->
+        error
+    end
+  end
+
+  defp fetch_alliance_info(_), do: {:error, :invalid_alliance_id}
 
   def signing_secret(_resource, _opts) do
     # Always use SECRET_KEY_BASE for token signing

@@ -40,6 +40,18 @@ defmodule EveDmv.Database.HealthCheck do
   end
 
   @doc """
+  Simple health check for basic monitoring endpoints.
+  Returns :ok if healthy, {:error, reason} if unhealthy.
+  """
+  def check do
+    case check_connection() do
+      :healthy -> :ok
+      :warning -> :ok
+      :critical -> {:error, "Database connection failed"}
+    end
+  end
+
+  @doc """
   Quick health check for monitoring systems.
   Returns :healthy, :warning, or :critical.
   """

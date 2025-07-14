@@ -62,7 +62,7 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
   def handle_event("monitor_chain", %{"map_id" => map_id}, socket) do
     user = socket.assigns.current_user
     # Default corp if not set
-    corporation_id = user.corporation_id || 1
+    corporation_id = user.eve_corporation_id || 1
 
     case ChainMonitor.monitor_chain(map_id, corporation_id) do
       :ok ->
@@ -238,7 +238,7 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
 
   defp load_user_chains(socket) do
     user = socket.assigns.current_user
-    corporation_id = user.corporation_id || 1
+    corporation_id = user.eve_corporation_id || 1
 
     case ChainTopology
          |> Ash.Query.filter(corporation_id == ^corporation_id and monitoring_enabled == true)

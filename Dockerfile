@@ -65,6 +65,10 @@ WORKDIR /app
 # Copy the release from builder stage
 COPY --from=builder --chown=appuser:appgroup /app/_build/prod/rel/eve_dmv ./
 
+# Copy entrypoint script
+COPY --chown=appuser:appgroup entrypoint.sh ./
+RUN chmod +x entrypoint.sh
+
 # Switch to app user
 USER appuser
 
@@ -79,5 +83,5 @@ ENV MIX_ENV=prod
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD bin/eve_dmv rpc "1 + 1"
 
-# Start the application
-CMD ["bin/eve_dmv", "start"]
+# Start the application with automatic migrations
+CMD ["./entrypoint.sh"]

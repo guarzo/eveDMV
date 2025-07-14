@@ -2,8 +2,20 @@ defmodule EveDmvWeb.SurveillanceProfilesLiveTest do
   use EveDmvWeb.ConnCase
 
   import Phoenix.LiveViewTest
+  import EveDmv.Factories
 
   describe "surveillance profiles live" do
+    setup do
+      user = create(:user)
+
+      conn =
+        Phoenix.ConnTest.build_conn()
+        |> Phoenix.ConnTest.init_test_session(%{})
+        |> Plug.Conn.put_session(:current_user_id, user.id)
+
+      %{conn: conn, user: user}
+    end
+
     test "displays surveillance profiles page", %{conn: conn} do
       {:ok, _index_live, html} = live(conn, ~p"/surveillance-profiles")
 
@@ -28,6 +40,17 @@ defmodule EveDmvWeb.SurveillanceProfilesLiveTest do
   end
 
   describe "profile editor" do
+    setup do
+      user = create(:user)
+
+      conn =
+        Phoenix.ConnTest.build_conn()
+        |> Phoenix.ConnTest.init_test_session(%{})
+        |> Plug.Conn.put_session(:current_user_id, user.id)
+
+      %{conn: conn, user: user}
+    end
+
     test "displays profile creation form", %{conn: conn} do
       {:ok, _index_live, html} = live(conn, ~p"/surveillance-profiles?action=new")
 
@@ -63,6 +86,17 @@ defmodule EveDmvWeb.SurveillanceProfilesLiveTest do
   end
 
   describe "filter types" do
+    setup do
+      user = create(:user)
+
+      conn =
+        Phoenix.ConnTest.build_conn()
+        |> Phoenix.ConnTest.init_test_session(%{})
+        |> Plug.Conn.put_session(:current_user_id, user.id)
+
+      %{conn: conn, user: user}
+    end
+
     test "supports character watch filters", %{conn: conn} do
       {:ok, index_live, _html} = live(conn, ~p"/surveillance-profiles?action=new")
 
@@ -123,6 +157,17 @@ defmodule EveDmvWeb.SurveillanceProfilesLiveTest do
   end
 
   describe "logic operators" do
+    setup do
+      user = create(:user)
+
+      conn =
+        Phoenix.ConnTest.build_conn()
+        |> Phoenix.ConnTest.init_test_session(%{})
+        |> Plug.Conn.put_session(:current_user_id, user.id)
+
+      %{conn: conn, user: user}
+    end
+
     test "allows changing logic operator from AND to OR", %{conn: conn} do
       {:ok, index_live, _html} = live(conn, ~p"/surveillance-profiles?action=new")
 
@@ -142,6 +187,17 @@ defmodule EveDmvWeb.SurveillanceProfilesLiveTest do
   end
 
   describe "filter management" do
+    setup do
+      user = create(:user)
+
+      conn =
+        Phoenix.ConnTest.build_conn()
+        |> Phoenix.ConnTest.init_test_session(%{})
+        |> Plug.Conn.put_session(:current_user_id, user.id)
+
+      %{conn: conn, user: user}
+    end
+
     test "can remove filters", %{conn: conn} do
       {:ok, index_live, _html} = live(conn, ~p"/surveillance-profiles?action=new")
 

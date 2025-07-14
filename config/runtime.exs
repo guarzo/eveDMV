@@ -81,8 +81,14 @@ unless config_env() == :test do
   end
 end
 
-# Override application configuration with .env values for development
-if config_env() == :dev do
+# Override application configuration with .env values for development only
+# Never override database config for test environment to preserve SQL Sandbox
+if config_env() == :dev and System.get_env("MIX_ENV") != "test" do
+  # Database configuration for development
+  if database_url = System.get_env("DATABASE_URL") do
+    config :eve_dmv, EveDmv.Repo, url: database_url
+  end
+
   config :eve_dmv,
     wanderer_kills_sse_url: System.get_env("WANDERER_KILLS_SSE_URL", "http://localhost:8080/sse"),
     wanderer_kills_websocket_url:
@@ -136,6 +142,18 @@ if System.get_env("PHX_SERVER") do
 end
 
 if config_env() == :prod do
+  # Database configuration for production
+  database_url =
+    System.get_env("DATABASE_URL") ||
+      raise """
+      environment variable DATABASE_URL is missing.
+      For example: ecto://USER:PASS@HOST/DATABASE
+      """
+
+  config :eve_dmv, EveDmv.Repo,
+    url: database_url,
+    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10")
+
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you
   # want to use a different value for prod and you most likely don't want

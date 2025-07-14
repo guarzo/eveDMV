@@ -10,6 +10,7 @@ defmodule EveDmvWeb.SystemLive do
 
   alias EveDmv.Cache.AnalysisCache
   alias EveDmv.Eve.SolarSystem
+  alias EveDmv.Analytics.BattleDetector
 
   @impl true
   def mount(%{"system_id" => system_id}, _session, socket) do
@@ -85,6 +86,10 @@ defmodule EveDmvWeb.SystemLive do
 
           primary_timezone = calculate_primary_timezone(peak_hour.hour)
 
+          # Load battle data
+          recent_battles = BattleDetector.detect_system_battles(system_id, 10)
+          battle_stats = BattleDetector.get_system_battle_stats(system_id)
+
           system_data = %{
             system_name: system_info.system_name,
             region_name: system_info.region_name,
@@ -97,7 +102,9 @@ defmodule EveDmvWeb.SystemLive do
             danger_assessment: danger_assessment,
             activity_heatmap: activity_heatmap,
             peak_activity_hour: peak_hour.hour,
-            primary_timezone: primary_timezone
+            primary_timezone: primary_timezone,
+            recent_battles: recent_battles,
+            battle_stats: battle_stats
           }
 
           {:ok, system_data}

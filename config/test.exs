@@ -29,29 +29,40 @@ config :phoenix_live_view,
 # to provide built-in test partitioning in CI environment.
 # Run `mix help test` for more information.
 
-# Check if DATABASE_URL is provided (e.g., in CI)
-database_url = System.get_env("DATABASE_URL")
+# For tests, always use the dedicated test database configuration
+# DATABASE_URL should only be used if explicitly set for testing (CI environments)
+test_database_url = System.get_env("TEST_DATABASE_URL")
+ci_database_url = System.get_env("DATABASE_URL")
 
-if database_url do
-  # Use DATABASE_URL if provided (for CI environments)
-  config :eve_dmv, EveDmv.Repo,
-    url: database_url,
-    pool: Ecto.Adapters.SQL.Sandbox,
-    pool_size: System.schedulers_online() * 2,
-    ownership_timeout: 60_000,
-    timeout: 60_000
-else
-  # Default configuration for local development
-  config :eve_dmv, EveDmv.Repo,
-    username: "postgres",
-    password: "postgres",
-    hostname: "db",
-    database: "eve_dmv_test#{System.get_env("MIX_TEST_PARTITION")}",
-    port: 5432,
-    pool: Ecto.Adapters.SQL.Sandbox,
-    pool_size: System.schedulers_online() * 2,
-    ownership_timeout: 60_000,
-    timeout: 60_000
+# Common pool configuration for all test environments
+common_pool_config = [
+  pool: Ecto.Adapters.SQL.Sandbox,
+  pool_size: System.schedulers_online() * 2,
+  ownership_timeout: 60_000,
+  timeout: 60_000
+]
+
+cond do
+  test_database_url ->
+    # Use explicit test DATABASE_URL if provided
+    config :eve_dmv, EveDmv.Repo, [url: test_database_url] ++ common_pool_config
+
+  ci_database_url ->
+    # Use DATABASE_URL if provided (typically in CI environments)
+    config :eve_dmv, EveDmv.Repo, [url: ci_database_url] ++ common_pool_config
+
+  true ->
+    # Always use local test database for development/testing
+    # Do not use the regular DATABASE_URL from .env for tests
+    config :eve_dmv,
+           EveDmv.Repo,
+           [
+             username: "postgres",
+             password: "postgres",
+             hostname: "db",
+             database: "eve_dmv_test#{System.get_env("MIX_TEST_PARTITION")}",
+             port: 5432
+           ] ++ common_pool_config
 end
 
 # Authentication configuration for tests

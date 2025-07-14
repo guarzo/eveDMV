@@ -2,8 +2,20 @@ defmodule EveDmvWeb.SurveillanceDashboardLiveTest do
   use EveDmvWeb.ConnCase
 
   import Phoenix.LiveViewTest
+  import EveDmv.Factories
 
   describe "surveillance dashboard live" do
+    setup do
+      user = create(:user)
+
+      conn =
+        Phoenix.ConnTest.build_conn()
+        |> Phoenix.ConnTest.init_test_session(%{})
+        |> Plug.Conn.put_session(:current_user_id, user.id)
+
+      %{conn: conn, user: user}
+    end
+
     test "displays dashboard page", %{conn: conn} do
       # The dashboard will call Surveillance.list_profiles but it should handle errors gracefully
       {:ok, _index_live, html} = live(conn, ~p"/surveillance-dashboard")
@@ -67,6 +79,17 @@ defmodule EveDmvWeb.SurveillanceDashboardLiveTest do
   end
 
   describe "performance recommendations" do
+    setup do
+      user = create(:user)
+
+      conn =
+        Phoenix.ConnTest.build_conn()
+        |> Phoenix.ConnTest.init_test_session(%{})
+        |> Plug.Conn.put_session(:current_user_id, user.id)
+
+      %{conn: conn, user: user}
+    end
+
     test "shows recommendations section when recommendations exist", %{conn: conn} do
       {:ok, _index_live, html} = live(conn, ~p"/surveillance-dashboard")
 
@@ -76,6 +99,17 @@ defmodule EveDmvWeb.SurveillanceDashboardLiveTest do
   end
 
   describe "alert trends" do
+    setup do
+      user = create(:user)
+
+      conn =
+        Phoenix.ConnTest.build_conn()
+        |> Phoenix.ConnTest.init_test_session(%{})
+        |> Plug.Conn.put_session(:current_user_id, user.id)
+
+      %{conn: conn, user: user}
+    end
+
     test "displays alert trends chart area", %{conn: conn} do
       {:ok, _index_live, html} = live(conn, ~p"/surveillance-dashboard")
 
