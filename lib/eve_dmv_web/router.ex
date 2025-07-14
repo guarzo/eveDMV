@@ -115,6 +115,16 @@ defmodule EveDmvWeb.Router do
   # Other scopes may use custom stacks.
   scope "/api", EveDmvWeb do
     pipe_through(:api)
+
+    # Health check endpoint
+    get("/health", HealthController, :check)
+  end
+
+  # Public health endpoint (no auth required)
+  scope "/", EveDmvWeb do
+    pipe_through(:api)
+
+    get("/health", HealthController, :check)
   end
 
   # Authenticated API endpoints

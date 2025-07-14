@@ -1,0 +1,279 @@
+name: Deploy EVE DMV
+
+on:
+  # Manual deployment with environment selection
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - staging
+          - production
+      version:
+        description: 'Version tag (leave empty for latest)'
+        required: false
+        default: ''
+      action:
+        description: 'Deployment action'
+        required: true
+        default: 'deploy'
+        type: choice
+        options:
+          - deploy
+          - rollback
+          
+  # Auto-deploy on successful CI to main
+  workflow_run:
+    workflows: ["CI/CD Pipeline"]
+    branches: [main]
+    types: [completed]
+
+env:
+  DOCKER_IMAGE_NAME: guarzo/evedmv
+  ELIXIR_VERSION: "1.17.2"
+  OTP_VERSION: "27.0"
+
+jobs:
+  deploy:
+    name: Deploy EVE DMV Application
+    runs-on: ubuntu-latest
+    
+    # Only run if CI passed or manual trigger
+    if: |
+      github.event_name == 'workflow_dispatch' || 
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+    
+    permissions:
+      contents: write
+      packages: write
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          
+      - name: Determine deployment parameters
+        id: params
+        run: |
+          # Set environment (default to production for auto-deploy)
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            ENVIRONMENT="${{ github.event.inputs.environment }}"
+            ACTION="${{ github.event.inputs.action }}"
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            ENVIRONMENT="production"
+            ACTION="deploy"
+            VERSION=""
+          fi
+          
+          # Generate version if not provided
+          if [ -z "$VERSION" ]; then
+            VERSION="v$(date +%Y%m%d%H%M%S)"
+          fi
+          
+          echo "ENVIRONMENT=$ENVIRONMENT" >> $GITHUB_OUTPUT
+          echo "ACTION=$ACTION" >> $GITHUB_OUTPUT
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          
+          echo "📋 Deployment Parameters:"
+          echo "  Environment: $ENVIRONMENT"
+          echo "  Action: $ACTION"
+          echo "  Version: $VERSION"
+          
+      - name: Create and push tag (deploy only)
+        if: steps.params.outputs.ACTION == 'deploy'
+        id: create_tag
+        run: |
+          VERSION="${{ steps.params.outputs.VERSION }}"
+          
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          
+          git tag -a "$VERSION" -m "Deploy to ${{ steps.params.outputs.ENVIRONMENT }}"
+          git push origin "$VERSION"
+          
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          
+      - name: Set up Elixir (for build verification)
+        if: steps.params.outputs.ACTION == 'deploy'
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+          otp-version: ${{ env.OTP_VERSION }}
+          
+      - name: Install system dependencies
+        if: steps.params.outputs.ACTION == 'deploy'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libbz2-dev bc erlang-dev
+          
+      - name: Install Elixir dependencies
+        if: steps.params.outputs.ACTION == 'deploy'
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+          mix deps.get --only prod
+          
+      - name: Compile for production (safety check)
+        if: steps.params.outputs.ACTION == 'deploy'
+        run: MIX_ENV=prod mix compile --warnings-as-errors
+        
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+          
+      - name: Build and push Docker image
+        if: steps.params.outputs.ACTION == 'deploy'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.DOCKER_IMAGE_NAME }}:latest
+            ${{ env.DOCKER_IMAGE_NAME }}:${{ steps.params.outputs.VERSION }}
+          build-args: |
+            VERSION=${{ steps.params.outputs.VERSION }}
+            MIX_ENV=prod
+                      
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          port: 22
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            set -e
+            
+            VERSION="${{ steps.params.outputs.VERSION }}"
+            ACTION="${{ steps.params.outputs.ACTION }}"
+            ENVIRONMENT="${{ steps.params.outputs.ENVIRONMENT }}"
+            
+            echo "🚀 Performing $ACTION to $ENVIRONMENT with version $VERSION"
+            
+            # Navigate to the correct directory
+            cd /app/wanderer
+            
+            # Update the .env file with the new version
+            if [ -f ".env-dmv" ]; then
+              cp .env-dmv .env-dmv.backup
+              
+              if grep -q "^EVEDMV_VERSION=" .env-dmv; then
+                sed -i "s/^EVEDMV_VERSION=.*/EVEDMV_VERSION=$VERSION/" .env-dmv
+              else
+                echo "EVEDMV_VERSION=$VERSION" >> .env-dmv
+              fi
+              
+              echo "✅ Updated EVEDMV_VERSION to $VERSION in .env-dmv"
+            else
+              echo "❌ .env-dmv file not found"
+              exit 1
+            fi
+            
+            # Run the compose manager to upgrade
+            if [ "$ACTION" = "rollback" ]; then
+              echo "🔄 Rolling back to version $VERSION"
+            fi
+            
+            echo "🚀 Running compose-manager.sh upgrade evecorptools"
+            ./compose-manager.sh upgrade evecorptools
+            
+            echo "✅ Deployment completed successfully!"
+          
+      - name: Generate release notes
+        if: steps.params.outputs.ACTION == 'deploy' && steps.params.outputs.ENVIRONMENT == 'production'
+        id: release_notes
+        run: |
+          # Get the previous tag for changelog
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
+          
+          # Generate changelog from commits since last tag
+          if [ -n "$PREVIOUS_TAG" ]; then
+            CHANGELOG=$(git log --oneline --pretty=format:"- %s" ${PREVIOUS_TAG}..HEAD)
+          else
+            CHANGELOG=$(git log --oneline --pretty=format:"- %s" -10)
+          fi
+          
+          # Check if CHANGELOG.md exists and get latest section
+          CHANGELOG_SECTION=""
+          if [ -f "CHANGELOG.md" ]; then
+            # Extract the first unreleased section from CHANGELOG.md
+            CHANGELOG_SECTION=$(awk '/^## \[/ {if (found) exit; if ($0 !~ /Unreleased/) found=1; next} found {print}' CHANGELOG.md | head -20)
+          fi
+          
+          # Create release body
+          cat > release_body.md << 'EOF'
+          ## 🚀 EVE DMV Deployment Information
+          
+          - **Environment:** ${{ steps.params.outputs.ENVIRONMENT }}
+          - **Version:** ${{ steps.params.outputs.VERSION }}
+          - **Docker Image:** `${{ env.DOCKER_IMAGE_NAME }}:${{ steps.params.outputs.VERSION }}`
+          - **Commit:** ${{ github.sha }}
+          
+          ### Changes in this Release
+          EOF
+          
+          if [ -n "$CHANGELOG_SECTION" ]; then
+            echo "$CHANGELOG_SECTION" >> release_body.md
+          else
+            echo "$CHANGELOG" >> release_body.md
+          fi
+          
+          cat >> release_body.md << 'EOF'
+          
+        
+          ### Links
+          - [Full commit history](https://github.com/${{ github.repository }}/commits/${{ steps.params.outputs.VERSION }})
+          - [Docker image](https://hub.docker.com/r/${{ env.DOCKER_IMAGE_NAME }}/tags)
+          EOF
+          
+          echo "RELEASE_BODY<<EOF" >> $GITHUB_OUTPUT
+          cat release_body.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        if: steps.params.outputs.ACTION == 'deploy' && steps.params.outputs.ENVIRONMENT == 'production'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: "${{ steps.params.outputs.VERSION }}"
+          release_name: "EVE DMV Release ${{ steps.params.outputs.VERSION }}"
+          body: ${{ steps.release_notes.outputs.RELEASE_BODY }}
+          draft: false
+          prerelease: ${{ steps.params.outputs.ENVIRONMENT == 'staging' }}
+          
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ EVE DMV deployment to ${{ steps.params.outputs.ENVIRONMENT }} completed successfully!"
+            echo "🌐 Application should be available at the configured domain"
+            echo "📊 Monitor logs with: docker-compose logs -f web"
+          else
+            echo "❌ EVE DMV deployment to ${{ steps.params.outputs.ENVIRONMENT }} failed!"
+            echo "🔍 Check logs with: docker-compose logs web"
+            echo "🔄 Rollback available via manual workflow dispatch"
+          fi
+
+      - name: Post-deployment verification
+        if: steps.params.outputs.ACTION == 'deploy' && job.status == 'success'
+        run: |
+          echo "🎉 Deployment Summary:"
+          echo "  • Application: EVE DMV"
+          echo "  • Version: ${{ steps.params.outputs.VERSION }}"
+          echo "  • Environment: ${{ steps.params.outputs.ENVIRONMENT }}"
+          echo "  • Docker Image: ${{ env.DOCKER_IMAGE_NAME }}:${{ steps.params.outputs.VERSION }}"
+          echo ""
+          echo "📋 Next Steps:"
+          echo "  • Verify application functionality"
+          echo "  • Check killmail feed connectivity"
+          echo "  • Test EVE SSO authentication"
+          echo "  • Monitor performance metrics"
