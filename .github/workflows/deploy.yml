@@ -202,8 +202,8 @@ jobs:
               echo "🔄 Rolling back to version $VERSION"
             fi
             
-            echo "🚀 Running compose-manager.sh upgrade evecorptools"
-            ./compose-manager.sh upgrade evecorptools
+            echo "🚀 Running compose-manager.sh upgrade evedmv"
+            ./compose-manager.sh upgrade evedmv
             
             echo "✅ Deployment completed successfully!"
           
