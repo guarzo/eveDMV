@@ -30,16 +30,14 @@ COPY mix.exs mix.lock ./
 RUN mix deps.get --only prod && \
     mix deps.compile
 
-# Copy assets and build them
+# Copy assets and source code
 COPY assets/ ./assets/
 COPY config/ ./config/
 COPY priv/ ./priv/
+COPY lib/ ./lib/
 
 # Build assets using Elixir tools (no npm needed)
 RUN mix assets.deploy
-
-# Copy source code
-COPY lib/ ./lib/
 
 # Compile the project
 RUN mix compile
