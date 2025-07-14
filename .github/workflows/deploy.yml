@@ -181,19 +181,16 @@ jobs:
             # Navigate to the correct directory
             cd /app/wanderer
             
-            # Update the .env file with the new version
-            if [ -f ".env-dmv" ]; then
-              cp .env-dmv .env-dmv.backup
+            # Update the docker-compose file with the new version
+            if [ -f "docker-compose-dmv.yml" ]; then
+              cp docker-compose-dmv.yml docker-compose-dmv.yml.backup
               
-              if grep -q "^EVEDMV_VERSION=" .env-dmv; then
-                sed -i "s/^EVEDMV_VERSION=.*/EVEDMV_VERSION=$VERSION/" .env-dmv
-              else
-                echo "EVEDMV_VERSION=$VERSION" >> .env-dmv
-              fi
+              # Update the image tag in docker-compose-dmv.yml
+              sed -i "s|image: guarzo/evedmv:.*|image: guarzo/evedmv:$VERSION|g" docker-compose-dmv.yml
               
-              echo "✅ Updated EVEDMV_VERSION to $VERSION in .env-dmv"
+              echo "✅ Updated EVEDMV_VERSION to $VERSION in docker-compose-dmv.yml"
             else
-              echo "❌ .env-dmv file not found"
+              echo "❌ docker-compose-dmv.yml file not found"
               exit 1
             fi
             

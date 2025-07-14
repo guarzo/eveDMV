@@ -35,7 +35,7 @@ defmodule EveDmvWeb.Endpoint do
   plug(Plug.Static,
     at: "/",
     from: :eve_dmv,
-    gzip: false,
+    gzip: true,
     only: EveDmvWeb.static_paths(),
     headers: %{
       "strict-transport-security" => "max-age=31_536_000; includeSubDomains",
