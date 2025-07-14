@@ -68,6 +68,9 @@ WORKDIR /app
 # Copy the release from builder stage
 COPY --from=builder --chown=appuser:appgroup /app/_build/prod/rel/eve_dmv ./
 
+# Copy the digested static assets (includes cache_manifest.json)
+COPY --from=builder --chown=appuser:appgroup /app/priv/static ./priv/static
+
 # Copy entrypoint script
 COPY --chown=appuser:appgroup entrypoint.sh ./
 RUN chmod +x entrypoint.sh
