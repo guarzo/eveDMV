@@ -21,7 +21,7 @@ defmodule EveDmv.Application do
     NameResolver.start_cache()
 
     # Only set up security handlers in non-test environments
-    if Mix.env() != :test do
+    if Application.get_env(:eve_dmv, :environment, :prod) != :test do
       # Set up security monitoring handlers
       # EveDmv.Security.AuditLogger.setup_handlers()
 
@@ -103,7 +103,7 @@ defmodule EveDmv.Application do
         EveDmv.Performance.QueryMonitor.attach_telemetry_handlers()
 
         # Start performance regression detection
-        if Mix.env() != :test do
+        if Application.get_env(:eve_dmv, :environment, :prod) != :test do
           RegressionDetector.start_link()
         end
 
@@ -116,7 +116,7 @@ defmodule EveDmv.Application do
 
   # Conditionally start database-dependent processes
   defp maybe_start_database_processes do
-    if Mix.env() != :test do
+    if Application.get_env(:eve_dmv, :environment, :prod) != :test do
       [
         EveDmv.Telemetry.QueryMonitor,
         EveDmv.Database.QueryCache,
@@ -141,7 +141,7 @@ defmodule EveDmv.Application do
 
   # Conditionally start surveillance context
   defp maybe_start_surveillance_context do
-    if Mix.env() != :test do
+    if Application.get_env(:eve_dmv, :environment, :prod) != :test do
       EveDmv.Contexts.Surveillance
     else
       %{
@@ -153,7 +153,7 @@ defmodule EveDmv.Application do
 
   # Conditionally start a process based on environment
   defp maybe_start_process(module) do
-    if Mix.env() != :test do
+    if Application.get_env(:eve_dmv, :environment, :prod) != :test do
       module
     else
       %{id: module, start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}}
@@ -190,7 +190,7 @@ defmodule EveDmv.Application do
 
   # Spec for background static data loader
   defp static_data_loader_spec do
-    if Mix.env() != :test do
+    if Application.get_env(:eve_dmv, :environment, :prod) != :test do
       %{
         id: :static_data_loader,
         start: {
@@ -217,7 +217,7 @@ defmodule EveDmv.Application do
 
   # Conditionally start the SDE automatic update service
   defp maybe_start_sde_startup_service do
-    if Mix.env() != :test do
+    if Application.get_env(:eve_dmv, :environment, :prod) != :test do
       EveDmv.Eve.StaticDataLoader.SdeStartupService
     else
       # No-op process for tests

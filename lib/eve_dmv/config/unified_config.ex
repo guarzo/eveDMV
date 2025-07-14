@@ -242,7 +242,7 @@ defmodule EveDmv.Config.UnifiedConfig do
       categories: Map.keys(@config_schema),
       env_variables_set: count_env_variables_set(),
       validation_status: validate_config(),
-      runtime_environment: Mix.env()
+      runtime_environment: Application.get_env(:eve_dmv, :environment, :prod)
     }
   end
 

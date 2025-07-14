@@ -97,7 +97,7 @@ defmodule EveDmv.Surveillance.MatchingEngine do
 
     # Initial profile load - delay slightly to allow database to be ready
     profiles_count =
-      if Mix.env() == :test do
+      if Application.get_env(:eve_dmv, :environment, :prod) == :test do
         # In test environment, skip initial load
         0
       else

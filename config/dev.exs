@@ -1,5 +1,8 @@
 import Config
 
+# Set environment for proper runtime detection
+config :eve_dmv, environment: :dev
+
 # Load .env file for development if it exists (but not in test environment)
 if File.exists?(".env") and Mix.env() != :test do
   try do

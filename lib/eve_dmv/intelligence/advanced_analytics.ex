@@ -24,7 +24,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
     Logger.info("Performing advanced behavioral pattern analysis for character #{character_id}")
 
     # Return mock data in test environment to prevent "Insufficient data" errors
-    if Mix.env() == :test do
+    if Application.get_env(:eve_dmv, :environment, :prod) == :test do
       if mock_data = Process.get("behavioral_analysis_#{character_id}") do
         {:ok, mock_data}
       else
@@ -80,7 +80,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
     Logger.info("Performing advanced threat assessment for character #{character_id}")
 
     # Return mock data in test environment to prevent "Insufficient data" errors
-    if Mix.env() == :test do
+    if Application.get_env(:eve_dmv, :environment, :prod) == :test do
       if mock_data = Process.get("threat_assessment_#{character_id}") do
         {:ok, mock_data}
       else
@@ -220,7 +220,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
     Logger.info("Calculating advanced risk score for character #{character_id}")
 
     # Return mock data in test environment to prevent "Insufficient data" errors
-    if Mix.env() == :test do
+    if Application.get_env(:eve_dmv, :environment, :prod) == :test do
       if mock_data = Process.get("risk_analysis_#{character_id}") do
         {:ok, mock_data}
       else
