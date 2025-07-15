@@ -80,7 +80,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ThreatAssessor do
     new_state =
       case result do
         {:ok, _} -> %{state | assessment_count: state.assessment_count + 1}
-        _ -> state
+        {:error, _} -> state
       end
 
     {:reply, result, new_state}
@@ -119,7 +119,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ThreatAssessor do
       {:ok, cached} when context == :general ->
         {:ok, cached}
 
-      _ ->
+      {:error, :not_found} ->
         # Perform actual assessment based on context
         assessment =
           case context do
@@ -136,6 +136,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ThreatAssessor do
         end
 
         {:ok, assessment}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 

@@ -1,84 +1,46 @@
-# Fix Module Aliasing Issues (Part of 76 Design Issues)
+# Prompt 2: Fix Module Aliasing and Import Issues
 
-You are an AI assistant tasked with resolving nested module aliasing issues found by Credo in an Elixir Phoenix codebase. Focus ONLY on [D] "Nested modules could be aliased at the top of the invoking module" issues.
+## Task
+Fix module aliasing issues, import statements, and namespace conflicts throughout the codebase.
+
+## Context
+Several files have module aliasing issues, import conflicts, and namespace problems that need to be resolved to improve code clarity and prevent conflicts.
 
 ## Instructions
+1. Review and fix module aliasing in these key files:
+   - `lib/eve_dmv/contexts/character_intelligence.ex` - Has alias conflicts
+   - `lib/eve_dmv/contexts/corporation_intelligence.ex` - Needs proper aliasing
+   - `lib/eve_dmv/contexts/battle_analysis.ex` - Import organization needed
+   - `lib/eve_dmv/api.ex` - Resource organization
 
-1. **Module Aliasing**: Add proper `alias` statements at the top of modules for nested modules that are used multiple times within the same file.
+2. For each file:
+   - Ensure all `alias` statements are properly organized
+   - Remove unused imports
+   - Fix any namespace conflicts
+   - Organize imports in a consistent order (standard library, dependencies, local modules)
+   - Ensure module names don't conflict with function names
 
-2. **Pattern to Follow**:
-   ```elixir
-   defmodule MyModule do
-     alias Some.Deeply.Nested.Module
-     alias Another.Long.Module.Name, as: ShortName
-     
-     def some_function do
-       Module.some_call()  # instead of Some.Deeply.Nested.Module.some_call()
-       ShortName.other_call()
-     end
-   end
-   ```
+3. Pay special attention to:
+   - Context modules that aggregate multiple submodules
+   - API definitions that import many resources
+   - Modules with many internal aliases
 
-3. **Key Files to Address** (based on Credo output):
-   - `lib/eve_dmv/contexts/surveillance/domain/matching_engine.ex`
-   - `lib/mix/tasks/eve.performance.ex`
-   - `lib/mix/tasks/cache.stats.ex`
-   - `lib/eve_dmv_web/live/surveillance_live/profile_service.ex`
-   - `lib/eve_dmv_web/live/profile_live.ex`
-   - `lib/eve_dmv_web/live/dashboard_live.ex`
-   - `lib/eve_dmv_web/live/battle_analysis_live.ex`
-   - `lib/eve_dmv/users/user.ex`
-   - `lib/eve_dmv/shutdown/graceful_shutdown.ex`
-   - `lib/eve_dmv/performance/query_monitor.ex`
-   - `lib/eve_dmv/monitoring/pipeline_monitor.ex`
-   - `lib/eve_dmv/intelligence_migration_adapter.ex`
-   - `lib/eve_dmv/intelligence/analyzers/member_activity_analyzer.ex`
-   - `lib/eve_dmv/contexts/surveillance/domain/chain_intelligence_helper.ex`
-   - `lib/eve_dmv/contexts/corporation_intelligence.ex`
-   - `lib/eve_dmv/contexts/character_intelligence.ex`
-   - `lib/eve_dmv/contexts/battle_analysis/extractors/ship_instance_extractor.ex`
-   - `lib/eve_dmv/contexts/battle_analysis/domain/zkillboard_import_service.ex`
-   - `test/eve_dmv_web/live/kill_feed_live_test.exs`
-
-4. **Rules**:
-   - Only alias modules used 2+ times in the same file
-   - Place aliases at the top of the module, after `use` statements
-   - Use descriptive short names when using `as:`
-   - Group related aliases together
-   - Maintain alphabetical order within alias groups
-
-5. **Example Transformation**:
-   ```elixir
-   # Before
-   defmodule MyModule do
-     def func1 do
-       SomeModule.Long.Path.function()
-       SomeModule.Long.Path.other_function()
-     end
-   end
-   
-   # After  
-   defmodule MyModule do
-     alias SomeModule.Long.Path
-     
-     def func1 do
-       Path.function()
-       Path.other_function()
-     end
-   end
-   ```
-
-## Important Notes
-
-- This is part of a parallel fix effort - only modify alias-related issues
-- Do NOT modify TODO comments, pipeline usage, number formatting, or other issue types
-- Focus on one file at a time to avoid conflicts
-- Run `mix compile` after changes to ensure no compilation errors
-- Keep existing functionality intact
+## Files to Focus On
+- `lib/eve_dmv/api.ex`
+- `lib/eve_dmv/contexts/character_intelligence.ex`
+- `lib/eve_dmv/contexts/corporation_intelligence.ex`
+- `lib/eve_dmv/contexts/battle_analysis.ex`
+- `lib/eve_dmv/intelligence_migration_adapter.ex`
 
 ## Success Criteria
+- All module aliases are properly defined and used
+- No namespace conflicts
+- Imports are organized and unused imports removed
+- Code compiles without warnings
+- Module structure is clean and consistent
 
-- All nested module references are properly aliased when used multiple times
-- Code compiles without errors  
-- No functionality is broken
-- Code is more readable with shorter, clearer module references
+## Important Notes
+- This task focuses on import/alias organization only
+- DO NOT change business logic or function implementations
+- Maintain existing API contracts
+- Ensure all references to aliased modules are updated consistently

@@ -26,7 +26,7 @@ defmodule EveDmv.Release do
     Application.load(@app)
   end
 
-  def import_historical_killmails(archive_dir, batch_size) do
+  def import_historical_killmails(archive_dir, _batch_size) do
     load_app()
     Application.ensure_all_started(@app)
 

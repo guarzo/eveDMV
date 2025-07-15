@@ -13,8 +13,8 @@ defmodule EveDmv.Users.User do
     extensions: [AshAuthentication],
     authorizers: [Ash.Policy.Authorizer]
 
-  alias Changeset
-  alias EsiRequestClient
+  alias Ash.Changeset
+  alias EveDmv.Eve.EsiRequestClient
 
   authentication do
     # EVE SSO OAuth2 authentication strategy

@@ -273,6 +273,7 @@ defmodule EveDmvWeb.DashboardLive do
           </div>
         </div>
       </.link>
+      
     </div>
 
     <!-- Recent Activity Timeline -->

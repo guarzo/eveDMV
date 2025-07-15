@@ -9,6 +9,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
   use EveDmvWeb, :live_view
 
   import EveDmvWeb.Components.ThreatLevelComponent
+  import EveDmvWeb.LiveHelpers.ApiErrorHelper
 
   alias EveDmv.Contexts.CharacterIntelligence
   # import EveDmvWeb.Components.ActivityOverviewComponent
@@ -51,10 +52,12 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
 
   @impl Phoenix.LiveView
   def handle_event("refresh", _params, socket) do
-    {:noreply,
-     socket
-     |> assign(:loading, true)
-     |> load_character_intelligence(socket.assigns.character_id)}
+    updated_socket =
+      socket
+      |> assign(:loading, true)
+      |> load_character_intelligence(socket.assigns.character_id)
+
+    {:noreply, updated_socket}
   end
 
   @impl Phoenix.LiveView
@@ -119,7 +122,13 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
   # Private functions
 
   defp load_character_intelligence(socket, character_id) do
-    case CharacterIntelligence.get_character_intelligence_report(character_id) do
+    case safe_api_call(
+           socket,
+           fn ->
+             CharacterIntelligence.get_character_intelligence_report(character_id)
+           end,
+           "Loading character intelligence"
+         ) do
       {:ok, report} ->
         socket
         |> assign(:intelligence_report, report)
@@ -127,19 +136,16 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
         |> assign(:error_message, nil)
         |> update_page_title(report.character.name)
 
-      {:error, reason} ->
-        socket
+      {:error, error_socket} ->
+        error_socket
         |> assign(:loading, false)
-        |> assign(:error_message, format_error(reason))
+        |> assign(:intelligence_report, nil)
     end
   end
 
   defp update_page_title(socket, character_name) do
     assign(socket, :page_title, "Intelligence: #{character_name}")
   end
-
-  defp format_error(:character_not_found), do: "Character not found"
-  defp format_error(_), do: "Failed to load character intelligence"
 
   # View helpers
 

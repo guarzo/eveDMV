@@ -92,7 +92,8 @@ defmodule EveDmv.Surveillance.MatchingEngine do
       matches_processed: 0,
       last_reload: DateTime.utc_now(),
       pending_matches: [],
-      last_batch_record: System.monotonic_time(:millisecond)
+      last_batch_record: System.monotonic_time(:millisecond),
+      connection_status: determine_connection_status()
     }
 
     # Initial profile load - delay slightly to allow database to be ready
@@ -144,6 +145,7 @@ defmodule EveDmv.Surveillance.MatchingEngine do
       last_reload: state.last_reload,
       pending_matches: length(state.pending_matches),
       last_batch_record: state.last_batch_record,
+      connection_status: state.connection_status,
       cache_stats: %{
         size: table_stats.match_cache,
         hit_rate: MatchEvaluator.calculate_cache_hit_rate()
@@ -314,6 +316,47 @@ defmodule EveDmv.Surveillance.MatchingEngine do
       {:error, reason} ->
         Logger.error("Failed to compile profile #{profile.name}: #{reason}")
         {:error, reason}
+    end
+  end
+
+  # Helper function to determine connection status
+  defp determine_connection_status do
+    cond do
+      # Check if we have a database connection
+      not database_connected?() ->
+        {:error, "Database disconnected"}
+
+      # Check if killmail pipeline is running
+      not pipeline_running?() ->
+        {:warning, "Pipeline inactive"}
+
+      # Check if we're in a development environment
+      Application.get_env(:eve_dmv, :environment, :prod) == :dev ->
+        {:ok, "Development mode"}
+
+      # Default to active
+      true ->
+        {:ok, "Active"}
+    end
+  end
+
+  defp database_connected? do
+    try do
+      # Simple ping to check database connectivity
+      case Ecto.Adapters.SQL.query(EveDmv.Repo, "SELECT 1", []) do
+        {:ok, _} -> true
+        _ -> false
+      end
+    rescue
+      _ -> false
+    end
+  end
+
+  defp pipeline_running? do
+    # Check if Broadway pipeline is running
+    case GenServer.whereis(EveDmv.Killmails.KillmailPipeline) do
+      nil -> false
+      _pid -> true
     end
   end
 end

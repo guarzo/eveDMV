@@ -7,6 +7,7 @@ defmodule EveDmvWeb.Components.ErrorHandler do
   """
 
   require Logger
+  import Phoenix.Component, only: [assign: 3]
 
   @doc """
   Safely executes a database operation with proper error handling and logging.
@@ -175,7 +176,7 @@ defmodule EveDmvWeb.Components.ErrorHandler do
       socket = add_error_recovery(socket, :load_data, "Failed to load character data")
   """
   def add_error_recovery(socket, operation_atom, error_message) do
-    Phoenix.LiveView.assign(socket, :error_state, %{
+    assign(socket, :error_state, %{
       operation: operation_atom,
       message: error_message,
       recoverable: true,
@@ -187,7 +188,7 @@ defmodule EveDmvWeb.Components.ErrorHandler do
   Clears error recovery state after successful operation.
   """
   def clear_error_recovery(socket) do
-    Phoenix.LiveView.assign(socket, :error_state, nil)
+    assign(socket, :error_state, nil)
   end
 
   @doc """

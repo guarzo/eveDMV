@@ -21,9 +21,11 @@ defmodule EveDmvWeb.SurveillanceLive.Components do
   """
   @spec load_recent_matches() :: [ProfileMatch.t()]
   def load_recent_matches do
-    case Ash.read(ProfileMatch, action: :recent_matches, input: %{hours: 24}, domain: Api) do
+    # Reduce query time by limiting results and reducing time window
+    case Ash.read(ProfileMatch, action: :recent_matches, input: %{hours: 6}, domain: Api) do
       {:ok, matches} ->
-        Enum.take(matches, 20)
+        # Limit to 10 matches for better performance
+        Enum.take(matches, 10)
 
       {:error, error} ->
         Logger.warning("Failed to load recent matches: #{inspect(error)}")

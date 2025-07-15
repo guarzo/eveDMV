@@ -115,8 +115,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       nil ->
         # Perform full analysis
         case fetch_battle_killmails(battle_id) do
-          {:error, :not_implemented} ->
-            {:reply, {:error, :not_implemented}, state}
+          {:error, reason} ->
+            {:reply, {:error, reason}, state}
 
           {:ok, killmails} ->
             with {:ok, timeline} <- construct_battle_timeline(killmails),
@@ -211,8 +211,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
     # Fetch recent killmails
     case fetch_recent_system_kills(system_id, 300) do
-      {:error, :not_implemented} ->
-        {:reply, {:error, :not_implemented}, state}
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
 
       {:ok, recent_kills} ->
         with {:ok, updated_engagement} <- update_engagement_data(engagement, recent_kills),
@@ -385,12 +385,96 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   defp fetch_battle_killmails(battle_id) do
     # Fetch killmails related to a specific battle
-    # For now, return empty list as we don't have the actual battle tracking yet
+    # For now, we'll extract system_id and time range from battle_id
+    # In a real implementation, this would query a battle_killmails junction table
     Logger.debug("Fetching killmails for battle #{battle_id}")
 
-    # In a real implementation, this would query the database for killmails
-    # associated with this battle_id based on time/space clustering
-    {:ok, []}
+    # Parse battle_id to extract system_id and time range
+    # Format: "system_#{system_id}_#{unix_timestamp}"
+    case String.split(battle_id, "_") do
+      ["system", system_id_str, timestamp_str] ->
+        with {system_id, ""} <- Integer.parse(system_id_str),
+             {timestamp, ""} <- Integer.parse(timestamp_str) do
+          # Create intelligent time window around the battle based on activity patterns
+          battle_time = DateTime.from_unix!(timestamp)
+          {start_time, end_time} = calculate_optimal_battle_window(system_id, battle_time)
+
+          query = """
+          SELECT 
+            killmail_id,
+            killmail_time,
+            killmail_hash,
+            solar_system_id,
+            victim_character_id,
+            victim_corporation_id,
+            victim_alliance_id,
+            victim_ship_type_id,
+            attacker_count,
+            raw_data,
+            source
+          FROM killmails_raw
+          WHERE solar_system_id = $1
+            AND killmail_time >= $2
+            AND killmail_time <= $3
+          ORDER BY killmail_time ASC
+          """
+
+          case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [system_id, start_time, end_time]) do
+            {:ok, %{rows: rows}} ->
+              killmails =
+                Enum.map(rows, fn [
+                                    killmail_id,
+                                    killmail_time,
+                                    killmail_hash,
+                                    solar_system_id,
+                                    victim_character_id,
+                                    victim_corporation_id,
+                                    victim_alliance_id,
+                                    victim_ship_type_id,
+                                    attacker_count,
+                                    raw_data,
+                                    source
+                                  ] ->
+                  %{
+                    killmail_id: killmail_id,
+                    killmail_time: killmail_time,
+                    killmail_hash: killmail_hash,
+                    solar_system_id: solar_system_id,
+                    victim_character_id: victim_character_id,
+                    victim_corporation_id: victim_corporation_id,
+                    victim_alliance_id: victim_alliance_id,
+                    victim_ship_type_id: victim_ship_type_id,
+                    attacker_count: attacker_count,
+                    raw_data: raw_data,
+                    source: source,
+                    # Extract additional fields from raw_data
+                    total_value: get_in(raw_data, ["zkb", "totalValue"]) || 0,
+                    attackers: raw_data["attackers"] || [],
+                    victim: raw_data["victim"] || %{}
+                  }
+                end)
+
+              Logger.debug("Found #{length(killmails)} killmails for battle #{battle_id}")
+              {:ok, killmails}
+
+            {:error, error} ->
+              Logger.error("Database error fetching battle killmails: #{inspect(error)}")
+              {:error, :database_error}
+          end
+        else
+          _ ->
+            Logger.warning("Invalid battle_id format: #{battle_id}")
+            {:error, :invalid_battle_id}
+        end
+
+      _ ->
+        Logger.warning("Invalid battle_id format: #{battle_id}")
+        {:error, :invalid_battle_id}
+    end
+  rescue
+    error ->
+      Logger.error("Exception fetching battle killmails: #{inspect(error)}")
+      {:error, :fetch_failed}
   end
 
   defp fetch_recent_system_kills(system_id, seconds_back) do
@@ -400,13 +484,75 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     # Calculate the time window
     cutoff_time = DateTime.add(DateTime.utc_now(), -seconds_back, :second)
 
-    # In a real implementation, this would query:
-    # SELECT * FROM killmails_raw 
-    # WHERE solar_system_id = system_id 
-    # AND killmail_time > cutoff_time
-    # ORDER BY killmail_time DESC
+    query = """
+    SELECT 
+      killmail_id,
+      killmail_time,
+      killmail_hash,
+      solar_system_id,
+      victim_character_id,
+      victim_corporation_id,
+      victim_alliance_id,
+      victim_ship_type_id,
+      attacker_count,
+      raw_data,
+      source
+    FROM killmails_raw
+    WHERE solar_system_id = $1
+      AND killmail_time >= $2
+    ORDER BY killmail_time DESC
+    LIMIT 500
+    """
 
-    {:ok, []}
+    case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [system_id, cutoff_time]) do
+      {:ok, %{rows: rows}} ->
+        killmails =
+          Enum.map(rows, fn [
+                              killmail_id,
+                              killmail_time,
+                              killmail_hash,
+                              solar_system_id,
+                              victim_character_id,
+                              victim_corporation_id,
+                              victim_alliance_id,
+                              victim_ship_type_id,
+                              attacker_count,
+                              raw_data,
+                              source
+                            ] ->
+            %{
+              killmail_id: killmail_id,
+              killmail_time: killmail_time,
+              killmail_hash: killmail_hash,
+              solar_system_id: solar_system_id,
+              victim_character_id: victim_character_id,
+              victim_corporation_id: victim_corporation_id,
+              victim_alliance_id: victim_alliance_id,
+              victim_ship_type_id: victim_ship_type_id,
+              attacker_count: attacker_count,
+              raw_data: raw_data,
+              source: source,
+              # Extract additional fields from raw_data for analysis
+              total_value: get_in(raw_data, ["zkb", "totalValue"]) || 0,
+              attackers: raw_data["attackers"] || [],
+              victim: raw_data["victim"] || %{}
+            }
+          end)
+
+        Logger.debug(
+          "Found #{length(killmails)} killmails in system #{system_id} from last #{seconds_back} seconds"
+        )
+
+        {:ok, killmails}
+
+      {:error, error} ->
+        Logger.error("Database error fetching recent system kills: #{inspect(error)}")
+        {:error, :database_error}
+    end
+  rescue
+    error ->
+      Logger.error("Exception fetching recent system kills: #{inspect(error)}")
+      {:error, :fetch_failed}
   end
 
   defp construct_battle_timeline(killmails) do
@@ -442,7 +588,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
           timestamp: km.killmail_time,
           event_type: :kill,
           killmail_id: km.killmail_id,
-          system_id: km.system_id,
+          system_id: km.solar_system_id,
           victim: extract_victim_details(km),
           attackers: if(include_damage_dealt, do: extract_attacker_details(km), else: nil),
           isk_destroyed: km.total_value,
@@ -751,7 +897,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       # Strategic Cruisers (T3C)
       ship_type_id in [29_984, 29_986, 29_988, 29_990] -> :strategic_cruiser
       # Logistics Cruisers
-      ship_type_id in [11_985, 11_987, 11_989, 11_987] -> :logistics
+      ship_type_id in [11_985, 11_987, 11_989, 12_003] -> :logistics
       # Recon Ships
       ship_type_id in [11_957, 11_959, 11_961, 11_963] -> :recon
       # Heavy Assault Cruisers
@@ -908,19 +1054,23 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
         end)
 
       moments = moments ++ high_value_kills
+      moments
     end
 
     # Find first blood
-    if first_kill = List.first(timeline) do
-      moments = [
-        %{
-          type: :first_blood,
-          timestamp: first_kill.timestamp,
-          victim: first_kill.victim
-        }
-        | moments
-      ]
-    end
+    moments =
+      if first_kill = List.first(timeline) do
+        [
+          %{
+            type: :first_blood,
+            timestamp: first_kill.timestamp,
+            victim: first_kill.victim
+          }
+          | moments
+        ]
+      else
+        moments
+      end
 
     # Sort by timestamp
     Enum.sort_by(moments, & &1.timestamp)
@@ -979,6 +1129,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
             new_momentum: curr.momentum
           }
         end)
+
+      turning_points
     end
 
     turning_points
@@ -994,7 +1146,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   defp analyze_engagement_flow(timeline) do
     # Analyze the flow and phases of the engagement
-    phases = identify_battle_phases(timeline)
+    phases = identify_battle_phases_detailed(timeline)
     intensity_changes = identify_intensity_changes(timeline)
 
     %{
@@ -1003,7 +1155,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     }
   end
 
-  defp identify_battle_phases(timeline) do
+  defp identify_battle_phases_detailed(timeline) do
     # Identify distinct phases based on kill clustering
     if length(timeline) < 3 do
       []
@@ -1199,7 +1351,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     end
   end
 
-  defp analyze_target_selection(timeline, fleet_analysis) do
+  defp analyze_target_selection(timeline, _fleet_analysis) do
     # Analyze target prioritization effectiveness
     if Enum.empty?(timeline) do
       %{
@@ -1465,7 +1617,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     numerical_factors =
       initial_factors ++
         case performance_metrics.by_side do
-          nil -> []
+          by_side when map_size(by_side) == 0 -> []
           by_side -> analyze_numerical_factors(by_side)
         end
 
@@ -1473,7 +1625,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     tactical_factors =
       numerical_factors ++
         case tactical_analysis.patterns do
-          nil -> []
+          [] -> []
           patterns -> analyze_tactical_factors(patterns)
         end
 
@@ -1481,7 +1633,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     control_factors =
       tactical_factors ++
         case tactical_analysis.key_moments do
-          nil -> []
+          [] -> []
           key_moments -> analyze_control_factors(key_moments)
         end
 
@@ -1524,5 +1676,146 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     else
       []
     end
+  end
+
+  # Calculate intelligent time window around a battle based on activity patterns
+  defp calculate_optimal_battle_window(system_id, battle_time) do
+    # Get killmail activity around the battle time to determine optimal window
+    # Look 1 hour before
+    base_start = DateTime.add(battle_time, -60 * 60, :second)
+    # Look 1 hour after
+    base_end = DateTime.add(battle_time, 60 * 60, :second)
+
+    # Query for killmail activity in the system around this time
+    activity_query = """
+    SELECT 
+      killmail_time,
+      COUNT(*) as kill_count
+    FROM killmails_enriched 
+    WHERE solar_system_id = $1 
+      AND killmail_time BETWEEN $2 AND $3
+    GROUP BY 
+      DATE_TRUNC('minute', killmail_time)
+    ORDER BY killmail_time
+    """
+
+    case Ecto.Adapters.SQL.query(EveDmv.Repo, activity_query, [
+           system_id,
+           base_start,
+           base_end
+         ]) do
+      {:ok, %{rows: [_ | _] = rows}} ->
+        # Analyze activity pattern to find optimal bounds
+        analyze_activity_pattern(rows, battle_time)
+
+      {:error, reason} ->
+        Logger.warning("Failed to analyze battle activity pattern: #{inspect(reason)}")
+        # Fallback to 30-minute window
+        default_battle_window(battle_time)
+
+      _ ->
+        # No activity data, use default window
+        default_battle_window(battle_time)
+    end
+  rescue
+    error ->
+      Logger.error("Error calculating optimal battle window: #{inspect(error)}")
+      default_battle_window(battle_time)
+  end
+
+  defp analyze_activity_pattern(activity_rows, battle_time) do
+    # Convert activity data to time/count pairs
+    activity_minutes =
+      Enum.map(activity_rows, fn [timestamp, count] ->
+        {timestamp, count}
+      end)
+
+    if Enum.empty?(activity_minutes) do
+      default_battle_window(battle_time)
+    else
+      # Find the start and end of sustained activity
+      battle_unix = DateTime.to_unix(battle_time)
+
+      # Group activity into 5-minute windows for noise reduction
+      smoothed_activity =
+        activity_minutes
+        |> Enum.chunk_every(5)
+        |> Enum.map(fn chunk ->
+          avg_time =
+            chunk
+            |> Enum.map(&elem(&1, 0))
+            |> Enum.map(&DateTime.to_unix/1)
+            |> Enum.sum()
+            |> div(length(chunk))
+
+          total_kills = chunk |> Enum.map(&elem(&1, 1)) |> Enum.sum()
+          {avg_time, total_kills}
+        end)
+
+      # Find activity threshold (10% of peak activity)
+      max_activity = smoothed_activity |> Enum.map(&elem(&1, 1)) |> Enum.max(fn -> 0 end)
+      threshold = max(1, div(max_activity, 10))
+
+      # Find start of significant activity before battle
+      start_time =
+        smoothed_activity
+        |> Enum.filter(fn {time, _count} -> time <= battle_unix end)
+        |> Enum.reverse()
+        |> find_activity_start(threshold)
+        |> case do
+          # Default 30min before
+          nil -> DateTime.add(battle_time, -30 * 60, :second)
+          unix_time -> DateTime.from_unix!(unix_time)
+        end
+
+      # Find end of significant activity after battle  
+      end_time =
+        smoothed_activity
+        |> Enum.filter(fn {time, _count} -> time >= battle_unix end)
+        |> find_activity_end(threshold)
+        |> case do
+          # Default 30min after
+          nil -> DateTime.add(battle_time, 30 * 60, :second)
+          unix_time -> DateTime.from_unix!(unix_time)
+        end
+
+      # Ensure minimum 20-minute window and maximum 2-hour window
+      min_start = DateTime.add(battle_time, -10 * 60, :second)
+      max_start = DateTime.add(battle_time, -120 * 60, :second)
+      min_end = DateTime.add(battle_time, 10 * 60, :second)
+      max_end = DateTime.add(battle_time, 120 * 60, :second)
+
+      final_start = max(start_time, max_start) |> min(min_start)
+      final_end = max(end_time, min_end) |> min(max_end)
+
+      {final_start, final_end}
+    end
+  end
+
+  defp find_activity_start(reversed_activity, threshold) do
+    # Find first period of low activity working backwards from battle
+    reversed_activity
+    |> Enum.find(fn {_time, count} -> count < threshold end)
+    |> case do
+      nil -> nil
+      {time, _count} -> time
+    end
+  end
+
+  defp find_activity_end(forward_activity, threshold) do
+    # Find first period of low activity working forwards from battle
+    forward_activity
+    |> Enum.find(fn {_time, count} -> count < threshold end)
+    |> case do
+      nil -> nil
+      {time, _count} -> time
+    end
+  end
+
+  defp default_battle_window(battle_time) do
+    # Default 30-minute window around battle
+    start_time = DateTime.add(battle_time, -30 * 60, :second)
+    end_time = DateTime.add(battle_time, 30 * 60, :second)
+    {start_time, end_time}
   end
 end

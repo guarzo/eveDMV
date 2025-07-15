@@ -12,7 +12,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Infrastructure.WormholeEventProcess
 
   require Logger
 
-  def process_character_for_wormhole_vetting(%{character_id: character_id} = event) do
+  def process_character_for_wormhole_vetting(%{character_id: character_id} = _event) do
     Logger.info("Processing character #{character_id} for wormhole vetting")
 
     # Define default wormhole vetting criteria
@@ -72,7 +72,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Infrastructure.WormholeEventProcess
 
         # Log high severity alerts
         if alert_level in [:critical, :high] do
-          Logger.warn("High severity threat detected in system #{system_id}: #{alert_level}")
+          Logger.warning("High severity threat detected in system #{system_id}: #{alert_level}")
         end
 
         {:ok, result}

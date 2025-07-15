@@ -1,108 +1,66 @@
-# Fix Refactoring Opportunities (127 Issues)
+# Prompt 6: Fix Function Complexity and Parameter Issues
 
-You are an AI assistant tasked with resolving refactoring opportunities found by Credo in an Elixir Phoenix codebase. Focus ONLY on [F] (Refactoring) issues.
+## Task
+Refactor functions with too many parameters and address complex function issues.
+
+## Context
+Credo has identified functions that take too many parameters (more than 6) and other complexity issues that need to be addressed for better maintainability.
 
 ## Instructions
 
-1. **Refactoring Issues to Address**:
-   - Avoid negated conditions in if-else blocks
-   - Use `Enum.map_join/3` instead of `Enum.map/2 |> Enum.join/2`  
-   - Avoid long quote blocks
-   - Fix pipe chains that should start with raw values
+### Part 1: Functions with Too Many Parameters
+1. Find functions with more than 6 parameters (arity > 6)
+2. Refactor using one of these strategies:
+   - **Option structs**: Group related parameters into a struct
+   - **Keyword lists**: Use keyword arguments for optional parameters
+   - **Context objects**: Create a context struct that holds related data
+   - **Function splitting**: Break complex functions into smaller ones
 
-2. **Key Transformation Patterns**:
-
-   **A. Negated Conditions**:
+3. Example refactoring:
    ```elixir
-   # Before
-   if !condition do
-     handle_false_case()
-   else  
-     handle_true_case()
+   # Before: Function with 11 parameters
+   def complex_function(a, b, c, d, e, f, g, h, i, j, k) do
+     # ...
    end
    
-   # After
-   if condition do
-     handle_true_case()
-   else
-     handle_false_case()  
-   end
-   ```
-
-   **B. Enum.map_join Optimization**:
-   ```elixir
-   # Before
-   list |> Enum.map(&transform/1) |> Enum.join(", ")
-   
-   # After
-   Enum.map_join(list, ", ", &transform/1)
-   ```
-
-   **C. Pipe Chain Starting Points**:
-   ```elixir
-   # Before
-   function_call() |> transform() |> process()
-   
-   # After (if function_call() doesn't return raw value)
-   raw_value = function_call()
-   raw_value |> transform() |> process()
-   ```
-
-3. **Areas to Focus On**:
-   - Look for patterns like `data |> Enum.map(...) |> Enum.join(...)`
-   - Find negated if conditions with `!` or `not`
-   - Identify pipe chains starting with function calls instead of raw values
-   - Check for overly long quote blocks that could be split
-
-4. **File Types to Prioritize**:
-   - Start with utility modules and shared code
-   - Move to context modules
-   - Handle web/LiveView files last to avoid conflicts
-
-5. **Examples from Common Patterns**:
-   ```elixir
-   # Map-Join Pattern
-   # Before
-   ships |> Enum.map(&"#{&1.name} (#{&1.type})") |> Enum.join(", ")
-   
-   # After  
-   Enum.map_join(ships, ", ", &"#{&1.name} (#{&1.type})")
-   
-   # Negated Condition Pattern
-   # Before
-   if !valid_input?(data) do
-     {:error, "Invalid input"}
-   else
-     process_data(data)
+   # After: Use options struct
+   defmodule ComplexOptions do
+     defstruct [:a, :b, :c, :d, :e, :f, :g, :h, :i, :j, :k]
    end
    
-   # After
-   if valid_input?(data) do
-     process_data(data)
-   else
-     {:error, "Invalid input"}
+   def complex_function(%ComplexOptions{} = opts) do
+     # ...
    end
    ```
 
-6. **Quote Block Guidelines**:
-   - Split long quote blocks into smaller, focused sections
-   - Use proper indentation and formatting
-   - Consider extracting complex quotes into separate functions
+### Part 2: Long Quote Blocks
+1. Find long quote blocks that exceed reasonable length
+2. Break them into smaller, more manageable pieces
+3. Consider using heredocs for multi-line strings
 
-## Important Notes
+## Files to Focus On
+Based on credo output, these files have high-arity functions:
+- Look for functions with arity 11, 9, and other high counts
+- Search in battle analysis modules
+- Check intelligence infrastructure modules
+- Review data processing modules
 
-- This is part of a parallel fix effort - only modify [F] refactoring issues
-- Do NOT modify TODO comments, module aliases, pipeline usage, predicate naming, number formatting, or other issue types
-- Test changes incrementally with `mix compile`
-- Preserve all existing functionality and behavior
-- Focus on readability and performance improvements
+## Areas to Search
+Use these patterns to find problematic functions:
+- `grep -n "def.*(" lib/ | grep -E "\w+,\s*\w+,\s*\w+,\s*\w+,\s*\w+,\s*\w+,\s*\w+"` (functions with many parameters)
+- Look in modules that handle complex data structures
+- Check functions that process multiple related pieces of data
 
 ## Success Criteria
+- No functions have more than 6 parameters
+- Complex parameter lists are replaced with structured data
+- Long quote blocks are broken into manageable pieces
+- Function interfaces are cleaner and more maintainable
+- All existing functionality is preserved
 
-- All negated conditions are restructured positively
-- `Enum.map/2 |> Enum.join/2` patterns are replaced with `Enum.map_join/3`
-- Pipe chains start with appropriate raw values
-- Long quote blocks are reasonably sized
-- Code compiles without errors
-- All tests pass
-- Performance is improved where applicable
+## Important Notes
+- This is a significant refactoring task
+- Maintain all existing API contracts
+- Update all callers when function signatures change
+- Consider backwards compatibility if these are public APIs
+- Test thoroughly after refactoring

@@ -1,79 +1,56 @@
-# Fix Predicate Function Naming Issues (Part of 742 Readability Issues)
+# Prompt 4: Fix Predicate Function Naming and Negated Conditions
 
-You are an AI assistant tasked with resolving predicate function naming issues found by Credo in an Elixir Phoenix codebase. Focus ONLY on [R] "Predicate function names should not start with 'is', and should end in a question mark" issues.
+## Task
+Fix predicate function naming issues and refactor negated conditions in if-else blocks.
+
+## Context
+Credo has identified multiple function naming and conditional logic issues that need to be addressed for better code readability and Elixir conventions.
 
 ## Instructions
 
-1. **Predicate Naming**: Rename predicate functions to follow Elixir conventions by removing 'is_' prefix and adding '?' suffix.
-
-2. **Pattern to Follow**:
+### Part 1: Negated Conditions in If-Else Blocks
+1. Find all if-else blocks with negated conditions (pattern: `if !condition` or `if not condition`)
+2. Refactor them to use positive conditions by swapping the if/else branches
+3. Example transformation:
    ```elixir
-   # Before
-   def is_valid(data), do: ...
-   def is_strategic_ship_type(ship_id), do: ...
-   
-   # After  
-   def valid?(data), do: ...
-   def strategic_ship_type?(ship_id), do: ...
-   ```
-
-3. **Key Files to Address**:
-   - `lib/eve_dmv/performance/regression_detector.ex` - `is_reasonable_baseline?`
-   - `lib/eve_dmv/contexts/intelligence_infrastructure/domain/cross_system_analyzer.ex` - `is_high_value_target`
-   - `lib/eve_dmv/contexts/combat_intelligence/domain/battle_analysis_service.ex` - `is_strategic_ship_type`
-   - `lib/eve_dmv/contexts/character_intelligence/domain/threat_scoring_engine.ex` - `is_specialist`, `is_opportunist`, `is_fleet_anchor`, `is_solo_hunter`
-   - `lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex` - `is_tactical_term`, `is_phase_transition_moment`, `is_intensity_change_moment`, `is_capital_ship`
-   - `lib/eve_dmv/contexts/battle_analysis/domain/tactical_phase_detector.ex` - `is_ewar_ship_type`
-   - `lib/eve_dmv/analytics/module_classifier.ex` - Multiple `is_*` functions
-
-4. **Transformation Steps**:
-   - Rename function definition: `is_something` → `something?`
-   - Update all function calls in the same file
-   - Update any pattern matches or guards using the function
-   - Keep the same function logic and return values
-
-5. **Examples**:
-   ```elixir
-   # Before
-   def is_capital_ship(ship_type_id) do
-     ship_type_id in [19_720, 19_740]
+   # Before:
+   if !valid? do
+     handle_invalid()
+   else
+     handle_valid()
    end
    
-   def analyze_fleet(ships) do
-     if is_capital_ship(ship.type_id) do
-       ...
-     end
-   end
-   
-   # After
-   def capital_ship?(ship_type_id) do
-     ship_type_id in [19_720, 19_740]
-   end
-   
-   def analyze_fleet(ships) do  
-     if capital_ship?(ship.type_id) do
-       ...
-     end
+   # After:
+   if valid? do
+     handle_valid()
+   else
+     handle_invalid()
    end
    ```
 
-6. **Special Attention**:
-   - `lib/eve_dmv/analytics/module_classifier.ex` has many predicate functions to rename
-   - Update all internal calls within the same module
-   - Be careful with public API functions that might be called from other modules
+### Part 2: Predicate Function Naming
+1. Ensure all predicate functions (those returning boolean values) end with `?`
+2. Look for functions that return true/false but don't have `?` in their name
+3. Rename them to follow Elixir conventions
 
-## Important Notes
-
-- This is part of a parallel fix effort - only modify predicate function naming issues
-- Do NOT modify TODO comments, module aliases, pipeline usage, number formatting, or other issue types
-- Focus on one file at a time to avoid conflicts
-- Run `mix compile` after each file to catch any missed references
-- Preserve all existing functionality and behavior
+## Files to Focus On
+Based on credo output patterns, look for these issues in:
+- `lib/eve_dmv/contexts/surveillance/domain/matching_engine.ex`
+- `lib/eve_dmv/contexts/battle_analysis/domain/battle_detection_service.ex`
+- `lib/eve_dmv/analytics/battle_detector.ex`
+- `lib/eve_dmv/eve/esi_utils.ex`
+- `lib/eve_dmv/killmails/killmail_data_transformer.ex`
+- `lib/eve_dmv_web/live/character_analysis/character_analysis_live.ex`
 
 ## Success Criteria
+- All negated conditions in if-else blocks are refactored to positive conditions
+- All predicate functions have proper naming with `?` suffix
+- Code maintains the same functionality
+- No logical errors introduced during refactoring
+- Code compiles without warnings
 
-- All predicate functions follow Elixir naming conventions (no 'is_' prefix, '?' suffix)
-- All function calls are updated consistently
-- Code compiles without errors
-- No functionality is broken
-- Tests still pass
+## Important Notes
+- This is a code quality and readability improvement
+- Maintain exact same functionality, only change structure
+- Be careful when swapping if/else branches to maintain correct logic
+- Update all callers if function names change

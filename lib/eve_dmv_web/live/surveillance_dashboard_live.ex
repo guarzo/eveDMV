@@ -87,23 +87,16 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
 
   @impl Phoenix.LiveView
   def handle_event("optimize_profile", %{"profile_id" => profile_id}, socket) do
-    case generate_optimization_recommendations(profile_id) do
-      {:ok, recommendations} ->
-        socket =
-          put_flash(
-            socket,
-            :info,
-            "Generated #{length(recommendations)} optimization recommendations"
-          )
+    {:ok, recommendations} = generate_optimization_recommendations(profile_id)
 
-        {:noreply, socket}
+    socket =
+      put_flash(
+        socket,
+        :info,
+        "Generated #{length(recommendations)} optimization recommendations"
+      )
 
-      {:error, reason} ->
-        socket =
-          put_flash(socket, :error, "Failed to generate recommendations: #{inspect(reason)}")
-
-        {:noreply, socket}
-    end
+    {:noreply, socket}
   end
 
   # PubSub handlers

@@ -80,7 +80,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CorporationAnalyzer do
     new_state =
       case result do
         {:ok, _} -> %{state | analysis_count: state.analysis_count + 1}
-        _ -> state
+        {:error, _} -> state
       end
 
     {:reply, result, new_state}
@@ -122,6 +122,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CorporationAnalyzer do
         AnalysisCache.put_corporation_analysis(corporation_id, analysis)
 
         {:ok, analysis}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 end

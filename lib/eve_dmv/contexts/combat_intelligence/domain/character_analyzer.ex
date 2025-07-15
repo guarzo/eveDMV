@@ -100,7 +100,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
     new_state =
       case result do
         {:ok, _} -> %{state | analysis_count: state.analysis_count + 1}
-        _ -> state
+        {:error, _} -> state
       end
 
     {:reply, result, new_state}
@@ -167,6 +167,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
         AnalysisCache.put_character_analysis(character_id, analysis)
 
         {:ok, analysis}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
