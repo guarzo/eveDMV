@@ -20,6 +20,8 @@ defmodule EveDmvWeb.Components.ErrorRecoveryComponent do
   """
   attr(:error_state, :map, default: nil)
   attr(:retry_event, :string, default: "retry_operation")
+  attr(:clear_event, :string, default: "clear_error")
+  attr(:refresh_event, :string, default: "refresh_page")
   attr(:show_details, :boolean, default: false)
   attr(:class, :string, default: "")
 
@@ -40,11 +42,13 @@ defmodule EveDmvWeb.Components.ErrorRecoveryComponent do
             <h3 class="text-lg font-medium text-red-400 mb-2">
               Something went wrong
             </h3>
-            <p class="text-red-300 mb-4">
-              <%= @error_state.message %>
-            </p>
+            <%= if Map.get(@error_state, :message) do %>
+              <p class="text-red-300 mb-4">
+                <%= @error_state.message %>
+              </p>
+            <% end %>
             
-            <%= if @show_details && @error_state[:details] do %>
+            <%= if @show_details && Map.get(@error_state, :details) do %>
               <details class="mb-4">
                 <summary class="cursor-pointer text-red-300 hover:text-red-200 transition-colors">
                   Technical details
@@ -71,7 +75,7 @@ defmodule EveDmvWeb.Components.ErrorRecoveryComponent do
               <% end %>
               
               <button
-                phx-click="clear_error"
+                phx-click={@clear_event}
                 class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors duration-200"
               >
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -81,7 +85,7 @@ defmodule EveDmvWeb.Components.ErrorRecoveryComponent do
               </button>
               
               <button
-                phx-click="refresh_page"
+                phx-click={@refresh_event}
                 class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200"
               >
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

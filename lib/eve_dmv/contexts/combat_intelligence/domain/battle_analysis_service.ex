@@ -900,8 +900,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       ship_type_id in [11_985, 11_987, 11_989, 12_003] -> :logistics
       # Recon Ships
       ship_type_id in [11_957, 11_959, 11_961, 11_963] -> :recon
-      # Heavy Assault Cruisers
-      ship_type_id in [12_003, 12_005, 11_993, 11_995] -> :heavy_assault_cruiser
+      # Heavy Assault Cruisers  
+      ship_type_id in [11_991, 12_005, 11_993, 11_995] -> :heavy_assault_cruiser
       # Capital ships
       ship_type_id > 20_000 and ship_type_id < 30_000 -> :capital
       # Default
@@ -1023,12 +1023,22 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   end
 
   defp identify_kiting_pattern(_timeline) do
-    # Would analyze for consistent damage patterns with low losses
+    # TODO: Implement kiting pattern detection algorithm
+    # Should analyze for:
+    # - Consistent damage over time with minimal losses
+    # - Range-based engagement patterns
+    # - Hit-and-run tactical indicators
+    # Related to Sprint 15 IMPL-15: Complete tactical pattern extraction
     []
   end
 
   defp identify_brawling_pattern(_timeline) do
-    # Would analyze for high reciprocal damage patterns
+    # TODO: Implement brawling pattern detection algorithm
+    # Should analyze for:
+    # - High reciprocal damage patterns
+    # - Close-range engagement indicators
+    # - Simultaneous kill/loss events
+    # Related to Sprint 15 IMPL-15: Complete tactical pattern extraction
     []
   end
 
@@ -1438,10 +1448,19 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   end
 
   defp calculate_side_kd_ratio(_participants) do
+    # TODO: Implement actual kill/death ratio calculation
+    # Should calculate: total_kills / max(total_deaths, 1)
+    # Related to Sprint 15 IMPL-3: Implement battle intensity calculations
     1.0
   end
 
   defp analyze_ship_class_performance(_killmails, _participants) do
+    # TODO: Implement ship class performance analysis
+    # Should analyze:
+    # - Effectiveness by ship class (frigate, cruiser, battleship, etc.)
+    # - Class-specific kill/loss ratios
+    # - Tactical role performance metrics
+    # Related to Sprint 15 IMPL-5: Implement basic fleet composition analysis
     %{}
   end
 

@@ -1,0 +1,119 @@
+
+
+In lib/eve_dmv/release.ex around the import_historical_killmails/2 function near
+the Enum.each loop, replace the current stub that only sleeps with a real call
+to your import pipeline module under lib/eve_dmv/killmails/. Update the function
+to invoke the actual import logic or Broadway pipeline instead of simulating it,
+ensuring the import_historical_killmails/2 method performs the real data import
+as expected before running scripts/import_historical_killmails.sh.
+
+
+In lib/eve_dmv_web/components/style_guide.ex from lines 22 to 241, the
+style_guide function is too large and hard to maintain. Refactor by extracting
+each major section (buttons, forms, colors, loading states, implementation
+guide) into separate private functions that return their respective HEEx
+templates. Then update the main style_guide function to call these smaller
+components within the main container div, improving modularity and readability.
+
+
+In lib/eve_dmv_web/components/style_guide.ex from lines 22 to 241, the
+style_guide function is too large and hard to maintain. Refactor by extracting
+each major section (buttons, forms, colors, loading states, implementation
+guide) into separate private functions that return their respective HEEx
+templates. Then update the main style_guide function to call these smaller
+components within the main container div, improving modularity and readability.
+
+
+In lib/eve_dmv_web/components/form_component.ex around lines 270 to 294, the
+icon rendering functions use hardcoded SVG strings directly in the component,
+which reduces maintainability. Refactor by extracting these SVG icon renderings
+into a separate module, such as EveDmvWeb.Components.Icons, defining each icon
+as a function component using the ~H sigil. Then update the form_component to
+call this new icon component instead of rendering raw SVG strings inline.
+
+
+In lib/eve_dmv_web/components/form_component.ex at line 263, avoid using
+String.to_atom(@name) directly as it can cause atom exhaustion if @name is
+user-controlled. Replace it with String.to_existing_atom(@name) to only convert
+existing atoms, or better, refactor the code to pass the field as an atom from
+the caller to eliminate the need for runtime atom conversion.
+
+
+In lib/eve_dmv_web/components/error_recovery_component.ex around lines 74 to 91,
+the event names for error recovery actions are hardcoded as "clear_error" and
+"refresh_page". To increase component flexibility, define attributes for these
+event names with default values, such as :clear_event defaulting to
+"clear_error" and :refresh_event defaulting to "refresh_page". Then replace the
+hardcoded event names in the phx-click bindings with these attribute values.
+
+In lib/eve_dmv_web/components/error_recovery_component.ex around lines 44 to 54,
+the code directly accesses @error_state.message and @error_state.details without
+checking if these fields exist, which can cause errors if they are nil or
+missing. Add nil checks or use safe access methods to ensure these fields exist
+before rendering them, preventing runtime exceptions.
+
+In lib/eve_dmv/contexts/market_intelligence/domain/valuation_service.ex at line
+106, replace the integer division function div/2 with a floating-point division
+to avoid precision loss in the average_ship_value calculation. Change the
+calculation to use a float division operator or convert operands to floats
+before division to maintain decimal precision for financial accuracy.
+
+
+In lib/eve_dmv/contexts/market_intelligence/domain/valuation_service.ex around
+lines 122 to 135, replace the hard-coded ship_type_id threshold cond block with
+a fallback valuation that uses the existing ship classification functions like
+FleetUtils.get_ship_category/1 or ShipDatabase.get_ship_category/1. Define a
+module attribute map @ship_estimates_by_category keyed by ship category names
+(e.g., "frigate", "destroyer", "cruiser", "battleship", "capital",
+"supercapital") with corresponding valuation numbers, then call the
+classification function to get the ship category and use it to lookup the
+fallback value from the map instead of relying on numeric ID ranges.
+
+
+
+In lib/eve_dmv_web/components/color_utils.ex at lines 143 to 144, the catch-all
+clause isk_color(_) currently returns a default color string but is too broad
+and may hide programming errors. Modify this clause to explicitly match only
+expected input types (such as specific atoms or strings) or add a guard clause
+to restrict input types. Alternatively, raise an error or log a warning for
+unexpected input types to make the function's behavior clearer and safer.
+
+
+In lib/eve_dmv_web/components/color_utils.ex at lines 165 to 166, the catch-all
+clause for efficiency_color/1 currently returns a default color string without
+validating input types, which can mask programming errors. Modify this clause to
+explicitly check for expected input types or raise a clear error when given
+unexpected input, similar to the approach used in isk_color/1, to make the
+function's behavior more explicit and safer.
+
+In lib/eve_dmv_web/components/color_utils.ex around lines 20 to 28, the color
+mappings for security classes are hardcoded in the function. Refactor by
+extracting these mappings into module attributes at the top of the module,
+defining a map from security_class atoms to color strings. Then update the
+security_color function to reference these module attributes instead of
+hardcoding the strings, improving maintainability and reducing duplication.
+
+In lib/eve_dmv_web/components/error_handler.ex between lines 220 and 263, the
+retry logic currently uses a fixed 1000ms delay before retrying. To implement
+true exponential backoff, replace the fixed Process.sleep(1000) with a delay
+that increases exponentially based on the number of retries left or attempts
+made, for example by calculating the delay as a base delay multiplied by 2 to
+the power of the retry attempt count. This will help reduce retry storms by
+spacing out retries more effectively.
+
+In lib/eve_dmv_web/components/error_handler.ex between lines 220 and 263, the
+retry logic currently uses a fixed 1000ms delay before retrying. To implement
+true exponential backoff, replace the fixed Process.sleep(1000) with a delay
+that increases exponentially based on the number of retries left or attempts
+made, for example by calculating the delay as a base delay multiplied by 2 to
+the power of the retry attempt count. This will help reduce retry storms by
+spacing out retries more effectively.
+
+
+In lib/eve_dmv/contexts/combat_intelligence/domain/battle_analysis_service.ex
+around lines 879 to 887 and also lines 1409 to 1451, several functions like
+identify_kiting_pattern/1 and identify_brawling_pattern/1 are stubs returning
+empty lists. Add clear TODO comments in these functions indicating they are
+pending implementation and consider creating or linking to issue tracker entries
+for these unfinished analysis and strategic recommendation functions to ensure
+they are addressed in future development.

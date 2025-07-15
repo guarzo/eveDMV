@@ -8,7 +8,20 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationService do
 
   require Logger
 
-  # Common ship base prices (in ISK) for estimation
+  # TODO: Replace hardcoded ship prices with Janice API integration
+  # Current implementation covers only a small subset of ship types (26 ships)
+  # causing most ships to use generic price estimation.
+  # 
+  # Improvements needed:
+  # 1. Integrate with Janice API for accurate ship pricing (https://janice.e-351.com/)
+  # 2. Implement service to fetch and cache prices from Janice
+  # 3. Expand coverage to include all ship types in EVE Online
+  # 4. Add caching with TTL to avoid excessive API calls
+  # 5. Handle Janice API rate limits and fallback scenarios
+  # 
+  # Related to Sprint 15 IMPL-19: Market Intelligence Valuation System
+  # 
+  # Common ship base prices (in ISK) for estimation - TEMPORARY HARDCODED VALUES
   @ship_base_prices %{
     # Frigates
     582 => 500_000,
@@ -35,6 +48,18 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationService do
     19_722 => 1_500_000_000,
     19_726 => 1_500_000_000,
     19_720 => 1_500_000_000
+  }
+
+  # Ship value estimates by category for fallback valuation
+  @ship_estimates_by_category %{
+    "frigate" => 1_500_000,
+    "destroyer" => 3_000_000,
+    "cruiser" => 15_000_000,
+    "battlecruiser" => 60_000_000,
+    "battleship" => 150_000_000,
+    "capital" => 1_200_000_000,
+    "supercapital" => 20_000_000_000,
+    "unknown" => 10_000_000
   }
 
   @doc """
@@ -103,7 +128,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationService do
     fleet_valuation = %{
       total_ships: total_ships,
       total_value: total_value,
-      average_ship_value: if(total_ships > 0, do: div(total_value, total_ships), else: 0),
+      average_ship_value: if(total_ships > 0, do: total_value / total_ships, else: 0.0),
       ship_values: ship_values,
       value_by_class: by_class,
       calculated_at: DateTime.utc_now()
@@ -118,21 +143,10 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationService do
     # Use cached prices or fallback to estimates
     case Map.get(@ship_base_prices, ship_type_id) do
       nil ->
-        # Estimate based on ship type ID ranges
-        cond do
-          # Tech 1 frigates
-          ship_type_id < 1000 -> 1_000_000
-          # Tech 1 cruisers
-          ship_type_id < 2000 -> 10_000_000
-          # Tech 1 battleships
-          ship_type_id < 5000 -> 100_000_000
-          # Tech 2 ships
-          ship_type_id < 20_000 -> 200_000_000
-          # Capitals
-          ship_type_id < 30_000 -> 1_000_000_000
-          # Supercapitals
-          true -> 5_000_000_000
-        end
+        # Use ship classification function for better categorization
+        category = EveDmv.Intelligence.ShipDatabase.get_ship_category(ship_type_id)
+        category_key = String.downcase(category)
+        Map.get(@ship_estimates_by_category, category_key, @ship_estimates_by_category["unknown"])
 
       price ->
         price
@@ -175,7 +189,24 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationService do
   end
 
   defp estimate_item_value(item_type_id) when is_integer(item_type_id) do
-    # Basic item value estimation
+    # TODO: Replace simplistic fixed ranges with Janice API integration
+    # Current implementation uses hardcoded value ranges that undervalue many important items.
+    # 
+    # Improvements needed:
+    # 1. Use Janice API for accurate item pricing (https://janice.e-351.com/)
+    # 2. Implement caching with TTL to avoid excessive API calls
+    # 3. Add special handling for high-value categories through Janice:
+    #    - Deadspace modules (significantly higher than T2)
+    #    - Faction items (premium pricing)
+    #    - Officer modules (extremely high value)
+    #    - Capital/supercapital modules
+    #    - Rare blueprints and materials
+    # 4. Use Janice's item categorization and pricing intelligence
+    # 5. Handle API rate limits and implement fallback pricing
+    # 
+    # Related to Sprint 15 IMPL-19: Market Intelligence Valuation System
+    # 
+    # Basic item value estimation - TEMPORARY HARDCODED VALUES
     cond do
       # Modules
       item_type_id < 10_000 -> 1_000_000

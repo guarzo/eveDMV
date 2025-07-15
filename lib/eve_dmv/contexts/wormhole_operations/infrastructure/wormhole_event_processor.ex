@@ -12,7 +12,156 @@ defmodule EveDmv.Contexts.WormholeOperations.Infrastructure.WormholeEventProcess
 
   require Logger
 
-  def process_character_for_wormhole_vetting(%{character_id: character_id} = _event) do
+  # Ship type IDs for role detection (more reliable than string matching)
+  @logistics_ship_ids [
+    # T2 Logistics Cruisers
+    # Guardian (Amarr)
+    11_985,
+    # Basilisk (Caldari) 
+    11_987,
+    # Oneiros (Gallente)
+    11_989,
+    # Scimitar (Minmatar)
+    12_003,
+    # T1 Logistics Cruisers
+    # Augoror (Amarr)
+    11_978,
+    # Osprey (Caldari)
+    11_982,
+    # Exequror (Gallente)
+    11_979,
+    # Scythe (Minmatar)
+    11_993,
+    # Logistics Frigates
+    # Inquisitor (Amarr)
+    32_788,
+    # Bantam (Caldari)
+    32_790,
+    # Navitas (Gallente)
+    32_789,
+    # Burst (Minmatar)
+    32_791
+  ]
+
+  @scanner_ship_ids [
+    # Covert Ops Frigates
+    # Anathema (Amarr)
+    11_940,
+    # Buzzard (Caldari)
+    11_939,
+    # Helios (Gallente)
+    11_941,
+    # Cheetah (Minmatar)
+    11_942,
+    # Sisters of EVE Exploration Ships
+    # Astero
+    33_468,
+    # Stratios
+    33_470,
+    # T3 Cruisers with scanning subsystems (simplified - would need subsystem detection)
+    # Legion (with scanning subsystem)
+    29_984,
+    # Tengu (with scanning subsystem)
+    29_986,
+    # Proteus (with scanning subsystem)
+    29_988,
+    # Loki (with scanning subsystem)
+    29_990
+  ]
+
+  @tackle_ship_ids [
+    # Interdictors
+    # Sabre (Minmatar)
+    22_456,
+    # Flycatcher (Caldari)
+    22_452,
+    # Eris (Gallente)
+    22_448,
+    # Heretic (Amarr)
+    22_460,
+    # Heavy Interdictors
+    # Broadsword (Minmatar)
+    12_011,
+    # Onyx (Caldari)
+    12_013,
+    # Phobos (Gallente)
+    12_009,
+    # Devoter (Amarr)
+    12_015,
+    # Interceptors
+    # Stiletto (Minmatar)
+    11_172,
+    # Crow (Caldari)
+    11_174,
+    # Ares (Gallente)
+    11_176,
+    # Malediction (Amarr)
+    11_182,
+    # Claw (Minmatar)
+    11_184,
+    # Raptor (Caldari)
+    11_186,
+    # Taranis (Gallente)
+    11_188,
+    # Crusader (Amarr)
+    11_192
+  ]
+
+  @dps_ship_ids [
+    # Strategic Cruisers
+    # Legion
+    29_984,
+    # Tengu
+    29_986,
+    # Proteus
+    29_988,
+    # Loki
+    29_990,
+    # Heavy Assault Cruisers
+    # Sacrilege (Amarr)
+    12_003,
+    # Cerberus (Caldari)
+    12_005,
+    # Ishtar (Gallente)
+    11_993,
+    # Vagabond (Minmatar)
+    11_995,
+    # Zealot (Amarr)
+    12_023,
+    # Eagle (Caldari)
+    12_019,
+    # Deimos (Gallente)
+    12_021,
+    # Muninn (Minmatar)
+    12_017,
+    # Battleships (simplified selection)
+    # Apocalypse (Amarr)
+    638,
+    # Armageddon (Amarr)
+    640,
+    # Abaddon (Amarr)
+    642,
+    # Scorpion (Caldari)
+    639,
+    # Raven (Caldari)
+    641,
+    # Rokh (Caldari)
+    643,
+    # Megathron (Gallente)
+    645,
+    # Dominix (Gallente)
+    644,
+    # Hyperion (Gallente)
+    646,
+    # Tempest (Minmatar)
+    647,
+    # Typhoon (Minmatar)
+    648,
+    # Maelstrom (Minmatar)
+    24_692
+  ]
+
+  def process_character_for_wormhole_vetting(%{character_id: character_id}) do
     Logger.info("Processing character #{character_id} for wormhole vetting")
 
     # Define default wormhole vetting criteria
@@ -101,7 +250,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Infrastructure.WormholeEventProcess
           optimization: optimization_result,
           doctrine_compliance: doctrine_compliance,
           mass_efficiency: optimization_result.mass_efficiency,
-          recommendations: optimization_result.suggestions,
+          recommendations: optimization_result.recommendations,
           processed_at: DateTime.utc_now()
         }
 
@@ -147,39 +296,20 @@ defmodule EveDmv.Contexts.WormholeOperations.Infrastructure.WormholeEventProcess
   end
 
   defp ship_fills_role?(ship, role, _wormhole_class) do
-    # Simplified role detection based on ship type
+    # Robust role detection based on ship type IDs (more reliable than string matching)
     case role do
       "logistics" ->
-        String.contains?(String.downcase(ship.type_name || ""), [
-          "guardian",
-          "basilisk",
-          "oneiros",
-          "scimitar"
-        ])
+        ship.type_id in @logistics_ship_ids
 
       "scanner" ->
-        String.contains?(String.downcase(ship.type_name || ""), [
-          "astero",
-          "helios",
-          "buzzard",
-          "cheetah",
-          "anathema"
-        ])
+        ship.type_id in @scanner_ship_ids
 
       "tackle" ->
-        String.contains?(String.downcase(ship.type_name || ""), [
-          "sabre",
-          "flycatcher",
-          "eris",
-          "heretic",
-          "devoter",
-          "phobos",
-          "broadsword",
-          "onyx"
-        ])
+        ship.type_id in @tackle_ship_ids
 
       "dps" ->
-        ship.damage_output && ship.damage_output > 0
+        # Check if ship is in DPS ship list OR has damage output
+        ship.type_id in @dps_ship_ids or (ship.damage_output && ship.damage_output > 0)
 
       _ ->
         false

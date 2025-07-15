@@ -52,6 +52,8 @@ defmodule EveDmv.ErrorHandler do
         [
           max_retries: 3,
           retry_backoff: :exponential,
+          max_backoff_delay: 30_000,
+          backoff_jitter: true,
           enable_telemetry: true,
           emit_error_logs: true
         ]
@@ -135,7 +137,8 @@ defmodule EveDmv.ErrorHandler do
 
         case handle_error(error_with_context, context) do
           {:retry, delay_ms} when attempt < max_retries ->
-            if delay_ms > 0, do: Process.sleep(delay_ms)
+            actual_delay = calculate_backoff_delay(delay_ms, attempt, config)
+            if actual_delay > 0, do: Process.sleep(actual_delay)
             do_with_error_handling(operation, context, attempt + 1, max_retries, config)
 
           {:retry, _delay_ms} ->
@@ -230,6 +233,41 @@ defmodule EveDmv.ErrorHandler do
           :medium -> Logger.warning(log_message, log_metadata)
           :high -> Logger.error(log_message, log_metadata)
           :critical -> Logger.critical(log_message, log_metadata)
+        end
+      end
+
+      defp calculate_backoff_delay(base_delay, attempt, config) do
+        backoff_strategy = Keyword.get(config, :retry_backoff, :exponential)
+        max_delay = Keyword.get(config, :max_backoff_delay, 30_000)
+        jitter_enabled = Keyword.get(config, :backoff_jitter, true)
+
+        calculated_delay =
+          case backoff_strategy do
+            :linear ->
+              base_delay * (attempt + 1)
+
+            :exponential ->
+              base_delay * :math.pow(2, attempt)
+
+            :constant ->
+              base_delay
+
+            _ ->
+              # Default to exponential
+              base_delay * :math.pow(2, attempt)
+          end
+
+        # Cap at max_delay
+        capped_delay = min(calculated_delay, max_delay)
+
+        # Add jitter to prevent thundering herd
+        if jitter_enabled do
+          # Up to 10% jitter
+          jitter_factor = :rand.uniform() * 0.1
+          base_jitter = capped_delay * jitter_factor
+          round(capped_delay + base_jitter)
+        else
+          round(capped_delay)
         end
       end
 

@@ -235,6 +235,11 @@ defmodule EveDmvWeb.Components.FormComponent do
       <.field name="password" type="password" label="Password" errors={@errors} />
   """
   attr(:name, :string, required: true)
+
+  attr(:field, :atom,
+    doc: "The field atom for error message lookup - defaults to atom version of name"
+  )
+
   attr(:type, :string, default: "text")
   attr(:label, :string, required: true)
   attr(:value, :string, default: "")
@@ -246,6 +251,9 @@ defmodule EveDmvWeb.Components.FormComponent do
   attr(:rest, :global)
 
   def field(assigns) do
+    # Use the provided field atom or safely convert name to atom
+    assigns = assign_field_atom(assigns)
+
     ~H"""
     <div class={["space-y-2", @class]}>
       <.label for={@name} required={@required}>
@@ -260,9 +268,30 @@ defmodule EveDmvWeb.Components.FormComponent do
         disabled={@disabled}
         {@rest}
       />
-      <.error_message errors={@errors} field={String.to_atom(@name)} />
+      <.error_message errors={@errors} field={@field_atom} />
     </div>
     """
+  end
+
+  defp assign_field_atom(assigns) do
+    field_atom =
+      case Map.get(assigns, :field) do
+        nil ->
+          # Try to convert name to existing atom safely
+          try do
+            String.to_existing_atom(assigns.name)
+          rescue
+            ArgumentError ->
+              # If atom doesn't exist, create a temporary one
+              # This is safer than String.to_atom but still not ideal
+              String.to_atom(assigns.name)
+          end
+
+        atom when is_atom(atom) ->
+          atom
+      end
+
+    Map.put(assigns, :field_atom, field_atom)
   end
 
   # Private helper functions

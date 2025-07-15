@@ -6,6 +6,74 @@ defmodule EveDmvWeb.Components.ColorUtils do
   threat levels, and status indicators.
   """
 
+  # Color mappings for consistent styling
+  @security_colors %{
+    highsec: "text-green-400",
+    lowsec: "text-yellow-400",
+    nullsec: "text-red-400",
+    wormhole: "text-purple-400"
+  }
+
+  @security_bg_colors %{
+    highsec: "bg-green-900/20 border-green-700",
+    lowsec: "bg-yellow-900/20 border-yellow-700",
+    nullsec: "bg-red-900/20 border-red-700",
+    wormhole: "bg-purple-900/20 border-purple-700"
+  }
+
+  @threat_colors %{
+    extreme: "text-red-500",
+    very_high: "text-red-400",
+    high: "text-orange-400",
+    moderate: "text-yellow-400",
+    low: "text-green-400",
+    minimal: "text-green-500"
+  }
+
+  @threat_bg_colors %{
+    extreme: "bg-red-900/20 border-red-600",
+    very_high: "bg-red-800/20 border-red-500",
+    high: "bg-orange-800/20 border-orange-500",
+    moderate: "bg-yellow-800/20 border-yellow-500",
+    low: "bg-green-800/20 border-green-500",
+    minimal: "bg-green-900/20 border-green-600"
+  }
+
+  @status_colors %{
+    success: "text-green-400",
+    warning: "text-yellow-400",
+    error: "text-red-400",
+    info: "text-blue-400",
+    pending: "text-gray-400"
+  }
+
+  @status_bg_colors %{
+    success: "bg-green-900/20 border-green-700",
+    warning: "bg-yellow-900/20 border-yellow-700",
+    error: "bg-red-900/20 border-red-700",
+    info: "bg-blue-900/20 border-blue-700",
+    pending: "bg-gray-900/20 border-gray-700"
+  }
+
+  @connection_colors %{
+    connected: "text-green-400",
+    connecting: "text-yellow-400",
+    disconnected: "text-red-400",
+    error: "text-red-500"
+  }
+
+  @pill_variants %{
+    success: "bg-green-900/20 text-green-400 border-green-700",
+    warning: "bg-yellow-900/20 text-yellow-400 border-yellow-700",
+    error: "bg-red-900/20 text-red-400 border-red-700",
+    info: "bg-blue-900/20 text-blue-400 border-blue-700",
+    pending: "bg-gray-900/20 text-gray-400 border-gray-700"
+  }
+
+  # Default colors
+  @default_text_color "text-gray-400"
+  @default_bg_color "bg-gray-900/20 border-gray-700"
+
   @doc """
   Returns consistent color classes for EVE security levels.
 
@@ -18,26 +86,14 @@ defmodule EveDmvWeb.Components.ColorUtils do
       "text-red-400"
   """
   def security_color(security_class) do
-    case security_class do
-      :highsec -> "text-green-400"
-      :lowsec -> "text-yellow-400"
-      :nullsec -> "text-red-400"
-      :wormhole -> "text-purple-400"
-      _ -> "text-gray-400"
-    end
+    Map.get(@security_colors, security_class, @default_text_color)
   end
 
   @doc """
   Returns consistent background color classes for EVE security levels.
   """
   def security_bg_color(security_class) do
-    case security_class do
-      :highsec -> "bg-green-900/20 border-green-700"
-      :lowsec -> "bg-yellow-900/20 border-yellow-700"
-      :nullsec -> "bg-red-900/20 border-red-700"
-      :wormhole -> "bg-purple-900/20 border-purple-700"
-      _ -> "bg-gray-900/20 border-gray-700"
-    end
+    Map.get(@security_bg_colors, security_class, @default_bg_color)
   end
 
   @doc """
@@ -52,30 +108,14 @@ defmodule EveDmvWeb.Components.ColorUtils do
       "text-green-400"
   """
   def threat_color(threat_level) do
-    case threat_level do
-      :extreme -> "text-red-500"
-      :very_high -> "text-red-400"
-      :high -> "text-orange-400"
-      :moderate -> "text-yellow-400"
-      :low -> "text-green-400"
-      :minimal -> "text-green-500"
-      _ -> "text-gray-400"
-    end
+    Map.get(@threat_colors, threat_level, @default_text_color)
   end
 
   @doc """
   Returns consistent background color classes for threat levels.
   """
   def threat_bg_color(threat_level) do
-    case threat_level do
-      :extreme -> "bg-red-900/20 border-red-600"
-      :very_high -> "bg-red-800/20 border-red-500"
-      :high -> "bg-orange-800/20 border-orange-500"
-      :moderate -> "bg-yellow-800/20 border-yellow-500"
-      :low -> "bg-green-800/20 border-green-500"
-      :minimal -> "bg-green-900/20 border-green-600"
-      _ -> "bg-gray-800/20 border-gray-600"
-    end
+    Map.get(@threat_bg_colors, threat_level, "bg-gray-800/20 border-gray-600")
   end
 
   @doc """
@@ -90,28 +130,14 @@ defmodule EveDmvWeb.Components.ColorUtils do
       "text-red-400"
   """
   def status_color(status) do
-    case status do
-      :success -> "text-green-400"
-      :warning -> "text-yellow-400"
-      :error -> "text-red-400"
-      :info -> "text-blue-400"
-      :pending -> "text-gray-400"
-      _ -> "text-gray-400"
-    end
+    Map.get(@status_colors, status, @default_text_color)
   end
 
   @doc """
   Returns consistent background color classes for status indicators.
   """
   def status_bg_color(status) do
-    case status do
-      :success -> "bg-green-900/20 border-green-700"
-      :warning -> "bg-yellow-900/20 border-yellow-700"
-      :error -> "bg-red-900/20 border-red-700"
-      :info -> "bg-blue-900/20 border-blue-700"
-      :pending -> "bg-gray-900/20 border-gray-700"
-      _ -> "bg-gray-900/20 border-gray-700"
-    end
+    Map.get(@status_bg_colors, status, @default_bg_color)
   end
 
   @doc """
@@ -140,7 +166,15 @@ defmodule EveDmvWeb.Components.ColorUtils do
     end
   end
 
-  def isk_color(_), do: "text-gray-400"
+  def isk_color(isk_value) when is_binary(isk_value) do
+    case Integer.parse(isk_value) do
+      {num, _} -> isk_color(num)
+      :error -> "text-gray-400"
+    end
+  end
+
+  def isk_color(nil), do: "text-gray-400"
+  def isk_color(_invalid), do: "text-gray-400"
 
   @doc """
   Returns consistent color classes for efficiency percentages.
@@ -162,7 +196,15 @@ defmodule EveDmvWeb.Components.ColorUtils do
     end
   end
 
-  def efficiency_color(_), do: "text-gray-400"
+  def efficiency_color(efficiency) when is_binary(efficiency) do
+    case Float.parse(efficiency) do
+      {num, _} -> efficiency_color(num)
+      :error -> "text-gray-400"
+    end
+  end
+
+  def efficiency_color(nil), do: "text-gray-400"
+  def efficiency_color(_invalid), do: "text-gray-400"
 
   @doc """
   Returns consistent color classes for connection status.
@@ -176,13 +218,7 @@ defmodule EveDmvWeb.Components.ColorUtils do
       "text-red-400"
   """
   def connection_color(status) do
-    case status do
-      :connected -> "text-green-400"
-      :connecting -> "text-yellow-400"
-      :disconnected -> "text-red-400"
-      :error -> "text-red-500"
-      _ -> "text-gray-400"
-    end
+    Map.get(@connection_colors, status, @default_text_color)
   end
 
   @doc """
@@ -198,14 +234,7 @@ defmodule EveDmvWeb.Components.ColorUtils do
       "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
 
     variant_classes =
-      case variant do
-        :success -> "bg-green-900/20 text-green-400 border-green-700"
-        :warning -> "bg-yellow-900/20 text-yellow-400 border-yellow-700"
-        :error -> "bg-red-900/20 text-red-400 border-red-700"
-        :info -> "bg-blue-900/20 text-blue-400 border-blue-700"
-        :pending -> "bg-gray-900/20 text-gray-400 border-gray-700"
-        _ -> "bg-gray-900/20 text-gray-400 border-gray-700"
-      end
+      Map.get(@pill_variants, variant, "bg-gray-900/20 text-gray-400 border-gray-700")
 
     "#{base_classes} #{variant_classes}"
   end

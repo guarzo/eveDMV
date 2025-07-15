@@ -26,22 +26,89 @@ defmodule EveDmv.Release do
     Application.load(@app)
   end
 
-  def import_historical_killmails(archive_dir, _batch_size) do
+  def import_historical_killmails(archive_dir, batch_size) do
     load_app()
     Application.ensure_all_started(@app)
 
-    # Simple implementation that calls the import service directly
+    # Get archive files to import
     archive_files = Path.wildcard(Path.join(archive_dir, "*.json"))
 
     IO.puts("Found #{length(archive_files)} files to import")
 
-    Enum.each(archive_files, fn file ->
-      IO.puts("Importing #{Path.basename(file)}...")
-      # Here you would call your actual import logic
-      # For now, just simulate success
-      :timer.sleep(1000)
+    # Process files in batches
+    archive_files
+    |> Enum.chunk_every(batch_size)
+    |> Enum.with_index()
+    |> Enum.each(fn {file_batch, batch_index} ->
+      IO.puts("Processing batch #{batch_index + 1}/#{div(length(archive_files), batch_size) + 1}")
+
+      # Process each file in the batch
+      killmails =
+        Enum.flat_map(file_batch, fn file ->
+          IO.puts("Reading #{Path.basename(file)}...")
+
+          case File.read(file) do
+            {:ok, content} ->
+              case Jason.decode(content) do
+                {:ok, data} when is_list(data) ->
+                  data
+
+                # Single killmail
+                {:ok, data} ->
+                  [data]
+
+                {:error, reason} ->
+                  IO.puts("Error parsing #{file}: #{inspect(reason)}")
+                  []
+              end
+
+            {:error, reason} ->
+              IO.puts("Error reading #{file}: #{inspect(reason)}")
+              []
+          end
+        end)
+
+      if length(killmails) > 0 do
+        # Transform killmails for database insertion
+        changesets =
+          Enum.map(killmails, fn killmail ->
+            %{
+              killmail_id: killmail["killmail_id"],
+              killmail_time: parse_killmail_time(killmail["killmail_time"]),
+              killmail_hash: killmail["zkb"]["hash"],
+              solar_system_id: killmail["solar_system_id"],
+              victim_character_id: get_in(killmail, ["victim", "character_id"]),
+              victim_corporation_id: get_in(killmail, ["victim", "corporation_id"]),
+              victim_alliance_id: get_in(killmail, ["victim", "alliance_id"]),
+              victim_ship_type_id: get_in(killmail, ["victim", "ship_type_id"]),
+              attacker_count: length(killmail["attackers"] || []),
+              raw_data: killmail,
+              source: "historical_import"
+            }
+          end)
+
+        # Insert using the database inserter
+        case EveDmv.Killmails.DatabaseInserter.insert_raw_killmails(changesets) do
+          :ok ->
+            IO.puts("Successfully imported #{length(killmails)} killmails from batch")
+
+          :error ->
+            IO.puts("Failed to import batch #{batch_index + 1}")
+        end
+      else
+        IO.puts("No valid killmails found in batch #{batch_index + 1}")
+      end
     end)
 
     IO.puts("Import completed!")
   end
+
+  defp parse_killmail_time(time_string) when is_binary(time_string) do
+    case DateTime.from_iso8601(time_string) do
+      {:ok, datetime, _offset} -> datetime
+      {:error, _reason} -> DateTime.utc_now()
+    end
+  end
+
+  defp parse_killmail_time(_), do: DateTime.utc_now()
 end
