@@ -7,6 +7,9 @@ ExUnit.start(
 
 require Logger
 
+# Start the application to ensure the repo is available
+{:ok, _} = Application.ensure_all_started(:eve_dmv)
+
 # Verify we're using the correct pool for testing
 repo_config = Application.get_env(:eve_dmv, EveDmv.Repo)
 pool_class = Keyword.get(repo_config, :pool)

@@ -38,28 +38,18 @@ See `/workspace/docs/sprints/current/SPRINT_10_FLEET_INTELLIGENCE_POLISH.md` for
 The logged-in user dashboard (`/dashboard`) needs several data accuracy fixes and feature improvements:
 
 #### ISK Destroyed Section
-- [x] ~~Calculate real ISK destroyed values from killmail data~~ **MOVED TO SPRINT 10**
 - [ ] Show monthly/weekly/daily breakdowns
-- [x] ~~Include both kills and losses~~ **MOVED TO SPRINT 10** 
-- [x] ~~Add ISK efficiency ratio (ISK destroyed vs ISK lost)~~ **MOVED TO SPRINT 10**
 - [ ] Show trending indicators
 
 #### Fleet Engagements
-- [ ] Query real fleet participation data from killmails
-- [ ] Show actual fleet battles the user participated in
 - [ ] Calculate fleet roles (DPS, Logi, Tackle, etc.)
 - [ ] Display fleet performance metrics
 - [ ] Link to detailed battle analysis
 
 #### Recent Activity
-- [x] ~~Display actual recent kills/losses from database~~ **MOVED TO SPRINT 10**
-- [x] ~~Show real timestamps and system information~~ **MOVED TO SPRINT 10**
-- [x] ~~Include ship types and values~~ **MOVED TO SPRINT 10**
 - [ ] Add activity heatmap by hour/day
-- [x] ~~Quick links to full killmail details~~ **MOVED TO SPRINT 10**
 
 #### Real-Time Price Updates
-- [ ] Fix price update subscription system
 - [ ] Show live price changes for destroyed items
 - [ ] Display market volatility indicators
 - [ ] Track personal asset value changes
@@ -71,19 +61,10 @@ The logged-in user dashboard (`/dashboard`) needs several data accuracy fixes an
 The user profile page needs to display comprehensive character information:
 
 #### Character Information
-- [x] ~~Display character portrait from EVE image server~~ **MOVED TO SPRINT 10**
-- [x] ~~Show character name, ID, and creation date~~ **MOVED TO SPRINT 10**
-- [x] ~~Add security status display~~ **MOVED TO SPRINT 10**
-- [ ] Include character description/bio
 - [ ] Show skill point count (if authorized)
 
 #### Corporation & Alliance
-- [x] ~~Display corporation name and ticker~~ **MOVED TO SPRINT 10**
-- [x] ~~Show corporation logo~~ **MOVED TO SPRINT 10**
-- [x] ~~Include alliance name and ticker (if applicable)~~ **MOVED TO SPRINT 10**
-- [x] ~~Display alliance logo~~ **MOVED TO SPRINT 10**
 - [ ] Show member count and founding date
-- [x] ~~Link to corporation intelligence page~~ **MOVED TO SPRINT 10**
 
 #### EVE SSO Integration
 - [ ] Show authorized scopes with descriptions
@@ -212,16 +193,11 @@ end
 ## Priority Ranking
 
 ### High Priority
-1. Fix ISK destroyed calculations (impacts trust in data)
-2. Display character portrait and corp/alliance info
-3. Fix real-time price updates
-4. Implement data export for compliance
+1. Implement data export for compliance
 
 ### Medium Priority
-1. Fleet engagement analysis
-2. Recent activity improvements
-3. Token refresh functionality
-4. Activity heatmaps
+1. Token refresh functionality
+2. Activity heatmaps
 
 ### Low Priority
 1. Trending indicators
@@ -233,15 +209,14 @@ end
 
 | Feature Group | Story Points | Complexity |
 |--------------|--------------|------------|
-| Dashboard ISK/Fleet/Activity | 8-10 | Medium |
-| Character Profile Display | 5-6 | Low |
 | EVE SSO Token Management | 4-5 | Medium |
 | Data Export System | 6-8 | Medium |
-| Real-time Price Fixes | 3-4 | Low |
 | Chain Intelligence Improvements | 10-12 | High |
 | Route Error Handling (404) | 2-3 | Low |
+| Activity Heatmaps | 3-4 | Low |
+| Mobile Navigation | 5-6 | Medium |
 
-**Total Estimated Points**: 38-48 (1-2 full sprints)
+**Total Estimated Points**: 30-38 (1-2 full sprints)
 
 ## Route Error Handling
 
@@ -396,140 +371,6 @@ Battle sharing is a valuable feature for community engagement but not critical f
 ## Dynamic Ship Role Analysis System
 
 **✅ MOVED TO SPRINT 10** - See `/workspace/docs/sprints/current/SPRINT_10_FLEET_INTELLIGENCE_POLISH.md`
-
-### ~~Killmail-Based Role Classification~~ 
-~~Implement a sophisticated ship role analysis system that determines ship roles based on actual player fitting patterns from killmail data, rather than static ship classifications.~~
-
-#### Core Features
-- [ ] **Module Classification Engine**: Analyze fitted modules to determine ship roles
-  - Tackle role detection (scramblers, webs, interdiction launchers)
-  - Logistics role detection (remote reps, cap transfers, triage modules)
-  - EWAR role detection (ECM, damps, painters, neuts)
-  - DPS role detection (weapons, damage amplifiers)
-  - Command role detection (command bursts, warfare links)
-  - Exploration role detection (probe launchers, analyzers, covert ops)
-
-- [ ] **Scheduled Analysis Job**: Daily/hourly background analysis of killmail data
-  - Query recent killmails (last 7 days) for each ship type
-  - Extract fitted modules from victim ships
-  - Calculate role confidence scores based on module patterns
-  - Update cached ship role classifications
-  - Track meta changes over time
-
-- [ ] **Real-Time Fleet Analysis**: Enhanced fleet composition analysis
-  - Use dynamic role classification for fleet analysis
-  - Provide confidence scores for role assignments
-  - Generate tactical insights based on actual fitting patterns
-  - Detect doctrine shifts and meta evolution
-
-#### Technical Implementation
-
-```elixir
-# Core module classification system
-defmodule EveDmv.Analytics.ModuleClassifier do
-  @tackle_modules ["Warp Scrambler", "Warp Disruptor", "Stasis Webifier"]
-  @logi_modules ["Remote Shield Booster", "Remote Armor Repairer"]
-  @ewar_modules ["ECM", "Remote Sensor Dampener", "Target Painter"]
-  
-  def classify_ship_role(fitted_modules) do
-    role_scores = calculate_role_scores(fitted_modules)
-    determine_primary_role(role_scores)
-  end
-end
-
-# Scheduled analysis worker
-defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
-  use Oban.Worker, queue: :analytics
-  
-  def perform(%Oban.Job{}) do
-    analyze_recent_killmails()
-    |> update_ship_role_cache()
-    |> generate_meta_trend_report()
-  end
-end
-
-# Enhanced fleet analyzer
-defmodule EveDmv.Analytics.FleetAnalyzer do
-  def analyze_fleet_with_dynamic_roles(fleet_participants) do
-    participants
-    |> Enum.map(&get_dynamic_role/1)
-    |> generate_tactical_insights()
-  end
-end
-```
-
-#### Database Schema Extensions
-- [ ] **Ship Role Patterns Table**: Store aggregated role analysis results
-  ```sql
-  CREATE TABLE ship_role_patterns (
-    ship_type_id INTEGER PRIMARY KEY,
-    primary_role VARCHAR(50),
-    role_distribution JSONB,
-    confidence_score DECIMAL(3,2),
-    sample_size INTEGER,
-    last_analyzed TIMESTAMP,
-    meta_trend VARCHAR(20)
-  );
-  ```
-
-- [ ] **Role Analysis History**: Track role changes over time
-  ```sql
-  CREATE TABLE role_analysis_history (
-    id SERIAL PRIMARY KEY,
-    ship_type_id INTEGER,
-    analysis_date DATE,
-    role_distribution JSONB,
-    meta_indicators JSONB
-  );
-  ```
-
-#### Fleet Analysis Enhancements
-- [ ] **Smart Role Detection**: 
-  - If 70% of Lokis are fitted with webs → classify as `:tackle` 
-  - If 60% of Stormbringers have damage modules → classify as `:dps`
-  - Confidence thresholds prevent false classifications
-
-- [ ] **Meta Trend Analysis**:
-  - Detect when ship usage patterns change
-  - Alert on doctrine shifts (e.g., "Loki usage shifted from DPS to tackle")
-  - Track seasonal meta evolution
-
-- [ ] **Tactical Insights Generation**:
-  - "This Strategic Cruiser heavy fleet indicates high ISK investment and tactical flexibility"
-  - "⚠️ No logistics support detected based on recent fitting patterns"
-  - "EDENCOM ships present - arc damage effective against drone swarms"
-
-#### Integration Points
-- [ ] **Fleet Operations Analysis**: Use dynamic roles for fleet composition analysis
-- [ ] **Battle Analysis**: Enhance battle reports with role-based insights
-- [ ] **Character Intelligence**: Track individual pilot role preferences
-- [ ] **Corporation Analysis**: Identify corp doctrine preferences and meta adaptation
-
-#### Performance Considerations
-- [ ] **Caching Strategy**: Cache role analysis results for 24-48 hours
-- [ ] **Query Optimization**: Efficient killmail queries with proper indexing
-- [ ] **Background Processing**: All analysis runs as background jobs
-- [ ] **Graceful Fallbacks**: Fall back to static classification if insufficient data
-
-#### Analytics Dashboard
-- [ ] **Meta Trends Page**: Visualize ship role evolution over time
-- [ ] **Doctrine Analysis**: Track popular fitting patterns and their effectiveness
-- [ ] **Fleet Composition Insights**: Real-time analysis of fleet effectiveness based on actual meta
-
-### Implementation Timeline
-**Week 1**: Module classification engine and role scoring algorithms
-**Week 2**: Scheduled analysis worker and database schema
-**Week 3**: Integration with fleet analysis system and caching
-**Week 4**: Analytics dashboard and meta trend visualization
-
-### Priority: HIGH
-This system would provide unprecedented insights into EVE Online fleet meta and player behavior, making EVE DMV the go-to platform for data-driven fleet analysis.
-
-### Success Metrics
-- 80%+ accuracy in role classification vs manual analysis
-- Sub-second fleet analysis response times
-- Detection of major meta shifts within 24-48 hours
-- Positive feedback from fleet commanders on tactical insights
 
 ## Advanced Charts with LiveCharts
 
@@ -906,10 +747,7 @@ Profile page is a primary user destination and should showcase real, meaningful 
 Clean up the top navigation bar for better user experience and consistent logged-in state display.
 
 #### Navigation Bar Issues to Address
-- [ ] **Inconsistent Menu Items**: Standardize navigation items across pages
-- [ ] **Logged-in State Visibility**: Always show user is authenticated
 - [ ] **Mobile Responsiveness**: Ensure navigation works on all screen sizes
-- [ ] **Active Page Indication**: Clearly show current page location
 
 #### Proposed Navigation Structure
 ```elixir
@@ -931,44 +769,6 @@ Clean up the top navigation bar for better user experience and consistent logged
 ```
 
 #### Implementation Tasks
-- [ ] **Consistent User Indicator**: Always show logged-in user information
-  ```heex
-  <div class="flex items-center space-x-4">
-    <!-- Character portrait (small) -->
-    <img src={character_portrait_url(@current_user.character_id, 32)} 
-         class="w-8 h-8 rounded-full border-2 border-blue-400" 
-         alt={@current_user.character_name} />
-    
-    <!-- Character name with corporation ticker -->
-    <div class="text-sm">
-      <div class="text-white font-medium"><%= @current_user.character_name %></div>
-      <div class="text-gray-400 text-xs">[<%= @current_user.corporation_ticker %>]</div>
-    </div>
-    
-    <!-- User menu dropdown -->
-    <div class="relative">
-      <!-- Menu trigger and dropdown content -->
-    </div>
-  </div>
-  ```
-
-- [ ] **Active Page Highlighting**: Visual indication of current page
-  ```heex
-  <nav class="flex space-x-6">
-    <%= for item <- @navigation_items do %>
-      <.link navigate={item.path} 
-             class={[
-               "flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors",
-               if(@current_page == item.path, 
-                  do: "bg-blue-600 text-white", 
-                  else: "text-gray-300 hover:text-white hover:bg-gray-700")
-             ]}>
-        <.icon name={item.icon} class="w-4 h-4 mr-2" />
-        <%= item.name %>
-      </.link>
-    <% end %>
-  </nav>
-  ```
 
 - [ ] **Mobile-First Navigation**: Collapsible menu for smaller screens
   - Hamburger menu for mobile
@@ -1005,9 +805,6 @@ Clean up the top navigation bar for better user experience and consistent logged
   ```
 
 #### User Experience Improvements
-- [ ] **Breadcrumb Navigation**: Show navigation path for deep pages
-  - "Intelligence > Character > [Character Name]"
-  - "Battle Analysis > Battle Details > [Battle ID]"
 
 - [ ] **Quick Actions Menu**: Frequently used actions
   - "New Battle Analysis"
@@ -1362,67 +1159,6 @@ While not user-facing, application health monitoring is crucial for maintaining 
 Implement a comprehensive favorites/bookmarking system allowing users to mark battles, characters, and corporations as favorites for quick access.
 
 #### Core Features
-- [ ] **Database Schema**: Create user favorites storage system
-  ```sql
-  CREATE TABLE user_favorites (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    entity_type VARCHAR(20) NOT NULL CHECK (entity_type IN ('character', 'corporation', 'battle')),
-    entity_id VARCHAR(100) NOT NULL,
-    entity_name VARCHAR(200) NOT NULL,
-    custom_name VARCHAR(200), -- User-defined name override
-    notes TEXT,
-    tags VARCHAR(50)[], -- Array of tags for organization
-    favorited_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(user_id, entity_type, entity_id)
-  );
-  
-  CREATE INDEX idx_user_favorites_user_entity ON user_favorites(user_id, entity_type);
-  CREATE INDEX idx_user_favorites_tags ON user_favorites USING GIN(tags);
-  ```
-
-- [ ] **Ash Resource Definition**: Define favorites as an Ash resource
-  ```elixir
-  defmodule EveDmv.UserContent.Favorite do
-    use Ash.Resource,
-      domain: EveDmv.Api,
-      data_layer: AshPostgres.DataLayer
-    
-    attributes do
-      uuid_primary_key :id
-      attribute :user_id, :uuid, allow_nil?: false
-      attribute :entity_type, :atom, constraints: [one_of: [:character, :corporation, :battle]]
-      attribute :entity_id, :string, allow_nil?: false
-      attribute :entity_name, :string, allow_nil?: false
-      attribute :custom_name, :string
-      attribute :notes, :string
-      attribute :tags, {:array, :string}, default: []
-      attribute :favorited_at, :utc_datetime, default: &DateTime.utc_now/0
-    end
-    
-    actions do
-      defaults [:read, :destroy]
-      
-      create :favorite do
-        argument :entity_type, :atom, allow_nil?: false
-        argument :entity_id, :string, allow_nil?: false
-        argument :entity_name, :string, allow_nil?: false
-        
-        change set_attribute(:entity_type, arg(:entity_type))
-        change set_attribute(:entity_id, arg(:entity_id)) 
-        change set_attribute(:entity_name, arg(:entity_name))
-      end
-      
-      update :update_favorite do
-        accept [:custom_name, :notes, :tags]
-      end
-    end
-    
-    relationships do
-      belongs_to :user, EveDmv.Users.User
-    end
-  end
-  ```
 
 #### User Interface Components
 - [ ] **Star/Bookmark Buttons**: Add to relevant pages
@@ -2020,17 +1756,3 @@ Chain intelligence is a core feature for wormhole operations. Better map managem
 - Real-time updates work reliably
 - Profile page provides comprehensive character overview
 
-
-### Deferred from Sprint 11 (35 points) - more detail in docs/sprints/planning/quality_details.md
-
-| Story ID | Description | Points | Priority | Definition of Done |
-|----------|-------------|---------|----------|-------------------|
-| QUAL-10 | Remove process dictionary usage | 3 | HIGH | Replace with ETS tables |
-| QUAL-11 | Add structured logging format | 2 | HIGH | JSON/map log format |
-| QUAL-12 | Implement graceful task shutdown | 3 | HIGH | No brutal_kill timeouts |
-| QUAL-14 | Add OpenTelemetry spans | 5 | MEDIUM | Tracing for task supervisors |
-| QUAL-15 | Extract large module utilities | 5 | MEDIUM | Common helpers centralized |
-| QUAL-16 | Refactor massive files (>1000 lines) | 13 | HIGH | Ship performance analyzer split |
-| QUAL-18 | Fix undefined module references | 3 | MEDIUM | All module refs work |
-| QUAL-19 | Implement missing route handlers | 2 | MEDIUM | No broken navigation links |
-| QUAL-20 | Clean up over-abstraction in contexts | 5 | MEDIUM | Simpler CRUD operations |

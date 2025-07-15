@@ -1,5 +1,5 @@
 defmodule EveDmvWeb.SurveillanceDashboardLiveTest do
-  use EveDmvWeb.ConnCase
+  use EveDmvWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
   import EveDmv.Factories

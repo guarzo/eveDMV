@@ -19,5 +19,8 @@ config :swoosh, local: false
 # Do not print debug messages in production
 config :logger, level: :info
 
+# Use structured logging in production
+config :logger, :console, format: {EveDmv.Logging.StructuredFormatter, :format}
+
 # Runtime production configuration, including reading
 # of environment variables, is done on config/runtime.exs.

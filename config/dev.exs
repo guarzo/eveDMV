@@ -86,8 +86,15 @@ config :eve_dmv, EveDmvWeb.Endpoint,
 # Enable dev routes for dashboard and mailbox
 config :eve_dmv, dev_routes: true
 
-# Do not include metadata nor timestamps in development logs
-config :logger, :console, format: "[$level] $message\n", level: :debug
+# Development logging configuration
+# Use structured logging if STRUCTURED_LOGGING=true, otherwise use simple format
+if System.get_env("STRUCTURED_LOGGING") == "true" do
+  config :logger, :console,
+    format: {EveDmv.Logging.StructuredFormatter, :format},
+    level: :debug
+else
+  config :logger, :console, format: "[$level] $message\n", level: :debug
+end
 
 # Configure logger to filter out noisy database connection messages
 config :logger,

@@ -92,7 +92,7 @@ defmodule EveDmv.Factories do
     }
 
     # Set one attacker as final blow
-    raw_data =
+    updated_raw_data =
       if attacker_count > 0 do
         attackers = Map.get(raw_data, "attackers", [])
 
@@ -117,7 +117,7 @@ defmodule EveDmv.Factories do
       victim_alliance_id: victim_alliance_id,
       victim_ship_type_id: victim_ship_type_id,
       attacker_count: attacker_count,
-      raw_data: raw_data,
+      raw_data: updated_raw_data,
       source: "test"
     }
   end

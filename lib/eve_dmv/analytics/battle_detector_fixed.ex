@@ -309,55 +309,6 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
     end
   end
 
-  # Test function to verify the fixes work
-  def test_fixed_queries() do
-    IO.puts("🧪 Testing Fixed BattleDetector Queries")
-
-    # Get sample character
-    {:ok, result} =
-      Repo.query(
-        "SELECT character_id FROM participants WHERE character_id IS NOT NULL LIMIT 1",
-        []
-      )
-
-    case result.rows do
-      [[character_id]] ->
-        IO.puts("Testing with character #{character_id}")
-
-        battles = detect_character_battles(character_id, 2)
-        IO.puts("✅ Character battles: #{length(battles)} found")
-
-        stats = get_character_battle_stats(character_id)
-        IO.puts("✅ Character stats: #{inspect(stats)}")
-
-      [] ->
-        IO.puts("❌ No character data found")
-    end
-
-    # Get sample corporation
-    {:ok, corp_result} =
-      Repo.query(
-        "SELECT corporation_id FROM participants WHERE corporation_id IS NOT NULL LIMIT 1",
-        []
-      )
-
-    case corp_result.rows do
-      [[corp_id]] ->
-        IO.puts("Testing with corporation #{corp_id}")
-
-        corp_battles = detect_corporation_battles(corp_id, 2)
-        IO.puts("✅ Corporation battles: #{length(corp_battles)} found")
-
-        corp_stats = get_corporation_battle_stats(corp_id)
-        IO.puts("✅ Corporation stats: #{inspect(corp_stats)}")
-
-      [] ->
-        IO.puts("❌ No corporation data found")
-    end
-
-    IO.puts("🎉 Fixed query testing complete!")
-  end
-
   # Helper functions
   defp enhance_character_battles(battles, _character_id) do
     Enum.map(battles, fn battle ->

@@ -131,9 +131,9 @@ A feature is **ONLY** considered done when:
 
 ## Current Implementation Status
 
-### 🚀 Reality Check Sprint 1 In Progress
-See `/workspace/ACTUAL_PROJECT_STATE.md` for honest project status
-See `/workspace/REALITY_CHECK_SPRINT_1.md` for current sprint work
+### 🚀 Sprint 12: Architecture & Polish (In Progress)
+See `/workspace/docs/sprints/current/SPRINT_12_ARCHITECTURE_POLISH.md` for current sprint
+**Previous Sprint**: Sprint 11 Quality Debt Cleanup - ✅ COMPLETED (All 10 tasks finished)
 
 ### ✅ What Actually Works
 - **Kill Feed** (`/feed`) - Real-time killmail display with wanderer-kills SSE
@@ -188,17 +188,23 @@ To run SQL queries directly:
 
 ### Quality Assurance
 ```bash
-# Run all quality checks (same as CI)
-./scripts/quality_check.sh
+# Quality Gate Scripts (Sprint 11)
+./scripts/quality_check.sh      # Run all quality checks (same as CI)
+./scripts/quality_fix.sh        # Auto-fix quality issues where possible
+./scripts/analyze_todos.sh       # Analyze TODO comments for Sprint 12
+
+# Quality check options
+SKIP_DIALYZER=true ./scripts/quality_check.sh  # Skip slow Dialyzer check
+RUN_TESTS=true ./scripts/quality_check.sh      # Include full test suite
+CHECK_DOCS=true ./scripts/quality_check.sh     # Include documentation checks
 
 # Individual quality checks
-mix quality.check          # Run all checks
-mix quality.fix            # Auto-fix formatting and unused deps
-mix format                 # Format code
-mix credo --strict         # Static analysis
-mix dialyzer              # Type checking
-mix deps.audit            # Security audit
-mix test --cover          # Tests with coverage
+mix compile --warnings-as-errors  # Compilation with warnings as errors
+mix format --check-formatted      # Check code formatting
+mix credo --strict                 # Static analysis
+mix dialyzer                      # Type checking
+mix deps.audit                    # Security audit
+mix test --cover                  # Tests with coverage
 ```
 
 ### Adding New LiveView Pages
