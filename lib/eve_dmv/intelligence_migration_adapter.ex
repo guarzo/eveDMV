@@ -11,6 +11,8 @@ defmodule EveDmv.IntelligenceMigrationAdapter do
   alias EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer
   alias EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer
   alias EveDmv.Contexts.ThreatAssessment.Domain.ThreatAnalyzer
+  alias EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache
+  alias EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache
 
   require Logger
 
@@ -282,23 +284,17 @@ defmodule EveDmv.IntelligenceMigrationAdapter do
   defp invalidate_character_cache(character_id) do
     try do
       # Invalidate cache in Combat Intelligence context
-      if Code.ensure_loaded?(EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache) do
-        EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache.invalidate_character(
-          character_id
-        )
+      if Code.ensure_loaded?(AnalysisCache) do
+        AnalysisCache.invalidate_character(character_id)
 
-        EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache.invalidate_threat_assessment(
-          character_id
-        )
+        AnalysisCache.invalidate_threat_assessment(character_id)
 
-        EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache.invalidate_intelligence_scores(
-          character_id
-        )
+        AnalysisCache.invalidate_intelligence_scores(character_id)
       end
 
       # Invalidate cache in Threat Assessment context
-      if Code.ensure_loaded?(EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache) do
-        EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache.invalidate_entity(
+      if Code.ensure_loaded?(ThreatCache) do
+        ThreatCache.invalidate_entity(
           character_id,
           :character
         )
@@ -316,15 +312,13 @@ defmodule EveDmv.IntelligenceMigrationAdapter do
   defp invalidate_corporation_cache(corporation_id) do
     try do
       # Invalidate cache in Combat Intelligence context
-      if Code.ensure_loaded?(EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache) do
-        EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache.invalidate_corporation(
-          corporation_id
-        )
+      if Code.ensure_loaded?(AnalysisCache) do
+        AnalysisCache.invalidate_corporation(corporation_id)
       end
 
       # Invalidate cache in Threat Assessment context
-      if Code.ensure_loaded?(EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache) do
-        EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache.invalidate_entity(
+      if Code.ensure_loaded?(ThreatCache) do
+        ThreatCache.invalidate_entity(
           corporation_id,
           :corporation
         )
@@ -354,8 +348,8 @@ defmodule EveDmv.IntelligenceMigrationAdapter do
   defp invalidate_threat_cache(entity_id) do
     try do
       # Invalidate cache in Threat Assessment context
-      if Code.ensure_loaded?(EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache) do
-        EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache.invalidate_entity(
+      if Code.ensure_loaded?(ThreatCache) do
+        ThreatCache.invalidate_entity(
           entity_id,
           :character
         )

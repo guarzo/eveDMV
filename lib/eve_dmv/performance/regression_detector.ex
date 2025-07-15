@@ -291,7 +291,7 @@ defmodule EveDmv.Performance.RegressionDetector do
   defp determine_query_severity(query_time_ms) do
     cond do
       # > 10s
-      query_time_ms > 10000 -> :critical
+      query_time_ms > 10_000 -> :critical
       # > 5s
       query_time_ms > 5000 -> :high
       # > 2s

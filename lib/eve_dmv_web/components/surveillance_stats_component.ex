@@ -20,6 +20,13 @@ defmodule EveDmvWeb.SurveillanceStatsComponent do
         <h2 class="text-lg font-semibold text-gray-200 mb-4">Engine Statistics</h2>
         <div class="space-y-3">
           <div class="flex justify-between">
+            <span class="text-gray-400">Connection Status:</span>
+            <span class="text-green-400 font-mono">
+              <span class="inline-block w-2 h-2 bg-green-400 rounded-full mr-1"></span>
+              Active
+            </span>
+          </div>
+          <div class="flex justify-between">
             <span class="text-gray-400">Active Profiles:</span>
             <span class="text-green-400 font-mono">{@engine_stats.profiles_loaded || 0}</span>
           </div>

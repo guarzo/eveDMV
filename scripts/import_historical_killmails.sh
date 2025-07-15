@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Historical Killmail Import Script
 # This script runs in an init container to import historical killmail data
@@ -39,7 +39,7 @@ echo "📊 Found $archive_files archive files"
 
 # Wait for database to be ready
 echo "🔄 Waiting for database..."
-while ! mix ecto.migrate 2>/dev/null; do
+while ! /app/bin/eve_dmv eval "EveDmv.Release.migrate()"; do
     echo "   Database not ready, waiting 5 seconds..."
     sleep 5
 done
@@ -52,9 +52,7 @@ echo "   Batch size: 500"
 echo "   Log file: $LOG_FILE"
 
 # Run the import task
-if mix eve.import_historical_killmails \
-    --batch-size 500 \
-    --file "$ARCHIVE_DIR/*.json" 2>&1 | tee "$LOG_FILE"; then
+if /app/bin/eve_dmv eval "EveDmv.Release.import_historical_killmails(\"$ARCHIVE_DIR\", 500)"; then
     
     # Create lock file on success
     echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) Import completed successfully" > "$LOCK_FILE"

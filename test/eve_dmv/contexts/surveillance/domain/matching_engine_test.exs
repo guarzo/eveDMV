@@ -35,11 +35,61 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngineTest do
       assert result.matches == true
     end
 
-    # TODO: Implement ISK value criteria matching in MatchingEngine
-    # test "validates ISK value criteria" do
+    test "validates ISK value criteria" do
+      criteria = %{
+        type: :custom_criteria,
+        logic_operator: :and,
+        conditions: [
+          %{type: :isk_value, operator: :greater_than, value: 100_000_000}
+        ]
+      }
 
-    # TODO: Implement participant count criteria matching in MatchingEngine
-    # test "validates participant count criteria" do
+      test_data = %{
+        victim: %{character_id: 123_456_789},
+        attackers: [],
+        zkb_total_value: 500_000_000
+      }
+
+      assert {:ok, result} = MatchingEngine.test_criteria(criteria, test_data)
+      assert result.matches == true
+      assert length(result.matched_criteria) > 0
+
+      # Test with value below threshold
+      low_value_data = %{test_data | zkb_total_value: 50_000_000}
+      assert {:ok, low_result} = MatchingEngine.test_criteria(criteria, low_value_data)
+      assert low_result.matches == false
+    end
+
+    test "validates participant count criteria" do
+      criteria = %{
+        type: :custom_criteria,
+        logic_operator: :and,
+        conditions: [
+          %{type: :participant_count, operator: :greater_than, value: 5}
+        ]
+      }
+
+      test_data = %{
+        victim: %{character_id: 123_456_789},
+        attackers: [
+          %{"character_id" => 1},
+          %{"character_id" => 2},
+          %{"character_id" => 3},
+          %{"character_id" => 4},
+          %{"character_id" => 5},
+          %{"character_id" => 6}
+        ]
+      }
+
+      assert {:ok, result} = MatchingEngine.test_criteria(criteria, test_data)
+      assert result.matches == true
+      assert length(result.matched_criteria) > 0
+
+      # Test with fewer participants
+      small_gang_data = %{test_data | attackers: [%{"character_id" => 1}, %{"character_id" => 2}]}
+      assert {:ok, small_result} = MatchingEngine.test_criteria(criteria, small_gang_data)
+      assert small_result.matches == false
+    end
   end
 
   describe "validate_criteria/1" do
@@ -118,8 +168,31 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngineTest do
   end
 
   describe "complex criteria testing" do
-    # TODO: Implement custom criteria and missing criteria types (isk_value, participant_count)
-    # test "validates complex criteria with multiple conditions" do
+    test "validates complex criteria with multiple conditions" do
+      criteria = %{
+        type: :custom_criteria,
+        logic_operator: :and,
+        conditions: [
+          %{type: :isk_value, operator: :greater_than, value: 100_000_000},
+          %{type: :participant_count, operator: :less_than, value: 10},
+          %{type: :character_watch, character_ids: [123_456_789]}
+        ]
+      }
+
+      test_data = %{
+        victim: %{character_id: 123_456_789},
+        attackers: [
+          %{"character_id" => 1},
+          %{"character_id" => 2},
+          %{"character_id" => 3}
+        ],
+        zkb_total_value: 250_000_000
+      }
+
+      assert {:ok, result} = MatchingEngine.test_criteria(criteria, test_data)
+      assert result.matches == true
+      assert length(result.matched_criteria) >= 3
+    end
 
     test "validates OR logic with partial matches" do
       criteria = %{

@@ -59,18 +59,17 @@ defmodule EveDmvWeb.SystemSearchLive do
   @impl true
   def handle_event("clear_search", _params, socket) do
     socket =
-      socket
-      |> assign(query: "", results: [], show_dropdown: false, selected_index: 0)
+      assign(socket, query: "", results: [], show_dropdown: false, selected_index: 0)
 
     {:noreply, socket}
   end
 
   @impl true
   def handle_info(:hide_dropdown, socket) do
-    if !socket.assigns.focused do
-      {:noreply, assign(socket, show_dropdown: false)}
-    else
+    if socket.assigns.focused do
       {:noreply, socket}
+    else
+      {:noreply, assign(socket, show_dropdown: false)}
     end
   end
 

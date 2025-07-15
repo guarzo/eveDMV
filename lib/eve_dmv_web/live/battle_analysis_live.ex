@@ -11,6 +11,8 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   alias EveDmv.Contexts.BattleAnalysis
   alias EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser
   alias EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer
+  alias CombatLog
+  alias ShipFitting
   alias EveDmv.Contexts.BattleSharing
   alias EveDmv.Eve.NameResolver
   alias EveDmv.Performance.BatchNameResolver
@@ -240,7 +242,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
         if socket.assigns.current_battle, do: socket.assigns.current_battle.battle_id, else: nil
 
       case Ash.create(
-             EveDmv.Contexts.BattleAnalysis.Resources.CombatLog,
+             CombatLog,
              %{
                file_upload: file_upload,
                pilot_name: pilot_name,
@@ -326,7 +328,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   end
 
   def handle_event("delete_log", %{"log_id" => log_id}, socket) do
-    case Ash.get(EveDmv.Contexts.BattleAnalysis.Resources.CombatLog, log_id) do
+    case Ash.get(CombatLog, log_id) do
       {:ok, log} ->
         case Ash.destroy(log) do
           :ok -> {:noreply, load_combat_logs(socket)}
@@ -373,7 +375,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
         fitting
       else
         # Then check database and cache the result
-        case Ash.read(EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting,
+        case Ash.read(ShipFitting,
                filter: [character_id: character_id, ship_type_id: ship_type_id],
                sort: [updated_at: :desc],
                limit: 1
@@ -427,7 +429,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   def handle_event("import_eft_fitting", %{"eft_text" => eft_text}, socket) do
     if socket.assigns.selected_ship do
       case Ash.create(
-             EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting,
+             ShipFitting,
              %{
                eft_text: eft_text,
                character_id: socket.assigns.selected_ship.character_id
@@ -1009,7 +1011,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   defp load_combat_logs(socket) do
     logs =
       if socket.assigns.current_battle do
-        case Ash.read(EveDmv.Contexts.BattleAnalysis.Resources.CombatLog,
+        case Ash.read(CombatLog,
                filter: [battle_id: socket.assigns.current_battle.battle_id],
                sort: [uploaded_at: :desc]
              ) do
@@ -1111,7 +1113,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   defp get_combat_log_analysis_for_pilot(pilot_name) when is_binary(pilot_name) do
     # Find all combat logs for this pilot and use the most recent one with tactical analysis
-    case Ash.read(EveDmv.Contexts.BattleAnalysis.Resources.CombatLog) do
+    case Ash.read(CombatLog) do
       {:ok, all_logs} ->
         # Filter for this pilot and completed status, sort by upload time descending
         pilot_logs =

@@ -19,7 +19,7 @@ defmodule EveDmv.Analytics.FleetAnalyzerTest do
       setup_megathron_fleet_data()
 
       # Typical Megathron armor fleet: 8 Megathrons + 2 Guardians
-      fleet_ships = [641, 641, 641, 641, 641, 641, 641, 641, 11987, 11987]
+      fleet_ships = [641, 641, 641, 641, 641, 641, 641, 641, 11_987, 11_987]
 
       result = FleetAnalyzer.analyze_fleet_composition(fleet_ships)
 
@@ -36,7 +36,7 @@ defmodule EveDmv.Analytics.FleetAnalyzerTest do
       setup_basic_ship_data()
 
       # Mixed fleet with no clear doctrine
-      fleet_ships = [641, 4306, 17738, 11978, 22428, 11987]
+      fleet_ships = [641, 4306, 17_738, 11_978, 22_428, 11_987]
 
       result = FleetAnalyzer.analyze_fleet_composition(fleet_ships)
 
@@ -47,7 +47,7 @@ defmodule EveDmv.Analytics.FleetAnalyzerTest do
 
     test "provides tactical assessment" do
       setup_basic_ship_data()
-      fleet_ships = [641, 641, 641, 641, 11987, 11987]
+      fleet_ships = [641, 641, 641, 641, 11_987, 11_987]
 
       result = FleetAnalyzer.analyze_fleet_composition(fleet_ships)
 
@@ -69,7 +69,7 @@ defmodule EveDmv.Analytics.FleetAnalyzerTest do
       setup_role_distribution_data()
 
       # Fleet: 6 DPS + 2 Logistics + 1 EWAR + 1 Tackle
-      fleet_ships = [641, 641, 641, 641, 641, 641, 11987, 11987, 11989, 22456]
+      fleet_ships = [641, 641, 641, 641, 641, 641, 11_987, 11_987, 11_989, 22_456]
 
       result = FleetAnalyzer.analyze_fleet_composition(fleet_ships)
 
@@ -88,7 +88,7 @@ defmodule EveDmv.Analytics.FleetAnalyzerTest do
       setup_megathron_fleet_data()
 
       # Classic Megathron armor composition
-      fleet_ships = [641, 641, 641, 641, 641, 641, 11987, 11987]
+      fleet_ships = [641, 641, 641, 641, 641, 641, 11_987, 11_987]
 
       result = FleetAnalyzer.identify_doctrine(fleet_ships)
 
@@ -110,18 +110,18 @@ defmodule EveDmv.Analytics.FleetAnalyzerTest do
 
       # Machariel speed fleet (12+ ships required)
       fleet_ships = [
-        17738,
-        17738,
-        17738,
-        17738,
-        17738,
-        17738,
-        17738,
-        17738,
-        17738,
-        17738,
-        11978,
-        11978
+        17_738,
+        17_738,
+        17_738,
+        17_738,
+        17_738,
+        17_738,
+        17_738,
+        17_738,
+        17_738,
+        17_738,
+        11_978,
+        11_978
       ]
 
       result = FleetAnalyzer.identify_doctrine(fleet_ships)
@@ -149,7 +149,7 @@ defmodule EveDmv.Analytics.FleetAnalyzerTest do
       setup_basic_ship_data()
 
       # Fleet with good logistics ratio (20%)
-      fleet_ships = [641, 641, 641, 641, 11987]
+      fleet_ships = [641, 641, 641, 641, 11_987]
 
       result = FleetAnalyzer.assess_fleet_strengths(fleet_ships)
 
@@ -178,7 +178,7 @@ defmodule EveDmv.Analytics.FleetAnalyzerTest do
       setup_basic_ship_data()
 
       # All armor ships
-      fleet_ships = [641, 641, 11987, 11987, 22852]
+      fleet_ships = [641, 641, 11_987, 11_987, 22_852]
 
       result = FleetAnalyzer.assess_fleet_strengths(fleet_ships)
 
@@ -275,7 +275,7 @@ defmodule EveDmv.Analytics.FleetAnalyzerTest do
       setup_basic_ship_data()
 
       # Fleet with only DPS and logistics, no EWAR/tackle
-      fleet_ships = [641, 641, 641, 11987]
+      fleet_ships = [641, 641, 641, 11_987]
 
       recommendations = FleetAnalyzer.generate_recommendations(fleet_ships)
 
@@ -322,16 +322,16 @@ defmodule EveDmv.Analytics.FleetAnalyzerTest do
         641,
         641,
         # Logistics
-        11987,
-        11987,
-        11987,
+        11_987,
+        11_987,
+        11_987,
         # Support
-        11989,
-        22456
+        11_989,
+        22_456
       ]
 
       # Small basic fleet
-      small_fleet = [641, 641, 11987]
+      small_fleet = [641, 641, 11_987]
 
       large_threat = FleetAnalyzer.calculate_threat_score(large_fleet)
       small_threat = FleetAnalyzer.calculate_threat_score(small_fleet)
@@ -345,7 +345,7 @@ defmodule EveDmv.Analytics.FleetAnalyzerTest do
       setup_megathron_fleet_data()
 
       # Organized Megathron fleet
-      organized_fleet = [641, 641, 641, 641, 641, 641, 11987, 11987]
+      organized_fleet = [641, 641, 641, 641, 641, 641, 11_987, 11_987]
 
       # Random fleet of same size
       random_fleet = [1234, 5678, 9012, 3456, 7890, 2345, 6789, 1357]
@@ -387,7 +387,7 @@ defmodule EveDmv.Analytics.FleetAnalyzerTest do
     # Guardian - Logistics
     Repo.insert_all("ship_role_patterns", [
       %{
-        ship_type_id: 11987,
+        ship_type_id: 11_987,
         ship_name: "Guardian",
         primary_role: "logistics",
         role_distribution: %{
@@ -412,7 +412,7 @@ defmodule EveDmv.Analytics.FleetAnalyzerTest do
     # Machariel - Mobile DPS
     Repo.insert_all("ship_role_patterns", [
       %{
-        ship_type_id: 17738,
+        ship_type_id: 17_738,
         ship_name: "Machariel",
         primary_role: "dps",
         role_distribution: %{
@@ -435,7 +435,7 @@ defmodule EveDmv.Analytics.FleetAnalyzerTest do
     # Basilisk - Shield Logistics
     Repo.insert_all("ship_role_patterns", [
       %{
-        ship_type_id: 11978,
+        ship_type_id: 11_978,
         ship_name: "Basilisk",
         primary_role: "logistics",
         role_distribution: %{
@@ -472,7 +472,7 @@ defmodule EveDmv.Analytics.FleetAnalyzerTest do
         }
       },
       %{
-        ship_type_id: 11987,
+        ship_type_id: 11_987,
         ship_name: "Guardian",
         primary_role: "logistics",
         role_distribution: %{
@@ -498,7 +498,7 @@ defmodule EveDmv.Analytics.FleetAnalyzerTest do
         }
       },
       %{
-        ship_type_id: 17738,
+        ship_type_id: 17_738,
         ship_name: "Machariel",
         primary_role: "dps",
         role_distribution: %{
@@ -511,7 +511,7 @@ defmodule EveDmv.Analytics.FleetAnalyzerTest do
         }
       },
       %{
-        ship_type_id: 11978,
+        ship_type_id: 11_978,
         ship_name: "Basilisk",
         primary_role: "logistics",
         role_distribution: %{
@@ -524,7 +524,7 @@ defmodule EveDmv.Analytics.FleetAnalyzerTest do
         }
       },
       %{
-        ship_type_id: 22428,
+        ship_type_id: 22_428,
         ship_name: "Muninn",
         primary_role: "dps",
         role_distribution: %{
@@ -568,7 +568,7 @@ defmodule EveDmv.Analytics.FleetAnalyzerTest do
         }
       },
       %{
-        ship_type_id: 11987,
+        ship_type_id: 11_987,
         primary_role: "logistics",
         role_distribution: %{
           "dps" => 0.0,
@@ -580,7 +580,7 @@ defmodule EveDmv.Analytics.FleetAnalyzerTest do
         }
       },
       %{
-        ship_type_id: 11989,
+        ship_type_id: 11_989,
         primary_role: "ewar",
         role_distribution: %{
           "dps" => 0.1,
@@ -592,7 +592,7 @@ defmodule EveDmv.Analytics.FleetAnalyzerTest do
         }
       },
       %{
-        ship_type_id: 22456,
+        ship_type_id: 22_456,
         primary_role: "tackle",
         role_distribution: %{
           "dps" => 0.2,
@@ -627,7 +627,7 @@ defmodule EveDmv.Analytics.FleetAnalyzerTest do
 
     additional_ships = [
       %{
-        ship_type_id: 11989,
+        ship_type_id: 11_989,
         ship_name: "Blackbird",
         primary_role: "ewar",
         role_distribution: %{
@@ -640,7 +640,7 @@ defmodule EveDmv.Analytics.FleetAnalyzerTest do
         }
       },
       %{
-        ship_type_id: 22456,
+        ship_type_id: 22_456,
         ship_name: "Sabre",
         primary_role: "tackle",
         role_distribution: %{
@@ -653,7 +653,7 @@ defmodule EveDmv.Analytics.FleetAnalyzerTest do
         }
       },
       %{
-        ship_type_id: 22852,
+        ship_type_id: 22_852,
         ship_name: "Damnation",
         primary_role: "command",
         role_distribution: %{

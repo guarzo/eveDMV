@@ -9,6 +9,9 @@ defmodule EveDmv.Shutdown.GracefulShutdown do
   use GenServer
   require Logger
   alias EveDmv.Logging.StructuredLogger
+  alias EveDmv.Workers.BackgroundTaskSupervisor
+  alias EveDmv.Workers.UITaskSupervisor
+  alias EveDmv.Workers.RealtimeTaskSupervisor
 
   # Shutdown phases with timeouts (in milliseconds)
   @shutdown_phases [
@@ -258,9 +261,9 @@ defmodule EveDmv.Shutdown.GracefulShutdown do
   defp execute_phase(:stop_accepting_work, timeout) do
     # Stop accepting new work in all supervisors
     tasks = [
-      Task.async(fn -> stop_accepting_work(EveDmv.Workers.BackgroundTaskSupervisor) end),
-      Task.async(fn -> stop_accepting_work(EveDmv.Workers.UITaskSupervisor) end),
-      Task.async(fn -> stop_accepting_work(EveDmv.Workers.RealtimeTaskSupervisor) end)
+      Task.async(fn -> stop_accepting_work(BackgroundTaskSupervisor) end),
+      Task.async(fn -> stop_accepting_work(UITaskSupervisor) end),
+      Task.async(fn -> stop_accepting_work(RealtimeTaskSupervisor) end)
     ]
 
     results = Task.await_many(tasks, timeout)
@@ -276,10 +279,10 @@ defmodule EveDmv.Shutdown.GracefulShutdown do
     # Wait for current tasks to complete
     tasks = [
       Task.async(fn ->
-        drain_supervisor_tasks(EveDmv.Workers.BackgroundTaskSupervisor, timeout)
+        drain_supervisor_tasks(BackgroundTaskSupervisor, timeout)
       end),
-      Task.async(fn -> drain_supervisor_tasks(EveDmv.Workers.UITaskSupervisor, timeout) end),
-      Task.async(fn -> drain_supervisor_tasks(EveDmv.Workers.RealtimeTaskSupervisor, timeout) end)
+      Task.async(fn -> drain_supervisor_tasks(UITaskSupervisor, timeout) end),
+      Task.async(fn -> drain_supervisor_tasks(RealtimeTaskSupervisor, timeout) end)
     ]
 
     results = Task.await_many(tasks, timeout)

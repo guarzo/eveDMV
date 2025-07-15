@@ -776,7 +776,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
   defp analyze_logistics_capabilities(participant_data) do
     # Identify logistics ships
     # Basic logi ship types
-    logi_ships = [11985, 11987, 11989, 625, 624, 11978, 22474]
+    logi_ships = [11_985, 11_987, 11_989, 625, 624, 11_978, 22_474]
 
     logi_count =
       participant_data
@@ -852,9 +852,9 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
           # Titans (extremely slow)
           id in 3514..3518 -> 200
           # T3 Cruisers (medium-fast)
-          id in 11567..12034 -> 1900
+          id in 11_567..12_034 -> 1900
           # T3 Destroyers (fast)
-          id in 29984..29990 -> 2300
+          id in 29_984..29_990 -> 2300
           # Default
           true -> 1500
         end
@@ -909,9 +909,9 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
           # Titans
           id in 3514..3518 -> 8000
           # T3 Cruisers
-          id in 11567..12034 -> 450
+          id in 11_567..12_034 -> 450
           # T3 Destroyers
-          id in 29984..29990 -> 250
+          id in 29_984..29_990 -> 250
           # Default
           true -> 200
         end
@@ -957,9 +957,9 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
           # Titans
           id in 3514..3518 -> 50_000_000
           # T3 Cruisers
-          id in 11567..12034 -> 45_000
+          id in 11_567..12_034 -> 45_000
           # T3 Destroyers
-          id in 29984..29990 -> 20_000
+          id in 29_984..29_990 -> 20_000
           # Default
           true -> 25_000
         end

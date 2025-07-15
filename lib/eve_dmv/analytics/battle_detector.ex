@@ -563,7 +563,7 @@ defmodule EveDmv.Analytics.BattleDetector do
 
     %{
       battle_id: generate_battle_id(killmails),
-      battle_time: Map.get(first_km, "killmail_time") |> parse_datetime(),
+      battle_time: first_km |> Map.get("killmail_time") |> parse_datetime(),
       solar_system_id: Map.get(first_km, "solar_system_id"),
       solar_system_name: Map.get(first_km, "solar_system_name"),
       killmail_count: length(killmails),
@@ -593,7 +593,11 @@ defmodule EveDmv.Analytics.BattleDetector do
     system = Map.get(first_km, "solar_system_id")
 
     hash_input = "#{time}_#{system}_#{length(killmails)}"
-    :crypto.hash(:md5, hash_input) |> Base.encode16() |> String.slice(0, 8)
+
+    hash_input
+    |> then(&:crypto.hash(:md5, &1))
+    |> Base.encode16()
+    |> String.slice(0, 8)
   end
 
   defp parse_datetime(nil), do: DateTime.utc_now()

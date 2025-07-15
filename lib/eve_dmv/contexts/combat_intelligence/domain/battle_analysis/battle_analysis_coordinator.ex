@@ -193,7 +193,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleAnalysi
       |> Enum.into(%{})
 
     # Schedule next cleanup
-    Process.send_after(self(), :cleanup_cache, 3600_000)
+    Process.send_after(self(), :cleanup_cache, 3_600_000)
 
     {:noreply, %{state | cache: cleaned_cache}}
   end

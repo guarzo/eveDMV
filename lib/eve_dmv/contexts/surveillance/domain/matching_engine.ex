@@ -14,6 +14,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
   alias EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository
   alias EveDmv.DomainEvents.SurveillanceMatch
   alias EveDmv.Infrastructure.EventBus
+  alias EveDmv.Intelligence.WandererClient
 
   require Logger
 
@@ -283,8 +284,16 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
     # Check attackers
     attacker_matches =
-      Enum.filter(killmail_data.attackers, fn attacker ->
-        MapSet.member?(target_characters, attacker.character_id)
+      Enum.filter(killmail_data.attackers || [], fn attacker ->
+        # Handle both map and string keys
+        character_id =
+          case attacker do
+            %{character_id: id} -> id
+            %{"character_id" => id} -> id
+            _ -> nil
+          end
+
+        character_id && MapSet.member?(target_characters, character_id)
       end)
 
     matches = victim_match or length(attacker_matches) > 0
@@ -298,7 +307,14 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
     attacker_criteria =
       Enum.map(attacker_matches, fn attacker ->
-        %{type: :attacker, character_id: attacker.character_id}
+        character_id =
+          case attacker do
+            %{character_id: id} -> id
+            %{"character_id" => id} -> id
+            _ -> nil
+          end
+
+        %{type: :attacker, character_id: character_id}
       end)
 
     matched_criteria = victim_criteria ++ attacker_criteria
@@ -544,6 +560,11 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
       :isk_value -> evaluate_isk_value_condition(condition, killmail_data)
       :participant_count -> evaluate_participant_count_condition(condition, killmail_data)
       :time_range -> evaluate_time_range_condition(condition, killmail_data)
+      :character_watch -> evaluate_character_criteria(condition, killmail_data)
+      :corporation_watch -> evaluate_corporation_criteria(condition, killmail_data)
+      :system_watch -> evaluate_system_criteria(condition, killmail_data)
+      :ship_type_watch -> evaluate_ship_type_criteria(condition, killmail_data)
+      :alliance_watch -> evaluate_alliance_criteria(condition, killmail_data)
       _ -> %{matches: false, matched_criteria: [], confidence_score: 0.0}
     end
   end
@@ -635,7 +656,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
   # Chain checking helper functions
 
   defp check_system_in_chain(system_id, map_id) do
-    case EveDmv.Intelligence.WandererClient.get_chain_topology(map_id) do
+    case WandererClient.get_chain_topology(map_id) do
       {:ok, topology} ->
         systems = Map.get(topology, "systems", [])
 
@@ -661,7 +682,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
   end
 
   defp check_system_within_jumps(system_id, map_id, max_jumps) do
-    case EveDmv.Intelligence.WandererClient.get_chain_topology(map_id) do
+    case WandererClient.get_chain_topology(map_id) do
       {:ok, topology} ->
         # Calculate jump distance from any system in the chain
         chain_systems =
@@ -694,7 +715,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
   end
 
   defp check_killmail_involves_chain_inhabitant(killmail_data, map_id) do
-    case EveDmv.Intelligence.WandererClient.get_chain_inhabitants(map_id) do
+    case WandererClient.get_chain_inhabitants(map_id) do
       {:ok, inhabitants} ->
         inhabitant_character_ids =
           Enum.map(inhabitants, &Map.get(&1, "character_id"))
@@ -752,7 +773,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
     # This would require more sophisticated logic to determine if a kill represents
     # hostiles entering the chain based on patterns, system proximity, etc.
     # For now, check if killmail is near chain and involves unknown entities
-    case EveDmv.Intelligence.WandererClient.get_chain_topology(map_id) do
+    case WandererClient.get_chain_topology(map_id) do
       {:ok, topology} ->
         chain_systems =
           Map.get(topology, "systems", [])
@@ -802,7 +823,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
         # 2 jumps away
         min_distance < 5000 -> 2
         # 3 jumps away
-        min_distance < 10000 -> 3
+        min_distance < 10_000 -> 3
         # Far away
         true -> 10
       end

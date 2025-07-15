@@ -76,8 +76,7 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
     # Get current user from session
     user_id = get_user_id(socket)
 
-    safe_call(fn -> AlertService.update_alert_state(alert_id, "acknowledged", user_id) end)
-    |> case do
+    case safe_call(fn -> AlertService.update_alert_state(alert_id, "acknowledged", user_id) end) do
       {:ok, _updated_alert} ->
         socket =
           socket
@@ -97,8 +96,7 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
     # Get current user from session
     user_id = get_user_id(socket)
 
-    safe_call(fn -> AlertService.update_alert_state(alert_id, "resolved", user_id) end)
-    |> case do
+    case safe_call(fn -> AlertService.update_alert_state(alert_id, "resolved", user_id) end) do
       {:ok, _updated_alert} ->
         socket =
           socket
@@ -119,8 +117,7 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
     user_id = get_user_id(socket)
     criteria = %{state: "new"}
 
-    safe_call(fn -> AlertService.bulk_acknowledge_alerts(criteria, user_id) end)
-    |> case do
+    case safe_call(fn -> AlertService.bulk_acknowledge_alerts(criteria, user_id) end) do
       {:ok, count} ->
         socket =
           socket
@@ -202,8 +199,7 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
       |> then(fn socket ->
         # Update details if this alert is currently shown
         if socket.assigns.selected_alert && socket.assigns.selected_alert.id == alert_id do
-          safe_call(fn -> AlertService.get_alert(alert_id) end)
-          |> case do
+          case safe_call(fn -> AlertService.get_alert(alert_id) end) do
             {:ok, updated_alert} -> assign(socket, :selected_alert, updated_alert)
             _ -> assign(socket, :selected_alert, nil)
           end
@@ -241,20 +237,17 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
 
     opts = Enum.reject(base_opts, fn {_k, v} -> is_nil(v) end)
 
-    safe_call(fn -> AlertService.get_recent_alerts(opts) end)
-    |> case do
+    case safe_call(fn -> AlertService.get_recent_alerts(opts) end) do
       {:ok, alerts} ->
         assign(socket, :alerts, alerts)
 
       _ ->
-        socket
-        |> assign(:alerts, [])
+        assign(socket, :alerts, [])
     end
   end
 
   defp load_alert_metrics(socket) do
-    safe_call(fn -> AlertService.get_alert_metrics(:last_24h) end)
-    |> case do
+    case safe_call(fn -> AlertService.get_alert_metrics(:last_24h) end) do
       {:ok, metrics} ->
         assign(socket, :alert_metrics, metrics)
 
@@ -264,8 +257,7 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
   end
 
   defp show_alert_details(socket, alert_id) do
-    safe_call(fn -> AlertService.get_alert(alert_id) end)
-    |> case do
+    case safe_call(fn -> AlertService.get_alert(alert_id) end) do
       {:ok, alert} ->
         socket
         |> assign(:selected_alert, alert)

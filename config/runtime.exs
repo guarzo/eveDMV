@@ -97,6 +97,8 @@ if config_env() == :dev and System.get_env("MIX_ENV") != "test" do
       System.get_env("WANDERER_KILLS_BASE_URL", "http://host.docker.internal:4004"),
     # Wanderer Map Integration
     wanderer_base_url: System.get_env("WANDERER_BASE_URL", "http://host.docker.internal:4004"),
+    # Default chain for chain intelligence
+    default_chain_id: System.get_env("DEFAULT_CHAIN_ID"),
     wanderer_ws_url:
       System.get_env("WANDERER_WS_URL", "ws://host.docker.internal:4004/socket/events"),
     wanderer_api_token: System.get_env("WANDERER_API_TOKEN"),

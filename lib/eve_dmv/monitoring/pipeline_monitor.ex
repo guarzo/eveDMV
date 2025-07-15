@@ -7,6 +7,10 @@ defmodule EveDmv.Monitoring.PipelineMonitor do
   """
 
   use GenServer
+
+  alias EveDmv.Error
+  alias EveDmv.Monitoring.ErrorTracker
+
   require Logger
 
   @metrics_interval :timer.seconds(30)
@@ -149,7 +153,7 @@ defmodule EveDmv.Monitoring.PipelineMonitor do
     }
 
     # Track error in error tracker
-    EveDmv.Monitoring.ErrorTracker.track_error(error, %{
+    ErrorTracker.track_error(error, %{
       module: __MODULE__,
       function: :pipeline_processing
     })
@@ -265,8 +269,8 @@ defmodule EveDmv.Monitoring.PipelineMonitor do
 
   defp extract_error_type(error) do
     case error do
-      %EveDmv.Error{code: code} -> code
-      {:error, %EveDmv.Error{code: code}} -> code
+      %Error{code: code} -> code
+      {:error, %Error{code: code}} -> code
       {:error, reason} when is_atom(reason) -> reason
       _ -> :unknown_error
     end

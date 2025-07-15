@@ -13,7 +13,7 @@ defmodule EveDmv.Contexts.CombatIntelligenceIntegrationTest do
 
   describe "IntelligenceScoring stub behavior" do
     test "calculate_score would return not_implemented (GenServer not started in test)" do
-      character_id = 12345
+      character_id = 12_345
 
       # Note: IntelligenceScoring is a GenServer that's not started in test environment
       # The important thing is that the private calculation functions return :not_implemented
@@ -45,7 +45,7 @@ defmodule EveDmv.Contexts.CombatIntelligenceIntegrationTest do
 
   describe "AnalysisCache stub behavior" do
     test "get_intelligence_scores returns not_implemented" do
-      character_id = 12345
+      character_id = 12_345
 
       # AnalysisCache.get_intelligence_scores was updated to return {:error, :not_implemented}
       assert {:error, :not_implemented} = AnalysisCache.get_intelligence_scores(character_id)

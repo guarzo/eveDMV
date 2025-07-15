@@ -253,7 +253,7 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-plt-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-
     - name: Run Dialyzer
-      run: mix dialyzer || true
+      run: mix dialyzer
 
   coverage-comment:
     name: Coverage Comment

@@ -310,8 +310,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
       ship_type_id in 620..650 -> :cruiser
       ship_type_id in 540..570 -> :battlecruiser
       ship_type_id in 640..670 -> :battleship
-      ship_type_id in 19720..19740 -> :capital
-      ship_type_id in 28650..28710 -> :strategic_cruiser
+      ship_type_id in 19_720..19_740 -> :capital
+      ship_type_id in 28_650..28_710 -> :strategic_cruiser
       true -> :unknown
     end
   end
@@ -371,7 +371,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp infer_tank_type(damage_profile) do
     # Simple heuristic based on damage sustained
-    if damage_profile.total_damage > 50000 do
+    if damage_profile.total_damage > 50_000 do
       # Higher EHP suggests armor tank
       :armor
     else
@@ -402,11 +402,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
     ship_class = determine_ship_class(ship_type_id)
 
     case {ship_class, damage_profile.total_damage} do
-      {:frigate, damage} when damage < 10000 -> :tackle
-      {:frigate, damage} when damage >= 10000 -> :assault
+      {:frigate, damage} when damage < 10_000 -> :tackle
+      {:frigate, damage} when damage >= 10_000 -> :assault
       {:destroyer, _} -> :anti_frigate
-      {:cruiser, damage} when damage < 30000 -> :support
-      {:cruiser, damage} when damage >= 30000 -> :dps
+      {:cruiser, damage} when damage < 30_000 -> :support
+      {:cruiser, damage} when damage >= 30_000 -> :dps
       {:battlecruiser, _} -> :heavy_dps
       {:battleship, _} -> :main_dps
       {:capital, _} -> :capital_dps
@@ -440,7 +440,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
         :cruiser ->
           %{
-            base_hp: 15000,
+            base_hp: 15_000,
             base_dps: 300,
             base_speed: 150,
             base_sig: 120,
@@ -449,7 +449,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
         :battlecruiser ->
           %{
-            base_hp: 30000,
+            base_hp: 30_000,
             base_dps: 500,
             base_speed: 100,
             base_sig: 200,
@@ -458,7 +458,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
         :battleship ->
           %{
-            base_hp: 60000,
+            base_hp: 60_000,
             base_dps: 700,
             base_speed: 80,
             base_sig: 300,
@@ -467,7 +467,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
         _ ->
           %{
-            base_hp: 10000,
+            base_hp: 10_000,
             base_dps: 200,
             base_speed: 150,
             base_sig: 100,
@@ -1339,20 +1339,20 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
     insights = battle_summary.key_insights
 
     recommendations =
-      if "High survivability battle" not in insights do
-        ["Focus on defensive positioning and tank optimization" | recommendations]
-      else
+      if "High survivability battle" in insights do
         recommendations
+      else
+        ["Focus on defensive positioning and tank optimization" | recommendations]
       end
 
     recommendations =
-      if "Excellent DPS efficiency" not in insights do
+      if "Excellent DPS efficiency" in insights do
+        recommendations
+      else
         [
           "Improve damage application through better target selection and positioning"
           | recommendations
         ]
-      else
-        recommendations
       end
 
     recommendations
@@ -1466,7 +1466,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
           []
         end
 
-    # Tank recommendations  
+    # Tank recommendations
     recommendations =
       recommendations ++
         if efficiency_metrics[:tank_efficiency] &&
@@ -1568,7 +1568,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
     cond do
       # Frigates
       ship_type_id in 582..650 -> 150
-      # Cruisers  
+      # Cruisers
       ship_type_id in 620..634 -> 400
       # Battleships
       ship_type_id in 638..645 -> 800
@@ -1580,7 +1580,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
     # Simplified drone DPS estimation
     cond do
       # Tech 3 Destroyers
-      ship_type_id in 29984..29990 -> 300
+      ship_type_id in 29_984..29_990 -> 300
       # Cruisers
       ship_type_id in 620..634 -> 100
       # Battleships

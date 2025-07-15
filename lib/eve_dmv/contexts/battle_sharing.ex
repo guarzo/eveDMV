@@ -109,7 +109,7 @@ defmodule EveDmv.Contexts.BattleSharing do
        report_id: report_id,
        battle_id: "battle_123",
        creator: %{
-         character_id: 12345,
+         character_id: 12_345,
          character_name: "Test Pilot"
        },
        title: "Epic Battle Report",

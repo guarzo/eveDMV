@@ -526,7 +526,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
           {:ok, time} ->
             case NaiveDateTime.new(today, time) do
               {:ok, dt} -> dt
-              _ -> nil
+              {:error, _} -> nil
             end
 
           _ ->
@@ -558,8 +558,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
       :normal -> 50.0
       :glancing -> 30.0
       :grazing -> 20.0
-      :miss -> 0.0
-      _ -> 50.0
     end
   end
 

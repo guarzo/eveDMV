@@ -519,7 +519,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
 
   defp is_capital_ship(ship_type_id) do
     # Rough capital ship detection
-    ship_type_id in 19720..19740
+    ship_type_id in 19_720..19_740
   end
 
   defp calculate_ship_diversity(killmails) do

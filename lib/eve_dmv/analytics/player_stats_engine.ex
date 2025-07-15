@@ -212,7 +212,7 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
   end
 
   defp split_kills_losses(ps) do
-    Enum.split_with(ps, fn p -> not (p.is_victim || false) end)
+    Enum.split_with(ps, fn p -> not p.is_victim end)
   end
 
   defp split_solo_gang(kills, losses) do
@@ -304,7 +304,7 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
         avg_per_week: 0
       }
     else
-      kill_participants = Enum.filter(participants, fn p -> not (p.is_victim || false) end)
+      kill_participants = Enum.filter(participants, fn p -> not p.is_victim end)
       total_kills = length(kill_participants)
 
       weeks = 12

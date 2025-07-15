@@ -512,7 +512,8 @@ defmodule EveDmv.Analytics.ModuleClassifier do
 
   defp normalize_confidence_scores(classification) do
     # Ensure no role exceeds 1.0 confidence
-    Enum.map(classification, fn {role, confidence} ->
+    classification
+    |> Enum.map(fn {role, confidence} ->
       {role, min(1.0, confidence)}
     end)
     |> Enum.into(%{})

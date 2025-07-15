@@ -76,7 +76,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
       %{
         doctrine_name: "armor_bs_sniper",
         # Megathron + Guardian
-        ship_composition: %{641 => 20, 11987 => 4},
+        ship_composition: %{641 => 20, 11_987 => 4},
         tank_type: "armor",
         engagement_range: "long",
         tactical_role: "sniper",
@@ -85,7 +85,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
       %{
         doctrine_name: "mach_speed_fleet",
         # Machariel + Scimitar
-        ship_composition: %{17738 => 25, 11989 => 5},
+        ship_composition: %{17_738 => 25, 11_989 => 5},
         tank_type: "shield",
         engagement_range: "medium_long",
         tactical_role: "mobile_dps",
@@ -95,7 +95,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
       %{
         doctrine_name: "ferox_railgun_fleet",
         # Ferox + Basilisk
-        ship_composition: %{20648 => 30, 11985 => 6},
+        ship_composition: %{20_648 => 30, 11_985 => 6},
         tank_type: "shield",
         engagement_range: "long",
         tactical_role: "sniper",
@@ -104,7 +104,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
       %{
         doctrine_name: "drake_missile_fleet",
         # Drake + Basilisk
-        ship_composition: %{24698 => 25, 11985 => 5},
+        ship_composition: %{24_698 => 25, 11_985 => 5},
         tank_type: "shield",
         engagement_range: "medium",
         tactical_role: "brawler",
@@ -114,7 +114,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
       %{
         doctrine_name: "muninn_artillery_fleet",
         # Muninn + Scimitar
-        ship_composition: %{12015 => 40, 11989 => 8},
+        ship_composition: %{12_015 => 40, 11_989 => 8},
         tank_type: "shield",
         engagement_range: "long",
         tactical_role: "alpha",
@@ -123,7 +123,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
       %{
         doctrine_name: "eagle_railgun_fleet",
         # Eagle + Basilisk
-        ship_composition: %{12011 => 35, 11985 => 7},
+        ship_composition: %{12_011 => 35, 11_985 => 7},
         tank_type: "shield",
         engagement_range: "extreme",
         tactical_role: "sniper",
@@ -170,7 +170,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
           "Minmatar battleship known for versatility and speed. Often fit with artillery for long-range volleys"
       },
       %{
-        type_id: 24694,
+        type_id: 24_694,
         name: "Maelstrom",
         reference_role: "alpha_dps",
         typical_doctrines: ["alpha_fleet", "artillery_volley"],
@@ -180,7 +180,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
           "Minmatar battleship with strong shield tank. 1400mm artillery provides massive alpha damage"
       },
       %{
-        type_id: 24688,
+        type_id: 24_688,
         name: "Rokh",
         reference_role: "sniper_dps",
         typical_doctrines: ["shield_sniper", "railgun_extreme"],
@@ -190,7 +190,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
           "Caldari battleship specialized for railguns. Very high engagement range with strong shield tank"
       },
       %{
-        type_id: 24692,
+        type_id: 24_692,
         name: "Abaddon",
         reference_role: "armor_brawler",
         typical_doctrines: ["armor_brawl", "laser_brawl"],
@@ -221,7 +221,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
       },
       # Pirate Faction Battleships
       %{
-        type_id: 17738,
+        type_id: 17_738,
         name: "Machariel",
         reference_role: "mobile_dps",
         typical_doctrines: ["mach_speed_fleet", "shield_artillery"],
@@ -231,7 +231,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
           "Angel Cartel battleship famed for speed and damage. Dictates engagement range with hit-and-run tactics"
       },
       %{
-        type_id: 17736,
+        type_id: 17_736,
         name: "Nightmare",
         reference_role: "shield_sniper",
         typical_doctrines: ["shield_laser", "nightmare_fleet"],
@@ -241,7 +241,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
           "Sansha's Nation battleship with high EM/Thermal damage and strong capacitor"
       },
       %{
-        type_id: 17920,
+        type_id: 17_920,
         name: "Bhaalgorn",
         reference_role: "heavy_tackle",
         typical_doctrines: ["neut_tackle", "armor_support"],
@@ -252,7 +252,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
       },
       # Triglavian Battleships
       %{
-        type_id: 47966,
+        type_id: 47_966,
         name: "Leshak",
         reference_role: "ramping_dps",
         typical_doctrines: ["leshak_spider", "triglavian_fleet"],
@@ -267,7 +267,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
   defp parse_battlecruisers(_content) do
     [
       %{
-        type_id: 20648,
+        type_id: 20_648,
         name: "Ferox",
         reference_role: "shield_sniper",
         typical_doctrines: ["ferox_railgun_fleet", "shield_bc"],
@@ -277,7 +277,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
           "Caldari battlecruiser valued for low cost and optimal range. Railgun platform at 50-100km"
       },
       %{
-        type_id: 24698,
+        type_id: 24_698,
         name: "Drake",
         reference_role: "shield_brawler",
         typical_doctrines: ["drake_missile_fleet", "shield_bc"],
@@ -287,7 +287,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
           "Caldari battlecruiser known for durability and missile firepower. Thick shield tank"
       },
       %{
-        type_id: 24702,
+        type_id: 24_702,
         name: "Hurricane",
         reference_role: "versatile_dps",
         typical_doctrines: ["hurricane_fleet", "projectile_bc"],
@@ -302,7 +302,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
   defp parse_command_ships(_content) do
     [
       %{
-        type_id: 22474,
+        type_id: 22_474,
         name: "Damnation",
         reference_role: "armor_command",
         typical_doctrines: ["armor_fleet", "command_support"],
@@ -312,7 +312,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
           "Amarr Command Ship with colossal armor tank and armor warfare links. Fleet booster for armor fleets"
       },
       %{
-        type_id: 22472,
+        type_id: 22_472,
         name: "Vulture",
         reference_role: "shield_command",
         typical_doctrines: ["shield_fleet", "command_support"],
@@ -322,7 +322,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
           "Caldari Command Ship for shield warfare links. Go-to shield fleet booster"
       },
       %{
-        type_id: 22468,
+        type_id: 22_468,
         name: "Claymore",
         reference_role: "skirmish_command",
         typical_doctrines: ["fast_fleet", "nano_support"],
@@ -337,7 +337,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
   defp parse_heavy_assault_cruisers(_content) do
     [
       %{
-        type_id: 12015,
+        type_id: 12_015,
         name: "Muninn",
         reference_role: "alpha_dps",
         typical_doctrines: ["muninn_artillery_fleet", "hac_alpha"],
@@ -347,7 +347,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
           "Minmatar HAC popular for artillery. High-speed shield-tanked sniper at 70-100km with high alpha"
       },
       %{
-        type_id: 12011,
+        type_id: 12_011,
         name: "Eagle",
         reference_role: "sniper_dps",
         typical_doctrines: ["eagle_railgun_fleet", "hac_sniper"],
@@ -357,7 +357,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
           "Caldari HAC for long-range railguns. Excellent range with Spike ammo, extreme distances"
       },
       %{
-        type_id: 11993,
+        type_id: 11_993,
         name: "Cerberus",
         reference_role: "missile_dps",
         typical_doctrines: ["cerberus_missile_fleet", "hac_missile"],
@@ -367,7 +367,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
           "Caldari HAC excels with heavy missiles. Long-range missile boat beyond 100km"
       },
       %{
-        type_id: 12005,
+        type_id: 12_005,
         name: "Ishtar",
         reference_role: "drone_dps",
         typical_doctrines: ["ishtar_drone_fleet", "sentry_drone"],
@@ -382,7 +382,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
   defp parse_logistics_ships(_content) do
     [
       %{
-        type_id: 11987,
+        type_id: 11_987,
         name: "Guardian",
         reference_role: "armor_logistics",
         typical_doctrines: ["armor_fleet", "logistics_support"],
@@ -392,7 +392,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
           "Amarr T2 Logistics Cruiser, armor repair specialist. Uses cap-chain system, workhorse of armor fleets"
       },
       %{
-        type_id: 11985,
+        type_id: 11_985,
         name: "Basilisk",
         reference_role: "shield_logistics",
         typical_doctrines: ["shield_fleet", "logistics_support"],
@@ -402,7 +402,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
           "Caldari T2 Logistics Cruiser, shield transfer specialist. Superior raw repping throughput"
       },
       %{
-        type_id: 11989,
+        type_id: 11_989,
         name: "Scimitar",
         reference_role: "fast_logistics",
         typical_doctrines: ["fast_fleet", "mobile_support"],
@@ -417,7 +417,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
   defp parse_interdictors(_content) do
     [
       %{
-        type_id: 22456,
+        type_id: 22_456,
         name: "Sabre",
         reference_role: "fast_tackle",
         typical_doctrines: ["dictor_support", "bubble_tackle"],
@@ -432,7 +432,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
   defp parse_heavy_interdictors(_content) do
     [
       %{
-        type_id: 12017,
+        type_id: 12_017,
         name: "Devoter",
         reference_role: "heavy_tackle",
         typical_doctrines: ["hic_tackle", "armor_support"],
@@ -448,7 +448,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
     [
       %{
         # Huginn (Combat Recon)
-        type_id: 11999,
+        type_id: 11_999,
         name: "Huginn",
         reference_role: "ewar_support",
         typical_doctrines: ["web_support", "paint_support"],
@@ -463,7 +463,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
   defp parse_strategic_cruisers(_content) do
     [
       %{
-        type_id: 29984,
+        type_id: 29_984,
         name: "Tengu",
         reference_role: "versatile_dps",
         typical_doctrines: ["t3_missile", "covert_ops"],
@@ -478,7 +478,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
   defp parse_interceptors(_content) do
     [
       %{
-        type_id: 11174,
+        type_id: 11_174,
         name: "Ares",
         reference_role: "fast_tackle",
         typical_doctrines: ["interceptor_support", "fast_tackle"],
@@ -494,7 +494,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
     [
       %{
         # Note: Using placeholder ID - need to verify actual Pontifex type ID
-        type_id: 22468,
+        type_id: 22_468,
         name: "Pontifex",
         reference_role: "boosh_support",
         typical_doctrines: ["boosh_support", "armor_support"],

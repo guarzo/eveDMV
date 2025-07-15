@@ -8,6 +8,7 @@ defmodule EveDmvWeb.SurveillanceLive.ProfileService do
 
   alias EveDmv.Api
   alias EveDmv.Database.SurveillanceRepository
+  alias EveDmv.Performance.BatchNameResolver
   alias EveDmv.Surveillance.MatchingEngine
   alias EveDmv.Surveillance.Profile
   alias EveDmvWeb.SurveillanceLive.Components
@@ -23,7 +24,7 @@ defmodule EveDmvWeb.SurveillanceLive.ProfileService do
   def load_user_profiles(user_id, current_user) do
     profiles = SurveillanceRepository.get_user_profiles(user_id, current_user)
     # Preload all profile names to prevent N+1 queries
-    EveDmv.Performance.BatchNameResolver.preload_profile_names(profiles)
+    BatchNameResolver.preload_profile_names(profiles)
     profiles
   end
 
@@ -174,14 +175,14 @@ defmodule EveDmvWeb.SurveillanceLive.ProfileService do
       %{__exception__: true} = exception ->
         Exception.message(exception)
 
-      error when is_binary(error) ->
-        error
+      err when is_binary(err) ->
+        err
 
-      error when is_atom(error) ->
-        Atom.to_string(error)
+      err when is_atom(err) ->
+        Atom.to_string(err)
 
-      error ->
-        inspect(error)
+      err ->
+        inspect(err)
     end
   end
 end

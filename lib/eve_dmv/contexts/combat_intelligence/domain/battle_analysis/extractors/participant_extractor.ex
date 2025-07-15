@@ -362,14 +362,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
     # For now, return basic damage dealt
     # TODO: Implement proper damage calculation
 
-    if participant.participant_type == :attacker, do: 10000, else: 0
+    if participant.participant_type == :attacker, do: 10_000, else: 0
   end
 
   defp calculate_damage_received(participant, _killmails) do
     # For now, return basic damage received
     # TODO: Implement proper damage calculation
 
-    if participant.participant_type == :victim, do: 50000, else: 0
+    if participant.participant_type == :victim, do: 50_000, else: 0
   end
 
   defp build_activity_timeline(_participant, _killmails) do

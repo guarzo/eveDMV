@@ -72,7 +72,7 @@ defmodule EveDmv.Eve.EsiRequestClient do
 
     if String.contains?(path, "/markets/") do
       Logger.debug(
-        "EsiRequestClient.public_request for #{path} returning: #{inspect(elem(result, 0))}, type: #{inspect(result |> elem(0))}"
+        "EsiRequestClient.public_request for #{path} returning: #{inspect(elem(result, 0))}, type: #{inspect(elem(result, 0))}"
       )
 
       case result do

@@ -14,8 +14,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
   alias EveDmv.Killmails.KillmailRaw
 
   # Battle detection parameters
-  @max_time_gap_minutes 20
+  @max_time_gap_minutes 30
+  @max_participant_time_gap_minutes 60
   @min_participants_for_battle 2
+  @min_participant_overlap_ratio 0.3
 
   @doc """
   Detects battles from killmail data within a time range.
@@ -227,9 +229,25 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
     time_gap_minutes =
       NaiveDateTime.diff(killmail.killmail_time, current_cluster.end_time, :second) / 60
 
+    # Check for participant overlap for longer time gaps
+    participant_overlap_ratio = calculate_participant_overlap(killmail, current_cluster.killmails)
+
     can_add_to_cluster =
-      time_gap_minutes <= max_time_gap_minutes and
-        (not same_system_only or killmail.solar_system_id == current_cluster.system_id)
+      cond do
+        # Close in time and same system (original logic)
+        time_gap_minutes <= max_time_gap_minutes and
+            (not same_system_only or killmail.solar_system_id == current_cluster.system_id) ->
+          true
+
+        # Longer time gap but significant participant overlap in same system
+        time_gap_minutes <= @max_participant_time_gap_minutes and
+          participant_overlap_ratio >= @min_participant_overlap_ratio and
+            killmail.solar_system_id == current_cluster.system_id ->
+          true
+
+        true ->
+          false
+      end
 
     if can_add_to_cluster do
       # Add to current cluster
@@ -242,15 +260,31 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
 
       [updated_cluster | rest_clusters]
     else
-      # Start new cluster
-      new_cluster = %{
-        killmails: [killmail],
-        start_time: killmail.killmail_time,
-        end_time: killmail.killmail_time,
-        system_id: killmail.solar_system_id
-      }
+      # Try to add to other clusters with participant overlap
+      case find_cluster_with_overlap(killmail, rest_clusters) do
+        {:found, cluster_index} ->
+          # Add to found cluster and move it to front
+          {target_cluster, other_clusters} = List.pop_at(rest_clusters, cluster_index)
 
-      [new_cluster, current_cluster | rest_clusters]
+          updated_cluster = %{
+            target_cluster
+            | killmails: [killmail | target_cluster.killmails],
+              end_time: max(killmail.killmail_time, target_cluster.end_time)
+          }
+
+          [current_cluster, updated_cluster | other_clusters]
+
+        :not_found ->
+          # Start new cluster
+          new_cluster = %{
+            killmails: [killmail],
+            start_time: killmail.killmail_time,
+            end_time: killmail.killmail_time,
+            system_id: killmail.solar_system_id
+          }
+
+          [new_cluster, current_cluster | rest_clusters]
+      end
     end
   end
 
@@ -268,6 +302,45 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
       |> Enum.uniq()
 
     length(participants)
+  end
+
+  defp calculate_participant_overlap(killmail, cluster_killmails) do
+    killmail_participants = ParticipantExtractor.extract_participants(killmail)
+
+    cluster_participants =
+      cluster_killmails
+      |> Enum.flat_map(&ParticipantExtractor.extract_participants/1)
+      |> Enum.uniq()
+
+    if Enum.empty?(cluster_participants) do
+      0.0
+    else
+      overlap_count =
+        killmail_participants
+        |> Enum.count(&(&1 in cluster_participants))
+
+      overlap_count / length(cluster_participants)
+    end
+  end
+
+  defp find_cluster_with_overlap(killmail, clusters) do
+    clusters
+    |> Enum.with_index()
+    |> Enum.find(fn {cluster, _index} ->
+      time_gap_minutes =
+        NaiveDateTime.diff(killmail.killmail_time, cluster.end_time, :second) / 60
+
+      overlap_ratio = calculate_participant_overlap(killmail, cluster.killmails)
+
+      # Check if killmail can be added to this cluster
+      time_gap_minutes <= @max_participant_time_gap_minutes and
+        overlap_ratio >= @min_participant_overlap_ratio and
+        killmail.solar_system_id == cluster.system_id
+    end)
+    |> case do
+      {_cluster, index} -> {:found, index}
+      nil -> :not_found
+    end
   end
 
   defp enrich_battle_metadata(clusters) do

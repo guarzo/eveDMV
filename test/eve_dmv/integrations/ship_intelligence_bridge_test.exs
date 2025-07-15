@@ -47,7 +47,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridgeTest do
   describe "calculate_ship_specialization/2" do
     test "calculates ship specialization for character with sufficient data" do
       # Setup character killmail data
-      character_id = 12345
+      character_id = 12_345
       setup_character_killmail_data(character_id)
 
       {:ok, result} = ShipIntelligenceBridge.calculate_ship_specialization(character_id)
@@ -62,7 +62,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridgeTest do
 
     test "handles insufficient data gracefully" do
       # Character with no data
-      character_id = 99999
+      character_id = 99_999
 
       {:ok, result} = ShipIntelligenceBridge.calculate_ship_specialization(character_id)
 
@@ -75,7 +75,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridgeTest do
 
   describe "get_character_ship_preferences/1" do
     test "returns ship preference summary" do
-      character_id = 12345
+      character_id = 12_345
       setup_character_killmail_data(character_id)
 
       result = ShipIntelligenceBridge.get_character_ship_preferences(character_id)
@@ -102,8 +102,8 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridgeTest do
         %{ship_type_id: 641},
         %{ship_type_id: 641},
         # Guardian
-        %{ship_type_id: 11987},
-        %{ship_type_id: 11987}
+        %{ship_type_id: 11_987},
+        %{ship_type_id: 11_987}
       ]
 
       {:ok, result} = ShipIntelligenceBridge.analyze_fleet_for_operations(fleet_composition)

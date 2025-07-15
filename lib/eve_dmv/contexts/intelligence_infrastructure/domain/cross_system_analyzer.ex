@@ -863,12 +863,12 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     ship_type_id = killmail.victim_ship_type_id
 
     # Capital ship type ID ranges (simplified)
-    ship_type_id in 19720..19740 or
+    ship_type_id in 19_720..19_740 or
       (killmail.raw_data["attackers"] || [])
       |> Enum.any?(fn attacker ->
         case attacker["ship_type_id"] do
-          id when is_integer(id) -> id in 19720..19740
-          id when is_binary(id) -> String.to_integer(id) in 19720..19740
+          id when is_integer(id) -> id in 19_720..19_740
+          id when is_binary(id) -> String.to_integer(id) in 19_720..19_740
           _ -> false
         end
       end)
@@ -881,8 +881,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # High-value ship types (simplified)
     # Capitals
     # T3 Cruisers (example range)
-    ship_type_id in 19720..19740 or
-      ship_type_id in 28352..28356
+    ship_type_id in 19_720..19_740 or
+      ship_type_id in 28_352..28_356
   end
 
   defp has_fleet_activity(killmails) do

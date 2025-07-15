@@ -72,8 +72,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
   @impl Phoenix.LiveView
   def handle_event("delete_profile", %{"id" => id}, socket) do
-    safe_call(fn -> Surveillance.delete_profile(id) end)
-    |> case do
+    case safe_call(fn -> Surveillance.delete_profile(id) end) do
       {:ok, _} ->
         socket =
           socket
@@ -93,8 +92,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
     profile = find_profile(socket.assigns.profiles, id)
     enabled = !profile.enabled
 
-    safe_call(fn -> Surveillance.update_profile(id, %{enabled: enabled}) end)
-    |> case do
+    case safe_call(fn -> Surveillance.update_profile(id, %{enabled: enabled}) end) do
       {:ok, _} ->
         socket =
           socket
@@ -119,7 +117,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
       description: Map.get(profile_params, "description", ""),
       is_active: Map.get(profile_params, "enabled", "true") == "true",
       criteria: editing_profile.criteria,
-      user_id: get_current_user_id()
+      user_id: get_current_user_id(socket)
     }
 
     # Debug logging
@@ -128,8 +126,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
     case editing_profile do
       %{id: nil} ->
         # Create new profile
-        safe_call(fn -> Surveillance.create_profile(profile_data) end)
-        |> case do
+        case safe_call(fn -> Surveillance.create_profile(profile_data) end) do
           {:ok, _profile} ->
             socket =
               socket
@@ -147,8 +144,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
       %{id: id} ->
         # Update existing profile
-        safe_call(fn -> Surveillance.update_profile(id, profile_data) end)
-        |> case do
+        case safe_call(fn -> Surveillance.update_profile(id, profile_data) end) do
           {:ok, _profile} ->
             socket =
               socket
@@ -327,7 +323,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
         current_ids = Map.get(condition, String.to_existing_atom(field), [])
 
         # Convert current IDs to string for display, add new ID
-        current_string = current_ids |> Enum.join(", ")
+        current_string = Enum.join(current_ids, ", ")
 
         new_value =
           if current_string == "",
@@ -403,8 +399,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   # Private functions
 
   defp load_profiles(socket) do
-    safe_call(fn -> Surveillance.list_profiles([]) end)
-    |> case do
+    case safe_call(fn -> Surveillance.list_profiles([]) end) do
       {:ok, profiles} ->
         # Profiles should already be in the correct format since we're not doing backwards compatibility
         formatted_profiles = Enum.map(profiles, &format_profile_for_ui/1)
@@ -438,8 +433,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   defp check_chain_status do
     map_slug = get_default_map_slug()
 
-    safe_call(fn -> WandererClient.get_chain_topology(map_slug) end)
-    |> case do
+    case safe_call(fn -> WandererClient.get_chain_topology(map_slug) end) do
       {:ok, topology} ->
         %{
           connected: true,
@@ -612,9 +606,6 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
               else
                 nil
               end
-
-            {:error, _} ->
-              nil
           end
         end)
         |> Enum.reject(&is_nil/1)
@@ -711,10 +702,20 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
     }
   end
 
-  defp get_current_user_id do
-    # TODO: Get from session/assigns when authentication is properly integrated
-    # For now, return a placeholder integer
-    1
+  defp get_current_user_id(socket) do
+    # Get user ID from socket assigns if available
+    case socket.assigns do
+      %{current_user: %{id: user_id}} ->
+        user_id
+
+      %{user_id: user_id} when is_integer(user_id) ->
+        user_id
+
+      _ ->
+        # Default to user ID 1 if not authenticated
+        # In production, this would redirect to login
+        1
+    end
   end
 
   defp search_entity_suggestions(field, query) do

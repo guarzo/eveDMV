@@ -596,10 +596,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Calculators.PerformanceMetricsCalculato
   defp get_weapon_optimal_range(weapon_type_id) do
     # Simplified range estimates based on weapon type
     case classify_weapon_type(weapon_type_id) do
-      "Missile" -> 50000
-      "Energy" -> 15000
-      "Projectile" -> 25000
-      _ -> 10000
+      "Missile" -> 50_000
+      "Energy" -> 15_000
+      "Projectile" -> 25_000
+      _ -> 10_000
     end
   end
 
@@ -625,8 +625,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Calculators.PerformanceMetricsCalculato
     avg_range = Enum.sum(ranges) / max(length(ranges), 1)
 
     cond do
-      avg_range > 40000 -> "Long Range"
-      avg_range > 20000 -> "Medium Range"
+      avg_range > 40_000 -> "Long Range"
+      avg_range > 20_000 -> "Medium Range"
       avg_range > 5000 -> "Short Range"
       true -> "Point Blank"
     end

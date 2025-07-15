@@ -128,7 +128,7 @@ defmodule EveDmvWeb.SystemLive do
 
   # Get activity statistics for the last 30 days
   defp get_activity_statistics(system_id) do
-    thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30, :day)
+    thirty_days_ago = DateTime.add(DateTime.utc_now(), -30, :day)
 
     # Query killmail activity in this system
     killmail_query = """
@@ -165,7 +165,7 @@ defmodule EveDmvWeb.SystemLive do
 
   # Get structure and citadel kills
   defp get_structure_kills(system_id) do
-    thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30, :day)
+    thirty_days_ago = DateTime.add(DateTime.utc_now(), -30, :day)
 
     structure_query = """
     SELECT
@@ -215,7 +215,7 @@ defmodule EveDmvWeb.SystemLive do
 
   # Get corporation and alliance presence
   defp get_corporation_presence(system_id) do
-    thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30, :day)
+    thirty_days_ago = DateTime.add(DateTime.utc_now(), -30, :day)
 
     presence_query = """
     SELECT
@@ -272,8 +272,8 @@ defmodule EveDmvWeb.SystemLive do
 
   # Calculate danger assessment score
   defp calculate_danger_assessment(system_id) do
-    seven_days_ago = DateTime.utc_now() |> DateTime.add(-7, :day)
-    thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30, :day)
+    seven_days_ago = DateTime.add(DateTime.utc_now(), -7, :day)
+    thirty_days_ago = DateTime.add(DateTime.utc_now(), -30, :day)
 
     danger_query = """
     SELECT
@@ -332,7 +332,7 @@ defmodule EveDmvWeb.SystemLive do
 
   # Get 24-hour activity heatmap
   defp get_activity_heatmap(system_id) do
-    thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30, :day)
+    thirty_days_ago = DateTime.add(DateTime.utc_now(), -30, :day)
 
     heatmap_query = """
     SELECT
@@ -349,15 +349,14 @@ defmodule EveDmvWeb.SystemLive do
       {:ok, %{rows: rows}} ->
         # Create array for all 24 hours
         activity_by_hour =
-          0..23
-          |> Enum.map(fn hour ->
+          Enum.map(0..23, fn hour ->
             count =
               Enum.find_value(rows, 0, fn [h, count] -> if h == hour, do: count, else: nil end)
 
             %{hour: hour, count: count}
           end)
 
-        max_count = Enum.max_by(activity_by_hour, & &1.count) |> Map.get(:count, 1)
+        max_count = Map.get(Enum.max_by(activity_by_hour, & &1.count), :count, 1)
 
         # Calculate percentages for visualization
         heatmap_data =

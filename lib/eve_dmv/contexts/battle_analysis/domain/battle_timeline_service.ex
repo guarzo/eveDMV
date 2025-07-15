@@ -543,7 +543,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
             |> Enum.find_index(fn side_groups ->
               # Check if this group is hostile to any group in this side
               not Enum.any?(side_groups, fn side_group ->
-                Map.get(hostile_map, group, [])
+                hostile_map
+                |> Map.get(group, [])
                 |> Enum.member?(side_group)
               end)
             end)
@@ -692,7 +693,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
   end
 
   defp generate_battle_summary(events, phases, key_moments) do
-    phase_names = Enum.map(phases, & &1.phase_type) |> Enum.join(", ")
+    phase_names = Enum.map_join(phases, ", ", & &1.phase_type)
     key_moment_count = length(key_moments)
 
     %{

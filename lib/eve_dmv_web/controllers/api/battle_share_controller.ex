@@ -17,7 +17,7 @@ defmodule EveDmvWeb.Api.BattleShareController do
   """
   def create(conn, %{"id" => battle_id} = params) do
     # In production, get character_id from authenticated user
-    creator_id = conn.assigns[:current_user_id] || 12345
+    creator_id = conn.assigns[:current_user_id] || 12_345
 
     options = [
       title: params["title"],

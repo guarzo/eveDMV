@@ -39,6 +39,7 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
       |> assign(:loading, false)
       |> assign(:error, nil)
       |> load_user_chains()
+      |> auto_select_default_chain()
 
     {:ok, socket}
   end
@@ -237,19 +238,70 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
   end
 
   defp load_user_chains(socket) do
-    user = socket.assigns.current_user
-    corporation_id = user.eve_corporation_id || 1
+    # Check for configured default chain first
+    default_chain_id =
+      Application.get_env(:eve_dmv, :default_chain_id) ||
+        System.get_env("DEFAULT_CHAIN_ID")
 
-    case ChainTopology
-         |> Ash.Query.filter(corporation_id == ^corporation_id and monitoring_enabled == true)
-         |> Ash.read(domain: Api) do
-      {:ok, chains} ->
-        assign(socket, :monitored_chains, chains)
+    if default_chain_id do
+      # Load the specific chain configured in environment
+      case ChainTopology
+           |> Ash.Query.filter(map_id == ^default_chain_id or id == ^default_chain_id)
+           |> Ash.read(domain: Api) do
+        {:ok, [chain]} ->
+          assign(socket, :monitored_chains, [chain])
 
-      {:error, reason} ->
+        {:ok, []} ->
+          socket
+          |> assign(:monitored_chains, [])
+          |> put_flash(:warning, "Configured chain '#{default_chain_id}' not found")
+
+        {:error, reason} ->
+          socket
+          |> assign(:monitored_chains, [])
+          |> put_flash(:error, "Failed to load configured chain: #{inspect(reason)}")
+      end
+    else
+      # Fallback to corporation-based chains
+      user = socket.assigns.current_user
+      corporation_id = user.eve_corporation_id || 1
+
+      case ChainTopology
+           |> Ash.Query.filter(corporation_id == ^corporation_id and monitoring_enabled == true)
+           |> Ash.read(domain: Api) do
+        {:ok, chains} ->
+          assign(socket, :monitored_chains, chains)
+
+        {:error, reason} ->
+          socket
+          |> assign(:monitored_chains, [])
+          |> put_flash(:error, "Failed to load chains: #{inspect(reason)}")
+      end
+    end
+  end
+
+  defp auto_select_default_chain(socket) do
+    # If we have a configured default chain, auto-select it
+    default_chain_id =
+      Application.get_env(:eve_dmv, :default_chain_id) ||
+        System.get_env("DEFAULT_CHAIN_ID")
+
+    if default_chain_id && length(socket.assigns.monitored_chains) > 0 do
+      # Find the configured chain in our monitored chains
+      configured_chain =
+        Enum.find(socket.assigns.monitored_chains, fn chain ->
+          chain.map_id == default_chain_id || to_string(chain.id) == default_chain_id
+        end)
+
+      if configured_chain do
         socket
-        |> assign(:monitored_chains, [])
-        |> put_flash(:error, "Failed to load chains: #{inspect(reason)}")
+        |> assign(:selected_chain, configured_chain.map_id)
+        |> load_chain_data(configured_chain.map_id)
+      else
+        socket
+      end
+    else
+      socket
     end
   end
 

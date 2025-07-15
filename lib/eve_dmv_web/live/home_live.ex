@@ -69,10 +69,10 @@ defmodule EveDmvWeb.HomeLive do
 
   @impl true
   def handle_info(:hide_search_dropdown, socket) do
-    if !socket.assigns.search_focused do
-      {:noreply, assign(socket, show_search_dropdown: false)}
-    else
+    if socket.assigns.search_focused do
       {:noreply, socket}
+    else
+      {:noreply, assign(socket, show_search_dropdown: false)}
     end
   end
 

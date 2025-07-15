@@ -266,7 +266,7 @@ defmodule Mix.Tasks.Eve.ImportHistoricalKillmails do
           {:ok, length(records)}
 
         %Ash.BulkResult{status: :error, errors: errors} ->
-          error_msg = errors |> Enum.map(&Exception.message/1) |> Enum.join(", ")
+          error_msg = Enum.map_join(errors, ", ", &Exception.message/1)
           {:error, error_msg}
       end
     rescue
@@ -312,8 +312,8 @@ defmodule Mix.Tasks.Eve.ImportHistoricalKillmails do
     IO.puts(message <> " [y/N]")
 
     case IO.read(:stdio, :line) do
-      {:ok, "y\n"} -> true
-      {:ok, "Y\n"} -> true
+      "y\n" -> true
+      "Y\n" -> true
       _ -> false
     end
   end
