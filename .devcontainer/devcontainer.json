@@ -7,14 +7,14 @@
   "forwardPorts": [4021, 5441, 6391],
   "portsAttributes": {
     "4021": {
-      "label": "Phoenix Server (Cleanup Beta)",
+      "label": "Phoenix Server",
       "onAutoForward": "notify"
     },
     "5441": {
-      "label": "PostgreSQL (Cleanup Beta)"
+      "label": "PostgreSQL"
     },
     "6391": {
-      "label": "Redis (Cleanup Beta)"
+      "label": "Redis"
     }
   },
   "postCreateCommand": "echo 'Waiting for services...' && sleep 5 && mix deps.get && mix ecto.create --quiet && mix ecto.migrate && mix assets.setup && git config --global core.editor vim && echo \"alias vi='vim'\" >> ~/.bashrc && echo 'Dev container setup complete!'",

@@ -191,6 +191,7 @@ To run SQL queries directly:
 # Quality Gate Scripts (Sprint 11)
 ./scripts/quality_check.sh      # Run all quality checks (same as CI)
 ./scripts/quality_fix.sh        # Auto-fix quality issues where possible
+./scripts/analyze_todos.sh       # Analyze TODO comments for Sprint 12
 
 # Quality check options
 SKIP_DIALYZER=true ./scripts/quality_check.sh  # Skip slow Dialyzer check

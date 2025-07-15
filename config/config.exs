@@ -69,7 +69,35 @@ config :logger, :console,
     :character_id,
     :corporation_id,
     :supervisor,
-    :task_metadata
+    :task_metadata,
+    :user_id,
+    :task_id,
+    :security_event,
+    :performance,
+    :business,
+    :operation,
+    :killmail_id,
+    :battle_id,
+    :solar_system_id,
+    :pipeline,
+    :stage,
+    :event,
+    :batch_size,
+    :success_count,
+    :error_count,
+    :service,
+    :endpoint,
+    :status,
+    :response_size,
+    :rate_limit_remaining,
+    :table,
+    :rows_affected,
+    :cache_hit,
+    :query_time,
+    :response_time,
+    :memory_usage,
+    :priority,
+    :description
   ]
 
 # Filter sensitive parameters from logs
@@ -97,7 +125,8 @@ config :eve_dmv,
     EveDmv.Api,
     EveDmv.Domains.Analytics,
     EveDmv.Domains.Intelligence,
-    EveDmv.Domains.Surveillance
+    EveDmv.Domains.Surveillance,
+    EveDmv.Contexts.BattleAnalysis.Api
   ]
 
 # AshPostgres configuration

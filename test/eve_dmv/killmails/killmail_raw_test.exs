@@ -252,6 +252,7 @@ defmodule EveDmv.Killmails.KillmailRawTest do
       assert killmail_with_age.age_in_hours <= 3
     end
 
+    # Skipped: flaky test - depends on exact timing and partition setup
     @tag :skip
     test "is_recent identifies recent killmails" do
       # Ensure June partition exists
