@@ -44,7 +44,7 @@ Transform EVE DMV from a data display tool into an intelligent analysis platform
 | INTEL-6 | Build intelligence recommendation engine | 8 | HIGH | Returns empty array | Actionable intelligence suggestions |
 
 ### **Phase 2: Battle Analysis & Tactical Intelligence (Week 2)**
-*Total: 48 points*
+*Total: 74 points*
 
 | Story ID | Description | Points | Priority | Current State | Definition of Done |
 |----------|-------------|---------|----------|---------------|-------------------|
@@ -54,6 +54,10 @@ Transform EVE DMV from a data display tool into an intelligent analysis platform
 | BATTLE-4 | Implement logistics analysis and effectiveness | 6 | MEDIUM | Placeholder ratios | Real logistics impact assessment |
 | BATTLE-5 | Create focus fire and target selection analysis | 8 | MEDIUM | Returns empty data | Tactical decision analysis |
 | BATTLE-6 | Build engagement flow and turning point detection | 8 | MEDIUM | Returns empty data | Battle timeline analysis |
+| BATTLE-7 | Complete tactical highlight manager implementations | 8 | HIGH | 40+ stub functions from Sprint 15 | Real tactical analysis and highlight creation |
+| BATTLE-8 | Implement battle curator placeholder functions | 5 | MEDIUM | 15+ stub functions from Sprint 15 | Real battle rating, search, and curation |
+| BATTLE-9 | Fix fleet engagement cache implementations | 5 | MEDIUM | All placeholder from Sprint 15 | Real fleet engagement data |
+| BATTLE-10 | Implement chain intelligence topology sync | 8 | MEDIUM | Returns placeholder from Sprint 15 | Basic wormhole chain sync |
 
 ### **Phase 3: Cross-System Intelligence & Wormhole Operations (Week 3)**
 *Total: 45 points*
@@ -66,7 +70,7 @@ Transform EVE DMV from a data display tool into an intelligent analysis platform
 | CROSS-4 | Implement wormhole mass optimization | 8 | MEDIUM | Placeholder functions | Real mass calculations |
 | CROSS-5 | Build home defense capability analysis | 4 | LOW | Placeholder functions | Defensive readiness assessment |
 
-**Total Sprint Points**: 135 (Aggressive scope - may defer some Phase 3 items)
+**Total Sprint Points**: 161 (Very Aggressive scope - will definitely need to defer Phase 3 items)
 
 ---
 

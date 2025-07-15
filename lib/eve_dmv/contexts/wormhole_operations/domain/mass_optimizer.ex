@@ -20,7 +20,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
       available_mass = get_wormhole_mass_limit(wormhole_class)
 
       # Check if fleet exceeds mass limits
-      _mass_efficiency = calculate_mass_efficiency_percentage(current_mass, available_mass)
 
       # Generate optimization recommendations
       {optimized_fleet, recommendations, warnings} =
@@ -108,51 +107,22 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
   end
 
   defp get_ship_mass(ship) do
-    # Simplified ship mass lookup - in real implementation would query EVE static data
-    # Using ship type ID or fallback to estimated mass
-    case Map.get(ship, :type_id) do
-      # Frigates: ~1-2M kg
-      type_id when type_id in 11_172..11_200 ->
-        1_500_000
+    # Use ship database for accurate mass data
+    type_id = Map.get(ship, :type_id)
+    ship_name = Map.get(ship, :type_name, "")
 
-      # Destroyers: ~1.5-3M kg  
-      type_id when type_id in 22_440..22_470 ->
-        2_500_000
-
-      # Cruisers: ~10-15M kg
-      type_id when type_id in 11_978..12_050 ->
-        12_000_000
-
-      # Battlecruisers: ~15-30M kg
-      type_id when type_id in 16_227..16_240 ->
-        22_000_000
-
-      # Battleships: ~90-120M kg
-      type_id when type_id in 638..650 ->
-        100_000_000
-
-      # Strategic Cruisers: ~13-18M kg
-      type_id when type_id in 29_984..29_990 ->
-        15_000_000
-
-      # Default based on ship name or fallback
-      _ ->
-        ship_name = Map.get(ship, :type_name, "")
-        estimate_mass_from_name(ship_name)
-    end
-  end
-
-  defp estimate_mass_from_name(ship_name) do
     cond do
-      String.contains?(ship_name, ["Frigate", "frigate"]) -> 1_500_000
-      String.contains?(ship_name, ["Destroyer", "destroyer"]) -> 2_500_000
-      String.contains?(ship_name, ["Cruiser", "cruiser"]) -> 12_000_000
-      String.contains?(ship_name, ["Battlecruiser", "battlecruiser"]) -> 22_000_000
-      String.contains?(ship_name, ["Battleship", "battleship"]) -> 100_000_000
-      String.contains?(ship_name, ["Dreadnought", "dreadnought"]) -> 1_200_000_000
-      String.contains?(ship_name, ["Carrier", "carrier"]) -> 1_000_000_000
-      # Default 10M kg
-      true -> 10_000_000
+      # First try ship type ID lookup
+      is_integer(type_id) ->
+        EveDmv.Intelligence.ShipDatabase.ShipMassData.get_ship_mass(type_id)
+
+      # Fallback to ship name lookup
+      ship_name != "" ->
+        EveDmv.Intelligence.ShipDatabase.ShipMassData.get_ship_mass_by_name(ship_name)
+
+      # Final fallback
+      true ->
+        10_000_000
     end
   end
 

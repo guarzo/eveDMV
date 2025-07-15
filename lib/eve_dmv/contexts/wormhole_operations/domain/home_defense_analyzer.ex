@@ -76,7 +76,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
   @spec generate_defense_recommendations(integer(), map(), map()) :: [map()]
   def generate_defense_recommendations(_system_id, _defense_analysis, _threat_event) do
     # TODO: Implement context-aware defense recommendations
-    # For now, return basic recommendations
+    # For now, return basic recommendations based on threat event
     [
       %{
         type: :increase_patrols,

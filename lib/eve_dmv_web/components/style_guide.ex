@@ -20,8 +20,6 @@ defmodule EveDmvWeb.Components.StyleGuide do
       <.style_guide />
   """
   def style_guide(assigns) do
-    assigns = assign(assigns, :page_title, "EVE DMV Style Guide")
-
     ~H"""
     <div class="max-w-7xl mx-auto px-4 py-8">
       <.style_guide_header />

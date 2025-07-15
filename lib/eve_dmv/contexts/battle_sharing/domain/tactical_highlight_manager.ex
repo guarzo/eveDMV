@@ -392,8 +392,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
   # Private implementation functions
 
   defp fetch_battle_report_data(_battle_report_id) do
-    # Fetch comprehensive battle report data
+    # TODO: Fetch comprehensive battle report data
     # This would integrate with the battle report storage system
+    # Related to Sprint 16 BATTLE-7: Complete tactical highlight manager implementations
     {:ok, %{killmails: [], duration_seconds: 0}}
   end
 
@@ -847,13 +848,16 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
     "https://evedmv.com/battles/#{highlight.battle_report_id}#highlight-#{highlight.highlight_id}"
   end
 
-  # Placeholder functions for features requiring data layer implementation
+  # TODO: Placeholder functions for features requiring data layer implementation
+  # Related to Sprint 16 BATTLE-7: Complete tactical highlight manager implementations
 
   defp analyze_battle_phases(_battle_data) do
+    # TODO: Implement real battle phase analysis
     {:ok, %{phases: [], transitions: []}}
   end
 
   defp detect_tactical_patterns(_battle_data) do
+    # TODO: Implement tactical pattern detection
     {:ok, %{patterns: [], intensity_changes: []}}
   end
 

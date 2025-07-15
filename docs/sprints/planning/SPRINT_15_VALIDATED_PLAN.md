@@ -54,7 +54,7 @@ Implement the essential user experience features that are currently showing as p
 | VAL-4 | Add price caching and refresh mechanisms | 2 | MEDIUM | Cache exists, no data | TTL-based price updates |
 
 ### **Phase 3: Essential TODO Completion (Medium Priority)**
-*Total: 26 points*
+*Total: 39 points*
 
 | Story ID | Description | Points | Priority | Status in Codebase | Definition of Done |
 |----------|-------------|---------|----------|-------------------|-------------------|
@@ -62,8 +62,10 @@ Implement the essential user experience features that are currently showing as p
 | TODO-2 | Implement basic intelligence scoring algorithms | 8 | MEDIUM | Placeholder scores | Real danger/hunter scoring |
 | TODO-3 | Fix fleet engagement cache implementations | 5 | MEDIUM | All placeholder | Real fleet engagement data |
 | TODO-4 | Implement chain intelligence topology sync | 5 | LOW | Returns placeholder | Basic wormhole chain sync |
+| BATTLE-1 | Complete tactical highlight manager implementations | 8 | MEDIUM | 40+ stub functions | Real tactical analysis and highlight creation |
+| BATTLE-2 | Implement battle curator placeholder functions | 5 | MEDIUM | 15+ stub functions | Real battle rating, search, and curation |
 
-**Total Sprint Points**: 83 (Aggressive - may defer Phase 3 items)
+**Total Sprint Points**: 96 (Very Aggressive - will need to defer Phase 3 items)
 
 ---
 
@@ -101,10 +103,20 @@ Implement the essential user experience features that are currently showing as p
 - Performance trend calculations
 - Complete profile statistics dashboard
 
-**Day 10: Sprint Polish & Critical TODOs**
+**Day 10: Critical TODOs & Testing**
 - Complete alert service implementation (TODO-1)
 - Basic intelligence scoring (TODO-2)
 - Testing and bug fixes
+
+### **Phase 3 Deferral (Due to Scope)**
+**Battle Sharing Implementation** (BATTLE-1, BATTLE-2) - **DEFERRED TO SPRINT 16**
+Due to the addition of 13 points for battle sharing placeholders, Phase 3 items will be deferred:
+- Fleet engagement cache implementations (TODO-3)
+- Chain intelligence topology sync (TODO-4)  
+- Tactical highlight manager implementations (BATTLE-1)
+- Battle curator placeholder functions (BATTLE-2)
+
+**Revised Sprint 15 Total**: 57 points (Achievable scope)
 
 ---
 
@@ -160,6 +172,95 @@ def search_characters(query, limit \\ 10) do
   else
     local_results
   end
+end
+```
+
+### Battle Sharing Placeholders Implementation
+
+**Critical Tactical Highlight Manager Functions (40+ stubs)**:
+```elixir
+# High Priority - Core functionality
+defp fetch_battle_report_data(battle_report_id) do
+  # Replace {:ok, %{killmails: [], duration_seconds: 0}}
+  case BattleAnalysisService.get_battle_details(battle_report_id) do
+    {:ok, battle} ->
+      killmails = BattleAnalysisService.get_battle_killmails(battle_report_id)
+      duration = calculate_battle_duration(killmails)
+      {:ok, %{killmails: killmails, duration_seconds: duration, battle: battle}}
+    error -> error
+  end
+end
+
+defp analyze_tactical_context_at_timestamp(timestamp, battle_data) do
+  # Replace placeholder with real tactical analysis
+  time_window = 60  # seconds
+  relevant_kills = extract_killmails_near_timestamp(timestamp, battle_data, time_window)
+  
+  tactical_situation = %{
+    intensity: calculate_combat_intensity(relevant_kills),
+    ship_types: analyze_ship_composition(relevant_kills),
+    participants: count_unique_participants(relevant_kills),
+    tactical_phase: determine_tactical_phase(timestamp, battle_data)
+  }
+  
+  {:ok, tactical_situation}
+end
+
+defp calculate_combat_intensity(killmails) do
+  # Replace simple count with sophisticated analysis
+  count = length(killmails)
+  total_value = Enum.sum(Enum.map(killmails, & &1.total_value || 0))
+  participant_count = count_unique_participants(killmails)
+  
+  # Intensity factors: kill rate, value destroyed, participant density
+  base_intensity = min(count / 5.0, 1.0)  # Normalize to kills per minute
+  value_factor = min(total_value / 1_000_000_000, 1.0)  # Normalize to billions
+  participant_factor = min(participant_count / 50.0, 1.0)  # Normalize to 50 pilots
+  
+  (base_intensity * 0.4 + value_factor * 0.3 + participant_factor * 0.3) * 100
+end
+```
+
+**Battle Curator Implementation (15+ stubs)**:
+```elixir
+defp fetch_battle_report(report_id) do
+  # Replace hardcoded example with real data fetch
+  case Ash.get(EveDmv.BattleSharing.BattleReport, report_id) do
+    {:ok, report} -> {:ok, report}
+    {:error, _} -> {:error, :not_found}
+  end
+end
+
+defp create_rating_record(report_id, rater_id, rating, comment, categories) do
+  # Replace stub with real database insert
+  rating_data = %{
+    battle_report_id: report_id,
+    character_id: rater_id,
+    rating: rating,
+    comment: comment,
+    categories: categories,
+    created_at: DateTime.utc_now()
+  }
+  
+  case Ash.create(EveDmv.BattleSharing.BattleRating, rating_data) do
+    {:ok, rating_record} -> {:ok, rating_record}
+    error -> error
+  end
+end
+
+defp perform_battle_report_search(query, filters, sort_by, limit) do
+  # Replace {:ok, []} with real search implementation
+  base_query = from(r in EveDmv.BattleSharing.BattleReport)
+  
+  query_with_filters = 
+    base_query
+    |> maybe_filter_by_title(filters[:title])
+    |> maybe_filter_by_date_range(filters[:date_range])
+    |> maybe_filter_by_rating(filters[:min_rating])
+    |> order_by_sort_option(sort_by)
+    |> limit(^limit)
+  
+  {:ok, Repo.all(query_with_filters)}
 end
 ```
 

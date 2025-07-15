@@ -1147,9 +1147,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   end
 
   defp determine_victim_side(victim, fleet_analysis) do
+    # Handle different fleet analysis structures
+    side_a_corps = get_side_corporations(fleet_analysis, :side_a)
+    side_b_corps = get_side_corporations(fleet_analysis, :side_b)
+
     cond do
-      victim.corporation_id in Map.keys(fleet_analysis.side_a.corporations) -> :side_a
-      victim.corporation_id in Map.keys(fleet_analysis.side_b.corporations) -> :side_b
+      victim.corporation_id in side_a_corps -> :side_a
+      victim.corporation_id in side_b_corps -> :side_b
       true -> :unknown
     end
   end
@@ -1409,12 +1413,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   defp calculate_side_isk_destroyed(side, killmails) do
     # Sum ISK value of all kills made by this side
+    side_corps = get_side_corporations_from_data(side)
+
     killmails
     |> Enum.filter(fn km ->
       # Check if any attacker is from this side
       Enum.any?(km.attackers || [], fn attacker ->
         corp_id = attacker["corporation_id"]
-        corp_id && corp_id in Map.keys(side.corporations)
+        corp_id && corp_id in side_corps
       end)
     end)
     |> Enum.map(&(&1.total_value || 0))
@@ -1423,13 +1429,48 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   defp calculate_side_isk_lost(side, killmails) do
     # Sum ISK value of all losses by this side
+    side_corps = get_side_corporations_from_data(side)
+
     killmails
     |> Enum.filter(fn km ->
       # Check if victim is from this side
-      km.victim_corporation_id in Map.keys(side.corporations)
+      km.victim_corporation_id in side_corps
     end)
     |> Enum.map(&(&1.total_value || 0))
     |> Enum.sum()
+  end
+
+  # Helper function to extract corporation IDs from fleet analysis side data
+  defp get_side_corporations(fleet_analysis, side_key) do
+    case get_in(fleet_analysis, [side_key]) do
+      nil -> []
+      side_data -> get_side_corporations_from_data(side_data)
+    end
+  end
+
+  # Helper function to extract corporation IDs from side data structure
+  defp get_side_corporations_from_data(side_data) do
+    cond do
+      # If side has a corporations field with a map
+      is_map(side_data) && Map.has_key?(side_data, :corporations) ->
+        Map.keys(side_data.corporations)
+
+      # If side has a corporations field as atom key
+      is_map(side_data) && Map.has_key?(side_data, "corporations") ->
+        Map.keys(side_data["corporations"])
+
+      # If side data is directly a map of corporations
+      is_map(side_data) ->
+        Map.keys(side_data)
+
+      # If side data is a list of corporation IDs
+      is_list(side_data) ->
+        side_data
+
+      # Default to empty list
+      true ->
+        []
+    end
   end
 
   defp calculate_side_efficiency(side, killmails) do

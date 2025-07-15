@@ -885,9 +885,11 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
     end
   end
 
-  # Placeholder functions for features that would be implemented with proper data layer
+  # TODO: Placeholder functions for features that would be implemented with proper data layer
+  # Related to Sprint 16 BATTLE-8: Implement battle curator placeholder functions
 
   defp fetch_battle_report(_report_id) do
+    # TODO: Implement real battle report fetching from database
     {:ok, %{report_id: "example", title: "Example Battle", creator_id: 12345, metadata: %{}}}
   end
 
@@ -900,6 +902,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
   end
 
   defp create_rating_record(_report_id, rater_id, rating, _comment, _categories) do
+    # TODO: Implement real rating record creation in database
     {:ok, %{rating: rating, rater_id: rater_id}}
   end
 
@@ -936,6 +939,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
   end
 
   defp perform_battle_report_search(_query, _filters, _sort_by, _limit) do
+    # TODO: Implement real battle report search with filters and sorting
     {:ok, []}
   end
 
