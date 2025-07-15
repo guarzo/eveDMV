@@ -60,7 +60,7 @@ defmodule Mix.Tasks.Eve.ImportHistoricalKillmails do
 
     files = get_files(opts[:file])
 
-    if length(files) == 0 do
+    if Enum.empty?(files) do
       Logger.error("No archive files found")
       exit({:shutdown, 1})
     end
@@ -162,7 +162,7 @@ defmodule Mix.Tasks.Eve.ImportHistoricalKillmails do
             raise "Root element must be array"
           end
 
-          if length(data) == 0 do
+          if Enum.empty?(data) do
             raise "File is empty"
           end
 
