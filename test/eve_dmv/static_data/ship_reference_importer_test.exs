@@ -269,13 +269,4 @@ defmodule EveDmv.StaticData.ShipReferenceImporterTest do
       end
     end
   end
-
-  # Helper function to expose private methods for testing
-  defp import_ship_patterns(ship_data) do
-    ShipReferenceImporter.import_ship_patterns(ship_data)
-  end
-
-  defp import_doctrine_patterns(doctrine_data) do
-    ShipReferenceImporter.import_doctrine_patterns(doctrine_data)
-  end
 end
