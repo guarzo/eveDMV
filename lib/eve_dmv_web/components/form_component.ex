@@ -282,9 +282,9 @@ defmodule EveDmvWeb.Components.FormComponent do
             String.to_existing_atom(assigns.name)
           rescue
             ArgumentError ->
-              # If atom doesn't exist, create a temporary one
-              # This is safer than String.to_atom but still not ideal
-              String.to_atom(assigns.name)
+              # If atom doesn't exist, use a safe default
+              # This avoids creating new atoms at runtime
+              :form_field
           end
 
         atom when is_atom(atom) ->
