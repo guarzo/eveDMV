@@ -67,7 +67,9 @@ config :logger, :console,
     :threat_level,
     :error,
     :character_id,
-    :corporation_id
+    :corporation_id,
+    :supervisor,
+    :task_metadata
   ]
 
 # Filter sensitive parameters from logs

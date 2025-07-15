@@ -8,6 +8,7 @@ defmodule EveDmv.MixProject do
       elixir: "~> 1.17",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
+      warnings_as_errors: System.get_env("CI") == "true",
       aliases: aliases(),
       deps: deps(),
       # Test coverage
