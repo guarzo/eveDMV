@@ -1,4 +1,4 @@
-<header class="px-4 sm:px-6 lg:px-8 bg-gray-900 shadow-lg">
+<header class="fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 lg:px-8 bg-gray-900 shadow-lg">
   <div class="flex items-center justify-between border-b border-gray-700 py-3">
     <!-- Logo -->
     <div class="flex items-center gap-6">
@@ -34,19 +34,12 @@
       <!-- Universal Search Bar -->
       <%= if assigns[:current_user] do %>
         <div class="hidden lg:block">
-          <form phx-submit="search" class="relative">
-            <input
-              type="text"
-              name="query"
-              placeholder="Search characters, corporations..."
-              class="bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent w-80"
-            />
-            <button type="submit" class="absolute right-2 top-2 text-gray-400 hover:text-gray-300">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-              </svg>
-            </button>
-          </form>
+          <.live_component
+            module={EveDmvWeb.SearchComponent}
+            id="header_search"
+            class="w-80"
+            search_type={:universal}
+          />
         </div>
       <% end %>
 
@@ -138,8 +131,13 @@
       dropdown.classList.add('hidden');
     }
   });
+
+  // Handle search navigation events
+  window.addEventListener('phx:navigate', function(event) {
+    window.location.href = event.detail.path;
+  });
 </script>
-<main class="px-4 py-20 sm:px-6 lg:px-8">
+<main class="px-4 pt-20 pb-8 sm:px-6 lg:px-8">
   <div class="mx-auto max-w-7xl">
     <.flash_group flash={@flash} />
     {@inner_content}

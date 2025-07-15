@@ -612,7 +612,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
       <div>
         <h4 class="font-medium text-gray-900 dark:text-white mb-2">Most Common Ships</h4>
         <div class="space-y-2">
-          #{Enum.map(most_common_ships, fn ship ->
+          #{Enum.map_join(most_common_ships, "", fn ship ->
         ship_name = Map.get(ship, :ship_name, "Unknown")
         count = Map.get(ship, :count, 0)
         percentage = Map.get(ship, :percentage, 0)
@@ -622,7 +622,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
           <span class="text-sm text-gray-600 dark:text-gray-300">#{count} ships (#{Float.round(percentage, 1)}%)</span>
         </div>
         """
-      end) |> Enum.join("")}
+      end)}
         </div>
       </div>
       """
@@ -634,7 +634,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
         <div>
           <h4 class="font-medium text-gray-900 dark:text-white mb-2">Ship Classes</h4>
           <div class="space-y-2">
-            #{Enum.map(ship_class_breakdown, fn {ship_class, data} ->
+            #{Enum.map_join(ship_class_breakdown, "", fn {ship_class, data} ->
       count = Map.get(data, :count, 0)
       percentage = Map.get(data, :percentage, 0)
       ship_types = Map.get(data, :ship_types, %{})
@@ -655,7 +655,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
       end}
       </div>
       """
-    end) |> Enum.join("")}
+    end)}
           </div>
         </div>
         
@@ -663,7 +663,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
         <div>
           <h4 class="font-medium text-gray-900 dark:text-white mb-2">Fleet Roles</h4>
           <div class="space-y-2">
-            #{Enum.map(role_breakdown, fn {role, data} ->
+            #{Enum.map_join(role_breakdown, "", fn {role, data} ->
       count = case data do
         %{count: c} -> c
         c when is_number(c) -> c
@@ -693,7 +693,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
         <span class="text-sm font-medium #{role_color}">#{count} pilots (#{Float.round(percentage, 1)}%)</span>
       </div>
       """
-    end) |> Enum.join("")}
+    end)}
           </div>
         </div>
         
@@ -703,11 +703,11 @@ defmodule EveDmvWeb.FleetOperationsLive do
         <div>
           <h4 class="font-medium text-gray-900 dark:text-white mb-2">Tactical Insights</h4>
           <div class="space-y-2">
-            #{Enum.map(insights, fn insight -> """
+            #{Enum.map_join(insights, "", fn insight -> """
           <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded border-l-4 border-blue-500">
             <p class="text-sm text-blue-800 dark:text-blue-200">#{insight}</p>
           </div>
-          """ end) |> Enum.join("")}
+          """ end)}
           </div>
         </div>
         """
@@ -868,12 +868,12 @@ defmodule EveDmvWeb.FleetOperationsLive do
       <div>
         <h4 class="font-medium text-gray-900 dark:text-white mb-3">Ship Distribution</h4>
         <div class="space-y-2">
-          #{Enum.map(ship_distribution, fn {ship_name, count} -> """
+          #{Enum.map_join(ship_distribution, "", fn {ship_name, count} -> """
         <div class="flex justify-between items-center bg-white dark:bg-gray-600 p-3 rounded">
           <span class="text-sm text-gray-700 dark:text-gray-200">#{ship_name}</span>
           <span class="text-sm font-medium text-gray-900 dark:text-white">#{count} pilots</span>
         </div>
-        """ end) |> Enum.join("")}
+        """ end)}
         </div>
       </div>
       """
@@ -887,7 +887,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
       <div>
         <h4 class="font-medium text-gray-900 dark:text-white mb-3">Top Performers</h4>
         <div class="space-y-2">
-          #{Enum.map(top_performers, fn pilot ->
+          #{Enum.map_join(top_performers, "", fn pilot ->
         character_name = Map.get(pilot, :character_name, "Unknown")
         ship_name = Map.get(pilot, :ship_name, "Unknown Ship")
         score = Map.get(pilot, :score, 0)
@@ -908,7 +908,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
           </div>
         </div>
         """
-      end) |> Enum.join("")}
+      end)}
         </div>
       </div>
       """

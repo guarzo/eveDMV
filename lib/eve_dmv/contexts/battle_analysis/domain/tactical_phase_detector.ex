@@ -664,7 +664,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
       round(total_distance / killmail_count)
     else
       # Default fallback
-      15000
+      15_000
     end
   end
 
@@ -680,19 +680,19 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
         # Close-medium range
         "Destroyer" -> 8000
         # Medium range
-        "Cruiser" -> 12000
+        "Cruiser" -> 12_000
         # Medium-long range
-        "Battlecruiser" -> 18000
+        "Battlecruiser" -> 18_000
         # Long range
-        "Battleship" -> 25000
+        "Battleship" -> 25_000
         # Very long range
-        "Carrier" -> 40000
+        "Carrier" -> 40_000
         # Long range
-        "Dreadnought" -> 30000
+        "Dreadnought" -> 30_000
         # Extreme range
-        "Titan" -> 50000
+        "Titan" -> 50_000
         # Default
-        _ -> 15000
+        _ -> 15_000
       end
 
     # Adjust for fleet size - larger fleets tend to fight at longer ranges
@@ -744,9 +744,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
     # Convert damage rate to intensity score (0-10)
     cond do
       avg_damage_rate > 100_000 -> 10
-      avg_damage_rate > 50000 -> 8
-      avg_damage_rate > 25000 -> 6
-      avg_damage_rate > 10000 -> 4
+      avg_damage_rate > 50_000 -> 8
+      avg_damage_rate > 25_000 -> 6
+      avg_damage_rate > 10_000 -> 4
       avg_damage_rate > 5000 -> 2
       true -> 1
     end
@@ -852,15 +852,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
       # Destroyers  
       ship_type_id in 420..450 -> 8000
       # Cruisers
-      ship_type_id in 620..650 -> 15000
+      ship_type_id in 620..650 -> 15_000
       # Battlecruisers
-      ship_type_id in 540..570 -> 30000
+      ship_type_id in 540..570 -> 30_000
       # Battleships
-      ship_type_id in 640..670 -> 60000
+      ship_type_id in 640..670 -> 60_000
       # Capitals (very rough)
-      ship_type_id in 19720..19740 -> 500_000
+      ship_type_id in 19_720..19_740 -> 500_000
       # Default
-      true -> 10000
+      true -> 10_000
     end
   end
 
@@ -880,7 +880,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
       # Battleships: 200M ISK
       ship_type_id in 640..670 -> 200_000_000
       # Capitals: 2B ISK
-      ship_type_id in 19720..19740 -> 2_000_000_000
+      ship_type_id in 19_720..19_740 -> 2_000_000_000
       # Default: 15M ISK
       true -> 15_000_000
     end
@@ -893,15 +893,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
     # Some known EWAR ship type ranges (simplified)
     ship_type_id in [
       # Recon ships
-      11963,
-      11965,
-      11969,
-      11971,
+      11_963,
+      11_965,
+      11_969,
+      11_971,
       # Force Recon
-      11957,
-      11958,
-      11959,
-      11961,
+      11_957,
+      11_958,
+      11_959,
+      11_961,
       # Some T1 cruisers commonly used for EWAR
       621,
       622,

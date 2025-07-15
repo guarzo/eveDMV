@@ -6,6 +6,8 @@ defmodule EveDmvWeb.DashboardLive do
 
   use EveDmvWeb, :live_view
 
+  alias Ecto.Adapters.SQL
+
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
@@ -66,7 +68,10 @@ defmodule EveDmvWeb.DashboardLive do
           <!-- Character Info -->
           <div>
             <h1 class="text-3xl font-bold text-white mb-2">
-              {@current_user.eve_character_name}
+              <.link navigate={~p"/character/#{@current_user.eve_character_id}"} 
+                    class="hover:text-blue-300 transition-colors">
+                {@current_user.eve_character_name}
+              </.link>
             </h1>
             
             <!-- Corporation Info -->
@@ -78,7 +83,10 @@ defmodule EveDmvWeb.DashboardLive do
                     alt="Corporation logo"
                     class="w-8 h-8 rounded"
                   />
-                  <span class="text-gray-300">{@current_user.eve_corporation_name}</span>
+                  <.link navigate={~p"/corporation/#{@current_user.eve_corporation_id}"} 
+                        class="text-gray-300 hover:text-blue-300 transition-colors">
+                    {@current_user.eve_corporation_name}
+                  </.link>
                 </div>
               <% else %>
                 <span class="text-gray-400">Independent Pilot</span>
@@ -92,7 +100,10 @@ defmodule EveDmvWeb.DashboardLive do
                     alt="Alliance logo"
                     class="w-8 h-8 rounded"
                   />
-                  <span class="text-blue-400">{@current_user.eve_alliance_name}</span>
+                  <.link navigate={~p"/alliance/#{@current_user.eve_alliance_id}"} 
+                        class="text-blue-400 hover:text-blue-300 transition-colors">
+                    {@current_user.eve_alliance_name}
+                  </.link>
                 </div>
               <% end %>
             </div>
@@ -196,84 +207,73 @@ defmodule EveDmvWeb.DashboardLive do
       </div>
       
       <!-- Chain Activity -->
-      <div class="bg-gray-800 rounded-lg p-6">
-        <h3 class="text-white font-semibold mb-4 flex items-center">
-          🔗 Chain Activity
-        </h3>
-        <div class="space-y-3">
-          <!-- Current Chain Status -->
-          <div class="bg-gray-900 rounded p-3">
-            <div class="flex justify-between items-center mb-2">
-              <span class="text-gray-400 text-sm">Current Chain</span>
-              <span class="text-green-400 text-xs">Connected</span>
+      <.link navigate={~p"/chain-intelligence"} class="block">
+        <div class="bg-gray-800 rounded-lg p-6 hover:bg-gray-750 transition-colors cursor-pointer">
+          <h3 class="text-white font-semibold mb-4 flex items-center">
+            🔗 Chain Activity
+          </h3>
+          <div class="space-y-3">
+            <!-- Current Chain Status -->
+            <div class="bg-gray-900 rounded p-3">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-gray-400 text-sm">Current Chain</span>
+                <span class="text-green-400 text-xs">Connected</span>
+              </div>
+              <div class="space-y-1">
+                <p class="text-white text-sm">J123456 → Jita</p>
+                <p class="text-gray-400 text-xs">3 jumps via wormholes</p>
+              </div>
             </div>
-            <div class="space-y-1">
-              <p class="text-white text-sm">J123456 → Jita</p>
-              <p class="text-gray-400 text-xs">3 jumps via wormholes</p>
+            
+            <!-- Recent Chain Kills -->
+            <div class="bg-gray-900 rounded p-3">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-gray-400 text-sm">Chain Activity</span>
+                <span class="text-orange-400 text-xs">Last 1h</span>
+              </div>
+              <div class="space-y-1">
+                <p class="text-white text-sm">5 kills detected</p>
+                <p class="text-gray-400 text-xs">Mostly in J-space systems</p>
+              </div>
             </div>
           </div>
-          
-          <!-- Recent Chain Kills -->
-          <div class="bg-gray-900 rounded p-3">
-            <div class="flex justify-between items-center mb-2">
-              <span class="text-gray-400 text-sm">Chain Activity</span>
-              <span class="text-orange-400 text-xs">Last 1h</span>
-            </div>
-            <div class="space-y-1">
-              <p class="text-white text-sm">5 kills detected</p>
-              <p class="text-gray-400 text-xs">Mostly in J-space systems</p>
-            </div>
-          </div>
-          
-          <!-- Quick Chain Access -->
-          <.link navigate={~p"/chain-intelligence"} 
-                class="flex items-center p-2 bg-blue-900 hover:bg-blue-800 rounded transition-colors text-center">
-            <div class="flex-1">
-              <span class="text-blue-300 text-sm font-medium">→ View Full Chain Map</span>
-            </div>
-          </.link>
         </div>
-      </div>
+      </.link>
       
       <!-- Surveillance -->
-      <div class="bg-gray-800 rounded-lg p-6">
-        <h3 class="text-white font-semibold mb-4 flex items-center">
-          👁️ Surveillance
-        </h3>
-        <div class="space-y-3">
-          <!-- Active Profiles -->
-          <div class="bg-gray-900 rounded p-3">
-            <div class="flex justify-between items-center mb-2">
-              <span class="text-gray-400 text-sm">Active Profiles</span>
-              <span class="text-green-400 text-xs">3 Running</span>
+      <.link navigate={~p"/surveillance"} class="block">
+        <div class="bg-gray-800 rounded-lg p-6 hover:bg-gray-750 transition-colors cursor-pointer">
+          <h3 class="text-white font-semibold mb-4 flex items-center">
+            👁️ Surveillance
+          </h3>
+          <div class="space-y-3">
+            <!-- Active Profiles -->
+            <div class="bg-gray-900 rounded p-3">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-gray-400 text-sm">Active Profiles</span>
+                <span class="text-green-400 text-xs">3 Running</span>
+              </div>
+              <div class="space-y-1">
+                <p class="text-white text-sm">Hostile Corps</p>
+                <p class="text-gray-400 text-xs">Monitoring 12 corporations</p>
+              </div>
             </div>
-            <div class="space-y-1">
-              <p class="text-white text-sm">Hostile Corps</p>
-              <p class="text-gray-400 text-xs">Monitoring 12 corporations</p>
+            
+            <!-- Recent Alerts -->
+            <div class="bg-gray-900 rounded p-3">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-gray-400 text-sm">Recent Alerts</span>
+                <span class="text-red-400 text-xs">2 new</span>
+              </div>
+              <div class="space-y-1">
+                <p class="text-white text-sm">Hostile detected</p>
+                <p class="text-gray-400 text-xs">J152_430 - 15m ago</p>
+              </div>
             </div>
           </div>
-          
-          <!-- Recent Alerts -->
-          <div class="bg-gray-900 rounded p-3">
-            <div class="flex justify-between items-center mb-2">
-              <span class="text-gray-400 text-sm">Recent Alerts</span>
-              <span class="text-red-400 text-xs">2 new</span>
-            </div>
-            <div class="space-y-1">
-              <p class="text-white text-sm">Hostile detected</p>
-              <p class="text-gray-400 text-xs">J152430 - 15m ago</p>
-            </div>
-          </div>
-          
-          <!-- Quick Surveillance Access -->
-          <.link navigate={~p"/surveillance-profiles"} 
-                class="flex items-center p-2 bg-purple-900 hover:bg-purple-800 rounded transition-colors text-center">
-            <div class="flex-1">
-              <span class="text-purple-300 text-sm font-medium">→ Manage Profiles</span>
-            </div>
-          </.link>
         </div>
-      </div>
+      </.link>
+      
     </div>
 
     <!-- Recent Activity Timeline -->
@@ -401,7 +401,7 @@ defmodule EveDmvWeb.DashboardLive do
 
         attacker_filter = Jason.encode!([%{"character_id" => character_id}])
 
-        case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [character_id, attacker_filter]) do
+        case SQL.query(EveDmv.Repo, query, [character_id, attacker_filter]) do
           {:ok, %{rows: [[count]]}} when is_number(count) -> count
           _ -> 0
         end
@@ -415,7 +415,7 @@ defmodule EveDmvWeb.DashboardLive do
         AND victim_character_id = $1
         """
 
-        case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [character_id]) do
+        case SQL.query(EveDmv.Repo, query, [character_id]) do
           {:ok, %{rows: [[count]]}} when is_number(count) -> count
           _ -> 0
         end
@@ -439,7 +439,7 @@ defmodule EveDmvWeb.DashboardLive do
     LIMIT 6
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, query, []) do
+    case SQL.query(EveDmv.Repo, query, []) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [
                             killmail_id,
@@ -481,7 +481,7 @@ defmodule EveDmvWeb.DashboardLive do
 
     attacker_filter = Jason.encode!([%{"character_id" => character_id}])
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [character_id, attacker_filter]) do
+    case SQL.query(EveDmv.Repo, query, [character_id, attacker_filter]) do
       {:ok, %{rows: [[total_isk]]}} when is_number(total_isk) ->
         round(total_isk)
 
@@ -502,7 +502,7 @@ defmodule EveDmvWeb.DashboardLive do
     AND raw_data->'zkb'->>'totalValue' IS NOT NULL
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [character_id]) do
+    case SQL.query(EveDmv.Repo, query, [character_id]) do
       {:ok, %{rows: [[total_isk]]}} when is_number(total_isk) ->
         round(total_isk)
 
@@ -523,7 +523,7 @@ defmodule EveDmvWeb.DashboardLive do
   #   WHERE killmail_time >= $1
   #   """
 
-  #   case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [thirty_days_ago]) do
+  #   case SQL.query(EveDmv.Repo, query, [thirty_days_ago]) do
   #     {:ok, %{rows: [[count]]}} when is_number(count) -> count
   #     _ -> 0
   #   end
@@ -567,8 +567,8 @@ defmodule EveDmvWeb.DashboardLive do
         cond do
           diff < 60 -> "#{diff}s ago"
           diff < 3600 -> "#{div(diff, 60)}m ago"
-          diff < 86400 -> "#{div(diff, 3600)}h ago"
-          true -> "#{div(diff, 86400)}d ago"
+          diff < 86_400 -> "#{div(diff, 3600)}h ago"
+          true -> "#{div(diff, 86_400)}d ago"
         end
 
       _ ->

@@ -115,8 +115,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       nil ->
         # Perform full analysis
         case fetch_battle_killmails(battle_id) do
-          {:error, :not_implemented} ->
-            {:reply, {:error, :not_implemented}, state}
+          {:error, reason} ->
+            {:reply, {:error, reason}, state}
 
           {:ok, killmails} ->
             with {:ok, timeline} <- construct_battle_timeline(killmails),
@@ -211,8 +211,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
     # Fetch recent killmails
     case fetch_recent_system_kills(system_id, 300) do
-      {:error, :not_implemented} ->
-        {:reply, {:error, :not_implemented}, state}
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
 
       {:ok, recent_kills} ->
         with {:ok, updated_engagement} <- update_engagement_data(engagement, recent_kills),
@@ -383,18 +383,176 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   # Private functions
 
-  defp fetch_battle_killmails(_battle_id) do
-    # TODO: Implement real battle killmail fetching
-    # Requires: Query killmails_raw table for related kills within time/space window
-    # Original stub returned: {:ok, []}
-    {:error, :not_implemented}
+  defp fetch_battle_killmails(battle_id) do
+    # Fetch killmails related to a specific battle
+    # For now, we'll extract system_id and time range from battle_id
+    # In a real implementation, this would query a battle_killmails junction table
+    Logger.debug("Fetching killmails for battle #{battle_id}")
+
+    # Parse battle_id to extract system_id and time range
+    # Format: "system_#{system_id}_#{unix_timestamp}"
+    case String.split(battle_id, "_") do
+      ["system", system_id_str, timestamp_str] ->
+        with {system_id, ""} <- Integer.parse(system_id_str),
+             {timestamp, ""} <- Integer.parse(timestamp_str) do
+          # Create intelligent time window around the battle based on activity patterns
+          battle_time = DateTime.from_unix!(timestamp)
+          {start_time, end_time} = calculate_optimal_battle_window(system_id, battle_time)
+
+          query = """
+          SELECT 
+            killmail_id,
+            killmail_time,
+            killmail_hash,
+            solar_system_id,
+            victim_character_id,
+            victim_corporation_id,
+            victim_alliance_id,
+            victim_ship_type_id,
+            attacker_count,
+            raw_data,
+            source
+          FROM killmails_raw
+          WHERE solar_system_id = $1
+            AND killmail_time >= $2
+            AND killmail_time <= $3
+          ORDER BY killmail_time ASC
+          """
+
+          case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [system_id, start_time, end_time]) do
+            {:ok, %{rows: rows}} ->
+              killmails =
+                Enum.map(rows, fn [
+                                    killmail_id,
+                                    killmail_time,
+                                    killmail_hash,
+                                    solar_system_id,
+                                    victim_character_id,
+                                    victim_corporation_id,
+                                    victim_alliance_id,
+                                    victim_ship_type_id,
+                                    attacker_count,
+                                    raw_data,
+                                    source
+                                  ] ->
+                  %{
+                    killmail_id: killmail_id,
+                    killmail_time: killmail_time,
+                    killmail_hash: killmail_hash,
+                    solar_system_id: solar_system_id,
+                    victim_character_id: victim_character_id,
+                    victim_corporation_id: victim_corporation_id,
+                    victim_alliance_id: victim_alliance_id,
+                    victim_ship_type_id: victim_ship_type_id,
+                    attacker_count: attacker_count,
+                    raw_data: raw_data,
+                    source: source,
+                    # Extract additional fields from raw_data
+                    total_value: get_in(raw_data, ["zkb", "totalValue"]) || 0,
+                    attackers: raw_data["attackers"] || [],
+                    victim: raw_data["victim"] || %{}
+                  }
+                end)
+
+              Logger.debug("Found #{length(killmails)} killmails for battle #{battle_id}")
+              {:ok, killmails}
+
+            {:error, error} ->
+              Logger.error("Database error fetching battle killmails: #{inspect(error)}")
+              {:error, :database_error}
+          end
+        else
+          _ ->
+            Logger.warning("Invalid battle_id format: #{battle_id}")
+            {:error, :invalid_battle_id}
+        end
+
+      _ ->
+        Logger.warning("Invalid battle_id format: #{battle_id}")
+        {:error, :invalid_battle_id}
+    end
+  rescue
+    error ->
+      Logger.error("Exception fetching battle killmails: #{inspect(error)}")
+      {:error, :fetch_failed}
   end
 
-  defp fetch_recent_system_kills(_system_id, _seconds_back) do
-    # TODO: Implement real system kill fetching
-    # Requires: Query killmails_raw where system_id matches and kill_time within window
-    # Original stub returned: {:ok, []}
-    {:error, :not_implemented}
+  defp fetch_recent_system_kills(system_id, seconds_back) do
+    # Fetch recent kills in a specific system
+    Logger.debug("Fetching kills in system #{system_id} from last #{seconds_back} seconds")
+
+    # Calculate the time window
+    cutoff_time = DateTime.add(DateTime.utc_now(), -seconds_back, :second)
+
+    query = """
+    SELECT 
+      killmail_id,
+      killmail_time,
+      killmail_hash,
+      solar_system_id,
+      victim_character_id,
+      victim_corporation_id,
+      victim_alliance_id,
+      victim_ship_type_id,
+      attacker_count,
+      raw_data,
+      source
+    FROM killmails_raw
+    WHERE solar_system_id = $1
+      AND killmail_time >= $2
+    ORDER BY killmail_time DESC
+    LIMIT 500
+    """
+
+    case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [system_id, cutoff_time]) do
+      {:ok, %{rows: rows}} ->
+        killmails =
+          Enum.map(rows, fn [
+                              killmail_id,
+                              killmail_time,
+                              killmail_hash,
+                              solar_system_id,
+                              victim_character_id,
+                              victim_corporation_id,
+                              victim_alliance_id,
+                              victim_ship_type_id,
+                              attacker_count,
+                              raw_data,
+                              source
+                            ] ->
+            %{
+              killmail_id: killmail_id,
+              killmail_time: killmail_time,
+              killmail_hash: killmail_hash,
+              solar_system_id: solar_system_id,
+              victim_character_id: victim_character_id,
+              victim_corporation_id: victim_corporation_id,
+              victim_alliance_id: victim_alliance_id,
+              victim_ship_type_id: victim_ship_type_id,
+              attacker_count: attacker_count,
+              raw_data: raw_data,
+              source: source,
+              # Extract additional fields from raw_data for analysis
+              total_value: get_in(raw_data, ["zkb", "totalValue"]) || 0,
+              attackers: raw_data["attackers"] || [],
+              victim: raw_data["victim"] || %{}
+            }
+          end)
+
+        Logger.debug(
+          "Found #{length(killmails)} killmails in system #{system_id} from last #{seconds_back} seconds"
+        )
+
+        {:ok, killmails}
+
+      {:error, error} ->
+        Logger.error("Database error fetching recent system kills: #{inspect(error)}")
+        {:error, :database_error}
+    end
+  rescue
+    error ->
+      Logger.error("Exception fetching recent system kills: #{inspect(error)}")
+      {:error, :fetch_failed}
   end
 
   defp construct_battle_timeline(killmails) do
@@ -430,7 +588,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
           timestamp: km.killmail_time,
           event_type: :kill,
           killmail_id: km.killmail_id,
-          system_id: km.system_id,
+          system_id: km.solar_system_id,
           victim: extract_victim_details(km),
           attackers: if(include_damage_dealt, do: extract_attacker_details(km), else: nil),
           isk_destroyed: km.total_value,
@@ -723,11 +881,32 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     Enum.find(attackers, &(&1["final_blow"] == true))
   end
 
-  defp classify_ship(_ship_type_id) do
-    # TODO: Implement real ship classification
-    # Requires: Query static_ship_types table and categorize by ship group
-    # Original stub returned: :cruiser
-    :unknown
+  defp classify_ship(ship_type_id) do
+    # Classify ship based on type ID ranges (simplified EVE ship classification)
+    cond do
+      # Frigates
+      ship_type_id in [582, 583, 584, 585, 586, 587, 588, 589] -> :frigate
+      # Destroyers  
+      ship_type_id in [16_236, 16_238, 16_240, 16_242] -> :destroyer
+      # Cruisers
+      ship_type_id in [620, 621, 622, 623, 624, 625, 626, 627] -> :cruiser
+      # Battlecruisers
+      ship_type_id in [16_227, 16_229, 16_231, 16_233] -> :battlecruiser
+      # Battleships
+      ship_type_id in [638, 639, 640, 641, 642, 643, 644, 645] -> :battleship
+      # Strategic Cruisers (T3C)
+      ship_type_id in [29_984, 29_986, 29_988, 29_990] -> :strategic_cruiser
+      # Logistics Cruisers
+      ship_type_id in [11_985, 11_987, 11_989, 12_003] -> :logistics
+      # Recon Ships
+      ship_type_id in [11_957, 11_959, 11_961, 11_963] -> :recon
+      # Heavy Assault Cruisers  
+      ship_type_id in [11_991, 12_005, 11_993, 11_995] -> :heavy_assault_cruiser
+      # Capital ships
+      ship_type_id > 20_000 and ship_type_id < 30_000 -> :capital
+      # Default
+      true -> :unknown
+    end
   end
 
   defp extract_victim_details(killmail) do
@@ -780,11 +959,23 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     end
   end
 
-  defp calculate_logistics_ratio(_ship_composition) do
-    # TODO: Implement real logistics ratio calculation
-    # Requires: Identify logistics ships from ship_composition and calculate percentage
-    # Original stub returned: 0.0
-    nil
+  defp calculate_logistics_ratio(ship_composition) do
+    # Calculate the ratio of logistics ships to total ships
+    total_ships = Enum.sum(Map.values(ship_composition))
+
+    if total_ships > 0 do
+      logistics_ships =
+        ship_composition
+        |> Enum.filter(fn {ship_type_id, _count} ->
+          classify_ship(ship_type_id) == :logistics
+        end)
+        |> Enum.map(fn {_, count} -> count end)
+        |> Enum.sum()
+
+      Float.round(logistics_ships / total_ships, 3)
+    else
+      0.0
+    end
   end
 
   defp detect_ewar_presence(_ship_composition) do
@@ -792,83 +983,525 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     false
   end
 
-  defp identify_tactical_patterns(_timeline) do
-    # TODO: Implement real tactical pattern recognition
-    # Requires: Analyze timeline for common engagement patterns
-    # Original stub returned: []
+  defp identify_tactical_patterns(timeline) do
+    # Identify common tactical patterns from the engagement timeline
+    patterns = []
+
+    # Pattern 1: Alpha strike (many kills in short time)
+    patterns = patterns ++ identify_alpha_strike_pattern(timeline)
+
+    # Pattern 2: Kiting (consistent damage over time with minimal losses)
+    patterns = patterns ++ identify_kiting_pattern(timeline)
+
+    # Pattern 3: Brawling (high kill rate on both sides)
+    patterns = patterns ++ identify_brawling_pattern(timeline)
+
+    patterns
+  end
+
+  defp identify_alpha_strike_pattern(timeline) do
+    # Group kills by 30-second windows
+    windows =
+      Enum.chunk_by(timeline, fn event ->
+        div(DateTime.to_unix(event.timestamp), 30)
+      end)
+
+    # Find windows with high kill concentration
+    alpha_strikes =
+      windows
+      |> Enum.filter(fn window -> length(window) >= 3 end)
+      |> Enum.map(fn window ->
+        %{
+          pattern: :alpha_strike,
+          timestamp: List.first(window).timestamp,
+          kills: length(window),
+          duration_seconds: 30
+        }
+      end)
+
+    alpha_strikes
+  end
+
+  defp identify_kiting_pattern(_timeline) do
+    # TODO: Implement kiting pattern detection algorithm
+    # Should analyze for:
+    # - Consistent damage over time with minimal losses
+    # - Range-based engagement patterns
+    # - Hit-and-run tactical indicators
+    # Related to Sprint 15 IMPL-15: Complete tactical pattern extraction
     []
   end
 
-  defp identify_key_moments(_timeline) do
-    # TODO: Implement real key moment identification
-    # Requires: Find turning points, high-value kills, etc.
-    # Original stub returned: []
+  defp identify_brawling_pattern(_timeline) do
+    # TODO: Implement brawling pattern detection algorithm
+    # Should analyze for:
+    # - High reciprocal damage patterns
+    # - Close-range engagement indicators
+    # - Simultaneous kill/loss events
+    # Related to Sprint 15 IMPL-15: Complete tactical pattern extraction
     []
   end
 
-  defp identify_turning_points(_timeline, _fleet_analysis) do
-    # TODO: Implement real turning point analysis
-    # Requires: Analyze momentum shifts in battle
-    # Original stub returned: []
-    []
+  defp identify_key_moments(timeline) do
+    # Identify significant moments in the battle
+    moments = []
+
+    # Find high-value kills (top 10% by ISK value)
+    if length(timeline) > 0 do
+      isk_values = Enum.map(timeline, & &1.isk_value)
+      threshold = Enum.max(isk_values) * 0.9
+
+      high_value_kills =
+        timeline
+        |> Enum.filter(&(&1.isk_value >= threshold))
+        |> Enum.map(fn event ->
+          %{
+            type: :high_value_kill,
+            timestamp: event.timestamp,
+            isk_value: event.isk_value,
+            victim: event.victim
+          }
+        end)
+
+      moments = moments ++ high_value_kills
+      moments
+    end
+
+    # Find first blood
+    moments =
+      if first_kill = List.first(timeline) do
+        [
+          %{
+            type: :first_blood,
+            timestamp: first_kill.timestamp,
+            victim: first_kill.victim
+          }
+          | moments
+        ]
+      else
+        moments
+      end
+
+    # Sort by timestamp
+    Enum.sort_by(moments, & &1.timestamp)
   end
 
-  defp analyze_engagement_flow(_timeline) do
-    # TODO: Implement real engagement flow analysis
-    # Requires: Analyze kill clustering and tempo changes
-    # Original stub returned: %{phases: [], intensity_changes: []}
+  defp identify_turning_points(timeline, fleet_analysis) do
+    # Identify moments where battle momentum shifted
+    turning_points = []
+
+    # Analyze kill rate changes over time
+    if length(timeline) >= 5 do
+      # Group kills into 2-minute windows
+      windows =
+        timeline
+        |> Enum.chunk_by(fn event ->
+          div(DateTime.to_unix(event.timestamp), 120)
+        end)
+        |> Enum.filter(fn window -> length(window) > 0 end)
+
+      # Calculate kill rates for each side per window
+      window_stats =
+        Enum.map(windows, fn window ->
+          side_a_kills =
+            Enum.count(window, fn event ->
+              victim_side = determine_victim_side(event.victim, fleet_analysis)
+              victim_side == :side_b
+            end)
+
+          side_b_kills =
+            Enum.count(window, fn event ->
+              victim_side = determine_victim_side(event.victim, fleet_analysis)
+              victim_side == :side_a
+            end)
+
+          %{
+            timestamp: List.first(window).timestamp,
+            side_a_kills: side_a_kills,
+            side_b_kills: side_b_kills,
+            momentum: side_a_kills - side_b_kills
+          }
+        end)
+
+      # Find momentum shifts
+      turning_points =
+        window_stats
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.filter(fn [prev, curr] ->
+          # Momentum reversed
+          (prev.momentum > 0 and curr.momentum < 0) or
+            (prev.momentum < 0 and curr.momentum > 0)
+        end)
+        |> Enum.map(fn [_prev, curr] ->
+          %{
+            type: :momentum_shift,
+            timestamp: curr.timestamp,
+            new_momentum: curr.momentum
+          }
+        end)
+
+      turning_points
+    end
+
+    turning_points
+  end
+
+  defp determine_victim_side(victim, fleet_analysis) do
+    # Handle different fleet analysis structures
+    side_a_corps = get_side_corporations(fleet_analysis, :side_a)
+    side_b_corps = get_side_corporations(fleet_analysis, :side_b)
+
+    cond do
+      victim.corporation_id in side_a_corps -> :side_a
+      victim.corporation_id in side_b_corps -> :side_b
+      true -> :unknown
+    end
+  end
+
+  defp analyze_engagement_flow(timeline) do
+    # Analyze the flow and phases of the engagement
+    phases = identify_battle_phases_detailed(timeline)
+    intensity_changes = identify_intensity_changes(timeline)
+
     %{
-      phases: [],
-      intensity_changes: []
+      phases: phases,
+      intensity_changes: intensity_changes
     }
   end
 
-  defp analyze_focus_fire(_timeline) do
-    # TODO: Implement real focus fire analysis
-    # Requires: Analyze damage concentration patterns
-    # Original stub returned: %{effectiveness: 0.0, coordination_score: 0.0}
-    %{
-      effectiveness: nil,
-      coordination_score: nil
-    }
+  defp identify_battle_phases_detailed(timeline) do
+    # Identify distinct phases based on kill clustering
+    if length(timeline) < 3 do
+      []
+    else
+      # Find gaps of more than 5 minutes between kills
+      phases =
+        timeline
+        |> Enum.chunk_while(
+          [],
+          fn event, acc ->
+            case acc do
+              [] ->
+                {:cont, [event]}
+
+              _ ->
+                last_event = List.last(acc)
+                gap_seconds = DateTime.diff(event.timestamp, last_event.timestamp)
+
+                # 5 minute gap
+                if gap_seconds > 300 do
+                  {:cont, acc, [event]}
+                else
+                  {:cont, acc ++ [event]}
+                end
+            end
+          end,
+          fn
+            [] -> {:cont, []}
+            acc -> {:cont, acc, []}
+          end
+        )
+        |> Enum.reject(&Enum.empty?/1)
+        |> Enum.with_index(1)
+        |> Enum.map(fn {phase_events, index} ->
+          %{
+            phase_number: index,
+            start_time: List.first(phase_events).timestamp,
+            end_time: List.last(phase_events).timestamp,
+            duration_seconds:
+              DateTime.diff(
+                List.last(phase_events).timestamp,
+                List.first(phase_events).timestamp
+              ),
+            kills: length(phase_events),
+            intensity:
+              length(phase_events) /
+                max(
+                  DateTime.diff(
+                    List.last(phase_events).timestamp,
+                    List.first(phase_events).timestamp
+                  ) / 60,
+                  1
+                )
+          }
+        end)
+
+      phases
+    end
   end
 
-  defp analyze_target_selection(_timeline, _fleet_analysis) do
-    # TODO: Implement real target selection analysis
-    # Requires: Analyze target prioritization patterns
-    # Original stub returned: %{priority_targets_hit: 0.0, target_switching_rate: 0.0}
-    %{
-      priority_targets_hit: nil,
-      target_switching_rate: nil
-    }
+  defp identify_intensity_changes(timeline) do
+    # Calculate rolling kill rate and find significant changes
+    if length(timeline) < 5 do
+      []
+    else
+      # Calculate kills per minute in 3-minute windows
+      intensities =
+        timeline
+        |> Enum.chunk_every(3, 1, :discard)
+        |> Enum.map(fn window ->
+          duration_minutes =
+            DateTime.diff(
+              List.last(window).timestamp,
+              List.first(window).timestamp
+            ) / 60
+
+          %{
+            # Middle of window
+            timestamp: Enum.at(window, 1).timestamp,
+            kills_per_minute:
+              if(duration_minutes > 0, do: length(window) / duration_minutes, else: 0)
+          }
+        end)
+
+      # Find significant intensity changes (>50% change)
+      intensity_changes =
+        intensities
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.filter(fn [prev, curr] ->
+          change_ratio =
+            if prev.kills_per_minute > 0 do
+              abs(curr.kills_per_minute - prev.kills_per_minute) / prev.kills_per_minute
+            else
+              1.0
+            end
+
+          change_ratio > 0.5
+        end)
+        |> Enum.map(fn [prev, curr] ->
+          %{
+            timestamp: curr.timestamp,
+            previous_intensity: Float.round(prev.kills_per_minute, 2),
+            new_intensity: Float.round(curr.kills_per_minute, 2),
+            change_type:
+              if(curr.kills_per_minute > prev.kills_per_minute,
+                do: :escalation,
+                else: :deescalation
+              )
+          }
+        end)
+
+      intensity_changes
+    end
   end
 
-  defp calculate_side_isk_destroyed(_side, _killmails) do
-    # TODO: Implement real ISK destroyed calculation
-    # Requires: Sum total_value for kills by this side
-    # Original stub returned: 0
-    nil
+  defp analyze_focus_fire(timeline) do
+    # Analyze how well fleets focused their damage
+    if length(timeline) < 2 do
+      %{
+        effectiveness: 0.0,
+        coordination_score: 0.0
+      }
+    else
+      # Group kills by 30-second windows
+      windows =
+        timeline
+        |> Enum.chunk_by(fn event ->
+          div(DateTime.to_unix(event.timestamp), 30)
+        end)
+        |> Enum.filter(fn window -> length(window) > 1 end)
+
+      if Enum.empty?(windows) do
+        %{
+          effectiveness: 0.0,
+          coordination_score: 0.0
+        }
+      else
+        # Calculate focus fire metrics for each window
+        window_metrics =
+          Enum.map(windows, fn window ->
+            # Count unique targets
+            unique_targets =
+              window
+              |> Enum.map(& &1.victim.character_id)
+              |> Enum.uniq()
+              |> length()
+
+            # Perfect focus fire = 1 target per window
+            focus_score = 1.0 / unique_targets
+
+            # Time spread - how close together were the kills
+            time_score =
+              if length(window) > 1 do
+                time_spread =
+                  DateTime.diff(
+                    List.last(window).timestamp,
+                    List.first(window).timestamp
+                  )
+
+                # Normalize to 0-1 where <10s = 1.0
+                max(0, 1.0 - time_spread / 30.0)
+              else
+                1.0
+              end
+
+            %{
+              focus_score: focus_score,
+              time_score: time_score,
+              kills: length(window)
+            }
+          end)
+
+        # Weight by number of kills in each window
+        total_kills = Enum.sum(Enum.map(window_metrics, & &1.kills))
+
+        weighted_focus =
+          window_metrics
+          |> Enum.map(&(&1.focus_score * &1.kills))
+          |> Enum.sum()
+          |> Kernel./(total_kills)
+
+        weighted_coordination =
+          window_metrics
+          |> Enum.map(&(&1.time_score * &1.kills))
+          |> Enum.sum()
+          |> Kernel./(total_kills)
+
+        %{
+          effectiveness: Float.round(weighted_focus, 3),
+          coordination_score: Float.round(weighted_coordination, 3)
+        }
+      end
+    end
   end
 
-  defp calculate_side_isk_lost(_side, _killmails) do
-    # TODO: Implement real ISK lost calculation
-    # Requires: Sum total_value for losses by this side
-    # Original stub returned: 0
-    nil
+  defp analyze_target_selection(timeline, _fleet_analysis) do
+    # Analyze target prioritization effectiveness
+    if Enum.empty?(timeline) do
+      %{
+        priority_targets_hit: 0.0,
+        target_switching_rate: 0.0
+      }
+    else
+      # Identify priority targets (logistics, fleet commanders, high-value ships)
+      priority_kills =
+        timeline
+        |> Enum.filter(fn event ->
+          ship_class = classify_ship(event.victim.ship_type_id)
+          # 1B+ ISK
+          ship_class in [:logistics, :strategic_cruiser, :capital] or
+            event.isk_value > 1_000_000_000
+        end)
+
+      priority_ratio =
+        if length(timeline) > 0 do
+          Float.round(length(priority_kills) / length(timeline), 3)
+        else
+          0.0
+        end
+
+      # Calculate target switching rate
+      target_switches =
+        timeline
+        |> Enum.map(& &1.victim.character_id)
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.count(fn [prev, curr] -> prev != curr end)
+
+      switching_rate =
+        if length(timeline) > 1 do
+          Float.round(target_switches / (length(timeline) - 1), 3)
+        else
+          0.0
+        end
+
+      %{
+        priority_targets_hit: priority_ratio,
+        target_switching_rate: switching_rate
+      }
+    end
   end
 
-  defp calculate_side_efficiency(_side, _killmails) do
-    # TODO: Implement real efficiency calculation
-    # Requires: Calculate destroyed/(destroyed + lost) * 100
-    # Original stub returned: 100.0
-    nil
+  defp calculate_side_isk_destroyed(side, killmails) do
+    # Sum ISK value of all kills made by this side
+    side_corps = get_side_corporations_from_data(side)
+
+    killmails
+    |> Enum.filter(fn km ->
+      # Check if any attacker is from this side
+      Enum.any?(km.attackers || [], fn attacker ->
+        corp_id = attacker["corporation_id"]
+        corp_id && corp_id in side_corps
+      end)
+    end)
+    |> Enum.map(&(&1.total_value || 0))
+    |> Enum.sum()
+  end
+
+  defp calculate_side_isk_lost(side, killmails) do
+    # Sum ISK value of all losses by this side
+    side_corps = get_side_corporations_from_data(side)
+
+    killmails
+    |> Enum.filter(fn km ->
+      # Check if victim is from this side
+      km.victim_corporation_id in side_corps
+    end)
+    |> Enum.map(&(&1.total_value || 0))
+    |> Enum.sum()
+  end
+
+  # Helper function to extract corporation IDs from fleet analysis side data
+  defp get_side_corporations(fleet_analysis, side_key) do
+    case get_in(fleet_analysis, [side_key]) do
+      nil -> []
+      side_data -> get_side_corporations_from_data(side_data)
+    end
+  end
+
+  # Helper function to extract corporation IDs from side data structure
+  defp get_side_corporations_from_data(side_data) do
+    cond do
+      # If side has a corporations field with a map
+      is_map(side_data) && Map.has_key?(side_data, :corporations) ->
+        Map.keys(side_data.corporations)
+
+      # If side has a corporations field as atom key
+      is_map(side_data) && Map.has_key?(side_data, "corporations") ->
+        Map.keys(side_data["corporations"])
+
+      # If side data is directly a map of corporations
+      is_map(side_data) ->
+        Map.keys(side_data)
+
+      # If side data is a list of corporation IDs
+      is_list(side_data) ->
+        side_data
+
+      # Default to empty list
+      true ->
+        []
+    end
+  end
+
+  defp calculate_side_efficiency(side, killmails) do
+    # Calculate ISK efficiency: destroyed / (destroyed + lost) * 100
+    destroyed = calculate_side_isk_destroyed(side, killmails)
+    lost = calculate_side_isk_lost(side, killmails)
+
+    total = destroyed + lost
+
+    if total > 0 do
+      Float.round(destroyed / total * 100, 2)
+    else
+      # No activity = neutral efficiency
+      50.0
+    end
   end
 
   defp calculate_side_kd_ratio(_participants) do
+    # TODO: Implement actual kill/death ratio calculation
+    # Should calculate: total_kills / max(total_deaths, 1)
+    # Related to Sprint 15 IMPL-3: Implement battle intensity calculations
     1.0
   end
 
   defp analyze_ship_class_performance(_killmails, _participants) do
+    # TODO: Implement ship class performance analysis
+    # Should analyze:
+    # - Effectiveness by ship class (frigate, cruiser, battleship, etc.)
+    # - Class-specific kill/loss ratios
+    # - Tactical role performance metrics
+    # Related to Sprint 15 IMPL-5: Implement basic fleet composition analysis
     %{}
   end
 
@@ -1044,7 +1677,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     numerical_factors =
       initial_factors ++
         case performance_metrics.by_side do
-          nil -> []
+          by_side when map_size(by_side) == 0 -> []
           by_side -> analyze_numerical_factors(by_side)
         end
 
@@ -1052,7 +1685,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     tactical_factors =
       numerical_factors ++
         case tactical_analysis.patterns do
-          nil -> []
+          [] -> []
           patterns -> analyze_tactical_factors(patterns)
         end
 
@@ -1060,7 +1693,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     control_factors =
       tactical_factors ++
         case tactical_analysis.key_moments do
-          nil -> []
+          [] -> []
           key_moments -> analyze_control_factors(key_moments)
         end
 
@@ -1103,5 +1736,146 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     else
       []
     end
+  end
+
+  # Calculate intelligent time window around a battle based on activity patterns
+  defp calculate_optimal_battle_window(system_id, battle_time) do
+    # Get killmail activity around the battle time to determine optimal window
+    # Look 1 hour before
+    base_start = DateTime.add(battle_time, -60 * 60, :second)
+    # Look 1 hour after
+    base_end = DateTime.add(battle_time, 60 * 60, :second)
+
+    # Query for killmail activity in the system around this time
+    activity_query = """
+    SELECT 
+      killmail_time,
+      COUNT(*) as kill_count
+    FROM killmails_enriched 
+    WHERE solar_system_id = $1 
+      AND killmail_time BETWEEN $2 AND $3
+    GROUP BY 
+      DATE_TRUNC('minute', killmail_time)
+    ORDER BY killmail_time
+    """
+
+    case Ecto.Adapters.SQL.query(EveDmv.Repo, activity_query, [
+           system_id,
+           base_start,
+           base_end
+         ]) do
+      {:ok, %{rows: [_ | _] = rows}} ->
+        # Analyze activity pattern to find optimal bounds
+        analyze_activity_pattern(rows, battle_time)
+
+      {:error, reason} ->
+        Logger.warning("Failed to analyze battle activity pattern: #{inspect(reason)}")
+        # Fallback to 30-minute window
+        default_battle_window(battle_time)
+
+      _ ->
+        # No activity data, use default window
+        default_battle_window(battle_time)
+    end
+  rescue
+    error ->
+      Logger.error("Error calculating optimal battle window: #{inspect(error)}")
+      default_battle_window(battle_time)
+  end
+
+  defp analyze_activity_pattern(activity_rows, battle_time) do
+    # Convert activity data to time/count pairs
+    activity_minutes =
+      Enum.map(activity_rows, fn [timestamp, count] ->
+        {timestamp, count}
+      end)
+
+    if Enum.empty?(activity_minutes) do
+      default_battle_window(battle_time)
+    else
+      # Find the start and end of sustained activity
+      battle_unix = DateTime.to_unix(battle_time)
+
+      # Group activity into 5-minute windows for noise reduction
+      smoothed_activity =
+        activity_minutes
+        |> Enum.chunk_every(5)
+        |> Enum.map(fn chunk ->
+          avg_time =
+            chunk
+            |> Enum.map(&elem(&1, 0))
+            |> Enum.map(&DateTime.to_unix/1)
+            |> Enum.sum()
+            |> div(length(chunk))
+
+          total_kills = chunk |> Enum.map(&elem(&1, 1)) |> Enum.sum()
+          {avg_time, total_kills}
+        end)
+
+      # Find activity threshold (10% of peak activity)
+      max_activity = smoothed_activity |> Enum.map(&elem(&1, 1)) |> Enum.max(fn -> 0 end)
+      threshold = max(1, div(max_activity, 10))
+
+      # Find start of significant activity before battle
+      start_time =
+        smoothed_activity
+        |> Enum.filter(fn {time, _count} -> time <= battle_unix end)
+        |> Enum.reverse()
+        |> find_activity_start(threshold)
+        |> case do
+          # Default 30min before
+          nil -> DateTime.add(battle_time, -30 * 60, :second)
+          unix_time -> DateTime.from_unix!(unix_time)
+        end
+
+      # Find end of significant activity after battle  
+      end_time =
+        smoothed_activity
+        |> Enum.filter(fn {time, _count} -> time >= battle_unix end)
+        |> find_activity_end(threshold)
+        |> case do
+          # Default 30min after
+          nil -> DateTime.add(battle_time, 30 * 60, :second)
+          unix_time -> DateTime.from_unix!(unix_time)
+        end
+
+      # Ensure minimum 20-minute window and maximum 2-hour window
+      min_start = DateTime.add(battle_time, -10 * 60, :second)
+      max_start = DateTime.add(battle_time, -120 * 60, :second)
+      min_end = DateTime.add(battle_time, 10 * 60, :second)
+      max_end = DateTime.add(battle_time, 120 * 60, :second)
+
+      final_start = max(start_time, max_start) |> min(min_start)
+      final_end = max(end_time, min_end) |> min(max_end)
+
+      {final_start, final_end}
+    end
+  end
+
+  defp find_activity_start(reversed_activity, threshold) do
+    # Find first period of low activity working backwards from battle
+    reversed_activity
+    |> Enum.find(fn {_time, count} -> count < threshold end)
+    |> case do
+      nil -> nil
+      {time, _count} -> time
+    end
+  end
+
+  defp find_activity_end(forward_activity, threshold) do
+    # Find first period of low activity working forwards from battle
+    forward_activity
+    |> Enum.find(fn {_time, count} -> count < threshold end)
+    |> case do
+      nil -> nil
+      {time, _count} -> time
+    end
+  end
+
+  defp default_battle_window(battle_time) do
+    # Default 30-minute window around battle
+    start_time = DateTime.add(battle_time, -30 * 60, :second)
+    end_time = DateTime.add(battle_time, 30 * 60, :second)
+    {start_time, end_time}
   end
 end

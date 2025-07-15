@@ -36,7 +36,7 @@ defmodule EveDmv.Analytics.ModuleClassifierTest do
       killmail_data = %{
         "victim" => %{
           # Guardian
-          "ship_type_id" => 11987,
+          "ship_type_id" => 11_987,
           "items" => [
             # High slots - remote reps
             %{"flag" => 27, "type_name" => "Large Remote Armor Repairer II", "type_id" => 3301},
@@ -62,7 +62,7 @@ defmodule EveDmv.Analytics.ModuleClassifierTest do
       killmail_data = %{
         "victim" => %{
           # Ares
-          "ship_type_id" => 11174,
+          "ship_type_id" => 11_174,
           "items" => [
             # Mid slots - tackle
             %{"flag" => 19, "type_name" => "Warp Scrambler II", "type_id" => 441},
@@ -171,7 +171,7 @@ defmodule EveDmv.Analytics.ModuleClassifierTest do
       killmail_data = %{
         "victim" => %{
           # Guardian (logistics cruiser)
-          "ship_type_id" => 11987,
+          "ship_type_id" => 11_987,
           "items" => [
             %{"flag" => 27, "type_name" => "Large Remote Armor Repairer II", "type_id" => 3301},
             %{"flag" => 28, "type_name" => "Large Remote Armor Repairer II", "type_id" => 3301}
@@ -306,7 +306,7 @@ defmodule EveDmv.Analytics.ModuleClassifierTest do
         "victim" => %{
           "ship_type_id" => 641,
           "items" => [
-            %{"flag" => 27, "type_name" => "Unknown Future Module X", "type_id" => 99999}
+            %{"flag" => 27, "type_name" => "Unknown Future Module X", "type_id" => 99_999}
           ]
         }
       }

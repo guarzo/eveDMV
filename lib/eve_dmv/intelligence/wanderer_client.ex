@@ -8,6 +8,7 @@ defmodule EveDmv.Intelligence.WandererClient do
 
   use GenServer
   require Logger
+  alias EveDmv.Utils.DnsResolver
 
   defstruct [
     :auth_token,
@@ -24,7 +25,11 @@ defmodule EveDmv.Intelligence.WandererClient do
 
   # Get base URL at runtime for better configuration flexibility
   defp base_url do
-    Application.get_env(:eve_dmv, :wanderer_base_url, "http://host.docker.internal:4004")
+    # Try to get working URL from DNS resolver, fallback to config
+    case DnsResolver.get_service_url(:wanderer) do
+      url when is_binary(url) -> url
+      _ -> Application.get_env(:eve_dmv, :wanderer_base_url, "http://host.docker.internal:4004")
+    end
   end
 
   # Get SSE URL for real-time updates

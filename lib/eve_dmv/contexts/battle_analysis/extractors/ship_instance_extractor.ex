@@ -211,8 +211,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Extractors.ShipInstanceExtractor do
       "Frigate" -> 2500
       "Destroyer" -> 3500
       "Cruiser" -> 7500
-      "Battlecruiser" -> 15000
-      "Battleship" -> 25000
+      "Battlecruiser" -> 15_000
+      "Battleship" -> 25_000
       "Capsule" -> 500
       _ -> 5000
     end

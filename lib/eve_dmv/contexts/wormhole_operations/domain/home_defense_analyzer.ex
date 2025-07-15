@@ -40,6 +40,26 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
   end
 
   @doc """
+  Analyze system defense capabilities.
+  """
+  @spec analyze_system_defense(integer()) :: {:ok, map()} | {:error, term()}
+  def analyze_system_defense(_system_id) do
+    # TODO: Implement real system defense analysis
+    # For now, return a basic analysis structure
+    {:ok,
+     %{
+       defense_readiness: 0.5,
+       vulnerabilities: [],
+       defensive_assets: %{
+         active_members: 0,
+         available_ships: 0,
+         response_time: 0
+       },
+       threat_level: :moderate
+     }}
+  end
+
+  @doc """
   Generate defense recommendations.
   """
   @spec generate_defense_recommendations(integer()) :: {:ok, [map()]} | {:error, term()}
@@ -48,6 +68,27 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
     # Requires: Analyze vulnerabilities, suggest improvements
     # Original stub returned: empty list
     {:error, :not_implemented}
+  end
+
+  @doc """
+  Generate defense recommendations with additional context.
+  """
+  @spec generate_defense_recommendations(integer(), map(), map()) :: [map()]
+  def generate_defense_recommendations(_system_id, _defense_analysis, _threat_event) do
+    # TODO: Implement context-aware defense recommendations
+    # For now, return basic recommendations based on threat event
+    [
+      %{
+        type: :increase_patrols,
+        priority: :medium,
+        description: "Increase patrol frequency in threatened system"
+      },
+      %{
+        type: :alert_members,
+        priority: :high,
+        description: "Alert corporation members of potential threat"
+      }
+    ]
   end
 
   @doc """

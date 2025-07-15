@@ -22,8 +22,7 @@ defmodule EveDmvWeb.SurveillanceLive.BatchOperationService do
   def batch_delete_profiles(profile_ids, actor) do
     # First, fetch all profiles in a single query
     profiles_query =
-      Profile
-      |> Ash.Query.filter(id in ^profile_ids)
+      Ash.Query.filter(Profile, id in ^profile_ids)
 
     case Ash.read(profiles_query, domain: Api, actor: actor) do
       {:ok, profiles} ->
@@ -42,9 +41,10 @@ defmodule EveDmvWeb.SurveillanceLive.BatchOperationService do
                return_errors?: true,
                batch_size: 100
              ) do
-          %Ash.BulkResult{errors: [], records: _} = result ->
+          %Ash.BulkResult{errors: [], records: records} ->
             reload_matching_engine()
-            %{success: length(result.records) || length(profiles), failed: length(not_found_ids)}
+            success_count = if records, do: length(records), else: length(profiles)
+            %{success: success_count, failed: length(not_found_ids)}
 
           %Ash.BulkResult{errors: errors} = result ->
             Enum.each(errors, fn error ->
@@ -53,8 +53,10 @@ defmodule EveDmvWeb.SurveillanceLive.BatchOperationService do
 
             reload_matching_engine()
 
+            success_count = if result.records, do: length(result.records), else: 0
+
             %{
-              success: length(result.records) || 0,
+              success: success_count,
               failed: length(errors) + length(not_found_ids)
             }
         end
@@ -72,8 +74,7 @@ defmodule EveDmvWeb.SurveillanceLive.BatchOperationService do
   def batch_update_profiles(profile_ids, update_data, actor) do
     # First, fetch all profiles in a single query
     profiles_query =
-      Profile
-      |> Ash.Query.filter(id in ^profile_ids)
+      Ash.Query.filter(Profile, id in ^profile_ids)
 
     case Ash.read(profiles_query, domain: Api, actor: actor) do
       {:ok, profiles} ->
@@ -92,9 +93,10 @@ defmodule EveDmvWeb.SurveillanceLive.BatchOperationService do
                return_errors?: true,
                batch_size: 100
              ) do
-          %Ash.BulkResult{errors: [], records: _} = result ->
+          %Ash.BulkResult{errors: [], records: records} ->
             reload_matching_engine()
-            %{success: length(result.records) || length(profiles), failed: length(not_found_ids)}
+            success_count = if records, do: length(records), else: length(profiles)
+            %{success: success_count, failed: length(not_found_ids)}
 
           %Ash.BulkResult{errors: errors} = result ->
             Enum.each(errors, fn error ->
@@ -103,8 +105,10 @@ defmodule EveDmvWeb.SurveillanceLive.BatchOperationService do
 
             reload_matching_engine()
 
+            success_count = if result.records, do: length(result.records), else: 0
+
             %{
-              success: length(result.records) || 0,
+              success: success_count,
               failed: length(errors) + length(not_found_ids)
             }
         end

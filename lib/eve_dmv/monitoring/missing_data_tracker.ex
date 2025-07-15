@@ -125,8 +125,8 @@ defmodule EveDmv.Monitoring.MissingDataTracker do
           first_seen: now,
           last_seen: now,
           occurrence_count: 1,
-          example_killmail_ids: [metadata[:killmail_id]] |> Enum.reject(&is_nil/1),
-          example_character_names: [metadata[:character_name]] |> Enum.reject(&is_nil/1)
+          example_killmail_ids: Enum.reject([metadata[:killmail_id]], &is_nil/1),
+          example_character_names: Enum.reject([metadata[:character_name]], &is_nil/1)
         }
 
         :ets.insert(@table_name, {ship_type_id, new_entry})
@@ -222,7 +222,7 @@ defmodule EveDmv.Monitoring.MissingDataTracker do
     if item in list do
       list
     else
-      [item | list] |> Enum.take(limit)
+      Enum.take([item | list], limit)
     end
   end
 

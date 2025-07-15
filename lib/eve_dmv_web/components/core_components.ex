@@ -9,6 +9,13 @@ defmodule EveDmvWeb.CoreComponents do
   use Phoenix.Component
   alias Phoenix.LiveView.JS
 
+  # Import custom components
+  # import EveDmvWeb.Components.ButtonComponent
+  # import EveDmvWeb.Components.FormComponent
+  # import EveDmvWeb.Components.ColorUtils
+  # import EveDmvWeb.Components.ErrorHandler
+  # import EveDmvWeb.Components.ErrorRecoveryComponent
+
   # Phoenix default components
 
   @doc """

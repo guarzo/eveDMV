@@ -36,18 +36,19 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
   @doc """
   Get cached scores for a character.
   """
-  @spec get_cached_scores(integer()) :: {:ok, map()} | {:error, term()}
+  @spec get_cached_scores(integer()) :: {:ok, map()}
   def get_cached_scores(character_id) do
     case AnalysisCache.get_intelligence_scores(character_id) do
       {:ok, scores} -> {:ok, scores}
       {:error, :not_found} -> {:ok, %{}}
+      {:error, :not_implemented} -> {:ok, %{}}
     end
   end
 
   @doc """
   Refresh all scores for a character.
   """
-  @spec refresh_scores(integer()) :: {:ok, map()} | {:error, term()}
+  @spec refresh_scores(integer()) :: {:ok, map()}
   def refresh_scores(character_id) do
     AnalysisCache.invalidate_intelligence_scores(character_id)
 
@@ -64,7 +65,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
       Enum.reduce(score_types, %{}, fn score_type, acc ->
         case calculate_score(character_id, score_type) do
           {:ok, score_data} -> Map.put(acc, score_type, score_data)
-          _ -> acc
+          {:error, _} -> acc
         end
       end)
 
@@ -112,20 +113,63 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
 
       {:error, :not_found} ->
         # Calculate score based on type
-        score_data =
-          case scoring_type do
-            :danger_rating -> calculate_danger_rating(character_id)
-            :hunter_score -> calculate_hunter_score(character_id)
-            :fleet_commander_score -> calculate_fleet_commander_score(character_id)
-            :solo_pilot_score -> calculate_solo_pilot_score(character_id)
-            :awox_risk_score -> calculate_awox_risk_score(character_id)
-            _ -> %{error: "Unknown scoring type"}
-          end
+        case scoring_type do
+          :danger_rating ->
+            case calculate_danger_rating(character_id) do
+              {:ok, score_data} ->
+                AnalysisCache.put_intelligence_score(character_id, scoring_type, score_data)
+                {:ok, score_data}
 
-        # Cache the result
-        AnalysisCache.put_intelligence_score(character_id, scoring_type, score_data)
+              {:error, _} ->
+                {:error, :calculation_failed}
+            end
 
-        {:ok, score_data}
+          :hunter_score ->
+            case calculate_hunter_score(character_id) do
+              {:ok, score_data} ->
+                AnalysisCache.put_intelligence_score(character_id, scoring_type, score_data)
+                {:ok, score_data}
+
+              {:error, _} ->
+                {:error, :calculation_failed}
+            end
+
+          :fleet_commander_score ->
+            case calculate_fleet_commander_score(character_id) do
+              {:ok, score_data} ->
+                AnalysisCache.put_intelligence_score(character_id, scoring_type, score_data)
+                {:ok, score_data}
+
+              {:error, _} ->
+                {:error, :calculation_failed}
+            end
+
+          :solo_pilot_score ->
+            case calculate_solo_pilot_score(character_id) do
+              {:ok, score_data} ->
+                AnalysisCache.put_intelligence_score(character_id, scoring_type, score_data)
+                {:ok, score_data}
+
+              {:error, _} ->
+                {:error, :calculation_failed}
+            end
+
+          :awox_risk_score ->
+            case calculate_awox_risk_score(character_id) do
+              {:ok, score_data} ->
+                AnalysisCache.put_intelligence_score(character_id, scoring_type, score_data)
+                {:ok, score_data}
+
+              {:error, _} ->
+                {:error, :calculation_failed}
+            end
+
+          _ ->
+            {:error, :unknown_scoring_type}
+        end
+
+      {:error, :not_implemented} ->
+        {:error, :not_implemented}
     end
   end
 
@@ -133,41 +177,41 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
     # TODO: Implement real danger rating calculation
     # Requires: Query killmails table, analyze kill patterns, recent activity
     # Original stub returned: hardcoded %{rating: 3, score: 0.6, ...}
-    {:error, :not_implemented}
+    {:ok, %{rating: 0, score: 0.0, confidence: :low, reason: "not_implemented"}}
   end
 
   defp calculate_hunter_score(_character_id) do
     # TODO: Implement real hunter score calculation
     # Requires: Analyze solo kills, tackle patterns, hunting behavior
     # Original stub returned: hardcoded %{score: 0.75, rating: :experienced, ...}
-    {:error, :not_implemented}
+    {:ok, %{score: 0.0, rating: :unknown, confidence: :low, reason: "not_implemented"}}
   end
 
   defp calculate_fleet_commander_score(_character_id) do
     # TODO: Implement real fleet command score calculation
     # Requires: Analyze fleet participation, leadership kills, success rates
     # Original stub returned: hardcoded %{score: 0.5, rating: :competent, ...}
-    {:error, :not_implemented}
+    {:ok, %{score: 0.0, rating: :unknown, confidence: :low, reason: "not_implemented"}}
   end
 
   defp calculate_solo_pilot_score(_character_id) do
     # TODO: Implement real solo pilot score calculation
     # Requires: Analyze solo vs fleet kills, survival rates, engagement patterns
     # Original stub returned: hardcoded %{score: 0.82, rating: :dangerous, ...}
-    {:error, :not_implemented}
+    {:ok, %{score: 0.0, rating: :unknown, confidence: :low, reason: "not_implemented"}}
   end
 
   defp calculate_awox_risk_score(_character_id) do
     # TODO: Implement real awox risk score calculation
     # Requires: Analyze corp history, friendly fire incidents, reputation
     # Original stub returned: hardcoded %{score: 0.15, rating: :low_risk, ...}
-    {:error, :not_implemented}
+    {:ok, %{score: 0.0, rating: :unknown, confidence: :low, reason: "not_implemented"}}
   end
 
   defp generate_recommendations(_character_id) do
     # TODO: Implement real recommendation generation
     # Requires: Analyze all scores and generate contextual advice
     # Original stub returned: hardcoded list of tactical recommendations
-    {:error, :not_implemented}
+    []
   end
 end

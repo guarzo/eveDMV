@@ -22,9 +22,9 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
       # Megathron
       primary_ships: [641],
       # Guardian, Oneiros
-      support_ships: [11987, 12003],
+      support_ships: [11_987, 12_003],
       # Damnation
-      command_ships: [22852],
+      command_ships: [22_852],
       tank_type: "armor",
       engagement_range: "long",
       min_fleet_size: 10,
@@ -38,9 +38,9 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
       # Apocalypse
       primary_ships: [642],
       # Guardian, Oneiros
-      support_ships: [11987, 12003],
+      support_ships: [11_987, 12_003],
       # Damnation
-      command_ships: [22852],
+      command_ships: [22_852],
       tank_type: "armor",
       engagement_range: "extreme_long",
       min_fleet_size: 8,
@@ -52,11 +52,11 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
     "machariel_speed_fleet" => %{
       name: "Machariel Speed Fleet",
       # Machariel
-      primary_ships: [17738],
+      primary_ships: [17_738],
       # Basilisk, Scimitar
-      support_ships: [11978, 11989],
+      support_ships: [11_978, 11_989],
       # Vulture
-      command_ships: [22444],
+      command_ships: [22_444],
       tank_type: "shield",
       engagement_range: "medium_long",
       min_fleet_size: 12,
@@ -72,9 +72,9 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
       # Ferox
       primary_ships: [4306],
       # Basilisk, Scimitar
-      support_ships: [11978, 11989],
+      support_ships: [11_978, 11_989],
       # Vulture
-      command_ships: [22444],
+      command_ships: [22_444],
       tank_type: "shield",
       engagement_range: "long",
       min_fleet_size: 15,
@@ -88,9 +88,9 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
       # Hurricane
       primary_ships: [4302],
       # Basilisk, Scimitar
-      support_ships: [11978, 11989],
+      support_ships: [11_978, 11_989],
       # Vulture
-      command_ships: [22444],
+      command_ships: [22_444],
       tank_type: "shield",
       engagement_range: "medium_long",
       min_fleet_size: 12,
@@ -104,11 +104,11 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
     "muninn_fleet" => %{
       name: "Muninn Fleet",
       # Muninn
-      primary_ships: [22428],
+      primary_ships: [22_428],
       # Basilisk, Scimitar
-      support_ships: [11978, 11989],
+      support_ships: [11_978, 11_989],
       # Vulture
-      command_ships: [22444],
+      command_ships: [22_444],
       tank_type: "shield",
       engagement_range: "long",
       min_fleet_size: 20,
@@ -120,11 +120,11 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
     "eagle_fleet" => %{
       name: "Eagle Fleet",
       # Eagle
-      primary_ships: [12003],
+      primary_ships: [12_003],
       # Basilisk, Scimitar
-      support_ships: [11978, 11989],
+      support_ships: [11_978, 11_989],
       # Vulture
-      command_ships: [22444],
+      command_ships: [22_444],
       tank_type: "shield",
       engagement_range: "long",
       min_fleet_size: 18,
@@ -138,11 +138,11 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
     "leshak_triglavian" => %{
       name: "Leshak Triglavian Fleet",
       # Leshak
-      primary_ships: [47270],
+      primary_ships: [47_270],
       # Guardian, Oneiros
-      support_ships: [11987, 12003],
+      support_ships: [11_987, 12_003],
       # Damnation
-      command_ships: [22852],
+      command_ships: [22_852],
       tank_type: "armor",
       engagement_range: "medium",
       min_fleet_size: 8,
@@ -763,34 +763,34 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
       # Armageddon
       643,
       # Guardian
-      11987,
+      11_987,
       # Oneiros
-      12003,
+      12_003,
       # Damnation
-      22852,
+      22_852,
       # Leshak
-      47270
+      47_270
     ]
   end
 
   defp get_shield_ship_types do
     [
       # Machariel
-      17738,
+      17_738,
       # Ferox
       4306,
       # Hurricane
       4302,
       # Muninn
-      22428,
+      22_428,
       # Eagle
-      12003,
+      12_003,
       # Basilisk
-      11978,
+      11_978,
       # Scimitar
-      11989,
+      11_989,
       # Vulture
-      22444
+      22_444
     ]
   end
 end

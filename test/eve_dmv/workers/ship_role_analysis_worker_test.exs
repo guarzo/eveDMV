@@ -299,7 +299,7 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorkerTest do
   defp setup_test_killmail_data do
     # Create diverse test data
     # Megathron, Guardian, Sabre
-    ship_types = [641, 11987, 22456]
+    ship_types = [641, 11_987, 22_456]
 
     Enum.each(ship_types, fn ship_type_id ->
       # Insert 6 killmails per ship type (above minimum sample size)
@@ -316,7 +316,7 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorkerTest do
               ]
 
             # Guardian - Logistics
-            11987 ->
+            11_987 ->
               [
                 %{
                   "flag" => 27,
@@ -331,7 +331,7 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorkerTest do
               ]
 
             # Sabre - Tackle
-            22456 ->
+            22_456 ->
               [
                 %{"flag" => 19, "type_name" => "Warp Scrambler II", "type_id" => 441},
                 %{"flag" => 20, "type_name" => "Stasis Webifier II", "type_id" => 526}

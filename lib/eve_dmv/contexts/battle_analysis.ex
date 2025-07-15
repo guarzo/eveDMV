@@ -314,8 +314,6 @@ defmodule EveDmv.Contexts.BattleAnalysis do
          {:ok, performance} <- ShipPerformanceAnalyzer.analyze_battle_performance(battle),
          {:ok, correlated} <-
            MultiSystemBattleCorrelator.correlate_multi_system_battles([battle]),
-         # Ensure correlated is a list before passing to analyze_combat_flow_patterns
-         true <- is_list(correlated) || {:error, "Correlated battles must be a list"},
          {:ok, flow_analysis} <-
            MultiSystemBattleCorrelator.analyze_combat_flow_patterns(correlated) do
       # For single-battle analysis, extract the current battle from correlated results
@@ -334,7 +332,6 @@ defmodule EveDmv.Contexts.BattleAnalysis do
          battle_flow: flow_analysis
        }}
     else
-      false -> {:error, "Unexpected data structure in battle analysis"}
       error -> error
     end
   end
@@ -365,7 +362,8 @@ defmodule EveDmv.Contexts.BattleAnalysis do
          phases: phases,
          phase_transitions: transitions,
          key_moments: extract_key_moments_from_phases(phases),
-         tactical_summary: generate_tactical_summary(phases, transitions)
+         tactical_summary:
+           generate_tactical_summary(phases, %{significant_transitions: transitions})
        }}
     end
   end
@@ -546,9 +544,13 @@ defmodule EveDmv.Contexts.BattleAnalysis do
       end)
 
     transition_summary =
-      transitions
-      |> Map.get(:significant_transitions, [])
-      |> Enum.map_join(", ", & &1.description)
+      if is_map(transitions) do
+        transitions
+        |> Map.get(:significant_transitions, [])
+        |> Enum.map_join(", ", & &1.description)
+      else
+        "No transitions available"
+      end
 
     %{
       phase_progression: phase_summary,

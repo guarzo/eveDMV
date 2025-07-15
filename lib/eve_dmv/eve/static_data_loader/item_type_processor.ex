@@ -303,11 +303,11 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessor do
     base_price_safe = is_nil(type.base_price) or type.base_price <= max_safe_value
 
     # Skip items with astronomical values (typically celestial objects)
-    if not (mass_safe and volume_safe and capacity_safe and base_price_safe) do
+    if mass_safe and volume_safe and capacity_safe and base_price_safe do
+      true
+    else
       Logger.debug("Skipping type_id #{type.type_id} (#{type.name}) due to numeric overflow")
       false
-    else
-      true
     end
   end
 end

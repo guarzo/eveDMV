@@ -1028,6 +1028,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
           km.killmail_time
           |> NaiveDateTime.to_time()
           |> Time.to_seconds_after_midnight()
+          |> elem(0)
           # Convert to hour of day
           |> div(3600)
         end)
@@ -1083,6 +1084,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
             km.killmail_time
             |> NaiveDateTime.to_time()
             |> Time.to_seconds_after_midnight()
+            |> elem(0)
             |> div(3600)
 
           day_of_week = Date.day_of_week(date)
@@ -1139,7 +1141,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     repeated_ships =
       ship_types
       |> Enum.filter(fn {_ship, uses} -> uses > 2 end)
-      |> map_size()
+      |> length()
 
     fitting_experimentation = min(1.0, repeated_ships / 5)
 

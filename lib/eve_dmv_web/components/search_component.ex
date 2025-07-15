@@ -57,8 +57,11 @@ defmodule EveDmvWeb.SearchComponent do
         _ -> "/"
       end
 
-    send(self(), {:navigate, path})
-    {:noreply, assign(socket, show_dropdown: false, query: "")}
+    # Use JavaScript to navigate since we can't push_navigate from a component
+    {:noreply,
+     socket
+     |> assign(show_dropdown: false, query: "")
+     |> push_event("navigate", %{path: path})}
   end
 
   @impl true
@@ -75,9 +78,20 @@ defmodule EveDmvWeb.SearchComponent do
   end
 
   defp search(socket, query) do
-    # For now, just search systems. Will expand to other types later.
-    send(self(), {:search_async, socket.assigns.id, query})
-    assign(socket, loading: true, show_dropdown: true)
+    # Search across all types for universal search
+    search_type = socket.assigns.search_type
+
+    case search_type do
+      :universal ->
+        # Search all types and show results synchronously for now
+        results = perform_universal_search(query)
+        assign(socket, results: results, loading: false, show_dropdown: true)
+
+      _ ->
+        # Search specific type
+        send(self(), {:search_async, socket.assigns.id, query})
+        assign(socket, loading: true, show_dropdown: true)
+    end
   end
 
   @impl true
@@ -182,4 +196,142 @@ defmodule EveDmvWeb.SearchComponent do
   defp placeholder_text(:characters), do: "Search characters..."
   defp placeholder_text(:corporations), do: "Search corporations..."
   defp placeholder_text(_), do: "Search..."
+
+  defp perform_universal_search(query) do
+    # Perform parallel searches across all types
+    tasks = [
+      Task.async(fn -> search_systems(query) end),
+      Task.async(fn -> search_characters(query) end),
+      Task.async(fn -> search_corporations(query) end)
+    ]
+
+    [systems, characters, corporations] = Task.await_many(tasks, 5000)
+
+    # Combine results in a single list with type information
+    results = []
+    results = results ++ Enum.map(systems, &Map.put(&1, :type, "system"))
+    results = results ++ Enum.map(characters, &Map.put(&1, :type, "character"))
+    results = results ++ Enum.map(corporations, &Map.put(&1, :type, "corporation"))
+
+    # Sort by relevance and take top 10
+    results
+    |> Enum.sort_by(fn result ->
+      # Simple relevance scoring - exact matches first
+      if String.downcase(result.name) == String.downcase(query) do
+        0
+      else
+        1
+      end
+    end)
+    |> Enum.take(10)
+  end
+
+  defp search_systems(query) do
+    alias EveDmv.Eve.SolarSystem
+
+    case SolarSystem.search_by_name(name_pattern: query, similarity_threshold: 0.2) do
+      {:ok, systems} ->
+        systems
+        |> Enum.take(3)
+        |> Enum.map(fn system ->
+          %{
+            id: system.system_id,
+            name: system.system_name,
+            subtitle: "#{system.constellation_name} • #{system.region_name}",
+            type_label: "System"
+          }
+        end)
+
+      {:error, _reason} ->
+        []
+    end
+  end
+
+  defp search_characters(query) do
+    # Search in participants table for character names
+    character_query = """
+    SELECT DISTINCT
+      p.character_id,
+      p.character_name,
+      p.corporation_name,
+      p.alliance_name,
+      COUNT(*) as activity_count
+    FROM participants p
+    JOIN killmails_raw k ON p.killmail_id = k.killmail_id
+    WHERE p.character_name ILIKE $1
+    GROUP BY p.character_id, p.character_name, p.corporation_name, p.alliance_name
+    ORDER BY activity_count DESC
+    LIMIT 3
+    """
+
+    search_pattern = "%#{query}%"
+
+    case Ecto.Adapters.SQL.query(EveDmv.Repo, character_query, [search_pattern]) do
+      {:ok, %{rows: rows}} ->
+        Enum.map(rows, fn [char_id, char_name, corp_name, alliance_name, _activity] ->
+          %{
+            id: char_id,
+            name: char_name || "Unknown Character",
+            subtitle: format_character_subtitle(corp_name, alliance_name),
+            type_label: "Character"
+          }
+        end)
+
+      {:error, _reason} ->
+        []
+    end
+  end
+
+  defp search_corporations(query) do
+    # Search in participants table for corporation names
+    corp_query = """
+    SELECT DISTINCT
+      p.corporation_id,
+      p.corporation_name,
+      p.alliance_name,
+      COUNT(DISTINCT p.character_id) as member_count
+    FROM participants p
+    JOIN killmails_raw k ON p.killmail_id = k.killmail_id
+    WHERE p.corporation_name ILIKE $1
+      AND p.corporation_id IS NOT NULL
+    GROUP BY p.corporation_id, p.corporation_name, p.alliance_name
+    ORDER BY member_count DESC
+    LIMIT 3
+    """
+
+    search_pattern = "%#{query}%"
+
+    case Ecto.Adapters.SQL.query(EveDmv.Repo, corp_query, [search_pattern]) do
+      {:ok, %{rows: rows}} ->
+        Enum.map(rows, fn [corp_id, corp_name, alliance_name, members] ->
+          %{
+            id: corp_id,
+            name: corp_name || "Unknown Corporation",
+            subtitle: format_corporation_subtitle(alliance_name, members),
+            type_label: "Corporation"
+          }
+        end)
+
+      {:error, _reason} ->
+        []
+    end
+  end
+
+  defp format_character_subtitle(corp_name, alliance_name) do
+    parts = []
+    parts = if corp_name, do: [corp_name | parts], else: parts
+    parts = if alliance_name, do: [alliance_name | parts], else: parts
+
+    case parts do
+      [] -> "Independent"
+      [corp] -> corp
+      [corp, alliance] -> "#{corp} • #{alliance}"
+      _ -> Enum.join(parts, " • ")
+    end
+  end
+
+  defp format_corporation_subtitle(alliance_name, member_count) do
+    alliance_part = if alliance_name, do: alliance_name, else: "Independent"
+    "#{alliance_part} • #{member_count} active members"
+  end
 end

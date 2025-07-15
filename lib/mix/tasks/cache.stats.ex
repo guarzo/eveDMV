@@ -19,6 +19,8 @@ defmodule Mix.Tasks.Cache.Stats do
 
   use Mix.Task
 
+  alias EveDmv.Cache.AnalysisCache
+
   @shortdoc "Show cache statistics and manage cache entries"
 
   def run(args) do
@@ -51,7 +53,7 @@ defmodule Mix.Tasks.Cache.Stats do
   end
 
   defp show_cache_stats do
-    stats = EveDmv.Cache.AnalysisCache.stats()
+    stats = AnalysisCache.stats()
 
     Mix.shell().info("📊 Analysis Cache Statistics")
     Mix.shell().info("=" <> String.duplicate("=", 40))
@@ -69,19 +71,19 @@ defmodule Mix.Tasks.Cache.Stats do
   end
 
   defp clear_all_cache do
-    EveDmv.Cache.AnalysisCache.clear_all()
+    AnalysisCache.clear_all()
     Mix.shell().info("✅ Cleared all cache entries")
     show_cache_stats()
   end
 
   defp clear_corporation_cache(corp_id) do
-    EveDmv.Cache.AnalysisCache.invalidate_corporation(corp_id)
+    AnalysisCache.invalidate_corporation(corp_id)
     Mix.shell().info("✅ Cleared cache for corporation #{corp_id}")
     show_cache_stats()
   end
 
   defp clear_character_cache(char_id) do
-    EveDmv.Cache.AnalysisCache.invalidate_character(char_id)
+    AnalysisCache.invalidate_character(char_id)
     Mix.shell().info("✅ Cleared cache for character #{char_id}")
     show_cache_stats()
   end

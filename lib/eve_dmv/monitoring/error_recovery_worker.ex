@@ -140,7 +140,7 @@ defmodule EveDmv.Monitoring.ErrorRecoveryWorker do
 
       if error_rate > @error_rate_threshold do
         # Identify top error types
-        top_errors = error_summary.top_errors |> Enum.take(3)
+        top_errors = Enum.take(error_summary.top_errors, 3)
 
         take_recovery_action(state, %RecoveryAction{
           type: :rate_limit_adjustment,
@@ -223,7 +223,7 @@ defmodule EveDmv.Monitoring.ErrorRecoveryWorker do
     end
 
     # Record the action
-    history = [action | state.recovery_history] |> Enum.take(100)
+    history = Enum.take([action | state.recovery_history], 100)
 
     # Emit telemetry
     :telemetry.execute(
@@ -283,7 +283,7 @@ defmodule EveDmv.Monitoring.ErrorRecoveryWorker do
 
         "High " <> rest ->
           if String.contains?(rest, " error rate") do
-            error_type = String.replace(rest, " error rate", "") |> String.trim()
+            error_type = String.trim(String.replace(rest, " error rate", ""))
             Logger.warning("High error rate for #{error_type}, consider circuit breaker")
           end
 

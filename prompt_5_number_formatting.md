@@ -1,84 +1,61 @@
-# Fix Number Formatting Issues (Part of 742 Readability Issues)
+# Prompt 5: Fix Number Formatting and Code Style Issues
 
-You are an AI assistant tasked with resolving number formatting issues found by Credo in an Elixir Phoenix codebase. Focus ONLY on [R] "Numbers larger than 9999 should be written with underscores" issues.
+## Task
+Fix number formatting, variable declarations, and general code style issues identified by Credo.
+
+## Context
+Credo has identified various formatting and style issues including large numbers without underscores, variable redeclarations, and code style violations.
 
 ## Instructions
 
-1. **Number Formatting**: Add underscores to large numbers (>9999) for better readability.
+### Part 1: Number Formatting
+1. Find large numbers (5+ digits) that should have underscore separators
+2. Add underscores to improve readability:
+   - `1000000` → `1_000_000`
+   - `500000` → `500_000`
+   - `86400` → `86_400`
 
-2. **Pattern to Follow**:
+### Part 2: Variable Redeclaration
+1. Find variables that are declared multiple times in the same scope
+2. Either:
+   - Use different variable names if they serve different purposes
+   - Combine the logic if they represent the same data at different stages
+3. Common patterns to fix:
+   - `names = ...` followed by `names = ...` in the same function
+   - `headers = ...` followed by `headers = ...`
+   - `keywords = ...` followed by `keywords = ...`
+
+### Part 3: Pipe Chain Issues
+1. Find pipe chains that don't start with a raw value
+2. Refactor them to start with the actual data being transformed
+3. Example:
    ```elixir
-   # Before
-   ship_id = 19740
-   value = 50000
-   timeout = 600000
+   # Before:
+   SomeModule.function() |> transform() |> process()
    
-   # After
-   ship_id = 19_740  
-   value = 50_000
-   timeout = 600_000
+   # After:
+   data = SomeModule.function()
+   data |> transform() |> process()
    ```
 
-3. **Key Files to Address**:
-   - `lib/eve_dmv/performance/regression_detector.ex` - `10000` → `10_000`
-   - `lib/eve_dmv/contexts/surveillance/domain/matching_engine.ex` - `10000` → `10_000`
-   - `lib/eve_dmv/contexts/intelligence_infrastructure/domain/cross_system_analyzer.ex` - Multiple large numbers
-   - `lib/eve_dmv/contexts/fleet_operations/analyzers/composition_analyzer.ex` - Many ship type IDs and values
-   - `lib/eve_dmv/contexts/combat_intelligence/domain/battle_analysis_service.ex` - Ship type IDs
-   - `lib/eve_dmv/contexts/battle_analysis/domain/tactical_phase_detector.ex` - Distance and HP values
-   - `lib/eve_dmv/contexts/battle_analysis/calculators/performance_metrics_calculator.ex` - Range and damage values
-   - `lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex` - Ship type IDs
-   - `lib/eve_dmv/contexts/battle_analysis/resources/ship_fitting.ex` - HP and damage values
-   - `lib/eve_dmv/contexts/battle_analysis/extractors/ship_instance_extractor.ex` - HP values
-   - `lib/eve_dmv/analytics/fleet_analyzer.ex` - Many ship type IDs
-   - `test/support/factories.ex` - Test values
-   - `test/eve_dmv/analytics/fleet_analyzer_test.exs` - Test ship type IDs
-
-4. **Common Numbers to Format**:
-   - Ship Type IDs: `19720`, `19740`, `28356`, `28352`, `29990`, `29984`, `12034`, `11567`, etc.
-   - Distance values: `10000`, `15000`, `25000`, `30000`, `40000`, `50000`, etc.  
-   - HP values: `15000`, `25000`, `60000`, `70000`, etc.
-   - ISK values: `50000`, `99999`, etc.
-   - Timeouts: `600000`, etc.
-
-5. **Transformation Examples**:
-   ```elixir
-   # EVE Ship Type IDs
-   19740 → 19_740
-   28356 → 28_356
-   29990 → 29_990
-   
-   # Distance/Range Values  
-   15000 → 15_000
-   50000 → 50_000
-   
-   # HP/Damage Values
-   70000 → 70_000
-   25000 → 25_000
-   
-   # ISK Values
-   12345 → 12_345
-   99999 → 99_999
-   ```
-
-6. **Files Priority Order** (to minimize conflicts):
-   1. Test files first (`test/` directory)
-   2. Analytics modules (`lib/eve_dmv/analytics/`)
-   3. Context modules (`lib/eve_dmv/contexts/`)
-   4. Other library files
-
-## Important Notes
-
-- This is part of a parallel fix effort - only modify number formatting issues
-- Do NOT modify TODO comments, module aliases, pipeline usage, predicate naming, or other issue types
-- Numbers ≤ 9999 should remain unchanged
-- Be careful not to modify version numbers, dates, or other special numeric values
-- Focus on one directory at a time to avoid conflicts
+## Files to Focus On
+Based on credo output, these files likely have these issues:
+- `lib/eve_dmv/eve/static_data_loader/item_type_processor.ex`
+- `lib/eve_dmv/performance/batch_name_resolver.ex`
+- `lib/eve_dmv/killmails/killmail_data_transformer.ex`
+- `lib/eve_dmv_web/components/core_components.ex`
+- `lib/eve_dmv_web/live/character_analysis/character_analysis_live.ex`
+- `lib/eve_dmv/users/user.ex`
 
 ## Success Criteria
+- All large numbers use underscore separators for readability
+- No variable redeclarations in the same scope
+- All pipe chains start with raw values
+- Code follows Elixir style conventions
+- Code compiles without warnings
 
-- All numbers > 9999 are formatted with underscores
-- Code compiles without errors
-- All tests pass
-- No functionality is broken
-- Numbers are more readable and follow Elixir conventions
+## Important Notes
+- This is a pure style/formatting task
+- DO NOT change functionality or logic
+- Maintain all existing behavior
+- Focus on readability and convention compliance

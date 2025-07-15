@@ -8,6 +8,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
 
   require Logger
   require Ash.Query
+
   alias EveDmv.Api
   alias EveDmv.Killmails.KillmailRaw
 

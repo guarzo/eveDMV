@@ -384,10 +384,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting do
         # Frigates
         ship_type_id in 582..650 -> 2000
         # Cruisers
-        ship_type_id in 620..634 -> 15000
+        ship_type_id in 620..634 -> 15_000
         # Battleships
-        ship_type_id in 638..645 -> 70000
-        true -> 10000
+        ship_type_id in 638..645 -> 70_000
+        true -> 10_000
       end
 
     # Add tank module bonuses

@@ -20,6 +20,13 @@ defmodule EveDmvWeb.SurveillanceStatsComponent do
         <h2 class="text-lg font-semibold text-gray-200 mb-4">Engine Statistics</h2>
         <div class="space-y-3">
           <div class="flex justify-between">
+            <span class="text-gray-400">Connection Status:</span>
+            <span class={"#{connection_status_class(@engine_stats.connection_status)} font-mono"}>
+              <span class={"inline-block w-2 h-2 #{connection_status_dot_class(@engine_stats.connection_status)} rounded-full mr-1"}></span>
+              {connection_status_text(@engine_stats.connection_status)}
+            </span>
+          </div>
+          <div class="flex justify-between">
             <span class="text-gray-400">Active Profiles:</span>
             <span class="text-green-400 font-mono">{@engine_stats.profiles_loaded || 0}</span>
           </div>
@@ -89,4 +96,23 @@ defmodule EveDmvWeb.SurveillanceStatsComponent do
 
   defp format_datetime(nil), do: "N/A"
   defp format_datetime(_), do: "N/A"
+
+  # Connection status helper functions
+  defp connection_status_text(nil), do: "Unknown"
+  defp connection_status_text({:ok, message}), do: message
+  defp connection_status_text({:warning, message}), do: message
+  defp connection_status_text({:error, message}), do: message
+  defp connection_status_text(_), do: "Unknown"
+
+  defp connection_status_class(nil), do: "text-gray-400"
+  defp connection_status_class({:ok, _}), do: "text-green-400"
+  defp connection_status_class({:warning, _}), do: "text-yellow-400"
+  defp connection_status_class({:error, _}), do: "text-red-400"
+  defp connection_status_class(_), do: "text-gray-400"
+
+  defp connection_status_dot_class(nil), do: "bg-gray-400"
+  defp connection_status_dot_class({:ok, _}), do: "bg-green-400"
+  defp connection_status_dot_class({:warning, _}), do: "bg-yellow-400"
+  defp connection_status_dot_class({:error, _}), do: "bg-red-400"
+  defp connection_status_dot_class(_), do: "bg-gray-400"
 end

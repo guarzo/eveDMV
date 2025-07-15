@@ -129,7 +129,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
     sorted_battles = Enum.sort_by(battles, &get_battle_start_time/1)
 
     # Group battles within temporal windows
-    Enum.reduce(sorted_battles, [], fn battle, clusters ->
+    sorted_battles
+    |> Enum.reduce([], fn battle, clusters ->
       add_to_temporal_cluster(battle, clusters, max_time_gap)
     end)
     |> Enum.reverse()

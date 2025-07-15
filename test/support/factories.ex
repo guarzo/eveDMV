@@ -68,7 +68,7 @@ defmodule EveDmv.Factories do
         "corporation_id" => victim_corporation_id,
         "alliance_id" => victim_alliance_id,
         "ship_type_id" => victim_ship_type_id,
-        "damage_taken" => Enum.random(1000..50000)
+        "damage_taken" => Enum.random(1000..50_000)
       },
       "attackers" =>
         Enum.map(1..attacker_count, fn _i ->
@@ -78,7 +78,7 @@ defmodule EveDmv.Factories do
             "alliance_id" => Enum.random(99_000_000..100_000_000),
             "ship_type_id" => Enum.random([587, 588, 589]),
             "weapon_type_id" => Enum.random([2185, 2873, 3074]),
-            "damage_done" => Enum.random(100..10000),
+            "damage_done" => Enum.random(100..10_000),
             "final_blow" => false,
             "security_status" => 0.5
           }

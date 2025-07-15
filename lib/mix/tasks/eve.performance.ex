@@ -14,6 +14,12 @@ defmodule Mix.Tasks.Eve.Performance do
 
   use Mix.Task
 
+  alias EveDmv.Database.QueryPlanAnalyzer
+  alias EveDmv.Eve.NameResolver
+  alias EveDmv.Performance.MemoryProfiler
+  alias EveDmv.Performance.QueryMonitor
+  alias EveDmv.Performance.RegressionDetector
+
   @impl Mix.Task
   def run(args) do
     Mix.Task.run("app.start")
@@ -54,11 +60,11 @@ defmodule Mix.Tasks.Eve.Performance do
     Mix.shell().info("=== EVE DMV Performance Dashboard ===\n")
 
     # Memory overview
-    memory_info = EveDmv.Performance.MemoryProfiler.get_memory_info()
+    memory_info = MemoryProfiler.get_memory_info()
     Mix.shell().info("💾 Memory Usage: #{format_bytes(memory_info.total)}")
 
     # Query performance
-    query_metrics = EveDmv.Performance.QueryMonitor.get_performance_metrics()
+    query_metrics = QueryMonitor.get_performance_metrics()
     slow_queries = Enum.filter(query_metrics, &(&1.avg_time_ms > 1000))
 
     if Enum.empty?(slow_queries) do
@@ -68,9 +74,9 @@ defmodule Mix.Tasks.Eve.Performance do
     end
 
     # Regression status
-    if Code.ensure_loaded?(EveDmv.Performance.RegressionDetector) do
+    if Code.ensure_loaded?(RegressionDetector) do
       try do
-        baselines = EveDmv.Performance.RegressionDetector.get_baselines()
+        baselines = RegressionDetector.get_baselines()
         Mix.shell().info("📊 Regression Detection: ✅ Monitoring #{map_size(baselines)} metrics")
       rescue
         _ ->
@@ -155,14 +161,14 @@ defmodule Mix.Tasks.Eve.Performance do
     Mix.shell().info("Update ##{iteration + 1} - #{DateTime.utc_now()}")
 
     # Memory snapshot
-    memory = EveDmv.Performance.MemoryProfiler.get_memory_info()
+    memory = MemoryProfiler.get_memory_info()
 
     Mix.shell().info(
       "Memory: #{format_bytes(memory.total)} (Processes: #{format_bytes(memory.processes)})"
     )
 
     # Recent query performance
-    metrics = EveDmv.Performance.QueryMonitor.get_performance_metrics()
+    metrics = QueryMonitor.get_performance_metrics()
     slow_count = Enum.count(metrics, &(&1.avg_time_ms > 1000))
     Mix.shell().info("Queries: #{length(metrics)} monitored, #{slow_count} slow")
 
@@ -178,14 +184,14 @@ defmodule Mix.Tasks.Eve.Performance do
   defp check_regressions do
     Mix.shell().info("=== Performance Regression Check ===\n")
 
-    if Code.ensure_loaded?(EveDmv.Performance.RegressionDetector) do
+    if Code.ensure_loaded?(RegressionDetector) do
       try do
         # Force a regression check
-        EveDmv.Performance.RegressionDetector.force_regression_check()
+        RegressionDetector.force_regression_check()
 
         # Get current metrics vs baselines
-        baselines = EveDmv.Performance.RegressionDetector.get_baselines()
-        current_metrics = EveDmv.Performance.RegressionDetector.get_current_metrics()
+        baselines = RegressionDetector.get_baselines()
+        current_metrics = RegressionDetector.get_current_metrics()
 
         Mix.shell().info("Baselines: #{map_size(baselines)} metrics")
         Mix.shell().info("Current metrics: #{length(current_metrics)} measurements")
@@ -212,8 +218,8 @@ defmodule Mix.Tasks.Eve.Performance do
     Mix.shell().info("Generating comprehensive performance report...")
 
     # Collect all metrics
-    memory_info = EveDmv.Performance.MemoryProfiler.get_memory_info()
-    query_metrics = EveDmv.Performance.QueryMonitor.get_performance_metrics()
+    memory_info = MemoryProfiler.get_memory_info()
+    query_metrics = QueryMonitor.get_performance_metrics()
 
     report = %{
       timestamp: timestamp,
@@ -252,7 +258,7 @@ defmodule Mix.Tasks.Eve.Performance do
     Mix.shell().info("Analyzing database performance...")
 
     # Check database size and statistics
-    case EveDmv.Database.QueryPlanAnalyzer.get_analysis_report() do
+    case QueryPlanAnalyzer.get_analysis_report() do
       report when is_map(report) ->
         Mix.shell().info("Database health: #{report.system_health.status}")
         Mix.shell().info("Slow queries detected: #{report.slow_query_count}")
@@ -266,12 +272,12 @@ defmodule Mix.Tasks.Eve.Performance do
     Mix.shell().info("Analyzing system resources...")
 
     # System process analysis
-    process_analysis = EveDmv.Performance.MemoryProfiler.analyze_process_memory()
+    process_analysis = MemoryProfiler.analyze_process_memory()
     Mix.shell().info("Total processes: #{process_analysis.process_count}")
     Mix.shell().info("Process memory: #{format_bytes(process_analysis.total_memory)}")
 
     # ETS analysis
-    ets_analysis = EveDmv.Performance.MemoryProfiler.analyze_ets_tables()
+    ets_analysis = MemoryProfiler.analyze_ets_tables()
     Mix.shell().info("ETS tables: #{ets_analysis.table_count}")
     Mix.shell().info("ETS memory: #{format_bytes(ets_analysis.total_memory)}")
   end
@@ -281,7 +287,7 @@ defmodule Mix.Tasks.Eve.Performance do
 
     # Warm name resolver cache
     try do
-      EveDmv.Eve.NameResolver.warm_cache()
+      NameResolver.warm_cache()
       Mix.shell().info("✅ Name resolver cache warmed")
     rescue
       error ->

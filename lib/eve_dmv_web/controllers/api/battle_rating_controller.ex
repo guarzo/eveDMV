@@ -17,7 +17,7 @@ defmodule EveDmvWeb.Api.BattleRatingController do
   """
   def create(conn, %{"id" => report_id, "rating" => rating}) do
     # In production, get character_id from authenticated user
-    rater_id = conn.assigns[:current_user_id] || 12345
+    rater_id = conn.assigns[:current_user_id] || 12_345
 
     rating_value =
       case rating do

@@ -253,7 +253,12 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-plt-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-
     - name: Run Dialyzer
-      run: mix dialyzer || true
+      run: |
+        echo "Running Dialyzer type analysis (warnings only)..."
+        mix dialyzer || {
+          echo "Dialyzer found type warnings, but continuing CI..."
+          exit 0
+        }
 
   coverage-comment:
     name: Coverage Comment

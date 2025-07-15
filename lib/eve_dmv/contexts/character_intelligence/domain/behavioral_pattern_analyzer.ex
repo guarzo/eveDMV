@@ -855,6 +855,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.BehavioralPatternAnalyzer
           km.killmail_time
           |> NaiveDateTime.to_time()
           |> Time.to_seconds_after_midnight()
+          |> elem(0)
           |> div(3600)
         end)
         |> Enum.frequencies()
@@ -1333,6 +1334,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.BehavioralPatternAnalyzer
           km.killmail_time
           |> NaiveDateTime.to_time()
           |> Time.to_seconds_after_midnight()
+          |> elem(0)
           |> div(3600)
         end)
         |> Enum.frequencies()

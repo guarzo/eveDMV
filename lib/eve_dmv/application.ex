@@ -96,6 +96,16 @@ defmodule EveDmv.Application do
     # Start the supervisor
     case Supervisor.start_link(children, opts) do
       {:ok, pid} ->
+        # Initialize DNS resolution and connectivity checks
+        Task.start(fn ->
+          try do
+            EveDmv.ApplicationStartup.initialize()
+          rescue
+            error ->
+              EveDmv.ApplicationStartup.handle_startup_error(error, "DNS initialization")
+          end
+        end)
+
         # Attach global error telemetry handlers
         EveDmv.ErrorHandler.attach_telemetry_handlers()
 

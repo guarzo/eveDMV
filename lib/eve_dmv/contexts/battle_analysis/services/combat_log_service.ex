@@ -18,7 +18,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.CombatLogService do
   def process_file_upload(file_upload, pilot_name, battle_id \\ nil) do
     with {:ok, content} <- File.read(file_upload.path),
          compressed <- :zlib.compress(content),
-         content_hash <- content |> :crypto.hash(:sha256) |> Base.encode16(case: :lower) do
+         content_hash <- :crypto.hash(:sha256, content) |> Base.encode16(case: :lower) do
       {:ok,
        %{
          raw_content: Base.encode64(compressed),

@@ -78,8 +78,7 @@ defmodule EveDmvWeb.UniversalSearchLive do
   @impl true
   def handle_event("clear_search", _params, socket) do
     socket =
-      socket
-      |> assign(
+      assign(socket,
         query: "",
         results: %{systems: [], characters: [], corporations: []},
         show_dropdown: false,
@@ -98,10 +97,10 @@ defmodule EveDmvWeb.UniversalSearchLive do
 
   @impl true
   def handle_info(:hide_dropdown, socket) do
-    if !socket.assigns.focused do
-      {:noreply, assign(socket, show_dropdown: false)}
-    else
+    if socket.assigns.focused do
       {:noreply, socket}
+    else
+      {:noreply, assign(socket, show_dropdown: false)}
     end
   end
 
@@ -361,8 +360,7 @@ defmodule EveDmvWeb.UniversalSearchLive do
 
     # Remove duplicates and add new search at the beginning
     updated =
-      [new_search | Enum.reject(recent, &(&1.id == id && &1.type == type))]
-      |> Enum.take(10)
+      Enum.take([new_search | Enum.reject(recent, &(&1.id == id && &1.type == type))], 10)
 
     # 24 hours
     AnalysisCache.put("recent_searches", updated, 86_400_000)
@@ -409,8 +407,8 @@ defmodule EveDmvWeb.UniversalSearchLive do
     case DateTime.diff(DateTime.utc_now(), datetime, :second) do
       seconds when seconds < 60 -> "just now"
       seconds when seconds < 3600 -> "#{div(seconds, 60)}m ago"
-      seconds when seconds < 86400 -> "#{div(seconds, 3600)}h ago"
-      seconds when seconds < 604_800 -> "#{div(seconds, 86400)}d ago"
+      seconds when seconds < 86_400 -> "#{div(seconds, 3600)}h ago"
+      seconds when seconds < 604_800 -> "#{div(seconds, 86_400)}d ago"
       seconds -> "#{div(seconds, 604_800)}w ago"
     end
   end

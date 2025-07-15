@@ -62,7 +62,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive.Helpers do
   end
 
   defp render_id_list_input(condition, index, field, placeholder) do
-    value = Map.get(condition, field, []) |> Enum.join(", ")
+    value = Enum.join(Map.get(condition, field, []), ", ")
 
     assigns = %{
       index: index,

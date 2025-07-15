@@ -8,6 +8,8 @@ defmodule EveDmvWeb.SurveillanceLive do
 
   use EveDmvWeb, :live_view
 
+  require Logger
+  import EveDmvWeb.LiveHelpers.ApiErrorHelper
   alias EveDmv.Surveillance.MatchingEngine
   alias EveDmvWeb.SurveillanceLive.BatchOperationService
   alias EveDmvWeb.SurveillanceLive.Components
@@ -31,31 +33,34 @@ defmodule EveDmvWeb.SurveillanceLive do
 
       user_id = current_user.id
 
-      # Load user's profiles and notifications
+      # Load critical data first, defer non-critical data
       profiles = ProfileService.load_user_profiles(user_id, current_user)
-      recent_matches = Components.load_recent_matches()
-      engine_stats = Components.get_engine_stats()
-      notifications = NotificationService.load_user_notifications(user_id)
       unread_count = NotificationService.get_unread_count(user_id)
 
       socket =
         socket
         |> assign(:user_id, user_id)
         |> assign(:profiles, profiles)
-        |> assign(:recent_matches, recent_matches)
-        |> assign(:engine_stats, engine_stats)
-        |> assign(:notifications, notifications)
+        |> assign(:recent_matches, [])
+        |> assign(:engine_stats, %{})
+        |> assign(:notifications, [])
         |> assign(:unread_count, unread_count)
         |> assign(:show_create_modal, false)
         |> assign(:show_notifications, false)
         |> assign(:show_batch_modal, false)
         |> assign(:selected_profiles, MapSet.new())
         |> assign(:batch_mode, false)
+        |> assign(:loading_data, true)
         |> assign(:new_profile_form, %{
           "name" => "",
           "description" => "",
           "filter_tree" => Components.sample_filter_tree()
         })
+
+      # Load remaining data asynchronously
+      if connected?(socket) do
+        send(self(), :load_surveillance_data)
+      end
 
       {:ok, socket}
     else
@@ -141,6 +146,94 @@ defmodule EveDmvWeb.SurveillanceLive do
   @impl Phoenix.LiveView
   def handle_info({:show_create_modal}, socket) do
     handle_event("show_create_modal", %{}, socket)
+  end
+
+  @impl Phoenix.LiveView
+  def handle_info(:load_surveillance_data, socket) do
+    user_id = socket.assigns.user_id
+
+    # Use parallel loading with individual error handling
+    tasks = [
+      Task.async(fn ->
+        safe_api_call(
+          socket,
+          fn -> Components.load_recent_matches() end,
+          "Loading recent matches"
+        )
+      end),
+      Task.async(fn ->
+        safe_api_call(socket, fn -> Components.get_engine_stats() end, "Loading engine stats")
+      end),
+      Task.async(fn ->
+        safe_api_call(
+          socket,
+          fn -> NotificationService.load_user_notifications(user_id) end,
+          "Loading notifications"
+        )
+      end)
+    ]
+
+    # Wait for all tasks with timeout
+    results = Task.await_many(tasks, 5_000)
+
+    # Extract results or use defaults on error
+    [recent_matches_result, engine_stats_result, notifications_result] = results
+
+    recent_matches =
+      case recent_matches_result do
+        {:ok, matches} -> matches
+        _ -> []
+      end
+
+    engine_stats =
+      case engine_stats_result do
+        {:ok, stats} -> stats
+        _ -> %{}
+      end
+
+    notifications =
+      case notifications_result do
+        {:ok, notifs} -> notifs
+        _ -> []
+      end
+
+    socket =
+      socket
+      |> assign(:recent_matches, recent_matches)
+      |> assign(:engine_stats, engine_stats)
+      |> assign(:notifications, notifications)
+      |> assign(:loading_data, false)
+
+    {:noreply, socket}
+  rescue
+    error ->
+      Logger.error("Failed to load surveillance data: #{inspect(error)}")
+
+      # Show user-friendly error message
+      {:error, error_socket} = handle_api_error(socket, error, "Loading surveillance data")
+
+      # Fallback to empty data
+      updated_socket =
+        error_socket
+        |> assign(:recent_matches, [])
+        |> assign(:engine_stats, %{})
+        |> assign(:notifications, [])
+        |> assign(:loading_data, false)
+
+      {:noreply, updated_socket}
+  end
+
+  @impl Phoenix.LiveView
+  def handle_info(:refresh_stats_async, socket) do
+    case safe_api_call(socket, fn -> Components.get_engine_stats() end, "Refreshing stats") do
+      {:ok, engine_stats} ->
+        socket = assign(socket, :engine_stats, engine_stats)
+        {:noreply, socket}
+
+      {:error, error_socket} ->
+        # Don't update stats on error, just log and continue
+        {:noreply, error_socket}
+    end
   end
 
   @impl Phoenix.LiveView
@@ -241,8 +334,8 @@ defmodule EveDmvWeb.SurveillanceLive do
 
   @impl Phoenix.LiveView
   def handle_event("refresh_stats", _params, socket) do
-    engine_stats = Components.get_engine_stats()
-    socket = assign(socket, :engine_stats, engine_stats)
+    # Load stats asynchronously to avoid blocking the UI
+    send(self(), :refresh_stats_async)
     {:noreply, socket}
   end
 

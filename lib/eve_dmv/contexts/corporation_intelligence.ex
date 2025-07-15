@@ -8,6 +8,9 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
 
   alias EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer
   alias EveDmv.Utils.TimezoneAnalyzer
+  alias EveDmv.Api
+  alias EveDmv.Killmails.Participant
+  alias EveDmv.Eve.NameResolver
 
   require Ash.Query
 
@@ -146,8 +149,6 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
   Analyzes threat levels of top members in a corporation.
   """
   def analyze_top_member_threats(corporation_id, limit \\ 10) do
-    alias EveDmv.Api
-    alias EveDmv.Killmails.Participant
     alias EveDmv.Contexts.CharacterIntelligence
 
     # Get active members from last 60 days
@@ -175,7 +176,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
           |> Enum.map(fn {character_id, activity_count} ->
             case CharacterIntelligence.analyze_character_threat(character_id) do
               {:ok, threat_data} ->
-                character_name = EveDmv.Eve.NameResolver.character_name(character_id)
+                character_name = NameResolver.character_name(character_id)
 
                 %{
                   character_id: character_id,
@@ -219,9 +220,6 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
   Calculates activity metrics for a corporation.
   """
   def calculate_activity_metrics(corporation_id, days_back \\ 30) do
-    alias EveDmv.Api
-    alias EveDmv.Killmails.Participant
-
     time_cutoff = DateTime.utc_now() |> DateTime.add(-days_back, :day)
 
     case Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id})
@@ -283,9 +281,6 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
 
   defp get_corporation_info(corporation_id) do
     # Get corporation info from recent killmail data using Ash
-    alias EveDmv.Api
-    alias EveDmv.Killmails.Participant
-
     case Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id})
          |> Ash.Query.limit(1)
          |> Ash.read(domain: Api) do
@@ -386,8 +381,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
         |> to_string()
         |> String.replace("_", " ")
         |> String.split()
-        |> Enum.map(&String.capitalize/1)
-        |> Enum.join(" ")
+        |> Enum.map_join(" ", &String.capitalize/1)
     end
   end
 
@@ -554,9 +548,6 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
 
   defp get_member_count(corporation_id) do
     # Count unique members from killmail data in last 90 days
-    alias EveDmv.Api
-    alias EveDmv.Killmails.Participant
-
     ninety_days_ago = DateTime.utc_now() |> DateTime.add(-90, :day)
 
     case Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id})
@@ -653,7 +644,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
         ship_names =
           ship_usage
           |> Enum.map(fn {ship_id, count} ->
-            ship_name = EveDmv.Eve.NameResolver.ship_name(ship_id) || "Unknown Ship"
+            ship_name = NameResolver.ship_name(ship_id) || "Unknown Ship"
             "#{ship_name} (#{count})"
           end)
           |> Enum.take(3)
@@ -807,9 +798,6 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
 
   # Generate fallback doctrine evolution showing activity patterns instead of doctrine changes
   defp generate_fallback_evolution(corporation_id) do
-    alias EveDmv.Api
-    alias EveDmv.Killmails.Participant
-
     # Generate last 6 months of activity data
     months =
       for i <- 6..1//-1 do

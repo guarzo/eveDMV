@@ -11,6 +11,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
   alias EveDmv.Contexts.Surveillance.Domain.ChainThreatAnalyzer
   alias EveDmv.DomainEvents.ChainThreatDetected
   alias EveDmv.Intelligence.WandererClient
+  alias Phoenix.PubSub
 
   require Logger
 
@@ -64,9 +65,9 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
   Subscribe to PubSub channels for chain intelligence.
   """
   def subscribe_to_channels do
-    Phoenix.PubSub.subscribe(EveDmv.PubSub, "wanderer:chain_updates")
-    Phoenix.PubSub.subscribe(EveDmv.PubSub, "wanderer:inhabitant_updates")
-    Phoenix.PubSub.subscribe(EveDmv.PubSub, "killmails:enriched")
+    PubSub.subscribe(EveDmv.PubSub, "wanderer:chain_updates")
+    PubSub.subscribe(EveDmv.PubSub, "wanderer:inhabitant_updates")
+    PubSub.subscribe(EveDmv.PubSub, "killmails:enriched")
   end
 
   @doc """
@@ -316,7 +317,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
     # Base confidence from data quality
     data_quality = if is_map(hostile_data) and map_size(hostile_data) > 2, do: 0.4, else: 0.2
     contact_quality = if is_map(contact_info) and map_size(contact_info) > 0, do: 0.3, else: 0.1
-    activity_confirmation = if length(recent_activity) > 0, do: 0.3, else: 0.0
+    activity_confirmation = if not Enum.empty?(recent_activity), do: 0.3, else: 0.0
 
     min(1.0, data_quality + contact_quality + activity_confirmation)
   end
@@ -369,7 +370,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
   defp calculate_risk_factors(hostile_inhabitants, recent_kills, inhabitants) do
     %{
       hostile_ratio:
-        if(length(inhabitants) > 0,
+        if(not Enum.empty?(inhabitants),
           do: length(hostile_inhabitants) / length(inhabitants),
           else: 0
         ),

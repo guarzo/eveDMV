@@ -7,6 +7,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   """
 
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine
+  alias EveDmv.Integrations.ShipIntelligenceBridge
+  alias EveDmv.Api
+  alias EveDmv.Killmails.KillmailRaw
+  alias EveDmv.Eve.NameResolver
+  alias EveDmv.Eve.EsiCharacterClient
 
   @doc """
   Analyzes a character's threat level based on their combat history.
@@ -183,14 +188,14 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Returns ship specialization, role preferences, and tactical insights.
   """
   def get_character_ship_intelligence(character_id) do
-    EveDmv.Integrations.ShipIntelligenceBridge.calculate_ship_specialization(character_id)
+    ShipIntelligenceBridge.calculate_ship_specialization(character_id)
   end
 
   @doc """
   Get ship preference summary for quick threat assessment.
   """
   def get_ship_preferences(character_id) do
-    EveDmv.Integrations.ShipIntelligenceBridge.get_character_ship_preferences(character_id)
+    ShipIntelligenceBridge.get_character_ship_preferences(character_id)
   end
 
   # Private helper functions
@@ -259,8 +264,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
 
   defp get_combat_statistics(character_id) do
     import Ash.Query
-    alias EveDmv.Api
-    alias EveDmv.Killmails.KillmailRaw
 
     # Calculate kills where character was attacker
     kills_query =
@@ -368,9 +371,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   end
 
   defp get_character_info(character_id) do
-    alias EveDmv.Eve.NameResolver
-    alias EveDmv.Eve.EsiCharacterClient
-
     # Get character name
     character_name = NameResolver.character_name(character_id)
 

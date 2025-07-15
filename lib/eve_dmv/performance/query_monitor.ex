@@ -6,6 +6,8 @@ defmodule EveDmv.Performance.QueryMonitor do
   performance metrics for database operations.
   """
 
+  alias EveDmv.Database.QueryPlanAnalyzer
+
   require Logger
 
   @slow_query_threshold_ms 1000
@@ -57,7 +59,7 @@ defmodule EveDmv.Performance.QueryMonitor do
     # Send to QueryPlanAnalyzer for deeper analysis if very slow
     if query_time > 2000 do
       Task.start(fn ->
-        EveDmv.Database.QueryPlanAnalyzer.analyze_query(metadata.query, metadata.params || [])
+        QueryPlanAnalyzer.analyze_query(metadata.query, metadata.params || [])
       end)
     end
   end
@@ -75,7 +77,7 @@ defmodule EveDmv.Performance.QueryMonitor do
     # Always analyze very slow queries
     Task.start(fn ->
       result =
-        EveDmv.Database.QueryPlanAnalyzer.analyze_query(metadata.query, metadata.params || [])
+        QueryPlanAnalyzer.analyze_query(metadata.query, metadata.params || [])
 
       if result[:recommendations] do
         Logger.error("""

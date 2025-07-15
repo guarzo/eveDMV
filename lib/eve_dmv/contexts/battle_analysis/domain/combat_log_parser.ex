@@ -239,7 +239,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
           {:ok, time} ->
             case NaiveDateTime.new(today, time) do
               {:ok, dt} -> dt
-              _ -> nil
+              {:error, _} -> nil
             end
 
           _ ->

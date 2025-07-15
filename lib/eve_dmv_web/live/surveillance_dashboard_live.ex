@@ -87,23 +87,16 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
 
   @impl Phoenix.LiveView
   def handle_event("optimize_profile", %{"profile_id" => profile_id}, socket) do
-    case generate_optimization_recommendations(profile_id) do
-      {:ok, recommendations} ->
-        socket =
-          put_flash(
-            socket,
-            :info,
-            "Generated #{length(recommendations)} optimization recommendations"
-          )
+    {:ok, recommendations} = generate_optimization_recommendations(profile_id)
 
-        {:noreply, socket}
+    socket =
+      put_flash(
+        socket,
+        :info,
+        "Generated #{length(recommendations)} optimization recommendations"
+      )
 
-      {:error, reason} ->
-        socket =
-          put_flash(socket, :error, "Failed to generate recommendations: #{inspect(reason)}")
-
-        {:noreply, socket}
-    end
+    {:noreply, socket}
   end
 
   # PubSub handlers
@@ -147,21 +140,18 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
         {:error, reason} ->
           Logger.error("Failed to load profiles: #{inspect(reason)}")
 
-          socket
-          |> assign(:profiles, [])
+          assign(socket, :profiles, [])
       end
     rescue
       error ->
         Logger.error("Surveillance service unavailable: #{inspect(error)}")
 
-        socket
-        |> assign(:profiles, [])
+        assign(socket, :profiles, [])
     catch
       :exit, reason ->
         Logger.error("Surveillance service process not available: #{inspect(reason)}")
 
-        socket
-        |> assign(:profiles, [])
+        assign(socket, :profiles, [])
     end
   end
 
@@ -198,7 +188,8 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
           criteria_efficiency: analyze_criteria_efficiency(profile.criteria)
         }
       end)
-      |> Enum.sort_by(& &1.performance_score, :desc)
+
+    profile_metrics = Enum.sort_by(profile_metrics, & &1.performance_score, :desc)
 
     assign(socket, :profile_metrics, profile_metrics)
   end
@@ -213,8 +204,7 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
     profile_metrics = socket.assigns.profile_metrics
 
     top_profiles =
-      profile_metrics
-      |> Enum.filter(&(&1.alerts_generated > 0))
+      Enum.filter(profile_metrics, &(&1.alerts_generated > 0))
       |> Enum.sort_by(& &1.performance_score, :desc)
       |> Enum.take(5)
 
@@ -248,8 +238,7 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
   end
 
   defp get_total_alerts(time_range) do
-    safe_call(fn -> AlertService.get_alert_metrics(time_range) end)
-    |> case do
+    case safe_call(fn -> AlertService.get_alert_metrics(time_range) end) do
       {:ok, metrics} -> Map.get(metrics, :total_alerts, 0)
       _ -> 0
     end
@@ -271,8 +260,7 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
 
   defp get_average_response_time do
     # Get surveillance engine response time from monitoring
-    safe_call(fn -> Surveillance.get_surveillance_metrics() end)
-    |> case do
+    case safe_call(fn -> Surveillance.get_surveillance_metrics() end) do
       {:ok, metrics} -> Map.get(metrics, :avg_response_time_ms, 0)
       _ -> 0
     end
@@ -280,8 +268,7 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
 
   defp get_system_load do
     # Get current system load percentage
-    safe_call(fn -> Surveillance.get_surveillance_metrics() end)
-    |> case do
+    case safe_call(fn -> Surveillance.get_surveillance_metrics() end) do
       {:ok, metrics} -> Map.get(metrics, :system_load_percent, 0)
       _ -> 0
     end
@@ -295,16 +282,14 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
 
   defp get_cache_hit_rate do
     # Get cache hit rate from MatchingEngine
-    safe_call(fn -> MatchingEngine.get_cache_stats() end)
-    |> case do
+    case safe_call(fn -> MatchingEngine.get_cache_stats() end) do
       {:ok, stats} -> Map.get(stats, :hit_rate, 0.0)
       _ -> 0.0
     end
   end
 
   defp get_profile_alert_count(profile_id, time_range) do
-    safe_call(fn -> AlertService.get_recent_alerts(profile_id: profile_id, limit: 1000) end)
-    |> case do
+    case safe_call(fn -> AlertService.get_recent_alerts(profile_id: profile_id, limit: 1000) end) do
       {:ok, alerts} ->
         cutoff_time = get_cutoff_time(time_range)
 
@@ -326,8 +311,8 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
       case time_range do
         :last_hour -> 100
         :last_24h -> 2400
-        :last_7d -> 16800
-        :last_30d -> 72000
+        :last_7d -> 16_800
+        :last_30d -> 72_000
       end
 
     if estimated_total > 0, do: Float.round(alert_count / estimated_total * 100, 2), else: 0.0
@@ -336,8 +321,7 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
   defp get_profile_false_positive_rate(profile_id, _time_range) do
     # In a real system, this would track user feedback on alert accuracy
     # For now, simulate based on profile complexity
-    safe_call(fn -> Surveillance.get_profile(profile_id) end)
-    |> case do
+    case safe_call(fn -> Surveillance.get_profile(profile_id) end) do
       {:ok, profile} ->
         criteria_count = length(Map.get(profile.criteria, :conditions, []))
         # More complex filters tend to have fewer false positives
@@ -353,8 +337,7 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
   end
 
   defp get_profile_avg_confidence(profile_id, time_range) do
-    safe_call(fn -> AlertService.get_recent_alerts(profile_id: profile_id, limit: 100) end)
-    |> case do
+    case safe_call(fn -> AlertService.get_recent_alerts(profile_id: profile_id, limit: 100) end) do
       {:ok, alerts} ->
         cutoff_time = get_cutoff_time(time_range)
 
@@ -392,8 +375,7 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
   end
 
   defp get_profile_last_alert(profile_id) do
-    safe_call(fn -> AlertService.get_recent_alerts(profile_id: profile_id, limit: 1) end)
-    |> case do
+    case safe_call(fn -> AlertService.get_recent_alerts(profile_id: profile_id, limit: 1) end) do
       {:ok, [alert | _]} -> alert.created_at
       _ -> nil
     end
@@ -460,18 +442,20 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
 
     current_time = DateTime.utc_now()
 
-    Enum.map(0..min(hours - 1, 23), fn hour_offset ->
-      timestamp = DateTime.add(current_time, -hour_offset * 3600, :second)
-      # Simulate varying alert counts
-      alert_count = :rand.uniform(10)
+    hourly_activity =
+      Enum.map(0..min(hours - 1, 23), fn hour_offset ->
+        timestamp = DateTime.add(current_time, -hour_offset * 3600, :second)
+        # Simulate varying alert counts
+        alert_count = :rand.uniform(10)
 
-      %{
-        timestamp: timestamp,
-        alert_count: alert_count,
-        hour_label: DateTime.to_time(timestamp) |> Time.to_string() |> String.slice(0, 5)
-      }
-    end)
-    |> Enum.reverse()
+        %{
+          timestamp: timestamp,
+          alert_count: alert_count,
+          hour_label: String.slice(Time.to_string(DateTime.to_time(timestamp)), 0, 5)
+        }
+      end)
+
+    Enum.reverse(hourly_activity)
   end
 
   defp generate_system_recommendations(profiles, profile_metrics) do
@@ -560,8 +544,7 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
 
   defp generate_optimization_recommendations(profile_id) do
     # Generate specific recommendations for a profile
-    safe_call(fn -> Surveillance.get_profile(profile_id) end)
-    |> case do
+    case safe_call(fn -> Surveillance.get_profile(profile_id) end) do
       {:ok, profile} ->
         recommendations = []
 

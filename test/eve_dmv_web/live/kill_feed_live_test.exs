@@ -7,6 +7,11 @@ defmodule EveDmvWeb.KillFeedLiveTest do
   import Phoenix.LiveViewTest
   import EveDmv.Factories
 
+  alias Phoenix.PubSub
+  alias Phoenix.Socket.Broadcast
+  alias EveDmv.Eve.SolarSystem
+  alias EveDmv.Eve.ItemType
+
   setup do
     # Allow background processes to access the database
     Ecto.Adapters.SQL.Sandbox.mode(EveDmv.Repo, {:shared, self()})
@@ -40,10 +45,10 @@ defmodule EveDmvWeb.KillFeedLiveTest do
       # Verify subscription by sending a broadcast
       killmail_data = build_test_killmail()
 
-      Phoenix.PubSub.broadcast(
+      PubSub.broadcast(
         EveDmv.PubSub,
         "kill_feed",
-        %Phoenix.Socket.Broadcast{
+        %Broadcast{
           topic: "kill_feed",
           event: "new_kill",
           payload: killmail_data
@@ -78,10 +83,10 @@ defmodule EveDmvWeb.KillFeedLiveTest do
       for i <- 1..3 do
         killmail = build_test_killmail(killmail_id: 90_000_000 + i)
 
-        Phoenix.PubSub.broadcast(
+        PubSub.broadcast(
           EveDmv.PubSub,
           "kill_feed",
-          %Phoenix.Socket.Broadcast{
+          %Broadcast{
             topic: "kill_feed",
             event: "new_kill",
             payload: killmail
@@ -109,10 +114,10 @@ defmodule EveDmvWeb.KillFeedLiveTest do
       # Send high-value kill
       expensive_kill = build_test_killmail(total_value: 1_000_000_000)
 
-      Phoenix.PubSub.broadcast(
+      PubSub.broadcast(
         EveDmv.PubSub,
         "kill_feed",
-        %Phoenix.Socket.Broadcast{
+        %Broadcast{
           topic: "kill_feed",
           event: "new_kill",
           payload: expensive_kill
@@ -138,10 +143,10 @@ defmodule EveDmvWeb.KillFeedLiveTest do
       for i <- 1..10 do
         killmail = build_test_killmail(killmail_id: 91_000_000 + i)
 
-        Phoenix.PubSub.broadcast(
+        PubSub.broadcast(
           EveDmv.PubSub,
           "kill_feed",
-          %Phoenix.Socket.Broadcast{
+          %Broadcast{
             topic: "kill_feed",
             event: "new_kill",
             payload: killmail
@@ -179,10 +184,10 @@ defmodule EveDmvWeb.KillFeedLiveTest do
           solar_system_name: "Podion"
         )
 
-      Phoenix.PubSub.broadcast(
+      PubSub.broadcast(
         EveDmv.PubSub,
         "kill_feed",
-        %Phoenix.Socket.Broadcast{
+        %Broadcast{
           topic: "kill_feed",
           event: "new_kill",
           payload: podion_kill
@@ -239,10 +244,10 @@ defmodule EveDmvWeb.KillFeedLiveTest do
           victim_ship_name: "Loki"
         )
 
-      Phoenix.PubSub.broadcast(
+      PubSub.broadcast(
         EveDmv.PubSub,
         "kill_feed",
-        %Phoenix.Socket.Broadcast{
+        %Broadcast{
           topic: "kill_feed",
           event: "new_kill",
           payload: loki_killmail
@@ -275,10 +280,10 @@ defmodule EveDmvWeb.KillFeedLiveTest do
       for i <- 1..20 do
         killmail = build_test_killmail(killmail_id: 96_000_000 + i)
 
-        Phoenix.PubSub.broadcast(
+        PubSub.broadcast(
           EveDmv.PubSub,
           "kill_feed",
-          %Phoenix.Socket.Broadcast{
+          %Broadcast{
             topic: "kill_feed",
             event: "new_kill",
             payload: killmail
@@ -315,7 +320,7 @@ defmodule EveDmvWeb.KillFeedLiveTest do
         :timer.tc(fn ->
           new_kill = build_test_killmail()
 
-          send(view.pid, %Phoenix.Socket.Broadcast{
+          send(view.pid, %Broadcast{
             topic: "kill_feed",
             event: "new_kill",
             payload: new_kill
@@ -457,15 +462,15 @@ defmodule EveDmvWeb.KillFeedLiveTest do
 
     for system <- solar_systems do
       # Create if doesn't exist using the SDE create action
-      case Ash.read_one(EveDmv.Eve.SolarSystem, filter: [system_id: system.system_id]) do
+      case Ash.read_one(SolarSystem, filter: [system_id: system.system_id]) do
         {:ok, nil} ->
-          Ash.create!(EveDmv.Eve.SolarSystem, system, action: :create)
+          Ash.create!(SolarSystem, system, action: :create)
 
         {:ok, _existing} ->
           :ok
 
         {:error, _} ->
-          Ash.create!(EveDmv.Eve.SolarSystem, system, action: :create)
+          Ash.create!(SolarSystem, system, action: :create)
       end
     end
   end
@@ -509,15 +514,15 @@ defmodule EveDmvWeb.KillFeedLiveTest do
 
     for item <- item_types do
       # Create if doesn't exist
-      case Ash.read_one(EveDmv.Eve.ItemType, filter: [type_id: item.type_id]) do
+      case Ash.read_one(ItemType, filter: [type_id: item.type_id]) do
         {:ok, nil} ->
-          Ash.create!(EveDmv.Eve.ItemType, item, action: :create)
+          Ash.create!(ItemType, item, action: :create)
 
         {:ok, _existing} ->
           :ok
 
         {:error, _} ->
-          Ash.create!(EveDmv.Eve.ItemType, item, action: :create)
+          Ash.create!(ItemType, item, action: :create)
       end
     end
   end

@@ -13,6 +13,9 @@ defmodule EveDmv.Users.User do
     extensions: [AshAuthentication],
     authorizers: [Ash.Policy.Authorizer]
 
+  alias Ash.Changeset
+  alias EveDmv.Eve.EsiRequestClient
+
   authentication do
     # EVE SSO OAuth2 authentication strategy
     strategies do
@@ -177,8 +180,8 @@ defmodule EveDmv.Users.User do
       change(AshAuthentication.GenerateTokenChange)
 
       change(fn changeset, _context ->
-        user_info = Ash.Changeset.get_argument(changeset, :user_info)
-        oauth_tokens = Ash.Changeset.get_argument(changeset, :oauth_tokens)
+        user_info = Changeset.get_argument(changeset, :user_info)
+        oauth_tokens = Changeset.get_argument(changeset, :oauth_tokens)
 
         # EVE SSO provides user_info and oauth_tokens
 
@@ -192,12 +195,12 @@ defmodule EveDmv.Users.User do
         } = extract_eve_sso_data(user_info, oauth_tokens)
 
         changeset
-        |> Ash.Changeset.change_attribute(:eve_character_id, character_id)
-        |> Ash.Changeset.change_attribute(:eve_character_name, character_name)
-        |> Ash.Changeset.change_attribute(:access_token, access_token)
-        |> Ash.Changeset.change_attribute(:refresh_token, refresh_token)
-        |> Ash.Changeset.change_attribute(:token_expires_at, expires_at)
-        |> Ash.Changeset.change_attribute(:last_login_at, DateTime.utc_now())
+        |> Changeset.change_attribute(:eve_character_id, character_id)
+        |> Changeset.change_attribute(:eve_character_name, character_name)
+        |> Changeset.change_attribute(:access_token, access_token)
+        |> Changeset.change_attribute(:refresh_token, refresh_token)
+        |> Changeset.change_attribute(:token_expires_at, expires_at)
+        |> Changeset.change_attribute(:last_login_at, DateTime.utc_now())
         |> maybe_update_corporation_info(user_info)
       end)
     end
@@ -229,8 +232,8 @@ defmodule EveDmv.Users.User do
       change(AshAuthentication.GenerateTokenChange)
 
       change(fn changeset, _context ->
-        user_info = Ash.Changeset.get_argument(changeset, :user_info)
-        oauth_tokens = Ash.Changeset.get_argument(changeset, :oauth_tokens)
+        user_info = Changeset.get_argument(changeset, :user_info)
+        oauth_tokens = Changeset.get_argument(changeset, :oauth_tokens)
 
         # Extract EVE SSO data using helper function
         %{
@@ -242,12 +245,12 @@ defmodule EveDmv.Users.User do
         } = extract_eve_sso_data(user_info, oauth_tokens)
 
         changeset
-        |> Ash.Changeset.change_attribute(:eve_character_id, character_id)
-        |> Ash.Changeset.change_attribute(:eve_character_name, character_name)
-        |> Ash.Changeset.change_attribute(:access_token, access_token)
-        |> Ash.Changeset.change_attribute(:refresh_token, refresh_token)
-        |> Ash.Changeset.change_attribute(:token_expires_at, expires_at)
-        |> Ash.Changeset.change_attribute(:last_login_at, DateTime.utc_now())
+        |> Changeset.change_attribute(:eve_character_id, character_id)
+        |> Changeset.change_attribute(:eve_character_name, character_name)
+        |> Changeset.change_attribute(:access_token, access_token)
+        |> Changeset.change_attribute(:refresh_token, refresh_token)
+        |> Changeset.change_attribute(:token_expires_at, expires_at)
+        |> Changeset.change_attribute(:last_login_at, DateTime.utc_now())
         |> maybe_update_corporation_info(user_info)
       end)
     end
@@ -306,8 +309,8 @@ defmodule EveDmv.Users.User do
   # Private functions
   defp maybe_update_corporation_info(changeset, _user_info) do
     # Extract character ID to fetch corporation info
-    character_id = Ash.Changeset.get_attribute(changeset, :eve_character_id)
-    access_token = Ash.Changeset.get_attribute(changeset, :access_token)
+    character_id = Changeset.get_attribute(changeset, :eve_character_id)
+    access_token = Changeset.get_attribute(changeset, :access_token)
 
     require Logger
 
@@ -323,10 +326,10 @@ defmodule EveDmv.Users.User do
           Logger.info("Successfully fetched corp info: #{inspect(corp_info)}")
 
           changeset
-          |> Ash.Changeset.change_attribute(:eve_corporation_id, corp_info.corporation_id)
-          |> Ash.Changeset.change_attribute(:eve_corporation_name, corp_info.corporation_name)
-          |> Ash.Changeset.change_attribute(:eve_alliance_id, corp_info.alliance_id)
-          |> Ash.Changeset.change_attribute(:eve_alliance_name, corp_info.alliance_name)
+          |> Changeset.change_attribute(:eve_corporation_id, corp_info.corporation_id)
+          |> Changeset.change_attribute(:eve_corporation_name, corp_info.corporation_name)
+          |> Changeset.change_attribute(:eve_alliance_id, corp_info.alliance_id)
+          |> Changeset.change_attribute(:eve_alliance_name, corp_info.alliance_name)
 
         {:error, reason} ->
           Logger.warning(
@@ -348,7 +351,7 @@ defmodule EveDmv.Users.User do
     # Direct ESI call to avoid fallback strategy issues
     path = "/v4/characters/#{character_id}/"
 
-    case EveDmv.Eve.EsiRequestClient.public_request("GET", path) do
+    case EsiRequestClient.public_request("GET", path) do
       {:ok, character_response} ->
         Logger.info("Got character response: #{inspect(character_response)}")
 
@@ -378,7 +381,7 @@ defmodule EveDmv.Users.User do
 
           corp_path = "/v4/corporations/#{corporation_id}/"
 
-          case EveDmv.Eve.EsiRequestClient.public_request("GET", corp_path) do
+          case EsiRequestClient.public_request("GET", corp_path) do
             {:ok, corp_response} ->
               # Handle potential double-wrapping from the request client
               actual_corp_response =
@@ -449,7 +452,7 @@ defmodule EveDmv.Users.User do
     # Use ESI to fetch alliance info
     path = "/v3/alliances/#{alliance_id}/"
 
-    case EveDmv.Eve.EsiRequestClient.get_request(path) do
+    case EsiRequestClient.get_request(path) do
       {:ok, response} ->
         # Handle potential double-wrapping from the request client
         actual_response =
