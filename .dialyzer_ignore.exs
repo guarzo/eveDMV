@@ -13,9 +13,6 @@
   # GENERATED CODE FALSE POSITIVES
   # ===========================================
 
-  # Test files - more lenient type checking
-  ~r"test/.*\.exs.*",
-
   # ===========================================
   # TELEMETRY AND MONITORING FALSE POSITIVES
   # ===========================================
