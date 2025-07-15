@@ -74,22 +74,20 @@ defmodule Mix.Tasks.Eve.ImportHistoricalKillmails do
     end
 
     # Import each file
-    total_imported = 0
-    total_errors = 0
+    {total_imported, total_errors} =
+      Enum.reduce(files, {0, 0}, fn file, {imported_acc, errors_acc} ->
+        Logger.info("Processing #{Path.basename(file)}")
 
-    for file <- files do
-      Logger.info("Processing #{Path.basename(file)}")
+        case import_file(file, batch_size, dry_run) do
+          {:ok, imported} ->
+            Logger.info("✅ Imported #{imported} records from #{Path.basename(file)}")
+            {imported_acc + imported, errors_acc}
 
-      case import_file(file, batch_size, dry_run) do
-        {:ok, imported} ->
-          _total_imported = total_imported + imported
-          Logger.info("✅ Imported #{imported} records from #{Path.basename(file)}")
-
-        {:error, reason} ->
-          _total_errors = total_errors + 1
-          Logger.error("❌ Failed to import #{Path.basename(file)}: #{reason}")
-      end
-    end
+          {:error, reason} ->
+            Logger.error("❌ Failed to import #{Path.basename(file)}: #{reason}")
+            {imported_acc, errors_acc + 1}
+        end
+      end)
 
     Logger.info("Import complete:")
     Logger.info("  Total imported: #{total_imported}")
@@ -260,14 +258,37 @@ defmodule Mix.Tasks.Eve.ImportHistoricalKillmails do
       case Ash.bulk_create(
              transformed_killmails,
              EveDmv.Killmails.KillmailRaw,
-             :ingest_from_source
+             :ingest_from_source,
+             return_records?: true,
+             return_errors?: true,
+             stop_on_error?: false
            ) do
         %Ash.BulkResult{status: :success, records: records} ->
           {:ok, length(records)}
 
+        %Ash.BulkResult{status: :partial_success} = result ->
+          success_count = length(result.records || [])
+          error_count = length(result.errors || [])
+          Logger.warning("Partial success: imported #{success_count}, failed #{error_count}")
+
+          # Log first few errors for debugging
+          result.errors
+          |> Enum.take(3)
+          |> Enum.each(fn error ->
+            Logger.error("Import error: #{inspect(error)}")
+          end)
+
+          {:ok, success_count}
+
         %Ash.BulkResult{status: :error, errors: errors} ->
-          error_msg = Enum.map_join(errors, ", ", &Exception.message/1)
-          {:error, error_msg}
+          # Log first few errors for debugging
+          errors
+          |> Enum.take(3)
+          |> Enum.each(fn error ->
+            Logger.error("Import error: #{inspect(error)}")
+          end)
+
+          {:error, "All records failed to import"}
       end
     rescue
       error -> {:error, Exception.message(error)}
@@ -277,7 +298,7 @@ defmodule Mix.Tasks.Eve.ImportHistoricalKillmails do
   defp transform_killmail(archive_data) do
     %{
       killmail_id: archive_data["killmail_id"],
-      killmail_hash: archive_data["hash"],
+      killmail_hash: get_or_generate_hash(archive_data),
       killmail_time: parse_datetime(archive_data["killmail_time"]),
       solar_system_id: archive_data["solar_system_id"],
       victim_character_id: normalize_id(archive_data["victim"]["character_id"]),
@@ -301,6 +322,22 @@ defmodule Mix.Tasks.Eve.ImportHistoricalKillmails do
   defp normalize_id(0), do: nil
   defp normalize_id(id) when is_integer(id), do: id
   defp normalize_id(nil), do: nil
+
+  # Get hash from killmail data or generate one if missing
+  defp get_or_generate_hash(archive_data) do
+    case archive_data["hash"] do
+      nil ->
+        # Generate a hash from killmail ID and time
+        id = archive_data["killmail_id"]
+        timestamp = archive_data["killmail_time"]
+        hash_data = "#{id}-#{timestamp}"
+        hash = :crypto.hash(:sha256, hash_data)
+        Base.encode16(hash, case: :lower)
+
+      hash ->
+        hash
+    end
+  end
 
   defp obscure_url(url) do
     url

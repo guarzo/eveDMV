@@ -3,7 +3,6 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridgeTest do
 
   alias EveDmv.Integrations.ShipIntelligenceBridge
   alias EveDmv.Repo
-  import Ecto.Query
 
   describe "analyze_ship_roles_in_battle/1" do
     test "analyzes battle ship roles successfully" do

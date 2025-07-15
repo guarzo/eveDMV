@@ -3,7 +3,6 @@ defmodule EveDmv.Analytics.FleetAnalyzerTest do
 
   alias EveDmv.Analytics.FleetAnalyzer
   alias EveDmv.Repo
-  import Ecto.Query
 
   describe "analyze_fleet_composition/1" do
     test "returns error for fleets that are too small" do

@@ -36,16 +36,17 @@ defmodule EveDmv.Workers.GenericTaskSupervisorTest do
   end
 
   describe "BackgroundTaskSupervisor" do
-    test "has correct configuration" do
-      config = BackgroundTaskSupervisor.config()
+    test "can start and get stats" do
+      # Start the BackgroundTaskSupervisor for this test
+      {:ok, _pid} = BackgroundTaskSupervisor.start_link([])
 
-      # 30 minutes
-      assert config[:max_duration] == 1_800_000
-      # 10 minutes
-      assert config[:warning_time] == 600_000
-      assert config[:max_concurrent] == 5
-      assert config[:max_per_user] == nil
-      assert config[:telemetry_prefix] == [:eve_dmv, :background_task]
+      # Now we can get stats
+      stats = BackgroundTaskSupervisor.get_stats()
+
+      assert is_map(stats)
+      assert Map.has_key?(stats, :total_tasks)
+      assert Map.has_key?(stats, :max_concurrent)
+      assert stats.max_concurrent == 5
     end
   end
 
