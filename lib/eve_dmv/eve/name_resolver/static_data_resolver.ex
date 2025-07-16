@@ -23,8 +23,8 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
       iex> StaticDataResolver.ship_name(587)
       "Rifter"
 
-      iex> StaticDataResolver.ship_name(999999)
-      "Unknown Ship (999999)"
+      iex> StaticDataResolver.ship_name(999_999)
+      "Unknown Ship (999_999)"
   """
   @spec ship_name(integer() | nil) :: String.t()
   def ship_name(nil), do: "Unknown Ship"
@@ -40,11 +40,11 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
 
   ## Examples
 
-      iex> StaticDataResolver.item_name(12058)
+      iex> StaticDataResolver.item_name(12_058)
       "Medium Shield Extender II"
 
-      iex> StaticDataResolver.item_name(999999)
-      "Unknown Item (999999)"
+      iex> StaticDataResolver.item_name(999_999)
+      "Unknown Item (999_999)"
   """
   @spec item_name(integer()) :: String.t()
   def item_name(type_id) when is_integer(type_id) do
@@ -57,11 +57,11 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
 
   ## Examples
 
-      iex> StaticDataResolver.system_name(30000142)
+      iex> StaticDataResolver.system_name(30_000_142)
       "Jita"
 
-      iex> StaticDataResolver.system_name(999999)
-      "Unknown System (999999)"
+      iex> StaticDataResolver.system_name(999_999)
+      "Unknown System (999_999)"
   """
   @spec system_name(integer()) :: String.t()
   def system_name(system_id) when is_integer(system_id) do
@@ -106,7 +106,7 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
 
   ## Examples
 
-      iex> StaticDataResolver.system_security(30000142)
+      iex> StaticDataResolver.system_security(30_000_142)
       %{class: "highsec", color: "text-green-400", status: 0.946}
   """
   @spec system_security(integer()) :: %{

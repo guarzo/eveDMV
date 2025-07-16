@@ -14,11 +14,11 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
   to ensure high-quality shared battle content for the EVE Online community.
   """
 
-  require Logger
   alias EveDmv.Contexts.BattleAnalysis
   alias EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator
   alias EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector
 
+  require Logger
   # Battle sharing parameters
   # Maximum characters in battle description
   @max_description_length 2000
@@ -38,6 +38,24 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
       embed_template: "https://player.twitch.tv/?video={video_id}&parent={domain}"
     }
   }
+
+  # Options struct for create_battle_report_record
+  defmodule BattleReportOptions do
+    @moduledoc false
+    defstruct [
+      :battle_id,
+      :creator_id,
+      :title,
+      :description,
+      :videos,
+      :highlights,
+      :auto_analysis,
+      :visibility,
+      :tags,
+      :allow_comments,
+      :allow_ratings
+    ]
+  end
 
   @doc """
   Creates a shareable battle report with comprehensive analysis and media integration.
@@ -98,19 +116,19 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
            process_tactical_highlights(tactical_highlights, battle_data),
          {:ok, auto_analysis} <- generate_auto_analysis(battle_data),
          {:ok, battle_report} <-
-           create_battle_report_record(
-             battle_data.battle_id,
-             creator_character_id,
-             title,
-             description,
-             validated_videos,
-             processed_highlights,
-             auto_analysis,
-             visibility,
-             tags,
-             allow_comments,
-             allow_ratings
-           ),
+           create_battle_report_record(%BattleReportOptions{
+             battle_id: battle_data.battle_id,
+             creator_id: creator_character_id,
+             title: title,
+             description: description,
+             videos: validated_videos,
+             highlights: processed_highlights,
+             auto_analysis: auto_analysis,
+             visibility: visibility,
+             tags: tags,
+             allow_comments: allow_comments,
+             allow_ratings: allow_ratings
+           }),
          {:ok, final_report} <- enrich_battle_report(battle_report) do
       end_time = System.monotonic_time(:millisecond)
       duration_ms = end_time - start_time
@@ -605,34 +623,22 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
     end
   end
 
-  defp create_battle_report_record(
-         battle_id,
-         creator_id,
-         title,
-         description,
-         videos,
-         highlights,
-         auto_analysis,
-         visibility,
-         tags,
-         allow_comments,
-         allow_ratings
-       ) do
+  defp create_battle_report_record(%BattleReportOptions{} = opts) do
     # Create the battle report record
     battle_report = %{
       report_id: generate_report_id(),
-      battle_id: battle_id,
-      creator_character_id: creator_id,
-      title: title || generate_auto_title(auto_analysis),
-      description: validate_description(description),
-      video_links: videos,
-      tactical_highlights: highlights,
-      auto_analysis: auto_analysis,
-      visibility: visibility,
-      tags: validate_tags(tags),
+      battle_id: opts.battle_id,
+      creator_character_id: opts.creator_id,
+      title: opts.title || generate_auto_title(opts.auto_analysis),
+      description: validate_description(opts.description),
+      video_links: opts.videos,
+      tactical_highlights: opts.highlights,
+      auto_analysis: opts.auto_analysis,
+      visibility: opts.visibility,
+      tags: validate_tags(opts.tags),
       community_features: %{
-        allow_comments: allow_comments,
-        allow_ratings: allow_ratings,
+        allow_comments: opts.allow_comments,
+        allow_ratings: opts.allow_ratings,
         comments: [],
         ratings: []
       },

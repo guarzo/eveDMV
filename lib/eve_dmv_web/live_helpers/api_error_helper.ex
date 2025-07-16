@@ -1,19 +1,17 @@
 defmodule EveDmvWeb.LiveHelpers.ApiErrorHelper do
+  import Phoenix.Component
+  alias EveDmvWeb.Components.ApiErrorHandler
+
   @moduledoc """
   Helper functions for handling API errors in LiveViews.
 
   Import this module in LiveViews to get convenient error handling functions.
   """
 
-  alias EveDmvWeb.Components.ApiErrorHandler
   # import Phoenix.LiveView
-  import Phoenix.Component
-
   @doc """
   Convenience macro for handling API calls with automatic error handling.
-
   ## Examples
-
       with_api_error_handling socket, "Loading character data" do
         case CharacterService.fetch_character(character_id) do
           {:ok, character} -> {:ok, assign(socket, :character, character)}
@@ -106,7 +104,6 @@ defmodule EveDmvWeb.LiveHelpers.ApiErrorHelper do
           # Wait before retry
           delay = ApiErrorHandler.get_retry_delay(error)
           :timer.sleep(delay)
-
           api_call_with_retry_impl(socket, api_function, context, max_retries, attempt + 1)
         else
           error

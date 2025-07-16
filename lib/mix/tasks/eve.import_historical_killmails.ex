@@ -195,9 +195,10 @@ defmodule Mix.Tasks.Eve.ImportHistoricalKillmails do
     end
 
     victim = killmail["victim"]
-    victim_fields = ["character_id", "corporation_id", "alliance_id", "ship_type_id"]
+    # alliance_id is optional (value 0 means no alliance)
+    required_victim_fields = ["character_id", "corporation_id", "ship_type_id"]
 
-    for field <- victim_fields do
+    for field <- required_victim_fields do
       unless Map.has_key?(victim, field) do
         raise "Missing victim field: #{field}"
       end
@@ -296,14 +297,23 @@ defmodule Mix.Tasks.Eve.ImportHistoricalKillmails do
   end
 
   defp transform_killmail(archive_data) do
+    hash = get_or_generate_hash(archive_data)
+
+    # Debug logging
+    if is_nil(hash) or hash == "" do
+      Logger.error("Hash is nil or empty for killmail #{archive_data["killmail_id"]}")
+      Logger.error("Archive data keys: #{inspect(Map.keys(archive_data))}")
+      Logger.error("Hash field value: #{inspect(archive_data["hash"])}")
+    end
+
     %{
       killmail_id: archive_data["killmail_id"],
-      killmail_hash: get_or_generate_hash(archive_data),
+      killmail_hash: hash,
       killmail_time: parse_datetime(archive_data["killmail_time"]),
       solar_system_id: archive_data["solar_system_id"],
       victim_character_id: normalize_id(archive_data["victim"]["character_id"]),
       victim_corporation_id: normalize_id(archive_data["victim"]["corporation_id"]),
-      victim_alliance_id: normalize_id(archive_data["victim"]["alliance_id"]),
+      victim_alliance_id: normalize_id(Map.get(archive_data["victim"], "alliance_id", 0)),
       victim_ship_type_id: archive_data["victim"]["ship_type_id"],
       attacker_count: length(archive_data["Attackers"]),
       raw_data: archive_data,
@@ -330,12 +340,45 @@ defmodule Mix.Tasks.Eve.ImportHistoricalKillmails do
         # Generate a hash from killmail ID and time
         id = archive_data["killmail_id"]
         timestamp = archive_data["killmail_time"]
+
+        if is_nil(id) or is_nil(timestamp) do
+          raise "Cannot generate hash: killmail_id or killmail_time is nil"
+        end
+
         hash_data = "#{id}-#{timestamp}"
         hash = :crypto.hash(:sha256, hash_data)
         Base.encode16(hash, case: :lower)
 
-      hash ->
+      "" ->
+        # Empty string hash - generate one
+        id = archive_data["killmail_id"]
+        timestamp = archive_data["killmail_time"]
+
+        if is_nil(id) or is_nil(timestamp) do
+          raise "Cannot generate hash: killmail_id or killmail_time is nil"
+        end
+
+        hash_data = "#{id}-#{timestamp}"
+        hash = :crypto.hash(:sha256, hash_data)
+        Base.encode16(hash, case: :lower)
+
+      hash when is_binary(hash) ->
+        # Valid hash exists
         hash
+
+      _ ->
+        # Invalid hash type - generate one
+        Logger.warning("Invalid hash type: #{inspect(archive_data["hash"])}, generating new hash")
+        id = archive_data["killmail_id"]
+        timestamp = archive_data["killmail_time"]
+
+        if is_nil(id) or is_nil(timestamp) do
+          raise "Cannot generate hash: killmail_id or killmail_time is nil"
+        end
+
+        hash_data = "#{id}-#{timestamp}"
+        hash = :crypto.hash(:sha256, hash_data)
+        Base.encode16(hash, case: :lower)
     end
   end
 

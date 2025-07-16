@@ -1,23 +1,21 @@
 # credo:disable-for-this-file Credo.Check.Readability.StrictModuleLayout
 defmodule EveDmvWeb.KillFeedLive do
+  import EveDmvWeb.Components.StatsGridComponent
+  import EveDmvWeb.Components.EmptyStateComponent
+  import EveDmvWeb.Components.PageHeaderComponent
+  import EveDmvWeb.EveImageComponents
+  alias EveDmv.Killmails.DisplayService
+  alias EveDmv.Presentation.Formatters
+
   @moduledoc """
   Public live kill feed displaying real-time killmail data.
   """
 
   use EveDmvWeb, :live_view
 
-  alias EveDmv.Killmails.DisplayService
-  alias EveDmv.Presentation.Formatters
-
   # Import reusable components
-  import EveDmvWeb.Components.StatsGridComponent
-  import EveDmvWeb.Components.EmptyStateComponent
-  import EveDmvWeb.Components.PageHeaderComponent
-  import EveDmvWeb.EveImageComponents
-
   @topic "kill_feed"
   @feed_limit 50
-
   # Load current user from session on mount (optional for public pages)
   on_mount({EveDmvWeb.AuthLive, :load_from_session_optional})
 
@@ -48,7 +46,6 @@ defmodule EveDmvWeb.KillFeedLive do
       ) do
     # Add new killmail to the stream
     new_killmail = DisplayService.build_killmail_display(killmail_data)
-
     # Update stats
     current_killmails = [new_killmail | socket.assigns.killmails]
     limited_killmails = Enum.take(current_killmails, @feed_limit)
@@ -94,7 +91,6 @@ defmodule EveDmvWeb.KillFeedLive do
           Enum.filter(socket.assigns.killmails, &(&1.solar_system_id == system_id_int))
 
         socket = stream(socket, :killmail_stream, filtered_killmails, reset: true)
-
         {:noreply, socket}
 
       _ ->

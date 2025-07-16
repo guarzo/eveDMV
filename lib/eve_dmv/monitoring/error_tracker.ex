@@ -7,10 +7,10 @@ defmodule EveDmv.Monitoring.ErrorTracker do
   """
 
   use GenServer
-  require Logger
-
   alias EveDmv.Error
   alias EveDmv.ErrorCodes
+
+  require Logger
 
   @table_name :error_tracker_ets
   # Keep errors for 24 hours

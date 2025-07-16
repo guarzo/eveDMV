@@ -1,4 +1,10 @@
 defmodule EveDmv.Integrations.ShipIntelligenceBridge do
+  import Ecto.Query
+  alias EveDmv.Analytics.ModuleClassifier
+  alias EveDmv.Analytics.FleetAnalyzer
+  alias EveDmv.Repo
+  require Logger
+
   @moduledoc """
   Bridge module that integrates the new ship intelligence features with existing systems.
 
@@ -11,17 +17,9 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
   Acts as the central integration point for ship intelligence across the application.
   """
 
-  require Logger
-  alias EveDmv.Analytics.ModuleClassifier
-  alias EveDmv.Analytics.FleetAnalyzer
-  alias EveDmv.Repo
-  import Ecto.Query
-
   ## Battle Analysis Integration
-
   @doc """
   Enhanced ship role analysis for battle performance evaluation.
-
   Takes killmail data and provides enhanced role classification using our
   advanced ModuleClassifier, supplementing the existing estimated fitting approach.
   """
@@ -31,7 +29,6 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
     try do
       # Extract killmail data from battle
       killmails = extract_killmails_from_battle(battle_data)
-
       # Analyze each ship's role using our ModuleClassifier
       enhanced_roles =
         killmails
@@ -84,7 +81,6 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
 
   @doc """
   Enhance existing ship performance data with ship intelligence insights.
-
   Takes performance data from ShipPerformanceAnalyzer and enriches it with
   role classification confidence, doctrine compliance, and tactical insights.
   """
@@ -93,13 +89,10 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
       # Get ship role classification from our system
       ship_type_id = ship_perf.ship_instance.ship_type_id
       enhanced_role = get_ship_role_classification(ship_type_id)
-
       # Calculate role execution score based on classification confidence
       role_execution_score = calculate_enhanced_role_execution(ship_perf, enhanced_role)
-
       # Add doctrine compliance assessment
       doctrine_compliance = assess_doctrine_compliance(ship_perf, battle_context)
-
       # Enhance tactical analysis
       enhanced_tactical = enhance_tactical_analysis(ship_perf, enhanced_role)
 
@@ -112,19 +105,15 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
   end
 
   ## Character Intelligence Integration
-
   @doc """
   Calculate ship specialization scores for character intelligence.
-
   Analyzes a character's killmail history to determine ship specialization
   and expertise levels based on performance and usage patterns.
   """
   def calculate_ship_specialization(character_id, options \\ []) do
     days_back = Keyword.get(options, :days_back, 90)
     min_killmails = Keyword.get(options, :min_killmails, 5)
-
     Logger.debug("Calculating ship specialization for character #{character_id}")
-
     # Get character's recent killmail data
     killmail_data = get_character_killmail_data(character_id, days_back)
 
@@ -143,13 +132,10 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
     else
       # Analyze ship usage patterns
       ship_usage = analyze_ship_usage_patterns(killmail_data)
-
       # Calculate role preferences
       role_preferences = calculate_role_preferences(killmail_data)
-
       # Determine expertise level
       expertise_level = determine_expertise_level(killmail_data, ship_usage)
-
       # Calculate ship mastery scores
       ship_mastery = calculate_ship_mastery_scores(killmail_data)
 
@@ -168,7 +154,6 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
 
   @doc """
   Get ship preference insights for character threat assessment.
-
   Returns preferred ship classes, tactical roles, and effectiveness patterns.
   """
   def get_character_ship_preferences(character_id) do
@@ -196,16 +181,13 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
   end
 
   ## Fleet Operations Integration
-
   @doc """
   Enhanced fleet composition analysis for fleet operations.
-
   Provides detailed fleet analysis including role distribution,
   doctrine identification, and tactical recommendations.
   """
   def analyze_fleet_for_operations(fleet_composition) when is_list(fleet_composition) do
     Logger.debug("Analyzing fleet composition for operations")
-
     # Extract ship type IDs
     ship_types = extract_ship_types_from_composition(fleet_composition)
 
@@ -253,10 +235,8 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
   end
 
   ## Surveillance Profiles Integration
-
   @doc """
   Enhanced ship filtering for surveillance profiles.
-
   Provides advanced ship classification filters based on tactical roles,
   threat levels, and doctrine compliance.
   """
@@ -316,7 +296,6 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
   end
 
   ## Private Helper Functions
-
   defp extract_killmails_from_battle(battle_data) do
     # Extract killmail data from battle structure
     case battle_data do
@@ -334,7 +313,6 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
   defp classify_ship_role_from_killmail(killmail) do
     try do
       classification = ModuleClassifier.classify_ship_role(killmail)
-
       ship_type_id = extract_ship_type_id(killmail)
 
       {:ok,
@@ -402,7 +380,6 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
     # Enhanced role execution based on classification confidence and performance
     base_score = ship_perf.role_effectiveness.effectiveness_score || 0.5
     confidence_bonus = (enhanced_role.confidence_score || 0.0) * 0.3
-
     min(1.0, base_score + confidence_bonus)
   end
 
@@ -563,16 +540,13 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
   defp calculate_individual_ship_mastery(killmails) do
     # Simple mastery calculation based on usage frequency and consistency
     usage_count = length(killmails)
-
     # Time span analysis
     times = Enum.map(killmails, & &1.killmail_time)
     time_span_days = calculate_time_span_days(times)
     consistency = usage_count / max(time_span_days, 1)
-
     # Max score at 20+ killmails
     base_score = min(1.0, usage_count / 20.0)
     consistency_bonus = min(0.3, consistency * 0.1)
-
     base_score + consistency_bonus
   end
 
@@ -620,7 +594,6 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
   defp assess_engagement_suitability(analysis) do
     threat_level = analysis.threat_level
     doctrine_confidence = analysis.doctrine.confidence
-
     overall_suitability = threat_level / 10.0 * 0.7 + doctrine_confidence * 0.3
 
     cond do

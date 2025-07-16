@@ -1,4 +1,7 @@
 defmodule EveDmvWeb.Components.ErrorHandler do
+  import Phoenix.Component, only: [assign: 3]
+  require Logger
+
   @moduledoc """
   Standardized error handling utilities for EVE DMV LiveView components.
 
@@ -6,14 +9,9 @@ defmodule EveDmvWeb.Components.ErrorHandler do
   and proper logging with user context.
   """
 
-  require Logger
-  import Phoenix.Component, only: [assign: 3]
-
   @doc """
   Safely executes a database operation with proper error handling and logging.
-
   ## Examples
-
       case safe_database_operation(socket, "load_character_data", fn ->
         CharacterService.get_character(character_id)
       end) do
@@ -49,9 +47,7 @@ defmodule EveDmvWeb.Components.ErrorHandler do
 
   @doc """
   Safely executes an external API call with timeout and retry logic.
-
   ## Examples
-
       case safe_external_call(socket, "fetch_character_info", fn ->
         EsiClient.get_character(character_id)
       end, timeout: 5000, max_retries: 2) do
@@ -64,15 +60,12 @@ defmodule EveDmvWeb.Components.ErrorHandler do
     user_context = get_user_context(socket)
     timeout = Keyword.get(opts, :timeout, 5000)
     max_retries = Keyword.get(opts, :max_retries, 3)
-
     execute_with_retry(operation_name, operation_func, user_context, max_retries, timeout)
   end
 
   @doc """
   Validates and parses an integer parameter with proper error handling.
-
   ## Examples
-
       case validate_integer_param("character_id", params["character_id"]) do
         {:ok, character_id} -> # proceed with valid integer
         {:error, message} -> # handle validation error
@@ -100,9 +93,7 @@ defmodule EveDmvWeb.Components.ErrorHandler do
 
   @doc """
   Validates a string parameter with length and format constraints.
-
   ## Examples
-
       case validate_string_param("search_query", params["query"], min_length: 2, max_length: 100) do
         {:ok, query} -> # proceed with valid string
         {:error, message} -> # handle validation error
@@ -133,9 +124,7 @@ defmodule EveDmvWeb.Components.ErrorHandler do
 
   @doc """
   Handles errors in LiveView event handlers with consistent flash messaging.
-
   ## Examples
-
       def handle_event("save_profile", params, socket) do
         case ProfileService.save_profile(params) do
           {:ok, profile} -> 
@@ -148,16 +137,13 @@ defmodule EveDmvWeb.Components.ErrorHandler do
   def handle_event_error(socket, operation_name, error) do
     user_context = get_user_context(socket)
     error_message = format_user_error(error)
-
     log_with_context(:error, "Failed to #{operation_name}: #{inspect(error)}", user_context)
     put_flash(socket, :error, error_message)
   end
 
   @doc """
   Handles successful operations with optional success messaging.
-
   ## Examples
-
       socket = handle_event_success(socket, "Profile saved successfully")
   """
   def handle_event_success(socket, message \\ nil) do
@@ -170,9 +156,7 @@ defmodule EveDmvWeb.Components.ErrorHandler do
 
   @doc """
   Adds error recovery options to the socket for user-initiated retries.
-
   ## Examples
-
       socket = add_error_recovery(socket, :load_data, "Failed to load character data")
   """
   def add_error_recovery(socket, operation_atom, error_message) do
@@ -193,9 +177,7 @@ defmodule EveDmvWeb.Components.ErrorHandler do
 
   @doc """
   Logs a message with user context information.
-
   ## Examples
-
       log_with_context(:info, "User performed action", socket)
   """
   def log_with_context(level, message, socket_or_context) do
@@ -217,7 +199,6 @@ defmodule EveDmvWeb.Components.ErrorHandler do
   end
 
   # Private helper functions
-
   defp execute_with_retry(operation_name, operation_func, user_context, retries_left, timeout) do
     task = Task.async(operation_func)
 

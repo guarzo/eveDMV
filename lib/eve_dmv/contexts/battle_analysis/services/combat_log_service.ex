@@ -6,11 +6,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.CombatLogService do
   reducing dependencies in the resource module.
   """
 
-  require Logger
-
   alias EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser
   alias EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser
   alias EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting
+
+  require Logger
 
   @doc """
   Processes file upload and prepares combat log data.

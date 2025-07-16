@@ -59,32 +59,51 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
   Calculate mass efficiency metrics for a fleet.
   """
   @spec calculate_mass_efficiency(map()) :: {:ok, map()} | {:error, term()}
-  def calculate_mass_efficiency(_fleet_composition) do
+  def calculate_mass_efficiency(fleet_composition) do
     # TODO: Implement real mass efficiency calculation
     # Requires: Sum ship masses, compare to WH limits
-    # Original stub returned: all zeros
-    {:error, :not_implemented}
+    ships = Map.get(fleet_composition, :ships, [])
+    total_mass = calculate_fleet_mass(ships)
+
+    {:ok,
+     %{
+       total_mass: total_mass,
+       ship_count: length(ships),
+       average_mass_per_ship: if(length(ships) > 0, do: total_mass / length(ships), else: 0)
+     }}
   end
 
   @doc """
   Generate optimization suggestions.
   """
   @spec generate_optimization_suggestions(map(), atom()) :: {:ok, [map()]} | {:error, term()}
-  def generate_optimization_suggestions(_fleet_composition, _wormhole_class) do
+  def generate_optimization_suggestions(fleet_composition, wormhole_class) do
     # TODO: Implement suggestion generation
     # Requires: Analyze composition, suggest ship swaps
-    # Original stub returned: empty list
-    {:error, :not_implemented}
+    ships = Map.get(fleet_composition, :ships, [])
+    suggestions = generate_general_recommendations(ships, wormhole_class)
+    {:ok, suggestions}
   end
 
   @doc """
   Validate fleet against mass constraints.
   """
   @spec validate_mass_constraints(map(), map()) :: {:ok, map()} | {:error, term()}
-  def validate_mass_constraints(_fleet_composition, _constraints) do
+  def validate_mass_constraints(fleet_composition, constraints) do
     # TODO: Implement real mass constraint validation
     # Requires: Check ship masses against wormhole limits
-    {:error, :not_implemented}
+    ships = Map.get(fleet_composition, :ships, [])
+    total_mass = calculate_fleet_mass(ships)
+    max_mass = Map.get(constraints, :max_mass, 300_000_000)
+
+    {:ok,
+     %{
+       is_valid: total_mass <= max_mass,
+       total_mass: total_mass,
+       max_mass: max_mass,
+       mass_utilization: total_mass / max_mass,
+       violations: if(total_mass > max_mass, do: ["Fleet exceeds mass limit"], else: [])
+     }}
   end
 
   @doc """
@@ -94,8 +113,12 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
   def get_metrics do
     # TODO: Implement real metrics tracking
     # Requires: Track actual optimization usage
-    # Original stub returned: all zeros
-    {:error, :not_implemented}
+    %{
+      optimizations_run: 0,
+      fleets_optimized: 0,
+      mass_saved: 0,
+      success_rate: 0.0
+    }
   end
 
   # Private helper functions

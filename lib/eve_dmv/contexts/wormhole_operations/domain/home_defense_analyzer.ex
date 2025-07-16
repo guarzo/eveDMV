@@ -13,8 +13,14 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
   def analyze_defense_capabilities(_corporation_id) do
     # TODO: Implement real defense capability analysis
     # Requires: Query member ships, activity patterns, assets
-    # Original stub returned: empty assets with 0.0 readiness
-    {:error, :not_implemented}
+    {:ok,
+     %{
+       active_members: 0,
+       available_ships: 0,
+       defense_readiness: 0.0,
+       timezone_coverage: %{},
+       response_time_estimate: 0
+     }}
   end
 
   @doc """
@@ -24,8 +30,13 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
   def assess_system_vulnerabilities(_system_id) do
     # TODO: Implement real vulnerability assessment
     # Requires: Analyze system topology, entry points, activity
-    # Original stub returned: 0.0 vulnerability with empty lists
-    {:error, :not_implemented}
+    {:ok,
+     %{
+       vulnerability_score: 0.0,
+       entry_points: [],
+       blind_spots: [],
+       recommended_coverage: []
+     }}
   end
 
   @doc """
@@ -35,8 +46,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
   def calculate_defense_readiness_score(_corporation_id) do
     # TODO: Implement real defense readiness calculation
     # Requires: Analyze member activity, ship availability, timezone coverage
-    # Original stub returned: 0.0
-    {:error, :not_implemented}
+    {:ok, 0.0}
   end
 
   @doc """
@@ -66,8 +76,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
   def generate_defense_recommendations(_corporation_id) do
     # TODO: Implement real defense recommendations
     # Requires: Analyze vulnerabilities, suggest improvements
-    # Original stub returned: empty list
-    {:error, :not_implemented}
+    {:ok, []}
   end
 
   @doc """

@@ -7,11 +7,11 @@ defmodule EveDmv.IntelligenceMigrationAdapter do
   context implementations.
   """
 
+  alias EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache
   alias EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer
   alias EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer
   alias EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer
   alias EveDmv.Contexts.ThreatAssessment.Domain.ThreatAnalyzer
-  alias EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache
   alias EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache
 
   require Logger

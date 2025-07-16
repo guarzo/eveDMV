@@ -11,9 +11,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
   to detect phase transitions and classify combat periods.
   """
 
-  require Logger
   alias EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor
 
+  require Logger
   # Phase detection parameters optimized for EVE PvP
   # Minimum time for a valid phase
   @min_phase_duration_seconds 30

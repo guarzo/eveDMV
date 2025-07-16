@@ -13,17 +13,27 @@ defmodule EveDmv.Killmails.TestDataGenerator do
 
     killmail_id = Keyword.get(opts, :killmail_id, Enum.random(100_000_000..999_999_999))
     timestamp = Keyword.get(opts, :timestamp, DateTime.utc_now())
+    system_id = Keyword.get(opts, :solar_system_id, Enum.random(30_000_000..30_005_000))
+
+    # Map some common system IDs to names for testing
+    system_name =
+      case system_id do
+        30_000_142 -> "Jita"
+        30_000_144 -> "Rens"
+        30_002_187 -> "Amarr"
+        _ -> "System-#{system_id}"
+      end
 
     %{
       "killmail_id" => killmail_id,
       "killmail_hash" => generate_hash(killmail_id, timestamp),
       "timestamp" => DateTime.to_iso8601(timestamp),
       "system" => %{
-        "id" => 30_000_142,
-        "name" => "Jita"
+        "id" => system_id,
+        "name" => system_name
       },
-      "solar_system_id" => 30_000_142,
-      "solar_system_name" => "Jita",
+      "solar_system_id" => system_id,
+      "solar_system_name" => system_name,
       "ship" => %{
         "type_id" => 22_452,
         "name" => "Rifter"

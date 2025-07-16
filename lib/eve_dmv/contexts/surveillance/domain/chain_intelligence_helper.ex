@@ -246,7 +246,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
 
   defp get_recent_system_activity(system_id, opts) do
     hours = Keyword.get(opts, :hours, 2)
-    since = DateTime.utc_now() |> DateTime.add(-hours * 3600, :second)
+    since = DateTime.add(DateTime.utc_now(), -hours * 3600, :second)
 
     query = """
     SELECT k.killmail_id, k.killmail_time, k.victim_ship_type_id, k.attacker_count
@@ -304,7 +304,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
     # Count dangerous ship types
     dangerous_ships =
       Enum.count(ships, fn ship ->
-        ship_name = Map.get(ship, "name", "") |> String.downcase()
+        ship_name = String.downcase(Map.get(ship, "name", ""))
         ship_name =~ ~r/(dread|carrier|super|titan|recon|interceptor|dictor)/
       end)
 
@@ -348,8 +348,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
     # Simple classification based on known patterns
     # In a real implementation, this would check against standings, known hostile lists, etc.
     Enum.filter(inhabitants, fn inhabitant ->
-      name = Map.get(inhabitant, "name", "") |> String.downcase()
-      corp = Map.get(inhabitant, "corporation", "") |> String.downcase()
+      name = String.downcase(Map.get(inhabitant, "name", ""))
+      corp = String.downcase(Map.get(inhabitant, "corporation", ""))
 
       # Check for known hostile patterns (simplified)
       name =~ ~r/(hostile|enemy|pirate)/ or corp =~ ~r/(pirate|hostile)/

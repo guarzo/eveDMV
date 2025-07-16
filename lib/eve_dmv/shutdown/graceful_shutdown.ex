@@ -7,12 +7,12 @@ defmodule EveDmv.Shutdown.GracefulShutdown do
   """
 
   use GenServer
-  require Logger
   alias EveDmv.Logging.StructuredLogger
   alias EveDmv.Workers.BackgroundTaskSupervisor
   alias EveDmv.Workers.UITaskSupervisor
   alias EveDmv.Workers.RealtimeTaskSupervisor
 
+  require Logger
   # Shutdown phases with timeouts (in milliseconds)
   @shutdown_phases [
     {:stop_accepting_work, 2_000},

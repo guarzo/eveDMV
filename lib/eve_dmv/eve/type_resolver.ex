@@ -21,10 +21,10 @@ defmodule EveDmv.Eve.TypeResolver do
 
   ## Examples
 
-      iex> TypeResolver.resolve_item_type(23378)
-      {:ok, %ItemType{type_id: 23378, type_name: "Machariel", ...}}
+      iex> TypeResolver.resolve_item_type(23_378)
+      {:ok, %ItemType{type_id: 23_378, type_name: "Machariel", ...}}
 
-      iex> TypeResolver.resolve_item_type(999999)
+      iex> TypeResolver.resolve_item_type(999_999)
       {:error, :not_found}
   """
   @spec resolve_item_type(integer()) :: {:ok, ItemType.t()} | {:error, term()}
@@ -45,7 +45,7 @@ defmodule EveDmv.Eve.TypeResolver do
 
   ## Examples
 
-      iex> TypeResolver.resolve_item_types([23378, 32970, 79520])
+      iex> TypeResolver.resolve_item_types([23_378, 32_970, 79_520])
       {:ok, [%ItemType{...}, %ItemType{...}, %ItemType{...}]}
   """
   @spec resolve_item_types([integer()]) :: {:ok, [ItemType.t()]}

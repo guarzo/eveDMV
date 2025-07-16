@@ -5,7 +5,7 @@ defmodule EveDmv.Killmails.KillmailRawTest do
 
   use EveDmv.DataCase, async: true
 
-  import Ash.Expr, only: [expr: 1]
+  import Ash.Expr
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Api
@@ -148,16 +148,31 @@ defmodule EveDmv.Killmails.KillmailRawTest do
       # Should be the same record
       assert killmail1.killmail_id == killmail2.killmail_id
 
-      # Verify only one record exists
-      count = KillmailRaw |> Ash.Query.new() |> Ash.count!(domain: Api)
+      # Verify only one record exists with this killmail_id
+      count =
+        KillmailRaw
+        |> Ash.Query.new()
+        |> Ash.Query.filter(killmail_id == ^attrs.killmail_id)
+        |> Ash.count!(domain: Api)
+
       assert count == 1
     end
   end
 
   describe "read queries" do
     setup do
-      # Create test data
-      killmails = TestDataGenerator.generate_multiple_killmails(3)
+      # Create test data with unique system IDs to avoid collision with other tests
+      # Using process pid to ensure uniqueness
+      test_system_id = (32_000_000 + System.unique_integer([:positive])) |> rem(100_000)
+      other_system_id = test_system_id + 1
+
+      killmails = [
+        TestDataGenerator.generate_sample_killmail(solar_system_id: test_system_id),
+        TestDataGenerator.generate_sample_killmail(solar_system_id: test_system_id),
+        TestDataGenerator.generate_sample_killmail(solar_system_id: test_system_id),
+        TestDataGenerator.generate_sample_killmail(solar_system_id: other_system_id),
+        TestDataGenerator.generate_sample_killmail(solar_system_id: other_system_id)
+      ]
 
       for killmail_data <- killmails do
         attrs = %{
@@ -190,7 +205,7 @@ defmodule EveDmv.Killmails.KillmailRawTest do
         Ash.create!(KillmailRaw, attrs, domain: Api)
       end
 
-      :ok
+      %{test_system_id: test_system_id, other_system_id: other_system_id}
     end
 
     test "recent_kills returns killmails sorted by time" do
@@ -200,22 +215,23 @@ defmodule EveDmv.Killmails.KillmailRawTest do
         |> Ash.Query.for_read(:recent_kills)
         |> Ash.read!(domain: Api)
 
-      assert length(killmails) == 3
+      assert length(killmails) >= 5
 
       # Should be sorted by killmail_time desc
       times = Enum.map(killmails, & &1.killmail_time)
       assert times == Enum.sort(times, &(DateTime.compare(&1, &2) != :lt))
     end
 
-    test "by_system filters by solar system" do
+    test "by_system filters by solar system", %{test_system_id: test_system_id} do
       killmails =
         KillmailRaw
         |> Ash.Query.new()
-        |> Ash.Query.for_read(:by_system, %{system_id: 30_000_142})
+        |> Ash.Query.for_read(:by_system, %{system_id: test_system_id})
         |> Ash.read!(domain: Api)
 
+      # We created exactly 3 killmails with the test_system_id
       assert length(killmails) == 3
-      assert Enum.all?(killmails, &(&1.solar_system_id == 30_000_142))
+      assert Enum.all?(killmails, &(&1.solar_system_id == test_system_id))
     end
   end
 

@@ -16,7 +16,7 @@ defmodule EveDmv.Eve.EsiUtils do
 
   ## Examples
 
-      iex> safe_esi_call("character", fn -> EsiClient.get_character(12345) end)
+      iex> safe_esi_call("character", fn -> EsiClient.get_character(12_345) end)
       {:ok, %{name: "Test Character"}}
 
       iex> safe_esi_call("character", fn -> {:error, :not_found} end)

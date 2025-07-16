@@ -1,4 +1,9 @@
 defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
+  import Ecto.Query
+  alias EveDmv.Analytics.ModuleClassifier
+  alias EveDmv.Repo
+  require Logger
+
   @moduledoc """
   Background worker for continuous ship role pattern analysis.
 
@@ -10,18 +15,11 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
   """
 
   use GenServer
-  require Logger
-
-  alias EveDmv.Analytics.ModuleClassifier
-  alias EveDmv.Repo
-  import Ecto.Query
-
   # Configuration
   # 6 hours
   @analysis_interval_ms 1000 * 60 * 60 * 6
   @recent_data_days 7
   @min_sample_size 5
-
   defmodule State do
     @moduledoc false
     defstruct [
@@ -32,7 +30,6 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
   end
 
   ## Public API
-
   @doc """
   Start the ship role analysis worker.
   """
@@ -57,21 +54,17 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
 
   @doc """
   Perform ship role analysis for recent killmails.
-
   This is the main analysis function that can be called directly
   or by the background worker.
   """
   def perform_analysis do
     Logger.info("Starting ship role analysis for recent killmails")
-
     start_time = System.monotonic_time(:millisecond)
 
     try do
       # Get recent killmail data grouped by ship type
       ship_killmail_data = fetch_recent_killmail_data()
-
       Logger.info("Analyzing #{map_size(ship_killmail_data)} ship types")
-
       # Analyze each ship type
       results =
         ship_killmail_data
@@ -83,13 +76,10 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
 
       # Update cached ship role classifications
       update_stats = update_ship_role_cache(results)
-
       # Generate meta trend report
       trend_stats = generate_meta_trend_report(results)
-
       # Record analysis history
       record_analysis_history(results)
-
       end_time = System.monotonic_time(:millisecond)
       duration_ms = end_time - start_time
 
@@ -104,7 +94,6 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
       }
 
       Logger.info("Ship role analysis completed in #{duration_ms}ms: #{inspect(stats)}")
-
       {:ok, stats}
     rescue
       error ->
@@ -114,7 +103,6 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
   end
 
   ## GenServer Callbacks
-
   @impl true
   def init(_opts) do
     # Schedule the first analysis
@@ -127,7 +115,6 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
     }
 
     Logger.info("Ship role analysis worker started")
-
     {:ok, state}
   end
 
@@ -156,7 +143,6 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
         # Still schedule next analysis even if this one failed
         timer_ref = schedule_next_analysis()
         new_state = %{state | timer_ref: timer_ref}
-
         {:reply, {:error, reason}, new_state}
     end
   end
@@ -184,24 +170,20 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
 
       {:error, reason} ->
         Logger.error("Scheduled ship role analysis failed: #{inspect(reason)}")
-
         # Still schedule next analysis
         timer_ref = schedule_next_analysis()
         new_state = %{state | timer_ref: timer_ref}
-
         {:noreply, new_state}
     end
   end
 
   ## Private Functions
-
   defp schedule_next_analysis do
     Process.send_after(self(), :run_analysis, @analysis_interval_ms)
   end
 
   defp fetch_recent_killmail_data do
     cutoff_date = DateTime.utc_now() |> DateTime.add(-@recent_data_days, :day)
-
     # Query recent killmails with victim ship data
     query =
       from(k in "killmails_raw",
@@ -215,14 +197,12 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
       )
 
     killmails = Repo.all(query)
-
     # Group by ship type
     Enum.group_by(killmails, & &1.victim_ship_type_id)
   end
 
   defp analyze_ship_type(ship_type_id, killmails) do
     Logger.debug("Analyzing ship type #{ship_type_id} with #{length(killmails)} killmails")
-
     # Skip analysis if insufficient data
     if length(killmails) < @min_sample_size do
       Logger.debug("Skipping ship type #{ship_type_id}: insufficient sample size")
@@ -239,13 +219,10 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
         if length(role_classifications) > 0 do
           # Aggregate role distributions
           aggregated_roles = aggregate_role_distributions(role_classifications)
-
           # Calculate confidence score based on consistency and sample size
           confidence_score = calculate_confidence_score(role_classifications, length(killmails))
-
           # Determine primary role
           primary_role = determine_primary_role(aggregated_roles)
-
           # Detect meta trends (compare with historical data)
           meta_trend = detect_meta_trend(ship_type_id, aggregated_roles)
 
@@ -313,14 +290,11 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
   defp calculate_confidence_score(classifications, sample_size) do
     # Calculate consistency score (lower variance = higher confidence)
     consistency_score = calculate_consistency(classifications)
-
     # Sample size bonus (more data = higher confidence, with diminishing returns)
     sample_factor = :math.log(sample_size + 1) / 10
     sample_score = min(1.0, sample_factor)
-
     # Combine scores with weights
     base_score = consistency_score * 0.7 + sample_score * 0.3
-
     # Apply minimum and maximum bounds
     min(1.0, max(0.1, base_score))
   end
@@ -334,7 +308,6 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
       primary_roles = Enum.map(classifications, &determine_primary_role/1)
       role_counts = Enum.frequencies(primary_roles)
       most_common_count = Enum.max(Map.values(role_counts))
-
       # Consistency is the percentage of classifications that agree on primary role
       most_common_count / length(classifications)
     end
@@ -398,7 +371,6 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
       end)
 
     Logger.info("Cache update complete: #{updated_count} updated, #{failed_count} failed")
-
     %{updated: updated_count, failed: failed_count}
   end
 

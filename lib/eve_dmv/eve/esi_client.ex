@@ -16,18 +16,18 @@ defmodule EveDmv.Eve.EsiClient do
   ## Usage
 
       # Character operations
-      {:ok, character} = EsiClient.get_character(95465499)
-      {:ok, characters} = EsiClient.get_characters([95465499, 90267367])
+      {:ok, character} = EsiClient.get_character(95_465_499)
+      {:ok, characters} = EsiClient.get_characters([95_465_499, 90_267_367])
 
       # Corporation operations
-      {:ok, corp} = EsiClient.get_corporation(98388312)
+      {:ok, corp} = EsiClient.get_corporation(98_388_312)
 
       # Universe operations
-      {:ok, system} = EsiClient.get_solar_system(30002187)
-      {:ok, alliance} = EsiClient.get_alliance(99000001)
+      {:ok, system} = EsiClient.get_solar_system(30_002_187)
+      {:ok, alliance} = EsiClient.get_alliance(99_000_001)
 
       # Market operations
-      {:ok, orders} = EsiClient.get_market_orders(34, 10000002)
+      {:ok, orders} = EsiClient.get_market_orders(34, 10_000_002)
   """
 
   alias EveDmv.Eve.EsiCharacterClient

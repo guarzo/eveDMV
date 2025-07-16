@@ -1,4 +1,7 @@
 defmodule EveDmv.StaticData.ShipReferenceImporter do
+  import Ecto.Query
+  alias EveDmv.Repo
+
   @moduledoc """
   Imports ship reference data from docs/reference/ship_info.md.
 
@@ -7,14 +10,9 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
   baseline role classifications and fleet doctrine information.
   """
 
-  alias EveDmv.Repo
-  import Ecto.Query
-
   @ship_info_file "docs/reference/ship_info.md"
-
   @doc """
   Import all ship reference data from ship_info.md.
-
   Returns {:ok, stats} on success with import statistics.
   """
   def import_all do
@@ -38,7 +36,6 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
 
   @doc """
   Parse ship data from ship_info.md content.
-
   Returns {:ok, ship_data_list} where each item contains:
   - type_id: EVE type ID
   - name: Ship name
@@ -50,7 +47,6 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
   """
   def parse_ship_data(content) do
     ships = []
-
     # Parse different ship sections
     ships = ships ++ parse_battleships(content)
     ships = ships ++ parse_battlecruisers(content)
@@ -63,7 +59,6 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
     ships = ships ++ parse_recon_ships(content)
     ships = ships ++ parse_interceptors(content)
     ships = ships ++ parse_command_destroyers(content)
-
     {:ok, ships}
   end
 
@@ -135,7 +130,6 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
   end
 
   # Private helper functions for parsing specific ship categories
-
   defp parse_battleships(_content) do
     [
       # Tech I Battleships
@@ -507,7 +501,6 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
   end
 
   # Database interaction functions
-
   def import_ship_patterns(ship_data) do
     {inserted, updated} =
       Enum.reduce(ship_data, {0, 0}, fn ship, {ins, upd} ->

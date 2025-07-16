@@ -131,11 +131,31 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
   Get all intelligence scores for a character.
   """
   @spec get_intelligence_scores(integer()) ::
-          {:ok, map()} | {:error, :not_found | :not_implemented}
-  def get_intelligence_scores(_character_id) do
-    # TODO: Implement fetching all score types for character
-    # Original stub returned: {:ok, %{}}
-    {:error, :not_implemented}
+          {:ok, map()} | {:error, :not_found}
+  def get_intelligence_scores(character_id) do
+    score_types = [
+      :danger_rating,
+      :hunter_score,
+      :fleet_commander_score,
+      :solo_pilot_score,
+      :awox_risk_score
+    ]
+
+    scores =
+      Enum.reduce(score_types, %{}, fn score_type, acc ->
+        cache_key = {:intelligence_score, character_id, score_type}
+
+        case Cache.get(@cache_type, cache_key) do
+          {:ok, score_data} -> Map.put(acc, score_type, score_data)
+          :miss -> acc
+        end
+      end)
+
+    if map_size(scores) == 0 do
+      {:error, :not_found}
+    else
+      {:ok, scores}
+    end
   end
 
   @doc """

@@ -1,4 +1,10 @@
 defmodule EveDmvWeb.SurveillanceProfilesLive do
+  import EveDmvWeb.SurveillanceProfilesLive.Helpers
+  alias EveDmv.Contexts.Surveillance
+  alias EveDmv.Contexts.Surveillance.Domain.MatchingEngine
+  alias EveDmv.Intelligence.WandererClient
+  require Logger
+
   @moduledoc """
   LiveView for managing surveillance profiles.
 
@@ -11,17 +17,8 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
   use EveDmvWeb, :live_view
 
-  alias EveDmv.Contexts.Surveillance
-  alias EveDmv.Contexts.Surveillance.Domain.MatchingEngine
-  alias EveDmv.Intelligence.WandererClient
-  import EveDmvWeb.SurveillanceProfilesLive.Helpers
-
-  require Logger
-
   @preview_killmail_limit 1000
-
   # LiveView lifecycle
-
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     if connected?(socket) do
@@ -59,7 +56,6 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   end
 
   # Event handlers
-
   @impl Phoenix.LiveView
   def handle_event("new_profile", _params, socket) do
     {:noreply, push_patch(socket, to: ~p"/surveillance-profiles?action=new")}
@@ -110,7 +106,6 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   @impl Phoenix.LiveView
   def handle_event("save_profile", %{"profile" => profile_params}, socket) do
     editing_profile = socket.assigns.editing_profile
-
     # Prepare profile data with our new criteria format
     profile_data = %{
       name: Map.get(profile_params, "name", ""),
@@ -313,7 +308,6 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
     if editing_profile do
       {index_int, _} = Integer.parse(index)
-
       # Get current filter condition
       conditions = Map.get(editing_profile.criteria, :conditions, [])
       Logger.debug("Current conditions: #{inspect(conditions)}")
@@ -321,7 +315,6 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
       if index_int < length(conditions) do
         condition = Enum.at(conditions, index_int)
         current_ids = Map.get(condition, String.to_existing_atom(field), [])
-
         # Convert current IDs to string for display, add new ID
         current_string = Enum.join(current_ids, ", ")
 
@@ -336,9 +329,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
           update_filter_in_criteria(editing_profile.criteria, index_int, field, new_value)
 
         updated_profile = %{editing_profile | criteria: updated_criteria}
-
         Logger.debug("Updated profile criteria: #{inspect(updated_profile.criteria)}")
-
         # Don't trigger preview update immediately to avoid re-rendering during click
         socket =
           socket
@@ -347,7 +338,6 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
         # Schedule preview update after a small delay to let the UI settle
         Process.send_after(self(), {:delayed_preview_update, updated_profile}, 100)
-
         {:noreply, socket}
       else
         Logger.debug(
@@ -369,7 +359,6 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   end
 
   # PubSub handlers
-
   @impl Phoenix.LiveView
   def handle_info({:profile_updated, _profile}, socket) do
     {:noreply, load_profiles(socket)}
@@ -386,7 +375,6 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   def handle_info({:update_preview, profile}, socket) do
     # Get last 1000 killmails for testing
     preview_result = test_profile_against_killmails(profile)
-
     socket = assign(socket, :filter_preview, preview_result)
     {:noreply, socket}
   end
@@ -397,7 +385,6 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   end
 
   # Private functions
-
   defp load_profiles(socket) do
     case safe_call(fn -> Surveillance.list_profiles([]) end) do
       {:ok, profiles} ->
@@ -588,7 +575,6 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
     try do
       # Get recent killmails for testing (simplified - would normally query database)
       test_killmails = get_recent_killmails_for_testing(@preview_killmail_limit)
-
       # Test criteria against killmails
       matches =
         test_killmails

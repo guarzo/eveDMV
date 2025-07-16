@@ -6,11 +6,11 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
   and tactical intelligence gathering.
   """
 
-  alias EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer
-  alias EveDmv.Utils.TimezoneAnalyzer
   alias EveDmv.Api
-  alias EveDmv.Killmails.Participant
+  alias EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer
   alias EveDmv.Eve.NameResolver
+  alias EveDmv.Killmails.Participant
+  alias EveDmv.Utils.TimezoneAnalyzer
 
   require Ash.Query
 
@@ -610,9 +610,6 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
 
   # Generate fallback intelligence analysis from participant data when fleet data is insufficient
   defp generate_fallback_analysis(corporation_id) do
-    alias EveDmv.Api
-    alias EveDmv.Killmails.Participant
-
     # Get recent participant data for analysis
     ninety_days_ago = DateTime.utc_now() |> DateTime.add(-90, :day)
 

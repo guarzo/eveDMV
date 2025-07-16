@@ -1,4 +1,7 @@
 defmodule EveDmv.Contexts.BoundedContext do
+  alias __MODULE__, as: BoundedContext
+  alias EveDmv.Infrastructure.EventBus
+
   @moduledoc """
   Base behaviour for bounded contexts in the EVE DMV system.
 
@@ -6,33 +9,25 @@ defmodule EveDmv.Contexts.BoundedContext do
   and anti-corruption layers.
   """
 
-  alias __MODULE__, as: BoundedContext
-  alias EveDmv.Infrastructure.EventBus
-
   @doc """
   Called when the context is starting up.
   Should return a specification for starting child processes.
   """
   @callback child_spec(opts :: keyword()) :: Supervisor.child_spec()
-
   @doc """
   Called to initialize the context's event subscriptions.
   Should return a list of {event_type, handler} tuples.
   """
   @callback event_subscriptions() :: [{atom(), (struct() -> any())}]
-
   @doc """
   Called to validate that the context can handle a specific command.
   """
   @callback can_handle?(command :: struct()) :: boolean()
-
   @doc """
   Called to get the context's public API module.
   """
   @callback api_module() :: module()
-
   @optional_callbacks [child_spec: 1, event_subscriptions: 0, can_handle?: 1]
-
   defmacro __using__(opts) do
     context_name = Keyword.get(opts, :name) || raise "Context name required"
 
@@ -53,10 +48,6 @@ defmodule EveDmv.Contexts.BoundedContext do
 
   defp inject_imports_and_aliases do
     quote do
-      import EveDmv.Contexts.BoundedContext, only: [defapi: 2, defcommand: 2, defevent: 2]
-      alias EveDmv.Contexts.BoundedContext
-      alias EveDmv.DomainEvents
-      alias EveDmv.Infrastructure.EventBus
     end
   end
 

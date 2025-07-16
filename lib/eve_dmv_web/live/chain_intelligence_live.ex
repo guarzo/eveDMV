@@ -1,6 +1,17 @@
 # credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 # credo:disable-for-this-file Credo.Check.Readability.StrictModuleLayout
 defmodule EveDmvWeb.ChainIntelligenceLive do
+  import EveDmvWeb.Components.PageHeaderComponent
+  import EveDmvWeb.Components.EmptyStateComponent
+  alias EveDmv.Api
+  alias EveDmv.Intelligence.ChainAnalysis.ChainMonitor
+  alias EveDmv.Intelligence.ChainAnalysis.ChainTopology
+  alias EveDmv.Intelligence.ChainConnection
+  alias EveDmv.Intelligence.SystemInhabitant
+  alias EveDmv.IntelligenceMigrationAdapter
+  alias EveDmvWeb.Helpers.TimeFormatter
+  require Ash.Query
+
   @moduledoc """
   LiveView for real-time wormhole chain intelligence surveillance.
 
@@ -10,22 +21,8 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
 
   use EveDmvWeb, :live_view
 
-  alias EveDmv.Api
-  alias EveDmv.Intelligence.ChainAnalysis.ChainMonitor
-  alias EveDmv.Intelligence.ChainAnalysis.ChainTopology
-  alias EveDmv.Intelligence.ChainConnection
-  alias EveDmv.Intelligence.SystemInhabitant
-  alias EveDmv.IntelligenceMigrationAdapter
-  alias EveDmvWeb.Helpers.TimeFormatter
-
-  require Ash.Query
-
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
-
   # Import reusable components
-  import EveDmvWeb.Components.PageHeaderComponent
-  import EveDmvWeb.Components.EmptyStateComponent
-
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     # Subscribe to chain intelligence updates
@@ -137,7 +134,6 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
   def handle_info({:pilot_analysis, character_id, analysis}, socket) do
     # Update the chain data with pilot analysis from Intelligence Engine
     chain_data = socket.assigns.chain_data
-
     # Transform Intelligence Engine result to format expected by UI
     threat_summary = transform_threat_analysis(analysis)
 
@@ -208,11 +204,9 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
   end
 
   # Private Functions
-
   defp transform_threat_analysis(intelligence_result) do
     # Transform Intelligence Engine threat analysis to format expected by chain UI
     threat_data = get_in(intelligence_result, [:analysis, :vulnerability_scan]) || %{}
-
     # Extract key threat metrics
     %{
       threat_level: determine_threat_level(threat_data),
@@ -354,17 +348,14 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
   defp threat_level_class(:neutral), do: "text-yellow-600 bg-yellow-50"
   defp threat_level_class(:friendly), do: "text-green-600 bg-green-50"
   defp threat_level_class(:unknown), do: "text-gray-600 bg-gray-50"
-
   defp threat_level_icon(:hostile), do: "⚠️"
   defp threat_level_icon(:neutral), do: "❓"
   defp threat_level_icon(:friendly), do: "✅"
   defp threat_level_icon(:unknown), do: "❔"
-
   defp mass_status_class(:stable), do: "text-green-600"
   defp mass_status_class(:destab), do: "text-yellow-600"
   defp mass_status_class(:critical), do: "text-red-600"
   defp mass_status_class(:unknown), do: "text-gray-600"
-
   defp time_since(datetime) when is_nil(datetime), do: "Never"
   defp time_since(datetime), do: TimeFormatter.format_relative_time(datetime)
 end

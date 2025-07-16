@@ -1,6 +1,15 @@
 # credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 # credo:disable-for-this-file Credo.Check.Readability.StrictModuleLayout
 defmodule EveDmvWeb.AllianceLive do
+  import EveDmvWeb.Components.PageHeaderComponent
+  import EveDmvWeb.Components.StatsGridComponent
+  import EveDmvWeb.Components.ErrorStateComponent
+  import EveDmvWeb.Components.EmptyStateComponent
+  import EveDmvWeb.FormatHelpers
+  alias EveDmv.Api
+  alias EveDmv.Killmails.Participant
+  alias EveDmvWeb.Helpers.TimeFormatter
+
   @moduledoc """
   LiveView for displaying alliance analytics dashboard.
 
@@ -10,24 +19,11 @@ defmodule EveDmvWeb.AllianceLive do
 
   use EveDmvWeb, :live_view
 
-  alias EveDmv.Api
-  alias EveDmv.Killmails.Participant
-
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
-
   # Import reusable components
-  import EveDmvWeb.Components.PageHeaderComponent
-  import EveDmvWeb.Components.StatsGridComponent
-  import EveDmvWeb.Components.ErrorStateComponent
-  import EveDmvWeb.Components.EmptyStateComponent
-  import EveDmvWeb.FormatHelpers
-
-  alias EveDmvWeb.Helpers.TimeFormatter
-
   # Helper function for template
   defp time_ago(datetime), do: TimeFormatter.format_relative_time(datetime)
-
   @impl Phoenix.LiveView
   def mount(%{"alliance_id" => alliance_id_str}, _session, socket) do
     case Integer.parse(alliance_id_str) do
@@ -67,7 +63,6 @@ defmodule EveDmvWeb.AllianceLive do
   @impl Phoenix.LiveView
   def handle_event("refresh", _params, socket) do
     alliance_id = socket.assigns.alliance_id
-
     # Reload all alliance data
     alliance_info = load_alliance_info(alliance_id)
     corporations = load_alliance_corporations(alliance_id)
@@ -90,7 +85,6 @@ defmodule EveDmvWeb.AllianceLive do
   end
 
   # Private helper functions
-
   defp load_alliance_info(alliance_id) do
     # Get alliance info from recent killmail data
     case Ash.read(Participant,
@@ -130,12 +124,10 @@ defmodule EveDmvWeb.AllianceLive do
           |> Enum.group_by(& &1.corporation_id)
           |> Enum.map(fn {corp_id, corp_participants} ->
             corp_name = corp_participants |> List.first() |> Map.get(:corporation_name, "Unknown")
-
             # Calculate corporation stats
             members = corp_participants |> Enum.map(& &1.character_id) |> Enum.uniq() |> length()
             kills = Enum.count(corp_participants, &(not &1.is_victim))
             losses = Enum.count(corp_participants, & &1.is_victim)
-
             # Get latest activity
             latest_activity =
               corp_participants
@@ -201,7 +193,6 @@ defmodule EveDmvWeb.AllianceLive do
         |> Enum.map(fn {character_id, participations} ->
           character_name = participations |> List.first() |> Map.get(:character_name, "Unknown")
           corp_name = participations |> List.first() |> Map.get(:corporation_name, "Unknown")
-
           kills = Enum.count(participations, &(not &1.is_victim))
           losses = Enum.count(participations, & &1.is_victim)
 
@@ -229,17 +220,14 @@ defmodule EveDmvWeb.AllianceLive do
     total_kills = corporations |> Enum.map(& &1.total_kills) |> Enum.sum()
     total_losses = corporations |> Enum.map(& &1.total_losses) |> Enum.sum()
     total_activity = corporations |> Enum.map(& &1.total_activity) |> Enum.sum()
-
     # Calculate averages
     avg_activity_per_corp =
       if total_corporations > 0, do: total_activity / total_corporations, else: 0
 
     avg_activity_per_member = if total_members > 0, do: total_activity / total_members, else: 0
     kd_ratio = if total_losses > 0, do: total_kills / total_losses, else: total_kills
-
     # Find most active corporation
     most_active_corp = Enum.max_by(corporations, & &1.total_activity, fn -> nil end)
-
     # Calculate activity distribution
     active_corporations = Enum.count(corporations, &(&1.total_activity > 10))
 
@@ -311,7 +299,6 @@ defmodule EveDmvWeb.AllianceLive do
     # Weighted efficiency score that considers both K/D and total activity
     kd_ratio = if losses > 0, do: kills / losses, else: kills
     activity_weight = :math.log(kills + losses + 1)
-
     kd_ratio * activity_weight
   end
 
@@ -328,7 +315,6 @@ defmodule EveDmvWeb.AllianceLive do
   end
 
   # Helper functions
-
   defp safe_float_round(value, precision) when is_float(value) do
     Float.round(value, precision)
   end
@@ -338,7 +324,6 @@ defmodule EveDmvWeb.AllianceLive do
   end
 
   # Template helper functions (using FormatHelpers for numbers)
-
   def corporation_activity_indicator(activity_count) do
     cond do
       activity_count >= 500 -> {"🔥", "text-red-400"}
@@ -368,7 +353,6 @@ defmodule EveDmvWeb.AllianceLive do
   end
 
   # Using TimeFormatter.format_friendly_time for time formatting
-
   def activity_type_badge(is_kill) do
     if is_kill do
       {"🎯 Kill", "bg-green-600 text-white"}

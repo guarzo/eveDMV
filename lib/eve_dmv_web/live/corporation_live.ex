@@ -1,15 +1,13 @@
 # credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 # credo:disable-for-this-file Credo.Check.Readability.StrictModuleLayout
 defmodule EveDmvWeb.CorporationLive do
-  @moduledoc """
-  LiveView for displaying corporation overview and member activity.
-
-  Shows corporation statistics, member list, recent activity, and
-  top performing pilots within the corporation.
-  """
-
-  use EveDmvWeb, :live_view
-
+  import EveDmvWeb.Components.ErrorStateComponent
+  import EveDmvWeb.Components.EmptyStateComponent
+  import EveDmvWeb.Components.ThreatLevelComponent
+  import EveDmvWeb.Components.ActivityOverviewComponent
+  import EveDmvWeb.Components.IskStatsComponent
+  import EveDmvWeb.EveImageComponents
+  import EveDmvWeb.FormatHelpers
   alias Ecto.Adapters.SQL
   alias EveDmv.Api
   alias EveDmv.Analytics.BattleDetector
@@ -20,24 +18,22 @@ defmodule EveDmvWeb.CorporationLive do
   alias EveDmv.Killmails.Participant
   alias EveDmv.Performance.BatchNameResolver
   alias EveDmv.Repo
-
+  alias EveDmvWeb.Helpers.TimeFormatter
   require Ash.Query
   require Logger
 
+  @moduledoc """
+  LiveView for displaying corporation overview and member activity.
+
+  Shows corporation statistics, member list, recent activity, and
+  top performing pilots within the corporation.
+  """
+
+  use EveDmvWeb, :live_view
+
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
-
   # Import reusable components
-  import EveDmvWeb.Components.ErrorStateComponent
-  import EveDmvWeb.Components.EmptyStateComponent
-  import EveDmvWeb.Components.ThreatLevelComponent
-  import EveDmvWeb.Components.ActivityOverviewComponent
-  import EveDmvWeb.Components.IskStatsComponent
-  import EveDmvWeb.EveImageComponents
-  import EveDmvWeb.FormatHelpers
-
-  alias EveDmvWeb.Helpers.TimeFormatter
-
   # Template helper functions
   def format_relative_time(datetime) do
     TimeFormatter.format_friendly_time(datetime)
@@ -57,7 +53,6 @@ defmodule EveDmvWeb.CorporationLive do
         # Load members directly for debugging
         members = load_corp_members(corporation_id)
         Logger.info("Loaded #{length(members)} members for corp #{corporation_id}")
-
         # Load recent activity directly for debugging
         recent_activity = load_recent_activity(corporation_id)
 
@@ -66,7 +61,6 @@ defmodule EveDmvWeb.CorporationLive do
         )
 
         corp_stats = calculate_corp_stats(members)
-
         # Get comprehensive corporation statistics (longer time period)
         comprehensive_stats = get_comprehensive_corp_stats(corporation_id)
 
@@ -90,7 +84,6 @@ defmodule EveDmvWeb.CorporationLive do
           )
 
         participation_data = calculate_participation_data(members, corp_info)
-
         # Load intelligence data directly for debugging
         intelligence_data =
           case CorporationIntelligence.get_corporation_intelligence_report(corporation_id) do
@@ -149,10 +142,8 @@ defmodule EveDmvWeb.CorporationLive do
   @impl Phoenix.LiveView
   def handle_event("refresh", _params, socket) do
     corporation_id = socket.assigns.corporation_id
-
     # Invalidate cache for this corporation
     AnalysisCache.invalidate_corporation(corporation_id)
-
     # Reload all corporation data (will cache fresh data)
     {:ok, corp_info} =
       AnalysisCache.get_or_compute(
@@ -163,10 +154,8 @@ defmodule EveDmvWeb.CorporationLive do
     # Load directly for debugging
     members = load_corp_members(corporation_id)
     Logger.info("Refresh: Loaded #{length(members)} members for corp #{corporation_id}")
-
     # Get comprehensive stats first
     comprehensive_stats = get_comprehensive_corp_stats(corporation_id)
-
     recent_activity = load_recent_activity(corporation_id)
 
     Logger.info(
@@ -195,7 +184,6 @@ defmodule EveDmvWeb.CorporationLive do
       )
 
     participation_data = calculate_participation_data(members, corp_info)
-
     # Reload intelligence data
     intelligence_data =
       case AnalysisCache.get_or_compute(
@@ -256,16 +244,13 @@ defmodule EveDmvWeb.CorporationLive do
     corporation_id = socket.assigns.corporation_id
     # Clear cache for this corporation
     AnalysisCache.invalidate_corporation(corporation_id)
-
     # Also clear any corporation intelligence cache
     CorporationIntelligence.clear_corporation_cache(corporation_id)
-
     # Redirect to reload the page with fresh data
     {:noreply, push_navigate(socket, to: ~p"/corporation/#{corporation_id}")}
   end
 
   # Private helper functions
-
   defp load_corporation_info(corporation_id) do
     # First try to get from ESI for accurate member count
     esi_info =
@@ -315,7 +300,6 @@ defmodule EveDmvWeb.CorporationLive do
     # Get corporation members with activity stats using optimized single query
     # Look back 90 days for comprehensive member data
     ninety_days_ago = DateTime.add(DateTime.utc_now(), -90, :day)
-
     Logger.info("Loading members for corp #{corporation_id} from #{ninety_days_ago}")
 
     case Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id})
@@ -327,17 +311,13 @@ defmodule EveDmvWeb.CorporationLive do
          |> Ash.read(domain: Api) do
       {:ok, participants} ->
         Logger.debug("Found #{length(participants)} participants for corp #{corporation_id}")
-
         # Filter out entries without character_id
         valid_participants = Enum.filter(participants, & &1.character_id)
         Logger.debug("#{length(valid_participants)} participants have character_id")
-
         # Preload all character names to avoid N+1 queries
         character_ids = valid_participants |> Enum.map(& &1.character_id) |> Enum.uniq()
         Logger.debug("Found #{length(character_ids)} unique character IDs")
-
         BatchNameResolver.preload_participant_names(valid_participants)
-
         # Group by character and aggregate stats
         members =
           valid_participants
@@ -388,16 +368,12 @@ defmodule EveDmvWeb.CorporationLive do
          |> Ash.read(domain: Api) do
       {:ok, participants} ->
         Logger.debug("Found #{length(participants)} recent activities for corp #{corporation_id}")
-
         # Filter out entries without character_id
         valid_participants = Enum.filter(participants, & &1.character_id)
-
         # Preload all names to avoid N+1 queries
         BatchNameResolver.preload_participant_names(valid_participants)
-
         # Load activities with solar system information
         activities = load_activities_with_system_info(valid_participants)
-
         Logger.debug("Returning #{length(activities)} recent activities")
         activities
 
@@ -412,14 +388,11 @@ defmodule EveDmvWeb.CorporationLive do
     total_kills = members |> Enum.map(& &1.total_kills) |> Enum.sum()
     total_losses = members |> Enum.map(& &1.total_losses) |> Enum.sum()
     total_activity = members |> Enum.map(& &1.total_activity) |> Enum.sum()
-
     # Calculate averages
     avg_activity = if total_members > 0, do: total_activity / total_members, else: 0
     kd_ratio = if total_losses > 0, do: total_kills / total_losses, else: total_kills
-
     # Find most active member
     most_active = Enum.max_by(members, & &1.total_activity, fn -> nil end)
-
     # Calculate activity distribution
     active_members = Enum.count(members, &(&1.total_activity > 5))
 
@@ -439,7 +412,6 @@ defmodule EveDmvWeb.CorporationLive do
   defp get_comprehensive_corp_stats(corporation_id) do
     # Look at 90 days of data for more accurate statistics
     ninety_days_ago = DateTime.add(DateTime.utc_now(), -90, :day)
-
     # First get participants
     case Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id})
          |> Ash.Query.filter(killmail_time >= ^ninety_days_ago)
@@ -462,12 +434,10 @@ defmodule EveDmvWeb.CorporationLive do
 
         # Calculate ISK values from killmails
         {isk_destroyed, isk_lost} = calculate_isk_values(kill_ids, loss_ids)
-
         # Calculate comprehensive statistics
         total_activities = length(participants)
         total_kills = length(kill_ids)
         total_losses = length(loss_ids)
-
         # Unique members over 90 days
         total_members =
           participants
@@ -478,7 +448,6 @@ defmodule EveDmvWeb.CorporationLive do
 
         # K/D ratio (ensure we get a float)
         kd_ratio = if total_losses > 0, do: total_kills / total_losses, else: total_kills / 1.0
-
         # Average activity per member (ensure we get a float)
         avg_activity = if total_members > 0, do: total_activities / total_members, else: 0.0
 
@@ -513,7 +482,6 @@ defmodule EveDmvWeb.CorporationLive do
     # Calculate real ISK values from killmail data
     isk_destroyed = calculate_isk_for_participants(kill_ids, false)
     isk_lost = calculate_isk_for_participants(loss_ids, true)
-
     {isk_destroyed, isk_lost}
   end
 
@@ -544,7 +512,6 @@ defmodule EveDmvWeb.CorporationLive do
   end
 
   # Helper functions
-
   defp round_value(value, precision) when is_number(value) do
     if is_float(value) do
       Float.round(value, precision)
@@ -565,7 +532,6 @@ defmodule EveDmvWeb.CorporationLive do
   end
 
   # Template helper functions (using FormatHelpers for numbers and ISK)
-
   def activity_indicator(activity_count) do
     cond do
       activity_count >= 50 -> {"🔥", "text-red-400"}
@@ -587,7 +553,6 @@ defmodule EveDmvWeb.CorporationLive do
   end
 
   # Using TimeFormatter.format_friendly_time for time formatting
-
   def activity_type_badge(is_kill) do
     if is_kill do
       {"🎯 Kill", "bg-green-600 text-white"}
@@ -606,7 +571,6 @@ defmodule EveDmvWeb.CorporationLive do
       {:ok, participants} ->
         # Group by solar system and aggregate stats
         system_groups = Enum.group_by(participants, & &1.solar_system_id)
-
         # Batch load all system names to avoid N+1 queries
         system_ids = Enum.filter(Map.keys(system_groups), & &1)
         system_names = get_system_names(system_ids)
@@ -636,7 +600,6 @@ defmodule EveDmvWeb.CorporationLive do
   defp load_victim_corporation_stats(corporation_id) do
     # Get top victim corporations using Ash
     thirty_days_ago = DateTime.add(DateTime.utc_now(), -30, :day)
-
     # First get all our corporation's attackers (is_victim = false)
     case Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id})
          |> Ash.Query.filter(killmail_time >= ^thirty_days_ago and is_victim == false)
@@ -644,7 +607,6 @@ defmodule EveDmvWeb.CorporationLive do
       {:ok, our_attackers} ->
         # Get unique killmail IDs where our corp attacked
         our_killmail_ids = our_attackers |> Enum.map(& &1.killmail_id) |> Enum.uniq()
-
         # Now get all victims from those killmails
         case Ash.Query.for_read(Participant, :read)
              |> Ash.Query.filter(killmail_id in ^our_killmail_ids and is_victim == true)
@@ -712,7 +674,6 @@ defmodule EveDmvWeb.CorporationLive do
         # Calculate overall coverage score (how many hours have activity)
         active_hours = hourly_distribution |> Map.keys() |> length()
         overall_coverage_score = active_hours / 24 * 100
-
         # Analyze timezone coverage strengths and gaps
         timezone_coverage = analyze_timezone_coverage(hourly_distribution)
 
@@ -738,10 +699,8 @@ defmodule EveDmvWeb.CorporationLive do
   defp calculate_participation_data(members, corp_info) do
     # Use the actual number of members we have data for
     members_with_data = length(members)
-
     # Get the actual ESI member count
     total_corp_members = Map.get(corp_info || %{}, :member_count, members_with_data)
-
     # Use total corp members for participation rates if we have ESI data
     # This gives a more accurate representation of corp activity
     participation_base =
@@ -865,7 +824,6 @@ defmodule EveDmvWeb.CorporationLive do
 
     # Query for solar system IDs
     system_lookup = get_solar_systems_for_killmails(killmail_data)
-
     # Build activities with system info
     Enum.map(participants, fn p ->
       solar_system_id = Map.get(system_lookup, p.killmail_id)

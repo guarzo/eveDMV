@@ -15,9 +15,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
   5. **Multi-System Battle Merge**: Combines correlated battles into coherent narratives
   """
 
-  require Logger
   alias EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor
 
+  require Logger
   # Correlation parameters optimized for wormhole PvP
   # Wormhole chases can be longer
   @max_multi_system_gap_minutes 30

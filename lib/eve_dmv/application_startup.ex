@@ -6,8 +6,9 @@ defmodule EveDmv.ApplicationStartup do
   including DNS resolution, connectivity checks, and environment setup.
   """
 
-  require Logger
   alias EveDmv.Utils.DnsResolver
+
+  require Logger
 
   @doc """
   Run all startup initialization tasks.

@@ -14,11 +14,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
   to provide deep intelligence on wormhole space operations and PvP activities.
   """
 
-  require Logger
   alias EveDmv.Api
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor
 
+  require Logger
   # Cross-system analysis parameters
   # Minimum correlation for activity linking
   @activity_correlation_threshold 0.7

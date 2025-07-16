@@ -6,11 +6,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
   by parsing zkillboard URLs and fetching data from their API.
   """
 
-  require Logger
-  require Ash.Query
-
   alias EveDmv.Api
   alias EveDmv.Killmails.KillmailRaw
+
+  require Logger
+  require Ash.Query
 
   @zkillboard_api_base "https://zkillboard.com/api"
   @esi_base "https://esi.evetech.net/latest"

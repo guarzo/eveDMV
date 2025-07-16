@@ -10,9 +10,9 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
   to provide comprehensive fleet analysis capabilities.
   """
 
-  require Logger
-  alias EveDmv.Repo
   import Ecto.Query
+  alias EveDmv.Repo
+  require Logger
 
   # Doctrine pattern definitions based on ship_info.md reference data
   @doctrine_patterns %{
@@ -329,25 +329,23 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
   def generate_recommendations(fleet_ships, ship_role_data \\ nil) do
     ship_role_data = ship_role_data || get_ship_role_data(fleet_ships)
 
-    recommendations = []
-
     # Logistics recommendations
     logistics_analysis = analyze_logistics_ratio(ship_role_data)
-    recommendations = recommendations ++ logistics_recommendations(logistics_analysis)
+    logistics_recs = logistics_recommendations(logistics_analysis)
 
     # Role balance recommendations
     role_balance = calculate_role_balance(ship_role_data)
-    recommendations = recommendations ++ role_balance_recommendations(role_balance)
+    role_balance_recs = role_balance_recommendations(role_balance)
 
     # Doctrine-specific recommendations
     doctrine_info = identify_doctrine(fleet_ships, ship_role_data)
-    recommendations = recommendations ++ doctrine_recommendations(doctrine_info, fleet_ships)
+    doctrine_recs = doctrine_recommendations(doctrine_info, fleet_ships)
 
     # Support coverage recommendations
     support_analysis = analyze_support_coverage(ship_role_data)
-    recommendations = recommendations ++ support_recommendations(support_analysis)
+    support_recs = support_recommendations(support_analysis)
 
-    recommendations
+    (logistics_recs ++ role_balance_recs ++ doctrine_recs ++ support_recs)
     |> Enum.uniq()
     # Limit to top 8 recommendations
     |> Enum.take(8)
@@ -693,31 +691,28 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
   defp logistics_recommendations(_), do: []
 
   defp role_balance_recommendations(role_balance) do
-    recommendations = []
-
-    # Check for missing critical roles
-    recommendations =
+    ewar_rec =
       if (role_balance["ewar"] || 0.0) < 0.05 do
-        ["Consider adding EWAR support for tactical advantage" | recommendations]
+        ["Consider adding EWAR support for tactical advantage"]
       else
-        recommendations
+        []
       end
 
-    recommendations =
+    tackle_rec =
       if (role_balance["tackle"] || 0.0) < 0.05 do
-        ["Add tackle ships for fleet control and engagement management" | recommendations]
+        ["Add tackle ships for fleet control and engagement management"]
       else
-        recommendations
+        []
       end
 
-    recommendations =
+    command_rec =
       if (role_balance["command"] || 0.0) < 0.02 do
-        ["Consider adding command ship for fleet bonuses" | recommendations]
+        ["Consider adding command ship for fleet bonuses"]
       else
-        recommendations
+        []
       end
 
-    recommendations
+    ewar_rec ++ tackle_rec ++ command_rec
   end
 
   defp doctrine_recommendations(%{confidence: confidence}, fleet_ships) when confidence < 0.50 do

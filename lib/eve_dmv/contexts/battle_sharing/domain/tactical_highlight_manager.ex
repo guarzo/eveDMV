@@ -14,9 +14,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
   and manage the most educational and strategically significant battle moments.
   """
 
-  require Logger
   alias EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor
 
+  require Logger
   # Highlight management parameters
   # Minimum confidence for auto-detection
   @highlight_confidence_threshold 0.7
@@ -104,6 +104,22 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
     combat_fundamentals: ["first_engagement", "key_elimination", "phase_transition"]
   }
 
+  # Options struct for create_highlight_record
+  defmodule HighlightOptions do
+    @moduledoc false
+    defstruct [
+      :battle_report_id,
+      :creator_id,
+      :timestamp,
+      :title,
+      :description,
+      :highlight_type,
+      :context,
+      :learning_integration,
+      :video_timestamp
+    ]
+  end
+
   @doc """
   Creates a tactical highlight for a battle report.
 
@@ -161,17 +177,17 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
          {:ok, learning_integration} <-
            integrate_learning_content(highlight_type, learning_notes),
          {:ok, tactical_highlight} <-
-           create_highlight_record(
-             battle_report_id,
-             creator_character_id,
-             timestamp,
-             title,
-             description,
-             highlight_type,
-             highlight_context,
-             learning_integration,
-             video_timestamp
-           ),
+           create_highlight_record(%HighlightOptions{
+             battle_report_id: battle_report_id,
+             creator_id: creator_character_id,
+             timestamp: timestamp,
+             title: title,
+             description: description,
+             highlight_type: highlight_type,
+             context: highlight_context,
+             learning_integration: learning_integration,
+             video_timestamp: video_timestamp
+           }),
          {:ok, enriched_highlight} <- enrich_highlight_data(tactical_highlight, battle_data) do
       end_time = System.monotonic_time(:millisecond)
       duration_ms = end_time - start_time
@@ -692,28 +708,18 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
     term in tactical_terms
   end
 
-  defp create_highlight_record(
-         battle_report_id,
-         creator_id,
-         timestamp,
-         title,
-         description,
-         highlight_type,
-         context,
-         learning_integration,
-         video_timestamp
-       ) do
+  defp create_highlight_record(%HighlightOptions{} = opts) do
     highlight = %{
       highlight_id: generate_highlight_id(),
-      battle_report_id: battle_report_id,
-      creator_character_id: creator_id,
-      timestamp: timestamp,
-      title: title,
-      description: description,
-      highlight_type: highlight_type,
-      tactical_context: context,
-      learning_integration: learning_integration,
-      video_timestamp: video_timestamp,
+      battle_report_id: opts.battle_report_id,
+      creator_character_id: opts.creator_id,
+      timestamp: opts.timestamp,
+      title: opts.title,
+      description: opts.description,
+      highlight_type: opts.highlight_type,
+      tactical_context: opts.context,
+      learning_integration: opts.learning_integration,
+      video_timestamp: opts.video_timestamp,
       status: :active,
       created_at: DateTime.utc_now(),
       updated_at: DateTime.utc_now()

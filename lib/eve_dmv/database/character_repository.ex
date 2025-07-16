@@ -25,8 +25,8 @@ defmodule EveDmv.Database.CharacterRepository do
 
   ## Examples
 
-      get_character_stats(98765)
-      get_character_stats(98765, bypass_cache: true)
+      get_character_stats(98_765)
+      get_character_stats(98_765, bypass_cache: true)
   """
   @spec get_character_stats(integer(), keyword()) :: {:ok, struct() | nil} | {:error, term()}
   def get_character_stats(character_id, opts \\ []) do
@@ -110,7 +110,7 @@ defmodule EveDmv.Database.CharacterRepository do
 
   ## Examples
 
-      batch_get_character_stats([98765, 98766, 98767])
+      batch_get_character_stats([98_765, 98_766, 98_767])
   """
   @spec batch_get_character_stats([integer()]) :: {:ok, [struct()]} | {:error, term()}
   def batch_get_character_stats(character_ids) when is_list(character_ids) do
@@ -137,8 +137,8 @@ defmodule EveDmv.Database.CharacterRepository do
 
   ## Examples
 
-      get_corporation_members(12345)
-      get_corporation_members(12345, active_only: true)
+      get_corporation_members(12_345)
+      get_corporation_members(12_345, active_only: true)
   """
   @spec get_corporation_members(integer(), keyword()) :: {:ok, [struct()]} | {:error, term()}
   def get_corporation_members(corporation_id, opts \\ []) do

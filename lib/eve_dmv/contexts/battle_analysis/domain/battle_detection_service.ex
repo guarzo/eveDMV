@@ -7,11 +7,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
   """
 
   import Ash.Query
-  require Logger
 
   alias EveDmv.Api
   alias EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor
   alias EveDmv.Killmails.KillmailRaw
+
+  require Logger
 
   # Battle detection parameters
   @max_time_gap_minutes 30
@@ -236,7 +237,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
       cond do
         # Close in time and same system (original logic)
         time_gap_minutes <= max_time_gap_minutes and
-            (not same_system_only or killmail.solar_system_id == current_cluster.system_id) ->
+            (same_system_only == false or killmail.solar_system_id == current_cluster.system_id) ->
           true
 
         # Longer time gap but significant participant overlap in same system

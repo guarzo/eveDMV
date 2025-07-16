@@ -1,5 +1,11 @@
 # credo:disable-for-this-file Credo.Check.Refactor.LongQuoteBlocks
 defmodule EveDmv.ErrorHandler do
+  import EveDmv.Result
+  alias EveDmv.Error
+  alias EveDmv.ErrorCodes
+  require Logger
+  require Logger
+
   @moduledoc """
   Behavior for consistent error handling across modules.
 
@@ -7,19 +13,13 @@ defmodule EveDmv.ErrorHandler do
   and telemetry integration for standardized error handling.
   """
 
-  alias EveDmv.Error
-  alias EveDmv.ErrorCodes
-  require Logger
-
   @type error_action ::
           {:retry, delay_ms :: non_neg_integer()}
           | {:fallback, value :: term()}
           | {:propagate, Error.t()}
           | :ignore
-
   @doc """
   Handle an error and determine the appropriate action.
-
   Return one of:
   - `{:retry, delay_ms}` - Retry the operation after delay
   - `{:fallback, value}` - Use fallback value and continue
@@ -27,26 +27,19 @@ defmodule EveDmv.ErrorHandler do
   - `:ignore` - Log the error but continue with nil result
   """
   @callback handle_error(Error.t(), context :: map()) :: error_action()
-
   @doc """
   Optional callback to configure error handling behavior.
-
   Return options like:
   - `max_retries` - Maximum number of retry attempts
   - `retry_backoff` - Retry backoff strategy (:linear | :exponential)
   - `enable_telemetry` - Whether to emit telemetry events
   """
   @callback error_config() :: keyword()
-
   @optional_callbacks [error_config: 0]
-
   defmacro __using__(opts \\ []) do
     quote location: :keep do
-      @behaviour EveDmv.ErrorHandler
-
-      import EveDmv.Result
       require Logger
-
+      @behaviour EveDmv.ErrorHandler
       # Default configuration
       def error_config do
         [
@@ -61,13 +54,11 @@ defmodule EveDmv.ErrorHandler do
 
       @doc """
       Execute operation with standardized error handling.
-
       Wraps the operation in try-catch and applies the module's error handling strategy.
       """
       def with_error_handling(operation, context \\ %{}) when is_function(operation, 0) do
         config = error_config()
         max_retries = Keyword.get(config, :max_retries, 3)
-
         do_with_error_handling(operation, context, 0, max_retries, config)
       end
 
@@ -259,7 +250,6 @@ defmodule EveDmv.ErrorHandler do
 
         # Cap at max_delay
         capped_delay = min(calculated_delay, max_delay)
-
         # Add jitter to prevent thundering herd
         if jitter_enabled do
           # Up to 10% jitter
@@ -273,16 +263,13 @@ defmodule EveDmv.ErrorHandler do
 
       # Allow overriding the default error handling
       defoverridable handle_error: 2, error_config: 0
-
       # Convenience functions for common error operations
-
       @doc """
       Create and return a standardized error result.
       """
       def error_result(code, message, opts \\ []) do
         context = Keyword.get(opts, :context, %{module: __MODULE__})
         details = Keyword.get(opts, :details, %{})
-
         error = Error.new(code, message, context: context, details: details)
         {:error, error}
       end
@@ -301,12 +288,10 @@ defmodule EveDmv.ErrorHandler do
 
   @doc """
   Global error handler for uncaught errors.
-
   Can be used as a fallback when no specific error handling is available.
   """
   def handle_global_error(error, context \\ %{}) do
     normalized = Error.normalize(error)
-
     # Always emit telemetry for global errors
     :telemetry.execute(
       [:eve_dmv, :error, :global],
@@ -327,7 +312,6 @@ defmodule EveDmv.ErrorHandler do
 
   @doc """
   Attach global error telemetry handlers.
-
   Should be called during application startup.
   """
   def attach_telemetry_handlers do

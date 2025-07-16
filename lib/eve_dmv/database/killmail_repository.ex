@@ -44,8 +44,8 @@ defmodule EveDmv.Database.KillmailRepository do
 
   ## Examples
 
-      get_by_character(98765, start_date: ~D[2024-01-01], end_date: ~D[2024-01-31])
-      get_by_character(98765, limit: 500, include_losses: false)
+      get_by_character(98_765, start_date: ~D[2024-01-01], end_date: ~D[2024-01-31])
+      get_by_character(98_765, limit: 500, include_losses: false)
   """
   @spec get_by_character(integer(), keyword()) :: {:ok, [struct()]} | {:error, term()}
   def get_by_character(character_id, opts \\ []) do
@@ -79,8 +79,8 @@ defmodule EveDmv.Database.KillmailRepository do
 
   ## Examples
 
-      get_by_corporation(12345, start_date: ~D[2024-01-01], end_date: ~D[2024-01-31])
-      get_by_corporation(12345, wormhole_only: true, limit: 200)
+      get_by_corporation(12_345, start_date: ~D[2024-01-01], end_date: ~D[2024-01-31])
+      get_by_corporation(12_345, wormhole_only: true, limit: 200)
   """
   @spec get_by_corporation(integer(), keyword()) :: {:ok, [struct()]} | {:error, term()}
   def get_by_corporation(corporation_id, opts \\ []) do
@@ -144,8 +144,8 @@ defmodule EveDmv.Database.KillmailRepository do
 
   ## Examples
 
-      get_kill_stats(character_id: 98765)
-      get_kill_stats(corporation_id: 12345, days_back: 30)
+      get_kill_stats(character_id: 98_765)
+      get_kill_stats(corporation_id: 12_345, days_back: 30)
   """
   @spec get_kill_stats(keyword()) :: {:ok, map()} | {:error, term()}
   def get_kill_stats(opts) do

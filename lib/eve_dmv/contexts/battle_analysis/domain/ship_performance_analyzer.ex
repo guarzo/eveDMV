@@ -15,9 +15,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   actionable intelligence for fleet commanders and individual pilots.
   """
 
-  require Logger
   alias EveDmv.Eve.NameResolver
 
+  require Logger
   # Performance analysis parameters
 
   @doc """

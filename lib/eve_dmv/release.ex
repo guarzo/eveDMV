@@ -83,7 +83,7 @@ defmodule EveDmv.Release do
           %{
             killmail_id: killmail["killmail_id"],
             killmail_time: parse_killmail_time(killmail["killmail_time"]),
-            killmail_hash: killmail["zkb"]["hash"],
+            killmail_hash: get_or_generate_hash(killmail),
             solar_system_id: killmail["solar_system_id"],
             victim_character_id: get_in(killmail, ["victim", "character_id"]),
             victim_corporation_id: get_in(killmail, ["victim", "corporation_id"]),
@@ -122,4 +122,34 @@ defmodule EveDmv.Release do
   end
 
   defp parse_killmail_time(_), do: DateTime.utc_now()
+
+  defp get_or_generate_hash(killmail) do
+    # Try multiple locations for the hash
+    cond do
+      # Try zkb.hash first (most common)
+      hash = get_in(killmail, ["zkb", "hash"]) ->
+        hash
+
+      # Try top-level hash
+      hash = killmail["hash"] ->
+        hash
+
+      # Generate a hash from killmail_id and killmail_time
+      true ->
+        killmail_id = killmail["killmail_id"]
+        killmail_time = killmail["killmail_time"]
+
+        if killmail_id && killmail_time do
+          # Generate deterministic hash from ID and time
+          :crypto.hash(:sha256, "#{killmail_id}:#{killmail_time}")
+          |> Base.encode16(case: :lower)
+          |> String.slice(0..39)
+        else
+          # Last resort: generate from entire killmail data
+          :crypto.hash(:sha256, :erlang.term_to_binary(killmail))
+          |> Base.encode16(case: :lower)
+          |> String.slice(0..39)
+        end
+    end
+  end
 end

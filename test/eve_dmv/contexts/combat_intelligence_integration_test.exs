@@ -44,11 +44,11 @@ defmodule EveDmv.Contexts.CombatIntelligenceIntegrationTest do
   end
 
   describe "AnalysisCache stub behavior" do
-    test "get_intelligence_scores returns not_implemented" do
+    test "get_intelligence_scores returns not_found when no cached scores" do
       character_id = 12_345
 
-      # AnalysisCache.get_intelligence_scores was updated to return {:error, :not_implemented}
-      assert {:error, :not_implemented} = AnalysisCache.get_intelligence_scores(character_id)
+      # AnalysisCache.get_intelligence_scores returns {:error, :not_found} when no cached data
+      assert {:error, :not_found} = AnalysisCache.get_intelligence_scores(character_id)
     end
   end
 

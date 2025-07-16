@@ -23,11 +23,11 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
 
   ## Examples
 
-      iex> EsiEntityResolver.character_name(95465499)
+      iex> EsiEntityResolver.character_name(95_465_499)
       "CCP Falcon"
 
-      iex> EsiEntityResolver.character_name(999999999)
-      "Unknown Character (999999999)"
+      iex> EsiEntityResolver.character_name(999_999_999)
+      "Unknown Character (999_999_999)"
   """
   @spec character_name(integer() | nil) :: String.t()
   def character_name(nil), do: "Unknown Character"
@@ -46,11 +46,11 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
 
   ## Examples
 
-      iex> EsiEntityResolver.corporation_name(98388312)
+      iex> EsiEntityResolver.corporation_name(98_388_312)
       "CCP Games"
 
-      iex> EsiEntityResolver.corporation_name(999999999)
-      "Unknown Corporation (999999999)"
+      iex> EsiEntityResolver.corporation_name(999_999_999)
+      "Unknown Corporation (999_999_999)"
   """
   @spec corporation_name(integer()) :: String.t()
   def corporation_name(corporation_id) when is_integer(corporation_id) do
@@ -67,11 +67,11 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
 
   ## Examples
 
-      iex> EsiEntityResolver.alliance_name(99005338)
+      iex> EsiEntityResolver.alliance_name(99_005_338)
       "Pandemic Horde"
 
-      iex> EsiEntityResolver.alliance_name(999999999)
-      "Unknown Alliance (999999999)"
+      iex> EsiEntityResolver.alliance_name(999_999_999)
+      "Unknown Alliance (999_999_999)"
   """
   @spec alliance_name(integer() | nil) :: String.t() | nil
   def alliance_name(nil), do: nil

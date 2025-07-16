@@ -7,8 +7,9 @@ defmodule EveDmv.Intelligence.WandererClient do
   """
 
   use GenServer
-  require Logger
   alias EveDmv.Utils.DnsResolver
+
+  require Logger
 
   defstruct [
     :auth_token,

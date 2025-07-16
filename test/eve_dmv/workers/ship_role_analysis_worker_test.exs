@@ -7,6 +7,10 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorkerTest do
   import Ecto.Query
 
   setup do
+    # Clean up any existing ship role patterns from other tests
+    Repo.delete_all("ship_role_patterns")
+    Repo.delete_all("role_analysis_history")
+
     # Start the worker for testing
     {:ok, pid} = ShipRoleAnalysisWorker.start_link()
 
@@ -54,6 +58,9 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorkerTest do
     end
 
     test "skips ships with insufficient sample size" do
+      # Clean up any existing test data
+      Repo.delete_all("killmails_raw")
+
       # Insert single killmail (below minimum sample size)
       insert_test_killmail(999_001, %{
         "victim" => %{
@@ -70,6 +77,9 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorkerTest do
     end
 
     test "calculates role distributions correctly" do
+      # Clean up any existing test data
+      Repo.delete_all("killmails_raw")
+
       # Insert multiple killmails for same ship with consistent roles
       ship_type_id = 999_002
 
@@ -297,6 +307,9 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorkerTest do
   # Helper functions
 
   defp setup_test_killmail_data do
+    # Clean up any existing test data first
+    Repo.delete_all("killmails_raw")
+
     # Create diverse test data
     # Megathron, Guardian, Sabre
     ship_types = [641, 11_987, 22_456]
@@ -357,8 +370,8 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorkerTest do
         killmail_id: killmail_id,
         killmail_time: killmail_time,
         killmail_hash: "test_hash_#{killmail_id}",
-        # Jita
-        solar_system_id: 30_000_142,
+        # Use a unique system ID for this test to avoid collisions
+        solar_system_id: 31_000_000 + killmail_id,
         victim_ship_type_id: victim_ship_type_id,
         attacker_count: 1,
         raw_data: raw_data,

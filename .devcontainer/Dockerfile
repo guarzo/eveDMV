@@ -1,59 +1,46 @@
-# Use official Elixir image based on Ubuntu
-FROM elixir:1.17
+# .devcontainer/Dockerfile
 
-# Install dependencies and configure locales
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    git \
-    curl \
-    wget \
-    ca-certificates \
-    gnupg \
-    lsb-release \
-    inotify-tools \
-    postgresql-client \
-    locales \
-    && locale-gen en_US.UTF-8 \
-    && rm -rf /var/lib/apt/lists/*
+# 1) Base image with Erlang/OTP + Elixir
+FROM elixir:1.17-otp-27
 
-# Set locale environment variables
-ENV LANG=en_US.UTF-8
-ENV LC_ALL=en_US.UTF-8
-ENV LANGUAGE=en_US:en
+# 2) Non-interactive & dev env
+ENV DEBIAN_FRONTEND=noninteractive \
+    MIX_ENV=dev \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8
 
-# Install Node.js LTS
-RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
-    && apt-get install -y nodejs
+# 3) Install OS tools, Postgres client, locales, Vim, Node.js LTS & Yarn, plus cleanup
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      build-essential \
+      ca-certificates \
+      curl \
+      git \
+      gnupg \
+      inotify-tools \
+      locales \
+      net-tools \
+      postgresql-client \
+      procps \
+      vim \
+ && locale-gen en_US.UTF-8 \
+ && curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
+ && apt-get install -y --no-install-recommends nodejs \
+ && npm install -g yarn @anthropic-ai/claude-code \
+ && mix local.hex --force \
+ && mix local.rebar --force \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
-# Create vscode user for development
-RUN groupadd --gid 1000 vscode \
-    && useradd --uid 1000 --gid vscode --shell /bin/bash --create-home vscode
-
-# Set up workspace directory
+# 4) Use /workspace to match devcontainer.json
 WORKDIR /workspace
-RUN chown -R vscode:vscode /workspace
 
-# Create directories that will be volume mounted to ensure proper ownership
-RUN mkdir -p /workspace/deps /workspace/_build && \
-    chown -R vscode:vscode /workspace/deps /workspace/_build
+# 5) Cache Elixir deps (invalidate only when mix.exs or mix.lock change)
+COPY mix.exs mix.lock ./
+RUN mix deps.get
 
-RUN npm install -g @anthropic-ai/claude-code
+# 6) Copy remainder of your app
+COPY . .
 
-# Switch to vscode user
-USER vscode
-
-# Install Hex and Rebar for Elixir
-RUN mix local.hex --force && \
-    mix local.rebar --force
-
-# Set up shell environment
-RUN echo 'export MIX_ENV=dev' >> ~/.bashrc && \
-    echo 'alias ll="ls -la"' >> ~/.bashrc && \
-    echo 'alias phoenix="mix phx.server"' >> ~/.bashrc && \
-    echo 'alias iex="iex -S mix"' >> ~/.bashrc
-
-# Create bash history file
-RUN touch ~/.bash_history
-
-# Default to bash
-CMD ["bash"] 
+# 7) Default to bash (you can always run `mix phx.server` via VSCode tasks)
+CMD ["bash"]

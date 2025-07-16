@@ -1005,7 +1005,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
       |> length()
 
     time_variety = analyze_engagement_time_variety(killmails)
-    ship_variety = extract_ship_types_used(killmails) |> map_size()
+    ship_variety = map_size(extract_ship_types_used(killmails))
 
     # Normalize and combine variance indicators
     # 20+ systems = max variance
@@ -1189,41 +1189,35 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
 
   defp identify_behavioral_patterns(killmails) do
     # Identify specific behavioral patterns
-    patterns = []
-
-    # Solo hunter pattern
-    patterns =
+    solo_hunter_pattern =
       if is_solo_hunter(killmails) do
-        [:solo_hunter | patterns]
+        [:solo_hunter]
       else
-        patterns
+        []
       end
 
-    # Fleet anchor pattern
-    patterns =
+    fleet_anchor_pattern =
       if is_fleet_anchor(killmails) do
-        [:fleet_anchor | patterns]
+        [:fleet_anchor]
       else
-        patterns
+        []
       end
 
-    # Opportunist pattern
-    patterns =
+    opportunist_pattern =
       if is_opportunist(killmails) do
-        [:opportunist | patterns]
+        [:opportunist]
       else
-        patterns
+        []
       end
 
-    # Specialist pattern
-    patterns =
+    specialist_pattern =
       if is_specialist(killmails) do
-        [:specialist | patterns]
+        [:specialist]
       else
-        patterns
+        []
       end
 
-    patterns
+    solo_hunter_pattern ++ fleet_anchor_pattern ++ opportunist_pattern ++ specialist_pattern
   end
 
   defp is_solo_hunter(killmails) do
@@ -1309,7 +1303,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     days_active =
       recent_killmails
       |> Enum.map(fn km ->
-        km.killmail_time |> NaiveDateTime.to_date()
+        NaiveDateTime.to_date(km.killmail_time)
       end)
       |> Enum.uniq()
       |> length()
@@ -1711,7 +1705,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
       0.0
     else
       n = length(values)
-      indices = 1..n |> Enum.to_list()
+      indices = Enum.to_list(1..n)
 
       sum_x = Enum.sum(indices)
       sum_y = Enum.sum(values)

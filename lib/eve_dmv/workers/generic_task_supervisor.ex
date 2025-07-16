@@ -1,21 +1,36 @@
 defmodule EveDmv.Workers.GenericTaskSupervisor do
   @moduledoc """
-  A generic task supervisor behavior that eliminates code duplication
-  across UI, Background, and Realtime task supervisors.
+  Generic task supervisor behavior for managing dynamic task execution.
 
-  This module provides a common supervision pattern with configurable
-  policies for timeout, concurrency, and monitoring.
-  """
+  Provides a behavior and shared implementation for task supervisors that need:
+  - Dynamic child management
+  - Capacity limits and per-user limits
+  - Telemetry and monitoring
+  - Timeout handling
 
-  @doc """
-  Defines the configuration for a task supervisor.
+  ## Usage
 
-  ## Required Configuration
-  - `:name` - The supervisor name (atom)
-  - `:max_duration` - Maximum task duration in milliseconds
+  defmodule MyTaskSupervisor do
+    use EveDmv.Workers.GenericTaskSupervisor
+
+    @impl true
+    def config do
+      [
+        telemetry_prefix: [:my_app, :tasks],
+        max_concurrent: 100,
+        max_duration: :timer.minutes(5),
+        warning_time: :timer.minutes(2)
+      ]
+    end
+  end
+
+  ## Configuration
+
+  Required configuration returned by `config/0` callback:
+  - `:telemetry_prefix` - Base telemetry event prefix
   - `:max_concurrent` - Maximum concurrent tasks
-  - `:warning_time` - Warning threshold in milliseconds
-  - `:telemetry_prefix` - Telemetry event prefix (list of atoms)
+  - `:max_duration` - Maximum task duration before termination
+  - `:warning_time` - Duration before warning is logged
 
   ## Optional Configuration
   - `:max_per_user` - Maximum tasks per user (for UI supervisors)
@@ -50,120 +65,109 @@ defmodule EveDmv.Workers.GenericTaskSupervisor do
       Starts a task with monitoring and telemetry.
       """
       def start_task(task_fn, options \\ [], metadata \\ %{}) do
-        config = config()
-
-        # Check capacity limits
-        if exceeds_capacity?(config, metadata) do
-          {:error, :capacity_exceeded}
-        else
-          # Start the task with monitoring
-          case DynamicSupervisor.start_child(__MODULE__, {Task, task_fn}) do
-            {:ok, pid} ->
-              # Register task in ETS instead of Process dictionary
-              task_info = %{
-                pid: pid,
-                started_at: System.monotonic_time(:millisecond),
-                metadata: metadata,
-                supervisor: __MODULE__
-              }
-
-              :ets.insert(@table_name, {pid, task_info})
-
-              # Start monitoring
-              monitor_task(pid, config, task_info)
-
-              {:ok, pid}
-
-            {:error, reason} ->
-              emit_telemetry(config[:telemetry_prefix], :failed, %{reason: reason}, metadata)
-              {:error, reason}
-          end
-        end
+        __MODULE__.TaskRunner.start_task(__MODULE__, @table_name, task_fn, options, metadata)
       end
 
       @doc """
       Gets statistics for all tasks managed by this supervisor.
       """
       def get_stats() do
-        config = config()
-
-        tasks = :ets.tab2list(@table_name)
-        now = System.monotonic_time(:millisecond)
-
-        running_tasks = Enum.count(tasks)
-
-        task_durations =
-          Enum.map(tasks, fn {_pid, task_info} ->
-            now - task_info.started_at
-          end)
-
-        avg_duration =
-          if running_tasks > 0 do
-            Enum.sum(task_durations) / running_tasks
-          else
-            0
-          end
-
-        %{
-          running_tasks: running_tasks,
-          max_concurrent: config[:max_concurrent],
-          capacity_utilization: running_tasks / config[:max_concurrent],
-          average_duration_ms: avg_duration
-        }
+        __MODULE__.TaskStats.get_stats(__MODULE__, @table_name)
       end
 
       @doc """
       Gets all running tasks with their metadata.
       """
       def get_running_tasks() do
-        :ets.tab2list(@table_name)
-        |> Enum.map(fn {pid, task_info} ->
-          %{
-            pid: pid,
-            duration_ms: System.monotonic_time(:millisecond) - task_info.started_at,
-            metadata: task_info.metadata
-          }
-        end)
+        __MODULE__.TaskStats.get_running_tasks(@table_name)
       end
 
-      # Private functions
+      # Define nested modules for implementation
+      defmodule TaskRunner do
+        @moduledoc false
+        @parent_module __MODULE__ |> Module.split() |> Enum.drop(-1) |> Module.concat()
 
-      defp exceeds_capacity?(config, metadata) do
-        current_count = :ets.info(@table_name, :size)
+        def start_task(supervisor, table_name, task_fn, _options, metadata) do
+          config = supervisor.config()
 
-        # Check global capacity
-        if current_count >= config[:max_concurrent] do
-          true
-        else
-          # Check per-user capacity if configured
-          case config[:max_per_user] do
-            nil ->
-              false
+          # Check capacity limits
+          if exceeds_capacity?(table_name, config, metadata) do
+            {:error, :capacity_exceeded}
+          else
+            # Start the task with monitoring
+            case DynamicSupervisor.start_child(supervisor, {Task, task_fn}) do
+              {:ok, pid} ->
+                register_task(table_name, pid, metadata, supervisor)
+                start_monitoring(pid, config, table_name, metadata)
+                {:ok, pid}
 
-            max_per_user ->
-              user_id = Map.get(metadata, :user_id)
-
-              if user_id do
-                user_task_count = count_user_tasks(user_id)
-                user_task_count >= max_per_user
-              else
-                false
-              end
+              {:error, reason} ->
+                emit_telemetry(config[:telemetry_prefix], :failed, %{reason: reason}, metadata)
+                {:error, reason}
+            end
           end
+        end
+
+        defp exceeds_capacity?(table_name, config, metadata) do
+          current_count = :ets.info(table_name, :size)
+
+          # Check global capacity
+          if current_count >= config[:max_concurrent] do
+            true
+          else
+            # Check per-user capacity if configured
+            case config[:max_per_user] do
+              nil ->
+                false
+
+              max_per_user ->
+                user_id = Map.get(metadata, :user_id)
+
+                if user_id do
+                  user_task_count = count_user_tasks(table_name, user_id)
+                  user_task_count >= max_per_user
+                else
+                  false
+                end
+            end
+          end
+        end
+
+        defp count_user_tasks(table_name, user_id) do
+          :ets.tab2list(table_name)
+          |> Enum.count(fn {_pid, task_info} ->
+            Map.get(task_info.metadata, :user_id) == user_id
+          end)
+        end
+
+        defp register_task(table_name, pid, metadata, supervisor) do
+          task_info = %{
+            pid: pid,
+            started_at: System.monotonic_time(:millisecond),
+            metadata: metadata,
+            supervisor: supervisor
+          }
+
+          :ets.insert(table_name, {pid, task_info})
+        end
+
+        defp start_monitoring(pid, config, table_name, _metadata) do
+          spawn(fn ->
+            @parent_module.TaskMonitor.monitor_task(pid, config, table_name)
+          end)
+        end
+
+        defp emit_telemetry(prefix, event, measurements, metadata) do
+          :telemetry.execute(prefix ++ [event], measurements, metadata)
         end
       end
 
-      defp count_user_tasks(user_id) do
-        :ets.tab2list(@table_name)
-        |> Enum.count(fn {_pid, task_info} ->
-          Map.get(task_info.metadata, :user_id) == user_id
-        end)
-      end
+      defmodule TaskMonitor do
+        @moduledoc false
 
-      defp monitor_task(pid, config, task_info) do
-        # Start monitoring process
-        spawn(fn ->
+        def monitor_task(pid, config, table_name) do
           ref = Process.monitor(pid)
+          task_info = get_task_info(table_name, pid)
 
           # Set up warning timer
           if config[:warning_time] do
@@ -174,66 +178,122 @@ defmodule EveDmv.Workers.GenericTaskSupervisor do
           Process.send_after(self(), {:max_timeout, pid}, config[:max_duration])
 
           # Wait for completion or timeout
+          handle_monitoring(ref, pid, config, table_name, task_info)
+        end
+
+        defp handle_monitoring(ref, pid, config, table_name, task_info) do
           receive do
             {:DOWN, ^ref, :process, ^pid, reason} ->
               # Task completed
-              cleanup_task(pid, reason, config, task_info)
+              cleanup_task(pid, reason, config, table_name, task_info)
 
             {:warning_timeout, ^pid} ->
-              # Task is taking too long, log warning
-              duration = System.monotonic_time(:millisecond) - task_info.started_at
-
-              Logger.warning("Task #{inspect(pid)} exceeding warning time: #{duration}ms",
-                supervisor: __MODULE__,
-                duration_ms: duration,
-                task_metadata: task_info.metadata
-              )
-
+              handle_warning(pid, config, table_name, task_info)
               # Continue monitoring
               receive do
                 {:DOWN, ^ref, :process, ^pid, reason} ->
-                  cleanup_task(pid, reason, config, task_info)
+                  cleanup_task(pid, reason, config, table_name, task_info)
 
                 {:max_timeout, ^pid} ->
                   # Force kill the task
                   Process.exit(pid, :kill)
-                  cleanup_task(pid, :timeout, config, task_info)
+                  cleanup_task(pid, :timeout, config, table_name, task_info)
               end
 
             {:max_timeout, ^pid} ->
               # Task exceeded max duration, kill it
               Process.exit(pid, :kill)
-              cleanup_task(pid, :timeout, config, task_info)
+              cleanup_task(pid, :timeout, config, table_name, task_info)
           end
-        end)
+        end
+
+        defp handle_warning(pid, config, _table_name, task_info) do
+          duration = System.monotonic_time(:millisecond) - task_info.started_at
+
+          Logger.warning("Task #{inspect(pid)} exceeding warning time: #{duration}ms",
+            supervisor: task_info.supervisor,
+            duration_ms: duration,
+            task_metadata: task_info.metadata
+          )
+        end
+
+        defp get_task_info(table_name, pid) do
+          case :ets.lookup(table_name, pid) do
+            [{^pid, info}] -> info
+            [] -> nil
+          end
+        end
+
+        defp cleanup_task(pid, reason, config, table_name, task_info) do
+          # Remove from ETS table
+          :ets.delete(table_name, pid)
+
+          # Calculate final duration
+          duration = System.monotonic_time(:millisecond) - task_info.started_at
+
+          # Emit telemetry
+          event_suffix = if reason == :normal, do: :completed, else: :failed
+
+          measurements = %{
+            duration_ms: duration,
+            task_count: :ets.info(table_name, :size)
+          }
+
+          metadata =
+            Map.merge(task_info.metadata, %{
+              supervisor: task_info.supervisor,
+              exit_reason: reason
+            })
+
+          emit_telemetry(config[:telemetry_prefix], event_suffix, measurements, metadata)
+        end
+
+        defp emit_telemetry(prefix, event, measurements, metadata) do
+          :telemetry.execute(prefix ++ [event], measurements, metadata)
+        end
       end
 
-      defp cleanup_task(pid, reason, config, task_info) do
-        # Remove from ETS table
-        :ets.delete(@table_name, pid)
+      defmodule TaskStats do
+        @moduledoc false
 
-        # Calculate final duration
-        duration = System.monotonic_time(:millisecond) - task_info.started_at
+        def get_stats(supervisor, table_name) do
+          config = supervisor.config()
 
-        # Emit telemetry
-        event_suffix = if reason == :normal, do: :completed, else: :failed
+          tasks = :ets.tab2list(table_name)
+          now = System.monotonic_time(:millisecond)
 
-        measurements = %{
-          duration_ms: duration,
-          task_count: :ets.info(@table_name, :size)
-        }
+          running_tasks = Enum.count(tasks)
 
-        metadata =
-          Map.merge(task_info.metadata, %{
-            supervisor: __MODULE__,
-            exit_reason: reason
-          })
+          task_durations =
+            Enum.map(tasks, fn {_pid, task_info} ->
+              now - task_info.started_at
+            end)
 
-        emit_telemetry(config[:telemetry_prefix], event_suffix, measurements, metadata)
-      end
+          avg_duration =
+            if running_tasks > 0 do
+              Enum.sum(task_durations) / running_tasks
+            else
+              0
+            end
 
-      defp emit_telemetry(prefix, event, measurements, metadata) do
-        :telemetry.execute(prefix ++ [event], measurements, metadata)
+          %{
+            running_tasks: running_tasks,
+            max_concurrent: config[:max_concurrent],
+            capacity_utilization: running_tasks / config[:max_concurrent],
+            average_duration_ms: avg_duration
+          }
+        end
+
+        def get_running_tasks(table_name) do
+          :ets.tab2list(table_name)
+          |> Enum.map(fn {pid, task_info} ->
+            %{
+              pid: pid,
+              duration_ms: System.monotonic_time(:millisecond) - task_info.started_at,
+              metadata: task_info.metadata
+            }
+          end)
+        end
       end
     end
   end

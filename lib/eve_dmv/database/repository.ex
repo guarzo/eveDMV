@@ -15,7 +15,7 @@ defmodule EveDmv.Database.Repository do
       end
 
       # Query with automatic caching and monitoring
-      KillmailRepository.get_by_id(123456)
+      KillmailRepository.get_by_id(123_456)
       KillmailRepository.list_by_corporation(corp_id, preload: [:participants])
       KillmailRepository.get_recent_killmails(limit: 100)
 
@@ -33,14 +33,14 @@ defmodule EveDmv.Database.Repository do
     cache_type = Keyword.get(opts, :cache_type, :api_responses)
 
     quote bind_quoted: [resource: resource, cache_type: cache_type] do
-      require Logger
-      require Ash.Query
-
       alias EveDmv.Api
       alias EveDmv.Cache
       alias EveDmv.Database.Repository.CacheHelper
       alias EveDmv.Database.Repository.QueryBuilder
       alias EveDmv.Database.Repository.TelemetryHelper
+
+      require Logger
+      require Ash.Query
 
       @resource resource
       @cache_type cache_type

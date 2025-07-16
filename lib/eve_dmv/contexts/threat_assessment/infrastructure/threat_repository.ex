@@ -9,6 +9,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
   use EveDmv.ErrorHandler
 
   alias EveDmv.Result
+  require Logger
 
   @doc """
   Get entity data for threat assessment.

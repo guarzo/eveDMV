@@ -10,9 +10,9 @@ defmodule EveDmv.Monitoring.ErrorRecoveryWorker do
   """
 
   use GenServer
-  require Logger
-
   alias EveDmv.Monitoring.{ErrorTracker, PipelineMonitor}
+
+  require Logger
 
   @check_interval :timer.minutes(1)
   @stall_threshold_minutes 5

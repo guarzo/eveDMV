@@ -1,4 +1,13 @@
 defmodule EveDmvWeb.SurveillanceLive do
+  import EveDmvWeb.LiveHelpers.ApiErrorHelper
+  alias EveDmv.Surveillance.MatchingEngine
+  alias EveDmvWeb.SurveillanceLive.BatchOperationService
+  alias EveDmvWeb.SurveillanceLive.Components
+  alias EveDmvWeb.SurveillanceLive.ExportImportService
+  alias EveDmvWeb.SurveillanceLive.NotificationService
+  alias EveDmvWeb.SurveillanceLive.ProfileService
+  require Logger
+
   @moduledoc """
   LiveView for managing surveillance profiles.
 
@@ -8,18 +17,8 @@ defmodule EveDmvWeb.SurveillanceLive do
 
   use EveDmvWeb, :live_view
 
-  require Logger
-  import EveDmvWeb.LiveHelpers.ApiErrorHelper
-  alias EveDmv.Surveillance.MatchingEngine
-  alias EveDmvWeb.SurveillanceLive.BatchOperationService
-  alias EveDmvWeb.SurveillanceLive.Components
-  alias EveDmvWeb.SurveillanceLive.ExportImportService
-  alias EveDmvWeb.SurveillanceLive.NotificationService
-  alias EveDmvWeb.SurveillanceLive.ProfileService
-
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
-
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     current_user = socket.assigns[:current_user]
@@ -32,7 +31,6 @@ defmodule EveDmvWeb.SurveillanceLive do
       end
 
       user_id = current_user.id
-
       # Load critical data first, defer non-critical data
       profiles = ProfileService.load_user_profiles(user_id, current_user)
       unread_count = NotificationService.get_unread_count(user_id)
@@ -86,7 +84,6 @@ defmodule EveDmvWeb.SurveillanceLive do
     }
 
     updated_matches = Enum.take([new_match | socket.assigns.recent_matches], 50)
-
     # Show temporary notification
     socket =
       socket
@@ -151,7 +148,6 @@ defmodule EveDmvWeb.SurveillanceLive do
   @impl Phoenix.LiveView
   def handle_info(:load_surveillance_data, socket) do
     user_id = socket.assigns.user_id
-
     # Use parallel loading with individual error handling
     tasks = [
       Task.async(fn ->
@@ -175,7 +171,6 @@ defmodule EveDmvWeb.SurveillanceLive do
 
     # Wait for all tasks with timeout
     results = Task.await_many(tasks, 5_000)
-
     # Extract results or use defaults on error
     [recent_matches_result, engine_stats_result, notifications_result] = results
 
@@ -208,10 +203,8 @@ defmodule EveDmvWeb.SurveillanceLive do
   rescue
     error ->
       Logger.error("Failed to load surveillance data: #{inspect(error)}")
-
       # Show user-friendly error message
       {:error, error_socket} = handle_api_error(socket, error, "Loading surveillance data")
-
       # Fallback to empty data
       updated_socket =
         error_socket
@@ -499,7 +492,6 @@ defmodule EveDmvWeb.SurveillanceLive do
       {:ok, count} ->
         # Reload matching engine profiles
         MatchingEngine.reload_profiles()
-
         # Reload user profiles
         profiles =
           ProfileService.load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)
@@ -560,7 +552,6 @@ defmodule EveDmvWeb.SurveillanceLive do
         # Reload notifications and update count
         notifications = NotificationService.load_user_notifications(socket.assigns.user_id)
         unread_count = NotificationService.get_unread_count(socket.assigns.user_id)
-
         flash_message = NotificationService.format_mark_all_message(results)
 
         socket =
@@ -578,7 +569,6 @@ defmodule EveDmvWeb.SurveillanceLive do
   end
 
   # Template helper functions - delegate to ViewHelpers module
-
   defdelegate format_filter_tree(filter_tree), to: Components
   defdelegate format_datetime(datetime), to: Components
   defdelegate profile_status_badge(is_active), to: Components

@@ -459,12 +459,10 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
   end
 
   defp generate_system_recommendations(profiles, profile_metrics) do
-    recommendations = []
-
     # Check for inactive profiles
     inactive_profiles = Enum.filter(profiles, &(!&1.enabled))
 
-    recommendations =
+    inactive_rec =
       if length(inactive_profiles) > 0 do
         [
           %{
@@ -475,16 +473,15 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
               "#{length(inactive_profiles)} profiles are disabled and not generating alerts",
             action: "Review and enable relevant profiles"
           }
-          | recommendations
         ]
       else
-        recommendations
+        []
       end
 
     # Check for low-performing profiles
     low_performers = Enum.filter(profile_metrics, &(&1.performance_score < 30))
 
-    recommendations =
+    low_perf_rec =
       if length(low_performers) > 0 do
         [
           %{
@@ -494,16 +491,15 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
             description: "#{length(low_performers)} profiles have performance scores below 30",
             action: "Optimize criteria or disable underperforming profiles"
           }
-          | recommendations
         ]
       else
-        recommendations
+        []
       end
 
     # Check for high false positive rates
     high_fp_profiles = Enum.filter(profile_metrics, &(&1.false_positive_rate > 15))
 
-    recommendations =
+    high_fp_rec =
       if length(high_fp_profiles) > 0 do
         [
           %{
@@ -514,16 +510,15 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
               "#{length(high_fp_profiles)} profiles have false positive rates above 15%",
             action: "Refine criteria to improve accuracy"
           }
-          | recommendations
         ]
       else
-        recommendations
+        []
       end
 
     # Check system performance
     avg_response = get_average_response_time()
 
-    recommendations =
+    perf_rec =
       if avg_response > 200 do
         [
           %{
@@ -533,13 +528,12 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
             description: "Average response time is #{avg_response}ms (target: <200ms)",
             action: "Optimize queries or reduce criteria complexity"
           }
-          | recommendations
         ]
       else
-        recommendations
+        []
       end
 
-    recommendations
+    inactive_rec ++ low_perf_rec ++ high_fp_rec ++ perf_rec
   end
 
   defp generate_optimization_recommendations(profile_id) do

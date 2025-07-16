@@ -11,10 +11,11 @@ defmodule EveDmv.Cache.StaticDataCache do
 
   use GenServer
   import Ash.Query
-  require Logger
 
   alias EveDmv.Eve.ItemType
   alias EveDmv.Eve.SolarSystem
+
+  require Logger
 
   @table_name :static_data_cache
   @warm_cache_interval :timer.hours(6)

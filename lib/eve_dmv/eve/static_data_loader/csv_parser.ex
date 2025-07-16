@@ -42,7 +42,7 @@ defmodule EveDmv.Eve.StaticDataLoader.CsvParser do
       volume: parse_float(row["volume"]),
       capacity: parse_float(row["capacity"]),
       base_price: parse_float(row["basePrice"]),
-      published: parse_boolean(row["published"])
+      published: parse_boolean?(row["published"])
     }
   end
 
@@ -148,8 +148,8 @@ defmodule EveDmv.Eve.StaticDataLoader.CsvParser do
   @doc """
   Parses a boolean value from CSV data.
   """
-  def parse_boolean(value) when value in ["1", "true", "True", "TRUE"], do: true
-  def parse_boolean(_), do: false
+  def parse_boolean?(value) when value in ["1", "true", "True", "TRUE"], do: true
+  def parse_boolean?(_), do: false
 
   @doc """
   Reads and parses a CSV file.

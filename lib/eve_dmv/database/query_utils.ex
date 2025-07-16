@@ -24,7 +24,7 @@ defmodule EveDmv.Database.QueryUtils do
 
   ## Examples
 
-      iex> query_killmails_by_corporation(12345, ~D[2024-01-01], ~D[2024-01-31])
+      iex> query_killmails_by_corporation(12_345, ~D[2024-01-01], ~D[2024-01-31])
       {:ok, [%KillmailEnriched{}, ...]}
   """
   def query_killmails_by_corporation(corporation_id, start_date, end_date, opts \\ []) do
@@ -62,7 +62,7 @@ defmodule EveDmv.Database.QueryUtils do
 
   ## Examples
 
-      iex> query_killmails_by_character(98765, ~D[2024-01-01], ~D[2024-01-31])
+      iex> query_killmails_by_character(98_765, ~D[2024-01-01], ~D[2024-01-31])
       {:ok, [%KillmailEnriched{}, ...]}
   """
   def query_killmails_by_character(character_id, start_date, end_date, opts \\ []) do
@@ -101,7 +101,7 @@ defmodule EveDmv.Database.QueryUtils do
 
   ## Examples
 
-      iex> query_participants_by_character(98765, ~D[2024-01-01], ~D[2024-01-31])
+      iex> query_participants_by_character(98_765, ~D[2024-01-01], ~D[2024-01-31])
       {:ok, [%Participant{}, ...]}
   """
   def query_participants_by_character(character_id, start_date, end_date, opts \\ []) do
@@ -140,7 +140,7 @@ defmodule EveDmv.Database.QueryUtils do
       iex> query_killmail_participants([123, 456, 789])
       {:ok, [%Participant{}, ...]}
 
-      iex> query_killmail_participants([123], exclude_character: 98765)
+      iex> query_killmail_participants([123], exclude_character: 98_765)
       {:ok, [%Participant{}, ...]}
   """
   def query_killmail_participants(killmail_ids, opts \\ []) when is_list(killmail_ids) do
@@ -173,7 +173,7 @@ defmodule EveDmv.Database.QueryUtils do
 
   ## Examples
 
-      iex> query_corporation_members(12345)
+      iex> query_corporation_members(12_345)
       {:ok, [%CharacterStats{}, ...]}
   """
   def query_corporation_members(corporation_id, opts \\ []) do
@@ -254,10 +254,10 @@ defmodule EveDmv.Database.QueryUtils do
 
   ## Examples
 
-      iex> wormhole_system?(31000001)
+      iex> wormhole_system?(31_000_001)
       true
 
-      iex> wormhole_system?(30000142)
+      iex> wormhole_system?(30_000_142)
       false
   """
   def wormhole_system?(system_id) when is_integer(system_id) do
@@ -309,7 +309,7 @@ defmodule EveDmv.Database.QueryUtils do
   ## Examples
 
       iex> filter_wormhole_killmails(killmails)
-      [%KillmailEnriched{solar_system_id: 31000001}, ...]
+      [%KillmailEnriched{solar_system_id: 31_000_001}, ...]
   """
   def filter_wormhole_killmails(killmails) when is_list(killmails) do
     Enum.filter(killmails, fn km -> wormhole_system?(km.solar_system_id) end)

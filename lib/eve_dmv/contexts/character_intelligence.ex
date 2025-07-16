@@ -1,4 +1,13 @@
 defmodule EveDmv.Contexts.CharacterIntelligence do
+  import Ash.Query
+  alias EveDmv.Api
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine
+  alias EveDmv.Eve.EsiCharacterClient
+  alias EveDmv.Eve.NameResolver
+  alias EveDmv.Integrations.ShipIntelligenceBridge
+  alias EveDmv.Killmails.KillmailRaw
+  require Logger
+
   @moduledoc """
   Context module for character intelligence and threat analysis.
 
@@ -6,24 +15,14 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   and combat effectiveness prediction.
   """
 
-  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine
-  alias EveDmv.Integrations.ShipIntelligenceBridge
-  alias EveDmv.Api
-  alias EveDmv.Killmails.KillmailRaw
-  alias EveDmv.Eve.NameResolver
-  alias EveDmv.Eve.EsiCharacterClient
-
   @doc """
   Analyzes a character's threat level based on their combat history.
-
   Returns comprehensive threat scoring including:
   - Multi-dimensional threat score (0-100)
   - Combat effectiveness metrics
   - Behavioral patterns
   - Threat trends over time
-
   ## Examples
-
       iex> CharacterIntelligence.analyze_character_threat(character_id)
       {:ok, %{
         threat_score: 85,
@@ -72,7 +71,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
 
   @doc """
   Detects behavioral patterns for a character based on their killmail history.
-
   Identifies patterns such as:
   - Solo hunter
   - Fleet anchor
@@ -98,7 +96,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
 
   @doc """
   Calculates threat trends for a character over time.
-
   Shows how their threat level has evolved based on recent performance.
   """
   def calculate_threat_trends(character_id, days_back \\ 90) do
@@ -129,7 +126,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
 
   @doc """
   Compares threat levels between multiple characters.
-
   Useful for identifying the most dangerous opponents in a group.
   """
   def compare_character_threats(character_ids) when is_list(character_ids) do
@@ -149,12 +145,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
 
   @doc """
   Gets a comprehensive intelligence report for a character.
-
   Combines threat scoring, behavioral analysis, and performance metrics.
   """
   def get_character_intelligence_report(character_id) do
-    require Logger
-
     with {:ok, threat_analysis} <- analyze_character_threat(character_id),
          {:ok, behavioral_patterns} <- detect_behavioral_patterns(character_id),
          {:ok, threat_trends} <- calculate_threat_trends(character_id),
@@ -181,10 +174,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   end
 
   ## Ship Intelligence Integration
-
   @doc """
   Get comprehensive ship intelligence for a character.
-
   Returns ship specialization, role preferences, and tactical insights.
   """
   def get_character_ship_intelligence(character_id) do
@@ -199,9 +190,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   end
 
   # Private helper functions
-
   defp enhance_with_ship_intelligence(threat_data, character_id) do
-    case EveDmv.Integrations.ShipIntelligenceBridge.calculate_ship_specialization(character_id) do
+    case ShipIntelligenceBridge.calculate_ship_specialization(character_id) do
       {:ok, ship_intelligence} ->
         # Enhance ship mastery dimension with detailed analysis
         enhanced_dimensions =
@@ -246,7 +236,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
 
     # Diversity penalty (specialists get higher scores)
     diversity_penalty = ship_intelligence.specialization_diversity * 5
-
     max(0, expertise_bonus - diversity_penalty)
   end
 
@@ -261,10 +250,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   end
 
   # Private helper functions
-
   defp get_combat_statistics(character_id) do
-    import Ash.Query
-
     # Calculate kills where character was attacker
     kills_query =
       KillmailRaw
@@ -299,7 +285,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
           end
 
         kills_count = length(kills)
-
         # Calculate ISK destroyed and lost
         isk_destroyed =
           Enum.reduce(kills, 0, fn km, acc ->
@@ -373,7 +358,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   defp get_character_info(character_id) do
     # Get character name
     character_name = NameResolver.character_name(character_id)
-
     # Get character's corporation and alliance info from ESI
     case EsiCharacterClient.get_character(character_id) do
       {:ok, char_info} ->
@@ -445,7 +429,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   defp generate_behavioral_characteristics(threat_data) do
     dimensions = Map.get(threat_data, :dimensions, %{})
     characteristics = []
-
     # Add characteristics based on dimensions
     characteristics =
       if dimensions[:combat_skill] > 80 do

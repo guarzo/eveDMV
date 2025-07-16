@@ -258,13 +258,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Extractors.ShipInstanceExtractor do
   end
 
   defp get_ship_name(ship_type_id) do
-    # Use name resolver if available, fallback to type ID
-    # TODO: Implement EveDmv.Eve.NameResolver.resolve_type_id/1
-    # EveDmv.Eve.NameResolver.resolve_type_id(ship_type_id) do
-    case {:error, :not_implemented} do
-      {:ok, name} -> name
-      _ -> "Unknown Ship (#{ship_type_id})"
-    end
+    # Use name resolver to get ship name
+    EveDmv.Eve.NameResolver.ship_name(ship_type_id)
   end
 
   defp remove_duplicate_attacker_victims(instances, victims) do

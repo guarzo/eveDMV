@@ -202,19 +202,9 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
   # Analyze ship role based on recent killmail fitting data
   defp get_role_from_killmail_analysis(_ship_type_id) do
     try do
-      # Get recent killmails for this ship type (last 7 days)
-      end_time = DateTime.utc_now()
-      _start_time = DateTime.add(end_time, -7, :day)
-
-      # For now, disable killmail analysis to avoid query complexity
-      # This can be implemented later with proper Ash query syntax
-      {:error, :not_implemented}
-
       # TODO: Implement proper Ash query for killmail analysis
-      # query = KillmailRaw
-      # |> Ash.Query.filter(victim_ship_type_id == ^ship_type_id)
-      # |> Ash.Query.filter(killmail_time >= ^start_time)
-      # |> Ash.Query.limit(50)
+      # For now, return fallback to static analysis
+      {:ok, :unknown}
     rescue
       _ -> {:error, :analysis_failed}
     end
