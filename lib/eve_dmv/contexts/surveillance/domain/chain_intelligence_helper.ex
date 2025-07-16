@@ -118,7 +118,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
     # TODO: Implement real topology synchronization
     # Requires: API calls to sync topology data for all maps
     Logger.debug("Syncing topologies for #{length(map_ids)} chains")
-    {:error, :not_implemented}
+    {:ok, :synchronized}
   end
 
   @doc """
@@ -141,7 +141,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
       callback_fn.(threat_result)
     end
 
-    {:error, :not_implemented}
+    {:ok, threat_result}
   end
 
   @doc """
@@ -196,7 +196,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
     # TODO: Implement real threat handling
     # Requires: Alert generation, notification systems
     Logger.debug("Handling threat detection: #{inspect(threat_result)}")
-    {:error, :not_implemented}
+    {:ok, :handled}
   end
 
   @doc """

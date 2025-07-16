@@ -68,22 +68,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Api do
   Includes ship hull, modules, cargo, and implants if available.
   Returns detailed breakdown by category.
   """
-  @spec calculate_killmail_value(map()) ::
-          Result.t(%{
-            total_value: float(),
-            ship_value: float(),
-            modules_value: float(),
-            cargo_value: float(),
-            implants_value: float(),
-            breakdown: [
-              %{
-                type_id: type_id(),
-                quantity: integer(),
-                unit_price: float(),
-                total_price: float()
-              }
-            ]
-          })
+  @spec calculate_killmail_value(map()) :: {:ok, map()} | {:error, term()}
   def calculate_killmail_value(killmail) do
     with :ok <- validate_killmail(killmail),
          {:ok, valuation} <- Domain.ValuationService.calculate_killmail_value(killmail) do
@@ -96,14 +81,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Api do
 
   Input should be a list of ships with their fits.
   """
-  @spec calculate_fleet_value([map()]) ::
-          Result.t(%{
-            total_value: float(),
-            ship_count: integer(),
-            average_ship_value: float(),
-            value_by_ship_class: %{},
-            breakdown: [%{ship_type_id: type_id(), fit_value: float(), count: integer()}]
-          })
+  @spec calculate_fleet_value([map()]) :: {:ok, map()} | {:error, term()}
   def calculate_fleet_value(ships) do
     with :ok <- validate_fleet_composition(ships),
          {:ok, valuation} <- Domain.ValuationService.calculate_fleet_value(ships) do
@@ -116,19 +94,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Api do
 
   Returns trend data including price changes, volume patterns, and anomalies.
   """
-  @spec analyze_market_trends([type_id()], period :: :day | :week | :month) ::
-          Result.t(%{
-            period: atom(),
-            trends: [
-              %{
-                type_id: type_id(),
-                price_change_percent: float(),
-                volume_change_percent: float(),
-                trend_direction: :increasing | :decreasing | :stable,
-                anomalies: [map()]
-              }
-            ]
-          })
+  @spec analyze_market_trends([type_id()], period :: :day | :week | :month) :: {:ok, map()} | {:error, term()}
   def analyze_market_trends(type_ids, period \\ :week) do
     with :ok <- validate_type_ids(type_ids),
          :ok <- validate_period(period),

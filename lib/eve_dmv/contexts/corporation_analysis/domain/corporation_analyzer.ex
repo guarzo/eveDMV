@@ -317,7 +317,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer do
         Result.ok(health_score)
 
       {:error, reason} ->
-        Result.error(:health_calculation_failed, reason)
+        Result.error(:health_calculation_failed, "Health calculation failed: #{inspect(reason)}")
     end
   end
 

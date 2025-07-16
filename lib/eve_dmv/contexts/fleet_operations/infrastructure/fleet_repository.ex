@@ -11,7 +11,7 @@ defmodule EveDmv.Contexts.FleetOperations.Infrastructure.FleetRepository do
   @doc """
   Refresh the doctrine cache.
   """
-  @spec refresh_doctrine_cache() :: :ok | {:error, term()}
+  @spec refresh_doctrine_cache() :: :ok
   def refresh_doctrine_cache do
     Logger.debug("Refreshing doctrine cache")
 

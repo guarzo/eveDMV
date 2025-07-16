@@ -317,10 +317,10 @@ defmodule EveDmvWeb.SystemLive do
          %{
            danger_score: danger_score,
            danger_level: danger_level,
-           recent_kills: recent_kills || 0,
-           total_kills: total_kills || 0,
-           hostile_corporations: hostile_corps || 0,
-           active_days: active_days || 0,
+           recent_kills: recent_kills,
+           total_kills: total_kills,
+           hostile_corporations: hostile_corps,
+           active_days: active_days,
            # Not available in current schema
            recent_avg_value: 0.0
          }}

@@ -89,7 +89,8 @@ defmodule EveDmv.Contexts.CombatIntelligence do
   end
 
   def bulk_analyze_characters(character_ids, opts \\ []) do
-    Domain.CharacterAnalyzer.bulk_analyze(character_ids, opts)
+    context = Enum.into(opts, %{})
+    Domain.CharacterAnalyzer.bulk_analyze(character_ids, context)
   end
 
   def invalidate_intelligence_cache(character_id) do

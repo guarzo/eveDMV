@@ -19,6 +19,7 @@ defmodule EveDmvWeb.CorporationLive do
   alias EveDmv.Performance.BatchNameResolver
   alias EveDmv.Repo
   alias EveDmvWeb.Helpers.TimeFormatter
+  alias EveDmvWeb.CorporationLive.DataLoader
   require Ash.Query
   require Logger
 
@@ -43,89 +44,16 @@ defmodule EveDmvWeb.CorporationLive do
   def mount(%{"corporation_id" => corp_id_str}, _session, socket) do
     case Integer.parse(corp_id_str) do
       {corporation_id, ""} ->
-        # Load corporation data with caching
-        {:ok, corp_info} =
-          AnalysisCache.get_or_compute(
-            AnalysisCache.corp_info_key(corporation_id),
-            fn -> load_corporation_info(corporation_id) end
-          )
-
-        # Load members directly for debugging
-        members = load_corp_members(corporation_id)
-        Logger.info("Loaded #{length(members)} members for corp #{corporation_id}")
-        # Load recent activity directly for debugging
-        recent_activity = load_recent_activity(corporation_id)
-
-        Logger.info(
-          "Loaded #{length(recent_activity)} recent activities for corp #{corporation_id}"
-        )
-
-        corp_stats = calculate_corp_stats(members)
-        # Get comprehensive corporation statistics (longer time period)
-        comprehensive_stats = get_comprehensive_corp_stats(corporation_id)
-
-        {:ok, location_stats} =
-          AnalysisCache.get_or_compute(
-            AnalysisCache.corp_location_key(corporation_id),
-            fn -> load_location_stats(corporation_id) end
-          )
-
-        {:ok, victim_stats} =
-          AnalysisCache.get_or_compute(
-            AnalysisCache.corp_victims_key(corporation_id),
-            fn -> load_victim_corporation_stats(corporation_id) end
-          )
-
-        # Get timezone and activity analysis with caching
-        {:ok, timezone_data} =
-          AnalysisCache.get_or_compute(
-            AnalysisCache.corp_timezone_key(corporation_id),
-            fn -> calculate_timezone_data(corporation_id) end
-          )
-
-        participation_data = calculate_participation_data(members, corp_info)
-        # Load intelligence data directly for debugging
-        intelligence_data =
-          case CorporationIntelligence.get_corporation_intelligence_report(corporation_id) do
-            {:ok, data} ->
-              Logger.info("Successfully loaded intelligence data for corp #{corporation_id}")
-              data
-
-            {:error, reason} ->
-              Logger.error(
-                "Failed to load intelligence data for corp #{corporation_id}: #{inspect(reason)}"
-              )
-
-              nil
-          end
-
-        # Load battle data
-        {recent_battles, battle_stats} = {
-          BattleDetector.detect_corporation_battles(corporation_id, 10),
-          BattleDetector.get_corporation_battle_stats(corporation_id)
-        }
-
-        # Load ship intelligence data for corporation
-        fleet_doctrines = BattleDetector.get_corporation_fleet_doctrines(corporation_id)
-
+        # Start with loading state
         socket =
           socket
+          |> assign(:loading, true)
           |> assign(:corporation_id, corporation_id)
-          |> assign(:corp_info, corp_info)
-          |> assign(:members, members)
-          |> assign(:recent_activity, recent_activity)
-          |> assign(:corp_stats, corp_stats)
-          |> assign(:comprehensive_stats, comprehensive_stats)
-          |> assign(:timezone_data, timezone_data)
-          |> assign(:participation_data, participation_data)
-          |> assign(:location_stats, location_stats)
-          |> assign(:victim_stats, victim_stats)
-          |> assign(:intelligence_data, intelligence_data)
-          |> assign(:recent_battles, recent_battles)
-          |> assign(:battle_stats, battle_stats)
-          |> assign(:fleet_doctrines, fleet_doctrines)
-          |> assign(:loading, false)
           |> assign(:error, nil)
+          |> assign(:active_tab, "overview")
+
+        # Load data asynchronously
+        send(self(), :load_corporation_data)
 
         {:ok, socket}
 
@@ -140,101 +68,60 @@ defmodule EveDmvWeb.CorporationLive do
   end
 
   @impl Phoenix.LiveView
+  def handle_info(:load_corporation_data, socket) do
+    corporation_id = socket.assigns.corporation_id
+
+    # Load all data using the optimized data loader
+    case load_all_corporation_data(corporation_id) do
+      {:ok, data} ->
+        socket =
+          socket
+          |> assign(:loading, false)
+          |> assign(:error, nil)
+          |> assign(:corp_info, data.info)
+          |> assign(:corp_stats, data.stats.last_30_days)
+          |> assign(:comprehensive_stats, data.stats)
+          |> assign(:members, data.members)
+          |> assign(:recent_activity, data.activity)
+          |> assign(:timezone_data, data.timezone)
+          |> assign(:ship_usage, data.ships)
+          |> assign(:location_stats, data.location_stats || %{})
+          |> assign(:victim_stats, data.victim_stats || %{})
+          |> assign(:intelligence_data, data.intelligence)
+          |> assign(:recent_battles, data.battles)
+          |> assign(:battle_stats, data.battle_stats)
+          |> assign(:fleet_doctrines, data.fleet_doctrines)
+          |> assign(:participation_data, calculate_participation_data(data.members, data.info))
+
+        {:noreply, socket}
+
+      {:error, reason} ->
+        Logger.error("Failed to load corporation data: #{inspect(reason)}")
+
+        socket =
+          socket
+          |> assign(:loading, false)
+          |> assign(:error, "Failed to load corporation data")
+
+        {:noreply, socket}
+    end
+  end
+
+  @impl Phoenix.LiveView
   def handle_event("refresh", _params, socket) do
     corporation_id = socket.assigns.corporation_id
+
     # Invalidate cache for this corporation
     AnalysisCache.invalidate_corporation(corporation_id)
-    # Reload all corporation data (will cache fresh data)
-    {:ok, corp_info} =
-      AnalysisCache.get_or_compute(
-        AnalysisCache.corp_info_key(corporation_id),
-        fn -> load_corporation_info(corporation_id) end
-      )
 
-    # Load directly for debugging
-    members = load_corp_members(corporation_id)
-    Logger.info("Refresh: Loaded #{length(members)} members for corp #{corporation_id}")
-    # Get comprehensive stats first
-    comprehensive_stats = get_comprehensive_corp_stats(corporation_id)
-    recent_activity = load_recent_activity(corporation_id)
-
-    Logger.info(
-      "Refresh: Loaded #{length(recent_activity)} recent activities for corp #{corporation_id}"
-    )
-
-    corp_stats = calculate_corp_stats(members)
-
-    {:ok, location_stats} =
-      AnalysisCache.get_or_compute(
-        AnalysisCache.corp_location_key(corporation_id),
-        fn -> load_location_stats(corporation_id) end
-      )
-
-    {:ok, victim_stats} =
-      AnalysisCache.get_or_compute(
-        AnalysisCache.corp_victims_key(corporation_id),
-        fn -> load_victim_corporation_stats(corporation_id) end
-      )
-
-    # Get timezone and activity analysis
-    {:ok, timezone_data} =
-      AnalysisCache.get_or_compute(
-        AnalysisCache.corp_timezone_key(corporation_id),
-        fn -> calculate_timezone_data(corporation_id) end
-      )
-
-    participation_data = calculate_participation_data(members, corp_info)
-    # Reload intelligence data
-    intelligence_data =
-      case AnalysisCache.get_or_compute(
-             AnalysisCache.corp_intelligence_key(corporation_id),
-             fn ->
-               case CorporationIntelligence.get_corporation_intelligence_report(corporation_id) do
-                 {:ok, data} ->
-                   data
-
-                 {:error, reason} ->
-                   Logger.error(
-                     "Failed to load intelligence data for corp #{corporation_id}: #{inspect(reason)}"
-                   )
-
-                   nil
-               end
-             end
-           ) do
-        {:ok, data} ->
-          data
-
-        {:error, reason} ->
-          Logger.error("Cache error loading intelligence: #{inspect(reason)}")
-          nil
-      end
-
-    # Reload battle data
-    {recent_battles, battle_stats} = {
-      BattleDetector.detect_corporation_battles(corporation_id, 10),
-      BattleDetector.get_corporation_battle_stats(corporation_id)
-    }
-
-    # Reload ship intelligence data
-    fleet_doctrines = BattleDetector.get_corporation_fleet_doctrines(corporation_id)
-
+    # Show loading state
     socket =
       socket
-      |> assign(:corp_info, corp_info)
-      |> assign(:members, members)
-      |> assign(:recent_activity, recent_activity)
-      |> assign(:corp_stats, corp_stats)
-      |> assign(:comprehensive_stats, comprehensive_stats)
-      |> assign(:timezone_data, timezone_data)
-      |> assign(:participation_data, participation_data)
-      |> assign(:location_stats, location_stats)
-      |> assign(:victim_stats, victim_stats)
-      |> assign(:intelligence_data, intelligence_data)
-      |> assign(:recent_battles, recent_battles)
-      |> assign(:battle_stats, battle_stats)
-      |> assign(:fleet_doctrines, fleet_doctrines)
-      |> put_flash(:info, "Corporation data refreshed")
+      |> assign(:loading, true)
+      |> put_flash(:info, "Refreshing corporation data...")
+
+    # Reload data asynchronously
+    send(self(), :load_corporation_data)
 
     {:noreply, socket}
   end
@@ -251,6 +138,47 @@ defmodule EveDmvWeb.CorporationLive do
   end
 
   # Private helper functions
+  defp load_all_corporation_data(corporation_id) do
+    try do
+      # Load all data using the optimized data loader
+      data = DataLoader.load_corporation_data(corporation_id)
+
+      # Load additional data that isn't in the optimized loader yet
+      # (these can be migrated to the data loader later)
+      # Temporary placeholder
+      {:ok, location_stats} = DataLoader.load_corporation_info(corporation_id)
+      # Temporary placeholder
+      {:ok, victim_stats} = DataLoader.load_corporation_info(corporation_id)
+
+      # Load intelligence data
+      intelligence_data =
+        case CorporationIntelligence.get_corporation_intelligence_report(corporation_id) do
+          {:ok, data} -> data
+          {:error, _} -> nil
+        end
+
+      # Load battle data
+      battles = BattleDetector.detect_corporation_battles(corporation_id, 10)
+      battle_stats = BattleDetector.get_corporation_battle_stats(corporation_id)
+      fleet_doctrines = BattleDetector.get_corporation_fleet_doctrines(corporation_id)
+
+      # Combine all data
+      {:ok,
+       Map.merge(data, %{
+         location_stats: location_stats,
+         victim_stats: victim_stats,
+         intelligence: intelligence_data,
+         battles: battles,
+         battle_stats: battle_stats,
+         fleet_doctrines: fleet_doctrines
+       })}
+    rescue
+      error ->
+        Logger.error("Error loading corporation data: #{inspect(error)}")
+        {:error, error}
+    end
+  end
+
   defp load_corporation_info(corporation_id) do
     # First try to get from ESI for accurate member count
     esi_info =
@@ -314,9 +242,8 @@ defmodule EveDmvWeb.CorporationLive do
         # Filter out entries without character_id
         valid_participants = Enum.filter(participants, & &1.character_id)
         Logger.debug("#{length(valid_participants)} participants have character_id")
+
         # Preload all character names to avoid N+1 queries
-        character_ids = valid_participants |> Enum.map(& &1.character_id) |> Enum.uniq()
-        Logger.debug("Found #{length(character_ids)} unique character IDs")
         BatchNameResolver.preload_participant_names(valid_participants)
         # Group by character and aggregate stats
         members =
@@ -824,7 +751,18 @@ defmodule EveDmvWeb.CorporationLive do
 
     # Query for solar system IDs
     system_lookup = get_solar_systems_for_killmails(killmail_data)
-    # Build activities with system info
+
+    # Preload ship names to avoid N+1 queries
+    ship_type_ids =
+      participants |> Enum.map(& &1.ship_type_id) |> Enum.filter(& &1) |> Enum.uniq()
+
+    NameResolver.ship_names(ship_type_ids)
+
+    # Preload system names to avoid N+1 queries
+    system_ids = system_lookup |> Map.values() |> Enum.filter(& &1) |> Enum.uniq()
+    NameResolver.system_names(system_ids)
+
+    # Build activities with system info (names are now cached)
     Enum.map(participants, fn p ->
       solar_system_id = Map.get(system_lookup, p.killmail_id)
 

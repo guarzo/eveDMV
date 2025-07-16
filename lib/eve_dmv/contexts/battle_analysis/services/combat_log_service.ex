@@ -38,40 +38,35 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.CombatLogService do
   Parses combat log content using enhanced parser.
   """
   def parse_combat_log(raw_content, pilot_name) do
-    with {:ok, compressed} <- Base.decode64(raw_content),
+    with {:ok, compressed} <- (case Base.decode64(raw_content) do
+                                 {:ok, data} -> {:ok, data}
+                                 :error -> {:error, :invalid_base64}
+                               end),
          content <- :zlib.uncompress(compressed) do
       Logger.info("🔍 USING ENHANCED PARSER for combat log")
 
-      case EnhancedCombatLogParser.parse_combat_log(content, pilot_name: pilot_name) do
-        {:ok,
-         %{
+      {:ok,
+       %{
+         events: events,
+         summary: summary,
+         metadata: metadata,
+         tactical_analysis: tactical_analysis,
+         recommendations: recommendations
+       }} = EnhancedCombatLogParser.parse_combat_log(content, pilot_name: pilot_name)
+      
+      {:ok,
+       %{
+         parsed_data: %{
            events: events,
-           summary: summary,
-           metadata: metadata,
            tactical_analysis: tactical_analysis,
            recommendations: recommendations
-         }} ->
-          {:ok,
-           %{
-             parsed_data: %{
-               events: events,
-               tactical_analysis: tactical_analysis,
-               recommendations: recommendations
-             },
-             summary: summary,
-             event_count: length(events),
-             start_time: metadata[:start_time],
-             end_time: metadata[:end_time],
-             parse_status: :completed
-           }}
-
-        {:error, reason} ->
-          {:error,
-           %{
-             parse_status: :failed,
-             parse_error: inspect(reason)
-           }}
-      end
+         },
+         summary: summary,
+         event_count: length(events),
+         start_time: metadata[:start_time],
+         end_time: metadata[:end_time],
+         parse_status: :completed
+       }}
     else
       {:error, reason} ->
         {:error,

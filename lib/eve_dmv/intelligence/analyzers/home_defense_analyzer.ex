@@ -200,7 +200,7 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
     case QueryUtils.query_killmails_by_corporation(corporation_id, start_date, end_date,
            limit: 1000
          ) do
-      killmails when is_list(killmails) -> {:ok, killmails}
+      killmails -> {:ok, killmails}
       _ -> {:ok, []}
     end
   rescue

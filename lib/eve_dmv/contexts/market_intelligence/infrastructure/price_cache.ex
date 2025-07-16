@@ -72,11 +72,11 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.PriceCache do
   @doc """
   Get cache statistics.
   """
-  @spec stats() :: %{size: non_neg_integer(), memory_bytes: non_neg_integer()}
+  @spec stats() :: %{size: non_neg_integer(), memory_bytes: non_neg_integer(), hits: non_neg_integer(), misses: non_neg_integer(), puts: non_neg_integer(), hit_rate: float()}
   def stats do
     try do
-      size = :ets.info(@cache_table, :size) || 0
-      memory = :ets.info(@cache_table, :memory) || 0
+      size = :ets.info(@cache_table, :size)
+      memory = :ets.info(@cache_table, :memory)
       memory_bytes = memory * :erlang.system_info(:wordsize)
 
       hits = get_stat(:hits)

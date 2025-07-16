@@ -1271,7 +1271,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
        when is_integer(character_id) and is_integer(ship_type_id) do
     # Convert character_id to character name and check fitting cache
     character_name = resolve_character_name(character_id)
-    if character_name, do: has_fitting?(character_name), else: false
+    has_fitting?(character_name)
   end
 
   defp has_fitting?(_, _), do: false

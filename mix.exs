@@ -196,6 +196,8 @@ defmodule EveDmv.MixProject do
       {:cachex, "~> 4.1"},
       {:gun, "~> 2.0"},
       {:httpoison, "~> 2.0"},
+      {:tesla, "~> 1.8"},
+      {:hackney, "~> 1.20"},
       {:dotenvy, "~> 1.1"},
       {:nimble_csv, "~> 1.2"},
       # For native bzip2 decompression (requires libbz2-dev/bzip2-dev system package)

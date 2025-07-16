@@ -331,18 +331,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
 
   defp maybe_extract_metadata(video_info, extract_metadata, timeout) do
     if extract_metadata do
-      case fetch_metadata(video_info.platform, video_info.video_id, true, timeout) do
-        {:ok, metadata} ->
-          enriched_info = Map.put(video_info, :metadata, metadata)
-          {:ok, enriched_info}
-
-        {:error, reason} ->
-          # Don't fail validation if metadata extraction fails
-          Logger.warning("Metadata extraction failed: #{reason}")
-          metadata = create_fallback_metadata(video_info)
-          enriched_info = Map.put(video_info, :metadata, metadata)
-          {:ok, enriched_info}
-      end
+      {:ok, metadata} = fetch_metadata(video_info.platform, video_info.video_id, true, timeout)
+      enriched_info = Map.put(video_info, :metadata, metadata)
+      {:ok, enriched_info}
     else
       {:ok, video_info}
     end
@@ -532,10 +523,6 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
 
         {:error, :content_violation} ->
           {:error, :content_not_suitable}
-
-        {:error, reason} ->
-          Logger.warning("Content moderation failed: #{reason}")
-          {:ok, video_info}
       end
     else
       {:ok, video_info}
@@ -582,20 +569,16 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
     with {:ok, platform} <- detect_platform(url),
          {:ok, video_id} <- extract_video_id(url, platform) do
       # Simple HTTP check for accessibility
-      case perform_accessibility_check(url, timeout) do
-        {:ok, status} ->
-          {:ok,
-           %{
-             accessible: status == :accessible,
-             platform: platform,
-             video_id: video_id,
-             status: status,
-             checked_at: DateTime.utc_now()
-           }}
-
-        {:error, reason} ->
-          {:error, reason}
-      end
+      {:ok, status} = perform_accessibility_check(url, timeout)
+      
+      {:ok,
+       %{
+         accessible: status == :accessible,
+         platform: platform,
+         video_id: video_id,
+         status: status,
+         checked_at: DateTime.utc_now()
+       }}
     end
   end
 

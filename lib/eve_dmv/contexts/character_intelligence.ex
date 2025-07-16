@@ -63,9 +63,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
              analysis_window_days: 90
            }
          }}
-
-      error ->
-        error
     end
   end
 
@@ -88,9 +85,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
            patterns: extract_behavioral_patterns(threat_data),
            characteristics: generate_behavioral_characteristics(threat_data)
          }}
-
-      error ->
-        error
     end
   end
 
@@ -99,29 +93,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Shows how their threat level has evolved based on recent performance.
   """
   def calculate_threat_trends(character_id, days_back \\ 90) do
-    case ThreatScoringEngine.analyze_threat_trends(character_id, analysis_window_days: days_back) do
-      {:ok, trends} ->
-        {:ok, trends}
-
-      {:error, :insufficient_data} ->
-        # Return default trends for characters with limited data
-        {:ok,
-         %{
-           periods: [
-             %{
-               label: "Recent (30 days)",
-               date_range: "Limited data",
-               threat_score: 0,
-               previous_score: nil
-             }
-           ],
-           trend: :stable,
-           analysis: "Insufficient combat data for trend analysis"
-         }}
-
-      error ->
-        error
-    end
+    ThreatScoringEngine.analyze_threat_trends(character_id, analysis_window_days: days_back)
   end
 
   @doc """
@@ -134,10 +106,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
       |> Enum.map(fn id ->
         case analyze_character_threat(id) do
           {:ok, analysis} -> {id, analysis}
-          _ -> nil
         end
       end)
-      |> Enum.reject(&is_nil/1)
       |> Enum.sort_by(fn {_id, analysis} -> analysis.threat_score end, :desc)
 
     {:ok, threat_analyses}
@@ -167,9 +137,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
         Logger.error("Failed to get character intelligence report: #{inspect(reason)}")
         error
 
-      error ->
-        Logger.error("Unexpected error in character intelligence report: #{inspect(error)}")
-        {:error, :unknown_error}
     end
   end
 
@@ -191,36 +158,25 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
 
   # Private helper functions
   defp enhance_with_ship_intelligence(threat_data, character_id) do
-    case ShipIntelligenceBridge.calculate_ship_specialization(character_id) do
-      {:ok, ship_intelligence} ->
-        # Enhance ship mastery dimension with detailed analysis
-        enhanced_dimensions =
-          Map.update(
-            threat_data.dimensions,
-            :ship_mastery,
-            0,
-            fn base_score ->
-              # Combine base score with specialization insights
-              specialization_bonus = calculate_specialization_bonus(ship_intelligence)
-              min(100, base_score + specialization_bonus)
-            end
-          )
+    {:ok, ship_intelligence} = ShipIntelligenceBridge.calculate_ship_specialization(character_id)
+    
+    # Enhance ship mastery dimension with detailed analysis
+    enhanced_dimensions =
+      Map.update(
+        threat_data.dimensions,
+        :ship_mastery,
+        0,
+        fn base_score ->
+          # Combine base score with specialization insights
+          specialization_bonus = calculate_specialization_bonus(ship_intelligence)
+          min(100, base_score + specialization_bonus)
+        end
+      )
 
-        # Add ship intelligence to threat data
-        threat_data
-        |> Map.put(:ship_specialization, format_ship_specialization(ship_intelligence))
-        |> Map.put(:dimensions, enhanced_dimensions)
-
-      {:error, _reason} ->
-        # Add empty ship specialization data
-        threat_data
-        |> Map.put(:ship_specialization, %{
-          preferred_roles: [],
-          ship_mastery: %{},
-          specialization_diversity: 0.0,
-          expertise_level: :unknown
-        })
-    end
+    # Add ship intelligence to threat data
+    threat_data
+    |> Map.put(:ship_specialization, format_ship_specialization(ship_intelligence))
+    |> Map.put(:dimensions, enhanced_dimensions)
   end
 
   defp calculate_specialization_bonus(ship_intelligence) do
@@ -245,7 +201,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
       ship_mastery: ship_intelligence.ship_mastery |> Enum.take(5) |> Enum.into(%{}),
       specialization_diversity: ship_intelligence.specialization_diversity,
       expertise_level: ship_intelligence.expertise_level,
-      total_killmails: ship_intelligence.total_killmails || 0
+      total_killmails: ship_intelligence.total_killmails
     }
   end
 

@@ -143,6 +143,13 @@ if System.get_env("PHX_SERVER") do
   config :eve_dmv, EveDmvWeb.Endpoint, server: true
 end
 
+# Runtime logger configuration
+if System.get_env("DISABLE_STRUCTURED_LOGGING") == "true" do
+  config :logger, :console,
+    format: "$time $metadata[$level] $message\n",
+    metadata: [:request_id, :user_id, :character_id]
+end
+
 if config_env() == :prod do
   # Database configuration for production
   database_url =

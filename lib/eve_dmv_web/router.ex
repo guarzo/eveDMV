@@ -84,6 +84,9 @@ defmodule EveDmvWeb.Router do
 
     # System monitoring (admin only in production)
     live("/monitoring", MonitoringDashboardLive)
+
+    # Performance monitoring dashboard
+    live("/admin/performance", Admin.PerformanceDashboardLive)
   end
 
   # Authentication routes

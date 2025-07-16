@@ -3,7 +3,9 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
   Helper module for loading and processing character analysis data.
   """
 
-  alias EveDmv.Repo
+  # alias EveDmv.Repo
+  alias EveDmv.Database.CharacterQueries
+  alias EveDmv.Database.QueryPerformance
   require Logger
 
   @doc """
@@ -13,45 +15,36 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
     try do
       Logger.info("Starting analysis for character #{character_id}")
 
-      # First, try to get character name from killmail data
-      character_name = get_character_name(character_id)
-      Logger.info("Found character name: #{character_name || "Unknown"}")
-
-      # Simple count queries
+      # Use optimized queries from CharacterQueries module
       ninety_days_ago = DateTime.utc_now() |> DateTime.add(-90, :day)
 
-      # Query kills (simplified)
-      kills_query = """
-      SELECT COUNT(DISTINCT km.killmail_id) as kill_count
-      FROM killmails_raw km,
-           jsonb_array_elements(raw_data->'attackers') as attacker
-      WHERE attacker->>'character_id' = $1
-        AND km.killmail_time >= $2
-      """
+      # Get character stats using optimized query
+      stats =
+        QueryPerformance.tracked_query(
+          "character_stats",
+          fn -> CharacterQueries.get_character_stats(character_id, ninety_days_ago) end,
+          metadata: %{character_id: character_id}
+        )
 
-      # Query deaths (simplified)
-      deaths_query = """
-      SELECT COUNT(*) as death_count
-      FROM killmails_raw km
-      WHERE victim_character_id = $1
-        AND killmail_time >= $2
-      """
+      # Get character name from killmail data
+      character_name =
+        QueryPerformance.tracked_query(
+          "character_name",
+          fn -> CharacterQueries.get_character_name_from_killmails(character_id) end
+        )
 
-      Logger.info("Executing kill query for character #{character_id}")
+      Logger.info("Found character name: #{character_name || "Unknown"}")
 
-      {:ok, %{rows: [[kill_count]]}} =
-        Repo.query(kills_query, [to_string(character_id), ninety_days_ago])
+      Logger.info(
+        "Found #{stats.kills} kills and #{stats.deaths} deaths for character #{character_id}"
+      )
 
-      Logger.info("Found #{kill_count} kills for character #{character_id}")
-
-      {:ok, %{rows: [[death_count]]}} =
-        Repo.query(deaths_query, [character_id, ninety_days_ago])
-
-      Logger.info("Found #{death_count} deaths for character #{character_id}")
-
-      # Calculate simple metrics
-      kd_ratio =
-        if death_count > 0, do: Float.round(kill_count / death_count, 2), else: kill_count
+      # Get affiliations
+      affiliations =
+        QueryPerformance.tracked_query(
+          "character_affiliations",
+          fn -> CharacterQueries.get_character_affiliations(character_id) end
+        )
 
       # Get ship and weapon preferences
       top_ships = get_ship_preferences(character_id, ninety_days_ago)
@@ -75,20 +68,16 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
       intelligence_summary =
         calculate_character_intelligence_summary(character_id, ninety_days_ago)
 
-      # Get corporation and alliance info from killmail data
-      {corp_name, alliance_name, corp_id, alliance_id} =
-        get_corporation_alliance_from_killmails(character_id)
-
       analysis = %{
         character_id: character_id,
         character_name: character_name,
-        corporation_name: corp_name,
-        corporation_id: corp_id,
-        alliance_name: alliance_name,
-        alliance_id: alliance_id,
-        total_kills: kill_count,
-        total_deaths: death_count,
-        kd_ratio: kd_ratio,
+        corporation_name: affiliations.corporation_name,
+        corporation_id: affiliations.corporation_id,
+        alliance_name: affiliations.alliance_name,
+        alliance_id: affiliations.alliance_id,
+        total_kills: stats.kills,
+        total_deaths: stats.deaths,
+        kd_ratio: stats.kd_ratio,
         isk_efficiency: isk_stats.efficiency,
         isk_destroyed: isk_stats.destroyed,
         isk_lost: isk_stats.lost,
@@ -111,7 +100,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
   end
 
   # Placeholder implementations - these would need to be moved from the original file
-  defp get_character_name(_character_id), do: "Unknown Pilot"
+  # defp get_character_name(_character_id), do: "Unknown Pilot"
   defp get_ship_preferences(_character_id, _date), do: []
   defp get_weapon_preferences(_character_id, _date), do: []
   defp calculate_isk_efficiency(_character_id, _date), do: %{efficiency: 0, destroyed: 0, lost: 0}
@@ -124,5 +113,5 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
   defp calculate_character_intelligence_summary(_character_id, _date),
     do: %{peak_activity_hour: nil, top_location: nil, primary_timezone: nil}
 
-  defp get_corporation_alliance_from_killmails(_character_id), do: {nil, nil, nil, nil}
+  # defp get_corporation_alliance_from_killmails(_character_id), do: {nil, nil, nil, nil}
 end
