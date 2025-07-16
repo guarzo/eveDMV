@@ -97,8 +97,8 @@ defmodule EveDmv.Killmails.KillmailRaw do
 
   # Identities for uniqueness
   identities do
-    identity :unique_killmail, [:killmail_id, :killmail_time] do
-      description("Each killmail ID + time combination is unique")
+    identity :unique_killmail_id, [:killmail_id] do
+      description("Each killmail ID is globally unique")
     end
 
     identity :unique_hash_time, [:killmail_hash, :killmail_time] do
@@ -151,7 +151,7 @@ defmodule EveDmv.Killmails.KillmailRaw do
 
       # Upsert behavior - if killmail already exists, do nothing
       upsert?(true)
-      upsert_identity(:unique_killmail)
+      upsert_identity(:unique_killmail_id)
       # Don't update any fields on conflict - just ignore duplicates
       upsert_fields([])
     end

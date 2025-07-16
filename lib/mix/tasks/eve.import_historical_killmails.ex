@@ -272,24 +272,85 @@ defmodule Mix.Tasks.Eve.ImportHistoricalKillmails do
           error_count = length(result.errors || [])
           Logger.warning("Partial success: imported #{success_count}, failed #{error_count}")
 
-          # Log first few errors for debugging
-          result.errors
-          |> Enum.take(3)
-          |> Enum.each(fn error ->
-            Logger.error("Import error: #{inspect(error)}")
+          # Categorize errors
+          duplicate_errors = Enum.count(result.errors, fn error ->
+            error_msg = inspect(error)
+            String.contains?(error_msg, "killmail_id") and (
+              String.contains?(error_msg, "already exists") or 
+              String.contains?(error_msg, "unique constraint") or
+              String.contains?(error_msg, "duplicate key")
+            )
           end)
+          
+          other_errors = error_count - duplicate_errors
+          
+          if duplicate_errors > 0 do
+            Logger.info("Skipped #{duplicate_errors} duplicate killmails")
+          end
+          
+          if other_errors > 0 do
+            Logger.warning("#{other_errors} non-duplicate errors occurred")
+            # Log first few non-duplicate errors for debugging
+            result.errors
+            |> Enum.reject(fn error ->
+              error_msg = inspect(error)
+              String.contains?(error_msg, "killmail_id") and (
+                String.contains?(error_msg, "already exists") or 
+                String.contains?(error_msg, "unique constraint") or
+                String.contains?(error_msg, "duplicate key")
+              )
+            end)
+            |> Enum.take(3)
+            |> Enum.each(fn error ->
+              Logger.error("Import error: #{inspect(error)}")
+            end)
+          end
 
           {:ok, success_count}
 
         %Ash.BulkResult{status: :error, errors: errors} ->
-          # Log first few errors for debugging
-          errors
-          |> Enum.take(3)
-          |> Enum.each(fn error ->
-            Logger.error("Import error: #{inspect(error)}")
+          error_count = length(errors)
+          
+          # Categorize errors
+          duplicate_errors = Enum.count(errors, fn error ->
+            error_msg = inspect(error)
+            String.contains?(error_msg, "killmail_id") and (
+              String.contains?(error_msg, "already exists") or 
+              String.contains?(error_msg, "unique constraint") or
+              String.contains?(error_msg, "duplicate key")
+            )
           end)
-
-          {:error, "All records failed to import"}
+          
+          other_errors = error_count - duplicate_errors
+          
+          if duplicate_errors == error_count do
+            # All errors are duplicates - this is actually success
+            Logger.info("All #{duplicate_errors} records were duplicates, skipping batch")
+            {:ok, 0}
+          else
+            if duplicate_errors > 0 do
+              Logger.info("Skipped #{duplicate_errors} duplicate killmails")
+            end
+            
+            if other_errors > 0 do
+              # Log first few non-duplicate errors for debugging
+              errors
+              |> Enum.reject(fn error ->
+                error_msg = inspect(error)
+                String.contains?(error_msg, "killmail_id") and (
+                  String.contains?(error_msg, "already exists") or 
+                  String.contains?(error_msg, "unique constraint") or
+                  String.contains?(error_msg, "duplicate key")
+                )
+              end)
+              |> Enum.take(3)
+              |> Enum.each(fn error ->
+                Logger.error("Import error: #{inspect(error)}")
+              end)
+            end
+          
+            {:error, "#{other_errors} non-duplicate records failed to import"}
+          end
       end
     rescue
       error -> {:error, Exception.message(error)}
@@ -345,6 +406,7 @@ defmodule Mix.Tasks.Eve.ImportHistoricalKillmails do
           raise "Cannot generate hash: killmail_id or killmail_time is nil"
         end
 
+        # Generate hash from killmail ID and timestamp
         hash_data = "#{id}-#{timestamp}"
         hash = :crypto.hash(:sha256, hash_data)
         Base.encode16(hash, case: :lower)
@@ -358,6 +420,7 @@ defmodule Mix.Tasks.Eve.ImportHistoricalKillmails do
           raise "Cannot generate hash: killmail_id or killmail_time is nil"
         end
 
+        # Generate hash from killmail ID and timestamp
         hash_data = "#{id}-#{timestamp}"
         hash = :crypto.hash(:sha256, hash_data)
         Base.encode16(hash, case: :lower)
@@ -376,6 +439,7 @@ defmodule Mix.Tasks.Eve.ImportHistoricalKillmails do
           raise "Cannot generate hash: killmail_id or killmail_time is nil"
         end
 
+        # Generate hash from killmail ID and timestamp
         hash_data = "#{id}-#{timestamp}"
         hash = :crypto.hash(:sha256, hash_data)
         Base.encode16(hash, case: :lower)
