@@ -1027,30 +1027,33 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     # - Consistent kills over extended time with minimal losses on one side
     # - High time gaps between reciprocal kills 
     # - One side maintains range advantage
-    
+
     if length(timeline) < 5 do
       []
     else
       # Analyze kill distribution by side over time
-      time_windows = group_timeline_by_windows(timeline, 120) # 2-minute windows
-      
-      kiting_patterns = 
+      # 2-minute windows
+      time_windows = group_timeline_by_windows(timeline, 120)
+
+      kiting_patterns =
         time_windows
-        |> Enum.chunk_every(3, 1, :discard) # Look at 3-window sequences
+        # Look at 3-window sequences
+        |> Enum.chunk_every(3, 1, :discard)
         |> Enum.filter(&detect_kiting_sequence/1)
         |> Enum.map(fn [first_window, _mid_window, last_window] ->
           %{
             pattern: :kiting,
             start_timestamp: List.first(first_window).timestamp,
             end_timestamp: List.last(last_window).timestamp,
-            duration_seconds: DateTime.diff(
-              List.last(last_window).timestamp,
-              List.first(first_window).timestamp
-            ),
+            duration_seconds:
+              DateTime.diff(
+                List.last(last_window).timestamp,
+                List.first(first_window).timestamp
+              ),
             characteristic: "Sustained range advantage with minimal reciprocal damage"
           }
         end)
-      
+
       kiting_patterns
     end
   end
@@ -1060,41 +1063,45 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     # - High reciprocal kill rate (both sides taking losses)
     # - Short time intervals between kills
     # - High concentration of kills in short periods
-    
+
     if length(timeline) < 4 do
       []
     else
       # Group kills into 60-second windows for brawl detection
-      time_windows = group_timeline_by_windows(timeline, 60) # 1-minute windows
-      
+      # 1-minute windows
+      time_windows = group_timeline_by_windows(timeline, 60)
+
       brawling_patterns =
         time_windows
         |> Enum.filter(&detect_brawling_window/1)
         |> Enum.chunk_by(fn window ->
           # Group consecutive brawling windows
           first_kill = List.first(window)
-          div(DateTime.to_unix(first_kill.timestamp), 120) # 2-minute chunks
+          # 2-minute chunks
+          div(DateTime.to_unix(first_kill.timestamp), 120)
         end)
-        |> Enum.filter(fn window_group -> length(window_group) >= 2 end) # At least 2 consecutive windows
+        # At least 2 consecutive windows
+        |> Enum.filter(fn window_group -> length(window_group) >= 2 end)
         |> Enum.map(fn window_group ->
           first_window = List.first(window_group)
           last_window = List.last(window_group)
-          
-          all_kills = Enum.flat_map(window_group, &(&1))
-          
+
+          all_kills = Enum.flat_map(window_group, & &1)
+
           %{
             pattern: :brawling,
             start_timestamp: List.first(first_window).timestamp,
             end_timestamp: List.last(last_window).timestamp,
-            duration_seconds: DateTime.diff(
-              List.last(last_window).timestamp,
-              List.first(first_window).timestamp
-            ),
+            duration_seconds:
+              DateTime.diff(
+                List.last(last_window).timestamp,
+                List.first(first_window).timestamp
+              ),
             intensity: length(all_kills) / max(1, length(window_group)),
             characteristic: "High intensity close-range combat with reciprocal losses"
           }
         end)
-      
+
       brawling_patterns
     end
   end
@@ -1549,7 +1556,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     # Calculate kill/death ratio for all participants on this side
     total_kills = Enum.sum(Enum.map(participants, & &1.kills))
     total_deaths = Enum.sum(Enum.map(participants, & &1.losses))
-    
+
     # Avoid division by zero
     if total_deaths > 0 do
       Float.round(total_kills / total_deaths, 2)
@@ -1565,44 +1572,55 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   defp analyze_ship_class_performance(killmails, participants) do
     # Analyze performance metrics by ship class
-    
+
     # Extract ship usage data from participants
     ship_usage = extract_ship_usage_from_participants(participants)
-    
+
     # Analyze kills made by each ship class
     kills_by_class = analyze_kills_by_ship_class(killmails)
-    
+
     # Analyze losses by ship class  
     losses_by_class = analyze_losses_by_ship_class(killmails)
-    
+
     # Calculate performance metrics for each ship class
-    all_classes = (Map.keys(ship_usage) ++ Map.keys(kills_by_class) ++ Map.keys(losses_by_class))
-                  |> Enum.uniq()
-    
-    class_performance = 
+    all_classes =
+      (Map.keys(ship_usage) ++ Map.keys(kills_by_class) ++ Map.keys(losses_by_class))
+      |> Enum.uniq()
+
+    class_performance =
       all_classes
       |> Enum.map(fn ship_class ->
         ships_used = Map.get(ship_usage, ship_class, 0)
         kills_made = Map.get(kills_by_class, ship_class, 0)
         ships_lost = Map.get(losses_by_class, ship_class, 0)
-        
+
         # Calculate metrics
-        kill_efficiency = if ships_used > 0, do: Float.round(kills_made / ships_used, 2), else: 0.0
-        survival_rate = if ships_used > 0, do: Float.round((ships_used - ships_lost) / ships_used * 100, 2), else: 0.0
-        k_d_ratio = if ships_lost > 0, do: Float.round(kills_made / ships_lost, 2), else: Float.round(kills_made * 1.0, 2)
-        
-        {ship_class, %{
-          ships_used: ships_used,
-          kills_made: kills_made,
-          ships_lost: ships_lost,
-          kill_efficiency: kill_efficiency,
-          survival_rate: survival_rate,
-          k_d_ratio: k_d_ratio,
-          tactical_role: determine_tactical_role(ship_class)
-        }}
+        kill_efficiency =
+          if ships_used > 0, do: Float.round(kills_made / ships_used, 2), else: 0.0
+
+        survival_rate =
+          if ships_used > 0,
+            do: Float.round((ships_used - ships_lost) / ships_used * 100, 2),
+            else: 0.0
+
+        k_d_ratio =
+          if ships_lost > 0,
+            do: Float.round(kills_made / ships_lost, 2),
+            else: Float.round(kills_made * 1.0, 2)
+
+        {ship_class,
+         %{
+           ships_used: ships_used,
+           kills_made: kills_made,
+           ships_lost: ships_lost,
+           kill_efficiency: kill_efficiency,
+           survival_rate: survival_rate,
+           k_d_ratio: k_d_ratio,
+           tactical_role: determine_tactical_role(ship_class)
+         }}
       end)
       |> Map.new()
-    
+
     class_performance
   end
 
@@ -1840,7 +1858,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   end
 
   # Helper functions for tactical pattern detection
-  
+
   defp group_timeline_by_windows(timeline, window_seconds) do
     timeline
     |> Enum.group_by(fn event ->
@@ -1850,67 +1868,76 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     |> Enum.filter(fn window -> length(window) > 0 end)
     |> Enum.sort_by(fn window -> List.first(window).timestamp end, DateTime)
   end
-  
+
   defp detect_kiting_sequence([window1, window2, window3]) do
     # Calculate side kill ratios for each window
     side_ratios = Enum.map([window1, window2, window3], &calculate_window_side_ratio/1)
-    
+
     # Check for consistent one-sided advantage (kiting indicator)
-    consistent_advantage = 
+    consistent_advantage =
       Enum.all?(side_ratios, fn ratio ->
-        ratio > 2.0 or ratio < 0.5  # Strong advantage to one side
+        # Strong advantage to one side
+        ratio > 2.0 or ratio < 0.5
       end)
-    
+
     # Check that the advantage is in the same direction
-    same_direction = 
-      Enum.all?(side_ratios, &(&1 > 1.0)) or 
-      Enum.all?(side_ratios, &(&1 < 1.0))
-    
+    same_direction =
+      Enum.all?(side_ratios, &(&1 > 1.0)) or
+        Enum.all?(side_ratios, &(&1 < 1.0))
+
     consistent_advantage and same_direction
   end
-  
+
   defp detect_brawling_window(window) do
     if length(window) < 3 do
       false
     else
       # High kill concentration and reciprocal damage
-      kill_rate = length(window) / 60  # kills per second in this minute
+      # kills per second in this minute
+      kill_rate = length(window) / 60
       side_ratio = calculate_window_side_ratio(window)
-      
+
       # Brawling: high activity and balanced kills (not too one-sided)
-      high_intensity = kill_rate > 0.05  # More than 3 kills per minute
-      balanced_fight = side_ratio >= 0.4 and side_ratio <= 2.5  # Not too one-sided
-      
+      # More than 3 kills per minute
+      high_intensity = kill_rate > 0.05
+      # Not too one-sided
+      balanced_fight = side_ratio >= 0.4 and side_ratio <= 2.5
+
       high_intensity and balanced_fight
     end
   end
-  
+
   defp calculate_window_side_ratio(window) do
     # Simplified side determination based on corporation grouping
     # Group by corporation to approximate sides
-    corp_kills = 
+    corp_kills =
       window
       |> Enum.group_by(fn event -> event.victim.corporation_id end)
       |> Map.values()
       |> Enum.map(&length/1)
       |> Enum.sort(:desc)
-    
+
     case corp_kills do
       [side_a_losses, side_b_losses | _] ->
         if side_b_losses > 0 do
           side_a_losses / side_b_losses
         else
-          side_a_losses  # One-sided if no losses on other side
+          # One-sided if no losses on other side
+          side_a_losses
         end
+
       [side_a_losses] ->
-        side_a_losses  # Completely one-sided
+        # Completely one-sided
+        side_a_losses
+
       [] ->
-        1.0  # No kills
+        # No kills
+        1.0
     end
   end
-  
+
   # Helper functions for ship class performance analysis
-  
+
   defp extract_ship_usage_from_participants(participants) do
     participants
     |> Map.values()
@@ -1921,7 +1948,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     end)
     |> Enum.frequencies()
   end
-  
+
   defp analyze_kills_by_ship_class(killmails) do
     killmails
     |> Enum.flat_map(fn km ->
@@ -1934,7 +1961,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     end)
     |> Enum.frequencies()
   end
-  
+
   defp analyze_losses_by_ship_class(killmails) do
     killmails
     |> Enum.map(fn km ->
@@ -1942,7 +1969,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     end)
     |> Enum.frequencies()
   end
-  
+
   defp determine_tactical_role(ship_class) do
     case ship_class do
       :frigate -> "Fast tackle, scouting, interception"

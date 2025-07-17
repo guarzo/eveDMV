@@ -1,54 +1,181 @@
-# TODO Items Replaced During Dialyzer Fix
+# TODO Items and Implementation Status
 
-This document tracks all TODO comments that were replaced or modified during the systematic Dialyzer error resolution process.
+## Summary
 
-## Phase 1: Foundation Issues - Pattern Matching Failures
+This document catalogues all placeholder implementations, stub functions, and incomplete features across the EVE DMV **production code**. Test files are excluded as mock data is expected in tests. The goal is to systematically replace placeholder implementations with real functionality.
 
-### Overview
-During Phase 1 of the Dialyzer fix implementation, we're replacing stub functions that return `{:error, :not_implemented}` or always return empty results with minimal viable implementations that satisfy type contracts.
+## 🔴 Critical Placeholder Functions
 
-### Replaced TODO Items
+### Character Intelligence Functions
+These functions are referenced in CLAUDE.md as returning mock data instead of real calculations:
 
-## Phase 3: Guards & Contracts
+**File: `lib/eve_dmv/contexts/character_intelligence/domain/threat_scoring/`**
+- All threat scoring engines return placeholder data
+- Combat threat engine needs actual threat calculations  
+- Gang effectiveness engine needs real effectiveness scoring
+- Ship mastery engine needs actual mastery analysis
+- Unpredictability engine needs behavioral pattern analysis
 
-### /workspace/lib/eve_dmv/contexts/market_intelligence/infrastructure/price_cache.ex - stats/0
-- **Original TODO**: None (was a type spec mismatch)
-- **Replacement**: Updated @spec to include all fields returned by the function (hits, misses, puts, hit_rate)
-- **Rationale**: The @spec only listed size and memory_bytes but the function returns 6 fields
-- **Future Work**: None - this is the correct spec
+**File: `lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex`**
+- `search_criteria_processing/1` - Line 121: Placeholder implementation
+- `activity_pattern_analysis/1` - Line 127: Placeholder implementation  
+- `character_comparison/2` - Line 133: Placeholder implementation
 
-### /workspace/lib/eve_dmv/intelligence_engine/plugins/character/combat_stats.ex - plugin_info/0 and cache_strategy/0
-- **Original TODO**: None (was callback type mismatches)
-- **Replacement**: Removed extra fields (author, tags from plugin_info and strategy from cache_strategy)
-- **Rationale**: The Plugin behaviour callbacks only expect specific fields
-- **Future Work**: Consider extending the behaviour if these fields are needed
+### Battle Analysis Services
+**File: `lib/eve_dmv/contexts/combat_intelligence/domain/battle_analysis_service.ex`**
+- Multiple functions return `{:error, :not_implemented}` instead of real analysis
 
-### /workspace/lib/eve_dmv_web/live/system_live.ex - Guard failures lines 320-323
-- **Original TODO**: None (was redundant guard clauses)
-- **Replacement**: Removed `|| 0` fallback patterns since variables already have numeric values
-- **Rationale**: Variables were already guaranteed to be numbers from calculations above
-- **Future Work**: None - cleanup only
+### Fleet Operations
+**File: `lib/eve_dmv/contexts/fleet_operations/infrastructure/`**
+- `fleet_repository.ex:18` - Doctrine cache refresh not implemented
+- `killmail_fleet_processor.ex:19` - Fleet analysis processing not implemented
+- `engagement_cache.ex` - Entire module is placeholder implementations
 
-### /workspace/lib/eve_dmv_web/live/corporation_live.ex - Guard failures lines 91-93
-- **Original TODO**: None (was redundant guard clauses)
-- **Replacement**: Removed `|| []` and `|| %{}` fallback patterns for battles, battle_stats, fleet_doctrines
-- **Rationale**: These fields are always populated by function calls in load_all_corporation_data
-- **Future Work**: None - cleanup only
+### Wormhole Operations  
+**File: `lib/eve_dmv/contexts/wormhole_operations/domain/`**
+- All wormhole analysis functions return mock data
+- Chain intelligence service has placeholder implementations
+- Home defense analyzer needs real threat assessment
+- Mass optimizer needs actual optimization algorithms
 
----
+## 🟡 Production Code Placeholder Data Generation
 
-## Documentation Notes
+### Threat Assessment Repository
+**File: `lib/eve_dmv/contexts/threat_assessment/infrastructure/threat_repository.ex`**
+- Lines 94-305: Multiple `sample_*` and `generate_sample_*` functions
+- All threat assessment data is currently generated, not queried
 
-- **Purpose**: Track removed TODO items to maintain visibility into what was temporarily implemented
-- **Format**: Each entry includes file path, function name, original TODO text, and replacement rationale
-- **Review**: These items should be revisited for full implementation in future sprints
+**File: `lib/eve_dmv/contexts/battle_sharing/domain/battle_curator.ex`**
+- `generate_sample_reports/3` - Line 1454: Creates fake battle reports
+- `generate_sample_highlights/1` - Line 1514: Mock tactical highlights
+- `generate_sample_tags/2` - Line 1531: Placeholder tagging system
 
-## Template for New Entries
+### Intelligence Analytics
+**File: `lib/eve_dmv/intelligence/advanced_analytics.ex`**
+- Lines 28-29, 84-85, 224-225: Uses Process dictionary for mock data
+- Behavioral analysis returns stored mock data instead of calculations
+- Threat assessment uses placeholder instead of real analysis
+- Risk analysis similarly mocked
 
-```markdown
-### [File Path] - [Function Name]
-- **Original TODO**: [Original TODO comment text]
-- **Replacement**: [Brief description of what was implemented instead]
-- **Rationale**: [Why this replacement was chosen for Dialyzer compliance]
-- **Future Work**: [Notes on what a full implementation would require]
-```
+## 🟠 User Interface Placeholders
+
+### Coming Soon Messages
+**File: `lib/eve_dmv_web/live/profile_live.ex`**
+- Line 292: "Refresh Token (Coming Soon)"
+- Line 326: "Export My Data (Coming Soon)"
+
+**File: `lib/eve_dmv_web/live/killmail_live.ex`**
+- Line 15: "Killmail details coming soon!" flash message
+
+**File: `lib/eve_dmv_web/controllers/page_html/home.html.heex`**
+- Line 412: Character name search not implemented alert
+
+### Mock Suggestion Systems
+**File: `lib/eve_dmv_web/live/surveillance_profiles_live.ex`**
+- Lines 712-776: All suggestion functions are mocked:
+  - `mock_character_suggestions/1`
+  - `mock_corporation_suggestions/1` 
+  - `mock_alliance_suggestions/1`
+  - `mock_system_suggestions/1`
+  - `mock_ship_suggestions/1`
+
+## 🔵 Database and Infrastructure Placeholders
+
+### Cache Management
+**File: `lib/eve_dmv/database/cache_hash_manager.ex`**
+- Lines 277, 283, 319: Return placeholder hash values instead of real calculations
+
+**File: `lib/eve_dmv/database/repository/telemetry_helper.ex`**
+- Line 131: Returns placeholder data instead of real telemetry
+
+### Query Analysis
+**File: `lib/eve_dmv/database/query_plan_analyzer/index_analyzer.ex`**
+- Line 373: Placeholder value for analysis
+- Line 387: Placeholder index optimization logic
+
+### Security Audit
+**File: `lib/mix/tasks/security.audit.ex`**
+- Line 87: Database security review deferred
+- Line 101: Container security review not implemented
+
+## 🟢 Implementation Status Tracking
+
+### Static Data
+**File: `lib/eve_dmv/static_data/ship_reference_importer.ex`**
+- Line 490: Using placeholder ID for Pontifex type verification
+
+### Workers and Background Jobs
+**File: `lib/eve_dmv/workers/cache_warming_worker.ex`**
+- Lines 384-408: Multiple placeholder implementations for cache warming
+- Line 454: Data fetching functions are placeholders
+
+**File: `lib/eve_dmv/workers/re_enrichment_worker.ex`**
+- Line 440: Returns empty list as placeholder
+
+## 📊 Corporation Analysis
+
+### Member Activity Analysis
+**File: `lib/eve_dmv/contexts/corporation_analysis/analyzers/member_activity_analyzer.ex`**
+- Lines 358-468: Multiple placeholder implementations:
+  - Activity trend analysis
+  - Engagement trends  
+  - Activity type breakdown
+  - Pattern identification
+  - Coverage analysis
+  - Participation calculations
+
+### Participation Analysis
+**File: `lib/eve_dmv/contexts/corporation_analysis/analyzers/participation_analyzer.ex`**
+- Lines 666-680: Three placeholder implementations
+
+## 🔍 Search and Discovery
+
+### Name Resolution
+**File: `lib/eve_dmv/eve/name_resolver/cache_manager.ex`**
+- Line 121: Pattern-based cache invalidation not implemented
+
+## 📈 Analytics and Metrics
+
+### Character Metrics
+**File: `lib/eve_dmv/intelligence/metrics/character_metrics_adapter.ex`**
+- Lines 74, 95: V2 MetricsCalculator not implemented, using fallback
+
+### Intelligence Core
+**File: `lib/eve_dmv/intelligence/core/intelligence_coordinator.ex`**
+- Lines 130-285: Multiple placeholder analysis functions:
+  - `get_placeholder_basic_analysis/1`
+  - `get_placeholder_vetting_analysis/1`
+  - Threat analysis placeholders
+  - Alert generation placeholders
+
+## 📝 Action Items
+
+### High Priority
+1. Replace character intelligence mock data with real calculations
+2. Implement actual battle analysis algorithms  
+3. Create real fleet effectiveness calculations
+4. Build wormhole chain analysis logic
+
+### Medium Priority
+1. Implement search suggestion systems with real data
+2. Replace threat assessment mock data with database queries
+3. Build corporation analysis algorithms
+4. Implement cache warming with real data sources
+
+### Low Priority
+1. Complete UI "Coming Soon" features
+2. Implement security audit modules
+3. Add query optimization analysis
+4. Complete static data import validation
+
+## 🚨 Critical Development Rule Compliance
+
+According to CLAUDE.md, features are **ONLY** considered done when:
+- ✅ They query real data from the database
+- ✅ Calculations use actual algorithms (no hardcoded values)  
+- ✅ No placeholder/mock return values
+- ✅ Tests exist and pass with real data
+- ✅ Documentation matches actual implementation
+- ✅ No TODO comments in the implementation
+
+**Current Status**: Most intelligence and analysis features fail this criteria and need real implementations.

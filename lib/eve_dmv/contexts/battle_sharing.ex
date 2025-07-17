@@ -96,39 +96,35 @@ defmodule EveDmv.Contexts.BattleSharing do
   def get_battle_report(report_id) do
     # Use the BattleCurator to fetch the report with full details
     # Since fetch_battle_report is private, we'll use a workaround
-    case get_battle_report_from_curator(report_id) do
-      {:ok, full_report} ->
-        # Transform to the expected format for the public API
-        public_report = %{
-          report_id: full_report.report_id,
-          battle_id: full_report.battle_id,
-          creator: %{
-            character_id: full_report.creator_character_id,
-            character_name: full_report.creator_name || "Unknown Creator"
-          },
-          title: full_report.title,
-          description: full_report.description,
-          video_links: full_report.video_links,
-          tactical_highlights: full_report.tactical_highlights,
-          ratings: %{
-            average: full_report.metrics.average_rating,
-            count: full_report.metrics.total_ratings
-          },
-          visibility: full_report.visibility,
-          tags: full_report.tags,
-          auto_analysis: full_report.auto_analysis,
-          tactical_insights: full_report.tactical_insights,
-          share_urls: full_report.share_urls,
-          metrics: full_report.metrics,
-          created_at: full_report.created_at,
-          updated_at: full_report.updated_at
-        }
-        
-        {:ok, public_report}
-      
-      error ->
-        error
-    end
+    {:ok, full_report} = get_battle_report_from_curator(report_id)
+
+    # Transform to the expected format for the public API
+    public_report = %{
+      report_id: full_report.report_id,
+      battle_id: full_report.battle_id,
+      creator: %{
+        character_id: full_report.creator_character_id,
+        character_name: full_report.creator_name || "Unknown Creator"
+      },
+      title: full_report.title,
+      description: full_report.description,
+      video_links: full_report.video_links,
+      tactical_highlights: full_report.tactical_highlights,
+      ratings: %{
+        average: full_report.metrics.average_rating,
+        count: full_report.metrics.total_ratings
+      },
+      visibility: full_report.visibility,
+      tags: full_report.tags,
+      auto_analysis: full_report.auto_analysis,
+      tactical_insights: full_report.tactical_insights,
+      share_urls: full_report.share_urls,
+      metrics: full_report.metrics,
+      created_at: full_report.created_at,
+      updated_at: full_report.updated_at
+    }
+
+    {:ok, public_report}
   end
 
   @doc """
@@ -140,19 +136,20 @@ defmodule EveDmv.Contexts.BattleSharing do
     with {:ok, report} <- get_battle_report(report_id),
          {:ok, _} <- verify_update_permission(report, updater_character_id),
          {:ok, updated_report} <- apply_battle_report_updates(report, updates) do
-      {:ok, %{
-        report_id: updated_report.report_id,
-        updated: true,
-        changes: Map.keys(updates),
-        updated_at: DateTime.utc_now()
-      }}
+      {:ok,
+       %{
+         report_id: updated_report.report_id,
+         updated: true,
+         changes: Map.keys(updates),
+         updated_at: DateTime.utc_now()
+       }}
     else
       {:error, :report_not_found} -> {:error, :report_not_found}
       {:error, :permission_denied} -> {:error, :permission_denied}
       error -> error
     end
   end
-  
+
   defp verify_update_permission(report, updater_character_id) do
     if report.creator.character_id == updater_character_id do
       {:ok, :authorized}
@@ -160,22 +157,22 @@ defmodule EveDmv.Contexts.BattleSharing do
       {:error, :permission_denied}
     end
   end
-  
+
   defp apply_battle_report_updates(report, updates) do
     # Apply allowed updates
     allowed_fields = [:title, :description, :tags, :visibility, :video_links]
-    
-    filtered_updates = 
+
+    filtered_updates =
       updates
       |> Enum.filter(fn {key, _value} -> key in allowed_fields end)
       |> Enum.into(%{})
-    
+
     if map_size(filtered_updates) > 0 do
-      updated_report = 
+      updated_report =
         report
         |> Map.merge(filtered_updates)
         |> Map.put(:updated_at, DateTime.utc_now())
-      
+
       # In production, this would save to database
       {:ok, updated_report}
     else
@@ -192,18 +189,17 @@ defmodule EveDmv.Contexts.BattleSharing do
     with {:ok, report} <- get_battle_report(report_id),
          {:ok, _} <- verify_delete_permission(report, deleter_character_id),
          {:ok, _} <- perform_battle_report_deletion(report_id) do
-      {:ok, %{
-        deleted: true,
-        report_id: report_id,
-        deleted_at: DateTime.utc_now()
-      }}
+      {:ok,
+       %{
+         deleted: true,
+         report_id: report_id,
+         deleted_at: DateTime.utc_now()
+       }}
     else
-      {:error, :report_not_found} -> {:error, :report_not_found}
       {:error, :permission_denied} -> {:error, :permission_denied}
-      error -> error
     end
   end
-  
+
   defp verify_delete_permission(report, deleter_character_id) do
     if report.creator.character_id == deleter_character_id do
       {:ok, :authorized}
@@ -211,14 +207,14 @@ defmodule EveDmv.Contexts.BattleSharing do
       {:error, :permission_denied}
     end
   end
-  
+
   defp perform_battle_report_deletion(_report_id) do
     # In production, this would:
     # 1. Mark report as deleted in database
     # 2. Clean up associated data (ratings, highlights, etc.)
     # 3. Log the deletion for audit purposes
     # 4. Notify any subscribers
-    
+
     # For now, simulate successful deletion
     {:ok, :deleted}
   end
@@ -229,13 +225,13 @@ defmodule EveDmv.Contexts.BattleSharing do
   def get_reports_for_battle(battle_id) do
     # In production, this would query the database for all reports of this battle
     # For now, simulate finding related battle reports
-    
+
     try do
       # Generate sample reports for this battle
       sample_reports = generate_sample_battle_reports(battle_id)
-      
+
       # Transform to public format
-      public_reports = 
+      public_reports =
         sample_reports
         |> Enum.map(fn report ->
           %{
@@ -257,7 +253,7 @@ defmodule EveDmv.Contexts.BattleSharing do
             updated_at: report.updated_at
           }
         end)
-      
+
       {:ok, public_reports}
     rescue
       error ->
@@ -265,11 +261,11 @@ defmodule EveDmv.Contexts.BattleSharing do
         {:error, :query_failed}
     end
   end
-  
+
   defp generate_sample_battle_reports(battle_id) do
     # Generate 0-3 sample reports for this battle
     report_count = :rand.uniform(4) - 1
-    
+
     if report_count > 0 do
       1..report_count
       |> Enum.map(fn i ->
@@ -304,32 +300,34 @@ defmodule EveDmv.Contexts.BattleSharing do
     offset = Keyword.get(options, :offset, 0)
     sort_by = Keyword.get(options, :sort_by, :created_at)
     visibility_filter = Keyword.get(options, :visibility)
-    
+
     try do
       # In production, this would query the database
       # For now, generate sample reports for this creator
       sample_reports = generate_sample_creator_reports(character_id, limit, offset)
-      
+
       # Apply visibility filter if specified
-      filtered_reports = if visibility_filter do
-        Enum.filter(sample_reports, fn report -> 
-          report.visibility == visibility_filter
-        end)
-      else
-        sample_reports
-      end
-      
+      filtered_reports =
+        if visibility_filter do
+          Enum.filter(sample_reports, fn report ->
+            report.visibility == visibility_filter
+          end)
+        else
+          sample_reports
+        end
+
       # Apply sorting
-      sorted_reports = case sort_by do
-        :created_at -> Enum.sort_by(filtered_reports, & &1.created_at, :desc)
-        :updated_at -> Enum.sort_by(filtered_reports, & &1.updated_at, :desc)
-        :rating -> Enum.sort_by(filtered_reports, & &1.metrics.average_rating, :desc)
-        :views -> Enum.sort_by(filtered_reports, & &1.metrics.views, :desc)
-        _ -> filtered_reports
-      end
-      
+      sorted_reports =
+        case sort_by do
+          :created_at -> Enum.sort_by(filtered_reports, & &1.created_at, :desc)
+          :updated_at -> Enum.sort_by(filtered_reports, & &1.updated_at, :desc)
+          :rating -> Enum.sort_by(filtered_reports, & &1.metrics.average_rating, :desc)
+          :views -> Enum.sort_by(filtered_reports, & &1.metrics.views, :desc)
+          _ -> filtered_reports
+        end
+
       # Transform to public format
-      public_reports = 
+      public_reports =
         sorted_reports
         |> Enum.map(fn report ->
           %{
@@ -351,7 +349,7 @@ defmodule EveDmv.Contexts.BattleSharing do
             updated_at: report.updated_at
           }
         end)
-      
+
       {:ok, public_reports}
     rescue
       error ->
@@ -359,16 +357,16 @@ defmodule EveDmv.Contexts.BattleSharing do
         {:error, :query_failed}
     end
   end
-  
+
   defp generate_sample_creator_reports(character_id, limit, offset) do
     # Generate sample reports for this creator
     base_count = 3 + :rand.uniform(8)
-    
+
     (offset + 1)..(offset + min(limit, base_count))
     |> Enum.map(fn i ->
       battle_types = [:fleet_battle, :gang_warfare, :small_gang, :skirmish]
       battle_type = Enum.random(battle_types)
-      
+
       %{
         report_id: "creator_#{character_id}_report_#{i}",
         battle_id: "battle_#{character_id}_#{i}",
@@ -388,7 +386,7 @@ defmodule EveDmv.Contexts.BattleSharing do
       }
     end)
   end
-  
+
   # Helper function to simulate fetching from BattleCurator
   defp get_battle_report_from_curator(report_id) do
     # Simulate a comprehensive battle report with all the fields
@@ -446,7 +444,7 @@ defmodule EveDmv.Contexts.BattleSharing do
       created_at: DateTime.add(DateTime.utc_now(), -:rand.uniform(86400), :second),
       updated_at: DateTime.utc_now()
     }
-    
+
     {:ok, full_report}
   end
 end

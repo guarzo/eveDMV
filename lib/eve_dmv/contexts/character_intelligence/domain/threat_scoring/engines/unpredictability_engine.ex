@@ -34,10 +34,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
 
       # Ship selection patterns (does character vary ship choices?)
       ship_patterns = analyze_ship_selection_patterns(combat_data)
-      
+
       # Tactical variance (does character adapt tactics?)
       tactical_variance = analyze_tactical_variance(combat_data)
-      
+
       # Location diversity (does character fight in different areas?)
       location_diversity = analyze_location_diversity(all_killmails)
 
@@ -58,7 +58,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
           location_diversity: location_diversity
         },
         ship_selection_analysis: ship_patterns,
-        insights: generate_unpredictability_insights(raw_score, time_variety, tactical_variance, location_diversity)
+        insights:
+          generate_unpredictability_insights(
+            raw_score,
+            time_variety,
+            tactical_variance,
+            location_diversity
+          )
       }
     end
   end
@@ -70,20 +76,21 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
     Logger.debug("Analyzing engagement time variety for #{length(killmails)} killmails")
 
     if length(killmails) < 5 do
-      0.5  # Not enough data for meaningful analysis
+      # Not enough data for meaningful analysis
+      0.5
     else
       # Extract timestamps and analyze temporal patterns
       timestamps = extract_killmail_timestamps(killmails)
-      
+
       # Analyze time of day variety
       hour_variety = analyze_hour_of_day_variety(timestamps)
-      
+
       # Analyze day of week variety
       day_variety = analyze_day_of_week_variety(timestamps)
-      
+
       # Analyze engagement frequency patterns
       frequency_variance = analyze_engagement_frequency_variance(timestamps)
-      
+
       # Combined time variety score
       hour_variety * 0.4 + day_variety * 0.3 + frequency_variance * 0.3
     end
@@ -107,23 +114,24 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
     else
       # Extract ship usage patterns
       ship_usage = extract_ship_usage_patterns(all_killmails)
-      
+
       # Calculate selection variance (how much variety in ship choices)
       selection_variance = calculate_ship_selection_variance(ship_usage)
-      
+
       # Analyze adaptation patterns (changing ships based on situation)
       adaptation_score = analyze_ship_adaptation_patterns(all_killmails)
-      
+
       # Calculate predictability index (reverse of unpredictability)
       predictability_index = calculate_ship_predictability_index(ship_usage)
-      
+
       # Calculate ship diversity using Shannon entropy
       ship_diversity = calculate_ship_diversity_entropy(ship_usage)
 
       %{
         selection_variance: selection_variance,
         adaptation_score: adaptation_score,
-        predictability_index: 1.0 - predictability_index,  # Convert to unpredictability
+        # Convert to unpredictability
+        predictability_index: 1.0 - predictability_index,
         ship_diversity: ship_diversity,
         ship_usage_breakdown: ship_usage
       }
@@ -144,13 +152,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
     else
       # Analyze target type variance (different victim ship classes)
       target_variance = analyze_target_type_variance(attacker_killmails)
-      
+
       # Analyze engagement size variance (solo vs gang patterns)
       size_variance = analyze_engagement_size_variance(all_killmails)
-      
+
       # Analyze damage pattern variance
       damage_variance = analyze_damage_pattern_variance(attacker_killmails)
-      
+
       # Analyze tactical role variance (different roles in combat)
       role_variance = analyze_tactical_role_variance(all_killmails)
 
@@ -173,13 +181,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
     else
       # Extract system locations from killmails
       systems = extract_system_locations(killmails)
-      
+
       # Calculate location diversity using Shannon entropy
       system_diversity = calculate_location_diversity_entropy(systems)
-      
+
       # Analyze region diversity
       region_diversity = analyze_region_diversity(killmails)
-      
+
       # Analyze security space variety (high-sec, low-sec, null-sec, wormhole)
       security_variety = analyze_security_space_variety(killmails)
 
@@ -201,7 +209,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       0.5
     else
       # Extract hours from timestamps
-      hours = 
+      hours =
         timestamps
         |> Enum.map(&DateTime.to_time/1)
         |> Enum.map(& &1.hour)
@@ -209,7 +217,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
 
       # Calculate entropy of hour distribution
       total_engagements = Enum.sum(Map.values(hours))
-      entropy = 
+
+      entropy =
         hours
         |> Enum.map(fn {_hour, count} ->
           probability = count / total_engagements
@@ -228,14 +237,15 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       0.5
     else
       # Extract day of week from timestamps
-      days = 
+      days =
         timestamps
         |> Enum.map(&Date.day_of_week/1)
         |> Enum.frequencies()
 
       # Calculate entropy of day distribution
       total_engagements = Enum.sum(Map.values(days))
-      entropy = 
+
+      entropy =
         days
         |> Enum.map(fn {_day, count} ->
           probability = count / total_engagements
@@ -255,8 +265,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
     else
       # Calculate time gaps between engagements
       sorted_timestamps = Enum.sort(timestamps, DateTime)
-      
-      gaps = 
+
+      gaps =
         sorted_timestamps
         |> Enum.chunk_every(2, 1, :discard)
         |> Enum.map(fn [t1, t2] -> DateTime.diff(t2, t1, :hour) end)
@@ -267,15 +277,16 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       else
         # Calculate coefficient of variation for gaps
         mean_gap = Enum.sum(gaps) / length(gaps)
-        variance = 
+
+        variance =
           gaps
           |> Enum.map(&((&1 - mean_gap) * (&1 - mean_gap)))
           |> Enum.sum()
           |> Kernel./(length(gaps))
-        
+
         std_dev = :math.sqrt(variance)
         coefficient_of_variation = if mean_gap > 0, do: std_dev / mean_gap, else: 0
-        
+
         # Normalize to 0-1 scale (high variance = more unpredictable)
         min(1.0, coefficient_of_variation / 2.0)
       end
@@ -284,21 +295,24 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
 
   defp extract_ship_usage_patterns(killmails) do
     # Extract ship types used by the character
-    ship_types = 
+    ship_types =
       killmails
       |> Enum.flat_map(fn km ->
         # Ship type when victim
         victim_ship = if km.victim_character_id, do: [km.victim_ship_type_id], else: []
 
         # Ship type when attacker
-        attacker_ships = case km.raw_data do
-          %{"attackers" => attackers} when is_list(attackers) ->
-            attackers
-            |> Enum.filter(&(&1["character_id"] != nil))
-            |> Enum.map(& &1["ship_type_id"])
-            |> Enum.filter(&(&1 != nil))
-          _ -> []
-        end
+        attacker_ships =
+          case km.raw_data do
+            %{"attackers" => attackers} when is_list(attackers) ->
+              attackers
+              |> Enum.filter(&(&1["character_id"] != nil))
+              |> Enum.map(& &1["ship_type_id"])
+              |> Enum.filter(&(&1 != nil))
+
+            _ ->
+              []
+          end
 
         victim_ship ++ attacker_ships
       end)
@@ -310,13 +324,15 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
 
   defp calculate_ship_selection_variance(ship_usage) do
     if map_size(ship_usage) <= 1 do
-      0.0  # No variance with only one ship type
+      # No variance with only one ship type
+      0.0
     else
       total_usage = ship_usage |> Map.values() |> Enum.sum()
-      
+
       # Calculate variance in ship usage frequencies
       mean_usage = total_usage / map_size(ship_usage)
-      variance = 
+
+      variance =
         ship_usage
         |> Map.values()
         |> Enum.map(&((&1 - mean_usage) * (&1 - mean_usage)))
@@ -338,7 +354,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       # This is a simplified version - would need more context data
       ship_usage = extract_ship_usage_patterns(killmails)
       unique_ships = map_size(ship_usage)
-      
+
       # More ship types = better adaptation
       adaptation_score = min(1.0, unique_ships / 10)
       adaptation_score
@@ -347,11 +363,12 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
 
   defp calculate_ship_predictability_index(ship_usage) do
     if map_size(ship_usage) == 0 do
-      1.0  # Completely predictable (no data)
+      # Completely predictable (no data)
+      1.0
     else
       total_usage = ship_usage |> Map.values() |> Enum.sum()
       max_usage = ship_usage |> Map.values() |> Enum.max()
-      
+
       # High concentration on one ship = high predictability
       concentration_ratio = max_usage / total_usage
       concentration_ratio
@@ -363,9 +380,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       0.0
     else
       total_usage = ship_usage |> Map.values() |> Enum.sum()
-      
+
       # Shannon entropy
-      entropy = 
+      entropy =
         ship_usage
         |> Enum.map(fn {_ship, usage} ->
           probability = usage / total_usage
@@ -385,14 +402,15 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       0.5
     else
       # Analyze variety in target ship types
-      target_ships = 
+      target_ships =
         attacker_killmails
         |> Enum.map(& &1.victim_ship_type_id)
         |> Enum.frequencies()
 
       # Calculate Shannon entropy of target selection
       total_kills = Enum.sum(Map.values(target_ships))
-      entropy = 
+
+      entropy =
         target_ships
         |> Enum.map(fn {_ship, count} ->
           probability = count / total_kills
@@ -412,23 +430,27 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       0.5
     else
       # Extract engagement sizes (number of attackers per killmail)
-      engagement_sizes = 
+      engagement_sizes =
         killmails
         |> Enum.map(fn km ->
           case km.raw_data do
             %{"attackers" => attackers} when is_list(attackers) ->
               length(attackers)
-            _ -> 1
+
+            _ ->
+              1
           end
         end)
         |> Enum.frequencies()
 
       # Calculate variance in engagement sizes
       if map_size(engagement_sizes) <= 1 do
-        0.0  # No variance
+        # No variance
+        0.0
       else
         total_engagements = Enum.sum(Map.values(engagement_sizes))
-        entropy = 
+
+        entropy =
           engagement_sizes
           |> Enum.map(fn {_size, count} ->
             probability = count / total_engagements
@@ -449,7 +471,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       0.5
     else
       # Analyze variance in damage contribution patterns
-      damage_contributions = 
+      damage_contributions =
         attacker_killmails
         |> Enum.map(&extract_damage_contribution/1)
         |> Enum.filter(&(&1 > 0))
@@ -459,7 +481,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       else
         # Calculate coefficient of variation for damage contributions
         mean_damage = Enum.sum(damage_contributions) / length(damage_contributions)
-        variance = 
+
+        variance =
           damage_contributions
           |> Enum.map(&((&1 - mean_damage) * (&1 - mean_damage)))
           |> Enum.sum()
@@ -467,7 +490,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
 
         std_dev = :math.sqrt(variance)
         coefficient_of_variation = if mean_damage > 0, do: std_dev / mean_damage, else: 0
-        
+
         # Normalize to 0-1 scale
         min(1.0, coefficient_of_variation * 2.0)
       end
@@ -478,7 +501,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
     case killmail.raw_data do
       %{"victim" => %{"damage_taken" => total_damage}, "attackers" => attackers}
       when is_list(attackers) and is_number(total_damage) and total_damage > 0 ->
-        character_damage = 
+        character_damage =
           attackers
           |> Enum.find(&(&1["character_id"] == killmail.victim_character_id))
           |> case do
@@ -487,26 +510,31 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
           end
 
         character_damage / total_damage
-      _ -> 0.0
+
+      _ ->
+        0.0
     end
   end
 
   defp analyze_tactical_role_variance(killmails) do
     # Analyze variance in tactical roles played
-    ship_roles = 
+    ship_roles =
       killmails
       |> Enum.flat_map(fn km ->
         # Extract ship types used by character
         victim_ships = if km.victim_character_id, do: [km.victim_ship_type_id], else: []
-        
-        attacker_ships = case km.raw_data do
-          %{"attackers" => attackers} when is_list(attackers) ->
-            attackers
-            |> Enum.filter(&(&1["character_id"] != nil))
-            |> Enum.map(& &1["ship_type_id"])
-            |> Enum.filter(&(&1 != nil))
-          _ -> []
-        end
+
+        attacker_ships =
+          case km.raw_data do
+            %{"attackers" => attackers} when is_list(attackers) ->
+              attackers
+              |> Enum.filter(&(&1["character_id"] != nil))
+              |> Enum.map(& &1["ship_type_id"])
+              |> Enum.filter(&(&1 != nil))
+
+            _ ->
+              []
+          end
 
         victim_ships ++ attacker_ships
       end)
@@ -515,11 +543,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       |> Enum.frequencies()
 
     if map_size(ship_roles) <= 1 do
-      0.0  # No role variance
+      # No role variance
+      0.0
     else
       # Calculate entropy of role distribution
       total_usage = ship_roles |> Map.values() |> Enum.sum()
-      entropy = 
+
+      entropy =
         ship_roles
         |> Enum.map(fn {_role, usage} ->
           probability = usage / total_usage
@@ -558,9 +588,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       0.0
     else
       total_engagements = systems |> Map.values() |> Enum.sum()
-      
+
       # Shannon entropy for system distribution
-      entropy = 
+      entropy =
         systems
         |> Enum.map(fn {_system, count} ->
           probability = count / total_engagements
@@ -578,7 +608,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
   defp analyze_region_diversity(killmails) do
     # This is simplified - would need EVE static data for actual regions
     # For now, estimate region diversity based on system ID ranges
-    systems = 
+    systems =
       killmails
       |> Enum.map(& &1.solar_system_id)
       |> Enum.filter(&(&1 != nil))
@@ -588,7 +618,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       0.5
     else
       # Rough region estimation based on system ID ranges
-      estimated_regions = 
+      estimated_regions =
         systems
         |> Enum.map(&estimate_region_from_system_id/1)
         |> Enum.uniq()
@@ -608,7 +638,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
   defp analyze_security_space_variety(killmails) do
     # Analyze variety across security space types
     # This is simplified - would need EVE static data for actual security status
-    systems = 
+    systems =
       killmails
       |> Enum.map(& &1.solar_system_id)
       |> Enum.filter(&(&1 != nil))
@@ -631,38 +661,48 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
     end
   end
 
-  defp generate_unpredictability_insights(raw_score, time_variety, tactical_variance, location_diversity) do
+  defp generate_unpredictability_insights(
+         raw_score,
+         time_variety,
+         tactical_variance,
+         location_diversity
+       ) do
     insights = []
 
-    insights = if raw_score > 0.8 do
-      ["Highly unpredictable opponent - difficult to anticipate" | insights]
-    else
-      insights
-    end
+    insights =
+      if raw_score > 0.8 do
+        ["Highly unpredictable opponent - difficult to anticipate" | insights]
+      else
+        insights
+      end
 
-    insights = if time_variety > 0.7 do
-      ["Varies engagement times - no clear schedule pattern" | insights]
-    else
-      insights
-    end
+    insights =
+      if time_variety > 0.7 do
+        ["Varies engagement times - no clear schedule pattern" | insights]
+      else
+        insights
+      end
 
-    insights = if tactical_variance > 0.7 do
-      ["High tactical adaptability - changes approach frequently" | insights]
-    else
-      insights
-    end
+    insights =
+      if tactical_variance > 0.7 do
+        ["High tactical adaptability - changes approach frequently" | insights]
+      else
+        insights
+      end
 
-    insights = if location_diversity > 0.8 do
-      ["Operates across diverse regions - wide operational range" | insights]
-    else
-      insights
-    end
+    insights =
+      if location_diversity > 0.8 do
+        ["Operates across diverse regions - wide operational range" | insights]
+      else
+        insights
+      end
 
-    insights = if raw_score < 0.3 do
-      ["Predictable patterns - may be easier to anticipate" | insights]
-    else
-      insights
-    end
+    insights =
+      if raw_score < 0.3 do
+        ["Predictable patterns - may be easier to anticipate" | insights]
+      else
+        insights
+      end
 
     insights
   end

@@ -136,7 +136,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
       {:error, reason} = error ->
         Logger.error("Failed to get character intelligence report: #{inspect(reason)}")
         error
-
     end
   end
 
@@ -159,7 +158,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   # Private helper functions
   defp enhance_with_ship_intelligence(threat_data, character_id) do
     {:ok, ship_intelligence} = ShipIntelligenceBridge.calculate_ship_specialization(character_id)
-    
+
     # Enhance ship mastery dimension with detailed analysis
     enhanced_dimensions =
       Map.update(

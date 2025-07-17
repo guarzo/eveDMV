@@ -144,6 +144,31 @@ defmodule EveDmv.Cache.QueryCache do
   end
 
   @doc """
+  Get all cache keys matching a pattern.
+  Used for hash-based smart invalidation.
+  """
+  def get_keys_by_pattern(pattern) do
+    :ets.foldl(
+      fn {key, _value, _expiry}, acc ->
+        if match_pattern?(key, pattern) do
+          [key | acc]
+        else
+          acc
+        end
+      end,
+      [],
+      @table_name
+    )
+  end
+
+  @doc """
+  Invalidate a specific cache key.
+  """
+  def invalidate_key(key) do
+    delete(key)
+  end
+
+  @doc """
   Get cache statistics.
   """
   def get_stats do

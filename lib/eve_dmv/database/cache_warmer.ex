@@ -288,12 +288,12 @@ defmodule EveDmv.Database.CacheWarmer do
           cache_key = "alliance_stats_#{alliance_id}"
 
           case QueryCache.get_or_compute(
-            cache_key,
-            fn ->
-              compute_alliance_stats(alliance_id)
-            end,
-            :timer.hours(6)
-          ) do
+                 cache_key,
+                 fn ->
+                   compute_alliance_stats(alliance_id)
+                 end,
+                 :timer.hours(6)
+               ) do
             {:ok, _} -> :ok
             _ -> :ok
           end
@@ -311,15 +311,15 @@ defmodule EveDmv.Database.CacheWarmer do
       cache_key = "character_intel_#{character_id}"
 
       case QueryCache.get_or_compute(
-        cache_key,
-        fn ->
-          case IntelligenceMigrationAdapter.analyze(:character, character_id, scope: :basic) do
-            {:ok, analysis} -> analysis
-            _ -> nil
-          end
-        end,
-        :timer.hours(1)
-      ) do
+             cache_key,
+             fn ->
+               case IntelligenceMigrationAdapter.analyze(:character, character_id, scope: :basic) do
+                 {:ok, analysis} -> analysis
+                 _ -> nil
+               end
+             end,
+             :timer.hours(1)
+           ) do
         {:ok, _} -> :ok
         _ -> :ok
       end
@@ -331,19 +331,19 @@ defmodule EveDmv.Database.CacheWarmer do
       cache_key = "killmail_enriched_#{killmail_id}"
 
       case QueryCache.get_or_compute(
-        cache_key,
-        fn ->
-          KillmailEnriched
-          |> Ash.Query.filter(killmail_id == ^killmail_id)
-          |> Ash.Query.load(:participants)
-          |> Ash.read_one(domain: Api)
-          |> case do
-            {:ok, killmail} -> killmail
-            _ -> nil
-          end
-        end,
-        :timer.hours(2)
-      ) do
+             cache_key,
+             fn ->
+               KillmailEnriched
+               |> Ash.Query.filter(killmail_id == ^killmail_id)
+               |> Ash.Query.load(:participants)
+               |> Ash.read_one(domain: Api)
+               |> case do
+                 {:ok, killmail} -> killmail
+                 _ -> nil
+               end
+             end,
+             :timer.hours(2)
+           ) do
         {:ok, _} -> :ok
         _ -> :ok
       end
@@ -374,15 +374,15 @@ defmodule EveDmv.Database.CacheWarmer do
     cache_key = "system_info_#{system_id}"
 
     case QueryCache.get_or_compute(
-      cache_key,
-      fn ->
-        case Ash.get(SolarSystem, system_id, domain: Api) do
-          {:ok, system} -> system
-          _ -> nil
-        end
-      end,
-      :timer.hours(24)
-    ) do
+           cache_key,
+           fn ->
+             case Ash.get(SolarSystem, system_id, domain: Api) do
+               {:ok, system} -> system
+               _ -> nil
+             end
+           end,
+           :timer.hours(24)
+         ) do
       {:ok, _} -> :ok
       _ -> :ok
     end
@@ -393,15 +393,15 @@ defmodule EveDmv.Database.CacheWarmer do
       cache_key = "item_type_#{type_id}"
 
       case QueryCache.get_or_compute(
-        cache_key,
-        fn ->
-          case Ash.get(ItemType, type_id, domain: Api) do
-            {:ok, item} -> item
-            _ -> nil
-          end
-        end,
-        :timer.hours(48)
-      ) do
+             cache_key,
+             fn ->
+               case Ash.get(ItemType, type_id, domain: Api) do
+                 {:ok, item} -> item
+                 _ -> nil
+               end
+             end,
+             :timer.hours(48)
+           ) do
         {:ok, _} -> :ok
         _ -> :ok
       end

@@ -340,10 +340,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
     total_isk_destroyed =
       side_killmails
       |> Enum.map(fn killmail ->
-        case PriceService.calculate_killmail_value(killmail) do
-          {:ok, %{total_value: value}} when is_number(value) -> value
-          _ -> 0.0
-        end
+        %{total_value: value} = PriceService.calculate_killmail_value(killmail)
+        if is_number(value), do: value, else: 0.0
       end)
       |> Enum.sum()
 

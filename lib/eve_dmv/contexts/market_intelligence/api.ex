@@ -94,7 +94,8 @@ defmodule EveDmv.Contexts.MarketIntelligence.Api do
 
   Returns trend data including price changes, volume patterns, and anomalies.
   """
-  @spec analyze_market_trends([type_id()], period :: :day | :week | :month) :: {:ok, map()} | {:error, term()}
+  @spec analyze_market_trends([type_id()], period :: :day | :week | :month) ::
+          {:ok, map()} | {:error, term()}
   def analyze_market_trends(type_ids, period \\ :week) do
     with :ok <- validate_type_ids(type_ids),
          :ok <- validate_period(period),

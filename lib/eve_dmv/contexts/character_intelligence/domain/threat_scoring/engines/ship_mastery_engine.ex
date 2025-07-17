@@ -50,7 +50,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
         specialization_score: specialization_score
       },
       ship_usage_breakdown: analyze_ship_usage_patterns(ship_types_used),
-      insights: generate_ship_mastery_insights(ship_diversity, class_mastery, specialization_score)
+      insights:
+        generate_ship_mastery_insights(ship_diversity, class_mastery, specialization_score)
     }
   end
 
@@ -74,15 +75,18 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
         ship_count = length(ships)
 
         # Mastery = usage frequency + diversity within class
-        usage_score = min(1.0, total_uses / 10)      # Normalize to frequent usage
-        diversity_score = min(1.0, ship_count / 5)   # Normalize to good diversity
+        # Normalize to frequent usage
+        usage_score = min(1.0, total_uses / 10)
+        # Normalize to good diversity
+        diversity_score = min(1.0, ship_count / 5)
 
         (usage_score + diversity_score) / 2
       end)
 
     if length(mastery_scores) > 0 do
       average_mastery = Enum.sum(mastery_scores) / length(mastery_scores)
-      class_breadth = min(1.0, classes_used / 6)     # 6 main ship classes
+      # 6 main ship classes
+      class_breadth = min(1.0, classes_used / 6)
 
       average_mastery * 0.7 + class_breadth * 0.3
     else
@@ -118,7 +122,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
     sorted_ships =
       ship_types_map
       |> Enum.sort_by(&elem(&1, 1), :desc)
-      |> Enum.take(5)  # Top 5 most used ships
+      # Top 5 most used ships
+      |> Enum.take(5)
 
     %{
       most_used_ships: sorted_ships,
@@ -215,7 +220,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
     if total_engagements > 0 do
       (total_engagements - deaths) / total_engagements
     else
-      0.5  # Neutral score for no data
+      # Neutral score for no data
+      0.5
     end
   end
 
@@ -255,7 +261,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
 
   defp tackle_ship?(ship_type_id) do
     # Frigates and some cruisers commonly used for tackle
-    ship_type_id in 580..700 or ship_type_id in [11_182, 11_196]  # Interceptors
+    # Interceptors
+    ship_type_id in 580..700 or ship_type_id in [11_182, 11_196]
   end
 
   defp dps_ship?(ship_type_id) do
@@ -265,8 +272,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
 
   defp support_ship?(ship_type_id) do
     # EWAR, logistics, command ships
-    ship_type_id in [11_978, 11_987, 11_985, 12_003] or  # Logistics
-      ship_type_id in [11_957, 11_958, 11_959, 11_961]     # Force Recon
+    # Logistics
+    # Force Recon
+    ship_type_id in [11_978, 11_987, 11_985, 12_003] or
+      ship_type_id in [11_957, 11_958, 11_959, 11_961]
   end
 
   defp calculate_specialization_balance(ship_types_map) do
@@ -282,9 +291,12 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
       # Optimal balance: some specialization but also diversity
       specialization_score =
         cond do
-          specialization_ratio > 0.7 -> 0.6    # Too specialized
-          specialization_ratio < 0.3 -> 0.7    # Good generalization
-          true -> 1.0                          # Good balance
+          # Too specialized
+          specialization_ratio > 0.7 -> 0.6
+          # Good generalization
+          specialization_ratio < 0.3 -> 0.7
+          # Good balance
+          true -> 1.0
         end
 
       # Bonus for diversity
@@ -310,7 +322,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
     has_support = Enum.any?(ship_types_map, fn {ship_type, _} -> support_ship?(ship_type) end)
 
     roles_covered = Enum.count([has_tackle, has_dps, has_support], & &1)
-    roles_covered / 3  # Normalize to 0-1
+    # Normalize to 0-1
+    roles_covered / 3
   end
 
   defp generate_ship_mastery_insights(ship_diversity, class_mastery, specialization_score) do

@@ -6,6 +6,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
   This module should be fully implemented as part of the wormhole operations feature.
   """
 
+  require Logger
+
   @doc """
   Calculate strategic value of a system.
   """
@@ -16,22 +18,22 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
     try do
       # Get recent killmail activity (last 7 days)
       recent_activity = get_system_killmail_activity(system_id, days: 7)
-      
+
       # Get system static data and classification
       system_class = classify_system_type(system_id)
-      
+
       # Calculate activity metrics
       activity_score = calculate_activity_score(recent_activity)
-      
+
       # Calculate strategic importance
       strategic_importance = calculate_strategic_importance(system_class, recent_activity)
-      
+
       # Calculate resource value
       resource_value = calculate_resource_value(system_class)
-      
+
       # Calculate accessibility score
       accessibility = calculate_accessibility_score(system_id)
-      
+
       # Weighted strategic value calculation
       strategic_value =
         activity_score * 0.30 +
@@ -42,7 +44,10 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
       {:ok, Float.round(strategic_value, 3)}
     rescue
       error ->
-        Logger.error("Error calculating strategic value for system #{system_id}: #{inspect(error)}")
+        Logger.error(
+          "Error calculating strategic value for system #{system_id}: #{inspect(error)}"
+        )
+
         {:error, :calculation_failed}
     end
   end
@@ -62,7 +67,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
         {:ok, %{activity_level: :unknown, patterns: [], last_activity: nil, systems_analyzed: 0}}
       else
         # Get killmail activity for all systems in the chain
-        system_activities = 
+        system_activities =
           systems
           |> Enum.map(fn system_id ->
             activity = get_system_killmail_activity(system_id, hours: time_window_hours)
@@ -77,7 +82,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
         movement_patterns = analyze_movement_patterns(system_activities, systems)
 
         # Calculate overall activity level
-        total_kills = 
+        total_kills =
           system_activities
           |> Map.values()
           |> List.flatten()
@@ -134,7 +139,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
         {:ok, %{threat_level: :unknown, hostile_count: 0, risk_score: 0.0, threats: []}}
       else
         # Analyze recent hostile activity in each system
-        system_threats = 
+        system_threats =
           systems
           |> Enum.map(fn system_id ->
             threats = analyze_system_threat_indicators(system_id, corporation_id)
@@ -145,28 +150,30 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
         # Calculate overall threat metrics
         total_hostiles = count_total_hostiles(system_threats)
         recent_kills = count_recent_hostile_kills(system_threats)
-        
+
         # Analyze threat proximity to home system
         proximity_threat = analyze_threat_proximity(system_threats, home_system, systems)
-        
+
         # Calculate escalation potential
         escalation_risk = calculate_escalation_risk(system_threats)
-        
+
         # Determine overall threat level
-        overall_threat_level = determine_overall_threat_level(
-          total_hostiles, 
-          recent_kills, 
-          proximity_threat, 
-          escalation_risk
-        )
-        
+        overall_threat_level =
+          determine_overall_threat_level(
+            total_hostiles,
+            recent_kills,
+            proximity_threat,
+            escalation_risk
+          )
+
         # Calculate risk score (0.0 - 1.0)
-        risk_score = calculate_overall_risk_score(
-          total_hostiles, 
-          recent_kills, 
-          proximity_threat, 
-          escalation_risk
-        )
+        risk_score =
+          calculate_overall_risk_score(
+            total_hostiles,
+            recent_kills,
+            proximity_threat,
+            escalation_risk
+          )
 
         # Generate specific threat warnings
         threat_warnings = generate_threat_warnings(system_threats, home_system)
@@ -216,7 +223,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
         topology_graph = build_topology_graph(systems, connections)
 
         # Calculate strategic importance of each system
-        system_importance = 
+        system_importance =
           systems
           |> Enum.map(fn system_id ->
             {:ok, strategic_value} = calculate_system_strategic_value(system_id)
@@ -228,24 +235,26 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
         current_coverage = calculate_current_coverage(current_positions, topology_graph)
 
         # Find optimal scout positions using graph theory
-        optimal_positions = find_optimal_scout_positions(
-          topology_graph, 
-          system_importance, 
-          home_system,
-          length(current_positions)
-        )
+        optimal_positions =
+          find_optimal_scout_positions(
+            topology_graph,
+            system_importance,
+            home_system,
+            length(current_positions)
+          )
 
         # Calculate coverage improvement
         optimal_coverage = calculate_coverage_with_positions(optimal_positions, topology_graph)
         coverage_improvement = optimal_coverage - current_coverage
 
         # Generate positioning recommendations
-        recommendations = generate_positioning_recommendations(
-          current_positions, 
-          optimal_positions, 
-          system_importance,
-          home_system
-        )
+        recommendations =
+          generate_positioning_recommendations(
+            current_positions,
+            optimal_positions,
+            system_importance,
+            home_system
+          )
 
         # Calculate escape route optimization
         escape_routes = analyze_escape_routes(topology_graph, home_system, optimal_positions)
@@ -292,12 +301,13 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
       active_chains = get_corporation_active_chains(corporation_id)
 
       if Enum.empty?(active_chains) do
-        {:ok, %{
-          active_chains: 0, 
-          total_systems: 0, 
-          threat_assessment: :no_data,
-          summary: "No active chains monitored"
-        }}
+        {:ok,
+         %{
+           active_chains: 0,
+           total_systems: 0,
+           threat_assessment: :no_data,
+           summary: "No active chains monitored"
+         }}
       else
         # Aggregate data across all chains
         aggregated_data = aggregate_chain_data(active_chains)
@@ -315,11 +325,12 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
         strategic_analysis = analyze_strategic_positioning(aggregated_data)
 
         # Generate recommendations
-        recommendations = generate_corporation_recommendations(
-          overall_threat, 
-          operational_metrics, 
-          strategic_analysis
-        )
+        recommendations =
+          generate_corporation_recommendations(
+            overall_threat,
+            operational_metrics,
+            strategic_analysis
+          )
 
         summary = %{
           corporation_id: corporation_id,
@@ -347,10 +358,11 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
   # Private helper functions - stub implementations to resolve undefined function errors
 
   defp get_system_killmail_activity(system_id, opts) do
-    time_period = case Keyword.has_key?(opts, :days) do
-      true -> Keyword.get(opts, :days) * 24
-      false -> Keyword.get(opts, :hours, 24)
-    end
+    time_period =
+      case Keyword.has_key?(opts, :days) do
+        true -> Keyword.get(opts, :days) * 24
+        false -> Keyword.get(opts, :hours, 24)
+      end
 
     since = DateTime.add(DateTime.utc_now(), -time_period * 3600, :second)
 
@@ -399,15 +411,21 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
 
   defp calculate_activity_score(recent_activity) do
     kill_count = length(recent_activity)
-    
+
     # Activity score based on kill frequency (normalized to 0-1)
     cond do
-      kill_count >= 20 -> 1.0  # Very high
-      kill_count >= 10 -> 0.8  # High
-      kill_count >= 5 -> 0.6   # Moderate
-      kill_count >= 2 -> 0.4   # Low
-      kill_count >= 1 -> 0.2   # Minimal
-      true -> 0.0              # None
+      # Very high
+      kill_count >= 20 -> 1.0
+      # High
+      kill_count >= 10 -> 0.8
+      # Moderate
+      kill_count >= 5 -> 0.6
+      # Low
+      kill_count >= 2 -> 0.4
+      # Minimal
+      kill_count >= 1 -> 0.2
+      # None
+      true -> 0.0
     end
   end
 
@@ -481,7 +499,12 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
     0.3
   end
 
-  defp find_optimal_scout_positions(_topology_graph, _system_importance, _home_system, _position_count) do
+  defp find_optimal_scout_positions(
+         _topology_graph,
+         _system_importance,
+         _home_system,
+         _position_count
+       ) do
     # Stub: Return empty positions
     []
   end
@@ -491,7 +514,12 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
     0.6
   end
 
-  defp generate_positioning_recommendations(_current_positions, _optimal_positions, _system_importance, _home_system) do
+  defp generate_positioning_recommendations(
+         _current_positions,
+         _optimal_positions,
+         _system_importance,
+         _home_system
+       ) do
     # Stub: Return empty recommendations
     []
   end
@@ -516,12 +544,22 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
     0.2
   end
 
-  defp determine_overall_threat_level(_total_hostiles, _recent_kills, _proximity_threat, _escalation_risk) do
+  defp determine_overall_threat_level(
+         _total_hostiles,
+         _recent_kills,
+         _proximity_threat,
+         _escalation_risk
+       ) do
     # Stub: Return low threat level
     :low
   end
 
-  defp calculate_overall_risk_score(_total_hostiles, _recent_kills, _proximity_threat, _escalation_risk) do
+  defp calculate_overall_risk_score(
+         _total_hostiles,
+         _recent_kills,
+         _proximity_threat,
+         _escalation_risk
+       ) do
     # Stub: Return low risk score
     0.15
   end
@@ -544,7 +582,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
   end
 
   defp aggregate_chain_data(chains) do
-    total_systems = 
+    total_systems =
       chains
       |> Enum.map(&Map.get(&1, :systems, []))
       |> List.flatten()
@@ -557,7 +595,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
     }
   end
 
-  defp assess_overall_threat(aggregated_data) do
+  defp assess_overall_threat(_aggregated_data) do
     # Simplified overall threat assessment
     %{
       level: :low,
@@ -566,7 +604,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
     }
   end
 
-  defp calculate_operational_metrics(aggregated_data) do
+  defp calculate_operational_metrics(_aggregated_data) do
     %{
       coverage_efficiency: 0.5,
       resource_utilization: 0.6,
@@ -584,7 +622,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
     }
   end
 
-  defp analyze_strategic_positioning(aggregated_data) do
+  defp analyze_strategic_positioning(_aggregated_data) do
     %{
       territorial_control: :limited,
       strategic_depth: :shallow,
@@ -594,28 +632,37 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
     }
   end
 
-  defp generate_corporation_recommendations(threat_assessment, operational_metrics, strategic_analysis) do
+  defp generate_corporation_recommendations(
+         threat_assessment,
+         operational_metrics,
+         strategic_analysis
+       ) do
     recommendations = []
 
     # Threat-based recommendations
-    recommendations = case threat_assessment.level do
-      level when level in [:high, :critical] ->
-        ["Increase defensive posture", "Deploy additional scouts" | recommendations]
-      _ -> recommendations
-    end
+    recommendations =
+      case threat_assessment.level do
+        level when level in [:high, :critical] ->
+          ["Increase defensive posture", "Deploy additional scouts" | recommendations]
+
+        _ ->
+          recommendations
+      end
 
     # Operational recommendations
-    recommendations = if operational_metrics.coverage_efficiency < 0.6 do
-      ["Optimize scout positioning", "Improve chain coverage" | recommendations]
-    else
-      recommendations
-    end
+    recommendations =
+      if operational_metrics.coverage_efficiency < 0.6 do
+        ["Optimize scout positioning", "Improve chain coverage" | recommendations]
+      else
+        recommendations
+      end
 
     # Strategic recommendations
-    recommendations = case strategic_analysis.territorial_control do
-      :limited -> ["Consider expanding monitored territory" | recommendations]
-      _ -> recommendations
-    end
+    recommendations =
+      case strategic_analysis.territorial_control do
+        :limited -> ["Consider expanding monitored territory" | recommendations]
+        _ -> recommendations
+      end
 
     if Enum.empty?(recommendations) do
       ["Maintain current operations", "Continue monitoring"]

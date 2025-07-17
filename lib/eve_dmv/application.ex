@@ -140,6 +140,7 @@ defmodule EveDmv.Application do
         EveDmv.Database.ConnectionPoolMonitor,
         EveDmv.Database.PartitionManager,
         EveDmv.Database.CacheInvalidator,
+        EveDmv.Database.CacheHashManager,
         EveDmv.Database.QueryPlanAnalyzer,
         EveDmv.Database.MaterializedViewManager,
         EveDmv.Database.ArchiveManager,
@@ -148,7 +149,12 @@ defmodule EveDmv.Application do
         # Ship role analysis worker for continuous fleet intelligence
         EveDmv.Workers.ShipRoleAnalysisWorker,
         # Intelligence analysis supervisor for managing analysis tasks
-        EveDmv.Intelligence.Core.Supervisor
+        EveDmv.Intelligence.Core.Supervisor,
+        # Historical import pipeline (Sprint 15A)
+        EveDmv.Historical.ImportPipeline,
+        EveDmv.Historical.ImportProgressMonitor,
+        # Performance monitoring dashboard (Sprint 15A)
+        EveDmv.Monitoring.PerformanceDashboard
       ]
     else
       []

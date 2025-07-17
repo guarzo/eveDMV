@@ -6,8 +6,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
   tactical effectiveness and identify optimization opportunities.
   """
 
-  alias EveDmv.Repo
-  import Ecto.Query
   require Logger
 
   @doc """
@@ -18,23 +16,23 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
 
     # Comprehensive fleet composition analysis
     sides = classify_participants_by_side(participants)
-    
+
     # Enhanced composition analysis with ship database integration
     side_a_analysis = analyze_side_composition(sides.side_a)
     side_b_analysis = analyze_side_composition(sides.side_b)
-    
+
     # Advanced composition comparison with tactical metrics
     composition_comparison = compare_fleet_compositions(side_a_analysis, side_b_analysis)
-    
+
     # Detailed effectiveness analysis using killmail data
     effectiveness_analysis = analyze_composition_effectiveness(sides, killmails)
-    
+
     # Fleet doctrine analysis
     doctrine_analysis = analyze_fleet_doctrines(sides.side_a, sides.side_b)
-    
+
     # Tactical advantage assessment
     tactical_advantages = assess_tactical_advantages(side_a_analysis, side_b_analysis, killmails)
-    
+
     # Fleet synergy analysis
     synergy_analysis = analyze_fleet_synergy(sides.side_a, sides.side_b, killmails)
 
@@ -58,12 +56,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
 
     # Comprehensive ship class performance analysis
     ship_classes = classify_ships_by_class(participants)
-    
+
     # Get ship type data for accurate analysis
-    ship_type_data = get_ship_type_data(participants)
-    
+    _ship_type_data = get_ship_type_data(participants)
+
     # Performance metrics per ship class
-    performance_analysis = 
+    performance_analysis =
       ship_classes
       |> Enum.map(fn {ship_class, ships} ->
         # Calculate detailed performance metrics
@@ -72,37 +70,38 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
         effectiveness_score = calculate_effectiveness_score(ships, killmails)
         damage_dealt = calculate_damage_dealt(ships, killmails)
         damage_taken = calculate_damage_taken(ships, killmails)
-        
+
         # Role effectiveness analysis
         role_effectiveness = analyze_role_effectiveness(ship_class, ships, killmails)
-        
+
         # Ship class specific metrics
         class_metrics = calculate_class_specific_metrics(ship_class, ships, killmails)
-        
+
         # Tactical positioning analysis
         positioning_analysis = analyze_tactical_positioning(ship_class, ships, killmails)
-        
-        {ship_class, %{
-          count: length(ships),
-          survival_rate: survival_rate,
-          kill_participation: kill_participation,
-          effectiveness_score: effectiveness_score,
-          damage_dealt: damage_dealt,
-          damage_taken: damage_taken,
-          role_effectiveness: role_effectiveness,
-          class_metrics: class_metrics,
-          positioning_analysis: positioning_analysis,
-          performance_grade: grade_performance(effectiveness_score, survival_rate)
-        }}
+
+        {ship_class,
+         %{
+           count: length(ships),
+           survival_rate: survival_rate,
+           kill_participation: kill_participation,
+           effectiveness_score: effectiveness_score,
+           damage_dealt: damage_dealt,
+           damage_taken: damage_taken,
+           role_effectiveness: role_effectiveness,
+           class_metrics: class_metrics,
+           positioning_analysis: positioning_analysis,
+           performance_grade: grade_performance(effectiveness_score, survival_rate)
+         }}
       end)
       |> Enum.into(%{})
-    
+
     # Cross-class analysis
     cross_class_analysis = analyze_cross_class_interactions(performance_analysis, killmails)
-    
+
     # Performance trends
     performance_trends = analyze_performance_trends(performance_analysis, killmails)
-    
+
     %{
       ship_class_performance: performance_analysis,
       cross_class_analysis: cross_class_analysis,
@@ -122,20 +121,22 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     role_imbalances = identify_role_imbalances(fleet_compositions)
     optimization_suggestions = generate_optimization_suggestions(fleet_compositions)
     synergy_opportunities = identify_synergy_opportunities(fleet_compositions)
-    
+
     # Advanced gap analysis
     doctrine_gaps = analyze_doctrine_gaps(fleet_compositions)
     capability_gaps = analyze_capability_gaps(fleet_compositions)
     tactical_gaps = analyze_tactical_gaps(fleet_compositions)
-    
+
     # Optimization priority analysis
-    optimization_priorities = prioritize_optimizations(missing_roles, role_imbalances, doctrine_gaps)
-    
+    optimization_priorities =
+      prioritize_optimizations(missing_roles, role_imbalances, doctrine_gaps)
+
     # Resource requirement analysis
     resource_requirements = analyze_resource_requirements(optimization_suggestions)
-    
+
     # Implementation roadmap
-    implementation_roadmap = generate_implementation_roadmap(optimization_priorities, resource_requirements)
+    implementation_roadmap =
+      generate_implementation_roadmap(optimization_priorities, resource_requirements)
 
     %{
       missing_roles: missing_roles,
@@ -160,25 +161,26 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     # Extract positioning data from battle analysis
     participants = get_participants_from_battle_analysis(battle_analysis)
     killmails = get_killmails_from_battle_analysis(battle_analysis)
-    
+
     # Comprehensive positioning analysis
     positioning_effectiveness = calculate_positioning_effectiveness(participants, killmails)
     range_control = analyze_range_control(participants, killmails)
     escape_route_utilization = analyze_escape_route_utilization(participants, killmails)
     tactical_positioning = analyze_tactical_positioning_effectiveness(participants, killmails)
     formation_integrity = analyze_formation_integrity(participants, killmails)
-    
+
     # Advanced positioning metrics
     engagement_zones = analyze_engagement_zones(participants, killmails)
     positioning_advantages = identify_positioning_advantages(participants, killmails)
     mobility_analysis = analyze_fleet_mobility(participants, killmails)
-    
+
     # Positioning optimization recommendations
-    positioning_recommendations = generate_positioning_recommendations(
-      positioning_effectiveness,
-      range_control,
-      tactical_positioning
-    )
+    positioning_recommendations =
+      generate_positioning_recommendations(
+        positioning_effectiveness,
+        range_control,
+        tactical_positioning
+      )
 
     %{
       positioning_effectiveness: positioning_effectiveness,
@@ -197,32 +199,36 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
   defp classify_participants_by_side(participants) do
     # Sophisticated side classification based on corporation/alliance relationships
     Logger.debug("Classifying #{length(participants)} participants by side")
-    
+
     # Group participants by alliance first, then corporation
-    grouped_participants = 
+    grouped_participants =
       participants
       |> Enum.group_by(fn participant ->
         # Primary grouping by alliance
-        alliance_id = Map.get(participant, :alliance_id) || Map.get(participant, :attacker_alliance_id)
-        corp_id = Map.get(participant, :corporation_id) || Map.get(participant, :attacker_corporation_id)
-        
+        alliance_id =
+          Map.get(participant, :alliance_id) || Map.get(participant, :attacker_alliance_id)
+
+        corp_id =
+          Map.get(participant, :corporation_id) || Map.get(participant, :attacker_corporation_id)
+
         cond do
           alliance_id && alliance_id != 0 -> {:alliance, alliance_id}
           corp_id && corp_id != 0 -> {:corporation, corp_id}
           true -> {:neutral, :rand.uniform(1000)}
         end
       end)
-    
+
     # Identify the two largest groups as primary sides
-    sorted_groups = 
+    sorted_groups =
       grouped_participants
       |> Enum.sort_by(fn {_key, participants} -> length(participants) end, :desc)
-    
+
     case sorted_groups do
       [{_key_a, side_a_participants}, {_key_b, side_b_participants} | rest] ->
         # Assign remaining smaller groups to the side with fewer participants
-        remaining_participants = rest |> Enum.flat_map(fn {_key, participants} -> participants end)
-        
+        remaining_participants =
+          rest |> Enum.flat_map(fn {_key, participants} -> participants end)
+
         if length(side_a_participants) <= length(side_b_participants) do
           %{
             side_a: side_a_participants ++ remaining_participants,
@@ -234,14 +240,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
             side_b: side_b_participants ++ remaining_participants
           }
         end
-      
+
       [{_key_a, side_a_participants}] ->
         # Only one group, split it in half
         %{
           side_a: Enum.take(side_a_participants, div(length(side_a_participants), 2)),
           side_b: Enum.drop(side_a_participants, div(length(side_a_participants), 2))
         }
-      
+
       [] ->
         # No participants
         %{side_a: [], side_b: []}
@@ -251,7 +257,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
   defp analyze_side_composition(side_participants) do
     # Comprehensive side composition analysis
     Logger.debug("Analyzing composition for #{length(side_participants)} participants")
-    
+
     if Enum.empty?(side_participants) do
       %{
         total_pilots: 0,
@@ -264,33 +270,33 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     else
       # Detailed ship classification
       ship_classes = classify_ships_by_class(side_participants)
-      
+
       # Advanced role distribution analysis
       role_distribution = calculate_role_distribution(side_participants)
-      
+
       # Doctrine adherence analysis
       doctrine_adherence = calculate_doctrine_adherence(side_participants)
-      
+
       # Fleet synergy calculation
       fleet_synergy = calculate_fleet_synergy(side_participants)
-      
+
       # Effectiveness estimation
       estimated_effectiveness = estimate_fleet_effectiveness(side_participants)
-      
+
       # Additional composition metrics
       fleet_strength = calculate_fleet_strength(side_participants)
       composition_balance = analyze_composition_balance(role_distribution)
       logistical_support = analyze_logistical_support(side_participants)
-      
+
       # Ship size distribution
       ship_size_distribution = analyze_ship_size_distribution(side_participants)
-      
+
       # Alliance/Corporation composition
       org_composition = analyze_organizational_composition(side_participants)
-      
+
       # Combat capability assessment
       combat_capability = assess_combat_capability(side_participants, ship_classes)
-      
+
       %{
         total_pilots: length(side_participants),
         ship_classes: ship_classes,
@@ -311,38 +317,46 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
   defp compare_fleet_compositions(side_a_analysis, side_b_analysis) do
     # Comprehensive composition comparison
     Logger.debug("Comparing fleet compositions")
-    
+
     # Extract participant data for comparison
     side_a_pilots = side_a_analysis.total_pilots
     side_b_pilots = side_b_analysis.total_pilots
-    
+
     # Numerical analysis
     numerical_advantage = calculate_numerical_advantage(side_a_pilots, side_b_pilots)
-    
+
     # Composition advantage analysis
     composition_advantage = calculate_composition_advantage(side_a_analysis, side_b_analysis)
-    
+
     # Experience advantage (based on ship classes and organization)
     experience_advantage = calculate_experience_advantage(side_a_analysis, side_b_analysis)
-    
+
     # Fleet strength comparison
-    strength_comparison = compare_fleet_strength(side_a_analysis.fleet_strength, side_b_analysis.fleet_strength)
-    
+    strength_comparison =
+      compare_fleet_strength(side_a_analysis.fleet_strength, side_b_analysis.fleet_strength)
+
     # Doctrine comparison
-    doctrine_comparison = compare_doctrines(side_a_analysis.doctrine_adherence, side_b_analysis.doctrine_adherence)
-    
+    doctrine_comparison =
+      compare_doctrines(side_a_analysis.doctrine_adherence, side_b_analysis.doctrine_adherence)
+
     # Synergy comparison
-    synergy_comparison = compare_fleet_synergy(side_a_analysis.fleet_synergy, side_b_analysis.fleet_synergy)
-    
+    synergy_comparison =
+      compare_fleet_synergy(side_a_analysis.fleet_synergy, side_b_analysis.fleet_synergy)
+
     # Role balance comparison
-    role_balance_comparison = compare_role_balance(side_a_analysis.role_distribution, side_b_analysis.role_distribution)
-    
+    role_balance_comparison =
+      compare_role_balance(side_a_analysis.role_distribution, side_b_analysis.role_distribution)
+
     # Logistical comparison
-    logistical_comparison = compare_logistical_support(side_a_analysis.logistical_support, side_b_analysis.logistical_support)
-    
+    logistical_comparison =
+      compare_logistical_support(
+        side_a_analysis.logistical_support,
+        side_b_analysis.logistical_support
+      )
+
     # Overall engagement prediction
     predicted_outcome = predict_engagement_outcome(side_a_analysis, side_b_analysis)
-    
+
     %{
       numerical_advantage: numerical_advantage,
       composition_advantage: composition_advantage,
@@ -353,36 +367,41 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       role_balance_comparison: role_balance_comparison,
       logistical_comparison: logistical_comparison,
       predicted_outcome: predicted_outcome,
-      overall_assessment: generate_overall_assessment(numerical_advantage, composition_advantage, experience_advantage)
+      overall_assessment:
+        generate_overall_assessment(
+          numerical_advantage,
+          composition_advantage,
+          experience_advantage
+        )
     }
   end
 
   defp analyze_composition_effectiveness(sides, killmails) do
     # Comprehensive effectiveness analysis based on actual battle outcomes
     Logger.debug("Analyzing composition effectiveness against #{length(killmails)} killmails")
-    
+
     # Calculate effectiveness for each side
     side_a_effectiveness = calculate_side_effectiveness(sides.side_a, killmails)
     side_b_effectiveness = calculate_side_effectiveness(sides.side_b, killmails)
-    
+
     # Analyze composition impact on battle outcomes
     composition_impact = analyze_composition_impact(sides, killmails)
-    
+
     # Identify tactical advantages from composition
     tactical_advantages = identify_tactical_advantages(sides, killmails)
-    
+
     # Effectiveness trends over time
     effectiveness_trends = analyze_effectiveness_trends(sides, killmails)
-    
+
     # Loss analysis by composition
     loss_analysis = analyze_losses_by_composition(sides, killmails)
-    
+
     # Performance vs expected
     performance_vs_expected = analyze_performance_vs_expected(sides, killmails)
-    
+
     # Critical moments analysis
     critical_moments = identify_critical_moments(sides, killmails)
-    
+
     %{
       side_a_effectiveness: side_a_effectiveness,
       side_b_effectiveness: side_b_effectiveness,
@@ -392,56 +411,101 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       loss_analysis: loss_analysis,
       performance_vs_expected: performance_vs_expected,
       critical_moments: critical_moments,
-      battle_outcome_analysis: determine_battle_outcome(side_a_effectiveness, side_b_effectiveness, killmails)
+      battle_outcome_analysis:
+        determine_battle_outcome(side_a_effectiveness, side_b_effectiveness, killmails)
     }
   end
 
   defp classify_ships_by_class(participants) do
     # Proper ship classification based on ship types and database lookup
     Logger.debug("Classifying #{length(participants)} ships by class")
-    
+
     participants
     |> Enum.group_by(fn participant ->
-      ship_type_id = Map.get(participant, :ship_type_id) || Map.get(participant, :victim_ship_type_id)
+      ship_type_id =
+        Map.get(participant, :ship_type_id) || Map.get(participant, :victim_ship_type_id)
+
       ship_name = Map.get(participant, :ship_name) || Map.get(participant, :ship_type_name, "")
-      
+
       cond do
         # Capital ships (type ID ranges)
-        ship_type_id && ship_type_id >= 19720 && ship_type_id <= 19740 -> :capital
-        ship_type_id && ship_type_id >= 23757 && ship_type_id <= 23919 -> :capital
-        
+        ship_type_id && ship_type_id >= 19720 && ship_type_id <= 19740 ->
+          :capital
+
+        ship_type_id && ship_type_id >= 23757 && ship_type_id <= 23919 ->
+          :capital
+
         # Battleships
-        ship_type_id && ship_type_id >= 640 && ship_type_id <= 644 -> :battleship
-        ship_type_id && ship_type_id >= 17738 && ship_type_id <= 17740 -> :battleship
-        
+        ship_type_id && ship_type_id >= 640 && ship_type_id <= 644 ->
+          :battleship
+
+        ship_type_id && ship_type_id >= 17738 && ship_type_id <= 17740 ->
+          :battleship
+
         # Cruisers
-        ship_type_id && ship_type_id >= 358 && ship_type_id <= 894 -> :cruiser
-        ship_type_id && ship_type_id >= 17634 && ship_type_id <= 17738 -> :cruiser
-        
+        ship_type_id && ship_type_id >= 358 && ship_type_id <= 894 ->
+          :cruiser
+
+        ship_type_id && ship_type_id >= 17634 && ship_type_id <= 17738 ->
+          :cruiser
+
         # Frigates
-        ship_type_id && ship_type_id >= 1 && ship_type_id <= 100 -> :frigate
-        ship_type_id && ship_type_id >= 17476 && ship_type_id <= 17634 -> :frigate
-        
+        ship_type_id && ship_type_id >= 1 && ship_type_id <= 100 ->
+          :frigate
+
+        ship_type_id && ship_type_id >= 17476 && ship_type_id <= 17634 ->
+          :frigate
+
         # Destroyers
-        ship_type_id && ship_type_id >= 420 && ship_type_id <= 441 -> :destroyer
-        
+        ship_type_id && ship_type_id >= 420 && ship_type_id <= 441 ->
+          :destroyer
+
         # Industrial
-        ship_type_id && ship_type_id >= 648 && ship_type_id <= 672 -> :industrial
-        
+        ship_type_id && ship_type_id >= 648 && ship_type_id <= 672 ->
+          :industrial
+
         # Logistics (by name patterns)
-        String.contains?(String.downcase(ship_name), ["guardian", "basilisk", "oneiros", "scimitar", "osprey", "augoror"]) -> :logistics
-        
+        String.contains?(String.downcase(ship_name), [
+          "guardian",
+          "basilisk",
+          "oneiros",
+          "scimitar",
+          "osprey",
+          "augoror"
+        ]) ->
+          :logistics
+
         # Electronic warfare
-        String.contains?(String.downcase(ship_name), ["falcon", "curse", "pilgrim", "huginn", "rapier", "lachesis", "arazu", "huginn"]) -> :ewar
-        
+        String.contains?(String.downcase(ship_name), [
+          "falcon",
+          "curse",
+          "pilgrim",
+          "huginn",
+          "rapier",
+          "lachesis",
+          "arazu",
+          "huginn"
+        ]) ->
+          :ewar
+
         # Interdiction
-        String.contains?(String.downcase(ship_name), ["sabre", "heretic", "eris", "flycatcher", "dictor", "hictor"]) -> :interdiction
-        
+        String.contains?(String.downcase(ship_name), [
+          "sabre",
+          "heretic",
+          "eris",
+          "flycatcher",
+          "dictor",
+          "hictor"
+        ]) ->
+          :interdiction
+
         # Strategic cruisers
-        ship_type_id && ship_type_id >= 29986 && ship_type_id <= 29990 -> :strategic_cruiser
-        
+        ship_type_id && ship_type_id >= 29986 && ship_type_id <= 29990 ->
+          :strategic_cruiser
+
         # Default classification
-        true -> :unknown
+        true ->
+          :unknown
       end
     end)
   end
@@ -449,18 +513,18 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
   defp calculate_role_distribution(participants) do
     # Sophisticated role classification based on ship types and capabilities
     Logger.debug("Calculating role distribution for #{length(participants)} participants")
-    
+
     if Enum.empty?(participants) do
       %{dps: 0, logistics: 0, ewar: 0, tackle: 0, support: 0, interdiction: 0, command: 0}
     else
       # Classify each participant by primary role
-      role_counts = 
+      role_counts =
         participants
         |> Enum.map(&classify_ship_role/1)
         |> Enum.frequencies()
-      
+
       total = length(participants)
-      
+
       # Calculate percentages and counts
       %{
         dps: %{
@@ -582,43 +646,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     ]
   end
 
-  defp calculate_numerical_advantage(side_a, side_b) do
-    # Calculate numerical advantage
-    a_count = length(side_a)
-    b_count = length(side_b)
-
-    if b_count > 0 do
-      a_count / b_count
-    else
-      if a_count > 0, do: 10.0, else: 1.0
-    end
-  end
-
-  defp calculate_composition_advantage(_side_a, _side_b) do
-    # For now, return basic composition advantage
-    # TODO: Implement sophisticated composition advantage calculation
-
-    0.6
-  end
-
-  defp calculate_experience_advantage(_side_a, _side_b) do
-    # For now, return basic experience advantage
-    # TODO: Implement experience advantage calculation
-
-    0.5
-  end
-
-  defp predict_engagement_outcome(_side_a, _side_b) do
-    # For now, return basic outcome prediction
-    # TODO: Implement sophisticated outcome prediction
-
-    %{
-      predicted_winner: :side_a,
-      confidence: 0.7,
-      expected_duration: 300,
-      key_factors: ["numerical_advantage", "logistics_support"]
-    }
-  end
 
   defp calculate_side_effectiveness(_side_participants, _killmails) do
     # For now, return basic side effectiveness
@@ -654,17 +681,18 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       0
     else
       # Count ships that appear as victims in killmails
-      ship_character_ids = MapSet.new(ships, fn ship -> 
-        Map.get(ship, :character_id) || Map.get(ship, :victim_character_id)
-      end)
-      
-      losses = 
+      ship_character_ids =
+        MapSet.new(ships, fn ship ->
+          Map.get(ship, :character_id) || Map.get(ship, :victim_character_id)
+        end)
+
+      losses =
         killmails
         |> Enum.count(fn killmail ->
           victim_id = Map.get(killmail, :victim_character_id)
           victim_id && MapSet.member?(ship_character_ids, victim_id)
         end)
-      
+
       losses
     end
   end
@@ -673,54 +701,93 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
 
   defp classify_ship_role(participant) do
     # Classify ship role based on ship type and name
-    ship_type_id = Map.get(participant, :ship_type_id) || Map.get(participant, :victim_ship_type_id)
+    _ship_type_id =
+      Map.get(participant, :ship_type_id) || Map.get(participant, :victim_ship_type_id)
+
     ship_name = Map.get(participant, :ship_name) || Map.get(participant, :ship_type_name, "")
-    
+
     ship_name_lower = String.downcase(ship_name)
-    
+
     cond do
       # Logistics ships
-      String.contains?(ship_name_lower, ["guardian", "basilisk", "oneiros", "scimitar", "osprey", "augoror"]) -> :logistics
-      
+      String.contains?(ship_name_lower, [
+        "guardian",
+        "basilisk",
+        "oneiros",
+        "scimitar",
+        "osprey",
+        "augoror"
+      ]) ->
+        :logistics
+
       # Electronic warfare
-      String.contains?(ship_name_lower, ["falcon", "curse", "pilgrim", "huginn", "rapier", "lachesis", "arazu", "keres"]) -> :ewar
-      
+      String.contains?(ship_name_lower, [
+        "falcon",
+        "curse",
+        "pilgrim",
+        "huginn",
+        "rapier",
+        "lachesis",
+        "arazu",
+        "keres"
+      ]) ->
+        :ewar
+
       # Interdiction
-      String.contains?(ship_name_lower, ["sabre", "heretic", "eris", "flycatcher", "dictor", "hictor"]) -> :interdiction
-      
+      String.contains?(ship_name_lower, [
+        "sabre",
+        "heretic",
+        "eris",
+        "flycatcher",
+        "dictor",
+        "hictor"
+      ]) ->
+        :interdiction
+
       # Tackle frigates
-      String.contains?(ship_name_lower, ["stiletto", "crow", "crusader", "claw", "interceptor"]) -> :tackle
-      
+      String.contains?(ship_name_lower, ["stiletto", "crow", "crusader", "claw", "interceptor"]) ->
+        :tackle
+
       # Command ships
-      String.contains?(ship_name_lower, ["nighthawk", "vulture", "claymore", "sleipnir", "command"]) -> :command
-      
+      String.contains?(ship_name_lower, [
+        "nighthawk",
+        "vulture",
+        "claymore",
+        "sleipnir",
+        "command"
+      ]) ->
+        :command
+
       # Support ships
-      String.contains?(ship_name_lower, ["blackbird", "celestis", "bellicose", "vigil"]) -> :support
-      
+      String.contains?(ship_name_lower, ["blackbird", "celestis", "bellicose", "vigil"]) ->
+        :support
+
       # Everything else is DPS
-      true -> :dps
+      true ->
+        :dps
     end
   end
 
   defp get_ship_type_data(participants) do
     # Get ship type data for participants
-    ship_type_ids = 
+    ship_type_ids =
       participants
       |> Enum.map(fn participant ->
         Map.get(participant, :ship_type_id) || Map.get(participant, :victim_ship_type_id)
       end)
       |> Enum.filter(& &1)
       |> Enum.uniq()
-    
+
     # In a real implementation, this would query the ship database
     # For now, return basic type data
     ship_type_ids
     |> Enum.map(fn type_id ->
-      {type_id, %{
-        type_id: type_id,
-        name: "Ship Type #{type_id}",
-        group: determine_ship_group(type_id)
-      }}
+      {type_id,
+       %{
+         type_id: type_id,
+         name: "Ship Type #{type_id}",
+         group: determine_ship_group(type_id)
+       }}
     end)
     |> Enum.into(%{})
   end
@@ -743,7 +810,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     else
       # Simplified damage calculation
       kill_count = count_kills_by_ships(ships, killmails)
-      kill_count * 50000 # Estimated damage per kill
+      # Estimated damage per kill
+      kill_count * 50000
     end
   end
 
@@ -754,7 +822,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     else
       # Simplified damage calculation based on losses
       losses = count_ships_lost(ships, killmails)
-      losses * 100000 # Estimated damage per loss
+      # Estimated damage per loss
+      losses * 100_000
     end
   end
 
@@ -775,16 +844,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     else
       survival_rate = calculate_survival_rate(ships, killmails)
       kill_participation = calculate_kill_participation(ships, killmails)
-      
+
       # Role-specific effectiveness calculation
-      effectiveness = case ship_class do
-        :logistics -> survival_rate * 0.8 + kill_participation * 0.2
-        :ewar -> survival_rate * 0.6 + kill_participation * 0.4
-        :tackle -> survival_rate * 0.4 + kill_participation * 0.6
-        :capital -> survival_rate * 0.3 + kill_participation * 0.7
-        _ -> survival_rate * 0.5 + kill_participation * 0.5
-      end
-      
+      effectiveness =
+        case ship_class do
+          :logistics -> survival_rate * 0.8 + kill_participation * 0.2
+          :ewar -> survival_rate * 0.6 + kill_participation * 0.4
+          :tackle -> survival_rate * 0.4 + kill_participation * 0.6
+          :capital -> survival_rate * 0.3 + kill_participation * 0.7
+          _ -> survival_rate * 0.5 + kill_participation * 0.5
+        end
+
       %{
         effectiveness: Float.round(effectiveness, 2),
         performance: grade_performance(effectiveness, survival_rate),
@@ -801,7 +871,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       losses: count_ships_lost(ships, killmails),
       kills: count_kills_by_ships(ships, killmails)
     }
-    
+
     # Add class-specific metrics
     case ship_class do
       :capital ->
@@ -810,21 +880,21 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
           force_multiplier: 3.0,
           priority_target: true
         })
-      
+
       :logistics ->
         Map.merge(base_metrics, %{
           repair_capability: :high,
           force_multiplier: 2.0,
           priority_target: true
         })
-      
+
       :ewar ->
         Map.merge(base_metrics, %{
           disruption_capability: :high,
           force_multiplier: 1.5,
           priority_target: true
         })
-      
+
       _ ->
         Map.merge(base_metrics, %{
           force_multiplier: 1.0,
@@ -840,19 +910,25 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     else
       # Simplified positioning analysis
       survival_rate = calculate_survival_rate(ships, killmails)
-      
+
       # Class-specific positioning expectations
-      expected_positioning = case ship_class do
-        :capital -> 0.9  # Should be well-protected
-        :logistics -> 0.8  # Should be positioned safely
-        :ewar -> 0.7  # Should maintain range
-        :tackle -> 0.4  # Expected to take risks
-        _ -> 0.6  # Standard positioning
-      end
-      
+      expected_positioning =
+        case ship_class do
+          # Should be well-protected
+          :capital -> 0.9
+          # Should be positioned safely
+          :logistics -> 0.8
+          # Should maintain range
+          :ewar -> 0.7
+          # Expected to take risks
+          :tackle -> 0.4
+          # Standard positioning
+          _ -> 0.6
+        end
+
       positioning_score = min(1.0, survival_rate / expected_positioning)
       positioning_quality = if positioning_score >= 0.8, do: :excellent, else: :adequate
-      
+
       %{
         positioning_score: Float.round(positioning_score, 2),
         positioning_quality: positioning_quality,
@@ -864,7 +940,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
   defp grade_performance(effectiveness_score, survival_rate) do
     # Grade performance based on effectiveness and survival
     combined_score = (effectiveness_score + survival_rate) / 2
-    
+
     cond do
       combined_score >= 0.9 -> :excellent
       combined_score >= 0.8 -> :good
@@ -874,22 +950,23 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     end
   end
 
-  defp analyze_cross_class_interactions(performance_analysis, killmails) do
+  defp analyze_cross_class_interactions(performance_analysis, _killmails) do
     # Analyze how different ship classes interact
     if map_size(performance_analysis) < 2 do
       %{interactions: [], synergy_detected: false}
     else
       # Simplified interaction analysis
-      class_pairs = 
+      class_pairs =
         for {class_a, _} <- performance_analysis,
             {class_b, _} <- performance_analysis,
             class_a != class_b,
             do: {class_a, class_b}
-      
-      interactions = 
+
+      interactions =
         class_pairs
         |> Enum.map(fn {class_a, class_b} ->
           synergy_score = calculate_class_synergy(class_a, class_b)
+
           %{
             class_a: class_a,
             class_b: class_b,
@@ -898,7 +975,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
           }
         end)
         |> Enum.filter(fn interaction -> interaction.synergy_score > 0.3 end)
-      
+
       %{
         interactions: interactions,
         synergy_detected: length(interactions) > 0
@@ -918,7 +995,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       {:capital, :logistics} => 0.9,
       {:logistics, :capital} => 0.9
     }
-    
+
     Map.get(synergy_matrix, {class_a, class_b}, 0.2)
   end
 
@@ -933,22 +1010,22 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     end
   end
 
-  defp analyze_performance_trends(performance_analysis, killmails) do
+  defp analyze_performance_trends(_performance_analysis, killmails) do
     # Analyze performance trends over time
     if Enum.empty?(killmails) do
       %{trend: :stable, trend_strength: 0.0}
     else
       # Simplified trend analysis
       sorted_killmails = Enum.sort_by(killmails, & &1.killmail_time)
-      
+
       if length(sorted_killmails) > 10 do
         # Analyze early vs late performance
         early_kills = Enum.take(sorted_killmails, div(length(sorted_killmails), 2))
         late_kills = Enum.drop(sorted_killmails, div(length(sorted_killmails), 2))
-        
+
         trend = if length(late_kills) > length(early_kills), do: :escalating, else: :declining
         trend_strength = abs(length(late_kills) - length(early_kills)) / length(sorted_killmails)
-        
+
         %{
           trend: trend,
           trend_strength: Float.round(trend_strength, 2),
@@ -967,15 +1044,20 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       %{total_ships: 0, total_losses: 0, overall_effectiveness: 0.0}
     else
       total_ships = performance_analysis |> Map.values() |> Enum.map(& &1.count) |> Enum.sum()
-      total_losses = performance_analysis |> Map.values() |> Enum.map(& &1.damage_taken) |> Enum.sum()
-      
-      effectiveness_scores = performance_analysis |> Map.values() |> Enum.map(& &1.effectiveness_score)
-      overall_effectiveness = if length(effectiveness_scores) > 0 do
-        Enum.sum(effectiveness_scores) / length(effectiveness_scores)
-      else
-        0.0
-      end
-      
+
+      total_losses =
+        performance_analysis |> Map.values() |> Enum.map(& &1.damage_taken) |> Enum.sum()
+
+      effectiveness_scores =
+        performance_analysis |> Map.values() |> Enum.map(& &1.effectiveness_score)
+
+      overall_effectiveness =
+        if length(effectiveness_scores) > 0 do
+          Enum.sum(effectiveness_scores) / length(effectiveness_scores)
+        else
+          0.0
+        end
+
       %{
         total_ships: total_ships,
         total_losses: total_losses,
@@ -1002,19 +1084,29 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       %{doctrine_type: :unknown, coherence: 0.0}
     else
       ship_classes = classify_ships_by_class(participants)
-      
+
       # Identify primary doctrine
-      doctrine_type = cond do
-        Map.get(ship_classes, :capital, []) |> length() > 2 -> :capital_doctrine
-        Map.get(ship_classes, :battleship, []) |> length() > length(participants) * 0.6 -> :battleship_doctrine
-        Map.get(ship_classes, :cruiser, []) |> length() > length(participants) * 0.6 -> :cruiser_doctrine
-        Map.get(ship_classes, :frigate, []) |> length() > length(participants) * 0.6 -> :frigate_doctrine
-        true -> :mixed_doctrine
-      end
-      
+      doctrine_type =
+        cond do
+          Map.get(ship_classes, :capital, []) |> length() > 2 ->
+            :capital_doctrine
+
+          Map.get(ship_classes, :battleship, []) |> length() > length(participants) * 0.6 ->
+            :battleship_doctrine
+
+          Map.get(ship_classes, :cruiser, []) |> length() > length(participants) * 0.6 ->
+            :cruiser_doctrine
+
+          Map.get(ship_classes, :frigate, []) |> length() > length(participants) * 0.6 ->
+            :frigate_doctrine
+
+          true ->
+            :mixed_doctrine
+        end
+
       # Calculate doctrine coherence
       coherence = calculate_doctrine_coherence(ship_classes)
-      
+
       %{
         doctrine_type: doctrine_type,
         coherence: coherence,
@@ -1026,7 +1118,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
   defp calculate_doctrine_coherence(ship_classes) do
     # Calculate how coherent the doctrine is
     total_ships = ship_classes |> Map.values() |> Enum.map(&length/1) |> Enum.sum()
-    
+
     if total_ships == 0 do
       0.0
     else
@@ -1037,28 +1129,38 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     end
   end
 
-  defp assess_tactical_advantages(side_a_analysis, side_b_analysis, killmails) do
+  defp assess_tactical_advantages(side_a_analysis, side_b_analysis, _killmails) do
     # Assess tactical advantages between sides
-    advantages = []
     
     # Numerical advantage
-    if side_a_analysis.total_pilots > side_b_analysis.total_pilots * 1.2 do
-      advantages = [%{advantage: :numerical_superiority, side: :side_a, magnitude: :significant} | advantages]
-    end
-    
+    numerical_advantages = 
+      if side_a_analysis.total_pilots > side_b_analysis.total_pilots * 1.2 do
+        [%{advantage: :numerical_superiority, side: :side_a, magnitude: :significant}]
+      else
+        []
+      end
+
     # Logistics advantage
     side_a_logistics = get_in(side_a_analysis, [:role_distribution, :logistics, :count]) || 0
     side_b_logistics = get_in(side_b_analysis, [:role_distribution, :logistics, :count]) || 0
-    
-    if side_a_logistics > side_b_logistics * 1.5 do
-      advantages = [%{advantage: :logistics_superiority, side: :side_a, magnitude: :moderate} | advantages]
-    end
-    
+
+    logistics_advantages = 
+      if side_a_logistics > side_b_logistics * 1.5 do
+        [%{advantage: :logistics_superiority, side: :side_a, magnitude: :moderate}]
+      else
+        []
+      end
+
     # Fleet synergy advantage
-    if side_a_analysis.fleet_synergy > side_b_analysis.fleet_synergy * 1.3 do
-      advantages = [%{advantage: :synergy_advantage, side: :side_a, magnitude: :moderate} | advantages]
-    end
-    
+    synergy_advantages = 
+      if side_a_analysis.fleet_synergy > side_b_analysis.fleet_synergy * 1.3 do
+        [%{advantage: :synergy_advantage, side: :side_a, magnitude: :moderate}]
+      else
+        []
+      end
+
+    advantages = numerical_advantages ++ logistics_advantages ++ synergy_advantages
+
     %{
       tactical_advantages: advantages,
       advantage_count: length(advantages),
@@ -1093,16 +1195,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       # Simplified synergy impact analysis
       side_a_synergy = calculate_fleet_synergy(side_a)
       side_b_synergy = calculate_fleet_synergy(side_b)
-      
+
       synergy_difference = abs(side_a_synergy - side_b_synergy)
-      
-      impact = cond do
-        synergy_difference > 0.3 -> :high
-        synergy_difference > 0.2 -> :moderate
-        synergy_difference > 0.1 -> :low
-        true -> :minimal
-      end
-      
+
+      impact =
+        cond do
+          synergy_difference > 0.3 -> :high
+          synergy_difference > 0.2 -> :moderate
+          synergy_difference > 0.1 -> :low
+          true -> :minimal
+        end
+
       %{
         impact: impact,
         effectiveness: Float.round(synergy_difference, 2),
@@ -1114,12 +1217,18 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
   defp generate_battle_summary(side_a_analysis, side_b_analysis, killmails) do
     # Generate comprehensive battle summary
     %{
-      battle_scale: determine_battle_scale(side_a_analysis.total_pilots + side_b_analysis.total_pilots),
+      battle_scale:
+        determine_battle_scale(side_a_analysis.total_pilots + side_b_analysis.total_pilots),
       total_participants: side_a_analysis.total_pilots + side_b_analysis.total_pilots,
       total_kills: length(killmails),
-      battle_intensity: calculate_battle_intensity(killmails, side_a_analysis.total_pilots + side_b_analysis.total_pilots),
+      battle_intensity:
+        calculate_battle_intensity(
+          killmails,
+          side_a_analysis.total_pilots + side_b_analysis.total_pilots
+        ),
       dominant_ship_classes: identify_dominant_classes(side_a_analysis, side_b_analysis),
-      battle_outcome: determine_battle_outcome_from_summary(side_a_analysis, side_b_analysis, killmails)
+      battle_outcome:
+        determine_battle_outcome_from_summary(side_a_analysis, side_b_analysis, killmails)
     }
   end
 
@@ -1144,12 +1253,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
 
   defp identify_dominant_classes(side_a_analysis, side_b_analysis) do
     # Identify dominant ship classes in battle
-    all_classes = 
+    all_classes =
       [side_a_analysis.ship_classes, side_b_analysis.ship_classes]
       |> Enum.reduce(%{}, fn class_map, acc ->
         Map.merge(acc, class_map, fn _k, v1, v2 -> v1 ++ v2 end)
       end)
-    
+
     all_classes
     |> Enum.sort_by(fn {_class, ships} -> length(ships) end, :desc)
     |> Enum.take(3)
@@ -1164,7 +1273,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       # Simplified outcome determination
       side_a_effectiveness = side_a_analysis.estimated_effectiveness
       side_b_effectiveness = side_b_analysis.estimated_effectiveness
-      
+
       cond do
         side_a_effectiveness > side_b_effectiveness * 1.2 -> :side_a_victory
         side_b_effectiveness > side_a_effectiveness * 1.2 -> :side_b_victory
@@ -1193,7 +1302,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       # Simplified positioning effectiveness
       total_participants = length(participants)
       losses = count_total_losses(killmails)
-      
+
       if total_participants > 0 do
         survival_rate = (total_participants - losses) / total_participants
         Float.round(survival_rate, 2)
@@ -1208,7 +1317,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     length(killmails)
   end
 
-  defp analyze_range_control(participants, killmails) do
+  defp analyze_range_control(participants, _killmails) do
     # Analyze range control effectiveness
     if Enum.empty?(participants) do
       0.0
@@ -1216,7 +1325,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       # Simplified range control analysis
       long_range_ships = count_long_range_ships(participants)
       total_participants = length(participants)
-      
+
       if total_participants > 0 do
         range_control_ratio = long_range_ships / total_participants
         Float.round(range_control_ratio, 2)
@@ -1232,7 +1341,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     |> Enum.count(fn participant ->
       ship_name = Map.get(participant, :ship_name, "")
       # Ships typically used for long-range combat
-      String.contains?(String.downcase(ship_name), ["tornado", "naga", "talos", "oracle", "sniper"])
+      String.contains?(String.downcase(ship_name), [
+        "tornado",
+        "naga",
+        "talos",
+        "oracle",
+        "sniper"
+      ])
     end)
   end
 
@@ -1244,7 +1359,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       # Simplified escape analysis
       total_participants = length(participants)
       losses = length(killmails)
-      
+
       if total_participants > 0 do
         escape_rate = (total_participants - losses) / total_participants
         Float.round(escape_rate, 2)
@@ -1262,13 +1377,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       # Simplified tactical positioning analysis
       survival_rate = calculate_positioning_effectiveness(participants, killmails)
       range_control = analyze_range_control(participants, killmails)
-      
+
       tactical_score = (survival_rate + range_control) / 2
       Float.round(tactical_score, 2)
     end
   end
 
-  defp analyze_formation_integrity(participants, killmails) do
+  defp analyze_formation_integrity(participants, _killmails) do
     # Analyze formation integrity
     if Enum.empty?(participants) do
       0.0
@@ -1276,11 +1391,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       # Simplified formation integrity analysis
       logistics_ships = count_logistics_ships(participants)
       total_participants = length(participants)
-      
+
       # Formation integrity based on logistics support
       if total_participants > 0 do
         logistics_ratio = logistics_ships / total_participants
-        integrity_score = min(1.0, logistics_ratio * 5) # Scale logistics ratio
+        # Scale logistics ratio
+        integrity_score = min(1.0, logistics_ratio * 5)
         Float.round(integrity_score, 2)
       else
         0.0
@@ -1293,6 +1409,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     participants
     |> Enum.count(fn participant ->
       ship_name = Map.get(participant, :ship_name, "")
+
       String.contains?(String.downcase(ship_name), ["guardian", "basilisk", "oneiros", "scimitar"])
     end)
   end
@@ -1303,12 +1420,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       []
     else
       # Simplified engagement zone analysis
-      [%{
-        zone_type: :primary_engagement,
-        participant_count: length(participants),
-        kill_count: length(killmails),
-        intensity: calculate_zone_intensity(participants, killmails)
-      }]
+      [
+        %{
+          zone_type: :primary_engagement,
+          participant_count: length(participants),
+          kill_count: length(killmails),
+          intensity: calculate_zone_intensity(participants, killmails)
+        }
+      ]
     end
   end
 
@@ -1321,30 +1440,36 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     end
   end
 
-  defp identify_positioning_advantages(participants, killmails) do
+  defp identify_positioning_advantages(participants, _killmails) do
     # Identify positioning advantages
     if Enum.empty?(participants) do
       []
     else
-      advantages = []
-      
       # Range advantage
       long_range_count = count_long_range_ships(participants)
+
+      range_advantages = 
       if long_range_count > length(participants) * 0.3 do
-        advantages = [%{advantage: :range_superiority, strength: :moderate} | advantages]
+        [%{advantage: :range_superiority, strength: :moderate}]
+      else
+        []
       end
-      
+
       # Logistics advantage
       logistics_count = count_logistics_ships(participants)
+
+      logistics_advantages =
       if logistics_count > length(participants) * 0.15 do
-        advantages = [%{advantage: :logistics_support, strength: :good} | advantages]
+        [%{advantage: :logistics_support, strength: :good}]
+      else
+        []
       end
-      
-      advantages
+
+      range_advantages ++ logistics_advantages
     end
   end
 
-  defp analyze_fleet_mobility(participants, killmails) do
+  defp analyze_fleet_mobility(participants, _killmails) do
     # Analyze fleet mobility
     if Enum.empty?(participants) do
       %{mobility_score: 0.0, mobility_rating: :unknown}
@@ -1352,12 +1477,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       # Simplified mobility analysis based on ship types
       fast_ships = count_fast_ships(participants)
       total_participants = length(participants)
-      
+
       if total_participants > 0 do
         mobility_ratio = fast_ships / total_participants
         mobility_score = Float.round(mobility_ratio, 2)
         mobility_rating = rate_mobility(mobility_score)
-        
+
         %{
           mobility_score: mobility_score,
           mobility_rating: mobility_rating,
@@ -1374,12 +1499,16 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     # Count fast ships (frigates, destroyers, cruisers)
     participants
     |> Enum.count(fn participant ->
-      ship_type_id = Map.get(participant, :ship_type_id) || Map.get(participant, :victim_ship_type_id)
-      
+      ship_type_id =
+        Map.get(participant, :ship_type_id) || Map.get(participant, :victim_ship_type_id)
+
       cond do
-        ship_type_id && ship_type_id >= 1 && ship_type_id <= 100 -> true # Frigates
-        ship_type_id && ship_type_id >= 420 && ship_type_id <= 441 -> true # Destroyers  
-        ship_type_id && ship_type_id >= 358 && ship_type_id <= 894 -> true # Cruisers
+        # Frigates
+        ship_type_id && ship_type_id >= 1 && ship_type_id <= 100 -> true
+        # Destroyers  
+        ship_type_id && ship_type_id >= 420 && ship_type_id <= 441 -> true
+        # Cruisers
+        ship_type_id && ship_type_id >= 358 && ship_type_id <= 894 -> true
         true -> false
       end
     end)
@@ -1395,37 +1524,44 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     end
   end
 
-  defp generate_positioning_recommendations(positioning_effectiveness, range_control, tactical_positioning) do
+  defp generate_positioning_recommendations(
+         positioning_effectiveness,
+         range_control,
+         tactical_positioning
+       ) do
     # Generate positioning recommendations
     recommendations = []
-    
+
     # Positioning effectiveness recommendations
-    recommendations = if positioning_effectiveness < 0.5 do
-      ["Improve defensive positioning and formation discipline" | recommendations]
-    else
-      recommendations
-    end
-    
+    recommendations =
+      if positioning_effectiveness < 0.5 do
+        ["Improve defensive positioning and formation discipline" | recommendations]
+      else
+        recommendations
+      end
+
     # Range control recommendations
-    recommendations = if range_control < 0.3 do
-      ["Increase long-range capability for better range control" | recommendations]
-    else
-      recommendations
-    end
-    
+    recommendations =
+      if range_control < 0.3 do
+        ["Increase long-range capability for better range control" | recommendations]
+      else
+        recommendations
+      end
+
     # Tactical positioning recommendations  
-    recommendations = if tactical_positioning < 0.6 do
-      ["Enhance tactical positioning awareness and coordination" | recommendations]
-    else
-      recommendations
-    end
-    
+    recommendations =
+      if tactical_positioning < 0.6 do
+        ["Enhance tactical positioning awareness and coordination" | recommendations]
+      else
+        recommendations
+      end
+
     recommendations
   end
 
   # Additional helper functions for gap analysis
 
-  defp analyze_doctrine_gaps(fleet_compositions) do
+  defp analyze_doctrine_gaps(_fleet_compositions) do
     # Analyze gaps in fleet doctrine
     %{
       doctrine_coherence: 0.7,
@@ -1434,7 +1570,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     }
   end
 
-  defp analyze_capability_gaps(fleet_compositions) do
+  defp analyze_capability_gaps(_fleet_compositions) do
     # Analyze capability gaps
     %{
       missing_capabilities: ["Anti-capital", "Long-range engagement", "Fast tackle"],
@@ -1443,7 +1579,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     }
   end
 
-  defp analyze_tactical_gaps(fleet_compositions) do
+  defp analyze_tactical_gaps(_fleet_compositions) do
     # Analyze tactical gaps
     %{
       tactical_weaknesses: ["Range control", "Escape route coverage", "Formation integrity"],
@@ -1454,21 +1590,25 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
 
   defp prioritize_optimizations(missing_roles, role_imbalances, doctrine_gaps) do
     # Prioritize optimization efforts
-    priorities = []
-    
+    _priorities = []
+
     # High priority: Critical missing roles
-    high_priority = missing_roles |> Enum.filter(fn role -> 
-      role in ["interdiction", "logistics", "command_ships"]
-    end)
-    
+    high_priority =
+      missing_roles
+      |> Enum.filter(fn role ->
+        role in ["interdiction", "logistics", "command_ships"]
+      end)
+
     # Medium priority: Role imbalances
-    medium_priority = role_imbalances |> Enum.filter(fn imbalance ->
-      imbalance.imbalance == :deficit
-    end)
-    
+    medium_priority =
+      role_imbalances
+      |> Enum.filter(fn imbalance ->
+        imbalance.imbalance == :deficit
+      end)
+
     # Low priority: Doctrine improvements
     low_priority = doctrine_gaps.missing_doctrine_elements
-    
+
     %{
       high_priority: high_priority,
       medium_priority: medium_priority,
@@ -1495,7 +1635,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
         targets: optimization_priorities.high_priority
       },
       phase_2: %{
-        duration: "4 weeks", 
+        duration: "4 weeks",
         focus: "Role balancing",
         targets: optimization_priorities.medium_priority
       },
@@ -1518,14 +1658,15 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     else
       # Simplified strength calculation
       ship_classes = classify_ships_by_class(participants)
-      
+
       capital_strength = length(Map.get(ship_classes, :capital, [])) * 10
       battleship_strength = length(Map.get(ship_classes, :battleship, [])) * 5
       cruiser_strength = length(Map.get(ship_classes, :cruiser, [])) * 2
-      frigate_strength = length(Map.get(ship_classes, :frigate, [])) * 1
-      
-      total_strength = capital_strength + battleship_strength + cruiser_strength + frigate_strength
-      
+      frigate_strength = length(Map.get(ship_classes, :frigate, []))
+
+      total_strength =
+        capital_strength + battleship_strength + cruiser_strength + frigate_strength
+
       %{
         total_strength: total_strength,
         capital_strength: capital_strength,
@@ -1552,19 +1693,22 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     else
       # Ideal ratios: 60% DPS, 20% logistics, 10% EWAR, 10% tackle
       dps_ratio = (Map.get(role_distribution, :dps, %{}) |> Map.get(:percentage, 0)) / 100
-      logistics_ratio = (Map.get(role_distribution, :logistics, %{}) |> Map.get(:percentage, 0)) / 100
+
+      logistics_ratio =
+        (Map.get(role_distribution, :logistics, %{}) |> Map.get(:percentage, 0)) / 100
+
       ewar_ratio = (Map.get(role_distribution, :ewar, %{}) |> Map.get(:percentage, 0)) / 100
       tackle_ratio = (Map.get(role_distribution, :tackle, %{}) |> Map.get(:percentage, 0)) / 100
-      
+
       # Calculate deviation from ideal
       dps_deviation = abs(dps_ratio - 0.6)
       logistics_deviation = abs(logistics_ratio - 0.2)
       ewar_deviation = abs(ewar_ratio - 0.1)
       tackle_deviation = abs(tackle_ratio - 0.1)
-      
+
       total_deviation = dps_deviation + logistics_deviation + ewar_deviation + tackle_deviation
       balance_score = max(0.0, 1.0 - total_deviation)
-      
+
       %{
         balance_score: Float.round(balance_score, 2),
         balance_rating: rate_balance(balance_score),
@@ -1595,10 +1739,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     else
       logistics_count = count_logistics_ships(participants)
       total_participants = length(participants)
-      
+
       support_ratio = logistics_count / total_participants
       support_rating = rate_logistics_support(support_ratio)
-      
+
       %{
         support_rating: support_rating,
         support_ratio: Float.round(support_ratio, 2),
@@ -1624,10 +1768,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       %{small: 0, medium: 0, large: 0, capital: 0}
     else
       ship_classes = classify_ships_by_class(participants)
-      
+
       %{
-        small: length(Map.get(ship_classes, :frigate, [])) + length(Map.get(ship_classes, :destroyer, [])),
-        medium: length(Map.get(ship_classes, :cruiser, [])) + length(Map.get(ship_classes, :battlecruiser, [])),
+        small:
+          length(Map.get(ship_classes, :frigate, [])) +
+            length(Map.get(ship_classes, :destroyer, [])),
+        medium:
+          length(Map.get(ship_classes, :cruiser, [])) +
+            length(Map.get(ship_classes, :battlecruiser, [])),
         large: length(Map.get(ship_classes, :battleship, [])),
         capital: length(Map.get(ship_classes, :capital, []))
       }
@@ -1640,23 +1788,23 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       %{diversity_score: 0.0, primary_organization: :unknown}
     else
       # Group by organization
-      organizations = 
+      organizations =
         participants
         |> Enum.group_by(fn participant ->
           Map.get(participant, :alliance_id) || Map.get(participant, :corporation_id) || :unknown
         end)
-      
+
       org_count = map_size(organizations)
       total_participants = length(participants)
-      
+
       diversity_score = min(1.0, org_count / total_participants)
-      
+
       # Find primary organization
-      primary_org = 
+      primary_org =
         organizations
         |> Enum.max_by(fn {_org, members} -> length(members) end)
         |> elem(0)
-      
+
       %{
         diversity_score: Float.round(diversity_score, 2),
         primary_organization: primary_org,
@@ -1674,7 +1822,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       # Calculate combat power based on ship classes
       combat_power = calculate_combat_power(ship_classes)
       capability_rating = rate_combat_capability(combat_power)
-      
+
       %{
         capability_rating: capability_rating,
         combat_power: combat_power,
@@ -1690,7 +1838,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     battleship_power = length(Map.get(ship_classes, :battleship, [])) * 20
     cruiser_power = length(Map.get(ship_classes, :cruiser, [])) * 8
     frigate_power = length(Map.get(ship_classes, :frigate, [])) * 2
-    
+
     capital_power + battleship_power + cruiser_power + frigate_power
   end
 
@@ -1708,7 +1856,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     # Assess force projection capability
     capital_count = length(Map.get(ship_classes, :capital, []))
     battleship_count = length(Map.get(ship_classes, :battleship, []))
-    
+
     cond do
       capital_count >= 5 -> :strategic
       capital_count >= 2 or battleship_count >= 10 -> :operational
@@ -1721,12 +1869,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     # Assess fleet sustainability
     logistics_count = length(Map.get(ship_classes, :logistics, []))
     total_ships = ship_classes |> Map.values() |> Enum.map(&length/1) |> Enum.sum()
-    
+
     if total_ships == 0 do
       :none
     else
       logistics_ratio = logistics_count / total_ships
-      
+
       cond do
         logistics_ratio >= 0.2 -> :excellent
         logistics_ratio >= 0.15 -> :good
@@ -1745,15 +1893,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       if side_a_pilots > 0, do: 10.0, else: 1.0
     else
       advantage = side_a_pilots / side_b_pilots
+
       %{
         ratio: Float.round(advantage, 2),
-        advantage: cond do
-          advantage >= 2.0 -> :overwhelming
-          advantage >= 1.5 -> :significant
-          advantage >= 1.2 -> :moderate
-          advantage >= 0.8 -> :balanced
-          true -> :disadvantage
-        end
+        advantage:
+          cond do
+            advantage >= 2.0 -> :overwhelming
+            advantage >= 1.5 -> :significant
+            advantage >= 1.2 -> :moderate
+            advantage >= 0.8 -> :balanced
+            true -> :disadvantage
+          end
       }
     end
   end
@@ -1762,78 +1912,89 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     # Calculate composition advantage
     side_a_score = side_a_analysis.estimated_effectiveness
     side_b_score = side_b_analysis.estimated_effectiveness
-    
+
     advantage_score = side_a_score - side_b_score
-    
+
     %{
       advantage_score: Float.round(advantage_score, 2),
-      advantage_type: cond do
-        advantage_score >= 0.3 -> :significant
-        advantage_score >= 0.1 -> :moderate
-        advantage_score >= -0.1 -> :balanced
-        true -> :disadvantage
-      end,
+      advantage_type:
+        cond do
+          advantage_score >= 0.3 -> :significant
+          advantage_score >= 0.1 -> :moderate
+          advantage_score >= -0.1 -> :balanced
+          true -> :disadvantage
+        end,
       key_advantages: identify_key_advantages(side_a_analysis, side_b_analysis)
     }
   end
 
   defp identify_key_advantages(side_a_analysis, side_b_analysis) do
     # Identify key compositional advantages
-    advantages = []
-    
+
     # Logistics advantage
     side_a_logistics = get_in(side_a_analysis, [:role_distribution, :logistics, :count]) || 0
     side_b_logistics = get_in(side_b_analysis, [:role_distribution, :logistics, :count]) || 0
-    
-    if side_a_logistics > side_b_logistics * 1.5 do
-      advantages = [:logistics_superiority | advantages]
-    end
-    
+
+    logistics_advantages = 
+      if side_a_logistics > side_b_logistics * 1.5 do
+        [:logistics_superiority]
+      else
+        []
+      end
+
     # Fleet synergy advantage
-    if side_a_analysis.fleet_synergy > side_b_analysis.fleet_synergy * 1.3 do
-      advantages = [:synergy_advantage | advantages]
-    end
-    
+    synergy_advantages = 
+      if side_a_analysis.fleet_synergy > side_b_analysis.fleet_synergy * 1.3 do
+        [:synergy_advantage]
+      else
+        []
+      end
+
     # Doctrine advantage
-    if side_a_analysis.doctrine_adherence > side_b_analysis.doctrine_adherence * 1.2 do
-      advantages = [:doctrine_advantage | advantages]
-    end
-    
-    advantages
+    doctrine_advantages = 
+      if side_a_analysis.doctrine_adherence > side_b_analysis.doctrine_adherence * 1.2 do
+        [:doctrine_advantage]
+      else
+        []
+      end
+
+    logistics_advantages ++ synergy_advantages ++ doctrine_advantages
   end
 
   defp calculate_experience_advantage(side_a_analysis, side_b_analysis) do
     # Calculate experience advantage based on organizational composition
     side_a_diversity = side_a_analysis.organizational_composition.diversity_score
     side_b_diversity = side_b_analysis.organizational_composition.diversity_score
-    
+
     # Lower diversity often indicates more organized/experienced groups
-    experience_factor = (1 - side_a_diversity) - (1 - side_b_diversity)
-    
+    experience_factor = 1 - side_a_diversity - (1 - side_b_diversity)
+
     %{
       experience_advantage: Float.round(experience_factor, 2),
-      advantage_type: cond do
-        experience_factor >= 0.2 -> :significant
-        experience_factor >= 0.1 -> :moderate
-        experience_factor >= -0.1 -> :balanced
-        true -> :disadvantage
-      end
+      advantage_type:
+        cond do
+          experience_factor >= 0.2 -> :significant
+          experience_factor >= 0.1 -> :moderate
+          experience_factor >= -0.1 -> :balanced
+          true -> :disadvantage
+        end
     }
   end
 
   defp compare_fleet_strength(side_a_strength, side_b_strength) do
     # Compare fleet strength between sides
     strength_diff = side_a_strength.total_strength - side_b_strength.total_strength
-    
+
     %{
       strength_difference: strength_diff,
-      advantage: cond do
-        strength_diff >= 500 -> :overwhelming
-        strength_diff >= 200 -> :significant
-        strength_diff >= 100 -> :moderate
-        strength_diff >= -100 -> :balanced
-        true -> :disadvantage
-      end,
+      advantage:
+        cond do
+          strength_diff >= 500 -> :overwhelming
+          strength_diff >= 200 -> :significant
+          strength_diff >= 100 -> :moderate
+          strength_diff >= -100 -> :balanced
+          true -> :disadvantage
+        end,
       side_a_strength: side_a_strength.total_strength,
       side_b_strength: side_b_strength.total_strength
     }
@@ -1842,38 +2003,43 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
   defp compare_doctrines(side_a_adherence, side_b_adherence) do
     # Compare doctrine adherence
     doctrine_diff = side_a_adherence - side_b_adherence
-    
+
     %{
       doctrine_difference: Float.round(doctrine_diff, 2),
-      advantage: cond do
-        doctrine_diff >= 0.3 -> :significant
-        doctrine_diff >= 0.1 -> :moderate
-        doctrine_diff >= -0.1 -> :balanced
-        true -> :disadvantage
-      end
+      advantage:
+        cond do
+          doctrine_diff >= 0.3 -> :significant
+          doctrine_diff >= 0.1 -> :moderate
+          doctrine_diff >= -0.1 -> :balanced
+          true -> :disadvantage
+        end
     }
   end
 
   defp compare_fleet_synergy(side_a_synergy, side_b_synergy) do
     # Compare fleet synergy
     synergy_diff = side_a_synergy - side_b_synergy
-    
+
     %{
       synergy_difference: Float.round(synergy_diff, 2),
-      advantage: cond do
-        synergy_diff >= 0.3 -> :significant
-        synergy_diff >= 0.1 -> :moderate
-        synergy_diff >= -0.1 -> :balanced
-        true -> :disadvantage
-      end
+      advantage:
+        cond do
+          synergy_diff >= 0.3 -> :significant
+          synergy_diff >= 0.1 -> :moderate
+          synergy_diff >= -0.1 -> :balanced
+          true -> :disadvantage
+        end
     }
   end
 
   defp compare_role_balance(side_a_roles, side_b_roles) do
     # Compare role balance between sides
-    side_a_balance = side_a_roles |> Map.values() |> Enum.map(&Map.get(&1, :percentage, 0)) |> Enum.sum()
-    side_b_balance = side_b_roles |> Map.values() |> Enum.map(&Map.get(&1, :percentage, 0)) |> Enum.sum()
-    
+    side_a_balance =
+      side_a_roles |> Map.values() |> Enum.map(&Map.get(&1, :percentage, 0)) |> Enum.sum()
+
+    side_b_balance =
+      side_b_roles |> Map.values() |> Enum.map(&Map.get(&1, :percentage, 0)) |> Enum.sum()
+
     %{
       balance_comparison: Float.round(side_a_balance - side_b_balance, 1),
       side_a_balance: side_a_balance,
@@ -1884,27 +2050,30 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
   defp compare_logistical_support(side_a_logistics, side_b_logistics) do
     # Compare logistical support
     support_diff = side_a_logistics.support_ratio - side_b_logistics.support_ratio
-    
+
     %{
       support_difference: Float.round(support_diff, 2),
-      advantage: cond do
-        support_diff >= 0.1 -> :significant
-        support_diff >= 0.05 -> :moderate
-        support_diff >= -0.05 -> :balanced
-        true -> :disadvantage
-      end
+      advantage:
+        cond do
+          support_diff >= 0.1 -> :significant
+          support_diff >= 0.05 -> :moderate
+          support_diff >= -0.05 -> :balanced
+          true -> :disadvantage
+        end
     }
   end
 
   defp predict_engagement_outcome(side_a_analysis, side_b_analysis) do
     # Predict engagement outcome
     factors = %{
-      numerical: calculate_numerical_advantage(side_a_analysis.total_pilots, side_b_analysis.total_pilots),
+      numerical:
+        calculate_numerical_advantage(side_a_analysis.total_pilots, side_b_analysis.total_pilots),
       composition: calculate_composition_advantage(side_a_analysis, side_b_analysis),
       experience: calculate_experience_advantage(side_a_analysis, side_b_analysis),
-      strength: compare_fleet_strength(side_a_analysis.fleet_strength, side_b_analysis.fleet_strength)
+      strength:
+        compare_fleet_strength(side_a_analysis.fleet_strength, side_b_analysis.fleet_strength)
     }
-    
+
     # Score each factor
     scores = %{
       numerical: score_advantage(factors.numerical.advantage),
@@ -1912,15 +2081,16 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       experience: score_advantage(factors.experience.advantage_type),
       strength: score_advantage(factors.strength.advantage)
     }
-    
+
     total_score = scores.numerical + scores.composition + scores.experience + scores.strength
-    
+
     %{
-      predicted_winner: cond do
-        total_score >= 2 -> :side_a
-        total_score <= -2 -> :side_b
-        true -> :contested
-      end,
+      predicted_winner:
+        cond do
+          total_score >= 2 -> :side_a
+          total_score <= -2 -> :side_b
+          true -> :contested
+        end,
       confidence: calculate_prediction_confidence(total_score),
       key_factors: identify_key_prediction_factors(factors),
       expected_duration: estimate_battle_duration(side_a_analysis, side_b_analysis),
@@ -1940,8 +2110,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
   end
 
   defp calculate_prediction_confidence(total_score) do
-    confidence = abs(total_score) / 12 # Max possible score is 12
-    
+    # Max possible score is 12
+    confidence = abs(total_score) / 12
+
     cond do
       confidence >= 0.8 -> :high
       confidence >= 0.6 -> :medium
@@ -1958,7 +2129,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       {:experience, score_advantage(factors.experience.advantage_type)},
       {:strength, score_advantage(factors.strength.advantage)}
     ]
-    
+
     factor_scores
     |> Enum.sort_by(&elem(&1, 1), :desc)
     |> Enum.take(2)
@@ -1968,22 +2139,24 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
   defp estimate_battle_duration(side_a_analysis, side_b_analysis) do
     # Estimate battle duration based on composition
     total_participants = side_a_analysis.total_pilots + side_b_analysis.total_pilots
-    
-    base_duration = cond do
-      total_participants >= 1000 -> 60 # minutes
-      total_participants >= 500 -> 45
-      total_participants >= 100 -> 30
-      total_participants >= 50 -> 20
-      true -> 15
-    end
-    
+
+    base_duration =
+      cond do
+        # minutes
+        total_participants >= 1000 -> 60
+        total_participants >= 500 -> 45
+        total_participants >= 100 -> 30
+        total_participants >= 50 -> 20
+        true -> 15
+      end
+
     # Adjust for logistics (longer battles)
-    total_logistics = 
+    total_logistics =
       (get_in(side_a_analysis, [:role_distribution, :logistics, :count]) || 0) +
-      (get_in(side_b_analysis, [:role_distribution, :logistics, :count]) || 0)
-    
-    logistics_factor = 1 + (total_logistics / total_participants) * 0.5
-    
+        (get_in(side_b_analysis, [:role_distribution, :logistics, :count]) || 0)
+
+    logistics_factor = 1 + total_logistics / total_participants * 0.5
+
     round(base_duration * logistics_factor)
   end
 
@@ -1991,14 +2164,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     # Estimate casualties for each side
     total_a = side_a_analysis.total_pilots
     total_b = side_b_analysis.total_pilots
-    
+
     # Base casualty rates
     base_casualty_rate = 0.3
-    
+
     # Adjust for fleet effectiveness
-    side_a_casualties = round(total_a * base_casualty_rate / side_a_analysis.estimated_effectiveness)
-    side_b_casualties = round(total_b * base_casualty_rate / side_b_analysis.estimated_effectiveness)
-    
+    side_a_casualties =
+      round(total_a * base_casualty_rate / side_a_analysis.estimated_effectiveness)
+
+    side_b_casualties =
+      round(total_b * base_casualty_rate / side_b_analysis.estimated_effectiveness)
+
     %{
       side_a_casualties: side_a_casualties,
       side_b_casualties: side_b_casualties,
@@ -2006,32 +2182,38 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     }
   end
 
-  defp generate_overall_assessment(numerical_advantage, composition_advantage, experience_advantage) do
+  defp generate_overall_assessment(
+         numerical_advantage,
+         composition_advantage,
+         experience_advantage
+       ) do
     # Generate overall assessment
     scores = [
       score_advantage(numerical_advantage.advantage),
       score_advantage(composition_advantage.advantage_type),
       score_advantage(experience_advantage.advantage_type)
     ]
-    
+
     total_score = Enum.sum(scores)
-    
+
     %{
-      overall_advantage: cond do
-        total_score >= 4 -> :decisive
-        total_score >= 2 -> :significant
-        total_score >= 1 -> :moderate
-        total_score >= -1 -> :balanced
-        true -> :disadvantage
-      end,
+      overall_advantage:
+        cond do
+          total_score >= 4 -> :decisive
+          total_score >= 2 -> :significant
+          total_score >= 1 -> :moderate
+          total_score >= -1 -> :balanced
+          true -> :disadvantage
+        end,
       confidence: calculate_assessment_confidence(total_score),
       primary_factors: identify_primary_assessment_factors(scores)
     }
   end
 
   defp calculate_assessment_confidence(total_score) do
-    confidence = abs(total_score) / 9 # Max possible score is 9
-    
+    # Max possible score is 9
+    confidence = abs(total_score) / 9
+
     cond do
       confidence >= 0.7 -> :high
       confidence >= 0.5 -> :medium
@@ -2043,7 +2225,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
   defp identify_primary_assessment_factors(scores) do
     # Identify primary factors in assessment
     factors = [:numerical, :composition, :experience]
-    
+
     factors
     |> Enum.zip(scores)
     |> Enum.sort_by(&elem(&1, 1), :desc)
@@ -2061,15 +2243,15 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       # Divide battle into phases
       sorted_killmails = Enum.sort_by(killmails, & &1.killmail_time)
       phase_size = max(1, div(length(sorted_killmails), 3))
-      
+
       phases = [
         %{phase: :early, kills: Enum.take(sorted_killmails, phase_size)},
         %{phase: :middle, kills: Enum.slice(sorted_killmails, phase_size, phase_size)},
         %{phase: :late, kills: Enum.drop(sorted_killmails, phase_size * 2)}
       ]
-      
+
       # Analyze each phase
-      phase_analysis = 
+      phase_analysis =
         phases
         |> Enum.map(fn %{phase: phase, kills: phase_kills} ->
           %{
@@ -2078,7 +2260,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
             intensity: calculate_phase_intensity(phase_kills, sides)
           }
         end)
-      
+
       %{
         trend: determine_trend(phase_analysis),
         phases: phase_analysis
@@ -2089,7 +2271,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
   defp calculate_phase_intensity(phase_kills, sides) do
     # Calculate intensity of a battle phase
     total_participants = length(sides.side_a) + length(sides.side_b)
-    
+
     if total_participants > 0 do
       Float.round(length(phase_kills) / total_participants, 2)
     else
@@ -2100,7 +2282,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
   defp determine_trend(phase_analysis) do
     # Determine overall trend from phase analysis
     intensities = Enum.map(phase_analysis, & &1.intensity)
-    
+
     case intensities do
       [early, middle, late] when late > middle and middle > early -> :escalating
       [early, middle, late] when late < middle and middle < early -> :declining
@@ -2115,16 +2297,16 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       %{side_a_losses: [], side_b_losses: []}
     else
       side_a_chars = MapSet.new(sides.side_a, fn p -> Map.get(p, :character_id) end)
-      side_b_chars = MapSet.new(sides.side_b, fn p -> Map.get(p, :character_id) end)
-      
+      _side_b_chars = MapSet.new(sides.side_b, fn p -> Map.get(p, :character_id) end)
+
       # Categorize losses by side
-      {side_a_losses, side_b_losses} = 
+      {side_a_losses, side_b_losses} =
         killmails
         |> Enum.split_with(fn killmail ->
           victim_id = Map.get(killmail, :victim_character_id)
           MapSet.member?(side_a_chars, victim_id)
         end)
-      
+
       %{
         side_a_losses: analyze_side_losses(side_a_losses, sides.side_a),
         side_b_losses: analyze_side_losses(side_b_losses, sides.side_b),
@@ -2139,7 +2321,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       %{total_losses: 0, loss_by_class: %{}, loss_rate: 0.0}
     else
       # Group losses by ship class
-      loss_by_class = 
+      loss_by_class =
         losses
         |> Enum.group_by(fn killmail ->
           ship_type_id = Map.get(killmail, :victim_ship_type_id)
@@ -2147,9 +2329,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
         end)
         |> Enum.map(fn {class, class_losses} -> {class, length(class_losses)} end)
         |> Enum.into(%{})
-      
+
       loss_rate = length(losses) / length(side_participants)
-      
+
       %{
         total_losses: length(losses),
         loss_by_class: loss_by_class,
@@ -2171,7 +2353,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
 
   defp calculate_loss_ratio(side_a_losses, side_b_losses) do
     # Calculate loss ratio between sides
-    if length(side_b_losses) == 0 do
+    if Enum.empty?(side_b_losses) do
       if length(side_a_losses) > 0, do: 10.0, else: 1.0
     else
       Float.round(length(side_a_losses) / length(side_b_losses), 2)
@@ -2182,11 +2364,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     # Analyze performance vs expected outcomes
     side_a_expected = estimate_expected_performance(sides.side_a)
     side_b_expected = estimate_expected_performance(sides.side_b)
-    
+
     # Calculate actual performance
     side_a_actual = calculate_actual_performance(sides.side_a, killmails)
     side_b_actual = calculate_actual_performance(sides.side_b, killmails)
-    
+
     %{
       side_a: %{
         expected: side_a_expected,
@@ -2208,14 +2390,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     else
       ship_classes = classify_ships_by_class(side_participants)
       fleet_strength = calculate_fleet_strength(side_participants)
-      
+
       # Base expected performance on fleet strength
       base_performance = min(1.0, fleet_strength.total_strength / 1000)
-      
+
       # Adjust for composition balance
       logistics_count = length(Map.get(ship_classes, :logistics, []))
-      logistics_factor = min(1.2, 1.0 + (logistics_count / length(side_participants)) * 0.5)
-      
+      logistics_factor = min(1.2, 1.0 + logistics_count / length(side_participants) * 0.5)
+
       Float.round(base_performance * logistics_factor, 2)
     end
   end
@@ -2226,23 +2408,25 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       0.0
     else
       side_chars = MapSet.new(side_participants, fn p -> Map.get(p, :character_id) end)
-      
+
       # Count kills achieved and losses suffered
-      kills_achieved = Enum.count(killmails, fn km ->
-        # This is simplified - in reality would need attacker data
-        true
-      end)
-      
-      losses_suffered = Enum.count(killmails, fn km ->
-        victim_id = Map.get(km, :victim_character_id)
-        MapSet.member?(side_chars, victim_id)
-      end)
-      
+      kills_achieved =
+        Enum.count(killmails, fn _km ->
+          # This is simplified - in reality would need attacker data
+          true
+        end)
+
+      losses_suffered =
+        Enum.count(killmails, fn km ->
+          victim_id = Map.get(km, :victim_character_id)
+          MapSet.member?(side_chars, victim_id)
+        end)
+
       # Calculate performance score
       if length(side_participants) > 0 do
         kill_score = kills_achieved / length(side_participants)
         loss_penalty = losses_suffered / length(side_participants)
-        
+
         performance = max(0.0, kill_score - loss_penalty * 0.5)
         Float.round(performance, 2)
       else
@@ -2258,16 +2442,16 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     else
       # Sort killmails by time
       sorted_killmails = Enum.sort_by(killmails, & &1.killmail_time)
-      
+
       # Identify spikes in kill activity
       kill_spikes = identify_kill_spikes(sorted_killmails)
-      
+
       # Identify high-value losses
       high_value_losses = identify_high_value_losses(sorted_killmails)
-      
+
       # Identify turning points
       turning_points = identify_turning_points(sorted_killmails, sides)
-      
+
       (kill_spikes ++ high_value_losses ++ turning_points)
       |> Enum.sort_by(& &1.timestamp)
       |> Enum.take(5)
@@ -2280,17 +2464,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       []
     else
       # Group by 5-minute windows
-      time_windows = 
+      time_windows =
         sorted_killmails
         |> Enum.group_by(fn km ->
           time = Map.get(km, :killmail_time)
           # Truncate to 5-minute intervals
           %{time | minute: div(time.minute, 5) * 5, second: 0}
         end)
-      
+
       # Find windows with high activity
       avg_kills_per_window = length(sorted_killmails) / map_size(time_windows)
-      
+
       time_windows
       |> Enum.filter(fn {_time, kills} -> length(kills) > avg_kills_per_window * 2 end)
       |> Enum.map(fn {time, kills} ->
@@ -2322,21 +2506,21 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     end)
   end
 
-  defp identify_turning_points(sorted_killmails, sides) do
+  defp identify_turning_points(sorted_killmails, _sides) do
     # Identify potential turning points in the battle
     if length(sorted_killmails) < 20 do
       []
     else
       # Analyze loss ratios over time
       phase_size = div(length(sorted_killmails), 4)
-      
+
       phases = [
         Enum.take(sorted_killmails, phase_size),
         Enum.slice(sorted_killmails, phase_size, phase_size),
         Enum.slice(sorted_killmails, phase_size * 2, phase_size),
         Enum.drop(sorted_killmails, phase_size * 3)
       ]
-      
+
       # Look for significant changes in loss patterns
       phases
       |> Enum.with_index()
@@ -2361,21 +2545,23 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       %{outcome: :inconclusive, victor: :none, confidence: :low}
     else
       effectiveness_diff = side_a_effectiveness - side_b_effectiveness
-      
+
       # Determine victor based on effectiveness difference
-      victor = cond do
-        effectiveness_diff > 0.2 -> :side_a
-        effectiveness_diff < -0.2 -> :side_b
-        true -> :contested
-      end
-      
+      victor =
+        cond do
+          effectiveness_diff > 0.2 -> :side_a
+          effectiveness_diff < -0.2 -> :side_b
+          true -> :contested
+        end
+
       # Determine confidence based on kill data
-      confidence = cond do
-        abs(effectiveness_diff) > 0.4 -> :high
-        abs(effectiveness_diff) > 0.2 -> :medium
-        true -> :low
-      end
-      
+      confidence =
+        cond do
+          abs(effectiveness_diff) > 0.4 -> :high
+          abs(effectiveness_diff) > 0.2 -> :medium
+          true -> :low
+        end
+
       %{
         outcome: if(victor == :contested, do: :stalemate, else: :victory),
         victor: victor,

@@ -133,7 +133,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationService do
       {:ok, price_info} ->
         # Use sell price as the primary value (what it costs to buy the ship)
         price = price_info.sell_price
-        
+
         if price > 0 do
           Logger.debug("Got ship price from Janice: type_id=#{ship_type_id}, price=#{price}")
           price
@@ -141,24 +141,27 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationService do
           # Fallback to estimates if API returns zero price
           fallback_ship_value(ship_type_id)
         end
-        
+
       {:error, :rate_limited} ->
         Logger.warning("Janice API rate limited, using fallback for ship #{ship_type_id}")
         fallback_ship_value(ship_type_id)
-        
+
       {:error, :not_found} ->
         Logger.debug("Ship type #{ship_type_id} not found in Janice, using fallback")
         fallback_ship_value(ship_type_id)
-        
+
       {:error, reason} ->
-        Logger.warning("Janice API error for ship #{ship_type_id}: #{inspect(reason)}, using fallback")
+        Logger.warning(
+          "Janice API error for ship #{ship_type_id}: #{inspect(reason)}, using fallback"
+        )
+
         fallback_ship_value(ship_type_id)
     end
   end
 
   # Default fallback
   defp estimate_ship_value(_), do: 10_000_000
-  
+
   # Fallback function when API is unavailable
   defp fallback_ship_value(ship_type_id) do
     # First check if we have a hardcoded fallback price
@@ -168,7 +171,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationService do
         category = EveDmv.Intelligence.ShipDatabase.get_ship_category(ship_type_id)
         category_key = String.downcase(category)
         Map.get(@ship_estimates_by_category, category_key, @ship_estimates_by_category["unknown"])
-        
+
       price ->
         price
     end
@@ -176,25 +179,25 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationService do
 
   defp calculate_item_values(items) do
     # Extract all unique item type IDs for bulk pricing
-    item_type_ids = 
+    item_type_ids =
       items
-      |> Enum.map(&(&1["item_type_id"]))
+      |> Enum.map(& &1["item_type_id"])
       |> Enum.uniq()
       |> Enum.filter(&is_integer/1)
-    
+
     # Get prices in bulk for efficiency
     item_prices = get_bulk_item_prices(item_type_ids)
-    
+
     # Calculate destroyed and dropped values from killmail items
     {destroyed_total, dropped_total} =
       Enum.reduce(items, {0, 0}, fn item, {dest_acc, drop_acc} ->
         quantity = item["quantity_destroyed"] || 0
         dropped_qty = item["quantity_dropped"] || 0
         item_type_id = item["item_type_id"]
-        
+
         # Get price from bulk lookup or estimate
         item_value = Map.get(item_prices, item_type_id, estimate_item_value(item_type_id))
-        
+
         {
           dest_acc + quantity * item_value,
           drop_acc + dropped_qty * item_value
@@ -203,10 +206,10 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationService do
 
     {destroyed_total, dropped_total}
   end
-  
+
   # Helper function to get bulk prices
   defp get_bulk_item_prices([]), do: %{}
-  
+
   defp get_bulk_item_prices(type_ids) when length(type_ids) <= 100 do
     case JaniceClient.bulk_price_lookup(type_ids) do
       {:ok, prices} ->
@@ -214,13 +217,13 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationService do
         Map.new(prices, fn {type_id, price_info} ->
           {type_id, price_info.sell_price}
         end)
-        
+
       {:error, reason} ->
         Logger.warning("Bulk price lookup failed: #{inspect(reason)}, using individual lookups")
         %{}
     end
   end
-  
+
   defp get_bulk_item_prices(type_ids) do
     # Split into chunks of 100 for API limits
     type_ids
@@ -247,18 +250,18 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationService do
       {:ok, price_info} ->
         # Use sell price as the primary value
         price = price_info.sell_price
-        
+
         if price > 0 do
           price
         else
           # Fallback to estimates if API returns zero price
           fallback_item_value(item_type_id)
         end
-        
+
       {:error, :rate_limited} ->
         # Silently fallback on rate limit for items (too many to log)
         fallback_item_value(item_type_id)
-        
+
       {:error, _reason} ->
         # Use fallback for any API errors
         fallback_item_value(item_type_id)
@@ -266,7 +269,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationService do
   end
 
   defp estimate_item_value(_), do: 100_000
-  
+
   # Fallback function for item values when API is unavailable
   defp fallback_item_value(item_type_id) do
     # Basic item value estimation based on type ID ranges

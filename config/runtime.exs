@@ -103,7 +103,14 @@ if config_env() == :dev and System.get_env("MIX_ENV") != "test" do
       System.get_env("WANDERER_WS_URL", "ws://host.docker.internal:4004/socket/events"),
     wanderer_api_token: System.get_env("WANDERER_API_TOKEN"),
     pipeline_enabled: System.get_env("PIPELINE_ENABLED", "true") == "true",
-    mock_sse_server_enabled: System.get_env("MOCK_SSE_SERVER_ENABLED", "false") == "true"
+    mock_sse_server_enabled: System.get_env("MOCK_SSE_SERVER_ENABLED", "false") == "true",
+    # Broadway Performance Configuration (Sprint 15A)
+    batch_size: ConfigHelper.safe_string_to_integer(System.get_env("BATCH_SIZE"), 100),
+    batch_timeout: ConfigHelper.safe_string_to_integer(System.get_env("BATCH_TIMEOUT"), 30000),
+    pipeline_concurrency:
+      ConfigHelper.safe_string_to_integer(System.get_env("PIPELINE_CONCURRENCY"), 12),
+    batcher_concurrency:
+      ConfigHelper.safe_string_to_integer(System.get_env("BATCHER_CONCURRENCY"), 4)
 
   # External API configurations
   for {api_name, api_config} <- ConfigHelper.configure_external_apis() do
@@ -200,7 +207,14 @@ if config_env() == :prod do
   # Production configuration for external services
   config :eve_dmv,
     wanderer_kills_sse_url: System.get_env("WANDERER_KILLS_SSE_URL"),
-    pipeline_enabled: System.get_env("PIPELINE_ENABLED", "true") == "true"
+    pipeline_enabled: System.get_env("PIPELINE_ENABLED", "true") == "true",
+    # Broadway Performance Configuration (Sprint 15A)
+    batch_size: ConfigHelper.safe_string_to_integer(System.get_env("BATCH_SIZE"), 100),
+    batch_timeout: ConfigHelper.safe_string_to_integer(System.get_env("BATCH_TIMEOUT"), 30000),
+    pipeline_concurrency:
+      ConfigHelper.safe_string_to_integer(System.get_env("PIPELINE_CONCURRENCY"), 12),
+    batcher_concurrency:
+      ConfigHelper.safe_string_to_integer(System.get_env("BATCHER_CONCURRENCY"), 4)
 
   # External API configurations
   for {api_name, api_config} <- ConfigHelper.configure_external_apis() do

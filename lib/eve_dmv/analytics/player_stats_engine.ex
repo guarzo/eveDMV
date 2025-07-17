@@ -48,12 +48,13 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
   defp participants_ids(field, limit) do
     case Ash.read(Participant, domain: Api) do
       {:ok, parts} ->
-        ids = parts
-        |> Enum.map(&Map.get(&1, field))
-        |> Enum.filter(& &1)
-        |> Enum.uniq()
-        |> Enum.take(limit)
-        
+        ids =
+          parts
+          |> Enum.map(&Map.get(&1, field))
+          |> Enum.filter(& &1)
+          |> Enum.uniq()
+          |> Enum.take(limit)
+
         {:ok, ids}
 
       {:error, reason} ->

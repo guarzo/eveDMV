@@ -31,14 +31,14 @@ defmodule EveDmv.Killmails.KillmailPipeline do
       ],
       processors: [
         default: [
-          concurrency: Application.get_env(:eve_dmv, :pipeline_concurrency, 4)
+          concurrency: Application.get_env(:eve_dmv, :pipeline_concurrency, 12)
         ]
       ],
       batchers: [
         db_insert: [
-          concurrency: 2,
-          batch_size: Application.get_env(:eve_dmv, :batch_size, 10),
-          batch_timeout: Application.get_env(:eve_dmv, :batch_timeout, 5000)
+          concurrency: Application.get_env(:eve_dmv, :batcher_concurrency, 4),
+          batch_size: Application.get_env(:eve_dmv, :batch_size, 100),
+          batch_timeout: Application.get_env(:eve_dmv, :batch_timeout, 30000)
         ]
       ]
     )

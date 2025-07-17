@@ -429,23 +429,6 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
     end
   end
 
-  defp create_fallback_metadata(video_info) do
-    %{
-      title: "#{video_info.platform_name} Video",
-      description: "Video content",
-      duration: nil,
-      thumbnail_url: generate_thumbnail_url(video_info.platform, video_info.video_id),
-      view_count: nil,
-      upload_date: nil,
-      channel_name: nil,
-      channel_id: nil,
-      tags: [],
-      category: nil,
-      language: nil,
-      privacy_status: :unknown,
-      content_rating: nil
-    }
-  end
 
   defp maybe_generate_embed(video_info, generate_embed) do
     if generate_embed do
@@ -570,7 +553,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
          {:ok, video_id} <- extract_video_id(url, platform) do
       # Simple HTTP check for accessibility
       {:ok, status} = perform_accessibility_check(url, timeout)
-      
+
       {:ok,
        %{
          accessible: status == :accessible,

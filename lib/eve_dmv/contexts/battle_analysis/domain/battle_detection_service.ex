@@ -434,10 +434,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
 
     killmails
     |> Enum.map(fn killmail ->
-      case PriceService.calculate_killmail_value(killmail) do
-        %{total_value: value} when is_number(value) -> value
-        _ -> 0.0
-      end
+      %{total_value: value} = PriceService.calculate_killmail_value(killmail)
+      if is_number(value), do: value, else: 0.0
     end)
     |> Enum.sum()
     |> round()

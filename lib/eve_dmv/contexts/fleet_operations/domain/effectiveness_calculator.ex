@@ -759,9 +759,9 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
   defp determine_ship_role(ship_type_id) do
     # Simplified role determination based on ship type
     case rem(ship_type_id, 10) do
-      0..2 -> :tackle
-      3..4 -> :dps
-      5..6 -> if rem(ship_type_id, 3) == 0, do: :logistics, else: :dps
+      x when x in [0, 1, 2] -> :tackle
+      x when x in [3, 4] -> :dps
+      x when x in [5, 6] -> if rem(ship_type_id, 3) == 0, do: :logistics, else: :dps
       7 -> :command
       8 -> :dps
       9 -> :capital

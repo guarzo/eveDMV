@@ -7,6 +7,8 @@ defmodule EveDmvWeb.CharacterSearchLive do
 
   alias EveDmv.Eve.NameResolver
 
+  require Logger
+
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     socket =
@@ -79,22 +81,24 @@ defmodule EveDmvWeb.CharacterSearchLive do
   defp search_by_character_id(character_id) do
     character_name = NameResolver.character_name(character_id)
 
-    if character_name != "Unknown Character" and not String.contains?(character_name, "Unknown Character") do
+    if character_name != "Unknown Character" and
+         not String.contains?(character_name, "Unknown Character") do
       # Get additional character info
       character_info = get_character_additional_info(character_id)
-      
-      {:ok, [
-        %{
-          character_id: character_id,
-          name: character_name,
-          portrait_url: character_portrait(character_id),
-          corporation_name: character_info.corporation_name,
-          alliance_name: character_info.alliance_name,
-          security_status: character_info.security_status,
-          killmails_count: character_info.killmails_count,
-          last_seen: character_info.last_seen
-        }
-      ]}
+
+      {:ok,
+       [
+         %{
+           character_id: character_id,
+           name: character_name,
+           portrait_url: character_portrait(character_id),
+           corporation_name: character_info.corporation_name,
+           alliance_name: character_info.alliance_name,
+           security_status: character_info.security_status,
+           killmails_count: character_info.killmails_count,
+           last_seen: character_info.last_seen
+         }
+       ]}
     else
       {:ok, []}
     end
@@ -103,7 +107,7 @@ defmodule EveDmvWeb.CharacterSearchLive do
   defp search_by_character_name(query) do
     # Enhanced character name search using database
     sanitized_query = String.trim(query) |> String.downcase()
-    
+
     if String.length(sanitized_query) < 3 do
       {:error, :query_too_short}
     else
@@ -111,12 +115,13 @@ defmodule EveDmvWeb.CharacterSearchLive do
       case search_characters_in_database(sanitized_query) do
         {:ok, results} ->
           # Enhance results with additional info
-          enhanced_results = 
+          enhanced_results =
             results
             |> Enum.map(&enhance_character_result/1)
-            |> Enum.sort_by(&(&1.killmails_count), :desc)
-            |> Enum.take(20)  # Limit to top 20 results
-          
+            |> Enum.sort_by(& &1.killmails_count, :desc)
+            # Limit to top 20 results
+            |> Enum.take(20)
+
           {:ok, enhanced_results}
 
         {:error, reason} ->
@@ -258,7 +263,7 @@ defmodule EveDmvWeb.CharacterSearchLive do
 
     case Ecto.Adapters.SQL.query(EveDmv.Repo, search_query, [search_pattern]) do
       {:ok, %{rows: rows}} ->
-        results = 
+        results =
           rows
           |> Enum.map(fn [character_id, character_name, killmail_count, last_seen] ->
             %{
@@ -269,7 +274,7 @@ defmodule EveDmvWeb.CharacterSearchLive do
             }
           end)
           |> Enum.filter(&(&1.character_id != nil))
-          |> Enum.uniq_by(&(&1.character_id))
+          |> Enum.uniq_by(& &1.character_id)
 
         {:ok, results}
 
@@ -282,7 +287,7 @@ defmodule EveDmvWeb.CharacterSearchLive do
   defp enhance_character_result(result) do
     # Enhance search result with additional information
     character_info = get_character_additional_info(result.character_id)
-    
+
     result
     |> Map.put(:portrait_url, character_portrait(result.character_id))
     |> Map.put(:corporation_name, character_info.corporation_name)
@@ -303,7 +308,7 @@ defmodule EveDmvWeb.CharacterSearchLive do
       base_status = 0.0
       kill_bonus = min(2.0, kills * 0.1)
       death_penalty = min(1.0, deaths * 0.05)
-      
+
       Float.round(base_status + kill_bonus - death_penalty, 1)
     end
   end

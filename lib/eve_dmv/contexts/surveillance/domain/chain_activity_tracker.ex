@@ -98,36 +98,39 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainActivityTracker do
   Predict future activity based on timeline patterns.
   """
   def predict_activity(map_id, activity_timeline) do
-    Logger.debug("Predicting activity for chain #{map_id} with #{length(activity_timeline)} events")
+    Logger.debug(
+      "Predicting activity for chain #{map_id} with #{length(activity_timeline)} events"
+    )
 
     if length(activity_timeline) < 5 do
       # Insufficient data for prediction
-      {:ok, %{
-        predicted_activity_level: 0,
-        confidence: 0.1,
-        next_activity_window: nil,
-        risk_assessment: :unknown,
-        prediction_type: :insufficient_data
-      }}
+      {:ok,
+       %{
+         predicted_activity_level: 0,
+         confidence: 0.1,
+         next_activity_window: nil,
+         risk_assessment: :unknown,
+         prediction_type: :insufficient_data
+       }}
     else
       # Analyze historical patterns
       patterns = analyze_activity_patterns_for_prediction(activity_timeline)
-      
+
       # Generate temporal predictions
       temporal_predictions = predict_temporal_activity(patterns)
-      
+
       # Analyze threat escalation patterns
       threat_predictions = predict_threat_escalation(activity_timeline)
-      
+
       # Calculate activity level prediction
       predicted_level = calculate_predicted_activity_level(patterns, temporal_predictions)
-      
+
       # Determine confidence based on pattern strength
       confidence = calculate_prediction_confidence(patterns)
-      
+
       # Predict next activity window
       next_window = predict_next_activity_window(patterns)
-      
+
       # Overall risk assessment
       risk_assessment = assess_predicted_risk(predicted_level, threat_predictions)
 

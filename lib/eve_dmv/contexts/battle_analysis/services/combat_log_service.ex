@@ -38,10 +38,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.CombatLogService do
   Parses combat log content using enhanced parser.
   """
   def parse_combat_log(raw_content, pilot_name) do
-    with {:ok, compressed} <- (case Base.decode64(raw_content) do
-                                 {:ok, data} -> {:ok, data}
-                                 :error -> {:error, :invalid_base64}
-                               end),
+    with {:ok, compressed} <-
+           (case Base.decode64(raw_content) do
+              {:ok, data} -> {:ok, data}
+              :error -> {:error, :invalid_base64}
+            end),
          content <- :zlib.uncompress(compressed) do
       Logger.info("🔍 USING ENHANCED PARSER for combat log")
 
@@ -53,7 +54,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.CombatLogService do
          tactical_analysis: tactical_analysis,
          recommendations: recommendations
        }} = EnhancedCombatLogParser.parse_combat_log(content, pilot_name: pilot_name)
-      
+
       {:ok,
        %{
          parsed_data: %{

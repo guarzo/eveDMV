@@ -19,48 +19,152 @@ defmodule EveDmv.Database.CorporationQueries do
     QueryCache.get_or_compute(
       cache_key,
       fn ->
-        # Losses are straightforward
-        losses_query = """
-        SELECT COUNT(*) as loss_count
-        FROM killmails_raw
-        WHERE victim_corporation_id = $1
-          AND killmail_time >= $2
+        # Use materialized views for better performance (Sprint 15A optimization)
+        stats_query = """
+        SELECT 
+          SUM(kills) as kill_count,
+          SUM(losses) as loss_count,
+          SUM(isk_destroyed) as isk_destroyed,
+          SUM(isk_lost) as isk_lost,
+          COUNT(DISTINCT character_id) as active_members
+        FROM corporation_member_summary
+        WHERE corporation_id = $1
+          AND last_seen >= $2
         """
 
-        # For kills, we need to check attackers but with better indexing
-        kills_query = """
-        WITH corp_kills AS (
-          SELECT DISTINCT k.killmail_id
-          FROM killmails_raw k
-          WHERE k.killmail_time >= $2
-            AND EXISTS (
-              SELECT 1 
-              FROM jsonb_array_elements(k.raw_data->'attackers') AS attacker
-              WHERE (attacker->>'corporation_id')::integer = $1
-            )
-          LIMIT 5000
-        )
-        SELECT COUNT(*) as kill_count FROM corp_kills
-        """
+        case Repo.query(stats_query, [corporation_id, since_date]) do
+          {:ok, %{rows: [[kills, losses, isk_destroyed, isk_lost, active_members]]}} ->
+            %{
+              kills: kills || 0,
+              losses: losses || 0,
+              isk_destroyed: Decimal.to_float(isk_destroyed || 0),
+              isk_lost: Decimal.to_float(isk_lost || 0),
+              active_members: active_members || 0,
+              efficiency: calculate_efficiency(kills || 0, losses || 0),
+              isk_efficiency: calculate_isk_efficiency(isk_destroyed || 0, isk_lost || 0)
+            }
 
-        # Run queries
-        {:ok, %{rows: [[loss_count]]}} = Repo.query(losses_query, [corporation_id, since_date])
-        {:ok, %{rows: [[kill_count]]}} = Repo.query(kills_query, [corporation_id, since_date])
-
-        %{
-          kills: kill_count,
-          losses: loss_count,
-          efficiency: calculate_efficiency(kill_count, loss_count)
-        }
+          {:error, _} ->
+            # Fallback to direct query if materialized view isn't ready
+            Logger.warning("Materialized view not available, falling back to direct query")
+            get_corporation_stats_direct(corporation_id, since_date)
+        end
       end,
       ttl: :timer.hours(1)
     )
   end
 
+  # Fallback method using direct queries
+  defp get_corporation_stats_direct(corporation_id, since_date) do
+    # Losses are straightforward
+    losses_query = """
+    SELECT COUNT(*) as loss_count
+    FROM killmails_raw
+    WHERE victim_corporation_id = $1
+      AND killmail_time >= $2
+    """
+
+    # For kills, we need to check attackers but with better indexing
+    kills_query = """
+    WITH corp_kills AS (
+      SELECT DISTINCT k.killmail_id
+      FROM killmails_raw k
+      WHERE k.killmail_time >= $2
+        AND EXISTS (
+          SELECT 1 
+          FROM jsonb_array_elements(k.raw_data->'attackers') AS attacker
+          WHERE (attacker->>'corporation_id')::integer = $1
+        )
+      LIMIT 5000
+    )
+    SELECT COUNT(*) as kill_count FROM corp_kills
+    """
+
+    # Run queries
+    {:ok, %{rows: [[loss_count]]}} = Repo.query(losses_query, [corporation_id, since_date])
+    {:ok, %{rows: [[kill_count]]}} = Repo.query(kills_query, [corporation_id, since_date])
+
+    %{
+      kills: kill_count,
+      losses: loss_count,
+      efficiency: calculate_efficiency(kill_count, loss_count)
+    }
+  end
+
   @doc """
   Get top active members without expensive N+1 queries.
+  Uses materialized view for Sprint 15A performance optimization.
   """
   def get_top_active_members(corporation_id, limit \\ 10, since_date) do
+    # Use materialized view for instant results
+    query = """
+    SELECT 
+      character_id,
+      character_name,
+      total_killmails as total_activity,
+      kills,
+      losses,
+      isk_destroyed,
+      isk_lost,
+      systems_active,
+      ships_flown,
+      days_active,
+      activity_rank,
+      last_seen,
+      CASE 
+        WHEN losses = 0 THEN 100.0
+        ELSE ROUND((kills::decimal / (kills + losses)::decimal) * 100, 2)
+      END as efficiency
+    FROM corporation_member_summary
+    WHERE corporation_id = $1
+      AND last_seen >= $3
+    ORDER BY activity_rank
+    LIMIT $2
+    """
+
+    case Repo.query(query, [corporation_id, limit, since_date]) do
+      {:ok, %{rows: rows}} ->
+        Enum.map(rows, fn [
+                            character_id,
+                            character_name,
+                            total_activity,
+                            kills,
+                            losses,
+                            isk_destroyed,
+                            isk_lost,
+                            systems_active,
+                            ships_flown,
+                            days_active,
+                            activity_rank,
+                            last_seen,
+                            efficiency
+                          ] ->
+          %{
+            character_id: character_id,
+            character_name: character_name,
+            total_activity: total_activity,
+            kills: kills,
+            losses: losses,
+            efficiency: efficiency,
+            isk_destroyed: Decimal.to_float(isk_destroyed || 0),
+            isk_lost: Decimal.to_float(isk_lost || 0),
+            systems_active: systems_active,
+            ships_flown: ships_flown,
+            days_active: days_active,
+            activity_rank: activity_rank,
+            last_seen: last_seen
+          }
+        end)
+
+      {:error, _} ->
+        # Fallback to direct query
+        Logger.warning("Materialized view not available, falling back to direct query")
+        get_top_active_members_direct(corporation_id, limit, since_date)
+    end
+  end
+
+  # Fallback method using direct queries
+  defp get_top_active_members_direct(corporation_id, limit, since_date) do
     query = """
     WITH member_activity AS (
       -- Members who died
@@ -380,4 +484,9 @@ defmodule EveDmv.Database.CorporationQueries do
   end
 
   defp calculate_efficiency(_kills, _losses), do: 100.0
+
+  defp calculate_isk_efficiency(destroyed, lost) do
+    total = destroyed + lost
+    if total > 0, do: Float.round(destroyed / total * 100, 2), else: 50.0
+  end
 end

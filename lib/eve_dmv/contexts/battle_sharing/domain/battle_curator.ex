@@ -896,7 +896,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
 
   defp fetch_battle_report(report_id) do
     Logger.debug("Fetching battle report #{report_id}")
-    
+
     # In a real implementation, this would query a battle_reports table
     # For now, we'll create a comprehensive mock with proper structure
     battle_report = %{
@@ -967,7 +967,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
       created_at: DateTime.add(DateTime.utc_now(), -:rand.uniform(86400), :second),
       updated_at: DateTime.utc_now()
     }
-    
+
     {:ok, battle_report}
   rescue
     error ->
@@ -977,44 +977,53 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
 
   defp validate_rating(rating, categories) do
     Logger.debug("Validating rating #{rating} for categories #{inspect(categories)}")
-    
+
     cond do
       rating < 1 or rating > 10 ->
         {:error, :invalid_rating_range}
-      
+
       not is_integer(rating) ->
         {:error, :invalid_rating_type}
-      
-      length(categories) == 0 ->
+
+      Enum.empty?(categories) ->
         {:error, :no_categories_specified}
-      
-      not Enum.all?(categories, fn cat -> 
-        cat in [:overall, :tactical_value, :educational_content, :entertainment_value, :video_quality]
+
+      not Enum.all?(categories, fn cat ->
+        cat in [
+          :overall,
+          :tactical_value,
+          :educational_content,
+          :entertainment_value,
+          :video_quality
+        ]
       end) ->
         {:error, :invalid_category}
-      
+
       true ->
         validated_rating = %{
           score: rating,
           categories: categories,
           normalized_score: rating / 10.0,
-          rating_level: case rating do
-            r when r >= 9 -> :exceptional
-            r when r >= 7 -> :good
-            r when r >= 5 -> :average
-            r when r >= 3 -> :below_average
-            _ -> :poor
-          end,
+          rating_level:
+            case rating do
+              r when r >= 9 -> :exceptional
+              r when r >= 7 -> :good
+              r when r >= 5 -> :average
+              r when r >= 3 -> :below_average
+              _ -> :poor
+            end,
           validated_at: DateTime.utc_now()
         }
-        
+
         {:ok, validated_rating}
     end
   end
 
   defp create_rating_record(report_id, rater_character_id, validated_rating, comment, categories) do
-    Logger.debug("Creating rating record for report #{report_id} by character #{rater_character_id}")
-    
+    Logger.debug(
+      "Creating rating record for report #{report_id} by character #{rater_character_id}"
+    )
+
     rating_record = %{
       rating_id: generate_rating_id(),
       report_id: report_id,
@@ -1032,7 +1041,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
       created_at: DateTime.utc_now(),
       updated_at: DateTime.utc_now()
     }
-    
+
     # In a real implementation, this would insert into a ratings table
     # and handle duplicate ratings, user verification, etc.
     {:ok, rating_record}
@@ -1041,20 +1050,20 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
       Logger.error("Failed to create rating record: #{inspect(error)}")
       {:error, :rating_creation_failed}
   end
-  
+
   defp generate_rating_id do
     12
     |> :crypto.strong_rand_bytes()
     |> Base.encode16(case: :lower)
   end
-  
+
   defp generate_ip_hash do
     # In production, would hash the actual IP address
     16
     |> :crypto.strong_rand_bytes()
     |> Base.encode16(case: :lower)
   end
-  
+
   defp generate_user_agent_hash do
     # In production, would hash the actual user agent
     16
@@ -1064,44 +1073,46 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
 
   defp update_report_ratings(battle_report, rating_record) do
     Logger.debug("Updating ratings for battle report #{battle_report.report_id}")
-    
+
     try do
       # Get current ratings
       current_ratings = battle_report.community_features.ratings || []
-      
+
       # Add new rating
       updated_ratings = [rating_record | current_ratings]
-      
+
       # Calculate new average rating
       total_ratings = length(updated_ratings)
       total_score = updated_ratings |> Enum.map(& &1.rating_score) |> Enum.sum()
       new_average = if total_ratings > 0, do: total_score / total_ratings, else: 0.0
-      
+
       # Calculate category-specific averages
       category_averages = calculate_category_averages(updated_ratings)
-      
+
       # Calculate featured score (weighted average considering factors)
       featured_score = calculate_featured_score(new_average, total_ratings, category_averages)
-      
+
       # Update battle report
       updated_battle_report = %{
-        battle_report |
-        community_features: %{
-          battle_report.community_features |
-          ratings: updated_ratings
-        },
-        metrics: %{
-          battle_report.metrics |
-          average_rating: Float.round(new_average, 2),
-          total_ratings: total_ratings,
-          featured_score: Float.round(featured_score, 3),
-          category_ratings: category_averages
-        },
-        updated_at: DateTime.utc_now()
+        battle_report
+        | community_features: %{
+            battle_report.community_features
+            | ratings: updated_ratings
+          },
+          metrics: %{
+            battle_report.metrics
+            | average_rating: Float.round(new_average, 2),
+              total_ratings: total_ratings,
+              featured_score: Float.round(featured_score, 3),
+              category_ratings: category_averages
+          },
+          updated_at: DateTime.utc_now()
       }
-      
-      Logger.info("Updated ratings for report #{battle_report.report_id}: #{total_ratings} ratings, avg: #{Float.round(new_average, 2)}")
-      
+
+      Logger.info(
+        "Updated ratings for report #{battle_report.report_id}: #{total_ratings} ratings, avg: #{Float.round(new_average, 2)}"
+      )
+
       {:ok, updated_battle_report}
     rescue
       error ->
@@ -1109,46 +1120,54 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
         {:error, :rating_update_failed}
     end
   end
-  
+
   defp calculate_category_averages(ratings) do
     # Calculate average rating per category
-    all_categories = [:overall, :tactical_value, :educational_content, :entertainment_value, :video_quality]
-    
+    all_categories = [
+      :overall,
+      :tactical_value,
+      :educational_content,
+      :entertainment_value,
+      :video_quality
+    ]
+
     all_categories
     |> Enum.map(fn category ->
-      category_ratings = 
+      category_ratings =
         ratings
-        |> Enum.filter(fn rating -> 
+        |> Enum.filter(fn rating ->
           category in (rating.rating_categories || [])
         end)
         |> Enum.map(& &1.rating_score)
-      
-      avg = if length(category_ratings) > 0 do
-        Enum.sum(category_ratings) / length(category_ratings)
-      else
-        0.0
-      end
-      
-      {category, %{
-        average: Float.round(avg, 2),
-        count: length(category_ratings)
-      }}
+
+      avg =
+        if length(category_ratings) > 0 do
+          Enum.sum(category_ratings) / length(category_ratings)
+        else
+          0.0
+        end
+
+      {category,
+       %{
+         average: Float.round(avg, 2),
+         count: length(category_ratings)
+       }}
     end)
     |> Enum.into(%{})
   end
-  
+
   defp calculate_featured_score(average_rating, total_ratings, category_averages) do
     # Calculate a composite score for featuring battles
     # Factors: overall rating, number of ratings, category balance
-    
+
     # Base score from average rating (0-1)
     base_score = average_rating / 10.0
-    
+
     # Popularity factor (more ratings = higher score, diminishing returns)
     popularity_factor = min(1.0, :math.log(total_ratings + 1) / :math.log(50))
-    
+
     # Category balance factor (bonus for high ratings across multiple categories)
-    category_balance = 
+    category_balance =
       category_averages
       |> Map.values()
       |> Enum.filter(fn %{count: count} -> count > 0 end)
@@ -1157,51 +1176,67 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
         [] -> 0.0
         scores -> Enum.sum(scores) / length(scores)
       end
-    
+
     # Weighted combination
-    featured_score = 
+    featured_score =
       base_score * 0.5 +
-      popularity_factor * 0.3 +
-      category_balance * 0.2
-    
+        popularity_factor * 0.3 +
+        category_balance * 0.2
+
     min(1.0, featured_score)
   end
 
   defp validate_tactical_highlight(highlight, timestamp, highlight_type) do
     Logger.debug("Validating tactical highlight: #{inspect(highlight)}")
-    
+
     cond do
       is_nil(highlight) or (is_binary(highlight) and String.trim(highlight) == "") ->
         {:error, :empty_highlight}
-      
+
       is_binary(highlight) and String.length(highlight) > 500 ->
         {:error, :highlight_too_long}
-      
+
       not is_nil(timestamp) and (not is_integer(timestamp) or timestamp < 0) ->
         {:error, :invalid_timestamp}
-      
-      highlight_type not in [:tactical_moment, :first_blood, :primary_engagement, 
-                             :tactical_shift, :escalation, :de_escalation, :final_blow,
-                             :strategic_movement, :logistics_save, :key_decision] ->
+
+      highlight_type not in [
+        :tactical_moment,
+        :first_blood,
+        :primary_engagement,
+        :tactical_shift,
+        :escalation,
+        :de_escalation,
+        :final_blow,
+        :strategic_movement,
+        :logistics_save,
+        :key_decision
+      ] ->
         {:error, :invalid_highlight_type}
-      
+
       true ->
         validated_highlight = %{
           content: String.trim(to_string(highlight)),
           timestamp: timestamp,
           type: highlight_type,
-          significance: assess_highlight_significance(%{type: highlight_type, timestamp: timestamp}, nil),
+          significance:
+            assess_highlight_significance(%{type: highlight_type, timestamp: timestamp}, nil),
           validation_status: :approved,
           validated_at: DateTime.utc_now()
         }
-        
+
         {:ok, validated_highlight}
     end
   end
 
-  defp create_highlight_record(report_id, character_id, validated_highlight, description, highlight_type) do
+  defp create_highlight_record(
+         report_id,
+         character_id,
+         validated_highlight,
+         description,
+         highlight_type
+       ) do
     Logger.debug("Creating highlight record for report #{report_id} by character #{character_id}")
-    
+
     highlight_record = %{
       highlight_id: generate_highlight_id(),
       report_id: report_id,
@@ -1228,7 +1263,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
       created_at: DateTime.utc_now(),
       updated_at: DateTime.utc_now()
     }
-    
+
     # In a real implementation, this would insert into highlights table
     {:ok, highlight_record}
   rescue
@@ -1236,13 +1271,13 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
       Logger.error("Failed to create highlight record: #{inspect(error)}")
       {:error, :highlight_creation_failed}
   end
-  
+
   defp generate_highlight_id do
     12
     |> :crypto.strong_rand_bytes()
     |> Base.encode16(case: :lower)
   end
-  
+
   defp verify_character_access(character_id, report_id) do
     # In production, would verify character has access to the report
     # For now, return basic verification info
@@ -1253,7 +1288,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
       verified_at: DateTime.utc_now()
     }
   end
-  
+
   defp extract_tactical_context(timestamp, highlight_type) do
     # Extract tactical context around the timestamp
     %{
@@ -1267,7 +1302,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
       }
     }
   end
-  
+
   defp determine_tactical_phase(timestamp) do
     # Determine which tactical phase this timestamp falls into
     cond do
@@ -1278,8 +1313,8 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
       true -> :conclusion
     end
   end
-  
-  defp estimate_battle_intensity(timestamp) do
+
+  defp estimate_battle_intensity(_timestamp) do
     # Estimate battle intensity at this timestamp
     # In production, would analyze killmail density around this time
     intensities = [:low, :moderate, :high, :extreme]
@@ -1288,42 +1323,48 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
 
   defp add_highlight_to_report(battle_report, highlight_record) do
     Logger.debug("Adding highlight to report #{battle_report.report_id}")
-    
+
     try do
       # Get current highlights
       current_highlights = battle_report.tactical_highlights || []
-      
+
       # Add new highlight and sort by timestamp
-      updated_highlights = [highlight_record | current_highlights]
-      |> Enum.sort_by(fn highlight -> 
-        highlight.timestamp || 0
-      end)
-      
+      updated_highlights =
+        [highlight_record | current_highlights]
+        |> Enum.sort_by(fn highlight ->
+          highlight.timestamp || 0
+        end)
+
       # Update highlight metrics
       highlight_metrics = %{
         total_highlights: length(updated_highlights),
-        highlight_types: updated_highlights
+        highlight_types:
+          updated_highlights
           |> Enum.map(& &1.highlight_type)
           |> Enum.frequencies(),
-        significance_distribution: updated_highlights
+        significance_distribution:
+          updated_highlights
           |> Enum.map(& &1.significance)
           |> Enum.frequencies(),
         average_timestamp: calculate_average_timestamp(updated_highlights),
         timeline_coverage: calculate_timeline_coverage(updated_highlights)
       }
-      
+
       # Update battle report
       updated_battle_report = %{
-        battle_report |
-        tactical_highlights: updated_highlights,
-        metrics: Map.merge(battle_report.metrics, %{
-          highlight_metrics: highlight_metrics
-        }),
-        updated_at: DateTime.utc_now()
+        battle_report
+        | tactical_highlights: updated_highlights,
+          metrics:
+            Map.merge(battle_report.metrics, %{
+              highlight_metrics: highlight_metrics
+            }),
+          updated_at: DateTime.utc_now()
       }
-      
-      Logger.info("Added highlight to report #{battle_report.report_id}: #{length(updated_highlights)} total highlights")
-      
+
+      Logger.info(
+        "Added highlight to report #{battle_report.report_id}: #{length(updated_highlights)} total highlights"
+      )
+
       {:ok, updated_battle_report}
     rescue
       error ->
@@ -1331,33 +1372,39 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
         {:error, :highlight_addition_failed}
     end
   end
-  
+
   defp calculate_average_timestamp(highlights) do
-    timestamps = highlights
+    timestamps =
+      highlights
       |> Enum.map(& &1.timestamp)
       |> Enum.filter(& &1)
-    
+
     if length(timestamps) > 0 do
       Enum.sum(timestamps) / length(timestamps)
     else
       0
     end
   end
-  
+
   defp calculate_timeline_coverage(highlights) do
-    timestamps = highlights
+    timestamps =
+      highlights
       |> Enum.map(& &1.timestamp)
       |> Enum.filter(& &1)
       |> Enum.sort()
-    
+
     case timestamps do
-      [] -> %{coverage: 0, span: 0}
-      [single] -> %{coverage: 1, span: 0, single_point: single}
-      _ -> 
+      [] ->
+        %{coverage: 0, span: 0}
+
+      [single] ->
+        %{coverage: 1, span: 0, single_point: single}
+
+      _ ->
         min_time = List.first(timestamps)
         max_time = List.last(timestamps)
         span = max_time - min_time
-        
+
         %{
           coverage: length(timestamps),
           span: span,
@@ -1369,28 +1416,33 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
   end
 
   defp fetch_candidate_reports(time_window_days, min_rating) do
-    Logger.debug("Fetching candidate reports for last #{time_window_days} days with min rating #{min_rating}")
-    
+    Logger.debug(
+      "Fetching candidate reports for last #{time_window_days} days with min rating #{min_rating}"
+    )
+
     try do
       # Calculate time window
       cutoff_date = DateTime.add(DateTime.utc_now(), -time_window_days * 24 * 3600, :second)
-      
+
       # In a real implementation, this would query the battle_reports table
       # For now, generate sample candidate reports
       candidate_reports = generate_sample_reports(cutoff_date, min_rating, time_window_days)
-      
+
       # Filter by minimum rating
-      filtered_reports = 
+      filtered_reports =
         candidate_reports
-        |> Enum.filter(fn report -> 
+        |> Enum.filter(fn report ->
           report.metrics.average_rating >= min_rating
         end)
-        |> Enum.sort_by(fn report -> 
-          report.metrics.featured_score
-        end, :desc)
-      
+        |> Enum.sort_by(
+          fn report ->
+            report.metrics.featured_score
+          end,
+          :desc
+        )
+
       Logger.info("Found #{length(filtered_reports)} candidate reports meeting criteria")
-      
+
       {:ok, filtered_reports}
     rescue
       error ->
@@ -1398,25 +1450,30 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
         {:error, :candidate_fetch_failed}
     end
   end
-  
+
   defp generate_sample_reports(cutoff_date, min_rating, time_window_days) do
     # Generate sample battle reports for testing
     battle_types = [:fleet_battle, :gang_warfare, :small_gang, :skirmish]
     scale_levels = [:epic, :major, :significant, :minor]
-    
+
     1..15
     |> Enum.map(fn i ->
       battle_type = Enum.random(battle_types)
       scale = Enum.random(scale_levels)
       rating = min_rating + :rand.uniform() * (10 - min_rating)
-      
+
       %{
         report_id: "candidate_#{i}",
         battle_id: "battle_#{i}",
         creator_character_id: 10000 + i,
-        title: "#{String.capitalize(to_string(battle_type))} - #{String.capitalize(to_string(scale))} Scale",
+        title:
+          "#{String.capitalize(to_string(battle_type))} - #{String.capitalize(to_string(scale))} Scale",
         description: "A #{scale} #{battle_type} with tactical significance",
-        video_links: if(:rand.uniform() > 0.7, do: [%{platform: :youtube, video_id: "sample_#{i}"}], else: []),
+        video_links:
+          if(:rand.uniform() > 0.7,
+            do: [%{platform: :youtube, video_id: "sample_#{i}"}],
+            else: []
+          ),
         tactical_highlights: generate_sample_highlights(i),
         auto_analysis: %{
           battle_classification: battle_type,
@@ -1447,12 +1504,13 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
           total_ratings: 5 + :rand.uniform(50),
           featured_score: :rand.uniform()
         },
-        created_at: DateTime.add(cutoff_date, :rand.uniform(time_window_days * 24 * 3600), :second),
+        created_at:
+          DateTime.add(cutoff_date, :rand.uniform(time_window_days * 24 * 3600), :second),
         updated_at: DateTime.utc_now()
       }
     end)
   end
-  
+
   defp generate_sample_highlights(battle_index) do
     if :rand.uniform() > 0.5 do
       1..:rand.uniform(5)
@@ -1469,64 +1527,79 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
       []
     end
   end
-  
+
   defp generate_sample_tags(battle_type, scale) do
     base_tags = [to_string(battle_type), to_string(scale)]
-    additional_tags = ["pvp", "analysis", "tactical", "educational", "wormhole", "nullsec", "lowsec"]
-    
+
+    additional_tags = [
+      "pvp",
+      "analysis",
+      "tactical",
+      "educational",
+      "wormhole",
+      "nullsec",
+      "lowsec"
+    ]
+
     base_tags ++ Enum.take_random(additional_tags, :rand.uniform(3))
   end
 
   defp analyze_curation_metrics(reports) do
     Logger.debug("Analyzing curation metrics for #{length(reports)} reports")
-    
+
     try do
-      analyzed_reports = 
+      analyzed_reports =
         reports
         |> Enum.map(fn report ->
           # Calculate comprehensive curation metrics
           curation_metrics = %{
             # Community engagement score
             engagement_score: calculate_engagement_score(report),
-            
+
             # Tactical value assessment
             tactical_value: assess_tactical_value(report),
-            
+
             # Educational potential
             educational_value: assess_educational_value(report),
-            
+
             # Content quality score
             content_quality: assess_content_quality(report),
-            
+
             # Uniqueness factor
             uniqueness_score: assess_uniqueness(report),
-            
+
             # Recency factor
             recency_score: calculate_recency_score(report.created_at),
-            
+
             # Overall curation score
             overall_curation_score: 0.0
           }
-          
+
           # Calculate weighted overall score
-          overall_score = 
+          overall_score =
             curation_metrics.engagement_score * 0.25 +
-            curation_metrics.tactical_value * 0.20 +
-            curation_metrics.educational_value * 0.20 +
-            curation_metrics.content_quality * 0.15 +
-            curation_metrics.uniqueness_score * 0.10 +
-            curation_metrics.recency_score * 0.10
-          
-          updated_metrics = %{curation_metrics | overall_curation_score: Float.round(overall_score, 3)}
-          
+              curation_metrics.tactical_value * 0.20 +
+              curation_metrics.educational_value * 0.20 +
+              curation_metrics.content_quality * 0.15 +
+              curation_metrics.uniqueness_score * 0.10 +
+              curation_metrics.recency_score * 0.10
+
+          updated_metrics = %{
+            curation_metrics
+            | overall_curation_score: Float.round(overall_score, 3)
+          }
+
           Map.put(report, :curation_metrics, updated_metrics)
         end)
-        |> Enum.sort_by(fn report -> 
-          report.curation_metrics.overall_curation_score
-        end, :desc)
-      
+        |> Enum.sort_by(
+          fn report ->
+            report.curation_metrics.overall_curation_score
+          end,
+          :desc
+        )
+
       Logger.info("Analyzed curation metrics for #{length(analyzed_reports)} reports")
-      
+
       {:ok, analyzed_reports}
     rescue
       error ->
@@ -1534,99 +1607,102 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
         {:error, :metrics_analysis_failed}
     end
   end
-  
+
   defp calculate_engagement_score(report) do
     # Calculate engagement based on views, ratings, shares
     views = report.metrics.views || 0
     ratings = report.metrics.total_ratings || 0
     shares = report.metrics.shares || 0
     avg_rating = report.metrics.average_rating || 0
-    
+
     # Normalize to 0-1 scale
     view_score = min(1.0, views / 5000.0)
     rating_score = min(1.0, ratings / 50.0)
     share_score = min(1.0, shares / 100.0)
     quality_score = avg_rating / 10.0
-    
+
     # Weighted combination
-    engagement_score = 
+    engagement_score =
       view_score * 0.3 +
-      rating_score * 0.25 +
-      share_score * 0.25 +
-      quality_score * 0.20
-    
+        rating_score * 0.25 +
+        share_score * 0.25 +
+        quality_score * 0.20
+
     Float.round(engagement_score, 3)
   end
-  
+
   defp assess_tactical_value(report) do
     # Assess tactical learning value
     auto_analysis = report.auto_analysis || %{}
     key_stats = auto_analysis.key_statistics || %{}
-    
+
     # Factor in battle complexity
-    complexity_score = case auto_analysis.battle_classification do
-      :fleet_battle -> 1.0
-      :gang_warfare -> 0.8
-      :small_gang -> 0.6
-      :skirmish -> 0.4
-      _ -> 0.5
-    end
-    
+    complexity_score =
+      case auto_analysis.battle_classification do
+        :fleet_battle -> 1.0
+        :gang_warfare -> 0.8
+        :small_gang -> 0.6
+        :skirmish -> 0.4
+        _ -> 0.5
+      end
+
     # Factor in scale
-    scale_score = case auto_analysis.tactical_summary.scale_assessment do
-      :epic -> 1.0
-      :major -> 0.8
-      :significant -> 0.6
-      :minor -> 0.4
-      _ -> 0.5
-    end
-    
+    scale_score =
+      case auto_analysis.tactical_summary.scale_assessment do
+        :epic -> 1.0
+        :major -> 0.8
+        :significant -> 0.6
+        :minor -> 0.4
+        _ -> 0.5
+      end
+
     # Factor in duration (longer battles often more tactically interesting)
     duration_score = min(1.0, (key_stats.duration_minutes || 0) / 30.0)
-    
+
     # Factor in multi-system complexity
     system_score = min(1.0, (key_stats.systems_involved || 1) / 3.0)
-    
-    tactical_value = 
+
+    tactical_value =
       complexity_score * 0.35 +
-      scale_score * 0.30 +
-      duration_score * 0.20 +
-      system_score * 0.15
-    
+        scale_score * 0.30 +
+        duration_score * 0.20 +
+        system_score * 0.15
+
     Float.round(tactical_value, 3)
   end
-  
+
   defp assess_educational_value(report) do
     # Assess educational potential
     highlights_count = length(report.tactical_highlights || [])
     video_count = length(report.video_links || [])
     description_length = String.length(report.description || "")
-    
+
     # Factor in tactical highlights
     highlight_score = min(1.0, highlights_count / 5.0)
-    
+
     # Factor in video content
     video_score = min(1.0, video_count / 2.0)
-    
+
     # Factor in description quality
     description_score = min(1.0, description_length / 1000.0)
-    
+
     # Factor in auto-analysis quality
-    analysis_score = if Map.has_key?(report.auto_analysis || %{}, :phase_analysis) do
-      0.8
-    else
-      0.4
-    end
-    
-    educational_value = 
+    analysis_score =
+      if Map.has_key?(report.auto_analysis || %{}, :phase_analysis) do
+        0.8
+      else
+        0.4
+      end
+
+    educational_value =
       highlight_score * 0.30 +
-      video_score * 0.25 +
-      description_score * 0.25 +
-      analysis_score * 0.20
-    
+        video_score * 0.25 +
+        description_score * 0.25 +
+        analysis_score * 0.20
+
     Float.round(educational_value, 3)
   end
-  
+
   defp assess_content_quality(report) do
     # Assess overall content quality
     has_title = String.length(report.title || "") > 10
@@ -1634,7 +1710,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
     has_videos = length(report.video_links || []) > 0
     has_highlights = length(report.tactical_highlights || []) > 0
     has_tags = length(report.tags || []) > 2
-    
+
     quality_factors = [
       has_title,
       has_description,
@@ -1642,65 +1718,72 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
       has_highlights,
       has_tags
     ]
-    
-    quality_score = 
+
+    quality_score =
       quality_factors
       |> Enum.count(& &1)
       |> Kernel./(length(quality_factors))
-    
+
     Float.round(quality_score, 3)
   end
-  
+
   defp assess_uniqueness(report) do
     # Assess uniqueness/novelty of the battle
     # This would be more sophisticated with historical data
     battle_type = report.auto_analysis.battle_classification
     scale = report.auto_analysis.tactical_summary.scale_assessment
-    
-    uniqueness_score = case {battle_type, scale} do
-      {:fleet_battle, :epic} -> 0.9
-      {:gang_warfare, :major} -> 0.7
-      {:small_gang, :significant} -> 0.5
-      _ -> 0.3
-    end
-    
+
+    uniqueness_score =
+      case {battle_type, scale} do
+        {:fleet_battle, :epic} -> 0.9
+        {:gang_warfare, :major} -> 0.7
+        {:small_gang, :significant} -> 0.5
+        _ -> 0.3
+      end
+
     # Add randomness for variety
     uniqueness_score + :rand.uniform() * 0.2
   end
-  
+
   defp calculate_recency_score(created_at) do
     # More recent battles get higher scores
     hours_ago = DateTime.diff(DateTime.utc_now(), created_at, :hour)
-    
+
     # Recency decay over 7 days
-    recency_score = max(0.0, 1.0 - (hours_ago / (7 * 24)))
-    
+    recency_score = max(0.0, 1.0 - hours_ago / (7 * 24))
+
     Float.round(recency_score, 3)
   end
 
   defp categorize_featured_battles(reports, categories) do
-    Logger.debug("Categorizing #{length(reports)} reports into categories: #{inspect(categories)}")
-    
+    Logger.debug(
+      "Categorizing #{length(reports)} reports into categories: #{inspect(categories)}"
+    )
+
     try do
-      categorized_reports = 
+      categorized_reports =
         categories
         |> Enum.map(fn category ->
-          category_reports = 
+          category_reports =
             reports
             |> Enum.filter(fn report ->
               meets_category_criteria(report, category)
             end)
-            |> Enum.sort_by(fn report ->
-              get_category_score(report, category)
-            end, :desc)
-            |> Enum.take(5) # Top 5 per category
-          
+            |> Enum.sort_by(
+              fn report ->
+                get_category_score(report, category)
+              end,
+              :desc
+            )
+            # Top 5 per category
+            |> Enum.take(5)
+
           {category, category_reports}
         end)
         |> Enum.into(%{})
-      
+
       Logger.info("Categorized reports: #{inspect(Map.keys(categorized_reports))}")
-      
+
       {:ok, categorized_reports}
     rescue
       error ->
@@ -1708,64 +1791,65 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
         {:error, :categorization_failed}
     end
   end
-  
+
   defp meets_category_criteria(report, category) do
     case category do
       :tactical_excellence ->
         report.curation_metrics.tactical_value >= 0.7 and
-        report.metrics.average_rating >= 7.0
-      
+          report.metrics.average_rating >= 7.0
+
       :educational_value ->
         report.curation_metrics.educational_value >= 0.6 and
-        length(report.tactical_highlights || []) >= 2
-      
+          length(report.tactical_highlights || []) >= 2
+
       :epic_battles ->
         report.auto_analysis.tactical_summary.scale_assessment in [:epic, :major] and
-        report.auto_analysis.key_statistics.total_participants >= 20
-      
+          report.auto_analysis.key_statistics.total_participants >= 20
+
       :recent_highlights ->
         report.curation_metrics.recency_score >= 0.8
-      
+
       :community_favorites ->
         report.metrics.total_ratings >= 10 and
-        report.metrics.average_rating >= 8.0
-      
+          report.metrics.average_rating >= 8.0
+
       :multi_system_warfare ->
         report.auto_analysis.key_statistics.systems_involved >= 2
-      
+
       :fleet_command_training ->
         report.auto_analysis.battle_classification == :fleet_battle and
-        length(report.video_links || []) > 0
-      
+          length(report.video_links || []) > 0
+
       _ ->
         true
     end
   end
-  
+
   defp get_category_score(report, category) do
     base_score = report.curation_metrics.overall_curation_score
-    
+
     # Category-specific bonuses
-    bonus = case category do
-      :tactical_excellence -> report.curation_metrics.tactical_value * 0.5
-      :educational_value -> report.curation_metrics.educational_value * 0.5
-      :epic_battles -> (report.auto_analysis.key_statistics.total_participants / 50.0) * 0.3
-      :recent_highlights -> report.curation_metrics.recency_score * 0.4
-      :community_favorites -> (report.metrics.average_rating / 10.0) * 0.3
-      :multi_system_warfare -> (report.auto_analysis.key_statistics.systems_involved / 5.0) * 0.3
-      :fleet_command_training -> if length(report.video_links || []) > 0, do: 0.2, else: 0.0
-      _ -> 0.0
-    end
-    
+    bonus =
+      case category do
+        :tactical_excellence -> report.curation_metrics.tactical_value * 0.5
+        :educational_value -> report.curation_metrics.educational_value * 0.5
+        :epic_battles -> report.auto_analysis.key_statistics.total_participants / 50.0 * 0.3
+        :recent_highlights -> report.curation_metrics.recency_score * 0.4
+        :community_favorites -> report.metrics.average_rating / 10.0 * 0.3
+        :multi_system_warfare -> report.auto_analysis.key_statistics.systems_involved / 5.0 * 0.3
+        :fleet_command_training -> if length(report.video_links || []) > 0, do: 0.2, else: 0.0
+        _ -> 0.0
+      end
+
     base_score + bonus
   end
 
   defp select_featured_battles(categorized_reports, max_results) do
     Logger.debug("Selecting final featured battles from categorized reports")
-    
+
     try do
       # Flatten all categorized reports with their category info
-      all_candidates = 
+      all_candidates =
         categorized_reports
         |> Enum.flat_map(fn {category, reports} ->
           reports
@@ -1773,13 +1857,14 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
             Map.put(report, :featured_category, category)
           end)
         end)
-        |> Enum.uniq_by(& &1.report_id) # Remove duplicates
-      
+        # Remove duplicates
+        |> Enum.uniq_by(& &1.report_id)
+
       # Select top reports ensuring category diversity
       selected_reports = select_diverse_reports(all_candidates, max_results)
-      
+
       # Enrich with featured metadata
-      final_selection = 
+      final_selection =
         selected_reports
         |> Enum.with_index(1)
         |> Enum.map(fn {report, rank} ->
@@ -1795,9 +1880,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
             }
           })
         end)
-      
+
       Logger.info("Selected #{length(final_selection)} featured battles")
-      
+
       {:ok, final_selection}
     rescue
       error ->
@@ -1805,32 +1890,32 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
         {:error, :selection_failed}
     end
   end
-  
+
   defp select_diverse_reports(candidates, max_results) do
     # Ensure we get diverse categories in the final selection
     categories = candidates |> Enum.map(& &1.featured_category) |> Enum.uniq()
-    
+
     # Try to get at least one from each category
-    category_representatives = 
+    category_representatives =
       categories
       |> Enum.map(fn category ->
         candidates
-        |> Enum.filter(& &1.featured_category == category)
+        |> Enum.filter(&(&1.featured_category == category))
         |> Enum.max_by(& &1.curation_metrics.overall_curation_score)
       end)
-    
+
     # Fill remaining slots with top-rated reports
     remaining_slots = max_results - length(category_representatives)
-    
+
     if remaining_slots > 0 do
-      additional_reports = 
+      additional_reports =
         candidates
-        |> Enum.reject(fn report -> 
+        |> Enum.reject(fn report ->
           report.report_id in Enum.map(category_representatives, & &1.report_id)
         end)
         |> Enum.sort_by(& &1.curation_metrics.overall_curation_score, :desc)
         |> Enum.take(remaining_slots)
-      
+
       category_representatives ++ additional_reports
     else
       category_representatives
@@ -1838,47 +1923,52 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
     |> Enum.sort_by(& &1.curation_metrics.overall_curation_score, :desc)
     |> Enum.take(max_results)
   end
-  
+
   defp get_selection_criteria(report) do
     criteria = []
-    
-    criteria = if report.curation_metrics.tactical_value >= 0.7 do
-      ["High tactical value" | criteria]
-    else
-      criteria
-    end
-    
-    criteria = if report.curation_metrics.educational_value >= 0.6 do
-      ["Educational content" | criteria]
-    else
-      criteria
-    end
-    
-    criteria = if report.metrics.average_rating >= 8.0 do
-      ["High community rating" | criteria]
-    else
-      criteria
-    end
-    
-    criteria = if report.auto_analysis.tactical_summary.scale_assessment in [:epic, :major] do
-      ["Epic scale battle" | criteria]
-    else
-      criteria
-    end
-    
-    criteria = if length(report.video_links || []) > 0 do
-      ["Video content available" | criteria]
-    else
-      criteria
-    end
-    
+
+    criteria =
+      if report.curation_metrics.tactical_value >= 0.7 do
+        ["High tactical value" | criteria]
+      else
+        criteria
+      end
+
+    criteria =
+      if report.curation_metrics.educational_value >= 0.6 do
+        ["Educational content" | criteria]
+      else
+        criteria
+      end
+
+    criteria =
+      if report.metrics.average_rating >= 8.0 do
+        ["High community rating" | criteria]
+      else
+        criteria
+      end
+
+    criteria =
+      if report.auto_analysis.tactical_summary.scale_assessment in [:epic, :major] do
+        ["Epic scale battle" | criteria]
+      else
+        criteria
+      end
+
+    criteria =
+      if length(report.video_links || []) > 0 do
+        ["Video content available" | criteria]
+      else
+        criteria
+      end
+
     criteria
   end
-  
+
   defp get_category_rank(report, categorized_reports) do
     category = report.featured_category
     category_reports = Map.get(categorized_reports, category, [])
-    
+
     category_reports
     |> Enum.find_index(fn r -> r.report_id == report.report_id end)
     |> case do
@@ -1889,28 +1979,28 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
 
   defp perform_battle_report_search(query, filters, sort_by, limit) do
     Logger.debug("Performing battle report search: '#{query}' with filters: #{inspect(filters)}")
-    
+
     try do
       # In a real implementation, this would use a proper search engine like Elasticsearch
       # For now, we'll simulate comprehensive search functionality
-      
+
       # Generate sample search results
       all_reports = generate_search_sample_data()
-      
+
       # Apply text search
       text_filtered_reports = apply_text_search(all_reports, query)
-      
+
       # Apply filters
       filtered_reports = apply_search_filters(text_filtered_reports, filters)
-      
+
       # Apply sorting
       sorted_reports = apply_search_sorting(filtered_reports, sort_by)
-      
+
       # Apply limit
       final_results = Enum.take(sorted_reports, limit)
-      
+
       Logger.info("Search returned #{length(final_results)} results for query: '#{query}'")
-      
+
       {:ok, final_results}
     rescue
       error ->
@@ -1918,20 +2008,60 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
         {:error, :search_failed}
     end
   end
-  
+
   defp generate_search_sample_data do
     # Generate sample battle reports for search testing
     battle_scenarios = [
-      %{type: :fleet_battle, scale: :epic, title: "Massive Fleet Engagement in Delve", tags: ["fleet", "nullsec", "capitals"]},
-      %{type: :gang_warfare, scale: :major, title: "Wormhole Gang Warfare Tutorial", tags: ["gang", "wormhole", "educational"]},
-      %{type: :small_gang, scale: :significant, title: "Small Gang Roaming Guide", tags: ["small_gang", "roaming", "guide"]},
-      %{type: :skirmish, scale: :minor, title: "Faction Warfare Skirmish Analysis", tags: ["faction_warfare", "skirmish", "analysis"]},
-      %{type: :fleet_battle, scale: :major, title: "Capital Ship Brawl Commentary", tags: ["capital", "brawl", "commentary"]},
-      %{type: :gang_warfare, scale: :significant, title: "Tactical Retreat Masterclass", tags: ["tactical", "retreat", "masterclass"]},
-      %{type: :small_gang, scale: :minor, title: "Solo PvP Techniques", tags: ["solo", "pvp", "techniques"]},
-      %{type: :fleet_battle, scale: :epic, title: "The Great Wormhole War", tags: ["wormhole", "war", "epic"]}
+      %{
+        type: :fleet_battle,
+        scale: :epic,
+        title: "Massive Fleet Engagement in Delve",
+        tags: ["fleet", "nullsec", "capitals"]
+      },
+      %{
+        type: :gang_warfare,
+        scale: :major,
+        title: "Wormhole Gang Warfare Tutorial",
+        tags: ["gang", "wormhole", "educational"]
+      },
+      %{
+        type: :small_gang,
+        scale: :significant,
+        title: "Small Gang Roaming Guide",
+        tags: ["small_gang", "roaming", "guide"]
+      },
+      %{
+        type: :skirmish,
+        scale: :minor,
+        title: "Faction Warfare Skirmish Analysis",
+        tags: ["faction_warfare", "skirmish", "analysis"]
+      },
+      %{
+        type: :fleet_battle,
+        scale: :major,
+        title: "Capital Ship Brawl Commentary",
+        tags: ["capital", "brawl", "commentary"]
+      },
+      %{
+        type: :gang_warfare,
+        scale: :significant,
+        title: "Tactical Retreat Masterclass",
+        tags: ["tactical", "retreat", "masterclass"]
+      },
+      %{
+        type: :small_gang,
+        scale: :minor,
+        title: "Solo PvP Techniques",
+        tags: ["solo", "pvp", "techniques"]
+      },
+      %{
+        type: :fleet_battle,
+        scale: :epic,
+        title: "The Great Wormhole War",
+        tags: ["wormhole", "war", "epic"]
+      }
     ]
-    
+
     battle_scenarios
     |> Enum.with_index(1)
     |> Enum.map(fn {scenario, index} ->
@@ -1975,39 +2105,46 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
         },
         created_at: DateTime.add(DateTime.utc_now(), -:rand.uniform(30 * 24 * 3600), :second),
         updated_at: DateTime.utc_now(),
-        search_relevance: 0.0 # Will be calculated during search
+        # Will be calculated during search
+        search_relevance: 0.0
       }
     end)
   end
-  
+
   defp generate_battle_description(scenario) do
     descriptions = %{
-      fleet_battle: "A massive fleet engagement featuring coordinated tactics and strategic positioning. This battle showcases advanced fleet command principles and large-scale coordination.",
-      gang_warfare: "An intense gang warfare scenario demonstrating tactical flexibility and role specialization. Perfect for understanding gang-level combat dynamics.",
-      small_gang: "A small gang engagement highlighting individual pilot skill and tight coordination. Excellent for learning small-scale tactics and positioning.",
-      skirmish: "A quick skirmish showing rapid decision-making and opportunistic combat. Great for understanding engagement timing and risk assessment."
+      fleet_battle:
+        "A massive fleet engagement featuring coordinated tactics and strategic positioning. This battle showcases advanced fleet command principles and large-scale coordination.",
+      gang_warfare:
+        "An intense gang warfare scenario demonstrating tactical flexibility and role specialization. Perfect for understanding gang-level combat dynamics.",
+      small_gang:
+        "A small gang engagement highlighting individual pilot skill and tight coordination. Excellent for learning small-scale tactics and positioning.",
+      skirmish:
+        "A quick skirmish showing rapid decision-making and opportunistic combat. Great for understanding engagement timing and risk assessment."
     }
-    
+
     Map.get(descriptions, scenario.type, "An engaging PvP battle with tactical lessons.")
   end
-  
+
   defp generate_video_links(index) do
     if :rand.uniform() > 0.6 do
-      [%{
-        url: "https://youtube.com/watch?v=example_#{index}",
-        platform: :youtube,
-        video_id: "example_#{index}",
-        metadata: %{
-          title: "Battle Video #{index}",
-          duration: :rand.uniform(3600),
-          thumbnail: "https://img.youtube.com/vi/example_#{index}/maxresdefault.jpg"
+      [
+        %{
+          url: "https://youtube.com/watch?v=example_#{index}",
+          platform: :youtube,
+          video_id: "example_#{index}",
+          metadata: %{
+            title: "Battle Video #{index}",
+            duration: :rand.uniform(3600),
+            thumbnail: "https://img.youtube.com/vi/example_#{index}/maxresdefault.jpg"
+          }
         }
-      }]
+      ]
     else
       []
     end
   end
-  
+
   defp generate_tactical_highlights(index) do
     if :rand.uniform() > 0.4 do
       1..:rand.uniform(4)
@@ -2024,59 +2161,62 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
       []
     end
   end
-  
+
   defp apply_text_search(reports, query) do
     if String.trim(query) == "" do
       reports
     else
-      query_terms = 
+      query_terms =
         query
         |> String.downcase()
         |> String.split()
         |> Enum.map(&String.trim/1)
         |> Enum.filter(fn term -> String.length(term) > 1 end)
-      
+
       reports
       |> Enum.map(fn report ->
         # Calculate relevance score
         relevance = calculate_text_relevance(report, query_terms)
         Map.put(report, :search_relevance, relevance)
       end)
-      |> Enum.filter(fn report -> 
+      |> Enum.filter(fn report ->
         report.search_relevance > 0.0
       end)
     end
   end
-  
+
   defp calculate_text_relevance(report, query_terms) do
     # Search in different fields with different weights
     title_matches = count_term_matches(report.title, query_terms) * 3.0
     description_matches = count_term_matches(report.description, query_terms) * 2.0
     tag_matches = count_tag_matches(report.tags, query_terms) * 2.5
-    
+
     # Battle type matches
-    battle_type_matches = if to_string(report.auto_analysis.battle_classification) in 
-                             Enum.map(query_terms, &String.replace(&1, "_", " ")) do
-      1.0
-    else
-      0.0
-    end
-    
+    battle_type_matches =
+      if to_string(report.auto_analysis.battle_classification) in Enum.map(
+           query_terms,
+           &String.replace(&1, "_", " ")
+         ) do
+        1.0
+      else
+        0.0
+      end
+
     total_relevance = title_matches + description_matches + tag_matches + battle_type_matches
-    
+
     # Normalize and add quality boost
     base_relevance = min(1.0, total_relevance / 10.0)
     quality_boost = report.metrics.average_rating / 10.0 * 0.1
-    
+
     base_relevance + quality_boost
   end
-  
+
   defp count_term_matches(text, query_terms) do
     if is_nil(text) or text == "" do
       0.0
     else
       normalized_text = String.downcase(text)
-      
+
       query_terms
       |> Enum.map(fn term ->
         if String.contains?(normalized_text, term) do
@@ -2088,13 +2228,13 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
       |> Enum.sum()
     end
   end
-  
+
   defp count_tag_matches(tags, query_terms) do
     if is_nil(tags) or tags == [] do
       0.0
     else
       normalized_tags = Enum.map(tags, &String.downcase/1)
-      
+
       query_terms
       |> Enum.map(fn term ->
         if term in normalized_tags do
@@ -2106,7 +2246,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
       |> Enum.sum()
     end
   end
-  
+
   defp apply_search_filters(reports, filters) do
     reports
     |> maybe_filter_by_battle_type(Map.get(filters, :battle_type))
@@ -2120,116 +2260,128 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
     |> maybe_filter_by_has_video(Map.get(filters, :has_video))
     |> maybe_filter_by_has_highlights(Map.get(filters, :has_highlights))
   end
-  
+
   defp maybe_filter_by_battle_type(reports, nil), do: reports
+
   defp maybe_filter_by_battle_type(reports, battle_type) do
     Enum.filter(reports, fn report ->
       report.auto_analysis.battle_classification == battle_type
     end)
   end
-  
+
   defp maybe_filter_by_scale(reports, nil), do: reports
+
   defp maybe_filter_by_scale(reports, scale) do
     Enum.filter(reports, fn report ->
       report.auto_analysis.tactical_summary.scale_assessment == scale
     end)
   end
-  
+
   defp maybe_filter_by_rating(reports, nil), do: reports
+
   defp maybe_filter_by_rating(reports, min_rating) do
     Enum.filter(reports, fn report ->
       report.metrics.average_rating >= min_rating
     end)
   end
-  
+
   defp maybe_filter_by_date_range(reports, nil), do: reports
+
   defp maybe_filter_by_date_range(reports, %{start_date: start_date, end_date: end_date}) do
     Enum.filter(reports, fn report ->
       DateTime.compare(report.created_at, start_date) in [:gt, :eq] and
-      DateTime.compare(report.created_at, end_date) in [:lt, :eq]
+        DateTime.compare(report.created_at, end_date) in [:lt, :eq]
     end)
   end
-  
+
   defp maybe_filter_by_tags(reports, nil), do: reports
+
   defp maybe_filter_by_tags(reports, tags) when is_list(tags) do
     Enum.filter(reports, fn report ->
       report_tags = Enum.map(report.tags || [], &String.downcase/1)
       search_tags = Enum.map(tags, &String.downcase/1)
-      
+
       Enum.any?(search_tags, fn tag -> tag in report_tags end)
     end)
   end
-  
+
   defp maybe_filter_by_duration(reports, nil), do: reports
+
   defp maybe_filter_by_duration(reports, %{min: min_duration, max: max_duration}) do
     Enum.filter(reports, fn report ->
       duration = report.auto_analysis.key_statistics.duration_minutes
       duration >= min_duration and duration <= max_duration
     end)
   end
-  
+
   defp maybe_filter_by_participants(reports, nil), do: reports
+
   defp maybe_filter_by_participants(reports, %{min: min_participants, max: max_participants}) do
     Enum.filter(reports, fn report ->
       participants = report.auto_analysis.key_statistics.total_participants
       participants >= min_participants and participants <= max_participants
     end)
   end
-  
+
   defp maybe_filter_by_creator(reports, nil), do: reports
+
   defp maybe_filter_by_creator(reports, creator_id) do
     Enum.filter(reports, fn report ->
       report.creator_character_id == creator_id
     end)
   end
-  
+
   defp maybe_filter_by_has_video(reports, nil), do: reports
+
   defp maybe_filter_by_has_video(reports, true) do
     Enum.filter(reports, fn report ->
       length(report.video_links || []) > 0
     end)
   end
+
   defp maybe_filter_by_has_video(reports, false) do
     Enum.filter(reports, fn report ->
-      length(report.video_links || []) == 0
+      Enum.empty?(report.video_links || [])
     end)
   end
-  
+
   defp maybe_filter_by_has_highlights(reports, nil), do: reports
+
   defp maybe_filter_by_has_highlights(reports, true) do
     Enum.filter(reports, fn report ->
       length(report.tactical_highlights || []) > 0
     end)
   end
+
   defp maybe_filter_by_has_highlights(reports, false) do
     Enum.filter(reports, fn report ->
-      length(report.tactical_highlights || []) == 0
+      Enum.empty?(report.tactical_highlights || [])
     end)
   end
-  
+
   defp apply_search_sorting(reports, sort_by) do
     case sort_by do
       :relevance ->
         Enum.sort_by(reports, & &1.search_relevance, :desc)
-      
+
       :rating ->
         Enum.sort_by(reports, & &1.metrics.average_rating, :desc)
-      
+
       :date ->
         Enum.sort_by(reports, & &1.created_at, :desc)
-      
+
       :views ->
         Enum.sort_by(reports, & &1.metrics.views, :desc)
-      
+
       :participants ->
         Enum.sort_by(reports, & &1.auto_analysis.key_statistics.total_participants, :desc)
-      
+
       :duration ->
         Enum.sort_by(reports, & &1.auto_analysis.key_statistics.duration_minutes, :desc)
-      
+
       :isk_destroyed ->
         Enum.sort_by(reports, & &1.auto_analysis.key_statistics.isk_destroyed, :desc)
-      
+
       _ ->
         Enum.sort_by(reports, & &1.search_relevance, :desc)
     end
@@ -2237,36 +2389,43 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
 
   defp maybe_enrich_search_results(results, include_metadata) do
     Logger.debug("Enriching #{length(results)} search results with metadata: #{include_metadata}")
-    
+
     try do
-      enriched_results = if include_metadata do
-        results
-        |> Enum.map(fn result ->
-          Map.merge(result, %{
-            search_metadata: %{
-              relevance_score: result.search_relevance,
-              match_factors: get_match_factors(result),
-              content_summary: generate_content_summary(result),
-              engagement_indicators: get_engagement_indicators(result),
-              learning_value: assess_learning_value(result),
-              recommended_for: get_recommendations(result),
-              similar_battles: find_similar_battles(result, results)
-            },
-            display_metadata: %{
-              formatted_duration: format_duration(result.auto_analysis.key_statistics.duration_minutes),
-              formatted_participants: format_participants(result.auto_analysis.key_statistics.total_participants),
-              formatted_isk: format_isk_value(result.auto_analysis.key_statistics.isk_destroyed),
-              battle_type_display: format_battle_type(result.auto_analysis.battle_classification),
-              scale_display: format_scale(result.auto_analysis.tactical_summary.scale_assessment),
-              rating_display: format_rating(result.metrics.average_rating, result.metrics.total_ratings),
-              age_display: format_age(result.created_at)
-            }
-          })
-        end)
-      else
-        results
-      end
-      
+      enriched_results =
+        if include_metadata do
+          results
+          |> Enum.map(fn result ->
+            Map.merge(result, %{
+              search_metadata: %{
+                relevance_score: result.search_relevance,
+                match_factors: get_match_factors(result),
+                content_summary: generate_content_summary(result),
+                engagement_indicators: get_engagement_indicators(result),
+                learning_value: assess_learning_value(result),
+                recommended_for: get_recommendations(result),
+                similar_battles: find_similar_battles(result, results)
+              },
+              display_metadata: %{
+                formatted_duration:
+                  format_duration(result.auto_analysis.key_statistics.duration_minutes),
+                formatted_participants:
+                  format_participants(result.auto_analysis.key_statistics.total_participants),
+                formatted_isk:
+                  format_isk_value(result.auto_analysis.key_statistics.isk_destroyed),
+                battle_type_display:
+                  format_battle_type(result.auto_analysis.battle_classification),
+                scale_display:
+                  format_scale(result.auto_analysis.tactical_summary.scale_assessment),
+                rating_display:
+                  format_rating(result.metrics.average_rating, result.metrics.total_ratings),
+                age_display: format_age(result.created_at)
+              }
+            })
+          end)
+        else
+          results
+        end
+
       {:ok, enriched_results}
     rescue
       error ->
@@ -2274,157 +2433,179 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
         {:error, :enrichment_failed}
     end
   end
-  
+
   defp get_match_factors(result) do
     factors = []
-    
-    factors = if result.search_relevance > 0.7 do
-      ["High relevance match" | factors]
-    else
-      factors
-    end
-    
-    factors = if result.metrics.average_rating > 7.0 do
-      ["Highly rated" | factors]
-    else
-      factors
-    end
-    
-    factors = if length(result.video_links || []) > 0 do
-      ["Has video content" | factors]
-    else
-      factors
-    end
-    
-    factors = if length(result.tactical_highlights || []) > 2 do
-      ["Rich tactical analysis" | factors]
-    else
-      factors
-    end
-    
-    factors = if result.auto_analysis.tactical_summary.scale_assessment in [:epic, :major] do
-      ["Large scale battle" | factors]
-    else
-      factors
-    end
-    
+
+    factors =
+      if result.search_relevance > 0.7 do
+        ["High relevance match" | factors]
+      else
+        factors
+      end
+
+    factors =
+      if result.metrics.average_rating > 7.0 do
+        ["Highly rated" | factors]
+      else
+        factors
+      end
+
+    factors =
+      if length(result.video_links || []) > 0 do
+        ["Has video content" | factors]
+      else
+        factors
+      end
+
+    factors =
+      if length(result.tactical_highlights || []) > 2 do
+        ["Rich tactical analysis" | factors]
+      else
+        factors
+      end
+
+    factors =
+      if result.auto_analysis.tactical_summary.scale_assessment in [:epic, :major] do
+        ["Large scale battle" | factors]
+      else
+        factors
+      end
+
     factors
   end
-  
+
   defp generate_content_summary(result) do
     key_stats = result.auto_analysis.key_statistics
-    
+
     summary_parts = []
-    
+
     summary_parts = ["#{key_stats.total_participants} participants" | summary_parts]
-    
+
     summary_parts = ["#{key_stats.duration_minutes} minutes" | summary_parts]
-    
-    summary_parts = if key_stats.isk_destroyed > 1_000_000_000 do
-      ["#{Float.round(key_stats.isk_destroyed / 1_000_000_000, 1)}B ISK destroyed" | summary_parts]
-    else
-      ["#{Float.round(key_stats.isk_destroyed / 1_000_000, 0)}M ISK destroyed" | summary_parts]
-    end
-    
-    summary_parts = if key_stats.systems_involved > 1 do
-      ["#{key_stats.systems_involved} systems involved" | summary_parts]
-    else
-      summary_parts
-    end
-    
+
+    summary_parts =
+      if key_stats.isk_destroyed > 1_000_000_000 do
+        [
+          "#{Float.round(key_stats.isk_destroyed / 1_000_000_000, 1)}B ISK destroyed"
+          | summary_parts
+        ]
+      else
+        ["#{Float.round(key_stats.isk_destroyed / 1_000_000, 0)}M ISK destroyed" | summary_parts]
+      end
+
+    summary_parts =
+      if key_stats.systems_involved > 1 do
+        ["#{key_stats.systems_involved} systems involved" | summary_parts]
+      else
+        summary_parts
+      end
+
     Enum.reverse(summary_parts) |> Enum.join(" • ")
   end
-  
+
   defp get_engagement_indicators(result) do
     %{
-      popularity_level: case result.metrics.views do
-        v when v > 2000 -> :high
-        v when v > 500 -> :medium
-        _ -> :low
-      end,
-      community_rating: case result.metrics.average_rating do
-        r when r > 8.0 -> :excellent
-        r when r > 6.0 -> :good
-        r when r > 4.0 -> :average
-        _ -> :below_average
-      end,
+      popularity_level:
+        case result.metrics.views do
+          v when v > 2000 -> :high
+          v when v > 500 -> :medium
+          _ -> :low
+        end,
+      community_rating:
+        case result.metrics.average_rating do
+          r when r > 8.0 -> :excellent
+          r when r > 6.0 -> :good
+          r when r > 4.0 -> :average
+          _ -> :below_average
+        end,
       engagement_score: calculate_engagement_score(result),
       social_proof: result.metrics.total_ratings > 10
     }
   end
-  
+
   defp assess_learning_value(result) do
     learning_factors = []
-    
-    learning_factors = if length(result.tactical_highlights || []) > 2 do
-      ["Detailed tactical analysis" | learning_factors]
-    else
-      learning_factors
-    end
-    
-    learning_factors = if length(result.video_links || []) > 0 do
-      ["Visual learning content" | learning_factors]
-    else
-      learning_factors
-    end
-    
-    learning_factors = case result.auto_analysis.battle_classification do
-      :fleet_battle -> ["Fleet command lessons" | learning_factors]
-      :gang_warfare -> ["Gang tactics" | learning_factors]
-      :small_gang -> ["Small gang techniques" | learning_factors]
-      _ -> learning_factors
-    end
-    
-    learning_factors = if String.length(result.description) > 200 do
-      ["In-depth analysis" | learning_factors]
-    else
-      learning_factors
-    end
-    
+
+    learning_factors =
+      if length(result.tactical_highlights || []) > 2 do
+        ["Detailed tactical analysis" | learning_factors]
+      else
+        learning_factors
+      end
+
+    learning_factors =
+      if length(result.video_links || []) > 0 do
+        ["Visual learning content" | learning_factors]
+      else
+        learning_factors
+      end
+
+    learning_factors =
+      case result.auto_analysis.battle_classification do
+        :fleet_battle -> ["Fleet command lessons" | learning_factors]
+        :gang_warfare -> ["Gang tactics" | learning_factors]
+        :small_gang -> ["Small gang techniques" | learning_factors]
+        _ -> learning_factors
+      end
+
+    learning_factors =
+      if String.length(result.description) > 200 do
+        ["In-depth analysis" | learning_factors]
+      else
+        learning_factors
+      end
+
     %{
       learning_factors: learning_factors,
       educational_value: if(length(learning_factors) > 2, do: :high, else: :medium),
       recommended_for_learning: length(learning_factors) > 1
     }
   end
-  
+
   defp get_recommendations(result) do
     recommendations = []
-    
-    recommendations = case result.auto_analysis.battle_classification do
-      :fleet_battle -> ["Fleet commanders", "Logistics pilots" | recommendations]
-      :gang_warfare -> ["Gang leaders", "Tactical analysts" | recommendations]
-      :small_gang -> ["Small gang pilots", "Solo PvPers" | recommendations]
-      :skirmish -> ["New PvPers", "Quick engagement fans" | recommendations]
-      _ -> recommendations
-    end
-    
-    recommendations = if length(result.video_links || []) > 0 do
-      ["Visual learners" | recommendations]
-    else
-      recommendations
-    end
-    
-    recommendations = if result.auto_analysis.tactical_summary.scale_assessment in [:epic, :major] do
-      ["Epic battle enthusiasts" | recommendations]
-    else
-      recommendations
-    end
-    
+
+    recommendations =
+      case result.auto_analysis.battle_classification do
+        :fleet_battle -> ["Fleet commanders", "Logistics pilots" | recommendations]
+        :gang_warfare -> ["Gang leaders", "Tactical analysts" | recommendations]
+        :small_gang -> ["Small gang pilots", "Solo PvPers" | recommendations]
+        :skirmish -> ["New PvPers", "Quick engagement fans" | recommendations]
+        _ -> recommendations
+      end
+
+    recommendations =
+      if length(result.video_links || []) > 0 do
+        ["Visual learners" | recommendations]
+      else
+        recommendations
+      end
+
+    recommendations =
+      if result.auto_analysis.tactical_summary.scale_assessment in [:epic, :major] do
+        ["Epic battle enthusiasts" | recommendations]
+      else
+        recommendations
+      end
+
     recommendations
   end
-  
+
   defp find_similar_battles(result, all_results) do
     all_results
     |> Enum.reject(fn r -> r.report_id == result.report_id end)
-    |> Enum.filter(fn r -> 
+    |> Enum.filter(fn r ->
       r.auto_analysis.battle_classification == result.auto_analysis.battle_classification
     end)
-    |> Enum.sort_by(fn r -> 
-      abs(r.auto_analysis.key_statistics.total_participants - result.auto_analysis.key_statistics.total_participants)
+    |> Enum.sort_by(fn r ->
+      abs(
+        r.auto_analysis.key_statistics.total_participants -
+          result.auto_analysis.key_statistics.total_participants
+      )
     end)
     |> Enum.take(3)
-    |> Enum.map(fn r -> 
+    |> Enum.map(fn r ->
       %{
         report_id: r.report_id,
         title: r.title,
@@ -2432,22 +2613,31 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
       }
     end)
   end
-  
+
   defp calculate_similarity_score(result1, result2) do
     # Simple similarity calculation
-    type_match = if result1.auto_analysis.battle_classification == result2.auto_analysis.battle_classification, do: 0.4, else: 0.0
-    scale_match = if result1.auto_analysis.tactical_summary.scale_assessment == result2.auto_analysis.tactical_summary.scale_assessment, do: 0.3, else: 0.0
-    
+    type_match =
+      if result1.auto_analysis.battle_classification ==
+           result2.auto_analysis.battle_classification,
+         do: 0.4,
+         else: 0.0
+
+    scale_match =
+      if result1.auto_analysis.tactical_summary.scale_assessment ==
+           result2.auto_analysis.tactical_summary.scale_assessment,
+         do: 0.3,
+         else: 0.0
+
     # Participant similarity
     p1 = result1.auto_analysis.key_statistics.total_participants
     p2 = result2.auto_analysis.key_statistics.total_participants
     participant_similarity = 0.3 * (1 - abs(p1 - p2) / max(p1, p2))
-    
+
     Float.round(type_match + scale_match + participant_similarity, 2)
   end
-  
+
   # Display formatting helpers
-  
+
   defp format_duration(minutes) do
     cond do
       minutes < 60 -> "#{minutes}m"
@@ -2455,7 +2645,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
       true -> "#{div(minutes, 1440)}d #{div(rem(minutes, 1440), 60)}h"
     end
   end
-  
+
   defp format_participants(count) do
     cond do
       count < 1000 -> "#{count}"
@@ -2463,7 +2653,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
       true -> "#{div(count, 1000)}k"
     end
   end
-  
+
   defp format_isk_value(isk) do
     cond do
       isk < 1_000_000 -> "#{div(isk, 1000)}k"
@@ -2472,7 +2662,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
       true -> "#{Float.round(isk / 1_000_000_000_000, 1)}T"
     end
   end
-  
+
   defp format_battle_type(battle_type) do
     battle_type
     |> to_string()
@@ -2481,20 +2671,20 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
     |> Enum.map(&String.capitalize/1)
     |> Enum.join(" ")
   end
-  
+
   defp format_scale(scale) do
     scale
     |> to_string()
     |> String.capitalize()
   end
-  
+
   defp format_rating(rating, total_ratings) do
     "#{Float.round(rating, 1)}/10 (#{total_ratings} ratings)"
   end
-  
+
   defp format_age(created_at) do
     hours_ago = DateTime.diff(DateTime.utc_now(), created_at, :hour)
-    
+
     cond do
       hours_ago < 24 -> "#{hours_ago}h ago"
       hours_ago < 168 -> "#{div(hours_ago, 24)}d ago"

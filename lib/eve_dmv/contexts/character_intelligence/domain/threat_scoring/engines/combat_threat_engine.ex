@@ -73,7 +73,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Com
       # Analyze value and tactical importance of targets
       valuable_targets =
         Enum.count(attacker_killmails, fn km ->
-          estimate_killmail_value(km) > 100_000_000  # Targets worth >100M ISK
+          # Targets worth >100M ISK
+          estimate_killmail_value(km) > 100_000_000
         end)
 
       tactical_targets =
@@ -128,7 +129,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Com
     if total_engagements > 0 do
       (total_engagements - deaths) / total_engagements
     else
-      0.5  # Neutral score for no data
+      # Neutral score for no data
+      0.5
     end
   end
 
@@ -162,13 +164,20 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Com
     ship_type_id = killmail.victim_ship_type_id
 
     cond do
-      ship_type_id in 580..700 -> 5_000_000          # Frigates: 5M ISK
-      ship_type_id in 420..450 -> 15_000_000         # Destroyers: 15M ISK
-      ship_type_id in 620..650 -> 50_000_000         # Cruisers: 50M ISK
-      ship_type_id in 540..570 -> 150_000_000        # Battlecruisers: 150M ISK
-      ship_type_id in 640..670 -> 300_000_000        # Battleships: 300M ISK
-      ship_type_id in 19_720..19_740 -> 2_000_000_000 # Capitals: 2B ISK
-      true -> 25_000_000                              # Default: 25M ISK
+      # Frigates: 5M ISK
+      ship_type_id in 580..700 -> 5_000_000
+      # Destroyers: 15M ISK
+      ship_type_id in 420..450 -> 15_000_000
+      # Cruisers: 50M ISK
+      ship_type_id in 620..650 -> 50_000_000
+      # Battlecruisers: 150M ISK
+      ship_type_id in 540..570 -> 150_000_000
+      # Battleships: 300M ISK
+      ship_type_id in 640..670 -> 300_000_000
+      # Capitals: 2B ISK
+      ship_type_id in 19_720..19_740 -> 2_000_000_000
+      # Default: 25M ISK
+      true -> 25_000_000
     end
   end
 
@@ -176,11 +185,21 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Com
     # Ships that are tactically important targets
     ship_type_id in [
       # Logistics ships (very high priority)
-      11_978, 11_987, 11_985, 12_003,  # Guardian, Basilisk, Oneiros, Scimitar
+      # Guardian, Basilisk, Oneiros, Scimitar
+      11_978,
+      11_987,
+      11_985,
+      12_003,
       # Force Recon (high priority)
-      11_957, 11_958, 11_959, 11_961,
+      11_957,
+      11_958,
+      11_959,
+      11_961,
       # Command ships
-      22_470, 22_852, 17_918, 17_920
+      22_470,
+      22_852,
+      17_918,
+      17_920
     ]
   end
 
