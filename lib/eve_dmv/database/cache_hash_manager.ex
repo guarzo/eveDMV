@@ -272,16 +272,114 @@ defmodule EveDmv.Database.CacheHashManager do
     smart_invalidate(pattern, check_function)
   end
 
-  defp extract_corp_data(_cache_key) do
-    # This would extract data from the cache entry
-    # For now, return a placeholder
-    {:ok, %{member_count: 100, last_activity: DateTime.utc_now()}}
+  defp extract_corp_data(cache_key) do
+    # Extract corporation data from the cached entry
+    case QueryCache.get(cache_key) do
+      {:ok, cached_data} when is_map(cached_data) ->
+        # Extract relevant fields for comparison
+        corp_data = %{
+          member_count: Map.get(cached_data, :member_count, 0),
+          last_activity: Map.get(cached_data, :last_activity, DateTime.utc_now()),
+          total_kills: Map.get(cached_data, :total_kills, 0),
+          total_losses: Map.get(cached_data, :total_losses, 0)
+        }
+
+        {:ok, corp_data}
+
+      _ ->
+        {:error, :no_cached_data}
+    end
   end
 
-  defp fetch_current_corp_data(_corp_id) do
-    # This would fetch current data from the database
-    # For now, return a placeholder
-    {:ok, %{member_count: 101, last_activity: DateTime.utc_now()}}
+  defp fetch_current_corp_data(corp_id) do
+    # Fetch current corporation data from database
+    # This queries the corporation summary and recent activity
+
+    # Query for member count from corporation table or killmail data
+    alias EveDmv.Killmails.KillmailRaw
+    import Ash.Query
+
+    # Last 7 days
+    cutoff_date = DateTime.add(DateTime.utc_now(), -7, :day)
+
+    # Get recent corporation activity from killmails (victim side only for simplicity)
+    corp_query =
+      KillmailRaw
+      |> new()
+      |> filter(victim_corporation_id: corp_id)
+      |> filter(killmail_time: [gte: cutoff_date])
+      |> limit(100)
+
+    # Also get recent killmails to search for attacker involvement
+    recent_query =
+      KillmailRaw
+      |> new()
+      |> filter(killmail_time: [gte: cutoff_date])
+      |> limit(500)
+
+    with {:ok, victim_kills} <- Ash.read(corp_query, domain: EveDmv.Api),
+         {:ok, recent_killmails} <- Ash.read(recent_query, domain: EveDmv.Api) do
+      # Filter recent killmails for attacker involvement
+      attacker_kills =
+        Enum.filter(recent_killmails, fn km ->
+          case km.raw_data do
+            %{"attackers" => attackers} when is_list(attackers) ->
+              Enum.any?(attackers, &(&1["corporation_id"] == corp_id))
+
+            _ ->
+              false
+          end
+        end)
+
+      all_killmails = Enum.uniq_by(victim_kills ++ attacker_kills, & &1.killmail_id)
+
+      # Get unique character count as proxy for member count
+      unique_chars =
+        (Enum.map(victim_kills, & &1.victim_character_id) ++
+           Enum.flat_map(attacker_kills, fn km ->
+             case km.raw_data do
+               %{"attackers" => attackers} ->
+                 attackers
+                 |> Enum.filter(&(&1["corporation_id"] == corp_id))
+                 |> Enum.map(& &1["character_id"])
+
+               _ ->
+                 []
+             end
+           end))
+        |> Enum.reject(&is_nil/1)
+        |> Enum.uniq()
+
+      last_activity =
+        if Enum.empty?(all_killmails) do
+          # Default to 30 days ago
+          DateTime.utc_now() |> DateTime.add(-30, :day)
+        else
+          all_killmails
+          |> Enum.max_by(& &1.killmail_time, DateTime)
+          |> Map.get(:killmail_time)
+        end
+
+      corp_data = %{
+        member_count: length(unique_chars),
+        last_activity: last_activity,
+        total_kills: length(attacker_kills),
+        total_losses: length(victim_kills)
+      }
+
+      {:ok, corp_data}
+    else
+      {:error, reason} ->
+        Logger.warning("Failed to fetch corporation data for #{corp_id}: #{inspect(reason)}")
+        # Return default data structure
+        {:ok,
+         %{
+           member_count: 0,
+           last_activity: DateTime.utc_now() |> DateTime.add(-30, :day),
+           total_kills: 0,
+           total_losses: 0
+         }}
+    end
   end
 
   defp corporation_data_changed?(old_data, new_data) do
@@ -314,14 +412,72 @@ defmodule EveDmv.Database.CacheHashManager do
     smart_invalidate(pattern, check_function)
   end
 
-  defp extract_killmail_hash(_cache_key) do
-    # Extract stored hash for killmail
-    {:ok, "placeholder_hash"}
+  defp extract_killmail_hash(cache_key) do
+    # Extract hash from ETS table or compute from cached data
+    case :ets.lookup(@hash_table, cache_key) do
+      [{^cache_key, hash, _expiry}] ->
+        {:ok, hash}
+
+      [] ->
+        # Try to compute hash from cached killmail data
+        case QueryCache.get(cache_key) do
+          {:ok, cached_killmail} ->
+            hash = compute_killmail_content_hash(cached_killmail)
+            {:ok, hash}
+
+          _ ->
+            {:error, :no_hash_found}
+        end
+    end
   end
 
   defp compute_killmail_hash(killmail_id) do
-    # Compute hash based on killmail participants and values
-    # This would query the actual killmail data
-    {:ok, "computed_hash_#{killmail_id}"}
+    # Fetch fresh killmail data and compute content hash
+    alias EveDmv.Killmails.KillmailRaw
+    import Ash.Query
+
+    query =
+      KillmailRaw
+      |> new()
+      |> filter(killmail_id: killmail_id)
+      |> limit(1)
+
+    case Ash.read(query, domain: EveDmv.Api) do
+      {:ok, [killmail]} ->
+        hash = compute_killmail_content_hash(killmail)
+        {:ok, hash}
+
+      {:ok, []} ->
+        {:error, :killmail_not_found}
+
+      {:error, reason} ->
+        Logger.warning("Failed to fetch killmail #{killmail_id}: #{inspect(reason)}")
+        {:error, :database_error}
+    end
+  end
+
+  defp compute_killmail_content_hash(killmail) do
+    # Create hash based on killmail content that matters for cache validity
+    content = %{
+      killmail_id: killmail.killmail_id,
+      victim_character_id: killmail.victim_character_id,
+      victim_corporation_id: killmail.victim_corporation_id,
+      victim_alliance_id: killmail.victim_alliance_id,
+      victim_ship_type_id: killmail.victim_ship_type_id,
+      killmail_time: killmail.killmail_time,
+      # Key parts of raw_data that affect analysis
+      attackers_count:
+        case killmail.raw_data do
+          %{"attackers" => attackers} when is_list(attackers) -> length(attackers)
+          _ -> 0
+        end,
+      total_value: Map.get(killmail.raw_data || %{}, "zkb", %{}) |> Map.get("totalValue", 0)
+    }
+
+    # Create deterministic hash
+    content
+    |> :erlang.term_to_binary()
+    |> :crypto.hash(:sha256)
+    |> Base.encode16()
   end
 end

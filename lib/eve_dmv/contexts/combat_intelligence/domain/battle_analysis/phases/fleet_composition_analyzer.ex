@@ -646,7 +646,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     ]
   end
 
-
   defp calculate_side_effectiveness(_side_participants, _killmails) do
     # For now, return basic side effectiveness
     # TODO: Implement sophisticated effectiveness calculation
@@ -1131,9 +1130,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
 
   defp assess_tactical_advantages(side_a_analysis, side_b_analysis, _killmails) do
     # Assess tactical advantages between sides
-    
+
     # Numerical advantage
-    numerical_advantages = 
+    numerical_advantages =
       if side_a_analysis.total_pilots > side_b_analysis.total_pilots * 1.2 do
         [%{advantage: :numerical_superiority, side: :side_a, magnitude: :significant}]
       else
@@ -1144,7 +1143,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     side_a_logistics = get_in(side_a_analysis, [:role_distribution, :logistics, :count]) || 0
     side_b_logistics = get_in(side_b_analysis, [:role_distribution, :logistics, :count]) || 0
 
-    logistics_advantages = 
+    logistics_advantages =
       if side_a_logistics > side_b_logistics * 1.5 do
         [%{advantage: :logistics_superiority, side: :side_a, magnitude: :moderate}]
       else
@@ -1152,7 +1151,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       end
 
     # Fleet synergy advantage
-    synergy_advantages = 
+    synergy_advantages =
       if side_a_analysis.fleet_synergy > side_b_analysis.fleet_synergy * 1.3 do
         [%{advantage: :synergy_advantage, side: :side_a, magnitude: :moderate}]
       else
@@ -1448,22 +1447,22 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       # Range advantage
       long_range_count = count_long_range_ships(participants)
 
-      range_advantages = 
-      if long_range_count > length(participants) * 0.3 do
-        [%{advantage: :range_superiority, strength: :moderate}]
-      else
-        []
-      end
+      range_advantages =
+        if long_range_count > length(participants) * 0.3 do
+          [%{advantage: :range_superiority, strength: :moderate}]
+        else
+          []
+        end
 
       # Logistics advantage
       logistics_count = count_logistics_ships(participants)
 
       logistics_advantages =
-      if logistics_count > length(participants) * 0.15 do
-        [%{advantage: :logistics_support, strength: :good}]
-      else
-        []
-      end
+        if logistics_count > length(participants) * 0.15 do
+          [%{advantage: :logistics_support, strength: :good}]
+        else
+          []
+        end
 
       range_advantages ++ logistics_advantages
     end
@@ -1935,7 +1934,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     side_a_logistics = get_in(side_a_analysis, [:role_distribution, :logistics, :count]) || 0
     side_b_logistics = get_in(side_b_analysis, [:role_distribution, :logistics, :count]) || 0
 
-    logistics_advantages = 
+    logistics_advantages =
       if side_a_logistics > side_b_logistics * 1.5 do
         [:logistics_superiority]
       else
@@ -1943,7 +1942,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       end
 
     # Fleet synergy advantage
-    synergy_advantages = 
+    synergy_advantages =
       if side_a_analysis.fleet_synergy > side_b_analysis.fleet_synergy * 1.3 do
         [:synergy_advantage]
       else
@@ -1951,7 +1950,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       end
 
     # Doctrine advantage
-    doctrine_advantages = 
+    doctrine_advantages =
       if side_a_analysis.doctrine_adherence > side_b_analysis.doctrine_adherence * 1.2 do
         [:doctrine_advantage]
       else

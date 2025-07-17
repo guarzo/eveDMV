@@ -1147,36 +1147,53 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   defp get_pilot_suggestions(nil, _search_term), do: []
 
   defp get_pilot_suggestions(battle, search_term) when is_binary(search_term) do
-    if battle.timeline && battle.timeline.fleet_composition do
-      # Get all unique pilots from the battle
-      all_pilots =
+    # First try to get pilots from the current battle if available
+    battle_pilots =
+      if battle && battle.timeline && battle.timeline.fleet_composition do
         battle.timeline.fleet_composition
         |> Enum.flat_map(fn window ->
           window[:pilot_ships] || []
         end)
         |> Enum.uniq_by(& &1.character_id)
+        |> Enum.filter(fn pilot ->
+          character_name = pilot[:character_name] || resolve_character_name(pilot.character_id)
 
-      # Filter pilots by search term (case insensitive)
-      search_lower = String.downcase(search_term)
+          character_name &&
+            String.contains?(String.downcase(character_name), String.downcase(search_term))
+        end)
+        |> Enum.map(fn pilot ->
+          %{
+            character_id: pilot.character_id,
+            character_name: pilot[:character_name] || resolve_character_name(pilot.character_id),
+            ship_name: pilot[:ship_name] || resolve_ship_name(pilot.ship_type_id),
+            corporation_name:
+              pilot[:corporation_name] || resolve_corporation_name(pilot.corporation_id)
+          }
+        end)
+      else
+        []
+      end
 
-      all_pilots
-      |> Enum.filter(fn pilot ->
-        character_name = pilot[:character_name] || resolve_character_name(pilot.character_id)
-        character_name && String.contains?(String.downcase(character_name), search_lower)
-      end)
-      |> Enum.map(fn pilot ->
-        %{
-          character_id: pilot.character_id,
-          character_name: pilot[:character_name] || resolve_character_name(pilot.character_id),
-          ship_name: pilot[:ship_name] || resolve_ship_name(pilot.ship_type_id),
-          corporation_name:
-            pilot[:corporation_name] || resolve_corporation_name(pilot.corporation_id)
-        }
-      end)
-      # Limit to 8 suggestions to keep UI manageable
-      |> Enum.take(8)
+    # If we have battle pilots, return them, otherwise search the database
+    if Enum.empty?(battle_pilots) do
+      # Search the database for character suggestions
+      case EveDmv.Search.SearchSuggestionService.get_character_suggestions(search_term, limit: 8) do
+        {:ok, suggestions} ->
+          Enum.map(suggestions, fn suggestion ->
+            %{
+              character_id: suggestion.id,
+              character_name: suggestion.name,
+              # Ship info not available from general search
+              ship_name: nil,
+              corporation_name: suggestion.subtitle
+            }
+          end)
+
+        {:error, _reason} ->
+          []
+      end
     else
-      []
+      Enum.take(battle_pilots, 8)
     end
   end
 

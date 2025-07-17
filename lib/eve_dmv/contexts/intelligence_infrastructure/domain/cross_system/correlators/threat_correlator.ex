@@ -77,70 +77,74 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       # Pattern 1: Coordinated PvP activity
       pvp_correlation = analyze_pvp_correlation(threat_data)
 
-      threat_patterns = if pvp_correlation.is_correlated do
-        [
-          %{
-            type: :coordinated_pvp,
-            confidence: pvp_correlation.confidence,
-            affected_systems: pvp_correlation.systems,
-            entities: pvp_correlation.entities
-          }
-          | threat_patterns
-        ]
-      else
-        threat_patterns
-      end
+      threat_patterns =
+        if pvp_correlation.is_correlated do
+          [
+            %{
+              type: :coordinated_pvp,
+              confidence: pvp_correlation.confidence,
+              affected_systems: pvp_correlation.systems,
+              entities: pvp_correlation.entities
+            }
+            | threat_patterns
+          ]
+        else
+          threat_patterns
+        end
 
       # Pattern 2: Structure attacks
       structure_attacks = analyze_structure_attacks(threat_data)
 
-      threat_patterns = if structure_attacks.detected do
-        [
-          %{
-            type: :structure_warfare,
-            confidence: structure_attacks.confidence,
-            affected_systems: structure_attacks.systems,
-            target_types: structure_attacks.target_types
-          }
-          | threat_patterns
-        ]
-      else
-        threat_patterns
-      end
+      threat_patterns =
+        if structure_attacks.detected do
+          [
+            %{
+              type: :structure_warfare,
+              confidence: structure_attacks.confidence,
+              affected_systems: structure_attacks.systems,
+              target_types: structure_attacks.target_types
+            }
+            | threat_patterns
+          ]
+        else
+          threat_patterns
+        end
 
       # Pattern 3: Fleet movements
       fleet_movements = analyze_fleet_movements(threat_data)
 
-      threat_patterns = if fleet_movements.detected do
-        [
-          %{
-            type: :fleet_operations,
-            confidence: fleet_movements.confidence,
-            fleet_size: fleet_movements.avg_fleet_size,
-            movement_pattern: fleet_movements.pattern
-          }
-          | threat_patterns
-        ]
-      else
-        threat_patterns
-      end
+      threat_patterns =
+        if fleet_movements.detected do
+          [
+            %{
+              type: :fleet_operations,
+              confidence: fleet_movements.confidence,
+              fleet_size: fleet_movements.avg_fleet_size,
+              movement_pattern: fleet_movements.pattern
+            }
+            | threat_patterns
+          ]
+        else
+          threat_patterns
+        end
 
       # Pattern 4: Capital escalation
       capital_activity = analyze_capital_threats(threat_data)
 
-      threat_patterns = if capital_activity.detected do
-        [
-          %{
-            type: :capital_escalation,
-            confidence: capital_activity.confidence,
-            capital_types: capital_activity.ship_types,
-            threat_level: :critical
-          }
-          | threat_patterns
-        ]
-      else
-        threat_patterns
-      end
+      threat_patterns =
+        if capital_activity.detected do
+          [
+            %{
+              type: :capital_escalation,
+              confidence: capital_activity.confidence,
+              capital_types: capital_activity.ship_types,
+              threat_level: :critical
+            }
+            | threat_patterns
+          ]
+        else
+          threat_patterns
+        end
 
       threat_patterns
     end
@@ -204,77 +208,81 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       escalation_indicators = []
 
       # Check for kill rate escalation
-      escalation_indicators = if recent_metrics.kill_rate > historical_metrics.kill_rate * 1.5 do
-        [
-          %{
-            type: :increased_activity,
-            severity: :high,
-            metric: :kill_rate,
-            change_ratio:
-              Float.round(recent_metrics.kill_rate / max(historical_metrics.kill_rate, 0.1), 2)
-          }
-          | escalation_indicators
-        ]
-      else
-        escalation_indicators
-      end
+      escalation_indicators =
+        if recent_metrics.kill_rate > historical_metrics.kill_rate * 1.5 do
+          [
+            %{
+              type: :increased_activity,
+              severity: :high,
+              metric: :kill_rate,
+              change_ratio:
+                Float.round(recent_metrics.kill_rate / max(historical_metrics.kill_rate, 0.1), 2)
+            }
+            | escalation_indicators
+          ]
+        else
+          escalation_indicators
+        end
 
       # Check for value escalation
-      escalation_indicators = if recent_metrics.avg_kill_value > historical_metrics.avg_kill_value * 2 do
-        [
-          %{
-            type: :higher_stakes,
-            severity: :medium,
-            metric: :kill_value,
-            change_ratio:
-              Float.round(
-                recent_metrics.avg_kill_value / max(historical_metrics.avg_kill_value, 1),
-                2
-              )
-          }
-          | escalation_indicators
-        ]
-      else
-        escalation_indicators
-      end
+      escalation_indicators =
+        if recent_metrics.avg_kill_value > historical_metrics.avg_kill_value * 2 do
+          [
+            %{
+              type: :higher_stakes,
+              severity: :medium,
+              metric: :kill_value,
+              change_ratio:
+                Float.round(
+                  recent_metrics.avg_kill_value / max(historical_metrics.avg_kill_value, 1),
+                  2
+                )
+            }
+            | escalation_indicators
+          ]
+        else
+          escalation_indicators
+        end
 
       # Check for gang size escalation
-      escalation_indicators = if recent_metrics.avg_gang_size > historical_metrics.avg_gang_size * 1.3 do
-        [
-          %{
-            type: :larger_fleets,
-            severity: :medium,
-            metric: :gang_size,
-            change_ratio:
-              Float.round(
-                recent_metrics.avg_gang_size / max(historical_metrics.avg_gang_size, 1),
-                2
-              )
-          }
-          | escalation_indicators
-        ]
-      else
-        escalation_indicators
-      end
+      escalation_indicators =
+        if recent_metrics.avg_gang_size > historical_metrics.avg_gang_size * 1.3 do
+          [
+            %{
+              type: :larger_fleets,
+              severity: :medium,
+              metric: :gang_size,
+              change_ratio:
+                Float.round(
+                  recent_metrics.avg_gang_size / max(historical_metrics.avg_gang_size, 1),
+                  2
+                )
+            }
+            | escalation_indicators
+          ]
+        else
+          escalation_indicators
+        end
 
       # Check for geographic escalation
-      escalation_indicators = if recent_metrics.active_systems > historical_metrics.active_systems * 1.5 do
-        [
-          %{
-            type: :geographic_expansion,
-            severity: :high,
-            metric: :system_spread,
-            change_ratio:
-              Float.round(
-                recent_metrics.active_systems / max(historical_metrics.active_systems, 1),
-                2
-              )
-          }
-          | escalation_indicators
-        ]
-      else
-        escalation_indicators
-      end
+      escalation_indicators =
+        if recent_metrics.active_systems > historical_metrics.active_systems * 1.5 do
+          [
+            %{
+              type: :geographic_expansion,
+              severity: :high,
+              metric: :system_spread,
+              change_ratio:
+                Float.round(
+                  recent_metrics.active_systems / max(historical_metrics.active_systems, 1),
+                  2
+                )
+            }
+            | escalation_indicators
+          ]
+        else
+          escalation_indicators
+        end
 
       escalation_detected = length(escalation_indicators) > 0
       escalation_probability = calculate_escalation_probability(escalation_indicators)

@@ -642,5 +642,4 @@ defmodule EveDmv.Historical.ImportPipeline do
     minutes = div(rem(seconds, 3600), 60)
     "#{hours}h #{minutes}m"
   end
-
 end

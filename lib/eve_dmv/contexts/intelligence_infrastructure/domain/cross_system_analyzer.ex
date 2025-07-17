@@ -2842,7 +2842,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
       coordinated_op_pattern =
         detect_coordinated_operation(temporal_correlations, pilot_movements, corp_activities)
 
-      _patterns = if coordinated_op_pattern, do: [coordinated_op_pattern | patterns], else: patterns
+      _patterns =
+        if coordinated_op_pattern, do: [coordinated_op_pattern | patterns], else: patterns
     end
 
     # Pattern: Tactical reconnaissance sweep

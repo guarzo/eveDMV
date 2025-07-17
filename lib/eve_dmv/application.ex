@@ -65,6 +65,8 @@ defmodule EveDmv.Application do
       EveDmv.Monitoring.PerformanceTracker,
       # Start the corporation analyzer service
       EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer,
+      # Start the battle analysis service for combat intelligence
+      EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService,
       # Start rate limiter for Janice API (5 requests per second)
       {EveDmv.Market.RateLimiter, [name: :janice_rate_limiter] ++ RateLimit.janice_rate_limit()},
       # Start the Janice API client for market pricing

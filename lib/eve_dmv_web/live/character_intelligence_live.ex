@@ -67,9 +67,12 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
 
   @impl Phoenix.LiveView
   def handle_event("search_character", %{"query" => query}, socket) do
-    # For now, return empty results
-    # In production, this would search the character database
-    results = []
+    # Search character database for matching names
+    results =
+      case EveDmv.Search.SearchSuggestionService.get_character_suggestions(query, limit: 8) do
+        {:ok, suggestions} -> suggestions
+        {:error, _reason} -> []
+      end
 
     {:noreply,
      socket

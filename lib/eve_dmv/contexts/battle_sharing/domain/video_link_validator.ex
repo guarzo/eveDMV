@@ -429,7 +429,6 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
     end
   end
 
-
   defp maybe_generate_embed(video_info, generate_embed) do
     if generate_embed do
       case generate_embed_url(video_info.platform, video_info.video_id, []) do

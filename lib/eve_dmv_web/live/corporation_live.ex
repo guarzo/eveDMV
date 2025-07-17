@@ -272,7 +272,6 @@ defmodule EveDmvWeb.CorporationLive do
 
   defp round_value(_value, _precision), do: 0.0
 
-
   # Template helper functions (using FormatHelpers for numbers and ISK)
   def activity_indicator(activity_count) do
     cond do
@@ -405,5 +404,4 @@ defmodule EveDmvWeb.CorporationLive do
   def threat_level_color("Moderate"), do: "text-yellow-500"
   def threat_level_color("Low"), do: "text-blue-500"
   def threat_level_color(_), do: "text-green-500"
-
 end

@@ -288,11 +288,12 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     movement_insights = generate_movement_insights(movement_patterns)
 
     # Cross-pattern insights
-    cross_pattern_insights = generate_cross_pattern_insights(
-      activity_patterns,
-      threat_patterns,
-      movement_patterns
-    )
+    cross_pattern_insights =
+      generate_cross_pattern_insights(
+        activity_patterns,
+        threat_patterns,
+        movement_patterns
+      )
 
     # Combine all insights
     insights = activity_insights ++ threat_insights ++ movement_insights ++ cross_pattern_insights
@@ -601,38 +602,44 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     control = analyze_constellation_control_patterns(constellation_id)
 
     # Activity-based recommendations
-    activity_recommendations = case activity.activity_level do
-      :very_high -> ["Deploy additional scouts to monitor high activity"]
-      :high -> ["Maintain regular surveillance of key systems"]
-      :moderate -> ["Schedule periodic reconnaissance"]
-      _ -> ["Consider expanding intelligence coverage"]
-    end
+    activity_recommendations =
+      case activity.activity_level do
+        :very_high -> ["Deploy additional scouts to monitor high activity"]
+        :high -> ["Maintain regular surveillance of key systems"]
+        :moderate -> ["Schedule periodic reconnaissance"]
+        _ -> ["Consider expanding intelligence coverage"]
+      end
 
     # Tactical significance recommendations
-    tactical_recommendations = case significance.tactical_value do
-      :critical -> ["Establish permanent presence in strategic systems"]
-      :high -> ["Prepare rapid response fleet for tactical opportunities"]
-      :moderate -> ["Monitor for escalation in strategic importance"]
-      _ -> []
-    end
+    tactical_recommendations =
+      case significance.tactical_value do
+        :critical -> ["Establish permanent presence in strategic systems"]
+        :high -> ["Prepare rapid response fleet for tactical opportunities"]
+        :moderate -> ["Monitor for escalation in strategic importance"]
+        _ -> []
+      end
 
     # Control-based recommendations
-    control_recommendations = case control.control_status do
-      :contested -> ["Prepare for potential sovereignty conflicts"]
-      :fragmented -> ["Opportunity for establishing control presence"]
-      :dominated -> ["Exercise caution - strong entity control detected"]
-      _ -> []
-    end
+    control_recommendations =
+      case control.control_status do
+        :contested -> ["Prepare for potential sovereignty conflicts"]
+        :fragmented -> ["Opportunity for establishing control presence"]
+        :dominated -> ["Exercise caution - strong entity control detected"]
+        _ -> []
+      end
 
     # Add stability-based recommendation
-    stability_recommendations = if control.control_stability < 0.5 do
-      ["High volatility detected - expect rapid control changes"]
-    else
-      []
-    end
+    stability_recommendations =
+      if control.control_stability < 0.5 do
+        ["High volatility detected - expect rapid control changes"]
+      else
+        []
+      end
 
     # Combine all recommendations
-    recommendations = activity_recommendations ++ tactical_recommendations ++ control_recommendations ++ stability_recommendations
+    recommendations =
+      activity_recommendations ++
+        tactical_recommendations ++ control_recommendations ++ stability_recommendations
 
     Enum.take(recommendations, 5)
   end
@@ -842,48 +849,52 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     escalation_indicators = []
 
     # Check kill rate increase
-    escalation_indicators = if recent_metrics.kill_rate > older_metrics.kill_rate * 1.5 do
-      [
-        %{
-          type: :increased_kill_rate,
-          severity: :high,
-          change_ratio:
-            Float.round(recent_metrics.kill_rate / max(older_metrics.kill_rate, 0.1), 2)
-        }
-        | escalation_indicators
-      ]
-    else
-      escalation_indicators
-    end
+    escalation_indicators =
+      if recent_metrics.kill_rate > older_metrics.kill_rate * 1.5 do
+        [
+          %{
+            type: :increased_kill_rate,
+            severity: :high,
+            change_ratio:
+              Float.round(recent_metrics.kill_rate / max(older_metrics.kill_rate, 0.1), 2)
+          }
+          | escalation_indicators
+        ]
+      else
+        escalation_indicators
+      end
 
     # Check value escalation
-    escalation_indicators = if recent_metrics.avg_value > older_metrics.avg_value * 2 do
-      [
-        %{
-          type: :higher_value_targets,
-          severity: :medium,
-          change_ratio: Float.round(recent_metrics.avg_value / max(older_metrics.avg_value, 1), 2)
-        }
-        | escalation_indicators
-      ]
-    else
-      escalation_indicators
-    end
+    escalation_indicators =
+      if recent_metrics.avg_value > older_metrics.avg_value * 2 do
+        [
+          %{
+            type: :higher_value_targets,
+            severity: :medium,
+            change_ratio:
+              Float.round(recent_metrics.avg_value / max(older_metrics.avg_value, 1), 2)
+          }
+          | escalation_indicators
+        ]
+      else
+        escalation_indicators
+      end
 
     # Check gang size increase
-    escalation_indicators = if recent_metrics.avg_attackers > older_metrics.avg_attackers * 1.3 do
-      [
-        %{
-          type: :larger_fleets,
-          severity: :medium,
-          change_ratio:
-            Float.round(recent_metrics.avg_attackers / max(older_metrics.avg_attackers, 1), 2)
-        }
-        | escalation_indicators
-      ]
-    else
-      escalation_indicators
-    end
+    escalation_indicators =
+      if recent_metrics.avg_attackers > older_metrics.avg_attackers * 1.3 do
+        [
+          %{
+            type: :larger_fleets,
+            severity: :medium,
+            change_ratio:
+              Float.round(recent_metrics.avg_attackers / max(older_metrics.avg_attackers, 1), 2)
+          }
+          | escalation_indicators
+        ]
+      else
+        escalation_indicators
+      end
 
     escalation_detected = length(escalation_indicators) > 0
     escalation_probability = min(1.0, length(escalation_indicators) * 0.3)
@@ -1292,160 +1303,178 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
 
   defp generate_cross_pattern_insights(activity_patterns, threat_patterns, movement_patterns) do
     # Combined threat and activity insights
-    activity_threat_insights = if activity_patterns.events_per_hour > 10 &&
-         threat_patterns.threat_escalation.escalation_detected do
-      [
-        "High activity combined with threat escalation - prepare for major engagement"
-      ]
-    else
-      []
-    end
-
-    # Movement and threat correlation
-    choke_threat_insights = if length(movement_patterns.choke_points) > 0 && length(threat_patterns.threat_hotspots) > 0 do
-      # Check if any choke points are also threat hotspots
-      choke_systems = movement_patterns.choke_points |> Enum.map(& &1.system_id) |> MapSet.new()
-      threat_systems = threat_patterns.threat_hotspots |> Enum.map(& &1.system_id) |> MapSet.new()
-      overlap = MapSet.intersection(choke_systems, threat_systems) |> MapSet.size()
-
-      if overlap > 0 do
+    activity_threat_insights =
+      if activity_patterns.events_per_hour > 10 &&
+           threat_patterns.threat_escalation.escalation_detected do
         [
-          "#{overlap} systems identified as both choke points and threat hotspots - extreme caution advised"
+          "High activity combined with threat escalation - prepare for major engagement"
         ]
       else
         []
       end
-    else
-      []
-    end
+
+    # Movement and threat correlation
+    choke_threat_insights =
+      if length(movement_patterns.choke_points) > 0 && length(threat_patterns.threat_hotspots) > 0 do
+        # Check if any choke points are also threat hotspots
+        choke_systems = movement_patterns.choke_points |> Enum.map(& &1.system_id) |> MapSet.new()
+
+        threat_systems =
+          threat_patterns.threat_hotspots |> Enum.map(& &1.system_id) |> MapSet.new()
+
+        overlap = MapSet.intersection(choke_systems, threat_systems) |> MapSet.size()
+
+        if overlap > 0 do
+          [
+            "#{overlap} systems identified as both choke points and threat hotspots - extreme caution advised"
+          ]
+        else
+          []
+        end
+      else
+        []
+      end
 
     # Activity anomaly and threat correlation
-    anomaly_migration_insights = if length(activity_patterns.anomalies) > 0 &&
-         threat_patterns.threat_migration.migration_speed in [:rapid, :fast] do
-      [
-        "Activity anomalies coinciding with rapid threat migration - possible coordinated operation"
-      ]
-    else
-      []
-    end
+    anomaly_migration_insights =
+      if length(activity_patterns.anomalies) > 0 &&
+           threat_patterns.threat_migration.migration_speed in [:rapid, :fast] do
+        [
+          "Activity anomalies coinciding with rapid threat migration - possible coordinated operation"
+        ]
+      else
+        []
+      end
 
     activity_threat_insights ++ choke_threat_insights ++ anomaly_migration_insights
   end
 
   defp generate_movement_insights(movement_patterns) do
-    corridor_insights = if length(movement_patterns.movement_corridors) > 0 do
-      primary_corridors =
-        Enum.count(movement_patterns.movement_corridors, fn c -> c.corridor_type == :primary end)
+    corridor_insights =
+      if length(movement_patterns.movement_corridors) > 0 do
+        primary_corridors =
+          Enum.count(movement_patterns.movement_corridors, fn c -> c.corridor_type == :primary end)
 
-      if primary_corridors > 0 do
-        ["#{primary_corridors} primary movement corridors identified"]
+        if primary_corridors > 0 do
+          ["#{primary_corridors} primary movement corridors identified"]
+        else
+          []
+        end
       else
         []
       end
-    else
-      []
-    end
 
     # Choke point insights
-    choke_insights = if length(movement_patterns.choke_points) > 0 do
-      top_choke = List.first(movement_patterns.choke_points)
+    choke_insights =
+      if length(movement_patterns.choke_points) > 0 do
+        top_choke = List.first(movement_patterns.choke_points)
 
-      if top_choke && top_choke.choke_score > 50 do
-        ["Critical choke point detected in system #{top_choke.system_id}"]
+        if top_choke && top_choke.choke_score > 50 do
+          ["Critical choke point detected in system #{top_choke.system_id}"]
+        else
+          []
+        end
       else
         []
       end
-    else
-      []
-    end
 
     # Travel pattern insights
-    travel_insights = if movement_patterns.travel_patterns.unique_travelers > 20 do
-      [
-        "High traffic volume: #{movement_patterns.travel_patterns.unique_travelers} unique travelers tracked"
-      ]
-    else
-      []
-    end
+    travel_insights =
+      if movement_patterns.travel_patterns.unique_travelers > 20 do
+        [
+          "High traffic volume: #{movement_patterns.travel_patterns.unique_travelers} unique travelers tracked"
+        ]
+      else
+        []
+      end
 
     # Cross-system activity insights
-    activity_insights = if movement_patterns.cross_system_activity > 70 do
-      [
-        "High cross-system mobility: #{movement_patterns.cross_system_activity}% of entities active in multiple systems"
-      ]
-    else
-      []
-    end
+    activity_insights =
+      if movement_patterns.cross_system_activity > 70 do
+        [
+          "High cross-system mobility: #{movement_patterns.cross_system_activity}% of entities active in multiple systems"
+        ]
+      else
+        []
+      end
 
     corridor_insights ++ choke_insights ++ travel_insights ++ activity_insights
   end
 
   defp generate_threat_insights(threat_patterns, _system_ids) do
     # Hotspot insights
-    hotspot_insights = if length(threat_patterns.threat_hotspots) > 0 do
-      hotspot_count = length(threat_patterns.threat_hotspots)
-      ["#{hotspot_count} high-threat systems identified"]
-    else
-      []
-    end
+    hotspot_insights =
+      if length(threat_patterns.threat_hotspots) > 0 do
+        hotspot_count = length(threat_patterns.threat_hotspots)
+        ["#{hotspot_count} high-threat systems identified"]
+      else
+        []
+      end
 
     # Migration insights
-    migration_insights = case threat_patterns.threat_migration.migration_speed do
-      :rapid ->
-        ["Rapid threat migration detected - defensive posture recommended"]
+    migration_insights =
+      case threat_patterns.threat_migration.migration_speed do
+        :rapid ->
+          ["Rapid threat migration detected - defensive posture recommended"]
 
-      :fast ->
-        ["Fast threat movement observed across systems"]
+        :fast ->
+          ["Fast threat movement observed across systems"]
 
-      _ ->
-        []
-    end
+        _ ->
+          []
+      end
 
     # Escalation insights
-    escalation_insights = if threat_patterns.threat_escalation.escalation_detected do
-      prob = threat_patterns.threat_escalation.escalation_probability
-      ["Threat escalation detected with #{round(prob * 100)}% confidence"]
-    else
-      []
-    end
+    escalation_insights =
+      if threat_patterns.threat_escalation.escalation_detected do
+        prob = threat_patterns.threat_escalation.escalation_probability
+        ["Threat escalation detected with #{round(prob * 100)}% confidence"]
+      else
+        []
+      end
 
     # Capital activity insights
-    capital_insights = if length(threat_patterns.capital_activity) > 0 do
-      [
-        "Capital ship activity detected in #{length(threat_patterns.capital_activity)} instances"
-      ]
-    else
-      []
-    end
+    capital_insights =
+      if length(threat_patterns.capital_activity) > 0 do
+        [
+          "Capital ship activity detected in #{length(threat_patterns.capital_activity)} instances"
+        ]
+      else
+        []
+      end
 
     hotspot_insights ++ migration_insights ++ escalation_insights ++ capital_insights
   end
 
   defp generate_activity_insights(activity_patterns) do
     # Peak hour insights
-    peak_insights = if length(activity_patterns.peak_activity_hours) > 0 do
-      peak_hours_str = Enum.join(activity_patterns.peak_activity_hours, ", ")
-      ["Peak activity detected at hours: #{peak_hours_str} EVE time"]
-    else
-      []
-    end
+    peak_insights =
+      if length(activity_patterns.peak_activity_hours) > 0 do
+        peak_hours_str = Enum.join(activity_patterns.peak_activity_hours, ", ")
+        ["Peak activity detected at hours: #{peak_hours_str} EVE time"]
+      else
+        []
+      end
 
     # Activity distribution insights
     dist = activity_patterns.activity_distribution
-    distribution_insights = if dist.high_activity > dist.low_activity * 2 do
-      ["Activity highly concentrated in #{dist.high_activity} systems"]
-    else
-      []
-    end
+
+    distribution_insights =
+      if dist.high_activity > dist.low_activity * 2 do
+        ["Activity highly concentrated in #{dist.high_activity} systems"]
+      else
+        []
+      end
 
     # Anomaly insights
-    anomaly_insights = if length(activity_patterns.anomalies) > 0 do
-      [
-        "#{length(activity_patterns.anomalies)} activity anomalies detected requiring investigation"
-      ]
-    else
-      []
-    end
+    anomaly_insights =
+      if length(activity_patterns.anomalies) > 0 do
+        [
+          "#{length(activity_patterns.anomalies)} activity anomalies detected requiring investigation"
+        ]
+      else
+        []
+      end
 
     peak_insights ++ distribution_insights ++ anomaly_insights
   end

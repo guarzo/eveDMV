@@ -61,38 +61,42 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       # Pattern 1: Character sightings across systems
       character_intel = analyze_character_sightings(intel_data)
 
-      shared_intel = if length(character_intel) > 0 do
-        shared_intel ++ character_intel
-      else
-        shared_intel
-      end
+      shared_intel =
+        if length(character_intel) > 0 do
+          shared_intel ++ character_intel
+        else
+          shared_intel
+        end
 
       # Pattern 2: Fleet movements
       fleet_intel = analyze_fleet_intelligence(intel_data)
 
-      shared_intel = if length(fleet_intel) > 0 do
-        shared_intel ++ fleet_intel
-      else
-        shared_intel
-      end
+      shared_intel =
+        if length(fleet_intel) > 0 do
+          shared_intel ++ fleet_intel
+        else
+          shared_intel
+        end
 
       # Pattern 3: Structure status changes
       structure_intel = analyze_structure_intelligence(intel_data)
 
-      shared_intel = if length(structure_intel) > 0 do
-        shared_intel ++ structure_intel
-      else
-        shared_intel
-      end
+      shared_intel =
+        if length(structure_intel) > 0 do
+          shared_intel ++ structure_intel
+        else
+          shared_intel
+        end
 
       # Pattern 4: Alliance operations
       alliance_intel = analyze_alliance_operations(intel_data)
 
-      shared_intel = if length(alliance_intel) > 0 do
-        shared_intel ++ alliance_intel
-      else
-        shared_intel
-      end
+      shared_intel =
+        if length(alliance_intel) > 0 do
+          shared_intel ++ alliance_intel
+        else
+          shared_intel
+        end
 
       # Sort by relevance and take top results
       shared_intel
