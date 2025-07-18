@@ -42,6 +42,10 @@ defmodule EveDmvWeb.Router do
     plug(EveDmvWeb.TokenRefreshPlug)
   end
 
+  pipeline :require_admin do
+    plug(EveDmvWeb.Plugs.RequireAdmin)
+  end
+
   # Public routes - accessible without authentication
   scope "/", EveDmvWeb do
     pipe_through(:browser)
@@ -167,11 +171,6 @@ defmodule EveDmvWeb.Router do
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:eve_dmv, :dev_routes) do
-    # If you want to use the LiveDashboard in production, you should put
-    # it behind authentication and allow only admins to access it.
-    # If your application does not have an admins-only section yet,
-    # you can use Plug.BasicAuth to set up some basic authentication
-    # as long as you are also using SSL (which you should anyway).
     import Phoenix.LiveDashboard.Router
 
     scope "/dev" do
@@ -179,6 +178,30 @@ defmodule EveDmvWeb.Router do
 
       live_dashboard("/dashboard", metrics: EveDmvWeb.Telemetry)
       forward("/mailbox", Plug.Swoosh.MailboxPreview)
+    end
+  end
+
+  # Admin-only routes
+  scope "/admin", EveDmvWeb do
+    pipe_through([:browser, :require_admin])
+
+    live("/users", Admin.UsersLive)
+    live("/system", Admin.SystemLive)
+  end
+
+  # Production performance monitoring (admin only)
+  if Mix.env() == :prod do
+    import Phoenix.LiveDashboard.Router
+
+    scope "/admin" do
+      pipe_through([:browser, :require_admin])
+
+      live_dashboard("/performance-dashboard",
+        metrics: EveDmvWeb.Telemetry,
+        additional_pages: [
+          query_monitor: {EveDmv.Telemetry.QueryMonitor, :dashboard_page}
+        ]
+      )
     end
   end
 end

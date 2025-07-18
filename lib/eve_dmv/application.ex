@@ -122,6 +122,34 @@ defmodule EveDmv.Application do
           end
         end)
 
+        # Bootstrap admin users from environment variables
+        Task.start(fn ->
+          try do
+            # Wait for database to be ready
+            wait_for_database_ready()
+
+            if EveDmv.Admin.Bootstrap.bootstrap_configured?() do
+              # Skip if admin users already exist
+              case check_existing_admin_users() do
+                {:ok, false} ->
+                  EveDmv.Admin.Bootstrap.bootstrap_from_env()
+
+                {:ok, true} ->
+                  require Logger
+                  Logger.info("Admin users already exist, skipping bootstrap")
+
+                {:error, _} ->
+                  # Database not ready or other issue, proceed with bootstrap attempt
+                  EveDmv.Admin.Bootstrap.bootstrap_from_env()
+              end
+            end
+          rescue
+            error ->
+              require Logger
+              Logger.error("Admin bootstrap failed: #{inspect(error)}")
+          end
+        end)
+
         # Attach global error telemetry handlers
         EveDmv.ErrorHandler.attach_telemetry_handlers()
 
@@ -292,6 +320,58 @@ defmodule EveDmv.Application do
           {:error, reason} ->
             Logger.error("Failed to load static data: #{inspect(reason)}")
         end
+    end
+  end
+
+  # Wait for database to be ready with exponential backoff
+  defp wait_for_database_ready(attempts \\ 0, max_attempts \\ 10) do
+    require Logger
+
+    if attempts >= max_attempts do
+      Logger.warning("Database readiness check timeout after #{max_attempts} attempts")
+      :timeout
+    else
+      case check_database_connection() do
+        :ok ->
+          Logger.info("Database is ready")
+          :ok
+
+        {:error, reason} ->
+          wait_time = (:math.pow(2, attempts) * 100) |> round() |> min(5000)
+          Logger.debug("Database not ready (#{reason}), retrying in #{wait_time}ms...")
+          Process.sleep(wait_time)
+          wait_for_database_ready(attempts + 1, max_attempts)
+      end
+    end
+  end
+
+  # Check if database connection is available
+  defp check_database_connection do
+    try do
+      case Ecto.Adapters.SQL.query(EveDmv.Repo, "SELECT 1", []) do
+        {:ok, _} -> :ok
+        {:error, %{message: message}} -> {:error, message}
+        _ -> {:error, "Unknown database error"}
+      end
+    rescue
+      error -> {:error, inspect(error)}
+    end
+  end
+
+  # Check if admin users already exist
+  defp check_existing_admin_users do
+    try do
+      case Ecto.Adapters.SQL.query(
+             EveDmv.Repo,
+             "SELECT EXISTS(SELECT 1 FROM users WHERE is_admin = true)",
+             []
+           ) do
+        {:ok, %{rows: [[true]]}} -> {:ok, true}
+        {:ok, %{rows: [[false]]}} -> {:ok, false}
+        {:error, reason} -> {:error, reason}
+      end
+    rescue
+      error -> {:error, inspect(error)}
     end
   end
 end
