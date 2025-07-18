@@ -148,7 +148,7 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
     SELECT 
       (SELECT setting::int FROM pg_settings WHERE name = 'max_connections') as max_connections,
       (SELECT count(*) FROM pg_stat_activity WHERE state = 'active') as active_connections,
-      (SELECT count(*) FROM pg_stat_activity) as total_connections,
+      (SELECT count(*) FROM pg_stat_activity) as all_pg_connections,
       (SELECT setting::int FROM pg_settings WHERE name = 'superuser_reserved_connections') as reserved_for_superuser
     """
 
@@ -157,7 +157,7 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
         %{
           max_connections: max_conn,
           active_connections: active_conn,
-          total_connections: total_conn,
+          all_pg_connections: total_conn,
           reserved_for_superuser: reserved
         }
 
@@ -165,7 +165,7 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
         %{
           max_connections: nil,
           active_connections: nil,
-          total_connections: nil,
+          all_pg_connections: nil,
           reserved_for_superuser: nil
         }
     end
@@ -258,16 +258,19 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
     query = """
     SELECT 
       'connection_pool' as alert_type,
-      'High connection usage detected' as message,
-      now() as detected_at,
+      'High connection usage detected: ' || active_count || ' active connections' as message,
+      $1 as detected_at,
       'warning' as severity
-    FROM pg_stat_activity 
-    WHERE state = 'active' 
-    GROUP BY 1,2,3,4
-    HAVING count(*) > 80
+    FROM (
+      SELECT count(*) as active_count
+      FROM pg_stat_activity 
+      WHERE state = 'active' 
+        AND query_start >= $1
+    ) active_summary
+    WHERE active_count > 80
     """
 
-    case Ecto.Adapters.SQL.query(Repo, query) do
+    case Ecto.Adapters.SQL.query(Repo, query, [cutoff_time]) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [type, message, detected_at, severity] ->
           %{
@@ -293,11 +296,12 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
       'critical' as severity
     FROM pg_stat_activity 
     WHERE state = 'active' 
+      AND query_start >= $1
       AND query_start < now() - interval '5 minutes'
       AND query NOT LIKE '%pg_stat_%'
     """
 
-    case Ecto.Adapters.SQL.query(Repo, query) do
+    case Ecto.Adapters.SQL.query(Repo, query, [cutoff_time]) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [type, message, detected_at, severity] ->
           %{
