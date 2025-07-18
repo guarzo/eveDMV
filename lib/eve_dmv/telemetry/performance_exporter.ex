@@ -8,7 +8,8 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
   - Create sanitized data dumps for development testing
   """
 
-  alias EveDmv.Telemetry.{QueryMonitor, PerformanceMonitor}
+  alias EveDmv.Telemetry.QueryMonitor
+  # alias EveDmv.Telemetry.PerformanceMonitor # Currently unused
   alias EveDmv.Repo
 
   @doc """
@@ -21,7 +22,7 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
     hours = Keyword.get(opts, :hours, 24)
     threshold_ms = Keyword.get(opts, :threshold_ms, 1000)
 
-    slow_queries = QueryMonitor.get_slow_queries(hours: hours, threshold_ms: threshold_ms)
+    slow_queries = QueryMonitor.get_slow_queries()
 
     %{
       exported_at: DateTime.utc_now(),
@@ -69,7 +70,8 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
       report_generated_at: DateTime.utc_now(),
       database_metrics: export_database_metrics(opts),
       slow_queries: export_slow_queries(opts),
-      performance_alerts: PerformanceMonitor.DatabaseMetrics.get_recent_alerts(24),
+      # TODO: Implement get_recent_alerts/1 function
+      performance_alerts: [],
       system_metrics: %{
         memory_usage: :erlang.memory(),
         process_count: length(Process.list()),
@@ -145,7 +147,7 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
     """
 
     case Ecto.Adapters.SQL.query(Repo, query) do
-      {:ok, %{rows: rows}} when length(rows) > 0 ->
+      {:ok, %{rows: [_ | _] = rows}} ->
         [max_conn, used, reserved] = hd(rows)
 
         %{

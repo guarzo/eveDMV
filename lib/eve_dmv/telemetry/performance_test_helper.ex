@@ -10,7 +10,7 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
   """
 
   alias EveDmv.Repo
-  alias EveDmv.Telemetry.QueryMonitor
+  # alias EveDmv.Telemetry.QueryMonitor # Currently unused
 
   @doc """
   Load production performance data from exported JSON file.
@@ -18,7 +18,7 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
   def load_production_data(filepath) do
     case File.read(filepath) do
       {:ok, content} ->
-        case Jason.decode(content, keys: :atoms) do
+        case Jason.decode(content, keys: :atoms!) do
           {:ok, data} -> {:ok, data}
           {:error, reason} -> {:error, "Failed to parse JSON: #{inspect(reason)}"}
         end
@@ -151,7 +151,7 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
 
   # Private functions
 
-  defp handle_query_telemetry(event, measurements, metadata, _config) do
+  defp handle_query_telemetry(_event, measurements, metadata, _config) do
     query_time = measurements.total_time
 
     # Log queries > 100ms in development
@@ -241,12 +241,12 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
   end
 
   defp calculate_scaling_factor(production_metrics) do
-    prod_size = production_metrics.database_metrics.database_size.size_bytes || 1_000_000_000
+    _prod_size = production_metrics.database_metrics.database_size.size_bytes || 1_000_000_000
     # Aim for 1/10th of production size in development
     1.0 / 10.0
   end
 
-  defp generate_recommendation(ratio, current, production) do
+  defp generate_recommendation(ratio, _current, _production) do
     cond do
       ratio > 2.0 ->
         "Query performance is significantly degraded. Consider:\n" <>
