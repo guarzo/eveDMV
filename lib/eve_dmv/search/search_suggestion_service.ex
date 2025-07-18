@@ -8,7 +8,6 @@ defmodule EveDmv.Search.SearchSuggestionService do
 
   alias EveDmv.Api
   alias EveDmv.Killmails.Participant
-  alias EveDmv.Analytics.PlayerStats
   alias EveDmv.Static.EveSolarSystem
   alias EveDmv.Static.EveItemType
 
@@ -275,38 +274,60 @@ defmodule EveDmv.Search.SearchSuggestionService do
   # Private helper functions
 
   defp get_character_suggestions_from_stats(query, limit) do
-    query_pattern = "%#{String.downcase(query)}%"
+    # Try direct SQL query on player_stats table if it exists and has data
+    search_query = """
+    SELECT 
+      character_id,
+      character_name,
+      corporation_name,
+      total_kills,
+      total_losses
+    FROM player_stats
+    WHERE character_name IS NOT NULL
+      AND LOWER(character_name) LIKE $1
+    ORDER BY total_kills DESC, total_losses ASC
+    LIMIT $2
+    """
 
-    stats_query =
-      PlayerStats
-      |> new()
-      |> filter(not is_nil(character_name))
-      |> filter(fragment("LOWER(?) LIKE ?", character_name, ^query_pattern))
-      |> select([:character_id, :character_name, :corporation_name, :total_kills, :total_losses])
-      # Order by activity level
-      |> sort(total_kills: :desc)
-      |> limit(limit)
+    search_pattern = "%#{String.downcase(query)}%"
 
-    case Ash.read(stats_query, domain: Api) do
-      {:ok, characters} ->
+    case Ecto.Adapters.SQL.query(EveDmv.Repo, search_query, [search_pattern, limit]) do
+      {:ok, %{rows: [_ | _] = rows}} ->
         suggestions =
-          Enum.map(characters, fn char ->
+          rows
+          |> Enum.map(fn [
+                           character_id,
+                           character_name,
+                           corporation_name,
+                           total_kills,
+                           total_losses
+                         ] ->
             subtitle =
-              if char.corporation_name do
-                "#{char.corporation_name} (#{char.total_kills}K/#{char.total_losses}L)"
+              if corporation_name do
+                "#{corporation_name} (#{total_kills}K/#{total_losses}L)"
               else
-                "#{char.total_kills} Kills / #{char.total_losses} Losses"
+                "#{total_kills} Kills / #{total_losses} Losses"
               end
 
             %{
-              id: char.character_id,
-              name: char.character_name,
+              id: character_id,
+              name: character_name,
               type: :character,
               subtitle: subtitle
             }
           end)
 
         {:ok, suggestions}
+
+      {:ok, %{rows: []}} ->
+        # No results from player_stats, fallback will be used
+        Logger.debug("No results from stats table, will try participants")
+        {:error, :no_stats_data}
+
+      {:error, %{postgres: %{code: :undefined_table}}} ->
+        # Table doesn't exist, fallback will be used
+        Logger.debug("Player stats table not available, using fallback search")
+        {:error, :table_not_found}
 
       {:error, reason} ->
         Logger.debug("Stats search failed, will try participants: #{inspect(reason)}")
@@ -315,26 +336,71 @@ defmodule EveDmv.Search.SearchSuggestionService do
   end
 
   defp get_character_suggestions_from_participants(query, limit) do
-    query_pattern = "%#{String.downcase(query)}%"
+    # Use direct SQL query for better reliability (based on working character_search_live.ex implementation)
+    search_query = """
+    WITH character_activity AS (
+      SELECT 
+        victim_character_id as character_id,
+        victim_character_name as character_name,
+        victim_corporation_name as corporation_name,
+        COUNT(*) as killmail_count,
+        MAX(killmail_time) as last_activity
+      FROM killmails_raw
+      WHERE victim_character_name IS NOT NULL
+        AND LOWER(victim_character_name) LIKE $1
+      GROUP BY victim_character_id, victim_character_name, victim_corporation_name
+      
+      UNION
+      
+      SELECT DISTINCT
+        (attacker->>'character_id')::bigint as character_id,
+        attacker->>'character_name' as character_name,
+        attacker->>'corporation_name' as corporation_name,
+        COUNT(*) as killmail_count,
+        MAX(killmail_time) as last_activity
+      FROM killmails_raw km,
+           jsonb_array_elements(km.raw_data->'attackers') as attacker
+      WHERE attacker->>'character_name' IS NOT NULL
+        AND LOWER(attacker->>'character_name') LIKE $1
+        AND (attacker->>'character_id')::bigint IS NOT NULL
+      GROUP BY (attacker->>'character_id')::bigint, attacker->>'character_name', attacker->>'corporation_name'
+    )
+    SELECT 
+      character_id,
+      character_name,
+      corporation_name,
+      SUM(killmail_count) as total_killmails,
+      MAX(last_activity) as last_seen
+    FROM character_activity
+    WHERE character_id IS NOT NULL
+    GROUP BY character_id, character_name, corporation_name
+    ORDER BY total_killmails DESC, last_seen DESC
+    LIMIT $2
+    """
 
-    participant_query =
-      Participant
-      |> new()
-      |> filter(not is_nil(character_name))
-      |> filter(fragment("LOWER(?) LIKE ?", character_name, ^query_pattern))
-      |> select([:character_id, :character_name, :corporation_name])
-      |> distinct([:character_id])
-      |> limit(limit)
+    search_pattern = "%#{String.downcase(query)}%"
 
-    case Ash.read(participant_query, domain: Api) do
-      {:ok, characters} ->
+    case Ecto.Adapters.SQL.query(EveDmv.Repo, search_query, [search_pattern, limit]) do
+      {:ok, %{rows: rows}} ->
         suggestions =
-          Enum.map(characters, fn char ->
-            subtitle = char.corporation_name || "Character"
+          rows
+          |> Enum.map(fn [
+                           character_id,
+                           character_name,
+                           corporation_name,
+                           total_killmails,
+                           _last_seen
+                         ] ->
+            subtitle =
+              if corporation_name do
+                "#{corporation_name} (#{total_killmails} killmails)"
+              else
+                "#{total_killmails} killmails"
+              end
 
             %{
-              id: char.character_id,
-              name: char.character_name,
+              id: character_id,
+              name: character_name,
               type: :character,
               subtitle: subtitle
             }
@@ -343,7 +409,7 @@ defmodule EveDmv.Search.SearchSuggestionService do
         {:ok, suggestions}
 
       {:error, reason} ->
-        Logger.warning("Participant search failed: #{inspect(reason)}")
+        Logger.warning("Character search SQL query failed: #{inspect(reason)}")
         {:ok, []}
     end
   end

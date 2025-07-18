@@ -119,7 +119,8 @@
         <div class="lg:col-span-2 space-y-6">
           <!-- Threat Dimensions -->
           <div class="bg-gray-800 rounded-lg p-6">
-            <h2 class="text-xl font-medium mb-4">Threat Dimensions</h2>
+            <h2 class="text-xl font-medium mb-4">Advanced Threat Analysis</h2>
+            <!-- Enhanced with IntelligenceComponents integration -->
             <div class="space-y-3">
               <%= for {dimension, score} <- @intelligence_report.threat_analysis.dimensions do %>
                 <div>
@@ -144,11 +145,24 @@
                 </div>
               <% end %>
             </div>
+
+            <!-- Advanced Threat Assessment Display -->
+            <%= if @intelligence_report.threat_analysis do %>
+              <.threat_assessment_display 
+                threat_data={%{
+                  threat_level: @intelligence_report.threat_analysis.threat_level || :moderate,
+                  threat_score: (@intelligence_report.threat_analysis.threat_score || 50) / 100,
+                  threat_indicators: @intelligence_report.threat_analysis.dimensions || %{}
+                }}
+                expanded={false}
+              />
+            <% end %>
           </div>
           
           <!-- Behavioral Patterns -->
           <div class="bg-gray-800 rounded-lg p-6">
-            <h2 class="text-xl font-medium mb-4">Behavioral Analysis</h2>
+            <h2 class="text-xl font-medium mb-4">Advanced Behavioral Analysis</h2>
+            <!-- Enhanced with behavioral pattern analysis -->
             
             <div class="grid grid-cols-2 gap-4 mb-4">
               <%= for {pattern, confidence} <- @intelligence_report.behavioral_patterns.patterns do %>
@@ -184,6 +198,20 @@
                   <% end %>
                 </ul>
               </div>
+            <% end %>
+
+            <!-- Advanced Behavioral Pattern Component -->
+            <%= if @intelligence_report.behavioral_patterns do %>
+              <.behavioral_patterns_display 
+                pattern_data={%{
+                  primary_pattern: @intelligence_report.behavioral_patterns.primary_pattern || :unknown,
+                  pattern_scores: @intelligence_report.behavioral_patterns.patterns || %{},
+                  behavioral_indicators: transform_behavioral_characteristics(@intelligence_report.behavioral_patterns.characteristics || []),
+                  confidence_level: calculate_pattern_confidence(@intelligence_report.behavioral_patterns.patterns || %{}),
+                  pattern_timeline: [],
+                  engagement_preferences: %{}
+                }}
+              />
             <% end %>
           </div>
           

@@ -147,133 +147,459 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
   end
 
   defp get_corporation_data(corporation_id) do
-    # Placeholder implementation
-    corporation_data = %{
-      corporation_id: corporation_id,
-      corporation_name: "Sample Corporation #{corporation_id}",
-      alliance_id: nil,
-      member_count: :rand.uniform(500) + 50,
-      founded_date:
-        DateTime.to_iso8601(DateTime.add(DateTime.utc_now(), -:rand.uniform(2000) - 100, :day)),
-      ceo_id: 123_456,
-      ticker: "[SMPL]",
-      description: "Sample corporation for threat assessment"
-    }
+    # Get corporation data from killmail records
+    case fetch_corporation_basic_data(corporation_id) do
+      {:ok, corp_data} ->
+        # Enhance with member statistics
+        member_stats = get_corporation_member_stats(corporation_id)
+        alliance_data = get_corporation_alliance_data(corporation_id)
+        activity_data = get_corporation_activity_data(corporation_id)
 
-    Result.ok(corporation_data)
+        enhanced_data =
+          corp_data
+          |> Map.merge(member_stats)
+          |> Map.merge(alliance_data)
+          |> Map.merge(activity_data)
+
+        Result.ok(enhanced_data)
+
+      {:error, reason} ->
+        Result.error(reason, "Failed to fetch corporation data")
+    end
   end
 
   defp get_fleet_data(fleet_id) do
-    # Placeholder implementation
-    fleet_data = %{
-      fleet_id: fleet_id,
-      fleet_name: "Sample Fleet #{fleet_id}",
-      participant_count: :rand.uniform(50) + 5,
-      fleet_commander: "Sample FC",
-      fleet_type:
-        Enum.random([
-          :capital_fleet,
-          :battleship_fleet,
-          :cruiser_fleet,
-          :frigate_gang,
-          :mixed_composition
-        ]),
-      engagement_context:
-        Enum.random([:defensive, :offensive, :roaming, :strategic_op, :training]),
-      start_time:
-        DateTime.to_iso8601(DateTime.add(DateTime.utc_now(), -:rand.uniform(120), :minute)),
-      end_time: nil
-    }
+    # In EVE, fleet_id might be treated as a killmail_id for a specific engagement
+    # Get fleet data from participants and engagement information
+    participants = get_fleet_participants_from_killmails(fleet_id)
+    engagement_data = get_fleet_engagement_data(fleet_id)
 
-    Result.ok(fleet_data)
-  end
-
-  defp get_character_related_data(_character_id) do
-    %{
-      killmail_stats: generate_sample_killmail_stats(),
-      corp_data: %{
-        corporation_id: 98_000_001,
-        corporation_name: "Sample Corp",
-        member_count: 150
-      },
-      alliance_data: %{}
-    }
-  end
-
-  defp get_corporation_related_data(_corporation_id) do
-    %{
-      member_stats: generate_sample_member_stats(),
-      alliance_data: %{},
-      corp_activity: generate_sample_corp_activity()
-    }
-  end
-
-  defp get_fleet_related_data(_fleet_id) do
-    %{
-      participants: generate_sample_participants(),
-      engagement_data: generate_sample_engagement_data()
-    }
-  end
-
-  # Sample data generation helpers
-
-  defp generate_sample_killmail_stats do
-    %{
-      "total_kills" => :rand.uniform(500),
-      "total_losses" => :rand.uniform(200),
-      "high_value_losses" => :rand.uniform(50),
-      "peak_hour_activity" => :rand.uniform(100),
-      "total_activity" => :rand.uniform(1000) + 100,
-      "easy_target_kills" => :rand.uniform(200),
-      "escalated_engagements" => :rand.uniform(50),
-      "total_engagements" => :rand.uniform(300) + 50,
-      "successful_retreats" => :rand.uniform(30),
-      "failed_retreats" => :rand.uniform(20)
-    }
-  end
-
-  defp generate_sample_member_stats do
-    Enum.map(1..20, fn i ->
-      %{
-        character_id: 1_000_000 + i,
-        character_name: "Member #{i}",
-        recent_kills: :rand.uniform(20),
-        recent_losses: :rand.uniform(10),
-        activity_score: :rand.uniform(100)
+    if Enum.empty?(participants) do
+      Result.error(:no_fleet_data, "No fleet data found for ID #{fleet_id}")
+    else
+      fleet_data = %{
+        fleet_id: fleet_id,
+        participants: participants,
+        participant_count: length(participants),
+        engagement_data: engagement_data,
+        fleet_type: determine_fleet_type_from_participants(participants),
+        start_time: engagement_data.killmail_time,
+        solar_system_id: engagement_data.solar_system_id,
+        total_value: engagement_data.total_value
       }
-    end)
+
+      Result.ok(fleet_data)
+    end
   end
 
-  defp generate_sample_corp_activity do
+  defp get_character_related_data(character_id) do
+    # Query real killmail data for character
+    killmail_stats = get_character_killmail_stats(character_id)
+
+    # Get corporation data from recent killmails 
+    corp_data = get_character_corporation_data(character_id)
+
+    # Get alliance data if character is in one
+    alliance_data = get_character_alliance_data(character_id)
+
     %{
-      total_kills: :rand.uniform(2000),
-      total_losses: :rand.uniform(800),
-      weekly_activity: :rand.uniform(500),
-      member_participation_rate: :rand.uniform() * 0.8 + 0.2
+      killmail_stats: killmail_stats,
+      corp_data: corp_data,
+      alliance_data: alliance_data
     }
   end
 
-  defp generate_sample_participants do
-    Enum.map(1..(:rand.uniform(20) + 5), fn i ->
-      %{
-        character_id: 2_000_000 + i,
-        character_name: "Pilot #{i}",
-        ship_type: "Sample Ship Type",
-        ship_value: :rand.uniform(1_000_000_000),
-        fleet_role: if(rem(i, 5) == 0, do: "Squad Commander", else: "Member")
-      }
-    end)
+  defp get_corporation_related_data(corporation_id) do
+    # Get real member statistics from killmail data
+    member_stats = get_corporation_member_stats(corporation_id)
+
+    # Get alliance data if corporation is in one
+    alliance_data = get_corporation_alliance_data(corporation_id)
+
+    # Get corporation activity from killmail data
+    corp_activity = get_corporation_activity_data(corporation_id)
+
+    %{
+      member_stats: member_stats,
+      alliance_data: alliance_data,
+      corp_activity: corp_activity
+    }
   end
 
-  defp generate_sample_engagement_data do
+  defp get_fleet_related_data(fleet_id) do
+    # Note: Fleet ID might be synthetic - in EVE, fleets aren't directly tracked in killmails
+    # We can infer fleet participation from killmails that happened close together
+
+    # Get engagement participants from killmail data
+    participants = get_fleet_participants_from_killmails(fleet_id)
+
+    # Get engagement data based on killmail timestamps and locations
+    engagement_data = get_fleet_engagement_data(fleet_id)
+
     %{
-      engagement_type: Enum.random([:defensive, :offensive, :roaming, :strategic_op, :training]),
-      duration_minutes: :rand.uniform(120) + 10,
-      isk_destroyed: :rand.uniform(10_000_000_000),
-      isk_lost: :rand.uniform(5_000_000_000),
-      participants_lost: :rand.uniform(5),
-      objective_achieved: :rand.uniform() > 0.5
+      participants: participants,
+      engagement_data: engagement_data
     }
+  end
+
+  # Real data query helpers
+
+  defp get_character_killmail_stats(character_id) do
+    cutoff_date = DateTime.add(DateTime.utc_now(), -30, :day)
+
+    # Query killmails where character was victim
+    victim_query =
+      KillmailRaw
+      |> new()
+      |> filter(victim_character_id: character_id)
+      |> filter(killmail_time: [gte: cutoff_date])
+      |> limit(100)
+
+    # Query killmails where character was attacker  
+    recent_query =
+      KillmailRaw
+      |> new()
+      |> filter(killmail_time: [gte: cutoff_date])
+      |> limit(500)
+
+    case {Ash.read(victim_query, domain: Api), Ash.read(recent_query, domain: Api)} do
+      {{:ok, victim_killmails}, {:ok, recent_killmails}} ->
+        # Filter for attacker involvement
+        attacker_killmails =
+          Enum.filter(recent_killmails, fn km ->
+            case km.raw_data do
+              %{"attackers" => attackers} when is_list(attackers) ->
+                Enum.any?(attackers, &(&1["character_id"] == character_id))
+
+              _ ->
+                false
+            end
+          end)
+
+        total_isk_destroyed = calculate_total_isk_destroyed(attacker_killmails)
+        total_isk_lost = calculate_total_isk_lost(victim_killmails)
+
+        %{
+          kills: length(attacker_killmails),
+          deaths: length(victim_killmails),
+          isk_destroyed: total_isk_destroyed,
+          isk_lost: total_isk_lost,
+          efficiency: calculate_efficiency(total_isk_destroyed, total_isk_lost),
+          activity_level:
+            calculate_activity_level(length(attacker_killmails) + length(victim_killmails))
+        }
+
+      _ ->
+        # Fallback to empty stats
+        %{
+          kills: 0,
+          deaths: 0,
+          isk_destroyed: 0,
+          isk_lost: 0,
+          efficiency: 0.0,
+          activity_level: :low
+        }
+    end
+  end
+
+  defp get_character_corporation_data(character_id) do
+    # Get corporation info from most recent killmail
+    cutoff_date = DateTime.add(DateTime.utc_now(), -7, :day)
+
+    query =
+      KillmailRaw
+      |> new()
+      |> filter(victim_character_id: character_id)
+      |> filter(killmail_time: [gte: cutoff_date])
+      |> sort(killmail_time: :desc)
+      |> limit(1)
+
+    case Ash.read(query, domain: Api) do
+      {:ok, [killmail]} ->
+        %{
+          corporation_id: killmail.victim_corporation_id,
+          corporation_name: "Corporation #{killmail.victim_corporation_id}",
+          # Would need separate API call to get this
+          member_count: nil
+        }
+
+      _ ->
+        %{
+          corporation_id: nil,
+          corporation_name: "Unknown Corporation",
+          member_count: 0
+        }
+    end
+  end
+
+  defp get_character_alliance_data(character_id) do
+    # Get alliance info from most recent killmail
+    cutoff_date = DateTime.add(DateTime.utc_now(), -7, :day)
+
+    query =
+      KillmailRaw
+      |> new()
+      |> filter(victim_character_id: character_id)
+      |> filter(killmail_time: [gte: cutoff_date])
+      |> sort(killmail_time: :desc)
+      |> limit(1)
+
+    case Ash.read(query, domain: Api) do
+      {:ok, [killmail]} when not is_nil(killmail.victim_alliance_id) ->
+        %{
+          alliance_id: killmail.victim_alliance_id,
+          alliance_name: "Alliance #{killmail.victim_alliance_id}"
+        }
+
+      _ ->
+        %{}
+    end
+  end
+
+  defp get_corporation_member_stats(corporation_id) do
+    cutoff_date = DateTime.add(DateTime.utc_now(), -30, :day)
+
+    # Get killmails involving corporation members
+    query =
+      KillmailRaw
+      |> new()
+      |> filter(victim_corporation_id: corporation_id)
+      |> filter(killmail_time: [gte: cutoff_date])
+      |> limit(200)
+
+    case Ash.read(query, domain: Api) do
+      {:ok, killmails} ->
+        unique_members =
+          killmails
+          |> Enum.map(& &1.victim_character_id)
+          |> Enum.reject(&is_nil/1)
+          |> Enum.uniq()
+
+        %{
+          active_members: length(unique_members),
+          total_engagements: length(killmails),
+          average_kills_per_member:
+            if(length(unique_members) > 0,
+              do: length(killmails) / length(unique_members),
+              else: 0
+            )
+        }
+
+      _ ->
+        %{
+          active_members: 0,
+          total_engagements: 0,
+          average_kills_per_member: 0
+        }
+    end
+  end
+
+  defp get_corporation_alliance_data(corporation_id) do
+    # Get alliance info from most recent corporation killmail
+    cutoff_date = DateTime.add(DateTime.utc_now(), -7, :day)
+
+    query =
+      KillmailRaw
+      |> new()
+      |> filter(victim_corporation_id: corporation_id)
+      |> filter(killmail_time: [gte: cutoff_date])
+      |> sort(killmail_time: :desc)
+      |> limit(1)
+
+    case Ash.read(query, domain: Api) do
+      {:ok, [killmail]} when not is_nil(killmail.victim_alliance_id) ->
+        %{
+          alliance_id: killmail.victim_alliance_id,
+          alliance_name: "Alliance #{killmail.victim_alliance_id}"
+        }
+
+      _ ->
+        %{}
+    end
+  end
+
+  defp get_corporation_activity_data(corporation_id) do
+    cutoff_date = DateTime.add(DateTime.utc_now(), -30, :day)
+
+    query =
+      KillmailRaw
+      |> new()
+      |> filter(victim_corporation_id: corporation_id)
+      |> filter(killmail_time: [gte: cutoff_date])
+      |> limit(100)
+
+    case Ash.read(query, domain: Api) do
+      {:ok, killmails} ->
+        if Enum.empty?(killmails) do
+          %{
+            activity_level: :inactive,
+            recent_kills: 0,
+            peak_activity_day: nil
+          }
+        else
+          # Group by day to find peak activity
+          daily_activity =
+            killmails
+            |> Enum.group_by(fn km ->
+              Date.from_iso8601!(Date.to_iso8601(DateTime.to_date(km.killmail_time)))
+            end)
+            |> Map.new(fn {date, kms} -> {date, length(kms)} end)
+
+          peak_day =
+            Enum.max_by(daily_activity, fn {_date, count} -> count end, fn -> {nil, 0} end)
+
+          activity_level =
+            cond do
+              length(killmails) > 20 -> :high
+              length(killmails) > 5 -> :moderate
+              true -> :low
+            end
+
+          %{
+            activity_level: activity_level,
+            recent_kills: length(killmails),
+            peak_activity_day: elem(peak_day, 0)
+          }
+        end
+
+      _ ->
+        %{
+          activity_level: :inactive,
+          recent_kills: 0,
+          peak_activity_day: nil
+        }
+    end
+  end
+
+  defp get_fleet_participants_from_killmails(fleet_id) do
+    # Since EVE doesn't track fleets directly in killmails, we'll treat fleet_id 
+    # as a killmail_id and get participants from that specific engagement
+    query =
+      KillmailRaw
+      |> new()
+      |> filter(killmail_id: fleet_id)
+      |> limit(1)
+
+    case Ash.read(query, domain: Api) do
+      {:ok, [killmail]} ->
+        # Extract all participants from the killmail
+        case killmail.raw_data do
+          %{"attackers" => attackers} when is_list(attackers) ->
+            participants =
+              attackers
+              |> Enum.map(fn attacker ->
+                %{
+                  character_id: attacker["character_id"],
+                  corporation_id: attacker["corporation_id"],
+                  alliance_id: attacker["alliance_id"],
+                  ship_type_id: attacker["ship_type_id"],
+                  damage_done: attacker["damage_done"] || 0
+                }
+              end)
+              |> Enum.reject(fn p -> is_nil(p.character_id) end)
+
+            # Add victim as participant
+            victim_participant = %{
+              character_id: killmail.victim_character_id,
+              corporation_id: killmail.victim_corporation_id,
+              alliance_id: killmail.victim_alliance_id,
+              ship_type_id: killmail.victim_ship_type_id,
+              # victim doesn't do damage
+              damage_done: 0
+            }
+
+            [victim_participant | participants]
+
+          _ ->
+            []
+        end
+
+      _ ->
+        []
+    end
+  end
+
+  defp get_fleet_engagement_data(fleet_id) do
+    # Use the killmail data to provide engagement information
+    query =
+      KillmailRaw
+      |> new()
+      |> filter(killmail_id: fleet_id)
+      |> limit(1)
+
+    case Ash.read(query, domain: Api) do
+      {:ok, [killmail]} ->
+        # Extract engagement data from killmail
+        attacker_count =
+          case killmail.raw_data do
+            %{"attackers" => attackers} when is_list(attackers) -> length(attackers)
+            _ -> 0
+          end
+
+        # Get system info from killmail
+        solar_system_id =
+          case killmail.raw_data do
+            %{"solar_system_id" => system_id} -> system_id
+            _ -> nil
+          end
+
+        %{
+          # This is one engagement
+          total_engagements: 1,
+          # attackers + victim
+          participants: attacker_count + 1,
+          solar_system_id: solar_system_id,
+          killmail_time: killmail.killmail_time,
+          total_value:
+            case killmail.raw_data do
+              %{"zkb" => %{"totalValue" => value}} -> value
+              _ -> 0
+            end
+        }
+
+      _ ->
+        %{
+          total_engagements: 0,
+          participants: 0,
+          solar_system_id: nil,
+          killmail_time: nil,
+          total_value: 0
+        }
+    end
+  end
+
+  # Helper functions for calculations
+
+  defp calculate_total_isk_destroyed(killmails) do
+    killmails
+    |> Enum.map(fn km ->
+      case km.raw_data do
+        %{"zkb" => %{"totalValue" => value}} when is_number(value) -> value
+        _ -> 0
+      end
+    end)
+    |> Enum.sum()
+  end
+
+  defp calculate_total_isk_lost(killmails) do
+    calculate_total_isk_destroyed(killmails)
+  end
+
+  defp calculate_efficiency(isk_destroyed, isk_lost) do
+    if isk_lost > 0 do
+      Float.round(isk_destroyed / (isk_destroyed + isk_lost) * 100, 2)
+    else
+      100.0
+    end
+  end
+
+  defp calculate_activity_level(total_killmails) do
+    cond do
+      total_killmails > 20 -> :high
+      total_killmails > 5 -> :moderate
+      total_killmails > 0 -> :low
+      true -> :inactive
+    end
   end
 
   # Real database query functions
@@ -510,6 +836,65 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
         end)
 
       min(1.0, large_fleet_engagements / length(killmails))
+    end
+  end
+
+  defp fetch_corporation_basic_data(corporation_id) do
+    # Get corporation data from killmail records
+    cutoff_date = DateTime.add(DateTime.utc_now(), -30, :day)
+
+    query =
+      KillmailRaw
+      |> new()
+      |> filter(victim_corporation_id: corporation_id)
+      |> filter(killmail_time: [gte: cutoff_date])
+      |> limit(10)
+
+    case Ash.read(query, domain: Api) do
+      {:ok, [_ | _] = killmails} ->
+        first_killmail = List.first(killmails)
+
+        corp_data = %{
+          corporation_id: corporation_id,
+          corporation_name: "Corporation #{corporation_id}",
+          alliance_id: first_killmail.victim_alliance_id,
+          total_members: length(Enum.uniq_by(killmails, & &1.victim_character_id)),
+          recent_activity: length(killmails),
+          last_seen: DateTime.utc_now()
+        }
+
+        {:ok, corp_data}
+
+      {:ok, []} ->
+        # No killmail data found
+        corp_data = %{
+          corporation_id: corporation_id,
+          corporation_name: "Corporation #{corporation_id}",
+          alliance_id: nil,
+          total_members: 0,
+          recent_activity: 0,
+          last_seen: nil
+        }
+
+        {:ok, corp_data}
+
+      {:error, _reason} ->
+        {:error, :database_error}
+    end
+  end
+
+  defp determine_fleet_type_from_participants(participants) do
+    if Enum.empty?(participants) do
+      :unknown
+    else
+      participant_count = length(participants)
+
+      cond do
+        participant_count < 5 -> :small_gang
+        participant_count < 15 -> :medium_gang
+        participant_count < 50 -> :large_gang
+        true -> :fleet
+      end
     end
   end
 end

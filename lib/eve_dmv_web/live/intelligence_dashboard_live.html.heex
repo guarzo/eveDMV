@@ -1,0 +1,558 @@
+<div class="intelligence-dashboard">
+  <!-- Header Section -->
+  <div class="dashboard-header">
+    <div class="header-title">
+      <h1>Intelligence Dashboard</h1>
+      <p class="subtitle">Real-time threat monitoring and analysis overview</p>
+    </div>
+    
+    <div class="header-controls">
+      <div id="file-download-hook" phx-hook="FileDownload" style="display: none;"></div>
+      
+      <div class="timeframe-selector">
+        <select 
+          class="form-select" 
+          phx-change="change_timeframe" 
+          name="timeframe"
+          value={@timeframe}
+        >
+          <option value="last_hour">Last Hour</option>
+          <option value="last_6_hours">Last 6 Hours</option>
+          <option value="last_24_hours">Last 24 Hours</option>
+          <option value="last_week">Last Week</option>
+          <option value="last_month">Last Month</option>
+        </select>
+      </div>
+      
+      <div class="btn-group me-2">
+        <button 
+          class="btn btn-success" 
+          phx-click="export_dashboard"
+          phx-value-format="json"
+          title="Export Dashboard as JSON"
+        >
+          📊 JSON
+        </button>
+        <button 
+          class="btn btn-info" 
+          phx-click="export_dashboard"
+          phx-value-format="csv"
+          title="Export Dashboard as CSV"
+        >
+          📈 CSV
+        </button>
+      </div>
+      
+      <button 
+        class="btn btn-primary" 
+        phx-click="refresh_dashboard"
+        disabled={@loading}
+      >
+        <%= if @loading do %>
+          <span class="spinner-border spinner-border-sm me-2"></span>
+        <% end %>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <%= if @loading and is_nil(@dashboard_data) do %>
+    <div class="loading-container">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading dashboard...</span>
+      </div>
+      <p class="mt-3">Loading intelligence dashboard...</p>
+    </div>
+  <% end %>
+
+  <!-- Error State -->
+  <%= if @error do %>
+    <div class="alert alert-danger" role="alert">
+      <h4 class="alert-heading">Dashboard Error</h4>
+      <p>{@error}</p>
+      <button class="btn btn-outline-danger" phx-click="refresh_dashboard">
+        Retry
+      </button>
+    </div>
+  <% end %>
+
+  <!-- Main Dashboard Content -->
+  <%= if @dashboard_data and not @loading do %>
+    <!-- Tab Navigation -->
+    <div class="dashboard-tabs">
+      <nav class="nav nav-pills mb-4">
+        <a 
+          class={if @tab == :overview, do: "nav-link active", else: "nav-link"}
+          phx-click="change_tab" 
+          phx-value-tab="overview"
+          href="#"
+        >
+          Overview
+        </a>
+        <a 
+          class={if @tab == :threat_analysis, do: "nav-link active", else: "nav-link"}
+          phx-click="change_tab" 
+          phx-value-tab="threat_analysis"
+          href="#"
+        >
+          Threat Analysis
+        </a>
+        <a 
+          class={if @tab == :recent_activity, do: "nav-link active", else: "nav-link"}
+          phx-click="change_tab" 
+          phx-value-tab="recent_activity"
+          href="#"
+        >
+          Recent Activity
+        </a>
+        <a 
+          class={if @tab == :system_health, do: "nav-link active", else: "nav-link"}
+          phx-click="change_tab" 
+          phx-value-tab="system_health"
+          href="#"
+        >
+          System Health
+        </a>
+      </nav>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+      <!-- Overview Tab -->
+      <%= if @tab == :overview do %>
+        <div class="overview-tab">
+          <!-- Key Metrics Row -->
+          <div class="row mb-4">
+            <div class="col-md-3">
+              <div class="metric-card">
+                <div class="metric-value">{@dashboard_data.total_analyses || 0}</div>
+                <div class="metric-label">Total Analyses</div>
+                <div class="metric-change text-success">
+                  +{@dashboard_data.analyses_change || 0}% from last period
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="metric-card">
+                <div class="metric-value">{length(@threat_alerts)}</div>
+                <div class="metric-label">Active Threat Alerts</div>
+                <div class="metric-change text-warning">
+                  {if length(@threat_alerts) > 0, do: "Requires attention", else: "All clear"}
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="metric-card">
+                <div class="metric-value">{@cache_stats.hit_ratio || 0}%</div>
+                <div class="metric-label">Cache Hit Rate</div>
+                <div class="metric-change text-info">
+                  {if (@cache_stats.hit_ratio || 0) > 80, do: "Excellent", else: "Needs optimization"}
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="metric-card">
+                <div class="metric-value">{@system_health.status || "Unknown"}</div>
+                <div class="metric-label">System Status</div>
+                <div class="metric-change">
+                  Last updated: {relative_time(@system_health.last_check || DateTime.utc_now())}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="row mb-4">
+            <div class="col-md-12">
+              <div class="card">
+                <div class="card-header">
+                  <h5>Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                  <div class="btn-group" role="group">
+                    <button class="btn btn-outline-primary" phx-click="warm_cache">
+                      Warm Cache
+                    </button>
+                    <button class="btn btn-outline-warning" phx-click="clear_cache">
+                      Clear Cache
+                    </button>
+                  </div>
+
+                  <div class="mt-3">
+                    <form phx-submit="analyze_character" class="d-flex">
+                      <input 
+                        type="number" 
+                        name="character_id" 
+                        placeholder="Character ID" 
+                        class="form-control me-2"
+                        required
+                      />
+                      <button type="submit" class="btn btn-primary">
+                        Analyze Character
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Analyses & Threat Alerts Row -->
+          <div class="row">
+            <div class="col-md-8">
+              <div class="card">
+                <div class="card-header">
+                  <h5>Recent Intelligence Analyses</h5>
+                </div>
+                <div class="card-body">
+                  <%= if Enum.empty?(@recent_analyses) do %>
+                    <p class="text-muted">No recent analyses available.</p>
+                  <% else %>
+                    <div class="analyses-list">
+                      <%= for analysis <- @recent_analyses do %>
+                        <div class="analysis-item d-flex justify-content-between align-items-center mb-3">
+                          <div>
+                            <strong>{analysis.character_name || "Character #{analysis.character_id}"}</strong>
+                            <div class="text-muted small">
+                              Threat Level: 
+                              <span class={"badge bg-#{threat_level_color(analysis.threat_level)}"}>
+                                {String.capitalize(to_string(analysis.threat_level))}
+                              </span>
+                            </div>
+                            <div class="text-muted small">
+                              {relative_time(analysis.analyzed_at)}
+                            </div>
+                          </div>
+                          <button 
+                            class="btn btn-sm btn-outline-primary"
+                            phx-click="view_analysis"
+                            phx-value-type="character"
+                            phx-value-id={analysis.character_id}
+                          >
+                            View Details
+                          </button>
+                        </div>
+                      <% end %>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <div class="card">
+                <div class="card-header">
+                  <h5>Threat Alerts</h5>
+                </div>
+                <div class="card-body">
+                  <%= if Enum.empty?(@threat_alerts) do %>
+                    <p class="text-muted">No active threat alerts.</p>
+                  <% else %>
+                    <div class="alerts-list">
+                      <%= for alert <- @threat_alerts do %>
+                        <div class="alert alert-warning mb-2">
+                          <div class="d-flex justify-content-between">
+                            <strong>{alert.title}</strong>
+                            <small>{alert.severity}</small>
+                          </div>
+                          <p class="mb-1">{alert.message}</p>
+                          <small class="text-muted">
+                            {relative_time(alert.created_at)}
+                          </small>
+                        </div>
+                      <% end %>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Threat Analysis Tab -->
+      <%= if @tab == :threat_analysis do %>
+        <div class="threat-analysis-tab">
+          <div class="row">
+            <div class="col-md-12">
+              <div class="card">
+                <div class="card-header">
+                  <h5>Threat Level Distribution</h5>
+                </div>
+                <div class="card-body">
+                  <%= if @dashboard_data.threat_distribution do %>
+                    <div class="threat-distribution">
+                      <%= for {level, count} <- @dashboard_data.threat_distribution do %>
+                        <div class="threat-level-stat d-flex justify-content-between align-items-center mb-2">
+                          <span class={"badge bg-#{threat_level_color(level)} me-2"}>
+                            {String.capitalize(to_string(level))}
+                          </span>
+                          <span>{count} characters</span>
+                        </div>
+                      <% end %>
+                    </div>
+                  <% else %>
+                    <p class="text-muted">No threat distribution data available.</p>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Recent Activity Tab -->
+      <%= if @tab == :recent_activity do %>
+        <div class="recent-activity-tab">
+          <div class="row">
+            <div class="col-md-12">
+              <div class="card">
+                <div class="card-header">
+                  <h5>Intelligence Analysis Activity</h5>
+                </div>
+                <div class="card-body">
+                  <%= if @dashboard_data.activity_timeline do %>
+                    <div class="activity-timeline">
+                      <%= for activity <- @dashboard_data.activity_timeline do %>
+                        <div class="activity-item mb-3">
+                          <div class="d-flex">
+                            <div class="activity-time text-muted me-3">
+                              {format_time(activity.timestamp)}
+                            </div>
+                            <div class="activity-content">
+                              <strong>{activity.event_type}</strong>
+                              <p class="mb-0">{activity.description}</p>
+                            </div>
+                          </div>
+                        </div>
+                      <% end %>
+                    </div>
+                  <% else %>
+                    <p class="text-muted">No recent activity data available.</p>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- System Health Tab -->
+      <%= if @tab == :system_health do %>
+        <div class="system-health-tab">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="card">
+                <div class="card-header">
+                  <h5>Cache Performance</h5>
+                </div>
+                <div class="card-body">
+                  <div class="cache-stats">
+                    <div class="stat-item d-flex justify-content-between mb-2">
+                      <span>Cache Size:</span>
+                      <span>{@cache_stats.cache_size || 0} entries</span>
+                    </div>
+                    <div class="stat-item d-flex justify-content-between mb-2">
+                      <span>Hit Ratio:</span>
+                      <span>{@cache_stats.hit_ratio || 0}%</span>
+                    </div>
+                    <div class="stat-item d-flex justify-content-between mb-2">
+                      <span>Total Hits:</span>
+                      <span>{@cache_stats.hit_count || 0}</span>
+                    </div>
+                    <div class="stat-item d-flex justify-content-between mb-2">
+                      <span>Total Misses:</span>
+                      <span>{@cache_stats.miss_count || 0}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="card">
+                <div class="card-header">
+                  <h5>System Status</h5>
+                </div>
+                <div class="card-body">
+                  <div class="system-status">
+                    <div class="status-item d-flex justify-content-between mb-2">
+                      <span>Overall Status:</span>
+                      <span class={"badge bg-#{system_status_color(@system_health.status)}"}>
+                        {@system_health.status || "Unknown"}
+                      </span>
+                    </div>
+                    <div class="status-item d-flex justify-content-between mb-2">
+                      <span>Database:</span>
+                      <span class={"badge bg-#{system_status_color(@system_health.database_status)}"}>
+                        {@system_health.database_status || "Unknown"}
+                      </span>
+                    </div>
+                    <div class="status-item d-flex justify-content-between mb-2">
+                      <span>Cache System:</span>
+                      <span class={"badge bg-#{system_status_color(@system_health.cache_status)}"}>
+                        {@system_health.cache_status || "Unknown"}
+                      </span>
+                    </div>
+                    <div class="status-item d-flex justify-content-between mb-2">
+                      <span>Last Check:</span>
+                      <span>{relative_time(@system_health.last_check || DateTime.utc_now())}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
+  <!-- Analysis Detail Modal -->
+  <%= if @selected_analysis do %>
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">{@selected_analysis.title}</h5>
+            <button 
+              type="button" 
+              class="btn-close" 
+              phx-click="close_analysis"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <%= case @selected_analysis.type do %>
+              <% "character" -> %>
+                <div class="character-analysis-detail">
+                  <!-- Character analysis details would go here -->
+                  <pre class="text-muted">{inspect(@selected_analysis.data, pretty: true)}</pre>
+                </div>
+              <% "vetting" -> %>
+                <div class="vetting-analysis-detail">
+                  <!-- Vetting analysis details would go here -->
+                  <pre class="text-muted">{inspect(@selected_analysis.data, pretty: true)}</pre>
+                </div>
+              <% "error" -> %>
+                <div class="alert alert-danger">
+                  <h6>Analysis Error</h6>
+                  <p>{@selected_analysis.data.error}</p>
+                </div>
+              <% _ -> %>
+                <p>Unknown analysis type</p>
+            <% end %>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" phx-click="close_analysis">
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<style>
+.intelligence-dashboard {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.header-title h1 {
+  margin: 0;
+  color: #2c3e50;
+}
+
+.header-title .subtitle {
+  margin: 5px 0 0 0;
+  color: #7f8c8d;
+}
+
+.header-controls {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+.metric-card {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.metric-value {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #2c3e50;
+  margin-bottom: 5px;
+}
+
+.metric-label {
+  font-size: 0.9rem;
+  color: #7f8c8d;
+  margin-bottom: 5px;
+}
+
+.metric-change {
+  font-size: 0.8rem;
+}
+
+.loading-container {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.analysis-item {
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 15px;
+}
+
+.analysis-item:last-child {
+  border-bottom: none;
+}
+
+.threat-distribution .threat-level-stat {
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 4px;
+}
+
+.activity-timeline .activity-item {
+  border-left: 3px solid #3498db;
+  padding-left: 15px;
+  position: relative;
+}
+
+.activity-timeline .activity-item::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 8px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #3498db;
+}
+
+.cache-stats .stat-item,
+.system-status .status-item {
+  padding: 5px 0;
+}
+</style>
+
+<%!-- Helper functions moved to LiveView module --%>

@@ -240,6 +240,30 @@ defmodule EveDmv.Killmails.KillmailPipeline do
             # Don't fail the pipeline for broadcasting issues
         end
 
+        # Handle real-time intelligence processing asynchronously
+        Task.start(fn ->
+          try do
+            Logger.debug(
+              "🧠 Processing #{length(broadcast_messages)} killmails for intelligence updates"
+            )
+
+            # Process each killmail for intelligence
+            Enum.each(broadcast_messages, fn message ->
+              case message.data do
+                %{killmail_id: _} = killmail_data ->
+                  EveDmv.Intelligence.RealTimeCoordinator.process_killmail(killmail_data)
+
+                _ ->
+                  :skip
+              end
+            end)
+          rescue
+            error ->
+              Logger.error("Failed to process killmails for intelligence: #{inspect(error)}")
+              # Don't fail the pipeline for intelligence processing issues
+          end
+        end)
+
         # Handle surveillance matching asynchronously
         Task.start(fn ->
           try do

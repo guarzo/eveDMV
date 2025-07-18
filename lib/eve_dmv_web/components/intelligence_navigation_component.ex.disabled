@@ -1,0 +1,274 @@
+defmodule EveDmvWeb.IntelligenceNavigationComponent do
+  @moduledoc """
+  Navigation component specifically for intelligence-related pages.
+  
+  Provides contextual navigation between intelligence features,
+  quick access to common intelligence tools, and breadcrumb navigation.
+  """
+
+  use EveDmvWeb, :live_component
+  alias Phoenix.LiveView.JS
+
+  @doc """
+  Renders the intelligence navigation bar.
+  
+  ## Attributes
+  - `:current_page` - Current page identifier for highlighting active nav
+  - `:character_id` - Character ID when viewing character-specific intelligence
+  - `:class` - Additional CSS classes
+  """
+
+  @impl true
+  def render(assigns) do
+    ~H"""
+    <div class={["bg-gray-800 border-b border-gray-700 mb-6", @class]}>
+      <!-- Intelligence Breadcrumb -->
+      <div class="px-6 py-3 border-b border-gray-700">
+        <nav class="flex" aria-label="Breadcrumb">
+          <ol class="inline-flex items-center space-x-1 md:space-x-3">
+            <li class="inline-flex items-center">
+              <.link navigate={~p"/dashboard"} class="inline-flex items-center text-sm font-medium text-gray-400 hover:text-white transition-colors">
+                <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
+                </svg>
+                Dashboard
+              </.link>
+            </li>
+            
+            <li>
+              <div class="flex items-center">
+                <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                </svg>
+                <.link navigate={~p"/intelligence-dashboard"} class="ml-1 text-sm font-medium text-gray-400 hover:text-white transition-colors md:ml-2">
+                  Intelligence
+                </.link>
+              </div>
+            </li>
+            
+            <%= if @current_page != :dashboard do %>
+              <li aria-current="page">
+                <div class="flex items-center">
+                  <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                  </svg>
+                  <span class="ml-1 text-sm font-medium text-gray-200 md:ml-2">
+                    <%= page_title(@current_page) %>
+                  </span>
+                </div>
+              </li>
+            <% end %>
+          </ol>
+        </nav>
+      </div>
+
+      <!-- Intelligence Sub-Navigation -->
+      <div class="px-6 py-4">
+        <div class="flex items-center justify-between">
+          <!-- Primary Navigation -->
+          <nav class="flex space-x-8">
+            <.nav_link 
+              navigate={~p"/intelligence-dashboard"} 
+              active={@current_page == :dashboard}
+              icon="dashboard"
+            >
+              Dashboard
+            </.nav_link>
+            
+            <.nav_link 
+              navigate={~p"/character"} 
+              active={@current_page == :character_search}
+              icon="character"
+            >
+              Character Analysis
+            </.nav_link>
+            
+            <.nav_link 
+              navigate={~p"/chain-intelligence"} 
+              active={@current_page == :chain_intelligence}
+              icon="chain"
+            >
+              Chain Intelligence
+            </.nav_link>
+            
+            <.nav_link 
+              navigate={~p"/wh-vetting"} 
+              active={@current_page == :wh_vetting}
+              icon="vetting"
+            >
+              WH Vetting
+            </.nav_link>
+          </nav>
+
+          <!-- Quick Actions -->
+          <div class="flex items-center space-x-3">
+            <%= if @character_id do %>
+              <.quick_action_button 
+                navigate={~p"/character/#{@character_id}"}
+                icon="analyze"
+                label="Analyze Character"
+              />
+            <% end %>
+            
+            <.quick_action_button 
+              phx-click="export_intelligence_data"
+              phx-target={@myself}
+              icon="export"
+              label="Export Data"
+            />
+            
+            <.quick_action_button 
+              phx-click="refresh_intelligence"
+              phx-target={@myself}
+              icon="refresh"
+              label="Refresh"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Context-Specific Actions -->
+      <%= if @current_page == :character_analysis && @character_id do %>
+        <div class="px-6 py-3 bg-gray-750 border-t border-gray-700">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+              <span class="text-sm text-gray-400">Character Tools:</span>
+              
+              <.link navigate={~p"/character/#{@character_id}"} class="text-sm text-blue-400 hover:text-blue-300 transition-colors">
+                Full Analysis
+              </.link>
+              
+              <.link navigate={~p"/wh-vetting?character_id=#{@character_id}"} class="text-sm text-blue-400 hover:text-blue-300 transition-colors">
+                Create Vetting
+              </.link>
+              
+              <button 
+                phx-click="add_to_watchlist"
+                phx-value-character-id={@character_id}
+                phx-target={@myself}
+                class="text-sm text-yellow-400 hover:text-yellow-300 transition-colors"
+              >
+                Add to Watchlist
+              </button>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+    """
+  end
+
+  # Navigation link component
+  defp nav_link(assigns) do
+    ~H"""
+    <.link
+      navigate={@navigate}
+      class={[
+        "flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors",
+        if(@active, 
+          do: "bg-blue-600 text-white", 
+          else: "text-gray-300 hover:text-white hover:bg-gray-700"
+        )
+      ]}
+    >
+      <.nav_icon type={@icon} class="w-4 h-4 mr-2" />
+      <%= render_slot(@inner_block) %>
+    </.link>
+    """
+  end
+
+  # Quick action button component
+  defp quick_action_button(assigns) do
+    button_attrs = 
+      if assigns[:navigate] do
+        [navigate: assigns.navigate]
+      else
+        [
+          "phx-click": assigns[:"phx-click"],
+          "phx-target": assigns[:"phx-target"],
+          "phx-value-character-id": assigns[:"phx-value-character-id"]
+        ]
+        |> Enum.filter(fn {_k, v} -> not is_nil(v) end)
+      end
+
+    assigns = assign(assigns, :button_attrs, button_attrs)
+
+    ~H"""
+    <.link
+      {Map.new(@button_attrs)}
+      class="flex items-center px-3 py-2 text-xs font-medium text-gray-400 hover:text-white bg-gray-700 hover:bg-gray-600 rounded-md transition-colors"
+      title={@label}
+    >
+      <.nav_icon type={@icon} class="w-4 h-4" />
+      <span class="ml-2 hidden lg:inline"><%= @label %></span>
+    </.link>
+    """
+  end
+
+  # Icon component for navigation
+  defp nav_icon(assigns) do
+    svg_content = case assigns.type do
+      "dashboard" ->
+        ~s(<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2-2V7a2 2 0 012-2h2a2 2 0 002 2v2a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 00-2 2h-2a2 2 0 00-2 2v6a2 2 0 01-2 2H9z"/>)
+      
+      "character" ->
+        ~s(<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>)
+      
+      "chain" ->
+        ~s(<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>)
+      
+      "vetting" ->
+        ~s(<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>)
+      
+      "analyze" ->
+        ~s(<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v6a2 2 0 002 2h2m0 0V9a2 2 0 012-2h2a2 2 0 012 2v6a2 2 0 01-2 2H9z"/>)
+      
+      "export" ->
+        ~s(<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>)
+      
+      "refresh" ->
+        ~s(<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>)
+        
+      _ ->
+        ~s(<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>)
+    end
+
+    assigns = assign(assigns, :svg_content, svg_content)
+
+    ~H"""
+    <svg class={@class} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <%= Phoenix.HTML.raw(@svg_content) %>
+    </svg>
+    """
+  end
+
+  @impl true
+  def handle_event("export_intelligence_data", _params, socket) do
+    # Trigger export functionality
+    send(self(), {:export_data, :intelligence})
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("refresh_intelligence", _params, socket) do
+    # Trigger page refresh
+    send(self(), :refresh_intelligence_data)
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("add_to_watchlist", %{"character-id" => character_id}, socket) do
+    # Add character to watchlist
+    send(self(), {:add_to_watchlist, character_id})
+    {:noreply, socket}
+  end
+
+  # Helper functions
+
+  defp page_title(:dashboard), do: "Dashboard"
+  defp page_title(:character_search), do: "Character Search"
+  defp page_title(:character_analysis), do: "Character Analysis"
+  defp page_title(:chain_intelligence), do: "Chain Intelligence"
+  defp page_title(:wh_vetting), do: "WH Vetting"
+  defp page_title(_), do: "Intelligence"
+end

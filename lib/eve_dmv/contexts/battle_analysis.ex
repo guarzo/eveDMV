@@ -297,6 +297,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   Performs comprehensive intelligence analysis on a battle.
 
   Includes tactical phase detection, ship performance analysis, and multi-system correlation.
+  Now integrates with the advanced BattleAnalysisService for deeper analytics.
 
   ## Examples
 
@@ -306,33 +307,77 @@ defmodule EveDmv.Contexts.BattleAnalysis do
         tactical_phases: [...],
         ship_performance: %{...},
         multi_system_context: %{...},
-        battle_flow: :pursuit_engagement
+        battle_flow: :pursuit_engagement,
+        advanced_analysis: %{...}
       }}
   """
   def analyze_battle_with_intelligence(battle) do
-    with {:ok, phases} <- TacticalPhaseDetector.detect_tactical_phases(battle),
-         {:ok, performance} <- ShipPerformanceAnalyzer.analyze_battle_performance(battle),
-         {:ok, correlated} <-
-           MultiSystemBattleCorrelator.correlate_multi_system_battles([battle]),
-         {:ok, flow_analysis} <-
-           MultiSystemBattleCorrelator.analyze_combat_flow_patterns(correlated) do
-      # For single-battle analysis, extract the current battle from correlated results
-      current_battle = List.first(correlated)
-      other_battles = Enum.drop(correlated, 1)
+    # Use the advanced BattleAnalysisService for comprehensive analysis
+    alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService
 
-      {:ok,
-       %{
-         tactical_phases: phases,
-         ship_performance: performance,
-         multi_system_context: %{
-           current_battle: current_battle,
-           correlated_battles: other_battles,
-           is_multi_system: length(correlated) > 1
-         },
-         battle_flow: flow_analysis
-       }}
-    else
-      error -> error
+    case BattleAnalysisService.analyze_battle(battle.battle_id) do
+      {:ok, advanced_analysis} ->
+        # Also run the existing analysis for backward compatibility
+        with {:ok, phases} <- TacticalPhaseDetector.detect_tactical_phases(battle),
+             {:ok, performance} <- ShipPerformanceAnalyzer.analyze_battle_performance(battle),
+             {:ok, correlated} <-
+               MultiSystemBattleCorrelator.correlate_multi_system_battles([battle]),
+             {:ok, flow_analysis} <-
+               MultiSystemBattleCorrelator.analyze_combat_flow_patterns(correlated) do
+          # For single-battle analysis, extract the current battle from correlated results
+          current_battle = List.first(correlated)
+          other_battles = Enum.drop(correlated, 1)
+
+          {:ok,
+           %{
+             # Legacy analysis for backward compatibility
+             tactical_phases: phases,
+             ship_performance: performance,
+             multi_system_context: %{
+               current_battle: current_battle,
+               correlated_battles: other_battles,
+               is_multi_system: length(correlated) > 1
+             },
+             battle_flow: flow_analysis,
+             # Advanced analysis from BattleAnalysisService
+             advanced_analysis: advanced_analysis
+           }}
+        else
+          _error ->
+            # If legacy analysis fails, return just the advanced analysis
+            {:ok, %{advanced_analysis: advanced_analysis}}
+        end
+
+      {:error, reason} ->
+        Logger.warning(
+          "Advanced battle analysis failed for #{battle.battle_id}: #{inspect(reason)}"
+        )
+
+        # Fallback to legacy analysis
+        with {:ok, phases} <- TacticalPhaseDetector.detect_tactical_phases(battle),
+             {:ok, performance} <- ShipPerformanceAnalyzer.analyze_battle_performance(battle),
+             {:ok, correlated} <-
+               MultiSystemBattleCorrelator.correlate_multi_system_battles([battle]),
+             {:ok, flow_analysis} <-
+               MultiSystemBattleCorrelator.analyze_combat_flow_patterns(correlated) do
+          # For single-battle analysis, extract the current battle from correlated results
+          current_battle = List.first(correlated)
+          other_battles = Enum.drop(correlated, 1)
+
+          {:ok,
+           %{
+             tactical_phases: phases,
+             ship_performance: performance,
+             multi_system_context: %{
+               current_battle: current_battle,
+               correlated_battles: other_battles,
+               is_multi_system: length(correlated) > 1
+             },
+             battle_flow: flow_analysis
+           }}
+        else
+          error -> error
+        end
     end
   end
 
@@ -378,6 +423,33 @@ defmodule EveDmv.Contexts.BattleAnalysis do
          {:ok, performance} <- ShipPerformanceAnalyzer.analyze_battle_performance(battle) do
       {:ok, performance}
     end
+  end
+
+  @doc """
+  Analyze battle using the advanced BattleAnalysisService.
+
+  Returns comprehensive battle analytics including timeline, fleet composition,
+  tactical effectiveness, and strategic recommendations.
+  """
+  def analyze_battle(battle_id, opts \\ []) do
+    alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService
+    BattleAnalysisService.analyze_battle(battle_id, opts)
+  end
+
+  @doc """
+  Analyze ongoing engagement in real-time using BattleAnalysisService.
+  """
+  def analyze_live_engagement(system_id, opts \\ []) do
+    alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService
+    BattleAnalysisService.analyze_live_engagement(system_id, opts)
+  end
+
+  @doc """
+  Generate tactical recommendations based on battle analysis.
+  """
+  def generate_tactical_recommendations(battle_analysis) do
+    alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService
+    BattleAnalysisService.generate_tactical_recommendations(battle_analysis)
   end
 
   @doc """

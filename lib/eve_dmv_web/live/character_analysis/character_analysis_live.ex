@@ -135,21 +135,60 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
   end
 
   @impl Phoenix.LiveView
+  def handle_event("export_analysis", %{"format" => format}, socket) do
+    case generate_character_export_data(socket.assigns, format) do
+      {:ok, {filename, content, content_type}} ->
+        socket =
+          socket
+          |> push_event("download_file", %{
+            filename: filename,
+            content: content,
+            content_type: content_type
+          })
+          |> put_flash(:info, "Analysis exported successfully")
+
+        {:noreply, socket}
+
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, "Export failed: #{reason}")}
+    end
+  end
+
+  @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
     <div class="container mx-auto px-4 py-8">
+      <div id="file-download-hook" phx-hook="FileDownload" style="display: none;"></div>
       <div class="mb-6 flex justify-between items-center">
         <h1 class="text-3xl font-bold text-white">Character Combat Analysis</h1>
-        <button
-          phx-click="force_refresh"
-          class="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors"
-          title="Force Refresh"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+        <div class="flex space-x-2">
+          <button
+            phx-click="export_analysis"
+            phx-value-format="json"
+            class="p-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors"
+            title="Export Analysis as JSON"
+          >
+            📊 Export JSON
+          </button>
+          <button
+            phx-click="export_analysis"
+            phx-value-format="csv"
+            class="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+            title="Export Analysis as CSV"
+          >
+            📈 Export CSV
+          </button>
+          <button
+            phx-click="force_refresh"
+            class="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors"
+            title="Force Refresh"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
           </svg>
         </button>
       </div>
+    </div>
       
       <%= if @loading do %>
         <div class="bg-gray-800 rounded-lg p-6">
@@ -200,6 +239,117 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
       <% end %>
     </div>
     """
+  end
+
+  # Export functions
+
+  defp generate_character_export_data(assigns, format) do
+    case assigns do
+      %{analysis: nil} ->
+        {:error, "No analysis data to export"}
+
+      %{analysis: analysis, character_id: character_id} ->
+        case format do
+          "json" ->
+            export_data = %{
+              character_id: character_id,
+              analysis_timestamp: DateTime.utc_now(),
+              combat_analysis: analysis,
+              intelligence: Map.get(assigns, :intelligence),
+              threat_scoring: Map.get(assigns, :threat_scoring),
+              ship_specialization: Map.get(assigns, :ship_specialization),
+              ship_preferences: Map.get(assigns, :ship_preferences)
+            }
+
+            content = Jason.encode!(export_data, pretty: true)
+            filename = "character_analysis_#{character_id}_#{Date.utc_today()}.json"
+            {:ok, {filename, content, "application/json"}}
+
+          "csv" ->
+            case generate_character_csv_export(assigns) do
+              {:ok, content} ->
+                filename = "character_analysis_#{character_id}_#{Date.utc_today()}.csv"
+                {:ok, {filename, content, "text/csv"}}
+
+              error ->
+                error
+            end
+
+          _ ->
+            {:error, "Unsupported format"}
+        end
+    end
+  end
+
+  defp generate_character_csv_export(assigns) do
+    try do
+      headers = [
+        "character_id",
+        "analysis_date",
+        "total_kills",
+        "total_losses",
+        "efficiency_ratio",
+        "isk_destroyed",
+        "isk_lost",
+        "avg_ship_value",
+        "favorite_ship",
+        "primary_role",
+        "threat_score",
+        "activity_level",
+        "preferred_engagement_range"
+      ]
+
+      analysis = assigns.analysis
+      intelligence = Map.get(assigns, :intelligence, %{})
+      ship_specialization = Map.get(assigns, :ship_specialization, %{})
+
+      row = [
+        assigns.character_id,
+        Date.utc_today(),
+        Map.get(analysis, :total_kills, 0),
+        Map.get(analysis, :total_losses, 0),
+        Map.get(analysis, :efficiency_ratio, 0.0),
+        Map.get(analysis, :isk_destroyed, 0),
+        Map.get(analysis, :isk_lost, 0),
+        Map.get(analysis, :average_ship_value, 0),
+        get_in(ship_specialization, [:preferred_ships]) |> List.first() |> format_ship_name(),
+        Map.get(intelligence, :primary_role, "Unknown"),
+        Map.get(intelligence, :threat_score, 0),
+        Map.get(intelligence, :activity_level, "Unknown"),
+        Map.get(intelligence, :engagement_range, "Unknown")
+      ]
+
+      content =
+        [headers, row]
+        |> Enum.map(fn row ->
+          row
+          |> Enum.map(&to_string/1)
+          |> Enum.map(&escape_csv_field/1)
+          |> Enum.join(",")
+        end)
+        |> Enum.join("\n")
+
+      {:ok, content}
+    rescue
+      error ->
+        Logger.error("Character CSV export failed: #{inspect(error)}")
+        {:error, "CSV generation failed"}
+    end
+  end
+
+  defp format_ship_name(nil), do: "Unknown"
+  defp format_ship_name(ship) when is_map(ship), do: Map.get(ship, :name, "Unknown")
+  defp format_ship_name(ship) when is_binary(ship), do: ship
+  defp format_ship_name(_), do: "Unknown"
+
+  defp escape_csv_field(field) do
+    field_str = to_string(field)
+
+    if String.contains?(field_str, [",", "\"", "\n"]) do
+      "\"#{String.replace(field_str, "\"", "\"\"")}\""
+    else
+      field_str
+    end
   end
 
   # Import formatting helpers

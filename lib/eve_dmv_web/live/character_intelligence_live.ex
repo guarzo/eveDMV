@@ -10,10 +10,9 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
 
   import EveDmvWeb.Components.ThreatLevelComponent
   import EveDmvWeb.LiveHelpers.ApiErrorHelper
+  import EveDmvWeb.IntelligenceComponents
 
   alias EveDmv.Contexts.CharacterIntelligence
-  # import EveDmvWeb.Components.ActivityOverviewComponent
-  # import EveDmvWeb.Components.IskStatsComponent
 
   @impl Phoenix.LiveView
   def mount(%{"character_id" => character_id_str}, _session, socket) do
@@ -199,4 +198,80 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
   end
 
   def format_isk(amount), do: "#{amount}"
+
+  # Helper functions for template
+  def determine_grade(threat_score) do
+    case threat_score do
+      score when score >= 0.9 -> "A+"
+      score when score >= 0.8 -> "A"
+      score when score >= 0.7 -> "B+"
+      score when score >= 0.6 -> "B"
+      score when score >= 0.5 -> "C+"
+      score when score >= 0.4 -> "C"
+      score when score >= 0.3 -> "D+"
+      score when score >= 0.2 -> "D"
+      _ -> "F"
+    end
+  end
+
+  def generate_threat_recommendations(threat_analysis) do
+    case threat_analysis.threat_level do
+      level when level in [:high, :critical] ->
+        [
+          "Enhanced monitoring recommended",
+          "Consider escalation protocols",
+          "Review access permissions"
+        ]
+
+      level when level in [:medium, :moderate] ->
+        ["Standard monitoring", "Periodic review"]
+
+      _ ->
+        ["Standard processing", "Routine monitoring"]
+    end
+  end
+
+  def transform_behavioral_characteristics(characteristics) when is_list(characteristics) do
+    characteristics
+    |> Enum.with_index()
+    |> Enum.map(fn {char, index} ->
+      %{
+        indicator_type: "behavioral_#{index}",
+        description: char,
+        confidence: 0.8,
+        relevance: :high
+      }
+    end)
+  end
+
+  def transform_behavioral_characteristics(_), do: []
+
+  def calculate_pattern_confidence(patterns) when is_map(patterns) do
+    if Enum.empty?(patterns) do
+      0.0
+    else
+      patterns
+      |> Map.values()
+      |> Enum.sum()
+      |> Kernel./(length(Map.values(patterns)))
+    end
+  end
+
+  def calculate_pattern_confidence(_), do: 0.0
+
+  def generate_behavioral_recommendations(behavioral_patterns) do
+    base_recommendations = ["Continue behavioral monitoring", "Analyze engagement patterns"]
+
+    pattern_specific =
+      case behavioral_patterns.primary_pattern do
+        :aggressive -> ["Expect direct engagement", "Prepare for sustained combat"]
+        :cautious -> ["Anticipate defensive tactics", "Watch for retreat patterns"]
+        :opportunistic -> ["Monitor for third-party opportunities", "Expect engagement timing"]
+        :nomadic -> ["Track movement patterns", "Anticipate relocation"]
+        :territorial -> ["Expect area defense", "Monitor home system activity"]
+        _ -> ["General pattern analysis needed"]
+      end
+
+    base_recommendations ++ pattern_specific
+  end
 end

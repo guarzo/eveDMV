@@ -169,16 +169,25 @@ defmodule EveDmv.Workers.GenericTaskSupervisor do
           ref = Process.monitor(pid)
           task_info = get_task_info(table_name, pid)
 
-          # Set up warning timer
-          if config[:warning_time] do
-            Process.send_after(self(), {:warning_timeout, pid}, config[:warning_time])
+          # Only proceed if we have task info
+          if task_info do
+            # Set up warning timer
+            if config[:warning_time] do
+              Process.send_after(self(), {:warning_timeout, pid}, config[:warning_time])
+            end
+
+            # Set up max duration timer
+            Process.send_after(self(), {:max_timeout, pid}, config[:max_duration])
+
+            # Wait for completion or timeout
+            handle_monitoring(ref, pid, config, table_name, task_info)
+          else
+            # Just monitor for completion if no task info
+            receive do
+              {:DOWN, ^ref, :process, ^pid, _reason} ->
+                :ok
+            end
           end
-
-          # Set up max duration timer
-          Process.send_after(self(), {:max_timeout, pid}, config[:max_duration])
-
-          # Wait for completion or timeout
-          handle_monitoring(ref, pid, config, table_name, task_info)
         end
 
         defp handle_monitoring(ref, pid, config, table_name, task_info) do
@@ -218,34 +227,48 @@ defmodule EveDmv.Workers.GenericTaskSupervisor do
         end
 
         defp get_task_info(table_name, pid) do
-          case :ets.lookup(table_name, pid) do
-            [{^pid, info}] -> info
-            [] -> nil
+          case :ets.info(table_name) do
+            :undefined ->
+              nil
+
+            _ ->
+              case :ets.lookup(table_name, pid) do
+                [{^pid, info}] -> info
+                [] -> nil
+              end
           end
         end
 
         defp cleanup_task(pid, reason, config, table_name, task_info) do
-          # Remove from ETS table
-          :ets.delete(table_name, pid)
+          # Remove from ETS table if it exists
+          if :ets.info(table_name) != :undefined do
+            :ets.delete(table_name, pid)
+          end
 
-          # Calculate final duration
-          duration = System.monotonic_time(:millisecond) - task_info.started_at
+          # Only process telemetry if we have task_info
+          if task_info do
+            # Calculate final duration
+            duration = System.monotonic_time(:millisecond) - task_info.started_at
 
-          # Emit telemetry
-          event_suffix = if reason == :normal, do: :completed, else: :failed
+            # Emit telemetry
+            event_suffix = if reason == :normal, do: :completed, else: :failed
 
-          measurements = %{
-            duration_ms: duration,
-            task_count: :ets.info(table_name, :size)
-          }
+            table_size =
+              if :ets.info(table_name) != :undefined, do: :ets.info(table_name, :size), else: 0
 
-          metadata =
-            Map.merge(task_info.metadata, %{
-              supervisor: task_info.supervisor,
-              exit_reason: reason
-            })
+            measurements = %{
+              duration_ms: duration,
+              task_count: table_size
+            }
 
-          emit_telemetry(config[:telemetry_prefix], event_suffix, measurements, metadata)
+            metadata =
+              Map.merge(task_info.metadata, %{
+                supervisor: task_info.supervisor,
+                exit_reason: reason
+              })
+
+            emit_telemetry(config[:telemetry_prefix], event_suffix, measurements, metadata)
+          end
         end
 
         defp emit_telemetry(prefix, event, measurements, metadata) do

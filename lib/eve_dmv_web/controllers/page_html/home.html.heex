@@ -407,9 +407,8 @@
           // Direct navigation to character analysis with ID
           window.location.href = `/analysis/${input}`;
         } else {
-          // Character name - for now, redirect to search (we'll enhance this later)
-          // TODO: Implement character name to ID resolution via ESI
-          alert(`Character name search not yet implemented. Please use character ID for now.\n\nExample: Try "96218312" for Johhny Maricadie`);
+          // Character name - redirect to search for name resolution
+          window.location.href = `/search?q=${encodeURIComponent(input)}&type=character`;
         }
       });
     </script>

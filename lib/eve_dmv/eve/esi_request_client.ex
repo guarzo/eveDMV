@@ -261,7 +261,7 @@ defmodule EveDmv.Eve.EsiRequestClient do
   defp try_fallback_request(path, cache_key, opts) do
     fallback_config = ReliabilityConfig.get_fallback_config()
 
-    if cache_key and fallback_config.use_stale_cache do
+    if not is_nil(cache_key) and fallback_config.use_stale_cache do
       execute_stale_cache_fallback(path, cache_key, opts)
     else
       try_placeholder_fallback(path, opts)
