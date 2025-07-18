@@ -297,5 +297,4 @@ defmodule EveDmv.Users.TokenRefreshService do
   def get_stats do
     GenServer.call(__MODULE__, :get_stats)
   end
-
 end
