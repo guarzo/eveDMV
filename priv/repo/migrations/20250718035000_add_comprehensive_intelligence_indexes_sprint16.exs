@@ -77,11 +77,12 @@ defmodule EveDmv.Repo.Migrations.AddComprehensiveIntelligenceIndexesSprint16 do
     """
 
     # Index for large battle detection (participant count analysis)
+    # Simplified condition to avoid potential non-immutable functions
     execute """
     CREATE INDEX #{concurrently} IF NOT EXISTS idx_killmails_large_battles
     ON killmails_raw (killmail_time DESC, solar_system_id)
     WHERE (raw_data->'attackers') IS NOT NULL 
-    AND jsonb_array_length(raw_data->'attackers') > 10
+    AND killmail_time >= '2024-01-01'::timestamp
     """
 
     # 5. MULTI-SYSTEM BATTLE CORRELATION INDEXES
@@ -96,11 +97,17 @@ defmodule EveDmv.Repo.Migrations.AddComprehensiveIntelligenceIndexesSprint16 do
     """
 
     # Index for participant overlap analysis across systems
+    # Using separate indexes for attackers and victims since jsonb_build_array is not immutable
     execute """
-    CREATE INDEX #{concurrently} IF NOT EXISTS idx_killmails_participant_overlap
-    ON killmails_raw USING GIN (
-      (raw_data->'attackers' || jsonb_build_array(raw_data->'victim'))
-    )
+    CREATE INDEX #{concurrently} IF NOT EXISTS idx_killmails_attackers_gin
+    ON killmails_raw USING GIN ((raw_data->'attackers'))
+    WHERE killmail_time >= '2024-01-01'::timestamp
+    """
+
+    # Separate index for victim data for participant analysis
+    execute """
+    CREATE INDEX #{concurrently} IF NOT EXISTS idx_killmails_victim_gin
+    ON killmails_raw USING GIN ((raw_data->'victim'))
     WHERE killmail_time >= '2024-01-01'::timestamp
     """
 
@@ -120,18 +127,20 @@ defmodule EveDmv.Repo.Migrations.AddComprehensiveIntelligenceIndexesSprint16 do
     # ---------------------------------------
     
     # Index for recent activity analysis in intelligence dashboard
+    # Using fixed timestamp instead of NOW() since NOW() is not immutable
     execute """
     CREATE INDEX #{concurrently} IF NOT EXISTS idx_killmails_dashboard_recent
     ON killmails_raw (killmail_time DESC, victim_character_id, solar_system_id)
-    WHERE killmail_time >= NOW() - INTERVAL '7 days'
+    WHERE killmail_time >= '2024-01-01'::timestamp
     """
 
     # Index for threat alert generation queries
+    # Simplified condition to avoid non-immutable functions
     execute """
     CREATE INDEX #{concurrently} IF NOT EXISTS idx_killmails_threat_alerts
     ON killmails_raw (killmail_time DESC, solar_system_id)
-    WHERE (raw_data->'zkb'->>'totalValue')::bigint > 500000000 
-    OR jsonb_array_length(raw_data->'attackers') > 20
+    WHERE (raw_data->'zkb'->>'totalValue')::bigint > 500000000
+    AND killmail_time >= '2024-01-01'::timestamp
     """
   end
 
@@ -149,7 +158,8 @@ defmodule EveDmv.Repo.Migrations.AddComprehensiveIntelligenceIndexesSprint16 do
     execute "DROP INDEX #{concurrently} IF EXISTS idx_killmails_system_activity_volume"
     execute "DROP INDEX #{concurrently} IF EXISTS idx_killmails_large_battles"
     execute "DROP INDEX #{concurrently} IF EXISTS idx_killmails_temporal_clustering"
-    execute "DROP INDEX #{concurrently} IF EXISTS idx_killmails_participant_overlap"
+    execute "DROP INDEX #{concurrently} IF EXISTS idx_killmails_attackers_gin"
+    execute "DROP INDEX #{concurrently} IF EXISTS idx_killmails_victim_gin"
     execute "DROP INDEX #{concurrently} IF EXISTS idx_killmails_cache_warming"
     execute "DROP INDEX #{concurrently} IF EXISTS idx_killmails_dashboard_recent"
     execute "DROP INDEX #{concurrently} IF EXISTS idx_killmails_threat_alerts"
