@@ -122,6 +122,22 @@ defmodule EveDmv.Application do
           end
         end)
 
+        # Bootstrap admin users from environment variables
+        Task.start(fn ->
+          try do
+            # Wait a bit for database to be ready
+            Process.sleep(2000)
+
+            if EveDmv.Admin.Bootstrap.bootstrap_configured?() do
+              EveDmv.Admin.Bootstrap.bootstrap_from_env()
+            end
+          rescue
+            error ->
+              require Logger
+              Logger.error("Admin bootstrap failed: #{inspect(error)}")
+          end
+        end)
+
         # Attach global error telemetry handlers
         EveDmv.ErrorHandler.attach_telemetry_handlers()
 

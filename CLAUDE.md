@@ -171,6 +171,10 @@ WANDERER_KILLS_WS_URL       # WebSocket URL: ws://host.docker.internal:4004/sock
 # Pipeline Control
 PIPELINE_ENABLED            # Enable/disable Broadway pipeline (true/false)
 MOCK_SSE_SERVER_ENABLED     # Use mock server for development (true/false)
+
+# Admin User Bootstrap (Production)
+ADMIN_BOOTSTRAP_CHARACTERS      # Comma-separated character names: "John Doe,Jane Smith"
+ADMIN_BOOTSTRAP_CHARACTER_IDS   # Comma-separated character IDs: "123456789,987654321"
 ```
 
 ## Common Development Tasks

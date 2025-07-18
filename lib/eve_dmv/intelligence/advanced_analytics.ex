@@ -27,6 +27,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
          {:ok, vetting_data} <- get_vetting_data(character_id) do
       case {character_stats, vetting_data} do
         {[stats], [vetting]} ->
+          # Full analysis with both stats and vetting data
           patterns = %{
             activity_rhythm: PatternAnalysis.analyze_activity_rhythm(stats),
             engagement_patterns: PatternAnalysis.analyze_engagement_patterns(stats),
@@ -44,6 +45,53 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
              confidence_score: confidence_score,
              analysis_timestamp: DateTime.utc_now(),
              recommendations: generate_pattern_recommendations(patterns)
+           }}
+
+        {[stats], []} ->
+          # Analysis with stats only (no vetting data)
+          patterns = %{
+            activity_rhythm: PatternAnalysis.analyze_activity_rhythm(stats),
+            engagement_patterns: PatternAnalysis.analyze_engagement_patterns(stats),
+            # placeholder
+            risk_progression: %{analysis_quality: "limited", risk_trend: "stable"},
+            social_patterns: PatternAnalysis.analyze_social_patterns(stats),
+            operational_patterns: PatternAnalysis.analyze_operational_patterns(stats),
+            anomaly_detection: PatternAnalysis.detect_behavioral_anomalies(stats)
+          }
+
+          # Reduced confidence
+          confidence_score = calculate_pattern_confidence(patterns) * 0.8
+
+          {:ok,
+           %{
+             patterns: patterns,
+             confidence_score: confidence_score,
+             analysis_timestamp: DateTime.utc_now(),
+             recommendations: generate_pattern_recommendations(patterns),
+             note: "Analysis performed with limited vetting data"
+           }}
+
+        {[], _} ->
+          # No character stats available - return minimal analysis
+          Logger.warning(
+            "No character stats found for character #{character_id}, returning minimal analysis"
+          )
+
+          {:ok,
+           %{
+             patterns: %{
+               activity_rhythm: %{analysis_quality: "minimal", activity_level: "unknown"},
+               engagement_patterns: %{analysis_quality: "minimal", engagement_style: "unknown"},
+               risk_progression: %{analysis_quality: "minimal", risk_trend: "unknown"},
+               social_patterns: %{analysis_quality: "minimal", social_connectivity: "unknown"},
+               operational_patterns: %{analysis_quality: "minimal", operational_style: "unknown"},
+               anomaly_detection: %{analysis_quality: "minimal", anomalies: []}
+             },
+             # Very low confidence
+             confidence_score: 0.1,
+             analysis_timestamp: DateTime.utc_now(),
+             recommendations: ["Gather more character data for comprehensive analysis"],
+             note: "Minimal analysis due to insufficient character statistics"
            }}
 
         _ ->
@@ -255,7 +303,18 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   end
 
   defp count_behavioral_anomalies(behavioral_patterns) do
-    behavioral_patterns.anomaly_detection.anomaly_count * 0.1
+    case get_in(behavioral_patterns, [:anomaly_detection, :anomaly_count]) do
+      nil ->
+        # Handle cases where anomaly_count is not available (e.g., minimal analysis)
+        anomalies = get_in(behavioral_patterns, [:anomaly_detection, :anomalies]) || []
+        length(anomalies) * 0.1
+
+      count when is_number(count) ->
+        count * 0.1
+
+      _ ->
+        0.0
+    end
   end
 
   defp assess_opsec_score(character_id) do
