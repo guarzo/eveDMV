@@ -1,0 +1,289 @@
+defmodule EveDmvWeb.Live.Helpers.ApiHelper do
+  @moduledoc """
+  Standardized API consumption patterns for LiveView pages.
+  
+  Provides consistent patterns for Ash API calls, error handling,
+  loading states, and async data operations across all LiveView modules.
+  """
+
+  alias EveDmv.Api
+  
+  import Phoenix.LiveView, only: [assign: 3]
+  require Logger
+
+  @type loading_state :: :loading | :loaded | :error
+  @type api_result(t) :: {:ok, t} | {:error, term()}
+  @type socket_assigns :: %{required(atom()) => term()}
+
+  @doc """
+  Standard domain reference for all Ash API calls.
+  
+  Use this instead of hardcoding domain references throughout LiveView modules.
+  """
+  def domain, do: Api
+
+  @doc """
+  Standardized async data loading pattern for LiveView pages.
+  
+  ## Usage:
+  
+      def handle_info(:load_data, socket) do
+        {:noreply, load_data_async(socket, :character_data, fn ->
+          CharacterAnalyzer.analyze_character(socket.assigns.character_id)
+        end)}
+      end
+  """
+  def load_data_async(socket, assign_key, data_loader_fn) when is_function(data_loader_fn, 0) do
+    # Set loading state
+    socket = assign(socket, assign_key, nil)
+    socket = assign(socket, :"#{assign_key}_loading", true)
+    socket = assign(socket, :"#{assign_key}_error", nil)
+    
+    # Load data asynchronously
+    Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
+      try do
+        result = data_loader_fn.()
+        
+        # Send result back to LiveView
+        send(self(), {:"#{assign_key}_loaded", result})
+      rescue
+        error ->
+          Logger.error("Async data loading failed for #{assign_key}: #{inspect(error)}")
+          send(self(), {:"#{assign_key}_error", error})
+      end
+    end)
+    
+    socket
+  end
+
+  @doc """
+  Handle async data loading results with standardized patterns.
+  
+  ## Usage:
+  
+      def handle_info({:character_data_loaded, result}, socket) do
+        {:noreply, handle_async_result(socket, :character_data, result)}
+      end
+      
+      def handle_info({:character_data_error, error}, socket) do
+        {:noreply, handle_async_error(socket, :character_data, error)}
+      end
+  """
+  def handle_async_result(socket, assign_key, {:ok, data}) do
+    socket
+    |> assign(assign_key, data)
+    |> assign(:"#{assign_key}_loading", false)
+    |> assign(:"#{assign_key}_error", nil)
+  end
+
+  def handle_async_result(socket, assign_key, {:error, reason}) do
+    handle_async_error(socket, assign_key, reason)
+  end
+
+  def handle_async_result(socket, assign_key, data) do
+    # Handle direct data (non-tuple result)
+    socket
+    |> assign(assign_key, data)
+    |> assign(:"#{assign_key}_loading", false)
+    |> assign(:"#{assign_key}_error", nil)
+  end
+
+  def handle_async_error(socket, assign_key, reason) do
+    Logger.warning("Data loading error for #{assign_key}: #{inspect(reason)}")
+    
+    socket
+    |> assign(assign_key, nil)
+    |> assign(:"#{assign_key}_loading", false)
+    |> assign(:"#{assign_key}_error", format_error_message(reason))
+  end
+
+  @doc """
+  Standardized Ash resource query with consistent error handling.
+  
+  ## Usage:
+  
+      case ash_read(KillmailRaw, query) do
+        {:ok, killmails} -> handle_success(killmails)
+        {:error, reason} -> handle_error(reason)
+      end
+  """
+  def ash_read(resource, query_or_options \\ []) do
+    result = 
+      cond do
+        is_list(query_or_options) ->
+          # Simple read with options
+          Ash.read(resource, Keyword.put(query_or_options, :domain, domain()))
+          
+        match?(%Ash.Query{}, query_or_options) ->
+          # Pre-built query
+          Ash.read(query_or_options, domain: domain())
+          
+        true ->
+          # Single resource read
+          Ash.read(resource, domain: domain())
+      end
+    
+    case result do
+      {:ok, data} -> {:ok, data}
+      {:error, reason} ->
+        Logger.warning("Ash read failed for #{inspect(resource)}: #{inspect(reason)}")
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Standardized Ash resource get with consistent error handling.
+  """
+  def ash_get(resource, id, options \\ []) do
+    result = Ash.get(resource, id, Keyword.put(options, :domain, domain()))
+    
+    case result do
+      {:ok, data} -> {:ok, data}
+      {:error, reason} ->
+        Logger.warning("Ash get failed for #{inspect(resource)} ID #{id}: #{inspect(reason)}")
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Standardized Ash query building with domain pre-set.
+  """
+  def ash_query(resource) do
+    Ash.Query.new(resource)
+  end
+
+  @doc """
+  Apply filters to an Ash query using a standardized pattern.
+  
+  ## Usage:
+  
+      query = ash_query(KillmailRaw)
+      |> apply_filters([
+        {:killmail_time, :gte, start_time},
+        {:solar_system_id, :eq, system_id}
+      ])
+  """
+  def apply_filters(query, filters) when is_list(filters) do
+    # Note: This is a simplified version. Full implementation would require
+    # proper Ash.Query.filter macro usage in the calling context.
+    Enum.reduce(filters, query, fn {_field, _operator, _value}, acc ->
+      # Simplified implementation - users should use Ash.Query.filter directly
+      # for complex filtering scenarios
+      Logger.warning("Filter application requires macro context - use Ash.Query.filter directly")
+      acc
+    end)
+  end
+
+  @doc """
+  Standardized pagination for large datasets.
+  
+  ## Usage:
+  
+      paginate_query(query, page: 1, page_size: 50)
+  """
+  def paginate_query(query, options \\ []) do
+    page = Keyword.get(options, :page, 1)
+    page_size = Keyword.get(options, :page_size, 25)
+    
+    query
+    |> Ash.Query.limit(page_size)
+    |> Ash.Query.offset((page - 1) * page_size)
+  end
+
+  @doc """
+  Standardized timeframe filtering for intelligence and analysis queries.
+  
+  ## Usage:
+  
+      cutoff_time = calculate_timeframe_cutoff(:last_24h)
+      query = ash_query(KillmailRaw)
+      |> Ash.Query.filter(killmail_time >= ^cutoff_time)
+  """
+  def apply_timeframe_filter(query, _time_field, timeframe) do
+    # Note: This returns the cutoff time for use in caller's filter context
+    _cutoff_time = calculate_timeframe_cutoff(timeframe)
+    # Return query unchanged - caller should apply filter with calculated cutoff
+    query
+  end
+
+  @doc """
+  Calculate cutoff time for common timeframe filters.
+  """
+  def calculate_timeframe_cutoff(timeframe) do
+    case timeframe do
+      :last_1h -> DateTime.add(DateTime.utc_now(), -1, :hour)
+      :last_24h -> DateTime.add(DateTime.utc_now(), -24, :hour)
+      :last_7d -> DateTime.add(DateTime.utc_now(), -7, :day)
+      :last_30d -> DateTime.add(DateTime.utc_now(), -30, :day)
+      :last_90d -> DateTime.add(DateTime.utc_now(), -90, :day)
+      _ -> DateTime.add(DateTime.utc_now(), -24, :hour)
+    end
+  end
+
+  @doc """
+  Standardized error handling and user-friendly error messages.
+  """
+  def format_error_message(error) do
+    case error do
+      %Ash.Error.Unknown{} ->
+        "An unexpected error occurred. Please try again."
+        
+      %Ash.Error.Invalid{} ->
+        "Invalid data provided. Please check your input."
+        
+      %Ecto.NoResultsError{} ->
+        "No records found matching your criteria."
+        
+      {:error, :not_found} ->
+        "The requested resource was not found."
+        
+      {:error, :timeout} ->
+        "The request timed out. Please try again."
+        
+      binary when is_binary(binary) ->
+        binary
+        
+      _ ->
+        "An error occurred while processing your request."
+    end
+  end
+
+  @doc """
+  Standardized loading state management for LiveView assigns.
+  
+  Sets up the standard loading/error state assigns for a data key.
+  """
+  def init_loading_state(socket, data_keys) when is_list(data_keys) do
+    Enum.reduce(data_keys, socket, &init_loading_state(&2, &1))
+  end
+
+  def init_loading_state(socket, data_key) when is_atom(data_key) do
+    socket
+    |> assign(data_key, nil)
+    |> assign(:"#{data_key}_loading", false)
+    |> assign(:"#{data_key}_error", nil)
+  end
+
+  @doc """
+  Check if data is currently loading for a given key.
+  """
+  def loading?(assigns, data_key) do
+    Map.get(assigns, :"#{data_key}_loading", false)
+  end
+
+  @doc """
+  Check if there's an error for a given data key.
+  """
+  def error?(assigns, data_key) do
+    not is_nil(Map.get(assigns, :"#{data_key}_error"))
+  end
+
+  @doc """
+  Get error message for a given data key.
+  """
+  def get_error(assigns, data_key) do
+    Map.get(assigns, :"#{data_key}_error")
+  end
+
+  # Private helper functions
+end

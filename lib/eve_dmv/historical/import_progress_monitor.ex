@@ -232,14 +232,12 @@ defmodule EveDmv.Historical.ImportProgressMonitor do
       [:eve_dmv, :import, :complete]
     ]
 
-    Enum.each(events, fn event ->
-      :telemetry.attach(
-        "import-monitor-#{inspect(event)}",
-        event,
-        {__MODULE__, :handle_telemetry_event, []},
-        nil
-      )
-    end)
+    :telemetry.attach_many(
+      "import-monitor",
+      events,
+      {__MODULE__, :handle_telemetry_event, []},
+      nil
+    )
   end
 
   def handle_telemetry_event(event, measurements, metadata, _config) do

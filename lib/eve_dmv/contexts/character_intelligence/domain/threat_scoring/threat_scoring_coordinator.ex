@@ -15,6 +15,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
 
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Api
+  alias EveDmv.Intelligence.Cache.IntelligenceCache
 
   import Ash.Query
 
@@ -29,6 +30,14 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
   @unpredictability_weight 0.10
   @recent_activity_weight 0.10
 
+  # Cache configuration for performance optimization
+  # 6 hours for basic threat scores
+  @cache_ttl_threat_score :timer.hours(6)
+  # 12 hours for trend analysis
+  @cache_ttl_trend_analysis :timer.hours(12)
+  # 4 hours for comparisons
+  @cache_ttl_comparison :timer.hours(4)
+
   @threat_levels %{
     extreme: 9.0,
     very_high: 7.5,
@@ -39,9 +48,23 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
   }
 
   @doc """
-  Calculates comprehensive threat score for a character.
+  Calculates comprehensive threat score for a character with caching.
   """
   def calculate_threat_score(character_id, options \\ []) do
+    ttl = Keyword.get(options, :cache_ttl, @cache_ttl_threat_score)
+
+    case IntelligenceCache.get_threat_score(character_id, options, ttl) do
+      {:ok, result} -> {:ok, result}
+      {:error, _} = error -> error
+    end
+  end
+
+  @doc """
+  Calculates comprehensive threat score for a character without caching.
+
+  This is the internal implementation called by the cache system.
+  """
+  def calculate_threat_score_uncached(character_id, options \\ []) do
     Logger.info("Calculating threat score for character #{character_id}")
 
     analysis_window_days = Keyword.get(options, :analysis_window_days, @analysis_window_days)
@@ -97,53 +120,147 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
   end
 
   @doc """
-  Compare threat levels between multiple characters.
+  Compare threat levels between multiple characters with caching.
   """
   def compare_threat_levels(character_ids, options \\ []) when is_list(character_ids) do
-    Logger.info("Comparing threat levels for #{length(character_ids)} characters")
+    ttl = Keyword.get(options, :cache_ttl, @cache_ttl_comparison)
 
-    # For now, return placeholder comparison
-    comparisons =
-      Enum.map(character_ids, fn character_id ->
-        {:ok, threat_data} = calculate_threat_score(character_id, options)
-        threat_data
-      end)
-
-    {:ok,
-     %{
-       characters: comparisons,
-       highest_threat: List.first(comparisons),
-       average_threat: 5.0,
-       threat_distribution: %{
-         extreme: 0,
-         very_high: 0,
-         high: 0,
-         moderate: length(character_ids),
-         low: 0,
-         minimal: 0
-       }
-     }}
+    case IntelligenceCache.get_threat_comparison(character_ids, options, ttl) do
+      {:ok, result} -> {:ok, result}
+      {:error, _} = error -> error
+    end
   end
 
   @doc """
-  Analyze threat trends for a character over time.
+  Compare threat levels between multiple characters without caching.
+
+  This is the internal implementation called by the cache system.
   """
-  def analyze_threat_trends(character_id, _options \\ []) do
+  def compare_threat_levels_uncached(character_ids, options \\ []) when is_list(character_ids) do
+    Logger.info("Comparing threat levels for #{length(character_ids)} characters")
+
+    # Calculate threat scores for all characters
+    {successful_comparisons, failed_comparisons} =
+      character_ids
+      |> Enum.map(fn character_id ->
+        case calculate_threat_score_uncached(character_id, options) do
+          {:ok, threat_data} -> {:ok, threat_data}
+          {:error, reason} -> {:error, {character_id, reason}}
+        end
+      end)
+      |> Enum.split_with(&match?({:ok, _}, &1))
+
+    # Extract successful threat data
+    comparisons =
+      successful_comparisons
+      |> Enum.map(fn {:ok, data} -> data end)
+      |> Enum.sort_by(& &1.threat_score, :desc)
+
+    if Enum.empty?(comparisons) do
+      {:error, :no_valid_threat_data}
+    else
+      # Calculate real statistics
+      threat_scores = Enum.map(comparisons, & &1.threat_score)
+      average_threat = Enum.sum(threat_scores) / length(threat_scores)
+
+      # Count threat level distribution
+      threat_distribution =
+        comparisons
+        |> Enum.group_by(& &1.threat_level)
+        |> Map.new(fn {level, chars} -> {level, length(chars)} end)
+        |> Map.merge(%{extreme: 0, very_high: 0, high: 0, moderate: 0, low: 0, minimal: 0})
+
+      {:ok,
+       %{
+         characters: comparisons,
+         highest_threat: List.first(comparisons),
+         lowest_threat: List.last(comparisons),
+         average_threat: Float.round(average_threat, 2),
+         threat_distribution: threat_distribution,
+         successful_analyses: length(comparisons),
+         failed_analyses: length(failed_comparisons),
+         failures: Enum.map(failed_comparisons, fn {:error, failure} -> failure end)
+       }}
+    end
+  end
+
+  @doc """
+  Analyze threat trends for a character over time with caching.
+  """
+  def analyze_threat_trends(character_id, options \\ []) do
+    ttl = Keyword.get(options, :cache_ttl, @cache_ttl_trend_analysis)
+
+    case IntelligenceCache.get_threat_trends(character_id, options, ttl) do
+      {:ok, result} -> {:ok, result}
+      {:error, _} = error -> error
+    end
+  end
+
+  @doc """
+  Analyze threat trends for a character over time without caching.
+
+  This is the internal implementation called by the cache system.
+  """
+  def analyze_threat_trends_uncached(character_id, options \\ []) do
     Logger.info("Analyzing threat trends for character #{character_id}")
 
-    # For now, return placeholder trend data
-    {:ok,
-     %{
-       character_id: character_id,
-       trend_direction: :stable,
-       trend_strength: 0.1,
-       historical_scores: [],
-       recent_changes: [],
-       prediction: %{
-         next_30_days: 5.0,
-         confidence: 0.7
-       }
-     }}
+    # Calculate threat scores for different time periods to establish trend
+    # days
+    analysis_periods = [30, 60, 90]
+
+    historical_scores =
+      Enum.map(analysis_periods, fn days ->
+        case calculate_threat_score_uncached(
+               character_id,
+               Keyword.put(options, :analysis_window_days, days)
+             ) do
+          {:ok, threat_data} ->
+            %{
+              period_days: days,
+              threat_score: threat_data.threat_score,
+              threat_level: threat_data.threat_level,
+              total_killmails: threat_data.total_killmails,
+              confidence: threat_data.confidence
+            }
+
+          {:error, _} ->
+            nil
+        end
+      end)
+      |> Enum.reject(&is_nil/1)
+
+    if length(historical_scores) < 2 do
+      {:error, :insufficient_data_for_trend_analysis}
+    else
+      # Calculate trend direction and strength
+      scores = Enum.map(historical_scores, & &1.threat_score)
+      {trend_direction, trend_strength} = calculate_trend_metrics(scores)
+
+      # Analyze recent changes (30-day vs 60-day)
+      recent_changes = analyze_recent_changes(historical_scores)
+
+      # Simple prediction based on trend
+      latest_score = List.first(scores)
+      predicted_score = latest_score + trend_strength * 0.5
+
+      # Confidence based on data consistency
+      confidence = calculate_trend_confidence(historical_scores)
+
+      {:ok,
+       %{
+         character_id: character_id,
+         trend_direction: trend_direction,
+         trend_strength: Float.round(trend_strength, 3),
+         historical_scores: historical_scores,
+         recent_changes: recent_changes,
+         prediction: %{
+           next_30_days: Float.round(max(0.0, min(10.0, predicted_score)), 2),
+           confidence: Float.round(confidence, 2)
+         },
+         analysis_periods: analysis_periods,
+         analyzed_at: DateTime.utc_now()
+       }}
+    end
   end
 
   # Private helper functions
@@ -262,7 +379,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
     cutoff_date =
       DateTime.add(DateTime.utc_now(), -analysis_window_days * 24 * 60 * 60, :second)
 
-    # Fetch killmails where character was victim
+    # Optimized: Fetch killmails where character was victim using existing index
     victim_query =
       KillmailRaw
       |> new()
@@ -271,48 +388,142 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
       |> sort(killmail_time: :desc)
       |> limit(500)
 
-    # Fetch killmails where character was attacker (need to search raw_data)
-    # This is a simplified approach - would be more efficient with proper indexing
+    # Optimized: Use a more targeted approach for attacker queries
+    # We'll still need to post-filter but limit the initial dataset more aggressively
     attacker_query =
       KillmailRaw
       |> new()
       |> filter(killmail_time: [gte: cutoff_date])
-      |> limit(1000)
+      |> sort(killmail_time: :desc)
+      # Increased limit but still manageable
+      |> limit(2000)
 
-    with {:ok, victim_killmails} <- Ash.read(victim_query, domain: Api),
-         {:ok, potential_attacker_killmails} <- Ash.read(attacker_query, domain: Api) do
-      # Filter attacker killmails for this character
-      attacker_killmails =
-        Enum.filter(potential_attacker_killmails, fn km ->
-          case km.raw_data do
-            %{"attackers" => attackers} when is_list(attackers) ->
-              Enum.any?(attackers, &(&1["character_id"] == character_id))
+    # Execute both queries in parallel for better performance
+    tasks = [
+      Task.async(fn -> Ash.read(victim_query, domain: Api) end),
+      Task.async(fn -> Ash.read(attacker_query, domain: Api) end)
+    ]
 
-            _ ->
-              false
-          end
-        end)
+    case Task.await_many(tasks, 10_000) do
+      [{:ok, victim_killmails}, {:ok, potential_attacker_killmails}] ->
+        # Filter attacker killmails for this character - optimized filtering
+        attacker_killmails =
+          Enum.filter(potential_attacker_killmails, fn km ->
+            case km.raw_data do
+              %{"attackers" => attackers} when is_list(attackers) ->
+                Enum.any?(attackers, &(&1["character_id"] == character_id))
 
-      all_killmails = Enum.uniq_by(victim_killmails ++ attacker_killmails, & &1.killmail_id)
+              _ ->
+                false
+            end
+          end)
 
-      if length(all_killmails) < @minimum_killmails_for_scoring do
-        {:error, :insufficient_data}
-      else
-        combat_data = %{
-          killmails: all_killmails,
-          analysis_period_days: analysis_window_days,
-          data_cutoff: cutoff_date,
-          victim_killmails: victim_killmails,
-          attacker_killmails: attacker_killmails
-        }
+        all_killmails = Enum.uniq_by(victim_killmails ++ attacker_killmails, & &1.killmail_id)
 
-        {:ok, combat_data}
-      end
-    else
+        if length(all_killmails) < @minimum_killmails_for_scoring do
+          {:error, :insufficient_data}
+        else
+          combat_data = %{
+            killmails: all_killmails,
+            analysis_period_days: analysis_window_days,
+            data_cutoff: cutoff_date,
+            victim_killmails: victim_killmails,
+            attacker_killmails: attacker_killmails
+          }
+
+          {:ok, combat_data}
+        end
+
+      [victim_result, attacker_result] ->
+        # Handle partial failures - use what we have
+        case {victim_result, attacker_result} do
+          {{:ok, victim_killmails}, {:ok, potential_attacker_killmails}} ->
+            attacker_killmails =
+              Enum.filter(potential_attacker_killmails, fn km ->
+                case km.raw_data do
+                  %{"attackers" => attackers} when is_list(attackers) ->
+                    Enum.any?(attackers, &(&1["character_id"] == character_id))
+
+                  _ ->
+                    false
+                end
+              end)
+
+            all_killmails = Enum.uniq_by(victim_killmails ++ attacker_killmails, & &1.killmail_id)
+
+            if length(all_killmails) < @minimum_killmails_for_scoring do
+              {:error, :insufficient_data}
+            else
+              combat_data = %{
+                killmails: all_killmails,
+                analysis_period_days: analysis_window_days,
+                data_cutoff: cutoff_date,
+                victim_killmails: victim_killmails,
+                attacker_killmails: attacker_killmails
+              }
+
+              {:ok, combat_data}
+            end
+
+          {{:ok, victim_killmails}, _} ->
+            # Only victim data available
+            if length(victim_killmails) < @minimum_killmails_for_scoring do
+              {:error, :insufficient_data}
+            else
+              Logger.warning("Only victim data available for character #{character_id}")
+
+              combat_data = %{
+                killmails: victim_killmails,
+                analysis_period_days: analysis_window_days,
+                data_cutoff: cutoff_date,
+                victim_killmails: victim_killmails,
+                attacker_killmails: []
+              }
+
+              {:ok, combat_data}
+            end
+
+          {_, {:ok, potential_attacker_killmails}} ->
+            # Only attacker data available
+            attacker_killmails =
+              Enum.filter(potential_attacker_killmails, fn km ->
+                case km.raw_data do
+                  %{"attackers" => attackers} when is_list(attackers) ->
+                    Enum.any?(attackers, &(&1["character_id"] == character_id))
+
+                  _ ->
+                    false
+                end
+              end)
+
+            if length(attacker_killmails) < @minimum_killmails_for_scoring do
+              {:error, :insufficient_data}
+            else
+              Logger.warning("Only attacker data available for character #{character_id}")
+
+              combat_data = %{
+                killmails: attacker_killmails,
+                analysis_period_days: analysis_window_days,
+                data_cutoff: cutoff_date,
+                victim_killmails: [],
+                attacker_killmails: attacker_killmails
+              }
+
+              {:ok, combat_data}
+            end
+
+          _ ->
+            {:error, :database_error}
+        end
+
       error ->
         Logger.error("Failed to fetch combat data: #{inspect(error)}")
         {:error, :database_error}
     end
+  rescue
+    error ->
+      Logger.error("Exception during combat data fetch: #{inspect(error)}")
+      {:error, :database_error}
   end
 
   defp analyze_activity_trend(killmails) do
@@ -337,5 +548,71 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
         true -> :stable
       end
     end
+  end
+
+  defp calculate_trend_metrics(scores) when length(scores) >= 2 do
+    # Calculate linear trend between first (most recent) and last (oldest) scores
+    first_score = List.first(scores)
+    last_score = List.last(scores)
+
+    trend_strength = first_score - last_score
+
+    trend_direction =
+      cond do
+        trend_strength > 0.5 -> :increasing
+        trend_strength < -0.5 -> :decreasing
+        true -> :stable
+      end
+
+    {trend_direction, trend_strength}
+  end
+
+  defp analyze_recent_changes(historical_scores) do
+    if length(historical_scores) >= 2 do
+      recent_30_day = Enum.find(historical_scores, &(&1.period_days == 30))
+      recent_60_day = Enum.find(historical_scores, &(&1.period_days == 60))
+
+      if recent_30_day && recent_60_day do
+        score_change = recent_30_day.threat_score - recent_60_day.threat_score
+
+        level_change =
+          if recent_30_day.threat_level != recent_60_day.threat_level do
+            "#{recent_60_day.threat_level} -> #{recent_30_day.threat_level}"
+          else
+            "stable at #{recent_30_day.threat_level}"
+          end
+
+        [
+          %{
+            change_type: :threat_score,
+            value: Float.round(score_change, 2),
+            description: if(score_change > 0, do: "threat increasing", else: "threat decreasing")
+          },
+          %{
+            change_type: :threat_level,
+            value: level_change,
+            description: "threat level change"
+          }
+        ]
+      else
+        []
+      end
+    else
+      []
+    end
+  end
+
+  defp calculate_trend_confidence(historical_scores) do
+    # Confidence based on data volume and consistency
+    total_killmails = Enum.sum(Enum.map(historical_scores, & &1.total_killmails))
+
+    avg_confidence =
+      Enum.sum(Enum.map(historical_scores, & &1.confidence)) / length(historical_scores)
+
+    # More killmails and higher individual confidence = higher trend confidence
+    # 50+ killmails = max confidence
+    killmail_factor = min(1.0, total_killmails / 50.0)
+
+    avg_confidence * killmail_factor
   end
 end

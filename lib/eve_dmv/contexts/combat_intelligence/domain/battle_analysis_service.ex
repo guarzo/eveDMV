@@ -24,6 +24,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   alias EveDmv.DomainEvents.BattleAnalysisComplete
   alias EveDmv.DomainEvents.TacticalInsightGenerated
   alias EveDmv.Infrastructure.EventBus
+  alias EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer
 
   require Logger
 
@@ -484,6 +485,19 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     # Calculate the time window
     cutoff_time = DateTime.add(DateTime.utc_now(), -seconds_back, :second)
 
+    # Use streaming for large time windows (> 4 hours) or when expecting > 1000 kills
+    # 4 hours
+    if seconds_back > 14400 do
+      use_streaming_fetch(system_id, cutoff_time)
+    else
+      use_standard_fetch(system_id, cutoff_time)
+    end
+  end
+
+  defp use_standard_fetch(system_id, cutoff_time) do
+    # Calculate seconds back for logging
+    seconds_back_calculated = DateTime.diff(DateTime.utc_now(), cutoff_time, :second)
+
     query = """
     SELECT 
       killmail_id,
@@ -501,7 +515,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     WHERE solar_system_id = $1
       AND killmail_time >= $2
     ORDER BY killmail_time DESC
-    LIMIT 500
+    LIMIT 1000
     """
 
     case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [system_id, cutoff_time]) do
@@ -540,7 +554,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
           end)
 
         Logger.debug(
-          "Found #{length(killmails)} killmails in system #{system_id} from last #{seconds_back} seconds"
+          "Found #{length(killmails)} killmails in system #{system_id} from last #{seconds_back_calculated} seconds"
         )
 
         {:ok, killmails}
@@ -553,6 +567,59 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     error ->
       Logger.error("Exception fetching recent system kills: #{inspect(error)}")
       {:error, :fetch_failed}
+  end
+
+  defp use_streaming_fetch(system_id, cutoff_time) do
+    Logger.info("Using streaming fetch for large dataset: system #{system_id}")
+
+    # Use streaming for large datasets to avoid memory issues
+    params = %{
+      system_id: system_id,
+      start_time: cutoff_time,
+      end_time: DateTime.utc_now()
+    }
+
+    opts = [
+      batch_size: 1000,
+      analysis_types: [:basic_metrics],
+      stream_timeout: 60_000
+    ]
+
+    try do
+      case StreamingBattleAnalyzer.stream_killmail_processing(
+             params,
+             # Identity function - just collect the killmails
+             fn batch -> batch end,
+             opts
+           ) do
+        {:ok, stream} ->
+          # Collect all killmails from the stream
+          killmails =
+            stream
+            # Limit to first 10 batches to prevent excessive memory usage
+            |> Enum.take(10)
+            |> List.flatten()
+            |> Enum.sort_by(& &1.killmail_time, {:desc, DateTime})
+            # Hard limit of 2000 most recent killmails
+            |> Enum.take(2000)
+
+          Logger.info("Streaming fetch completed: #{length(killmails)} killmails")
+          {:ok, killmails}
+
+        {:error, reason} ->
+          Logger.error("Streaming fetch failed: #{inspect(reason)}")
+          # Fallback to standard fetch with smaller window
+          # 1 hour fallback
+          smaller_cutoff = DateTime.add(DateTime.utc_now(), -3600, :second)
+          use_standard_fetch(system_id, smaller_cutoff)
+      end
+    rescue
+      error ->
+        Logger.error("Exception in streaming fetch: #{inspect(error)}")
+        # Fallback to standard fetch
+        smaller_cutoff = DateTime.add(DateTime.utc_now(), -3600, :second)
+        use_standard_fetch(system_id, smaller_cutoff)
+    end
   end
 
   defp construct_battle_timeline(killmails) do

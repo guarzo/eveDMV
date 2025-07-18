@@ -67,6 +67,14 @@ defmodule EveDmv.Application do
       EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer,
       # Start the battle analysis service for combat intelligence
       EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService,
+      # Start the streaming battle analyzer for large dataset processing
+      EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer,
+      # Start the intelligence event publisher for real-time updates
+      EveDmv.Intelligence.EventPublisher,
+      # Start the real-time intelligence coordinator
+      EveDmv.Intelligence.RealTimeCoordinator,
+      # Start the token refresh service for automatic EVE SSO token renewal
+      EveDmv.Users.TokenRefreshService,
       # Start rate limiter for Janice API (5 requests per second)
       {EveDmv.Market.RateLimiter, [name: :janice_rate_limiter] ++ RateLimit.janice_rate_limit()},
       # Start the Janice API client for market pricing

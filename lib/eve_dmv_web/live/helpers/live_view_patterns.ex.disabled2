@@ -1,0 +1,342 @@
+defmodule EveDmvWeb.Live.Helpers.LiveViewPatterns do
+  @moduledoc """
+  Common LiveView patterns and utilities for standardized page behavior.
+  
+  Provides reusable patterns for authentication, error handling, flash messages,
+  and common UI interactions across all LiveView pages.
+  """
+
+  import Phoenix.LiveView, only: [assign: 3, put_flash: 3, push_navigate: 2]
+  alias EveDmvWeb.Live.Helpers.ApiHelper
+
+  @doc """
+  Standard authentication check and user loading pattern.
+  
+  Use in LiveView mount to ensure user is authenticated and load user data.
+  
+  ## Usage:
+  
+      def mount(_params, session, socket) do
+        case ensure_authenticated(socket, session) do
+          {:ok, socket} -> 
+            # Continue with page-specific logic
+            {:ok, socket}
+          {:error, socket} -> 
+            # User not authenticated, redirect handled
+            {:ok, socket}
+        end
+      end
+  """
+  def ensure_authenticated(socket, session) do
+    case session do
+      %{"user_id" => user_id} when not is_nil(user_id) ->
+        case ApiHelper.ash_get(EveDmv.Users.User, user_id) do
+          {:ok, user} ->
+            socket = assign(socket, :current_user, user)
+            {:ok, socket}
+            
+          {:error, _reason} ->
+            socket = 
+              socket
+              |> put_flash(:error, "Authentication failed. Please sign in again.")
+              |> push_navigate(to: "/auth/login")
+            {:error, socket}
+        end
+        
+      _ ->
+        socket = 
+          socket
+          |> put_flash(:info, "Please sign in to access this page.")
+          |> push_navigate(to: "/auth/login")
+        {:error, socket}
+    end
+  end
+
+  @doc """
+  Standard error handling with user-friendly flash messages.
+  
+  ## Usage:
+  
+      socket = handle_operation_error(socket, error, "Failed to load character data")
+  """
+  def handle_operation_error(socket, error, context_message) do
+    error_message = ApiHelper.format_error_message(error)
+    
+    socket
+    |> put_flash(:error, "#{context_message}: #{error_message}")
+  end
+
+  @doc """
+  Standard success flash message pattern.
+  """
+  def handle_operation_success(socket, message) do
+    put_flash(socket, :info, message)
+  end
+
+  @doc """
+  Standard parameter parsing with error handling.
+  
+  ## Usage:
+  
+      case parse_id_param(params, "character_id") do
+        {:ok, character_id} -> continue_with_id(character_id)
+        {:error, socket} -> return_error_socket(socket)
+      end
+  """
+  def parse_id_param(params, param_name) do
+    case Map.get(params, param_name) do
+      nil ->
+        {:error, "Missing required parameter: #{param_name}"}
+        
+      id_string ->
+        case Integer.parse(id_string) do
+          {id, ""} when id > 0 ->
+            {:ok, id}
+            
+          _ ->
+            {:error, "Invalid #{param_name}: must be a positive integer"}
+        end
+    end
+  end
+
+  @doc """
+  Standard pagination parameter parsing.
+  
+  ## Usage:
+  
+      {page, page_size} = parse_pagination_params(params)
+  """
+  def parse_pagination_params(params, default_page_size \\ 25) do
+    page = 
+      case Integer.parse(Map.get(params, "page", "1")) do
+        {p, ""} when p > 0 -> p
+        _ -> 1
+      end
+      
+    page_size = 
+      case Integer.parse(Map.get(params, "page_size", to_string(default_page_size))) do
+        {ps, ""} when ps > 0 and ps <= 100 -> ps
+        _ -> default_page_size
+      end
+      
+    {page, page_size}
+  end
+
+  @doc """
+  Standard timeframe parameter parsing for intelligence/analysis pages.
+  """
+  def parse_timeframe_param(params, default \\ :last_24h) do
+    case Map.get(params, "timeframe") do
+      "last_hour" -> :last_1h
+      "last_24h" -> :last_24h
+      "last_24_hours" -> :last_24h
+      "last_7d" -> :last_7d
+      "last_7_days" -> :last_7d
+      "last_30d" -> :last_30d
+      "last_30_days" -> :last_30d
+      "last_90d" -> :last_90d
+      "last_90_days" -> :last_90d
+      _ -> default
+    end
+  end
+
+  @doc """
+  Standard tab parameter parsing and validation.
+  
+  ## Usage:
+  
+      tab = parse_tab_param(params, "overview", ["overview", "details", "history"])
+  """
+  def parse_tab_param(params, default_tab, valid_tabs) do
+    requested_tab = Map.get(params, "tab", default_tab)
+    
+    if requested_tab in valid_tabs do
+      requested_tab
+    else
+      default_tab
+    end
+  end
+
+  @doc """
+  Standard LiveView mount pattern for data-heavy pages.
+  
+  Sets up common assigns and prepares for async data loading.
+  """
+  def mount_data_page(socket, data_keys, options \\ []) do
+    loading_message = Keyword.get(options, :loading_message, "Loading...")
+    
+    socket
+    |> ApiHelper.init_loading_state(data_keys)
+    |> assign(:page_loading, true)
+    |> assign(:loading_message, loading_message)
+    |> assign(:refresh_count, 0)
+  end
+
+  @doc """
+  Standard refresh/reload pattern for LiveView pages.
+  
+  ## Usage:
+  
+      def handle_event("refresh", _params, socket) do
+        {:noreply, refresh_page_data(socket, [:character_data, :killmail_data])}
+      end
+  """
+  def refresh_page_data(socket, data_keys) do
+    refresh_count = Map.get(socket.assigns, :refresh_count, 0) + 1
+    
+    socket
+    |> assign(:refresh_count, refresh_count)
+    |> assign(:page_loading, true)
+    |> ApiHelper.init_loading_state(data_keys)
+    |> then(fn socket ->
+      # Send refresh message to trigger data reload
+      send(self(), :refresh_data)
+      socket
+    end)
+  end
+
+  @doc """
+  Standard export functionality pattern.
+  
+  ## Usage:
+  
+      def handle_event("export_data", %{"format" => format}, socket) do
+        case generate_export_data(socket.assigns, format) do
+          {:ok, {filename, content, content_type}} ->
+            {:noreply, trigger_download(socket, filename, content, content_type)}
+          {:error, reason} ->
+            {:noreply, handle_operation_error(socket, reason, "Export failed")}
+        end
+      end
+  """
+  def trigger_download(socket, filename, content, content_type) do
+    socket
+    |> push_event("download_file", %{
+      filename: filename,
+      content: content,
+      content_type: content_type
+    })
+    |> put_flash(:info, "Download started: #{filename}")
+  end
+
+  @doc """
+  Standard real-time update subscription pattern.
+  
+  ## Usage:
+  
+      if connected?(socket) do
+        socket = subscribe_to_updates(socket, [
+          "intelligence:updates",
+          "killmails:new"
+        ])
+      end
+  """
+  def subscribe_to_updates(socket, topics) when is_list(topics) do
+    Enum.each(topics, fn topic ->
+      Phoenix.PubSub.subscribe(EveDmv.PubSub, topic)
+    end)
+    
+    assign(socket, :subscribed_topics, topics)
+  end
+
+  @doc """
+  Standard periodic update timer setup.
+  
+  ## Usage:
+  
+      if connected?(socket) do
+        socket = setup_periodic_updates(socket, :refresh_dashboard, 30_000)
+      end
+  """
+  def setup_periodic_updates(socket, message, interval_ms) do
+    :timer.send_interval(interval_ms, message)
+    assign(socket, :update_interval, interval_ms)
+  end
+
+  @doc """
+  Standard form validation error handling.
+  
+  ## Usage:
+  
+      case validate_form_data(params) do
+        {:ok, validated_data} -> process_form(validated_data)
+        {:error, errors} -> 
+          socket = handle_form_errors(socket, errors)
+          {:noreply, socket}
+      end
+  """
+  def handle_form_errors(socket, errors) when is_list(errors) do
+    error_message = 
+      errors
+      |> Enum.map(fn {field, message} -> "#{field}: #{message}" end)
+      |> Enum.join(", ")
+    
+    put_flash(socket, :error, "Validation errors: #{error_message}")
+  end
+
+  def handle_form_errors(socket, error) do
+    handle_operation_error(socket, error, "Form validation failed")
+  end
+
+  @doc """
+  Standard search functionality pattern.
+  
+  ## Usage:
+  
+      def handle_event("search", %{"query" => query}, socket) do
+        {:noreply, perform_search(socket, query, :search_results)}
+      end
+  """
+  def perform_search(socket, query, results_key) when byte_size(query) >= 2 do
+    socket
+    |> assign(:"#{results_key}_loading", true)
+    |> assign(:"#{results_key}_error", nil)
+    |> then(fn socket ->
+      # Send search message with query
+      send(self(), {:perform_search, query, results_key})
+      socket
+    end)
+  end
+
+  def perform_search(socket, _query, results_key) do
+    # Query too short, clear results
+    socket
+    |> assign(results_key, [])
+    |> assign(:"#{results_key}_loading", false)
+    |> assign(:"#{results_key}_error", nil)
+  end
+
+  @doc """
+  Standard modal state management.
+  
+  ## Usage:
+  
+      def handle_event("open_modal", %{"type" => type, "data" => data}, socket) do
+        {:noreply, open_modal(socket, type, data)}
+      end
+      
+      def handle_event("close_modal", _params, socket) do
+        {:noreply, close_modal(socket)}
+      end
+  """
+  def open_modal(socket, modal_type, modal_data \\ nil) do
+    socket
+    |> assign(:modal_open, true)
+    |> assign(:modal_type, modal_type)
+    |> assign(:modal_data, modal_data)
+  end
+
+  def close_modal(socket) do
+    socket
+    |> assign(:modal_open, false)
+    |> assign(:modal_type, nil)
+    |> assign(:modal_data, nil)
+  end
+
+  @doc """
+  Check if a modal is currently open.
+  """
+  def modal_open?(assigns) do
+    Map.get(assigns, :modal_open, false)
+  end
+end

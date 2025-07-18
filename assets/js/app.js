@@ -28,6 +28,68 @@ import InfiniteScroll from "./hooks/infinite_scroll"
 const Hooks = {}
 Hooks.InfiniteScroll = InfiniteScroll
 
+// Hook for file downloads
+Hooks.FileDownload = {
+  mounted() {
+    this.handleEvent("download_file", ({filename, content, content_type}) => {
+      console.log('📥 Downloading file:', filename);
+      
+      const blob = new Blob([content], { type: content_type });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    });
+  }
+}
+
+// Hook for clipboard operations
+Hooks.Clipboard = {
+  mounted() {
+    this.handleEvent("copy_to_clipboard", ({text}) => {
+      console.log('📋 Copying to clipboard:', text);
+      
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => {
+          console.log('✅ Copied to clipboard successfully');
+        }).catch(err => {
+          console.error('❌ Failed to copy to clipboard:', err);
+          this.fallbackCopyTextToClipboard(text);
+        });
+      } else {
+        this.fallbackCopyTextToClipboard(text);
+      }
+    });
+  },
+  
+  fallbackCopyTextToClipboard(text) {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    
+    // Avoid scrolling to bottom
+    textArea.style.top = "0";
+    textArea.style.left = "0";
+    textArea.style.position = "fixed";
+    
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    try {
+      const successful = document.execCommand('copy');
+      console.log(successful ? '✅ Fallback copy successful' : '❌ Fallback copy failed');
+    } catch (err) {
+      console.error('❌ Fallback copy failed:', err);
+    }
+    
+    document.body.removeChild(textArea);
+  }
+}
+
 Hooks.AutocompleteInput = {
   mounted() {
     console.log('🚀 AutocompleteInput hook mounted for:', this.el.id);

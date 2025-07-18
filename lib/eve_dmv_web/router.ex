@@ -39,6 +39,7 @@ defmodule EveDmvWeb.Router do
 
   pipeline :require_authenticated_user do
     plug(EveDmvWeb.Plugs.RequireAuth)
+    plug(EveDmvWeb.TokenRefreshPlug)
   end
 
   # Public routes - accessible without authentication
