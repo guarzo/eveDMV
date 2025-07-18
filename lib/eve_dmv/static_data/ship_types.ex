@@ -182,4 +182,52 @@ defmodule EveDmv.StaticData.ShipTypes do
     # their bonuses and typical fits (logistics, command ships, etc.)
     classify_ship_type(type_id) in [:cruiser, :battlecruiser]
   end
+
+  @doc """
+  Get interceptor ship type IDs.
+
+  Interceptors are fast, agile frigates used for tackling and fleet scouting.
+  """
+  def interceptor_ship_ids do
+    [11_182, 11_196]
+  end
+
+  @doc """
+  Get logistics ship type IDs.
+
+  Logistics ships provide remote repair capabilities to fleets.
+  """
+  def logistics_ship_ids do
+    [11_978, 11_987, 11_985, 12_003]
+  end
+
+  @doc """
+  Get electronic warfare ship type IDs.
+
+  EWAR ships provide electronic disruption capabilities like jamming and dampening.
+  """
+  def ewar_ship_ids do
+    [11_957, 11_958, 11_959, 11_961]
+  end
+
+  @doc """
+  Check if a ship type ID is an interceptor.
+  """
+  def is_interceptor?(type_id) do
+    type_id in interceptor_ship_ids()
+  end
+
+  @doc """
+  Check if a ship type ID is a logistics ship.
+  """
+  def is_logistics?(type_id) do
+    type_id in logistics_ship_ids()
+  end
+
+  @doc """
+  Check if a ship type ID is an EWAR ship.
+  """
+  def is_ewar?(type_id) do
+    type_id in ewar_ship_ids()
+  end
 end

@@ -215,12 +215,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
     end
   end
 
-  # Specific ship type IDs for roles - these should also be moved to static data
-  # when a more comprehensive ship database is available
-  @interceptor_ids [11_182, 11_196]
-  @logistics_ids [11_978, 11_987, 11_985, 12_003]
-  @ewar_ids [11_957, 11_958, 11_959, 11_961]
-
   defp classify_ship_type(ship_type_id) do
     case ShipTypes.classify_ship_type(ship_type_id) do
       :unknown -> :other
@@ -241,7 +235,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
   end
 
   defp tackle_ship?(ship_type_id) do
-    ShipTypes.is_tackle_ship?(ship_type_id) or ship_type_id in @interceptor_ids
+    ShipTypes.is_tackle_ship?(ship_type_id) or ShipTypes.is_interceptor?(ship_type_id)
   end
 
   defp dps_ship?(ship_type_id) do
@@ -250,7 +244,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
 
   defp support_ship?(ship_type_id) do
     # EWAR, logistics, command ships
-    ship_type_id in @logistics_ids or ship_type_id in @ewar_ids
+    ShipTypes.is_logistics?(ship_type_id) or ShipTypes.is_ewar?(ship_type_id)
   end
 
   defp calculate_specialization_balance(ship_types_map) do
