@@ -22,13 +22,24 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
     hours = Keyword.get(opts, :hours, 24)
     threshold_ms = Keyword.get(opts, :threshold_ms, 1000)
 
-    slow_queries = QueryMonitor.get_slow_queries()
+    # Get all slow queries from QueryMonitor
+    all_slow_queries = QueryMonitor.get_slow_queries()
+
+    # Filter queries based on threshold_ms if needed
+    filtered_queries =
+      if threshold_ms > 0 do
+        Enum.filter(all_slow_queries, fn query ->
+          query[:avg_time] >= threshold_ms
+        end)
+      else
+        all_slow_queries
+      end
 
     %{
       exported_at: DateTime.utc_now(),
       time_window_hours: hours,
       threshold_ms: threshold_ms,
-      slow_queries: Enum.map(slow_queries, &sanitize_query/1)
+      slow_queries: Enum.map(filtered_queries, &sanitize_query/1)
     }
   end
 
@@ -39,27 +50,24 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
     include_tables = Keyword.get(opts, :include_tables, true)
     include_statements = Keyword.get(opts, :include_statements, true)
 
-    metrics = %{
+    base_metrics = %{
       exported_at: DateTime.utc_now(),
       database_size: get_database_size(),
       connection_stats: get_connection_stats()
     }
 
-    metrics =
-      if include_tables do
-        Map.put(metrics, :table_stats, get_table_statistics())
+    # Build metrics map functionally
+    [
+      {:table_stats, include_tables, &get_table_statistics/0},
+      {:statement_stats, include_statements, &get_statement_statistics/0}
+    ]
+    |> Enum.reduce(base_metrics, fn {key, include?, fetch_fn}, acc ->
+      if include? do
+        Map.put(acc, key, fetch_fn.())
       else
-        metrics
+        acc
       end
-
-    metrics =
-      if include_statements do
-        Map.put(metrics, :statement_stats, get_statement_statistics())
-      else
-        metrics
-      end
-
-    metrics
+    end)
   end
 
   @doc """
@@ -70,8 +78,7 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
       report_generated_at: DateTime.utc_now(),
       database_metrics: export_database_metrics(opts),
       slow_queries: export_slow_queries(opts),
-      # TODO: Implement get_recent_alerts/1 function
-      performance_alerts: [],
+      performance_alerts: get_recent_alerts(24),
       system_metrics: %{
         memory_usage: :erlang.memory(),
         process_count: length(Process.list()),
@@ -139,25 +146,28 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
   defp get_connection_stats do
     query = """
     SELECT 
-      max_conn as max_connections,
-      used as used_connections,
-      res_for_super as reserved_for_superuser
-    FROM pg_stat_database 
-    WHERE datname = current_database()
+      (SELECT setting::int FROM pg_settings WHERE name = 'max_connections') as max_connections,
+      (SELECT count(*) FROM pg_stat_activity WHERE state = 'active') as active_connections,
+      (SELECT count(*) FROM pg_stat_activity) as total_connections,
+      (SELECT setting::int FROM pg_settings WHERE name = 'superuser_reserved_connections') as reserved_for_superuser
     """
 
     case Ecto.Adapters.SQL.query(Repo, query) do
-      {:ok, %{rows: [_ | _] = rows}} ->
-        [max_conn, used, reserved] = hd(rows)
-
+      {:ok, %{rows: [[max_conn, active_conn, total_conn, reserved]]}} ->
         %{
           max_connections: max_conn,
-          used_connections: used,
+          active_connections: active_conn,
+          total_connections: total_conn,
           reserved_for_superuser: reserved
         }
 
       _ ->
-        %{max_connections: nil, used_connections: nil, reserved_for_superuser: nil}
+        %{
+          max_connections: nil,
+          active_connections: nil,
+          total_connections: nil,
+          reserved_for_superuser: nil
+        }
     end
   end
 
@@ -224,6 +234,101 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
       {:error, _} ->
         # pg_stat_statements not available
         []
+    end
+  end
+
+  defp get_recent_alerts(hours_back) do
+    # Get recent performance alerts from the last N hours
+    cutoff_time = DateTime.add(DateTime.utc_now(), -hours_back, :hour)
+
+    # Check for database connection issues
+    db_alerts = check_database_alerts(cutoff_time)
+
+    # Check for slow queries
+    slow_query_alerts = check_slow_query_alerts(cutoff_time)
+
+    # Check for memory issues
+    memory_alerts = check_memory_alerts()
+
+    db_alerts ++ slow_query_alerts ++ memory_alerts
+  end
+
+  defp check_database_alerts(cutoff_time) do
+    # Check for connection pool exhaustion
+    query = """
+    SELECT 
+      'connection_pool' as alert_type,
+      'High connection usage detected' as message,
+      now() as detected_at,
+      'warning' as severity
+    FROM pg_stat_activity 
+    WHERE state = 'active' 
+    GROUP BY 1,2,3,4
+    HAVING count(*) > 80
+    """
+
+    case Ecto.Adapters.SQL.query(Repo, query) do
+      {:ok, %{rows: rows}} ->
+        Enum.map(rows, fn [type, message, detected_at, severity] ->
+          %{
+            alert_type: type,
+            message: message,
+            detected_at: detected_at,
+            severity: severity
+          }
+        end)
+
+      _ ->
+        []
+    end
+  end
+
+  defp check_slow_query_alerts(cutoff_time) do
+    # Check for queries that have been running too long
+    query = """
+    SELECT 
+      'long_running_query' as alert_type,
+      'Query running for ' || extract(epoch from (now() - query_start))::int || ' seconds' as message,
+      query_start as detected_at,
+      'critical' as severity
+    FROM pg_stat_activity 
+    WHERE state = 'active' 
+      AND query_start < now() - interval '5 minutes'
+      AND query NOT LIKE '%pg_stat_%'
+    """
+
+    case Ecto.Adapters.SQL.query(Repo, query) do
+      {:ok, %{rows: rows}} ->
+        Enum.map(rows, fn [type, message, detected_at, severity] ->
+          %{
+            alert_type: type,
+            message: message,
+            detected_at: detected_at,
+            severity: severity
+          }
+        end)
+
+      _ ->
+        []
+    end
+  end
+
+  defp check_memory_alerts do
+    memory = :erlang.memory()
+    total_memory = memory[:total]
+
+    # Alert if memory usage is above 1GB
+    if total_memory > 1_000_000_000 do
+      [
+        %{
+          alert_type: "high_memory",
+          message: "High memory usage: #{Float.round(total_memory / 1_000_000_000, 2)}GB",
+          detected_at: DateTime.utc_now(),
+          severity: "warning"
+        }
+      ]
+    else
+      []
     end
   end
 end

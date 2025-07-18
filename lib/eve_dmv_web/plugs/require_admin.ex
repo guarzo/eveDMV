@@ -47,14 +47,15 @@ defmodule EveDmvWeb.Plugs.RequireAdmin do
   end
 
   defp get_user_with_admin_check(user_id) do
-    try do
-      case Ash.read_one(EveDmv.Users.User, domain: EveDmv.Api, filter: [id: user_id]) do
-        {:ok, user} -> {:ok, user}
-        {:error, _} -> {:error, :user_not_found}
-        nil -> {:error, :user_not_found}
-      end
-    rescue
-      _ -> {:error, :database_error}
+    case Ash.get(EveDmv.Users.User, user_id, domain: EveDmv.Api) do
+      {:ok, user} ->
+        {:ok, user}
+
+      {:error, %Ash.Error.Query.NotFound{}} ->
+        {:error, :user_not_found}
+
+      {:error, _error} ->
+        {:error, :database_error}
     end
   end
 end

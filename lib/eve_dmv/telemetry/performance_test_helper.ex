@@ -18,7 +18,7 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
   def load_production_data(filepath) do
     case File.read(filepath) do
       {:ok, content} ->
-        case Jason.decode(content, keys: :atoms!) do
+        case Jason.decode(content) do
           {:ok, data} -> {:ok, data}
           {:error, reason} -> {:error, "Failed to parse JSON: #{inspect(reason)}"}
         end
@@ -78,8 +78,8 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
     sanitized_query = sanitize_query_for_comparison(query)
 
     production_match =
-      Enum.find(production_data.slow_queries, fn pq ->
-        similarity(pq.query_pattern, sanitized_query) > 0.8
+      Enum.find(production_data["slow_queries"] || [], fn pq ->
+        similarity(pq["query_pattern"], sanitized_query) > 0.8
       end)
 
     case production_match do
@@ -87,7 +87,7 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
         {:error, "No matching production query pattern found"}
 
       prod_query ->
-        performance_ratio = current_benchmark.avg_time_ms / prod_query.avg_time_ms
+        performance_ratio = current_benchmark.avg_time_ms / prod_query["avg_time_ms"]
 
         %{
           current: current_benchmark,
@@ -110,12 +110,12 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
   Generate test data that simulates production data volume and distribution.
   """
   def generate_test_data_plan(production_metrics) do
-    table_stats = production_metrics.database_metrics.table_stats || []
+    table_stats = get_in(production_metrics, ["database_metrics", "table_stats"]) || []
 
     plans =
       Enum.map(table_stats, fn stat ->
         %{
-          table: stat.table,
+          table: stat["table"],
           estimated_rows: estimate_row_count(stat),
           data_distribution: analyze_distribution(stat),
           suggested_test_size: calculate_test_size(stat)
@@ -123,7 +123,7 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
       end)
 
     %{
-      total_database_size: production_metrics.database_metrics.database_size,
+      total_database_size: get_in(production_metrics, ["database_metrics", "database_size"]),
       table_plans: plans,
       scaling_factor: calculate_scaling_factor(production_metrics)
     }
@@ -132,13 +132,16 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
   @doc """
   Monitor query performance during development and compare with production patterns.
   """
-  def start_performance_monitoring do
+  def start_performance_monitoring(opts \\ []) do
+    # Default threshold is 100ms (100_000_000 nanoseconds)
+    threshold_ns = Keyword.get(opts, :threshold_ns, 100_000_000)
+
     # Attach telemetry handler for development performance tracking
     :telemetry.attach(
       "dev-performance-monitor",
       [:ecto, :repo, :query],
       &handle_query_telemetry/4,
-      %{}
+      %{threshold_ns: threshold_ns}
     )
   end
 
@@ -151,11 +154,12 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
 
   # Private functions
 
-  defp handle_query_telemetry(_event, measurements, metadata, _config) do
+  defp handle_query_telemetry(_event, measurements, metadata, config) do
     query_time = measurements.total_time
+    threshold_ns = Map.get(config, :threshold_ns, 100_000_000)
 
-    # Log queries > 100ms in development
-    if query_time > 100_000 do
+    # Log queries exceeding the configured threshold
+    if query_time > threshold_ns do
       IO.puts("""
       [DEV PERFORMANCE] Slow query detected:
       Time: #{query_time / 1_000_000}ms
@@ -175,15 +179,8 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
   end
 
   defp similarity(str1, str2) do
-    # Simple similarity calculation using Levenshtein distance
-    max_len = max(String.length(str1), String.length(str2))
-
-    if max_len == 0 do
-      1.0
-    else
-      distance = String.jaro_distance(str1, str2)
-      distance
-    end
+    # Calculate similarity using Jaro distance (0.0 to 1.0)
+    String.jaro_distance(str1, str2)
   end
 
   defp median(list) do
@@ -205,31 +202,71 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
   end
 
   defp estimate_row_count(stat) do
-    # Estimate based on n_distinct and other statistics
-    # This is a simplified estimation
-    case stat.n_distinct do
-      # Rough estimation
-      n when n > 0 -> round(n * 10)
-      # Default fallback
-      _ -> 1000
+    # Get actual row count from pg_stat_user_tables
+    case get_actual_row_count(stat["table"]) do
+      {:ok, row_count} when row_count > 0 ->
+        row_count
+
+      _ ->
+        # Fallback: Use pg_class for more accurate row count estimation
+        case get_table_row_count_from_catalog(stat["table"]) do
+          {:ok, count} -> count
+          # Final fallback only if table doesn't exist
+          _ -> 1000
+        end
+    end
+  end
+
+  defp get_actual_row_count(table_name) do
+    query = """
+    SELECT n_tup_ins - n_tup_del as estimated_rows
+    FROM pg_stat_user_tables 
+    WHERE relname = $1
+    """
+
+    case Ecto.Adapters.SQL.query(Repo, query, [table_name]) do
+      {:ok, %{rows: [[row_count]]}} when is_integer(row_count) and row_count > 0 ->
+        {:ok, row_count}
+
+      _ ->
+        {:error, :table_not_found}
+    end
+  end
+
+  defp get_table_row_count_from_catalog(table_name) do
+    query = """
+    SELECT reltuples::bigint as estimated_rows
+    FROM pg_class 
+    WHERE relname = $1 AND relkind = 'r'
+    """
+
+    case Ecto.Adapters.SQL.query(Repo, query, [table_name]) do
+      {:ok, %{rows: [[row_count]]}} when is_integer(row_count) and row_count > 0 ->
+        {:ok, row_count}
+
+      _ ->
+        {:error, :table_not_found}
     end
   end
 
   defp analyze_distribution(stat) do
     %{
-      column: stat.column,
-      distinctness: stat.n_distinct,
-      correlation: stat.correlation,
+      column: stat["column"],
+      distinctness: stat["n_distinct"],
+      correlation: stat["correlation"],
       distribution_type: classify_distribution(stat)
     }
   end
 
   defp classify_distribution(stat) do
+    correlation = stat["correlation"]
+    n_distinct = stat["n_distinct"]
+
     cond do
-      stat.correlation && stat.correlation > 0.8 -> :highly_correlated
-      stat.correlation && stat.correlation > 0.3 -> :correlated
-      stat.n_distinct && stat.n_distinct < 10 -> :low_cardinality
-      stat.n_distinct && stat.n_distinct > 1000 -> :high_cardinality
+      correlation && correlation > 0.8 -> :highly_correlated
+      correlation && correlation > 0.3 -> :correlated
+      n_distinct && n_distinct < 10 -> :low_cardinality
+      n_distinct && n_distinct > 1000 -> :high_cardinality
       true -> :unknown
     end
   end
@@ -241,9 +278,21 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
   end
 
   defp calculate_scaling_factor(production_metrics) do
-    _prod_size = production_metrics.database_metrics.database_size.size_bytes || 1_000_000_000
-    # Aim for 1/10th of production size in development
-    1.0 / 10.0
+    prod_size =
+      get_in(production_metrics, ["database_metrics", "database_size", "size_bytes"]) ||
+        1_000_000_000
+
+    # Dynamic scaling based on production database size
+    cond do
+      # 1% for very large DBs (> 100GB)
+      prod_size > 100_000_000_000 -> 0.01
+      # 5% for large DBs (> 10GB)
+      prod_size > 10_000_000_000 -> 0.05
+      # 10% for medium DBs (> 1GB)
+      prod_size > 1_000_000_000 -> 0.1
+      # 20% for smaller DBs
+      true -> 0.2
+    end
   end
 
   defp generate_recommendation(ratio, _current, _production) do

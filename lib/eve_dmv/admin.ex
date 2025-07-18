@@ -24,39 +24,17 @@ defmodule EveDmv.Admin do
   """
   def promote_user_to_admin(character_id) when is_integer(character_id) do
     case Ash.read_one(User, domain: Api, filter: [eve_character_id: character_id]) do
-      {:ok, user} ->
-        case Ash.update(user, %{is_admin: true}, domain: Api) do
-          {:ok, updated_user} ->
-            {:ok, updated_user}
-
-          {:error, reason} ->
-            {:error, reason}
-        end
-
-      {:error, _} ->
-        {:error, :user_not_found}
-
-      nil ->
-        {:error, :user_not_found}
+      {:ok, user} -> update_user_admin_status(user, true)
+      {:error, _} -> {:error, :user_not_found}
+      nil -> {:error, :user_not_found}
     end
   end
 
   def promote_user_to_admin(character_name) when is_binary(character_name) do
     case Ash.read_one(User, domain: Api, filter: [eve_character_name: character_name]) do
-      {:ok, user} ->
-        case Ash.update(user, %{is_admin: true}, domain: Api) do
-          {:ok, updated_user} ->
-            {:ok, updated_user}
-
-          {:error, reason} ->
-            {:error, reason}
-        end
-
-      {:error, _} ->
-        {:error, :user_not_found}
-
-      nil ->
-        {:error, :user_not_found}
+      {:ok, user} -> update_user_admin_status(user, true)
+      {:error, _} -> {:error, :user_not_found}
+      nil -> {:error, :user_not_found}
     end
   end
 
@@ -65,20 +43,9 @@ defmodule EveDmv.Admin do
   """
   def demote_admin(character_id) when is_integer(character_id) do
     case Ash.read_one(User, domain: Api, filter: [eve_character_id: character_id]) do
-      {:ok, user} ->
-        case Ash.update(user, %{is_admin: false}, domain: Api) do
-          {:ok, updated_user} ->
-            {:ok, updated_user}
-
-          {:error, reason} ->
-            {:error, reason}
-        end
-
-      {:error, _} ->
-        {:error, :user_not_found}
-
-      nil ->
-        {:error, :user_not_found}
+      {:ok, user} -> update_user_admin_status(user, false)
+      {:error, _} -> {:error, :user_not_found}
+      nil -> {:error, :user_not_found}
     end
   end
 
@@ -148,6 +115,14 @@ defmodule EveDmv.Admin do
     else
       IO.puts("⚠️  Admin users already exist. Use promote_user_to_admin/1 instead.")
       {:error, :admins_already_exist}
+    end
+  end
+
+  # Private helper function to update user admin status
+  defp update_user_admin_status(user, admin_status) do
+    case Ash.update(user, %{is_admin: admin_status}, domain: Api) do
+      {:ok, updated_user} -> {:ok, updated_user}
+      {:error, reason} -> {:error, reason}
     end
   end
 end

@@ -50,17 +50,14 @@ defmodule EveDmv.Admin.Bootstrap do
     character_names = get_character_names_from_env()
     character_ids = get_character_ids_from_env()
 
-    length(character_names) > 0 || length(character_ids) > 0
+    Enum.any?([character_names, character_ids], &(not Enum.empty?(&1)))
   end
 
   # Private functions
 
   defp get_character_names_from_env do
     case System.get_env("ADMIN_BOOTSTRAP_CHARACTERS") do
-      nil ->
-        []
-
-      "" ->
+      nil_or_empty when nil_or_empty in [nil, ""] ->
         []
 
       names_string ->
@@ -73,10 +70,7 @@ defmodule EveDmv.Admin.Bootstrap do
 
   defp get_character_ids_from_env do
     case System.get_env("ADMIN_BOOTSTRAP_CHARACTER_IDS") do
-      nil ->
-        []
-
-      "" ->
+      nil_or_empty when nil_or_empty in [nil, ""] ->
         []
 
       ids_string ->
@@ -100,51 +94,45 @@ defmodule EveDmv.Admin.Bootstrap do
   end
 
   defp process_character_names(character_names) do
-    Enum.map(character_names, fn name ->
-      case Admin.promote_user_to_admin(name) do
-        {:ok, user} ->
-          Logger.info(
-            "✅ Successfully promoted #{user.eve_character_name} (ID: #{user.eve_character_id}) to admin"
-          )
-
-          {:ok, user}
-
-        {:error, :user_not_found} ->
-          Logger.warning(
-            "❌ Character '#{name}' not found - user must log in at least once before admin promotion"
-          )
-
-          {:error, :user_not_found, name}
-
-        {:error, reason} ->
-          Logger.error("❌ Failed to promote '#{name}' to admin: #{inspect(reason)}")
-          {:error, reason, name}
-      end
-    end)
+    Enum.map(character_names, &process_admin_promotion(&1, :name))
   end
 
   defp process_character_ids(character_ids) do
-    Enum.map(character_ids, fn id ->
-      case Admin.promote_user_to_admin(id) do
-        {:ok, user} ->
-          Logger.info(
-            "✅ Successfully promoted #{user.eve_character_name} (ID: #{user.eve_character_id}) to admin"
-          )
+    Enum.map(character_ids, &process_admin_promotion(&1, :id))
+  end
 
-          {:ok, user}
+  defp process_admin_promotion(identifier, type) do
+    case Admin.promote_user_to_admin(identifier) do
+      {:ok, user} ->
+        Logger.info(
+          "✅ Successfully promoted #{user.eve_character_name} (ID: #{user.eve_character_id}) to admin"
+        )
 
-        {:error, :user_not_found} ->
-          Logger.warning(
-            "❌ Character ID #{id} not found - user must log in at least once before admin promotion"
-          )
+        {:ok, user}
 
-          {:error, :user_not_found, id}
+      {:error, :user_not_found} ->
+        not_found_message =
+          case type do
+            :name ->
+              "❌ Character '#{identifier}' not found - user must log in at least once before admin promotion"
 
-        {:error, reason} ->
-          Logger.error("❌ Failed to promote character ID #{id} to admin: #{inspect(reason)}")
-          {:error, reason, id}
-      end
-    end)
+            :id ->
+              "❌ Character ID #{identifier} not found - user must log in at least once before admin promotion"
+          end
+
+        Logger.warning(not_found_message)
+        {:error, :user_not_found, identifier}
+
+      {:error, reason} ->
+        error_message =
+          case type do
+            :name -> "❌ Failed to promote '#{identifier}' to admin: #{inspect(reason)}"
+            :id -> "❌ Failed to promote character ID #{identifier} to admin: #{inspect(reason)}"
+          end
+
+        Logger.error(error_message)
+        {:error, reason, identifier}
+    end
   end
 
   defp log_bootstrap_results(results) do

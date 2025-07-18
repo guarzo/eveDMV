@@ -13,6 +13,9 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   alias EveDmv.Intelligence.WhSpace.Vetting, as: WHVetting
 
   require Ash.Query
+
+  # Confidence reduction factor when analysis is performed with limited vetting data
+  @limited_data_confidence_factor 0.8
   require Logger
 
   @doc """
@@ -60,7 +63,8 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
           }
 
           # Reduced confidence
-          confidence_score = calculate_pattern_confidence(patterns) * 0.8
+          confidence_score =
+            calculate_pattern_confidence(patterns) * @limited_data_confidence_factor
 
           {:ok,
            %{
