@@ -1,5 +1,5 @@
 defmodule EveDmv.StaticData.ShipReferenceImporterTest do
-  use EveDmv.DataCase, async: true
+  use EveDmv.DataCase, async: false
 
   alias EveDmv.StaticData.ShipReferenceImporter
   alias EveDmv.Repo

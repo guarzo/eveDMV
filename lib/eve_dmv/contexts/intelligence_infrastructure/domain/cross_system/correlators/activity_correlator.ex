@@ -172,6 +172,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
           total_value: k.total_value
         },
         order_by: [desc: k.killmail_time],
+        # 5000 provides ~2 days of data for high-activity systems (40 kills/hour)
+        # while keeping memory usage reasonable for correlation calculations
         limit: 5000
       )
 
@@ -246,42 +248,86 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     if length(data1) < 3 or length(data2) < 3 do
       0.0
     else
-      # Extract activity counts
-      values1 = data1 |> Enum.map(&(&1.attacker_count || 1))
-      values2 = data2 |> Enum.map(&(&1.attacker_count || 1))
+      # Align data by timestamp
+      {aligned1, aligned2} = align_by_timestamp(data1, data2)
 
-      # Align data by time (simplified)
-      min_length = min(length(values1), length(values2))
-      aligned1 = Enum.take(values1, min_length)
-      aligned2 = Enum.take(values2, min_length)
-
-      # Calculate correlation
-      mean1 = Enum.sum(aligned1) / length(aligned1)
-      mean2 = Enum.sum(aligned2) / length(aligned2)
-
-      numerator =
-        Enum.zip(aligned1, aligned2)
-        |> Enum.map(fn {x, y} -> (x - mean1) * (y - mean2) end)
-        |> Enum.sum()
-
-      denominator1 =
-        aligned1
-        |> Enum.map(fn x -> (x - mean1) * (x - mean1) end)
-        |> Enum.sum()
-
-      denominator2 =
-        aligned2
-        |> Enum.map(fn y -> (y - mean2) * (y - mean2) end)
-        |> Enum.sum()
-
-      denominator = :math.sqrt(denominator1 * denominator2)
-
-      if denominator > 0 do
-        Float.round(numerator / denominator, 3)
-      else
+      if length(aligned1) < 3 do
         0.0
+      else
+        # Extract activity counts from aligned data
+        values1 = aligned1 |> Enum.map(&(&1.attacker_count || 1))
+        values2 = aligned2 |> Enum.map(&(&1.attacker_count || 1))
+
+        # Calculate correlation
+        mean1 = Enum.sum(values1) / length(values1)
+        mean2 = Enum.sum(values2) / length(values2)
+
+        numerator =
+          Enum.zip(values1, values2)
+          |> Enum.map(fn {x, y} -> (x - mean1) * (y - mean2) end)
+          |> Enum.sum()
+
+        denominator1 =
+          values1
+          |> Enum.map(fn x -> (x - mean1) * (x - mean1) end)
+          |> Enum.sum()
+
+        denominator2 =
+          values2
+          |> Enum.map(fn y -> (y - mean2) * (y - mean2) end)
+          |> Enum.sum()
+
+        denominator = :math.sqrt(denominator1 * denominator2)
+
+        if denominator > 0 do
+          Float.round(numerator / denominator, 3)
+        else
+          0.0
+        end
       end
     end
+  end
+
+  defp align_by_timestamp(data1, data2) do
+    # Create maps indexed by rounded timestamp for efficient lookup
+    map1 =
+      data1
+      |> Enum.into(%{}, fn item ->
+        # Round to nearest hour for alignment
+        rounded_time =
+          item.killmail_time
+          |> DateTime.truncate(:second)
+          |> Map.put(:minute, 0)
+          |> Map.put(:second, 0)
+
+        {rounded_time, item}
+      end)
+
+    map2 =
+      data2
+      |> Enum.into(%{}, fn item ->
+        rounded_time =
+          item.killmail_time
+          |> DateTime.truncate(:second)
+          |> Map.put(:minute, 0)
+          |> Map.put(:second, 0)
+
+        {rounded_time, item}
+      end)
+
+    # Find common timestamps
+    common_times =
+      MapSet.intersection(
+        MapSet.new(Map.keys(map1)),
+        MapSet.new(Map.keys(map2))
+      )
+      |> Enum.sort()
+
+    # Extract aligned data
+    aligned1 = common_times |> Enum.map(&Map.get(map1, &1))
+    aligned2 = common_times |> Enum.map(&Map.get(map2, &1))
+
+    {aligned1, aligned2}
   end
 
   defp identify_synchronized_systems(activity_data) do
@@ -728,10 +774,13 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
   defp find_connected_components(systems, correlations) do
     # Find connected components in the correlation graph
-    # Simplified implementation
+    # Build bidirectional correlation map
     correlation_map =
       correlations
-      |> Enum.map(fn {{s1, s2}, _} -> {s1, s2} end)
+      |> Enum.flat_map(fn {{s1, s2}, _} ->
+        # Include both directions for bidirectional graph
+        [{s1, s2}, {s2, s1}]
+      end)
       |> Enum.group_by(&elem(&1, 0))
       |> Enum.map(fn {s, pairs} -> {s, Enum.map(pairs, &elem(&1, 1))} end)
       |> Map.new()
@@ -785,14 +834,18 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
   defp calculate_time_span(activities) do
     if Enum.empty?(activities) do
-      %{minutes: 0}
+      %{hours: 0, start: nil, end: nil}
     else
       times = Enum.map(activities, & &1.killmail_time)
       first = Enum.min(times)
       last = Enum.max(times)
 
+      hours = DateTime.diff(last, first, :second) / 3600
+
       %{
-        minutes: DateTime.diff(last, first, :minute)
+        hours: Float.round(hours, 2),
+        start: first,
+        end: last
       }
     end
   end

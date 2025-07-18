@@ -190,7 +190,7 @@ defmodule EveDmv.Cache.QueryCache do
     cache_table =
       :ets.new(@table_name, [
         :named_table,
-        :public,
+        :protected,
         :set,
         read_concurrency: true,
         write_concurrency: true
@@ -200,7 +200,7 @@ defmodule EveDmv.Cache.QueryCache do
     stats_table =
       :ets.new(:query_cache_stats, [
         :named_table,
-        :public,
+        :protected,
         :set,
         write_concurrency: true
       ])

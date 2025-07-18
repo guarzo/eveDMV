@@ -1,5 +1,5 @@
 defmodule EveDmv.Analytics.FleetAnalyzerTest do
-  use EveDmv.DataCase, async: true
+  use EveDmv.DataCase, async: false
 
   alias EveDmv.Analytics.FleetAnalyzer
   alias EveDmv.Repo

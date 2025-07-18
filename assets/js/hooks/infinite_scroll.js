@@ -7,7 +7,7 @@
 
 const InfiniteScroll = {
   mounted() {
-    this.threshold = parseInt(this.el.dataset.threshold) || 200;
+    this.threshold = Number.parseInt(this.el.dataset.threshold) || 200;
     this.loading = false;
     
     // Create intersection observer for efficient scroll detection
@@ -21,10 +21,13 @@ const InfiniteScroll = {
     
     this.observer.observe(this.el);
     
-    // Also listen for manual clicks
+    // Also listen for manual clicks on load more buttons
     this.el.addEventListener('click', (e) => {
-      e.preventDefault();
-      this.loadMore();
+      // Only prevent default and load more if clicking on a load more button
+      if (e.target.matches('[data-load-more]') || e.target.closest('[data-load-more]')) {
+        e.preventDefault();
+        this.loadMore();
+      }
     });
   },
   
@@ -44,16 +47,18 @@ const InfiniteScroll = {
     // Add loading visual feedback
     this.el.classList.add('loading');
     
-    // Trigger the load more event
-    this.pushEvent('load_more', {
-      cursor: this.el.dataset.cursor
-    });
-    
-    // Reset loading state after a delay to prevent rapid triggers
-    setTimeout(() => {
+    // Validate cursor before sending
+    const cursor = this.el.dataset.cursor;
+    if (cursor && typeof cursor === 'string') {
+      // Trigger the load more event
+      this.pushEvent('load_more', {
+        cursor: cursor
+      });
+    } else {
+      // Reset loading state if cursor is invalid
       this.loading = false;
       this.el.classList.remove('loading');
-    }, 1000);
+    }
   },
   
   updated() {
@@ -62,6 +67,11 @@ const InfiniteScroll = {
     if (newCursor) {
       this.cursor = newCursor;
     }
+  },
+  
+  resetLoading() {
+    this.loading = false;
+    this.el.classList.remove('loading');
   },
   
   destroyed() {

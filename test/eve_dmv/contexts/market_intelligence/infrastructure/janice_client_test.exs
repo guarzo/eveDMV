@@ -3,8 +3,115 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClientTest do
   alias EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient
 
   setup do
-    # Start the JaniceClient GenServer for tests
-    {:ok, _pid} = JaniceClient.start_link()
+    # Mock Tesla requests for testing - use global mock for all processes
+    Tesla.Mock.mock_global(fn
+      %{method: :get, url: "https://janice.e-351.com/api/rest/v2/market/34"} ->
+        %Tesla.Env{
+          status: 200,
+          body: %{
+            "sell" => %{"min" => 4.50, "volume" => 1_000_000},
+            "buy" => %{"max" => 4.25, "volume" => 900_000}
+          }
+        }
+
+      %{method: :get, url: "https://janice.e-351.com/api/rest/v2/market/35"} ->
+        %Tesla.Env{
+          status: 200,
+          body: %{
+            "sell" => %{"min" => 12.50, "volume" => 800_000},
+            "buy" => %{"max" => 12.10, "volume" => 750_000}
+          }
+        }
+
+      %{method: :get, url: "https://janice.e-351.com/api/rest/v2/market/36"} ->
+        %Tesla.Env{
+          status: 200,
+          body: %{
+            "sell" => %{"min" => 75.00, "volume" => 100_000},
+            "buy" => %{"max" => 73.50, "volume" => 90_000}
+          }
+        }
+
+      %{method: :get, url: "https://janice.e-351.com/api/rest/v2/market/37"} ->
+        %Tesla.Env{
+          status: 200,
+          body: %{
+            "sell" => %{"min" => 320.00, "volume" => 50_000},
+            "buy" => %{"max" => 315.00, "volume" => 45_000}
+          }
+        }
+
+      %{method: :get, url: "https://janice.e-351.com/api/rest/v2/market/587"} ->
+        %Tesla.Env{
+          status: 200,
+          body: %{
+            "sell" => %{"min" => 750_000.0, "volume" => 50},
+            "buy" => %{"max" => 720_000.0, "volume" => 30}
+          }
+        }
+
+      %{method: :get, url: "https://janice.e-351.com/api/rest/v2/market/999999"} ->
+        %Tesla.Env{status: 404, body: %{"error" => "Item not found"}}
+
+      %{method: :get, url: "https://janice.e-351.com/api/rest/v2/market/bulk/" <> ids} ->
+        # Handle bulk requests dynamically based on requested IDs
+        id_list = String.split(ids, ",")
+
+        response_body =
+          id_list
+          |> Enum.reduce(%{}, fn id, acc ->
+            case id do
+              "34" ->
+                Map.put(acc, "34", %{
+                  "sell" => %{"min" => 4.50, "volume" => 1_000_000},
+                  "buy" => %{"max" => 4.25, "volume" => 900_000}
+                })
+
+              "35" ->
+                Map.put(acc, "35", %{
+                  "sell" => %{"min" => 12.50, "volume" => 800_000},
+                  "buy" => %{"max" => 12.10, "volume" => 750_000}
+                })
+
+              "36" ->
+                Map.put(acc, "36", %{
+                  "sell" => %{"min" => 75.00, "volume" => 100_000},
+                  "buy" => %{"max" => 73.50, "volume" => 90_000}
+                })
+
+              "37" ->
+                Map.put(acc, "37", %{
+                  "sell" => %{"min" => 320.00, "volume" => 50_000},
+                  "buy" => %{"max" => 315.00, "volume" => 45_000}
+                })
+
+              "587" ->
+                Map.put(acc, "587", %{
+                  "sell" => %{"min" => 750_000.0, "volume" => 50},
+                  "buy" => %{"max" => 720_000.0, "volume" => 30}
+                })
+
+              # Unknown IDs return no data
+              _ ->
+                acc
+            end
+          end)
+
+        %Tesla.Env{status: 200, body: response_body}
+
+      # Default fallback for any other requests
+      _ ->
+        %Tesla.Env{status: 500, body: %{"error" => "Internal server error"}}
+    end)
+
+    # Start the JaniceClient GenServer for tests if not already started
+    case Process.whereis(JaniceClient) do
+      nil ->
+        {:ok, _pid} = JaniceClient.start_link()
+
+      _pid ->
+        :ok
+    end
 
     # Clear cache before each test
     JaniceClient.clear_cache()
@@ -14,8 +121,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClientTest do
 
   describe "get_item_price/1" do
     test "returns price info for valid item" do
-      # This will make an actual API call to Janice
-      # Type ID 34 is Tritanium - a common mineral
+      # Type ID 34 is Tritanium - using mocked response
       result = JaniceClient.get_item_price(34)
 
       assert {:ok, price_info} = result
@@ -45,9 +151,9 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClientTest do
 
     test "handles non-existent item gracefully" do
       # Use an invalid type ID
-      result = JaniceClient.get_item_price(999_999_999)
+      result = JaniceClient.get_item_price(999_999)
 
-      assert {:error, _reason} = result
+      assert {:error, :not_found} = result
     end
   end
 
@@ -65,9 +171,8 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClientTest do
 
   describe "bulk_price_lookup/1" do
     test "returns prices for multiple items" do
-      # Common minerals
-      # Tritanium, Pyerite, Mexallon, Isogen, Nocxium
-      type_ids = [34, 35, 36, 37, 38]
+      # Use mocked type IDs: Tritanium and Rifter
+      type_ids = [34, 587]
 
       result = JaniceClient.bulk_price_lookup(type_ids)
 

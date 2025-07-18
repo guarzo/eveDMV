@@ -1,5 +1,5 @@
 defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzerTest do
-  use EveDmv.DataCase, async: true
+  use EveDmv.DataCase, async: false
 
   alias EveDmv.Intelligence.Analyzers.WHVettingAnalyzer
 

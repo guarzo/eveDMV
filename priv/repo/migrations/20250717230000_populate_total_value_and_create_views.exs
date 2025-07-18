@@ -68,8 +68,11 @@ defmodule EveDmv.Repo.Migrations.PopulateTotalValueAndCreateViews do
     """)
 
     # Step 3: Create corporation_member_summary materialized view
+    # Drop existing view first to ensure proper structure
+    execute("DROP MATERIALIZED VIEW IF EXISTS corporation_member_summary CASCADE")
+    
     execute("""
-    CREATE MATERIALIZED VIEW IF NOT EXISTS corporation_member_summary AS
+    CREATE MATERIALIZED VIEW corporation_member_summary AS
     SELECT 
       cas.corporation_id,
       cas.corporation_name,

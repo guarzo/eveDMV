@@ -2,7 +2,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
   @moduledoc """
   Comprehensive tests for WHFleetAnalyzer module.
   """
-  use EveDmv.DataCase, async: true
+  use EveDmv.DataCase, async: false
 
   alias EveDmv.Intelligence.Analyzers.WhFleetAnalyzer
   alias EveDmv.TestMocks

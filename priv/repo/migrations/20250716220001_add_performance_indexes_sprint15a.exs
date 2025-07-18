@@ -1,4 +1,4 @@
-defmodule EveDmv.Repo.Migrations.AddPerformanceIndexes do
+defmodule EveDmv.Repo.Migrations.AddPerformanceIndexesSprint15a do
   @moduledoc """
   Sprint 15A Performance Optimization - Phase 1: Critical Indexes
   

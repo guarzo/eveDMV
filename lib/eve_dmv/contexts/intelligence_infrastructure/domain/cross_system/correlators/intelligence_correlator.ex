@@ -7,6 +7,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   import Ecto.Query
   require Logger
 
+  # Correlation weight constants
+  @overlap_weight 0.4
+  @quality_weight 0.3
+  @temporal_weight 0.3
+
   @doc """
   Correlate intelligence data across systems.
   """
@@ -42,7 +47,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
         temporal_score = calculate_temporal_correlation(intel_coverage)
 
         # Combine scores
-        correlation_strength = overlap_score * 0.4 + quality_score * 0.3 + temporal_score * 0.3
+        correlation_strength =
+          overlap_score * @overlap_weight + quality_score * @quality_weight +
+            temporal_score * @temporal_weight
 
         Float.round(correlation_strength, 2)
       end
@@ -56,47 +63,20 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     else
       intel_data = fetch_cross_system_intelligence(system_ids)
 
-      shared_intel = []
-
       # Pattern 1: Character sightings across systems
       character_intel = analyze_character_sightings(intel_data)
-
-      shared_intel =
-        if length(character_intel) > 0 do
-          shared_intel ++ character_intel
-        else
-          shared_intel
-        end
 
       # Pattern 2: Fleet movements
       fleet_intel = analyze_fleet_intelligence(intel_data)
 
-      shared_intel =
-        if length(fleet_intel) > 0 do
-          shared_intel ++ fleet_intel
-        else
-          shared_intel
-        end
-
       # Pattern 3: Structure status changes
       structure_intel = analyze_structure_intelligence(intel_data)
-
-      shared_intel =
-        if length(structure_intel) > 0 do
-          shared_intel ++ structure_intel
-        else
-          shared_intel
-        end
 
       # Pattern 4: Alliance operations
       alliance_intel = analyze_alliance_operations(intel_data)
 
-      shared_intel =
-        if length(alliance_intel) > 0 do
-          shared_intel ++ alliance_intel
-        else
-          shared_intel
-        end
+      # Concatenate all intelligence lists
+      shared_intel = character_intel ++ fleet_intel ++ structure_intel ++ alliance_intel
 
       # Sort by relevance and take top results
       shared_intel
@@ -332,7 +312,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
           total_value: k.total_value
         },
         order_by: [desc: k.killmail_time],
-        limit: 5000
+        # Reduced from 5000 to 1000 for better memory efficiency
+        # Still provides ~6 hours of data for high-activity systems
+        limit: 1000
       )
 
     Repo.all(query)
@@ -431,13 +413,20 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   end
 
   defp analyze_system_coverage(system_ids) do
-    # Analyze intelligence coverage for each system
+    # Analyze intelligence coverage for each system in parallel
     system_ids
-    |> Enum.map(fn system_id ->
-      coverage = analyze_single_system_coverage(system_id)
-      {system_id, coverage}
+    |> Task.async_stream(
+      fn system_id ->
+        coverage = analyze_single_system_coverage(system_id)
+        {system_id, coverage}
+      end,
+      max_concurrency: 5,
+      timeout: 10_000
+    )
+    |> Enum.reduce(%{}, fn
+      {:ok, {system_id, coverage}}, acc -> Map.put(acc, system_id, coverage)
+      {:exit, _reason}, acc -> acc
     end)
-    |> Map.new()
   end
 
   defp analyze_single_system_coverage(system_id) do
@@ -832,10 +821,42 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     missing
   end
 
-  defp estimate_strategic_value(_system_id) do
+  defp estimate_strategic_value(system_id) do
     # Estimate strategic value of a system
-    # In real implementation, would use system properties
-    :rand.uniform()
+    # TODO: Implement proper strategic value calculation based on:
+    # - System security status (from eve_solar_systems table)
+    # - Trade route proximity (check connections to trade hubs)
+    # - Structure presence (from structure tracking data)
+    # - Recent activity levels (from killmail data)
+    # - Alliance sovereignty (from sovereignty data)
+    # For now, return a simple activity-based estimate
+    try do
+      start_time = DateTime.add(DateTime.utc_now(), -7 * 24 * 3600, :second)
+
+      query =
+        from(k in "killmails_enriched",
+          where: k.solar_system_id == ^system_id and k.killmail_time >= ^start_time,
+          select: %{
+            activity_count: count(k.killmail_id),
+            total_value: sum(k.total_value)
+          }
+        )
+
+      case Repo.one(query) do
+        %{activity_count: count, total_value: value} when count > 0 ->
+          # Normalize to 0-1 range based on activity
+          activity_score = min(count / 1000, 1.0)
+          value_score = if value, do: min(value / 100_000_000_000, 1.0), else: 0.0
+          (activity_score + value_score) / 2
+
+        _ ->
+          # Base value for any system
+          0.1
+      end
+    rescue
+      # Default medium value on error
+      _ -> 0.5
+    end
   end
 
   defp calculate_data_consistency(hourly_metrics) do

@@ -457,7 +457,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   defp predict_engagement_likelihood(stats, horizon) do
     # Predict engagement likelihood based on stats
     total_activity = Map.get(stats, :total_kills, 0) + Map.get(stats, :total_losses, 0)
-    avg_gang_size = Map.get(stats, :avg_gang_size, Decimal.new(1)) |> Decimal.to_float()
+    avg_gang_size = Map.get(stats, :avg_gang_size, 1.0) |> to_float()
     ship_diversity = Map.get(stats, :ship_types_used, 1)
 
     # Base likelihood from activity level
@@ -537,7 +537,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   defp predict_corp_stability(stats) do
     # Predict corporation stability based on character metrics
     total_activity = Map.get(stats, :total_kills, 0) + Map.get(stats, :total_losses, 0)
-    avg_gang_size = Map.get(stats, :avg_gang_size, Decimal.new(1)) |> Decimal.to_float()
+    avg_gang_size = Map.get(stats, :avg_gang_size, 1.0) |> to_float()
     primary_activity = Map.get(stats, :primary_activity, :mixed)
 
     # Calculate loyalty indicators
@@ -661,7 +661,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
       # Extract tactical preferences
       tactical_profiles =
         Enum.map(character_data, fn {_id, stats} ->
-          avg_gang_size = Map.get(stats, :avg_gang_size, Decimal.new(1)) |> Decimal.to_float()
+          avg_gang_size = Map.get(stats, :avg_gang_size, 1.0) |> to_float()
           primary_activity = Map.get(stats, :primary_activity, :mixed)
           ship_diversity = Map.get(stats, :ship_types_used, 1)
 
@@ -721,7 +721,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
       # Extract social indicators
       social_profiles =
         Enum.map(character_data, fn {_id, stats} ->
-          avg_gang_size = Map.get(stats, :avg_gang_size, Decimal.new(1)) |> Decimal.to_float()
+          avg_gang_size = Map.get(stats, :avg_gang_size, 1.0) |> to_float()
           primary_activity = Map.get(stats, :primary_activity, :mixed)
           total_activity = Map.get(stats, :total_kills, 0) + Map.get(stats, :total_losses, 0)
 
@@ -915,4 +915,11 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
         {:ok, []}
     end
   end
+
+  # Helper function to safely convert values to float
+  defp to_float(value) when is_float(value), do: value
+  defp to_float(value) when is_integer(value), do: value * 1.0
+  defp to_float(%Decimal{} = decimal), do: Decimal.to_float(decimal)
+  # fallback for nil or other types
+  defp to_float(_value), do: 0.0
 end

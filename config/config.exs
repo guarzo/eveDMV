@@ -115,6 +115,9 @@ config :phoenix, :filter_parameters, [
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
+# Disable Tesla deprecated builder warning
+config :tesla, disable_deprecated_builder_warning: true
+
 # Ash Framework configuration
 config :ash, :include_embedded_source_by_default?, false
 config :ash, :policies, show_policy_breakdowns?: true

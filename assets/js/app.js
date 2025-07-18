@@ -25,7 +25,7 @@ import topbar from "../vendor/topbar"
 // Define Phoenix Hooks
 import InfiniteScroll from "./hooks/infinite_scroll"
 
-let Hooks = {}
+const Hooks = {}
 Hooks.InfiniteScroll = InfiniteScroll
 
 Hooks.AutocompleteInput = {

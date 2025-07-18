@@ -7,6 +7,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
   """
 
   require Logger
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedCalculations
 
   @doc """
   Calculate ship mastery score based on combat data.
@@ -188,15 +189,27 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
     end
   end
 
+  # Ship type ID ranges for classification
+  @ship_type_ranges %{
+    frigate: 580..700,
+    destroyer: 420..450,
+    cruiser: 620..650,
+    battlecruiser: 540..570,
+    battleship: 640..670,
+    capital: 19_720..19_740
+  }
+
+  # Specific ship type IDs for roles
+  @interceptor_ids [11_182, 11_196]
+  @logistics_ids [11_978, 11_987, 11_985, 12_003]
+  @ewar_ids [11_957, 11_958, 11_959, 11_961]
+
   defp classify_ship_type(ship_type_id) do
-    cond do
-      ship_type_id in 580..700 -> :frigate
-      ship_type_id in 420..450 -> :destroyer
-      ship_type_id in 620..650 -> :cruiser
-      ship_type_id in 540..570 -> :battlecruiser
-      ship_type_id in 640..670 -> :battleship
-      ship_type_id in 19_720..19_740 -> :capital
-      true -> :other
+    @ship_type_ranges
+    |> Enum.find(fn {_type, range} -> ship_type_id in range end)
+    |> case do
+      {type, _range} -> type
+      nil -> :other
     end
   end
 
@@ -205,77 +218,28 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
     victim_killmails = Map.get(combat_data, :victim_killmails, [])
     attacker_killmails = Map.get(combat_data, :attacker_killmails, [])
 
-    survival_rate = calculate_survival_rate(combat_data, victim_killmails)
-    damage_efficiency = calculate_damage_efficiency(attacker_killmails)
+    survival_rate = SharedCalculations.calculate_survival_rate(combat_data, victim_killmails)
+    damage_efficiency = SharedCalculations.calculate_damage_efficiency(attacker_killmails)
 
     # Ships that survive longer and deal more damage likely have better fits
     survival_rate * 0.6 + damage_efficiency * 0.4
   end
 
-  defp calculate_survival_rate(combat_data, victim_killmails) do
-    all_killmails = Map.get(combat_data, :killmails, [])
-    total_engagements = length(all_killmails)
-    deaths = length(victim_killmails)
-
-    if total_engagements > 0 do
-      (total_engagements - deaths) / total_engagements
-    else
-      # Neutral score for no data
-      0.5
-    end
-  end
-
-  defp calculate_damage_efficiency(attacker_killmails) do
-    if Enum.empty?(attacker_killmails) do
-      0.5
-    else
-      total_damage_contribution =
-        attacker_killmails
-        |> Enum.map(&extract_damage_contribution/1)
-        |> Enum.sum()
-
-      average_contribution = total_damage_contribution / length(attacker_killmails)
-      # Normalize damage contribution (15% average = 1.0 score)
-      min(1.0, average_contribution / 0.15)
-    end
-  end
-
-  defp extract_damage_contribution(killmail) do
-    case killmail.raw_data do
-      %{"victim" => %{"damage_taken" => total_damage}, "attackers" => attackers}
-      when is_list(attackers) and is_number(total_damage) and total_damage > 0 ->
-        character_damage =
-          attackers
-          |> Enum.find(&(&1["character_id"] == killmail.victim_character_id))
-          |> case do
-            %{"damage_done" => damage} when is_number(damage) -> damage
-            _ -> 0
-          end
-
-        character_damage / total_damage
-
-      _ ->
-        0.0
-    end
-  end
-
   defp tackle_ship?(ship_type_id) do
     # Frigates and some cruisers commonly used for tackle
-    # Interceptors
-    ship_type_id in 580..700 or ship_type_id in [11_182, 11_196]
+    ship_type_id in @ship_type_ranges.frigate or ship_type_id in @interceptor_ids
   end
 
   defp dps_ship?(ship_type_id) do
     # Most cruisers, battlecruisers, battleships
-    ship_type_id in 620..670
+    ship_type_id in @ship_type_ranges.cruiser or
+      ship_type_id in @ship_type_ranges.battlecruiser or
+      ship_type_id in @ship_type_ranges.battleship
   end
 
   defp support_ship?(ship_type_id) do
     # EWAR, logistics, command ships
-    # Logistics
-    # Force Recon
-    ship_type_id in [11_978, 11_987, 11_985, 12_003] or
-      ship_type_id in [11_957, 11_958, 11_959, 11_961]
+    ship_type_id in @logistics_ids or ship_type_id in @ewar_ids
   end
 
   defp calculate_specialization_balance(ship_types_map) do
@@ -354,7 +318,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
   end
 
   defp normalize_to_10_scale(score) do
-    min(10.0, max(0.0, score * 10))
+    SharedCalculations.normalize_to_10_scale(score)
   end
 
   # Private helper functions - removed unused functions

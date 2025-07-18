@@ -8,6 +8,36 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
 
   require Logger
 
+  # Ship type ID ranges for classification
+  @ship_type_ranges %{
+    capital: 19720..19740,
+    titan: 23757..23919,
+    battleship: 640..644,
+    marauder: 17738..17740,
+    cruiser: 358..894,
+    heavy_assault_cruiser: 17634..17738,
+    frigate: 1..100,
+    assault_frigate: 17476..17634,
+    destroyer: 420..441,
+    interdictor: 648..672,
+    supercarrier: 29986..29990
+  }
+
+  @ship_name_patterns %{
+    titan: ~r/Titan|Avatar|Erebus|Leviathan|Ragnarok/i,
+    supercarrier: ~r/Supercarrier|Aeon|Hel|Nyx|Wyvern|Revenant/i,
+    carrier: ~r/Carrier|Archon|Chimera|Thanatos|Nidhoggur/i,
+    dreadnought: ~r/Dreadnought|Revelation|Phoenix|Moros|Naglfar/i,
+    rorqual: ~r/Rorqual/i,
+    fax: ~r/Force Auxiliary|Apostle|Minokawa|Ninazu|Lif/i,
+    battleship: ~r/Battleship|Megathron|Tempest|Apocalypse|Raven/i,
+    command_ship: ~r/Command Ship|Damnation|Absolution|Vulture|Claymore/i,
+    logistics: ~r/Logistics|Guardian|Basilisk|Oneiros|Scimitar/i,
+    cruiser: ~r/Cruiser|Rupture|Thorax|Omen|Caracal/i,
+    frigate: ~r/Frigate|Rifter|Incursus|Punisher|Merlin/i,
+    destroyer: ~r/Destroyer|Thrasher|Catalyst|Coercer|Cormorant/i
+  }
+
   @doc """
   Analyze fleet compositions from participant data.
   """
@@ -57,42 +87,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     # Comprehensive ship class performance analysis
     ship_classes = classify_ships_by_class(participants)
 
-    # Get ship type data for accurate analysis
-    _ship_type_data = get_ship_type_data(participants)
-
     # Performance metrics per ship class
     performance_analysis =
       ship_classes
       |> Enum.map(fn {ship_class, ships} ->
-        # Calculate detailed performance metrics
-        survival_rate = calculate_survival_rate(ships, killmails)
-        kill_participation = calculate_kill_participation(ships, killmails)
-        effectiveness_score = calculate_effectiveness_score(ships, killmails)
-        damage_dealt = calculate_damage_dealt(ships, killmails)
-        damage_taken = calculate_damage_taken(ships, killmails)
-
-        # Role effectiveness analysis
-        role_effectiveness = analyze_role_effectiveness(ship_class, ships, killmails)
-
-        # Ship class specific metrics
-        class_metrics = calculate_class_specific_metrics(ship_class, ships, killmails)
-
-        # Tactical positioning analysis
-        positioning_analysis = analyze_tactical_positioning(ship_class, ships, killmails)
-
-        {ship_class,
-         %{
-           count: length(ships),
-           survival_rate: survival_rate,
-           kill_participation: kill_participation,
-           effectiveness_score: effectiveness_score,
-           damage_dealt: damage_dealt,
-           damage_taken: damage_taken,
-           role_effectiveness: role_effectiveness,
-           class_metrics: class_metrics,
-           positioning_analysis: positioning_analysis,
-           performance_grade: grade_performance(effectiveness_score, survival_rate)
-         }}
+        performance_metrics = do_calculate_ship_class_performance(ship_class, ships, killmails)
+        {ship_class, performance_metrics}
       end)
       |> Enum.into(%{})
 
@@ -212,9 +212,20 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
           Map.get(participant, :corporation_id) || Map.get(participant, :attacker_corporation_id)
 
         cond do
-          alliance_id && alliance_id != 0 -> {:alliance, alliance_id}
-          corp_id && corp_id != 0 -> {:corporation, corp_id}
-          true -> {:neutral, :rand.uniform(1000)}
+          alliance_id && alliance_id != 0 ->
+            {:alliance, alliance_id}
+
+          corp_id && corp_id != 0 ->
+            {:corporation, corp_id}
+
+          true ->
+            # Use a deterministic identifier based on participant data
+            participant_id =
+              Map.get(participant, :character_id) ||
+                Map.get(participant, :attacker_character_id) ||
+                Map.get(participant, :killmail_id, 0)
+
+            {:neutral, participant_id}
         end
       end)
 
@@ -242,11 +253,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
         end
 
       [{_key_a, side_a_participants}] ->
-        # Only one group, split it in half
-        %{
-          side_a: Enum.take(side_a_participants, div(length(side_a_participants), 2)),
-          side_b: Enum.drop(side_a_participants, div(length(side_a_participants), 2))
-        }
+        # Only one group - try to split by analyzing engagement data
+        Logger.warning("Only one group found, attempting to split by engagement analysis")
+        split_single_group_by_engagement(side_a_participants)
 
       [] ->
         # No participants
@@ -427,86 +436,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
 
       ship_name = Map.get(participant, :ship_name) || Map.get(participant, :ship_type_name, "")
 
-      cond do
-        # Capital ships (type ID ranges)
-        ship_type_id && ship_type_id >= 19720 && ship_type_id <= 19740 ->
-          :capital
-
-        ship_type_id && ship_type_id >= 23757 && ship_type_id <= 23919 ->
-          :capital
-
-        # Battleships
-        ship_type_id && ship_type_id >= 640 && ship_type_id <= 644 ->
-          :battleship
-
-        ship_type_id && ship_type_id >= 17738 && ship_type_id <= 17740 ->
-          :battleship
-
-        # Cruisers
-        ship_type_id && ship_type_id >= 358 && ship_type_id <= 894 ->
-          :cruiser
-
-        ship_type_id && ship_type_id >= 17634 && ship_type_id <= 17738 ->
-          :cruiser
-
-        # Frigates
-        ship_type_id && ship_type_id >= 1 && ship_type_id <= 100 ->
-          :frigate
-
-        ship_type_id && ship_type_id >= 17476 && ship_type_id <= 17634 ->
-          :frigate
-
-        # Destroyers
-        ship_type_id && ship_type_id >= 420 && ship_type_id <= 441 ->
-          :destroyer
-
-        # Industrial
-        ship_type_id && ship_type_id >= 648 && ship_type_id <= 672 ->
-          :industrial
-
-        # Logistics (by name patterns)
-        String.contains?(String.downcase(ship_name), [
-          "guardian",
-          "basilisk",
-          "oneiros",
-          "scimitar",
-          "osprey",
-          "augoror"
-        ]) ->
-          :logistics
-
-        # Electronic warfare
-        String.contains?(String.downcase(ship_name), [
-          "falcon",
-          "curse",
-          "pilgrim",
-          "huginn",
-          "rapier",
-          "lachesis",
-          "arazu",
-          "huginn"
-        ]) ->
-          :ewar
-
-        # Interdiction
-        String.contains?(String.downcase(ship_name), [
-          "sabre",
-          "heretic",
-          "eris",
-          "flycatcher",
-          "dictor",
-          "hictor"
-        ]) ->
-          :interdiction
-
-        # Strategic cruisers
-        ship_type_id && ship_type_id >= 29986 && ship_type_id <= 29990 ->
-          :strategic_cruiser
-
-        # Default classification
-        true ->
-          :unknown
-      end
+      classify_ship_type(ship_type_id, ship_name)
     end)
   end
 
@@ -764,41 +694,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       # Everything else is DPS
       true ->
         :dps
-    end
-  end
-
-  defp get_ship_type_data(participants) do
-    # Get ship type data for participants
-    ship_type_ids =
-      participants
-      |> Enum.map(fn participant ->
-        Map.get(participant, :ship_type_id) || Map.get(participant, :victim_ship_type_id)
-      end)
-      |> Enum.filter(& &1)
-      |> Enum.uniq()
-
-    # In a real implementation, this would query the ship database
-    # For now, return basic type data
-    ship_type_ids
-    |> Enum.map(fn type_id ->
-      {type_id,
-       %{
-         type_id: type_id,
-         name: "Ship Type #{type_id}",
-         group: determine_ship_group(type_id)
-       }}
-    end)
-    |> Enum.into(%{})
-  end
-
-  defp determine_ship_group(ship_type_id) do
-    cond do
-      ship_type_id >= 19720 && ship_type_id <= 19740 -> :capital
-      ship_type_id >= 640 && ship_type_id <= 644 -> :battleship
-      ship_type_id >= 358 && ship_type_id <= 894 -> :cruiser
-      ship_type_id >= 1 && ship_type_id <= 100 -> :frigate
-      ship_type_id >= 420 && ship_type_id <= 441 -> :destroyer
-      true -> :unknown
     end
   end
 
@@ -1501,15 +1396,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       ship_type_id =
         Map.get(participant, :ship_type_id) || Map.get(participant, :victim_ship_type_id)
 
-      cond do
-        # Frigates
-        ship_type_id && ship_type_id >= 1 && ship_type_id <= 100 -> true
-        # Destroyers  
-        ship_type_id && ship_type_id >= 420 && ship_type_id <= 441 -> true
-        # Cruisers
-        ship_type_id && ship_type_id >= 358 && ship_type_id <= 894 -> true
-        true -> false
-      end
+      ship_class = classify_ship_type(ship_type_id, nil)
+      ship_class in [:frigate, :destroyer, :cruiser]
     end)
   end
 
@@ -2340,14 +2228,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
   end
 
   defp classify_ship_by_type_id(ship_type_id) do
-    cond do
-      ship_type_id >= 19720 && ship_type_id <= 19740 -> :capital
-      ship_type_id >= 640 && ship_type_id <= 644 -> :battleship
-      ship_type_id >= 358 && ship_type_id <= 894 -> :cruiser
-      ship_type_id >= 1 && ship_type_id <= 100 -> :frigate
-      ship_type_id >= 420 && ship_type_id <= 441 -> :destroyer
-      true -> :unknown
-    end
+    # Reuse the centralized classification logic
+    classify_ship_type(ship_type_id, nil)
   end
 
   defp calculate_loss_ratio(side_a_losses, side_b_losses) do
@@ -2493,7 +2375,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     |> Enum.filter(fn km ->
       ship_type_id = Map.get(km, :victim_ship_type_id)
       # Capital ships and other high-value targets
-      ship_type_id && ship_type_id >= 19720 && ship_type_id <= 19740
+      ship_class = classify_ship_type(ship_type_id, nil)
+      ship_class == :capital
     end)
     |> Enum.map(fn km ->
       %{
@@ -2568,6 +2451,230 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
         effectiveness_difference: Float.round(effectiveness_diff, 2),
         total_kills: length(killmails)
       }
+    end
+  end
+
+  defp do_calculate_ship_class_performance(ship_class, ships, killmails) do
+    # Calculate detailed performance metrics for a ship class
+    survival_rate = calculate_survival_rate(ships, killmails)
+    kill_participation = calculate_kill_participation(ships, killmails)
+    effectiveness_score = calculate_effectiveness_score(ships, killmails)
+    damage_dealt = calculate_damage_dealt(ships, killmails)
+    damage_taken = calculate_damage_taken(ships, killmails)
+
+    # Role effectiveness analysis
+    role_effectiveness = analyze_role_effectiveness(ship_class, ships, killmails)
+
+    # Ship class specific metrics
+    class_metrics = calculate_class_specific_metrics(ship_class, ships, killmails)
+
+    # Tactical positioning analysis
+    positioning_analysis = analyze_tactical_positioning(ship_class, ships, killmails)
+
+    %{
+      count: length(ships),
+      survival_rate: survival_rate,
+      kill_participation: kill_participation,
+      effectiveness_score: effectiveness_score,
+      damage_dealt: damage_dealt,
+      damage_taken: damage_taken,
+      role_effectiveness: role_effectiveness,
+      class_metrics: class_metrics,
+      positioning_analysis: positioning_analysis,
+      performance_grade: grade_performance(effectiveness_score, survival_rate)
+    }
+  end
+
+  defp split_single_group_by_engagement(participants) do
+    # Analyze engagement relationships to determine sides
+    # Group participants by who they engaged with
+    if Enum.empty?(participants) do
+      %{side_a: [], side_b: []}
+    else
+      # Create engagement graph based on killmail data
+      engagement_pairs =
+        participants
+        |> Enum.flat_map(fn participant ->
+          # Get all engagements this participant was involved in
+          victim_id =
+            Map.get(participant, :victim_character_id) ||
+              Map.get(participant, :character_id)
+
+          attacker_id = Map.get(participant, :attacker_character_id)
+
+          if victim_id && attacker_id && victim_id != attacker_id do
+            [{victim_id, attacker_id}, {attacker_id, victim_id}]
+          else
+            []
+          end
+        end)
+        |> Enum.uniq()
+
+      # Build adjacency map
+      adjacency =
+        engagement_pairs
+        |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+
+      # Use simple graph partitioning - find two groups with minimal cross-edges
+      # Start with first participant as seed for side A
+      case participants do
+        [first | _rest] ->
+          first_id =
+            Map.get(first, :character_id) ||
+              Map.get(first, :attacker_character_id) ||
+              Map.get(first, :victim_character_id)
+
+          # Build side A from connections
+          side_a_ids = build_connected_component(first_id, adjacency, MapSet.new([first_id]))
+
+          # Partition participants based on discovered groups
+          {side_a, side_b} =
+            Enum.split_with(participants, fn p ->
+              p_id =
+                Map.get(p, :character_id) ||
+                  Map.get(p, :attacker_character_id) ||
+                  Map.get(p, :victim_character_id)
+
+              MapSet.member?(side_a_ids, p_id)
+            end)
+
+          # If one side is empty or too imbalanced, fall back to simple split
+          if Enum.empty?(side_b) || length(side_a) / length(participants) > 0.8 do
+            %{
+              side_a: Enum.take(participants, div(length(participants), 2)),
+              side_b: Enum.drop(participants, div(length(participants), 2))
+            }
+          else
+            %{side_a: side_a, side_b: side_b}
+          end
+
+        [] ->
+          %{side_a: [], side_b: []}
+      end
+    end
+  end
+
+  defp classify_ship_type(ship_type_id, ship_name) do
+    cond do
+      # Check ship type ID ranges first
+      ship_type_id && ship_type_in_range?(ship_type_id, :capital) ->
+        :capital
+
+      ship_type_id && ship_type_in_range?(ship_type_id, :titan) ->
+        :capital
+
+      ship_type_id && ship_type_in_range?(ship_type_id, :supercarrier) ->
+        :capital
+
+      ship_type_id && ship_type_in_range?(ship_type_id, :battleship) ->
+        :battleship
+
+      ship_type_id && ship_type_in_range?(ship_type_id, :marauder) ->
+        :battleship
+
+      ship_type_id && ship_type_in_range?(ship_type_id, :cruiser) ->
+        :cruiser
+
+      ship_type_id && ship_type_in_range?(ship_type_id, :heavy_assault_cruiser) ->
+        :cruiser
+
+      ship_type_id && ship_type_in_range?(ship_type_id, :frigate) ->
+        :frigate
+
+      ship_type_id && ship_type_in_range?(ship_type_id, :assault_frigate) ->
+        :frigate
+
+      ship_type_id && ship_type_in_range?(ship_type_id, :destroyer) ->
+        :destroyer
+
+      ship_type_id && ship_type_in_range?(ship_type_id, :interdictor) ->
+        :interdiction
+
+      # Check name patterns
+      ship_name_matches?(ship_name, :logistics) ->
+        :logistics
+
+      ship_name_matches?(ship_name, :command_ship) ->
+        :command
+
+      ship_name_matches?(ship_name, :titan) ->
+        :capital
+
+      ship_name_matches?(ship_name, :supercarrier) ->
+        :capital
+
+      ship_name_matches?(ship_name, :carrier) ->
+        :capital
+
+      ship_name_matches?(ship_name, :dreadnought) ->
+        :capital
+
+      ship_name_matches?(ship_name, :rorqual) ->
+        :industrial
+
+      ship_name_matches?(ship_name, :fax) ->
+        :logistics
+
+      # Name patterns for ewar
+      String.contains?(String.downcase(ship_name || ""), [
+        "falcon",
+        "curse",
+        "pilgrim",
+        "huginn",
+        "rapier",
+        "lachesis",
+        "arazu",
+        "keres",
+        "maulus"
+      ]) ->
+        :ewar
+
+      # Name patterns for interdiction  
+      String.contains?(String.downcase(ship_name || ""), [
+        "sabre",
+        "heretic",
+        "eris",
+        "flycatcher",
+        "dictor",
+        "hictor"
+      ]) ->
+        :interdiction
+
+      true ->
+        :unknown
+    end
+  end
+
+  defp ship_type_in_range?(ship_type_id, ship_class) do
+    case Map.get(@ship_type_ranges, ship_class) do
+      %Range{} = range -> ship_type_id in range
+      _ -> false
+    end
+  end
+
+  defp ship_name_matches?(ship_name, ship_class) do
+    case Map.get(@ship_name_patterns, ship_class) do
+      %Regex{} = pattern -> Regex.match?(pattern, ship_name || "")
+      _ -> false
+    end
+  end
+
+  defp build_connected_component(node, adjacency, visited) do
+    neighbors = Map.get(adjacency, node, [])
+    unvisited_neighbors = Enum.reject(neighbors, &MapSet.member?(visited, &1))
+
+    if Enum.empty?(unvisited_neighbors) do
+      visited
+    else
+      new_visited =
+        Enum.reduce(unvisited_neighbors, visited, fn neighbor, acc ->
+          MapSet.put(acc, neighbor)
+        end)
+
+      # Recursively visit neighbors
+      Enum.reduce(unvisited_neighbors, new_visited, fn neighbor, acc ->
+        build_connected_component(neighbor, adjacency, acc)
+      end)
     end
   end
 end

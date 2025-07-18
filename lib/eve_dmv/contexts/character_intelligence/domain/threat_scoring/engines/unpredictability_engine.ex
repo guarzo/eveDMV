@@ -7,6 +7,17 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
   """
 
   require Logger
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedCalculations
+
+  # Ship type IDs for tactical roles
+  @logistics_ids [11_978, 11_987, 11_985, 12_003]
+  @ewar_ids [11_957, 11_958, 11_959, 11_961]
+  @command_ids [22_470, 22_852, 17_918, 17_920]
+
+  # Ship type ID ranges - note: dps range is more specific and should be checked first
+  @dps_range 620..670
+  @tackle_range 580..700
+  @capital_range 19_720..19_740
 
   @doc """
   Calculate unpredictability score based on combat data.
@@ -239,6 +250,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       # Extract day of week from timestamps
       days =
         timestamps
+        |> Enum.map(&DateTime.to_date/1)
         |> Enum.map(&Date.day_of_week/1)
         |> Enum.frequencies()
 
@@ -264,7 +276,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       0.5
     else
       # Calculate time gaps between engagements
-      sorted_timestamps = Enum.sort(timestamps, DateTime)
+      sorted_timestamps = Enum.sort(timestamps, &DateTime.compare/2)
 
       gaps =
         sorted_timestamps
@@ -471,9 +483,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       0.5
     else
       # Analyze variance in damage contribution patterns
+      # Note: Using SharedCalculations which has a compatibility version
       damage_contributions =
         attacker_killmails
-        |> Enum.map(&extract_damage_contribution/1)
+        |> Enum.map(&SharedCalculations.extract_damage_contribution/1)
         |> Enum.filter(&(&1 > 0))
 
       if length(damage_contributions) < 2 do
@@ -494,25 +507,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
         # Normalize to 0-1 scale
         min(1.0, coefficient_of_variation * 2.0)
       end
-    end
-  end
-
-  defp extract_damage_contribution(killmail) do
-    case killmail.raw_data do
-      %{"victim" => %{"damage_taken" => total_damage}, "attackers" => attackers}
-      when is_list(attackers) and is_number(total_damage) and total_damage > 0 ->
-        character_damage =
-          attackers
-          |> Enum.find(&(&1["character_id"] == killmail.victim_character_id))
-          |> case do
-            %{"damage_done" => damage} when is_number(damage) -> damage
-            _ -> 0
-          end
-
-        character_damage / total_damage
-
-      _ ->
-        0.0
     end
   end
 
@@ -566,12 +560,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
 
   defp classify_tactical_role(ship_type_id) do
     cond do
-      ship_type_id in [11_978, 11_987, 11_985, 12_003] -> :logistics
-      ship_type_id in [11_957, 11_958, 11_959, 11_961] -> :ewar
-      ship_type_id in [22_470, 22_852, 17_918, 17_920] -> :command
-      ship_type_id in 580..700 -> :tackle
-      ship_type_id in 620..670 -> :dps
-      ship_type_id in 19_720..19_740 -> :capital
+      ship_type_id in @logistics_ids -> :logistics
+      ship_type_id in @ewar_ids -> :ewar
+      ship_type_id in @command_ids -> :command
+      # Check DPS range before tackle since they overlap
+      ship_type_id in @dps_range -> :dps
+      ship_type_id in @tackle_range -> :tackle
+      ship_type_id in @capital_range -> :capital
       true -> :other
     end
   end
@@ -708,6 +703,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
   end
 
   defp normalize_to_10_scale(score) do
-    min(10.0, max(0.0, score * 10))
+    SharedCalculations.normalize_to_10_scale(score)
   end
 end

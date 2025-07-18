@@ -339,17 +339,81 @@ defmodule EveDmvWeb.KillFeedLiveTest do
 
   defp create_test_killmails(count) do
     for i <- 1..count do
-      create(:killmail_enriched, %{
+      # Create raw killmail with proper structure expected by DisplayService
+      # For first killmail, use specific values to ensure test assertions pass
+      {ship_type_id, ship_name} =
+        if i == 1 do
+          {587, "Rifter"}
+        else
+          type_id = Enum.random([587, 588, 589])
+
+          name =
+            case type_id do
+              587 -> "Rifter"
+              588 -> "Rupture"
+              589 -> "Hurricane"
+            end
+
+          {type_id, name}
+        end
+
+      {system_id, system_name} =
+        if i == 1 do
+          {30_000_142, "Jita"}
+        else
+          sys_id = Enum.random([30_000_142, 30_002_187, 30_003_715])
+
+          sys_name =
+            case sys_id do
+              30_000_142 -> "Jita"
+              30_002_187 -> "Amarr"
+              30_003_715 -> "Dodixie"
+            end
+
+          {sys_id, sys_name}
+        end
+
+      raw_data = %{
+        "killmail_id" => 80_000_000 + i,
+        "killmail_time" =>
+          DateTime.to_iso8601(DateTime.add(DateTime.utc_now(), -i * 60, :second)),
+        "solar_system_id" => system_id,
+        "solar_system_name" => system_name,
+        "victim" => %{
+          "character_id" => 90_000_000 + i,
+          "character_name" => "Victim #{i}",
+          "corporation_id" => 1_000_000 + i,
+          "corporation_name" => "Test Corp #{i}",
+          "ship_type_id" => ship_type_id,
+          "ship_name" => ship_name,
+          "damage_taken" => 10000
+        },
+        "attackers" => [
+          %{
+            "character_id" => 91_000_000 + i,
+            "character_name" => "Attacker #{i}",
+            "corporation_id" => 2_000_000 + i,
+            "corporation_name" => "Enemy Corp #{i}",
+            "ship_type_id" => 620,
+            "damage_done" => 10000,
+            "final_blow" => true
+          }
+        ],
+        "attacker_count" => 1,
+        "total_value" => Enum.random(1_000_000..100_000_000)
+      }
+
+      create(:killmail_raw, %{
         killmail_id: 80_000_000 + i,
         killmail_time: DateTime.add(DateTime.utc_now(), -i * 60, :second),
-        solar_system_id: Enum.random([30_000_142, 30_002_187, 30_003_715]),
-        solar_system_name: Enum.random(["Jita", "Amarr", "Dodixie"]),
-        victim_character_name: "Victim #{i}",
-        # Required field
-        victim_ship_type_id: Enum.random([587, 588, 589]),
-        victim_ship_name: Enum.random(["Rifter", "Rupture", "Hurricane"]),
-        final_blow_character_name: "Attacker #{i}",
-        total_value: Decimal.new(Enum.random(1_000_000..100_000_000))
+        killmail_hash: "test_hash_#{i}",
+        solar_system_id: system_id,
+        victim_character_id: 90_000_000 + i,
+        victim_corporation_id: 1_000_000 + i,
+        victim_ship_type_id: ship_type_id,
+        attacker_count: 1,
+        raw_data: raw_data,
+        source: "test"
       })
     end
   end
@@ -363,13 +427,48 @@ defmodule EveDmvWeb.KillFeedLiveTest do
 
     for {system_id, system_name, count} <- systems do
       for i <- 1..count do
-        create(:killmail_enriched, %{
+        ship_type_id = Enum.random([587, 588, 589])
+
+        raw_data = %{
+          "killmail_id" => 81_000_000 + system_id + i,
+          "killmail_time" => DateTime.to_iso8601(DateTime.utc_now()),
+          "solar_system_id" => system_id,
+          "solar_system_name" => system_name,
+          "victim" => %{
+            "character_id" => 95_000_000 + i,
+            "character_name" => "System Victim #{i}",
+            "corporation_id" => 3_000_000 + i,
+            "corporation_name" => "System Corp #{i}",
+            "ship_type_id" => ship_type_id,
+            "ship_name" => Enum.random(["Rifter", "Rupture", "Hurricane"]),
+            "damage_taken" => 5000
+          },
+          "attackers" => [
+            %{
+              "character_id" => 96_000_000 + i,
+              "character_name" => "System Attacker #{i}",
+              "corporation_id" => 4_000_000 + i,
+              "corporation_name" => "System Enemy #{i}",
+              "ship_type_id" => 22456,
+              "damage_done" => 5000,
+              "final_blow" => true
+            }
+          ],
+          "attacker_count" => 1,
+          "total_value" => 50_000_000
+        }
+
+        create(:killmail_raw, %{
           killmail_id: 81_000_000 + system_id + i,
           killmail_time: DateTime.utc_now(),
+          killmail_hash: "system_hash_#{system_id}_#{i}",
           solar_system_id: system_id,
-          solar_system_name: system_name,
-          # Required field
-          victim_ship_type_id: Enum.random([587, 588, 589])
+          victim_character_id: 95_000_000 + i,
+          victim_corporation_id: 3_000_000 + i,
+          victim_ship_type_id: ship_type_id,
+          attacker_count: 1,
+          raw_data: raw_data,
+          source: "test"
         })
       end
     end

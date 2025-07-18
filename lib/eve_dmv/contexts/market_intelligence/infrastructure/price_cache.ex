@@ -82,8 +82,8 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.PriceCache do
         }
   def stats do
     try do
-      size = :ets.info(@cache_table, :size)
-      memory = :ets.info(@cache_table, :memory)
+      size = :ets.info(@cache_table, :size) || 0
+      memory = :ets.info(@cache_table, :memory) || 0
       memory_bytes = memory * :erlang.system_info(:wordsize)
 
       hits = get_stat(:hits)

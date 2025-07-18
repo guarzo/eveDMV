@@ -23,6 +23,11 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
   plug(Tesla.Middleware.JSON)
   plug(Tesla.Middleware.Timeout, timeout: 10_000)
 
+  # Use Tesla.Mock adapter in test environment
+  if Application.compile_env(:eve_dmv, :environment) == :test do
+    adapter(Tesla.Mock)
+  end
+
   plug(Tesla.Middleware.Retry,
     delay: 500,
     max_retries: 3,

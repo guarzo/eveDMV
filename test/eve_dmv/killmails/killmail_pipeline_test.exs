@@ -4,16 +4,10 @@ defmodule EveDmv.Killmails.KillmailPipelineTest do
   """
 
   # Broadway tests need to be synchronous
-  use ExUnit.Case, async: false
-  import EveDmv.TestHelpers
+  use EveDmv.DataCase, async: false
 
   alias EveDmv.Killmails.KillmailPipeline
   alias EveDmv.Killmails.TestDataGenerator
-
-  setup do
-    setup_database()
-    :ok
-  end
 
   describe "transform_sse/2" do
     test "transforms valid SSE event data" do

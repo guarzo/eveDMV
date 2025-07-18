@@ -3,7 +3,7 @@ defmodule EveDmv.Killmails.KillmailRawTest do
   Tests for KillmailRaw resource operations.
   """
 
-  use EveDmv.DataCase, async: true
+  use EveDmv.DataCase, async: false
 
   import Ash.Expr
 

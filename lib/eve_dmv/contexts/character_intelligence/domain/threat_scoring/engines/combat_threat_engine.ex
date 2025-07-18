@@ -7,6 +7,45 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Com
   """
 
   require Logger
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedCalculations
+
+  # Score calculation weights
+  @kd_ratio_weight 0.25
+  @isk_efficiency_weight 0.25
+  @survival_rate_weight 0.20
+  @target_quality_weight 0.15
+  @damage_efficiency_weight 0.15
+
+  # Ship type ID ranges
+  @ship_type_ranges %{
+    frigate: 580..700,
+    destroyer: 420..450,
+    cruiser: 620..650,
+    battlecruiser: 540..570,
+    battleship: 640..670,
+    capital: 19_720..19_740
+  }
+
+  # Ship valuation estimates
+  @ship_values %{
+    frigate: 5_000_000,
+    destroyer: 15_000_000,
+    cruiser: 50_000_000,
+    battlecruiser: 150_000_000,
+    battleship: 300_000_000,
+    capital: 2_000_000_000,
+    default: 25_000_000
+  }
+
+  # Tactical target ship IDs
+  @tactical_ship_ids %{
+    logistics: [11_978, 11_987, 11_985, 12_003],
+    force_recon: [11_957, 11_958, 11_959, 11_961],
+    command_ships: [22_470, 22_852, 17_918, 17_920],
+    interdictors: [11_995, 11_993, 22_460, 22_464],
+    heavy_interdictors: [12_013, 12_015, 12_017, 12_019],
+    strategic_cruisers: [29_984, 29_986, 29_988, 29_990]
+  }
 
   @doc """
   Calculate combat skill score based on combat data.
@@ -30,25 +69,25 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Com
       if isk_lost > 0, do: isk_destroyed / isk_lost, else: min(isk_destroyed / 1_000_000, 10.0)
 
     # Survival analysis
-    survival_rate = calculate_survival_rate(combat_data)
+    survival_rate = SharedCalculations.calculate_survival_rate(combat_data, victim_kms)
 
     # Target selection quality (attacking valuable targets)
     target_quality = analyze_target_selection_quality(attacker_kms)
 
     # Damage efficiency in fights
-    damage_efficiency = calculate_damage_efficiency(attacker_kms)
+    damage_efficiency = SharedCalculations.calculate_damage_efficiency(attacker_kms)
 
     # Weighted combat skill score
     raw_score =
-      normalize_score(kd_ratio, 0, 5) * 0.25 +
-        normalize_score(isk_efficiency, 0, 3) * 0.25 +
-        survival_rate * 0.20 +
-        target_quality * 0.15 +
-        damage_efficiency * 0.15
+      normalize_score(kd_ratio, 0, 5) * @kd_ratio_weight +
+        normalize_score(isk_efficiency, 0, 3) * @isk_efficiency_weight +
+        survival_rate * @survival_rate_weight +
+        target_quality * @target_quality_weight +
+        damage_efficiency * @damage_efficiency_weight
 
     %{
       raw_score: raw_score,
-      normalized_score: normalize_to_10_scale(raw_score),
+      normalized_score: SharedCalculations.normalize_to_10_scale(raw_score),
       components: %{
         kd_ratio: kd_ratio,
         isk_efficiency: isk_efficiency,
@@ -93,48 +132,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Com
   end
 
   @doc """
-  Calculate damage efficiency in combat.
-  """
-  def calculate_damage_efficiency(attacker_killmails) do
-    Logger.debug("Calculating damage efficiency for #{length(attacker_killmails)} killmails")
-
-    if Enum.empty?(attacker_killmails) do
-      0.5
-    else
-      total_damage_contribution =
-        attacker_killmails
-        |> Enum.map(&extract_damage_contribution/1)
-        |> Enum.sum()
-
-      average_contribution = total_damage_contribution / length(attacker_killmails)
-
-      # Normalize damage contribution (higher is better)
-      # 15% average contribution = 1.0 score
-      min(1.0, average_contribution / 0.15)
-    end
-  end
-
-  @doc """
-  Calculate survival rate based on combat data.
-  """
-  def calculate_survival_rate(combat_data) do
-    Logger.debug("Calculating survival rate")
-
-    all_killmails = Map.get(combat_data, :killmails, [])
-    victim_killmails = Map.get(combat_data, :victim_killmails, [])
-
-    total_engagements = length(all_killmails)
-    deaths = length(victim_killmails)
-
-    if total_engagements > 0 do
-      (total_engagements - deaths) / total_engagements
-    else
-      # Neutral score for no data
-      0.5
-    end
-  end
-
-  @doc """
   Calculate total ISK destroyed from killmails.
   """
   def calculate_total_isk_destroyed(attacker_killmails) do
@@ -163,64 +160,25 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Com
     # Heuristic ship value estimation based on type
     ship_type_id = killmail.victim_ship_type_id
 
-    cond do
-      # Frigates: 5M ISK
-      ship_type_id in 580..700 -> 5_000_000
-      # Destroyers: 15M ISK
-      ship_type_id in 420..450 -> 15_000_000
-      # Cruisers: 50M ISK
-      ship_type_id in 620..650 -> 50_000_000
-      # Battlecruisers: 150M ISK
-      ship_type_id in 540..570 -> 150_000_000
-      # Battleships: 300M ISK
-      ship_type_id in 640..670 -> 300_000_000
-      # Capitals: 2B ISK
-      ship_type_id in 19_720..19_740 -> 2_000_000_000
-      # Default: 25M ISK
-      true -> 25_000_000
-    end
+    # Find which ship class this type ID belongs to
+    ship_class =
+      @ship_type_ranges
+      |> Enum.find(fn {_class, range} -> ship_type_id in range end)
+      |> case do
+        {class, _range} -> class
+        nil -> :default
+      end
+
+    # Return the corresponding value
+    Map.get(@ship_values, ship_class, @ship_values.default)
   end
 
   defp tactical_target?(ship_type_id) do
     # Ships that are tactically important targets
-    ship_type_id in [
-      # Logistics ships (very high priority)
-      # Guardian, Basilisk, Oneiros, Scimitar
-      11_978,
-      11_987,
-      11_985,
-      12_003,
-      # Force Recon (high priority)
-      11_957,
-      11_958,
-      11_959,
-      11_961,
-      # Command ships
-      22_470,
-      22_852,
-      17_918,
-      17_920
-    ]
-  end
-
-  defp extract_damage_contribution(killmail) do
-    # Extract character's damage from killmail
-    case killmail.raw_data do
-      %{"victim" => %{"damage_taken" => total_damage}, "attackers" => attackers}
-      when is_list(attackers) and is_number(total_damage) and total_damage > 0 ->
-        character_damage =
-          attackers
-          |> Enum.find(&(&1["character_id"] == killmail.victim_character_id))
-          |> case do
-            %{"damage_done" => damage} when is_number(damage) -> damage
-            _ -> 0
-          end
-
-        character_damage / total_damage
-
-      _ ->
-        0.0
-    end
+    # Check if the ship type ID is in any of the tactical ship ID lists
+    @tactical_ship_ids
+    |> Map.values()
+    |> Enum.any?(fn ship_ids -> ship_type_id in ship_ids end)
   end
 
   defp generate_combat_skill_insights(raw_score, kd_ratio, isk_efficiency, survival_rate) do
@@ -260,10 +218,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Com
   defp normalize_score(value, min_val, max_val) do
     clamped_value = min(max_val, max(min_val, value))
     (clamped_value - min_val) / (max_val - min_val)
-  end
-
-  defp normalize_to_10_scale(score) do
-    min(10.0, max(0.0, score * 10))
   end
 
   # Private helper functions - removed unused generate_combat_skill_insights/4

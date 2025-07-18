@@ -1,5 +1,5 @@
 defmodule EveDmv.Integrations.ShipIntelligenceBridgeTest do
-  use EveDmv.DataCase, async: true
+  use EveDmv.DataCase, async: false
 
   alias EveDmv.Integrations.ShipIntelligenceBridge
   alias EveDmv.Repo

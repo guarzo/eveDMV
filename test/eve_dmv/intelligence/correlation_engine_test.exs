@@ -7,7 +7,11 @@ defmodule EveDmv.Intelligence.CorrelationEngineTest do
 
   setup do
     # Start QueryCache for this test since it's not started in test environment
-    start_supervised!(QueryCache)
+    case Process.whereis(QueryCache) do
+      nil -> start_supervised!(QueryCache)
+      _pid -> :ok
+    end
+
     :ok
   end
 
