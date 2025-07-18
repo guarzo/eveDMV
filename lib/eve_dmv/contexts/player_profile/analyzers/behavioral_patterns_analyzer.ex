@@ -636,15 +636,11 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.BehavioralPatternsAnalyzer do
   end
 
   defp calculate_doctrine_compliance(character_stats) do
-    if is_nil(character_stats) do
-      0.0
-    else
-      fleet_ratio = 1.0 - Map.get(character_stats, :solo_ratio, 0.5)
-      ship_standardization = assess_ship_standardization(character_stats)
+    fleet_ratio = 1.0 - Map.get(character_stats, :solo_ratio, 0.5)
+    ship_standardization = assess_ship_standardization(character_stats)
 
-      compliance_score = fleet_ratio * 0.6 + ship_standardization * 0.4
-      Float.round(compliance_score, 2)
-    end
+    compliance_score = fleet_ratio * 0.6 + ship_standardization * 0.4
+    Float.round(compliance_score, 2)
   end
 
   defp assess_ship_standardization(stats) do
@@ -677,7 +673,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.BehavioralPatternsAnalyzer do
       top_ship_class = Map.get(character_stats, :top_ship_class, "")
 
       cond do
-        Map.get(character_stats, :is_fc, false) == true -> :fleet_commander
+        Map.get(character_stats, :is_fc, false) -> :fleet_commander
         solo_ratio < 0.2 and total_kills > 500 -> :anchor
         solo_ratio < 0.3 and total_kills > 200 -> :mainline_dps
         solo_ratio > 0.7 -> :scout_tackler

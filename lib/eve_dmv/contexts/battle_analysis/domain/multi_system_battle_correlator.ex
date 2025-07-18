@@ -53,13 +53,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
     min_overlap = Keyword.get(options, :min_overlap, @min_participant_overlap_ratio)
     system_connections = Keyword.get(options, :system_connections, %{})
 
-    # Ensure battles is a proper list
-    battles_list =
-      case battles do
-        b when is_list(b) -> b
-        b when is_map(b) -> [b]
-        _ -> []
-      end
+    # battles is already ensured to be a list by the function guard
+    battles_list = battles
 
     Logger.info("Correlating #{length(battles_list)} battles across multiple systems")
 

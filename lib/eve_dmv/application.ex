@@ -59,10 +59,18 @@ defmodule EveDmv.Application do
       EveDmv.Cache.AnalysisCache,
       # Start the static data cache for system/ship names
       EveDmv.Cache.StaticDataCache,
+      # Start the query cache for expensive database queries
+      EveDmv.Cache.QueryCache,
+      # Start the performance tracker
+      EveDmv.Monitoring.PerformanceTracker,
       # Start the corporation analyzer service
       EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer,
+      # Start the battle analysis service for combat intelligence
+      EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService,
       # Start rate limiter for Janice API (5 requests per second)
       {EveDmv.Market.RateLimiter, [name: :janice_rate_limiter] ++ RateLimit.janice_rate_limit()},
+      # Start the Janice API client for market pricing
+      EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient,
       # Start the surveillance context (includes matching engine, profile repository, etc.)
       maybe_start_surveillance_context(),
       # Conditionally start database-dependent processes
@@ -129,11 +137,12 @@ defmodule EveDmv.Application do
     if Application.get_env(:eve_dmv, :environment, :prod) != :test do
       [
         EveDmv.Telemetry.QueryMonitor,
-        EveDmv.Database.QueryCache,
+        # EveDmv.Database.QueryCache, # Removed - duplicate of EveDmv.Cache.QueryCache
         EveDmv.Database.CacheWarmer,
         EveDmv.Database.ConnectionPoolMonitor,
         EveDmv.Database.PartitionManager,
         EveDmv.Database.CacheInvalidator,
+        EveDmv.Database.CacheHashManager,
         EveDmv.Database.QueryPlanAnalyzer,
         EveDmv.Database.MaterializedViewManager,
         EveDmv.Database.ArchiveManager,
@@ -142,7 +151,12 @@ defmodule EveDmv.Application do
         # Ship role analysis worker for continuous fleet intelligence
         EveDmv.Workers.ShipRoleAnalysisWorker,
         # Intelligence analysis supervisor for managing analysis tasks
-        EveDmv.Intelligence.Core.Supervisor
+        EveDmv.Intelligence.Core.Supervisor,
+        # Historical import pipeline (Sprint 15A)
+        EveDmv.Historical.ImportPipeline,
+        EveDmv.Historical.ImportProgressMonitor,
+        # Performance monitoring dashboard (Sprint 15A)
+        EveDmv.Monitoring.PerformanceDashboard
       ]
     else
       []

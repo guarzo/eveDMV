@@ -9,7 +9,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Infrastructure.DefenseMetricsCache 
   @doc """
   Get defense metrics for a corporation over a time range.
   """
-  @spec get_defense_metrics(integer(), map()) :: {:ok, map()} | {:error, term()}
+  @spec get_defense_metrics(integer(), atom()) :: {:ok, map()} | {:error, term()}
   def get_defense_metrics(_corporation_id, _time_range) do
     {:ok,
      %{

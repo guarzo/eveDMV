@@ -10,7 +10,7 @@ defmodule EveDmv.Database.CacheWarmer do
   use GenServer
 
   alias EveDmv.Api
-  alias EveDmv.Database.QueryCache
+  alias EveDmv.Cache.QueryCache
   alias EveDmv.Eve.ItemType
   alias EveDmv.Eve.SolarSystem
   alias EveDmv.Intelligence.CharacterStats
@@ -202,7 +202,10 @@ defmodule EveDmv.Database.CacheWarmer do
           cache_key = "killmail_enriched_#{killmail.killmail_id}"
 
           # Cache is handled by QueryCache internally, just touch it to warm
-          QueryCache.get_or_compute(cache_key, fn -> killmail end, :timer.hours(2))
+          case QueryCache.get_or_compute(cache_key, fn -> killmail end, :timer.hours(2)) do
+            {:ok, _} -> :ok
+            _ -> :ok
+          end
         end)
 
         length(killmails)
@@ -284,13 +287,16 @@ defmodule EveDmv.Database.CacheWarmer do
         Enum.each(alliance_ids, fn alliance_id ->
           cache_key = "alliance_stats_#{alliance_id}"
 
-          QueryCache.get_or_compute(
-            cache_key,
-            fn ->
-              compute_alliance_stats(alliance_id)
-            end,
-            :timer.hours(6)
-          )
+          case QueryCache.get_or_compute(
+                 cache_key,
+                 fn ->
+                   compute_alliance_stats(alliance_id)
+                 end,
+                 :timer.hours(6)
+               ) do
+            {:ok, _} -> :ok
+            _ -> :ok
+          end
         end)
 
         length(alliance_ids)
@@ -304,16 +310,19 @@ defmodule EveDmv.Database.CacheWarmer do
     Enum.each(character_ids, fn character_id ->
       cache_key = "character_intel_#{character_id}"
 
-      QueryCache.get_or_compute(
-        cache_key,
-        fn ->
-          case IntelligenceMigrationAdapter.analyze(:character, character_id, scope: :basic) do
-            {:ok, analysis} -> analysis
-            _ -> nil
-          end
-        end,
-        :timer.hours(1)
-      )
+      case QueryCache.get_or_compute(
+             cache_key,
+             fn ->
+               case IntelligenceMigrationAdapter.analyze(:character, character_id, scope: :basic) do
+                 {:ok, analysis} -> analysis
+                 _ -> nil
+               end
+             end,
+             :timer.hours(1)
+           ) do
+        {:ok, _} -> :ok
+        _ -> :ok
+      end
     end)
   end
 
@@ -321,20 +330,23 @@ defmodule EveDmv.Database.CacheWarmer do
     Enum.each(killmail_ids, fn killmail_id ->
       cache_key = "killmail_enriched_#{killmail_id}"
 
-      QueryCache.get_or_compute(
-        cache_key,
-        fn ->
-          KillmailEnriched
-          |> Ash.Query.filter(killmail_id == ^killmail_id)
-          |> Ash.Query.load(:participants)
-          |> Ash.read_one(domain: Api)
-          |> case do
-            {:ok, killmail} -> killmail
-            _ -> nil
-          end
-        end,
-        :timer.hours(2)
-      )
+      case QueryCache.get_or_compute(
+             cache_key,
+             fn ->
+               KillmailEnriched
+               |> Ash.Query.filter(killmail_id == ^killmail_id)
+               |> Ash.Query.load(:participants)
+               |> Ash.read_one(domain: Api)
+               |> case do
+                 {:ok, killmail} -> killmail
+                 _ -> nil
+               end
+             end,
+             :timer.hours(2)
+           ) do
+        {:ok, _} -> :ok
+        _ -> :ok
+      end
     end)
   end
 
@@ -361,32 +373,38 @@ defmodule EveDmv.Database.CacheWarmer do
   defp warm_system_info(system_id) do
     cache_key = "system_info_#{system_id}"
 
-    QueryCache.get_or_compute(
-      cache_key,
-      fn ->
-        case Ash.get(SolarSystem, system_id, domain: Api) do
-          {:ok, system} -> system
-          _ -> nil
-        end
-      end,
-      :timer.hours(24)
-    )
+    case QueryCache.get_or_compute(
+           cache_key,
+           fn ->
+             case Ash.get(SolarSystem, system_id, domain: Api) do
+               {:ok, system} -> system
+               _ -> nil
+             end
+           end,
+           :timer.hours(24)
+         ) do
+      {:ok, _} -> :ok
+      _ -> :ok
+    end
   end
 
   defp warm_item_type_batch(type_ids) do
     Enum.each(type_ids, fn type_id ->
       cache_key = "item_type_#{type_id}"
 
-      QueryCache.get_or_compute(
-        cache_key,
-        fn ->
-          case Ash.get(ItemType, type_id, domain: Api) do
-            {:ok, item} -> item
-            _ -> nil
-          end
-        end,
-        :timer.hours(48)
-      )
+      case QueryCache.get_or_compute(
+             cache_key,
+             fn ->
+               case Ash.get(ItemType, type_id, domain: Api) do
+                 {:ok, item} -> item
+                 _ -> nil
+               end
+             end,
+             :timer.hours(48)
+           ) do
+        {:ok, _} -> :ok
+        _ -> :ok
+      end
     end)
   end
 

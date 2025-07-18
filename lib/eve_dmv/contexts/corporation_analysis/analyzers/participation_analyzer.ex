@@ -107,48 +107,43 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
     period_start = get_period_start(opts, base_data)
     period_end = get_period_end(opts, base_data)
 
-    case get_corporation_member_participations(
-           base_data,
-           corporation_id,
-           period_start,
-           period_end
-         ) do
-      {:ok, member_participations} ->
-        analysis = %{
-          corporation_id: corporation_id,
-          analysis_period_start: period_start,
-          analysis_period_end: period_end,
-          total_members_analyzed: length(member_participations),
+    {:ok, member_participations} =
+      get_corporation_member_participations(
+        base_data,
+        corporation_id,
+        period_start,
+        period_end
+      )
 
-          # Aggregate participation metrics
-          average_fleet_participation:
-            calculate_average_fleet_participation(member_participations),
-          total_fleet_operations: calculate_total_fleet_operations(member_participations),
-          total_home_defense_ops: calculate_total_home_defense_ops(member_participations),
-          total_chain_operations: calculate_total_chain_operations(member_participations),
+    analysis = %{
+      corporation_id: corporation_id,
+      analysis_period_start: period_start,
+      analysis_period_end: period_end,
+      total_members_analyzed: length(member_participations),
 
-          # Participation distribution
-          high_participation_members: count_high_participation_members(member_participations),
-          moderate_participation_members:
-            count_moderate_participation_members(member_participations),
-          low_participation_members: count_low_participation_members(member_participations),
-          inactive_members: count_inactive_members(member_participations),
+      # Aggregate participation metrics
+      average_fleet_participation: calculate_average_fleet_participation(member_participations),
+      total_fleet_operations: calculate_total_fleet_operations(member_participations),
+      total_home_defense_ops: calculate_total_home_defense_ops(member_participations),
+      total_chain_operations: calculate_total_chain_operations(member_participations),
 
-          # Corporation insights
-          participation_health_score: calculate_participation_health_score(member_participations),
-          most_active_operation_type: determine_most_active_operation_type(member_participations),
-          participation_trends: analyze_corporation_participation_trends(member_participations),
+      # Participation distribution
+      high_participation_members: count_high_participation_members(member_participations),
+      moderate_participation_members: count_moderate_participation_members(member_participations),
+      low_participation_members: count_low_participation_members(member_participations),
+      inactive_members: count_inactive_members(member_participations),
 
-          # Recommendations
-          improvement_areas: identify_participation_improvement_areas(member_participations),
-          engagement_recommendations: generate_engagement_recommendations(member_participations)
-        }
+      # Corporation insights
+      participation_health_score: calculate_participation_health_score(member_participations),
+      most_active_operation_type: determine_most_active_operation_type(member_participations),
+      participation_trends: analyze_corporation_participation_trends(member_participations),
 
-        Result.ok(analysis)
+      # Recommendations
+      improvement_areas: identify_participation_improvement_areas(member_participations),
+      engagement_recommendations: generate_engagement_recommendations(member_participations)
+    }
 
-      {:error, _reason} = error ->
-        error
-    end
+    Result.ok(analysis)
   rescue
     exception ->
       Result.error(

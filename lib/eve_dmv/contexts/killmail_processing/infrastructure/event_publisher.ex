@@ -9,7 +9,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Infrastructure.EventPublisher do
   @doc """
   Publish multiple killmail processing events.
   """
-  @spec publish_events([map()]) :: {:ok, non_neg_integer()} | {:error, term()}
+  @spec publish_events([map()]) :: {:ok, non_neg_integer()}
   def publish_events(events) when is_list(events) do
     # In real implementation would:
     # - Validate events
@@ -23,7 +23,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Infrastructure.EventPublisher do
   @doc """
   Publish a single event.
   """
-  @spec publish_event(map()) :: :ok | {:error, term()}
+  @spec publish_event(map()) :: :ok
   def publish_event(_event) do
     # In real implementation would publish to event bus
     :ok

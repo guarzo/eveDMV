@@ -68,8 +68,8 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
         individual_ship_roles: enhanced_roles,
         fleet_composition: fleet_analysis,
         doctrine_analysis: fleet_analysis.doctrine_classification,
-        tactical_assessment: fleet_analysis.tactical_assessment || %{},
-        recommendations: fleet_analysis.recommendations || [],
+        tactical_assessment: fleet_analysis.tactical_assessment,
+        recommendations: fleet_analysis.recommendations,
         enhanced_at: DateTime.utc_now()
       }
     rescue

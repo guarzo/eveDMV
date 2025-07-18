@@ -798,8 +798,19 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
     # Generate last 6 months of activity data
     months =
       for i <- 6..1//-1 do
-        start_date = DateTime.utc_now() |> DateTime.add(-i, :month)
-        end_date = DateTime.utc_now() |> DateTime.add(-(i - 1), :month)
+        today = Date.utc_today()
+
+        start_date =
+          today
+          |> Date.beginning_of_month()
+          |> Date.shift(month: -i)
+          |> DateTime.new!(~T[00:00:00])
+
+        end_date =
+          today
+          |> Date.beginning_of_month()
+          |> Date.shift(month: -(i - 1))
+          |> DateTime.new!(~T[00:00:00])
 
         case Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id})
              |> Ash.Query.filter(killmail_time >= ^start_date and killmail_time < ^end_date)

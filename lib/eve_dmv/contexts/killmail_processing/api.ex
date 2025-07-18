@@ -77,7 +77,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
 
   Returns both raw and enriched data if available.
   """
-  @spec get_killmail_by_id(integer()) :: Result.t(map()) | Result.t(:not_found)
+  @spec get_killmail_by_id(integer()) :: {:error, :not_found | :invalid_killmail_id}
   def get_killmail_by_id(killmail_id) when is_integer(killmail_id) and killmail_id > 0 do
     # For now, return a mock response since the table doesn't exist
     {:error, :not_found}

@@ -126,11 +126,14 @@ defmodule EveDmv.Cache.StaticDataCache do
     # Create ETS table
     :ets.new(@table_name, [:set, :public, :named_table, read_concurrency: true])
 
-    # Schedule cache warming
-    schedule_warm_cache()
+    # Only warm cache in non-test environments
+    unless Application.get_env(:eve_dmv, :environment, :prod) == :test do
+      # Schedule cache warming
+      schedule_warm_cache()
 
-    # Initial cache warming
-    send(self(), :initial_warm_cache)
+      # Initial cache warming
+      send(self(), :initial_warm_cache)
+    end
 
     {:ok,
      %{

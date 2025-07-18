@@ -273,7 +273,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
 
     case SQL.query(Repo, query, [character_id, corporation_id]) do
       {:ok, %{rows: [[ratio]]}} when is_number(ratio) ->
-        Decimal.to_float(ratio)
+        ratio
 
       _ ->
         0.0
@@ -296,7 +296,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
 
     case SQL.query(Repo, query, [corporation_id]) do
       {:ok, %{rows: [[avg_size]]}} when is_number(avg_size) ->
-        Float.round(Decimal.to_float(avg_size), 1)
+        Float.round(avg_size, 1)
 
       _ ->
         0.0

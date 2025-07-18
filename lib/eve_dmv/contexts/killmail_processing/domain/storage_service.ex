@@ -9,7 +9,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.StorageService do
   @doc """
   Store validated killmail and enriched data to the database.
   """
-  @spec store_killmail(map(), map()) :: {:ok, map()} | {:error, term()}
+  @spec store_killmail(map(), map()) :: {:ok, map()}
   def store_killmail(validated_killmail, _enriched_data) do
     # In real implementation would:
     # - Store raw killmail data

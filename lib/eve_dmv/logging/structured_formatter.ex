@@ -9,20 +9,48 @@ defmodule EveDmv.Logging.StructuredFormatter do
   @behaviour :logger_formatter
 
   @impl :logger_formatter
-  def format(%{level: level, msg: message, time: timestamp, meta: metadata}, _opts) do
-    log_entry =
-      %{
-        "@timestamp": format_timestamp(timestamp),
-        level: level,
-        message: format_message(message),
-        service: "eve_dmv",
-        environment: Application.get_env(:eve_dmv, :environment, :prod)
-      }
-      |> add_metadata(metadata)
-      |> add_context_fields(metadata)
-      |> Jason.encode!()
+  def format(log_event, _opts) do
+    # Handle both old and new logger formats
+    {level, message, timestamp, metadata} =
+      case log_event do
+        %{level: level, msg: msg, time: time, meta: meta} ->
+          {level, msg, time, meta}
 
-    [log_entry, "\n"]
+        {level, {_, _, _} = timestamp, message, metadata} ->
+          {level, message, timestamp, metadata}
+
+        _ ->
+          # Fallback for unexpected formats
+          {:info, inspect(log_event), :os.timestamp(), %{}}
+      end
+
+    try do
+      log_entry =
+        %{
+          "@timestamp": format_timestamp(timestamp),
+          level: level,
+          message: format_message(message),
+          service: "eve_dmv",
+          environment: Application.get_env(:eve_dmv, :environment, :prod)
+        }
+        |> add_metadata(metadata)
+        |> add_context_fields(metadata)
+        |> Jason.encode!()
+
+      [log_entry, "\n"]
+    rescue
+      _error ->
+        # Fallback to simple format if structured logging fails
+        fallback_message =
+          case message do
+            {:string, binary} when is_binary(binary) -> binary
+            {:string, list} when is_list(list) -> IO.iodata_to_binary(list)
+            {format, args} -> :io_lib.format(format, args) |> IO.iodata_to_binary()
+            other -> format_message(other)
+          end
+
+        "[#{level}] #{fallback_message}\n"
+    end
   end
 
   @impl :logger_formatter
@@ -35,29 +63,47 @@ defmodule EveDmv.Logging.StructuredFormatter do
 
   defp format_timestamp(timestamp) do
     # Convert erlang timestamp to ISO8601 format
-    case timestamp do
-      {_, _, _} = _erl_timestamp ->
-        # Legacy erlang timestamp format
-        :calendar.system_time_to_rfc3339(
-          :erlang.convert_time_unit(:erlang.timestamp(), :microsecond, :second),
-          [{:unit, :second}]
-        )
+    try do
+      case timestamp do
+        {mega, sec, micro} ->
+          # Legacy erlang timestamp format
+          unix_timestamp = mega * 1_000_000 + sec
 
-      timestamp when is_integer(timestamp) ->
-        # Modern system timestamp
-        :calendar.system_time_to_rfc3339(timestamp, [{:unit, :microsecond}])
+          DateTime.from_unix!(unix_timestamp, :second)
+          |> DateTime.add(micro, :microsecond)
+          |> DateTime.to_iso8601()
 
+        timestamp when is_integer(timestamp) ->
+          # Modern system timestamp
+          System.convert_time_unit(timestamp, :native, :microsecond)
+          |> DateTime.from_unix!(:microsecond)
+          |> DateTime.to_iso8601()
+
+        _ ->
+          # Fallback to current time
+          DateTime.utc_now() |> DateTime.to_iso8601()
+      end
+    rescue
       _ ->
-        # Fallback to current time
+        # If all else fails, use current time
         DateTime.utc_now() |> DateTime.to_iso8601()
     end
+  end
+
+  defp format_message({:string, message}) when is_binary(message), do: message
+  defp format_message({:string, message}) when is_list(message), do: IO.iodata_to_binary(message)
+
+  defp format_message({format, args}) when is_list(format) and is_list(args) do
+    :io_lib.format(format, args) |> IO.iodata_to_binary()
+  rescue
+    _ -> "#{inspect(format)} #{inspect(args)}"
   end
 
   defp format_message(message) when is_binary(message), do: message
   defp format_message(message) when is_list(message), do: IO.iodata_to_binary(message)
   defp format_message(message), do: inspect(message)
 
-  defp add_metadata(log_entry, metadata) do
+  defp add_metadata(log_entry, metadata) when is_map(metadata) do
     # Add standard metadata fields
     standard_fields = [
       :request_id,
@@ -79,6 +125,8 @@ defmodule EveDmv.Logging.StructuredFormatter do
       Map.put(acc, key, value)
     end)
   end
+
+  defp add_metadata(log_entry, _metadata), do: log_entry
 
   defp add_context_fields(log_entry, metadata) do
     log_entry

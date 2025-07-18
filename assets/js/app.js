@@ -23,7 +23,10 @@ import {LiveSocket} from "phoenix_live_view"
 import topbar from "../vendor/topbar"
 
 // Define Phoenix Hooks
-let Hooks = {}
+import InfiniteScroll from "./hooks/infinite_scroll"
+
+const Hooks = {}
+Hooks.InfiniteScroll = InfiniteScroll
 
 Hooks.AutocompleteInput = {
   mounted() {

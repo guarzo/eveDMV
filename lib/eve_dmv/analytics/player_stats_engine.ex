@@ -37,7 +37,7 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
         Logger.error("Failed to calculate player stats: #{inspect(reason)}")
         {:error, reason}
 
-      ids ->
+      {:ok, ids} ->
         chunk_and_process(ids, batch_size, &process_character(&1, start_date, now), "player")
         Logger.info("Player statistics calculation completed")
         :ok
@@ -48,11 +48,14 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
   defp participants_ids(field, limit) do
     case Ash.read(Participant, domain: Api) do
       {:ok, parts} ->
-        parts
-        |> Enum.map(&Map.get(&1, field))
-        |> Enum.filter(& &1)
-        |> Enum.uniq()
-        |> Enum.take(limit)
+        ids =
+          parts
+          |> Enum.map(&Map.get(&1, field))
+          |> Enum.filter(& &1)
+          |> Enum.uniq()
+          |> Enum.take(limit)
+
+        {:ok, ids}
 
       {:error, reason} ->
         Logger.error("Failed to fetch participants: #{inspect(reason)}")

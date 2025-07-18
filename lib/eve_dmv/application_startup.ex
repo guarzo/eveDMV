@@ -7,6 +7,7 @@ defmodule EveDmv.ApplicationStartup do
   """
 
   alias EveDmv.Utils.DnsResolver
+  alias EveDmvWeb.Telemetry.PerformanceTelemetry
 
   require Logger
 
@@ -19,7 +20,8 @@ defmodule EveDmv.ApplicationStartup do
     tasks = [
       {:dns_resolution, &initialize_dns_resolution/0},
       {:connectivity_checks, &run_connectivity_checks/0},
-      {:environment_validation, &validate_environment/0}
+      {:environment_validation, &validate_environment/0},
+      {:performance_telemetry, &initialize_performance_telemetry/0}
     ]
 
     results = run_startup_tasks(tasks)
@@ -153,6 +155,20 @@ defmodule EveDmv.ApplicationStartup do
       end
 
       :ok
+    end
+  end
+
+  defp initialize_performance_telemetry do
+    Logger.info("📊 Initializing performance telemetry...")
+
+    try do
+      PerformanceTelemetry.attach_handlers()
+      Logger.info("✅ Performance telemetry handlers attached successfully")
+      :ok
+    rescue
+      error ->
+        Logger.warning("⚠️ Failed to attach performance telemetry: #{inspect(error)}")
+        {:error, error}
     end
   end
 

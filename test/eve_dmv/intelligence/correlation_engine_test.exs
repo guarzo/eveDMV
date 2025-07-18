@@ -1,13 +1,17 @@
 defmodule EveDmv.Intelligence.CorrelationEngineTest do
   use EveDmv.DataCase, async: false
 
-  alias EveDmv.Database.QueryCache
+  alias EveDmv.Cache.QueryCache
   alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Intelligence.Core.CorrelationEngine
 
   setup do
     # Start QueryCache for this test since it's not started in test environment
-    start_supervised!(QueryCache)
+    case Process.whereis(QueryCache) do
+      nil -> start_supervised!(QueryCache)
+      _pid -> :ok
+    end
+
     :ok
   end
 

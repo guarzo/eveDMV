@@ -3,26 +3,14 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationService do
   Service for calculating asset and killmail valuations.
 
   Provides market value calculations for killmails and fleet compositions
-  using cached price data and fallback estimates.
+  using Janice API for accurate market pricing with fallback estimates.
   """
 
+  alias EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient
   require Logger
 
-  # TODO: Replace hardcoded ship prices with Janice API integration
-  # Current implementation covers only a small subset of ship types (26 ships)
-  # causing most ships to use generic price estimation.
-  # 
-  # Improvements needed:
-  # 1. Integrate with Janice API for accurate ship pricing (https://janice.e-351.com/)
-  # 2. Implement service to fetch and cache prices from Janice
-  # 3. Expand coverage to include all ship types in EVE Online
-  # 4. Add caching with TTL to avoid excessive API calls
-  # 5. Handle Janice API rate limits and fallback scenarios
-  # 
-  # Related to Sprint 15 IMPL-19: Market Intelligence Valuation System
-  # 
-  # Common ship base prices (in ISK) for estimation - TEMPORARY HARDCODED VALUES
-  @ship_base_prices %{
+  # Fallback ship base prices (in ISK) for when API is unavailable
+  @fallback_ship_prices %{
     # Frigates
     582 => 500_000,
     583 => 500_000,
@@ -65,7 +53,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationService do
   @doc """
   Calculate the total value of a killmail.
   """
-  @spec calculate_killmail_value(map()) :: {:ok, map()} | {:error, term()}
+  @spec calculate_killmail_value(map()) :: {:ok, map()}
   def calculate_killmail_value(killmail) do
     Logger.debug("Calculating value for killmail #{killmail[:killmail_id]}")
 
@@ -96,7 +84,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationService do
   @doc """
   Calculate the total value of a fleet composition.
   """
-  @spec calculate_fleet_value([map()]) :: {:ok, map()} | {:error, term()}
+  @spec calculate_fleet_value([map()]) :: {:ok, map()}
   def calculate_fleet_value(ships) do
     Logger.debug("Calculating fleet value for #{length(ships)} ships")
 
@@ -140,10 +128,46 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationService do
   # Private helper functions
 
   defp estimate_ship_value(ship_type_id) when is_integer(ship_type_id) do
-    # Use cached prices or fallback to estimates
-    case Map.get(@ship_base_prices, ship_type_id) do
+    # First try to get price from Janice API
+    case JaniceClient.get_ship_price(ship_type_id) do
+      {:ok, price_info} ->
+        # Use sell price as the primary value (what it costs to buy the ship)
+        price = price_info.sell_price
+
+        if price > 0 do
+          Logger.debug("Got ship price from Janice: type_id=#{ship_type_id}, price=#{price}")
+          price
+        else
+          # Fallback to estimates if API returns zero price
+          fallback_ship_value(ship_type_id)
+        end
+
+      {:error, :rate_limited} ->
+        Logger.warning("Janice API rate limited, using fallback for ship #{ship_type_id}")
+        fallback_ship_value(ship_type_id)
+
+      {:error, :not_found} ->
+        Logger.debug("Ship type #{ship_type_id} not found in Janice, using fallback")
+        fallback_ship_value(ship_type_id)
+
+      {:error, reason} ->
+        Logger.warning(
+          "Janice API error for ship #{ship_type_id}: #{inspect(reason)}, using fallback"
+        )
+
+        fallback_ship_value(ship_type_id)
+    end
+  end
+
+  # Default fallback
+  defp estimate_ship_value(_), do: 10_000_000
+
+  # Fallback function when API is unavailable
+  defp fallback_ship_value(ship_type_id) do
+    # First check if we have a hardcoded fallback price
+    case Map.get(@fallback_ship_prices, ship_type_id) do
       nil ->
-        # Use ship classification function for better categorization
+        # Use ship classification for better categorization
         category = EveDmv.Intelligence.ShipDatabase.get_ship_category(ship_type_id)
         category_key = String.downcase(category)
         Map.get(@ship_estimates_by_category, category_key, @ship_estimates_by_category["unknown"])
@@ -153,21 +177,26 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationService do
     end
   end
 
-  # Default fallback
-  defp estimate_ship_value(_), do: 10_000_000
-
   defp calculate_item_values(items) do
-    # Calculate destroyed and dropped values from killmail items
-    destroyed = 0
-    dropped = 0
+    # Extract all unique item type IDs for bulk pricing
+    item_type_ids =
+      items
+      |> Enum.map(& &1["item_type_id"])
+      |> Enum.uniq()
+      |> Enum.filter(&is_integer/1)
 
+    # Get prices in bulk for efficiency
+    item_prices = get_bulk_item_prices(item_type_ids)
+
+    # Calculate destroyed and dropped values from killmail items
     {destroyed_total, dropped_total} =
-      Enum.reduce(items, {destroyed, dropped}, fn item, {dest_acc, drop_acc} ->
+      Enum.reduce(items, {0, 0}, fn item, {dest_acc, drop_acc} ->
         quantity = item["quantity_destroyed"] || 0
         dropped_qty = item["quantity_dropped"] || 0
+        item_type_id = item["item_type_id"]
 
-        # Estimate item value based on type
-        item_value = estimate_item_value(item["item_type_id"])
+        # Get price from bulk lookup or estimate
+        item_value = Map.get(item_prices, item_type_id, estimate_item_value(item_type_id))
 
         {
           dest_acc + quantity * item_value,
@@ -176,6 +205,33 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationService do
       end)
 
     {destroyed_total, dropped_total}
+  end
+
+  # Helper function to get bulk prices
+  defp get_bulk_item_prices([]), do: %{}
+
+  defp get_bulk_item_prices(type_ids) when length(type_ids) <= 100 do
+    case JaniceClient.bulk_price_lookup(type_ids) do
+      {:ok, prices} ->
+        # Convert price info to simple price map
+        Map.new(prices, fn {type_id, price_info} ->
+          {type_id, price_info.sell_price}
+        end)
+
+      {:error, reason} ->
+        Logger.warning("Bulk price lookup failed: #{inspect(reason)}, using individual lookups")
+        %{}
+    end
+  end
+
+  defp get_bulk_item_prices(type_ids) do
+    # Split into chunks of 100 for API limits
+    type_ids
+    |> Enum.chunk_every(100)
+    |> Enum.reduce(%{}, fn chunk, acc ->
+      chunk_prices = get_bulk_item_prices(chunk)
+      Map.merge(acc, chunk_prices)
+    end)
   end
 
   defp calculate_cargo_value(cargo_items) do
@@ -189,26 +245,40 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationService do
   end
 
   defp estimate_item_value(item_type_id) when is_integer(item_type_id) do
-    # TODO: Replace simplistic fixed ranges with Janice API integration
-    # Current implementation uses hardcoded value ranges that undervalue many important items.
-    # 
-    # Improvements needed:
-    # 1. Use Janice API for accurate item pricing (https://janice.e-351.com/)
-    # 2. Implement caching with TTL to avoid excessive API calls
-    # 3. Add special handling for high-value categories through Janice:
-    #    - Deadspace modules (significantly higher than T2)
-    #    - Faction items (premium pricing)
-    #    - Officer modules (extremely high value)
-    #    - Capital/supercapital modules
-    #    - Rare blueprints and materials
-    # 4. Use Janice's item categorization and pricing intelligence
-    # 5. Handle API rate limits and implement fallback pricing
-    # 
-    # Related to Sprint 15 IMPL-19: Market Intelligence Valuation System
-    # 
-    # Basic item value estimation - TEMPORARY HARDCODED VALUES
+    # Use Janice API for accurate item pricing
+    case JaniceClient.get_item_price(item_type_id) do
+      {:ok, price_info} ->
+        # Use sell price as the primary value
+        price = price_info.sell_price
+
+        if price > 0 do
+          price
+        else
+          # Fallback to estimates if API returns zero price
+          fallback_item_value(item_type_id)
+        end
+
+      {:error, :rate_limited} ->
+        # Silently fallback on rate limit for items (too many to log)
+        fallback_item_value(item_type_id)
+
+      {:error, _reason} ->
+        # Use fallback for any API errors
+        fallback_item_value(item_type_id)
+    end
+  end
+
+  defp estimate_item_value(_), do: 100_000
+
+  # Fallback function for item values when API is unavailable
+  defp fallback_item_value(item_type_id) do
+    # Basic item value estimation based on type ID ranges
     cond do
-      # Modules
+      # High-value module ranges (deadspace/faction/officer)
+      item_type_id in 14_000..15_000 -> 50_000_000
+      item_type_id in 17_000..18_000 -> 100_000_000
+      item_type_id in 19_000..20_000 -> 500_000_000
+      # Standard modules
       item_type_id < 10_000 -> 1_000_000
       # Ammo/Charges
       item_type_id < 20_000 -> 1_000
@@ -220,8 +290,6 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationService do
       true -> 100_000
     end
   end
-
-  defp estimate_item_value(_), do: 100_000
 
   defp group_ships_by_class(ship_values) do
     ship_values

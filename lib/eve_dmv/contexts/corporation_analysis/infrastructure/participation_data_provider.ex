@@ -10,7 +10,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.ParticipationDataPr
   Get participation data for a character over a time period.
   """
   @spec get_participation_data(integer(), DateTime.t(), DateTime.t()) ::
-          {:ok, map()} | {:error, term()}
+          {:ok, map()}
   def get_participation_data(_character_id, _period_start, _period_end) do
     {:ok,
      %{
@@ -26,7 +26,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.ParticipationDataPr
   Get corporation member participations over a time period.
   """
   @spec get_corporation_member_participations(integer(), DateTime.t(), DateTime.t()) ::
-          {:ok, [map()]} | {:error, term()}
+          {:ok, [map()]}
   def get_corporation_member_participations(_corporation_id, _period_start, _period_end) do
     {:ok, []}
   end
@@ -34,7 +34,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.ParticipationDataPr
   @doc """
   Get all members of a corporation.
   """
-  @spec get_corporation_members(integer()) :: {:ok, [map()]} | {:error, term()}
+  @spec get_corporation_members(integer()) :: {:ok, [map()]}
   def get_corporation_members(_corporation_id) do
     {:ok, []}
   end

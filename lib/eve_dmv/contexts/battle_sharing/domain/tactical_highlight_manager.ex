@@ -439,15 +439,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
 
   defp maybe_analyze_tactical_context(timestamp, battle_data, provided_context, auto_analyze) do
     if auto_analyze do
-      case analyze_tactical_context_at_timestamp(timestamp, battle_data) do
-        {:ok, auto_context} ->
-          merged_context = Map.merge(auto_context, provided_context)
-          {:ok, merged_context}
-
-        {:error, reason} ->
-          Logger.warning("Auto-analysis failed: #{reason}")
-          {:ok, provided_context}
-      end
+      {:ok, auto_context} = analyze_tactical_context_at_timestamp(timestamp, battle_data)
+      merged_context = Map.merge(auto_context, provided_context)
+      {:ok, merged_context}
     else
       {:ok, provided_context}
     end

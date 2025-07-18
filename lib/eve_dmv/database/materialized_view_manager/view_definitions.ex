@@ -12,6 +12,8 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewDefinitions do
   def all_views do
     [
       character_activity_summary(),
+      # Sprint 15A: Added for performance optimization
+      corporation_member_summary(),
       system_activity_summary(),
       alliance_statistics(),
       daily_killmail_summary(),
@@ -193,6 +195,43 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewDefinitions do
       indexes: [
         "CREATE INDEX IF NOT EXISTS idx_top_hunters_character_id ON top_hunters_summary (character_id)",
         "CREATE INDEX IF NOT EXISTS idx_top_hunters_kill_rank ON top_hunters_summary (kill_rank)"
+      ],
+      refresh_strategy: :full,
+      dependencies: ["participants", "killmails_raw"]
+    }
+  end
+
+  defp corporation_member_summary do
+    %{
+      name: "corporation_member_summary",
+      query: """
+      SELECT
+        p.corporation_id,
+        p.corporation_name,
+        p.character_id,
+        p.character_name,
+        COUNT(*) as total_killmails,
+        COUNT(*) FILTER (WHERE NOT p.is_victim) as kills,
+        COUNT(*) FILTER (WHERE p.is_victim) as losses,
+        SUM(kr.total_value) FILTER (WHERE NOT p.is_victim) as isk_destroyed,
+        SUM(kr.total_value) FILTER (WHERE p.is_victim) as isk_lost,
+        MIN(kr.killmail_time) as first_seen,
+        MAX(kr.killmail_time) as last_seen,
+        COUNT(DISTINCT p.solar_system_id) as systems_active,
+        COUNT(DISTINCT p.ship_type_id) as ships_flown,
+        COUNT(DISTINCT DATE_TRUNC('day', kr.killmail_time)) as days_active,
+        RANK() OVER (PARTITION BY p.corporation_id ORDER BY COUNT(*) DESC) as activity_rank
+      FROM participants p
+      JOIN killmails_raw kr ON p.killmail_id = kr.killmail_id
+      WHERE p.corporation_id IS NOT NULL
+      AND kr.killmail_time >= NOW() - INTERVAL '90 days'
+      GROUP BY p.corporation_id, p.corporation_name, p.character_id, p.character_name
+      HAVING COUNT(*) >= 5
+      """,
+      indexes: [
+        "CREATE INDEX IF NOT EXISTS idx_corp_member_corp_char ON corporation_member_summary (corporation_id, character_id)",
+        "CREATE INDEX IF NOT EXISTS idx_corp_member_last_seen ON corporation_member_summary (corporation_id, last_seen DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_corp_member_activity ON corporation_member_summary (corporation_id, activity_rank)"
       ],
       refresh_strategy: :full,
       dependencies: ["participants", "killmails_raw"]

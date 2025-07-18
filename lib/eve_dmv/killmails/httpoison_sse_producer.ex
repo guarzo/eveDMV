@@ -13,6 +13,9 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
 
   @default_retry_delay 1000
   @max_retry_delay 30_000
+  # Sprint 15A: Memory optimization - prevent buffer overflow
+  # 1MB buffer limit
+  @max_buffer_size 1_048_576
 
   def init(opts) do
     url = Keyword.fetch!(opts, :url)
@@ -82,8 +85,30 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
   end
 
   def handle_info(%HTTPoison.AsyncChunk{chunk: chunk}, state) do
+    # Sprint 15A: Memory optimization - check buffer overflow before processing
+    combined_data = state.buffer <> chunk
+
+    combined_data =
+      if byte_size(combined_data) > @max_buffer_size do
+        Logger.warning(
+          "⚠️  SSE buffer overflow detected (#{byte_size(combined_data)} bytes), resetting buffer"
+        )
+
+        # Reset buffer to prevent memory leaks, log for monitoring
+        :telemetry.execute(
+          [:eve_dmv, :sse, :buffer_overflow],
+          %{size: byte_size(combined_data)},
+          %{}
+        )
+
+        # Keep only current chunk
+        chunk
+      else
+        combined_data
+      end
+
     # Process incoming SSE chunk
-    {events, new_buffer} = parse_sse_data(state.buffer <> chunk)
+    {events, new_buffer} = parse_sse_data(combined_data)
 
     # Convert events to Broadway messages and count killmails
     filtered_events = Enum.reject(events, &is_nil/1)

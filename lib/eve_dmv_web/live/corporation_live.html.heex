@@ -138,10 +138,10 @@
           </div>
 
           <div class="p-6">
-            <%= if @members && length(@members) > 0 do %>
-              <div class="space-y-3 max-h-96 overflow-y-auto">
-                <%= for member <- @members do %>
-                  <div class="flex items-center justify-between p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
+            <%= if @streams.members.inserts != [] do %>
+              <div class="space-y-3 max-h-96 overflow-y-auto" id="members-list" phx-update="stream">
+                <%= for {dom_id, member} <- @streams.members do %>
+                  <div id={dom_id} class="flex items-center justify-between p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
                     <div class="flex items-center space-x-3">
                       <% {indicator, color_class} = activity_indicator(member.total_activity) %>
                       <span class={"text-lg #{color_class}"}>{indicator}</span>
@@ -193,10 +193,10 @@
           </div>
 
           <div class="p-6">
-            <%= if @recent_activity && length(@recent_activity) > 0 do %>
-              <div class="space-y-3 max-h-96 overflow-y-auto">
-                <%= for activity <- @recent_activity do %>
-                  <div class="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+            <%= if @streams.recent_activity.inserts != [] do %>
+              <div class="space-y-3 max-h-96 overflow-y-auto" id="recent-activity-list" phx-update="stream">
+                <%= for {dom_id, activity} <- @streams.recent_activity do %>
+                  <div id={dom_id} class="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
                     <div class="flex items-center space-x-3">
                       <% {type_text, type_class} = activity_type_badge(activity.is_kill) %>
                       <a 

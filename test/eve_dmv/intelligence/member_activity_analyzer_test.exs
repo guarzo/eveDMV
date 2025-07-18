@@ -2,7 +2,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzerTest do
   @moduledoc """
   Comprehensive tests for MemberActivityAnalyzer module.
   """
-  use EveDmv.DataCase, async: true
+  use EveDmv.DataCase, async: false
 
   alias EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer
 

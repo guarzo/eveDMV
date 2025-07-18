@@ -705,94 +705,86 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   end
 
   defp search_entity_suggestions(field, query) do
-    # This is a simplified autocomplete - in a real app you'd query the database
-    # For now, return some mock suggestions based on the field type
+    # Use real database search for entity suggestions
     case field do
       "character_ids" ->
-        mock_character_suggestions(query)
+        get_character_suggestions(query)
 
       "corporation_ids" ->
-        mock_corporation_suggestions(query)
+        get_corporation_suggestions(query)
 
       "alliance_ids" ->
-        mock_alliance_suggestions(query)
+        get_alliance_suggestions(query)
 
       "system_ids" ->
-        mock_system_suggestions(query)
+        get_system_suggestions(query)
 
       "ship_type_ids" ->
-        mock_ship_suggestions(query)
+        get_ship_suggestions(query)
 
       _ ->
         []
     end
   end
 
-  defp mock_character_suggestions(query) do
-    all_suggestions = [
-      %{id: 2_116_806_579, name: "Stealthbot"},
-      %{id: 2_119_123_456, name: "TestPilot"},
-      %{id: 2_119_987_654, name: "SpaceMiner"},
-      %{id: 2_120_000_001, name: "PvPWarrior"},
-      %{id: 2_120_111_222, name: "CareBear"}
-    ]
+  defp get_character_suggestions(query) do
+    case EveDmv.Search.SearchSuggestionService.get_character_suggestions(query, limit: 5) do
+      {:ok, suggestions} ->
+        Enum.map(suggestions, fn suggestion ->
+          %{id: suggestion.id, name: suggestion.name}
+        end)
 
-    filter_suggestions(all_suggestions, query)
+      {:error, _reason} ->
+        []
+    end
   end
 
-  defp mock_corporation_suggestions(query) do
-    all_suggestions = [
-      %{id: 98_000_001, name: "Test Corporation"},
-      %{id: 98_000_002, name: "Mining Consortium"},
-      %{id: 98_000_003, name: "PvP Corporation"},
-      %{id: 98_000_004, name: "Industrial Corp"}
-    ]
+  defp get_corporation_suggestions(query) do
+    case EveDmv.Search.SearchSuggestionService.get_corporation_suggestions(query, limit: 5) do
+      {:ok, suggestions} ->
+        Enum.map(suggestions, fn suggestion ->
+          %{id: suggestion.id, name: suggestion.name}
+        end)
 
-    filter_suggestions(all_suggestions, query)
+      {:error, _reason} ->
+        []
+    end
   end
 
-  defp mock_alliance_suggestions(query) do
-    all_suggestions = [
-      %{id: 99_000_001, name: "Test Alliance"},
-      %{id: 99_000_002, name: "Goonswarm Federation"},
-      %{id: 99_000_003, name: "Pandemic Legion"},
-      %{id: 99_000_004, name: "Northern Coalition"}
-    ]
+  defp get_alliance_suggestions(query) do
+    case EveDmv.Search.SearchSuggestionService.get_alliance_suggestions(query, limit: 5) do
+      {:ok, suggestions} ->
+        Enum.map(suggestions, fn suggestion ->
+          %{id: suggestion.id, name: suggestion.name}
+        end)
 
-    filter_suggestions(all_suggestions, query)
+      {:error, _reason} ->
+        []
+    end
   end
 
-  defp mock_system_suggestions(query) do
-    all_suggestions = [
-      %{id: 30_000_142, name: "Jita"},
-      %{id: 30_002_187, name: "Amarr"},
-      %{id: 30_000_144, name: "Perimeter"},
-      %{id: 30_002_659, name: "Dodixie"}
-    ]
+  defp get_system_suggestions(query) do
+    case EveDmv.Search.SearchSuggestionService.get_system_suggestions(query, limit: 5) do
+      {:ok, suggestions} ->
+        Enum.map(suggestions, fn suggestion ->
+          %{id: suggestion.id, name: suggestion.name}
+        end)
 
-    filter_suggestions(all_suggestions, query)
+      {:error, _reason} ->
+        []
+    end
   end
 
-  defp mock_ship_suggestions(query) do
-    all_suggestions = [
-      %{id: 587, name: "Rifter"},
-      %{id: 598, name: "Merlin"},
-      %{id: 608, name: "Punisher"},
-      %{id: 615, name: "Incursus"}
-    ]
+  defp get_ship_suggestions(query) do
+    case EveDmv.Search.SearchSuggestionService.get_ship_suggestions(query, limit: 5) do
+      {:ok, suggestions} ->
+        Enum.map(suggestions, fn suggestion ->
+          %{id: suggestion.id, name: suggestion.name}
+        end)
 
-    filter_suggestions(all_suggestions, query)
-  end
-
-  defp filter_suggestions(suggestions, query) do
-    query_lower = String.downcase(query)
-
-    suggestions
-    |> Enum.filter(fn %{name: name} ->
-      String.contains?(String.downcase(name), query_lower)
-    end)
-    # Limit to 5 suggestions
-    |> Enum.take(5)
+      {:error, _reason} ->
+        []
+    end
   end
 
   # Safe call helper for surveillance and other services

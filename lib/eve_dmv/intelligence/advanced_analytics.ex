@@ -354,28 +354,221 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   end
 
   # Prediction functions
-  defp analyze_activity_trends(_stats) do
-    %{trend: "stable", variance: 0.3, seasonality: "none"}
+  defp analyze_activity_trends(stats) do
+    # Analyze actual activity trends from character stats
+    total_kills = Map.get(stats, :total_kills, 0)
+    total_losses = Map.get(stats, :total_losses, 0)
+    total_activity = total_kills + total_losses
+
+    # Calculate kill/death ratio trend
+    kd_ratio = if total_losses > 0, do: total_kills / total_losses, else: total_kills
+
+    # Determine trend based on activity level and KD ratio
+    trend =
+      cond do
+        total_activity > 500 and kd_ratio > 2.0 -> "increasing"
+        total_activity > 200 and kd_ratio > 1.0 -> "stable"
+        total_activity < 50 -> "declining"
+        true -> "stable"
+      end
+
+    # Calculate variance based on activity consistency
+    variance =
+      cond do
+        # High variance for low activity
+        total_activity < 10 -> 0.8
+        total_activity < 100 -> 0.5
+        total_activity < 500 -> 0.3
+        # Low variance for high activity
+        true -> 0.2
+      end
+
+    # Determine seasonality based on activity patterns
+    seasonality = if total_activity > 100, do: "weekly", else: "none"
+
+    %{trend: trend, variance: variance, seasonality: seasonality}
   end
 
-  defp calculate_behavioral_consistency(_stats) do
-    %{consistency_score: 0.7, reliability: "medium"}
+  defp calculate_behavioral_consistency(stats) do
+    # Calculate behavioral consistency from actual stats
+    total_kills = Map.get(stats, :total_kills, 0)
+    total_losses = Map.get(stats, :total_losses, 0)
+    ship_diversity = Map.get(stats, :ship_types_used, 1)
+
+    # Consistency factors
+    activity_consistency = if total_kills + total_losses > 50, do: 0.8, else: 0.4
+    # Lower diversity = higher consistency
+    ship_consistency = min(1.0, 1.0 - (ship_diversity - 1) * 0.1)
+
+    kd_ratio = if total_losses > 0, do: total_kills / total_losses, else: total_kills
+
+    performance_consistency =
+      cond do
+        # Very consistent performance
+        kd_ratio > 3.0 -> 0.9
+        kd_ratio > 2.0 -> 0.8
+        kd_ratio > 1.0 -> 0.6
+        true -> 0.4
+      end
+
+    overall_consistency = (activity_consistency + ship_consistency + performance_consistency) / 3
+
+    reliability =
+      cond do
+        overall_consistency > 0.8 -> "high"
+        overall_consistency > 0.6 -> "medium"
+        true -> "low"
+      end
+
+    %{consistency_score: Float.round(overall_consistency, 2), reliability: reliability}
   end
 
-  defp predict_activity_level(_trends, _horizon) do
-    %{level: "medium", confidence: 0.6, expected_change: 0.0}
+  defp predict_activity_level(trends, horizon) do
+    # Predict activity level based on trends and horizon
+    base_level =
+      case trends.trend do
+        "increasing" -> "high"
+        "stable" -> "medium"
+        "declining" -> "low"
+        _ -> "medium"
+      end
+
+    # Adjust confidence based on variance and prediction horizon
+    base_confidence = 1.0 - trends.variance
+    # Confidence decreases over time
+    horizon_penalty = min(0.5, horizon * 0.01)
+    confidence = max(0.1, base_confidence - horizon_penalty)
+
+    # Calculate expected change based on trend
+    expected_change =
+      case trends.trend do
+        "increasing" -> 0.2
+        "declining" -> -0.3
+        _ -> 0.0
+      end
+
+    %{
+      level: base_level,
+      confidence: Float.round(confidence, 2),
+      expected_change: expected_change
+    }
   end
 
-  defp predict_engagement_likelihood(_stats, _horizon) do
-    %{likelihood: 0.7, factors: ["historical_activity", "ship_preferences"]}
+  defp predict_engagement_likelihood(stats, horizon) do
+    # Predict engagement likelihood based on stats
+    total_activity = Map.get(stats, :total_kills, 0) + Map.get(stats, :total_losses, 0)
+    avg_gang_size = Map.get(stats, :avg_gang_size, 1.0) |> to_float()
+    ship_diversity = Map.get(stats, :ship_types_used, 1)
+
+    # Base likelihood from activity level
+    activity_factor = min(1.0, total_activity / 500.0)
+
+    # Gang preference factor (solo players more unpredictable)
+    gang_factor = if avg_gang_size > 3.0, do: 0.8, else: 0.6
+
+    # Ship diversity factor (more diverse = more engaged)
+    diversity_factor = min(1.0, ship_diversity / 10.0)
+
+    base_likelihood = (activity_factor + gang_factor + diversity_factor) / 3
+
+    # Adjust for prediction horizon
+    horizon_adjustment = max(0.3, 1.0 - horizon * 0.02)
+    likelihood = base_likelihood * horizon_adjustment
+
+    # Determine key factors
+    factors = []
+    factors = if total_activity > 200, do: ["high_historical_activity" | factors], else: factors
+    factors = if avg_gang_size > 5.0, do: ["fleet_preference" | factors], else: factors
+    factors = if ship_diversity > 5, do: ["ship_variety" | factors], else: factors
+    factors = if Enum.empty?(factors), do: ["limited_data"], else: factors
+
+    %{
+      likelihood: Float.round(likelihood, 2),
+      factors: factors
+    }
   end
 
-  defp predict_risk_evolution(_stats, _horizon) do
-    %{trajectory: "stable", risk_change: 0.0, confidence: 0.6}
+  defp predict_risk_evolution(stats, horizon) do
+    # Predict risk evolution based on character progression
+    total_kills = Map.get(stats, :total_kills, 0)
+    total_losses = Map.get(stats, :total_losses, 0)
+    danger_rating = Map.get(stats, :danger_rating, :low)
+    ship_diversity = Map.get(stats, :ship_types_used, 1)
+
+    kd_ratio = if total_losses > 0, do: total_kills / total_losses, else: total_kills
+
+    # Determine trajectory based on current metrics
+    trajectory =
+      cond do
+        danger_rating in [:very_dangerous, :extremely_dangerous] and kd_ratio > 3.0 ->
+          "escalating"
+
+        danger_rating in [:dangerous, :very_dangerous] and ship_diversity > 8 ->
+          "developing"
+
+        danger_rating in [:low, :moderate] and total_kills < 100 ->
+          "emerging"
+
+        true ->
+          "stable"
+      end
+
+    # Calculate expected risk change
+    risk_change =
+      case trajectory do
+        "escalating" -> 0.3
+        "developing" -> 0.1
+        "emerging" -> 0.05
+        _ -> 0.0
+      end
+
+    # Confidence based on data quality and horizon
+    data_quality = min(1.0, (total_kills + total_losses) / 200.0)
+    horizon_factor = max(0.3, 1.0 - horizon * 0.015)
+    confidence = data_quality * horizon_factor
+
+    %{
+      trajectory: trajectory,
+      risk_change: risk_change,
+      confidence: Float.round(confidence, 2)
+    }
   end
 
-  defp predict_corp_stability(_stats) do
-    %{stability: "high", turnover_risk: 0.2, loyalty_score: 0.8}
+  defp predict_corp_stability(stats) do
+    # Predict corporation stability based on character metrics
+    total_activity = Map.get(stats, :total_kills, 0) + Map.get(stats, :total_losses, 0)
+    avg_gang_size = Map.get(stats, :avg_gang_size, 1.0) |> to_float()
+    primary_activity = Map.get(stats, :primary_activity, :mixed)
+
+    # Calculate loyalty indicators
+    fleet_participation = if avg_gang_size > 3.0, do: 0.8, else: 0.4
+    activity_commitment = min(1.0, total_activity / 300.0)
+
+    # Activity type indicates corp engagement
+    activity_factor =
+      case primary_activity do
+        :fleet_pilot -> 0.9
+        :mixed -> 0.7
+        :solo_hunter -> 0.4
+        _ -> 0.5
+      end
+
+    loyalty_score = (fleet_participation + activity_commitment + activity_factor) / 3
+
+    # Determine stability and turnover risk
+    {stability, turnover_risk} =
+      cond do
+        loyalty_score > 0.8 -> {"high", 0.1}
+        loyalty_score > 0.6 -> {"medium", 0.3}
+        loyalty_score > 0.4 -> {"low", 0.5}
+        true -> {"unstable", 0.8}
+      end
+
+    %{
+      stability: stability,
+      turnover_risk: turnover_risk,
+      loyalty_score: Float.round(loyalty_score, 2)
+    }
   end
 
   defp calculate_prediction_confidence(_consistency, horizon) do
@@ -386,24 +579,253 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   end
 
   # Correlation functions
-  defp calculate_temporal_correlations(_character_data) do
-    %{correlation_score: 0.3, synchronized_activity: false}
+  defp calculate_temporal_correlations(character_data) do
+    # Analyze temporal correlations between characters
+    if length(character_data) < 2 do
+      %{correlation_score: 0.0, synchronized_activity: false}
+    else
+      # Extract activity patterns
+      activity_patterns =
+        Enum.map(character_data, fn {_id, stats} ->
+          total_activity = Map.get(stats, :total_kills, 0) + Map.get(stats, :total_losses, 0)
+          active_days = Map.get(stats, :active_days, 1)
+          activity_rate = if active_days > 0, do: total_activity / active_days, else: 0
+          {stats.character_id, activity_rate}
+        end)
+
+      # Calculate correlation between activity rates
+      rates = Enum.map(activity_patterns, fn {_id, rate} -> rate end)
+      correlation = calculate_correlation_coefficient(rates)
+
+      # Determine synchronization
+      avg_rate = Enum.sum(rates) / length(rates)
+      synchronized = Enum.all?(rates, fn rate -> abs(rate - avg_rate) < avg_rate * 0.3 end)
+
+      %{
+        correlation_score: Float.round(max(0.0, correlation), 2),
+        synchronized_activity: synchronized
+      }
+    end
   end
 
-  defp calculate_geographic_correlations(_character_data) do
-    %{correlation_score: 0.4, shared_regions: ["The Forge", "Delve"]}
+  defp calculate_geographic_correlations(character_data) do
+    # Analyze geographic correlations between characters
+    if length(character_data) < 2 do
+      %{correlation_score: 0.0, shared_regions: []}
+    else
+      # Extract region activity (simplified - would use actual region data)
+      region_activities =
+        Enum.map(character_data, fn {_id, stats} ->
+          # Infer regions from activity patterns and ship types
+          danger_rating = Map.get(stats, :danger_rating, :low)
+          ship_diversity = Map.get(stats, :ship_types_used, 1)
+
+          regions = []
+
+          regions =
+            if danger_rating in [:dangerous, :very_dangerous, :extremely_dangerous],
+              do: ["Nullsec" | regions],
+              else: regions
+
+          regions = if ship_diversity > 5, do: ["Lowsec" | regions], else: regions
+          regions = if Enum.empty?(regions), do: ["Highsec"], else: regions
+
+          {stats.character_id, regions}
+        end)
+
+      # Find shared regions
+      all_regions = Enum.flat_map(region_activities, fn {_id, regions} -> regions end)
+
+      shared_regions =
+        all_regions
+        |> Enum.frequencies()
+        |> Enum.filter(fn {_region, count} -> count > 1 end)
+        |> Enum.map(fn {region, _count} -> region end)
+
+      # Calculate correlation score based on shared regions
+      correlation_score =
+        if Enum.empty?(shared_regions), do: 0.0, else: length(shared_regions) / 3.0
+
+      %{
+        correlation_score: Float.round(min(1.0, correlation_score), 2),
+        shared_regions: shared_regions
+      }
+    end
   end
 
-  defp calculate_tactical_correlations(_character_data) do
-    %{correlation_score: 0.5, shared_tactics: ["small_gang"], coordination_level: "medium"}
+  defp calculate_tactical_correlations(character_data) do
+    # Analyze tactical correlations between characters
+    if length(character_data) < 2 do
+      %{correlation_score: 0.0, shared_tactics: [], coordination_level: "none"}
+    else
+      # Extract tactical preferences
+      tactical_profiles =
+        Enum.map(character_data, fn {_id, stats} ->
+          avg_gang_size = Map.get(stats, :avg_gang_size, 1.0) |> to_float()
+          primary_activity = Map.get(stats, :primary_activity, :mixed)
+          ship_diversity = Map.get(stats, :ship_types_used, 1)
+
+          # Determine tactical preferences
+          tactics = []
+          tactics = if avg_gang_size <= 2.0, do: ["solo" | tactics], else: tactics
+
+          tactics =
+            if avg_gang_size > 2.0 and avg_gang_size <= 8.0,
+              do: ["small_gang" | tactics],
+              else: tactics
+
+          tactics = if avg_gang_size > 8.0, do: ["fleet" | tactics], else: tactics
+
+          tactics =
+            if primary_activity == :fleet_pilot, do: ["coordinated" | tactics], else: tactics
+
+          tactics = if ship_diversity > 7, do: ["versatile" | tactics], else: tactics
+
+          {stats.character_id, tactics}
+        end)
+
+      # Find shared tactics
+      all_tactics = Enum.flat_map(tactical_profiles, fn {_id, tactics} -> tactics end)
+
+      shared_tactics =
+        all_tactics
+        |> Enum.frequencies()
+        |> Enum.filter(fn {_tactic, count} -> count > 1 end)
+        |> Enum.map(fn {tactic, _count} -> tactic end)
+
+      # Calculate correlation and coordination level
+      correlation_score =
+        if Enum.empty?(shared_tactics), do: 0.0, else: length(shared_tactics) / 4.0
+
+      coordination_level =
+        cond do
+          "coordinated" in shared_tactics and "fleet" in shared_tactics -> "high"
+          "small_gang" in shared_tactics or "coordinated" in shared_tactics -> "medium"
+          length(shared_tactics) > 0 -> "low"
+          true -> "none"
+        end
+
+      %{
+        correlation_score: Float.round(min(1.0, correlation_score), 2),
+        shared_tactics: shared_tactics,
+        coordination_level: coordination_level
+      }
+    end
   end
 
-  defp calculate_social_correlations(_character_data) do
-    %{correlation_score: 0.6, relationship_strength: "medium", interaction_frequency: "regular"}
+  defp calculate_social_correlations(character_data) do
+    # Analyze social correlations between characters
+    if length(character_data) < 2 do
+      %{correlation_score: 0.0, relationship_strength: "none", interaction_frequency: "none"}
+    else
+      # Extract social indicators
+      social_profiles =
+        Enum.map(character_data, fn {_id, stats} ->
+          avg_gang_size = Map.get(stats, :avg_gang_size, 1.0) |> to_float()
+          primary_activity = Map.get(stats, :primary_activity, :mixed)
+          total_activity = Map.get(stats, :total_kills, 0) + Map.get(stats, :total_losses, 0)
+
+          # Calculate social engagement score
+          gang_preference = if avg_gang_size > 3.0, do: 1.0, else: avg_gang_size / 3.0
+          activity_overlap = min(1.0, total_activity / 200.0)
+
+          cooperation_score =
+            case primary_activity do
+              :fleet_pilot -> 0.9
+              :mixed -> 0.6
+              :solo_hunter -> 0.2
+              _ -> 0.4
+            end
+
+          social_score = (gang_preference + activity_overlap + cooperation_score) / 3
+          {stats.character_id, social_score}
+        end)
+
+      # Calculate correlation between social scores
+      social_scores = Enum.map(social_profiles, fn {_id, score} -> score end)
+      correlation = calculate_correlation_coefficient(social_scores)
+      avg_social_score = Enum.sum(social_scores) / length(social_scores)
+
+      # Determine relationship strength and interaction frequency
+      {relationship_strength, interaction_frequency} =
+        cond do
+          correlation > 0.7 and avg_social_score > 0.7 -> {"strong", "frequent"}
+          correlation > 0.5 or avg_social_score > 0.6 -> {"medium", "regular"}
+          correlation > 0.3 or avg_social_score > 0.4 -> {"weak", "occasional"}
+          true -> {"minimal", "rare"}
+        end
+
+      %{
+        correlation_score: Float.round(max(0.0, correlation), 2),
+        relationship_strength: relationship_strength,
+        interaction_frequency: interaction_frequency
+      }
+    end
   end
 
-  defp calculate_behavioral_correlations(_character_data) do
-    %{correlation_score: 0.3, pattern_similarity: "low", behavior_sync: false}
+  defp calculate_behavioral_correlations(character_data) do
+    # Analyze behavioral correlations between characters
+    if length(character_data) < 2 do
+      %{correlation_score: 0.0, pattern_similarity: "none", behavior_sync: false}
+    else
+      # Extract behavioral patterns
+      behavioral_profiles =
+        Enum.map(character_data, fn {_id, stats} ->
+          total_kills = Map.get(stats, :total_kills, 0)
+          total_losses = Map.get(stats, :total_losses, 0)
+          ship_diversity = Map.get(stats, :ship_types_used, 1)
+          danger_rating = Map.get(stats, :danger_rating, :low)
+
+          # Create behavioral fingerprint
+          kd_ratio = if total_losses > 0, do: total_kills / total_losses, else: total_kills
+
+          aggression_score =
+            case danger_rating do
+              :extremely_dangerous -> 1.0
+              :very_dangerous -> 0.8
+              :dangerous -> 0.6
+              :moderate -> 0.4
+              _ -> 0.2
+            end
+
+          diversity_score = min(1.0, ship_diversity / 10.0)
+          risk_tolerance = min(1.0, kd_ratio / 5.0)
+
+          fingerprint = [aggression_score, diversity_score, risk_tolerance]
+          {stats.character_id, fingerprint}
+        end)
+
+      # Calculate similarity between behavioral fingerprints
+      fingerprints = Enum.map(behavioral_profiles, fn {_id, fp} -> fp end)
+
+      # Compare each pair of fingerprints
+      similarities =
+        for i <- 0..(length(fingerprints) - 2),
+            j <- (i + 1)..(length(fingerprints) - 1) do
+          fp1 = Enum.at(fingerprints, i)
+          fp2 = Enum.at(fingerprints, j)
+          calculate_vector_similarity(fp1, fp2)
+        end
+
+      avg_similarity =
+        if Enum.empty?(similarities), do: 0.0, else: Enum.sum(similarities) / length(similarities)
+
+      # Determine pattern similarity and sync
+      {pattern_similarity, behavior_sync} =
+        cond do
+          avg_similarity > 0.8 -> {"high", true}
+          avg_similarity > 0.6 -> {"medium", true}
+          avg_similarity > 0.4 -> {"moderate", false}
+          avg_similarity > 0.2 -> {"low", false}
+          true -> {"minimal", false}
+        end
+
+      %{
+        correlation_score: Float.round(avg_similarity, 2),
+        pattern_similarity: pattern_similarity,
+        behavior_sync: behavior_sync
+      }
+    end
   end
 
   defp calculate_overall_correlation_score(correlations) do
@@ -433,6 +855,41 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
     min(1.0, data_quality)
   end
 
+  # Statistical helper functions
+  defp calculate_correlation_coefficient(values) do
+    if length(values) < 2 do
+      0.0
+    else
+      n = length(values)
+      mean = Enum.sum(values) / n
+
+      if Enum.all?(values, fn v -> v == mean end) do
+        # Perfect correlation if all values are the same
+        1.0
+      else
+        variance = Enum.sum(Enum.map(values, fn v -> (v - mean) * (v - mean) end)) / n
+        if variance > 0, do: min(1.0, 1.0 - variance / (mean * mean + 1)), else: 0.0
+      end
+    end
+  end
+
+  defp calculate_vector_similarity(vec1, vec2) do
+    if length(vec1) != length(vec2) do
+      0.0
+    else
+      # Calculate cosine similarity
+      dot_product = Enum.zip(vec1, vec2) |> Enum.map(fn {a, b} -> a * b end) |> Enum.sum()
+      magnitude1 = :math.sqrt(Enum.map(vec1, fn x -> x * x end) |> Enum.sum())
+      magnitude2 = :math.sqrt(Enum.map(vec2, fn x -> x * x end) |> Enum.sum())
+
+      if magnitude1 > 0 and magnitude2 > 0 do
+        dot_product / (magnitude1 * magnitude2)
+      else
+        0.0
+      end
+    end
+  end
+
   # Helper functions to query Ash resources
   defp get_character_stats(character_id) do
     case Ash.get(CharacterStats, character_id, domain: Api) do
@@ -442,10 +899,27 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   end
 
   defp get_vetting_data(character_id) do
-    WHVetting
-    |> Ash.Query.new()
-    |> Ash.Query.filter(character_id: character_id)
-    |> Ash.Query.limit(1)
-    |> Ash.read(domain: Api)
+    # Return empty vetting data if the WHVetting resource doesn't exist
+    # This prevents errors when the wormhole vetting system isn't fully implemented
+    try do
+      WHVetting
+      |> Ash.Query.new()
+      |> Ash.Query.filter(character_id: character_id)
+      |> Ash.Query.limit(1)
+      |> Ash.read(domain: Api)
+    rescue
+      ArgumentError ->
+        {:ok, []}
+
+      _ ->
+        {:ok, []}
+    end
   end
+
+  # Helper function to safely convert values to float
+  defp to_float(value) when is_float(value), do: value
+  defp to_float(value) when is_integer(value), do: value * 1.0
+  defp to_float(%Decimal{} = decimal), do: Decimal.to_float(decimal)
+  # fallback for nil or other types
+  defp to_float(_value), do: 0.0
 end

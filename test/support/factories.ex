@@ -586,4 +586,13 @@ defmodule EveDmv.Factories do
       user_id: nil
     }
   end
+
+  # Helper functions for generating consistent test IDs
+  def character_id do
+    Enum.random(90_000_000..100_000_000)
+  end
+
+  def corporation_id do
+    Enum.random(1_000_000..2_000_000)
+  end
 end

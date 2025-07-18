@@ -9,7 +9,7 @@ defmodule EveDmv.Contexts.FleetOperations.Infrastructure.PilotDataProvider do
   @doc """
   Get pilot data including skills and experience.
   """
-  @spec get_pilot_data(integer()) :: {:ok, map()} | {:error, term()}
+  @spec get_pilot_data(integer()) :: {:ok, map()}
   def get_pilot_data(_pilot_id) do
     {:ok,
      %{
@@ -26,7 +26,7 @@ defmodule EveDmv.Contexts.FleetOperations.Infrastructure.PilotDataProvider do
   @doc """
   Get combat statistics for a pilot.
   """
-  @spec get_combat_statistics(integer()) :: {:ok, map()} | {:error, term()}
+  @spec get_combat_statistics(integer()) :: {:ok, map()}
   def get_combat_statistics(_pilot_id) do
     {:ok,
      %{
@@ -43,7 +43,7 @@ defmodule EveDmv.Contexts.FleetOperations.Infrastructure.PilotDataProvider do
   @doc """
   Get pilots belonging to a corporation.
   """
-  @spec get_corporation_pilots(integer()) :: {:ok, [map()]} | {:error, term()}
+  @spec get_corporation_pilots(integer()) :: {:ok, [map()]}
   def get_corporation_pilots(_corporation_id) do
     {:ok, []}
   end
