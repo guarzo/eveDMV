@@ -11,13 +11,16 @@ defmodule EveDmv.Cache.QueryCache do
   alias EveDmv.Monitoring.PerformanceTracker
 
   @table_name :query_cache
+  @pattern_cache_table :query_cache_patterns
   @default_ttl :timer.minutes(15)
   @max_cache_size 10_000
   @cleanup_interval :timer.minutes(5)
+  @max_pattern_cache_size 1_000
 
   defstruct [
     :cache_table,
     :stats_table,
+    :pattern_cache_table,
     :start_time
   ]
 
@@ -44,31 +47,29 @@ defmodule EveDmv.Cache.QueryCache do
 
     start_time = System.monotonic_time(:millisecond)
 
-    result =
+    {result, was_cached} =
       if force_refresh do
-        compute_and_cache(key, compute_fn, ttl)
+        {compute_and_cache(key, compute_fn, ttl), false}
       else
         case get(key) do
           {:ok, value} ->
             record_hit(key, start_time)
-            {:ok, value}
+            {{:ok, value}, true}
 
           {:error, :not_found} ->
             record_miss(key, start_time)
-            compute_and_cache(key, compute_fn, ttl)
+            {compute_and_cache(key, compute_fn, ttl), false}
 
           {:error, :expired} ->
             record_miss(key, start_time)
-            compute_and_cache(key, compute_fn, ttl)
+            {compute_and_cache(key, compute_fn, ttl), false}
         end
       end
 
     # Track performance
     duration = System.monotonic_time(:millisecond) - start_time
 
-    PerformanceTracker.track_query("cache:#{key}", duration,
-      metadata: %{cache_hit: result != :miss}
-    )
+    PerformanceTracker.track_query("cache:#{key}", duration, metadata: %{cache_hit: was_cached})
 
     result
   end
@@ -205,6 +206,15 @@ defmodule EveDmv.Cache.QueryCache do
         write_concurrency: true
       ])
 
+    # Create pattern cache table for compiled regexes
+    pattern_cache_table =
+      :ets.new(@pattern_cache_table, [
+        :named_table,
+        :protected,
+        :set,
+        read_concurrency: true
+      ])
+
     # Initialize stats
     :ets.insert(stats_table, {:hits, 0})
     :ets.insert(stats_table, {:misses, 0})
@@ -216,6 +226,7 @@ defmodule EveDmv.Cache.QueryCache do
     state = %__MODULE__{
       cache_table: cache_table,
       stats_table: stats_table,
+      pattern_cache_table: pattern_cache_table,
       start_time: DateTime.utc_now()
     }
 
@@ -316,12 +327,70 @@ defmodule EveDmv.Cache.QueryCache do
   end
 
   defp match_pattern?(key, pattern) when is_binary(key) and is_binary(pattern) do
-    regex_pattern =
-      pattern
-      |> String.replace("*", ".*")
-      |> Regex.compile!()
+    # Check for simple prefix/suffix patterns first
+    cond do
+      # Simple prefix pattern: "prefix*"
+      String.ends_with?(pattern, "*") and
+          not String.contains?(String.trim_trailing(pattern, "*"), "*") ->
+        prefix = String.trim_trailing(pattern, "*")
+        String.starts_with?(key, prefix)
 
-    Regex.match?(regex_pattern, key)
+      # Simple suffix pattern: "*suffix"
+      String.starts_with?(pattern, "*") and
+          not String.contains?(String.trim_leading(pattern, "*"), "*") ->
+        suffix = String.trim_leading(pattern, "*")
+        String.ends_with?(key, suffix)
+
+      # Complex pattern - use cached regex
+      true ->
+        regex = get_or_compile_pattern(pattern)
+        Regex.match?(regex, key)
+    end
+  end
+
+  defp get_or_compile_pattern(pattern) do
+    case :ets.lookup(@pattern_cache_table, pattern) do
+      [{^pattern, compiled_regex}] ->
+        compiled_regex
+
+      [] ->
+        # Compile and cache the regex
+        regex_pattern =
+          pattern
+          |> String.replace("*", ".*")
+          |> Regex.compile!()
+
+        # Cache it (with size limit check)
+        cache_pattern(pattern, regex_pattern)
+        regex_pattern
+    end
+  end
+
+  defp cache_pattern(pattern, regex) do
+    # Check cache size
+    case :ets.info(@pattern_cache_table, :size) do
+      size when size >= @max_pattern_cache_size ->
+        # Remove oldest patterns if cache is full
+        cleanup_pattern_cache()
+
+      _ ->
+        :ok
+    end
+
+    :ets.insert(@pattern_cache_table, {pattern, regex})
+  end
+
+  defp cleanup_pattern_cache do
+    # Simple cleanup: delete first 10% of patterns
+    # In production, you might want LRU or other strategies
+    patterns = :ets.tab2list(@pattern_cache_table)
+    to_delete = div(length(patterns), 10)
+
+    patterns
+    |> Enum.take(to_delete)
+    |> Enum.each(fn {pattern, _} ->
+      :ets.delete(@pattern_cache_table, pattern)
+    end)
   end
 
   defp cleanup_expired_entries do

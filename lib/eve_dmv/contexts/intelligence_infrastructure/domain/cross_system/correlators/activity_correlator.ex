@@ -449,7 +449,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
             systems: systems,
             start_time: List.first(chunk).killmail_time,
             end_time: List.last(chunk).killmail_time,
-            duration_minutes: time_span.minutes,
+            duration_minutes: time_span.hours * 60,
             activity_count: length(chunk),
             propagation_speed: calculate_propagation_speed(chunk)
           }
@@ -858,8 +858,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       unique_systems = activities |> Enum.map(& &1.system_id) |> Enum.uniq() |> length()
       time_span = calculate_time_span(activities)
 
-      if time_span.minutes > 0 do
-        Float.round(unique_systems / time_span.minutes, 2)
+      if time_span.hours > 0 do
+        Float.round(unique_systems / time_span.hours, 2)
       else
         0.0
       end

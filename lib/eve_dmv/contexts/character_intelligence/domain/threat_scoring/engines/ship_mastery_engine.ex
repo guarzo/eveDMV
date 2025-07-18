@@ -8,6 +8,26 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
 
   require Logger
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedCalculations
+  alias EveDmv.StaticData.ShipTypes
+
+  # Normalization constants for ship mastery calculations
+  @max_usage_count 10
+  @max_ship_diversity 5
+  @max_ship_classes 6
+
+  # Specialization thresholds
+  @overspecialized_threshold 0.7
+  @generalist_threshold 0.3
+  @diversity_bonus_limit 0.4
+
+  # Fitting quality weights
+  @survival_weight 0.6
+  @damage_weight 0.4
+
+  # Ship mastery insight thresholds
+  @ship_diversity_excellence_threshold 0.8
+  @class_mastery_excellence_threshold 0.75
+  @specialization_balance_threshold 0.85
 
   @doc """
   Calculate ship mastery score based on combat data.
@@ -77,17 +97,17 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
 
         # Mastery = usage frequency + diversity within class
         # Normalize to frequent usage
-        usage_score = min(1.0, total_uses / 10)
+        usage_score = min(1.0, total_uses / @max_usage_count)
         # Normalize to good diversity
-        diversity_score = min(1.0, ship_count / 5)
+        diversity_score = min(1.0, ship_count / @max_ship_diversity)
 
         (usage_score + diversity_score) / 2
       end)
 
     if length(mastery_scores) > 0 do
       average_mastery = Enum.sum(mastery_scores) / length(mastery_scores)
-      # 6 main ship classes
-      class_breadth = min(1.0, classes_used / 6)
+      # Main ship classes
+      class_breadth = min(1.0, classes_used / @max_ship_classes)
 
       average_mastery * 0.7 + class_breadth * 0.3
     else
@@ -189,27 +209,16 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
     end
   end
 
-  # Ship type ID ranges for classification
-  @ship_type_ranges %{
-    frigate: 580..700,
-    destroyer: 420..450,
-    cruiser: 620..650,
-    battlecruiser: 540..570,
-    battleship: 640..670,
-    capital: 19_720..19_740
-  }
-
-  # Specific ship type IDs for roles
+  # Specific ship type IDs for roles - these should also be moved to static data
+  # when a more comprehensive ship database is available
   @interceptor_ids [11_182, 11_196]
   @logistics_ids [11_978, 11_987, 11_985, 12_003]
   @ewar_ids [11_957, 11_958, 11_959, 11_961]
 
   defp classify_ship_type(ship_type_id) do
-    @ship_type_ranges
-    |> Enum.find(fn {_type, range} -> ship_type_id in range end)
-    |> case do
-      {type, _range} -> type
-      nil -> :other
+    case ShipTypes.classify_ship_type(ship_type_id) do
+      :unknown -> :other
+      type -> type
     end
   end
 
@@ -222,19 +231,15 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
     damage_efficiency = SharedCalculations.calculate_damage_efficiency(attacker_killmails)
 
     # Ships that survive longer and deal more damage likely have better fits
-    survival_rate * 0.6 + damage_efficiency * 0.4
+    survival_rate * @survival_weight + damage_efficiency * @damage_weight
   end
 
   defp tackle_ship?(ship_type_id) do
-    # Frigates and some cruisers commonly used for tackle
-    ship_type_id in @ship_type_ranges.frigate or ship_type_id in @interceptor_ids
+    ShipTypes.is_tackle_ship?(ship_type_id) or ship_type_id in @interceptor_ids
   end
 
   defp dps_ship?(ship_type_id) do
-    # Most cruisers, battlecruisers, battleships
-    ship_type_id in @ship_type_ranges.cruiser or
-      ship_type_id in @ship_type_ranges.battlecruiser or
-      ship_type_id in @ship_type_ranges.battleship
+    ShipTypes.is_dps_ship?(ship_type_id)
   end
 
   defp support_ship?(ship_type_id) do
@@ -256,15 +261,15 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
       specialization_score =
         cond do
           # Too specialized
-          specialization_ratio > 0.7 -> 0.6
+          specialization_ratio > @overspecialized_threshold -> 0.6
           # Good generalization
-          specialization_ratio < 0.3 -> 0.7
+          specialization_ratio < @generalist_threshold -> 0.7
           # Good balance
           true -> 1.0
         end
 
       # Bonus for diversity
-      diversity_bonus = min(0.4, diversity_count / 10)
+      diversity_bonus = min(@diversity_bonus_limit, diversity_count / 10)
       min(1.0, specialization_score + diversity_bonus)
     end
   end
@@ -294,21 +299,21 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
     insights = []
 
     insights =
-      if ship_diversity > 0.8 do
+      if ship_diversity > @ship_diversity_excellence_threshold do
         ["Excellent ship diversity - comfortable with many hull types" | insights]
       else
         insights
       end
 
     insights =
-      if class_mastery > 0.8 do
+      if class_mastery > @class_mastery_excellence_threshold do
         ["Strong mastery across multiple ship classes" | insights]
       else
         insights
       end
 
     insights =
-      if specialization_score > 0.8 do
+      if specialization_score > @specialization_balance_threshold do
         ["Good balance between specialization and versatility" | insights]
       else
         insights

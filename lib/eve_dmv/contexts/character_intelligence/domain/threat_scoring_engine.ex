@@ -217,6 +217,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
         {:error, :insufficient_data}
       else
         combat_data = %{
+          character_id: character_id,
           killmails: all_killmails,
           analysis_period_days: analysis_window_days,
           data_cutoff: cutoff_date,

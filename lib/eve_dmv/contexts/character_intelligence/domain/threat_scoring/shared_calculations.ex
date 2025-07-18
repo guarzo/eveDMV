@@ -67,15 +67,31 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedCalcu
   end
 
   @doc """
-  Extract damage contribution from a killmail (for backward compatibility).
-  This version assumes the character is the victim, which is likely incorrect.
-  Use extract_damage_contribution/2 with the character_id parameter instead.
+  Extract damage contribution from a killmail.
+  This single-parameter version should be removed if possible.
+  For now, it attempts to find any character damage in the killmail.
   """
   def extract_damage_contribution(killmail) do
-    # This is a compatibility shim - it's likely incorrect
-    # as it looks for the victim as an attacker
-    victim_id = Map.get(killmail, :victim_character_id)
-    extract_damage_contribution(killmail, victim_id)
+    # Try to find the first attacker with damage done
+    # This is a best-effort approach when character_id is not provided
+    case Map.get(killmail, :raw_data) do
+      %{"attackers" => attackers, "victim" => %{"damage_taken" => total_damage}}
+      when is_list(attackers) and is_number(total_damage) and total_damage > 0 ->
+        # Find the first attacker with character_id and damage_done
+        attackers
+        |> Enum.find(fn attacker ->
+          Map.has_key?(attacker, "character_id") and
+            is_number(Map.get(attacker, "damage_done", 0)) and
+            Map.get(attacker, "damage_done", 0) > 0
+        end)
+        |> case do
+          %{"damage_done" => damage} -> damage / total_damage
+          _ -> 0.0
+        end
+
+      _ ->
+        0.0
+    end
   end
 
   @doc """

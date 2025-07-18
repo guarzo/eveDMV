@@ -12,6 +12,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   @quality_weight 0.3
   @temporal_weight 0.3
 
+  # Quality assessment thresholds
+  @stale_data_threshold_hours 48
+  @insufficient_data_threshold 0.3
+  @incomplete_coverage_types_threshold 2
+  @age_weight_factor 0.3
+  @completeness_weight_factor 0.4
+  @coverage_severity_divisor 72
+
   @doc """
   Correlate intelligence data across systems.
   """
@@ -606,17 +614,24 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
   defp determine_quality_issue(coverage) do
     cond do
-      coverage.data_age_hours > 48 -> :stale_data
-      coverage.data_completeness < 0.3 -> :insufficient_data
-      length(coverage.missing_types) > 2 -> :incomplete_coverage
-      true -> :quality_degradation
+      coverage.data_age_hours > @stale_data_threshold_hours ->
+        :stale_data
+
+      coverage.data_completeness < @insufficient_data_threshold ->
+        :insufficient_data
+
+      length(coverage.missing_types) > @incomplete_coverage_types_threshold ->
+        :incomplete_coverage
+
+      true ->
+        :quality_degradation
     end
   end
 
   defp rate_issue_severity(coverage) do
     severity_score =
-      coverage.data_age_hours / 72 * 0.3 +
-        (1 - coverage.data_completeness) * 0.4 +
+      coverage.data_age_hours / @coverage_severity_divisor * @age_weight_factor +
+        (1 - coverage.data_completeness) * @completeness_weight_factor +
         length(coverage.missing_types) / 5 * 0.3
 
     cond do
@@ -822,40 +837,224 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   end
 
   defp estimate_strategic_value(system_id) do
-    # Estimate strategic value of a system
-    # TODO: Implement proper strategic value calculation based on:
-    # - System security status (from eve_solar_systems table)
-    # - Trade route proximity (check connections to trade hubs)
-    # - Structure presence (from structure tracking data)
-    # - Recent activity levels (from killmail data)
-    # - Alliance sovereignty (from sovereignty data)
-    # For now, return a simple activity-based estimate
+    # Comprehensive strategic value calculation
     try do
-      start_time = DateTime.add(DateTime.utc_now(), -7 * 24 * 3600, :second)
+      # 1. Get system security status
+      security_score = calculate_security_score(system_id)
 
+      # 2. Calculate trade route proximity
+      trade_proximity_score = calculate_trade_proximity_score(system_id)
+
+      # 3. Assess structure presence (placeholder for now as structure data not available)
+      structure_score = estimate_structure_presence_score(system_id)
+
+      # 4. Recent activity levels
+      activity_score = calculate_activity_score(system_id)
+
+      # 5. Alliance sovereignty importance (placeholder for now)
+      sovereignty_score = estimate_sovereignty_importance(system_id)
+
+      # 6. Wormhole connectivity (for J-space systems)
+      connectivity_score = calculate_connectivity_score(system_id)
+
+      # Weighted combination of all factors
+      strategic_value =
+        security_score * 0.15 +
+          trade_proximity_score * 0.2 +
+          structure_score * 0.15 +
+          activity_score * 0.25 +
+          sovereignty_score * 0.15 +
+          connectivity_score * 0.1
+
+      Float.round(strategic_value, 3)
+    rescue
+      error ->
+        Logger.warning(
+          "Failed to calculate strategic value for system #{system_id}: #{inspect(error)}"
+        )
+
+        # Return medium value on error
+        0.5
+    end
+  end
+
+  defp calculate_security_score(system_id) do
+    # Query system security status
+    query =
+      from(s in "eve_solar_systems",
+        where: s.solar_system_id == ^system_id,
+        select: s.security_status
+      )
+
+    case Repo.one(query) do
+      # Unknown system
+      nil ->
+        0.5
+
+      security_status ->
+        # Convert security status to strategic value
+        # Null-sec (negative) and low-sec (0.0-0.4) are more strategically valuable
+        cond do
+          # Null-sec - highest value
+          security_status < 0.0 -> 1.0
+          # Low-sec - high value  
+          security_status <= 0.4 -> 0.8
+          # Mid-sec - medium value
+          security_status <= 0.7 -> 0.4
+          # High-sec - lower strategic value
+          true -> 0.2
+        end
+    end
+  end
+
+  defp calculate_trade_proximity_score(system_id) do
+    # Major trade hubs
+    trade_hubs = [
+      # Jita
+      30_000_142,
+      # Amarr
+      30_002_187,
+      # Dodixie
+      30_002_659,
+      # Rens
+      30_002_510,
+      # Hek
+      30_002_053
+    ]
+
+    if system_id in trade_hubs do
+      # Is a trade hub
+      1.0
+    else
+      # Check proximity through stargates (simplified - checks direct connections)
       query =
-        from(k in "killmails_enriched",
-          where: k.solar_system_id == ^system_id and k.killmail_time >= ^start_time,
-          select: %{
-            activity_count: count(k.killmail_id),
-            total_value: sum(k.total_value)
-          }
+        from(sg in "eve_stargates",
+          where: sg.from_solar_system_id == ^system_id and sg.to_solar_system_id in ^trade_hubs,
+          select: count()
         )
 
       case Repo.one(query) do
-        %{activity_count: count, total_value: value} when count > 0 ->
-          # Normalize to 0-1 range based on activity
-          activity_score = min(count / 1000, 1.0)
-          value_score = if value, do: min(value / 100_000_000_000, 1.0), else: 0.0
-          (activity_score + value_score) / 2
-
-        _ ->
-          # Base value for any system
-          0.1
+        # Not directly connected
+        0 -> 0.3
+        # Direct connection to trade hub
+        _ -> 0.7
       end
-    rescue
-      # Default medium value on error
-      _ -> 0.5
+    end
+  end
+
+  defp estimate_structure_presence_score(system_id) do
+    # Placeholder - would query structure data when available
+    # For now, estimate based on recent kill activity involving structures
+    start_time = DateTime.add(DateTime.utc_now(), -30 * 24 * 3600, :second)
+
+    query =
+      from(k in "killmails_enriched",
+        # Structure type IDs typically > 40000
+        where:
+          k.solar_system_id == ^system_id and
+            k.killmail_time >= ^start_time and
+            k.victim_ship_type_id > 40000 and
+            k.victim_ship_type_id < 50000,
+        select: count()
+      )
+
+    structure_kills = Repo.one(query) || 0
+
+    cond do
+      # Heavy structure presence
+      structure_kills >= 10 -> 0.9
+      # Moderate presence
+      structure_kills >= 5 -> 0.7
+      # Some presence
+      structure_kills >= 1 -> 0.5
+      # No recent structure activity
+      true -> 0.3
+    end
+  end
+
+  defp calculate_activity_score(system_id) do
+    # Recent PvP activity levels
+    start_time = DateTime.add(DateTime.utc_now(), -7 * 24 * 3600, :second)
+
+    query =
+      from(k in "killmails_enriched",
+        where: k.solar_system_id == ^system_id and k.killmail_time >= ^start_time,
+        select: %{
+          kill_count: count(k.killmail_id),
+          total_value: sum(k.total_value),
+          unique_characters: count(k.victim_character_id, :distinct)
+        }
+      )
+
+    case Repo.one(query) do
+      %{kill_count: count, total_value: value, unique_characters: chars} when count > 0 ->
+        # Normalize scores
+        kill_score = min(count / 500.0, 1.0)
+        value_score = if value, do: min(value / 50_000_000_000, 1.0), else: 0.0
+        diversity_score = min(chars / 100.0, 1.0)
+
+        # Combined activity score
+        kill_score * 0.4 + value_score * 0.4 + diversity_score * 0.2
+
+      _ ->
+        # Minimal activity
+        0.1
+    end
+  end
+
+  defp estimate_sovereignty_importance(system_id) do
+    # Placeholder - would query sovereignty data when available
+    # For now, estimate based on alliance activity concentration
+    start_time = DateTime.add(DateTime.utc_now(), -30 * 24 * 3600, :second)
+
+    query =
+      from(k in "killmails_enriched",
+        where: k.solar_system_id == ^system_id and k.killmail_time >= ^start_time,
+        group_by: k.victim_alliance_id,
+        having: count() > 10,
+        select: count()
+      )
+
+    active_alliances = Repo.all(query) |> length()
+
+    cond do
+      # Highly contested
+      active_alliances >= 5 -> 0.9
+      # Moderately contested
+      active_alliances >= 3 -> 0.7
+      # Some alliance presence
+      active_alliances >= 1 -> 0.5
+      # No significant alliance activity
+      true -> 0.3
+    end
+  end
+
+  defp calculate_connectivity_score(system_id) do
+    # Check stargate connections
+    query =
+      from(sg in "eve_stargates",
+        where: sg.from_solar_system_id == ^system_id,
+        select: count()
+      )
+
+    connection_count = Repo.one(query) || 0
+
+    # Also check if it's a wormhole system (J-space)
+    is_wormhole = system_id >= 31_000_000 and system_id < 32_000_000
+
+    cond do
+      # Connected wormhole
+      is_wormhole and connection_count > 0 -> 0.9
+      # Isolated wormhole
+      is_wormhole -> 0.7
+      # Major crossroads
+      connection_count >= 5 -> 0.8
+      # Well connected
+      connection_count >= 3 -> 0.6
+      # Some connections
+      connection_count >= 1 -> 0.4
+      # Dead-end system
+      true -> 0.2
     end
   end
 

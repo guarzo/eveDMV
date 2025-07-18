@@ -8,6 +8,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
 
   require Logger
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedCalculations
+  alias EveDmv.StaticData.SystemData
 
   # Ship type IDs for tactical roles
   @logistics_ids [11_978, 11_987, 11_985, 12_003]
@@ -22,7 +23,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
   @doc """
   Calculate unpredictability score based on combat data.
   """
-  def calculate_unpredictability_score(combat_data) do
+  def calculate_unpredictability_score(combat_data) when is_map(combat_data) do
     Logger.debug("Calculating unpredictability score")
 
     all_killmails = Map.get(combat_data, :killmails, [])
@@ -78,6 +79,24 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
           )
       }
     end
+  end
+
+  def calculate_unpredictability_score(_invalid_data) do
+    Logger.warning(
+      "Invalid combat_data provided to calculate_unpredictability_score - expected a map"
+    )
+
+    %{
+      raw_score: 0.0,
+      normalized_score: 0.0,
+      components: %{
+        engagement_time_variety: 0.0,
+        ship_selection_patterns: 0.0,
+        tactical_variance: 0.0,
+        location_diversity: 0.0
+      },
+      insights: ["Invalid input data - unable to calculate unpredictability score"]
+    }
   end
 
   @doc """
@@ -168,7 +187,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       size_variance = analyze_engagement_size_variance(all_killmails)
 
       # Analyze damage pattern variance
-      damage_variance = analyze_damage_pattern_variance(attacker_killmails)
+      damage_variance =
+        analyze_damage_pattern_variance(attacker_killmails, combat_data.character_id)
 
       # Analyze tactical role variance (different roles in combat)
       role_variance = analyze_tactical_role_variance(all_killmails)
@@ -478,15 +498,14 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
     end
   end
 
-  defp analyze_damage_pattern_variance(attacker_killmails) do
+  defp analyze_damage_pattern_variance(attacker_killmails, character_id) do
     if Enum.empty?(attacker_killmails) do
       0.5
     else
       # Analyze variance in damage contribution patterns
-      # Note: Using SharedCalculations which has a compatibility version
       damage_contributions =
         attacker_killmails
-        |> Enum.map(&SharedCalculations.extract_damage_contribution/1)
+        |> Enum.map(&SharedCalculations.extract_damage_contribution(&1, character_id))
         |> Enum.filter(&(&1 > 0))
 
       if length(damage_contributions) < 2 do
@@ -612,23 +631,12 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
     if Enum.empty?(systems) do
       0.5
     else
-      # Rough region estimation based on system ID ranges
-      estimated_regions =
-        systems
-        |> Enum.map(&estimate_region_from_system_id/1)
-        |> Enum.uniq()
-        |> length()
-
-      # Normalize to 0-1 scale (assume max 20 regions)
-      min(1.0, estimated_regions / 20)
+      # Use centralized system data service for region diversity
+      SystemData.calculate_region_diversity(systems)
     end
   end
 
-  defp estimate_region_from_system_id(system_id) do
-    # Very rough region estimation based on system ID ranges
-    # This is a simplification - real implementation would use static data
-    div(system_id, 1000)
-  end
+  # Region estimation now handled by SystemData module
 
   defp analyze_security_space_variety(killmails) do
     # Analyze variety across security space types
@@ -637,24 +645,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       killmails
       |> Enum.map(& &1.solar_system_id)
       |> Enum.filter(&(&1 != nil))
-      |> Enum.map(&estimate_security_type/1)
-      |> Enum.uniq()
-      |> length()
 
-    # Normalize to 0-1 scale (4 security types: high, low, null, wormhole)
-    systems / 4
+    SystemData.calculate_security_diversity(systems)
   end
 
-  defp estimate_security_type(system_id) do
-    # Very rough security type estimation
-    # Real implementation would use EVE static data
-    case rem(system_id, 4) do
-      0 -> :highsec
-      1 -> :lowsec
-      2 -> :nullsec
-      3 -> :wormhole
-    end
-  end
+  # Security type estimation now handled by SystemData module
 
   defp generate_unpredictability_insights(
          raw_score,

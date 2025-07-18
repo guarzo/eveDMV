@@ -268,6 +268,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     Logger.debug("Analyzing composition for #{length(side_participants)} participants")
 
     if Enum.empty?(side_participants) do
+      Logger.warning("analyze_side_composition: Empty participant list, returning default values")
+
       %{
         total_pilots: 0,
         ship_classes: %{},
@@ -445,6 +447,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     Logger.debug("Calculating role distribution for #{length(participants)} participants")
 
     if Enum.empty?(participants) do
+      Logger.debug("calculate_role_distribution: Empty participant list, returning zero counts")
       %{dps: 0, logistics: 0, ewar: 0, tackle: 0, support: 0, interdiction: 0, command: 0}
     else
       # Classify each participant by primary role
@@ -490,25 +493,492 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     end
   end
 
-  defp calculate_doctrine_adherence(_participants) do
-    # For now, return basic doctrine adherence
-    # TODO: Implement doctrine adherence calculation
+  defp calculate_doctrine_adherence(participants) do
+    # Calculate doctrine adherence based on fleet composition patterns
+    if Enum.empty?(participants) do
+      Logger.debug("calculate_doctrine_adherence: Empty participant list, returning 0.0")
+      0.0
+    else
+      # Group by ship class and role
+      role_distribution = calculate_role_distribution(participants)
+      ship_classes = classify_ships_by_class(participants)
 
-    0.7
+      # Calculate various doctrine metrics
+
+      # 1. Role balance score (ideal fleet has balanced roles)
+      role_balance = calculate_role_balance_score(role_distribution)
+
+      # 2. Ship class consistency (fleets should have consistent ship sizes)
+      class_consistency = calculate_class_consistency_score(ship_classes)
+
+      # 3. Critical role presence (logistics, ewar, tackle)
+      critical_roles_score = calculate_critical_roles_score(role_distribution)
+
+      # 4. Fleet size appropriateness
+      fleet_size_score = calculate_fleet_size_score(length(participants))
+
+      # Weighted average of all factors
+      adherence =
+        role_balance * 0.3 +
+          class_consistency * 0.3 +
+          critical_roles_score * 0.25 +
+          fleet_size_score * 0.15
+
+      Float.round(adherence, 2)
+    end
   end
 
-  defp calculate_fleet_synergy(_participants) do
-    # For now, return basic fleet synergy
-    # TODO: Implement sophisticated synergy calculation
+  defp calculate_role_balance_score(role_distribution) do
+    # Ideal fleet composition ratios
+    ideal_ratios = %{
+      # 40-60% DPS
+      dps: {0.4, 0.6},
+      # 10-20% logistics
+      logistics: {0.1, 0.2},
+      # 5-15% ewar
+      ewar: {0.05, 0.15},
+      # 5-15% tackle
+      tackle: {0.05, 0.15},
+      # 5-15% support
+      support: {0.05, 0.15}
+    }
 
-    0.6
+    scores =
+      Enum.map(ideal_ratios, fn {role, {min_ratio, max_ratio}} ->
+        actual_ratio = get_in(role_distribution, [role, :percentage]) / 100.0
+
+        cond do
+          actual_ratio >= min_ratio and actual_ratio <= max_ratio -> 1.0
+          actual_ratio < min_ratio -> actual_ratio / min_ratio
+          actual_ratio > max_ratio -> max_ratio / actual_ratio
+        end
+      end)
+
+    Enum.sum(scores) / length(scores)
   end
 
-  defp estimate_fleet_effectiveness(_participants) do
-    # For now, return basic effectiveness estimate
-    # TODO: Implement sophisticated effectiveness estimation
+  defp calculate_class_consistency_score(ship_classes) do
+    # Check if fleet is composed of similar ship sizes
+    total_ships = ship_classes |> Map.values() |> Enum.sum()
 
-    0.75
+    if total_ships == 0 do
+      0.0
+    else
+      # Calculate concentration of ship classes
+      concentrations =
+        ship_classes
+        |> Map.values()
+        |> Enum.map(&(&1 / total_ships))
+        # Only consider significant concentrations
+        |> Enum.filter(&(&1 > 0.1))
+
+      case length(concentrations) do
+        # Single ship class doctrine (very focused)
+        1 -> 1.0
+        # Two-class doctrine (common)
+        2 -> 0.85
+        # Three-class doctrine (less focused)
+        3 -> 0.7
+        # Mixed doctrine (unfocused)
+        _ -> 0.5
+      end
+    end
+  end
+
+  defp calculate_critical_roles_score(role_distribution) do
+    # Check presence of critical support roles
+    logistics_present = get_in(role_distribution, [:logistics, :count]) > 0
+    ewar_present = get_in(role_distribution, [:ewar, :count]) > 0
+    tackle_present = get_in(role_distribution, [:tackle, :count]) > 0
+
+    score = 0.0
+    score = if logistics_present, do: score + 0.4, else: score
+    score = if ewar_present, do: score + 0.3, else: score
+    score = if tackle_present, do: score + 0.3, else: score
+
+    score
+  end
+
+  defp calculate_fleet_size_score(fleet_size) do
+    # Optimal fleet sizes for different engagement types
+    cond do
+      # Small gang
+      fleet_size >= 5 and fleet_size <= 15 -> 1.0
+      # Medium fleet
+      fleet_size >= 20 and fleet_size <= 50 -> 0.9
+      # Large fleet
+      fleet_size >= 100 and fleet_size <= 250 -> 0.8
+      # Too small for doctrine
+      fleet_size < 5 -> 0.6
+      # Blob warfare
+      fleet_size > 250 -> 0.7
+      true -> 0.75
+    end
+  end
+
+  defp calculate_fleet_synergy(participants) do
+    # Calculate how well fleet components work together
+    if Enum.empty?(participants) do
+      Logger.debug("calculate_fleet_synergy: Empty participant list, returning 0.0")
+      0.0
+    else
+      role_distribution = calculate_role_distribution(participants)
+      ship_classes = classify_ships_by_class(participants)
+
+      # Calculate synergy components
+
+      # 1. DPS/Logi ratio synergy
+      dps_logi_synergy = calculate_dps_logi_synergy(role_distribution)
+
+      # 2. Tackle/DPS synergy
+      tackle_dps_synergy = calculate_tackle_dps_synergy(role_distribution)
+
+      # 3. EWAR support synergy
+      ewar_synergy = calculate_ewar_synergy(role_distribution)
+
+      # 4. Ship class compatibility
+      class_synergy = calculate_class_compatibility(ship_classes)
+
+      # 5. Fleet coherence (similar engagement ranges)
+      range_coherence = calculate_range_coherence(participants)
+
+      # Weighted combination
+      synergy =
+        dps_logi_synergy * 0.25 +
+          tackle_dps_synergy * 0.2 +
+          ewar_synergy * 0.2 +
+          class_synergy * 0.2 +
+          range_coherence * 0.15
+
+      Float.round(synergy, 2)
+    end
+  end
+
+  defp calculate_dps_logi_synergy(role_distribution) do
+    dps_count = get_in(role_distribution, [:dps, :count]) || 0
+    logi_count = get_in(role_distribution, [:logistics, :count]) || 0
+
+    if dps_count == 0 do
+      0.0
+    else
+      # Optimal ratio is 1 logi per 4-5 DPS
+      ratio = logi_count / dps_count
+
+      cond do
+        ratio >= 0.2 and ratio <= 0.25 -> 1.0
+        ratio >= 0.15 and ratio <= 0.3 -> 0.85
+        ratio >= 0.1 and ratio <= 0.35 -> 0.7
+        # No logi is poor synergy
+        ratio == 0 -> 0.3
+        true -> 0.5
+      end
+    end
+  end
+
+  defp calculate_tackle_dps_synergy(role_distribution) do
+    dps_count = get_in(role_distribution, [:dps, :count]) || 0
+    tackle_count = get_in(role_distribution, [:tackle, :count]) || 0
+
+    if dps_count == 0 do
+      0.0
+    else
+      # Need adequate tackle to hold targets for DPS
+      ratio = tackle_count / dps_count
+
+      cond do
+        ratio >= 0.1 and ratio <= 0.2 -> 1.0
+        ratio >= 0.05 and ratio <= 0.25 -> 0.8
+        # No tackle hurts effectiveness
+        ratio == 0 -> 0.4
+        # Too much tackle, not enough DPS
+        ratio > 0.3 -> 0.6
+        true -> 0.7
+      end
+    end
+  end
+
+  defp calculate_ewar_synergy(role_distribution) do
+    total = get_in(role_distribution, [:total_participants]) || 0
+    ewar_count = get_in(role_distribution, [:ewar, :count]) || 0
+
+    if total == 0 do
+      0.0
+    else
+      ewar_ratio = ewar_count / total
+
+      # EWAR is most effective in moderate amounts
+      cond do
+        ewar_ratio >= 0.1 and ewar_ratio <= 0.15 -> 1.0
+        ewar_ratio >= 0.05 and ewar_ratio <= 0.2 -> 0.8
+        # No EWAR limits options
+        ewar_ratio == 0 -> 0.6
+        # Too much EWAR, not enough damage
+        ewar_ratio > 0.25 -> 0.5
+        true -> 0.7
+      end
+    end
+  end
+
+  defp calculate_class_compatibility(ship_classes) do
+    # Check if ship classes work well together
+    classes_present =
+      ship_classes
+      |> Enum.filter(fn {_, count} -> count > 0 end)
+      |> Enum.map(fn {class, _} -> class end)
+
+    cond do
+      # Cruiser/BC fleets work well together
+      :cruiser in classes_present and :battlecruiser in classes_present -> 0.9
+      # BS/BC fleets are coherent
+      :battleship in classes_present and :battlecruiser in classes_present -> 0.85
+      # Frigate/destroyer fleets are fast and coherent
+      :frigate in classes_present and :destroyer in classes_present -> 0.9
+      # Mixed sizes reduce coherence
+      :frigate in classes_present and :battleship in classes_present -> 0.4
+      # Single ship class is very coherent
+      length(classes_present) == 1 -> 1.0
+      # Default mixed fleet
+      true -> 0.6
+    end
+  end
+
+  defp calculate_range_coherence(participants) do
+    # Estimate engagement range coherence based on ship types
+    # Ships with similar optimal ranges work better together
+
+    if Enum.empty?(participants) do
+      0.0
+    else
+      # Group by estimated engagement range
+      range_groups =
+        participants
+        |> Enum.group_by(&estimate_engagement_range/1)
+        |> Map.values()
+        |> Enum.map(&length/1)
+
+      total = length(participants)
+      largest_group = Enum.max(range_groups, fn -> 0 end)
+
+      # Coherence is how concentrated ships are in similar ranges
+      coherence = largest_group / total
+      Float.round(coherence, 2)
+    end
+  end
+
+  defp estimate_engagement_range(participant) do
+    # Estimate based on ship class and type
+    ship_type_id =
+      Map.get(participant, :ship_type_id) || Map.get(participant, :victim_ship_type_id)
+
+    ship_class = classify_ship_type(ship_type_id, "")
+
+    case ship_class do
+      # 0-10km
+      :frigate -> :close_range
+      # 0-15km
+      :destroyer -> :close_range
+      # 10-30km
+      :cruiser -> :medium_range
+      # 15-40km
+      :battlecruiser -> :medium_range
+      # 30-100km+
+      :battleship -> :long_range
+      # 100km+
+      :capital -> :extreme_range
+      _ -> :medium_range
+    end
+  end
+
+  defp estimate_fleet_effectiveness(participants) do
+    # Estimate overall fleet combat effectiveness
+    if Enum.empty?(participants) do
+      Logger.debug("estimate_fleet_effectiveness: Empty participant list, returning 0.0")
+      0.0
+    else
+      # Calculate various effectiveness factors
+
+      # 1. Raw firepower potential
+      firepower_score = calculate_firepower_potential(participants)
+
+      # 2. Survivability (tank and logistics)
+      survivability_score = calculate_survivability_score(participants)
+
+      # 3. Force multipliers (command ships, links)
+      multiplier_score = calculate_force_multiplier_score(participants)
+
+      # 4. Mobility and positioning capability
+      mobility_score = calculate_mobility_score(participants)
+
+      # 5. Electronic warfare capability
+      ewar_capability = calculate_ewar_capability(participants)
+
+      # Weighted combination based on fleet size
+      fleet_size = length(participants)
+
+      effectiveness =
+        if fleet_size < 10 do
+          # Small gang weights mobility and individual pilot skill
+          firepower_score * 0.3 +
+            survivability_score * 0.2 +
+            multiplier_score * 0.1 +
+            mobility_score * 0.3 +
+            ewar_capability * 0.1
+        else
+          # Large fleets weight firepower and survivability
+          firepower_score * 0.35 +
+            survivability_score * 0.3 +
+            multiplier_score * 0.15 +
+            mobility_score * 0.1 +
+            ewar_capability * 0.1
+        end
+
+      Float.round(effectiveness, 2)
+    end
+  end
+
+  defp calculate_firepower_potential(participants) do
+    # Estimate DPS potential based on ship types
+    total_dps_weight =
+      participants
+      |> Enum.map(&estimate_ship_dps_weight/1)
+      |> Enum.sum()
+
+    # Normalize based on fleet size
+    fleet_size = length(participants)
+    avg_dps_weight = total_dps_weight / fleet_size
+
+    # Convert to 0-1 scale (assuming max avg weight of 10)
+    min(avg_dps_weight / 10.0, 1.0)
+  end
+
+  defp estimate_ship_dps_weight(participant) do
+    ship_type_id =
+      Map.get(participant, :ship_type_id) || Map.get(participant, :victim_ship_type_id)
+
+    ship_class = classify_ship_type(ship_type_id, "")
+
+    # Rough DPS weights by ship class
+    case ship_class do
+      :frigate -> 1.0
+      :destroyer -> 2.0
+      :cruiser -> 4.0
+      :battlecruiser -> 6.0
+      :battleship -> 10.0
+      :capital -> 20.0
+      :supercapital -> 50.0
+      _ -> 2.0
+    end
+  end
+
+  defp calculate_survivability_score(participants) do
+    role_distribution = calculate_role_distribution(participants)
+    ship_classes = classify_ships_by_class(participants)
+
+    # Factors affecting survivability
+    logi_ratio = (get_in(role_distribution, [:logistics, :percentage]) || 0) / 100.0
+
+    # Average ship tankiness based on class
+    avg_tank = calculate_average_tankiness(ship_classes, length(participants))
+
+    # Command ship presence
+    command_ratio = (get_in(role_distribution, [:command, :percentage]) || 0) / 100.0
+
+    # Calculate survivability
+    base_survivability = avg_tank
+    # Cap logi bonus at 40%
+    logi_bonus = min(logi_ratio * 2.0, 0.4)
+    command_bonus = command_ratio * 0.1
+
+    min(base_survivability + logi_bonus + command_bonus, 1.0)
+  end
+
+  defp calculate_average_tankiness(ship_classes, total_ships) do
+    if total_ships == 0 do
+      0.0
+    else
+      # Tank weights by ship class
+      tank_weights = %{
+        frigate: 0.2,
+        destroyer: 0.3,
+        cruiser: 0.5,
+        battlecruiser: 0.7,
+        battleship: 0.9,
+        capital: 1.0,
+        supercapital: 1.0
+      }
+
+      weighted_tank =
+        ship_classes
+        |> Enum.map(fn {class, count} ->
+          weight = Map.get(tank_weights, class, 0.3)
+          weight * count
+        end)
+        |> Enum.sum()
+
+      weighted_tank / total_ships
+    end
+  end
+
+  defp calculate_force_multiplier_score(participants) do
+    role_distribution = calculate_role_distribution(participants)
+
+    # Command ships and boosters
+    command_presence = (get_in(role_distribution, [:command, :count]) || 0) > 0
+
+    # Interdiction capability
+    interdictor_ratio = (get_in(role_distribution, [:interdiction, :percentage]) || 0) / 100.0
+
+    # Base score
+    score = 0.5
+    score = if command_presence, do: score + 0.3, else: score
+    score = score + interdictor_ratio * 0.2
+
+    min(score, 1.0)
+  end
+
+  defp calculate_mobility_score(participants) do
+    ship_classes = classify_ships_by_class(participants)
+    total_ships = length(participants)
+
+    if total_ships == 0 do
+      0.0
+    else
+      # Mobility weights by ship class
+      mobility_weights = %{
+        frigate: 1.0,
+        destroyer: 0.9,
+        cruiser: 0.7,
+        battlecruiser: 0.5,
+        battleship: 0.3,
+        capital: 0.1,
+        supercapital: 0.0
+      }
+
+      weighted_mobility =
+        ship_classes
+        |> Enum.map(fn {class, count} ->
+          weight = Map.get(mobility_weights, class, 0.5)
+          weight * count
+        end)
+        |> Enum.sum()
+
+      weighted_mobility / total_ships
+    end
+  end
+
+  defp calculate_ewar_capability(participants) do
+    role_distribution = calculate_role_distribution(participants)
+
+    ewar_ratio = (get_in(role_distribution, [:ewar, :percentage]) || 0) / 100.0
+
+    # EWAR effectiveness caps out around 20% of fleet
+    cond do
+      ewar_ratio >= 0.15 -> 1.0
+      ewar_ratio >= 0.1 -> 0.8
+      ewar_ratio >= 0.05 -> 0.6
+      ewar_ratio > 0 -> 0.4
+      true -> 0.0
+    end
   end
 
   defp calculate_survival_rate(ships, killmails) do

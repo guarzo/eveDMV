@@ -48,7 +48,7 @@ const InfiniteScroll = {
     this.el.classList.add('loading');
     
     // Validate cursor before sending
-    const cursor = this.el.dataset.cursor;
+    const cursor = this.cursor || this.el.dataset.cursor;
     if (cursor && typeof cursor === 'string') {
       // Trigger the load more event
       this.pushEvent('load_more', {
