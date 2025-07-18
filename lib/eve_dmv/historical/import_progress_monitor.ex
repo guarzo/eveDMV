@@ -236,13 +236,13 @@ defmodule EveDmv.Historical.ImportProgressMonitor do
       :telemetry.attach(
         "import-monitor-#{inspect(event)}",
         event,
-        &handle_telemetry_event/4,
+        {__MODULE__, :handle_telemetry_event, []},
         nil
       )
     end)
   end
 
-  defp handle_telemetry_event(event, measurements, metadata, _config) do
+  def handle_telemetry_event(event, measurements, metadata, _config) do
     send(self(), {:telemetry, event, measurements, metadata})
   end
 

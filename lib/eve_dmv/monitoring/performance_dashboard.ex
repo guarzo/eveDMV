@@ -402,15 +402,15 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
 
   defp attach_telemetry_handlers do
     handlers = [
-      {[:eve_dmv, :query, :duration], &handle_telemetry/4},
-      {[:eve_dmv, :cache, :hit], &handle_telemetry/4},
-      {[:eve_dmv, :cache, :miss], &handle_telemetry/4},
-      {[:eve_dmv, :cache, :invalidation], &handle_telemetry/4},
-      {[:broadway, :processor, :message, :stop], &handle_telemetry/4},
-      {[:broadway, :processor, :message, :exception], &handle_telemetry/4},
-      {[:eve_dmv, :import, :batch], &handle_telemetry/4},
-      {[:ecto, :repo, :query], &handle_telemetry/4},
-      {[:eve_dmv, :materialized_views, :refresh], &handle_telemetry/4}
+      {[:eve_dmv, :query, :duration], {__MODULE__, :handle_telemetry, []}},
+      {[:eve_dmv, :cache, :hit], {__MODULE__, :handle_telemetry, []}},
+      {[:eve_dmv, :cache, :miss], {__MODULE__, :handle_telemetry, []}},
+      {[:eve_dmv, :cache, :invalidation], {__MODULE__, :handle_telemetry, []}},
+      {[:broadway, :processor, :message, :stop], {__MODULE__, :handle_telemetry, []}},
+      {[:broadway, :processor, :message, :exception], {__MODULE__, :handle_telemetry, []}},
+      {[:eve_dmv, :import, :batch], {__MODULE__, :handle_telemetry, []}},
+      {[:ecto, :repo, :query], {__MODULE__, :handle_telemetry, []}},
+      {[:eve_dmv, :materialized_views, :refresh], {__MODULE__, :handle_telemetry, []}}
     ]
 
     Enum.each(handlers, fn {event, handler} ->
@@ -423,7 +423,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
     end)
   end
 
-  defp handle_telemetry(event, measurements, metadata, _config) do
+  def handle_telemetry(event, measurements, metadata, _config) do
     send(self(), {:telemetry_event, event, measurements, metadata})
   end
 

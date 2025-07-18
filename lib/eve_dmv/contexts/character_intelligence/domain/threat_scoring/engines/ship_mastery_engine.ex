@@ -29,6 +29,12 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
   @class_mastery_excellence_threshold 0.75
   @specialization_balance_threshold 0.85
 
+  # Specialization balance scoring
+  @overspecialized_penalty 0.6
+  @generalist_bonus 0.7
+  @perfect_balance_score 1.0
+  @diversity_denominator 10
+
   @doc """
   Calculate ship mastery score based on combat data.
   """
@@ -261,16 +267,16 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
       specialization_score =
         cond do
           # Too specialized
-          specialization_ratio > @overspecialized_threshold -> 0.6
+          specialization_ratio > @overspecialized_threshold -> @overspecialized_penalty
           # Good generalization
-          specialization_ratio < @generalist_threshold -> 0.7
+          specialization_ratio < @generalist_threshold -> @generalist_bonus
           # Good balance
-          true -> 1.0
+          true -> @perfect_balance_score
         end
 
       # Bonus for diversity
-      diversity_bonus = min(@diversity_bonus_limit, diversity_count / 10)
-      min(1.0, specialization_score + diversity_bonus)
+      diversity_bonus = min(@diversity_bonus_limit, diversity_count / @diversity_denominator)
+      min(@perfect_balance_score, specialization_score + diversity_bonus)
     end
   end
 

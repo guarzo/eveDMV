@@ -8,6 +8,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Com
 
   require Logger
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedCalculations
+  alias EveDmv.Market.ShipValuation
 
   # Score calculation weights
   @kd_ratio_weight 0.25
@@ -16,26 +17,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Com
   @target_quality_weight 0.15
   @damage_efficiency_weight 0.15
 
-  # Ship type ID ranges
-  @ship_type_ranges %{
-    frigate: 580..700,
-    destroyer: 420..450,
-    cruiser: 620..650,
-    battlecruiser: 540..570,
-    battleship: 640..670,
-    capital: 19_720..19_740
-  }
-
-  # Ship valuation estimates
-  @ship_values %{
-    frigate: 5_000_000,
-    destroyer: 15_000_000,
-    cruiser: 50_000_000,
-    battlecruiser: 150_000_000,
-    battleship: 300_000_000,
-    capital: 2_000_000_000,
-    default: 25_000_000
-  }
+  # Default fallback value for ship valuation
+  @default_ship_value 25_000_000
 
   # Tactical target ship IDs
   @tactical_ship_ids %{
@@ -157,20 +140,17 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Com
   # Private helper functions
 
   defp estimate_killmail_value(killmail) do
-    # Heuristic ship value estimation based on type
+    # Use centralized ship valuation service
     ship_type_id = killmail.victim_ship_type_id
 
-    # Find which ship class this type ID belongs to
-    ship_class =
-      @ship_type_ranges
-      |> Enum.find(fn {_class, range} -> ship_type_id in range end)
-      |> case do
-        {class, _range} -> class
-        nil -> :default
-      end
+    case ShipValuation.estimate_value(ship_type_id) do
+      {:ok, value} ->
+        value
 
-    # Return the corresponding value
-    Map.get(@ship_values, ship_class, @ship_values.default)
+      {:error, _reason} ->
+        # Fallback to default value if service fails
+        @default_ship_value
+    end
   end
 
   defp tactical_target?(ship_type_id) do
