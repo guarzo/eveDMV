@@ -2,13 +2,28 @@ defmodule EveDmv.Repo.Migrations.AddComprehensiveIntelligenceIndexesSprint16 do
   use Ecto.Migration
   @disable_ddl_transaction true
 
+  # Configurable threshold values for index WHERE clauses
+  # MAINTENANCE NOTE: These values should be reviewed quarterly and adjusted based on:
+  # - Data growth patterns and retention policies
+  # - Query performance metrics
+  # - Storage constraints and index maintenance costs
+  @min_isk_threshold_millions 100  # 100M ISK minimum for high-value analysis (review quarterly)
+  @intelligence_data_cutoff "2024-01-01"  # Minimum date for intelligence data (adjust as data ages)
+  @recent_activity_cutoff "2024-06-01"    # Recent activity analysis cutoff (update with data retention)
+
   def up do
     # Use regular indexes for test environment, concurrent for others
     concurrently = if Mix.env() == :test, do: "", else: "CONCURRENTLY"
     
+    # Calculate dynamic thresholds
+    isk_threshold = @min_isk_threshold_millions * 1_000_000  # Convert to actual ISK value
+    
     # ====================================================================
     # INTELLIGENCE QUERY PATTERN INDEXES
     # ====================================================================
+    # These indexes are optimized for Sprint 16 intelligence system queries.
+    # Threshold values are configurable at the top of this file and should be
+    # reviewed quarterly for optimal performance.
     
     # 1. BATTLE ANALYSIS INTEGRATION INDEXES
     # -------------------------------------
@@ -18,7 +33,7 @@ defmodule EveDmv.Repo.Migrations.AddComprehensiveIntelligenceIndexesSprint16 do
     execute """
     CREATE INDEX #{concurrently} IF NOT EXISTS idx_killmails_system_time_battle_analysis
     ON killmails_raw (solar_system_id, killmail_time DESC)
-    WHERE killmail_time >= '2024-01-01'::timestamp
+    WHERE killmail_time >= '#{@intelligence_data_cutoff}'::timestamp
     """
 
     # Index for ISK destruction analysis in battle intelligence 
@@ -26,7 +41,7 @@ defmodule EveDmv.Repo.Migrations.AddComprehensiveIntelligenceIndexesSprint16 do
     execute """
     CREATE INDEX #{concurrently} IF NOT EXISTS idx_killmails_isk_participants_threat
     ON killmails_raw (killmail_time DESC, solar_system_id)
-    WHERE raw_data ? 'zkb' AND (raw_data->'zkb'->>'totalValue')::bigint > 100000000
+    WHERE raw_data ? 'zkb' AND (raw_data->'zkb'->>'totalValue')::bigint > #{isk_threshold}
     """
 
     # 2. VETTING ANALYSIS PERFORMANCE INDEXES  
@@ -62,7 +77,7 @@ defmodule EveDmv.Repo.Migrations.AddComprehensiveIntelligenceIndexesSprint16 do
     execute """
     CREATE INDEX #{concurrently} IF NOT EXISTS idx_killmails_attackers_threat_scoring
     ON killmails_raw USING GIN ((raw_data -> 'attackers'))
-    WHERE killmail_time >= '2024-01-01'::timestamp
+    WHERE killmail_time >= '#{@intelligence_data_cutoff}'::timestamp
     """
 
     # 4. SYSTEM ACTIVITY MONITORING INDEXES
@@ -73,7 +88,7 @@ defmodule EveDmv.Repo.Migrations.AddComprehensiveIntelligenceIndexesSprint16 do
     execute """
     CREATE INDEX #{concurrently} IF NOT EXISTS idx_killmails_system_activity_volume
     ON killmails_raw (solar_system_id, killmail_time DESC)
-    WHERE killmail_time >= '2024-06-01'::timestamp
+    WHERE killmail_time >= '#{@recent_activity_cutoff}'::timestamp
     """
 
     # Index for large battle detection (participant count analysis)
@@ -82,7 +97,7 @@ defmodule EveDmv.Repo.Migrations.AddComprehensiveIntelligenceIndexesSprint16 do
     CREATE INDEX #{concurrently} IF NOT EXISTS idx_killmails_large_battles
     ON killmails_raw (killmail_time DESC, solar_system_id)
     WHERE (raw_data->'attackers') IS NOT NULL 
-    AND killmail_time >= '2024-01-01'::timestamp
+    AND killmail_time >= '#{@intelligence_data_cutoff}'::timestamp
     """
 
     # 5. MULTI-SYSTEM BATTLE CORRELATION INDEXES
@@ -93,22 +108,16 @@ defmodule EveDmv.Repo.Migrations.AddComprehensiveIntelligenceIndexesSprint16 do
     execute """
     CREATE INDEX #{concurrently} IF NOT EXISTS idx_killmails_temporal_clustering
     ON killmails_raw (killmail_time, solar_system_id, victim_character_id)
-    WHERE killmail_time >= '2024-01-01'::timestamp
+    WHERE killmail_time >= '#{@intelligence_data_cutoff}'::timestamp
     """
 
     # Index for participant overlap analysis across systems
-    # Using separate indexes for attackers and victims since jsonb_build_array is not immutable
-    execute """
-    CREATE INDEX #{concurrently} IF NOT EXISTS idx_killmails_attackers_gin
-    ON killmails_raw USING GIN ((raw_data->'attackers'))
-    WHERE killmail_time >= '2024-01-01'::timestamp
-    """
-
-    # Separate index for victim data for participant analysis
+    # Note: Attackers GIN index already exists as idx_killmails_attackers_threat_scoring
+    # Only need victim data index for participant analysis
     execute """
     CREATE INDEX #{concurrently} IF NOT EXISTS idx_killmails_victim_gin
     ON killmails_raw USING GIN ((raw_data->'victim'))
-    WHERE killmail_time >= '2024-01-01'::timestamp
+    WHERE killmail_time >= '#{@intelligence_data_cutoff}'::timestamp
     """
 
     # 6. CACHE OPTIMIZATION INDEXES
@@ -120,7 +129,7 @@ defmodule EveDmv.Repo.Migrations.AddComprehensiveIntelligenceIndexesSprint16 do
     CREATE INDEX #{concurrently} IF NOT EXISTS idx_killmails_cache_warming
     ON killmails_raw (victim_character_id, killmail_time DESC)
     WHERE victim_character_id IS NOT NULL 
-    AND killmail_time >= '2024-01-01'::timestamp
+    AND killmail_time >= '#{@intelligence_data_cutoff}'::timestamp
     """
 
     # 7. DASHBOARD QUERY OPTIMIZATION INDEXES
@@ -131,7 +140,7 @@ defmodule EveDmv.Repo.Migrations.AddComprehensiveIntelligenceIndexesSprint16 do
     execute """
     CREATE INDEX #{concurrently} IF NOT EXISTS idx_killmails_dashboard_recent
     ON killmails_raw (killmail_time DESC, victim_character_id, solar_system_id)
-    WHERE killmail_time >= '2024-01-01'::timestamp
+    WHERE killmail_time >= '#{@intelligence_data_cutoff}'::timestamp
     """
 
     # Index for threat alert generation queries
@@ -140,7 +149,7 @@ defmodule EveDmv.Repo.Migrations.AddComprehensiveIntelligenceIndexesSprint16 do
     CREATE INDEX #{concurrently} IF NOT EXISTS idx_killmails_threat_alerts
     ON killmails_raw (killmail_time DESC, solar_system_id)
     WHERE (raw_data->'zkb'->>'totalValue')::bigint > 500000000
-    AND killmail_time >= '2024-01-01'::timestamp
+    AND killmail_time >= '#{@intelligence_data_cutoff}'::timestamp
     """
   end
 
@@ -158,7 +167,6 @@ defmodule EveDmv.Repo.Migrations.AddComprehensiveIntelligenceIndexesSprint16 do
     execute "DROP INDEX #{concurrently} IF EXISTS idx_killmails_system_activity_volume"
     execute "DROP INDEX #{concurrently} IF EXISTS idx_killmails_large_battles"
     execute "DROP INDEX #{concurrently} IF EXISTS idx_killmails_temporal_clustering"
-    execute "DROP INDEX #{concurrently} IF EXISTS idx_killmails_attackers_gin"
     execute "DROP INDEX #{concurrently} IF EXISTS idx_killmails_victim_gin"
     execute "DROP INDEX #{concurrently} IF EXISTS idx_killmails_cache_warming"
     execute "DROP INDEX #{concurrently} IF EXISTS idx_killmails_dashboard_recent"
