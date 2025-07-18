@@ -197,12 +197,10 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
 
   defp get_corporation_killmails(corporation_id, start_date, end_date) do
     # Simplified killmail retrieval
-    case QueryUtils.query_killmails_by_corporation(corporation_id, start_date, end_date,
-           limit: 1000
-         ) do
-      killmails -> {:ok, killmails}
-      _ -> {:ok, []}
-    end
+    killmails =
+      QueryUtils.query_killmails_by_corporation(corporation_id, start_date, end_date, limit: 1000)
+
+    {:ok, killmails}
   rescue
     error ->
       Logger.warning("Failed to get corporation killmails: #{inspect(error)}")
