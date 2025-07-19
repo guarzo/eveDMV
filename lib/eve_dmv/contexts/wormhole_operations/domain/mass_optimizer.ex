@@ -128,23 +128,15 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
       current_mass = calculate_fleet_mass(ships)
       mass_limit = get_wormhole_mass_limit(wormhole_class)
 
-      suggestions = []
-
-      # Mass optimization suggestions
+      # Generate all suggestions
       mass_suggestions = generate_mass_suggestions(ships, current_mass, mass_limit)
-      suggestions = suggestions ++ mass_suggestions
-
-      # Role optimization suggestions
       role_suggestions = generate_role_suggestions(ships)
-      suggestions = suggestions ++ role_suggestions
-
-      # Ship upgrade suggestions
       upgrade_suggestions = generate_upgrade_suggestions(ships, wormhole_class)
-      suggestions = suggestions ++ upgrade_suggestions
-
-      # Doctrine suggestions
       doctrine_suggestions = generate_doctrine_suggestions(ships, wormhole_class)
-      suggestions = suggestions ++ doctrine_suggestions
+
+      # Combine all suggestions
+      suggestions =
+        mass_suggestions ++ role_suggestions ++ upgrade_suggestions ++ doctrine_suggestions
 
       # Sort by priority
       sorted_suggestions =
@@ -207,10 +199,13 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
     utilization_warning = mass_utilization > 0.9
 
     # Generate violations list
-    violations = []
+    base_violations = []
 
-    violations =
-      if not total_mass_valid do
+    # Check total mass violation
+    mass_violations =
+      if total_mass_valid do
+        base_violations
+      else
         [
           %{
             type: :total_mass_exceeded,
@@ -219,13 +214,12 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
             severity: :critical,
             excess_mass: total_mass - max_mass
           }
-          | violations
+          | base_violations
         ]
-      else
-        violations
       end
 
-    violations =
+    # Check individual ship violations
+    individual_viol_list =
       if length(individual_violations) > 0 do
         [
           %{
@@ -234,12 +228,13 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
             severity: :high,
             violations: individual_violations
           }
-          | violations
+          | mass_violations
         ]
       else
-        violations
+        mass_violations
       end
 
+    # Check utilization warning
     violations =
       if utilization_warning and total_mass_valid do
         [
@@ -250,10 +245,10 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
             severity: :medium,
             utilization: mass_utilization
           }
-          | violations
+          | individual_viol_list
         ]
       else
-        violations
+        individual_viol_list
       end
 
     # Generate recommendations
@@ -320,22 +315,21 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
   end
 
   defp get_ship_mass(ship) do
-    # Use ship database for accurate mass data
-    type_id = Map.get(ship, :type_id)
-    ship_name = Map.get(ship, :type_name, "")
+    # Use static data for accurate mass data
+    type_id = Map.get(ship, :type_id) || Map.get(ship, :ship_type_id)
 
     cond do
-      # First try ship type ID lookup
+      # Try ship type ID lookup from static data
       is_integer(type_id) ->
-        EveDmv.Intelligence.ShipDatabase.ShipMassData.get_ship_mass(type_id)
+        case EveDmv.StaticData.get_ship_mass(type_id) do
+          {:ok, mass} -> mass
+          # Realistic cruiser mass fallback
+          {:error, _} -> 12_000_000.0
+        end
 
-      # Fallback to ship name lookup
-      ship_name != "" ->
-        EveDmv.Intelligence.ShipDatabase.ShipMassData.get_ship_mass_by_name(ship_name)
-
-      # Final fallback
+      # Final fallback for ships without type_id
       true ->
-        10_000_000
+        12_000_000.0
     end
   end
 
@@ -504,27 +498,60 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
   end
 
   defp determine_ship_role(ship) do
-    ship_name = Map.get(ship, :type_name, "") |> String.downcase()
+    # Use ship type ID for accurate role detection if available
+    ship_type_id = ship |> Map.get(:ship_type_id) || ship |> Map.get(:type_id)
 
-    cond do
-      String.contains?(ship_name, [
-        "guardian",
-        "basilisk",
-        "oneiros",
-        "scimitar",
-        "osprey",
-        "augoror"
-      ]) ->
-        :logistics
+    if ship_type_id do
+      # Use static data for accurate role classification
+      case EveDmv.StaticData.get_ship_class(ship_type_id) do
+        :logistics_frigate -> :logistics
+        :logistics_cruiser -> :logistics
+        :force_auxiliary -> :logistics
+        :electronic_attack_frigate -> :support
+        :force_recon -> :support
+        :combat_recon -> :support
+        :interdictor -> :support
+        :heavy_interdictor -> :support
+        :interceptor -> :tackle
+        :dreadnought -> :capital
+        :carrier -> :capital
+        :supercarrier -> :capital
+        :titan -> :capital
+        # All other ship types default to DPS role
+        _ -> :dps
+      end
+    else
+      # Fallback to name-based detection for legacy data
+      ship_name = ship |> Map.get(:type_name, "") |> String.downcase()
 
-      String.contains?(ship_name, ["falcon", "curse", "pilgrim", "huginn", "rapier", "lachesis"]) ->
-        :support
+      cond do
+        String.contains?(ship_name, [
+          "guardian",
+          "basilisk",
+          "oneiros",
+          "scimitar",
+          "osprey",
+          "augoror"
+        ]) ->
+          :logistics
 
-      String.contains?(ship_name, ["dictor", "hictor", "sabre", "heretic", "eris", "flycatcher"]) ->
-        :support
+        String.contains?(ship_name, [
+          "falcon",
+          "curse",
+          "pilgrim",
+          "huginn",
+          "rapier",
+          "lachesis",
+          "sabre",
+          "heretic",
+          "eris",
+          "flycatcher"
+        ]) ->
+          :support
 
-      true ->
-        :dps
+        true ->
+          :dps
+      end
     end
   end
 
@@ -588,13 +615,14 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
 
   defp find_lighter_alternative(ship) do
     # Simplified alternative finder
-    ship_name = Map.get(ship, :type_name, "") |> String.downcase()
+    ship_name = ship |> Map.get(:type_name, "") |> String.downcase()
 
+    # Map battleships to battlecruiser alternatives for wormhole use
     alternatives = %{
-      "dominix" => %{name: "Myrmidon", mass: 98_000_000},
-      "megathron" => %{name: "Thorax", mass: 98_000_000},
-      "apocalypse" => %{name: "Harbinger", mass: 98_000_000},
-      "tempest" => %{name: "Hurricane", mass: 98_000_000}
+      "dominix" => %{name: "Myrmidon", ship_class: :battlecruiser},
+      "megathron" => %{name: "Thorax", ship_class: :cruiser},
+      "apocalypse" => %{name: "Harbinger", ship_class: :battlecruiser},
+      "tempest" => %{name: "Hurricane", ship_class: :battlecruiser}
     }
 
     Map.get(alternatives, ship_name)
@@ -603,8 +631,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
   # Helper functions for suggestion generation
 
   defp generate_mass_suggestions(_ships, current_mass, mass_limit) do
-    suggestions = []
-
     utilization = current_mass / mass_limit
 
     suggestions =
@@ -618,7 +644,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
               impact: "Fleet cannot enter wormhole",
               action: "Remove heaviest ships or replace with lighter alternatives"
             }
-            | suggestions
           ]
 
         utilization > 0.95 ->
@@ -631,7 +656,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
               impact: "Little margin for error",
               action: "Consider lighter ship alternatives for safety margin"
             }
-            | suggestions
           ]
 
         utilization < 0.5 ->
@@ -644,11 +668,10 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
               impact: "Underutilizing wormhole capacity",
               action: "Consider adding more ships or upgrading to heavier variants"
             }
-            | suggestions
           ]
 
         true ->
-          suggestions
+          []
       end
 
     suggestions
@@ -657,8 +680,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
   defp generate_role_suggestions(ships) do
     roles = categorize_ship_roles(ships)
     total_ships = length(ships)
-
-    suggestions = []
 
     # Check logistics ratio
     logistics_ratio = Map.get(roles, :logistics, 0) / total_ships
@@ -674,7 +695,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
               impact: "Fleet has no repair capability",
               action: "Add Guardian, Basilisk, Oneiros, or Scimitar"
             }
-            | suggestions
           ]
 
         logistics_ratio < 0.15 ->
@@ -686,7 +706,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
               impact: "May have insufficient repair capacity",
               action: "Consider adding more logistics ships"
             }
-            | suggestions
           ]
 
         logistics_ratio > 0.3 ->
@@ -698,19 +717,16 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
               impact: "May have excess repair capacity",
               action: "Consider replacing some logistics with DPS"
             }
-            | suggestions
           ]
 
         true ->
-          suggestions
+          []
       end
 
     suggestions
   end
 
   defp generate_upgrade_suggestions(ships, _wormhole_class) do
-    suggestions = []
-
     # Check for T1 ships that could be upgraded
     t1_ships =
       ships
@@ -720,7 +736,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
       end)
 
     if length(t1_ships) > 0 do
-      _suggestions = [
+      [
         %{
           type: :upgrade,
           priority: :medium,
@@ -728,21 +744,18 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
           impact: "Improved performance and survivability",
           action: "Consider upgrading to T2 or faction variants"
         }
-        | suggestions
       ]
+    else
+      []
     end
-
-    suggestions
   end
 
   defp generate_doctrine_suggestions(ships, _wormhole_class) do
-    suggestions = []
-
     # Analyze doctrine coherence
     ship_types = ships |> Enum.map(&Map.get(&1, :type_name, "")) |> Enum.uniq()
 
     if length(ship_types) > length(ships) * 0.7 do
-      _suggestions = [
+      [
         %{
           type: :doctrine,
           priority: :medium,
@@ -750,11 +763,10 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
           impact: "May lack doctrinal coherence",
           action: "Consider standardizing around fewer ship types"
         }
-        | suggestions
       ]
+    else
+      []
     end
-
-    suggestions
   end
 
   defp is_t1_ship(ship_name) do
@@ -784,10 +796,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
   end
 
   defp generate_constraint_recommendations(violations, _ships, _constraints) do
-    recommendations = []
-
     # Generate recommendations based on violations
-    Enum.reduce(violations, recommendations, fn violation, acc ->
+    Enum.reduce(violations, [], fn violation, acc ->
       case violation.type do
         :total_mass_exceeded ->
           ["Remove #{format_mass(violation.excess_mass)} worth of ships" | acc]
@@ -860,13 +870,13 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
     current_time = DateTime.utc_now()
 
     %{
-      optimizations_run: :rand.uniform(1000) + 500,
-      fleets_optimized: :rand.uniform(750) + 300,
-      mass_saved: :rand.uniform(50_000_000_000) + 10_000_000_000,
-      success_rate: Float.round(0.85 + :rand.uniform() * 0.10, 2),
+      optimizations_run: 0,
+      fleets_optimized: 0,
+      mass_saved: 0,
+      success_rate: 0.0,
       last_updated: current_time,
       cache_status: :fresh,
-      average_optimization_time: Float.round(2.5 + :rand.uniform() * 3.0, 2),
+      average_optimization_time: 0.0,
       popular_wormhole_classes: ["C2", "C3", "C4", "C5"],
       common_optimizations: [
         "Ship replacement for mass reduction",

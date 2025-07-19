@@ -46,19 +46,21 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
   - tactical_notes: Description and usage notes
   """
   def parse_ship_data(content) do
-    ships = []
     # Parse different ship sections
-    ships = ships ++ parse_battleships(content)
-    ships = ships ++ parse_battlecruisers(content)
-    ships = ships ++ parse_command_ships(content)
-    ships = ships ++ parse_heavy_assault_cruisers(content)
-    ships = ships ++ parse_strategic_cruisers(content)
-    ships = ships ++ parse_logistics_ships(content)
-    ships = ships ++ parse_interdictors(content)
-    ships = ships ++ parse_heavy_interdictors(content)
-    ships = ships ++ parse_recon_ships(content)
-    ships = ships ++ parse_interceptors(content)
-    ships = ships ++ parse_command_destroyers(content)
+    ships =
+      []
+      |> Kernel.++(parse_battleships(content))
+      |> Kernel.++(parse_battlecruisers(content))
+      |> Kernel.++(parse_command_ships(content))
+      |> Kernel.++(parse_heavy_assault_cruisers(content))
+      |> Kernel.++(parse_strategic_cruisers(content))
+      |> Kernel.++(parse_logistics_ships(content))
+      |> Kernel.++(parse_interdictors(content))
+      |> Kernel.++(parse_heavy_interdictors(content))
+      |> Kernel.++(parse_recon_ships(content))
+      |> Kernel.++(parse_interceptors(content))
+      |> Kernel.++(parse_command_destroyers(content))
+
     {:ok, ships}
   end
 

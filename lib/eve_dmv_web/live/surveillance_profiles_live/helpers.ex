@@ -189,7 +189,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive.Helpers do
           phx-value-index={@index}
           phx-value-field="value"
           value={@value}
-          placeholder="1000000000"
+          placeholder="10_00000000"
           class="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-md text-sm text-gray-100 placeholder-gray-400"
         />
       </div>

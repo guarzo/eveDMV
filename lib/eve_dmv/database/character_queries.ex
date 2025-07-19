@@ -158,7 +158,7 @@ defmodule EveDmv.Database.CharacterQueries do
     """
 
     case Repo.query(victim_query, [character_id]) do
-      {:ok, %{rows: [[name]]}} when not is_nil(name) ->
+      {:ok, %{rows: [[name]]}} when name != nil ->
         name
 
       _ ->
@@ -172,7 +172,7 @@ defmodule EveDmv.Database.CharacterQueries do
         """
 
         case Repo.query(attacker_query, [to_string(character_id)]) do
-          {:ok, %{rows: [[name]]}} when not is_nil(name) -> name
+          {:ok, %{rows: [[name]]}} when name != nil -> name
           _ -> nil
         end
     end

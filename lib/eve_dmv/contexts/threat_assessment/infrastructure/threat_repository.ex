@@ -345,7 +345,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
       |> limit(1)
 
     case Ash.read(query, domain: Api) do
-      {:ok, [killmail]} when not is_nil(killmail.victim_alliance_id) ->
+      {:ok, [killmail]} when killmail.victim_alliance_id != nil ->
         %{
           alliance_id: killmail.victim_alliance_id,
           alliance_name: "Alliance #{killmail.victim_alliance_id}"
@@ -407,7 +407,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
       |> limit(1)
 
     case Ash.read(query, domain: Api) do
-      {:ok, [killmail]} when not is_nil(killmail.victim_alliance_id) ->
+      {:ok, [killmail]} when killmail.victim_alliance_id != nil ->
         %{
           alliance_id: killmail.victim_alliance_id,
           alliance_name: "Alliance #{killmail.victim_alliance_id}"

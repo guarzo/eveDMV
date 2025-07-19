@@ -234,7 +234,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
     # Heuristic: certain ship types indicate EWAR usage
     ewar_ships =
       window.killmails
-      |> Enum.count(&is_ewar_ship_type/1)
+      |> Enum.count(&ewar_ship_type?/1)
 
     total_ships = length(window.killmails)
 
@@ -494,9 +494,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
     Enum.sum(
       Enum.map(clusters, fn cluster ->
         cluster.members
-        |> Enum.map(&extract_numeric_features/1)
-        |> Enum.map(&euclidean_distance(&1, cluster.centroid))
-        |> Enum.map(&:math.pow(&1, 2))
+        |> Enum.map(fn member ->
+          member
+          |> extract_numeric_features()
+          |> euclidean_distance(cluster.centroid)
+        end)
+        |> Enum.map(fn distance -> :math.pow(distance, 2) end)
         |> Enum.sum()
       end)
     )
@@ -509,8 +512,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
         # Sort by average time of cluster members
         avg_time =
           cluster.members
-          |> Enum.map(& &1.window.start_time)
-          |> Enum.map(&DateTime.to_unix(DateTime.from_naive!(&1, "Etc/UTC")))
+          |> Enum.map(fn member ->
+            member.window.start_time
+            |> DateTime.from_naive!("Etc/UTC")
+            |> DateTime.to_unix()
+          end)
           |> Enum.sum()
           |> div(length(cluster.members))
 
@@ -886,7 +892,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
     end
   end
 
-  defp is_ewar_ship_type(killmail) do
+  defp ewar_ship_type?(killmail) do
     # Heuristic for EWAR ships based on type ID
     ship_type_id = killmail.victim_ship_type_id
 

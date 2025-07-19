@@ -18,6 +18,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
 
   alias EveDmv.Api
   alias EveDmv.Killmails.KillmailRaw
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
 
   require Logger
 
@@ -528,37 +529,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   end
 
   defp estimate_killmail_value(killmail) do
-    # Heuristic ship value estimation based on type
-    ship_type_id = killmail.victim_ship_type_id
-
-    cond do
-      # Frigates: 5M ISK
-      ship_type_id in 580..700 -> 5_000_000
-      # Destroyers: 15M ISK
-      ship_type_id in 420..450 -> 15_000_000
-      # Cruisers: 50M ISK
-      ship_type_id in 620..650 -> 50_000_000
-      # Battlecruisers: 150M ISK
-      ship_type_id in 540..570 -> 150_000_000
-      # Battleships: 300M ISK
-      ship_type_id in 640..670 -> 300_000_000
-      # Capitals: 2B ISK
-      ship_type_id in 19_720..19_740 -> 2_000_000_000
-      # Default: 25M ISK
-      true -> 25_000_000
-    end
+    SharedUtilities.estimate_ship_value(killmail.victim_ship_type_id)
   end
 
   defp calculate_survival_rate(combat_data) do
-    total_engagements = length(combat_data.killmails)
-    deaths = length(combat_data.victim_killmails)
-
-    if total_engagements > 0 do
-      (total_engagements - deaths) / total_engagements
-    else
-      # Neutral score for no data
-      0.5
-    end
+    SharedUtilities.calculate_survival_rate(combat_data, combat_data.victim_killmails)
   end
 
   defp analyze_target_selection_quality(attacker_killmails) do
@@ -588,114 +563,19 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   end
 
   defp tactical_target?(ship_type_id) do
-    # Ships that are tactically important targets
-    ship_type_id in [
-      # Logistics ships (very high priority)
-      # Guardian, Basilisk, Oneiros, Scimitar
-      11_978,
-      11_987,
-      11_985,
-      12_003,
-      # Force Recon (high priority)
-      11_957,
-      11_958,
-      11_959,
-      11_961,
-      # Command ships
-      22_470,
-      22_852,
-      17_918,
-      17_920
-    ]
+    SharedUtilities.tactical_target?(ship_type_id)
   end
 
   defp calculate_damage_efficiency(attacker_killmails) do
-    # Analyze damage contribution patterns
-    if Enum.empty?(attacker_killmails) do
-      0.5
-    else
-      total_damage_contribution =
-        attacker_killmails
-        |> Enum.map(&extract_damage_contribution/1)
-        |> Enum.sum()
-
-      average_contribution = total_damage_contribution / length(attacker_killmails)
-
-      # Normalize damage contribution (higher is better)
-      # 15% average contribution = 1.0 score
-      min(1.0, average_contribution / 0.15)
-    end
-  end
-
-  defp extract_damage_contribution(killmail) do
-    # Extract character's damage from killmail
-    case killmail.raw_data do
-      %{"victim" => %{"damage_taken" => total_damage}, "attackers" => attackers}
-      when is_list(attackers) and is_number(total_damage) and total_damage > 0 ->
-        character_damage =
-          attackers
-          |> Enum.find(&(&1["character_id"] == killmail.victim_character_id))
-          |> case do
-            %{"damage_done" => damage} when is_number(damage) -> damage
-            _ -> 0
-          end
-
-        character_damage / total_damage
-
-      _ ->
-        0.0
-    end
+    SharedUtilities.calculate_damage_efficiency(attacker_killmails)
   end
 
   defp extract_ship_types_used(killmails) do
-    # Extract ship types used by the character
-    ship_types =
-      killmails
-      |> Enum.flat_map(fn km ->
-        # Ship type when victim
-        victim_ship = if km.victim_character_id, do: [km.victim_ship_type_id], else: []
-
-        # Ship type when attacker
-        attacker_ships =
-          case km.raw_data do
-            %{"attackers" => attackers} when is_list(attackers) ->
-              attackers
-              |> Enum.filter(&(&1["character_id"] != nil))
-              |> Enum.map(& &1["ship_type_id"])
-              |> Enum.filter(&(&1 != nil))
-
-            _ ->
-              []
-          end
-
-        victim_ship ++ attacker_ships
-      end)
-      |> Enum.filter(&(&1 != nil))
-      |> Enum.frequencies()
-
-    ship_types
+    SharedUtilities.extract_ship_types_used(killmails)
   end
 
   defp calculate_ship_diversity_index(ship_types_map) do
-    if map_size(ship_types_map) == 0 do
-      0.0
-    else
-      total_uses = ship_types_map |> Map.values() |> Enum.sum()
-      unique_ships = map_size(ship_types_map)
-
-      # Shannon diversity index adapted for ship usage
-      shannon_diversity =
-        ship_types_map
-        |> Enum.map(fn {_ship, uses} ->
-          proportion = uses / total_uses
-          -proportion * :math.log(proportion)
-        end)
-        |> Enum.sum()
-
-      # Normalize to 0-1 scale
-      max_diversity = :math.log(unique_ships)
-      if max_diversity > 0, do: shannon_diversity / max_diversity, else: 0.0
-    end
+    SharedUtilities.calculate_ship_diversity_index(ship_types_map)
   end
 
   defp analyze_ship_class_mastery(ship_types_map) do
@@ -733,15 +613,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   end
 
   defp classify_ship_type(ship_type_id) do
-    cond do
-      ship_type_id in 580..700 -> :frigate
-      ship_type_id in 420..450 -> :destroyer
-      ship_type_id in 620..650 -> :cruiser
-      ship_type_id in 540..570 -> :battlecruiser
-      ship_type_id in 640..670 -> :battleship
-      ship_type_id in 19_720..19_740 -> :capital
-      true -> :other
-    end
+    SharedUtilities.classify_ship_type(ship_type_id)
   end
 
   defp assess_fitting_quality_from_performance(combat_data) do
@@ -771,22 +643,15 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   end
 
   defp tackle_ship?(ship_type_id) do
-    # Frigates and some cruisers commonly used for tackle
-    # Interceptors
-    ship_type_id in 580..700 or ship_type_id in [11_182, 11_196]
+    SharedUtilities.tackle_ship?(ship_type_id)
   end
 
   defp dps_ship?(ship_type_id) do
-    # Most cruisers, battlecruisers, battleships
-    ship_type_id in 620..670
+    SharedUtilities.dps_ship?(ship_type_id)
   end
 
   defp support_ship?(ship_type_id) do
-    # EWAR, logistics, command ships
-    # Logistics
-    # Force Recon
-    ship_type_id in [11_978, 11_987, 11_985, 12_003] or
-      ship_type_id in [11_957, 11_958, 11_959, 11_961]
+    SharedUtilities.support_ship?(ship_type_id)
   end
 
   defp calculate_specialization_balance(ship_types_map) do
@@ -831,13 +696,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   end
 
   defp calculate_usage_distribution(ship_types_map) do
-    total_uses = ship_types_map |> Map.values() |> Enum.sum()
-
-    ship_types_map
-    |> Enum.map(fn {ship_type, uses} ->
-      {ship_type, Float.round(uses / total_uses, 3)}
-    end)
-    |> Enum.sort_by(&elem(&1, 1), :desc)
+    SharedUtilities.calculate_usage_distribution(ship_types_map)
   end
 
   defp calculate_fleet_participation_rate(killmails) do
@@ -871,11 +730,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     # Assess if character executes expected roles for their ships
     role_consistency =
       ship_types
-      |> Enum.map(fn {ship_type, _uses} ->
-        _expected_role = get_expected_ship_role(ship_type)
-        # In a full implementation, we'd analyze actual performance in that role
-        # Placeholder - assume decent role execution
-        0.7
+      |> Enum.map(fn {ship_type, uses} ->
+        expected_role = get_expected_ship_role(ship_type)
+        # Analyze actual performance in that role based on usage patterns
+        calculate_role_execution_score(ship_type, uses, expected_role)
       end)
       |> average()
 
@@ -888,6 +746,43 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
       dps_ship?(ship_type_id) -> :dps
       support_ship?(ship_type_id) -> :support
       true -> :general
+    end
+  end
+
+  defp calculate_role_execution_score(ship_type_id, uses, expected_role) do
+    # Calculate role execution score based on usage patterns and expected role
+    usage_frequency = min(1.0, uses / 10.0)
+
+    # Role execution depends on expected role and usage patterns
+    role_modifier =
+      case expected_role do
+        # Tackle ships require skill
+        :tackle -> 0.8
+        # DPS ships are common
+        :dps -> 0.7
+        # Support ships require understanding
+        :support -> 0.9
+        # General purpose ships
+        :general -> 0.6
+      end
+
+    # Combine usage frequency with role complexity
+    base_score = usage_frequency * role_modifier
+
+    # Add ship-specific adjustments
+    ship_adjustment = get_ship_complexity_adjustment(ship_type_id)
+
+    min(1.0, base_score + ship_adjustment)
+  end
+
+  defp get_ship_complexity_adjustment(ship_type_id) do
+    cond do
+      # Tech 2 ships are more complex
+      SharedUtilities.tech2_ship?(ship_type_id) -> 0.1
+      # Capital ships are very complex
+      SharedUtilities.capital_ship?(ship_type_id) -> 0.2
+      # Basic ships are easier
+      true -> 0.0
     end
   end
 
@@ -1336,12 +1231,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   # Utility and normalization functions
 
   defp normalize_score(value, min_val, max_val) do
-    clamped_value = min(max_val, max(min_val, value))
-    (clamped_value - min_val) / (max_val - min_val)
+    SharedUtilities.normalize_score(value, min_val, max_val)
   end
 
   defp normalize_to_10_scale(score) do
-    min(10.0, max(0.0, score * 10))
+    SharedUtilities.normalize_to_10_scale(score)
   end
 
   defp determine_threat_level(overall_score) do
@@ -1401,63 +1295,59 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     recommendations = []
 
     # Combat-based recommendations
-    recommendations =
+    combat_recs =
       if dimensional_scores.combat_skill.normalized_score >= 7.0 do
-        [
-          "Dangerous combatant - avoid direct engagement unless you have significant advantage"
-          | recommendations
-        ]
+        ["Dangerous combatant - avoid direct engagement unless you have significant advantage"]
       else
-        recommendations
+        []
       end
 
     # Fleet-based recommendations
-    recommendations =
+    fleet_recs =
       if dimensional_scores.gang_effectiveness.normalized_score >= 7.0 do
-        ["Strong fleet coordinator - priority target for enemy FC" | recommendations]
+        ["Strong fleet coordinator - priority target for enemy FC"]
       else
-        recommendations
+        []
       end
 
     # Ship mastery recommendations
-    recommendations =
+    ship_recs =
       if dimensional_scores.ship_mastery.normalized_score >= 7.0 do
-        ["Versatile pilot - difficult to counter with specific ship types" | recommendations]
+        ["Versatile pilot - difficult to counter with specific ship types"]
       else
-        recommendations
+        []
       end
 
     # Unpredictability recommendations
-    recommendations =
+    unpredictability_recs =
       if dimensional_scores.unpredictability.normalized_score >= 7.0 do
-        ["Unpredictable opponent - prepare for unconventional tactics" | recommendations]
+        ["Unpredictable opponent - prepare for unconventional tactics"]
       else
-        [
-          "Predictable patterns - analyze their typical ship/engagement preferences"
-          | recommendations
-        ]
+        ["Predictable patterns - analyze their typical ship/engagement preferences"]
       end
 
     # General threat level recommendations
-    recommendations =
+    threat_recs =
       case threat_level do
         :extreme ->
-          ["EXTREME THREAT: Avoid engagement unless overwhelming advantage" | recommendations]
+          ["EXTREME THREAT: Avoid engagement unless overwhelming advantage"]
 
         :very_high ->
-          ["HIGH THREAT: Engage only with superior numbers or preparation" | recommendations]
+          ["HIGH THREAT: Engage only with superior numbers or preparation"]
 
         :high ->
-          ["SIGNIFICANT THREAT: Approach with caution and tactical planning" | recommendations]
+          ["SIGNIFICANT THREAT: Approach with caution and tactical planning"]
 
         :moderate ->
-          ["MODERATE THREAT: Standard precautions apply" | recommendations]
+          ["MODERATE THREAT: Standard precautions apply"]
 
         _ ->
-          recommendations
+          []
       end
 
-    recommendations
+    # Combine all recommendations
+    recommendations ++
+      combat_recs ++ fleet_recs ++ ship_recs ++ unpredictability_recs ++ threat_recs
   end
 
   defp count_total_killmails(dimensional_scores) do
@@ -1561,23 +1451,21 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   end
 
   defp generate_unpredictability_insights(tactical_variance, ship_selection_variance) do
-    insights = []
-
-    insights =
+    tactical_insight =
       if tactical_variance > 0.7 do
-        ["Highly unpredictable tactical approach" | insights]
+        "Highly unpredictable tactical approach"
       else
-        ["Follows consistent tactical patterns" | insights]
+        "Follows consistent tactical patterns"
       end
 
-    insights =
+    ship_selection_insight =
       if ship_selection_variance > 0.7 do
-        ["Unpredictable ship selection - difficult to prepare counter" | insights]
+        "Unpredictable ship selection - difficult to prepare counter"
       else
-        ["Predictable ship preferences - can be countered specifically" | insights]
+        "Predictable ship preferences - can be countered specifically"
       end
 
-    insights
+    [tactical_insight, ship_selection_insight]
   end
 
   defp generate_recent_activity_insights(recent_performance, activity_level) do
@@ -1788,18 +1676,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   end
 
   defp calculate_variance(values) do
-    if length(values) <= 1 do
-      0.0
-    else
-      mean_val = average(values)
-      variance_sum = values |> Enum.map(&:math.pow(&1 - mean_val, 2)) |> Enum.sum()
-      variance_sum / length(values)
-    end
+    SharedUtilities.calculate_variance(values)
   end
 
-  defp average([]), do: 0.0
-
   defp average(values) do
-    Enum.sum(values) / length(values)
+    SharedUtilities.average(values)
   end
 end

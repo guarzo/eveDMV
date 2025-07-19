@@ -102,7 +102,7 @@ defmodule EveDmv.Monitoring.ErrorTracker do
 
   # Server callbacks
 
-  @impl true
+  @impl GenServer
   def init(_opts) do
     # Create ETS tables for fast concurrent reads
     :ets.new(@table_name, [:named_table, :set, :public, read_concurrency: true])
@@ -124,7 +124,7 @@ defmodule EveDmv.Monitoring.ErrorTracker do
     {:ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast({:track_error, error, metadata}, state) do
     normalized_error = Error.normalize(error)
     category = ErrorCodes.category(normalized_error.code)
@@ -159,7 +159,7 @@ defmodule EveDmv.Monitoring.ErrorTracker do
     {:noreply, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast({:track_retry_success, error_code, _metadata}, state) do
     # Update retry success stats
     case :ets.lookup(:error_stats_ets, error_code) do
@@ -174,13 +174,13 @@ defmodule EveDmv.Monitoring.ErrorTracker do
     {:noreply, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:get_category_stats, category}, _from, state) do
     stats = collect_category_stats(category)
     {:reply, stats, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:get_error_stats, error_code}, _from, state) do
     stats =
       case :ets.lookup(:error_stats_ets, error_code) do
@@ -191,22 +191,25 @@ defmodule EveDmv.Monitoring.ErrorTracker do
     {:reply, stats, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:get_recent_errors, minutes}, _from, state) do
     cutoff = DateTime.add(DateTime.utc_now(), -minutes * 60, :second)
 
     errors =
-      :ets.tab2list(@table_name)
-      |> Enum.map(fn {_id, record} -> record end)
-      |> Enum.filter(fn record ->
-        DateTime.compare(record.timestamp, cutoff) == :gt
+      cutoff
+      |> then(fn c ->
+        :ets.tab2list(@table_name)
+        |> Enum.map(fn {_id, record} -> record end)
+        |> Enum.filter(fn record ->
+          DateTime.compare(record.timestamp, c) == :gt
+        end)
+        |> Enum.sort_by(& &1.timestamp, {:desc, DateTime})
       end)
-      |> Enum.sort_by(& &1.timestamp, {:desc, DateTime})
 
     {:reply, errors, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_summary_report, _from, state) do
     report = %{
       start_time: state.start_time,
@@ -221,7 +224,7 @@ defmodule EveDmv.Monitoring.ErrorTracker do
     {:reply, report, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:clear_all, _from, _state) do
     :ets.delete_all_objects(@table_name)
     :ets.delete_all_objects(:error_stats_ets)
@@ -236,7 +239,7 @@ defmodule EveDmv.Monitoring.ErrorTracker do
     {:reply, :ok, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:cleanup, state) do
     cleanup_old_errors()
     schedule_cleanup()
@@ -298,7 +301,8 @@ defmodule EveDmv.Monitoring.ErrorTracker do
   end
 
   defp get_top_errors(limit) do
-    :ets.tab2list(:error_stats_ets)
+    :error_stats_ets
+    |> :ets.tab2list()
     |> Enum.map(fn {_code, stats} -> stats end)
     |> Enum.sort_by(& &1.count, :desc)
     |> Enum.take(limit)

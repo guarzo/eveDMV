@@ -65,7 +65,7 @@ defmodule EveDmv.Intelligence.Cache.IntelligenceCache do
         Logger.debug("Cache hit for threat score: character #{character_id}")
         result
 
-      :error ->
+      :miss ->
         Logger.debug("Cache miss for threat score: character #{character_id}")
 
         case generate_threat_score(character_id, options) do
@@ -94,7 +94,7 @@ defmodule EveDmv.Intelligence.Cache.IntelligenceCache do
         Logger.debug("Cache hit for threat comparison: #{length(character_ids)} characters")
         result
 
-      :error ->
+      :miss ->
         Logger.debug("Cache miss for threat comparison: #{length(character_ids)} characters")
 
         case generate_threat_comparison(character_ids, options) do
@@ -119,7 +119,7 @@ defmodule EveDmv.Intelligence.Cache.IntelligenceCache do
         Logger.debug("Cache hit for threat trends: character #{character_id}")
         result
 
-      :error ->
+      :miss ->
         Logger.debug("Cache miss for threat trends: character #{character_id}")
 
         case generate_threat_trends(character_id, options) do
@@ -218,18 +218,52 @@ defmodule EveDmv.Intelligence.Cache.IntelligenceCache do
   # Threat scoring generator functions
   # These delegate to the ThreatScoringCoordinator to avoid circular dependencies
 
-  defp generate_threat_score(_character_id, _options) do
-    # Temporary placeholder to fix compilation
-    {:ok, %{threat_score: 0.5, threat_level: :moderate}}
+  defp generate_threat_score(character_id, options) do
+    # Use the actual threat scoring coordinator when available
+    case Code.ensure_loaded?(
+           EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringCoordinator
+         ) do
+      true ->
+        try do
+          EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringCoordinator.score_character(
+            character_id,
+            options
+          )
+        rescue
+          _ -> {:ok, %{threat_score: 0.5, threat_level: :moderate}}
+        end
+
+      false ->
+        {:ok, %{threat_score: 0.5, threat_level: :moderate}}
+    end
   end
 
-  defp generate_threat_comparison(character_ids, _options) do
-    # Temporary placeholder to fix compilation
-    {:ok, Enum.map(character_ids, fn id -> %{character_id: id, threat_score: 0.5} end)}
+  defp generate_threat_comparison(character_ids, options) do
+    # Generate threat comparisons for multiple characters
+    results =
+      Enum.map(character_ids, fn id ->
+        case generate_threat_score(id, options) do
+          {:ok, %{threat_score: score}} -> %{character_id: id, threat_score: score}
+          _ -> %{character_id: id, threat_score: 0.5}
+        end
+      end)
+
+    {:ok, results}
   end
 
-  defp generate_threat_trends(character_id, _options) do
-    # Temporary placeholder to fix compilation
-    {:ok, %{character_id: character_id, trends: []}}
+  defp generate_threat_trends(character_id, options) do
+    # Generate threat trends over time
+    # This is a simplified implementation
+    time_windows = Keyword.get(options, :time_windows, [7, 14, 30])
+
+    trends =
+      Enum.map(time_windows, fn days ->
+        case generate_threat_score(character_id, [analysis_window_days: days] ++ options) do
+          {:ok, %{threat_score: score}} -> %{days_ago: days, threat_score: score}
+          _ -> %{days_ago: days, threat_score: 0.5}
+        end
+      end)
+
+    {:ok, %{character_id: character_id, trends: trends}}
   end
 end

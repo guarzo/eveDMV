@@ -77,11 +77,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CorporationAnalyzer do
   def handle_call({:analyze, corporation_id, context}, _from, state) do
     result = perform_analysis(corporation_id, context)
 
-    new_state =
-      case result do
-        {:ok, _} -> %{state | analysis_count: state.analysis_count + 1}
-        {:error, _} -> state
-      end
+    new_state = %{state | analysis_count: state.analysis_count + 1}
 
     {:reply, result, new_state}
   end
@@ -122,9 +118,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CorporationAnalyzer do
         AnalysisCache.put_corporation_analysis(corporation_id, analysis)
 
         {:ok, analysis}
-
-      {:error, reason} ->
-        {:error, reason}
     end
   end
 end

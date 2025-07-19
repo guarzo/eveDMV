@@ -86,7 +86,7 @@ defmodule EveDmvWeb.Telemetry.PerformanceTelemetry do
           %{event: metadata.event}
 
         [:phoenix, :live_view, :handle_info, :stop] ->
-          %{message: inspect(metadata.msg) |> String.slice(0, 50)}
+          %{message: String.slice(inspect(metadata.msg), 0, 50)}
 
         _ ->
           %{}

@@ -93,16 +93,9 @@ defmodule EveDmv.StaticData.SystemData do
   Classify a system by its security type.
   """
   def classify_security_type(system_id) when is_integer(system_id) do
-    security_status = get_security_status(system_id)
-
-    cond do
-      system_id >= 31_000_000 and system_id < 32_000_000 -> :wormhole
-      system_id >= 32_000_000 and system_id < 33_000_000 -> :abyssal
-      security_status >= 0.5 -> :highsec
-      security_status > 0.0 -> :lowsec
-      security_status <= 0.0 -> :nullsec
-      true -> :unknown
-    end
+    # Use the comprehensive classification from StaticData module
+    # which properly handles wormhole classes
+    EveDmv.StaticData.classify_system(system_id)
   end
 
   def classify_security_type(_), do: :unknown

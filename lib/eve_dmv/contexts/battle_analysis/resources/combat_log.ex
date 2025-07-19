@@ -4,7 +4,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.CombatLog do
   """
 
   use Ash.Resource,
-    domain: EveDmv.Api,
+    domain: EveDmv.Api.BattleAnalysisApi,
     data_layer: AshPostgres.DataLayer
 
   require Logger
@@ -114,31 +114,27 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.CombatLog do
         compressed = Base.decode64!(log.raw_content)
         content = :zlib.uncompress(compressed)
 
-        # Parse the log with enhanced parser
-        Logger.info("🔍 USING ENHANCED PARSER for combat log #{log.id}")
+        # Parse the log using helper module
+        Logger.info("🔍 PARSING COMBAT LOG #{log.id}")
 
-        case EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser.parse_combat_log(
+        case EveDmv.Contexts.BattleAnalysis.Domain.CombatLogHelper.parse_combat_log_content(
                content,
                pilot_name: log.pilot_name
              ) do
           {:ok,
            %{
-             events: events,
+             parsed_data: parsed_data,
              summary: summary,
-             metadata: metadata,
-             tactical_analysis: tactical_analysis,
-             recommendations: recommendations
+             event_count: event_count,
+             start_time: start_time,
+             end_time: end_time
            }} ->
             changeset
-            |> Ash.Changeset.change_attribute(:parsed_data, %{
-              events: events,
-              tactical_analysis: tactical_analysis,
-              recommendations: recommendations
-            })
+            |> Ash.Changeset.change_attribute(:parsed_data, parsed_data)
             |> Ash.Changeset.change_attribute(:summary, summary)
-            |> Ash.Changeset.change_attribute(:event_count, length(events))
-            |> Ash.Changeset.change_attribute(:start_time, metadata[:start_time])
-            |> Ash.Changeset.change_attribute(:end_time, metadata[:end_time])
+            |> Ash.Changeset.change_attribute(:event_count, event_count)
+            |> Ash.Changeset.change_attribute(:start_time, start_time)
+            |> Ash.Changeset.change_attribute(:end_time, end_time)
             |> Ash.Changeset.change_attribute(:parse_status, :completed)
 
           {:error, reason} ->
@@ -156,37 +152,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.CombatLog do
         log = changeset.data
 
         if log.parse_status == :completed && log.parsed_data[:events] do
-          events = log.parsed_data.events
+          case EveDmv.Contexts.BattleAnalysis.Domain.CombatLogHelper.analyze_performance_metrics(
+                 log.parsed_data,
+                 log.pilot_name
+               ) do
+            {:ok, performance_metrics} ->
+              changeset
+              |> Ash.Changeset.change_attribute(:performance_metrics, performance_metrics)
 
-          # Try to get fitting data for enhanced analysis
-          fitting_data =
-            case Ash.read(EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting,
-                   filter: [pilot_name: log.pilot_name],
-                   sort: [updated_at: :desc],
-                   limit: 1
-                 ) do
-              {:ok, [fitting | _]} -> fitting.parsed_fitting
-              _ -> nil
-            end
-
-          # Enhanced performance analysis with fitting correlation
-          performance =
-            if fitting_data do
-              fitting_analysis =
-                EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser.analyze_fitting_vs_usage(
-                  events,
-                  fitting_data
-                )
-
-              Map.merge(log.parsed_data[:tactical_analysis] || %{}, %{
-                fitting_correlation: fitting_analysis
-              })
-            else
-              log.parsed_data[:tactical_analysis] || %{}
-            end
-
-          changeset
-          |> Ash.Changeset.change_attribute(:performance_metrics, performance)
+            {:error, _reason} ->
+              changeset
+          end
         else
           changeset
         end
@@ -204,17 +180,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.CombatLog do
         if log.parse_status == :completed && log.parsed_data[:events] do
           events = log.parsed_data.events
 
-          correlation =
-            EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser.correlate_with_killmails(
-              events,
-              battle.killmails
-            )
+          case EveDmv.Contexts.BattleAnalysis.Domain.CombatLogHelper.correlate_with_battle(
+                 events,
+                 battle.killmails
+               ) do
+            {:ok, battle_correlation} ->
+              changeset
+              |> Ash.Changeset.change_attribute(:battle_correlation, battle_correlation)
 
-          changeset
-          |> Ash.Changeset.change_attribute(:battle_correlation, %{
-            killmail_correlations: correlation,
-            match_quality: calculate_match_quality(correlation)
-          })
+            {:error, _reason} ->
+              changeset
+          end
         else
           changeset
         end
@@ -231,17 +207,5 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.CombatLog do
     define(:correlate_with_battle)
     define(:read)
     define(:destroy)
-  end
-
-  defp calculate_match_quality(correlations) do
-    # Calculate how well the combat log matches the battle
-    matched_kills = Enum.count(correlations, fn c -> length(c.combat_events) > 0 end)
-    total_kills = length(correlations)
-
-    if total_kills > 0 do
-      Float.round(matched_kills / total_kills * 100, 1)
-    else
-      0.0
-    end
   end
 end

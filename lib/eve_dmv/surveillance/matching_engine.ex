@@ -21,7 +21,7 @@ defmodule EveDmv.Surveillance.MatchingEngine do
   """
 
   use GenServer
-  alias EveDmv.Api
+  alias EveDmv.Api.SurveillanceApi
   alias EveDmv.Surveillance.Matching.IndexManager
   alias EveDmv.Surveillance.Matching.MatchEvaluator
   alias EveDmv.Surveillance.Matching.ProfileCompiler
@@ -260,7 +260,11 @@ defmodule EveDmv.Surveillance.MatchingEngine do
 
     # Load active profiles from database
     try do
-      case Ash.read(Profile, action: :active_profiles, domain: Api, load: [:filter_tree]) do
+      case Ash.read(Profile,
+             action: :active_profiles,
+             domain: SurveillanceApi,
+             load: [:filter_tree]
+           ) do
         {:ok, profiles} ->
           # Preload profile names to avoid N+1 queries
           EveDmv.Performance.BatchNameResolver.preload_profile_names(profiles)

@@ -197,10 +197,16 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
 
   defp get_corporation_killmails(corporation_id, start_date, end_date) do
     # Simplified killmail retrieval
-    killmails =
-      QueryUtils.query_killmails_by_corporation(corporation_id, start_date, end_date, limit: 1000)
+    case QueryUtils.query_killmails_by_corporation(corporation_id, start_date, end_date,
+           limit: 1000
+         ) do
+      {:ok, killmails} ->
+        {:ok, killmails}
 
-    {:ok, killmails}
+      {:error, reason} ->
+        Logger.warning("Failed to get corporation killmails: #{inspect(reason)}")
+        {:ok, []}
+    end
   rescue
     error ->
       Logger.warning("Failed to get corporation killmails: #{inspect(error)}")
@@ -268,7 +274,7 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
   end
 
   defp count_rolling_events(rolling_indicators) do
-    map_size(rolling_indicators)
+    length(rolling_indicators)
   end
 
   defp calculate_rolling_frequency(rolling_events) do
@@ -282,7 +288,7 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
   end
 
   defp assess_rolling_effectiveness(rolling_indicators) do
-    if map_size(rolling_indicators) > 0 do
+    if length(rolling_indicators) > 0 do
       :effective
     else
       :minimal

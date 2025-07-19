@@ -168,7 +168,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationService do
     case Map.get(@fallback_ship_prices, ship_type_id) do
       nil ->
         # Use ship classification for better categorization
-        category = EveDmv.Intelligence.ShipDatabase.get_ship_category(ship_type_id)
+        category = EveDmv.StaticData.get_ship_category(ship_type_id)
         category_key = String.downcase(category)
         Map.get(@ship_estimates_by_category, category_key, @ship_estimates_by_category["unknown"])
 

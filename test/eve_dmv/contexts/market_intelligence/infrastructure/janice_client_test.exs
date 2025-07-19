@@ -4,7 +4,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClientTest do
 
   setup do
     # Mock Tesla requests for testing - use global mock for all processes
-    Tesla.Mock.mock_global(fn
+    mock_fn = fn
       %{method: :get, url: "https://janice.e-351.com/api/rest/v2/market/34"} ->
         %Tesla.Env{
           status: 200,
@@ -58,8 +58,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClientTest do
         id_list = String.split(ids, ",")
 
         response_body =
-          id_list
-          |> Enum.reduce(%{}, fn id, acc ->
+          Enum.reduce(id_list, %{}, fn id, acc ->
             case id do
               "34" ->
                 Map.put(acc, "34", %{
@@ -102,7 +101,9 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClientTest do
       # Default fallback for any other requests
       _ ->
         %Tesla.Env{status: 500, body: %{"error" => "Internal server error"}}
-    end)
+    end
+
+    Tesla.Mock.mock_global(mock_fn)
 
     # Start the JaniceClient GenServer for tests if not already started
     case Process.whereis(JaniceClient) do
@@ -241,9 +242,9 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClientTest do
       # Try to exceed rate limit (this would take too long in real tests)
       results =
         Enum.map(1..101, fn i ->
-          Task.async(fn -> JaniceClient.get_item_price(i) end)
+          task = Task.async(fn -> JaniceClient.get_item_price(i) end)
+          Task.await(task, 10_000)
         end)
-        |> Enum.map(&Task.await/1)
 
       # Some requests should be rate limited
       rate_limited_count =

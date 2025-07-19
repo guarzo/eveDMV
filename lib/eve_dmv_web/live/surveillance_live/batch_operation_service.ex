@@ -6,7 +6,7 @@ defmodule EveDmvWeb.SurveillanceLive.BatchOperationService do
   bulk operations on multiple surveillance profiles.
   """
 
-  alias EveDmv.Api
+  alias EveDmv.Api.SurveillanceApi
   alias EveDmv.Surveillance.MatchingEngine
   alias EveDmv.Surveillance.Profile
 
@@ -24,7 +24,7 @@ defmodule EveDmvWeb.SurveillanceLive.BatchOperationService do
     profiles_query =
       Ash.Query.filter(Profile, id in ^profile_ids)
 
-    case Ash.read(profiles_query, domain: Api, actor: actor) do
+    case Ash.read(profiles_query, domain: SurveillanceApi, actor: actor) do
       {:ok, profiles} ->
         found_ids = Enum.map(profiles, & &1.id)
         not_found_ids = profile_ids -- found_ids
@@ -36,7 +36,7 @@ defmodule EveDmvWeb.SurveillanceLive.BatchOperationService do
 
         # Use bulk_destroy for efficient batch deletion
         case Ash.bulk_destroy(profiles, :destroy, %{},
-               domain: Api,
+               domain: SurveillanceApi,
                actor: actor,
                return_errors?: true,
                batch_size: 100
@@ -76,7 +76,7 @@ defmodule EveDmvWeb.SurveillanceLive.BatchOperationService do
     profiles_query =
       Ash.Query.filter(Profile, id in ^profile_ids)
 
-    case Ash.read(profiles_query, domain: Api, actor: actor) do
+    case Ash.read(profiles_query, domain: SurveillanceApi, actor: actor) do
       {:ok, profiles} ->
         found_ids = Enum.map(profiles, & &1.id)
         not_found_ids = profile_ids -- found_ids
@@ -88,7 +88,7 @@ defmodule EveDmvWeb.SurveillanceLive.BatchOperationService do
 
         # Use bulk_update for efficient batch updates
         case Ash.bulk_update(profiles, :update, update_data,
-               domain: Api,
+               domain: SurveillanceApi,
                actor: actor,
                return_errors?: true,
                batch_size: 100

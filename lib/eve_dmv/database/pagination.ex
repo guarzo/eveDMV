@@ -18,7 +18,7 @@ defmodule EveDmv.Database.Pagination do
       paginate_query(query, page: 2, page_size: 20)
   """
   def paginate_query(query, opts \\ []) do
-    page = Keyword.get(opts, :page, 1) |> max(1)
+    page = opts |> Keyword.get(:page, 1) |> max(1)
 
     page_size =
       opts
@@ -40,7 +40,7 @@ defmodule EveDmv.Database.Pagination do
   Execute a paginated query and return results with metadata.
   """
   def paginated_query(base_query, params, opts \\ []) do
-    page = Keyword.get(opts, :page, 1) |> max(1)
+    page = max(Keyword.get(opts, :page, 1), 1)
 
     page_size =
       opts
@@ -129,8 +129,7 @@ defmodule EveDmv.Database.Pagination do
     end_page = min(total_pages, current_page + 2)
 
     pages =
-      start_page..end_page
-      |> Enum.map(fn page ->
+      Enum.map(start_page..end_page, fn page ->
         %{
           page: page,
           url: "#{base_path}?page=#{page}",
@@ -156,13 +155,13 @@ defmodule EveDmv.Database.Pagination do
     page =
       case params["page"] do
         nil -> 1
-        page_str -> String.to_integer(page_str) |> max(1)
+        page_str -> page_str |> String.to_integer() |> max(1)
       end
 
     page_size =
       case params["page_size"] do
         nil -> @default_page_size
-        size_str -> String.to_integer(size_str) |> min(@max_page_size) |> max(1)
+        size_str -> size_str |> String.to_integer() |> min(@max_page_size) |> max(1)
       end
 
     %{page: page, page_size: page_size}

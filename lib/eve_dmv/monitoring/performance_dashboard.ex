@@ -7,9 +7,17 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
   """
 
   use GenServer
-  require Logger
 
   alias Phoenix.PubSub
+
+  require Logger
+
+  defstruct [
+    :metrics,
+    :alerts,
+    :history,
+    :start_time
+  ]
 
   # Metrics we track
   @metrics %{
@@ -48,13 +56,6 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
       average_rate: 0
     }
   }
-
-  defstruct [
-    :metrics,
-    :alerts,
-    :history,
-    :start_time
-  ]
 
   # Client API
 
@@ -183,7 +184,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
           metadata: metadata
         }
 
-        [query | queries.slow_queries] |> Enum.take(100)
+        Enum.take([query | queries.slow_queries], 100)
       else
         queries.slow_queries
       end
@@ -191,7 +192,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
     updated_queries = %{
       queries
       | count: queries.count + 1,
-        durations: [duration | queries.durations] |> Enum.take(1000),
+        durations: Enum.take([duration | queries.durations], 1000),
         by_name: by_name,
         slow_queries: slow_queries
     }
@@ -228,9 +229,9 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
     # Calculate hit rate
     total = updated_cache.hits + updated_cache.misses
     hit_rate = if total > 0, do: updated_cache.hits / total * 100, else: 0.0
-    updated_cache = %{updated_cache | hit_rate: Float.round(hit_rate, 2)}
+    final_cache = %{updated_cache | hit_rate: Float.round(hit_rate, 2)}
 
-    new_metrics = %{metrics | cache: updated_cache}
+    new_metrics = %{metrics | cache: final_cache}
     new_state = %{state | metrics: new_metrics}
 
     # Alert on low cache hit rate
@@ -293,7 +294,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
 
       updated_database = %{
         database
-        | slow_queries: [slow_query | database.slow_queries] |> Enum.take(50)
+        | slow_queries: Enum.take([slow_query | database.slow_queries], 50)
       }
 
       new_metrics = %{metrics | database: updated_database}
@@ -364,12 +365,12 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
     new_state = %{state | metrics: new_metrics}
 
     # Check for memory issues
-    new_state = check_memory_alerts(new_state, total_mb, processes)
+    final_state = check_memory_alerts(new_state, total_mb, processes)
 
     # Schedule next check
     Process.send_after(self(), :monitor_memory, :timer.seconds(10))
 
-    {:noreply, new_state}
+    {:noreply, final_state}
   end
 
   # Periodic snapshots for history
@@ -385,7 +386,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
 
     # Add to history (keep last 24 hours)
     # 30s intervals = 2880 per day
-    history = [snapshot | state.history] |> Enum.take(2880)
+    history = Enum.take([snapshot | state.history], 2880)
 
     # Broadcast current metrics
     PubSub.broadcast(EveDmv.PubSub, "performance:metrics", {:metrics_update, state.metrics})
@@ -402,15 +403,15 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
 
   defp attach_telemetry_handlers do
     handlers = [
-      {[:eve_dmv, :query, :duration], {__MODULE__, :handle_telemetry, []}},
-      {[:eve_dmv, :cache, :hit], {__MODULE__, :handle_telemetry, []}},
-      {[:eve_dmv, :cache, :miss], {__MODULE__, :handle_telemetry, []}},
-      {[:eve_dmv, :cache, :invalidation], {__MODULE__, :handle_telemetry, []}},
-      {[:broadway, :processor, :message, :stop], {__MODULE__, :handle_telemetry, []}},
-      {[:broadway, :processor, :message, :exception], {__MODULE__, :handle_telemetry, []}},
-      {[:eve_dmv, :import, :batch], {__MODULE__, :handle_telemetry, []}},
-      {[:ecto, :repo, :query], {__MODULE__, :handle_telemetry, []}},
-      {[:eve_dmv, :materialized_views, :refresh], {__MODULE__, :handle_telemetry, []}}
+      {[:eve_dmv, :query, :duration], &__MODULE__.handle_telemetry/4},
+      {[:eve_dmv, :cache, :hit], &__MODULE__.handle_telemetry/4},
+      {[:eve_dmv, :cache, :miss], &__MODULE__.handle_telemetry/4},
+      {[:eve_dmv, :cache, :invalidation], &__MODULE__.handle_telemetry/4},
+      {[:broadway, :processor, :message, :stop], &__MODULE__.handle_telemetry/4},
+      {[:broadway, :processor, :message, :exception], &__MODULE__.handle_telemetry/4},
+      {[:eve_dmv, :import, :batch], &__MODULE__.handle_telemetry/4},
+      {[:ecto, :repo, :query], &__MODULE__.handle_telemetry/4},
+      {[:eve_dmv, :materialized_views, :refresh], &__MODULE__.handle_telemetry/4}
     ]
 
     Enum.each(handlers, fn {event, handler} ->
@@ -424,7 +425,11 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
   end
 
   def handle_telemetry(event, measurements, metadata, _config) do
-    send(self(), {:telemetry_event, event, measurements, metadata})
+    # Need to send to the registered process name instead of self()
+    case Process.whereis(__MODULE__) do
+      nil -> :ok
+      pid -> send(pid, {:telemetry_event, event, measurements, metadata})
+    end
   end
 
   defp add_calculated_metrics(metrics) do
@@ -456,7 +461,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
 
   defp calculate_qps(queries) do
     # Calculate queries per second from recent history
-    recent = queries.durations |> Enum.take(100)
+    recent = Enum.take(queries.durations, 100)
 
     if length(recent) > 0 do
       # Over last 30 seconds
@@ -526,7 +531,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
     }
 
     # Keep last 100 alerts
-    alerts = [alert | state.alerts] |> Enum.take(100)
+    alerts = Enum.take([alert | state.alerts], 100)
 
     # Log critical alerts
     if level == :critical do
@@ -575,15 +580,15 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
     "#{div(seconds, 60)} minutes"
   end
 
-  defp format_uptime(seconds) when seconds < 86400 do
-    hours = div(seconds, 3600)
-    minutes = div(rem(seconds, 3600), 60)
+  defp format_uptime(seconds) when seconds < 86_400 do
+    hours = div(seconds, 3_600)
+    minutes = div(rem(seconds, 3_600), 60)
     "#{hours}h #{minutes}m"
   end
 
   defp format_uptime(seconds) do
-    days = div(seconds, 86400)
-    hours = div(rem(seconds, 86400), 3600)
+    days = div(seconds, 86_400)
+    hours = div(rem(seconds, 86_400), 3_600)
     "#{days}d #{hours}h"
   end
 

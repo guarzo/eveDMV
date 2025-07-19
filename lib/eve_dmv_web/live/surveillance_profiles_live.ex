@@ -478,7 +478,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
   defp add_filter_to_criteria(criteria, new_filter) do
     conditions = Map.get(criteria, :conditions, [])
-    Map.put(criteria, :conditions, conditions ++ [new_filter])
+    Map.put(criteria, :conditions, [new_filter | conditions] |> Enum.reverse())
   end
 
   defp remove_filter_from_criteria(criteria, index) do

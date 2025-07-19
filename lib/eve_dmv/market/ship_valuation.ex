@@ -156,14 +156,14 @@ defmodule EveDmv.Market.ShipValuation do
     cond do
       # Pirate faction ships
       # Pirate frigates/cruisers
-      type_id in 17619..17740 -> 5.0
+      type_id in 17_619..17_740 -> 5.0
       # Pirate battleships
-      type_id in 17918..17932 -> 5.0
+      type_id in 17_918..17_932 -> 5.0
       # Navy ships
       # Navy ships
-      type_id in 16227..16240 -> 2.0
+      type_id in 16_227..16_240 -> 2.0
       # More navy variants
-      type_id in 17619..17636 -> 2.0
+      type_id in 17_619..17_636 -> 2.0
       # Standard ships
       true -> 1.0
     end

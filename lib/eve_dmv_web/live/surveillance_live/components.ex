@@ -6,7 +6,7 @@ defmodule EveDmvWeb.SurveillanceLive.Components do
   interface templates.
   """
 
-  alias EveDmv.Api
+  alias EveDmv.Api.SurveillanceApi
   alias EveDmv.Surveillance.MatchingEngine
   alias EveDmv.Surveillance.ProfileMatch
 
@@ -22,7 +22,11 @@ defmodule EveDmvWeb.SurveillanceLive.Components do
   @spec load_recent_matches() :: [ProfileMatch.t()]
   def load_recent_matches do
     # Reduce query time by limiting results and reducing time window
-    case Ash.read(ProfileMatch, action: :recent_matches, input: %{hours: 6}, domain: Api) do
+    case Ash.read(ProfileMatch,
+           action: :recent_matches,
+           input: %{hours: 6},
+           domain: SurveillanceApi
+         ) do
       {:ok, matches} ->
         # Limit to 10 matches for better performance
         Enum.take(matches, 10)

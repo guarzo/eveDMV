@@ -174,7 +174,7 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer do
   # Public API functions - delegated to specialized modules
 
   @doc """
-  Enhanced fleet composition analysis using ShipDatabase.
+  Enhanced fleet composition analysis using StaticData.
   Provides detailed ship-by-ship analysis with wormhole suitability.
   """
   defdelegate analyze_enhanced_fleet_composition(ship_list), to: FleetAnalyzer

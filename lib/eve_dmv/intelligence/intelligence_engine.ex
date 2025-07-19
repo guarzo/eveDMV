@@ -18,8 +18,8 @@ defmodule IntelligenceEngine do
 
   ## Examples
 
-      IntelligenceEngine.analyze(:character, 12345, scope: :basic)
-      IntelligenceEngine.analyze(:character, 12345, scope: :standard)
+      IntelligenceEngine.analyze(:character, 12_345, scope: :basic)
+      IntelligenceEngine.analyze(:character, 12_345, scope: :standard)
   """
   @spec analyze(atom(), integer(), keyword()) :: {:ok, map()} | {:error, term()}
   def analyze(entity_type, entity_id, opts \\ []) do

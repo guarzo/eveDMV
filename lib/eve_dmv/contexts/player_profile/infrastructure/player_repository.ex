@@ -9,7 +9,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
   @doc """
   Get comprehensive player data for analysis.
   """
-  @spec get_player_data(integer()) :: {:ok, map()} | {:error, term()}
+  @spec get_player_data(integer()) :: {:ok, map()}
   def get_player_data(_character_id) do
     {:ok,
      %{

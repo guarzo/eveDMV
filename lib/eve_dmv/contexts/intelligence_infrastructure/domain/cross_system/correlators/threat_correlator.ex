@@ -3,8 +3,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   Correlator for threat patterns across multiple systems.
   """
 
-  alias EveDmv.Repo
   import Ecto.Query
+
+  alias EveDmv.Repo
   require Logger
 
   @doc """
@@ -36,7 +37,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
         threat_entities =
           threat_data
           |> Enum.flat_map(fn {_system_id, threats} ->
-            threats |> Enum.map(& &1.attacker_alliance_id)
+            Enum.map(threats, & &1.attacker_alliance_id)
           end)
           # Remove nil values
           |> Enum.filter(& &1)
@@ -44,8 +45,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
         # Count entities active in multiple systems
         multi_system_threats =
-          threat_entities
-          |> Enum.count(fn {_entity, count} -> count > 1 end)
+          Enum.count(threat_entities, fn {_entity, count} -> count > 1 end)
 
         total_threats = map_size(threat_entities)
 
@@ -319,14 +319,13 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
           # Placeholder
           attacker_alliance_id: k.victim_alliance_id
         },
-        limit: 5000
+        limit: 5_000
       )
 
     killmails = Repo.all(query)
 
     # Group by system
-    killmails
-    |> Enum.group_by(& &1.solar_system_id)
+    Enum.group_by(killmails, & &1.solar_system_id)
   rescue
     error ->
       Logger.error("Failed to fetch threat data: #{inspect(error)}")
@@ -363,8 +362,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       threat_data
       |> Enum.flat_map(fn {_system, kills} -> kills end)
       |> Enum.filter(fn kill ->
-        # Structure type IDs typically > 35000
-        kill.victim_ship_type_id && kill.victim_ship_type_id > 35000
+        # Structure type IDs typically > 35_000
+        kill.victim_ship_type_id && kill.victim_ship_type_id > 35_000
       end)
 
     if length(structure_kills) > 0 do
@@ -386,12 +385,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   defp analyze_fleet_movements(threat_data) do
     # Detect coordinated fleet operations
     fleet_indicators =
-      threat_data
-      |> Enum.flat_map(fn {_system, kills} ->
+      Enum.flat_map(threat_data, fn {_system, kills} ->
         # Group kills by time window to find fleet ops
         kills
         |> Enum.chunk_by(fn k ->
-          k.killmail_time |> DateTime.truncate(:minute)
+          DateTime.truncate(k.killmail_time, :second)
         end)
         |> Enum.filter(fn chunk -> length(chunk) > 3 end)
       end)
@@ -430,8 +428,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       |> Enum.flat_map(fn {_system, kills} -> kills end)
       |> Enum.filter(fn kill ->
         # Capital ship type IDs
-        kill.victim_ship_type_id && kill.victim_ship_type_id > 20000 &&
-          kill.victim_ship_type_id < 30000
+        kill.victim_ship_type_id && kill.victim_ship_type_id > 20_000 &&
+          kill.victim_ship_type_id < 30_000
       end)
 
     if length(capital_kills) > 0 do
@@ -463,7 +461,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
           attacker_alliance_id: k.victim_alliance_id
         },
         order_by: [asc: k.killmail_time],
-        limit: 2000
+        limit: 2_000
       )
 
     Repo.all(query)
@@ -522,8 +520,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
   defp build_spillover_timeline(spillover_vectors) do
     # Build a timeline of spillover events
-    spillover_vectors
-    |> Enum.map(fn vector ->
+    Enum.map(spillover_vectors, fn vector ->
       %{
         route: [vector.from_system, vector.to_system],
         frequency: vector.frequency,
@@ -633,7 +630,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     # Create 15-minute time windows for correlation analysis
     threat_data
     |> Enum.flat_map(fn {system, kills} ->
-      kills |> Enum.map(fn k -> {system, k.killmail_time |> DateTime.truncate(:minute)} end)
+      Enum.map(kills, fn k -> {system, DateTime.truncate(k.killmail_time, :second)} end)
     end)
     |> Enum.group_by(&elem(&1, 1))
   end
@@ -655,7 +652,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     # Find entities active in multiple systems
     threat_data
     |> Enum.flat_map(fn {system, kills} ->
-      kills |> Enum.map(fn k -> {k.attacker_alliance_id, system} end)
+      Enum.map(kills, fn k -> {k.attacker_alliance_id, system} end)
     end)
     |> Enum.filter(fn {entity, _} -> entity != nil end)
     |> Enum.group_by(&elem(&1, 0))

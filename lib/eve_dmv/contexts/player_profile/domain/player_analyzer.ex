@@ -9,7 +9,6 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
   use GenServer
   use EveDmv.ErrorHandler
 
-  alias EveDmv.Contexts.PlayerProfile.Analyzers.BehavioralPatternsAnalyzer
   alias EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer
   alias EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer
   alias EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository
@@ -45,7 +44,6 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
            character_id: character_id,
            analysis_type: :player_profile,
            combat_stats: Map.get(analysis, :combat, %{}),
-           behavioral_patterns: Map.get(analysis, :behavioral, %{}),
            ship_preferences: Map.get(analysis, :ships, %{}),
            archetype: Map.get(analysis, :archetype, :unknown),
            confidence_score: Map.get(analysis, :confidence, 0.5),
@@ -68,7 +66,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
   Get specific analysis component for a player.
   """
   def get_analysis_component(character_id, component)
-      when component in [:combat, :behavioral, :ships] do
+      when component in [:combat, :ships] do
     GenServer.call(__MODULE__, {:get_component, character_id, component})
   end
 
@@ -99,7 +97,6 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
         average_analysis_time_ms: 0,
         component_timings: %{
           combat: [],
-          behavioral: [],
           ships: []
         }
       },
@@ -186,7 +183,6 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
         result =
           case component do
             :combat -> CombatStatsAnalyzer.analyze(character_id)
-            :behavioral -> BehavioralPatternsAnalyzer.analyze(character_id)
             :ships -> ShipPreferencesAnalyzer.analyze(character_id)
           end
 
@@ -241,17 +237,15 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
   defp perform_player_analysis(character_id, opts) do
     with {:ok, base_data} <- gather_base_data(character_id),
          {:ok, combat_stats} <- analyze_combat_stats(character_id, base_data, opts),
-         {:ok, behavioral} <- analyze_behavioral_patterns(character_id, base_data, opts),
          {:ok, ship_prefs} <- analyze_ship_preferences(character_id, base_data, opts) do
       analysis = %{
         character_id: character_id,
         timestamp: DateTime.utc_now(),
         combat_statistics: combat_stats,
-        behavioral_patterns: behavioral,
         ship_preferences: ship_prefs,
-        player_archetype: determine_archetype(combat_stats, behavioral, ship_prefs),
-        risk_profile: calculate_risk_profile(combat_stats, behavioral, ship_prefs),
-        recommendations: generate_recommendations(combat_stats, behavioral, ship_prefs)
+        player_archetype: determine_archetype(combat_stats, ship_prefs),
+        risk_profile: calculate_risk_profile(combat_stats, ship_prefs),
+        recommendations: generate_recommendations(combat_stats, ship_prefs)
       }
 
       {:ok, analysis}
@@ -259,93 +253,76 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
   end
 
   defp gather_base_data(character_id) do
-    case PlayerRepository.get_player_data(character_id) do
-      {:ok, player_data} ->
-        # Gather all necessary base data
-        base_data = %{
-          character_stats: player_data,
-          killmail_stats: PlayerRepository.get_killmail_stats(character_id),
-          activity_data: PlayerRepository.get_activity_data(character_id),
-          corporation_history: PlayerRepository.get_corporation_history(character_id)
-        }
+    {:ok, player_data} = PlayerRepository.get_player_data(character_id)
 
-        {:ok, base_data}
+    # Gather all necessary base data
+    base_data = %{
+      character_stats: player_data,
+      killmail_stats: PlayerRepository.get_killmail_stats(character_id),
+      activity_data: PlayerRepository.get_activity_data(character_id),
+      corporation_history: PlayerRepository.get_corporation_history(character_id)
+    }
 
-      {:error, reason} ->
-        {:error, reason}
-    end
+    {:ok, base_data}
   end
 
   defp analyze_combat_stats(character_id, base_data, _opts) do
     CombatStatsAnalyzer.analyze(character_id, base_data)
   end
 
-  defp analyze_behavioral_patterns(character_id, base_data, _opts) do
-    BehavioralPatternsAnalyzer.analyze(character_id, base_data)
-  end
-
   defp analyze_ship_preferences(character_id, base_data, _opts) do
     ShipPreferencesAnalyzer.analyze(character_id, base_data)
   end
 
-  defp determine_archetype(combat_stats, behavioral, ship_prefs) do
-    # Comprehensive archetype determination based on all analyses
-    aggression = behavioral.engagement_behavior.aggression_style
-    primary_role = ship_prefs.role_distribution.primary_role
-    solo_pref = behavioral.tactical_patterns.tactical_style.solo_vs_group_preference
+  defp determine_archetype(combat_stats, ship_prefs) do
+    # Simplified archetype determination based on combat stats and ship preferences
+    kd_ratio = get_in(combat_stats, [:performance_metrics, :kill_death_ratio]) || 1.0
+    primary_role = get_in(ship_prefs, [:role_distribution, :primary_role]) || :unknown
+    specialization_level = get_in(ship_prefs, [:specialization, :level]) || :moderate
 
     cond do
-      aggression == :highly_aggressive and solo_pref == :strong_solo_preference ->
-        :elite_pvper
+      kd_ratio > 3.0 ->
+        :veteran_fighter
 
-      primary_role == :logistics and solo_pref == :group_oriented ->
+      primary_role == :logistics ->
         :fleet_support
 
-      ship_prefs.specialization.level == :highly_specialized ->
+      specialization_level == :highly_specialized ->
         :specialist
 
-      behavioral.risk_profile.risk_tolerance_score > 0.7 ->
-        :risk_taker
-
-      combat_stats.performance_metrics.kill_death_ratio > 3.0 ->
-        :veteran_fighter
+      kd_ratio > 2.0 ->
+        :skilled_pilot
 
       true ->
         :standard_pilot
     end
   end
 
-  defp calculate_risk_profile(combat_stats, behavioral, ship_prefs) do
+  defp calculate_risk_profile(combat_stats, ship_prefs) do
     %{
-      overall_risk_score: calculate_overall_risk(combat_stats, behavioral, ship_prefs),
-      risk_factors: identify_risk_factors(combat_stats, behavioral, ship_prefs),
-      mitigation_suggestions: generate_risk_mitigation(combat_stats, behavioral, ship_prefs)
+      overall_risk_score: calculate_overall_risk(combat_stats, ship_prefs),
+      risk_factors: identify_risk_factors(combat_stats, ship_prefs),
+      mitigation_suggestions: generate_risk_mitigation(combat_stats, ship_prefs)
     }
   end
 
-  defp generate_recommendations(combat_stats, behavioral, ship_prefs) do
+  defp generate_recommendations(combat_stats, ship_prefs) do
     # Combat recommendations
     initial_recommendations =
-      if combat_stats.performance_metrics.isk_efficiency < 50 do
+      if get_in(combat_stats, [:performance_metrics, :isk_efficiency]) &&
+           combat_stats.performance_metrics.isk_efficiency < 50 do
         ["Improve target selection for better ISK efficiency"]
       else
         []
       end
 
-    # Behavioral recommendations
-    behavioral_recommendations =
-      if behavioral.consistency_metrics.overall_consistency_score < 0.3 do
-        ["Consider establishing more consistent play patterns" | initial_recommendations]
-      else
-        initial_recommendations
-      end
-
     # Ship recommendations
     final_recommendations =
-      if ship_prefs.diversity_metrics.ship_diversity_index < 0.2 do
-        ["Expand ship repertoire for tactical flexibility" | behavioral_recommendations]
+      if get_in(ship_prefs, [:diversity_metrics, :ship_diversity_index]) &&
+           ship_prefs.diversity_metrics.ship_diversity_index < 0.2 do
+        ["Expand ship repertoire for tactical flexibility" | initial_recommendations]
       else
-        behavioral_recommendations
+        initial_recommendations
       end
 
     final_recommendations
@@ -380,7 +357,6 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
   end
 
   defp component_key(:combat), do: :combat_statistics
-  defp component_key(:behavioral), do: :behavioral_patterns
   defp component_key(:ships), do: :ship_preferences
 
   defp update_metrics(state, event_type, duration) do
@@ -416,45 +392,60 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
     MetricsCalculator.calculate_current_metrics(state)
   end
 
-  defp calculate_overall_risk(_combat_stats, behavioral, _ship_prefs) do
-    behavioral.risk_profile.risk_tolerance_score
+  defp calculate_overall_risk(combat_stats, ship_prefs) do
+    # Simplified risk calculation based on available data
+    kd_ratio = get_in(combat_stats, [:performance_metrics, :kill_death_ratio]) || 1.0
+    avg_loss_value = get_in(combat_stats, [:performance_metrics, :average_loss_value]) || 0
+    flies_expensive = get_in(ship_prefs, [:value_patterns, :flies_expensive_ships]) || false
+
+    base_risk = 0.5
+
+    # Lower risk for better pilots
+    base_risk = if kd_ratio > 2.0, do: base_risk - 0.2, else: base_risk
+
+    # Higher risk for expensive losses
+    base_risk = if avg_loss_value > 500_000_000, do: base_risk + 0.2, else: base_risk
+
+    # Higher risk for expensive ships
+    base_risk = if flies_expensive, do: base_risk + 0.1, else: base_risk
+
+    max(0.0, min(1.0, base_risk))
   end
 
-  defp identify_risk_factors(combat_stats, behavioral, ship_prefs) do
-    base_factors = []
+  defp identify_risk_factors(combat_stats, ship_prefs) do
+    factors = []
 
-    loss_factors =
-      if combat_stats.performance_metrics.average_loss_value > 1_000_000_000 do
-        [{:high_value_losses, "Frequently loses expensive ships"} | base_factors]
+    factors =
+      if get_in(combat_stats, [:performance_metrics, :average_loss_value]) &&
+           combat_stats.performance_metrics.average_loss_value > 1_000_000_000 do
+        [{:high_value_losses, "Frequently loses expensive ships"} | factors]
       else
-        base_factors
+        factors
       end
 
-    behavioral_factors =
-      if behavioral.risk_profile.tactical_risk_taking.bait_susceptibility == "high" do
-        [{:bait_susceptible, "High susceptibility to bait tactics"} | loss_factors]
+    factors =
+      if get_in(ship_prefs, [:value_patterns, :flies_expensive_ships]) &&
+           ship_prefs.value_patterns.flies_expensive_ships do
+        [{:expensive_ships, "Regularly flies high-value ships"} | factors]
       else
-        loss_factors
+        factors
       end
 
-    final_factors =
-      if ship_prefs.value_patterns.flies_expensive_ships do
-        [{:expensive_ships, "Regularly flies high-value ships"} | behavioral_factors]
-      else
-        behavioral_factors
-      end
-
-    final_factors
+    factors
   end
 
-  defp generate_risk_mitigation(_combat_stats, behavioral, _ship_prefs) do
+  defp generate_risk_mitigation(combat_stats, _ship_prefs) do
     mitigations = []
 
-    if behavioral.risk_profile.tactical_risk_taking.overcommitment_tendency == "frequent" do
-      ["Develop better disengagement protocols" | mitigations]
-    else
-      mitigations
-    end
+    mitigations =
+      if get_in(combat_stats, [:performance_metrics, :kill_death_ratio]) &&
+           combat_stats.performance_metrics.kill_death_ratio < 1.0 do
+        ["Consider flying in larger groups for better survival" | mitigations]
+      else
+        mitigations
+      end
+
+    mitigations
   end
 
   defp classify_archetype(analysis) do

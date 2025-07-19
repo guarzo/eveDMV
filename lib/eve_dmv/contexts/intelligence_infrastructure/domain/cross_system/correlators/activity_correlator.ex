@@ -3,8 +3,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   Correlator for activity patterns across multiple systems.
   """
 
-  alias EveDmv.Repo
   import Ecto.Query
+  alias EveDmv.Repo
   require Logger
 
   @doc """
@@ -180,8 +180,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     killmails = Repo.all(query)
 
     # Group by system
-    killmails
-    |> Enum.group_by(& &1.solar_system_id)
+    Enum.group_by(killmails, & &1.solar_system_id)
   rescue
     error ->
       Logger.error("Failed to fetch systems activity data: #{inspect(error)}")
@@ -255,15 +254,16 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
         0.0
       else
         # Extract activity counts from aligned data
-        values1 = aligned1 |> Enum.map(&(&1.attacker_count || 1))
-        values2 = aligned2 |> Enum.map(&(&1.attacker_count || 1))
+        values1 = Enum.map(aligned1, &(&1.attacker_count || 1))
+        values2 = Enum.map(aligned2, &(&1.attacker_count || 1))
 
         # Calculate correlation
         mean1 = Enum.sum(values1) / length(values1)
         mean2 = Enum.sum(values2) / length(values2)
 
         numerator =
-          Enum.zip(values1, values2)
+          values1
+          |> Enum.zip(values2)
           |> Enum.map(fn {x, y} -> (x - mean1) * (y - mean2) end)
           |> Enum.sum()
 
@@ -291,8 +291,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   defp align_by_timestamp(data1, data2) do
     # Create maps indexed by rounded timestamp for efficient lookup
     map1 =
-      data1
-      |> Enum.into(%{}, fn item ->
+      Enum.into(data1, %{}, fn item ->
         # Round to nearest hour for alignment
         rounded_time =
           item.killmail_time
@@ -304,8 +303,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       end)
 
     map2 =
-      data2
-      |> Enum.into(%{}, fn item ->
+      Enum.into(data2, %{}, fn item ->
         rounded_time =
           item.killmail_time
           |> DateTime.truncate(:second)
@@ -317,15 +315,15 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
     # Find common timestamps
     common_times =
-      MapSet.intersection(
-        MapSet.new(Map.keys(map1)),
-        MapSet.new(Map.keys(map2))
-      )
+      map1
+      |> Map.keys()
+      |> MapSet.new()
+      |> MapSet.intersection(MapSet.new(Map.keys(map2)))
       |> Enum.sort()
 
     # Extract aligned data
-    aligned1 = common_times |> Enum.map(&Map.get(map1, &1))
-    aligned2 = common_times |> Enum.map(&Map.get(map2, &1))
+    aligned1 = Enum.map(common_times, &Map.get(map1, &1))
+    aligned2 = Enum.map(common_times, &Map.get(map2, &1))
 
     {aligned1, aligned2}
   end
@@ -351,9 +349,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     correlations = calculate_pairwise_correlations(activity_data)
 
     # Group by correlation strength
-    strong_sync = correlations |> Enum.filter(fn {_, r} -> r > 0.8 end)
-    moderate_sync = correlations |> Enum.filter(fn {_, r} -> r > 0.5 and r <= 0.8 end)
-    weak_sync = correlations |> Enum.filter(fn {_, r} -> r > 0.3 and r <= 0.5 end)
+    strong_sync = Enum.filter(correlations, fn {_, r} -> r > 0.8 end)
+    moderate_sync = Enum.filter(correlations, fn {_, r} -> r > 0.5 and r <= 0.8 end)
+    weak_sync = Enum.filter(correlations, fn {_, r} -> r > 0.3 and r <= 0.5 end)
 
     %{
       strong_synchronization: strong_sync,
@@ -377,8 +375,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       # Find fully connected clusters
       clusters = find_connected_components(systems, strong_correlations)
 
-      clusters
-      |> Enum.map(fn cluster ->
+      Enum.map(clusters, fn cluster ->
         %{
           systems: cluster,
           size: length(cluster),
@@ -409,7 +406,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     time_clusters =
       all_activities
       |> Enum.chunk_by(fn activity ->
-        activity.killmail_time |> DateTime.truncate(:hour)
+        DateTime.truncate(activity.killmail_time, :second)
       end)
       |> Enum.filter(fn cluster -> length(cluster) > 3 end)
       |> Enum.map(fn cluster ->
@@ -433,7 +430,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       activity_timeline =
         activity_data
         |> Enum.flat_map(fn {system, activities} ->
-          activities |> Enum.map(fn a -> Map.put(a, :system_id, system) end)
+          Enum.map(activities, fn a -> Map.put(a, :system_id, system) end)
         end)
         |> Enum.sort_by(& &1.killmail_time)
 
@@ -551,12 +548,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
       # Calculate correlation for each time point
       time_correlations =
-        all_times
-        |> Enum.map(fn time ->
+        Enum.map(all_times, fn time ->
           # Get activity for all systems at this time
           activity_at_time =
-            hourly_data
-            |> Enum.map(fn {system, hours} ->
+            Enum.map(hourly_data, fn {system, hours} ->
               activity = Map.get(hours, time, 0)
               {system, activity}
             end)
@@ -589,8 +584,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     else
       # Find maximum correlations across all lags
       max_correlations =
-        lag_analysis
-        |> Enum.map(fn {_pair, correlations} ->
+        Enum.map(lag_analysis, fn {_pair, correlations} ->
           correlations
           |> Enum.map(&elem(&1, 1))
           |> Enum.max()
@@ -611,8 +605,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       0
     else
       optimal_lags =
-        lag_analysis
-        |> Enum.map(fn {_pair, correlations} ->
+        Enum.map(lag_analysis, fn {_pair, correlations} ->
           correlations
           |> Enum.max_by(&elem(&1, 1))
           |> elem(0)
@@ -632,23 +625,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       []
     else
       # Extract hourly patterns across all systems
-      hourly_patterns =
-        0..23
-        |> Enum.map(fn hour ->
-          # Get activity for this hour across all systems
-          total_activity =
-            hourly_data
-            |> Enum.map(fn {_system, hours} ->
-              # Sum activity for this hour across all days
-              hours
-              |> Enum.filter(fn {time, _} -> time.hour == hour end)
-              |> Enum.map(&elem(&1, 1))
-              |> Enum.sum()
-            end)
-            |> Enum.sum()
-
-          {hour, total_activity}
-        end)
+      hourly_patterns = Enum.map(0..23, &calculate_hourly_activity(&1, hourly_data))
 
       # Find peak hours
       peak_hours =
@@ -722,7 +699,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     %{
       correlation_count: length(correlations),
       avg_correlation: calculate_avg_correlation(correlations),
-      sync_clusters: identify_sync_clusters(correlations |> Enum.filter(fn {_, r} -> r > 0.8 end))
+      sync_clusters: identify_sync_clusters(Enum.filter(correlations, fn {_, r} -> r > 0.8 end))
     }
   end
 
@@ -740,8 +717,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
   defp identify_synchronized_activities(sync_patterns) do
     # Identify specific synchronized activities
-    sync_patterns.sync_clusters
-    |> Enum.map(fn cluster ->
+    Enum.map(sync_patterns.sync_clusters, fn cluster ->
       %{
         type: :coordinated_activity,
         systems: cluster.systems,
@@ -809,8 +785,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       new_visited = MapSet.put(visited, system)
       neighbors = Map.get(correlation_map, system, [])
 
-      neighbors
-      |> Enum.reduce(new_visited, fn neighbor, acc ->
+      Enum.reduce(neighbors, new_visited, fn neighbor, acc ->
         find_cluster(neighbor, correlation_map, acc)
       end)
     end
@@ -867,45 +842,44 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   end
 
   defp calculate_lagged_correlation(data1, data2, lag) do
-    # Calculate correlation with time lag
-    # Simplified implementation
-    times1 = Map.keys(data1) |> Enum.sort()
-    times2 = Map.keys(data2) |> Enum.sort()
+    # Calculate correlation with time lag using with clauses to reduce nesting
+    times1 = data1 |> Map.keys() |> Enum.sort()
+    times2 = data2 |> Map.keys() |> Enum.sort()
 
-    if length(times1) < 3 or length(times2) < 3 do
-      0.0
+    with true <- length(times1) >= 3 and length(times2) >= 3,
+         lagged_times2 <- apply_lag_to_times(times2, lag),
+         overlapping_times <- find_overlapping_times(times1, lagged_times2),
+         true <- length(overlapping_times) >= 3 do
+      # Calculate correlation for overlapping times
+      values1 = Enum.map(overlapping_times, fn t -> Map.get(data1, t, 0) end)
+      values2 = build_lagged_values(overlapping_times, lagged_times2, data2, lag)
+
+      calculate_simple_correlation(values1, values2)
     else
-      # Apply lag and calculate correlation
-      lagged_times2 =
-        times2
-        |> Enum.map(fn time -> DateTime.add(time, lag * 3600, :second) end)
-
-      # Find overlapping times
-      overlapping_times =
-        times1
-        |> Enum.filter(fn t1 ->
-          Enum.any?(lagged_times2, fn t2 -> abs(DateTime.diff(t1, t2, :minute)) < 30 end)
-        end)
-
-      if length(overlapping_times) < 3 do
-        0.0
-      else
-        # Calculate correlation for overlapping times
-        values1 = Enum.map(overlapping_times, fn t -> Map.get(data1, t, 0) end)
-
-        values2 =
-          Enum.map(overlapping_times, fn t ->
-            # Find closest lagged time
-            closest_lagged =
-              Enum.min_by(lagged_times2, fn t2 -> abs(DateTime.diff(t, t2, :minute)) end)
-
-            original_time = DateTime.add(closest_lagged, -lag * 3600, :second)
-            Map.get(data2, original_time, 0)
-          end)
-
-        calculate_simple_correlation(values1, values2)
-      end
+      _ -> 0.0
     end
+  end
+
+  defp apply_lag_to_times(times, lag) do
+    Enum.map(times, fn time -> DateTime.add(time, lag * 3600, :second) end)
+  end
+
+  defp find_overlapping_times(times1, lagged_times2) do
+    Enum.filter(times1, fn t1 ->
+      Enum.any?(lagged_times2, fn t2 -> abs(DateTime.diff(t1, t2, :minute)) < 30 end)
+    end)
+  end
+
+  defp build_lagged_values(overlapping_times, lagged_times2, data2, lag) do
+    Enum.map(overlapping_times, fn t ->
+      closest_lagged = find_closest_lagged_time(t, lagged_times2)
+      original_time = DateTime.add(closest_lagged, -lag * 3600, :second)
+      Map.get(data2, original_time, 0)
+    end)
+  end
+
+  defp find_closest_lagged_time(time, lagged_times2) do
+    Enum.min_by(lagged_times2, fn t2 -> abs(DateTime.diff(time, t2, :minute)) end)
   end
 
   defp calculate_simple_correlation(values1, values2) do
@@ -917,12 +891,13 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       mean2 = Enum.sum(values2) / length(values2)
 
       numerator =
-        Enum.zip(values1, values2)
+        values1
+        |> Enum.zip(values2)
         |> Enum.map(fn {x, y} -> (x - mean1) * (y - mean2) end)
         |> Enum.sum()
 
-      variance1 = Enum.map(values1, fn x -> (x - mean1) * (x - mean1) end) |> Enum.sum()
-      variance2 = Enum.map(values2, fn y -> (y - mean2) * (y - mean2) end) |> Enum.sum()
+      variance1 = values1 |> Enum.map(fn x -> (x - mean1) * (x - mean1) end) |> Enum.sum()
+      variance2 = values2 |> Enum.map(fn y -> (y - mean2) * (y - mean2) end) |> Enum.sum()
 
       denominator = :math.sqrt(variance1 * variance2)
 
@@ -939,7 +914,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       0.0
     else
       mean = Enum.sum(values) / length(values)
-      variance = Enum.map(values, fn x -> (x - mean) * (x - mean) end) |> Enum.sum()
+      variance = values |> Enum.map(fn x -> (x - mean) * (x - mean) end) |> Enum.sum()
       variance / length(values)
     end
   end
@@ -969,5 +944,21 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       Enum.all?(peak_hours, fn h -> h >= 0 and h <= 8 end) -> :night_peak
       true -> :distributed
     end
+  end
+
+  defp calculate_hourly_activity(hour, hourly_data) do
+    # Calculate total activity for a specific hour across all systems
+    total_activity =
+      hourly_data
+      |> Enum.map(fn {_system, hours} ->
+        # Sum activity for this hour across all days
+        hours
+        |> Enum.filter(fn {time, _} -> time.hour == hour end)
+        |> Enum.map(&elem(&1, 1))
+        |> Enum.sum()
+      end)
+      |> Enum.sum()
+
+    {hour, total_activity}
   end
 end

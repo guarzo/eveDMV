@@ -283,7 +283,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
       ROUND(n_dead_tup::numeric / NULLIF(n_live_tup + n_dead_tup, 0) * 100, 2) as dead_tuple_percent
     FROM pg_stat_user_tables
     WHERE n_dead_tup > 1000
-      OR (last_autovacuum IS NULL AND n_live_tup > 10000)
+      OR (last_autovacuum IS NULL AND n_live_tup > 10_000)
     ORDER BY n_dead_tup DESC
     LIMIT 20
     """

@@ -8,12 +8,11 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.RequirementsBuilder do
 
   alias EveDmv.Intelligence.Analyzers.FleetAssetManager.ShipCostCalculator
   alias EveDmv.Intelligence.Analyzers.MassCalculator
-  alias EveDmv.Intelligence.ShipDatabase
 
   @doc """
   Get detailed ship information including mass, cost, and wormhole suitability.
 
-  This function retrieves comprehensive ship data from the ShipDatabase and calculates
+  This function retrieves comprehensive ship data from StaticData and calculates
   cost estimates based on ship category and role. It includes wormhole compatibility
   assessment for fleet planning.
 
@@ -32,12 +31,12 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.RequirementsBuilder do
   - `:wormhole_suitable` - Boolean indicating WH suitability
   """
   def get_ship_info(ship_name) do
-    # Use centralized ShipDatabase for ship data
-    mass_kg = ShipDatabase.get_ship_mass(ship_name)
+    # Use centralized StaticData for ship data
+    mass_kg = EveDmv.StaticData.get_ship_mass(ship_name)
 
     # Get ship role and category for cost estimation
-    role = ShipDatabase.get_ship_role(ship_name)
-    category = ShipDatabase.get_ship_category(ship_name)
+    role = EveDmv.StaticData.get_ship_role(ship_name)
+    category = EveDmv.StaticData.get_ship_category(ship_name)
 
     # Estimate cost based on ship category and role
     estimated_cost = ShipCostCalculator.estimate_ship_cost_by_category(category, role)
@@ -47,8 +46,8 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.RequirementsBuilder do
       estimated_cost: estimated_cost,
       category: category,
       role: role,
-      ship_class: ShipDatabase.get_ship_class(ship_name),
-      wormhole_suitable: ShipDatabase.wormhole_suitable?(ship_name)
+      ship_class: EveDmv.StaticData.get_ship_class(ship_name),
+      wormhole_suitable: EveDmv.StaticData.wormhole_suitable?(ship_name)
     }
   end
 
@@ -62,7 +61,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.RequirementsBuilder do
   ## Parameters
 
   - `doctrine_template` - Doctrine configuration with roles and ship preferences
-  - `ship_data` - Ship information data collected from ShipDatabase
+  - `ship_data` - Ship information data collected from StaticData
 
   ## Returns
 
@@ -88,11 +87,11 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.RequirementsBuilder do
       required_count = role_config["required"] || 1
 
       Enum.reduce(preferred_ships, acc, fn ship_name, acc2 ->
-        ship_info = ship_data[ship_name] || %{mass_kg: 10_000_000, estimated_cost: 50_000_000}
+        ship_info = ship_data[ship_name] || %{mass_kg: 12_000_000, estimated_cost: 50_000_000}
 
-        # Get wormhole restrictions from ShipDatabase
-        ship_class = ShipDatabase.get_ship_class(ship_name)
-        wh_restrictions = ShipDatabase.get_wormhole_restrictions(ship_class)
+        # Get wormhole restrictions from StaticData
+        ship_class = EveDmv.StaticData.get_ship_class(ship_name)
+        wh_restrictions = EveDmv.StaticData.get_wormhole_restrictions(ship_class)
 
         # Use a hash of ship_name as type_id for demo purposes
         hash_value = :erlang.phash2(ship_name)

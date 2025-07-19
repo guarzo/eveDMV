@@ -116,7 +116,10 @@ When creating or modifying Ash resources:
 3. Generate migration: `mix ash_postgres.create`
 4. Run migration: `mix ash_postgres.migrate`
 
-## 🚨 CRITICAL DEVELOPMENT RULE
+## 🚨 CRITICAL DEVELOPMENT RULES
+
+### Clean Codebase Vision
+EVE DMV maintains a **CLEAN CODEBASE** with NO placeholder implementations. Every function must provide real value or not exist at all.
 
 ### Definition of "Done"
 A feature is **ONLY** considered done when:
@@ -127,32 +130,52 @@ A feature is **ONLY** considered done when:
 5. ✅ Documentation matches actual implementation
 6. ✅ No TODO comments in the implementation
 
-**If it returns mock data, it's not done. If it's not done, don't ship it.**
+### Prohibited Patterns
+**NEVER** implement these anti-patterns:
+- ❌ Functions that return empty arrays `[]` or maps `%{}` as placeholders
+- ❌ Hardcoded "magic" numbers (e.g., DPS = 600, mass = 10,000,000)
+- ❌ Random data generation (`Enum.random`, `:rand.uniform()`) for "analysis"
+- ❌ Stub functions that return fake data
+- ❌ References to non-existent modules with fallbacks
+- ❌ Modulo-based logic for classifications (e.g., `ship_type_id % 10`)
+
+### Required Patterns
+**ALWAYS** implement features this way:
+- ✅ Query static data tables for ship/system information
+- ✅ Calculate metrics from actual killmail data
+- ✅ Return meaningful errors if data is unavailable
+- ✅ Remove the entire function if it can't be properly implemented
+- ✅ Use real EVE static data (49,906 item types are loaded!)
+
+### The Golden Rule
+**If you can't implement it with real data, don't implement it at all.**
+
+Better to have fewer features that work perfectly than many features that lie to users.
 
 ## Current Implementation Status
 
-### 🚀 Sprint 12: Architecture & Polish (In Progress)
-See `/workspace/docs/sprints/current/SPRINT_12_ARCHITECTURE_POLISH.md` for current sprint
-**Previous Sprint**: Sprint 11 Quality Debt Cleanup - ✅ COMPLETED (All 10 tasks finished)
+### ✅ What Actually Works with Real Data
+- **Authentication** - Full EVE SSO integration
+- **Kill Feed** (`/feed`) - Real-time killmail display from wanderer-kills SSE
+- **Database Pipeline** - Broadway ingestion with partitioned storage
+- **Static Data** - 49,906 item types and 8,436 systems loaded and queryable
+- **Character Stats** - Basic kill/death counts from real queries
+- **Threat Scoring** - Multi-dimensional analysis engine
+- **Battle Detection** - Clustering algorithm groups killmails
+- **Surveillance Profiles** - Real-time matching engine
 
-### ✅ What Actually Works
-- **Kill Feed** (`/feed`) - Real-time killmail display with wanderer-kills SSE
-- **Authentication** - EVE SSO integration
-- **Database Schema** - Tables exist with partitioning
-- **Broadway Pipeline** - Receives killmails
+### 🔴 What Contains Placeholders (Needs Cleanup)
+- **Fleet Analysis** - Hardcoded DPS values, modulo-based ship classification
+- **Wormhole Operations** - Random data generation, all systems show as C6
+- **Character Preferences** - Returns empty arrays instead of querying data
+- **Battle Analysis** - Detection works but advanced analysis returns empty data
+- **Market Pricing** - Stub client returns zeros
 
-### 🔴 What's Currently Placeholder/Broken
-- **Character Intelligence** - UI exists but most data is stubbed
-- **Battle Analysis** - Returns empty arrays
-- **Fleet Tools** - All calculations return 0
-- **Wormhole Features** - Mock data only
-- **Price Integration** - Not connected
-- **Static Data** - Tables exist but are empty
-
-### 📋 Documentation
-- **Actual State**: `/workspace/ACTUAL_PROJECT_STATE.md`
-- **Current Sprint**: `/workspace/REALITY_CHECK_SPRINT_1.md`
-- **Legacy Docs**: `/workspace/docs/archive/optimistic-planning/`
+### 📋 Key Documentation
+- **Implementation Status**: `/workspace/docs/IMPLEMENTATION_STATUS_COMBINED.md`
+- **Cleanup Plan**: `/workspace/docs/PLACEHOLDER_CLEANUP_PLAN.md`
+- **Clean Vision**: `/workspace/docs/CLEAN_CODEBASE_VISION.md`
+- **Revised Requirements**: `/workspace/docs/REVISED_REQUIREMENTS.md`
 
 ## Environment Configuration
 

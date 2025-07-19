@@ -7,14 +7,14 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
   use GenServer
   require Logger
 
-  @table_name :performance_metrics
-  @cleanup_interval :timer.minutes(5)
-  @metric_ttl :timer.hours(24)
-
   defstruct [
     :metrics_table,
     :start_time
   ]
+
+  @table_name :performance_metrics
+  @cleanup_interval :timer.minutes(5)
+  @metric_ttl :timer.hours(24)
 
   # Client API
 
@@ -73,7 +73,7 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
       result = unquote(block)
       duration = System.monotonic_time(:millisecond) - start_time
 
-      EveDmv.Monitoring.PerformanceTracker.track_query(
+      __MODULE__.track_query(
         unquote(query_name),
         duration,
         unquote(opts)
@@ -85,7 +85,7 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
 
   # Server callbacks
 
-  @impl true
+  @impl GenServer
   def init(_opts) do
     # Create ETS table for metrics
     table =
@@ -108,14 +108,14 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
     {:ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast({:track_query, query_name, duration_ms, opts}, state) do
     record_metric(:query, query_name, duration_ms, opts)
     check_threshold(:query, query_name, duration_ms)
     {:noreply, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast({:track_api_call, api_name, endpoint, duration_ms, opts}, state) do
     metric_name = "#{api_name}:#{endpoint}"
     record_metric(:api_call, metric_name, duration_ms, opts)
@@ -123,7 +123,7 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
     {:noreply, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast({:track_liveview, view_module, action, duration_ms, opts}, state) do
     metric_name = "#{view_module}:#{action}"
     record_metric(:liveview, metric_name, duration_ms, opts)
@@ -131,12 +131,13 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
     {:noreply, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:get_metrics_summary, time_range}, _from, state) do
     since = calculate_since_time(time_range)
 
     metrics =
-      :ets.tab2list(@table_name)
+      @table_name
+      |> :ets.tab2list()
       |> Enum.filter(fn {_key, metric} ->
         DateTime.compare(metric.timestamp, since) == :gt
       end)
@@ -150,10 +151,11 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
     {:reply, metrics, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:get_slow_queries, threshold_ms}, _from, state) do
     slow_queries =
-      :ets.tab2list(@table_name)
+      @table_name
+      |> :ets.tab2list()
       |> Enum.filter(fn {_key, metric} ->
         metric.type == :query && metric.duration_ms > threshold_ms
       end)
@@ -166,7 +168,7 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
     {:reply, slow_queries, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_bottlenecks, _from, state) do
     # Analyze recent metrics to identify bottlenecks
     recent_metrics = get_recent_metrics(:timer.minutes(15))
@@ -182,7 +184,7 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
     {:reply, bottlenecks, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:cleanup_metrics, state) do
     cleanup_old_metrics()
     schedule_cleanup()
@@ -230,8 +232,8 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
   end
 
   defp calculate_since_time(:minute), do: DateTime.add(DateTime.utc_now(), -60, :second)
-  defp calculate_since_time(:hour), do: DateTime.add(DateTime.utc_now(), -3600, :second)
-  defp calculate_since_time(:day), do: DateTime.add(DateTime.utc_now(), -86400, :second)
+  defp calculate_since_time(:hour), do: DateTime.add(DateTime.utc_now(), -3_600, :second)
+  defp calculate_since_time(:day), do: DateTime.add(DateTime.utc_now(), -86_400, :second)
 
   defp calculate_stats(metrics) do
     durations = Enum.map(metrics, fn {_key, metric} -> metric.duration_ms end)
@@ -261,7 +263,8 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
   defp get_recent_metrics(time_ms) do
     since = DateTime.add(DateTime.utc_now(), -div(time_ms, 1000), :second)
 
-    :ets.tab2list(@table_name)
+    @table_name
+    |> :ets.tab2list()
     |> Enum.filter(fn {_key, metric} ->
       DateTime.compare(metric.timestamp, since) == :gt
     end)
@@ -330,7 +333,8 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
   defp cleanup_old_metrics do
     cutoff = DateTime.add(DateTime.utc_now(), -div(@metric_ttl, 1000), :second)
 
-    :ets.tab2list(@table_name)
+    @table_name
+    |> :ets.tab2list()
     |> Enum.each(fn {key, metric} ->
       if DateTime.compare(metric.timestamp, cutoff) == :lt do
         :ets.delete(@table_name, key)

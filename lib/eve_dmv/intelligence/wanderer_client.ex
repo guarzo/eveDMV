@@ -191,6 +191,16 @@ defmodule EveDmv.Intelligence.WandererClient do
       {:error, reason} ->
         Logger.error("Failed to start SSE for map #{map_id}: #{inspect(reason)}")
         {:noreply, %{state | monitored_maps: new_monitored}}
+
+      sse_pid when is_pid(sse_pid) ->
+        # Handle direct pid return
+        Logger.info("Started SSE monitoring for map #{map_id}")
+        new_sse_connections = Map.put(state.sse_connections || %{}, map_id, sse_pid)
+        {:noreply, %{state | monitored_maps: new_monitored, sse_connections: new_sse_connections}}
+
+      other ->
+        Logger.error("Unexpected return from connect_sse_for_map: #{inspect(other)}")
+        {:noreply, %{state | monitored_maps: new_monitored}}
     end
   end
 
@@ -248,6 +258,17 @@ defmodule EveDmv.Intelligence.WandererClient do
 
         {:error, reason} ->
           Logger.error("Failed to reconnect SSE for map #{map_id}: #{inspect(reason)}")
+          Process.send_after(self(), {:reconnect_sse, map_id}, 10_000)
+          {:noreply, state}
+
+        sse_pid when is_pid(sse_pid) ->
+          # Handle direct pid return
+          Logger.info("Reconnected SSE for map #{map_id}")
+          new_sse_connections = Map.put(state.sse_connections, map_id, sse_pid)
+          {:noreply, %{state | sse_connections: new_sse_connections}}
+
+        other ->
+          Logger.error("Unexpected return from connect_sse_for_map: #{inspect(other)}")
           Process.send_after(self(), {:reconnect_sse, map_id}, 10_000)
           {:noreply, state}
       end
@@ -463,7 +484,7 @@ defmodule EveDmv.Intelligence.WandererClient do
     end
   end
 
-  defp parse_connections_data(connections_data) do
+  defp parse_connections_data(connections_data) when is_list(connections_data) do
     # Transform Wanderer connections data into our format
     Enum.map(connections_data, fn conn ->
       %{
@@ -478,6 +499,11 @@ defmodule EveDmv.Intelligence.WandererClient do
     end)
   end
 
+  defp parse_connections_data(connections_data) do
+    Logger.warning("Unexpected connections data format: #{inspect(connections_data)}")
+    []
+  end
+
   defp connect_sse_for_map(map_id, auth_token) do
     # Start SSE connection process for a specific map
     parent_pid = self()
@@ -488,15 +514,18 @@ defmodule EveDmv.Intelligence.WandererClient do
       end)
 
     {:ok, sse_pid}
+  rescue
+    error ->
+      Logger.error("Failed to spawn SSE process for map #{map_id}: #{inspect(error)}")
+      {:error, error}
   end
 
   defp sse_loop(parent_pid, map_id, auth_token) do
     url = sse_url(map_id)
-    headers = build_headers(auth_token)
 
-    # Add SSE-specific headers
+    # Build headers with SSE-specific headers
     headers =
-      headers ++
+      build_headers(auth_token) ++
         [
           {"Accept", "text/event-stream"},
           {"Cache-Control", "no-cache"}
@@ -522,21 +551,28 @@ defmodule EveDmv.Intelligence.WandererClient do
     receive do
       %HTTPoison.AsyncStatus{code: code} ->
         if code == 200 do
-          HTTPoison.stream_next(self())
-          sse_receive_loop(parent_pid, map_id)
+          case HTTPoison.stream_next(self()) do
+            {:ok, _} -> sse_receive_loop(parent_pid, map_id)
+            {:error, reason} -> send(parent_pid, {:sse_closed, map_id, {:stream_error, reason}})
+          end
         else
           Logger.error("SSE connection failed with status: #{code} for map #{map_id}")
           send(parent_pid, {:sse_closed, map_id, {:http_error, code}})
         end
 
       %HTTPoison.AsyncHeaders{headers: _headers} ->
-        HTTPoison.stream_next(self())
-        sse_receive_loop(parent_pid, map_id)
+        case HTTPoison.stream_next(self()) do
+          {:ok, _} -> sse_receive_loop(parent_pid, map_id)
+          {:error, reason} -> send(parent_pid, {:sse_closed, map_id, {:stream_error, reason}})
+        end
 
       %HTTPoison.AsyncChunk{chunk: chunk} ->
         process_sse_chunk(chunk, parent_pid, map_id)
-        HTTPoison.stream_next(self())
-        sse_receive_loop(parent_pid, map_id)
+
+        case HTTPoison.stream_next(self()) do
+          {:ok, _} -> sse_receive_loop(parent_pid, map_id)
+          {:error, reason} -> send(parent_pid, {:sse_closed, map_id, {:stream_error, reason}})
+        end
 
       %HTTPoison.AsyncEnd{} ->
         Logger.info("SSE stream ended for map #{map_id}")

@@ -8,7 +8,7 @@ defmodule EveDmv.Analytics.PlayerStats do
   """
 
   use Ash.Resource,
-    domain: EveDmv.Api,
+    domain: EveDmv.Api.AnalyticsApi,
     data_layer: AshPostgres.DataLayer
 
   alias EveDmv.Analytics.PerformanceCalculator

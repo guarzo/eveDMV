@@ -6,7 +6,7 @@ defmodule EveDmvWeb.SurveillanceLive.NotificationService do
   notifications with proper error handling.
   """
 
-  alias EveDmv.Api
+  alias EveDmv.Api.SurveillanceApi
   alias EveDmv.Surveillance.Notification
   alias EveDmv.Surveillance.NotificationService
 
@@ -50,7 +50,7 @@ defmodule EveDmvWeb.SurveillanceLive.NotificationService do
     case Ash.read(Notification,
            action: :unread_for_user,
            input: %{user_id: user_id},
-           domain: Api,
+           domain: SurveillanceApi,
            actor: current_user
          ) do
       {:ok, notifications} ->
@@ -59,7 +59,7 @@ defmodule EveDmvWeb.SurveillanceLive.NotificationService do
         final_results =
           Enum.reduce(notifications, results, fn notification, acc ->
             case Ash.update(notification, %{read_at: DateTime.utc_now()},
-                   domain: Api,
+                   domain: SurveillanceApi,
                    actor: current_user
                  ) do
               {:ok, _} ->

@@ -27,10 +27,13 @@ defmodule Mix.Tasks.Eve.ImportHistoricalKillmails do
     * `--skip-validation` - Skip data validation (faster but riskier)
   """
 
-  use Mix.Task
-  require Logger
-
   @shortdoc "Import historical killmail data from JSON archives"
+
+  use Mix.Task
+
+  alias EveDmv.Historical.KillmailImporter
+
+  require Logger
 
   @default_batch_size 500
   @archive_pattern "/workspace/tmp/*.json"
@@ -179,34 +182,7 @@ defmodule Mix.Tasks.Eve.ImportHistoricalKillmails do
   end
 
   defp validate_killmail_structure(killmail) do
-    required_fields = [
-      "killmail_id",
-      "killmail_time",
-      "solar_system_id",
-      "hash",
-      "victim",
-      "Attackers"
-    ]
-
-    for field <- required_fields do
-      unless Map.has_key?(killmail, field) do
-        raise "Missing required field: #{field}"
-      end
-    end
-
-    victim = killmail["victim"]
-    # alliance_id is optional (value 0 means no alliance)
-    required_victim_fields = ["character_id", "corporation_id", "ship_type_id"]
-
-    for field <- required_victim_fields do
-      unless Map.has_key?(victim, field) do
-        raise "Missing victim field: #{field}"
-      end
-    end
-
-    unless is_list(killmail["Attackers"]) do
-      raise "Attackers must be array"
-    end
+    KillmailImporter.validate_killmail_structure(killmail)
   end
 
   defp import_file(file_path, batch_size, dry_run) do
@@ -252,200 +228,7 @@ defmodule Mix.Tasks.Eve.ImportHistoricalKillmails do
   end
 
   defp import_batch(killmails) do
-    try do
-      transformed_killmails = Enum.map(killmails, &transform_killmail/1)
-
-      # Use Ash.bulk_create with upsert for safe import
-      case Ash.bulk_create(
-             transformed_killmails,
-             EveDmv.Killmails.KillmailRaw,
-             :ingest_from_source,
-             return_records?: true,
-             return_errors?: true,
-             stop_on_error?: false
-           ) do
-        %Ash.BulkResult{status: :success, records: records} ->
-          {:ok, length(records)}
-
-        %Ash.BulkResult{status: :partial_success} = result ->
-          success_count = length(result.records || [])
-          error_count = length(result.errors || [])
-          Logger.warning("Partial success: imported #{success_count}, failed #{error_count}")
-
-          # Categorize errors
-          duplicate_errors =
-            Enum.count(result.errors, fn error ->
-              error_msg = inspect(error)
-
-              String.contains?(error_msg, "killmail_id") and
-                (String.contains?(error_msg, "already exists") or
-                   String.contains?(error_msg, "unique constraint") or
-                   String.contains?(error_msg, "duplicate key"))
-            end)
-
-          other_errors = error_count - duplicate_errors
-
-          if duplicate_errors > 0 do
-            Logger.info("Skipped #{duplicate_errors} duplicate killmails")
-          end
-
-          if other_errors > 0 do
-            Logger.warning("#{other_errors} non-duplicate errors occurred")
-            # Log first few non-duplicate errors for debugging
-            result.errors
-            |> Enum.reject(fn error ->
-              error_msg = inspect(error)
-
-              String.contains?(error_msg, "killmail_id") and
-                (String.contains?(error_msg, "already exists") or
-                   String.contains?(error_msg, "unique constraint") or
-                   String.contains?(error_msg, "duplicate key"))
-            end)
-            |> Enum.take(3)
-            |> Enum.each(fn error ->
-              Logger.error("Import error: #{inspect(error)}")
-            end)
-          end
-
-          {:ok, success_count}
-
-        %Ash.BulkResult{status: :error, errors: errors} ->
-          error_count = length(errors)
-
-          # Categorize errors
-          duplicate_errors =
-            Enum.count(errors, fn error ->
-              error_msg = inspect(error)
-
-              String.contains?(error_msg, "killmail_id") and
-                (String.contains?(error_msg, "already exists") or
-                   String.contains?(error_msg, "unique constraint") or
-                   String.contains?(error_msg, "duplicate key"))
-            end)
-
-          other_errors = error_count - duplicate_errors
-
-          if duplicate_errors == error_count do
-            # All errors are duplicates - this is actually success
-            Logger.info("All #{duplicate_errors} records were duplicates, skipping batch")
-            {:ok, 0}
-          else
-            if duplicate_errors > 0 do
-              Logger.info("Skipped #{duplicate_errors} duplicate killmails")
-            end
-
-            if other_errors > 0 do
-              # Log first few non-duplicate errors for debugging
-              errors
-              |> Enum.reject(fn error ->
-                error_msg = inspect(error)
-
-                String.contains?(error_msg, "killmail_id") and
-                  (String.contains?(error_msg, "already exists") or
-                     String.contains?(error_msg, "unique constraint") or
-                     String.contains?(error_msg, "duplicate key"))
-              end)
-              |> Enum.take(3)
-              |> Enum.each(fn error ->
-                Logger.error("Import error: #{inspect(error)}")
-              end)
-            end
-
-            {:error, "#{other_errors} non-duplicate records failed to import"}
-          end
-      end
-    rescue
-      error -> {:error, Exception.message(error)}
-    end
-  end
-
-  defp transform_killmail(archive_data) do
-    hash = get_or_generate_hash(archive_data)
-
-    # Debug logging
-    if is_nil(hash) or hash == "" do
-      Logger.error("Hash is nil or empty for killmail #{archive_data["killmail_id"]}")
-      Logger.error("Archive data keys: #{inspect(Map.keys(archive_data))}")
-      Logger.error("Hash field value: #{inspect(archive_data["hash"])}")
-    end
-
-    %{
-      killmail_id: archive_data["killmail_id"],
-      killmail_hash: hash,
-      killmail_time: parse_datetime(archive_data["killmail_time"]),
-      solar_system_id: archive_data["solar_system_id"],
-      victim_character_id: normalize_id(archive_data["victim"]["character_id"]),
-      victim_corporation_id: normalize_id(archive_data["victim"]["corporation_id"]),
-      victim_alliance_id: normalize_id(Map.get(archive_data["victim"], "alliance_id", 0)),
-      victim_ship_type_id: archive_data["victim"]["ship_type_id"],
-      attacker_count: length(archive_data["Attackers"]),
-      raw_data: archive_data,
-      source: "historical_archive"
-    }
-  end
-
-  defp parse_datetime(datetime_string) do
-    case DateTime.from_iso8601(datetime_string) do
-      {:ok, datetime, _} -> datetime
-      _ -> raise "Invalid datetime: #{datetime_string}"
-    end
-  end
-
-  # Convert 0 to nil for optional fields
-  defp normalize_id(0), do: nil
-  defp normalize_id(id) when is_integer(id), do: id
-  defp normalize_id(nil), do: nil
-
-  # Get hash from killmail data or generate one if missing
-  defp get_or_generate_hash(archive_data) do
-    case archive_data["hash"] do
-      nil ->
-        # Generate a hash from killmail ID and time
-        id = archive_data["killmail_id"]
-        timestamp = archive_data["killmail_time"]
-
-        if is_nil(id) or is_nil(timestamp) do
-          raise "Cannot generate hash: killmail_id or killmail_time is nil"
-        end
-
-        # Generate hash from killmail ID and timestamp
-        hash_data = "#{id}-#{timestamp}"
-        hash = :crypto.hash(:sha256, hash_data)
-        Base.encode16(hash, case: :lower)
-
-      "" ->
-        # Empty string hash - generate one
-        id = archive_data["killmail_id"]
-        timestamp = archive_data["killmail_time"]
-
-        if is_nil(id) or is_nil(timestamp) do
-          raise "Cannot generate hash: killmail_id or killmail_time is nil"
-        end
-
-        # Generate hash from killmail ID and timestamp
-        hash_data = "#{id}-#{timestamp}"
-        hash = :crypto.hash(:sha256, hash_data)
-        Base.encode16(hash, case: :lower)
-
-      hash when is_binary(hash) ->
-        # Valid hash exists
-        hash
-
-      _ ->
-        # Invalid hash type - generate one
-        Logger.warning("Invalid hash type: #{inspect(archive_data["hash"])}, generating new hash")
-        id = archive_data["killmail_id"]
-        timestamp = archive_data["killmail_time"]
-
-        if is_nil(id) or is_nil(timestamp) do
-          raise "Cannot generate hash: killmail_id or killmail_time is nil"
-        end
-
-        # Generate hash from killmail ID and timestamp
-        hash_data = "#{id}-#{timestamp}"
-        hash = :crypto.hash(:sha256, hash_data)
-        Base.encode16(hash, case: :lower)
-    end
+    KillmailImporter.import_batch(killmails)
   end
 
   defp obscure_url(url) do
@@ -455,11 +238,11 @@ defmodule Mix.Tasks.Eve.ImportHistoricalKillmails do
   end
 
   defp confirm(message) do
-    IO.puts(message <> " [y/N]")
+    Mix.shell().info(message <> " [y/N]")
 
-    case IO.read(:stdio, :line) do
-      "y\n" -> true
-      "Y\n" -> true
+    case Mix.shell().prompt("") do
+      "y" -> true
+      "Y" -> true
       _ -> false
     end
   end

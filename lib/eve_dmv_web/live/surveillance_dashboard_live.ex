@@ -22,8 +22,8 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
+    # Subscribe to real-time surveillance updates when connected
     if connected?(socket) do
-      # Subscribe to real-time surveillance updates
       Phoenix.PubSub.subscribe(EveDmv.PubSub, "surveillance:metrics")
       Phoenix.PubSub.subscribe(EveDmv.PubSub, "surveillance:alerts")
     end

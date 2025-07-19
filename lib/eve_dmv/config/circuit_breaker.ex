@@ -47,7 +47,7 @@ defmodule EveDmv.Config.CircuitBreaker do
   @doc """
   Get request timeout in milliseconds.
 
-  Environment: EVE_DMV_CIRCUIT_BREAKER_TIMEOUT_MS (default: 10000)
+  Environment: EVE_DMV_CIRCUIT_BREAKER_TIMEOUT_MS (default: 10_000)
   """
   @spec timeout() :: pos_integer()
   def timeout do

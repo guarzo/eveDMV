@@ -103,7 +103,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.AcquisitionPlanner do
   Find alternative ships for a given role.
   """
   def find_alternative_ships(ship_name, role) do
-    # Use ShipDatabase to find alternative ships for the same role
+    # Use StaticData to find alternative ships for the same role
     case role do
       "logistics" ->
         ["Guardian", "Scimitar", "Osprey", "Exequror"]

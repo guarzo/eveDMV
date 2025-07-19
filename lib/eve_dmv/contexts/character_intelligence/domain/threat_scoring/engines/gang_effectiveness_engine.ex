@@ -7,6 +7,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
   """
 
   require Logger
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
 
   @doc """
   Calculate gang effectiveness score based on combat data.
@@ -185,40 +186,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
   end
 
   defp extract_character_ship_roles(killmails) do
-    killmails
-    |> Enum.flat_map(fn km ->
-      # Extract ship types used by the character
-      victim_ships = if km.victim_character_id, do: [km.victim_ship_type_id], else: []
-
-      attacker_ships =
-        case km.raw_data do
-          %{"attackers" => attackers} when is_list(attackers) ->
-            attackers
-            |> Enum.filter(&(&1["character_id"] != nil))
-            |> Enum.map(& &1["ship_type_id"])
-            |> Enum.filter(&(&1 != nil))
-
-          _ ->
-            []
-        end
-
-      victim_ships ++ attacker_ships
-    end)
-    |> Enum.filter(&(&1 != nil))
-    |> Enum.map(&classify_ship_role/1)
-    |> Enum.frequencies()
+    SharedUtilities.extract_character_ship_roles(killmails)
   end
 
   defp classify_ship_role(ship_type_id) do
-    cond do
-      ship_type_id in [11_978, 11_987, 11_985, 12_003] -> :logistics
-      ship_type_id in [11_957, 11_958, 11_959, 11_961] -> :ewar
-      ship_type_id in [22_470, 22_852, 17_918, 17_920] -> :command
-      ship_type_id in 580..700 -> :tackle
-      ship_type_id in 620..670 -> :dps
-      ship_type_id in 19_720..19_740 -> :capital
-      true -> :other
-    end
+    SharedUtilities.classify_ship_role(ship_type_id)
   end
 
   defp calculate_role_consistency(ship_roles) do
@@ -413,22 +385,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
   end
 
   defp estimate_ship_value(ship_type_id) do
-    cond do
-      # Frigates
-      ship_type_id in 580..700 -> 5_000_000
-      # Destroyers  
-      ship_type_id in 420..450 -> 15_000_000
-      # Cruisers
-      ship_type_id in 620..650 -> 50_000_000
-      # Battlecruisers
-      ship_type_id in 540..570 -> 150_000_000
-      # Battleships
-      ship_type_id in 640..670 -> 300_000_000
-      # Capitals
-      ship_type_id in 19_720..19_740 -> 2_000_000_000
-      # Default
-      true -> 25_000_000
-    end
+    SharedUtilities.estimate_ship_value(ship_type_id)
   end
 
   defp extract_gang_sizes(killmails) do
@@ -566,15 +523,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
   end
 
   defp classify_ship_class(ship_type_id) do
-    cond do
-      ship_type_id in 580..700 -> :frigate
-      ship_type_id in 420..450 -> :destroyer
-      ship_type_id in 620..650 -> :cruiser
-      ship_type_id in 540..570 -> :battlecruiser
-      ship_type_id in 640..670 -> :battleship
-      ship_type_id in 19_720..19_740 -> :capital
-      true -> :other
-    end
+    SharedUtilities.classify_ship_type(ship_type_id)
   end
 
   defp analyze_gang_composition_quality(killmails) do
@@ -809,6 +758,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
   end
 
   defp normalize_to_10_scale(score) do
-    min(10.0, max(0.0, score * 10))
+    SharedUtilities.normalize_to_10_scale(score)
   end
 end

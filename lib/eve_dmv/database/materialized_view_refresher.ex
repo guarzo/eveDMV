@@ -22,7 +22,7 @@ defmodule EveDmv.Database.MaterializedViewRefresher do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
-  @impl true
+  @impl GenServer
   def init(_) do
     # Schedule first refresh after 1 minute to allow system to start up
     Process.send_after(self(), :refresh_views, :timer.minutes(1))
@@ -38,7 +38,7 @@ defmodule EveDmv.Database.MaterializedViewRefresher do
      }}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:refresh_views, %{enabled: false} = state) do
     # Skip refresh if disabled
     schedule_next_refresh()
@@ -83,7 +83,7 @@ defmodule EveDmv.Database.MaterializedViewRefresher do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_status, _from, state) do
     status = %{
       last_refresh: state.last_refresh,
@@ -96,7 +96,7 @@ defmodule EveDmv.Database.MaterializedViewRefresher do
     {:reply, {:ok, status}, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:force_refresh, _from, state) do
     Logger.info("🔄 Force refresh requested for materialized views")
 
@@ -110,7 +110,7 @@ defmodule EveDmv.Database.MaterializedViewRefresher do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:enable, enabled}, _from, state) do
     Logger.info("📊 Materialized view refresh #{if enabled, do: "enabled", else: "disabled"}")
     {:reply, :ok, %{state | enabled: enabled}}

@@ -10,10 +10,11 @@ defmodule EveDmv.Intelligence.EventPublisher do
   """
 
   use GenServer
-  require Logger
 
   alias EveDmv.Infrastructure.EventBus
   alias EveDmv.Intelligence.Events
+
+  require Logger
 
   # Publishing configuration
   # Publish batched events every 1 second
@@ -218,7 +219,7 @@ defmodule EveDmv.Intelligence.EventPublisher do
   end
 
   defp generate_alert_id do
-    "alert_#{:erlang.unique_integer([:positive])}_#{DateTime.utc_now() |> DateTime.to_unix()}"
+    "alert_#{:erlang.unique_integer([:positive])}_#{DateTime.to_unix(DateTime.utc_now())}"
   end
 
   # GenServer implementation
@@ -271,7 +272,10 @@ defmodule EveDmv.Intelligence.EventPublisher do
 
   @impl GenServer
   def handle_info(:publish_batch, state) do
-    if not Enum.empty?(state.pending_events) do
+    if Enum.empty?(state.pending_events) do
+      schedule_batch_publish()
+      {:noreply, state}
+    else
       publish_batch(state.pending_events)
 
       new_stats = %{
@@ -282,9 +286,6 @@ defmodule EveDmv.Intelligence.EventPublisher do
 
       schedule_batch_publish()
       {:noreply, %{state | pending_events: [], stats: new_stats}}
-    else
-      schedule_batch_publish()
-      {:noreply, state}
     end
   end
 

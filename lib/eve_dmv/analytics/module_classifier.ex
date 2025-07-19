@@ -24,8 +24,6 @@ defmodule EveDmv.Analytics.ModuleClassifier do
   - Overall fitting coherence
   """
 
-  alias EveDmv.Intelligence.ShipDatabase
-
   @type role :: :tackle | :logistics | :ewar | :dps | :command | :support
   @type confidence :: float()
   @type module_classification :: %{
@@ -99,8 +97,8 @@ defmodule EveDmv.Analytics.ModuleClassifier do
       analysis_metadata: %{
         module_count: length(victim_items),
         ship_type_id: ship_type_id,
-        ship_class: ShipDatabase.get_ship_class(ship_type_id),
-        ship_category: ShipDatabase.get_ship_category(ship_type_id),
+        ship_class: EveDmv.StaticData.get_ship_class(ship_type_id),
+        ship_category: EveDmv.StaticData.get_ship_category(ship_type_id),
         analyzed_at: DateTime.utc_now()
       }
     }
@@ -174,15 +172,15 @@ defmodule EveDmv.Analytics.ModuleClassifier do
 
       cond do
         # DPS modules
-        is_weapon_module?(module_name) ->
+        weapon_module?(module_name) ->
           update_role_confidence(acc, :dps, 0.8)
 
         # Remote repair modules (logistics)
-        is_remote_repair_module?(module_name) ->
+        remote_repair_module?(module_name) ->
           update_role_confidence(acc, :logistics, 0.9)
 
         # Utility/support modules
-        is_utility_module?(module_name) ->
+        utility_module?(module_name) ->
           update_role_confidence(acc, :support, 0.4)
 
         true ->
@@ -197,23 +195,23 @@ defmodule EveDmv.Analytics.ModuleClassifier do
 
       cond do
         # Tackle modules
-        is_tackle_module?(module_name) ->
+        tackle_module?(module_name) ->
           update_role_confidence(acc, :tackle, 0.8)
 
         # EWAR modules
-        is_ewar_module?(module_name) ->
+        ewar_module?(module_name) ->
           update_role_confidence(acc, :ewar, 0.7)
 
         # Shield logistics
-        is_shield_logistics_module?(module_name) ->
+        shield_logistics_module?(module_name) ->
           update_role_confidence(acc, :logistics, 0.8)
 
         # Command modules
-        is_command_module?(module_name) ->
+        command_module?(module_name) ->
           update_role_confidence(acc, :command, 0.6)
 
         # Support modules
-        is_support_module?(module_name) ->
+        support_module?(module_name) ->
           update_role_confidence(acc, :support, 0.3)
 
         true ->
@@ -228,15 +226,15 @@ defmodule EveDmv.Analytics.ModuleClassifier do
 
       cond do
         # DPS enhancement modules
-        is_damage_module?(module_name) ->
+        damage_module?(module_name) ->
           update_role_confidence(acc, :dps, 0.6)
 
         # Armor logistics
-        is_armor_logistics_module?(module_name) ->
+        armor_logistics_module?(module_name) ->
           update_role_confidence(acc, :logistics, 0.8)
 
         # Support/tank modules
-        is_tank_module?(module_name) ->
+        tank_module?(module_name) ->
           update_role_confidence(acc, :support, 0.2)
 
         true ->
@@ -251,15 +249,15 @@ defmodule EveDmv.Analytics.ModuleClassifier do
 
       cond do
         # DPS enhancement rigs
-        is_dps_rig?(module_name) ->
+        dps_rig?(module_name) ->
           update_role_confidence(acc, :dps, 0.3)
 
         # Tank/support rigs
-        is_tank_rig?(module_name) ->
+        tank_rig?(module_name) ->
           update_role_confidence(acc, :support, 0.2)
 
         # Logistics rigs
-        is_logistics_rig?(module_name) ->
+        logistics_rig?(module_name) ->
           update_role_confidence(acc, :logistics, 0.4)
 
         true ->
@@ -270,7 +268,7 @@ defmodule EveDmv.Analytics.ModuleClassifier do
 
   # Module pattern matching functions
 
-  defp is_weapon_module?(module_name) do
+  defp weapon_module?(module_name) do
     weapon_patterns = [
       "launcher",
       "turret",
@@ -293,7 +291,7 @@ defmodule EveDmv.Analytics.ModuleClassifier do
     Enum.any?(weapon_patterns, &String.contains?(module_name, &1))
   end
 
-  defp is_remote_repair_module?(module_name) do
+  defp remote_repair_module?(module_name) do
     remote_repair_patterns = [
       "remote armor repairer",
       "remote shield booster",
@@ -306,7 +304,7 @@ defmodule EveDmv.Analytics.ModuleClassifier do
     Enum.any?(remote_repair_patterns, &String.contains?(module_name, &1))
   end
 
-  defp is_tackle_module?(module_name) do
+  defp tackle_module?(module_name) do
     tackle_patterns = [
       "warp scrambler",
       "warp disruptor",
@@ -321,7 +319,7 @@ defmodule EveDmv.Analytics.ModuleClassifier do
     Enum.any?(tackle_patterns, &String.contains?(module_name, &1))
   end
 
-  defp is_ewar_module?(module_name) do
+  defp ewar_module?(module_name) do
     ewar_patterns = [
       "ecm",
       "sensor dampener",
@@ -337,7 +335,7 @@ defmodule EveDmv.Analytics.ModuleClassifier do
     Enum.any?(ewar_patterns, &String.contains?(module_name, &1))
   end
 
-  defp is_shield_logistics_module?(module_name) do
+  defp shield_logistics_module?(module_name) do
     shield_logi_patterns = [
       "large shield transporter",
       "medium shield transporter",
@@ -348,7 +346,7 @@ defmodule EveDmv.Analytics.ModuleClassifier do
     Enum.any?(shield_logi_patterns, &String.contains?(module_name, &1))
   end
 
-  defp is_armor_logistics_module?(module_name) do
+  defp armor_logistics_module?(module_name) do
     armor_logi_patterns = [
       "large armor repairer",
       "medium armor repairer",
@@ -359,7 +357,7 @@ defmodule EveDmv.Analytics.ModuleClassifier do
     Enum.any?(armor_logi_patterns, &String.contains?(module_name, &1))
   end
 
-  defp is_command_module?(module_name) do
+  defp command_module?(module_name) do
     command_patterns = [
       "command burst",
       "warfare link",
@@ -371,7 +369,7 @@ defmodule EveDmv.Analytics.ModuleClassifier do
     Enum.any?(command_patterns, &String.contains?(module_name, &1))
   end
 
-  defp is_damage_module?(module_name) do
+  defp damage_module?(module_name) do
     damage_patterns = [
       "gyrostabilizer",
       "heat sink",
@@ -386,7 +384,7 @@ defmodule EveDmv.Analytics.ModuleClassifier do
     Enum.any?(damage_patterns, &String.contains?(module_name, &1))
   end
 
-  defp is_utility_module?(module_name) do
+  defp utility_module?(module_name) do
     utility_patterns = [
       "probe launcher",
       "cynosural field",
@@ -399,7 +397,7 @@ defmodule EveDmv.Analytics.ModuleClassifier do
     Enum.any?(utility_patterns, &String.contains?(module_name, &1))
   end
 
-  defp is_support_module?(module_name) do
+  defp support_module?(module_name) do
     support_patterns = [
       "afterburner",
       "microwarpdrive",
@@ -413,7 +411,7 @@ defmodule EveDmv.Analytics.ModuleClassifier do
     Enum.any?(support_patterns, &String.contains?(module_name, &1))
   end
 
-  defp is_tank_module?(module_name) do
+  defp tank_module?(module_name) do
     tank_patterns = [
       "armor plate",
       "shield extender",
@@ -428,7 +426,7 @@ defmodule EveDmv.Analytics.ModuleClassifier do
     Enum.any?(tank_patterns, &String.contains?(module_name, &1))
   end
 
-  defp is_dps_rig?(module_name) do
+  defp dps_rig?(module_name) do
     dps_rig_patterns = [
       "burst aerator",
       "collision accelerator",
@@ -441,7 +439,7 @@ defmodule EveDmv.Analytics.ModuleClassifier do
     Enum.any?(dps_rig_patterns, &String.contains?(module_name, &1))
   end
 
-  defp is_tank_rig?(module_name) do
+  defp tank_rig?(module_name) do
     tank_rig_patterns = [
       "trimark",
       "core defense",
@@ -456,7 +454,7 @@ defmodule EveDmv.Analytics.ModuleClassifier do
     Enum.any?(tank_rig_patterns, &String.contains?(module_name, &1))
   end
 
-  defp is_logistics_rig?(module_name) do
+  defp logistics_rig?(module_name) do
     logistics_rig_patterns = [
       "repair",
       "remote",
@@ -477,8 +475,8 @@ defmodule EveDmv.Analytics.ModuleClassifier do
   end
 
   defp apply_ship_class_adjustments(classification, ship_type_id) do
-    ship_class = ShipDatabase.get_ship_class(ship_type_id)
-    ship_category = ShipDatabase.get_ship_category(ship_type_id)
+    ship_class = EveDmv.StaticData.get_ship_class(ship_type_id)
+    ship_category = EveDmv.StaticData.get_ship_category(ship_type_id)
 
     case {ship_class, ship_category} do
       {:logistics, _} ->
@@ -544,11 +542,11 @@ defmodule EveDmv.Analytics.ModuleClassifier do
           )
 
         cond do
-          is_weapon_module?(module_name) -> Map.update!(acc, :weapons, &(&1 + 1))
-          is_tank_module?(module_name) -> Map.update!(acc, :tank, &(&1 + 1))
-          is_ewar_module?(module_name) -> Map.update!(acc, :ewar, &(&1 + 1))
-          is_tackle_module?(module_name) -> Map.update!(acc, :tackle, &(&1 + 1))
-          is_remote_repair_module?(module_name) -> Map.update!(acc, :logistics, &(&1 + 1))
+          weapon_module?(module_name) -> Map.update!(acc, :weapons, &(&1 + 1))
+          tank_module?(module_name) -> Map.update!(acc, :tank, &(&1 + 1))
+          ewar_module?(module_name) -> Map.update!(acc, :ewar, &(&1 + 1))
+          tackle_module?(module_name) -> Map.update!(acc, :tackle, &(&1 + 1))
+          remote_repair_module?(module_name) -> Map.update!(acc, :logistics, &(&1 + 1))
           true -> Map.update!(acc, :support, &(&1 + 1))
         end
       end
@@ -556,8 +554,8 @@ defmodule EveDmv.Analytics.ModuleClassifier do
   end
 
   defp calculate_ship_appropriateness(role_scores, ship_type_id) do
-    ship_class = ShipDatabase.get_ship_class(ship_type_id)
-    ship_category = ShipDatabase.get_ship_category(ship_type_id)
+    ship_class = EveDmv.StaticData.get_ship_class(ship_type_id)
+    ship_category = EveDmv.StaticData.get_ship_category(ship_type_id)
     primary_role = determine_primary_role(role_scores)
 
     # Calculate how appropriate the ship is for its detected role

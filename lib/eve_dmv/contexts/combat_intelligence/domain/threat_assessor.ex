@@ -77,11 +77,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ThreatAssessor do
   def handle_call({:assess_threat, character_id, context}, _from, state) do
     result = perform_threat_assessment(character_id, context)
 
-    new_state =
-      case result do
-        {:ok, _} -> %{state | assessment_count: state.assessment_count + 1}
-        {:error, _} -> state
-      end
+    new_state = %{state | assessment_count: state.assessment_count + 1}
 
     {:reply, result, new_state}
   end
@@ -137,8 +133,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ThreatAssessor do
 
         {:ok, assessment}
 
-      {:error, reason} ->
-        {:error, reason}
+      {:ok, cached} ->
+        # For non-general contexts, use cached data even if context differs
+        {:ok, cached}
     end
   end
 

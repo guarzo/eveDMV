@@ -72,7 +72,7 @@ defmodule EveDmv.Monitoring.MissingDataTracker do
 
   # Server callbacks
 
-  @impl true
+  @impl GenServer
   def init(_opts) do
     # Create ETS table for fast concurrent reads
     :ets.new(@table_name, [:named_table, :set, :public, read_concurrency: true])
@@ -91,7 +91,7 @@ defmodule EveDmv.Monitoring.MissingDataTracker do
     {:ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast({:track_missing_ship_type, ship_type_id, metadata}, state) do
     now = DateTime.utc_now()
 
@@ -151,25 +151,27 @@ defmodule EveDmv.Monitoring.MissingDataTracker do
     {:noreply, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_missing_ship_types, _from, state) do
     missing_types =
-      :ets.tab2list(@table_name)
+      @table_name
+      |> :ets.tab2list()
       |> Enum.map(fn {_id, data} -> data end)
       |> Enum.sort_by(& &1.occurrence_count, :desc)
 
     {:reply, missing_types, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_missing_ship_types_count, _from, state) do
     {:reply, state.unique_missing_types, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:get_top_missing_ship_types, limit}, _from, state) do
     top_types =
-      :ets.tab2list(@table_name)
+      @table_name
+      |> :ets.tab2list()
       |> Enum.map(fn {_id, data} -> data end)
       |> Enum.sort_by(& &1.occurrence_count, :desc)
       |> Enum.take(limit)
@@ -177,7 +179,7 @@ defmodule EveDmv.Monitoring.MissingDataTracker do
     {:reply, top_types, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:clear_all, _from, _state) do
     :ets.delete_all_objects(@table_name)
 
@@ -189,7 +191,7 @@ defmodule EveDmv.Monitoring.MissingDataTracker do
     {:reply, :ok, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:cleanup, state) do
     # Limit table size to prevent unbounded growth
     size = :ets.info(@table_name, :size)
@@ -197,7 +199,8 @@ defmodule EveDmv.Monitoring.MissingDataTracker do
     if size > @max_entries do
       # Remove least frequent entries
       entries =
-        :ets.tab2list(@table_name)
+        @table_name
+        |> :ets.tab2list()
         |> Enum.map(fn {id, data} -> {id, data} end)
         |> Enum.sort_by(fn {_id, data} -> data.occurrence_count end)
 

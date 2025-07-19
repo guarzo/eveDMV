@@ -3,8 +3,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   Correlator for intelligence data across multiple systems.
   """
 
-  alias EveDmv.Repo
   import Ecto.Query
+
+  alias EveDmv.Repo
   require Logger
 
   # Correlation weight constants
@@ -195,12 +196,124 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
         reliability_score: Float.round(reliability_score, 2),
         quality_breakdown: build_quality_breakdown(quality_metrics),
         recommendations:
-          generate_quality_recommendations(overall_quality, data_freshness, coverage_completeness)
+          build_recommendations(overall_quality, data_freshness, coverage_completeness)
       }
     end
   end
 
   # Helper functions
+
+  defp calculate_system_quality_score({_system, data}) do
+    density = Map.get(data, :data_density, 0)
+    temporal = Map.get(data, :temporal_coverage, 0)
+    (density + temporal) / 2
+  end
+
+  defp chunk_by_system_and_time(k) do
+    {k.solar_system_id, DateTime.truncate(k.killmail_time, :second)}
+  end
+
+  defp calculate_system_freshness_score({_system, metrics}) do
+    recent_activity = Map.get(metrics.hourly_metrics, 1, 0)
+    day_activity = Map.get(metrics.hourly_metrics, 24, 0)
+
+    if day_activity > 0 do
+      recent_ratio = recent_activity / day_activity
+      # Boost recent activity
+      min(1.0, recent_ratio * 2)
+    else
+      0.0
+    end
+  end
+
+  defp calculate_system_completeness_score({_system, metrics}) do
+    consistency = Map.get(metrics, :consistency, 0)
+
+    trend =
+      case Map.get(metrics, :coverage_trend) do
+        :improving -> 1.0
+        :stable -> 0.7
+        :degrading -> 0.4
+        _ -> 0.5
+      end
+
+    (consistency + trend) / 2
+  end
+
+  defp calculate_system_reliability_score({_system, metrics}) do
+    # Consistent data flow indicates reliability
+    consistency = Map.get(metrics, :consistency, 0)
+
+    # Multiple data points increase reliability
+    data_points =
+      metrics.hourly_metrics
+      |> Map.values()
+      |> Enum.sum()
+
+    point_score = min(1.0, data_points / 100)
+
+    consistency * 0.6 + point_score * 0.4
+  end
+
+  defp build_recommendations(overall_quality, freshness, completeness) do
+    base_recommendations = []
+
+    quality_rec =
+      if overall_quality < 0.5 do
+        ["Critical: Intelligence quality below acceptable threshold"]
+      else
+        []
+      end
+
+    freshness_rec =
+      if freshness < 0.3 do
+        ["Deploy scouts to gather fresh intelligence"]
+      else
+        []
+      end
+
+    completeness_rec =
+      if completeness < 0.4 do
+        ["Expand intelligence collection to cover gaps"]
+      else
+        []
+      end
+
+    all_recommendations = base_recommendations ++ quality_rec ++ freshness_rec ++ completeness_rec
+
+    if Enum.empty?(all_recommendations) do
+      ["Maintain current intelligence collection standards"]
+    else
+      all_recommendations
+    end
+  end
+
+  defp build_missing_data_types(result) do
+    base_missing = []
+
+    killmail_missing =
+      if Map.get(result, :kill_count, 0) == 0 do
+        [:killmail_data]
+      else
+        []
+      end
+
+    entity_missing =
+      if Map.get(result, :unique_entities, 0) < 5 do
+        [:entity_diversity]
+      else
+        []
+      end
+
+    ship_missing =
+      if Map.get(result, :data_types, 0) < 3 do
+        [:ship_variety]
+      else
+        []
+      end
+
+    base_missing ++ killmail_missing ++ entity_missing ++ ship_missing
+  end
 
   defp fetch_intelligence_coverage(system_ids) do
     # Fetch intelligence data coverage for systems
@@ -270,13 +383,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     if map_size(intel_coverage) == 0 do
       0.0
     else
-      quality_scores =
-        intel_coverage
-        |> Enum.map(fn {_system, data} ->
-          density = Map.get(data, :data_density, 0)
-          temporal = Map.get(data, :temporal_coverage, 0)
-          (density + temporal) / 2
-        end)
+      quality_scores = Enum.map(intel_coverage, &calculate_system_quality_score/1)
 
       avg_quality = Enum.sum(quality_scores) / length(quality_scores)
       Float.round(avg_quality, 2)
@@ -359,9 +466,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   defp analyze_fleet_intelligence(intel_data) do
     # Detect fleet operations from killmail patterns
     intel_data
-    |> Enum.chunk_by(fn k ->
-      {k.solar_system_id, k.killmail_time |> DateTime.truncate(:minute)}
-    end)
+    |> Enum.chunk_by(&chunk_by_system_and_time/1)
     |> Enum.filter(fn chunk -> length(chunk) > 3 end)
     |> Enum.map(fn chunk ->
       %{
@@ -380,7 +485,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   defp analyze_structure_intelligence(intel_data) do
     # Detect structure-related intelligence
     intel_data
-    |> Enum.filter(fn k -> k.victim_ship_type_id && k.victim_ship_type_id > 35000 end)
+    |> Enum.filter(fn k -> k.victim_ship_type_id && k.victim_ship_type_id > 35_000 end)
     |> Enum.group_by(& &1.solar_system_id)
     |> Enum.map(fn {system, kills} ->
       %{
@@ -466,7 +571,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       data_completeness: min(1.0, kill_count / 100),
       data_age_hours: data_age_hours,
       last_update: latest,
-      missing_types: identify_missing_data_types(result),
+      missing_types: build_missing_data_types(result),
       strategic_value: estimate_strategic_value(system_id)
     }
   rescue
@@ -685,20 +790,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     if map_size(quality_metrics) == 0 do
       0.0
     else
-      freshness_scores =
-        quality_metrics
-        |> Enum.map(fn {_system, metrics} ->
-          recent_activity = Map.get(metrics.hourly_metrics, 1, 0)
-          day_activity = Map.get(metrics.hourly_metrics, 24, 0)
-
-          if day_activity > 0 do
-            recent_ratio = recent_activity / day_activity
-            # Boost recent activity
-            min(1.0, recent_ratio * 2)
-          else
-            0.0
-          end
-        end)
+      freshness_scores = Enum.map(quality_metrics, &calculate_system_freshness_score/1)
 
       Enum.sum(freshness_scores) / length(freshness_scores)
     end
@@ -709,21 +801,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     if map_size(quality_metrics) == 0 do
       0.0
     else
-      completeness_scores =
-        quality_metrics
-        |> Enum.map(fn {_system, metrics} ->
-          consistency = Map.get(metrics, :consistency, 0)
-
-          trend =
-            case Map.get(metrics, :coverage_trend) do
-              :improving -> 1.0
-              :stable -> 0.7
-              :degrading -> 0.4
-              _ -> 0.5
-            end
-
-          (consistency + trend) / 2
-        end)
+      completeness_scores = Enum.map(quality_metrics, &calculate_system_completeness_score/1)
 
       Enum.sum(completeness_scores) / length(completeness_scores)
     end
@@ -734,22 +812,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     if map_size(quality_metrics) == 0 do
       0.0
     else
-      reliability_scores =
-        quality_metrics
-        |> Enum.map(fn {_system, metrics} ->
-          # Consistent data flow indicates reliability
-          consistency = Map.get(metrics, :consistency, 0)
-
-          # Multiple data points increase reliability
-          data_points =
-            metrics.hourly_metrics
-            |> Map.values()
-            |> Enum.sum()
-
-          point_score = min(1.0, data_points / 100)
-
-          consistency * 0.6 + point_score * 0.4
-        end)
+      reliability_scores = Enum.map(quality_metrics, &calculate_system_reliability_score/1)
 
       Enum.sum(reliability_scores) / length(reliability_scores)
     end
@@ -769,37 +832,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     |> Enum.sort_by(& &1.consistency, :desc)
   end
 
-  defp generate_quality_recommendations(overall_quality, freshness, completeness) do
-    recommendations = []
-
-    recommendations =
-      if overall_quality < 0.5 do
-        ["Critical: Intelligence quality below acceptable threshold" | recommendations]
-      else
-        recommendations
-      end
-
-    recommendations =
-      if freshness < 0.3 do
-        ["Deploy scouts to gather fresh intelligence" | recommendations]
-      else
-        recommendations
-      end
-
-    recommendations =
-      if completeness < 0.4 do
-        ["Expand intelligence collection to cover gaps" | recommendations]
-      else
-        recommendations
-      end
-
-    if Enum.empty?(recommendations) do
-      ["Maintain current intelligence collection standards"]
-    else
-      recommendations
-    end
-  end
-
   defp calculate_coverage_score(kill_count, data_age_hours) do
     # Calculate coverage score based on data volume and age
     volume_score = min(1.0, kill_count / 50)
@@ -808,74 +840,44 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     volume_score * 0.6 + freshness_score * 0.4
   end
 
-  defp identify_missing_data_types(result) do
-    # Identify what types of data are missing
-    missing = []
-
-    missing =
-      if Map.get(result, :kill_count, 0) == 0 do
-        [:killmail_data | missing]
-      else
-        missing
-      end
-
-    missing =
-      if Map.get(result, :unique_entities, 0) < 5 do
-        [:entity_diversity | missing]
-      else
-        missing
-      end
-
-    missing =
-      if Map.get(result, :data_types, 0) < 3 do
-        [:ship_variety | missing]
-      else
-        missing
-      end
-
-    missing
-  end
-
   defp estimate_strategic_value(system_id) do
     # Comprehensive strategic value calculation
-    try do
-      # 1. Get system security status
-      security_score = calculate_security_score(system_id)
+    # 1. Get system security status
+    security_score = calculate_security_score(system_id)
 
-      # 2. Calculate trade route proximity
-      trade_proximity_score = calculate_trade_proximity_score(system_id)
+    # 2. Calculate trade route proximity
+    trade_proximity_score = calculate_trade_proximity_score(system_id)
 
-      # 3. Assess structure presence (placeholder for now as structure data not available)
-      structure_score = estimate_structure_presence_score(system_id)
+    # 3. Assess structure presence (placeholder for now as structure data not available)
+    structure_score = estimate_structure_presence_score(system_id)
 
-      # 4. Recent activity levels
-      activity_score = calculate_activity_score(system_id)
+    # 4. Recent activity levels
+    activity_score = calculate_activity_score(system_id)
 
-      # 5. Alliance sovereignty importance (placeholder for now)
-      sovereignty_score = estimate_sovereignty_importance(system_id)
+    # 5. Alliance sovereignty importance (placeholder for now)
+    sovereignty_score = estimate_sovereignty_importance(system_id)
 
-      # 6. Wormhole connectivity (for J-space systems)
-      connectivity_score = calculate_connectivity_score(system_id)
+    # 6. Wormhole connectivity (for J-space systems)
+    connectivity_score = calculate_connectivity_score(system_id)
 
-      # Weighted combination of all factors
-      strategic_value =
-        security_score * 0.15 +
-          trade_proximity_score * 0.2 +
-          structure_score * 0.15 +
-          activity_score * 0.25 +
-          sovereignty_score * 0.15 +
-          connectivity_score * 0.1
+    # Weighted combination of all factors
+    strategic_value =
+      security_score * 0.15 +
+        trade_proximity_score * 0.2 +
+        structure_score * 0.15 +
+        activity_score * 0.25 +
+        sovereignty_score * 0.15 +
+        connectivity_score * 0.1
 
-      Float.round(strategic_value, 3)
-    rescue
-      error ->
-        Logger.warning(
-          "Failed to calculate strategic value for system #{system_id}: #{inspect(error)}"
-        )
+    Float.round(strategic_value, 3)
+  rescue
+    error ->
+      Logger.warning(
+        "Failed to calculate strategic value for system #{system_id}: #{inspect(error)}"
+      )
 
-        # Return medium value on error
-        0.5
-    end
+      # Return medium value on error
+      0.5
   end
 
   defp calculate_security_score(system_id) do
@@ -897,7 +899,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
         cond do
           # Null-sec - highest value
           security_status < 0.0 -> 1.0
-          # Low-sec - high value  
+          # Low-sec - high value
           security_status <= 0.4 -> 0.8
           # Mid-sec - medium value
           security_status <= 0.7 -> 0.4
@@ -953,8 +955,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
         where:
           k.solar_system_id == ^system_id and
             k.killmail_time >= ^start_time and
-            k.victim_ship_type_id > 40000 and
-            k.victim_ship_type_id < 50000,
+            k.victim_ship_type_id > 40_000 and
+            k.victim_ship_type_id < 50_000,
         select: count()
       )
 
@@ -1015,7 +1017,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
         select: count()
       )
 
-    active_alliances = Repo.all(query) |> length()
+    active_alliances = query |> Repo.all() |> length()
 
     cond do
       # Highly contested
@@ -1066,7 +1068,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       0.0
     else
       # Check if data flow is consistent across time windows
-      [h1, h6, h24, h72] = [1, 6, 24, 72] |> Enum.map(fn h -> Map.get(hourly_metrics, h, 0) end)
+      [h1, h6, h24, h72] = Enum.map([1, 6, 24, 72], &Map.get(hourly_metrics, &1, 0))
 
       # Expected ratios if data is consistent
       expected_6_1 = 6

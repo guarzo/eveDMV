@@ -7,6 +7,85 @@ defmodule EveDmv.Factories do
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Users.User
 
+  # Real EVE ship type IDs from static data
+  # Rifter, Punisher, Merlin, Incursus, etc.
+  @frigates [587, 588, 589, 590, 591, 592, 593, 594]
+  # Algos, Catalyst, Cormorant, Coercer
+  @destroyers [16219, 16227, 16236, 16242]
+  # Arbitrator, Augoror, Bellicose, etc.
+  @cruisers [620, 621, 622, 623, 624, 625, 626, 627]
+  # Abaddon, Apocalypse, Armageddon, Megathron, etc.
+  @battleships [638, 639, 640, 641, 642, 643, 644, 645]
+  # Ares, Crow, Malediction, Stiletto
+  @interceptors [11_985, 11_987, 11_989, 11_993]
+  # Enyo, Hawk, Jaguar, Retribution
+  @assault_frigates [22_442, 22_444, 22_446, 22_448]
+  # Legion, Loki, Proteus, Tengu
+  @strategic_cruisers [29_984, 29_986, 29_988, 29_990]
+  # Basilisk, Guardian, Augoror, Osprey
+  @logistics [11_978, 11_987, 625, 624]
+  # Sabre, Eris, Flycatcher, Heretic
+  @interdictors [22_456, 22_460, 22_464, 22_468]
+
+  # Ship name mappings for real EVE ships
+  @ship_names %{
+    587 => "Rifter",
+    588 => "Punisher",
+    589 => "Merlin",
+    590 => "Incursus",
+    591 => "Kestrel",
+    592 => "Imicus",
+    593 => "Heron",
+    594 => "Magnate",
+    620 => "Arbitrator",
+    621 => "Augoror",
+    622 => "Bellicose",
+    623 => "Celestis",
+    624 => "Osprey",
+    625 => "Exequror",
+    626 => "Rupture",
+    627 => "Thorax",
+    638 => "Abaddon",
+    639 => "Apocalypse",
+    640 => "Armageddon",
+    641 => "Megathron",
+    642 => "Rokh",
+    643 => "Scorpion",
+    644 => "Raven",
+    645 => "Hyperion",
+    11_985 => "Ares",
+    11_987 => "Crow",
+    11_989 => "Malediction",
+    11_993 => "Stiletto",
+    11_978 => "Basilisk",
+    625 => "Exequror",
+    624 => "Osprey",
+    22_456 => "Sabre",
+    22_460 => "Eris"
+  }
+
+  # Get a random ship by role
+  def random_ship_by_role(role) do
+    ship_ids =
+      case role do
+        :frigate -> @frigates
+        :destroyer -> @destroyers
+        :cruiser -> @cruisers
+        :battleship -> @battleships
+        :interceptor -> @interceptors
+        :assault_frigate -> @assault_frigates
+        :strategic_cruiser -> @strategic_cruisers
+        :logistics -> @logistics
+        :interdictor -> @interdictors
+        # default mix
+        _ -> @frigates ++ @cruisers
+      end
+
+    Enum.random(ship_ids)
+  end
+
+  def ship_name_for_id(ship_type_id), do: Map.get(@ship_names, ship_type_id, "Unknown Ship")
+
   def character_factory do
     %{
       eve_character_id: Enum.random(90_000_000..100_000_000),
@@ -55,7 +134,7 @@ defmodule EveDmv.Factories do
     victim_character_id = Enum.random(90_000_000..100_000_000)
     victim_corporation_id = Enum.random(1_000_000..2_000_000)
     victim_alliance_id = Enum.random(99_000_000..100_000_000)
-    victim_ship_type_id = Enum.random([587, 588, 589])
+    victim_ship_type_id = Enum.random(@frigates ++ @cruisers)
     attacker_count = Enum.random(1..10)
 
     # Build realistic killmail data with the victim information
@@ -153,8 +232,8 @@ defmodule EveDmv.Factories do
       corporation_name: "Test Corp #{System.unique_integer([:positive])}",
       alliance_id: Enum.random(99_000_000..100_000_000),
       alliance_name: "Test Alliance #{System.unique_integer([:positive])}",
-      ship_type_id: Enum.random([587, 588, 589, 622]),
-      ship_name: "Test Ship",
+      ship_type_id: random_ship_by_role(:cruiser),
+      ship_name: "Real EVE Ship",
       weapon_type_id: Enum.random([2185, 2873, 3074]),
       weapon_name: "Test Weapon",
       damage_done: Enum.random(100..10_000),
@@ -178,8 +257,8 @@ defmodule EveDmv.Factories do
         "character_id" => victim_character_id,
         "corporation_id" => Enum.random(1_000_000..2_000_000),
         "alliance_id" => Enum.random(99_000_000..100_000_000),
-        # Rifter, Rupture, Stabber
-        "ship_type_id" => Enum.random([587, 588, 589]),
+        # Real EVE ships from frigates and cruisers
+        "ship_type_id" => Enum.random(@frigates ++ @cruisers),
         "damage_taken" => Enum.random(1000..50_000),
         "items" => build_random_items()
       },
@@ -353,7 +432,7 @@ defmodule EveDmv.Factories do
   end
 
   def build_wormhole_killmail(character_id, wh_class \\ "C3") do
-    # J-space system IDs typically start with 31000000
+    # J-space system IDs typically start with 310_00000
     wh_system_id =
       case wh_class do
         "C1" -> Enum.random(31_000_000..31_001_000)

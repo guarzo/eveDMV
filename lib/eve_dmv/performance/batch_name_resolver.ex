@@ -155,31 +155,32 @@ defmodule EveDmv.Performance.BatchNameResolver do
     victim = Map.get(raw_data, "victim", %{})
 
     # Extract character name if present
-    names =
-      if victim["character_id"] && victim["character_name"] do
-        int_id = ensure_integer_id(victim["character_id"])
-        put_in(names, [:characters, int_id], victim["character_name"])
-      else
-        names
-      end
-
-    # Extract corporation name if present
-    names =
-      if victim["corporation_id"] && victim["corporation_name"] do
-        int_id = ensure_integer_id(victim["corporation_id"])
-        put_in(names, [:corporations, int_id], victim["corporation_name"])
-      else
-        names
-      end
-
-    # Extract alliance name if present
-    names =
-      if victim["alliance_id"] && victim["alliance_name"] do
-        int_id = ensure_integer_id(victim["alliance_id"])
-        put_in(names, [:alliances, int_id], victim["alliance_name"])
-      else
-        names
-      end
+    updated_names =
+      names
+      |> then(fn n ->
+        if victim["character_id"] && victim["character_name"] do
+          int_id = ensure_integer_id(victim["character_id"])
+          put_in(n, [:characters, int_id], victim["character_name"])
+        else
+          n
+        end
+      end)
+      |> then(fn n ->
+        if victim["corporation_id"] && victim["corporation_name"] do
+          int_id = ensure_integer_id(victim["corporation_id"])
+          put_in(n, [:corporations, int_id], victim["corporation_name"])
+        else
+          n
+        end
+      end)
+      |> then(fn n ->
+        if victim["alliance_id"] && victim["alliance_name"] do
+          int_id = ensure_integer_id(victim["alliance_id"])
+          put_in(n, [:alliances, int_id], victim["alliance_name"])
+        else
+          n
+        end
+      end)
 
     # Add IDs for missing names - ensure they are integers
     ids = %{
@@ -201,7 +202,7 @@ defmodule EveDmv.Performance.BatchNameResolver do
           )
     }
 
-    {names, ids}
+    {updated_names, ids}
   end
 
   defp extract_attackers_data(raw_data, names, ids) do
@@ -326,26 +327,29 @@ defmodule EveDmv.Performance.BatchNameResolver do
     victim = Map.get(event, :victim, %{})
 
     # For timeline events, names should already be present
-    names =
-      if victim[:character_id] && victim[:character_name] do
-        put_in(names, [:characters, victim.character_id], victim.character_name)
-      else
-        names
-      end
-
-    names =
-      if victim[:corporation_id] && victim[:corporation_name] do
-        put_in(names, [:corporations, victim.corporation_id], victim.corporation_name)
-      else
-        names
-      end
-
-    names =
-      if victim[:alliance_id] && victim[:alliance_name] do
-        put_in(names, [:alliances, victim.alliance_id], victim.alliance_name)
-      else
-        names
-      end
+    updated_names =
+      names
+      |> then(fn n ->
+        if victim[:character_id] && victim[:character_name] do
+          put_in(n, [:characters, victim.character_id], victim.character_name)
+        else
+          n
+        end
+      end)
+      |> then(fn n ->
+        if victim[:corporation_id] && victim[:corporation_name] do
+          put_in(n, [:corporations, victim.corporation_id], victim.corporation_name)
+        else
+          n
+        end
+      end)
+      |> then(fn n ->
+        if victim[:alliance_id] && victim[:alliance_name] do
+          put_in(n, [:alliances, victim.alliance_id], victim.alliance_name)
+        else
+          n
+        end
+      end)
 
     # Add IDs for any missing names
     ids = %{
@@ -372,7 +376,7 @@ defmodule EveDmv.Performance.BatchNameResolver do
           )
     }
 
-    {names, ids}
+    {updated_names, ids}
   end
 
   defp extract_event_attackers_data(event, names, ids) do
@@ -507,11 +511,12 @@ defmodule EveDmv.Performance.BatchNameResolver do
           do: Task.async(fn -> NameResolver.system_names(system_ids) end)
         )
       ]
-      |> Enum.filter(& &1)
+
+    filtered_tasks = Enum.filter(tasks, & &1)
 
     # Await all tasks
-    if length(tasks) > 0 do
-      Task.await_many(tasks, 30_000)
+    if length(filtered_tasks) > 0 do
+      Task.await_many(filtered_tasks, 30_000)
     end
 
     elapsed = System.monotonic_time(:millisecond) - start_time

@@ -239,27 +239,16 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
       home_system_id = get_corporation_home_system(corporation_id)
       {:ok, system_analysis} = analyze_system_defense(home_system_id)
 
-      recommendations = []
-
-      # Analyze timezone coverage gaps
+      # Generate all recommendations
       timezone_recs = generate_timezone_recommendations(defense_analysis.timezone_coverage)
-      recommendations = recommendations ++ timezone_recs
-
-      # Analyze fleet composition gaps
       fleet_recs = generate_fleet_recommendations(defense_analysis.defensive_doctrines)
-      recommendations = recommendations ++ fleet_recs
-
-      # Analyze response time issues
       response_recs = generate_response_recommendations(defense_analysis.response_time_estimate)
-      recommendations = recommendations ++ response_recs
-
-      # Analyze vulnerability gaps
       vulnerability_recs = generate_vulnerability_recommendations(system_analysis.vulnerabilities)
-      recommendations = recommendations ++ vulnerability_recs
-
-      # Analyze member activity gaps
       activity_recs = generate_activity_recommendations(defense_analysis.active_members)
-      recommendations = recommendations ++ activity_recs
+
+      # Combine all recommendations
+      recommendations =
+        timezone_recs ++ fleet_recs ++ response_recs ++ vulnerability_recs ++ activity_recs
 
       # Sort by priority
       sorted_recommendations =
@@ -700,15 +689,17 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
   end
 
   defp classify_wormhole_system(system_id) do
-    # Simplified wormhole classification
-    cond do
-      system_id >= 31_000_000 -> :c6
-      system_id >= 31_000_000 -> :c5
-      system_id >= 31_000_000 -> :c4
-      system_id >= 31_000_000 -> :c3
-      system_id >= 31_000_000 -> :c2
-      system_id >= 31_000_000 -> :c1
-      true -> :unknown
+    # Use StaticData for accurate wormhole classification
+    case EveDmv.StaticData.classify_system(system_id) do
+      :wormhole_c1 -> :c1
+      :wormhole_c2 -> :c2
+      :wormhole_c3 -> :c3
+      :wormhole_c4 -> :c4
+      :wormhole_c5 -> :c5
+      :wormhole_c6 -> :c6
+      :wormhole_c13 -> :c13
+      :wormhole_c14 -> :c14
+      _ -> :unknown
     end
   end
 
@@ -890,11 +881,11 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
 
   defp assess_route_security(connection_count) do
     # Assess overall security of escape routes
-    case connection_count do
-      count when count >= 4 -> :good
-      count when count >= 2 -> :moderate
-      count when count >= 1 -> :poor
-      _ -> :critical
+    cond do
+      connection_count >= 4 -> :good
+      connection_count >= 2 -> :moderate
+      connection_count >= 1 -> :poor
+      true -> :critical
     end
   end
 
@@ -1152,11 +1143,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
 
   defp generate_timezone_recommendations(timezone_coverage) do
     # Generate recommendations for timezone coverage
-    recommendations = []
-
     coverage_pct = timezone_coverage.coverage_percentage
 
-    recommendations =
+    coverage_recommendations =
       if coverage_pct < 50 do
         [
           %{
@@ -1165,16 +1154,15 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
             description: "Expand timezone coverage to #{coverage_pct}%",
             action: "Recruit members from underrepresented timezones"
           }
-          | recommendations
         ]
       else
-        recommendations
+        []
       end
 
     # Check for timezone balance
     tz_categories = timezone_coverage.timezone_categories
 
-    recommendations =
+    balance_recommendations =
       if tz_categories.dominant_tz != :mixed do
         [
           %{
@@ -1183,13 +1171,12 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
             description: "Heavy #{tz_categories.dominant_tz} timezone bias",
             action: "Recruit members from other timezones for better coverage"
           }
-          | recommendations
         ]
       else
-        recommendations
+        []
       end
 
-    recommendations
+    coverage_recommendations ++ balance_recommendations
   end
 
   defp generate_fleet_recommendations(defensive_doctrines) do

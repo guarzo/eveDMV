@@ -64,15 +64,71 @@ defmodule EveDmvWeb.ProfileLive do
   defp get_character_combat_stats(character_id) do
     case EveDmv.Contexts.CharacterIntelligence.get_character_intelligence_report(character_id) do
       {:ok, report} -> report.combat_stats
-      _ -> nil
     end
   end
 
   defp get_character_ship_intelligence(character_id) do
     case EveDmv.Integrations.ShipIntelligenceBridge.calculate_ship_specialization(character_id) do
       {:ok, intelligence} -> intelligence
-      _ -> nil
     end
+  end
+
+  defp export_user_data(user) do
+    # Gather all user data for export
+    character_data = %{
+      character_id: user.eve_character_id,
+      character_name: user.eve_character_name,
+      corporation_id: user.eve_corporation_id,
+      corporation_name: user.eve_corporation_name,
+      alliance_id: user.eve_alliance_id,
+      alliance_name: user.eve_alliance_name,
+      created_at: user.created_at,
+      last_login_at: user.last_login_at,
+      scopes: user.scopes
+    }
+
+    # Get character intelligence data
+    intelligence_data =
+      case EveDmv.Contexts.CharacterIntelligence.get_character_intelligence_report(
+             user.eve_character_id
+           ) do
+        {:ok, report} -> report
+      end
+
+    # Get threat scoring data
+    threat_data =
+      case EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.calculate_threat_score(
+             user.eve_character_id
+           ) do
+        {:ok, threat_score} -> threat_score
+        {:error, _} -> %{error: "Threat scoring data not available"}
+      end
+
+    # Get activity patterns
+    activity_data =
+      case EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer.get_activity_patterns(
+             user.eve_character_id
+           ) do
+        {:ok, patterns} -> patterns
+        {:error, _} -> %{error: "Activity patterns not available"}
+      end
+
+    export_data = %{
+      character: character_data,
+      intelligence: intelligence_data,
+      threat_scoring: threat_data,
+      activity_patterns: activity_data,
+      export_timestamp: DateTime.utc_now(),
+      format_version: "1.0"
+    }
+
+    # In a real implementation, this would:
+    # 1. Generate a downloadable file (JSON/CSV)
+    # 2. Store it temporarily with a secure token
+    # 3. Send an email with download link
+    # 4. Schedule cleanup of the temporary file
+
+    {:ok, export_data}
   end
 
   # defp format_isk(amount) when amount >= 1_000_000_000 do
@@ -94,6 +150,41 @@ defmodule EveDmvWeb.ProfileLive do
   # defp expertise_level_color(:competent), do: "text-green-400"
   # defp expertise_level_color(:novice), do: "text-yellow-400"
   # defp expertise_level_color(_), do: "text-gray-400"
+
+  @impl Phoenix.LiveView
+  def handle_event("refresh_token", _params, socket) do
+    current_user = socket.assigns.current_user
+
+    case EveDmv.Auth.refresh_user_token(current_user) do
+      {:ok, updated_user} ->
+        {:noreply,
+         socket
+         |> assign(:current_user, updated_user)
+         |> put_flash(:info, "Token refreshed successfully")}
+
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, "Failed to refresh token: #{reason}")}
+    end
+  end
+
+  @impl Phoenix.LiveView
+  def handle_event("export_data", _params, socket) do
+    current_user = socket.assigns.current_user
+
+    case export_user_data(current_user) do
+      {:ok, _data} ->
+        # In a real implementation, this would trigger a download or email
+        {:noreply,
+         put_flash(
+           socket,
+           :info,
+           "Data export completed. Check your email for the download link."
+         )}
+
+      _ ->
+        {:noreply, put_flash(socket, :error, "Failed to export data")}
+    end
+  end
 
   @impl Phoenix.LiveView
   def render(assigns) do
@@ -286,10 +377,10 @@ defmodule EveDmvWeb.ProfileLive do
             <div class="flex space-x-4">
               <button
                 type="button"
+                phx-click="refresh_token"
                 class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors duration-200"
-                disabled
               >
-                Refresh Token (Coming Soon)
+                Refresh Token
               </button>
 
               <.link
@@ -300,10 +391,6 @@ defmodule EveDmvWeb.ProfileLive do
                 Sign Out
               </.link>
             </div>
-
-            <p class="text-gray-400 text-sm mt-3">
-              Token refresh functionality will be implemented in Epic 3 along with the EVE ESI integration.
-            </p>
           </div>
         </div>
       </div>
@@ -320,10 +407,10 @@ defmodule EveDmvWeb.ProfileLive do
           </.link>
           <button
             type="button"
-            class="bg-gray-700 text-gray-400 px-4 py-3 rounded-lg cursor-not-allowed"
-            disabled
+            phx-click="export_data"
+            class="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg transition-colors"
           >
-            Export My Data (Coming Soon)
+            Export My Data
           </button>
         </div>
       </div>

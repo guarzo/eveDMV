@@ -9,15 +9,11 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   use EveDmvWeb, :live_view
 
   alias EveDmv.Contexts.BattleAnalysis
-  alias EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser
-  alias EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer
-  alias CombatLog
-  alias ShipFitting
+  alias EveDmv.Contexts.BattleAnalysis.Resources.CombatLog
+  alias EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting
   alias EveDmv.Contexts.BattleSharing
   alias EveDmv.Eve.NameResolver
   alias EveDmv.Performance.BatchNameResolver
-
-  require Logger
 
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
@@ -262,7 +258,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
               content = :zlib.uncompress(compressed)
 
               # Parse the log with ENHANCED parser
-              case EnhancedCombatLogParser.parse_combat_log(
+              case EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser.parse_combat_log(
                      content,
                      pilot_name: combat_log.pilot_name
                    ) do
@@ -291,12 +287,12 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
                   send(self, {:combat_log_parsed, updated_log})
 
-                {:error, reason} ->
+                _ ->
                   # Update with error status
                   {:ok, _} =
                     Ash.update(combat_log, %{
                       parse_status: :failed,
-                      parse_error: inspect(reason)
+                      parse_error: "Parse failed"
                     })
               end
             rescue
@@ -395,13 +391,13 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     combat_log_analysis =
       get_combat_log_analysis_for_pilot(pilot_data && pilot_data[:character_name])
 
-    ship_data =
+    enhanced_ship_data =
       ship_data
       |> Map.put(:fitting_data, existing_fitting)
       |> Map.put(:combat_log_analysis, combat_log_analysis)
 
-    case ShipPerformanceAnalyzer.analyze_ship_performance(
-           ship_data,
+    case EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer.analyze_ship_performance(
+           enhanced_ship_data,
            socket.assigns.current_battle
          ) do
       {:ok, performance} ->
@@ -417,7 +413,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
         {:noreply, socket}
 
-      {:error, _reason} ->
+      _ ->
         {:noreply, socket}
     end
   end
@@ -515,6 +511,15 @@ defmodule EveDmvWeb.BattleAnalysisLive do
            )
            |> assign(:show_share_modal, false)}
 
+        {:error, :max_iterations_reached} ->
+          {:noreply,
+           socket
+           |> put_flash(
+             :error,
+             "Unable to create battle report due to processing limits."
+           )
+           |> assign(:show_share_modal, false)}
+
         {:error, reason} ->
           {:noreply,
            socket
@@ -586,7 +591,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       # Update ship data with new fitting
       ship_data = Map.put(socket.assigns.selected_ship, :fitting_data, fitting.parsed_fitting)
 
-      case ShipPerformanceAnalyzer.analyze_ship_performance(
+      case EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer.analyze_ship_performance(
              ship_data,
              socket.assigns.current_battle
            ) do
@@ -598,7 +603,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
           {:noreply, socket}
 
-        {:error, _reason} ->
+        _ ->
           {:noreply, socket}
       end
     else
@@ -636,6 +641,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
     if existing_battle do
       # Use the battle from our list directly but ensure it has timeline
+      require Logger
       Logger.info("Using cached battle data for #{battle_id}")
 
       # Reconstruct timeline if missing
@@ -699,6 +705,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
           |> load_battle_reports()
 
         {:error, :battle_not_found} ->
+          require Logger
           Logger.warning("Battle #{battle_id} not found in backend, showing error")
 
           assign(
@@ -1033,7 +1040,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
         {:ok, metrics} ->
           assign(socket, :battle_metrics, metrics)
 
-        _ ->
+        {:error, _} ->
           socket
       end
     else

@@ -6,14 +6,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
   threats, and opportunities spanning system boundaries.
   """
 
-  alias EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlators.{
-    ActivityCorrelator,
-    ThreatCorrelator,
-    IntelligenceCorrelator
-  }
-
-  alias EveDmv.Repo
   import Ecto.Query
+
+  alias EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlators.ActivityCorrelator
+
+  alias EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlators.IntelligenceCorrelator
+
+  alias EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlators.ThreatCorrelator
+  alias EveDmv.Repo
 
   require Logger
 
@@ -24,7 +24,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     Logger.info("Analyzing cross-system patterns for #{length(system_ids)} systems")
 
     analysis_window = Keyword.get(options, :analysis_window, 24)
-    start_time = DateTime.add(DateTime.utc_now(), -analysis_window * 3600, :second)
+    start_time = DateTime.add(DateTime.utc_now(), -analysis_window * 3_600, :second)
 
     # Fetch killmail data for all systems
     killmails = fetch_multi_system_killmails(system_ids, start_time)
@@ -70,36 +70,134 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
   @doc """
   Analyze regional intelligence patterns.
   """
-  def analyze_regional_patterns(region_id, _options) do
+  def analyze_regional_patterns(region_id, options \\ []) do
     Logger.info("Analyzing regional patterns for region #{region_id}")
 
-    # For now, return basic regional analysis
-    # TODO: Implement detailed regional pattern analysis
+    # 7 days
+    analysis_window = Keyword.get(options, :analysis_window, 168)
+    start_time = DateTime.add(DateTime.utc_now(), -analysis_window * 3_600, :second)
+    include_predictions = Keyword.get(options, :include_predictions, true)
+
+    # Get all systems in the region
+    region_systems = get_region_systems(region_id)
+
+    # Fetch comprehensive data for the region
+    region_data = fetch_regional_data(region_id, region_systems, start_time, analysis_window)
+
+    # Analyze activity patterns across the region
+    activity_analysis = analyze_comprehensive_regional_activity(region_data, analysis_window)
+
+    # Analyze threat landscape with detailed metrics
+    threat_analysis = analyze_detailed_regional_threats(region_data, analysis_window)
+
+    # Assess strategic value using multiple factors
+    strategic_analysis =
+      assess_comprehensive_regional_strategic_value(region_data, region_systems)
+
+    # Generate actionable recommendations
+    recommendations =
+      generate_detailed_regional_recommendations(
+        region_data,
+        activity_analysis,
+        threat_analysis,
+        strategic_analysis
+      )
+
+    # Optional: Generate predictions for future patterns
+    predictions =
+      if include_predictions do
+        predict_regional_patterns(region_data, activity_analysis, threat_analysis, 72)
+      else
+        %{}
+      end
 
     %{
       region_id: region_id,
-      regional_activity: analyze_regional_activity(region_id),
-      threat_landscape: analyze_regional_threats(region_id),
-      strategic_value: assess_regional_strategic_value(region_id),
-      recommendations: generate_regional_recommendations(region_id)
+      analysis_window_hours: analysis_window,
+      systems_analyzed: length(region_systems),
+      data_points: region_data.total_data_points,
+      regional_activity: activity_analysis,
+      threat_landscape: threat_analysis,
+      strategic_value: strategic_analysis,
+      recommendations: recommendations,
+      predictions: predictions,
+      analysis_confidence: calculate_regional_analysis_confidence(region_data),
+      analyzed_at: DateTime.utc_now()
     }
   end
 
   @doc """
   Analyze constellation-wide patterns.
   """
-  def analyze_constellation_patterns(constellation_id, _options) do
+  def analyze_constellation_patterns(constellation_id, options \\ []) do
     Logger.info("Analyzing constellation patterns for constellation #{constellation_id}")
 
-    # For now, return basic constellation analysis
-    # TODO: Implement detailed constellation pattern analysis
+    # 3 days
+    analysis_window = Keyword.get(options, :analysis_window, 72)
+    start_time = DateTime.add(DateTime.utc_now(), -analysis_window * 3_600, :second)
+    include_projections = Keyword.get(options, :include_projections, true)
+
+    # Get all systems in the constellation
+    constellation_systems = get_constellation_systems(constellation_id)
+
+    # Fetch comprehensive constellation data
+    constellation_data =
+      fetch_constellation_data(
+        constellation_id,
+        constellation_systems,
+        start_time,
+        analysis_window
+      )
+
+    # Detailed activity analysis
+    activity_analysis =
+      analyze_detailed_constellation_activity(constellation_data, analysis_window)
+
+    # Comprehensive tactical significance assessment
+    tactical_analysis =
+      assess_detailed_constellation_tactical_significance(
+        constellation_data,
+        constellation_systems
+      )
+
+    # Advanced control pattern analysis
+    control_analysis =
+      analyze_advanced_constellation_control_patterns(constellation_data, analysis_window)
+
+    # Generate strategic recommendations with priorities
+    recommendations =
+      generate_advanced_constellation_recommendations(
+        constellation_data,
+        activity_analysis,
+        tactical_analysis,
+        control_analysis
+      )
+
+    # Optional: Generate tactical projections
+    projections =
+      if include_projections do
+        generate_constellation_projections(
+          constellation_data,
+          activity_analysis,
+          control_analysis,
+          48
+        )
+      else
+        %{}
+      end
 
     %{
       constellation_id: constellation_id,
-      constellation_activity: analyze_constellation_activity(constellation_id),
-      tactical_significance: assess_constellation_tactical_significance(constellation_id),
-      control_patterns: analyze_constellation_control_patterns(constellation_id),
-      strategic_recommendations: generate_constellation_recommendations(constellation_id)
+      analysis_window_hours: analysis_window,
+      systems_analyzed: length(constellation_systems),
+      data_quality: assess_constellation_data_quality(constellation_data),
+      constellation_activity: activity_analysis,
+      tactical_significance: tactical_analysis,
+      control_patterns: control_analysis,
+      strategic_recommendations: recommendations,
+      tactical_projections: projections,
+      analysis_confidence: calculate_constellation_analysis_confidence(constellation_data),
+      analyzed_at: DateTime.utc_now()
     }
   end
 
@@ -281,7 +379,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     # Activity-based insights
     activity_insights = generate_activity_insights(activity_patterns)
 
-    # Threat-based insights  
+    # Threat-based insights
     threat_insights = generate_threat_insights(threat_patterns, system_ids)
 
     # Movement-based insights
@@ -304,226 +402,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     |> Enum.take(10)
   end
 
-  defp analyze_regional_activity(_region_id) do
-    # Fetch region systems and analyze activity
-    # Note: This would need EVE static data for system->region mapping
-    start_time = DateTime.add(DateTime.utc_now(), -7 * 24 * 3600, :second)
-
-    # For now, use placeholder region data
-    %{
-      activity_level: :moderate,
-      active_systems: 15,
-      total_systems: 50,
-      activity_trends: :stable,
-      hotspot_systems: [],
-      analysis_period: %{start: start_time, end: DateTime.utc_now()}
-    }
-
-    %{
-      activity_level: :moderate,
-      active_systems: 15,
-      total_systems: 50,
-      activity_trends: :stable
-    }
-  end
-
-  defp analyze_regional_threats(_region_id) do
-    # Analyze threat landscape for the region
-    %{
-      threat_level: :moderate,
-      primary_threats: [:pvp_activity, :structure_warfare],
-      threat_sources: [:hostile_alliances, :pirate_groups],
-      threat_trends: :increasing,
-      high_threat_systems: [],
-      threat_concentration: 0.45
-    }
-
-    %{
-      threat_level: :moderate,
-      primary_threats: [:pvp_activity, :structure_warfare],
-      threat_sources: [:hostile_alliances, :pirate_groups],
-      threat_trends: :increasing
-    }
-  end
-
-  defp assess_regional_strategic_value(_region_id) do
-    # Assess strategic importance of the region
-    %{
-      strategic_value: :high,
-      value_factors: [:trade_routes, :resources, :geography],
-      control_status: :contested,
-      strategic_importance: 0.8,
-      key_systems: [],
-      access_points: 3
-    }
-
-    %{
-      strategic_value: :high,
-      value_factors: [:trade_routes, :resources, :geography],
-      control_status: :contested,
-      strategic_importance: 0.8
-    }
-  end
-
-  defp generate_regional_recommendations(_region_id) do
-    # Generate strategic recommendations based on region analysis
-    [
-      %{
-        type: :monitoring,
-        priority: :high,
-        action: "Monitor key strategic systems for increased activity",
-        systems: []
-      },
-      %{
-        type: :intelligence,
-        priority: :medium,
-        action: "Strengthen intelligence gathering in contested areas",
-        reasoning: "Recent activity patterns suggest potential escalation"
-      },
-      %{
-        type: :defensive,
-        priority: :high,
-        action: "Prepare for potential escalation in threat levels",
-        timeframe: "Next 72 hours"
-      }
-    ]
-
-    [
-      "Monitor key strategic systems for increased activity",
-      "Strengthen intelligence gathering in contested areas",
-      "Prepare for potential escalation in threat levels"
-    ]
-  end
-
-  defp analyze_constellation_activity(_constellation_id) do
-    # Analyze activity patterns within a constellation
-    start_time = DateTime.add(DateTime.utc_now(), -7 * 24 * 3600, :second)
-
-    # Note: This would need constellation->system mapping from EVE static data
-    # For now, using a simplified approach
-    query =
-      from(k in "killmails_enriched",
-        where: k.killmail_time >= ^start_time,
-        # Would filter by constellation systems here
-        select: %{
-          killmail_id: k.killmail_id,
-          solar_system_id: k.solar_system_id,
-          killmail_time: k.killmail_time,
-          total_value: k.total_value
-        },
-        limit: 1000
-      )
-
-    killmails = Repo.all(query)
-
-    # Calculate activity metrics
-    system_activity = killmails |> Enum.group_by(& &1.solar_system_id)
-
-    activity_level =
-      cond do
-        length(killmails) > 500 -> :very_high
-        length(killmails) > 200 -> :high
-        length(killmails) > 50 -> :moderate
-        length(killmails) > 10 -> :low
-        true -> :minimal
-      end
-
-    # Identify key systems (most active)
-    key_systems =
-      system_activity
-      |> Enum.map(fn {system_id, kills} -> {system_id, length(kills)} end)
-      |> Enum.sort_by(&elem(&1, 1), :desc)
-      |> Enum.take(5)
-      |> Enum.map(&elem(&1, 0))
-
-    # Calculate activity distribution
-    total_kills = length(killmails)
-
-    activity_distribution =
-      system_activity
-      |> Enum.map(fn {system_id, kills} ->
-        {system_id, Float.round(length(kills) / total_kills * 100, 1)}
-      end)
-      |> Map.new()
-
-    # Analyze control indicators
-    control_indicators = analyze_control_indicators(killmails)
-
-    %{
-      activity_level: activity_level,
-      key_systems: key_systems,
-      activity_distribution: activity_distribution,
-      control_indicators: control_indicators
-    }
-  rescue
-    error ->
-      Logger.error("Failed to analyze constellation activity: #{inspect(error)}")
-
-      %{
-        activity_level: :unknown,
-        key_systems: [],
-        activity_distribution: %{},
-        control_indicators: %{}
-      }
-  end
-
-  defp assess_constellation_tactical_significance(_constellation_id) do
-    # Assess tactical importance based on activity and strategic factors
-    start_time = DateTime.add(DateTime.utc_now(), -30 * 24 * 3600, :second)
-
-    # Query capital ship activity as indicator of strategic importance
-    capital_query =
-      from(k in "killmails_enriched",
-        where: k.killmail_time >= ^start_time and k.victim_ship_type_id > 20000,
-        select: count(k.killmail_id)
-      )
-
-    capital_count = Repo.one(capital_query) || 0
-
-    # Assess values based on activity
-    tactical_value =
-      cond do
-        capital_count > 20 -> :critical
-        capital_count > 10 -> :high
-        capital_count > 5 -> :moderate
-        capital_count > 0 -> :low
-        true -> :minimal
-      end
-
-    # Determine strategic position (simplified)
-    strategic_position =
-      case tactical_value do
-        :critical -> :key_chokepoint
-        :high -> :strategic_route
-        :moderate -> :secondary_route
-        _ -> :peripheral
-      end
-
-    # Calculate defensive and offensive values
-    defensive_value = min(1.0, capital_count / 25)
-    offensive_value = min(1.0, capital_count / 30)
-
-    %{
-      tactical_value: tactical_value,
-      strategic_position: strategic_position,
-      defensive_value: Float.round(defensive_value, 2),
-      offensive_value: Float.round(offensive_value, 2)
-    }
-  rescue
-    error ->
-      Logger.error("Failed to assess constellation tactical significance: #{inspect(error)}")
-
-      %{
-        tactical_value: :unknown,
-        strategic_position: :unknown,
-        defensive_value: 0.0,
-        offensive_value: 0.0
-      }
-  end
-
   defp analyze_constellation_control_patterns(_constellation_id) do
     # Analyze who controls the constellation based on kill patterns
-    start_time = DateTime.add(DateTime.utc_now(), -14 * 24 * 3600, :second)
+    start_time = DateTime.add(DateTime.utc_now(), -14 * 24 * 3_600, :second)
 
     query =
       from(k in "killmails_enriched",
@@ -533,7 +414,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
           victim_corporation_id: k.victim_corporation_id,
           killmail_time: k.killmail_time
         },
-        limit: 2000
+        limit: 2_000
       )
 
     killmails = Repo.all(query)
@@ -593,55 +474,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
         control_stability: 0.0,
         control_trends: :unknown
       }
-  end
-
-  defp generate_constellation_recommendations(constellation_id) do
-    # Generate recommendations based on constellation analysis
-    activity = analyze_constellation_activity(constellation_id)
-    significance = assess_constellation_tactical_significance(constellation_id)
-    control = analyze_constellation_control_patterns(constellation_id)
-
-    # Activity-based recommendations
-    activity_recommendations =
-      case activity.activity_level do
-        :very_high -> ["Deploy additional scouts to monitor high activity"]
-        :high -> ["Maintain regular surveillance of key systems"]
-        :moderate -> ["Schedule periodic reconnaissance"]
-        _ -> ["Consider expanding intelligence coverage"]
-      end
-
-    # Tactical significance recommendations
-    tactical_recommendations =
-      case significance.tactical_value do
-        :critical -> ["Establish permanent presence in strategic systems"]
-        :high -> ["Prepare rapid response fleet for tactical opportunities"]
-        :moderate -> ["Monitor for escalation in strategic importance"]
-        _ -> []
-      end
-
-    # Control-based recommendations
-    control_recommendations =
-      case control.control_status do
-        :contested -> ["Prepare for potential sovereignty conflicts"]
-        :fragmented -> ["Opportunity for establishing control presence"]
-        :dominated -> ["Exercise caution - strong entity control detected"]
-        _ -> []
-      end
-
-    # Add stability-based recommendation
-    stability_recommendations =
-      if control.control_stability < 0.5 do
-        ["High volatility detected - expect rapid control changes"]
-      else
-        []
-      end
-
-    # Combine all recommendations
-    recommendations =
-      activity_recommendations ++
-        tactical_recommendations ++ control_recommendations ++ stability_recommendations
-
-    Enum.take(recommendations, 5)
   end
 
   # Helper functions for pattern analysis
@@ -750,8 +582,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     bucket_hours = 6
 
     time_buckets =
-      killmails
-      |> Enum.group_by(fn kill ->
+      Enum.group_by(killmails, fn kill ->
         hours_ago = DateTime.diff(DateTime.utc_now(), kill.killmail_time, :hour)
         div(hours_ago, bucket_hours)
       end)
@@ -773,16 +604,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
           new_threat_systems: MapSet.to_list(new_systems),
           cleared_systems: MapSet.to_list(abandoned_systems),
           persistent_systems:
-            MapSet.intersection(earlier_systems, later_systems) |> MapSet.to_list()
+            earlier_systems |> MapSet.intersection(later_systems) |> MapSet.to_list()
         }
       end)
 
     # Calculate migration speed
     system_changes =
       migration_patterns
-      |> Enum.map(fn pattern ->
-        length(pattern.new_threat_systems) + length(pattern.cleared_systems)
-      end)
+      |> Enum.map(&(length(&1.new_threat_systems) + length(&1.cleared_systems)))
       |> Enum.sum()
 
     avg_changes =
@@ -814,10 +643,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
   defp analyze_migration_direction(patterns) do
     # Simplified direction analysis
     expanding =
-      patterns |> Enum.count(fn p -> length(p.new_threat_systems) > length(p.cleared_systems) end)
+      Enum.count(patterns, fn p -> length(p.new_threat_systems) > length(p.cleared_systems) end)
 
     contracting =
-      patterns |> Enum.count(fn p -> length(p.cleared_systems) > length(p.new_threat_systems) end)
+      Enum.count(patterns, fn p -> length(p.cleared_systems) > length(p.new_threat_systems) end)
 
     cond do
       expanding > contracting * 1.5 -> :expanding
@@ -829,14 +658,12 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
   defp detect_threat_escalation(_system_ids, killmails) do
     # Detect escalating threat patterns
     recent_kills =
-      killmails
-      |> Enum.filter(fn kill ->
+      Enum.filter(killmails, fn kill ->
         DateTime.diff(DateTime.utc_now(), kill.killmail_time, :hour) <= 24
       end)
 
     older_kills =
-      killmails
-      |> Enum.filter(fn kill ->
+      Enum.filter(killmails, fn kill ->
         hours_ago = DateTime.diff(DateTime.utc_now(), kill.killmail_time, :hour)
         hours_ago > 24 and hours_ago <= 72
       end)
@@ -846,55 +673,43 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     older_metrics = calculate_threat_metrics(older_kills)
 
     # Detect escalation indicators
-    escalation_indicators = []
-
-    # Check kill rate increase
-    escalation_indicators =
+    kill_rate_indicator =
       if recent_metrics.kill_rate > older_metrics.kill_rate * 1.5 do
-        [
-          %{
-            type: :increased_kill_rate,
-            severity: :high,
-            change_ratio:
-              Float.round(recent_metrics.kill_rate / max(older_metrics.kill_rate, 0.1), 2)
-          }
-          | escalation_indicators
-        ]
+        %{
+          type: :increased_kill_rate,
+          severity: :high,
+          change_ratio:
+            Float.round(recent_metrics.kill_rate / max(older_metrics.kill_rate, 0.1), 2)
+        }
       else
-        escalation_indicators
+        nil
       end
 
-    # Check value escalation
-    escalation_indicators =
+    value_indicator =
       if recent_metrics.avg_value > older_metrics.avg_value * 2 do
-        [
-          %{
-            type: :higher_value_targets,
-            severity: :medium,
-            change_ratio:
-              Float.round(recent_metrics.avg_value / max(older_metrics.avg_value, 1), 2)
-          }
-          | escalation_indicators
-        ]
+        %{
+          type: :higher_value_targets,
+          severity: :medium,
+          change_ratio: Float.round(recent_metrics.avg_value / max(older_metrics.avg_value, 1), 2)
+        }
       else
-        escalation_indicators
+        nil
       end
 
-    # Check gang size increase
-    escalation_indicators =
+    gang_size_indicator =
       if recent_metrics.avg_attackers > older_metrics.avg_attackers * 1.3 do
-        [
-          %{
-            type: :larger_fleets,
-            severity: :medium,
-            change_ratio:
-              Float.round(recent_metrics.avg_attackers / max(older_metrics.avg_attackers, 1), 2)
-          }
-          | escalation_indicators
-        ]
+        %{
+          type: :larger_fleets,
+          severity: :medium,
+          change_ratio:
+            Float.round(recent_metrics.avg_attackers / max(older_metrics.avg_attackers, 1), 2)
+        }
       else
-        escalation_indicators
+        nil
       end
+
+    escalation_indicators =
+      Enum.filter([kill_rate_indicator, value_indicator, gang_size_indicator], & &1)
 
     escalation_detected = length(escalation_indicators) > 0
     escalation_probability = min(1.0, length(escalation_indicators) * 0.3)
@@ -926,7 +741,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     daily_activity =
       killmails
       |> Enum.group_by(fn kill ->
-        kill.killmail_time |> DateTime.to_date()
+        DateTime.to_date(kill.killmail_time)
       end)
       |> Enum.map(fn {date, kills} ->
         {date,
@@ -947,8 +762,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
       |> Enum.group_by(& &1.solar_system_id)
       |> Enum.map(fn {system_id, kills} ->
         recent_kills =
-          kills
-          |> Enum.filter(fn k ->
+          Enum.filter(kills, fn k ->
             DateTime.diff(DateTime.utc_now(), k.killmail_time, :hour) <= 48
           end)
 
@@ -1049,8 +863,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     # Analyze how characters move through systems
     # Get all character movements
     all_movements =
-      character_activity
-      |> Enum.map(fn {char_id, data} ->
+      Enum.map(character_activity, fn {char_id, data} ->
         %{
           character_id: char_id,
           systems_visited: data.systems,
@@ -1090,7 +903,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
         if length(m.systems_visited) >= 3 do
           m.systems_visited
           |> Enum.chunk_every(3, 1, :discard)
-          |> Enum.map(fn route -> Enum.join(route, "→") end)
+          |> Enum.map(&Enum.join(&1, "→"))
         else
           []
         end
@@ -1099,7 +912,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
       |> Enum.sort_by(&elem(&1, 1), :desc)
       |> Enum.take(5)
       |> Enum.map(fn {route, count} ->
-        systems = String.split(route, "→") |> Enum.map(&String.to_integer/1)
+        systems = route |> String.split("→") |> Enum.map(&String.to_integer/1)
 
         %{
           route: systems,
@@ -1143,12 +956,12 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     primary_routes =
       corridors
       |> Enum.filter(fn c -> c.corridor_type == :primary end)
-      |> Enum.map(fn c -> [c.from_system, c.to_system] end)
+      |> Enum.map(&[&1.from_system, &1.to_system])
 
     secondary_routes =
       corridors
       |> Enum.filter(fn c -> c.corridor_type == :secondary end)
-      |> Enum.map(fn c -> [c.from_system, c.to_system] end)
+      |> Enum.map(&[&1.from_system, &1.to_system])
 
     # Calculate strategic value for each system based on route participation
     strategic_value =
@@ -1194,7 +1007,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
           total_value: k.total_value
         },
         order_by: [desc: k.killmail_time],
-        limit: 5000
+        limit: 5_000
       )
 
     Repo.all(query)
@@ -1322,7 +1135,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
         threat_systems =
           threat_patterns.threat_hotspots |> Enum.map(& &1.system_id) |> MapSet.new()
 
-        overlap = MapSet.intersection(choke_systems, threat_systems) |> MapSet.size()
+        overlap = choke_systems |> MapSet.intersection(threat_systems) |> MapSet.size()
 
         if overlap > 0 do
           [
@@ -1555,6 +1368,24 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     end
   end
 
+  defp extract_threat_times(chunk) do
+    Enum.map(chunk, fn t ->
+      case t do
+        %{time: time} -> time
+        _ -> nil
+      end
+    end)
+  end
+
+  defp are_coordinated?(times) do
+    if Enum.all?(times, & &1) do
+      [first | rest] = times
+      Enum.all?(rest, fn t -> DateTime.diff(t, first, :minute) < 30 end)
+    else
+      false
+    end
+  end
+
   defp identify_coordinated_threats(threat_data) do
     # Identify coordinated threat activities
     if is_list(threat_data) and length(threat_data) > 5 do
@@ -1563,25 +1394,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
       |> Enum.chunk_every(3, 1, :discard)
       |> Enum.filter(fn chunk ->
         # Check if threats appear coordinated (simplified)
-        times =
-          Enum.map(chunk, fn t ->
-            case t do
-              %{time: time} -> time
-              _ -> nil
-            end
-          end)
+        times = extract_threat_times(chunk)
 
         # All events within 30 minutes suggest coordination
-        if Enum.all?(times, & &1) do
-          [first | rest] = times
-          Enum.all?(rest, fn t -> DateTime.diff(t, first, :minute) < 30 end)
-        else
-          false
-        end
+        are_coordinated?(times)
       end)
       |> Enum.map(fn chunk ->
         %{
-          threat_group: Enum.map(chunk, fn t -> Map.get(t, :entity_id, :unknown) end),
+          threat_group: Enum.map(chunk, &Map.get(&1, :entity_id, :unknown)),
           coordination_type: :simultaneous,
           confidence: 0.7
         }
@@ -1646,7 +1466,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
       covered_systems =
         if is_list(intel_data) do
           intel_data
-          |> Enum.map(fn data -> Map.get(data, :system_id) end)
+          |> Enum.map(&Map.get(&1, :system_id))
           |> Enum.filter(& &1)
           |> Enum.uniq()
           |> length()
@@ -1673,8 +1493,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     if is_list(intel_data) and length(intel_data) > 0 do
       # Assess quality based on data completeness and recency
       quality_scores =
-        intel_data
-        |> Enum.map(fn data ->
+        Enum.map(intel_data, fn data ->
           completeness =
             if Map.has_key?(data, :system_id) and Map.has_key?(data, :timestamp),
               do: 0.5,
@@ -1796,7 +1615,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
       territory_control = detect_territory_control(killmails)
       indicators = indicators ++ territory_control
 
-      indicators |> Enum.take(20)
+      Enum.take(indicators, 20)
     else
       []
     end
@@ -1835,7 +1654,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
       # 5B+ ISK
       # Capital
       (km.total_value || 0) > 5_000_000_000 or
-        (km.victim_ship_type_id && km.victim_ship_type_id > 20000)
+        (km.victim_ship_type_id && km.victim_ship_type_id > 20_000)
     end)
     |> Enum.map(fn km ->
       %{
@@ -1882,13 +1701,13 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
       :stable
     else
       # Simple linear regression on bucket activity
-      {xs, ys} = buckets |> Enum.unzip()
+      {xs, ys} = Enum.unzip(buckets)
 
       n = length(xs)
       sum_x = Enum.sum(xs)
       sum_y = Enum.sum(ys)
-      sum_xy = Enum.zip(xs, ys) |> Enum.map(fn {x, y} -> x * y end) |> Enum.sum()
-      sum_x_sq = Enum.map(xs, &(&1 * &1)) |> Enum.sum()
+      sum_xy = xs |> Enum.zip(ys) |> Enum.map(fn {x, y} -> x * y end) |> Enum.sum()
+      sum_x_sq = Enum.sum(Enum.map(xs, &(&1 * &1)))
 
       slope =
         if n * sum_x_sq - sum_x * sum_x == 0 do
@@ -1920,7 +1739,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
       hourly_activity =
         system_kills
         |> Enum.group_by(fn kill ->
-          kill.killmail_time |> DateTime.truncate(:hour)
+          DateTime.truncate(kill.killmail_time, :second)
         end)
         |> Enum.map(fn {_hour, kills} -> length(kills) end)
 
@@ -1939,7 +1758,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
   defp detect_activity_spikes(killmails, baselines) do
     killmails
     |> Enum.group_by(fn kill ->
-      {kill.solar_system_id, kill.killmail_time |> DateTime.truncate(:hour)}
+      {kill.solar_system_id, DateTime.truncate(kill.killmail_time, :second)}
     end)
     |> Enum.flat_map(fn {{system_id, hour}, hour_kills} ->
       baseline = get_in(baselines, [system_id, :average_hourly_activity]) || 0
@@ -2093,18 +1912,17 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
   defp calculate_correlation_coefficient(activity1, activity2) do
     # Simplified correlation calculation
     common_times =
-      MapSet.intersection(
-        MapSet.new(Map.keys(activity1)),
-        MapSet.new(Map.keys(activity2))
-      )
+      activity1
+      |> Map.keys()
+      |> MapSet.new()
+      |> MapSet.intersection(activity2 |> Map.keys() |> MapSet.new())
 
     if MapSet.size(common_times) < 3 do
       0.0
     else
       # Calculate similarity based on activity patterns
       similarities =
-        common_times
-        |> Enum.map(fn time ->
+        Enum.map(common_times, fn time ->
           a1 = Map.get(activity1, time, 0)
           a2 = Map.get(activity2, time, 0)
 
@@ -2127,7 +1945,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     # Group killmails by system and time window (hourly)
     killmails
     |> Enum.group_by(fn km ->
-      hour = km.killmail_time |> DateTime.truncate(:hour)
+      hour = DateTime.truncate(km.killmail_time, :second)
       {km.solar_system_id, hour}
     end)
     |> Enum.map(fn {{system_id, hour}, kills} ->
@@ -2138,10 +1956,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
 
   defp detect_capital_activity(killmails) do
     # Detect capital ship activity
-    # Capital ship type IDs typically > 20000
+    # Capital ship type IDs typically > 2_0000
     capital_activity =
       killmails
-      |> Enum.filter(fn km -> km.victim_ship_type_id && km.victim_ship_type_id > 20000 end)
+      |> Enum.filter(fn km -> km.victim_ship_type_id && km.victim_ship_type_id > 20_000 end)
       |> Enum.map(fn km ->
         %{
           killmail_id: km.killmail_id,
@@ -2179,49 +1997,12 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
   end
 
   # Helper functions for constellation analysis
-  defp analyze_control_indicators(killmails) do
-    # Analyze indicators of system control
-    if Enum.empty?(killmails) do
-      %{dominance_ratio: 0.0, control_type: :unknown}
-    else
-      # Group by alliance to determine control
-      alliance_kills =
-        killmails
-        |> Enum.filter(& &1.victim_alliance_id)
-        |> Enum.group_by(& &1.victim_alliance_id)
-        |> Enum.map(fn {alliance, kills} -> {alliance, length(kills)} end)
-        |> Enum.sort_by(&elem(&1, 1), :desc)
-
-      if length(alliance_kills) > 0 do
-        [{dominant_alliance, dominant_kills} | _rest] = alliance_kills
-        total_kills = alliance_kills |> Enum.map(&elem(&1, 1)) |> Enum.sum()
-        dominance_ratio = dominant_kills / total_kills
-
-        control_type =
-          cond do
-            dominance_ratio > 0.8 -> :monopoly
-            dominance_ratio > 0.6 -> :dominant
-            dominance_ratio > 0.4 -> :contested
-            true -> :fragmented
-          end
-
-        %{
-          dominance_ratio: Float.round(dominance_ratio, 2),
-          control_type: control_type,
-          dominant_alliance: dominant_alliance,
-          alliance_count: length(alliance_kills)
-        }
-      else
-        %{dominance_ratio: 0.0, control_type: :unknown}
-      end
-    end
-  end
 
   defp calculate_daily_control_variance(killmails) do
     # Calculate variance in control over daily periods
     daily_control =
       killmails
-      |> Enum.group_by(fn km -> km.killmail_time |> DateTime.to_date() end)
+      |> Enum.group_by(fn km -> DateTime.to_date(km.killmail_time) end)
       |> Enum.map(fn {date, daily_kills} ->
         # Get dominant entity for the day
         dominant =
@@ -2254,7 +2035,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
       :insufficient_data
     else
       # Split kills into recent and older
-      midpoint = DateTime.add(DateTime.utc_now(), -7 * 24 * 3600, :second)
+      midpoint = DateTime.add(DateTime.utc_now(), -7 * 24 * 3_600, :second)
 
       recent_kills =
         Enum.filter(killmails, fn km -> DateTime.compare(km.killmail_time, midpoint) == :gt end)
@@ -2293,11 +2074,422 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     else
       # Count characters active in multiple systems
       multi_system_chars =
-        character_activity
-        |> Enum.count(fn {_char_id, data} -> length(data.systems) > 1 end)
+        Enum.count(character_activity, fn {_char_id, data} -> length(data.systems) > 1 end)
 
       # Calculate cross-system activity ratio
       Float.round(multi_system_chars / total_characters * 100, 2)
     end
   end
+
+  # Supporting functions for enhanced regional analysis
+  defp get_region_systems(region_id) do
+    # In a real implementation, this would query EVE static data
+    # For now, return a placeholder list of systems
+    # This would typically come from eve_static_data tables
+    case region_id do
+      # The Forge systems
+      10_000_002 -> [30_000_142, 30_000_143, 30_000_144]
+      # Sinq Laison systems
+      10_000_032 -> [30_002_187, 30_002_188, 30_002_189]
+      _ -> []
+    end
+  end
+
+  defp fetch_regional_data(region_id, region_systems, start_time, analysis_window) do
+    # Fetch comprehensive data for regional analysis
+    killmails = fetch_multi_system_killmails(region_systems, start_time)
+
+    # Additional data that would be fetched in a real implementation
+    structure_data = fetch_region_structure_data(region_id, start_time)
+    sovereignty_data = fetch_region_sovereignty_data(region_id)
+    economic_data = fetch_region_economic_data(region_id, start_time)
+
+    %{
+      region_id: region_id,
+      systems: region_systems,
+      killmails: killmails,
+      structures: structure_data,
+      sovereignty: sovereignty_data,
+      economic: economic_data,
+      total_data_points: length(killmails) + length(structure_data) + length(sovereignty_data),
+      analysis_window: analysis_window,
+      data_freshness: DateTime.utc_now()
+    }
+  end
+
+  defp analyze_comprehensive_regional_activity(region_data, analysis_window) do
+    killmails = region_data.killmails
+
+    # System-level activity analysis
+    system_activity = analyze_system_activity_distribution(killmails, region_data.systems)
+
+    # Temporal pattern analysis
+    temporal_patterns = analyze_regional_temporal_patterns(killmails, analysis_window)
+
+    # Activity intensity analysis
+    intensity_analysis = analyze_regional_activity_intensity(killmails, region_data.systems)
+
+    # Inter-system correlation analysis
+    correlation_analysis = analyze_inter_system_correlations(killmails, region_data.systems)
+
+    %{
+      system_activity: system_activity,
+      temporal_patterns: temporal_patterns,
+      intensity_analysis: intensity_analysis,
+      correlation_analysis: correlation_analysis,
+      overall_activity_level: calculate_regional_activity_level(killmails, region_data.systems),
+      activity_trends: analyze_regional_activity_trends(killmails, analysis_window)
+    }
+  end
+
+  defp analyze_detailed_regional_threats(region_data, analysis_window) do
+    killmails = region_data.killmails
+
+    # Threat entity analysis
+    threat_entities = analyze_regional_threat_entities(killmails)
+
+    # Threat distribution analysis
+    threat_distribution = analyze_regional_threat_distribution(killmails, region_data.systems)
+
+    # Threat escalation patterns
+    escalation_patterns = analyze_regional_threat_escalation(killmails, analysis_window)
+
+    # Cross-system threat migration
+    threat_migration = analyze_regional_threat_migration(killmails, region_data.systems)
+
+    %{
+      threat_entities: threat_entities,
+      threat_distribution: threat_distribution,
+      escalation_patterns: escalation_patterns,
+      threat_migration: threat_migration,
+      overall_threat_level: calculate_regional_threat_level(killmails),
+      threat_projections: project_regional_threats(killmails, 48)
+    }
+  end
+
+  defp assess_comprehensive_regional_strategic_value(region_data, region_systems) do
+    # Multiple factors for strategic value assessment
+    economic_value = assess_regional_economic_value(region_data.economic, region_systems)
+    tactical_value = assess_regional_tactical_value(region_data.killmails, region_systems)
+    geographical_value = assess_regional_geographical_value(region_systems)
+    infrastructure_value = assess_regional_infrastructure_value(region_data.structures)
+
+    # Weighted strategic value calculation
+    overall_value =
+      calculate_weighted_strategic_value(
+        economic_value,
+        tactical_value,
+        geographical_value,
+        infrastructure_value
+      )
+
+    %{
+      economic_value: economic_value,
+      tactical_value: tactical_value,
+      geographical_value: geographical_value,
+      infrastructure_value: infrastructure_value,
+      overall_strategic_value: overall_value,
+      strategic_ranking: categorize_strategic_value(overall_value),
+      key_value_factors:
+        identify_key_value_factors(
+          economic_value,
+          tactical_value,
+          geographical_value,
+          infrastructure_value
+        )
+    }
+  end
+
+  defp generate_detailed_regional_recommendations(
+         region_data,
+         activity_analysis,
+         threat_analysis,
+         strategic_analysis
+       ) do
+    _recommendations = []
+
+    # Activity-based recommendations
+    activity_recs = generate_activity_recommendations(activity_analysis)
+
+    # Threat-based recommendations
+    threat_recs = generate_threat_recommendations(threat_analysis)
+
+    # Strategic recommendations
+    strategic_recs = generate_strategic_recommendations(strategic_analysis)
+
+    # Combined and prioritized recommendations
+    all_recommendations = activity_recs ++ threat_recs ++ strategic_recs
+
+    # Prioritize and limit to top recommendations
+    all_recommendations
+    |> Enum.sort_by(& &1.priority_score, :desc)
+    |> Enum.take(10)
+    |> Enum.map(&Map.put(&1, :region_id, region_data.region_id))
+  end
+
+  defp predict_regional_patterns(region_data, activity_analysis, threat_analysis, hours_ahead) do
+    # Pattern prediction based on historical data
+    activity_predictions = predict_activity_patterns(activity_analysis, hours_ahead)
+    threat_predictions = predict_threat_patterns(threat_analysis, hours_ahead)
+
+    %{
+      timeframe_hours: hours_ahead,
+      activity_predictions: activity_predictions,
+      threat_predictions: threat_predictions,
+      prediction_confidence:
+        calculate_prediction_confidence(region_data, activity_analysis, threat_analysis),
+      key_predicted_events:
+        identify_key_predicted_events(activity_predictions, threat_predictions)
+    }
+  end
+
+  # Supporting functions for enhanced constellation analysis
+  defp get_constellation_systems(constellation_id) do
+    # In a real implementation, this would query EVE static data
+    # For now, return a placeholder list of systems
+    case constellation_id do
+      # Kimotoro systems
+      20_000_020 -> [30_000_142, 30_000_143]
+      # Crux systems
+      20_000_069 -> [30_002_187, 30_002_188]
+      _ -> []
+    end
+  end
+
+  defp fetch_constellation_data(
+         constellation_id,
+         constellation_systems,
+         start_time,
+         analysis_window
+       ) do
+    # Fetch comprehensive data for constellation analysis
+    killmails = fetch_multi_system_killmails(constellation_systems, start_time)
+
+    # Additional constellation-specific data
+    jump_data = fetch_constellation_jump_data(constellation_id, start_time)
+    structure_data = fetch_constellation_structure_data(constellation_id, start_time)
+    sovereignty_data = fetch_constellation_sovereignty_data(constellation_id)
+
+    %{
+      constellation_id: constellation_id,
+      systems: constellation_systems,
+      killmails: killmails,
+      jump_data: jump_data,
+      structures: structure_data,
+      sovereignty: sovereignty_data,
+      total_data_points: length(killmails) + length(jump_data) + length(structure_data),
+      analysis_window: analysis_window,
+      data_freshness: DateTime.utc_now()
+    }
+  end
+
+  defp analyze_detailed_constellation_activity(constellation_data, _analysis_window) do
+    killmails = constellation_data.killmails
+
+    # Enhanced activity analysis for constellation level
+    system_activity = analyze_constellation_system_activity(killmails, constellation_data.systems)
+    jump_patterns = analyze_constellation_jump_patterns(constellation_data.jump_data)
+
+    activity_clusters =
+      identify_constellation_activity_clusters(killmails, constellation_data.systems)
+
+    %{
+      system_activity: system_activity,
+      jump_patterns: jump_patterns,
+      activity_clusters: activity_clusters,
+      peak_activity_periods: identify_constellation_peak_periods(killmails),
+      activity_flow: analyze_constellation_activity_flow(killmails, constellation_data.systems)
+    }
+  end
+
+  defp assess_detailed_constellation_tactical_significance(
+         constellation_data,
+         constellation_systems
+       ) do
+    # Enhanced tactical significance assessment
+    strategic_position = assess_constellation_strategic_position(constellation_systems)
+    chokepoint_analysis = analyze_constellation_chokepoints(constellation_data.systems)
+
+    defensive_value =
+      assess_constellation_defensive_value(constellation_data.killmails, constellation_systems)
+
+    offensive_value =
+      assess_constellation_offensive_value(constellation_data.killmails, constellation_systems)
+
+    %{
+      strategic_position: strategic_position,
+      chokepoint_analysis: chokepoint_analysis,
+      defensive_value: defensive_value,
+      offensive_value: offensive_value,
+      tactical_priority:
+        calculate_constellation_tactical_priority(
+          strategic_position,
+          chokepoint_analysis,
+          defensive_value,
+          offensive_value
+        )
+    }
+  end
+
+  defp analyze_advanced_constellation_control_patterns(constellation_data, analysis_window) do
+    # Advanced control pattern analysis
+    base_control = analyze_constellation_control_patterns(constellation_data.constellation_id)
+
+    # Enhanced analysis
+    control_stability =
+      analyze_constellation_control_stability(constellation_data.killmails, analysis_window)
+
+    control_transitions = analyze_constellation_control_transitions(constellation_data.killmails)
+    influence_patterns = analyze_constellation_influence_patterns(constellation_data.sovereignty)
+
+    %{
+      current_control: base_control,
+      control_stability: control_stability,
+      control_transitions: control_transitions,
+      influence_patterns: influence_patterns,
+      control_prediction: predict_constellation_control_changes(constellation_data.killmails, 72)
+    }
+  end
+
+  defp generate_advanced_constellation_recommendations(
+         constellation_data,
+         activity_analysis,
+         tactical_analysis,
+         control_analysis
+       ) do
+    # Generate sophisticated recommendations
+    activity_recs = generate_constellation_activity_recommendations(activity_analysis)
+    tactical_recs = generate_constellation_tactical_recommendations(tactical_analysis)
+    control_recs = generate_constellation_control_recommendations(control_analysis)
+
+    all_recommendations = activity_recs ++ tactical_recs ++ control_recs
+
+    # Prioritize recommendations
+    all_recommendations
+    |> Enum.sort_by(& &1.priority_score, :desc)
+    |> Enum.take(8)
+    |> Enum.map(&Map.put(&1, :constellation_id, constellation_data.constellation_id))
+  end
+
+  defp generate_constellation_projections(
+         constellation_data,
+         activity_analysis,
+         control_analysis,
+         hours_ahead
+       ) do
+    # Generate tactical projections
+    activity_projections = project_constellation_activity(activity_analysis, hours_ahead)
+    control_projections = project_constellation_control(control_analysis, hours_ahead)
+
+    %{
+      timeframe_hours: hours_ahead,
+      activity_projections: activity_projections,
+      control_projections: control_projections,
+      projection_confidence: calculate_constellation_projection_confidence(constellation_data),
+      key_projected_events:
+        identify_key_constellation_events(activity_projections, control_projections)
+    }
+  end
+
+  # Confidence calculation functions
+  defp calculate_regional_analysis_confidence(region_data) do
+    data_quality = assess_regional_data_quality(region_data)
+    sample_size = region_data.total_data_points
+    time_coverage = region_data.analysis_window
+
+    # Base confidence calculation
+    base_confidence = 0.3
+
+    # Data quality factor
+    quality_factor = if data_quality > 0.7, do: 0.3, else: 0.1
+
+    # Sample size factor
+    sample_factor = min(0.3, sample_size / 1_000)
+
+    # Time coverage factor
+    time_factor = if time_coverage >= 168, do: 0.1, else: 0.05
+
+    Float.round(base_confidence + quality_factor + sample_factor + time_factor, 2)
+  end
+
+  defp calculate_constellation_analysis_confidence(constellation_data) do
+    data_quality = assess_constellation_data_quality(constellation_data)
+    sample_size = constellation_data.total_data_points
+    system_coverage = length(constellation_data.systems)
+
+    # Base confidence calculation
+    base_confidence = 0.4
+
+    # Data quality factor
+    quality_factor = if data_quality > 0.8, do: 0.3, else: 0.1
+
+    # Sample size factor (smaller scale than regional)
+    sample_factor = min(0.2, sample_size / 500)
+
+    # System coverage factor
+    coverage_factor = if system_coverage >= 5, do: 0.1, else: 0.05
+
+    Float.round(base_confidence + quality_factor + sample_factor + coverage_factor, 2)
+  end
+
+  # Placeholder implementations for data fetching functions
+  defp fetch_region_structure_data(_region_id, _start_time), do: []
+  defp fetch_region_sovereignty_data(_region_id), do: []
+  defp fetch_region_economic_data(_region_id, _start_time), do: []
+  defp fetch_constellation_jump_data(_constellation_id, _start_time), do: []
+  defp fetch_constellation_structure_data(_constellation_id, _start_time), do: []
+  defp fetch_constellation_sovereignty_data(_constellation_id), do: []
+
+  # Placeholder implementations for analysis functions
+  defp analyze_system_activity_distribution(_killmails, _systems), do: %{}
+  defp analyze_regional_temporal_patterns(_killmails, _window), do: %{}
+  defp analyze_regional_activity_intensity(_killmails, _systems), do: %{}
+  defp analyze_inter_system_correlations(_killmails, _systems), do: %{}
+  defp calculate_regional_activity_level(_killmails, _systems), do: :moderate
+  defp analyze_regional_activity_trends(_killmails, _window), do: :stable
+  defp analyze_regional_threat_entities(_killmails), do: []
+  defp analyze_regional_threat_distribution(_killmails, _systems), do: %{}
+  defp analyze_regional_threat_escalation(_killmails, _window), do: %{}
+  defp analyze_regional_threat_migration(_killmails, _systems), do: %{}
+  defp calculate_regional_threat_level(_killmails), do: :moderate
+  defp project_regional_threats(_killmails, _hours), do: %{}
+  defp assess_regional_economic_value(_economic, _systems), do: 0.5
+  defp assess_regional_tactical_value(_killmails, _systems), do: 0.6
+  defp assess_regional_geographical_value(_systems), do: 0.4
+  defp assess_regional_infrastructure_value(_structures), do: 0.3
+  defp calculate_weighted_strategic_value(e, t, g, i), do: e * 0.3 + t * 0.3 + g * 0.2 + i * 0.2
+  defp categorize_strategic_value(value) when value > 0.8, do: :critical
+  defp categorize_strategic_value(value) when value > 0.6, do: :high
+  defp categorize_strategic_value(value) when value > 0.4, do: :moderate
+  defp categorize_strategic_value(_), do: :low
+  defp identify_key_value_factors(_e, _t, _g, _i), do: [:economic, :tactical]
+  defp generate_activity_recommendations(_activity), do: []
+  defp generate_threat_recommendations(_threat), do: []
+  defp generate_strategic_recommendations(_strategic), do: []
+  defp predict_activity_patterns(_activity, _hours), do: %{}
+  defp calculate_prediction_confidence(_region_data, _activity, _threat), do: 0.6
+  defp identify_key_predicted_events(_activity, _threat), do: []
+  defp assess_regional_data_quality(_region_data), do: 0.7
+  defp assess_constellation_data_quality(_constellation_data), do: 0.8
+  defp analyze_constellation_system_activity(_killmails, _systems), do: %{}
+  defp analyze_constellation_jump_patterns(_jump_data), do: %{}
+  defp identify_constellation_activity_clusters(_killmails, _systems), do: []
+  defp identify_constellation_peak_periods(_killmails), do: []
+  defp analyze_constellation_activity_flow(_killmails, _systems), do: %{}
+  defp assess_constellation_strategic_position(_systems), do: :strategic
+  defp analyze_constellation_chokepoints(_systems), do: %{}
+  defp assess_constellation_defensive_value(_killmails, _systems), do: 0.7
+  defp assess_constellation_offensive_value(_killmails, _systems), do: 0.6
+  defp calculate_constellation_tactical_priority(_pos, _choke, _def, _off), do: :high
+  defp analyze_constellation_control_stability(_killmails, _window), do: %{}
+  defp analyze_constellation_control_transitions(_killmails), do: %{}
+  defp analyze_constellation_influence_patterns(_sovereignty), do: %{}
+  defp predict_constellation_control_changes(_killmails, _hours), do: %{}
+  defp generate_constellation_activity_recommendations(_activity), do: []
+  defp generate_constellation_tactical_recommendations(_tactical), do: []
+  defp generate_constellation_control_recommendations(_control), do: []
+  defp project_constellation_activity(_activity, _hours), do: %{}
+  defp project_constellation_control(_control, _hours), do: %{}
+  defp calculate_constellation_projection_confidence(_data), do: 0.7
+  defp identify_key_constellation_events(_activity, _control), do: []
 end

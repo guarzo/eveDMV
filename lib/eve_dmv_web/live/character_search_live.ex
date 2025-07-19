@@ -106,7 +106,10 @@ defmodule EveDmvWeb.CharacterSearchLive do
 
   defp search_by_character_name(query) do
     # Enhanced character name search using database
-    sanitized_query = String.trim(query) |> String.downcase()
+    sanitized_query =
+      query
+      |> String.trim()
+      |> String.downcase()
 
     if String.length(sanitized_query) < 3 do
       {:error, :query_too_short}

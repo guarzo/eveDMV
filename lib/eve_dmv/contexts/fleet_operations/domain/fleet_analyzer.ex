@@ -12,7 +12,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
   alias EveDmv.DomainEvents.FleetAnalysisComplete
   # alias EveDmv.DomainEvents.FleetEngagement
   alias EveDmv.Infrastructure.EventBus
-  alias EveDmv.Shared.ShipDatabaseService
+  alias EveDmv.StaticData
 
   require Logger
 
@@ -24,16 +24,6 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
     c4: 1_800_000_000,
     c5: 1_800_000_000,
     c6: 1_800_000_000
-  }
-
-  # Approximate ship masses by class in kg
-  @ship_masses %{
-    "frigate" => 1_500_000,
-    "destroyer" => 3_000_000,
-    "cruiser" => 15_000_000,
-    "battlecruiser" => 25_000_000,
-    "battleship" => 50_000_000,
-    "capital" => 1_000_000_000
   }
 
   # Public API
@@ -123,103 +113,72 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
   def handle_call({:analyze_composition, fleet_data}, _from, state) do
     start_time = System.monotonic_time(:millisecond)
 
-    case perform_composition_analysis(fleet_data) do
-      {:ok, analysis} ->
-        end_time = System.monotonic_time(:millisecond)
-        analysis_time = end_time - start_time
+    {:ok, analysis} = perform_composition_analysis(fleet_data)
+    end_time = System.monotonic_time(:millisecond)
+    analysis_time = end_time - start_time
 
-        new_state = update_analysis_metrics(state, :composition, analysis_time, true)
+    new_state = update_analysis_metrics(state, :composition, analysis_time, true)
 
-        {:reply, {:ok, analysis}, new_state}
-
-      {:error, reason} ->
-        new_state = update_analysis_metrics(state, :composition, 0, false)
-        {:reply, {:error, reason}, new_state}
-    end
+    {:reply, {:ok, analysis}, new_state}
   end
 
   @impl GenServer
   def handle_call({:analyze_engagement, engagement_data}, _from, state) do
     start_time = System.monotonic_time(:millisecond)
 
-    case perform_engagement_analysis(engagement_data) do
-      {:ok, analysis} ->
-        end_time = System.monotonic_time(:millisecond)
-        analysis_time = end_time - start_time
+    {:ok, analysis} = perform_engagement_analysis(engagement_data)
+    end_time = System.monotonic_time(:millisecond)
+    analysis_time = end_time - start_time
 
-        # Publish engagement analysis complete event
-        EventBus.publish(%FleetAnalysisComplete{
-          engagement_id: engagement_data.engagement_id,
-          analysis_type: :engagement,
-          results: analysis,
-          timestamp: DateTime.utc_now()
-        })
+    # Publish engagement analysis complete event
+    EventBus.publish(%FleetAnalysisComplete{
+      engagement_id: engagement_data.engagement_id,
+      analysis_type: :engagement,
+      results: analysis,
+      timestamp: DateTime.utc_now()
+    })
 
-        new_state = update_analysis_metrics(state, :engagement, analysis_time, true)
+    new_state = update_analysis_metrics(state, :engagement, analysis_time, true)
 
-        {:reply, {:ok, analysis}, new_state}
-
-      {:error, reason} ->
-        new_state = update_analysis_metrics(state, :engagement, 0, false)
-        {:reply, {:error, reason}, new_state}
-    end
+    {:reply, {:ok, analysis}, new_state}
   end
 
   @impl GenServer
   def handle_call({:calculate_mass_analysis, fleet_data}, _from, state) do
-    case calculate_fleet_mass_analysis(fleet_data) do
-      {:ok, mass_analysis} ->
-        {:reply, {:ok, mass_analysis}, state}
-
-      {:error, reason} ->
-        {:reply, {:error, reason}, state}
-    end
+    {:ok, mass_analysis} = calculate_fleet_mass_analysis(fleet_data)
+    {:reply, {:ok, mass_analysis}, state}
   end
 
   @impl GenServer
   def handle_call({:generate_recommendations, fleet_data}, _from, state) do
-    case generate_fleet_recommendations(fleet_data) do
-      {:ok, recommendations} ->
-        new_metrics = %{
-          state.metrics
-          | recommendations_generated: state.metrics.recommendations_generated + 1
-        }
+    {:ok, recommendations} = generate_fleet_recommendations(fleet_data)
 
-        new_state = %{state | metrics: new_metrics}
+    new_metrics = %{
+      state.metrics
+      | recommendations_generated: state.metrics.recommendations_generated + 1
+    }
 
-        {:reply, {:ok, recommendations}, new_state}
+    new_state = %{state | metrics: new_metrics}
 
-      {:error, reason} ->
-        {:reply, {:error, reason}, state}
-    end
+    {:reply, {:ok, recommendations}, new_state}
   end
 
   @impl GenServer
   def handle_call({:calculate_optimal_composition, doctrine, pilot_count}, _from, state) do
-    case calculate_doctrine_optimal_composition(doctrine, pilot_count) do
-      {:ok, composition} ->
-        {:reply, {:ok, composition}, state}
-
-      {:error, reason} ->
-        {:reply, {:error, reason}, state}
-    end
+    {:ok, composition} = calculate_doctrine_optimal_composition(doctrine, pilot_count)
+    {:reply, {:ok, composition}, state}
   end
 
   @impl GenServer
   def handle_call({:force_reanalyze_engagement, engagement_id}, _from, state) do
     case EngagementCache.get_engagement_details(engagement_id) do
       {:ok, engagement_data} ->
-        case perform_engagement_analysis(engagement_data) do
-          {:ok, analysis} ->
-            # Store updated analysis
-            EngagementCache.store_engagement_analysis(engagement_id, analysis)
+        {:ok, analysis} = perform_engagement_analysis(engagement_data)
+        # Store updated analysis
+        EngagementCache.store_engagement_analysis(engagement_id, analysis)
 
-            Logger.info("Force reanalyzed engagement: #{engagement_id}")
-            {:reply, {:ok, analysis}, state}
-
-          {:error, reason} ->
-            {:reply, {:error, reason}, state}
-        end
+        Logger.info("Force reanalyzed engagement: #{engagement_id}")
+        {:reply, {:ok, analysis}, state}
 
       {:error, reason} ->
         {:reply, {:error, reason}, state}
@@ -228,13 +187,8 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
 
   @impl GenServer
   def handle_call({:calculate_wormhole_mass_limits, fleet_data}, _from, state) do
-    case calculate_wormhole_compatibility(fleet_data) do
-      {:ok, wormhole_analysis} ->
-        {:reply, {:ok, wormhole_analysis}, state}
-
-      {:error, reason} ->
-        {:reply, {:error, reason}, state}
-    end
+    {:ok, wormhole_analysis} = calculate_wormhole_compatibility(fleet_data)
+    {:reply, {:ok, wormhole_analysis}, state}
   end
 
   @impl GenServer
@@ -482,19 +436,36 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
   # Helper functions
 
   defp get_ship_class(ship_type_id) do
-    ShipDatabaseService.get_ship_class(ship_type_id)
+    StaticData.get_ship_class(ship_type_id)
   end
 
   defp get_participant_role(participant) do
     # In a real implementation, this would determine role based on ship type and fitting
     # For now, we'll use ship class as a proxy
     case get_ship_class(participant.ship_type_id) do
-      :frigate -> :tackle
-      :destroyer -> :dps
-      :cruiser -> if rem(participant.ship_type_id, 3) == 0, do: :logistics, else: :dps
-      :battlecruiser -> :dps
-      :battleship -> :dps
-      :capital -> :capital
+      :frigate ->
+        :tackle
+
+      :destroyer ->
+        :dps
+
+      :cruiser ->
+        case StaticData.get_ship_class(participant.ship_type_id) do
+          :logistics_cruiser -> :logistics
+          :force_recon -> :ewar
+          :combat_recon -> :ewar
+          :heavy_interdictor -> :tackle
+          _ -> :dps
+        end
+
+      :battlecruiser ->
+        :dps
+
+      :battleship ->
+        :dps
+
+      :capital ->
+        :capital
     end
   end
 
@@ -549,7 +520,26 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
         %{ship_type_id: participant.ship_type_id}
       end)
 
-    ShipDatabaseService.calculate_fleet_mass(ships)
+    ships
+    |> Enum.map(fn ship ->
+      ship_type_id =
+        case ship do
+          %{ship_type_id: id} -> id
+          %{"ship_type_id" => id} -> id
+          _ -> nil
+        end
+
+      if ship_type_id do
+        case StaticData.get_ship_mass(ship_type_id) do
+          {:ok, mass} -> mass
+          # Realistic cruiser mass fallback
+          {:error, _} -> 12_000_000.0
+        end
+      else
+        10_000_000.0
+      end
+    end)
+    |> Enum.sum()
   end
 
   defp determine_wormhole_compatibility(_total_mass) do
@@ -557,23 +547,24 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
     wh_classes = ["C1", "C2", "C3", "C4", "C5", "C6"]
 
     Enum.reduce(wh_classes, %{}, fn wh_class, acc ->
-      # Get a representative ship to check limits
-      case ShipDatabaseService.check_wormhole_compatibility("Vexor", wh_class) do
-        {:ok, _} ->
-          # Use the analyze_fleet_for_wormhole function for detailed analysis
-          # For now, do a simple mass check
-          Map.put(acc, String.to_existing_atom(String.downcase(wh_class)), %{
-            can_jump: true,
-            trips_needed: 1,
-            mass_utilization: 0.0
-          })
+      # For now, just check against basic wormhole mass limits
+      # This should be improved to check actual mass limits per class
+      wh_atom = String.downcase(wh_class) |> String.to_existing_atom()
+      mass_limit = Map.get(@wormhole_mass_limits, wh_atom, 0)
 
-        {:error, _} ->
-          Map.put(acc, String.to_existing_atom(String.downcase(wh_class)), %{
-            can_jump: false,
-            trips_needed: 999,
-            mass_utilization: 100.0
-          })
+      # Simple check - if mass limit exists, assume compatibility
+      if mass_limit > 0 do
+        Map.put(acc, wh_atom, %{
+          can_jump: true,
+          trips_needed: 1,
+          mass_utilization: 0.0
+        })
+      else
+        Map.put(acc, wh_atom, %{
+          can_jump: false,
+          trips_needed: 999,
+          mass_utilization: 100.0
+        })
       end
     end)
   end
@@ -582,7 +573,13 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
     mass_by_class =
       Enum.reduce(participants, %{}, fn participant, acc ->
         ship_class = get_ship_class(participant.ship_type_id)
-        ship_mass = ShipDatabaseService.get_ship_mass(participant.ship_type_id)
+
+        ship_mass =
+          case StaticData.get_ship_mass(participant.ship_type_id) do
+            {:ok, mass} -> mass
+            # Realistic cruiser mass fallback for unknown ships
+            {:error, _} -> 12_000_000.0
+          end
 
         Map.update(acc, ship_class, ship_mass, &(&1 + ship_mass))
       end)
@@ -1026,8 +1023,13 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
   defp calculate_allocation_mass(ship_allocation) do
     Enum.sum(
       Enum.map(ship_allocation, fn {ship_type_id, count} ->
-        ship_class = get_ship_class(ship_type_id)
-        ship_mass = Map.get(@ship_masses, to_string(ship_class), 10_000_000)
+        ship_mass =
+          case StaticData.get_ship_mass(ship_type_id) do
+            {:ok, mass} -> mass
+            # Realistic cruiser mass fallback
+            {:error, _} -> 12_000_000.0
+          end
+
         ship_mass * count
       end)
     )
@@ -1037,12 +1039,29 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
     Enum.reduce(ship_allocation, %{}, fn {ship_type_id, count}, acc ->
       role =
         case get_ship_class(ship_type_id) do
-          :frigate -> :tackle
-          :destroyer -> :dps
-          :cruiser -> if rem(ship_type_id, 3) == 0, do: :logistics, else: :dps
-          :battlecruiser -> :dps
-          :battleship -> :dps
-          :capital -> :capital
+          :frigate ->
+            :tackle
+
+          :destroyer ->
+            :dps
+
+          :cruiser ->
+            case StaticData.get_ship_class(ship_type_id) do
+              :logistics_cruiser -> :logistics
+              :force_recon -> :ewar
+              :combat_recon -> :ewar
+              :heavy_interdictor -> :tackle
+              _ -> :dps
+            end
+
+          :battlecruiser ->
+            :dps
+
+          :battleship ->
+            :dps
+
+          :capital ->
+            :capital
         end
 
       Map.update(acc, role, count, &(&1 + count))
@@ -1124,7 +1143,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
     determine_wormhole_compatibility(total_mass)
   end
 
-  defp update_analysis_metrics(state, analysis_type, analysis_time, success) do
+  defp update_analysis_metrics(state, analysis_type, analysis_time, _success) do
     new_metrics =
       case analysis_type do
         :composition ->
@@ -1134,12 +1153,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
           %{state.metrics | engagements_analyzed: state.metrics.engagements_analyzed + 1}
       end
 
-    new_processing_times =
-      if success do
-        [analysis_time | Enum.take(state.recent_analysis_times, 99)]
-      else
-        state.recent_analysis_times
-      end
+    new_processing_times = [analysis_time | Enum.take(state.recent_analysis_times, 99)]
 
     %{
       state

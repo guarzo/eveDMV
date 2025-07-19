@@ -332,10 +332,21 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
   """
   @spec classify_system_type(integer()) :: atom()
   def classify_system_type(system_id) when is_integer(system_id) do
-    cond do
-      system_id >= 31_000_000 and system_id < 32_000_000 -> :wormhole
-      system_id >= 30_000_000 and system_id < 31_000_000 -> :known_space
-      true -> :unknown
+    # Use proper system classification that distinguishes wormhole classes
+    case EveDmv.StaticData.classify_system(system_id) do
+      :wormhole_c1 -> :wormhole
+      :wormhole_c2 -> :wormhole
+      :wormhole_c3 -> :wormhole
+      :wormhole_c4 -> :wormhole
+      :wormhole_c5 -> :wormhole
+      :wormhole_c6 -> :wormhole
+      :wormhole_c13 -> :wormhole
+      :wormhole_c14 -> :wormhole
+      :wormhole_unknown -> :wormhole
+      :highsec -> :known_space
+      :lowsec -> :known_space
+      :nullsec -> :known_space
+      _ -> :unknown
     end
   end
 
@@ -493,11 +504,39 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
   end
 
   defp determine_most_active_wh_class(j_space_kills) do
-    # Simplified - just return "C1" for J-space systems starting with 31000
-    if Enum.any?(j_space_kills, fn km -> km.solar_system_id >= 31_000_000 end) do
-      "C1"
-    else
+    # Analyze actual wormhole systems to determine the most active class
+    if Enum.empty?(j_space_kills) do
       nil
+    else
+      # Group kills by system and classify each system
+      system_classes =
+        j_space_kills
+        |> Enum.group_by(& &1.solar_system_id)
+        |> Enum.map(fn {system_id, kills} ->
+          wh_class =
+            case EveDmv.StaticData.classify_system(system_id) do
+              :wormhole_c1 -> "C1"
+              :wormhole_c2 -> "C2"
+              :wormhole_c3 -> "C3"
+              :wormhole_c4 -> "C4"
+              :wormhole_c5 -> "C5"
+              :wormhole_c6 -> "C6"
+              :wormhole_c13 -> "C13"
+              :wormhole_c14 -> "C14"
+              _ -> nil
+            end
+
+          {wh_class, length(kills)}
+        end)
+        |> Enum.filter(fn {class, _count} -> class != nil end)
+
+      if Enum.empty?(system_classes) do
+        nil
+      else
+        # Return the wormhole class with the most activity
+        {most_active_class, _count} = Enum.max_by(system_classes, fn {_class, count} -> count end)
+        most_active_class
+      end
     end
   end
 

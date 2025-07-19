@@ -19,7 +19,7 @@ defmodule EveDmvWeb.HealthController do
         |> json(%{
           status: "healthy",
           timestamp: DateTime.utc_now(),
-          version: Application.spec(:eve_dmv, :vsn) |> to_string(),
+          version: :eve_dmv |> Application.spec(:vsn) |> to_string(),
           environment: Application.get_env(:eve_dmv, :environment, "unknown"),
           services: %{
             database: "healthy",

@@ -17,7 +17,7 @@ defmodule EveDmv.Eve.EsiMarketClient do
 
   ## Parameters
   - type_id: The type ID to get orders for
-  - region_id: The region ID (defaults to The Forge/Jita region: 10000002)
+  - region_id: The region ID (defaults to The Forge/Jita region: 10_000002)
   - order_type: :buy, :sell, or :all (defaults to :all)
   """
   @spec get_market_orders(integer(), integer(), atom()) ::

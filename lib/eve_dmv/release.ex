@@ -141,12 +141,15 @@ defmodule EveDmv.Release do
 
         if killmail_id && killmail_time do
           # Generate deterministic hash from ID and time
-          :crypto.hash(:sha256, "#{killmail_id}:#{killmail_time}")
+          "#{killmail_id}:#{killmail_time}"
+          |> (&:crypto.hash(:sha256, &1)).()
           |> Base.encode16(case: :lower)
           |> String.slice(0..39)
         else
           # Last resort: generate from entire killmail data
-          :crypto.hash(:sha256, :erlang.term_to_binary(killmail))
+          killmail
+          |> :erlang.term_to_binary()
+          |> (&:crypto.hash(:sha256, &1)).()
           |> Base.encode16(case: :lower)
           |> String.slice(0..39)
         end

@@ -34,9 +34,6 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
            engagement_metrics: get_engagement_metrics(report)
          }}
 
-      {:error, :no_members_found} ->
-        {:error, :insufficient_data}
-
       {:error, reason} ->
         Logger.warning("Failed to analyze corporation #{corporation_id}: #{inspect(reason)}")
         {:error, reason}
@@ -412,21 +409,6 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
     try do
       # Get authentication token for ESI request (simplified - would need proper auth flow)
       case get_corporation_auth_token(corporation_id) do
-        {:ok, auth_token} ->
-          case EveDmv.Eve.EsiCorporationClient.get_corporation_members(corporation_id, auth_token) do
-            {:ok, member_ids} when is_list(member_ids) ->
-              # Enrich member data with character names and details
-              members = enrich_member_data(member_ids)
-              {:ok, members}
-
-            {:error, reason} ->
-              Logger.warning(
-                "Failed to fetch corp members for #{corporation_id}: #{inspect(reason)}"
-              )
-
-              {:error, reason}
-          end
-
         {:error, :no_auth_token} ->
           # Fallback to database lookup if no ESI auth available
           fetch_members_from_database(corporation_id)
@@ -622,21 +604,18 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
 
   defp get_total_members(report) do
     case report do
-      %{member_count: count} -> count
-      %{member_details: details} when is_list(details) -> length(details)
-      _ -> 0
+      %{engagement_metrics: %{total_active_members: active, inactive_members: inactive}} ->
+        active + inactive
+
+      _ ->
+        0
     end
   end
 
   defp get_active_members(report) do
     case report do
-      %{active_member_count: count} ->
-        count
-
-      %{member_details: details} when is_list(details) ->
-        Enum.count(details, fn member ->
-          Map.get(member, :activity_level, :inactive) != :inactive
-        end)
+      %{engagement_metrics: %{total_active_members: active}} ->
+        active
 
       _ ->
         0
@@ -645,9 +624,11 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
 
   defp get_activity_trends(report) do
     case report do
-      %{activity_trends: trends} -> trends
-      %{engagement_metrics: %{trends: trends}} -> trends
-      _ -> %{direction: :stable, growth_rate: 0.0}
+      %{engagement_metrics: %{activity_trend: trend}} ->
+        %{direction: trend, growth_rate: 0.0}
+
+      _ ->
+        %{direction: :stable, growth_rate: 0.0}
     end
   end
 

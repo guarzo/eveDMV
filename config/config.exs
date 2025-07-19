@@ -126,6 +126,9 @@ config :ash, :policies, show_policy_breakdowns?: true
 config :eve_dmv,
   ash_domains: [
     EveDmv.Api,
+    EveDmv.Api.SurveillanceApi,
+    EveDmv.Api.AnalyticsApi,
+    EveDmv.Api.BattleAnalysisApi,
     EveDmv.Domains.Analytics,
     EveDmv.Domains.Intelligence,
     EveDmv.Domains.Surveillance,

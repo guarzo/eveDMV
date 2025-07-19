@@ -185,7 +185,7 @@ defmodule EveDmv.Cache.QueryCache do
 
   # Server callbacks
 
-  @impl true
+  @impl GenServer
   def init(_opts) do
     # Create cache table
     cache_table =
@@ -235,7 +235,7 @@ defmodule EveDmv.Cache.QueryCache do
     {:ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_stats, _from, state) do
     [{:hits, hits}] = :ets.lookup(:query_cache_stats, :hits)
     [{:misses, misses}] = :ets.lookup(:query_cache_stats, :misses)
@@ -260,7 +260,7 @@ defmodule EveDmv.Cache.QueryCache do
     {:reply, stats, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:clear_all, _from, state) do
     :ets.delete_all_objects(@table_name)
     :ets.update_counter(:query_cache_stats, :evictions, :ets.info(@table_name, :size))
@@ -270,7 +270,7 @@ defmodule EveDmv.Cache.QueryCache do
     {:reply, :ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:cleanup, state) do
     cleanup_expired_entries()
     enforce_size_limit()
@@ -422,7 +422,8 @@ defmodule EveDmv.Cache.QueryCache do
     if cache_size > @max_cache_size do
       # Get all entries sorted by expiry time
       entries =
-        :ets.tab2list(@table_name)
+        @table_name
+        |> :ets.tab2list()
         |> Enum.sort_by(fn {_key, _value, expiry} -> expiry end)
 
       # Calculate how many to remove

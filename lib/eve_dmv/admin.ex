@@ -11,6 +11,8 @@ defmodule EveDmv.Admin do
   alias EveDmv.Api
   alias EveDmv.Users.User
 
+  require Logger
+
   @doc """
   Promote a user to admin status by character ID.
 
@@ -24,17 +26,15 @@ defmodule EveDmv.Admin do
   """
   def promote_user_to_admin(character_id) when is_integer(character_id) do
     case Ash.read_one(User, domain: Api, filter: [eve_character_id: character_id]) do
-      {:ok, user} -> update_user_admin_status(user, true)
+      {:ok, %User{} = user} -> update_user_admin_status(user, true)
       {:error, _} -> {:error, :user_not_found}
-      nil -> {:error, :user_not_found}
     end
   end
 
   def promote_user_to_admin(character_name) when is_binary(character_name) do
     case Ash.read_one(User, domain: Api, filter: [eve_character_name: character_name]) do
-      {:ok, user} -> update_user_admin_status(user, true)
+      {:ok, %User{} = user} -> update_user_admin_status(user, true)
       {:error, _} -> {:error, :user_not_found}
-      nil -> {:error, :user_not_found}
     end
   end
 
@@ -43,9 +43,8 @@ defmodule EveDmv.Admin do
   """
   def demote_admin(character_id) when is_integer(character_id) do
     case Ash.read_one(User, domain: Api, filter: [eve_character_id: character_id]) do
-      {:ok, user} -> update_user_admin_status(user, false)
+      {:ok, %User{} = user} -> update_user_admin_status(user, false)
       {:error, _} -> {:error, :user_not_found}
-      nil -> {:error, :user_not_found}
     end
   end
 
@@ -98,22 +97,22 @@ defmodule EveDmv.Admin do
     if admin_count == 0 do
       case promote_user_to_admin(character_name) do
         {:ok, user} ->
-          IO.puts("✅ Successfully promoted #{user.eve_character_name} to admin!")
+          Logger.info("Successfully promoted #{user.eve_character_name} to admin")
           {:ok, user}
 
         {:error, :user_not_found} ->
-          IO.puts(
-            "❌ User '#{character_name}' not found. Make sure they have logged in at least once."
+          Logger.warning(
+            "User '#{character_name}' not found. Make sure they have logged in at least once."
           )
 
           {:error, :user_not_found}
 
         {:error, reason} ->
-          IO.puts("❌ Failed to promote user: #{inspect(reason)}")
+          Logger.error("Failed to promote user: #{inspect(reason)}")
           {:error, reason}
       end
     else
-      IO.puts("⚠️  Admin users already exist. Use promote_user_to_admin/1 instead.")
+      Logger.warning("Admin users already exist. Use promote_user_to_admin/1 instead.")
       {:error, :admins_already_exist}
     end
   end

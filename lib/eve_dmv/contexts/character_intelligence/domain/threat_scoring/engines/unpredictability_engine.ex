@@ -7,7 +7,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
   """
 
   require Logger
-  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedCalculations
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   alias EveDmv.StaticData.SystemData
 
   # Ship type IDs for tactical roles
@@ -242,8 +242,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       # Extract hours from timestamps
       hours =
         timestamps
-        |> Enum.map(&DateTime.to_time/1)
-        |> Enum.map(& &1.hour)
+        |> Enum.map(&(&1 |> DateTime.to_time() |> Map.get(:hour)))
         |> Enum.frequencies()
 
       # Calculate entropy of hour distribution
@@ -270,8 +269,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       # Extract day of week from timestamps
       days =
         timestamps
-        |> Enum.map(&DateTime.to_date/1)
-        |> Enum.map(&Date.day_of_week/1)
+        |> Enum.map(&(&1 |> DateTime.to_date() |> Date.day_of_week()))
         |> Enum.frequencies()
 
       # Calculate entropy of day distribution
@@ -326,32 +324,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
   end
 
   defp extract_ship_usage_patterns(killmails) do
-    # Extract ship types used by the character
-    ship_types =
-      killmails
-      |> Enum.flat_map(fn km ->
-        # Ship type when victim
-        victim_ship = if km.victim_character_id, do: [km.victim_ship_type_id], else: []
-
-        # Ship type when attacker
-        attacker_ships =
-          case km.raw_data do
-            %{"attackers" => attackers} when is_list(attackers) ->
-              attackers
-              |> Enum.filter(&(&1["character_id"] != nil))
-              |> Enum.map(& &1["ship_type_id"])
-              |> Enum.filter(&(&1 != nil))
-
-            _ ->
-              []
-          end
-
-        victim_ship ++ attacker_ships
-      end)
-      |> Enum.filter(&(&1 != nil))
-      |> Enum.frequencies()
-
-    ship_types
+    SharedUtilities.extract_ship_types_used(killmails)
   end
 
   defp calculate_ship_selection_variance(ship_usage) do
@@ -505,7 +478,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       # Analyze variance in damage contribution patterns
       damage_contributions =
         attacker_killmails
-        |> Enum.map(&SharedCalculations.extract_damage_contribution(&1, character_id))
+        |> Enum.map(&SharedUtilities.extract_damage_contribution(&1, character_id))
         |> Enum.filter(&(&1 > 0))
 
       if length(damage_contributions) < 2 do
@@ -533,24 +506,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
     # Analyze variance in tactical roles played
     ship_roles =
       killmails
-      |> Enum.flat_map(fn km ->
-        # Extract ship types used by character
-        victim_ships = if km.victim_character_id, do: [km.victim_ship_type_id], else: []
-
-        attacker_ships =
-          case km.raw_data do
-            %{"attackers" => attackers} when is_list(attackers) ->
-              attackers
-              |> Enum.filter(&(&1["character_id"] != nil))
-              |> Enum.map(& &1["ship_type_id"])
-              |> Enum.filter(&(&1 != nil))
-
-            _ ->
-              []
-          end
-
-        victim_ships ++ attacker_ships
-      end)
+      |> Enum.flat_map(&SharedUtilities.extract_ship_types_used/1)
       |> Enum.filter(&(&1 != nil))
       |> Enum.map(&classify_tactical_role/1)
       |> Enum.frequencies()
@@ -698,6 +654,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
   end
 
   defp normalize_to_10_scale(score) do
-    SharedCalculations.normalize_to_10_scale(score)
+    SharedUtilities.normalize_to_10_scale(score)
   end
 end

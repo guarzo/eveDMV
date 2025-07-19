@@ -115,21 +115,7 @@ defmodule Mix.Tasks.Eve.QueryPerformance do
 
         slow_queries
         |> Enum.with_index(1)
-        |> Enum.each(fn {query, idx} ->
-          Mix.shell().info("Query ##{idx}:")
-          Mix.shell().info("Execution Time: #{query.execution_time_ms}ms")
-          Mix.shell().info("Query: #{String.slice(query.query, 0, 200)}...")
-
-          if query.recommendations do
-            Mix.shell().info("\nRecommendations:")
-
-            Enum.each(query.recommendations, fn rec ->
-              Mix.shell().info("  - #{rec}")
-            end)
-          end
-
-          Mix.shell().info("\n" <> String.duplicate("-", 80) <> "\n")
-        end)
+        |> Enum.each(&display_slow_query/1)
     end
 
     # Get index suggestions
@@ -152,6 +138,26 @@ defmodule Mix.Tasks.Eve.QueryPerformance do
     Mix.shell().info("\nRunning fresh analysis...")
     QueryPlanAnalyzer.force_analysis()
     Mix.shell().info("Analysis triggered. Check logs for results.")
+  end
+
+  defp display_slow_query({query, idx}) do
+    Mix.shell().info("Query ##{idx}:")
+    Mix.shell().info("Execution Time: #{query.execution_time_ms}ms")
+    Mix.shell().info("Query: #{String.slice(query.query, 0, 200)}...")
+
+    if query.recommendations do
+      display_recommendations(query.recommendations)
+    end
+
+    Mix.shell().info("\n" <> String.duplicate("-", 80) <> "\n")
+  end
+
+  defp display_recommendations(recommendations) do
+    Mix.shell().info("\nRecommendations:")
+
+    Enum.each(recommendations, fn rec ->
+      Mix.shell().info("  - #{rec}")
+    end)
   end
 
   defp reset_metrics do

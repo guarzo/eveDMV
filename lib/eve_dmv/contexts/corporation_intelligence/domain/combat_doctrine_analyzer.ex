@@ -221,19 +221,14 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
         start_days = (month_offset - 1) * 30
         end_days = month_offset * 30
 
-        case analyze_historical_doctrine(corporation_id, start_days, end_days) do
-          {:ok, analysis} ->
-            %{
-              period: "#{month_offset} months ago",
-              month_offset: month_offset,
-              doctrine_analysis: analysis
-            }
+        {:ok, analysis} = analyze_historical_doctrine(corporation_id, start_days, end_days)
 
-          _ ->
-            nil
-        end
+        %{
+          period: "#{month_offset} months ago",
+          month_offset: month_offset,
+          doctrine_analysis: analysis
+        }
       end)
-      |> Enum.filter(&(&1 != nil))
       # Most recent first
       |> Enum.reverse()
 

@@ -7,10 +7,9 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
   """
 
   alias EveDmv.Intelligence.Analyzers.MassCalculator
-  alias EveDmv.Intelligence.ShipDatabase
 
   @doc """
-  Enhanced fleet composition analysis using ShipDatabase.
+  Enhanced fleet composition analysis using StaticData.
   Provides detailed ship-by-ship analysis with wormhole suitability.
   """
   def analyze_enhanced_fleet_composition(ship_list) when is_list(ship_list) do
@@ -33,14 +32,14 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
   def analyze_individual_ship(ship_name) do
     %{
       name: ship_name,
-      category: ShipDatabase.get_ship_category(ship_name),
-      mass_kg: ShipDatabase.get_ship_mass(ship_name),
-      role: ShipDatabase.get_ship_role(ship_name),
-      ship_class: ShipDatabase.get_ship_class(ship_name),
-      wormhole_suitable: ShipDatabase.wormhole_suitable?(ship_name),
-      is_capital: ShipDatabase.is_capital?(ship_name),
+      category: EveDmv.StaticData.get_ship_category(ship_name),
+      mass_kg: EveDmv.StaticData.get_ship_mass(ship_name),
+      role: EveDmv.StaticData.get_ship_role(ship_name),
+      ship_class: EveDmv.StaticData.get_ship_class(ship_name),
+      wormhole_suitable: EveDmv.StaticData.wormhole_suitable?(ship_name),
+      is_capital: EveDmv.StaticData.is_capital?(ship_name),
       wh_restrictions:
-        ShipDatabase.get_wormhole_restrictions(ShipDatabase.get_ship_class(ship_name))
+        EveDmv.StaticData.get_wormhole_restrictions(EveDmv.StaticData.get_ship_class(ship_name))
     }
   end
 
@@ -94,7 +93,7 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
       doctrines
       |> Enum.map(fn doctrine ->
         compliant_ships =
-          Enum.count(ship_analysis, &ShipDatabase.doctrine_ship?(&1.name, doctrine))
+          Enum.count(ship_analysis, &EveDmv.StaticData.doctrine_ship?(&1.name, doctrine))
 
         {doctrine, compliant_ships / length(ship_analysis)}
       end)
@@ -117,7 +116,7 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
     total_mass = Enum.sum(Enum.map(ship_analysis, & &1.mass_kg))
 
     suggestions =
-      if total_mass > 90_000_000 do
+      if total_mass > 100_000_000 do
         ["Consider lighter ships for better wormhole mobility"]
       else
         []

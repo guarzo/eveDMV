@@ -315,7 +315,7 @@ defmodule EveDmv.Users.User do
     require Logger
 
     Logger.info(
-      "ESI Corp Integration Debug - Character ID: #{character_id}, Has Token: #{!!access_token}"
+      "ESI Corp Integration Debug - Character ID: #{character_id}, Has Token: #{access_token != nil}"
     )
 
     if character_id && access_token do

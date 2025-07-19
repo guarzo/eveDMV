@@ -768,24 +768,20 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
   end
 
   defp generate_tactical_tags(battle_report) do
-    auto_tags = []
-
-    # Add tags based on analysis
     battle_type = battle_report.auto_analysis.tactical_summary.battle_type
-    auto_tags = [Atom.to_string(battle_type) | auto_tags]
-
     scale = battle_report.auto_analysis.tactical_summary.scale_assessment
-    auto_tags = [Atom.to_string(scale) | auto_tags]
+
+    base_tags = [Atom.to_string(battle_type), Atom.to_string(scale)]
 
     # Add multi-system tag if applicable
-    auto_tags =
+    multi_system_tags =
       if battle_report.auto_analysis.multi_system_analysis.multi_system do
-        ["multi-system" | auto_tags]
+        ["multi-system"]
       else
-        auto_tags
+        []
       end
 
-    auto_tags
+    base_tags ++ multi_system_tags
   end
 
   defp add_share_urls(battle_report) do
@@ -902,7 +898,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
     battle_report = %{
       report_id: report_id,
       battle_id: "battle_#{:crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)}",
-      creator_character_id: 12345,
+      creator_character_id: 12_345,
       creator_name: "Test Creator",
       title: "Battle Report #{report_id}",
       description: "Comprehensive battle analysis and tactical breakdown",
@@ -964,7 +960,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
         supports_video: false,
         supports_highlights: true
       },
-      created_at: DateTime.add(DateTime.utc_now(), -:rand.uniform(86400), :second),
+      created_at: DateTime.add(DateTime.utc_now(), -:rand.uniform(86_400), :second),
       updated_at: DateTime.utc_now()
     }
 
@@ -1076,7 +1072,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
 
     try do
       # Get current ratings
-      current_ratings = battle_report.community_features.ratings || []
+      current_ratings = battle_report.community_features.ratings
 
       # Add new rating
       updated_ratings = [rating_record | current_ratings]
@@ -1099,13 +1095,13 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
             battle_report.community_features
             | ratings: updated_ratings
           },
-          metrics: %{
-            battle_report.metrics
-            | average_rating: Float.round(new_average, 2),
+          metrics:
+            Map.merge(battle_report.metrics, %{
+              average_rating: Float.round(new_average, 2),
               total_ratings: total_ratings,
               featured_score: Float.round(featured_score, 3),
               category_ratings: category_averages
-          },
+            }),
           updated_at: DateTime.utc_now()
       }
 
@@ -1326,7 +1322,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
 
     try do
       # Get current highlights
-      current_highlights = battle_report.tactical_highlights || []
+      current_highlights = battle_report.tactical_highlights
 
       # Add new highlight and sort by timestamp
       updated_highlights =
@@ -1465,7 +1461,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
       %{
         report_id: "candidate_#{i}",
         battle_id: "battle_#{i}",
-        creator_character_id: 10000 + i,
+        creator_character_id: 10_000 + i,
         title:
           "#{String.capitalize(to_string(battle_type))} - #{String.capitalize(to_string(scale))} Scale",
         description: "A #{scale} #{battle_type} with tactical significance",
@@ -2068,7 +2064,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
       %{
         report_id: "search_result_#{index}",
         battle_id: "battle_#{index}",
-        creator_character_id: 10000 + index,
+        creator_character_id: 10_000 + index,
         creator_name: "Battle Analyst #{index}",
         title: scenario.title,
         description: generate_battle_description(scenario),
@@ -2501,7 +2497,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
         summary_parts
       end
 
-    Enum.reverse(summary_parts) |> Enum.join(" • ")
+    summary_parts
+    |> Enum.reverse()
+    |> Enum.join(" • ")
   end
 
   defp get_engagement_indicators(result) do
@@ -2649,7 +2647,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
   defp format_participants(count) do
     cond do
       count < 1000 -> "#{count}"
-      count < 10000 -> "#{Float.round(count / 1000, 1)}k"
+      count < 10_000 -> "#{Float.round(count / 1000, 1)}k"
       true -> "#{div(count, 1000)}k"
     end
   end
@@ -2668,8 +2666,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
     |> to_string()
     |> String.replace("_", " ")
     |> String.split(" ")
-    |> Enum.map(&String.capitalize/1)
-    |> Enum.join(" ")
+    |> Enum.map_join(" ", &String.capitalize/1)
   end
 
   defp format_scale(scale) do

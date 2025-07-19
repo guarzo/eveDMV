@@ -9,6 +9,8 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
   use GenServer
   use EveDmv.ErrorHandler
 
+  alias EveDmv.StaticData
+
   require Logger
 
   # Note: Doctrine types and mass categories are defined inline where needed
@@ -277,8 +279,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
     estimated_mass =
       Enum.sum(
         Enum.map(ship_requirements, fn {ship_type_id, requirement} ->
-          ship_class = get_ship_class_for_type(ship_type_id)
-          ship_mass = get_estimated_ship_mass(ship_class)
+          ship_mass = get_ship_mass(ship_type_id)
           ship_mass * requirement[:min_count]
         end)
       )
@@ -296,25 +297,71 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
   end
 
   defp get_ship_class_for_type(ship_type_id) do
-    # Simplified ship class determination
-    case rem(ship_type_id, 10) do
-      0..2 -> :frigate
-      3..4 -> :destroyer
-      5..6 -> :cruiser
-      7 -> :battlecruiser
-      8 -> :battleship
-      9 -> :capital
+    # Real ship class determination using static data
+    case StaticData.get_ship_class(ship_type_id) do
+      :frigate -> :frigate
+      :assault_frigate -> :frigate
+      :covert_ops -> :frigate
+      :interceptor -> :frigate
+      :interdictor -> :frigate
+      :electronic_attack_frigate -> :frigate
+      :logistics_frigate -> :frigate
+      :destroyer -> :destroyer
+      :tactical_destroyer -> :destroyer
+      :command_destroyer -> :destroyer
+      :cruiser -> :cruiser
+      :heavy_assault_cruiser -> :cruiser
+      :heavy_interdictor -> :cruiser
+      :force_recon -> :cruiser
+      :combat_recon -> :cruiser
+      :logistics_cruiser -> :cruiser
+      :strategic_cruiser -> :cruiser
+      :battlecruiser -> :battlecruiser
+      :attack_battlecruiser -> :battlecruiser
+      :battleship -> :battleship
+      :marauder -> :battleship
+      :black_ops -> :battleship
+      :dreadnought -> :capital
+      :carrier -> :capital
+      :supercarrier -> :capital
+      :titan -> :capital
+      :force_auxiliary -> :capital
+      # Default for unknown or special ships
+      _ -> :frigate
     end
   end
 
   defp get_estimated_ship_mass(ship_class) do
+    # Use average mass values for ship classes based on static data
+    # In production, this could be cached for performance
     case ship_class do
-      :frigate -> 1_000_000
-      :destroyer -> 1_800_000
-      :cruiser -> 10_000_000
-      :battlecruiser -> 50_000_000
-      :battleship -> 100_000_000
-      :capital -> 1_200_000_000
+      # Average T1/T2 frigate mass
+      :frigate -> 1_500_000
+      # Average destroyer mass  
+      :destroyer -> 2_000_000
+      # Average cruiser mass
+      :cruiser -> 12_000_000
+      # Average battlecruiser mass
+      :battlecruiser -> 60_000_000
+      # Average battleship mass
+      :battleship -> 110_000_000
+      # Average capital mass
+      :capital -> 1_300_000_000
+    end
+  end
+
+  @doc """
+  Get actual ship mass from static data.
+  Falls back to estimated class mass if not found.
+  """
+  def get_ship_mass(ship_type_id) when is_integer(ship_type_id) do
+    case StaticData.get_ship_mass(ship_type_id) do
+      {:ok, mass} ->
+        round(mass)
+
+      {:error, _} ->
+        ship_class = get_ship_class_for_type(ship_type_id)
+        get_estimated_ship_mass(ship_class)
     end
   end
 
@@ -460,15 +507,27 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
 
     case ship_class do
       :frigate ->
-        # Check if it's a logistics frigate
-        if rem(participant.ship_type_id, 5) == 0, do: :logistics, else: :tackle
+        # Check if it's a logistics frigate using actual ship classification
+        case StaticData.get_ship_class(participant.ship_type_id) do
+          :logistics_frigate -> :logistics
+          :electronic_attack_frigate -> :ewar
+          :interceptor -> :tackle
+          :interdictor -> :tackle
+          _ -> :tackle
+        end
 
       :destroyer ->
         :dps
 
       :cruiser ->
-        # Check if it's a logistics cruiser
-        if rem(participant.ship_type_id, 3) == 0, do: :logistics, else: :dps
+        # Check if it's a logistics cruiser using actual ship classification
+        case StaticData.get_ship_class(participant.ship_type_id) do
+          :logistics_cruiser -> :logistics
+          :force_recon -> :ewar
+          :combat_recon -> :ewar
+          :heavy_interdictor -> :tackle
+          _ -> :dps
+        end
 
       :battlecruiser ->
         :command
@@ -700,8 +759,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
   defp calculate_fleet_mass(participants) do
     Enum.sum(
       Enum.map(participants, fn participant ->
-        ship_class = get_ship_class_for_type(participant.ship_type_id)
-        get_estimated_ship_mass(ship_class)
+        get_ship_mass(participant.ship_type_id)
       end)
     )
   end

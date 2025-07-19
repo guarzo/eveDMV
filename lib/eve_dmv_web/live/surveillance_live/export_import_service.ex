@@ -6,7 +6,7 @@ defmodule EveDmvWeb.SurveillanceLive.ExportImportService do
   profiles from JSON data with validation and error handling.
   """
 
-  alias EveDmv.Api
+  alias EveDmv.Api.SurveillanceApi
   alias EveDmv.Surveillance.MatchingEngine
   alias EveDmv.Surveillance.Profile
 
@@ -20,7 +20,7 @@ defmodule EveDmvWeb.SurveillanceLive.ExportImportService do
     profiles =
       profile_ids
       |> Enum.reduce([], fn profile_id, acc ->
-        case Ash.get(Profile, profile_id, domain: Api, actor: actor) do
+        case Ash.get(Profile, profile_id, domain: SurveillanceApi, actor: actor) do
           {:ok, profile} ->
             exported = %{
               "name" => profile.name,
@@ -67,7 +67,7 @@ defmodule EveDmvWeb.SurveillanceLive.ExportImportService do
               user_id: user_id
             }
 
-            case Ash.create(Profile, profile_params, domain: Api, actor: current_user) do
+            case Ash.create(Profile, profile_params, domain: SurveillanceApi, actor: current_user) do
               {:ok, _} ->
                 %{acc | success: acc.success + 1}
 

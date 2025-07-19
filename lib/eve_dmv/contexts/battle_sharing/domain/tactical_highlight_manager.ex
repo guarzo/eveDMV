@@ -523,12 +523,12 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
     cond do
       length(ship_types) == 1 -> :focused_engagement
       length(ship_types) > 5 -> :mixed_engagement
-      Enum.any?(ship_types, &is_capital_ship/1) -> :capital_engagement
+      Enum.any?(ship_types, &capital_ship?/1) -> :capital_engagement
       true -> :standard_engagement
     end
   end
 
-  defp is_capital_ship(ship_type_id) do
+  defp capital_ship?(ship_type_id) do
     # Rough capital ship detection
     ship_type_id in 19_720..19_740
   end
@@ -573,7 +573,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
 
     # Check for intensity changes
     factors =
-      if is_intensity_change_moment(timestamp, battle_data) do
+      if intensity_change_moment?(timestamp, battle_data) do
         [:intensity_change | factors]
       else
         factors
@@ -581,7 +581,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
 
     # Check for phase transitions
     factors =
-      if is_phase_transition_moment(timestamp, battle_data) do
+      if phase_transition_moment?(timestamp, battle_data) do
         [:phase_transition | factors]
       else
         factors
@@ -590,13 +590,13 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
     {:ok, factors}
   end
 
-  defp is_intensity_change_moment(_timestamp, _battle_data) do
+  defp intensity_change_moment?(_timestamp, _battle_data) do
     # Simplified detection of intensity changes
     # Would analyze killmail frequency around the timestamp
     false
   end
 
-  defp is_phase_transition_moment(_timestamp, _battle_data) do
+  defp phase_transition_moment?(_timestamp, _battle_data) do
     # Simplified detection of phase transitions
     # Would use the tactical phase detector
     false
@@ -887,7 +887,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
   end
 
   defp fetch_tactical_highlight(_highlight_id) do
-    {:ok, %{highlight_id: "example", creator_character_id: 12345}}
+    {:ok, %{highlight_id: "example", creator_character_id: 12_345}}
   end
 
   defp validate_highlight_updates(updates) do

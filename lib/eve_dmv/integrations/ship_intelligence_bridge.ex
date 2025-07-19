@@ -23,6 +23,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
   Takes killmail data and provides enhanced role classification using our
   advanced ModuleClassifier, supplementing the existing estimated fitting approach.
   """
+  @spec analyze_ship_roles_in_battle(map()) :: map() | {:error, any()}
   def analyze_ship_roles_in_battle(battle_data) do
     Logger.debug("Analyzing ship roles in battle using enhanced ship intelligence")
 
@@ -37,7 +38,10 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
         |> Enum.map(fn {:ok, result} -> result end)
 
       # Get fleet composition analysis
-      ship_types = Enum.map(killmails, &extract_ship_type_id/1) |> Enum.filter(& &1)
+      ship_types =
+        killmails
+        |> Enum.map(&extract_ship_type_id/1)
+        |> Enum.filter(& &1)
 
       fleet_analysis =
         case FleetAnalyzer.analyze_fleet_composition(ship_types) do
@@ -61,6 +65,10 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
               recommendations: [],
               fleet_size: length(ship_types)
             }
+
+          analysis when is_map(analysis) ->
+            # Handle case where FleetAnalyzer returns a map directly
+            analysis
         end
 
       # Combine individual ship analysis with fleet-level analysis
@@ -84,6 +92,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
   Takes performance data from ShipPerformanceAnalyzer and enriches it with
   role classification confidence, doctrine compliance, and tactical insights.
   """
+  @spec enhance_ship_performance_data(list(map()), map() | nil) :: list(map())
   def enhance_ship_performance_data(performance_data, battle_context \\ nil) do
     Enum.map(performance_data, fn ship_perf ->
       # Get ship role classification from our system
@@ -110,6 +119,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
   Analyzes a character's killmail history to determine ship specialization
   and expertise levels based on performance and usage patterns.
   """
+  @spec calculate_ship_specialization(integer(), keyword()) :: {:ok, map()}
   def calculate_ship_specialization(character_id, options \\ []) do
     days_back = Keyword.get(options, :days_back, 90)
     min_killmails = Keyword.get(options, :min_killmails, 5)
@@ -161,15 +171,25 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
       {:ok, specialization} ->
         %{
           primary_ship_classes: extract_primary_ship_classes(specialization),
-          preferred_roles: specialization.preferred_roles,
+          preferred_roles: Map.get(specialization, :preferred_roles, []),
           specialization_diversity: calculate_specialization_diversity(specialization),
-          mastery_level: specialization.expertise_level
+          mastery_level: Map.get(specialization, :expertise_level, :unknown)
         }
 
       {:error, reason} ->
         Logger.warning(
           "Failed to get ship preferences for character #{character_id}: #{inspect(reason)}"
         )
+
+        %{
+          primary_ship_classes: [],
+          preferred_roles: [],
+          specialization_diversity: 0.0,
+          mastery_level: :unknown
+        }
+
+      other ->
+        Logger.warning("Unexpected return from calculate_ship_specialization: #{inspect(other)}")
 
         %{
           primary_ship_classes: [],
@@ -199,12 +219,12 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
         {:ok, analysis} ->
           # Enhance with operational insights
           operational_analysis = %{
-            fleet_size: analysis.fleet_size,
-            doctrine: analysis.doctrine_classification,
-            role_balance: analysis.role_distribution,
-            tactical_strengths: analysis.tactical_assessment,
-            threat_level: analysis.threat_level,
-            recommendations: analysis.recommendations,
+            fleet_size: Map.get(analysis, :fleet_size, 0),
+            doctrine: Map.get(analysis, :doctrine_classification, %{}),
+            role_balance: Map.get(analysis, :role_distribution, %{}),
+            tactical_strengths: Map.get(analysis, :tactical_assessment, %{}),
+            threat_level: Map.get(analysis, :threat_level, 0.0),
+            recommendations: Map.get(analysis, :recommendations, []),
             readiness_assessment: assess_operational_readiness(analysis),
             engagement_suitability: assess_engagement_suitability(analysis),
             logistics_sustainability: assess_logistics_sustainability(analysis)
@@ -230,6 +250,22 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
         {:error, reason} ->
           Logger.error("Fleet analysis failed: #{inspect(reason)}")
           {:error, reason}
+
+        analysis when is_map(analysis) ->
+          # Handle case where FleetAnalyzer returns a map directly
+          operational_analysis = %{
+            fleet_size: Map.get(analysis, :fleet_size, 0),
+            doctrine: Map.get(analysis, :doctrine_classification, %{}),
+            role_balance: Map.get(analysis, :role_distribution, %{}),
+            tactical_strengths: Map.get(analysis, :tactical_assessment, %{}),
+            threat_level: Map.get(analysis, :threat_level, 0.0),
+            recommendations: Map.get(analysis, :recommendations, []),
+            readiness_assessment: assess_operational_readiness(analysis),
+            engagement_suitability: assess_engagement_suitability(analysis),
+            logistics_sustainability: assess_logistics_sustainability(analysis)
+          }
+
+          {:ok, operational_analysis}
       end
     end
   end
@@ -346,7 +382,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
     |> Enum.max(fn -> 0.0 end)
   end
 
-  defp calculate_classification_confidence(_), do: 0.0
+  defp calculate_classification_confidence(_classification), do: 0.0
 
   defp get_ship_role_classification(ship_type_id) do
     query =
@@ -508,7 +544,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
     |> elem(0)
   end
 
-  defp determine_primary_role(_), do: "unknown"
+  defp determine_primary_role(_classification), do: "unknown"
 
   defp determine_expertise_level(killmail_data, ship_usage) do
     total_kills = length(killmail_data)
@@ -561,7 +597,8 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
 
   # Fleet operations helper functions
   defp extract_ship_types_from_composition(fleet_composition) do
-    Enum.map(fleet_composition, fn ship ->
+    fleet_composition
+    |> Enum.map(fn ship ->
       case ship do
         %{ship_type_id: id} -> id
         %{"ship_type_id" => id} -> id
@@ -696,15 +733,16 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
   end
 
   defp extract_primary_ship_classes(specialization) do
-    specialization.specializations
-    |> Enum.sort_by(fn {_ship_id, data} -> data.usage_percentage end, :desc)
+    Map.get(specialization, :specializations, %{})
+    |> Enum.sort_by(fn {_ship_id, data} -> Map.get(data, :usage_percentage, 0) end, :desc)
     |> Enum.take(3)
     |> Enum.map(fn {ship_id, _data} -> ship_id end)
   end
 
   defp calculate_specialization_diversity(specialization) do
     # Calculate diversity index (0.0 = specialized, 1.0 = very diverse)
-    ship_count = map_size(specialization.specializations)
+    specializations = Map.get(specialization, :specializations, %{})
+    ship_count = map_size(specializations)
 
     if ship_count <= 1 do
       0.0

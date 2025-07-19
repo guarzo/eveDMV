@@ -215,9 +215,16 @@ defmodule EveDmvWeb.EveImageComponents do
     deaths = pilot["deaths"] || 0
 
     cond do
-      deaths == 0 and kills > 0 -> "∞"
-      deaths == 0 -> "0.0"
-      true -> Float.round(kills / deaths, 1) |> to_string()
+      deaths == 0 and kills > 0 ->
+        "∞"
+
+      deaths == 0 ->
+        "0.0"
+
+      true ->
+        (kills / deaths)
+        |> Float.round(1)
+        |> to_string()
     end
   end
 end
