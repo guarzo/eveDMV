@@ -31,7 +31,50 @@
           "global": null,
           "strategy": null
         },
-        "name": "surveillance_profile_matches_profile_id_fkey",
+        "name": "surveillance_notifications_user_id_fkey",
+        "on_delete": null,
+        "on_update": null,
+        "primary_key?": true,
+        "schema": "public",
+        "table": "users"
+      },
+      "scale": null,
+      "size": null,
+      "source": "user_id",
+      "type": "uuid"
+    },
+    {
+      "allow_nil?": false,
+      "default": "\"profile_match\"",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "notification_type",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": {
+        "deferrable": false,
+        "destination_attribute": "id",
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null,
+        "index?": false,
+        "match_type": null,
+        "match_with": null,
+        "multitenancy": {
+          "attribute": null,
+          "global": null,
+          "strategy": null
+        },
+        "name": "surveillance_notifications_profile_id_fkey",
         "on_delete": null,
         "on_update": null,
         "primary_key?": true,
@@ -44,7 +87,7 @@
       "type": "uuid"
     },
     {
-      "allow_nil?": false,
+      "allow_nil?": true,
       "default": "nil",
       "generated?": false,
       "precision": null,
@@ -64,80 +107,68 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "killmail_time",
+      "source": "title",
+      "type": "text"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "message",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "data",
+      "type": "map"
+    },
+    {
+      "allow_nil?": false,
+      "default": "false",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "is_read",
+      "type": "boolean"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "read_at",
       "type": "utc_datetime"
     },
     {
       "allow_nil?": false,
-      "default": "fragment(\"(now() AT TIME ZONE 'utc')\")",
+      "default": "\"normal\"",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "matched_at",
-      "type": "utc_datetime"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "match_conditions",
-      "type": "map"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "victim_character_name",
+      "source": "priority",
       "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "victim_ship_name",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "solar_system_name",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": 15,
-      "primary_key?": false,
-      "references": null,
-      "scale": 2,
-      "size": null,
-      "source": "total_value",
-      "type": "decimal"
     },
     {
       "allow_nil?": false,
@@ -171,6 +202,77 @@
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
+        "user_id",
+        "inserted_at"
+      ],
+      "fields": [
+        {
+          "type": "atom",
+          "value": "user_id"
+        },
+        {
+          "type": "atom",
+          "value": "inserted_at"
+        }
+      ],
+      "include": null,
+      "message": null,
+      "name": "notifications_user_time_idx",
+      "nulls_distinct": true,
+      "prefix": null,
+      "table": null,
+      "unique": false,
+      "using": null,
+      "where": null
+    },
+    {
+      "all_tenants?": false,
+      "concurrently": false,
+      "error_fields": [
+        "is_read"
+      ],
+      "fields": [
+        {
+          "type": "atom",
+          "value": "is_read"
+        }
+      ],
+      "include": null,
+      "message": null,
+      "name": "notifications_read_idx",
+      "nulls_distinct": true,
+      "prefix": null,
+      "table": null,
+      "unique": false,
+      "using": null,
+      "where": null
+    },
+    {
+      "all_tenants?": false,
+      "concurrently": false,
+      "error_fields": [
+        "notification_type"
+      ],
+      "fields": [
+        {
+          "type": "atom",
+          "value": "notification_type"
+        }
+      ],
+      "include": null,
+      "message": null,
+      "name": "notifications_type_idx",
+      "nulls_distinct": true,
+      "prefix": null,
+      "table": null,
+      "unique": false,
+      "using": null,
+      "where": null
+    },
+    {
+      "all_tenants?": false,
+      "concurrently": false,
+      "error_fields": [
         "profile_id"
       ],
       "fields": [
@@ -181,83 +283,7 @@
       ],
       "include": null,
       "message": null,
-      "name": "profile_matches_profile_idx",
-      "nulls_distinct": true,
-      "prefix": null,
-      "table": null,
-      "unique": false,
-      "using": null,
-      "where": null
-    },
-    {
-      "all_tenants?": false,
-      "concurrently": false,
-      "error_fields": [
-        "killmail_id",
-        "killmail_time"
-      ],
-      "fields": [
-        {
-          "type": "atom",
-          "value": "killmail_id"
-        },
-        {
-          "type": "atom",
-          "value": "killmail_time"
-        }
-      ],
-      "include": null,
-      "message": null,
-      "name": "profile_matches_killmail_idx",
-      "nulls_distinct": true,
-      "prefix": null,
-      "table": null,
-      "unique": false,
-      "using": null,
-      "where": null
-    },
-    {
-      "all_tenants?": false,
-      "concurrently": false,
-      "error_fields": [
-        "matched_at"
-      ],
-      "fields": [
-        {
-          "type": "atom",
-          "value": "matched_at"
-        }
-      ],
-      "include": null,
-      "message": null,
-      "name": "profile_matches_time_idx",
-      "nulls_distinct": true,
-      "prefix": null,
-      "table": null,
-      "unique": false,
-      "using": null,
-      "where": null
-    },
-    {
-      "all_tenants?": false,
-      "concurrently": false,
-      "error_fields": [
-        "profile_id",
-        "matched_at"
-      ],
-      "fields": [
-        {
-          "type": "atom",
-          "value": "profile_id"
-        },
-        {
-          "type": "atom",
-          "value": "matched_at"
-        }
-      ],
-      "include": null,
-      "message": null,
-      "name": "profile_matches_profile_time_idx",
+      "name": "notifications_profile_idx",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
@@ -268,7 +294,7 @@
   ],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "C5901DD94DD016DDB96FE96FB7196DB3E4870E28FE85584C5541A80A22699B41",
+  "hash": "DDC52BE741978E0F5983E6E5AE5A4C38D9B01F916457BEA003869B4D65E4A12F",
   "identities": [],
   "multitenancy": {
     "attribute": null,
@@ -277,5 +303,5 @@
   },
   "repo": "Elixir.EveDmv.Repo",
   "schema": null,
-  "table": "surveillance_profile_matches"
+  "table": "surveillance_notifications"
 }

@@ -18,6 +18,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.Battle do
   postgres do
     table("battles")
     repo(EveDmv.Repo)
+    base_filter_sql("deleted_at IS NULL")
   end
 
   json_api do

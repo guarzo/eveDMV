@@ -9,7 +9,7 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "system_id",
+      "source": "type_id",
       "type": "bigint"
     },
     {
@@ -21,7 +21,7 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "system_name",
+      "source": "type_name",
       "type": "text"
     },
     {
@@ -33,19 +33,7 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "region_id",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "region_name",
+      "source": "description",
       "type": "text"
     },
     {
@@ -57,7 +45,7 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "constellation_id",
+      "source": "group_id",
       "type": "bigint"
     },
     {
@@ -69,7 +57,55 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "constellation_name",
+      "source": "group_name",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "category_id",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "category_name",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "market_group_id",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "market_group_name",
       "type": "text"
     },
     {
@@ -79,9 +115,45 @@
       "precision": 15,
       "primary_key?": false,
       "references": null,
-      "scale": 10,
+      "scale": 4,
       "size": null,
-      "source": "security_status",
+      "source": "mass",
+      "type": "decimal"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": 15,
+      "primary_key?": false,
+      "references": null,
+      "scale": 4,
+      "size": null,
+      "source": "volume",
+      "type": "decimal"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": 15,
+      "primary_key?": false,
+      "references": null,
+      "scale": 4,
+      "size": null,
+      "source": "capacity",
+      "type": "decimal"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": 15,
+      "primary_key?": false,
+      "references": null,
+      "scale": 2,
+      "size": null,
+      "source": "base_price",
       "type": "decimal"
     },
     {
@@ -93,19 +165,7 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "security_class",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "wormhole_class_id",
+      "source": "meta_level",
       "type": "bigint"
     },
     {
@@ -117,44 +177,95 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "wormhole_effect_type",
-      "type": "text"
+      "source": "tech_level",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": false,
+      "default": "true",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "published",
+      "type": "boolean"
+    },
+    {
+      "allow_nil?": false,
+      "default": "false",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "is_ship",
+      "type": "boolean"
+    },
+    {
+      "allow_nil?": false,
+      "default": "false",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "is_module",
+      "type": "boolean"
+    },
+    {
+      "allow_nil?": false,
+      "default": "false",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "is_charge",
+      "type": "boolean"
+    },
+    {
+      "allow_nil?": false,
+      "default": "false",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "is_blueprint",
+      "type": "boolean"
+    },
+    {
+      "allow_nil?": false,
+      "default": "false",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "is_deployable",
+      "type": "boolean"
     },
     {
       "allow_nil?": true,
-      "default": "nil",
+      "default": "[]",
       "generated?": false,
-      "precision": 25,
+      "precision": null,
       "primary_key?": false,
       "references": null,
-      "scale": 2,
+      "scale": null,
       "size": null,
-      "source": "x",
-      "type": "decimal"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": 25,
-      "primary_key?": false,
-      "references": null,
-      "scale": 2,
-      "size": null,
-      "source": "y",
-      "type": "decimal"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": 25,
-      "primary_key?": false,
-      "references": null,
-      "scale": 2,
-      "size": null,
-      "source": "z",
-      "type": "decimal"
+      "source": "search_keywords",
+      "type": [
+        "array",
+        "text"
+      ]
     },
     {
       "allow_nil?": true,
@@ -212,17 +323,17 @@
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
-        "system_name"
+        "type_name"
       ],
       "fields": [
         {
           "type": "atom",
-          "value": "system_name"
+          "value": "type_name"
         }
       ],
       "include": null,
       "message": null,
-      "name": "eve_solar_systems_name_idx",
+      "name": "eve_item_types_name_idx",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
@@ -234,17 +345,17 @@
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
-        "region_id"
+        "group_id"
       ],
       "fields": [
         {
           "type": "atom",
-          "value": "region_id"
+          "value": "group_id"
         }
       ],
       "include": null,
       "message": null,
-      "name": "eve_solar_systems_region_idx",
+      "name": "eve_item_types_group_idx",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
@@ -256,17 +367,17 @@
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
-        "constellation_id"
+        "category_id"
       ],
       "fields": [
         {
           "type": "atom",
-          "value": "constellation_id"
+          "value": "category_id"
         }
       ],
       "include": null,
       "message": null,
-      "name": "eve_solar_systems_constellation_idx",
+      "name": "eve_item_types_category_idx",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
@@ -278,17 +389,17 @@
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
-        "security_status"
+        "market_group_id"
       ],
       "fields": [
         {
           "type": "atom",
-          "value": "security_status"
+          "value": "market_group_id"
         }
       ],
       "include": null,
       "message": null,
-      "name": "eve_solar_systems_security_idx",
+      "name": "eve_item_types_market_group_idx",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
@@ -303,12 +414,100 @@
       "fields": [
         {
           "type": "string",
-          "value": "system_name gin_trgm_ops"
+          "value": "type_name gin_trgm_ops"
         }
       ],
       "include": null,
       "message": null,
-      "name": "eve_solar_systems_name_trgm_idx",
+      "name": "eve_item_types_name_trgm_idx",
+      "nulls_distinct": true,
+      "prefix": null,
+      "table": null,
+      "unique": false,
+      "using": "gin",
+      "where": null
+    },
+    {
+      "all_tenants?": false,
+      "concurrently": false,
+      "error_fields": [
+        "published"
+      ],
+      "fields": [
+        {
+          "type": "atom",
+          "value": "published"
+        }
+      ],
+      "include": null,
+      "message": null,
+      "name": "eve_item_types_published_idx",
+      "nulls_distinct": true,
+      "prefix": null,
+      "table": null,
+      "unique": false,
+      "using": null,
+      "where": null
+    },
+    {
+      "all_tenants?": false,
+      "concurrently": false,
+      "error_fields": [
+        "is_ship"
+      ],
+      "fields": [
+        {
+          "type": "atom",
+          "value": "is_ship"
+        }
+      ],
+      "include": null,
+      "message": null,
+      "name": "eve_item_types_ship_idx",
+      "nulls_distinct": true,
+      "prefix": null,
+      "table": null,
+      "unique": false,
+      "using": null,
+      "where": null
+    },
+    {
+      "all_tenants?": false,
+      "concurrently": false,
+      "error_fields": [
+        "is_module"
+      ],
+      "fields": [
+        {
+          "type": "atom",
+          "value": "is_module"
+        }
+      ],
+      "include": null,
+      "message": null,
+      "name": "eve_item_types_module_idx",
+      "nulls_distinct": true,
+      "prefix": null,
+      "table": null,
+      "unique": false,
+      "using": null,
+      "where": null
+    },
+    {
+      "all_tenants?": false,
+      "concurrently": false,
+      "error_fields": [
+        "search_keywords"
+      ],
+      "fields": [
+        {
+          "type": "atom",
+          "value": "search_keywords"
+        }
+      ],
+      "include": null,
+      "message": null,
+      "name": "eve_item_types_search_keywords_gin_idx",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
@@ -319,19 +518,19 @@
   ],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "80DB4E86CF41799A4AFB6F22CDE657E22C2549273860C7494CD35FB75816D098",
+  "hash": "AC7E3B77FEC4EE19FE959A33122BDFF538C551F9CEBD9C7C0BE0641666A8EC3C",
   "identities": [
     {
       "all_tenants?": false,
       "base_filter": null,
-      "index_name": "eve_solar_systems_system_id_index",
+      "index_name": "eve_item_types_type_id_index",
       "keys": [
         {
           "type": "atom",
-          "value": "system_id"
+          "value": "type_id"
         }
       ],
-      "name": "system_id",
+      "name": "type_id",
       "nils_distinct?": true,
       "where": null
     }
@@ -343,5 +542,5 @@
   },
   "repo": "Elixir.EveDmv.Repo",
   "schema": null,
-  "table": "eve_solar_systems"
+  "table": "eve_item_types"
 }

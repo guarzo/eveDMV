@@ -2,15 +2,15 @@
   "attributes": [
     {
       "allow_nil?": false,
-      "default": "nil",
-      "generated?": true,
+      "default": "fragment(\"gen_random_uuid()\")",
+      "generated?": false,
       "precision": null,
       "primary_key?": true,
       "references": null,
       "scale": null,
       "size": null,
       "source": "id",
-      "type": "bigint"
+      "type": "uuid"
     },
     {
       "allow_nil?": false,
@@ -34,54 +34,6 @@
       "scale": null,
       "size": null,
       "source": "character_name",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "corporation_id",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "corporation_name",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "alliance_id",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "alliance_name",
       "type": "text"
     },
     {
@@ -134,219 +86,291 @@
     },
     {
       "allow_nil?": true,
-      "default": "%{}",
+      "default": "0",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "ship_usage",
-      "type": "map"
-    },
-    {
-      "allow_nil?": true,
-      "default": "%{}",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "frequent_associates",
-      "type": "map"
-    },
-    {
-      "allow_nil?": true,
-      "default": "%{}",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "active_systems",
-      "type": "map"
-    },
-    {
-      "allow_nil?": true,
-      "default": "%{}",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "target_profile",
-      "type": "map"
-    },
-    {
-      "allow_nil?": true,
-      "default": "0.0",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "aggression_index",
-      "type": "float"
-    },
-    {
-      "allow_nil?": true,
-      "default": "1.0",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "avg_gang_size",
-      "type": "float"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "prime_timezone",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "home_system_id",
+      "source": "gang_kills",
       "type": "bigint"
     },
     {
       "allow_nil?": true,
-      "default": "nil",
+      "default": "0",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "home_system_name",
-      "type": "text"
+      "source": "gang_losses",
+      "type": "bigint"
     },
     {
       "allow_nil?": true,
-      "default": "false",
+      "default": "\"0.0\"",
       "generated?": false,
-      "precision": null,
+      "precision": 20,
       "primary_key?": false,
       "references": null,
-      "scale": null,
+      "scale": 2,
       "size": null,
-      "source": "uses_cynos",
-      "type": "boolean"
+      "source": "total_isk_destroyed",
+      "type": "decimal"
     },
     {
       "allow_nil?": true,
-      "default": "false",
+      "default": "\"0.0\"",
       "generated?": false,
-      "precision": null,
+      "precision": 20,
       "primary_key?": false,
       "references": null,
-      "scale": null,
+      "scale": 2,
       "size": null,
-      "source": "flies_capitals",
-      "type": "boolean"
+      "source": "total_isk_lost",
+      "type": "decimal"
     },
     {
       "allow_nil?": true,
-      "default": "false",
+      "default": "\"0.0\"",
       "generated?": false,
-      "precision": null,
+      "precision": 10,
       "primary_key?": false,
       "references": null,
-      "scale": null,
-      "size": null,
-      "source": "has_logi_support",
-      "type": "boolean"
-    },
-    {
-      "allow_nil?": true,
-      "default": "0.0",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "awox_probability",
-      "type": "float"
-    },
-    {
-      "allow_nil?": true,
-      "default": "\"low\"",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "batphone_probability",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "50.0",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "isk_efficiency",
-      "type": "float"
-    },
-    {
-      "allow_nil?": true,
-      "default": "1.0",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
+      "scale": 2,
       "size": null,
       "source": "kill_death_ratio",
-      "type": "float"
+      "type": "decimal"
     },
     {
       "allow_nil?": true,
-      "default": "3",
+      "default": "\"0.0\"",
+      "generated?": false,
+      "precision": 5,
+      "primary_key?": false,
+      "references": null,
+      "scale": 2,
+      "size": null,
+      "source": "isk_efficiency_percent",
+      "type": "decimal"
+    },
+    {
+      "allow_nil?": true,
+      "default": "\"0.0\"",
+      "generated?": false,
+      "precision": 10,
+      "primary_key?": false,
+      "references": null,
+      "scale": 2,
+      "size": null,
+      "source": "solo_performance_ratio",
+      "type": "decimal"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "dangerous_rating",
+      "source": "first_kill_date",
+      "type": "utc_datetime"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "last_kill_date",
+      "type": "utc_datetime"
+    },
+    {
+      "allow_nil?": true,
+      "default": "0",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "active_days",
       "type": "bigint"
     },
     {
       "allow_nil?": true,
-      "default": "%{}",
+      "default": "\"0.0\"",
+      "generated?": false,
+      "precision": 8,
+      "primary_key?": false,
+      "references": null,
+      "scale": 2,
+      "size": null,
+      "source": "avg_kills_per_week",
+      "type": "decimal"
+    },
+    {
+      "allow_nil?": true,
+      "default": "0",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "identified_weaknesses",
-      "type": "map"
+      "source": "ship_types_used",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "favorite_ship_type_id",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "favorite_ship_name",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "\"1.0\"",
+      "generated?": false,
+      "precision": 6,
+      "primary_key?": false,
+      "references": null,
+      "scale": 2,
+      "size": null,
+      "source": "avg_gang_size",
+      "type": "decimal"
+    },
+    {
+      "allow_nil?": true,
+      "default": "\"solo\"",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "preferred_gang_size",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "0",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "active_regions",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "home_region_id",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "home_region_name",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "1",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "danger_rating",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": true,
+      "default": "\"solo_pvp\"",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "primary_activity",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "stats_period_start",
+      "type": "utc_datetime"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "stats_period_end",
+      "type": "utc_datetime"
+    },
+    {
+      "allow_nil?": true,
+      "default": "fragment(\"(now() AT TIME ZONE 'utc')\")",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "last_updated",
+      "type": "utc_datetime"
     },
     {
       "allow_nil?": false,
@@ -371,150 +395,30 @@
       "size": null,
       "source": "updated_at",
       "type": "utc_datetime_usec"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "last_calculated_at",
-      "type": "utc_datetime_usec"
-    },
-    {
-      "allow_nil?": true,
-      "default": "0",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "data_completeness",
-      "type": "bigint"
     }
   ],
   "base_filter": null,
   "check_constraints": [],
-  "custom_indexes": [
+  "custom_indexes": [],
+  "custom_statements": [],
+  "has_create_action": true,
+  "hash": "4A1AB8CB03DC5F7C2795F683E30ED15D2CFD7000D6E5430840734852E3646F53",
+  "identities": [
     {
       "all_tenants?": false,
-      "concurrently": false,
-      "error_fields": [
-        "ship_usage"
-      ],
-      "fields": [
+      "base_filter": null,
+      "index_name": "player_stats_unique_character_index",
+      "keys": [
         {
           "type": "atom",
-          "value": "ship_usage"
+          "value": "character_id"
         }
       ],
-      "include": null,
-      "message": null,
-      "name": "character_stats_ship_usage_gin_idx",
-      "nulls_distinct": true,
-      "prefix": null,
-      "table": null,
-      "unique": false,
-      "using": "gin",
-      "where": null
-    },
-    {
-      "all_tenants?": false,
-      "concurrently": false,
-      "error_fields": [
-        "frequent_associates"
-      ],
-      "fields": [
-        {
-          "type": "atom",
-          "value": "frequent_associates"
-        }
-      ],
-      "include": null,
-      "message": null,
-      "name": "character_stats_frequent_associates_gin_idx",
-      "nulls_distinct": true,
-      "prefix": null,
-      "table": null,
-      "unique": false,
-      "using": "gin",
-      "where": null
-    },
-    {
-      "all_tenants?": false,
-      "concurrently": false,
-      "error_fields": [
-        "active_systems"
-      ],
-      "fields": [
-        {
-          "type": "atom",
-          "value": "active_systems"
-        }
-      ],
-      "include": null,
-      "message": null,
-      "name": "character_stats_active_systems_gin_idx",
-      "nulls_distinct": true,
-      "prefix": null,
-      "table": null,
-      "unique": false,
-      "using": "gin",
-      "where": null
-    },
-    {
-      "all_tenants?": false,
-      "concurrently": false,
-      "error_fields": [
-        "target_profile"
-      ],
-      "fields": [
-        {
-          "type": "atom",
-          "value": "target_profile"
-        }
-      ],
-      "include": null,
-      "message": null,
-      "name": "character_stats_target_profile_gin_idx",
-      "nulls_distinct": true,
-      "prefix": null,
-      "table": null,
-      "unique": false,
-      "using": "gin",
-      "where": null
-    },
-    {
-      "all_tenants?": false,
-      "concurrently": false,
-      "error_fields": [
-        "identified_weaknesses"
-      ],
-      "fields": [
-        {
-          "type": "atom",
-          "value": "identified_weaknesses"
-        }
-      ],
-      "include": null,
-      "message": null,
-      "name": "character_stats_identified_weaknesses_gin_idx",
-      "nulls_distinct": true,
-      "prefix": null,
-      "table": null,
-      "unique": false,
-      "using": "gin",
+      "name": "unique_character",
+      "nils_distinct?": true,
       "where": null
     }
   ],
-  "custom_statements": [],
-  "has_create_action": true,
-  "hash": "76E3CF17F42FB79F29E69C77F91B237192335195495355C944F04D296195DB42",
-  "identities": [],
   "multitenancy": {
     "attribute": null,
     "global": null,
@@ -522,5 +426,5 @@
   },
   "repo": "Elixir.EveDmv.Repo",
   "schema": null,
-  "table": "character_stats"
+  "table": "player_stats"
 }

@@ -18,11 +18,66 @@
       "generated?": false,
       "precision": null,
       "primary_key?": false,
+      "references": {
+        "deferrable": false,
+        "destination_attribute": "id",
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null,
+        "index?": false,
+        "match_type": null,
+        "match_with": null,
+        "multitenancy": {
+          "attribute": null,
+          "global": null,
+          "strategy": null
+        },
+        "name": "surveillance_profile_matches_profile_id_fkey",
+        "on_delete": null,
+        "on_update": null,
+        "primary_key?": true,
+        "schema": "public",
+        "table": "surveillance_profiles"
+      },
+      "scale": null,
+      "size": null,
+      "source": "profile_id",
+      "type": "uuid"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "map_id",
-      "type": "text"
+      "source": "killmail_id",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "killmail_time",
+      "type": "utc_datetime"
+    },
+    {
+      "allow_nil?": false,
+      "default": "fragment(\"(now() AT TIME ZONE 'utc')\")",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "matched_at",
+      "type": "utc_datetime"
     },
     {
       "allow_nil?": true,
@@ -33,68 +88,20 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "map_name",
-      "type": "text"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "corporation_id",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "alliance_id",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": false,
-      "default": "%{}",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "topology_data",
+      "source": "match_conditions",
       "type": "map"
     },
     {
-      "allow_nil?": false,
-      "default": "0",
+      "allow_nil?": true,
+      "default": "nil",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "system_count",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": false,
-      "default": "0",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "connection_count",
-      "type": "bigint"
+      "source": "victim_character_name",
+      "type": "text"
     },
     {
       "allow_nil?": true,
@@ -105,20 +112,32 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "last_activity_at",
-      "type": "utc_datetime_usec"
+      "source": "victim_ship_name",
+      "type": "text"
     },
     {
-      "allow_nil?": false,
-      "default": "true",
+      "allow_nil?": true,
+      "default": "nil",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "monitoring_enabled",
-      "type": "boolean"
+      "source": "solar_system_name",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": 15,
+      "primary_key?": false,
+      "references": null,
+      "scale": 2,
+      "size": null,
+      "source": "total_value",
+      "type": "decimal"
     },
     {
       "allow_nil?": false,
@@ -152,39 +171,17 @@
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
-        "map_id"
+        "profile_id"
       ],
       "fields": [
         {
           "type": "atom",
-          "value": "map_id"
+          "value": "profile_id"
         }
       ],
       "include": null,
       "message": null,
-      "name": null,
-      "nulls_distinct": true,
-      "prefix": null,
-      "table": null,
-      "unique": true,
-      "using": null,
-      "where": null
-    },
-    {
-      "all_tenants?": false,
-      "concurrently": false,
-      "error_fields": [
-        "updated_at"
-      ],
-      "fields": [
-        {
-          "type": "atom",
-          "value": "updated_at"
-        }
-      ],
-      "include": null,
-      "message": null,
-      "name": null,
+      "name": "profile_matches_profile_idx",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
@@ -196,22 +193,71 @@
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
-        "corporation_id",
-        "map_id"
+        "killmail_id",
+        "killmail_time"
       ],
       "fields": [
         {
           "type": "atom",
-          "value": "corporation_id"
+          "value": "killmail_id"
         },
         {
           "type": "atom",
-          "value": "map_id"
+          "value": "killmail_time"
         }
       ],
       "include": null,
       "message": null,
-      "name": null,
+      "name": "profile_matches_killmail_idx",
+      "nulls_distinct": true,
+      "prefix": null,
+      "table": null,
+      "unique": false,
+      "using": null,
+      "where": null
+    },
+    {
+      "all_tenants?": false,
+      "concurrently": false,
+      "error_fields": [
+        "matched_at"
+      ],
+      "fields": [
+        {
+          "type": "atom",
+          "value": "matched_at"
+        }
+      ],
+      "include": null,
+      "message": null,
+      "name": "profile_matches_time_idx",
+      "nulls_distinct": true,
+      "prefix": null,
+      "table": null,
+      "unique": false,
+      "using": null,
+      "where": null
+    },
+    {
+      "all_tenants?": false,
+      "concurrently": false,
+      "error_fields": [
+        "profile_id",
+        "matched_at"
+      ],
+      "fields": [
+        {
+          "type": "atom",
+          "value": "profile_id"
+        },
+        {
+          "type": "atom",
+          "value": "matched_at"
+        }
+      ],
+      "include": null,
+      "message": null,
+      "name": "profile_matches_profile_time_idx",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
@@ -222,7 +268,7 @@
   ],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "B88DF2AC83E7CCB0CFEB7D0702895B8BFADFC25DB313FA7923DE49073FEA2C6E",
+  "hash": "9A8361A501C48AFAB739272D62511DEB1B3BBFCD78F7067FD7C7C41EE3ED890B",
   "identities": [],
   "multitenancy": {
     "attribute": null,
@@ -231,5 +277,5 @@
   },
   "repo": "Elixir.EveDmv.Repo",
   "schema": null,
-  "table": "chain_topologies"
+  "table": "surveillance_profile_matches"
 }

@@ -2,100 +2,14 @@
   "attributes": [
     {
       "allow_nil?": false,
-      "default": "fragment(\"gen_random_uuid()\")",
+      "default": "nil",
       "generated?": false,
       "precision": null,
       "primary_key?": true,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "id",
-      "type": "uuid"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": {
-        "deferrable": false,
-        "destination_attribute": "id",
-        "destination_attribute_default": null,
-        "destination_attribute_generated": null,
-        "index?": false,
-        "match_type": null,
-        "match_with": null,
-        "multitenancy": {
-          "attribute": null,
-          "global": null,
-          "strategy": null
-        },
-        "name": "surveillance_notifications_user_id_fkey",
-        "on_delete": null,
-        "on_update": null,
-        "primary_key?": true,
-        "schema": "public",
-        "table": "users"
-      },
-      "scale": null,
-      "size": null,
-      "source": "user_id",
-      "type": "uuid"
-    },
-    {
-      "allow_nil?": false,
-      "default": "\"profile_match\"",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "notification_type",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": {
-        "deferrable": false,
-        "destination_attribute": "id",
-        "destination_attribute_default": null,
-        "destination_attribute_generated": null,
-        "index?": false,
-        "match_type": null,
-        "match_with": null,
-        "multitenancy": {
-          "attribute": null,
-          "global": null,
-          "strategy": null
-        },
-        "name": "surveillance_notifications_profile_id_fkey",
-        "on_delete": null,
-        "on_update": null,
-        "primary_key?": true,
-        "schema": "public",
-        "table": "surveillance_profiles"
-      },
-      "scale": null,
-      "size": null,
-      "source": "profile_id",
-      "type": "uuid"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "killmail_id",
+      "source": "system_id",
       "type": "bigint"
     },
     {
@@ -107,19 +21,7 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "title",
-      "type": "text"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "message",
+      "source": "system_name",
       "type": "text"
     },
     {
@@ -131,20 +33,8 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "data",
-      "type": "map"
-    },
-    {
-      "allow_nil?": false,
-      "default": "false",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "is_read",
-      "type": "boolean"
+      "source": "region_id",
+      "type": "bigint"
     },
     {
       "allow_nil?": true,
@@ -155,20 +45,140 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "read_at",
+      "source": "region_name",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "constellation_id",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "constellation_name",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": 15,
+      "primary_key?": false,
+      "references": null,
+      "scale": 10,
+      "size": null,
+      "source": "security_status",
+      "type": "decimal"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "security_class",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "wormhole_class_id",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "wormhole_effect_type",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": 25,
+      "primary_key?": false,
+      "references": null,
+      "scale": 2,
+      "size": null,
+      "source": "x",
+      "type": "decimal"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": 25,
+      "primary_key?": false,
+      "references": null,
+      "scale": 2,
+      "size": null,
+      "source": "y",
+      "type": "decimal"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": 25,
+      "primary_key?": false,
+      "references": null,
+      "scale": 2,
+      "size": null,
+      "source": "z",
+      "type": "decimal"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "sde_version",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "last_updated",
       "type": "utc_datetime"
-    },
-    {
-      "allow_nil?": false,
-      "default": "\"normal\"",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "priority",
-      "type": "text"
     },
     {
       "allow_nil?": false,
@@ -202,22 +212,17 @@
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
-        "user_id",
-        "inserted_at"
+        "system_name"
       ],
       "fields": [
         {
           "type": "atom",
-          "value": "user_id"
-        },
-        {
-          "type": "atom",
-          "value": "inserted_at"
+          "value": "system_name"
         }
       ],
       "include": null,
       "message": null,
-      "name": "notifications_user_time_idx",
+      "name": "eve_solar_systems_name_idx",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
@@ -229,17 +234,17 @@
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
-        "is_read"
+        "region_id"
       ],
       "fields": [
         {
           "type": "atom",
-          "value": "is_read"
+          "value": "region_id"
         }
       ],
       "include": null,
       "message": null,
-      "name": "notifications_read_idx",
+      "name": "eve_solar_systems_region_idx",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
@@ -251,17 +256,17 @@
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
-        "notification_type"
+        "constellation_id"
       ],
       "fields": [
         {
           "type": "atom",
-          "value": "notification_type"
+          "value": "constellation_id"
         }
       ],
       "include": null,
       "message": null,
-      "name": "notifications_type_idx",
+      "name": "eve_solar_systems_constellation_idx",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
@@ -273,29 +278,64 @@
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
-        "profile_id"
+        "security_status"
       ],
       "fields": [
         {
           "type": "atom",
-          "value": "profile_id"
+          "value": "security_status"
         }
       ],
       "include": null,
       "message": null,
-      "name": "notifications_profile_idx",
+      "name": "eve_solar_systems_security_idx",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
       "unique": false,
       "using": null,
+      "where": null
+    },
+    {
+      "all_tenants?": false,
+      "concurrently": false,
+      "error_fields": [],
+      "fields": [
+        {
+          "type": "string",
+          "value": "system_name gin_trgm_ops"
+        }
+      ],
+      "include": null,
+      "message": null,
+      "name": "eve_solar_systems_name_trgm_idx",
+      "nulls_distinct": true,
+      "prefix": null,
+      "table": null,
+      "unique": false,
+      "using": "gin",
       "where": null
     }
   ],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "DDD3E7C57C35098CF059C6D0303FC9CCBD8D5784C7F0E752822742D64CCDE317",
-  "identities": [],
+  "hash": "5FF9DE0B4B918196CB7EC9B2EABE5A12880B50BFFD84C373C7BCA7E45D3CADD2",
+  "identities": [
+    {
+      "all_tenants?": false,
+      "base_filter": null,
+      "index_name": "eve_solar_systems_system_id_index",
+      "keys": [
+        {
+          "type": "atom",
+          "value": "system_id"
+        }
+      ],
+      "name": "system_id",
+      "nils_distinct?": true,
+      "where": null
+    }
+  ],
   "multitenancy": {
     "attribute": null,
     "global": null,
@@ -303,5 +343,5 @@
   },
   "repo": "Elixir.EveDmv.Repo",
   "schema": null,
-  "table": "surveillance_notifications"
+  "table": "eve_solar_systems"
 }

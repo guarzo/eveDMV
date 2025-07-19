@@ -21,11 +21,59 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "corporation_id",
+      "source": "killmail_id",
       "type": "bigint"
     },
     {
       "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "killmail_time",
+      "type": "utc_datetime"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "character_id",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "character_name",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "corporation_id",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": true,
       "default": "nil",
       "generated?": false,
       "precision": null,
@@ -61,6 +109,176 @@
       "type": "text"
     },
     {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "faction_id",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "faction_name",
+      "type": "text"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": {
+        "deferrable": false,
+        "destination_attribute": "type_id",
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null,
+        "index?": false,
+        "match_type": null,
+        "match_with": null,
+        "multitenancy": {
+          "attribute": null,
+          "global": null,
+          "strategy": null
+        },
+        "name": "participants_ship_type_id_fkey",
+        "on_delete": null,
+        "on_update": null,
+        "primary_key?": true,
+        "schema": "public",
+        "table": "eve_item_types"
+      },
+      "scale": null,
+      "size": null,
+      "source": "ship_type_id",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "ship_name",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": {
+        "deferrable": false,
+        "destination_attribute": "type_id",
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null,
+        "index?": false,
+        "match_type": null,
+        "match_with": null,
+        "multitenancy": {
+          "attribute": null,
+          "global": null,
+          "strategy": null
+        },
+        "name": "participants_weapon_type_id_fkey",
+        "on_delete": null,
+        "on_update": null,
+        "primary_key?": true,
+        "schema": "public",
+        "table": "eve_item_types"
+      },
+      "scale": null,
+      "size": null,
+      "source": "weapon_type_id",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "weapon_name",
+      "type": "text"
+    },
+    {
+      "allow_nil?": false,
+      "default": "0",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "damage_done",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": 5,
+      "primary_key?": false,
+      "references": null,
+      "scale": 2,
+      "size": null,
+      "source": "security_status",
+      "type": "decimal"
+    },
+    {
+      "allow_nil?": false,
+      "default": "false",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "is_victim",
+      "type": "boolean"
+    },
+    {
+      "allow_nil?": false,
+      "default": "false",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "final_blow",
+      "type": "boolean"
+    },
+    {
+      "allow_nil?": false,
+      "default": "false",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "is_npc",
+      "type": "boolean"
+    },
+    {
       "allow_nil?": false,
       "default": "nil",
       "generated?": false,
@@ -69,247 +287,7 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "doctrine_name",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "doctrine_description",
-      "type": "text"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "fleet_size_category",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "1",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "minimum_pilots",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": true,
-      "default": "5",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "optimal_pilots",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": true,
-      "default": "10",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "maximum_pilots",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "created_by",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": true,
-      "default": "fragment(\"(now() AT TIME ZONE 'utc')\")",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "last_updated_at",
-      "type": "utc_datetime"
-    },
-    {
-      "allow_nil?": true,
-      "default": "0.0",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "effectiveness_rating",
-      "type": "float"
-    },
-    {
-      "allow_nil?": true,
-      "default": "0",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "usage_count",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": true,
-      "default": "0.0",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "success_rate",
-      "type": "float"
-    },
-    {
-      "allow_nil?": true,
-      "default": "%{}",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "doctrine_template",
-      "type": "map"
-    },
-    {
-      "allow_nil?": true,
-      "default": "%{}",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "ship_requirements",
-      "type": "map"
-    },
-    {
-      "allow_nil?": true,
-      "default": "%{}",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "pilot_assignments",
-      "type": "map"
-    },
-    {
-      "allow_nil?": true,
-      "default": "%{}",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "skill_gaps",
-      "type": "map"
-    },
-    {
-      "allow_nil?": true,
-      "default": "%{}",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "mass_calculations",
-      "type": "map"
-    },
-    {
-      "allow_nil?": true,
-      "default": "%{}",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "optimization_results",
-      "type": "map"
-    },
-    {
-      "allow_nil?": true,
-      "default": "0",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "current_readiness_percent",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": true,
-      "default": "0",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "pilots_available",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": true,
-      "default": "0",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "pilots_required",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": true,
-      "default": "30",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "estimated_form_up_time_minutes",
+      "source": "solar_system_id",
       "type": "bigint"
     },
     {
@@ -344,6 +322,55 @@
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
+        "killmail_id",
+        "killmail_time"
+      ],
+      "fields": [
+        {
+          "type": "atom",
+          "value": "killmail_id"
+        },
+        {
+          "type": "atom",
+          "value": "killmail_time"
+        }
+      ],
+      "include": null,
+      "message": null,
+      "name": "participants_killmail_idx",
+      "nulls_distinct": true,
+      "prefix": null,
+      "table": null,
+      "unique": false,
+      "using": null,
+      "where": null
+    },
+    {
+      "all_tenants?": false,
+      "concurrently": false,
+      "error_fields": [
+        "character_id"
+      ],
+      "fields": [
+        {
+          "type": "atom",
+          "value": "character_id"
+        }
+      ],
+      "include": null,
+      "message": null,
+      "name": "participants_character_idx",
+      "nulls_distinct": true,
+      "prefix": null,
+      "table": null,
+      "unique": false,
+      "using": null,
+      "where": null
+    },
+    {
+      "all_tenants?": false,
+      "concurrently": false,
+      "error_fields": [
         "corporation_id"
       ],
       "fields": [
@@ -354,7 +381,7 @@
       ],
       "include": null,
       "message": null,
-      "name": null,
+      "name": "participants_corporation_idx",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
@@ -376,7 +403,7 @@
       ],
       "include": null,
       "message": null,
-      "name": null,
+      "name": "participants_alliance_idx",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
@@ -388,17 +415,17 @@
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
-        "doctrine_name"
+        "ship_type_id"
       ],
       "fields": [
         {
           "type": "atom",
-          "value": "doctrine_name"
+          "value": "ship_type_id"
         }
       ],
       "include": null,
       "message": null,
-      "name": null,
+      "name": "participants_ship_type_idx",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
@@ -410,17 +437,17 @@
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
-        "fleet_size_category"
+        "is_victim"
       ],
       "fields": [
         {
           "type": "atom",
-          "value": "fleet_size_category"
+          "value": "is_victim"
         }
       ],
       "include": null,
       "message": null,
-      "name": null,
+      "name": "participants_victim_idx",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
@@ -432,17 +459,17 @@
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
-        "last_updated_at"
+        "final_blow"
       ],
       "fields": [
         {
           "type": "atom",
-          "value": "last_updated_at"
+          "value": "final_blow"
         }
       ],
       "include": null,
       "message": null,
-      "name": null,
+      "name": "participants_final_blow_idx",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
@@ -454,139 +481,56 @@
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
-        "doctrine_template"
+        "killmail_time"
       ],
       "fields": [
         {
           "type": "atom",
-          "value": "doctrine_template"
+          "value": "killmail_time"
         }
       ],
       "include": null,
       "message": null,
-      "name": "wh_fleet_doctrine_template_gin_idx",
+      "name": "participants_time_idx",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
       "unique": false,
-      "using": "gin",
-      "where": null
-    },
-    {
-      "all_tenants?": false,
-      "concurrently": false,
-      "error_fields": [
-        "ship_requirements"
-      ],
-      "fields": [
-        {
-          "type": "atom",
-          "value": "ship_requirements"
-        }
-      ],
-      "include": null,
-      "message": null,
-      "name": "wh_fleet_ship_requirements_gin_idx",
-      "nulls_distinct": true,
-      "prefix": null,
-      "table": null,
-      "unique": false,
-      "using": "gin",
-      "where": null
-    },
-    {
-      "all_tenants?": false,
-      "concurrently": false,
-      "error_fields": [
-        "pilot_assignments"
-      ],
-      "fields": [
-        {
-          "type": "atom",
-          "value": "pilot_assignments"
-        }
-      ],
-      "include": null,
-      "message": null,
-      "name": "wh_fleet_pilot_assignments_gin_idx",
-      "nulls_distinct": true,
-      "prefix": null,
-      "table": null,
-      "unique": false,
-      "using": "gin",
-      "where": null
-    },
-    {
-      "all_tenants?": false,
-      "concurrently": false,
-      "error_fields": [
-        "skill_gaps"
-      ],
-      "fields": [
-        {
-          "type": "atom",
-          "value": "skill_gaps"
-        }
-      ],
-      "include": null,
-      "message": null,
-      "name": "wh_fleet_skill_gaps_gin_idx",
-      "nulls_distinct": true,
-      "prefix": null,
-      "table": null,
-      "unique": false,
-      "using": "gin",
-      "where": null
-    },
-    {
-      "all_tenants?": false,
-      "concurrently": false,
-      "error_fields": [
-        "mass_calculations"
-      ],
-      "fields": [
-        {
-          "type": "atom",
-          "value": "mass_calculations"
-        }
-      ],
-      "include": null,
-      "message": null,
-      "name": "wh_fleet_mass_calculations_gin_idx",
-      "nulls_distinct": true,
-      "prefix": null,
-      "table": null,
-      "unique": false,
-      "using": "gin",
-      "where": null
-    },
-    {
-      "all_tenants?": false,
-      "concurrently": false,
-      "error_fields": [
-        "optimization_results"
-      ],
-      "fields": [
-        {
-          "type": "atom",
-          "value": "optimization_results"
-        }
-      ],
-      "include": null,
-      "message": null,
-      "name": "wh_fleet_optimization_gin_idx",
-      "nulls_distinct": true,
-      "prefix": null,
-      "table": null,
-      "unique": false,
-      "using": "gin",
+      "using": null,
       "where": null
     }
   ],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "CE48AA13A360E53A24D2EB76575FDAB64AFC437EEE51AACF8E32C45A6A02AF38",
-  "identities": [],
+  "hash": "33B363435D85D437D3DFB2070A9586299E2D13531991A6AF97CBF7FA90900106",
+  "identities": [
+    {
+      "all_tenants?": false,
+      "base_filter": null,
+      "index_name": "participants_unique_participant_per_killmail_index",
+      "keys": [
+        {
+          "type": "atom",
+          "value": "killmail_id"
+        },
+        {
+          "type": "atom",
+          "value": "killmail_time"
+        },
+        {
+          "type": "atom",
+          "value": "character_id"
+        },
+        {
+          "type": "atom",
+          "value": "ship_type_id"
+        }
+      ],
+      "name": "unique_participant_per_killmail",
+      "nils_distinct?": true,
+      "where": null
+    }
+  ],
   "multitenancy": {
     "attribute": null,
     "global": null,
@@ -594,5 +538,5 @@
   },
   "repo": "Elixir.EveDmv.Repo",
   "schema": null,
-  "table": "wh_fleet_composition"
+  "table": "participants"
 }
