@@ -208,10 +208,6 @@ defmodule EveDmv.Eve.StaticDataLoader.FileManager do
       error ->
         Logger.error("bzip2 decompression failed: #{inspect(error)}")
         {:error, "bzip2 decompression failed: #{inspect(error)}"}
-    catch
-      :error, reason ->
-        Logger.error("bzip2 decompression failed: #{inspect(reason)}")
-        {:error, "bzip2 decompression failed: #{inspect(reason)}"}
     end
   end
 

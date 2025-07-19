@@ -48,7 +48,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.CombatLog do
     attribute(:performance_metrics, :map, default: %{})
 
     # Associated battle (optional)
-    attribute(:battle_id, :string)
+    attribute(:battle_id, :uuid)
     # How well it matches the battle
     attribute(:battle_correlation, :map, default: %{})
 
