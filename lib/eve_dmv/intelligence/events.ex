@@ -23,8 +23,6 @@ defmodule EveDmv.Intelligence.Events do
       # How confident we are in this assessment
       :confidence_score
     ]
-
-    @enforce_keys [:character_id, :new_threat_level, :previous_threat_level, :updated_at]
   end
 
   defmodule BattleDetected do
@@ -44,8 +42,6 @@ defmodule EveDmv.Intelligence.Events do
       # :developing, :concluded, :uncertain
       :battle_status
     ]
-
-    @enforce_keys [:battle_id, :system_id, :detected_at, :participant_count]
   end
 
   defmodule IntelligenceAlert do
@@ -70,8 +66,6 @@ defmodule EveDmv.Intelligence.Events do
       # Additional context data
       :data
     ]
-
-    @enforce_keys [:alert_id, :alert_type, :priority, :created_at]
   end
 
   defmodule CharacterAnalysisUpdated do
@@ -90,8 +84,6 @@ defmodule EveDmv.Intelligence.Events do
       :significant_changes,
       :confidence_level
     ]
-
-    @enforce_keys [:character_id, :updated_at, :analysis_type]
   end
 
   defmodule SystemActivitySpikeDetected do
@@ -115,8 +107,6 @@ defmodule EveDmv.Intelligence.Events do
       # Other events that might be related
       :related_events
     ]
-
-    @enforce_keys [:system_id, :detected_at, :activity_level, :baseline_level]
   end
 
   defmodule ChainIntelligenceUpdate do
@@ -138,8 +128,6 @@ defmodule EveDmv.Intelligence.Events do
       # Pilot movement data if available
       :pilot_movements
     ]
-
-    @enforce_keys [:chain_id, :updated_at, :update_type]
   end
 
   defmodule VettingResultUpdated do
@@ -160,8 +148,6 @@ defmodule EveDmv.Intelligence.Events do
       # When this vetting result expires
       :expires_at
     ]
-
-    @enforce_keys [:character_id, :vetting_result, :updated_at]
   end
 
   defmodule FleetCompositionAnalyzed do
@@ -184,7 +170,5 @@ defmodule EveDmv.Intelligence.Events do
       :participant_count,
       :estimated_capabilities
     ]
-
-    @enforce_keys [:fleet_id, :system_id, :analyzed_at, :composition_type]
   end
 end
