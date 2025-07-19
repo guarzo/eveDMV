@@ -5753,11 +5753,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   defp count_phase_casualties(_events), do: 5
   defp calculate_phase_importance(_phase, _events), do: 0.8
 
-  defp analyze_ewar_effectiveness(_fleet_analysis) do
-    # TODO: Implement EWAR analysis
-    %{}
-  end
-
   # Force multiplication helper functions
   defp identify_force_multipliers(compositions, metrics) do
     %{
@@ -6355,11 +6350,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     else
       []
     end
-  end
-
-  defp analyze_relative_positioning(_battle) do
-    # TODO: Implement relative positioning analysis
-    %{}
   end
 
   # Missing function implementations

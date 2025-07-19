@@ -17,42 +17,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
   alias EveDmv.Contexts.WormholeOperations.Domain.ChainTracker
   require Logger
 
-  # Signature type patterns for identification
-  @signature_patterns %{
-    # Wormhole signatures like H296, K162
-    wormhole: ~r/^[A-Z]\d{3}$/,
-    # Data sites
-    data: ~r/Data\s+(Site|Perimeter)/i,
-    # Relic sites
-    relic: ~r/Relic\s+(Site|Perimeter)/i,
-    # Gas sites
-    gas: ~r/(Nebula|Reservoir|Cloud)/i,
-    # Combat sites
-    combat: ~r/(Garrison|Outpost|Perimeter|Frontier)/i
-  }
-
-  # Wormhole signature strengths by class
-  @wormhole_strengths %{
-    wormhole_c1: 0.10,
-    wormhole_c2: 0.10,
-    wormhole_c3: 0.10,
-    wormhole_c4: 0.05,
-    wormhole_c5: 0.01,
-    wormhole_c6: 0.01,
-    highsec: 0.10,
-    lowsec: 0.10,
-    nullsec: 0.05
-  }
-
-  # Site difficulty by signature strength
-  @site_difficulties %{
-    {0.25, 1.0} => :easy,
-    {0.10, 0.25} => :medium,
-    {0.05, 0.10} => :hard,
-    {0.01, 0.05} => :dangerous,
-    {0.0, 0.01} => :deadly
-  }
-
   @doc """
   Track a new signature in a system.
 

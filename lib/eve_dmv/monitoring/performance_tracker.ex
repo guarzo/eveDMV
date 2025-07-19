@@ -73,7 +73,7 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
       result = unquote(block)
       duration = System.monotonic_time(:millisecond) - start_time
 
-      __MODULE__.track_query(
+      EveDmv.Monitoring.PerformanceTracker.track_query(
         unquote(query_name),
         duration,
         unquote(opts)

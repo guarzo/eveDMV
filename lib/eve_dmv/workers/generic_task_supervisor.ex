@@ -173,6 +173,8 @@ defmodule EveDmv.Workers.GenericTaskSupervisor do
   defmodule TaskMonitor do
     @moduledoc false
 
+    require Logger
+
     def monitor_task(pid, config, table_name) do
       ref = Process.monitor(pid)
       task_info = get_task_info(table_name, pid)

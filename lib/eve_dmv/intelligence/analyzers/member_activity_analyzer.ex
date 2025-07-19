@@ -1066,21 +1066,6 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
     {:error, :no_auth_token}
   end
 
-  defp enrich_member_data(member_ids) when is_list(member_ids) do
-    # Enrich member IDs with character names and basic info
-    member_ids
-    |> Enum.map(fn character_id ->
-      %{
-        character_id: character_id,
-        character_name: EveDmv.Eve.NameResolver.character_name(character_id),
-        # Add basic member info - would be enhanced with more ESI calls
-        join_date: nil,
-        last_login: nil,
-        roles: []
-      }
-    end)
-  end
-
   defp fetch_members_from_database(corporation_id) do
     # Fallback: get members from participant/killmail data
     try do

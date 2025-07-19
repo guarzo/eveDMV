@@ -226,6 +226,13 @@ defmodule EveDmv.Killmails.KillmailRaw do
     end
   end
 
+  # Preparations for query safety
+  preparations do
+    prepare(fn query, _ ->
+      EveDmv.Ash.Preparations.QuerySafety.prepare(query, [limit: 500], %{})
+    end)
+  end
+
   # Calculations for derived values
   calculations do
     calculate :age_in_hours, :integer do

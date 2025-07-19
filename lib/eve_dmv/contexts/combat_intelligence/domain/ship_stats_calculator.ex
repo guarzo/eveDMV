@@ -554,20 +554,20 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ShipStatsCalculator do
 
         %{
           # 2x EANM
-          em: improve_resist(base.em, armor_bonus.eanm + armor_bonus.eanm),
+          em: improve_resist(base.em, armor_bonus.t2_eanm + armor_bonus.t2_eanm),
           # 2x EANM + hardener
           thermal:
             improve_resist(
               base.thermal,
-              armor_bonus.eanm + armor_bonus.eanm + armor_bonus.specific_hardener
+              armor_bonus.t2_eanm + armor_bonus.t2_eanm + armor_bonus.specific_hardener
             ),
           # 2x EANM
-          kinetic: improve_resist(base.kinetic, armor_bonus.eanm + armor_bonus.eanm),
+          kinetic: improve_resist(base.kinetic, armor_bonus.t2_eanm + armor_bonus.t2_eanm),
           # 2x EANM + hardener
           explosive:
             improve_resist(
               base.explosive,
-              armor_bonus.eanm + armor_bonus.eanm + armor_bonus.specific_hardener
+              armor_bonus.t2_eanm + armor_bonus.t2_eanm + armor_bonus.specific_hardener
             )
         }
 

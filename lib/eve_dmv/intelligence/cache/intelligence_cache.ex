@@ -221,11 +221,11 @@ defmodule EveDmv.Intelligence.Cache.IntelligenceCache do
   defp generate_threat_score(character_id, options) do
     # Use the actual threat scoring coordinator when available
     case Code.ensure_loaded?(
-           EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringCoordinator
+           EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator
          ) do
       true ->
         try do
-          EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringCoordinator.score_character(
+          EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.calculate_threat_score(
             character_id,
             options
           )

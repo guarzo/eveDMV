@@ -10,6 +10,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Api do
     otp_app: :eve_dmv
 
   resources do
+    # Core battle analysis resources
+    resource(EveDmv.Contexts.BattleAnalysis.Resources.Battle)
+    resource(EveDmv.Contexts.BattleAnalysis.Resources.BattleKillmail)
+
+    # Combat log and fitting analysis
     resource(EveDmv.Contexts.BattleAnalysis.Resources.CombatLog)
     resource(EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting)
   end

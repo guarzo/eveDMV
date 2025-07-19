@@ -177,6 +177,7 @@ defmodule EveDmv.Application do
         EveDmv.Database.CacheWarmer,
         EveDmv.Database.ConnectionPoolMonitor,
         EveDmv.Database.PartitionManager,
+        EveDmv.Database.IncrementalViewRefresher,
         EveDmv.Database.CacheInvalidator,
         EveDmv.Database.CacheHashManager,
         EveDmv.Database.QueryPlanAnalyzer,

@@ -6,7 +6,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.Battle do
   """
 
   use Ash.Resource,
-    domain: EveDmv.Api,
+    domain: EveDmv.Contexts.BattleAnalysis.Api,
     data_layer: AshPostgres.DataLayer,
     extensions: [AshJsonApi.Resource]
 

@@ -27,9 +27,8 @@ defmodule EveDmv.Api do
     # REMOVED: KillmailEnriched - see /docs/architecture/enriched-raw-analysis.md
     resource(EveDmv.Killmails.Participant)
 
-    # Battle analysis resources (must be in same domain as KillmailRaw)
-    resource(EveDmv.Contexts.BattleAnalysis.Resources.Battle)
-    resource(EveDmv.Contexts.BattleAnalysis.Resources.BattleKillmail)
+    # Battle analysis resources moved to dedicated domain
+    # See: EveDmv.Contexts.BattleAnalysis.Api
 
     # Essential EVE static data
     resource(EveDmv.Eve.ItemType)
@@ -42,5 +41,14 @@ defmodule EveDmv.Api do
   # Authorization configuration
   authorization do
     authorize(:when_requested)
+  end
+
+  # Global query safety configuration
+  # Apply default query limits to all read actions
+  @doc false
+  def default_read_preparations do
+    [
+      {EveDmv.Ash.Preparations.QuerySafety, [limit: 1000]}
+    ]
   end
 end

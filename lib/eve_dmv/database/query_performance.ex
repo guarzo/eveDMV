@@ -6,6 +6,7 @@ defmodule EveDmv.Database.QueryPerformance do
   and identify bottlenecks.
   """
 
+  require EveDmv.Monitoring.PerformanceTracker
   import EveDmv.Monitoring.PerformanceTracker, only: [time_query: 3]
 
   @doc """
