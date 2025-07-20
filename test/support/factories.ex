@@ -23,7 +23,7 @@ defmodule EveDmv.Factories do
   # Legion, Loki, Proteus, Tengu
   @strategic_cruisers [29_984, 29_986, 29_988, 29_990]
   # Basilisk, Guardian, Augoror, Osprey
-  @logistics [11_978, 11_987, 625, 624]
+  @logistics [11_978, 11_987, 16, 624]
   # Sabre, Eris, Flycatcher, Heretic
   @interdictors [22_456, 22_460, 22_464, 22_468]
 
@@ -58,8 +58,7 @@ defmodule EveDmv.Factories do
     11_989 => "Malediction",
     11_993 => "Stiletto",
     11_978 => "Basilisk",
-    625 => "Exequror",
-    624 => "Osprey",
+    16 => "Augoror",
     22_456 => "Sabre",
     22_460 => "Eris"
   }
