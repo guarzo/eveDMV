@@ -7,7 +7,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
   """
 
   require Logger
-  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedCalculations
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   alias EveDmv.StaticData.ShipTypes
 
   # Normalization constants for ship mastery calculations
@@ -44,8 +44,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
     all_killmails = Map.get(combat_data, :killmails, [])
 
     # Ship type diversity
-    ship_types_used = extract_ship_types_used(all_killmails)
-    ship_diversity = calculate_ship_diversity_index(ship_types_used)
+    ship_types_used = SharedUtilities.extract_ship_types_used(all_killmails)
+    ship_diversity = SharedUtilities.calculate_ship_diversity_index(ship_types_used)
 
     # Ship class mastery (comfort across different ship classes)
     class_mastery = analyze_ship_class_mastery(ship_types_used)
@@ -128,7 +128,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
     Logger.debug("Analyzing tactical ship usage")
 
     # Analyze if character uses appropriate ships for different situations
-    ship_types = extract_ship_types_used(Map.get(combat_data, :killmails, []))
+    ship_types = SharedUtilities.extract_ship_types_used(Map.get(combat_data, :killmails, []))
 
     # Check for tactical diversity
     has_tackle = Enum.any?(ship_types, fn {ship_type, _} -> tackle_ship?(ship_type) end)
@@ -155,8 +155,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
     %{
       most_used_ships: sorted_ships,
       total_unique_ships: map_size(ship_types_map),
-      usage_distribution: calculate_usage_distribution(ship_types_map),
-      diversity_score: calculate_ship_diversity_index(ship_types_map),
+      usage_distribution: SharedUtilities.calculate_usage_distribution(ship_types_map),
+      diversity_score: SharedUtilities.calculate_ship_diversity_index(ship_types_map),
       specialization_score: calculate_specialization_balance(ship_types_map),
       tactical_coverage: assess_tactical_coverage(ship_types_map)
     }
@@ -164,56 +164,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
 
   # Private helper functions
 
-  defp extract_ship_types_used(killmails) do
-    # Extract ship types used by the character
-    ship_types =
-      killmails
-      |> Enum.flat_map(fn km ->
-        # Ship type when victim
-        victim_ship = if km.victim_character_id, do: [km.victim_ship_type_id], else: []
+  # Function removed - using SharedUtilities.extract_ship_types_used/1
 
-        # Ship type when attacker
-        attacker_ships =
-          case km.raw_data do
-            %{"attackers" => attackers} when is_list(attackers) ->
-              attackers
-              |> Enum.filter(&(&1["character_id"] != nil))
-              |> Enum.map(& &1["ship_type_id"])
-              |> Enum.filter(&(&1 != nil))
-
-            _ ->
-              []
-          end
-
-        victim_ship ++ attacker_ships
-      end)
-      |> Enum.filter(&(&1 != nil))
-      |> Enum.frequencies()
-
-    ship_types
-  end
-
-  defp calculate_ship_diversity_index(ship_types_map) do
-    if map_size(ship_types_map) == 0 do
-      0.0
-    else
-      total_uses = ship_types_map |> Map.values() |> Enum.sum()
-      unique_ships = map_size(ship_types_map)
-
-      # Shannon diversity index adapted for ship usage
-      shannon_diversity =
-        ship_types_map
-        |> Enum.map(fn {_ship, uses} ->
-          proportion = uses / total_uses
-          -proportion * :math.log(proportion)
-        end)
-        |> Enum.sum()
-
-      # Normalize to 0-1 scale
-      max_diversity = :math.log(unique_ships)
-      if max_diversity > 0, do: shannon_diversity / max_diversity, else: 0.0
-    end
-  end
+  # Function removed - using SharedUtilities.calculate_ship_diversity_index/1
 
   defp classify_ship_type(ship_type_id) do
     case ShipTypes.classify_ship_type(ship_type_id) do
@@ -227,8 +180,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
     victim_killmails = Map.get(combat_data, :victim_killmails, [])
     attacker_killmails = Map.get(combat_data, :attacker_killmails, [])
 
-    survival_rate = SharedCalculations.calculate_survival_rate(combat_data, victim_killmails)
-    damage_efficiency = SharedCalculations.calculate_damage_efficiency(attacker_killmails)
+    survival_rate = SharedUtilities.calculate_survival_rate(combat_data, victim_killmails)
+    damage_efficiency = SharedUtilities.calculate_damage_efficiency(attacker_killmails)
 
     # Ships that survive longer and deal more damage likely have better fits
     survival_rate * @survival_weight + damage_efficiency * @damage_weight
@@ -274,15 +227,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
     end
   end
 
-  defp calculate_usage_distribution(ship_types_map) do
-    total_uses = ship_types_map |> Map.values() |> Enum.sum()
-
-    ship_types_map
-    |> Enum.map(fn {ship_type, uses} ->
-      {ship_type, Float.round(uses / total_uses, 3)}
-    end)
-    |> Enum.sort_by(&elem(&1, 1), :desc)
-  end
+  # Function removed - using SharedUtilities.calculate_usage_distribution/1
 
   defp assess_tactical_coverage(ship_types_map) do
     # Assess how well ship choices cover different tactical roles
@@ -323,7 +268,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
   end
 
   defp normalize_to_10_scale(score) do
-    SharedCalculations.normalize_to_10_scale(score)
+    SharedUtilities.normalize_to_10_scale(score)
   end
 
   # Private helper functions - removed unused functions

@@ -47,7 +47,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberRiskAssessment do
 
       iex> activity_data = %{total_kills: 5, total_losses: 2, activity_trend: :decreasing}
       iex> participation_data = %{fleet_count: 1, solo_count: 3}
-      iex> assess_member_risks(12345, activity_data, participation_data)
+      iex> assess_member_risks(12_345, activity_data, participation_data)
       {:ok, %{burnout_risk: 45, disengagement_risk: 60, warning_indicators: ["Declining activity trend"]}}
   """
   def assess_member_risks(character_id, activity_data, participation_data) do
@@ -293,14 +293,14 @@ defmodule EveDmv.Intelligence.Analyzers.MemberRiskAssessment do
   ## Examples
 
       iex> member_data = %{
-      ...>   character_id: 12345,
+      ...>   character_id: 12_345,
       ...>   last_activity: ~U[2024-06-01 12:00:00Z],
       ...>   activity_score: 65
       ...> }
       iex> current_time = ~U[2024-07-01 12:00:00Z]
       iex> process_member_activity(member_data, current_time)
       %{
-        character_id: 12345,
+        character_id: 12_345,
         days_since_last_activity: 30,
         activity_level: :moderately_active,
         activity_score: 65,

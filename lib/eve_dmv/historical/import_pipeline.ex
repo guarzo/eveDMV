@@ -12,6 +12,7 @@ defmodule EveDmv.Historical.ImportPipeline do
 
   alias EveDmv.Killmails.KillmailRaw
   alias Phoenix.PubSub
+  alias EveDmv.PubSub, as: AppPubSub
 
   @batch_size 1000
   @max_concurrent_batches 4
@@ -237,13 +238,13 @@ defmodule EveDmv.Historical.ImportPipeline do
 
   # Batch result handling
   def handle_info({:batch_processed, batch_result}, state) do
-    new_state = update_progress(state, batch_result)
+    progress_state = update_progress(state, batch_result)
 
     # Update current processing rate
-    rate = calculate_current_rate(new_state)
-    peak_rate = max(rate, new_state.peak_rate)
+    rate = calculate_current_rate(progress_state)
+    peak_rate = max(rate, progress_state.peak_rate)
 
-    new_state = %{new_state | current_rate: rate, peak_rate: peak_rate}
+    new_state = %{progress_state | current_rate: rate, peak_rate: peak_rate}
 
     # Check if we should report progress
     if rem(new_state.processed_count, @progress_report_interval) < @batch_size do
@@ -320,7 +321,7 @@ defmodule EveDmv.Historical.ImportPipeline do
   defp initialize_source(path, :json_file, _opts) do
     try do
       # Load and parse JSON file
-      data = File.read!(path) |> Jason.decode!()
+      data = path |> File.read!() |> Jason.decode!()
 
       killmails =
         case data do
@@ -521,9 +522,7 @@ defmodule EveDmv.Historical.ImportPipeline do
   defp parse_killmail_time(_), do: DateTime.utc_now()
 
   defp format_error(%Ash.Error.Invalid{errors: errors}) do
-    errors
-    |> Enum.map(&inspect/1)
-    |> Enum.join(", ")
+    Enum.map_join(errors, ", ", &inspect/1)
   end
 
   defp format_error(error), do: inspect(error)
@@ -586,7 +585,7 @@ defmodule EveDmv.Historical.ImportPipeline do
 
     # Broadcast progress for UI updates
     PubSub.broadcast(
-      EveDmv.PubSub,
+      AppPubSub,
       "import:#{state.import_id}",
       {:import_progress, state}
     )

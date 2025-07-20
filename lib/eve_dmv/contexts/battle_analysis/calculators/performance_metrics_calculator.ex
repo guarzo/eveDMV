@@ -531,9 +531,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Calculators.PerformanceMetricsCalculato
     if total_damage > 0 do
       # Calculate entropy-like measure of damage type diversity
       damage_breakdown
-      |> Enum.map(fn {_type, amount} -> amount / total_damage end)
-      # Avoid log(0)
-      |> Enum.map(fn ratio -> -ratio * :math.log2(ratio + 0.001) end)
+      |> Enum.map(fn {_type, amount} ->
+        ratio = amount / total_damage
+        # Avoid log(0)
+        -ratio * :math.log2(ratio + 0.001)
+      end)
       |> Enum.sum()
       # Normalize
       |> Kernel./(2.0)

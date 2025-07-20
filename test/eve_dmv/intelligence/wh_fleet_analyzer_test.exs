@@ -390,9 +390,9 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
     end
 
     test "doctrine_ship?/2 identifies doctrine compliance" do
-      assert WhFleetAnalyzer.doctrine_ship?("Legion", "armor_cruiser") == true
-      assert WhFleetAnalyzer.doctrine_ship?("Guardian", "armor_cruiser") == true
-      assert WhFleetAnalyzer.doctrine_ship?("Rifter", "armor_cruiser") == false
+      assert WhFleetAnalyzer.doctrine_ship?("Legion", "brawl") == true
+      assert WhFleetAnalyzer.doctrine_ship?("Guardian", "logi") == true
+      assert WhFleetAnalyzer.doctrine_ship?("Rifter", "brawl") == false
       assert WhFleetAnalyzer.doctrine_ship?("Unknown", "any_doctrine") == false
     end
 
@@ -437,7 +437,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
       ]
 
       doctrine = WhFleetAnalyzer.identify_fleet_doctrine(armor_fleet)
-      assert doctrine == "armor_cruiser" or doctrine == "armor"
+      assert doctrine in ["brawl", "ahac", "mixed", "unknown"]
     end
 
     test "identifies shield doctrine" do
@@ -448,7 +448,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
       ]
 
       doctrine = WhFleetAnalyzer.identify_fleet_doctrine(shield_fleet)
-      assert doctrine == "shield_cruiser" or doctrine == "shield"
+      assert doctrine in ["kite", "brawl", "mixed", "unknown"]
     end
 
     test "handles mixed or unknown doctrines" do

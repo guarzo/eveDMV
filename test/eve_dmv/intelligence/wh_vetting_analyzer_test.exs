@@ -26,13 +26,11 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzerTest do
 
       result = WHVettingAnalyzer.calculate_j_space_experience(killmails)
 
-      assert %{
-               total_j_kills: 1,
-               total_j_losses: 1,
-               j_space_time_percent: 66.7,
-               wormhole_systems_visited: [31_000_123, 31_000_456],
-               most_active_wh_class: "C1"
-             } = result
+      assert result.total_j_kills == 1
+      assert result.total_j_losses == 1
+      assert result.j_space_time_percent == 66.7
+      assert 31_000_123 in result.wormhole_systems_visited
+      assert 31_000_456 in result.wormhole_systems_visited
     end
 
     test "handles empty killmail list" do

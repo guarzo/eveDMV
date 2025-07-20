@@ -70,7 +70,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Calculators
       %{momentum: 0.0, momentum_strength: :weak}
     else
       recent_scores = Enum.take(historical_scores, window_size)
-      older_scores = Enum.drop(historical_scores, window_size) |> Enum.take(window_size)
+
+      older_scores =
+        historical_scores
+        |> Enum.drop(window_size)
+        |> Enum.take(window_size)
 
       recent_avg = calculate_average(recent_scores)
       older_avg = calculate_average(older_scores)
@@ -120,8 +124,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Calculators
     current_avg = calculate_average(Enum.map(recent_scores, fn {_date, score} -> score end))
 
     # For now, predict stability with slight variation
-    predicted_score = current_avg + :rand.uniform() * 0.5 - 0.25
-    predicted_score = max(0.0, min(10.0, predicted_score))
+    raw_predicted_score = current_avg + :rand.uniform() * 0.5 - 0.25
+    predicted_score = max(0.0, min(10.0, raw_predicted_score))
 
     %{
       score: predicted_score,
@@ -130,53 +134,49 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Calculators
   end
 
   defp identify_risk_indicators(historical_scores, trend) do
-    risk_indicators = []
-
-    risk_indicators =
+    rapid_improvement_indicators =
       if trend.direction == :increasing and trend.strength > 0.3,
-        do: ["rapid_improvement" | risk_indicators],
-        else: risk_indicators
+        do: ["rapid_improvement"],
+        else: []
 
-    risk_indicators =
+    declining_performance_indicators =
       if trend.direction == :decreasing and trend.strength > 0.3,
-        do: ["declining_performance" | risk_indicators],
-        else: risk_indicators
+        do: ["declining_performance"],
+        else: []
 
     volatility = calculate_volatility(historical_scores)
 
-    risk_indicators =
-      if volatility > 0.7, do: ["high_volatility" | risk_indicators], else: risk_indicators
+    volatility_indicators =
+      if volatility > 0.7, do: ["high_volatility"], else: []
 
-    risk_indicators
+    rapid_improvement_indicators ++ declining_performance_indicators ++ volatility_indicators
   end
 
   defp generate_predictive_recommendations(trend, prediction) do
-    recommendations = []
-
-    recommendations =
+    trend_recommendations =
       case trend.direction do
         :increasing ->
           [
             "Monitor for continued improvement",
-            "Consider threat level escalation" | recommendations
+            "Consider threat level escalation"
           ]
 
         :decreasing ->
-          ["Potential threat reduction", "Monitor for performance recovery" | recommendations]
+          ["Potential threat reduction", "Monitor for performance recovery"]
 
         :stable ->
-          ["Stable threat level", "Standard monitoring protocols" | recommendations]
+          ["Stable threat level", "Standard monitoring protocols"]
 
         _ ->
-          ["Insufficient data for prediction" | recommendations]
+          ["Insufficient data for prediction"]
       end
 
-    recommendations =
+    confidence_recommendations =
       if prediction.confidence < 0.5,
-        do: ["Low confidence prediction", "Increase monitoring frequency" | recommendations],
-        else: recommendations
+        do: ["Low confidence prediction", "Increase monitoring frequency"],
+        else: []
 
-    recommendations
+    trend_recommendations ++ confidence_recommendations
   end
 
   defp calculate_trend_direction(historical_scores) do

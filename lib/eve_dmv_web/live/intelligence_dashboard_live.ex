@@ -162,8 +162,8 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
                 {:new_analysis, analysis}
               )
 
-            {:error, reason} ->
-              Logger.error("Character analysis failed for #{character_id}: #{inspect(reason)}")
+            _ ->
+              Logger.error("Character analysis failed for #{character_id}")
           end
         end)
 
@@ -455,13 +455,6 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
               title:
                 "Character Analysis: #{analysis.basic_analysis.character_name || character_id}"
             }
-
-          {:error, reason} ->
-            %{
-              type: "error",
-              data: %{error: reason},
-              title: "Analysis Error"
-            }
         end
 
       _ ->
@@ -530,24 +523,18 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
   defp relative_time(datetime) when is_struct(datetime, DateTime) do
     case EveDmvWeb.Helpers.TimeFormatter.format_relative_time(datetime) do
       result when is_binary(result) -> result
-      _ -> "unknown"
     end
   rescue
     _ -> "unknown"
   end
-
-  defp relative_time(_), do: "unknown"
 
   defp format_time(datetime) when is_struct(datetime, DateTime) do
     case EveDmvWeb.Helpers.TimeFormatter.format_datetime(datetime) do
       result when is_binary(result) -> result
-      _ -> "unknown"
     end
   rescue
     _ -> "unknown"
   end
-
-  defp format_time(_), do: "unknown"
 
   # Export functions
 
@@ -639,14 +626,11 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
       ]
 
       content =
-        [headers | rows]
-        |> Enum.map(fn row ->
+        Enum.map_join([headers | rows], "\n", fn row ->
           row
           |> Enum.map(&to_string/1)
-          |> Enum.map(&escape_csv_field/1)
-          |> Enum.join(",")
+          |> Enum.map_join(",", &escape_csv_field/1)
         end)
-        |> Enum.join("\n")
 
       {:ok, content}
     rescue

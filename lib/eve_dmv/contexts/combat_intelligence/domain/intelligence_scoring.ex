@@ -720,19 +720,21 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
          {:ok, fc} <- calculate_fleet_commander_score(character_id),
          {:ok, solo} <- calculate_solo_pilot_score(character_id),
          {:ok, awox} <- calculate_awox_risk_score(character_id) do
+      # Build recommendations efficiently
       recommendations = []
+
       # Danger-based recommendations
       recommendations =
         if danger.rating >= 4 do
-          recommendations ++
-            [
-              %{
-                type: :warning,
-                priority: :high,
-                message: "Extreme threat - #{danger.recent_kills} kills in last 30 days",
-                action: "Avoid solo engagement, use scouts when traveling"
-              }
-            ]
+          [
+            %{
+              type: :warning,
+              priority: :high,
+              message: "Extreme threat - #{danger.recent_kills} kills in last 30 days",
+              action: "Avoid solo engagement, use scouts when traveling"
+            }
+            | recommendations
+          ]
         else
           recommendations
         end
@@ -740,15 +742,15 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
       # Hunter-based recommendations
       recommendations =
         if hunter.rating in [:elite, :experienced] do
-          recommendations ++
-            [
-              %{
-                type: :tactical,
-                priority: :high,
-                message: "Skilled hunter with #{hunter.solo_kills} solo kills",
-                action: "Expect tackle ships and kiting tactics"
-              }
-            ]
+          [
+            %{
+              type: :tactical,
+              priority: :high,
+              message: "Skilled hunter with #{hunter.solo_kills} solo kills",
+              action: "Expect tackle ships and kiting tactics"
+            }
+            | recommendations
+          ]
         else
           recommendations
         end
@@ -756,15 +758,15 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
       # FC-based recommendations
       recommendations =
         if fc.rating in [:veteran_fc, :experienced_fc] do
-          recommendations ++
-            [
-              %{
-                type: :strategic,
-                priority: :medium,
-                message: "Experienced FC - avg fleet size #{fc.avg_fleet_size}",
-                action: "Expect coordinated fleet response if engaged"
-              }
-            ]
+          [
+            %{
+              type: :strategic,
+              priority: :medium,
+              message: "Experienced FC - avg fleet size #{fc.avg_fleet_size}",
+              action: "Expect coordinated fleet response if engaged"
+            }
+            | recommendations
+          ]
         else
           recommendations
         end
@@ -772,15 +774,15 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
       # Solo pilot recommendations
       recommendations =
         if solo.rating == :dangerous && solo.efficiency > 0.8 do
-          recommendations ++
-            [
-              %{
-                type: :tactical,
-                priority: :high,
-                message: "Dangerous solo pilot - #{solo.efficiency * 100}% efficiency",
-                action: "Do not engage solo unless confident in ship advantage"
-              }
-            ]
+          [
+            %{
+              type: :tactical,
+              priority: :high,
+              message: "Dangerous solo pilot - #{solo.efficiency * 100}% efficiency",
+              action: "Do not engage solo unless confident in ship advantage"
+            }
+            | recommendations
+          ]
         else
           recommendations
         end
@@ -788,15 +790,15 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
       # Awox risk recommendations
       recommendations =
         if awox.rating in [:high_risk, :extreme_risk] do
-          recommendations ++
-            [
-              %{
-                type: :security,
-                priority: :critical,
-                message: "High awox risk - #{awox.friendly_fire_count} blue-on-blue incidents",
-                action: "Do not grant roles or access to valuable assets"
-              }
-            ]
+          [
+            %{
+              type: :security,
+              priority: :critical,
+              message: "High awox risk - #{awox.friendly_fire_count} blue-on-blue incidents",
+              action: "Do not grant roles or access to valuable assets"
+            }
+            | recommendations
+          ]
         else
           recommendations
         end
@@ -804,21 +806,21 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
       # Add general engagement recommendation
       engagement_risk = (danger.score + hunter.score + solo.score) / 3
 
-      recommendations ++
-        [
-          %{
-            type: :summary,
-            priority: :medium,
-            message: "Overall combat threat: #{Float.round(engagement_risk, 2)}/1.0",
-            action:
-              cond do
-                engagement_risk > 0.7 -> "Avoid engagement unless with superior numbers"
-                engagement_risk > 0.5 -> "Engage with caution, ensure escape route"
-                engagement_risk > 0.3 -> "Standard engagement protocols apply"
-                true -> "Low threat target, engage at will"
-              end
-          }
-        ]
+      [
+        %{
+          type: :summary,
+          priority: :medium,
+          message: "Overall combat threat: #{Float.round(engagement_risk, 2)}/1.0",
+          action:
+            cond do
+              engagement_risk > 0.7 -> "Avoid engagement unless with superior numbers"
+              engagement_risk > 0.5 -> "Engage with caution, ensure escape route"
+              engagement_risk > 0.3 -> "Standard engagement protocols apply"
+              true -> "Low threat target, engage at will"
+            end
+        }
+        | Enum.reverse(recommendations)
+      ]
     else
       _ -> []
     end

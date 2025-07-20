@@ -8,12 +8,11 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetAnalyzer do
 
   alias EveDmv.Intelligence.Analyzers.MassCalculator
   alias EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer
-  alias EveDmv.Intelligence.ShipDatabase
 
   require Logger
 
   @doc """
-  Enhanced fleet composition analysis using ShipDatabase.
+  Enhanced fleet composition analysis using StaticData.
   Provides detailed ship-by-ship analysis with wormhole suitability.
 
   ## Parameters
@@ -391,7 +390,7 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetAnalyzer do
   - String representing the ship's role
   """
   def categorize_ship_role(ship_name) do
-    ShipDatabase.get_ship_role(ship_name)
+    EveDmv.StaticData.get_ship_role(ship_name)
   end
 
   @doc """
@@ -404,9 +403,7 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetAnalyzer do
   ## Returns
   - Boolean indicating if ship is part of doctrine
   """
-  def doctrine_ship?(ship_name, doctrine) do
-    ShipDatabase.doctrine_ship?(ship_name, doctrine)
-  end
+  defdelegate doctrine_ship?(ship_name, doctrine), to: EveDmv.StaticData
 
   @doc """
   Calculate logistics ratio for a fleet.

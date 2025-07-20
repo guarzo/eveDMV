@@ -222,7 +222,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
     # Build adjacency list representation
     initial_graph = battles |> Enum.map(&{&1, []}) |> Map.new()
 
-    Enum.reduce(connections, initial_graph, fn {battle_a, battle_b}, graph ->
+    connections
+    |> Enum.reduce(initial_graph, fn {battle_a, battle_b}, graph ->
       graph
       |> Map.update(battle_a, [battle_b], &[battle_b | &1])
       |> Map.update(battle_b, [battle_a], &[battle_a | &1])
@@ -440,7 +441,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
     sorted_battles = Enum.sort_by(battles, &get_battle_start_time/1)
 
     flow_events =
-      Enum.with_index(sorted_battles)
+      sorted_battles
+      |> Enum.with_index()
       |> Enum.map(fn {battle, index} ->
         %{
           sequence: index + 1,
@@ -619,7 +621,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
   defp identify_battle_phases(battles) do
     # For now, return simple phase identification
     # This will be enhanced with the tactical phase detection algorithm
-    Enum.with_index(battles)
+    battles
+    |> Enum.with_index()
     |> Enum.map(fn {battle, index} ->
       %{
         phase: index + 1,

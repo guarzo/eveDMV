@@ -716,7 +716,6 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
       :intermediate -> "Intermediate solo skills with moderate success"
       :novice -> "Developing solo capabilities"
       :beginner -> "Limited solo experience"
-      :none -> "No solo activity recorded"
     end
   end
 

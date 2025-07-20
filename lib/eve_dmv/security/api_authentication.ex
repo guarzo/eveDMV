@@ -97,8 +97,11 @@ defmodule EveDmv.Security.ApiAuthentication do
   List API keys for a character.
   """
   def list_character_api_keys(character_id) do
+    import Ash.Query
+
     __MODULE__
-    |> Ash.ActionInput.for_action(:by_character, %{character_id: character_id})
+    |> new()
+    |> filter(character_id == ^character_id)
     |> Ash.read(domain: EveDmv.Api)
   end
 
@@ -122,8 +125,11 @@ defmodule EveDmv.Security.ApiAuthentication do
   Validate an API key and return the associated character information.
   """
   def validate_api_key(api_key, client_ip, required_permissions \\ []) do
+    import Ash.Query
+
     case __MODULE__
-         |> Ash.ActionInput.for_action(:by_api_key, %{api_key: api_key})
+         |> new()
+         |> filter(key_hash == ^api_key)
          |> Ash.read_one(domain: EveDmv.Api) do
       {:ok, key_record} when key_record != nil ->
         cond do
@@ -151,11 +157,11 @@ defmodule EveDmv.Security.ApiAuthentication do
   Revoke an API key.
   """
   def revoke_api_key(api_key_id, character_id) do
+    import Ash.Query
+
     case __MODULE__
-         |> Ash.ActionInput.for_action(:by_id_and_character, %{
-           id: api_key_id,
-           character_id: character_id
-         })
+         |> new()
+         |> filter(id == ^api_key_id and character_id == ^character_id)
          |> Ash.read_one(domain: EveDmv.Api) do
       {:ok, api_key} when api_key != nil ->
         api_key

@@ -6,7 +6,7 @@ defmodule EveDmvWeb.SurveillanceLive.ProfileService do
   with proper error handling and matching engine integration.
   """
 
-  alias EveDmv.Api
+  alias EveDmv.Api.SurveillanceApi
   alias EveDmv.Database.SurveillanceRepository
   alias EveDmv.Performance.BatchNameResolver
   alias EveDmv.Surveillance.MatchingEngine
@@ -56,7 +56,7 @@ defmodule EveDmvWeb.SurveillanceLive.ProfileService do
       is_active: true
     }
 
-    case Ash.create(Profile, profile_data, domain: Api, actor: current_user) do
+    case Ash.create(Profile, profile_data, domain: SurveillanceApi, actor: current_user) do
       {:ok, profile} ->
         reload_matching_engine()
         {:ok, profile, has_json_error}
@@ -73,7 +73,7 @@ defmodule EveDmvWeb.SurveillanceLive.ProfileService do
   @spec update_profile(String.t(), map(), map()) ::
           {:ok, Profile.t(), boolean()} | {:error, String.t()}
   def update_profile(profile_id, profile_params, current_user) do
-    case Ash.get(Profile, profile_id, domain: Api, actor: current_user) do
+    case Ash.get(Profile, profile_id, domain: SurveillanceApi, actor: current_user) do
       {:ok, profile} ->
         # Parse JSON filter tree
         {filter_tree, has_json_error} =
@@ -93,7 +93,7 @@ defmodule EveDmvWeb.SurveillanceLive.ProfileService do
           is_active: Map.get(profile_params, "is_active", true)
         }
 
-        case Ash.update(profile, update_data, domain: Api, actor: current_user) do
+        case Ash.update(profile, update_data, domain: SurveillanceApi, actor: current_user) do
           {:ok, updated_profile} ->
             reload_matching_engine()
             {:ok, updated_profile, has_json_error}
@@ -114,10 +114,10 @@ defmodule EveDmvWeb.SurveillanceLive.ProfileService do
   """
   @spec toggle_profile(String.t(), map()) :: {:ok, Profile.t()} | {:error, String.t()}
   def toggle_profile(profile_id, current_user) do
-    case Ash.get(Profile, profile_id, domain: Api, actor: current_user) do
+    case Ash.get(Profile, profile_id, domain: SurveillanceApi, actor: current_user) do
       {:ok, profile} ->
         case Ash.update(profile, %{is_active: !profile.is_active},
-               domain: Api,
+               domain: SurveillanceApi,
                actor: current_user
              ) do
           {:ok, updated_profile} ->
@@ -140,9 +140,9 @@ defmodule EveDmvWeb.SurveillanceLive.ProfileService do
   """
   @spec delete_profile(String.t(), map()) :: :ok | {:error, String.t()}
   def delete_profile(profile_id, current_user) do
-    case Ash.get(Profile, profile_id, domain: Api, actor: current_user) do
+    case Ash.get(Profile, profile_id, domain: SurveillanceApi, actor: current_user) do
       {:ok, profile} ->
-        case Ash.destroy(profile, domain: Api, actor: current_user) do
+        case Ash.destroy(profile, domain: SurveillanceApi, actor: current_user) do
           :ok ->
             reload_matching_engine()
             :ok
@@ -168,21 +168,18 @@ defmodule EveDmvWeb.SurveillanceLive.ProfileService do
   end
 
   defp format_error_message(error) do
-    case error do
-      %{__exception__: true, message: message} when is_binary(message) ->
-        message
+    cond do
+      is_exception(error) ->
+        Exception.message(error)
 
-      %{__exception__: true} = exception ->
-        Exception.message(exception)
+      is_binary(error) ->
+        error
 
-      err when is_binary(err) ->
-        err
+      is_atom(error) ->
+        Atom.to_string(error)
 
-      err when is_atom(err) ->
-        Atom.to_string(err)
-
-      err ->
-        inspect(err)
+      true ->
+        inspect(error)
     end
   end
 end

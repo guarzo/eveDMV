@@ -1,0 +1,929 @@
+defmodule EveDmv.Contexts.CombatIntelligence.Domain.ShipStatsCalculator do
+  @moduledoc """
+  Advanced ship statistics calculator for EVE Online PvP analysis.
+
+  Provides sophisticated calculations for:
+  - DPS (Damage Per Second) estimation based on ship type and typical fittings
+  - EHP (Effective Hit Points) calculation with resistance profiles
+  - Application efficiency based on ship size and weapon systems
+  - Tank type detection and optimization suggestions
+
+  Uses EVE static data and common fitting patterns to provide accurate estimates
+  even when exact fitting data is unavailable.
+  """
+
+  alias EveDmv.StaticData
+
+  require Logger
+
+  # Base ship statistics by class (simplified but realistic)
+  @ship_base_stats %{
+    # Frigates
+    frigate: %{
+      shield_hp: 500,
+      armor_hp: 400,
+      hull_hp: 350,
+      base_dps: 100,
+      sig_radius: 40,
+      max_velocity: 400,
+      drone_bandwidth: 0,
+      turret_slots: 3,
+      launcher_slots: 0
+    },
+    # Destroyers
+    destroyer: %{
+      shield_hp: 1200,
+      armor_hp: 900,
+      hull_hp: 800,
+      base_dps: 200,
+      sig_radius: 70,
+      max_velocity: 300,
+      drone_bandwidth: 0,
+      turret_slots: 7,
+      launcher_slots: 0
+    },
+    # Cruisers
+    cruiser: %{
+      shield_hp: 3000,
+      armor_hp: 2500,
+      hull_hp: 2200,
+      base_dps: 350,
+      sig_radius: 130,
+      max_velocity: 250,
+      drone_bandwidth: 50,
+      turret_slots: 5,
+      launcher_slots: 0
+    },
+    # Battlecruisers
+    battlecruiser: %{
+      shield_hp: 6000,
+      armor_hp: 5000,
+      hull_hp: 4500,
+      base_dps: 500,
+      sig_radius: 200,
+      max_velocity: 180,
+      drone_bandwidth: 50,
+      turret_slots: 7,
+      launcher_slots: 0
+    },
+    # Battleships
+    battleship: %{
+      shield_hp: 10000,
+      armor_hp: 9000,
+      hull_hp: 8000,
+      base_dps: 800,
+      sig_radius: 400,
+      max_velocity: 120,
+      drone_bandwidth: 125,
+      turret_slots: 8,
+      launcher_slots: 0
+    },
+    # T3 Cruisers
+    strategic_cruiser: %{
+      shield_hp: 4000,
+      armor_hp: 3500,
+      hull_hp: 3000,
+      base_dps: 450,
+      sig_radius: 150,
+      max_velocity: 200,
+      drone_bandwidth: 0,
+      turret_slots: 6,
+      launcher_slots: 0
+    },
+    # Heavy Assault Cruisers
+    heavy_assault_cruiser: %{
+      shield_hp: 4500,
+      armor_hp: 4000,
+      hull_hp: 3500,
+      base_dps: 400,
+      sig_radius: 140,
+      max_velocity: 180,
+      drone_bandwidth: 50,
+      turret_slots: 6,
+      launcher_slots: 0
+    }
+  }
+
+  # Resistance profiles by tank type
+  @base_resistances %{
+    shield: %{em: 0.0, thermal: 0.2, kinetic: 0.4, explosive: 0.5},
+    armor: %{em: 0.5, thermal: 0.35, kinetic: 0.35, explosive: 0.1},
+    hull: %{em: 0.0, thermal: 0.0, kinetic: 0.0, explosive: 0.0}
+  }
+
+  # Typical resistance bonuses from modules
+  @module_resistance_bonus %{
+    shield: %{
+      # Adaptive Invulnerability Field II
+      t2_invuln: 0.30,
+      # EM Ward Amplifier II
+      em_hardener: 0.55,
+      # Anti-Thermal/Kinetic/Explosive
+      specific_hardener: 0.55,
+      # Core Defense Field Extender
+      extender_rig: 0.15
+    },
+    armor: %{
+      # Energized Adaptive Nano Membrane II
+      t2_eanm: 0.20,
+      # Armor Hardeners
+      specific_hardener: 0.55,
+      # Trimark Armor Pump
+      trimark: 0.15,
+      # Reactive Armor Hardener
+      reactive: 0.15
+    }
+  }
+
+  @doc """
+  Calculate comprehensive ship statistics including DPS and EHP.
+
+  ## Parameters
+  - ship_type_id: EVE ship type ID
+  - options: 
+    - fitting_type: :pvp (default), :fleet, :solo, :kiting, :brawling
+    - tank_type: :shield, :armor, :hull, :auto (default: auto-detect)
+    - skills: :all_v (default), :average
+    
+  ## Returns
+  {:ok, %{dps: dps_stats, ehp: ehp_stats, application: application_stats}}
+  """
+  def calculate_ship_stats(ship_type_id, options \\ []) do
+    fitting_type = Keyword.get(options, :fitting_type, :pvp)
+    tank_type = Keyword.get(options, :tank_type, :auto)
+    skills = Keyword.get(options, :skills, :all_v)
+
+    with {:ok, ship_info} <- get_ship_info(ship_type_id),
+         ship_class <- determine_ship_class(ship_info),
+         base_stats <- get_base_stats(ship_class, ship_info),
+         tank_type <- determine_tank_type(tank_type, ship_info),
+         {:ok, dps_stats} <- calculate_dps(base_stats, ship_info, fitting_type, skills),
+         {:ok, ehp_stats} <-
+           calculate_ehp(base_stats, ship_info, tank_type, fitting_type, skills),
+         {:ok, application_stats} <- calculate_application(ship_info, fitting_type) do
+      comprehensive_stats = %{
+        ship_id: ship_type_id,
+        ship_name: ship_info.type_name,
+        ship_class: ship_class,
+        dps: dps_stats,
+        ehp: ehp_stats,
+        application: application_stats,
+        mobility: calculate_mobility(base_stats, ship_info),
+        meta_info: %{
+          tank_type: tank_type,
+          fitting_type: fitting_type,
+          common_roles: determine_common_roles(ship_info, ship_class)
+        }
+      }
+
+      {:ok, comprehensive_stats}
+    else
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :calculation_failed}
+    end
+  end
+
+  @doc """
+  Calculate DPS for a specific ship with typical fitting.
+  """
+  def calculate_dps_only(ship_type_id, options \\ []) do
+    fitting_type = Keyword.get(options, :fitting_type, :pvp)
+    skills = Keyword.get(options, :skills, :all_v)
+
+    with {:ok, ship_info} <- get_ship_info(ship_type_id),
+         ship_class <- determine_ship_class(ship_info),
+         base_stats <- get_base_stats(ship_class, ship_info) do
+      calculate_dps(base_stats, ship_info, fitting_type, skills)
+    end
+  end
+
+  @doc """
+  Calculate EHP for a specific ship with typical fitting.
+  """
+  def calculate_ehp_only(ship_type_id, options \\ []) do
+    fitting_type = Keyword.get(options, :fitting_type, :pvp)
+    tank_type = Keyword.get(options, :tank_type, :auto)
+    skills = Keyword.get(options, :skills, :all_v)
+
+    with {:ok, ship_info} <- get_ship_info(ship_type_id),
+         ship_class <- determine_ship_class(ship_info),
+         base_stats <- get_base_stats(ship_class, ship_info),
+         tank_type <- determine_tank_type(tank_type, ship_info) do
+      calculate_ehp(base_stats, ship_info, tank_type, fitting_type, skills)
+    end
+  end
+
+  # Private implementation functions
+
+  defp get_ship_info(ship_type_id) do
+    case StaticData.get_type(ship_type_id) do
+      %{} = type_info -> {:ok, type_info}
+      nil -> {:error, :ship_not_found}
+    end
+  end
+
+  defp determine_ship_class(ship_info) do
+    # Use group name to determine ship class
+    group_name = ship_info.group_name || ""
+
+    cond do
+      String.contains?(group_name, "Frigate") ->
+        :frigate
+
+      String.contains?(group_name, "Destroyer") ->
+        :destroyer
+
+      String.contains?(group_name, "Cruiser") and String.contains?(group_name, "Heavy Assault") ->
+        :heavy_assault_cruiser
+
+      String.contains?(group_name, "Cruiser") and String.contains?(group_name, "Strategic") ->
+        :strategic_cruiser
+
+      String.contains?(group_name, "Cruiser") ->
+        :cruiser
+
+      String.contains?(group_name, "Battlecruiser") ->
+        :battlecruiser
+
+      String.contains?(group_name, "Battleship") ->
+        :battleship
+
+      String.contains?(group_name, "Dreadnought") ->
+        :dreadnought
+
+      String.contains?(group_name, "Carrier") ->
+        :carrier
+
+      String.contains?(group_name, "Titan") ->
+        :titan
+
+      true ->
+        :unknown
+    end
+  end
+
+  defp get_base_stats(ship_class, ship_info) do
+    # Get base stats for ship class, with specific overrides from actual data
+    base = Map.get(@ship_base_stats, ship_class, @ship_base_stats.cruiser)
+
+    # Override with actual ship attributes if available
+    # This would use real eve static data in production
+    Map.merge(base, %{
+      ship_name: ship_info.type_name,
+      ship_type_id: ship_info.type_id,
+      actual_mass: ship_info.mass,
+      actual_volume: ship_info.volume
+    })
+  end
+
+  defp determine_tank_type(:auto, ship_info) do
+    # Auto-detect tank type based on ship race and bonuses
+    race = determine_ship_race(ship_info)
+
+    case race do
+      "Caldari" -> :shield
+      "Minmatar" -> :shield
+      "Amarr" -> :armor
+      "Gallente" -> :armor
+      # Default to shield
+      _ -> :shield
+    end
+  end
+
+  defp determine_tank_type(tank_type, _ship_info), do: tank_type
+
+  defp determine_ship_race(ship_info) do
+    # Use StaticData module's race detection
+    case StaticData.get_ship_race(ship_info.type_id) do
+      {:ok, race} -> race
+      _ -> "Unknown"
+    end
+  end
+
+  defp calculate_dps(base_stats, ship_info, fitting_type, skills) do
+    # Calculate weapon DPS
+    turret_dps = calculate_turret_dps(base_stats, ship_info, fitting_type, skills)
+    missile_dps = calculate_missile_dps(base_stats, ship_info, fitting_type, skills)
+    drone_dps = calculate_drone_dps(base_stats, ship_info, fitting_type, skills)
+
+    # Total DPS
+    total_dps = turret_dps + missile_dps + drone_dps
+
+    # Apply skill modifiers
+    skill_modifier = if skills == :all_v, do: 1.25, else: 1.15
+    total_dps = total_dps * skill_modifier
+
+    # Apply fitting type modifiers
+    fitting_modifier =
+      case fitting_type do
+        # Better application in fleet
+        :fleet -> 1.1
+        # Sacrifice some DPS for tank/utility
+        :solo -> 0.9
+        # Long range = less DPS
+        :kiting -> 0.85
+        # Close range = more DPS
+        :brawling -> 1.15
+        _ -> 1.0
+      end
+
+    final_dps = total_dps * fitting_modifier
+
+    dps_stats = %{
+      total: round(final_dps),
+      turret: round(turret_dps * skill_modifier * fitting_modifier),
+      missile: round(missile_dps * skill_modifier * fitting_modifier),
+      drone: round(drone_dps * skill_modifier * fitting_modifier),
+      breakdown: %{
+        weapon_type: determine_primary_weapon_system(ship_info),
+        damage_profile: estimate_damage_profile(ship_info),
+        optimal_range: estimate_optimal_range(fitting_type),
+        falloff: estimate_falloff(fitting_type)
+      }
+    }
+
+    {:ok, dps_stats}
+  end
+
+  defp calculate_turret_dps(base_stats, ship_info, fitting_type, _skills) do
+    turret_slots = Map.get(base_stats, :turret_slots, 0)
+
+    if turret_slots > 0 do
+      # Base damage per turret based on ship class
+      damage_per_turret =
+        case determine_ship_class(ship_info) do
+          :frigate -> 35
+          :destroyer -> 40
+          :cruiser -> 75
+          :battlecruiser -> 90
+          :battleship -> 150
+          :heavy_assault_cruiser -> 85
+          :strategic_cruiser -> 80
+          _ -> 60
+        end
+
+      # Rate of fire modifier
+      rof_modifier =
+        case fitting_type do
+          # Blasters/Autocannons
+          :brawling -> 1.2
+          # Rails/Artillery
+          :kiting -> 0.8
+          _ -> 1.0
+        end
+
+      turret_slots * damage_per_turret * rof_modifier
+    else
+      0
+    end
+  end
+
+  defp calculate_missile_dps(_base_stats, ship_info, _fitting_type, _skills) do
+    # Check if this is a missile ship
+    ship_name = String.downcase(ship_info.type_name || "")
+
+    is_missile_ship =
+      String.contains?(ship_name, [
+        "raven",
+        "drake",
+        "caracal",
+        "cerberus",
+        "tengu",
+        "phoenix",
+        "leviathan",
+        "golem",
+        "widow",
+        "scorpion",
+        "bellicose",
+        "scythe fleet",
+        "typhoon",
+        "barghest"
+      ])
+
+    if is_missile_ship do
+      launcher_count =
+        case determine_ship_class(ship_info) do
+          :frigate -> 3
+          :destroyer -> 5
+          :cruiser -> 5
+          :battlecruiser -> 7
+          :battleship -> 8
+          _ -> 5
+        end
+
+      damage_per_launcher =
+        case determine_ship_class(ship_info) do
+          :frigate -> 30
+          :destroyer -> 35
+          :cruiser -> 60
+          :battlecruiser -> 80
+          :battleship -> 120
+          _ -> 50
+        end
+
+      launcher_count * damage_per_launcher
+    else
+      0
+    end
+  end
+
+  defp calculate_drone_dps(base_stats, _ship_info, _fitting_type, _skills) do
+    drone_bandwidth = Map.get(base_stats, :drone_bandwidth, 0)
+
+    # Estimate DPS based on bandwidth
+    # Light drone = 5 bandwidth, ~40 DPS
+    # Medium drone = 10 bandwidth, ~60 DPS
+    # Heavy drone = 25 bandwidth, ~150 DPS
+    case drone_bandwidth do
+      0 -> 0
+      # Light drones
+      bandwidth when bandwidth <= 25 -> bandwidth * 8
+      # Mix of light/medium
+      bandwidth when bandwidth <= 50 -> bandwidth * 6
+      # Mix of medium/heavy
+      bandwidth when bandwidth <= 125 -> bandwidth * 4.5
+      # Mostly heavy/sentry
+      bandwidth -> bandwidth * 4
+    end
+  end
+
+  defp calculate_ehp(base_stats, _ship_info, tank_type, fitting_type, skills) do
+    # Get base HP values
+    shield_hp = Map.get(base_stats, :shield_hp, 0)
+    armor_hp = Map.get(base_stats, :armor_hp, 0)
+    hull_hp = Map.get(base_stats, :hull_hp, 0)
+
+    # Apply fitting bonuses based on tank type
+    {shield_hp, armor_hp} = apply_tank_modules(shield_hp, armor_hp, tank_type, fitting_type)
+
+    # Calculate resistances
+    shield_resists = calculate_resistances(:shield, tank_type, fitting_type)
+    armor_resists = calculate_resistances(:armor, tank_type, fitting_type)
+    hull_resists = calculate_resistances(:hull, tank_type, fitting_type)
+
+    # Apply skill bonuses
+    skill_bonus = if skills == :all_v, do: 1.25, else: 1.10
+    shield_hp = shield_hp * skill_bonus
+    armor_hp = armor_hp * skill_bonus
+    hull_hp = hull_hp * skill_bonus
+
+    # Calculate effective HP for each layer
+    shield_ehp = calculate_layer_ehp(shield_hp, shield_resists)
+    armor_ehp = calculate_layer_ehp(armor_hp, armor_resists)
+    hull_ehp = calculate_layer_ehp(hull_hp, hull_resists)
+
+    total_ehp = shield_ehp + armor_ehp + hull_ehp
+
+    ehp_stats = %{
+      total: round(total_ehp),
+      shield: round(shield_ehp),
+      armor: round(armor_ehp),
+      hull: round(hull_ehp),
+      primary_tank: tank_type,
+      resistances: %{
+        shield: shield_resists,
+        armor: armor_resists,
+        hull: hull_resists
+      },
+      resist_profile: analyze_resist_holes(shield_resists, armor_resists, tank_type),
+      recommended_damage_type: find_optimal_damage_type(shield_resists, armor_resists, tank_type)
+    }
+
+    {:ok, ehp_stats}
+  end
+
+  defp apply_tank_modules(shield_hp, armor_hp, tank_type, fitting_type) do
+    case {tank_type, fitting_type} do
+      {:shield, :pvp} ->
+        # Typical shield extenders
+        {shield_hp * 2.5, armor_hp}
+
+      {:shield, :fleet} ->
+        # More tank in fleet fits
+        {shield_hp * 3.0, armor_hp}
+
+      {:shield, :solo} ->
+        # Balanced tank/gank
+        {shield_hp * 2.0, armor_hp}
+
+      {:armor, :pvp} ->
+        # Typical plates
+        {shield_hp, armor_hp * 2.5}
+
+      {:armor, :fleet} ->
+        # Heavy tank
+        {shield_hp, armor_hp * 3.0}
+
+      {:armor, :solo} ->
+        # Active tank
+        {shield_hp, armor_hp * 2.0}
+
+      {:hull, _} ->
+        # Hull tank (rare)
+        {shield_hp * 0.5, armor_hp * 0.5}
+
+      _ ->
+        {shield_hp, armor_hp}
+    end
+  end
+
+  defp calculate_resistances(layer, tank_type, fitting_type) do
+    base = Map.get(@base_resistances, layer, %{})
+
+    # Apply module bonuses based on tank type and fitting
+    case {layer, tank_type, fitting_type} do
+      {:shield, :shield, :pvp} ->
+        # Typical invulns + specific hardener
+        shield_bonus = @module_resistance_bonus.shield
+
+        %{
+          # Invuln + rig
+          em: improve_resist(base.em, shield_bonus.t2_invuln + 0.15),
+          # Invuln + hardener
+          thermal:
+            improve_resist(base.thermal, shield_bonus.t2_invuln + shield_bonus.specific_hardener),
+          # Invuln + rig
+          kinetic: improve_resist(base.kinetic, shield_bonus.t2_invuln + 0.15),
+          # Invuln
+          explosive: improve_resist(base.explosive, shield_bonus.t2_invuln)
+        }
+
+      {:armor, :armor, :pvp} ->
+        # EANMs + specific hardener
+        armor_bonus = @module_resistance_bonus.armor
+
+        %{
+          # 2x EANM
+          em: improve_resist(base.em, armor_bonus.t2_eanm + armor_bonus.t2_eanm),
+          # 2x EANM + hardener
+          thermal:
+            improve_resist(
+              base.thermal,
+              armor_bonus.t2_eanm + armor_bonus.t2_eanm + armor_bonus.specific_hardener
+            ),
+          # 2x EANM
+          kinetic: improve_resist(base.kinetic, armor_bonus.t2_eanm + armor_bonus.t2_eanm),
+          # 2x EANM + hardener
+          explosive:
+            improve_resist(
+              base.explosive,
+              armor_bonus.t2_eanm + armor_bonus.t2_eanm + armor_bonus.specific_hardener
+            )
+        }
+
+      _ ->
+        base
+    end
+  end
+
+  defp improve_resist(base_resist, bonus) do
+    # Stacking penalties would apply in real calculation
+    # Simplified: new_resist = 1 - (1 - base) * (1 - bonus)
+    1 - (1 - base_resist) * (1 - bonus)
+  end
+
+  defp calculate_layer_ehp(hp, resists) do
+    # Calculate average resistance
+    avg_resist = (resists.em + resists.thermal + resists.kinetic + resists.explosive) / 4
+
+    # EHP = HP / (1 - avg_resist)
+    if avg_resist < 1.0 do
+      hp / (1 - avg_resist)
+    else
+      # Prevent division by zero
+      hp
+    end
+  end
+
+  defp analyze_resist_holes(shield_resists, armor_resists, tank_type) do
+    resists = if tank_type == :shield, do: shield_resists, else: armor_resists
+
+    # Find lowest resist
+    lowest = Enum.min([resists.em, resists.thermal, resists.kinetic, resists.explosive])
+
+    resist_hole =
+      cond do
+        resists.em == lowest -> :em
+        resists.thermal == lowest -> :thermal
+        resists.kinetic == lowest -> :kinetic
+        resists.explosive == lowest -> :explosive
+      end
+
+    %{
+      damage_type: resist_hole,
+      resistance: Float.round(lowest, 3),
+      vulnerability: Float.round(1 - lowest, 3)
+    }
+  end
+
+  defp find_optimal_damage_type(shield_resists, armor_resists, tank_type) do
+    resists = if tank_type == :shield, do: shield_resists, else: armor_resists
+
+    # Return the damage type that would be most effective
+    damage_effectiveness = %{
+      em: 1 - resists.em,
+      thermal: 1 - resists.thermal,
+      kinetic: 1 - resists.kinetic,
+      explosive: 1 - resists.explosive
+    }
+
+    {best_type, _effectiveness} = Enum.max_by(damage_effectiveness, fn {_type, eff} -> eff end)
+    best_type
+  end
+
+  defp calculate_application(ship_info, fitting_type) do
+    ship_class = determine_ship_class(ship_info)
+
+    # Base application stats
+    base_tracking =
+      case ship_class do
+        :frigate -> 0.8
+        :destroyer -> 0.6
+        :cruiser -> 0.4
+        :battlecruiser -> 0.3
+        :battleship -> 0.15
+        _ -> 0.35
+      end
+
+    # Explosion radius (for missiles)
+    explosion_radius =
+      case ship_class do
+        :frigate -> 30
+        :destroyer -> 50
+        :cruiser -> 125
+        :battlecruiser -> 180
+        :battleship -> 300
+        _ -> 150
+      end
+
+    # Modify by fitting type
+    tracking_modifier =
+      case fitting_type do
+        # Close range = better tracking
+        :brawling -> 1.5
+        # Long range = worse tracking
+        :kiting -> 0.7
+        _ -> 1.0
+      end
+
+    {:ok,
+     %{
+       turret_tracking: Float.round(base_tracking * tracking_modifier, 3),
+       missile_application: explosion_radius,
+       web_effectiveness: calculate_web_effectiveness(ship_class),
+       paint_effectiveness: calculate_paint_effectiveness(ship_class)
+     }}
+  end
+
+  defp calculate_web_effectiveness(ship_class) do
+    # How effective are webs against this ship?
+    case ship_class do
+      # Too fast even with webs
+      :frigate -> :low
+      # Somewhat effective
+      :destroyer -> :medium
+      # Very effective
+      :cruiser -> :high
+      # Very effective
+      :battlecruiser -> :high
+      # Devastating
+      :battleship -> :extreme
+      _ -> :medium
+    end
+  end
+
+  defp calculate_paint_effectiveness(ship_class) do
+    # How effective are target painters?
+    case ship_class do
+      # Small sig = huge benefit
+      :frigate -> :extreme
+      # Good benefit
+      :destroyer -> :high
+      # Moderate benefit
+      :cruiser -> :medium
+      # Less benefit
+      :battlecruiser -> :low
+      # Already huge sig
+      :battleship -> :minimal
+      _ -> :medium
+    end
+  end
+
+  defp calculate_mobility(base_stats, ship_info) do
+    %{
+      max_velocity: Map.get(base_stats, :max_velocity, 0),
+      signature_radius: Map.get(base_stats, :sig_radius, 0),
+      agility: estimate_agility(ship_info),
+      warp_speed: estimate_warp_speed(determine_ship_class(ship_info))
+    }
+  end
+
+  defp estimate_agility(ship_info) do
+    # Simplified agility estimation
+    _mass = ship_info.mass || 10_000_000
+
+    # Align time approximation
+    case determine_ship_class(ship_info) do
+      :frigate -> 3.0
+      :destroyer -> 4.0
+      :cruiser -> 6.0
+      :battlecruiser -> 8.0
+      :battleship -> 12.0
+      _ -> 7.0
+    end
+  end
+
+  defp estimate_warp_speed(ship_class) do
+    # AU/s warp speed
+    case ship_class do
+      :frigate -> 5.0
+      :destroyer -> 4.5
+      :cruiser -> 3.0
+      :battlecruiser -> 2.7
+      :battleship -> 2.0
+      _ -> 3.0
+    end
+  end
+
+  defp determine_primary_weapon_system(ship_info) do
+    ship_name = String.downcase(ship_info.type_name || "")
+    race = determine_ship_race(ship_info)
+
+    cond do
+      # Missile ships
+      String.contains?(ship_name, ["drake", "raven", "caracal", "cerberus", "tengu"]) ->
+        :missiles
+
+      # Projectile ships
+      race == "Minmatar" ->
+        :projectile
+
+      # Hybrid ships
+      race in ["Caldari", "Gallente"] ->
+        :hybrid
+
+      # Energy ships
+      race == "Amarr" ->
+        :energy
+
+      true ->
+        :unknown
+    end
+  end
+
+  defp estimate_damage_profile(ship_info) do
+    weapon_system = determine_primary_weapon_system(ship_info)
+
+    case weapon_system do
+      :missiles ->
+        %{kinetic: 0.6, explosive: 0.4, thermal: 0.0, em: 0.0}
+
+      :projectile ->
+        %{explosive: 0.5, kinetic: 0.5, thermal: 0.0, em: 0.0}
+
+      :hybrid ->
+        %{kinetic: 0.5, thermal: 0.5, explosive: 0.0, em: 0.0}
+
+      :energy ->
+        %{em: 0.5, thermal: 0.5, kinetic: 0.0, explosive: 0.0}
+
+      _ ->
+        %{kinetic: 0.25, thermal: 0.25, explosive: 0.25, em: 0.25}
+    end
+  end
+
+  defp estimate_optimal_range(fitting_type) do
+    case fitting_type do
+      :brawling -> "0-10km"
+      :kiting -> "20-50km"
+      :fleet -> "30-80km"
+      _ -> "10-30km"
+    end
+  end
+
+  defp estimate_falloff(fitting_type) do
+    case fitting_type do
+      :brawling -> "+5km"
+      :kiting -> "+20km"
+      :fleet -> "+30km"
+      _ -> "+10km"
+    end
+  end
+
+  defp determine_common_roles(ship_info, ship_class) do
+    ship_name = String.downcase(ship_info.type_name || "")
+
+    roles = []
+
+    # DPS roles
+    roles =
+      if ship_class in [:cruiser, :battlecruiser, :battleship] do
+        ["DPS" | roles]
+      else
+        roles
+      end
+
+    # Tackle roles
+    roles =
+      if ship_class == :frigate or
+           String.contains?(ship_name, ["sabre", "flycatcher", "eris", "heretic"]) do
+        ["Tackle" | roles]
+      else
+        roles
+      end
+
+    # Logistics roles
+    roles =
+      if String.contains?(ship_name, ["guardian", "basilisk", "oneiros", "scimitar"]) do
+        ["Logistics" | roles]
+      else
+        roles
+      end
+
+    # EWAR roles
+    roles =
+      if String.contains?(ship_name, ["blackbird", "falcon", "rook", "griffin", "kitsune"]) do
+        ["EWAR" | roles]
+      else
+        roles
+      end
+
+    # Command roles
+    roles =
+      if String.contains?(ship_name, ["claymore", "vulture", "damnation", "eos"]) do
+        ["Command" | roles]
+      else
+        roles
+      end
+
+    if Enum.empty?(roles) do
+      ["General Combat"]
+    else
+      roles
+    end
+  end
+
+  @doc """
+  Compare two ships' combat effectiveness.
+  """
+  def compare_ships(ship1_id, ship2_id, options \\ []) do
+    with {:ok, ship1_stats} <- calculate_ship_stats(ship1_id, options),
+         {:ok, ship2_stats} <- calculate_ship_stats(ship2_id, options) do
+      comparison = %{
+        dps_advantage: compare_metric(ship1_stats.dps.total, ship2_stats.dps.total),
+        ehp_advantage: compare_metric(ship1_stats.ehp.total, ship2_stats.ehp.total),
+        speed_advantage:
+          compare_metric(ship1_stats.mobility.max_velocity, ship2_stats.mobility.max_velocity),
+        application_advantage: compare_application(ship1_stats, ship2_stats),
+        overall_verdict: determine_combat_verdict(ship1_stats, ship2_stats)
+      }
+
+      {:ok, comparison}
+    end
+  end
+
+  defp compare_metric(value1, value2) do
+    percentage =
+      if value2 > 0 do
+        (value1 - value2) / value2 * 100
+      else
+        0.0
+      end
+
+    %{
+      ship1_value: value1,
+      ship2_value: value2,
+      percentage_difference: Float.round(percentage, 1),
+      advantage: if(value1 > value2, do: :ship1, else: :ship2)
+    }
+  end
+
+  defp compare_application(ship1_stats, ship2_stats) do
+    # Simplified - compare tracking/sig radius
+    ship1_score =
+      ship1_stats.application.turret_tracking / (ship1_stats.mobility.signature_radius / 100)
+
+    ship2_score =
+      ship2_stats.application.turret_tracking / (ship2_stats.mobility.signature_radius / 100)
+
+    if ship1_score > ship2_score do
+      :ship1_better_application
+    else
+      :ship2_better_application
+    end
+  end
+
+  defp determine_combat_verdict(ship1_stats, ship2_stats) do
+    # Simple combat time calculation
+    ship1_ttk = ship2_stats.ehp.total / max(ship1_stats.dps.total, 1)
+    ship2_ttk = ship1_stats.ehp.total / max(ship2_stats.dps.total, 1)
+
+    cond do
+      ship1_ttk < ship2_ttk * 0.8 -> :ship1_wins_decisively
+      ship1_ttk < ship2_ttk -> :ship1_wins
+      ship2_ttk < ship1_ttk * 0.8 -> :ship2_wins_decisively
+      ship2_ttk < ship1_ttk -> :ship2_wins
+      true -> :too_close_to_call
+    end
+  end
+end

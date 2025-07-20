@@ -17,6 +17,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
   require Logger
 
   alias EveDmv.Repo
+  alias EveDmv.Contexts.CombatIntelligence.Domain.Shared.KillmailMapper
 
   # Configuration constants
   @default_batch_size 1000
@@ -279,97 +280,71 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
   end
 
   defp build_cursor_query(base_query, cursor, params) do
-    conditions = []
-    query_params = []
-    param_count = 0
-
     # Add cursor conditions for pagination
-    {conditions, query_params, param_count} =
+    {cursor_conditions, cursor_params, cursor_param_count} =
       if cursor.last_killmail_id > 0 do
         condition =
-          "(killmail_time > $#{param_count + 1} OR (killmail_time = $#{param_count + 2} AND killmail_id > $#{param_count + 3}))"
+          "(killmail_time > $1 OR (killmail_time = $2 AND killmail_id > $3))"
 
-        {[condition | conditions],
-         query_params ++
-           [cursor.last_killmail_time, cursor.last_killmail_time, cursor.last_killmail_id],
-         param_count + 3}
+        {[condition],
+         [cursor.last_killmail_time, cursor.last_killmail_time, cursor.last_killmail_id], 3}
       else
-        {conditions, query_params, param_count}
+        {[], [], 0}
       end
 
     # Add filter conditions
-    {conditions, query_params, param_count} =
+    {system_conditions, system_params, system_param_count} =
       case params[:system_id] do
         nil ->
-          {conditions, query_params, param_count}
+          {[], [], 0}
 
         system_id ->
-          condition = "solar_system_id = $#{param_count + 1}"
-          {[condition | conditions], query_params ++ [system_id], param_count + 1}
+          condition = "solar_system_id = $#{cursor_param_count + 1}"
+          {[condition], [system_id], 1}
       end
 
-    {conditions, query_params, param_count} =
+    {start_time_conditions, start_time_params, start_time_param_count} =
       case params[:start_time] do
         nil ->
-          {conditions, query_params, param_count}
+          {[], [], 0}
 
         start_time ->
-          condition = "killmail_time >= $#{param_count + 1}"
-          {[condition | conditions], query_params ++ [start_time], param_count + 1}
+          condition = "killmail_time >= $#{cursor_param_count + system_param_count + 1}"
+          {[condition], [start_time], 1}
       end
 
-    {conditions, query_params, _param_count} =
+    {end_time_conditions, end_time_params, _end_time_param_count} =
       case params[:end_time] do
         nil ->
-          {conditions, query_params, param_count}
+          {[], [], 0}
 
         end_time ->
-          condition = "killmail_time <= $#{param_count + 1}"
-          {[condition | conditions], query_params ++ [end_time], param_count + 1}
+          condition =
+            "killmail_time <= $#{cursor_param_count + system_param_count + start_time_param_count + 1}"
+
+          {[condition], [end_time], 1}
       end
+
+    # Combine all conditions and parameters
+    all_conditions =
+      cursor_conditions ++ system_conditions ++ start_time_conditions ++ end_time_conditions
+
+    all_params = cursor_params ++ system_params ++ start_time_params ++ end_time_params
 
     # Build final query
     where_clause =
-      if Enum.empty?(conditions), do: "", else: " AND " <> Enum.join(conditions, " AND ")
+      if Enum.empty?(all_conditions), do: "", else: " AND " <> Enum.join(all_conditions, " AND ")
 
     order_clause = " ORDER BY killmail_time ASC, killmail_id ASC"
     limit_clause = " LIMIT #{cursor.batch_size}"
 
     final_query = base_query <> where_clause <> order_clause <> limit_clause
 
-    {final_query, query_params}
+    {final_query, all_params}
   end
 
-  defp map_killmail_row([
-         killmail_id,
-         killmail_time,
-         killmail_hash,
-         solar_system_id,
-         victim_character_id,
-         victim_corporation_id,
-         victim_alliance_id,
-         victim_ship_type_id,
-         attacker_count,
-         raw_data,
-         source
-       ]) do
-    %{
-      killmail_id: killmail_id,
-      killmail_time: killmail_time,
-      killmail_hash: killmail_hash,
-      solar_system_id: solar_system_id,
-      victim_character_id: victim_character_id,
-      victim_corporation_id: victim_corporation_id,
-      victim_alliance_id: victim_alliance_id,
-      victim_ship_type_id: victim_ship_type_id,
-      attacker_count: attacker_count,
-      raw_data: raw_data,
-      source: source,
-      # Extract derived fields
-      total_value: get_in(raw_data, ["zkb", "totalValue"]) || 0,
-      attackers: raw_data["attackers"] || [],
-      victim: raw_data["victim"] || %{}
-    }
+  defp map_killmail_row(row) do
+    KillmailMapper.map_killmail_row(row)
   end
 
   defp update_cursor(cursor, killmails) do
@@ -390,32 +365,36 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
   defp process_killmail_batch(killmails, opts) do
     analysis_types = Keyword.get(opts, :analysis_types, [:basic_metrics])
 
-    results = %{}
-
     # Process different analysis types
-    results =
+    basic_metrics_results =
       if :basic_metrics in analysis_types do
-        Map.put(results, :basic_metrics, calculate_basic_metrics(killmails))
+        %{basic_metrics: calculate_basic_metrics(killmails)}
       else
-        results
+        %{}
       end
 
-    results =
+    timeline_analysis_results =
       if :timeline_analysis in analysis_types do
-        Map.put(results, :timeline_analysis, analyze_timeline_chunk(killmails))
+        %{timeline_analysis: analyze_timeline_chunk(killmails)}
       else
-        results
+        %{}
       end
 
-    results =
+    participant_analysis_results =
       if :participant_analysis in analysis_types do
-        Map.put(results, :participant_analysis, analyze_participants_chunk(killmails))
+        %{participant_analysis: analyze_participants_chunk(killmails)}
       else
-        results
+        %{}
       end
+
+    # Combine all results
+    combined_results =
+      basic_metrics_results
+      |> Map.merge(timeline_analysis_results)
+      |> Map.merge(participant_analysis_results)
 
     # Add batch metadata
-    Map.put(results, :batch_info, %{
+    Map.put(combined_results, :batch_info, %{
       killmail_count: length(killmails),
       time_span: calculate_time_span(killmails),
       processed_at: DateTime.utc_now()
@@ -425,7 +404,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
   defp stream_timeline_events(battle_params, opts) do
     batch_size = Keyword.get(opts, :batch_size, @default_batch_size)
 
-    create_killmail_cursor_stream(battle_params, batch_size)
+    battle_params
+    |> create_killmail_cursor_stream(batch_size)
     |> Stream.flat_map(fn killmails ->
       # Convert each killmail to timeline events
       Enum.flat_map(killmails, &extract_timeline_events/1)
@@ -509,9 +489,15 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
     %{
       total_participants: length(all_participants),
       unique_characters:
-        all_participants |> Enum.map(& &1.character_id) |> Enum.uniq() |> length(),
+        all_participants
+        |> Enum.map(& &1.character_id)
+        |> Enum.uniq()
+        |> length(),
       unique_corporations:
-        all_participants |> Enum.map(& &1.corporation_id) |> Enum.uniq() |> length(),
+        all_participants
+        |> Enum.map(& &1.corporation_id)
+        |> Enum.uniq()
+        |> length(),
       unique_alliances:
         all_participants
         |> Enum.map(& &1.alliance_id)
@@ -555,7 +541,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
     |> Enum.group_by(fn event ->
       event.timestamp
       |> DateTime.to_unix()
-      # 1-minute windows
       |> div(60)
     end)
     |> Enum.map(fn {_window, window_events} -> length(window_events) end)

@@ -83,7 +83,9 @@ defmodule EveDmv.Eve.StaticDataLoader.FileManager do
     Logger.info("Downloading missing CSV files from fuzzwork.co.uk")
 
     results =
-      Enum.map(file_names, &download_single_file(&1, data_dir))
+      Enum.map(file_names, fn file_name ->
+        download_single_file(file_name, data_dir)
+      end)
 
     case Enum.find(results, &match?({:error, _}, &1)) do
       nil -> :ok
@@ -106,9 +108,13 @@ defmodule EveDmv.Eve.StaticDataLoader.FileManager do
       Logger.info("Successfully downloaded and saved #{file_name}")
       :ok
     else
+      {:error, reason} ->
+        Logger.error("Failed to download #{file_name}: #{inspect(reason)}")
+        {:error, "Failed to download #{file_name}: #{inspect(reason)}"}
+
       error ->
-        Logger.error("Failed to download #{file_name}: #{inspect(error)}")
-        {:error, "Failed to download #{file_name}: #{inspect(error)}"}
+        Logger.error("Unexpected error downloading #{file_name}: #{inspect(error)}")
+        {:error, "Unexpected error downloading #{file_name}: #{inspect(error)}"}
     end
   end
 
@@ -120,9 +126,13 @@ defmodule EveDmv.Eve.StaticDataLoader.FileManager do
 
     if File.exists?(data_dir) do
       case File.rm_rf(data_dir) do
-        {:ok, _} ->
+        {:ok, _files} ->
           Logger.info("Cleared static data cache")
           :ok
+
+        {:error, reason, _file} ->
+          Logger.error("Failed to clear cache: #{inspect(reason)}")
+          {:error, reason}
 
         {:error, reason} ->
           Logger.error("Failed to clear cache: #{inspect(reason)}")
@@ -184,14 +194,25 @@ defmodule EveDmv.Eve.StaticDataLoader.FileManager do
       {:error, reason} ->
         {:error, reason}
     end
-  end
-
-  defp decompress_bz2(compressed_data) do
-    decompressed = Bzip2.decompress!(compressed_data)
-    {:ok, decompressed}
   rescue
     error ->
-      Logger.error("bzip2 decompression failed: #{inspect(error)}")
-      {:error, "bzip2 decompression failed: #{inspect(error)}"}
+      Logger.error("Failed to download file: #{inspect(error)}")
+      {:error, "Download failed: #{inspect(error)}"}
+  end
+
+  defp decompress_bz2(compressed_data) when is_binary(compressed_data) do
+    try do
+      decompressed = Bzip2.decompress!(compressed_data)
+      {:ok, decompressed}
+    rescue
+      error ->
+        Logger.error("bzip2 decompression failed: #{inspect(error)}")
+        {:error, "bzip2 decompression failed: #{inspect(error)}"}
+    end
+  end
+
+  defp decompress_bz2(invalid_data) do
+    Logger.error("Invalid data for bzip2 decompression: #{inspect(invalid_data)}")
+    {:error, "Invalid data for bzip2 decompression"}
   end
 end

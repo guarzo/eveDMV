@@ -431,13 +431,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
 
   defp calculate_total_isk_destroyed(killmails) do
     case calculate_killmail_values_batch(killmails) do
-      {:ok, values} ->
-        values
-        |> Enum.sum()
+      {:ok, value} ->
+        value
         |> round()
 
-      {:error, _} ->
-        # Fallback to individual calculation
+      {:error, _reason} ->
+        # Fallback to individual calculation method
         calculate_total_isk_destroyed_fallback(killmails)
     end
   end
@@ -446,53 +445,55 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
   defp calculate_killmail_values_batch(killmails) do
     alias EveDmv.Market.PriceService
 
-    # First, try to extract zKillboard values (fastest path)
-    {zkb_values, needs_calculation} =
-      Enum.split_with(killmails, fn killmail ->
-        case extract_zkb_value(killmail) do
-          {:ok, _value} -> true
-          _ -> false
-        end
-      end)
-
-    zkb_total =
-      zkb_values
-      |> Enum.map(fn killmail ->
-        case extract_zkb_value(killmail) do
-          {:ok, value} -> value
-          _ -> 0.0
-        end
-      end)
-      |> Enum.sum()
-
-    # For killmails that need calculation, batch the price fetching
-    calculation_total =
-      case needs_calculation do
-        [] ->
-          0.0
-
-        killmails_to_calculate ->
-          # Extract all unique type IDs from all killmails
-          all_type_ids =
-            killmails_to_calculate
-            |> Enum.flat_map(&extract_type_ids/1)
-            |> Enum.uniq()
-
-          # Batch fetch all prices
-          case PriceService.get_item_prices(all_type_ids) do
-            {:ok, price_map} ->
-              killmails_to_calculate
-              |> Enum.map(fn killmail ->
-                calculate_killmail_value_with_prices(killmail, price_map)
-              end)
-              |> Enum.sum()
-
-            {:error, _} ->
-              0.0
+    try do
+      # First, try to extract zKillboard values (fastest path)
+      {zkb_values, needs_calculation} =
+        Enum.split_with(killmails, fn killmail ->
+          case extract_zkb_value(killmail) do
+            {:ok, _value} -> true
+            _ -> false
           end
-      end
+        end)
 
-    {:ok, [zkb_total + calculation_total]}
+      zkb_total =
+        zkb_values
+        |> Enum.map(fn killmail ->
+          case extract_zkb_value(killmail) do
+            {:ok, value} -> value
+            _ -> 0.0
+          end
+        end)
+        |> Enum.sum()
+
+      # For killmails that need calculation, batch the price fetching
+      calculation_total =
+        case needs_calculation do
+          [] ->
+            0.0
+
+          killmails_to_calculate ->
+            # Extract all unique type IDs from all killmails
+            all_type_ids =
+              killmails_to_calculate
+              |> Enum.flat_map(&extract_type_ids/1)
+              |> Enum.uniq()
+
+            # Batch fetch all prices
+            {:ok, price_map} = PriceService.get_item_prices(all_type_ids)
+
+            killmails_to_calculate
+            |> Enum.map(fn killmail ->
+              calculate_killmail_value_with_prices(killmail, price_map)
+            end)
+            |> Enum.sum()
+        end
+
+      {:ok, zkb_total + calculation_total}
+    rescue
+      error ->
+        Logger.error("Error in calculate_killmail_values_batch: #{inspect(error)}")
+        {:error, :calculation_failed}
+    end
   end
 
   # Fallback to original individual calculation method  
@@ -502,7 +503,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
     killmails
     |> Enum.map(fn killmail ->
       case PriceService.calculate_killmail_value(killmail) do
-        {:ok, %{total_value: value}} when is_number(value) -> value
+        %{total_value: value} when is_number(value) -> value
         _ -> 0.0
       end
     end)

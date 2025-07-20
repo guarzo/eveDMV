@@ -20,7 +20,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     assault_frigate: 17476..17634,
     destroyer: 420..441,
     interdictor: 648..672,
-    supercarrier: 29986..29990
+    supercarrier: 29986..29990,
+    battlecruiser: 16227..33875,
+    supercapital: 22852..23919
   }
 
   @ship_name_patterns %{
@@ -192,6 +194,35 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       positioning_advantages: positioning_advantages,
       mobility_analysis: mobility_analysis,
       positioning_recommendations: positioning_recommendations
+    }
+  end
+
+  @doc """
+  Analyze enhanced fleet composition from a list of ships.
+
+  This function provides simplified fleet composition analysis for cases where
+  only ship information is available without full battle context.
+  """
+  def analyze_enhanced_fleet_composition(ship_list) when is_list(ship_list) do
+    Logger.debug("Analyzing enhanced fleet composition for #{length(ship_list)} ships")
+
+    # Convert ship list to participant format for analysis
+    participants = convert_ships_to_participants(ship_list)
+
+    # Analyze composition without battle context
+    composition_analysis = analyze_side_composition(participants)
+
+    # Enhanced analysis with ship database integration
+    ship_classes = classify_ships_by_class(participants)
+    role_distribution = calculate_role_distribution(participants)
+
+    %{
+      total_ships: length(ship_list),
+      composition: composition_analysis,
+      ship_classes: ship_classes,
+      role_distribution: role_distribution,
+      fleet_synergy: calculate_fleet_synergy(participants),
+      composition_coherence: calculate_doctrine_coherence(ship_classes)
     }
   end
 
@@ -779,12 +810,19 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       :destroyer -> :close_range
       # 10-30km
       :cruiser -> :medium_range
-      # 15-40km
-      :battlecruiser -> :medium_range
+      # 15-50km
+      :battlecruiser -> :long_range
       # 30-100km+
       :battleship -> :long_range
       # 100km+
       :capital -> :extreme_range
+      # 200km+
+      :supercapital -> :extreme_range
+      # Special roles
+      :logistics -> :medium_range
+      :command -> :medium_range
+      :ewar -> :long_range
+      :interdiction -> :close_range
       _ -> :medium_range
     end
   end
@@ -862,10 +900,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       :frigate -> 1.0
       :destroyer -> 2.0
       :cruiser -> 4.0
-      :battlecruiser -> 6.0
       :battleship -> 10.0
       :capital -> 20.0
-      :supercapital -> 50.0
+      # Special roles - generally lower DPS
+      :logistics -> 0.5
+      :command -> 3.0
+      :ewar -> 1.5
+      :interdiction -> 2.0
+      :industrial -> 0.1
       _ -> 2.0
     end
   end
@@ -1435,10 +1477,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
 
   defp analyze_fleet_doctrines(side_a, side_b) do
     # Analyze fleet doctrines for both sides
+    side_a_adherence = calculate_doctrine_adherence(side_a)
+    side_b_adherence = calculate_doctrine_adherence(side_b)
+
     %{
       side_a_doctrine: identify_doctrine(side_a),
       side_b_doctrine: identify_doctrine(side_b),
-      doctrine_effectiveness: compare_doctrines(side_a, side_b)
+      doctrine_effectiveness: compare_doctrines(side_a_adherence, side_b_adherence)
     }
   end
 
@@ -1452,16 +1497,16 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       # Identify primary doctrine
       doctrine_type =
         cond do
-          Map.get(ship_classes, :capital, []) |> length() > 2 ->
+          ship_classes |> Map.get(:capital, []) |> length() > 2 ->
             :capital_doctrine
 
-          Map.get(ship_classes, :battleship, []) |> length() > length(participants) * 0.6 ->
+          ship_classes |> Map.get(:battleship, []) |> length() > length(participants) * 0.6 ->
             :battleship_doctrine
 
-          Map.get(ship_classes, :cruiser, []) |> length() > length(participants) * 0.6 ->
+          ship_classes |> Map.get(:cruiser, []) |> length() > length(participants) * 0.6 ->
             :cruiser_doctrine
 
-          Map.get(ship_classes, :frigate, []) |> length() > length(participants) * 0.6 ->
+          ship_classes |> Map.get(:frigate, []) |> length() > length(participants) * 0.6 ->
             :frigate_doctrine
 
           true ->
@@ -1887,31 +1932,33 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
          tactical_positioning
        ) do
     # Generate positioning recommendations
-    recommendations = []
-
-    # Positioning effectiveness recommendations
-    recommendations =
+    positioning_effectiveness_recommendations =
       if positioning_effectiveness < 0.5 do
-        ["Improve defensive positioning and formation discipline" | recommendations]
+        ["Improve defensive positioning and formation discipline"]
       else
-        recommendations
+        []
       end
 
     # Range control recommendations
-    recommendations =
+    range_control_recommendations =
       if range_control < 0.3 do
-        ["Increase long-range capability for better range control" | recommendations]
+        ["Increase long-range capability for better range control"]
       else
-        recommendations
+        []
       end
 
     # Tactical positioning recommendations  
-    recommendations =
+    tactical_positioning_recommendations =
       if tactical_positioning < 0.6 do
-        ["Enhance tactical positioning awareness and coordination" | recommendations]
+        ["Enhance tactical positioning awareness and coordination"]
       else
-        recommendations
+        []
       end
+
+    # Combine all recommendations
+    recommendations =
+      positioning_effectiveness_recommendations ++
+        range_control_recommendations ++ tactical_positioning_recommendations
 
     recommendations
   end
@@ -2049,13 +2096,20 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       %{balance_score: 0.0, balance_rating: :unknown}
     else
       # Ideal ratios: 60% DPS, 20% logistics, 10% EWAR, 10% tackle
-      dps_ratio = (Map.get(role_distribution, :dps, %{}) |> Map.get(:percentage, 0)) / 100
+      dps_ratio =
+        role_distribution |> Map.get(:dps, %{}) |> Map.get(:percentage, 0) |> then(&(&1 / 100))
 
       logistics_ratio =
-        (Map.get(role_distribution, :logistics, %{}) |> Map.get(:percentage, 0)) / 100
+        role_distribution
+        |> Map.get(:logistics, %{})
+        |> Map.get(:percentage, 0)
+        |> then(&(&1 / 100))
 
-      ewar_ratio = (Map.get(role_distribution, :ewar, %{}) |> Map.get(:percentage, 0)) / 100
-      tackle_ratio = (Map.get(role_distribution, :tackle, %{}) |> Map.get(:percentage, 0)) / 100
+      ewar_ratio =
+        role_distribution |> Map.get(:ewar, %{}) |> Map.get(:percentage, 0) |> then(&(&1 / 100))
+
+      tackle_ratio =
+        role_distribution |> Map.get(:tackle, %{}) |> Map.get(:percentage, 0) |> then(&(&1 / 100))
 
       # Calculate deviation from ideal
       dps_deviation = abs(dps_ratio - 0.6)
@@ -2357,7 +2411,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     }
   end
 
-  defp compare_doctrines(side_a_adherence, side_b_adherence) do
+  defp compare_doctrines(side_a_adherence, side_b_adherence)
+       when is_number(side_a_adherence) and is_number(side_b_adherence) do
     # Compare doctrine adherence
     doctrine_diff = side_a_adherence - side_b_adherence
 
@@ -2371,6 +2426,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
           true -> :disadvantage
         end
     }
+  end
+
+  defp compare_doctrines(side_a_adherence, side_b_adherence) do
+    # Handle incorrect types by converting to numbers
+    a_val = side_a_adherence
+    b_val = side_b_adherence
+
+    compare_doctrines(a_val, b_val)
   end
 
   defp compare_fleet_synergy(side_a_synergy, side_b_synergy) do
@@ -2883,7 +2946,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       |> Enum.map(fn {phase_kills, index} ->
         %{
           type: :turning_point,
-          timestamp: List.first(phase_kills) |> Map.get(:killmail_time),
+          timestamp: phase_kills |> List.first() |> Map.get(:killmail_time),
           description: "Significant escalation in phase #{index + 1}",
           severity: :medium
         }
@@ -3027,14 +3090,20 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
   defp classify_ship_type(ship_type_id, ship_name) do
     cond do
       # Check ship type ID ranges first
+      ship_type_id && ship_type_in_range?(ship_type_id, :supercapital) ->
+        :supercapital
+
+      ship_type_id && ship_type_in_range?(ship_type_id, :titan) ->
+        :supercapital
+
+      ship_type_id && ship_type_in_range?(ship_type_id, :supercarrier) ->
+        :supercapital
+
       ship_type_id && ship_type_in_range?(ship_type_id, :capital) ->
         :capital
 
-      ship_type_id && ship_type_in_range?(ship_type_id, :titan) ->
-        :capital
-
-      ship_type_id && ship_type_in_range?(ship_type_id, :supercarrier) ->
-        :capital
+      ship_type_id && ship_type_in_range?(ship_type_id, :battlecruiser) ->
+        :battlecruiser
 
       ship_type_id && ship_type_in_range?(ship_type_id, :battleship) ->
         :battleship
@@ -3146,5 +3215,22 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
         build_connected_component(neighbor, adjacency, acc)
       end)
     end
+  end
+
+  # Helper function to convert ship list to participant format
+  defp convert_ships_to_participants(ship_list) when is_list(ship_list) do
+    ship_list
+    |> Enum.with_index()
+    |> Enum.map(fn {ship, index} ->
+      %{
+        character_id: index,
+        ship_name: Map.get(ship, :ship_name, "Unknown"),
+        ship_type_id: Map.get(ship, :ship_type_id, 0),
+        # Default to side_a since we don't have battle context
+        side: :side_a,
+        corporation_id: Map.get(ship, :corporation_id, 0),
+        alliance_id: Map.get(ship, :alliance_id, 0)
+      }
+    end)
   end
 end

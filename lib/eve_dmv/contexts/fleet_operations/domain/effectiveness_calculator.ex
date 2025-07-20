@@ -757,14 +757,69 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
   end
 
   defp determine_ship_role(ship_type_id) do
-    # Simplified role determination based on ship type
-    case rem(ship_type_id, 10) do
-      x when x in 0..2 -> :tackle
-      x when x in 3..4 -> :dps
-      x when x in [5, 6] -> if rem(ship_type_id, 3) == 0, do: :logistics, else: :dps
-      7 -> :command
-      8 -> :dps
-      9 -> :capital
+    # Determine role based on actual ship class from static data
+    case EveDmv.StaticData.get_ship_class(ship_type_id) do
+      :interceptor ->
+        :tackle
+
+      :interdictor ->
+        :tackle
+
+      :heavy_interdictor ->
+        :tackle
+
+      :logistics_frigate ->
+        :logistics
+
+      :logistics_cruiser ->
+        :logistics
+
+      :force_recon ->
+        :ewar
+
+      :combat_recon ->
+        :ewar
+
+      :electronic_attack_frigate ->
+        :ewar
+
+      :command_destroyer ->
+        :command
+
+      :command_battlecruiser ->
+        :command
+
+      ship_class
+      when ship_class in [:frigate, :destroyer, :cruiser, :battlecruiser, :battleship] ->
+        :dps
+
+      :assault_frigate ->
+        :dps
+
+      :heavy_assault_cruiser ->
+        :dps
+
+      :marauder ->
+        :dps
+
+      :black_ops ->
+        :dps
+
+      :dreadnought ->
+        :dps
+
+      :carrier ->
+        :support
+
+      :supercarrier ->
+        :support
+
+      :titan ->
+        :dps
+
+      # Default to DPS for unknown ships
+      _ ->
+        :dps
     end
   end
 

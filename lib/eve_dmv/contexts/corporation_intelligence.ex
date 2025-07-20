@@ -174,23 +174,17 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
         threat_results =
           member_activities
           |> Enum.map(fn {character_id, activity_count} ->
-            case CharacterIntelligence.analyze_character_threat(character_id) do
-              {:ok, threat_data} ->
-                character_name = NameResolver.character_name(character_id)
+            {:ok, threat_data} = CharacterIntelligence.analyze_character_threat(character_id)
+            character_name = NameResolver.character_name(character_id)
 
-                %{
-                  character_id: character_id,
-                  character_name: character_name,
-                  threat_score: threat_data.threat_score,
-                  activity_count: activity_count,
-                  threat_level: categorize_threat_level(threat_data.threat_score)
-                }
-
-              _ ->
-                nil
-            end
+            %{
+              character_id: character_id,
+              character_name: character_name,
+              threat_score: threat_data.threat_score,
+              activity_count: activity_count,
+              threat_level: categorize_threat_level(threat_data.threat_score)
+            }
           end)
-          |> Enum.filter(& &1)
           |> Enum.sort_by(& &1.threat_score, :desc)
           |> Enum.take(limit)
 
@@ -641,7 +635,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
         ship_names =
           ship_usage
           |> Enum.map(fn {ship_id, count} ->
-            ship_name = NameResolver.ship_name(ship_id) || "Unknown Ship"
+            ship_name = NameResolver.ship_name(ship_id)
             "#{ship_name} (#{count})"
           end)
           |> Enum.take(3)

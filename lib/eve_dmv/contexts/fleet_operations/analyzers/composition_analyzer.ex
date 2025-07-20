@@ -200,14 +200,119 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
   end
 
   # Analyze ship role based on recent killmail fitting data
-  defp get_role_from_killmail_analysis(_ship_type_id) do
+  defp get_role_from_killmail_analysis(ship_type_id) do
+    # Query recent killmails for this ship type to analyze fitting patterns
     try do
-      # TODO: Implement proper Ash query for killmail analysis
-      # For now, return fallback to static analysis
-      {:ok, :unknown}
+      # Query killmails where this ship type was used
+      query = """
+      SELECT km.raw_data
+      FROM killmails_raw km
+      WHERE km.victim_ship_type_id = $1
+         OR EXISTS (
+           SELECT 1 FROM jsonb_array_elements(km.raw_data->'attackers') as attacker
+           WHERE (attacker->>'ship_type_id')::integer = $1
+         )
+      ORDER BY km.killmail_time DESC
+      LIMIT 20
+      """
+
+      case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [ship_type_id]) do
+        {:ok, %{rows: rows}} when rows != [] ->
+          # Analyze fitting patterns from killmail data
+          fittings = extract_fitting_data(rows)
+          role = classify_role_from_fittings(fittings)
+          confidence = calculate_fitting_role_confidence(fittings, length(rows))
+          {:ok, role, confidence}
+
+        _ ->
+          {:ok, :unknown, 0.0}
+      end
     rescue
-      _ -> {:error, :analysis_failed}
+      _ -> {:ok, :unknown, 0.0}
     end
+  end
+
+  # Helper functions to identify module types by type_id
+  defp is_weapon_module(type_id) do
+    # Common weapon type IDs - this is a simplified check
+    # In production, would query static data for proper categorization
+    type_id in [
+      # Pulse lasers
+      2205,
+      2206,
+      2207,
+      2208,
+      # Beam lasers  
+      2221,
+      2222,
+      2223,
+      2224,
+      # Blasters
+      2185,
+      2186,
+      2187,
+      2188,
+      # Railguns
+      2201,
+      2202,
+      2203,
+      2204,
+      # Autocannons
+      2161,
+      2162,
+      2163,
+      2164,
+      # Artillery
+      2177,
+      2178,
+      2179,
+      2180,
+      # Missiles
+      2509,
+      2510,
+      2511,
+      2512
+    ]
+  end
+
+  defp is_remote_repair_module(type_id) do
+    # Remote repair modules
+    type_id in [
+      # Remote armor repairers
+      2313,
+      2314,
+      2315,
+      # Remote shield boosters
+      2281,
+      2282,
+      2283,
+      # Remote hull repairers
+      2456,
+      2457,
+      2458
+    ]
+  end
+
+  defp is_ewar_module(type_id) do
+    # EWAR modules
+    type_id in [
+      # ECM
+      2281,
+      2282,
+      2283,
+      # Sensor dampeners
+      2456,
+      2457,
+      2458,
+      # Target painters
+      2313,
+      2314,
+      2315,
+      # Tracking disruptors
+      2205,
+      2206,
+      2207
+    ]
   end
 
   # Analyze fitting patterns from killmail data
@@ -631,8 +736,28 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
     end)
   end
 
-  # Placeholder implementations for complex analysis functions
-  defp assess_composition_balance(_ship_composition), do: :balanced
+  # Assess composition balance based on ship class distribution
+  defp assess_composition_balance(ship_composition) do
+    case ship_composition do
+      composition when map_size(composition) == 0 ->
+        :empty
+
+      composition ->
+        # Calculate total ships
+        total_ships = Enum.sum(Map.values(composition))
+
+        # Calculate balance based on distribution
+        class_counts = Enum.count(composition, fn {_class, count} -> count > 0 end)
+
+        # Check for balanced distribution
+        cond do
+          class_counts >= 3 and total_ships >= 10 -> :balanced
+          class_counts >= 2 and total_ships >= 5 -> :partially_balanced
+          class_counts == 1 -> :monolithic
+          true -> :unbalanced
+        end
+    end
+  end
 
   defp assess_role_balance(role_distribution) do
     # Calculate balance based on role diversity and ratios
@@ -1128,4 +1253,109 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
   end
 
   defp format_isk(_), do: "0 ISK"
+
+  # Helper functions for killmail analysis
+  defp extract_fitting_data(rows) do
+    rows
+    |> Enum.map(fn [raw_data] -> raw_data end)
+    |> Enum.map(&extract_fitting_from_killmail/1)
+    |> Enum.reject(&is_nil/1)
+  end
+
+  defp extract_fitting_from_killmail(killmail_data) when is_map(killmail_data) do
+    # Extract fitting data from killmail victim
+    case killmail_data do
+      %{"victim" => %{"items" => items}} when is_list(items) ->
+        # Group items by slot type
+        %{
+          high_slots: extract_slot_items(items, "high"),
+          med_slots: extract_slot_items(items, "med"),
+          low_slots: extract_slot_items(items, "low")
+        }
+
+      _ ->
+        nil
+    end
+  end
+
+  defp extract_fitting_from_killmail(_), do: nil
+
+  defp extract_slot_items(items, slot_type) when is_list(items) do
+    items
+    |> Enum.filter(fn item ->
+      case item do
+        %{"flag" => flag} -> slot_matches_flag(flag, slot_type)
+        _ -> false
+      end
+    end)
+    |> Enum.map(fn item -> Map.get(item, "item_type_id") end)
+    |> Enum.reject(&is_nil/1)
+  end
+
+  defp slot_matches_flag(flag, slot_type) when is_integer(flag) do
+    case slot_type do
+      # High slots
+      "high" -> flag >= 27 and flag <= 34
+      # Med slots  
+      "med" -> flag >= 19 and flag <= 26
+      # Low slots
+      "low" -> flag >= 11 and flag <= 18
+      _ -> false
+    end
+  end
+
+  defp slot_matches_flag(_, _), do: false
+
+  defp classify_role_from_fittings(fittings) when is_list(fittings) and length(fittings) > 0 do
+    # Analyze fitting patterns to classify role
+    weapon_count = count_weapons_in_fittings(fittings)
+    logi_count = count_logi_modules_in_fittings(fittings)
+    ewar_count = count_ewar_modules_in_fittings(fittings)
+
+    cond do
+      logi_count > 0 -> :logistics
+      ewar_count > weapon_count -> :ewar
+      weapon_count > 0 -> :dps
+      true -> :support
+    end
+  end
+
+  defp classify_role_from_fittings(_), do: :unknown
+
+  defp count_weapons_in_fittings(fittings) do
+    fittings
+    |> Enum.map(fn fitting ->
+      fitting.high_slots
+      |> Enum.count(&is_weapon_module/1)
+    end)
+    |> Enum.sum()
+  end
+
+  defp count_logi_modules_in_fittings(fittings) do
+    fittings
+    |> Enum.map(fn fitting ->
+      fitting.high_slots
+      |> Enum.count(&is_remote_repair_module/1)
+    end)
+    |> Enum.sum()
+  end
+
+  defp count_ewar_modules_in_fittings(fittings) do
+    fittings
+    |> Enum.map(fn fitting ->
+      fitting.high_slots
+      |> Enum.count(&is_ewar_module/1)
+    end)
+    |> Enum.sum()
+  end
+
+  defp calculate_fitting_role_confidence(fittings, sample_size) do
+    # Calculate confidence based on fitting consistency and sample size
+    base_confidence = min(1.0, sample_size / 10.0)
+
+    # Add consistency bonus if fittings are similar
+    consistency_bonus = if length(fittings) > 1, do: 0.2, else: 0.0
+
+    min(1.0, base_confidence + consistency_bonus)
+  end
 end

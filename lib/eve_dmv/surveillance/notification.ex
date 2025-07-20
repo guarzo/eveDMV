@@ -8,7 +8,7 @@ defmodule EveDmv.Surveillance.Notification do
 
   use Ash.Resource,
     otp_app: :eve_dmv,
-    domain: EveDmv.Api,
+    domain: EveDmv.Api.SurveillanceApi,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
@@ -26,7 +26,7 @@ defmodule EveDmv.Surveillance.Notification do
 
   # Resource configuration
   code_interface do
-    domain(EveDmv.Api)
+    domain(EveDmv.Api.SurveillanceApi)
     define(:read, action: :read)
     define(:create, action: :create)
     define(:mark_read, action: :mark_read)

@@ -7,7 +7,7 @@ defmodule EveDmv.Surveillance.NotificationService do
   via various channels (LiveView, email, webhooks, etc.).
   """
 
-  alias EveDmv.Api
+  alias EveDmv.Api.SurveillanceApi
   alias EveDmv.Surveillance.Notification
   alias EveDmv.Surveillance.Profile
   alias EveDmvWeb.Endpoint
@@ -20,7 +20,7 @@ defmodule EveDmv.Surveillance.NotificationService do
   @spec create_profile_match_notification(String.t(), map(), [String.t()]) ::
           :ok | {:error, term()}
   def create_profile_match_notification(profile_id, killmail, matched_profile_ids) do
-    case Ash.get(Profile, profile_id, domain: Api) do
+    case Ash.get(Profile, profile_id, domain: SurveillanceApi) do
       {:ok, profile} ->
         notification_data = %{
           user_id: profile.user_id,
@@ -37,7 +37,7 @@ defmodule EveDmv.Surveillance.NotificationService do
           priority: determine_priority(killmail, profile)
         }
 
-        case Ash.create(Notification, notification_data, domain: Api) do
+        case Ash.create(Notification, notification_data, domain: SurveillanceApi) do
           {:ok, notification} ->
             # Broadcast to user's personal notification channel
             broadcast_to_user(profile.user_id, "new_notification", %{
@@ -91,7 +91,7 @@ defmodule EveDmv.Surveillance.NotificationService do
       priority: priority
     }
 
-    case Ash.create(Notification, notification_data, domain: Api) do
+    case Ash.create(Notification, notification_data, domain: SurveillanceApi) do
       {:ok, notification} ->
         broadcast_to_user(user_id, "new_notification", %{notification: notification})
         :ok
@@ -107,9 +107,9 @@ defmodule EveDmv.Surveillance.NotificationService do
   """
   @spec mark_notification_read(String.t()) :: :ok | {:error, term()}
   def mark_notification_read(notification_id) do
-    case Ash.get(Notification, notification_id, domain: Api) do
+    case Ash.get(Notification, notification_id, domain: SurveillanceApi) do
       {:ok, notification} ->
-        case Ash.update(notification, action: :mark_read, domain: Api) do
+        case Ash.update(notification, action: :mark_read, domain: SurveillanceApi) do
           {:ok, _} -> :ok
           {:error, error} -> {:error, error}
         end
@@ -124,7 +124,11 @@ defmodule EveDmv.Surveillance.NotificationService do
   """
   @spec get_unread_count(String.t()) :: integer()
   def get_unread_count(user_id) do
-    case Ash.read(Notification, action: :unread_for_user, input: %{user_id: user_id}, domain: Api) do
+    case Ash.read(Notification,
+           action: :unread_for_user,
+           input: %{user_id: user_id},
+           domain: SurveillanceApi
+         ) do
       {:ok, notifications} -> length(notifications)
       {:error, _} -> 0
     end
@@ -138,7 +142,7 @@ defmodule EveDmv.Surveillance.NotificationService do
     case Ash.read(Notification,
            action: :recent_for_user,
            input: %{user_id: user_id, hours: hours},
-           domain: Api
+           domain: SurveillanceApi
          ) do
       {:ok, notifications} -> notifications
       {:error, _} -> []
@@ -183,7 +187,7 @@ defmodule EveDmv.Surveillance.NotificationService do
   end
 
   defp get_profiles_by_user(profile_ids) do
-    case Ash.read(Profile, domain: Api) do
+    case Ash.read(Profile, domain: SurveillanceApi) do
       {:ok, all_profiles} ->
         profiles = Enum.filter(all_profiles, &(&1.id in profile_ids))
         Enum.group_by(profiles, & &1.user_id)
@@ -217,7 +221,7 @@ defmodule EveDmv.Surveillance.NotificationService do
       priority: determine_batch_priority(killmail, user_profiles)
     }
 
-    case Ash.create(Notification, notification_data, domain: Api) do
+    case Ash.create(Notification, notification_data, domain: SurveillanceApi) do
       {:ok, notification} ->
         broadcast_to_user(user_id, "new_notification", %{
           notification: notification,

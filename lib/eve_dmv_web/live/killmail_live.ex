@@ -160,8 +160,7 @@ defmodule EveDmvWeb.KillmailLive do
     # Calculate killmail value
     killmail_value =
       case PriceService.calculate_killmail_value(killmail) do
-        {:ok, %{total_value: value}} -> value
-        _ -> extract_zkb_value(killmail)
+        %{total_value: value} when is_number(value) -> value
       end
 
     # Parse victim data
@@ -179,13 +178,6 @@ defmodule EveDmvWeb.KillmailLive do
     |> Map.put(:attackers_details, attackers_data)
     |> Map.put(:fitted_items, fitted_items)
     |> Map.put(:damage_stats, calculate_damage_stats(attackers_data))
-  end
-
-  defp extract_zkb_value(killmail) do
-    case killmail.raw_data do
-      %{"zkb" => %{"totalValue" => value}} when is_number(value) -> value
-      _ -> 0
-    end
   end
 
   defp parse_victim_data(killmail) do
@@ -349,14 +341,11 @@ defmodule EveDmvWeb.KillmailLive do
       all_rows = [headers] ++ if Enum.empty?(attacker_rows), do: [base_data], else: attacker_rows
 
       content =
-        all_rows
-        |> Enum.map(fn row ->
+        Enum.map_join(all_rows, "\n", fn row ->
           row
           |> Enum.map(&to_string/1)
-          |> Enum.map(&escape_csv_field/1)
-          |> Enum.join(",")
+          |> Enum.map_join(",", &escape_csv_field/1)
         end)
-        |> Enum.join("\n")
 
       {:ok, content}
     rescue

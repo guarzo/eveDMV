@@ -17,7 +17,7 @@ defmodule EveDmv.Eve.EsiUniverseClient do
   @doc """
   Get alliance information by ID.
   """
-  @spec get_alliance(integer()) :: {:ok, map()} | {:error, :service_unavailable}
+  @spec get_alliance(integer()) :: {:ok, map()} | {:error, any()}
   def get_alliance(alliance_id) when is_integer(alliance_id) do
     case EsiCache.get_alliance(alliance_id) do
       {:ok, cached} ->
@@ -44,7 +44,7 @@ defmodule EveDmv.Eve.EsiUniverseClient do
   @doc """
   Get solar system information by ID.
   """
-  @spec get_solar_system(integer()) :: {:ok, map()} | {:error, :service_unavailable}
+  @spec get_solar_system(integer()) :: {:ok, map()} | {:error, any()}
   def get_solar_system(system_id) when is_integer(system_id) do
     case EsiCache.get_system(system_id) do
       {:ok, cached} ->
@@ -93,7 +93,7 @@ defmodule EveDmv.Eve.EsiUniverseClient do
   @doc """
   Get type information by ID.
   """
-  @spec get_type(integer()) :: {:ok, map()} | {:error, :service_unavailable}
+  @spec get_type(integer()) :: {:ok, map()} | {:error, any()}
   def get_type(type_id) when is_integer(type_id) do
     case EsiCache.get_type(type_id) do
       {:ok, cached} ->
@@ -120,7 +120,7 @@ defmodule EveDmv.Eve.EsiUniverseClient do
   @doc """
   Get group information by ID.
   """
-  @spec get_group(integer()) :: {:ok, map()} | {:error, :service_unavailable}
+  @spec get_group(integer()) :: {:ok, map()} | {:error, any()}
   def get_group(group_id) when is_integer(group_id) do
     case EsiCache.get_group(group_id) do
       {:ok, cached} ->
@@ -147,7 +147,7 @@ defmodule EveDmv.Eve.EsiUniverseClient do
   @doc """
   Get category information by ID.
   """
-  @spec get_category(integer()) :: {:ok, map()} | {:error, :service_unavailable}
+  @spec get_category(integer()) :: {:ok, map()} | {:error, any()}
   def get_category(category_id) when is_integer(category_id) do
     case EsiCache.get_category(category_id) do
       {:ok, cached} ->

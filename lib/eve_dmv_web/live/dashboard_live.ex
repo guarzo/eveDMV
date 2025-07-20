@@ -11,6 +11,9 @@ defmodule EveDmvWeb.DashboardLive do
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
+  # Import time formatting helper
+  import EveDmvWeb.Helpers.TimeFormatter
+
   # Import reusable components
 
   @impl Phoenix.LiveView
@@ -557,27 +560,6 @@ defmodule EveDmvWeb.DashboardLive do
 
   defp format_isk_simple(amount), do: "#{amount} ISK"
 
-  defp format_time_ago(datetime) when is_nil(datetime), do: "Unknown"
-
-  defp format_time_ago(datetime) do
-    case DateTime.from_naive(datetime, "Etc/UTC") do
-      {:ok, dt} ->
-        diff = DateTime.diff(DateTime.utc_now(), dt, :second)
-
-        cond do
-          diff < 60 -> "#{diff}s ago"
-          diff < 3600 -> "#{div(diff, 60)}m ago"
-          diff < 86_400 -> "#{div(diff, 3600)}h ago"
-          true -> "#{div(diff, 86_400)}d ago"
-        end
-
-      _ ->
-        "Unknown"
-    end
-  rescue
-    _ -> "Unknown"
-  end
-
   defp get_character_threat_score(character_id) do
     case EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine.calculate_threat_score(
            character_id,
@@ -636,7 +618,6 @@ defmodule EveDmvWeb.DashboardLive do
   defp get_ship_name(ship_type_id) when is_integer(ship_type_id) do
     case EveDmv.Eve.NameResolver.ship_name(ship_type_id) do
       name when is_binary(name) -> name
-      _ -> "Unknown Ship"
     end
   end
 

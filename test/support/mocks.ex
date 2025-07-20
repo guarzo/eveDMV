@@ -49,7 +49,7 @@ defmodule EveDmv.TestMocks do
       {:ok,
        %{
          systems: [
-           %{system_id: 31_000_001, system_name: "J100001", security_status: -0.99}
+           %{system_id: 31_000_001, system_name: "J10_0001", security_status: -0.99}
          ],
          connections: [],
          last_updated: DateTime.utc_now()
@@ -63,7 +63,8 @@ defmodule EveDmv.TestMocks do
            character_id: 123_456,
            character_name: "Test Pilot",
            system_id: 31_000_001,
-           ship_type_id: 11_999
+           # Real Rifter ship type ID
+           ship_type_id: 587
          }
        ]}
     end
@@ -98,7 +99,8 @@ defmodule EveDmv.TestMocks do
       solar_system_id:
         config.solar_system_id || Enum.random([30_002_187, 30_000_142, 31_000_001]),
       is_victim: config.is_victim || Enum.random([true, false]),
-      ship_type_id: config.ship_type_id || Enum.random([11_999, 12_003, 670]),
+      # Rifter, Megathron, Crow
+      ship_type_id: config.ship_type_id || Enum.random([587, 641, 11_987]),
       ship_name: Enum.random(["Rifter", "Crucifier", "Capsule"]),
       character_id: character_id,
       character_name: "Test Pilot #{character_id}",

@@ -19,7 +19,7 @@ defmodule EveDmv.Analytics.BattleDetector do
     Logger.info("Detecting battles for character #{character_id}")
 
     # Find killmails involving this character with multiple participants
-    thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30, :day)
+    thirty_days_ago = thirty_days_ago()
 
     query = """
     WITH character_killmails AS (
@@ -96,7 +96,7 @@ defmodule EveDmv.Analytics.BattleDetector do
   def detect_corporation_battles(corporation_id, limit \\ 10) do
     Logger.info("Detecting battles for corporation #{corporation_id}")
 
-    thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30, :day)
+    thirty_days_ago = thirty_days_ago()
 
     query = """
     WITH corp_killmails AS (
@@ -175,7 +175,7 @@ defmodule EveDmv.Analytics.BattleDetector do
   Get corporation battle statistics and fleet preferences.
   """
   def get_corporation_battle_stats(corporation_id) do
-    thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30, :day)
+    thirty_days_ago = thirty_days_ago()
 
     query = """
     WITH corp_battles AS (
@@ -263,7 +263,7 @@ defmodule EveDmv.Analytics.BattleDetector do
   def detect_system_battles(system_id, limit \\ 10) do
     Logger.info("Detecting battles in system #{system_id}")
 
-    thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30, :day)
+    thirty_days_ago = thirty_days_ago()
 
     query = """
     WITH system_killmails AS (
@@ -332,7 +332,7 @@ defmodule EveDmv.Analytics.BattleDetector do
   Get system battle statistics and activity patterns.
   """
   def get_system_battle_stats(system_id) do
-    thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30, :day)
+    thirty_days_ago = thirty_days_ago()
 
     query = """
     WITH system_battles AS (
@@ -426,7 +426,7 @@ defmodule EveDmv.Analytics.BattleDetector do
   Get corporation fleet doctrine preferences based on battle participation.
   """
   def get_corporation_fleet_doctrines(corporation_id) do
-    thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30, :day)
+    thirty_days_ago = thirty_days_ago()
 
     query = """
     SELECT 
@@ -467,7 +467,7 @@ defmodule EveDmv.Analytics.BattleDetector do
   Get battle summary statistics for a character.
   """
   def get_character_battle_stats(character_id) do
-    thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30, :day)
+    thirty_days_ago = thirty_days_ago()
 
     query = """
     SELECT 
@@ -511,6 +511,10 @@ defmodule EveDmv.Analytics.BattleDetector do
   end
 
   # Private functions
+
+  defp thirty_days_ago do
+    DateTime.add(DateTime.utc_now(), -30, :day)
+  end
 
   defp group_battles_by_proximity(battles) do
     # Group battles that occurred within 30 minutes and in the same system

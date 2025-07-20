@@ -9,7 +9,6 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
   use EveDmvWeb, :live_view
 
   alias EveDmv.Cache.AnalysisCache
-  alias EveDmv.Contexts.CharacterIntelligence
   alias EveDmv.Analytics.BattleDetector
   alias EveDmv.Integrations.ShipIntelligenceBridge
   alias EveDmvWeb.CharacterAnalysis.Helpers.{CharacterDataLoader, DisplayFormatters}
@@ -20,8 +19,6 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
     StatisticsPanelComponent,
     ActivityFeedComponent
   }
-
-  require Logger
 
   @impl Phoenix.LiveView
   def mount(%{"character_id" => character_id}, _session, socket) do
@@ -63,7 +60,7 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
 
     intelligence_task =
       Task.async(fn ->
-        CharacterIntelligence.get_character_intelligence_report(character_id)
+        EveDmv.Contexts.CharacterIntelligence.get_character_intelligence_report(character_id)
       end)
 
     battle_data_task =
@@ -312,7 +309,10 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
         Map.get(analysis, :isk_destroyed, 0),
         Map.get(analysis, :isk_lost, 0),
         Map.get(analysis, :average_ship_value, 0),
-        get_in(ship_specialization, [:preferred_ships]) |> List.first() |> format_ship_name(),
+        ship_specialization
+        |> get_in([:preferred_ships])
+        |> List.first()
+        |> format_ship_name(),
         Map.get(intelligence, :primary_role, "Unknown"),
         Map.get(intelligence, :threat_score, 0),
         Map.get(intelligence, :activity_level, "Unknown"),
@@ -320,18 +320,16 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
       ]
 
       content =
-        [headers, row]
-        |> Enum.map(fn row ->
+        Enum.map_join([headers, row], "\n", fn row ->
           row
           |> Enum.map(&to_string/1)
-          |> Enum.map(&escape_csv_field/1)
-          |> Enum.join(",")
+          |> Enum.map_join(",", &escape_csv_field/1)
         end)
-        |> Enum.join("\n")
 
       {:ok, content}
     rescue
       error ->
+        require Logger
         Logger.error("Character CSV export failed: #{inspect(error)}")
         {:error, "CSV generation failed"}
     end

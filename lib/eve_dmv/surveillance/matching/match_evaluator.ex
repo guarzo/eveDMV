@@ -6,7 +6,7 @@ defmodule EveDmv.Surveillance.Matching.MatchEvaluator do
   including parallel evaluation for performance and match recording.
   """
 
-  alias EveDmv.Api
+  alias EveDmv.Api.SurveillanceApi
   alias EveDmv.Surveillance.Matching.IndexManager
   alias EveDmv.Surveillance.ProfileMatch
   require Logger
@@ -80,7 +80,7 @@ defmodule EveDmv.Surveillance.Matching.MatchEvaluator do
       try do
         # Use bulk creation for better performance
         case Ash.bulk_create(match_records, ProfileMatch, :create,
-               domain: Api,
+               domain: SurveillanceApi,
                return_records?: false,
                return_errors?: true,
                stop_on_error?: false,

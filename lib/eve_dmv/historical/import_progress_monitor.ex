@@ -235,7 +235,7 @@ defmodule EveDmv.Historical.ImportProgressMonitor do
     :telemetry.attach_many(
       "import-monitor",
       events,
-      {__MODULE__, :handle_telemetry_event, []},
+      &__MODULE__.handle_telemetry_event/4,
       nil
     )
   end

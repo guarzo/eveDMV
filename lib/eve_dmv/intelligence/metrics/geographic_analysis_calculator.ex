@@ -124,7 +124,7 @@ defmodule EveDmv.Intelligence.Metrics.GeographicAnalysisCalculator do
   Returns wormhole activity analysis with counts and percentages.
   """
   def analyze_wormhole_activity(killmail_data) do
-    # Look for wormhole system activity (system IDs 31000000+)
+    # Look for wormhole system activity (system IDs 310_00000+)
     wh_killmails =
       Enum.filter(killmail_data, fn km ->
         system_id = km[:solar_system_id] || km["solar_system_id"]

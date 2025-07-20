@@ -40,7 +40,6 @@ defmodule EveDmv.IntelligenceEngine.PluginRegistry do
     default_plugins = %{
       character: %{
         combat_stats: EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer,
-        behavioral_patterns: EveDmv.Contexts.PlayerProfile.Analyzers.BehavioralPatternsAnalyzer,
         ship_preferences: EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer,
         threat_assessment: EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer
       },

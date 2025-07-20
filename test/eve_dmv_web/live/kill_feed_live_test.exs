@@ -7,14 +7,15 @@ defmodule EveDmvWeb.KillFeedLiveTest do
   import Phoenix.LiveViewTest
   import EveDmv.Factories
 
+  alias Ecto.Adapters.SQL.Sandbox
+  alias EveDmv.Eve.ItemType
+  alias EveDmv.Eve.SolarSystem
   alias Phoenix.PubSub
   alias Phoenix.Socket.Broadcast
-  alias EveDmv.Eve.SolarSystem
-  alias EveDmv.Eve.ItemType
 
   setup do
     # Allow background processes to access the database
-    Ecto.Adapters.SQL.Sandbox.mode(EveDmv.Repo, {:shared, self()})
+    Sandbox.mode(EveDmv.Repo, {:shared, self()})
 
     # Create required reference data for tests
     create_test_solar_systems()
@@ -386,7 +387,7 @@ defmodule EveDmvWeb.KillFeedLiveTest do
           "corporation_name" => "Test Corp #{i}",
           "ship_type_id" => ship_type_id,
           "ship_name" => ship_name,
-          "damage_taken" => 10000
+          "damage_taken" => 10_000
         },
         "attackers" => [
           %{
@@ -395,7 +396,7 @@ defmodule EveDmvWeb.KillFeedLiveTest do
             "corporation_id" => 2_000_000 + i,
             "corporation_name" => "Enemy Corp #{i}",
             "ship_type_id" => 620,
-            "damage_done" => 10000,
+            "damage_done" => 10_000,
             "final_blow" => true
           }
         ],
@@ -441,7 +442,7 @@ defmodule EveDmvWeb.KillFeedLiveTest do
             "corporation_name" => "System Corp #{i}",
             "ship_type_id" => ship_type_id,
             "ship_name" => Enum.random(["Rifter", "Rupture", "Hurricane"]),
-            "damage_taken" => 5000
+            "damage_taken" => 5_000
           },
           "attackers" => [
             %{
@@ -449,8 +450,8 @@ defmodule EveDmvWeb.KillFeedLiveTest do
               "character_name" => "System Attacker #{i}",
               "corporation_id" => 4_000_000 + i,
               "corporation_name" => "System Enemy #{i}",
-              "ship_type_id" => 22456,
-              "damage_done" => 5000,
+              "ship_type_id" => 22_456,
+              "damage_done" => 5_000,
               "final_blow" => true
             }
           ],

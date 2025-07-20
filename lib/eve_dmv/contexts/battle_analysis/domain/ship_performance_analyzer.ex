@@ -382,7 +382,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp infer_range_profile(weapon_types) do
     # Analyze weapon types to determine engagement range
-    long_range_weapons = Enum.count(weapon_types, &is_long_range_weapon/1)
+    long_range_weapons = Enum.count(weapon_types, &long_range_weapon?/1)
     total_weapons = length(weapon_types)
 
     if total_weapons > 0 and long_range_weapons / total_weapons > 0.5 do
@@ -392,7 +392,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
     end
   end
 
-  defp is_long_range_weapon(weapon_type_id) do
+  defp long_range_weapon?(weapon_type_id) do
     # Simplified long-range weapon detection
     # Example: railgun type IDs
     weapon_type_id in [2488, 2489, 2490]
@@ -1273,35 +1273,42 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   defp generate_ship_recommendation(performance) do
     recommendations = []
 
-    # Survivability recommendations
+    # Build recommendations list efficiently
     recommendations =
-      if performance.survivability_score.normalized_score < 0.5 do
-        ["Consider upgrading tank or improving positioning" | recommendations]
-      else
-        recommendations
-      end
-
-    # DPS efficiency recommendations
-    recommendations =
-      if performance.dps_efficiency.efficiency_ratio < 0.6 do
-        ["Optimize fitting for better damage application" | recommendations]
-      else
-        recommendations
-      end
-
-    # Role recommendations
-    recommendations =
-      if performance.role_effectiveness.role_appropriateness == :suboptimal do
-        ["Ship class may not be optimal for intended role" | recommendations]
-      else
-        recommendations
-      end
+      recommendations
+      |> maybe_add_survivability_recommendation(performance)
+      |> maybe_add_dps_recommendation(performance)
+      |> maybe_add_role_recommendation(performance)
 
     %{
       ship_type_id: performance.ship_instance.ship_type_id,
       character_id: performance.ship_instance.character_id,
       recommendations: recommendations
     }
+  end
+
+  defp maybe_add_survivability_recommendation(recommendations, performance) do
+    if performance.survivability_score.normalized_score < 0.5 do
+      ["Consider upgrading tank or improving positioning" | recommendations]
+    else
+      recommendations
+    end
+  end
+
+  defp maybe_add_dps_recommendation(recommendations, performance) do
+    if performance.dps_efficiency.efficiency_ratio < 0.6 do
+      ["Optimize fitting for better damage application" | recommendations]
+    else
+      recommendations
+    end
+  end
+
+  defp maybe_add_role_recommendation(recommendations, performance) do
+    if performance.role_effectiveness.role_appropriateness == :suboptimal do
+      ["Ship class may not be optimal for intended role" | recommendations]
+    else
+      recommendations
+    end
   end
 
   defp generate_fleet_recommendations(comparative_metrics) do

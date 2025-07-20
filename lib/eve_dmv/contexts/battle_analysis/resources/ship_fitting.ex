@@ -10,7 +10,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting do
   """
 
   use Ash.Resource,
-    domain: EveDmv.Api,
+    domain: EveDmv.Contexts.BattleAnalysis.Api,
     data_layer: AshPostgres.DataLayer
 
   postgres do

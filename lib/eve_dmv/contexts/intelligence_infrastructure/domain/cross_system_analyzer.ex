@@ -523,10 +523,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Assess strategic value based on position in chain and system characteristics
     depth = find_connection_depth(connection, chain_map)
 
-    value_factors = []
+    initial_value_factors = []
 
     # Deeper connections are more valuable for strategic positioning
-    value_factors = [depth * 0.2 | value_factors]
+    depth_value_factors = [depth * 0.2 | initial_value_factors]
 
     # High-class wormholes are more valuable
     class_value =
@@ -539,14 +539,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
         _ -> 0.1
       end
 
-    value_factors = [class_value | value_factors]
+    class_value_factors = [class_value | depth_value_factors]
 
     # Mass capacity affects strategic value
     mass_value = min(1.0, connection.mass_capacity / 3_000_000_000)
-    value_factors = [mass_value | value_factors]
+    final_value_factors = [mass_value | class_value_factors]
 
     # Calculate overall strategic value
-    total_value = Enum.sum(value_factors) / length(value_factors)
+    total_value = Enum.sum(final_value_factors) / length(final_value_factors)
 
     cond do
       total_value > 0.8 -> :very_high
@@ -829,33 +829,33 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Identify threat indicators in the system
     killmails = get_system_killmails(system_id, time_window_hours)
 
-    threat_indicators = []
+    initial_threat_indicators = []
 
     # Check for capital ship activity
-    threat_indicators =
+    capital_threat_indicators =
       if Enum.any?(killmails, &has_capital_ships/1) do
-        [:capital_activity | threat_indicators]
+        [:capital_activity | initial_threat_indicators]
       else
-        threat_indicators
+        initial_threat_indicators
       end
 
     # Check for high-value targets
-    threat_indicators =
+    high_value_threat_indicators =
       if Enum.any?(killmails, &is_high_value_target/1) do
-        [:high_value_targets | threat_indicators]
+        [:high_value_targets | capital_threat_indicators]
       else
-        threat_indicators
+        capital_threat_indicators
       end
 
     # Check for fleet activity
-    threat_indicators =
+    fleet_threat_indicators =
       if has_fleet_activity(killmails) do
-        [:fleet_activity | threat_indicators]
+        [:fleet_activity | high_value_threat_indicators]
       else
-        threat_indicators
+        high_value_threat_indicators
       end
 
-    threat_indicators
+    fleet_threat_indicators
   end
 
   defp has_capital_ships(killmail) do
@@ -938,28 +938,28 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
   defp identify_activity_patterns(system_activities) do
     # Identify patterns in activity distribution
-    patterns = []
+    initial_patterns = []
 
     # Check for activity concentration
     hotspot_count = length(identify_activity_hotspots(system_activities))
     total_systems = length(system_activities)
 
-    patterns =
+    concentration_patterns =
       if hotspot_count / total_systems > 0.5 do
-        [:distributed_activity | patterns]
+        [:distributed_activity | initial_patterns]
       else
-        [:concentrated_activity | patterns]
+        [:concentrated_activity | initial_patterns]
       end
 
     # Check for temporal patterns
-    patterns =
+    temporal_patterns =
       if has_synchronized_activity(system_activities) do
-        [:synchronized_activity | patterns]
+        [:synchronized_activity | concentration_patterns]
       else
-        patterns
+        concentration_patterns
       end
 
-    patterns
+    temporal_patterns
   end
 
   defp has_synchronized_activity(system_activities) do
@@ -1087,26 +1087,28 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
   defp calculate_system_threat_level(killmails) do
     # Calculate threat level based on killmail analysis
-    threat_score = 0
+    initial_threat_score = 0
 
     # Factor in killmail frequency
-    threat_score = threat_score + length(killmails) * 2
+    frequency_threat_score = initial_threat_score + length(killmails) * 2
 
     # Factor in capital ship presence
-    threat_score = threat_score + (killmails |> Enum.count(&has_capital_ships/1)) * 10
+    capital_threat_score =
+      frequency_threat_score + (killmails |> Enum.count(&has_capital_ships/1)) * 10
 
     # Factor in fleet activity
-    threat_score = threat_score + if has_fleet_activity(killmails), do: 20, else: 0
+    fleet_threat_score = capital_threat_score + if has_fleet_activity(killmails), do: 20, else: 0
 
     # Factor in high-value targets
-    threat_score = threat_score + (killmails |> Enum.count(&is_high_value_target/1)) * 5
+    final_threat_score =
+      fleet_threat_score + (killmails |> Enum.count(&is_high_value_target/1)) * 5
 
     # Convert to threat level
     cond do
-      threat_score > 100 -> :critical
-      threat_score > 50 -> :high
-      threat_score > 20 -> :medium
-      threat_score > 5 -> :low
+      final_threat_score > 100 -> :critical
+      final_threat_score > 50 -> :high
+      final_threat_score > 20 -> :medium
+      final_threat_score > 5 -> :low
       true -> :minimal
     end
   end
@@ -1270,33 +1272,33 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
   defp assess_system_vulnerabilities(killmails) do
     # Assess vulnerabilities based on killmail patterns
-    vulnerabilities = []
+    initial_vulnerabilities = []
 
     # Check for predictable activity patterns
-    vulnerabilities =
+    predictable_vulnerabilities =
       if has_predictable_patterns(killmails) do
-        [:predictable_activity | vulnerabilities]
+        [:predictable_activity | initial_vulnerabilities]
       else
-        vulnerabilities
+        initial_vulnerabilities
       end
 
     # Check for defensive weaknesses
-    vulnerabilities =
+    defensive_vulnerabilities =
       if has_defensive_weaknesses(killmails) do
-        [:weak_defenses | vulnerabilities]
+        [:weak_defenses | predictable_vulnerabilities]
       else
-        vulnerabilities
+        predictable_vulnerabilities
       end
 
     # Check for strategic vulnerabilities
-    vulnerabilities =
+    strategic_vulnerabilities =
       if has_strategic_vulnerabilities(killmails) do
-        [:strategic_exposure | vulnerabilities]
+        [:strategic_exposure | defensive_vulnerabilities]
       else
-        vulnerabilities
+        defensive_vulnerabilities
       end
 
-    vulnerabilities
+    strategic_vulnerabilities
   end
 
   defp has_predictable_patterns(killmails) do
@@ -1364,18 +1366,18 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
   defp generate_threat_recommendations(system_threats) do
     # Generate recommendations based on threat analysis
-    recommendations = []
+    initial_recommendations = []
 
     # Check for high-threat systems
     high_threat_systems =
       system_threats
       |> Enum.filter(fn system -> system.threat_level in [:high, :critical] end)
 
-    recommendations =
+    threat_recommendations =
       if length(high_threat_systems) > 0 do
-        ["Increase monitoring of high-threat systems" | recommendations]
+        ["Increase monitoring of high-threat systems" | initial_recommendations]
       else
-        recommendations
+        initial_recommendations
       end
 
     # Check for defensive weaknesses
@@ -1383,11 +1385,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
       system_threats
       |> Enum.filter(fn system -> :weak_defenses in system.vulnerability_assessment end)
 
-    recommendations =
+    defense_recommendations =
       if length(vulnerable_systems) > 0 do
-        ["Strengthen defensive capabilities in vulnerable systems" | recommendations]
+        ["Strengthen defensive capabilities in vulnerable systems" | threat_recommendations]
       else
-        recommendations
+        threat_recommendations
       end
 
     # Check for strategic exposure
@@ -1395,14 +1397,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
       system_threats
       |> Enum.filter(fn system -> :strategic_exposure in system.vulnerability_assessment end)
 
-    recommendations =
+    strategic_recommendations =
       if length(exposed_systems) > 0 do
-        ["Review strategic positioning and exposure" | recommendations]
+        ["Review strategic positioning and exposure" | defense_recommendations]
       else
-        recommendations
+        defense_recommendations
       end
 
-    recommendations
+    strategic_recommendations
   end
 
   defp analyze_strategic_significance(
@@ -1412,7 +1414,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
          threat_assessment
        ) do
     # Analyze the strategic significance of the wormhole chain
-    strategic_factors = []
 
     # Factor in chain depth
     depth_significance =
@@ -1422,8 +1423,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
         depth when depth > 1 -> :medium
         _ -> :low
       end
-
-    strategic_factors = [{:chain_depth, depth_significance} | strategic_factors]
 
     # Factor in connection quality
     high_value_connections =
@@ -1438,16 +1437,12 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
         _ -> :low
       end
 
-    strategic_factors = [{:connection_quality, connection_significance} | strategic_factors]
-
     # Factor in activity level
     activity_significance =
       case activity_analysis do
         %{chain_activity_level: level} -> level
         _ -> :unknown
       end
-
-    strategic_factors = [{:activity_level, activity_significance} | strategic_factors]
 
     # Factor in threat level
     threat_significance =
@@ -1456,7 +1451,13 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
         _ -> :unknown
       end
 
-    strategic_factors = [{:threat_level, threat_significance} | strategic_factors]
+    # Combine all strategic factors
+    strategic_factors = [
+      {:chain_depth, depth_significance},
+      {:connection_quality, connection_significance},
+      {:activity_level, activity_significance},
+      {:threat_level, threat_significance}
+    ]
 
     # Calculate overall strategic rating
     strategic_rating = calculate_strategic_rating(strategic_factors)
@@ -1504,81 +1505,78 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
   defp identify_strategic_advantages(strategic_factors) do
     # Identify strategic advantages
-    advantages = []
+    initial_advantages = []
 
-    advantages =
+    chain_depth_advantages =
       if get_factor_value(strategic_factors, :chain_depth) in [:high, :very_high] do
-        ["Deep chain provides strategic depth" | advantages]
+        ["Deep chain provides strategic depth" | initial_advantages]
       else
-        advantages
+        initial_advantages
       end
 
-    advantages =
+    connection_quality_advantages =
       if get_factor_value(strategic_factors, :connection_quality) in [:high, :very_high] do
-        ["High-quality connections enable strategic mobility" | advantages]
+        ["High-quality connections enable strategic mobility" | chain_depth_advantages]
       else
-        advantages
+        chain_depth_advantages
       end
 
-    advantages =
+    activity_level_advantages =
       if get_factor_value(strategic_factors, :activity_level) in [:high, :very_high] do
-        ["High activity provides intelligence opportunities" | advantages]
+        ["High activity provides intelligence opportunities" | connection_quality_advantages]
       else
-        advantages
+        connection_quality_advantages
       end
 
-    advantages
+    activity_level_advantages
   end
 
   defp identify_strategic_risks(strategic_factors) do
     # Identify strategic risks
-    risks = []
+    initial_risks = []
 
-    risks =
+    threat_level_risks =
       if get_factor_value(strategic_factors, :threat_level) in [:high, :critical] do
-        ["High threat level increases operational risk" | risks]
+        ["High threat level increases operational risk" | initial_risks]
       else
-        risks
+        initial_risks
       end
 
-    risks =
+    activity_level_risks =
       if get_factor_value(strategic_factors, :activity_level) in [:high, :very_high] do
-        ["High activity increases detection risk" | risks]
+        ["High activity increases detection risk" | threat_level_risks]
       else
-        risks
+        threat_level_risks
       end
 
-    risks
+    activity_level_risks
   end
 
   defp generate_strategic_recommendations(strategic_factors) do
     # Generate strategic recommendations
-    recommendations = []
-
-    # Recommendations based on chain depth
-    recommendations =
+    chain_depth_recommendations =
       case get_factor_value(strategic_factors, :chain_depth) do
         depth when depth in [:high, :very_high] ->
-          ["Leverage deep chain for strategic positioning" | recommendations]
+          ["Leverage deep chain for strategic positioning"]
 
         :low ->
-          ["Consider expanding chain depth for strategic advantage" | recommendations]
+          ["Consider expanding chain depth for strategic advantage"]
 
         _ ->
-          recommendations
+          []
       end
 
     # Recommendations based on threat level
-    recommendations =
+    threat_level_recommendations =
       case get_factor_value(strategic_factors, :threat_level) do
         threat when threat in [:high, :critical] ->
-          ["Implement enhanced security measures" | recommendations]
+          ["Implement enhanced security measures"]
 
         _ ->
-          recommendations
+          []
       end
 
-    recommendations
+    chain_depth_recommendations ++ threat_level_recommendations
   end
 
   defp get_factor_value(strategic_factors, factor_key) do
@@ -1627,7 +1625,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
   defp calculate_analysis_confidence(chain_map, connection_data, activity_analysis) do
     # Calculate confidence in the analysis
-    confidence_factors = []
 
     # Factor in data availability
     data_availability =
@@ -1636,17 +1633,15 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
         _ -> 0.3
       end
 
-    confidence_factors = [data_availability | confidence_factors]
-
     # Factor in chain completeness
     chain_completeness = min(1.0, length(chain_map.systems) / 10)
-    confidence_factors = [chain_completeness | confidence_factors]
 
     # Factor in connection data quality
     connection_quality = min(1.0, length(connection_data) / length(chain_map.connections))
-    confidence_factors = [connection_quality | confidence_factors]
 
     # Calculate overall confidence
+    confidence_factors = [data_availability, chain_completeness, connection_quality]
+
     if length(confidence_factors) > 0 do
       Enum.sum(confidence_factors) / length(confidence_factors)
     else
@@ -1969,41 +1964,41 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
   defp identify_temporal_patterns(time_series_data, correlations) do
     # Identify meaningful temporal patterns
-    patterns = []
+    initial_patterns = []
 
     # Pattern 1: Synchronized activity bursts
-    patterns =
+    synchronized_patterns =
       if has_synchronized_bursts(time_series_data) do
-        [:synchronized_activity_bursts | patterns]
+        [:synchronized_activity_bursts | initial_patterns]
       else
-        patterns
+        initial_patterns
       end
 
     # Pattern 2: Sequential activity waves
-    patterns =
+    sequential_patterns =
       if has_sequential_waves(correlations) do
-        [:sequential_activity_waves | patterns]
+        [:sequential_activity_waves | synchronized_patterns]
       else
-        patterns
+        synchronized_patterns
       end
 
     # Pattern 3: Anti-correlated activity (one system active when others quiet)
-    patterns =
+    anti_correlation_patterns =
       if has_anti_correlation(correlations) do
-        [:anti_correlated_activity | patterns]
+        [:anti_correlated_activity | sequential_patterns]
       else
-        patterns
+        sequential_patterns
       end
 
     # Pattern 4: Periodic activity cycles
-    patterns =
+    final_patterns =
       if has_periodic_cycles(time_series_data) do
-        [:periodic_activity_cycles | patterns]
+        [:periodic_activity_cycles | anti_correlation_patterns]
       else
-        patterns
+        anti_correlation_patterns
       end
 
-    patterns
+    final_patterns
   end
 
   defp has_synchronized_bursts(time_series_data) do
@@ -2140,7 +2135,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
   defp calculate_correlation_confidence(correlations, time_series_data) do
     # Calculate overall confidence in correlation analysis
-    confidence_factors = []
+    initial_confidence_factors = []
 
     # Factor 1: Sample size adequacy
     min_sample_size =
@@ -2151,7 +2146,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
     # 50 buckets = ~12.5 hours
     sample_confidence = min(1.0, min_sample_size / 50.0)
-    confidence_factors = [sample_confidence | confidence_factors]
+    sample_confidence_factors = [sample_confidence | initial_confidence_factors]
 
     # Factor 2: Number of significant correlations
     significant_count = count_significant_correlations(correlations)
@@ -2164,16 +2159,18 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
         0.0
       end
 
-    confidence_factors = [significance_confidence | confidence_factors]
+    significance_confidence_factors = [significance_confidence | sample_confidence_factors]
 
     # Factor 3: Consistency of correlation strengths
     correlation_values = Enum.map(correlations, & &1.correlation_coefficient)
     consistency_confidence = 1.0 - calculate_coefficient_of_variation(correlation_values)
 
-    confidence_factors = [max(0.0, consistency_confidence) | confidence_factors]
+    final_confidence_factors = [
+      max(0.0, consistency_confidence) | significance_confidence_factors
+    ]
 
     # Calculate weighted average
-    Enum.sum(confidence_factors) / length(confidence_factors)
+    Enum.sum(final_confidence_factors) / length(final_confidence_factors)
   end
 
   defp count_significant_correlations(correlations) do
@@ -2540,10 +2537,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
           corr.significance in [:significant, :very_significant]
       end)
 
-    patterns = []
+    initial_patterns = []
 
     # Synchronized activity pattern
-    patterns =
+    sync_patterns =
       if length(strong_correlations) > 0 do
         sync_pattern = %{
           pattern_type: :synchronized_activity,
@@ -2553,14 +2550,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
           confidence: temporal_correlations.confidence
         }
 
-        [sync_pattern | patterns]
+        [sync_pattern | initial_patterns]
       else
-        patterns
+        initial_patterns
       end
 
     # Lag-based patterns (one system leads another)
     lag_patterns = identify_lag_based_patterns(strong_correlations)
-    patterns ++ lag_patterns
+    sync_patterns ++ lag_patterns
   end
 
   defp identify_lag_based_patterns(correlations) do
@@ -2696,7 +2693,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
       systems_b = Map.keys(corp_b.territorial_behavior.system_distribution)
 
       common_systems =
-        MapSet.intersection(MapSet.new(systems_a), MapSet.new(systems_b)) |> MapSet.to_list()
+        MapSet.new(systems_a)
+        |> MapSet.intersection(MapSet.new(systems_b))
+        |> MapSet.to_list()
 
       if length(common_systems) > 0 do
         %{
@@ -2835,22 +2834,24 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
          corp_activities
        ) do
     # Identify complex patterns combining temporal, movement, and corp data
-    patterns = []
+    coordinated_patterns =
+      if length(pilot_movements) > 2 and length(corp_activities.corp_analyses) > 1 do
+        coordinated_op_pattern =
+          detect_coordinated_operation(temporal_correlations, pilot_movements, corp_activities)
 
-    # Pattern: Coordinated multi-corp operation
-    if length(pilot_movements) > 2 and length(corp_activities.corp_analyses) > 1 do
-      coordinated_op_pattern =
-        detect_coordinated_operation(temporal_correlations, pilot_movements, corp_activities)
-
-      _patterns =
-        if coordinated_op_pattern, do: [coordinated_op_pattern | patterns], else: patterns
-    end
+        if coordinated_op_pattern, do: [coordinated_op_pattern], else: []
+      else
+        []
+      end
 
     # Pattern: Tactical reconnaissance sweep
-    recon_pattern = detect_reconnaissance_pattern(pilot_movements, temporal_correlations)
-    patterns = if recon_pattern, do: [recon_pattern | patterns], else: patterns
+    recon_patterns =
+      case detect_reconnaissance_pattern(pilot_movements, temporal_correlations) do
+        nil -> []
+        pattern -> [pattern]
+      end
 
-    patterns
+    coordinated_patterns ++ recon_patterns
   end
 
   defp detect_coordinated_operation(temporal_correlations, pilot_movements, corp_activities) do
@@ -2940,21 +2941,21 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Assess strategic implications of discovered patterns
     Logger.info("Assessing strategic implications for #{length(system_ids)} systems")
 
-    implications = []
+    initial_implications = []
 
     # Implication 1: Coordinated threat assessment
     coordinated_threats = assess_coordinated_threats(correlation_patterns)
-    implications = implications ++ coordinated_threats
+    threat_implications = initial_implications ++ coordinated_threats
 
     # Implication 2: Strategic opportunity identification
     strategic_opportunities = identify_strategic_opportunities_from_patterns(correlation_patterns)
-    implications = implications ++ strategic_opportunities
+    opportunity_implications = threat_implications ++ strategic_opportunities
 
     # Implication 3: Intelligence value assessment
     intelligence_insights = assess_intelligence_value(correlation_patterns, system_ids)
-    implications = implications ++ intelligence_insights
+    final_implications = opportunity_implications ++ intelligence_insights
 
-    {:ok, implications}
+    {:ok, final_implications}
   end
 
   defp assess_coordinated_threats(patterns) do
@@ -3137,11 +3138,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
   defp calculate_overall_analysis_confidence(patterns, implications) do
     # Calculate confidence in overall analysis
-    confidence_factors = []
+    initial_confidence_factors = []
 
     # Factor 1: Number of patterns found
     pattern_confidence = min(1.0, length(patterns) / 5.0)
-    confidence_factors = [pattern_confidence | confidence_factors]
+    pattern_confidence_factors = [pattern_confidence | initial_confidence_factors]
 
     # Factor 2: Diversity of pattern types
     unique_pattern_types =
@@ -3151,14 +3152,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
       |> length()
 
     diversity_confidence = min(1.0, unique_pattern_types / 6.0)
-    confidence_factors = [diversity_confidence | confidence_factors]
+    diversity_confidence_factors = [diversity_confidence | pattern_confidence_factors]
 
     # Factor 3: Strategic implications generated
     implications_confidence = min(1.0, length(implications) / 3.0)
-    confidence_factors = [implications_confidence | confidence_factors]
+    final_confidence_factors = [implications_confidence | diversity_confidence_factors]
 
-    if length(confidence_factors) > 0 do
-      Enum.sum(confidence_factors) / length(confidence_factors)
+    if length(final_confidence_factors) > 0 do
+      Enum.sum(final_confidence_factors) / length(final_confidence_factors)
     else
       0.0
     end
@@ -3481,14 +3482,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
   defp extract_pilot_ships_from_killmail(killmail, pilot_id) do
     # Extract ship types for specific pilot from killmail
-    ships = []
+    initial_ships = []
 
     # Check if pilot was victim
-    ships =
+    victim_ships =
       if killmail.victim_character_id == pilot_id do
-        [killmail.victim_ship_type_id | ships]
+        [killmail.victim_ship_type_id | initial_ships]
       else
-        ships
+        initial_ships
       end
 
     # Check if pilot was attacker
@@ -3521,7 +3522,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
           []
       end
 
-    ships ++ attacker_ships
+    victim_ships ++ attacker_ships
   end
 
   defp find_preferred_ship(ship_usage) do

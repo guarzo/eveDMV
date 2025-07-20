@@ -394,19 +394,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
   end
 
   defp classify_system_type(system_id) do
-    # Simplified system classification based on ID ranges
-    # Real implementation would query EVE static data
-    cond do
-      system_id >= 31_000_000 -> :wormhole_c6
-      system_id >= 31_000_000 -> :wormhole_c5
-      system_id >= 31_000_000 -> :wormhole_c4
-      system_id >= 31_000_000 -> :wormhole_c3
-      system_id >= 31_000_000 -> :wormhole_c2
-      system_id >= 31_000_000 -> :wormhole_c1
-      system_id >= 30_000_000 -> :nullsec
-      system_id >= 20_000_000 -> :lowsec
-      true -> :highsec
-    end
+    # Use StaticData for accurate system classification
+    EveDmv.StaticData.classify_system(system_id)
   end
 
   defp calculate_activity_score(recent_activity) do
@@ -642,7 +631,10 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
     # Threat-based recommendations
     recommendations =
       case threat_assessment.level do
-        level when level in [:high, :critical] ->
+        :high ->
+          ["Increase defensive posture", "Deploy additional scouts" | recommendations]
+
+        :critical ->
           ["Increase defensive posture", "Deploy additional scouts" | recommendations]
 
         _ ->

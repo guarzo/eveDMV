@@ -6,13 +6,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
   a comprehensive threat assessment.
   """
 
-  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.{
-    CombatThreatEngine,
-    ShipMasteryEngine,
-    GangEffectivenessEngine,
-    UnpredictabilityEngine
-  }
-
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.CombatThreatEngine
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.ShipMasteryEngine
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.GangEffectivenessEngine
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.UnpredictabilityEngine
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Api
   alias EveDmv.Intelligence.Cache.IntelligenceCache
@@ -209,7 +206,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
     analysis_periods = [30, 60, 90]
 
     historical_scores =
-      Enum.map(analysis_periods, fn days ->
+      analysis_periods
+      |> Enum.map(fn days ->
         case calculate_threat_score_uncached(
                character_id,
                Keyword.put(options, :analysis_window_days, days)
@@ -347,32 +345,35 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
   end
 
   defp generate_insights(dimensional_scores, threat_level) do
-    insights = ["Character shows #{threat_level} threat level"]
+    # Build base insights
+    base_insights = ["Character shows #{threat_level} threat level"]
 
     # Add specific insights based on dimensional scores
-    insights =
+    combat_insights =
       if dimensional_scores.combat_skill.normalized_score > 7.0 do
-        insights ++ ["High combat proficiency detected"]
+        ["High combat proficiency detected"]
       else
-        insights ++ ["Moderate combat capabilities"]
+        ["Moderate combat capabilities"]
       end
 
-    # Add more detailed insights from each dimensional score
-    insights = insights ++ dimensional_scores.combat_skill.insights
-    insights = insights ++ dimensional_scores.ship_mastery.insights
-    insights = insights ++ dimensional_scores.gang_effectiveness.insights
-    insights = insights ++ dimensional_scores.unpredictability.insights
+    # Collect all insights from dimensional scores
+    all_dimensional_insights =
+      dimensional_scores.combat_skill.insights ++
+        dimensional_scores.ship_mastery.insights ++
+        dimensional_scores.gang_effectiveness.insights ++
+        dimensional_scores.unpredictability.insights
 
-    # Activity insights
-    insights =
+    # Add activity insight
+    activity_insight =
       case dimensional_scores.recent_activity.activity_trend do
-        :increasing -> insights ++ ["Increasing activity levels - becoming more active"]
-        :decreasing -> insights ++ ["Decreasing activity levels - less engaged recently"]
-        :stable -> insights ++ ["Stable activity pattern"]
-        :inactive -> insights ++ ["Low recent activity"]
+        :increasing -> "Increasing activity levels - becoming more active"
+        :decreasing -> "Decreasing activity levels - less engaged recently"
+        :stable -> "Stable activity pattern"
+        :inactive -> "Low recent activity"
       end
 
-    insights
+    # Combine all insights efficiently
+    [activity_insight | all_dimensional_insights ++ combat_insights ++ base_insights]
   end
 
   defp fetch_character_combat_data(character_id, analysis_window_days) do

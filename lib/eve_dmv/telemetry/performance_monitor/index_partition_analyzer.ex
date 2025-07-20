@@ -191,7 +191,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer do
     FROM pg_stat_user_tables
     WHERE schemaname = 'public'
       AND seq_scan > idx_scan
-      AND n_live_tup > 10000
+      AND n_live_tup > 10_000
     ORDER BY seq_scan DESC
     LIMIT 20
     """

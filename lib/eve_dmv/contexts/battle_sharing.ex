@@ -95,7 +95,6 @@ defmodule EveDmv.Contexts.BattleSharing do
   """
   def get_battle_report(report_id) do
     # Use the BattleCurator to fetch the report with full details
-    # Since fetch_battle_report is private, we'll use a workaround
     {:ok, full_report} = get_battle_report_from_curator(report_id)
 
     # Transform to the expected format for the public API
@@ -104,7 +103,7 @@ defmodule EveDmv.Contexts.BattleSharing do
       battle_id: full_report.battle_id,
       creator: %{
         character_id: full_report.creator_character_id,
-        character_name: full_report.creator_name || "Unknown Creator"
+        character_name: full_report.creator_name
       },
       title: full_report.title,
       description: full_report.description,
@@ -144,7 +143,6 @@ defmodule EveDmv.Contexts.BattleSharing do
          updated_at: DateTime.utc_now()
        }}
     else
-      {:error, :report_not_found} -> {:error, :report_not_found}
       {:error, :permission_denied} -> {:error, :permission_denied}
       error -> error
     end
@@ -272,7 +270,7 @@ defmodule EveDmv.Contexts.BattleSharing do
         %{
           report_id: "#{battle_id}_report_#{i}",
           battle_id: battle_id,
-          creator_character_id: 10000 + i,
+          creator_character_id: 10_000 + i,
           title: "Battle Report #{i} - #{battle_id}",
           description: "Analysis of battle #{battle_id} from perspective #{i}",
           visibility: Enum.random([:public, :corporation, :alliance]),
@@ -394,7 +392,7 @@ defmodule EveDmv.Contexts.BattleSharing do
     full_report = %{
       report_id: report_id,
       battle_id: "battle_#{:crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)}",
-      creator_character_id: 12345,
+      creator_character_id: 12_345,
       creator_name: "Battle Analyst",
       title: "Comprehensive Battle Report #{report_id}",
       description: "Detailed tactical analysis and battle breakdown with strategic insights",
@@ -441,7 +439,7 @@ defmodule EveDmv.Contexts.BattleSharing do
         total_ratings: :rand.uniform(20),
         featured_score: :rand.uniform()
       },
-      created_at: DateTime.add(DateTime.utc_now(), -:rand.uniform(86400), :second),
+      created_at: DateTime.add(DateTime.utc_now(), -:rand.uniform(86_400), :second),
       updated_at: DateTime.utc_now()
     }
 

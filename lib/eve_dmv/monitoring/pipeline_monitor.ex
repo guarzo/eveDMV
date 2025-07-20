@@ -97,7 +97,7 @@ defmodule EveDmv.Monitoring.PipelineMonitor do
 
   # Server callbacks
 
-  @impl true
+  @impl GenServer
   def init(_opts) do
     # Schedule periodic metrics emission
     schedule_metrics_emission()
@@ -114,13 +114,13 @@ defmodule EveDmv.Monitoring.PipelineMonitor do
     {:ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast(:message_received, state) do
     metrics = %{state.metrics | messages_received: state.metrics.messages_received + 1}
     {:noreply, %{state | metrics: metrics}}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast({:message_processed, processing_time_us}, state) do
     metrics = state.metrics
 
@@ -138,7 +138,7 @@ defmodule EveDmv.Monitoring.PipelineMonitor do
     {:noreply, %{state | metrics: final_metrics}}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast({:message_failed, error}, state) do
     error_type = extract_error_type(error)
 
@@ -161,7 +161,7 @@ defmodule EveDmv.Monitoring.PipelineMonitor do
     {:noreply, %{state | metrics: metrics}}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast({:batch_processed, batch_size, processing_time_us}, state) do
     updated_metrics = %{
       state.metrics
@@ -186,7 +186,7 @@ defmodule EveDmv.Monitoring.PipelineMonitor do
     {:noreply, %{state | metrics: final_metrics}}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast({:batch_failed, batch_size, error}, state) do
     error_type = extract_error_type(error)
 
@@ -212,32 +212,32 @@ defmodule EveDmv.Monitoring.PipelineMonitor do
     {:noreply, %{state | metrics: metrics}}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_metrics, _from, state) do
     metrics_summary = summarize_metrics(state.metrics)
     {:reply, metrics_summary, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_health_status, _from, state) do
     health = analyze_health(state)
     {:reply, health, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:reset_metrics, _from, state) do
     new_state = %{state | metrics: new_metrics()}
     {:reply, :ok, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:emit_metrics, state) do
     emit_metrics(state.metrics)
     schedule_metrics_emission()
     {:noreply, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:health_check, state) do
     health = analyze_health(state)
 
@@ -331,34 +331,34 @@ defmodule EveDmv.Monitoring.PipelineMonitor do
 
   defp analyze_health(state) do
     metrics = state.metrics
-    issues = []
+    initial_issues = []
 
     # Check message processing rate
     success_rate = calculate_success_rate(metrics.messages_processed, metrics.messages_failed)
 
-    issues =
+    success_rate_issues =
       if success_rate < 95.0 do
-        ["Low success rate: #{Float.round(success_rate, 1)}%" | issues]
+        ["Low success rate: #{Float.round(success_rate, 1)}%" | initial_issues]
       else
-        issues
+        initial_issues
       end
 
     # Check for recent failures
-    issues =
+    failure_issues =
       if metrics.last_failure &&
            DateTime.diff(DateTime.utc_now(), metrics.last_failure, :minute) < 5 do
-        ["Recent failures detected" | issues]
+        ["Recent failures detected" | success_rate_issues]
       else
-        issues
+        success_rate_issues
       end
 
     # Check for stalled pipeline
-    issues =
+    stall_issues =
       if metrics.last_success &&
            DateTime.diff(DateTime.utc_now(), metrics.last_success, :minute) > 10 do
-        ["No successful processing in last 10 minutes" | issues]
+        ["No successful processing in last 10 minutes" | failure_issues]
       else
-        issues
+        failure_issues
       end
 
     # Check error rates
@@ -366,8 +366,8 @@ defmodule EveDmv.Monitoring.PipelineMonitor do
     # 5% error rate threshold
     error_threshold = 0.05
 
-    issues =
-      Enum.reduce(metrics.errors_by_type, issues, fn {error_type, count}, acc ->
+    final_issues =
+      Enum.reduce(metrics.errors_by_type, stall_issues, fn {error_type, count}, acc ->
         error_rate = if total_messages > 0, do: count / total_messages, else: 0
 
         if error_rate > error_threshold do
@@ -378,7 +378,7 @@ defmodule EveDmv.Monitoring.PipelineMonitor do
       end)
 
     status =
-      case length(issues) do
+      case length(final_issues) do
         0 -> :healthy
         n when n <= 2 -> :degraded
         _ -> :unhealthy
@@ -386,7 +386,7 @@ defmodule EveDmv.Monitoring.PipelineMonitor do
 
     %{
       status: status,
-      issues: issues,
+      issues: final_issues,
       last_check: DateTime.utc_now()
     }
   end

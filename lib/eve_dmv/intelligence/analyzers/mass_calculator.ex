@@ -11,8 +11,6 @@ defmodule EveDmv.Intelligence.Analyzers.MassCalculator do
   - Jump sequence optimization
   """
 
-  alias EveDmv.Intelligence.ShipDatabase
-
   @doc """
   Calculate mass efficiency for a fleet doctrine.
 
@@ -50,18 +48,18 @@ defmodule EveDmv.Intelligence.Analyzers.MassCalculator do
   """
   def calculate_total_fleet_mass(doctrine_template, ship_data) do
     doctrine_template
-    |> Enum.map(fn {_role, config} ->
+    |> Enum.map(fn {role, config} ->
       required = config["required"] || 1
       ships = config["preferred_ships"] || []
 
       if length(ships) > 0 do
         # Use the first preferred ship for mass calculation
         ship_name = hd(ships)
-        ship_info = ship_data[ship_name] || %{mass_kg: 10_000_000}
+        ship_info = ship_data[ship_name] || %{mass_kg: get_fallback_mass_for_role(role)}
         required * ship_info.mass_kg
       else
-        # Default ship mass
-        required * 10_000_000
+        # Use role-appropriate fallback mass
+        required * get_fallback_mass_for_role(role)
       end
     end)
     |> Enum.sum()
@@ -274,12 +272,12 @@ defmodule EveDmv.Intelligence.Analyzers.MassCalculator do
   end
 
   @doc """
-  Calculate ship mass by name using ShipDatabase.
+  Calculate ship mass by name using StaticData.
 
-  Wrapper function that delegates to ShipDatabase for consistency.
+  Wrapper function that delegates to StaticData for consistency.
   """
   def calculate_ship_mass(ship_name) do
-    ShipDatabase.get_ship_mass(ship_name)
+    EveDmv.StaticData.get_ship_mass(ship_name)
   end
 
   @doc """
@@ -300,9 +298,9 @@ defmodule EveDmv.Intelligence.Analyzers.MassCalculator do
         mass when is_number(mass) ->
           mass
 
-        # Default
+        # Default - use realistic cruiser mass
         _ ->
-          10_000_000
+          12_000_000
       end
     end)
     |> Enum.sum()
@@ -320,6 +318,26 @@ defmodule EveDmv.Intelligence.Analyzers.MassCalculator do
     else
       total_mass = calculate_total_fleet_mass(fleet_members)
       round(total_mass / length(fleet_members))
+    end
+  end
+
+  # Private helper functions
+
+  defp get_fallback_mass_for_role(role) do
+    # Return realistic mass estimates based on typical ship roles
+    case role do
+      # Frigate/Interceptor mass
+      "tackle" -> 1_500_000
+      # Typical DPS cruiser mass
+      "dps" -> 12_000_000
+      # Logistics cruiser mass
+      "logistics" -> 15_000_000
+      # Command ship/BC mass
+      "command" -> 60_000_000
+      # Capital ship mass
+      "capital" -> 1_300_000_000
+      # Default to cruiser mass
+      _ -> 12_000_000
     end
   end
 end

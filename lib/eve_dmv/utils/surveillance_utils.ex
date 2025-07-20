@@ -48,7 +48,11 @@ defmodule EveDmv.Utils.SurveillanceUtils do
     # Count dangerous ship types
     dangerous_ships =
       Enum.count(ships, fn ship ->
-        ship_name = Map.get(ship, "name", "") |> String.downcase()
+        ship_name =
+          ship
+          |> Map.get("name", "")
+          |> String.downcase()
+
         ship_name =~ ~r/(dread|carrier|super|titan|recon|interceptor|dictor)/
       end)
 
@@ -64,7 +68,7 @@ defmodule EveDmv.Utils.SurveillanceUtils do
     # Base confidence from data quality
     data_quality = if is_map(hostile_data) and map_size(hostile_data) > 2, do: 0.4, else: 0.2
     contact_quality = if is_map(contact_info) and map_size(contact_info) > 0, do: 0.3, else: 0.1
-    activity_confirmation = if not Enum.empty?(recent_activity), do: 0.3, else: 0.0
+    activity_confirmation = if Enum.empty?(recent_activity), do: 0.0, else: 0.3
 
     min(1.0, data_quality + contact_quality + activity_confirmation)
   end
@@ -101,8 +105,15 @@ defmodule EveDmv.Utils.SurveillanceUtils do
     # Simple classification based on known patterns
     # In a real implementation, this would check against standings, known hostile lists, etc.
     Enum.filter(inhabitants, fn inhabitant ->
-      name = Map.get(inhabitant, "name", "") |> String.downcase()
-      corp = Map.get(inhabitant, "corporation", "") |> String.downcase()
+      name =
+        inhabitant
+        |> Map.get("name", "")
+        |> String.downcase()
+
+      corp =
+        inhabitant
+        |> Map.get("corporation", "")
+        |> String.downcase()
 
       # Check for known hostile patterns (simplified)
       name =~ ~r/(hostile|enemy|pirate)/ or corp =~ ~r/(pirate|hostile)/
@@ -129,9 +140,9 @@ defmodule EveDmv.Utils.SurveillanceUtils do
   def calculate_risk_factors(hostile_inhabitants, recent_kills, inhabitants) do
     %{
       hostile_ratio:
-        if(not Enum.empty?(inhabitants),
-          do: length(hostile_inhabitants) / length(inhabitants),
-          else: 0
+        if(Enum.empty?(inhabitants),
+          do: 0,
+          else: length(hostile_inhabitants) / length(inhabitants)
         ),
       recent_violence: length(recent_kills),
       escalation_potential: calculate_escalation_potential(hostile_inhabitants, recent_kills),
@@ -327,8 +338,7 @@ defmodule EveDmv.Utils.SurveillanceUtils do
     # Get highest system threat
     max_system_threat =
       system_threats
-      |> Enum.map(&Map.get(&1, :threat_level, :low))
-      |> Enum.map(&threat_level_to_number/1)
+      |> Enum.map(&(&1 |> Map.get(:threat_level, :low) |> threat_level_to_number()))
       |> Enum.max(&>=/2, fn -> 1 end)
 
     # Factor in chain patterns
@@ -357,9 +367,9 @@ defmodule EveDmv.Utils.SurveillanceUtils do
   def calculate_analysis_confidence(chain_data) do
     # Base confidence from data availability
     topology_quality = if map_size(chain_data.topology) > 0, do: 0.3, else: 0.0
-    inhabitants_quality = if not Enum.empty?(chain_data.inhabitants), do: 0.3, else: 0.1
-    activity_quality = if not Enum.empty?(chain_data.recent_activity), do: 0.3, else: 0.1
-    history_quality = if not Enum.empty?(chain_data.threat_history), do: 0.1, else: 0.0
+    inhabitants_quality = if Enum.empty?(chain_data.inhabitants), do: 0.1, else: 0.3
+    activity_quality = if Enum.empty?(chain_data.recent_activity), do: 0.1, else: 0.3
+    history_quality = if Enum.empty?(chain_data.threat_history), do: 0.0, else: 0.1
 
     min(1.0, topology_quality + inhabitants_quality + activity_quality + history_quality)
   end

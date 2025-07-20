@@ -10,7 +10,9 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
   """
 
   alias EveDmv.Repo
+  alias Ecto.Adapters.SQL
   # alias EveDmv.Telemetry.QueryMonitor # Currently unused
+  require Logger
 
   @doc """
   Load production performance data from exported JSON file.
@@ -40,7 +42,7 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
 
     # Warmup runs
     for _ <- 1..warmup do
-      Ecto.Adapters.SQL.query(Repo, query, params)
+      SQL.query(Repo, query, params)
     end
 
     # Benchmark runs
@@ -48,7 +50,7 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
       for _ <- 1..iterations do
         {time, _result} =
           :timer.tc(fn ->
-            Ecto.Adapters.SQL.query(Repo, query, params)
+            SQL.query(Repo, query, params)
           end)
 
         # Convert to milliseconds
@@ -160,7 +162,7 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
 
     # Log queries exceeding the configured threshold
     if query_time > threshold_ns do
-      IO.puts("""
+      Logger.warning("""
       [DEV PERFORMANCE] Slow query detected:
       Time: #{query_time / 1_000_000}ms
       Query: #{inspect(metadata.query)}
@@ -224,7 +226,7 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
     WHERE relname = $1
     """
 
-    case Ecto.Adapters.SQL.query(Repo, query, [table_name]) do
+    case SQL.query(Repo, query, [table_name]) do
       {:ok, %{rows: [[row_count]]}} when is_integer(row_count) and row_count > 0 ->
         {:ok, row_count}
 
@@ -240,7 +242,7 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
     WHERE relname = $1 AND relkind = 'r'
     """
 
-    case Ecto.Adapters.SQL.query(Repo, query, [table_name]) do
+    case SQL.query(Repo, query, [table_name]) do
       {:ok, %{rows: [[row_count]]}} when is_integer(row_count) and row_count > 0 ->
         {:ok, row_count}
 

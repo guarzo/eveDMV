@@ -107,7 +107,7 @@ defmodule EveDmv.Performance.RegressionDetector do
   end
 
   def handle_call(:get_baselines, _from, state) do
-    baselines = :ets.tab2list(@baseline_table) |> Enum.into(%{})
+    baselines = Enum.into(:ets.tab2list(@baseline_table), %{})
     {:reply, baselines, state}
   end
 
@@ -143,7 +143,7 @@ defmodule EveDmv.Performance.RegressionDetector do
       :ets.insert(@baseline_table, {metric_name, value})
     end)
 
-    Logger.info("Initialized performance baselines with #{length(current_metrics)} metrics")
+    Logger.info("Initialized performance baselines with #{map_size(current_metrics)} metrics")
   end
 
   defp collect_system_metrics do

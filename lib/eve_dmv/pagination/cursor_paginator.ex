@@ -199,8 +199,7 @@ defmodule EveDmv.Pagination.CursorPaginator do
 
   defp add_cursor_where(query, fields, values, operator) when length(fields) == length(values) do
     # Multi-field cursor - build composite where condition
-    Enum.zip(fields, values)
-    |> Enum.reduce(query, fn {field, value}, acc_query ->
+    Enum.reduce(Enum.zip(fields, values), query, fn {field, value}, acc_query ->
       condition = apply_operator(field, operator, value)
       where(acc_query, [r], ^condition)
     end)

@@ -158,7 +158,10 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
           :miss -> {:missing, type_id}
         end
       end)
-      |> Enum.split_with(fn {status, _, _} -> status == :cached end)
+      |> Enum.split_with(fn
+        {:cached, _, _} -> true
+        {:missing, _} -> false
+      end)
 
     # Fetch missing prices
     missing_type_ids = Enum.map(missing, fn {:missing, type_id} -> type_id end)
@@ -181,8 +184,12 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
 
         {:ok, all_prices}
 
-      error ->
-        error
+      {:error, reason} ->
+        {:error, reason}
+
+      other ->
+        Logger.warning("Unexpected result from fetch_and_cache_prices: #{inspect(other)}")
+        {:error, :unexpected_result}
     end
   end
 
@@ -191,7 +198,8 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
 
     case fetch_and_cache_prices(type_ids, source, force_refresh: true) do
       {:ok, _prices} -> :ok
-      error -> error
+      {:error, reason} -> {:error, reason}
+      other -> {:error, {:unexpected_result, other}}
     end
   end
 
@@ -213,14 +221,23 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
 
         {:ok, price_data}
 
-      error ->
+      {:error, reason} ->
         Logger.warning("Failed to fetch price for type #{type_id}", %{
           type_id: type_id,
           source: source,
-          error: inspect(error)
+          error: inspect(reason)
         })
 
-        error
+        {:error, reason}
+
+      other ->
+        Logger.warning("Unexpected result from get_price for type #{type_id}", %{
+          type_id: type_id,
+          source: source,
+          result: inspect(other)
+        })
+
+        {:error, :unexpected_result}
     end
   end
 
@@ -253,14 +270,23 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
 
         {:ok, prices}
 
-      error ->
+      {:error, reason} ->
         Logger.error("Failed to fetch batch prices", %{
           type_ids: type_ids,
           source: source,
-          error: inspect(error)
+          error: inspect(reason)
         })
 
-        error
+        {:error, reason}
+
+      other ->
+        Logger.error("Unexpected result from get_prices", %{
+          type_ids: type_ids,
+          source: source,
+          result: inspect(other)
+        })
+
+        {:error, :unexpected_result}
     end
   end
 
@@ -274,7 +300,11 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
     Map.update!(state, :cache_hits, &(&1 + 1))
   end
 
-  defp update_cache_stats(state, _) do
+  defp update_cache_stats(state, {:error, _}) do
+    Map.update!(state, :cache_misses, &(&1 + 1))
+  end
+
+  defp update_cache_stats(state, _other) do
     Map.update!(state, :cache_misses, &(&1 + 1))
   end
 

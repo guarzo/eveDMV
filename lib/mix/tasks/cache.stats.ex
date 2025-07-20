@@ -8,7 +8,7 @@ defmodule Mix.Tasks.Cache.Stats do
       mix cache.stats
       
       # Clear specific corporation cache
-      mix cache.stats --clear-corp 12345
+      mix cache.stats --clear-corp 12_345
       
       # Clear specific character cache  
       mix cache.stats --clear-char 67890

@@ -141,7 +141,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.PriceCache do
 
   # GenServer callbacks
 
-  @impl true
+  @impl GenServer
   def init(_opts) do
     # Create ETS tables
     :ets.new(@cache_table, [:named_table, :set, :public, read_concurrency: true])
@@ -157,14 +157,14 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.PriceCache do
     {:ok, %{}}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:cleanup, state) do
     cleanup_expired()
     schedule_cleanup()
     {:noreply, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(_msg, state) do
     {:noreply, state}
   end
@@ -196,7 +196,8 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.PriceCache do
     now = System.system_time(:millisecond)
 
     expired_keys =
-      :ets.tab2list(@cache_table)
+      @cache_table
+      |> :ets.tab2list()
       |> Enum.filter(fn {_type_id, _data, expires_at} -> expires_at <= now end)
       |> Enum.map(fn {type_id, _data, _expires_at} -> type_id end)
 

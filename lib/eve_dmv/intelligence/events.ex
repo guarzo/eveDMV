@@ -11,7 +11,6 @@ defmodule EveDmv.Intelligence.Events do
     Published when a character's threat level changes significantly.
     """
 
-    @enforce_keys [:character_id, :new_threat_level, :previous_threat_level, :updated_at]
     defstruct [
       :character_id,
       :new_threat_level,
@@ -31,7 +30,6 @@ defmodule EveDmv.Intelligence.Events do
     Published when a new battle is detected in real-time.
     """
 
-    @enforce_keys [:battle_id, :system_id, :detected_at, :participant_count]
     defstruct [
       :battle_id,
       :system_id,
@@ -51,7 +49,6 @@ defmodule EveDmv.Intelligence.Events do
     Published for high-priority intelligence alerts requiring immediate attention.
     """
 
-    @enforce_keys [:alert_id, :alert_type, :priority, :created_at]
     defstruct [
       :alert_id,
       # :hostile_activity, :cap_movement, :unusual_behavior, :system_breach
@@ -76,7 +73,6 @@ defmodule EveDmv.Intelligence.Events do
     Published when character analysis data is updated with new information.
     """
 
-    @enforce_keys [:character_id, :updated_at, :analysis_type]
     defstruct [
       :character_id,
       :updated_at,
@@ -95,7 +91,6 @@ defmodule EveDmv.Intelligence.Events do
     Published when unusual activity spikes are detected in a system.
     """
 
-    @enforce_keys [:system_id, :detected_at, :activity_level, :baseline_level]
     defstruct [
       :system_id,
       :detected_at,
@@ -119,7 +114,6 @@ defmodule EveDmv.Intelligence.Events do
     Published when wormhole chain intelligence data is updated.
     """
 
-    @enforce_keys [:chain_id, :updated_at, :update_type]
     defstruct [
       :chain_id,
       :updated_at,
@@ -141,7 +135,6 @@ defmodule EveDmv.Intelligence.Events do
     Published when character vetting status changes.
     """
 
-    @enforce_keys [:character_id, :vetting_result, :updated_at]
     defstruct [
       :character_id,
       # :approved, :rejected, :flagged, :pending_review
@@ -162,7 +155,6 @@ defmodule EveDmv.Intelligence.Events do
     Published when a fleet composition analysis is completed.
     """
 
-    @enforce_keys [:fleet_id, :system_id, :analyzed_at, :composition_type]
     defstruct [
       :fleet_id,
       :system_id,

@@ -104,7 +104,7 @@ defmodule EveDmv.Config.Cache do
   @doc """
   Get intelligence cache max size.
 
-  Environment: EVE_DMV_CACHE_INTELLIGENCE_MAX_SIZE (default: 10000)
+  Environment: EVE_DMV_CACHE_INTELLIGENCE_MAX_SIZE (default: 10_000)
   """
   @spec intelligence_cache_size() :: pos_integer()
   def intelligence_cache_size do
@@ -224,7 +224,7 @@ defmodule EveDmv.Config.Cache do
   @doc """
   Get analysis cache max size.
 
-  Environment: EVE_DMV_CACHE_ANALYSIS_MAX_SIZE (default: 10000)
+  Environment: EVE_DMV_CACHE_ANALYSIS_MAX_SIZE (default: 10_000)
   """
   @spec analysis_max_size() :: pos_integer()
   def analysis_max_size do

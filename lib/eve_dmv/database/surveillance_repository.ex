@@ -6,12 +6,13 @@ defmodule EveDmv.Database.SurveillanceRepository do
   and related data with proper preloading and caching.
   """
 
-  use EveDmv.Database.Repository,
-    resource: EveDmv.Surveillance.Profile,
-    cache_type: :hot_data
+  alias EveDmv.Cache
+  require Logger
 
-  alias EveDmv.Api
+  alias EveDmv.Api.SurveillanceApi
   alias EveDmv.Surveillance.Profile
+
+  @cache_type :hot_data
 
   @doc """
   Load all surveillance profiles for a user with preloaded matches.
@@ -31,7 +32,7 @@ defmodule EveDmv.Database.SurveillanceRepository do
           |> Ash.Query.for_read(:user_profiles, %{user_id: user_id})
           |> Ash.Query.load(:matches)
 
-        case Ash.read(query, domain: EveDmv.Api, actor: actor) do
+        case Ash.read(query, domain: SurveillanceApi, actor: actor) do
           {:ok, profiles} ->
             Cache.put(@cache_type, cache_key, profiles, ttl: :timer.minutes(5))
             profiles
@@ -49,7 +50,7 @@ defmodule EveDmv.Database.SurveillanceRepository do
   @spec create_profile(map(), any()) :: {:ok, Profile.t()} | {:error, any()}
   def create_profile(attrs, actor \\ nil) do
     changeset = Ash.Changeset.for_create(Profile, :create, attrs)
-    result = Ash.create(changeset, domain: Api, actor: actor)
+    result = Ash.create(changeset, domain: SurveillanceApi, actor: actor)
 
     case result do
       {:ok, profile} ->
@@ -71,7 +72,7 @@ defmodule EveDmv.Database.SurveillanceRepository do
   @spec update_profile(Profile.t(), map(), any()) :: {:ok, Profile.t()} | {:error, any()}
   def update_profile(profile, attrs, actor \\ nil) do
     changeset = Ash.Changeset.for_update(profile, :update, attrs)
-    result = Ash.update(changeset, domain: Api, actor: actor)
+    result = Ash.update(changeset, domain: SurveillanceApi, actor: actor)
 
     case result do
       {:ok, updated_profile} ->
@@ -90,7 +91,7 @@ defmodule EveDmv.Database.SurveillanceRepository do
   @spec delete_profile(Profile.t(), any()) :: :ok | {:error, any()}
   def delete_profile(profile, actor \\ nil) do
     changeset = Ash.Changeset.for_destroy(profile, :destroy)
-    result = Ash.destroy(changeset, domain: Api, actor: actor)
+    result = Ash.destroy(changeset, domain: SurveillanceApi, actor: actor)
 
     case result do
       :ok ->
@@ -120,7 +121,7 @@ defmodule EveDmv.Database.SurveillanceRepository do
           |> Ash.Query.for_read(:active)
           |> Ash.Query.load([:matches, :filters])
 
-        case Ash.read(query, domain: EveDmv.Api) do
+        case Ash.read(query, domain: SurveillanceApi) do
           {:ok, profiles} ->
             Cache.put(@cache_type, cache_key, profiles, ttl: :timer.minutes(2))
             profiles

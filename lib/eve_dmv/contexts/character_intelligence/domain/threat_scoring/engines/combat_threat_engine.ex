@@ -17,9 +17,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Com
   @target_quality_weight 0.15
   @damage_efficiency_weight 0.15
 
-  # Default fallback value for ship valuation
-  @default_ship_value 25_000_000
-
   # Tactical target ship IDs
   @tactical_ship_ids %{
     logistics: [11_978, 11_987, 11_985, 12_003],
@@ -143,14 +140,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Com
     # Use centralized ship valuation service
     ship_type_id = killmail.victim_ship_type_id
 
-    case ShipValuation.estimate_value(ship_type_id) do
-      {:ok, value} ->
-        value
-
-      {:error, _reason} ->
-        # Fallback to default value if service fails
-        @default_ship_value
-    end
+    # ShipValuation.estimate_value/1 returns an integer directly
+    ShipValuation.estimate_value(ship_type_id)
   end
 
   defp tactical_target?(ship_type_id) do

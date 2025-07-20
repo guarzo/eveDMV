@@ -178,7 +178,7 @@ defmodule EveDmv.Utils.TimeUtils do
       7200
 
       iex> to_seconds(1, :day)
-      86400
+      86_400
   """
   def to_seconds(amount, :second), do: amount
   def to_seconds(amount, :minute), do: amount * 60

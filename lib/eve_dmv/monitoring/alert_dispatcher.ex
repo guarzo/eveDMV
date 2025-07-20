@@ -39,7 +39,7 @@ defmodule EveDmv.Monitoring.AlertDispatcher do
 
   # Server callbacks
 
-  @impl true
+  @impl GenServer
   def init(_opts) do
     # Attach telemetry handlers
     attach_telemetry_handlers()
@@ -53,7 +53,7 @@ defmodule EveDmv.Monitoring.AlertDispatcher do
     {:ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast({:send_alert, type, severity, message, details}, state) do
     # Check cooldown
     if should_send_alert?(type, state) do
@@ -72,7 +72,7 @@ defmodule EveDmv.Monitoring.AlertDispatcher do
       # Update state
       new_state =
         state
-        |> update_in([:alerts], &([alert | &1] |> Enum.take(100)))
+        |> update_in([:alerts], &[alert | Enum.take(&1, 99)])
         |> put_in([:last_alert_times, type], DateTime.utc_now())
         |> update_in([:alert_counts, type], &((&1 || 0) + 1))
 
@@ -83,13 +83,13 @@ defmodule EveDmv.Monitoring.AlertDispatcher do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:get_recent_alerts, limit}, _from, state) do
     alerts = Enum.take(state.alerts, limit)
     {:reply, alerts, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info({:telemetry_alert, event_name, measurements, metadata}, state) do
     # Handle telemetry-based alerts
     {type, severity, message} = analyze_telemetry_event(event_name, measurements, metadata)

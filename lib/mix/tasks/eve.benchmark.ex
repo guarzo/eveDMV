@@ -44,20 +44,20 @@ defmodule Mix.Tasks.Eve.Benchmark do
   end
 
   defp run_all_benchmarks(opts) do
-    IO.puts("\n🚀 Running EVE DMV Performance Benchmarks\n")
+    Mix.shell().info("\n🚀 Running EVE DMV Performance Benchmarks\n")
 
     run_character_benchmarks(opts)
-    IO.puts("")
+    Mix.shell().info("")
     run_corporation_benchmarks(opts)
-    IO.puts("")
+    Mix.shell().info("")
     run_cache_benchmarks()
 
-    IO.puts("\n✅ Benchmarks complete!")
+    Mix.shell().info("\n✅ Benchmarks complete!")
   end
 
   defp run_character_benchmarks(opts) do
-    IO.puts("📊 Character Query Benchmarks")
-    IO.puts("=" |> String.duplicate(50))
+    Mix.shell().info("📊 Character Query Benchmarks")
+    Mix.shell().info("=" |> String.duplicate(50))
 
     # Test data
     # Example character ID
@@ -69,27 +69,27 @@ defmodule Mix.Tasks.Eve.Benchmark do
       QueryCache.clear_all()
 
       # Without cache
-      IO.puts("\nWithout cache:")
+      Mix.shell().info("\nWithout cache:")
 
       {time_no_cache, _} =
         measure_time(fn ->
           CharacterQueries.get_character_stats(character_id, since_date)
         end)
 
-      IO.puts("  Character stats query: #{format_time(time_no_cache)}")
+      Mix.shell().info("  Character stats query: #{format_time(time_no_cache)}")
 
       # With cache (second run)
-      IO.puts("\nWith cache:")
+      Mix.shell().info("\nWith cache:")
 
       {time_cached, _} =
         measure_time(fn ->
           CharacterQueries.get_character_stats(character_id, since_date)
         end)
 
-      IO.puts("  Character stats query: #{format_time(time_cached)}")
+      Mix.shell().info("  Character stats query: #{format_time(time_cached)}")
 
       speedup = Float.round(time_no_cache / time_cached, 2)
-      IO.puts("  Cache speedup: #{speedup}x faster")
+      Mix.shell().info("  Cache speedup: #{speedup}x faster")
     else
       # Standard benchmarks
       benchmarks = [
@@ -116,8 +116,8 @@ defmodule Mix.Tasks.Eve.Benchmark do
   end
 
   defp run_corporation_benchmarks(opts) do
-    IO.puts("📊 Corporation Query Benchmarks")
-    IO.puts("=" |> String.duplicate(50))
+    Mix.shell().info("📊 Corporation Query Benchmarks")
+    Mix.shell().info("=" |> String.duplicate(50))
 
     # Test data
     # Example corporation ID
@@ -129,27 +129,27 @@ defmodule Mix.Tasks.Eve.Benchmark do
       QueryCache.clear_all()
 
       # Without cache
-      IO.puts("\nWithout cache:")
+      Mix.shell().info("\nWithout cache:")
 
       {time_no_cache, _} =
         measure_time(fn ->
           CorporationQueries.get_corporation_stats(corporation_id, since_date)
         end)
 
-      IO.puts("  Corporation stats query: #{format_time(time_no_cache)}")
+      Mix.shell().info("  Corporation stats query: #{format_time(time_no_cache)}")
 
       # With cache (second run)
-      IO.puts("\nWith cache:")
+      Mix.shell().info("\nWith cache:")
 
       {time_cached, _} =
         measure_time(fn ->
           CorporationQueries.get_corporation_stats(corporation_id, since_date)
         end)
 
-      IO.puts("  Corporation stats query: #{format_time(time_cached)}")
+      Mix.shell().info("  Corporation stats query: #{format_time(time_cached)}")
 
       speedup = Float.round(time_no_cache / time_cached, 2)
-      IO.puts("  Cache speedup: #{speedup}x faster")
+      Mix.shell().info("  Cache speedup: #{speedup}x faster")
     else
       # Standard benchmarks
       benchmarks = [
@@ -180,17 +180,17 @@ defmodule Mix.Tasks.Eve.Benchmark do
   end
 
   defp run_cache_benchmarks do
-    IO.puts("📊 Cache Performance")
-    IO.puts("=" |> String.duplicate(50))
+    Mix.shell().info("📊 Cache Performance")
+    Mix.shell().info("=" |> String.duplicate(50))
 
     stats = QueryCache.get_stats()
 
-    IO.puts("  Hit rate: #{stats.hit_rate}%")
-    IO.puts("  Total hits: #{stats.hits}")
-    IO.puts("  Total misses: #{stats.misses}")
-    IO.puts("  Cache size: #{stats.cache_size} entries")
-    IO.puts("  Memory usage: #{stats.memory_mb}MB")
-    IO.puts("  Evictions: #{stats.evictions}")
+    Mix.shell().info("  Hit rate: #{stats.hit_rate}%")
+    Mix.shell().info("  Total hits: #{stats.hits}")
+    Mix.shell().info("  Total misses: #{stats.misses}")
+    Mix.shell().info("  Cache size: #{stats.cache_size} entries")
+    Mix.shell().info("  Memory usage: #{stats.memory_mb}MB")
+    Mix.shell().info("  Evictions: #{stats.evictions}")
   end
 
   defp run_benchmarks(benchmarks) do
@@ -215,11 +215,11 @@ defmodule Mix.Tasks.Eve.Benchmark do
       end)
 
     # Display results
-    IO.puts("\nQuery Performance (5 runs each):")
-    IO.puts("--------------------------------")
+    Mix.shell().info("\nQuery Performance (5 runs each):")
+    Mix.shell().info("--------------------------------")
 
     Enum.each(results, fn {name, avg, min, max} ->
-      IO.puts(
+      Mix.shell().info(
         "#{String.pad_trailing(name, 30)} Avg: #{format_time(avg)} (#{format_time(min)}-#{format_time(max)})"
       )
     end)

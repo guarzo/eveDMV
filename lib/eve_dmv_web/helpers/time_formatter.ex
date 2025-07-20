@@ -74,4 +74,26 @@ defmodule EveDmvWeb.Helpers.TimeFormatter do
   end
 
   def format_friendly_time(_), do: "Unknown"
+
+  @doc """
+  Alias for format_relative_time/1 for backward compatibility.
+  Also handles NaiveDateTime input by converting to DateTime.
+  """
+  @spec format_time_ago(DateTime.t() | NaiveDateTime.t() | nil) :: String.t()
+  def format_time_ago(nil), do: "Unknown"
+
+  def format_time_ago(%DateTime{} = datetime) do
+    format_relative_time(datetime)
+  end
+
+  def format_time_ago(%NaiveDateTime{} = datetime) do
+    case DateTime.from_naive(datetime, "Etc/UTC") do
+      {:ok, dt} -> format_relative_time(dt)
+      _ -> "Unknown"
+    end
+  rescue
+    _ -> "Unknown"
+  end
+
+  def format_time_ago(_), do: "Unknown"
 end

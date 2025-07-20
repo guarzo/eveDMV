@@ -44,7 +44,16 @@ New sprint focus: [Battle Analysis / Corporation Intelligence / Performance / et
 **Start Date**: [YYYY-MM-DD]  
 **End Date**: [YYYY-MM-DD]  
 **Sprint Goal**: [One clear, measurable objective]  
-**Philosophy**: "If it returns mock data, it's not done."
+
+### 🚨 CLEAN CODEBASE COMMITMENT
+**This sprint adheres to the Clean Codebase Vision:**
+- ✅ NO placeholder implementations
+- ✅ NO functions returning empty data as stubs
+- ✅ NO hardcoded "magic" numbers
+- ✅ NO random data generation for "analysis"
+- ✅ ALL features query real data or don't exist
+
+**Philosophy**: "If it returns mock data, it's not done. If it's not done, delete it."
 
 ---
 
@@ -68,10 +77,18 @@ New sprint focus: [Battle Analysis / Corporation Intelligence / Performance / et
 
 | Story ID | Description | Points | Priority | Definition of Done |
 |----------|-------------|---------|----------|-------------------|
+| CLEANUP-1 | Remove placeholder functions in [module] | 3 | CRITICAL | Functions deleted or implemented with real data |
 | STORY-1 | | 5 | HIGH | Queries real data, no mocks |
 | STORY-2 | | 3 | HIGH | Tests pass with real data |
 | STORY-3 | | 8 | MEDIUM | UI displays actual results |
 | STORY-4 | | 2 | LOW | Documentation updated |
+
+### 🧹 Placeholder Cleanup Tasks (REQUIRED)
+Every sprint MUST include cleanup tasks until codebase is clean:
+- [ ] Identify X placeholder functions to remove/fix
+- [ ] Replace hardcoded values with static data queries
+- [ ] Remove any random data generation
+- [ ] Delete functions that can't be properly implemented
 
 **Total Points**: [Sum]
 
@@ -118,11 +135,15 @@ New sprint focus: [Battle Analysis / Corporation Intelligence / Performance / et
 ### Code Quality
 - [ ] All features query real data from database
 - [ ] No hardcoded/mock values in completed features
+- [ ] No functions returning empty arrays/maps as placeholders
+- [ ] No random data generation in production code
+- [ ] All ship/system lookups use static data tables
 - [ ] All tests pass (`mix test`)
 - [ ] Static analysis passes (`mix credo`)
 - [ ] Type checking passes (`mix dialyzer`)
 - [ ] No compilation warnings
 - [ ] No TODO comments in completed code
+- [ ] No references to non-existent modules
 
 ### Documentation
 - [ ] README.md updated if features added/changed
@@ -293,22 +314,54 @@ Based on this sprint's outcomes:
 1. **Claiming Completion Without Evidence**
    - Always require screenshots or demo
    - Test in actual browser, not just unit tests
+   - Verify data comes from database, not hardcoded
 
 2. **Scope Creep**
    - Explicitly list what's NOT in scope
    - Resist adding "just one more thing"
+   - Delete incomplete features rather than stub them
 
 3. **Ignoring Technical Debt**
    - Track it, plan for it
    - Don't let it accumulate silently
+   - Remove placeholder code immediately
 
 4. **Overestimating Capacity**
    - Use actual velocity from previous sprints
    - Account for meetings, reviews, testing
+   - Factor in time to remove placeholders
 
 5. **Documentation Drift**
    - Update docs with code changes
    - Remove outdated information immediately
+   - Never document features that don't work
+
+## 🔴 PLACEHOLDER DETECTION CHECKLIST
+
+Run these checks before closing ANY sprint:
+
+```bash
+# Check for empty return placeholders
+grep -r "def.*do\s*\[\]\s*end" lib/
+grep -r "def.*do\s*%{}\s*end" lib/
+grep -r "def.*do\s*nil\s*end" lib/
+
+# Check for random data generation
+grep -r "Enum.random" lib/
+grep -r ":rand.uniform" lib/
+
+# Check for hardcoded values
+grep -r "# TODO" lib/
+grep -r "# FIXME" lib/
+grep -r "# stub" lib/
+grep -r "# placeholder" lib/
+
+# Check for modulo-based logic
+grep -r "% 10.*ship" lib/
+grep -r "% 3.*role" lib/
+```
+
+If ANY of these return results in production code, the sprint is NOT complete.
 
 ---
 

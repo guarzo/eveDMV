@@ -2,7 +2,6 @@ defmodule EveDmv.Admin.BootstrapTest do
   use EveDmv.DataCase, async: true
 
   alias EveDmv.Admin.Bootstrap
-  alias EveDmv.Users.User
 
   describe "bootstrap_configured?/0" do
     test "returns false when no environment variables are set" do

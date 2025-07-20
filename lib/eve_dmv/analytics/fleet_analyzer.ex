@@ -396,7 +396,8 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
       )
 
     role_data_map =
-      Repo.all(query)
+      query
+      |> Repo.all()
       |> Enum.map(fn ship -> {ship.ship_type_id, ship} end)
       |> Enum.into(%{})
 

@@ -8,6 +8,8 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.PaginatedActivityComponent do
   alias EveDmv.Database.CharacterQueries
   alias EveDmvWeb.CharacterAnalysis.Helpers.DisplayFormatters
 
+  import EveDmvWeb.Helpers.TimeFormatter
+
   @impl true
   def mount(socket) do
     {:ok, assign(socket, page: 1, page_size: 20, loading: false)}
@@ -204,18 +206,6 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.PaginatedActivityComponent do
 
       true ->
         [1, "...", current - 1, current, current + 1, "...", total]
-    end
-  end
-
-  defp format_time_ago(datetime) do
-    now = DateTime.utc_now()
-    diff = DateTime.diff(now, datetime, :second)
-
-    cond do
-      diff < 60 -> "#{diff}s ago"
-      diff < 3600 -> "#{div(diff, 60)}m ago"
-      diff < 86400 -> "#{div(diff, 3600)}h ago"
-      true -> "#{div(diff, 86400)}d ago"
     end
   end
 

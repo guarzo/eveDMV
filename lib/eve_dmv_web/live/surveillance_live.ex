@@ -33,7 +33,7 @@ defmodule EveDmvWeb.SurveillanceLive do
       user_id = current_user.id
       # Load critical data first, defer non-critical data
       profiles = ProfileService.load_user_profiles(user_id, current_user)
-      unread_count = NotificationService.get_unread_count(user_id)
+      unread_count = NotificationService.get_unread_count(to_string(user_id))
 
       socket =
         socket

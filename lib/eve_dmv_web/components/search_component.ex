@@ -208,10 +208,11 @@ defmodule EveDmvWeb.SearchComponent do
     [systems, characters, corporations] = Task.await_many(tasks, 5000)
 
     # Combine results in a single list with type information
-    results = []
-    results = results ++ Enum.map(systems, &Map.put(&1, :type, "system"))
-    results = results ++ Enum.map(characters, &Map.put(&1, :type, "character"))
-    results = results ++ Enum.map(corporations, &Map.put(&1, :type, "corporation"))
+    results =
+      []
+      |> Kernel.++(Enum.map(systems, &Map.put(&1, :type, "system")))
+      |> Kernel.++(Enum.map(characters, &Map.put(&1, :type, "character")))
+      |> Kernel.++(Enum.map(corporations, &Map.put(&1, :type, "corporation")))
 
     # Sort by relevance and take top 10
     results
@@ -318,9 +319,10 @@ defmodule EveDmvWeb.SearchComponent do
   end
 
   defp format_character_subtitle(corp_name, alliance_name) do
-    parts = []
-    parts = if corp_name, do: [corp_name | parts], else: parts
-    parts = if alliance_name, do: [alliance_name | parts], else: parts
+    parts =
+      []
+      |> (&if(corp_name, do: [corp_name | &1], else: &1)).()
+      |> (&if(alliance_name, do: [alliance_name | &1], else: &1)).()
 
     case parts do
       [] -> "Independent"

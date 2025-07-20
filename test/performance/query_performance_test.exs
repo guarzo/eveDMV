@@ -8,10 +8,18 @@ defmodule EveDmv.Performance.QueryPerformanceTest do
 
   use EveDmv.DataCase, async: false
 
+  alias EveDmv.Cache.QueryCache
+  alias EveDmv.Database.CharacterQueries
+  alias EveDmv.Database.CorporationQueries
+  alias EveDmv.Factories, as: Factory
+
   @moduletag :skip
 
-  alias EveDmv.Database.{CharacterQueries, CorporationQueries}
-  alias EveDmv.Factories, as: Factory
+  # Real EVE ship type IDs for performance testing
+  @ship_ids [587, 588, 589, 590, 620, 621, 622, 623, 641, 642, 11_985, 11_987, 22_456, 29_984]
+
+  # Helper function to get real ship IDs instead of modulo calculation
+  defp get_real_ship_id(index), do: Enum.at(@ship_ids, rem(index, length(@ship_ids)))
 
   # milliseconds
   @max_character_query_time 100
@@ -22,14 +30,14 @@ defmodule EveDmv.Performance.QueryPerformanceTest do
 
   setup do
     # Ensure QueryCache is available
-    case Process.whereis(EveDmv.Cache.QueryCache) do
+    case Process.whereis(QueryCache) do
       nil ->
         # Start QueryCache if not running
-        {:ok, _} = EveDmv.Cache.QueryCache.start_link([])
+        {:ok, _} = QueryCache.start_link([])
 
       _pid ->
         # Clear the cache if already running
-        EveDmv.Cache.QueryCache.clear_all()
+        QueryCache.clear_all()
     end
 
     # Create test data
@@ -156,13 +164,14 @@ defmodule EveDmv.Performance.QueryPerformanceTest do
 
       {time_us, results} =
         :timer.tc(fn ->
-          character_ids
-          |> Enum.map(fn char_id ->
-            Task.async(fn ->
-              CharacterQueries.get_character_stats(char_id, since_date)
-            end)
+          Enum.map(character_ids, fn char_id ->
+            task =
+              Task.async(fn ->
+                CharacterQueries.get_character_stats(char_id, since_date)
+              end)
+
+            Task.await(task, 5_000)
           end)
-          |> Enum.map(&Task.await(&1, 5000))
         end)
 
       time_ms = time_us / 1000
@@ -222,7 +231,7 @@ defmodule EveDmv.Performance.QueryPerformanceTest do
           victim_character_id: if(rem(i, 2) == 0, do: character_id, else: nil),
           victim_corporation_id: corporation_id,
           victim_alliance_id: if(rem(i, 3) == 0, do: 99_000_000 + rem(i, 10), else: nil),
-          victim_ship_type_id: 587 + rem(i, 10),
+          victim_ship_type_id: get_real_ship_id(i),
           attacker_count: rem(i, 20) + 1,
           raw_data: build_raw_killmail_data(i, character_ids, corporation_ids),
           source: "test",
@@ -249,7 +258,7 @@ defmodule EveDmv.Performance.QueryPerformanceTest do
         "character_name" => if(victim_char_id, do: "Test Pilot #{victim_char_id}", else: nil),
         "corporation_id" => Enum.random(corporation_ids),
         "corporation_name" => "Test Corp",
-        "ship_type_id" => 587 + rem(index, 10)
+        "ship_type_id" => get_real_ship_id(index)
       },
       "attackers" => build_attackers(index, character_ids, corporation_ids),
       "total_value" => :rand.uniform(1_000_000_000)
@@ -269,9 +278,9 @@ defmodule EveDmv.Performance.QueryPerformanceTest do
         "character_name" => "Attacker #{char_id}",
         "corporation_id" => corp_id,
         "corporation_name" => "Corp #{corp_id}",
-        "ship_type_id" => 587 + rem(i, 10),
+        "ship_type_id" => get_real_ship_id(i),
         "weapon_type_id" => if(rem(i, 2) == 0, do: 2456, else: nil),
-        "damage_done" => :rand.uniform(10000)
+        "damage_done" => :rand.uniform(10_000)
       }
     end)
   end
