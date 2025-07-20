@@ -101,6 +101,11 @@ defmodule EveDmv.Killmails.KillmailRaw do
       description("Each killmail ID is globally unique")
     end
 
+    # For partitioned tables, we need to include the partition key
+    identity :unique_killmail_id_time, [:killmail_id, :killmail_time] do
+      description("Killmail ID + time combination for partitioned table upsert")
+    end
+
     identity :unique_hash_time, [:killmail_hash, :killmail_time] do
       description("Each killmail hash + time combination is unique")
     end
@@ -151,7 +156,8 @@ defmodule EveDmv.Killmails.KillmailRaw do
 
       # Upsert behavior - if killmail already exists, do nothing
       upsert?(true)
-      upsert_identity(:unique_killmail_id)
+      # Use the composite identity that includes partition key
+      upsert_identity(:unique_killmail_id_time)
       # Don't update any fields on conflict - just ignore duplicates
       upsert_fields([])
     end

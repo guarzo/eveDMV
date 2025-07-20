@@ -112,7 +112,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
           victim_character_id: 11111,
           raw_data: %{
             "victim" => %{"character_id" => 11111},
-            "attackers" => [%{"character_id" => 67890}]
+            "attackers" => [%{"character_id" => 99999}]
           }
         })
 

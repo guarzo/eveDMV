@@ -49,6 +49,14 @@ mix eve.analyze_performance       # Analyze query performance
 mix eve.check_indexes             # Verify index health
 mix eve.benchmark                 # Run performance benchmarks
 
+# Partition Management (Automated with pg_cron)
+mix eve.partition_manager status          # Show current partition status
+mix eve.partition_manager create_future   # Create partitions for next 3 months
+mix eve.partition_manager create 2024-12  # Create partition for specific month
+mix eve.partition_manager cleanup         # Clean up old partitions (12 months retention)
+mix eve.partition_manager cleanup --months=6  # Custom retention period
+mix eve.partition_manager stats           # Show detailed partition statistics
+
 # Pipeline Management
 # Set PIPELINE_ENABLED=true/false in .env file to enable/disable Broadway pipeline
 # Configuration automatically loaded from .env files at runtime
@@ -62,6 +70,32 @@ mix eve.benchmark                 # Run performance benchmarks
 ```
 
 ## Database Configuration
+
+### IMPORTANT: pg_cron Extension Setup
+
+EVE DMV uses automated partition management via the pg_cron PostgreSQL extension. This is **automatically configured** in the development environment but requires setup in production.
+
+**Development Environment (Docker/DevContainer)**:
+- ✅ pg_cron is automatically installed and configured
+- ✅ Partition automation works out of the box
+- ✅ Use `mix eve.partition_manager status` to verify
+
+**Production Environment Setup**:
+```bash
+# Install pg_cron extension (requires superuser privileges)
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+
+# Run migrations to set up automation
+mix ecto.migrate
+
+# Verify setup
+mix eve.partition_manager status
+```
+
+**Without pg_cron** (CI/Testing environments):
+- ⚠️ Automated partition management is disabled
+- ✅ Manual partition management still available via Mix tasks
+- ✅ All core functionality works normally
 
 ### IMPORTANT: Test Environment Database Setup
 
@@ -127,12 +161,13 @@ The killmail ingestion pipeline (`lib/eve_dmv/killmails/killmail_pipeline.ex`) u
 4. **PubSub** broadcasts updates to LiveView
 
 ### Database Design
-- **Partitioned tables**: `killmails_raw` partitioned by month for scalability
+- **Partitioned tables**: `killmails_raw` partitioned by month for scalability with automated management
 - **Materialized views**: Pre-computed aggregations for performance
 - **Covering indexes**: Optimized for common query patterns
 - **Bulk operations**: Use `Ash.bulk_create` for high-volume inserts
 - **Resource snapshots**: Track schema evolution in `priv/resource_snapshots/`
-- **Archive management**: Automatic old data archival
+- **Automated partition management**: pg_cron jobs create future partitions and clean up old ones
+- **Archive management**: Automatic old data archival via partition cleanup
 
 ## Working with Resources
 

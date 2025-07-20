@@ -38,29 +38,35 @@ defmodule EveDmv.Database.IndexPerformanceVerifierTest do
 
   describe "index existence verification" do
     test "verifies killmails_raw indexes exist" do
-      # Check if our new indexes were created
+      # For partitioned tables, check indexes on both parent and partitions
       {:ok, result} =
         Repo.query("""
-          SELECT indexname, indexdef
+          SELECT tablename, indexname, indexdef
           FROM pg_indexes
-          WHERE tablename = 'killmails_raw'
-            AND indexname IN (
-              'killmails_raw_time_system_idx',
-              'killmails_raw_character_activity_idx',
-              'killmails_raw_corp_alliance_idx',
-              'killmails_raw_corp_alliance_time_idx'
+          WHERE (tablename = 'killmails_raw' OR tablename LIKE 'killmails_raw_y%')
+            AND (
+              indexname LIKE '%time_system%' OR
+              indexname LIKE '%character_activity%' OR
+              indexname LIKE '%corp_alliance%'
             )
-          ORDER BY indexname
+          ORDER BY tablename, indexname
         """)
 
-      index_names = Enum.map(result.rows, fn [name, _def] -> name end)
+      index_info = Enum.map(result.rows, fn [table, name, _def] -> {table, name} end)
 
-      # Verify our Sprint 17 indexes exist
-      assert "killmails_raw_time_system_idx" in index_names or
-               "killmails_raw_character_activity_idx" in index_names or
-               "killmails_raw_corp_alliance_idx" in index_names or
-               "killmails_raw_corp_alliance_time_idx" in index_names,
-             "At least one Sprint 17 index should exist"
+      # Check if we have any of the expected Sprint 17 index patterns
+      has_time_system =
+        Enum.any?(index_info, fn {_, name} -> String.contains?(name, "time_system") end)
+
+      has_character_activity =
+        Enum.any?(index_info, fn {_, name} -> String.contains?(name, "character_activity") end)
+
+      has_corp_alliance =
+        Enum.any?(index_info, fn {_, name} -> String.contains?(name, "corp_alliance") end)
+
+      # Verify at least one Sprint 17 index pattern exists
+      assert has_time_system or has_character_activity or has_corp_alliance,
+             "At least one Sprint 17 index pattern should exist. Found indexes: #{inspect(index_info)}"
     end
 
     test "verifies participants indexes exist" do

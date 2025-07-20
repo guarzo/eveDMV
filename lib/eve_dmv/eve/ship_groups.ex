@@ -43,13 +43,14 @@ defmodule EveDmv.Eve.ShipGroups do
     # Combat recons
     906 => :combat_recon,
     # Logistics
+    832 => :logistics,
     883 => :logistics_cruiser,
     # T3Cs
     963 => :strategic_cruiser,
 
     # Battlecruisers
-    # Standard BCs
-    419 => :battlecruiser,
+    # Command Ships (actually group 419 in EVE)
+    419 => :command_ship,
     # Attack BCs
     1201 => :attack_battlecruiser,
     # Command destroyers

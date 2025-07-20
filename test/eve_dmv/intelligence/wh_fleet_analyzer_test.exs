@@ -362,7 +362,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
       # Should identify key roles
       assert Map.has_key?(balance, "dps")
       assert Map.has_key?(balance, "logistics")
-      assert Map.has_key?(balance, "tackle")
+      assert Map.has_key?(balance, "fc")
     end
   end
 

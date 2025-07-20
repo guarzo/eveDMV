@@ -15,14 +15,14 @@ defmodule EveDmv.Killmails.KillmailBroadcaster do
   @doc """
   Broadcast killmails to LiveView clients via PubSub.
 
-  Sends killmail data to the "killmail_feed" topic for real-time updates
+  Sends killmail data to the "kill_feed" topic for real-time updates
   in the UI. Handles errors gracefully to prevent pipeline failures.
   """
   @spec broadcast_killmails([Message.t()]) :: :ok
   def broadcast_killmails(messages) do
     for %Message{data: killmail_data} <- messages do
       try do
-        Endpoint.broadcast!("killmail_feed", "new_killmail", killmail_data)
+        Endpoint.broadcast!("kill_feed", "new_kill", killmail_data)
       rescue
         error ->
           Logger.warning("Failed to broadcast killmail: #{inspect(error)}")

@@ -115,9 +115,16 @@ defmodule EveDmv.TestDataHelpers do
     %{
       type_id: 2834,
       type_name: "Crucifier",
-      group_id: 25,
+      group_id: 893,
       is_ship: true,
       mass: Decimal.new("1160000")
+    },
+    %{
+      type_id: 11202,
+      type_name: "Ares",
+      group_id: 831,
+      is_ship: true,
+      mass: Decimal.new("1000000")
     }
   ]
 

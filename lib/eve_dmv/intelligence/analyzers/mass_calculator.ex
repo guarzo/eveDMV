@@ -277,7 +277,11 @@ defmodule EveDmv.Intelligence.Analyzers.MassCalculator do
   Wrapper function that delegates to StaticData for consistency.
   """
   def calculate_ship_mass(ship_name) do
-    EveDmv.StaticData.get_ship_mass(ship_name)
+    case EveDmv.StaticData.get_ship_mass(ship_name) do
+      {:ok, mass} -> mass
+      # Default cruiser mass
+      {:error, _} -> 12_000_000
+    end
   end
 
   @doc """
@@ -293,6 +297,7 @@ defmodule EveDmv.Intelligence.Analyzers.MassCalculator do
       case Map.get(member, :ship_mass) do
         nil ->
           ship_name = Map.get(member, :ship_name, "Unknown")
+          # calculate_ship_mass now returns a number directly
           calculate_ship_mass(ship_name)
 
         mass when is_number(mass) ->

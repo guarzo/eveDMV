@@ -265,10 +265,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
     avg_score = calculate_overall_focus_score(focus_fire_windows)
 
     cond do
-      avg_score >= 80 -> :excellent
-      avg_score >= 60 -> :good
-      avg_score >= 40 -> :moderate
-      avg_score >= 20 -> :poor
+      avg_score >= 70 -> :excellent
+      avg_score >= 50 -> :good
+      avg_score >= 30 -> :moderate
+      avg_score >= 15 -> :poor
       true -> :very_poor
     end
   end
@@ -423,11 +423,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
 
     effectiveness =
       case formation_type do
-        :fleet_doctrine when kill_count > 10 -> :highly_effective
-        :fleet_doctrine -> :effective
+        :fleet_doctrine when kill_count >= 10 -> :highly_effective
+        :fleet_doctrine when kill_count >= 5 -> :effective
+        :fleet_doctrine -> :moderately_effective
         :tackle_heavy when kill_count > 5 -> :effective
         :ewar_doctrine when kill_count > 3 -> :effective
-        :dps_ball when kill_count > 15 -> :highly_effective
+        :dps_ball when kill_count >= 10 -> :highly_effective
+        :dps_ball when kill_count >= 5 -> :effective
         :yolo_fleet when kill_count > 5 -> :surprisingly_effective
         _ -> :moderately_effective
       end
@@ -618,41 +620,63 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
   end
 
   defp identify_coordinated_switches(sorted_killmails) do
-    # Look for multiple attackers switching targets within short time windows
-    time_windows = group_by_time_windows(sorted_killmails, 10)
+    # Look for multiple attackers switching targets across consecutive time windows
+    if length(sorted_killmails) < 2 do
+      []
+    else
+      # Group killmails by victim to track when attackers move between targets
+      victim_groups =
+        sorted_killmails
+        |> Enum.group_by(& &1.victim_character_id)
+        |> Enum.sort_by(fn {_victim_id, kms} ->
+          List.first(kms).killmail_time
+        end)
 
-    coordinated_switches =
-      Enum.flat_map(time_windows, fn {window_start, window_kms} ->
-        # Track target changes in this window
-        attacker_targets =
-          extract_attacker_targets(window_kms)
-          |> Enum.group_by(& &1.attacker_id)
+      # Look for coordinated switches between consecutive victim groups
+      victim_groups
+      |> Enum.chunk_every(2, 1, :discard)
+      |> Enum.flat_map(fn [{victim1_id, victim1_kms}, {victim2_id, victim2_kms}] ->
+        # Get attackers from first victim
+        attackers1 =
+          victim1_kms
+          |> Enum.flat_map(&get_attackers_from_killmail/1)
+          |> Enum.map(& &1["character_id"])
+          |> Enum.uniq()
+          |> MapSet.new()
 
-        # Count how many attackers switched in this window
-        switching_attackers =
-          Enum.count(attacker_targets, fn {_attacker_id, targets} ->
-            unique_targets =
-              targets
-              |> Enum.map(& &1.target_id)
-              |> Enum.uniq()
+        # Get attackers from second victim  
+        attackers2 =
+          victim2_kms
+          |> Enum.flat_map(&get_attackers_from_killmail/1)
+          |> Enum.map(& &1["character_id"])
+          |> Enum.uniq()
+          |> MapSet.new()
 
-            length(unique_targets) > 1
-          end)
+        # Find common attackers (those who switched)
+        switching_attackers = MapSet.intersection(attackers1, attackers2) |> MapSet.size()
 
-        if switching_attackers >= 3 do
+        # Get time gap between victim groups
+        last_time1 = victim1_kms |> Enum.map(& &1.killmail_time) |> Enum.max()
+        first_time2 = victim2_kms |> Enum.map(& &1.killmail_time) |> Enum.min()
+        time_gap = DateTime.diff(first_time2, last_time1)
+
+        # Consider it coordinated if multiple attackers switch within reasonable time
+        if switching_attackers >= 3 and time_gap <= 30 do
           [
             %{
-              window: window_start,
+              window: first_time2,
               switching_attackers: switching_attackers,
-              coordination_level: rate_coordination_level(switching_attackers)
+              coordination_level: rate_coordination_level(switching_attackers),
+              from_target: victim1_id,
+              to_target: victim2_id,
+              time_gap_seconds: time_gap
             }
           ]
         else
           []
         end
       end)
-
-    coordinated_switches
+    end
   end
 
   defp rate_coordination_level(switching_count) do

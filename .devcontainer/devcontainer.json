@@ -6,16 +6,16 @@
   "shutdownAction": "stopCompose",
   "remoteUser": "vscode",
 
-  "forwardPorts": [4021, 5441, 6391],
+  "forwardPorts": [4010, 5433, 6380],
   "portsAttributes": {
-    "4021": {
+    "4010": {
       "label": "Phoenix Server",
       "onAutoForward": "notify"
     },
-    "5441": {
+    "5433": {
       "label": "PostgreSQL"
     },
-    "6391": {
+    "6380": {
       "label": "Redis"
     }
   },
