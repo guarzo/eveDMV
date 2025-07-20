@@ -1,7 +1,7 @@
 defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.TacticalPatternDetector do
   @moduledoc """
   Detects and analyzes tactical patterns in battle timelines.
-  
+
   Responsible for:
   - Identifying combat patterns (alpha strike, kiting, brawling)
   - Detecting key moments and turning points
@@ -37,40 +37,42 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
     moments = []
 
     # Find high-value kills (top 10% by ISK value)
-    moments = if length(timeline) > 0 do
-      isk_values = Enum.map(timeline, & &1.isk_value)
-      threshold = Enum.max(isk_values) * 0.9
+    moments =
+      if length(timeline) > 0 do
+        isk_values = Enum.map(timeline, & &1.isk_value)
+        threshold = Enum.max(isk_values) * 0.9
 
-      high_value_kills =
-        timeline
-        |> Enum.filter(&(&1.isk_value >= threshold))
-        |> Enum.map(fn event ->
-          %{
-            type: :high_value_kill,
-            timestamp: event.timestamp,
-            isk_value: event.isk_value,
-            victim: event.victim
-          }
-        end)
+        high_value_kills =
+          timeline
+          |> Enum.filter(&(&1.isk_value >= threshold))
+          |> Enum.map(fn event ->
+            %{
+              type: :high_value_kill,
+              timestamp: event.timestamp,
+              isk_value: event.isk_value,
+              victim: event.victim
+            }
+          end)
 
-      moments ++ high_value_kills
-    else
-      moments
-    end
+        moments ++ high_value_kills
+      else
+        moments
+      end
 
     # Find first blood
-    moments = if first_kill = List.first(timeline) do
-      [
-        %{
-          type: :first_blood,
-          timestamp: first_kill.timestamp,
-          victim: first_kill.victim
-        }
-        | moments
-      ]
-    else
-      moments
-    end
+    moments =
+      if first_kill = List.first(timeline) do
+        [
+          %{
+            type: :first_blood,
+            timestamp: first_kill.timestamp,
+            victim: first_kill.victim
+          }
+          | moments
+        ]
+      else
+        moments
+      end
 
     # Sort by timestamp
     Enum.sort_by(moments, & &1.timestamp)

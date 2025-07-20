@@ -1,7 +1,7 @@
 defmodule EveDmv.Utils.Validation do
   @moduledoc """
   Common validation utilities to reduce duplication.
-  
+
   Part of Sprint 22 Quality Standards - Code Duplication Elimination.
   """
 
@@ -32,11 +32,13 @@ defmodule EveDmv.Utils.Validation do
   @doc """
   Validate required parameters are present.
   """
-  def validate_required(params, required_fields) when is_map(params) and is_list(required_fields) do
-    missing = Enum.filter(required_fields, fn field ->
-      value = Map.get(params, field) || Map.get(params, Atom.to_string(field))
-      is_nil(value) or value == ""
-    end)
+  def validate_required(params, required_fields)
+      when is_map(params) and is_list(required_fields) do
+    missing =
+      Enum.filter(required_fields, fn field ->
+        value = Map.get(params, field) || Map.get(params, Atom.to_string(field))
+        is_nil(value) or value == ""
+      end)
 
     case missing do
       [] -> {:ok, params}
@@ -62,9 +64,12 @@ defmodule EveDmv.Utils.Validation do
   Parse various date formats into DateTime.
   """
   def parse_date(%DateTime{} = dt), do: {:ok, dt}
+
   def parse_date(date_string) when is_binary(date_string) do
     case DateTime.from_iso8601(date_string) do
-      {:ok, dt, _} -> {:ok, dt}
+      {:ok, dt, _} ->
+        {:ok, dt}
+
       {:error, _} ->
         case Date.from_iso8601(date_string) do
           {:ok, date} -> {:ok, DateTime.new!(date, ~T[00:00:00], "Etc/UTC")}
@@ -72,6 +77,7 @@ defmodule EveDmv.Utils.Validation do
         end
     end
   end
+
   def parse_date(_), do: {:error, "Invalid date format"}
 
   @doc """
@@ -96,19 +102,21 @@ defmodule EveDmv.Utils.Validation do
   """
   def validate_killmail_structure(killmail) when is_map(killmail) do
     required_fields = ["killmail_id", "killmail_time", "victim", "attackers"]
-    
+
     case validate_required(killmail, required_fields) do
       {:ok, _} ->
         victim = Map.get(killmail, "victim", %{})
         attackers = Map.get(killmail, "attackers", [])
-        
+
         cond do
           not is_map(victim) -> {:error, "Victim must be an object"}
           not is_list(attackers) -> {:error, "Attackers must be an array"}
           Enum.empty?(attackers) -> {:error, "At least one attacker required"}
           true -> {:ok, killmail}
         end
-      error -> error
+
+      error ->
+        error
     end
   end
 

@@ -23,7 +23,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   # alias EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetCompositionAnalyzer
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.OutcomeAnalyzer
+
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.DataCollectors.BattleDataCollector
+
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.BattleTimelineBuilder
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.TacticalPatternDetector
   alias EveDmv.DomainEvents.BattleAnalysisComplete
@@ -125,7 +127,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
           {:ok, killmails} ->
             with {:ok, timeline} <- BattleTimelineBuilder.construct_battle_timeline(killmails),
-                 {:ok, participants} <- BattleTimelineBuilder.extract_battle_participants(killmails),
+                 {:ok, participants} <-
+                   BattleTimelineBuilder.extract_battle_participants(killmails),
                  {:ok, fleet_analysis} <- analyze_fleet_compositions(participants, killmails),
                  {:ok, tactical_analysis} <- perform_tactical_analysis(timeline, fleet_analysis),
                  {:ok, performance_metrics} <-
@@ -387,13 +390,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   end
 
   # Private functions
-
-
-
-
-
-
-
 
   defp analyze_fleet_compositions(participants, killmails) do
     # Use the comprehensive FleetCompositionAnalyzer for detailed fleet analysis
@@ -711,8 +707,23 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     if length(timeline) < 3 do
       []
     else
-      # Use the detailed phase analysis and enrich with phase types
-      detailed_phases = identify_battle_phases_detailed(timeline)
+      # Simple phase identification based on kill clustering
+      detailed_phases = [
+        %{
+          phase_number: 1,
+          start_time: List.first(timeline).timestamp,
+          end_time: List.last(timeline).timestamp,
+          duration_seconds:
+            DateTime.diff(List.last(timeline).timestamp, List.first(timeline).timestamp),
+          kills: length(timeline),
+          intensity:
+            length(timeline) /
+              max(
+                1,
+                DateTime.diff(List.last(timeline).timestamp, List.first(timeline).timestamp) / 60
+              )
+        }
+      ]
 
       detailed_phases
       |> Enum.with_index()
@@ -896,7 +907,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     end
   end
 
-
   defp classify_ship(ship_type_id) do
     # Classify ship based on type ID ranges (simplified EVE ship classification)
     cond do
@@ -924,8 +934,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       true -> :unknown
     end
   end
-
-
 
   defp analyze_side_ship_composition(participants) do
     participants
@@ -1021,277 +1029,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     end
   end
 
-
-
-
-
-
-
-  defp determine_victim_side(victim, fleet_analysis) do
-    # Handle different fleet analysis structures
-    side_a_corps = get_side_corporations(fleet_analysis, :side_a)
-    side_b_corps = get_side_corporations(fleet_analysis, :side_b)
-
-    cond do
-      victim.corporation_id in side_a_corps -> :side_a
-      victim.corporation_id in side_b_corps -> :side_b
-      true -> :unknown
-    end
-  end
-
-  defp analyze_engagement_flow(timeline) do
-    # Analyze the flow and phases of the engagement
-    phases = identify_battle_phases_detailed(timeline)
-    intensity_changes = identify_intensity_changes(timeline)
-
-    %{
-      phases: phases,
-      intensity_changes: intensity_changes
-    }
-  end
-
-  defp identify_battle_phases_detailed(timeline) do
-    # Identify distinct phases based on kill clustering
-    if length(timeline) < 3 do
-      []
-    else
-      # Find gaps of more than 5 minutes between kills
-      phases =
-        timeline
-        |> Enum.chunk_while(
-          [],
-          fn event, acc ->
-            case acc do
-              [] ->
-                {:cont, [event]}
-
-              _ ->
-                last_event = List.first(acc)
-                gap_seconds = DateTime.diff(event.timestamp, last_event.timestamp)
-
-                # 5 minute gap
-                if gap_seconds > 300 do
-                  {:cont, Enum.reverse(acc), [event]}
-                else
-                  {:cont, [event | acc]}
-                end
-            end
-          end,
-          fn
-            [] -> {:cont, []}
-            acc -> {:cont, Enum.reverse(acc), []}
-          end
-        )
-        |> Enum.reject(&Enum.empty?/1)
-        |> Enum.with_index(1)
-        |> Enum.map(fn {phase_events, index} ->
-          %{
-            phase_number: index,
-            start_time: List.first(phase_events).timestamp,
-            end_time: List.last(phase_events).timestamp,
-            duration_seconds:
-              DateTime.diff(
-                List.last(phase_events).timestamp,
-                List.first(phase_events).timestamp
-              ),
-            kills: length(phase_events),
-            intensity:
-              length(phase_events) /
-                max(
-                  DateTime.diff(
-                    List.last(phase_events).timestamp,
-                    List.first(phase_events).timestamp
-                  ) / 60,
-                  1
-                )
-          }
-        end)
-
-      phases
-    end
-  end
-
-  defp identify_intensity_changes(timeline) do
-    # Calculate rolling kill rate and find significant changes
-    if length(timeline) < 5 do
-      []
-    else
-      # Calculate kills per minute in 3-minute windows
-      intensities =
-        timeline
-        |> Enum.chunk_every(3, 1, :discard)
-        |> Enum.map(fn window ->
-          duration_minutes =
-            DateTime.diff(
-              List.last(window).timestamp,
-              List.first(window).timestamp
-            ) / 60
-
-          %{
-            # Middle of window
-            timestamp: Enum.at(window, 1).timestamp,
-            kills_per_minute:
-              if(duration_minutes > 0, do: length(window) / duration_minutes, else: 0)
-          }
-        end)
-
-      # Find significant intensity changes (>50% change)
-      intensity_changes =
-        intensities
-        |> Enum.chunk_every(2, 1, :discard)
-        |> Enum.filter(fn [prev, curr] ->
-          change_ratio =
-            if prev.kills_per_minute > 0 do
-              abs(curr.kills_per_minute - prev.kills_per_minute) / prev.kills_per_minute
-            else
-              1.0
-            end
-
-          change_ratio > 0.5
-        end)
-        |> Enum.map(fn [prev, curr] ->
-          %{
-            timestamp: curr.timestamp,
-            previous_intensity: Float.round(prev.kills_per_minute, 2),
-            new_intensity: Float.round(curr.kills_per_minute, 2),
-            change_type:
-              if(curr.kills_per_minute > prev.kills_per_minute,
-                do: :escalation,
-                else: :deescalation
-              )
-          }
-        end)
-
-      intensity_changes
-    end
-  end
-
-  defp analyze_focus_fire(timeline) do
-    # Analyze how well fleets focused their damage
-    if length(timeline) < 2 do
-      %{
-        effectiveness: 0.0,
-        coordination_score: 0.0
-      }
-    else
-      # Group kills by 30-second windows
-      windows =
-        timeline
-        |> Enum.chunk_by(fn event ->
-          div(DateTime.to_unix(event.timestamp), 30)
-        end)
-        |> Enum.filter(fn window -> length(window) > 1 end)
-
-      if Enum.empty?(windows) do
-        %{
-          effectiveness: 0.0,
-          coordination_score: 0.0
-        }
-      else
-        # Calculate focus fire metrics for each window
-        window_metrics =
-          Enum.map(windows, fn window ->
-            # Count unique targets
-            unique_targets =
-              window
-              |> Enum.map(& &1.victim.character_id)
-              |> Enum.uniq()
-              |> length()
-
-            # Perfect focus fire = 1 target per window
-            focus_score = 1.0 / unique_targets
-
-            # Time spread - how close together were the kills
-            time_score =
-              if length(window) > 1 do
-                time_spread =
-                  DateTime.diff(
-                    List.last(window).timestamp,
-                    List.first(window).timestamp
-                  )
-
-                # Normalize to 0-1 where <10s = 1.0
-                max(0, 1.0 - time_spread / 30.0)
-              else
-                1.0
-              end
-
-            %{
-              focus_score: focus_score,
-              time_score: time_score,
-              kills: length(window)
-            }
-          end)
-
-        # Weight by number of kills in each window
-        total_kills = Enum.sum(Enum.map(window_metrics, & &1.kills))
-
-        weighted_focus =
-          window_metrics
-          |> Enum.map(&(&1.focus_score * &1.kills))
-          |> Enum.sum()
-          |> Kernel./(total_kills)
-
-        weighted_coordination =
-          window_metrics
-          |> Enum.map(&(&1.time_score * &1.kills))
-          |> Enum.sum()
-          |> Kernel./(total_kills)
-
-        %{
-          effectiveness: Float.round(weighted_focus, 3),
-          coordination_score: Float.round(weighted_coordination, 3)
-        }
-      end
-    end
-  end
-
-  defp analyze_target_selection(timeline, _fleet_analysis) do
-    # Analyze target prioritization effectiveness
-    if Enum.empty?(timeline) do
-      %{
-        priority_targets_hit: 0.0,
-        target_switching_rate: 0.0
-      }
-    else
-      # Identify priority targets (logistics, fleet commanders, high-value ships)
-      priority_kills =
-        timeline
-        |> Enum.filter(fn event ->
-          ship_class = classify_ship(event.victim.ship_type_id)
-          # 1B+ ISK
-          ship_class in [:logistics, :strategic_cruiser, :capital] or
-            event.isk_value > 1_000_000_000
-        end)
-
-      priority_ratio =
-        if length(timeline) > 0 do
-          Float.round(length(priority_kills) / length(timeline), 3)
-        else
-          0.0
-        end
-
-      # Calculate target switching rate
-      target_switches =
-        timeline
-        |> Enum.map(& &1.victim.character_id)
-        |> Enum.chunk_every(2, 1, :discard)
-        |> Enum.count(fn [prev, curr] -> prev != curr end)
-
-      switching_rate =
-        if length(timeline) > 1 do
-          Float.round(target_switches / (length(timeline) - 1), 3)
-        else
-          0.0
-        end
-
-      %{
-        priority_targets_hit: priority_ratio,
-        target_switching_rate: switching_rate
-      }
-    end
-  end
-
   defp calculate_side_isk_destroyed(side, killmails) do
     # Sum ISK value of all kills made by this side
     side_corps = get_side_corporations_from_data(side)
@@ -1319,14 +1056,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     end)
     |> Enum.map(&(&1.total_value || 0))
     |> Enum.sum()
-  end
-
-  # Helper function to extract corporation IDs from fleet analysis side data
-  defp get_side_corporations(fleet_analysis, side_key) do
-    case get_in(fleet_analysis, [side_key]) do
-      nil -> []
-      side_data -> get_side_corporations_from_data(side_data)
-    end
   end
 
   # Helper function to extract corporation IDs from side data structure
@@ -4491,85 +4220,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     end
   end
 
-  # Helper functions for tactical pattern detection
-
-  defp group_timeline_by_windows(timeline, window_seconds) do
-    timeline
-    |> Enum.group_by(fn event ->
-      div(DateTime.to_unix(event.timestamp), window_seconds)
-    end)
-    |> Map.values()
-    |> Enum.filter(fn window -> length(window) > 0 end)
-    |> Enum.sort_by(fn window -> List.first(window).timestamp end, DateTime)
-  end
-
-  defp detect_kiting_sequence([window1, window2, window3]) do
-    # Calculate side kill ratios for each window
-    side_ratios = Enum.map([window1, window2, window3], &calculate_window_side_ratio/1)
-
-    # Check for consistent one-sided advantage (kiting indicator)
-    consistent_advantage =
-      Enum.all?(side_ratios, fn ratio ->
-        # Strong advantage to one side
-        ratio > 2.0 or ratio < 0.5
-      end)
-
-    # Check that the advantage is in the same direction
-    same_direction =
-      Enum.all?(side_ratios, &(&1 > 1.0)) or
-        Enum.all?(side_ratios, &(&1 < 1.0))
-
-    consistent_advantage and same_direction
-  end
-
-  defp detect_brawling_window(window) do
-    if length(window) < 3 do
-      false
-    else
-      # High kill concentration and reciprocal damage
-      # kills per second in this minute
-      kill_rate = length(window) / 60
-      side_ratio = calculate_window_side_ratio(window)
-
-      # Brawling: high activity and balanced kills (not too one-sided)
-      # More than 3 kills per minute
-      high_intensity = kill_rate > 0.05
-      # Not too one-sided
-      balanced_fight = side_ratio >= 0.4 and side_ratio <= 2.5
-
-      high_intensity and balanced_fight
-    end
-  end
-
-  defp calculate_window_side_ratio(window) do
-    # Simplified side determination based on corporation grouping
-    # Group by corporation to approximate sides
-    corp_kills =
-      window
-      |> Enum.group_by(fn event -> event.victim.corporation_id end)
-      |> Map.values()
-      |> Enum.map(&length/1)
-      |> Enum.sort(:desc)
-
-    case corp_kills do
-      [side_a_losses, side_b_losses | _] ->
-        if side_b_losses > 0 do
-          side_a_losses / side_b_losses
-        else
-          # One-sided if no losses on other side
-          side_a_losses
-        end
-
-      [side_a_losses] ->
-        # Completely one-sided
-        side_a_losses
-
-      [] ->
-        # No kills
-        1.0
-    end
-  end
-
   # Helper functions for ship class performance analysis
 
   defp extract_ship_usage_from_participants(participants) do
@@ -4619,7 +4269,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       _ -> "General combat role"
     end
   end
-
 
   # Pattern analysis functions
   defp identify_enemy_doctrine_patterns(fleet_compositions) do

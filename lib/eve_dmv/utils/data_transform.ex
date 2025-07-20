@@ -1,7 +1,7 @@
 defmodule EveDmv.Utils.DataTransform do
   @moduledoc """
   Common data transformation utilities to reduce duplication.
-  
+
   Part of Sprint 22 Quality Standards - Code Duplication Elimination.
   """
 
@@ -10,13 +10,15 @@ defmodule EveDmv.Utils.DataTransform do
   """
   def safe_to_integer(value, default \\ 0)
 
-  def safe_to_integer(value, default) when is_integer(value), do: value
+  def safe_to_integer(value, _default) when is_integer(value), do: value
+
   def safe_to_integer(value, default) when is_binary(value) do
     case Integer.parse(value) do
       {int, ""} -> int
       _ -> default
     end
   end
+
   def safe_to_integer(_, default), do: default
 
   @doc """
@@ -24,14 +26,16 @@ defmodule EveDmv.Utils.DataTransform do
   """
   def safe_to_float(value, default \\ 0.0)
 
-  def safe_to_float(value, default) when is_float(value), do: value
-  def safe_to_float(value, default) when is_integer(value), do: value / 1
+  def safe_to_float(value, _default) when is_float(value), do: value
+  def safe_to_float(value, _default) when is_integer(value), do: value / 1
+
   def safe_to_float(value, default) when is_binary(value) do
     case Float.parse(value) do
       {float, ""} -> float
       _ -> default
     end
   end
+
   def safe_to_float(_, default), do: default
 
   @doc """
@@ -45,7 +49,9 @@ defmodule EveDmv.Utils.DataTransform do
         rescue
           ArgumentError -> {key, atomize_keys(value)}
         end
-      {key, value} -> {key, atomize_keys(value)}
+
+      {key, value} ->
+        {key, atomize_keys(value)}
     end)
   end
 
@@ -68,7 +74,7 @@ defmodule EveDmv.Utils.DataTransform do
     end)
   end
 
-  def deep_merge(left, right), do: right
+  def deep_merge(_left, right), do: right
 
   @doc """
   Calculate percentage safely.
@@ -77,6 +83,7 @@ defmodule EveDmv.Utils.DataTransform do
 
   def safe_percentage(_, 0, _), do: 0.0
   def safe_percentage(0, _, _), do: 0.0
+
   def safe_percentage(numerator, denominator, precision) do
     Float.round(numerator / denominator * 100, precision)
   end
@@ -87,6 +94,7 @@ defmodule EveDmv.Utils.DataTransform do
   def safe_ratio(numerator, denominator, precision \\ 2)
 
   def safe_ratio(_, 0, _), do: 0.0
+
   def safe_ratio(numerator, denominator, precision) do
     Float.round(numerator / denominator, precision)
   end

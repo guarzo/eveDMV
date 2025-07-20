@@ -1,7 +1,7 @@
 defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.BattleTimelineBuilder do
   @moduledoc """
   Handles timeline construction and event sequencing for battle analysis.
-  
+
   Responsible for:
   - Constructing battle timelines from killmail data
   - Creating detailed event sequences
@@ -118,8 +118,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Ba
 
   defp find_final_blow_attacker(attackers) when is_list(attackers) do
     case Enum.find(attackers, &(&1["final_blow"] == true)) do
-      nil -> nil
-      attacker -> 
+      nil ->
+        nil
+
+      attacker ->
         %{
           character_id: attacker["character_id"],
           corporation_id: attacker["corporation_id"],

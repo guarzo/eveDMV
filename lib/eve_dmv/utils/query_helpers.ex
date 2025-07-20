@@ -1,7 +1,7 @@
 defmodule EveDmv.Utils.QueryHelpers do
   @moduledoc """
   Common query helper functions to reduce duplication across contexts.
-  
+
   Part of Sprint 22 Quality Standards - Code Duplication Elimination.
   """
 
@@ -62,7 +62,7 @@ defmodule EveDmv.Utils.QueryHelpers do
     order_by(query, [q], [{^dir, field(q, ^field)}])
   rescue
     ArgumentError ->
-      Logger.warn("Invalid ordering parameters: #{inspect(params)}")
+      Logger.warning("Invalid ordering parameters: #{inspect(params)}")
       order_by(query, [q], desc: field(q, ^default_field))
   end
 

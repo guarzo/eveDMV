@@ -1,7 +1,7 @@
 defmodule EveDmv.Utils.ErrorHandling do
   @moduledoc """
   Standardized error handling patterns to reduce duplication.
-  
+
   Part of Sprint 22 Quality Standards - Code Duplication Elimination.
   """
 

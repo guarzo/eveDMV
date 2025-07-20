@@ -1,7 +1,7 @@
 defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.DataCollectors.BattleDataCollector do
   @moduledoc """
   Handles data collection and fetching for battle analysis.
-  
+
   Responsible for:
   - Fetching killmails related to specific battles
   - Retrieving recent system activity
@@ -16,7 +16,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.DataCollector
 
   @doc """
   Fetch killmails related to a specific battle.
-  
+
   Battle ID format: "system_{system_id}_{unix_timestamp}"
   """
   def fetch_battle_killmails(battle_id) do
@@ -77,7 +77,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.DataCollector
 
   @doc """
   Fetch recent kills in a specific system.
-  
+
   Automatically chooses between streaming and standard fetch based on time window size.
   """
   def fetch_recent_system_kills(system_id, seconds_back) do
@@ -221,12 +221,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.DataCollector
     }
   end
 
-  defp calculate_optimal_battle_window(system_id, battle_time) do
+  defp calculate_optimal_battle_window(_system_id, battle_time) do
     # Create intelligent time window around the battle based on activity patterns
     # For now, use a standard 2-hour window around the battle time
     start_time = DateTime.add(battle_time, -3600, :second)
     end_time = DateTime.add(battle_time, 3600, :second)
-    
+
     {start_time, end_time}
   end
 end
