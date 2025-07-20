@@ -67,21 +67,91 @@ _(Automated where possible)_
 
 ---
 
-## 📈 Daily Progress Tracking
+## 🚨 VALIDATION GATES - PAUSE/CONTINUE CHECKPOINTS
 
-### Day 1 – 2025-08-04
+### Pre-Sprint Validation Gate
+**STOP and validate before starting Sprint 22:**
+
+```bash
+# Run validation checks
+./scripts/pre_sprint_validation.sh 22
+
+# Required conditions to proceed:
+```
+
+**✅ PROCEED if ALL conditions met:**
+- [ ] Current Credo issues baseline established (run `mix credo --strict | tail -1`)
+- [ ] Test suite passes completely (`mix test`)
+- [ ] No critical build failures (`mix compile --warnings-as-errors`)
+- [ ] Team has capacity for 2-week sprint commitment
+- [ ] Quality automation tools accessible (pre-commit, mix format, etc.)
+
+**🛑 PAUSE if ANY condition fails:**
+- Fix test failures before beginning quality improvements
+- Resolve build issues to establish clean baseline
+- Ensure team availability and tool access
+
+### Daily Validation Gates
+
+Each day includes a **PAUSE/CONTINUE** checkpoint:
+
+```bash
+# Daily validation command
+./scripts/daily_validation.sh 22 [DAY_NUMBER]
+```
+
+### Day 1 Validation Gate – 2025-08-04
 
 - **Started**: Bulk readability fixes and consistency analysis
 - **Completed**: [Update at end of day]
 - **Blockers**: [Any issues encountered]
 - **Reality Check**: ✅ No manual style changes break functionality
 
-### Day 2 – 2025-08-05
+**🚨 END OF DAY 1 VALIDATION - PAUSE/CONTINUE DECISION:**
+
+```bash
+# Automated checks
+mix test                           # Must pass 100%
+mix credo --strict | tail -1       # Note issue count reduction
+mix format --check-formatted       # Must pass
+
+# Manual validation
+echo "Credo issues reduced by: [X]%"
+echo "Quality fixes applied: [COUNT]"
+echo "Test coverage maintained: [YES/NO]"
+```
+
+**✅ CONTINUE to Day 2 if:**
+- [ ] All tests still pass after bulk fixes
+- [ ] Credo issues reduced by ≥10% from baseline
+- [ ] No new compilation warnings introduced
+- [ ] Automated formatting working correctly
+
+**🛑 PAUSE if:**
+- Test failures introduced by quality changes
+- Credo issue count increased or unchanged
+- Build process broken
+- Team capacity issues identified
+
+### Day 2 Validation Gate – 2025-08-05
 
 - **Started**: [Task]
 - **Completed**: [Task + evidence]
 - **Blockers**: [Issues]
 - **Reality Check**: ✅ Automated fixes maintain test coverage
+
+**🚨 END OF DAY 2 VALIDATION - PAUSE/CONTINUE DECISION:**
+
+**✅ CONTINUE to Day 3 if:**
+- [ ] Consistency issues reduced by ≥25%
+- [ ] Pre-commit hooks functional
+- [ ] No performance regression in test suite
+- [ ] Quality dashboard shows improvement trend
+
+**🛑 PAUSE if:**
+- Consistency fixes causing integration issues
+- Pre-commit hook failures blocking development
+- Significant test performance degradation
 
 ### Day 3 – 2025-08-06
 
@@ -97,12 +167,44 @@ _(Automated where possible)_
 - **Blockers**: [Issues]
 - **Reality Check**: ✅ Function complexity reduced measurably
 
-### Day 5 – 2025-08-08
+### Day 5 Validation Gate – 2025-08-08 (MID-SPRINT CRITICAL CHECKPOINT)
 
 - **Started**: [Task]
 - **Completed**: [Task + evidence]
 - **Blockers**: [Issues]
 - **Reality Check**: ✅ Code duplication eliminated systematically
+
+**🚨 MID-SPRINT VALIDATION - CRITICAL PAUSE/CONTINUE DECISION:**
+
+```bash
+# Critical mid-sprint validation
+./scripts/mid_sprint_validation.sh 22
+
+# Required metrics check
+current_credo_issues=$(mix credo --strict | grep -c "↗\|↘")
+baseline_issues=1762
+reduction_percentage=$(( (baseline_issues - current_credo_issues) * 100 / baseline_issues ))
+
+echo "Credo reduction: ${reduction_percentage}% (Target: 35% by mid-sprint)"
+```
+
+**✅ CONTINUE sprint if ALL conditions met:**
+- [ ] Credo issues reduced by ≥35% (target: 617 or fewer remaining)
+- [ ] All tests passing consistently
+- [ ] Function complexity improvements measurable
+- [ ] Team velocity on track for sprint completion
+- [ ] No critical blockers identified
+
+**🛑 PAUSE and reassess scope if ANY condition fails:**
+- Credo reduction below 25% 
+- Test failures increasing
+- Team velocity significantly behind
+- Critical technical blockers discovered
+
+**🔄 SCOPE ADJUSTMENT OPTIONS:**
+- Focus on top 3 quality improvement areas only
+- Extend timeline by 2-3 days with stakeholder approval
+- Defer complex refactoring to Sprint 23
 
 ### Day 6 – 2025-08-11
 
@@ -132,12 +234,46 @@ _(Automated where possible)_
 - **Blockers**: [Any remaining issues]
 - **Reality Check**: ✅ All quality targets met
 
-### Day 10 – 2025-08-15
+### Day 10 Final Validation Gate – 2025-08-15
 
 - **Started**: Sprint retrospective and handoff
 - **Completed**: Sprint closure and Sprint 23 preparation
 - **Blockers**: [None - sprint complete]
 - **Reality Check**: ✅ Quality standards established and enforced
+
+**🚨 FINAL SPRINT VALIDATION - PROCEED TO SPRINT 23 DECISION:**
+
+```bash
+# Final sprint validation
+./scripts/final_sprint_validation.sh 22
+
+# Success criteria validation
+final_credo_issues=$(mix credo --strict | grep -c "↗\|↘")
+target_issues=500
+success_rate=$(( (1762 - final_credo_issues) * 100 / 1762 ))
+
+echo "Final Credo issues: ${final_credo_issues} (Target: <500)"
+echo "Quality improvement: ${success_rate}% (Target: 70%)"
+```
+
+**✅ PROCEED TO SPRINT 23 if ALL conditions met:**
+- [ ] Credo issues <500 (70% reduction achieved)
+- [ ] All automated quality tools working
+- [ ] Pre-commit hooks preventing regressions
+- [ ] Team trained on quality standards
+- [ ] Quality score improved from 45 to 55+
+- [ ] Documentation updated and accessible
+
+**🛑 EXTEND SPRINT 22 if ANY critical condition fails:**
+- Credo issues >500 (quality target not met)
+- Quality regression prevention not working
+- Team not confident with new standards
+
+**🔄 HANDOFF TO SPRINT 23 REQUIREMENTS:**
+- Quality baseline established and maintained
+- Automated quality enforcement operational
+- Team ready for module refactoring work
+- Foundation stable for architectural improvements
 
 ---
 

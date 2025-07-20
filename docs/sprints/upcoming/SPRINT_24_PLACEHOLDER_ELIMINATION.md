@@ -75,14 +75,65 @@ _(Based on user impact and system criticality)_
 
 ---
 
-## 📈 Daily Progress Tracking
+## 🚨 VALIDATION GATES - PAUSE/CONTINUE CHECKPOINTS
 
-### Day 1 – 2025-09-01
+### Pre-Sprint Validation Gate
+**STOP and validate before starting Sprint 24:**
+
+```bash
+# Run validation checks
+./scripts/pre_sprint_validation.sh 24
+
+# Dependencies from Sprint 22 & 23
+```
+
+**✅ PROCEED if ALL conditions met:**
+- [ ] Sprint 22 quality standards operational (Credo <500 issues)
+- [ ] Sprint 23 module refactoring complete (0 modules >1000 lines)
+- [ ] Placeholder audit completed (`./scripts/detect_placeholders.sh`)
+- [ ] Static data availability confirmed (`mix eve.stats`)
+- [ ] ESI API integration functional for required endpoints
+- [ ] Team understands "Clean Codebase Vision" requirements
+
+**🛑 PAUSE if ANY condition fails:**
+- Quality or architecture foundation unstable from previous sprints
+- Placeholder audit reveals unexpected complexity
+- Data sources unavailable or unreliable
+- Team not aligned on real implementation requirements
+
+### Day 1 Validation Gate – 2025-09-01
 
 - **Started**: Placeholder audit and implementation planning
 - **Completed**: [Update at end of day]
 - **Blockers**: [Any issues encountered]
 - **Reality Check**: ✅ Only real implementations introduced
+
+**🚨 END OF DAY 1 VALIDATION - PAUSE/CONTINUE DECISION:**
+
+```bash
+# Automated checks
+./scripts/detect_placeholders.sh     # Count remaining placeholders
+mix test                            # Must pass 100%
+mix eve.stats                       # Verify static data availability
+
+# Manual validation
+echo "Total placeholders identified: [COUNT]"
+echo "Critical placeholders (breaking user workflows): [COUNT]"
+echo "Data source availability confirmed: [YES/NO]"
+echo "Implementation strategy documented: [YES/NO]"
+```
+
+**✅ CONTINUE to Day 2 if:**
+- [ ] All 123 placeholders identified and categorized
+- [ ] Critical vs non-critical placeholders prioritized
+- [ ] Data source availability confirmed for top implementations
+- [ ] Implementation strategy reviewed and approved
+- [ ] All tests passing
+
+**🛑 PAUSE if:**
+- Placeholder audit incomplete or reveals major complexity
+- Critical data sources unavailable
+- Implementation strategy unclear or infeasible
 
 ### Day 2 – 2025-09-02
 
@@ -105,12 +156,52 @@ _(Based on user impact and system criticality)_
 - **Blockers**: [Issues]
 - **Reality Check**: ✅ No random data generation in wormhole ops
 
-### Day 5 – 2025-09-05
+### Day 5 Validation Gate – 2025-09-05 (MID-SPRINT CRITICAL CHECKPOINT)
 
 - **Started**: [Task]
 - **Completed**: [Task + evidence]
 - **Blockers**: [Issues]
 - **Reality Check**: ✅ Character analysis uses real killmail data
+
+**🚨 MID-SPRINT VALIDATION - CRITICAL PAUSE/CONTINUE DECISION:**
+
+```bash
+# Critical mid-sprint validation
+./scripts/mid_sprint_validation.sh 24
+
+# Placeholder elimination progress check
+remaining_placeholders=$(./scripts/detect_placeholders.sh | grep -c "placeholder\|TODO.*implement\|return \[\]\|return %{}")
+baseline_placeholders=123
+eliminated_count=$((baseline_placeholders - remaining_placeholders))
+elimination_rate=$(( eliminated_count * 100 / baseline_placeholders ))
+
+echo "Placeholders eliminated: ${eliminated_count}/123 (${elimination_rate}%)"
+echo "Critical placeholders remaining: [COUNT]"
+
+# Real implementation validation
+grep -r "Enum\.random\|:rand\.uniform" lib/ --include="*.ex" | wc -l
+grep -r "return \[\]" lib/ --include="*.ex" | wc -l
+```
+
+**✅ CONTINUE sprint if ALL conditions met:**
+- [ ] ≥50% of placeholders eliminated (≥61 implementations completed)
+- [ ] All critical placeholders (Fleet DPS, Ship mass, Wormhole ops) completed
+- [ ] No random data generation remaining in lib/ directory
+- [ ] All new implementations use real data sources
+- [ ] All tests passing with new implementations
+- [ ] Performance acceptable for real calculations
+
+**🛑 PAUSE and reassess scope if ANY condition fails:**
+- <40% placeholder elimination rate
+- Critical placeholders still using hardcoded/random data
+- Test failures from new implementations
+- Performance degradation from real calculations
+
+**🔄 SCOPE ADJUSTMENT OPTIONS:**
+- Focus only on critical placeholders that break user workflows
+- Simplify implementations to use reasonable estimates vs perfect data
+- Extend timeline for complex implementations
+- Defer non-critical placeholders to future maintenance
 
 ### Day 6 – 2025-09-08
 
@@ -140,12 +231,52 @@ _(Based on user impact and system criticality)_
 - **Blockers**: [Any remaining issues]
 - **Reality Check**: ✅ All placeholder implementations eliminated
 
-### Day 10 – 2025-09-12
+### Day 10 Final Validation Gate – 2025-09-12
 
 - **Started**: Sprint retrospective and handoff
 - **Completed**: Sprint closure and Sprint 25 preparation
 - **Blockers**: [None - sprint complete]
 - **Reality Check**: ✅ Clean codebase vision achieved
+
+**🚨 FINAL SPRINT VALIDATION - PROCEED TO SPRINT 25 DECISION:**
+
+```bash
+# Final sprint validation
+./scripts/final_sprint_validation.sh 24
+
+# Clean Codebase Vision compliance check
+remaining_placeholders=$(./scripts/detect_placeholders.sh | wc -l)
+random_data_usage=$(grep -r "Enum\.random\|:rand\.uniform" lib/ --include="*.ex" | wc -l)
+empty_returns=$(grep -r "return \[\]" lib/ --include="*.ex" | wc -l)
+hardcoded_values=$(grep -r "# TODO.*hardcode" lib/ --include="*.ex" | wc -l)
+
+echo "Clean Codebase Vision Compliance:"
+echo "- Placeholder functions: ${remaining_placeholders} (Target: 0)"
+echo "- Random data generation: ${random_data_usage} (Target: 0)"
+echo "- Empty return placeholders: ${empty_returns} (Target: 0)"
+echo "- Hardcoded values: ${hardcoded_values} (Target: 0)"
+```
+
+**✅ PROCEED TO SPRINT 25 if ALL conditions met:**
+- [ ] 0 placeholder TODO comments remaining
+- [ ] 0 functions returning empty arrays/maps as placeholders
+- [ ] 0 random data generation in lib/ directory
+- [ ] 0 hardcoded "magic" values in calculations
+- [ ] All features work with real data or are properly removed
+- [ ] Quality score improved from 65 to 75+
+- [ ] All critical user workflows functional
+
+**🛑 EXTEND SPRINT 24 if ANY critical condition fails:**
+- >0 critical placeholders remaining (breaks user workflows)
+- Random data generation still in production code
+- Major hardcoded values not replaced with real data
+- Test failures from implementations
+
+**🔄 HANDOFF TO SPRINT 25 REQUIREMENTS:**
+- Clean Codebase Vision achieved (all real implementations)
+- All features working with real data sources
+- Stable foundation for comprehensive testing
+- Performance baseline established for optimization
 
 ---
 

@@ -319,7 +319,7 @@ defmodule EveDmv.Config.UnifiedConfig do
 
   defp generate_env_var_name(key_path) do
     key_path
-    |> Enum.map_join("_", &(&(to_string(1) |> String.upcase())))
+    |> Enum.map_join("_", &(to_string(&1) |> String.upcase()))
     |> then(&("EVE_DMV_" <> &1))
   end
 

@@ -1,0 +1,26 @@
+repos:
+  - repo: local
+    hooks:
+      - id: mix-format
+        name: Mix Format
+        entry: mix format
+        language: system
+        files: \.exs?$
+        pass_filenames: false
+      - id: mix-credo
+        name: Mix Credo
+        entry: mix credo --strict
+        language: system
+        files: \.exs?$
+        pass_filenames: false
+      - id: trailing-whitespace
+        name: Trim Trailing Whitespace
+        entry: sed -i 's/[[:space:]]*$//'
+        language: system
+        files: \.exs?$
+      - id: large-numbers
+        name: Fix Large Numbers
+        entry: bash
+        args: ['-c', 'find . -name "*.ex" -exec sed -i "s/\([0-9]\{5,\}\)/\1/g" {} \;']
+        language: system
+        pass_filenames: false

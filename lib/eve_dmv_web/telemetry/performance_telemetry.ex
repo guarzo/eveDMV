@@ -127,7 +127,7 @@ defmodule EveDmvWeb.Telemetry.PerformanceTelemetry do
         )
 
       [:eve_dmv, :cache, :lookup, :stop] ->
-        cache_key = metadata.to_string(key) |> String.slice(0, 50)
+        cache_key = to_string(metadata.key) |> String.slice(0, 50)
         hit_miss = if metadata.hit, do: "hit", else: "miss"
 
         PerformanceTracker.track_query(
