@@ -195,7 +195,7 @@ Test-specific settings in `config/test.exs`:
 
 ```elixir
 config :eve_dmv, EveDmv.Repo,
-  database: "eve_dmv_test#{System.get_env("MIX_TEST_PARTITION")}",
+  database: "eve_dmv_test",
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: 10
 
@@ -203,6 +203,8 @@ config :eve_dmv, EveDmvWeb.Endpoint,
   http: [port: 4002],
   server: false
 ```
+
+**IMPORTANT**: Test environment MUST use SQL Sandbox pool and ignores .env files
 
 ## Security Headers Configuration
 
@@ -235,7 +237,27 @@ Configure feature toggles:
 ```elixir
 config :eve_dmv, :features,
   intelligence_analysis: true,
-  killmail_enrichment: true,
-  market_integration: true,
-  wormhole_vetting: true
+  surveillance_profiles: true,
+  battle_analysis: true,
+  performance_monitoring: true,
+  api_authentication: true
+```
+
+## Ash Framework Configuration
+
+Configure Ash resources and domains:
+
+```elixir
+config :ash,
+  include_embedded_source_by_default?: false,
+  default_page_type: :keyset,
+  policies: [
+    no_filter_static_forbidden_reads?: false
+  ]
+
+config :ash_postgres,
+  migration_defaults: [
+    migration_path: "priv/repo/migrations",
+    tenant_migration_path: "priv/repo/tenant_migrations"
+  ]
 ```

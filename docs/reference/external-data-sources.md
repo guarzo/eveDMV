@@ -13,6 +13,8 @@ Download the latest ESI Static Data Export (SDE) JSON or CSV from CCP:
 ### 1.2 Schema
 
 ```sql
+-- This table is already created by migrations
+-- See: priv/repo/migrations/01_static_data_schema.exs
 CREATE TABLE eve_item_types (
   type_id        bigint    PRIMARY KEY,
   type_name      text      NOT NULL,
@@ -22,7 +24,9 @@ CREATE TABLE eve_item_types (
   volume         numeric,
   portion_size   integer,
   published      boolean,
-  -- add any other columns you need (meta_group, capacity, etc.)
+  base_price     numeric,
+  capacity       numeric,
+  market_group_id integer,
   inserted_at    timestamptz DEFAULT now(),
   updated_at     timestamptz DEFAULT now()
 );
@@ -30,11 +34,24 @@ CREATE TABLE eve_item_types (
 
 ### 1.3 Import Process
 
-Write a small Elixir script (`mix run priv/repo/import_sde.exs`) that:
+Use the provided mix tasks:
 
-1. Reads the JSON/CSV file line by line (streaming)
-2. `Repo.insert_all("eve_item_types", rows, on_conflict: :replace_all)`
-3. Schedule it as part of your CI/CD or nightly cron so you can re-import when CCP updates SDE
+```bash
+# Load static data from SDE files
+mix eve.load_static_data
+
+# Update to latest SDE version
+mix eve.update_sde
+
+# Check statistics
+mix eve.stats
+```
+
+The tasks handle:
+1. Downloading latest SDE from CCP
+2. Streaming import with progress tracking
+3. Automatic conflict resolution
+4. Loading both item types and solar systems
 
 ## 2. Janice API Integration
 
@@ -59,7 +76,7 @@ GET https://janice.e-351.com/api/markets/{region_id}/types/{type_id}/prices
 ### 2.2 Elixir Client
 
 ```elixir
-defmodule EveTracker.Prices.JaniceClient do
+defmodule EveDmv.Prices.JaniceClient do
   @base_url "https://janice.e-351.com/api"
   @default_region 10000002  # The Forge (Jita)
 
@@ -110,7 +127,7 @@ GET https://mutamarket.com/api/v1/markets/{region_id}/types/{type_id}
 ### 3.2 Elixir Client
 
 ```elixir
-defmodule EveTracker.Prices.MutaMarketClient do
+defmodule EveDmv.Prices.MutaMarketClient do
   @base_url "https://mutamarket.com/api/rest"
   @default_region 10000002
 
@@ -159,7 +176,7 @@ end
 Finally, wrap both clients in a single API:
 
 ```elixir
-defmodule EveTracker.Prices do
+defmodule EveDmv.Prices do
   @doc """
   Returns the best available price for a given type:
     1. Janice (official market)
@@ -194,14 +211,19 @@ end
 ## Caching & Performance
 
 - **Cachex table `:price_cache`** with per-key TTLs
-- In Cachex, use separate namespaces for `:janice_price` vs `:mutamarket_price`
-- **Prewarm cache** offline for top 1,000 ships daily
-- **Background jobs** to refresh expensive lookups
+- Separate namespaces for `:janice_price` vs `:mutamarket_price`
+- **Prewarm cache** for frequently used items
+- **Background jobs** using `EveDmv.Workers` infrastructure
+- **Query optimization** with database indexes on type_id
+
+## Current Implementation Status
+
+⚠️ **Note**: Market price integration is currently deferred (Sprint 20+). The stub client returns `{:ok, %{price: 0.0}}` for all requests. This is a known placeholder that needs implementation when external API keys are available.
 
 With these pieces in place, your enrichment pipeline can call:
 
 ```elixir
-price = EveTracker.Prices.lookup(type_id)
+price = EveDmv.Prices.lookup(type_id)
 ```
 
 and you'll reliably get up-to-date market or abyssal prices, falling back to a static heuristic if needed.

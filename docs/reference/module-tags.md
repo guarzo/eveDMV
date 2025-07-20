@@ -1,5 +1,7 @@
 # Module Tags & Metrics
 
+⚠️ **Implementation Status**: Module tags are defined in the surveillance profile schema but extraction logic is not yet implemented in the killmail pipeline. This document describes the planned implementation.
+
 ## Module Tags from wanderer-kills
 
 Module tags are high-level descriptors extracted from the full fitting detail. They let us filter on broad categories without parsing every module string.
@@ -12,10 +14,10 @@ Module tags are high-level descriptors extracted from the full fitting detail. T
 | **Support** | Shield Extender, Armor Repairer, Sensor Booster<br/>`["Shield Extender","Armor Repairer","Sensor Booster"]` |
 | **Propulsion** | Afterburner, Microwarpdrive, Warp Disruptor<br/>`["Afterburner","Warp Disruptor"]` |
 
-### Extraction Logic (pseudo-Elixir):
+### Planned Extraction Logic:
 
 ```elixir
-defmodule Enrichment.Tags do
+defmodule EveDmv.Killmails.Enrichment.Tags do
   @tech_regex ~r/II|I{1,3}/
   @slot_map %{
     high: ["weapon", "launcher"],

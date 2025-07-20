@@ -5,14 +5,14 @@ A real-time PvP activity tracking platform for EVE Online. **Active development*
 ## 📚 Documentation
 
 ### Current Status
-- **[Project Status](./PROJECT_STATUS.md)** - Comprehensive status, features, and technical details
-- **[Development Progress](./DEVELOPMENT_PROGRESS_TRACKER.md)** - Sprint history and metrics
+- **Active Development** - Sprint 19 focused on removing placeholder implementations
+- See **[CLAUDE.md](./CLAUDE.md)** for development guidelines and current implementation status
 
 ### Development
-- **[Setup Guide](./docs/development/devcontainer.md)** - Get started with development
 - **[Project Instructions](./CLAUDE.md)** - Development guidelines and commands
+- **[Architecture Guide](./docs/ARCHITECTURE.md)** - System design and patterns
 
-For complete documentation, see the [/docs directory](./docs/README.md).
+For complete documentation, see the [/docs directory](./docs/README.md). For deployment instructions, see [Deployment Guide](./docs/DEPLOYMENT_GUIDE.md).
 
 ## Current Features
 
@@ -24,14 +24,14 @@ For complete documentation, see the [/docs directory](./docs/README.md).
 - 🔍 **Universal Search** (`/search`) - Auto-completion for characters, corporations, and systems
 - ⚔️ **Battle Analysis** (In Development) - Combat log parsing, ship performance analysis, battle metrics
 - 🔐 **EVE SSO Authentication** - Login/logout with EVE Online account
-- 📊 **Static Data** - Complete EVE universe data (49,894 items including all ships)
+- 📊 **Static Data** - Complete EVE universe data (49,906 items including all ships)
 - 🗃️ **Database Infrastructure** - PostgreSQL with Broadway pipeline processing 50-100 killmails/minute
 - 📈 **Monitoring Dashboard** (`/monitoring`) - Error tracking, pipeline health, performance monitoring
 
-### 🚧 In Development (Sprint 8)
+### 🚧 In Development (Sprint 19)
+- **Character Intelligence Cleanup** - Replacing placeholder functions with real database queries
 - **Advanced Battle Analysis** - Multi-system battle correlation and tactical phase detection
-- **Character Threat Intelligence** - Multi-dimensional threat scoring and behavioral analysis
-- **Battle Sharing System** - Community curation with video link integration
+- **Threat Intelligence Engine** - Multi-dimensional threat scoring with real data
 
 ### 📋 Future Priorities
 - **Price Integration** - Real-time ISK calculations via Janice/Mutamarket APIs
@@ -41,13 +41,12 @@ For complete documentation, see the [/docs directory](./docs/README.md).
 
 **Note**: All working features use real data and algorithms. No mock data in production features.
 
-## Quick Start with Dev Containers
+## Quick Start
 
 ### Prerequisites
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- [VS Code](https://code.visualstudio.com/)
-- [Remote - Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) and Docker Compose
+- OR: Elixir 1.15+, Node.js 20+, PostgreSQL 16+
 
 ### Setup Instructions
 
@@ -100,16 +99,15 @@ For complete documentation, see the [/docs directory](./docs/README.md).
    - Update all environments with new values
    - Review access logs for any unauthorized usage
 
-5. **Open in VS Code and start dev container:**
+5. **Start the application:**
    ```bash
-   code .
+   # Using Docker Compose
+   docker-compose up -d
+   
+   # Or manually
+   mix setup  # Install deps, create/migrate DB
+   mix phx.server  # Start server on http://localhost:4010
    ```
-   - VS Code will prompt to "Reopen in Container" - click it
-   - Or use Command Palette (`Ctrl+Shift+P`) → "Remote-Containers: Open Folder in Container"
-
-6. **Wait for setup to complete:**
-   - The container will automatically install dependencies and set up the database
-   - Phoenix server will start automatically on http://localhost:4010
 
 ### Manual Setup (Alternative)
 
@@ -177,8 +175,10 @@ npm run watch --prefix assets         # Watch and rebuild assets
 ├── assets/                 # Frontend assets (CSS, JS)
 ├── config/                 # Application configuration
 ├── lib/
-│   ├── eve_tracker/        # Business logic and contexts
-│   └── eve_tracker_web/    # Web interface (controllers, views, live views)
+│   ├── eve_dmv/            # Business logic with DDD structure
+│   │   ├── api.ex          # Main Ash API domain
+│   │   └── contexts/       # Domain contexts (battle, character, fleet, etc.)
+│   └── eve_dmv_web/        # Web interface (controllers, views, live views)
 ├── priv/
 │   ├── repo/               # Database migrations and seeds
 │   └── static/             # Static assets
@@ -192,7 +192,7 @@ npm run watch --prefix assets         # Watch and rebuild assets
 The application uses PostgreSQL with range partitioning for optimal performance:
 
 - **killmails_raw** - Raw killmail data (partitioned by timestamp)
-- **killmails_enriched** - Enriched killmail data with ISK values and module tags
+- **materialized views** - Pre-computed aggregations for performance
 - **users** - User accounts linked to EVE characters
 - **surveillance_profiles** - Custom alert configurations
 
@@ -216,10 +216,10 @@ EVE_SSO_CLIENT_SECRET=your_client_secret
 SECRET_KEY_BASE=generated_secret
 
 # Database
-DATABASE_URL=ecto://postgres:postgres@db/eve_tracker_dev
+DATABASE_URL=ecto://postgres:postgres@db/eve_dmv_dev
 
 # External Services
-WANDERER_SSE_URL=https://wanderer-kills.example.com/sse
+WANDERER_KILLS_SSE_URL=http://host.docker.internal:4004/api/v1/kills/stream
 JANICE_API_BASE=https://janice.e-351.com/api
 ```
 
@@ -233,7 +233,7 @@ mix test
 mix test --cover
 
 # Run specific test file
-mix test test/eve_tracker/killmails_test.exs
+mix test test/eve_dmv/killmails_test.exs
 
 # Run tests matching pattern
 mix test --grep "surveillance"
@@ -241,16 +241,16 @@ mix test --grep "surveillance"
 
 ## Deployment
 
-See [Technical Design](./docs/architecture/DESIGN.md) for detailed deployment architecture and instructions.
+See [Deployment Guide](./docs/DEPLOYMENT_GUIDE.md) for detailed deployment instructions.
 
 ### Docker Production Build
 
 ```bash
 # Build production image
-docker build -t eve-tracker .
+docker build -t eve-dmv .
 
 # Run with environment variables
-docker run -p 4000:4000 --env-file .env.prod eve-tracker
+docker run -p 4000:4000 --env-file .env.prod eve-dmv
 ```
 
 ## Contributing
@@ -264,7 +264,11 @@ docker run -p 4000:4000 --env-file .env.prod eve-tracker
 
 ### Pull Request Checklist
 
-See [Pull Request Checklist](./docs/development/pull-request-checklist.md) for the complete checklist.
+Before submitting a pull request:
+- All tests must pass
+- Code must be formatted (`mix format`)
+- Static analysis must pass (`mix credo --strict`)
+- Coverage should meet minimum threshold (70%)
 
 ## Documentation
 
@@ -272,8 +276,8 @@ Complete project documentation is organized in the [`docs/`](./docs/) directory:
 
 - **[Documentation Index](./docs/README.md)** - Complete overview of all documentation
 - **[Product Requirements](./docs/product-requirements.md)** - Business requirements and user stories  
-- **[Technical Design](./docs/architecture/DESIGN.md)** - Architecture and implementation details
-- **[Development Setup](./docs/development/devcontainer.md)** - Dev container configuration
+- **[Architecture](./docs/ARCHITECTURE.md)** - System design and implementation details
+- **[Implementation Status](./docs/IMPLEMENTATION_STATUS_COMBINED.md)** - Current feature status
 
 See the [Documentation Index](./docs/README.md) for the complete list of guides, implementation details, and reference materials.
 

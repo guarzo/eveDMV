@@ -431,10 +431,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
       |> Enum.flat_map(fn event ->
         case event.type do
           :damage -> [event.from, event.to]
-          :ewar -> [event.ship]
+          :ewar -> [event[:target]]
           _ -> []
         end
       end)
+      |> Enum.filter(&(&1 != nil))
       |> Enum.uniq()
 
     %{

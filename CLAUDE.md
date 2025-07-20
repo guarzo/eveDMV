@@ -4,11 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-EVE DMV is an Elixir Phoenix application for tracking EVE Online PvP data. It uses:
-- **Phoenix 1.7.21** with LiveView for real-time UI
-- **Ash Framework 3.4** for declarative resource management (instead of traditional Ecto schemas)
-- **Broadway** for real-time killmail ingestion pipeline
-- **EVE SSO OAuth2** for authentication
+EVE DMV is an Elixir Phoenix application for real-time PvP intelligence and analytics for EVE Online. It uses:
+- **Phoenix 1.7.21** with LiveView for real-time UI updates
+- **Ash Framework 3.4** for declarative resource management (replaces traditional Ecto schemas)
+- **Broadway** for high-throughput killmail ingestion pipeline
+- **PostgreSQL 16** with partitioning and materialized views for performance
+- **EVE SSO OAuth2** for authentication with automatic token refresh
+- **OpenTelemetry** for observability and performance monitoring
 
 ## Essential Commands
 
@@ -26,14 +28,26 @@ mix ecto.reset         # Drop, create, and migrate
 
 # Testing and Quality
 mix test               # Run tests
-mix test --cover       # Run with coverage
-mix credo              # Static analysis
+mix test --cover       # Run with coverage (70% minimum)
+mix credo --strict     # Static analysis
 mix format             # Format code
+mix dialyzer           # Type checking
+./scripts/quality_check.sh  # Run all quality gates
 
 # Ash-Specific Commands
-mix ash_postgres.create           # Create migration from resource changes
+mix ash_postgres.create           # Generate migration from resource changes
 mix ash_postgres.migrate          # Run Ash migrations
 mix ash.codegen <resource_name>   # Generate resource code
+
+# Static Data Management
+mix eve.load_static_data          # Load EVE static data (ships, systems)
+mix eve.update_sde                # Update to latest SDE version
+mix eve.stats                     # Display database statistics
+
+# Performance Analysis
+mix eve.analyze_performance       # Analyze query performance
+mix eve.check_indexes             # Verify index health
+mix eve.benchmark                 # Run performance benchmarks
 
 # Pipeline Management
 # Set PIPELINE_ENABLED=true/false in .env file to enable/disable Broadway pipeline
@@ -73,6 +87,15 @@ The test environment uses SQL Sandbox pool for safe concurrent testing. The conf
 
 ## Architecture Overview
 
+The application follows hexagonal architecture with bounded contexts:
+- **Contexts**: Domain logic organized by business capability
+- **Resources**: Ash resources replace Ecto schemas
+- **Infrastructure**: External integrations (ESI, wanderer-kills)
+- **Real-time**: PubSub and LiveView for instant updates
+- **Pipeline**: Broadway for streaming data processing
+
+See [ARCHITECTURE.md](/workspace/ARCHITECTURE.md) for detailed system design.
+
 ### Ash Framework Usage
 This project heavily uses Ash Framework for data modeling. Key concepts:
 - **Resources** replace traditional Ecto schemas (in `lib/eve_dmv/`)
@@ -104,9 +127,12 @@ The killmail ingestion pipeline (`lib/eve_dmv/killmails/killmail_pipeline.ex`) u
 4. **PubSub** broadcasts updates to LiveView
 
 ### Database Design
-- **Partitioned tables**: `killmails_raw` and `killmails_enriched` partitioned by month
+- **Partitioned tables**: `killmails_raw` partitioned by month for scalability
+- **Materialized views**: Pre-computed aggregations for performance
+- **Covering indexes**: Optimized for common query patterns
 - **Bulk operations**: Use `Ash.bulk_create` for high-volume inserts
 - **Resource snapshots**: Track schema evolution in `priv/resource_snapshots/`
+- **Archive management**: Automatic old data archival
 
 ## Working with Resources
 
@@ -155,24 +181,32 @@ Better to have fewer features that work perfectly than many features that lie to
 ## Current Implementation Status
 
 ### ✅ What Actually Works with Real Data
-- **Authentication** - Full EVE SSO integration
+- **Authentication** - Full EVE SSO integration with token refresh
 - **Kill Feed** (`/feed`) - Real-time killmail display from wanderer-kills SSE
-- **Database Pipeline** - Broadway ingestion with partitioned storage
-- **Static Data** - 49,906 item types and 8,436 systems loaded and queryable
-- **Character Stats** - Basic kill/death counts from real queries
-- **Threat Scoring** - Multi-dimensional analysis engine
-- **Battle Detection** - Clustering algorithm groups killmails
-- **Surveillance Profiles** - Real-time matching engine
+- **Database Pipeline** - Broadway ingestion with partitioned storage and error handling
+- **Static Data** - 49,906 item types and 8,436 systems loaded via SDE import
+- **Character Stats** - Kill/death counts, ISK efficiency from materialized views
+- **Threat Scoring** - Multi-dimensional analysis with configurable weights
+- **Battle Detection** - Clustering algorithm with timeline reconstruction
+- **Surveillance Profiles** - Real-time matching with filter builder UI
+- **Performance Monitoring** - Query analysis, index health, telemetry
+- **API Authentication** - Separate API key system for programmatic access
+- **Admin Features** - Performance dashboard, user management
 
-### 🔴 What Contains Placeholders (Needs Cleanup)
-- **Fleet Analysis** - Hardcoded DPS values, modulo-based ship classification
-- **Wormhole Operations** - Random data generation, all systems show as C6
-- **Character Preferences** - Returns empty arrays instead of querying data
-- **Battle Analysis** - Detection works but advanced analysis returns empty data
-- **Market Pricing** - Stub client returns zeros
+### 🔴 What Contains Placeholders (Sprint 19-20 Cleanup)
+- **Fleet Analysis** - Hardcoded DPS values (200/600/1000), modulo-based ship classification
+- **Wormhole Operations** - Random data generation, C-class detection bug (all show C6)
+- **Character Preferences** - `get_ship_preferences()` returns `[]` (Sprint 19)
+- **Weapon Preferences** - `get_weapon_preferences()` returns `[]` (Sprint 19)
+- **Gang Size Patterns** - `get_gang_size_patterns()` returns `%{}` (Sprint 19)
+- **Activity Statistics** - `calculate_activity_stats()` returns zeros (Sprint 19)
+- **Battle Phases** - `identify_battle_phases()` returns `[]` (Sprint 20)
+- **Market Pricing** - Stub client returns `{:ok, %{price: 0.0}}` (deferred)
 
 ### 📋 Key Documentation
+- **Architecture**: `/workspace/ARCHITECTURE.md` - System design and patterns
 - **Implementation Status**: `/workspace/docs/IMPLEMENTATION_STATUS_COMBINED.md`
+- **Current Sprint**: `/workspace/docs/sprints/current/SPRINT_19_CHARACTER_INTELLIGENCE.md`
 - **Cleanup Plan**: `/workspace/docs/PLACEHOLDER_CLEANUP_PLAN.md`
 - **Clean Vision**: `/workspace/docs/CLEAN_CODEBASE_VISION.md`
 - **Revised Requirements**: `/workspace/docs/REVISED_REQUIREMENTS.md`
@@ -262,11 +296,28 @@ mix test --cover                  # Tests with coverage
 
 ## Key Files and Modules
 
+### Core Architecture
+- `lib/eve_dmv/application.ex` - Application supervisor tree
 - `lib/eve_dmv/api.ex` - Central Ash API domain
+- `lib/eve_dmv/contexts/` - Bounded contexts (battle_analysis, surveillance, etc.)
+- `ARCHITECTURE.md` - Complete system design documentation
+
+### Data Pipeline
 - `lib/eve_dmv/killmails/killmail_pipeline.ex` - Broadway pipeline
 - `lib/eve_dmv/killmails/sse_producer.ex` - SSE connection handler
-- `lib/eve_dmv_web/live/kill_feed_live.ex` - Live kill feed UI
+- `lib/eve_dmv/database/` - Partitioning, materialized views, query optimization
+
+### Web Interface
 - `lib/eve_dmv_web/router.ex` - Route definitions
+- `lib/eve_dmv_web/live/` - LiveView modules
+- `lib/eve_dmv_web/components/` - Reusable UI components
+
+### Intelligence Engine
+- `lib/eve_dmv/intelligence/` - Analysis engines and scoring
+- `lib/eve_dmv/analytics/` - Battle detection, fleet analysis
+- `lib/eve_dmv/surveillance/` - Profile matching engine
+
+### Configuration
 - `config/config.exs` - Base configuration
-- `WANDERER_KILLS_SSE_REQUIREMENTS.md` - SSE implementation specification
+- `config/runtime.exs` - Runtime configuration with .env support
 - `.env` - Environment variable configuration

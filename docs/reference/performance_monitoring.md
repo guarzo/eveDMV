@@ -12,7 +12,9 @@ EVE DMV now includes a comprehensive performance monitoring system that tracks q
 - Maintains metrics in ETS for fast access
 - Automatic cleanup of old metrics (24-hour retention)
 
-### 2. Performance Dashboard (`/admin/performance`)
+### 2. Performance Dashboard
+- Available at `/admin/performance-dashboard` in production (requires admin access)
+- Custom LiveView implementation exists at `EveDmvWeb.Admin.PerformanceLive`
 - Real-time dashboard showing:
   - Query performance statistics (min/max/avg/percentiles)
   - Slow query detection
@@ -70,9 +72,10 @@ tracked_query("character_lookup",
 
 ### Analyzing Performance
 
-1. Visit `/admin/performance` to see real-time metrics
+1. Visit `/admin/performance-dashboard` to see real-time metrics (production only)
 2. Use `mix eve.db_indexes --analyze` to check query performance
 3. Check application logs for threshold warnings
+4. Review telemetry data via LiveDashboard integration
 
 ### Performance Thresholds
 

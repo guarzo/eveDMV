@@ -52,3 +52,5 @@ npm-debug.log
 .claude
 /priv/plts/
 ./tmp
+
+node_modules
