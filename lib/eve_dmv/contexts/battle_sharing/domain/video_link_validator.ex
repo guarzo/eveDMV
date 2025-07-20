@@ -453,12 +453,12 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
 
   defp generate_embed_html(embed_url, video_info) do
     """
-    <iframe 
-      src="#{embed_url}" 
-      width="560" 
-      height="315" 
-      frameborder="0" 
-      allowfullscreen 
+    <iframe
+      src="#{embed_url}"
+      width="560"
+      height="315"
+      frameborder="0"
+      allowfullscreen
       title="#{video_info.platform_name} Video Player"
       loading="lazy">
     </iframe>

@@ -21,7 +21,7 @@ defmodule EveDmv.Workers.UITaskSupervisor do
   use EveDmv.Workers.GenericTaskSupervisor
 
   @impl true
-  def config() do
+  def config do
     [
       name: __MODULE__,
       # 30 seconds

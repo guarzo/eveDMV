@@ -67,20 +67,20 @@ defmodule EveDmv.Database.CharacterQueries do
   """
   def get_recent_activity(character_id, opts \\ []) do
     base_query = """
-    SELECT 
+    SELECT
       killmail_id,
       killmail_time,
       solar_system_id,
-      CASE 
+      CASE
         WHEN victim_character_id = $1 THEN 'loss'
         ELSE 'kill'
       END as involvement_type,
       victim_ship_type_id as ship_type_id,
       COALESCE((raw_data->>'total_value')::numeric, 0) as total_value
     FROM killmails_raw
-    WHERE victim_character_id = $1 
+    WHERE victim_character_id = $1
        OR EXISTS (
-         SELECT 1 
+         SELECT 1
          FROM jsonb_array_elements(raw_data->'attackers') as attacker
          WHERE attacker->>'character_id' = $2
        )
@@ -184,7 +184,7 @@ defmodule EveDmv.Database.CharacterQueries do
   def get_character_affiliations(character_id) do
     query = """
     WITH recent_data AS (
-      SELECT 
+      SELECT
         raw_data->'victim' as victim_data,
         killmail_time
       FROM killmails_raw
@@ -193,7 +193,7 @@ defmodule EveDmv.Database.CharacterQueries do
       LIMIT 1
     ),
     attacker_data AS (
-      SELECT 
+      SELECT
         attacker as attacker_data,
         killmail_time
       FROM killmails_raw,
@@ -202,7 +202,7 @@ defmodule EveDmv.Database.CharacterQueries do
       ORDER BY killmail_time DESC
       LIMIT 1
     )
-    SELECT 
+    SELECT
       COALESCE(
         (SELECT victim_data->>'corporation_name' FROM recent_data),
         (SELECT attacker_data->>'corporation_name' FROM attacker_data)

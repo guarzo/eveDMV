@@ -11,13 +11,13 @@ defmodule Mix.Tasks.Eve.UpdateSde do
   ## Usage
 
       mix eve.update_sde
-      
+
   ## Options
 
     * `--force` - Force update even if data appears current
     * `--check-only` - Only check for updates without downloading
     * `--verbose` - Show detailed progress information
-    
+
   ## Examples
 
       mix eve.update_sde

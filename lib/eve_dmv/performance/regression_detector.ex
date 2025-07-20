@@ -2,7 +2,7 @@ defmodule EveDmv.Performance.RegressionDetector do
   @moduledoc """
   Automated performance regression detection system.
 
-  Monitors key performance metrics and alerts when performance 
+  Monitors key performance metrics and alerts when performance
   degrades beyond acceptable thresholds.
   """
 

@@ -186,7 +186,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
         # Query to get killmails where the character was an attacker and analyze their weapon usage
         weapon_query = """
         WITH character_weapons AS (
-          SELECT 
+          SELECT
             attacker->>'character_id' as char_id,
             jsonb_array_elements(attacker->'items') as item_data,
             k.killmail_time
@@ -197,7 +197,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
             AND jsonb_array_length(COALESCE(attacker->'items', '[]'::jsonb)) > 0
         ),
         weapon_usage AS (
-          SELECT 
+          SELECT
             (item_data->>'type_id')::integer as weapon_type_id,
             COUNT(*) as usage_count,
             MAX(killmail_time) as last_used
@@ -208,7 +208,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
               eit.group_id IN (
                 53, 54, 55, 74, 76, 506, 507, 508, 509, 510, 511, 512, 513, 514, 515, 516, 517, 518, 519, 520, 521, 522, 523, 524, 525, 526, 527, 528, 529, 530, 531, 532, 533, 534, 535, 536, 537, 538, 539, 540, 541, 542, 543, 544, 545, 546, 547, 548, 549, 550, 551, 552, 553, 554, 555, 556, 557, 558, 559, 560, 561, 562, 563, 564, 565, 566, 567, 568, 569, 570, 571, 572, 573, 574, 575, 576, 577, 578, 579, 580, 581, 582, 583, 584, 585, 586, 587, 588, 589, 590, 591, 592, 593, 594, 595, 596, 597, 598, 599, 600
               ) OR
-              eit.type_name ILIKE '%gun%' OR 
+              eit.type_name ILIKE '%gun%' OR
               eit.type_name ILIKE '%launcher%' OR
               eit.type_name ILIKE '%turret%' OR
               eit.type_name ILIKE '%missile%' OR
@@ -219,7 +219,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
           ORDER BY usage_count DESC
           LIMIT 15
         )
-        SELECT 
+        SELECT
           wu.weapon_type_id,
           eit.type_name as weapon_name,
           eit.group_name as weapon_group,
@@ -336,25 +336,25 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
         efficiency_query = """
         WITH character_isk_data AS (
           -- ISK destroyed (when character is attacker)
-          SELECT 
+          SELECT
             SUM(COALESCE((k.raw_data->>'total_value')::numeric, 0)) as isk_destroyed,
             0 as isk_lost
           FROM killmails_raw k,
                jsonb_array_elements(k.raw_data->'attackers') as attacker
           WHERE attacker->>'character_id' = $1
             AND k.killmail_time >= $2
-          
+
           UNION ALL
-          
+
           -- ISK lost (when character is victim)
-          SELECT 
+          SELECT
             0 as isk_destroyed,
             SUM(COALESCE((k.raw_data->>'total_value')::numeric, 0)) as isk_lost
           FROM killmails_raw k
           WHERE k.victim_character_id = $3
             AND k.killmail_time >= $4
         )
-        SELECT 
+        SELECT
           SUM(isk_destroyed) as total_destroyed,
           SUM(isk_lost) as total_lost,
           COUNT(CASE WHEN isk_destroyed > 0 THEN 1 END) as kills_count,
@@ -479,19 +479,19 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
           SELECT DISTINCT
             COALESCE(
               (SELECT raw_data->'victim'->>'corporation_id' FROM killmails_raw WHERE victim_character_id = $3 LIMIT 1),
-              (SELECT attacker->>'corporation_id' 
+              (SELECT attacker->>'corporation_id'
                FROM killmails_raw k, jsonb_array_elements(k.raw_data->'attackers') as attacker
                WHERE attacker->>'character_id' = $1 LIMIT 1)
             )::integer as char_corp_id,
             COALESCE(
               (SELECT raw_data->'victim'->>'alliance_id' FROM killmails_raw WHERE victim_character_id = $3 LIMIT 1),
-              (SELECT attacker->>'alliance_id' 
+              (SELECT attacker->>'alliance_id'
                FROM killmails_raw k, jsonb_array_elements(k.raw_data->'attackers') as attacker
                WHERE attacker->>'character_id' = $1 LIMIT 1)
             )::integer as char_alliance_id
         ),
         external_collaborations AS (
-          SELECT 
+          SELECT
             k.killmail_id,
             k.killmail_time,
             k.solar_system_id,
@@ -520,7 +520,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
             )
         ),
         corp_collaboration_stats AS (
-          SELECT 
+          SELECT
             ext_corp_id::integer as corporation_id,
             ext_corp_name as corporation_name,
             ext_alliance_id::integer as alliance_id,
@@ -539,7 +539,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
           ORDER BY kills_together DESC
           LIMIT 15
         )
-        SELECT 
+        SELECT
           corporation_id,
           corporation_name,
           alliance_id,
@@ -718,7 +718,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
         # Query to analyze gang size patterns from killmail participant counts
         gang_size_query = """
         WITH character_gang_data AS (
-          SELECT 
+          SELECT
             k.killmail_id,
             k.killmail_time,
             jsonb_array_length(k.raw_data->'attackers') as gang_size,
@@ -731,12 +731,12 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
             AND jsonb_array_length(k.raw_data->'attackers') > 0
         ),
         gang_size_categories AS (
-          SELECT 
+          SELECT
             killmail_id,
             gang_size,
             kill_value,
             solar_system_id,
-            CASE 
+            CASE
               WHEN gang_size = 1 THEN 'solo'
               WHEN gang_size BETWEEN 2 AND 5 THEN 'small_gang'
               WHEN gang_size BETWEEN 6 AND 15 THEN 'medium_gang'
@@ -745,7 +745,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
             END as size_category
           FROM character_gang_data
         )
-        SELECT 
+        SELECT
           size_category,
           COUNT(*) as kill_count,
           AVG(gang_size) as avg_gang_size,
@@ -754,7 +754,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
           COUNT(DISTINCT solar_system_id) as systems_active
         FROM gang_size_categories
         GROUP BY size_category
-        ORDER BY 
+        ORDER BY
           CASE size_category
             WHEN 'solo' THEN 1
             WHEN 'small_gang' THEN 2
@@ -935,12 +935,12 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
         activity_query = """
         WITH character_activity AS (
           -- Get all killmails where character participated
-          SELECT 
+          SELECT
             k.killmail_time,
             DATE(k.killmail_time) as activity_date,
             EXTRACT(HOUR FROM k.killmail_time) as hour_utc,
             EXTRACT(DOW FROM k.killmail_time) as day_of_week,
-            CASE 
+            CASE
               WHEN k.victim_character_id = $3 THEN 'death'
               ELSE 'kill'
             END as activity_type
@@ -949,14 +949,14 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
             AND (
               k.victim_character_id = $3
               OR EXISTS (
-                SELECT 1 
+                SELECT 1
                 FROM jsonb_array_elements(k.raw_data->'attackers') as attacker
                 WHERE attacker->>'character_id' = $1
               )
             )
         ),
         hourly_activity AS (
-          SELECT 
+          SELECT
             hour_utc,
             COUNT(*) as activity_count
           FROM character_activity
@@ -964,7 +964,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
           ORDER BY activity_count DESC
         ),
         daily_activity AS (
-          SELECT 
+          SELECT
             activity_date,
             COUNT(*) as daily_count,
             COUNT(CASE WHEN activity_type = 'kill' THEN 1 END) as kills,
@@ -974,7 +974,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
           ORDER BY activity_date DESC
         ),
         weekday_activity AS (
-          SELECT 
+          SELECT
             day_of_week,
             COUNT(*) as activity_count,
             CASE day_of_week
@@ -990,21 +990,21 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
           GROUP BY day_of_week
           ORDER BY activity_count DESC
         )
-        SELECT 
+        SELECT
           -- Recent activity metrics
           (SELECT COUNT(*) FROM character_activity WHERE activity_date >= CURRENT_DATE - INTERVAL '7 days') as recent_kills,
           (SELECT COUNT(DISTINCT activity_date) FROM character_activity) as active_days,
-          
+
           -- Peak activity patterns
           (SELECT hour_utc FROM hourly_activity LIMIT 1) as most_active_hour,
           (SELECT weekday_name FROM weekday_activity LIMIT 1) as most_active_weekday,
           (SELECT activity_date FROM daily_activity ORDER BY daily_count DESC LIMIT 1) as best_day,
           (SELECT daily_count FROM daily_activity ORDER BY daily_count DESC LIMIT 1) as best_day_count,
-          
+
           -- Activity consistency
           (SELECT AVG(daily_count) FROM daily_activity) as avg_daily_activity,
           (SELECT STDDEV(daily_count) FROM daily_activity) as activity_variance,
-          
+
           -- Recent trends (last 7 vs previous 7 days)
           (SELECT COUNT(*) FROM character_activity WHERE activity_date >= CURRENT_DATE - INTERVAL '7 days') as last_7_days,
           (SELECT COUNT(*) FROM character_activity WHERE activity_date >= CURRENT_DATE - INTERVAL '14 days' AND activity_date < CURRENT_DATE - INTERVAL '7 days') as prev_7_days
@@ -1097,7 +1097,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
     case peak_hour do
       # Europe/London evening
       hour when hour in 18..22 -> "UTC+0"
-      # Europe/Berlin evening  
+      # Europe/Berlin evening
       hour when hour in 17..21 -> "UTC+1"
       # Europe/Helsinki evening
       hour when hour in 16..20 -> "UTC+2"
@@ -1167,7 +1167,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
         AND (
           k.victim_character_id = $3
           OR EXISTS (
-            SELECT 1 
+            SELECT 1
             FROM jsonb_array_elements(k.raw_data->'attackers') as attacker
             WHERE attacker->>'character_id' = $1
           )
@@ -1175,7 +1175,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
       ORDER BY activity_date DESC
     ),
     streak_calc AS (
-      SELECT 
+      SELECT
         activity_date,
         ROW_NUMBER() OVER (ORDER BY activity_date DESC) as rn,
         activity_date + ROW_NUMBER() OVER (ORDER BY activity_date DESC) * INTERVAL '1 day' as expected_date
@@ -1229,13 +1229,13 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
         # Query to aggregate intelligence data for the summary
         intelligence_summary_query = """
         WITH character_activity AS (
-          SELECT 
+          SELECT
             k.killmail_time,
             k.solar_system_id,
             s.system_name,
             s.region_name,
             EXTRACT(HOUR FROM k.killmail_time) as hour_utc,
-            CASE 
+            CASE
               WHEN k.victim_character_id = $3 THEN 'death'
               ELSE 'kill'
             END as activity_type,
@@ -1246,14 +1246,14 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
             AND (
               k.victim_character_id = $3
               OR EXISTS (
-                SELECT 1 
+                SELECT 1
                 FROM jsonb_array_elements(k.raw_data->'attackers') as attacker
                 WHERE attacker->>'character_id' = $1
               )
             )
         ),
         hourly_analysis AS (
-          SELECT 
+          SELECT
             hour_utc,
             COUNT(*) as activity_count,
             COUNT(CASE WHEN activity_type = 'kill' THEN 1 END) as kills,
@@ -1264,7 +1264,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
           ORDER BY activity_count DESC
         ),
         location_analysis AS (
-          SELECT 
+          SELECT
             solar_system_id,
             system_name,
             region_name,
@@ -1278,7 +1278,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
           ORDER BY activity_count DESC
         ),
         region_analysis AS (
-          SELECT 
+          SELECT
             region_name,
             COUNT(*) as activity_count,
             COUNT(DISTINCT solar_system_id) as systems_active,
@@ -1288,23 +1288,23 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
           GROUP BY region_name
           ORDER BY activity_count DESC
         )
-        SELECT 
+        SELECT
           -- Peak activity hour
           (SELECT hour_utc FROM hourly_analysis LIMIT 1) as peak_activity_hour,
           (SELECT activity_count FROM hourly_analysis LIMIT 1) as peak_hour_activity,
           (SELECT isk_destroyed FROM hourly_analysis LIMIT 1) as peak_hour_isk,
-          
+
           -- Top location (system)
           (SELECT solar_system_id FROM location_analysis LIMIT 1) as top_system_id,
           (SELECT system_name FROM location_analysis LIMIT 1) as top_system_name,
           (SELECT region_name FROM location_analysis LIMIT 1) as top_system_region,
           (SELECT activity_count FROM location_analysis LIMIT 1) as top_system_activity,
-          
+
           -- Top region
           (SELECT region_name FROM region_analysis LIMIT 1) as top_region_name,
           (SELECT activity_count FROM region_analysis LIMIT 1) as top_region_activity,
           (SELECT systems_active FROM region_analysis LIMIT 1) as top_region_systems,
-          
+
           -- Activity diversity metrics
           (SELECT COUNT(*) FROM hourly_analysis WHERE activity_count > 0) as active_hours,
           (SELECT COUNT(*) FROM location_analysis WHERE activity_count > 0) as active_systems,

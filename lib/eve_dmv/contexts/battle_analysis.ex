@@ -247,10 +247,10 @@ defmodule EveDmv.Contexts.BattleAnalysis do
 
       # Import a single kill
       {:ok, battle} = import_from_zkillboard("https://zkillboard.com/kill/128431979/")
-      
+
       # Import related kills from a battle
       {:ok, battle} = import_from_zkillboard("https://zkillboard.com/related/31001629/202507090500/")
-      
+
       # Import recent kills for a character
       {:ok, battles} = import_from_zkillboard("https://zkillboard.com/character/1234567890/")
   """

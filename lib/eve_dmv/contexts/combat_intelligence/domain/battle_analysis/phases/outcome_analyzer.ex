@@ -460,7 +460,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
     # Adjust for battle duration
     weights =
       if battle_duration > 1800 do
-        # Long battles emphasize strategic factors  
+        # Long battles emphasize strategic factors
         base_weights
         |> Map.update!(:strategic, &(&1 + 0.1))
         |> Map.update!(:tactical, &(&1 - 0.1))

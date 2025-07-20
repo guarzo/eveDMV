@@ -70,14 +70,14 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
         <h1 class="text-3xl font-bold text-white mb-2">Performance Dashboard</h1>
         <p class="text-gray-400">Real-time monitoring of system performance and bottlenecks</p>
       </div>
-      
+
       <!-- Controls -->
       <div class="bg-gray-800 rounded-lg p-4 mb-6">
         <div class="flex flex-wrap gap-4">
           <div>
             <label class="text-sm text-gray-400">Time Range</label>
-            <select 
-              phx-change="change_time_range" 
+            <select
+              phx-change="change_time_range"
               name="range"
               class="ml-2 bg-gray-700 text-white rounded px-3 py-1"
             >
@@ -86,11 +86,11 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
               <option value="day" selected={@time_range == :day}>Last 24 Hours</option>
             </select>
           </div>
-          
+
           <div>
             <label class="text-sm text-gray-400">Slow Query Threshold (ms)</label>
-            <input 
-              type="number" 
+            <input
+              type="number"
               phx-change="change_threshold"
               name="threshold"
               value={@threshold_ms}
@@ -99,7 +99,7 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
           </div>
         </div>
       </div>
-      
+
       <!-- Metrics Summary -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <%= for {type, label} <- [{:query, "Database Queries"}, {:api_call, "API Calls"}, {:liveview, "LiveView Operations"}] do %>
@@ -132,7 +132,7 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
           </div>
         <% end %>
       </div>
-      
+
       <!-- Bottlenecks Analysis -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <!-- Slow Queries -->
@@ -162,7 +162,7 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
             <p class="text-gray-500">No slow queries detected</p>
           <% end %>
         </div>
-        
+
         <!-- Performance Degradation -->
         <div class="bg-gray-800 rounded-lg p-6">
           <h3 class="text-lg font-semibold text-white mb-4">
@@ -191,7 +191,7 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
           <% end %>
         </div>
       </div>
-      
+
       <!-- Cache Statistics -->
       <div class="bg-gray-800 rounded-lg p-6 mb-8">
         <h3 class="text-lg font-semibold text-white mb-4">Query Cache Statistics</h3>
@@ -218,14 +218,14 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
             </div>
           </div>
           <div class="mt-4 text-sm text-gray-400">
-            Evictions: <%= @cache_stats.evictions %> | 
+            Evictions: <%= @cache_stats.evictions %> |
             Uptime: <%= @cache_stats.uptime_hours %>h
           </div>
         <% else %>
           <p class="text-gray-500">Cache statistics unavailable</p>
         <% end %>
       </div>
-      
+
       <!-- High Frequency Operations -->
       <div class="bg-gray-800 rounded-lg p-6">
         <h3 class="text-lg font-semibold text-white mb-4">

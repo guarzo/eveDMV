@@ -40,7 +40,7 @@ defmodule EveDmv.Utils.FleetUtils do
       ship_type_id in [29_248, 29_984, 29_986, 29_988] -> "T3 Destroyer"
       # Frigates
       ship_type_id in 582..650 -> "Frigate"
-      # Regular Destroyers  
+      # Regular Destroyers
       ship_type_id in [16_219, 16_227, 16_236, 16_242] -> "Destroyer"
       ship_type_id in 324..380 -> "Destroyer"
       # Cruisers

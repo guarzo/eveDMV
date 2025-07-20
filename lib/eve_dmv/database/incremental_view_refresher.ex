@@ -212,7 +212,7 @@ defmodule EveDmv.Database.IncrementalViewRefresher do
 
     sql = """
     WITH recent_kills AS (
-      SELECT 
+      SELECT
         character_id,
         character_name,
         is_victim,
@@ -259,7 +259,7 @@ defmodule EveDmv.Database.IncrementalViewRefresher do
     DELETE FROM recent_character_activity;
 
     INSERT INTO recent_character_activity
-    SELECT 
+    SELECT
       p.character_id,
       p.character_name,
       COUNT(*) FILTER (WHERE p.is_victim = false) as kills_24h,
@@ -317,8 +317,8 @@ defmodule EveDmv.Database.IncrementalViewRefresher do
 
   defp get_last_refresh_time(view_name) do
     sql = """
-    SELECT last_refresh_time 
-    FROM view_refresh_tracking 
+    SELECT last_refresh_time
+    FROM view_refresh_tracking
     WHERE view_name = $1
     """
 
@@ -330,8 +330,8 @@ defmodule EveDmv.Database.IncrementalViewRefresher do
 
   defp get_last_full_refresh_time(view_name) do
     sql = """
-    SELECT last_full_refresh_time 
-    FROM view_refresh_tracking 
+    SELECT last_full_refresh_time
+    FROM view_refresh_tracking
     WHERE view_name = $1
     """
 
@@ -347,7 +347,7 @@ defmodule EveDmv.Database.IncrementalViewRefresher do
     sql =
       if refresh_type == "full" do
         """
-        INSERT INTO view_refresh_tracking 
+        INSERT INTO view_refresh_tracking
         (view_name, last_refresh_time, last_full_refresh_time, refresh_duration_ms, rows_updated, refresh_type)
         VALUES ($1, $2, $3, $4, $5, $6)
         ON CONFLICT (view_name) DO UPDATE SET
@@ -359,7 +359,7 @@ defmodule EveDmv.Database.IncrementalViewRefresher do
         """
       else
         """
-        INSERT INTO view_refresh_tracking 
+        INSERT INTO view_refresh_tracking
         (view_name, last_refresh_time, refresh_duration_ms, rows_updated, refresh_type)
         VALUES ($1, $2, $3, $4, $5)
         ON CONFLICT (view_name) DO UPDATE SET
@@ -397,7 +397,7 @@ defmodule EveDmv.Database.IncrementalViewRefresher do
 
   defp compile_refresh_status(state) do
     sql = """
-    SELECT 
+    SELECT
       view_name,
       last_refresh_time,
       last_full_refresh_time,

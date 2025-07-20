@@ -17,14 +17,14 @@ defmodule Mix.Tasks.Eve.ListIndexes do
     Mix.shell().info("=" <> String.duplicate("=", 60))
 
     query = """
-    SELECT 
+    SELECT
       p.tablename,
       p.indexname,
       p.indexdef,
       pg_size_pretty(pg_relation_size(p.indexname::regclass)) as index_size
     FROM pg_indexes p
     WHERE p.schemaname = 'public'
-    AND p.tablename IN ('killmails_raw', 'participants', 'character_stats', 
+    AND p.tablename IN ('killmails_raw', 'participants', 'character_stats',
                         'eve_solar_systems', 'eve_item_types')
     ORDER BY p.tablename, p.indexname
     """

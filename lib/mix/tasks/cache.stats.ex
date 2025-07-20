@@ -6,13 +6,13 @@ defmodule Mix.Tasks.Cache.Stats do
 
       # Show cache statistics
       mix cache.stats
-      
+
       # Clear specific corporation cache
       mix cache.stats --clear-corp 12_345
-      
-      # Clear specific character cache  
+
+      # Clear specific character cache
       mix cache.stats --clear-char 67890
-      
+
       # Clear all cache
       mix cache.stats --clear-all
   """

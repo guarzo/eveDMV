@@ -288,7 +288,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
     # Use raw SQL for more efficient check
     query = """
       SELECT EXISTS(
-        SELECT 1 FROM killmails_raw 
+        SELECT 1 FROM killmails_raw
         WHERE killmail_id = $1
         LIMIT 1
       )

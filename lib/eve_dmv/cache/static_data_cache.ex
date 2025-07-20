@@ -235,7 +235,7 @@ defmodule EveDmv.Cache.StaticDataCache do
         # Single fetch with caching
         case fetch_and_cache_item(type_id, category) do
           {:ok, name} -> name
-          :error -> "Unknown #{category |> to_string() |> String.capitalize()}"
+          :error -> "Unknown #{to_string(category) |> String.capitalize()}"
         end
     end
   end
@@ -297,7 +297,7 @@ defmodule EveDmv.Cache.StaticDataCache do
 
         unknown_map =
           Map.new(missing_ids, fn id ->
-            name = "Unknown #{category |> to_string() |> String.capitalize()} (#{id})"
+            name = "Unknown #{to_string(category) |> String.capitalize()} (#{id})"
             :ets.insert(@table_name, {{category, id}, name})
             {id, name}
           end)
@@ -308,7 +308,7 @@ defmodule EveDmv.Cache.StaticDataCache do
         Logger.error("Failed to batch fetch items: #{inspect(error)}")
 
         Map.new(type_ids, fn id ->
-          {id, "Unknown #{category |> to_string() |> String.capitalize()}"}
+          {id, "Unknown #{to_string(category) |> String.capitalize()}"}
         end)
     end
   end

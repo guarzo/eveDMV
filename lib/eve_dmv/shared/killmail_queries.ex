@@ -17,7 +17,7 @@ defmodule EveDmv.Shared.KillmailQueries do
 
     """
     WITH character_activity AS (
-      SELECT 
+      SELECT
         p.is_victim,
         COUNT(*) as count,
         COALESCE(SUM(k.zkb_total_value), 0) as total_value
@@ -27,7 +27,7 @@ defmodule EveDmv.Shared.KillmailQueries do
         AND k.killmail_time >= $2
       GROUP BY p.is_victim
     )
-    SELECT 
+    SELECT
       COALESCE(SUM(CASE WHEN is_victim = false THEN count ELSE 0 END), 0) as kills,
       COALESCE(SUM(CASE WHEN is_victim = true THEN count ELSE 0 END), 0) as losses,
       COALESCE(SUM(CASE WHEN is_victim = false THEN total_value ELSE 0 END), 0) as isk_destroyed,
@@ -43,7 +43,7 @@ defmodule EveDmv.Shared.KillmailQueries do
     _since_date = DateTime.add(DateTime.utc_now(), -time_window_days * 24 * 60 * 60, :second)
 
     """
-    SELECT 
+    SELECT
       p.character_id,
       p.character_name,
       COUNT(CASE WHEN p.is_victim = false THEN 1 END) as kills,
@@ -74,7 +74,7 @@ defmodule EveDmv.Shared.KillmailQueries do
       end
 
     """
-    SELECT 
+    SELECT
       EXTRACT(HOUR FROM k.killmail_time AT TIME ZONE 'UTC') as hour,
       COUNT(CASE WHEN p.is_victim = false THEN 1 END) as kills,
       COUNT(CASE WHEN p.is_victim = true THEN 1 END) as losses,
@@ -102,7 +102,7 @@ defmodule EveDmv.Shared.KillmailQueries do
       end
 
     """
-    SELECT 
+    SELECT
       p.ship_type_id,
       MAX(t.type_name) as ship_name,
       COUNT(*) as usage_count,
@@ -133,7 +133,7 @@ defmodule EveDmv.Shared.KillmailQueries do
       end
 
     """
-    SELECT 
+    SELECT
       DATE(k.killmail_time) as activity_date,
       COUNT(DISTINCT CASE WHEN p.is_victim = false THEN k.killmail_id END) as kills,
       COUNT(DISTINCT CASE WHEN p.is_victim = true THEN k.killmail_id END) as losses,
@@ -170,7 +170,7 @@ defmodule EveDmv.Shared.KillmailQueries do
   """
   def corporation_overview_query(_corporation_id) do
     """
-    SELECT 
+    SELECT
       COUNT(DISTINCT p.character_id) as total_members,
       COUNT(DISTINCT CASE WHEN k.killmail_time >= NOW() - INTERVAL '7 days' THEN p.character_id END) as active_7d,
       COUNT(DISTINCT CASE WHEN k.killmail_time >= NOW() - INTERVAL '30 days' THEN p.character_id END) as active_30d,

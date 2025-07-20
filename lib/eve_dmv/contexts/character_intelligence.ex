@@ -433,7 +433,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
       threat_score: threat_analysis.threat_score,
       primary_behavior: primary_pattern,
       summary:
-        "#{threat_level} threat #{primary_pattern |> to_string() |> String.replace("_", " ")} with #{threat_analysis.threat_score}/100 overall score",
+        "#{threat_level} threat #{to_string(primary_pattern) |> String.replace("_", " ")} with #{threat_analysis.threat_score}/100 overall score",
       key_strengths: extract_key_strengths(threat_analysis.dimensions),
       recommendations: generate_tactical_recommendations(threat_analysis, behavioral_patterns)
     }
@@ -445,7 +445,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
     |> Enum.take(3)
     |> Enum.map(fn {key, value} ->
       %{
-        dimension: key |> to_string() |> String.replace("_", " ") |> String.capitalize(),
+        dimension: to_string(key) |> String.replace("_", " ") |> String.capitalize(),
         score: value
       }
     end)

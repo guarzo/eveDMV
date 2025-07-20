@@ -242,7 +242,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
       2206,
       2207,
       2208,
-      # Beam lasers  
+      # Beam lasers
       2221,
       2222,
       2223,
@@ -1009,7 +1009,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
         cond do
           # Frigates
           id in 582..650 -> 150
-          # Destroyers  
+          # Destroyers
           id in 324..380 -> 200
           # Cruisers
           id in 620..634 -> 350
@@ -1296,7 +1296,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
     case slot_type do
       # High slots
       "high" -> flag >= 27 and flag <= 34
-      # Med slots  
+      # Med slots
       "med" -> flag >= 19 and flag <= 26
       # Low slots
       "low" -> flag >= 11 and flag <= 18

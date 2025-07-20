@@ -20,7 +20,7 @@ defmodule EveDmv.Admin do
 
       iex> EveDmv.Admin.promote_user_to_admin(123456789)
       {:ok, %User{is_admin: true}}
-      
+
       iex> EveDmv.Admin.promote_user_to_admin(999999999)
       {:error, :user_not_found}
   """
@@ -80,7 +80,7 @@ defmodule EveDmv.Admin do
 
       # In IEx console:
       EveDmv.Admin.bootstrap_first_admin("Your Character Name")
-      
+
   ## Environment Variable Bootstrap (Recommended)
 
   For production deployment, use environment variables instead:
@@ -88,7 +88,7 @@ defmodule EveDmv.Admin do
       # In production environment:
       ADMIN_BOOTSTRAP_CHARACTERS="Your Character Name,Another Admin"
       ADMIN_BOOTSTRAP_CHARACTER_IDS="123456789,987654321"
-      
+
   Admin users will be automatically promoted during application startup.
   """
   def bootstrap_first_admin(character_name) when is_binary(character_name) do

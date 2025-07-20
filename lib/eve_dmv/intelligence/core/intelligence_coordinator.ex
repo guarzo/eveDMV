@@ -193,7 +193,7 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
     # 1. Battle Analysis Threat Alerts
     battle_threats = get_battle_threat_alerts(cutoff_time)
 
-    # 2. Character Intelligence Alerts  
+    # 2. Character Intelligence Alerts
     character_threats = get_character_threat_alerts(cutoff_time)
 
     # 3. System Activity Alerts
@@ -236,7 +236,7 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
     # 1. Recent character intelligence analyses
     character_analyses = get_recent_character_analyses(cutoff_time, limit)
 
-    # 2. Recent battle analyses 
+    # 2. Recent battle analyses
     battle_analyses = get_recent_battle_analyses(cutoff_time, limit)
 
     # 3. Recent vetting analyses

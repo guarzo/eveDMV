@@ -73,7 +73,7 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
         <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">System Monitoring Dashboard</h1>
         <p class="mt-2 text-gray-600 dark:text-gray-400">Real-time system health and error tracking</p>
       </div>
-      
+
       <!-- Pipeline Health Status -->
       <div class="mb-8 bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <div class="flex items-center justify-between mb-4">
@@ -82,7 +82,7 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
             <%= String.upcase(to_string(@pipeline_health.status)) %>
           </span>
         </div>
-        
+
         <%= if @pipeline_health.issues != [] do %>
           <div class="mt-4 space-y-2">
             <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Issues:</p>
@@ -97,7 +97,7 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
           </div>
         <% end %>
       </div>
-      
+
       <!-- Pipeline Metrics Grid -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <.metric_card
@@ -107,7 +107,7 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
           icon="hero-check-circle"
           color="green"
         />
-        
+
         <.metric_card
           title="Messages Failed"
           value={@pipeline_metrics.messages.failed}
@@ -115,7 +115,7 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
           icon="hero-x-circle"
           color="red"
         />
-        
+
         <.metric_card
           title="Avg Processing Time"
           value={"#{Float.round(@pipeline_metrics.performance.avg_processing_time_ms, 1)} ms"}
@@ -123,7 +123,7 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
           icon="hero-clock"
           color="blue"
         />
-        
+
         <.metric_card
           title="Batches Processed"
           value={@pipeline_metrics.batches.processed}
@@ -132,7 +132,7 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
           color="purple"
         />
       </div>
-      
+
       <!-- Data Quality Metrics -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <.metric_card
@@ -142,7 +142,7 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
           icon="hero-exclamation-triangle"
           color="yellow"
         />
-        
+
         <.metric_card
           title="Pipeline Throughput"
           value={"#{Float.round(@pipeline_metrics.messages.processed / max(1, DateTime.diff(DateTime.utc_now(), @pipeline_metrics.started_at, :minute)), 1)}/min"}
@@ -150,7 +150,7 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
           icon="hero-arrow-trending-up"
           color="green"
         />
-        
+
         <.metric_card
           title="System Uptime"
           value={format_uptime(@pipeline_metrics.started_at)}
@@ -159,7 +159,7 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
           color="blue"
         />
       </div>
-      
+
       <!-- Error Summary -->
       <div class="mb-8 bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <div class="flex items-center justify-between mb-4">
@@ -174,7 +174,7 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
             </button>
           </div>
         </div>
-        
+
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div>
             <p class="text-sm text-gray-600 dark:text-gray-400">Total Errors</p>
@@ -193,7 +193,7 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
             </p>
           </div>
         </div>
-        
+
         <!-- Top Errors Table -->
         <%= if @error_summary.top_errors != [] do %>
           <div class="mt-6">
@@ -241,7 +241,7 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
           </div>
         <% end %>
       </div>
-      
+
       <!-- Missing Ship Types -->
       <div class="mb-8 bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <div class="flex items-center justify-between mb-4">
@@ -250,7 +250,7 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
             <%= @missing_ship_types_count %> unique types
           </span>
         </div>
-        
+
         <%= if @top_missing_ship_types == [] do %>
           <p class="text-gray-500 dark:text-gray-400 text-center py-8">No missing ship types detected</p>
         <% else %>
@@ -297,11 +297,11 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
           </p>
         <% end %>
       </div>
-      
+
       <!-- Recent Alerts -->
       <div class="mb-8 bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Recent Alerts</h2>
-        
+
         <%= if @recent_alerts == [] do %>
           <p class="text-gray-500 dark:text-gray-400 text-center py-8">No recent alerts</p>
         <% else %>
@@ -320,7 +320,7 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
           </div>
         <% end %>
       </div>
-      
+
       <!-- Recovery Actions -->
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <div class="flex items-center justify-between mb-4">
@@ -332,7 +332,7 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
             Force Check
           </button>
         </div>
-        
+
         <%= if @recovery_history == [] do %>
           <p class="text-gray-500 dark:text-gray-400 text-center py-8">No recovery actions taken</p>
         <% else %>

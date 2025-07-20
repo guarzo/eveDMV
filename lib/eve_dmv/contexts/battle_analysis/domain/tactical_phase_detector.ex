@@ -4,7 +4,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
 
   Analyzes battle data to automatically identify distinct tactical phases:
   - Setup Phase: Low damage, positioning, EWAR deployment
-  - Engagement Phase: High damage, focus fire, ship losses  
+  - Engagement Phase: High damage, focus fire, ship losses
   - Resolution Phase: Cleanup, looting, extraction
 
   Uses k-means clustering on damage rate, engagement distance, and ship movement vectors
@@ -652,7 +652,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
         true -> "small"
       end
 
-    "#{intensity} #{scale} #{phase_type |> to_string() |> String.replace("_", " ")} with #{participants} participants"
+    "#{intensity} #{scale} #{to_string(phase_type) |> String.replace("_", " ")} with #{participants} participants"
   end
 
   defp calculate_average_distance(killmails) do
@@ -855,7 +855,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
     cond do
       # Frigates (rough range)
       ship_type_id in 580..700 -> 3000
-      # Destroyers  
+      # Destroyers
       ship_type_id in 420..450 -> 8000
       # Cruisers
       ship_type_id in 620..650 -> 15_000

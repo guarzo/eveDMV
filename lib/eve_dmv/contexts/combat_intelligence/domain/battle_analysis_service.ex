@@ -404,7 +404,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
           {start_time, end_time} = calculate_optimal_battle_window(system_id, battle_time)
 
           query = """
-          SELECT 
+          SELECT
             killmail_id,
             killmail_time,
             killmail_hash,
@@ -471,7 +471,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     seconds_back_calculated = DateTime.diff(DateTime.utc_now(), cutoff_time, :second)
 
     query = """
-    SELECT 
+    SELECT
       killmail_id,
       killmail_time,
       killmail_hash,
@@ -1041,7 +1041,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       total_phases == 1 -> :single_engagement
       # First phase is usually engagement
       index == 0 -> :initial_engagement
-      # Last phase is usually withdrawal/cleanup  
+      # Last phase is usually withdrawal/cleanup
       index == total_phases - 1 -> :withdrawal
       # Middle phases depend on intensity
       phase.intensity > 2.0 -> :escalation
@@ -1109,7 +1109,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     cond do
       # 5+ kills per minute
       intensity >= 5.0 -> :very_high
-      # 3-5 kills per minute  
+      # 3-5 kills per minute
       intensity >= 3.0 -> :high
       # 1.5-3 kills per minute
       intensity >= 1.5 -> :moderate
@@ -1200,7 +1200,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     cond do
       # Frigates
       ship_type_id in [582, 583, 584, 585, 586, 587, 588, 589] -> :frigate
-      # Destroyers  
+      # Destroyers
       ship_type_id in [16_236, 16_238, 16_240, 16_242] -> :destroyer
       # Cruisers
       ship_type_id in [620, 621, 622, 623, 624, 625, 626, 627] -> :cruiser
@@ -1214,7 +1214,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       ship_type_id in [11_985, 11_987, 11_989, 12_003] -> :logistics
       # Recon Ships
       ship_type_id in [11_957, 11_959, 11_961, 11_963] -> :recon
-      # Heavy Assault Cruisers  
+      # Heavy Assault Cruisers
       ship_type_id in [11_991, 12_005, 11_993, 11_995] -> :heavy_assault_cruiser
       # Capital ships
       ship_type_id > 20_000 and ship_type_id < 30_000 -> :capital
@@ -1387,7 +1387,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   defp identify_kiting_pattern(timeline) do
     # Kiting pattern characteristics:
     # - Consistent kills over extended time with minimal losses on one side
-    # - High time gaps between reciprocal kills 
+    # - High time gaps between reciprocal kills
     # - One side maintains range advantage
 
     if length(timeline) < 5 do
@@ -1941,7 +1941,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     # Analyze kills made by each ship class
     kills_by_class = analyze_kills_by_ship_class(killmails)
 
-    # Analyze losses by ship class  
+    # Analyze losses by ship class
     losses_by_class = analyze_losses_by_ship_class(killmails)
 
     # Calculate performance metrics for each ship class
@@ -2546,7 +2546,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
         # Find new participants (joiners)
         new_participants = MapSet.difference(curr_participants, prev_participants)
 
-        # Find departed participants (leavers)  
+        # Find departed participants (leavers)
         departed_participants = MapSet.difference(prev_participants, curr_participants)
 
         # Create flow events if there are significant changes
@@ -2709,7 +2709,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
         Enum.take(flow_types, 2) == [:escalation, :stable] -> :early_escalation
         # Late escalation
         List.last(flow_types) == :escalation -> :late_escalation
-        # Early de-escalation  
+        # Early de-escalation
         List.first(flow_types) == :de_escalation -> :early_withdrawal
         # Alternating flows
         length(Enum.uniq(flow_types)) > 2 -> :complex_flow
@@ -5175,13 +5175,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
     # Query for killmail activity in the system around this time
     activity_query = """
-    SELECT 
+    SELECT
       killmail_time,
       COUNT(*) as kill_count
-    FROM killmails_enriched 
-    WHERE solar_system_id = $1 
+    FROM killmails_enriched
+    WHERE solar_system_id = $1
       AND killmail_time BETWEEN $2 AND $3
-    GROUP BY 
+    GROUP BY
       DATE_TRUNC('minute', killmail_time)
     ORDER BY killmail_time
     """
@@ -5255,7 +5255,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
           unix_time -> DateTime.from_unix!(unix_time)
         end
 
-      # Find end of significant activity after battle  
+      # Find end of significant activity after battle
       end_time =
         smoothed_activity
         |> Enum.filter(fn {time, _count} -> time >= battle_unix end)

@@ -49,7 +49,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
         end_time: ~U[2024-01-02 00:00:00Z],
         batch_size: 1000
       )
-      
+
       results = Enum.to_list(stream)
   """
   def stream_battle_analysis(params, opts \\ []) do
@@ -243,7 +243,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
   defp fetch_killmail_batch(cursor, params) do
     # Build optimized query with cursor pagination
     base_query = """
-    SELECT 
+    SELECT
       killmail_id,
       killmail_time,
       killmail_hash,

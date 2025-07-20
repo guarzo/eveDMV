@@ -6,19 +6,19 @@ defmodule Mix.Tasks.Eve.PartitionManager do
 
       # Show current partition status
       mix eve.partition_manager status
-      
+
       # Create partitions for next 3 months
       mix eve.partition_manager create_future
-      
+
       # Create partition for specific month
       mix eve.partition_manager create 2024-12
-      
+
       # Clean up old partitions (default: 12 months retention)
       mix eve.partition_manager cleanup
-      
+
       # Clean up with custom retention (6 months)
       mix eve.partition_manager cleanup --months=6
-      
+
       # Show partition statistics
       mix eve.partition_manager stats
   """

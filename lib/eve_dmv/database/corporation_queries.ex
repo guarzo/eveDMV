@@ -21,7 +21,7 @@ defmodule EveDmv.Database.CorporationQueries do
       fn ->
         # Use materialized views for better performance (Sprint 15A optimization)
         stats_query = """
-        SELECT 
+        SELECT
           SUM(kills) as kill_count,
           SUM(losses) as loss_count,
           SUM(isk_destroyed) as isk_destroyed,
@@ -71,7 +71,7 @@ defmodule EveDmv.Database.CorporationQueries do
       FROM killmails_raw k
       WHERE k.killmail_time >= $2
         AND EXISTS (
-          SELECT 1 
+          SELECT 1
           FROM jsonb_array_elements(k.raw_data->'attackers') AS attacker
           WHERE (attacker->>'corporation_id')::integer = $1
         )
@@ -98,7 +98,7 @@ defmodule EveDmv.Database.CorporationQueries do
   def get_top_active_members(corporation_id, limit \\ 10, since_date) do
     # Use materialized view for instant results
     query = """
-    SELECT 
+    SELECT
       character_id,
       character_name,
       total_killmails as total_activity,
@@ -111,7 +111,7 @@ defmodule EveDmv.Database.CorporationQueries do
       days_active,
       activity_rank,
       last_seen,
-      CASE 
+      CASE
         WHEN losses = 0 THEN 100.0
         ELSE ROUND((kills::decimal / (kills + losses)::decimal) * 100, 2)
       END as efficiency
@@ -168,7 +168,7 @@ defmodule EveDmv.Database.CorporationQueries do
     query = """
     WITH member_activity AS (
       -- Members who died
-      SELECT 
+      SELECT
         victim_character_id as character_id,
         raw_data->'victim'->>'character_name' as character_name,
         COUNT(*) as total_activity,
@@ -179,11 +179,11 @@ defmodule EveDmv.Database.CorporationQueries do
         AND victim_character_id IS NOT NULL
         AND killmail_time >= $3
       GROUP BY victim_character_id, character_name
-      
+
       UNION ALL
-      
+
       -- Members who got kills
-      SELECT 
+      SELECT
         (attacker->>'character_id')::integer as character_id,
         attacker->>'character_name' as character_name,
         COUNT(*) as total_activity,
@@ -197,7 +197,7 @@ defmodule EveDmv.Database.CorporationQueries do
       GROUP BY character_id, character_name
     ),
     aggregated AS (
-      SELECT 
+      SELECT
         character_id,
         MAX(character_name) as character_name,
         SUM(total_activity) as total_activity,
@@ -206,13 +206,13 @@ defmodule EveDmv.Database.CorporationQueries do
       FROM member_activity
       GROUP BY character_id
     )
-    SELECT 
+    SELECT
       character_id,
       character_name,
       total_activity,
       kills,
       losses,
-      CASE 
+      CASE
         WHEN losses > 0 THEN ROUND(kills::numeric / losses, 2)
         ELSE kills
       END as kd_ratio
@@ -246,7 +246,7 @@ defmodule EveDmv.Database.CorporationQueries do
   def get_timezone_activity(corporation_id, since_date) do
     query = """
     WITH hourly_activity AS (
-      SELECT 
+      SELECT
         EXTRACT(HOUR FROM killmail_time AT TIME ZONE 'UTC') as hour,
         COUNT(*) as activity_count,
         'loss' as activity_type
@@ -254,23 +254,23 @@ defmodule EveDmv.Database.CorporationQueries do
       WHERE victim_corporation_id = $1
         AND killmail_time >= $2
       GROUP BY hour
-      
+
       UNION ALL
-      
-      SELECT 
+
+      SELECT
         EXTRACT(HOUR FROM k.killmail_time AT TIME ZONE 'UTC') as hour,
         COUNT(*) as activity_count,
         'kill' as activity_type
       FROM killmails_raw k
       WHERE k.killmail_time >= $2
         AND EXISTS (
-          SELECT 1 
+          SELECT 1
           FROM jsonb_array_elements(k.raw_data->'attackers') AS attacker
           WHERE (attacker->>'corporation_id')::integer = $1
         )
       GROUP BY hour
     )
-    SELECT 
+    SELECT
       hour::integer,
       SUM(activity_count) as total_activity
     FROM hourly_activity
@@ -308,7 +308,7 @@ defmodule EveDmv.Database.CorporationQueries do
     query = """
     WITH ship_usage AS (
       -- Ships lost by corp members
-      SELECT 
+      SELECT
         victim_ship_type_id as ship_type_id,
         COUNT(*) as usage_count,
         SUM(COALESCE((raw_data->>'total_value')::numeric, 0)) as total_value
@@ -317,11 +317,11 @@ defmodule EveDmv.Database.CorporationQueries do
         AND victim_ship_type_id IS NOT NULL
         AND killmail_time >= $2
       GROUP BY victim_ship_type_id
-      
+
       UNION ALL
-      
+
       -- Ships used by corp members in kills
-      SELECT 
+      SELECT
         (attacker->>'ship_type_id')::integer as ship_type_id,
         COUNT(*) as usage_count,
         0 as total_value
@@ -332,7 +332,7 @@ defmodule EveDmv.Database.CorporationQueries do
         AND k.killmail_time >= $2
       GROUP BY ship_type_id
     )
-    SELECT 
+    SELECT
       ship_type_id,
       SUM(usage_count) as total_usage,
       SUM(total_value) as total_isk_lost
@@ -364,22 +364,22 @@ defmodule EveDmv.Database.CorporationQueries do
   """
   def get_recent_activity(corporation_id, limit \\ 20) do
     query = """
-    SELECT 
+    SELECT
       k.killmail_id,
       k.killmail_time,
       k.solar_system_id,
       k.victim_ship_type_id,
       k.victim_character_id,
       k.raw_data->'victim'->>'character_name' as victim_name,
-      CASE 
+      CASE
         WHEN k.victim_corporation_id = $1 THEN 'loss'
         ELSE 'kill'
       END as involvement_type,
       COALESCE((k.raw_data->>'total_value')::numeric, 0) as total_value
     FROM killmails_raw k
-    WHERE k.victim_corporation_id = $1 
+    WHERE k.victim_corporation_id = $1
        OR EXISTS (
-         SELECT 1 
+         SELECT 1
          FROM jsonb_array_elements(k.raw_data->'attackers') as attacker
          WHERE (attacker->>'corporation_id')::integer = $1
        )
@@ -424,7 +424,7 @@ defmodule EveDmv.Database.CorporationQueries do
     query = """
     WITH corp_data AS (
       -- From victims
-      SELECT 
+      SELECT
         raw_data->'victim'->>'corporation_name' as corp_name,
         raw_data->'victim'->>'alliance_name' as alliance_name,
         (raw_data->'victim'->>'alliance_id')::integer as alliance_id,
@@ -436,7 +436,7 @@ defmodule EveDmv.Database.CorporationQueries do
     ),
     attacker_data AS (
       -- From attackers
-      SELECT 
+      SELECT
         attacker->>'corporation_name' as corp_name,
         attacker->>'alliance_name' as alliance_name,
         (attacker->>'alliance_id')::integer as alliance_id,
@@ -447,7 +447,7 @@ defmodule EveDmv.Database.CorporationQueries do
       ORDER BY k.killmail_time DESC
       LIMIT 1
     )
-    SELECT 
+    SELECT
       COALESCE(
         (SELECT corp_name FROM corp_data),
         (SELECT corp_name FROM attacker_data)

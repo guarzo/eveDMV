@@ -1947,7 +1947,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
         []
       end
 
-    # Tactical positioning recommendations  
+    # Tactical positioning recommendations
     tactical_positioning_recommendations =
       if tactical_positioning < 0.6 do
         ["Enhance tactical positioning awareness and coordination"]
@@ -3168,7 +3168,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       ]) ->
         :ewar
 
-      # Name patterns for interdiction  
+      # Name patterns for interdiction
       String.contains?(String.downcase(ship_name || ""), [
         "sabre",
         "heretic",

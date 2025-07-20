@@ -118,7 +118,7 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
         {:ok, created_count}
 
       %Ash.BulkResult{} = _result ->
-        # Successful bulk create, count may not be tracked  
+        # Successful bulk create, count may not be tracked
         Logger.debug("Bulk create completed successfully")
         {:ok, length(system_data)}
     end

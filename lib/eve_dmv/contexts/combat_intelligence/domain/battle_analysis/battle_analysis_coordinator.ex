@@ -260,14 +260,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleAnalysi
     # In a real implementation, this would query killmails and aggregate them into battle data
     try do
       query = """
-      SELECT k.killmail_id, k.killmail_time, k.solar_system_id, k.victim_character_id, 
+      SELECT k.killmail_id, k.killmail_time, k.solar_system_id, k.victim_character_id,
              k.victim_corporation_id, k.victim_alliance_id, k.victim_ship_type_id,
              k.attacker_count, k.total_value
       FROM killmails_enriched k
       WHERE k.killmail_id = $1
-      OR k.killmail_time BETWEEN 
+      OR k.killmail_time BETWEEN
         (SELECT killmail_time - INTERVAL '30 minutes' FROM killmails_enriched WHERE killmail_id = $1)
-        AND 
+        AND
         (SELECT killmail_time + INTERVAL '30 minutes' FROM killmails_enriched WHERE killmail_id = $1)
       ORDER BY k.killmail_time ASC
       LIMIT 1000

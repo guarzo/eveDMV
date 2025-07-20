@@ -23,15 +23,15 @@ defmodule EveDmv.Database.QueryHelpers do
   ## Options
     * `:limit` - Requested limit (default: #{@default_limit}, max: #{@max_limit})
     * `:enforce_limit` - Whether to enforce limits even if explicitly disabled (default: true)
-    
+
   ## Examples
-      
-      iex> query |> apply_safe_limit()
+
+      iex> apply_safe_limit(query)
       # Applies default limit of 1000
-      
+
       iex> query |> apply_safe_limit(limit: 5000)
       # Applies limit of 5000
-      
+
       iex> query |> apply_safe_limit(limit: 20000)
       # Applies max limit of 10000
   """
@@ -54,12 +54,12 @@ defmodule EveDmv.Database.QueryHelpers do
 
   ## Options
     * `:timeout` - Timeout in milliseconds (default: #{@default_timeout_ms}, max: #{@max_timeout_ms})
-    
+
   ## Examples
-      
-      iex> {query, opts} = query |> with_timeout()
+
+      iex> {query, opts} = with_timeout(query)
       iex> Repo.all(query, opts)
-      
+
       iex> {query, opts} = query |> with_timeout(timeout: 60_000)
       iex> Repo.all(query, opts)
   """
@@ -77,10 +77,10 @@ defmodule EveDmv.Database.QueryHelpers do
   ## Options
     * `:limit` - Query result limit
     * `:timeout` - Query timeout in milliseconds
-    
+
   ## Examples
-      
-      iex> {safe_query, opts} = query |> with_safety()
+
+      iex> {safe_query, opts} = with_safety(query)
       iex> Repo.all(safe_query, opts)
   """
   def with_safety(query, opts \\ []) do
@@ -96,9 +96,9 @@ defmodule EveDmv.Database.QueryHelpers do
     * `:parallel` - Enable parallel query execution
     * `:index` - Force use of specific index
     * `:no_index` - Disable index usage
-    
+
   ## Examples
-      
+
       iex> query |> with_hints(parallel: true)
       iex> query |> with_hints(index: "idx_killmails_system_activity")
   """
@@ -130,9 +130,9 @@ defmodule EveDmv.Database.QueryHelpers do
   ## Options
     * `:batch_size` - Number of records per batch (default: 1000)
     * `:timeout` - Timeout per batch query (default: 30s)
-    
+
   ## Examples
-      
+
       iex> stream = query |> stream_query(batch_size: 500)
       iex> stream |> Stream.each(&process_record/1) |> Stream.run()
   """
@@ -166,10 +166,10 @@ defmodule EveDmv.Database.QueryHelpers do
   ## Options
     * `:max_count` - Maximum count threshold (default: 100_000)
     * `:estimate` - Use table statistics for estimation (default: false)
-    
+
   ## Examples
-      
-      iex> {:ok, count} = query |> safe_count()
+
+      iex> {:ok, count} = safe_count(query)
       iex> {:max, 100_000} = query |> safe_count(max_count: 100_000)
   """
   def safe_count(query, opts \\ []) do
@@ -195,9 +195,9 @@ defmodule EveDmv.Database.QueryHelpers do
     * `:cursor_field` - Field to use for cursor (default: :id)
     * `:direction` - :asc or :desc (default: :asc)
     * `:limit` - Page size (default: 100)
-    
+
   ## Examples
-      
+
       iex> query |> paginate(cursor: last_id, limit: 50)
   """
   def paginate(query, opts \\ []) do

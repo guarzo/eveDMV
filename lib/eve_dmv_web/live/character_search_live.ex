@@ -141,12 +141,12 @@ defmodule EveDmvWeb.CharacterSearchLive do
 
   defp load_recent_active_characters do
     query = """
-    SELECT DISTINCT 
+    SELECT DISTINCT
       km.victim_character_id as character_id,
       COUNT(*) as activity_count,
       MAX(km.killmail_time) as last_seen
     FROM killmails_raw km
-    WHERE km.victim_character_id IS NOT NULL 
+    WHERE km.victim_character_id IS NOT NULL
       AND km.killmail_time >= NOW() - INTERVAL '30 days'
     GROUP BY km.victim_character_id
     ORDER BY activity_count DESC, last_seen DESC
@@ -182,7 +182,7 @@ defmodule EveDmvWeb.CharacterSearchLive do
   defp get_character_additional_info(character_id) do
     # Get comprehensive character information from killmail data
     query = """
-    SELECT 
+    SELECT
       COUNT(*) as total_killmails,
       COUNT(CASE WHEN km.victim_character_id = $1 THEN 1 END) as deaths,
       COUNT(CASE WHEN km.victim_character_id != $1 THEN 1 END) as kills,
@@ -190,7 +190,7 @@ defmodule EveDmvWeb.CharacterSearchLive do
       MAX(km.victim_corporation_id) as corporation_id,
       MAX(km.victim_alliance_id) as alliance_id
     FROM killmails_raw km
-    WHERE km.victim_character_id = $1 
+    WHERE km.victim_character_id = $1
        OR EXISTS (
          SELECT 1 FROM jsonb_array_elements(km.raw_data->'attackers') as attacker
          WHERE (attacker->>'character_id')::bigint = $1
@@ -226,7 +226,7 @@ defmodule EveDmvWeb.CharacterSearchLive do
     # Search for characters in killmail data using name patterns
     search_query = """
     WITH character_activity AS (
-      SELECT 
+      SELECT
         victim_character_id as character_id,
         victim_character_name as character_name,
         COUNT(*) as killmail_count,
@@ -235,9 +235,9 @@ defmodule EveDmvWeb.CharacterSearchLive do
       WHERE victim_character_name IS NOT NULL
         AND LOWER(victim_character_name) LIKE $1
       GROUP BY victim_character_id, victim_character_name
-      
+
       UNION
-      
+
       SELECT DISTINCT
         (attacker->>'character_id')::bigint as character_id,
         attacker->>'character_name' as character_name,
@@ -250,7 +250,7 @@ defmodule EveDmvWeb.CharacterSearchLive do
         AND (attacker->>'character_id')::bigint IS NOT NULL
       GROUP BY (attacker->>'character_id')::bigint, attacker->>'character_name'
     )
-    SELECT 
+    SELECT
       character_id,
       character_name,
       SUM(killmail_count) as total_killmails,

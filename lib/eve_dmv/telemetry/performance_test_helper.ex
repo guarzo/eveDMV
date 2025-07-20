@@ -222,7 +222,7 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
   defp get_actual_row_count(table_name) do
     query = """
     SELECT n_tup_ins - n_tup_del as estimated_rows
-    FROM pg_stat_user_tables 
+    FROM pg_stat_user_tables
     WHERE relname = $1
     """
 
@@ -238,7 +238,7 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
   defp get_table_row_count_from_catalog(table_name) do
     query = """
     SELECT reltuples::bigint as estimated_rows
-    FROM pg_class 
+    FROM pg_class
     WHERE relname = $1 AND relkind = 'r'
     """
 

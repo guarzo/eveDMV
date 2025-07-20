@@ -17,7 +17,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Infrastructure.WormholeEventProcess
     # T2 Logistics Cruisers
     # Guardian (Amarr)
     11_985,
-    # Basilisk (Caldari) 
+    # Basilisk (Caldari)
     11_987,
     # Oneiros (Gallente)
     11_989,

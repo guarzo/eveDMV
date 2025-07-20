@@ -228,14 +228,14 @@ defmodule Mix.Tasks.Eve.CreateIndexesAsync do
 
     # Query pg_stat_progress_create_index for progress info
     progress_sql = """
-    SELECT 
+    SELECT
       phase,
       blocks_total,
       blocks_done,
       tuples_total,
       tuples_done,
-      CASE 
-        WHEN blocks_total > 0 THEN 
+      CASE
+        WHEN blocks_total > 0 THEN
           ROUND((blocks_done::numeric / blocks_total::numeric) * 100, 2)
         ELSE 0
       END as percent_complete
@@ -261,7 +261,7 @@ defmodule Mix.Tasks.Eve.CreateIndexesAsync do
   defp index_exists?(index_name) do
     sql = """
     SELECT EXISTS (
-      SELECT 1 FROM pg_indexes 
+      SELECT 1 FROM pg_indexes
       WHERE indexname = $1
     )
     """

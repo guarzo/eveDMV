@@ -758,7 +758,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   end
 
   def format_number(number) when is_float(number) do
-    number |> round() |> format_number()
+    round(number) |> format_number()
   end
 
   def format_number(_), do: "0"

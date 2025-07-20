@@ -49,7 +49,7 @@ defmodule EveDmvWeb.Components.PaginationComponent do
           </svg>
           Previous
         </button>
-        
+
         <button
           :if={!@has_previous_page}
           class="pagination-btn pagination-prev pagination-disabled"
@@ -61,7 +61,7 @@ defmodule EveDmvWeb.Components.PaginationComponent do
           </svg>
           Previous
         </button>
-        
+
         <!-- Page info -->
         <div class="pagination-info">
           <span class="pagination-text">
@@ -71,7 +71,7 @@ defmodule EveDmvWeb.Components.PaginationComponent do
             <% end %>
           </span>
         </div>
-        
+
         <!-- Next page button -->
         <button
           :if={@has_next_page}
@@ -86,7 +86,7 @@ defmodule EveDmvWeb.Components.PaginationComponent do
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
           </svg>
         </button>
-        
+
         <button
           :if={!@has_next_page}
           class="pagination-btn pagination-next pagination-disabled"
@@ -99,7 +99,7 @@ defmodule EveDmvWeb.Components.PaginationComponent do
           </svg>
         </button>
       </div>
-      
+
       <!-- Page size selector -->
       <div class="pagination-size-selector">
         <label for="page-size-select" class="sr-only">Items per page</label>

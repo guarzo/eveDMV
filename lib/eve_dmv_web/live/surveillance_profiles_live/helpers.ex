@@ -120,7 +120,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive.Helpers do
           class="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-md text-sm text-gray-100 placeholder-gray-400"
         />
       </div>
-      
+
       <div>
         <label class="block text-xs text-gray-400 mb-1">Filter Type</label>
         <select
@@ -135,7 +135,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive.Helpers do
           <option value="entering_chain" selected={@filter_type == :entering_chain}>Entering Chain</option>
         </select>
       </div>
-      
+
       <%= if @filter_type == :within_jumps do %>
         <div>
           <label class="block text-xs text-gray-400 mb-1">Max Jumps</label>
@@ -180,7 +180,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive.Helpers do
           <option value="equals" selected={@operator == :equals}>Equals</option>
         </select>
       </div>
-      
+
       <div>
         <label class="block text-xs text-gray-400 mb-1">ISK Value</label>
         <input
@@ -222,7 +222,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive.Helpers do
           <option value="equals" selected={@operator == :equals}>Equals</option>
         </select>
       </div>
-      
+
       <div>
         <label class="block text-xs text-gray-400 mb-1">Participant Count</label>
         <input

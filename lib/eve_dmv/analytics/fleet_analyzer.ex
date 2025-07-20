@@ -169,7 +169,7 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
   capabilities, and provide actionable recommendations.
 
   ## Examples
-      
+
       iex> fleet_ships = [641, 641, 641, 11987, 11987]
       iex> FleetAnalyzer.analyze_fleet_composition(fleet_ships)
       %{

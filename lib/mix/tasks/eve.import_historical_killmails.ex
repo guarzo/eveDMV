@@ -9,13 +9,13 @@ defmodule Mix.Tasks.Eve.ImportHistoricalKillmails do
 
       # Import all archives
       mix eve.import_historical_killmails
-      
+
       # Import specific file
       mix eve.import_historical_killmails --file tmp/2024-01-killmails.json
-      
+
       # Dry run (validate data without importing)
       mix eve.import_historical_killmails --dry-run
-      
+
       # Import with custom batch size
       mix eve.import_historical_killmails --batch-size 100
 

@@ -74,7 +74,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     - :include_counters - Generate counter-fleet recommendations
     - :check_doctrine - Check against known doctrines
     - :simulate_engagement - Run engagement simulations
-    
+
   ## Returns
   Comprehensive fleet analysis with tactical recommendations
   """

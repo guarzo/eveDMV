@@ -276,7 +276,7 @@ defmodule EveDmv.Search.SearchSuggestionService do
   defp get_character_suggestions_from_stats(query, limit) do
     # Try direct SQL query on player_stats table if it exists and has data
     search_query = """
-    SELECT 
+    SELECT
       character_id,
       character_name,
       corporation_name,
@@ -339,7 +339,7 @@ defmodule EveDmv.Search.SearchSuggestionService do
     # Use direct SQL query for better reliability (based on working character_search_live.ex implementation)
     search_query = """
     WITH character_activity AS (
-      SELECT 
+      SELECT
         victim_character_id as character_id,
         victim_character_name as character_name,
         victim_corporation_name as corporation_name,
@@ -349,9 +349,9 @@ defmodule EveDmv.Search.SearchSuggestionService do
       WHERE victim_character_name IS NOT NULL
         AND LOWER(victim_character_name) LIKE $1
       GROUP BY victim_character_id, victim_character_name, victim_corporation_name
-      
+
       UNION
-      
+
       SELECT DISTINCT
         (attacker->>'character_id')::bigint as character_id,
         attacker->>'character_name' as character_name,
@@ -365,7 +365,7 @@ defmodule EveDmv.Search.SearchSuggestionService do
         AND (attacker->>'character_id')::bigint IS NOT NULL
       GROUP BY (attacker->>'character_id')::bigint, attacker->>'character_name', attacker->>'corporation_name'
     )
-    SELECT 
+    SELECT
       character_id,
       character_name,
       corporation_name,

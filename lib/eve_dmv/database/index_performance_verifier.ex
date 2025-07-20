@@ -38,10 +38,10 @@ defmodule EveDmv.Database.IndexPerformanceVerifier do
         {
           "Battle detection by system and time",
           """
-          EXPLAIN (ANALYZE, BUFFERS) 
-          SELECT killmail_id, killmail_time, solar_system_id 
-          FROM killmails_raw 
-          WHERE killmail_time BETWEEN '2024-01-01 00:00:00' AND '2024-01-01 01:00:00' 
+          EXPLAIN (ANALYZE, BUFFERS)
+          SELECT killmail_id, killmail_time, solar_system_id
+          FROM killmails_raw
+          WHERE killmail_time BETWEEN '2024-01-01 00:00:00' AND '2024-01-01 01:00:00'
             AND solar_system_id = 30002765
           ORDER BY killmail_time
           """,

@@ -2,7 +2,7 @@ defmodule EveDmv.Intelligence.Events do
   @moduledoc """
   Domain events for intelligence system real-time updates.
 
-  These events are published when intelligence data changes and need to be 
+  These events are published when intelligence data changes and need to be
   broadcast to connected clients for real-time UI updates.
   """
 

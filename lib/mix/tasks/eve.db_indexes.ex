@@ -36,12 +36,12 @@ defmodule Mix.Tasks.Eve.DbIndexes do
     Logger.info("=====================================")
 
     query = """
-    SELECT 
+    SELECT
       indexname,
       indexdef,
       pg_size_pretty(pg_relation_size(indexname::regclass)) as size
-    FROM pg_indexes 
-    WHERE tablename = 'killmails_raw' 
+    FROM pg_indexes
+    WHERE tablename = 'killmails_raw'
     ORDER BY indexname
     """
 
@@ -74,8 +74,8 @@ defmodule Mix.Tasks.Eve.DbIndexes do
     # Get existing indexes
     {:ok, %{rows: existing}} =
       EveDmv.Repo.query("""
-        SELECT indexname 
-        FROM pg_indexes 
+        SELECT indexname
+        FROM pg_indexes
         WHERE tablename = 'killmails_raw'
       """)
 
@@ -152,7 +152,7 @@ defmodule Mix.Tasks.Eve.DbIndexes do
     using_sql = " USING #{index_type}"
 
     sql = """
-    CREATE INDEX CONCURRENTLY IF NOT EXISTS #{name} 
+    CREATE INDEX CONCURRENTLY IF NOT EXISTS #{name}
     ON killmails_raw #{using_sql} (#{columns})#{where_sql}
     """
 
@@ -176,7 +176,7 @@ defmodule Mix.Tasks.Eve.DbIndexes do
 
     # Check slow queries
     slow_query = """
-    SELECT 
+    SELECT
       calls,
       mean_exec_time,
       total_exec_time,
@@ -207,7 +207,7 @@ defmodule Mix.Tasks.Eve.DbIndexes do
 
     # Table statistics
     stats_query = """
-    SELECT 
+    SELECT
       n_live_tup as live_rows,
       n_dead_tup as dead_rows,
       last_vacuum,

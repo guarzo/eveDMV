@@ -487,7 +487,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
     # Check for tactical withdrawals (gap in kills from one side)
     withdrawal_points = detect_tactical_withdrawals(timeline_events)
 
-    # Combine and sort all de-escalation points  
+    # Combine and sort all de-escalation points
     (de_escalation_points ++ kill_rate_drops ++ lull_starts ++ withdrawal_points)
     |> Enum.sort_by(& &1.timestamp)
   end

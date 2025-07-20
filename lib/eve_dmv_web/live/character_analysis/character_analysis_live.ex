@@ -186,7 +186,7 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
         </button>
       </div>
     </div>
-      
+
       <%= if @loading do %>
         <div class="bg-gray-800 rounded-lg p-6">
           <div class="flex items-center space-x-3">
@@ -195,14 +195,14 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
           </div>
         </div>
       <% end %>
-      
+
       <%= if @error do %>
         <div class="bg-red-900 border border-red-600 rounded-lg p-6">
           <h3 class="text-red-300 font-semibold mb-2">Analysis Error</h3>
           <p class="text-red-400">Error: <%= @error %></p>
         </div>
       <% end %>
-      
+
       <%= if @analysis do %>
         <.live_component
           module={CharacterHeaderComponent}
@@ -211,26 +211,26 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
           analysis={@analysis}
           intelligence={@intelligence}
         />
-        
+
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <.live_component
             module={IntelligenceSummaryComponent}
             id="intelligence-summary"
             analysis={@analysis}
           />
-          
+
           <.live_component
             module={StatisticsPanelComponent}
             id="statistics-panel"
             analysis={@analysis}
           />
-          
+
           <.live_component
             module={ActivityFeedComponent}
             id="activity-feed"
             analysis={@analysis}
           />
-          
+
           <!-- Additional components would go here -->
         </div>
       <% end %>

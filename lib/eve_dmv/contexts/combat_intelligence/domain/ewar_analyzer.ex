@@ -4,7 +4,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
 
   Identifies and analyzes EWAR capabilities including:
   - ECM (Electronic Counter Measures) - Jamming
-  - Sensor Dampeners - Range/scan resolution reduction  
+  - Sensor Dampeners - Range/scan resolution reduction
   - Tracking Disruptors - Tracking/range disruption
   - Target Painters - Signature bloom
   - Energy Neutralizers - Capacitor warfare

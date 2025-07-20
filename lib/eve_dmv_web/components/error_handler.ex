@@ -127,9 +127,9 @@ defmodule EveDmvWeb.Components.ErrorHandler do
   ## Examples
       def handle_event("save_profile", params, socket) do
         case ProfileService.save_profile(params) do
-          {:ok, profile} -> 
+          {:ok, profile} ->
             {:noreply, assign(socket, :profile, profile)}
-          {:error, error} -> 
+          {:error, error} ->
             {:noreply, handle_event_error(socket, "save profile", error)}
         end
       end
@@ -305,7 +305,7 @@ defmodule EveDmvWeb.Components.ErrorHandler do
         error
 
       error when is_atom(error) ->
-        error |> to_string() |> String.replace("_", " ") |> String.capitalize()
+        to_string(error) |> String.replace("_", " ") |> String.capitalize()
 
       _ ->
         "An unexpected error occurred. Please try again."

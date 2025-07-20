@@ -204,7 +204,7 @@ defmodule EveDmv.Market.PriceService do
       %{raw_data: %{"zkb" => %{"totalValue" => value}}} when is_number(value) ->
         {:ok, value}
 
-      # Handle raw map format  
+      # Handle raw map format
       %{"zkb" => %{"totalValue" => value}} when is_number(value) ->
         {:ok, value}
 

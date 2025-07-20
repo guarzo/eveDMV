@@ -14,7 +14,7 @@ defmodule EveDmv.Database.QueryPerformance do
 
   ## Examples
 
-      tracked_query("character_stats", 
+      tracked_query("character_stats",
         fn -> Repo.query(sql, params) end,
         metadata: %{character_id: 123}
       )
@@ -31,7 +31,7 @@ defmodule EveDmv.Database.QueryPerformance do
   ## Examples
 
       tracked_ash_query("recent_killmails",
-        fn -> 
+        fn ->
           KillmailRaw
           |> Ash.Query.filter(killmail_time > ^since)
           |> Api.read!()
@@ -50,7 +50,7 @@ defmodule EveDmv.Database.QueryPerformance do
   ## Examples
 
       import EveDmv.Database.QueryPerformance
-      
+
       track_query "get_character_kills" do
         Repo.query(sql, [character_id])
       end
@@ -97,7 +97,7 @@ defmodule EveDmv.Database.QueryPerformance do
   """
   def table_index_stats(table_name) do
     sql = """
-    SELECT 
+    SELECT
       schemaname,
       tablename,
       indexname,
@@ -134,7 +134,7 @@ defmodule EveDmv.Database.QueryPerformance do
   """
   def suggest_missing_indexes(table_name) do
     sql = """
-    SELECT 
+    SELECT
       schemaname,
       tablename,
       attname as column_name,

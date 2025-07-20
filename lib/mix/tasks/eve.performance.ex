@@ -106,7 +106,7 @@ defmodule Mix.Tasks.Eve.Performance do
     Mix.shell().info("\n1. 📊 Query Performance Analysis")
     Mix.Task.run("eve.query_performance")
 
-    # 2. Memory Analysis  
+    # 2. Memory Analysis
     Mix.shell().info("\n2. 💾 Memory Analysis")
     Mix.Task.run("eve.memory_analysis", ["--detailed"])
 

@@ -2,7 +2,7 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
   @moduledoc """
   Fixed version of BattleDetector that uses the correct database schema.
 
-  A "battle" is defined as a cluster of killmails that occurred within a 
+  A "battle" is defined as a cluster of killmails that occurred within a
   short time window and geographical area with multiple participants.
   """
 
@@ -29,7 +29,7 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
         km.victim_ship_type_id,
         (km.raw_data->'zkb'->>'totalValue')::numeric::bigint as total_value,
         km.attacker_count,
-        CASE 
+        CASE
           WHEN km.victim_character_id = $1 THEN 'loss'
           ELSE 'kill'
         END as participation_type
@@ -40,7 +40,7 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
         AND km.attacker_count >= 5  -- Multi-pilot engagements
     ),
     battle_clusters AS (
-      SELECT 
+      SELECT
         cm.*,
         -- Group killmails that are close in time and space
         COUNT(*) OVER (
@@ -49,9 +49,9 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
         ) as system_hour_activity
       FROM character_killmails cm
     )
-    SELECT 
+    SELECT
       bc.*,
-      CASE 
+      CASE
         WHEN bc.system_hour_activity >= 10 THEN 'major_battle'
         WHEN bc.system_hour_activity >= 5 THEN 'skirmish'
         WHEN bc.attacker_count >= 20 THEN 'fleet_engagement'
@@ -86,12 +86,12 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
 
     query = """
     WITH character_battles AS (
-      SELECT 
+      SELECT
         km.killmail_id,
         km.killmail_time,
         (km.raw_data->'zkb'->>'totalValue')::numeric::bigint as total_value,
         km.attacker_count,
-        CASE 
+        CASE
           WHEN km.victim_character_id = $1 THEN 'loss'
           ELSE 'kill'
         END as participation_type
@@ -101,7 +101,7 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
         AND (km.victim_character_id = $1 OR p.character_id = $1)
         AND km.attacker_count >= 5
     )
-    SELECT 
+    SELECT
       COUNT(*) as total_battles,
       COUNT(*) FILTER (WHERE participation_type = 'kill') as battles_won,
       COUNT(*) FILTER (WHERE participation_type = 'loss') as battles_lost,
@@ -160,7 +160,7 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
         km.victim_ship_type_id,
         (km.raw_data->'zkb'->>'totalValue')::numeric::bigint as total_value,
         km.attacker_count,
-        CASE 
+        CASE
           WHEN km.victim_corporation_id = $1 THEN 'loss'
           ELSE 'kill'
         END as participation_type,
@@ -168,7 +168,7 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
         (
           SELECT COUNT(*)
           FROM participants p2
-          WHERE p2.killmail_id = km.killmail_id 
+          WHERE p2.killmail_id = km.killmail_id
             AND p2.corporation_id = $1
             AND p2.is_victim = false
         ) as corp_members_involved
@@ -179,7 +179,7 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
         AND km.attacker_count >= 5
     ),
     battle_clusters AS (
-      SELECT 
+      SELECT
         cm.*,
         COUNT(*) OVER (
           PARTITION BY cm.solar_system_id,
@@ -187,9 +187,9 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
         ) as system_hour_activity
       FROM corp_killmails cm
     )
-    SELECT 
+    SELECT
       bc.*,
-      CASE 
+      CASE
         WHEN bc.system_hour_activity >= 10 THEN 'major_battle'
         WHEN bc.system_hour_activity >= 5 THEN 'skirmish'
         WHEN bc.attacker_count >= 20 THEN 'fleet_engagement'
@@ -223,20 +223,20 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
 
     query = """
     WITH corp_battles AS (
-      SELECT 
+      SELECT
         km.killmail_id,
         km.killmail_time,
         (km.raw_data->'zkb'->>'totalValue')::numeric::bigint as total_value,
         km.solar_system_id,
         km.attacker_count,
-        CASE 
+        CASE
           WHEN km.victim_corporation_id = $1 THEN 'loss'
           ELSE 'kill'
         END as participation_type,
         (
           SELECT COUNT(*)
           FROM participants p2
-          WHERE p2.killmail_id = km.killmail_id 
+          WHERE p2.killmail_id = km.killmail_id
             AND p2.corporation_id = $1
             AND p2.is_victim = false
         ) as corp_members_involved
@@ -246,7 +246,7 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
         AND (km.victim_corporation_id = $1 OR p.corporation_id = $1)
         AND km.attacker_count >= 5
     )
-    SELECT 
+    SELECT
       COUNT(*) as total_battles,
       COUNT(*) FILTER (WHERE participation_type = 'kill') as battles_won,
       COUNT(*) FILTER (WHERE participation_type = 'loss') as battles_lost,

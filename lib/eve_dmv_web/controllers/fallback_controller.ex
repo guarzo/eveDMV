@@ -390,5 +390,5 @@ defmodule EveDmvWeb.FallbackController do
   defp humanize_error_atom(:cache_error), do: "Cache operation failed"
 
   defp humanize_error_atom(atom),
-    do: atom |> to_string() |> String.replace("_", " ") |> String.capitalize()
+    do: to_string(atom) |> String.replace("_", " ") |> String.capitalize()
 end

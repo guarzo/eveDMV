@@ -166,7 +166,7 @@ defmodule EveDmvWeb.KillmailLive do
     # Parse victim data
     victim_data = parse_victim_data(killmail)
 
-    # Parse attackers data  
+    # Parse attackers data
     attackers_data = parse_attackers_data(killmail)
 
     # Parse fitted items
@@ -407,7 +407,7 @@ defmodule EveDmvWeb.KillmailLive do
                 </p>
               </div>
               <div class="flex space-x-2">
-                <button 
+                <button
                   phx-click="copy_zkb_link"
                   class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors"
                   title="Copy zKillboard URL"
@@ -416,7 +416,7 @@ defmodule EveDmvWeb.KillmailLive do
                 </button>
               </div>
             </div>
-            
+
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div class="bg-gray-700 rounded p-4">
                 <h3 class="text-sm font-medium text-gray-400 mb-1">Total Value</h3>
@@ -448,17 +448,17 @@ defmodule EveDmvWeb.KillmailLive do
                   <%= @killmail.victim_details.character_name %>
                 </h3>
                 <p class="text-gray-300 mb-1">
-                  <span class="text-gray-400">Corporation:</span> 
+                  <span class="text-gray-400">Corporation:</span>
                   <%= @killmail.victim_details.corporation_name %>
                 </p>
                 <%= if @killmail.victim_details.alliance_name do %>
                   <p class="text-gray-300 mb-1">
-                    <span class="text-gray-400">Alliance:</span> 
+                    <span class="text-gray-400">Alliance:</span>
                     <%= @killmail.victim_details.alliance_name %>
                   </p>
                 <% end %>
                 <p class="text-gray-300">
-                  <span class="text-gray-400">Ship:</span> 
+                  <span class="text-gray-400">Ship:</span>
                   <%= @killmail.victim_details.ship_name %>
                 </p>
               </div>
@@ -524,7 +524,7 @@ defmodule EveDmvWeb.KillmailLive do
           <%= if @killmail.fitted_items do %>
             <div class="bg-gray-800 rounded-lg p-6">
               <h2 class="text-xl font-bold text-white mb-4">Fitted Items</h2>
-              
+
               <%= for {category, items} <- @killmail.fitted_items do %>
                 <%= if not Enum.empty?(items) do %>
                   <div class="mb-4">
@@ -558,17 +558,17 @@ defmodule EveDmvWeb.KillmailLive do
           <div class="bg-gray-800 rounded-lg p-6">
             <h2 class="text-xl font-bold text-white mb-4">Export Killmail Data</h2>
             <div class="flex items-center space-x-4">
-              <select 
-                phx-change="change_export_format" 
-                name="format" 
+              <select
+                phx-change="change_export_format"
+                name="format"
                 value={@export_format}
                 class="bg-gray-700 border border-gray-600 text-white rounded px-3 py-2"
               >
                 <option value="json">JSON</option>
                 <option value="csv">CSV</option>
               </select>
-              <button 
-                phx-click="export_killmail" 
+              <button
+                phx-click="export_killmail"
                 phx-value-format={@export_format}
                 class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition-colors"
               >

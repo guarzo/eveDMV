@@ -12,7 +12,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
   @spec optimize_fleet_composition(map(), atom()) :: {:ok, map()} | {:error, term()}
   def optimize_fleet_composition(fleet_composition, wormhole_class) do
     try do
-      # Extract ships from fleet composition 
+      # Extract ships from fleet composition
       ships = Map.get(fleet_composition, :ships, [])
 
       # Calculate current fleet mass

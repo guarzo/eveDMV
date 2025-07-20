@@ -36,7 +36,7 @@ defmodule EveDmv.Killmails.KillmailDataTransformer do
 
   # REMOVED: Functions only used by enriched changeset building
   # - calculate_price_values
-  # - extract_victim_data  
+  # - extract_victim_data
   # - extract_system_data
   # See /docs/architecture/enriched-raw-analysis.md
 

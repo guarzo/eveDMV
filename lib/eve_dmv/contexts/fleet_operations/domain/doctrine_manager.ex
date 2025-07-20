@@ -337,7 +337,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
     case ship_class do
       # Average T1/T2 frigate mass
       :frigate -> 1_500_000
-      # Average destroyer mass  
+      # Average destroyer mass
       :destroyer -> 2_000_000
       # Average cruiser mass
       :cruiser -> 12_000_000

@@ -3,7 +3,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
   Sophisticated algorithm for correlating battles across multiple wormhole systems.
 
   This module implements advanced correlation techniques specifically designed for wormhole
-  PvP analysis, where battles often span multiple connected systems as participants 
+  PvP analysis, where battles often span multiple connected systems as participants
   chase each other through wormhole chains.
 
   ## Algorithm Components

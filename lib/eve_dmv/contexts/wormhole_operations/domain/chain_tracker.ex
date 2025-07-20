@@ -77,7 +77,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainTracker do
 
   ## Parameters
   - from_system_id: Source system ID
-  - to_system_id: Destination system ID  
+  - to_system_id: Destination system ID
   - wormhole_type: Type code (e.g., "H296", "K162")
   - options: Additional tracking data
     - sig_id: Signature ID in source system

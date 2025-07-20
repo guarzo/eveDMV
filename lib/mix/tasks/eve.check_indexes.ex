@@ -30,14 +30,14 @@ defmodule Mix.Tasks.Eve.CheckIndexes do
     Mix.shell().info("=" <> String.duplicate("=", 50))
 
     query = """
-    SELECT 
+    SELECT
       tablename,
       indexname,
       pg_size_pretty(pg_relation_size(indexrelid)) as index_size
     FROM pg_indexes
     JOIN pg_stat_user_indexes USING (schemaname, tablename, indexname)
     WHERE schemaname = 'public'
-    AND tablename IN ('killmails_raw', 'participants', 'eve_solar_systems', 'eve_item_types', 
+    AND tablename IN ('killmails_raw', 'participants', 'eve_solar_systems', 'eve_item_types',
                       'character_stats', 'surveillance_profiles', 'surveillance_profile_matches')
     ORDER BY tablename, indexname
     """
@@ -100,9 +100,9 @@ defmodule Mix.Tasks.Eve.CheckIndexes do
     column_names = Enum.join(columns, ",")
 
     query = """
-    SELECT COUNT(*) 
-    FROM pg_indexes 
-    WHERE tablename = $1 
+    SELECT COUNT(*)
+    FROM pg_indexes
+    WHERE tablename = $1
     AND schemaname = 'public'
     AND indexdef LIKE '%(' || $2 || ')%'
     """

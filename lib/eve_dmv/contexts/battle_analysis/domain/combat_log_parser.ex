@@ -19,7 +19,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
 
   ## Parameters
   - content: The raw combat log text
-  - options: 
+  - options:
     - :start_time - Filter events after this time
     - :end_time - Filter events before this time
     - :pilot_name - Extract events only for this pilot
@@ -158,7 +158,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
           type: :miss,
           timestamp: timestamp,
           from: String.trim(attacker),
-          # This log is from victim's perspective  
+          # This log is from victim's perspective
           to: nil,
           weapon: %{weapon: String.trim(weapon_type), ammo: nil},
           damage: 0,

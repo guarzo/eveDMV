@@ -9,7 +9,7 @@ defmodule EveDmv.Analytics.ModuleClassifier do
   ## Role Classifications
 
   - **Tackle**: Scramblers, disruptors, webs, interdiction
-  - **Logistics**: Remote reps, cap transfers, triage modules  
+  - **Logistics**: Remote reps, cap transfers, triage modules
   - **EWAR**: ECM, damps, painters, neuts
   - **DPS**: Weapons, damage amplifiers
   - **Command**: Command bursts, warfare links

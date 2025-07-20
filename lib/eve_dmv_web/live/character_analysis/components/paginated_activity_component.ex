@@ -91,13 +91,13 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.PaginatedActivityComponent do
         <h3 class="text-lg font-semibold text-white">Recent Activity</h3>
         <div class="text-sm text-gray-400">
           <%= if @pagination do %>
-            Showing <%= (@pagination.page - 1) * @pagination.page_size + 1 %> - 
-            <%= min(@pagination.page * @pagination.page_size, @pagination.total_count) %> 
+            Showing <%= (@pagination.page - 1) * @pagination.page_size + 1 %> -
+            <%= min(@pagination.page * @pagination.page_size, @pagination.total_count) %>
             of <%= @pagination.total_count %>
           <% end %>
         </div>
       </div>
-      
+
       <%= if @loading do %>
         <div class="flex justify-center py-8">
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
@@ -116,12 +116,12 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.PaginatedActivityComponent do
                   </span>
                 </div>
                 <div class="text-xs text-gray-500 mt-1">
-                  Ship Type ID: <%= activity.ship_type_id %> • 
+                  Ship Type ID: <%= activity.ship_type_id %> •
                   System ID: <%= activity.solar_system_id %> •
                   Value: <%= format_isk(activity.total_value) %>
                 </div>
               </div>
-              <a 
+              <a
                 href={"/killmail/#{activity.killmail_id}"}
                 class="text-blue-400 hover:text-blue-300 text-sm"
                 target="_blank"
@@ -130,12 +130,12 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.PaginatedActivityComponent do
               </a>
             </div>
           <% end %>
-          
+
           <%= if @activity == [] do %>
             <p class="text-gray-500 text-center py-4">No activity found</p>
           <% end %>
         </div>
-        
+
         <!-- Pagination Controls -->
         <%= if @pagination && @pagination.total_pages > 1 do %>
           <div class="flex items-center justify-between pt-4 border-t border-gray-700">
@@ -147,7 +147,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.PaginatedActivityComponent do
             >
               ← Previous
             </button>
-            
+
             <div class="flex items-center gap-2">
               <%= for page_num <- visible_page_numbers(@pagination) do %>
                 <%= if page_num == "..." do %>
@@ -164,7 +164,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.PaginatedActivityComponent do
                 <% end %>
               <% end %>
             </div>
-            
+
             <button
               phx-click="next_page"
               phx-target={@myself}

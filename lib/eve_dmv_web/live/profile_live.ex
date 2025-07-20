@@ -225,8 +225,8 @@ defmodule EveDmvWeb.ProfileLive do
         <div class="bg-gray-800 rounded-lg p-6">
           <div class="text-center">
             <!-- EVE Character Portrait -->
-            <img 
-              src={character_portrait(@current_user.eve_character_id)} 
+            <img
+              src={character_portrait(@current_user.eve_character_id)}
               alt="Character portrait"
               class="w-32 h-32 rounded-lg mx-auto mb-4 border-2 border-gray-600"
             />
@@ -244,7 +244,7 @@ defmodule EveDmvWeb.ProfileLive do
             <p class="text-gray-500 text-xs mb-4">
               ID: {@current_user.eve_character_id}
             </p>
-            
+
             <!-- Quick Combat Stats -->
             <%= if assigns[:combat_stats] && @combat_stats do %>
               <div class="mt-4 p-3 bg-gray-900 rounded-lg">
@@ -273,7 +273,7 @@ defmodule EveDmvWeb.ProfileLive do
                 </div>
               <% end %>
             <% end %>
-            
+
             <p class="text-gray-400 text-sm mt-4">
               Last Login:
               <%= if @current_user.last_login_at do %>

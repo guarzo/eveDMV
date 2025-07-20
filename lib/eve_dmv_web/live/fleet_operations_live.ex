@@ -589,7 +589,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
     <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
       <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Fleet Composition Analysis</h3>
       <div class="space-y-6">
-        
+
         <!-- Fleet Summary -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div class="bg-white dark:bg-gray-600 p-4 rounded-lg">
@@ -605,7 +605,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
             <div class="text-xl font-bold text-purple-600">#{Map.get(ship_composition, :unique_ship_classes, 0)}</div>
           </div>
         </div>
-        
+
         <!-- Most Common Ships -->
         #{if length(most_common_ships) > 0 do
       """
@@ -629,7 +629,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
     else
       ""
     end}
-        
+
         <!-- Ship Classes Overview -->
         <div>
           <h4 class="font-medium text-gray-900 dark:text-white mb-2">Ship Classes</h4>
@@ -658,7 +658,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
     end)}
           </div>
         </div>
-        
+
         <!-- Fleet Roles -->
         <div>
           <h4 class="font-medium text-gray-900 dark:text-white mb-2">Fleet Roles</h4>
@@ -696,7 +696,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
     end)}
           </div>
         </div>
-        
+
         <!-- Fleet Tactical Insights -->
         #{case Map.get(data || %{}, :composition_summary) do
       %{fleet_insights: insights} when is_list(insights) and length(insights) > 0 -> """
@@ -713,7 +713,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
         """
       _ -> ""
     end}
-        
+
       </div>
     </div>
     """
@@ -739,26 +739,26 @@ defmodule EveDmvWeb.FleetOperationsLive do
     <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
       <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Fleet Effectiveness Analysis</h3>
       <div class="space-y-6">
-        
+
         <!-- Overall Rating -->
         <div class="text-center bg-white dark:bg-gray-600 p-4 rounded-lg">
           <div class="text-sm text-gray-600 dark:text-gray-300 mb-1">Overall Effectiveness</div>
           <div class="text-3xl font-bold text-indigo-600">#{overall_effectiveness}%</div>
           <div class="text-xs text-gray-500 dark:text-gray-400">Combined fleet performance rating</div>
         </div>
-        
+
         <!-- Combat Capabilities -->
         <div>
           <h4 class="font-medium text-gray-900 dark:text-white mb-3">Combat Capabilities</h4>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="bg-white dark:bg-gray-600 p-4 rounded-lg">
               <div class="text-sm text-gray-600 dark:text-gray-300">Estimated DPS</div>
-              <div class="text-xl font-bold text-red-600">#{estimated_dps |> format_number()}</div>
+              <div class="text-xl font-bold text-red-600">#{format_number(estimated_dps)}</div>
               <div class="text-xs text-gray-500 dark:text-gray-400">Total fleet damage per second</div>
             </div>
             <div class="bg-white dark:bg-gray-600 p-4 rounded-lg">
               <div class="text-sm text-gray-600 dark:text-gray-300">Fleet EHP</div>
-              <div class="text-xl font-bold text-blue-600">#{estimated_ehp |> format_ehp()}</div>
+              <div class="text-xl font-bold text-blue-600">#{format_ehp(estimated_ehp)}</div>
               <div class="text-xs text-gray-500 dark:text-gray-400">Total effective hit points</div>
             </div>
             <div class="bg-white dark:bg-gray-600 p-4 rounded-lg">
@@ -768,7 +768,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
             </div>
           </div>
         </div>
-        
+
         <!-- Performance Ratings -->
         <div>
           <h4 class="font-medium text-gray-900 dark:text-white mb-3">Performance Ratings</h4>
@@ -811,7 +811,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
             </div>
           </div>
         </div>
-        
+
         <!-- Fleet Command -->
         <div class="bg-white dark:bg-gray-600 p-4 rounded-lg">
           <div class="flex justify-between items-center">
@@ -821,7 +821,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
             </span>
           </div>
         </div>
-        
+
       </div>
     </div>
     """
@@ -839,7 +839,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
     <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
       <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Pilot Performance Analysis</h3>
       <div class="space-y-6">
-        
+
         <!-- Performance Overview -->
         <div>
           <h4 class="font-medium text-gray-900 dark:text-white mb-3">Battle Performance</h4>
@@ -861,7 +861,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
             </div>
           </div>
         </div>
-        
+
         <!-- Ship Distribution -->
         #{if map_size(ship_distribution) > 0 do
       """
@@ -880,7 +880,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
     else
       ""
     end}
-        
+
         <!-- Top Performers -->
         #{if length(top_performers) > 0 do
       """
@@ -915,7 +915,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
     else
       ""
     end}
-        
+
         <!-- Battle Statistics -->
         <div>
           <h4 class="font-medium text-gray-900 dark:text-white mb-3">Battle Statistics</h4>
@@ -932,7 +932,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
             </div>
           </div>
         </div>
-        
+
       </div>
     </div>
     """
@@ -1167,7 +1167,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
       ship_type_id in [29_248, 29_984, 29_986, 29_988] -> "T3 Destroyer"
       # Frigates
       ship_type_id in 582..650 -> "Frigate"
-      # Regular Destroyers  
+      # Regular Destroyers
       ship_type_id in [16_219, 16_227, 16_236, 16_242] -> "Destroyer"
       ship_type_id in 324..380 -> "Destroyer"
       # Cruisers

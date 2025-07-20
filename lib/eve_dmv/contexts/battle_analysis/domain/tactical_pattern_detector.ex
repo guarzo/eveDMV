@@ -644,7 +644,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
           |> Enum.uniq()
           |> MapSet.new()
 
-        # Get attackers from second victim  
+        # Get attackers from second victim
         attackers2 =
           victim2_kms
           |> Enum.flat_map(&get_attackers_from_killmail/1)

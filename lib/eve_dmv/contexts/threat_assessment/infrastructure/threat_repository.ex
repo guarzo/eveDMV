@@ -196,7 +196,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
     # Query real killmail data for character
     killmail_stats = get_character_killmail_stats(character_id)
 
-    # Get corporation data from recent killmails 
+    # Get corporation data from recent killmails
     corp_data = get_character_corporation_data(character_id)
 
     # Get alliance data if character is in one
@@ -255,7 +255,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
       |> filter(killmail_time: [gte: cutoff_date])
       |> limit(100)
 
-    # Query killmails where character was attacker  
+    # Query killmails where character was attacker
     recent_query =
       KillmailRaw
       |> new()
@@ -472,7 +472,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
   end
 
   defp get_fleet_participants_from_killmails(fleet_id) do
-    # Since EVE doesn't track fleets directly in killmails, we'll treat fleet_id 
+    # Since EVE doesn't track fleets directly in killmails, we'll treat fleet_id
     # as a killmail_id and get participants from that specific engagement
     query =
       KillmailRaw

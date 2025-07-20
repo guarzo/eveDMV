@@ -140,11 +140,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ShipStatsCalculator do
 
   ## Parameters
   - ship_type_id: EVE ship type ID
-  - options: 
+  - options:
     - fitting_type: :pvp (default), :fleet, :solo, :kiting, :brawling
     - tank_type: :shield, :armor, :hull, :auto (default: auto-detect)
     - skills: :all_v (default), :average
-    
+
   ## Returns
   {:ok, %{dps: dps_stats, ehp: ehp_stats, application: application_stats}}
   """

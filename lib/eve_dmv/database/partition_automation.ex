@@ -94,12 +94,12 @@ defmodule EveDmv.Database.PartitionAutomation do
   @spec get_partition_stats() :: {:ok, map()} | {:error, any()}
   def get_partition_stats do
     query = """
-    SELECT 
+    SELECT
       schemaname,
       tablename,
       pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as size,
       (SELECT count(*) FROM (SELECT 1 FROM pg_class WHERE relname = tablename LIMIT 1000000) x) as approx_row_count
-    FROM pg_tables 
+    FROM pg_tables
     WHERE tablename ~ '^killmails_raw_y[0-9]{4}m[0-9]{2}$'
     ORDER BY tablename;
     """
@@ -185,24 +185,24 @@ defmodule EveDmv.Database.PartitionAutomation do
   defp create_partition_with_indexes(partition_name, start_date, end_date) do
     # Create the partition
     Repo.query!("""
-    CREATE TABLE #{partition_name} 
-    PARTITION OF killmails_raw 
+    CREATE TABLE #{partition_name}
+    PARTITION OF killmails_raw
     FOR VALUES FROM ('#{start_date}') TO ('#{end_date}');
     """)
 
     # Create indexes
     Repo.query!("""
-    CREATE INDEX #{partition_name}_system_time_idx 
+    CREATE INDEX #{partition_name}_system_time_idx
     ON #{partition_name} (solar_system_id, killmail_time);
     """)
 
     Repo.query!("""
-    CREATE INDEX #{partition_name}_victim_time_idx 
+    CREATE INDEX #{partition_name}_victim_time_idx
     ON #{partition_name} (victim_character_id, killmail_time);
     """)
 
     Repo.query!("""
-    CREATE INDEX #{partition_name}_attacker_count_idx 
+    CREATE INDEX #{partition_name}_attacker_count_idx
     ON #{partition_name} (attacker_count, killmail_time);
     """)
   end

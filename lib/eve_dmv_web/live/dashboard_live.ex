@@ -62,31 +62,31 @@ defmodule EveDmvWeb.DashboardLive do
       <div class="flex items-start justify-between">
         <div class="flex items-center space-x-6">
           <!-- Character Portrait -->
-          <img 
-            src={character_portrait(@current_user.eve_character_id)} 
+          <img
+            src={character_portrait(@current_user.eve_character_id)}
             alt="Character portrait"
             class="w-24 h-24 rounded-lg border-2 border-gray-600"
           />
-          
+
           <!-- Character Info -->
           <div>
             <h1 class="text-3xl font-bold text-white mb-2">
-              <.link navigate={~p"/character/#{@current_user.eve_character_id}"} 
+              <.link navigate={~p"/character/#{@current_user.eve_character_id}"}
                     class="hover:text-blue-300 transition-colors">
                 {@current_user.eve_character_name}
               </.link>
             </h1>
-            
+
             <!-- Corporation Info -->
             <div class="flex items-center space-x-4 mb-2">
               <%= if @current_user.eve_corporation_name && @current_user.eve_corporation_id do %>
                 <div class="flex items-center space-x-2">
-                  <img 
+                  <img
                     src={corporation_logo(@current_user.eve_corporation_id)}
                     alt="Corporation logo"
                     class="w-8 h-8 rounded"
                   />
-                  <.link navigate={~p"/corporation/#{@current_user.eve_corporation_id}"} 
+                  <.link navigate={~p"/corporation/#{@current_user.eve_corporation_id}"}
                         class="text-gray-300 hover:text-blue-300 transition-colors">
                     {@current_user.eve_corporation_name}
                   </.link>
@@ -94,16 +94,16 @@ defmodule EveDmvWeb.DashboardLive do
               <% else %>
                 <span class="text-gray-400">Independent Pilot</span>
               <% end %>
-              
+
               <!-- Alliance Info -->
               <%= if @current_user.eve_alliance_name && @current_user.eve_alliance_id do %>
                 <div class="flex items-center space-x-2">
-                  <img 
+                  <img
                     src={alliance_logo(@current_user.eve_alliance_id)}
                     alt="Alliance logo"
                     class="w-8 h-8 rounded"
                   />
-                  <.link navigate={~p"/alliance/#{@current_user.eve_alliance_id}"} 
+                  <.link navigate={~p"/alliance/#{@current_user.eve_alliance_id}"}
                         class="text-blue-400 hover:text-blue-300 transition-colors">
                     {@current_user.eve_alliance_name}
                   </.link>
@@ -112,7 +112,7 @@ defmodule EveDmvWeb.DashboardLive do
             </div>
           </div>
         </div>
-        
+
         <!-- Threat Score -->
         <%= if @threat_score.score > 0 do %>
           <div class={"ml-auto px-6 py-3 rounded-lg border " <> threat_level_bg(@threat_score.level)}>
@@ -131,7 +131,7 @@ defmodule EveDmvWeb.DashboardLive do
 
     <!-- Main Dashboard Content -->
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-      
+
       <!-- Favorites & Bookmarks -->
       <div class="bg-gray-800 rounded-lg p-6">
         <h3 class="text-white font-semibold mb-4 flex items-center">
@@ -149,7 +149,7 @@ defmodule EveDmvWeb.DashboardLive do
               <p class="text-gray-600 text-xs mt-1">Star pilots and corps from analysis pages</p>
             </div>
           </div>
-          
+
           <!-- Favorite Battles -->
           <div>
             <h4 class="text-gray-300 text-sm font-medium mb-2">Notable Battles</h4>
@@ -163,7 +163,7 @@ defmodule EveDmvWeb.DashboardLive do
           </div>
         </div>
       </div>
-      
+
       <!-- Combat Statistics -->
       <div class="bg-gray-800 rounded-lg p-6">
         <h3 class="text-white font-semibold mb-4 flex items-center">
@@ -181,7 +181,7 @@ defmodule EveDmvWeb.DashboardLive do
               <div class="text-sm text-gray-400">Losses</div>
             </div>
           </div>
-          
+
           <!-- ISK Summary -->
           <div class="grid grid-cols-2 gap-4">
             <div class="bg-gray-900 rounded-lg p-3 text-center">
@@ -193,7 +193,7 @@ defmodule EveDmvWeb.DashboardLive do
               <div class="text-xs text-gray-400">Lost</div>
             </div>
           </div>
-          
+
           <!-- Efficiency -->
           <div class="bg-gray-900 rounded-lg p-4">
             <div class="flex justify-between items-center mb-2">
@@ -201,14 +201,14 @@ defmodule EveDmvWeb.DashboardLive do
               <span class="text-white font-bold">{calculate_efficiency(@killmail_count, @loss_count, @isk_destroyed, @isk_lost)}%</span>
             </div>
             <div class="w-full bg-gray-700 rounded-full h-2">
-              <div class="bg-gradient-to-r from-green-500 to-blue-500 h-2 rounded-full" 
+              <div class="bg-gradient-to-r from-green-500 to-blue-500 h-2 rounded-full"
                    style={"width: #{calculate_efficiency(@killmail_count, @loss_count, @isk_destroyed, @isk_lost)}%"}></div>
             </div>
             <p class="text-gray-500 text-xs mt-1">Last 30 days</p>
           </div>
         </div>
       </div>
-      
+
       <!-- Chain Activity -->
       <.link navigate={~p"/chain-intelligence"} class="block">
         <div class="bg-gray-800 rounded-lg p-6 hover:bg-gray-750 transition-colors cursor-pointer">
@@ -227,7 +227,7 @@ defmodule EveDmvWeb.DashboardLive do
                 <p class="text-gray-400 text-xs">3 jumps via wormholes</p>
               </div>
             </div>
-            
+
             <!-- Recent Chain Kills -->
             <div class="bg-gray-900 rounded p-3">
               <div class="flex justify-between items-center mb-2">
@@ -242,7 +242,7 @@ defmodule EveDmvWeb.DashboardLive do
           </div>
         </div>
       </.link>
-      
+
       <!-- Surveillance -->
       <.link navigate={~p"/surveillance"} class="block">
         <div class="bg-gray-800 rounded-lg p-6 hover:bg-gray-750 transition-colors cursor-pointer">
@@ -261,7 +261,7 @@ defmodule EveDmvWeb.DashboardLive do
                 <p class="text-gray-400 text-xs">Monitoring 12 corporations</p>
               </div>
             </div>
-            
+
             <!-- Recent Alerts -->
             <div class="bg-gray-900 rounded p-3">
               <div class="flex justify-between items-center mb-2">
@@ -276,7 +276,7 @@ defmodule EveDmvWeb.DashboardLive do
           </div>
         </div>
       </.link>
-      
+
     </div>
 
     <!-- Recent Activity Timeline -->
@@ -293,7 +293,7 @@ defmodule EveDmvWeb.DashboardLive do
             >
               <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-3">
-                  <img 
+                  <img
                     src={character_portrait(kill.character_id)}
                     alt="Victim"
                     class="w-8 h-8 rounded border border-gray-600 group-hover:border-gray-500 transition-colors"
@@ -312,7 +312,7 @@ defmodule EveDmvWeb.DashboardLive do
                   <p class="text-gray-500 text-xs">{format_time_ago(kill.killmail_time)}</p>
                 </div>
               </div>
-              
+
               <!-- Additional kill context -->
               <div class="mt-3 pt-3 border-t border-gray-700 flex items-center justify-between text-xs">
                 <span class="text-gray-500">
@@ -359,12 +359,12 @@ defmodule EveDmvWeb.DashboardLive do
               </span>
             </div>
             <div class="w-full bg-gray-700 rounded-full h-3">
-              <div class={"h-3 rounded-full " <> threat_level_bar_color(@threat_score.level)} 
+              <div class={"h-3 rounded-full " <> threat_level_bar_color(@threat_score.level)}
                    style={"width: #{@threat_score.score * 10}%"}></div>
             </div>
             <p class="text-gray-500 text-xs mt-2">Score: {@threat_score.score}/10</p>
           </div>
-          
+
           <div class="bg-gray-900 rounded p-4">
             <h4 class="text-gray-400 text-sm mb-2">Analysis Period</h4>
             <p class="text-white font-medium">Last 90 Days</p>
@@ -372,11 +372,11 @@ defmodule EveDmvWeb.DashboardLive do
               {if @killmail_count > 0, do: "#{@killmail_count} engagements analyzed", else: "No combat data"}
             </p>
           </div>
-          
+
           <div class="bg-gray-900 rounded p-4">
             <h4 class="text-gray-400 text-sm mb-2">Intelligence Status</h4>
             <p class="text-green-400 font-medium">Active Profile</p>
-            <.link navigate={~p"/character/#{@current_user.eve_character_id}"} 
+            <.link navigate={~p"/character/#{@current_user.eve_character_id}"}
                   class="text-blue-400 hover:text-blue-300 text-xs transition-colors">
               → View Full Analysis
             </.link>
@@ -395,8 +395,8 @@ defmodule EveDmvWeb.DashboardLive do
       :kills ->
         # Count killmails where character is an attacker (not victim)
         query = """
-        SELECT COUNT(*) 
-        FROM killmails_raw 
+        SELECT COUNT(*)
+        FROM killmails_raw
         WHERE killmail_time >= NOW() - INTERVAL '30 days'
         AND victim_character_id != $1
         AND raw_data->'attackers' @> $2::jsonb
@@ -412,8 +412,8 @@ defmodule EveDmvWeb.DashboardLive do
       :losses ->
         # Count killmails where character is the victim
         query = """
-        SELECT COUNT(*) 
-        FROM killmails_raw 
+        SELECT COUNT(*)
+        FROM killmails_raw
         WHERE killmail_time >= NOW() - INTERVAL '30 days'
         AND victim_character_id = $1
         """
@@ -430,15 +430,15 @@ defmodule EveDmvWeb.DashboardLive do
   defp get_recent_kills do
     # Get recent killmails from killmails_raw table with ISK values
     query = """
-    SELECT 
-      killmail_id, 
-      victim_character_id, 
-      victim_ship_type_id, 
+    SELECT
+      killmail_id,
+      victim_character_id,
+      victim_ship_type_id,
       killmail_time,
       COALESCE(CAST(raw_data->>'zkb'->>'totalValue' AS NUMERIC), 0) as fitted_value,
       COALESCE(raw_data->>'victim'->>'character_name', 'Unknown Pilot') as character_name
-    FROM killmails_raw 
-    ORDER BY killmail_time DESC 
+    FROM killmails_raw
+    ORDER BY killmail_time DESC
     LIMIT 6
     """
 
@@ -475,7 +475,7 @@ defmodule EveDmvWeb.DashboardLive do
     # Calculate total ISK destroyed by character (as attacker, not victim)
     query = """
     SELECT COALESCE(SUM(CAST(raw_data->>'zkb'->>'totalValue' AS NUMERIC)), 0) as total_isk
-    FROM killmails_raw 
+    FROM killmails_raw
     WHERE killmail_time >= NOW() - INTERVAL '30 days'
     AND victim_character_id != $1
     AND raw_data->'attackers' @> $2::jsonb
@@ -499,7 +499,7 @@ defmodule EveDmvWeb.DashboardLive do
     # Calculate total ISK lost by character (as victim)
     query = """
     SELECT COALESCE(SUM(CAST(raw_data->>'zkb'->>'totalValue' AS NUMERIC)), 0) as total_isk
-    FROM killmails_raw 
+    FROM killmails_raw
     WHERE killmail_time >= NOW() - INTERVAL '30 days'
     AND victim_character_id = $1
     AND raw_data->'zkb'->>'totalValue' IS NOT NULL
@@ -522,7 +522,7 @@ defmodule EveDmvWeb.DashboardLive do
 
   #   query = """
   #   SELECT COUNT(DISTINCT DATE_TRUNC('hour', killmail_time)) as engagements
-  #   FROM killmails_raw 
+  #   FROM killmails_raw
   #   WHERE killmail_time >= $1
   #   """
 

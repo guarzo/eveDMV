@@ -498,7 +498,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
 
   defp identify_unused_modules(events, fitting_data) do
     fitted_modules = extract_modules_from_fitting(fitting_data)
-    used_module_types = events |> extract_used_modules_from_events() |> Map.keys()
+    used_module_types = extract_used_modules_from_events(events) |> Map.keys()
 
     fitted_modules
     |> Enum.filter(fn module ->

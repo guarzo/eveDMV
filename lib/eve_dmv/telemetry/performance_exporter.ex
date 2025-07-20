@@ -129,7 +129,7 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
 
   defp get_database_size do
     query = """
-    SELECT 
+    SELECT
       pg_size_pretty(pg_database_size(current_database())) as size,
       pg_database_size(current_database()) as size_bytes
     """
@@ -145,7 +145,7 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
 
   defp get_connection_stats do
     query = """
-    SELECT 
+    SELECT
       (SELECT setting::int FROM pg_settings WHERE name = 'max_connections') as max_connections,
       (SELECT count(*) FROM pg_stat_activity WHERE state = 'active') as active_connections,
       (SELECT count(*) FROM pg_stat_activity) as all_pg_connections,
@@ -173,14 +173,14 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
 
   defp get_table_statistics do
     query = """
-    SELECT 
+    SELECT
       schemaname,
       tablename,
       attname,
       n_distinct,
       correlation,
       most_common_vals
-    FROM pg_stats 
+    FROM pg_stats
     WHERE schemaname = 'public'
     ORDER BY tablename, attname
     """
@@ -205,16 +205,16 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
   defp get_statement_statistics do
     # Only available if pg_stat_statements extension is enabled
     query = """
-    SELECT 
+    SELECT
       query,
       calls,
       total_exec_time,
       mean_exec_time,
       rows,
       100.0 * shared_blks_hit / nullif(shared_blks_hit + shared_blks_read, 0) AS hit_percent
-    FROM pg_stat_statements 
+    FROM pg_stat_statements
     WHERE query NOT LIKE '%pg_stat_%'
-    ORDER BY total_exec_time DESC 
+    ORDER BY total_exec_time DESC
     LIMIT 20
     """
 
@@ -256,15 +256,15 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
   defp check_database_alerts(cutoff_time) do
     # Check for connection pool exhaustion
     query = """
-    SELECT 
+    SELECT
       'connection_pool' as alert_type,
       'High connection usage detected: ' || active_count || ' active connections' as message,
       $1 as detected_at,
       'warning' as severity
     FROM (
       SELECT count(*) as active_count
-      FROM pg_stat_activity 
-      WHERE state = 'active' 
+      FROM pg_stat_activity
+      WHERE state = 'active'
         AND query_start >= $1
     ) active_summary
     WHERE active_count > 80
@@ -289,13 +289,13 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
   defp check_slow_query_alerts(cutoff_time) do
     # Check for queries that have been running too long
     query = """
-    SELECT 
+    SELECT
       'long_running_query' as alert_type,
       'Query running for ' || extract(epoch from (now() - query_start))::int || ' seconds' as message,
       query_start as detected_at,
       'critical' as severity
-    FROM pg_stat_activity 
-    WHERE state = 'active' 
+    FROM pg_stat_activity
+    WHERE state = 'active'
       AND query_start >= $1
       AND query_start < now() - interval '5 minutes'
       AND query NOT LIKE '%pg_stat_%'

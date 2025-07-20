@@ -125,13 +125,13 @@ defmodule Mix.Tasks.Eve.Stats do
 
       table_sizes =
         EveDmv.Repo.all(
-          from(t in fragment("SELECT 
+          from(t in fragment("SELECT
             schemaname,
             tablename,
             pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size,
             pg_total_relation_size(schemaname||'.'||tablename) AS size_bytes
           FROM pg_tables
-          WHERE schemaname = 'public' 
+          WHERE schemaname = 'public'
             AND tablename LIKE 'killmails_raw%'
           ORDER BY size_bytes DESC"),
             select: %{

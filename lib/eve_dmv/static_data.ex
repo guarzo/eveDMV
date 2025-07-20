@@ -729,7 +729,7 @@ defmodule EveDmv.StaticData do
       ]) or String.contains?(group_lower, "caldari") ->
         "Caldari"
 
-      # Minmatar ships  
+      # Minmatar ships
       String.contains?(name_lower, [
         "bellicose",
         "breacher",

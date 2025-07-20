@@ -24,10 +24,10 @@ defmodule Mix.Tasks.EveDmv.ImportHistorical do
 
       # Import from JSONL file
       mix eve_dmv.import_historical /data/killmails.jsonl
-      
+
       # Import with monitoring
       mix eve_dmv.import_historical /data/killmails.jsonl --monitor
-      
+
       # Resume failed import from line 50000
       mix eve_dmv.import_historical /data/killmails.jsonl --resume-from 50000
   """

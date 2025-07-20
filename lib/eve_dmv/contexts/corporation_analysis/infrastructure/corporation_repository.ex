@@ -122,7 +122,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
   """
   def get_killmail_statistics(corporation_id) do
     query = """
-    SELECT 
+    SELECT
       COUNT(DISTINCT CASE WHEN p.is_victim = false THEN k.killmail_id END) as total_kills,
       COUNT(DISTINCT CASE WHEN p.is_victim = true THEN k.killmail_id END) as total_losses,
       COALESCE(SUM(CASE WHEN p.is_victim = false THEN k.zkb_total_value END), 0) as isk_destroyed,
@@ -255,14 +255,14 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
   defp calculate_group_activity_ratio(character_id, corporation_id) do
     # Calculate ratio of fleet vs solo activity
     query = """
-    SELECT 
-      COUNT(DISTINCT CASE WHEN 
-        (SELECT COUNT(DISTINCT p2.character_id) 
-         FROM participants p2 
-         WHERE p2.killmail_id = k.killmail_id 
+    SELECT
+      COUNT(DISTINCT CASE WHEN
+        (SELECT COUNT(DISTINCT p2.character_id)
+         FROM participants p2
+         WHERE p2.killmail_id = k.killmail_id
            AND p2.corporation_id = $2
-           AND p2.is_victim = false) > 1 
-        THEN k.killmail_id END)::float / 
+           AND p2.is_victim = false) > 1
+        THEN k.killmail_id END)::float /
       NULLIF(COUNT(DISTINCT k.killmail_id)::float, 0) as group_ratio
     FROM participants p
     JOIN killmails_raw k ON p.killmail_id = k.killmail_id

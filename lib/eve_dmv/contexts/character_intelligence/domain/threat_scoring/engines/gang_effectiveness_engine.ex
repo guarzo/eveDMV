@@ -310,7 +310,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
       11_987,
       11_985,
       12_003,
-      # Command ships  
+      # Command ships
       22_470,
       22_852,
       17_918,

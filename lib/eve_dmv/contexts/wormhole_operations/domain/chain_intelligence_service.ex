@@ -367,9 +367,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
     since = DateTime.add(DateTime.utc_now(), -time_period * 3600, :second)
 
     query = """
-    SELECT killmail_id, killmail_time, victim_ship_type_id, attacker_count, 
+    SELECT killmail_id, killmail_time, victim_ship_type_id, attacker_count,
            victim_character_id, victim_corporation_id
-    FROM killmails_raw 
+    FROM killmails_raw
     WHERE solar_system_id = $1 AND killmail_time >= $2
     ORDER BY killmail_time DESC
     LIMIT 100

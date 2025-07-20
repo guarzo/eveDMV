@@ -11,12 +11,12 @@ defmodule Mix.Tasks.Eve.LoadWormholeClasses do
   ## Usage
 
       mix eve.load_wormhole_classes
-      
+
   ## Options
 
     * `--dry-run` - Show what would be updated without making changes
     * `--force` - Force update even if data seems current
-    
+
   ## Examples
 
       mix eve.load_wormhole_classes

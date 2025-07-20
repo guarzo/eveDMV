@@ -29,7 +29,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.ActivityFeedComponent do
           </div>
         </div>
       </div>
-      
+
       <!-- Ships & Weapons -->
       <div class="bg-gray-800 rounded-lg p-6 mt-6">
         <h3 class="text-white font-semibold mb-4 flex items-center">
@@ -40,7 +40,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.ActivityFeedComponent do
             <% weapon = Enum.find(@analysis.weapon_preferences, fn w -> w.ship_name == ship_name end) %>
             <div class="bg-gray-700 rounded p-3">
               <div class="flex items-center gap-3">
-                <.ship_image 
+                <.ship_image
                   type_id={String.to_integer(stats.ship_type_id || "0")}
                   name={ship_name}
                   size={48}

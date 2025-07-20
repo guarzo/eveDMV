@@ -496,7 +496,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
     end
   end
 
-  # Fallback to original individual calculation method  
+  # Fallback to original individual calculation method
   defp calculate_total_isk_destroyed_fallback(killmails) do
     alias EveDmv.Market.PriceService
 
