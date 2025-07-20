@@ -403,9 +403,7 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetAnalyzer do
   ## Returns
   - Boolean indicating if ship is part of doctrine
   """
-  def doctrine_ship?(ship_name, doctrine) do
-    EveDmv.StaticData.doctrine_ship?(ship_name, doctrine)
-  end
+  defdelegate doctrine_ship?(ship_name, doctrine), to: EveDmv.StaticData
 
   @doc """
   Calculate logistics ratio for a fleet.

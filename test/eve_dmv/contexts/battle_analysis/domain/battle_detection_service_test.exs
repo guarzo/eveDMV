@@ -6,7 +6,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
   describe "detect_battles/3" do
     test "clusters killmails by time and space into battles" do
       # Create sample killmails in database
-      {:ok, killmail1} =
+      {:ok, _killmail1} =
         create_killmail(%{
           killmail_id: 1,
           killmail_time: ~U[2024-01-01 10:00:00Z],
@@ -18,7 +18,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
           }
         })
 
-      {:ok, killmail2} =
+      {:ok, _killmail2} =
         create_killmail(%{
           killmail_id: 2,
           killmail_time: ~U[2024-01-01 10:05:00Z],
@@ -31,7 +31,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
         })
 
       # Different system, should be separate battle
-      {:ok, killmail3} =
+      {:ok, _killmail3} =
         create_killmail(%{
           killmail_id: 3,
           killmail_time: ~U[2024-01-01 10:10:00Z],
@@ -52,7 +52,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
       assert length(battles) == 2
 
       # First battle should contain killmail1 and killmail2
-      first_battle = Enum.find(battles, &(&1.metadata.system_id == 30_002_765))
+      first_battle = Enum.find(battles, &(&1.metadata.primary_system == 30_002_765))
       assert first_battle
       assert length(first_battle.killmails) == 2
       killmail_ids = Enum.map(first_battle.killmails, & &1.killmail_id)
@@ -60,7 +60,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
       assert 2 in killmail_ids
 
       # Second battle should contain killmail3
-      second_battle = Enum.find(battles, &(&1.metadata.system_id == 30_002_766))
+      second_battle = Enum.find(battles, &(&1.metadata.primary_system == 30_002_766))
       assert second_battle
       assert length(second_battle.killmails) == 1
       assert hd(second_battle.killmails).killmail_id == 3
@@ -91,7 +91,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
 
     test "respects max_time_gap option" do
       # Create killmails with large time gap
-      {:ok, killmail1} =
+      {:ok, _killmail1} =
         create_killmail(%{
           killmail_id: 1,
           killmail_time: ~U[2024-01-01 10:00:00Z],
@@ -103,7 +103,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
           }
         })
 
-      {:ok, killmail2} =
+      {:ok, _killmail2} =
         create_killmail(%{
           killmail_id: 2,
           # 40 minutes later
@@ -133,7 +133,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
 
     test "handles participant overlap for longer time gaps" do
       # Create killmails with same participants but longer time gap
-      {:ok, killmail1} =
+      {:ok, _killmail1} =
         create_killmail(%{
           killmail_id: 1,
           killmail_time: ~U[2024-01-01 10:00:00Z],
@@ -145,7 +145,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
           }
         })
 
-      {:ok, killmail2} =
+      {:ok, _killmail2} =
         create_killmail(%{
           killmail_id: 2,
           # 45 minutes later
@@ -170,15 +170,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
       assert length(battle.killmails) == 2
 
       # Verify battle metadata
-      assert battle.metadata.participant_count >= 3
-      assert battle.metadata.system_id == 30_002_765
+      assert battle.metadata.unique_participants >= 3
+      assert battle.metadata.primary_system == 30_002_765
     end
   end
 
   describe "detect_battles_in_system/4" do
     test "only detects battles in specified system" do
       # Create killmails in different systems
-      {:ok, killmail1} =
+      {:ok, _killmail1} =
         create_killmail(%{
           killmail_id: 1,
           killmail_time: ~U[2024-01-01 10:00:00Z],
@@ -190,7 +190,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
           }
         })
 
-      {:ok, killmail2} =
+      {:ok, _killmail2} =
         create_killmail(%{
           killmail_id: 2,
           killmail_time: ~U[2024-01-01 10:05:00Z],
@@ -212,7 +212,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
       # Should only find battles in the specified system
       assert length(battles) == 1
       battle = hd(battles)
-      assert battle.metadata.system_id == 30_002_765
+      assert battle.metadata.primary_system == 30_002_765
       assert length(battle.killmails) == 1
       assert hd(battle.killmails).killmail_id == 1
     end
@@ -221,7 +221,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
   describe "analyze_battle_from_killmail_ids/1" do
     test "analyzes battle from specific killmail IDs" do
       # Create killmails
-      {:ok, killmail1} =
+      {:ok, _killmail1} =
         create_killmail(%{
           killmail_id: 1,
           killmail_time: ~U[2024-01-01 10:00:00Z],
@@ -233,7 +233,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
           }
         })
 
-      {:ok, killmail2} =
+      {:ok, _killmail2} =
         create_killmail(%{
           killmail_id: 2,
           killmail_time: ~U[2024-01-01 10:05:00Z],
@@ -249,12 +249,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
 
       assert battle.battle_id
       assert length(battle.killmails) == 2
-      assert battle.metadata.participant_count >= 2
-      assert battle.metadata.system_id == 30_002_765
+      assert battle.metadata.unique_participants >= 2
+      assert battle.metadata.primary_system == 30_002_765
     end
 
     test "handles single killmail" do
-      {:ok, killmail} =
+      {:ok, _killmail} =
         create_killmail(%{
           killmail_id: 1,
           killmail_time: ~U[2024-01-01 10:00:00Z],
@@ -281,7 +281,18 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
 
   # Helper function to create killmails
   defp create_killmail(attrs) do
-    changeset = EveDmv.Killmails.KillmailRaw.create_changeset(attrs)
-    EveDmv.Api.create!(changeset)
+    # Set required attributes with defaults
+    attrs =
+      Map.merge(
+        %{
+          killmail_hash: "hash_#{attrs.killmail_id}",
+          source: "test",
+          victim_ship_type_id: 587,
+          attacker_count: length(get_in(attrs, [:raw_data, "attackers"]) || [])
+        },
+        attrs
+      )
+
+    Ash.create(EveDmv.Killmails.KillmailRaw, attrs, domain: EveDmv.Api)
   end
 end

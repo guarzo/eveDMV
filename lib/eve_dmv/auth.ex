@@ -14,33 +14,51 @@ defmodule EveDmv.Auth do
   Uses the refresh token to get a new access token from EVE SSO.
   """
   def refresh_user_token(user) do
-    if user.refresh_token do
-      case refresh_eve_sso_token(user.refresh_token) do
-        {:ok, token_data} ->
-          # Update the user with new token data
-          case user
-               |> Ash.Changeset.for_update(:refresh_token, %{
-                 access_token: token_data.access_token,
-                 refresh_token: token_data.refresh_token || user.refresh_token,
-                 token_expires_at: token_data.expires_at
-               })
-               |> Ash.update(domain: Api) do
-            {:ok, updated_user} ->
-              Logger.info("Successfully refreshed token for user #{user.id}")
-              {:ok, updated_user}
+    with {:ok, _} <- validate_refresh_token(user),
+         {:ok, token_data} <- refresh_eve_sso_token(user.refresh_token),
+         {:ok, validated_data} <- validate_token_response(token_data),
+         {:ok, updated_user} <- update_user_token(user, validated_data) do
+      Logger.info("Successfully refreshed token for user #{user.id}")
+      {:ok, updated_user}
+    else
+      {:error, :no_refresh_token} = error ->
+        Logger.error("No refresh token available for user #{user.id}")
+        error
 
-            {:error, reason} ->
-              Logger.error("Failed to update user token: #{inspect(reason)}")
-              {:error, :token_update_failed}
-          end
+      {:error, :invalid_token_response} = error ->
+        Logger.error("Invalid token response from EVE SSO")
+        error
 
-        {:error, reason} ->
-          Logger.error("Failed to refresh EVE SSO token: #{inspect(reason)}")
-          {:error, :token_refresh_failed}
-      end
+      {:error, reason} ->
+        Logger.error("Token refresh failed: #{inspect(reason)}")
+        {:error, :token_refresh_failed}
+    end
+  end
+
+  defp validate_refresh_token(user) do
+    if user.refresh_token && user.refresh_token != "" do
+      {:ok, user.refresh_token}
     else
       {:error, :no_refresh_token}
     end
+  end
+
+  defp validate_token_response(token_data) do
+    if token_data.access_token && token_data.refresh_token do
+      {:ok, token_data}
+    else
+      {:error, :invalid_token_response}
+    end
+  end
+
+  defp update_user_token(user, token_data) do
+    user
+    |> Ash.Changeset.for_update(:refresh_token, %{
+      access_token: token_data.access_token,
+      refresh_token: token_data.refresh_token,
+      token_expires_at: token_data.expires_at
+    })
+    |> Ash.update(domain: Api)
   end
 
   @doc """
@@ -52,8 +70,9 @@ defmodule EveDmv.Auth do
         false
 
       expires_at ->
-        # Check if token expires within 5 minutes
-        buffer_time = DateTime.add(DateTime.utc_now(), 5 * 60, :second)
+        # Check if token expires within configured buffer time
+        buffer_minutes = token_refresh_buffer_minutes()
+        buffer_time = DateTime.add(DateTime.utc_now(), buffer_minutes * 60, :second)
         DateTime.compare(expires_at, buffer_time) == :lt
     end
   end
@@ -62,17 +81,42 @@ defmodule EveDmv.Auth do
   Get the current user from the session.
   """
   def get_current_user(user_id) when is_binary(user_id) do
-    case Ash.get(User, user_id, domain: Api) do
-      {:ok, user} -> {:ok, user}
+    with {:ok, _} <- validate_user_id(user_id),
+         {:ok, user} <- Ash.get(User, user_id, domain: Api) do
+      {:ok, user}
+    else
+      {:error, :invalid_user_id} = error -> error
       {:error, _} -> {:error, :user_not_found}
+    end
+  end
+
+  defp validate_user_id(user_id) do
+    # Validate UUID format
+    case Ecto.UUID.cast(user_id) do
+      {:ok, _uuid} -> {:ok, user_id}
+      :error -> {:error, :invalid_user_id}
     end
   end
 
   # Private functions
 
+  defp token_refresh_buffer_minutes do
+    # Get from config or environment, default to 5 minutes
+    Application.get_env(:eve_dmv, :token_refresh_buffer_minutes, 5)
+  end
+
+  defp eve_sso_token_url do
+    # Get from config or environment, default to production URL
+    Application.get_env(
+      :eve_dmv,
+      :eve_sso_token_url,
+      "https://login.eveonline.com/v2/oauth/token"
+    )
+  end
+
   defp refresh_eve_sso_token(refresh_token) do
     # EVE SSO token refresh endpoint
-    url = "https://login.eveonline.com/v2/oauth/token"
+    url = eve_sso_token_url()
 
     client_id = System.get_env("EVE_SSO_CLIENT_ID")
     client_secret = System.get_env("EVE_SSO_CLIENT_SECRET")

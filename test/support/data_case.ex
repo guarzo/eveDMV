@@ -32,6 +32,13 @@ defmodule EveDmv.DataCase do
 
   setup tags do
     setup_sandbox(tags)
+
+    # Seed common test ships if needed
+    if tags[:seed_ships] != false do
+      EveDmv.TestDataHelpers.seed_test_ships()
+    end
+
+    :ok
   end
 
   @doc """

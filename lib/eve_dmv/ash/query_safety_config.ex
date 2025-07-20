@@ -11,32 +11,31 @@ defmodule EveDmv.Ash.QuerySafetyConfig do
 
   Returns a keyword list with safety options or nil if no safety should be applied.
   """
-  def safety_config_for(resource) do
-    resource_name = Module.split(resource) |> List.last()
+  # High-volume resources need stricter limits
+  def safety_config_for(EveDmv.Killmails.KillmailRaw), do: [limit: 500]
+  def safety_config_for(EveDmv.Killmails.Participant), do: [limit: 1000]
+  def safety_config_for(EveDmv.Intelligence.CharacterStats), do: [limit: 1000]
 
-    case resource_name do
-      # High-volume resources need stricter limits
-      "KillmailRaw" -> [limit: 500]
-      "Participant" -> [limit: 1000]
-      "CharacterStats" -> [limit: 1000]
-      # Profile and surveillance resources
-      "Profile" -> [limit: 100]
-      "ProfileMatch" -> [limit: 500]
-      "Notification" -> [limit: 200]
-      # Analytics resources
-      "PlayerStats" -> [limit: 1000]
-      "ShipStats" -> [limit: 1000]
-      # Battle analysis resources
-      "Battle" -> [limit: 100]
-      "BattleKillmail" -> [limit: 500]
-      "CombatLog" -> [limit: 1000]
-      # System resources
-      "SolarSystem" -> [limit: 5000, allow_unlimited: true]
-      "ItemType" -> [limit: 5000, allow_unlimited: true]
-      # Default for other resources
-      _ -> [limit: 1000]
-    end
-  end
+  # Profile and surveillance resources
+  def safety_config_for(EveDmv.Surveillance.Profile), do: [limit: 100]
+  def safety_config_for(EveDmv.Surveillance.ProfileMatch), do: [limit: 500]
+  def safety_config_for(EveDmv.Surveillance.Notification), do: [limit: 200]
+
+  # Analytics resources
+  def safety_config_for(EveDmv.Analytics.PlayerStats), do: [limit: 1000]
+  def safety_config_for(EveDmv.Analytics.ShipStats), do: [limit: 1000]
+
+  # Battle analysis resources
+  def safety_config_for(EveDmv.BattleAnalysis.Battle), do: [limit: 100]
+  def safety_config_for(EveDmv.BattleAnalysis.BattleKillmail), do: [limit: 500]
+  def safety_config_for(EveDmv.BattleAnalysis.CombatLog), do: [limit: 1000]
+
+  # System resources
+  def safety_config_for(EveDmv.Eve.SolarSystem), do: [limit: 5000, allow_unlimited: true]
+  def safety_config_for(EveDmv.Eve.ItemType), do: [limit: 5000, allow_unlimited: true]
+
+  # Default for other resources
+  def safety_config_for(_), do: [limit: 1000]
 
   @doc """
   Actions that should bypass query safety.
@@ -51,16 +50,20 @@ defmodule EveDmv.Ash.QuerySafetyConfig do
   Apply query safety to a query based on resource configuration.
   """
   def apply_safety(query) do
-    resource = query.resource
-    action_name = query.action.name
-
-    if action_name in unsafe_actions() do
-      query
-    else
-      case safety_config_for(resource) do
-        nil -> query
-        config -> EveDmv.Ash.Preparations.QuerySafety.prepare(query, config, %{})
+    # Verify query structure before accessing fields
+    with %{resource: resource} <- query,
+         %{action: %{name: action_name}} <- query do
+      if action_name in unsafe_actions() do
+        query
+      else
+        case safety_config_for(resource) do
+          nil -> query
+          config -> EveDmv.Ash.Preparations.QuerySafety.prepare(query, config, %{})
+        end
       end
+    else
+      # If query doesn't have expected structure, return unchanged
+      _ -> query
     end
   end
 end

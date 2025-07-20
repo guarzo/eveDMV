@@ -13,7 +13,6 @@ defmodule EveDmv.Ash.Preparations.QuerySafety do
 
   ## Options
     * `:limit` - Override default limit (max: 10,000)
-    * `:timeout` - Override default timeout in ms (max: 120,000)
     * `:allow_unlimited` - Allow queries without limits (use with caution)
   """
   def prepare(query, opts, _context) do

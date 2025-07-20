@@ -85,7 +85,7 @@ defmodule EveDmv.Database.IndexPerformanceVerifierTest do
   describe "performance metrics extraction" do
     test "extracts metrics from EXPLAIN output" do
       # This is a unit test for the metric extraction logic
-      explain_output = """
+      _explain_output = """
       Index Scan using test_idx on test_table  (cost=0.42..8.45 rows=1 width=40) (actual time=0.123..0.125 rows=1 loops=1)
       Planning Time: 0.456 ms
       Execution Time: 1.234 ms

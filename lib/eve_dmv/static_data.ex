@@ -62,6 +62,26 @@ defmodule EveDmv.StaticData do
   end
 
   @doc """
+  Get type information by name.
+  Returns the full ItemType struct or nil if not found.
+  """
+  def get_type_by_name(type_name) when is_binary(type_name) do
+    ItemType
+    |> new()
+    |> filter(type_name == ^type_name)
+    |> Ash.read_one(domain: Api)
+    |> case do
+      {:ok, item} when not is_nil(item) ->
+        # Cache by ID for future lookups
+        cache_item(@type_cache_table, item.type_id, item)
+        item
+
+      _ ->
+        nil
+    end
+  end
+
+  @doc """
   Get multiple types by IDs with intelligent caching.
   Returns a map of type_id => ItemType.
   """
@@ -103,7 +123,15 @@ defmodule EveDmv.StaticData do
   @doc """
   Get ship classification based on group ID.
   Returns atom like :frigate, :cruiser, etc., or :unknown.
+  Accepts either a ship type ID (integer) or ship name (string).
   """
+  def get_ship_class(ship_name) when is_binary(ship_name) do
+    case get_type_by_name(ship_name) do
+      %ItemType{type_id: type_id} -> get_ship_class(type_id)
+      _ -> :unknown
+    end
+  end
+
   def get_ship_class(ship_type_id) when is_integer(ship_type_id) do
     case get_type(ship_type_id) do
       %ItemType{group_id: group_id} when is_integer(group_id) ->
@@ -153,7 +181,15 @@ defmodule EveDmv.StaticData do
 
   @doc """
   Get ship mass. Returns {:ok, mass} or {:error, :not_found}.
+  Accepts either a ship type ID (integer) or ship name (string).
   """
+  def get_ship_mass(ship_name) when is_binary(ship_name) do
+    case get_type_by_name(ship_name) do
+      %ItemType{type_id: type_id} -> get_ship_mass(type_id)
+      _ -> {:error, :ship_not_found}
+    end
+  end
+
   def get_ship_mass(ship_type_id) when is_integer(ship_type_id) do
     case get_type(ship_type_id) do
       %ItemType{mass: mass} when not is_nil(mass) ->
@@ -192,7 +228,19 @@ defmodule EveDmv.StaticData do
         classify_by_security(sec_status, sec_class, system_id)
 
       _ ->
-        :unknown
+        # If system not in database, check if it's a wormhole by ID range
+        cond do
+          is_wormhole_system?(system_id) ->
+            # Unknown class wormhole
+            :wormhole_unknown
+
+          system_id >= 30_000_000 and system_id < 31_000_000 ->
+            # K-space systems in 30M range
+            :known_space
+
+          true ->
+            :unknown
+        end
     end
   end
 
@@ -325,7 +373,15 @@ defmodule EveDmv.StaticData do
   @doc """
   Get ship role based on ship class and group.
   Returns atom like :dps, :logistics, :tackle, :ewar, :command.
+  Accepts either a ship type ID (integer) or ship name (string).
   """
+  def get_ship_role(ship_name) when is_binary(ship_name) do
+    case get_type_by_name(ship_name) do
+      %ItemType{type_id: type_id} -> get_ship_role(type_id)
+      _ -> :unknown
+    end
+  end
+
   def get_ship_role(ship_type_id) when is_integer(ship_type_id) do
     case get_ship_class(ship_type_id) do
       :logistics -> :logistics
@@ -462,7 +518,16 @@ defmodule EveDmv.StaticData do
 
   @doc """
   Check if a ship is part of a specific doctrine.
+  Accepts either a ship type ID (integer) or ship name (string).
   """
+  def doctrine_ship?(ship_name, doctrine_name)
+      when is_binary(ship_name) and is_binary(doctrine_name) do
+    case get_type_by_name(ship_name) do
+      %ItemType{type_id: type_id} -> doctrine_ship?(type_id, doctrine_name)
+      _ -> false
+    end
+  end
+
   def doctrine_ship?(ship_type_id, doctrine_name)
       when is_integer(ship_type_id) and is_binary(doctrine_name) do
     case get_type(ship_type_id) do

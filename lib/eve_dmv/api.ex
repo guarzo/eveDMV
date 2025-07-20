@@ -13,7 +13,8 @@ defmodule EveDmv.Api do
   """
 
   use Ash.Domain,
-    otp_app: :eve_dmv
+    otp_app: :eve_dmv,
+    default_read_preparations: &default_read_preparations/0
 
   # Core application resources only
   resources do

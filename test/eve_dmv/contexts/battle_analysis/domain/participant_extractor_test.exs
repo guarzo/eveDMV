@@ -21,7 +21,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractorTest do
 
       result = ParticipantExtractor.extract_participants(killmail)
 
-      assert Enum.sort(result) == [12345, 67890, 11111]
+      assert Enum.sort(result) == [11111, 12345, 67890]
     end
 
     test "handles string character IDs" do
@@ -37,7 +37,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractorTest do
 
       result = ParticipantExtractor.extract_participants(killmail)
 
-      assert Enum.sort(result) == [12345, 67890, 11111]
+      assert Enum.sort(result) == [11111, 12345, 67890]
     end
 
     test "returns empty list for killmail with no attackers" do

@@ -7,18 +7,6 @@ defmodule EveDmv.Api.DomainExtensions do
   """
 
   @doc """
-  Apply default preparations to all read actions in the domain.
-
-  This function should be called during API compilation to ensure
-  all read queries have appropriate safety limits.
-  """
-  def apply_query_safety_to_domain(_domain_module) do
-    # This would need to be implemented as a compile-time hook
-    # For now, we'll document the manual process
-    :ok
-  end
-
-  @doc """
   Create a preparation function that applies query safety.
 
   This can be used in individual resources or applied globally.
@@ -36,10 +24,23 @@ defmodule EveDmv.Api.DomainExtensions do
     Usage in a resource:
         use EveDmv.Api.DomainExtensions.QuerySafety
     """
-    defmacro __using__(_opts) do
+    defmacro __using__(opts) do
       quote do
         preparations do
-          prepare(EveDmv.Api.DomainExtensions.query_safety_preparation())
+          prepare(fn query, _context ->
+            opts =
+              unquote(
+                Keyword.take(opts, [:limit, :allow_unlimited])
+                |> Macro.escape()
+              )
+
+            # Use provided options or fall back to default config
+            if opts == [] do
+              EveDmv.Ash.QuerySafetyConfig.apply_safety(query)
+            else
+              EveDmv.Ash.Preparations.QuerySafety.prepare(query, opts, %{})
+            end
+          end)
         end
       end
     end

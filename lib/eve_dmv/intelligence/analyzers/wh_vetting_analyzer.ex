@@ -346,6 +346,7 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
       :highsec -> :known_space
       :lowsec -> :known_space
       :nullsec -> :known_space
+      :known_space -> :known_space
       _ -> :unknown
     end
   end
