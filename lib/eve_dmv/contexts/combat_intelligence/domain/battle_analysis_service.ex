@@ -28,6 +28,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.BattleTimelineBuilder
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.TacticalPatternDetector
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.PerformanceCalculator
   alias EveDmv.DomainEvents.BattleAnalysisComplete
   alias EveDmv.DomainEvents.TacticalInsightGenerated
   alias EveDmv.Infrastructure.EventBus
@@ -132,7 +133,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
                  {:ok, fleet_analysis} <- analyze_fleet_compositions(participants, killmails),
                  {:ok, tactical_analysis} <- perform_tactical_analysis(timeline, fleet_analysis),
                  {:ok, performance_metrics} <-
-                   calculate_performance_metrics(killmails, participants) do
+                   PerformanceCalculator.calculate_performance_metrics(killmails, participants) do
               analysis = %{
                 battle_id: battle_id,
                 analyzed_at: DateTime.utc_now(),
@@ -141,7 +142,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
                 duration_seconds: calculate_battle_duration(timeline),
                 total_participants: map_size(participants),
                 total_kills: length(killmails),
-                isk_destroyed: calculate_total_isk_destroyed(killmails),
+                isk_destroyed: PerformanceCalculator.calculate_total_isk_destroyed(killmails),
 
                 # Classification
                 battle_type: classify_battle_type(participants, killmails),
@@ -280,7 +281,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
         battle_id: battle_id,
         events: timeline,
         duration: calculate_timeline_duration(timeline),
-        intensity_curve: calculate_intensity_curve(timeline),
+        intensity_curve: PerformanceCalculator.calculate_intensity_curve(timeline),
         participant_flow: track_participant_flow(timeline)
       }
 
@@ -423,7 +424,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
          pilot_count: length(side_participants),
          ship_composition: ship_composition,
          doctrine_detected: detect_doctrine_usage(ship_composition),
-         average_pilot_efficiency: calculate_average_efficiency(side_participants),
+         average_pilot_efficiency:
+           PerformanceCalculator.calculate_average_efficiency(side_participants),
          logistics_ratio: calculate_logistics_ratio(ship_composition),
          ewar_presence: detect_ewar_presence(ship_composition)
        }}
@@ -441,39 +443,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     }
 
     {:ok, analysis}
-  end
-
-  defp calculate_performance_metrics(killmails, participants) do
-    # Group by side
-    sides =
-      participants
-      |> Map.values()
-      |> Enum.group_by(& &1.side)
-
-    by_side =
-      sides
-      |> Enum.map(fn {side, side_participants} ->
-        {side,
-         %{
-           kills: Enum.sum(Enum.map(side_participants, & &1.kills)),
-           losses: Enum.sum(Enum.map(side_participants, & &1.losses)),
-           isk_destroyed: calculate_side_isk_destroyed(side, killmails),
-           isk_lost: calculate_side_isk_lost(side, killmails),
-           efficiency: calculate_side_efficiency(side, killmails),
-           k_d_ratio: calculate_side_kd_ratio(side_participants)
-         }}
-      end)
-      |> Map.new()
-
-    by_ship_class = analyze_ship_class_performance(killmails, participants)
-    top_performers = identify_top_performers(participants)
-
-    {:ok,
-     %{
-       by_side: by_side,
-       by_ship_class: by_ship_class,
-       top_performers: top_performers
-     }}
   end
 
   defp update_engagement_data(engagement, new_kills) do
@@ -500,7 +469,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   defp perform_live_analysis(engagement) do
     # Quick analysis for live engagement
     participant_count = map_size(engagement.participants)
-    kill_rate = calculate_kill_rate(engagement.killmails)
+    kill_rate = PerformanceCalculator.calculate_kill_rate(engagement.killmails)
 
     analysis = %{
       system_id: engagement.system_id,
@@ -509,7 +478,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       participant_count: participant_count,
       kill_count: length(engagement.killmails),
       kill_rate_per_minute: kill_rate,
-      engagement_intensity: calculate_engagement_intensity(kill_rate, participant_count),
+      engagement_intensity:
+        PerformanceCalculator.calculate_engagement_intensity(
+          engagement.killmails,
+          participant_count
+        ),
       likely_outcome: predict_engagement_outcome(engagement)
     }
 
@@ -673,10 +646,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       last_event = List.last(timeline)
       DateTime.diff(last_event.timestamp, first_event.timestamp)
     end
-  end
-
-  defp calculate_total_isk_destroyed(killmails) do
-    Enum.sum(Enum.map(killmails, &(&1.total_value || 0)))
   end
 
   defp classify_battle_type(participants, _killmails) do
@@ -968,17 +937,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     end
   end
 
-  defp calculate_average_efficiency(participants) do
-    total_kills = Enum.sum(Enum.map(participants, & &1.kills))
-    total_losses = Enum.sum(Enum.map(participants, & &1.losses))
-
-    if total_losses > 0 do
-      total_kills / total_losses
-    else
-      total_kills
-    end
-  end
-
   defp calculate_logistics_ratio(ship_composition) do
     # Calculate the ratio of logistics ships to total ships
     total_ships = Enum.sum(Map.values(ship_composition))
@@ -1029,170 +987,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     end
   end
 
-  defp calculate_side_isk_destroyed(side, killmails) do
-    # Sum ISK value of all kills made by this side
-    side_corps = get_side_corporations_from_data(side)
-
-    killmails
-    |> Enum.filter(fn km ->
-      # Check if any attacker is from this side
-      Enum.any?(km.attackers || [], fn attacker ->
-        corp_id = attacker["corporation_id"]
-        corp_id && corp_id in side_corps
-      end)
-    end)
-    |> Enum.map(&(&1.total_value || 0))
-    |> Enum.sum()
-  end
-
-  defp calculate_side_isk_lost(side, killmails) do
-    # Sum ISK value of all losses by this side
-    side_corps = get_side_corporations_from_data(side)
-
-    killmails
-    |> Enum.filter(fn km ->
-      # Check if victim is from this side
-      km.victim_corporation_id in side_corps
-    end)
-    |> Enum.map(&(&1.total_value || 0))
-    |> Enum.sum()
-  end
-
-  # Helper function to extract corporation IDs from side data structure
-  defp get_side_corporations_from_data(side_data) do
-    cond do
-      # If side has a corporations field with a map
-      is_map(side_data) && Map.has_key?(side_data, :corporations) ->
-        Map.keys(side_data.corporations)
-
-      # If side has a corporations field as atom key
-      is_map(side_data) && Map.has_key?(side_data, "corporations") ->
-        Map.keys(side_data["corporations"])
-
-      # If side data is directly a map of corporations
-      is_map(side_data) ->
-        Map.keys(side_data)
-
-      # If side data is a list of corporation IDs
-      is_list(side_data) ->
-        side_data
-
-      # Default to empty list
-      true ->
-        []
-    end
-  end
-
-  defp calculate_side_efficiency(side, killmails) do
-    # Calculate ISK efficiency: destroyed / (destroyed + lost) * 100
-    destroyed = calculate_side_isk_destroyed(side, killmails)
-    lost = calculate_side_isk_lost(side, killmails)
-
-    total = destroyed + lost
-
-    if total > 0 do
-      Float.round(destroyed / total * 100, 2)
-    else
-      # No activity = neutral efficiency
-      50.0
-    end
-  end
-
-  defp calculate_side_kd_ratio(participants) do
-    # Calculate kill/death ratio for all participants on this side
-    total_kills = Enum.sum(Enum.map(participants, & &1.kills))
-    total_deaths = Enum.sum(Enum.map(participants, & &1.losses))
-
-    # Avoid division by zero
-    if total_deaths > 0 do
-      Float.round(total_kills / total_deaths, 2)
-    else
-      # If no deaths, return a high K/D ratio based on kills
-      if total_kills > 0 do
-        Float.round(total_kills * 1.0, 2)
-      else
-        0.0
-      end
-    end
-  end
-
-  defp analyze_ship_class_performance(killmails, participants) do
-    # Analyze performance metrics by ship class
-
-    # Extract ship usage data from participants
-    ship_usage = extract_ship_usage_from_participants(participants)
-
-    # Analyze kills made by each ship class
-    kills_by_class = analyze_kills_by_ship_class(killmails)
-
-    # Analyze losses by ship class
-    losses_by_class = analyze_losses_by_ship_class(killmails)
-
-    # Calculate performance metrics for each ship class
-    all_classes =
-      (Map.keys(ship_usage) ++ Map.keys(kills_by_class) ++ Map.keys(losses_by_class))
-      |> Enum.uniq()
-
-    class_performance =
-      all_classes
-      |> Enum.map(fn ship_class ->
-        ships_used = Map.get(ship_usage, ship_class, 0)
-        kills_made = Map.get(kills_by_class, ship_class, 0)
-        ships_lost = Map.get(losses_by_class, ship_class, 0)
-
-        # Calculate metrics
-        kill_efficiency =
-          if ships_used > 0, do: Float.round(kills_made / ships_used, 2), else: 0.0
-
-        survival_rate =
-          if ships_used > 0,
-            do: Float.round((ships_used - ships_lost) / ships_used * 100, 2),
-            else: 0.0
-
-        k_d_ratio =
-          if ships_lost > 0,
-            do: Float.round(kills_made / ships_lost, 2),
-            else: Float.round(kills_made * 1.0, 2)
-
-        {ship_class,
-         %{
-           ships_used: ships_used,
-           kills_made: kills_made,
-           ships_lost: ships_lost,
-           kill_efficiency: kill_efficiency,
-           survival_rate: survival_rate,
-           k_d_ratio: k_d_ratio,
-           tactical_role: determine_tactical_role(ship_class)
-         }}
-      end)
-      |> Map.new()
-
-    class_performance
-  end
-
-  defp identify_top_performers(participants) do
-    participants
-    |> Map.values()
-    |> Enum.sort_by(& &1.kills, :desc)
-    |> Enum.take(10)
-  end
-
-  defp calculate_kill_rate(killmails) do
-    if Enum.empty?(killmails) do
-      0.0
-    else
-      first_kill = List.first(killmails)
-      last_kill = List.last(killmails)
-      duration_minutes = DateTime.diff(last_kill.killmail_time, first_kill.killmail_time) / 60
-
-      if duration_minutes > 0 do
-        length(killmails) / duration_minutes
-      else
-        0.0
-      end
-    end
-  end
-
   defp determine_engagement_status(engagement) do
     last_activity_seconds = DateTime.diff(DateTime.utc_now(), engagement.last_activity)
 
@@ -1200,22 +994,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       last_activity_seconds < 60 -> :active
       last_activity_seconds < 300 -> :winding_down
       true -> :concluded
-    end
-  end
-
-  defp calculate_engagement_intensity(kill_rate, participant_count) do
-    if participant_count > 0 do
-      intensity = kill_rate * 10 / participant_count
-
-      cond do
-        intensity > 2.0 -> :extreme
-        intensity > 1.0 -> :high
-        intensity > 0.5 -> :moderate
-        intensity > 0.2 -> :low
-        true -> :minimal
-      end
-    else
-      :minimal
     end
   end
 
@@ -1234,93 +1012,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       first = List.first(timeline)
       last = List.last(timeline)
       DateTime.diff(last.timestamp, first.timestamp)
-    end
-  end
-
-  defp calculate_intensity_curve(timeline) do
-    # Calculate kills per minute over time to create intensity curve
-    if length(timeline) < 2 do
-      []
-    else
-      # Sort timeline by time
-      sorted_timeline = Enum.sort_by(timeline, & &1.killmail_time)
-
-      # Get battle start and end times
-      start_time = List.first(sorted_timeline).killmail_time
-      end_time = List.last(sorted_timeline).killmail_time
-
-      # Calculate total duration in minutes
-      total_duration_minutes = NaiveDateTime.diff(end_time, start_time, :second) / 60
-
-      # If battle is very short (< 2 minutes), use 30-second intervals
-      # Otherwise use 1-minute intervals for longer battles
-      interval_seconds = if total_duration_minutes < 2, do: 30, else: 60
-      interval_minutes = interval_seconds / 60
-
-      # Create time buckets
-      time_buckets = create_time_buckets(start_time, end_time, interval_seconds)
-
-      # Assign killmails to buckets and calculate intensity for each
-      time_buckets
-      |> Enum.map(fn {bucket_start, bucket_end} ->
-        # Count kills in this time bucket
-        kills_in_bucket =
-          Enum.count(sorted_timeline, fn km ->
-            kill_time = km.killmail_time
-
-            NaiveDateTime.compare(kill_time, bucket_start) in [:eq, :gt] and
-              NaiveDateTime.compare(kill_time, bucket_end) == :lt
-          end)
-
-        # Calculate kills per minute for this bucket
-        kills_per_minute = kills_in_bucket / interval_minutes
-
-        # Calculate ISK destroyed per minute in this bucket
-        isk_in_bucket =
-          sorted_timeline
-          |> Enum.filter(fn km ->
-            kill_time = km.killmail_time
-
-            NaiveDateTime.compare(kill_time, bucket_start) in [:eq, :gt] and
-              NaiveDateTime.compare(kill_time, bucket_end) == :lt
-          end)
-          |> Enum.map(&calculate_killmail_isk_value/1)
-          |> Enum.sum()
-
-        isk_per_minute = isk_in_bucket / interval_minutes
-
-        # Calculate participant activity in this bucket
-        active_participants =
-          sorted_timeline
-          |> Enum.filter(fn km ->
-            kill_time = km.killmail_time
-
-            NaiveDateTime.compare(kill_time, bucket_start) in [:eq, :gt] and
-              NaiveDateTime.compare(kill_time, bucket_end) == :lt
-          end)
-          |> Enum.flat_map(&extract_participants_from_killmail/1)
-          |> Enum.uniq()
-          |> length()
-
-        # Determine intensity level based on multiple factors
-        intensity_level =
-          determine_intensity_level(kills_per_minute, isk_per_minute, active_participants)
-
-        %{
-          timestamp: bucket_start,
-          bucket_end: bucket_end,
-          interval_minutes: interval_minutes,
-          kills_count: kills_in_bucket,
-          kills_per_minute: Float.round(kills_per_minute, 2),
-          isk_destroyed: round(isk_in_bucket),
-          isk_per_minute: round(isk_per_minute),
-          active_participants: active_participants,
-          intensity_level: intensity_level,
-          intensity_score:
-            calculate_intensity_score(kills_per_minute, isk_per_minute, active_participants)
-        }
-      end)
-      |> Enum.filter(fn bucket -> bucket.kills_count > 0 end)
     end
   end
 
@@ -1360,7 +1051,22 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
               NaiveDateTime.compare(kill_time, window_start) in [:eq, :gt] and
                 NaiveDateTime.compare(kill_time, window_end) == :lt
             end)
-            |> Enum.flat_map(&extract_participants_from_killmail/1)
+            |> Enum.flat_map(fn km ->
+              victim_id = if km.victim_character_id, do: [km.victim_character_id], else: []
+              
+              attacker_ids =
+                case km.raw_data do
+                  %{"attackers" => attackers} when is_list(attackers) ->
+                    attackers
+                    |> Enum.map(fn attacker -> attacker["character_id"] end)
+                    |> Enum.filter(&(&1 != nil))
+
+                  _ ->
+                    []
+                end
+
+              victim_id ++ attacker_ids
+            end)
             |> Enum.uniq()
 
           %{
@@ -1565,139 +1271,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
      }}
   end
 
-  # Helper functions for intensity curve calculation
 
-  defp create_time_buckets(start_time, end_time, interval_seconds) do
-    # Create time buckets from start to end with the given interval
-    duration_seconds = NaiveDateTime.diff(end_time, start_time, :second)
-    bucket_count = max(1, div(duration_seconds, interval_seconds))
 
-    0..(bucket_count - 1)
-    |> Enum.map(fn bucket_index ->
-      bucket_start = NaiveDateTime.add(start_time, bucket_index * interval_seconds, :second)
-      bucket_end = NaiveDateTime.add(start_time, (bucket_index + 1) * interval_seconds, :second)
 
-      # Ensure the last bucket doesn't extend beyond the actual end time
-      bucket_end =
-        if NaiveDateTime.compare(bucket_end, end_time) == :gt, do: end_time, else: bucket_end
 
-      {bucket_start, bucket_end}
-    end)
-  end
 
-  defp calculate_killmail_isk_value(killmail) do
-    # Try to get ISK value from different sources
-    cond do
-      # Check if we have zKillboard value
-      is_map(killmail.raw_data) and
-        Map.has_key?(killmail.raw_data, "zkb") and
-          Map.has_key?(killmail.raw_data["zkb"], "totalValue") ->
-        killmail.raw_data["zkb"]["totalValue"]
 
-      # Check if we have a cached total_value
-      Map.has_key?(killmail, :total_value) and is_number(killmail.total_value) ->
-        killmail.total_value
-
-      # Fallback to ship-based estimation
-      true ->
-        estimate_killmail_value_by_ship(killmail)
-    end
-  end
-
-  defp estimate_killmail_value_by_ship(killmail) do
-    # Basic ISK value estimates based on ship type ID ranges
-    ship_type_id = killmail.victim_ship_type_id
-
-    cond do
-      # Frigates: ~5M ISK
-      ship_type_id in 580..700 -> 5_000_000
-      # Destroyers: ~15M ISK
-      ship_type_id in 420..450 -> 15_000_000
-      # Cruisers: ~50M ISK
-      ship_type_id in 620..650 -> 50_000_000
-      # Battlecruisers: ~150M ISK
-      ship_type_id in 540..570 -> 150_000_000
-      # Battleships: ~300M ISK
-      ship_type_id in 640..670 -> 300_000_000
-      # Capital ships: ~2B ISK
-      ship_type_id in 19_720..19_740 -> 2_000_000_000
-      # T3 Cruisers: ~250M ISK
-      ship_type_id in 29_984..29_990 -> 250_000_000
-      # Default: ~25M ISK
-      true -> 25_000_000
-    end
-  end
-
-  defp extract_participants_from_killmail(killmail) do
-    # Extract all participant character IDs from a killmail
-    victim_participants =
-      if killmail.victim_character_id, do: [killmail.victim_character_id], else: []
-
-    attacker_participants =
-      case killmail.raw_data do
-        %{"attackers" => attackers} when is_list(attackers) ->
-          attackers
-          |> Enum.map(fn attacker -> attacker["character_id"] end)
-          |> Enum.filter(&(&1 != nil))
-
-        _ ->
-          []
-      end
-
-    victim_participants ++ attacker_participants
-  end
-
-  defp determine_intensity_level(kills_per_minute, isk_per_minute, active_participants) do
-    # Determine intensity level based on multiple metrics
-    # Convert ISK to billions for easier calculation
-    isk_per_minute_billions = isk_per_minute / 1_000_000_000
-
-    cond do
-      # Very High: >15 kills/min OR >5B ISK/min OR >100 participants
-      kills_per_minute > 15 or isk_per_minute_billions > 5 or active_participants > 100 ->
-        :very_high
-
-      # High: >8 kills/min OR >2B ISK/min OR >50 participants
-      kills_per_minute > 8 or isk_per_minute_billions > 2 or active_participants > 50 ->
-        :high
-
-      # Medium: >4 kills/min OR >500M ISK/min OR >20 participants
-      kills_per_minute > 4 or isk_per_minute_billions > 0.5 or active_participants > 20 ->
-        :medium
-
-      # Low: >1 kill/min OR >100M ISK/min OR >5 participants
-      kills_per_minute > 1 or isk_per_minute_billions > 0.1 or active_participants > 5 ->
-        :low
-
-      # Very Low: anything else
-      true ->
-        :very_low
-    end
-  end
-
-  defp calculate_intensity_score(kills_per_minute, isk_per_minute, active_participants) do
-    # Calculate a numerical intensity score (0-100)
-    # Weighted combination of different factors
-
-    # Normalize kills per minute (assume max of 30 kills/min for scaling)
-    kill_score = min(100, kills_per_minute / 30 * 100)
-
-    # Normalize ISK per minute (assume max of 10B ISK/min for scaling)
-    isk_score = min(100, isk_per_minute / 10_000_000_000 * 100)
-
-    # Normalize participant count (assume max of 200 participants for scaling)
-    participant_score = min(100, active_participants / 200 * 100)
-
-    # Weighted combination: kills=40%, ISK=35%, participants=25%
-    total_score = kill_score * 0.4 + isk_score * 0.35 + participant_score * 0.25
-
-    Float.round(total_score, 1)
-  end
 
   # Helper functions for participant flow tracking
 
   defp create_participant_tracking_windows(start_time, end_time, interval_seconds) do
-    # Similar to create_time_buckets but optimized for participant tracking
+    # Create time windows optimized for participant tracking
     duration_seconds = NaiveDateTime.diff(end_time, start_time, :second)
 
     # Use minimum of 2 windows even for very short battles
@@ -4222,53 +3806,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   # Helper functions for ship class performance analysis
 
-  defp extract_ship_usage_from_participants(participants) do
-    participants
-    |> Map.values()
-    |> Enum.flat_map(fn participant ->
-      participant.ships_used
-      |> MapSet.to_list()
-      |> Enum.map(&classify_ship/1)
-    end)
-    |> Enum.frequencies()
-  end
 
-  defp analyze_kills_by_ship_class(killmails) do
-    killmails
-    |> Enum.flat_map(fn km ->
-      # Get the ship classes of attackers who made kills
-      km.attackers
-      |> Enum.filter(&(&1["final_blow"] == true))
-      |> Enum.map(fn attacker ->
-        classify_ship(attacker["ship_type_id"])
-      end)
-    end)
-    |> Enum.frequencies()
-  end
 
-  defp analyze_losses_by_ship_class(killmails) do
-    killmails
-    |> Enum.map(fn km ->
-      classify_ship(km.victim_ship_type_id)
-    end)
-    |> Enum.frequencies()
-  end
 
-  defp determine_tactical_role(ship_class) do
-    case ship_class do
-      :frigate -> "Fast tackle, scouting, interception"
-      :destroyer -> "Anti-frigate, small gang combat"
-      :cruiser -> "Versatile mainline, logistics support"
-      :battlecruiser -> "Heavy damage, mid-range combat"
-      :battleship -> "Main DPS, anchor, tanking"
-      :strategic_cruiser -> "Specialized roles, adaptable"
-      :logistics -> "Fleet support, remote repair"
-      :recon -> "EWAR, intelligence, force multiplication"
-      :heavy_assault_cruiser -> "Specialized assault, high DPS"
-      :capital -> "Strategic assets, major engagements"
-      _ -> "General combat role"
-    end
-  end
 
   # Pattern analysis functions
   defp identify_enemy_doctrine_patterns(fleet_compositions) do
