@@ -20,7 +20,7 @@ defmodule EveDmv.MixProject do
         "coveralls.html": :test
       ],
       excoveralls: [
-        minimum_coverage: 4.0,
+        minimum_coverage: 40.0,
         output_dir: "cover",
         skip_files: [
           # Test files

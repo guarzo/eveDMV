@@ -180,7 +180,7 @@ jobs:
 
     - name: Run tests with coverage
       run: MIX_ENV=test mix coveralls.json
-      continue-on-error: true
+      # continue-on-error: true
       env:
         DATABASE_URL: postgres://postgres:postgres@localhost:5432/eve_dmv_test
         WANDERER_KILLS_SSE_URL: http://localhost:4004/api/v1/kills/stream
@@ -257,7 +257,7 @@ jobs:
         echo "Running Dialyzer type analysis (warnings only)..."
         mix dialyzer || {
           echo "Dialyzer found type warnings, but continuing CI..."
-          exit 0
+          exit 1
         }
 
   coverage-comment:

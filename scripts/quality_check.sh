@@ -75,13 +75,13 @@ run_check "Code Formatting" "mix format --check-formatted"
 # STATIC ANALYSIS
 # ===========================================
 
-run_check "Credo Analysis" "mix credo --strict --only readiness,warning"
+run_check "Credo Analysis" "mix credo --strict"
 
 # ===========================================
 # SECURITY CHECKS
 # ===========================================
 
-run_check "Security Audit" "mix deps.audit" "false"
+run_check "Security Audit" "mix deps.audit" "true"
 
 # ===========================================
 # DEPENDENCY CHECKS

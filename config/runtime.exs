@@ -83,7 +83,8 @@ end
 
 # Override application configuration with .env values for development only
 # Never override database config for test environment to preserve SQL Sandbox
-if config_env() == :dev and System.get_env("MIX_ENV") != "test" do
+# Use both config_env() and MIX_ENV checks for extra safety
+if config_env() == :dev and System.get_env("MIX_ENV") != "test" and Mix.env() != :test do
   # Database configuration for development
   if database_url = System.get_env("DATABASE_URL") do
     config :eve_dmv, EveDmv.Repo, url: database_url
