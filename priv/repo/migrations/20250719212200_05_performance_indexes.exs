@@ -11,6 +11,8 @@ defmodule EveDmv.Repo.Migrations.PerformanceIndexes do
   """
   
   use Ecto.Migration
+  @disable_ddl_transaction true
+  @disable_migration_lock true
   
   def up do
     # =====================================
@@ -43,14 +45,10 @@ defmodule EveDmv.Repo.Migrations.PerformanceIndexes do
       name: :idx_killmails_ship_type_time,
       concurrently: true)
     
-    # Recent kills partial index (last 7 days)
-    execute """
-    CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_killmails_recent 
-    ON killmails_raw (killmail_time DESC)
-    WHERE killmail_time > CURRENT_TIMESTAMP - INTERVAL '7 days'
-    """, """
-    DROP INDEX IF EXISTS idx_killmails_recent
-    """
+    # Recent kills index (no partial filter due to immutability requirement)
+    create_if_not_exists index(:killmails_raw, ["killmail_time DESC"], 
+      name: :idx_killmails_recent,
+      concurrently: true)
     
     # =====================================
     # Participant Analysis
@@ -87,26 +85,26 @@ defmodule EveDmv.Repo.Migrations.PerformanceIndexes do
     # Intelligence & Analytics
     # =====================================
     
-    # Character stats lookups
-    create_if_not_exists index(:character_stats, [:recent_activity_score, :threat_level], 
-      name: :idx_character_stats_activity_threat,
+    # Character stats lookups - using actual columns
+    create_if_not_exists index(:character_stats, [:dangerous_rating, :kill_death_ratio], 
+      name: :idx_character_stats_danger_kdr,
       concurrently: true)
     
-    create_if_not_exists index(:character_stats, [:last_seen, :threat_level], 
-      name: :idx_character_stats_last_seen_threat,
+    create_if_not_exists index(:character_stats, [:total_kills, :isk_efficiency], 
+      name: :idx_character_stats_kills_efficiency,
       concurrently: true)
     
     # Player stats leaderboards
-    create_if_not_exists index(:player_stats, [:kills_last_30d, :efficiency_rating], 
-      name: :idx_player_stats_recent_performance,
+    create_if_not_exists index(:player_stats, [:total_kills, :kill_death_ratio], 
+      name: :idx_player_stats_kills_kdr,
       concurrently: true)
     
-    create_if_not_exists index(:player_stats, [:total_isk_destroyed, :efficiency_rating], 
+    create_if_not_exists index(:player_stats, [:total_isk_destroyed, :isk_efficiency_percent], 
       name: :idx_player_stats_isk_efficiency,
       concurrently: true)
     
     # Ship stats analysis
-    create_if_not_exists index(:ship_stats, [:ship_type_id, :usage_count], 
+    create_if_not_exists index(:ship_stats, [:ship_type_id, :total_kills], 
       name: :idx_ship_stats_popularity,
       concurrently: true)
     
@@ -121,22 +119,21 @@ defmodule EveDmv.Repo.Migrations.PerformanceIndexes do
       where: "is_active = true")
     
     # Character watch lists
-    create_if_not_exists index(:surveillance_profiles, [:criteria], 
-      name: :idx_profiles_character_criteria,
+    create_if_not_exists index(:surveillance_profiles, [:filter_tree], 
+      name: :idx_profiles_filter_tree,
       concurrently: true,
       using: :gin,
-      comment: "GIN index for JSONB character criteria lookups")
+      comment: "GIN index for JSONB filter tree lookups")
     
-    # Profile matches by character
-    create_if_not_exists index(:surveillance_profile_matches, [:character_id, :created_at], 
-      name: :idx_matches_character_time,
+    # Profile matches by victim name and time
+    create_if_not_exists index(:surveillance_profile_matches, [:victim_character_name, :matched_at], 
+      name: :idx_matches_victim_time,
       concurrently: true)
     
-    # Recent matches for notifications
-    create_if_not_exists index(:surveillance_profile_matches, [:profile_id, :created_at], 
+    # Recent matches for notifications (removed partial filter due to immutability requirement)
+    create_if_not_exists index(:surveillance_profile_matches, [:profile_id, :matched_at], 
       name: :idx_matches_profile_recent,
-      concurrently: true,
-      where: "created_at > CURRENT_TIMESTAMP - INTERVAL '24 hours'")
+      concurrently: true)
     
     # =====================================
     # Battle Analysis
@@ -164,14 +161,14 @@ defmodule EveDmv.Repo.Migrations.PerformanceIndexes do
     # =====================================
     
     # User lookups by character
-    create_if_not_exists index(:users, [:character_id], 
+    create_if_not_exists index(:users, [:eve_character_id], 
       name: :idx_users_character,
       concurrently: true,
       unique: true)
     
     # API key lookups
-    create_if_not_exists index(:api_keys, [:key_hash], 
-      name: :idx_api_keys_hash,
+    create_if_not_exists index(:api_keys, [:api_key], 
+      name: :idx_api_keys_key,
       concurrently: true,
       unique: true)
     
@@ -217,23 +214,23 @@ defmodule EveDmv.Repo.Migrations.PerformanceIndexes do
     drop_if_exists index(:eve_item_types, [:type_name], name: :idx_item_types_name)
     
     drop_if_exists index(:api_keys, [:is_active, :expires_at], name: :idx_api_keys_active_expiry)
-    drop_if_exists index(:api_keys, [:key_hash], name: :idx_api_keys_hash)
-    drop_if_exists index(:users, [:character_id], name: :idx_users_character)
+    drop_if_exists index(:api_keys, [:api_key], name: :idx_api_keys_key)
+    drop_if_exists index(:users, [:eve_character_id], name: :idx_users_character)
     
     drop_if_exists index(:battle_killmails, [:killmail_id], name: :idx_battle_killmails_killmail)
     drop_if_exists index(:battles, [:participant_count, :total_isk_destroyed], name: :idx_battles_large_scale)
     drop_if_exists index(:battles, [:system_id, :start_time], name: :idx_battles_system_time)
     
-    drop_if_exists index(:surveillance_profile_matches, [:profile_id, :created_at], name: :idx_matches_profile_recent)
-    drop_if_exists index(:surveillance_profile_matches, [:character_id, :created_at], name: :idx_matches_character_time)
-    drop_if_exists index(:surveillance_profiles, [:criteria], name: :idx_profiles_character_criteria)
+    drop_if_exists index(:surveillance_profile_matches, [:profile_id, :matched_at], name: :idx_matches_profile_recent)
+    drop_if_exists index(:surveillance_profile_matches, [:victim_character_name, :matched_at], name: :idx_matches_victim_time)
+    drop_if_exists index(:surveillance_profiles, [:filter_tree], name: :idx_profiles_filter_tree)
     drop_if_exists index(:surveillance_profiles, [:is_active, :updated_at], name: :idx_profiles_active)
     
-    drop_if_exists index(:ship_stats, [:ship_type_id, :usage_count], name: :idx_ship_stats_popularity)
-    drop_if_exists index(:player_stats, [:total_isk_destroyed, :efficiency_rating], name: :idx_player_stats_isk_efficiency)
-    drop_if_exists index(:player_stats, [:kills_last_30d, :efficiency_rating], name: :idx_player_stats_recent_performance)
-    drop_if_exists index(:character_stats, [:last_seen, :threat_level], name: :idx_character_stats_last_seen_threat)
-    drop_if_exists index(:character_stats, [:recent_activity_score, :threat_level], name: :idx_character_stats_activity_threat)
+    drop_if_exists index(:ship_stats, [:ship_type_id, :total_kills], name: :idx_ship_stats_popularity)
+    drop_if_exists index(:player_stats, [:total_isk_destroyed, :isk_efficiency_percent], name: :idx_player_stats_isk_efficiency)
+    drop_if_exists index(:player_stats, [:total_kills, :kill_death_ratio], name: :idx_player_stats_kills_kdr)
+    drop_if_exists index(:character_stats, [:total_kills, :isk_efficiency], name: :idx_character_stats_kills_efficiency)
+    drop_if_exists index(:character_stats, [:dangerous_rating, :kill_death_ratio], name: :idx_character_stats_danger_kdr)
     
     drop_if_exists index(:participants, [:killmail_id], name: :idx_participants_final_blow)
     drop_if_exists index(:participants, [:corporation_id, :killmail_time], name: :idx_participants_corp_activity)
@@ -241,25 +238,12 @@ defmodule EveDmv.Repo.Migrations.PerformanceIndexes do
     drop_if_exists index(:participants, [:ship_type_id, :killmail_time], name: :idx_participants_ship_analysis)
     drop_if_exists index(:participants, [:character_id, :killmail_time], name: :idx_participants_character_activity)
     
-    execute "DROP INDEX IF EXISTS idx_killmails_recent"
+    drop_if_exists index(:killmails_raw, ["killmail_time DESC"], name: :idx_killmails_recent)
     
     drop_if_exists index(:killmails_raw, [:victim_ship_type_id, :killmail_time], name: :idx_killmails_ship_type_time)
     drop_if_exists index(:killmails_raw, [:victim_alliance_id, :killmail_time], name: :idx_killmails_alliance_time)
     drop_if_exists index(:killmails_raw, [:victim_corporation_id, :killmail_time], name: :idx_killmails_corp_time)
     drop_if_exists index(:killmails_raw, [:victim_character_id, :killmail_time], name: :idx_killmails_victim_time)
     drop_if_exists index(:killmails_raw, [:solar_system_id, :killmail_time], name: :idx_killmails_system_time)
-  end
-  
-  # Helper to create indexes only if they don't exist
-  defp create_if_not_exists(index_definition) do
-    create index_definition
-  rescue
-    _ -> :ok
-  end
-  
-  defp drop_if_exists(index_definition) do
-    drop index_definition
-  rescue
-    _ -> :ok
   end
 end
