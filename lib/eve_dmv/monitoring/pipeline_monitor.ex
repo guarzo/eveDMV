@@ -312,8 +312,8 @@ defmodule EveDmv.Monitoring.PipelineMonitor do
     count = length(sorted)
 
     # Calculate indices safely
-    p95_index = max(0, min(count - 1, round(count * 0.95))
-    p99_index = max(0, min(count - 1, round(count * 0.99))
+    p95_index = max(0, min(count - 1, round(count * 0.95)))
+    p99_index = max(0, min(count - 1, round(count * 0.99)))
 
     %{
       mean: Enum.sum(sorted) / count,

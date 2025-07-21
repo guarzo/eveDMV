@@ -443,7 +443,7 @@ defmodule EveDmv.Workers.ReEnrichmentWorker do
 
   defp calculate_retry_delay(attempt) do
     # Exponential backoff: base * 2^(attempt-1)
-    round(@retry_backoff_base * :math.pow(2, attempt - 1)
+    round(@retry_backoff_base * :math.pow(2, attempt - 1))
   end
 
   defp init_processing_stats do

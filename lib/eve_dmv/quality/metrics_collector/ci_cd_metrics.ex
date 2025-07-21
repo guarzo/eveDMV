@@ -246,7 +246,7 @@ defmodule EveDmv.Quality.MetricsCollector.CiCdMetrics do
           end)
         )
 
-      round(total_score / length(quality_checks)
+      round(total_score / length(quality_checks))
     end
   end
 

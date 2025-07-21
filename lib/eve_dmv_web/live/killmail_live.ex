@@ -589,7 +589,7 @@ defmodule EveDmvWeb.KillmailLive do
       value >= 1_000_000_000 -> "#{Float.round(value / 1_000_000_000, 1)}B"
       value >= 1_000_000 -> "#{Float.round(value / 1_000_000, 1)}M"
       value >= 1_000 -> "#{Float.round(value / 1_000, 1)}K"
-      true -> number_to_delimited(round(value)
+      true -> number_to_delimited(round(value))
     end
   end
 

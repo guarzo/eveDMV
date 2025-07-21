@@ -210,7 +210,7 @@ defmodule EveDmv.Result do
       {:error, error} = failure ->
         if attempt < max_attempts and Error.retryable?(error) do
           delay = min(base_delay * :math.pow(2, attempt - 1), max_delay)
-          Process.sleep(round(delay)
+          Process.sleep(round(delay))
           do_retry(operation, attempt + 1, max_attempts, base_delay, max_delay)
         else
           failure
