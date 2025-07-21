@@ -1,0 +1,102 @@
+defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlators.ActivityCorrelator.Processors.PatternProcessor do
+  @moduledoc """
+  Processes activity patterns and identifies temporal clusters.
+  """
+
+  alias EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlators.ActivityCorrelator.{
+    Processors.SynchronizationProcessor,
+    Utilities.TimeUtilities
+  }
+
+  @doc """
+  Identify temporal clusters in activity data.
+  """
+  def identify_temporal_clusters(activity_data) do
+    # Identify temporal clustering of activity
+    all_activities =
+      activity_data
+      |> Enum.flat_map(fn {_system, activities} -> activities end)
+      |> Enum.sort_by(& &1.killmail_time)
+
+    # Group activities by time windows
+    time_clusters =
+      all_activities
+      |> Enum.chunk_by(fn activity ->
+        DateTime.truncate(activity.killmail_time, :second)
+      end)
+      |> Enum.filter(fn cluster -> length(cluster) > 3 end)
+      |> Enum.map(fn cluster ->
+        %{
+          time_window: List.first(cluster).killmail_time,
+          activity_count: length(cluster),
+          systems_involved: cluster |> Enum.map(& &1.solar_system_id) Enum.uniq(),
+          total_value: cluster |> Enum.map(&(&1.total_value || 0)) Enum.sum()
+        }
+      end)
+
+    time_clusters
+  end
+
+  @doc """
+  Detect activity waves propagating across systems.
+  """
+  def detect_activity_waves(activity_data) do
+    # Detect waves of activity propagating across systems
+    if map_size(activity_data) < 2 do
+      []
+    else
+      # Find temporal sequences of activity
+      activity_timeline =
+        activity_data
+        |> Enum.flat_map(fn {system, activities} ->
+          Enum.map(activities, fn a -> Map.put(a, :system_id, system) end)
+        end)
+        |> Enum.sort_by(& &1.killmail_time)
+
+      # Group into potential waves
+      waves =
+        activity_timeline
+        |> Enum.chunk_every(10, 5, :discard)
+        |> Enum.map(fn chunk ->
+          systems = chunk |> Enum.map(& &1.system_id) Enum.uniq()
+          time_span = TimeUtilities.calculate_time_span(chunk)
+
+          %{
+            systems: systems,
+            start_time: List.first(chunk).killmail_time,
+            end_time: List.last(chunk).killmail_time,
+            duration_minutes: time_span.hours * 60,
+            activity_count: length(chunk),
+            propagation_speed: calculate_propagation_speed(chunk, time_span)
+          }
+        end)
+        |> Enum.filter(fn wave -> length(wave.systems) > 1 end)
+
+      waves
+    end
+  end
+
+  @doc """
+  Identify synchronization clusters.
+  """
+  def identify_sync_clusters(strong_correlations) do
+    SynchronizationProcessor.identify_sync_clusters(strong_correlations)
+  end
+
+  # Private functions
+
+  defp calculate_propagation_speed(activities, time_span) do
+    # Calculate how fast activity propagates across systems
+    if length(activities) < 2 do
+      0.0
+    else
+      unique_systems = activities |> Enum.map(& &1.system_id) Enum.uniq() length()
+
+      if time_span.hours > 0 do
+        Float.round(unique_systems / time_span.hours, 2)
+      else
+        0.0
+      end
+    end
+  end
+end

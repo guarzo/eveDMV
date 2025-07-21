@@ -1,0 +1,65 @@
+defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine.Matchers.CharacterMatcher do
+  @moduledoc """
+  Matches killmails based on character criteria.
+  """
+
+  @doc """
+  Evaluate character criteria against killmail data.
+  """
+  def evaluate(criteria, killmail_data) do
+    target_characters = MapSet.new(criteria.character_ids || [])
+
+    # Check victim
+    victim_match = MapSet.member?(target_characters, killmail_data.victim.character_id)
+
+    # Check attackers
+    attacker_matches =
+      Enum.filter(killmail_data.attackers || [], fn attacker ->
+        # Handle both map and string keys
+        character_id =
+          case attacker do
+            %{character_id: id} -> id
+            %{"character_id" => id} -> id
+            _ -> nil
+          end
+
+        character_id && MapSet.member?(target_characters, character_id)
+      end)
+
+    matches = victim_match or length(attacker_matches) > 0
+
+    victim_criteria =
+      if victim_match do
+        [%{type: :victim, character_id: killmail_data.victim.character_id}]
+      else
+        []
+      end
+
+    attacker_criteria =
+      Enum.map(attacker_matches, fn attacker ->
+        character_id =
+          case attacker do
+            %{character_id: id} -> id
+            %{"character_id" => id} -> id
+            _ -> nil
+          end
+
+        %{type: :attacker, character_id: character_id}
+      end)
+
+    matched_criteria = victim_criteria ++ attacker_criteria
+
+    confidence_score =
+      cond do
+        victim_match -> 1.0
+        length(attacker_matches) > 0 -> 0.8
+        true -> 0.0
+      end
+
+    %{
+      matches: matches,
+      matched_criteria: matched_criteria,
+      confidence_score: confidence_score
+    }
+  end
+end

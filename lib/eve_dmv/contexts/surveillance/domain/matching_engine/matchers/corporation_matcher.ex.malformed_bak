@@ -1,0 +1,50 @@
+defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine.Matchers.CorporationMatcher do
+  @moduledoc """
+  Matches killmails based on corporation criteria.
+  """
+
+  @doc """
+  Evaluate corporation criteria against killmail data.
+  """
+  def evaluate(criteria, killmail_data) do
+    target_corporations = MapSet.new(criteria.corporation_ids || [])
+
+    # Check victim corporation
+    victim_match = MapSet.member?(target_corporations, killmail_data.victim.corporation_id)
+
+    # Check attacker corporations
+    attacker_matches =
+      Enum.filter(killmail_data.attackers, fn attacker ->
+        MapSet.member?(target_corporations, attacker.corporation_id)
+      end)
+
+    matches = victim_match or length(attacker_matches) > 0
+
+
+    victim_criteria =
+      if victim_match,
+        do: [
+          %{type: :victim_corporation, corporation_id: killmail_data.victim.corporation_id}
+          | base_criteria
+        ],
+        else: base_criteria
+
+    matched_criteria =
+      Enum.reduce(attacker_matches, victim_criteria, fn attacker, acc ->
+        [%{type: :attacker_corporation, corporation_id: attacker.corporation_id} | acc]
+      end)
+
+    confidence_score =
+      cond do
+        victim_match -> 1.0
+        length(attacker_matches) > 0 -> 0.8
+        true -> 0.0
+      end
+
+    %{
+      matches: matches,
+      matched_criteria: matched_criteria,
+      confidence_score: confidence_score
+    }
+  end
+end

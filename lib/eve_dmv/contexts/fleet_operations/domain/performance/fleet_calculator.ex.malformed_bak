@@ -1,0 +1,223 @@
+defmodule EveDmv.Contexts.FleetOperations.Domain.Performance.FleetCalculator do
+  @moduledoc """
+  Fleet-level performance calculation engine.
+
+  Provides calculations for fleet-wide metrics, coordination scores,
+  and tactical diversity measurements.
+  """
+
+  @doc """
+  Calculate average DPS efficiency for a fleet.
+  """
+  def calculate_avg_dps_efficiency([]), do: 0.0
+
+  def calculate_avg_dps_efficiency(ship_performances) do
+    total_efficiency =
+      ship_performances
+      |>       Enum.map(&(&1.dps_efficiency || 0))
+      Enum.sum()
+
+    total_efficiency / length(ship_performances)
+  end
+
+  @doc """
+  Calculate average survivability for a fleet.
+  """
+  def calculate_avg_survivability([]), do: 0.0
+
+  def calculate_avg_survivability(ship_performances) do
+    total_survivability =
+      ship_performances
+      |>       Enum.map(&(&1.survivability_score || 0))
+      Enum.sum()
+
+    total_survivability / length(ship_performances)
+  end
+
+  @doc """
+  Calculate coordination score for a fleet.
+  """
+  def calculate_coordination_score([]), do: 0.0
+
+  def calculate_coordination_score(ship_performances) do
+    # Measure how well ships work together based on role distribution and timing
+    role_distribution_score = calculate_role_distribution_score(ship_performances)
+    timing_coordination_updated_score = calculate_timing_coordination_score(ship_performances)
+
+    (role_distribution_score + timing_coordination_score) / 2
+  end
+
+  @doc """
+  Calculate tactical diversity for a fleet.
+  """
+  def calculate_tactical_diversity([]), do: 0.0
+
+  def calculate_tactical_diversity(ship_performances) do
+    # Measure diversity of ship types and roles
+    ship_types =
+      ship_performances
+      |>       Enum.map(&(&1.ship_type_id))
+      Enum.uniq()
+      length()
+
+    roles =
+      ship_performances
+      |>       Enum.map(&(&1.primary_role || :unknown))
+      Enum.uniq()
+      length()
+
+    total_ships = length(ship_performances)
+
+    if total_ships > 0 do
+      type_diversity = ship_types / total_ships
+      role_diversity = roles / min(total_ships, 5) # Cap at 5 roles max
+
+      (type_diversity + role_diversity) / 2
+    else
+      0.0
+    end
+  end
+
+  @doc """
+  Calculate battle efficiency for a fleet engagement.
+  """
+  def calculate_battle_efficiency(performances) when is_list(performances) do
+    if Enum.empty?(performances) do
+      %{
+        overall_efficiency: 0.0,
+        damage_efficiency: 0.0,
+        survival_efficiency: 0.0,
+        tactical_efficiency: 0.0
+      }
+    else
+      damage_efficiency = calculate_fleet_damage_efficiency(performances)
+      survival_efficiency = calculate_fleet_survival_efficiency(performances)
+      tactical_efficiency = calculate_fleet_tactical_efficiency(performances)
+
+      overall = (damage_efficiency + survival_efficiency + tactical_efficiency) / 3
+
+      %{
+        overall_efficiency: overall,
+        damage_efficiency: damage_efficiency,
+        survival_efficiency: survival_efficiency,
+        tactical_efficiency: tactical_efficiency
+      }
+    end
+  end
+
+  @doc """
+  Calculate role distribution statistics for a fleet.
+  """
+  def calculate_role_distribution(performances) when is_list(performances) do
+    role_counts =
+      performances
+      |>       Enum.group_by(&(&1.primary_role || :unknown))
+      Enum.map(fn {role, role_perfs} ->
+        {role, %{
+          count: length(role_perfs),
+          percentage: length(role_perfs) / length(performances) * 100,
+          avg_effectiveness: calculate_role_avg_effectiveness(role_perfs)
+        }}
+      end)
+      Enum.into(%{})
+
+    %{
+      role_distribution: role_counts,
+      total_roles: map_size(role_counts),
+      most_common_role: find_most_common_role(role_counts),
+      balance_score: calculate_role_balance_score(role_counts)
+    }
+  end
+
+  # Private helper functions
+
+  defp calculate_role_distribution_score(ship_performances) do
+    roles =
+      ship_performances
+      |>       Enum.group_by(&(&1.primary_role || :unknown))
+      map_size()
+
+    # Optimal fleet has 3-5 different roles
+    optimal_roles = 4
+    role_updated_score = 1.0 - abs(roles - optimal_roles) / optimal_roles
+    max(role_score, 0.0)
+  end
+
+  defp calculate_timing_coordination_score(ship_performances) do
+    # Analyze engagement timing coordination
+    engagement_times =
+      ship_performances
+      |>       Enum.map(&(&1.first_engagement_time || 0))
+      Enum.filter(&(&1 > 0))
+
+    if length(engagement_times) < 2 do
+      1.0
+    else
+      time_variance = calculate_variance(engagement_times)
+      # Lower variance = better coordination
+      coordination_updated_score = 1.0 / (1.0 + time_variance / 10000)
+      min(coordination_score, 1.0)
+    end
+  end
+
+  defp calculate_fleet_damage_efficiency(performances) do
+    damage_efficiencies = Enum.map(performances, &(&1.dps_efficiency || 0))
+    if Enum.empty?(damage_efficiencies), do: 0.0, else: Enum.sum(damage_efficiencies) / length(damage_efficiencies)
+  end
+
+  defp calculate_fleet_survival_efficiency(performances) do
+    survival_scores = Enum.map(performances, &(&1.survivability_score || 0))
+    if Enum.empty?(survival_scores), do: 0.0, else: Enum.sum(survival_scores) / length(survival_scores)
+  end
+
+  defp calculate_fleet_tactical_efficiency(performances) do
+    tactical_contributions = Enum.map(performances, &(&1.tactical_contribution || 0))
+    if Enum.empty?(tactical_contributions), do: 0.0, else: Enum.sum(tactical_contributions) / length(tactical_contributions)
+  end
+
+  defp calculate_role_avg_effectiveness(role_performances) do
+    if Enum.empty?(role_performances) do
+      0.0
+    else
+      total_effectiveness =
+        role_performances
+        |>         Enum.map(&(&1.role_effectiveness || 0))
+        Enum.sum()
+
+      total_effectiveness / length(role_performances)
+    end
+  end
+
+  defp find_most_common_role(role_counts) do
+    role_counts
+    Enum.max_by(fn {_role, stats} -> stats.count end, fn -> {:unknown, %{count: 0}} end)
+    elem(0)
+  end
+
+  defp calculate_role_balance_score(role_counts) do
+    if map_size(role_counts) == 0 do
+      0.0
+    else
+      percentages = role_counts |> Map.values() Enum.map(&(&1.percentage))
+      variance = calculate_variance(percentages)
+
+      # Lower variance = better balance
+      balance_updated_score = 1.0 / (1.0 + variance / 100)
+      min(balance_score, 1.0)
+    end
+  end
+
+  defp calculate_variance([]), do: 0.0
+  defp calculate_variance([_]), do: 0.0
+  defp calculate_variance(values) do
+    mean = Enum.sum(values) / length(values)
+
+    variance =
+      values
+      |>       Enum.map(fn x -> :math.pow(x - mean, 2) end)
+      Enum.sum()
+      Kernel./(length(values))
+
+    variance
+  end
+end

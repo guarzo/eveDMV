@@ -277,7 +277,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer do
             total_size: total_size,
             total_size_pretty: format_bytes(total_size),
             avg_partition_size: avg_size,
-            avg_partition_size_pretty: format_bytes(round(avg_size)),
+            avg_partition_size_pretty: format_bytes(round(avg_size),
             max_partition_size: max_size,
             min_partition_size: min_size,
             size_variance: calculate_size_variance(max_size, min_size, avg_size),

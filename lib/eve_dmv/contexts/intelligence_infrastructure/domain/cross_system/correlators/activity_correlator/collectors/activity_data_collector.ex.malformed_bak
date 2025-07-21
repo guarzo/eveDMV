@@ -1,0 +1,111 @@
+defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlators.ActivityCorrelator.Collectors.ActivityDataCollector do
+  @moduledoc """
+  Collects activity data from killmails for correlation analysis.
+  """
+
+  import Ecto.Query
+  alias EveDmv.Repo
+  require Logger
+
+  @doc """
+  Fetch activity data for multiple systems.
+  """
+  def fetch_systems_activity_data(system_ids) do
+    # Fetch activity data for all systems
+    start_time = DateTime.add(DateTime.utc_now(), -48 * 3600, :second)
+
+    query =
+      from(k in "killmails_enriched",
+        where: k.solar_system_id in ^system_ids and k.killmail_time >= ^start_time,
+        select: %{
+          killmail_id: k.killmail_id,
+          solar_system_id: k.solar_system_id,
+          killmail_time: k.killmail_time,
+          attacker_count: k.attacker_count,
+          total_value: k.total_value
+        },
+        order_by: [desc: k.killmail_time],
+        # 5000 provides ~2 days of data for high-activity systems (40 kills/hour)
+        # while keeping memory usage reasonable for correlation calculations
+        limit: 5000
+      )
+
+    killmails = Repo.all(query)
+
+    # Group by system
+    Enum.group_by(killmails, & &1.solar_system_id)
+  rescue
+    error ->
+      Logger.error("Failed to fetch systems activity data: #{inspect(error)}")
+      %{}
+  end
+
+  @doc """
+  Fetch hourly activity data for correlation analysis.
+  """
+  def fetch_hourly_activity_data(system_ids) do
+    # Fetch hourly activity data for correlation analysis
+    # 1 week
+    start_time = DateTime.add(DateTime.utc_now(), -168 * 3600, :second)
+
+    query =
+      from(k in "killmails_enriched",
+        where: k.solar_system_id in ^system_ids and k.killmail_time >= ^start_time,
+        group_by: [k.solar_system_id, fragment("date_trunc('hour', ?)", k.killmail_time)],
+        select: %{
+          system_id: k.solar_system_id,
+          hour: fragment("date_trunc('hour', ?)", k.killmail_time),
+          kill_count: count(k.killmail_id),
+          total_value: sum(k.total_value)
+        },
+        order_by: [k.solar_system_id, fragment("date_trunc('hour', ?)", k.killmail_time)]
+      )
+
+    results = Repo.all(query)
+
+    # Group by system
+    results
+    |> Enum.group_by(& &1.system_id)
+    |> Enum.map(fn {system_id, hours} ->
+      hourly_data =
+        hours
+        |> Enum.map(fn h -> {h.hour, h.kill_count} end)
+        |> Map.new()
+
+      {system_id, hourly_data}
+    end)
+    |> Map.new()
+  rescue
+    error ->
+      Logger.error("Failed to fetch hourly activity data: #{inspect(error)}")
+      %{}
+  end
+
+  @doc """
+  Analyze weekly activity patterns.
+  """
+  def fetch_weekly_activity_data(system_ids) do
+    if Enum.empty?(system_ids) do
+      []
+    else
+      # Get weekly data
+      start_time = DateTime.add(DateTime.utc_now(), -14 * 24 * 3600, :second)
+
+      query =
+        from(k in "killmails_enriched",
+          where: k.solar_system_id in ^system_ids and k.killmail_time >= ^start_time,
+          group_by: fragment("EXTRACT(DOW FROM ?)", k.killmail_time),
+          select: %{
+            day_of_week: fragment("EXTRACT(DOW FROM ?)", k.killmail_time),
+            kill_count: count(k.killmail_id)
+          }
+        )
+
+      Repo.all(query)
+    end
+  rescue
+    error ->
+      Logger.error("Failed to fetch weekly activity data: #{inspect(error)}")
+      []
+  end
+end

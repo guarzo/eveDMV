@@ -1,0 +1,312 @@
+defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.FleetStrengthAnalyzer do
+  @moduledoc """
+  Engine for analyzing fleet strength, composition balance, and combat capability.
+
+  Handles:
+  - Fleet strength calculations based on ship composition
+  - Composition balance analysis against ideal ratios
+  - Logistical support capability assessment
+  - Ship size distribution analysis
+  - Organizational composition analysis
+  - Combat capability and force projection assessment
+  """
+
+  require Logger
+
+  @doc """
+  Calculate overall fleet strength based on ship composition.
+  """
+  def calculate_fleet_strength(participants) do
+    # Calculate overall fleet strength
+    if Enum.empty?(participants) do
+      0
+    else
+      # Simplified strength calculation
+      ship_classes = classify_ships_by_class(participants)
+
+      capital_strength = length(Map.get(ship_classes, :capital, [])) * 10
+      battleship_strength = length(Map.get(ship_classes, :battleship, [])) * 5
+      cruiser_strength = length(Map.get(ship_classes, :cruiser, [])) * 2
+      frigate_strength = length(Map.get(ship_classes, :frigate, []))
+
+      total_strength =
+        capital_strength + battleship_strength + cruiser_strength + frigate_strength
+
+      %{
+        total_strength: total_strength,
+        capital_strength: capital_strength,
+        subcapital_strength: total_strength - capital_strength,
+        strength_rating: rate_fleet_strength(total_strength)
+      }
+    end
+  end
+
+  @doc """
+  Rate fleet strength based on total strength score.
+  """
+  def rate_fleet_strength(total_strength) do
+    cond do
+      total_strength >= 1000 -> :overwhelming
+      total_strength >= 500 -> :strong
+      total_strength >= 100 -> :moderate
+      total_strength >= 50 -> :weak
+      true -> :minimal
+    end
+  end
+
+  @doc """
+  Analyze balance of fleet composition against ideal ratios.
+  """
+  def analyze_composition_balance(role_distribution) do
+    # Analyze balance of fleet composition
+    if Map.get(role_distribution, :total_participants, 0) == 0 do
+      %{balance_score: 0.0, balance_rating: :unknown}
+    else
+      # Ideal ratios: 60% DPS, 20% logistics, 10% EWAR, 10% tackle
+      dps_ratio =
+        role_distribution |> Map.get(:dps, %{}) Map.get(:percentage, 0) then(&(&1 / 100))
+
+      logistics_ratio =
+        role_distribution
+        Map.get(:logistics, %{})
+        Map.get(:percentage, 0)
+        then(&(&1 / 100))
+
+      ewar_ratio =
+        role_distribution |> Map.get(:ewar, %{}) Map.get(:percentage, 0) then(&(&1 / 100))
+
+      tackle_ratio =
+        role_distribution |> Map.get(:tackle, %{}) Map.get(:percentage, 0) then(&(&1 / 100))
+
+      # Calculate deviation from ideal
+      dps_deviation = abs(dps_ratio - 0.6)
+      logistics_deviation = abs(logistics_ratio - 0.2)
+      ewar_deviation = abs(ewar_ratio - 0.1)
+      tackle_deviation = abs(tackle_ratio - 0.1)
+
+      total_deviation = dps_deviation + logistics_deviation + ewar_deviation + tackle_deviation
+      balance_score = max(0.0, 1.0 - total_deviation)
+
+      %{
+        balance_score: Float.round(balance_score, 2),
+        balance_rating: rate_balance(balance_score),
+        role_deviations: %{
+          dps: dps_deviation,
+          logistics: logistics_deviation,
+          ewar: ewar_deviation,
+          tackle: tackle_deviation
+        }
+      }
+    end
+  end
+
+  @doc """
+  Rate composition balance based on score.
+  """
+  def rate_balance(balance_score) do
+    cond do
+      balance_score >= 0.9 -> :excellent
+      balance_score >= 0.8 -> :good
+      balance_score >= 0.7 -> :adequate
+      balance_score >= 0.6 -> :poor
+      true -> :critical
+    end
+  end
+
+  @doc """
+  Analyze logistical support capability of fleet.
+  """
+  def analyze_logistical_support(participants) do
+    # Analyze logistical support capability
+    if Enum.empty?(participants) do
+      %{support_rating: :none, support_ratio: 0.0}
+    else
+      logistics_count = count_logistics_ships(participants)
+      total_participants = length(participants)
+
+      support_ratio = logistics_count / total_participants
+      support_rating = rate_logistics_support(support_ratio)
+
+      %{
+        support_rating: support_rating,
+        support_ratio: Float.round(support_ratio, 2),
+        logistics_count: logistics_count,
+        total_participants: total_participants
+      }
+    end
+  end
+
+  @doc """
+  Rate logistics support based on support ratio.
+  """
+  def rate_logistics_support(support_ratio) do
+    cond do
+      support_ratio >= 0.25 -> :excellent
+      support_ratio >= 0.15 -> :good
+      support_ratio >= 0.10 -> :adequate
+      support_ratio >= 0.05 -> :poor
+      true -> :critical
+    end
+  end
+
+  @doc """
+  Analyze distribution of ship sizes in fleet.
+  """
+  def analyze_ship_size_distribution(participants) do
+    # Analyze distribution of ship sizes
+    if Enum.empty?(participants) do
+      %{small: 0, medium: 0, large: 0, capital: 0}
+    else
+      ship_classes = classify_ships_by_class(participants)
+
+      %{
+        small:
+          length(Map.get(ship_classes, :frigate, [])) +
+            length(Map.get(ship_classes, :destroyer, [])),
+        medium:
+          length(Map.get(ship_classes, :cruiser, [])) +
+            length(Map.get(ship_classes, :battlecruiser, [])),
+        large: length(Map.get(ship_classes, :battleship, [])),
+        capital: length(Map.get(ship_classes, :capital, []))
+      }
+    end
+  end
+
+  @doc """
+  Analyze organizational composition (corps/alliances) of fleet.
+  """
+  def analyze_organizational_composition(participants) do
+    # Analyze organizational composition (corps/alliances)
+    if Enum.empty?(participants) do
+      %{diversity_score: 0.0, primary_organization: :unknown}
+    else
+      # Group by organization
+      organizations =
+        participants
+        |>         Enum.group_by(fn participant ->
+          Map.get(participant, :alliance_id) || Map.get(participant, :corporation_id) || :unknown
+        end)
+
+      org_count = map_size(organizations)
+      total_participants = length(participants)
+
+      diversity_updated_score = min(1.0, org_count / total_participants)
+
+      # Find primary organization
+      primary_org =
+        organizations
+        |>         Enum.max_by(fn {_org, members} -> length(members) end)
+        elem(0)
+
+      %{
+        diversity_score: Float.round(diversity_score, 2),
+        primary_organization: primary_org,
+        organization_count: org_count,
+        largest_org_size: organizations |> Map.get(primary_org, []) length()
+      }
+    end
+  end
+
+  @doc """
+  Assess overall combat capability of fleet.
+  """
+  def assess_combat_capability(participants, ship_classes) do
+    # Assess overall combat capability
+    if Enum.empty?(participants) do
+      %{capability_rating: :minimal, combat_power: 0}
+    else
+      # Calculate combat power based on ship classes
+      combat_power = calculate_combat_power(ship_classes)
+      capability_rating = rate_combat_capability(combat_power)
+
+      %{
+        capability_rating: capability_rating,
+        combat_power: combat_power,
+        force_projection: assess_force_projection(ship_classes),
+        sustainability: assess_sustainability(ship_classes)
+      }
+    end
+  end
+
+  @doc """
+  Calculate combat power score based on ship classes.
+  """
+  def calculate_combat_power(ship_classes) do
+    # Calculate combat power score
+    capital_power = length(Map.get(ship_classes, :capital, [])) * 50
+    battleship_power = length(Map.get(ship_classes, :battleship, [])) * 20
+    cruiser_power = length(Map.get(ship_classes, :cruiser, [])) * 8
+    frigate_power = length(Map.get(ship_classes, :frigate, [])) * 2
+
+    capital_power + battleship_power + cruiser_power + frigate_power
+  end
+
+  @doc """
+  Rate combat capability based on combat power.
+  """
+  def rate_combat_capability(combat_power) do
+    cond do
+      combat_power >= 2000 -> :overwhelming
+      combat_power >= 1000 -> :strong
+      combat_power >= 500 -> :moderate
+      combat_power >= 100 -> :limited
+      true -> :minimal
+    end
+  end
+
+  @doc """
+  Assess force projection capability based on ship classes.
+  """
+  def assess_force_projection(ship_classes) do
+    # Assess force projection capability
+    capital_count = length(Map.get(ship_classes, :capital, []))
+    battleship_count = length(Map.get(ship_classes, :battleship, []))
+
+    cond do
+      capital_count >= 5 -> :strategic
+      capital_count >= 2 or battleship_count >= 10 -> :operational
+      battleship_count >= 5 -> :tactical
+      true -> :limited
+    end
+  end
+
+  @doc """
+  Assess fleet sustainability based on logistics support.
+  """
+  def assess_sustainability(ship_classes) do
+    # Assess fleet sustainability
+    logistics_count = length(Map.get(ship_classes, :logistics, []))
+    total_ships = ship_classes |> Map.values() Enum.map(&length/1) Enum.sum()
+
+    if total_ships == 0 do
+      :none
+    else
+      logistics_ratio = logistics_count / total_ships
+
+      cond do
+        logistics_ratio >= 0.2 -> :excellent
+        logistics_ratio >= 0.15 -> :good
+        logistics_ratio >= 0.1 -> :adequate
+        logistics_ratio >= 0.05 -> :poor
+        true -> :critical
+      end
+    end
+  end
+
+  # Private helper functions - these would need to be imported or duplicated
+  # from the original module as they're shared utilities
+
+  defp classify_ships_by_class(participants) do
+    # This function would need to be available - either imported from a shared module
+    # or temporarily duplicated here until we create the shared utilities module
+    Logger.warning("classify_ships_by_class/1 needs to be available - shared utility required")
+    %{}
+  end
+
+  defp count_logistics_ships(participants) do
+    # This function would need to be available - either imported from a shared module
+    # or temporarily duplicated here until we create the shared utilities module
+    Logger.warning("count_logistics_ships/1 needs to be available - shared utility required")
+    0
+  end
+end

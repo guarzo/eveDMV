@@ -1,0 +1,406 @@
+defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.ShipClassPerformanceAnalyzer do
+  @moduledoc """
+  Analyzes ship class performance in fleet battles.
+
+  Provides comprehensive analysis of ship class effectiveness, role performance,
+  cross-class interactions, performance trends, and statistical calculations.
+
+  Handles:
+  - Ship class performance calculation and metrics
+  - Role effectiveness analysis for different ship classes
+  - Class-specific tactical positioning analysis
+  - Performance grading and rating systems
+  - Cross-class interaction and synergy analysis
+  - Performance trend analysis over battle phases
+  - Overall battle statistics calculation
+  - Damage dealt/taken calculations
+  - Kill participation and survival rate metrics
+  """
+
+  require Logger
+
+  @doc """
+  Calculate detailed performance metrics for a ship class.
+  """
+  def do_calculate_ship_class_performance(ship_class, ships, killmails) do
+    # Calculate detailed performance metrics for a ship class
+    survival_rate = calculate_survival_rate(ships, killmails)
+    kill_participation = calculate_kill_participation(ships, killmails)
+    effectiveness_score = calculate_effectiveness_score(ships, killmails)
+    damage_dealt = calculate_damage_dealt(ships, killmails)
+    damage_taken = calculate_damage_taken(ships, killmails)
+
+    # Role effectiveness analysis
+    role_effectiveness = analyze_role_effectiveness(ship_class, ships, killmails)
+
+    # Ship class specific metrics
+    class_metrics = calculate_class_specific_metrics(ship_class, ships, killmails)
+
+    # Tactical positioning analysis
+    positioning_analysis = analyze_tactical_positioning(ship_class, ships, killmails)
+
+    %{
+      count: length(ships),
+      survival_rate: survival_rate,
+      kill_participation: kill_participation,
+      effectiveness_score: effectiveness_score,
+      damage_dealt: damage_dealt,
+      damage_taken: damage_taken,
+      role_effectiveness: role_effectiveness,
+      class_metrics: class_metrics,
+      positioning_analysis: positioning_analysis,
+      performance_grade: grade_performance(effectiveness_score, survival_rate)
+    }
+  end
+
+  @doc """
+  Analyze effectiveness of ship class in their designated role.
+  """
+  def analyze_role_effectiveness(ship_class, ships, killmails) do
+    # Analyze effectiveness of ship class in their role
+    if Enum.empty?(ships) do
+      %{effectiveness: 0.0, performance: :unknown}
+    else
+      survival_rate = calculate_survival_rate(ships, killmails)
+      kill_participation = calculate_kill_participation(ships, killmails)
+
+      # Role-specific effectiveness calculation
+      effectiveness =
+        case ship_class do
+          :logistics -> survival_rate * 0.8 + kill_participation * 0.2
+          :ewar -> survival_rate * 0.6 + kill_participation * 0.4
+          :tackle -> survival_rate * 0.4 + kill_participation * 0.6
+          :capital -> survival_rate * 0.3 + kill_participation * 0.7
+          _ -> survival_rate * 0.5 + kill_participation * 0.5
+        end
+
+      %{
+        effectiveness: Float.round(effectiveness, 2),
+        performance: grade_performance(effectiveness, survival_rate),
+        survival_rate: survival_rate,
+        kill_participation: kill_participation
+      }
+    end
+  end
+
+  @doc """
+  Calculate metrics specific to each ship class.
+  """
+  def calculate_class_specific_metrics(ship_class, ships, killmails) do
+    # Calculate metrics specific to ship class
+    base_metrics = %{
+      ship_count: length(ships),
+      losses: count_ships_lost(ships, killmails),
+      kills: count_kills_by_ships(ships, killmails)
+    }
+
+    # Add class-specific metrics
+    case ship_class do
+      :capital ->
+        Map.merge(base_metrics, %{
+          strategic_value: :high,
+          force_multiplier: 3.0,
+          priority_target: true
+        })
+
+      :logistics ->
+        Map.merge(base_metrics, %{
+          repair_capability: :high,
+          force_multiplier: 2.0,
+          priority_target: true
+        })
+
+      :ewar ->
+        Map.merge(base_metrics, %{
+          disruption_capability: :high,
+          force_multiplier: 1.5,
+          priority_target: true
+        })
+
+      _ ->
+        Map.merge(base_metrics, %{
+          force_multiplier: 1.0,
+          priority_target: false
+        })
+    end
+  end
+
+  @doc """
+  Analyze tactical positioning effectiveness for ship class.
+  """
+  def analyze_tactical_positioning(ship_class, ships, killmails) do
+    # Analyze tactical positioning effectiveness
+    if Enum.empty?(ships) do
+      %{positioning_score: 0.0, positioning_quality: :unknown}
+    else
+      survival_rate = calculate_survival_rate(ships, killmails)
+
+      # Class-specific positioning expectations
+      expected_positioning =
+        case ship_class do
+          # Should be well-protected
+          :capital -> 0.9
+          # Should be positioned safely
+          :logistics -> 0.8
+          # Should maintain range
+          :ewar -> 0.7
+          # Expected to take risks
+          :tackle -> 0.4
+          # Standard positioning
+          _ -> 0.6
+        end
+
+      positioning_updated_score = min(1.0, survival_rate / expected_positioning)
+      positioning_quality = if positioning_score >= 0.8, do: :excellent, else: :adequate
+
+      %{
+        positioning_score: Float.round(positioning_score, 2),
+        positioning_quality: positioning_quality,
+        expected_positioning: expected_positioning
+      }
+    end
+  end
+
+  @doc """
+  Grade performance based on effectiveness and survival.
+  """
+  def grade_performance(effectiveness_score, survival_rate) do
+    # Grade performance based on effectiveness and survival
+    combined_updated_score = (effectiveness_score + survival_rate) / 2
+
+    cond do
+      combined_score >= 0.9 -> :excellent
+      combined_score >= 0.8 -> :good
+      combined_score >= 0.7 -> :adequate
+      combined_score >= 0.6 -> :poor
+      true -> :critical
+    end
+  end
+
+  @doc """
+  Analyze how different ship classes interact with each other.
+  """
+  def analyze_cross_class_interactions(performance_analysis, _killmails) do
+    # Analyze how different ship classes interact
+    if map_size(performance_analysis) < 2 do
+      %{interactions: [], synergy_detected: false}
+    else
+      # Simplified interaction analysis
+      class_pairs =
+        for {class_a, _} <- performance_analysis,
+            {class_b, _} <- performance_analysis,
+            class_a != class_b,
+            do: {class_a, class_b}
+
+      interactions =
+        class_pairs
+        |>         Enum.map(fn {class_a, class_b} ->
+          synergy_updated_score = calculate_class_synergy(class_a, class_b)
+
+          %{
+            class_a: class_a,
+            class_b: class_b,
+            synergy_score: synergy_score,
+            interaction_type: determine_interaction_type(class_a, class_b)
+          }
+        end)
+        Enum.filter(fn interaction -> interaction.synergy_score > 0.3 end)
+
+      %{
+        interactions: interactions,
+        synergy_detected: length(interactions) > 0
+      }
+    end
+  end
+
+  @doc """
+  Calculate synergy score between two ship classes.
+  """
+  def calculate_class_synergy(class_a, class_b) do
+    # Calculate synergy score between ship classes
+    synergy_matrix = %{
+      {:dps, :logistics} => 0.8,
+      {:logistics, :dps} => 0.8,
+      {:dps, :ewar} => 0.7,
+      {:ewar, :dps} => 0.7,
+      {:tackle, :dps} => 0.6,
+      {:dps, :tackle} => 0.6,
+      {:capital, :logistics} => 0.9,
+      {:logistics, :capital} => 0.9
+    }
+
+    Map.get(synergy_matrix, {class_a, class_b}, 0.2)
+  end
+
+  @doc """
+  Determine the type of interaction between ship classes.
+  """
+  def determine_interaction_type(class_a, class_b) do
+    # Determine the type of interaction between classes
+    cond do
+      {class_a, class_b} in [{:dps, :logistics}, {:logistics, :dps}] -> :support
+      {class_a, class_b} in [{:dps, :ewar}, {:ewar, :dps}] -> :force_multiplier
+      {class_a, class_b} in [{:tackle, :dps}, {:dps, :tackle}] -> :coordination
+      {class_a, class_b} in [{:capital, :logistics}, {:logistics, :capital}] -> :protection
+      true -> :neutral
+    end
+  end
+
+  @doc """
+  Analyze performance trends over the course of battle.
+  """
+  def analyze_performance_trends(_performance_analysis, killmails) do
+    # Analyze performance trends over time
+    if Enum.empty?(killmails) do
+      %{trend: :stable, trend_strength: 0.0}
+    else
+      # Simplified trend analysis
+      sorted_killmails = Enum.sort_by(killmails, & &1.killmail_time)
+
+      if length(sorted_killmails) > 10 do
+        # Analyze early vs late performance
+        early_kills = Enum.take(sorted_killmails, div(length(sorted_killmails), 2))
+        late_kills = Enum.drop(sorted_killmails, div(length(sorted_killmails), 2))
+
+        trend = if length(late_kills) > length(early_kills), do: :escalating, else: :declining
+        trend_strength = abs(length(late_kills) - length(early_kills)) / length(sorted_killmails)
+
+        %{
+          trend: trend,
+          trend_strength: Float.round(trend_strength, 2),
+          early_phase_kills: length(early_kills),
+          late_phase_kills: length(late_kills)
+        }
+      else
+        %{trend: :stable, trend_strength: 0.0}
+      end
+    end
+  end
+
+  @doc """
+  Calculate overall statistics across all ship classes.
+  """
+  def calculate_overall_statistics(performance_analysis) do
+    # Calculate overall statistics across all ship classes
+    if map_size(performance_analysis) == 0 do
+      %{total_ships: 0, total_losses: 0, overall_effectiveness: 0.0}
+    else
+      total_ships = performance_analysis |> Map.values() Enum.map(& &1.count) Enum.sum()
+
+      total_losses =
+        performance_analysis |> Map.values() Enum.map(& &1.damage_taken) Enum.sum()
+
+      effectiveness_scores =
+        performance_analysis |> Map.values() Enum.map(& &1.effectiveness_score)
+
+      overall_effectiveness =
+        if length(effectiveness_scores) > 0 do
+          Enum.sum(effectiveness_scores) / length(effectiveness_scores)
+        else
+          0.0
+        end
+
+      %{
+        total_ships: total_ships,
+        total_losses: total_losses,
+        overall_effectiveness: Float.round(overall_effectiveness, 2),
+        class_count: map_size(performance_analysis)
+      }
+    end
+  end
+
+  @doc """
+  Calculate damage dealt by ships in battle.
+  """
+  def calculate_damage_dealt(ships, killmails) do
+    # Calculate damage dealt by ships
+    if Enum.empty?(ships) or Enum.empty?(killmails) do
+      0
+    else
+      # Simplified damage calculation
+      kill_count = count_kills_by_ships(ships, killmails)
+      # Estimated damage per kill
+      kill_count * 50000
+    end
+  end
+
+  @doc """
+  Calculate damage taken by ships in battle.
+  """
+  def calculate_damage_taken(ships, killmails) do
+    # Calculate damage taken by ships
+    if Enum.empty?(ships) or Enum.empty?(killmails) do
+      0
+    else
+      # Simplified damage calculation based on losses
+      losses = count_ships_lost(ships, killmails)
+      # Estimated damage per loss
+      losses * 100_000
+    end
+  end
+
+  @doc """
+  Count kills achieved by ships in battle.
+  """
+  def count_kills_by_ships(ships, killmails) do
+    # Count kills achieved by ships
+    if Enum.empty?(ships) or Enum.empty?(killmails) do
+      0
+    else
+      # Simplified kill count
+      length(killmails)
+    end
+  end
+
+  @doc """
+  Calculate survival rate of ships in battle.
+  """
+  def calculate_survival_rate(ships, killmails) do
+    # For now, return basic survival rate
+    if length(ships) > 0 do
+      survived = length(ships) - count_ships_lost(ships, killmails)
+      survived / length(ships)
+    else
+      0.0
+    end
+  end
+
+  @doc """
+  Calculate kill participation rate of ships.
+  """
+  def calculate_kill_participation(_ships, _killmails) do
+    # For now, return basic kill participation
+    0.6
+  end
+
+  @doc """
+  Calculate effectiveness score of ships in battle.
+  """
+  def calculate_effectiveness_score(_ships, _killmails) do
+    # For now, return basic effectiveness score
+    0.7
+  end
+
+  # Private helper function to count ships lost
+  defp count_ships_lost(ships, killmails) do
+    # Proper ship loss calculation based on killmail data
+    if Enum.empty?(ships) or Enum.empty?(killmails) do
+      0
+    else
+      # Count ships that appear as victims in killmails
+      ship_character_ids =
+        MapSet.new(ships, fn ship ->
+          Map.get(ship, :character_id) || Map.get(ship, :victim_character_id)
+        end)
+
+      losses =
+        killmails
+        |>         Enum.count(fn killmail ->
+          victim_id = Map.get(killmail, :victim_character_id)
+          victim_id && MapSet.member?(ship_character_ids, victim_id)
+        end)
+
+      losses
+    end
+  end
+end

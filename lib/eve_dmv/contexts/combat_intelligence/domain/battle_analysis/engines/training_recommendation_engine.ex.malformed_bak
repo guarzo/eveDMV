@@ -1,0 +1,288 @@
+defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.TrainingRecommendationEngine do
+  @moduledoc """
+  Training recommendation and counter-strategy engine for tactical improvement.
+
+  Responsible for:
+  - Generating training recommendations based on battle analysis
+  - Creating counter-strategies against enemy doctrine patterns
+  - Designing practice scenarios for skill development
+  - Identifying enemy patterns and weaknesses
+  - Suggesting tactical drills and training programs
+  - Providing default role specializations and compositions
+  """
+
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.{
+    DoctrineAnalysisEngine,
+    SkillGapAnalyzer,
+    ShipCompositionAnalyzer
+  }
+
+  require Logger
+
+  @doc """
+  Identify enemy doctrine patterns from fleet compositions.
+  """
+  def identify_enemy_doctrine_patterns(fleet_compositions) do
+    fleet_compositions
+    Enum.group_by(& &1.doctrine_type)
+    |>     Enum.map(fn {doctrine, fleets} ->
+      %{
+        doctrine_type: doctrine,
+        _frequency: length(fleets),
+        average_fleet_size: calculate_average_fleet_size(fleets),
+        common_ships: DoctrineAnalysisEngine.identify_common_doctrine_ships(fleets),
+        typical_roles: extract_typical_role_distribution(fleets),
+        engagement_preferences: DoctrineAnalysisEngine.analyze_doctrine_engagement_patterns(fleets),
+        weaknesses: DoctrineAnalysisEngine.identify_doctrine_weaknesses(doctrine, fleets)
+      }
+    end)
+    Enum.sort_by(& &1._frequency, :desc)
+  end
+
+  @doc """
+  Generate counter-strategies for enemy patterns.
+  """
+  def generate_counter_strategies(enemy_patterns) do
+    Enum.map(enemy_patterns, fn pattern ->
+      %{
+        enemy_doctrine: pattern.doctrine_type,
+        recommended_comp: ShipCompositionAnalyzer.suggest_counter_composition(pattern),
+        key_ships: identify_counter_ships(pattern),
+        tactics: generate_enemy_counter_tactics(pattern),
+        required_skills: SkillGapAnalyzer.identify_required_pilot_skills(pattern)
+      }
+    end)
+  end
+
+  @doc """
+  Calculate priority level for counter-doctrine strategies.
+  """
+  def calculate_counter_doctrine_priority(enemy_patterns) do
+    case enemy_patterns do
+      [] -> :low
+      [single] when single._frequency < 3 -> :medium
+      [primary | _] when primary._frequency > 10 -> :critical
+      _ -> :high
+    end
+  end
+
+  @doc """
+  Generate default practice scenarios for training.
+  """
+  def generate_default_practice_scenarios do
+    [
+      %{
+        name: "Small Gang Kiting",
+        fleet_size: 5,
+        composition: ["Orthrus", "Garmur", "Keres", "Sabre", "Scalpel"],
+        objectives: ["Maintain range control", "Pick off stragglers", "Avoid brawls"],
+        difficulty: :intermediate
+      },
+      %{
+        name: "Armor Brawl",
+        fleet_size: 10,
+        composition: ["Deimos", "Guardian", "Oneiros", "Devoter", "Vindicator"],
+        objectives: ["Close range quickly", "Focus fire coordination", "Logistics anchoring"],
+        difficulty: :advanced
+      },
+      %{
+        name: "Bombing Run",
+        fleet_size: 8,
+        composition: ["Hound", "Nemesis", "Manticore", "Purifier"],
+        objectives: ["Coordinate bomb timing", "Warp-in positioning", "Escape routes"],
+        difficulty: :expert
+      }
+    ]
+  end
+
+  @doc """
+  Generate default role specializations for fleet composition.
+  """
+  def generate_default_role_specializations do
+    [
+      %{
+        role: :tackle,
+        min_pilots: 2,
+        max_pilots: 4,
+        priority: :critical,
+        ship_suggestions: ["Sabre", "Stiletto", "Lachesis", "Arazu"]
+      },
+      %{
+        role: :logistics,
+        min_pilots: 2,
+        max_pilots: 5,
+        priority: :critical,
+        ship_suggestions: ["Guardian", "Oneiros", "Scimitar", "Basilisk"]
+      },
+      %{
+        role: :dps,
+        min_pilots: 4,
+        max_pilots: 15,
+        priority: :high,
+        ship_suggestions: ["Cerberus", "Muninn", "Eagle", "Ferox"]
+      },
+      %{
+        role: :ewar,
+        min_pilots: 1,
+        max_pilots: 3,
+        priority: :medium,
+        ship_suggestions: ["Falcon", "Rook", "Blackbird", "Kitsune"]
+      }
+    ]
+  end
+
+  @doc """
+  Generate weakness-based training scenarios.
+  """
+  def generate_weakness_based_scenarios(weaknesses) do
+    Enum.map(weaknesses, fn weakness ->
+      case weakness.type do
+        :low_tank ->
+          %{
+            name: "Tank Improvement Drill",
+            focus: "Survivability training",
+            ships: ["Buffer tanked ships", "Logistics support"],
+            objectives: [
+              "Broadcast for reps quickly",
+              "Manage capacitor",
+              "Overheat appropriately"
+            ]
+          }
+
+        :poor_positioning ->
+          %{
+            name: "Fleet Positioning Practice",
+            focus: "Anchor and movement training",
+            ships: ["Standard fleet comp"],
+            objectives: ["Maintain optimal range", "Follow anchor", "Avoid bumping"]
+          }
+
+        :target_calling ->
+          %{
+            name: "Target Priority Training",
+            focus: "FC and DPS coordination",
+            ships: ["Mixed fleet composition"],
+            objectives: ["Quick target switches", "Primary/secondary calling", "Spread points"]
+          }
+
+        _ ->
+          %{
+            name: "General Combat Drill",
+            focus: "Overall improvement",
+            ships: ["Varied composition"],
+            objectives: ["Follow broadcasts", "Maintain discipline", "Execute tactics"]
+          }
+      end
+    end)
+  end
+
+  @doc """
+  Generate tactical drill scenarios based on insights.
+  """
+  def generate_tactical_drill_scenarios(insights) do
+
+    # Add scenarios based on insights
+    scenarios =
+      if Map.get(insights, :needs_anti_kite, false) do
+        [
+          %{
+            name: "Anti-Kite Practice",
+            focus: "Catching kiters",
+            ships: ["Lachesis", "Huginn", "Raptor"],
+            objectives: ["Web/scram coordination", "Slingshot maneuvers", "Range control"]
+          }
+          | base_scenarios
+        ]
+      else
+        base_scenarios
+      end
+
+    _scenarios =
+      if Map.get(insights, :needs_anti_blob, false) do
+        [
+          %{
+            name: "Fighting Outnumbered",
+            focus: "Asymmetric warfare",
+            ships: ["Kiting ships", "Bomber support"],
+            objectives: ["Hit and run tactics", "Target isolation", "Disengagement"]
+          }
+          | scenarios
+        ]
+      else
+        scenarios
+      end
+
+    scenarios
+  end
+
+  @doc """
+  Identify counter ships for enemy patterns.
+  """
+  def identify_counter_ships(enemy_pattern) do
+    weaknesses = enemy_pattern.weaknesses
+
+
+    ships =
+      if Enum.member?(weaknesses, "Vulnerable to hard tackle") do
+        ["Lachesis", "Arazu", "Huginn" | ships]
+      else
+        ships
+      end
+
+    _ships =
+      if Enum.member?(weaknesses, "Limited range control") do
+        ["Cerberus", "Eagle", "Tengu" | ships]
+      else
+        ships
+      end
+
+    Enum.take(Enum.uniq(ships), 5)
+  end
+
+  @doc """
+  Generate counter tactics for enemy engagement patterns.
+  """
+  def generate_enemy_counter_tactics(enemy_pattern) do
+    case enemy_pattern.engagement_preferences.engagement_style do
+      :hit_and_run ->
+        ["Use heavy tackle", "Set up gate camps", "Force commitment with bubbles"]
+
+      :sustained_brawl ->
+        ["Maintain range advantage", "Use damps/tracking disruptors", "Avoid close range"]
+
+      :alpha_strike ->
+        ["Split fleet positioning", "Use buffer tanks", "Rapid target switches"]
+
+      _ ->
+        ["Adapt to enemy movements", "Maintain intel coverage", "Flexible positioning"]
+    end
+  end
+
+  # Private helper functions
+
+  defp calculate_average_fleet_size(fleets) do
+    if length(fleets) > 0 do
+      total_size = fleets |> Enum.map(& &1.fleet_size) Enum.sum()
+      Float.round(total_size / length(fleets), 1)
+    else
+      0.0
+    end
+  end
+
+  defp extract_typical_role_distribution(fleets) do
+    role_distributions = Enum.map(fleets, & &1.role_counts)
+
+    if length(role_distributions) > 0 do
+      # Average role distribution across fleets
+      all_roles = Enum.flat_map(role_distributions, &Map.keys/1) Enum.uniq()
+
+      Enum.reduce(all_roles, %{}, fn role, acc ->
+        total = role_distributions |> Enum.map(&Map.get(&1, role, 0)) Enum.sum()
+        avg = Float.round(total / length(role_distributions), 1)
+        Map.put(acc, role, avg)
+      end)
+    else
+      %{}
+    end
+  end
+end

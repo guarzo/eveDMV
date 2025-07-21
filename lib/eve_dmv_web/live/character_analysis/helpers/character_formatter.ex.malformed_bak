@@ -1,0 +1,213 @@
+defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterFormatter do
+  @moduledoc """
+  Formatting utilities for character analysis data.
+  Handles data presentation and transformation for the UI.
+  """
+
+  @doc """
+  Format weapon type by category and name.
+  """
+  def categorize_weapon_type(weapon_name, weapon_group) do
+    # Capitalize and categorize energy weapon types
+    energy_weapons = [
+      "small_energy_turret",
+      "medium_energy_turret",
+      "large_energy_turret",
+      "x-large_energy_turret"
+    ]
+
+    projectile_weapons = [
+      "small_projectile_turret",
+      "medium_projectile_turret",
+      "large_projectile_turret",
+      "x-large_projectile_turret"
+    ]
+
+    hybrid_weapons = [
+      "small_hybrid_turret",
+      "medium_hybrid_turret",
+      "large_hybrid_turret",
+      "x-large_hybrid_turret"
+    ]
+
+    missile_systems = [
+      "assault_missiles",
+      "heavy_assault_missiles",
+      "light_missiles",
+      "heavy_missiles",
+      "cruise_missiles",
+      "torpedoes",
+      "citadel_torpedoes",
+      "rockets"
+    ]
+
+    drone_systems = [
+      "combat_drone",
+      "fighter_bomber",
+      "fighter",
+      "heavy_fighter"
+    ]
+
+    cond do
+      String.downcase(weapon_group) in energy_weapons ->
+        weapon_name_lower = String.downcase(weapon_name)
+        cond do
+          String.contains?(weapon_name_lower, "pulse") or String.contains?(weapon_name_lower, "beam") -> :energy_pulse_beam
+          String.contains?(weapon_name_lower, "laser") -> :energy_laser
+          true -> :energy_other
+        end
+
+      String.downcase(weapon_group) in projectile_weapons ->
+        weapon_name_lower = String.downcase(weapon_name)
+        cond do
+          String.contains?(weapon_name_lower, "artillery") or String.contains?(weapon_name_lower, "cannon") -> :projectile_artillery
+          String.contains?(weapon_name_lower, "autocannon") -> :projectile_autocannon
+          true -> :projectile_other
+        end
+
+      String.downcase(weapon_group) in hybrid_weapons ->
+        weapon_name_lower = String.downcase(weapon_name)
+        cond do
+          String.contains?(weapon_name_lower, "railgun") or String.contains?(weapon_name_lower, "rail") -> :hybrid_railgun
+          String.contains?(weapon_name_lower, "blaster") -> :hybrid_blaster
+          true -> :hybrid_other
+        end
+
+      String.downcase(weapon_group) in missile_systems ->
+        weapon_name_lower = String.downcase(weapon_name)
+        cond do
+          String.contains?(weapon_name_lower, "cruise") or String.contains?(weapon_name_lower, "torpedo") -> :missile_long_range
+          String.contains?(weapon_name_lower, "assault") or String.contains?(weapon_name_lower, "rocket") -> :missile_short_range
+          true -> :missile_medium_range
+        end
+
+      String.downcase(weapon_group) in drone_systems ->
+        weapon_name_lower = String.downcase(weapon_name)
+        cond do
+          String.contains?(weapon_name_lower, "fighter") -> :drone_fighter
+          String.contains?(weapon_name_lower, "combat") or String.contains?(weapon_name_lower, "warrior") or String.contains?(weapon_name_lower, "hornet") -> :drone_combat
+          true -> :drone_other
+        end
+
+      true ->
+        :unknown
+    end
+  end
+
+  @doc """
+  Calculate weapon effectiveness score based on category and usage.
+  """
+  def calculate_weapon_effectiveness(weapon_category, usage_count) do
+    base_effectiveness =
+      case weapon_category do
+        :energy_pulse_beam -> 0.85
+        :energy_laser -> 0.80
+        :projectile_artillery -> 0.88
+        :projectile_autocannon -> 0.82
+        :hybrid_railgun -> 0.90
+        :hybrid_blaster -> 0.85
+        :missile_long_range -> 0.88
+        :missile_short_range -> 0.80
+        :missile_medium_range -> 0.85
+        :drone_fighter -> 0.92
+        :drone_combat -> 0.78
+        _ -> 0.70
+      end
+
+    # Boost effectiveness based on usage experience
+    usage_boost = min(usage_count / 50.0, 0.15)
+    base_effectiveness + usage_boost
+  end
+
+  @doc """
+  Format timezone estimation from peak activity hour.
+  """
+  def estimate_timezone_from_peak_hour(nil), do: :unknown
+
+  def estimate_timezone_from_peak_hour(peak_hour) when is_integer(peak_hour) do
+    case peak_hour do
+      hour when hour >= 0 and hour <= 6 -> :oceanic_early
+      hour when hour >= 7 and hour <= 11 -> :european_morning
+      hour when hour >= 12 and hour <= 17 -> :us_eastern_afternoon
+      hour when hour >= 18 and hour <= 23 -> :us_western_evening
+      _ -> :unknown
+    end
+  end
+
+  @doc """
+  Calculate and format activity trend between two periods.
+  """
+  def calculate_activity_trend(last_7, prev_7) when last_7 > 0 and prev_7 > 0 do
+    change_ratio = (last_7 - prev_7) / prev_7
+
+    cond do
+      change_ratio >= 0.25 -> :strongly_rising
+      change_ratio >= 0.10 -> :rising
+      change_ratio <= -0.25 -> :strongly_declining
+      change_ratio <= -0.10 -> :declining
+      true -> :stable
+    end
+  end
+
+  def calculate_activity_trend(last_7, prev_7) when last_7 > prev_7, do: :rising
+  def calculate_activity_trend(last_7, prev_7) when last_7 < prev_7, do: :declining
+  def calculate_activity_trend(_, _), do: :stable
+
+  @doc """
+  Determine activity concentration level.
+  """
+  def determine_activity_concentration(active_hours, active_systems, active_regions) do
+    # Normalize to percentages for comparison
+    hour_concentration = (24 - active_hours) / 24.0
+    system_concentration = max(0, (100 - active_systems)) / 100.0
+    region_concentration = max(0, (50 - active_regions)) / 50.0
+
+    avg_concentration = (hour_concentration + system_concentration + region_concentration) / 3.0
+
+    cond do
+      avg_concentration >= 0.7 -> :highly_concentrated
+      avg_concentration >= 0.5 -> :moderately_concentrated
+      avg_concentration >= 0.3 -> :somewhat_distributed
+      true -> :widely_distributed
+    end
+  end
+
+  @doc """
+  Determine operational preference based on system activity.
+  """
+  def determine_operational_preference(top_region_systems, total_regions) do
+    if total_regions <= 2 do
+      :regional_specialist
+    else
+      concentration = top_region_systems / total_regions
+
+      if concentration > 0.6 do
+        :focused_operations
+      else
+        :wide_area_operations
+      end
+    end
+  end
+
+  @doc """
+  Calculate intelligence rating from activity metrics.
+  """
+  def calculate_intelligence_rating(active_systems, active_regions, peak_activity) do
+    # Normalize components to 0-1 scale
+    system_score = min(active_systems / 50.0, 1.0)
+    region_updated_score = min(active_regions / 20.0, 1.0)
+    peak_updated_score = min(peak_activity / 50.0, 1.0)
+
+    # Weighted average (systems weighted higher)
+    weighted_updated_score = (system_score * 0.5) + (region_score * 0.3) + (peak_score * 0.2)
+
+    # Convert to rating scale
+    cond do
+      weighted_score >= 0.8 -> :excellent
+      weighted_score >= 0.6 -> :good
+      weighted_score >= 0.4 -> :moderate
+      weighted_score >= 0.2 -> :limited
+      true -> :minimal
+    end
+  end
+end

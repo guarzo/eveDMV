@@ -1053,7 +1053,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
             end)
             |> Enum.flat_map(fn km ->
               victim_id = if km.victim_character_id, do: [km.victim_character_id], else: []
-              
+
               attacker_ids =
                 case km.raw_data do
                   %{"attackers" => attackers} when is_list(attackers) ->
@@ -1270,13 +1270,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
        performance_trend: :stable
      }}
   end
-
-
-
-
-
-
-
 
   # Helper functions for participant flow tracking
 
@@ -3805,10 +3798,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   end
 
   # Helper functions for ship class performance analysis
-
-
-
-
 
   # Pattern analysis functions
   defp identify_enemy_doctrine_patterns(fleet_compositions) do

@@ -1,0 +1,409 @@
+defmodule EveDmv.Contexts.CorporationIntelligence.Analyzers.DoctrineComparisonAnalyzer do
+  @moduledoc """
+  Specialized analyzer for comparing combat doctrines between corporations.
+
+  This module provides comparative analysis capabilities for multiple corporations'
+  combat doctrines, including:
+
+  - Doctrine distribution analysis across corporations
+  - Tactical overlap identification
+  - Counter-relationship mapping
+  - Competitive assessment generation
+  - Alliance synergy evaluation
+
+  Used by CombatDoctrineAnalyzer for multi-corporation intelligence operations.
+  """
+
+  alias EveDmv.Contexts.CorporationIntelligence.Domain.CorpIntelligenceUtils
+
+  require Logger
+
+  @doc """
+  Analyzes doctrine distribution across multiple corporations.
+
+  Calculates the frequency and diversity of doctrines used by different
+  corporations to understand the meta landscape.
+  """
+  def analyze_doctrine_distribution(doctrine_analyses) do
+    # Count doctrine occurrences
+    doctrine_counts =
+      doctrine_analyses
+      Enum.map(& &1.primary_doctrine.key)
+      Enum.frequencies()
+
+    total = length(doctrine_analyses)
+
+    distribution = Map.new(doctrine_counts, fn {doctrine, count} ->
+      {doctrine, %{
+        count: count,
+        percentage: Float.round(count / total * 100, 1),
+        corporations: filter_corps_by_doctrine(doctrine_analyses, doctrine)
+      }}
+    end)
+
+    %{
+      primary_doctrines: distribution,
+      diversity_index: calculate_diversity_index(doctrine_counts),
+      dominant_doctrine: find_dominant_doctrine(doctrine_counts)
+    }
+  end
+
+  @doc """
+  Identifies tactical overlaps between corporations.
+
+  Finds common tactical patterns and approaches used across multiple
+  corporations for alliance compatibility analysis.
+  """
+  def identify_tactical_overlaps(doctrine_analyses) do
+    # Find common tactical patterns across corporations
+    all_patterns =
+      doctrine_analyses
+      |>       Enum.flat_map(fn analysis ->
+        patterns = analysis[:tactical_patterns] || %{}
+        extract_pattern_features(patterns)
+      end)
+      Enum.frequencies()
+      Enum.filter(fn {_pattern, count} -> count >= 2 end)
+      |>       Enum.sort_by(&elem(&1, 1), :desc)
+      Enum.take(10)
+
+    %{
+      common_patterns: all_patterns,
+      overlap_score: calculate_overlap_score(all_patterns, length(doctrine_analyses))
+    }
+  end
+
+  @doc """
+  Analyzes counter-relationships between doctrines.
+
+  Maps which doctrines effectively counter others based on tactical
+  characteristics and historical effectiveness data.
+  """
+  def analyze_counter_relationships(doctrine_analyses) do
+    # Analyze which doctrines counter each other
+    relationships =
+      for a <- doctrine_analyses,
+          b <- doctrine_analyses,
+          a.corporation_id != b.corporation_id do
+        %{
+          doctrine_a: a.primary_doctrine.key,
+          doctrine_b: b.primary_doctrine.key,
+          counter_effectiveness: calculate_counter_effectiveness(a.primary_doctrine.key, b.primary_doctrine.key)
+        }
+      end
+      Enum.group_by(fn r -> {r.doctrine_a, r.doctrine_b} end)
+      |>       Map.new(fn {{doc_a, doc_b}, rels} ->
+        avg_effectiveness =
+          rels
+          Enum.map(& &1.counter_effectiveness)
+          Enum.sum()
+          Kernel./(length(rels))
+
+        {{doc_a, doc_b}, avg_effectiveness}
+      end)
+
+    %{
+      counter_matrix: relationships,
+      strong_counters: find_strong_counters(relationships),
+      vulnerable_matchups: find_vulnerable_matchups(relationships)
+    }
+  end
+
+  @doc """
+  Generates competitive assessment of the doctrine landscape.
+
+  Evaluates the overall competitive environment based on doctrine
+  diversity, coordination levels, and threat distribution.
+  """
+  def generate_competitive_assessment(doctrine_analyses) do
+    %{
+      doctrine_diversity: assess_doctrine_diversity(doctrine_analyses),
+      coordination_levels: assess_coordination_levels(doctrine_analyses),
+      threat_distribution: assess_threat_distribution(doctrine_analyses),
+      competitive_clusters: identify_competitive_clusters(doctrine_analyses)
+    }
+  end
+
+  @doc """
+  Assesses potential alliance synergies between corporations.
+
+  Identifies corporations with complementary doctrines that would
+  work well together in alliance operations.
+  """
+  def assess_alliance_synergies(doctrine_analyses) do
+    # Find synergistic doctrine combinations
+    synergy_pairs =
+      for a <- doctrine_analyses,
+          b <- doctrine_analyses,
+          a.corporation_id < b.corporation_id do
+        %{
+          corp_a: a.corporation_id,
+          corp_b: b.corporation_id,
+          doctrine_a: a.primary_doctrine.key,
+          doctrine_b: b.primary_doctrine.key,
+          synergy_score: calculate_synergy_score(a.primary_doctrine.key, b.primary_doctrine.key)
+        }
+      end
+      Enum.sort_by(& &1.synergy_score, :desc)
+      Enum.take(10)
+
+    %{
+      top_synergies: synergy_pairs,
+      recommended_alliances: recommend_alliances(synergy_pairs),
+      synergy_summary: summarize_synergies(synergy_pairs)
+    }
+  end
+
+  # Private helper functions
+
+  defp filter_corps_by_doctrine(analyses, doctrine) do
+    analyses
+    Enum.filter(& &1.primary_doctrine.key == doctrine)
+    Enum.map(& &1.corporation_id)
+  end
+
+  defp calculate_diversity_index(doctrine_counts) do
+    total = doctrine_counts |> Map.values() Enum.sum()
+    if total == 0, do: 0.0, else: CorpIntelligenceUtils.calculate_composition_diversity(doctrine_counts)
+  end
+
+  defp find_dominant_doctrine(doctrine_counts) do
+    if map_size(doctrine_counts) > 0 do
+      {doctrine, count} = Enum.max_by(doctrine_counts, &elem(&1, 1))
+      %{doctrine: doctrine, count: count}
+    else
+      nil
+    end
+  end
+
+  defp extract_pattern_features(patterns) do
+
+    if engagement_pref = patterns[:engagement_preferences] do
+      features = features ++ extract_engagement_features(engagement_pref)
+    end
+
+    if coordination = patterns[:coordination_quality] do
+      features = [{:coordination, coordination[:quality]} | features]
+    end
+
+    features
+  end
+
+  defp extract_engagement_features(%{time_preferences: time_prefs} = _engagement) do
+    peak_hours = Map.get(time_prefs, :peak_activity_hours, [])
+    timezone = Map.get(time_prefs, :timezone_preference, :unknown)
+
+    [{:timezone, timezone} | Enum.map(peak_hours, &{:peak_hour, &1})]
+  end
+  defp extract_engagement_features(_), do: []
+
+  defp calculate_overlap_score(common_patterns, total_corps) do
+    if total_corps > 0 do
+      pattern_coverage = length(common_patterns) / (total_corps * 3)  # Assume 3 patterns per corp
+      Float.round(min(pattern_coverage, 1.0), 3)
+    else
+      0.0
+    end
+  end
+
+  defp calculate_counter_effectiveness(doctrine_a, doctrine_b) do
+    # Simplified counter effectiveness matrix
+    counter_matrix = %{
+      {:shield_kiting, :armor_brawling} => 0.8,
+      {:armor_brawling, :shield_kiting} => 0.2,
+      {:ewar_heavy, :alpha_strike} => 0.3,
+      {:alpha_strike, :ewar_heavy} => 0.7,
+      {:nano_gang, :capital_escalation} => 0.9,
+      {:capital_escalation, :nano_gang} => 0.1,
+      {:logistics_heavy, :alpha_strike} => 0.6,
+      {:alpha_strike, :logistics_heavy} => 0.4
+    }
+
+    Map.get(counter_matrix, {doctrine_a, doctrine_b}, 0.5)
+  end
+
+  defp find_strong_counters(relationships) do
+    relationships
+    Enum.filter(fn {_pair, effectiveness} -> effectiveness >= 0.7 end)
+    |>     Enum.map(fn {{doc_a, doc_b}, effectiveness} ->
+      %{counter: doc_a, target: doc_b, effectiveness: effectiveness}
+    end)
+    Enum.sort_by(& &1.effectiveness, :desc)
+    Enum.take(5)
+  end
+
+  defp find_vulnerable_matchups(relationships) do
+    relationships
+    Enum.filter(fn {_pair, effectiveness} -> effectiveness <= 0.3 end)
+    |>     Enum.map(fn {{doc_a, doc_b}, effectiveness} ->
+      %{vulnerable: doc_a, threat: doc_b, effectiveness: effectiveness}
+    end)
+    Enum.sort_by(& &1.effectiveness)
+    Enum.take(5)
+  end
+
+  defp assess_doctrine_diversity(analyses) do
+    unique_doctrines = analyses |> Enum.map(& &1.primary_doctrine.key) Enum.uniq() length()
+    total_corps = length(analyses)
+
+    %{
+      unique_doctrines: unique_doctrines,
+      diversity_ratio: Float.round(unique_doctrines / max(total_corps, 1), 3),
+      classification: classify_diversity(unique_doctrines, total_corps)
+    }
+  end
+
+  defp classify_diversity(unique, total) when total > 0 do
+    ratio = unique / total
+    cond do
+      ratio >= 0.8 -> :highly_diverse
+      ratio >= 0.5 -> :moderately_diverse
+      ratio >= 0.3 -> :somewhat_uniform
+      true -> :highly_uniform
+    end
+  end
+  defp classify_diversity(_, _), do: :unknown
+
+  defp assess_coordination_levels(analyses) do
+    coordination_scores =
+      analyses
+      |>       Enum.map(fn analysis ->
+        tactical = analysis[:tactical_patterns] || %{}
+        coord = tactical[:coordination_quality] || %{}
+        {analysis.corporation_id, coord[:score] || 0.0}
+      end)
+
+    avg_coordination =
+      if length(coordination_scores) > 0 do
+        coordination_scores
+        |>         Enum.map(&elem(&1, 1))
+        Enum.sum()
+        Kernel./(length(coordination_scores))
+      else
+        0.0
+      end
+
+    %{
+      average_coordination: Float.round(avg_coordination, 3),
+      coordination_distribution: coordination_scores,
+      high_coordination_corps: Enum.filter(coordination_scores, fn {_id, score} -> score >= 0.7 end)
+    }
+  end
+
+  defp assess_threat_distribution(analyses) do
+    threat_levels =
+      analyses
+      |>       Enum.map(fn analysis ->
+        threat = analysis[:threat_assessment] || %{}
+        {analysis.corporation_id, threat[:threat_level] || :unknown}
+      end)
+      Enum.group_by(&elem(&1, 1), &elem(&1, 0))
+
+    %{
+      threat_breakdown: Map.new(threat_levels, fn {level, corps} ->
+        {level, %{count: length(corps), corporations: corps}}
+      end),
+      high_threat_count: length(Map.get(threat_levels, :high, []) ++ Map.get(threat_levels, :very_high, [])),
+      threat_summary: summarize_threats(threat_levels)
+    }
+  end
+
+  defp summarize_threats(threat_levels) do
+    total = threat_levels |> Map.values() Enum.map(&length/1) Enum.sum()
+    high_threats = length(Map.get(threat_levels, :high, []) ++ Map.get(threat_levels, :very_high, []))
+
+    cond do
+      total == 0 -> :no_data
+      high_threats / total >= 0.5 -> :high_threat_environment
+      high_threats / total >= 0.3 -> :moderate_threat_environment
+      true -> :low_threat_environment
+    end
+  end
+
+  defp identify_competitive_clusters(analyses) do
+    # Group corporations by similar doctrines
+    analyses
+    Enum.group_by(& &1.primary_doctrine.key)
+    |>     Map.new(fn {doctrine, corps} ->
+      {doctrine, %{
+        member_count: length(corps),
+        corporations: Enum.map(corps, & &1.corporation_id),
+        average_confidence: calculate_average_confidence(corps)
+      }}
+    end)
+  end
+
+  defp calculate_average_confidence(corps) do
+    if length(corps) > 0 do
+      corps
+      Enum.map(& &1.primary_doctrine.confidence)
+      Enum.sum()
+      Kernel./(length(corps))
+      Float.round(3)
+    else
+      0.0
+    end
+  end
+
+  defp calculate_synergy_score(doctrine_a, doctrine_b) do
+    # Simplified synergy scoring
+    synergy_matrix = %{
+      {:shield_kiting, :logistics_heavy} => 0.9,
+      {:armor_brawling, :logistics_heavy} => 0.85,
+      {:alpha_strike, :ewar_heavy} => 0.8,
+      {:nano_gang, :nano_gang} => 0.7,
+      {:capital_escalation, :logistics_heavy} => 0.95
+    }
+
+    Map.get(synergy_matrix, {doctrine_a, doctrine_b}, 0.5) +
+    Map.get(synergy_matrix, {doctrine_b, doctrine_a}, 0.0)
+  end
+
+  defp recommend_alliances(synergy_pairs) do
+    synergy_pairs
+    Enum.take(3)
+    |>     Enum.map(fn pair ->
+      %{
+        corporations: [pair.corp_a, pair.corp_b],
+        doctrines: [pair.doctrine_a, pair.doctrine_b],
+        synergy_score: pair.synergy_score,
+        recommendation: generate_alliance_recommendation(pair)
+      }
+    end)
+  end
+
+  defp generate_alliance_recommendation(%{doctrine_a: doc_a, doctrine_b: doc_b, synergy_score: score}) do
+    if score >= 0.8 do
+      "Strong synergy between #{doc_a} and #{doc_b} doctrines - highly recommended alliance"
+    else
+      "Moderate synergy detected - alliance could provide tactical advantages"
+    end
+  end
+
+  defp summarize_synergies(synergy_pairs) do
+    avg_synergy =
+      if length(synergy_pairs) > 0 do
+        synergy_pairs
+        Enum.map(& &1.synergy_score)
+        Enum.sum()
+        Kernel./(length(synergy_pairs))
+      else
+        0.0
+      end
+
+    %{
+      average_synergy: Float.round(avg_synergy, 3),
+      synergy_level: classify_synergy_level(avg_synergy),
+      top_synergy: List.first(synergy_pairs)
+    }
+  end
+
+  defp classify_synergy_level(avg) do
+    cond do
+      avg >= 0.8 -> :excellent
+      avg >= 0.6 -> :good
+      avg >= 0.4 -> :moderate
+      true -> :poor
+    end
+  end
+end

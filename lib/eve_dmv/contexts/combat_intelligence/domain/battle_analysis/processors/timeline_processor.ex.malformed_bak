@@ -1,0 +1,279 @@
+defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.TimelineProcessor do
+  @moduledoc """
+  Timeline processing engine for battle event reconstruction and analysis.
+
+  Handles:
+  - Timeline event creation and sequencing
+  - Battle duration calculations
+  - Event categorization and significance analysis
+  - Temporal pattern recognition
+  """
+
+  require Logger
+
+  @doc """
+  Reconstruct battle timeline from _killmail data.
+  """
+  def reconstruct_timeline(killmails) do
+    Logger.debug("Reconstructing timeline from #{length(killmails)} killmails")
+
+    if Enum.empty?(killmails) do
+      %{events: [], duration: 0, phases: [], key_moments: []}
+    else
+      # Sort killmails chronologically
+      sorted_killmails = Enum.sort_by(killmails, & &1.killmail_time)
+
+      # Build detailed timeline events with context
+      timeline_events =
+        sorted_killmails
+        Enum.with_index()
+        |>         Enum.map(fn {_killmail, index} ->
+          prev_killmail = if index > 0, do: Enum.at(sorted_killmails, index - 1), else: nil
+
+          %{
+            sequence: index + 1,
+            timestamp: _killmail.killmail_time,
+            event_type: categorize_event_type(_killmail),
+            victim: extract_victim_summary(_killmail),
+            attackers: extract_attacker_summary(_killmail),
+            location: extract_location_summary(_killmail),
+            tactical_significance: analyze_tactical_significance(_killmail, index, sorted_killmails),
+            time_since_last: calculate_time_since_last(_killmail, prev_killmail),
+            accumulated_value: calculate_accumulated_value(sorted_killmails, index)
+          }
+        end)
+
+      %{
+        events: timeline_events,
+        duration: calculate_battle_duration(timeline_events),
+        total_events: length(timeline_events),
+        start_time: List.first(timeline_events).timestamp,
+        end_time: List.last(timeline_events).timestamp
+      }
+    end
+  end
+
+  @doc """
+  Extract victim summary from _killmail.
+  """
+  def extract_victim_summary(_killmail) do
+    %{
+      character_id: _killmail.victim_character_id,
+      corporation_id: _killmail.victim_corporation_id,
+      alliance_id: _killmail.victim_alliance_id,
+      ship_type_id: _killmail.victim_ship_type_id,
+      ship_value: estimate_ship_value(_killmail.victim_ship_type_id)
+    }
+  end
+
+  @doc """
+  Extract attacker summary from _killmail.
+  """
+  def extract_attacker_summary(_killmail) do
+    # Simplified attacker extraction - in production would parse raw_data
+    attacker_count = _killmail.attacker_count || 1
+
+    %{
+      total_attackers: attacker_count,
+      final_blow: %{
+        character_id: _killmail.final_blow_character_id || 0,
+        corporation_id: _killmail.final_blow_corporation_id || 0,
+        ship_type_id: _killmail.final_blow_ship_type_id || 0
+      },
+      involvement_level: classify_involvement_level(attacker_count)
+    }
+  end
+
+  @doc """
+  Extract location summary from _killmail.
+  """
+  def extract_location_summary(_killmail) do
+    %{
+      system_id: _killmail.solar_system_id,
+      # Would need static data for system name and security
+      system_name: "System_#{_killmail.solar_system_id}",
+      security_level: estimate_security_level(_killmail.solar_system_id)
+    }
+  end
+
+  @doc """
+  Analyze tactical significance of a _killmail event.
+  """
+  def analyze_tactical_significance(_killmail, index, all_killmails) do
+    base_score = 10
+
+    # High-value ship factor
+    ship_value = estimate_ship_value(_killmail.victim_ship_type_id)
+    if ship_value > 1_000_000_000 do
+      significance_factors = ["high_value_target" | significance_factors]
+      base_updated_score = base_score + 30
+    end
+
+    # Early/late battle factor
+    battle_progress = index / length(all_killmails)
+    cond do
+      battle_progress < 0.1 ->
+        significance_factors = ["battle_opener" | significance_factors]
+        base_updated_score = base_score + 15
+
+      battle_progress > 0.9 ->
+        significance_factors = ["battle_closer" | significance_factors]
+        base_updated_score = base_score + 10
+
+      true -> :ok
+    end
+
+    # Multiple attackers factor
+    if (_killmail.attacker_count || 1) > 10 do
+      significance_factors = ["focus_fire" | significance_factors]
+      base_updated_score = base_score + 10
+    end
+
+    # Capital ship factor
+    if is_capital_ship?(_killmail.victim_ship_type_id) do
+      significance_factors = ["capital_loss" | significance_factors]
+      base_updated_score = base_score + 25
+    end
+
+    # Logistics ship factor
+    if is_logistics_ship?(_killmail.victim_ship_type_id) do
+      significance_factors = ["logistics_loss" | significance_factors]
+      base_updated_score = base_score + 20
+    end
+
+    %{
+      score: min(100, base_score),
+      factors: significance_factors,
+      classification: classify_significance(base_score)
+    }
+  end
+
+  @doc """
+  Calculate battle duration from timeline events.
+  """
+  def calculate_battle_duration(timeline_events) do
+    if length(timeline_events) < 2 do
+      0
+    else
+      first_event = List.first(timeline_events)
+      last_event = List.last(timeline_events)
+      DateTime.diff(last_event.timestamp, first_event.timestamp)
+    end
+  end
+
+  @doc """
+  Calculate time since last event.
+  """
+  def calculate_time_since_last(_killmail, nil), do: 0
+
+  def calculate_time_since_last(_killmail, prev_killmail) do
+    DateTime.diff(_killmail.killmail_time, prev_killmail.killmail_time)
+  end
+
+  @doc """
+  Calculate accumulated ISK value up to a point in timeline.
+  """
+  def calculate_accumulated_value(killmails, index) do
+    killmails
+    Enum.take(index + 1)
+    |>     Enum.map(fn _killmail ->
+      estimate_ship_value(_killmail.victim_ship_type_id)
+    end)
+    Enum.sum()
+  end
+
+  @doc """
+  Categorize the type of event from _killmail.
+  """
+  def categorize_event_type(_killmail) do
+    ship_value = estimate_ship_value(_killmail.victim_ship_type_id)
+
+    cond do
+      is_capital_ship?(_killmail.victim_ship_type_id) -> :capital_kill
+      is_logistics_ship?(_killmail.victim_ship_type_id) -> :logistics_kill
+      ship_value > 1_000_000_000 -> :high_value_kill
+      ship_value > 100_000_000 -> :significant_kill
+      true -> :standard_kill
+    end
+  end
+
+  # Private helper functions
+
+  defp estimate_ship_value(ship_type_id) do
+    # Simplified ship value estimation
+    case ship_type_id do
+      # Titans
+      id when id in [11_567, 22_444, 23_757] -> 50_000_000_000
+      # Supercarriers
+      id when id in [19_720, 19_722, 19_724] -> 20_000_000_000
+      # Carriers
+      id when id in [19_726, 24_483] -> 2_000_000_000
+      # Dreadnoughts
+      id when id in [17_132, 17_738, 28_665] -> 1_500_000_000
+      # Battleships
+      id when id in [640..644] -> 200_000_000
+      # Battlecruisers
+      id when id in [16_227..16_240] -> 100_000_000
+      # Cruisers
+      id when id in [358..400] -> 50_000_000
+      # Destroyers
+      id when id in [420..441] -> 15_000_000
+      # Frigates
+      id when id in [1..100] -> 5_000_000
+      # Default
+      _ -> 25_000_000
+    end
+  end
+
+  defp classify_involvement_level(attacker_count) do
+    cond do
+      attacker_count >= 20 -> :massive_focus_fire
+      attacker_count >= 10 -> :heavy_focus_fire
+      attacker_count >= 5 -> :coordinated_attack
+      attacker_count >= 2 -> :small_group
+      true -> :solo_kill
+    end
+  end
+
+  defp estimate_security_level(system_id) do
+    # Simplified security estimation based on system ID ranges
+    cond do
+      system_id >= 30_000_000 and system_id < 31_000_000 -> :high_sec
+      system_id >= 31_000_000 and system_id < 32_000_000 -> :low_sec
+      system_id >= 32_000_000 -> :null_sec
+      true -> :unknown
+    end
+  end
+
+  defp is_capital_ship?(ship_type_id) do
+    ship_type_id in [
+      # Titans
+      11_567, 22_444, 23_757,
+      # Supercarriers
+      19_720, 19_722, 19_724,
+      # Carriers
+      19_726, 24_483,
+      # Dreadnoughts
+      17_132, 17_738, 28_665
+    ]
+  end
+
+  defp is_logistics_ship?(ship_type_id) do
+    ship_type_id in [
+      11_978,  # Guardian
+      11_987,  # Basilisk
+      17_634,  # Oneiros
+      17_636   # Scimitar
+    ]
+  end
+
+  defp classify_significance(score) do
+    cond do
+      score >= 80 -> :critical
+      score >= 60 -> :high
+      score >= 40 -> :medium
+      score >= 20 -> :low
+      true -> :minimal
+    end
+  end
+end

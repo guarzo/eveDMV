@@ -1,0 +1,222 @@
+defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine.Matchers.ChainMatcher do
+  @moduledoc """
+  Matches killmails based on wormhole chain criteria.
+  """
+
+  alias EveDmv.Intelligence.WandererClient
+
+  @doc """
+  Evaluate chain criteria against killmail data.
+  """
+  def evaluate(criteria, killmail_data) do
+    system_id = killmail_data.solar_system_id
+    map_id = Map.get(criteria, :map_id)
+    chain_filter_type = Map.get(criteria, :chain_filter_type, :in_chain)
+
+    result =
+      case chain_filter_type do
+        :in_chain ->
+          check_system_in_chain(system_id, map_id)
+
+        :within_jumps ->
+          max_jumps = Map.get(criteria, :max_jumps, 1)
+          check_system_within_jumps(system_id, map_id, max_jumps)
+
+        :chain_inhabitant ->
+          check_killmail_involves_chain_inhabitant(killmail_data, map_id)
+
+        :entering_chain ->
+          check_hostile_entering_chain(killmail_data, map_id)
+
+        _ ->
+          %{matches: false, matched_criteria: [], confidence_score: 0.0}
+      end
+
+    # Add chain-specific metadata to the result
+    |>     Map.merge(result, %{
+      system_id: system_id,
+      map_id: map_id,
+      filter_type: chain_filter_type
+    })
+  end
+
+  # Private functions
+
+  defp check_system_in_chain(system_id, map_id) do
+    case WandererClient.get_chain_topology(map_id) do
+      {:ok, topology} ->
+        systems = Map.get(topology, "systems", [])
+
+        system_in_chain =
+          Enum.any?(systems, fn system ->
+            Map.get(system, "system_id") == system_id
+          end)
+
+        if system_in_chain do
+          %{
+            matches: true,
+            matched_criteria: [%{type: :in_chain, system_id: system_id, map_id: map_id}],
+            confidence_score: 1.0
+          }
+        else
+          %{matches: false, matched_criteria: [], confidence_score: 0.0}
+        end
+
+      {:error, _reason} ->
+        # If we can't get chain data, assume no match
+        %{matches: false, matched_criteria: [], confidence_score: 0.0}
+    end
+  end
+
+  defp check_system_within_jumps(system_id, map_id, max_jumps) do
+    case WandererClient.get_chain_topology(map_id) do
+      {:ok, topology} ->
+        # Calculate jump distance from any system in the chain
+        chain_systems =
+          topology
+          |> Map.get("systems", [])
+          |> Enum.map(&Map.get(&1, "system_id"))
+
+        jump_distance = calculate_min_jump_distance(system_id, chain_systems)
+
+        if jump_distance <= max_jumps do
+          %{
+            matches: true,
+            matched_criteria: [
+              %{
+                type: :within_jumps,
+                system_id: system_id,
+                map_id: map_id,
+                jump_distance: jump_distance,
+                max_jumps: max_jumps
+              }
+            ],
+            confidence_score: max(0.1, 1.0 - jump_distance / max_jumps * 0.5)
+          }
+        else
+          %{matches: false, matched_criteria: [], confidence_score: 0.0}
+        end
+
+      {:error, _reason} ->
+        %{matches: false, matched_criteria: [], confidence_score: 0.0}
+    end
+  end
+
+  defp check_killmail_involves_chain_inhabitant(killmail_data, map_id) do
+    case WandererClient.get_chain_inhabitants(map_id) do
+      {:ok, inhabitants} ->
+        inhabitant_character_ids =
+          inhabitants
+          |> Enum.map(&Map.get(&1, "character_id"))
+          |> Enum.filter(&(&1 != nil))
+          |> MapSet.new()
+
+        # Check victim
+        victim_match = MapSet.member?(inhabitant_character_ids, killmail_data.victim.character_id)
+
+        # Check attackers
+        attacker_matches =
+          Enum.filter(killmail_data.attackers, fn attacker ->
+            MapSet.member?(inhabitant_character_ids, attacker.character_id)
+          end)
+
+        matches = victim_match or length(attacker_matches) > 0
+
+        if matches do
+          matched_criteria =
+            []
+            |> then(fn acc ->
+              if victim_match do
+                [
+                  %{
+                    type: :chain_inhabitant_victim,
+                    character_id: killmail_data.victim.character_id
+                  }
+                  | acc
+                ]
+              else
+                acc
+              end
+            end)
+            |> then(fn acc ->
+              Enum.reduce(attacker_matches, acc, fn attacker, acc ->
+                [%{type: :chain_inhabitant_attacker, character_id: attacker.character_id} | acc]
+              end)
+            end)
+
+          %{
+            matches: true,
+            matched_criteria: matched_criteria,
+            confidence_score: if(victim_match, do: 1.0, else: 0.8)
+          }
+        else
+          %{matches: false, matched_criteria: [], confidence_score: 0.0}
+        end
+
+      {:error, _reason} ->
+        %{matches: false, matched_criteria: [], confidence_score: 0.0}
+    end
+  end
+
+  defp check_hostile_entering_chain(killmail_data, map_id) do
+    # This would require more sophisticated logic to determine if a kill represents
+    # hostiles entering the chain based on patterns, system proximity, etc.
+    # For now, check if killmail is near chain and involves unknown entities
+    case WandererClient.get_chain_topology(map_id) do
+      {:ok, topology} ->
+        chain_systems =
+          topology
+          |> Map.get("systems", [])
+          |> Enum.map(&Map.get(&1, "system_id"))
+
+        # If killmail is within 1 jump of chain, it could be hostiles entering
+        within_one_jump =
+          calculate_min_jump_distance(killmail_data.solar_system_id, chain_systems) <= 1
+
+        if within_one_jump do
+          %{
+            matches: true,
+            matched_criteria: [
+              %{
+                type: :entering_chain,
+                system_id: killmail_data.solar_system_id,
+                map_id: map_id
+              }
+            ],
+            confidence_score: 0.6
+          }
+        else
+          %{matches: false, matched_criteria: [], confidence_score: 0.0}
+        end
+
+      {:error, _reason} ->
+        %{matches: false, matched_criteria: [], confidence_score: 0.0}
+    end
+  end
+
+  defp calculate_min_jump_distance(target_system_id, chain_system_ids) do
+    # Simplified jump distance calculation
+    # In a real implementation, this would use EVE's jump routing data
+    if target_system_id in chain_system_ids do
+      0
+    else
+      # For now, return a simple heuristic based on system ID proximity
+      # This should be replaced with proper jump route calculation
+      min_distance =
+        chain_system_ids
+        |> Enum.map(fn system_id -> abs(target_system_id - system_id) end)
+        |> Enum.min(fn -> 999 end)
+
+      cond do
+        # Likely adjacent
+        min_distance < 1000 -> 1
+        # 2 jumps away
+        min_distance < 5000 -> 2
+        # 3 jumps away
+        min_distance < 10_000 -> 3
+        # Far away
+        true -> 10
+      end
+    end
+  end
+end

@@ -1,0 +1,882 @@
+defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetCompositionAnalyzer do
+  @moduledoc """
+  Fleet composition analyzer for analyzing fleet compositions and their effectiveness.
+
+  Analyzes ship compositions, role distributions, and fleet synergy to determine
+  tactical effectiveness and identify optimization opportunities.
+  """
+
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.FleetCompositionUtilities
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.FleetDoctrineAnalyzer
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.FleetGapAnalyzer
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.FleetSynergyAnalyzer
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.ShipClassificationAnalyzer
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.ShipClassPerformanceAnalyzer
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.StrategicPositioningAnalyzer
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.BattleOutcomeAnalysisEngine
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.BattleOutcomeEngine
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.BattleOutcomePredictor
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.DoctrineDetectionEngine
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.FleetComparisonEngine
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.FleetEffectivenessCalculator
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.FleetStrengthAnalyzer
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.SideClassificationEngine
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.SideDeterminationEngine
+  alias EveDmv.Contexts.CorporationIntelligence.Domain.CorpIntelligenceUtils
+
+  require Logger
+
+  # Ship type ID ranges for classification
+
+  @doc """
+  Analyze fleet compositions from participant data.
+  """
+  def analyze_fleet_compositions(participants, killmails) do
+    Logger.debug("Analyzing fleet compositions for #{length(participants)} participants")
+
+    # Comprehensive fleet composition analysis
+    sides = classify_participants_by_side(participants)
+
+    # Enhanced composition analysis with ship database integration
+    side_a_analysis = analyze_side_composition(sides.side_a)
+    side_b_analysis = analyze_side_composition(sides.side_b)
+
+    # Advanced composition comparison with tactical metrics
+    composition_comparison = compare_fleet_compositions(side_a_analysis, side_b_analysis)
+
+    # Detailed effectiveness analysis using _killmail data
+    effectiveness_analysis = analyze_composition_effectiveness(sides, killmails)
+
+    # Fleet doctrine analysis
+    doctrine_analysis = analyze_fleet_doctrines(sides.side_a, sides.side_b)
+
+    # Tactical advantage assessment
+    tactical_advantages = assess_tactical_advantages(side_a_analysis, side_b_analysis, killmails)
+
+    # Fleet synergy analysis
+    synergy_analysis = FleetSynergyAnalyzer.analyze_fleet_synergy(sides.side_a, sides.side_b, killmails)
+
+    %{
+      side_a: side_a_analysis,
+      side_b: side_b_analysis,
+      composition_comparison: composition_comparison,
+      effectiveness_analysis: effectiveness_analysis,
+      doctrine_analysis: doctrine_analysis,
+      tactical_advantages: tactical_advantages,
+      synergy_analysis: synergy_analysis,
+      battle_summary: generate_battle_summary(side_a_analysis, side_b_analysis, killmails)
+    }
+  end
+
+  @doc """
+  Analyze ship class performance in battle.
+  """
+  def analyze_ship_class_performance(killmails, participants) do
+    Logger.debug("Analyzing ship class performance")
+
+    # Comprehensive ship class performance analysis
+    ship_classes = classify_ships_by_class(participants)
+
+    # Performance metrics per ship class
+    performance_analysis =
+      ship_classes
+      |> Enum.map(fn {ship_class, ships} ->
+        performance_metrics = do_calculate_ship_class_performance(ship_class, ships, killmails)
+        {ship_class, performance_metrics}
+      end)
+      |> Enum.into(%{})
+
+    # Cross-class analysis
+    cross_class_analysis = analyze_cross_class_interactions(performance_analysis, killmails)
+
+    # Performance trends
+    performance_trends = analyze_performance_trends(performance_analysis, killmails)
+
+    %{
+      ship_class_performance: performance_analysis,
+      cross_class_analysis: cross_class_analysis,
+      performance_trends: performance_trends,
+      overall_statistics: calculate_overall_statistics(performance_analysis)
+    }
+  end
+
+  @doc """
+  Analyze fleet composition gaps and optimization opportunities.
+  """
+  def analyze_fleet_composition_gaps(fleet_compositions) do
+    Logger.debug("Analyzing fleet composition gaps")
+
+    # Comprehensive gap analysis
+    missing_roles = identify_missing_roles(fleet_compositions)
+    role_imbalances = identify_role_imbalances(fleet_compositions)
+    optimization_suggestions = generate_optimization_suggestions(fleet_compositions)
+    synergy_opportunities = identify_synergy_opportunities(fleet_compositions)
+
+    # Advanced gap analysis
+    doctrine_gaps = analyze_doctrine_gaps(fleet_compositions)
+    capability_gaps = analyze_capability_gaps(fleet_compositions)
+    tactical_gaps = analyze_tactical_gaps(fleet_compositions)
+
+    # Optimization priority analysis
+    optimization_priorities =
+      prioritize_optimizations(missing_roles, role_imbalances, doctrine_gaps)
+
+    # Resource requirement analysis
+    resource_requirements = analyze_resource_requirements(optimization_suggestions)
+
+    # Implementation roadmap
+    implementation_roadmap =
+      generate_implementation_roadmap(optimization_priorities, resource_requirements)
+
+    %{
+      missing_roles: missing_roles,
+      role_imbalances: role_imbalances,
+      optimization_suggestions: optimization_suggestions,
+      synergy_opportunities: synergy_opportunities,
+      doctrine_gaps: doctrine_gaps,
+      capability_gaps: capability_gaps,
+      tactical_gaps: tactical_gaps,
+      optimization_priorities: optimization_priorities,
+      resource_requirements: resource_requirements,
+      implementation_roadmap: implementation_roadmap
+    }
+  end
+
+  @doc """
+  Analyze strategic positioning effectiveness.
+  """
+  def analyze_strategic_positioning(battle_analysis) do
+    Logger.debug("Analyzing strategic positioning")
+
+    # Extract positioning data from battle analysis
+    participants = get_participants_from_battle_analysis(battle_analysis)
+    killmails = get_killmails_from_battle_analysis(battle_analysis)
+
+    # Comprehensive positioning analysis
+    positioning_effectiveness = calculate_positioning_effectiveness(participants, killmails)
+    range_control = analyze_range_control(participants, killmails)
+    escape_route_utilization = analyze_escape_route_utilization(participants, killmails)
+    tactical_positioning = analyze_tactical_positioning_effectiveness(participants, killmails)
+    formation_integrity = analyze_formation_integrity(participants, killmails)
+
+    # Advanced positioning metrics
+    engagement_zones = analyze_engagement_zones(participants, killmails)
+    positioning_advantages = identify_positioning_advantages(participants, killmails)
+    mobility_analysis = analyze_fleet_mobility(participants, killmails)
+
+    # Positioning optimization recommendations
+    positioning_recommendations =
+      generate_positioning_recommendations(
+        positioning_effectiveness,
+        range_control,
+        tactical_positioning
+      )
+
+    %{
+      positioning_effectiveness: positioning_effectiveness,
+      range_control: range_control,
+      escape_route_utilization: escape_route_utilization,
+      tactical_positioning: tactical_positioning,
+      formation_integrity: formation_integrity,
+      engagement_zones: engagement_zones,
+      positioning_advantages: positioning_advantages,
+      mobility_analysis: mobility_analysis,
+      positioning_recommendations: positioning_recommendations
+    }
+  end
+
+  @doc """
+  Analyze enhanced fleet composition from a list of ships.
+
+  This function provides simplified fleet composition analysis for cases where
+  only ship information is available without full battle context.
+  """
+  def analyze_enhanced_fleet_composition(ship_list) when is_list(ship_list) do
+    Logger.debug("Analyzing enhanced fleet composition for #{length(ship_list)} ships")
+
+    # Convert ship list to participant format for analysis
+    participants = convert_ships_to_participants(ship_list)
+
+    # Analyze composition without battle context
+    composition_analysis = analyze_side_composition(participants)
+
+    # Enhanced analysis with ship database integration
+    ship_classes = classify_ships_by_class(participants)
+    role_distribution = calculate_role_distribution(participants)
+
+    %{
+      total_ships: length(ship_list),
+      composition: composition_analysis,
+      ship_classes: ship_classes,
+      role_distribution: role_distribution,
+      fleet_synergy: FleetSynergyAnalyzer.calculate_fleet_synergy(participants),
+      composition_coherence: calculate_doctrine_coherence(ship_classes)
+    }
+  end
+
+  # Private helper functions
+  defp classify_participants_by_side(participants) do
+    SideClassificationEngine.classify_participants_by_side(participants)
+  end
+
+  defp analyze_side_composition(side_participants) do
+    # Comprehensive side composition analysis
+    Logger.debug("Analyzing composition for #{length(side_participants)} participants")
+
+    if Enum.empty?(side_participants) do
+      Logger.warning("analyze_side_composition: Empty participant list, returning default values")
+
+      %{
+        total_pilots: 0,
+        ship_classes: %{},
+        role_distribution: %{},
+        doctrine_adherence: 0.0,
+        fleet_synergy: 0.0,
+        estimated_effectiveness: 0.0
+      }
+    else
+      # Detailed ship classification
+      ship_classes = classify_ships_by_class(side_participants)
+
+      # Advanced role distribution analysis
+      role_distribution = calculate_role_distribution(side_participants)
+
+      # Doctrine adherence analysis
+      doctrine_adherence = calculate_doctrine_adherence(side_participants)
+
+      # Fleet synergy calculation
+      fleet_synergy = FleetSynergyAnalyzer.calculate_fleet_synergy(side_participants)
+
+      # Effectiveness estimation
+      estimated_effectiveness = estimate_fleet_effectiveness(side_participants)
+
+      # Additional composition metrics
+      fleet_strength = calculate_fleet_strength(side_participants)
+      composition_balance = analyze_composition_balance(role_distribution)
+      logistical_support = analyze_logistical_support(side_participants)
+
+      # Ship size distribution
+      ship_size_distribution = analyze_ship_size_distribution(side_participants)
+
+      # Alliance/Corporation composition
+      org_composition = analyze_organizational_composition(side_participants)
+
+      # Combat capability assessment
+      combat_capability = assess_combat_capability(side_participants, ship_classes)
+
+      %{
+        total_pilots: length(side_participants),
+        ship_classes: ship_classes,
+        role_distribution: role_distribution,
+        doctrine_adherence: doctrine_adherence,
+        fleet_synergy: fleet_synergy,
+        estimated_effectiveness: estimated_effectiveness,
+        fleet_strength: fleet_strength,
+        composition_balance: composition_balance,
+        logistical_support: logistical_support,
+        ship_size_distribution: ship_size_distribution,
+        organizational_composition: org_composition,
+        combat_capability: combat_capability
+      }
+    end
+  end
+
+  defp compare_fleet_compositions(side_a_analysis, side_b_analysis) do
+    FleetComparisonEngine.compare_fleet_compositions(side_a_analysis, side_b_analysis)
+  end
+
+  defp analyze_composition_effectiveness(sides, killmails) do
+    # Comprehensive effectiveness analysis based on actual battle outcomes
+    Logger.debug("Analyzing composition effectiveness against #{length(killmails)} killmails")
+
+    # Calculate effectiveness for each side
+    side_a_effectiveness = calculate_side_effectiveness(sides.side_a, killmails)
+    side_b_effectiveness = calculate_side_effectiveness(sides.side_b, killmails)
+
+    # Analyze composition impact on battle outcomes
+    composition_impact = analyze_composition_impact(sides, killmails)
+
+    # Identify tactical advantages from composition
+    tactical_advantages = identify_tactical_advantages(sides, killmails)
+
+    # Effectiveness trends over time
+    effectiveness_trends = analyze_effectiveness_trends(sides, killmails)
+
+    # Loss analysis by composition
+    loss_analysis = analyze_losses_by_composition(sides, killmails)
+
+    # Performance vs expected
+    performance_vs_expected = analyze_performance_vs_expected(sides, killmails)
+
+    # Critical moments analysis
+    critical_moments = identify_critical_moments(sides, killmails)
+
+    %{
+      side_a_effectiveness: side_a_effectiveness,
+      side_b_effectiveness: side_b_effectiveness,
+      composition_impact: composition_impact,
+      tactical_advantages: tactical_advantages,
+      effectiveness_trends: effectiveness_trends,
+      loss_analysis: loss_analysis,
+      performance_vs_expected: performance_vs_expected,
+      critical_moments: critical_moments,
+      battle_outcome_analysis:
+        determine_battle_outcome(side_a_effectiveness, side_b_effectiveness, killmails)
+    }
+  end
+
+  defp classify_ships_by_class(participants) do
+    # Proper ship classification based on ship types and database lookup
+    Logger.debug("Classifying #{length(participants)} ships by class")
+
+    Enum.group_by(participants, fn participant ->
+      ship_type_id =
+        Map.get(participant, :ship_type_id) || Map.get(participant, :victim_ship_type_id)
+
+      ship_name = Map.get(participant, :ship_name) || Map.get(participant, :ship_type_name, "")
+
+      # Create participant map for classification
+      participant = %{ship_type_id: ship_type_id, ship_name: ship_name}
+      CorpIntelligenceUtils.classify_ship_type(participant.ship_type_id)
+    end)
+  end
+
+  defp calculate_role_distribution(participants) do
+    # Sophisticated role classification based on ship types and capabilities
+    Logger.debug("Calculating role distribution for #{length(participants)} participants")
+
+    if Enum.empty?(participants) do
+      Logger.debug("calculate_role_distribution: Empty participant list, returning zero counts")
+      %{dps: 0, logistics: 0, ewar: 0, tackle: 0, support: 0, interdiction: 0, command: 0}
+    else
+      # Classify each participant by primary role
+      role_counts =
+        participants
+        |> Enum.map(&ShipClassificationAnalyzer.classify_ship_role/1)
+        |> Enum.frequencies()
+
+      total = length(participants)
+
+      # Calculate percentages and counts
+      %{
+        dps: %{
+          count: Map.get(role_counts, :dps, 0),
+          percentage: Float.round(Map.get(role_counts, :dps, 0) / total * 100, 1)
+        },
+        logistics: %{
+          count: Map.get(role_counts, :logistics, 0),
+          percentage: Float.round(Map.get(role_counts, :logistics, 0) / total * 100, 1)
+        },
+        ewar: %{
+          count: Map.get(role_counts, :ewar, 0),
+          percentage: Float.round(Map.get(role_counts, :ewar, 0) / total * 100, 1)
+        },
+        tackle: %{
+          count: Map.get(role_counts, :tackle, 0),
+          percentage: Float.round(Map.get(role_counts, :tackle, 0) / total * 100, 1)
+        },
+        support: %{
+          count: Map.get(role_counts, :support, 0),
+          percentage: Float.round(Map.get(role_counts, :support, 0) / total * 100, 1)
+        },
+        interdiction: %{
+          count: Map.get(role_counts, :interdiction, 0),
+          percentage: Float.round(Map.get(role_counts, :interdiction, 0) / total * 100, 1)
+        },
+        command: %{
+          count: Map.get(role_counts, :command, 0),
+          percentage: Float.round(Map.get(role_counts, :command, 0) / total * 100, 1)
+        },
+        total_participants: total
+      }
+    end
+  end
+
+  defp calculate_doctrine_adherence(participants) do
+    FleetDoctrineAnalyzer.calculate_doctrine_adherence(participants)
+  end
+
+  defp calculate_role_balance_score(role_distribution) do
+    FleetDoctrineAnalyzer.calculate_role_balance_score(role_distribution)
+  end
+
+  defp calculate_class_consistency_score(ship_classes) do
+    FleetDoctrineAnalyzer.calculate_class_consistency_score(ship_classes)
+  end
+
+  defp calculate_critical_roles_score(role_distribution) do
+    FleetDoctrineAnalyzer.calculate_critical_roles_score(role_distribution)
+  end
+
+  defp estimate_fleet_effectiveness(participants) do
+    FleetEffectivenessCalculator.estimate_fleet_effectiveness(participants)
+  end
+
+  defp calculate_firepower_potential(participants) do
+    FleetEffectivenessCalculator.calculate_firepower_potential(participants)
+  end
+
+  defp estimate_ship_dps_weight(participant) do
+    FleetEffectivenessCalculator.estimate_ship_dps_weight(participant)
+  end
+
+  defp calculate_survivability_score(participants) do
+    FleetEffectivenessCalculator.calculate_survivability_score(participants)
+  end
+
+  defp calculate_average_tankiness(ship_classes, total_ships) do
+    FleetEffectivenessCalculator.calculate_average_tankiness(ship_classes, total_ships)
+  end
+
+  defp calculate_force_multiplier_score(participants) do
+    FleetEffectivenessCalculator.calculate_force_multiplier_score(participants)
+  end
+
+  defp calculate_mobility_score(participants) do
+    FleetEffectivenessCalculator.calculate_mobility_score(participants)
+  end
+
+  defp calculate_ewar_capability(participants) do
+    FleetEffectivenessCalculator.calculate_ewar_capability(participants)
+  end
+
+  defp calculate_survival_rate(ships, killmails) do
+    ShipClassPerformanceAnalyzer.calculate_survival_rate(ships, killmails)
+  end
+
+  defp calculate_kill_participation(_ships, _killmails) do
+    ShipClassPerformanceAnalyzer.calculate_kill_participation(_ships, _killmails)
+  end
+
+  defp calculate_effectiveness_score(_ships, _killmails) do
+    ShipClassPerformanceAnalyzer.calculate_effectiveness_score(_ships, _killmails)
+  end
+
+  defp identify_missing_roles(_fleet_compositions) do
+    FleetGapAnalyzer.identify_missing_roles(_fleet_compositions)
+  end
+
+  defp identify_role_imbalances(_fleet_compositions) do
+    FleetGapAnalyzer.identify_role_imbalances(_fleet_compositions)
+  end
+
+  defp generate_optimization_suggestions(_fleet_compositions) do
+    FleetGapAnalyzer.generate_optimization_suggestions(_fleet_compositions)
+  end
+
+  defp identify_synergy_opportunities(_fleet_compositions) do
+    FleetGapAnalyzer.identify_synergy_opportunities(_fleet_compositions)
+  end
+
+  defp calculate_side_effectiveness(_side_participants, _killmails) do
+    # For now, return basic side effectiveness
+
+    0.7
+  end
+
+  defp analyze_composition_impact(_sides, _killmails) do
+    # For now, return basic composition impact
+
+    %{
+      doctrine_effectiveness: 0.7,
+      role_execution: 0.6,
+      synergy_utilization: 0.5
+    }
+  end
+
+  defp identify_tactical_advantages(_sides, _killmails) do
+    # For now, return basic tactical advantages
+
+    [
+      %{advantage: :logistics_superiority, side: :side_a, impact: 0.8},
+      %{advantage: :alpha_strike_capability, side: :side_b, impact: 0.6}
+    ]
+  end
+
+  defp count_ships_lost(ships, killmails) do
+    # Proper ship loss calculation based on _killmail data
+    if Enum.empty?(ships) or Enum.empty?(killmails) do
+      0
+    else
+      # Count ships that appear as victims in killmails
+      ship_character_ids =
+        MapSet.new(ships, fn ship ->
+          Map.get(ship, :character_id) || Map.get(ship, :victim_character_id)
+        end)
+
+      losses = Enum.count(killmails, fn _killmail ->
+          victim_id = Map.get(_killmail, :victim_character_id)
+          victim_id && MapSet.member?(ship_character_ids, victim_id)
+        end)
+
+      losses
+    end
+  end
+
+  # Additional helper functions for comprehensive analysis
+
+  defp calculate_damage_dealt(ships, killmails) do
+    ShipClassPerformanceAnalyzer.calculate_damage_dealt(ships, killmails)
+  end
+
+  defp calculate_damage_taken(ships, killmails) do
+    ShipClassPerformanceAnalyzer.calculate_damage_taken(ships, killmails)
+  end
+
+  defp count_kills_by_ships(ships, killmails) do
+    ShipClassPerformanceAnalyzer.count_kills_by_ships(ships, killmails)
+  end
+
+  defp analyze_role_effectiveness(ship_class, ships, killmails) do
+    ShipClassPerformanceAnalyzer.analyze_role_effectiveness(ship_class, ships, killmails)
+  end
+
+  defp calculate_class_specific_metrics(ship_class, ships, killmails) do
+    ShipClassPerformanceAnalyzer.calculate_class_specific_metrics(ship_class, ships, killmails)
+  end
+
+  defp analyze_tactical_positioning(ship_class, ships, killmails) do
+    ShipClassPerformanceAnalyzer.analyze_tactical_positioning(ship_class, ships, killmails)
+  end
+
+  defp grade_performance(effectiveness_score, survival_rate) do
+    ShipClassPerformanceAnalyzer.grade_performance(effectiveness_score, survival_rate)
+  end
+
+  defp analyze_cross_class_interactions(performance_analysis, _killmails) do
+    ShipClassPerformanceAnalyzer.analyze_cross_class_interactions(performance_analysis, _killmails)
+  end
+
+  defp calculate_class_synergy(class_a, class_b) do
+    ShipClassPerformanceAnalyzer.calculate_class_synergy(class_a, class_b)
+  end
+
+  defp determine_interaction_type(class_a, class_b) do
+    ShipClassPerformanceAnalyzer.determine_interaction_type(class_a, class_b)
+  end
+
+  defp analyze_performance_trends(_performance_analysis, killmails) do
+    ShipClassPerformanceAnalyzer.analyze_performance_trends(_performance_analysis, killmails)
+  end
+
+  defp calculate_overall_statistics(performance_analysis) do
+    ShipClassPerformanceAnalyzer.calculate_overall_statistics(performance_analysis)
+  end
+
+  # Helper functions for the main analysis functions
+
+  defp analyze_fleet_doctrines(side_a, side_b) do
+    FleetDoctrineAnalyzer.analyze_fleet_doctrines(side_a, side_b)
+  end
+
+  defp calculate_doctrine_coherence(ship_classes) do
+    FleetDoctrineAnalyzer.calculate_doctrine_coherence(ship_classes)
+  end
+
+  defp assess_tactical_advantages(side_a_analysis, side_b_analysis, _killmails) do
+    FleetDoctrineAnalyzer.assess_tactical_advantages(side_a_analysis, side_b_analysis, _killmails)
+  end
+
+  defp generate_battle_summary(side_a_analysis, side_b_analysis, killmails) do
+    FleetDoctrineAnalyzer.generate_battle_summary(side_a_analysis, side_b_analysis, killmails)
+  end
+
+  defp calculate_battle_intensity(killmails, total_participants) do
+    FleetDoctrineAnalyzer.calculate_battle_intensity(killmails, total_participants)
+  end
+
+  defp identify_dominant_classes(side_a_analysis, side_b_analysis) do
+    FleetDoctrineAnalyzer.identify_dominant_classes(side_a_analysis, side_b_analysis)
+  end
+
+  # Additional helper functions for positioning analysis
+
+  defp get_participants_from_battle_analysis(battle_analysis) do
+    StrategicPositioningAnalyzer.get_participants_from_battle_analysis(battle_analysis)
+  end
+
+  defp get_killmails_from_battle_analysis(battle_analysis) do
+    StrategicPositioningAnalyzer.get_killmails_from_battle_analysis(battle_analysis)
+  end
+
+  defp calculate_positioning_effectiveness(participants, killmails) do
+    StrategicPositioningAnalyzer.calculate_positioning_effectiveness(participants, killmails)
+  end
+
+  defp count_total_losses(killmails) do
+    StrategicPositioningAnalyzer.count_total_losses(killmails)
+  end
+
+  defp analyze_range_control(participants, _killmails) do
+    StrategicPositioningAnalyzer.analyze_range_control(participants, _killmails)
+  end
+
+  defp count_long_range_ships(participants) do
+    StrategicPositioningAnalyzer.count_long_range_ships(participants)
+  end
+
+  defp analyze_escape_route_utilization(participants, killmails) do
+    StrategicPositioningAnalyzer.analyze_escape_route_utilization(participants, killmails)
+  end
+
+  defp analyze_tactical_positioning_effectiveness(participants, killmails) do
+    StrategicPositioningAnalyzer.analyze_tactical_positioning_effectiveness(participants, killmails)
+  end
+
+  defp analyze_formation_integrity(participants, _killmails) do
+    StrategicPositioningAnalyzer.analyze_formation_integrity(participants, _killmails)
+  end
+
+  defp count_logistics_ships(participants) do
+    StrategicPositioningAnalyzer.count_logistics_ships(participants)
+  end
+
+  defp analyze_engagement_zones(participants, killmails) do
+    StrategicPositioningAnalyzer.analyze_engagement_zones(participants, killmails)
+  end
+
+  defp calculate_zone_intensity(participants, killmails) do
+    StrategicPositioningAnalyzer.calculate_zone_intensity(participants, killmails)
+  end
+
+  defp identify_positioning_advantages(participants, _killmails) do
+    StrategicPositioningAnalyzer.identify_positioning_advantages(participants, _killmails)
+  end
+
+  defp analyze_fleet_mobility(participants, _killmails) do
+    StrategicPositioningAnalyzer.analyze_fleet_mobility(participants, _killmails)
+  end
+
+  defp count_fast_ships(participants) do
+    StrategicPositioningAnalyzer.count_fast_ships(participants)
+  end
+
+  defp rate_mobility(mobility_score) do
+    StrategicPositioningAnalyzer.rate_mobility(mobility_score)
+  end
+
+  defp generate_positioning_recommendations(
+         positioning_effectiveness,
+         range_control,
+         tactical_positioning
+       ) do
+    StrategicPositioningAnalyzer.generate_positioning_recommendations(
+         positioning_effectiveness,
+         range_control,
+         tactical_positioning
+       )
+  end
+
+  # Additional helper functions for gap analysis
+
+  defp analyze_doctrine_gaps(_fleet_compositions) do
+    FleetGapAnalyzer.analyze_doctrine_gaps(_fleet_compositions)
+  end
+
+  defp analyze_capability_gaps(_fleet_compositions) do
+    FleetGapAnalyzer.analyze_capability_gaps(_fleet_compositions)
+  end
+
+  defp analyze_tactical_gaps(_fleet_compositions) do
+    FleetGapAnalyzer.analyze_tactical_gaps(_fleet_compositions)
+  end
+
+  defp prioritize_optimizations(missing_roles, role_imbalances, doctrine_gaps) do
+    FleetGapAnalyzer.prioritize_optimizations(missing_roles, role_imbalances, doctrine_gaps)
+  end
+
+  defp analyze_resource_requirements(optimization_suggestions) do
+    FleetGapAnalyzer.analyze_resource_requirements(optimization_suggestions)
+  end
+
+  defp generate_implementation_roadmap(optimization_priorities, resource_requirements) do
+    FleetGapAnalyzer.generate_implementation_roadmap(optimization_priorities, resource_requirements)
+  end
+
+  # Additional helper functions for comprehensive analysis
+
+  defp calculate_fleet_strength(participants) do
+    FleetStrengthAnalyzer.calculate_fleet_strength(participants)
+  end
+
+  defp rate_fleet_strength(total_strength) do
+    FleetStrengthAnalyzer.rate_fleet_strength(total_strength)
+  end
+
+  defp analyze_composition_balance(role_distribution) do
+    FleetStrengthAnalyzer.analyze_composition_balance(role_distribution)
+  end
+
+  defp rate_balance(balance_score) do
+    FleetStrengthAnalyzer.rate_balance(balance_score)
+  end
+
+  defp analyze_logistical_support(participants) do
+    FleetStrengthAnalyzer.analyze_logistical_support(participants)
+  end
+
+  defp rate_logistics_support(support_ratio) do
+    FleetStrengthAnalyzer.rate_logistics_support(support_ratio)
+  end
+
+  defp analyze_ship_size_distribution(participants) do
+    FleetStrengthAnalyzer.analyze_ship_size_distribution(participants)
+  end
+
+  defp analyze_organizational_composition(participants) do
+    FleetStrengthAnalyzer.analyze_organizational_composition(participants)
+  end
+
+  defp assess_combat_capability(participants, ship_classes) do
+    FleetStrengthAnalyzer.assess_combat_capability(participants, ship_classes)
+  end
+
+  defp calculate_combat_power(ship_classes) do
+    FleetStrengthAnalyzer.calculate_combat_power(ship_classes)
+  end
+
+  defp rate_combat_capability(combat_power) do
+    FleetStrengthAnalyzer.rate_combat_capability(combat_power)
+  end
+
+  defp assess_force_projection(ship_classes) do
+    FleetStrengthAnalyzer.assess_force_projection(ship_classes)
+  end
+
+  defp assess_sustainability(ship_classes) do
+    FleetStrengthAnalyzer.assess_sustainability(ship_classes)
+  end
+
+  # Additional helper functions for comparison analysis
+
+  defp calculate_numerical_advantage(side_a_pilots, side_b_pilots) do
+    FleetCompositionUtilities.calculate_numerical_advantage(side_a_pilots, side_b_pilots)
+  end
+
+  defp compare_fleet_strength(side_a_strength, side_b_strength) do
+    FleetCompositionUtilities.compare_fleet_strength(side_a_strength, side_b_strength)
+  end
+
+  defp compare_role_balance(side_a_roles, side_b_roles) do
+    FleetCompositionUtilities.compare_role_balance(side_a_roles, side_b_roles)
+  end
+
+  defp predict_engagement_outcome(side_a_analysis, side_b_analysis) do
+    FleetCompositionUtilities.predict_engagement_outcome(side_a_analysis, side_b_analysis)
+  end
+
+  defp score_advantage(advantage) do
+    FleetCompositionUtilities.score_advantage(advantage)
+  end
+
+  defp calculate_prediction_confidence(total_score) do
+    FleetCompositionUtilities.calculate_prediction_confidence(total_score)
+  end
+
+  defp identify_key_prediction_factors(factors) do
+    FleetCompositionUtilities.identify_key_prediction_factors(factors)
+  end
+
+  defp estimate_battle_duration(side_a_analysis, side_b_analysis) do
+    FleetCompositionUtilities.estimate_battle_duration(side_a_analysis, side_b_analysis)
+  end
+
+  defp estimate_casualties(side_a_analysis, side_b_analysis) do
+    FleetCompositionUtilities.estimate_casualties(side_a_analysis, side_b_analysis)
+  end
+
+  defp generate_overall_assessment(
+         numerical_advantage,
+         composition_advantage,
+         experience_advantage
+       ) do
+    FleetCompositionUtilities.generate_overall_assessment(
+         numerical_advantage,
+         composition_advantage,
+         experience_advantage
+       )
+  end
+
+  defp calculate_assessment_confidence(total_score) do
+    FleetCompositionUtilities.calculate_assessment_confidence(total_score)
+  end
+
+  defp identify_primary_assessment_factors(scores) do
+    FleetCompositionUtilities.identify_primary_assessment_factors(scores)
+  end
+
+  # Additional effectiveness analysis functions
+
+  defp analyze_effectiveness_trends(sides, killmails) do
+    BattleOutcomeAnalysisEngine.analyze_effectiveness_trends(sides, killmails)
+  end
+
+  defp calculate_phase_intensity(phase_kills, sides) do
+    BattleOutcomeAnalysisEngine.calculate_phase_intensity(phase_kills, sides)
+  end
+
+  defp determine_trend(phase_analysis) do
+    BattleOutcomeAnalysisEngine.determine_trend(phase_analysis)
+  end
+
+  defp analyze_losses_by_composition(sides, killmails) do
+    BattleOutcomeAnalysisEngine.analyze_losses_by_composition(sides, killmails)
+  end
+
+  defp analyze_side_losses(losses, side_participants) do
+    BattleOutcomeAnalysisEngine.analyze_side_losses(losses, side_participants)
+  end
+
+  defp classify_ship_by_type_id(ship_type_id) do
+    BattleOutcomeAnalysisEngine.classify_ship_by_type_id(ship_type_id)
+  end
+
+  defp calculate_loss_ratio(side_a_losses, side_b_losses) do
+    BattleOutcomeAnalysisEngine.calculate_loss_ratio(side_a_losses, side_b_losses)
+  end
+
+  defp analyze_performance_vs_expected(sides, killmails) do
+    BattleOutcomeAnalysisEngine.analyze_performance_vs_expected(sides, killmails)
+  end
+
+  defp estimate_expected_performance(side_participants) do
+    BattleOutcomeAnalysisEngine.estimate_expected_performance(side_participants)
+  end
+
+  defp calculate_actual_performance(side_participants, killmails) do
+    BattleOutcomeAnalysisEngine.calculate_actual_performance(side_participants, killmails)
+  end
+
+  defp identify_critical_moments(sides, killmails) do
+    BattleOutcomeAnalysisEngine.identify_critical_moments(sides, killmails)
+  end
+
+  defp identify_kill_spikes(sorted_killmails) do
+    BattleOutcomeAnalysisEngine.identify_kill_spikes(sorted_killmails)
+  end
+
+  defp identify_high_value_losses(sorted_killmails) do
+    BattleOutcomeAnalysisEngine.identify_high_value_losses(sorted_killmails)
+  end
+
+  defp determine_battle_outcome(side_a_effectiveness, side_b_effectiveness, killmails) do
+    BattleOutcomeAnalysisEngine.determine_battle_outcome(side_a_effectiveness, side_b_effectiveness, killmails)
+  end
+
+  defp do_calculate_ship_class_performance(ship_class, ships, killmails) do
+    BattleOutcomeAnalysisEngine.do_calculate_ship_class_performance(ship_class, ships, killmails)
+  end
+
+  defp split_single_group_by_engagement(participants) do
+    BattleOutcomeAnalysisEngine.split_single_group_by_engagement(participants)
+  end
+
+  defp build_connected_component(node, adjacency, visited) do
+    BattleOutcomeAnalysisEngine.build_connected_component(node, adjacency, visited)
+  end
+
+  # Helper function to convert ship list to participant format
+  defp convert_ships_to_participants(ship_list) when is_list(ship_list) do
+    BattleOutcomeAnalysisEngine.convert_ships_to_participants(ship_list)
+  end
+end

@@ -1,0 +1,225 @@
+defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterValidator do
+  @moduledoc """
+  Validation and calculation utilities for character analysis.
+  Handles data validation, risk assessment, and rating calculations.
+  """
+
+  @doc """
+  Calculate risk level based on average death value and efficiency.
+  """
+  def calculate_risk_level(avg_death_value, efficiency) do
+    risk_score =
+      case {avg_death_value, efficiency} do
+        {value, eff} when value > 5_000_000_000 and eff < 0.3 -> 0.95  # Very high risk
+        {value, eff} when value > 2_000_000_000 and eff < 0.5 -> 0.85  # High risk
+        {value, eff} when value > 1_000_000_000 and eff < 0.7 -> 0.65  # Medium risk
+        {value, eff} when value > 500_000_000 and eff < 0.8 -> 0.45    # Low-medium risk
+        {value, _} when value > 100_000_000 -> 0.25                    # Low risk
+        _ -> 0.1                                                       # Very low risk
+      end
+
+    case risk_score do
+      score when score >= 0.8 -> :very_high
+      score when score >= 0.6 -> :high
+      score when score >= 0.4 -> :medium
+      score when score >= 0.2 -> :low
+      _ -> :very_low
+    end
+  end
+
+  @doc """
+  Calculate efficiency rating based on ISK metrics.
+  """
+  def calculate_efficiency_rating(efficiency, net_isk) do
+    cond do
+      efficiency >= 0.9 and net_isk > 10_000_000_000 -> :elite
+      efficiency >= 0.8 and net_isk > 5_000_000_000 -> :excellent
+      efficiency >= 0.7 and net_isk > 1_000_000_000 -> :good
+      efficiency >= 0.6 and net_isk > 500_000_000 -> :average
+      efficiency >= 0.5 -> :below_average
+      true -> :poor
+    end
+  end
+
+  @doc """
+  Calculate collaboration strength from group activity metrics.
+  """
+  def calculate_collaboration_strength(kills_together, unique_pilots, systems_active) do
+    # Base collaboration score from kills and pilots
+    pilot_diversity = min(unique_pilots / 20.0, 1.0)
+    kill_frequency = min(kills_together / 50.0, 1.0)
+    area_coverage = min(systems_active / 10.0, 1.0)
+
+    # Weight factors: kills > pilots > area
+    base_score = (kill_frequency * 0.5) + (pilot_diversity * 0.3) + (area_coverage * 0.2)
+
+    case base_score do
+      score when score >= 0.8 -> :very_strong
+      score when score >= 0.6 -> :strong
+      score when score >= 0.4 -> :moderate
+      score when score >= 0.2 -> :weak
+      _ -> :minimal
+    end
+  end
+
+  @doc """
+  Determine relationship type based on activity patterns.
+  """
+  def determine_relationship_type(kills_together, unique_pilots, first_seen, last_seen) do
+    days_known = DateTime.diff(last_seen, first_seen, :day)
+
+    cond do
+      # Long-term, high activity relationships
+      kills_together >= 50 and days_known >= 30 and unique_pilots >= 5 -> :core_alliance
+      kills_together >= 30 and days_known >= 14 and unique_pilots >= 3 -> :regular_fleet
+      kills_together >= 15 and days_known >= 7 -> :active_cooperation
+      kills_together >= 5 and days_known >= 3 -> :casual_cooperation
+      true -> :occasional_contact
+    end
+  end
+
+  @doc """
+  Calculate trust level based on collaboration metrics.
+  """
+  def calculate_trust_level(kills_together, days_since_last) do
+    # Base trust from collaboration _frequency
+    base_trust = min(kills_together / 30.0, 1.0)
+
+    # Reduce trust based on time since last interaction
+    recency_factor =
+      case days_since_last do
+        days when days <= 3 -> 1.0      # Very recent
+        days when days <= 7 -> 0.9      # Recent
+        days when days <= 14 -> 0.7     # Somewhat recent
+        days when days <= 30 -> 0.5     # Old
+        _ -> 0.2                        # Very old
+      end
+
+    trust_updated_score = base_trust * recency_factor
+
+    case trust_score do
+      score when score >= 0.8 -> :very_high
+      score when score >= 0.6 -> :high
+      score when score >= 0.4 -> :moderate
+      score when score >= 0.2 -> :low
+      _ -> :very_low
+    end
+  end
+
+  @doc """
+  Calculate gang effectiveness from performance metrics.
+  """
+  def calculate_gang_effectiveness(kill_percentage, isk_percentage) do
+    # Weighted effectiveness: ISK more important than raw kills
+    effectiveness = (kill_percentage * 0.3) + (isk_percentage * 0.7)
+
+    case effectiveness do
+      eff when eff >= 0.8 -> :highly_effective
+      eff when eff >= 0.6 -> :effective
+      eff when eff >= 0.4 -> :moderately_effective
+      eff when eff >= 0.2 -> :somewhat_effective
+      _ -> :ineffective
+    end
+  end
+
+  @doc """
+  Determine preferred gang style from patterns.
+  """
+  def determine_preferred_gang_style(patterns) when map_size(patterns) == 0, do: :unknown
+
+  def determine_preferred_gang_style(patterns) do
+    {preferred_size, _count} =
+      patterns
+      Enum.max_by(fn {_size, data} -> data.kills end)
+
+    case preferred_size do
+      size when size <= 3 -> :solo_small_gang
+      size when size <= 8 -> :small_gang
+      size when size <= 20 -> :medium_fleet
+      size when size <= 50 -> :large_fleet
+      _ -> :massive_fleet
+    end
+  end
+
+  @doc """
+  Calculate activity diversity from gang patterns.
+  """
+  def calculate_activity_diversity(patterns) when map_size(patterns) == 0, do: :no_data
+
+  def calculate_activity_diversity(patterns) do
+    total_activities = Enum.reduce(patterns, 0, fn {_size, data}, acc -> acc + data.kills end)
+
+    # Calculate entropy-like measure of diversity
+    diversity_score =
+      patterns
+      |>       Enum.reduce(0, fn {_size, data}, acc ->
+        proportion = data.kills / total_activities
+        if proportion > 0 do
+          acc - (proportion * :math.log2(proportion))
+        else
+          acc
+        end
+      end)
+
+    # Normalize by maximum possible entropy for this number of categories
+    max_entropy = :math.log2(map_size(patterns))
+    normalized_diversity = if max_entropy > 0, do: diversity_score / max_entropy, else: 0
+
+    case normalized_diversity do
+      score when score >= 0.8 -> :very_diverse
+      score when score >= 0.6 -> :diverse
+      score when score >= 0.4 -> :moderately_diverse
+      score when score >= 0.2 -> :somewhat_focused
+      _ -> :highly_focused
+    end
+  end
+
+  @doc """
+  Calculate activity consistency from variance and active days.
+  """
+  def calculate_activity_consistency(_variance, active_days) when active_days < 3,
+    do: :insufficient_data
+
+  def calculate_activity_consistency(variance, _active_days) do
+    # Lower variance = higher consistency
+    consistency_updated_score = 1.0 / (1.0 + variance)
+
+    case consistency_score do
+      score when score >= 0.8 -> :very_consistent
+      score when score >= 0.6 -> :consistent
+      score when score >= 0.4 -> :moderately_consistent
+      score when score >= 0.2 -> :inconsistent
+      _ -> :very_inconsistent
+    end
+  end
+
+  @doc """
+  Calculate activity rating from recent activity metrics.
+  """
+  def calculate_activity_rating(recent_kills, active_days, consistency) do
+    # Base rating from kill _frequency
+    kill_updated_score = min(recent_kills / 30.0, 1.0)
+
+    # Bonus for consistent activity
+    day_updated_score = min(active_days / 20.0, 1.0)
+
+    # Consistency bonus
+    consistency_bonus =
+      case consistency do
+        :very_consistent -> 0.2
+        :consistent -> 0.1
+        _ -> 0.0
+      end
+
+    final_updated_score = (kill_score * 0.6) + (day_score * 0.4) + consistency_bonus
+
+    case final_score do
+      score when score >= 0.9 -> :hyperactive
+      score when score >= 0.7 -> :very_active
+      score when score >= 0.5 -> :active
+      score when score >= 0.3 -> :moderately_active
+      score when score >= 0.1 -> :low_activity
+      _ -> :inactive
+    end
+  end
+end

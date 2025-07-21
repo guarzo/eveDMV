@@ -1,0 +1,1331 @@
+defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.TimelineAnalyzer do
+  @moduledoc """
+  Timeline analyzer for reconstructing battle timelines from killmail data.
+
+  Analyzes the sequence of events in a battle to understand the flow of combat,
+  identify key moments, and provide temporal context for tactical analysis.
+  """
+
+  require Logger
+
+  @doc """
+  Reconstruct battle _timeline from killmail data.
+  """
+  def reconstruct_timeline(killmails) do
+    Logger.debug("Reconstructing timeline from #{length(killmails)} killmails")
+
+    if Enum.empty?(killmails) do
+      %{events: [], duration: 0, phases: [], key_moments: []}
+    else
+      # Sort killmails chronologically
+      sorted_killmails = Enum.sort_by(killmails, & &1.killmail_time)
+
+      # Build detailed timeline events with context
+      timeline_events =
+        sorted_killmails
+        |> Enum.with_index()
+        |> Enum.map(fn {killmail, index} ->
+          prev_killmail = if index > 0, do: Enum.at(sorted_killmails, index - 1), else: nil
+
+          %{
+            sequence: index + 1,
+            timestamp: killmail.killmail_time,
+            event_type: categorize_event_type(killmail),
+            victim: extract_victim_summary(killmail),
+            attackers: extract_attacker_summary(killmail),
+            location: extract_location_summary(killmail),
+            tactical_significance:
+              analyze_tactical_significance(killmail, index, sorted_killmails),
+            time_since_last: calculate_time_since_last(killmail, prev_killmail),
+            accumulated_value: calculate_accumulated_value(sorted_killmails, index)
+          }
+        end)
+
+      # Analyze timeline for phases and patterns
+      phases = identify_battle_phases(timeline_events, sorted_killmails)
+      key_moments = identify_key_moments(timeline_events, sorted_killmails)
+
+      %{
+        events: timeline_events,
+        duration: calculate_battle_duration(timeline_events),
+        phases: phases,
+        key_moments: key_moments,
+        tempo: calculate_battle_tempo(timeline_events),
+        intensity_profile: calculate_intensity_profile(timeline_events)
+      }
+    end
+  end
+
+  @doc """
+  Analyze engagement flow patterns in the _timeline.
+  """
+  def analyze_engagement_flow(timeline) do
+    Logger.debug("Analyzing engagement flow for #{length(timeline.events)} events")
+
+    if Enum.empty?(timeline.events) do
+      %{
+        intensity_curve: [],
+        engagement_patterns: %{},
+        escalation_points: [],
+        de_escalation_points: []
+      }
+    else
+      # Calculate detailed engagement flow metrics
+      intensity_curve = calculate_intensity_curve(timeline.events)
+      patterns = identify_engagement_patterns(timeline.events)
+
+      %{
+        intensity_curve: intensity_curve,
+        engagement_patterns: patterns,
+        escalation_points: identify_escalation_points(timeline.events, intensity_curve),
+        de_escalation_points: identify_de_escalation_points(timeline.events, intensity_curve),
+        flow_dynamics: analyze_flow_dynamics(timeline.events),
+        momentum_shifts: identify_momentum_shifts(timeline.events)
+      }
+    end
+  end
+
+  @doc """
+  Analyze focus fire patterns in the _timeline.
+  """
+  def analyze_focus_fire(timeline) do
+    Logger.debug("Analyzing focus fire patterns")
+
+    if Enum.empty?(timeline.events) do
+      %{
+        focus_fire_effectiveness: 0.0,
+        target_switching_frequency: 0.0,
+        coordination_score: 0.0,
+        primary_target_patterns: []
+      }
+    else
+      # Group kills by time windows to detect focus fire
+      # 60 second windows
+      time_windows = create_time_windows(timeline.events, 60)
+
+      focus_patterns =
+        time_windows
+        |> Enum.map(fn window ->
+          analyze_window_focus_fire(window)
+        end)
+        |> aggregate_focus_patterns
+
+      # Calculate metrics based on patterns
+      effectiveness = calculate_focus_fire_effectiveness(focus_patterns)
+      switching_freq = calculate_target_switching_frequency(timeline.events)
+      coordination = calculate_coordination_score(focus_patterns, timeline.events)
+
+      %{
+        focus_fire_effectiveness: effectiveness,
+        target_switching_frequency: switching_freq,
+        coordination_score: coordination,
+        primary_target_patterns: extract_primary_patterns(focus_patterns),
+        focus_windows: identify_focus_windows(time_windows),
+        target_priority_analysis: analyze_target_priorities(timeline.events)
+      }
+    end
+  end
+
+  @doc """
+  Analyze target selection patterns throughout the _timeline.
+  """
+  def analyze_target_selection(timeline, fleet_analysis) do
+    Logger.debug("Analyzing target selection patterns")
+
+    if Enum.empty?(timeline.events) do
+      %{
+        target_priority_score: 0.0,
+        target_switching_efficiency: 0.0,
+        optimal_target_selection: 0.0,
+        target_type_preferences: %{}
+      }
+    else
+      # Categorize targets by ship type and role
+      target_categories = categorize_targets(timeline.events)
+
+      # Analyze targeting patterns
+      priority_score = calculate_target_priority_score(timeline.events, target_categories)
+      switching_efficiency = calculate_switching_efficiency(timeline.events)
+      optimal_selection = evaluate_optimal_selection(timeline.events, fleet_analysis)
+
+      # Calculate preferences by ship type/role
+      preferences = calculate_target_preferences(target_categories, timeline.events)
+
+      %{
+        target_priority_score: priority_score,
+        target_switching_efficiency: switching_efficiency,
+        optimal_target_selection: optimal_selection,
+        target_type_preferences: preferences,
+        targeting_mistakes: identify_targeting_mistakes(timeline.events, fleet_analysis),
+        optimal_sequence: suggest_optimal_target_sequence(timeline.events, fleet_analysis)
+      }
+    end
+  end
+
+  # Private helper functions
+  defp extract_victim_summary(killmail) do
+    %{
+      character_id: killmail.victim_character_id,
+      character_name: killmail.victim_character_name,
+      corporation_id: killmail.victim_corporation_id,
+      ship_type_id: killmail.victim_ship_type_id,
+      ship_name: killmail.victim_ship_name
+    }
+  end
+
+  defp extract_attacker_summary(killmail) do
+    # Extract attacker information from killmail structure
+    # Note: This assumes attackers data is available in killmail.attackers
+    attackers = Map.get(killmail, :attackers, [])
+
+    if Enum.empty?(attackers) do
+      # If no attacker data, derive from other fields
+      [
+        %{
+          character_id: Map.get(killmail, :final_blow_character_id),
+          character_name: Map.get(killmail, :final_blow_character_name, "Unknown"),
+          corporation_id: Map.get(killmail, :final_blow_corporation_id),
+          ship_type_id: Map.get(killmail, :final_blow_ship_type_id),
+          final_blow: true,
+          damage_done: Map.get(killmail, :damage_taken, 0)
+        }
+      ]
+    else
+      # Process actual attacker data
+      attackers
+      # Limit to top 10 attackers
+      |> Enum.take(10)
+      |> Enum.map(fn attacker ->
+        %{
+          character_id: Map.get(attacker, :character_id),
+          character_name: Map.get(attacker, :character_name, "Unknown"),
+          corporation_id: Map.get(attacker, :corporation_id),
+          ship_type_id: Map.get(attacker, :ship_type_id),
+          final_blow: Map.get(attacker, :final_blow, false),
+          damage_done: Map.get(attacker, :damage_done, 0)
+        }
+      end)
+    end
+  end
+
+  defp extract_location_summary(killmail) do
+    %{
+      system_id: killmail.solar_system_id,
+      system_name: killmail.solar_system_name,
+      region_id: killmail.region_id,
+      region_name: killmail.region_name,
+      security_status: killmail.security_status
+    }
+  end
+
+  defp analyze_tactical_significance(killmail, index, all_killmails) do
+    # Comprehensive tactical significance analysis
+    ship_name = Map.get(killmail, :victim_ship_name, "")
+    ship_type_id = Map.get(killmail, :victim_ship_type_id, 0)
+    kill_value = Map.get(killmail, :total_value, 0)
+
+    # Calculate relative value (compared to average)
+    avg_value = calculate_average_kill_value(all_killmails)
+    is_high_value = kill_value > avg_value * 2
+
+    cond do
+      index == 0 ->
+        :first_blood
+
+      is_capital_ship(ship_type_id) ->
+        :capital_kill
+
+      is_logistics_ship(ship_type_id) or
+          ship_name =~ ~r/Logistics|Basilisk|Guardian|Oneiros|Scimitar/i ->
+        :logistics_kill
+
+      is_command_ship(ship_type_id) or ship_name =~ ~r/Command|Booster/i ->
+        :command_kill
+
+      is_ewar_ship(ship_type_id) or ship_name =~ ~r/Blackbird|Falcon|Rook|Arazu|Lachesis/i ->
+        :ewar_kill
+
+      is_high_value ->
+        :high_value_kill
+
+      caused_momentum_shift(killmail, index, all_killmails) ->
+        :momentum_shift
+
+      true ->
+        :standard_kill
+    end
+  end
+
+  defp calculate_battle_duration(timeline_events) do
+    if length(timeline_events) < 2 do
+      0
+    else
+      first_event = List.first(timeline_events)
+      last_event = List.last(timeline_events)
+
+      DateTime.diff(last_event.timestamp, first_event.timestamp, :second)
+    end
+  end
+
+  defp identify_battle_phases(timeline_events, killmails) do
+    # Sophisticated phase detection based on kill patterns and timing
+    if length(timeline_events) < 2 do
+      [:skirmish]
+    else
+      # Analyze kill rate changes over time
+      # 5 minute segments
+      time_segments = segment_timeline(timeline_events, 300)
+      kill_rates = calculate_segment_kill_rates(time_segments)
+      value_rates = calculate_segment_value_rates(time_segments, killmails)
+
+      # Identify phases based on activity patterns
+      phases = []
+
+      # Detect initial contact phase
+      phases = phases ++ detect_initial_contact(kill_rates, value_rates)
+
+      # Detect escalation phases
+      phases = phases ++ detect_escalation_phases(kill_rates, value_rates)
+
+      # Detect main engagement
+      phases = phases ++ detect_main_engagement(kill_rates, value_rates, timeline_events)
+
+      # Detect decisive moments
+      phases = phases ++ detect_decisive_phase(kill_rates, value_rates, killmails)
+
+      # Detect cleanup/pursuit
+      phases = phases ++ detect_cleanup_phase(kill_rates, timeline_events)
+
+      # Remove duplicates and sort chronologically
+      phases
+      |> Enum.uniq()
+      |> order_phases_chronologically
+    end
+  end
+
+  defp identify_key_moments(timeline_events, killmails) do
+    # Sophisticated key moment detection with context
+    significant_events =
+      timeline_events
+      |> Enum.filter(fn event ->
+        event.tactical_significance not in [:standard_kill]
+      end)
+
+    # Identify momentum shifts
+    momentum_shifts = identify_momentum_shifts(timeline_events)
+
+    # Identify turning points
+    turning_points = identify_turning_points(killmails)
+
+    # Combine all key moments
+    all_moments =
+      (significant_events |> Enum.map(&event_to_key_moment/1)) ++
+        momentum_shifts ++
+        turning_points
+
+    # Sort by timestamp and add impact scores
+    all_moments
+    |> Enum.sort_by(& &1.timestamp)
+    |> Enum.map(fn moment ->
+      Map.put(moment, :impact_score, calculate_moment_impact(moment, killmails))
+    end)
+    |> Enum.filter(fn moment ->
+      # Only keep high-impact moments
+      moment.impact_score > 0.5
+    end)
+  end
+
+  defp format_key_moment_description(event) do
+    case event.tactical_significance do
+      :first_blood ->
+        "First kill - #{event.victim.character_name} in #{event.victim.ship_name}"
+
+      :logistics_kill ->
+        "Logistics kill - #{event.victim.character_name} in #{event.victim.ship_name}"
+
+      :capital_kill ->
+        "Capital kill - #{event.victim.character_name} in #{event.victim.ship_name}"
+
+      _ ->
+        "Standard kill"
+    end
+  end
+
+  defp calculate_intensity_curve(timeline_events) do
+    # Calculate battle intensity over time using multiple factors
+    if Enum.empty?(timeline_events) do
+      []
+    else
+      # Create 1-minute time windows
+      start_time = List.first(timeline_events).timestamp
+      end_time = List.last(timeline_events).timestamp
+      duration_seconds = DateTime.diff(end_time, start_time, :second)
+      window_count = max(1, div(duration_seconds, 60))
+
+      # Calculate intensity for each time window
+      0..window_count
+      |> Enum.map(fn window_index ->
+        window_start = DateTime.add(start_time, window_index * 60, :second)
+        window_end = DateTime.add(window_start, 60, :second)
+
+        # Get events in this window
+        window_events =
+          timeline_events
+          |> Enum.filter(fn event ->
+            DateTime.compare(event.timestamp, window_start) != :lt and
+              DateTime.compare(event.timestamp, window_end) == :lt
+          end)
+
+        # Calculate intensity based on multiple factors
+        %{
+          timestamp: window_start,
+          kill_count: length(window_events),
+          # kills per minute
+          kill_rate: length(window_events) / 1.0,
+          value_destroyed: calculate_window_value(window_events),
+          significance_score: calculate_window_significance(window_events),
+          overall_intensity: calculate_overall_intensity(window_events)
+        }
+      end)
+    end
+  end
+
+  defp identify_engagement_patterns(timeline_events) do
+    # Analyze timeline for combat patterns
+    if length(timeline_events) < 3 do
+      %{burst_periods: [], sustained_periods: [], lull_periods: []}
+    else
+      intensity_data = calculate_intensity_curve(timeline_events)
+
+      # Identify different engagement patterns
+      burst_periods = identify_burst_periods(intensity_data)
+      sustained_periods = identify_sustained_combat(intensity_data)
+      lull_periods = identify_lull_periods(intensity_data)
+
+      %{
+        burst_periods: burst_periods,
+        sustained_periods: sustained_periods,
+        lull_periods: lull_periods,
+        pattern_summary: summarize_patterns(burst_periods, sustained_periods, lull_periods),
+        dominant_pattern:
+          identify_dominant_pattern(burst_periods, sustained_periods, lull_periods)
+      }
+    end
+  end
+
+  defp identify_escalation_points(timeline_events, intensity_curve) do
+    # Detect points where battle intensity significantly increases
+    escalation_points = []
+
+    # Check for rapid kill rate increases
+    kill_rate_escalations =
+      intensity_curve
+      |> Enum.chunk_every(3, 1, :discard)
+      |> Enum.filter(fn [prev, current, next] ->
+        # Detect significant increases in kill rate
+        current.kill_rate > prev.kill_rate * 1.5 and
+          next.kill_rate > current.kill_rate * 0.8
+      end)
+      |> Enum.map(fn [_, current, _] ->
+        %{
+          timestamp: current.timestamp,
+          type: :kill_rate_spike,
+          intensity_increase: current.kill_rate,
+          description: "Kill rate increased to #{Float.round(current.kill_rate, 1)} kills/min"
+        }
+      end)
+
+    # Check for capital/super capital deployments
+    capital_escalations =
+      timeline_events
+      |> Enum.filter(fn event ->
+        event.tactical_significance in [:capital_kill, :super_capital_kill]
+      end)
+      |> Enum.map(fn event ->
+        %{
+          timestamp: event.timestamp,
+          type: :capital_deployment,
+          intensity_increase: 10.0,
+          description: "Capital ship engagement detected"
+        }
+      end)
+
+    # Check for high-value losses indicating commitment
+    value_escalations = detect_value_based_escalations(timeline_events)
+
+    # Combine and sort all escalation points
+    (escalation_points ++ kill_rate_escalations ++ capital_escalations ++ value_escalations)
+    |> Enum.sort_by(& &1.timestamp)
+  end
+
+  defp identify_de_escalation_points(timeline_events, intensity_curve) do
+    # Detect points where battle intensity significantly decreases
+    de_escalation_points = []
+
+    # Check for rapid kill rate decreases
+    kill_rate_drops =
+      intensity_curve
+      |> Enum.chunk_every(3, 1, :discard)
+      |> Enum.filter(fn [prev, current, next] ->
+        # Detect significant decreases in kill rate
+        current.kill_rate < prev.kill_rate * 0.5 and
+          next.kill_rate < prev.kill_rate * 0.6
+      end)
+      |> Enum.map(fn [prev, current, _] ->
+        %{
+          timestamp: current.timestamp,
+          type: :kill_rate_drop,
+          intensity_decrease: prev.kill_rate - current.kill_rate,
+          description:
+            "Kill rate dropped from #{Float.round(prev.kill_rate, 1)} to #{Float.round(current.kill_rate, 1)} kills/min"
+        }
+      end)
+
+    # Check for extended periods without kills
+    lull_starts = detect_combat_lulls(timeline_events)
+
+    # Check for tactical withdrawals (gap in kills from one side)
+    withdrawal_points = detect_tactical_withdrawals(timeline_events)
+
+    # Combine and sort all de-escalation points
+    (de_escalation_points ++ kill_rate_drops ++ lull_starts ++ withdrawal_points)
+    |> Enum.sort_by(& &1.timestamp)
+  end
+
+  # Additional helper functions for timeline analysis
+
+  defp categorize_event_type(killmail) do
+    cond do
+      is_capital_ship(Map.get(killmail, :victim_ship_type_id, 0)) -> :capital_kill
+      Map.get(killmail, :attacker_count, 0) > 50 -> :fleet_kill
+      Map.get(killmail, :attacker_count, 0) == 1 -> :solo_kill
+      true -> :small_gang_kill
+    end
+  end
+
+  defp calculate_time_since_last(_killmail, nil), do: 0
+
+  defp calculate_time_since_last(killmail, prev_killmail) do
+    DateTime.diff(killmail.killmail_time, prev_killmail.killmail_time, :second)
+  end
+
+  defp calculate_accumulated_value(killmails, index) do
+    killmails
+    |> Enum.take(index + 1)
+    |> Enum.map(&Map.get(&1, :total_value, 0))
+    |> Enum.sum()
+  end
+
+  defp calculate_battle_tempo(timeline_events) do
+    if length(timeline_events) < 2 do
+      :slow
+    else
+      avg_time_between =
+        timeline_events
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.map(fn [e1, e2] -> DateTime.diff(e2.timestamp, e1.timestamp, :second) end)
+        |> Enum.sum()
+        |> Kernel./(length(timeline_events) - 1)
+
+      cond do
+        avg_time_between < 30 -> :very_fast
+        avg_time_between < 60 -> :fast
+        avg_time_between < 120 -> :moderate
+        avg_time_between < 300 -> :slow
+        true -> :very_slow
+      end
+    end
+  end
+
+  defp calculate_intensity_profile(timeline_events) do
+    intensity_curve = calculate_intensity_curve(timeline_events)
+
+    if Enum.empty?(intensity_curve) do
+      %{peak: 0, average: 0, variance: 0}
+    else
+      intensities = Enum.map(intensity_curve, & &1.overall_intensity)
+      peak = Enum.max(intensities, fn -> 0 end)
+      average = Enum.sum(intensities) / length(intensities)
+      variance = calculate_variance(intensities, average)
+
+      %{peak: peak, average: average, variance: variance}
+    end
+  end
+
+  defp calculate_variance(values, mean) do
+    if Enum.empty?(values) do
+      0
+    else
+      sum_squared_diff =
+        values
+        |> Enum.map(fn v -> :math.pow(v - mean, 2) end)
+        |> Enum.sum()
+
+      sum_squared_diff / length(values)
+    end
+  end
+
+  defp create_time_windows(events, window_seconds) do
+    if Enum.empty?(events) do
+      []
+    else
+      events
+      |> Enum.group_by(fn event ->
+        # Group by time window
+        start_time = List.first(events).timestamp
+        seconds_since_start = DateTime.diff(event.timestamp, start_time, :second)
+        div(seconds_since_start, window_seconds)
+      end)
+      |> Enum.sort_by(&elem(&1, 0))
+      |> Enum.map(&elem(&1, 1))
+    end
+  end
+
+  defp analyze_window_focus_fire(window_events) do
+    # Analyze how concentrated fire was in this window
+    victims = Enum.map(window_events, & &1.victim.character_id)
+    victim_counts = Enum.frequencies(victims)
+
+    %{
+      unique_targets: map_size(victim_counts),
+      max_focus: victim_counts |> Map.values() |> Enum.max(fn -> 0 end),
+      focus_ratio: calculate_focus_ratio(victim_counts)
+    }
+  end
+
+  defp aggregate_focus_patterns(patterns) do
+    # Aggregate focus fire patterns across windows
+    %{
+      avg_unique_targets: average(Enum.map(patterns, & &1.unique_targets)),
+      avg_max_focus: average(Enum.map(patterns, & &1.max_focus)),
+      avg_focus_ratio: average(Enum.map(patterns, & &1.focus_ratio))
+    }
+  end
+
+  defp calculate_focus_fire_effectiveness(focus_patterns) do
+    # Higher focus ratio = better focus fire
+    min(1.0, focus_patterns.avg_focus_ratio * 1.2)
+  end
+
+  defp calculate_target_switching_frequency(events) do
+    if length(events) < 2 do
+      0.0
+    else
+      switches =
+        events
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.count(fn [e1, e2] ->
+          e1.victim.character_id != e2.victim.character_id
+        end)
+
+      switches / (length(events) - 1)
+    end
+  end
+
+  defp calculate_coordination_score(focus_patterns, events) do
+    # Coordination based on focus fire and timing
+    focus_score = focus_patterns.avg_focus_ratio
+    timing_score = calculate_timing_coordination(events)
+
+    (focus_score + timing_score) / 2
+  end
+
+  defp extract_primary_patterns(focus_patterns) do
+    # Extract dominant focus fire patterns
+    [
+      %{pattern: :concentrated_fire, strength: focus_patterns.avg_focus_ratio},
+      %{pattern: :target_switching, frequency: 1 - focus_patterns.avg_focus_ratio}
+    ]
+  end
+
+  defp identify_focus_windows(time_windows) do
+    # Identify windows with strong focus fire
+    time_windows
+    |> Enum.with_index()
+    |> Enum.filter(fn {window, _idx} ->
+      length(window) > 2 and
+        analyze_window_focus_fire(window).focus_ratio > 0.7
+    end)
+    |> Enum.map(fn {window, idx} ->
+      %{
+        window_index: idx,
+        start_time: List.first(window).timestamp,
+        end_time: List.last(window).timestamp,
+        kills: length(window)
+      }
+    end)
+  end
+
+  defp analyze_target_priorities(events) do
+    # Analyze which ship types were prioritized
+    events
+    |> Enum.group_by(& &1.tactical_significance)
+    |> Enum.map(fn {sig, evts} ->
+      {sig, %{count: length(evts), percentage: length(evts) / length(events)}}
+    end)
+    |> Map.new()
+  end
+
+  defp analyze_flow_dynamics(events) do
+    # Analyze how the battle flowed
+    %{
+      momentum_changes: count_momentum_changes(events),
+      sustained_pressure: measure_sustained_pressure(events),
+      tactical_pauses: identify_tactical_pauses(events)
+    }
+  end
+
+  defp identify_momentum_shifts(events) do
+    # Identify major momentum shifts in battle
+    if length(events) < 5 do
+      []
+    else
+      events
+      |> Enum.chunk_every(5, 1, :discard)
+      |> Enum.filter(&is_momentum_shift/1)
+      |> Enum.map(&create_momentum_shift_moment/1)
+    end
+  end
+
+  # Ship type classification helpers
+  defp is_capital_ship(type_id) do
+    # Capital ship type IDs (simplified - in reality would use EVE SDE)
+    type_id in [20_185, 19_720, 19_722, 19_724, 19_726, 23_757, 23_911, 23_915, 24_483]
+  end
+
+  defp is_logistics_ship(type_id) do
+    # Logistics ship type IDs
+    type_id in [11_985, 11_987, 11_989, 11_978, 23_915, 11_969, 11_971]
+  end
+
+  defp is_command_ship(type_id) do
+    # Command ship type IDs
+    type_id in [22_442, 22_444, 22_446, 22_448, 22_452, 22_456, 22_460, 22_464]
+  end
+
+  defp is_ewar_ship(type_id) do
+    # Electronic warfare ship type IDs
+    type_id in [11_957, 11_959, 11_961, 11_963, 11_965, 11_969, 11_971]
+  end
+
+  defp calculate_average_kill_value(killmails) do
+    if Enum.empty?(killmails) do
+      0
+    else
+      total = killmails |> Enum.map(&Map.get(&1, :total_value, 0)) |> Enum.sum()
+      total / length(killmails)
+    end
+  end
+
+  defp caused_momentum_shift(killmail, index, all_killmails) do
+    # Check if this kill caused a momentum shift
+    if index < 2 or index >= length(all_killmails) - 2 do
+      false
+    else
+      before_kills = Enum.slice(all_killmails, max(0, index - 3), 3)
+      after_kills = Enum.slice(all_killmails, index + 1, 3)
+
+      before_rate = length(before_kills) / 3
+      after_rate = length(after_kills) / 3
+
+      # Significant change in kill rate or high-value kill
+      after_rate > before_rate * 2 or
+        Map.get(killmail, :total_value, 0) > calculate_average_kill_value(all_killmails) * 5
+    end
+  end
+
+  defp categorize_targets(events) do
+    events
+    |> Enum.group_by(& &1.tactical_significance)
+    |> Enum.map(fn {category, evts} ->
+      {category, length(evts)}
+    end)
+    |> Map.new()
+  end
+
+  defp calculate_target_priority_score(events, _target_categories) do
+    # Score based on targeting high-value targets first
+    priority_targets = [:capital_kill, :logistics_kill, :command_kill, :ewar_kill]
+
+    priority_kills =
+      events
+      |> Enum.filter(fn e -> e.tactical_significance in priority_targets end)
+      |> Enum.with_index()
+
+    if Enum.empty?(priority_kills) do
+      0.5
+    else
+      # Higher score if priority targets were killed early
+      scores =
+        priority_kills
+        |> Enum.map(fn {_event, idx} ->
+          1.0 - idx / length(events)
+        end)
+
+      Enum.sum(scores) / length(priority_kills)
+    end
+  end
+
+  defp calculate_switching_efficiency(events) do
+    # Efficiency of target switching (not switching too often)
+    switch_freq = calculate_target_switching_frequency(events)
+
+    # Optimal switching is moderate - not too high, not too low
+    cond do
+      # Too focused, might miss opportunities
+      switch_freq < 0.2 -> 0.7
+      # Good balance
+      switch_freq < 0.4 -> 0.9
+      # Acceptable
+      switch_freq < 0.6 -> 0.8
+      # Too much switching
+      true -> 0.5
+    end
+  end
+
+  defp evaluate_optimal_selection(events, _fleet_analysis) do
+    # Evaluate if targets were selected optimally
+    priority_score =
+      events
+      |> Enum.map(& &1.tactical_significance)
+      |> score_target_sequence
+
+    min(1.0, priority_score)
+  end
+
+  defp calculate_target_preferences(target_categories, events) do
+    total = length(events)
+
+    %{
+      logistics: Map.get(target_categories, :logistics_kill, 0) / max(1, total),
+      capitals: Map.get(target_categories, :capital_kill, 0) / max(1, total),
+      command: Map.get(target_categories, :command_kill, 0) / max(1, total),
+      ewar: Map.get(target_categories, :ewar_kill, 0) / max(1, total),
+      dps: Map.get(target_categories, :standard_kill, 0) / max(1, total)
+    }
+  end
+
+  defp identify_targeting_mistakes(events, _fleet_analysis) do
+    # Identify potential targeting mistakes
+    mistakes = []
+
+    # Check for ignoring logistics
+    logistics_kills = Enum.filter(events, &(&1.tactical_significance == :logistics_kill))
+
+    mistakes =
+      if Enum.empty?(logistics_kills) and length(events) > 10 do
+        [%{type: :ignored_logistics, severity: :high} | mistakes]
+      else
+        mistakes
+      end
+
+    # Check for poor target prioritization
+    first_quarter = Enum.take(events, div(length(events), 4))
+    priority_in_first = Enum.count(first_quarter, &(&1.tactical_significance != :standard_kill))
+
+    mistakes =
+      if priority_in_first < length(first_quarter) * 0.3 do
+        [%{type: :poor_prioritization, severity: :medium} | mistakes]
+      else
+        mistakes
+      end
+
+    mistakes
+  end
+
+  defp suggest_optimal_target_sequence(events, _fleet_analysis) do
+    # Suggest optimal targeting order based on tactical value
+    events
+    |> Enum.sort_by(fn event ->
+      case event.tactical_significance do
+        :logistics_kill -> 1
+        :command_kill -> 2
+        :ewar_kill -> 3
+        :capital_kill -> 4
+        :high_value_kill -> 5
+        _ -> 6
+      end
+    end)
+    |> Enum.take(10)
+    |> Enum.map(& &1.victim)
+  end
+
+  # Helper functions for phase detection
+  defp segment_timeline(events, segment_seconds) do
+    create_time_windows(events, segment_seconds)
+  end
+
+  defp calculate_segment_kill_rates(segments) do
+    Enum.map(segments, &length/1)
+  end
+
+  defp calculate_segment_value_rates(segments, killmails) do
+    segments
+    |> Enum.map(fn segment ->
+      segment_ids = Enum.map(segment, & &1.sequence)
+
+      segment_killmails =
+        killmails
+        |> Enum.with_index(1)
+        |> Enum.filter(fn {_km, idx} -> idx in segment_ids end)
+        |> Enum.map(&elem(&1, 0))
+
+      segment_killmails
+      |> Enum.map(&Map.get(&1, :total_value, 0))
+      |> Enum.sum()
+    end)
+  end
+
+  defp detect_initial_contact(kill_rates, _value_rates) do
+    if List.first(kill_rates, 0) > 0 do
+      [:initial_contact]
+    else
+      []
+    end
+  end
+
+  defp detect_escalation_phases(kill_rates, _value_rates) do
+    escalations =
+      kill_rates
+      |> Enum.chunk_every(2, 1, :discard)
+      |> Enum.filter(fn [prev, curr] -> curr > prev * 1.5 end)
+
+    if length(escalations) > 0, do: [:escalation], else: []
+  end
+
+  defp detect_main_engagement(kill_rates, _value_rates, _events) do
+    avg_rate = if Enum.empty?(kill_rates), do: 0, else: Enum.sum(kill_rates) / length(kill_rates)
+    high_activity = Enum.filter(kill_rates, &(&1 > avg_rate * 1.2))
+
+    if length(high_activity) > 0, do: [:main_engagement], else: []
+  end
+
+  defp detect_decisive_phase(_kill_rates, value_rates, _killmails) do
+    # Detect phase with highest value destruction
+    if Enum.empty?(value_rates) do
+      []
+    else
+      max_value = Enum.max(value_rates)
+      avg_value = Enum.sum(value_rates) / length(value_rates)
+
+      if max_value > avg_value * 2, do: [:decisive_phase], else: []
+    end
+  end
+
+  defp detect_cleanup_phase(kill_rates, _events) do
+    # Detect cleanup phase (low activity at end)
+    if length(kill_rates) > 3 do
+      last_rates = Enum.take(kill_rates, -2)
+      avg_rate = Enum.sum(kill_rates) / length(kill_rates)
+
+      if Enum.all?(last_rates, &(&1 < avg_rate * 0.5)) do
+        [:cleanup]
+      else
+        []
+      end
+    else
+      []
+    end
+  end
+
+  defp order_phases_chronologically(phases) do
+    # Define phase order
+    phase_order = %{
+      initial_contact: 1,
+      buildup: 2,
+      escalation: 3,
+      main_engagement: 4,
+      decisive_phase: 5,
+      cleanup: 6,
+      skirmish: 1
+    }
+
+    phases
+    |> Enum.sort_by(&Map.get(phase_order, &1, 99))
+  end
+
+  defp event_to_key_moment(event) do
+    %{
+      timestamp: event.timestamp,
+      significance: event.tactical_significance,
+      description: format_key_moment_description(event),
+      involved_parties: extract_involved_parties(event)
+    }
+  end
+
+  defp identify_turning_points(killmails) do
+    # Identify battle turning points based on value/alliance swings
+    if length(killmails) < 5 do
+      []
+    else
+      # Group by time windows and analyze alliance performance
+      windows =
+        killmails
+        |> Enum.sort_by(& &1.killmail_time)
+        |> Enum.chunk_every(5, 1, :discard)
+
+      windows
+      |> Enum.chunk_every(2, 1, :discard)
+      |> Enum.filter(fn [w1, w2] ->
+        alliance_swing_detected(w1, w2)
+      end)
+      |> Enum.map(fn [_, w2] ->
+        %{
+          timestamp: List.first(w2).killmail_time,
+          significance: :turning_point,
+          description: "Battle momentum shifted"
+        }
+      end)
+    end
+  end
+
+  defp calculate_moment_impact(moment, killmails) do
+    # Calculate the impact score of a key moment
+    base_score =
+      case moment.significance do
+        :first_blood -> 0.6
+        :capital_kill -> 0.9
+        :logistics_kill -> 0.8
+        :command_kill -> 0.7
+        :ewar_kill -> 0.6
+        :turning_point -> 0.8
+        :momentum_shift -> 0.7
+        _ -> 0.5
+      end
+
+    # Adjust based on timing in battle
+    timing_factor = calculate_timing_factor(moment.timestamp, killmails)
+
+    base_score * timing_factor
+  end
+
+  defp calculate_window_value(events) do
+    events
+    |> Enum.map(& &1.accumulated_value)
+    |> Enum.sum()
+  end
+
+  defp calculate_window_significance(events) do
+    sig_scores = %{
+      capital_kill: 10,
+      logistics_kill: 8,
+      command_kill: 7,
+      ewar_kill: 6,
+      high_value_kill: 5,
+      momentum_shift: 7,
+      first_blood: 4,
+      standard_kill: 1
+    }
+
+    events
+    |> Enum.map(fn e -> Map.get(sig_scores, e.tactical_significance, 1) end)
+    |> Enum.sum()
+  end
+
+  defp calculate_overall_intensity(events) do
+    if Enum.empty?(events) do
+      0
+    else
+      # Combine multiple factors for overall intensity
+      kill_factor = length(events) * 10
+      # Billions
+      value_factor = calculate_window_value(events) / 1_000_000_000
+      significance_factor = calculate_window_significance(events)
+
+      (kill_factor + value_factor + significance_factor) / 3
+    end
+  end
+
+  defp identify_burst_periods(intensity_data) do
+    # Periods of very high activity
+    intensity_data
+    |> Enum.filter(&(&1.overall_intensity > 50))
+    |> Enum.map(fn period ->
+      %{
+        start: period.timestamp,
+        intensity: period.overall_intensity,
+        kills: period.kill_count
+      }
+    end)
+  end
+
+  defp identify_sustained_combat(intensity_data) do
+    # Periods of consistent moderate+ activity
+    intensity_data
+    |> Enum.chunk_every(3, 1, :discard)
+    |> Enum.filter(fn chunk ->
+      Enum.all?(chunk, &(&1.overall_intensity > 20))
+    end)
+    |> Enum.map(fn chunk ->
+      %{
+        start: List.first(chunk).timestamp,
+        end: List.last(chunk).timestamp,
+        avg_intensity: average(Enum.map(chunk, & &1.overall_intensity))
+      }
+    end)
+  end
+
+  defp identify_lull_periods(intensity_data) do
+    # Periods of low/no activity
+    intensity_data
+    |> Enum.filter(&(&1.overall_intensity < 10))
+    |> Enum.map(fn period ->
+      %{
+        timestamp: period.timestamp,
+        # 1 minute windows
+        duration: 60
+      }
+    end)
+  end
+
+  defp summarize_patterns(burst, sustained, lulls) do
+    %{
+      total_bursts: length(burst),
+      # 3 min per sustained
+      sustained_duration: Enum.sum(Enum.map(sustained, fn _s -> 180 end)),
+      total_lulls: length(lulls),
+      pattern_type: determine_pattern_type(burst, sustained, lulls)
+    }
+  end
+
+  defp identify_dominant_pattern(burst, sustained, lulls) do
+    cond do
+      length(burst) > length(sustained) * 2 -> :burst_heavy
+      length(sustained) > length(burst) -> :sustained_combat
+      length(lulls) > length(burst) + length(sustained) -> :intermittent
+      true -> :mixed
+    end
+  end
+
+  defp determine_pattern_type(burst, sustained, lulls) do
+    total = length(burst) + length(sustained) + length(lulls)
+
+    cond do
+      total == 0 -> :no_activity
+      length(burst) / max(1, total) > 0.5 -> :burst_heavy
+      length(sustained) / max(1, total) > 0.5 -> :sustained
+      length(lulls) / max(1, total) > 0.5 -> :sporadic
+      true -> :mixed
+    end
+  end
+
+  defp detect_value_based_escalations(events) do
+    # Detect escalations based on increasing kill values
+    events
+    |> Enum.chunk_every(3, 1, :discard)
+    |> Enum.filter(fn chunk ->
+      values = Enum.map(chunk, & &1.accumulated_value)
+      ascending_values?(values)
+    end)
+    |> Enum.map(fn chunk ->
+      middle = Enum.at(chunk, 1)
+
+      %{
+        timestamp: middle.timestamp,
+        type: :value_escalation,
+        intensity_increase: 5.0,
+        description: "High-value targets being destroyed"
+      }
+    end)
+  end
+
+  defp detect_combat_lulls(events) do
+    # Detect starts of combat lulls
+    if length(events) < 3 do
+      []
+    else
+      events
+      |> Enum.chunk_every(3, 1, :discard)
+      |> Enum.filter(fn [e1, e2, e3] ->
+        # 5+ minute gaps
+        DateTime.diff(e2.timestamp, e1.timestamp, :second) > 300 or
+          DateTime.diff(e3.timestamp, e2.timestamp, :second) > 300
+      end)
+      |> Enum.map(fn [_, e2, _] ->
+        %{
+          timestamp: e2.timestamp,
+          type: :combat_lull,
+          intensity_decrease: 5.0,
+          description: "Combat activity decreased significantly"
+        }
+      end)
+    end
+  end
+
+  defp detect_tactical_withdrawals(_events) do
+    # Detect potential tactical withdrawals
+    # Look for sudden stops in kills from one side
+    []
+  end
+
+  defp calculate_focus_ratio(victim_counts) do
+    if map_size(victim_counts) == 0 do
+      0
+    else
+      max_count = victim_counts |> Map.values() |> Enum.max(fn -> 1 end)
+      total_kills = victim_counts |> Map.values() |> Enum.sum()
+      max_count / max(1, total_kills)
+    end
+  end
+
+  defp average(list) when list == [], do: 0
+  defp average(list), do: Enum.sum(list) / length(list)
+
+  defp calculate_timing_coordination(events) do
+    # Score based on kill timing clustering
+    if length(events) < 2 do
+      0.5
+    else
+      time_gaps =
+        events
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.map(fn [e1, e2] ->
+          DateTime.diff(e2.timestamp, e1.timestamp, :second)
+        end)
+
+      avg_gap = average(time_gaps)
+      variance = calculate_variance(time_gaps |> Enum.map(&(&1 / 1)), avg_gap)
+
+      # Lower variance = better coordination
+      coordination = 1.0 / (1.0 + variance / 100)
+      min(1.0, coordination)
+    end
+  end
+
+  defp count_momentum_changes(events) do
+    identify_momentum_shifts(events) |> length
+  end
+
+  defp measure_sustained_pressure(events) do
+    # Measure how sustained the pressure was
+    if length(events) < 2 do
+      0
+    else
+      time_gaps =
+        events
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.map(fn [e1, e2] ->
+          DateTime.diff(e2.timestamp, e1.timestamp, :second)
+        end)
+
+      # Count gaps under 2 minutes
+      sustained = Enum.count(time_gaps, &(&1 < 120))
+      sustained / max(1, length(time_gaps))
+    end
+  end
+
+  defp identify_tactical_pauses(events) do
+    # Identify deliberate pauses in combat
+    events
+    |> Enum.chunk_every(2, 1, :discard)
+    |> Enum.filter(fn [e1, e2] ->
+      gap = DateTime.diff(e2.timestamp, e1.timestamp, :second)
+      # 2-10 minute gaps
+      gap > 120 and gap < 600
+    end)
+    |> length
+  end
+
+  defp is_momentum_shift(chunk) do
+    # Detect if this chunk represents a momentum shift
+    values = Enum.map(chunk, & &1.accumulated_value)
+    kills = length(chunk)
+
+    # High kill concentration or value spike
+    kills >= 3 or List.last(values) - List.first(values) > 5_000_000_000
+  end
+
+  defp create_momentum_shift_moment(chunk) do
+    middle_event = Enum.at(chunk, 2)
+
+    %{
+      timestamp: middle_event.timestamp,
+      significance: :momentum_shift,
+      description: "Battle momentum shifted - #{length(chunk)} rapid kills",
+      involved_parties: extract_involved_parties(middle_event)
+    }
+  end
+
+  defp extract_involved_parties(event) do
+    %{
+      victim: event.victim.corporation_id,
+      attackers: event.attackers |> Enum.map(& &1.corporation_id) |> Enum.uniq()
+    }
+  end
+
+  defp alliance_swing_detected(window1, window2) do
+    # Detect if alliance performance swung between windows
+    alliance1_losses = Enum.group_by(window1, & &1.victim_alliance_id)
+    alliance2_losses = Enum.group_by(window2, & &1.victim_alliance_id)
+
+    # Check for significant changes in loss distribution
+    Map.keys(alliance1_losses) != Map.keys(alliance2_losses) or
+      significant_loss_change?(alliance1_losses, alliance2_losses)
+  end
+
+  defp significant_loss_change?(losses1, losses2) do
+    # Check if any alliance had significant change in losses
+    Enum.any?(Map.keys(losses1), fn alliance ->
+      count1 = losses1 |> Map.get(alliance, []) |> length
+      count2 = losses2 |> Map.get(alliance, []) |> length
+
+      abs(count2 - count1) > 3
+    end)
+  end
+
+  defp calculate_timing_factor(timestamp, killmails) do
+    # Calculate impact based on when in battle it occurred
+    if Enum.empty?(killmails) do
+      1.0
+    else
+      sorted = Enum.sort_by(killmails, & &1.killmail_time)
+      start_time = List.first(sorted).killmail_time
+      end_time = List.last(sorted).killmail_time
+      battle_duration = DateTime.diff(end_time, start_time, :second)
+
+      if battle_duration == 0 do
+        1.0
+      else
+        time_into_battle = DateTime.diff(timestamp, start_time, :second)
+        progress = time_into_battle / battle_duration
+
+        # Early and late kills have more impact
+        cond do
+          # Early battle
+          progress < 0.2 -> 1.2
+          # Mid battle
+          progress < 0.8 -> 1.0
+          # Late battle
+          true -> 1.1
+        end
+      end
+    end
+  end
+
+  defp score_target_sequence(significances) do
+    # Score how well targets were prioritized
+    scores =
+      significances
+      |> Enum.with_index()
+      |> Enum.map(fn {sig, idx} ->
+        priority =
+          case sig do
+            :logistics_kill -> 10
+            :command_kill -> 9
+            :ewar_kill -> 8
+            :capital_kill -> 7
+            :high_value_kill -> 6
+            _ -> 3
+          end
+
+        # Higher score for killing priority targets early
+        priority * (1.0 - idx / length(significances))
+      end)
+
+    if Enum.empty?(scores), do: 0.5, else: average(scores) / 10
+  end
+
+  defp ascending_values?(values) do
+    values == Enum.sort(values)
+  end
+end

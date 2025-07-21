@@ -1,0 +1,658 @@
+defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
+  @moduledoc """
+  Analyzes participant roles in battles based on ship types and damage patterns.
+
+  Categorizes participants into tactical roles:
+  - DPS (Damage Per Second) - Primary damage dealers
+  - Logistics - Repair and support ships
+  - Tackle - Point/web/scram ships for target control
+  - EWAR - Electronic warfare ships
+  - FC (Fleet Command) - Command ships and identified leaders
+  - Scout - Fast, small ships used for reconnaissance
+  """
+
+  require Logger
+
+  @doc """
+  Analyzes participant roles for a battle.
+
+  ## Parameters
+  - battle: Battle data with killmails and participant information
+  - options: Optional analysis parameters
+
+  ## Returns
+  A map with:
+  - participants: List of participants with assigned roles
+  - role_distribution: Summary of role counts
+  - key_players: Identified important participants
+  - commanders: Likely fleet commanders
+  """
+  def analyze_participant_roles(battle, options \\ []) do
+    Logger.debug("Analyzing participant roles for battle #{battle.battle_id}")
+
+    participants = extract_all_participants(battle.killmails)
+
+    # Analyze each participant
+    analyzed_participants =
+      participants
+      |>       Enum.map(&analyze_participant_role(&1, battle.killmails, options))
+      Enum.sort_by(& &1.contribution_score, :desc)
+
+    # Identify key players and commanders
+    key_players = identify_key_players(analyzed_participants)
+    commanders = identify_commanders(analyzed_participants, battle.killmails)
+
+    # Calculate role distribution
+    role_distribution = calculate_role_distribution(analyzed_participants)
+
+    %{
+      participants: analyzed_participants,
+      role_distribution: role_distribution,
+      key_players: key_players,
+      commanders: commanders,
+      analysis_metadata: %{
+        total_participants: length(analyzed_participants),
+        analyzed_at: DateTime.utc_now(),
+        battle_id: battle.battle_id
+      }
+    }
+  end
+
+  @doc """
+  Analyzes a single participant's role based on their activity.
+  """
+  def analyze_participant_role(participant, killmails, _options \\ []) do
+    # Get participant's activities across all killmails
+    activities = get_participant_activities(participant, killmails)
+
+    # Analyze ship types used
+    ship_analysis = analyze_ship_types(activities)
+
+    # Analyze damage patterns
+    damage_analysis = analyze_damage_patterns(activities)
+
+    # Analyze target selection patterns
+    target_analysis = analyze_target_patterns(activities)
+
+    # Determine primary role
+    primary_role = determine_primary_role(ship_analysis, damage_analysis, target_analysis)
+
+    # Calculate contribution score
+    contribution_score = calculate_contribution_score(activities, primary_role)
+
+    # Identify special characteristics
+    characteristics = identify_characteristics(activities, ship_analysis, damage_analysis)
+
+    %{
+      character_id: participant.character_id,
+      character_name: participant.character_name,
+      corporation_id: participant.corporation_id,
+      corporation_name: participant.corporation_name,
+      alliance_id: participant.alliance_id,
+      primary_role: primary_role,
+      secondary_roles: determine_secondary_roles(ship_analysis, damage_analysis),
+      ship_types: ship_analysis.ship_types,
+      primary_ship: ship_analysis.primary_ship,
+      contribution_score: contribution_score,
+      characteristics: characteristics,
+      activity_summary: %{
+        total_kills: activities.kills,
+        total_losses: activities.losses,
+        total_damage_dealt: activities.damage_dealt,
+        total_damage_taken: activities.damage_taken,
+        participation_rate: calculate_participation_rate(activities, killmails)
+      }
+    }
+  end
+
+  # Private helper functions
+
+  defp extract_all_participants(killmails) do
+    killmails
+    |>     Enum.flat_map(fn _killmail ->
+      # Extract victim
+      victim = %{
+        character_id: _killmail.victim_character_id,
+        character_name: extract_victim_name(_killmail.raw_data, "character_name"),
+        corporation_id: _killmail.victim_corporation_id,
+        corporation_name: extract_victim_name(_killmail.raw_data, "corporation_name"),
+        alliance_id: _killmail.victim_alliance_id
+      }
+
+      # Extract attackers
+      attackers =
+        case _killmail.raw_data do
+          %{"attackers" => attackers} when is_list(attackers) ->
+            attackers
+            Enum.filter(& &1["character_id"])
+            |>             Enum.map(fn attacker ->
+              %{
+                character_id: parse_id(attacker["character_id"]),
+                character_name: attacker["character_name"],
+                corporation_id: parse_id(attacker["corporation_id"]),
+                corporation_name: attacker["corporation_name"],
+                alliance_id: parse_id(attacker["alliance_id"])
+              }
+            end)
+
+          _ ->
+            []
+        end
+
+      [victim | attackers]
+    end)
+    Enum.filter(& &1.character_id)
+    Enum.uniq_by(&{&1.character_id, &1.corporation_id})
+  end
+
+  defp get_participant_activities(participant, killmails) do
+    activities = %{
+      kills: 0,
+      losses: 0,
+      damage_dealt: 0,
+      damage_taken: 0,
+      ship_types: [],
+      target_types: [],
+      weapons_used: [],
+      final_blows: 0,
+      participation_events: []
+    }
+
+    Enum.reduce(killmails, activities, fn _killmail, acc ->
+      if _killmail.victim_character_id == participant.character_id do
+        # Participant was the victim
+        victim_ship_type = _killmail.victim_ship_type_id
+        damage_taken = calculate_killmail_damage(_killmail.raw_data)
+
+        %{
+          acc
+          | losses: acc.losses + 1,
+            damage_taken: acc.damage_taken + damage_taken,
+            ship_types: [victim_ship_type | acc.ship_types],
+            participation_events: [
+              %{
+                type: :loss,
+                killmail_id: _killmail.killmail_id,
+                ship_type: victim_ship_type,
+                damage: damage_taken
+              }
+              | acc.participation_events
+            ]
+        }
+      else
+        # Participant was an attacker
+        attacker_data = find_attacker_data(_killmail.raw_data, participant.character_id)
+
+        if attacker_data do
+          damage_dealt = attacker_data["damage_done"] || 0
+          ship_type = parse_id(attacker_data["ship_type_id"])
+          weapon_type = parse_id(attacker_data["weapon_type_id"])
+          final_blow = attacker_data["final_blow"] || false
+
+          %{
+            acc
+            | kills: acc.kills + 1,
+              damage_dealt: acc.damage_dealt + damage_dealt,
+              ship_types: [ship_type | acc.ship_types],
+              target_types: [_killmail.victim_ship_type_id | acc.target_types],
+              weapons_used: [weapon_type | acc.weapons_used],
+              final_blows: acc.final_blows + if(final_blow, do: 1, else: 0),
+              participation_events: [
+                %{
+                  type: :kill,
+                  killmail_id: _killmail.killmail_id,
+                  ship_type: ship_type,
+                  damage: damage_dealt,
+                  final_blow: final_blow,
+                  weapon_type: weapon_type
+                }
+                | acc.participation_events
+              ]
+          }
+        else
+          acc
+        end
+      end
+    end)
+  end
+
+  defp analyze_ship_types(activities) do
+    ship_frequency = Enum.frequencies(activities.ship_types)
+
+    primary_ship =
+      ship_frequency |> Enum.max_by(fn {_ship, count} -> count end, fn -> {nil, 0} end) elem(0)
+
+    # Categorize ships by role
+    ship_roles = %{
+      dps: count_ships_by_role(activities.ship_types, :dps),
+      logistics: count_ships_by_role(activities.ship_types, :logistics),
+      tackle: count_ships_by_role(activities.ship_types, :tackle),
+      ewar: count_ships_by_role(activities.ship_types, :ewar),
+      command: count_ships_by_role(activities.ship_types, :command),
+      scout: count_ships_by_role(activities.ship_types, :scout)
+    }
+
+    %{
+      ship_types: ship_frequency,
+      primary_ship: primary_ship,
+      role_distribution: ship_roles,
+      ship_diversity: length(Map.keys(ship_frequency))
+    }
+  end
+
+  defp analyze_damage_patterns(activities) do
+    _total_damage = activities.damage_dealt + activities.damage_taken
+
+    # Calculate damage ratios
+    damage_ratio =
+      if activities.damage_taken > 0 do
+        activities.damage_dealt / activities.damage_taken
+      else
+        if activities.damage_dealt > 0, do: :infinity, else: 0
+      end
+
+    # Analyze damage consistency
+    damage_per_event =
+      if activities.kills > 0 do
+        activities.damage_dealt / activities.kills
+      else
+        0
+      end
+
+    # Final blow ratio
+    final_blow_ratio =
+      if activities.kills > 0 do
+        activities.final_blows / activities.kills
+      else
+        0
+      end
+
+    %{
+      total_damage_dealt: activities.damage_dealt,
+      total_damage_taken: activities.damage_taken,
+      damage_ratio: damage_ratio,
+      average_damage_per_kill: damage_per_event,
+      final_blow_ratio: final_blow_ratio,
+      damage_profile: classify_damage_profile(activities.damage_dealt, activities.kills)
+    }
+  end
+
+  defp analyze_target_patterns(activities) do
+    target_frequency = Enum.frequencies(activities.target_types)
+
+    # Analyze target selection
+    target_priority = analyze_target_priority(activities.target_types)
+
+    %{
+      target_types: target_frequency,
+      target_diversity: length(Map.keys(target_frequency)),
+      target_priority: target_priority
+    }
+  end
+
+  defp determine_primary_role(ship_analysis, damage_analysis, target_analysis) do
+    # Calculate role scores based on multiple factors
+    role_scores = %{
+      dps: calculate_dps_score(ship_analysis, damage_analysis, target_analysis),
+      logistics: calculate_logistics_score(ship_analysis, damage_analysis),
+      tackle: calculate_tackle_score(ship_analysis, damage_analysis, target_analysis),
+      ewar: calculate_ewar_score(ship_analysis, damage_analysis),
+      command: calculate_command_score(ship_analysis, damage_analysis),
+      scout: calculate_scout_score(ship_analysis, damage_analysis)
+    }
+
+    # Return role with highest score
+    role_scores
+    Enum.max_by(fn {_role, score} -> score end)
+    elem(0)
+  end
+
+  defp determine_secondary_roles(ship_analysis, _damage_analysis) do
+    # Identify secondary roles based on ship diversity and activity patterns
+
+    # If used multiple ship types, may have secondary roles
+    if ship_analysis.ship_diversity > 1 do
+      ship_analysis.role_distribution
+      Enum.filter(fn {_role, count} -> count > 0 end)
+      Enum.map(fn {role, _count} -> role end)
+      # Top 2 secondary roles
+      Enum.take(2)
+    else
+      []
+    end
+  end
+
+  defp calculate_contribution_score(activities, primary_role) do
+    base_updated_score = activities.kills * 10 + activities.damage_dealt / 1000
+
+    # Role-specific bonuses
+    role_bonus =
+      case primary_role do
+        :dps -> activities.final_blows * 5
+        # Logistics are valuable
+        :logistics -> activities.kills * 15
+        # Tackle enables kills
+        :tackle -> activities.kills * 12
+        # EWAR disrupts enemy
+        :ewar -> activities.kills * 10
+        # Command ships are high value
+        :command -> activities.kills * 20
+        # Scouts provide intel
+        :scout -> activities.kills * 8
+        _ -> 0
+      end
+
+    # Survivability bonus
+    survivability_bonus =
+      if activities.losses == 0 and activities.kills > 0 do
+        activities.kills * 2
+      else
+        0
+      end
+
+    Float.round(base_score + role_bonus + survivability_bonus, 2)
+  end
+
+  defp identify_characteristics(activities, ship_analysis, damage_analysis) do
+
+    # High activity
+    characteristics =
+      if activities.kills > 5 do
+        [:high_activity | characteristics]
+      else
+        characteristics
+      end
+
+    # Survivability
+    characteristics =
+      if activities.losses == 0 and activities.kills > 0 do
+        [:survivor | characteristics]
+      else
+        characteristics
+      end
+
+    # Damage dealer
+    characteristics =
+      if damage_analysis.total_damage_dealt > 10000 do
+        [:heavy_damage | characteristics]
+      else
+        characteristics
+      end
+
+    # Versatile (multiple ship types)
+    characteristics =
+      if ship_analysis.ship_diversity > 2 do
+        [:versatile | characteristics]
+      else
+        characteristics
+      end
+
+    # Final blow specialist
+    _characteristics =
+      if damage_analysis.final_blow_ratio > 0.5 do
+        [:finisher | characteristics]
+      else
+        characteristics
+      end
+
+    characteristics
+  end
+
+  defp identify_key_players(participants) do
+    # Top 10 contributors
+    participants
+    Enum.take(10)
+    |>     Enum.map(fn participant ->
+      %{
+        character_id: participant.character_id,
+        character_name: participant.character_name,
+        primary_role: participant.primary_role,
+        contribution_score: participant.contribution_score,
+        kills: participant.activity_summary.total_kills,
+        key_factor: determine_key_factor(participant)
+      }
+    end)
+  end
+
+  defp identify_commanders(participants, killmails) do
+    # Look for command ships and high-activity participants
+    potential_commanders =
+      participants
+      |>       Enum.filter(fn participant ->
+        # Command ship usage or high activity with diverse roles
+        participant.primary_role == :command or
+          (participant.contribution_score > 100 and participant.activity_summary.total_kills > 3)
+      end)
+      Enum.take(3)
+
+    potential_commanders
+    |>     Enum.map(fn participant ->
+      %{
+        character_id: participant.character_id,
+        character_name: participant.character_name,
+        corporation_name: participant.corporation_name,
+        primary_role: participant.primary_role,
+        contribution_score: participant.contribution_score,
+        command_indicators: analyze_command_indicators(participant, killmails)
+      }
+    end)
+  end
+
+  defp calculate_role_distribution(participants) do
+    role_counts = Enum.frequencies(Enum.map(participants, & &1.primary_role))
+    total = length(participants)
+
+    role_counts
+    |>     Enum.map(fn {role, count} ->
+      {role, %{count: count, percentage: Float.round(count / total * 100, 1)}}
+    end)
+    Enum.into(%{})
+  end
+
+  defp calculate_participation_rate(activities, killmails) do
+    total_events = length(killmails)
+    participant_events = activities.kills + activities.losses
+
+    if total_events > 0 do
+      Float.round(participant_events / total_events * 100, 1)
+    else
+      0.0
+    end
+  end
+
+  # Ship role classification helpers
+
+  defp count_ships_by_role(ship_types, role) do
+    ship_types
+    |>     Enum.count(&(classify_ship_role(&1) == role))
+  end
+
+  defp classify_ship_role(ship_type_id) do
+    case ship_type_id do
+      # Logistics ships
+      # Scythe
+      11978 -> :logistics
+      # Scythe
+      11129 -> :logistics
+      # Osprey
+      11985 -> :logistics
+      # DPS ships
+      # Rifter
+      587 -> :dps
+      # Punisher
+      588 -> :dps
+      # Cyclone
+      17918 -> :dps
+      # Tackle ships
+      # Tormentor (often used for tackle)
+      15 -> :tackle
+      # Command ships
+      # Sleipnir
+      22474 -> :command
+      # Damnation
+      22546 -> :command
+      # Scout ships
+      # Capsule
+      670 -> :scout
+      # Default to DPS for unknown ships
+      _ -> :dps
+    end
+  end
+
+  # Role scoring functions
+
+  defp calculate_dps_score(ship_analysis, damage_analysis, _target_analysis) do
+    ship_updated_score = ship_analysis.role_distribution.dps * 10
+    damage_updated_score = damage_analysis.total_damage_dealt / 1000
+    final_blow_updated_score = damage_analysis.final_blow_ratio * 20
+
+    ship_score + damage_score + final_blow_score
+  end
+
+  defp calculate_logistics_score(ship_analysis, damage_analysis) do
+    ship_updated_score = ship_analysis.role_distribution.logistics * 50
+    survivability_updated_score = if damage_analysis.damage_ratio < 0.5, do: 20, else: 0
+
+    ship_score + survivability_score
+  end
+
+  defp calculate_tackle_score(ship_analysis, damage_analysis, _target_analysis) do
+    ship_updated_score = ship_analysis.role_distribution.tackle * 30
+    participation_updated_score = if damage_analysis.total_damage_dealt > 0, do: 15, else: 0
+
+    ship_score + participation_score
+  end
+
+  defp calculate_ewar_score(ship_analysis, damage_analysis) do
+    ship_updated_score = ship_analysis.role_distribution.ewar * 40
+    low_damage_updated_score = if damage_analysis.total_damage_dealt < 1000, do: 10, else: 0
+
+    ship_score + low_damage_score
+  end
+
+  defp calculate_command_score(ship_analysis, damage_analysis) do
+    ship_updated_score = ship_analysis.role_distribution.command * 60
+    high_value_updated_score = if damage_analysis.total_damage_taken > 5000, do: 20, else: 0
+
+    ship_score + high_value_score
+  end
+
+  defp calculate_scout_score(ship_analysis, damage_analysis) do
+    ship_updated_score = ship_analysis.role_distribution.scout * 20
+    mobility_updated_score = if damage_analysis.damage_ratio > 2, do: 15, else: 0
+
+    ship_score + mobility_score
+  end
+
+  # Helper functions
+
+  defp extract_victim_name(raw_data, field) do
+    case raw_data do
+      %{"victim" => victim} when is_map(victim) ->
+        victim[field]
+
+      _ ->
+        nil
+    end
+  end
+
+  defp find_attacker_data(raw_data, character_id) do
+    case raw_data do
+      %{"attackers" => attackers} when is_list(attackers) ->
+        Enum.find(attackers, fn attacker ->
+          parse_id(attacker["character_id"]) == character_id
+        end)
+
+      _ ->
+        nil
+    end
+  end
+
+  defp calculate_killmail_damage(raw_data) do
+    case raw_data do
+      %{"attackers" => attackers} when is_list(attackers) ->
+        attackers
+        |>         Enum.map(&(&1["damage_done"] || 0))
+        Enum.sum()
+
+      _ ->
+        0
+    end
+  end
+
+  defp parse_id(nil), do: nil
+  defp parse_id(id) when is_integer(id), do: id
+
+  defp parse_id(id) when is_binary(id) do
+    case Integer.parse(id) do
+      {parsed_id, _} -> parsed_id
+      :error -> nil
+    end
+  end
+
+  defp classify_damage_profile(damage_dealt, kills) do
+    avg_damage = if kills > 0, do: damage_dealt / kills, else: 0
+
+    cond do
+      avg_damage > 2000 -> :heavy_hitter
+      avg_damage > 1000 -> :consistent_damage
+      avg_damage > 500 -> :moderate_damage
+      avg_damage > 0 -> :light_damage
+      true -> :no_damage
+    end
+  end
+
+  defp analyze_target_priority(target_types) do
+    # Prioritize based on target value
+    high_value_targets =
+      Enum.count(target_types, fn ship_type ->
+        classify_ship_role(ship_type) in [:logistics, :command, :ewar]
+      end)
+
+    if high_value_targets > 0 do
+      :priority_target_hunter
+    else
+      :opportunistic
+    end
+  end
+
+  defp determine_key_factor(participant) do
+    cond do
+      participant.contribution_score > 200 -> :high_contribution
+      participant.activity_summary.total_kills > 10 -> :high_activity
+      participant.primary_role == :logistics -> :force_multiplier
+      participant.primary_role == :command -> :leadership
+      :survivor in participant.characteristics -> :survivability
+      true -> :participation
+    end
+  end
+
+  defp analyze_command_indicators(participant, _killmails) do
+
+    # Command ship usage
+    indicators =
+      if participant.primary_role == :command do
+        [:command_ship | indicators]
+      else
+        indicators
+      end
+
+    # High activity
+    indicators =
+      if participant.activity_summary.total_kills > 5 do
+        [:high_activity | indicators]
+      else
+        indicators
+      end
+
+    # Survivability
+    _indicators =
+      if participant.activity_summary.total_losses == 0 do
+        [:survived_battle | indicators]
+      else
+        indicators
+      end
+
+    indicators
+  end
+end

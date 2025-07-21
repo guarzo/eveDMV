@@ -1,0 +1,468 @@
+defmodule EveDmv.Contexts.WormholeOperations.Analyzers.CombatAnalyzer do
+  @moduledoc """
+  Combat analysis engine for wormhole operations recruitment vetting.
+
+  Provides comprehensive analysis of:
+  - Killboard activity and combat effectiveness
+  - Ship usage patterns and preferences
+  - Combat engagement styles and tactics
+  - Wormhole-specific combat experience
+  - Activity levels and participation metrics
+
+  Used by the RecruitmentVetter to evaluate combat capabilities
+  and fighting styles of recruitment candidates.
+  """
+
+  use EveDmv.ErrorHandler
+  require Logger
+
+  # Activity level thresholds
+  @very_active_threshold 30
+  @active_threshold 15
+  @moderate_threshold 5
+  @low_threshold 1
+
+  # Engagement style thresholds
+  @solo_hunter_threshold 0.7
+  @fleet_fighter_threshold 0.8
+  @mixed_engagement_threshold 0.3
+
+  # Wormhole activity thresholds
+  @wh_expert_threshold 80
+  @wh_experienced_threshold 50
+  @wh_moderate_threshold 20
+  @wh_novice_threshold 5
+
+  # Experience level thresholds
+  @expert_score_threshold 0.8
+  @experienced_score_threshold 0.6
+  @intermediate_score_threshold 0.4
+  @novice_score_threshold 0.2
+
+  @doc """
+  Analyzes comprehensive killboard activity for a character.
+  """
+  def analyze_killboard_activity(character_data, _vetting_criteria) do
+    killboard_data = character_data.killboard_data
+
+    # Core activity metrics
+    activity_metrics = calculate_activity_metrics(killboard_data)
+
+    # Ship usage analysis
+    ship_analysis = analyze_ship_usage_patterns(killboard_data.ship_usage)
+
+    # Combat patterns
+    combat_patterns = analyze_combat_patterns(killboard_data)
+
+    # Wormhole activity specifically
+    wh_activity = analyze_wormhole_activity(killboard_data)
+
+    # Calculate overall killboard score
+    killboard_score =
+      calculate_killboard_score(activity_metrics, ship_analysis, combat_patterns, wh_activity)
+
+    killboard_analysis = %{
+      score: killboard_score,
+      activity_metrics: activity_metrics,
+      ship_analysis: ship_analysis,
+      combat_patterns: combat_patterns,
+      wormhole_activity: wh_activity,
+      activity_level: categorize_activity_level(activity_metrics.recent_activity),
+      preferred_engagement_style: determine_engagement_style(activity_metrics)
+    }
+
+    {:ok, killboard_analysis}
+  end
+
+  @doc """
+  Evaluates overall wormhole combat experience.
+  """
+  def evaluate_wormhole_experience(character_data) do
+    killboard_data = character_data.killboard_data
+
+    # Analyze wormhole-specific experience
+    wh_kills = Map.get(killboard_data, :wormhole_kills, 0)
+    wh_losses = Map.get(killboard_data, :wormhole_losses, 0)
+    wh_systems_visited = Map.get(killboard_data, :unique_wh_systems, 0)
+
+    # Ship types used in wormholes
+    wh_ship_diversity = analyze_wh_ship_diversity(killboard_data)
+
+    # Doctrine ship usage
+    doctrine_experience = assess_doctrine_ship_experience(killboard_data)
+
+    # Calculate wormhole experience score
+    wh_score =
+      calculate_wormhole_experience_score(
+        wh_kills,
+        wh_losses,
+        wh_systems_visited,
+        wh_ship_diversity,
+        doctrine_experience
+      )
+
+    wh_experience = %{
+      score: wh_score,
+      wormhole_kills: wh_kills,
+      wormhole_losses: wh_losses,
+      wormhole_systems_visited: wh_systems_visited,
+      ship_diversity: wh_ship_diversity,
+      doctrine_experience: doctrine_experience,
+      experience_level: categorize_wh_experience_level(wh_score),
+      suitability_assessment: assess_wh_suitability(wh_score, doctrine_experience)
+    }
+
+    {:ok, wh_experience}
+  end
+
+  # Core calculation functions
+
+  defp calculate_activity_metrics(killboard_data) do
+    %{
+      total_kills: killboard_data.total_kills,
+      total_losses: killboard_data.total_losses,
+      isk_efficiency: calculate_isk_efficiency(killboard_data),
+      solo_ratio: safe_division(killboard_data.solo_kills, killboard_data.total_kills),
+      gang_ratio: calculate_gang_ratio(killboard_data),
+      avg_gang_size: safe_division(killboard_data.total_kills, killboard_data.total_engagements),
+      recent_activity: killboard_data.kills_last_30d + killboard_data.losses_last_30d
+    }
+  end
+
+  defp calculate_isk_efficiency(killboard_data) do
+    total_isk = killboard_data.isk_destroyed + killboard_data.isk_lost
+
+    if total_isk > 0 do
+      Float.round(killboard_data.isk_destroyed / total_isk * 100, 2)
+    else
+      50.0
+    end
+  end
+
+  defp calculate_gang_ratio(killboard_data) do
+    if killboard_data.total_kills > 0 do
+      (killboard_data.total_kills - killboard_data.solo_kills) / killboard_data.total_kills
+    else
+      0.0
+    end
+  end
+
+  defp safe_division(numerator, denominator) do
+    if denominator > 0, do: numerator / denominator, else: 0.0
+  end
+
+  # Ship usage analysis
+
+  defp analyze_ship_usage_patterns(ship_usage) do
+    total_usage = Enum.sum(Map.values(ship_usage))
+
+    if total_usage > 0 do
+      ship_distribution = calculate_ship_distribution(ship_usage, total_usage)
+
+      %{
+        distribution: ship_distribution,
+        primary_ship_class: get_primary_ship_class(ship_distribution),
+        diversity_score: calculate_ship_diversity_score(ship_distribution),
+        total_ships_used: total_usage
+      }
+    else
+      %{
+        distribution: %{},
+        primary_ship_class: :unknown,
+        diversity_score: 0.0,
+        total_ships_used: 0
+      }
+    end
+  end
+
+  defp calculate_ship_distribution(ship_usage, total_usage) do
+    Map.new(ship_usage, fn {ship_class, count} ->
+      {ship_class, Float.round(count / total_usage * 100, 1)}
+    end)
+  end
+
+  defp get_primary_ship_class(ship_distribution) do
+    case Enum.max_by(ship_distribution, fn {_, percentage} -> percentage end, fn -> {:unknown, 0} end) do
+      {ship_class, percentage} when percentage > 30 -> ship_class
+      _ -> :mixed
+    end
+  end
+
+  defp calculate_ship_diversity_score(ship_distribution) do
+    non_zero_percentages =
+      ship_distribution
+      Map.values()
+      |>       Enum.filter(&(&1 > 0))
+      Enum.map(&(&1 / 100))
+
+    if length(non_zero_percentages) > 0 do
+      entropy = -Enum.sum(Enum.map(non_zero_percentages, &(&1 * :math.log(&1))))
+      max_entropy = :math.log(length(non_zero_percentages))
+
+      if max_entropy > 0 do
+        Float.round(entropy / max_entropy, 3)
+      else
+        0.0
+      end
+    else
+      0.0
+    end
+  end
+
+  # Combat pattern analysis
+
+  defp analyze_combat_patterns(killboard_data) do
+    %{
+      engagement_rate: Float.round((killboard_data.kills_last_30d + killboard_data.losses_last_30d) / 30, 2),
+      survival_rate: calculate_survival_rate(killboard_data),
+      aggression_level: determine_aggression_level(killboard_data),
+      preferred_gang_size: determine_preferred_gang_size(killboard_data),
+      kill_death_ratio: calculate_kill_death_ratio(killboard_data)
+    }
+  end
+
+  defp calculate_survival_rate(killboard_data) do
+    total_engagements = killboard_data.total_engagements
+
+    if total_engagements > 0 do
+      survival_rate = (total_engagements - killboard_data.total_losses) / total_engagements * 100
+      Float.round(survival_rate, 2)
+    else
+      0.0
+    end
+  end
+
+  defp calculate_kill_death_ratio(killboard_data) do
+    if killboard_data.total_losses > 0 do
+      Float.round(killboard_data.total_kills / killboard_data.total_losses, 2)
+    else
+      Float.round(killboard_data.total_kills * 1.0, 2)
+    end
+  end
+
+  defp determine_aggression_level(killboard_data) do
+    if killboard_data.total_kills > killboard_data.total_losses * 2, do: :aggressive, else: :defensive
+  end
+
+  defp determine_preferred_gang_size(killboard_data) do
+    avg_gang_size = safe_division(killboard_data.total_kills, killboard_data.total_engagements)
+
+    cond do
+      avg_gang_size < 2 -> :solo
+      avg_gang_size < 5 -> :small_gang
+      avg_gang_size < 15 -> :medium_gang
+      true -> :large_fleet
+    end
+  end
+
+  # Wormhole activity analysis
+
+  defp analyze_wormhole_activity(killboard_data) do
+    total_wh_activity = killboard_data.wormhole_kills + killboard_data.wormhole_losses
+    total_activity = killboard_data.total_kills + killboard_data.total_losses
+
+    wh_activity_percentage = calculate_wh_activity_percentage(total_wh_activity, total_activity)
+
+    %{
+      wormhole_activity_percentage: wh_activity_percentage,
+      wormhole_experience_level: categorize_wh_activity_level(wh_activity_percentage),
+      systems_explored: killboard_data.unique_wh_systems,
+      wormhole_kills: killboard_data.wormhole_kills,
+      wormhole_losses: killboard_data.wormhole_losses,
+      wh_kill_ratio: calculate_wh_kill_ratio(killboard_data)
+    }
+  end
+
+  defp calculate_wh_activity_percentage(wh_activity, total_activity) do
+    if total_activity > 0 do
+      Float.round(wh_activity / total_activity * 100, 1)
+    else
+      0.0
+    end
+  end
+
+  defp calculate_wh_kill_ratio(killboard_data) do
+    if killboard_data.wormhole_losses > 0 do
+      Float.round(killboard_data.wormhole_kills / killboard_data.wormhole_losses, 2)
+    else
+      Float.round(killboard_data.wormhole_kills * 1.0, 2)
+    end
+  end
+
+  defp analyze_wh_ship_diversity(killboard_data) do
+    wh_ship_categories = [:strategic_cruiser, :cloaky_ship, :scanner_ship, :logistics]
+    base_diversity = max(1, div(killboard_data.wormhole_kills, 5))
+
+    Map.new(wh_ship_categories, fn ship_category ->
+      diversity_score = calculate_category_diversity_score(ship_category, base_diversity)
+      {ship_category, diversity_score}
+    end)
+  end
+
+  defp calculate_category_diversity_score(ship_category, base_diversity) do
+    case ship_category do
+      :strategic_cruiser -> min(10, base_diversity + 2)
+      :cloaky_ship -> min(8, base_diversity + 1)
+      :scanner_ship -> min(6, base_diversity)
+      :logistics -> min(4, max(1, base_diversity - 1))
+    end
+  end
+
+  defp assess_doctrine_ship_experience(killboard_data) do
+    doctrine_ships = [:strategic_cruiser, :recon_ship, :heavy_assault_cruiser, :logistics_cruiser]
+
+    total_doctrine_usage =
+      Enum.sum(Enum.map(doctrine_ships, &Map.get(killboard_data.ship_usage, &1, 0)))
+
+    %{
+      total_doctrine_usage: total_doctrine_usage,
+      doctrine_familiarity: min(1.0, total_doctrine_usage / 50),
+      preferred_doctrine_role: determine_doctrine_role(killboard_data.ship_usage)
+    }
+  end
+
+  defp determine_doctrine_role(ship_usage) do
+    logistics_usage = Map.get(ship_usage, :logistics_cruiser, 0)
+    dps_usage = Map.get(ship_usage, :heavy_assault_cruiser, 0) + Map.get(ship_usage, :strategic_cruiser, 0)
+    support_usage = Map.get(ship_usage, :recon_ship, 0)
+
+    cond do
+      logistics_usage > dps_usage and logistics_usage > support_usage -> :logistics
+      support_usage > dps_usage -> :support
+      true -> :dps
+    end
+  end
+
+  # Score calculations
+
+  defp calculate_killboard_score(activity_metrics, ship_analysis, _combat_patterns, wh_activity) do
+    # Activity score component (cap at 20 activities per month)
+    activity_updated_score = min(1.0, activity_metrics.recent_activity / 20)
+
+    # ISK efficiency component
+    isk_updated_score = activity_metrics.isk_efficiency / 100
+
+    # Ship diversity component
+    diversity_updated_score = ship_analysis.diversity_score
+
+    # Wormhole experience component (cap at 50%)
+    wh_updated_score = min(1.0, wh_activity.wormhole_activity_percentage / 50)
+
+    # Weighted average
+    Float.round(activity_score * 0.3 + isk_score * 0.3 + diversity_score * 0.2 + wh_score * 0.2, 3)
+  end
+
+  defp calculate_wormhole_experience_score(wh_kills, wh_losses, systems_visited, ship_diversity, doctrine_experience) do
+    # Activity component (cap at 100 wh activities)
+    activity_component = min(1.0, (wh_kills + wh_losses) / 100)
+
+    # Exploration component (cap at 50 systems)
+    exploration_component = min(1.0, systems_visited / 50)
+
+    # Ship diversity component
+    diversity_total = Enum.sum(Map.values(ship_diversity))
+    diversity_component = min(1.0, diversity_total / 20)
+
+    # Doctrine experience component
+    doctrine_component = doctrine_experience.doctrine_familiarity
+
+    # Weighted average
+    Float.round(
+      activity_component * 0.4 + exploration_component * 0.2 +
+      diversity_component * 0.2 + doctrine_component * 0.2,
+      3
+    )
+  end
+
+  # Categorization functions
+
+  defp categorize_activity_level(recent_activity) do
+    cond do
+      recent_activity >= @very_active_threshold -> :very_active
+      recent_activity >= @active_threshold -> :active
+      recent_activity >= @moderate_threshold -> :moderate
+      recent_activity >= @low_threshold -> :low
+      true -> :inactive
+    end
+  end
+
+  defp determine_engagement_style(activity_metrics) do
+    cond do
+      activity_metrics.solo_ratio > @solo_hunter_threshold -> :solo_hunter
+      activity_metrics.gang_ratio > @fleet_fighter_threshold -> :fleet_fighter
+      activity_metrics.solo_ratio > @mixed_engagement_threshold -> :mixed_engagement
+      true -> :support_role
+    end
+  end
+
+  defp categorize_wh_activity_level(percentage) do
+    cond do
+      percentage >= @wh_expert_threshold -> :expert
+      percentage >= @wh_experienced_threshold -> :experienced
+      percentage >= @wh_moderate_threshold -> :moderate
+      percentage >= @wh_novice_threshold -> :novice
+      true -> :minimal
+    end
+  end
+
+  defp categorize_wh_experience_level(wh_score) do
+    cond do
+      wh_score >= @expert_score_threshold -> :expert
+      wh_score >= @experienced_score_threshold -> :experienced
+      wh_score >= @intermediate_score_threshold -> :intermediate
+      wh_score >= @novice_score_threshold -> :novice
+      true -> :beginner
+    end
+  end
+
+  defp assess_wh_suitability(wh_score, doctrine_experience) do
+    suitability_updated_score = (wh_score + doctrine_experience.doctrine_familiarity) / 2
+
+    %{
+      suitability_score: Float.round(suitability_score, 3),
+      suitability_level: categorize_wh_experience_level(suitability_score),
+      recommended_role: doctrine_experience.preferred_doctrine_role
+    }
+  end
+
+  # Test helper function for mock data generation
+  def generate_mock_killboard_data(character_id) do
+    base_activity = rem(character_id, 1000)
+    total_kills = base_activity * 2
+    total_losses = div(base_activity, 3) + 1
+    solo_kills = div(total_kills, 4)
+
+    %{
+      total_kills: total_kills,
+      total_losses: total_losses,
+      solo_kills: solo_kills,
+      total_engagements: total_kills + total_losses,
+      isk_destroyed: total_kills * 50_000_000,
+      isk_lost: total_losses * 45_000_000,
+      kills_last_30d: rem(character_id, 20),
+      losses_last_30d: rem(character_id, 8),
+      wormhole_kills: rem(character_id, 50),
+      wormhole_losses: rem(character_id, 15),
+      unique_wh_systems: rem(character_id, 30),
+      ship_usage: generate_ship_usage_pattern(character_id)
+    }
+  end
+
+  defp generate_ship_usage_pattern(character_id) do
+    ship_classes = [:frigate, :destroyer, :cruiser, :battlecruiser, :battleship, :capital]
+    base_activity = rem(character_id, 50) + 10
+
+    Map.new(ship_classes, fn ship_class ->
+      usage_multiplier = case ship_class do
+        :frigate -> 1.5
+        :destroyer -> 0.8
+        :cruiser -> 2.0
+        :battlecruiser -> 1.2
+        :battleship -> 0.6
+        :capital -> 0.1
+      end
+      usage_count = round(base_activity * usage_multiplier)
+      {ship_class, max(0, usage_count)}
+    end)
+  end
+end

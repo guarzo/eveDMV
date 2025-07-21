@@ -29,7 +29,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
   @supported_platforms %{
     youtube: %{
       domains: ["youtube.com", "youtu.be", "m.youtube.com"],
-      regex: ~r/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+      regex: ~r/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9-]{11})/,
       embed_template: "https://www.youtube.com/embed/{video_id}"
     },
     twitch: %{

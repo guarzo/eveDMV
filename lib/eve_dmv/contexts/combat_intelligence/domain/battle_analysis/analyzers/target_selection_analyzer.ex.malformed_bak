@@ -1,0 +1,221 @@
+defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.TargetSelectionAnalyzer do
+  @moduledoc """
+  Target selection pattern analyzer for tactical assessment.
+
+  Handles:
+  - Target priority scoring
+  - Target switching efficiency analysis
+  - Optimal target selection evaluation
+  - Targeting mistake identification
+  - Target preference calculation
+  """
+
+  require Logger
+
+  @doc """
+  Analyze target selection patterns throughout the timeline.
+  """
+  def analyze_target_selection(timeline, fleet_analysis) do
+    Logger.debug("Analyzing target selection patterns")
+
+    if Enum.empty?(timeline.events) do
+      %{
+        target_priority_score: 0.0,
+        target_switching_efficiency: 0.0,
+        optimal_target_selection: 0.0,
+        target_type_preferences: %{}
+      }
+    else
+      # Categorize targets by ship type and role
+      target_categories = categorize_targets(timeline.events)
+
+      # Analyze targeting patterns
+      priority_score = calculate_target_priority_score(timeline.events, target_categories)
+      switching_efficiency = calculate_switching_efficiency(timeline.events)
+      optimal_selection = evaluate_optimal_selection(timeline.events, fleet_analysis)
+
+      # Calculate preferences by ship type/role
+      preferences = calculate_target_preferences(target_categories, timeline.events)
+
+      %{
+        target_priority_score: priority_score,
+        target_switching_efficiency: switching_efficiency,
+        optimal_target_selection: optimal_selection,
+        target_type_preferences: preferences,
+        targeting_mistakes: identify_targeting_mistakes(timeline.events, fleet_analysis),
+        optimal_sequence: suggest_optimal_target_sequence(timeline.events, fleet_analysis)
+      }
+    end
+  end
+
+  @doc """
+  Categorize targets by their tactical significance.
+  """
+  def categorize_targets(events) do
+    events
+    Enum.group_by(& &1.tactical_significance)
+    |>     Enum.map(fn {category, evts} ->
+      {category, length(evts)}
+    end)
+    Map.new()
+  end
+
+  @doc """
+  Calculate target priority score based on targeting high-value targets first.
+  """
+  def calculate_target_priority_score(events, _target_categories) do
+    priority_targets = [:capital_kill, :logistics_kill, :command_kill, :ewar_kill]
+
+    priority_kills =
+      events
+      Enum.filter(fn e -> e.tactical_significance in priority_targets end)
+      Enum.with_index()
+
+    if Enum.empty?(priority_kills) do
+      0.5
+    else
+      # Higher score if priority targets were killed early
+      scores =
+        priority_kills
+        |>         Enum.map(fn {_event, idx} ->
+          1.0 - idx / length(events)
+        end)
+
+      Enum.sum(scores) / length(priority_kills)
+    end
+  end
+
+  @doc """
+  Calculate target switching efficiency.
+  """
+  def calculate_switching_efficiency(events) do
+    # Efficiency of target switching (not switching too often)
+    switch_freq = calculate_target_switching_frequency(events)
+
+    # Optimal switching is moderate - not too high, not too low
+    cond do
+      switch_freq < 0.2 -> 0.7 # Too focused, might miss opportunities
+      switch_freq < 0.4 -> 0.9 # Good balance
+      switch_freq < 0.6 -> 0.8 # Acceptable
+      true -> 0.5 # Too much switching
+    end
+  end
+
+  @doc """
+  Evaluate if targets were selected optimally.
+  """
+  def evaluate_optimal_selection(events, _fleet_analysis) do
+    priority_score =
+      events
+      Enum.map(& &1.tactical_significance)
+      score_target_sequence()
+
+    min(1.0, priority_score)
+  end
+
+  @doc """
+  Calculate target preferences by type.
+  """
+  def calculate_target_preferences(target_categories, events) do
+    total = length(events)
+
+    %{
+      logistics: Map.get(target_categories, :logistics_kill, 0) / max(1, total),
+      capitals: Map.get(target_categories, :capital_kill, 0) / max(1, total),
+      command: Map.get(target_categories, :command_kill, 0) / max(1, total),
+      ewar: Map.get(target_categories, :ewar_kill, 0) / max(1, total),
+      dps: Map.get(target_categories, :standard_kill, 0) / max(1, total)
+    }
+  end
+
+  @doc """
+  Identify potential targeting mistakes.
+  """
+  def identify_targeting_mistakes(events, _fleet_analysis) do
+
+    # Check for ignoring logistics
+    logistics_kills = Enum.filter(events, &(&1.tactical_significance == :logistics_kill))
+
+    mistakes =
+      if Enum.empty?(logistics_kills) and length(events) > 10 do
+        [%{type: :ignored_logistics, severity: :high} | mistakes]
+      else
+        mistakes
+      end
+
+    # Check for poor target prioritization
+    first_quarter = Enum.take(events, div(length(events), 4))
+    priority_in_first = Enum.count(first_quarter, &(&1.tactical_significance != :standard_kill))
+
+    _mistakes =
+      if priority_in_first < length(first_quarter) * 0.3 do
+        [%{type: :poor_prioritization, severity: :medium} | mistakes]
+      else
+        mistakes
+      end
+
+    mistakes
+  end
+
+  @doc """
+  Suggest optimal target sequence based on tactical value.
+  """
+  def suggest_optimal_target_sequence(events, _fleet_analysis) do
+    events
+    |>     Enum.sort_by(fn event ->
+      case event.tactical_significance do
+        :logistics_kill -> 1
+        :command_kill -> 2
+        :ewar_kill -> 3
+        :capital_kill -> 4
+        :high_value_kill -> 5
+        _ -> 6
+      end
+    end)
+    Enum.take(10)
+    Enum.map(& &1.victim)
+  end
+
+  # Private helper functions
+
+  defp calculate_target_switching_frequency(events) do
+    if length(events) < 2 do
+      0.0
+    else
+      switches =
+        events
+        Enum.chunk_every(2, 1, :discard)
+        |>         Enum.count(fn [e1, e2] ->
+          e1.victim.character_id != e2.victim.character_id
+        end)
+
+      switches / (length(events) - 1)
+    end
+  end
+
+  defp score_target_sequence(significances) do
+    # Score how well targets were prioritized
+    scores =
+      significances
+      Enum.with_index()
+      |>       Enum.map(fn {sig, idx} ->
+        priority =
+          case sig do
+            :logistics_kill -> 10
+            :command_kill -> 9
+            :ewar_kill -> 8
+            :capital_kill -> 7
+            :high_value_kill -> 6
+            _ -> 3
+          end
+
+        # Higher score for killing priority targets early
+        priority * (1.0 - idx / length(significances))
+      end)
+
+    if Enum.empty?(scores), do: 0.5, else: average(scores) / 10
+  end
+
+  defp average(list) when list == [], do: 0
+  defp average(list), do: Enum.sum(list) / length(list)
+end

@@ -1,0 +1,462 @@
+defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.DoctrineDetectionEngine do
+  @moduledoc """
+  Doctrine detection engine for identifying fleet composition patterns.
+
+  Handles:
+  - Ship pattern analysis
+  - Known doctrine matching
+  - Support ship analysis
+  - Doctrine confidence scoring
+  - Ship classification and grouping
+  """
+
+  require Logger
+
+  @doc """
+  Analyze ship patterns in fleet composition.
+  """
+  def analyze_ship_patterns(ship_composition) do
+    # Convert ship composition to analyzable format
+    ship_data =
+      ship_composition
+      |>       Enum.flat_map(fn {_side, side_data} ->
+        case side_data do
+          %{ships: ships} when is_list(ships) -> ships
+          ships when is_list(ships) -> ships
+          _ -> []
+        end
+      end)
+
+    # Group ships by class and analyze patterns
+    ship_classes = group_ships_by_class(ship_data)
+    total_ships = Enum.sum(Enum.map(ship_classes, fn {_class, ships} -> length(ships) end))
+
+    # Calculate ship class percentages
+    class_percentages =
+      ship_classes
+      |>       Enum.map(fn {class, ships} ->
+        percentage = if total_ships > 0, do: length(ships) / total_ships * 100, else: 0
+        {class, %{count: length(ships), percentage: Float.round(percentage, 1)}}
+      end)
+      Map.new()
+
+    # Identify dominant ship classes (>20% of fleet)
+    dominant_classes =
+      class_percentages
+      Enum.filter(fn {_class, data} -> data.percentage > 20 end)
+      Enum.map(fn {class, _data} -> class end)
+
+    # Analyze support ships and special roles
+    support_analysis = analyze_support_ships(ship_classes)
+
+    %{
+      breakdown: class_percentages,
+      total_ships: total_ships,
+      dominant_classes: dominant_classes,
+      support_analysis: support_analysis,
+      ship_diversity: calculate_ship_diversity_score(class_percentages)
+    }
+  end
+
+  @doc """
+  Match ship composition against known EVE Online doctrines.
+  """
+  def match_known_doctrines(ship_analysis) do
+    # Match against known EVE Online doctrine patterns
+
+    # Analyze for common doctrines based on dominant ship classes
+    doctrines = doctrines ++ analyze_capital_doctrines(ship_analysis)
+    doctrines = doctrines ++ analyze_subcap_doctrines(ship_analysis)
+    _doctrines = doctrines ++ analyze_specialized_doctrines(ship_analysis)
+
+    # Sort by confidence score
+    doctrines
+    Enum.sort_by(& &1.confidence, :desc)
+    # Return top 3 matches
+    Enum.take(3)
+  end
+
+  @doc """
+  Calculate confidence score for doctrine detection.
+  """
+  def calculate_doctrine_confidence(doctrine_matches, ship_analysis) do
+    if Enum.empty?(doctrine_matches) do
+      0.0
+    else
+      # Weight confidence by ship diversity and support presence
+      base_confidence =
+        doctrine_matches
+        Enum.map(& &1.confidence)
+        Enum.max()
+
+      # Adjust for ship diversity (higher diversity = lower confidence in single doctrine)
+      diversity_penalty = min(20, ship_analysis.ship_diversity * 5)
+
+      # Bonus for proper support ships
+      support_bonus = if ship_analysis.support_analysis.has_logistics, do: 10, else: 0
+
+      adjusted_confidence = base_confidence - diversity_penalty + support_bonus
+      max(0, min(100, adjusted_confidence))
+    end
+  end
+
+  @doc """
+  Generate doctrine analysis description.
+  """
+  def generate_doctrine_analysis(doctrine_matches, ship_analysis) do
+    if Enum.empty?(doctrine_matches) do
+      "No clear doctrine patterns detected. Fleet composition shows #{ship_analysis.ship_diversity} diversity score."
+    else
+      primary_doctrine = List.first(doctrine_matches)
+      support_analysis = ship_analysis.support_analysis
+
+      support_desc =
+        cond do
+          support_analysis.has_logistics and support_analysis.has_ewar ->
+            "with full logistics and EWAR support"
+
+          support_analysis.has_logistics ->
+            "with logistics support"
+
+          support_analysis.has_ewar ->
+            "with EWAR support"
+
+          true ->
+            "with minimal support ships"
+        end
+
+      "Primary doctrine: #{primary_doctrine.name} (#{primary_doctrine.confidence}% confidence) #{support_desc}. " <>
+        "Fleet composition: #{ship_analysis.total_ships} ships across #{length(ship_analysis.dominant_classes)} dominant classes."
+    end
+  end
+
+  @doc """
+  Classify ship by its type ID.
+  """
+  def classify_ship_type_id(ship_type_id) when is_integer(ship_type_id) do
+    cond do
+      # Frigates
+      ship_type_id in 580..700 -> :frigate
+      # Assault Frigates
+      ship_type_id in 11_365..11_378 -> :assault_frigate
+      # Interceptors
+      ship_type_id in 11_177..11_190 -> :interceptor
+      # Destroyers
+      ship_type_id in 420..450 -> :destroyer
+      # Interdictors
+      ship_type_id in 22_440..22_460 -> :interdictor
+      # Cruisers
+      ship_type_id in 620..650 -> :cruiser
+      # Heavy Assault Cruisers
+      ship_type_id in 12_017..12_030 -> :heavy_assault_cruiser
+      # Heavy Interdictors
+      ship_type_id in 12_011..12_016 -> :heavy_interdictor
+      # Logistics Cruisers
+      ship_type_id in 11_987..11_995 -> :logistics_cruiser
+      # Recon Ships
+      ship_type_id in 11_957..11_971 -> :recon_ship
+      # Battlecruisers
+      ship_type_id in 540..570 -> :battlecruiser
+      # Command Ships
+      ship_type_id in 12_003..12_010 -> :command_ship
+      # Battleships
+      ship_type_id in 640..670 -> :battleship
+      # Marauders
+      ship_type_id in 28_659..28_665 -> :marauder
+      # Black Ops
+      ship_type_id in 22_440..22_456 -> :black_ops
+      # Carriers
+      ship_type_id in 547..554 -> :carrier
+      # Dreadnoughts
+      ship_type_id in 19_720..19_726 -> :dreadnought
+      # Force Auxiliaries
+      ship_type_id in 1_538..1_540 -> :force_auxiliary
+      # Supercarriers
+      ship_type_id in 23_757..23_773 -> :supercarrier
+      # Titans
+      ship_type_id in 3514..3518 -> :titan
+      # Industrial Ships
+      ship_type_id in 1_022..1_034 -> :industrial
+      # T3 Cruisers
+      ship_type_id in 29_984..29_990 -> :strategic_cruiser
+      # Default fallback
+      true -> :other
+    end
+  end
+
+  def classify_ship_type_id(_), do: :unknown
+
+  # Private helper functions
+
+  defp group_ships_by_class(ship_data) do
+    ship_data
+    Enum.group_by(&classify_ship_by_type_id/1)
+    Map.delete(:unknown)
+  end
+
+  defp classify_ship_by_type_id(ship) do
+    # Get ship type ID - handle different data structures
+    ship_type_id =
+      case ship do
+        %{victim_ship_type_id: id} -> id
+        %{ship_type_id: id} -> id
+        %{"ship_type_id" => id} -> id
+        id when is_integer(id) -> id
+        _ -> nil
+      end
+
+    classify_ship_type_id(ship_type_id)
+  end
+
+  defp analyze_support_ships(ship_classes) do
+    # Analyze presence of support and specialized ships
+    logistics_count = ship_classes |> Map.get(:logistics_cruiser, []) length()
+    recon_count = ship_classes |> Map.get(:recon_ship, []) length()
+    interdictor_count = ship_classes |> Map.get(:interdictor, []) length()
+    heavy_interdictor_count = ship_classes |> Map.get(:heavy_interdictor, []) length()
+    command_count = ship_classes |> Map.get(:command_ship, []) length()
+
+    %{
+      logistics_ships: logistics_count,
+      ewar_ships: recon_count,
+      tackle_ships: interdictor_count + heavy_interdictor_count,
+      command_ships: command_count,
+      has_logistics: logistics_count > 0,
+      has_ewar: recon_count > 0,
+      has_tackle: interdictor_count + heavy_interdictor_count > 0,
+      support_ratio: calculate_support_ratio(ship_classes)
+    }
+  end
+
+  defp calculate_support_ratio(ship_classes) do
+    # Calculate ratio of support ships to total fleet
+    support_ships = [
+      :logistics_cruiser,
+      :recon_ship,
+      :interdictor,
+      :heavy_interdictor,
+      :command_ship
+    ]
+
+    support_count =
+      support_ships
+      |>       Enum.map(fn class -> ship_classes |> Map.get(class, []) length() end)
+      Enum.sum()
+
+    total_ships =
+      ship_classes
+      Map.values()
+      Enum.map(&length/1)
+      Enum.sum()
+
+    if total_ships > 0 do
+      Float.round(support_count / total_ships * 100, 1)
+    else
+      0.0
+    end
+  end
+
+  defp calculate_ship_diversity_score(class_percentages) do
+    # Calculate Shannon diversity index for ship composition
+    if Enum.empty?(class_percentages) do
+      0.0
+    else
+      percentages =
+        class_percentages
+        Map.values()
+        Enum.map(& &1.percentage/100)
+        |>         Enum.filter(&(&1 > 0))
+
+      if Enum.empty?(percentages) do
+        0.0
+      else
+        diversity =
+          percentages
+          |>           Enum.map(fn p -> -p * :math.log2(p) end)
+          Enum.sum()
+
+        Float.round(diversity, 2)
+      end
+    end
+  end
+
+  defp analyze_capital_doctrines(ship_analysis) do
+    class_data = ship_analysis.breakdown
+
+    # Dreadnought doctrine
+    dread_percentage = get_class_percentage(class_data, :dreadnought)
+
+    doctrines_with_dread =
+      if dread_percentage > 30 do
+        [
+          %{
+            name: "Capital Dreadnought Doctrine",
+            type: :capital,
+            confidence: min(100, dread_percentage * 2),
+            characteristics: ["High alpha damage", "Siege warfare", "Structure bashing"],
+            key_ships: [:dreadnought, :force_auxiliary, :carrier]
+          }
+          | initial_doctrines
+        ]
+      else
+        initial_doctrines
+      end
+
+    # Carrier doctrine
+    carrier_percentage = get_class_percentage(class_data, :carrier)
+
+    final_doctrines =
+      if carrier_percentage > 25 do
+        [
+          %{
+            name: "Carrier Doctrine",
+            type: :capital,
+            confidence: min(100, carrier_percentage * 2.5),
+            characteristics: ["Fighter DPS", "Remote repair", "Area denial"],
+            key_ships: [:carrier, :supercarrier, :force_auxiliary]
+          }
+          | doctrines_with_dread
+        ]
+      else
+        doctrines_with_dread
+      end
+
+    final_doctrines
+  end
+
+  defp analyze_subcap_doctrines(ship_analysis) do
+    class_data = ship_analysis.breakdown
+    support = ship_analysis.support_analysis
+
+    # Battleship doctrine
+    bs_percentage = get_class_percentage(class_data, :battleship)
+
+    doctrines_with_bs =
+      if bs_percentage > 40 do
+        doctrine_name =
+          if support.has_logistics, do: "Armor/Shield BS Doctrine", else: "Buffer BS Doctrine"
+
+        [
+          %{
+            name: doctrine_name,
+            type: :subcap,
+            confidence: min(100, bs_percentage * 2),
+            characteristics: ["High EHP", "Long range DPS", "Slow movement"],
+            key_ships: [:battleship, :logistics_cruiser, :command_ship]
+          }
+          | initial_doctrines
+        ]
+      else
+        initial_doctrines
+      end
+
+    # HAC doctrine
+    hac_percentage = get_class_percentage(class_data, :heavy_assault_cruiser)
+
+    doctrines_with_hac =
+      if hac_percentage > 35 do
+        [
+          %{
+            name: "Heavy Assault Cruiser Doctrine",
+            type: :subcap,
+            confidence: min(100, hac_percentage * 2.2),
+            characteristics: ["Balanced mobility/tank", "Versatile engagement"],
+            key_ships: [:heavy_assault_cruiser, :logistics_cruiser, :recon_ship]
+          }
+          | doctrines_with_bs
+        ]
+      else
+        doctrines_with_bs
+      end
+
+    # Cruiser doctrine
+    cruiser_percentage = get_class_percentage(class_data, :cruiser)
+
+    final_doctrines =
+      if cruiser_percentage > 50 do
+        [
+          %{
+            name: "Fast Cruiser Doctrine",
+            type: :subcap,
+            confidence: min(100, cruiser_percentage * 1.5),
+            characteristics: ["High mobility", "Quick engagement/disengagement"],
+            key_ships: [:cruiser, :logistics_cruiser, :interceptor]
+          }
+          | doctrines_with_hac
+        ]
+      else
+        doctrines_with_hac
+      end
+
+    final_doctrines
+  end
+
+  defp analyze_specialized_doctrines(ship_analysis) do
+    class_data = ship_analysis.breakdown
+    support = ship_analysis.support_analysis
+
+    # Kiting doctrine (interceptors + long range)
+    interceptor_percentage = get_class_percentage(class_data, :interceptor)
+
+    doctrines_with_kiting =
+      if interceptor_percentage > 30 do
+        [
+          %{
+            name: "Kiting/Skirmish Doctrine",
+            type: :specialized,
+            confidence: min(100, interceptor_percentage * 2),
+            characteristics: ["High speed", "Hit and run", "Range control"],
+            key_ships: [:interceptor, :assault_frigate, :recon_ship]
+          }
+          | initial_doctrines
+        ]
+      else
+        initial_doctrines
+      end
+
+    # Blops doctrine
+    blops_percentage = get_class_percentage(class_data, :black_ops)
+
+    doctrines_with_blops =
+      if blops_percentage > 20 do
+        [
+          %{
+            name: "Black Ops Doctrine",
+            type: :specialized,
+            confidence: min(100, blops_percentage * 3),
+            characteristics: ["Stealth", "Portal capability", "Surprise attacks"],
+            key_ships: [:black_ops, :recon_ship, :stealth_bomber]
+          }
+          | doctrines_with_kiting
+        ]
+      else
+        doctrines_with_kiting
+      end
+
+    # Support-heavy doctrine
+    final_doctrines =
+      if support.support_ratio > 40 do
+        [
+          %{
+            name: "Support-Heavy Doctrine",
+            type: :specialized,
+            confidence: min(100, support.support_ratio * 1.5),
+            characteristics: ["High survivability", "Force multiplication", "Sustained fighting"],
+            key_ships: [:logistics_cruiser, :command_ship, :heavy_interdictor]
+          }
+          | doctrines_with_blops
+        ]
+      else
+        doctrines_with_blops
+      end
+
+    final_doctrines
+  end
+
+  defp get_class_percentage(class_data, ship_class) do
+    case Map.get(class_data, ship_class) do
+      %{percentage: percentage} -> percentage
+      _ -> 0.0
+    end
+  end
+end

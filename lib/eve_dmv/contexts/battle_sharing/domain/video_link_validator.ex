@@ -28,9 +28,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
       name: "YouTube",
       domains: ["youtube.com", "youtu.be", "m.youtube.com", "www.youtube.com"],
       url_patterns: [
-        ~r/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
-        ~r/youtube\.com\/v\/([a-zA-Z0-9_-]{11})/,
-        ~r/youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/
+        ~r/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9-]{11})/,
+        ~r/youtube\.com\/v\/([a-zA-Z0-9-]{11})/,
+        ~r/youtube\.com\/watch\?.*v=([a-zA-Z0-9-]{11})/
       ],
       embed_template: "https://www.youtube.com/embed/{video_id}?rel=0&modestbranding=1",
       thumbnail_template: "https://img.youtube.com/vi/{video_id}/maxresdefault.jpg",

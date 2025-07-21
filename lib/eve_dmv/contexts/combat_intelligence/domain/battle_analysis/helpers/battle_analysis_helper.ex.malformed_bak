@@ -1,0 +1,437 @@
+defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Helpers.BattleAnalysisHelper do
+  @moduledoc """
+  Helper functions for battle analysis calculations.
+
+  Handles:
+  - Victory factor analysis
+  - Performance gap analysis
+  - Doctrine composition analysis
+  - Battle effectiveness calculations
+  - Evolution pattern analysis
+  """
+
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Helpers.DoctrineHelper
+
+  @doc """
+  Analyze numerical factors in battle outcome.
+  """
+  def analyze_numerical_factors(side_performance) do
+    # Analyze if numbers played a decisive role
+    side_counts =
+      Enum.map(side_performance, fn {_side, metrics} ->
+        metrics.kills + metrics.losses
+      end)
+
+    if length(side_counts) >= 2 do
+      [max_count, second_count | _] = Enum.sort(side_counts, :desc)
+
+      if max_count > second_count * 1.5 do
+        ["Numerical superiority was decisive"]
+      else
+        []
+      end
+    else
+      []
+    end
+  end
+
+  @doc """
+  Analyze tactical factors for victory.
+  """
+  def analyze_tactical_factors(patterns) do
+    # Analyze tactical patterns for victory factors
+    if Enum.any?(patterns, &(&1.type == :coordinated_alpha)) do
+      ["Superior coordination and focus fire"]
+    else
+      []
+    end
+  end
+
+  @doc """
+  Analyze battlefield control factors.
+  """
+  def analyze_control_factors(key_moments) do
+    # Analyze battlefield control moments
+    if length(key_moments) > 0 do
+      ["Effective battlefield control"]
+    else
+      []
+    end
+  end
+
+  @doc """
+  Check support ship ratios in analysis.
+  """
+  def check_support_ship_ratios(analysis) do
+    ship_counts = get_in(analysis, [:fleet_analysis, :ship_counts]) || %{}
+    total_ships = ship_counts |> Map.values() Enum.sum()
+
+    if total_ships > 0 do
+      logi_count = Map.get(ship_counts, :logistics, 0)
+      ewar_count = Map.get(ship_counts, :ewar, 0)
+
+      %{
+        logistics_ratio: logi_count / total_ships,
+        ewar_ratio: ewar_count / total_ships,
+        support_adequate: logi_count / total_ships >= 0.1
+      }
+    else
+      %{logistics_ratio: 0, ewar_ratio: 0, support_adequate: false}
+    end
+  end
+
+  @doc """
+  Extract confidence from pattern.
+  """
+  def extract_confidence(pattern) do
+    case pattern do
+      %{confidence: conf} when is_number(conf) -> conf
+      %{strength: :strong} -> 80
+      %{strength: :moderate} -> 60
+      %{strength: :weak} -> 40
+      _ -> 50
+    end
+  end
+
+  @doc """
+  Extract doctrine patterns from battle.
+  """
+  def extract_doctrine_patterns(battle) do
+    doctrines = get_in(battle, [:fleet_analysis, :doctrines]) || []
+
+    Enum.map(doctrines, fn doctrine ->
+      %{
+        type: :doctrine,
+        name: doctrine.name,
+        ship_count: doctrine.ship_count,
+        confidence: doctrine.confidence || 70
+      }
+    end)
+  end
+
+  @doc """
+  Extract tactical patterns from battle.
+  """
+  def extract_tactical_patterns(battle) do
+
+    # Check for kiting pattern
+    patterns_with_kiting =
+      if get_in(battle, [:engagement_analysis, :engagement_style]) == :kiting do
+        [%{type: :tactical, name: :kiting, confidence: 80} | initial_patterns]
+      else
+        initial_patterns
+      end
+
+    # Check for brawling pattern
+    if get_in(battle, [:engagement_analysis, :engagement_style]) == :brawling do
+      [%{type: :tactical, name: :brawling, confidence: 80} | patterns_with_kiting]
+    else
+      patterns_with_kiting
+    end
+  end
+
+  @doc """
+  Extract timing patterns from battle.
+  """
+  def extract_timing_patterns(battle) do
+    phases = get_in(battle, [:timeline_analysis, :phases]) || []
+
+    if length(phases) > 1 do
+      [%{type: :timing, name: :multi_phase_engagement, confidence: 90}]
+    else
+      []
+    end
+  end
+
+  @doc """
+  Determine overall effectiveness trend.
+  """
+  def determine_overall_effectiveness_trend(battles) when is_list(battles) do
+    if length(battles) < 2 do
+      :insufficient_data
+    else
+      effectiveness_scores = Enum.map(battles, &calculate_battle_effectiveness/1)
+
+      # Calculate trend
+      recent_avg = effectiveness_scores |> Enum.take(3) average()
+      older_avg = effectiveness_scores |> Enum.drop(3) Enum.take(3) average()
+
+      cond do
+        recent_avg > older_avg * 1.1 -> :improving
+        recent_avg < older_avg * 0.9 -> :declining
+        true -> :stable
+      end
+    end
+  end
+
+  @doc """
+  Calculate battle effectiveness score.
+  """
+  def calculate_battle_effectiveness(battle) do
+    isk_efficiency = get_in(battle, [:outcome_analysis, :isk_efficiency]) || 0.5
+    kill_efficiency = get_in(battle, [:outcome_analysis, :kill_efficiency]) || 0.5
+    objective_success = if get_in(battle, [:outcome_analysis, :victor]), do: 1.0, else: 0.0
+
+    (isk_efficiency + kill_efficiency + objective_success) / 3
+  end
+
+  @doc """
+  Calculate average of a list.
+  """
+  def average(list) when is_list(list) and length(list) > 0 do
+    Enum.sum(list) / length(list)
+  end
+
+  def average(_), do: 0
+
+  @doc """
+  Determine doctrine evolution pattern.
+  """
+  def determine_doctrine_evolution_pattern(battles) do
+    doctrine_usage =
+      battles
+      Enum.map(&extract_doctrine_usage/1)
+      Enum.reject(&Enum.empty?/1)
+
+    if length(doctrine_usage) < 3 do
+      :insufficient_data
+    else
+      # Check for doctrine shifts
+      recent_doctrines = doctrine_usage |> Enum.take(3) List.flatten() Enum.uniq()
+
+      older_doctrines =
+        doctrine_usage |> Enum.drop(3) Enum.take(3) List.flatten() Enum.uniq()
+
+      new_doctrines = MapSet.difference(MapSet.new(recent_doctrines), MapSet.new(older_doctrines))
+
+      abandoned_doctrines =
+        MapSet.difference(MapSet.new(older_doctrines), MapSet.new(recent_doctrines))
+
+      cond do
+        MapSet.size(new_doctrines) > 2 -> :rapid_innovation
+        MapSet.size(new_doctrines) > 0 -> :gradual_evolution
+        MapSet.size(abandoned_doctrines) > 0 -> :doctrine_refinement
+        true -> :stable_doctrine
+      end
+    end
+  end
+
+  @doc """
+  Extract doctrine usage from battle.
+  """
+  def extract_doctrine_usage(battle) do
+    case get_in(battle, [:fleet_analysis, :doctrines]) do
+      doctrines when is_list(doctrines) ->
+        Enum.map(doctrines, & &1.name)
+
+      _ ->
+        []
+    end
+  end
+
+  @doc """
+  Calculate doctrine success rates.
+  """
+  def calculate_doctrine_success_rates(battles, _timeframe) do
+    # Group battles by doctrine
+    doctrine_results =
+      battles
+      Enum.flat_map(&expand_battle_by_doctrines/1)
+      Enum.group_by(& &1.doctrine)
+      |>       Enum.map(fn {doctrine, doctrine_battles} ->
+        wins = Enum.count(doctrine_battles, & &1.won)
+        total = length(doctrine_battles)
+        success_rate = if total > 0, do: wins / total, else: 0
+
+        {doctrine,
+         %{
+           battles: total,
+           wins: wins,
+           success_rate: Float.round(success_rate * 100, 1)
+         }}
+      end)
+      Map.new()
+
+    doctrine_results
+  end
+
+  @doc """
+  Expand battle data by doctrines used.
+  """
+  def expand_battle_by_doctrines(battle) do
+    doctrines = get_in(battle, [:fleet_analysis, :doctrines]) || []
+
+    won =
+      get_in(battle, [:outcome_analysis, :victor]) == get_in(battle, [:metadata, :analyzed_side])
+
+    Enum.map(doctrines, fn doctrine ->
+      %{
+        doctrine: doctrine.name,
+        won: won,
+        battle_id: get_in(battle, [:metadata, :battle_id])
+      }
+    end)
+  end
+
+  @doc """
+  Identify most used doctrines.
+  """
+  def identify_most_used_doctrines(battles) do
+    battles
+    Enum.flat_map(&extract_doctrine_usage/1)
+    Enum.frequencies()
+    Enum.sort_by(fn {_doctrine, count} -> count end, :desc)
+    Enum.take(5)
+    Enum.map(fn {doctrine, count} -> %{name: doctrine, usage_count: count} end)
+  end
+
+  @doc """
+  Analyze doctrine effectiveness.
+  """
+  def analyze_doctrine_effectiveness(success_rates, usage_counts) do
+    # Combine success rates with usage to find effective doctrines
+    all_doctrines =
+      MapSet.union(
+        MapSet.new(Map.keys(success_rates)),
+        MapSet.new(Enum.map(usage_counts, & &1.name))
+      )
+
+    all_doctrines
+    |>     Enum.map(fn doctrine ->
+      success_data = Map.get(success_rates, doctrine, %{success_rate: 0, battles: 0})
+      usage_data = Enum.find(usage_counts, %{usage_count: 0}, &(&1.name == doctrine))
+
+      effectiveness_score =
+        calculate_doctrine_effectiveness_score(
+          success_data.success_rate,
+          success_data.battles,
+          usage_data.usage_count
+        )
+
+      %{
+        doctrine: doctrine,
+        success_rate: success_data.success_rate,
+        battle_count: success_data.battles,
+        usage_count: usage_data.usage_count,
+        effectiveness_score: effectiveness_score,
+        rating: rate_doctrine_effectiveness(effectiveness_score)
+      }
+    end)
+    Enum.sort_by(& &1.effectiveness_score, :desc)
+  end
+
+  @doc """
+  Calculate doctrine effectiveness score.
+  """
+  def calculate_doctrine_effectiveness_score(success_rate, battles, usage_count) do
+    # Weight success rate by number of battles for reliability
+    reliability_factor = min(1.0, battles / 10)
+    weighted_success = success_rate * reliability_factor
+
+    # Factor in usage (popular doctrines that win are very effective)
+    usage_factor = min(1.0, usage_count / 20)
+
+    weighted_success * 0.7 + usage_factor * 30
+  end
+
+  @doc """
+  Rate doctrine effectiveness.
+  """
+  def rate_doctrine_effectiveness(score) do
+    cond do
+      score >= 80 -> :highly_effective
+      score >= 60 -> :effective
+      score >= 40 -> :moderately_effective
+      score >= 20 -> :marginally_effective
+      true -> :ineffective
+    end
+  end
+
+  @doc """
+  Calculate doctrine usage stability.
+  """
+  def calculate_doctrine_usage_stability(battles) do
+    # Get doctrine usage over time windows
+    usage_windows =
+      battles
+      Enum.chunk_every(5)
+      Enum.map(&calculate_window_doctrine_distribution/1)
+
+    if length(usage_windows) < 2 do
+      # Not enough data, assume stable
+      1.0
+    else
+      # Calculate variance between windows
+      calculate_distribution_variance(usage_windows)
+    end
+  end
+
+  @doc """
+  Find dominant doctrine from effectiveness analysis.
+  """
+  def find_dominant_doctrine(effectiveness_analysis) do
+    effectiveness_analysis
+    |>     Enum.filter(&(&1.effectiveness_score >= 60))
+    Enum.filter(&(&1.battle_count >= 3))
+    List.first()
+    case do
+      nil -> nil
+      doctrine -> doctrine.doctrine
+    end
+  end
+
+  # Helper functions
+
+  defp calculate_window_doctrine_distribution(window_battles) do
+    total_doctrines =
+      window_battles
+      Enum.flat_map(&extract_doctrine_usage/1)
+      length()
+
+    if total_doctrines == 0 do
+      %{}
+    else
+      window_battles
+      Enum.flat_map(&extract_doctrine_usage/1)
+      Enum.frequencies()
+      |>       Enum.map(fn {doctrine, count} ->
+        {doctrine, count / total_doctrines}
+      end)
+      Map.new()
+    end
+  end
+
+  defp calculate_distribution_variance(distributions) do
+    all_doctrines =
+      distributions
+      Enum.flat_map(&Map.keys/1)
+      Enum.uniq()
+
+    variances =
+      all_doctrines
+      |>       Enum.map(fn doctrine ->
+        values = Enum.map(distributions, &Map.get(&1, doctrine, 0))
+        calculate_variance(values)
+      end)
+
+    avg_variance = if Enum.empty?(variances), do: 0, else: Enum.sum(variances) / length(variances)
+
+    # Convert to stability score (inverse of variance)
+    1 - min(1, avg_variance * 10)
+  end
+
+  defp calculate_variance(values) do
+    if Enum.empty?(values) do
+      0
+    else
+      mean = Enum.sum(values) / length(values)
+
+      sum_squares =
+        values
+        |>         Enum.map(fn v -> (v - mean) * (v - mean) end)
+        Enum.sum()
+
+      sum_squares / length(values)
+    end
+  end
+end

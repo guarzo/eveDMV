@@ -1,0 +1,521 @@
+defmodule EveDmv.Contexts.CorporationIntelligence.Analyzers.DoctrineClassificationEngine do
+  @moduledoc """
+  Specialized engine for combat doctrine classification and analysis.
+
+  This module provides comprehensive doctrine pattern matching and classification
+  capabilities for EVE Online corporation combat analysis. It identifies and scores
+  various combat doctrines based on fleet composition patterns, engagement styles,
+  and tactical indicators.
+
+  ## Core Functions
+  - Doctrine pattern matching and scoring
+  - Classification confidence calculation
+  - Supporting evidence extraction
+  - Hybrid doctrine identification
+  - Engagement-specific doctrine analysis
+
+  ## Supported Doctrines
+  - Shield Kiting: Long-range shield-tanked mobility doctrine
+  - Armor Brawling: Close-range armor-tanked brawling doctrine
+  - EWAR Heavy: Electronic warfare focused force multiplication
+  - Capital Escalation: Capital ship deployment and escalation
+  - Alpha Strike: High alpha damage burst elimination
+  - Nano Gang: High-speed guerrilla warfare tactics
+  - Logistics Heavy: Survivability through extensive logistics
+
+  ## Classification Process
+  1. Analyze fleet compositions across multiple engagements
+  2. Calculate doctrine scores based on ship types, fitting patterns, and tactics
+  3. Determine confidence levels based on consistency and data quality
+  4. Extract supporting evidence from strongest examples
+  5. Identify hybrid doctrine characteristics
+  """
+
+  alias EveDmv.Contexts.CorporationIntelligence.Domain.CorpIntelligenceUtils
+
+  require Logger
+
+  # Minimum data requirements for reliable classification
+  @min_engagements_for_classification 3
+  @min_participants_per_engagement 5
+  @high_confidence_threshold 0.7
+  @moderate_confidence_threshold 0.5
+
+  @doc """
+  Classifies combat doctrines based on fleet composition analysis.
+
+  Analyzes multiple fleet engagements to identify primary and secondary doctrines,
+  calculate confidence levels, and extract supporting evidence.
+
+  ## Parameters
+  - fleet_compositions: List of analyzed fleet composition data
+
+  ## Returns
+  {:ok, classification} containing:
+  - primary_doctrine: Most prominent doctrine with score and confidence
+  - secondary_doctrine: Second most prominent doctrine (if applicable)
+  - all_doctrine_scores: Complete scoring breakdown for all doctrines
+  - doctrine_certainty: Overall classification certainty
+  - hybrid_characteristics: Identified hybrid doctrine patterns
+  """
+  def classify_combat_doctrines(fleet_compositions) when is_list(fleet_compositions) do
+    if length(fleet_compositions) < @min_engagements_for_classification do
+      {:error, :insufficient_engagements}
+    else
+      doctrine_scores = calculate_all_doctrine_scores(fleet_compositions)
+      sorted_doctrines = sort_doctrines_by_score(doctrine_scores)
+
+      classification = build_classification_result(sorted_doctrines, doctrine_scores)
+
+      {:ok, classification}
+    end
+  end
+
+  @doc """
+  Calculates doctrine score for a single engagement.
+
+  Analyzes a specific fleet composition to determine how well it matches
+  a particular doctrine pattern.
+
+  ## Parameters
+  - composition: Fleet composition data with doctrine indicators
+  - doctrine_key: Atom identifying the doctrine to score
+
+  ## Returns
+  Float score between 0.0 and 1.0 indicating doctrine match strength
+  """
+  def calculate_engagement_doctrine_score(composition, doctrine_key) do
+    indicators = get_in(composition, [:doctrine_indicators, doctrine_key]) || %{}
+
+    case doctrine_key do
+      :shield_kiting ->
+        score_shield_kiting_doctrine(indicators)
+
+      :armor_brawling ->
+        score_armor_brawling_doctrine(indicators)
+
+      :ewar_heavy ->
+        score_ewar_heavy_doctrine(indicators)
+
+      :capital_escalation ->
+        score_capital_escalation_doctrine(indicators)
+
+      :alpha_strike ->
+        score_alpha_strike_doctrine(indicators)
+
+      :nano_gang ->
+        score_nano_gang_doctrine(indicators)
+
+      :logistics_heavy ->
+        score_logistics_heavy_doctrine(indicators)
+
+      _ ->
+        0.0
+    end
+  end
+
+  @doc """
+  Calculates doctrine confidence based on consistency and data quality.
+
+  Evaluates how confident we can be in a doctrine classification based on
+  scoring consistency across engagements and the amount of available data.
+
+  ## Parameters
+  - fleet_compositions: List of fleet composition data
+  - doctrine_key: The doctrine being evaluated
+  - average_score: The calculated average doctrine score
+
+  ## Returns
+  Float confidence level between 0.0 and 1.0
+  """
+  def calculate_doctrine_confidence(fleet_compositions, doctrine_key, average_score) do
+    if length(fleet_compositions) < @min_engagements_for_classification do
+      # Low confidence with limited data
+      max(0.3, average_score * 0.7)
+    else
+      engagement_scores = calculate_engagement_scores(fleet_compositions, doctrine_key)
+      variance = CorpIntelligenceUtils.calculate_variance(engagement_scores)
+
+      # Calculate consistency factor (lower variance = higher consistency)
+      consistency = calculate_consistency_factor(variance, average_score)
+
+      # Calculate data quality factor
+      data_quality = calculate_data_quality_factor(fleet_compositions)
+
+      # Combine factors for final confidence
+      average_score * 0.5 + consistency * 0.3 + data_quality * 0.2
+    end
+  end
+
+  @doc """
+  Extracts supporting evidence for doctrine classification.
+
+  Identifies the strongest examples of a doctrine from fleet engagements
+  and extracts key characteristics that support the classification.
+
+  ## Parameters
+  - fleet_compositions: List of fleet composition data
+  - doctrine_key: The doctrine to extract evidence for
+
+  ## Returns
+  List of evidence records with engagement details and key characteristics
+  """
+  def extract_doctrine_evidence(fleet_compositions, doctrine_key) do
+    fleet_compositions
+    score_and_sort_engagements(doctrine_key)
+    Enum.take(3)
+    |>     Enum.map(&build_evidence_record(&1, doctrine_key))
+  end
+
+  @doc """
+  Identifies hybrid doctrine characteristics.
+
+  Analyzes doctrine scores to determine if a corporation uses
+  hybrid or complex doctrine combinations.
+
+  ## Parameters
+  - doctrine_scores: Map of doctrine keys to score data
+
+  ## Returns
+  List of atoms describing hybrid characteristics
+  """
+  def identify_hybrid_characteristics(doctrine_scores) do
+    high_scoring_doctrines =
+      doctrine_scores
+      Enum.filter(fn {_key, data} -> data.score > 0.5 end)
+      |>       Enum.map(&elem(&1, 0))
+
+    case length(high_scoring_doctrines) do
+      0 -> [:no_clear_doctrine]
+      1 -> [:pure_doctrine]
+      2 -> [:hybrid_doctrine] ++ high_scoring_doctrines
+      _ -> [:complex_hybrid] ++ Enum.take(high_scoring_doctrines, 3)
+    end
+  end
+
+  @doc """
+  Calculates overall doctrine classification certainty.
+
+  Determines how certain we can be about the doctrine classification
+  based on the separation between top doctrine scores.
+
+  ## Parameters
+  - doctrine_scores: Map of doctrine keys to score data
+
+  ## Returns
+  Float certainty between 0.0 and 1.0
+  """
+  def calculate_classification_certainty(doctrine_scores) do
+    scores =
+      doctrine_scores
+      Map.values()
+      Enum.map(& &1.score)
+      Enum.sort(:desc)
+
+    case scores do
+      [first, second | _] when first > 0 and second > 0 ->
+        # Certainty based on separation between top scores
+        separation = (first - second) / first
+        min(1.0, separation * 2)
+
+      [first | _] when first > 0 ->
+        # Single dominant doctrine
+        min(1.0, first * 1.5)
+
+      _ ->
+        0.0
+    end
+  end
+
+  # Private implementation functions
+
+  defp calculate_all_doctrine_scores(fleet_compositions) do
+    CorpIntelligenceUtils.doctrine_patterns()
+    |>     Enum.map(fn {doctrine_key, doctrine_def} ->
+      score = calculate_average_doctrine_score(fleet_compositions, doctrine_key)
+      confidence = calculate_doctrine_confidence(fleet_compositions, doctrine_key, score)
+      evidence = extract_doctrine_evidence(fleet_compositions, doctrine_key)
+
+      {doctrine_key, %{
+        name: doctrine_def.name,
+        description: doctrine_def.description,
+        score: score,
+        confidence: confidence,
+        supporting_evidence: evidence
+      }}
+    end)
+    Map.new()
+  end
+
+  defp calculate_average_doctrine_score(fleet_compositions, doctrine_key) do
+    if Enum.empty?(fleet_compositions) do
+      0.0
+    else
+      total_score =
+        fleet_compositions
+        |>         Enum.map(&calculate_engagement_doctrine_score(&1, doctrine_key))
+        Enum.sum()
+
+      total_score / length(fleet_compositions)
+    end
+  end
+
+  defp sort_doctrines_by_score(doctrine_scores) do
+    doctrine_scores
+    Enum.sort_by(fn {_key, data} -> data.score end, :desc)
+  end
+
+  defp build_classification_result(sorted_doctrines, doctrine_scores) do
+    {primary_key, primary_data} = List.first(sorted_doctrines) || {nil, nil}
+    {secondary_key, secondary_data} = Enum.at(sorted_doctrines, 1, {nil, nil})
+
+    %{
+      primary_doctrine: if(primary_data, do: Map.put(primary_data, :key, primary_key)),
+      secondary_doctrine: if(secondary_data, do: Map.put(secondary_data, :key, secondary_key)),
+      all_doctrine_scores: doctrine_scores,
+      doctrine_certainty: calculate_classification_certainty(doctrine_scores),
+      hybrid_characteristics: identify_hybrid_characteristics(doctrine_scores)
+    }
+  end
+
+  # Doctrine-specific scoring functions
+
+  defp score_shield_kiting_doctrine(indicators) do
+    shield_factor = Map.get(indicators, :shield_percentage, 0.0) * 0.3
+    range_factor = Map.get(indicators, :long_range_percentage, 0.0) * 0.3
+    mobility_factor = Map.get(indicators, :mobility_ships, 0.0) * 0.2
+
+    # Bonus for short engagements (hit and run tactics)
+    duration_bonus =
+      if Map.get(indicators, :engagement_duration, 999) < 300, do: 0.2, else: 0.0
+
+    shield_factor + range_factor + mobility_factor + duration_bonus
+  end
+
+  defp score_armor_brawling_doctrine(indicators) do
+    armor_factor = Map.get(indicators, :armor_percentage, 0.0) * 0.3
+    range_factor = Map.get(indicators, :short_range_percentage, 0.0) * 0.3
+    heavy_factor = Map.get(indicators, :heavy_ships_percentage, 0.0) * 0.2
+
+    # Bonus for close engagement patterns
+    engagement_bonus =
+      if Map.get(indicators, :close_engagement, false), do: 0.2, else: 0.0
+
+    armor_factor + range_factor + heavy_factor + engagement_bonus
+  end
+
+  defp score_ewar_heavy_doctrine(indicators) do
+    ewar_factor = Map.get(indicators, :ewar_percentage, 0.0) * 0.4
+    support_factor = min(1.0, Map.get(indicators, :support_ratio, 0.0) * 2) * 0.3
+    coordination_factor = Map.get(indicators, :coordination_quality, 0.0) * 0.2
+    specialized_factor = Map.get(indicators, :specialized_ships, 0.0) * 0.1
+
+    ewar_factor + support_factor + coordination_factor + specialized_factor
+  end
+
+  defp score_capital_escalation_doctrine(indicators) do
+    capital_factor = Map.get(indicators, :capital_percentage, 0.0) * 0.4
+    logistics_factor = Map.get(indicators, :logistics_percentage, 0.0) * 0.2
+    interdiction_factor = Map.get(indicators, :interdiction_percentage, 0.0) * 0.2
+
+    # Bonus for escalation patterns
+    escalation_bonus =
+      if Map.get(indicators, :escalation_pattern) in [:moderate_escalation, :strong_escalation],
+        do: 0.2,
+        else: 0.0
+
+    capital_factor + logistics_factor + interdiction_factor + escalation_bonus
+  end
+
+  defp score_alpha_strike_doctrine(indicators) do
+    alpha_factor = Map.get(indicators, :alpha_ships_percentage, 0.0) * 0.4
+    coordination_factor = Map.get(indicators, :coordination_quality, 0.0) * 0.3
+
+    # Bonus for focused fire patterns
+    focus_bonus =
+      if Map.get(indicators, :target_focus) in [:highly_focused, :moderately_focused],
+        do: 0.2,
+        else: 0.0
+
+    # Bonus for high kill density
+    density_bonus = min(0.1, Map.get(indicators, :killmail_density, 0.0) / 20)
+
+    alpha_factor + coordination_factor + focus_bonus + density_bonus
+  end
+
+  defp score_nano_gang_doctrine(indicators) do
+    mobility_factor = Map.get(indicators, :mobility_percentage, 0.0) * 0.4
+    frigate_factor = Map.get(indicators, :frigate_percentage, 0.0) * 0.3
+
+    # Bonus for short, hit-and-run engagements
+    duration_bonus =
+      if Map.get(indicators, :engagement_duration, 999) < 180, do: 0.2, else: 0.0
+
+    # Bonus for multi-system engagements
+    system_bonus =
+      if Map.get(indicators, :multi_system, false), do: 0.1, else: 0.0
+
+    mobility_factor + frigate_factor + duration_bonus + system_bonus
+  end
+
+  defp score_logistics_heavy_doctrine(indicators) do
+    # Scale up logistics percentage for this doctrine
+    logistics_factor = min(1.0, Map.get(indicators, :logistics_percentage, 0.0) * 4) * 0.4
+    support_factor = min(1.0, Map.get(indicators, :support_ratio, 0.0) * 2) * 0.3
+
+    # Bonus for long engagements (attrition warfare)
+    duration_bonus =
+      if Map.get(indicators, :engagement_duration, 0) > 600, do: 0.2, else: 0.0
+
+    # Bonus for survivability focus
+    survivability_bonus =
+      if Map.get(indicators, :survivability_focus, false), do: 0.1, else: 0.0
+
+    logistics_factor + support_factor + duration_bonus + survivability_bonus
+  end
+
+  # Helper functions
+
+  defp calculate_engagement_scores(fleet_compositions, doctrine_key) do
+    Enum.map(fleet_compositions, &calculate_engagement_doctrine_score(&1, doctrine_key))
+  end
+
+  defp calculate_consistency_factor(variance, average_score) do
+    if average_score > 0 do
+      1.0 - min(1.0, variance / (average_score * average_score))
+    else
+      0.0
+    end
+  end
+
+  defp calculate_data_quality_factor(fleet_compositions) do
+    valid_engagements =
+      Enum.count(fleet_compositions, fn comp ->
+        Map.get(comp, :participant_count, 0) >= @min_participants_per_engagement
+      end)
+
+    engagement_ratio = valid_engagements / length(fleet_compositions)
+
+    # Factor in average participant count
+    avg_participants =
+      fleet_compositions
+      |>       Enum.map(&Map.get(&1, :participant_count, 0))
+      Enum.sum()
+      Kernel./(length(fleet_compositions))
+
+    participant_factor = min(1.0, avg_participants / 20)
+
+    engagement_ratio * 0.6 + participant_factor * 0.4
+  end
+
+  defp score_and_sort_engagements(fleet_compositions, doctrine_key) do
+    fleet_compositions
+    |>     Enum.map(fn comp ->
+      updated_score = calculate_engagement_doctrine_score(comp, doctrine_key)
+      {comp, score}
+    end)
+    Enum.sort_by(&elem(&1, 1), :desc)
+    Enum.map(&elem(&1, 0))
+  end
+
+  defp build_evidence_record(composition, doctrine_key) do
+    %{
+      engagement_id: Map.get(composition, :engagement_id),
+      timestamp: Map.get(composition, :timestamp),
+      participant_count: Map.get(composition, :participant_count),
+      key_characteristics: extract_key_characteristics(composition, doctrine_key),
+      score: calculate_engagement_doctrine_score(composition, doctrine_key)
+    }
+  end
+
+  defp extract_key_characteristics(composition, doctrine_key) do
+    updated_indicators = get_in(composition, [:doctrine_indicators, doctrine_key]) || %{}
+
+    case doctrine_key do
+      :shield_kiting ->
+        build_shield_kiting_characteristics(indicators)
+
+      :armor_brawling ->
+        build_armor_brawling_characteristics(indicators)
+
+      :ewar_heavy ->
+        build_ewar_heavy_characteristics(indicators)
+
+      :capital_escalation ->
+        build_capital_escalation_characteristics(indicators)
+
+      :alpha_strike ->
+        build_alpha_strike_characteristics(indicators)
+
+      :nano_gang ->
+        build_nano_gang_characteristics(indicators)
+
+      :logistics_heavy ->
+        build_logistics_heavy_characteristics(indicators)
+
+      _ ->
+        ["Analysis available for #{doctrine_key}"]
+    end
+  end
+
+  defp build_shield_kiting_characteristics(indicators) do
+    [
+      "#{round(Map.get(indicators, :shield_percentage, 0) * 100)}% shield tanked ships",
+      "#{round(Map.get(indicators, :long_range_percentage, 0) * 100)}% long-range weapons",
+      "#{round(Map.get(indicators, :mobility_ships, 0) * 100)}% mobile ships"
+    ]
+  end
+
+  defp build_armor_brawling_characteristics(indicators) do
+    [
+      "#{round(Map.get(indicators, :armor_percentage, 0) * 100)}% armor tanked ships",
+      "#{round(Map.get(indicators, :short_range_percentage, 0) * 100)}% short-range weapons",
+      "#{round(Map.get(indicators, :heavy_ships_percentage, 0) * 100)}% heavy ships"
+    ]
+  end
+
+  defp build_ewar_heavy_characteristics(indicators) do
+    [
+      "#{round(Map.get(indicators, :ewar_percentage, 0) * 100)}% EWAR ships",
+      "#{round(Map.get(indicators, :support_ratio, 0) * 100)}% support ships overall",
+      "Coordination quality: #{round(Map.get(indicators, :coordination_quality, 0) * 100)}%"
+    ]
+  end
+
+  defp build_capital_escalation_characteristics(indicators) do
+    [
+      "#{round(Map.get(indicators, :capital_percentage, 0) * 100)}% capital ships",
+      "#{round(Map.get(indicators, :logistics_percentage, 0) * 100)}% logistics support",
+      "Escalation pattern: #{Map.get(indicators, :escalation_pattern, :unknown)}"
+    ]
+  end
+
+  defp build_alpha_strike_characteristics(indicators) do
+    [
+      "#{round(Map.get(indicators, :alpha_ships_percentage, 0) * 100)}% alpha damage ships",
+      "Target focus: #{Map.get(indicators, :target_focus, :unknown)}",
+      "Kill density: #{Float.round(Map.get(indicators, :killmail_density, 0), 1)} kills/minute"
+    ]
+  end
+
+  defp build_nano_gang_characteristics(indicators) do
+    characteristics = [
+      "#{round(Map.get(indicators, :mobility_percentage, 0) * 100)}% high-mobility ships",
+      "Engagement duration: #{Map.get(indicators, :engagement_duration, 0)} seconds"
+    ]
+
+    if Map.get(indicators, :multi_system, false) do
+      ["Multi-system engagement" | characteristics]
+    else
+      characteristics
+    end
+  end
+
+  defp build_logistics_heavy_characteristics(indicators) do
+    [
+      "#{round(Map.get(indicators, :logistics_percentage, 0) * 100)}% logistics ships",
+      "#{round(Map.get(indicators, :support_ratio, 0) * 100)}% total support",
+      "Engagement duration: #{div(Map.get(indicators, :engagement_duration, 0), 60)} minutes"
+    ]
+  end
+end

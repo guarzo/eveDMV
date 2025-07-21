@@ -1,0 +1,365 @@
+defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.BattleOutcomeEngine do
+  @moduledoc """
+  Engine for analyzing battle outcomes, trends, and critical moments.
+
+  Handles:
+  - Battle effectiveness trend analysis
+  - Critical moment identification
+  - Battle outcome determination
+  - Performance vs expected analysis
+  - Kill spike and turning point detection
+  """
+
+  alias EveDmv.Contexts.CorporationIntelligence.Domain.CorpIntelligenceUtils
+  require Logger
+
+  @doc """
+  Analyze effectiveness trends over time during a battle.
+  """
+  def analyze_effectiveness_trends(sides, killmails) do
+    if Enum.empty?(killmails) do
+      %{trend: :stable, phases: []}
+    else
+      # Divide battle into phases
+      sorted_killmails = Enum.sort_by(killmails, & &1.killmail_time)
+      phase_size = max(1, div(length(sorted_killmails), 3))
+
+      phases = [
+        %{phase: :early, kills: Enum.take(sorted_killmails, phase_size)},
+        %{phase: :middle, kills: Enum.slice(sorted_killmails, phase_size, phase_size)},
+        %{phase: :late, kills: Enum.drop(sorted_killmails, phase_size * 2)}
+      ]
+
+      # Analyze each phase
+      phase_analysis =
+        phases
+        |>         Enum.map(fn %{phase: phase, kills: phase_kills} ->
+          %{
+            phase: phase,
+            kill_count: length(phase_kills),
+            intensity: calculate_phase_intensity(phase_kills, sides)
+          }
+        end)
+
+      %{
+        trend: determine_trend(phase_analysis),
+        phases: phase_analysis
+      }
+    end
+  end
+
+  @doc """
+  Calculate intensity of a battle phase.
+  """
+  def calculate_phase_intensity(phase_kills, sides) do
+    total_participants = length(sides.side_a) + length(sides.side_b)
+
+    if total_participants > 0 do
+      Float.round(length(phase_kills) / total_participants, 2)
+    else
+      0.0
+    end
+  end
+
+  @doc """
+  Determine overall trend from phase analysis.
+  """
+  def determine_trend(phase_analysis) do
+    intensities = Enum.map(phase_analysis, & &1.intensity)
+
+    case intensities do
+      [early, middle, late] when late > middle and middle > early -> :escalating
+      [early, middle, late] when late < middle and middle < early -> :declining
+      [early, middle, late] when middle > early and middle > late -> :peaked
+      _ -> :stable
+    end
+  end
+
+  @doc """
+  Analyze losses by fleet composition.
+  """
+  def analyze_losses_by_composition(sides, killmails) do
+    if Enum.empty?(killmails) do
+      %{side_a_losses: [], side_b_losses: []}
+    else
+      side_a_chars = MapSet.new(sides.side_a, fn p -> Map.get(p, :character_id) end)
+      _side_b_chars = MapSet.new(sides.side_b, fn p -> Map.get(p, :character_id) end)
+
+      # Categorize losses by side
+      {side_a_losses, side_b_losses} =
+        killmails
+        |>         Enum.split_with(fn killmail ->
+          victim_id = Map.get(killmail, :victim_character_id)
+          |>           MapSet.member?(side_a_chars, victim_id)
+        end)
+
+      %{
+        side_a_losses: analyze_side_losses(side_a_losses, sides.side_a),
+        side_b_losses: analyze_side_losses(side_b_losses, sides.side_b),
+        loss_ratio: calculate_loss_ratio(side_a_losses, side_b_losses)
+      }
+    end
+  end
+
+  @doc """
+  Analyze losses for one side.
+  """
+  def analyze_side_losses(losses, side_participants) do
+    if Enum.empty?(losses) do
+      %{total_losses: 0, loss_by_class: %{}, loss_rate: 0.0}
+    else
+      # Group losses by ship class
+      loss_by_class =
+        losses
+        |>         Enum.group_by(fn killmail ->
+          ship_type_id = Map.get(killmail, :victim_ship_type_id)
+          classify_ship_by_type_id(ship_type_id)
+        end)
+        Enum.map(fn {class, class_losses} -> {class, length(class_losses)} end)
+        Enum.into(%{})
+
+      loss_rate = length(losses) / length(side_participants)
+
+      %{
+        total_losses: length(losses),
+        loss_by_class: loss_by_class,
+        loss_rate: Float.round(loss_rate, 2)
+      }
+    end
+  end
+
+  @doc """
+  Calculate loss ratio between sides.
+  """
+  def calculate_loss_ratio(side_a_losses, side_b_losses) do
+    if Enum.empty?(side_b_losses) do
+      if length(side_a_losses) > 0, do: 10.0, else: 1.0
+    else
+      Float.round(length(side_a_losses) / length(side_b_losses), 2)
+    end
+  end
+
+  @doc """
+  Analyze performance vs expected outcomes.
+  """
+  def analyze_performance_vs_expected(sides, killmails) do
+    side_a_expected = estimate_expected_performance(sides.side_a)
+    side_b_expected = estimate_expected_performance(sides.side_b)
+
+    # Calculate actual performance
+    side_a_actual = calculate_actual_performance(sides.side_a, killmails)
+    side_b_actual = calculate_actual_performance(sides.side_b, killmails)
+
+    %{
+      side_a: %{
+        expected: side_a_expected,
+        actual: side_a_actual,
+        variance: Float.round(side_a_actual - side_a_expected, 2)
+      },
+      side_b: %{
+        expected: side_b_expected,
+        actual: side_b_actual,
+        variance: Float.round(side_b_actual - side_b_expected, 2)
+      }
+    }
+  end
+
+  @doc """
+  Estimate expected performance based on composition.
+  """
+  def estimate_expected_performance(side_participants) do
+    if Enum.empty?(side_participants) do
+      0.0
+    else
+      # Simplified estimation - would need ship classification in real implementation
+      base_performance = min(1.0, length(side_participants) / 100)
+      Float.round(base_performance, 2)
+    end
+  end
+
+  @doc """
+  Calculate actual performance based on battle results.
+  """
+  def calculate_actual_performance(side_participants, killmails) do
+    if Enum.empty?(side_participants) do
+      0.0
+    else
+      side_chars = MapSet.new(side_participants, fn p -> Map.get(p, :character_id) end)
+
+      # Count kills achieved and losses suffered
+      kills_achieved = length(killmails) # Simplified
+
+      losses_suffered =
+        Enum.count(killmails, fn km ->
+          victim_id = Map.get(km, :victim_character_id)
+          |>           MapSet.member?(side_chars, victim_id)
+        end)
+
+      # Calculate performance score
+      if length(side_participants) > 0 do
+        kill_score = kills_achieved / length(side_participants)
+        loss_penalty = losses_suffered / length(side_participants)
+
+        performance = max(0.0, kill_score - loss_penalty * 0.5)
+        Float.round(performance, 2)
+      else
+        0.0
+      end
+    end
+  end
+
+  @doc """
+  Identify critical moments in the battle.
+  """
+  def identify_critical_moments(sides, killmails) do
+    if Enum.empty?(killmails) do
+      []
+    else
+      # Sort killmails by time
+      sorted_killmails = Enum.sort_by(killmails, & &1.killmail_time)
+
+      # Identify spikes in kill activity
+      kill_spikes = identify_kill_spikes(sorted_killmails)
+
+      # Identify high-value losses
+      high_value_losses = identify_high_value_losses(sorted_killmails)
+
+      # Identify turning points
+      turning_points = identify_turning_points(sorted_killmails, sides)
+
+      (kill_spikes ++ high_value_losses ++ turning_points)
+      Enum.sort_by(& &1.timestamp)
+      Enum.take(5)
+    end
+  end
+
+  @doc """
+  Identify spikes in kill activity.
+  """
+  def identify_kill_spikes(sorted_killmails) do
+    if length(sorted_killmails) < 10 do
+      []
+    else
+      # Group by 5-minute windows
+      time_windows =
+        sorted_killmails
+        |>         Enum.group_by(fn km ->
+          time = Map.get(km, :killmail_time)
+          # Truncate to 5-minute intervals
+          %{time | minute: div(time.minute, 5) * 5, second: 0}
+        end)
+
+      # Find windows with high activity
+      avg_kills_per_window = length(sorted_killmails) / map_size(time_windows)
+
+      time_windows
+      |>       Enum.filter(fn {_time, kills} -> length(kills) > avg_kills_per_window * 2 end)
+      Enum.map(fn {time, kills} ->
+        %{
+          type: :kill_spike,
+          timestamp: time,
+          description: "High activity spike - #{length(kills)} kills in 5 minutes",
+          severity: :high
+        }
+      end)
+    end
+  end
+
+  @doc """
+  Identify high-value ship losses.
+  """
+  def identify_high_value_losses(sorted_killmails) do
+    sorted_killmails
+    |>     Enum.filter(fn km ->
+      ship_type_id = Map.get(km, :victim_ship_type_id)
+      ship_class = classify_ship_by_type_id(ship_type_id)
+      ship_class == :capital
+    end)
+    Enum.map(fn km ->
+      %{
+        type: :high_value_loss,
+        timestamp: Map.get(km, :killmail_time),
+        description: "Capital ship destroyed",
+        severity: :critical
+      }
+    end)
+  end
+
+  @doc """
+  Identify potential turning points in the battle.
+  """
+  def identify_turning_points(sorted_killmails, _sides) do
+    if length(sorted_killmails) < 20 do
+      []
+    else
+      # Analyze loss ratios over time
+      phase_size = div(length(sorted_killmails), 4)
+
+      phases = [
+        Enum.take(sorted_killmails, phase_size),
+        Enum.slice(sorted_killmails, phase_size, phase_size),
+        Enum.slice(sorted_killmails, phase_size * 2, phase_size),
+        Enum.drop(sorted_killmails, phase_size * 3)
+      ]
+
+      # Look for significant changes in loss patterns
+      phases
+      Enum.with_index()
+      |>       Enum.filter(fn {phase_kills, index} ->
+        # Simplified turning point detection
+        length(phase_kills) > phase_size * 1.5 and index > 0
+      end)
+      Enum.map(fn {phase_kills, index} ->
+        %{
+          type: :turning_point,
+          timestamp: phase_kills |> List.first() Map.get(:killmail_time),
+          description: "Significant escalation in phase #{index + 1}",
+          severity: :medium
+        }
+      end)
+    end
+  end
+
+  @doc """
+  Determine battle outcome based on effectiveness and kill data.
+  """
+  def determine_battle_outcome(side_a_effectiveness, side_b_effectiveness, killmails) do
+    if Enum.empty?(killmails) do
+      %{outcome: :inconclusive, victor: :none, confidence: :low}
+    else
+      effectiveness_diff = side_a_effectiveness - side_b_effectiveness
+
+      # Determine victor based on effectiveness difference
+      victor =
+        cond do
+          effectiveness_diff > 0.2 -> :side_a
+          effectiveness_diff < -0.2 -> :side_b
+          true -> :contested
+        end
+
+      # Determine confidence based on kill data
+      confidence =
+        cond do
+          abs(effectiveness_diff) > 0.4 -> :high
+          abs(effectiveness_diff) > 0.2 -> :medium
+          true -> :low
+        end
+
+      %{
+        outcome: if(victor == :contested, do: :stalemate, else: :victory),
+        victor: victor,
+        confidence: confidence,
+        effectiveness_difference: Float.round(effectiveness_diff, 2),
+        total_kills: length(killmails)
+      }
+    end
+  end
+
+  # Private helper functions
+
+  defp classify_ship_by_type_id(ship_type_id) do
+    # Reuse the centralized classification logic
+    participant = %{ship_type_id: ship_type_id, ship_name: ""}
+    CorpIntelligenceUtils.classify_ship_type(participant.ship_type_id)
+  end
+end

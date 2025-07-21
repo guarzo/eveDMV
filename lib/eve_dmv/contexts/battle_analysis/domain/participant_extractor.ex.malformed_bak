@@ -1,0 +1,230 @@
+defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
+  @moduledoc """
+  Utility module for extracting participant information from _killmail data.
+  Handles comprehensive attacker extraction from _killmail raw_data JSON.
+  """
+
+  @doc """
+  Extracts all participant character IDs from a _killmail.
+  Returns a list of character IDs including both victim and attackers.
+  """
+  def extract_participants(_killmail) do
+    victim_ids = extract_victim_character_ids(_killmail)
+    attacker_ids = extract_attacker_character_ids(_killmail)
+
+    (victim_ids ++ attacker_ids)
+    |> Enum.uniq()
+    |> Enum.reject(&is_nil/1)
+  end
+
+  @doc """
+  Extracts attacker character IDs from a _killmail's raw data.
+  Returns a list of character IDs for attackers only.
+  """
+  def extract_attackers(_killmail) do
+    extract_attacker_character_ids(_killmail)
+  end
+
+  @doc """
+  Extracts comprehensive attacker information from _killmail raw_data.
+  Returns a list of attacker maps with full participant details.
+  """
+  def extract_attacker_details(_killmail) do
+    case _killmail.raw_data do
+      %{"attackers" => attackers} when is_list(attackers) ->
+        attackers
+        |> Enum.map(&normalize_attacker_data/1)
+        |> Enum.reject(&is_nil/1)
+
+      _ ->
+        []
+    end
+  end
+
+  @doc """
+  Extracts victim information from _killmail raw_data.
+  Returns a map with victim details or nil.
+  """
+  def extract_victim_details(_killmail) do
+    case _killmail.raw_data do
+      %{"victim" => victim} when is_map(victim) ->
+        normalize_victim_data(victim)
+
+      _ ->
+        # Fallback to _killmail direct fields
+        %{
+          character_id: _killmail.victim_character_id,
+          corporation_id: _killmail.victim_corporation_id,
+          alliance_id: _killmail.victim_alliance_id,
+          ship_type_id: _killmail.victim_ship_type_id,
+          damage_taken: nil,
+          final_blow: false,
+          security_status: nil,
+          weapon_type_id: nil,
+          faction_id: nil
+        }
+    end
+  end
+
+  @doc """
+  Extracts all participant details (victim + attackers) from _killmail.
+  Returns a list of normalized participant maps.
+  """
+  def extract_all_participant_details(_killmail) do
+    victim = extract_victim_details(_killmail)
+    attackers = extract_attacker_details(_killmail)
+
+    [victim | attackers]
+    |> Enum.reject(&is_nil/1)
+  end
+
+  @doc """
+  Extracts corporation IDs from all participants.
+  """
+  def extract_corporation_ids(_killmail) do
+    _killmail
+    extract_all_participant_details()
+    |> Enum.map(& &1[:corporation_id])
+    |> Enum.uniq()
+    |> Enum.reject(&is_nil/1)
+  end
+
+  @doc """
+  Extracts alliance IDs from all participants.
+  """
+  def extract_alliance_ids(_killmail) do
+    _killmail
+    extract_all_participant_details()
+    |> Enum.map(& &1[:alliance_id])
+    |> Enum.uniq()
+    |> Enum.reject(&is_nil/1)
+  end
+
+  @doc """
+  Extracts ship type IDs from all participants.
+  """
+  def extract_ship_type_ids(_killmail) do
+    _killmail
+    extract_all_participant_details()
+    |> Enum.map(& &1[:ship_type_id])
+    |> Enum.uniq()
+    |> Enum.reject(&is_nil/1)
+  end
+
+  @doc """
+  Extracts weapon type IDs from attackers.
+  """
+  def extract_weapon_type_ids(_killmail) do
+    _killmail
+    extract_attacker_details()
+    |> Enum.map(& &1[:weapon_type_id])
+    |> Enum.uniq()
+    |> Enum.reject(&is_nil/1)
+  end
+
+  @doc """
+  Finds the final blow attacker from the _killmail.
+  Returns the attacker map with final_blow: true or nil.
+  """
+  def find_final_blow_attacker(_killmail) do
+    _killmail
+    extract_attacker_details()
+    |> Enum.find(&(&1[:final_blow] == true))
+  end
+
+  @doc """
+  Calculates total damage done by all attackers.
+  """
+  def calculate_total_damage(_killmail) do
+    _killmail
+    extract_attacker_details()
+    |> Enum.map(&(&1[:damage_done] || 0))
+    |> Enum.sum()
+  end
+
+  # Private helper functions
+
+  defp extract_victim_character_ids(_killmail) do
+    victim_ids = case _killmail.raw_data do
+      %{"victim" => %{"character_id" => char_id}}
+      when is_binary(char_id) or is_integer(char_id) ->
+        [normalize_character_id(char_id)]
+
+      _ ->
+        [_killmail.victim_character_id]
+    end
+
+    victim_ids |> Enum.reject(&is_nil/1)
+  end
+
+  defp extract_attacker_character_ids(_killmail) do
+    case _killmail.raw_data do
+      %{"attackers" => attackers} when is_list(attackers) ->
+        attackers
+        |> Enum.map(& &1["character_id"])
+        |> Enum.reject(&is_nil/1)
+        |> Enum.map(&normalize_character_id/1)
+        |> Enum.reject(&is_nil/1)
+
+      _ ->
+        []
+    end
+  end
+
+  defp normalize_character_id(id) when is_binary(id) do
+    case Integer.parse(id) do
+      {int_id, ""} -> int_id
+      _ -> nil
+    end
+  end
+
+  defp normalize_character_id(id) when is_integer(id), do: id
+  defp normalize_character_id(_), do: nil
+
+  defp normalize_attacker_data(attacker) when is_map(attacker) do
+    %{
+      character_id: normalize_character_id(attacker["character_id"]),
+      character_name: attacker["character_name"],
+      corporation_id: normalize_character_id(attacker["corporation_id"]),
+      corporation_name: attacker["corporation_name"],
+      corporation_ticker: attacker["corporation_ticker"],
+      alliance_id: normalize_character_id(attacker["alliance_id"]),
+      alliance_name: attacker["alliance_name"],
+      alliance_ticker: attacker["alliance_ticker"],
+      ship_type_id: normalize_character_id(attacker["ship_type_id"]),
+      ship_name: attacker["ship_name"],
+      weapon_type_id: normalize_character_id(attacker["weapon_type_id"]),
+      weapon_name: attacker["weapon_name"],
+      damage_done: attacker["damage_done"] || 0,
+      final_blow: attacker["final_blow"] || false,
+      security_status: attacker["security_status"],
+      faction_id: normalize_character_id(attacker["faction_id"]),
+      faction_name: attacker["faction_name"]
+    }
+  end
+
+  defp normalize_attacker_data(_), do: nil
+
+  defp normalize_victim_data(victim) when is_map(victim) do
+    %{
+      character_id: normalize_character_id(victim["character_id"]),
+      character_name: victim["character_name"],
+      corporation_id: normalize_character_id(victim["corporation_id"]),
+      corporation_name: victim["corporation_name"],
+      corporation_ticker: victim["corporation_ticker"],
+      alliance_id: normalize_character_id(victim["alliance_id"]),
+      alliance_name: victim["alliance_name"],
+      alliance_ticker: victim["alliance_ticker"],
+      ship_type_id: normalize_character_id(victim["ship_type_id"]),
+      ship_name: victim["ship_name"],
+      damage_taken: victim["damage_taken"] || 0,
+      final_blow: false,
+      security_status: victim["security_status"],
+      faction_id: normalize_character_id(victim["faction_id"]),
+      faction_name: victim["faction_name"],
+      weapon_type_id: nil
+    }
+  end
+
+  defp normalize_victim_data(_), do: nil
+end

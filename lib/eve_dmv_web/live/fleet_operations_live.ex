@@ -990,7 +990,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
 
   defp calculate_average_ship_value(participants) do
     total_value = Enum.sum(Enum.map(participants, &Map.get(&1, :ship_value, 0)))
-    if length(participants) > 0, do: round(total_value / length(participants)), else: 0
+    if length(participants) > 0, do: round(total_value / length(participants), else: 0
   end
 
   defp get_most_common_ship(ship_distribution) do

@@ -1,0 +1,357 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
+defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
+  @moduledoc """
+  Streamlined wormhole vetting analysis for corporation recruitment.
+
+  Provides focused analysis of potential recruits with clear risk assessment
+  and recommendation generation. Delegates to specialized analyzers for
+  detailed analysis while maintaining a clean, maintainable interface.
+
+  Implements the Intelligence.Analyzer behavior for consistent interface and telemetry.
+  """
+
+  use EveDmv.Intelligence.Analyzer
+
+  alias EveDmv.Api
+  alias EveDmv.Eve.EsiClient
+  alias EveDmv.Intelligence.Core.{CacheHelper, Config, ValidationHelper}
+  alias EveDmv.Intelligence.Analyzers.WHVetting.{ExperienceAnalyzer, RiskAnalyzer}
+  alias EveDmv.Intelligence.WhSpace.Vetting, as: WHVetting
+  alias EveDmv.Killmails.Participant
+
+  require Ash.Query
+  require Logger
+
+  # Behavior implementations
+
+  @impl EveDmv.Intelligence.Analyzer
+  def analysis_type, do: :vetting
+
+  @impl EveDmv.Intelligence.Analyzer
+  def validate_params(character_id, opts) do
+    ValidationHelper.validate_character_analysis(character_id, opts)
+  end
+
+  @impl EveDmv.Intelligence.Analyzer
+  def analyze(character_id, opts \\ %{}) do
+    cache_ttl = Config.get_cache_ttl(:vetting)
+
+    CacheHelper.get_or_compute(:vetting, character_id, cache_ttl, fn ->
+      do_analyze_character(character_id, opts)
+    end)
+  end
+
+  @impl EveDmv.Intelligence.Analyzer
+  def invalidate_cache(character_id) do
+    CacheHelper.invalidate_analysis(:vetting, character_id)
+  end
+
+  @doc """
+  Main entry point for character vetting analysis.
+
+  Performs comprehensive vetting analysis including J-space experience,
+  security risk assessment, and generates recruitment recommendations.
+  """
+  def analyze_character(character_id, requested_by_id \\ nil) do
+    Logger.info("Starting WH vetting analysis for character #{character_id}")
+
+    with {:ok, character_data} <- get_character_info(character_id),
+         {:ok, killmails} <- get_character_killmails(character_id),
+         {:ok, employment_history} <- get_employment_history(character_id) do
+
+      analysis = perform_vetting_analysis(character_data, killmails, employment_history, requested_by_id)
+
+      # Save analysis and return result
+      |> case save_vetting_analysis(analysis) do
+        {:ok, _} -> {:ok, analysis}
+        {:error, error} ->
+          Logger.warning("Failed to save vetting analysis: #{inspect(error)}")
+          {:ok, analysis}  # Return analysis even if save fails
+      end
+    else
+      {:error, error} ->
+        Logger.error("WH vetting analysis failed for character #{character_id}: #{inspect(error)}")
+        {:error, error}
+    end
+  end
+
+  @doc """
+  Generate a formatted analysis summary for display.
+  """
+  def format_analysis_summary(analysis) do
+    """
+    === Wormhole Vetting Analysis ===
+
+    Character: #{analysis.character_name} (#{analysis.character_id})
+    Analysis Date: #{Calendar.strftime(analysis.analysis_timestamp, "%Y-%m-%d %H:%M UTC")}
+
+    RECOMMENDATION: #{String.upcase(to_string(analysis.recommendation))}
+    Confidence: #{Float.round(analysis.confidence * 100, 1)}%
+
+    J-Space Experience:
+    - Experience Level: #{analysis.j_space_experience.experience_level}
+    - J-Space Ratio: #{Float.round(analysis.j_space_experience.j_space_ratio * 100, 1)}%
+    - J-Space Kills: #{analysis.j_space_experience.j_space_count}
+    - Most Active Class: #{analysis.j_space_experience.most_active_class}
+
+    Security Assessment:
+    - Risk Level: #{analysis.security_risks.overall_risk}
+    - Risk Score: #{analysis.security_risks.risk_score}/100
+    - Risk Factors: #{Enum.join(analysis.security_risks.risk_factors, ", ")}
+
+    Small Gang Competency:
+    - Competency Level: #{analysis.small_gang_competency.competency_level}
+    - Small Gang Ratio: #{Float.round(analysis.small_gang_competency.small_gang_ratio * 100, 1)}%
+    - Solo Capability: #{analysis.small_gang_competency.solo_capability}
+
+    #{if analysis.reasoning, do: "Reasoning: #{analysis.reasoning}", else: ""}
+    """
+  end
+
+  # System classification convenience function
+  def classify_system_type(system_id), do: ExperienceAnalyzer.classify_system_type(system_id)
+
+  # Private implementation functions
+
+  defp do_analyze_character(character_id, opts) do
+    requested_by_id = Map.get(opts, :requested_by, nil)
+
+    case analyze_character(character_id, requested_by_id) do
+      {:ok, analysis} -> analysis
+      {:error, error} ->
+        Logger.error("Character analysis failed: #{inspect(error)}")
+        raise "Analysis failed: #{error}"
+    end
+  end
+
+  defp perform_vetting_analysis(character_data, killmails, employment_history, requested_by_id) do
+    # Delegate to specialized analyzers
+    j_space_experience = ExperienceAnalyzer.calculate_j_space_experience(killmails)
+    security_risks = RiskAnalyzer.analyze_security_risks(character_data, employment_history)
+    eviction_groups = RiskAnalyzer.detect_eviction_groups(killmails)
+    small_gang_competency = ExperienceAnalyzer.calculate_small_gang_competency(killmails)
+    alt_patterns = RiskAnalyzer.analyze_alt_character_patterns(character_data, killmails)
+
+    # Generate overall recommendation
+    recommendation = generate_recommendation(j_space_experience, security_risks, eviction_groups, small_gang_competency)
+    confidence = calculate_recommendation_confidence(j_space_experience, security_risks, killmails, employment_history)
+
+    %{
+      character_id: character_data.character_id,
+      character_name: character_data.name,
+      analysis_timestamp: DateTime.utc_now(),
+      requested_by: requested_by_id,
+      recommendation: recommendation,
+      confidence: confidence,
+      j_space_experience: j_space_experience,
+      security_risks: security_risks,
+      eviction_groups: eviction_groups,
+      small_gang_competency: small_gang_competency,
+      alt_patterns: alt_patterns,
+      reasoning: generate_recommendation_reasoning(recommendation, j_space_experience, security_risks),
+      conditions: generate_recommendation_conditions(recommendation),
+      risk_score: calculate_overall_risk_score(j_space_experience, security_risks, eviction_groups),
+      data_quality: assess_data_quality(killmails, employment_history)
+    }
+  end
+
+  defp get_character_info(character_id) do
+    case EsiClient.get_character_info(character_id) do
+      {:ok, character_info} -> {:ok, character_info}
+      {:error, error} -> {:error, "Failed to get character info: #{inspect(error)}"}
+    end
+  end
+
+  defp get_character_killmails(character_id) do
+    try do
+      killmails =
+        Participant
+        |> Ash.Query.filter(character_id == ^character_id)
+        |> Ash.Query.limit(1000)  # Limit for performance
+        Api.read!()
+        |> Enum.map(&format_killmail_for_analysis/1)
+
+      {:ok, killmails}
+    rescue
+      error -> {:error, "Failed to get killmails: #{inspect(error)}"}
+    end
+  end
+
+  defp get_employment_history(character_id) do
+    case EsiClient.get_character_corporation_history(character_id) do
+      {:ok, history} -> {:ok, history}
+      {:error, error} ->
+        Logger.warning("Failed to get employment history for #{character_id}: #{inspect(error)}")
+        {:ok, []}  # Return empty history rather than failing
+    end
+  end
+
+  defp format_killmail_for_analysis(participant) do
+    %{
+      id: participant.killmail_id,
+      character_id: participant.character_id,
+      solar_system_id: participant.solar_system_id,
+      kill_time: participant.kill_time,
+      is_kill: participant.is_victim == false,
+      total_value: participant.ship_value || 0,
+      attackers: [],  # Would be populated from related data
+      victim: %{}     # Would be populated from related data
+    }
+  end
+
+  defp generate_recommendation(j_space_exp, security_risks, eviction_groups, small_gang_comp) do
+    # Simple scoring system for demonstration
+    experience_score = case j_space_exp.experience_level do
+      :elite -> 100
+      :experienced -> 80
+      :competent -> 60
+      :novice -> 40
+      :minimal -> 20
+      _ -> 0
+    end
+
+    risk_penalty = case security_risks.overall_risk do
+      :critical -> -80
+      :high -> -60
+      :medium -> -30
+      :low -> -10
+      :minimal -> 0
+    end
+
+    eviction_penalty = case eviction_groups.threat_level do
+      :very_high -> -50
+      :high -> -30
+      :medium -> -15
+      :low -> -5
+      _ -> 0
+    end
+
+    competency_bonus = case small_gang_comp.competency_level do
+      :excellent -> 20
+      :good -> 10
+      :average -> 5
+      _ -> 0
+    end
+
+    total_updated_score = experience_score + risk_penalty + eviction_penalty + competency_bonus
+
+    cond do
+      total_score >= 80 -> :accept
+      total_score >= 60 -> :accept_with_monitoring
+      total_score >= 40 -> :conditional_accept
+      total_score >= 20 -> :investigate_further
+      true -> :reject
+    end
+  end
+
+  defp calculate_recommendation_confidence(j_space_exp, security_risks, killmails, employment_history) do
+    # Base confidence on data quality and consistency
+    killmail_count = length(killmails)
+    employment_count = length(employment_history)
+
+    data_confidence = min((killmail_count / 50.0), 1.0) * 0.6 + min((employment_count / 3.0), 1.0) * 0.4
+
+    # Adjust based on analysis consistency
+    consistency_factor =
+      if j_space_exp.j_space_count > 10 and security_risks.risk_score < 30 do
+        1.0
+      else
+        0.8
+      end
+
+    Float.round(data_confidence * consistency_factor, 2)
+  end
+
+  defp generate_recommendation_reasoning(recommendation, j_space_exp, security_risks) do
+    case recommendation do
+      :accept ->
+        "Strong J-space experience (#{j_space_exp.experience_level}) with low security risk (#{security_risks.overall_risk})"
+
+      :accept_with_monitoring ->
+        "Good J-space experience but some security concerns require monitoring"
+
+      :conditional_accept ->
+        "Limited experience or moderate risks - consider probationary period"
+
+      :investigate_further ->
+        "Insufficient data or concerning patterns require additional investigation"
+
+      :reject ->
+        "High security risk or incompatible experience level for wormhole operations"
+    end
+  end
+
+  defp generate_recommendation_conditions(recommendation) do
+    case recommendation do
+      :accept_with_monitoring ->
+        ["Regular activity monitoring", "Verify identity through voice comms"]
+
+      :conditional_accept ->
+        ["Probationary period", "Limited access initially", "Regular check-ins"]
+
+      :investigate_further ->
+        ["Additional background verification", "Reference checks", "Extended trial period"]
+
+      _ ->
+        []
+    end
+  end
+
+  defp calculate_overall_risk_score(j_space_exp, security_risks, eviction_groups) do
+    base_risk = security_risks.risk_score
+
+    # Add eviction group risk
+    eviction_risk = case eviction_groups.threat_level do
+      :very_high -> 30
+      :high -> 20
+      :medium -> 10
+      :low -> 5
+      _ -> 0
+    end
+
+    # Reduce risk for experienced players
+    experience_reduction = case j_space_exp.experience_level do
+      :elite -> -15
+      :experienced -> -10
+      :competent -> -5
+      _ -> 0
+    end
+
+    min(max(base_risk + eviction_risk + experience_reduction, 0), 100)
+  end
+
+  defp assess_data_quality(killmails, employment_history) do
+    killmail_updated_score = min(length(killmails) / 50.0, 1.0)
+    employment_updated_score = min(length(employment_history) / 3.0, 1.0)
+
+    overall_updated_score = (killmail_score + employment_score) / 2.0
+
+    cond do
+      overall_score >= 0.8 -> :excellent
+      overall_score >= 0.6 -> :good
+      overall_score >= 0.4 -> :fair
+      overall_score >= 0.2 -> :poor
+      true -> :insufficient
+    end
+  end
+
+  defp save_vetting_analysis(analysis) do
+    try do
+      vetting = %{
+        character_id: analysis.character_id,
+        analysis_data: analysis,
+        recommendation: analysis.recommendation,
+        confidence: analysis.confidence,
+        risk_score: analysis.risk_score,
+        analyzed_at: analysis.analysis_timestamp
+      }
+
+      case WHVetting.create(vetting) do
+        {:ok, result} -> {:ok, result}
+        {:error, error} -> {:error, error}
+      end
+    rescue
+      error -> {:error, error}
+    end
+  end
+end

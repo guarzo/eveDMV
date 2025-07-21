@@ -1,0 +1,392 @@
+defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataExtractor do
+  @moduledoc """
+  Data extraction utilities for character analysis.
+  Handles complex queries and data aggregation for character intelligence.
+  """
+
+  alias EveDmv.Database.QueryPerformance
+  alias EveDmv.Shared.KillmailQueries
+  alias EveDmv.StaticData
+  alias EveDmv.Cache.QueryCache
+  alias EveDmvWeb.CharacterAnalysis.Helpers.{CharacterFormatter, CharacterValidator}
+  require Logger
+
+  # Cache TTL configuration
+  @ship_preferences_ttl :timer.hours(2)
+  @weapon_preferences_ttl :timer.hours(2)
+  @isk_efficiency_ttl :timer.hours(1)
+  @gang_patterns_ttl :timer.hours(6)
+  @external_groups_ttl :timer.hours(8)
+
+  @doc """
+  Get ship preferences for a character with caching.
+  """
+  def get_ship_preferences(character_id, since_date) do
+    cache_key =
+      "ship_preferences:#{character_id}:#{Date.to_iso8601(DateTime.to_date(since_date))}"
+
+    cache_key
+    QueryCache.get_or_compute(
+      fn ->
+        query = KillmailQueries.ship_usage_query(:character, character_id, 90)
+        KillmailQueries.execute(query, [character_id, since_date])
+      end,
+      ttl: @ship_preferences_ttl
+    )
+    case do
+      {:ok, results} ->
+        process_ship_preferences(results)
+
+      {:error, error} ->
+        Logger.warning("Failed to get ship preferences: #{inspect(error)}")
+        []
+    end
+  end
+
+  @doc """
+  Get weapon preferences for a character with analysis.
+  """
+  def get_weapon_preferences(character_id, since_date) do
+    cache_key =
+      "weapon_preferences:#{character_id}:#{Date.to_iso8601(DateTime.to_date(since_date))}"
+
+    cache_key
+    QueryCache.get_or_compute(
+      fn ->
+        weapon_query = """
+        SELECT
+          w.weapon_type_id,
+          it.type_name as weapon_name,
+          ig.group_name as weapon_group,
+          COUNT(*) as usage_count,
+          COUNT(CASE WHEN km.attacker_character_id = $1 THEN 1 END) as kills_with_weapon
+        FROM killmails_raw km
+        JOIN killmail_weapons w ON km.killmail_id = w.killmail_id
+        JOIN eve_item_types it ON w.weapon_type_id = it.type_id
+        JOIN eve_item_groups ig ON it.group_id = ig.group_id
+        WHERE (km.attacker_character_id = $1 OR EXISTS(
+          SELECT 1 FROM killmail_attackers ka
+          WHERE ka.killmail_id = km.killmail_id AND ka.character_id = $1
+        ))
+        AND km.kill_time >= $2
+        GROUP BY w.weapon_type_id, it.type_name, ig.group_name
+        ORDER BY usage_count DESC
+        LIMIT 15
+        """
+
+        EveDmv.Repo.query(weapon_query, [character_id, since_date])
+      end,
+      ttl: @weapon_preferences_ttl
+    )
+    case do
+      {:ok, %{rows: rows}} ->
+        process_weapon_preferences(rows)
+
+      {:error, error} ->
+        Logger.warning("Failed to get weapon preferences: #{inspect(error)}")
+        []
+    end
+  end
+
+  @doc """
+  Calculate ISK efficiency metrics for a character.
+  """
+  def calculate_isk_efficiency(character_id, since_date) do
+    cache_key =
+      "isk_efficiency:#{character_id}:#{Date.to_iso8601(DateTime.to_date(since_date))}"
+
+    cache_key
+    QueryCache.get_or_compute(
+      fn ->
+        isk_query = """
+        SELECT
+          COALESCE(SUM(CASE WHEN km.attacker_character_id = $1 THEN km.victim_ship_value END), 0) as isk_destroyed,
+          COALESCE(SUM(CASE WHEN km.victim_character_id = $1 THEN km.victim_ship_value END), 0) as isk_lost,
+          COUNT(CASE WHEN km.attacker_character_id = $1 THEN 1 END) as kills,
+          COUNT(CASE WHEN km.victim_character_id = $1 THEN 1 END) as deaths,
+          AVG(CASE WHEN km.victim_character_id = $1 THEN km.victim_ship_value END) as avg_death_value
+        FROM killmails_raw km
+        WHERE (km.attacker_character_id = $1 OR km.victim_character_id = $1)
+          AND km.kill_time >= $2
+        """
+
+        EveDmv.Repo.query(isk_query, [character_id, since_date])
+      end,
+      ttl: @isk_efficiency_ttl
+    )
+    case do
+      {:ok, %{rows: [[destroyed, lost, kills, deaths, avg_death]]}} ->
+        process_isk_efficiency(destroyed, lost, kills, deaths, avg_death)
+
+      {:error, error} ->
+        Logger.warning("Failed to calculate ISK efficiency: #{inspect(error)}")
+        %{efficiency: 0.0, destroyed: 0, lost: 0, net_isk: 0, rating: :poor, risk_level: :unknown}
+    end
+  end
+
+  @doc """
+  Get external groups analysis for a character.
+  """
+  def get_external_groups(character_id, since_date) do
+    cache_key =
+      "external_groups:#{character_id}:#{Date.to_iso8601(DateTime.to_date(since_date))}"
+
+    cache_key
+    QueryCache.get_or_compute(
+      fn ->
+        external_query = """
+        WITH character_activity AS (
+          SELECT
+            COALESCE(a.corporation_id, km.attacker_corporation_id, km.victim_corporation_id) as corp_id,
+            COALESCE(a.alliance_id, km.attacker_alliance_id, km.victim_alliance_id) as alliance_id,
+            a.character_id as other_character_id,
+            km.solar_system_id,
+            km.kill_time,
+            CASE WHEN km.attacker_character_id = $1 THEN 'kill' ELSE 'assist' END as activity_type
+          FROM killmails_raw km
+          LEFT JOIN killmail_attackers a ON km.killmail_id = a.killmail_id
+          WHERE (km.attacker_character_id = $1 OR a.character_id = $1)
+            AND km.kill_time >= $2
+            AND a.character_id != $1
+        )
+        SELECT
+          corp_id,
+          alliance_id,
+          COUNT(*) as kills_together,
+          COUNT(DISTINCT other_character_id) as unique_pilots,
+          COUNT(DISTINCT solar_system_id) as systems_active,
+          MIN(kill_time) as first_seen,
+          MAX(kill_time) as last_seen
+        FROM character_activity
+        WHERE corp_id IS NOT NULL
+        GROUP BY corp_id, alliance_id
+        HAVING COUNT(*) >= 3
+        ORDER BY kills_together DESC
+        LIMIT 10
+        """
+
+        EveDmv.Repo.query(external_query, [character_id, since_date])
+      end,
+      ttl: @external_groups_ttl
+    )
+    case do
+      {:ok, %{rows: rows}} ->
+        process_external_groups(rows)
+
+      {:error, error} ->
+        Logger.warning("Failed to get external groups: #{inspect(error)}")
+        []
+    end
+  end
+
+  @doc """
+  Get gang size patterns for a character.
+  """
+  def get_gang_size_patterns(character_id, since_date) do
+    cache_key =
+      "gang_patterns:#{character_id}:#{Date.to_iso8601(DateTime.to_date(since_date))}"
+
+    cache_key
+    QueryCache.get_or_compute(
+      fn ->
+        gang_query = """
+        WITH gang_sizes AS (
+          SELECT
+            km.killmail_id,
+            COUNT(DISTINCT a.character_id) + 1 as gang_size,
+            km.victim_ship_value,
+            CASE WHEN km.attacker_character_id = $1 THEN 1 ELSE 0 END as is_final_blow
+          FROM killmails_raw km
+          LEFT JOIN killmail_attackers a ON km.killmail_id = a.killmail_id
+          WHERE (km.attacker_character_id = $1 OR EXISTS(
+            SELECT 1 FROM killmail_attackers ka
+            WHERE ka.killmail_id = km.killmail_id AND ka.character_id = $1
+          ))
+          AND km.kill_time >= $2
+          GROUP BY km.killmail_id, km.victim_ship_value, km.attacker_character_id
+        )
+        SELECT
+          CASE
+            WHEN gang_size = 1 THEN 'solo'
+            WHEN gang_size <= 3 THEN 'small'
+            WHEN gang_size <= 8 THEN 'medium'
+            WHEN gang_size <= 20 THEN 'large'
+            ELSE 'fleet'
+          END as size_category,
+          COUNT(*) as kills,
+          SUM(victim_ship_value) as total_isk,
+          AVG(victim_ship_value) as avg_isk,
+          SUM(is_final_blow) as final_blows
+        FROM gang_sizes
+        GROUP BY size_category
+        ORDER BY kills DESC
+        """
+
+        EveDmv.Repo.query(gang_query, [character_id, since_date])
+      end,
+      ttl: @gang_patterns_ttl
+    )
+    case do
+      {:ok, %{rows: rows}} ->
+        process_gang_patterns(rows)
+
+      {:error, error} ->
+        Logger.warning("Failed to get gang size patterns: #{inspect(error)}")
+        %{}
+    end
+  end
+
+  # Private processing functions
+
+  defp process_ship_preferences(results) do
+    total_usage = Enum.sum(Enum.map(results, &(&1["usage_count"] || 0)))
+
+    results
+    Enum.take(10)
+    |>     Enum.map(fn result ->
+      ship_type_id = result["ship_type_id"]
+      usage_count = result["usage_count"] || 0
+      ship_name = result["ship_name"] || "Unknown Ship"
+      kills_in_ship = result["kills_in_ship"] || 0
+      losses_in_ship = result["losses_in_ship"] || 0
+
+      ship_info =
+        StaticData.get_ship_group(ship_type_id) || %{class: :unknown, group_name: "Unknown"}
+
+      total_engagements = kills_in_ship + losses_in_ship
+
+      efficiency =
+        if total_engagements > 0 do
+          Float.round(kills_in_ship / total_engagements * 100, 1)
+        else
+          0.0
+        end
+
+      %{
+        ship_type_id: ship_type_id,
+        ship_name: ship_name,
+        ship_class: ship_info.class,
+        group_name: ship_info.group_name,
+        usage_count: usage_count,
+        percentage:
+          if(total_usage > 0, do: Float.round(usage_count / total_usage * 100, 1), else: 0.0),
+        kills_in_ship: kills_in_ship,
+        losses_in_ship: losses_in_ship,
+        efficiency: efficiency
+      }
+    end)
+  end
+
+  defp process_weapon_preferences(rows) do
+    total_usage = rows |> Enum.map(&Enum.at(&1, 3)) Enum.sum()
+
+    rows
+    |>     Enum.map(fn [weapon_type_id, weapon_name, weapon_group, usage_count, kills] ->
+      weapon_category = CharacterFormatter.categorize_weapon_type(weapon_name, weapon_group)
+      effectiveness = CharacterFormatter.calculate_weapon_effectiveness(weapon_category, usage_count)
+
+      %{
+        weapon_type_id: weapon_type_id,
+        weapon_name: weapon_name,
+        weapon_group: weapon_group,
+        weapon_category: weapon_category,
+        usage_count: usage_count,
+        kills_with_weapon: kills,
+        percentage:
+          if(total_usage > 0, do: Float.round(usage_count / total_usage * 100, 1), else: 0.0),
+        effectiveness: effectiveness
+      }
+    end)
+    Enum.take(10)
+  end
+
+  defp process_isk_efficiency(destroyed, lost, kills, deaths, avg_death) do
+    destroyed = destroyed || 0
+    lost = lost || 0
+    avg_death = avg_death || 0.0
+
+    net_isk = destroyed - lost
+
+    efficiency =
+      if destroyed + lost > 0 do
+        destroyed / (destroyed + lost)
+      else
+        0.0
+      end
+
+    rating = CharacterValidator.calculate_efficiency_rating(efficiency, net_isk)
+    risk_level = CharacterValidator.calculate_risk_level(avg_death, efficiency)
+
+    %{
+      efficiency: Float.round(efficiency, 3),
+      destroyed: destroyed,
+      lost: lost,
+      net_isk: net_isk,
+      rating: rating,
+      risk_level: risk_level
+    }
+  end
+
+  defp process_external_groups(rows) do
+    rows
+    |>     Enum.map(fn [corp_id, alliance_id, kills_together, unique_pilots, systems_active, first_seen, last_seen] ->
+      days_since_last = DateTime.diff(DateTime.utc_now(), last_seen, :day)
+
+      collaboration_strength =
+        CharacterValidator.calculate_collaboration_strength(kills_together, unique_pilots, systems_active)
+
+      relationship_type =
+        CharacterValidator.determine_relationship_type(kills_together, unique_pilots, first_seen, last_seen)
+
+      trust_level =
+        CharacterValidator.calculate_trust_level(kills_together, days_since_last)
+
+      %{
+        corporation_id: corp_id,
+        alliance_id: alliance_id,
+        kills_together: kills_together,
+        unique_pilots: unique_pilots,
+        systems_active: systems_active,
+        collaboration_strength: collaboration_strength,
+        relationship_type: relationship_type,
+        trust_level: trust_level,
+        first_seen: first_seen,
+        last_seen: last_seen,
+        days_since_last: days_since_last
+      }
+    end)
+  end
+
+  defp process_gang_patterns(rows) do
+    total_kills = rows |> Enum.map(&Enum.at(&1, 1)) Enum.sum()
+    total_isk = rows |> Enum.map(&Enum.at(&1, 2)) Enum.sum()
+
+    patterns =
+      rows
+      |>       Enum.map(fn [size_category, kills, isk_destroyed, avg_isk, final_blows] ->
+        kill_percentage = if total_kills > 0, do: kills / total_kills, else: 0.0
+        isk_percentage = if total_isk > 0, do: isk_destroyed / total_isk, else: 0.0
+
+        effectiveness = CharacterValidator.calculate_gang_effectiveness(kill_percentage, isk_percentage)
+
+        {size_category, %{
+          kills: kills,
+          isk_destroyed: isk_destroyed,
+          avg_isk: avg_isk,
+          final_blows: final_blows,
+          kill_percentage: Float.round(kill_percentage * 100, 1),
+          isk_percentage: Float.round(isk_percentage * 100, 1),
+          effectiveness: effectiveness
+        }}
+      end)
+      Enum.into(%{})
+
+    preferred_style = CharacterValidator.determine_preferred_gang_style(patterns)
+    activity_diversity = CharacterValidator.calculate_activity_diversity(patterns)
+
+    Map.put(patterns, :analysis, %{
+      preferred_style: preferred_style,
+      activity_diversity: activity_diversity
+    })
+  end
+end

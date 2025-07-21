@@ -1,0 +1,169 @@
+defmodule EveDmv.Contexts.CorporationIntelligence.Analyzers.DoctrineAnalysisHelper do
+  @moduledoc """
+  Helper module for combat doctrine analysis operations.
+
+  Provides utility functions for data quality assessment, participation analysis,
+  and other supporting operations used by the main CombatDoctrineAnalyzer.
+  """
+
+  require Logger
+
+  @doc """
+  Calculates recommendation confidence based on analysis quality.
+  """
+  def calculate_recommendation_confidence(target_analysis) do
+    base_confidence = target_analysis.doctrine_certainty
+    data_quality = calculate_data_quality(target_analysis)
+
+    (base_confidence * 0.7 + data_quality * 0.3)
+    Float.round(3)
+  end
+
+  @doc """
+  Calculates data quality score based on engagement count.
+  """
+  def calculate_data_quality(analysis) do
+    engagements = analysis.analysis_metadata.fleet_engagements_analyzed
+
+    cond do
+      engagements >= 50 -> 1.0
+      engagements >= 20 -> 0.8
+      engagements >= 10 -> 0.6
+      engagements >= 5 -> 0.4
+      true -> 0.2
+    end
+  end
+
+  @doc """
+  Calculates participation rate from combat data.
+  """
+  def calculate_participation_rate(combat_data) do
+    active_members = length(combat_data.active_members || [])
+    total_engagements = length(combat_data.fleet_engagements || [])
+
+    if total_engagements > 0 do
+      # Average members per engagement
+      total_participations =
+        combat_data.fleet_engagements
+        |>         Enum.map(&length(&1.corp_participants || []))
+        Enum.sum()
+
+      avg_participation = total_participations / total_engagements
+      participation_rate = avg_participation / max(active_members, 1)
+
+      Float.round(min(participation_rate, 1.0), 3)
+    else
+      0.0
+    end
+  end
+
+  @doc """
+  Identifies top contributors from combat data.
+  """
+  def identify_top_contributors(combat_data) do
+    members = combat_data.active_members || []
+    engagements = combat_data.fleet_engagements || []
+
+    if Enum.empty?(members) or Enum.empty?(engagements) do
+      []
+    else
+      # Calculate participation counts for each member
+      member_participation =
+        members
+        |>         Enum.map(fn member_id ->
+          participation_count = count_member_participations(member_id, engagements)
+          {member_id, participation_count}
+        end)
+        Enum.sort_by(&elem(&1, 1), :desc)
+        Enum.take(10)
+        |>         Enum.map(fn {member_id, count} ->
+          %{
+            character_id: member_id,
+            participation_count: count,
+            participation_rate: Float.round(count / length(engagements), 3)
+          }
+        end)
+
+      member_participation
+    end
+  end
+
+  @doc """
+  Formats period label for historical analysis.
+  """
+  def format_period_label(1), do: "1 month ago"
+  def format_period_label(months), do: "#{months} months ago"
+
+  @doc """
+  Logs analysis completion with metrics.
+  """
+  def log_analysis_completion(corporation_id, analysis, start_time) do
+    end_time = System.monotonic_time(:millisecond)
+    duration_ms = end_time - start_time
+
+    Logger.info("""
+    Combat doctrine analysis completed:
+    - Corporation: #{corporation_id}
+    - Primary Doctrine: #{analysis.primary_doctrine.name}
+    - Confidence: #{Float.round(analysis.primary_doctrine.confidence * 100, 1)}%
+    - Fleet Engagements: #{analysis.analysis_metadata.fleet_engagements_analyzed}
+    - Duration: #{duration_ms}ms
+    """)
+  end
+
+  @doc """
+  Builds historical timeline for doctrine evolution tracking.
+  """
+  def build_historical_timeline(corporation_id, analysis_months, analyzer_fn) do
+    time_periods =
+      1..analysis_months
+      |>       Enum.map(fn month_offset ->
+        analyze_historical_month(corporation_id, month_offset, analyzer_fn)
+      end)
+      Enum.filter(&(&1 != nil))
+      Enum.reverse()  # Most recent first
+
+    if length(time_periods) >= 2 do
+      {:ok, time_periods}
+    else
+      {:error, :insufficient_historical_data}
+    end
+  end
+
+  # Private helpers
+
+  defp count_member_participations(member_id, engagements) do
+    Enum.count(engagements, fn engagement ->
+      Enum.any?(engagement.corp_participants || [], fn participant ->
+        participant.character_id == member_id
+      end)
+    end)
+  end
+
+  defp analyze_historical_month(corporation_id, month_offset, analyzer_fn) do
+    start_days = (month_offset - 1) * 30
+    end_days = month_offset * 30
+
+    options = [
+      analysis_window_days: end_days - start_days,
+      historical_offset: start_days,
+      include_member_analysis: false,
+      doctrine_evolution_tracking: false,
+      include_threat_assessment: false
+    ]
+
+    case analyzer_fn.(corporation_id, options) do
+      {:ok, analysis} ->
+        %{
+          period: format_period_label(month_offset),
+          month_offset: month_offset,
+          doctrine_analysis: analysis,
+          start_date: DateTime.add(DateTime.utc_now(), -end_days * 24 * 3600, :second),
+          end_date: DateTime.add(DateTime.utc_now(), -start_days * 24 * 3600, :second)
+        }
+
+      {:error, _} ->
+        nil
+    end
+  end
+end

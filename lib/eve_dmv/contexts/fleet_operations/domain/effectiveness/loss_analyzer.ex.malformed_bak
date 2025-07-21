@@ -1,0 +1,371 @@
+defmodule EveDmv.Contexts.FleetOperations.Domain.Effectiveness.LossAnalyzer do
+  @moduledoc """
+  Analyzes fleet losses to identify patterns and improvement areas.
+  
+  Provides detailed loss analysis, pattern identification, and
+  recommendations for loss prevention.
+  """
+
+  require Logger
+
+  @doc """
+  Analyze fleet losses to identify improvement areas.
+  """
+  def analyze_fleet_losses(participants, killmails) do
+    # Identify fleet losses
+    fleet_losses = identify_fleet_losses(participants, killmails)
+
+    %{
+      total_losses: length(fleet_losses),
+      loss_patterns: analyze_loss_patterns(fleet_losses),
+      loss_causes: identify_loss_causes(fleet_losses),
+      loss_impact: calculate_loss_impact(fleet_losses, participants),
+      vulnerable_ship_types: identify_vulnerable_ship_types(fleet_losses),
+      loss_timeline: analyze_loss_timeline(fleet_losses),
+      recommendations: generate_loss_prevention_recommendations(fleet_losses, participants)
+    }
+  end
+
+  defp identify_fleet_losses(participants, killmails) do
+    participant_ids = MapSet.new(participants, &(&1.character_id))
+
+    killmails
+    |> Enum.filter(fn killmail ->
+      victim_id = Map.get(killmail, :victim_character_id)
+      |>       MapSet.member?(participant_ids, victim_id)
+    end)
+  end
+
+  defp analyze_loss_patterns(fleet_losses) do
+    %{
+      temporal_clustering: analyze_temporal_clustering(fleet_losses),
+      damage_patterns: analyze_damage_patterns(fleet_losses),
+      attacker_patterns: analyze_attacker_patterns(fleet_losses),
+      location_patterns: analyze_location_patterns(fleet_losses)
+    }
+  end
+
+  defp analyze_temporal_clustering(fleet_losses) do
+    if Enum.empty?(fleet_losses) do
+      %{clustered: false, clusters: []}
+    else
+      # Sort losses by timestamp
+      sorted_losses = Enum.sort_by(fleet_losses, &(&1.timestamp))
+      
+      # Identify clusters (losses within 2 minutes of each other)
+      clusters = identify_time_clusters(sorted_losses, 120)
+      
+      %{
+        clustered: length(clusters) > 0,
+        clusters: clusters,
+        average_cluster_size: calculate_average_cluster_size(clusters)
+      }
+    end
+  end
+
+  defp identify_time_clusters(sorted_losses, threshold_seconds) do
+    sorted_losses
+    |> Enum.reduce({[], nil, []}, fn loss, {clusters, current_cluster, acc} ->
+      if current_cluster == nil do
+        {clusters, [loss], acc}
+      else
+        last_time = List.last(current_cluster).timestamp
+        time_diff = DateTime.diff(loss.timestamp, last_time)
+        
+        if time_diff <= threshold_seconds do
+          {clusters, current_cluster ++ [loss], acc}
+        else
+          {clusters ++ [current_cluster], [loss], acc}
+        end
+      end
+    end)
+    |> elem(0)
+    |> Enum.filter(&(length(&1) > 1))
+  end
+
+  defp calculate_average_cluster_size(clusters) do
+    if Enum.empty?(clusters) do
+      0
+    else
+      total_size = Enum.sum(Enum.map(clusters, &length/1))
+      Float.round(total_size / length(clusters), 1)
+    end
+  end
+
+  defp analyze_damage_patterns(fleet_losses) do
+    alpha_strike_losses = count_alpha_strike_losses(fleet_losses)
+    sustained_damage_losses = count_sustained_damage_losses(fleet_losses)
+    total_losses = length(fleet_losses)
+
+    %{
+      alpha_strike_percentage: safe_percentage(alpha_strike_losses, total_losses),
+      sustained_damage_percentage: safe_percentage(sustained_damage_losses, total_losses),
+      primary_damage_type: determine_primary_damage_type(fleet_losses)
+    }
+  end
+
+  defp count_alpha_strike_losses(fleet_losses) do
+    Enum.count(fleet_losses, fn loss ->
+      attackers = Map.get(loss, :attackers, [])
+      damage_taken = Map.get(loss, :damage_taken, 0)
+      ship_hp = Map.get(loss, :ship_hp, 1)
+      
+      # Alpha strike if killed by few attackers with high damage
+      length(attackers) <= 5 && damage_taken > ship_hp * 0.8
+    end)
+  end
+
+  defp count_sustained_damage_losses(fleet_losses) do
+    Enum.count(fleet_losses, fn loss ->
+      attackers = Map.get(loss, :attackers, [])
+      length(attackers) > 10
+    end)
+  end
+
+  defp determine_primary_damage_type(fleet_losses) do
+    # Simplified damage type analysis
+    :mixed
+  end
+
+  defp analyze_attacker_patterns(fleet_losses) do
+    all_attackers = fleet_losses
+      |> Enum.flat_map(&Map.get(&1, :attackers, []))
+      |> Enum.map(&(&1.character_id))
+      |> Enum.frequencies()
+
+    %{
+      unique_attackers: map_size(all_attackers),
+      primary_threats: identify_primary_threats(all_attackers),
+      average_attackers_per_loss: calculate_average_attackers(fleet_losses)
+    }
+  end
+
+  defp identify_primary_threats(attacker_frequencies) do
+    attacker_frequencies
+    |> Enum.sort_by(fn {_, count} -> count end, :desc)
+    |> Enum.take(5)
+    |> Enum.map(fn {character_id, count} -> 
+      %{character_id: character_id, kill_participation: count}
+    end)
+  end
+
+  defp calculate_average_attackers(fleet_losses) do
+    if Enum.empty?(fleet_losses) do
+      0
+    else
+      total_attackers = Enum.sum(Enum.map(fleet_losses, fn loss ->
+        length(Map.get(loss, :attackers, []))
+      end))
+      Float.round(total_attackers / length(fleet_losses), 1)
+    end
+  end
+
+  defp analyze_location_patterns(fleet_losses) do
+    # Group losses by solar system
+    system_losses = Enum.group_by(fleet_losses, &(&1.solar_system_id))
+    
+    %{
+      systems_with_losses: map_size(system_losses),
+      concentrated_losses: map_size(system_losses) == 1,
+      loss_distribution: Enum.map(system_losses, fn {system_id, losses} ->
+        %{system_id: system_id, loss_count: length(losses)}
+      end)
+    }
+  end
+
+  defp identify_loss_causes(fleet_losses) do
+    %{
+      primary_fire_concentration: analyze_primary_fire_patterns(fleet_losses),
+      logistics_failure: detect_logistics_failures(fleet_losses),
+      positioning_errors: detect_positioning_errors(fleet_losses),
+      fleet_scattered: detect_fleet_scatter(fleet_losses)
+    }
+  end
+
+  defp analyze_primary_fire_patterns(fleet_losses) do
+    # Detect if losses were due to focused fire
+    high_value_targets_first = detect_high_value_targeting(fleet_losses)
+    
+    %{
+      focused_fire_detected: high_value_targets_first,
+      target_calling_effectiveness: estimate_target_calling_effectiveness(fleet_losses)
+    }
+  end
+
+  defp detect_high_value_targeting(fleet_losses) do
+    # Check if high-value ships were targeted first
+    sorted_by_time = Enum.sort_by(fleet_losses, &(&1.timestamp))
+    sorted_by_value = Enum.sort_by(fleet_losses, &(&1.total_value), :desc)
+    
+    # If first losses are also highest value, indicates good target selection by enemy
+    |>     Enum.take(sorted_by_time, 3) -- Enum.take(sorted_by_value, 3) == []
+  end
+
+  defp estimate_target_calling_effectiveness(fleet_losses) do
+    # Simplified effectiveness estimation
+    0.7
+  end
+
+  defp detect_logistics_failures(fleet_losses) do
+    # Detect if logistics were present but ineffective
+    logi_present = Enum.any?(fleet_losses, fn loss ->
+      Enum.any?(Map.get(loss, :fleet_composition, []), fn ship ->
+        determine_ship_role(ship.ship_type_id) == :logistics
+      end)
+    end)
+    
+    logi_present && length(fleet_losses) > 5
+  end
+
+  defp detect_positioning_errors(fleet_losses) do
+    # Simplified positioning error detection
+    false
+  end
+
+  defp detect_fleet_scatter(fleet_losses) do
+    # Check if losses occurred across multiple systems
+    systems = fleet_losses
+      |> Enum.map(&(&1.solar_system_id))
+      |> Enum.uniq()
+    
+    length(systems) > 1
+  end
+
+  defp calculate_loss_impact(fleet_losses, participants) do
+    total_fleet_value = Enum.sum(Enum.map(participants, &(&1.ship_value || 0)))
+    total_loss_value = Enum.sum(Enum.map(fleet_losses, &(&1.total_value || 0)))
+    
+    %{
+      isk_lost: total_loss_value,
+      percentage_of_fleet_value: safe_percentage(total_loss_value, total_fleet_value),
+      pilots_lost: length(fleet_losses),
+      percentage_of_fleet: safe_percentage(length(fleet_losses), length(participants)),
+      capability_reduction: calculate_capability_reduction(fleet_losses, participants)
+    }
+  end
+
+  defp calculate_capability_reduction(fleet_losses, participants) do
+    lost_roles = fleet_losses
+      |> Enum.map(&determine_ship_role(&1.ship_type_id))
+      |> Enum.frequencies()
+    
+    total_roles = participants
+      |> Enum.map(&determine_ship_role(&1.ship_type_id))
+      |> Enum.frequencies()
+    
+    # Calculate percentage of each role lost
+    role_impacts = Enum.map(lost_roles, fn {role, lost_count} ->
+      total_count = Map.get(total_roles, role, 1)
+      impact = lost_count / total_count
+      {role, impact}
+    end)
+    
+    %{
+      critical_roles_lost: Enum.filter(role_impacts, fn {_, impact} -> impact > 0.5 end),
+      overall_capability: 1.0 - (length(fleet_losses) / length(participants))
+    }
+  end
+
+  defp identify_vulnerable_ship_types(fleet_losses) do
+    fleet_losses
+    |> Enum.map(&(&1.ship_type_id))
+    |> Enum.frequencies()
+    |> Enum.sort_by(fn {_, count} -> count end, :desc)
+    |> Enum.take(5)
+    |> Enum.map(fn {ship_type_id, count} ->
+      %{
+        ship_type_id: ship_type_id,
+        losses: count,
+        vulnerability_score: calculate_vulnerability_score(ship_type_id, count, fleet_losses)
+      }
+    end)
+  end
+
+  defp calculate_vulnerability_score(ship_type_id, loss_count, all_losses) do
+    # Simple vulnerability score based on loss frequency
+    Float.round(loss_count / length(all_losses), 2)
+  end
+
+  defp analyze_loss_timeline(fleet_losses) do
+    if Enum.empty?(fleet_losses) do
+      %{phases: []}
+    else
+      sorted_losses = Enum.sort_by(fleet_losses, &(&1.timestamp))
+      first_loss = List.first(sorted_losses).timestamp
+      last_loss = List.last(sorted_losses).timestamp
+      
+      %{
+        first_loss_time: first_loss,
+        last_loss_time: last_loss,
+        duration_seconds: DateTime.diff(last_loss, first_loss),
+        loss_rate: calculate_loss_rate(fleet_losses),
+        phases: identify_loss_phases(sorted_losses)
+      }
+    end
+  end
+
+  defp calculate_loss_rate(fleet_losses) do
+    if length(fleet_losses) < 2 do
+      0
+    else
+      sorted = Enum.sort_by(fleet_losses, &(&1.timestamp))
+      duration = DateTime.diff(List.last(sorted).timestamp, List.first(sorted).timestamp)
+      if duration > 0 do
+        Float.round(length(fleet_losses) / (duration / 60), 2)  # losses per minute
+      else
+        0
+      end
+    end
+  end
+
+  defp identify_loss_phases(sorted_losses) do
+    # Simplified phase identification
+    [{:initial, 0}, {:main, length(sorted_losses) / 2}, {:final, length(sorted_losses)}]
+  end
+
+  defp generate_loss_prevention_recommendations(fleet_losses, participants) do
+    patterns = analyze_loss_patterns(fleet_losses)
+    causes = identify_loss_causes(fleet_losses)
+    
+    
+    recommendations = if patterns.temporal_clustering.clustered do
+      ["Improve fleet warp coordination to avoid clustering" | recommendations]
+    else
+      recommendations
+    end
+    
+    recommendations = if causes.logistics_failure do
+      ["Increase logistics numbers or improve logistics positioning" | recommendations]
+    else
+      recommendations
+    end
+    
+    recommendations = if causes.fleet_scattered do
+      ["Maintain tighter fleet formation and avoid splitting forces" | recommendations]
+    else
+      recommendations
+    end
+    
+    if Enum.empty?(recommendations) do
+      ["Continue current loss mitigation strategies"]
+    else
+      recommendations
+    end
+  end
+
+  defp determine_ship_role(ship_type_id) do
+    # Simplified role determination based on ship type ID ranges
+    cond do
+      ship_type_id in 11985..11987 -> :logistics
+      ship_type_id in 22442..22444 -> :command
+      ship_type_id in 11995..11999 -> :interdiction
+      ship_type_id in 12017..12023 -> :ewar
+      true -> :dps
+    end
+  end
+
+  defp safe_percentage(_, 0), do: 0
+  defp safe_percentage(numerator, denominator) do
+    Float.round(numerator / denominator * 100, 1)
+  end
+end

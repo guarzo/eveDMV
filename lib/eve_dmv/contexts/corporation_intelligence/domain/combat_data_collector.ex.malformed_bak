@@ -1,0 +1,667 @@
+defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDataCollector do
+  @moduledoc """
+  Specialized module for collecting and processing corporation combat data from killmails.
+
+  This module extracts combat-related functionality from the broader doctrine analysis system,
+  focusing specifically on:
+
+  - Corporation combat data fetching from _killmail sources
+  - Member participation data extraction and analysis
+  - Killmail grouping by engagement detection
+  - Combat data aggregation and processing
+  - Fleet composition analysis from engagement data
+
+  The module provides a clean separation between data collection/processing and higher-level
+  doctrine analysis, enabling reuse across different intelligence analysis contexts.
+
+  ## Key Responsibilities
+
+  ### Data Fetching
+  - Fetches killmails where corporation members participated as victims or attackers
+  - Handles both victim and attacker role identification
+  - Applies time-based filtering for analysis windows
+  - Validates minimum data requirements for reliable analysis
+
+  ### Member Analysis
+  - Extracts unique corporation member IDs from _killmail data
+  - Tracks participation patterns across engagements
+  - Identifies active member base for the analysis period
+
+  ### Engagement Detection
+  - Groups related killmails into logical engagement clusters
+  - Uses time proximity and participant overlap for grouping
+  - Handles multi-system engagements and extended battles
+  - Filters engagements by minimum fleet size requirements
+
+  ### Fleet Analysis
+  - Analyzes ship compositions for each engagement
+  - Extracts role distributions and tactical indicators
+  - Calculates coordination quality metrics
+  - Identifies specialized ship usage patterns
+
+  ## Usage
+
+      # Fetch basic combat data for a corporation
+      {:ok, combat_data} = CombatDataCollector.fetch_corporation_combat_data(corp_id, 30)
+
+      # Extract member participation data
+      members = CombatDataCollector.extract_corporation_members(killmails, corp_id)
+
+      # Group killmails into engagements
+      engagements = CombatDataCollector.group_killmails_by_engagement(killmails, corp_id)
+
+      # Analyze fleet compositions
+      {:ok, compositions} = CombatDataCollector.analyze_fleet_compositions(combat_data)
+
+  ## Data Structure
+
+  Combat data is structured as:
+
+      %{
+        corporation_id: integer(),
+        killmails: [KillmailRaw.t()],
+        victim_killmails: [KillmailRaw.t()],
+        attacker_killmails: [KillmailRaw.t()],
+        active_members: [integer()],
+        analysis_period_days: integer(),
+        data_cutoff: NaiveDateTime.t()
+      }
+
+  Fleet compositions include detailed tactical analysis:
+
+      %{
+        engagement_id: String.t(),
+        timestamp: NaiveDateTime.t(),
+        participant_count: integer(),
+        ship_composition: map(),
+        role_distribution: map(),
+        tactical_indicators: map(),
+        doctrine_indicators: map()
+      }
+  """
+
+  import Ash.Query
+  alias EveDmv.Api
+  alias EveDmv.Killmails.KillmailRaw
+  alias EveDmv.Contexts.CorporationIntelligence.Domain.CorpIntelligenceUtils
+  alias EveDmv.Contexts.CorporationIntelligence.Analyzers.FleetCompositionAnalyzer
+
+  require Logger
+
+  # Analysis parameters
+  @min_members_for_analysis 5
+  @min_fleet_kills_for_doctrine 10
+  @min_fleet_size 3
+  @engagement_time_window_seconds 600  # 10 minutes
+
+  @doc """
+  Fetches comprehensive combat data for a corporation within a specified time window.
+
+  Retrieves killmails where corporation members participated either as victims or attackers,
+  providing a complete picture of corporate combat activity for analysis.
+
+  ## Parameters
+  - corporation_id: EVE corporation ID to analyze
+  - analysis_window_days: Number of days of history to analyze
+
+  ## Returns
+  - {:ok, combat_data} - Complete combat data structure
+  - {:error, :insufficient_member_data} - Not enough active members found
+  - {:error, reason} - Database or processing error
+
+  ## Examples
+
+      {:ok, combat_data} = fetch_corporation_combat_data(98_000_001, 30)
+      # Returns 30 days of combat data for corporation 98_000_001
+
+      {:ok, recent_data} = fetch_corporation_combat_data(98_000_001, 7)
+      # Returns last week's combat activity
+  """
+  def fetch_corporation_combat_data(corporation_id, analysis_window_days) do
+    cutoff_date =
+      NaiveDateTime.add(NaiveDateTime.utc_now(), -analysis_window_days * 24 * 60 * 60, :second)
+
+    Logger.debug("Fetching combat data for corporation #{corporation_id}, window: #{analysis_window_days} days")
+
+    # Fetch killmails where corporation members were victims
+    victim_query =
+      KillmailRaw
+      new()
+      filter(victim_corporation_id: corporation_id)
+      filter(killmail_time: [gte: cutoff_date])
+      sort(killmail_time: :desc)
+      limit(500)
+
+    # Fetch recent killmails to search for corporation as attackers
+    attacker_query =
+      KillmailRaw
+      new()
+      filter(killmail_time: [gte: cutoff_date])
+      sort(killmail_time: :desc)
+      limit(2000)  # Larger sample for attacker search
+
+    with {:ok, victim_killmails} <- Ash.read(victim_query, domain: Api),
+         {:ok, potential_attacker_killmails} <- Ash.read(attacker_query, domain: Api) do
+
+      # Filter for corporation as attackers
+      attacker_killmails = filter_corporation_as_attackers(potential_attacker_killmails, corporation_id)
+
+      all_killmails = Enum.uniq_by(victim_killmails ++ attacker_killmails, & &1.killmail_id)
+
+      # Extract member information
+      members = extract_corporation_members(all_killmails, corporation_id)
+
+      if length(members) < @min_members_for_analysis do
+        Logger.warning("Insufficient member data for corporation #{corporation_id}: #{length(members)} members found")
+        {:error, :insufficient_member_data}
+      else
+        combat_data = %{
+          corporation_id: corporation_id,
+          killmails: all_killmails,
+          victim_killmails: victim_killmails,
+          attacker_killmails: attacker_killmails,
+          active_members: members,
+          analysis_period_days: analysis_window_days,
+          data_cutoff: cutoff_date
+        }
+
+        Logger.info("""
+        Combat data collected for corporation #{corporation_id}:
+        - Total killmails: #{length(all_killmails)}
+        - Victim killmails: #{length(victim_killmails)}
+        - Attacker killmails: #{length(attacker_killmails)}
+        - Active members: #{length(members)}
+        """)
+
+        {:ok, combat_data}
+      end
+    end
+  end
+
+  @doc """
+  Extracts unique corporation member character IDs from _killmail data.
+
+  Analyzes killmails to identify all corporation members who participated in combat
+  either as victims or attackers, providing the active member base for analysis.
+
+  ## Parameters
+  - killmails: List of KillmailRaw structs to analyze
+  - corporation_id: Corporation ID to filter for
+
+  ## Returns
+  List of unique character IDs representing active corporation members
+
+  ## Examples
+
+      members = extract_corporation_members(killmails, 98_000_001)
+      # Returns: [2112625428, 2113693827, ...]
+  """
+  def extract_corporation_members(killmails, corporation_id) when is_list(killmails) do
+    Logger.debug("Extracting corporation members from #{length(killmails)} killmails")
+
+    member_ids =
+      killmails
+      |>       Enum.flat_map(fn km ->
+
+        # Member as victim
+        members =
+          if km.victim_corporation_id == corporation_id and km.victim_character_id do
+            [km.victim_character_id | members]
+          else
+            members
+          end
+
+        # Members as attackers
+        members =
+          case km.raw_data do
+            %{"attackers" => attackers} when is_list(attackers) ->
+              corp_attackers =
+                attackers
+                |>                 Enum.filter(&(&1["corporation_id"] == corporation_id))
+                Enum.map(& &1["character_id"])
+                |>                 Enum.filter(&(&1 != nil))
+
+              members ++ corp_attackers
+
+            _ ->
+              members
+          end
+
+        members
+      end)
+      Enum.filter(&(&1 != nil))
+      Enum.uniq()
+
+    Logger.debug("Extracted #{length(member_ids)} unique corporation members")
+    member_ids
+  end
+
+  @doc """
+  Groups killmails into logical engagement clusters based on temporal and spatial proximity.
+
+  Uses sophisticated clustering algorithms to identify related killmails that represent
+  the same fleet engagement, considering time windows, participant overlap, and system proximity.
+
+  ## Parameters
+  - killmails: List of killmails to group
+  - corporation_id: Corporation ID for participant filtering
+
+  ## Returns
+  List of engagement structures with grouped killmails and metadata
+
+  ## Engagement Structure
+
+      %{
+        start_time: NaiveDateTime.t(),
+        end_time: NaiveDateTime.t(),
+        killmails: [KillmailRaw.t()],
+        corp_participants: [participant_struct()],
+        systems: [integer()]
+      }
+
+  ## Algorithm
+
+  The grouping algorithm:
+  1. Sorts killmails chronologically
+  2. For each _killmail, searches for existing engagements within time window
+  3. Checks for participant overlap or system proximity
+  4. Either adds to existing engagement or creates new one
+  5. Tracks engagement evolution over time
+
+  ## Examples
+
+      engagements = group_killmails_by_engagement(killmails, 98_000_001)
+      # Returns list of engagement clusters
+  """
+  def group_killmails_by_engagement(killmails, corporation_id) when is_list(killmails) do
+    Logger.debug("Grouping #{length(killmails)} killmails into engagements")
+
+    sorted_killmails = Enum.sort_by(killmails, & &1.killmail_time)
+
+    engagements =
+      sorted_killmails
+      |>       Enum.reduce([], fn km, acc ->
+        corp_participants = extract_corp_participants(km, corporation_id)
+
+        if length(corp_participants) > 0 do
+          case find_matching_engagement(km, acc, corporation_id) do
+            nil ->
+              # Start new engagement
+              new_engagement = %{
+                start_time: km.killmail_time,
+                end_time: km.killmail_time,
+                killmails: [km],
+                corp_participants: corp_participants,
+                systems: [km.solar_system_id]
+              }
+
+              [new_engagement | acc]
+
+            {matching_engagement, other_engagements} ->
+              # Add to existing engagement
+              updated_engagement = %{
+                matching_engagement
+                | end_time: km.killmail_time,
+                  killmails: [km | matching_engagement.killmails],
+                  corp_participants:
+                    Enum.uniq_by(
+                      matching_engagement.corp_participants ++ corp_participants,
+                      & &1.character_id
+                    ),
+                  systems: Enum.uniq([km.solar_system_id | matching_engagement.systems])
+              }
+
+              [updated_engagement | other_engagements]
+          end
+        else
+          acc
+        end
+      end)
+      Enum.reverse()
+
+    Logger.info("Grouped killmails into #{length(engagements)} distinct engagements")
+    engagements
+  end
+
+  @doc """
+  Analyzes fleet compositions from grouped engagement data.
+
+  Processes engagement clusters to extract detailed fleet composition analysis,
+  including ship distributions, role analysis, and tactical indicators.
+
+  ## Parameters
+  - combat_data: Combat data structure containing engagement information
+
+  ## Returns
+  - {:ok, fleet_compositions} - List of detailed composition analyses
+  - {:error, :insufficient_fleet_data} - Not enough fleet engagements found
+
+  ## Fleet Composition Structure
+
+      %{
+        engagement_id: String.t(),
+        timestamp: NaiveDateTime.t(),
+        duration_seconds: integer(),
+        participant_count: integer(),
+        ship_composition: %{
+          ship_types: map(),
+          ship_classes: map(),
+          tank_distribution: map(),
+          range_distribution: map(),
+          specialized_ships: map()
+        },
+        role_distribution: %{
+          roles: map(),
+          role_percentages: map(),
+          support_ratio: float()
+        },
+        tactical_indicators: %{
+          coordination_quality: map(),
+          target_focus: map(),
+          escalation_pattern: map()
+        }
+      }
+  """
+  def analyze_fleet_compositions(combat_data) do
+    Logger.debug("Analyzing fleet compositions from combat data")
+
+    # Group killmails by engagement to identify fleet compositions
+    fleet_engagements = group_killmails_by_engagement(combat_data.killmails, combat_data.corporation_id)
+
+    # Delegate to the specialized FleetCompositionAnalyzer
+    case FleetCompositionAnalyzer.analyze_fleet_compositions(fleet_engagements) do
+      {:ok, fleet_compositions} ->
+        if length(fleet_compositions) < @min_fleet_kills_for_doctrine do
+          Logger.warning("Insufficient fleet data: #{length(fleet_compositions)} compositions found")
+          {:error, :insufficient_fleet_data}
+        else
+          Logger.info("Analyzed #{length(fleet_compositions)} fleet compositions")
+          {:ok, fleet_compositions}
+        end
+
+      error ->
+        error
+    end
+  end
+
+  @doc """
+  Analyzes aggregated combat statistics across all engagements.
+
+  Provides high-level statistical analysis of corporation combat patterns,
+  including engagement _frequency, member participation rates, and tactical trends.
+
+  ## Parameters
+  - combat_data: Combat data structure
+  - fleet_compositions: Optional pre-analyzed fleet compositions
+
+  ## Returns
+  Map containing aggregated combat statistics and patterns
+  """
+  def analyze_combat_statistics(combat_data, fleet_compositions \\ nil) do
+    compositions = fleet_compositions || combat_data |> analyze_fleet_compositions() elem(1)
+
+    engagement_stats = calculate_engagement_statistics(combat_data)
+    member_stats = calculate_member_participation_statistics(combat_data)
+    tactical_stats = calculate_tactical_statistics(compositions)
+
+    %{
+      analysis_period: combat_data.analysis_period_days,
+      total_killmails: length(combat_data.killmails),
+      total_engagements: length(compositions),
+      engagement_statistics: engagement_stats,
+      member_statistics: member_stats,
+      tactical_statistics: tactical_stats,
+      data_quality: assess_data_quality(combat_data, compositions)
+    }
+  end
+
+  # Private implementation functions
+
+  defp filter_corporation_as_attackers(killmails, corporation_id) do
+    Enum.filter(killmails, fn km ->
+      case km.raw_data do
+        %{"attackers" => attackers} when is_list(attackers) ->
+          Enum.any?(attackers, &(&1["corporation_id"] == corporation_id))
+
+        _ ->
+          false
+      end
+    end)
+  end
+
+  defp extract_corp_participants(_killmail, corporation_id) do
+    # Participant as victim
+    initial_participants =
+      if _killmail.victim_corporation_id == corporation_id and _killmail.victim_character_id do
+        [
+          %{
+            character_id: _killmail.victim_character_id,
+            ship_type_id: _killmail.victim_ship_type_id,
+            role: :victim
+          }
+        ]
+      else
+        []
+      end
+
+    # Participants as attackers
+    case _killmail.raw_data do
+      %{"attackers" => attackers} when is_list(attackers) ->
+        corp_attackers =
+          attackers
+          |>           Enum.filter(&(&1["corporation_id"] == corporation_id))
+          Enum.map(fn attacker ->
+            %{
+              character_id: attacker["character_id"],
+              ship_type_id: attacker["ship_type_id"],
+              role: :attacker,
+              damage_done: attacker["damage_done"] || 0,
+              final_blow: attacker["final_blow"] || false
+            }
+          end)
+          Enum.filter(&(&1.character_id != nil))
+
+        initial_participants ++ corp_attackers
+
+      _ ->
+        initial_participants
+    end
+  end
+
+  defp find_matching_engagement(_killmail, engagements, corporation_id) do
+    corp_participants = extract_corp_participants(_killmail, corporation_id)
+    participant_ids = Enum.map(corp_participants, & &1.character_id)
+
+    matching =
+      Enum.find(engagements, fn engagement ->
+        # Check time proximity
+        time_diff = NaiveDateTime.diff(_killmail.killmail_time, engagement.end_time, :second)
+        within_time_window = time_diff <= @engagement_time_window_seconds and time_diff >= 0
+
+        # Check participant overlap
+        engagement_participant_ids = Enum.map(engagement.corp_participants, & &1.character_id)
+
+        overlap =
+          MapSet.intersection(MapSet.new(participant_ids), MapSet.new(engagement_participant_ids))
+
+        has_overlap = MapSet.size(overlap) > 0
+
+        # Check system proximity (same system or adjacent)
+        system_match = _killmail.solar_system_id in engagement.systems
+
+        within_time_window and (has_overlap or system_match)
+      end)
+
+    case matching do
+      nil ->
+        nil
+
+      engagement ->
+        other_engagements = Enum.filter(engagements, &(&1 != engagement))
+        {engagement, other_engagements}
+    end
+  end
+
+  # Fleet composition analysis functions have been moved to FleetCompositionAnalyzer module
+
+  defp calculate_engagement_statistics(combat_data) do
+    engagements = group_killmails_by_engagement(combat_data.killmails, combat_data.corporation_id)
+
+    %{
+      total_engagements: length(engagements),
+      avg_engagement_duration: calculate_avg_engagement_duration(engagements),
+      multi_system_engagements: count_multi_system_engagements(engagements),
+      largest_engagement: find_largest_engagement(engagements),
+      engagement_frequency: calculate_engagement_frequency(engagements, combat_data.analysis_period_days)
+    }
+  end
+
+  defp calculate_member_participation_statistics(combat_data) do
+    member_participation =
+      combat_data.active_members
+      |>       Enum.map(fn member_id ->
+        participation_count = count_member_participation(combat_data.killmails, member_id)
+        {member_id, participation_count}
+      end)
+      Map.new()
+
+    participation_counts = Map.values(member_participation)
+
+    %{
+      total_active_members: length(combat_data.active_members),
+      avg_participation: if(length(participation_counts) > 0, do: Enum.sum(participation_counts) / length(participation_counts), else: 0),
+      most_active_member: find_most_active_member(member_participation),
+      participation_distribution: Enum.frequencies(participation_counts)
+    }
+  end
+
+  defp calculate_tactical_statistics(fleet_compositions) when is_list(fleet_compositions) do
+    if Enum.empty?(fleet_compositions) do
+      %{error: :no_compositions}
+    else
+      %{
+        avg_fleet_size: calculate_avg_fleet_size(fleet_compositions),
+        coordination_quality_distribution: analyze_coordination_distribution(fleet_compositions),
+        common_ship_classes: identify_common_ship_classes(fleet_compositions),
+        tactical_patterns: summarize_tactical_patterns(fleet_compositions)
+      }
+    end
+  end
+
+  defp calculate_tactical_statistics(_), do: %{error: :invalid_compositions}
+
+  defp assess_data_quality(combat_data, fleet_compositions) do
+    %{
+      killmail_coverage: length(combat_data.killmails) / max(1, combat_data.analysis_period_days),
+      member_activity_rate: length(combat_data.active_members) / max(1, length(combat_data.killmails)),
+      engagement_detection_rate: if(is_list(fleet_compositions), do: length(fleet_compositions) / max(1, length(combat_data.killmails)), else: 0),
+      data_completeness: calculate_data_completeness(combat_data)
+    }
+  end
+
+  # Helper functions for statistics
+  defp calculate_avg_engagement_duration(engagements) do
+    if Enum.empty?(engagements) do
+      0
+    else
+      total_duration = Enum.sum(Enum.map(engagements, fn eng ->
+        NaiveDateTime.diff(eng.end_time, eng.start_time, :second)
+      end))
+      total_duration / length(engagements)
+    end
+  end
+
+  defp count_multi_system_engagements(engagements) do
+    Enum.count(engagements, fn eng -> length(eng.systems) > 1 end)
+  end
+
+  defp find_largest_engagement(engagements) do
+    if Enum.empty?(engagements) do
+      nil
+    else
+      engagements
+      |>       Enum.max_by(fn eng -> length(eng.corp_participants) end)
+      Map.take([:start_time, :corp_participants, :systems])
+    end
+  end
+
+  defp calculate_engagement_frequency(engagements, analysis_days) do
+    if analysis_days > 0 do
+      length(engagements) / analysis_days
+    else
+      0
+    end
+  end
+
+  defp count_member_participation(killmails, member_id) do
+    Enum.count(killmails, fn km ->
+      km.victim_character_id == member_id or member_in_attackers?(km, member_id)
+    end)
+  end
+
+  defp member_in_attackers?(_killmail, member_id) do
+    case _killmail.raw_data do
+      %{"attackers" => attackers} when is_list(attackers) ->
+        Enum.any?(attackers, &(&1["character_id"] == member_id))
+      _ ->
+        false
+    end
+  end
+
+  defp find_most_active_member(member_participation) do
+    if map_size(member_participation) > 0 do
+      {member_id, participation_count} = Enum.max_by(member_participation, &elem(&1, 1))
+      %{member_id: member_id, participation_count: participation_count}
+    else
+      nil
+    end
+  end
+
+  defp calculate_avg_fleet_size(fleet_compositions) do
+    total_participants = Enum.sum(Enum.map(fleet_compositions, & &1.participant_count))
+    total_participants / length(fleet_compositions)
+  end
+
+  defp analyze_coordination_distribution(fleet_compositions) do
+    coordination_qualities =
+      fleet_compositions
+      Enum.map(& &1.tactical_indicators.coordination_indicators.quality)
+      Enum.frequencies()
+
+    coordination_qualities
+  end
+
+  defp identify_common_ship_classes(fleet_compositions) do
+    all_ship_classes =
+      fleet_compositions
+      |>       Enum.flat_map(fn comp -> Map.keys(comp.ship_composition.ship_classes) end)
+      Enum.frequencies()
+      |>       Enum.sort_by(&elem(&1, 1), :desc)
+      Enum.take(5)
+
+    all_ship_classes
+  end
+
+  defp summarize_tactical_patterns(fleet_compositions) do
+    %{
+      avg_engagement_duration: Enum.sum(Enum.map(fleet_compositions, & &1.duration_seconds)) / length(fleet_compositions),
+      multi_system_rate: Enum.count(fleet_compositions, & &1.tactical_indicators.multi_system) / length(fleet_compositions),
+      avg_support_ratio: Enum.sum(Enum.map(fleet_compositions, & &1.role_distribution.support_ratio)) / length(fleet_compositions)
+    }
+  end
+
+  defp calculate_data_completeness(combat_data) do
+    complete_killmails = Enum.count(combat_data.killmails, fn km ->
+      km.victim_character_id != nil and
+      km.victim_ship_type_id != nil and
+      km.solar_system_id != nil and
+      is_map(km.raw_data)
+    end)
+
+    if length(combat_data.killmails) > 0 do
+      complete_killmails / length(combat_data.killmails)
+    else
+      0.0
+    end
+  end
+end

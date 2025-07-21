@@ -1,0 +1,444 @@
+defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.BattleMetricsProcessor do
+  @moduledoc """
+  Battle metrics processing engine for calculating battle-wide statistics.
+
+  Handles:
+  - Battle duration calculations
+  - Battle classification (type and scale)
+  - Battle phase identification
+  - Winner determination
+  - Victory factor analysis
+  - Battle intensity calculations
+  """
+
+  require Logger
+
+  # Battle classification thresholds
+  @small_gang_max 10
+  @medium_fleet_max 50
+
+  @doc """
+  Calculate battle duration from timeline.
+  """
+  def calculate_battle_duration(timeline) do
+    if length(timeline) < 2 do
+      0
+    else
+      first_event = Enum.min_by(timeline, & &1.timestamp, DateTime)
+      last_event = Enum.max_by(timeline, & &1.timestamp, DateTime)
+      DateTime.diff(last_event.timestamp, first_event.timestamp)
+    end
+  end
+
+  @doc """
+  Classify battle type based on participants and killmails.
+  """
+  def classify_battle_type(participants, killmails) do
+    participant_count = map_size(participants)
+    total_isk = calculate_total_isk_destroyed(killmails)
+
+    cond do
+      participant_count <= 5 and total_isk < 1_000_000_000 -> :skirmish
+      participant_count <= @small_gang_max -> :small_gang_engagement
+      participant_count <= @medium_fleet_max and total_isk < 50_000_000_000 -> :medium_fleet_battle
+      participant_count > @medium_fleet_max and total_isk > 100_000_000_000 -> :large_fleet_battle
+      total_isk > 500_000_000_000 -> :major_engagement
+      true -> :fleet_engagement
+    end
+  end
+
+  @doc """
+  Classify engagement scale based on participant count.
+  """
+  def classify_engagement_scale(participants) do
+    participant_count = map_size(participants)
+
+    cond do
+      participant_count <= 5 -> :micro_gang
+      participant_count <= @small_gang_max -> :small_gang
+      participant_count <= @medium_fleet_max -> :medium_fleet
+      participant_count <= 100 -> :large_fleet
+      true -> :massive_fleet
+    end
+  end
+
+  @doc """
+  Identify battle phases from timeline.
+  """
+  def identify_battle_phases(timeline) do
+    if length(timeline) < 5 do
+      # Too few events to meaningfully identify phases
+      []
+    else
+      # Divide timeline into phases based on activity patterns
+      total_duration = calculate_timeline_duration(timeline)
+      phase_duration = max(300, div(total_duration, 5))  # At least 5 minute phases
+
+      phases = create_time_based_phases(timeline, phase_duration)
+
+      phases
+      Enum.with_index()
+      |>       Enum.map(fn {phase, index} ->
+        phase_type = determine_phase_type(phase, index, length(phases))
+        dominant_side = calculate_dominant_side_for_phase(timeline, phase)
+        key_events = identify_key_events_in_phase(timeline, phase)
+
+        %{
+          phase_number: index + 1,
+          phase_type: phase_type,
+          start_time: phase.start_time,
+          end_time: phase.end_time,
+          duration_seconds: DateTime.diff(phase.end_time, phase.start_time),
+          events_count: length(phase.events),
+          dominant_side: dominant_side,
+          key_events: key_events,
+          intensity: calculate_phase_intensity(phase)
+        }
+      end)
+    end
+  end
+
+  @doc """
+  Determine battle winner from performance metrics.
+  """
+  def determine_battle_winner(performance_metrics) do
+    side_performance = performance_metrics.by_side || %{}
+
+    if map_size(side_performance) < 2 do
+      :inconclusive
+    else
+      # Score each side based on multiple factors
+      scored_sides =
+        side_performance
+        |>         Enum.map(fn {side, metrics} ->
+          # Calculate composite score
+          kill_score = (metrics.kills || 0) * 10
+          efficiency_updated_score = (metrics.efficiency || 0) * 100
+          isk_ratio_updated_score = calculate_isk_ratio_score(metrics)
+
+          total_updated_score = kill_score + efficiency_score + isk_ratio_score
+
+          {side, total_score}
+        end)
+        Enum.sort_by(fn {_side, score} -> score end, :desc)
+
+      case scored_sides do
+        [{winner, winner_score}, {runner_up, runner_up_score} | _] ->
+          # Check if victory is decisive
+          score_margin = winner_score - runner_up_score
+          if score_margin > 100 do
+            winner
+          else
+            :close_victory
+          end
+
+        [{winner, _score}] ->
+          winner
+
+        [] ->
+          :inconclusive
+      end
+    end
+  end
+
+  @doc """
+  Analyze victory factors from tactical and performance analysis.
+  """
+  def analyze_victory_factors(tactical_analysis, performance_metrics) do
+
+    # Performance-based factors
+    side_performance = performance_metrics.by_side || %{}
+    if map_size(side_performance) >= 2 do
+      performance_factors = extract_performance_factors(side_performance)
+      factors = factors ++ performance_factors
+    end
+
+    # Tactical factors
+    if tactical_analysis do
+      tactical_factors = extract_tactical_factors(tactical_analysis)
+      factors = factors ++ tactical_factors
+    end
+
+    # Ship class effectiveness factors
+    ship_class_performance = performance_metrics.by_ship_class || %{}
+    if not Enum.empty?(ship_class_performance) do
+      ship_factors = extract_ship_class_factors(ship_class_performance)
+      factors = factors ++ ship_factors
+    end
+
+    factors
+    Enum.uniq()
+    Enum.take(5)  # Top 5 most important factors
+  end
+
+  @doc """
+  Calculate total ISK destroyed from killmails.
+  """
+  def calculate_total_isk_destroyed(killmails) do
+    killmails
+    Enum.map(&extract_isk_value_from_killmail/1)
+    Enum.sum()
+  end
+
+  @doc """
+  Calculate battle intensity based on events per minute.
+  """
+  def calculate_battle_intensity(timeline, duration_seconds) do
+    if duration_seconds <= 0 or Enum.empty?(timeline) do
+      :very_low
+    else
+      events_per_minute = length(timeline) / (duration_seconds / 60)
+
+      cond do
+        events_per_minute >= 10 -> :very_high
+        events_per_minute >= 5 -> :high
+        events_per_minute >= 2 -> :medium
+        events_per_minute >= 1 -> :low
+        true -> :very_low
+      end
+    end
+  end
+
+  # Private helper functions
+
+  defp calculate_timeline_duration(timeline) do
+    if length(timeline) < 2 do
+      0
+    else
+      first_event = Enum.min_by(timeline, & &1.timestamp, DateTime)
+      last_event = Enum.max_by(timeline, & &1.timestamp, DateTime)
+      DateTime.diff(last_event.timestamp, first_event.timestamp)
+    end
+  end
+
+  defp create_time_based_phases(timeline, phase_duration_seconds) do
+    if Enum.empty?(timeline) do
+      []
+    else
+      first_event = Enum.min_by(timeline, & &1.timestamp, DateTime)
+      last_event = Enum.max_by(timeline, & &1.timestamp, DateTime)
+
+      total_duration = DateTime.diff(last_event.timestamp, first_event.timestamp)
+      num_phases = max(1, div(total_duration, phase_duration_seconds))
+
+      Enum.map(0..(num_phases - 1), fn phase_index ->
+        phase_start = DateTime.add(first_event.timestamp, phase_index * phase_duration_seconds)
+        phase_end = DateTime.add(first_event.timestamp, (phase_index + 1) * phase_duration_seconds)
+
+        phase_events =
+          timeline
+          |>           Enum.filter(fn event ->
+            DateTime.compare(event.timestamp, phase_start) != :lt and
+            DateTime.compare(event.timestamp, phase_end) == :lt
+          end)
+
+        %{
+          start_time: phase_start,
+          end_time: phase_end,
+          events: phase_events
+        }
+      end)
+    end
+  end
+
+  defp determine_phase_type(phase, index, total_phases) do
+    events_count = length(phase.events)
+
+    cond do
+      index == 0 -> :opening
+      index == total_phases - 1 -> :conclusion
+      events_count > 5 -> :escalation
+      events_count > 2 -> :engagement
+      true -> :lull
+    end
+  end
+
+  defp calculate_dominant_side_for_phase(_timeline, phase) do
+    # Simplified implementation - would need proper side tracking
+    if length(phase.events) > 0 do
+      "side_#{rem(length(phase.events), 2)}"
+    else
+      :unknown
+    end
+  end
+
+  defp identify_key_events_in_phase(_timeline, phase) do
+    # Identify high-value or significant events in this phase
+    phase.events
+    Enum.filter(&high_value_event?/1)
+    |>     Enum.map(fn event ->
+      %{
+        timestamp: event.timestamp,
+        type: determine_event_type(event),
+        description: generate_event_description(event),
+        significance: :high
+      }
+    end)
+  end
+
+  defp calculate_phase_intensity(phase) do
+    duration_minutes = DateTime.diff(phase.end_time, phase.start_time) / 60
+    events_per_minute = if duration_minutes > 0, do: length(phase.events) / duration_minutes, else: 0
+
+    intensity_value = cond do
+      events_per_minute >= 5 -> 5
+      events_per_minute >= 3 -> 4
+      events_per_minute >= 2 -> 3
+      events_per_minute >= 1 -> 2
+      events_per_minute > 0 -> 1
+      true -> 0
+    end
+
+    classify_intensity_rating(intensity_value)
+  end
+
+  defp classify_intensity_rating(intensity) when is_number(intensity) do
+    case intensity do
+      5 -> :very_high
+      4 -> :high
+      3 -> :medium
+      2 -> :low
+      1 -> :very_low
+      _ -> :minimal
+    end
+  end
+
+  defp high_value_event?(event) do
+    # Check if this is a high-value event (capital kill, commander kill, etc.)
+    isk_value = extract_isk_value_from_event(event)
+    isk_value > 1_000_000_000  # 1B+ ISK
+  end
+
+  defp determine_event_type(event) do
+    isk_value = extract_isk_value_from_event(event)
+
+    cond do
+      isk_value > 50_000_000_000 -> :titan_kill
+      isk_value > 20_000_000_000 -> :supercarrier_kill
+      isk_value > 5_000_000_000 -> :capital_kill
+      isk_value > 1_000_000_000 -> :high_value_kill
+      true -> :standard_kill
+    end
+  end
+
+  defp generate_event_description(event) do
+    event_type = determine_event_type(event)
+    isk_value = extract_isk_value_from_event(event)
+
+    case event_type do
+      :titan_kill -> "Titan destroyed (#{format_isk_value(isk_value)} ISK)"
+      :supercarrier_kill -> "Supercarrier destroyed (#{format_isk_value(isk_value)} ISK)"
+      :capital_kill -> "Capital ship destroyed (#{format_isk_value(isk_value)} ISK)"
+      :high_value_kill -> "High-value target destroyed (#{format_isk_value(isk_value)} ISK)"
+      _ -> "Standard engagement"
+    end
+  end
+
+  defp format_isk_value(value) when value >= 1_000_000_000 do
+    "#{Float.round(value / 1_000_000_000, 1)}B"
+  end
+
+  defp format_isk_value(value) when value >= 1_000_000 do
+    "#{Float.round(value / 1_000_000, 1)}M"
+  end
+
+  defp format_isk_value(value) do
+    "#{Float.round(value / 1000, 1)}K"
+  end
+
+  defp extract_isk_value_from_killmail(_killmail) do
+    # Simplified ISK extraction - in production would parse raw_data
+    case _killmail.victim_ship_type_id do
+      ship_id when ship_id in [11_567, 22_444, 23_757] -> 50_000_000_000  # Titans
+      ship_id when ship_id in [19_720, 19_722, 19_724] -> 20_000_000_000  # Supercarriers
+      ship_id when ship_id in [19_726, 24_483] -> 2_000_000_000           # Carriers
+      ship_id when ship_id in [17_132, 17_738, 28_665] -> 1_500_000_000   # Dreadnoughts
+      _ -> 100_000_000  # Default value
+    end
+  end
+
+  defp extract_isk_value_from_event(event) do
+    # Extract ISK value from timeline event
+    event[:isk_value] || event[:value] || 0
+  end
+
+  defp calculate_isk_ratio_score(metrics) do
+    isk_destroyed = metrics[:isk_destroyed] || 0
+    isk_lost = metrics[:isk_lost] || 0
+
+    if isk_lost > 0 do
+      ratio = isk_destroyed / isk_lost
+      min(100, ratio * 50)  # Cap at 100 points
+    else
+      if isk_destroyed > 0, do: 100, else: 0
+    end
+  end
+
+  defp extract_performance_factors(side_performance) do
+
+    # Find the side with best efficiency
+    best_efficiency =
+      side_performance
+      Enum.max_by(fn {_side, metrics} -> metrics[:efficiency] || 0 end)
+
+    if elem(best_efficiency, 1)[:efficiency] > 0.8 do
+      factors = ["superior_efficiency" | factors]
+    end
+
+    # Check for numerical superiority
+    participant_counts = Enum.map(side_performance, fn {_side, metrics} -> metrics[:participants] || 0 end)
+    max_participants = Enum.max(participant_counts)
+    min_participants = Enum.min(participant_counts)
+
+    if max_participants > min_participants * 2 do
+      factors = ["numerical_superiority" | factors]
+    end
+
+    # Check for high-value kills
+    max_isk_destroyed =
+      side_performance
+      Enum.map(fn {_side, metrics} -> metrics[:isk_destroyed] || 0 end)
+      Enum.max()
+
+    if max_isk_destroyed > 10_000_000_000 do
+      factors = ["high_value_targets" | factors]
+    end
+
+    factors
+  end
+
+  defp extract_tactical_factors(tactical_analysis) do
+
+    # Check for tactical patterns
+    patterns = tactical_analysis[:patterns] || []
+
+    if "alpha_strike" in patterns do
+      factors = ["alpha_strike_tactics" | factors]
+    end
+
+    if "superior_positioning" in patterns do
+      factors = ["tactical_positioning" | factors]
+    end
+
+    if "coordination" in patterns do
+      factors = ["fleet_coordination" | factors]
+    end
+
+    factors
+  end
+
+  defp extract_ship_class_factors(ship_class_performance) do
+
+    # Find most effective ship class
+    best_performing_class =
+      ship_class_performance
+      Enum.max_by(fn {_class, metrics} -> metrics[:efficiency] || 0 end)
+
+    if elem(best_performing_class, 1)[:efficiency] > 0.9 do
+      class_name = elem(best_performing_class, 0)
+      factors = ["#{class_name}_effectiveness" | factors]
+    end
+
+    factors
+  end
+end

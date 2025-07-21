@@ -1,0 +1,318 @@
+defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
+  @moduledoc """
+  Fleet effectiveness calculation engine.
+
+  Provides comprehensive metrics for fleet performance analysis,
+  including damage efficiency, survival rates, and tactical effectiveness.
+  
+  This is the main orchestrator that delegates to specialized analyzers.
+  """
+
+  use EveDmv.ErrorHandler
+
+  alias EveDmv.Contexts.FleetOperations.Infrastructure.EngagementCache
+  alias EveDmv.Contexts.FleetOperations.Domain.Effectiveness.{
+    TrendAnalyzer,
+    LossAnalyzer,
+    CoordinationAnalyzer,
+    DamageCalculator
+  }
+
+  require Logger
+
+  # Effectiveness weights for different metrics
+  @effectiveness_weights %{
+    isk_efficiency: 0.3,
+    kill_death_ratio: 0.25,
+    survival_rate: 0.2,
+    objective_completion: 0.15,
+    tactical_execution: 0.1
+  }
+
+  @doc """
+  Calculate comprehensive fleet effectiveness metrics.
+  """
+  def calculate_fleet_effectiveness(fleet_id) do
+    case EngagementCache.get_fleet_engagements(%{fleet_id: fleet_id}) do
+      {:ok, engagements} ->
+        if length(engagements) > 0 do
+          calculate_effectiveness_from_engagements(fleet_id, engagements)
+        else
+          {:error, :no_engagement_data}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Calculate performance trends for a corporation over time.
+  """
+  def calculate_performance_trends(corporation_id, time_range \\ :last_90d) do
+    case EngagementCache.get_corporation_engagements(corporation_id, time_range) do
+      {:ok, engagements} ->
+        trend_analysis = TrendAnalyzer.calculate_performance_trends(engagements, time_range)
+        {:ok, trend_analysis}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Analyze fleet losses to identify improvement areas.
+  """
+  def analyze_fleet_losses(fleet_data) do
+    participants = fleet_data.participants
+    killmails = Map.get(fleet_data, :killmails, [])
+
+    loss_analysis = LossAnalyzer.analyze_fleet_losses(participants, killmails)
+    {:ok, loss_analysis}
+  end
+
+  @doc """
+  Calculate damage per second efficiency for a fleet.
+  """
+  def calculate_dps_efficiency(fleet_data, engagement_duration_seconds) do
+    participants = fleet_data.participants
+    killmails = Map.get(fleet_data, :killmails, [])
+
+    DamageCalculator.calculate_dps_efficiency(participants, killmails, engagement_duration_seconds)
+  end
+
+  @doc """
+  Calculate fleet coordination score based on engagement patterns.
+  """
+  def calculate_coordination_score(fleet_data) do
+    participants = fleet_data.participants
+    killmails = Map.get(fleet_data, :killmails, [])
+
+    coordination_score = CoordinationAnalyzer.calculate_coordination_score(participants, killmails)
+    {:ok, coordination_score}
+  end
+
+  # Private functions for core effectiveness calculation
+
+  defp calculate_effectiveness_from_engagements(fleet_id, engagements) do
+    Logger.debug("Calculating effectiveness for fleet #{fleet_id} with #{length(engagements)} engagements")
+
+    # Aggregate metrics from all engagements
+    aggregated_metrics = aggregate_engagement_metrics(engagements)
+
+    # Calculate individual effectiveness components
+    effectiveness_components = %{
+      isk_efficiency: calculate_isk_efficiency_score(aggregated_metrics),
+      kill_death_ratio: calculate_kd_ratio_score(aggregated_metrics),
+      survival_rate: calculate_survival_score(aggregated_metrics),
+      objective_completion: calculate_objective_completion_score(aggregated_metrics),
+      tactical_execution: calculate_tactical_execution_score(aggregated_metrics)
+    }
+
+    # Calculate weighted overall effectiveness
+    overall_effectiveness = calculate_weighted_effectiveness(effectiveness_components)
+
+    effectiveness_data = %{
+      fleet_id: fleet_id,
+      engagement_count: length(engagements),
+      overall_effectiveness: overall_effectiveness,
+      effectiveness_grade: determine_effectiveness_grade(overall_effectiveness),
+      components: effectiveness_components,
+      metrics: aggregated_metrics,
+      period: determine_data_period(engagements),
+      recommendations: generate_effectiveness_recommendations(
+        overall_effectiveness,
+        effectiveness_components,
+        aggregated_metrics
+      )
+    }
+
+    {:ok, effectiveness_data}
+  end
+
+  defp aggregate_engagement_metrics(engagements) do
+    Enum.reduce(engagements, %{
+      total_kills: 0,
+      total_losses: 0,
+      total_isk_destroyed: 0,
+      total_isk_lost: 0,
+      total_participants: 0,
+      total_survivors: 0,
+      objectives_completed: 0,
+      objectives_attempted: 0,
+      engagement_durations: [],
+      pilot_performance_scores: []
+    }, fn engagement, acc ->
+      %{
+        total_kills: acc.total_kills + Map.get(engagement, :kills, 0),
+        total_losses: acc.total_losses + Map.get(engagement, :losses, 0),
+        total_isk_destroyed: acc.total_isk_destroyed + Map.get(engagement, :isk_destroyed, 0),
+        total_isk_lost: acc.total_isk_lost + Map.get(engagement, :isk_lost, 0),
+        total_participants: acc.total_participants + Map.get(engagement, :participant_count, 0),
+        total_survivors: acc.total_survivors + Map.get(engagement, :survivors, 0),
+        objectives_completed: acc.objectives_completed + Map.get(engagement, :objectives_completed, 0),
+        objectives_attempted: acc.objectives_attempted + Map.get(engagement, :objectives_attempted, 0),
+        engagement_durations: [Map.get(engagement, :duration_seconds, 0) | acc.engagement_durations],
+        pilot_performance_scores: [Map.get(engagement, :avg_pilot_performance, 0.5) | acc.pilot_performance_scores]
+      }
+    end)
+  end
+
+  defp calculate_weighted_effectiveness(components) do
+    weighted_sum = Enum.reduce(@effectiveness_weights, 0, fn {metric, weight}, sum ->
+      sum + Map.get(components, metric, 0) * weight
+    end)
+
+    Float.round(weighted_sum, 3)
+  end
+
+  defp calculate_isk_efficiency_score(metrics) do
+    total_value_destroyed = metrics.total_isk_destroyed
+    total_value_lost = metrics.total_isk_lost
+
+    cond do
+      total_value_destroyed == 0 and total_value_lost == 0 ->
+        0.5
+      total_value_lost == 0 ->
+        1.0
+      true ->
+        efficiency = total_value_destroyed / (total_value_destroyed + total_value_lost)
+        Float.round(efficiency, 3)
+    end
+  end
+
+  defp calculate_kd_ratio_score(metrics) do
+    if metrics.total_losses > 0 do
+      kd_ratio = metrics.total_kills / metrics.total_losses
+      # Normalize KD ratio to 0-1 scale (3:1 ratio = 1.0 score)
+      min(1.0, kd_ratio / 3.0)
+    else
+      # No losses is perfect score if there were kills
+      if metrics.total_kills > 0, do: 1.0, else: 0.5
+    end
+  end
+
+  defp calculate_survival_score(metrics) do
+    if metrics.total_participants > 0 do
+      survival_rate = metrics.total_survivors / metrics.total_participants
+      survival_rate
+    else
+      0.0
+    end
+  end
+
+  defp calculate_objective_completion_score(metrics) do
+    if metrics.objectives_attempted > 0 do
+      completion_rate = metrics.objectives_completed / metrics.objectives_attempted
+      completion_rate
+    else
+      # Neutral score if no objectives tracked
+      0.5
+    end
+  end
+
+  defp calculate_tactical_execution_score(metrics) do
+    # Based on engagement duration efficiency and pilot performance
+    avg_engagement_duration =
+      if length(metrics.engagement_durations) > 0 do
+        Enum.sum(metrics.engagement_durations) / length(metrics.engagement_durations)
+      else
+        0
+      end
+
+    avg_pilot_performance =
+      if length(metrics.pilot_performance_scores) > 0 do
+        Enum.sum(metrics.pilot_performance_scores) / length(metrics.pilot_performance_scores)
+      else
+        0.5
+      end
+
+    # Quick engagements with good pilot performance = high tactical score
+    duration_score =
+      cond do
+        avg_engagement_duration == 0 -> 0.5
+        avg_engagement_duration < 300 -> 1.0  # < 5 minutes
+        avg_engagement_duration < 900 -> 0.8  # < 15 minutes
+        avg_engagement_duration < 1800 -> 0.6 # < 30 minutes
+        true -> 0.4
+      end
+
+    # Weighted average of duration efficiency and pilot performance
+    duration_score * 0.6 + avg_pilot_performance * 0.4
+  end
+
+  defp determine_data_period(engagements) do
+    if Enum.empty?(engagements) do
+      %{start_date: nil, end_date: nil, duration_days: 0}
+    else
+      timestamps = Enum.map(engagements, &Map.get(&1, :timestamp, DateTime.utc_now()))
+      start_date = Enum.min(timestamps, DateTime)
+      end_date = Enum.max(timestamps, DateTime)
+
+      %{
+        start_date: start_date,
+        end_date: end_date,
+        duration_days: DateTime.diff(end_date, start_date, :day)
+      }
+    end
+  end
+
+  defp determine_effectiveness_grade(effectiveness_score) do
+    cond do
+      effectiveness_score >= 0.9 -> "S"
+      effectiveness_score >= 0.8 -> "A"
+      effectiveness_score >= 0.7 -> "B"
+      effectiveness_score >= 0.6 -> "C"
+      effectiveness_score >= 0.5 -> "D"
+      true -> "F"
+    end
+  end
+
+  defp generate_effectiveness_recommendations(overall_score, components, metrics) do
+    recommendations = []
+
+    # ISK efficiency recommendations
+    recommendations = if components.isk_efficiency < 0.5 do
+      ["Improve target selection and prioritize higher-value targets" | recommendations]
+    else
+      recommendations
+    end
+
+    # K/D ratio recommendations
+    recommendations = if components.kill_death_ratio < 0.5 do
+      ["Focus on survival tactics and better engagement selection" | recommendations]
+    else
+      recommendations
+    end
+
+    # Survival rate recommendations
+    recommendations = if components.survival_rate < 0.6 do
+      ["Enhance logistics support and improve fleet positioning" | recommendations]
+    else
+      recommendations
+    end
+
+    # Objective completion recommendations
+    recommendations = if components.objective_completion < 0.7 do
+      ["Better strategic planning and clearer objective communication" | recommendations]
+    else
+      recommendations
+    end
+
+    # Tactical execution recommendations
+    recommendations = if components.tactical_execution < 0.5 do
+      ["Improve fleet coordination and reduce engagement duration" | recommendations]
+    else
+      recommendations
+    end
+
+    # Overall performance recommendation
+    recommendations = if overall_score >= 0.8 do
+      ["Maintain current operational excellence" | recommendations]
+    else
+      recommendations
+    end
+
+    recommendations
+  end
+end

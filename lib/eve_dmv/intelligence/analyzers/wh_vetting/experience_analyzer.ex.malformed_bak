@@ -1,0 +1,226 @@
+defmodule EveDmv.Intelligence.Analyzers.WHVetting.ExperienceAnalyzer do
+  @moduledoc """
+  Analyzes wormhole experience and competency for vetting.
+  Handles J-space activity analysis and experience scoring.
+  """
+
+  require Logger
+
+  @doc """
+  Calculate J-space experience from _killmail data.
+  """
+  def calculate_j_space_experience(killmails) when is_list(killmails) do
+    total_kills = length(killmails)
+
+    if total_kills == 0 do
+      %{
+        j_space_ratio: 0.0,
+        j_space_count: 0,
+        total_kills: 0,
+        experience_level: :no_data,
+        competency: :unknown,
+        most_active_class: :unknown
+      }
+    else
+      j_space_kills = Enum.filter(killmails, &j_space_system?(&1.solar_system_id))
+      j_space_count = length(j_space_kills)
+      j_space_ratio = j_space_count / total_kills
+
+      %{
+        j_space_ratio: Float.round(j_space_ratio, 3),
+        j_space_count: j_space_count,
+        total_kills: total_kills,
+        experience_level: classify_experience_level(j_space_ratio, j_space_count),
+        competency: assess_wormhole_competency(j_space_kills),
+        most_active_class: determine_most_active_wh_class(j_space_kills),
+        experience_score: calculate_experience_score(j_space_ratio, j_space_count)
+      }
+    end
+  end
+
+  @doc """
+  Calculate small gang competency from _killmail analysis.
+  """
+  def calculate_small_gang_competency(killmails) when is_list(killmails) do
+    if Enum.empty?(killmails) do
+      %{
+        small_gang_ratio: 0.0,
+        average_gang_size: 0.0,
+        competency_level: :no_data,
+        solo_capability: :no_data,
+        preferred_gang_size: :unknown
+      }
+    else
+      small_gang_kills = Enum.filter(killmails, &small_gang_kill?/1)
+      solo_kills = Enum.filter(killmails, &solo_kill?/1)
+
+      small_gang_ratio = length(small_gang_kills) / length(killmails)
+      avg_gang_size = calculate_average_gang_size(small_gang_kills)
+
+      %{
+        small_gang_ratio: Float.round(small_gang_ratio, 3),
+        average_gang_size: Float.round(avg_gang_size, 1),
+        competency_level: classify_competency_level(calculate_competency_score(small_gang_kills, killmails)),
+        solo_capability: classify_solo_capability(length(solo_kills), length(killmails)),
+        preferred_gang_size: determine_preferred_size(avg_gang_size, length(solo_kills), length(small_gang_kills)),
+        performance: build_small_gang_performance(small_gang_kills, killmails)
+      }
+    end
+  end
+
+  @doc """
+  Classify system type based on system ID.
+  """
+  def classify_system_type(system_id) when is_integer(system_id) do
+    cond do
+      system_id >= 31000000 and system_id < 32000000 -> :j_space
+      system_id >= 30000000 and system_id < 31000000 -> :k_space
+      system_id >= 30045000 and system_id < 30050000 -> :thera
+      true -> :unknown
+    end
+  end
+  def classify_system_type(_), do: :unknown
+
+  # Private helper functions
+
+  defp j_space_system?(system_id) do
+    classify_system_type(system_id) == :j_space
+  end
+
+  defp determine_most_active_wh_class(j_space_kills) do
+    if Enum.empty?(j_space_kills) do
+      :unknown
+    else
+      # Simplified WH class detection based on system ID ranges
+      # In a real implementation, this would query static data
+      j_space_kills
+      Enum.group_by(&detect_wh_class/1)
+      |>       Enum.max_by(fn {_class, kills} -> length(kills) end, fn -> {:unknown, []} end)
+      elem(0)
+    end
+  end
+
+  defp detect_wh_class(_killmail) do
+    # Simplified classification - would need proper SDE data
+    system_id = _killmail.solar_system_id
+    case rem(system_id, 6) do
+      0 -> :c1
+      1 -> :c2
+      2 -> :c3
+      3 -> :c4
+      4 -> :c5
+      5 -> :c6
+    end
+  end
+
+  defp classify_experience_level(j_space_ratio, j_space_count) do
+    cond do
+      j_space_count >= 100 and j_space_ratio >= 0.7 -> :elite
+      j_space_count >= 50 and j_space_ratio >= 0.5 -> :experienced
+      j_space_count >= 20 and j_space_ratio >= 0.3 -> :competent
+      j_space_count >= 5 and j_space_ratio >= 0.1 -> :novice
+      true -> :minimal
+    end
+  end
+
+  defp assess_wormhole_competency(j_space_kills) do
+    case length(j_space_kills) do
+      count when count >= 100 -> :expert
+      count when count >= 50 -> :proficient
+      count when count >= 20 -> :competent
+      count when count >= 5 -> :basic
+      _ -> :minimal
+    end
+  end
+
+  defp calculate_experience_score(j_space_ratio, j_space_count) do
+    # Weight both ratio and absolute count
+    ratio_score = min(j_space_ratio * 50, 50)
+    count_updated_score = min(j_space_count / 2, 50)
+    ratio_score + count_score
+  end
+
+  defp small_gang_kill?(_killmail) do
+    # Consider kills with 2-10 attackers as small gang
+    attacker_count = length(_killmail.attackers || [])
+    attacker_count >= 2 and attacker_count <= 10
+  end
+
+  defp solo_kill?(_killmail) do
+    # Solo kills have exactly 1 attacker
+    length(_killmail.attackers || []) == 1
+  end
+
+  defp calculate_average_gang_size(small_gang_kills) do
+    if length(small_gang_kills) > 0 do
+      total_attackers = Enum.reduce(small_gang_kills, 0, fn kill, acc ->
+        acc + length(kill.attackers || [])
+      end)
+      total_attackers / length(small_gang_kills)
+    else
+      0.0
+    end
+  end
+
+  defp calculate_competency_score(small_gang_kills, all_killmails) do
+    if length(all_killmails) > 0 do
+      length(small_gang_kills) / length(all_killmails) * 100
+    else
+      0.0
+    end
+  end
+
+  defp classify_competency_level(score) do
+    cond do
+      score >= 70 -> :excellent
+      score >= 50 -> :good
+      score >= 30 -> :average
+      score >= 10 -> :poor
+      true -> :minimal
+    end
+  end
+
+  defp determine_preferred_size(avg_gang_size, solo_kills, small_gang_kills) do
+    cond do
+      solo_kills > small_gang_kills -> :solo
+      avg_gang_size <= 3 -> :micro_gang
+      avg_gang_size <= 6 -> :small_gang
+      true -> :medium_gang
+    end
+  end
+
+  defp build_small_gang_performance(small_gang_kills, all_killmails) do
+    %{
+      small_gang_kills: length(small_gang_kills),
+      total_kills: length(all_killmails),
+      small_gang_ratio: if(length(all_killmails) > 0, do: length(small_gang_kills) / length(all_killmails), else: 0.0),
+      efficiency: calculate_small_gang_efficiency(small_gang_kills)
+    }
+  end
+
+  defp calculate_small_gang_efficiency(small_gang_kills) do
+    # Simple efficiency based on kill/death ratio in small gang scenarios
+    # This would be more complex in a real implementation
+    if length(small_gang_kills) > 0 do
+      successful_engagements = Enum.count(small_gang_kills, &(&1.is_kill))
+      successful_engagements / length(small_gang_kills)
+    else
+      0.0
+    end
+  end
+
+  defp classify_solo_capability(solo_kills, total_kills) do
+    if total_kills == 0 do
+      :no_data
+    else
+      solo_ratio = solo_kills / total_kills
+      cond do
+        solo_ratio >= 0.3 -> :excellent
+        solo_ratio >= 0.2 -> :good
+        solo_ratio >= 0.1 -> :average
+        solo_ratio >= 0.05 -> :limited
+        true -> :minimal
+      end
+    end
+  end
+end

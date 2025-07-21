@@ -1,0 +1,225 @@
+defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.DataCollectors.ParticipantCollector do
+  @moduledoc """
+  Specialized data collector for extracting and analyzing battle participants.
+
+  Handles:
+  - Participant extraction from killmails
+  - Participant flow analysis over time
+  - Engagement tracking and participant classification
+  - Participant performance data aggregation
+  """
+
+  require Logger
+
+  @doc """
+  Create participant tracking windows for flow analysis.
+  """
+  def create_participant_tracking_windows(start_time, end_time, interval_seconds \\ 300) do
+    time_diff = DateTime.diff(end_time, start_time)
+    num_windows = max(1, div(time_diff, interval_seconds))
+
+    Enum.map(0..(num_windows - 1), fn index ->
+      window_start = DateTime.add(start_time, index * interval_seconds)
+      window_end = DateTime.add(start_time, (index + 1) * interval_seconds)
+
+      %{
+        window_index: index,
+        start_time: window_start,
+        end_time: window_end,
+        participants: []
+      }
+    end)
+  end
+
+  @doc """
+  Analyze participant flow between tracking windows.
+  """
+  def analyze_participant_flow_between_windows(window_participants) do
+    # Get all unique participants across windows
+    all_participants =
+      window_participants
+      Enum.flat_map(fn window -> window.participants end)
+      Enum.uniq()
+
+    # Analyze each participant's activity pattern
+    participant_flows =
+      all_participants
+      |>       Enum.map(fn participant_id ->
+        activity_windows =
+          window_participants
+          Enum.with_index()
+          |>           Enum.filter(fn {window, _index} ->
+            participant_id in window.participants
+          end)
+          Enum.map(fn {_window, index} -> index end)
+
+        %{
+          participant_id: participant_id,
+          active_windows: activity_windows,
+          entry_window: Enum.min(activity_windows),
+          exit_window: Enum.max(activity_windows),
+          activity_duration: length(activity_windows),
+          activity_pattern: classify_activity_pattern(activity_windows, length(window_participants))
+        }
+      end)
+
+    # Analyze overall flow patterns
+    flow_events = extract_flow_events(participant_flows, length(window_participants))
+    flow_pattern = analyze_flow_pattern(flow_events)
+
+    %{
+      participant_flows: participant_flows,
+      flow_events: flow_events,
+      flow_pattern: flow_pattern,
+      total_participants: length(all_participants),
+      peak_participation: calculate_peak_participation(window_participants),
+      participation_stability: calculate_participation_stability(window_participants)
+    }
+  end
+
+  @doc """
+  Calculate participation stability across windows.
+  """
+  def calculate_participation_stability(window_participants) do
+    participant_counts = Enum.map(window_participants, fn window -> length(window.participants) end)
+
+    if length(participant_counts) < 2 do
+      1.0
+    else
+      mean = Enum.sum(participant_counts) / length(participant_counts)
+      variance = Enum.reduce(participant_counts, 0, fn count, acc ->
+        acc + :math.pow(count - mean, 2)
+      end) / length(participant_counts)
+
+      coefficient_of_variation = if mean > 0, do: :math.sqrt(variance) / mean, else: 0
+      max(0, 1 - coefficient_of_variation)
+    end
+  end
+
+  @doc """
+  Generate participation flow summary.
+  """
+  def generate_participation_flow_summary(window_participants, flow_analysis) do
+    most_active_period = identify_most_active_period(window_participants)
+
+    %{
+      total_windows: length(window_participants),
+      most_active_period: most_active_period,
+      flow_pattern: flow_analysis.flow_pattern,
+      stability_score: flow_analysis.participation_stability,
+      peak_participants: flow_analysis.peak_participation.count,
+      peak_window: flow_analysis.peak_participation.window_index,
+      unique_participants: flow_analysis.total_participants,
+      average_window_participation: calculate_average_participation(window_participants)
+    }
+  end
+
+  # Private helper functions
+
+  defp classify_activity_pattern(activity_windows, total_windows) do
+    activity_span = length(activity_windows)
+    total_span = if Enum.empty?(activity_windows), do: 1, else: Enum.max(activity_windows) - Enum.min(activity_windows) + 1
+
+    cond do
+      activity_span == total_windows -> :full_engagement
+      activity_span >= total_windows * 0.8 -> :sustained_engagement
+      total_span <= 3 and activity_span >= 2 -> :concentrated_engagement
+      activity_span == 1 -> :brief_engagement
+      true -> :intermittent_engagement
+    end
+  end
+
+  defp extract_flow_events(participant_flows, total_windows) do
+    # Entry events
+    entry_events = Enum.map(participant_flows, fn flow ->
+      %{
+        type: :entry,
+        window: flow.entry_window,
+        participant_id: flow.participant_id
+      }
+    end)
+
+    # Exit events
+    exit_events = Enum.map(participant_flows, fn flow ->
+      # Only create exit event if not the last window
+      if flow.exit_window < total_windows - 1 do
+        %{
+          type: :exit,
+          window: flow.exit_window + 1,
+          participant_id: flow.participant_id
+        }
+      else
+        nil
+      end
+    end)
+    Enum.reject(&is_nil/1)
+
+    (entry_events ++ exit_events)
+    Enum.sort_by(& &1.window)
+  end
+
+  defp analyze_flow_pattern(flow_events) do
+    window_events = Enum.group_by(flow_events, & &1.window)
+
+    entry_heavy_windows =
+      window_events
+      |>       Enum.filter(fn {_window, events} ->
+        entry_count = Enum.count(events, & &1.type == :entry)
+        exit_count = Enum.count(events, & &1.type == :exit)
+        entry_count > exit_count * 2
+      end)
+      length()
+
+    exit_heavy_windows =
+      window_events
+      |>       Enum.filter(fn {_window, events} ->
+        entry_count = Enum.count(events, & &1.type == :entry)
+        exit_count = Enum.count(events, & &1.type == :exit)
+        exit_count > entry_count * 2
+      end)
+      length()
+
+    cond do
+      entry_heavy_windows > exit_heavy_windows * 2 -> :escalating
+      exit_heavy_windows > entry_heavy_windows * 2 -> :de_escalating
+      entry_heavy_windows == 0 and exit_heavy_windows == 0 -> :stable
+      true -> :fluctuating
+    end
+  end
+
+  defp calculate_peak_participation(window_participants) do
+    window_participants
+    Enum.with_index()
+    |>     Enum.map(fn {window, index} ->
+      %{window_index: index, count: length(window.participants)}
+    end)
+    Enum.max_by(& &1.count)
+  end
+
+  defp identify_most_active_period(window_participants) do
+    window_participants
+    Enum.with_index()
+    |>     Enum.max_by(fn {window, _index} -> length(window.participants) end)
+    case do
+      {window, index} ->
+        %{
+          window_index: index,
+          start_time: window.start_time,
+          end_time: window.end_time,
+          participant_count: length(window.participants)
+        }
+    end
+  end
+
+  defp calculate_average_participation(window_participants) do
+    total_participation = Enum.reduce(window_participants, 0, fn window, acc ->
+      acc + length(window.participants)
+    end)
+
+    if length(window_participants) > 0 do
+      total_participation / length(window_participants)
+    else
+      0
+    end
+  end
+end

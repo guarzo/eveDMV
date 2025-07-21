@@ -312,7 +312,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
     filter
     |> String.split(~r/[=<>!\s]+/)
     |> Enum.filter(fn part ->
-      String.match?(part, ~r/^[a-zA-Z][a-zA-Z0-9_]*$/) and
+      String.match?(part, ~r/^[a-zA-Z][a-zA-Z0-9]*$/) and
         not String.match?(part, ~r/^(AND|OR|NOT|NULL|TRUE|FALSE)$/i)
     end)
     # Limit to 3 columns for composite index

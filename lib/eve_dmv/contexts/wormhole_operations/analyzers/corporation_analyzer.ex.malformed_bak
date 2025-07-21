@@ -1,0 +1,492 @@
+defmodule EveDmv.Contexts.WormholeOperations.Analyzers.CorporationAnalyzer do
+  @moduledoc """
+  Corporation analysis and vetting functionality for wormhole recruitment.
+
+  Provides comprehensive corporation history analysis including:
+  - Corporation history evaluation and scoring
+  - Reputation assessment and suspicious pattern detection
+  - Corporation stability rating and tenure analysis
+  - OpSec risk analysis from corporation patterns
+  - Spy corporation detection and history validation
+
+  This module extracts the corporation-specific analysis from the broader
+  recruitment vetting process to provide focused, reusable corporation
+  intelligence capabilities.
+  """
+
+  use EveDmv.ErrorHandler
+  require Logger
+
+  # Corporation reputation scoring weights
+  @reputation_weights %{
+    excellent: 1.0,
+    good: 0.8,
+    neutral: 0.5,
+    poor: 0.2,
+    suspicious: 0.0
+  }
+
+  # Risk thresholds for corporation patterns
+  @corp_hopping_threshold 2
+  @short_tenure_threshold 7
+  @suspicious_pattern_weight 0.1
+  @min_tenure_days 30
+
+  @doc """
+  Analyze corporation history for a character and return comprehensive assessment.
+  """
+  def analyze_corporation_history(character_data, _vetting_criteria \\ %{}) do
+    with_error_handling do
+      corp_history = character_data.corporation_history
+
+      # Core analysis components
+      corp_changes = length(corp_history)
+      recent_changes = count_recent_corp_changes(corp_history, 90)
+
+      # Analyze corporation types and reputation
+      corp_reputation_analysis = analyze_corporation_reputations(corp_history)
+
+      # Check for suspicious patterns
+      suspicious_patterns = identify_suspicious_corp_patterns(corp_history)
+
+      # Calculate corporation history score
+      history_score =
+        calculate_corp_history_score(
+          corp_changes,
+          recent_changes,
+          corp_reputation_analysis,
+          suspicious_patterns
+        )
+
+      corp_analysis = %{
+        score: history_score,
+        total_corporations: corp_changes,
+        recent_changes: recent_changes,
+        average_tenure_days: calculate_average_corp_tenure(corp_history),
+        reputation_analysis: corp_reputation_analysis,
+        suspicious_patterns: suspicious_patterns,
+        stability_rating: determine_corp_stability_rating(corp_changes, recent_changes)
+      }
+
+      {:ok, corp_analysis}
+    end
+  end
+
+  @doc """
+  Assess corporation pattern risks for OpSec evaluation.
+  """
+  def assess_corp_pattern_risks(corp_history) do
+    spy_corps =
+      Enum.filter(corp_history, fn corp ->
+        corp.reputation == :suspicious or corp.tenure_days < 3
+      end)
+
+    if length(spy_corps) > 0 do
+      [
+        %{
+          type: :spy_corp_history,
+          severity: :high,
+          description: "History with suspicious corporations"
+        }
+      ]
+    else
+      []
+    end
+  end
+
+  @doc """
+  Determine corporation reputation for a given corporation ID.
+  """
+  def determine_corp_reputation(corp_id) do
+    case rem(corp_id, 10) do
+      val when val in 0..1 -> :excellent
+      val when val in 2..4 -> :good
+      val when val in 5..7 -> :neutral
+      8 -> :poor
+      9 -> :suspicious
+    end
+  end
+
+  @doc """
+  Count recent corporation changes within specified time window.
+  """
+  def count_recent_corp_changes(corp_history, days) do
+    cutoff_date = DateTime.add(DateTime.utc_now(), -days * 24 * 3600, :second)
+
+    Enum.count(corp_history, fn corp_entry ->
+      not is_nil(corp_entry.left_at) and
+        DateTime.compare(corp_entry.left_at, cutoff_date) == :gt
+    end)
+  end
+
+  @doc """
+  Calculate average corporation tenure across all corporations in history.
+  """
+  def calculate_average_corp_tenure(corp_history) do
+    if length(corp_history) > 0 do
+      total_tenure = Enum.sum(Enum.map(corp_history, & &1.tenure_days))
+      Float.round(total_tenure / length(corp_history), 1)
+    else
+      0.0
+    end
+  end
+
+  @doc """
+  Analyze corporation reputations from corporation history.
+  """
+  def analyze_corporation_reputations(corp_history) do
+    reputation_counts = Enum.frequencies(Enum.map(corp_history, & &1.reputation))
+
+    %{
+      excellent: Map.get(reputation_counts, :excellent, 0),
+      good: Map.get(reputation_counts, :good, 0),
+      neutral: Map.get(reputation_counts, :neutral, 0),
+      poor: Map.get(reputation_counts, :poor, 0),
+      suspicious: Map.get(reputation_counts, :suspicious, 0),
+      reputation_score: calculate_reputation_score(reputation_counts)
+    }
+  end
+
+  @doc """
+  Identify suspicious corporation patterns that may indicate security risks.
+  """
+  def identify_suspicious_corp_patterns(corp_history) do
+    []
+    check_rapid_corp_hopping(corp_history)
+    check_short_tenures(corp_history)
+    check_npc_corp_cycling(corp_history)
+    check_spy_corp_affiliations(corp_history)
+  end
+
+  @doc """
+  Calculate corporation history score based on multiple factors.
+  """
+  def calculate_corp_history_score(corp_changes, recent_changes, reputation_analysis, suspicious_patterns) do
+    initial_score = 1.0
+
+    # Penalize excessive corporation changes
+    change_penalty_updated_score = initial_score - min(0.3, corp_changes * 0.05)
+
+    # Penalize recent changes more heavily
+    recent_penalty_updated_score = change_penalty_score - min(0.4, recent_changes * 0.15)
+
+    # Factor in reputation
+    reputation_adjusted_updated_score = recent_penalty_score * reputation_analysis.reputation_score
+
+    # Penalize suspicious patterns
+    pattern_penalty = length(suspicious_patterns) * @suspicious_pattern_weight
+    final_updated_score = reputation_adjusted_score - pattern_penalty
+
+    Float.round(max(0.0, final_score), 3)
+  end
+
+  @doc """
+  Determine corporation stability rating based on change patterns.
+  """
+  def determine_corp_stability_rating(corp_changes, recent_changes) do
+    cond do
+      recent_changes > 2 -> :unstable
+      corp_changes > 8 -> :very_low
+      corp_changes > 5 -> :low
+      corp_changes > 3 -> :moderate
+      corp_changes > 1 -> :stable
+      true -> :very_stable
+    end
+  end
+
+  @doc """
+  Calculate reputation score from reputation counts.
+  """
+  def calculate_reputation_score(reputation_counts) do
+    total_corps = Enum.sum(Map.values(reputation_counts))
+
+    if total_corps > 0 do
+      weighted_score =
+        Enum.reduce(reputation_counts, 0.0, fn {reputation, count}, sum ->
+          sum + count * Map.get(@reputation_weights, reputation, 0.5)
+        end) / total_corps
+
+      Float.round(weighted_score, 3)
+    else
+      0.5
+    end
+  end
+
+  @doc """
+  Generate comprehensive corporation risk assessment.
+  """
+  def generate_corp_risk_assessment(corp_analysis) do
+    stability_risk = calculate_stability_risk(corp_analysis.stability_rating)
+    pattern_risk = length(corp_analysis.suspicious_patterns) * 0.1
+    reputation_risk = if corp_analysis.reputation_analysis.reputation_score < 0.3, do: 0.2, else: 0.0
+    recent_change_risk = if corp_analysis.recent_changes > 1, do: corp_analysis.recent_changes * 0.1, else: 0.0
+
+    total_risk = stability_risk + pattern_risk + reputation_risk + recent_change_risk
+
+    %{
+      total_risk_score: Float.round(min(1.0, total_risk), 3),
+      risk_level: categorize_corp_risk_level(total_risk),
+      primary_risk_factors: identify_primary_corp_risk_factors(corp_analysis),
+      mitigation_recommendations: generate_corp_risk_mitigations(corp_analysis)
+    }
+  end
+
+  @doc """
+  Validate corporation history for completeness and consistency.
+  """
+  def validate_corp_history(corp_history) do
+    add_if(Enum.empty?(corp_history), "No corporation history available")
+    add_if(
+      Enum.any?(corp_history, fn corp ->
+        is_nil(corp.corporation_name) or is_nil(corp.joined_at) or is_nil(corp.tenure_days)
+      end),
+      "Corporation history contains entries with missing data"
+    )
+    add_if(
+      corp_history
+      Enum.sort_by(& &1.joined_at, DateTime)
+      Enum.chunk_every(2, 1, :discard)
+      |>       Enum.any?(fn [corp1, corp2] ->
+        not is_nil(corp1.left_at) and DateTime.compare(corp1.left_at, corp2.joined_at) == :gt
+      end),
+      "Corporation history contains chronological inconsistencies"
+    )
+
+    %{is_valid: Enum.empty?(issues), issues: issues, warnings: []}
+  end
+
+  @doc """
+  Check for rapid corporation hopping patterns.
+  """
+  def check_rapid_corp_hopping(existing_patterns, corp_history) do
+    if count_recent_corp_changes(corp_history, 30) > @corp_hopping_threshold do
+      [%{type: :rapid_corp_hopping, severity: :high, description: "Multiple corporation changes in 30 days"} | existing_patterns]
+    else
+      existing_patterns
+    end
+  end
+
+  @doc """
+  Check for very short tenure patterns.
+  """
+  def check_short_tenures(existing_patterns, corp_history) do
+    short_tenures = Enum.count(corp_history, &(&1.tenure_days < @short_tenure_threshold))
+
+    if short_tenures > length(corp_history) / 3 do
+      [%{type: :short_tenures, severity: :medium, description: "Multiple corporations with very short tenure"} | existing_patterns]
+    else
+      existing_patterns
+    end
+  end
+
+  @doc """
+  Check for NPC corporation cycling patterns.
+  """
+  def check_npc_corp_cycling(existing_patterns, corp_history) do
+    npc_corps = Enum.filter(corp_history, &is_npc_corporation?/1)
+
+    if length(npc_corps) > length(corp_history) / 2 do
+      [%{type: :npc_corp_cycling, severity: :medium, description: "Frequent NPC corporation membership"} | existing_patterns]
+    else
+      existing_patterns
+    end
+  end
+
+  @doc """
+  Check for affiliations with known spy corporations.
+  """
+  def check_spy_corp_affiliations(existing_patterns, corp_history) do
+    spy_affiliations = Enum.filter(corp_history, &(&1.reputation == :suspicious))
+
+    if length(spy_affiliations) > 0 do
+      [%{type: :spy_corp_affiliation, severity: :high, description: "Affiliations with known spy corporations"} | existing_patterns]
+    else
+      existing_patterns
+    end
+  end
+
+  @doc """
+  Assess corporation tenure quality.
+  """
+  def assess_tenure_quality(corp_history) do
+    tenures = Enum.map(corp_history, & &1.tenure_days)
+
+    %{
+      average_tenure: calculate_average_corp_tenure(corp_history),
+      longest_tenure: Enum.max(tenures, fn -> 0 end),
+      shortest_tenure: Enum.min(tenures, fn -> 0 end),
+      stable_tenures: Enum.count(tenures, &(&1 >= @min_tenure_days)),
+      quality_rating: determine_tenure_quality_rating(tenures)
+    }
+  end
+
+  @doc """
+  Analyze corporation transition patterns.
+  """
+  def analyze_transition_patterns(corp_history) do
+    transitions =
+      corp_history
+      Enum.chunk_every(2, 1, :discard)
+      Enum.map(&analyze_single_transition/1)
+
+    %{
+      total_transitions: length(transitions),
+      suspicious_transitions: Enum.count(transitions, & &1.suspicious),
+      transition_types: Enum.frequencies_by(transitions, & &1.type),
+      risk_assessment: assess_transition_risk(transitions)
+    }
+  end
+
+  @doc """
+  Generate corporation intelligence summary.
+  """
+  def generate_corp_intelligence_summary(corp_analysis) do
+    risk_assessment = generate_corp_risk_assessment(corp_analysis)
+
+    %{
+      overall_assessment: determine_overall_corp_assessment(corp_analysis),
+      key_strengths: identify_corp_strengths(corp_analysis),
+      key_concerns: identify_corp_concerns(corp_analysis),
+      risk_profile: risk_assessment,
+      recruitment_recommendation: generate_corp_recruitment_recommendation(corp_analysis),
+      monitoring_recommendations: generate_monitoring_recommendations(corp_analysis)
+    }
+  end
+
+  @doc """
+  Determine if a corporation entry is an NPC corporation.
+  """
+  def is_npc_corporation?(corp_entry) do
+    corp_entry.corporation_id >= 1_000_000 and corp_entry.corporation_id < 2_000_000
+  end
+
+  @doc """
+  Determine tenure quality rating based on tenure patterns.
+  """
+  def determine_tenure_quality_rating(tenures) do
+    stable_count = Enum.count(tenures, &(&1 >= @min_tenure_days))
+
+    cond do
+      stable_count == length(tenures) -> :excellent
+      stable_count >= length(tenures) * 0.8 -> :good
+      stable_count >= length(tenures) * 0.5 -> :moderate
+      stable_count >= length(tenures) * 0.2 -> :poor
+      true -> :very_poor
+    end
+  end
+
+  # Private helper functions
+
+  defp calculate_stability_risk(stability_rating) do
+    case stability_rating do
+      :unstable -> 0.4
+      :very_low -> 0.3
+      :low -> 0.2
+      :moderate -> 0.1
+      :stable -> 0.05
+      :very_stable -> 0.0
+    end
+  end
+
+  defp categorize_corp_risk_level(risk_score) do
+    cond do
+      risk_score >= 0.7 -> :critical
+      risk_score >= 0.5 -> :high
+      risk_score >= 0.3 -> :medium
+      risk_score >= 0.1 -> :low
+      true -> :minimal
+    end
+  end
+
+  defp identify_primary_corp_risk_factors(corp_analysis) do
+    []
+    add_if(corp_analysis.stability_rating in [:unstable, :very_low], :corporation_instability)
+    add_if(corp_analysis.recent_changes > 1, :recent_corp_changes)
+    add_if(corp_analysis.reputation_analysis.reputation_score < 0.3, :poor_corp_reputation)
+    add_if(length(corp_analysis.suspicious_patterns) > 0, :suspicious_patterns)
+  end
+
+  defp generate_corp_risk_mitigations(corp_analysis) do
+    []
+    add_if(corp_analysis.stability_rating in [:unstable, :very_low], "Monitor for continued corporation hopping")
+    add_if(corp_analysis.recent_changes > 1, "Verify reasons for recent corporation changes")
+    add_if(corp_analysis.reputation_analysis.reputation_score < 0.3, "Investigate associations with poor reputation corporations")
+    add_if(length(corp_analysis.suspicious_patterns) > 0, "Conduct enhanced background verification")
+  end
+
+  defp analyze_single_transition([corp1, corp2]) do
+    gap_days = if not is_nil(corp1.left_at), do: DateTime.diff(corp2.joined_at, corp1.left_at, :day), else: 0
+
+    %{
+      from: corp1.corporation_name,
+      to: corp2.corporation_name,
+      gap_days: gap_days,
+      suspicious: gap_days > 30 or corp1.tenure_days < 7,
+      type: categorize_transition_type(corp1, corp2)
+    }
+  end
+
+  defp categorize_transition_type(corp1, corp2) do
+    cond do
+      is_npc_corporation?(corp1) and is_npc_corporation?(corp2) -> :npc_to_npc
+      is_npc_corporation?(corp1) -> :npc_to_player
+      is_npc_corporation?(corp2) -> :player_to_npc
+      true -> :player_to_player
+    end
+  end
+
+  defp assess_transition_risk(transitions) do
+    suspicious_count = Enum.count(transitions, & &1.suspicious)
+    risk_updated_score = suspicious_count / max(length(transitions), 1)
+
+    %{
+      risk_score: Float.round(risk_score, 3),
+      risk_level: categorize_corp_risk_level(risk_score)
+    }
+  end
+
+  defp determine_overall_corp_assessment(corp_analysis) do
+    cond do
+      corp_analysis.score >= 0.8 and corp_analysis.stability_rating in [:stable, :very_stable] -> :excellent
+      corp_analysis.score >= 0.6 and corp_analysis.stability_rating != :unstable -> :good
+      corp_analysis.score >= 0.4 -> :acceptable
+      corp_analysis.score >= 0.2 -> :concerning
+      true -> :problematic
+    end
+  end
+
+  defp identify_corp_strengths(corp_analysis) do
+    []
+    add_if(corp_analysis.stability_rating in [:stable, :very_stable], "Stable corporation history")
+    add_if(corp_analysis.reputation_analysis.reputation_score > 0.7, "Good reputation corporation associations")
+    add_if(corp_analysis.average_tenure_days > 180, "Long average corporation tenure")
+    add_if(Enum.empty?(corp_analysis.suspicious_patterns), "No suspicious corporation patterns detected")
+  end
+
+  defp identify_corp_concerns(corp_analysis) do
+    []
+    add_if(corp_analysis.stability_rating in [:unstable, :very_low], "Unstable corporation history")
+    add_if(corp_analysis.recent_changes > 1, "Recent corporation changes")
+    add_if(corp_analysis.reputation_analysis.reputation_score < 0.3, "Poor reputation corporation associations")
+    add_if(length(corp_analysis.suspicious_patterns) > 0, "Suspicious corporation patterns detected")
+  end
+
+  defp generate_corp_recruitment_recommendation(corp_analysis) do
+    cond do
+      corp_analysis.score >= 0.8 and Enum.empty?(corp_analysis.suspicious_patterns) -> :approve
+      corp_analysis.score >= 0.6 and corp_analysis.recent_changes <= 1 -> :conditional_approve
+      corp_analysis.score >= 0.4 -> :review_required
+      true -> :reject
+    end
+  end
+
+  defp generate_monitoring_recommendations(corp_analysis) do
+    ["Standard corporation activity monitoring"]
+    add_if(corp_analysis.recent_changes > 0, "Monitor for additional corporation changes")
+    add_if(corp_analysis.stability_rating == :unstable, "Enhanced monitoring for corporation hopping patterns")
+    add_if(length(corp_analysis.suspicious_patterns) > 0, "Investigate suspicious corporation patterns")
+  end
+
+  defp add_if(list, condition, item) when condition, do: [item | list]
+  defp add_if(list, _condition, _item), do: list
+end

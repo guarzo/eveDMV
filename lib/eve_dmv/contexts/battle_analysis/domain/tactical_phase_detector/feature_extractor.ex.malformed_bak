@@ -1,0 +1,185 @@
+defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector.FeatureExtractor do
+  @moduledoc """
+  Extracts features from temporal windows for phase detection.
+  """
+
+  alias EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor
+
+  def extract_phase_features(temporal_windows) do
+    features =
+      Enum.map(temporal_windows, fn window ->
+        %{
+          # Combat intensity metrics
+          damage_rate: calculate_damage_rate(window),
+          kill_rate: calculate_kill_rate(window),
+          participant_engagement: calculate_engagement_level(window),
+
+          # Tactical characteristics
+          ewar_usage: calculate_ewar_intensity(window),
+          ship_diversity: calculate_ship_diversity(window),
+          isk_destruction_rate: calculate_isk_rate(window),
+
+          # Temporal features
+          time_offset: calculate_time_offset(window),
+          battle_progression: calculate_progression_ratio(window),
+
+          # Reference to original window
+          window: window
+        }
+      end)
+
+    {:ok, features}
+  end
+
+  def extract_numeric_features(features) do
+    [
+      features.damage_rate,
+      features.kill_rate,
+      features.participant_engagement,
+      features.ewar_usage,
+      features.ship_diversity,
+      features.isk_destruction_rate,
+      features.battle_progression
+    ]
+  end
+
+  defp calculate_damage_rate(window) do
+    if Enum.empty?(window.killmails) do
+      0.0
+    else
+      total_estimated_hp = Enum.sum(Enum.map(window.killmails, &estimate_ship_hp/1))
+      duration_minutes = window.duration_seconds / 60
+
+      if duration_minutes > 0 do
+        total_estimated_hp / duration_minutes
+      else
+        total_estimated_hp
+      end
+    end
+  end
+
+  defp calculate_kill_rate(window) do
+    if window.duration_seconds > 0 do
+      length(window.killmails) / (window.duration_seconds / 60)
+    else
+      length(window.killmails)
+    end
+  end
+
+  defp calculate_engagement_level(window) do
+    if Enum.empty?(window.killmails) do
+      0.0
+    else
+      participants = extract_all_participants(window.killmails)
+      attackers = extract_attackers_count(window.killmails)
+
+      if length(participants) > 0 do
+        attackers / length(participants)
+      else
+        0.0
+      end
+    end
+  end
+
+  defp calculate_ewar_intensity(window) do
+    ewar_ships = window.killmails |> Enum.count(&ewar_ship_type?/1)
+    total_ships = length(window.killmails)
+
+    if total_ships > 0 do
+      ewar_ships / total_ships
+    else
+      0.0
+    end
+  end
+
+  defp calculate_ship_diversity(window) do
+    unique_ship_types =
+      window.killmails
+      |> Enum.map(& &1.victim_ship_type_id)
+      |> Enum.uniq()
+      |> length()
+
+    total_ships = length(window.killmails)
+
+    if total_ships > 0 do
+      unique_ship_types / total_ships
+    else
+      0.0
+    end
+  end
+
+  defp calculate_isk_rate(window) do
+    total_estimated_value = Enum.sum(Enum.map(window.killmails, &estimate_ship_value/1))
+    duration_minutes = window.duration_seconds / 60
+
+    if duration_minutes > 0 do
+      total_estimated_value / duration_minutes
+    else
+      total_estimated_value
+    end
+  end
+
+  defp calculate_time_offset(_window) do
+    # Normalized time position within battle (0.0 to 1.0)
+    0.0
+  end
+
+  defp calculate_progression_ratio(window) do
+    window.killmails |> length() :math.log() max(0.1)
+  end
+
+  defp extract_all_participants(killmails) do
+    killmails
+    |> Enum.flat_map(&ParticipantExtractor.extract_participants/1)
+    |> Enum.uniq()
+  end
+
+  defp extract_attackers_count(killmails) do
+    killmails
+    |> Enum.map(fn killmail ->
+      case killmail.raw_data do
+        %{"attackers" => attackers} when is_list(attackers) -> length(attackers)
+        _ -> 0
+      end
+    end)
+    |> Enum.sum()
+  end
+
+  defp estimate_ship_hp(killmail) do
+    ship_type_id = killmail.victim_ship_type_id
+
+    cond do
+      ship_type_id in 580..700 -> 3000
+      ship_type_id in 420..450 -> 8000
+      ship_type_id in 620..650 -> 15_000
+      ship_type_id in 540..570 -> 30_000
+      ship_type_id in 640..670 -> 60_000
+      ship_type_id in 19_720..19_740 -> 500_000
+      true -> 10_000
+    end
+  end
+
+  defp estimate_ship_value(killmail) do
+    ship_type_id = killmail.victim_ship_type_id
+
+    cond do
+      ship_type_id in 580..700 -> 2_000_000
+      ship_type_id in 420..450 -> 8_000_000
+      ship_type_id in 620..650 -> 25_000_000
+      ship_type_id in 540..570 -> 80_000_000
+      ship_type_id in 640..670 -> 200_000_000
+      ship_type_id in 19_720..19_740 -> 2_000_000_000
+      true -> 15_000_000
+    end
+  end
+
+  defp ewar_ship_type?(killmail) do
+    ship_type_id = killmail.victim_ship_type_id
+
+    ship_type_id in [
+      11_963, 11_965, 11_969, 11_971,
+      11_957, 11_958, 11_959, 11_961,
+      621, 622, 623
+    ]
+  end
+end

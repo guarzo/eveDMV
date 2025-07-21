@@ -1,0 +1,346 @@
+defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.FleetSynergyAnalyzer do
+  @moduledoc """
+  Fleet synergy analyzer for evaluating fleet composition effectiveness.
+
+  Handles:
+  - Fleet synergy calculation
+  - Role balance assessment
+  - DPS/Logistics synergy analysis
+  - Tackle/DPS coordination
+  - EWAR effectiveness
+  - Range coherence analysis
+  """
+
+  require Logger
+
+  @doc """
+  Calculate overall fleet synergy score.
+  """
+  def calculate_fleet_synergy(participants) do
+    # Calculate role distribution first
+    role_distribution = calculate_role_distribution(participants)
+    ship_classes = classify_ships_by_class(participants)
+
+    # Calculate various synergy components
+    dps_logi_synergy = calculate_dps_logi_synergy(role_distribution)
+    tackle_dps_synergy = calculate_tackle_dps_synergy(role_distribution)
+    ewar_synergy = calculate_ewar_synergy(role_distribution)
+    class_compatibility = calculate_class_compatibility(ship_classes)
+    range_coherence = calculate_range_coherence(participants)
+
+    # Weight the components
+    weighted_synergy =
+      dps_logi_synergy * 0.25 +
+      tackle_dps_synergy * 0.20 +
+      ewar_synergy * 0.15 +
+      class_compatibility * 0.20 +
+      range_coherence * 0.20
+
+    %{
+      overall_score: Float.round(weighted_synergy, 2),
+      components: %{
+        dps_logistics: dps_logi_synergy,
+        tackle_coordination: tackle_dps_synergy,
+        ewar_effectiveness: ewar_synergy,
+        ship_compatibility: class_compatibility,
+        range_coherence: range_coherence
+      },
+      role_distribution: role_distribution,
+      analysis: generate_synergy_analysis(weighted_synergy, role_distribution)
+    }
+  end
+
+  @doc """
+  Calculate DPS/Logistics synergy.
+  """
+  def calculate_dps_logi_synergy(role_distribution) do
+    dps_count = Map.get(role_distribution, :dps, 0)
+    logi_count = Map.get(role_distribution, :logistics, 0)
+    total_combat = dps_count + logi_count
+
+    if total_combat == 0 do
+      0.0
+    else
+      # Optimal ratio is around 1 logi per 4-5 DPS
+      logi_ratio = logi_count / total_combat
+      optimal_ratio = 0.2
+
+      # Calculate synergy based on how close to optimal
+      if logi_ratio == 0 do
+        0.0
+      else
+        deviation = abs(logi_ratio - optimal_ratio)
+        base_score = max(0, 1.0 - deviation * 5)
+        # Bonus for having at least some logistics
+        Float.round(base_score * 1.2, 2)
+      end
+    end
+  end
+
+  @doc """
+  Calculate Tackle/DPS synergy.
+  """
+  def calculate_tackle_dps_synergy(role_distribution) do
+    dps_count = Map.get(role_distribution, :dps, 0)
+    tackle_count = Map.get(role_distribution, :tackle, 0) + Map.get(role_distribution, :heavy_tackle, 0)
+    total_combat = dps_count + tackle_count
+
+    if total_combat == 0 do
+      0.0
+    else
+      # Optimal ratio is around 1 tackle per 3-4 DPS
+      tackle_ratio = tackle_count / total_combat
+      optimal_ratio = 0.25
+
+      # Calculate synergy
+      if tackle_ratio == 0 do
+        0.0
+      else
+        deviation = abs(tackle_ratio - optimal_ratio)
+        base_updated_score = max(0, 1.0 - deviation * 4)
+        Float.round(base_score, 2)
+      end
+    end
+  end
+
+  @doc """
+  Calculate EWAR synergy.
+  """
+  def calculate_ewar_synergy(role_distribution) do
+    ewar_count = Map.get(role_distribution, :ewar, 0)
+    total_ships = role_distribution |> Map.values() Enum.sum()
+
+    if total_ships == 0 do
+      0.0
+    else
+      # EWAR is effective with 10-20% of fleet
+      ewar_ratio = ewar_count / total_ships
+
+      cond do
+        ewar_ratio == 0 -> 0.0
+        ewar_ratio < 0.05 -> ewar_ratio * 10
+        ewar_ratio <= 0.20 -> 0.5 + (ewar_ratio - 0.05) * 3.33
+        true -> max(0.3, 1.0 - (ewar_ratio - 0.20) * 2)
+      end
+    end
+  end
+
+  @doc """
+  Calculate ship class compatibility.
+  """
+  def calculate_class_compatibility(ship_classes) do
+    # Group ships by mobility class
+    mobility_groups = group_by_mobility(ship_classes)
+
+    # Check if fleet has coherent mobility profile
+    dominant_mobility = mobility_groups
+      Enum.max_by(fn {_class, count} -> count end, fn -> {:unknown, 0} end)
+      elem(0)
+
+    total_ships = mobility_groups |> Map.values() Enum.sum()
+
+    if total_ships == 0 do
+      0.0
+    else
+      dominant_count = Map.get(mobility_groups, dominant_mobility, 0)
+      coherence_ratio = dominant_count / total_ships
+
+      # High coherence is good for coordination
+      Float.round(coherence_ratio, 2)
+    end
+  end
+
+  @doc """
+  Calculate range coherence for fleet.
+  """
+  def calculate_range_coherence(participants) do
+    # Group participants by engagement range
+    range_groups = participants
+      Enum.map(&estimate_engagement_range/1)
+      Enum.frequencies()
+
+    total_ships = participants |> length()
+
+    if total_ships == 0 do
+      0.0
+    else
+      # Find dominant range
+      dominant_range_count = range_groups
+        Map.values()
+        Enum.max(fn -> 0 end)
+
+      coherence = dominant_range_count / total_ships
+      Float.round(coherence, 2)
+    end
+  end
+
+  @doc """
+  Analyze fleet synergy and generate recommendations.
+  """
+  def analyze_fleet_synergy(side_a, side_b, killmails) do
+    side_a_synergy = calculate_fleet_synergy(side_a)
+    side_b_synergy = calculate_fleet_synergy(side_b)
+
+    synergy_comparison = compare_synergy_scores(side_a_synergy, side_b_synergy)
+    impact_analysis = analyze_synergy_impact(side_a_synergy, side_b_synergy, killmails)
+
+    %{
+      side_a: side_a_synergy,
+      side_b: side_b_synergy,
+      comparison: synergy_comparison,
+      battle_impact: impact_analysis,
+      recommendations: generate_synergy_recommendations(side_a_synergy, side_b_synergy)
+    }
+  end
+
+  # Private helper functions
+
+  defp calculate_role_distribution(participants) do
+    participants
+    Enum.map(&classify_ship_role/1)
+    Enum.frequencies()
+    Map.new()
+  end
+
+  defp classify_ships_by_class(participants) do
+    participants
+    |>     Enum.group_by(&classify_ship_class(&1))
+    Enum.map(fn {class, ships} -> {class, length(ships)} end)
+    Map.new()
+  end
+
+  defp classify_ship_role(participant) do
+    # Simple role classification based on ship type
+    # This would normally use ShipClassificationAnalyzer
+    ship_name = String.downcase(participant.ship_name || "")
+
+    cond do
+      String.contains?(ship_name, ["guardian", "basilisk", "oneiros", "scimitar"]) -> :logistics
+      String.contains?(ship_name, ["sabre", "flycatcher", "heretic", "eris"]) -> :tackle
+      String.contains?(ship_name, ["broadsword", "devoter", "phobos", "onyx"]) -> :heavy_tackle
+      String.contains?(ship_name, ["falcon", "rook", "arazu", "lachesis"]) -> :ewar
+      String.contains?(ship_name, ["damnation", "vulture", "claymore", "eos"]) -> :command
+      true -> :dps
+    end
+  end
+
+  defp classify_ship_class(participant) do
+    # Simple ship class classification
+    # This would normally use ShipClassificationAnalyzer
+    ship_name = String.downcase(participant.ship_name || "")
+
+    cond do
+      String.contains?(ship_name, ["titan", "erebus", "avatar", "leviathan", "ragnarok"]) -> :titan
+      String.contains?(ship_name, ["carrier", "nyx", "hel", "aeon", "wyvern"]) -> :carrier
+      String.contains?(ship_name, ["dread", "phoenix", "moros", "revelation", "naglfar"]) -> :dreadnought
+      String.contains?(ship_name, ["battleship", "megathron", "apocalypse", "tempest", "raven"]) -> :battleship
+      String.contains?(ship_name, ["cruiser", "thorax", "omen", "caracal", "rupture"]) -> :cruiser
+      String.contains?(ship_name, ["frigate", "rifter", "punisher", "merlin", "incursus"]) -> :frigate
+      true -> :unknown
+    end
+  end
+
+  defp group_by_mobility(ship_classes) do
+    ship_classes
+    |>     Enum.map(fn {class, count} ->
+      mobility = case class do
+        c when c in [:titan, :dreadnought] -> :immobile
+        c when c in [:carrier, :battleship] -> :slow
+        c when c in [:battlecruiser, :cruiser] -> :medium
+        c when c in [:frigate, :destroyer] -> :fast
+        _ -> :unknown
+      end
+      {mobility, count}
+    end)
+    Enum.reduce(%{}, fn {mobility, count}, acc ->
+      Map.update(acc, mobility, count, &(&1 + count))
+    end)
+  end
+
+  defp estimate_engagement_range(participant) do
+    ship_class = classify_ship_class(participant)
+
+    case ship_class do
+      c when c in [:titan, :dreadnought] -> :extreme_long
+      c when c in [:battleship, :carrier] -> :long
+      c when c in [:battlecruiser, :cruiser] -> :medium
+      c when c in [:frigate, :destroyer] -> :short
+      _ -> :variable
+    end
+  end
+
+  defp generate_synergy_analysis(score, role_distribution) do
+
+    # Check for missing roles
+    if Map.get(role_distribution, :logistics, 0) == 0 do
+      issues = ["No logistics support detected" | issues]
+    end
+
+    if Map.get(role_distribution, :tackle, 0) == 0 and Map.get(role_distribution, :heavy_tackle, 0) == 0 do
+      issues = ["No tackle capability present" | issues]
+    end
+
+    # Generate analysis text
+    cond do
+      score >= 0.8 -> "Excellent fleet synergy with well-balanced roles"
+      score >= 0.6 -> "Good fleet synergy with minor composition gaps"
+      score >= 0.4 -> "Moderate fleet synergy - consider role balance improvements"
+      true -> "Poor fleet synergy - significant composition issues: #{Enum.join(issues, ", ")}"
+    end
+  end
+
+  defp compare_synergy_scores(side_a, side_b) do
+    score_diff = side_a.overall_score - side_b.overall_score
+
+    %{
+      advantage: if(score_diff > 0, do: :side_a, else: :side_b),
+      magnitude: abs(score_diff),
+      key_differences: identify_key_differences(side_a.components, side_b.components)
+    }
+  end
+
+  defp identify_key_differences(comp_a, comp_b) do
+    comp_a
+    |>     Enum.map(fn {component, score_a} ->
+      score_b = Map.get(comp_b, component, 0)
+      diff = score_a - score_b
+      {component, diff}
+    end)
+    Enum.filter(fn {_, diff} -> abs(diff) > 0.1 end)
+    Enum.sort_by(fn {_, diff} -> abs(diff) end, :desc)
+  end
+
+  defp analyze_synergy_impact(_side_a_synergy, _side_b_synergy, _killmails) do
+    # Simplified impact analysis
+    %{
+      synergy_correlation: 0.7,
+      outcome_influence: :significant,
+      key_factors: ["Logistics presence", "Role balance", "Range coherence"]
+    }
+  end
+
+  defp generate_synergy_recommendations(side_a, side_b) do
+    recommendations = %{}
+
+    # Side A recommendations
+    if side_a.components.dps_logistics < 0.5 do
+      side_a_recs = ["Improve logistics support ratio" | side_a_recs]
+    end
+    if side_a.components.range_coherence < 0.6 do
+      side_a_recs = ["Improve range coherence for better coordination" | side_a_recs]
+    end
+
+    # Side B recommendations
+    if side_b.components.tackle_coordination < 0.5 do
+      side_b_recs = ["Add more tackle ships for target control" | side_b_recs]
+    end
+    if side_b.components.ewar_effectiveness < 0.3 do
+      side_b_recs = ["Consider adding EWAR support" | side_b_recs]
+    end
+
+    %{
+      side_a: side_a_recs,
+      side_b: side_b_recs
+    }
+  end
+end

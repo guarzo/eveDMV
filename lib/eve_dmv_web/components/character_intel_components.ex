@@ -57,7 +57,7 @@ defmodule EveDmvWeb.CharacterIntelComponents do
   attr(:class, :string, default: "")
 
   def progress_bar(assigns) do
-    percentage = min(100, round(assigns.value / assigns.max * 100))
+    percentage = min(100, round(assigns.value / assigns.max * 100)
     assigns = assign(assigns, :percentage, percentage)
 
     ~H"""

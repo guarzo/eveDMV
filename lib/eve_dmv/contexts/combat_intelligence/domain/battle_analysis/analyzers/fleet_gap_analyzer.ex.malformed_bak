@@ -1,0 +1,179 @@
+defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.FleetGapAnalyzer do
+  @moduledoc """
+  Analyzes fleet composition gaps and optimization opportunities.
+
+  Provides comprehensive analysis of missing roles, role imbalances,
+  optimization suggestions, and implementation roadmaps for fleet improvement.
+
+  Handles:
+  - Missing role identification
+  - Role imbalance detection
+  - Optimization suggestion generation
+  - Synergy opportunity identification
+  - Doctrine gap analysis
+  - Capability gap assessment
+  - Tactical gap identification
+  - Optimization prioritization
+  - Resource requirement analysis
+  - Implementation roadmap generation
+  """
+
+  require Logger
+
+  @doc """
+  Identify missing roles in fleet compositions.
+  """
+  def identify_missing_roles(_fleet_compositions) do
+    # For now, return basic missing roles
+    # Analysis based on standard fleet role requirements
+    ["interdiction", "heavy_ewar", "command_ships"]
+  end
+
+  @doc """
+  Identify role imbalances in fleet compositions.
+  """
+  def identify_role_imbalances(_fleet_compositions) do
+    # For now, return basic role imbalances
+    # Analysis based on current role distribution
+    [
+      %{role: :dps, current: 60, optimal: 50, imbalance: :excess},
+      %{role: :logistics, current: 10, optimal: 20, imbalance: :deficit}
+    ]
+  end
+
+  @doc """
+  Generate optimization suggestions for fleet compositions.
+  """
+  def generate_optimization_suggestions(_fleet_compositions) do
+    # For now, return basic optimization suggestions
+    # Suggestions based on fleet composition analysis
+    [
+      "Increase logistics support by 10%",
+      "Add interdiction capability",
+      "Balance DPS distribution across ship classes"
+    ]
+  end
+
+  @doc """
+  Identify synergy opportunities within fleet compositions.
+  """
+  def identify_synergy_opportunities(_fleet_compositions) do
+    # For now, return basic synergy opportunities
+    # Fleet synergy opportunity analysis
+    [
+      %{synergy: :logistics_chain, effectiveness: 0.8},
+      %{synergy: :alpha_strike, effectiveness: 0.7},
+      %{synergy: :ewar_coordination, effectiveness: 0.6}
+    ]
+  end
+
+  @doc """
+  Analyze gaps in fleet doctrine adherence.
+  """
+  def analyze_doctrine_gaps(_fleet_compositions) do
+    # Analyze gaps in fleet doctrine
+    # Fleet doctrine gap analysis
+    %{
+      doctrine_coherence: 0.7,
+      missing_doctrine_elements: ["Heavy interdiction", "Command ships"],
+      doctrine_weaknesses: ["Limited electronic warfare", "Insufficient logistics"]
+    }
+  end
+
+  @doc """
+  Analyze capability gaps in fleet compositions.
+  """
+  def analyze_capability_gaps(_fleet_compositions) do
+    # Analyze capability gaps
+    # Fleet capability gap analysis
+    %{
+      missing_capabilities: ["Anti-capital", "Long-range engagement", "Fast tackle"],
+      capability_weaknesses: ["Electronic warfare", "Logistics support"],
+      critical_gaps: ["Interdiction capability"]
+    }
+  end
+
+  @doc """
+  Analyze tactical gaps in fleet compositions.
+  """
+  def analyze_tactical_gaps(_fleet_compositions) do
+    # Analyze tactical gaps
+    # Fleet tactical gap analysis
+    %{
+      tactical_weaknesses: ["Range control", "Escape route coverage", "Formation integrity"],
+      strategic_gaps: ["Force projection", "Sustained operations"],
+      operational_gaps: ["Command and control", "Intelligence gathering"]
+    }
+  end
+
+  @doc """
+  Prioritize optimization efforts based on analysis results.
+  """
+  def prioritize_optimizations(missing_roles, role_imbalances, doctrine_gaps) do
+    # Prioritize optimization efforts
+
+    # High priority: Critical missing roles
+    high_priority =
+      missing_roles
+      |>       Enum.filter(fn role ->
+        role in ["interdiction", "logistics", "command_ships"]
+      end)
+
+    # Medium priority: Role imbalances
+    medium_priority =
+      role_imbalances
+      |>       Enum.filter(fn imbalance ->
+        imbalance.imbalance == :deficit
+      end)
+
+    # Low priority: Doctrine improvements
+    low_priority = doctrine_gaps.missing_doctrine_elements
+
+    %{
+      high_priority: high_priority,
+      medium_priority: medium_priority,
+      low_priority: low_priority
+    }
+  end
+
+  @doc """
+  Analyze resource requirements for optimizations.
+  """
+  def analyze_resource_requirements(optimization_suggestions) do
+    # Analyze resource requirements for optimizations
+    # Resource requirement calculation
+    %{
+      pilot_training_required: length(optimization_suggestions) * 2,
+      ship_acquisition_needed: length(optimization_suggestions) * 1.5,
+      time_investment: "#{length(optimization_suggestions) * 2} weeks",
+      isk_investment: "#{length(optimization_suggestions) * 1_000_000_000} ISK"
+    }
+  end
+
+  @doc """
+  Generate implementation roadmap for fleet improvements.
+  """
+  def generate_implementation_roadmap(optimization_priorities, resource_requirements) do
+    # Generate implementation roadmap
+    # TODO: Implement detailed roadmap logic
+    %{
+      phase_1: %{
+        duration: "2 weeks",
+        focus: "Critical missing roles",
+        targets: optimization_priorities.high_priority
+      },
+      phase_2: %{
+        duration: "4 weeks",
+        focus: "Role balancing",
+        targets: optimization_priorities.medium_priority
+      },
+      phase_3: %{
+        duration: "6 weeks",
+        focus: "Doctrine refinement",
+        targets: optimization_priorities.low_priority
+      },
+      total_timeline: "12 weeks",
+      resource_allocation: resource_requirements
+    }
+  end
+end

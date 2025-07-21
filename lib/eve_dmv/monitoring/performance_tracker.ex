@@ -256,7 +256,7 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
 
   defp calculate_percentile(list, percentile) do
     sorted = Enum.sort(list)
-    index = round(percentile * length(sorted)) - 1
+    index = round(percentile * length(sorted) - 1)
     Enum.at(sorted, max(0, index), 0)
   end
 

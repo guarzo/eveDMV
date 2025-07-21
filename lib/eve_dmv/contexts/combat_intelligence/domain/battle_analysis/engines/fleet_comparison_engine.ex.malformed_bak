@@ -1,0 +1,453 @@
+defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.FleetComparisonEngine do
+  @moduledoc """
+  Engine for comparing fleet compositions and predicting engagement outcomes.
+
+  Handles:
+  - Comprehensive fleet composition comparison
+  - Numerical advantage calculations
+  - Experience and doctrine advantage assessment
+  - Fleet strength and synergy comparisons
+  - Engagement outcome prediction
+  """
+
+  require Logger
+
+  @doc """
+  Compare two fleet compositions across multiple dimensions.
+  """
+  def compare_fleet_compositions(side_a_analysis, side_b_analysis) do
+    Logger.debug("Comparing fleet compositions")
+
+    # Extract participant data for comparison
+    side_a_pilots = side_a_analysis.total_pilots
+    side_b_pilots = side_b_analysis.total_pilots
+
+    # Numerical analysis
+    numerical_advantage = calculate_numerical_advantage(side_a_pilots, side_b_pilots)
+
+    # Composition advantage analysis
+    composition_advantage = calculate_composition_advantage(side_a_analysis, side_b_analysis)
+
+    # Experience advantage (based on ship classes and organization)
+    experience_advantage = calculate_experience_advantage(side_a_analysis, side_b_analysis)
+
+    # Fleet strength comparison
+    strength_comparison =
+      compare_fleet_strength(side_a_analysis.fleet_strength, side_b_analysis.fleet_strength)
+
+    # Doctrine comparison
+    doctrine_comparison =
+      compare_doctrines(side_a_analysis.doctrine_adherence, side_b_analysis.doctrine_adherence)
+
+    # Synergy comparison
+    synergy_comparison =
+      compare_fleet_synergy(side_a_analysis.fleet_synergy, side_b_analysis.fleet_synergy)
+
+    # Role balance comparison
+    role_balance_comparison =
+      compare_role_balance(side_a_analysis.role_distribution, side_b_analysis.role_distribution)
+
+    # Logistical comparison
+    logistical_comparison =
+      compare_logistical_support(
+        side_a_analysis.logistical_support,
+        side_b_analysis.logistical_support
+      )
+
+    # Overall advantage assessment
+    overall_advantage = calculate_overall_advantage([
+      numerical_advantage,
+      composition_advantage,
+      experience_advantage,
+      strength_comparison,
+      doctrine_comparison,
+      synergy_comparison,
+      role_balance_comparison,
+      logistical_comparison
+    ])
+
+    %{
+      numerical_advantage: numerical_advantage,
+      composition_advantage: composition_advantage,
+      experience_advantage: experience_advantage,
+      strength_comparison: strength_comparison,
+      doctrine_comparison: doctrine_comparison,
+      synergy_comparison: synergy_comparison,
+      role_balance_comparison: role_balance_comparison,
+      logistical_comparison: logistical_comparison,
+      overall_advantage: overall_advantage
+    }
+  end
+
+  @doc """
+  Calculate numerical advantage between two sides.
+  """
+  def calculate_numerical_advantage(side_a_pilots, side_b_pilots) do
+    total_pilots = side_a_pilots + side_b_pilots
+
+    if total_pilots == 0 do
+      %{advantage: :none, ratio: 1.0, assessment: "No participants"}
+    else
+      ratio = if side_b_pilots > 0, do: side_a_pilots / side_b_pilots, else: :infinity
+
+      {advantage, assessment} =
+        cond do
+          ratio == :infinity -> {:side_a_major, "Side A has total numerical superiority"}
+          ratio > 2.0 -> {:side_a_major, "Side A has major numerical superiority (#{Float.round(ratio, 1)}:1)"}
+          ratio > 1.5 -> {:side_a_moderate, "Side A has moderate numerical advantage (#{Float.round(ratio, 1)}:1)"}
+          ratio > 1.1 -> {:side_a_slight, "Side A has slight numerical advantage (#{Float.round(ratio, 1)}:1)"}
+          ratio > 0.9 -> {:balanced, "Forces are numerically balanced (#{Float.round(ratio, 1)}:1)"}
+          ratio > 0.67 -> {:side_b_slight, "Side B has slight numerical advantage (#{Float.round(1/ratio, 1)}:1)"}
+          ratio > 0.5 -> {:side_b_moderate, "Side B has moderate numerical advantage (#{Float.round(1/ratio, 1)}:1)"}
+          true -> {:side_b_major, "Side B has major numerical superiority (#{Float.round(1/ratio, 1)}:1)"}
+        end
+
+      %{
+        advantage: advantage,
+        ratio: ratio,
+        side_a_pilots: side_a_pilots,
+        side_b_pilots: side_b_pilots,
+        assessment: assessment
+      }
+    end
+  end
+
+  @doc """
+  Calculate composition advantage between sides.
+  """
+  def calculate_composition_advantage(side_a_analysis, side_b_analysis) do
+    # Compare role distributions
+    side_a_balance = calculate_composition_score(side_a_analysis.role_distribution)
+    side_b_balance = calculate_composition_score(side_b_analysis.role_distribution)
+
+    balance_diff = side_a_balance - side_b_balance
+
+    {advantage, assessment} =
+      cond do
+        balance_diff > 0.2 -> {:side_a, "Side A has better composition balance"}
+        balance_diff < -0.2 -> {:side_b, "Side B has better composition balance"}
+        true -> {:balanced, "Both sides have similar composition balance"}
+      end
+
+    %{
+      advantage: advantage,
+      side_a_score: side_a_balance,
+      side_b_score: side_b_balance,
+      difference: balance_diff,
+      assessment: assessment
+    }
+  end
+
+  @doc """
+  Calculate experience advantage based on organizational structure.
+  """
+  def calculate_experience_advantage(side_a_analysis, side_b_analysis) do
+    # Experience based on organizational cohesion and ship choices
+    side_a_experience = calculate_experience_score(side_a_analysis)
+    side_b_experience = calculate_experience_score(side_b_analysis)
+
+    experience_diff = side_a_experience - side_b_experience
+
+    {advantage, assessment} =
+      cond do
+        experience_diff > 0.15 -> {:side_a, "Side A appears more experienced"}
+        experience_diff < -0.15 -> {:side_b, "Side B appears more experienced"}
+        true -> {:balanced, "Both sides show similar experience levels"}
+      end
+
+    %{
+      advantage: advantage,
+      side_a_score: side_a_experience,
+      side_b_score: side_b_experience,
+      difference: experience_diff,
+      assessment: assessment
+    }
+  end
+
+  @doc """
+  Compare fleet strength between sides.
+  """
+  def compare_fleet_strength(side_a_strength, side_b_strength) do
+    strength_diff = side_a_strength - side_b_strength
+
+    {advantage, assessment} =
+      cond do
+        strength_diff > 20 -> {:side_a, "Side A has significantly higher fleet strength"}
+        strength_diff > 10 -> {:side_a, "Side A has moderately higher fleet strength"}
+        strength_diff < -20 -> {:side_b, "Side B has significantly higher fleet strength"}
+        strength_diff < -10 -> {:side_b, "Side B has moderately higher fleet strength"}
+        true -> {:balanced, "Fleet strengths are comparable"}
+      end
+
+    %{
+      advantage: advantage,
+      side_a_strength: side_a_strength,
+      side_b_strength: side_b_strength,
+      difference: strength_diff,
+      assessment: assessment
+    }
+  end
+
+  @doc """
+  Compare doctrine adherence between sides.
+  """
+  def compare_doctrines(side_a_doctrine, side_b_doctrine) do
+    doctrine_diff = side_a_doctrine - side_b_doctrine
+
+    {advantage, assessment} =
+      cond do
+        doctrine_diff > 0.2 -> {:side_a, "Side A shows better doctrine adherence"}
+        doctrine_diff < -0.2 -> {:side_b, "Side B shows better doctrine adherence"}
+        true -> {:balanced, "Both sides show similar doctrine adherence"}
+      end
+
+    %{
+      advantage: advantage,
+      side_a_doctrine: side_a_doctrine,
+      side_b_doctrine: side_b_doctrine,
+      difference: doctrine_diff,
+      assessment: assessment
+    }
+  end
+
+  @doc """
+  Compare fleet synergy between sides.
+  """
+  def compare_fleet_synergy(side_a_synergy, side_b_synergy) do
+    synergy_diff = side_a_synergy - side_b_synergy
+
+    {advantage, assessment} =
+      cond do
+        synergy_diff > 0.15 -> {:side_a, "Side A has better fleet synergy"}
+        synergy_diff < -0.15 -> {:side_b, "Side B has better fleet synergy"}
+        true -> {:balanced, "Both sides have comparable fleet synergy"}
+      end
+
+    %{
+      advantage: advantage,
+      side_a_synergy: side_a_synergy,
+      side_b_synergy: side_b_synergy,
+      difference: synergy_diff,
+      assessment: assessment
+    }
+  end
+
+  @doc """
+  Compare role balance between sides.
+  """
+  def compare_role_balance(side_a_roles, side_b_roles) do
+    side_a_balance = calculate_role_balance_score(side_a_roles)
+    side_b_balance = calculate_role_balance_score(side_b_roles)
+
+    balance_diff = side_a_balance - side_b_balance
+
+    {advantage, assessment} =
+      cond do
+        balance_diff > 0.1 -> {:side_a, "Side A has better role balance"}
+        balance_diff < -0.1 -> {:side_b, "Side B has better role balance"}
+        true -> {:balanced, "Both sides have similar role balance"}
+      end
+
+    %{
+      advantage: advantage,
+      side_a_balance: side_a_balance,
+      side_b_balance: side_b_balance,
+      difference: balance_diff,
+      assessment: assessment
+    }
+  end
+
+  @doc """
+  Compare logistical support between sides.
+  """
+  def compare_logistical_support(side_a_logistics, side_b_logistics) do
+    # Compare logistics ratios and capabilities
+    side_a_score = calculate_logistics_score(side_a_logistics)
+    side_b_updated_score = calculate_logistics_score(side_b_logistics)
+
+    logistics_diff = side_a_score - side_b_score
+
+    {advantage, assessment} =
+      cond do
+        logistics_diff > 0.1 -> {:side_a, "Side A has superior logistical support"}
+        logistics_diff < -0.1 -> {:side_b, "Side B has superior logistical support"}
+        true -> {:balanced, "Both sides have comparable logistical support"}
+      end
+
+    %{
+      advantage: advantage,
+      side_a_score: side_a_score,
+      side_b_score: side_b_score,
+      difference: logistics_diff,
+      assessment: assessment
+    }
+  end
+
+  @doc """
+  Calculate overall advantage from multiple comparison dimensions.
+  """
+  def calculate_overall_advantage(comparisons) do
+    # Weight different advantages
+    weights = %{
+      numerical_advantage: 0.3,
+      composition_advantage: 0.15,
+      experience_advantage: 0.15,
+      strength_comparison: 0.2,
+      doctrine_comparison: 0.1,
+      synergy_comparison: 0.05,
+      role_balance_comparison: 0.025,
+      logistical_comparison: 0.025
+    }
+
+    # Calculate weighted score
+    total_score =
+      comparisons
+      Enum.with_index()
+      |>       Enum.reduce(0.0, fn {comparison, index}, acc ->
+        weight_key = Enum.at(Map.keys(weights), index)
+        weight = Map.get(weights, weight_key, 0.1)
+
+        updated_score = case comparison.advantage do
+          :side_a -> weight
+          :side_a_major -> weight * 2
+          :side_a_moderate -> weight * 1.5
+          :side_a_slight -> weight * 0.5
+          :side_b -> -weight
+          :side_b_major -> -weight * 2
+          :side_b_moderate -> -weight * 1.5
+          :side_b_slight -> -weight * 0.5
+          _ -> 0
+        end
+
+        acc + score
+      end)
+
+    {overall_advantage, confidence} =
+      cond do
+        total_score > 0.3 -> {:side_a_major, :high}
+        total_score > 0.1 -> {:side_a_moderate, :medium}
+        total_score > 0.05 -> {:side_a_slight, :low}
+        total_score < -0.3 -> {:side_b_major, :high}
+        total_score < -0.1 -> {:side_b_moderate, :medium}
+        total_score < -0.05 -> {:side_b_slight, :low}
+        true -> {:balanced, :medium}
+      end
+
+    %{
+      advantage: overall_advantage,
+      confidence: confidence,
+      score: total_score,
+      assessment: generate_overall_assessment(overall_advantage, confidence)
+    }
+  end
+
+  # Private helper functions
+
+  defp calculate_composition_score(role_distribution) do
+    # Score based on role balance and coverage
+    essential_roles = [:dps, :logistics, :tackle, :ewar]
+
+    role_coverage =
+      essential_roles
+      |>       Enum.count(fn role -> Map.get(role_distribution, role, 0) > 0 end)
+      Kernel./(length(essential_roles))
+
+    # Balance score (prevent over-specialization)
+    role_values = Map.values(role_distribution)
+    total_roles = Enum.sum(role_values)
+
+    balance_updated_score = if total_roles > 0 do
+      # Calculate entropy as balance measure
+      entropy =
+        role_values
+        |>         Enum.map(fn count ->
+          if count > 0 do
+            ratio = count |> Kernel./(total_roles)
+            -ratio * :math.log2(ratio)
+          else
+            0
+          end
+        end)
+        Enum.sum()
+
+      # Normalize entropy (max entropy for 4 roles is 2)
+      entropy / 2
+    else
+      0
+    end
+
+    # Combine coverage and balance
+    role_coverage * 0.6 + balance_score * 0.4
+  end
+
+  defp calculate_experience_score(side_analysis) do
+    # Experience indicators
+    org_updated_score = calculate_organizational_experience(side_analysis.organizational_composition)
+    doctrine_updated_score = side_analysis.doctrine_adherence
+    synergy_updated_score = side_analysis.fleet_synergy
+
+    # Weighted average
+    org_score * 0.4 + doctrine_score * 0.3 + synergy_score * 0.3
+  end
+
+  defp calculate_organizational_experience(org_composition) do
+    # Higher scores for fewer, larger organizations (suggests coordination)
+    total_pilots = Map.get(org_composition, :total_pilots, 1)
+    unique_corps = Map.get(org_composition, :unique_corporations, 1)
+
+    if unique_corps > 0 do
+      avg_corp_size = total_pilots / unique_corps
+      # Normalize: larger average corp size suggests better organization
+      min(1.0, avg_corp_size / 20)
+    else
+      0.0
+    end
+  end
+
+  defp calculate_role_balance_score(role_distribution) do
+    # Calculate how balanced the role distribution is
+    total_roles = role_distribution |> Map.values() Enum.sum()
+
+    if total_roles == 0 do
+      0.0
+    else
+      # Calculate coefficient of variation (lower is more balanced)
+      values = Map.values(role_distribution)
+      mean = values |> Enum.sum() Kernel./(length(values))
+
+      if mean > 0 do
+        variance = values |> Enum.map(&(:math.pow(&1 - mean, 2))) Enum.sum() Kernel./(length(values))
+        cv = variance |> :math.sqrt() Kernel./(mean)
+        # Convert to balance score (higher is better)
+        max(0.0, 1.0 - cv)
+      else
+        0.0
+      end
+    end
+  end
+
+  defp calculate_logistics_score(logistics_support) do
+    # Score logistics based on ratio and capability
+    ratio = Map.get(logistics_support, :logistics_ratio, 0.0)
+    capability = Map.get(logistics_support, :logistics_capability, 0.0)
+
+    # Ideal logistics ratio is around 20%
+    ratio_updated_score = 1.0 - abs(ratio - 0.2) / 0.2
+    _ratio_updated_score = max(0.0, min(1.0, ratio_score))
+
+    # Combine ratio and capability
+    ratio_score * 0.7 + capability * 0.3
+  end
+
+  defp generate_overall_assessment(advantage, confidence) do
+    case {advantage, confidence} do
+      {:side_a_major, :high} -> "Side A has a decisive advantage and should win convincingly"
+      {:side_a_moderate, :medium} -> "Side A has a significant advantage and is favored to win"
+      {:side_a_slight, :low} -> "Side A has a marginal advantage but outcome is uncertain"
+      {:side_b_major, :high} -> "Side B has a decisive advantage and should win convincingly"
+      {:side_b_moderate, :medium} -> "Side B has a significant advantage and is favored to win"
+      {:side_b_slight, :low} -> "Side B has a marginal advantage but outcome is uncertain"
+      {:balanced, _} -> "Forces are evenly matched, outcome depends on execution"
+    end
+  end
+end

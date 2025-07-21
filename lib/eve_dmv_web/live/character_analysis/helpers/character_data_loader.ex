@@ -793,7 +793,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
                   if total_isk > 0,
                     do:
                       Float.round(
-                        Decimal.to_float(isk_destroyed || Decimal.new(0)) / total_isk * 100,
+                        Decimal.to_float(isk_destroyed || Decimal.new(0) / total_isk * 100,
                         1
                       ),
                     else: 0.0
@@ -801,7 +801,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
                 Map.put(acc, String.to_existing_atom(category), %{
                   kill_count: count,
                   percentage: percentage,
-                  avg_gang_size: Float.round(Decimal.to_float(avg_size || Decimal.new(0)), 1),
+                  avg_gang_size: Float.round(Decimal.to_float(avg_size || Decimal.new(0), 1),
                   total_isk_destroyed: Decimal.to_float(isk_destroyed || Decimal.new(0)),
                   isk_percentage: isk_percentage,
                   avg_kill_value: Decimal.to_float(avg_value || Decimal.new(0)),
@@ -1052,7 +1052,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
               most_active_weekday: most_active_weekday,
               best_day: best_day,
               best_day_activity: best_day_count || 0,
-              avg_daily_activity: Float.round(Decimal.to_float(avg_daily || Decimal.new(0)), 1),
+              avg_daily_activity: Float.round(Decimal.to_float(avg_daily || Decimal.new(0), 1),
               activity_consistency: consistency,
               timezone_estimate: timezone_estimate,
               activity_trend: trend,

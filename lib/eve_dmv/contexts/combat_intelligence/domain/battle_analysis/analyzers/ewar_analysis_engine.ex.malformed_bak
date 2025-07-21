@@ -1,0 +1,533 @@
+defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.EwarAnalysisEngine do
+  @moduledoc """
+  Electronic Warfare (EWAR) analysis engine for fleet composition analysis.
+
+  Responsible for:
+  - Detecting EWAR ship presence in fleet compositions
+  - Classifying ships by EWAR capabilities and types
+  - Calculating EWAR intensity and effectiveness metrics
+  - Analyzing EWAR impact on battle outcomes
+  - Generating tactical recommendations for EWAR usage
+  - Identifying EWAR gaps in fleet compositions
+  """
+
+  require Logger
+
+  @doc """
+  Detect electronic warfare presence in ship composition.
+  """
+  def detect_ewar_presence(ship_composition) do
+    if Enum.empty?(ship_composition) do
+      %{
+        ewar_detected: false,
+        ewar_ships: [],
+        ewar_types: [],
+        ewar_intensity: 0.0,
+        analysis: "No ship composition data available for EWAR analysis"
+      }
+    else
+      # Get all ships from composition
+      all_ships = Enum.flat_map(ship_composition, fn {_side, ships} -> ships end)
+
+      ewar_analysis = analyze_ships_for_ewar(all_ships)
+
+      # Calculate EWAR intensity based on ship count and types
+      ewar_intensity = calculate_ewar_intensity(ewar_analysis, length(all_ships))
+
+      %{
+        ewar_detected: length(ewar_analysis.ewar_ships) > 0,
+        ewar_ships: ewar_analysis.ewar_ships,
+        ewar_types: ewar_analysis.ewar_types,
+        ewar_intensity: ewar_intensity,
+        total_ewar_ships: length(ewar_analysis.ewar_ships),
+        ewar_percentage: calculate_ewar_percentage(ewar_analysis.ewar_ships, all_ships),
+        analysis: generate_ewar_analysis(ewar_analysis, ewar_intensity),
+        detailed_breakdown: ewar_analysis.breakdown
+      }
+    end
+  end
+
+  @doc """
+  Analyze EWAR impact on fleet effectiveness.
+  """
+  def analyze_ewar_impact(compositions) do
+    ewar_ships =
+      compositions
+      Enum.flat_map(& &1.ships)
+      Enum.filter(&is_ewar_ship?/1)
+      length
+
+    total_ships =
+      compositions
+      Enum.flat_map(& &1.ships)
+      length
+
+    if total_ships > 0 do
+      # EWAR impact scales with proportion but caps at 100%
+      min(1.0, ewar_ships / total_ships * 10)
+    else
+      0.0
+    end
+  end
+
+  @doc """
+  Check if a battle has EWAR presence.
+  """
+  def has_ewar?(battle) do
+    case battle do
+      %{ewar_analysis: %{ewar_detected: detected}} -> detected
+      _ -> false
+    end
+  end
+
+  @doc """
+  Check if a ship is an EWAR ship by name.
+  """
+  def is_ewar_ship?(ship_name) do
+    ewar_ships = [
+      "Falcon",
+      "Rook",
+      "Blackbird",
+      "Scorpion",
+      "Widow",
+      "Kitsune",
+      "Griffin",
+      "Maulus",
+      "Crucifier"
+    ]
+
+    Enum.member?(ewar_ships, ship_name)
+  end
+
+  @doc """
+  Analyze ships for EWAR capabilities.
+  """
+  def analyze_ships_for_ewar(ships) do
+    # Analyze each ship for EWAR capabilities
+    ewar_types = MapSet.new()
+    breakdown = %{}
+
+    {ewar_ships, ewar_types, breakdown} =
+      Enum.reduce(ships, {ewar_ships, ewar_types, breakdown}, fn ship,
+                                                                 {acc_ships, acc_types,
+                                                                  acc_breakdown} ->
+        ewar_info = classify_ship_ewar_capability(ship)
+
+        if ewar_info.has_ewar do
+          updated_ships = [
+            %{
+              ship: ship,
+              ewar_types: ewar_info.ewar_types,
+              ewar_strength: ewar_info.ewar_strength,
+              ship_class: ewar_info.ship_class
+            }
+            | acc_ships
+          ]
+
+          updated_types = MapSet.union(acc_types, MapSet.new(ewar_info.ewar_types))
+
+          # Update breakdown by EWAR type
+          updated_breakdown =
+            Enum.reduce(ewar_info.ewar_types, acc_breakdown, fn ewar_type, breakdown_acc ->
+              Map.update(breakdown_acc, ewar_type, 1, &(&1 + 1))
+            end)
+
+          {updated_ships, updated_types, updated_breakdown}
+        else
+          {acc_ships, acc_types, acc_breakdown}
+        end
+      end)
+
+    %{
+      ewar_ships: Enum.reverse(ewar_ships),
+      ewar_types: MapSet.to_list(ewar_types),
+      breakdown: breakdown
+    }
+  end
+
+  @doc """
+  Classify ship EWAR capability by type ID.
+  """
+  def classify_ship_ewar_capability(ship) do
+    # Get ship type ID from various possible formats
+    ship_type_id = extract_ship_type_id(ship)
+
+    case ship_type_id do
+      # Force Recon Ships
+      11_957 ->
+        %{
+          has_ewar: true,
+          ewar_types: [:sensor_dampening, :ecm],
+          ewar_strength: :high,
+          ship_class: :force_recon
+        }
+
+      11_958 ->
+        %{
+          has_ewar: true,
+          ewar_types: [:tracking_disruption, :weapon_disruption],
+          ewar_strength: :high,
+          ship_class: :force_recon
+        }
+
+      11_959 ->
+        %{
+          has_ewar: true,
+          ewar_types: [:target_painting, :tracking_disruption],
+          ewar_strength: :high,
+          ship_class: :force_recon
+        }
+
+      11_963 ->
+        %{
+          has_ewar: true,
+          ewar_types: [:ecm, :ecm_burst],
+          ewar_strength: :very_high,
+          ship_class: :force_recon
+        }
+
+      # Combat Recon Ships
+      11_965 ->
+        %{
+          has_ewar: true,
+          ewar_types: [:sensor_dampening, :tracking_disruption],
+          ewar_strength: :medium,
+          ship_class: :recon
+        }
+
+      11_969 ->
+        %{
+          has_ewar: true,
+          ewar_types: [:tracking_disruption, :weapon_disruption],
+          ewar_strength: :medium,
+          ship_class: :recon
+        }
+
+      11_961 ->
+        %{
+          has_ewar: true,
+          ewar_types: [:target_painting, :sensor_dampening],
+          ewar_strength: :medium,
+          ship_class: :recon
+        }
+
+      11_971 ->
+        %{
+          has_ewar: true,
+          ewar_types: [:ecm, :sensor_dampening],
+          ewar_strength: :high,
+          ship_class: :recon
+        }
+
+      # Electronic Attack Frigates
+      12_023 ->
+        %{
+          has_ewar: true,
+          ewar_types: [:sensor_dampening],
+          ewar_strength: :medium,
+          ship_class: :eaf
+        }
+
+      12_019 ->
+        %{
+          has_ewar: true,
+          ewar_types: [:tracking_disruption],
+          ewar_strength: :medium,
+          ship_class: :eaf
+        }
+
+      12_017 ->
+        %{
+          has_ewar: true,
+          ewar_types: [:target_painting],
+          ewar_strength: :medium,
+          ship_class: :eaf
+        }
+
+      12_015 ->
+        %{has_ewar: true, ewar_types: [:ecm], ewar_strength: :high, ship_class: :eaf}
+
+      # Heavy Interdictors (Tackle + EWAR)
+      12_011 ->
+        %{
+          has_ewar: true,
+          ewar_types: [:warp_disruption, :sensor_dampening],
+          ewar_strength: :medium,
+          ship_class: :hic
+        }
+
+      12_013 ->
+        %{
+          has_ewar: true,
+          ewar_types: [:warp_disruption, :tracking_disruption],
+          ewar_strength: :medium,
+          ship_class: :hic
+        }
+
+      12_021 ->
+        %{
+          has_ewar: true,
+          ewar_types: [:warp_disruption, :target_painting],
+          ewar_strength: :medium,
+          ship_class: :hic
+        }
+
+      12_009 ->
+        %{
+          has_ewar: true,
+          ewar_types: [:warp_disruption, :ecm],
+          ewar_strength: :high,
+          ship_class: :hic
+        }
+
+      # Command Ships (Weak EWAR + Bonuses)
+      11_985 ->
+        %{
+          has_ewar: true,
+          ewar_types: [:command_bonuses, :sensor_dampening],
+          ewar_strength: :low,
+          ship_class: :command
+        }
+
+      11_987 ->
+        %{
+          has_ewar: true,
+          ewar_types: [:command_bonuses, :tracking_disruption],
+          ewar_strength: :low,
+          ship_class: :command
+        }
+
+      11_989 ->
+        %{
+          has_ewar: true,
+          ewar_types: [:command_bonuses, :target_painting],
+          ewar_strength: :low,
+          ship_class: :command
+        }
+
+      11_991 ->
+        %{
+          has_ewar: true,
+          ewar_types: [:command_bonuses, :ecm],
+          ewar_strength: :medium,
+          ship_class: :command
+        }
+
+      # Standard Cruisers with EWAR bonuses
+      620 ->
+        %{
+          has_ewar: true,
+          ewar_types: [:sensor_dampening],
+          ewar_strength: :low,
+          ship_class: :cruiser
+        }
+
+      621 ->
+        %{
+          has_ewar: true,
+          ewar_types: [:tracking_disruption],
+          ewar_strength: :low,
+          ship_class: :cruiser
+        }
+
+      622 ->
+        %{
+          has_ewar: true,
+          ewar_types: [:target_painting],
+          ewar_strength: :low,
+          ship_class: :cruiser
+        }
+
+      623 ->
+        %{has_ewar: true, ewar_types: [:ecm], ewar_strength: :medium, ship_class: :cruiser}
+
+      # Interdictors (Tackle)
+      22_440 ->
+        %{
+          has_ewar: true,
+          ewar_types: [:warp_disruption],
+          ewar_strength: :medium,
+          ship_class: :interdictor
+        }
+
+      22_442 ->
+        %{
+          has_ewar: true,
+          ewar_types: [:warp_disruption],
+          ewar_strength: :medium,
+          ship_class: :interdictor
+        }
+
+      22_444 ->
+        %{
+          has_ewar: true,
+          ewar_types: [:warp_disruption],
+          ewar_strength: :medium,
+          ship_class: :interdictor
+        }
+
+      22_446 ->
+        %{
+          has_ewar: true,
+          ewar_types: [:warp_disruption],
+          ewar_strength: :medium,
+          ship_class: :interdictor
+        }
+
+      # Faction Ships with strong EWAR
+      17_634 ->
+        %{
+          has_ewar: true,
+          ewar_types: [:sensor_dampening, :tracking_disruption],
+          ewar_strength: :high,
+          ship_class: :faction
+        }
+
+      17_636 ->
+        %{
+          has_ewar: true,
+          ewar_types: [:ecm, :sensor_dampening],
+          ewar_strength: :high,
+          ship_class: :faction
+        }
+
+      # Default case - no EWAR
+      _ ->
+        %{has_ewar: false, ewar_types: [], ewar_strength: :none, ship_class: :other}
+    end
+  end
+
+  @doc """
+  Calculate EWAR intensity based on ship analysis.
+  """
+  def calculate_ewar_intensity(ewar_analysis, total_ships) do
+    if Enum.empty?(ewar_analysis.ewar_ships) or total_ships == 0 do
+      0.0
+    else
+      # Calculate based on EWAR ship percentage and strength
+      ewar_count = length(ewar_analysis.ewar_ships)
+      ewar_percentage = ewar_count / total_ships
+
+      # Weight by EWAR strength
+      strength_bonus =
+        ewar_analysis.ewar_ships
+        |>         Enum.map(fn ewar_ship ->
+          case ewar_ship.ewar_strength do
+            :very_high -> 2.0
+            :high -> 1.5
+            :medium -> 1.0
+            :low -> 0.5
+            _ -> 0.3
+          end
+        end) Enum.sum()
+        Kernel./(ewar_count)
+
+      # Calculate final intensity (0-100)
+      base_intensity = ewar_percentage * 100
+      weighted_intensity = base_intensity * strength_bonus
+
+      Float.round(min(100, weighted_intensity), 1)
+    end
+  end
+
+  @doc """
+  Calculate EWAR percentage in fleet.
+  """
+  def calculate_ewar_percentage(ewar_ships, all_ships) do
+    if Enum.empty?(all_ships) do
+      0.0
+    else
+      percentage = length(ewar_ships) / length(all_ships) * 100
+      Float.round(percentage, 1)
+    end
+  end
+
+  @doc """
+  Generate human-readable EWAR analysis.
+  """
+  def generate_ewar_analysis(ewar_analysis, ewar_intensity) do
+    if Enum.empty?(ewar_analysis.ewar_ships) do
+      "No electronic warfare ships detected in fleet composition."
+    else
+      ewar_count = length(ewar_analysis.ewar_ships)
+      ewar_types_str = Enum.join(ewar_analysis.ewar_types, ", ")
+
+      # Analyze breakdown by ship class
+      ship_classes =
+        ewar_analysis.ewar_ships
+        Enum.group_by(& &1.ship_class)
+        |>         Enum.map(fn {class, ships} -> "#{length(ships)} #{class}" end)
+        Enum.join(", ")
+
+      # Determine intensity description
+      intensity_desc =
+        case ewar_intensity do
+          ewar_intensity when ewar_intensity >= 80 -> "very high"
+          ewar_intensity when ewar_intensity >= 60 -> "high"
+          ewar_intensity when ewar_intensity >= 40 -> "moderate"
+          ewar_intensity when ewar_intensity >= 20 -> "low"
+          true -> "minimal"
+        end
+
+      "#{ewar_count} EWAR ships detected with #{intensity_desc} intensity (#{ewar_intensity}%). " <>
+        "Types: #{ewar_types_str}. Composition: #{ship_classes}."
+    end
+  end
+
+  @doc """
+  Analyze support ship ratios including EWAR.
+  """
+  def analyze_support_ratios(ship_composition) do
+    if Enum.empty?(ship_composition) do
+      %{logistics_ratio: 0, ewar_ratio: 0, support_adequate: false}
+    else
+      ship_counts = analyze_ship_role_distribution(ship_composition)
+      total_ships = Enum.sum(Map.values(ship_counts))
+
+      logi_count = Map.get(ship_counts, :logistics, 0)
+      ewar_count = Map.get(ship_counts, :ewar, 0)
+
+      %{
+        logistics_ratio: logi_count / total_ships,
+        ewar_ratio: ewar_count / total_ships,
+        support_adequate: logi_count / total_ships >= 0.1
+      }
+    end
+  end
+
+  # Private helper functions
+
+  defp extract_ship_type_id(ship) do
+    case ship do
+      %{ship_type_id: id} when is_integer(id) -> id
+      %{type_id: id} when is_integer(id) -> id
+      %{"ship_type_id" => id} when is_integer(id) -> id
+      %{"type_id" => id} when is_integer(id) -> id
+      id when is_integer(id) -> id
+      _ -> 0
+    end
+  end
+
+  defp analyze_ship_role_distribution(ship_composition) do
+    all_ships = Enum.flat_map(ship_composition, fn {_side, ships} -> ships end)
+
+    all_ships
+    |>     Enum.map(fn ship ->
+      ship_type_id = extract_ship_type_id(ship)
+      classify_ship_role(ship_type_id)
+    end)
+    Enum.frequencies()
+  end
+
+  defp classify_ship_role(ship_type_id) do
+    ewar_info = classify_ship_ewar_capability(ship_type_id)
+
+    cond do
+      ewar_info.has_ewar and :warp_disruption in ewar_info.ewar_types -> :tackle
+      ewar_info.has_ewar -> :ewar
+      ship_type_id in [11_987, 11_989, 12_015, 12_019] -> :logistics
+      ship_type_id in [638, 639, 640, 641] -> :dps
+      true -> :other
+    end
+  end
+end

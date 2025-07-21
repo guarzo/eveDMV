@@ -1,0 +1,483 @@
+defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.DataCollectors.EngagementCollector do
+  @moduledoc """
+  Specialized data collector for engagement tracking and analysis.
+
+  Handles:
+  - Live engagement tracking and updates
+  - Engagement status determination
+  - Engagement outcome prediction
+  - Engagement timeline construction
+  """
+
+  require Logger
+
+  @doc """
+  Update engagement data with new killmails.
+  """
+  def update_engagement_data(engagement, new_kills) do
+    updated_kills = engagement.killmails ++ new_kills
+    updated_participants = extract_participants_from_kills(updated_kills)
+
+    %{
+      engagement
+      | killmails: updated_kills,
+        participants: updated_participants,
+        last_activity: DateTime.utc_now(),
+        kill_count: length(updated_kills)
+    }
+  end
+
+  @doc """
+  Perform live analysis on an ongoing engagement.
+  """
+  def perform_live_analysis(engagement) do
+    timeline = construct_engagement_timeline(engagement.killmails)
+    status = determine_engagement_status(engagement)
+    prediction = predict_engagement_outcome(engagement)
+
+    %{
+      engagement_id: engagement.id,
+      system_id: engagement.system_id,
+      status: status,
+      timeline: timeline,
+      current_participants: map_size(engagement.participants),
+      isk_destroyed: calculate_total_isk_destroyed(engagement.killmails),
+      duration_seconds: calculate_engagement_duration(engagement),
+      intensity: calculate_engagement_intensity(timeline),
+      outcome_prediction: prediction,
+      last_updated: DateTime.utc_now()
+    }
+  end
+
+  @doc """
+  Determine the current status of an engagement.
+  """
+  def determine_engagement_status(engagement) do
+    time_since_last_kill = DateTime.diff(DateTime.utc_now(), engagement.last_activity)
+
+    cond do
+      time_since_last_kill < 300 -> :active  # Less than 5 minutes
+      time_since_last_kill < 900 -> :winding_down  # 5-15 minutes
+      time_since_last_kill < 1800 -> :cooling_off  # 15-30 minutes
+      true -> :concluded
+    end
+  end
+
+  @doc """
+  Predict the likely outcome of an ongoing engagement.
+  """
+  def predict_engagement_outcome(engagement) do
+    participants_by_side = group_participants_by_side(engagement.participants)
+    side_performance = analyze_side_performance(engagement.killmails, participants_by_side)
+
+    sides = Map.keys(participants_by_side)
+
+    if length(sides) < 2 do
+      %{prediction: :inconclusive, confidence: :low, reason: "insufficient_sides"}
+    else
+      {winning_side, confidence} = determine_likely_winner(side_performance)
+
+      %{
+        prediction: winning_side,
+        confidence: confidence,
+        side_performance: side_performance,
+        factors: extract_victory_factors(side_performance)
+      }
+    end
+  end
+
+  @doc """
+  Extract engagement patterns from battle data.
+  """
+  def extract_engagement_patterns_from_battle(battle) do
+    timeline = battle.timeline || []
+
+    %{
+      duration_minutes: calculate_battle_duration_minutes(timeline),
+      intensity_pattern: analyze_intensity_pattern(timeline),
+      escalation_pattern: analyze_escalation_pattern(timeline),
+      participant_flow: analyze_participant_entry_exit_pattern(timeline),
+      key_moments: identify_engagement_key_moments(timeline)
+    }
+  end
+
+  # Private helper functions
+
+  defp extract_participants_from_kills(killmails) do
+    killmails
+    |>     Enum.reduce(%{}, fn _killmail, acc ->
+      # Add victim
+      victim_key = "#{_killmail.victim_character_id}_#{_killmail.victim_corporation_id}"
+      victim_side = determine_participant_side(_killmail, :victim)
+
+      updated_acc = Map.put(acc, victim_key, %{
+        character_id: _killmail.victim_character_id,
+        corporation_id: _killmail.victim_corporation_id,
+        alliance_id: _killmail.victim_alliance_id,
+        ship_type_id: _killmail.victim_ship_type_id,
+        side: victim_side,
+        role: :victim,
+        first_seen: _killmail.killmail_time
+      })
+
+      # Add attackers (simplified - would need to parse raw_data for full attacker list)
+      updated_acc
+    end)
+  end
+
+  defp determine_participant_side(_killmail, role) do
+    # Simplified side determination - in reality would use more sophisticated logic
+    case role do
+      :victim -> "side_#{rem(_killmail.victim_corporation_id || 0, 2)}"
+      :attacker -> "side_#{rem((_killmail.victim_corporation_id || 0) + 1, 2)}"
+    end
+  end
+
+  defp construct_engagement_timeline(killmails) do
+    killmails
+    Enum.sort_by(& &1.killmail_time, DateTime)
+    |>     Enum.map(fn _killmail ->
+      %{
+        timestamp: _killmail.killmail_time,
+        type: :kill,
+        victim_ship_type: _killmail.victim_ship_type_id,
+        isk_value: extract_isk_value(_killmail),
+        system_id: _killmail.solar_system_id
+      }
+    end)
+  end
+
+  defp calculate_total_isk_destroyed(killmails) do
+    killmails
+    Enum.map(&extract_isk_value/1)
+    Enum.sum()
+  end
+
+  defp extract_isk_value(_killmail) do
+    # Simplified ISK extraction - would need to parse raw_data for accurate values
+    case _killmail.victim_ship_type_id do
+      ship_id when ship_id in [11_567, 22_444, 23_757] -> 50_000_000_000  # Titans
+      ship_id when ship_id in [19_720, 19_722, 19_724] -> 20_000_000_000  # Supercarriers
+      ship_id when ship_id in [19_726, 24_483] -> 2_000_000_000           # Carriers
+      ship_id when ship_id in [17_132, 17_738, 28_665] -> 1_500_000_000   # Dreadnoughts
+      _ -> 100_000_000  # Default value
+    end
+  end
+
+  defp calculate_engagement_duration(engagement) do
+    if Enum.empty?(engagement.killmails) do
+      0
+    else
+      first_kill = Enum.min_by(engagement.killmails, & &1.killmail_time, DateTime)
+      last_kill = Enum.max_by(engagement.killmails, & &1.killmail_time, DateTime)
+      DateTime.diff(last_kill.killmail_time, first_kill.killmail_time)
+    end
+  end
+
+  defp calculate_engagement_intensity(timeline) do
+    if length(timeline) < 2 do
+      :low
+    else
+      kills_per_minute = length(timeline) / max(1, calculate_timeline_duration_minutes(timeline))
+
+      cond do
+        kills_per_minute >= 5 -> :very_high
+        kills_per_minute >= 2 -> :high
+        kills_per_minute >= 1 -> :medium
+        kills_per_minute >= 0.5 -> :low
+        true -> :very_low
+      end
+    end
+  end
+
+  defp calculate_timeline_duration_minutes(timeline) do
+    if length(timeline) < 2 do
+      1
+    else
+      first_event = Enum.min_by(timeline, & &1.timestamp, DateTime)
+      last_event = Enum.max_by(timeline, & &1.timestamp, DateTime)
+      DateTime.diff(last_event.timestamp, first_event.timestamp) / 60
+    end
+  end
+
+  defp group_participants_by_side(participants) do
+    participants
+    Enum.group_by(fn {_key, participant} -> participant.side end)
+    |>     Enum.map(fn {side, side_participants} ->
+      {side, Enum.map(side_participants, fn {_key, participant} -> participant end)}
+    end)
+    Map.new()
+  end
+
+  defp analyze_side_performance(killmails, participants_by_side) do
+    participants_by_side
+    |>     Enum.map(fn {side, participants} ->
+      participant_ids = Enum.map(participants, & &1.character_id)
+
+      kills = Enum.count(killmails, fn _killmail ->
+        # Simplified - would need to check attackers list in raw_data
+        _killmail.victim_character_id not in participant_ids
+      end)
+
+      losses = Enum.count(killmails, fn _killmail ->
+        _killmail.victim_character_id in participant_ids
+      end)
+
+      isk_destroyed = killmails
+      Enum.filter(fn _killmail -> _killmail.victim_character_id not in participant_ids end)
+      Enum.map(&extract_isk_value/1)
+      Enum.sum()
+
+      isk_lost = killmails
+      Enum.filter(fn _killmail -> _killmail.victim_character_id in participant_ids end)
+      Enum.map(&extract_isk_value/1)
+      Enum.sum()
+
+      efficiency = if isk_lost > 0, do: isk_destroyed / (isk_destroyed + isk_lost), else: 1.0
+
+      {side, %{
+        kills: kills,
+        losses: losses,
+        isk_destroyed: isk_destroyed,
+        isk_lost: isk_lost,
+        efficiency: efficiency,
+        participant_count: length(participants)
+      }}
+    end)
+    Map.new()
+  end
+
+  defp determine_likely_winner(side_performance) do
+    sides = Map.keys(side_performance)
+
+    if length(sides) < 2 do
+      {:inconclusive, :low}
+    else
+      # Score each side based on multiple factors
+      scored_sides = Enum.map(sides, fn side ->
+        performance = side_performance[side]
+
+        kill_score = performance.kills * 10
+        efficiency_updated_score = performance.efficiency * 100
+        participation_updated_score = performance.participant_count * 5
+
+        total_updated_score = kill_score + efficiency_score + participation_score
+
+        {side, total_score}
+      end)
+
+      sorted_sides = Enum.sort_by(scored_sides, fn {_side, score} -> score end, :desc)
+
+      case sorted_sides do
+        [{winner, winner_score}, {runner_up, runner_up_score} | _] ->
+          score_gap = winner_score - runner_up_score
+          confidence = cond do
+            score_gap > 200 -> :high
+            score_gap > 100 -> :medium
+            score_gap > 50 -> :low
+            true -> :very_low
+          end
+
+          {winner, confidence}
+
+        [{winner, _score}] ->
+          {winner, :medium}
+
+        [] ->
+          {:inconclusive, :low}
+      end
+    end
+  end
+
+  defp extract_victory_factors(side_performance) do
+    sides = Map.keys(side_performance)
+
+    if length(sides) < 2 do
+      []
+    else
+      performance_values = Map.values(side_performance)
+
+
+      # Efficiency factor
+      max_efficiency = Enum.max_by(performance_values, & &1.efficiency)
+      if max_efficiency.efficiency > 0.7 do
+        factors = ["superior_efficiency" | factors]
+      end
+
+      # Numbers factor
+      max_participants = Enum.max_by(performance_values, & &1.participant_count)
+      min_participants = Enum.min_by(performance_values, & &1.participant_count)
+      if max_participants.participant_count > min_participants.participant_count * 2 do
+        factors = ["numerical_superiority" | factors]
+      end
+
+      # ISK factor
+      max_destroyed = Enum.max_by(performance_values, & &1.isk_destroyed)
+      if max_destroyed.isk_destroyed > 10_000_000_000 do
+        factors = ["high_value_kills" | factors]
+      end
+
+      factors
+    end
+  end
+
+  defp calculate_battle_duration_minutes(timeline) do
+    calculate_timeline_duration_minutes(timeline)
+  end
+
+  defp analyze_intensity_pattern(timeline) do
+    if length(timeline) < 5 do
+      :steady
+    else
+      # Divide timeline into segments and analyze kill _frequency
+      segment_size = max(1, div(length(timeline), 5))
+      segments = Enum.chunk_every(timeline, segment_size)
+
+      intensities = Enum.map(segments, fn segment ->
+        duration = calculate_timeline_duration_minutes(segment)
+        length(segment) / max(1, duration)
+      end)
+
+      # Analyze pattern
+      first_half = Enum.take(intensities, div(length(intensities), 2))
+      second_half = Enum.drop(intensities, div(length(intensities), 2))
+
+      first_avg = if Enum.empty?(first_half), do: 0, else: Enum.sum(first_half) / length(first_half)
+      second_avg = if Enum.empty?(second_half), do: 0, else: Enum.sum(second_half) / length(second_half)
+
+      cond do
+        second_avg > first_avg * 1.5 -> :escalating
+        first_avg > second_avg * 1.5 -> :de_escalating
+        true -> :steady
+      end
+    end
+  end
+
+  defp analyze_escalation_pattern(timeline) do
+    if length(timeline) < 3 do
+      :stable
+    else
+      # Analyze how participant count changes over time
+      time_windows = create_time_windows(timeline, 5)
+      participant_counts = Enum.map(time_windows, &count_unique_participants/1)
+
+      if length(participant_counts) < 2 do
+        :stable
+      else
+        trend = calculate_trend(participant_counts)
+
+        cond do
+          trend > 0.2 -> :escalating
+          trend < -0.2 -> :de_escalating
+          true -> :stable
+        end
+      end
+    end
+  end
+
+  defp analyze_participant_entry_exit_pattern(timeline) do
+    # Simplified analysis - would need more detailed participant tracking
+    if length(timeline) < 5 do
+      :steady_participation
+    else
+      # Check if kills are distributed evenly or clustered
+      time_gaps = timeline
+      Enum.chunk_every(2, 1, :discard)
+      |>       Enum.map(fn [event1, event2] ->
+        DateTime.diff(event2.timestamp, event1.timestamp)
+      end)
+
+      avg_gap = if Enum.empty?(time_gaps), do: 0, else: Enum.sum(time_gaps) / length(time_gaps)
+      variance = if Enum.empty?(time_gaps) or avg_gap == 0 do
+        0
+      else
+        |>         Enum.reduce(time_gaps, 0, fn gap, acc ->
+          acc + :math.pow(gap - avg_gap, 2)
+        end) / length(time_gaps)
+      end
+
+      coefficient_of_variation = if avg_gap > 0, do: :math.sqrt(variance) / avg_gap, else: 0
+
+      cond do
+        coefficient_of_variation > 1.5 -> :bursty_participation
+        coefficient_of_variation < 0.5 -> :steady_participation
+        true -> :moderate_variation
+      end
+    end
+  end
+
+  defp identify_engagement_key_moments(timeline) do
+    timeline
+    Enum.with_index()
+    |>     Enum.filter(fn {event, _index} ->
+      # Identify high-value kills or significant events
+      event.isk_value > 1_000_000_000
+    end)
+    Enum.map(fn {event, index} ->
+      %{
+        timestamp: event.timestamp,
+        index: index,
+        type: :high_value_kill,
+        isk_value: event.isk_value,
+        description: "High value kill worth #{format_isk(event.isk_value)} ISK"
+      }
+    end)
+  end
+
+  defp create_time_windows(timeline, num_windows) do
+    if Enum.empty?(timeline) do
+      []
+    else
+      first_event = Enum.min_by(timeline, & &1.timestamp, DateTime)
+      last_event = Enum.max_by(timeline, & &1.timestamp, DateTime)
+
+      total_duration = DateTime.diff(last_event.timestamp, first_event.timestamp)
+      window_duration = max(1, div(total_duration, num_windows))
+
+      Enum.map(0..(num_windows - 1), fn index ->
+        window_start = DateTime.add(first_event.timestamp, index * window_duration)
+        window_end = DateTime.add(first_event.timestamp, (index + 1) * window_duration)
+
+        Enum.filter(timeline, fn event ->
+          DateTime.compare(event.timestamp, window_start) != :lt and
+          DateTime.compare(event.timestamp, window_end) == :lt
+        end)
+      end)
+    end
+  end
+
+  defp count_unique_participants(window_events) do
+    # Simplified - in reality would track actual participants
+    length(window_events)
+  end
+
+  defp calculate_trend(values) do
+    if length(values) < 2 do
+      0
+    else
+      first_half = Enum.take(values, div(length(values), 2))
+      second_half = Enum.drop(values, div(length(values), 2))
+
+      first_avg = if Enum.empty?(first_half), do: 0, else: Enum.sum(first_half) / length(first_half)
+      second_avg = if Enum.empty?(second_half), do: 0, else: Enum.sum(second_half) / length(second_half)
+
+      if first_avg > 0 do
+        (second_avg - first_avg) / first_avg
+      else
+        0
+      end
+    end
+  end
+
+  defp format_isk(value) when value >= 1_000_000_000 do
+    "#{Float.round(value / 1_000_000_000, 1)}B"
+  end
+
+  defp format_isk(value) when value >= 1_000_000 do
+    "#{Float.round(value / 1_000_000, 1)}M"
+  end
+
+  defp format_isk(value) do
+    "#{Float.round(value / 1000, 1)}K"
+  end
+end

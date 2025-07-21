@@ -1,0 +1,461 @@
+defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.BattleClassificationEngine do
+  @moduledoc """
+  Battle classification and calculation engine for combat analysis.
+
+  Responsible for:
+  - Calculating battle metrics and durations
+  - Classifying battle types, scales, and engagement patterns
+  - Determining battle phases and intensity ratings
+  - Identifying key events and event types
+  - Extracting battle characteristics and patterns
+  - Classifying ships and participants by various criteria
+  - Determining sides and engagement status
+  - Calculating fleet composition ratios and logistics metrics
+  """
+
+  require Logger
+
+  @doc """
+  Calculate the total duration of a battle from timeline events.
+  """
+  def calculate_battle_duration(timeline) do
+    if Enum.empty?(timeline) do
+      0
+    else
+      timestamps = Enum.map(timeline, & &1.killmail_time)
+      earliest = Enum.min(timestamps, NaiveDateTime)
+      latest = Enum.max(timestamps, NaiveDateTime)
+
+      NaiveDateTime.diff(latest, earliest, :second)
+    end
+  end
+
+  @doc """
+  Classify the type of battle based on participants and engagement patterns.
+  """
+  def classify_battle_type(participants, _killmails) do
+    participant_count = length(participants)
+
+    cond do
+      participant_count >= 100 -> :large_fleet_battle
+      participant_count >= 50 -> :medium_fleet_battle
+      participant_count >= 20 -> :small_fleet_battle
+      participant_count >= 10 -> :small_gang_fight
+      participant_count >= 5 -> :skirmish
+      participant_count >= 2 -> :duel
+      true -> :unknown
+    end
+  end
+
+  @doc """
+  Classify the scale of engagement based on participant count.
+  """
+  def classify_engagement_scale(participants) do
+    participant_count = length(participants)
+
+    cond do
+      participant_count >= 200 -> :massive
+      participant_count >= 100 -> :large
+      participant_count >= 50 -> :medium
+      participant_count >= 20 -> :small
+      participant_count >= 10 -> :micro
+      participant_count >= 5 -> :tiny
+      true -> :minimal
+    end
+  end
+
+  @doc """
+  Identify distinct battle phases from timeline analysis.
+  """
+  def identify_battle_phases(timeline) do
+    if Enum.empty?(timeline) do
+      []
+    else
+      # Group events by time windows to identify phases
+      time_windows = create_time_windows(timeline)
+
+      phases =
+        time_windows
+        Enum.with_index()
+        |>         Enum.map(fn {window, index} ->
+          %{
+            phase_number: index + 1,
+            start_time: window.start_time,
+            end_time: window.end_time,
+            duration: NaiveDateTime.diff(window.end_time, window.start_time, :second),
+            kill_count: length(window.events),
+            intensity: calculate_phase_intensity(window.events),
+            phase_type: determine_phase_type(window, index, length(time_windows))
+          }
+        end)
+
+      phases
+    end
+  end
+
+  @doc """
+  Determine the type of a battle phase based on its characteristics.
+  """
+  def determine_phase_type(phase, index, total_phases) do
+    last_index = total_phases - 1
+    case index do
+      0 -> :opening_engagement
+      ^last_index -> :closing_phase
+      _ ->
+        if phase.intensity > 0.7 do
+          :peak_combat
+        else
+          :sustained_engagement
+        end
+    end
+  end
+
+  @doc """
+  Calculate the dominant side for a specific battle phase.
+  """
+  def calculate_dominant_side_for_phase(timeline, phase) do
+    phase_events = filter_events_by_timeframe(timeline, phase.start_time, phase.end_time)
+
+    if Enum.empty?(phase_events) do
+      :undetermined
+    else
+      side_kills =
+        phase_events
+        |>         Enum.group_by(fn event ->
+          determine_side(event.attacker_corporation_id, event.attacker_alliance_id)
+        end)
+        Enum.map(fn {side, events} -> {side, length(events)} end)
+        Enum.sort_by(fn {_side, count} -> count end, :desc)
+
+      case side_kills do
+        [{dominant_side, _count} | _] -> dominant_side
+        [] -> :undetermined
+      end
+    end
+  end
+
+  @doc """
+  Identify key events within a battle phase.
+  """
+  def identify_key_events_in_phase(timeline, phase) do
+    phase_events = filter_events_by_timeframe(timeline, phase.start_time, phase.end_time)
+
+    phase_events
+    Enum.filter(&is_key_event?/1)
+    |>     Enum.map(fn event ->
+      %{
+        timestamp: event.killmail_time,
+        event_type: determine_event_type(event),
+        description: generate_event_description(event),
+        importance: calculate_event_importance(event)
+      }
+    end)
+    Enum.sort_by(& &1.importance, :desc)
+    Enum.take(5)  # Top 5 key events per phase
+  end
+
+  @doc """
+  Classify intensity rating based on numeric intensity value.
+  """
+  def classify_intensity_rating(intensity) when is_number(intensity) do
+    cond do
+      intensity >= 0.8 -> :very_high
+      intensity >= 0.6 -> :high
+      intensity >= 0.4 -> :medium
+      intensity >= 0.2 -> :low
+      true -> :very_low
+    end
+  end
+
+  def classify_intensity_rating(_), do: :unknown
+
+  @doc """
+  Check if an event represents a high-value kill.
+  """
+  def high_value_kill?(event) do
+    isk_value = Map.get(event, :isk_destroyed, 0)
+    isk_value >= 1_000_000_000  # 1 billion ISK threshold
+  end
+
+  @doc """
+  Check if an event represents a capital ship kill.
+  """
+  def capital_ship_kill?(event) do
+    ship_type_id = Map.get(event, :victim_ship_type_id, 0)
+    is_capital_ship?(ship_type_id)
+  end
+
+  @doc """
+  Check if an event represents a fleet commander kill.
+  """
+  def commander_kill?(event) do
+    # Simplified check - would need more sophisticated fleet role detection
+    victim_name = Map.get(event, :victim_character_name, "")
+    |>     String.contains?(String.downcase(victim_name), ["fc", "commander", "leader"])
+  end
+
+  @doc """
+  Determine the type of event based on its characteristics.
+  """
+  def determine_event_type(event) do
+    cond do
+      capital_ship_kill?(event) -> :capital_kill
+      high_value_kill?(event) -> :high_value_kill
+      commander_kill?(event) -> :commander_kill
+      is_first_blood?(event) -> :first_blood
+      true -> :standard_kill
+    end
+  end
+
+  @doc """
+  Generate a human-readable description for an event.
+  """
+  def generate_event_description(event) do
+    ship_name = Map.get(event, :victim_ship_name, "Unknown Ship")
+    pilot_name = Map.get(event, :victim_character_name, "Unknown Pilot")
+    isk_value = Map.get(event, :isk_destroyed, 0)
+
+    "#{ship_name} piloted by #{pilot_name} destroyed (#{format_isk_value(isk_value)} ISK)"
+  end
+
+  @doc """
+  Format ISK values for human readability.
+  """
+  def format_isk_value(value) when value >= 1_000_000_000 do
+    "#{Float.round(value / 1_000_000_000, 1)}B"
+  end
+
+  def format_isk_value(value) when value >= 1_000_000 do
+    "#{Float.round(value / 1_000_000, 1)}M"
+  end
+
+  def format_isk_value(value) do
+    "#{Float.round(value / 1_000, 1)}K"
+  end
+
+  @doc """
+  Determine side affiliation based on corporation and alliance IDs.
+  """
+  def determine_side(corporation_id, alliance_id) do
+    cond do
+      not is_nil(alliance_id) and alliance_id != 0 ->
+        determine_side_by_alliance(alliance_id)
+
+      not is_nil(corporation_id) and corporation_id != 0 ->
+        determine_side_by_corporation(corporation_id)
+
+      true ->
+        :unknown
+    end
+  end
+
+  @doc """
+  Classify ship by type ID into ship categories.
+  """
+  def classify_ship(ship_type_id) do
+    cond do
+      ship_type_id >= 40_000 -> :titan
+      ship_type_id >= 30_000 -> :supercarrier
+      ship_type_id >= 27_000 -> :force_auxiliary
+      ship_type_id >= 24_000 -> :dreadnought
+      ship_type_id >= 23_000 -> :carrier
+      ship_type_id >= 22_000 -> :interdictor
+      ship_type_id >= 20_000 -> :battleship
+      ship_type_id >= 17_000 -> :command_ship
+      ship_type_id >= 16_000 -> :battlecruiser
+      ship_type_id >= 12_000 -> :strategic_cruiser
+      ship_type_id >= 11_900 -> :recon_ship
+      ship_type_id >= 11_000 -> :heavy_assault_cruiser
+      ship_type_id >= 10_000 -> :logistics_cruiser
+      ship_type_id >= 5_000 -> :cruiser
+      ship_type_id >= 3_000 -> :destroyer
+      ship_type_id >= 2_000 -> :assault_frigate
+      ship_type_id >= 1_000 -> :frigate
+      true -> :unknown
+    end
+  end
+
+  @doc """
+  Calculate logistics ratio in ship composition.
+  """
+  def calculate_logistics_ratio(ship_composition) do
+    total_ships = count_total_ships(ship_composition)
+    logistics_ships = count_logistics_ships(ship_composition)
+
+    if total_ships > 0 do
+      logistics_ships / total_ships
+    else
+      0.0
+    end
+  end
+
+  @doc """
+  Determine engagement status based on timeline and metrics.
+  """
+  def determine_engagement_status(engagement) do
+    current_time = DateTime.utc_now()
+    last_activity = Map.get(engagement, :last_activity_time, current_time)
+
+    time_since_activity = DateTime.diff(current_time, last_activity, :second)
+
+    cond do
+      time_since_activity < 300 -> :active       # Less than 5 minutes
+      time_since_activity < 1800 -> :recent      # Less than 30 minutes
+      time_since_activity < 3600 -> :cooling_down # Less than 1 hour
+      true -> :concluded
+    end
+  end
+
+  @doc """
+  Calculate duration of timeline in seconds.
+  """
+  def calculate_timeline_duration(timeline) do
+    calculate_battle_duration(timeline)
+  end
+
+  @doc """
+  Classify ship by type ID with detailed categorization.
+  """
+  def classify_ship_by_type_id(ship) do
+    ship_type_id = extract_ship_type_id(ship)
+    classify_ship(ship_type_id)
+  end
+
+  # Private helper functions
+
+  defp create_time_windows(timeline) do
+    if Enum.empty?(timeline) do
+      []
+    else
+      # Sort events by time
+      sorted_events = Enum.sort_by(timeline, & &1.killmail_time, NaiveDateTime)
+
+      # Group into 5-minute windows
+      window_size = 300  # 5 minutes in seconds
+      start_time = hd(sorted_events).killmail_time
+
+      sorted_events
+      |>       Enum.group_by(fn event ->
+        diff = NaiveDateTime.diff(event.killmail_time, start_time, :second)
+        div(diff, window_size)
+      end)
+      Enum.map(fn {window_index, events} ->
+        window_start = NaiveDateTime.add(start_time, window_index * window_size, :second)
+        window_end = NaiveDateTime.add(window_start, window_size, :second)
+
+        %{
+          window_index: window_index,
+          start_time: window_start,
+          end_time: window_end,
+          events: events
+        }
+      end)
+      Enum.sort_by(& &1.window_index)
+    end
+  end
+
+  defp calculate_phase_intensity(events) do
+    # Simple intensity calculation based on kills per minute
+    if Enum.empty?(events) do
+      0.0
+    else
+      kills_per_minute = length(events) / 5.0  # 5-minute windows
+      # Normalize to 0-1 scale (assuming max 10 kills per minute = intensity 1.0)
+      min(1.0, kills_per_minute / 10.0)
+    end
+  end
+
+  defp filter_events_by_timeframe(timeline, start_time, end_time) do
+    timeline
+    |>     Enum.filter(fn event ->
+      event_time = event.killmail_time
+      NaiveDateTime.compare(event_time, start_time) != :lt and
+        NaiveDateTime.compare(event_time, end_time) != :gt
+    end)
+  end
+
+  defp is_key_event?(event) do
+    high_value_kill?(event) or capital_ship_kill?(event) or commander_kill?(event)
+  end
+
+  defp calculate_event_importance(event) do
+    importance = 0.0
+
+    importance = importance + if high_value_kill?(event), do: 0.4, else: 0.0
+    importance = importance + if capital_ship_kill?(event), do: 0.3, else: 0.0
+    importance = importance + if commander_kill?(event), do: 0.2, else: 0.0
+    _importance = importance + if is_first_blood?(event), do: 0.1, else: 0.0
+
+    importance
+  end
+
+  defp is_first_blood?(event) do
+    # Would need timeline context to determine if this is the first kill
+    Map.get(event, :is_first_blood, false)
+  end
+
+  defp is_capital_ship?(ship_type_id) do
+    ship_type_id >= 23_000  # Carriers and above
+  end
+
+  defp determine_side_by_alliance(alliance_id) do
+    # Use hash-based approach for consistent side assignment
+    hash = :erlang.phash2(alliance_id)
+
+    case rem(hash, 4) do
+      0 -> :alliance_alpha
+      1 -> :alliance_beta
+      2 -> :alliance_gamma
+      3 -> :alliance_delta
+    end
+  end
+
+  defp determine_side_by_corporation(corporation_id) do
+    # For unaligned corporations
+    hash = :erlang.phash2(corporation_id)
+
+    case rem(hash, 3) do
+      0 -> :independent_alpha
+      1 -> :independent_beta
+      2 -> :independent_gamma
+    end
+  end
+
+  defp count_total_ships(ship_composition) do
+    case ship_composition do
+      ships when is_list(ships) -> length(ships)
+      %{ships: ships} when is_list(ships) -> length(ships)
+      %{total_ships: count} -> count
+      _ -> 0
+    end
+  end
+
+  defp count_logistics_ships(ship_composition) do
+    ships = extract_ships_list(ship_composition)
+
+    ships
+    |>     Enum.count(fn ship ->
+      ship_type = classify_ship_by_type_id(ship)
+      ship_type == :logistics_cruiser
+    end)
+  end
+
+  defp extract_ships_list(ship_composition) do
+    case ship_composition do
+      ships when is_list(ships) -> ships
+      %{ships: ships} when is_list(ships) -> ships
+      _ -> []
+    end
+  end
+
+  defp extract_ship_type_id(ship) do
+    case ship do
+      %{victim_ship_type_id: id} -> id
+      %{ship_type_id: id} -> id
+      %{"ship_type_id" => id} -> id
+      %{"victim" => %{"ship_type_id" => id}} -> id
+      id when is_integer(id) -> id
+      _ -> 0
+    end
+  end
+end
