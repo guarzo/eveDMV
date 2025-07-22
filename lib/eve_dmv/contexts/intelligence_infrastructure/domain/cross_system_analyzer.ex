@@ -1683,9 +1683,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
   defp extract_pilot_activity_data(killmails) do
     # Extract detailed pilot activity patterns
     pilot_data =
-    killmails
-    Enum.flat_map(&extract_all_participants_from_killmail/1) |> Enum.frequencies()
-    Enum.map(fn {pilot_id, activity_count} ->
+      killmails
+      |> Enum.flat_map(&extract_all_participants_from_killmail/1) 
+      |> Enum.frequencies()
+      |> Enum.map(fn {pilot_id, activity_count} ->
         pilot_killmails = Enum.filter(killmails, &pilot_participated_in_killmail?(&1, pilot_id))
 
         %{
@@ -1868,9 +1869,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
       numerator =
         Enum.zip(values_a, values_b)
-    Enum.map(fn {a, b} -> (a - mean_a) * (b - mean_b) end) |> Enum.sum()
-      sum_sq_a = Enum.map(values_a, fn a -> :math.pow(a - mean_a, 2) end) Enum.sum()
-      sum_sq_b = Enum.map(values_b, fn b -> :math.pow(b - mean_b, 2) end) Enum.sum()
+        |> Enum.map(fn {a, b} -> (a - mean_a) * (b - mean_b) end) 
+        |> Enum.sum()
+
+      sum_sq_a = Enum.map(values_a, fn a -> :math.pow(a - mean_a, 2) end) |> Enum.sum()
+      sum_sq_b = Enum.map(values_b, fn b -> :math.pow(b - mean_b, 2) end) |> Enum.sum()
 
       denominator = :math.sqrt(sum_sq_a * sum_sq_b)
 
@@ -2369,7 +2372,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
   defp calculate_territorial_concentration(activity_distribution) do
     # Calculate Gini coefficient for territorial concentration
-    activities = Map.values(activity_distribution) Enum.sort()
+    activities = Map.values(activity_distribution) |> Enum.sort()
     n = length(activities)
 
     if n > 1 do
@@ -3553,8 +3556,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     killmails
     Enum.map(& &1.solar_system_id) |> Enum.frequencies()
     if map_size(systems) > 0 do
-      max_system_activity = Map.values(systems) Enum.max()
-      total_activity = Map.values(systems) Enum.sum()
+      max_system_activity = Map.values(systems) |> Enum.max()
+      total_activity = Map.values(systems) |> Enum.sum()
 
       concentration = max_system_activity / total_activity
 

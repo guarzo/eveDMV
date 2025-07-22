@@ -271,7 +271,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
 
   defp generate_battle_summary(side_a_analysis, side_b_analysis, killmails) do
     total_participants = side_a_analysis.participant_count + side_b_analysis.participant_count
-    total_kills = length(killmails)
 
     %{
       battle_scale: determine_battle_scale(total_participants),
@@ -327,7 +326,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
   end
 
   defp calculate_side_effectiveness(_side_participants, _killmails), do: %{score: 0.5}
-  defp determine_overall_winner(side_a_eff, side_b_eff), do: :inconclusive
+  defp determine_overall_winner(_side_a_eff, _side_b_eff), do: :inconclusive
 
   defp calculate_kill_participation(_ships, _killmails), do: 0.5
   defp calculate_effectiveness_score(_ships, _killmails), do: 0.5
