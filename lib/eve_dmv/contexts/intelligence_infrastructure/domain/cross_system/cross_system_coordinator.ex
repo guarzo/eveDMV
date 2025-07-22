@@ -300,31 +300,23 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     # Identify systems with concentrated threat activity
     system_threats =
       killmails
-
-    Enum.group_by(& &1.solar_system_id)
-
-    Enum.map(fn {system_id, kills} ->
-      threat_score = calculate_system_threat_score(kills)
-      {system_id, threat_score}
-    end)
-
-    Enum.sort_by(&elem(&1, 1), :desc)
+      |> Enum.group_by(& &1.solar_system_id)
+      |> Enum.map(fn {system_id, kills} ->
+        threat_score = calculate_system_threat_score(kills)
+        {system_id, threat_score}
+      end)
+      |> Enum.sort_by(&elem(&1, 1), :desc)
 
     # Return top threat systems
-    hotspots =
-      system_threats
-
-    Enum.take(5)
-
-    Enum.map(fn {system_id, score} ->
+    system_threats
+    |> Enum.take(5)
+    |> Enum.map(fn {system_id, score} ->
       %{
         system_id: system_id,
         threat_score: Float.round(score, 2),
         threat_level: categorize_threat_level(score)
       }
     end)
-
-    hotspots
   end
 
   defp calculate_system_threat_score(kills) do
@@ -524,21 +516,18 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     # Predict future threat patterns based on historical data
     daily_activity =
       killmails
-
-    Enum.group_by(fn kill ->
-      DateTime.to_date(kill.killmail_time)
-    end)
-
-    Enum.map(fn {date, kills} ->
-      {date,
-       %{
-         kill_count: length(kills),
-         systems_active: kills |> Enum.map(& &1.solar_system_id) |> Enum.uniq() |> length(),
-         total_value: kills |> Enum.map(&(&1.total_value || 0)) |> Enum.sum()
-       }}
-    end)
-
-    Enum.sort_by(&elem(&1, 0))
+      |> Enum.group_by(fn kill ->
+        DateTime.to_date(kill.killmail_time)
+      end)
+      |> Enum.map(fn {date, kills} ->
+        {date,
+         %{
+           kill_count: length(kills),
+           systems_active: kills |> Enum.map(& &1.solar_system_id) |> Enum.uniq() |> length(),
+           total_value: kills |> Enum.map(&(&1.total_value || 0)) |> Enum.sum()
+         }}
+      end)
+      |> Enum.sort_by(&elem(&1, 0))
 
     # Simple trend projection
     trend = calculate_activity_trend(daily_activity)
