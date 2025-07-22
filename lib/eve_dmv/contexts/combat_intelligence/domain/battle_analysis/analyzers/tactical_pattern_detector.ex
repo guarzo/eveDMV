@@ -44,15 +44,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
 
         high_value_kills =
           timeline
-          |> Enum.filter(&(&1.isk_value >= threshold))
-          |> Enum.map(fn event ->
-            %{
-              type: :high_value_kill,
-              timestamp: event.timestamp,
-              isk_value: event.isk_value,
-              victim: event.victim
-            }
-          end)
+
+        Enum.filter(&(&1.isk_value >= threshold))
+
+        Enum.map(fn event ->
+          %{
+            type: :high_value_kill,
+            timestamp: event.timestamp,
+            isk_value: event.isk_value,
+            victim: event.victim
+          }
+        end)
 
         moments ++ high_value_kills
       else
@@ -190,9 +192,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
             # Count unique targets
             unique_targets =
               window
-              |> Enum.map(& &1.victim.character_id)
-              |> Enum.uniq()
-              |> length()
+
+            Enum.map(& &1.victim.character_id) |> Enum.uniq()
+            length()
 
             # Perfect focus fire = 1 target per window
             focus_score = 1.0 / unique_targets
@@ -224,15 +226,15 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
 
         weighted_focus =
           window_metrics
-          |> Enum.map(&(&1.focus_score * &1.kills))
-          |> Enum.sum()
-          |> Kernel./(total_kills)
+
+        Enum.map(&(&1.focus_score * &1.kills)) |> Enum.sum()
+        Kernel./(total_kills)
 
         weighted_coordination =
           window_metrics
-          |> Enum.map(&(&1.time_score * &1.kills))
-          |> Enum.sum()
-          |> Kernel./(total_kills)
+
+        Enum.map(&(&1.time_score * &1.kills)) |> Enum.sum()
+        Kernel./(total_kills)
 
         %{
           effectiveness: Float.round(weighted_focus, 3),
@@ -413,12 +415,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
 
   defp group_timeline_by_windows(timeline, window_seconds) do
     timeline
-    |> Enum.group_by(fn event ->
+
+    Enum.group_by(fn event ->
       div(DateTime.to_unix(event.timestamp), window_seconds)
     end)
     |> Map.values()
-    |> Enum.filter(fn window -> length(window) > 0 end)
-    |> Enum.sort_by(fn window -> List.first(window).timestamp end, DateTime)
+
+    Enum.filter(fn window -> length(window) > 0 end)
+    Enum.sort_by(fn window -> List.first(window).timestamp end, DateTime)
   end
 
   defp detect_kiting_sequence([window1, window2, window3]) do
@@ -464,10 +468,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
     # Group by corporation to approximate sides
     corp_kills =
       window
-      |> Enum.group_by(fn event -> event.victim.corporation_id end)
-      |> Map.values()
-      |> Enum.map(&length/1)
-      |> Enum.sort(:desc)
+
+    Enum.group_by(fn event -> event.victim.corporation_id end) |> Map.values()
+    Enum.map(&length/1)
+    Enum.sort(:desc)
 
     case corp_kills do
       [side_a_losses, side_b_losses | _] ->

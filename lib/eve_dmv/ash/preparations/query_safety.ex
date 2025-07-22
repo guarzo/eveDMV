@@ -31,6 +31,6 @@ defmodule EveDmv.Ash.Preparations.QuerySafety do
 
     # Apply limit to query
     query
-    |> Ash.Query.limit(min(limit, 10_000))
+    Ash.Query.limit(min(limit, 10_000))
   end
 end

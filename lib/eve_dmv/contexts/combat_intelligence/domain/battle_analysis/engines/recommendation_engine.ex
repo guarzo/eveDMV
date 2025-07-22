@@ -60,10 +60,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
   """
   def generate_pattern_based_recommendations(patterns) do
     patterns
-    |> Enum.flat_map(&pattern_to_recommendations/1)
-    |> Enum.uniq()
+    Enum.flat_map(&pattern_to_recommendations/1) |> Enum.uniq()
     # Limit to top 10 recommendations
-    |> Enum.take(10)
+    Enum.take(10)
   end
 
   # Private implementation functions
@@ -94,7 +93,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
       case Map.get(tactical_analysis, :patterns) do
         patterns when is_list(patterns) ->
           generate_pattern_based_recommendations(patterns)
-          |> Enum.map(&tactical_pattern_to_recommendation/1)
+          Enum.map(&tactical_pattern_to_recommendation/1)
 
         _ ->
           []
@@ -103,8 +102,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
     # Add fleet composition recommendations
     composition_recommendations = generate_fleet_composition_recommendations(fleet_analysis)
 
-    (base_recommendations ++ pattern_recommendations ++ composition_recommendations)
-    |> Enum.take(8)
+    base_recommendations ++ pattern_recommendations ++ composition_recommendations
+    Enum.take(8)
   end
 
   defp perform_basic_strategic_recommendations(battle_analysis) do
@@ -127,8 +126,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
     # Add force multiplication recommendations
     force_mult_recommendations = generate_force_multiplication_recommendations(fleet_analysis)
 
-    (base_recommendations ++ isk_recommendations ++ force_mult_recommendations)
-    |> Enum.take(6)
+    base_recommendations ++ isk_recommendations ++ force_mult_recommendations
+    Enum.take(6)
   end
 
   defp perform_basic_doctrine_recommendations(battle_analysis) do
@@ -147,8 +146,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
     # Add counter-doctrine recommendations
     counter_recommendations = generate_counter_doctrine_recommendations(fleet_analysis)
 
-    (base_recommendations ++ counter_recommendations)
-    |> Enum.take(5)
+    base_recommendations ++ counter_recommendations
+    Enum.take(5)
   end
 
   defp perform_basic_training_recommendations(battle_analysis) do
@@ -171,8 +170,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
     # Add tactical skill recommendations
     tactical_recommendations = generate_tactical_skill_recommendations(tactical_analysis)
 
-    (base_recommendations ++ gap_recommendations ++ tactical_recommendations)
-    |> Enum.take(7)
+    base_recommendations ++ gap_recommendations ++ tactical_recommendations
+    Enum.take(7)
   end
 
   defp tactical_pattern_to_recommendation(pattern) do

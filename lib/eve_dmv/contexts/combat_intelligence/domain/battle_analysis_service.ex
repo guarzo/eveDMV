@@ -1385,8 +1385,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
     support_count =
       support_ships
-      |> Enum.map(fn class -> Map.get(ship_classes, class, []) |> length() end)
-      |> Enum.sum()
+
+    Enum.map(fn class -> Map.get(ship_classes, class, []) |> length() end) |> Enum.sum()
 
     total_ships =
       Map.values(ship_classes) |> Enum.map(&length/1) |> Enum.sum()
@@ -4616,7 +4616,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     if timeline = get_in(battle, [:timeline_analysis, :timeline]) do
       tactical_patterns =
         TacticalPatternDetector.identify_tactical_patterns(timeline)
-        |> Enum.map(&%{type: :tactical, name: &1.name, confidence: &1.confidence})
+
+      Enum.map(&%{type: :tactical, name: &1.name, confidence: &1.confidence})
 
       patterns = patterns ++ tactical_patterns
     end
@@ -4628,7 +4629,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
           timeline,
           get_in(battle, [:fleet_analysis])
         )
-        |> Enum.map(&%{type: :timing, name: &1.event_type, confidence: &1.significance})
+
+      Enum.map(&%{type: :timing, name: &1.event_type, confidence: &1.significance})
 
       patterns = patterns ++ timing_patterns
     end

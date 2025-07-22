@@ -158,8 +158,7 @@ defmodule EveDmv.Killmails.ParticipantBuilder do
         datetime
 
       {:error, _reason} ->
-        Logger.warning("Failed to parse timestamp: #{timestamp}")
-        DateTime.utc_now()
+        Logger.warning("Failed to parse timestamp: #{timestamp}") |> DateTime.utc_now()
     end
   end
 

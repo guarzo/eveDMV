@@ -12,8 +12,8 @@ defmodule EveDmvWeb.Plugs.SecurityHeaders do
 
   def call(conn, _opts) do
     conn
-    |> Plug.Conn.put_resp_header("content-security-policy", csp_header())
-    |> Plug.Conn.put_resp_header("permissions-policy", permissions_policy())
+    Plug.Conn.put_resp_header("content-security-policy", csp_header())
+    Plug.Conn.put_resp_header("permissions-policy", permissions_policy())
   end
 
   defp csp_header do
@@ -32,8 +32,8 @@ defmodule EveDmvWeb.Plugs.SecurityHeaders do
     form-action 'self';
     upgrade-insecure-requests;
     """
-    |> String.replace("\n", " ")
-    |> String.trim()
+
+    String.replace("\n", " ") |> String.trim()
   end
 
   defp permissions_policy do
@@ -48,7 +48,7 @@ defmodule EveDmvWeb.Plugs.SecurityHeaders do
     payment=(),
     usb=()
     """
-    |> String.replace("\n", " ")
-    |> String.trim()
+
+    String.replace("\n", " ") |> String.trim()
   end
 end

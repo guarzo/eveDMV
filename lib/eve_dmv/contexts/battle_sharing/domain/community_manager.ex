@@ -162,8 +162,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.CommunityManager do
     # Category balance factor
     scores =
       Map.values(category_averages)
-      |> Enum.filter(fn avg -> avg > 0 end)
-      |> Enum.map(fn avg -> avg / 10.0 end)
+
+    Enum.filter(fn avg -> avg > 0 end)
+    Enum.map(fn avg -> avg / 10.0 end)
 
     category_balance =
       case scores do
@@ -314,23 +315,25 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.CommunityManager do
     # Try to get at least one from each category
     category_representatives =
       categories
-      |> Enum.map(fn category ->
-        candidates
-        |> Enum.filter(&(&1.featured_category == category))
-        |> Enum.max_by(& &1.curation_metrics.overall_curation_score)
-      end)
+
+    Enum.map(fn category ->
+      candidates
+      Enum.filter(&(&1.featured_category == category))
+      Enum.max_by(& &1.curation_metrics.overall_curation_score)
+    end)
 
     # Fill remaining slots with highest-scoring reports
     remaining_slots = max_results - length(category_representatives)
 
     remaining_candidates =
       candidates
-      |> Enum.reject(&(&1 in category_representatives))
-      |> Enum.take(remaining_slots)
 
-    (category_representatives ++ remaining_candidates)
-    |> Enum.sort_by(& &1.curation_metrics.overall_curation_score, :desc)
-    |> Enum.take(max_results)
+    Enum.reject(&(&1 in category_representatives))
+    Enum.take(remaining_slots)
+
+    category_representatives ++ remaining_candidates
+    Enum.sort_by(& &1.curation_metrics.overall_curation_score, :desc)
+    Enum.take(max_results)
   end
 
   # Private helper functions for search
@@ -341,10 +344,11 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.CommunityManager do
 
     filtered_results =
       search_results
-      |> apply_text_search(query)
-      |> apply_search_filters(filters)
-      |> apply_search_sorting(sort_by)
-      |> Enum.take(limit)
+
+    apply_text_search(query)
+    apply_search_filters(filters)
+    apply_search_sorting(sort_by)
+    Enum.take(limit)
 
     {:ok, filtered_results}
   end

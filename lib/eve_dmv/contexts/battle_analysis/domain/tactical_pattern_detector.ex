@@ -165,14 +165,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
 
   defp group_by_time_windows(killmails, window_seconds) do
     killmails
-    |> Enum.group_by(fn km ->
+
+    Enum.group_by(fn km ->
       # Round down to nearest window
       timestamp = km.killmail_time
       seconds = DateTime.to_unix(timestamp)
       window_start_seconds = div(seconds, window_seconds) * window_seconds
       DateTime.from_unix!(window_start_seconds)
     end)
-    |> Enum.sort_by(fn {window_start, _} -> window_start end)
+
+    Enum.sort_by(fn {window_start, _} -> window_start end)
   end
 
   defp extract_attacker_targets(killmails) do
@@ -251,8 +253,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
 
   defp identify_high_focus_periods(focus_fire_windows) do
     focus_fire_windows
-    |> Enum.filter(&(&1.focus_score > 75))
-    |> Enum.map(fn window ->
+    Enum.filter(&(&1.focus_score > 75))
+
+    Enum.map(fn window ->
       %{
         period: "#{window.window_start} - #{window.window_end}",
         focus_score: window.focus_score,
@@ -282,7 +285,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
 
     # Label phases
     Enum.with_index(phases)
-    |> Enum.map(fn {phase_kms, index} ->
+
+    Enum.map(fn {phase_kms, index} ->
       phase_name =
         case index do
           0 -> :initial_engagement
@@ -338,7 +342,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
          ship_types: Enum.frequencies(ships)
        }}
     end)
-    |> Enum.into(%{})
+
+    Enum.into(%{})
   end
 
   defp extract_all_ship_types(killmails) do
@@ -438,8 +443,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
 
   defp detect_formation_transitions(formations) do
     formations
-    |> Enum.chunk_every(2, 1, :discard)
-    |> Enum.map(fn [prev, curr] ->
+    Enum.chunk_every(2, 1, :discard)
+
+    Enum.map(fn [prev, curr] ->
       %{
         from: prev.formation_type,
         to: curr.formation_type,
@@ -474,16 +480,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
 
   defp identify_dominant_formation(formations) do
     formations
-    |> Enum.max_by(& &1.formation_cohesion, fn -> nil end)
+    Enum.max_by(& &1.formation_cohesion, fn -> nil end)
   end
 
   defp calculate_formation_adaptability(formations) do
     # Score based on variety and effectiveness of formations
     unique_formations =
       formations
-      |> Enum.map(& &1.formation_type)
-      |> Enum.uniq()
-      |> Kernel.length()
+
+    Enum.map(& &1.formation_type) |> Enum.uniq() |> Kernel.length()
 
     effectiveness_scores = %{
       highly_effective: 100,
@@ -495,15 +500,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
 
     avg_effectiveness =
       formations
-      |> Enum.map(&Map.get(effectiveness_scores, &1.formation_effectiveness, 50))
-      |> Enum.sum()
-      |> Kernel./(max(length(formations), 1))
+
+    Enum.map(&Map.get(effectiveness_scores, &1.formation_effectiveness, 50)) |> Enum.sum()
+    Kernel./(max(length(formations), 1))
 
     # Combine variety and effectiveness
     adaptability_score =
-      (unique_formations * 20 + avg_effectiveness * 0.8)
-      |> min(100)
-      |> Float.round(2)
+      unique_formations * 20 + avg_effectiveness * 0.8
+
+    min(100)
+    Float.round(2)
 
     adaptability_score
   end
@@ -511,7 +517,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
   defp track_attacker_target_switches(sorted_killmails) do
     # Build a map of attacker -> list of {target, timestamp} tuples
     sorted_killmails
-    |> Enum.reduce(%{}, fn km, acc ->
+
+    Enum.reduce(%{}, fn km, acc ->
       attackers = get_attackers_from_killmail(km)
       victim_id = km.victim_character_id
       timestamp = km.killmail_time
@@ -524,29 +531,34 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
         end)
       end)
     end)
-    |> Enum.map(fn {attacker_id, targets} ->
+
+    Enum.map(fn {attacker_id, targets} ->
       # Reverse to get chronological order
       sorted_targets = Enum.reverse(targets)
 
       # Detect switches
       switches =
         sorted_targets
-        |> Enum.chunk_every(2, 1, :discard)
-        |> Enum.filter(fn [{prev_target, _}, {curr_target, _}] ->
-          prev_target != curr_target
-        end)
-        |> Enum.map(fn [{prev_target, prev_time}, {curr_target, curr_time}] ->
-          %{
-            from_target: prev_target,
-            to_target: curr_target,
-            switch_time: curr_time,
-            time_on_prev_target: DateTime.diff(curr_time, prev_time)
-          }
-        end)
+
+      Enum.chunk_every(2, 1, :discard)
+
+      Enum.filter(fn [{prev_target, _}, {curr_target, _}] ->
+        prev_target != curr_target
+      end)
+
+      Enum.map(fn [{prev_target, prev_time}, {curr_target, curr_time}] ->
+        %{
+          from_target: prev_target,
+          to_target: curr_target,
+          switch_time: curr_time,
+          time_on_prev_target: DateTime.diff(curr_time, prev_time)
+        }
+      end)
 
       {attacker_id, switches}
     end)
-    |> Enum.into(%{})
+
+    Enum.into(%{})
   end
 
   defp calculate_switch_frequency(switches) do
@@ -626,31 +638,30 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
       # Group killmails by victim to track when attackers move between targets
       victim_groups =
         sorted_killmails
-        |> Enum.group_by(& &1.victim_character_id)
-        |> Enum.sort_by(fn {_victim_id, kms} ->
-          List.first(kms).killmail_time
-        end)
+
+      Enum.group_by(& &1.victim_character_id)
+
+      Enum.sort_by(fn {_victim_id, kms} ->
+        List.first(kms).killmail_time
+      end)
 
       # Look for coordinated switches between consecutive victim groups
       victim_groups
-      |> Enum.chunk_every(2, 1, :discard)
-      |> Enum.flat_map(fn [{victim1_id, victim1_kms}, {victim2_id, victim2_kms}] ->
+      Enum.chunk_every(2, 1, :discard)
+
+      Enum.flat_map(fn [{victim1_id, victim1_kms}, {victim2_id, victim2_kms}] ->
         # Get attackers from first victim
         attackers1 =
           victim1_kms
-          |> Enum.flat_map(&get_attackers_from_killmail/1)
-          |> Enum.map(& &1["character_id"])
-          |> Enum.uniq()
-          |> MapSet.new()
 
+        Enum.flat_map(&get_attackers_from_killmail/1)
+        Enum.map(& &1["character_id"]) |> Enum.uniq() |> MapSet.new()
         # Get attackers from second victim
         attackers2 =
           victim2_kms
-          |> Enum.flat_map(&get_attackers_from_killmail/1)
-          |> Enum.map(& &1["character_id"])
-          |> Enum.uniq()
-          |> MapSet.new()
 
+        Enum.flat_map(&get_attackers_from_killmail/1)
+        Enum.map(& &1["character_id"]) |> Enum.uniq() |> MapSet.new()
         # Find common attackers (those who switched)
         switching_attackers = MapSet.intersection(attackers1, attackers2) |> MapSet.size()
 
@@ -718,15 +729,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
       Enum.map(time_windows, fn {window_start, window_kms} ->
         attacker_count =
           window_kms
-          |> Enum.flat_map(&get_attackers_from_killmail/1)
-          |> Enum.uniq_by(& &1["character_id"])
-          |> Kernel.length()
+
+        Enum.flat_map(&get_attackers_from_killmail/1)
+        Enum.uniq_by(& &1["character_id"]) |> Kernel.length()
 
         damage_total =
           window_kms
-          |> Enum.flat_map(&get_attackers_from_killmail/1)
-          |> Enum.map(&(&1["damage_done"] || 0))
-          |> Enum.sum()
+
+        Enum.flat_map(&get_attackers_from_killmail/1)
+        Enum.map(&(&1["damage_done"] || 0)) |> Enum.sum()
 
         %{
           window: window_start,
@@ -796,9 +807,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
     Enum.map(time_windows, fn {window, kms} ->
       unique_targets =
         kms
-        |> Enum.map(& &1.victim_character_id)
-        |> Enum.uniq()
-        |> Kernel.length()
+
+      Enum.map(& &1.victim_character_id) |> Enum.uniq() |> Kernel.length()
 
       %{
         window: window,
@@ -864,7 +874,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
       # Low kill count in a minute indicates breakdown
       length(kms) < 2
     end)
-    |> Enum.map(fn {window, _kms} ->
+
+    Enum.map(fn {window, _kms} ->
       %{
         period_start: window,
         duration_seconds: 60,
@@ -880,7 +891,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
     Enum.filter(time_windows, fn {_window, kms} ->
       length(kms) >= 5
     end)
-    |> Enum.map(fn {window, kms} ->
+
+    Enum.map(fn {window, kms} ->
       %{
         period_start: window,
         kills_achieved: length(kms),
@@ -935,9 +947,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
     # Analyze kills to determine dominant tactic
     ship_types =
       extract_all_ship_types(phase_killmails)
-      |> Enum.map(&categorize_ship_role/1)
-      |> Enum.frequencies()
 
+    Enum.map(&categorize_ship_role/1) |> Enum.frequencies()
     # Determine tactic based on ship composition and kill patterns
     cond do
       Map.get(ship_types, :interdiction, 0) > length(phase_killmails) * 0.2 -> :bubble_camp

@@ -125,7 +125,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
 
     # Group battles within temporal windows
     sorted_battles
-    |> Enum.reduce([], fn battle, clusters ->
+
+    Enum.reduce([], fn battle, clusters ->
       add_to_temporal_cluster(battle, clusters, max_time_gap)
     end)
     |> Enum.reverse()
@@ -205,8 +206,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
     # Create graph of battles connected by sufficient overlap
     connections =
       overlap_analysis
-      |> Enum.filter(&(&1.overlap_ratio >= min_overlap))
-      |> Enum.map(&{&1.battle_a, &1.battle_b})
+
+    Enum.filter(&(&1.overlap_ratio >= min_overlap))
+    Enum.map(&{&1.battle_a, &1.battle_b})
 
     # Find connected components (groups of battles that should be correlated)
     find_connected_components(battles, connections)
@@ -223,10 +225,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
     initial_graph = battles |> Enum.map(&{&1, []}) |> Map.new()
 
     connections
-    |> Enum.reduce(initial_graph, fn {battle_a, battle_b}, graph ->
+
+    Enum.reduce(initial_graph, fn {battle_a, battle_b}, graph ->
       graph
-      |> Map.update(battle_a, [battle_b], &[battle_b | &1])
-      |> Map.update(battle_b, [battle_a], &[battle_a | &1])
+      Map.update(battle_a, [battle_b], &[battle_b | &1])
+      Map.update(battle_b, [battle_a], &[battle_a | &1])
     end)
   end
 
@@ -244,7 +247,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
 
   defp find_unvisited_battle(graph, visited) do
     Map.keys(graph)
-    |> Enum.find(&(not MapSet.member?(visited, &1)))
+    Enum.find(&(not MapSet.member?(visited, &1)))
   end
 
   defp depth_first_search(graph, battle, visited) do
@@ -441,15 +444,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
 
     flow_events =
       Enum.with_index(sorted_battles)
-      |> Enum.map(fn {battle, index} ->
-        %{
-          sequence: index + 1,
-          system_id: get_primary_system(battle),
-          start_time: get_battle_start_time(battle),
-          participants: extract_all_participants(battle) |> MapSet.size(),
-          battle_type: battle.metadata.battle_type
-        }
-      end)
+
+    Enum.map(fn {battle, index} ->
+      %{
+        sequence: index + 1,
+        system_id: get_primary_system(battle),
+        start_time: get_battle_start_time(battle),
+        participants: extract_all_participants(battle) |> MapSet.size(),
+        battle_type: battle.metadata.battle_type
+      }
+    end)
 
     %{
       events: flow_events,
@@ -581,25 +585,27 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
 
   defp extract_all_participants(battle) do
     battle.killmails
-    |> Enum.flat_map(&ParticipantExtractor.extract_participants/1)
-    |> MapSet.new()
+    Enum.flat_map(&ParticipantExtractor.extract_participants/1) |> MapSet.new()
   end
 
   defp count_unique_participants_across_battles(battles) do
     battles
-    |> Enum.flat_map(fn battle ->
+
+    Enum.flat_map(fn battle ->
       battle.killmails
-      |> Enum.flat_map(&ParticipantExtractor.extract_participants/1)
+      Enum.flat_map(&ParticipantExtractor.extract_participants/1)
     end)
     |> Enum.uniq()
-    |> length()
+
+    length()
   end
 
   defp calculate_multi_system_duration(battles) do
     all_times =
       battles
-      |> Enum.flat_map(& &1.killmails)
-      |> Enum.map(& &1.killmail_time)
+
+    Enum.flat_map(& &1.killmails)
+    Enum.map(& &1.killmail_time)
 
     case all_times do
       [] ->
@@ -619,7 +625,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
     # For now, return simple phase identification
     # This will be enhanced with the tactical phase detection algorithm
     Enum.with_index(battles)
-    |> Enum.map(fn {battle, index} ->
+
+    Enum.map(fn {battle, index} ->
       %{
         phase: index + 1,
         system: get_primary_system(battle),
@@ -639,9 +646,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
 
     timestamp =
       first_battle
-      |> get_battle_start_time()
-      |> NaiveDateTime.to_string()
-      |> String.replace([" ", ":", "-"], "")
+
+    get_battle_start_time() |> NaiveDateTime.to_string()
+    String.replace([" ", ":", "-"], "")
 
     system_str = systems |> Enum.join("_")
     "multi_battle_#{system_str}_#{timestamp}"

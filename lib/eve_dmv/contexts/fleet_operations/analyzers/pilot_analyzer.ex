@@ -319,14 +319,14 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
 
             ship_groups =
               ship_categories
-              |> Enum.map(fn {category, count} ->
-                group = map_category_to_group(category)
-                {group, count}
-              end)
-              |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
-              |> Enum.map(fn {group, counts} -> {group, Enum.sum(counts)} end)
-              |> Map.new()
 
+            Enum.map(fn {category, count} ->
+              group = map_category_to_group(category)
+              {group, count}
+            end)
+
+            Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+            Enum.map(fn {group, counts} -> {group, Enum.sum(counts)} end) |> Map.new()
             ship_groups
 
           {:error, _} ->
@@ -622,13 +622,14 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
 
   defp calculate_skill_coverage(pilot_assignments) do
     pilot_assignments
-    |> Enum.group_by(fn {_pilot_id, assignment} -> assignment.assigned_role end)
-    |> Enum.map(fn {role, assignments} ->
+    Enum.group_by(fn {_pilot_id, assignment} -> assignment.assigned_role end)
+
+    Enum.map(fn {role, assignments} ->
       avg_readiness =
         assignments
-        |> Enum.map(fn {_pilot_id, assignment} -> assignment.skill_readiness end)
-        |> Enum.sum()
-        |> Kernel./(length(assignments))
+
+      Enum.map(fn {_pilot_id, assignment} -> assignment.skill_readiness end) |> Enum.sum()
+      Kernel./(length(assignments))
 
       {role, Float.round(avg_readiness, 2)}
     end)
@@ -645,16 +646,18 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
     # Estimate form-up time based on pilot availability and readiness
     avg_availability =
       pilot_assignments
-      |> Enum.map(fn {_pilot_id, assignment} ->
-        case assignment.availability do
-          "high" -> 5
-          "medium" -> 10
-          "low" -> 20
-          _ -> 30
-        end
-      end)
-      |> Enum.sum()
-      |> Kernel./(map_size(pilot_assignments))
+
+    Enum.map(fn {_pilot_id, assignment} ->
+      case assignment.availability do
+        "high" -> 5
+        "medium" -> 10
+        "low" -> 20
+        _ -> 30
+      end
+    end)
+    |> Enum.sum()
+
+    Kernel./(map_size(pilot_assignments))
 
     trunc(avg_availability)
   end

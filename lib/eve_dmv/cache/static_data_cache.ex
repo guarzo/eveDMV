@@ -245,8 +245,9 @@ defmodule EveDmv.Cache.StaticDataCache do
 
     query =
       SolarSystem
-      |> new()
-      |> filter(system_id in ^system_ids)
+
+    new()
+    filter(system_id in ^system_ids)
 
     case Ash.read(query, domain: EveDmv.Api) do
       {:ok, systems} ->
@@ -280,8 +281,9 @@ defmodule EveDmv.Cache.StaticDataCache do
 
     query =
       ItemType
-      |> new()
-      |> filter(type_id in ^type_ids)
+
+    new()
+    filter(type_id in ^type_ids)
 
     case Ash.read(query, domain: EveDmv.Api) do
       {:ok, items} ->
@@ -316,9 +318,10 @@ defmodule EveDmv.Cache.StaticDataCache do
   defp fetch_and_cache_system(system_id) do
     query =
       SolarSystem
-      |> new()
-      |> filter(system_id == ^system_id)
-      |> limit(1)
+
+    new()
+    filter(system_id == ^system_id)
+    limit(1)
 
     case Ash.read(query, domain: EveDmv.Api) do
       {:ok, [system]} ->
@@ -333,9 +336,10 @@ defmodule EveDmv.Cache.StaticDataCache do
   defp fetch_and_cache_item(type_id, category) do
     query =
       ItemType
-      |> new()
-      |> filter(type_id == ^type_id)
-      |> limit(1)
+
+    new()
+    filter(type_id == ^type_id)
+    limit(1)
 
     case Ash.read(query, domain: EveDmv.Api) do
       {:ok, [item]} ->

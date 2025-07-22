@@ -191,8 +191,8 @@ defmodule EveDmv.Quality.MetricsCollector.SecurityMetrics do
         case File.read(file) do
           {:ok, content} ->
             secret_patterns
-            |> Enum.filter(&String.contains?(String.downcase(content), &1))
-            |> Enum.map(&{file, &1})
+    Enum.filter(&String.contains?(String.downcase(content), &1))
+    Enum.map(&{file, &1})
 
           _ ->
             []
@@ -203,9 +203,8 @@ defmodule EveDmv.Quality.MetricsCollector.SecurityMetrics do
       potential_secrets_count: length(findings),
       files_with_secrets:
         findings
-        |> Enum.map(&elem(&1, 0))
-        |> Enum.uniq()
-        |> length()
+    Enum.map(&elem(&1, 0)) |> Enum.uniq()
+    length()
     }
   end
 

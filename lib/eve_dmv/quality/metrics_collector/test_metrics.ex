@@ -37,10 +37,10 @@ defmodule EveDmv.Quality.MetricsCollector.TestMetrics do
       {output, 0} = System.cmd("mix", ["test", "--dry-run"], stderr_to_stdout: true)
 
       output
-      |> to_string()
-      |> String.split("\n")
-      |> Enum.filter(&String.contains?(&1, "test"))
-      |> length()
+      to_string()
+      String.split("\n")
+      Enum.filter(&String.contains?(&1, "test"))
+      length()
     rescue
       _ -> 0
     end
@@ -53,9 +53,9 @@ defmodule EveDmv.Quality.MetricsCollector.TestMetrics do
   defp count_skipped_tests do
     try do
       # Use file system traversal instead of grep
-      "test/**/*.exs"
-      |> Path.wildcard()
-      |> Enum.reduce(0, fn file, acc ->
+      "test/**/*.exs" |> Path.wildcard()
+
+      Enum.reduce(0, fn file, acc ->
         case File.read(file) do
           {:ok, content} ->
             skip_count =
@@ -113,10 +113,12 @@ defmodule EveDmv.Quality.MetricsCollector.TestMetrics do
 
     critical_coverage =
       coverage_data.files
-      |> Enum.filter(fn file ->
-        Enum.any?(critical_modules, &String.contains?(file.name, &1))
-      end)
-      |> Enum.map(& &1.coverage)
+
+    Enum.filter(fn file ->
+      Enum.any?(critical_modules, &String.contains?(file.name, &1))
+    end)
+
+    Enum.map(& &1.coverage)
 
     %{
       modules_count: length(critical_modules),

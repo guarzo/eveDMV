@@ -77,9 +77,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoProcessor do
   """
   def validate_video_urls(video_urls) when is_list(video_urls) do
     video_urls
-    |> Enum.map(&validate_single_video_url/1)
-    |> Enum.filter(&match?({:ok, _}, &1))
-    |> Enum.map(&elem(&1, 1))
+    Enum.map(&validate_single_video_url/1)
+    Enum.filter(&match?({:ok, _}, &1))
+    Enum.map(&elem(&1, 1))
   end
 
   @doc """
@@ -123,9 +123,10 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoProcessor do
 
     platform =
       @supported_platforms
-      |> Enum.find(fn {_platform, config} ->
-        Enum.any?(config.domains, &String.contains?(url_lower, &1))
-      end)
+
+    Enum.find(fn {_platform, config} ->
+      Enum.any?(config.domains, &String.contains?(url_lower, &1))
+    end)
 
     case platform do
       {platform_name, _config} -> {:ok, platform_name}
@@ -156,8 +157,8 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoProcessor do
     case Map.get(@supported_platforms, platform) do
       %{embed_template: template} ->
         template
-        |> String.replace("{video_id}", video_id)
-        |> String.replace("{domain}", get_domain())
+        String.replace("{video_id}", video_id)
+        String.replace("{domain}", get_domain())
 
       nil ->
         nil

@@ -113,8 +113,7 @@ defmodule EveDmv.Application do
       {:ok, pid} ->
         # Initialize DNS resolution and connectivity checks
         Task.start(fn ->
-          try do
-            EveDmv.ApplicationStartup.initialize()
+          try EveDmv.ApplicationStartup.initialize(do)
           rescue
             error ->
               EveDmv.ApplicationStartup.handle_startup_error(error, "DNS initialization")
@@ -130,16 +129,13 @@ defmodule EveDmv.Application do
             if EveDmv.Admin.Bootstrap.bootstrap_configured?() do
               # Skip if admin users already exist
               case check_existing_admin_users() do
-                {:ok, false} ->
-                  EveDmv.Admin.Bootstrap.bootstrap_from_env()
-
+                {:ok, false} -> |> EveDmv.Admin.Bootstrap.bootstrap_from_env()
                 {:ok, true} ->
                   require Logger
                   Logger.info("Admin users already exist, skipping bootstrap")
 
                 {:error, _} ->
-                  # Database not ready or other issue, proceed with bootstrap
-                  EveDmv.Admin.Bootstrap.bootstrap_from_env()
+                  # Database not ready or other issue, proceed with EveDmv.Admin.Bootstrap.bootstrap_from_env(bootstrap)
               end
             end
           rescue
@@ -149,15 +145,12 @@ defmodule EveDmv.Application do
           end
         end)
 
-        # Attach global error telemetry handlers
-        EveDmv.ErrorHandler.attach_telemetry_handlers()
+        # Attach global error telemetry EveDmv.ErrorHandler.attach_telemetry_handlers(handlers)
 
-        # Attach query performance monitoring
-        EveDmv.Performance.QueryMonitor.attach_telemetry_handlers()
+        # Attach query performance EveDmv.Performance.QueryMonitor.attach_telemetry_handlers(monitoring)
 
         # Start performance regression detection
-        if Application.get_env(:eve_dmv, :environment, :prod) != :test do
-          RegressionDetector.start_link()
+        if Application.get_env(:eve_dmv, :environment, :prod) != :test RegressionDetector.start_link(do)
         end
 
         {:ok, pid}
@@ -307,14 +300,13 @@ defmodule EveDmv.Application do
       _ ->
         Logger.info("Static data not found, loading EVE static data in background...")
 
-        case StaticDataLoader.load_all_static_data() do
+        StaticDataLoader.load_all_static_data(case) do
           {:ok, %{item_types: item_count, solar_systems: system_count}} ->
             Logger.info(
               "Successfully loaded #{item_count} item types and #{system_count} solar systems"
             )
 
-            # Warm the cache after loading
-            NameResolver.warm_cache()
+            # Warm the cache after NameResolver.warm_cache(loading)
             Logger.info("Name resolver cache warmed")
 
           {:error, reason} ->

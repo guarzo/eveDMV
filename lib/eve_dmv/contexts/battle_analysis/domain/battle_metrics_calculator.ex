@@ -110,22 +110,22 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
           total_kills: acc.total_kills + 1,
           unique_pilots:
             acc.unique_pilots
-            |> MapSet.put(victim_char_id)
-            |> then(&Enum.reduce(attacker_char_ids, &1, fn id, set -> MapSet.put(set, id) end)),
+    MapSet.put(victim_char_id)
+    then(&Enum.reduce(attacker_char_ids, &1, fn id, set -> MapSet.put(set, id) end)),
           unique_corporations:
             acc.unique_corporations
-            |> MapSet.put(victim_corp_id)
-            |> then(&Enum.reduce(attacker_corp_ids, &1, fn id, set -> MapSet.put(set, id) end)),
+    MapSet.put(victim_corp_id)
+    then(&Enum.reduce(attacker_corp_ids, &1, fn id, set -> MapSet.put(set, id) end)),
           unique_alliances:
             acc.unique_alliances
-            |> MapSet.put(victim_alliance_id)
-            |> then(
+    MapSet.put(victim_alliance_id)
+    then(
               &Enum.reduce(attacker_alliance_ids, &1, fn id, set -> MapSet.put(set, id) end)
             ),
           unique_ship_types:
             acc.unique_ship_types
-            |> MapSet.put(victim_ship_id)
-            |> then(&Enum.reduce(attacker_ship_ids, &1, fn id, set -> MapSet.put(set, id) end)),
+    MapSet.put(victim_ship_id)
+    then(&Enum.reduce(attacker_ship_ids, &1, fn id, set -> MapSet.put(set, id) end)),
           total_isk_value: acc.total_isk_value + isk_value,
           total_damage: acc.total_damage + damage,
           attackers_by_killmail: Map.put(acc.attackers_by_killmail, km.killmail_id, attackers),
@@ -342,9 +342,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
     Enum.map(fn killmail ->
       %{total_value: value} = PriceService.calculate_killmail_value(killmail)
       if is_number(value), do: value, else: 0.0
-    end)
-    |> Enum.sum()
-
+    end) |> Enum.sum()
     # For losses, we need to find killmails where this side lost ships
     # This would require more sophisticated side detection logic
     total_isk_lost = 0.0
@@ -372,7 +370,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
   defp find_most_expensive_loss(killmails) do
     result =
       killmails
-      |> Enum.max_by(&get_killmail_value(&1), fn -> nil end)
+    Enum.max_by(&get_killmail_value(&1), fn -> nil end)
 
     case result do
       nil ->
@@ -698,12 +696,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
 
     command_ships =
       killmails
-      |> Enum.flat_map(fn km ->
+    Enum.flat_map(fn km ->
         Enum.map(km.raw_data["attackers"] || [], & &1["ship_type_id"])
       end)
-      |> Enum.filter(&(&1 in command_ship_ids))
-      |> Kernel.length()
-
+    Enum.filter(&(&1 in command_ship_ids)) |> Kernel.length()
     %{
       command_ships: command_ships,
       estimated_links: command_ships > 0

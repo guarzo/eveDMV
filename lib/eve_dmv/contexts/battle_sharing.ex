@@ -162,16 +162,14 @@ defmodule EveDmv.Contexts.BattleSharing do
 
     filtered_updates =
       updates
-
-    Enum.filter(fn {key, _value} -> key in allowed_fields end)
-    Enum.into(%{})
+      |> Enum.filter(fn {key, _value} -> key in allowed_fields end)
+      |> Enum.into(%{})
 
     if map_size(filtered_updates) > 0 do
       updated_report =
         report
-
-      Map.merge(filtered_updates)
-      Map.put(:updated_at, DateTime.utc_now())
+        |> Map.merge(filtered_updates)
+        |> Map.put(:updated_at, DateTime.utc_now())
 
       # In production, this would save to database
       {:ok, updated_report}
@@ -233,8 +231,7 @@ defmodule EveDmv.Contexts.BattleSharing do
       # Transform to public format
       public_reports =
         sample_reports
-
-      Enum.map(fn report ->
+        |> Enum.map(fn report ->
         %{
           report_id: report.report_id,
           battle_id: report.battle_id,
@@ -331,8 +328,7 @@ defmodule EveDmv.Contexts.BattleSharing do
       # Transform to public format
       public_reports =
         sorted_reports
-
-      Enum.map(fn report ->
+        |> Enum.map(fn report ->
         %{
           report_id: report.report_id,
           battle_id: report.battle_id,

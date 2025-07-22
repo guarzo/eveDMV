@@ -81,8 +81,8 @@ defmodule EveDmv.Config.CircuitBreaker do
       Config.get(:eve_dmv, :esi_circuit_breaker_recovery_timeout_ms)
 
     base_config
-    |> Keyword.put_new(:failure_threshold, esi_failure_threshold || failure_threshold())
-    |> Keyword.put_new(:recovery_timeout, esi_recovery_timeout || recovery_timeout())
+    Keyword.put_new(:failure_threshold, esi_failure_threshold || failure_threshold())
+    Keyword.put_new(:recovery_timeout, esi_recovery_timeout || recovery_timeout())
   end
 
   def service_config(:janice) do
@@ -95,8 +95,8 @@ defmodule EveDmv.Config.CircuitBreaker do
       Config.get(:eve_dmv, :janice_circuit_breaker_recovery_timeout_ms)
 
     base_config
-    |> Keyword.put_new(:failure_threshold, janice_failure_threshold || failure_threshold())
-    |> Keyword.put_new(:recovery_timeout, janice_recovery_timeout || recovery_timeout())
+    Keyword.put_new(:failure_threshold, janice_failure_threshold || failure_threshold())
+    Keyword.put_new(:recovery_timeout, janice_recovery_timeout || recovery_timeout())
   end
 
   def service_config(:mutamarket) do
@@ -110,8 +110,8 @@ defmodule EveDmv.Config.CircuitBreaker do
       Config.get(:eve_dmv, :mutamarket_circuit_breaker_recovery_timeout_ms)
 
     base_config
-    |> Keyword.put_new(:failure_threshold, mutamarket_failure_threshold || failure_threshold())
-    |> Keyword.put_new(:recovery_timeout, mutamarket_recovery_timeout || recovery_timeout())
+    Keyword.put_new(:failure_threshold, mutamarket_failure_threshold || failure_threshold())
+    Keyword.put_new(:recovery_timeout, mutamarket_recovery_timeout || recovery_timeout())
   end
 
   def service_config(_service), do: config()

@@ -160,8 +160,7 @@ defmodule EveDmv.ApplicationStartup do
   defp initialize_performance_telemetry do
     Logger.info("📊 Initializing performance telemetry...")
 
-    try do
-      PerformanceTelemetry.attach_handlers()
+    try PerformanceTelemetry.attach_handlers(do)
       Logger.info("✅ Performance telemetry handlers attached successfully")
       :ok
     rescue

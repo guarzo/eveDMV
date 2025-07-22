@@ -133,8 +133,7 @@ defmodule EveDmv.Intelligence.Core.CacheHelper do
   def warm_cache(entries, ttl_seconds) do
     Logger.info("Warming cache for #{length(entries)} analysis entries")
 
-    start_time =
-    |> System.monotonic_time()
+    start_time = |> System.monotonic_time()
     entries
 
     Task.async_stream(
@@ -143,9 +142,7 @@ defmodule EveDmv.Intelligence.Core.CacheHelper do
       end,
       max_concurrency: 10,
       timeout: 60_000
-    )
-    |> Stream.run()
-
+    ) |> Stream.run()
     warm_duration_native = System.monotonic_time() - start_time
     duration_ms = System.convert_time_unit(warm_duration_native, :native, :millisecond)
 

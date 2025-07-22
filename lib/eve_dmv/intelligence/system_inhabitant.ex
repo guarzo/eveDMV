@@ -220,8 +220,7 @@ defmodule EveDmv.Intelligence.SystemInhabitant do
       accept([])
 
       change(fn changeset, _context ->
-        now =
-    |> DateTime.utc_now()
+        now = |> DateTime.utc_now()
     changeset
 
         Ash.Changeset.force_change_attribute(:present, false)

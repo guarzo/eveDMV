@@ -159,8 +159,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
   def analyze_fleet_ewar(ship_list) when is_list(ship_list) do
     ewar_ships =
       ship_list
-      |> Enum.map(&analyze_single_ship/1)
-      |> Enum.filter(& &1.is_ewar)
+
+    Enum.map(&analyze_single_ship/1)
+    Enum.filter(& &1.is_ewar)
 
     fleet_analysis = %{
       total_ships: length(ship_list),
@@ -181,8 +182,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
   def detect_ewar_modules(fitting_items) when is_list(fitting_items) do
     ewar_items =
       fitting_items
-      |> Enum.filter(&is_ewar_module?/1)
-      |> Enum.map(&categorize_ewar_module/1)
+
+    Enum.filter(&is_ewar_module?/1)
+    Enum.map(&categorize_ewar_module/1)
 
     module_analysis = %{
       has_ewar: not Enum.empty?(ewar_items),
@@ -232,9 +234,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
     else
       analysis =
         build_ewar_analysis(ship_name, ewar_types)
-        |> Map.put(:ship_id, ship_info.type_id)
-        |> Map.put(:ship_group, ship_info.group_name)
-        |> add_ship_bonuses(ship_info)
+
+      Map.put(:ship_id, ship_info.type_id)
+      Map.put(:ship_group, ship_info.group_name)
+      add_ship_bonuses(ship_info)
 
       {:ok, analysis}
     end
@@ -616,11 +619,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
 
   defp group_ewar_by_type(ewar_ships) do
     ewar_ships
-    |> Enum.flat_map(fn ship ->
+
+    Enum.flat_map(fn ship ->
       Enum.map(ship.ewar_types, fn type -> {type, ship} end)
     end)
-    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
-    |> Enum.map(fn {type, ships} ->
+
+    Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+
+    Enum.map(fn {type, ships} ->
       {type,
        %{
          count: length(ships),
@@ -637,9 +643,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
       # Count different EWAR types
       ewar_diversity =
         ewar_ships
-        |> Enum.flat_map(& &1.ewar_types)
-        |> Enum.uniq()
-        |> length()
+
+      Enum.flat_map(& &1.ewar_types) |> Enum.uniq()
+      length()
 
       # Check for force multipliers
       has_recons =
@@ -660,9 +666,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
   defp identify_ewar_gaps(ewar_ships) do
     present_types =
       ewar_ships
-      |> Enum.flat_map(& &1.ewar_types)
-      |> Enum.uniq()
-      |> MapSet.new()
+
+    Enum.flat_map(& &1.ewar_types) |> Enum.uniq() |> MapSet.new()
 
     all_types =
       MapSet.new([:ecm, :damps, :tracking_disruptors, :target_painters, :neuts, :tackle])
@@ -709,8 +714,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
 
     ewar_types =
       ewar_ships
-      |> Enum.flat_map(& &1.ewar_types)
-      |> Enum.uniq()
+
+    Enum.flat_map(& &1.ewar_types) |> Enum.uniq()
 
     recommendations =
       if :ecm in ewar_types do
@@ -810,9 +815,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
       nil
     else
       ewar_items
-      |> Enum.frequencies_by(& &1.type)
-      |> Enum.max_by(fn {_type, count} -> count end)
-      |> elem(0)
+      Enum.frequencies_by(& &1.type)
+      Enum.max_by(fn {_type, count} -> count end)
+      elem(0)
     end
   end
 

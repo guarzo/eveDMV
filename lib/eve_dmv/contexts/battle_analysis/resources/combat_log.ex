@@ -88,7 +88,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.CombatLog do
 
         content_hash =
           content
-          |> :crypto.hash(:sha256)
+
+        :crypto.hash(:sha256)
 
         Base.encode16(case: :lower)
         changeset

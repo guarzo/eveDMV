@@ -326,8 +326,7 @@ defmodule EveDmv.Intelligence.MemberActivityIntelligence do
 
         Ash.Changeset.change_attribute(
           updated_changeset,
-          :analysis_generated_at,
-          DateTime.utc_now()
+          :analysis_generated_at, |> DateTime.utc_now()
         )
       end)
     end

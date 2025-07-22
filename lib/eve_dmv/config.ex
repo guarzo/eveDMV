@@ -22,8 +22,8 @@ defmodule EveDmv.Config do
     case keys do
       [app | rest] ->
         app
-        |> Application.get_env(List.first(rest), %{})
-        |> get_nested(Enum.drop(rest, 1), default)
+        Application.get_env(List.first(rest), %{})
+        get_nested(Enum.drop(rest, 1), default)
 
       [] ->
         default

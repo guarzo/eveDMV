@@ -15,8 +15,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
   """
   def analyze_side_ship_composition(participants) do
     participants
-    |> Enum.flat_map(&MapSet.to_list(&1.ships_used))
-    |> Enum.frequencies()
+    Enum.flat_map(&MapSet.to_list(&1.ships_used)) |> Enum.frequencies()
   end
 
   @doc """
@@ -59,12 +58,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
     if total_ships > 0 do
       logistics_ships =
         ship_composition
-        |> Enum.filter(fn {ship_type_id, _count} ->
-          classify_ship(ship_type_id) == :logistics
-        end)
-        |> Enum.map(fn {_, count} -> count end)
-        |> Enum.sum()
 
+      Enum.filter(fn {ship_type_id, _count} ->
+        classify_ship(ship_type_id) == :logistics
+      end)
+
+      Enum.map(fn {_, count} -> count end) |> Enum.sum()
       Float.round(logistics_ships / total_ships, 3)
     else
       0.0
@@ -113,18 +112,19 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
     # Classify ships by category
     ship_classes =
       ship_composition
-      |> Enum.map(fn {ship_type_id, count} ->
-        {classify_ship(ship_type_id), count}
-      end)
-      |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
-      |> Enum.map(fn {class, counts} -> {class, Enum.sum(counts)} end)
-      |> Map.new()
 
+    Enum.map(fn {ship_type_id, count} ->
+      {classify_ship(ship_type_id), count}
+    end)
+
+    Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+    Enum.map(fn {class, counts} -> {class, Enum.sum(counts)} end) |> Map.new()
     # Find dominant ship classes (>20% of fleet)
     dominant_classes =
       ship_classes
-      |> Enum.filter(fn {_class, count} -> count / total_ships > 0.2 end)
-      |> Enum.map(&elem(&1, 0))
+
+    Enum.filter(fn {_class, count} -> count / total_ships > 0.2 end)
+    Enum.map(&elem(&1, 0))
 
     %{
       breakdown: ship_classes,
@@ -140,11 +140,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
     # Analyze for common doctrine patterns
     doctrines =
       doctrines
-      |> maybe_add_doctrine(:artillery_doctrine, detect_artillery_doctrine(ship_analysis))
-      |> maybe_add_doctrine(:logistics_heavy, detect_logistics_heavy(ship_analysis))
-      |> maybe_add_doctrine(:alpha_strike, detect_alpha_strike_doctrine(ship_analysis))
-      |> maybe_add_doctrine(:kiting_comp, detect_kiting_composition(ship_analysis))
-      |> maybe_add_doctrine(:brawling_comp, detect_brawling_composition(ship_analysis))
+
+    maybe_add_doctrine(:artillery_doctrine, detect_artillery_doctrine(ship_analysis))
+    maybe_add_doctrine(:logistics_heavy, detect_logistics_heavy(ship_analysis))
+    maybe_add_doctrine(:alpha_strike, detect_alpha_strike_doctrine(ship_analysis))
+    maybe_add_doctrine(:kiting_comp, detect_kiting_composition(ship_analysis))
+    maybe_add_doctrine(:brawling_comp, detect_brawling_composition(ship_analysis))
 
     doctrines
   end
@@ -176,7 +177,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
 
   defp extract_all_ships_from_composition(ship_composition) do
     ship_composition
-    |> Enum.flat_map(fn {ship_type_id, count} ->
+
+    Enum.flat_map(fn {ship_type_id, count} ->
       List.duplicate(ship_type_id, count)
     end)
   end
@@ -187,8 +189,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
 
     breakdown =
       ewar_ships
-      |> Enum.map(&classify_ewar_type/1)
-      |> Enum.frequencies()
+
+    Enum.map(&classify_ewar_type/1) |> Enum.frequencies()
 
     %{
       ewar_ships: ewar_ships,
@@ -262,15 +264,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
     else
       # Shannon diversity index calculation
       proportions =
-        ship_classes
-        |> Map.values()
-        |> Enum.map(&(&1 / total_ships))
+        Map.values(ship_classes)
+
+      Enum.map(&(&1 / total_ships))
 
       entropy =
         proportions
-        |> Enum.map(fn p -> if p > 0, do: -p * :math.log2(p), else: 0 end)
-        |> Enum.sum()
 
+      Enum.map(fn p -> if p > 0, do: -p * :math.log2(p), else: 0 end) |> Enum.sum()
       # Normalize to 0-1 scale
       max_entropy = :math.log2(map_size(ship_classes))
       if max_entropy > 0, do: entropy / max_entropy, else: 0.0

@@ -325,19 +325,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
 
   defp count_unique_attackers(events) do
     events
-    |> Enum.flat_map(& &1.attackers)
-    |> Enum.map(& &1.character_id)
-    |> Enum.filter(&(&1 != nil))
-    |> Enum.uniq()
-    |> Kernel.length()
+    Enum.flat_map(& &1.attackers)
+    Enum.map(& &1.character_id)
+    Enum.filter(&(&1 != nil)) |> Enum.uniq() |> Kernel.length()
   end
 
   defp count_unique_victims(events) do
     events
-    |> Enum.map(& &1.victim.character_id)
-    |> Enum.filter(&(&1 != nil))
-    |> Enum.uniq()
-    |> Kernel.length()
+    Enum.map(& &1.victim.character_id)
+    Enum.filter(&(&1 != nil)) |> Enum.uniq() |> Kernel.length()
   end
 
   defp analyze_ship_types_in_window(events, sides_analysis) do
@@ -553,32 +549,34 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
     # Group into sides based on hostile relationships
     {_assigned, sides} =
       groups
-      |> Enum.reduce({[], []}, fn group, {assigned, sides} ->
-        if group in assigned do
-          {assigned, sides}
-        else
-          # Find which side this group belongs to
-          side_index =
-            sides
-            |> Enum.find_index(fn side_groups ->
-              # Check if this group is hostile to any group in this side
-              not Enum.any?(side_groups, fn side_group ->
-                hostile_map
-                |> Map.get(group, [])
-                |> Enum.member?(side_group)
-              end)
-            end)
 
-          if side_index do
-            # Add to existing side
-            updated_sides = List.update_at(sides, side_index, &[group | &1])
-            {[group | assigned], updated_sides}
-          else
-            # Create new side
-            {[group | assigned], [[group] | sides]}
-          end
+    Enum.reduce({[], []}, fn group, {assigned, sides} ->
+      if group in assigned do
+        {assigned, sides}
+      else
+        # Find which side this group belongs to
+        side_index =
+          sides
+
+        Enum.find_index(fn side_groups ->
+          # Check if this group is hostile to any group in this side
+          not Enum.any?(side_groups, fn side_group ->
+            hostile_map
+            Map.get(group, [])
+            Enum.member?(side_group)
+          end)
+        end)
+
+        if side_index do
+          # Add to existing side
+          updated_sides = List.update_at(sides, side_index, &[group | &1])
+          {[group | assigned], updated_sides}
+        else
+          # Create new side
+          {[group | assigned], [[group] | sides]}
         end
-      end)
+      end
+    end)
 
     # Convert to detailed side information
     Enum.with_index(sides)

@@ -736,17 +736,14 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
 
   defp calculate_minimum_fleet_size(doctrine) do
     ship_minimums =
-      doctrine.ship_requirements
-      |> Map.values()
-      |> Enum.map(fn req -> req[:min_count] || 0 end)
-      |> Enum.sum()
+      doctrine.Map.values(ship_requirements)
+
+    Enum.map(fn req -> req[:min_count] || 0 end) |> Enum.sum()
 
     role_minimums =
-      doctrine.role_requirements
-      |> Map.values()
-      |> Enum.map(fn req -> req[:min_count] || 0 end)
-      |> Enum.sum()
+      doctrine.Map.values(role_requirements)
 
+    Enum.map(fn req -> req[:min_count] || 0 end) |> Enum.sum()
     max(ship_minimums, role_minimums)
   end
 

@@ -269,19 +269,19 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       # Extract day of week from timestamps
       days =
         timestamps
-        |> Enum.map(&(&1 |> DateTime.to_date() |> Date.day_of_week()))
-        |> Enum.frequencies()
 
+      Enum.map(&(&1 |> DateTime.to_date() |> Date.day_of_week())) |> Enum.frequencies()
       # Calculate entropy of day distribution
       total_engagements = Enum.sum(Map.values(days))
 
       entropy =
         days
-        |> Enum.map(fn {_day, count} ->
-          probability = count / total_engagements
-          -probability * :math.log(probability)
-        end)
-        |> Enum.sum()
+
+      Enum.map(fn {_day, count} ->
+        probability = count / total_engagements
+        -probability * :math.log(probability)
+      end)
+      |> Enum.sum()
 
       # Normalize entropy (max entropy for 7 days is log(7))
       max_entropy = :math.log(7)

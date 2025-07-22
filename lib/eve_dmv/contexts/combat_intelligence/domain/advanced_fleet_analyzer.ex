@@ -302,9 +302,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
          percentage: length(ships) / total_ships,
          ships: Enum.map(ships, & &1.ship_name)
        }}
-    end)
-    |> Map.new()
-
+    end) |> Map.new()
     # Analyze ship classes
     ship_classes =
       ship_analyses
@@ -315,9 +313,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
     Enum.map(fn {class, ships} ->
       {class, length(ships)}
-    end)
-    |> Map.new()
-
+    end) |> Map.new()
     # Analyze tank types
     tank_distribution = analyze_tank_distribution(ship_analyses)
 
@@ -343,25 +339,23 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
   defp analyze_tank_distribution(ship_analyses) do
     ship_analyses
-    |> Enum.group_by(fn ship ->
+    Enum.group_by(fn ship ->
       (ship.stats && ship.stats.meta_info.tank_type) || :unknown
     end)
-    |> Enum.map(fn {tank_type, ships} ->
+    Enum.map(fn {tank_type, ships} ->
       {tank_type,
        %{
          count: length(ships),
          percentage: length(ships) / length(ship_analyses)
        }}
-    end)
-    |> Map.new()
+    end) |> Map.new()
   end
 
   defp calculate_diversity_metrics(ship_analyses) do
     unique_ships =
       ship_analyses
-      |> Enum.map(& &1.ship_name)
-      |> Enum.uniq()
-      |> length()
+    Enum.map(& &1.ship_name) |> Enum.uniq()
+    length()
 
     total_ships = length(ship_analyses)
 
@@ -445,11 +439,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
   defp identify_missing_roles(role_distribution, total_ships) do
     @ideal_composition
-    |> Enum.filter(fn {role, ideal} ->
+    Enum.filter(fn {role, ideal} ->
       actual = Map.get(role_distribution, role, %{percentage: 0}).percentage
       ideal.critical and actual < ideal.min and total_ships >= 5
     end)
-    |> Enum.map(fn {role, ideal} ->
+    Enum.map(fn {role, ideal} ->
       actual = Map.get(role_distribution, role, %{percentage: 0}).percentage
       needed = round((ideal.min - actual) * total_ships)
 
@@ -541,9 +535,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
         String.contains?(name, "scalpel") -> 320
         true -> 500
       end
-    end)
-    |> Enum.sum()
-
+    end) |> Enum.sum()
     %{
       logi_count: length(logi_ships),
       total_rep_power: total_rep_power,
@@ -585,9 +577,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
          ships: Enum.map(ships, & &1.ship_name),
          effectiveness: calculate_ewar_effectiveness(type, ships)
        }}
-    end)
-    |> Map.new()
-
+    end) |> Map.new()
     %{
       has_ewar: not Enum.empty?(ewar_ships),
       ewar_ship_count: length(ewar_ships),
@@ -673,11 +663,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     threshold = avg_speed * 0.6
 
     ship_analyses
-    |> Enum.filter(fn ship ->
+    Enum.filter(fn ship ->
       speed = (ship.stats && ship.stats.mobility.max_velocity) || 0
       speed > 0 and speed < threshold
     end)
-    |> Enum.map(& &1.ship_name)
+    Enum.map(& &1.ship_name)
   end
 
   defp analyze_engagement_range(ship_analyses) do
@@ -701,8 +691,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
     dominant_range =
       range_groups
-      |> Enum.max_by(fn {_range, ships} -> length(ships) end, fn -> {:unknown, []} end)
-      |> elem(0)
+    Enum.max_by(fn {_range, ships} -> length(ships) end, fn -> {:unknown, []} end)
+    elem(0)
 
     %{
       dominant_range: dominant_range,
@@ -710,7 +700,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
         Enum.map(range_groups, fn {range, ships} ->
           {range, length(ships)}
         end)
-        |> Map.new(),
+    Map.new(),
       engagement_flexibility: assess_range_flexibility(range_groups),
       recommended_engagement_range: recommend_engagement_range(dominant_range)
     }
@@ -776,7 +766,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
   defp calculate_alpha_strike(ship_analyses) do
     # Estimate alpha based on ship types
     ship_analyses
-    |> Enum.map(fn ship ->
+    Enum.map(fn ship ->
       if ship.stats do
         multiplier =
           case ship.stats.ship_class do
@@ -790,9 +780,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
       else
         0
       end
-    end)
-    |> Enum.sum()
-    |> round()
+    end) |> Enum.sum()
+    round()
   end
 
   defp calculate_tank_efficiency(ship_analyses) do
@@ -1008,8 +997,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
   defp identify_priority_threats(vulnerabilities) do
     vulnerabilities
-    |> Enum.filter(&(&1.severity in [:critical, :high]))
-    |> Enum.map(& &1.type)
+    Enum.filter(&(&1.severity in [:critical, :high]))
+    Enum.map(& &1.type)
   end
 
   # Recommendations
@@ -1096,11 +1085,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
   defp get_top_ships(ship_analyses, count) do
     ship_analyses
-    |> Enum.group_by(& &1.ship_name)
-    |> Enum.map(fn {name, ships} -> {name, length(ships)} end)
-    |> Enum.sort_by(&elem(&1, 1), :desc)
-    |> Enum.take(count)
-    |> Enum.map(fn {name, count} -> %{ship: name, count: count} end)
+    Enum.group_by(& &1.ship_name)
+    Enum.map(fn {name, ships} -> {name, length(ships)} end)
+    Enum.sort_by(&elem(&1, 1), :desc)
+    Enum.take(count)
+    Enum.map(fn {name, count} -> %{ship: name, count: count} end)
   end
 
   defp analyze_engagement_profile(ship_analyses, capabilities) do

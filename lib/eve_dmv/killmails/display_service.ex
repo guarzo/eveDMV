@@ -32,16 +32,15 @@ defmodule EveDmv.Killmails.DisplayService do
     # Extract all unique IDs that need name resolution
     ship_type_ids =
       killmails
-      |> Stream.map(& &1.victim_ship_type_id)
-      |> Stream.reject(&is_nil/1)
-      |> Enum.uniq()
+
+    Stream.map(& &1.victim_ship_type_id)
+    Stream.reject(&is_nil/1) |> Enum.uniq()
 
     system_ids =
       killmails
-      |> Stream.map(& &1.solar_system_id)
-      |> Stream.reject(&is_nil/1)
-      |> Enum.uniq()
 
+    Stream.map(& &1.solar_system_id)
+    Stream.reject(&is_nil/1) |> Enum.uniq()
     # Bulk preload all names into cache
     NameResolver.ship_names(ship_type_ids)
     NameResolver.system_names(system_ids)
@@ -145,17 +144,17 @@ defmodule EveDmv.Killmails.DisplayService do
       victim = find_victim_in_raw(raw.raw_data)
       get_in(victim, ["ship_type_id"])
     end)
-    |> Enum.reject(&is_nil/1)
-    |> Enum.uniq()
+
+    Enum.reject(&is_nil/1) |> Enum.uniq()
 
     system_ids =
       raw_killmails
-      |> Enum.map(fn raw ->
-        get_in(raw.raw_data, ["solar_system_id"])
-      end)
-      |> Enum.reject(&is_nil/1)
-      |> Enum.uniq()
 
+    Enum.map(fn raw ->
+      get_in(raw.raw_data, ["solar_system_id"])
+    end)
+
+    Enum.reject(&is_nil/1) |> Enum.uniq()
     # Bulk preload all names into cache
     NameResolver.ship_names(ship_type_ids)
     NameResolver.system_names(system_ids)

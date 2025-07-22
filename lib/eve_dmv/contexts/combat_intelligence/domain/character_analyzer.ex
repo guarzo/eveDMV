@@ -211,14 +211,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
           # Extract unique character IDs
           character_ids =
             killmails
-            |> Enum.map(& &1.victim_character_id)
-            |> Enum.uniq()
-            |> Enum.take(limit)
+    Enum.map(& &1.victim_character_id) |> Enum.uniq()
+    Enum.take(limit)
 
           # Calculate threat scores for each character
           search_results =
             character_ids
-            |> Enum.map(fn character_id ->
+    Enum.map(fn character_id ->
               case ThreatScoringCoordinator.calculate_threat_score(character_id) do
                 {:ok, threat_data} ->
                   threat_score = threat_data.composite_score || 0.0
@@ -253,9 +252,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
                   end
               end
             end)
-            |> Enum.filter(&(&1 != nil))
-            |> Enum.sort_by(& &1.threat_score, :desc)
-            |> Enum.take(limit)
+    Enum.filter(&(&1 != nil))
+    Enum.sort_by(& &1.threat_score, :desc)
+    Enum.take(limit)
 
           {:ok, search_results}
       end
@@ -428,27 +427,23 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
       # Group by hour of day
       hourly_counts =
         activity_data
-        |> Enum.group_by(fn event ->
+    Enum.group_by(fn event ->
           DateTime.to_time(event.killmail_time).hour
         end)
-        |> Enum.map(fn {hour, events} -> {hour, length(events)} end)
-        |> Map.new()
-
+    Enum.map(fn {hour, events} -> {hour, length(events)} end) |> Map.new()
       # Group by day of week
       daily_counts =
         activity_data
-        |> Enum.group_by(fn event ->
+    Enum.group_by(fn event ->
           Date.day_of_week(DateTime.to_date(event.killmail_time))
         end)
-        |> Enum.map(fn {day, events} -> {day, length(events)} end)
-        |> Map.new()
-
+    Enum.map(fn {day, events} -> {day, length(events)} end) |> Map.new()
       # Find peak hours (top 3 hours with most activity)
       peak_hours =
         hourly_counts
-        |> Enum.sort_by(fn {_hour, count} -> count end, :desc)
-        |> Enum.take(3)
-        |> Enum.map(fn {hour, _count} -> hour end)
+    Enum.sort_by(fn {_hour, count} -> count end, :desc)
+    Enum.take(3)
+    Enum.map(fn {hour, _count} -> hour end)
 
       %{
         hourly_distribution: hourly_counts,
@@ -472,24 +467,22 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
       # Categorize by engagement size based on attacker count
       engagement_categories =
         activity_data
-        |> Enum.map(fn event ->
+    Enum.map(fn event ->
           case event.attacker_count do
             1 -> :solo
             n when n <= 5 -> :small_gang
             n when n <= 20 -> :medium_gang
             _ -> :fleet
           end
-        end)
-        |> Enum.frequencies()
-
+        end) |> Enum.frequencies()
       total = length(activity_data)
 
       %{
         engagement_sizes: engagement_categories,
         preferred_engagement_size:
           engagement_categories
-          |> Enum.max_by(fn {_size, count} -> count end)
-          |> elem(0),
+    Enum.max_by(fn {_size, count} -> count end)
+    elem(0),
         solo_percentage: Float.round(Map.get(engagement_categories, :solo, 0) / total * 100, 1),
         small_gang_percentage:
           Float.round(Map.get(engagement_categories, :small_gang, 0) / total * 100, 1),
@@ -508,9 +501,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
     else
       ship_usage =
         activity_data
-        |> Enum.map(& &1.victim_ship_type_id)
-        |> Enum.frequencies()
-
+    Enum.map(& &1.victim_ship_type_id) |> Enum.frequencies()
       total_ships = length(activity_data)
       unique_ships = map_size(ship_usage)
 
@@ -518,8 +509,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
         ship_types_used: ship_usage,
         most_used_ship:
           ship_usage
-          |> Enum.max_by(fn {_ship, count} -> count end)
-          |> elem(0),
+    Enum.max_by(fn {_ship, count} -> count end)
+    elem(0),
         ship_diversity_score: Float.round(unique_ships / total_ships, 2)
       }
     end
@@ -535,9 +526,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
     else
       system_usage =
         activity_data
-        |> Enum.map(& &1.solar_system_id)
-        |> Enum.frequencies()
-
+    Enum.map(& &1.solar_system_id) |> Enum.frequencies()
       total_events = length(activity_data)
       unique_systems = map_size(system_usage)
 
@@ -545,8 +534,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
         systems_frequented: system_usage,
         most_active_system:
           system_usage
-          |> Enum.max_by(fn {_system, count} -> count end)
-          |> elem(0),
+    Enum.max_by(fn {_system, count} -> count end)
+    elem(0),
         system_diversity_score: Float.round(unique_systems / total_events, 2)
       }
     end
@@ -597,11 +586,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
         # Get threat scores and analysis data for all characters
         character_data =
           character_ids
-          |> Enum.map(fn character_id ->
+    Enum.map(fn character_id ->
             {character_id, get_character_comparison_data(character_id)}
-          end)
-          |> Map.new()
-
+          end) |> Map.new()
         # Perform comparative analysis
         comparison_results = %{
           characters: character_ids,
@@ -673,8 +660,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   defp compare_threat_scores(character_data) do
     scores =
       character_data
-      |> Enum.map(fn {char_id, data} -> {char_id, data.threat_score} end)
-      |> Enum.sort_by(fn {_char_id, score} -> score end, :desc)
+    Enum.map(fn {char_id, data} -> {char_id, data.threat_score} end)
+    Enum.sort_by(fn {_char_id, score} -> score end, :desc)
 
     highest_threat = List.first(scores)
     lowest_threat = List.last(scores)
@@ -686,18 +673,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
       threat_score_spread: elem(highest_threat, 1) - elem(lowest_threat, 1),
       threat_level_distribution:
         character_data
-        |> Enum.map(fn {_char_id, data} -> data.threat_level end)
-        |> Enum.frequencies()
+    Enum.map(fn {_char_id, data} -> data.threat_level end) |> Enum.frequencies()
     }
   end
 
   defp compare_activity_levels(character_data) do
     activity_levels =
       character_data
-      |> Enum.map(fn {char_id, data} ->
+    Enum.map(fn {char_id, data} ->
         {char_id, data.activity_summary.events_per_day || 0.0}
       end)
-      |> Enum.sort_by(fn {_char_id, activity} -> activity end, :desc)
+    Enum.sort_by(fn {_char_id, activity} -> activity end, :desc)
 
     most_active = List.first(activity_levels)
     least_active = List.last(activity_levels)
@@ -709,20 +695,19 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
       activity_spread: elem(most_active, 1) - elem(least_active, 1),
       avg_activity_level:
         activity_levels
-        |> Enum.map(fn {_char_id, activity} -> activity end)
-        |> Enum.sum()
-        |> Kernel./(length(activity_levels))
-        |> Float.round(2)
+    Enum.map(fn {_char_id, activity} -> activity end) |> Enum.sum()
+    Kernel./(length(activity_levels))
+    Float.round(2)
     }
   end
 
   defp compare_combat_effectiveness(character_data) do
     effectiveness_scores =
       character_data
-      |> Enum.map(fn {char_id, data} ->
+    Enum.map(fn {char_id, data} ->
         {char_id, data.combat_effectiveness || 0.0}
       end)
-      |> Enum.sort_by(fn {_char_id, effectiveness} -> effectiveness end, :desc)
+    Enum.sort_by(fn {_char_id, effectiveness} -> effectiveness end, :desc)
 
     highest_effectiveness = List.first(effectiveness_scores)
     lowest_effectiveness = List.last(effectiveness_scores)
@@ -734,32 +719,29 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
       effectiveness_spread: elem(highest_effectiveness, 1) - elem(lowest_effectiveness, 1),
       avg_effectiveness:
         effectiveness_scores
-        |> Enum.map(fn {_char_id, effectiveness} -> effectiveness end)
-        |> Enum.sum()
-        |> Kernel./(length(effectiveness_scores))
-        |> Float.round(2)
+    Enum.map(fn {_char_id, effectiveness} -> effectiveness end) |> Enum.sum()
+    Kernel./(length(effectiveness_scores))
+    Float.round(2)
     }
   end
 
   defp compare_engagement_styles(character_data) do
     engagement_styles =
       character_data
-      |> Enum.map(fn {char_id, data} ->
+    Enum.map(fn {char_id, data} ->
         {char_id, data.engagement_patterns.preferred_engagement_size || :unknown}
       end)
 
     style_distribution =
       engagement_styles
-      |> Enum.map(fn {_char_id, style} -> style end)
-      |> Enum.frequencies()
-
+    Enum.map(fn {_char_id, style} -> style end) |> Enum.frequencies()
     %{
       character_styles: engagement_styles,
       style_distribution: style_distribution,
       dominant_style:
         style_distribution
-        |> Enum.max_by(fn {_style, count} -> count end)
-        |> elem(0),
+    Enum.max_by(fn {_style, count} -> count end)
+    elem(0),
       style_diversity: map_size(style_distribution)
     }
   end
@@ -767,7 +749,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   defp compare_risk_assessments(character_data) do
     risk_assessments =
       character_data
-      |> Enum.map(fn {char_id, data} ->
+    Enum.map(fn {char_id, data} ->
         risk_level =
           categorize_risk_level(data.threat_score, data.activity_summary.events_per_day)
 
@@ -778,14 +760,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
       character_risk_levels: risk_assessments,
       risk_distribution:
         risk_assessments
-        |> Enum.map(fn {_char_id, risk} -> risk end)
-        |> Enum.frequencies(),
+    Enum.map(fn {_char_id, risk} -> risk end)
+    Enum.frequencies(),
       highest_risk_character:
         risk_assessments
-        |> Enum.max_by(fn {_char_id, risk} -> risk_level_to_numeric(risk) end),
+    Enum.max_by(fn {_char_id, risk} -> risk_level_to_numeric(risk) end),
       lowest_risk_character:
         risk_assessments
-        |> Enum.min_by(fn {_char_id, risk} -> risk_level_to_numeric(risk) end)
+    Enum.min_by(fn {_char_id, risk} -> risk_level_to_numeric(risk) end)
     }
   end
 
@@ -793,7 +775,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
     # Create composite scores for overall ranking
     composite_rankings =
       character_data
-      |> Enum.map(fn {char_id, data} ->
+    Enum.map(fn {char_id, data} ->
         composite_score =
           data.threat_score * 0.4 +
             data.combat_effectiveness * 0.3 +
@@ -801,7 +783,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
 
         {char_id, composite_score}
       end)
-      |> Enum.sort_by(fn {_char_id, score} -> score end, :desc)
+    Enum.sort_by(fn {_char_id, score} -> score end, :desc)
 
     %{
       overall_ranking: composite_rankings,
@@ -817,11 +799,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   defp generate_tactical_recommendations_for_comparison(character_data) do
     recommendations =
       character_data
-      |> Enum.map(fn {char_id, data} ->
+    Enum.map(fn {char_id, data} ->
         {char_id, generate_character_tactical_recommendations(data)}
-      end)
-      |> Map.new()
-
+      end) |> Map.new()
     # Generate comparative recommendations
     comparative_recommendations =
       [
@@ -829,7 +809,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
         recommend_engagement_priorities(character_data),
         suggest_counter_strategies(character_data)
       ]
-      |> Enum.filter(&(&1 != nil))
+    Enum.filter(&(&1 != nil))
 
     %{
       individual_recommendations: recommendations,
@@ -926,8 +906,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
     # Identify the primary threat and secondary threats
     threat_levels =
       character_data
-      |> Enum.map(fn {char_id, data} -> {char_id, data.threat_score} end)
-      |> Enum.sort_by(fn {_char_id, score} -> score end, :desc)
+    Enum.map(fn {char_id, data} -> {char_id, data.threat_score} end)
+    Enum.sort_by(fn {_char_id, score} -> score end, :desc)
 
     case threat_levels do
       [{primary_threat, primary_score} | rest] when primary_score > 6.0 ->
@@ -948,11 +928,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
     # Recommend engagement order based on threat and activity
     priority_order =
       character_data
-      |> Enum.map(fn {char_id, data} ->
+    Enum.map(fn {char_id, data} ->
         priority_score = data.threat_score - (data.activity_summary.events_per_day || 0.0)
         {char_id, priority_score}
       end)
-      |> Enum.sort_by(fn {_char_id, score} -> score end, :desc)
+    Enum.sort_by(fn {_char_id, score} -> score end, :desc)
 
     %{
       recommendation_type: :engagement_priority,
@@ -965,7 +945,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
     # Suggest strategies based on the group composition
     high_threat_count =
       character_data
-      |> Enum.count(fn {_char_id, data} -> data.threat_score > 6.0 end)
+    Enum.count(fn {_char_id, data} -> data.threat_score > 6.0 end)
 
     if high_threat_count > 1 do
       %{

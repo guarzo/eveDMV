@@ -313,9 +313,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzerS
 
     summary_parts =
       []
-      |> add_constellation_summary_if_present(results)
-      |> add_activity_summary_if_present(results)
-      |> add_threat_summary_if_present(results)
+
+    add_constellation_summary_if_present(results)
+    add_activity_summary_if_present(results)
+    add_threat_summary_if_present(results)
 
     %{
       summary_components: Enum.reverse(summary_parts),
@@ -357,9 +358,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzerS
     # Extract threat levels from different analyses
     threat_indicators =
       []
-      |> add_constellation_threat_if_present(results)
-      |> add_activity_threat_if_present(results)
-      |> add_direct_threat_if_present(results)
+
+    add_constellation_threat_if_present(results)
+    add_activity_threat_if_present(results)
+    add_direct_threat_if_present(results)
 
     # Combine threat indicators
     case threat_indicators do

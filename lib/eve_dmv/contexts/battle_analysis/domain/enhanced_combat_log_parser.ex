@@ -28,10 +28,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
 
     events =
       lines
-      |> Enum.map(&parse_line/1)
-      |> Enum.filter(&(&1 != nil))
-      |> filter_by_time(options[:start_time], options[:end_time])
-      |> filter_by_pilot(options[:pilot_name])
+
+    Enum.map(&parse_line/1)
+    Enum.filter(&(&1 != nil))
+    filter_by_time(options[:start_time], options[:end_time])
+    filter_by_pilot(options[:pilot_name])
 
     tactical_analysis = analyze_tactical_patterns(events)
     summary = generate_enhanced_summary(events, options[:pilot_name])
@@ -619,9 +620,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
 
   defp generate_tactical_recommendations(tactical_analysis, _events) do
     []
-    |> maybe_add_damage_application_recommendation(tactical_analysis)
-    |> maybe_add_range_management_recommendation(tactical_analysis)
-    |> maybe_add_defensive_recommendation(tactical_analysis)
+    maybe_add_damage_application_recommendation(tactical_analysis)
+    maybe_add_range_management_recommendation(tactical_analysis)
+    maybe_add_defensive_recommendation(tactical_analysis)
   end
 
   defp maybe_add_damage_application_recommendation(recommendations, tactical_analysis) do

@@ -64,8 +64,7 @@ defmodule EveDmv.Contexts.CombatIntelligence do
   end
 
   def handle_static_data_updated(%StaticDataUpdated{categories_updated: categories}) do
-    if :item_types in categories or :ship_types in categories do
-      Infrastructure.StaticDataEventProcessor.refresh_ship_data()
+    if :item_types in categories or :ship_types in categories Infrastructure.StaticDataEventProcessor.refresh_ship_data(do)
     end
   end
 

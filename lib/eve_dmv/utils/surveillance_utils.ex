@@ -340,8 +340,9 @@ defmodule EveDmv.Utils.SurveillanceUtils do
     # Get highest system threat
     max_system_threat =
       system_threats
-      |> Enum.map(&(&1 |> Map.get(:threat_level, :low) |> threat_level_to_number()))
-      |> Enum.max(&>=/2, fn -> 1 end)
+
+    Enum.map(&(&1 |> Map.get(:threat_level, :low) |> threat_level_to_number()))
+    Enum.max(&>=/2, fn -> 1 end)
 
     # Factor in chain patterns
     pattern_modifier =

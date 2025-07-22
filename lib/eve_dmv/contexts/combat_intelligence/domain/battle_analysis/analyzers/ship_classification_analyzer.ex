@@ -105,8 +105,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Shi
   """
   def classify_ships_by_class(participants) do
     participants
-    |> Enum.group_by(&classify_ship_role/1)
-    |> Enum.into(%{}, fn {role, ships} -> {role, Enum.count(ships)} end)
+    Enum.group_by(&classify_ship_role/1)
+    Enum.into(%{}, fn {role, ships} -> {role, Enum.count(ships)} end)
   end
 
   @doc """
@@ -119,9 +119,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Shi
       %{}
     else
       participants
-      |> Enum.map(&classify_ship_role/1)
-      |> Enum.frequencies()
-      |> Enum.into(%{}, fn {role, count} ->
+      Enum.map(&classify_ship_role/1) |> Enum.frequencies()
+
+      Enum.into(%{}, fn {role, count} ->
         {role, %{count: count, percentage: count / total_ships * 100}}
       end)
     end
@@ -256,7 +256,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Shi
   """
   def convert_ships_to_participants(ship_list) when is_list(ship_list) do
     ship_list
-    |> Enum.map(fn ship ->
+
+    Enum.map(fn ship ->
       %{
         ship_type_id: ship.ship_type_id || 0,
         ship_name: ship.ship_name || "",
@@ -272,12 +273,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Shi
   """
   def count_logistics_ships(participants) do
     participants
-    |> Enum.count(&(classify_ship_role(&1) == :logistics))
+    Enum.count(&(classify_ship_role(&1) == :logistics))
   end
 
   def count_long_range_ships(participants) do
     participants
-    |> Enum.count(fn participant ->
+
+    Enum.count(fn participant ->
       role = classify_ship_role(participant)
       role in [:battleship, :cruiser, :battlecruiser]
     end)
@@ -285,7 +287,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Shi
 
   def count_fast_ships(participants) do
     participants
-    |> Enum.count(fn participant ->
+
+    Enum.count(fn participant ->
       role = classify_ship_role(participant)
       role in [:frigate, :destroyer, :assault_frigate]
     end)

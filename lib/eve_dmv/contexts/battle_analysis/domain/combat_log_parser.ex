@@ -41,10 +41,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
 
     events =
       lines
-      |> Enum.map(&parse_line/1)
-      |> Enum.filter(&(&1 != nil))
-      |> filter_by_time(options[:start_time], options[:end_time])
-      |> filter_by_pilot(options[:pilot_name])
+
+    Enum.map(&parse_line/1)
+    Enum.filter(&(&1 != nil))
+    filter_by_time(options[:start_time], options[:end_time])
+    filter_by_pilot(options[:pilot_name])
 
     summary = generate_summary(events, options[:pilot_name])
 
@@ -404,21 +405,18 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
       events
 
     events
-    |> Enum.filter(&(&1.type == :damage && &1.from))
-    |> Enum.map(& &1.from)
-    |> Enum.uniq()
-    |> Kernel.length()
-
+    Enum.filter(&(&1.type == :damage && &1.from))
+    Enum.map(& &1.from) |> Enum.uniq() |> Kernel.length()
     # Count misses
     total_shots =
       events
-      |> Enum.filter(&(&1.type in [:damage, :miss]))
-      |> Kernel.length()
+
+    Enum.filter(&(&1.type in [:damage, :miss])) |> Kernel.length()
 
     hits =
       events
-      |> Enum.filter(&(&1.type == :damage))
-      |> Kernel.length()
+
+    Enum.filter(&(&1.type == :damage)) |> Kernel.length()
 
     %{
       # This log perspective doesn't show outgoing damage

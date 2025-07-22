@@ -211,26 +211,28 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     # TODO: Filter by system_id and cutoff_time when system filtering is implemented
     influence_query =
       KillmailRaw
-      |> Ash.Query.filter(true)
-      |> Ash.Query.load([:participants])
-      |> Ash.Query.limit(100)
+
+    Ash.Query.filter(true)
+    Ash.Query.load([:participants])
+    Ash.Query.limit(100)
 
     case Ash.read(influence_query, domain: Api) do
       {:ok, killmails} ->
         # Count unique systems where participants from our system are active
         influenced_systems =
           killmails
-          |> Enum.filter(fn km ->
-            # Check if any participant is frequently active in our system
-            # This is simplified - would need historical data
-            Enum.any?(km.participants || [], fn p ->
-              # Simplified check - in reality would check historical activity
-              p.character_id && rem(p.character_id, 10) == rem(1, 10)
-            end)
+
+        Enum.filter(fn km ->
+          # Check if any participant is frequently active in our system
+          # This is simplified - would need historical data
+          Enum.any?(km.participants || [], fn p ->
+            # Simplified check - in reality would check historical activity
+            p.character_id && rem(p.character_id, 10) == rem(1, 10)
           end)
-          |> Enum.map(& &1.solar_system_id)
-          |> Enum.uniq()
-          |> length()
+        end)
+
+        Enum.map(& &1.solar_system_id) |> Enum.uniq()
+        length()
 
         # Influence radius based on activity spread
         cond do

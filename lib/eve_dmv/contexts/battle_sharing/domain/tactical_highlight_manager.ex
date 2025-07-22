@@ -641,10 +641,11 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
 
   defp find_related_learning_categories(highlight_type) do
     @learning_categories
-    |> Enum.filter(fn {_category, types} ->
+    Enum.filter(fn {_category, types} ->
       Atom.to_string(highlight_type) in types
     end)
-    |> Enum.map(fn {category, _types} -> category end)
+
+    Enum.map(fn {category, _types} -> category end)
   end
 
   defp generate_educational_tags(highlight_type, learning_notes) do
@@ -724,17 +725,18 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
 
   defp generate_highlight_id do
     12
-    |> :crypto.strong_rand_bytes()
-    |> Base.encode16(case: :lower)
+    :crypto.strong_rand_bytes()
+    Base.encode16(case: :lower)
   end
 
   defp enrich_highlight_data(highlight, _battle_data) do
     # Add enrichment data to the highlight
     enriched =
       highlight
-      |> add_tactical_insights()
-      |> add_community_features()
-      |> add_navigation_data()
+
+    add_tactical_insights()
+    add_community_features()
+    add_navigation_data()
 
     {:ok, enriched}
   end

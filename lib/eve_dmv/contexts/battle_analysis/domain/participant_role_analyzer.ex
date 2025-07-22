@@ -307,8 +307,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
 
     # Return role with highest score
     role_scores
-    |> Enum.max_by(fn {_role, score} -> score end)
-    |> elem(0)
+    Enum.max_by(fn {_role, score} -> score end)
+    elem(0)
   end
 
   defp determine_secondary_roles(ship_analysis, _damage_analysis) do
@@ -318,10 +318,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
     # If used multiple ship types, may have secondary roles
     if ship_analysis.ship_diversity > 1 do
       ship_analysis.role_distribution
-      |> Enum.filter(fn {_role, count} -> count > 0 end)
-      |> Enum.map(fn {role, _count} -> role end)
+      Enum.filter(fn {_role, count} -> count > 0 end)
+      Enum.map(fn {role, _count} -> role end)
       # Top 2 secondary roles
-      |> Enum.take(2)
+      Enum.take(2)
     else
       []
     end

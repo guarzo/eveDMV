@@ -126,16 +126,14 @@ defmodule EveDmv.Cache do
   Get statistics for all cache types.
   """
   @spec all_stats() :: map()
-  def all_stats do
-    CacheSupervisor.all_cache_stats()
+  def all_stats CacheSupervisor.all_cache_stats(do)
   end
 
   @doc """
   Clear all caches of all types.
   """
   @spec clear_all() :: :ok
-  def clear_all do
-    CacheSupervisor.clear_all_caches()
+  def clear_all CacheSupervisor.clear_all_caches(do)
   end
 
   # Convenience functions for specific data types

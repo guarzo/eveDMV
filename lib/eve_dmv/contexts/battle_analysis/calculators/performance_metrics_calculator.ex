@@ -525,8 +525,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Calculators.PerformanceMetricsCalculato
 
   defp get_primary_damage_type(damage_breakdown) do
     damage_breakdown
-    |> Enum.max_by(fn {_type, amount} -> amount end, fn -> {"Unknown", 0} end)
-    |> elem(0)
+    Enum.max_by(fn {_type, amount} -> amount end, fn -> {"Unknown", 0} end)
+    elem(0)
   end
 
   defp calculate_damage_diversity(damage_breakdown) do

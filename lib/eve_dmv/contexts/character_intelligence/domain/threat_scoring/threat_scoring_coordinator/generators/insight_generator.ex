@@ -54,21 +54,25 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
       # Query killmails where character was involved as victim or attacker
       victim_killmails =
         KillmailRaw
-        |> Api.read!()
-        |> Enum.filter(fn km ->
-          km.victim_character_id == character_id and
-            km.killmail_time >= thirty_days_ago
-        end)
+
+      Api.read!()
+
+      Enum.filter(fn km ->
+        km.victim_character_id == character_id and
+          km.killmail_time >= thirty_days_ago
+      end)
 
       attacker_killmails =
         KillmailRaw
-        |> Api.read!()
-        |> Enum.filter(fn km ->
-          km.killmail_time >= thirty_days_ago and
-            Enum.any?(km.attackers || [], fn attacker ->
-              attacker.character_id == character_id
-            end)
-        end)
+
+      Api.read!()
+
+      Enum.filter(fn km ->
+        km.killmail_time >= thirty_days_ago and
+          Enum.any?(km.attackers || [], fn attacker ->
+            attacker.character_id == character_id
+          end)
+      end)
 
       all_killmails = Enum.uniq_by(victim_killmails ++ attacker_killmails, & &1.killmail_id)
 
@@ -159,19 +163,19 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
   # Analyze preferred target ship types
   defp analyze_target_preferences(killmails) do
     killmails
-    |> Enum.filter(fn km -> is_integer(km.victim_ship_type_id) end)
-    |> Enum.map(& &1.victim_ship_type_id)
-    |> Enum.frequencies()
-    |> Enum.sort_by(fn {_, count} -> count end, :desc)
-    |> Enum.take(5)
+    Enum.filter(fn km -> is_integer(km.victim_ship_type_id) end)
+    Enum.map(& &1.victim_ship_type_id) |> Enum.frequencies()
+    Enum.sort_by(fn {_, count} -> count end, :desc)
+    Enum.take(5)
   end
 
   # Analyze fleet participation patterns (average fleet size)
   defp analyze_fleet_participation(killmails) do
     fleet_sizes =
       killmails
-      |> Enum.map(fn km -> length(km.attackers || []) end)
-      |> Enum.filter(fn size -> size > 0 end)
+
+    Enum.map(fn km -> length(km.attackers || []) end)
+    Enum.filter(fn size -> size > 0 end)
 
     case fleet_sizes do
       [] -> 0.0
@@ -182,11 +186,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
   # Analyze activity by hour of day
   defp analyze_timezone_patterns(killmails) do
     killmails
-    |> Enum.filter(fn km -> km.killmail_time != nil end)
-    |> Enum.map(fn km -> km.killmail_time.hour end)
-    |> Enum.frequencies()
-    |> Enum.sort_by(fn {_, count} -> count end, :desc)
-    |> Enum.take(3)
+    Enum.filter(fn km -> km.killmail_time != nil end)
+    Enum.map(fn km -> km.killmail_time.hour end) |> Enum.frequencies()
+    Enum.sort_by(fn {_, count} -> count end, :desc)
+    Enum.take(3)
   end
 
   # Calculate overall activity level (killmails per day)

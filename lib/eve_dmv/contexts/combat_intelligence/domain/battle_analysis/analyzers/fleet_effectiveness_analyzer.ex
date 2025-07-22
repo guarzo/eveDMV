@@ -166,7 +166,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Fle
     ship_ids = MapSet.new(ships, & &1.character_id)
 
     killmails
-    |> Enum.count(fn km -> MapSet.member?(ship_ids, km.victim_character_id) end)
+    Enum.count(fn km -> MapSet.member?(ship_ids, km.victim_character_id) end)
   end
 
   @doc """
@@ -290,8 +290,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Fle
     # Determine doctrine based on dominant ship class
     dominant_class =
       ship_classes
-      |> Enum.max_by(fn {_class, count} -> count end, fn -> {:unknown, 0} end)
-      |> elem(0)
+
+    Enum.max_by(fn {_class, count} -> count end, fn -> {:unknown, 0} end)
+    elem(0)
 
     case dominant_class do
       :battleship -> :battleship_doctrine

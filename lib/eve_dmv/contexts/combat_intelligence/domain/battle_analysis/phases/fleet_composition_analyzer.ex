@@ -52,19 +52,21 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
     # Performance metrics per ship class
     performance_analysis =
       ship_classes
-      |> Enum.map(fn {ship_class, count} ->
-        class_participants =
-          Enum.filter(
-            participants,
-            &(ShipClassificationAnalyzer.classify_ship_role(&1) == ship_class)
-          )
 
-        performance_metrics =
-          calculate_ship_class_performance(ship_class, class_participants, killmails)
+    Enum.map(fn {ship_class, count} ->
+      class_participants =
+        Enum.filter(
+          participants,
+          &(ShipClassificationAnalyzer.classify_ship_role(&1) == ship_class)
+        )
 
-        {ship_class, performance_metrics}
-      end)
-      |> Enum.into(%{})
+      performance_metrics =
+        calculate_ship_class_performance(ship_class, class_participants, killmails)
+
+      {ship_class, performance_metrics}
+    end)
+
+    Enum.into(%{})
 
     # Cross-class interaction analysis
     interaction_analysis = analyze_cross_class_interactions(performance_analysis, killmails)

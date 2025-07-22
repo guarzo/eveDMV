@@ -313,33 +313,37 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
   defp enhance_character_battles(battles, _character_id) do
     Enum.map(battles, fn battle ->
       battle
-      |> Map.put(:character_participation, %{
+
+      Map.put(:character_participation, %{
         role: Map.get(battle, "participation_type", "unknown"),
         kills: if(Map.get(battle, "participation_type") == "kill", do: 1, else: 0),
         losses: if(Map.get(battle, "participation_type") == "loss", do: 1, else: 0)
       })
-      |> Map.put(:battle_time, Map.get(battle, "killmail_time"))
-      |> Map.put(:total_participants, Map.get(battle, "attacker_count", 0))
+
+      Map.put(:battle_time, Map.get(battle, "killmail_time"))
+      Map.put(:total_participants, Map.get(battle, "attacker_count", 0))
       # Each row is one killmail
-      |> Map.put(:killmail_count, 1)
-      |> Map.put(:total_isk_destroyed, Map.get(battle, "total_value", 0))
-      |> atomize_keys()
+      Map.put(:killmail_count, 1)
+      Map.put(:total_isk_destroyed, Map.get(battle, "total_value", 0))
+      atomize_keys()
     end)
   end
 
   defp enhance_corporation_battles(battles, _corporation_id) do
     Enum.map(battles, fn battle ->
       battle
-      |> Map.put(:battle_time, Map.get(battle, "killmail_time"))
-      |> Map.put(:total_participants, Map.get(battle, "attacker_count", 0))
+      Map.put(:battle_time, Map.get(battle, "killmail_time"))
+      Map.put(:total_participants, Map.get(battle, "attacker_count", 0))
       # Each row is one killmail
-      |> Map.put(:killmail_count, 1)
-      |> Map.put(:total_isk_destroyed, Map.get(battle, "total_value", 0))
-      |> Map.put(
+      Map.put(:killmail_count, 1)
+      Map.put(:total_isk_destroyed, Map.get(battle, "total_value", 0))
+
+      Map.put(
         :coordination_level,
         determine_coordination_level(Map.get(battle, "corp_members_involved", 0))
       )
-      |> atomize_keys()
+
+      atomize_keys()
     end)
   end
 
@@ -356,7 +360,7 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
 
   defp atomize_keys(map) when is_map(map) do
     map
-    |> Enum.map(fn {k, v} -> {String.to_existing_atom(k), v} end)
-    |> Enum.into(%{})
+    Enum.map(fn {k, v} -> {String.to_existing_atom(k), v} end)
+    Enum.into(%{})
   end
 end

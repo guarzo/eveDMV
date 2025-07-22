@@ -217,13 +217,15 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
     # Score each doctrine pattern
     doctrine_scores =
       @doctrine_patterns
-      |> Enum.map(fn {doctrine_key, pattern} ->
-        score = calculate_doctrine_score(ship_counts, pattern, fleet_size)
 
-        # Logger.debug("Doctrine #{doctrine_key}: score=#{score}, primary_ships=#{inspect(pattern.primary_ships)}, ship_counts=#{inspect(ship_counts)}")
-        {doctrine_key, pattern, score}
-      end)
-      |> Enum.sort_by(fn {_key, _pattern, score} -> score end, :desc)
+    Enum.map(fn {doctrine_key, pattern} ->
+      score = calculate_doctrine_score(ship_counts, pattern, fleet_size)
+
+      # Logger.debug("Doctrine #{doctrine_key}: score=#{score}, primary_ships=#{inspect(pattern.primary_ships)}, ship_counts=#{inspect(ship_counts)}")
+      {doctrine_key, pattern, score}
+    end)
+
+    Enum.sort_by(fn {_key, _pattern, score} -> score end, :desc)
 
     case doctrine_scores do
       [{best_doctrine, pattern, score} | _] when score >= @doctrine_match_threshold ->
@@ -303,23 +305,24 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
       # Sum up role scores from all ships
       role_totals =
         ship_role_data
-        |> Enum.reduce(%{}, fn ship_data, acc ->
-          case ship_data do
-            %{role_distribution: roles} ->
-              Enum.reduce(roles, acc, fn {role, score}, role_acc ->
-                Map.update(role_acc, role, score, &(&1 + score))
-              end)
 
-            _ ->
-              acc
-          end
-        end)
+      Enum.reduce(%{}, fn ship_data, acc ->
+        case ship_data do
+          %{role_distribution: roles} ->
+            Enum.reduce(roles, acc, fn {role, score}, role_acc ->
+              Map.update(role_acc, role, score, &(&1 + score))
+            end)
+
+          _ ->
+            acc
+        end
+      end)
 
       # Convert to percentages
       role_totals
-      |> Enum.map(fn {role, total} -> {role, total / total_ships} end)
-      |> Enum.into(%{})
-      |> ensure_all_roles()
+      Enum.map(fn {role, total} -> {role, total / total_ships} end)
+      Enum.into(%{})
+      ensure_all_roles()
     end
   end
 
@@ -395,12 +398,14 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
 
     role_data_map =
       Repo.all(query)
-      |> Enum.map(fn ship -> {ship.ship_type_id, ship} end)
-      |> Enum.into(%{})
+
+    Enum.map(fn ship -> {ship.ship_type_id, ship} end)
+    Enum.into(%{})
 
     # Map each ship in fleet to its role data
     fleet_ships
-    |> Enum.map(fn ship_type_id ->
+
+    Enum.map(fn ship_type_id ->
       case Map.get(role_data_map, ship_type_id) do
         nil ->
           # No role data available, use default classification
@@ -459,8 +464,8 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
   defp calculate_primary_ship_score(ship_counts, primary_ships, fleet_size) do
     primary_count =
       primary_ships
-      |> Enum.map(&Map.get(ship_counts, &1, 0))
-      |> Enum.sum()
+
+    Enum.map(&Map.get(ship_counts, &1, 0)) |> Enum.sum()
 
     if primary_count == 0 do
       0.0
@@ -480,8 +485,8 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
   defp calculate_support_ship_score(ship_counts, support_ships, fleet_size) do
     support_count =
       support_ships
-      |> Enum.map(&Map.get(ship_counts, &1, 0))
-      |> Enum.sum()
+
+    Enum.map(&Map.get(ship_counts, &1, 0)) |> Enum.sum()
 
     if support_count == 0 do
       # Partial score if no support ships
@@ -512,9 +517,8 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
   defp calculate_logistics_score(ship_counts, support_ships, {min_ratio, max_ratio}, fleet_size) do
     logistics_count =
       support_ships
-      |> Enum.map(&Map.get(ship_counts, &1, 0))
-      |> Enum.sum()
 
+    Enum.map(&Map.get(ship_counts, &1, 0)) |> Enum.sum()
     logistics_ratio = logistics_count / fleet_size
 
     cond do
@@ -535,7 +539,8 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
 
     logistics_count =
       ship_role_data
-      |> Enum.count(fn ship -> ship.primary_role == "logistics" end)
+
+    Enum.count(fn ship -> ship.primary_role == "logistics" end)
 
     logistics_ratio = if total_ships > 0, do: logistics_count / total_ships, else: 0.0
 

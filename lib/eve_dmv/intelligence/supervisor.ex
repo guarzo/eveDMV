@@ -167,13 +167,15 @@ defmodule EveDmv.Intelligence.Supervisor do
 
   defp build_analyzer_breakdown(children) do
     children
-    |> Enum.group_by(fn {id, _pid, _type, _modules} ->
+
+    Enum.group_by(fn {id, _pid, _type, _modules} ->
       case id do
         {analyzer_module, _entity_id} -> analyzer_module
         _ -> :unknown
       end
     end)
-    |> Enum.map(fn {analyzer_module, analyzer_children} ->
+
+    Enum.map(fn {analyzer_module, analyzer_children} ->
       {analyzer_module, length(analyzer_children)}
     end)
     |> Map.new()

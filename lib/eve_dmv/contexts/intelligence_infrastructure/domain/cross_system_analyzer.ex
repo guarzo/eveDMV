@@ -666,8 +666,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
     unique_pilots =
       killmails
-      |> Enum.flat_map(&extract_all_participants_from_killmail/1)
-      |> Enum.uniq()
+
+    Enum.flat_map(&extract_all_participants_from_killmail/1) |> Enum.uniq()
 
     %{
       unique_pilots: length(unique_pilots),
@@ -699,11 +699,13 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     if length(killmails) > 0 do
       # Group killmails by hour and find peak
       killmails
-      |> Enum.group_by(fn km ->
+
+      Enum.group_by(fn km ->
         DateTime.to_time(DateTime.truncate(km.killmail_time, :second))
       end)
-      |> Enum.max_by(fn {_hour, kms} -> length(kms) end)
-      |> elem(0)
+
+      Enum.max_by(fn {_hour, kms} -> length(kms) end)
+      elem(0)
     else
       nil
     end
@@ -738,10 +740,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
     corp_participation =
       killmails
-      |> Enum.flat_map(&extract_corp_ids_from_killmail/1)
-      |> Enum.frequencies()
-      |> Enum.sort_by(fn {_corp_id, count} -> count end, :desc)
-      |> Enum.take(10)
+
+    Enum.flat_map(&extract_corp_ids_from_killmail/1) |> Enum.frequencies()
+    Enum.sort_by(fn {_corp_id, count} -> count end, :desc)
+    Enum.take(10)
 
     %{
       active_corporations: length(corp_participation),
@@ -1133,10 +1135,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
     aggressor_corps =
       killmails
-      |> Enum.flat_map(&extract_aggressor_corps/1)
-      |> Enum.frequencies()
-      |> Enum.sort_by(fn {_corp_id, count} -> count end, :desc)
-      |> Enum.take(5)
+
+    Enum.flat_map(&extract_aggressor_corps/1) |> Enum.frequencies()
+    Enum.sort_by(fn {_corp_id, count} -> count end, :desc)
+    Enum.take(5)
 
     %{
       hostile_corporations: aggressor_corps,
@@ -1712,7 +1714,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
   defp build_activity_timeline(killmails) do
     # Build detailed timeline of activity events
     killmails
-    |> Enum.map(fn km ->
+
+    Enum.map(fn km ->
       %{
         timestamp: km.killmail_time,
         event_type: :killmail,
@@ -1721,27 +1724,29 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
         activity_intensity: calculate_killmail_intensity(km)
       }
     end)
-    |> Enum.sort_by(& &1.timestamp)
+
+    Enum.sort_by(& &1.timestamp)
   end
 
   defp extract_pilot_activity_data(killmails) do
     # Extract detailed pilot activity patterns
     pilot_data =
       killmails
-      |> Enum.flat_map(&extract_all_participants_from_killmail/1)
-      |> Enum.frequencies()
-      |> Enum.map(fn {pilot_id, activity_count} ->
-        pilot_killmails = Enum.filter(killmails, &pilot_participated_in_killmail?(&1, pilot_id))
 
-        %{
-          pilot_id: pilot_id,
-          activity_count: activity_count,
-          first_seen: get_first_activity_time(pilot_killmails),
-          last_seen: get_last_activity_time(pilot_killmails),
-          activity_pattern: analyze_pilot_activity_pattern(pilot_killmails),
-          ship_preferences: extract_pilot_ship_usage(pilot_killmails, pilot_id)
-        }
-      end)
+    Enum.flat_map(&extract_all_participants_from_killmail/1) |> Enum.frequencies()
+
+    Enum.map(fn {pilot_id, activity_count} ->
+      pilot_killmails = Enum.filter(killmails, &pilot_participated_in_killmail?(&1, pilot_id))
+
+      %{
+        pilot_id: pilot_id,
+        activity_count: activity_count,
+        first_seen: get_first_activity_time(pilot_killmails),
+        last_seen: get_last_activity_time(pilot_killmails),
+        activity_pattern: analyze_pilot_activity_pattern(pilot_killmails),
+        ship_preferences: extract_pilot_ship_usage(pilot_killmails, pilot_id)
+      }
+    end)
 
     %{
       unique_pilots: length(pilot_data),
@@ -1922,9 +1927,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
       numerator =
         Enum.zip(values_a, values_b)
-        |> Enum.map(fn {a, b} -> (a - mean_a) * (b - mean_b) end)
-        |> Enum.sum()
 
+      Enum.map(fn {a, b} -> (a - mean_a) * (b - mean_b) end) |> Enum.sum()
       sum_sq_a = Enum.map(values_a, fn a -> :math.pow(a - mean_a, 2) end) |> Enum.sum()
       sum_sq_b = Enum.map(values_b, fn b -> :math.pow(b - mean_b, 2) end) |> Enum.sum()
 
@@ -3677,8 +3681,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Analyze corporation's territorial focus
     systems =
       killmails
-      |> Enum.map(& &1.solar_system_id)
-      |> Enum.frequencies()
+
+    Enum.map(& &1.solar_system_id) |> Enum.frequencies()
 
     if map_size(systems) > 0 do
       max_system_activity = Map.values(systems) |> Enum.max()
