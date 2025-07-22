@@ -74,19 +74,6 @@ defmodule EveDmv.Quality.MetricsCollector.CodeQualityMetrics do
     end
   end
 
-  defp group_issues_by_category(issues) do
-    issues
-    |> Enum.group_by(&Map.get(&1, "category", "unknown"))
-    |> Enum.map(fn {category, issue_list} -> {category, length(issue_list)} end)
-    |> Enum.into(%{})
-  end
-
-  defp group_issues_by_priority(issues) do
-    issues
-    |> Enum.group_by(&Map.get(&1, "priority", "unknown"))
-    |> Enum.map(fn {priority, issue_list} -> {priority, length(issue_list)} end)
-    |> Enum.into(%{})
-  end
 
   # Dialyzer analysis
 
@@ -231,11 +218,4 @@ defmodule EveDmv.Quality.MetricsCollector.CodeQualityMetrics do
     max(0, base_score - complexity_penalty - very_large_penalty + small_file_bonus)
   end
 
-  defp clean_env do
-    %{
-      "PATH" => System.get_env("PATH", ""),
-      "HOME" => System.get_env("HOME", ""),
-      "MIX_ENV" => System.get_env("MIX_ENV", "dev")
-    }
-  end
 end
