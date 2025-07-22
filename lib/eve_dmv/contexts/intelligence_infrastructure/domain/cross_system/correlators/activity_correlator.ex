@@ -38,7 +38,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
         0.0
       else
         # Use average correlation strength
-        total_correlation = correlations |> Enum.map(&abs/1) Enum.sum()
+        total_correlation = correlations |> Enum.map(&abs/1) |> Enum.sum()
         average_correlation = total_correlation / length(correlations)
 
         # Adjust for system count (more systems = potentially stronger network effect)

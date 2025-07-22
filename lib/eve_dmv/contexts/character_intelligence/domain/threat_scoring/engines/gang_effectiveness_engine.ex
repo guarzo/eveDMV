@@ -197,8 +197,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
     if map_size(ship_roles) == 0 do
       0.5
     else
-      total_usage = Map.values(ship_roles) |> Enum.sum()
-      primary_role_usage = Map.values(ship_roles) |> Enum.max()
+      total_usage = Enum.sum(Map.values(ship_roles))
+      primary_role_usage = Enum.max(Map.values(ship_roles))
 
       # Good role consistency means specialization in 1-2 roles
       consistency_ratio = primary_role_usage / total_usage
