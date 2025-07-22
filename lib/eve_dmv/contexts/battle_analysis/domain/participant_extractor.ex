@@ -12,8 +12,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
     victim_ids = extract_victim_character_ids(killmail)
     attacker_ids = extract_attacker_character_ids(killmail)
 
-    victim_ids ++ Enum.uniq(attacker_ids)
-    Enum.reject(&is_nil/1)
+    (victim_ids ++ Enum.uniq(attacker_ids))
+    |> Enum.reject(&is_nil/1)
   end
 
   @doc """
@@ -32,8 +32,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
     case killmail.raw_data do
       %{"attackers" => attackers} when is_list(attackers) ->
         attackers
-        Enum.map(&normalize_attacker_data/1)
-        Enum.reject(&is_nil/1)
+        |> Enum.map(&normalize_attacker_data/1)
+        |> Enum.reject(&is_nil/1)
 
       _ ->
         []
@@ -74,7 +74,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
     attackers = extract_attacker_details(killmail)
 
     [victim | attackers]
-    Enum.reject(&is_nil/1)
+    |> Enum.reject(&is_nil/1)
   end
 
   @doc """
@@ -86,8 +86,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
     all_participants = [victim | attackers]
 
     all_participants
-    Enum.map(& &1[:corporation_id]) |> Enum.uniq()
-    Enum.reject(&is_nil/1)
+    |> Enum.map(& &1[:corporation_id])
+    |> Enum.uniq()
+    |> Enum.reject(&is_nil/1)
   end
 
   @doc """

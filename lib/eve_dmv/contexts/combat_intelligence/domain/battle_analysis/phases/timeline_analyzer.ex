@@ -22,23 +22,24 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
 
       # Build detailed timeline events with context
       timeline_events =
-        Enum.with_index(sorted_killmails)
+        sorted_killmails
+        |> Enum.with_index()
+        |> Enum.map(fn {killmail, index} ->
+          prev_killmail = if index > 0, do: Enum.at(sorted_killmails, index - 1), else: nil
 
-      Enum.map(fn {killmail, index} ->
-        prev_killmail = if index > 0, do: Enum.at(sorted_killmails, index - 1), else: nil
-
-        %{
-          sequence: index + 1,
-          timestamp: killmail.killmail_time,
-          event_type: categorize_event_type(killmail),
-          victim: extract_victim_summary(killmail),
-          attackers: extract_attacker_summary(killmail),
-          location: extract_location_summary(killmail),
-          tactical_significance: analyze_tactical_significance(killmail, index, sorted_killmails),
-          time_since_last: calculate_time_since_last(killmail, prev_killmail),
-          accumulated_value: calculate_accumulated_value(sorted_killmails, index)
-        }
-      end)
+          %{
+            sequence: index + 1,
+            timestamp: killmail.killmail_time,
+            event_type: categorize_event_type(killmail),
+            victim: extract_victim_summary(killmail),
+            attackers: extract_attacker_summary(killmail),
+            location: extract_location_summary(killmail),
+            tactical_significance:
+              analyze_tactical_significance(killmail, index, sorted_killmails),
+            time_since_last: calculate_time_since_last(killmail, prev_killmail),
+            accumulated_value: calculate_accumulated_value(sorted_killmails, index)
+          }
+        end)
 
       # Analyze timeline for phases and patterns
       phases = identify_battle_phases(timeline_events, sorted_killmails)
@@ -104,12 +105,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
 
       focus_patterns =
         time_windows
-
-      Enum.map(fn window ->
-        analyze_window_focus_fire(window)
-      end)
-
-      aggregate_focus_patterns()
+        |> Enum.map(fn window ->
+          analyze_window_focus_fire(window)
+        end)
+        |> aggregate_focus_patterns()
 
       # Calculate metrics based on patterns
       effectiveness = calculate_focus_fire_effectiveness(focus_patterns)
@@ -195,9 +194,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
       # Process actual attacker data
       attackers
       # Limit to top 10 attackers
-      Enum.take(10)
-
-      Enum.map(fn attacker ->
+      |> Enum.take(10)
+      |> Enum.map(fn attacker ->
         %{
           character_id: Map.get(attacker, :character_id),
           character_name: Map.get(attacker, :character_name, "Unknown"),
@@ -299,8 +297,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
       phases = phases ++ detect_cleanup_phase(kill_rates, timeline_events)
 
       # Remove duplicates and sort chronologically
-      Enum.uniq(phases)
-      order_phases_chronologically()
+      phases
+      |> Enum.uniq()
+      |> order_phases_chronologically()
     end
   end
 
@@ -308,10 +307,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
     # Sophisticated key moment detection with context
     significant_events =
       timeline_events
-
-    Enum.filter(fn event ->
-      event.tactical_significance not in [:standard_kill]
-    end)
+      |> Enum.filter(fn event ->
+        event.tactical_significance not in [:standard_kill]
+      end)
 
     # Identify momentum shifts
     momentum_shifts = identify_momentum_shifts(timeline_events)
@@ -327,13 +325,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
 
     # Sort by timestamp and add impact scores
     all_moments
-    Enum.sort_by(& &1.timestamp)
-
-    Enum.map(fn moment ->
+    |> Enum.sort_by(& &1.timestamp)
+    |> Enum.map(fn moment ->
       Map.put(moment, :impact_score, calculate_moment_impact(moment, killmails))
     end)
-
-    Enum.filter(fn moment ->
+    |> Enum.filter(fn moment ->
       # Only keep high-impact moments
       moment.impact_score > 0.5
     end)
@@ -368,19 +364,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
 
       # Calculate intensity for each time window
       0..window_count
-
-      Enum.map(fn window_index ->
+      |> Enum.map(fn window_index ->
         window_start = DateTime.add(start_time, window_index * 60, :second)
         window_end = DateTime.add(window_start, 60, :second)
 
         # Get events in this window
         window_events =
           timeline_events
-
-        Enum.filter(fn event ->
-          DateTime.compare(event.timestamp, window_start) != :lt and
-            DateTime.compare(event.timestamp, window_end) == :lt
-        end)
+          |> Enum.filter(fn event ->
+            DateTime.compare(event.timestamp, window_start) != :lt and
+              DateTime.compare(event.timestamp, window_end) == :lt
+          end)
 
         # Calculate intensity based on multiple factors
         %{
@@ -426,47 +420,42 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
     # Check for rapid kill rate increases
     kill_rate_escalations =
       intensity_curve
-
-    Enum.chunk_every(3, 1, :discard)
-
-    Enum.filter(fn [prev, current, next] ->
-      # Detect significant increases in kill rate
-      current.kill_rate > prev.kill_rate * 1.5 and
-        next.kill_rate > current.kill_rate * 0.8
-    end)
-
-    Enum.map(fn [_, current, _] ->
-      %{
-        timestamp: current.timestamp,
-        type: :kill_rate_spike,
-        intensity_increase: current.kill_rate,
-        description: "Kill rate increased to #{Float.round(current.kill_rate, 1)} kills/min"
-      }
-    end)
+      |> Enum.chunk_every(3, 1, :discard)
+      |> Enum.filter(fn [prev, current, next] ->
+        # Detect significant increases in kill rate
+        current.kill_rate > prev.kill_rate * 1.5 and
+          next.kill_rate > current.kill_rate * 0.8
+      end)
+      |> Enum.map(fn [_, current, _] ->
+        %{
+          timestamp: current.timestamp,
+          type: :kill_rate_spike,
+          intensity_increase: current.kill_rate,
+          description: "Kill rate increased to #{Float.round(current.kill_rate, 1)} kills/min"
+        }
+      end)
 
     # Check for capital/super capital deployments
     capital_escalations =
       timeline_events
-
-    Enum.filter(fn event ->
-      event.tactical_significance in [:capital_kill, :super_capital_kill]
-    end)
-
-    Enum.map(fn event ->
-      %{
-        timestamp: event.timestamp,
-        type: :capital_deployment,
-        intensity_increase: 10.0,
-        description: "Capital ship engagement detected"
-      }
-    end)
+      |> Enum.filter(fn event ->
+        event.tactical_significance in [:capital_kill, :super_capital_kill]
+      end)
+      |> Enum.map(fn event ->
+        %{
+          timestamp: event.timestamp,
+          type: :capital_deployment,
+          intensity_increase: 10.0,
+          description: "Capital ship engagement detected"
+        }
+      end)
 
     # Check for high-value losses indicating commitment
     value_escalations = detect_value_based_escalations(timeline_events)
 
     # Combine and sort all escalation points
-    escalation_points ++ kill_rate_escalations ++ capital_escalations ++ value_escalations
-    Enum.sort_by(& &1.timestamp)
+    (escalation_points ++ kill_rate_escalations ++ capital_escalations ++ value_escalations)
+    |> Enum.sort_by(& &1.timestamp)
   end
 
   defp identify_de_escalation_points(timeline_events, intensity_curve) do
@@ -476,24 +465,21 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
     # Check for rapid kill rate decreases
     kill_rate_drops =
       intensity_curve
-
-    Enum.chunk_every(3, 1, :discard)
-
-    Enum.filter(fn [prev, current, next] ->
-      # Detect significant decreases in kill rate
-      current.kill_rate < prev.kill_rate * 0.5 and
-        next.kill_rate < prev.kill_rate * 0.6
-    end)
-
-    Enum.map(fn [prev, current, _] ->
-      %{
-        timestamp: current.timestamp,
-        type: :kill_rate_drop,
-        intensity_decrease: prev.kill_rate - current.kill_rate,
-        description:
-          "Kill rate dropped from #{Float.round(prev.kill_rate, 1)} to #{Float.round(current.kill_rate, 1)} kills/min"
-      }
-    end)
+      |> Enum.chunk_every(3, 1, :discard)
+      |> Enum.filter(fn [prev, current, next] ->
+        # Detect significant decreases in kill rate
+        current.kill_rate < prev.kill_rate * 0.5 and
+          next.kill_rate < prev.kill_rate * 0.6
+      end)
+      |> Enum.map(fn [prev, current, _] ->
+        %{
+          timestamp: current.timestamp,
+          type: :kill_rate_drop,
+          intensity_decrease: prev.kill_rate - current.kill_rate,
+          description:
+            "Kill rate dropped from #{Float.round(prev.kill_rate, 1)} to #{Float.round(current.kill_rate, 1)} kills/min"
+        }
+      end)
 
     # Check for extended periods without kills
     lull_starts = detect_combat_lulls(timeline_events)
@@ -502,8 +488,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
     withdrawal_points = detect_tactical_withdrawals(timeline_events)
 
     # Combine and sort all de-escalation points
-    de_escalation_points ++ kill_rate_drops ++ lull_starts ++ withdrawal_points
-    Enum.sort_by(& &1.timestamp)
+    (de_escalation_points ++ kill_rate_drops ++ lull_starts ++ withdrawal_points)
+    |> Enum.sort_by(& &1.timestamp)
   end
 
   # Additional helper functions for timeline analysis
@@ -525,8 +511,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
 
   defp calculate_accumulated_value(killmails, index) do
     killmails
-    Enum.take(index + 1)
-    Enum.map(&Map.get(&1, :total_value, 0)) |> Enum.sum()
+    |> Enum.take(index + 1)
+    |> Enum.map(&Map.get(&1, :total_value, 0))
+    |> Enum.sum()
   end
 
   defp calculate_battle_tempo(timeline_events) do
@@ -535,13 +522,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
     else
       avg_time_between =
         timeline_events
-
-      Enum.chunk_every(2, 1, :discard)
-
-      Enum.map(fn [e1, e2] -> DateTime.diff(e2.timestamp, e1.timestamp, :second) end)
-      |> Enum.sum()
-
-      Kernel./(length(timeline_events) - 1)
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.map(fn [e1, e2] -> DateTime.diff(e2.timestamp, e1.timestamp, :second) end)
+        |> Enum.sum()
+        |> Kernel./(length(timeline_events) - 1)
 
       cond do
         avg_time_between < 30 -> :very_fast
@@ -574,8 +558,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
     else
       sum_squared_diff =
         values
+        |> Enum.map(fn v -> :math.pow(v - mean, 2) end)
+        |> Enum.sum()
 
-      Enum.map(fn v -> :math.pow(v - mean, 2) end) |> Enum.sum()
       sum_squared_diff / length(values)
     end
   end
@@ -585,16 +570,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
       []
     else
       events
-
-      Enum.group_by(fn event ->
+      |> Enum.group_by(fn event ->
         # Group by time window
         start_time = List.first(events).timestamp
         seconds_since_start = DateTime.diff(event.timestamp, start_time, :second)
         div(seconds_since_start, window_seconds)
       end)
-
-      Enum.sort_by(&elem(&1, 0))
-      Enum.map(&elem(&1, 1))
+      |> Enum.sort_by(&elem(&1, 0))
+      |> Enum.map(&elem(&1, 1))
     end
   end
 
@@ -630,12 +613,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
     else
       switches =
         events
-
-      Enum.chunk_every(2, 1, :discard)
-
-      Enum.count(fn [e1, e2] ->
-        e1.victim.character_id != e2.victim.character_id
-      end)
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.count(fn [e1, e2] ->
+          e1.victim.character_id != e2.victim.character_id
+        end)
 
       switches / (length(events) - 1)
     end
@@ -659,14 +640,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
 
   defp identify_focus_windows(time_windows) do
     # Identify windows with strong focus fire
-    Enum.with_index(time_windows)
-
-    Enum.filter(fn {window, _idx} ->
+    time_windows
+    |> Enum.with_index()
+    |> Enum.filter(fn {window, _idx} ->
       length(window) > 2 and
         analyze_window_focus_fire(window).focus_ratio > 0.7
     end)
-
-    Enum.map(fn {window, idx} ->
+    |> Enum.map(fn {window, idx} ->
       %{
         window_index: idx,
         start_time: List.first(window).timestamp,
@@ -679,9 +659,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
   defp analyze_target_priorities(events) do
     # Analyze which ship types were prioritized
     events
-    Enum.group_by(& &1.tactical_significance)
-
-    Enum.map(fn {sig, evts} ->
+    |> Enum.group_by(& &1.tactical_significance)
+    |> Enum.map(fn {sig, evts} ->
       {sig, %{count: length(evts), percentage: length(evts) / length(events)}}
     end)
     |> Map.new()
@@ -702,9 +681,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
       []
     else
       events
-      Enum.chunk_every(5, 1, :discard)
-      Enum.filter(&is_momentum_shift/1)
-      Enum.map(&create_momentum_shift_moment/1)
+      |> Enum.chunk_every(5, 1, :discard)
+      |> Enum.filter(&is_momentum_shift/1)
+      |> Enum.map(&create_momentum_shift_moment/1)
     end
   end
 
@@ -757,9 +736,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
 
   defp categorize_targets(events) do
     events
-    Enum.group_by(& &1.tactical_significance)
-
-    Enum.map(fn {category, evts} ->
+    |> Enum.group_by(& &1.tactical_significance)
+    |> Enum.map(fn {category, evts} ->
       {category, length(evts)}
     end)
     |> Map.new()
@@ -771,8 +749,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
 
     priority_kills =
       events
-
-    Enum.filter(fn e -> e.tactical_significance in priority_targets end) |> Enum.with_index()
+      |> Enum.filter(fn e -> e.tactical_significance in priority_targets end)
+      |> Enum.with_index()
 
     if Enum.empty?(priority_kills) do
       0.5
@@ -780,10 +758,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
       # Higher score if priority targets were killed early
       scores =
         priority_kills
-
-      Enum.map(fn {_event, idx} ->
-        1.0 - idx / length(events)
-      end)
+        |> Enum.map(fn {_event, idx} ->
+          1.0 - idx / length(events)
+        end)
 
       Enum.sum(scores) / length(priority_kills)
     end
@@ -810,9 +787,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
     # Evaluate if targets were selected optimally
     priority_score =
       events
-
-    Enum.map(& &1.tactical_significance)
-    score_target_sequence()
+      |> Enum.map(& &1.tactical_significance)
+      |> score_target_sequence()
 
     min(1.0, priority_score)
   end
@@ -969,7 +945,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
     }
 
     phases
-    Enum.sort_by(&Map.get(phase_order, &1, 99))
+    |> Enum.sort_by(&Map.get(phase_order, &1, 99))
   end
 
   defp event_to_key_moment(event) do
@@ -989,18 +965,15 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
       # Group by time windows and analyze alliance performance
       windows =
         killmails
-
-      Enum.sort_by(& &1.killmail_time)
-      Enum.chunk_every(5, 1, :discard)
+        |> Enum.sort_by(& &1.killmail_time)
+        |> Enum.chunk_every(5, 1, :discard)
 
       windows
-      Enum.chunk_every(2, 1, :discard)
-
-      Enum.filter(fn [w1, w2] ->
+      |> Enum.chunk_every(2, 1, :discard)
+      |> Enum.filter(fn [w1, w2] ->
         alliance_swing_detected(w1, w2)
       end)
-
-      Enum.map(fn [_, w2] ->
+      |> Enum.map(fn [_, w2] ->
         %{
           timestamp: List.first(w2).killmail_time,
           significance: :turning_point,
@@ -1032,7 +1005,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
 
   defp calculate_window_value(events) do
     events
-    Enum.map(& &1.accumulated_value) |> Enum.sum()
+    |> Enum.map(& &1.accumulated_value)
+    |> Enum.sum()
   end
 
   defp calculate_window_significance(events) do
@@ -1048,7 +1022,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
     }
 
     events
-    Enum.map(fn e -> Map.get(sig_scores, e.tactical_significance, 1) end) |> Enum.sum()
+    |> Enum.map(fn e -> Map.get(sig_scores, e.tactical_significance, 1) end)
+    |> Enum.sum()
   end
 
   defp calculate_overall_intensity(events) do
@@ -1068,9 +1043,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
   defp identify_burst_periods(intensity_data) do
     # Periods of very high activity
     intensity_data
-    Enum.filter(&(&1.overall_intensity > 50))
-
-    Enum.map(fn period ->
+    |> Enum.filter(&(&1.overall_intensity > 50))
+    |> Enum.map(fn period ->
       %{
         start: period.timestamp,
         intensity: period.overall_intensity,
@@ -1082,13 +1056,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
   defp identify_sustained_combat(intensity_data) do
     # Periods of consistent moderate+ activity
     intensity_data
-    Enum.chunk_every(3, 1, :discard)
-
-    Enum.filter(fn chunk ->
+    |> Enum.chunk_every(3, 1, :discard)
+    |> Enum.filter(fn chunk ->
       Enum.all?(chunk, &(&1.overall_intensity > 20))
     end)
-
-    Enum.map(fn chunk ->
+    |> Enum.map(fn chunk ->
       %{
         start: List.first(chunk).timestamp,
         end: List.last(chunk).timestamp,
@@ -1100,9 +1072,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
   defp identify_lull_periods(intensity_data) do
     # Periods of low/no activity
     intensity_data
-    Enum.filter(&(&1.overall_intensity < 10))
-
-    Enum.map(fn period ->
+    |> Enum.filter(&(&1.overall_intensity < 10))
+    |> Enum.map(fn period ->
       %{
         timestamp: period.timestamp,
         # 1 minute windows
@@ -1145,14 +1116,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
   defp detect_value_based_escalations(events) do
     # Detect escalations based on increasing kill values
     events
-    Enum.chunk_every(3, 1, :discard)
-
-    Enum.filter(fn chunk ->
+    |> Enum.chunk_every(3, 1, :discard)
+    |> Enum.filter(fn chunk ->
       values = Enum.map(chunk, & &1.accumulated_value)
       ascending_values?(values)
     end)
-
-    Enum.map(fn chunk ->
+    |> Enum.map(fn chunk ->
       middle = Enum.at(chunk, 1)
 
       %{
@@ -1170,15 +1139,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
       []
     else
       events
-      Enum.chunk_every(3, 1, :discard)
-
-      Enum.filter(fn [e1, e2, e3] ->
+      |> Enum.chunk_every(3, 1, :discard)
+      |> Enum.filter(fn [e1, e2, e3] ->
         # 5+ minute gaps
         DateTime.diff(e2.timestamp, e1.timestamp, :second) > 300 or
           DateTime.diff(e3.timestamp, e2.timestamp, :second) > 300
       end)
-
-      Enum.map(fn [_, e2, _] ->
+      |> Enum.map(fn [_, e2, _] ->
         %{
           timestamp: e2.timestamp,
           type: :combat_lull,
@@ -1215,12 +1182,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
     else
       time_gaps =
         events
-
-      Enum.chunk_every(2, 1, :discard)
-
-      Enum.map(fn [e1, e2] ->
-        DateTime.diff(e2.timestamp, e1.timestamp, :second)
-      end)
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.map(fn [e1, e2] ->
+          DateTime.diff(e2.timestamp, e1.timestamp, :second)
+        end)
 
       avg_gap = average(time_gaps)
       variance = calculate_variance(time_gaps |> Enum.map(&(&1 / 1)), avg_gap)
@@ -1242,12 +1207,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
     else
       time_gaps =
         events
-
-      Enum.chunk_every(2, 1, :discard)
-
-      Enum.map(fn [e1, e2] ->
-        DateTime.diff(e2.timestamp, e1.timestamp, :second)
-      end)
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.map(fn [e1, e2] ->
+          DateTime.diff(e2.timestamp, e1.timestamp, :second)
+        end)
 
       # Count gaps under 2 minutes
       sustained = Enum.count(time_gaps, &(&1 < 120))
@@ -1258,15 +1221,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
   defp identify_tactical_pauses(events) do
     # Identify deliberate pauses in combat
     events
-    Enum.chunk_every(2, 1, :discard)
-
-    Enum.filter(fn [e1, e2] ->
+    |> Enum.chunk_every(2, 1, :discard)
+    |> Enum.filter(fn [e1, e2] ->
       gap = DateTime.diff(e2.timestamp, e1.timestamp, :second)
       # 2-10 minute gaps
       gap > 120 and gap < 600
     end)
-
-    length()
+    |> length()
   end
 
   defp is_momentum_shift(chunk) do
@@ -1348,22 +1309,22 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
   defp score_target_sequence(significances) do
     # Score how well targets were prioritized
     scores =
-      Enum.with_index(significances)
+      significances
+      |> Enum.with_index()
+      |> Enum.map(fn {sig, idx} ->
+        priority =
+          case sig do
+            :logistics_kill -> 10
+            :command_kill -> 9
+            :ewar_kill -> 8
+            :capital_kill -> 7
+            :high_value_kill -> 6
+            _ -> 3
+          end
 
-    Enum.map(fn {sig, idx} ->
-      priority =
-        case sig do
-          :logistics_kill -> 10
-          :command_kill -> 9
-          :ewar_kill -> 8
-          :capital_kill -> 7
-          :high_value_kill -> 6
-          _ -> 3
-        end
-
-      # Higher score for killing priority targets early
-      priority * (1.0 - idx / length(significances))
-    end)
+        # Higher score for killing priority targets early
+        priority * (1.0 - idx / length(significances))
+      end)
 
     if Enum.empty?(scores), do: 0.5, else: average(scores) / 10
   end

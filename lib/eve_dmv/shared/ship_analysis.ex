@@ -92,14 +92,10 @@ defmodule EveDmv.Shared.ShipAnalysis do
       end
 
     secondary_role =
-      sorted_roles
-
-    Enum.at(1)
-
-    case do
-      nil -> nil
-      {role, _data} -> role
-    end
+      case sorted_roles |> Enum.at(1) do
+        nil -> nil
+        {role, _data} -> role
+      end
 
     %{
       role_distribution: role_percentages,
@@ -126,9 +122,10 @@ defmodule EveDmv.Shared.ShipAnalysis do
 
     sum_products =
       sorted_usage
+      |> Enum.with_index(1)
+      |> Enum.map(fn {usage, index} -> usage * index end)
+      |> Enum.sum()
 
-    Enum.with_index(1)
-    Enum.map(fn {usage, index} -> usage * index end) |> Enum.sum()
     mean_usage = Enum.sum(sorted_usage) / n
 
     gini = 2 * sum_products / (n * n * mean_usage) - (n + 1) / n
@@ -186,9 +183,8 @@ defmodule EveDmv.Shared.ShipAnalysis do
 
     max_percentage =
       Map.values(role_percentages)
-
-    Enum.map(& &1.percentage)
-    Enum.max(fn -> 0.0 end)
+      |> Enum.map(& &1.percentage)
+      |> Enum.max(fn -> 0.0 end)
 
     max_percentage
   end
@@ -216,9 +212,9 @@ defmodule EveDmv.Shared.ShipAnalysis do
 
     combat_percentage =
       role_percentages
-
-    Enum.filter(fn {role, _data} -> role in combat_roles end)
-    Enum.map(fn {_role, data} -> data.percentage end) |> Enum.sum()
+      |> Enum.filter(fn {role, _data} -> role in combat_roles end)
+      |> Enum.map(fn {_role, data} -> data.percentage end)
+      |> Enum.sum()
 
     cond do
       combat_percentage > 0.8 -> :combat_focused

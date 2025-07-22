@@ -51,10 +51,10 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManager do
   defp get_current_sde_version do
     # Get the most recent SDE version from any solar system record
     case Ash.Query.new(SolarSystem)
-    Ash.Query.filter(not is_nil(sde_version))
-    Ash.Query.sort([{:last_updated, :desc}])
-    Ash.Query.limit(1)
-    Ash.read(domain: Api) do
+         |> Ash.Query.filter(not is_nil(sde_version))
+         |> Ash.Query.sort([{:last_updated, :desc}])
+         |> Ash.Query.limit(1)
+         |> Ash.read(domain: Api) do
       {:ok, [%{sde_version: version}]} -> {:ok, version}
       {:ok, []} -> {:ok, nil}
       {:error, error} -> {:error, error}
@@ -74,7 +74,7 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManager do
           {:error, reason} ->
             Logger.warning("Could not extract last-modified date: #{reason}")
             # Fallback to current timestamp as version
-            {:ok, DateTime.utc_now() DateTime.to_iso8601()}
+            {:ok, DateTime.utc_now() |> DateTime.to_iso8601()}
         end
 
       {:ok, %HTTPoison.Response{status_code: status}} ->
@@ -96,7 +96,7 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManager do
 
       nil ->
         # If no last-modified header, generate a timestamp-based version
-        {:ok, DateTime.utc_now() DateTime.to_iso8601()}
+        {:ok, DateTime.utc_now() |> DateTime.to_iso8601()}
     end
   end
 
@@ -137,7 +137,7 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManager do
   defp update_wormhole_classes(_version) do
     Logger.info("Updating wormhole classes data...")
 
-    WormholeClassLoader.load_wormhole_classes(case) do
+    case WormholeClassLoader.load_wormhole_classes() do
       {:ok, count} ->
         Logger.info("Successfully updated #{count} wormhole classes")
         {:ok, count}
@@ -153,7 +153,7 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManager do
 
     # Only update if reference files exist
     if File.exists?("tmp/wormholeSystems.json") and File.exists?("tmp/effects.json") do
-      WormholeEffectsLoader.load_wormhole_effects(case) do
+      case WormholeEffectsLoader.load_wormhole_effects() do
         {:ok, count} ->
           Logger.info("Successfully updated #{count} wormhole effects")
           {:ok, count}
@@ -173,13 +173,13 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManager do
 
     # Update a sample of systems to track the new version
     case Ash.Query.new(SolarSystem)
-    Ash.Query.limit(10)
-    Ash.read(domain: Api) do
+         |> Ash.Query.limit(10)
+         |> Ash.read(domain: Api) do
       {:ok, systems} ->
         update_time = DateTime.utc_now()
 
-    systems
-    Enum.each(fn system ->
+        systems
+        |> Enum.each(fn system ->
           Ash.update(
             system,
             %{

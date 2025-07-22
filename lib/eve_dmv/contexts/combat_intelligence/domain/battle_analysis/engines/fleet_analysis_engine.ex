@@ -15,7 +15,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
   """
   def analyze_side_ship_composition(participants) do
     participants
-    Enum.flat_map(&MapSet.to_list(&1.ships_used)) |> Enum.frequencies()
+    |> Enum.flat_map(&MapSet.to_list(&1.ships_used))
+    |> Enum.frequencies()
   end
 
   @doc """

@@ -13,7 +13,7 @@ defmodule EveDmv.QualityRegressionTest do
     test "credo issues remain below Sprint 22 target" do
       # Run credo and count issues using secure port approach
       {output, _exit_code} =
-        System.cmd("mix", ["credo", "--format=oneline"], stderr_to_stdout: true)
+        System.cmd("mix", ["credo", "--format=oneline"], stderr_to_stdout: true, env: %{})
 
       # Parse output to count issues
       issue_count =
@@ -33,7 +33,7 @@ defmodule EveDmv.QualityRegressionTest do
     test "compilation succeeds without warnings" do
       # Use secure approach with System.cmd 
       {output, _exit_code} =
-        System.cmd("mix", ["compile", "--warnings-as-errors"], stderr_to_stdout: true)
+        System.cmd("mix", ["compile", "--warnings-as-errors"], stderr_to_stdout: true, env: %{})
 
       # Check for error indicators in output instead of exit code
       refute String.contains?(output, "error:") or String.contains?(output, "Error:"),
@@ -43,7 +43,7 @@ defmodule EveDmv.QualityRegressionTest do
     test "formatting is consistent" do
       # Use secure approach with System.cmd
       {output, _exit_code} =
-        System.cmd("mix", ["format", "--check-formatted"], stderr_to_stdout: true)
+        System.cmd("mix", ["format", "--check-formatted"], stderr_to_stdout: true, env: %{})
 
       # Check for formatting error indicators in output
       refute String.contains?(output, "** (Mix)") or String.contains?(output, "not formatted"),

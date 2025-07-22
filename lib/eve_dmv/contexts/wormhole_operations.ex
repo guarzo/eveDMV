@@ -127,7 +127,8 @@ defmodule EveDmv.Contexts.WormholeOperations do
     }
   end
 
-  def refresh_wormhole_data_cache Infrastructure.WormholeDataProvider.refresh_cache(do)
+  def refresh_wormhole_data_cache do
+    Infrastructure.WormholeDataProvider.refresh_cache()
   end
 
   def calculate_system_strategic_value(system_id) do

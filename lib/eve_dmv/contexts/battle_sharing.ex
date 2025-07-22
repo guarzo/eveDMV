@@ -232,25 +232,25 @@ defmodule EveDmv.Contexts.BattleSharing do
       public_reports =
         sample_reports
         |> Enum.map(fn report ->
-        %{
-          report_id: report.report_id,
-          battle_id: report.battle_id,
-          creator: %{
-            character_id: report.creator_character_id,
-            character_name: "Battle Analyst #{report.creator_character_id}"
-          },
-          title: report.title,
-          description: report.description,
-          ratings: %{
-            average: report.metrics.average_rating,
-            count: report.metrics.total_ratings
-          },
-          visibility: report.visibility,
-          tags: report.tags,
-          created_at: report.created_at,
-          updated_at: report.updated_at
-        }
-      end)
+          %{
+            report_id: report.report_id,
+            battle_id: report.battle_id,
+            creator: %{
+              character_id: report.creator_character_id,
+              character_name: "Battle Analyst #{report.creator_character_id}"
+            },
+            title: report.title,
+            description: report.description,
+            ratings: %{
+              average: report.metrics.average_rating,
+              count: report.metrics.total_ratings
+            },
+            visibility: report.visibility,
+            tags: report.tags,
+            created_at: report.created_at,
+            updated_at: report.updated_at
+          }
+        end)
 
       {:ok, public_reports}
     rescue
@@ -329,25 +329,25 @@ defmodule EveDmv.Contexts.BattleSharing do
       public_reports =
         sorted_reports
         |> Enum.map(fn report ->
-        %{
-          report_id: report.report_id,
-          battle_id: report.battle_id,
-          title: report.title,
-          description: report.description,
-          ratings: %{
-            average: report.metrics.average_rating,
-            count: report.metrics.total_ratings
-          },
-          visibility: report.visibility,
-          tags: report.tags,
-          metrics: %{
-            views: report.metrics.views,
-            shares: report.metrics.shares
-          },
-          created_at: report.created_at,
-          updated_at: report.updated_at
-        }
-      end)
+          %{
+            report_id: report.report_id,
+            battle_id: report.battle_id,
+            title: report.title,
+            description: report.description,
+            ratings: %{
+              average: report.metrics.average_rating,
+              count: report.metrics.total_ratings
+            },
+            visibility: report.visibility,
+            tags: report.tags,
+            metrics: %{
+              views: report.metrics.views,
+              shares: report.metrics.shares
+            },
+            created_at: report.created_at,
+            updated_at: report.updated_at
+          }
+        end)
 
       {:ok, public_reports}
     rescue

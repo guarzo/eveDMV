@@ -1,9 +1,10 @@
 defmodule EveDmv.StaticData.ShipReferenceImporterTest do
   use EveDmv.DataCase, async: false
 
-  alias EveDmv.StaticData.ShipReferenceImporter
-  alias EveDmv.Repo
   import Ecto.Query
+
+  alias EveDmv.Repo
+  alias EveDmv.StaticData.ShipReferenceImporter
 
   describe "parse_ship_data/1" do
     test "parses ship data correctly" do

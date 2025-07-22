@@ -2,9 +2,10 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorkerTest do
   # Not async due to GenServer state
   use EveDmv.DataCase, async: false
 
-  alias EveDmv.Workers.ShipRoleAnalysisWorker
-  alias EveDmv.Repo
   import Ecto.Query
+
+  alias EveDmv.Repo
+  alias EveDmv.Workers.ShipRoleAnalysisWorker
 
   setup do
     # Clean up any existing ship role patterns from other tests

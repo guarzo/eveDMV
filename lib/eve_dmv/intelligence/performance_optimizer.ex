@@ -27,15 +27,15 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
     Logger.info("Optimizing bulk analysis for #{length(character_ids)} characters")
 
     character_ids
-    Enum.chunk_every(batch_size)
-    Task.async_stream(
+    |> Enum.chunk_every(batch_size)
+    |> Task.async_stream(
       fn batch ->
         process_character_batch(batch, use_cache)
       end,
       max_concurrency: max_concurrency,
       timeout: :timer.minutes(5)
     )
-    Enum.reduce({[], []}, fn
+    |> Enum.reduce({[], []}, fn
       {:ok, {successes, failures}}, {acc_success, acc_fail} ->
         {acc_success ++ successes, acc_fail ++ failures}
 
@@ -53,18 +53,19 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
     date_range =
       date_range ||
         {
-          DateTime.add(DateTime.utc_now(), -365, :day), |> DateTime.utc_now()
+          DateTime.add(DateTime.utc_now(), -365, :day),
+          DateTime.utc_now()
         }
 
     {_start_date, _end_date} = date_range
 
     # Use optimized query with proper indexing
     participant_query =
-    Ash.Query.new(Participant)
-    Ash.Query.filter(character_id: character_id)
-    Ash.Query.load(:killmail_enriched)
+      Ash.Query.new(Participant)
+      |> Ash.Query.filter(character_id: character_id)
+      |> Ash.Query.load(:killmail_enriched)
       # Prevent runaway queries
-    Ash.Query.limit(10_000)
+      |> Ash.Query.limit(10_000)
 
     case Ash.read(participant_query, domain: Api) do
       {:ok, participants} ->
@@ -233,20 +234,20 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
 
     # Batch load character stats
     character_ids
-    Enum.chunk_every(100)
-    Enum.flat_map(fn batch ->
+    |> Enum.chunk_every(100)
+    |> Enum.flat_map(fn batch ->
       # This would be an optimized batch query in a real implementation
       Enum.map(batch, fn char_id ->
         case Ash.Query.new(CharacterStats)
-    Ash.Query.filter(character_id: char_id)
-    Ash.Query.limit(1)
-    Ash.read(domain: Api) do
+             |> Ash.Query.filter(character_id: char_id)
+             |> Ash.Query.limit(1)
+             |> Ash.read(domain: Api) do
           {:ok, [stats]} -> {char_id, stats}
           _ -> {char_id, nil}
         end
       end)
     end)
-    Enum.into(%{})
+    |> Enum.into(%{})
   end
 
   defp preload_vetting_data(character_ids) do
@@ -254,8 +255,8 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
 
     # Batch load vetting data
     character_ids
-    Enum.chunk_every(100)
-    Enum.flat_map(fn batch ->
+    |> Enum.chunk_every(100)
+    |> Enum.flat_map(fn batch ->
       Enum.map(batch, fn char_id ->
         case WHVetting.get_by_character(char_id) do
           {:ok, [vetting]} -> {char_id, vetting}
@@ -263,7 +264,7 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
         end
       end)
     end)
-    Enum.into(%{})
+    |> Enum.into(%{})
   end
 
   defp preload_killmail_data(character_ids) do
@@ -273,19 +274,19 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
     _cutoff_date = DateTime.add(DateTime.utc_now(), -90, :day)
 
     character_ids
-    Enum.chunk_every(50)
-    Enum.flat_map(fn batch ->
+    |> Enum.chunk_every(50)
+    |> Enum.flat_map(fn batch ->
       # Batch query for killmail data
       participant_query =
-    Ash.Query.new(Participant)
-    Ash.Query.filter(character_id in ^batch)
-    Ash.Query.limit(5000)
+        Ash.Query.new(Participant)
+        |> Ash.Query.filter(character_id in ^batch)
+        |> Ash.Query.limit(5000)
 
       case Ash.read(participant_query, domain: Api) do
         {:ok, participants} ->
-        participants
-    Enum.group_by(& &1.character_id)
-    Enum.map(fn {char_id, char_participants} ->
+          participants
+          |> Enum.group_by(& &1.character_id)
+          |> Enum.map(fn {char_id, char_participants} ->
             {char_id, char_participants}
           end)
 
@@ -293,7 +294,7 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
           Enum.map(batch, fn char_id -> {char_id, []} end)
       end
     end)
-    Enum.into(%{})
+    |> Enum.into(%{})
   end
 
   defp determine_warming_strategy(cache_stats) do

@@ -177,8 +177,8 @@ defmodule EveDmv.Intelligence.SystemInhabitant do
 
       change(fn changeset, _context ->
         changeset
-        Ash.Changeset.force_change_attribute(:first_seen_at, DateTime.utc_now())
-        Ash.Changeset.force_change_attribute(:last_seen_at, DateTime.utc_now())
+        |> Ash.Changeset.force_change_attribute(:first_seen_at, DateTime.utc_now())
+        |> Ash.Changeset.force_change_attribute(:last_seen_at, DateTime.utc_now())
       end)
     end
 
@@ -207,9 +207,9 @@ defmodule EveDmv.Intelligence.SystemInhabitant do
 
       change(fn changeset, _context ->
         changeset
-        Ash.Changeset.force_change_attribute(:present, true)
-        Ash.Changeset.force_change_attribute(:last_seen_at, DateTime.utc_now())
-        Ash.Changeset.force_change_attribute(:departure_time, nil)
+        |> Ash.Changeset.force_change_attribute(:present, true)
+        |> Ash.Changeset.force_change_attribute(:last_seen_at, DateTime.utc_now())
+        |> Ash.Changeset.force_change_attribute(:departure_time, nil)
       end)
     end
 
@@ -220,11 +220,11 @@ defmodule EveDmv.Intelligence.SystemInhabitant do
       accept([])
 
       change(fn changeset, _context ->
-        now = |> DateTime.utc_now()
-    changeset
-
-        Ash.Changeset.force_change_attribute(:present, false)
-        Ash.Changeset.force_change_attribute(:departure_time, now)
+        now = DateTime.utc_now()
+        
+        changeset
+        |> Ash.Changeset.force_change_attribute(:present, false)
+        |> Ash.Changeset.force_change_attribute(:departure_time, now)
       end)
     end
 

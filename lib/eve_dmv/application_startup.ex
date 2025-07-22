@@ -63,7 +63,8 @@ defmodule EveDmv.ApplicationStartup do
   end
 
   defp initialize_dns_resolution do
-    Logger.info("🔍 Initializing DNS resolution...") |> DnsResolver.initialize()
+    Logger.info("🔍 Initializing DNS resolution...")
+    DnsResolver.initialize()
   end
 
   defp run_connectivity_checks do
@@ -160,7 +161,8 @@ defmodule EveDmv.ApplicationStartup do
   defp initialize_performance_telemetry do
     Logger.info("📊 Initializing performance telemetry...")
 
-    try PerformanceTelemetry.attach_handlers(do)
+    try do
+      PerformanceTelemetry.attach_handlers()
       Logger.info("✅ Performance telemetry handlers attached successfully")
       :ok
     rescue

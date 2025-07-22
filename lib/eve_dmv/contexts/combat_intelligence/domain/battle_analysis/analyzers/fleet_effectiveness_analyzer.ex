@@ -166,7 +166,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Fle
     ship_ids = MapSet.new(ships, & &1.character_id)
 
     killmails
-    Enum.count(fn km -> MapSet.member?(ship_ids, km.victim_character_id) end)
+    |> Enum.count(fn km -> MapSet.member?(ship_ids, km.victim_character_id) end)
   end
 
   @doc """
@@ -196,11 +196,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Fle
 
       total_strength =
         ship_classes
-
-      Enum.reduce(0, fn {class, count}, acc ->
-        weight = Map.get(strength_weights, class, 10)
-        acc + count * weight
-      end)
+        |> Enum.reduce(0, fn {class, count}, acc ->
+          weight = Map.get(strength_weights, class, 10)
+          acc + count * weight
+        end)
 
       total_strength
     end
@@ -211,7 +210,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Fle
   """
   def rate_fleet_strength(total_strength) do
     cond do
-      total_strength >= 10000 -> :overwhelming
+      total_strength >= 10_000 -> :overwhelming
       total_strength >= 5000 -> :very_strong
       total_strength >= 2000 -> :strong
       total_strength >= 1000 -> :moderate
@@ -288,11 +287,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Fle
     ship_classes = ShipClassificationAnalyzer.classify_ships_by_class(participants)
 
     # Determine doctrine based on dominant ship class
-    dominant_class =
+    {dominant_class, _count} =
       ship_classes
-
-    Enum.max_by(fn {_class, count} -> count end, fn -> {:unknown, 0} end)
-    elem(0)
+      |> Enum.max_by(fn {_class, count} -> count end, fn -> {:unknown, 0} end)
 
     case dominant_class do
       :battleship -> :battleship_doctrine
@@ -489,11 +486,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Fle
 
       weighted_tankiness =
         ship_classes
-
-      Enum.reduce(0.0, fn {class, count}, acc ->
-        weight = Map.get(tank_weights, class, 0.3)
-        acc + weight * count
-      end)
+        |> Enum.reduce(0.0, fn {class, count}, acc ->
+          weight = Map.get(tank_weights, class, 0.3)
+          acc + weight * count
+        end)
 
       weighted_tankiness / total_ships
     end

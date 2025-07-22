@@ -219,24 +219,24 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
 
   defp calculate_tech_level_distribution(ship_usage) do
     total_usage =
-      Map.values(ship_usage) |> Enum.map(&Map.get(&1, "times_used", 0)) Enum.sum()
+      Map.values(ship_usage) |> Enum.map(&Map.get(&1, "times_used", 0)) |> Enum.sum()
 
     if total_usage == 0 do
       %{tech1: 0, tech2: 0, tech3: 0, faction: 0}
     else
       tech_counts =
-    ship_usage
-    Enum.reduce(%{tech1: 0, tech2: 0, tech3: 0, faction: 0}, fn {ship_type_id, usage_data},
-                                                                       acc ->
+        ship_usage
+        |> Enum.reduce(%{tech1: 0, tech2: 0, tech3: 0, faction: 0}, fn {ship_type_id, usage_data},
+                                                                         acc ->
           times_used = Map.get(usage_data, "times_used", 0)
           tech_level = classify_ship_tech_level(ship_type_id)
           Map.update(acc, tech_level, times_used, &(&1 + times_used))
         end)
 
       # Convert to percentages
-    tech_counts
-    Enum.map(fn {tech, count} -> {tech, count / total_usage} end)
-    Enum.into(%{})
+      tech_counts
+      |> Enum.map(fn {tech, count} -> {tech, count / total_usage} end)
+      |> Enum.into(%{})
     end
   end
 
@@ -292,15 +292,16 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
       0.0
     else
       ship_classes =
-    Map.keys(ship_usage)
-    Enum.map(fn ship_type_id_str ->
+        Map.keys(ship_usage)
+        |> Enum.map(fn ship_type_id_str ->
           ship_type_id = String.to_integer(ship_type_id_str)
 
           case EveDmv.StaticData.get_ship_class(ship_type_id) do
             {:ok, ship_class} -> ship_class
             {:error, _} -> :unknown
           end
-        end) |> Enum.uniq()
+        end) 
+        |> Enum.uniq()
       # Diversity is unique classes / total possible classes (simplified)
       # Approximate number of major ship classes
       length(ship_classes) / 15.0
@@ -312,18 +313,19 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
       %{highsec: 0, lowsec: 0, nullsec: 0, wspace: 0}
     else
       total_activity =
-    Map.values(active_systems)
-    Enum.map(fn system_data ->
+        Map.values(active_systems)
+        |> Enum.map(fn system_data ->
           Map.get(system_data, "kills", 0) + Map.get(system_data, "losses", 0)
-        end) |> Enum.sum()
+        end) 
+        |> Enum.sum()
       if total_activity == 0 do
         %{highsec: 0, lowsec: 0, nullsec: 0, wspace: 0}
       else
         security_activity =
-    active_systems
-    Enum.reduce(%{highsec: 0, lowsec: 0, nullsec: 0, wspace: 0}, fn {_system_id,
-                                                                              system_data},
-                                                                             acc ->
+          active_systems
+          |> Enum.reduce(%{highsec: 0, lowsec: 0, nullsec: 0, wspace: 0}, fn {_system_id,
+                                                                                system_data},
+                                                                               acc ->
             security = Map.get(system_data, "security", 0.0)
             activity = Map.get(system_data, "kills", 0) + Map.get(system_data, "losses", 0)
 
@@ -344,20 +346,20 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
           end)
 
         # Convert to percentages
-    security_activity
-    Enum.map(fn {sec_type, activity} -> {sec_type, activity / total_activity} end)
-    Enum.into(%{})
+        security_activity
+        |> Enum.map(fn {sec_type, activity} -> {sec_type, activity / total_activity} end)
+        |> Enum.into(%{})
       end
     end
   end
 
   defp find_most_active_system(active_systems) do
     if map_size(active_systems) == 0 do
-    nil
+      nil
     else
       {_system_id, most_active} =
-    active_systems
-    Enum.max_by(fn {_system_id, system_data} ->
+        active_systems
+        |> Enum.max_by(fn {_system_id, system_data} ->
           Map.get(system_data, "kills", 0) + Map.get(system_data, "losses", 0)
         end)
 
@@ -370,8 +372,8 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
       1.0
     else
       activities =
-    Map.values(active_systems)
-    Enum.map(fn system_data ->
+        Map.values(active_systems)
+        |> Enum.map(fn system_data ->
           Map.get(system_data, "kills", 0) + Map.get(system_data, "losses", 0)
         end)
 

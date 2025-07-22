@@ -119,15 +119,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Bat
       end)
 
     phase_events
-
-    Enum.filter(fn event ->
+    |> Enum.filter(fn event ->
       # Consider an event "key" if it meets certain criteria
       high_value_kill?(event) or
         capital_ship_kill?(event) or
         commander_kill?(event)
     end)
-
-    Enum.map(fn event ->
+    |> Enum.map(fn event ->
       %{
         timestamp: event.timestamp,
         event_type: determine_event_type(event),
@@ -136,8 +134,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Bat
         description: generate_event_description(event)
       }
     end)
-
-    Enum.sort_by(& &1.timestamp)
+    |> Enum.sort_by(& &1.timestamp)
   end
 
   @doc """

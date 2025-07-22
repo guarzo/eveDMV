@@ -29,7 +29,10 @@ defmodule Mix.Tasks.Eve.Stats do
     Logger.info("==========================")
 
     # Total killmails
-    total_killmails = EveDmv.Repo.one(from(k in "killmails_raw", select: count(k.killmail_id)))
+    total_killmails =
+      from(k in "killmails_raw", select: count(k.killmail_id))
+      |> EveDmv.Repo.one()
+
     Logger.info("Total Killmails: #{format_number(total_killmails)}")
 
     if verbose do
@@ -37,12 +40,11 @@ defmodule Mix.Tasks.Eve.Stats do
       Logger.info("\nKillmails by Source:")
 
       source_counts =
-        EveDmv.Repo.all(
-          from(k in "killmails_raw",
-            group_by: k.source,
-            select: {k.source, count(k.killmail_id)}
-          )
+        from(k in "killmails_raw",
+          group_by: k.source,
+          select: {k.source, count(k.killmail_id)}
         )
+        |> EveDmv.Repo.all()
 
       Enum.each(source_counts, fn {source, count} ->
         Logger.info("  #{source}: #{format_number(count)}")
@@ -50,11 +52,10 @@ defmodule Mix.Tasks.Eve.Stats do
 
       # Date range
       {oldest, newest} =
-        EveDmv.Repo.one(
-          from(k in "killmails_raw",
-            select: {min(k.killmail_time), max(k.killmail_time)}
-          )
+        from(k in "killmails_raw",
+          select: {min(k.killmail_time), max(k.killmail_time)}
         )
+        |> EveDmv.Repo.one()
 
       if oldest && newest do
         Logger.info("\nDate Range:")
@@ -65,20 +66,19 @@ defmodule Mix.Tasks.Eve.Stats do
       # Killmails by month
       Logger.info("\nKillmails by Month (last 6 months):")
 
-      six_months_ago = DateTime.utc_now() |> DateTime.add(-180, :day)
+      six_months_ago = DateTime.add(DateTime.utc_now(), -180, :day)
 
       monthly_counts =
-        EveDmv.Repo.all(
-          from(k in "killmails_raw",
-            where: k.killmail_time >= ^six_months_ago,
-            group_by: fragment("DATE_TRUNC('month', ?)", k.killmail_time),
-            order_by: [desc: fragment("DATE_TRUNC('month', ?)", k.killmail_time)],
-            select: {
-              fragment("DATE_TRUNC('month', ?)", k.killmail_time),
-              count(k.killmail_id)
-            }
-          )
+        from(k in "killmails_raw",
+          where: k.killmail_time >= ^six_months_ago,
+          group_by: fragment("DATE_TRUNC('month', ?)", k.killmail_time),
+          order_by: [desc: fragment("DATE_TRUNC('month', ?)", k.killmail_time)],
+          select: {
+            fragment("DATE_TRUNC('month', ?)", k.killmail_time),
+            count(k.killmail_id)
+          }
         )
+        |> EveDmv.Repo.all()
 
       Enum.each(monthly_counts, fn {month, count} ->
         month_str = Calendar.strftime(month, "%B %Y")
@@ -89,34 +89,32 @@ defmodule Mix.Tasks.Eve.Stats do
       Logger.info("\nTop 10 Systems by Kills:")
 
       top_systems =
-        EveDmv.Repo.all(
-          from(k in "killmails_raw",
-            join: s in "eve_solar_systems",
-            on: k.solar_system_id == s.system_id,
-            group_by: [k.solar_system_id, s.system_name],
-            order_by: [desc: count(k.killmail_id)],
-            limit: 10,
-            select: {s.system_name, count(k.killmail_id)}
-          )
+        from(k in "killmails_raw",
+          join: s in "eve_solar_systems",
+          on: k.solar_system_id == s.system_id,
+          group_by: [k.solar_system_id, s.system_name],
+          order_by: [desc: count(k.killmail_id)],
+          limit: 10,
+          select: {s.system_name, count(k.killmail_id)}
         )
+        |> EveDmv.Repo.all()
 
-      case do
-        [] ->
-          # Fallback if no solar system data
-          EveDmv.Repo.all(
+      top_systems =
+        case top_systems do
+          [] ->
+            # Fallback if no solar system data
             from(k in "killmails_raw",
               group_by: k.solar_system_id,
               order_by: [desc: count(k.killmail_id)],
               limit: 10,
               select: {k.solar_system_id, count(k.killmail_id)}
             )
-          )
+            |> EveDmv.Repo.all()
+            |> Enum.map(fn {system_id, count} -> {"System #{system_id}", count} end)
 
-          Enum.map(fn {system_id, count} -> {"System #{system_id}", count} end)
-
-        systems ->
-          systems
-      end
+          systems ->
+            systems
+        end
 
       Enum.each(top_systems, fn {system, count} ->
         Logger.info("  #{system}: #{format_number(count)}")

@@ -62,9 +62,9 @@ defmodule EveDmv.Admin.Bootstrap do
 
       names_string ->
         names_string
-        String.split(",")
-        Enum.map(&String.trim/1)
-        Enum.reject(&(&1 == ""))
+        |> String.split(",")
+        |> Enum.map(&String.trim/1)
+        |> Enum.reject(&(&1 == ""))
     end
   end
 
@@ -75,14 +75,13 @@ defmodule EveDmv.Admin.Bootstrap do
 
       ids_string ->
         ids_string
-        String.split(",")
-
-        Enum.map(fn id_string ->
-          String.trim(id_string)
-          parse_character_id()
+        |> String.split(",")
+        |> Enum.map(fn id_string ->
+          id_string
+          |> String.trim()
+          |> parse_character_id()
         end)
-
-        Enum.reject(&is_nil/1)
+        |> Enum.reject(&is_nil/1)
     end
   end
 

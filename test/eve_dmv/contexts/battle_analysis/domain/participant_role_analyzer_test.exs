@@ -1,6 +1,6 @@
 defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
   use ExUnit.Case, async: true
-  use EveDmv.DataCase
+  use EveDmv.DataCase, async: true
 
   alias EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer
 
@@ -351,7 +351,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
               "final_blow" => true
             },
             %{
-              "character_id" => 11111,
+              "character_id" => 11_111,
               "character_name" => "Logistics Pilot",
               # Scythe (Logistics)
               "ship_type_id" => 11_129,
@@ -381,7 +381,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
               "character_id" => 67_890,
               "character_name" => "Fleet Commander",
               # Sleipnir (Command)
-              "ship_type_id" => 22474,
+              "ship_type_id" => 22_474,
               "damage_done" => 1000,
               "final_blow" => false
             }
@@ -395,11 +395,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
     Enum.map(1..5, fn i ->
       create_killmail(%{
         killmail_id: i,
-        victim_character_id: 12000 + i,
+        victim_character_id: 12_000 + i,
         victim_ship_type_id: 587,
         raw_data: %{
           "victim" => %{
-            "character_id" => 12000 + i,
+            "character_id" => 12_000 + i,
             "character_name" => "Victim #{i}",
             "ship_type_id" => 587
           },
@@ -552,7 +552,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
 
   defp create_inactive_participant do
     %{
-      character_id: 99999,
+      character_id: 99_999,
       character_name: "Inactive Pilot",
       corporation_id: 54_321,
       corporation_name: "Inactive Corp",

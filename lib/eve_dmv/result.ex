@@ -161,9 +161,8 @@ defmodule EveDmv.Result do
   @spec traverse([a], (a -> t(b))) :: t([b]) when a: term(), b: term()
   def traverse(items, fun) do
     items
-    Enum.map(fun)
-
-    combine()
+    |> Enum.map(fun)
+    |> combine()
   end
 
   @doc """

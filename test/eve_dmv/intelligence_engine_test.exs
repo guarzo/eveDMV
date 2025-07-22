@@ -5,11 +5,11 @@ defmodule EveDmv.IntelligenceEngineTest do
 
   use ExUnit.Case, async: false
 
+  alias EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer
   alias EveDmv.IntelligenceEngine
   alias EveDmv.IntelligenceEngine.Config
   alias EveDmv.IntelligenceEngine.Pipeline
   alias EveDmv.IntelligenceEngine.PluginRegistry
-  alias EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer
   alias EveDmv.IntelligenceEngine.Plugins.Character.CombatStats
 
   setup do

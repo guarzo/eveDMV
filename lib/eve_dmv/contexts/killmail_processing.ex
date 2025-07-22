@@ -37,8 +37,9 @@ defmodule EveDmv.Contexts.KillmailProcessing do
 
         # Infrastructure - only start if pipeline is enabled
         maybe_start_pipeline_infrastructure()
-      ] |> List.flatten()
-    Enum.reject(&is_nil/1)
+      ]
+      |> List.flatten()
+      |> Enum.reject(&is_nil/1)
 
     Supervisor.init(children, strategy: :one_for_one)
   end
@@ -58,16 +59,20 @@ defmodule EveDmv.Contexts.KillmailProcessing do
   defdelegate get_system_statistics(system_id, time_range), to: Api
 
   # Internal pipeline management
-  def start_pipeline Domain.KillmailOrchestrator.start_pipeline(do)
+  def start_pipeline do
+    Domain.KillmailOrchestrator.start_pipeline()
   end
 
-  def stop_pipeline Domain.KillmailOrchestrator.stop_pipeline(do)
+  def stop_pipeline do
+    Domain.KillmailOrchestrator.stop_pipeline()
   end
 
-  def pipeline_status Domain.KillmailOrchestrator.pipeline_status(do)
+  def pipeline_status do
+    Domain.KillmailOrchestrator.pipeline_status()
   end
 
-  def get_pipeline_metrics Domain.KillmailOrchestrator.get_metrics(do)
+  def get_pipeline_metrics do
+    Domain.KillmailOrchestrator.get_metrics()
   end
 
   # Private helpers

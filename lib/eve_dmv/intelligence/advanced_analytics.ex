@@ -186,16 +186,18 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
 
     # Load character data using batch operation to prevent N+1 queries
     character_data =
-      case Ash.Query.new(CharacterStats)
-    Ash.Query.filter(character_id in ^character_ids)
-    Ash.read(domain: Api) do
-        {:ok, stats_list} ->
-          character_tuples = Enum.map(stats_list, fn stats -> {stats.character_id, stats} end)
-          Enum.filter(character_tuples, fn {_, stats} -> not is_nil(stats) end)
+      case(Ash.Query.new(CharacterStats))
 
-        _ ->
-          []
-      end
+    Ash.Query.filter(character_id in ^character_ids)
+
+    Ash.read domain: Api do
+      {:ok, stats_list} ->
+        character_tuples = Enum.map(stats_list, fn stats -> {stats.character_id, stats} end)
+        Enum.filter(character_tuples, fn {_, stats} -> not is_nil(stats) end)
+
+      _ ->
+        []
+    end
 
     if length(character_data) >= 2 do
       correlations = %{
@@ -283,15 +285,15 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
 
   defp generate_pattern_recommendations(patterns) do
     []
-    maybe_add_recommendation(
+    |> maybe_add_recommendation(
       patterns.activity_rhythm.consistency_score < 0.5,
       "Monitor for irregular activity patterns"
     )
-    maybe_add_recommendation(
+    |> maybe_add_recommendation(
       patterns.anomaly_detection.anomaly_count > 2,
       "Investigate behavioral anomalies further"
     )
-    maybe_add_recommendation(
+    |> maybe_add_recommendation(
       patterns.social_patterns.cooperation_index < 0.3,
       "Consider teamwork assessment"
     )
@@ -452,7 +454,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   defp predict_engagement_likelihood(stats, horizon) do
     # Predict engagement likelihood based on stats
     total_activity = Map.get(stats, :total_kills, 0) + Map.get(stats, :total_losses, 0)
-    avg_gang_size = Map.get(stats, :avg_gang_size, 1.0) to_float()
+    avg_gang_size = Map.get(stats, :avg_gang_size, 1.0) |> to_float()
     ship_diversity = Map.get(stats, :ship_types_used, 1)
 
     # Base likelihood from activity level
@@ -532,7 +534,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   defp predict_corp_stability(stats) do
     # Predict corporation stability based on character metrics
     total_activity = Map.get(stats, :total_kills, 0) + Map.get(stats, :total_losses, 0)
-    avg_gang_size = Map.get(stats, :avg_gang_size, 1.0) to_float()
+    avg_gang_size = Map.get(stats, :avg_gang_size, 1.0) |> to_float()
     primary_activity = Map.get(stats, :primary_activity, :mixed)
 
     # Calculate loyalty indicators
@@ -632,9 +634,10 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
       all_regions = Enum.flat_map(region_activities, fn {_id, regions} -> regions end)
 
       shared_regions =
-    Enum.frequencies(all_regions)
-    Enum.filter(fn {_region, count} -> count > 1 end)
-    Enum.map(fn {region, _count} -> region end)
+        Enum.frequencies(all_regions)
+
+      Enum.filter(fn {_region, count} -> count > 1 end)
+      Enum.map(fn {region, _count} -> region end)
 
       # Calculate correlation score based on shared regions
       correlation_score =
@@ -655,7 +658,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
       # Extract tactical preferences
       tactical_profiles =
         Enum.map(character_data, fn {_id, stats} ->
-          avg_gang_size = Map.get(stats, :avg_gang_size, 1.0) to_float()
+          avg_gang_size = Map.get(stats, :avg_gang_size, 1.0) |> to_float()
           primary_activity = Map.get(stats, :primary_activity, :mixed)
           ship_diversity = Map.get(stats, :ship_types_used, 1)
 
@@ -682,9 +685,10 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
       all_tactics = Enum.flat_map(tactical_profiles, fn {_id, tactics} -> tactics end)
 
       shared_tactics =
-    Enum.frequencies(all_tactics)
-    Enum.filter(fn {_tactic, count} -> count > 1 end)
-    Enum.map(fn {tactic, _count} -> tactic end)
+        all_tactics
+        |> Enum.frequencies()
+        |> Enum.filter(fn {_tactic, count} -> count > 1 end)
+        |> Enum.map(fn {tactic, _count} -> tactic end)
 
       # Calculate correlation and coordination level
       correlation_score =
@@ -714,7 +718,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
       # Extract social indicators
       social_profiles =
         Enum.map(character_data, fn {_id, stats} ->
-          avg_gang_size = Map.get(stats, :avg_gang_size, 1.0) to_float()
+          avg_gang_size = Map.get(stats, :avg_gang_size, 1.0) |> to_float()
           primary_activity = Map.get(stats, :primary_activity, :mixed)
           total_activity = Map.get(stats, :total_kills, 0) + Map.get(stats, :total_losses, 0)
 
@@ -871,9 +875,9 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
       0.0
     else
       # Calculate cosine similarity
-      dot_product = Enum.zip(vec1, vec2) |> Enum.map(fn {a, b} -> a * b end) Enum.sum()
-      magnitude1 = :math.sqrt(Enum.map(vec1, fn x -> x * x end) Enum.sum())
-      magnitude2 = :math.sqrt(Enum.map(vec2, fn x -> x * x end) Enum.sum())
+      dot_product = Enum.zip(vec1, vec2) |> Enum.map(fn {a, b} -> a * b end) |> Enum.sum()
+      magnitude1 = :math.sqrt(Enum.map(vec1, fn x -> x * x end) |> Enum.sum())
+      magnitude2 = :math.sqrt(Enum.map(vec2, fn x -> x * x end) |> Enum.sum())
 
       if magnitude1 > 0 and magnitude2 > 0 do
         dot_product / (magnitude1 * magnitude2)
@@ -895,10 +899,11 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
     # Return empty vetting data if the WHVetting resource doesn't exist
     # This prevents errors when the wormhole vetting system isn't fully implemented
     try do
-    Ash.Query.new(WHVetting)
-    Ash.Query.filter(character_id: character_id)
-    Ash.Query.limit(1)
-    Ash.read(domain: Api)
+      WHVetting
+      |> Ash.Query.new()
+      |> Ash.Query.filter(character_id: character_id)
+      |> Ash.Query.limit(1)
+      |> Ash.read(domain: Api)
     rescue
       ArgumentError ->
         {:ok, []}
