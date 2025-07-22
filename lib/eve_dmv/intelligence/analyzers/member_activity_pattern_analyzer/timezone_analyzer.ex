@@ -33,7 +33,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TimezoneAn
 
     if is_map(activity_data) do
       hourly_activity = Map.get(activity_data, :hourly_activity, %{})
-      total_activity = Map.values(hourly_activity) Enum.sum()
+      total_activity = Map.values(hourly_activity) |> Enum.sum()
 
       active_hours = extract_active_hours(hourly_activity, total_activity)
       primary_timezone = estimate_timezone_from_hours(active_hours)
@@ -56,9 +56,10 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TimezoneAn
       # Get hours with >5% of total activity
       threshold = total_activity * 0.05
 
-    hourly_activity
-    Enum.filter(fn {_hour, count} -> count >= threshold end)
-    Enum.map(&elem(&1, 0)) |> Enum.sort()
+      hourly_activity
+      |> Enum.filter(fn {_hour, count} -> count >= threshold end)
+      |> Enum.map(&elem(&1, 0))
+      |> Enum.sort()
     else
       []
     end
@@ -125,17 +126,19 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TimezoneAn
       0.0
     else
       # Calculate how concentrated activity is in a 6-hour window
-      total_activity = Map.values(hourly_activity) Enum.sum()
+      total_activity = Map.values(hourly_activity) |> Enum.sum()
 
       max_6h_activity =
         0..23
-    Enum.map(fn start_hour ->
+        |> Enum.map(fn start_hour ->
           0..5
-    Enum.map(fn offset ->
+          |> Enum.map(fn offset ->
             hour = rem(start_hour + offset, 24)
             Map.get(hourly_activity, hour, 0)
-          end) |> Enum.sum()
-        end) |> Enum.max()
+          end)
+          |> Enum.sum()
+        end)
+        |> Enum.max()
       if total_activity > 0 do
         max_6h_activity / total_activity
       else
