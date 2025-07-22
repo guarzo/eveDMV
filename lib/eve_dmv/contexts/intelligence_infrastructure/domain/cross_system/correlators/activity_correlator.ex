@@ -209,13 +209,15 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
     # Group by system
     results
-    Enum.group_by(& &1.system_id)
-    Enum.map(fn {system_id, hours} ->
+    |> Enum.group_by(& &1.system_id)
+    |> Enum.map(fn {system_id, hours} ->
       hourly_data =
-    hours
-    Enum.map(fn h -> {h.hour, h.kill_count} end) |> Map.new()
+        hours
+        |> Enum.map(fn h -> {h.hour, h.kill_count} end) 
+        |> Map.new()
       {system_id, hourly_data}
-    end) |> Map.new()
+    end) 
+    |> Map.new()
   rescue
     error ->
       Logger.error("Failed to fetch hourly activity data: #{inspect(error)}")
@@ -321,13 +323,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
     # Find systems with high correlation (>0.7)
     synchronized_pairs =
-    correlations
-    Enum.filter(fn {_pair, correlation} -> correlation > 0.7 end)
-    Enum.sort_by(&elem(&1, 1), :desc)
+      correlations
+      |> Enum.filter(fn {_pair, correlation} -> correlation > 0.7 end)
+      |> Enum.sort_by(&elem(&1, 1), :desc)
 
     # Extract unique systems
     synchronized_pairs
-    Enum.flat_map(fn {{s1, s2}, _} -> [s1, s2] end) |> Enum.uniq()
+    |> Enum.flat_map(fn {{s1, s2}, _} -> [s1, s2] end) 
+    |> Enum.uniq()
   end
 
   defp analyze_synchronization_patterns(activity_data) do
@@ -448,8 +451,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     else
       # Get all systems
       all_systems =
-    correlations
-    Enum.flat_map(fn {{s1, s2}, _} -> [s1, s2] end) |> Enum.uniq() |> Enum.sort()
+        correlations
+        |> Enum.flat_map(fn {{s1, s2}, _} -> [s1, s2] end) 
+        |> Enum.uniq() 
+        |> Enum.sort()
       # Build matrix
       matrix =
         for s1 <- all_systems, s2 <- all_systems, into: %{} do
