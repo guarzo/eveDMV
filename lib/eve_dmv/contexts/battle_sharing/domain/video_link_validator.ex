@@ -147,26 +147,22 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
 
     results =
       urls
-
-    Enum.chunk_every(max_concurrent)
-
-    Enum.flat_map(fn batch ->
-      batch
-      Enum.map(&Task.async(fn -> validate_video_url(&1, options) end))
-      Enum.map(&Task.await(&1, timeout + 1000))
-    end)
+      |> Enum.chunk_every(max_concurrent)
+      |> Enum.flat_map(fn batch ->
+        batch
+        |> Enum.map(&Task.async(fn -> validate_video_url(&1, options) end))
+        |> Enum.map(&Task.await(&1, timeout + 1000))
+      end)
 
     successful_validations =
       results
-
-    Enum.filter(&match?({:ok, _}, &1))
-    Enum.map(&elem(&1, 1))
+      |> Enum.filter(&match?({:ok, _}, &1))
+      |> Enum.map(&elem(&1, 1))
 
     failed_validations =
       results
-
-    Enum.filter(&match?({:error, _}, &1))
-    |> Kernel.length()
+      |> Enum.filter(&match?({:error, _}, &1))
+      |> Kernel.length()
 
     Logger.info("""
     Batch video validation completed:
@@ -213,10 +209,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
     if platform_config do
       embed_url =
         platform_config.embed_template
-
-      String.replace("{video_id}", video_id)
-      String.replace("{domain}", embed_domain)
-      add_embed_parameters(additional_params)
+        |> String.replace("{video_id}", video_id)
+        |> String.replace("{domain}", embed_domain)
+        |> add_embed_parameters(additional_params)
 
       {:ok, embed_url}
     else
@@ -232,9 +227,8 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
       url
       |> String.trim()
       |> String.downcase()
-
-    remove_tracking_parameters()
-    ensure_https()
+      |> remove_tracking_parameters()
+      |> ensure_https()
 
     if valid_url_format?(normalized) do
       {:ok, normalized}
@@ -268,8 +262,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
       cleaned_query = if cleaned_query == "", do: nil, else: cleaned_query
 
       uri
-
-      Map.put(:query, cleaned_query)
+      |> Map.put(:query, cleaned_query)
       |> URI.to_string()
     else
       url
@@ -290,12 +283,13 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
   end
 
   defp detect_platform(url) do
-    detected_platform = @platforms
-    |> Enum.find_value(fn {platform, config} ->
-      if Enum.any?(config.domains, &String.contains?(url, &1)) do
-        platform
-      end
-    end)
+    detected_platform =
+      @platforms
+      |> Enum.find_value(fn {platform, config} ->
+        if Enum.any?(config.domains, &String.contains?(url, &1)) do
+          platform
+        end
+      end)
 
     case detected_platform do
       nil -> {:error, :unsupported_platform}
@@ -306,16 +300,17 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
   defp extract_video_id(url, platform) do
     platform_config = @platforms[platform]
 
-    video_id = platform_config.url_patterns
-    |> Enum.find_value(fn pattern ->
-      case Regex.run(pattern, url) do
-        nil -> nil
-        [_, video_id] -> video_id
-        [_, video_id, _] -> video_id
-        [_, _, _, video_id] -> video_id
-        matches -> List.last(matches)
-      end
-    end)
+    video_id =
+      platform_config.url_patterns
+      |> Enum.find_value(fn pattern ->
+        case Regex.run(pattern, url) do
+          nil -> nil
+          [_, video_id] -> video_id
+          [_, video_id, _] -> video_id
+          [_, _, _, video_id] -> video_id
+          matches -> List.last(matches)
+        end
+      end)
 
     case video_id do
       nil -> {:error, :invalid_video_url}
@@ -500,8 +495,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
       new_query = URI.encode_query(combined_params)
 
       uri
-
-      Map.put(:query, new_query)
+      |> Map.put(:query, new_query)
       |> URI.to_string()
     else
       embed_url
@@ -590,7 +584,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
   """
   def get_supported_platforms do
     @platforms
-    Enum.map(fn {platform, config} ->
+    |> Enum.map(fn {platform, config} ->
       %{
         platform: platform,
         name: config.name,

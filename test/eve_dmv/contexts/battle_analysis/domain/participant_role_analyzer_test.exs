@@ -218,26 +218,26 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
     [
       create_killmail(%{
         killmail_id: 1,
-        victim_character_id: 12345,
-        victim_corporation_id: 98765,
+        victim_character_id: 12_345,
+        victim_corporation_id: 98_765,
         # Rifter
         victim_ship_type_id: 587,
         raw_data: %{
           "victim" => %{
-            "character_id" => 12345,
+            "character_id" => 12_345,
             "character_name" => "Test Victim",
-            "corporation_id" => 98765,
+            "corporation_id" => 98_765,
             "corporation_name" => "Test Corp",
             "ship_type_id" => 587
           },
           "attackers" => [
             %{
-              "character_id" => 67890,
+              "character_id" => 67_890,
               "character_name" => "Test Attacker",
-              "corporation_id" => 54321,
+              "corporation_id" => 54_321,
               "corporation_name" => "Attacker Corp",
               # Cyclone
-              "ship_type_id" => 17918,
+              "ship_type_id" => 17_918,
               "damage_done" => 2000,
               "final_blow" => true
             }
@@ -247,25 +247,25 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
       create_killmail(%{
         killmail_id: 2,
         victim_character_id: 22_222,
-        victim_corporation_id: 98765,
+        victim_corporation_id: 98_765,
         # Punisher
         victim_ship_type_id: 588,
         raw_data: %{
           "victim" => %{
             "character_id" => 22_222,
             "character_name" => "Test Victim 2",
-            "corporation_id" => 98765,
+            "corporation_id" => 98_765,
             "corporation_name" => "Test Corp",
             "ship_type_id" => 588
           },
           "attackers" => [
             %{
-              "character_id" => 67890,
+              "character_id" => 67_890,
               "character_name" => "Test Attacker",
-              "corporation_id" => 54321,
+              "corporation_id" => 54_321,
               "corporation_name" => "Attacker Corp",
               # Cyclone
-              "ship_type_id" => 17918,
+              "ship_type_id" => 17_918,
               "damage_done" => 1500,
               "final_blow" => true
             }
@@ -279,20 +279,20 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
     [
       create_killmail(%{
         killmail_id: 1,
-        victim_character_id: 12345,
+        victim_character_id: 12_345,
         victim_ship_type_id: 587,
         raw_data: %{
           "victim" => %{
-            "character_id" => 12345,
+            "character_id" => 12_345,
             "character_name" => "Victim",
             "ship_type_id" => 587
           },
           "attackers" => [
             %{
-              "character_id" => 67890,
+              "character_id" => 67_890,
               "character_name" => "DPS Pilot",
               # Cyclone (DPS)
-              "ship_type_id" => 17918,
+              "ship_type_id" => 17_918,
               "damage_done" => 3000,
               "final_blow" => true
             }
@@ -306,20 +306,20 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
     [
       create_killmail(%{
         killmail_id: 1,
-        victim_character_id: 12345,
+        victim_character_id: 12_345,
         victim_ship_type_id: 587,
         raw_data: %{
           "victim" => %{
-            "character_id" => 12345,
+            "character_id" => 12_345,
             "character_name" => "Victim",
             "ship_type_id" => 587
           },
           "attackers" => [
             %{
-              "character_id" => 67890,
+              "character_id" => 67_890,
               "character_name" => "Logistics Pilot",
               # Scythe (Logistics)
-              "ship_type_id" => 11129,
+              "ship_type_id" => 11_129,
               "damage_done" => 100,
               "final_blow" => false
             }
@@ -333,20 +333,20 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
     [
       create_killmail(%{
         killmail_id: 1,
-        victim_character_id: 12345,
+        victim_character_id: 12_345,
         victim_ship_type_id: 587,
         raw_data: %{
           "victim" => %{
-            "character_id" => 12345,
+            "character_id" => 12_345,
             "character_name" => "Victim",
             "ship_type_id" => 587
           },
           "attackers" => [
             %{
-              "character_id" => 67890,
+              "character_id" => 67_890,
               "character_name" => "DPS Pilot",
               # Cyclone (DPS)
-              "ship_type_id" => 17918,
+              "ship_type_id" => 17_918,
               "damage_done" => 2000,
               "final_blow" => true
             },
@@ -354,7 +354,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
               "character_id" => 11111,
               "character_name" => "Logistics Pilot",
               # Scythe (Logistics)
-              "ship_type_id" => 11129,
+              "ship_type_id" => 11_129,
               "damage_done" => 50,
               "final_blow" => false
             }
@@ -368,17 +368,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
     [
       create_killmail(%{
         killmail_id: 1,
-        victim_character_id: 12345,
+        victim_character_id: 12_345,
         victim_ship_type_id: 587,
         raw_data: %{
           "victim" => %{
-            "character_id" => 12345,
+            "character_id" => 12_345,
             "character_name" => "Victim",
             "ship_type_id" => 587
           },
           "attackers" => [
             %{
-              "character_id" => 67890,
+              "character_id" => 67_890,
               "character_name" => "Fleet Commander",
               # Sleipnir (Command)
               "ship_type_id" => 22474,
@@ -405,9 +405,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
           },
           "attackers" => [
             %{
-              "character_id" => 67890,
+              "character_id" => 67_890,
               "character_name" => "Active Pilot",
-              "ship_type_id" => 17918,
+              "ship_type_id" => 17_918,
               "damage_done" => 1500,
               "final_blow" => true
             }
@@ -421,20 +421,20 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
     [
       create_killmail(%{
         killmail_id: 1,
-        victim_character_id: 12345,
+        victim_character_id: 12_345,
         victim_ship_type_id: 587,
         raw_data: %{
           "victim" => %{
-            "character_id" => 12345,
+            "character_id" => 12_345,
             "character_name" => "Victim",
             "ship_type_id" => 587
           },
           "attackers" => [
             %{
-              "character_id" => 67890,
+              "character_id" => 67_890,
               "character_name" => "Versatile Pilot",
               # Cyclone
-              "ship_type_id" => 17918,
+              "ship_type_id" => 17_918,
               "damage_done" => 1000,
               "final_blow" => false
             }
@@ -453,7 +453,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
           },
           "attackers" => [
             %{
-              "character_id" => 67890,
+              "character_id" => 67_890,
               "character_name" => "Versatile Pilot",
               # Different ship type
               "ship_type_id" => 587,
@@ -471,25 +471,25 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
       killmail_id: 1,
       killmail_time: ~U[2024-01-01 10:00:00Z],
       solar_system_id: 30_002_765,
-      victim_character_id: 12345,
-      victim_corporation_id: 98765,
+      victim_character_id: 12_345,
+      victim_corporation_id: 98_765,
       victim_alliance_id: nil,
       victim_ship_type_id: 587,
       raw_data: %{
         "victim" => %{
-          "character_id" => 12345,
+          "character_id" => 12_345,
           "character_name" => "Test Victim",
-          "corporation_id" => 98765,
+          "corporation_id" => 98_765,
           "corporation_name" => "Test Corp",
           "ship_type_id" => 587
         },
         "attackers" => [
           %{
-            "character_id" => 67890,
+            "character_id" => 67_890,
             "character_name" => "Test Attacker",
-            "corporation_id" => 54321,
+            "corporation_id" => 54_321,
             "corporation_name" => "Attacker Corp",
-            "ship_type_id" => 17918,
+            "ship_type_id" => 17_918,
             "damage_done" => 1000,
             "final_blow" => true
           }
@@ -502,9 +502,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
 
   defp create_test_participant do
     %{
-      character_id: 67890,
+      character_id: 67_890,
       character_name: "Test Participant",
-      corporation_id: 54321,
+      corporation_id: 54_321,
       corporation_name: "Test Corp",
       alliance_id: nil
     }
@@ -512,9 +512,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
 
   defp create_dps_participant do
     %{
-      character_id: 67890,
+      character_id: 67_890,
       character_name: "DPS Pilot",
-      corporation_id: 54321,
+      corporation_id: 54_321,
       corporation_name: "DPS Corp",
       alliance_id: nil
     }
@@ -522,9 +522,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
 
   defp create_logistics_participant do
     %{
-      character_id: 67890,
+      character_id: 67_890,
       character_name: "Logistics Pilot",
-      corporation_id: 54321,
+      corporation_id: 54_321,
       corporation_name: "Logistics Corp",
       alliance_id: nil
     }
@@ -532,9 +532,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
 
   defp create_high_activity_participant do
     %{
-      character_id: 67890,
+      character_id: 67_890,
       character_name: "Active Pilot",
-      corporation_id: 54321,
+      corporation_id: 54_321,
       corporation_name: "Active Corp",
       alliance_id: nil
     }
@@ -542,9 +542,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
 
   defp create_versatile_participant do
     %{
-      character_id: 67890,
+      character_id: 67_890,
       character_name: "Versatile Pilot",
-      corporation_id: 54321,
+      corporation_id: 54_321,
       corporation_name: "Versatile Corp",
       alliance_id: nil
     }
@@ -554,7 +554,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
     %{
       character_id: 99999,
       character_name: "Inactive Pilot",
-      corporation_id: 54321,
+      corporation_id: 54_321,
       corporation_name: "Inactive Corp",
       alliance_id: nil
     }

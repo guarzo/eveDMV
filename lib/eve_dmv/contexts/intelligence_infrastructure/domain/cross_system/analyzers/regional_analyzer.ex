@@ -231,6 +231,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
               |> Enum.group_by(fn {system_id, _, _} -> system_id end)
               |> Enum.map(&calculate_system_alliance_counts/1)
               |> Map.new()
+
             # Determine control status
             dominant_alliances =
               alliance_presence
@@ -433,6 +434,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
       |> Enum.group_by(fn {_, alliance_id, _} -> alliance_id end)
       |> Enum.map(&calculate_alliance_count/1)
       |> Map.new()
+
     {system_id, alliance_counts}
   end
 

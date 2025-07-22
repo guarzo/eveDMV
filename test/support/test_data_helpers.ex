@@ -8,14 +8,14 @@ defmodule EveDmv.TestDataHelpers do
 
   @common_ships [
     %{
-      type_id: 11987,
+      type_id: 11_987,
       type_name: "Guardian",
       group_id: 832,
       is_ship: true,
       mass: Decimal.new("11200000")
     },
     %{
-      type_id: 11174,
+      type_id: 11_174,
       type_name: "Keres",
       group_id: 893,
       is_ship: true,
@@ -29,35 +29,35 @@ defmodule EveDmv.TestDataHelpers do
       mass: Decimal.new("10650000")
     },
     %{
-      type_id: 22456,
+      type_id: 22_456,
       type_name: "Damnation",
       group_id: 419,
       is_ship: true,
       mass: Decimal.new("15500000")
     },
     %{
-      type_id: 29990,
+      type_id: 29_990,
       type_name: "Loki",
       group_id: 963,
       is_ship: true,
       mass: Decimal.new("12500000")
     },
     %{
-      type_id: 29984,
+      type_id: 29_984,
       type_name: "Tengu",
       group_id: 963,
       is_ship: true,
       mass: Decimal.new("14300000")
     },
     %{
-      type_id: 29986,
+      type_id: 29_986,
       type_name: "Legion",
       group_id: 963,
       is_ship: true,
       mass: Decimal.new("13000000")
     },
     %{
-      type_id: 29988,
+      type_id: 29_988,
       type_name: "Proteus",
       group_id: 963,
       is_ship: true,
@@ -120,7 +120,7 @@ defmodule EveDmv.TestDataHelpers do
       mass: Decimal.new("1160000")
     },
     %{
-      type_id: 11202,
+      type_id: 11_202,
       type_name: "Ares",
       group_id: 831,
       is_ship: true,

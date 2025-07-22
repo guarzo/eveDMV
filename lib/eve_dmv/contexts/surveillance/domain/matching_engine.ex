@@ -719,9 +719,11 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
     case WandererClient.get_chain_inhabitants(map_id) do
       {:ok, inhabitants} ->
         inhabitant_character_ids =
-          Enum.map(inhabitants, &Map.get(&1, "character_id"))
+          inhabitants
+          |> Enum.map(&Map.get(&1, "character_id"))
+          |> Enum.filter(&(&1 != nil))
+          |> MapSet.new()
 
-        Enum.filter(&(&1 != nil)) |> MapSet.new()
         # Check victim
         victim_match = MapSet.member?(inhabitant_character_ids, killmail_data.victim.character_id)
 

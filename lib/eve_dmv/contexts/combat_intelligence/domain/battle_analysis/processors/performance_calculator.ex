@@ -63,16 +63,15 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Pe
     side_corps = get_side_corporations_from_data(side)
 
     killmails
-
-    Enum.filter(fn km ->
+    |> Enum.filter(fn km ->
       # Check if any attacker is from this side
       Enum.any?(km.attackers || [], fn attacker ->
         corp_id = attacker["corporation_id"]
         corp_id && corp_id in side_corps
       end)
     end)
-
-    Enum.map(&(&1.total_value || 0)) |> Enum.sum()
+    |> Enum.map(&(&1.total_value || 0))
+    |> Enum.sum()
   end
 
   @doc """
@@ -82,13 +81,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Pe
     side_corps = get_side_corporations_from_data(side)
 
     killmails
-
-    Enum.filter(fn km ->
+    |> Enum.filter(fn km ->
       # Check if victim is from this side
       km.victim_corporation_id in side_corps
     end)
-
-    Enum.map(&(&1.total_value || 0)) |> Enum.sum()
+    |> Enum.map(&(&1.total_value || 0))
+    |> Enum.sum()
   end
 
   @doc """
@@ -233,9 +231,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Pe
 
         active_participants =
           bucket_kills
-
-        Enum.flat_map(&extract_participants_from_killmail/1) |> Enum.uniq()
-        length()
+          |> Enum.flat_map(&extract_participants_from_killmail/1)
+          |> Enum.uniq()
+          |> length()
 
         # Determine intensity level and score
         intensity_level =
@@ -257,16 +255,16 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Pe
       # Calculate overall metrics
       peak_intensity =
         timeline_data
-
-      Enum.map(& &1.intensity_score)
-      Enum.max(fn -> 0 end)
+        |> Enum.map(& &1.intensity_score)
+        |> Enum.max(fn -> 0 end)
 
       average_intensity =
         if length(timeline_data) > 0 do
           timeline_data
-          Enum.map(& &1.intensity_score) |> Enum.sum()
-          Kernel./(length(timeline_data))
-          Float.round(1)
+          |> Enum.map(& &1.intensity_score)
+          |> Enum.sum()
+          |> Kernel./(length(timeline_data))
+          |> Float.round(1)
         else
           0.0
         end
@@ -398,18 +396,18 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Pe
 
   defp analyze_kills_by_ship_class(killmails) do
     killmails
-
-    Enum.flat_map(fn km ->
-      km.attackers || []
-      Enum.filter(&(&1["final_blow"] == true))
-      Enum.map(&classify_ship(&1["ship_type_id"]))
+    |> Enum.flat_map(fn km ->
+      (km.attackers || [])
+      |> Enum.filter(&(&1["final_blow"] == true))
+      |> Enum.map(&classify_ship(&1["ship_type_id"]))
     end)
     |> Enum.frequencies()
   end
 
   defp analyze_losses_by_ship_class(killmails) do
     killmails
-    Enum.map(&classify_ship(&1.victim_ship_type_id)) |> Enum.frequencies()
+    |> Enum.map(&classify_ship(&1.victim_ship_type_id))
+    |> Enum.frequencies()
   end
 
   defp determine_tactical_role(ship_class) do

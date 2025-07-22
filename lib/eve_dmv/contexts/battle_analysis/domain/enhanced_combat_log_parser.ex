@@ -71,7 +71,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
       String.contains?(line, "\tCombat\t") &&
           Regex.match?(
             ~r/\d+ to [^\[]+\[[^\]]+\]\([^\)]+\) - [^-]+ - (Hits|Penetrates|Smashes|Wrecks|Glances Off|Grazes)/,
-    line
+            line
           ) ->
         parse_outgoing_damage_line(line)
 
@@ -79,7 +79,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
       String.contains?(line, "\tCombat\t") &&
           Regex.match?(
             ~r/\d+ from [^\[]+\[[^\]]+\]\([^\)]+\) - [^-]+ - (Hits|Penetrates|Smashes|Wrecks|Glances Off|Grazes)/,
-    line
+            line
           ) ->
         parse_incoming_damage_line(line)
 
@@ -159,7 +159,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
     # Parse format: "04:27:08\tCombat\t15 from Kragden[GI.N](Covetor) - Hornet II - Glances Off"
     case Regex.run(
            ~r/\t(\d+) from ([^\[]+)\[([^\]]+)\]\(([^\)]+)\) - ([^-]+) - ([^\t\n\r]+)/,
-    line
+           line
          ) do
       [_, damage_str, attacker_name, attacker_corp, attacker_ship, weapon, quality_str] ->
         damage = String.to_integer(damage_str)
@@ -252,7 +252,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
     # Parse format: "04:35:03\tCombat\t-0 GJ energy drained to [Brutix] Kragden |[GI.N] - Medium Energy Nosferatu II"
     case Regex.run(
            ~r/\t-?(\d+) GJ energy drained to \[([^\]]+)\]\s*([^\-]+) - ([^\t\n\r]+)/,
-    line
+           line
          ) do
       [_, energy_str, target_ship, target_name, module] ->
         %{
@@ -334,8 +334,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
 
     # Generic combat event that doesn't match other patterns
     content =
-    line
+      line
+
     String.replace(~r/^[^\t]*\tCombat\t/, "") |> String.trim()
+
     %{
       type: :combat,
       timestamp: timestamp,
@@ -379,24 +381,28 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
 
     if length(damage_events) > 0 do
       quality_breakdown =
-    damage_events
-    Enum.group_by(& &1.hit_quality)
-    Enum.map(fn {quality, events} ->
-          {quality,
-           %{
-             count: length(events),
-             percentage: length(events) / length(damage_events) * 100,
-             total_damage: Enum.sum(Enum.map(events, & &1.damage)),
-             avg_damage: Float.round(Enum.sum(Enum.map(events, & &1.damage)) / length(events), 1)
-           }}
-        end)
-    Enum.into(%{})
+        damage_events
+
+      Enum.group_by(& &1.hit_quality)
+
+      Enum.map(fn {quality, events} ->
+        {quality,
+         %{
+           count: length(events),
+           percentage: length(events) / length(damage_events) * 100,
+           total_damage: Enum.sum(Enum.map(events, & &1.damage)),
+           avg_damage: Float.round(Enum.sum(Enum.map(events, & &1.damage)) / length(events), 1)
+         }}
+      end)
+
+      Enum.into(%{})
 
       avg_application =
-    damage_events
-    Enum.map(& &1.application_percentage) |> Enum.sum()
-    Kernel./(length(damage_events))
-    Float.round(1)
+        damage_events
+
+      Enum.map(& &1.application_percentage) |> Enum.sum()
+      Kernel./(length(damage_events))
+      Float.round(1)
 
       %{
         total_shots: length(damage_events),
@@ -451,19 +457,22 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
     damage_events = Enum.filter(events, &(&1.type == :damage_dealt))
 
     target_stats =
-    damage_events
+      damage_events
+
     Enum.group_by(& &1.target)
+
     Enum.map(fn {target, target_events} ->
-        {target,
-         %{
-           shots: length(target_events),
-           damage: Enum.sum(Enum.map(target_events, & &1.damage)),
-           avg_application:
-             Enum.sum(Enum.map(target_events, & &1.application_percentage)) /
-               length(target_events),
-           ship_type: List.first(target_events).target_ship
-         }}
-      end)
+      {target,
+       %{
+         shots: length(target_events),
+         damage: Enum.sum(Enum.map(target_events, & &1.damage)),
+         avg_application:
+           Enum.sum(Enum.map(target_events, & &1.application_percentage)) /
+             length(target_events),
+         ship_type: List.first(target_events).target_ship
+       }}
+    end)
+
     Enum.into(%{})
 
     %{
@@ -498,9 +507,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
     used_module_types = extract_used_modules_from_events(events) |> Map.keys()
 
     fitted_modules
+
     Enum.filter(fn module ->
       not Enum.member?(used_module_types, module[:type_name])
     end)
+
     Enum.map(fn module ->
       %{
         module: module,
@@ -522,7 +533,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
         case Time.from_iso8601(time_str) do
           {:ok, time} ->
             {:ok, dt} = NaiveDateTime.new(today, time)
-    dt
+            dt
 
           _ ->
             nil
@@ -586,13 +597,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
 
   defp generate_enhanced_summary(events, _pilot_name) do
     damage_dealt =
-    events
+      events
+
     Enum.filter(&(&1.type == :damage_dealt))
     Enum.map(& &1.damage) |> Enum.sum()
+
     damage_received =
-    events
+      events
+
     Enum.filter(&(&1.type == :damage_received))
     Enum.map(& &1.damage) |> Enum.sum()
+
     %{
       total_damage_dealt: damage_dealt,
       total_damage_received: damage_received,
@@ -659,10 +674,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
 
     case timestamps do
       [] ->
-    0
+        0
 
       [_] ->
-    0
+        0
 
       _ ->
         start_time = Enum.min(timestamps)

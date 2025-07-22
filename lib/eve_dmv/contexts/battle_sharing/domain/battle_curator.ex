@@ -7,8 +7,6 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
   """
 
   alias EveDmv.Contexts.BattleAnalysis
-  alias EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator
-  alias EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector
   alias EveDmv.Contexts.BattleSharing.Domain.VideoProcessor
   alias EveDmv.Contexts.BattleSharing.Domain.CommunityManager
 
@@ -280,8 +278,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
 
   defp validate_tags(tags) when is_list(tags) do
     tags
-    Enum.take(10)
-    Enum.map(&String.downcase/1) |> Enum.uniq()
+    |> Enum.take(10)
+    |> Enum.map(&String.downcase/1)
+    |> Enum.uniq()
   end
 
   defp validate_tags(_), do: []

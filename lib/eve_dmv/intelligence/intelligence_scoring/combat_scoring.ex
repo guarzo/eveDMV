@@ -45,10 +45,11 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.CombatScoring do
       }
 
     # Equal weighting for tactical factors
-    Map.values(tactical_factors)
-    |> Enum.sum()
+    sum =
+      Map.values(tactical_factors)
+      |> Enum.sum()
 
-    Kernel./(map_size(tactical_factors))
+    sum / map_size(tactical_factors)
   end
 
   @doc """

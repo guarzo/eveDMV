@@ -144,8 +144,8 @@ defmodule EveDmv.Analytics.ModuleClassifier do
 
   defp extract_slot_items(items_by_flag, slot_range) do
     slot_range
-    Enum.flat_map(fn slot -> Map.get(items_by_flag, slot, []) end)
-    Enum.map(&extract_module_info/1)
+    |> Enum.flat_map(fn slot -> Map.get(items_by_flag, slot, []) end)
+    |> Enum.map(&extract_module_info/1)
   end
 
   defp extract_module_info(item) do
@@ -511,12 +511,10 @@ defmodule EveDmv.Analytics.ModuleClassifier do
   defp normalize_confidence_scores(classification) do
     # Ensure no role exceeds 1.0 confidence
     classification
-
-    Enum.map(fn {role, confidence} ->
+    |> Enum.map(fn {role, confidence} ->
       {role, min(1.0, confidence)}
     end)
-
-    Enum.into(%{})
+    |> Enum.into(%{})
   end
 
   defp determine_primary_role(role_scores) do
@@ -528,9 +526,9 @@ defmodule EveDmv.Analytics.ModuleClassifier do
     secondary_threshold = 0.3
 
     role_scores
-    Enum.filter(fn {role, score} -> role != primary_role and score >= secondary_threshold end)
-    Enum.sort_by(fn {_role, score} -> score end, :desc)
-    Enum.map(fn {role, _score} -> role end)
+    |> Enum.filter(fn {role, score} -> role != primary_role and score >= secondary_threshold end)
+    |> Enum.sort_by(fn {_role, score} -> score end, :desc)
+    |> Enum.map(fn {role, _score} -> role end)
   end
 
   defp categorize_modules(items) do

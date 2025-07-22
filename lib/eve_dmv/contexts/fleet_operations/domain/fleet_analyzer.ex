@@ -475,11 +475,14 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
 
     # Shannon diversity index adapted for fleet composition
     diversity =
-    Map.values(ship_counts)
+      Map.values(ship_counts)
+
     Enum.map(fn count ->
-        proportion = count / total_ships
-        proportion * :math.log(proportion)
-      end) |> Enum.sum()
+      proportion = count / total_ships
+      proportion * :math.log(proportion)
+    end)
+    |> Enum.sum()
+
     then(&(-&1))
 
     # Normalize to 0-1 range
@@ -519,6 +522,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
       end)
 
     ships
+
     Enum.map(fn ship ->
       ship_type_id =
         case ship do
@@ -536,7 +540,8 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
       else
         10_000_000.0
       end
-    end) |> Enum.sum()
+    end)
+    |> Enum.sum()
   end
 
   defp determine_wormhole_compatibility(_total_mass) do
@@ -628,13 +633,15 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
       MapSet.new(Enum.map(killmails, fn km -> km.victim.corporation_id end))
 
     _attacker_corps =
-    killmails
+      killmails
+
     Enum.flat_map(fn km -> Enum.map(km.attackers, & &1.corporation_id) end) |> MapSet.new()
     # Assume majority corp is friendly
     all_corps = Enum.map(participants, & &1.corporation_id)
 
     max_corp_tuple =
-    Enum.frequencies(all_corps)
+      Enum.frequencies(all_corps)
+
     Enum.max_by(fn {_corp, count} -> count end)
 
     majority_corp = elem(max_corp_tuple, 0)
@@ -881,6 +888,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
     # Check for over-concentration in single ship class
     max_percentage =
       composition.Map.values(ship_classes)
+
     Enum.map(& &1.percentage)
     Enum.max(fn -> 0 end)
 
@@ -1149,7 +1157,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
     new_processing_times = [analysis_time | Enum.take(state.recent_analysis_times, 99)]
 
     %{
-    state
+      state
       | metrics: new_metrics,
         recent_analysis_times: new_processing_times
     }

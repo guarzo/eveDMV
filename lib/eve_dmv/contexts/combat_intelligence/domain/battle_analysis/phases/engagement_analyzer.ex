@@ -317,10 +317,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Engage
   # Helper functions for calculations
   defp calculate_time_gaps_between_kills(killmails) do
     killmails
-    Enum.sort_by(& &1.killmail_time)
-    Enum.chunk_every(2, 1, :discard)
-
-    Enum.map(fn [first, second] ->
+    |> Enum.sort_by(& &1.killmail_time)
+    |> Enum.chunk_every(2, 1, :discard)
+    |> Enum.map(fn [first, second] ->
       DateTime.diff(second.killmail_time, first.killmail_time, :second)
     end)
   end
@@ -367,24 +366,23 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Engage
     # Calculate ISK destroyed by this side
     isk_destroyed =
       killmails
+      |> Enum.filter(fn killmail ->
+        killmail.attackers &&
+          Enum.any?(killmail.attackers, fn attacker ->
+            attacker.character_id in side_character_ids
+          end)
+      end)
+      |> Enum.map(&(&1.total_value || 0))
+      |> Enum.sum()
 
-    Enum.filter(fn killmail ->
-      killmail.attackers &&
-        Enum.any?(killmail.attackers, fn attacker ->
-          attacker.character_id in side_character_ids
-        end)
-    end)
-
-    Enum.map(&(&1.total_value || 0)) |> Enum.sum()
     # Calculate ISK lost by this side
     isk_lost =
       killmails
-
-    Enum.filter(fn killmail ->
-      killmail.victim_character_id in side_character_ids
-    end)
-
-    Enum.map(&(&1.total_value || 0)) |> Enum.sum()
+      |> Enum.filter(fn killmail ->
+        killmail.victim_character_id in side_character_ids
+      end)
+      |> Enum.map(&(&1.total_value || 0))
+      |> Enum.sum()
 
     if isk_lost > 0 do
       Float.round(isk_destroyed / isk_lost, 2)

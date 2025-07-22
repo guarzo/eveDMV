@@ -102,12 +102,14 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   """
   def compare_character_threats(character_ids) when is_list(character_ids) do
     threat_analyses =
-    character_ids
+      character_ids
+
     Enum.map(fn id ->
-        case analyze_character_threat(id) do
-          {:ok, analysis} -> {id, analysis}
-        end
-      end)
+      case analyze_character_threat(id) do
+        {:ok, analysis} -> {id, analysis}
+      end
+    end)
+
     Enum.sort_by(fn {_id, analysis} -> analysis.threat_score end, :desc)
 
     {:ok, threat_analyses}
@@ -135,7 +137,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
     else
       {:error, reason} = error ->
         Logger.error("Failed to get character intelligence report: #{inspect(reason)}")
-    error
+        error
     end
   end
 
@@ -208,10 +210,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   defp get_combat_statistics(character_id) do
     # Calculate kills where character was attacker
     kills_query =
-    KillmailRaw
-      new()
-    sort(killmail_time: :desc)
-    limit(1000)
+      KillmailRaw
+      |> Ash.Query.new()
+      |> sort(killmail_time: :desc)
+      |> limit(1000)
 
     case Ash.read(kills_query, domain: Api) do
       {:ok, killmails} ->
@@ -229,9 +231,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
 
         # Count losses where character was victim
         losses_query =
-    KillmailRaw
-          new()
-    filter(victim_character_id: character_id)
+          KillmailRaw
+          |> Ash.Query.new()
+          |> filter(victim_character_id: character_id)
 
         losses_count =
           case Ash.count(losses_query, domain: Api) do
@@ -248,9 +250,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
 
         # For now, calculate ISK lost from the raw data since total_value might not be populated
         isk_lost_query =
-    KillmailRaw
-          new()
-    filter(victim_character_id: character_id)
+          KillmailRaw
+          |> Ash.Query.new()
+          |> filter(victim_character_id: character_id)
 
         isk_lost =
           case Ash.read(isk_lost_query, domain: Api) do
@@ -350,15 +352,16 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
 
     patterns =
       []
-    maybe_add_pattern(:solo_hunter, dimensions[:solo_effectiveness] > 70)
-    maybe_add_pattern(:fleet_anchor, dimensions[:gang_effectiveness] > 80)
-    maybe_add_pattern(:specialist, dimensions[:ship_focus] > 0.7)
-    maybe_add_pattern(:opportunist, dimensions[:target_selection_variance] > 0.6)
+      |> maybe_add_pattern(:solo_hunter, dimensions[:solo_effectiveness] > 70)
+      |> maybe_add_pattern(:fleet_anchor, dimensions[:gang_effectiveness] > 80)
+      |> maybe_add_pattern(:specialist, dimensions[:ship_focus] > 0.7)
+      |> maybe_add_pattern(:opportunist, dimensions[:target_selection_variance] > 0.6)
 
     # Convert to pattern map with confidence scores
     Enum.map(patterns, fn pattern ->
       {pattern, calculate_pattern_confidence(pattern, dimensions)}
     end)
+
     Enum.into(%{})
   end
 
@@ -441,11 +444,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
 
   defp extract_key_strengths(dimensions) do
     dimensions
-    Enum.sort_by(fn {_key, value} -> value end, :desc)
-    Enum.take(3)
-    Enum.map(fn {key, value} ->
+    |> Enum.sort_by(fn {_key, value} -> value end, :desc)
+    |> Enum.take(3)
+    |> Enum.map(fn {key, value} ->
       %{
-        dimension: to_string(key) |> String.replace("_", " ") String.capitalize(),
+        dimension: to_string(key) |> String.replace("_", " ") |> String.capitalize(),
         score: value
       }
     end)

@@ -4,17 +4,17 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
   This module handles intelligence-related analysis including quality assessment,
   coverage analysis, gap identification, and shared intelligence correlation.
-  
+
   ## Key Responsibilities
-  
+
   - **Coverage Analysis**: Assesses intelligence coverage across systems
   - **Quality Assessment**: Evaluates intelligence data quality and reliability
   - **Gap Identification**: Identifies intelligence gaps and blind spots
   - **Shared Intelligence**: Analyzes shared intelligence between systems
   - **Correlation Analysis**: Determines intelligence correlation strength
-  
+
   ## Usage
-  
+
       # Calculate coverage percentage
       coverage = IntelligenceQualityAnalyzer.calculate_coverage_percentage(system_ids, intel_data)
       
@@ -36,12 +36,13 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     if Enum.empty?(system_ids) do
       0.0
     else
-      covered_systems = intel_data
-      |> Map.get(:coverage_map, %{})
-      |> Map.keys()
-      |> Enum.count(fn system_id -> system_id in system_ids end)
-      
-      (covered_systems / length(system_ids)) * 100.0
+      covered_systems =
+        intel_data
+        |> Map.get(:coverage_map, %{})
+        |> Map.keys()
+        |> Enum.count(fn system_id -> system_id in system_ids end)
+
+      covered_systems / length(system_ids) * 100.0
     end
   end
 
@@ -52,11 +53,12 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     if Enum.empty?(shared_intel) do
       0.0
     else
-      correlation_scores = shared_intel
-      |> Enum.map(fn intel_item ->
-        Map.get(intel_item, :reliability_score, 0.5)
-      end)
-      
+      correlation_scores =
+        shared_intel
+        |> Enum.map(fn intel_item ->
+          Map.get(intel_item, :reliability_score, 0.5)
+        end)
+
       Enum.sum(correlation_scores) / length(correlation_scores)
     end
   end
@@ -66,13 +68,13 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   """
   def assess_intelligence_quality(intel_data) do
     base_quality = 0.6
-    
+
     coverage_bonus = calculate_coverage_bonus(intel_data)
     recency_bonus = calculate_recency_bonus(intel_data)
     reliability_bonus = calculate_reliability_bonus(intel_data)
-    
+
     total_quality = min(base_quality + coverage_bonus + recency_bonus + reliability_bonus, 1.0)
-    
+
     %{
       overall_quality: total_quality,
       coverage_score: coverage_bonus,
@@ -91,25 +93,27 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   """
   def identify_intelligence_gaps(system_ids, killmails) do
     # Analyze killmail distribution to identify gaps
-    system_activity = killmails
-    |> Enum.group_by(& &1.solar_system_id)
-    |> Enum.into(%{}, fn {system_id, kills} -> {system_id, length(kills)} end)
-    
-    gaps = system_ids
-    |> Enum.map(fn system_id ->
-      activity_level = Map.get(system_activity, system_id, 0)
-      
-      %{
-        system_id: system_id,
-        activity_level: activity_level,
-        gap_severity: classify_gap_severity(activity_level),
-        recommended_actions: suggest_gap_mitigation(activity_level),
-        priority_level: calculate_gap_priority(system_id, activity_level)
-      }
-    end)
-    |> Enum.filter(fn gap -> gap.gap_severity != :no_gap end)
-    |> Enum.sort_by(& &1.priority_level, :desc)
-    
+    system_activity =
+      killmails
+      |> Enum.group_by(& &1.solar_system_id)
+      |> Enum.into(%{}, fn {system_id, kills} -> {system_id, length(kills)} end)
+
+    gaps =
+      system_ids
+      |> Enum.map(fn system_id ->
+        activity_level = Map.get(system_activity, system_id, 0)
+
+        %{
+          system_id: system_id,
+          activity_level: activity_level,
+          gap_severity: classify_gap_severity(activity_level),
+          recommended_actions: suggest_gap_mitigation(activity_level),
+          priority_level: calculate_gap_priority(system_id, activity_level)
+        }
+      end)
+      |> Enum.filter(fn gap -> gap.gap_severity != :no_gap end)
+      |> Enum.sort_by(& &1.priority_level, :desc)
+
     %{
       identified_gaps: gaps,
       total_gaps: length(gaps),
@@ -127,7 +131,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     shared_entities = extract_shared_entities(intel_data)
     cross_system_patterns = identify_cross_system_patterns(intel_data)
     intelligence_flow = analyze_intelligence_flow(intel_data)
-    
+
     %{
       shared_entities: shared_entities,
       cross_system_patterns: cross_system_patterns,
@@ -145,7 +149,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     fleet_operations = detect_fleet_operations(killmails)
     strategic_targets = detect_strategic_targets(killmails)
     territory_control = detect_territory_control(killmails)
-    
+
     %{
       fleet_operations: fleet_operations,
       strategic_target_activity: strategic_targets,
@@ -161,27 +165,29 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   """
   def detect_fleet_operations(killmails) do
     # Group killmails by time proximity to detect fleet operations
-    time_grouped = killmails
-    |> Enum.group_by(fn killmail ->
-      killmail.killmail_time |> DateTime.truncate(:hour)
-    end)
-    
-    fleet_operations = time_grouped
-    |> Enum.map(fn {time_window, window_kills} ->
-      if length(window_kills) >= 5 do
-        %{
-          operation_time: time_window,
-          participant_count: count_unique_participants(window_kills),
-          systems_involved: count_unique_systems(window_kills),
-          operation_type: classify_operation_type(window_kills),
-          fleet_size_estimate: estimate_fleet_size(window_kills),
-          coordination_level: assess_coordination_level(window_kills)
-        }
-      end
-    end)
-    |> Enum.filter(& &1)
-    |> Enum.sort_by(& &1.participant_count, :desc)
-    
+    time_grouped =
+      killmails
+      |> Enum.group_by(fn killmail ->
+        killmail.killmail_time |> DateTime.truncate(:hour)
+      end)
+
+    fleet_operations =
+      time_grouped
+      |> Enum.map(fn {time_window, window_kills} ->
+        if length(window_kills) >= 5 do
+          %{
+            operation_time: time_window,
+            participant_count: count_unique_participants(window_kills),
+            systems_involved: count_unique_systems(window_kills),
+            operation_type: classify_operation_type(window_kills),
+            fleet_size_estimate: estimate_fleet_size(window_kills),
+            coordination_level: assess_coordination_level(window_kills)
+          }
+        end
+      end)
+      |> Enum.filter(& &1)
+      |> Enum.sort_by(& &1.participant_count, :desc)
+
     %{
       detected_operations: fleet_operations,
       total_operations: length(fleet_operations),
@@ -194,24 +200,26 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   Detect strategic targets from killmail data.
   """
   def detect_strategic_targets(killmails) do
-    strategic_kills = killmails
-    |> Enum.filter(fn killmail ->
-      is_strategic_target(killmail)
-    end)
-    
-    target_analysis = strategic_kills
-    |> Enum.group_by(& &1.victim_ship_name)
-    |> Enum.map(fn {ship_type, kills} ->
-      %{
-        target_type: ship_type,
-        frequency: length(kills),
-        systems_affected: kills |> Enum.map(& &1.solar_system_id) |> Enum.uniq(),
-        threat_level: calculate_strategic_threat_level(kills),
-        targeting_pattern: analyze_targeting_pattern(kills)
-      }
-    end)
-    |> Enum.sort_by(& &1.threat_level, :desc)
-    
+    strategic_kills =
+      killmails
+      |> Enum.filter(fn killmail ->
+        is_strategic_target(killmail)
+      end)
+
+    target_analysis =
+      strategic_kills
+      |> Enum.group_by(& &1.victim_ship_name)
+      |> Enum.map(fn {ship_type, kills} ->
+        %{
+          target_type: ship_type,
+          frequency: length(kills),
+          systems_affected: kills |> Enum.map(& &1.solar_system_id) |> Enum.uniq(),
+          threat_level: calculate_strategic_threat_level(kills),
+          targeting_pattern: analyze_targeting_pattern(kills)
+        }
+      end)
+      |> Enum.sort_by(& &1.threat_level, :desc)
+
     %{
       strategic_targets: target_analysis,
       total_strategic_kills: length(strategic_kills),
@@ -224,23 +232,24 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   Detect territory control indicators from killmail patterns.
   """
   def detect_territory_control(killmails) do
-    system_control = killmails
-    |> Enum.group_by(& &1.solar_system_id)
-    |> Enum.map(fn {system_id, system_kills} ->
-      dominant_entities = identify_dominant_entities(system_kills)
-      control_strength = calculate_control_strength(system_kills)
-      
-      %{
-        system_id: system_id,
-        dominant_entities: dominant_entities,
-        control_strength: control_strength,
-        contested: is_contested_system(system_kills),
-        activity_level: length(system_kills),
-        control_trend: analyze_control_trend(system_kills)
-      }
-    end)
-    |> Enum.sort_by(& &1.control_strength, :desc)
-    
+    system_control =
+      killmails
+      |> Enum.group_by(& &1.solar_system_id)
+      |> Enum.map(fn {system_id, system_kills} ->
+        dominant_entities = identify_dominant_entities(system_kills)
+        control_strength = calculate_control_strength(system_kills)
+
+        %{
+          system_id: system_id,
+          dominant_entities: dominant_entities,
+          control_strength: control_strength,
+          contested: is_contested_system(system_kills),
+          activity_level: length(system_kills),
+          control_trend: analyze_control_trend(system_kills)
+        }
+      end)
+      |> Enum.sort_by(& &1.control_strength, :desc)
+
     %{
       system_control_analysis: system_control,
       contested_systems: Enum.filter(system_control, & &1.contested),
@@ -258,7 +267,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   defp calculate_recency_bonus(intel_data) do
     last_update = Map.get(intel_data, :last_update, DateTime.utc_now())
     hours_old = DateTime.diff(DateTime.utc_now(), last_update, :hour)
-    
+
     cond do
       hours_old < 6 -> 0.2
       hours_old < 24 -> 0.1
@@ -282,20 +291,24 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
   defp generate_quality_improvements(intel_data) do
     improvements = []
-    
+
     coverage = Map.get(intel_data, :coverage_percentage, 50.0)
-    improvements = if coverage < 70.0, do: ["Improve system coverage" | improvements], else: improvements
-    
+
+    improvements =
+      if coverage < 70.0, do: ["Improve system coverage" | improvements], else: improvements
+
     recency = Map.get(intel_data, :hours_since_update, 24)
-    improvements = if recency > 12, do: ["Increase data refresh frequency" | improvements], else: improvements
-    
+
+    improvements =
+      if recency > 12, do: ["Increase data refresh frequency" | improvements], else: improvements
+
     improvements
   end
 
   defp assess_data_freshness(intel_data) do
     last_update = Map.get(intel_data, :last_update, DateTime.utc_now())
     hours_old = DateTime.diff(DateTime.utc_now(), last_update, :hour)
-    
+
     cond do
       hours_old < 1 -> :very_fresh
       hours_old < 6 -> :fresh
@@ -347,11 +360,13 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
   defp calculate_system_coverage(system_ids, gaps) do
     covered_systems = length(system_ids) - length(gaps)
-    (covered_systems / length(system_ids)) * 100.0
+    covered_systems / length(system_ids) * 100.0
   end
 
   defp analyze_gap_trend(_gaps), do: :stable
-  defp develop_mitigation_strategy(_gaps), do: "Implement comprehensive intelligence collection strategy"
+
+  defp develop_mitigation_strategy(_gaps),
+    do: "Implement comprehensive intelligence collection strategy"
 
   defp extract_shared_entities(_intel_data), do: []
   defp identify_cross_system_patterns(_intel_data), do: []
@@ -378,7 +393,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
   defp classify_operation_type(killmails) do
     system_count = count_unique_systems(killmails)
-    
+
     cond do
       system_count == 1 -> :system_control
       system_count <= 3 -> :regional_operation
@@ -388,13 +403,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
   defp estimate_fleet_size(killmails) do
     unique_participants = count_unique_participants(killmails)
+
     # Estimate fleet size based on unique participants (assuming not all participants appear in killmails)
     round(unique_participants * 1.5)
   end
 
   defp assess_coordination_level(killmails) do
     time_span = calculate_operation_timespan(killmails)
-    
+
     cond do
       time_span < 30 -> :high
       time_span < 120 -> :medium
@@ -406,13 +422,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     if length(operations) < 2 do
       :insufficient_data
     else
-      :regular # Simplified
+      # Simplified
+      :regular
     end
   end
 
   defp is_strategic_target(killmail) do
     strategic_ships = ["Logistics", "Command", "Capital", "Supercarrier", "Titan", "Dreadnought"]
-    
+
     Enum.any?(strategic_ships, fn ship_type ->
       killmail.victim_ship_name && String.contains?(killmail.victim_ship_name, ship_type)
     end)
@@ -444,7 +461,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
   defp is_contested_system(system_kills) do
     entities = identify_dominant_entities(system_kills)
-    
+
     if length(entities) < 2 do
       false
     else

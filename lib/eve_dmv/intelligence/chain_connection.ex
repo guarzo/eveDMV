@@ -177,12 +177,11 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainConnection do
       )
 
       change(fn changeset, _context ->
-        now =
-    |> DateTime.utc_now()
-    changeset
+        now = DateTime.utc_now()
 
-        Ash.Changeset.force_change_attribute(:first_discovered_at, now)
-        Ash.Changeset.force_change_attribute(:last_updated_at, now)
+        changeset
+        |> Ash.Changeset.force_change_attribute(:first_discovered_at, now)
+        |> Ash.Changeset.force_change_attribute(:last_updated_at, now)
       end)
     end
 
@@ -226,12 +225,11 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainConnection do
       accept([])
 
       change(fn changeset, _context ->
-        now =
-    |> DateTime.utc_now()
-    changeset
+        now = DateTime.utc_now()
 
-        Ash.Changeset.force_change_attribute(:last_transit_at, now)
-        Ash.Changeset.force_change_attribute(:last_updated_at, now)
+        changeset
+        |> Ash.Changeset.force_change_attribute(:last_transit_at, now)
+        |> Ash.Changeset.force_change_attribute(:last_updated_at, now)
       end)
     end
 

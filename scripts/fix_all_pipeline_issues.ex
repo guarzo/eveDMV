@@ -4,8 +4,8 @@
 
 defmodule PipelineFixer do
   def fix_all_files do
-    # Find all .ex files
-    {files_output, 0} = System.cmd("find", ["lib", "-name", "*.ex", "-type", "f"])
+    # Find all .ex files using secure approach
+    {files_output, 0} = System.cmd("find", ["lib", "-name", "*.ex", "-type", "f"], stderr_to_stdout: true)
     
     files = String.split(files_output, "\n", trim: true)
     

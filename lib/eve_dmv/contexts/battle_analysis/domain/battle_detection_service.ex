@@ -435,10 +435,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
 
   defp find_primary_system(killmails) do
     # Find the system with the most killmails
-    result = killmails
-    |> Enum.group_by(& &1.solar_system_id)
-    |> Enum.max_by(fn {_system_id, kills} -> Kernel.length(kills) end, fn -> {nil, []} end)
-    
+    result =
+      killmails
+      |> Enum.group_by(& &1.solar_system_id)
+      |> Enum.max_by(fn {_system_id, kills} -> Kernel.length(kills) end, fn -> {nil, []} end)
+
     elem(result, 0)
   end
 

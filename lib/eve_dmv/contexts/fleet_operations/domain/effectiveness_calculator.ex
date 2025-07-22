@@ -727,11 +727,10 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
   defp analyze_damage_patterns(fleet_losses) do
     damage_sources =
       fleet_losses
-
-    Enum.flat_map(fn loss ->
-      Enum.map(loss.attackers, & &1.weapon_type_id)
-    end)
-    |> Enum.frequencies()
+      |> Enum.flat_map(fn loss ->
+        Enum.map(loss.attackers, & &1.weapon_type_id)
+      end)
+      |> Enum.frequencies()
 
     %{
       common_damage_sources: damage_sources,

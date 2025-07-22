@@ -517,7 +517,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
         pilots: pilots,
         ship_count: length(pilots),
         unique_ship_types:
-          pilots |> Enum.map(&Map.get(&1, :ship_type_id)) Enum.uniq() length()
+          pilots |> Enum.map(&Map.get(&1, :ship_type_id)) |> Enum.uniq() |> length()
       }
     end)
     # Only include sides with multiple ships

@@ -129,6 +129,7 @@ defmodule EveDmv.Shared.ShipAnalysis do
       |> Enum.with_index(1)
       |> Enum.map(fn {usage, index} -> usage * index end)
       |> Enum.sum()
+
     mean_usage = Enum.sum(sorted_usage) / n
 
     gini = 2 * sum_products / (n * n * mean_usage) - (n + 1) / n

@@ -375,8 +375,9 @@ defmodule EveDmvWeb.SurveillanceLive do
   def handle_event("select_all_profiles", _params, socket) do
     all_profile_ids =
       socket.assigns.profiles
+      |> Enum.map(& &1.id)
+      |> MapSet.new()
 
-    Enum.map(& &1.id) |> MapSet.new()
     socket = assign(socket, :selected_profiles, all_profile_ids)
     {:noreply, socket}
   end

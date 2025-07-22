@@ -176,11 +176,13 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
       # Analyze defense readiness for each corporation
       defense_analyses =
         resident_corporations
-    Enum.map(fn corp_id ->
-          {:ok, analysis} = analyze_defense_capabilities(corp_id)
-          {corp_id, analysis}
-        end)
-    Enum.into(%{})
+
+      Enum.map(fn corp_id ->
+        {:ok, analysis} = analyze_defense_capabilities(corp_id)
+        {corp_id, analysis}
+      end)
+
+      Enum.into(%{})
 
       # Assess system vulnerabilities
       {:ok, vulnerability_assessment} = assess_system_vulnerabilities(system_id)
@@ -253,8 +255,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
       # Sort by priority
       sorted_recommendations =
         recommendations
-    Enum.sort_by(fn rec -> priority_weight(rec.priority) end)
-    Enum.take(10)
+
+      Enum.sort_by(fn rec -> priority_weight(rec.priority) end)
+      Enum.take(10)
 
       {:ok, sorted_recommendations}
     rescue
@@ -412,16 +415,19 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
   defp calculate_timezone_coverage(member_activity) do
     # Analyze activity by hour to determine timezone coverage
     hourly_activity =
-    member_activity
+      member_activity
+
     Enum.group_by(fn activity ->
-        activity.killmail_time.hour
-      end)
+      activity.killmail_time.hour
+    end)
+
     Enum.map(fn {hour, activities} -> {hour, length(activities)} end)
     Enum.into(%{})
 
     # Find peak activity hours
     peak_hours =
-    hourly_activity
+      hourly_activity
+
     Enum.sort_by(&elem(&1, 1), :desc)
     Enum.take(8)
     Enum.map(&elem(&1, 0))
@@ -493,10 +499,11 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
       hour_ranges = [0..7, 8..15, 16..23]
 
       range_counts =
-    hour_ranges
-    Enum.map(fn range ->
-          Enum.count(hours, fn h -> h in range end)
-        end)
+        hour_ranges
+
+      Enum.map(fn range ->
+        Enum.count(hours, fn h -> h in range end)
+      end)
 
       # Better distribution = more even spread across ranges
       max_count = Enum.max(range_counts)
@@ -553,9 +560,11 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
   defp categorize_ships(member_ships) do
     # Simplified ship categorization based on type IDs
     member_ships
+
     Enum.group_by(fn ship ->
       categorize_ship_type(ship.ship_type_id)
     end)
+
     Enum.map(fn {category, ships} -> {category, length(ships)} end)
     Enum.into(%{})
   end
@@ -603,7 +612,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
   defp identify_common_doctrines(type_frequencies) do
     # Identify common ship doctrines from frequency patterns
     sorted_types =
-    type_frequencies
+      type_frequencies
+
     Enum.sort_by(&elem(&1, 1), :desc)
     Enum.take(5)
 
@@ -634,10 +644,11 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
     if total_ships > 0 do
       # Find most common ship types
       top_types =
-    type_frequencies
-    Enum.sort_by(&elem(&1, 1), :desc)
-    Enum.take(3)
-    Enum.map(&elem(&1, 1)) |> Enum.sum()
+        type_frequencies
+
+      Enum.sort_by(&elem(&1, 1), :desc)
+      Enum.take(3)
+      Enum.map(&elem(&1, 1)) |> Enum.sum()
       coherence = top_types / total_ships
       Float.round(coherence, 2)
     else
@@ -983,8 +994,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
       0.0
     else
       readiness_scores =
-    Map.values(defense_analyses)
-    Enum.map(& &1.defense_readiness)
+        Map.values(defense_analyses)
+
+      Enum.map(& &1.defense_readiness)
 
       Enum.sum(readiness_scores) / length(readiness_scores)
     end
@@ -996,16 +1008,18 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
 
     # Add defense-related vulnerabilities
     defense_vulnerabilities =
-    Map.values(defense_analyses)
+      Map.values(defense_analyses)
+
     Enum.filter(fn analysis -> analysis.defense_readiness < 0.5 end)
+
     Enum.map(fn _analysis ->
-        %{
-          type: :low_defense_readiness,
-          description: "Corporation has low defense readiness",
-          severity: :medium,
-          recommendation: "Improve member activity and fleet readiness"
-        }
-      end)
+      %{
+        type: :low_defense_readiness,
+        description: "Corporation has low defense readiness",
+        severity: :medium,
+        recommendation: "Improve member activity and fleet readiness"
+      }
+    end)
 
     base_vulnerabilities ++ defense_vulnerabilities
   end
@@ -1013,13 +1027,18 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
   defp calculate_system_defensive_assets(defense_analyses) do
     # Calculate total defensive assets across all corporations
     total_active_members =
-    Map.values(defense_analyses)
+      Map.values(defense_analyses)
+
     Enum.map(& &1.active_members) |> Enum.sum()
+
     total_available_ships =
-    Map.values(defense_analyses)
+      Map.values(defense_analyses)
+
     Enum.map(& &1.available_ships) |> Enum.sum()
+
     avg_response_time =
-    Map.values(defense_analyses)
+      Map.values(defense_analyses)
+
     Enum.map(& &1.response_time_estimate) |> Enum.sum()
     Kernel./(max(map_size(defense_analyses), 1))
 
@@ -1184,7 +1203,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
         recommendations
       end
 
-    (recommendations ++ defensive_doctrines.doctrine_recommendations)
+    recommendations ++ defensive_doctrines.doctrine_recommendations
+
     Enum.map(fn rec ->
       if is_binary(rec) do
         %{

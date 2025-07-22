@@ -4,17 +4,17 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
   This module handles threat-related analysis including threat correlation,
   escalation risk assessment, and coordinated threat detection across system boundaries.
-  
+
   ## Key Responsibilities
-  
+
   - **Threat Correlation**: Analyzes correlations between threats in different systems
   - **Escalation Risk**: Calculates risk of threat escalation across systems
   - **Coordinated Threats**: Detects coordinated threat activities
   - **Threat Spillover**: Identifies threats moving between systems
   - **Major Entities**: Extracts major threat entities and actors
-  
+
   ## Usage
-  
+
       # Analyze threat correlations
       correlations = ThreatPatternAnalyzer.calculate_threat_correlations(system_ids, killmails)
       
@@ -73,10 +73,13 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   def calculate_escalation_risk(threat_data) when is_map(threat_data) do
     base_risk = 0.3
     entity_risk = if length(Map.get(threat_data, :major_entities, [])) > 5, do: 0.2, else: 0.0
-    coordination_risk = if Map.get(threat_data, :coordinated_activities, false), do: 0.3, else: 0.0
-    
+
+    coordination_risk =
+      if Map.get(threat_data, :coordinated_activities, false), do: 0.3, else: 0.0
+
     min(base_risk + entity_risk + coordination_risk, 1.0)
   end
+
   def calculate_escalation_risk(_), do: 0.3
 
   @doc """
@@ -105,24 +108,26 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   def identify_threat_spillover(_system_ids, killmails) do
     # Group killmails by time windows to detect spillover patterns
     time_windows = group_killmails_by_time_windows(killmails)
-    
-    spillover_patterns = Enum.map(time_windows, fn {_window, window_kills} ->
-      systems_in_window = window_kills
-      |> Enum.map(& &1.solar_system_id)
-      |> Enum.uniq()
-      
-      if length(systems_in_window) > 1 do
-        %{
-          time_window: window_kills |> List.first() |> Map.get(:killmail_time),
-          affected_systems: systems_in_window,
-          spillover_strength: calculate_spillover_strength(window_kills),
-          threat_entities: extract_active_entities(window_kills),
-          pattern_type: classify_spillover_pattern(window_kills)
-        }
-      end
-    end)
-    |> Enum.filter(& &1)
-    
+
+    spillover_patterns =
+      Enum.map(time_windows, fn {_window, window_kills} ->
+        systems_in_window =
+          window_kills
+          |> Enum.map(& &1.solar_system_id)
+          |> Enum.uniq()
+
+        if length(systems_in_window) > 1 do
+          %{
+            time_window: window_kills |> List.first() |> Map.get(:killmail_time),
+            affected_systems: systems_in_window,
+            spillover_strength: calculate_spillover_strength(window_kills),
+            threat_entities: extract_active_entities(window_kills),
+            pattern_type: classify_spillover_pattern(window_kills)
+          }
+        end
+      end)
+      |> Enum.filter(& &1)
+
     %{
       spillover_incidents: spillover_patterns,
       spillover_frequency: length(spillover_patterns),
@@ -136,30 +141,32 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   """
   def identify_coordinated_threats(threat_data) do
     entities = Map.get(threat_data, :entities, [])
-    
+
     # Group entities by time proximity
-    time_grouped_entities = entities
-    |> Enum.group_by(fn entity ->
-      # Group by hour to detect coordination
-      entity.last_activity |> DateTime.truncate(:hour)
-    end)
-    
-    coordinated_groups = time_grouped_entities
-    |> Enum.filter(fn {_time, group_entities} -> length(group_entities) > 3 end)
-    |> Enum.map(fn {time, group_entities} ->
-      times = Enum.map(group_entities, & &1.last_activity)
-      
-      %{
-        coordination_time: time,
-        participants: length(group_entities),
-        entities: Enum.map(group_entities, & &1.character_id),
-        coordination_score: calculate_coordination_score(times),
-        threat_level: calculate_group_threat_level(group_entities)
-      }
-    end)
-    |> Enum.filter(fn group -> group.coordination_score > 0.6 end)
-    |> Enum.sort_by(& &1.threat_level, :desc)
-    
+    time_grouped_entities =
+      entities
+      |> Enum.group_by(fn entity ->
+        # Group by hour to detect coordination
+        entity.last_activity |> DateTime.truncate(:hour)
+      end)
+
+    coordinated_groups =
+      time_grouped_entities
+      |> Enum.filter(fn {_time, group_entities} -> length(group_entities) > 3 end)
+      |> Enum.map(fn {time, group_entities} ->
+        times = Enum.map(group_entities, & &1.last_activity)
+
+        %{
+          coordination_time: time,
+          participants: length(group_entities),
+          entities: Enum.map(group_entities, & &1.character_id),
+          coordination_score: calculate_coordination_score(times),
+          threat_level: calculate_group_threat_level(group_entities)
+        }
+      end)
+      |> Enum.filter(fn group -> group.coordination_score > 0.6 end)
+      |> Enum.sort_by(& &1.threat_level, :desc)
+
     %{
       coordinated_groups: coordinated_groups,
       coordination_incidents: length(coordinated_groups),
@@ -189,26 +196,27 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   Analyze threat entities from killmail data.
   """
   def analyze_threat_entities(killmails) do
-    entities = killmails
-    |> Enum.flat_map(fn killmail ->
-      [
-        %{character_id: killmail.attacker_character_id, role: :attacker, killmail: killmail},
-        %{character_id: killmail.victim_character_id, role: :victim, killmail: killmail}
-      ]
-    end)
-    |> Enum.filter(fn entity -> entity.character_id end)
-    |> Enum.group_by(& &1.character_id)
-    |> Enum.map(fn {character_id, character_activities} ->
-      %{
-        character_id: character_id,
-        activity_count: length(character_activities),
-        threat_level: calculate_entity_threat_level(character_activities),
-        activity_pattern: analyze_entity_activity_pattern(character_activities),
-        last_activity: get_last_activity_time(character_activities)
-      }
-    end)
-    |> Enum.sort_by(& &1.threat_level, :desc)
-    
+    entities =
+      killmails
+      |> Enum.flat_map(fn killmail ->
+        [
+          %{character_id: killmail.attacker_character_id, role: :attacker, killmail: killmail},
+          %{character_id: killmail.victim_character_id, role: :victim, killmail: killmail}
+        ]
+      end)
+      |> Enum.filter(fn entity -> entity.character_id end)
+      |> Enum.group_by(& &1.character_id)
+      |> Enum.map(fn {character_id, character_activities} ->
+        %{
+          character_id: character_id,
+          activity_count: length(character_activities),
+          threat_level: calculate_entity_threat_level(character_activities),
+          activity_pattern: analyze_entity_activity_pattern(character_activities),
+          last_activity: get_last_activity_time(character_activities)
+        }
+      end)
+      |> Enum.sort_by(& &1.threat_level, :desc)
+
     %{
       total_entities: length(entities),
       high_threat_entities: Enum.filter(entities, &(&1.threat_level > 0.7)),
@@ -227,7 +235,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   defp calculate_spillover_strength(killmails) do
     systems_count = killmails |> Enum.map(& &1.solar_system_id) |> Enum.uniq() |> length()
     entities_count = killmails |> Enum.map(& &1.attacker_character_id) |> Enum.uniq() |> length()
-    
+
     # Higher strength if more systems and entities involved
     min(systems_count * 0.2 + entities_count * 0.1, 1.0)
   end
@@ -241,7 +249,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
   defp classify_spillover_pattern(killmails) do
     timespan = calculate_timespan_minutes(killmails)
-    
+
     cond do
       timespan < 30 -> :rapid_spillover
       timespan < 120 -> :gradual_spillover
@@ -254,7 +262,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     |> Enum.flat_map(& &1.affected_systems)
     |> Enum.frequencies()
     |> Enum.filter(fn {_system, frequency} -> frequency > 2 end)
-    |> Enum.map(fn {system_id, frequency} -> 
+    |> Enum.map(fn {system_id, frequency} ->
       %{system_id: system_id, spillover_frequency: frequency}
     end)
     |> Enum.sort_by(& &1.spillover_frequency, :desc)
@@ -266,7 +274,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     else
       recent_spillovers = spillover_patterns |> Enum.take(5) |> length()
       total_spillovers = length(spillover_patterns)
-      
+
       if recent_spillovers / total_spillovers > 0.6 do
         :increasing
       else
@@ -279,15 +287,16 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     if length(times) < 2 do
       0.0
     else
-      time_diffs = times
-      |> Enum.sort()
-      |> Enum.chunk_every(2, 1, :discard)
-      |> Enum.map(fn [t1, t2] -> DateTime.diff(t2, t1, :minute) end)
-      
+      time_diffs =
+        times
+        |> Enum.sort()
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.map(fn [t1, t2] -> DateTime.diff(t2, t1, :minute) end)
+
       avg_diff = Enum.sum(time_diffs) / length(time_diffs)
-      
+
       # Higher score for activities closer in time
-      max(0.0, 1.0 - (avg_diff / 60.0))
+      max(0.0, 1.0 - avg_diff / 60.0)
     end
   end
 
@@ -303,7 +312,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
       :insufficient_data
     else
       recent_coordination = coordinated_groups |> Enum.take(3) |> length()
-      
+
       if recent_coordination >= 2 do
         :increasing
       else
@@ -320,14 +329,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   defp calculate_entity_threat_level(activities) do
     base_threat = min(length(activities) * 0.1, 0.7)
     attacker_bonus = activities |> Enum.count(&(&1.role == :attacker)) |> Kernel.*(0.1)
-    
+
     min(base_threat + attacker_bonus, 1.0)
   end
 
   defp analyze_entity_activity_pattern(activities) do
     attacker_count = Enum.count(activities, &(&1.role == :attacker))
     victim_count = Enum.count(activities, &(&1.role == :victim))
-    
+
     cond do
       attacker_count > victim_count * 2 -> :aggressive
       victim_count > attacker_count * 2 -> :vulnerable

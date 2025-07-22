@@ -137,20 +137,16 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
 
     metrics =
       @table_name
-
-    :ets.tab2list()
-
-    Enum.filter(fn {_key, metric} ->
-      DateTime.compare(metric.timestamp, since) == :gt
-    end)
-
-    Enum.group_by(fn {_key, metric} -> metric.type end)
-
-    Enum.map(fn {type, metrics} ->
-      stats = calculate_stats(metrics)
-      {type, stats}
-    end)
-    |> Map.new()
+      |> :ets.tab2list()
+      |> Enum.filter(fn {_key, metric} ->
+        DateTime.compare(metric.timestamp, since) == :gt
+      end)
+      |> Enum.group_by(fn {_key, metric} -> metric.type end)
+      |> Enum.map(fn {type, metrics} ->
+        stats = calculate_stats(metrics)
+        {type, stats}
+      end)
+      |> Map.new()
 
     {:reply, metrics, state}
   end

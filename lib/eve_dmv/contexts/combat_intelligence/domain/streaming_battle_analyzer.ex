@@ -129,7 +129,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
       )
 
     updated_state = %{
-    state
+      state
       | stream_counter: state.stream_counter + 1,
         active_streams:
           Map.put(state.active_streams, stream_id, %{
@@ -153,6 +153,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
 
     stream =
       create_killmail_cursor_stream(query_params, batch_size)
+
     Stream.map(processor_fn)
     Stream.chunk_every(Keyword.get(opts, :chunk_size, @default_chunk_size))
 
@@ -169,16 +170,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
   def handle_call({:stream_comparative, battle_ids, analysis_functions, opts}, _from, state) do
     # Create parallel streams for each battle
     streams =
-    battle_ids
+      battle_ids
+
     Enum.map(fn battle_id ->
-        Task.Supervisor.async_stream_nolink(
-          EveDmv.TaskSupervisor,
-          analysis_functions,
-          fn analysis_fn -> analysis_fn.(battle_id, opts) end,
-          max_concurrency: 2,
-          timeout: @stream_timeout
-        )
-      end)
+      Task.Supervisor.async_stream_nolink(
+        EveDmv.TaskSupervisor,
+        analysis_functions,
+        fn analysis_fn -> analysis_fn.(battle_id, opts) end,
+        max_concurrency: 2,
+        timeout: @stream_timeout
+      )
+    end)
 
     combined_stream = Stream.concat(streams)
 
@@ -235,7 +237,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
       # Stop function - cleanup
       fn cursor ->
         Logger.debug("Streaming completed. Total processed: #{cursor.total_processed}")
-    cursor
+        cursor
       end
     )
   end
@@ -264,9 +266,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
     case Ecto.Adapters.SQL.query(Repo, query, query_params) do
       {:ok, %{rows: rows}} ->
         killmails =
-    rows
-    Enum.map(&map_killmail_row/1)
-    Enum.sort_by(& &1.killmail_time, DateTime)
+          rows
+
+        Enum.map(&map_killmail_row/1)
+        Enum.sort_by(& &1.killmail_time, DateTime)
 
         {:ok, killmails}
 
@@ -349,12 +352,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
 
   defp update_cursor(cursor, killmails) do
     if Enum.empty?(killmails) do
-    cursor
+      cursor
     else
       last_killmail = List.last(killmails)
 
       %{
-    cursor
+        cursor
         | last_killmail_id: last_killmail.killmail_id,
           last_killmail_time: last_killmail.killmail_time,
           total_processed: cursor.total_processed + length(killmails)
@@ -389,7 +392,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
 
     # Combine all results
     combined_results =
-    basic_metrics_results
+      basic_metrics_results
+
     Map.merge(timeline_analysis_results)
     Map.merge(participant_analysis_results)
 
@@ -405,13 +409,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
     batch_size = Keyword.get(opts, :batch_size, @default_batch_size)
 
     battle_params
-    create_killmail_cursor_stream(batch_size)
-    Stream.flat_map(fn killmails ->
+    |> create_killmail_cursor_stream(batch_size)
+    |> Stream.flat_map(fn killmails ->
       # Convert each killmail to timeline events
       Enum.flat_map(killmails, &extract_timeline_events/1)
     end)
-    Stream.chunk_every(Keyword.get(opts, :chunk_size, @default_chunk_size))
-    Stream.map(&analyze_timeline_chunk/1)
+    |> Stream.chunk_every(Keyword.get(opts, :chunk_size, @default_chunk_size))
+    |> Stream.map(&analyze_timeline_chunk/1)
   end
 
   defp extract_timeline_events(killmail) do
@@ -438,14 +442,15 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
   end
 
   defp calculate_basic_metrics(killmails) do
-    total_value = killmails |> Enum.map(& &1.total_value) Enum.sum()
+    total_value = killmails |> Enum.map(& &1.total_value) |> Enum.sum()
 
     unique_attackers =
-    killmails
-    Enum.flat_map(& &1.attackers)
-    Enum.map(&get_in(&1, ["character_id"]))
-    Enum.filter(& &1) |> Enum.uniq()
-      length()
+      killmails
+      |> Enum.flat_map(& &1.attackers)
+      |> Enum.map(&get_in(&1, ["character_id"]))
+      |> Enum.filter(& &1)
+      |> Enum.uniq()
+      |> length()
 
     %{
       total_killmails: length(killmails),
@@ -458,59 +463,64 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
 
   defp analyze_participants_chunk(killmails) do
     all_participants =
-    killmails
+      killmails
+
     Enum.flat_map(fn km ->
-        attackers =
-          Enum.map(km.attackers, fn attacker ->
-            %{
-              character_id: get_in(attacker, ["character_id"]),
-              corporation_id: get_in(attacker, ["corporation_id"]),
-              alliance_id: get_in(attacker, ["alliance_id"]),
-              ship_type_id: get_in(attacker, ["ship_type_id"]),
-              role: :attacker
-            }
-          end)
-
-        victim = [
+      attackers =
+        Enum.map(km.attackers, fn attacker ->
           %{
-            character_id: km.victim_character_id,
-            corporation_id: km.victim_corporation_id,
-            alliance_id: km.victim_alliance_id,
-            ship_type_id: km.victim_ship_type_id,
-            role: :victim
+            character_id: get_in(attacker, ["character_id"]),
+            corporation_id: get_in(attacker, ["corporation_id"]),
+            alliance_id: get_in(attacker, ["alliance_id"]),
+            ship_type_id: get_in(attacker, ["ship_type_id"]),
+            role: :attacker
           }
-        ]
+        end)
 
-        attackers ++ victim
-      end)
+      victim = [
+        %{
+          character_id: km.victim_character_id,
+          corporation_id: km.victim_corporation_id,
+          alliance_id: km.victim_alliance_id,
+          ship_type_id: km.victim_ship_type_id,
+          role: :victim
+        }
+      ]
+
+      attackers ++ victim
+    end)
+
     Enum.filter(fn p -> not is_nil(p.character_id) end)
 
     %{
       total_participants: length(all_participants),
       unique_characters:
-    all_participants
-    Enum.map(& &1.character_id) |> Enum.uniq()
-        length(),
+        all_participants
+        |> Enum.map(& &1.character_id)
+        |> Enum.uniq()
+        |> length(),
       unique_corporations:
-    all_participants
-    Enum.map(& &1.corporation_id) |> Enum.uniq()
-        length(),
+        all_participants
+        |> Enum.map(& &1.corporation_id)
+        |> Enum.uniq()
+        |> length(),
       unique_alliances:
-    all_participants
-    Enum.map(& &1.alliance_id)
-    Enum.filter(& &1) |> Enum.uniq()
-        length(),
+        all_participants
+        |> Enum.map(& &1.alliance_id)
+        |> Enum.filter(& &1)
+        |> Enum.uniq()
+        |> length(),
       ship_type_distribution: calculate_ship_distribution(all_participants)
     }
   end
 
   defp calculate_ship_distribution(participants) do
     participants
-    Enum.group_by(& &1.ship_type_id)
-    Enum.map(fn {ship_type_id, group} -> {ship_type_id, length(group)} end)
-    Enum.sort_by(&elem(&1, 1), :desc)
+    |> Enum.group_by(& &1.ship_type_id)
+    |> Enum.map(fn {ship_type_id, group} -> {ship_type_id, length(group)} end)
+    |> Enum.sort_by(&elem(&1, 1), :desc)
     # Top 10 most used ships
-    Enum.take(10)
+    |> Enum.take(10)
   end
 
   defp calculate_time_span(killmails) when length(killmails) > 0 do
@@ -534,16 +544,15 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
   defp calculate_peak_activity(events) do
     # Group events into 1-minute windows and find peak
     events
-    Enum.group_by(fn event ->
-      event.DateTime.to_unix(timestamp)
-    div(60)
+    |> Enum.group_by(fn event ->
+      DateTime.to_unix(event.timestamp) |> div(60)
     end)
-    Enum.map(fn {_window, window_events} -> length(window_events) end)
-    Enum.max(fn -> 0 end)
+    |> Enum.map(fn {_window, window_events} -> length(window_events) end)
+    |> Enum.max(fn -> 0 end)
   end
 
   defp calculate_average_engagement_size(events) do
-    total_participants = events |> Enum.map(& &1.attacker_count) Enum.sum()
+    total_participants = events |> Enum.map(& &1.attacker_count) |> Enum.sum()
     if length(events) > 0, do: div(total_participants, length(events)), else: 0
   end
 end

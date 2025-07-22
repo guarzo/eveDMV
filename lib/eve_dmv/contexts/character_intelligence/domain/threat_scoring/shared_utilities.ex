@@ -30,29 +30,28 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtili
   """
   def extract_ship_types_used(killmails) do
     # Extract ship types used by the character
-    ship_types =
     killmails
-    Enum.flat_map(fn km ->
-        # Ship type when victim
-        victim_ship = if km.victim_character_id, do: [km.victim_ship_type_id], else: []
+    |> Enum.flat_map(fn km ->
+      # Ship type when victim
+      victim_ship = if km.victim_character_id, do: [km.victim_ship_type_id], else: []
 
-        # Ship type when attacker
-        attacker_ships =
-          case km.raw_data do
-            %{"attackers" => attackers} when is_list(attackers) ->
-        attackers
-    Enum.filter(&(&1["character_id"] != nil))
-    Enum.map(& &1["ship_type_id"])
-    Enum.filter(&(&1 != nil))
+      # Ship type when attacker
+      attacker_ships =
+        case km.raw_data do
+          %{"attackers" => attackers} when is_list(attackers) ->
+            attackers
+            |> Enum.filter(&(&1["character_id"] != nil))
+            |> Enum.map(& &1["ship_type_id"])
+            |> Enum.filter(&(&1 != nil))
 
-            _ ->
-              []
-          end
+          _ ->
+            []
+        end
 
-        victim_ship ++ attacker_ships
-      end)
-    Enum.filter(&(&1 != nil)) |> Enum.frequencies()
-    ship_types
+      victim_ship ++ attacker_ships
+    end)
+    |> Enum.filter(&(&1 != nil))
+    |> Enum.frequencies()
   end
 
   @doc """
@@ -62,17 +61,17 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtili
   """
   def extract_character_ship_roles(killmails) do
     killmails
-    Enum.flat_map(fn km ->
+    |> Enum.flat_map(fn km ->
       # Extract ship types used by the character
       victim_ships = if km.victim_character_id, do: [km.victim_ship_type_id], else: []
 
       attacker_ships =
         case km.raw_data do
           %{"attackers" => attackers} when is_list(attackers) ->
-        attackers
-    Enum.filter(&(&1["character_id"] != nil))
-    Enum.map(& &1["ship_type_id"])
-    Enum.filter(&(&1 != nil))
+            attackers
+            |> Enum.filter(&(&1["character_id"] != nil))
+            |> Enum.map(& &1["ship_type_id"])
+            |> Enum.filter(&(&1 != nil))
 
           _ ->
             []
@@ -80,8 +79,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtili
 
       victim_ships ++ attacker_ships
     end)
-    Enum.filter(&(&1 != nil))
-    Enum.map(&classify_ship_role/1) |> Enum.frequencies()
+    |> Enum.filter(&(&1 != nil))
+    |> Enum.map(&classify_ship_role/1)
+    |> Enum.frequencies()
   end
 
   @doc """
@@ -146,8 +146,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtili
       0.5
     else
       total_damage_contribution =
-    attacker_killmails
-    Enum.map(&extract_damage_contribution/1) |> Enum.sum()
+        attacker_killmails
+        |> Enum.map(&extract_damage_contribution/1)
+        |> Enum.sum()
+
       average_contribution = total_damage_contribution / length(attacker_killmails)
 
       # Normalize damage contribution (higher is better)
@@ -167,9 +169,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtili
       %{"victim" => %{"damage_taken" => total_damage}, "attackers" => attackers}
       when is_list(attackers) and is_number(total_damage) and total_damage > 0 ->
         character_damage =
-    attackers
-    Enum.find(&(&1["character_id"] == target_character_id))
-    case do
+          attackers
+          |> Enum.find(&(&1["character_id"] == target_character_id))
+          |> case do
             %{"damage_done" => damage} when is_number(damage) -> damage
             _ -> 0
           end
@@ -271,16 +273,18 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtili
     if map_size(ship_types_map) == 0 do
       0.0
     else
-      total_uses = Map.values(ship_types_map) Enum.sum()
+      total_uses = Map.values(ship_types_map) |> Enum.sum()
       unique_ships = map_size(ship_types_map)
 
       # Shannon diversity index adapted for ship usage
       shannon_diversity =
-    ship_types_map
-    Enum.map(fn {_ship, uses} ->
+        ship_types_map
+        |> Enum.map(fn {_ship, uses} ->
           proportion = uses / total_uses
           -proportion * :math.log(proportion)
-        end) |> Enum.sum()
+        end)
+        |> Enum.sum()
+
       # Normalize to 0-1 scale
       max_diversity = :math.log(unique_ships)
       if max_diversity > 0, do: shannon_diversity / max_diversity, else: 0.0
@@ -291,13 +295,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtili
   Calculates usage distribution percentages for ship types.
   """
   def calculate_usage_distribution(ship_types_map) do
-    total_uses = Map.values(ship_types_map) Enum.sum()
+    total_uses = Map.values(ship_types_map) |> Enum.sum()
 
     ship_types_map
-    Enum.map(fn {ship_type, uses} ->
+    |> Enum.map(fn {ship_type, uses} ->
       {ship_type, Float.round(uses / total_uses, 3)}
     end)
-    Enum.sort_by(&elem(&1, 1), :desc)
+    |> Enum.sort_by(&elem(&1, 1), :desc)
   end
 
   @doc """
@@ -317,7 +321,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtili
       0.0
     else
       mean_val = average(values)
-      variance_sum = values |> Enum.map(&:math.pow(&1 - mean_val, 2)) Enum.sum()
+      variance_sum = values |> Enum.map(&:math.pow(&1 - mean_val, 2)) |> Enum.sum()
       variance_sum / length(values)
     end
   end

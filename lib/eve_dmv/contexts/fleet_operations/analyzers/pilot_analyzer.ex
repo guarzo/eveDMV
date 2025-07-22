@@ -317,14 +317,17 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
             ship_usage = Map.get(analysis_data, "ship_usage", %{})
             ship_categories = Map.get(ship_usage, "ship_categories", %{})
 
-            ship_categories
-            |> Enum.map(fn {category, count} ->
-              group = map_category_to_group(category)
-              {group, count}
-            end)
-            |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
-            |> Enum.map(fn {group, counts} -> {group, Enum.sum(counts)} end)
-            |> Map.new()
+            ship_groups =
+              ship_categories
+              |> Enum.map(fn {category, count} ->
+                group = map_category_to_group(category)
+                {group, count}
+              end)
+              |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+              |> Enum.map(fn {group, counts} -> {group, Enum.sum(counts)} end)
+              |> Map.new()
+
+            ship_groups
 
           {:error, _} ->
             %{}

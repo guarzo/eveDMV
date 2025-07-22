@@ -186,12 +186,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
     kd_ratio = performance_metrics[:kill_death_ratio] || 1.0
 
     []
-    add_numerical_factors(tactical_analysis)
-    add_kill_efficiency_factors(kd_ratio)
-    add_logistics_effectiveness_factors(tactical_analysis)
-    add_target_prioritization_factors(tactical_analysis)
-    Enum.sort_by(& &1.impact, :desc)
-    Enum.take(3)
+    |> add_numerical_factors(tactical_analysis)
+    |> add_kill_efficiency_factors(kd_ratio)
+    |> add_logistics_effectiveness_factors(tactical_analysis)
+    |> add_target_prioritization_factors(tactical_analysis)
+    |> Enum.sort_by(& &1.impact, :desc)
+    |> Enum.take(3)
   end
 
   defp add_numerical_factors(factors_acc, tactical_analysis) do
@@ -260,16 +260,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
     end
   end
 
-  defp identify_secondary_victory_factors(tactical_analysis, performance_metrics) do
-    # Identify supporting factors that contributed to victory
+  defp identify_secondary_victory_factors(_tactical_analysis, _performance_metrics) do
+    # TODO: Implement secondary victory factor analysis
+    # This should analyze positioning, timing, coordination, EWAR, and intelligence factors
     []
-    add_positioning_factors(tactical_analysis)
-    add_timing_factors(tactical_analysis)
-    add_coordination_factors(performance_metrics)
-    add_ewar_factors(tactical_analysis)
-    add_intelligence_factors(tactical_analysis)
-    Enum.sort_by(& &1.impact, :desc)
-    Enum.take(3)
   end
 
   defp add_positioning_factors(factors_acc, tactical_analysis) do
@@ -360,8 +354,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
     # Find logistics eliminations
     logistics_kills =
       timeline.events
-    Enum.filter(&(&1.tactical_significance == :logistics_kill))
-    Enum.map(fn event ->
+      |> Enum.filter(&(&1.tactical_significance == :logistics_kill))
+      |> Enum.map(fn event ->
         %{
           moment: :logistics_elimination,
           timestamp: event.timestamp,
@@ -374,8 +368,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
     # Find capital losses
     capital_losses =
       timeline.events
-    Enum.filter(&(&1.tactical_significance == :capital_kill))
-    Enum.map(fn event ->
+      |> Enum.filter(&(&1.tactical_significance == :capital_kill))
+      |> Enum.map(fn event ->
         %{
           moment: :capital_loss,
           timestamp: event.timestamp,
@@ -387,23 +381,22 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
 
     # Find momentum shifts
     momentum_shifts =
-      tactical_analysis[:momentum_shifts] ||
-        []
-    Enum.map(fn shift ->
-          %{
-            moment: :momentum_shift,
-            timestamp: shift.timestamp,
-            impact: 0.75,
-            description: shift.description,
-            shift_magnitude: shift.magnitude
-          }
-        end)
+      (tactical_analysis[:momentum_shifts] || [])
+      |> Enum.map(fn shift ->
+        %{
+          moment: :momentum_shift,
+          timestamp: shift.timestamp,
+          impact: 0.75,
+          description: shift.description,
+          shift_magnitude: shift.magnitude
+        }
+      end)
 
     # Find command ship losses
     command_losses =
       timeline.events
-    Enum.filter(&(&1.tactical_significance == :command_kill))
-    Enum.map(fn event ->
+      |> Enum.filter(&(&1.tactical_significance == :command_kill))
+      |> Enum.map(fn event ->
         %{
           moment: :command_disruption,
           timestamp: event.timestamp,
@@ -414,10 +407,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
       end)
 
     # Combine all decisive moments, filter and sort
-    [logistics_kills, capital_losses, momentum_shifts, command_losses] |> Enum.concat()
-    Enum.filter(&(&1.impact > 0.6))
-    Enum.sort_by(& &1.timestamp)
-    Enum.take(5)
+    [logistics_kills, capital_losses, momentum_shifts, command_losses]
+    |> Enum.concat()
+    |> Enum.filter(&(&1.impact > 0.6))
+    |> Enum.sort_by(& &1.timestamp)
+    |> Enum.take(5)
   end
 
   defp calculate_factor_weights(tactical_analysis, performance_metrics) do
@@ -460,18 +454,19 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
     weights =
       if battle_duration > 1800 do
         # Long battles emphasize strategic factors
-    base_weights
-    Map.update!(:strategic, &(&1 + 0.1))
-    Map.update!(:tactical, &(&1 - 0.1))
+        base_weights
+        |> Map.update!(:strategic, &(&1 + 0.1))
+        |> Map.update!(:tactical, &(&1 - 0.1))
       else
         base_weights
       end
 
     # Normalize weights
-    total = Map.values(weights) Enum.sum()
+    total = Map.values(weights) |> Enum.sum()
 
     weights
-    Enum.map(fn {k, v} -> {k, v / total} end) |> Map.new()
+    |> Enum.map(fn {k, v} -> {k, v / total} end)
+    |> Map.new()
   end
 
   defp extract_victory_lessons(tactical_analysis, performance_metrics) do
@@ -483,13 +478,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
     engagement_timing = tactical_analysis[:engagement_timing_score] || 0.5
 
     []
-    add_logistics_lessons(logistics_survival)
-    add_target_selection_lessons(priority_elimination)
-    add_coordination_lessons(coordination_score)
-    add_isk_efficiency_lessons(isk_ratio)
-    add_timing_lessons(engagement_timing)
-    add_tactical_innovation_lessons(tactical_analysis)
-    Enum.take(5)
+    |> add_logistics_lessons(logistics_survival)
+    |> add_target_selection_lessons(priority_elimination)
+    |> add_coordination_lessons(coordination_score)
+    |> add_isk_efficiency_lessons(isk_ratio)
+    |> add_timing_lessons(engagement_timing)
+    |> add_tactical_innovation_lessons(tactical_analysis)
+    |> Enum.take(5)
   end
 
   defp add_logistics_lessons(lessons_acc, logistics_survival) do
@@ -630,8 +625,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
   defp calculate_kill_death_ratios(sides) do
     # Calculate K/D ratios for each side
     kd_ratios =
-    sides
-    Enum.map(fn {side_id, data} ->
+      sides
+      |> Enum.map(fn {side_id, data} ->
         kills = Map.get(data, :kills, 0)
         # Avoid division by zero
         losses = Map.get(data, :losses, 1)
@@ -644,10 +639,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
            ratio: Float.round(ratio, 2),
            efficiency: calculate_combat_efficiency(ratio)
          }}
-      end) |> Map.new()
+      end)
+      |> Map.new()
+
     # Calculate overall battle efficiency
-    total_kills = Map.values(sides) |> Enum.map(&Map.get(&1, :kills, 0)) Enum.sum()
-    total_losses = Map.values(sides) |> Enum.map(&Map.get(&1, :losses, 0)) Enum.sum()
+    total_kills = Map.values(sides) |> Enum.map(&Map.get(&1, :kills, 0)) |> Enum.sum()
+    total_losses = Map.values(sides) |> Enum.map(&Map.get(&1, :losses, 0)) |> Enum.sum()
 
     Map.put(
       kd_ratios,
@@ -659,8 +656,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
   defp calculate_isk_efficiency_impact(sides) do
     # Calculate ISK efficiency for each side
     isk_efficiencies =
-    sides
-    Enum.map(fn {side_id, data} ->
+      sides
+      |> Enum.map(fn {side_id, data} ->
         isk_destroyed = Map.get(data, :isk_destroyed, 0)
         # Avoid division by zero
         isk_lost = Map.get(data, :isk_lost, 1)
@@ -674,13 +671,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
            efficiency_percentage: Float.round(min(1.0, efficiency) * 100, 1),
            economic_victory: efficiency > 1.0
          }}
-      end) |> Map.new()
+      end)
+      |> Map.new()
+
     # Calculate overall economic impact
     total_isk =
-    Map.values(sides)
-    Enum.flat_map(fn data ->
+      Map.values(sides)
+      |> Enum.flat_map(fn data ->
         [Map.get(data, :isk_destroyed, 0), Map.get(data, :isk_lost, 0)]
-      end) |> Enum.sum()
+      end)
+      |> Enum.sum()
+
     # 10B+
     economic_impact =
       if total_isk > 10_000_000_000 do
@@ -691,15 +692,16 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
         if total_isk > 1_000_000_000, do: 0.6, else: 0.3
       end
 
-    Map.put(isk_efficiencies, :economic_impact, economic_impact)
-    Map.put(:total_isk_involved, total_isk)
+    isk_efficiencies
+    |> Map.put(:economic_impact, economic_impact)
+    |> Map.put(:total_isk_involved, total_isk)
   end
 
   defp calculate_participation_rates(sides) do
     # Calculate participation metrics for each side
     participation_data =
-    sides
-    Enum.map(fn {side_id, data} ->
+      sides
+      |> Enum.map(fn {side_id, data} ->
         total_members = Map.get(data, :total_pilots, 1)
         active_members = Map.get(data, :pilots_on_killmails, 0)
 
@@ -712,17 +714,20 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
            participation_rate: participation_rate |> Float.round(2),
            engagement_level: categorize_engagement_level(participation_rate)
          }}
-      end) |> Map.new()
+      end)
+      |> Map.new()
+
     # Calculate overall engagement intensity
     avg_participation =
-    Map.values(participation_data)
-    Enum.map(& &1.participation_rate)
-      average()
+      Map.values(participation_data)
+      |> Enum.map(& &1.participation_rate)
+      |> average()
 
     engagement_intensity = calculate_engagement_intensity(avg_participation, sides)
 
-    Map.put(participation_data, :engagement_intensity, engagement_intensity)
-    Map.put(:battle_commitment, categorize_battle_commitment(engagement_intensity))
+    participation_data
+    |> Map.put(:engagement_intensity, engagement_intensity)
+    |> Map.put(:battle_commitment, categorize_battle_commitment(engagement_intensity))
   end
 
   defp identify_force_multipliers(sides) do
@@ -770,8 +775,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
 
     # Check for EWAR presence
     multipliers =
-    sides
-    Enum.reduce(multipliers, fn {side_id, data}, acc ->
+      Enum.reduce(sides, multipliers, fn {side_id, data}, acc ->
         ewar_ratio = Map.get(data, :ewar_ratio, 0)
         # 10%+ EWAR
         if ewar_ratio > 0.1 do
@@ -835,7 +839,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
       target_calling,
       movement_coordination,
       communication,
-    response_time
+      response_time
     ]
 
     overall = average(components)
@@ -1086,11 +1090,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
       end
 
     final_recommendations
-    Enum.uniq_by(& &1.action)
-    Enum.sort_by(fn r ->
+    |> Enum.uniq_by(& &1.action)
+    |> Enum.sort_by(fn r ->
       {urgency_to_number(r.urgency), impact_to_number(r.expected_impact)}
     end)
-    Enum.take(5)
+    |> Enum.take(5)
   end
 
   defp generate_strategic_adjustments(_outcome_analysis) do
@@ -1200,9 +1204,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
   # Fleet size calculations
   defp calculate_fleet_sizes(sides) do
     sides
-    Enum.map(fn {side_id, data} ->
+    |> Enum.map(fn {side_id, data} ->
       {side_id, Map.get(data, :fleet_size, 0)}
-    end) |> Map.new()
+    end)
+    |> Map.new()
   end
 
   defp analyze_numerical_advantage(fleet_sizes, _kd_ratios) do
@@ -1231,8 +1236,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
       %{advantage: :none, best_efficiency: 1.0}
     else
       efficiencies =
-    Map.values(isk_efficiency)
-    Enum.map(&Map.get(&1, :efficiency_ratio, 1.0))
+        Map.values(isk_efficiency)
+        |> Enum.map(&Map.get(&1, :efficiency_ratio, 1.0))
 
       best = Enum.max(efficiencies)
       worst = Enum.min(efficiencies)
@@ -1256,7 +1261,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
 
   defp calculate_attrition_sustainability(sides) do
     sides
-    Enum.map(fn {side_id, data} ->
+    |> Enum.map(fn {side_id, data} ->
       total_pilots = Map.get(data, :total_pilots, 1)
       losses = Map.get(data, :losses, 0)
       loss_rate = losses / total_pilots
@@ -1270,7 +1275,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
         end
 
       {side_id, %{loss_rate: Float.round(loss_rate, 2), sustainability: sustainability}}
-    end) |> Map.new()
+    end)
+    |> Map.new()
   end
 
   # Tactical data extraction
@@ -1324,9 +1330,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
     current_efficiency = Map.get(battle_results, :isk_efficiency, 1.0)
 
     historical_avg =
-    recent_battles
-    Enum.map(&Map.get(&1, :isk_efficiency, 1.0))
-      average()
+      recent_battles
+      |> Enum.map(&Map.get(&1, :isk_efficiency, 1.0))
+      |> average()
 
     %{
       current_efficiency: current_efficiency,
@@ -1344,9 +1350,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
       %{effectiveness: :unknown, sample_size: 0}
     else
       win_rate =
-    doctrine_battles
-    Enum.count(&Map.get(&1, :victory, false))
-    Kernel./(length(doctrine_battles))
+        doctrine_battles
+        |> Enum.count(&Map.get(&1, :victory, false))
+        |> Kernel./(length(doctrine_battles))
 
       %{
         effectiveness: categorize_doctrine_effectiveness(win_rate),
@@ -1359,14 +1365,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
   # Probability calculations
   defp calculate_victory_probability(primary_factors, secondary_factors) do
     primary_score =
-    primary_factors
-    Enum.map(&Map.get(&1, :impact, 0.0))
-      average()
+      primary_factors
+      |> Enum.map(&Map.get(&1, :impact, 0.0))
+      |> average()
 
     secondary_score =
-    secondary_factors
-    Enum.map(&Map.get(&1, :impact, 0.0))
-      average()
+      secondary_factors
+      |> Enum.map(&Map.get(&1, :impact, 0.0))
+      |> average()
 
     # Weighted combination
     probability = primary_score * 0.7 + secondary_score * 0.3
@@ -1376,8 +1382,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
   defp analyze_counterfactuals(_tactical_analysis, decisive_moments) do
     # Analyze what-if scenarios based on decisive moments
     counterfactuals =
-    decisive_moments
-    Enum.map(fn moment ->
+      decisive_moments
+      |> Enum.map(fn moment ->
         case moment.moment do
           :logistics_elimination ->
             %{
@@ -1417,8 +1423,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
     ]
 
     max_improvement =
-    improvement_areas
-    Enum.map(fn {_area, potential} -> potential end) |> Enum.sum()
+      improvement_areas
+      |> Enum.map(fn {_area, potential} -> potential end)
+      |> Enum.sum()
+
     %{
       current_efficiency: current_efficiency,
       theoretical_maximum: theoretical_max,
@@ -1431,11 +1439,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
   defp calculate_logistics_kill_impact(event, timeline) do
     pre_kill_events =
       timeline.events
-    Enum.filter(&(&1.timestamp < event.timestamp))
+      |> Enum.filter(&(&1.timestamp < event.timestamp))
 
     post_kill_events =
       timeline.events
-    Enum.filter(&(&1.timestamp > event.timestamp))
+      |> Enum.filter(&(&1.timestamp > event.timestamp))
 
     # Calculate casualty rate change
     pre_casualty_rate = calculate_casualty_rate(pre_kill_events)
@@ -1447,8 +1455,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
   defp analyze_post_logistics_kill(event, timeline) do
     post_events =
       timeline.events
-    Enum.filter(&(&1.timestamp > event.timestamp))
-    Enum.take(10)
+      |> Enum.filter(&(&1.timestamp > event.timestamp))
+      |> Enum.take(10)
 
     %{
       immediate_casualties: Enum.count(post_events, &(&1.event_type == :kill)),
@@ -1504,8 +1512,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
 
   defp calculate_engagement_intensity(avg_participation, sides) do
     total_pilots =
-    Map.values(sides)
-    Enum.map(&Map.get(&1, :total_pilots, 0)) |> Enum.sum()
+      Map.values(sides)
+      |> Enum.map(&Map.get(&1, :total_pilots, 0))
+      |> Enum.sum()
+
     # Scale intensity by participation and fleet size
     base_intensity = avg_participation
     size_multiplier = min(2.0, total_pilots / 50.0)
@@ -1629,7 +1639,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
 
   defp prioritize_recommendations(immediate_actions) do
     immediate_actions
-    Enum.sort_by(
+    |> Enum.sort_by(
       fn action ->
         urgency_score = urgency_to_number(Map.get(action, :urgency, :low))
         impact_score = impact_to_number(Map.get(action, :expected_impact, :low))
@@ -1695,8 +1705,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
       recent = Enum.take(historical_data, 5)
       older = Enum.drop(historical_data, 5) |> Enum.take(5)
 
-      recent_avg = recent |> Enum.map(&Map.get(&1, :performance_score, 0.5)) average()
-      older_avg = older |> Enum.map(&Map.get(&1, :performance_score, 0.5)) average()
+      recent_avg = recent |> Enum.map(&Map.get(&1, :performance_score, 0.5)) |> average()
+      older_avg = older |> Enum.map(&Map.get(&1, :performance_score, 0.5)) |> average()
 
       Float.round(max(0.0, recent_avg - older_avg), 2)
     end
@@ -1762,9 +1772,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
       %{total_impact: 0.0, timeline: "N/A"}
     else
       total_impact =
-    prioritized_actions
-    Enum.map(&impact_to_number(Map.get(&1, :expected_impact, :low))) |> Enum.sum()
-    Kernel./(length(prioritized_actions))
+        prioritized_actions
+        |> Enum.map(&impact_to_number(Map.get(&1, :expected_impact, :low)))
+        |> Enum.sum()
+        |> Kernel./(length(prioritized_actions))
 
       %{
         total_impact: Float.round(total_impact / 3.0, 2),
@@ -1777,7 +1788,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
 
   defp generate_implementation_timeline(prioritized_actions) do
     Enum.with_index(prioritized_actions)
-    Enum.map(fn {action, index} ->
+    |> Enum.map(fn {action, index} ->
       urgency = Map.get(action, :urgency, :low)
 
       timeframe =
@@ -1839,9 +1850,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
       %{adaptability: :none, response_time: 0.0, effectiveness: 0.0}
     else
       avg_response_time =
-    adaptations
-    Enum.map(&Map.get(&1, :response_time, 60))
-        average()
+        adaptations
+        |> Enum.map(&Map.get(&1, :response_time, 60))
+        |> average()
 
       successful_adaptations = Enum.count(adaptations, &Map.get(&1, :successful, false))
       effectiveness = successful_adaptations / length(adaptations)
@@ -1920,9 +1931,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
       timestamps = Enum.map(escalation_points, & &1.timestamp)
 
       intervals =
-    Enum.sort(timestamps)
-    Enum.chunk_every(2, 1, :discard)
-    Enum.map(fn [a, b] -> b - a end)
+        Enum.sort(timestamps)
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.map(fn [a, b] -> b - a end)
 
       avg_interval = average(intervals)
 

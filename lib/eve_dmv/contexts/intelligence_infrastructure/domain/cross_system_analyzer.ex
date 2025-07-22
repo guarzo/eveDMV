@@ -662,8 +662,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     killmails = get_system_killmails(system_id, time_window_hours)
 
     unique_pilots =
-    killmails
-    Enum.flat_map(&extract_all_participants_from_killmail/1) |> Enum.uniq()
+      killmails
+      |> Enum.flat_map(&extract_all_participants_from_killmail/1) 
+      |> Enum.uniq()
     %{
       unique_pilots: length(unique_pilots),
       activity_score: calculate_pilot_activity_score(killmails, unique_pilots),
@@ -693,12 +694,12 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Estimate when peak activity occurred
     if length(killmails) > 0 do
       # Group killmails by hour and find peak
-    killmails
-    Enum.group_by(fn km ->
+      killmails
+      |> Enum.group_by(fn km ->
         DateTime.to_time(DateTime.truncate(km.killmail_time, :second))
       end)
-    Enum.max_by(fn {_hour, kms} -> length(kms) end)
-    elem(0)
+      |> Enum.max_by(fn {_hour, kms} -> length(kms) end)
+      |> elem(0)
     else
       nil
     end
@@ -732,10 +733,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     killmails = get_system_killmails(system_id, time_window_hours)
 
     corp_participation =
-    killmails
-    Enum.flat_map(&extract_corp_ids_from_killmail/1) |> Enum.frequencies()
-    Enum.sort_by(fn {_corp_id, count} -> count end, :desc)
-    Enum.take(10)
+      killmails
+      |> Enum.flat_map(&extract_corp_ids_from_killmail/1) 
+      |> Enum.frequencies()
+      |> Enum.sort_by(fn {_corp_id, count} -> count end, :desc)
+      |> Enum.take(10)
 
     %{
       active_corporations: length(corp_participation),
@@ -1016,7 +1018,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Calculate how spread out the activity is across hours
     if length(hourly_distribution) > 0 do
       total_activity =
-        hourly_distribution |> Enum.map(fn {_hour, count} -> count end) Enum.sum()
+        hourly_distribution |> Enum.map(fn {_hour, count} -> count end) |> Enum.sum()
 
       # Calculate variance
       # 24 hours
@@ -1105,10 +1107,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # This is simplified - in production would use more sophisticated analysis
 
     aggressor_corps =
-    killmails
-    Enum.flat_map(&extract_aggressor_corps/1) |> Enum.frequencies()
-    Enum.sort_by(fn {_corp_id, count} -> count end, :desc)
-    Enum.take(5)
+      killmails
+      |> Enum.flat_map(&extract_aggressor_corps/1) 
+      |> Enum.frequencies()
+      |> Enum.sort_by(fn {_corp_id, count} -> count end, :desc)
+      |> Enum.take(5)
 
     %{
       hostile_corporations: aggressor_corps,
@@ -1665,7 +1668,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
   defp build_activity_timeline(killmails) do
     # Build detailed timeline of activity events
     killmails
-    Enum.map(fn km ->
+    |> Enum.map(fn km ->
       %{
         timestamp: km.killmail_time,
         event_type: :killmail,
@@ -1674,7 +1677,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
         activity_intensity: calculate_killmail_intensity(km)
       }
     end)
-    Enum.sort_by(& &1.timestamp)
+    |> Enum.sort_by(& &1.timestamp)
   end
 
   defp extract_pilot_activity_data(killmails) do

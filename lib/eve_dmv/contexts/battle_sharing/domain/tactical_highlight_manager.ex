@@ -172,7 +172,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
              timestamp,
              battle_data,
              tactical_context,
-    auto_analyze
+             auto_analyze
            ),
          {:ok, learning_integration} <-
            integrate_learning_content(highlight_type, learning_notes),
@@ -239,23 +239,23 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
              battle_data,
              phase_analysis,
              tactical_patterns,
-    include_phase_transitions
+             include_phase_transitions
            ),
          {:ok, filtered_highlights} <-
            filter_highlights_by_confidence(
              candidate_highlights,
-    min_confidence
+             min_confidence
            ),
          {:ok, prioritized_highlights} <-
            prioritize_highlights(
              filtered_highlights,
              focus_types,
-    max_highlights
+             max_highlights
            ),
          {:ok, final_highlights} <-
            finalize_auto_detected_highlights(
              battle_report_id,
-    prioritized_highlights
+             prioritized_highlights
            ) do
       end_time = System.monotonic_time(:millisecond)
       duration_ms = end_time - start_time
@@ -289,14 +289,14 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
            maybe_validate_permissions(
              existing_highlight,
              updater_character_id,
-    validate_permissions
+             validate_permissions
            ),
          {:ok, updated_highlight} <-
            apply_highlight_updates(
              existing_highlight,
              validated_updates,
              updater_character_id,
-    preserve_attribution
+             preserve_attribution
            ),
          {:ok, enriched_highlight} <- re_enrich_highlight_data(updated_highlight) do
       Logger.info("""
@@ -327,19 +327,19 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
            maybe_fetch_engagement_data(
              battle_highlights,
              time_window_days,
-    include_engagement_metrics
+             include_engagement_metrics
            ),
          {:ok, effectiveness_metrics} <-
            calculate_effectiveness_metrics(
              battle_highlights,
-    engagement_data
+             engagement_data
            ),
          {:ok, learning_impact} <- assess_learning_impact(battle_highlights),
          {:ok, recommendations} <-
            generate_improvement_recommendations(
              battle_highlights,
              effectiveness_metrics,
-    learning_impact
+             learning_impact
            ) do
       analysis_results = %{
         battle_report_id: battle_report_id,
@@ -381,18 +381,18 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
     with {:ok, candidate_highlights} <-
            fetch_candidate_highlights(
              time_window_days,
-    min_community_rating
+             min_community_rating
            ),
          {:ok, analyzed_highlights} <- analyze_highlight_quality(candidate_highlights),
          {:ok, categorized_highlights} <-
            categorize_highlights_by_learning(
              analyzed_highlights,
-    learning_categories
+             learning_categories
            ),
          {:ok, featured_selection} <-
            select_featured_highlights(
              categorized_highlights,
-    max_highlights
+             max_highlights
            ) do
       Logger.info("""
       Featured highlights curation completed:
@@ -407,11 +407,13 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
 
   # Private implementation functions
 
-  defp fetch_battle_report_data(_battle_report_id) do
-    # TODO: Fetch comprehensive battle report data
-    # This would integrate with the battle report storage system
-    # Related to Sprint 16 BATTLE-7: Complete tactical highlight manager implementations
-    {:ok, %{killmails: [], duration_seconds: 0}}
+  defp fetch_battle_report_data(battle_report_id) do
+    # Battle report data requires integration with battle storage system
+    Logger.warning(
+      "Battle report data not available for battle #{battle_report_id} - requires battle storage system implementation"
+    )
+
+    {:error, :battle_data_unavailable}
   end
 
   defp maybe_validate_timing(timestamp, battle_data, validate_timing) do
@@ -472,10 +474,11 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
 
     relevant_killmails =
       battle_data.killmails
+
     Enum.filter(fn km ->
-        km_timestamp = calculate_killmail_timestamp_offset(km, battle_data)
-        abs(km_timestamp - timestamp) <= time_window
-      end)
+      km_timestamp = calculate_killmail_timestamp_offset(km, battle_data)
+      abs(km_timestamp - timestamp) <= time_window
+    end)
 
     {:ok, relevant_killmails}
   end
@@ -546,7 +549,8 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
 
   defp count_participants(killmails) do
     participants =
-    killmails
+      killmails
+
     Enum.flat_map(&extract_participants_from_killmail/1) |> Enum.uniq()
     length(participants)
   end
@@ -637,10 +641,10 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
 
   defp find_related_learning_categories(highlight_type) do
     @learning_categories
-    Enum.filter(fn {_category, types} ->
+    |> Enum.filter(fn {_category, types} ->
       Atom.to_string(highlight_type) in types
     end)
-    Enum.map(fn {category, _types} -> category end)
+    |> Enum.map(fn {category, _types} -> category end)
   end
 
   defp generate_educational_tags(highlight_type, learning_notes) do
@@ -657,7 +661,8 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
 
     # Add tags based on learning notes content
     note_tags =
-    learning_notes
+      learning_notes
+
     Enum.flat_map(&extract_tags_from_note/1) |> Enum.uniq()
     (type_tags ++ note_tags) |> Enum.take(10)
   end
@@ -719,8 +724,8 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
 
   defp generate_highlight_id do
     12
-    :crypto.strong_rand_bytes()
-    Base.encode16(case: :lower)
+    |> :crypto.strong_rand_bytes()
+    |> Base.encode16(case: :lower)
   end
 
   defp enrich_highlight_data(highlight, _battle_data) do
@@ -843,24 +848,26 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
     "https://evedmv.com/battles/#{highlight.battle_report_id}#highlight-#{highlight.highlight_id}"
   end
 
-  # TODO: Placeholder functions for features requiring data layer implementation
-  # Related to Sprint 16 BATTLE-7: Complete tactical highlight manager implementations
-
   defp analyze_battle_phases(_battle_data) do
-    # TODO: Implement real battle phase analysis
-    {:ok, %{phases: [], transitions: []}}
+    # Battle phase analysis requires sophisticated temporal analysis algorithms
+    Logger.warning("Battle phase analysis not implemented - requires temporal analysis system")
+    {:error, :battle_phase_analysis_unavailable}
   end
 
   defp detect_tactical_patterns(_battle_data) do
-    # TODO: Implement tactical pattern detection
-    {:ok, %{patterns: [], intensity_changes: []}}
+    # Tactical pattern detection requires machine learning models for pattern recognition
+    Logger.warning(
+      "Tactical pattern detection not implemented - requires ML pattern recognition system"
+    )
+
+    {:error, :tactical_pattern_detection_unavailable}
   end
 
   defp generate_candidate_highlights(
          _battle_data,
          _phase_analysis,
          _tactical_patterns,
-    _include_phase_transitions
+         _include_phase_transitions
        ) do
     {:ok, []}
   end

@@ -160,18 +160,16 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.CommunityManager do
     popularity_factor = min(0.3, :math.log(total_ratings + 1) / :math.log(50))
 
     # Category balance factor
-    category_balance =
-      Map.values(category_averages)
-
     scores =
       Map.values(category_averages)
       |> Enum.filter(fn avg -> avg > 0 end)
       |> Enum.map(fn avg -> avg / 10.0 end)
 
-    case scores do
-      [] -> 0.0
-      scores -> Enum.sum(scores) / length(scores)
-    end
+    category_balance =
+      case scores do
+        [] -> 0.0
+        scores -> Enum.sum(scores) / length(scores)
+      end
 
     # Weighted combination
     featured_score = base_score * 0.6 + popularity_factor + category_balance * 0.2
@@ -316,25 +314,23 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.CommunityManager do
     # Try to get at least one from each category
     category_representatives =
       categories
-
-    Enum.map(fn category ->
-      candidates
-      Enum.filter(&(&1.featured_category == category))
-      Enum.max_by(& &1.curation_metrics.overall_curation_score)
-    end)
+      |> Enum.map(fn category ->
+        candidates
+        |> Enum.filter(&(&1.featured_category == category))
+        |> Enum.max_by(& &1.curation_metrics.overall_curation_score)
+      end)
 
     # Fill remaining slots with highest-scoring reports
     remaining_slots = max_results - length(category_representatives)
 
     remaining_candidates =
       candidates
+      |> Enum.reject(&(&1 in category_representatives))
+      |> Enum.take(remaining_slots)
 
-    Enum.reject(&(&1 in category_representatives))
-    Enum.take(remaining_slots)
-
-    category_representatives ++ remaining_candidates
-    Enum.sort_by(& &1.curation_metrics.overall_curation_score, :desc)
-    Enum.take(max_results)
+    (category_representatives ++ remaining_candidates)
+    |> Enum.sort_by(& &1.curation_metrics.overall_curation_score, :desc)
+    |> Enum.take(max_results)
   end
 
   # Private helper functions for search

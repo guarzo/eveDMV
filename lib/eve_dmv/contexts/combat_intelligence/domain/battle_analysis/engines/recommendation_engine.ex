@@ -62,7 +62,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
     patterns
     |> Enum.flat_map(&pattern_to_recommendations/1)
     |> Enum.uniq()
-    |> Enum.take(10)  # Limit to top 10 recommendations
+    # Limit to top 10 recommendations
+    |> Enum.take(10)
   end
 
   # Private implementation functions
@@ -94,7 +95,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
         patterns when is_list(patterns) ->
           generate_pattern_based_recommendations(patterns)
           |> Enum.map(&tactical_pattern_to_recommendation/1)
-        _ -> []
+
+        _ ->
+          []
       end
 
     # Add fleet composition recommendations
@@ -216,21 +219,25 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
     doctrines = Map.get(fleet_analysis, :doctrines, [])
 
     if Enum.empty?(doctrines) do
-      [%{
-        type: :tactical,
-        priority: :medium,
-        title: "Fleet Composition Analysis",
-        description: "Establish doctrine analysis baseline",
-        actions: ["Document current fleet compositions", "Analyze role distribution"]
-      }]
+      [
+        %{
+          type: :tactical,
+          priority: :medium,
+          title: "Fleet Composition Analysis",
+          description: "Establish doctrine analysis baseline",
+          actions: ["Document current fleet compositions", "Analyze role distribution"]
+        }
+      ]
     else
-      [%{
-        type: :tactical,
-        priority: :high,
-        title: "Doctrine Optimization",
-        description: "Optimize fleet doctrine effectiveness",
-        actions: ["Review doctrine performance metrics", "Consider composition adjustments"]
-      }]
+      [
+        %{
+          type: :tactical,
+          priority: :high,
+          title: "Doctrine Optimization",
+          description: "Optimize fleet doctrine effectiveness",
+          actions: ["Review doctrine performance metrics", "Consider composition adjustments"]
+        }
+      ]
     end
   end
 
@@ -238,13 +245,19 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
     isk_efficiency = Map.get(outcome_analysis, :isk_efficiency, 1.0)
 
     if isk_efficiency < 0.8 do
-      [%{
-        type: :strategic,
-        priority: :high,
-        title: "ISK Efficiency Improvement",
-        description: "Focus on high-value target selection",
-        actions: ["Improve target prioritization", "Avoid wasteful engagements", "Optimize killmail values"]
-      }]
+      [
+        %{
+          type: :strategic,
+          priority: :high,
+          title: "ISK Efficiency Improvement",
+          description: "Focus on high-value target selection",
+          actions: [
+            "Improve target prioritization",
+            "Avoid wasteful engagements",
+            "Optimize killmail values"
+          ]
+        }
+      ]
     else
       []
     end
@@ -256,29 +269,45 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
 
     recommendations = []
 
-    recommendations = if not ewar_presence do
-      [%{
-        type: :strategic,
-        priority: :medium,
-        title: "Electronic Warfare Integration",
-        description: "Add EWAR ships for force multiplication",
-        actions: ["Deploy ECM/dampening ships", "Train EWAR pilots", "Coordinate EWAR tactics"]
-      } | recommendations]
-    else
-      recommendations
-    end
+    recommendations =
+      if not ewar_presence do
+        [
+          %{
+            type: :strategic,
+            priority: :medium,
+            title: "Electronic Warfare Integration",
+            description: "Add EWAR ships for force multiplication",
+            actions: [
+              "Deploy ECM/dampening ships",
+              "Train EWAR pilots",
+              "Coordinate EWAR tactics"
+            ]
+          }
+          | recommendations
+        ]
+      else
+        recommendations
+      end
 
-    recommendations = if logistics_ratio < 0.1 do
-      [%{
-        type: :strategic,
-        priority: :high,
-        title: "Logistics Support",
-        description: "Increase logistics ship presence",
-        actions: ["Add logistics ships", "Train logistics pilots", "Improve repair coordination"]
-      } | recommendations]
-    else
-      recommendations
-    end
+    recommendations =
+      if logistics_ratio < 0.1 do
+        [
+          %{
+            type: :strategic,
+            priority: :high,
+            title: "Logistics Support",
+            description: "Increase logistics ship presence",
+            actions: [
+              "Add logistics ships",
+              "Train logistics pilots",
+              "Improve repair coordination"
+            ]
+          }
+          | recommendations
+        ]
+      else
+        recommendations
+      end
 
     recommendations
   end
@@ -289,13 +318,19 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
     if Enum.empty?(dominant_ships) do
       []
     else
-      [%{
-        type: :doctrine,
-        priority: :medium,
-        title: "Counter-Doctrine Development",
-        description: "Develop counters to enemy doctrines",
-        actions: ["Analyze enemy ship preferences", "Design counter compositions", "Test counter-strategies"]
-      }]
+      [
+        %{
+          type: :doctrine,
+          priority: :medium,
+          title: "Counter-Doctrine Development",
+          description: "Develop counters to enemy doctrines",
+          actions: [
+            "Analyze enemy ship preferences",
+            "Design counter compositions",
+            "Test counter-strategies"
+          ]
+        }
+      ]
     end
   end
 
@@ -305,13 +340,19 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
     if Enum.empty?(by_side) do
       []
     else
-      [%{
-        type: :training,
-        priority: :medium,
-        title: "Performance Analysis",
-        description: "Address identified performance gaps",
-        actions: ["Review individual pilot performance", "Focus on weak areas", "Schedule additional training"]
-      }]
+      [
+        %{
+          type: :training,
+          priority: :medium,
+          title: "Performance Analysis",
+          description: "Address identified performance gaps",
+          actions: [
+            "Review individual pilot performance",
+            "Focus on weak areas",
+            "Schedule additional training"
+          ]
+        }
+      ]
     end
   end
 
@@ -321,29 +362,45 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
 
     recommendations = []
 
-    recommendations = if focus_fire < 0.6 do
-      [%{
-        type: :training,
-        priority: :high,
-        title: "Focus Fire Training",
-        description: "Improve target calling and focus fire coordination",
-        actions: ["Practice target calling", "Improve communication discipline", "Coordinate alpha strikes"]
-      } | recommendations]
-    else
-      recommendations
-    end
+    recommendations =
+      if focus_fire < 0.6 do
+        [
+          %{
+            type: :training,
+            priority: :high,
+            title: "Focus Fire Training",
+            description: "Improve target calling and focus fire coordination",
+            actions: [
+              "Practice target calling",
+              "Improve communication discipline",
+              "Coordinate alpha strikes"
+            ]
+          }
+          | recommendations
+        ]
+      else
+        recommendations
+      end
 
-    recommendations = if Enum.any?(patterns, &(&1.name == :poor_positioning)) do
-      [%{
-        type: :training,
-        priority: :medium,
-        title: "Positioning Skills",
-        description: "Improve fleet positioning and maneuvering",
-        actions: ["Practice fleet movements", "Study positioning theory", "Review engagement angles"]
-      } | recommendations]
-    else
-      recommendations
-    end
+    recommendations =
+      if Enum.any?(patterns, &(&1.name == :poor_positioning)) do
+        [
+          %{
+            type: :training,
+            priority: :medium,
+            title: "Positioning Skills",
+            description: "Improve fleet positioning and maneuvering",
+            actions: [
+              "Practice fleet movements",
+              "Study positioning theory",
+              "Review engagement angles"
+            ]
+          }
+          | recommendations
+        ]
+      else
+        recommendations
+      end
 
     recommendations
   end

@@ -234,15 +234,13 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
     # Calculate actual ISK values from killmail data
     total_isk_destroyed =
       kills
-
-    Enum.map(&(&1.total_value || Decimal.new(0)))
-    Enum.reduce(Decimal.new(0), &Decimal.add/2)
+      |> Enum.map(&(&1.total_value || Decimal.new(0)))
+      |> Enum.reduce(Decimal.new(0), &Decimal.add/2)
 
     total_isk_lost =
       losses
-
-    Enum.map(&(&1.total_value || Decimal.new(0)))
-    Enum.reduce(Decimal.new(0), &Decimal.add/2)
+      |> Enum.map(&(&1.total_value || Decimal.new(0)))
+      |> Enum.reduce(Decimal.new(0), &Decimal.add/2)
 
     %{
       total_kills: total_kills,

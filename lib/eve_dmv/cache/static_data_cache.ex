@@ -55,7 +55,7 @@ defmodule EveDmv.Cache.StaticDataCache do
 
     # Batch fetch missing
     if missing_ids == [] do
-    cached_map
+      cached_map
     else
       fetched_map = batch_fetch_systems(missing_ids)
       Map.merge(cached_map, fetched_map)
@@ -69,7 +69,7 @@ defmodule EveDmv.Cache.StaticDataCache do
     case :ets.lookup(@table_name, {:system, system_id}) do
       [{_, name}] ->
         GenServer.cast(__MODULE__, {:record_hits, 1})
-    name
+        name
 
       [] ->
         GenServer.cast(__MODULE__, {:record_misses, 1})
@@ -217,7 +217,7 @@ defmodule EveDmv.Cache.StaticDataCache do
 
     # Batch fetch missing
     if missing_ids == [] do
-    cached_map
+      cached_map
     else
       fetched_map = batch_fetch_items(missing_ids, category)
       Map.merge(cached_map, fetched_map)
@@ -228,14 +228,14 @@ defmodule EveDmv.Cache.StaticDataCache do
     case :ets.lookup(@table_name, {category, type_id}) do
       [{_, name}] ->
         GenServer.cast(__MODULE__, {:record_hits, 1})
-    name
+        name
 
       [] ->
         GenServer.cast(__MODULE__, {:record_misses, 1})
         # Single fetch with caching
         case fetch_and_cache_item(type_id, category) do
           {:ok, name} -> name
-          :error -> "Unknown #{to_string(category) |> String.capitalize()}"
+          :error -> "Unknown #{category |> to_string() |> String.capitalize()}"
         end
     end
   end
@@ -297,7 +297,7 @@ defmodule EveDmv.Cache.StaticDataCache do
 
         unknown_map =
           Map.new(missing_ids, fn id ->
-            name = "Unknown #{to_string(category) |> String.capitalize()} (#{id})"
+            name = "Unknown #{category |> to_string() |> String.capitalize()} (#{id})"
             :ets.insert(@table_name, {{category, id}, name})
             {id, name}
           end)
@@ -308,7 +308,7 @@ defmodule EveDmv.Cache.StaticDataCache do
         Logger.error("Failed to batch fetch items: #{inspect(error)}")
 
         Map.new(type_ids, fn id ->
-          {id, "Unknown #{to_string(category) |> String.capitalize()}"}
+          {id, "Unknown #{category |> to_string() |> String.capitalize()}"}
         end)
     end
   end
@@ -369,7 +369,7 @@ defmodule EveDmv.Cache.StaticDataCache do
       # Ashab
       30_002_761,
       # Common WH system from our data
-    31_002_238
+      31_002_238
     ]
 
     # Warm common ship types
@@ -416,7 +416,7 @@ defmodule EveDmv.Cache.StaticDataCache do
       29_984,
       29_986,
       29_988,
-    29_990
+      29_990
     ]
 
     # Batch load all at once

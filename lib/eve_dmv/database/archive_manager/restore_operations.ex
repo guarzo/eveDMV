@@ -230,21 +230,20 @@ defmodule EveDmv.Database.ArchiveManager.RestoreOperations do
   defp prepare_insert_values(records, column_names) do
     {placeholders, values} =
       Enum.with_index(records)
+      |> Enum.map(fn {record, index} ->
+        start_param = index * length(column_names) + 1
 
-    Enum.map(fn {record, index} ->
-      start_param = index * length(column_names) + 1
+        row_values =
+          Enum.map(column_names, fn col_name ->
+            Map.get(record, col_name) || Map.get(record, String.to_existing_atom(col_name))
+          end)
 
-      row_values =
-        Enum.map(column_names, fn col_name ->
-          Map.get(record, col_name) || Map.get(record, String.to_existing_atom(col_name))
-        end)
+        row_placeholders =
+          Enum.map_join(start_param..(start_param + length(column_names) - 1), ", ", &"$#{&1}")
 
-      row_placeholders =
-        Enum.map_join(start_param..(start_param + length(column_names) - 1), ", ", &"$#{&1}")
-
-      {"(#{row_placeholders})", row_values}
-    end)
-    |> Enum.unzip()
+        {"(#{row_placeholders})", row_values}
+      end)
+      |> Enum.unzip()
 
     value_placeholders = Enum.join(placeholders, ", ")
     all_values = List.flatten(values)

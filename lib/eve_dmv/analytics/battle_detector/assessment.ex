@@ -23,11 +23,12 @@ defmodule EveDmv.Analytics.BattleDetector.Assessment do
     if Kernel.length(battles) > 0 do
       total_participants =
         battles
-
-      Enum.map(&Map.get(&1, :participants, []))
-
-      Enum.map(&Kernel.length/1)
-      |> Enum.sum()
+        |> Enum.map(fn battle ->
+          battle
+          |> Map.get(:participants, [])
+          |> Kernel.length()
+        end)
+        |> Enum.sum()
 
       round(total_participants / Kernel.length(battles))
     else
@@ -39,9 +40,8 @@ defmodule EveDmv.Analytics.BattleDetector.Assessment do
     if Kernel.length(battles) > 0 do
       total_duration =
         battles
-
-      Enum.map(&Map.get(&1, :duration_minutes, 0))
-      |> Enum.sum()
+        |> Enum.map(&Map.get(&1, :duration_minutes, 0))
+        |> Enum.sum()
 
       round(total_duration / Kernel.length(battles))
     else
@@ -51,10 +51,7 @@ defmodule EveDmv.Analytics.BattleDetector.Assessment do
 
   defp calculate_quality_score(battles) do
     if Kernel.length(battles) > 0 do
-      scores =
-        battles
-
-      Enum.map(&calculate_individual_battle_score/1)
+      scores = Enum.map(battles, &calculate_individual_battle_score/1)
 
       avg_score = Enum.sum(scores) / Kernel.length(scores)
       Float.round(avg_score, 1)

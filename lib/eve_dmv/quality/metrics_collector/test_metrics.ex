@@ -34,7 +34,8 @@ defmodule EveDmv.Quality.MetricsCollector.TestMetrics do
 
   defp count_total_tests do
     try do
-      {output, 0} = :os.cmd('mix test --dry-run 2>&1')
+      {output, 0} = System.cmd("mix", ["test", "--dry-run"], stderr_to_stdout: true)
+
       output
       |> to_string()
       |> String.split("\n")
@@ -57,8 +58,11 @@ defmodule EveDmv.Quality.MetricsCollector.TestMetrics do
       |> Enum.reduce(0, fn file, acc ->
         case File.read(file) do
           {:ok, content} ->
-            skip_count = content |> String.split("\n") |> Enum.count(&String.contains?(&1, "@tag :skip"))
+            skip_count =
+              content |> String.split("\n") |> Enum.count(&String.contains?(&1, "@tag :skip"))
+
             acc + skip_count
+
           _ ->
             acc
         end

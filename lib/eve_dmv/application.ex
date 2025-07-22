@@ -130,7 +130,9 @@ defmodule EveDmv.Application do
             if EveDmv.Admin.Bootstrap.bootstrap_configured?() do
               # Skip if admin users already exist
               case check_existing_admin_users() do
-                {:ok, false} -> EveDmv.Admin.Bootstrap.bootstrap_from_env()
+                {:ok, false} ->
+                  EveDmv.Admin.Bootstrap.bootstrap_from_env()
+
                 {:ok, true} ->
                   require Logger
                   Logger.info("Admin users already exist, skipping bootstrap")
@@ -212,7 +214,7 @@ defmodule EveDmv.Application do
   # Conditionally start a process based on environment
   defp maybe_start_process(module) do
     if Application.get_env(:eve_dmv, :environment, :prod) != :test do
-    module
+      module
     else
       %{id: module, start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}}
     end

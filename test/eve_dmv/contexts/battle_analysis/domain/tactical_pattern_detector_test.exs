@@ -254,7 +254,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
 
   defp create_test_battle do
     %{
-      battle_id: "test_battle_20240101100000",
+      battle_id: "test_battle_2024010110_0000",
       killmails: create_mixed_killmails()
     }
   end
@@ -267,12 +267,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
         killmail_id: 1000 + i,
         killmail_time: DateTime.add(base_time, i * 30, :second),
         solar_system_id: 30_002_765,
-        victim_character_id: 10000 + i,
+        victim_character_id: 10_000 + i,
         # Various frigates
         victim_ship_type_id: Enum.random([587, 588, 589]),
         raw_data: %{
           "victim" => %{
-            "character_id" => 10000 + i,
+            "character_id" => 10_000 + i,
             "ship_type_id" => Enum.random([587, 588, 589])
           },
           "attackers" => create_random_attackers(3 + rem(i, 3))
@@ -292,11 +292,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
         killmail_id: 2000 + i,
         killmail_time: DateTime.add(base_time, i * 15, :second),
         solar_system_id: 30_002_765,
-        victim_character_id: 20000 + target_id,
+        victim_character_id: 20_000 + target_id,
         victim_ship_type_id: 587,
         raw_data: %{
           "victim" => %{
-            "character_id" => 20000 + target_id,
+            "character_id" => 20_000 + target_id,
             "ship_type_id" => 587
           },
           "attackers" => create_focus_fire_attackers()
@@ -315,13 +315,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
         killmail_time: DateTime.add(base_time, i * 5, :second),
         solar_system_id: 30_002_765,
         # Same target
-        victim_character_id: 30001,
+        victim_character_id: 30_001,
         # Drake
-        victim_ship_type_id: 24698,
+        victim_ship_type_id: 24_698,
         raw_data: %{
           "victim" => %{
-            "character_id" => 30001,
-            "ship_type_id" => 24698
+            "character_id" => 30_001,
+            "ship_type_id" => 24_698
           },
           "attackers" => create_focus_fire_attackers()
         }
@@ -338,17 +338,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
         killmail_id: 4000,
         killmail_time: base_time,
         solar_system_id: 30_002_765,
-        victim_character_id: 40001,
-        victim_ship_type_id: 24698,
+        victim_character_id: 40_001,
+        victim_ship_type_id: 24_698,
         raw_data: %{
           "victim" => %{
-            "character_id" => 40001,
-            "ship_type_id" => 24698
+            "character_id" => 40_001,
+            "ship_type_id" => 24_698
           },
           "attackers" =>
             Enum.map(1..10, fn i ->
               %{
-                "character_id" => 50000 + i,
+                "character_id" => 50_000 + i,
                 # Caracal
                 "ship_type_id" => 621,
                 "damage_done" => 1000 + i * 100,
@@ -368,9 +368,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
       ship_type =
         case rem(i, 5) do
           # Scimitar (Logistics)
-          0 -> 11978
+          0 -> 11_978
           # Sleipnir (Command)
-          1 -> 22474
+          1 -> 22_474
           # Caracal (DPS)
           _ -> 621
         end
@@ -379,16 +379,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
         killmail_id: 5000 + i,
         killmail_time: DateTime.add(base_time, i * 20, :second),
         solar_system_id: 30_002_765,
-        victim_character_id: 50000 + i,
+        victim_character_id: 50_000 + i,
         victim_ship_type_id: 587,
         raw_data: %{
           "victim" => %{
-            "character_id" => 50000 + i,
+            "character_id" => 50_000 + i,
             "ship_type_id" => 587
           },
           "attackers" => [
             %{
-              "character_id" => 60000 + i,
+              "character_id" => 60_000 + i,
               "ship_type_id" => ship_type,
               "damage_done" => 1500,
               "final_blow" => true
@@ -405,9 +405,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
     # Proper fleet composition
     ship_distribution = [
       # Scimitar (Logistics) - 3 ships
-      {11978, 3},
+      {11_978, 3},
       # Sleipnir (Command) - 2 ships
-      {22474, 2},
+      {22_474, 2},
       # Caracal (DPS) - 10 ships
       {621, 10}
     ]
@@ -420,16 +420,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
               killmail_id: 6000 + index + i,
               killmail_time: DateTime.add(base_time, (index + i) * 10, :second),
               solar_system_id: 30_002_765,
-              victim_character_id: 60000 + index + i,
+              victim_character_id: 60_000 + index + i,
               victim_ship_type_id: 587,
               raw_data: %{
                 "victim" => %{
-                  "character_id" => 60000 + index + i,
+                  "character_id" => 60_000 + index + i,
                   "ship_type_id" => 587
                 },
                 "attackers" => [
                   %{
-                    "character_id" => 70000 + index + i,
+                    "character_id" => 70_000 + index + i,
                     "ship_type_id" => ship_type,
                     "damage_done" => 2000,
                     "final_blow" => true
@@ -455,16 +455,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
           killmail_id: 7000 + i,
           killmail_time: DateTime.add(base_time, i * 30, :second),
           solar_system_id: 30_002_765,
-          victim_character_id: 70000 + i,
+          victim_character_id: 70_000 + i,
           victim_ship_type_id: 587,
           raw_data: %{
             "victim" => %{
-              "character_id" => 70000 + i,
+              "character_id" => 70_000 + i,
               "ship_type_id" => 587
             },
             "attackers" => [
               %{
-                "character_id" => 80000 + i,
+                "character_id" => 80_000 + i,
                 # Caracal (DPS)
                 "ship_type_id" => 621,
                 "damage_done" => 2000,
@@ -483,9 +483,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
         ship_type =
           case rem(i, 5) do
             # Scimitar
-            0 -> 11978
+            0 -> 11_978
             # Sleipnir
-            1 -> 22474
+            1 -> 22_474
             # Caracal
             _ -> 621
           end
@@ -494,16 +494,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
           killmail_id: 7100 + i,
           killmail_time: DateTime.add(base_time, 480 + i * 30, :second),
           solar_system_id: 30_002_765,
-          victim_character_id: 71000 + i,
+          victim_character_id: 71_000 + i,
           victim_ship_type_id: 587,
           raw_data: %{
             "victim" => %{
-              "character_id" => 71000 + i,
+              "character_id" => 71_000 + i,
               "ship_type_id" => 587
             },
             "attackers" => [
               %{
-                "character_id" => 81000 + i,
+                "character_id" => 81_000 + i,
                 "ship_type_id" => ship_type,
                 "damage_done" => 2000,
                 "final_blow" => true
@@ -521,25 +521,25 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
 
     # Attackers switch between targets
     Enum.map(0..11, fn i ->
-      # Attacker 90001 switches targets every 3 kills
-      # Attacker 90002 stays on same target
-      target_for_90001 = div(i, 3) + 80000
-      target_for_90002 = 80000
+      # Attacker 90_001 switches targets every 3 kills
+      # Attacker 90_002 stays on same target
+      target_for_90_001 = div(i, 3) + 80_000
+      target_for_90_002 = 80_000
 
       %{
         killmail_id: 8000 + i,
         killmail_time: DateTime.add(base_time, i * 20, :second),
         solar_system_id: 30_002_765,
-        victim_character_id: if(rem(i, 2) == 0, do: target_for_90001, else: target_for_90002),
+        victim_character_id: if(rem(i, 2) == 0, do: target_for_90_001, else: target_for_90_002),
         victim_ship_type_id: 587,
         raw_data: %{
           "victim" => %{
-            "character_id" => if(rem(i, 2) == 0, do: target_for_90001, else: target_for_90002),
+            "character_id" => if(rem(i, 2) == 0, do: target_for_90_001, else: target_for_90_002),
             "ship_type_id" => 587
           },
           "attackers" => [
             %{
-              "character_id" => if(rem(i, 2) == 0, do: 90001, else: 90002),
+              "character_id" => if(rem(i, 2) == 0, do: 90_001, else: 90_002),
               "ship_type_id" => 621,
               "damage_done" => 1500,
               "final_blow" => true
@@ -565,12 +565,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
             killmail_time: DateTime.add(base_time, i * 2, :second),
             solar_system_id: 30_002_765,
             # Target A
-            victim_character_id: 90001,
-            victim_ship_type_id: 24698,
+            victim_character_id: 90_001,
+            victim_ship_type_id: 24_698,
             raw_data: %{
               "victim" => %{
-                "character_id" => 90001,
-                "ship_type_id" => 24698
+                "character_id" => 90_001,
+                "ship_type_id" => 24_698
               },
               "attackers" => [
                 %{
@@ -592,12 +592,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
           killmail_time: DateTime.add(base_time, 15 + i * 2, :second),
           solar_system_id: 30_002_765,
           # Target B
-          victim_character_id: 90002,
-          victim_ship_type_id: 24698,
+          victim_character_id: 90_002,
+          victim_ship_type_id: 24_698,
           raw_data: %{
             "victim" => %{
-              "character_id" => 90002,
-              "ship_type_id" => 24698
+              "character_id" => 90_002,
+              "ship_type_id" => 24_698
             },
             "attackers" => [
               %{
@@ -622,7 +622,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
       target_id = 110_000 + div(i, 2)
 
       %{
-        killmail_id: 11000 + i,
+        killmail_id: 11_000 + i,
         killmail_time: DateTime.add(base_time, i * 30, :second),
         solar_system_id: 30_002_765,
         victim_character_id: target_id,
@@ -652,15 +652,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
     # Well-coordinated kills with multiple attackers
     Enum.map(0..9, fn i ->
       %{
-        killmail_id: 12000 + i,
+        killmail_id: 12_000 + i,
         killmail_time: DateTime.add(base_time, i * 5, :second),
         solar_system_id: 30_002_765,
         victim_character_id: 130_000 + i,
-        victim_ship_type_id: 24698,
+        victim_ship_type_id: 24_698,
         raw_data: %{
           "victim" => %{
             "character_id" => 130_000 + i,
-            "ship_type_id" => 24698
+            "ship_type_id" => 24_698
           },
           "attackers" =>
             Enum.map(0..7, fn j ->
@@ -682,7 +682,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
     # Rapid kills in short window
     Enum.map(0..6, fn i ->
       %{
-        killmail_id: 13000 + i,
+        killmail_id: 13_000 + i,
         killmail_time: DateTime.add(base_time, i * 4, :second),
         solar_system_id: 30_002_765,
         victim_character_id: 140_000 + i,
@@ -706,7 +706,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
     |> Enum.with_index()
     |> Enum.map(fn {time_offset, i} ->
       %{
-        killmail_id: 14000 + i,
+        killmail_id: 14_000 + i,
         killmail_time: DateTime.add(base_time, time_offset, :second),
         solar_system_id: 30_002_765,
         victim_character_id: 150_000 + i,
@@ -726,7 +726,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
     Enum.map(1..count, fn i ->
       %{
         "character_id" => 200_000 + :rand.uniform(1000),
-        "ship_type_id" => Enum.random([621, 17918, 24698]),
+        "ship_type_id" => Enum.random([621, 17_918, 24_698]),
         "damage_done" => 500 + :rand.uniform(1000),
         "final_blow" => i == 1
       }

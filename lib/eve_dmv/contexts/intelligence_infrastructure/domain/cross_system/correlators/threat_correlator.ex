@@ -35,12 +35,13 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       else
         # Calculate how many threat entities appear in multiple systems
         threat_entities =
-    threat_data
-    Enum.flat_map(fn {_system_id, threats} ->
+          threat_data
+          |> Enum.flat_map(fn {_system_id, threats} ->
             Enum.map(threats, & &1.attacker_alliance_id)
           end)
           # Remove nil values
-    Enum.filter(& &1) |> Enum.frequencies()
+          |> Enum.filter(& &1)
+          |> Enum.frequencies()
         # Count entities active in multiple systems
         multi_system_threats =
           Enum.count(threat_entities, fn {_entity, count} -> count > 1 end)
@@ -170,9 +171,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
         if spillover_detected do
           # Based on historical patterns and current activity
           vector_strength =
-    spillover_vectors
-    Enum.map(& &1.confidence) |> Enum.sum()
-    Kernel./(length(spillover_vectors))
+            spillover_vectors
+            |> Enum.map(& &1.confidence)
+            |> Enum.sum()
+            |> Kernel./(length(spillover_vectors))
 
           Float.round(min(1.0, vector_strength * 1.2), 2)
         else
@@ -356,16 +358,16 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   defp analyze_structure_attacks(threat_data) do
     # Detect structure warfare patterns
     structure_kills =
-    threat_data
-    Enum.flat_map(fn {_system, kills} -> kills end)
-    Enum.filter(fn kill ->
+      threat_data
+      |> Enum.flat_map(fn {_system, kills} -> kills end)
+      |> Enum.filter(fn kill ->
         # Structure type IDs typically > 35_000
         kill.victim_ship_type_id && kill.victim_ship_type_id > 35_000
       end)
 
     if length(structure_kills) > 0 do
-      affected_systems = structure_kills |> Enum.map(& &1.solar_system_id) Enum.uniq()
-      target_types = structure_kills |> Enum.map(& &1.victim_ship_type_id) Enum.uniq()
+      affected_systems = structure_kills |> Enum.map(& &1.solar_system_id) |> Enum.uniq()
+      target_types = structure_kills |> Enum.map(& &1.victim_ship_type_id) |> Enum.uniq()
 
       %{
         detected: true,
@@ -384,18 +386,19 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     fleet_indicators =
       Enum.flat_map(threat_data, fn {_system, kills} ->
         # Group kills by time window to find fleet ops
-    kills
-    Enum.chunk_by(fn k ->
+        kills
+        |> Enum.chunk_by(fn k ->
           DateTime.truncate(k.killmail_time, :second)
         end)
-    Enum.filter(fn chunk -> length(chunk) > 3 end)
+        |> Enum.filter(fn chunk -> length(chunk) > 3 end)
       end)
 
     if length(fleet_indicators) > 0 do
       avg_fleet_size =
-    fleet_indicators
-    Enum.map(&length/1) |> Enum.sum()
-    Kernel./(length(fleet_indicators))
+        fleet_indicators
+        |> Enum.map(&length/1)
+        |> Enum.sum()
+        |> Kernel./(length(fleet_indicators))
 
       pattern =
         cond do
@@ -420,16 +423,16 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   defp analyze_capital_threats(threat_data) do
     # Detect capital ship involvement
     capital_kills =
-    threat_data
-    Enum.flat_map(fn {_system, kills} -> kills end)
-    Enum.filter(fn kill ->
+      threat_data
+      |> Enum.flat_map(fn {_system, kills} -> kills end)
+      |> Enum.filter(fn kill ->
         # Capital ship type IDs
         kill.victim_ship_type_id && kill.victim_ship_type_id > 20_000 &&
           kill.victim_ship_type_id < 30_000
       end)
 
     if length(capital_kills) > 0 do
-      ship_types = capital_kills |> Enum.map(& &1.victim_ship_type_id) Enum.uniq()
+      ship_types = capital_kills |> Enum.map(& &1.victim_ship_type_id) |> Enum.uniq()
 
       %{
         detected: true,

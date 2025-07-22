@@ -181,9 +181,9 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationService do
     # Extract all unique item type IDs for bulk pricing
     item_type_ids =
       items
-
-    Enum.map(& &1["item_type_id"]) |> Enum.uniq()
-    Enum.filter(&is_integer/1)
+      |> Enum.map(& &1["item_type_id"])
+      |> Enum.uniq()
+      |> Enum.filter(&is_integer/1)
 
     # Get prices in bulk for efficiency
     item_prices = get_bulk_item_prices(item_type_ids)
@@ -294,9 +294,8 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationService do
 
   defp group_ships_by_class(ship_values) do
     ship_values
-    Enum.group_by(&classify_ship_by_value(&1.unit_value))
-
-    Enum.map(fn {class, ships} ->
+    |> Enum.group_by(&classify_ship_by_value(&1.unit_value))
+    |> Enum.map(fn {class, ships} ->
       {class,
        %{
          count: Enum.sum(Enum.map(ships, & &1.quantity)),

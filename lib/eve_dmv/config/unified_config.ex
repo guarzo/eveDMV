@@ -314,7 +314,7 @@ defmodule EveDmv.Config.UnifiedConfig do
   rescue
     _ ->
       Logger.warning("Failed to cast environment variable value '#{value}' to type #{type}")
-    value
+      value
   end
 
   defp generate_env_var_name(key_path) do

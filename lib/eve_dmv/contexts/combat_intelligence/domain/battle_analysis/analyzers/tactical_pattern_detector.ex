@@ -46,13 +46,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
           timeline
           |> Enum.filter(&(&1.isk_value >= threshold))
           |> Enum.map(fn event ->
-          %{
-            type: :high_value_kill,
-            timestamp: event.timestamp,
-            isk_value: event.isk_value,
-            victim: event.victim
-          }
-        end)
+            %{
+              type: :high_value_kill,
+              timestamp: event.timestamp,
+              isk_value: event.isk_value,
+              victim: event.victim
+            }
+          end)
 
         moments ++ high_value_kills
       else
@@ -413,8 +413,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
 
   defp group_timeline_by_windows(timeline, window_seconds) do
     timeline
-
-    Enum.group_by(fn event ->
+    |> Enum.group_by(fn event ->
       div(DateTime.to_unix(event.timestamp), window_seconds)
     end)
     |> Map.values()

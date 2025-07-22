@@ -527,9 +527,8 @@ defmodule EveDmv.Analytics.BattleDetector do
       time_bucket =
         if time do
           time
-          DateTime.from_naive!("Etc/UTC")
-
-          DateTime.add(
+          |> DateTime.from_naive!("Etc/UTC")
+          |> DateTime.add(
             -rem(DateTime.to_unix(DateTime.from_naive!(time, "Etc/UTC")), 1800),
             :second
           )
@@ -553,18 +552,18 @@ defmodule EveDmv.Analytics.BattleDetector do
     total_isk =
       killmails
       |> Enum.map(&(Map.get(&1, "total_value") || 0))
-    |> Enum.sum()
+      |> Enum.sum()
 
     participants =
       killmails
       |> Enum.flat_map(fn km ->
-      attackers = Map.get(km, "attackers_character_ids") || []
-      victim = [Map.get(km, "victim_character_id")]
-      attackers ++ victim
-    end)
-    |> Enum.filter(& &1)
-    |> Enum.uniq()
-    |> Kernel.length()
+        attackers = Map.get(km, "attackers_character_ids") || []
+        victim = [Map.get(km, "victim_character_id")]
+        attackers ++ victim
+      end)
+      |> Enum.filter(& &1)
+      |> Enum.uniq()
+      |> Kernel.length()
 
     %{
       battle_id: generate_battle_id(killmails),
@@ -651,7 +650,6 @@ defmodule EveDmv.Analytics.BattleDetector do
     |> Enum.map(&Map.get(&1, "victim_ship_type_name"))
     |> Enum.filter(& &1)
     |> Enum.frequencies()
-
     |> Enum.sort_by(&elem(&1, 1), :desc)
     |> Enum.take(3)
     |> Enum.map(&elem(&1, 0))

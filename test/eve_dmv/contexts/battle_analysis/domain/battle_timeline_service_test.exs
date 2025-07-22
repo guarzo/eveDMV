@@ -135,8 +135,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
     test "identifies connected battles" do
       # Create battles with shared participants
       battles = [
-        create_connected_battle(1, ~U[2024-01-01 10:00:00Z], [12345, 67890]),
-        create_connected_battle(2, ~U[2024-01-01 10:15:00Z], [67890, 11111])
+        create_connected_battle(1, ~U[2024-01-01 10:00:00Z], [12_345, 67_890]),
+        create_connected_battle(2, ~U[2024-01-01 10:15:00Z], [67_890, 11_111])
       ]
 
       sequence = BattleTimelineService.analyze_battle_sequence(battles)
@@ -170,19 +170,19 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
 
     test "tracks participant flow between battles" do
       battles = [
-        create_flow_battle(1, [12345, 67890, 11111]),
-        create_flow_battle(2, [67890, 11111, 22_222])
+        create_flow_battle(1, [12_345, 67_890, 11_111]),
+        create_flow_battle(2, [67_890, 11_111, 22_222])
       ]
 
       sequence = BattleTimelineService.analyze_battle_sequence(battles)
 
       assert length(sequence.participant_flow) == 1
       flow = List.first(sequence.participant_flow)
-      # 67890, 11111
+      # 67_890, 11_111
       assert flow.continuing_participants == 2
       # 22_222
       assert flow.new_participants == 1
-      # 12345
+      # 12_345
       assert flow.departing_participants == 1
     end
   end
@@ -205,11 +205,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
         create_test_killmail(%{
           killmail_id: 1,
           killmail_time: ~U[2024-01-01 10:00:00Z],
-          victim_character_id: 12345,
+          victim_character_id: 12_345,
           victim_corporation_id: 98765,
           raw_data: %{
             "victim" => %{
-              "character_id" => 12345,
+              "character_id" => 12_345,
               "character_name" => "Victim One",
               "corporation_id" => 98765,
               "corporation_name" => "Victim Corp",
@@ -218,7 +218,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
             },
             "attackers" => [
               %{
-                "character_id" => 67890,
+                "character_id" => 67_890,
                 "character_name" => "Attacker One",
                 "corporation_id" => 54321,
                 "corporation_name" => "Attacker Corp",
@@ -228,7 +228,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
                 "final_blow" => true
               },
               %{
-                "character_id" => 11111,
+                "character_id" => 11_111,
                 "character_name" => "Attacker Two",
                 "corporation_id" => 54321,
                 "corporation_name" => "Attacker Corp",
@@ -256,7 +256,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
             },
             "attackers" => [
               %{
-                "character_id" => 67890,
+                "character_id" => 67_890,
                 "character_name" => "Attacker One",
                 "corporation_id" => 54321,
                 "corporation_name" => "Attacker Corp",
@@ -291,7 +291,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
         create_test_killmail(%{
           killmail_id: 1,
           killmail_time: ~U[2024-01-01 10:00:00Z],
-          victim_character_id: 12345
+          victim_character_id: 12_345
         }),
         create_test_killmail(%{
           killmail_id: 2,
@@ -340,17 +340,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
         create_test_killmail(%{
           killmail_id: 1,
           killmail_time: ~U[2024-01-01 10:00:00Z],
-          victim_character_id: 12345,
+          victim_character_id: 12_345,
           raw_data: %{
             "victim" => %{
-              "character_id" => 12345,
+              "character_id" => 12_345,
               # Cyclone
               "ship_type_id" => 17918,
               "ship_name" => "Cyclone"
             },
             "attackers" => [
               %{
-                "character_id" => 67890,
+                "character_id" => 67_890,
                 # Rifter
                 "ship_type_id" => 587,
                 "ship_name" => "Rifter",
@@ -358,7 +358,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
                 "final_blow" => false
               },
               %{
-                "character_id" => 11111,
+                "character_id" => 11_111,
                 # Scythe
                 "ship_type_id" => 11129,
                 "ship_name" => "Scythe",
@@ -389,7 +389,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
             },
             "attackers" => [
               %{
-                "character_id" => 67890,
+                "character_id" => 67_890,
                 "ship_type_id" => 587,
                 "ship_name" => "Rifter",
                 "damage_done" => 1000,
@@ -418,7 +418,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
         create_test_killmail(%{
           killmail_id: 1,
           killmail_time: ~U[2024-01-01 10:00:00Z],
-          victim_character_id: 12345
+          victim_character_id: 12_345
         })
       ]
     }
@@ -440,24 +440,24 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
         create_test_killmail(%{
           killmail_id: 1,
           killmail_time: ~U[2024-01-01 10:00:00Z],
-          victim_character_id: 12345,
+          victim_character_id: 12_345,
           victim_corporation_id: 98765,
           raw_data: %{
             "victim" => %{
-              "character_id" => 12345,
+              "character_id" => 12_345,
               "corporation_id" => 98765,
               "corporation_name" => "Victim Corp A"
             },
             "attackers" => [
               %{
-                "character_id" => 67890,
+                "character_id" => 67_890,
                 "corporation_id" => 54321,
                 "corporation_name" => "Attacker Corp B",
                 "damage_done" => 1000,
                 "final_blow" => true
               },
               %{
-                "character_id" => 11111,
+                "character_id" => 11_111,
                 "corporation_id" => 54321,
                 "corporation_name" => "Attacker Corp B",
                 "damage_done" => 500,
@@ -610,13 +610,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
       killmail_id: 1,
       killmail_time: ~U[2024-01-01 10:00:00Z],
       solar_system_id: 30_002_765,
-      victim_character_id: 12345,
+      victim_character_id: 12_345,
       victim_corporation_id: 98765,
       victim_alliance_id: nil,
       victim_ship_type_id: 670,
       raw_data: %{
         "victim" => %{
-          "character_id" => 12345,
+          "character_id" => 12_345,
           "character_name" => "Test Victim",
           "corporation_id" => 98765,
           "corporation_name" => "Test Corp",
@@ -625,7 +625,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
         },
         "attackers" => [
           %{
-            "character_id" => 67890,
+            "character_id" => 67_890,
             "character_name" => "Test Attacker",
             "corporation_id" => 54321,
             "corporation_name" => "Test Attacker Corp",

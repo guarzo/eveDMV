@@ -175,8 +175,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
         time_window_seconds = 600
 
         battles
-
-        Enum.filter(fn battle ->
+        |> Enum.filter(fn battle ->
           # Parse each battle's timestamp
           with {:ok, {^system_id, battle_time}} <- parse_battle_id(battle.battle_id) do
             time_diff = abs(NaiveDateTime.diff(requested_time, battle_time, :second))

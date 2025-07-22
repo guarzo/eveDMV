@@ -374,8 +374,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
 
   defp parse_bulk_price_response(body) when is_map(body) do
     body
-
-    Enum.map(fn {type_id_str, price_data} ->
+    |> Enum.map(fn {type_id_str, price_data} ->
       type_id = String.to_integer(type_id_str)
       price_info = parse_price_response(price_data)
       {type_id, price_info}

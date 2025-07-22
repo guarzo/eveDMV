@@ -75,6 +75,7 @@ defmodule EveDmv.Quality.MetricsCollector.SecurityMetrics do
         {:ok, content} ->
           # Basic check - in real scenario would use hex API
           %{status: "passed", vulnerabilities: 0}
+
         _ ->
           %{status: "error", vulnerabilities: 0}
       end

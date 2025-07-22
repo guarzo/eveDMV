@@ -1,7 +1,7 @@
 defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.BattlePhaseAnalyzer do
   @moduledoc """
   Analyzer for identifying and classifying battle phases.
-  
+
   Responsible for:
   - Identifying distinct battle phases based on kill intensity and timing
   - Determining phase types (engagement, escalation, withdrawal, etc.)
@@ -9,7 +9,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Bat
   - Identifying key events within phases
   - Classifying intensity ratings and patterns
   """
-  
+
   @doc """
   Identify distinct battle phases from killmail timeline.
   """
@@ -60,7 +60,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Bat
       end)
     end
   end
-  
+
   @doc """
   Determine the type of battle phase based on position and characteristics.
   """
@@ -78,7 +78,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Bat
       true -> :lull
     end
   end
-  
+
   @doc """
   Calculate which side was dominant during a specific phase.
   """
@@ -100,14 +100,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Bat
           determine_side(event.victim_corporation_id, event.victim_alliance_id)
         end)
         |> Enum.frequencies()
-        
+
       case Enum.max_by(side_kills, &elem(&1, 1), fn -> {:unknown, 0} end) do
         {:unknown, _} -> :balanced
         {side, _count} -> side
       end
     end
   end
-  
+
   @doc """
   Identify key events within a phase (high-value kills, escalations).
   """
@@ -136,7 +136,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Bat
     end)
     |> Enum.sort_by(& &1.timestamp)
   end
-  
+
   @doc """
   Classify intensity rating from kills per minute.
   """
@@ -156,9 +156,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Bat
   end
 
   def classify_intensity_rating(_), do: :unknown
-  
+
   # Private helper functions
-  
+
   defp determine_side(corporation_id, alliance_id) do
     # Improved logic to determine which side a participant is on
     # Uses alliance/corporation hierarchy and attack patterns
@@ -177,7 +177,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Bat
         :unknown
     end
   end
-  
+
   defp determine_side_by_alliance(alliance_id) do
     # Simple hash-based side assignment for consistency
     # In reality, this would use battle context or known enemy lists
@@ -186,7 +186,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Bat
       1 -> :side_b
     end
   end
-  
+
   defp determine_side_by_corporation(corporation_id) do
     # Simple hash-based side assignment for consistency
     case rem(corporation_id, 2) do
@@ -194,23 +194,23 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Bat
       1 -> :side_b
     end
   end
-  
+
   defp high_value_kill?(event) do
     (event.total_value || 0) > 500_000_000
   end
-  
+
   defp capital_ship_kill?(event) do
     ship_class = classify_ship(event.victim_ship_type_id)
     ship_class in [:dreadnought, :carrier, :supercarrier, :titan, :force_auxiliary]
   end
-  
+
   defp commander_kill?(event) do
     ship_class = classify_ship(event.victim_ship_type_id)
     # Command ships, T3 cruisers, or expensive ships that might be FC ships
     ship_class in [:command_ship, :strategic_cruiser] or
       (event.total_value || 0) > 1_000_000_000
   end
-  
+
   defp determine_event_type(event) do
     cond do
       capital_ship_kill?(event) -> :capital_kill
@@ -219,14 +219,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Bat
       true -> :significant_kill
     end
   end
-  
+
   defp generate_event_description(event) do
     ship_class = classify_ship(event.victim_ship_type_id)
     value_formatted = format_isk_value(event.total_value || 0)
 
     "#{String.capitalize(to_string(ship_class))} destroyed (#{value_formatted})"
   end
-  
+
   defp format_isk_value(value) when value >= 1_000_000_000 do
     "#{Float.round(value / 1_000_000_000, 1)}B ISK"
   end
@@ -238,7 +238,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Bat
   defp format_isk_value(value) do
     "#{Float.round(value / 1_000, 0)}K ISK"
   end
-  
+
   defp classify_ship(ship_type_id) do
     # Classify ship based on type ID ranges (simplified EVE ship classification)
     cond do

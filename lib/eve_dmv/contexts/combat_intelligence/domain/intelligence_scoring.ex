@@ -484,12 +484,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
     else
       # Count frequency of fleet mates
       mate_frequency =
-        Enum.frequencies(all_fleet_mates) |> Map.values()
+        Enum.frequencies(all_fleet_mates)
+        |> Map.values()
 
-      # Flown together 3+ times
-      Enum.filter(&(&1 >= 3))
-
-      length()
+        # Flown together 3+ times
+        |> Enum.filter(&(&1 >= 3))
+        |> length()
 
       # Normalize to 0-1 scale
       min(mate_frequency / 10.0, 1.0)
@@ -617,8 +617,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
       Enum.map(& &1.ship_type_id)
     end)
     |> Enum.uniq()
-
-    length()
+    |> length()
 
     # Normalize: 1 ship = 0, 5+ ships = 1.0
     min((ship_types - 1) / 4.0, 1.0)

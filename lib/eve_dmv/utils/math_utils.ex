@@ -95,6 +95,7 @@ defmodule EveDmv.Utils.MathUtils do
       |> Enum.zip(weights)
       |> Enum.map(fn {value, weight} -> value * weight end)
       |> Enum.sum()
+
     total_weight = Enum.sum(weights)
     safe_division(weighted_sum, total_weight, 0.0)
   end
@@ -120,6 +121,7 @@ defmodule EveDmv.Utils.MathUtils do
       values
       |> Enum.map(fn x -> :math.pow(x - mean_val, 2) end)
       |> Enum.sum()
+
     safe_division(sum_squared_diffs, length(values), 0.0)
   end
 
@@ -351,6 +353,7 @@ defmodule EveDmv.Utils.MathUtils do
         |> Enum.zip(predicted_values)
         |> Enum.map(fn {actual, predicted} -> :math.pow(actual - predicted, 2) end)
         |> Enum.sum()
+
       r_squared = if ss_tot == 0, do: 1.0, else: 1 - ss_res / ss_tot
 
       {slope, intercept, max(0.0, r_squared)}

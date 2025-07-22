@@ -746,6 +746,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
       |> Map.values()
       |> Enum.map(fn req -> req[:min_count] || 0 end)
       |> Enum.sum()
+
     max(ship_minimums, role_minimums)
   end
 

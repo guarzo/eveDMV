@@ -15,7 +15,7 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
   def detect_character_battles(character_id, limit \\ 10) do
     Logger.info("Detecting battles for character #{character_id}")
 
-    thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30, :day)
+    thirty_days_ago = DateTime.add(DateTime.utc_now(), -30, :day)
 
     # Use participants table to find multi-pilot killmails involving this character
     query = """
@@ -82,7 +82,7 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
   Get character battle statistics using correct schema.
   """
   def get_character_battle_stats(character_id) do
-    thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30, :day)
+    thirty_days_ago = DateTime.add(DateTime.utc_now(), -30, :day)
 
     query = """
     WITH character_battles AS (
@@ -146,7 +146,7 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
   def detect_corporation_battles(corporation_id, limit \\ 10) do
     Logger.info("Detecting battles for corporation #{corporation_id}")
 
-    thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30, :day)
+    thirty_days_ago = DateTime.add(DateTime.utc_now(), -30, :day)
 
     query = """
     WITH corp_killmails AS (
@@ -219,7 +219,7 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
   Get corporation battle statistics using correct schema.
   """
   def get_corporation_battle_stats(corporation_id) do
-    thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30, :day)
+    thirty_days_ago = DateTime.add(DateTime.utc_now(), -30, :day)
 
     query = """
     WITH corp_battles AS (
@@ -313,16 +313,13 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
   defp enhance_character_battles(battles, _character_id) do
     Enum.map(battles, fn battle ->
       battle
-
-      Map.put(:character_participation, %{
+      |> Map.put(:character_participation, %{
         role: Map.get(battle, "participation_type", "unknown"),
         kills: if(Map.get(battle, "participation_type") == "kill", do: 1, else: 0),
         losses: if(Map.get(battle, "participation_type") == "loss", do: 1, else: 0)
       })
-
-      Map.put(:battle_time, Map.get(battle, "killmail_time"))
-      Map.put(:total_participants, Map.get(battle, "attacker_count", 0))
-      battle
+      |> Map.put(:battle_time, Map.get(battle, "killmail_time"))
+      |> Map.put(:total_participants, Map.get(battle, "attacker_count", 0))
       # Each row is one killmail
       |> Map.put(:killmail_count, 1)
       |> Map.put(:total_isk_destroyed, Map.get(battle, "total_value", 0))
@@ -333,13 +330,12 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
   defp enhance_corporation_battles(battles, _corporation_id) do
     Enum.map(battles, fn battle ->
       battle
-      Map.put(:battle_time, Map.get(battle, "killmail_time"))
-      Map.put(:total_participants, Map.get(battle, "attacker_count", 0))
+      |> Map.put(:battle_time, Map.get(battle, "killmail_time"))
+      |> Map.put(:total_participants, Map.get(battle, "attacker_count", 0))
       # Each row is one killmail
-      Map.put(:killmail_count, 1)
-      Map.put(:total_isk_destroyed, Map.get(battle, "total_value", 0))
-
-      Map.put(
+      |> Map.put(:killmail_count, 1)
+      |> Map.put(:total_isk_destroyed, Map.get(battle, "total_value", 0))
+      |> Map.put(
         :coordination_level,
         determine_coordination_level(Map.get(battle, "corp_members_involved", 0))
       )

@@ -85,8 +85,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
 
   # Extracted modules for better organization
   alias EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzers.ActivityCorrelationAnalyzer
+
   alias EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzers.RegionalConstellationAnalyzer
+
   alias EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzers.ThreatPatternAnalyzer
+
   alias EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzers.IntelligenceQualityAnalyzer
 
   alias EveDmv.Repo
@@ -215,7 +218,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     threat_data = ThreatPatternAnalyzer.analyze_threat_entities(killmails)
 
     # Calculate threat correlation between systems
-    threat_correlations = ThreatPatternAnalyzer.calculate_threat_correlation_matrix(system_ids, threat_data)
+    threat_correlations =
+      ThreatPatternAnalyzer.calculate_threat_correlation_matrix(system_ids, threat_data)
 
     # Identify coordinated threats
     coordinated_threats = ThreatPatternAnalyzer.identify_coordinated_threats(threat_data)
@@ -224,7 +228,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     spillover = ThreatPatternAnalyzer.identify_threat_spillover(system_ids, killmails)
 
     %{
-      threat_correlation_strength: ThreatPatternAnalyzer.calculate_threat_correlation_strength(threat_correlations),
+      threat_correlation_strength:
+        ThreatPatternAnalyzer.calculate_threat_correlation_strength(threat_correlations),
       correlated_threats: coordinated_threats,
       threat_spillover: spillover,
       threat_entities: ThreatPatternAnalyzer.extract_major_threat_entities(threat_data),
@@ -246,11 +251,13 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     quality = IntelligenceQualityAnalyzer.assess_intelligence_quality(intel_data)
 
     %{
-      intelligence_correlation_strength: IntelligenceQualityAnalyzer.calculate_intel_correlation_strength(shared_intel),
+      intelligence_correlation_strength:
+        IntelligenceQualityAnalyzer.calculate_intel_correlation_strength(shared_intel),
       shared_intelligence: shared_intel,
       intelligence_gaps: gaps,
       intelligence_quality: quality,
-      coverage_percentage: IntelligenceQualityAnalyzer.calculate_coverage_percentage(system_ids, intel_data)
+      coverage_percentage:
+        IntelligenceQualityAnalyzer.calculate_coverage_percentage(system_ids, intel_data)
     }
   end
 
@@ -680,5 +687,4 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
       Logger.error("Failed to fetch multi-system killmails: #{inspect(error)}")
       []
   end
-
 end

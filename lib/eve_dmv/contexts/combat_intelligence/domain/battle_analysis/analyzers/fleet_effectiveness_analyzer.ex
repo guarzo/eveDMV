@@ -69,7 +69,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Fle
     if Enum.empty?(ship_classes) do
       0.0
     else
-      total_ships = Map.values(ship_classes) Enum.sum()
       class_count = map_size(ship_classes)
 
       # Higher consistency when fewer ship classes are used
@@ -167,7 +166,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Fle
     ship_ids = MapSet.new(ships, & &1.character_id)
 
     killmails
-    Enum.count(fn km -> MapSet.member?(ship_ids, km.victim_character_id) end)
+    |> Enum.count(fn km -> MapSet.member?(ship_ids, km.victim_character_id) end)
   end
 
   @doc """
@@ -196,13 +195,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Fle
       }
 
       total_strength =
-    ship_classes
-    Enum.reduce(0, fn {class, count}, acc ->
-          weight = Map.get(strength_weights, class, 10)
-          acc + count * weight
-        end)
+        ship_classes
 
-    total_strength
+      Enum.reduce(0, fn {class, count}, acc ->
+        weight = Map.get(strength_weights, class, 10)
+        acc + count * weight
+      end)
+
+      total_strength
     end
   end
 
@@ -278,8 +278,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Fle
     if Enum.empty?(ship_classes) do
       0.0
     else
-      total_ships = Map.values(ship_classes) Enum.sum()
-      largest_class_count = Map.values(ship_classes) Enum.max()
+      total_ships = Map.values(ship_classes) |> Enum.sum()
+      largest_class_count = Map.values(ship_classes) |> Enum.max()
       largest_class_count / total_ships
     end
   end
@@ -289,9 +289,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Fle
 
     # Determine doctrine based on dominant ship class
     dominant_class =
-    ship_classes
-    Enum.max_by(fn {_class, count} -> count end, fn -> {:unknown, 0} end)
-    elem(0)
+      ship_classes
+      |> Enum.max_by(fn {_class, count} -> count end, fn -> {:unknown, 0} end)
+      |> elem(0)
 
     case dominant_class do
       :battleship -> :battleship_doctrine
@@ -359,7 +359,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Fle
       Map.get(role_distribution, :cruiser, %{count: 0}).count +
         Map.get(role_distribution, :frigate, %{count: 0}).count
 
-    total_count = Map.values(role_distribution) |> Enum.map(& &1.count) Enum.sum()
+    total_count = Map.values(role_distribution) |> Enum.map(& &1.count) |> Enum.sum()
 
     if total_count > 0 do
       ewar_ratio = ewar_count / total_count
@@ -487,11 +487,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Fle
       }
 
       weighted_tankiness =
-    ship_classes
-    Enum.reduce(0.0, fn {class, count}, acc ->
-          weight = Map.get(tank_weights, class, 0.3)
-          acc + weight * count
-        end)
+        ship_classes
+
+      Enum.reduce(0.0, fn {class, count}, acc ->
+        weight = Map.get(tank_weights, class, 0.3)
+        acc + weight * count
+      end)
 
       weighted_tankiness / total_ships
     end
@@ -539,7 +540,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Fle
       mean = Enum.sum(values) / length(values)
 
       variance =
-        values |> Enum.map(&:math.pow(&1 - mean, 2)) Enum.sum() |> Kernel./(length(values))
+        values |> Enum.map(&:math.pow(&1 - mean, 2)) |> Enum.sum() |> Kernel./(length(values))
 
       :math.sqrt(variance)
     end

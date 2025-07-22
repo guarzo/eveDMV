@@ -147,8 +147,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Com
   defp tactical_target?(ship_type_id) do
     # Ships that are tactically important targets
     # Check if the ship type ID is in any of the tactical ship ID lists
-    (@Map).values(tactical_ship_ids)
-    Enum.any?(fn ship_ids -> ship_type_id in ship_ids end)
+    Map.values(@tactical_ship_ids)
+    |> Enum.any?(fn ship_ids -> ship_type_id in ship_ids end)
   end
 
   defp generate_combat_skill_insights(raw_score, kd_ratio, isk_efficiency, survival_rate) do

@@ -277,16 +277,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractorTest do
             "alliance_id" => 11_111
           },
           "attackers" => [
-            %{"character_id" => 111, "alliance_id" => 22222},
+            %{"character_id" => 111, "alliance_id" => 22_222},
             %{"character_id" => 222, "alliance_id" => 11_111},
-            %{"character_id" => 333, "alliance_id" => 33333}
+            %{"character_id" => 333, "alliance_id" => 33_333}
           ]
         }
       }
 
       result = ParticipantExtractor.extract_alliance_ids(killmail)
 
-      assert Enum.sort(result) == [11_111, 22222, 33333]
+      assert Enum.sort(result) == [11_111, 22_222, 33_333]
     end
   end
 

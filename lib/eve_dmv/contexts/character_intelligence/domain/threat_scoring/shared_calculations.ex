@@ -30,9 +30,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedCalcu
     else
       damage_contributions =
         attacker_killmails
-
-      Enum.map(&extract_damage_contribution/1)
-      Enum.filter(&(&1 > 0))
+        |> Enum.map(&extract_damage_contribution/1)
+        |> Enum.filter(&(&1 > 0))
 
       if Enum.empty?(damage_contributions) do
         0.0
@@ -54,13 +53,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedCalcu
       when is_list(attackers) and is_number(total_damage) and total_damage > 0 ->
         character_damage =
           attackers
-
-        Enum.find(&(&1["character_id"] == character_id))
-
-        case do
-          %{"damage_done" => damage} when is_number(damage) -> damage
-          _ -> 0
-        end
+          |> Enum.find(&(&1["character_id"] == character_id))
+          |> case do
+            %{"damage_done" => damage} when is_number(damage) -> damage
+            _ -> 0
+          end
 
         character_damage / total_damage
 
@@ -82,14 +79,12 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedCalcu
       when is_list(attackers) and is_number(total_damage) and total_damage > 0 ->
         # Find the first attacker with character_id and damage_done
         attackers
-
-        Enum.find(fn attacker ->
+        |> Enum.find(fn attacker ->
           Map.has_key?(attacker, "character_id") and
             is_number(Map.get(attacker, "damage_done", 0)) and
             Map.get(attacker, "damage_done", 0) > 0
         end)
-
-        case do
+        |> case do
           %{"damage_done" => damage} -> damage / total_damage
           _ -> 0.0
         end

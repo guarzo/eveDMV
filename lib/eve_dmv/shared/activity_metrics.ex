@@ -60,6 +60,7 @@ defmodule EveDmv.Shared.ActivityMetrics do
       |> Enum.take(4)
       |> Enum.map(fn {hour, _count} -> hour end)
       |> Enum.sort()
+
     # Estimate primary timezone based on peak activity
     primary_tz = estimate_timezone(sorted_hours)
 
@@ -73,6 +74,7 @@ defmodule EveDmv.Shared.ActivityMetrics do
       sorted_hours
       |> Enum.map(fn hour -> Map.get(Map.new(hourly_activity), hour, 0) end)
       |> Enum.sum()
+
     concentration = if total_activity > 0, do: peak_activity / total_activity, else: 0
 
     %{

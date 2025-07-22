@@ -21,8 +21,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
       # Extract effectiveness metrics from each battle
       effectiveness_data =
         battle_analyses
-    |> Enum.with_index()
-    Enum.map(fn {analysis, index} ->
+        |> Enum.with_index()
+        |> Enum.map(fn {analysis, index} ->
           %{
             battle_index: index,
             timestamp: extract_battle_timestamp(analysis),
@@ -66,8 +66,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
       # Extract doctrine data from each battle
       doctrine_timeline =
         battle_analyses
-    |> Enum.with_index()
-    Enum.map(fn {analysis, index} ->
+        |> Enum.with_index()
+        |> Enum.map(fn {analysis, index} ->
           doctrines = extract_doctrines_from_battle(analysis)
 
           %{
@@ -114,7 +114,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
   defp extract_battle_timestamp(analysis) do
     get_in(analysis, [:timeline_analysis, :start_time]) ||
       get_in(analysis, [:metadata, :timestamp]) ||
-    |> DateTime.utc_now()
+      DateTime.utc_now()
   end
 
   defp extract_kill_efficiency(analysis) do
@@ -157,11 +157,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
 
       change = if older > 0, do: (recent - older) / older, else: 0
 
-      trend = cond do
-        change > 0.1 -> :improving
-        change < -0.1 -> :declining
-        true -> :stable
-      end
+      trend =
+        cond do
+          change > 0.1 -> :improving
+          change < -0.1 -> :declining
+          true -> :stable
+        end
 
       %{trend: trend, change: Float.round(change * 100, 1)}
     end
@@ -196,9 +197,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
       nil
     else
       doctrines
-    Enum.group_by(& &1.name)
-    Enum.max_by(fn {_name, group} -> length(group) end)
-    elem(0)
+      |> Enum.group_by(& &1.name)
+      |> Enum.max_by(fn {_name, group} -> length(group) end)
+      |> elem(0)
     end
   end
 
@@ -219,11 +220,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
     # Correlate doctrine usage with battle outcomes
     doctrine_outcomes =
       timeline
-    Enum.zip(battle_analyses)
-    Enum.group_by(fn {timeline_entry, _analysis} ->
+      |> Enum.zip(battle_analyses)
+      |> Enum.group_by(fn {timeline_entry, _analysis} ->
         timeline_entry.dominant_doctrine
       end)
-    Enum.map(fn {doctrine, battles} ->
+      |> Enum.map(fn {doctrine, battles} ->
         win_rate = calculate_doctrine_win_rate(battles)
         %{doctrine: doctrine, win_rate: win_rate, sample_size: length(battles)}
       end)
@@ -235,9 +236,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
     if Enum.empty?(battle_pairs) do
       0.0
     else
-      wins = Enum.count(battle_pairs, fn {_timeline, analysis} ->
-        get_in(analysis, [:outcome_analysis, :victor]) != nil
-      end)
+      wins =
+        Enum.count(battle_pairs, fn {_timeline, analysis} ->
+          get_in(analysis, [:outcome_analysis, :victor]) != nil
+        end)
 
       Float.round(wins / length(battle_pairs), 2)
     end
@@ -245,17 +247,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
 
   defp identify_most_used_doctrines(timeline) do
     timeline
-    Enum.flat_map(& &1.primary_doctrines)
-    Enum.frequencies_by(& &1.name)
-    Enum.sort_by(&elem(&1, 1), :desc)
-    Enum.take(5)
+    |> Enum.flat_map(& &1.primary_doctrines)
+    |> Enum.frequencies_by(& &1.name)
+    |> Enum.sort_by(&elem(&1, 1), :desc)
+    |> Enum.take(5)
   end
 
   defp calculate_doctrine_success_rates(timeline, battle_analyses) do
     timeline
-    Enum.zip(battle_analyses)
-    Enum.group_by(fn {timeline_entry, _} -> timeline_entry.dominant_doctrine end)
-    Enum.map(fn {doctrine, battles} ->
+    |> Enum.zip(battle_analyses)
+    |> Enum.group_by(fn {timeline_entry, _} -> timeline_entry.dominant_doctrine end)
+    |> Enum.map(fn {doctrine, battles} ->
       success_rate = calculate_doctrine_win_rate(battles)
       {doctrine, success_rate}
     end)
@@ -268,8 +270,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
     else
       diversity_trend =
         timeline
-    Enum.map(& &1.doctrine_diversity)
-    calculate_simple_trend()
+        |> Enum.map(& &1.doctrine_diversity)
+        |> calculate_simple_trend()
 
       case diversity_trend do
         :increasing -> :diversifying
@@ -352,7 +354,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
   defp estimate_fleet_dps(side) do
     # Simple DPS estimation based on ship counts and types
     participants = get_in(side, [:total_participants]) || 0
-    participants * 400  # Rough average DPS per ship
+    # Rough average DPS per ship
+    participants * 400
   end
 
   defp count_logistics_ships(side) do

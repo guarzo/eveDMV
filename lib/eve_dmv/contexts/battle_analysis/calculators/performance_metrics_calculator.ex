@@ -18,24 +18,25 @@ defmodule EveDmv.Contexts.BattleAnalysis.Calculators.PerformanceMetricsCalculato
   def calculate_performance_metrics(ship_instances, :all) do
     # Calculate all metrics for comprehensive analysis
     performance_data =
-    ship_instances
+      ship_instances
+
     Enum.map(fn instance ->
-        # Enhance instance with detailed analysis
-        enhanced_instance = enhance_instance_with_analysis(instance)
+      # Enhance instance with detailed analysis
+      enhanced_instance = enhance_instance_with_analysis(instance)
 
-        survivability_score = calculate_survivability_score(enhanced_instance)
-        dps_efficiency = calculate_dps_efficiency(enhanced_instance)
-        tactical_contribution = calculate_tactical_contribution(enhanced_instance)
+      survivability_score = calculate_survivability_score(enhanced_instance)
+      dps_efficiency = calculate_dps_efficiency(enhanced_instance)
+      tactical_contribution = calculate_tactical_contribution(enhanced_instance)
 
-        %{
-          ship_instance: enhanced_instance,
-          survivability_score: survivability_score,
-          dps_efficiency: dps_efficiency,
-          tactical_contribution: tactical_contribution,
-          role_effectiveness: calculate_role_effectiveness(enhanced_instance),
-          threat_assessment: calculate_threat_assessment(enhanced_instance)
-        }
-      end)
+      %{
+        ship_instance: enhanced_instance,
+        survivability_score: survivability_score,
+        dps_efficiency: dps_efficiency,
+        tactical_contribution: tactical_contribution,
+        role_effectiveness: calculate_role_effectiveness(enhanced_instance),
+        threat_assessment: calculate_threat_assessment(enhanced_instance)
+      }
+    end)
 
     {:ok, performance_data}
   end
@@ -44,18 +45,19 @@ defmodule EveDmv.Contexts.BattleAnalysis.Calculators.PerformanceMetricsCalculato
       when metric in [:efficiency, :survivability] do
     # Calculate only specific metrics for performance
     performance_data =
-    ship_instances
+      ship_instances
+
     Enum.map(fn instance ->
-        base_data = %{ship_instance: instance}
+      base_data = %{ship_instance: instance}
 
-        case metric do
-          :efficiency ->
-            Map.put(base_data, :dps_efficiency, calculate_dps_efficiency(instance))
+      case metric do
+        :efficiency ->
+          Map.put(base_data, :dps_efficiency, calculate_dps_efficiency(instance))
 
-          :survivability ->
-            Map.put(base_data, :survivability_score, calculate_survivability_score(instance))
-        end
-      end)
+        :survivability ->
+          Map.put(base_data, :survivability_score, calculate_survivability_score(instance))
+      end
+    end)
 
     {:ok, performance_data}
   end
@@ -228,12 +230,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Calculators.PerformanceMetricsCalculato
     attackers = instance.attackers || []
 
     damage_breakdown =
-    attackers
+      attackers
+
     Enum.group_by(&classify_damage_type(&1.weapon_type_id))
+
     Enum.map(fn {type, attackers_of_type} ->
-        total_damage = Enum.sum(Enum.map(attackers_of_type, & &1.damage_done))
-        {type, total_damage}
-      end) |> Map.new()
+      total_damage = Enum.sum(Enum.map(attackers_of_type, & &1.damage_done))
+      {type, total_damage}
+    end)
+    |> Map.new()
+
     primary_damage_type = get_primary_damage_type(damage_breakdown)
 
     %{
@@ -528,14 +534,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Calculators.PerformanceMetricsCalculato
 
     if total_damage > 0 do
       # Calculate entropy-like measure of damage type diversity
-    damage_breakdown
-    Enum.map(fn {_type, amount} ->
+      damage_breakdown
+
+      Enum.map(fn {_type, amount} ->
         ratio = amount / total_damage
         # Avoid log(0)
         -ratio * :math.log2(ratio + 0.001)
-      end) |> Enum.sum()
+      end)
+      |> Enum.sum()
+
       # Normalize
-    Kernel./(2.0)
+      Kernel./(2.0)
     else
       0
     end
