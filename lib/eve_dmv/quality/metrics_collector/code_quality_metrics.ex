@@ -76,16 +76,16 @@ defmodule EveDmv.Quality.MetricsCollector.CodeQualityMetrics do
 
   defp group_issues_by_category(issues) do
     issues
-    Enum.group_by(&Map.get(&1, "category", "unknown"))
-    Enum.map(fn {category, issue_list} -> {category, length(issue_list)} end)
-    Enum.into(%{})
+    |> Enum.group_by(&Map.get(&1, "category", "unknown"))
+    |> Enum.map(fn {category, issue_list} -> {category, length(issue_list)} end)
+    |> Enum.into(%{})
   end
 
   defp group_issues_by_priority(issues) do
     issues
-    Enum.group_by(&Map.get(&1, "priority", "unknown"))
-    Enum.map(fn {priority, issue_list} -> {priority, length(issue_list)} end)
-    Enum.into(%{})
+    |> Enum.group_by(&Map.get(&1, "priority", "unknown"))
+    |> Enum.map(fn {priority, issue_list} -> {priority, length(issue_list)} end)
+    |> Enum.into(%{})
   end
 
   # Dialyzer analysis
@@ -106,7 +106,7 @@ defmodule EveDmv.Quality.MetricsCollector.CodeQualityMetrics do
 
     total_lines =
       elixir_files
-    Enum.map(&count_lines_in_file/1) |> Enum.sum()
+      |> Enum.map(&count_lines_in_file/1) |> Enum.sum()
     %{
       total_files: length(elixir_files),
       total_lines_of_code: total_lines,
@@ -114,8 +114,8 @@ defmodule EveDmv.Quality.MetricsCollector.CodeQualityMetrics do
         if(length(elixir_files) > 0, do: div(total_lines, length(elixir_files)), else: 0),
       large_files:
         elixir_files
-    Enum.filter(&(count_lines_in_file(&1) > 300))
-    length(),
+        |> Enum.filter(&(count_lines_in_file(&1) > 300))
+        |> length(),
       file_size_distribution: calculate_file_size_distribution(elixir_files)
     }
   end
@@ -124,9 +124,9 @@ defmodule EveDmv.Quality.MetricsCollector.CodeQualityMetrics do
     case File.read(file_path) do
       {:ok, content} ->
         content
-    String.split("\n")
-    Enum.reject(&(String.trim(&1) == "" or String.starts_with?(String.trim(&1), "#")))
-    length()
+        |> String.split("\n")
+        |> Enum.reject(&(String.trim(&1) == "" or String.starts_with?(String.trim(&1), "#")))
+        |> length()
 
       _ ->
         0
@@ -135,7 +135,7 @@ defmodule EveDmv.Quality.MetricsCollector.CodeQualityMetrics do
 
   defp calculate_file_size_distribution(files) do
     files
-    Enum.group_by(fn file ->
+    |> Enum.group_by(fn file ->
       lines = count_lines_in_file(file)
 
       cond do
@@ -145,8 +145,8 @@ defmodule EveDmv.Quality.MetricsCollector.CodeQualityMetrics do
         true -> :very_large
       end
     end)
-    Enum.map(fn {size, file_list} -> {size, length(file_list)} end)
-    Enum.into(%{})
+    |> Enum.map(fn {size, file_list} -> {size, length(file_list)} end)
+    |> Enum.into(%{})
   end
 
   # Dependency analysis
@@ -156,9 +156,9 @@ defmodule EveDmv.Quality.MetricsCollector.CodeQualityMetrics do
       {:ok, content} ->
         deps =
           content
-    String.split("\n")
-    Enum.filter(&String.starts_with?(&1, "  \""))
-    length()
+          |> String.split("\n")
+          |> Enum.filter(&String.starts_with?(&1, "  \""))
+          |> length()
 
         %{
           total_dependencies: deps,
