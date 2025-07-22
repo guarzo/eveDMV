@@ -367,8 +367,8 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
   end
 
   defp calculate_chain_activity_scope(chain_activities) do
-    unique_systems = chain_activities |> Enum.map(& &1.system_id) Enum.uniq() length()
-    unique_regions = chain_activities |> Enum.map(& &1.region_id) Enum.uniq() length()
+    unique_systems = chain_activities |> Enum.map(& &1.system_id) |> Enum.uniq() |> length()
+    unique_regions = chain_activities |> Enum.map(& &1.region_id) |> Enum.uniq() |> length()
 
     %{
       unique_systems: unique_systems,
@@ -655,7 +655,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
 
   defp get_period_end(opts, base_data) do
     Keyword.get(opts, :period_end) ||
-      Map.get(base_data, :period_end) || |> DateTime.utc_now()
+      Map.get(base_data, :period_end) || DateTime.utc_now()
   end
 
   defp calculate_average_response_time(_fleet_activities) do
