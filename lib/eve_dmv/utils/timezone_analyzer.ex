@@ -22,9 +22,9 @@ defmodule EveDmv.Utils.TimezoneAnalyzer do
   def analyze_primary_timezone(killmails) when is_list(killmails) do
     # Extract hours from killmail times
     hourly_distribution =
-    killmails
-    Enum.map(&extract_hour_from_killmail/1)
-    Enum.filter(& &1) |> Enum.frequencies()
+      killmails
+      |> Enum.map(&extract_hour_from_killmail/1)
+      |> Enum.filter(& &1) |> Enum.frequencies()
     if map_size(hourly_distribution) == 0 do
       "Unknown"
     else
@@ -55,9 +55,9 @@ defmodule EveDmv.Utils.TimezoneAnalyzer do
   """
   def analyze_timezone_distribution(killmails) when is_list(killmails) do
     hourly_distribution =
-    killmails
-    Enum.map(&extract_hour_from_killmail/1)
-    Enum.filter(& &1) |> Enum.frequencies()
+      killmails
+      |> Enum.map(&extract_hour_from_killmail/1)
+      |> Enum.filter(& &1) |> Enum.frequencies()
     # Calculate activity for each timezone
     eutz_activity = calculate_timezone_activity(hourly_distribution, eutz_hours())
     ustz_activity = calculate_timezone_activity(hourly_distribution, ustz_hours())
@@ -74,7 +74,7 @@ defmodule EveDmv.Utils.TimezoneAnalyzer do
   # Private functions
 
   defp extract_hour_from_killmail(%{killmail_time: %DateTime{} = dt}) do
-    DateTime.to_time(dt) Time.to_erl() |> elem(0)
+    DateTime.to_time(dt) |> Time.to_erl() |> elem(0)
   end
 
   defp extract_hour_from_killmail(_), do: nil
@@ -88,15 +88,15 @@ defmodule EveDmv.Utils.TimezoneAnalyzer do
     end
   end
 
-  defp eutz_hours, do: 16..Enum.to_list(20)
-  defp autz_hours, do: 8..Enum.to_list(14)
+  defp eutz_hours, do: Enum.to_list(16..20)
+  defp autz_hours, do: Enum.to_list(8..14)
 
   # USTZ wraps around midnight (21-23 + 0-3)
   defp ustz_hours, do: [21, 22, 23, 0, 1, 2, 3]
 
   defp calculate_timezone_activity(hourly_distribution, timezone_hours) do
     timezone_hours
-    Enum.map(&Map.get(hourly_distribution, &1, 0)) |> Enum.sum()
+    |> Enum.map(&Map.get(hourly_distribution, &1, 0)) |> Enum.sum()
   end
 
   defp determine_primary_from_distribution(eutz, ustz, autz) do
