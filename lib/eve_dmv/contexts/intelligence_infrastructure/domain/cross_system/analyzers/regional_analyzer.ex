@@ -40,9 +40,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
         # Query killmails in these systems - simplified
         killmail_query =
           KillmailRaw
-
-        Ash.Query.limit(1000)
-        Ash.Query.select([:solar_system_id, :killmail_time, :total_value])
+          |> Ash.Query.limit(1000)
+          |> Ash.Query.select([:solar_system_id, :killmail_time, :total_value])
 
         case Ash.read(killmail_query, domain: Api) do
           {:ok, killmails} ->
@@ -125,9 +124,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     # Get recent killmails with participant data
     systems_query =
       SolarSystem
-
-    Ash.Query.filter(region_id == ^region_id)
-    Ash.Query.select([:system_id])
+      |> Ash.Query.filter(region_id == ^region_id)
+      |> Ash.Query.select([:system_id])
 
     case Ash.read(systems_query, domain: Api) do
       {:ok, systems} ->
@@ -137,36 +135,32 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
         # Get killmails with high-value losses - simplified
         threat_query =
           KillmailRaw
-
-        Ash.Query.load([:participants])
-        Ash.Query.limit(100)
-        Ash.Query.sort(desc: :total_value)
+          |> Ash.Query.load([:participants])
+          |> Ash.Query.limit(100)
+          |> Ash.Query.sort(desc: :total_value)
 
         case Ash.read(threat_query, domain: Api) do
           {:ok, high_value_kills} ->
             # Analyze threat sources (frequent attackers)
             threat_sources =
               high_value_kills
+              |> Enum.flat_map(&(&1.participants || []))
+              |> Enum.filter(&(!&1.is_victim && &1.corporation_id))
+              |> Enum.group_by(& &1.corporation_id)
+              |> Enum.map(fn {corp_id, participants} ->
+                first_participant = List.first(participants)
 
-            Enum.flat_map(&(&1.participants || []))
-            Enum.filter(&(!&1.is_victim && &1.corporation_id))
-            Enum.group_by(& &1.corporation_id)
-
-            Enum.map(fn {corp_id, participants} ->
-              first_participant = List.first(participants)
-
-              %{
-                corporation_id: corp_id,
-                corporation_name: first_participant.corporation_name,
-                alliance_id: first_participant.alliance_id,
-                alliance_name: first_participant.alliance_name,
-                kill_count: length(participants),
-                total_damage: Enum.reduce(participants, 0, &(&1.damage_done + &2))
-              }
-            end)
-
-            Enum.sort_by(& &1.kill_count, :desc)
-            Enum.take(10)
+                %{
+                  corporation_id: corp_id,
+                  corporation_name: first_participant.corporation_name,
+                  alliance_id: first_participant.alliance_id,
+                  alliance_name: first_participant.alliance_name,
+                  kill_count: length(participants),
+                  total_damage: Enum.reduce(participants, 0, &(&1.damage_done + &2))
+                }
+              end)
+              |> Enum.sort_by(& &1.kill_count, :desc)
+              |> Enum.take(10)
 
             threat_level =
               cond do
@@ -213,10 +207,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
         # Get killmail data to assess control
         control_query =
           KillmailRaw
-
-        Ash.Query.load([:participants])
-        Ash.Query.select([:killmail_id, :solar_system_id, :participants])
-        Ash.Query.limit(500)
+          |> Ash.Query.load([:participants])
+          |> Ash.Query.select([:killmail_id, :solar_system_id, :participants])
+          |> Ash.Query.limit(500)
 
         case Ash.read(control_query, domain: Api) do
           {:ok, killmails} ->
@@ -289,9 +282,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
     systems_query =
       SolarSystem
-
-    Ash.Query.filter(region_id == ^region_id)
-    Ash.Query.select([:system_id])
+      |> Ash.Query.filter(region_id == ^region_id)
+      |> Ash.Query.select([:system_id])
 
     case Ash.read(systems_query, domain: Api) do
       {:ok, systems} ->
@@ -301,16 +293,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
         # Get recent kills - simplified
         recent_query =
           KillmailRaw
-
-        Ash.Query.select([:killmail_id])
-        Ash.Query.limit(100)
+          |> Ash.Query.select([:killmail_id])
+          |> Ash.Query.limit(100)
 
         # Get historical kills - simplified
         historical_query =
           KillmailRaw
-
-        Ash.Query.select([:killmail_id])
-        Ash.Query.limit(100)
+          |> Ash.Query.select([:killmail_id])
+          |> Ash.Query.limit(100)
 
         with {:ok, recent_kills} <- Ash.read(recent_query, domain: Api),
              {:ok, historical_kills} <- Ash.read(historical_query, domain: Api) do
@@ -406,24 +396,21 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     # Identify uncontrolled valuable systems
     uncontrolled_systems =
       systems
+      |> Enum.filter(fn system ->
+        presence = Map.get(alliance_presence, system.system_id, %{})
 
-    Enum.filter(fn system ->
-      presence = Map.get(alliance_presence, system.system_id, %{})
-
-      length(Map.keys(presence)) < 2 and
-        (system.security_class in ["lowsec", "nullsec"] or system.wormhole_class_id)
-    end)
-
-    Enum.take(5)
-
-    Enum.map(fn system ->
-      %{
-        system_id: system.system_id,
-        system_name: system.system_name,
-        security_class: system.security_class,
-        opportunity_type: :uncontrolled_valuable_system
-      }
-    end)
+        length(Map.keys(presence)) < 2 and
+          (system.security_class in ["lowsec", "nullsec"] or system.wormhole_class_id)
+      end)
+      |> Enum.take(5)
+      |> Enum.map(fn system ->
+        %{
+          system_id: system.system_id,
+          system_name: system.system_name,
+          security_class: system.security_class,
+          opportunity_type: :uncontrolled_valuable_system
+        }
+      end)
 
     uncontrolled_systems
   end

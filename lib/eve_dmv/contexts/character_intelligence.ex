@@ -1,4 +1,11 @@
 defmodule EveDmv.Contexts.CharacterIntelligence do
+  @moduledoc """
+  Context module for character intelligence and threat analysis.
+
+  Provides the public API for character threat scoring, behavioral analysis,
+  and combat effectiveness prediction.
+  """
+
   import Ash.Query
   alias EveDmv.Api
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine
@@ -7,13 +14,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   alias EveDmv.Integrations.ShipIntelligenceBridge
   alias EveDmv.Killmails.KillmailRaw
   require Logger
-
-  @moduledoc """
-  Context module for character intelligence and threat analysis.
-
-  Provides the public API for character threat scoring, behavioral analysis,
-  and combat effectiveness prediction.
-  """
 
   @doc """
   Analyzes a character's threat level based on their combat history.
@@ -198,7 +198,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
 
   defp format_ship_specialization(ship_intelligence) do
     %{
-      preferred_roles: ship_intelligence.preferred_roles |> Enum.take(3),
+      preferred_roles: Enum.take(ship_intelligence.preferred_roles, 3),
       ship_mastery: ship_intelligence.ship_mastery |> Enum.take(5) |> Enum.into(%{}),
       specialization_diversity: ship_intelligence.specialization_diversity,
       expertise_level: ship_intelligence.expertise_level,
@@ -420,7 +420,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   end
 
   defp generate_intelligence_summary(threat_analysis, behavioral_patterns) do
-    primary_pattern = behavioral_patterns |> Map.get(:primary_pattern, :unknown)
+    primary_pattern = Map.get(behavioral_patterns, :primary_pattern, :unknown)
 
     threat_level =
       case threat_analysis.threat_score do
@@ -436,7 +436,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
       threat_score: threat_analysis.threat_score,
       primary_behavior: primary_pattern,
       summary:
-        "#{threat_level} threat #{to_string(primary_pattern) |> String.replace("_", " ")} with #{threat_analysis.threat_score}/100 overall score",
+        "#{threat_level} threat #{String.replace(to_string(primary_pattern), "_", " ")} with #{threat_analysis.threat_score}/100 overall score",
       key_strengths: extract_key_strengths(threat_analysis.dimensions),
       recommendations: generate_tactical_recommendations(threat_analysis, behavioral_patterns)
     }

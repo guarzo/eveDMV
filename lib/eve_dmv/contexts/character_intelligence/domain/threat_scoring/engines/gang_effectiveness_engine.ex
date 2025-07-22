@@ -6,8 +6,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
   to determine gang effectiveness threat level.
   """
 
-  require Logger
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
+  require Logger
 
   @doc """
   Calculate gang effectiveness score based on combat data.

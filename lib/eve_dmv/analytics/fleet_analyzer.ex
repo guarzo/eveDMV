@@ -535,8 +535,7 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
 
     logistics_count =
       ship_role_data
-
-    Enum.count(fn ship -> ship.primary_role == "logistics" end)
+      |> Enum.count(fn ship -> ship.primary_role == "logistics" end)
 
     logistics_ratio = if total_ships > 0, do: logistics_count / total_ships, else: 0.0
 
