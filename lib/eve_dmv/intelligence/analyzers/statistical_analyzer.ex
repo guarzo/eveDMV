@@ -30,9 +30,9 @@ defmodule EveDmv.Intelligence.Analyzers.StatisticalAnalyzer do
   @spec detect_progression_anomalies(map(), map()) :: list()
   def detect_progression_anomalies(character_analysis, fleet_data) do
     []
-    maybe_add_skill_mismatch_anomaly(character_analysis, fleet_data)
-    maybe_add_rapid_progression_anomaly(character_analysis)
-    maybe_add_regression_anomaly(character_analysis, fleet_data)
+    |> maybe_add_skill_mismatch_anomaly(character_analysis, fleet_data)
+    |> maybe_add_rapid_progression_anomaly(character_analysis)
+    |> maybe_add_regression_anomaly(character_analysis, fleet_data)
   end
 
   @doc """
@@ -49,7 +49,7 @@ defmodule EveDmv.Intelligence.Analyzers.StatisticalAnalyzer do
       sum_x = Enum.sum(x_values)
       sum_y = Enum.sum(y_values)
       zipped_values = Enum.zip(x_values, y_values)
-      sum_xy = zipped_values |> Enum.map(fn {x, y} -> x * y end) Enum.sum()
+      sum_xy = zipped_values |> Enum.map(fn {x, y} -> x * y end) |> Enum.sum()
       squared_x = Enum.map(x_values, &(&1 * &1))
       sum_x2 = Enum.sum(squared_x)
       squared_y = Enum.map(y_values, &(&1 * &1))
