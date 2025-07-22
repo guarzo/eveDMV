@@ -92,7 +92,7 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
       j_space_ratio = j_space_count / total_kills
 
       # Extract J-space systems and analyze
-      j_systems = j_space_kills |> Enum.map(& &1.solar_system_id) Enum.uniq()
+      j_systems = j_space_kills |> Enum.map(& &1.solar_system_id) |> Enum.uniq()
 
       j_kills =
         Enum.count(j_space_kills, fn km ->
@@ -157,7 +157,7 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
         # Add known eviction group corp IDs here - using placeholder values
         98_000_001,
         98_000_002,
-    98_000_003
+        98_000_003
       ])
 
     eviction_activity =
@@ -375,7 +375,7 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
         character_info,
         killmails,
         employment_history,
-    requested_by_id
+        requested_by_id
       )
     else
       {:error, :character_not_found} ->
@@ -391,7 +391,7 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
          character_info,
          killmails,
          employment_history,
-    requested_by_id
+         requested_by_id
        ) do
     # Perform simplified analysis
     j_space_experience = calculate_j_space_experience(killmails)
@@ -507,13 +507,13 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
   defp determine_most_active_wh_class(j_space_kills) do
     # Analyze actual wormhole systems to determine the most active class
     if Enum.empty?(j_space_kills) do
-    nil
+      nil
     else
       # Group kills by system and classify each system
       system_classes =
-    j_space_kills
-    Enum.group_by(& &1.solar_system_id)
-    Enum.map(fn {system_id, kills} ->
+        j_space_kills
+        |> Enum.group_by(& &1.solar_system_id)
+        |> Enum.map(fn {system_id, kills} ->
           wh_class =
             case EveDmv.StaticData.classify_system(system_id) do
               :wormhole_c1 -> "C1"
@@ -529,14 +529,14 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
 
           {wh_class, length(kills)}
         end)
-    Enum.filter(fn {class, _count} -> class != nil end)
+        |> Enum.filter(fn {class, _count} -> class != nil end)
 
       if Enum.empty?(system_classes) do
-    nil
+        nil
       else
         # Return the wormhole class with the most activity
         {most_active_class, _count} = Enum.max_by(system_classes, fn {_class, count} -> count end)
-    most_active_class
+        most_active_class
       end
     end
   end
@@ -554,10 +554,11 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
   defp detect_potential_alts(character_data, killmails) do
     # Extract potential alt character names from killmail data
     alt_names =
-    killmails
-    Enum.map(&Map.get(&1, :attacker_character_name, ""))
-    Enum.reject(&(&1 == "")) |> Enum.uniq()
-    Enum.reject(&(&1 == Map.get(character_data, :character_name, "")))
+      killmails
+      |> Enum.map(&Map.get(&1, :attacker_character_name, ""))
+      |> Enum.reject(&(&1 == ""))
+      |> Enum.uniq()
+      |> Enum.reject(&(&1 == Map.get(character_data, :character_name, "")))
 
     # Simple heuristic: if we see repeated names in killmails, they might be alts
     alt_names
@@ -634,11 +635,11 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
     corp_hopping = detect_corp_hopping(employment_history)
 
     []
-    maybe_add_risk_factor(age_risk > 20, "New character")
-    maybe_add_risk_factor(employment_risk > 10, "High corporation turnover")
-    maybe_add_risk_factor(pattern_risk > 15, "Suspicious patterns detected")
-    maybe_add_risk_factor(Enum.empty?(employment_history), "no_employment_history")
-    maybe_add_risk_factor(corp_hopping, "corp_hopping")
+    |> maybe_add_risk_factor(age_risk > 20, "New character")
+    |> maybe_add_risk_factor(employment_risk > 10, "High corporation turnover")
+    |> maybe_add_risk_factor(pattern_risk > 15, "Suspicious patterns detected")
+    |> maybe_add_risk_factor(Enum.empty?(employment_history), "no_employment_history")
+    |> maybe_add_risk_factor(corp_hopping, "corp_hopping")
   end
 
   defp detect_corp_hopping(employment_history) do
@@ -708,7 +709,7 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
   defp extract_known_groups(eviction_activity) do
     # Extract known eviction group names from the eviction activity
     eviction_activity
-    Enum.map(fn km ->
+    |> Enum.map(fn km ->
       corp_name = Map.get(km, :attacker_corporation_name, "")
       alliance_name = Map.get(km, :attacker_alliance_name, "")
 
@@ -737,7 +738,8 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
           nil
       end
     end)
-    Enum.reject(&is_nil/1) |> Enum.uniq()
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
   end
 
   defp calculate_eviction_confidence(eviction_activity, killmails) do
@@ -761,8 +763,9 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
   defp analyze_shared_systems(killmails) do
     # Extract unique systems from killmails
     killmails
-    Enum.map(&Map.get(&1, :solar_system_id, 0)) |> Enum.uniq()
-    Enum.reject(&(&1 == 0))
+    |> Enum.map(&Map.get(&1, :solar_system_id, 0))
+    |> Enum.uniq()
+    |> Enum.reject(&(&1 == 0))
   end
 
   defp calculate_timing_correlation(killmails) do
@@ -772,15 +775,15 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
     else
       # Calculate how clustered the killmails are in time
       sorted_times =
-    killmails
-    Enum.map(&Map.get(&1, :killmail_time, DateTime.utc_now()))
-    Enum.sort(&(DateTime.compare(&1, &2) in [:lt, :eq]))
+        killmails
+        |> Enum.map(&Map.get(&1, :killmail_time, DateTime.utc_now()))
+        |> Enum.sort(&(DateTime.compare(&1, &2) in [:lt, :eq]))
 
       # Calculate average time between kills
       time_diffs =
-    sorted_times
-    Enum.chunk_every(2, 1, :discard)
-    Enum.map(fn [t1, t2] -> DateTime.diff(t2, t1, :second) end)
+        sorted_times
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.map(fn [t1, t2] -> DateTime.diff(t2, t1, :second) end)
 
       if Enum.empty?(time_diffs) do
         0.0
@@ -815,7 +818,7 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
 
   defp calculate_competency_score(small_gang_kills, all_killmails) do
     if Enum.empty?(all_killmails) do
-    0
+      0
     else
       small_gang_ratio = length(small_gang_kills) / length(all_killmails)
       round(small_gang_ratio * 100)
