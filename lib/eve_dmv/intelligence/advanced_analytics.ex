@@ -186,11 +186,9 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
 
     # Load character data using batch operation to prevent N+1 queries
     character_data =
-      case(Ash.Query.new(CharacterStats))
-
-    Ash.Query.filter(character_id in ^character_ids)
-
-    Ash.read domain: Api do
+      case Ash.Query.new(CharacterStats)
+           |> Ash.Query.filter(character_id in ^character_ids)
+           |> Ash.read(domain: Api) do
       {:ok, stats_list} ->
         character_tuples = Enum.map(stats_list, fn stats -> {stats.character_id, stats} end)
         Enum.filter(character_tuples, fn {_, stats} -> not is_nil(stats) end)
@@ -634,10 +632,10 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
       all_regions = Enum.flat_map(region_activities, fn {_id, regions} -> regions end)
 
       shared_regions =
-        Enum.frequencies(all_regions)
-
-      Enum.filter(fn {_region, count} -> count > 1 end)
-      Enum.map(fn {region, _count} -> region end)
+        all_regions
+        |> Enum.frequencies()
+        |> Enum.filter(fn {_region, count} -> count > 1 end)
+        |> Enum.map(fn {region, _count} -> region end)
 
       # Calculate correlation score based on shared regions
       correlation_score =
