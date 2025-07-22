@@ -215,13 +215,14 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
 
   defp calculate_hourly_activity(killmails) do
     killmails
-    Enum.group_by(fn km ->
-      km.DateTime.to_time(killmail_time) |> Time.to_erl()
-      # Extract hour
-    elem(0)
+    |> Enum.group_by(fn km ->
+      km.killmail_time
+      |> DateTime.to_time()
+      |> Time.to_erl()
+      |> elem(0)  # Extract hour
     end)
-    Enum.map(fn {hour, kms} -> {hour, length(kms)} end)
-    Enum.into(%{})
+    |> Enum.map(fn {hour, kms} -> {hour, length(kms)} end)
+    |> Enum.into(%{})
   end
 
   defp calculate_coverage_score(active_hours) do
@@ -241,9 +242,9 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
 
   defp identify_peak_hours(hourly_activity) do
     hourly_activity
-    Enum.sort_by(&elem(&1, 1), :desc)
-    Enum.take(3)
-    Enum.map(&elem(&1, 0))
+    |> Enum.sort_by(&elem(&1, 1), :desc)
+    |> Enum.take(3)
+    |> Enum.map(&elem(&1, 0))
   end
 
   defp identify_timezone_gaps(active_hours) do
@@ -251,9 +252,10 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
     active_set = MapSet.new(active_hours)
 
     all_hours
-    MapSet.difference(active_set) |> MapSet.to_list()
+    |> MapSet.difference(active_set)
+    |> MapSet.to_list()
     # Group consecutive gaps
-    Enum.chunk_every(2)
+    |> Enum.chunk_every(2)
   end
 
   defp identify_rolling_indicators(killmails) do
@@ -265,9 +267,9 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
       end)
 
     filtered_kills
-    Enum.group_by(& &1.solar_system_id)
+    |> Enum.group_by(& &1.solar_system_id)
     # Potential rolling activity
-    Enum.filter(fn {_system, kills} -> length(kills) > 3 end)
+    |> Enum.filter(fn {_system, kills} -> length(kills) > 3 end)
   end
 
   defp count_rolling_events(rolling_indicators) do
@@ -299,9 +301,9 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
       end)
 
     all_participants
-    Enum.group_by(& &1.character_id)
-    Enum.filter(fn {_char_id, participations} -> length(participations) > 2 end)
-    Enum.map(&elem(&1, 0))
+    |> Enum.group_by(& &1.character_id)
+    |> Enum.filter(fn {_char_id, participations} -> length(participations) > 2 end)
+    |> Enum.map(&elem(&1, 0))
   end
 
   defp identify_response_events(killmails) do
@@ -348,9 +350,10 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
       avg_participants:
         if(length(response_events) > 0,
           do:
-    response_events
-    Enum.map(& &1.participants) |> Enum.sum()
-    Kernel./(length(response_events)),
+            response_events
+            |> Enum.map(& &1.participants)
+            |> Enum.sum()
+            |> Kernel./(length(response_events)),
           else: 0
         )
     }
@@ -359,9 +362,10 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
   defp analyze_fleet_compositions(killmails) do
     # Simplified fleet composition analysis
     ship_types =
-    killmails
-    Enum.flat_map(fn km -> km.participants || [] end)
-    Enum.map(& &1.ship_type_id) |> Enum.frequencies()
+      killmails
+      |> Enum.flat_map(fn km -> km.participants || [] end)
+      |> Enum.map(& &1.ship_type_id)
+      |> Enum.frequencies()
     %{
       ship_diversity: map_size(ship_types),
       most_used_ships: ship_types |> Enum.sort_by(&elem(&1, 1), :desc) |> Enum.take(5)
@@ -371,9 +375,10 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
   defp assess_member_capabilities(members, killmails) do
     # Simplified capability assessment
     active_members =
-    killmails
-    Enum.flat_map(fn km -> km.participants || [] end)
-    Enum.map(& &1.character_id) |> Enum.uniq()
+      killmails
+      |> Enum.flat_map(fn km -> km.participants || [] end)
+      |> Enum.map(& &1.character_id)
+      |> Enum.uniq()
     %{
       active_member_ratio: length(active_members) / length(members),
       total_active_members: length(active_members)
