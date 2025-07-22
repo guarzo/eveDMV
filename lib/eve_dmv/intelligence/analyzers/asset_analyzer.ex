@@ -151,7 +151,7 @@ defmodule EveDmv.Intelligence.Analyzers.AssetAnalyzer do
       1974,
       1975,
       1976,
-    2016
+      2016
     ]
   end
 
@@ -211,30 +211,30 @@ defmodule EveDmv.Intelligence.Analyzers.AssetAnalyzer do
 
   defp group_ships_by_type(assets) do
     assets
-    Enum.group_by(fn asset ->
+    |> Enum.group_by(fn asset ->
       case EsiCache.get_type(asset.type_id) do
         {:ok, type_data} -> type_data.name
         _ -> "Unknown Ship"
       end
     end)
-    Enum.map(fn {ship_name, ship_assets} ->
+    |> Enum.map(fn {ship_name, ship_assets} ->
       {ship_name, length(ship_assets)}
     end)
-    Enum.into(%{})
+    |> Enum.into(%{})
   end
 
   defp analyze_asset_locations(assets) do
     assets
-    Enum.group_by(& &1.location_id)
-    Enum.map(fn {location_id, location_assets} ->
+    |> Enum.group_by(& &1.location_id)
+    |> Enum.map(fn {location_id, location_assets} ->
       {location_id,
        %{
          ship_count: length(location_assets),
-         ship_types: location_assets |> Stream.map(& &1.type_id) Enum.uniq() length()
+         ship_types: location_assets |> Stream.map(& &1.type_id) |> Enum.uniq() |> length()
        }}
     end)
-    Enum.into(%{})
-    add_location_names()
+    |> Enum.into(%{})
+    |> add_location_names()
   end
 
   defp add_location_names(location_map) do
