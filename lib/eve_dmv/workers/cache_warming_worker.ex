@@ -370,8 +370,7 @@ defmodule EveDmv.Workers.CacheWarmingWorker do
 
     # Delegate to CacheWarmer for comprehensive warming
     # This triggers all cache warming functions including hot characters,
-    # active systems, recent killmails, frequent items, and alliance stats
-    CacheWarmer.warm_cache()
+    # active systems, recent killmails, frequent items, and alliance CacheWarmer.warm_cache(stats)
 
     :ok
   end
@@ -511,10 +510,10 @@ defmodule EveDmv.Workers.CacheWarmingWorker do
 
   defp apply_config_updates(state, config) do
     state
-    |> update_if_present(config, :warming_interval, :warming_interval_minutes, &(&1 * 60_000))
-    |> update_if_present(config, :priority_interval, :priority_interval_minutes, &(&1 * 60_000))
-    |> update_if_present(config, :batch_size, :batch_size, & &1)
-    |> update_if_present(config, :max_concurrent, :max_concurrent_batches, & &1)
+    update_if_present(config, :warming_interval, :warming_interval_minutes, &(&1 * 60_000))
+    update_if_present(config, :priority_interval, :priority_interval_minutes, &(&1 * 60_000))
+    update_if_present(config, :batch_size, :batch_size, & &1)
+    update_if_present(config, :max_concurrent, :max_concurrent_batches, & &1)
   end
 
   defp update_if_present(state, config, state_key, config_key, transform_fn) do

@@ -22,9 +22,10 @@ defmodule EveDmv.Database.Pagination do
 
     page_size =
       opts
-      |> Keyword.get(:page_size, @default_page_size)
-      |> min(@max_page_size)
-      |> max(1)
+
+    Keyword.get(:page_size, @default_page_size)
+    min(@max_page_size)
+    max(1)
 
     offset = (page - 1) * page_size
 
@@ -44,9 +45,10 @@ defmodule EveDmv.Database.Pagination do
 
     page_size =
       opts
-      |> Keyword.get(:page_size, @default_page_size)
-      |> min(@max_page_size)
-      |> max(1)
+
+    Keyword.get(:page_size, @default_page_size)
+    min(@max_page_size)
+    max(1)
 
     offset = (page - 1) * page_size
 
@@ -93,8 +95,9 @@ defmodule EveDmv.Database.Pagination do
 
     limit =
       opts
-      |> Keyword.get(:limit, @default_page_size)
-      |> min(@max_page_size)
+
+    Keyword.get(:limit, @default_page_size)
+    min(@max_page_size)
 
     direction = Keyword.get(opts, :direction, :desc)
 
@@ -155,13 +158,13 @@ defmodule EveDmv.Database.Pagination do
     page =
       case params["page"] do
         nil -> 1
-        page_str -> page_str |> String.to_integer() |> max(1)
+        page_str -> page_str(String.to_integer() |> max(1))
       end
 
     page_size =
       case params["page_size"] do
         nil -> @default_page_size
-        size_str -> size_str |> String.to_integer() |> min(@max_page_size) |> max(1)
+        size_str -> size_str(String.to_integer() |> min(@max_page_size) |> max(1))
       end
 
     %{page: page, page_size: page_size}

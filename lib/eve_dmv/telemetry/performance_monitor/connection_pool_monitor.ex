@@ -256,9 +256,9 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.ConnectionPoolMonitor do
 
   defp detect_connection_issues(total, idle_tx, longest_query, pool_size) do
     []
-    |> add_if_issue(total >= pool_size * 0.9, "near_pool_limit")
-    |> add_if_issue(idle_tx > 0, "idle_in_transaction")
-    |> add_if_issue(longest_query && longest_query > 300, "long_running_queries")
+    add_if_issue(total >= pool_size * 0.9, "near_pool_limit")
+    add_if_issue(idle_tx > 0, "idle_in_transaction")
+    add_if_issue(longest_query && longest_query > 300, "long_running_queries")
   end
 
   defp add_if_issue(issues, condition, issue) do
@@ -373,13 +373,15 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.ConnectionPoolMonitor do
     final_recommendations =
       if health[:has_issues] do
         health[:issues]
-        |> Enum.map(fn
+
+        Enum.map(fn
           "near_pool_limit" -> "Connection pool is near capacity"
           "idle_in_transaction" -> "Idle transactions detected - review transaction handling"
           "long_running_queries" -> "Long running queries detected - review query optimization"
           issue -> issue
         end)
-        |> Enum.concat(utilization_recommendations)
+
+        Enum.concat(utilization_recommendations)
       else
         utilization_recommendations
       end

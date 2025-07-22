@@ -27,10 +27,10 @@ defmodule EveDmv.Database.SurveillanceRepository do
 
       :miss ->
         query =
-          Profile
-          |> Ash.Query.new()
-          |> Ash.Query.for_read(:user_profiles, %{user_id: user_id})
-          |> Ash.Query.load(:matches)
+          Ash.Query.new(Profile)
+
+        Ash.Query.for_read(:user_profiles, %{user_id: user_id})
+        Ash.Query.load(:matches)
 
         case Ash.read(query, domain: SurveillanceApi, actor: actor) do
           {:ok, profiles} ->
@@ -116,10 +116,10 @@ defmodule EveDmv.Database.SurveillanceRepository do
 
       :miss ->
         query =
-          Profile
-          |> Ash.Query.new()
-          |> Ash.Query.for_read(:active)
-          |> Ash.Query.load([:matches, :filters])
+          Ash.Query.new(Profile)
+
+        Ash.Query.for_read(:active)
+        Ash.Query.load([:matches, :filters])
 
         case Ash.read(query, domain: SurveillanceApi) do
           {:ok, profiles} ->

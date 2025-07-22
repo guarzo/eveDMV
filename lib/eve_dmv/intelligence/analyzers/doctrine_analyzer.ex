@@ -108,9 +108,10 @@ defmodule EveDmv.Intelligence.Analyzers.DoctrineAnalyzer do
 
       ship_categories =
         categorized_ships
-        |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
-        |> Enum.map(fn {category, counts} -> {category, Enum.sum(counts)} end)
-        |> Enum.sort_by(&elem(&1, 1), :desc)
+
+      Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+      Enum.map(fn {category, counts} -> {category, Enum.sum(counts)} end)
+      Enum.sort_by(&elem(&1, 1), :desc)
 
       case ship_categories do
         [{primary_category, _} | _] -> primary_category
@@ -158,10 +159,10 @@ defmodule EveDmv.Intelligence.Analyzers.DoctrineAnalyzer do
     else
       # Base score on doctrine consistency
       primary_doctrine_usage =
-        doctrine_patterns
-        |> Map.values()
-        |> Enum.map(& &1.total_usage)
-        |> Enum.max(fn -> 0 end)
+        Map.values(doctrine_patterns)
+
+      Enum.map(& &1.total_usage)
+      Enum.max(fn -> 0 end)
 
       total_usage = Enum.sum(Map.values(ship_usage))
 
@@ -183,13 +184,15 @@ defmodule EveDmv.Intelligence.Analyzers.DoctrineAnalyzer do
     else
       # Find most used ship category
       ship_usage
-      |> Enum.group_by(
+
+      Enum.group_by(
         fn {ship_id, _count} -> categorize_ship_doctrine(ship_id) end,
         fn {_ship_id, count} -> count end
       )
-      |> Enum.map(fn {category, counts} -> {category, Enum.sum(counts)} end)
-      |> Enum.max_by(&elem(&1, 1), fn -> {:unknown, 0} end)
-      |> elem(0)
+
+      Enum.map(fn {category, counts} -> {category, Enum.sum(counts)} end)
+      Enum.max_by(&elem(&1, 1), fn -> {:unknown, 0} end)
+      elem(0)
     end
   end
 

@@ -246,13 +246,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
       }),
       create_killmail(%{
         killmail_id: 2,
-        victim_character_id: 22222,
+        victim_character_id: 22_222,
         victim_corporation_id: 98765,
         # Punisher
         victim_ship_type_id: 588,
         raw_data: %{
           "victim" => %{
-            "character_id" => 22222,
+            "character_id" => 22_222,
             "character_name" => "Test Victim 2",
             "corporation_id" => 98765,
             "corporation_name" => "Test Corp",
@@ -443,11 +443,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
       }),
       create_killmail(%{
         killmail_id: 2,
-        victim_character_id: 22222,
+        victim_character_id: 22_222,
         victim_ship_type_id: 588,
         raw_data: %{
           "victim" => %{
-            "character_id" => 22222,
+            "character_id" => 22_222,
             "character_name" => "Victim 2",
             "ship_type_id" => 588
           },

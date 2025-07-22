@@ -213,11 +213,11 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository do
   @impl GenServer
   def handle_call({:get_profile_by_name_and_user, name, user_id}, _from, state) do
     matching_profile =
-      state.profiles
-      |> Map.values()
-      |> Enum.find(fn profile ->
-        profile.name == name and profile.user_id == user_id and not profile.is_archived
-      end)
+      state.Map.values(profiles)
+
+    Enum.find(fn profile ->
+      profile.name == name and profile.user_id == user_id and not profile.is_archived
+    end)
 
     result =
       case matching_profile do
@@ -236,17 +236,18 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository do
     offset = Keyword.get(opts, :offset, 0)
 
     filtered_profiles =
-      state.profiles
-      |> Map.values()
-      |> Enum.filter(fn profile ->
-        user_match = is_nil(user_id) or profile.user_id == user_id
-        active_match = not active_only or profile.is_active
-        archived_match = not profile.is_archived
+      state.Map.values(profiles)
 
-        user_match and active_match and archived_match
-      end)
-      |> Enum.sort_by(& &1.updated_at, {:desc, DateTime})
-      |> Enum.drop(offset)
+    Enum.filter(fn profile ->
+      user_match = is_nil(user_id) or profile.user_id == user_id
+      active_match = not active_only or profile.is_active
+      archived_match = not profile.is_archived
+
+      user_match and active_match and archived_match
+    end)
+
+    Enum.sort_by(& &1.updated_at, {:desc, DateTime})
+    Enum.drop(offset)
 
     limited_profiles =
       if limit do
@@ -261,11 +262,11 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository do
   @impl GenServer
   def handle_call(:get_active_profiles, _from, state) do
     active_profiles =
-      state.profiles
-      |> Map.values()
-      |> Enum.filter(fn profile ->
-        profile.is_active and not profile.is_archived
-      end)
+      state.Map.values(profiles)
+
+    Enum.filter(fn profile ->
+      profile.is_active and not profile.is_archived
+    end)
 
     {:reply, {:ok, active_profiles}, state}
   end
@@ -273,11 +274,11 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository do
   @impl GenServer
   def handle_call({:count_user_profiles, user_id}, _from, state) do
     count =
-      state.profiles
-      |> Map.values()
-      |> Enum.count(fn profile ->
-        profile.user_id == user_id and not profile.is_archived
-      end)
+      state.Map.values(profiles)
+
+    Enum.count(fn profile ->
+      profile.user_id == user_id and not profile.is_archived
+    end)
 
     {:reply, {:ok, count}, state}
   end
@@ -293,14 +294,14 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository do
   @impl GenServer
   def handle_call({:get_inactive_profiles_before, cutoff_date}, _from, state) do
     inactive_profiles =
-      state.profiles
-      |> Map.values()
-      |> Enum.filter(fn profile ->
-        # Profile is inactive and last updated before cutoff
-        not profile.is_active and
-          not profile.is_archived and
-          DateTime.compare(profile.updated_at, cutoff_date) == :lt
-      end)
+      state.Map.values(profiles)
+
+    Enum.filter(fn profile ->
+      # Profile is inactive and last updated before cutoff
+      not profile.is_active and
+        not profile.is_archived and
+        DateTime.compare(profile.updated_at, cutoff_date) == :lt
+    end)
 
     {:reply, {:ok, inactive_profiles}, state}
   end

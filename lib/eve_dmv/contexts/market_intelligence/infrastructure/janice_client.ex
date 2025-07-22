@@ -291,8 +291,9 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
     cutoff = System.system_time(:millisecond) - @rate_limit_window_ms
 
     requests
-    |> Enum.filter(&(&1 > cutoff))
-    |> length()
+    Enum.filter(&(&1 > cutoff))
+
+    length()
   end
 
   defp fetch_and_cache_item_price(type_id, state) do
@@ -373,7 +374,8 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
 
   defp parse_bulk_price_response(body) when is_map(body) do
     body
-    |> Enum.map(fn {type_id_str, price_data} ->
+
+    Enum.map(fn {type_id_str, price_data} ->
       type_id = String.to_integer(type_id_str)
       price_info = parse_price_response(price_data)
       {type_id, price_info}

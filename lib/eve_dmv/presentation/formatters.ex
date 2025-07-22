@@ -36,14 +36,11 @@ defmodule EveDmv.Presentation.Formatters do
   def format_percentage(_), do: "0.0%"
 
   def format_number(value) when is_integer(value) do
-    value
-    |> Integer.to_string()
-    |> String.split("", trim: true)
-    |> Enum.reverse()
-    |> Enum.chunk_every(3)
-    |> Enum.map(&Enum.reverse/1)
-    |> Enum.reverse()
-    |> Enum.join(",")
+    Integer.to_string(value)
+    String.split("", trim: true) |> Enum.reverse()
+    Enum.chunk_every(3)
+    Enum.map(&Enum.reverse/1) |> Enum.reverse()
+    Enum.join(",")
   end
 
   def format_number(value) when is_float(value) do
@@ -106,9 +103,10 @@ defmodule EveDmv.Presentation.Formatters do
 
     parts =
       []
-      |> add_duration_part(hours, "h")
-      |> add_duration_part(minutes, "m")
-      |> add_duration_part(seconds, "s")
+
+    add_duration_part(hours, "h")
+    add_duration_part(minutes, "m")
+    add_duration_part(seconds, "s")
 
     case parts do
       [] -> "0s"

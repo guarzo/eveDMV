@@ -18,13 +18,13 @@ defmodule EveDmvWeb.FleetOperationsLive do
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     socket =
-      socket
-      |> assign(:page_title, "Fleet Operations")
-      |> assign(:current_page, :fleet_operations)
-      |> assign(:loading, false)
-      |> assign(:fleet_data, nil)
-      |> assign(:analysis_results, nil)
-      |> assign(:analysis_type, "composition")
+    socket
+    assign(:page_title, "Fleet Operations")
+    assign(:current_page, :fleet_operations)
+    assign(:loading, false)
+    assign(:fleet_data, nil)
+    assign(:analysis_results, nil)
+    assign(:analysis_type, "composition")
 
     {:ok, socket}
   end
@@ -35,30 +35,30 @@ defmodule EveDmvWeb.FleetOperationsLive do
       case params do
         %{"battle_id" => battle_id, "side" => side} ->
           # Load fleet data for specific side
-          socket
-          |> assign(:loading, true)
-          |> assign(:selected_side, side)
-          |> then(fn socket ->
+    socket
+    assign(:loading, true)
+    assign(:selected_side, side)
+    then(fn socket ->
             send(self(), {:load_battle_side_data, battle_id, side})
-            socket
+    socket
           end)
 
         %{"battle_id" => battle_id, "window" => window_timestamp} ->
           # Load fleet data from battle analysis
-          socket
-          |> assign(:loading, true)
-          |> then(fn socket ->
+    socket
+    assign(:loading, true)
+    then(fn socket ->
             send(self(), {:load_battle_fleet_data, battle_id, window_timestamp})
-            socket
+    socket
           end)
 
         %{"battle_id" => battle_id} ->
           # Load fleet data from battle (latest window)
-          socket
-          |> assign(:loading, true)
-          |> then(fn socket ->
+    socket
+    assign(:loading, true)
+    then(fn socket ->
             send(self(), {:load_battle_fleet_data, battle_id, nil})
-            socket
+    socket
           end)
 
         _ ->
@@ -76,9 +76,9 @@ defmodule EveDmvWeb.FleetOperationsLive do
 
       fleet_data ->
         socket =
-          socket
-          |> assign(:loading, true)
-          |> assign(:analysis_type, type)
+    socket
+    assign(:loading, true)
+    assign(:analysis_type, type)
 
         send(self(), {:run_analysis, type, fleet_data})
         {:noreply, socket}
@@ -103,9 +103,9 @@ defmodule EveDmvWeb.FleetOperationsLive do
       end
 
     socket =
-      socket
-      |> assign(:loading, false)
-      |> assign(:analysis_results, results)
+    socket
+    assign(:loading, false)
+    assign(:analysis_results, results)
 
     {:noreply, socket}
   end
@@ -115,19 +115,19 @@ defmodule EveDmvWeb.FleetOperationsLive do
     case load_fleet_side_from_battle(battle_id, side) do
       {:ok, fleet_data} ->
         socket =
-          socket
-          |> assign(:loading, false)
-          |> assign(:fleet_data, fleet_data)
-          |> assign(:analysis_results, nil)
-          |> put_flash(:info, "Loaded #{side} fleet data from battle #{battle_id}")
+    socket
+    assign(:loading, false)
+    assign(:fleet_data, fleet_data)
+    assign(:analysis_results, nil)
+    put_flash(:info, "Loaded #{side} fleet data from battle #{battle_id}")
 
         {:noreply, socket}
 
       {:error, reason} ->
         socket =
-          socket
-          |> assign(:loading, false)
-          |> put_flash(:error, "Failed to load #{side} fleet data: #{reason}")
+    socket
+    assign(:loading, false)
+    put_flash(:error, "Failed to load #{side} fleet data: #{reason}")
 
         {:noreply, socket}
     end
@@ -138,19 +138,19 @@ defmodule EveDmvWeb.FleetOperationsLive do
     case load_fleet_from_battle(battle_id, window_timestamp) do
       {:ok, fleet_data} ->
         socket =
-          socket
-          |> assign(:loading, false)
-          |> assign(:fleet_data, fleet_data)
-          |> assign(:analysis_results, nil)
-          |> put_flash(:info, "Loaded fleet data from battle #{battle_id}")
+    socket
+    assign(:loading, false)
+    assign(:fleet_data, fleet_data)
+    assign(:analysis_results, nil)
+    put_flash(:info, "Loaded fleet data from battle #{battle_id}")
 
         {:noreply, socket}
 
       {:error, reason} ->
         socket =
-          socket
-          |> assign(:loading, false)
-          |> put_flash(:error, "Failed to load battle fleet data: #{reason}")
+    socket
+    assign(:loading, false)
+    put_flash(:error, "Failed to load battle fleet data: #{reason}")
 
         {:noreply, socket}
     end
@@ -263,19 +263,19 @@ defmodule EveDmvWeb.FleetOperationsLive do
 
       # Calculate damage dealt (if available in participant data)
       damage_leaders =
-        participants
-        |> Enum.filter(&Map.has_key?(&1, :damage_dealt))
-        |> Enum.sort_by(&Map.get(&1, :damage_dealt, 0), :desc)
-        |> Enum.take(5)
+    participants
+    Enum.filter(&Map.has_key?(&1, :damage_dealt))
+    Enum.sort_by(&Map.get(&1, :damage_dealt, 0), :desc)
+    Enum.take(5)
 
       # Calculate ship distribution
       ship_distribution =
-        participants
-        |> Enum.group_by(&Map.get(&1, :ship_name, "Unknown"))
-        |> Enum.map(fn {ship, pilots} -> {ship, length(pilots)} end)
-        |> Enum.sort_by(&elem(&1, 1), :desc)
-        |> Enum.take(5)
-        |> Enum.into(%{})
+    participants
+    Enum.group_by(&Map.get(&1, :ship_name, "Unknown"))
+    Enum.map(fn {ship, pilots} -> {ship, length(pilots)} end)
+    Enum.sort_by(&elem(&1, 1), :desc)
+    Enum.take(5)
+    Enum.into(%{})
 
       # Calculate survival rate (participants who weren't victims)
       survivors = Enum.count(participants, &(!Map.get(&1, :is_victim, false)))
@@ -283,10 +283,10 @@ defmodule EveDmvWeb.FleetOperationsLive do
 
       # Identify top performers (based on multiple factors)
       top_performers =
-        participants
-        |> Enum.map(&calculate_pilot_score/1)
-        |> Enum.sort_by(&Map.get(&1, :score, 0), :desc)
-        |> Enum.take(5)
+    participants
+    Enum.map(&calculate_pilot_score/1)
+    Enum.sort_by(&Map.get(&1, :score, 0), :desc)
+    Enum.take(5)
 
       # Performance statistics
       performance_stats = %{
@@ -470,7 +470,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
       attackers = extract_attacker_data(km)
       [victim | attackers]
     end)
-    |> Enum.filter(&(&1 != nil))
+    Enum.filter(&(&1 != nil))
   end
 
   defp extract_victim_data(killmail) do
@@ -517,23 +517,23 @@ defmodule EveDmvWeb.FleetOperationsLive do
         pilots: pilots,
         ship_count: length(pilots),
         unique_ship_types:
-          pilots |> Enum.map(&Map.get(&1, :ship_type_id)) |> Enum.uniq() |> length()
+          pilots |> Enum.map(&Map.get(&1, :ship_type_id)) Enum.uniq() length()
       }
     end)
     # Only include sides with multiple ships
-    |> Enum.filter(fn side -> side.ship_count > 1 end)
+    Enum.filter(fn side -> side.ship_count > 1 end)
   end
 
   defp get_battle_start_time(killmails) do
     killmails
-    |> Enum.map(&Map.get(&1, :killmail_time))
-    |> Enum.min(DateTime, fn -> DateTime.utc_now() end)
+    Enum.map(&Map.get(&1, :killmail_time))
+    Enum.min(DateTime, fn -> DateTime.utc_now() end)
   end
 
   defp get_battle_end_time(killmails) do
     killmails
-    |> Enum.map(&Map.get(&1, :killmail_time))
-    |> Enum.max(DateTime, fn -> DateTime.utc_now() end)
+    Enum.map(&Map.get(&1, :killmail_time))
+    Enum.max(DateTime, fn -> DateTime.utc_now() end)
   end
 
   # Helper functions
@@ -716,8 +716,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
 
       </div>
     </div>
-    """
-    |> Phoenix.HTML.raw()
+    """ |> Phoenix.HTML.raw()
   end
 
   defp render_effectiveness_analysis(data) do
@@ -824,8 +823,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
 
       </div>
     </div>
-    """
-    |> Phoenix.HTML.raw()
+    """ |> Phoenix.HTML.raw()
   end
 
   defp render_performance_analysis(data) do
@@ -935,8 +933,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
 
       </div>
     </div>
-    """
-    |> Phoenix.HTML.raw()
+    """ |> Phoenix.HTML.raw()
   end
 
   # Generate a user-friendly fleet ID based on date/time
@@ -949,8 +946,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
         format_battle_datetime(timestamp)
 
       _ ->
-        # Fallback to current time
-        DateTime.utc_now() |> DateTime.to_string() |> String.slice(0..18)
+        # Fallback to current DateTime.utc_now(time) DateTime.to_string() |> String.slice(0..18)
     end
   end
 
@@ -964,8 +960,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
         "#{year}-#{month}-#{day} #{hour}:#{minute}"
 
       _ ->
-        # Fallback
-        DateTime.utc_now() |> DateTime.to_string() |> String.slice(0..18)
+        # DateTime.utc_now(Fallback) DateTime.to_string() |> String.slice(0..18)
     end
   end
 
@@ -1002,7 +997,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
 
   defp calculate_fleet_coordination_score(participants) do
     # Simple coordination score based on ship diversity and role distribution
-    ship_types = participants |> Enum.map(&Map.get(&1, :ship_name)) |> Enum.uniq() |> length()
+    ship_types = participants |> Enum.map(&Map.get(&1, :ship_name)) Enum.uniq() length()
     total_pilots = length(participants)
 
     if total_pilots > 0 do
@@ -1037,9 +1032,8 @@ defmodule EveDmvWeb.FleetOperationsLive do
 
       # Add side_id to fleet sides for compatibility with battle analysis
       fleet_sides_with_ids =
-        fleet_sides
-        |> Enum.with_index()
-        |> Enum.map(fn {fleet_side, index} ->
+    Enum.with_index(fleet_sides)
+    Enum.map(fn {fleet_side, index} ->
           Map.put(fleet_side, :side_id, "side_#{index + 1}")
         end)
 
@@ -1155,7 +1149,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
   end
 
   defp get_ship_category(ship_type_id) when is_integer(ship_type_id) do
-    get_ship_class(ship_type_id) |> String.downcase()
+    get_ship_class(ship_type_id) String.downcase()
   end
 
   defp get_ship_category(_), do: "other"

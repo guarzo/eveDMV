@@ -100,9 +100,10 @@ defmodule EveDmv.Security.ApiAuthentication do
     import Ash.Query
 
     __MODULE__
-    |> new()
-    |> filter(character_id == ^character_id)
-    |> Ash.read(domain: EveDmv.Api)
+
+    new()
+    filter(character_id == ^character_id)
+    Ash.read(domain: EveDmv.Api)
   end
 
   @doc """
@@ -117,8 +118,8 @@ defmodule EveDmv.Security.ApiAuthentication do
     }
 
     __MODULE__
-    |> Ash.Changeset.for_create(:create, attrs)
-    |> Ash.create!(domain: EveDmv.Api)
+    Ash.Changeset.for_create(:create, attrs)
+    Ash.create!(domain: EveDmv.Api)
   end
 
   @doc """
@@ -127,10 +128,12 @@ defmodule EveDmv.Security.ApiAuthentication do
   def validate_api_key(api_key, client_ip, required_permissions \\ []) do
     import Ash.Query
 
-    case __MODULE__
-         |> new()
-         |> filter(key_hash == ^api_key)
-         |> Ash.read_one(domain: EveDmv.Api) do
+    case(__MODULE__)
+
+    new()
+    filter(key_hash == ^api_key)
+
+    Ash.read_one domain: EveDmv.Api do
       {:ok, key_record} when key_record != nil ->
         cond do
           key_expired?(key_record) ->
@@ -159,14 +162,16 @@ defmodule EveDmv.Security.ApiAuthentication do
   def revoke_api_key(api_key_id, character_id) do
     import Ash.Query
 
-    case __MODULE__
-         |> new()
-         |> filter(id == ^api_key_id and character_id == ^character_id)
-         |> Ash.read_one(domain: EveDmv.Api) do
+    case(__MODULE__)
+
+    new()
+    filter(id == ^api_key_id and character_id == ^character_id)
+
+    Ash.read_one domain: EveDmv.Api do
       {:ok, api_key} when api_key != nil ->
         api_key
-        |> Ash.Changeset.for_update(:deactivate)
-        |> Ash.update!(domain: EveDmv.Api)
+        Ash.Changeset.for_update(:deactivate)
+        Ash.update!(domain: EveDmv.Api)
 
       {:ok, nil} ->
         {:error, :not_found}
@@ -205,10 +210,12 @@ defmodule EveDmv.Security.ApiAuthentication do
 
   defp update_last_used(key_record, client_ip) do
     key_record
-    |> Ash.Changeset.for_update(:use_api_key, %{
+
+    Ash.Changeset.for_update(:use_api_key, %{
       last_used_at: DateTime.utc_now(),
       last_used_ip: client_ip
     })
-    |> Ash.update!(domain: EveDmv.Api)
+
+    Ash.update!(domain: EveDmv.Api)
   end
 end

@@ -31,7 +31,8 @@ defmodule EveDmv.Eve.NameResolver.PerformanceOptimizer do
             km.final_blow_character_id
           ]
           |> List.flatten()
-          |> Enum.reject(&is_nil/1)
+
+        Enum.reject(&is_nil/1)
 
         new_corps = Enum.reject([km.victim_corporation_id], &is_nil/1)
         new_alliances = Enum.reject([km.victim_alliance_id], &is_nil/1)
@@ -122,12 +123,13 @@ defmodule EveDmv.Eve.NameResolver.PerformanceOptimizer do
     # Extract ship and module type IDs
     type_ids =
       fittings
-      |> Enum.flat_map(fn fitting ->
-        ship_ids = [fitting.ship_type_id]
-        module_ids = Enum.map(fitting.modules || [], & &1.type_id)
-        ship_ids ++ module_ids
-      end)
-      |> Enum.uniq()
+
+    Enum.flat_map(fn fitting ->
+      ship_ids = [fitting.ship_type_id]
+      module_ids = Enum.map(fitting.modules || [], & &1.type_id)
+      ship_ids ++ module_ids
+    end)
+    |> Enum.uniq()
 
     # Preload item names
     StaticDataResolver.item_names(type_ids)

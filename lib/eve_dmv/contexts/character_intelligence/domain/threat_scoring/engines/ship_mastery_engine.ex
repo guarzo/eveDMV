@@ -147,10 +147,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
     Logger.debug("Analyzing ship usage patterns for #{map_size(ship_types_map)} ship types")
 
     sorted_ships =
-      ship_types_map
-      |> Enum.sort_by(&elem(&1, 1), :desc)
+    ship_types_map
+    Enum.sort_by(&elem(&1, 1), :desc)
       # Top 5 most used ships
-      |> Enum.take(5)
+    Enum.take(5)
 
     %{
       most_used_ships: sorted_ships,
@@ -204,8 +204,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
     if map_size(ship_types_map) == 0 do
       0.5
     else
-      total_uses = ship_types_map |> Map.values() |> Enum.sum()
-      max_usage = ship_types_map |> Map.values() |> Enum.max()
+      total_uses = Map.values(ship_types_map) Enum.sum()
+      max_usage = Map.values(ship_types_map) Enum.max()
 
       specialization_ratio = max_usage / total_uses
       diversity_count = map_size(ship_types_map)

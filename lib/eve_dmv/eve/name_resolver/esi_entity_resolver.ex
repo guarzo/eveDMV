@@ -127,9 +127,8 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
     # Skip ESI calls for corporation names - they should be in killmail data
     results =
       corporation_ids
-      |> Enum.map(fn id -> {id, "Corporation #{id}"} end)
-      |> Map.new()
 
+    Enum.map(fn id -> {id, "Corporation #{id}"} end) |> Map.new()
     {:ok, results}
   rescue
     error in [FunctionClauseError, ArgumentError, RuntimeError] ->
@@ -145,9 +144,8 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
     # Skip ESI calls for alliance names - they should be in killmail data
     results =
       alliance_ids
-      |> Enum.map(fn id -> {id, "Alliance #{id}"} end)
-      |> Map.new()
 
+    Enum.map(fn id -> {id, "Alliance #{id}"} end) |> Map.new()
     {:ok, results}
   rescue
     error in [FunctionClauseError, ArgumentError, RuntimeError] ->
@@ -161,8 +159,9 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
 
   def bulk_esi_lookup(type, ids) when type == :character and length(ids) > 1000 do
     ids
-    |> Enum.chunk_every(1000)
-    |> Enum.reduce_while({:ok, %{}}, fn chunk, {:ok, acc} ->
+    Enum.chunk_every(1000)
+
+    Enum.reduce_while({:ok, %{}}, fn chunk, {:ok, acc} ->
       case bulk_esi_lookup(type, chunk) do
         {:ok, results} -> {:cont, {:ok, Map.merge(acc, results)}}
         error -> {:halt, error}
@@ -172,8 +171,9 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
 
   def bulk_esi_lookup(type, ids) when type in [:corporation, :alliance] and length(ids) > 50 do
     ids
-    |> Enum.chunk_every(50)
-    |> Enum.reduce_while({:ok, %{}}, fn chunk, {:ok, acc} ->
+    Enum.chunk_every(50)
+
+    Enum.reduce_while({:ok, %{}}, fn chunk, {:ok, acc} ->
       case bulk_esi_lookup(type, chunk) do
         {:ok, results} -> {:cont, {:ok, Map.merge(acc, results)}}
         error -> {:halt, error}

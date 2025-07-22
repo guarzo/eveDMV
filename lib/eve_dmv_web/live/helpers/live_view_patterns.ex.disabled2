@@ -1,7 +1,7 @@
 defmodule EveDmvWeb.Live.Helpers.LiveViewPatterns do
   @moduledoc """
   Common LiveView patterns and utilities for standardized page behavior.
-  
+
   Provides reusable patterns for authentication, error handling, flash messages,
   and common UI interactions across all LiveView pages.
   """
@@ -11,17 +11,17 @@ defmodule EveDmvWeb.Live.Helpers.LiveViewPatterns do
 
   @doc """
   Standard authentication check and user loading pattern.
-  
+
   Use in LiveView mount to ensure user is authenticated and load user data.
-  
+
   ## Usage:
-  
+
       def mount(_params, session, socket) do
         case ensure_authenticated(socket, session) do
-          {:ok, socket} -> 
+          {:ok, socket} ->
             # Continue with page-specific logic
             {:ok, socket}
-          {:error, socket} -> 
+          {:error, socket} ->
             # User not authenticated, redirect handled
             {:ok, socket}
         end
@@ -34,17 +34,17 @@ defmodule EveDmvWeb.Live.Helpers.LiveViewPatterns do
           {:ok, user} ->
             socket = assign(socket, :current_user, user)
             {:ok, socket}
-            
+
           {:error, _reason} ->
-            socket = 
+            socket =
               socket
               |> put_flash(:error, "Authentication failed. Please sign in again.")
               |> push_navigate(to: "/auth/login")
             {:error, socket}
         end
-        
+
       _ ->
-        socket = 
+        socket =
           socket
           |> put_flash(:info, "Please sign in to access this page.")
           |> push_navigate(to: "/auth/login")
@@ -54,14 +54,14 @@ defmodule EveDmvWeb.Live.Helpers.LiveViewPatterns do
 
   @doc """
   Standard error handling with user-friendly flash messages.
-  
+
   ## Usage:
-  
+
       socket = handle_operation_error(socket, error, "Failed to load character data")
   """
   def handle_operation_error(socket, error, context_message) do
     error_message = ApiHelper.format_error_message(error)
-    
+
     socket
     |> put_flash(:error, "#{context_message}: #{error_message}")
   end
@@ -75,9 +75,9 @@ defmodule EveDmvWeb.Live.Helpers.LiveViewPatterns do
 
   @doc """
   Standard parameter parsing with error handling.
-  
+
   ## Usage:
-  
+
       case parse_id_param(params, "character_id") do
         {:ok, character_id} -> continue_with_id(character_id)
         {:error, socket} -> return_error_socket(socket)
@@ -87,12 +87,12 @@ defmodule EveDmvWeb.Live.Helpers.LiveViewPatterns do
     case Map.get(params, param_name) do
       nil ->
         {:error, "Missing required parameter: #{param_name}"}
-        
+
       id_string ->
         case Integer.parse(id_string) do
           {id, ""} when id > 0 ->
             {:ok, id}
-            
+
           _ ->
             {:error, "Invalid #{param_name}: must be a positive integer"}
         end
@@ -101,24 +101,24 @@ defmodule EveDmvWeb.Live.Helpers.LiveViewPatterns do
 
   @doc """
   Standard pagination parameter parsing.
-  
+
   ## Usage:
-  
+
       {page, page_size} = parse_pagination_params(params)
   """
   def parse_pagination_params(params, default_page_size \\ 25) do
-    page = 
+    page =
       case Integer.parse(Map.get(params, "page", "1")) do
         {p, ""} when p > 0 -> p
         _ -> 1
       end
-      
-    page_size = 
+
+    page_size =
       case Integer.parse(Map.get(params, "page_size", to_string(default_page_size))) do
         {ps, ""} when ps > 0 and ps <= 100 -> ps
         _ -> default_page_size
       end
-      
+
     {page, page_size}
   end
 
@@ -142,14 +142,14 @@ defmodule EveDmvWeb.Live.Helpers.LiveViewPatterns do
 
   @doc """
   Standard tab parameter parsing and validation.
-  
+
   ## Usage:
-  
+
       tab = parse_tab_param(params, "overview", ["overview", "details", "history"])
   """
   def parse_tab_param(params, default_tab, valid_tabs) do
     requested_tab = Map.get(params, "tab", default_tab)
-    
+
     if requested_tab in valid_tabs do
       requested_tab
     else
@@ -159,12 +159,12 @@ defmodule EveDmvWeb.Live.Helpers.LiveViewPatterns do
 
   @doc """
   Standard LiveView mount pattern for data-heavy pages.
-  
+
   Sets up common assigns and prepares for async data loading.
   """
   def mount_data_page(socket, data_keys, options \\ []) do
     loading_message = Keyword.get(options, :loading_message, "Loading...")
-    
+
     socket
     |> ApiHelper.init_loading_state(data_keys)
     |> assign(:page_loading, true)
@@ -174,16 +174,16 @@ defmodule EveDmvWeb.Live.Helpers.LiveViewPatterns do
 
   @doc """
   Standard refresh/reload pattern for LiveView pages.
-  
+
   ## Usage:
-  
+
       def handle_event("refresh", _params, socket) do
         {:noreply, refresh_page_data(socket, [:character_data, :killmail_data])}
       end
   """
   def refresh_page_data(socket, data_keys) do
     refresh_count = Map.get(socket.assigns, :refresh_count, 0) + 1
-    
+
     socket
     |> assign(:refresh_count, refresh_count)
     |> assign(:page_loading, true)
@@ -197,9 +197,9 @@ defmodule EveDmvWeb.Live.Helpers.LiveViewPatterns do
 
   @doc """
   Standard export functionality pattern.
-  
+
   ## Usage:
-  
+
       def handle_event("export_data", %{"format" => format}, socket) do
         case generate_export_data(socket.assigns, format) do
           {:ok, {filename, content, content_type}} ->
@@ -221,9 +221,9 @@ defmodule EveDmvWeb.Live.Helpers.LiveViewPatterns do
 
   @doc """
   Standard real-time update subscription pattern.
-  
+
   ## Usage:
-  
+
       if connected?(socket) do
         socket = subscribe_to_updates(socket, [
           "intelligence:updates",
@@ -235,15 +235,15 @@ defmodule EveDmvWeb.Live.Helpers.LiveViewPatterns do
     Enum.each(topics, fn topic ->
       Phoenix.PubSub.subscribe(EveDmv.PubSub, topic)
     end)
-    
+
     assign(socket, :subscribed_topics, topics)
   end
 
   @doc """
   Standard periodic update timer setup.
-  
+
   ## Usage:
-  
+
       if connected?(socket) do
         socket = setup_periodic_updates(socket, :refresh_dashboard, 30_000)
       end
@@ -255,22 +255,22 @@ defmodule EveDmvWeb.Live.Helpers.LiveViewPatterns do
 
   @doc """
   Standard form validation error handling.
-  
+
   ## Usage:
-  
+
       case validate_form_data(params) do
         {:ok, validated_data} -> process_form(validated_data)
-        {:error, errors} -> 
+        {:error, errors} ->
           socket = handle_form_errors(socket, errors)
           {:noreply, socket}
       end
   """
   def handle_form_errors(socket, errors) when is_list(errors) do
-    error_message = 
+    error_message =
       errors
       |> Enum.map(fn {field, message} -> "#{field}: #{message}" end)
       |> Enum.join(", ")
-    
+
     put_flash(socket, :error, "Validation errors: #{error_message}")
   end
 
@@ -280,9 +280,9 @@ defmodule EveDmvWeb.Live.Helpers.LiveViewPatterns do
 
   @doc """
   Standard search functionality pattern.
-  
+
   ## Usage:
-  
+
       def handle_event("search", %{"query" => query}, socket) do
         {:noreply, perform_search(socket, query, :search_results)}
       end
@@ -308,13 +308,13 @@ defmodule EveDmvWeb.Live.Helpers.LiveViewPatterns do
 
   @doc """
   Standard modal state management.
-  
+
   ## Usage:
-  
+
       def handle_event("open_modal", %{"type" => type, "data" => data}, socket) do
         {:noreply, open_modal(socket, type, data)}
       end
-      
+
       def handle_event("close_modal", _params, socket) do
         {:noreply, close_modal(socket)}
       end

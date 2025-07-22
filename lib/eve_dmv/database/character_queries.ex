@@ -71,7 +71,7 @@ defmodule EveDmv.Database.CharacterQueries do
       killmail_id,
       killmail_time,
       solar_system_id,
-      CASE
+    CASE
         WHEN victim_character_id = $1 THEN 'loss'
         ELSE 'kill'
       END as involvement_type,
@@ -184,18 +184,18 @@ defmodule EveDmv.Database.CharacterQueries do
   def get_character_affiliations(character_id) do
     query = """
     WITH recent_data AS (
-      SELECT
+    SELECT
         raw_data->'victim' as victim_data,
-        killmail_time
+    killmail_time
       FROM killmails_raw
       WHERE victim_character_id = $1
       ORDER BY killmail_time DESC
       LIMIT 1
     ),
     attacker_data AS (
-      SELECT
+    SELECT
         attacker as attacker_data,
-        killmail_time
+    killmail_time
       FROM killmails_raw,
            jsonb_array_elements(raw_data->'attackers') as attacker
       WHERE attacker->>'character_id' = $2

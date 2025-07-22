@@ -61,13 +61,12 @@ defmodule EveDmv.Database.MaterializedViewManager do
     }
 
     if state.enabled do
-      # Subscribe to cache invalidation events
-      CacheInvalidator.subscribe_to_invalidations()
+      # Subscribe to cache invalidation CacheInvalidator.subscribe_to_invalidations(events)
 
       # Schedule initial setup
       Process.send_after(self(), :initialize_views, :timer.seconds(30))
-      ViewRefreshScheduler.schedule_refresh()
-      ViewRefreshScheduler.schedule_incremental_refresh()
+      |> ViewRefreshScheduler.schedule_refresh()
+      |> ViewRefreshScheduler.schedule_incremental_refresh()
     end
 
     {:ok, state}
@@ -121,8 +120,7 @@ defmodule EveDmv.Database.MaterializedViewManager do
   def handle_info(:scheduled_refresh, state) do
     {refreshed_views, new_stats} =
       ViewRefreshScheduler.refresh_all_views(state.views, state.refresh_stats)
-
-    ViewRefreshScheduler.schedule_refresh()
+      |> ViewRefreshScheduler.schedule_refresh()
 
     new_state = %{
       state
@@ -135,8 +133,10 @@ defmodule EveDmv.Database.MaterializedViewManager do
   end
 
   def handle_info(:incremental_refresh, state) do
-    refreshed_views = ViewRefreshScheduler.perform_incremental_refreshes(state.views)
-    ViewRefreshScheduler.schedule_incremental_refresh()
+    refreshed_views =
+      ViewRefreshScheduler.perform_incremental_refreshes(state.views)
+      |> ViewRefreshScheduler.schedule_incremental_refresh()
+
     new_state = %{state | views: Map.merge(state.views, refreshed_views)}
     {:noreply, new_state}
   end

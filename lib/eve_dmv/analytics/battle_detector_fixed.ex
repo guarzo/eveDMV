@@ -29,7 +29,7 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
         km.victim_ship_type_id,
         (km.raw_data->'zkb'->>'totalValue')::numeric::bigint as total_value,
         km.attacker_count,
-        CASE
+    CASE
           WHEN km.victim_character_id = $1 THEN 'loss'
           ELSE 'kill'
         END as participation_type
@@ -40,7 +40,7 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
         AND km.attacker_count >= 5  -- Multi-pilot engagements
     ),
     battle_clusters AS (
-      SELECT
+    SELECT
         cm.*,
         -- Group killmails that are close in time and space
         COUNT(*) OVER (
@@ -51,7 +51,7 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
     )
     SELECT
       bc.*,
-      CASE
+    CASE
         WHEN bc.system_hour_activity >= 10 THEN 'major_battle'
         WHEN bc.system_hour_activity >= 5 THEN 'skirmish'
         WHEN bc.attacker_count >= 20 THEN 'fleet_engagement'
@@ -86,12 +86,12 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
 
     query = """
     WITH character_battles AS (
-      SELECT
+    SELECT
         km.killmail_id,
         km.killmail_time,
         (km.raw_data->'zkb'->>'totalValue')::numeric::bigint as total_value,
         km.attacker_count,
-        CASE
+    CASE
           WHEN km.victim_character_id = $1 THEN 'loss'
           ELSE 'kill'
         END as participation_type
@@ -160,7 +160,7 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
         km.victim_ship_type_id,
         (km.raw_data->'zkb'->>'totalValue')::numeric::bigint as total_value,
         km.attacker_count,
-        CASE
+    CASE
           WHEN km.victim_corporation_id = $1 THEN 'loss'
           ELSE 'kill'
         END as participation_type,
@@ -179,7 +179,7 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
         AND km.attacker_count >= 5
     ),
     battle_clusters AS (
-      SELECT
+    SELECT
         cm.*,
         COUNT(*) OVER (
           PARTITION BY cm.solar_system_id,
@@ -189,7 +189,7 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
     )
     SELECT
       bc.*,
-      CASE
+    CASE
         WHEN bc.system_hour_activity >= 10 THEN 'major_battle'
         WHEN bc.system_hour_activity >= 5 THEN 'skirmish'
         WHEN bc.attacker_count >= 20 THEN 'fleet_engagement'
@@ -223,13 +223,13 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
 
     query = """
     WITH corp_battles AS (
-      SELECT
+    SELECT
         km.killmail_id,
         km.killmail_time,
         (km.raw_data->'zkb'->>'totalValue')::numeric::bigint as total_value,
         km.solar_system_id,
         km.attacker_count,
-        CASE
+    CASE
           WHEN km.victim_corporation_id = $1 THEN 'loss'
           ELSE 'kill'
         END as participation_type,
@@ -313,13 +313,16 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
   defp enhance_character_battles(battles, _character_id) do
     Enum.map(battles, fn battle ->
       battle
-      |> Map.put(:character_participation, %{
+
+      Map.put(:character_participation, %{
         role: Map.get(battle, "participation_type", "unknown"),
         kills: if(Map.get(battle, "participation_type") == "kill", do: 1, else: 0),
         losses: if(Map.get(battle, "participation_type") == "loss", do: 1, else: 0)
       })
-      |> Map.put(:battle_time, Map.get(battle, "killmail_time"))
-      |> Map.put(:total_participants, Map.get(battle, "attacker_count", 0))
+
+      Map.put(:battle_time, Map.get(battle, "killmail_time"))
+      Map.put(:total_participants, Map.get(battle, "attacker_count", 0))
+      battle
       # Each row is one killmail
       |> Map.put(:killmail_count, 1)
       |> Map.put(:total_isk_destroyed, Map.get(battle, "total_value", 0))
@@ -330,12 +333,13 @@ defmodule EveDmv.Analytics.BattleDetectorFixed do
   defp enhance_corporation_battles(battles, _corporation_id) do
     Enum.map(battles, fn battle ->
       battle
-      |> Map.put(:battle_time, Map.get(battle, "killmail_time"))
-      |> Map.put(:total_participants, Map.get(battle, "attacker_count", 0))
+      Map.put(:battle_time, Map.get(battle, "killmail_time"))
+      Map.put(:total_participants, Map.get(battle, "attacker_count", 0))
       # Each row is one killmail
-      |> Map.put(:killmail_count, 1)
-      |> Map.put(:total_isk_destroyed, Map.get(battle, "total_value", 0))
-      |> Map.put(
+      Map.put(:killmail_count, 1)
+      Map.put(:total_isk_destroyed, Map.get(battle, "total_value", 0))
+
+      Map.put(
         :coordination_level,
         determine_coordination_level(Map.get(battle, "corp_members_involved", 0))
       )

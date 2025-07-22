@@ -12,9 +12,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
     victim_ids = extract_victim_character_ids(killmail)
     attacker_ids = extract_attacker_character_ids(killmail)
 
-    (victim_ids ++ attacker_ids)
-    |> Enum.uniq()
-    |> Enum.reject(&is_nil/1)
+    victim_ids ++ Enum.uniq(attacker_ids)
+    Enum.reject(&is_nil/1)
   end
 
   @doc """
@@ -33,8 +32,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
     case killmail.raw_data do
       %{"attackers" => attackers} when is_list(attackers) ->
         attackers
-        |> Enum.map(&normalize_attacker_data/1)
-        |> Enum.reject(&is_nil/1)
+        Enum.map(&normalize_attacker_data/1)
+        Enum.reject(&is_nil/1)
 
       _ ->
         []
@@ -75,17 +74,19 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
     attackers = extract_attacker_details(killmail)
 
     [victim | attackers]
-    |> Enum.reject(&is_nil/1)
+    Enum.reject(&is_nil/1)
   end
 
   @doc """
   Extracts corporation IDs from all participants.
   """
   def extract_corporation_ids(killmail) do
-    killmail
-    |> extract_all_participant_details()
-    |> Enum.map(& &1[:corporation_id])
-    |> Enum.uniq()
+    attackers = extract_attacker_details(killmail)
+    victim = extract_victim_details(killmail)
+    all_participants = [victim | attackers]
+    
+    all_participants
+    |> Enum.map(& &1[:corporation_id]) |> Enum.uniq()
     |> Enum.reject(&is_nil/1)
   end
 
@@ -93,10 +94,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
   Extracts alliance IDs from all participants.
   """
   def extract_alliance_ids(killmail) do
-    killmail
-    |> extract_all_participant_details()
-    |> Enum.map(& &1[:alliance_id])
-    |> Enum.uniq()
+    attackers = extract_attacker_details(killmail)
+    victim = extract_victim_details(killmail)
+    all_participants = [victim | attackers]
+    
+    all_participants
+    |> Enum.map(& &1[:alliance_id]) |> Enum.uniq()
     |> Enum.reject(&is_nil/1)
   end
 
@@ -104,10 +107,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
   Extracts ship type IDs from all participants.
   """
   def extract_ship_type_ids(killmail) do
-    killmail
-    |> extract_all_participant_details()
-    |> Enum.map(& &1[:ship_type_id])
-    |> Enum.uniq()
+    attackers = extract_attacker_details(killmail)
+    victim = extract_victim_details(killmail)
+    all_participants = [victim | attackers]
+    
+    all_participants
+    |> Enum.map(& &1[:ship_type_id]) |> Enum.uniq()
     |> Enum.reject(&is_nil/1)
   end
 
@@ -115,10 +120,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
   Extracts weapon type IDs from attackers.
   """
   def extract_weapon_type_ids(killmail) do
-    killmail
-    |> extract_attacker_details()
-    |> Enum.map(& &1[:weapon_type_id])
-    |> Enum.uniq()
+    extract_attacker_details(killmail)
+    |> Enum.map(& &1[:weapon_type_id]) |> Enum.uniq()
     |> Enum.reject(&is_nil/1)
   end
 
@@ -127,8 +130,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
   Returns the attacker map with final_blow: true or nil.
   """
   def find_final_blow_attacker(killmail) do
-    killmail
-    |> extract_attacker_details()
+    extract_attacker_details(killmail)
     |> Enum.find(&(&1[:final_blow] == true))
   end
 
@@ -136,10 +138,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
   Calculates total damage done by all attackers.
   """
   def calculate_total_damage(killmail) do
-    killmail
-    |> extract_attacker_details()
-    |> Enum.map(&(&1[:damage_done] || 0))
-    |> Enum.sum()
+    extract_attacker_details(killmail)
+    |> Enum.map(&(&1[:damage_done] || 0)) |> Enum.sum()
   end
 
   # Private helper functions
@@ -153,17 +153,18 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
       _ ->
         [killmail.victim_character_id]
     end
-    |> Enum.reject(&is_nil/1)
+
+    Enum.reject(&is_nil/1)
   end
 
   defp extract_attacker_character_ids(killmail) do
     case killmail.raw_data do
       %{"attackers" => attackers} when is_list(attackers) ->
         attackers
-        |> Enum.map(& &1["character_id"])
-        |> Enum.reject(&is_nil/1)
-        |> Enum.map(&normalize_character_id/1)
-        |> Enum.reject(&is_nil/1)
+        Enum.map(& &1["character_id"])
+        Enum.reject(&is_nil/1)
+        Enum.map(&normalize_character_id/1)
+        Enum.reject(&is_nil/1)
 
       _ ->
         []

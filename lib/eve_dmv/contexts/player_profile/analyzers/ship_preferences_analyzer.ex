@@ -115,10 +115,9 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
     ship_usage = Map.get(character_stats, :ship_usage, %{})
 
     ship_values =
-      ship_usage
-      |> Map.values()
-      |> Enum.map(&Map.get(&1, "estimated_value", 0))
-      |> Enum.filter(&(&1 > 0))
+    Map.values(ship_usage)
+    Enum.map(&Map.get(&1, "estimated_value", 0))
+    Enum.filter(&(&1 > 0))
 
     %{
       value_distribution: ShipAnalysis.categorize_ship_values(ship_values),
@@ -220,14 +219,14 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
 
   defp calculate_tech_level_distribution(ship_usage) do
     total_usage =
-      ship_usage |> Map.values() |> Enum.map(&Map.get(&1, "times_used", 0)) |> Enum.sum()
+      Map.values(ship_usage) |> Enum.map(&Map.get(&1, "times_used", 0)) Enum.sum()
 
     if total_usage == 0 do
       %{tech1: 0, tech2: 0, tech3: 0, faction: 0}
     else
       tech_counts =
-        ship_usage
-        |> Enum.reduce(%{tech1: 0, tech2: 0, tech3: 0, faction: 0}, fn {ship_type_id, usage_data},
+    ship_usage
+    Enum.reduce(%{tech1: 0, tech2: 0, tech3: 0, faction: 0}, fn {ship_type_id, usage_data},
                                                                        acc ->
           times_used = Map.get(usage_data, "times_used", 0)
           tech_level = classify_ship_tech_level(ship_type_id)
@@ -235,9 +234,9 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
         end)
 
       # Convert to percentages
-      tech_counts
-      |> Enum.map(fn {tech, count} -> {tech, count / total_usage} end)
-      |> Enum.into(%{})
+    tech_counts
+    Enum.map(fn {tech, count} -> {tech, count / total_usage} end)
+    Enum.into(%{})
     end
   end
 
@@ -293,18 +292,15 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
       0.0
     else
       ship_classes =
-        ship_usage
-        |> Map.keys()
-        |> Enum.map(fn ship_type_id_str ->
+    Map.keys(ship_usage)
+    Enum.map(fn ship_type_id_str ->
           ship_type_id = String.to_integer(ship_type_id_str)
 
           case EveDmv.StaticData.get_ship_class(ship_type_id) do
             {:ok, ship_class} -> ship_class
             {:error, _} -> :unknown
           end
-        end)
-        |> Enum.uniq()
-
+        end) |> Enum.uniq()
       # Diversity is unique classes / total possible classes (simplified)
       # Approximate number of major ship classes
       length(ship_classes) / 15.0
@@ -316,19 +312,16 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
       %{highsec: 0, lowsec: 0, nullsec: 0, wspace: 0}
     else
       total_activity =
-        active_systems
-        |> Map.values()
-        |> Enum.map(fn system_data ->
+    Map.values(active_systems)
+    Enum.map(fn system_data ->
           Map.get(system_data, "kills", 0) + Map.get(system_data, "losses", 0)
-        end)
-        |> Enum.sum()
-
+        end) |> Enum.sum()
       if total_activity == 0 do
         %{highsec: 0, lowsec: 0, nullsec: 0, wspace: 0}
       else
         security_activity =
-          active_systems
-          |> Enum.reduce(%{highsec: 0, lowsec: 0, nullsec: 0, wspace: 0}, fn {_system_id,
+    active_systems
+    Enum.reduce(%{highsec: 0, lowsec: 0, nullsec: 0, wspace: 0}, fn {_system_id,
                                                                               system_data},
                                                                              acc ->
             security = Map.get(system_data, "security", 0.0)
@@ -351,20 +344,20 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
           end)
 
         # Convert to percentages
-        security_activity
-        |> Enum.map(fn {sec_type, activity} -> {sec_type, activity / total_activity} end)
-        |> Enum.into(%{})
+    security_activity
+    Enum.map(fn {sec_type, activity} -> {sec_type, activity / total_activity} end)
+    Enum.into(%{})
       end
     end
   end
 
   defp find_most_active_system(active_systems) do
     if map_size(active_systems) == 0 do
-      nil
+    nil
     else
       {_system_id, most_active} =
-        active_systems
-        |> Enum.max_by(fn {_system_id, system_data} ->
+    active_systems
+    Enum.max_by(fn {_system_id, system_data} ->
           Map.get(system_data, "kills", 0) + Map.get(system_data, "losses", 0)
         end)
 
@@ -377,9 +370,8 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
       1.0
     else
       activities =
-        active_systems
-        |> Map.values()
-        |> Enum.map(fn system_data ->
+    Map.values(active_systems)
+    Enum.map(fn system_data ->
           Map.get(system_data, "kills", 0) + Map.get(system_data, "losses", 0)
         end)
 
@@ -398,8 +390,8 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
   defp analyze_weapon_preferences(ship_usage) do
     # Analyze weapon preferences based on ship types
     weapon_categories =
-      ship_usage
-      |> Enum.reduce(
+    ship_usage
+    Enum.reduce(
         %{projectile: 0, laser: 0, hybrid: 0, missile: 0, drone: 0},
         fn {ship_type_id_str, usage_data}, acc ->
           ship_type_id = String.to_integer(ship_type_id_str)
@@ -410,17 +402,17 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
         end
       )
 
-    total_usage = weapon_categories |> Map.values() |> Enum.sum()
+    total_usage = Map.values(weapon_categories) Enum.sum()
 
     if total_usage == 0 do
       []
     else
       weapon_categories
-      |> Enum.map(fn {weapon, usage} -> {weapon, usage / total_usage} end)
+    Enum.map(fn {weapon, usage} -> {weapon, usage / total_usage} end)
       # Only significant preferences
-      |> Enum.filter(fn {_weapon, percentage} -> percentage > 0.1 end)
-      |> Enum.sort_by(fn {_weapon, percentage} -> percentage end, :desc)
-      |> Enum.take(3)
+    Enum.filter(fn {_weapon, percentage} -> percentage > 0.1 end)
+    Enum.sort_by(fn {_weapon, percentage} -> percentage end, :desc)
+    Enum.take(3)
     end
   end
 
@@ -451,7 +443,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
 
   defp has_bonus_for_weapon?(bonuses, weapon_type) do
     bonuses
-    |> Enum.any?(fn bonus ->
+    Enum.any?(fn bonus ->
       bonus_text = String.downcase(bonus)
       String.contains?(bonus_text, weapon_type)
     end)
@@ -460,8 +452,8 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
   defp analyze_tank_preferences(ship_usage) do
     # Analyze tank preferences based on ship racial characteristics
     tank_types =
-      ship_usage
-      |> Enum.reduce(%{armor: 0, shield: 0, hull: 0}, fn {ship_type_id_str, usage_data}, acc ->
+    ship_usage
+    Enum.reduce(%{armor: 0, shield: 0, hull: 0}, fn {ship_type_id_str, usage_data}, acc ->
         ship_type_id = String.to_integer(ship_type_id_str)
         times_used = Map.get(usage_data, "times_used", 0)
         tank_type = determine_primary_tank_type(ship_type_id)
@@ -469,15 +461,15 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
         Map.update(acc, tank_type, times_used, &(&1 + times_used))
       end)
 
-    total_usage = tank_types |> Map.values() |> Enum.sum()
+    total_usage = Map.values(tank_types) Enum.sum()
 
     if total_usage == 0 do
       []
     else
       tank_types
-      |> Enum.map(fn {tank, usage} -> {tank, usage / total_usage} end)
-      |> Enum.filter(fn {_tank, percentage} -> percentage > 0.1 end)
-      |> Enum.sort_by(fn {_tank, percentage} -> percentage end, :desc)
+    Enum.map(fn {tank, usage} -> {tank, usage / total_usage} end)
+    Enum.filter(fn {_tank, percentage} -> percentage > 0.1 end)
+    Enum.sort_by(fn {_tank, percentage} -> percentage end, :desc)
     end
   end
 
@@ -534,7 +526,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
 
   defp count_ships_by_role(ship_usage, target_role) do
     ship_usage
-    |> Enum.count(fn {ship_type_id_str, _usage_data} ->
+    Enum.count(fn {ship_type_id_str, _usage_data} ->
       ship_type_id = String.to_integer(ship_type_id_str)
 
       case EveDmv.StaticData.get_ship_class(ship_type_id) do
@@ -546,7 +538,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
 
   defp count_ships_by_class(ship_usage, target_classes) do
     ship_usage
-    |> Enum.count(fn {ship_type_id_str, _usage_data} ->
+    Enum.count(fn {ship_type_id_str, _usage_data} ->
       ship_type_id = String.to_integer(ship_type_id_str)
 
       case EveDmv.StaticData.get_ship_class(ship_type_id) do
@@ -594,10 +586,9 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
   defp analyze_preferred_gang_sizes(ship_usage) do
     # Analyze preferred gang sizes from ship usage data
     gang_sizes =
-      ship_usage
-      |> Map.values()
-      |> Enum.map(&Map.get(&1, "avg_gang_size", 1.0))
-      |> Enum.filter(&(&1 > 0))
+    Map.values(ship_usage)
+    Enum.map(&Map.get(&1, "avg_gang_size", 1.0))
+    Enum.filter(&(&1 > 0))
 
     if Enum.empty?(gang_sizes) do
       %{preferred_size: 1.0, size_variance: 0.0, flexibility: :unknown}
@@ -626,10 +617,8 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
       0.0
     else
       sum_of_squares =
-        values
-        |> Enum.map(fn value -> :math.pow(value - mean, 2) end)
-        |> Enum.sum()
-
+    values
+    Enum.map(fn value -> :math.pow(value - mean, 2) end) |> Enum.sum()
       sum_of_squares / (length(values) - 1)
     end
   end

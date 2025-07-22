@@ -43,23 +43,23 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
     end
 
     socket =
-      socket
-      |> assign(:tab, :overview)
-      |> assign(:loading, true)
-      |> assign(:error, nil)
-      |> assign(:dashboard_data, nil)
-      |> assign(:threat_alerts, [])
-      |> assign(:recent_analyses, [])
-      |> assign(:cache_stats, %{})
-      |> assign(:system_health, %{})
-      |> assign(:selected_analysis, nil)
-      |> assign(:timeframe, :last_24_hours)
+    socket
+    assign(:tab, :overview)
+    assign(:loading, true)
+    assign(:error, nil)
+    assign(:dashboard_data, nil)
+    assign(:threat_alerts, [])
+    assign(:recent_analyses, [])
+    assign(:cache_stats, %{})
+    assign(:system_health, %{})
+    assign(:selected_analysis, nil)
+    assign(:timeframe, :last_24_hours)
       # Real-time intelligence data
-      |> assign(:live_threats, [])
-      |> assign(:active_battles, [])
-      |> assign(:recent_events, [])
-      |> assign(:connection_status, :connected)
-      |> assign(:last_update, DateTime.utc_now())
+    assign(:live_threats, [])
+    assign(:active_battles, [])
+    assign(:recent_events, [])
+    assign(:connection_status, :connected)
+    assign(:last_update, DateTime.utc_now())
 
     # Load initial dashboard data
     send(self(), :load_dashboard)
@@ -73,9 +73,9 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
     timeframe = params["timeframe"] || "last_24_hours"
 
     socket =
-      socket
-      |> assign(:tab, String.to_existing_atom(tab))
-      |> assign(:timeframe, String.to_existing_atom(timeframe))
+    socket
+    assign(:tab, String.to_existing_atom(tab))
+    assign(:timeframe, String.to_existing_atom(timeframe))
 
     {:noreply, socket}
   end
@@ -103,16 +103,14 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
   end
 
   @impl Phoenix.LiveView
-  def handle_event("clear_cache", _params, socket) do
-    IntelligenceCache.clear_cache()
+  def handle_event("clear_cache", _params, socket) IntelligenceCache.clear_cache(do)
     socket = put_flash(socket, :info, "Intelligence cache cleared successfully")
     send(self(), :load_dashboard)
     {:noreply, assign(socket, :loading, true)}
   end
 
   @impl Phoenix.LiveView
-  def handle_event("warm_cache", _params, socket) do
-    IntelligenceCoordinator.warm_intelligence_cache()
+  def handle_event("warm_cache", _params, socket) IntelligenceCoordinator.warm_intelligence_cache(do)
     {:noreply, put_flash(socket, :info, "Cache warming initiated")}
   end
 
@@ -132,13 +130,13 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
     case generate_dashboard_export_data(socket.assigns, format) do
       {:ok, {filename, content, content_type}} ->
         socket =
-          socket
-          |> push_event("download_file", %{
+    socket
+    push_event("download_file", %{
             filename: filename,
             content: content,
             content_type: content_type
           })
-          |> put_flash(:info, "Dashboard data exported successfully")
+    put_flash(:info, "Dashboard data exported successfully")
 
         {:noreply, socket}
 
@@ -180,14 +178,14 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
       IntelligenceCoordinator.get_intelligence_dashboard(timeframe: socket.assigns.timeframe)
 
     socket =
-      socket
-      |> assign(:dashboard_data, dashboard_data)
-      |> assign(:threat_alerts, dashboard_data.threat_alerts)
-      |> assign(:recent_analyses, dashboard_data.recent_analyses)
-      |> assign(:cache_stats, dashboard_data.cache_performance)
-      |> assign(:system_health, dashboard_data.system_health)
-      |> assign(:loading, false)
-      |> assign(:error, nil)
+    socket
+    assign(:dashboard_data, dashboard_data)
+    assign(:threat_alerts, dashboard_data.threat_alerts)
+    assign(:recent_analyses, dashboard_data.recent_analyses)
+    assign(:cache_stats, dashboard_data.cache_performance)
+    assign(:system_health, dashboard_data.system_health)
+    assign(:loading, false)
+    assign(:error, nil)
 
     {:noreply, socket}
   end
@@ -205,9 +203,9 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
     updated_analyses = [analysis | socket.assigns.recent_analyses]
 
     socket =
-      socket
-      |> assign(:recent_analyses, Enum.take(updated_analyses, 10))
-      |> put_flash(:info, "New intelligence analysis completed")
+    socket
+    assign(:recent_analyses, Enum.take(updated_analyses, 10))
+    put_flash(:info, "New intelligence analysis completed")
 
     {:noreply, socket}
   end
@@ -218,9 +216,9 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
     updated_alerts = [alert | socket.assigns.threat_alerts]
 
     socket =
-      socket
-      |> assign(:threat_alerts, Enum.take(updated_alerts, 5))
-      |> put_flash(:error, "New threat alert: #{alert.message}")
+    socket
+    assign(:threat_alerts, Enum.take(updated_alerts, 5))
+    put_flash(:error, "New threat alert: #{alert.message}")
 
     {:noreply, socket}
   end
@@ -248,7 +246,7 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
     updated_threats =
       [threat_info | socket.assigns.live_threats]
       # Keep last 20 threat updates
-      |> Enum.take(20)
+    Enum.take(20)
 
     recent_event = %{
       type: :threat_change,
@@ -264,10 +262,10 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
     updated_events = [recent_event | socket.assigns.recent_events] |> Enum.take(50)
 
     socket =
-      socket
-      |> assign(:live_threats, updated_threats)
-      |> assign(:recent_events, updated_events)
-      |> assign(:last_update, DateTime.utc_now())
+    socket
+    assign(:live_threats, updated_threats)
+    assign(:recent_events, updated_events)
+    assign(:last_update, DateTime.utc_now())
 
     # Show flash message for significant threat changes
     socket =
@@ -295,12 +293,12 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
 
     updated_battles =
       [battle_info | socket.assigns.active_battles]
-      |> Enum.filter(fn battle ->
+    Enum.filter(fn battle ->
         # Keep battles from last 2 hours or still developing
         DateTime.diff(DateTime.utc_now(), battle.detected_at, :second) < 7200 or
           battle.status == :developing
       end)
-      |> Enum.take(10)
+    Enum.take(10)
 
     recent_event = %{
       type: :battle_detected,
@@ -319,11 +317,11 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
     updated_events = [recent_event | socket.assigns.recent_events] |> Enum.take(50)
 
     socket =
-      socket
-      |> assign(:active_battles, updated_battles)
-      |> assign(:recent_events, updated_events)
-      |> assign(:last_update, DateTime.utc_now())
-      |> put_flash(:info, "🔥 New battle detected: #{recent_event.message}")
+    socket
+    assign(:active_battles, updated_battles)
+    assign(:recent_events, updated_events)
+    assign(:last_update, DateTime.utc_now())
+    put_flash(:info, "🔥 New battle detected: #{recent_event.message}")
 
     {:noreply, socket}
   end
@@ -344,11 +342,11 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
 
     updated_alerts =
       [alert_info | socket.assigns.threat_alerts]
-      |> Enum.filter(fn alert ->
+    Enum.filter(fn alert ->
         # Filter out expired alerts
         is_nil(alert.expires_at) or DateTime.compare(DateTime.utc_now(), alert.expires_at) == :lt
       end)
-      |> Enum.take(10)
+    Enum.take(10)
 
     recent_event = %{
       type: :intelligence_alert,
@@ -360,10 +358,10 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
     updated_events = [recent_event | socket.assigns.recent_events] |> Enum.take(50)
 
     socket =
-      socket
-      |> assign(:threat_alerts, updated_alerts)
-      |> assign(:recent_events, updated_events)
-      |> assign(:last_update, DateTime.utc_now())
+    socket
+    assign(:threat_alerts, updated_alerts)
+    assign(:recent_events, updated_events)
+    assign(:last_update, DateTime.utc_now())
 
     # Show appropriate flash message based on priority
     socket =
@@ -391,9 +389,9 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
     updated_events = [recent_event | socket.assigns.recent_events] |> Enum.take(50)
 
     socket =
-      socket
-      |> assign(:recent_events, updated_events)
-      |> assign(:last_update, DateTime.utc_now())
+    socket
+    assign(:recent_events, updated_events)
+    assign(:last_update, DateTime.utc_now())
 
     # Show flash for significant spikes
     socket =
@@ -434,10 +432,10 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
       end
 
     socket =
-      socket
-      |> assign(:recent_events, updated_events)
-      |> assign(:recent_analyses, updated_analyses)
-      |> assign(:last_update, DateTime.utc_now())
+    socket
+    assign(:recent_events, updated_events)
+    assign(:recent_analyses, updated_analyses)
+    assign(:last_update, DateTime.utc_now())
 
     {:noreply, socket}
   end
@@ -628,8 +626,8 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
       content =
         Enum.map_join([headers | rows], "\n", fn row ->
           row
-          |> Enum.map(&to_string/1)
-          |> Enum.map_join(",", &escape_csv_field/1)
+    Enum.map(&to_string/1)
+    Enum.map_join(",", &escape_csv_field/1)
         end)
 
       {:ok, content}

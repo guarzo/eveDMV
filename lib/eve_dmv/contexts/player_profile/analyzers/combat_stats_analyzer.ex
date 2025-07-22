@@ -79,15 +79,17 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
 
     top_weapons =
       weapon_stats
-      |> Enum.sort_by(fn {_weapon, count} -> count end, :desc)
-      |> Enum.take(5)
-      |> Enum.map(fn {weapon, count} ->
-        %{
-          weapon: weapon,
-          usage_count: count,
-          percentage: safe_divide(count * 100, total_weapon_usage(weapon_stats))
-        }
-      end)
+
+    Enum.sort_by(fn {_weapon, count} -> count end, :desc)
+    Enum.take(5)
+
+    Enum.map(fn {weapon, count} ->
+      %{
+        weapon: weapon,
+        usage_count: count,
+        percentage: safe_divide(count * 100, total_weapon_usage(weapon_stats))
+      }
+    end)
 
     %{
       top_weapons: top_weapons,
@@ -105,18 +107,20 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
     # Analyze geographic patterns
     system_analysis =
       active_systems
-      |> Enum.map(fn {system_id, system_data} ->
-        %{
-          system_id: system_id,
-          system_name: Map.get(system_data, :system_name, "Unknown"),
-          security: Map.get(system_data, :security, 0.0),
-          kills: Map.get(system_data, :kills, 0),
-          losses: Map.get(system_data, :losses, 0),
-          efficiency: calculate_system_efficiency(system_data),
-          last_seen: Map.get(system_data, :last_seen)
-        }
-      end)
-      |> Enum.sort_by(& &1.kills, :desc)
+
+    Enum.map(fn {system_id, system_data} ->
+      %{
+        system_id: system_id,
+        system_name: Map.get(system_data, :system_name, "Unknown"),
+        security: Map.get(system_data, :security, 0.0),
+        kills: Map.get(system_data, :kills, 0),
+        losses: Map.get(system_data, :losses, 0),
+        efficiency: calculate_system_efficiency(system_data),
+        last_seen: Map.get(system_data, :last_seen)
+      }
+    end)
+
+    Enum.sort_by(& &1.kills, :desc)
 
     # Analyze target preferences
     preferred_targets = analyze_target_preferences(target_profile)
@@ -210,17 +214,18 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
   defp determine_preferred_range(weapons) do
     ranges =
       weapons
-      |> Enum.map(fn %{weapon: weapon} ->
-        cond do
-          String.contains?(weapon, ["Blaster", "Pulse", "Autocannon"]) -> :short
-          String.contains?(weapon, ["Railgun", "Beam", "Artillery"]) -> :long
-          String.contains?(weapon, ["Heavy Missile", "Light Missile"]) -> :medium
-          String.contains?(weapon, ["Rocket", "Heavy Assault"]) -> :short
-          String.contains?(weapon, ["Cruise", "Torpedo"]) -> :long
-          true -> :medium
-        end
-      end)
-      |> Enum.frequencies()
+
+    Enum.map(fn %{weapon: weapon} ->
+      cond do
+        String.contains?(weapon, ["Blaster", "Pulse", "Autocannon"]) -> :short
+        String.contains?(weapon, ["Railgun", "Beam", "Artillery"]) -> :long
+        String.contains?(weapon, ["Heavy Missile", "Light Missile"]) -> :medium
+        String.contains?(weapon, ["Rocket", "Heavy Assault"]) -> :short
+        String.contains?(weapon, ["Cruise", "Torpedo"]) -> :long
+        true -> :medium
+      end
+    end)
+    |> Enum.frequencies()
 
     case Enum.max_by(ranges, fn {_range, count} -> count end, fn -> {:medium, 0} end) do
       {preferred_range, _} -> preferred_range
@@ -241,7 +246,8 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
 
   defp analyze_damage_types(weapon_stats) do
     weapon_stats
-    |> Enum.map(fn {weapon, _count} ->
+
+    Enum.map(fn {weapon, _count} ->
       cond do
         String.contains?(weapon, ["Blaster", "Railgun", "Neutron", "Ion"]) -> :kinetic_thermal
         String.contains?(weapon, ["Pulse", "Beam", "Laser"]) -> :em_thermal
@@ -251,9 +257,10 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
       end
     end)
     |> Enum.frequencies()
-    |> Enum.sort_by(fn {_type, count} -> -count end)
-    |> Enum.take(2)
-    |> Enum.map(fn {type, _} -> type end)
+
+    Enum.sort_by(fn {_type, count} -> -count end)
+    Enum.take(2)
+    Enum.map(fn {type, _} -> type end)
   end
 
   defp calculate_system_efficiency(system_data) do
@@ -271,7 +278,8 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
     ship_categories = Map.get(target_profile, :ship_categories, %{})
 
     ship_categories
-    |> Enum.map(fn {category, data} ->
+
+    Enum.map(fn {category, data} ->
       %{
         category: category,
         kills: Map.get(data, :killed, 0),
@@ -279,41 +287,44 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
         avg_value: Map.get(data, :avg_value, 0)
       }
     end)
-    |> Enum.sort_by(& &1.kills, :desc)
-    |> Enum.take(5)
+
+    Enum.sort_by(& &1.kills, :desc)
+    Enum.take(5)
   end
 
   defp analyze_security_preferences(system_analysis) do
     security_stats =
       system_analysis
-      |> Enum.group_by(fn system ->
-        cond do
-          system.security >= 0.5 -> :highsec
-          system.security > 0.0 -> :lowsec
-          system.security == 0.0 -> :nullsec
-          true -> :wormhole
-        end
-      end)
-      |> Enum.map(fn {sec_type, systems} ->
-        {total_kills, total_losses} =
-          Enum.reduce(systems, {0, 0}, fn system, {kills_acc, losses_acc} ->
-            {kills_acc + system.kills, losses_acc + system.losses}
-          end)
 
-        {sec_type,
-         %{
-           kills: total_kills,
-           losses: total_losses,
-           systems: length(systems)
-         }}
-      end)
-      |> Enum.into(%{})
+    Enum.group_by(fn system ->
+      cond do
+        system.security >= 0.5 -> :highsec
+        system.security > 0.0 -> :lowsec
+        system.security == 0.0 -> :nullsec
+        true -> :wormhole
+      end
+    end)
+
+    Enum.map(fn {sec_type, systems} ->
+      {total_kills, total_losses} =
+        Enum.reduce(systems, {0, 0}, fn system, {kills_acc, losses_acc} ->
+          {kills_acc + system.kills, losses_acc + system.losses}
+        end)
+
+      {sec_type,
+       %{
+         kills: total_kills,
+         losses: total_losses,
+         systems: length(systems)
+       }}
+    end)
+
+    Enum.into(%{})
 
     total_kills =
-      security_stats
-      |> Map.values()
-      |> Enum.map(& &1.kills)
-      |> Enum.sum()
+      Map.values(security_stats)
+
+    Enum.map(& &1.kills) |> Enum.sum()
 
     Enum.into(
       Enum.map(security_stats, fn {sec_type, stats} ->
@@ -335,9 +346,10 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
 
     peak_hours =
       activity_by_hour
-      |> Enum.sort_by(fn {_hour, activity} -> -activity end)
-      |> Enum.take(3)
-      |> Enum.map(fn {hour, _} -> hour end)
+
+    Enum.sort_by(fn {_hour, activity} -> -activity end)
+    Enum.take(3)
+    Enum.map(fn {hour, _} -> hour end)
 
     %{
       peak_hours: peak_hours,
@@ -437,16 +449,15 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
       0.0
     else
       total_usage =
-        ship_usage
-        |> Map.values()
-        |> Enum.map(fn ship_data -> Map.get(ship_data, :times_used, 0) end)
-        |> Enum.sum()
+        Map.values(ship_usage)
+
+      Enum.map(fn ship_data -> Map.get(ship_data, :times_used, 0) end) |> Enum.sum()
 
       max_usage =
-        ship_usage
-        |> Map.values()
-        |> Enum.map(fn ship_data -> Map.get(ship_data, :times_used, 0) end)
-        |> Enum.max(fn -> 0 end)
+        Map.values(ship_usage)
+
+      Enum.map(fn ship_data -> Map.get(ship_data, :times_used, 0) end)
+      Enum.max(fn -> 0 end)
 
       Float.round(max_usage / total_usage, 2)
     end

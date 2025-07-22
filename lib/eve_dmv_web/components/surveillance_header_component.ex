@@ -37,7 +37,7 @@ defmodule EveDmvWeb.SurveillanceHeaderComponent do
                 phx-target={@myself}
                 class="px-2 py-1 bg-gray-600 hover:bg-gray-700 rounded text-xs"
               >
-                Clear
+    Clear
               </button>
             </div>
           <% end %>

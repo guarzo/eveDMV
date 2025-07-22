@@ -58,7 +58,7 @@ defmodule EveDmv.Intelligence.CacheCleanupWorker do
 
     # Update state
     updated_state = %{
-      state
+    state
       | last_cleanup: DateTime.utc_now(),
         cleanup_count: state.cleanup_count + 1,
         entries_cleaned: state.entries_cleaned + cleanup_results.entries_cleaned
@@ -99,7 +99,7 @@ defmodule EveDmv.Intelligence.CacheCleanupWorker do
     cleanup_results = perform_cache_maintenance()
 
     updated_state = %{
-      state
+    state
       | last_cleanup: DateTime.utc_now(),
         cleanup_count: state.cleanup_count + 1,
         entries_cleaned: state.entries_cleaned + cleanup_results.entries_cleaned
@@ -146,7 +146,7 @@ defmodule EveDmv.Intelligence.CacheCleanupWorker do
       memory_freed = calculate_memory_freed(initial_stats, final_stats)
 
       %{
-        results
+    results
         | entries_cleaned: cleaned_entries,
           memory_freed_bytes: memory_freed,
           cache_stats: final_stats
@@ -175,8 +175,7 @@ defmodule EveDmv.Intelligence.CacheCleanupWorker do
       nil ->
         %{cache_size: 0, error: "Cache process not running"}
 
-      _pid ->
-        IntelligenceCache.get_cache_stats()
+      _pid -> |> IntelligenceCache.get_cache_stats()
     end
   rescue
     error ->

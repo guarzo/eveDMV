@@ -37,8 +37,9 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.RecruitmentRetent
 
     _high_risk_members =
       at_risk_members
-      |> Enum.filter(&(&1.risk_score > 30))
-      |> Enum.sort_by(& &1.risk_score, :desc)
+
+    Enum.filter(&(&1.risk_score > 30))
+    Enum.sort_by(& &1.risk_score, :desc)
 
     %{
       at_risk_count: length(at_risk_members),
@@ -273,11 +274,11 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.RecruitmentRetent
       # Analyze common risk factors
       all_factors =
         at_risk_members
-        |> Enum.flat_map(& &1.risk_factors)
-        |> Enum.frequencies()
-        |> Enum.sort_by(fn {_factor, count} -> count end, :desc)
-        |> Enum.take(3)
-        |> Enum.map(fn {factor, _count} -> factor end)
+
+      Enum.flat_map(& &1.risk_factors) |> Enum.frequencies()
+      Enum.sort_by(fn {_factor, count} -> count end, :desc)
+      Enum.take(3)
+      Enum.map(fn {factor, _count} -> factor end)
 
       %{
         primary_risk_factors: all_factors,
@@ -331,10 +332,11 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.RecruitmentRetent
 
   defp prioritize_interventions(at_risk_members) do
     at_risk_members
-    |> Enum.filter(&(&1.risk_level in [:critical, :high]))
-    |> Enum.sort_by(&{&1.risk_score, &1.days_inactive}, :desc)
-    |> Enum.take(10)
-    |> Enum.map(fn member ->
+    Enum.filter(&(&1.risk_level in [:critical, :high]))
+    Enum.sort_by(&{&1.risk_score, &1.days_inactive}, :desc)
+    Enum.take(10)
+
+    Enum.map(fn member ->
       %{
         character_name: member.character_name,
         priority: determine_intervention_priority(member),

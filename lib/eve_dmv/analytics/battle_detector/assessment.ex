@@ -20,39 +20,43 @@ defmodule EveDmv.Analytics.BattleDetector.Assessment do
   # Private functions
 
   defp calculate_avg_participants(battles) do
-    if length(battles) > 0 do
+    if Kernel.length(battles) > 0 do
       total_participants =
         battles
-        |> Enum.map(&Map.get(&1, :participants, []))
-        |> Enum.map(&length/1)
-        |> Enum.sum()
 
-      round(total_participants / length(battles))
+      Enum.map(&Map.get(&1, :participants, []))
+
+      Enum.map(&Kernel.length/1)
+      |> Enum.sum()
+
+      round(total_participants / Kernel.length(battles))
     else
       0
     end
   end
 
   defp calculate_avg_duration(battles) do
-    if length(battles) > 0 do
+    if Kernel.length(battles) > 0 do
       total_duration =
         battles
-        |> Enum.map(&Map.get(&1, :duration_minutes, 0))
-        |> Enum.sum()
 
-      round(total_duration / length(battles))
+      Enum.map(&Map.get(&1, :duration_minutes, 0))
+      |> Enum.sum()
+
+      round(total_duration / Kernel.length(battles))
     else
       0
     end
   end
 
   defp calculate_quality_score(battles) do
-    if length(battles) > 0 do
+    if Kernel.length(battles) > 0 do
       scores =
         battles
-        |> Enum.map(&calculate_individual_battle_score/1)
 
-      avg_score = Enum.sum(scores) / length(scores)
+      Enum.map(&calculate_individual_battle_score/1)
+
+      avg_score = Enum.sum(scores) / Kernel.length(scores)
       Float.round(avg_score, 1)
     else
       0.0

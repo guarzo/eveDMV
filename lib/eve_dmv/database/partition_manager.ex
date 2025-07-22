@@ -292,8 +292,8 @@ defmodule EveDmv.Database.PartitionManager do
       {:ok, %{rows: rows}} ->
         rows
         # Get table name
-        |> Enum.map(&Enum.at(&1, 1))
-        |> Enum.filter(&partition_older_than?(&1, cutoff_date))
+        Enum.map(&Enum.at(&1, 1))
+        Enum.filter(&partition_older_than?(&1, cutoff_date))
 
       _ ->
         []

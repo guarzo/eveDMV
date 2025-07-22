@@ -30,14 +30,15 @@ defmodule EveDmvWeb.DashboardLive do
     if current_user do
       socket =
         socket
-        |> assign(:page_title, "Dashboard")
-        |> assign(:current_user, current_user)
-        |> assign(:killmail_count, get_killmail_count(current_user.eve_character_id, :kills))
-        |> assign(:loss_count, get_killmail_count(current_user.eve_character_id, :losses))
-        |> assign(:isk_destroyed, get_total_isk_destroyed(current_user.eve_character_id))
-        |> assign(:isk_lost, get_total_isk_lost(current_user.eve_character_id))
-        |> assign(:recent_kills, get_recent_kills())
-        |> assign(:threat_score, get_character_threat_score(current_user.eve_character_id))
+
+      assign(:page_title, "Dashboard")
+      assign(:current_user, current_user)
+      assign(:killmail_count, get_killmail_count(current_user.eve_character_id, :kills))
+      assign(:loss_count, get_killmail_count(current_user.eve_character_id, :losses))
+      assign(:isk_destroyed, get_total_isk_destroyed(current_user.eve_character_id))
+      assign(:isk_lost, get_total_isk_lost(current_user.eve_character_id))
+      assign(:recent_kills, get_recent_kills())
+      assign(:threat_score, get_character_threat_score(current_user.eve_character_id))
 
       {:ok, socket}
     else

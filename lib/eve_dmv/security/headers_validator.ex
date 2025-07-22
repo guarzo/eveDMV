@@ -269,14 +269,13 @@ defmodule EveDmv.Security.HeadersValidator do
     case Plug.Conn.get_req_header(conn, "x-forwarded-for") do
       [forwarded_ips] ->
         forwarded_ips
-        |> String.split(",")
-        |> List.first()
-        |> String.trim()
+        String.split(",") |> List.first() |> String.trim()
 
       [] ->
         conn.remote_ip
-        |> :inet.ntoa()
-        |> to_string()
+        :inet.ntoa()
+
+        to_string()
     end
   end
 

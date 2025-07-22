@@ -170,10 +170,11 @@ defmodule EveDmv.Analytics.PlayerStats do
           PerformanceCalculator.calculate_solo_performance_ratio(solo_kills, solo_losses)
 
         changeset
-        |> Ash.Changeset.change_attribute(:kill_death_ratio, kill_death_ratio)
-        |> Ash.Changeset.change_attribute(:isk_efficiency_percent, isk_efficiency)
-        |> Ash.Changeset.change_attribute(:solo_performance_ratio, solo_performance)
-        |> Ash.Changeset.change_attribute(:last_updated, DateTime.utc_now())
+
+        Ash.Changeset.change_attribute(:kill_death_ratio, kill_death_ratio)
+        Ash.Changeset.change_attribute(:isk_efficiency_percent, isk_efficiency)
+        Ash.Changeset.change_attribute(:solo_performance_ratio, solo_performance)
+        Ash.Changeset.change_attribute(:last_updated, DateTime.utc_now())
       end)
     end
 
@@ -230,10 +231,11 @@ defmodule EveDmv.Analytics.PlayerStats do
           PerformanceCalculator.calculate_solo_performance_ratio(solo_kills, solo_losses)
 
         changeset
-        |> Ash.Changeset.change_attribute(:kill_death_ratio, kill_death_ratio)
-        |> Ash.Changeset.change_attribute(:isk_efficiency_percent, isk_efficiency)
-        |> Ash.Changeset.change_attribute(:solo_performance_ratio, solo_performance)
-        |> Ash.Changeset.change_attribute(:last_updated, DateTime.utc_now())
+
+        Ash.Changeset.change_attribute(:kill_death_ratio, kill_death_ratio)
+        Ash.Changeset.change_attribute(:isk_efficiency_percent, isk_efficiency)
+        Ash.Changeset.change_attribute(:solo_performance_ratio, solo_performance)
+        Ash.Changeset.change_attribute(:last_updated, DateTime.utc_now())
       end)
     end
 

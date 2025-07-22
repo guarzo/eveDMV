@@ -49,10 +49,9 @@ defmodule EveDmv.Eve.StaticDataLoader.WormholeClassLoader do
     try do
       wormhole_data =
         csv_data
-        |> CsvParser.parse_csv_content(&parse_wormhole_row/1)
-        |> Enum.filter(& &1)
-        |> Map.new()
 
+      CsvParser.parse_csv_content(&parse_wormhole_row/1)
+      Enum.filter(& &1) |> Map.new()
       Logger.info("Parsed #{map_size(wormhole_data)} wormhole class mappings")
       {:ok, wormhole_data}
     rescue
@@ -77,33 +76,32 @@ defmodule EveDmv.Eve.StaticDataLoader.WormholeClassLoader do
 
     # Get all solar systems that need wormhole class updates
     systems_to_update =
-      wormhole_data
-      |> Map.keys()
-      |> Enum.chunk_every(1000)
-      |> Enum.flat_map(&get_systems_batch/1)
+      Map.keys(wormhole_data)
+
+    Enum.chunk_every(1000)
+    Enum.flat_map(&get_systems_batch/1)
 
     Logger.info("Found #{length(systems_to_update)} solar systems to update")
 
     # Update systems in batches
     update_count =
       systems_to_update
-      |> Enum.chunk_every(500)
-      |> Enum.map(&update_systems_batch(&1, wormhole_data))
-      |> Enum.sum()
 
+    Enum.chunk_every(500)
+    Enum.map(&update_systems_batch(&1, wormhole_data)) |> Enum.sum()
     {:ok, update_count}
   end
 
   defp get_systems_batch(system_ids) do
-    SolarSystem
-    |> Ash.Query.new()
-    |> Ash.Query.filter(system_id in ^system_ids)
-    |> Ash.read!(domain: Api)
+    Ash.Query.new(SolarSystem)
+    Ash.Query.filter(system_id in ^system_ids)
+    Ash.read!(domain: Api)
   end
 
   defp update_systems_batch(systems, wormhole_data) do
     systems
-    |> Enum.map(fn system ->
+
+    Enum.map(fn system ->
       wormhole_class_id = Map.get(wormhole_data, system.system_id)
 
       if wormhole_class_id do

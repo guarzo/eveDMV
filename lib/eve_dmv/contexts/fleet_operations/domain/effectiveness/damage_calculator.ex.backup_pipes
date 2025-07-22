@@ -1,7 +1,7 @@
 defmodule EveDmv.Contexts.FleetOperations.Domain.Effectiveness.DamageCalculator do
   @moduledoc """
   Calculates damage-related metrics for fleet effectiveness.
-  
+
   Provides damage efficiency calculations, DPS analysis, and
   damage application effectiveness metrics.
   """
@@ -62,7 +62,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.Effectiveness.DamageCalculator 
     else
       damage_values = Enum.map(fleet_attackers, &(&1.damage_done || 0))
       total_damage = Enum.sum(damage_values)
-      
+
       if total_damage == 0 do
         %{
           concentration_index: 0,
@@ -73,9 +73,9 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.Effectiveness.DamageCalculator 
         sorted_damage = Enum.sort(damage_values, :desc)
         top_20_percent_count = max(1, div(length(sorted_damage), 5))
         top_20_damage = Enum.sum(Enum.take(sorted_damage, top_20_percent_count))
-        
+
         concentration = Float.round(top_20_damage / total_damage, 2)
-        
+
         %{
           concentration_index: concentration,
           top_damage_percentage: Float.round(concentration * 100, 1),
@@ -90,12 +90,12 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.Effectiveness.DamageCalculator 
   """
   def calculate_damage_efficiency(participants, killmails) do
     participant_ids = MapSet.new(participants, &(&1.character_id))
-    
+
     # Calculate various damage metrics
     total_damage = calculate_total_damage_dealt(participants, killmails)
     damage_application = analyze_damage_application(killmails, participant_ids)
     overkill_analysis = analyze_overkill_patterns(killmails, participant_ids)
-    
+
     %{
       total_damage_dealt: total_damage,
       average_damage_per_pilot: Float.round(total_damage / length(participants), 0),
@@ -108,7 +108,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.Effectiveness.DamageCalculator 
 
   defp analyze_damage_application(killmails, participant_ids) do
     fleet_kills = filter_fleet_kills(killmails, participant_ids)
-    
+
     if Enum.empty?(fleet_kills) do
       %{
         hit_quality: 0,
@@ -120,10 +120,10 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.Effectiveness.DamageCalculator 
       application_scores = Enum.map(fleet_kills, fn killmail ->
         analyze_kill_damage_application(killmail, participant_ids)
       end)
-      
+
       avg_hit_quality = average(Enum.map(application_scores, &(&1.hit_quality)))
       avg_application = average(Enum.map(application_scores, &(&1.application)))
-      
+
       %{
         hit_quality: Float.round(avg_hit_quality, 2),
         application_percentage: Float.round(avg_application * 100, 1),
@@ -137,17 +137,17 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.Effectiveness.DamageCalculator 
       |> Enum.filter(fn attacker ->
         MapSet.member?(participant_ids, attacker.character_id)
       end)
-    
+
     if Enum.empty?(fleet_attackers) do
       %{hit_quality: 0, application: 0}
     else
       # Estimate hit quality based on damage patterns
       total_fleet_damage = Enum.sum(Enum.map(fleet_attackers, &(&1.damage_done || 0)))
       ship_hp = Map.get(killmail, :ship_hp, 50000) # Default ship HP estimate
-      
+
       hit_quality = min(1.0, total_fleet_damage / ship_hp)
       application = calculate_application_efficiency(fleet_attackers, killmail)
-      
+
       %{
         hit_quality: hit_quality,
         application: application
@@ -163,7 +163,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.Effectiveness.DamageCalculator 
       damage_values = Enum.map(fleet_attackers, &(&1.damage_done || 0))
       avg_damage = Enum.sum(damage_values) / length(damage_values)
       max_damage = Enum.max(damage_values)
-      
+
       # Good application = consistent damage across attackers
       if max_damage > 0 do
         consistency = avg_damage / max_damage
@@ -182,17 +182,17 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.Effectiveness.DamageCalculator 
 
   defp analyze_overkill_patterns(killmails, participant_ids) do
     fleet_kills = filter_fleet_kills(killmails, participant_ids)
-    
+
     if Enum.empty?(fleet_kills) do
       %{percentage: 0, wasted_damage: 0, instances: 0}
     else
       overkill_instances = Enum.map(fleet_kills, fn killmail ->
         calculate_overkill_for_kill(killmail, participant_ids)
       end)
-      
+
       total_instances = Enum.count(overkill_instances, &(&1.is_overkill))
       total_wasted = Enum.sum(Enum.map(overkill_instances, &(&1.wasted_damage)))
-      
+
       %{
         percentage: Float.round(total_instances / length(fleet_kills) * 100, 1),
         wasted_damage: total_wasted,
@@ -208,9 +208,9 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.Effectiveness.DamageCalculator 
       end)
       |> Enum.map(&(&1.damage_done || 0))
       |> Enum.sum()
-    
+
     ship_hp = Map.get(killmail, :ship_hp, 50000)
-    
+
     if fleet_damage > ship_hp * 1.5 do
       %{
         is_overkill: true,
@@ -228,9 +228,9 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.Effectiveness.DamageCalculator 
     # Calculate overall efficiency rating
     application_score = damage_application.application_percentage / 100
     overkill_penalty = min(0.3, overkill_analysis.percentage / 100 * 0.5)
-    
+
     raw_score = application_score * 0.7 + damage_application.hit_quality * 0.3 - overkill_penalty
-    
+
     cond do
       raw_score >= 0.9 -> "Excellent"
       raw_score >= 0.75 -> "Good"

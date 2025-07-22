@@ -238,14 +238,14 @@ defmodule EveDmv.Intelligence.Core.ValidationHelper do
 
   defp validate_all_entity_ids(entity_ids) do
     invalid_ids =
-      entity_ids
-      |> Enum.with_index()
-      |> Enum.filter(fn {id, _index} ->
-        case validate_entity_id(id) do
-          :ok -> false
-          {:error, _} -> true
-        end
-      end)
+      Enum.with_index(entity_ids)
+
+    Enum.filter(fn {id, _index} ->
+      case validate_entity_id(id) do
+        :ok -> false
+        {:error, _} -> true
+      end
+    end)
 
     if length(invalid_ids) > 0 do
       indices = Enum.map(invalid_ids, fn {_id, index} -> index end)

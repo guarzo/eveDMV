@@ -36,7 +36,7 @@ defmodule EveDmv.Contexts.CombatIntelligenceIntegrationTest do
 
       # The old code would have returned hardcoded data like:
       # %{score: 0.75, rating: :experienced, ...}
-      # 
+      #
       # The new code returns {:error, :not_implemented}
 
       assert true, "Stub functions have been updated to return {:error, :not_implemented}"
@@ -54,7 +54,7 @@ defmodule EveDmv.Contexts.CombatIntelligenceIntegrationTest do
 
   describe "Battle Analysis stub behavior" do
     test "battle analysis functions updated to return not_implemented" do
-      # BattleAnalysisService private functions like fetch_battle_killmails/1, 
+      # BattleAnalysisService private functions like fetch_battle_killmails/1,
       # fetch_recent_system_kills/2 have been updated to return {:error, :not_implemented}
       # instead of {:ok, []}
 

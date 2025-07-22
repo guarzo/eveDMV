@@ -304,10 +304,10 @@ defmodule EveDmv.Enrichment.RealTimePriceUpdater do
 
   defp get_recent_enriched_killmails(_since_datetime, limit) do
     query =
-      KillmailRaw
-      |> Ash.Query.new()
-      |> Ash.Query.sort(killmail_time: :desc)
-      |> Ash.Query.limit(limit)
+      Ash.Query.new(KillmailRaw)
+
+    Ash.Query.sort(killmail_time: :desc)
+    Ash.Query.limit(limit)
 
     Ash.read(query, domain: Api)
   end

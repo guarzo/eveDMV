@@ -60,12 +60,13 @@ defmodule EveDmv.Search.SearchSuggestionService do
 
         corporation_query =
           Participant
-          |> new()
-          |> filter(not is_nil(corporation_name))
-          |> filter(fragment("LOWER(?) LIKE ?", corporation_name, ^query_pattern))
-          |> select([:corporation_id, :corporation_name])
-          |> distinct([:corporation_id])
-          |> limit(limit)
+
+        new()
+        filter(not is_nil(corporation_name))
+        filter(fragment("LOWER(?) LIKE ?", corporation_name, ^query_pattern))
+        select([:corporation_id, :corporation_name])
+        distinct([:corporation_id])
+        limit(limit)
 
         case Ash.read(corporation_query, domain: Api) do
           {:ok, corporations} ->
@@ -108,12 +109,13 @@ defmodule EveDmv.Search.SearchSuggestionService do
 
         alliance_query =
           Participant
-          |> new()
-          |> filter(not is_nil(alliance_name))
-          |> filter(fragment("LOWER(?) LIKE ?", alliance_name, ^query_pattern))
-          |> select([:alliance_id, :alliance_name])
-          |> distinct([:alliance_id])
-          |> limit(limit)
+
+        new()
+        filter(not is_nil(alliance_name))
+        filter(fragment("LOWER(?) LIKE ?", alliance_name, ^query_pattern))
+        select([:alliance_id, :alliance_name])
+        distinct([:alliance_id])
+        limit(limit)
 
         case Ash.read(alliance_query, domain: Api) do
           {:ok, alliances} ->
@@ -156,10 +158,11 @@ defmodule EveDmv.Search.SearchSuggestionService do
 
         system_query =
           EveSolarSystem
-          |> new()
-          |> filter(fragment("LOWER(?) LIKE ?", system_name, ^query_pattern))
-          |> select([:system_id, :system_name, :region_name, :security_status])
-          |> limit(limit)
+
+        new()
+        filter(fragment("LOWER(?) LIKE ?", system_name, ^query_pattern))
+        select([:system_id, :system_name, :region_name, :security_status])
+        limit(limit)
 
         case Ash.read(system_query, domain: Api) do
           {:ok, systems} ->
@@ -204,12 +207,13 @@ defmodule EveDmv.Search.SearchSuggestionService do
 
         ship_query =
           EveItemType
-          |> new()
-          |> filter(is_ship: true)
-          |> filter(published: true)
-          |> filter(fragment("LOWER(?) LIKE ?", type_name, ^query_pattern))
-          |> select([:type_id, :type_name, :group_name, :category_name])
-          |> limit(limit)
+
+        new()
+        filter(is_ship: true)
+        filter(published: true)
+        filter(fragment("LOWER(?) LIKE ?", type_name, ^query_pattern))
+        select([:type_id, :type_name, :group_name, :category_name])
+        limit(limit)
 
         case Ash.read(ship_query, domain: Api) do
           {:ok, ships} ->
@@ -261,12 +265,14 @@ defmodule EveDmv.Search.SearchSuggestionService do
     # Combine results
     all_suggestions =
       results
-      |> Enum.map(fn
-        {:ok, suggestions} -> suggestions
-        _ -> []
-      end)
-      |> List.flatten()
-      |> Enum.take(total_limit)
+
+    Enum.map(fn
+      {:ok, suggestions} -> suggestions
+      _ -> []
+    end)
+    |> List.flatten()
+
+    Enum.take(total_limit)
 
     {:ok, all_suggestions}
   end
@@ -281,7 +287,7 @@ defmodule EveDmv.Search.SearchSuggestionService do
       character_name,
       corporation_name,
       total_kills,
-      total_losses
+    total_losses
     FROM player_stats
     WHERE character_name IS NOT NULL
       AND LOWER(character_name) LIKE $1
@@ -295,27 +301,28 @@ defmodule EveDmv.Search.SearchSuggestionService do
       {:ok, %{rows: [_ | _] = rows}} ->
         suggestions =
           rows
-          |> Enum.map(fn [
-                           character_id,
-                           character_name,
-                           corporation_name,
-                           total_kills,
-                           total_losses
-                         ] ->
-            subtitle =
-              if corporation_name do
-                "#{corporation_name} (#{total_kills}K/#{total_losses}L)"
-              else
-                "#{total_kills} Kills / #{total_losses} Losses"
-              end
 
-            %{
-              id: character_id,
-              name: character_name,
-              type: :character,
-              subtitle: subtitle
-            }
-          end)
+        Enum.map(fn [
+                      character_id,
+                      character_name,
+                      corporation_name,
+                      total_kills,
+                      total_losses
+                    ] ->
+          subtitle =
+            if corporation_name do
+              "#{corporation_name} (#{total_kills}K/#{total_losses}L)"
+            else
+              "#{total_kills} Kills / #{total_losses} Losses"
+            end
+
+          %{
+            id: character_id,
+            name: character_name,
+            type: :character,
+            subtitle: subtitle
+          }
+        end)
 
         {:ok, suggestions}
 
@@ -339,7 +346,7 @@ defmodule EveDmv.Search.SearchSuggestionService do
     # Use direct SQL query for better reliability (based on working character_search_live.ex implementation)
     search_query = """
     WITH character_activity AS (
-      SELECT
+    SELECT
         victim_character_id as character_id,
         victim_character_name as character_name,
         victim_corporation_name as corporation_name,
@@ -350,7 +357,7 @@ defmodule EveDmv.Search.SearchSuggestionService do
         AND LOWER(victim_character_name) LIKE $1
       GROUP BY victim_character_id, victim_character_name, victim_corporation_name
 
-      UNION
+    UNION
 
       SELECT DISTINCT
         (attacker->>'character_id')::bigint as character_id,
@@ -384,27 +391,28 @@ defmodule EveDmv.Search.SearchSuggestionService do
       {:ok, %{rows: rows}} ->
         suggestions =
           rows
-          |> Enum.map(fn [
-                           character_id,
-                           character_name,
-                           corporation_name,
-                           total_killmails,
-                           _last_seen
-                         ] ->
-            subtitle =
-              if corporation_name do
-                "#{corporation_name} (#{total_killmails} killmails)"
-              else
-                "#{total_killmails} killmails"
-              end
 
-            %{
-              id: character_id,
-              name: character_name,
-              type: :character,
-              subtitle: subtitle
-            }
-          end)
+        Enum.map(fn [
+                      character_id,
+                      character_name,
+                      corporation_name,
+                      total_killmails,
+                      _last_seen
+                    ] ->
+          subtitle =
+            if corporation_name do
+              "#{corporation_name} (#{total_killmails} killmails)"
+            else
+              "#{total_killmails} killmails"
+            end
+
+          %{
+            id: character_id,
+            name: character_name,
+            type: :character,
+            subtitle: subtitle
+          }
+        end)
 
         {:ok, suggestions}
 

@@ -92,9 +92,10 @@ defmodule EveDmv.Intelligence.PatternAnalysis do
   def detect_behavioral_anomalies(stats) do
     anomalies =
       []
-      |> check_activity_anomalies(stats)
-      |> check_ratio_anomalies(stats)
-      |> check_pattern_inconsistencies(stats)
+
+    check_activity_anomalies(stats)
+    check_ratio_anomalies(stats)
+    check_pattern_inconsistencies(stats)
 
     %{
       anomalies_detected: anomalies,

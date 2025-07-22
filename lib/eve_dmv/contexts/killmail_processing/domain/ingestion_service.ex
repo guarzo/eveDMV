@@ -116,13 +116,14 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.IngestionService do
 
     results =
       killmails
-      |> Task.async_stream(
-        &ingest/1,
-        max_concurrency: max_concurrency,
-        timeout: timeout,
-        on_timeout: :kill_task
-      )
-      |> Enum.to_list()
+
+    Task.async_stream(
+      &ingest/1,
+      max_concurrency: max_concurrency,
+      timeout: timeout,
+      on_timeout: :kill_task
+    )
+    |> Enum.to_list()
 
     processing_time = System.monotonic_time(:millisecond) - batch_start
 
@@ -272,8 +273,9 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.IngestionService do
   defp extract_attackers_summary(killmail) do
     killmail.attackers
     # Limit to top 5 attackers for event
-    |> Enum.take(5)
-    |> Enum.map(fn attacker ->
+    Enum.take(5)
+
+    Enum.map(fn attacker ->
       %{
         character_id: Map.get(attacker, :character_id),
         corporation_id: Map.get(attacker, :corporation_id),

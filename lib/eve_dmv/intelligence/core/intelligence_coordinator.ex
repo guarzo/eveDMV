@@ -200,9 +200,9 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
     system_threats = get_system_activity_alerts(cutoff_time)
 
     # Combine and sort by severity and timestamp
-    (threat_alerts ++ battle_threats ++ character_threats ++ system_threats)
-    |> Enum.sort_by(&{threat_severity_priority(&1.severity), &1.timestamp}, :desc)
-    |> Enum.take(10)
+    threat_alerts ++ battle_threats ++ character_threats ++ system_threats
+    Enum.sort_by(&{threat_severity_priority(&1.severity), &1.timestamp}, :desc)
+    Enum.take(10)
   rescue
     error ->
       Logger.warning("Failed to fetch threat alerts: #{inspect(error)}")
@@ -243,9 +243,9 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
     vetting_analyses = get_recent_vetting_analyses(cutoff_time, limit)
 
     # Combine and sort by timestamp
-    (analyses ++ character_analyses ++ battle_analyses ++ vetting_analyses)
-    |> Enum.sort_by(& &1.timestamp, :desc)
-    |> Enum.take(limit)
+    analyses ++ character_analyses ++ battle_analyses ++ vetting_analyses
+    Enum.sort_by(& &1.timestamp, :desc)
+    Enum.take(limit)
   rescue
     error ->
       Logger.warning("Failed to fetch recent analyses: #{inspect(error)}")
@@ -365,9 +365,9 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
     case BattleAnalysis.detect_recent_battles(hours_back) do
       {:ok, battles} ->
         battles
-        |> Enum.filter(&is_high_threat_battle/1)
-        |> Enum.map(&convert_battle_to_threat_alert/1)
-        |> Enum.take(5)
+        Enum.filter(&is_high_threat_battle/1)
+        Enum.map(&convert_battle_to_threat_alert/1)
+        Enum.take(5)
 
       {:error, _reason} ->
         []
@@ -412,7 +412,8 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
   defp check_killmail_volume_anomaly(cutoff_time) do
     # This would check for unusual spikes in killmail activity
     # indicating potential large battles or system intrusions
-    _cutoff_naive = DateTime.to_naive(cutoff_time)
+    _cutoff_naive =
+      DateTime.to_naive(cutoff_time)
 
     # Sample query: count recent killmails
     # If significantly higher than normal, create alert
@@ -489,8 +490,8 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
       {:ok, battles} ->
         battles
         # Take 1/3 of limit for battle analyses
-        |> Enum.take(div(limit, 3))
-        |> Enum.map(&convert_battle_to_analysis_entry/1)
+        Enum.take(div(limit, 3))
+        Enum.map(&convert_battle_to_analysis_entry/1)
 
       {:error, _reason} ->
         []
@@ -511,16 +512,18 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
       case Ash.read(Vetting, domain: EveDmv.Api) do
         {:ok, vettings} ->
           vettings
-          |> Enum.filter(fn v ->
+
+          Enum.filter(fn v ->
             case v.analysis_timestamp do
               %DateTime{} = dt -> DateTime.compare(dt, cutoff_time) != :lt
               %NaiveDateTime{} = ndt -> NaiveDateTime.compare(ndt, cutoff_naive) != :lt
               _ -> false
             end
           end)
+
           # Take 1/3 of limit for vetting analyses
-          |> Enum.take(div(limit, 3))
-          |> Enum.map(&convert_vetting_to_analysis_entry/1)
+          Enum.take(div(limit, 3))
+          Enum.map(&convert_vetting_to_analysis_entry/1)
 
         {:error, _reason} ->
           []

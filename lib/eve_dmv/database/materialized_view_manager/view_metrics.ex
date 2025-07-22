@@ -155,7 +155,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
       matviewname,
       hasindexes,
       ispopulated,
-      definition
+    definition
     FROM pg_matviews
     WHERE schemaname = 'public'
     """
@@ -247,7 +247,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
       pg_relation_size(indexname::regclass) as size,
       idx_scan,
       idx_tup_read,
-      idx_tup_fetch
+    idx_tup_fetch
     FROM pg_stat_user_indexes
     WHERE schemaname = 'public' AND tablename = $1
     """
@@ -284,7 +284,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
       attname,
       n_distinct,
       null_frac,
-      avg_width
+    avg_width
     FROM pg_stats
     WHERE schemaname = 'public' AND tablename = $1
     LIMIT 20
@@ -399,9 +399,9 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
     if length(health_data) > 0 do
       avg_score =
         health_data
-        |> Enum.map(& &1.health_score)
-        |> Enum.sum()
-        |> Kernel./(length(health_data))
+
+      Enum.map(& &1.health_score) |> Enum.sum()
+      Kernel./(length(health_data))
 
       round(avg_score)
     else
@@ -443,21 +443,24 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
 
     recommendation_list =
       []
-      # Check total size (10GB)
-      |> maybe_add_recommendation(
-        total_size > 10_737_418_240,
-        "Total materialized view size exceeds 10GB - review data retention policies"
-      )
-      # Check failure rate
-      |> maybe_add_recommendation(
-        failure_rate > 10.0,
-        "High refresh failure rate (#{failure_rate}%) - investigate refresh errors"
-      )
-      # Check refresh time (5 minutes)
-      |> maybe_add_recommendation(
-        refresh_stats.avg_refresh_time_ms > 300_000,
-        "Average refresh time exceeds 5 minutes - consider optimization"
-      )
+
+    # Check total size (10GB)
+    maybe_add_recommendation(
+      total_size > 10_737_418_240,
+      "Total materialized view size exceeds 10GB - review data retention policies"
+    )
+
+    # Check failure rate
+    maybe_add_recommendation(
+      failure_rate > 10.0,
+      "High refresh failure rate (#{failure_rate}%) - investigate refresh errors"
+    )
+
+    # Check refresh time (5 minutes)
+    maybe_add_recommendation(
+      refresh_stats.avg_refresh_time_ms > 300_000,
+      "Average refresh time exceeds 5 minutes - consider optimization"
+    )
 
     if Enum.empty?(recommendation_list) do
       ["Materialized view system is performing well"]

@@ -178,11 +178,12 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
 
     filtered_alerts =
       state.recent_alerts
-      # Take more to account for filtering
-      |> Enum.take(limit * 2)
-      |> Enum.map(&Map.get(state.alerts, &1))
-      |> Enum.filter(&filter_alert(&1, priority_filter, state_filter, profile_id_filter))
-      |> Enum.take(limit)
+
+    # Take more to account for filtering
+    Enum.take(limit * 2)
+    Enum.map(&Map.get(state.alerts, &1))
+    Enum.filter(&filter_alert(&1, priority_filter, state_filter, profile_id_filter))
+    Enum.take(limit)
 
     {:reply, {:ok, filtered_alerts}, state}
   end
@@ -503,24 +504,27 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
       end
 
     recent_alerts =
-      state.alerts
-      |> Map.values()
-      |> Enum.filter(&(DateTime.compare(&1.created_at, cutoff_time) == :gt))
+      state.Map.values(alerts)
+
+    Enum.filter(&(DateTime.compare(&1.created_at, cutoff_time) == :gt))
 
     priority_distribution =
       recent_alerts
-      |> Enum.group_by(& &1.priority)
-      |> Map.new(fn {priority, alerts} -> {priority, length(alerts)} end)
+
+    Enum.group_by(& &1.priority)
+    Map.new(fn {priority, alerts} -> {priority, length(alerts)} end)
 
     state_distribution =
       recent_alerts
-      |> Enum.group_by(& &1.state)
-      |> Map.new(fn {state, alerts} -> {state, length(alerts)} end)
+
+    Enum.group_by(& &1.state)
+    Map.new(fn {state, alerts} -> {state, length(alerts)} end)
 
     type_distribution =
       recent_alerts
-      |> Enum.group_by(& &1.alert_type)
-      |> Map.new(fn {type, alerts} -> {type, length(alerts)} end)
+
+    Enum.group_by(& &1.alert_type)
+    Map.new(fn {type, alerts} -> {type, length(alerts)} end)
 
     %{
       time_range: time_range,

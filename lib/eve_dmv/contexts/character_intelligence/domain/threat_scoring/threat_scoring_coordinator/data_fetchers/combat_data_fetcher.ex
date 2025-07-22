@@ -4,15 +4,16 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
 
   This module is responsible for:
   - Fetching killmails where character was victim
-  - Fetching killmails where character was attacker  
+  - Fetching killmails where character was attacker
   - Processing and structuring combat data
   - Validating data quality for analysis
   """
 
-  alias EveDmv.Killmails.KillmailRaw
-  alias EveDmv.Api
-
   import Ash.Query
+
+  alias EveDmv.Api
+  alias EveDmv.Killmails.KillmailRaw
+
   require Logger
 
   @analysis_window_days 90
@@ -92,11 +93,12 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
   defp fetch_victim_killmails(character_id, cutoff_date) do
     query =
       KillmailRaw
-      |> new()
-      |> filter(victim_character_id: character_id)
-      |> filter(killmail_time: [gte: cutoff_date])
-      |> sort(killmail_time: :desc)
-      |> limit(500)
+
+    new()
+    filter(victim_character_id: character_id)
+    filter(killmail_time: [gte: cutoff_date])
+    sort(killmail_time: :desc)
+    limit(500)
 
     case Ash.read(query, domain: Api) do
       {:ok, killmails} ->
@@ -113,11 +115,12 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
     # Fetch recent killmails and filter for character as attacker
     query =
       KillmailRaw
-      |> new()
-      |> filter(killmail_time: [gte: cutoff_date])
-      |> sort(killmail_time: :desc)
-      # Larger sample for attacker search
-      |> limit(2000)
+
+    new()
+    filter(killmail_time: [gte: cutoff_date])
+    sort(killmail_time: :desc)
+    # Larger sample for attacker search
+    limit(2000)
 
     case Ash.read(query, domain: Api) do
       {:ok, potential_killmails} ->

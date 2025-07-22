@@ -345,22 +345,24 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability do
   # Recommendation and training functions
 
   defp suggest_intelligence_roles(intel_components) do
-    role_scores = %{
-      reconnaissance: assess_reconnaissance_suitability(intel_components),
-      infiltration: assess_infiltration_suitability(intel_components),
-      intelligence_analysis: assess_analysis_suitability(intel_components),
-      threat_assessment: assess_threat_assessment_suitability(intel_components),
-      technical_intelligence: assess_technical_intelligence_suitability(intel_components),
-      counterintelligence: assess_counterintelligence_suitability(intel_components),
-      cyber_operations: assess_cyber_operations_suitability(intel_components),
-      human_intelligence: assess_humint_suitability(intel_components)
-    }
+    role_scores =
+      %{
+        reconnaissance: assess_reconnaissance_suitability(intel_components),
+        infiltration: assess_infiltration_suitability(intel_components),
+        intelligence_analysis: assess_analysis_suitability(intel_components),
+        threat_assessment: assess_threat_assessment_suitability(intel_components),
+        technical_intelligence: assess_technical_intelligence_suitability(intel_components),
+        counterintelligence: assess_counterintelligence_suitability(intel_components),
+        cyber_operations: assess_cyber_operations_suitability(intel_components),
+        human_intelligence: assess_humint_suitability(intel_components)
+      }
 
     # Return top 3 roles
     role_scores
-    |> Enum.sort_by(fn {_role, score} -> score end, :desc)
-    |> Enum.take(3)
-    |> Enum.map(fn {role, _score} -> role end)
+
+    Enum.sort_by(fn {_role, score} -> score end, :desc)
+    Enum.take(3)
+    Enum.map(fn {role, _score} -> role end)
   end
 
   defp suggest_intelligence_training(intel_components) do

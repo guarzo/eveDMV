@@ -17,11 +17,11 @@ defmodule EveDmv.Killmails.DisplayService do
     # Always load from raw killmails since enriched data isn't actually enriched
     # This gives us access to character/corp names from wanderer-kills
     raw =
-      KillmailRaw
-      |> Ash.Query.new()
-      |> Ash.Query.sort(killmail_time: :desc)
-      |> Ash.Query.limit(limit)
-      |> Ash.read!(domain: Api)
+      Ash.Query.new(KillmailRaw)
+
+    Ash.Query.sort(killmail_time: :desc)
+    Ash.Query.limit(limit)
+    Ash.read!(domain: Api)
 
     # Preload names for raw killmails
     preload_raw_killmail_names(raw)
@@ -32,16 +32,16 @@ defmodule EveDmv.Killmails.DisplayService do
     # Extract all unique IDs that need name resolution
     ship_type_ids =
       killmails
-      |> Stream.map(& &1.victim_ship_type_id)
-      |> Stream.reject(&is_nil/1)
-      |> Enum.uniq()
+
+    |> Stream.map(& &1.victim_ship_type_id)
+    |> Stream.reject(&is_nil/1)
+    |> Enum.uniq()
 
     system_ids =
       killmails
       |> Stream.map(& &1.solar_system_id)
       |> Stream.reject(&is_nil/1)
       |> Enum.uniq()
-
     # Bulk preload all names into cache
     NameResolver.ship_names(ship_type_ids)
     NameResolver.system_names(system_ids)
@@ -104,8 +104,9 @@ defmodule EveDmv.Killmails.DisplayService do
 
   def calculate_system_stats(killmails) do
     killmails
-    |> Enum.group_by(& &1.solar_system_id)
-    |> Enum.map(fn {system_id, kills} ->
+    Enum.group_by(& &1.solar_system_id)
+
+    Enum.map(fn {system_id, kills} ->
       system_name = List.first(kills).solar_system_name
       kill_count = length(kills)
 
@@ -122,8 +123,9 @@ defmodule EveDmv.Killmails.DisplayService do
         avg_isk: if(kill_count > 0, do: Decimal.div(total_isk, kill_count), else: Decimal.new(0))
       }
     end)
-    |> Enum.sort_by(& &1.kill_count, :desc)
-    |> Enum.take(10)
+
+    Enum.sort_by(& &1.kill_count, :desc)
+    Enum.take(10)
   end
 
   def calculate_total_isk(killmails) do
@@ -138,12 +140,13 @@ defmodule EveDmv.Killmails.DisplayService do
     # Extract IDs from raw killmail data
     ship_type_ids =
       raw_killmails
-      |> Enum.map(fn raw ->
-        victim = find_victim_in_raw(raw.raw_data)
-        get_in(victim, ["ship_type_id"])
-      end)
-      |> Enum.reject(&is_nil/1)
-      |> Enum.uniq()
+
+    Enum.map(fn raw ->
+      victim = find_victim_in_raw(raw.raw_data)
+      get_in(victim, ["ship_type_id"])
+    end)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
 
     system_ids =
       raw_killmails
@@ -152,7 +155,6 @@ defmodule EveDmv.Killmails.DisplayService do
       end)
       |> Enum.reject(&is_nil/1)
       |> Enum.uniq()
-
     # Bulk preload all names into cache
     NameResolver.ship_names(ship_type_ids)
     NameResolver.system_names(system_ids)

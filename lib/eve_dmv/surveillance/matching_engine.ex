@@ -83,8 +83,7 @@ defmodule EveDmv.Surveillance.MatchingEngine do
   def init(_opts) do
     Logger.info("Starting surveillance matching engine")
 
-    # Create ETS tables
-    IndexManager.create_ets_tables()
+    # Create ETS IndexManager.create_ets_tables(tables)
 
     # Load active profiles
     state = %{
@@ -185,8 +184,7 @@ defmodule EveDmv.Surveillance.MatchingEngine do
       IndexManager.update_profile_metadata(state.pending_matches)
     end
 
-    # Clean up expired cache entries
-    IndexManager.cleanup_expired_cache()
+    # Clean up expired cache IndexManager.cleanup_expired_cache(entries)
 
     # Schedule next batch recording
     schedule_batch_recording()
@@ -255,8 +253,7 @@ defmodule EveDmv.Surveillance.MatchingEngine do
   end
 
   defp load_active_profiles do
-    # Clear existing data
-    IndexManager.clear_all_tables()
+    # Clear existing IndexManager.clear_all_tables(data)
 
     # Load active profiles from database
     try do
@@ -272,12 +269,14 @@ defmodule EveDmv.Surveillance.MatchingEngine do
           # Process profiles in parallel batches for better performance
           profiles
           # Process in batches of 10
-          |> Enum.chunk_every(10)
-          |> Task.async_stream(&process_profile_batch/1,
+          Enum.chunk_every(10)
+
+          Task.async_stream(&process_profile_batch/1,
             max_concurrency: 4,
             timeout: 30_000
           )
-          |> Enum.reduce(0, fn
+
+          Enum.reduce(0, fn
             {:ok, count}, acc -> acc + count
             {:error, _}, acc -> acc
           end)

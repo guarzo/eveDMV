@@ -35,14 +35,16 @@ defmodule EveDmv.Intelligence.Metrics.TemporalAnalysisCalculator do
   """
   def analyze_hourly_activity(killmail_data) do
     killmail_data
-    |> Enum.group_by(fn km ->
+
+    Enum.group_by(fn km ->
       case get_killmail_time(km) do
         %DateTime{} = dt -> dt.hour
         _ -> 0
       end
     end)
-    |> Enum.map(fn {hour, killmails} -> {hour, length(killmails)} end)
-    |> Enum.into(%{})
+
+    Enum.map(fn {hour, killmails} -> {hour, length(killmails)} end)
+    Enum.into(%{})
   end
 
   @doc """
@@ -52,14 +54,16 @@ defmodule EveDmv.Intelligence.Metrics.TemporalAnalysisCalculator do
   """
   def analyze_daily_activity(killmail_data) do
     killmail_data
-    |> Enum.group_by(fn km ->
+
+    Enum.group_by(fn km ->
       case get_killmail_time(km) do
         %DateTime{} = dt -> Date.day_of_week(dt)
         _ -> 1
       end
     end)
-    |> Enum.map(fn {day, killmails} -> {day, length(killmails)} end)
-    |> Enum.into(%{})
+
+    Enum.map(fn {day, killmails} -> {day, length(killmails)} end)
+    Enum.into(%{})
   end
 
   @doc """
@@ -69,14 +73,16 @@ defmodule EveDmv.Intelligence.Metrics.TemporalAnalysisCalculator do
   """
   def analyze_weekly_activity(killmail_data) do
     killmail_data
-    |> Enum.group_by(fn km ->
+
+    Enum.group_by(fn km ->
       case get_killmail_time(km) do
         %DateTime{} = dt -> Date.beginning_of_week(dt)
         _ -> Date.utc_today()
       end
     end)
-    |> Enum.map(fn {week, killmails} -> {week, length(killmails)} end)
-    |> Enum.into(%{})
+
+    Enum.map(fn {week, killmails} -> {week, length(killmails)} end)
+    Enum.into(%{})
   end
 
   @doc """
@@ -86,9 +92,9 @@ defmodule EveDmv.Intelligence.Metrics.TemporalAnalysisCalculator do
   """
   def identify_peak_hours(hourly_activity) do
     hourly_activity
-    |> Enum.sort_by(fn {_hour, count} -> count end, :desc)
-    |> Enum.take(3)
-    |> Enum.map(fn {hour, _count} -> hour end)
+    Enum.sort_by(fn {_hour, count} -> count end, :desc)
+    Enum.take(3)
+    Enum.map(fn {hour, _count} -> hour end)
   end
 
   @doc """
@@ -126,8 +132,9 @@ defmodule EveDmv.Intelligence.Metrics.TemporalAnalysisCalculator do
     # Find peak hour and estimate timezone
     peak_hour =
       hourly_activity
-      |> Enum.max_by(fn {_hour, count} -> count end, fn -> {12, 0} end)
-      |> elem(0)
+
+    Enum.max_by(fn {_hour, count} -> count end, fn -> {12, 0} end)
+    elem(0)
 
     # Simple timezone estimation (very rough)
     cond do
@@ -150,10 +157,11 @@ defmodule EveDmv.Intelligence.Metrics.TemporalAnalysisCalculator do
     # Simple heuristic: times with activity but presumably losses
     vulnerable_hours =
       hourly_activity
-      |> Enum.filter(fn {_hour, count} -> count > 0 end)
-      |> Enum.sort_by(fn {_hour, count} -> count end, :desc)
-      |> Enum.take(3)
-      |> Enum.map(fn {hour, _count} -> "#{hour}:00-#{hour + 1}:00 EVE" end)
+
+    Enum.filter(fn {_hour, count} -> count > 0 end)
+    Enum.sort_by(fn {_hour, count} -> count end, :desc)
+    Enum.take(3)
+    Enum.map(fn {hour, _count} -> "#{hour}:00-#{hour + 1}:00 EVE" end)
 
     vulnerable_hours
   end

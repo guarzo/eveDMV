@@ -89,22 +89,24 @@ defmodule EveDmv.Eve.EsiMarketClient do
   def get_market_prices(type_ids, region_id \\ 10_000_002) when is_list(type_ids) do
     results =
       type_ids
-      |> Task.async_stream(
-        fn type_id ->
-          case get_market_orders(type_id, region_id) do
-            {:ok, orders} ->
-              # Calculate best prices from orders
-              best_prices = calculate_best_prices(orders)
-              {type_id, best_prices}
 
-            {:error, _} ->
-              {type_id, nil}
-          end
-        end,
-        timeout: 30_000
-      )
-      |> Enum.map(fn {:ok, result} -> result end)
-      |> Enum.into(%{})
+    Task.async_stream(
+      fn type_id ->
+        case get_market_orders(type_id, region_id) do
+          {:ok, orders} ->
+            # Calculate best prices from orders
+            best_prices = calculate_best_prices(orders)
+            {type_id, best_prices}
+
+          {:error, _} ->
+            {type_id, nil}
+        end
+      end,
+      timeout: 30_000
+    )
+
+    Enum.map(fn {:ok, result} -> result end)
+    Enum.into(%{})
 
     {:ok, results}
   end
@@ -125,8 +127,9 @@ defmodule EveDmv.Eve.EsiMarketClient do
 
   defp get_highest_price(orders) do
     orders
-    |> Enum.max_by(& &1["price"], fn -> nil end)
-    |> case do
+    Enum.max_by(& &1["price"], fn -> nil end)
+
+    case do
       nil -> nil
       order -> order["price"]
     end
@@ -136,8 +139,9 @@ defmodule EveDmv.Eve.EsiMarketClient do
 
   defp get_lowest_price(orders) do
     orders
-    |> Enum.min_by(& &1["price"], fn -> nil end)
-    |> case do
+    Enum.min_by(& &1["price"], fn -> nil end)
+
+    case do
       nil -> nil
       order -> order["price"]
     end

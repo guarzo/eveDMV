@@ -61,8 +61,7 @@ defmodule EveDmv.Intelligence.Fleet.DoctrineTemplateBuilder do
   def calculate_minimum_pilots(doctrine_template) do
     # Calculate absolute minimum pilots needed (all required roles filled with 1 pilot each)
     doctrine_template
-    |> Enum.map(fn {_role, config} -> min(1, config["required"] || 1) end)
-    |> Enum.sum()
+    Enum.map(fn {_role, config} -> min(1, config["required"] || 1) end) |> Enum.sum()
   end
 
   @doc """

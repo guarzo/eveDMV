@@ -33,8 +33,8 @@ defmodule EveDmv.Database.QueryPerformance do
       tracked_ash_query("recent_killmails",
         fn ->
           KillmailRaw
-          |> Ash.Query.filter(killmail_time > ^since)
-          |> Api.read!()
+    Ash.Query.filter(killmail_time > ^since)
+    Api.read!()
         end
       )
   """
@@ -139,7 +139,7 @@ defmodule EveDmv.Database.QueryPerformance do
       tablename,
       attname as column_name,
       n_distinct,
-      correlation
+    correlation
     FROM pg_stats
     WHERE tablename = $1
       AND n_distinct > 100
@@ -150,7 +150,8 @@ defmodule EveDmv.Database.QueryPerformance do
     case EveDmv.Repo.query(sql, [table_name]) do
       {:ok, %{rows: rows}} ->
         rows
-        |> Enum.map(fn [_schema, _table, column, n_distinct, correlation] ->
+
+        Enum.map(fn [_schema, _table, column, n_distinct, correlation] ->
           %{
             column: column,
             distinct_values: n_distinct,
@@ -158,7 +159,8 @@ defmodule EveDmv.Database.QueryPerformance do
             index_benefit: calculate_index_benefit(n_distinct, correlation)
           }
         end)
-        |> Enum.filter(&(&1.index_benefit > 0.5))
+
+        Enum.filter(&(&1.index_benefit > 0.5))
 
       _ ->
         []

@@ -73,9 +73,8 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.RecruitmentScoring do
 
     # Calculate overall requirement satisfaction
     satisfied_requirements =
-      requirement_checks
-      |> Map.values()
-      |> Enum.count(& &1.meets_requirement)
+    Map.values(requirement_checks)
+    Enum.count(& &1.meets_requirement)
 
     total_requirements = map_size(requirement_checks)
 
@@ -276,9 +275,9 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.RecruitmentScoring do
 
     # Identify top 2 strengths
     component_scores
-    |> Enum.sort_by(fn {_component, score} -> score end, :desc)
-    |> Enum.take(2)
-    |> Enum.map(fn {component, _score} -> component end)
+    Enum.sort_by(fn {_component, score} -> score end, :desc)
+    Enum.take(2)
+    Enum.map(fn {component, _score} -> component end)
   end
 
   defp calculate_role_match(candidate_strengths, preferred_roles) do
@@ -308,8 +307,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.RecruitmentScoring do
     }
 
     roles
-    |> Enum.flat_map(fn role -> Map.get(role_mappings, role, []) end)
-    |> Enum.uniq()
+    Enum.flat_map(fn role -> Map.get(role_mappings, role, []) end) |> Enum.uniq()
   end
 
   defp extract_strength_keywords(strengths) do
@@ -395,7 +393,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.RecruitmentScoring do
   end
 
   defp suggest_recruitment_timeline(components) do
-    average_score = components |> Map.values() |> Enum.sum() |> Kernel./(map_size(components))
+    average_score = Map.values(components) Enum.sum() |> Kernel./(map_size(components))
 
     cond do
       average_score >= 0.8 -> "Immediate recruitment recommended"
@@ -408,10 +406,9 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.RecruitmentScoring do
     mean = Enum.sum(values) / length(values)
 
     variance =
-      values
-      |> Enum.map(fn x -> :math.pow(x - mean, 2) end)
-      |> Enum.sum()
-      |> Kernel./(length(values))
+    values
+    Enum.map(fn x -> :math.pow(x - mean, 2) end) |> Enum.sum()
+    Kernel./(length(values))
 
     :math.sqrt(variance)
   end
@@ -429,7 +426,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.RecruitmentScoring do
 
   defp suggest_probation_terms(fitness_components) do
     average_score =
-      fitness_components |> Map.values() |> Enum.sum() |> Kernel./(map_size(fitness_components))
+      Map.values(fitness_components) Enum.sum() |> Kernel./(map_size(fitness_components))
 
     probation_duration =
       cond do

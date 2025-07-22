@@ -119,8 +119,8 @@ defmodule EveDmv.Surveillance.Matching.IndexManager do
   """
   def get_all_profile_ids do
     @compiled_profiles
-    |> :ets.tab2list()
-    |> Enum.map(fn {profile_id, _fn, _name} -> profile_id end)
+    :ets.tab2list()
+    Enum.map(fn {profile_id, _fn, _name} -> profile_id end)
   end
 
   @doc """
@@ -209,9 +209,10 @@ defmodule EveDmv.Surveillance.Matching.IndexManager do
 
     expired_keys =
       @match_cache
-      |> :ets.tab2list()
-      |> Enum.filter(fn {_key, _matches, expires_at} -> expires_at <= current_time end)
-      |> Enum.map(fn {key, _matches, _expires_at} -> key end)
+
+    :ets.tab2list()
+    Enum.filter(fn {_key, _matches, expires_at} -> expires_at <= current_time end)
+    Enum.map(fn {key, _matches, _expires_at} -> key end)
 
     Enum.each(expired_keys, fn key ->
       :ets.delete(@match_cache, key)
@@ -226,9 +227,8 @@ defmodule EveDmv.Surveillance.Matching.IndexManager do
     # Recursively walk the filter tree to find indexable criteria
     criteria = extract_criteria_from_node(filter_tree)
 
-    criteria
-    |> List.flatten()
-    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+    List.flatten(criteria)
+    Enum.group_by(&elem(&1, 0), &elem(&1, 1))
   end
 
   defp extract_criteria_from_node(%{
@@ -300,11 +300,13 @@ defmodule EveDmv.Surveillance.Matching.IndexManager do
       isk_list = :ets.tab2list(@index_by_isk)
 
       isk_list
-      |> Enum.filter(fn {indexed_value, _profile_id} ->
+
+      Enum.filter(fn {indexed_value, _profile_id} ->
         # 10% tolerance
         abs(indexed_value - isk_value) < isk_value * 0.1
       end)
-      |> Enum.map(fn {_isk, profile_id} -> profile_id end)
+
+      Enum.map(fn {_isk, profile_id} -> profile_id end)
     end)
   end
 

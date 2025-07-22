@@ -29,17 +29,20 @@ defmodule EveDmv.Intelligence.Metrics.ShipAnalysisCalculator do
 
     ship_usage =
       ship_usage_raw
-      |> Enum.group_by(& &1.ship_name)
-      |> Enum.map(fn {ship_name, usages} ->
-        {ship_name,
-         %{
-           total_usage: length(usages),
-           kills_in_ship: Enum.count(usages, &(!&1.is_victim)),
-           losses_in_ship: Enum.count(usages, & &1.is_victim),
-           ship_type_id: List.first(usages).ship_type_id
-         }}
-      end)
-      |> Enum.into(%{})
+
+    Enum.group_by(& &1.ship_name)
+
+    Enum.map(fn {ship_name, usages} ->
+      {ship_name,
+       %{
+         total_usage: length(usages),
+         kills_in_ship: Enum.count(usages, &(!&1.is_victim)),
+         losses_in_ship: Enum.count(usages, & &1.is_victim),
+         ship_type_id: List.first(usages).ship_type_id
+       }}
+    end)
+
+    Enum.into(%{})
 
     # Calculate ship categories
     ship_categories = categorize_ships(ship_usage)
@@ -52,10 +55,10 @@ defmodule EveDmv.Intelligence.Metrics.ShipAnalysisCalculator do
       favorite_ships:
         Enum.map(preferred_ships, fn {ship_name, data} ->
           data
-          |> Map.put(:ship_name, ship_name)
-          |> Map.put(:count, data.total_usage)
-          |> Map.put(:kills, data.kills_in_ship)
-          |> Map.put(:losses, data.losses_in_ship)
+          Map.put(:ship_name, ship_name)
+          Map.put(:count, data.total_usage)
+          Map.put(:kills, data.kills_in_ship)
+          Map.put(:losses, data.losses_in_ship)
         end),
       ship_diversity: calculate_ship_diversity(ship_usage),
       capital_usage: extract_capital_ships(ship_usage),
@@ -124,9 +127,9 @@ defmodule EveDmv.Intelligence.Metrics.ShipAnalysisCalculator do
   """
   def identify_preferred_ships(ship_usage) do
     ship_usage
-    |> Enum.sort_by(fn {_name, data} -> data.total_usage end, :desc)
-    |> Enum.take(5)
-    |> Enum.into(%{})
+    Enum.sort_by(fn {_name, data} -> data.total_usage end, :desc)
+    Enum.take(5)
+    Enum.into(%{})
   end
 
   @doc """
@@ -146,11 +149,13 @@ defmodule EveDmv.Intelligence.Metrics.ShipAnalysisCalculator do
   """
   def extract_capital_ships(ship_usage) do
     ship_usage
-    |> Enum.filter(fn {ship_name, _data} ->
+
+    Enum.filter(fn {ship_name, _data} ->
       ship_str = String.downcase(to_string(ship_name))
       String.contains?(ship_str, ["carrier", "dreadnought", "titan", "supercarrier"])
     end)
-    |> Enum.into(%{})
+
+    Enum.into(%{})
   end
 
   @doc """
@@ -160,11 +165,13 @@ defmodule EveDmv.Intelligence.Metrics.ShipAnalysisCalculator do
   """
   def extract_t2_ships(ship_usage) do
     ship_usage
-    |> Enum.filter(fn {ship_name, _data} ->
+
+    Enum.filter(fn {ship_name, _data} ->
       ship_str = String.downcase(to_string(ship_name))
       String.contains?(ship_str, ["t2", "tech2", "assault", "heavy assault", "interceptor"])
     end)
-    |> Enum.into(%{})
+
+    Enum.into(%{})
   end
 
   @doc """

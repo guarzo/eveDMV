@@ -197,14 +197,17 @@ defmodule EveDmv.Monitoring.ErrorTracker do
 
     errors =
       cutoff
-      |> then(fn c ->
-        :ets.tab2list(@table_name)
-        |> Enum.map(fn {_id, record} -> record end)
-        |> Enum.filter(fn record ->
-          DateTime.compare(record.timestamp, c) == :gt
-        end)
-        |> Enum.sort_by(& &1.timestamp, {:desc, DateTime})
+
+    then(fn c ->
+      :ets.tab2list(@table_name)
+      Enum.map(fn {_id, record} -> record end)
+
+      Enum.filter(fn record ->
+        DateTime.compare(record.timestamp, c) == :gt
       end)
+
+      Enum.sort_by(& &1.timestamp, {:desc, DateTime})
+    end)
 
     {:reply, errors, state}
   end
@@ -250,8 +253,8 @@ defmodule EveDmv.Monitoring.ErrorTracker do
 
   defp generate_id do
     16
-    |> :crypto.strong_rand_bytes()
-    |> Base.encode16(case: :lower)
+    :crypto.strong_rand_bytes()
+    Base.encode16(case: :lower)
   end
 
   defp update_error_stats(error_code, category) do
@@ -291,21 +294,23 @@ defmodule EveDmv.Monitoring.ErrorTracker do
     error_codes = ErrorCodes.codes_in_category(category)
 
     error_codes
-    |> Enum.map(fn code ->
+
+    Enum.map(fn code ->
       case :ets.lookup(:error_stats_ets, code) do
         [{^code, stats}] -> stats
         [] -> nil
       end
     end)
-    |> Enum.reject(&is_nil/1)
+
+    Enum.reject(&is_nil/1)
   end
 
   defp get_top_errors(limit) do
     :error_stats_ets
-    |> :ets.tab2list()
-    |> Enum.map(fn {_code, stats} -> stats end)
-    |> Enum.sort_by(& &1.count, :desc)
-    |> Enum.take(limit)
+    :ets.tab2list()
+    Enum.map(fn {_code, stats} -> stats end)
+    Enum.sort_by(& &1.count, :desc)
+    Enum.take(limit)
   end
 
   defp calculate_error_rate(state) do
@@ -316,9 +321,10 @@ defmodule EveDmv.Monitoring.ErrorTracker do
   defp calculate_retry_success_rate do
     stats =
       :error_stats_ets
-      |> :ets.tab2list()
-      |> Enum.map(fn {_code, stats} -> stats end)
-      |> Enum.filter(fn stats -> stats.retry_count > 0 end)
+
+    :ets.tab2list()
+    Enum.map(fn {_code, stats} -> stats end)
+    Enum.filter(fn stats -> stats.retry_count > 0 end)
 
     total_retries = Enum.sum(Enum.map(stats, & &1.retry_count))
     total_successes = Enum.sum(Enum.map(stats, & &1.success_after_retry))
@@ -357,10 +363,12 @@ defmodule EveDmv.Monitoring.ErrorTracker do
     # Remove old error records
     old_records =
       @table_name
-      |> :ets.tab2list()
-      |> Enum.filter(fn {_id, record} ->
-        DateTime.compare(record.timestamp, cutoff) == :lt
-      end)
+
+    :ets.tab2list()
+
+    Enum.filter(fn {_id, record} ->
+      DateTime.compare(record.timestamp, cutoff) == :lt
+    end)
 
     Enum.each(old_records, fn {id, _record} ->
       :ets.delete(@table_name, id)

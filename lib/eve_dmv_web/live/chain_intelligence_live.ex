@@ -29,14 +29,15 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
     Phoenix.PubSub.subscribe(EveDmv.PubSub, "chain_intelligence:*")
 
     socket =
-      socket
-      |> assign(:monitored_chains, [])
-      |> assign(:selected_chain, nil)
-      |> assign(:chain_data, %{})
-      |> assign(:loading, false)
-      |> assign(:error, nil)
-      |> load_user_chains()
-      |> auto_select_default_chain()
+    socket
+    assign(:monitored_chains, [])
+    assign(:selected_chain, nil)
+    assign(:chain_data, %{})
+    assign(:loading, false)
+    assign(:error, nil)
+
+    load_user_chains()
+    auto_select_default_chain()
 
     {:ok, socket}
   end
@@ -44,9 +45,9 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
   @impl Phoenix.LiveView
   def handle_params(%{"map_id" => map_id}, _uri, socket) do
     socket =
-      socket
-      |> assign(:selected_chain, map_id)
-      |> load_chain_data(map_id)
+    socket
+    assign(:selected_chain, map_id)
+    load_chain_data(map_id)
 
     {:noreply, socket}
   end
@@ -65,9 +66,10 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
     case ChainMonitor.monitor_chain(map_id, corporation_id) do
       :ok ->
         socket =
-          socket
-          |> put_flash(:info, "Started monitoring chain #{map_id}")
-          |> load_user_chains()
+    socket
+    put_flash(:info, "Started monitoring chain #{map_id}")
+
+        load_user_chains()
 
         {:noreply, socket}
 
@@ -82,9 +84,10 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
     case ChainMonitor.stop_monitoring(map_id) do
       :ok ->
         socket =
-          socket
-          |> put_flash(:info, "Stopped monitoring chain #{map_id}")
-          |> load_user_chains()
+    socket
+    put_flash(:info, "Stopped monitoring chain #{map_id}")
+
+        load_user_chains()
 
         {:noreply, socket}
 
@@ -95,13 +98,12 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
   end
 
   @impl Phoenix.LiveView
-  def handle_event("refresh_chain", %{"map_id" => map_id}, socket) do
-    ChainMonitor.force_sync()
+  def handle_event("refresh_chain", %{"map_id" => map_id}, socket) ChainMonitor.force_sync(do)
 
     socket =
-      socket
-      |> put_flash(:info, "Refreshing chain data...")
-      |> load_chain_data(map_id)
+    socket
+    put_flash(:info, "Refreshing chain data...")
+    load_chain_data(map_id)
 
     {:noreply, socket}
   end
@@ -149,9 +151,9 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
     updated_chain_data = Map.put(chain_data, :inhabitants, updated_inhabitants)
 
     socket =
-      socket
-      |> assign(:chain_data, updated_chain_data)
-      |> put_flash(:info, "Pilot analysis complete")
+    socket
+    assign(:chain_data, updated_chain_data)
+    put_flash(:info, "Pilot analysis complete")
 
     {:noreply, socket}
   end
@@ -240,20 +242,20 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
     if default_chain_id do
       # Load the specific chain configured in environment
       case ChainTopology
-           |> Ash.Query.filter(map_id == ^default_chain_id or id == ^default_chain_id)
-           |> Ash.read(domain: Api) do
+    Ash.Query.filter(map_id == ^default_chain_id or id == ^default_chain_id)
+    Ash.read(domain: Api) do
         {:ok, [chain]} ->
           assign(socket, :monitored_chains, [chain])
 
         {:ok, []} ->
-          socket
-          |> assign(:monitored_chains, [])
-          |> put_flash(:warning, "Configured chain '#{default_chain_id}' not found")
+        socket
+    assign(:monitored_chains, [])
+    put_flash(:warning, "Configured chain '#{default_chain_id}' not found")
 
         {:error, reason} ->
-          socket
-          |> assign(:monitored_chains, [])
-          |> put_flash(:error, "Failed to load configured chain: #{inspect(reason)}")
+        socket
+    assign(:monitored_chains, [])
+    put_flash(:error, "Failed to load configured chain: #{inspect(reason)}")
       end
     else
       # Fallback to corporation-based chains
@@ -261,15 +263,15 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
       corporation_id = user.eve_corporation_id || 1
 
       case ChainTopology
-           |> Ash.Query.filter(corporation_id == ^corporation_id and monitoring_enabled == true)
-           |> Ash.read(domain: Api) do
+    Ash.Query.filter(corporation_id == ^corporation_id and monitoring_enabled == true)
+    Ash.read(domain: Api) do
         {:ok, chains} ->
           assign(socket, :monitored_chains, chains)
 
         {:error, reason} ->
-          socket
-          |> assign(:monitored_chains, [])
-          |> put_flash(:error, "Failed to load chains: #{inspect(reason)}")
+        socket
+    assign(:monitored_chains, [])
+    put_flash(:error, "Failed to load chains: #{inspect(reason)}")
       end
     end
   end
@@ -288,14 +290,14 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
         end)
 
       if configured_chain do
-        socket
-        |> assign(:selected_chain, configured_chain.map_id)
-        |> load_chain_data(configured_chain.map_id)
+    socket
+    assign(:selected_chain, configured_chain.map_id)
+    load_chain_data(configured_chain.map_id)
       else
         socket
       end
     else
-      socket
+    socket
     end
   end
 
@@ -316,20 +318,20 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
 
       {:ok, []} ->
         socket
-        |> assign(:chain_data, %{})
-        |> put_flash(:error, "Chain not found")
+    assign(:chain_data, %{})
+    put_flash(:error, "Chain not found")
 
       {:error, reason} ->
         socket
-        |> assign(:chain_data, %{})
-        |> put_flash(:error, "Failed to load chain: #{inspect(reason)}")
+    assign(:chain_data, %{})
+    put_flash(:error, "Failed to load chain: #{inspect(reason)}")
     end
   end
 
   defp load_chain_inhabitants(chain_topology_id) do
     case SystemInhabitant
-         |> Ash.Query.filter(chain_topology_id == ^chain_topology_id and present == true)
-         |> Ash.read(domain: Api) do
+    Ash.Query.filter(chain_topology_id == ^chain_topology_id and present == true)
+    Ash.read(domain: Api) do
       {:ok, inhabitants} -> inhabitants
       {:error, _} -> []
     end
@@ -337,8 +339,8 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
 
   defp load_chain_connections(chain_topology_id) do
     case ChainConnection
-         |> Ash.Query.filter(chain_topology_id == ^chain_topology_id)
-         |> Ash.read(domain: Api) do
+    Ash.Query.filter(chain_topology_id == ^chain_topology_id)
+    Ash.read(domain: Api) do
       {:ok, connections} -> connections
       {:error, _} -> []
     end

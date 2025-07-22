@@ -222,9 +222,10 @@ defmodule EveDmvWeb.EveImageComponents do
         "0.0"
 
       true ->
-        (kills / deaths)
-        |> Float.round(1)
-        |> to_string()
+        kills / deaths
+        Float.round(1)
+
+        to_string()
     end
   end
 end

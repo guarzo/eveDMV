@@ -22,7 +22,7 @@ defmodule EveDmv.Utils.DnsResolver do
   def resolve_hostname(hostname) do
     case :inet.gethostbyname(String.to_charlist(hostname)) do
       {:ok, {:hostent, _name, _aliases, :inet, _length, [address | _]}} ->
-        ip_string = address |> :inet.ntoa() |> to_string()
+        ip_string = address |> :inet.ntoa() to_string()
         {:ok, ip_string}
 
       {:error, reason} ->
@@ -108,16 +108,14 @@ defmodule EveDmv.Utils.DnsResolver do
         String.replace(base_url, "host.docker.internal", "127.0.0.1"),
         # Try environment-specific fallback
         System.get_env("WANDERER_FALLBACK_URL", "http://localhost:4004")
-      ]
-      |> Enum.uniq()
-
+      ] |> Enum.uniq()
     case get_working_url(fallback_urls) do
       {:ok, working_url} ->
         working_url
 
       {:error, _} ->
         Logger.warning("No working Wanderer URL found, using default")
-        base_url
+    base_url
     end
   end
 
@@ -133,7 +131,7 @@ defmodule EveDmv.Utils.DnsResolver do
       {:error, reason} ->
         Logger.warning("ESI primary URL failed: #{inspect(reason)}")
         # ESI doesn't have good fallbacks, so return original URL
-        base_url
+    base_url
     end
   end
 

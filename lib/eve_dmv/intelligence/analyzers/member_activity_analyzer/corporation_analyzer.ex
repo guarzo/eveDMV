@@ -65,17 +65,19 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.CorporationAnalyz
       {:ok, at_risk_members} ->
         attention_list =
           at_risk_members
-          |> Enum.map(fn member ->
-            %{
-              character_id: member.character_id,
-              character_name: member.character_name,
-              primary_concern: MemberActivityFormatter.determine_primary_concern(member),
-              urgency: MemberActivityMetrics.calculate_attention_urgency(member),
-              recommended_action: MemberActivityFormatter.recommend_leadership_action(member),
-              contact_priority: MemberActivityMetrics.calculate_contact_priority(member)
-            }
-          end)
-          |> Enum.sort_by(& &1.contact_priority, :desc)
+
+        Enum.map(fn member ->
+          %{
+            character_id: member.character_id,
+            character_name: member.character_name,
+            primary_concern: MemberActivityFormatter.determine_primary_concern(member),
+            urgency: MemberActivityMetrics.calculate_attention_urgency(member),
+            recommended_action: MemberActivityFormatter.recommend_leadership_action(member),
+            contact_priority: MemberActivityMetrics.calculate_contact_priority(member)
+          }
+        end)
+
+        Enum.sort_by(& &1.contact_priority, :desc)
 
         {:ok, attention_list}
 
@@ -121,8 +123,9 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.CorporationAnalyz
   def fetch_corporation_members(corporation_id) do
     members =
       CharacterStats
-      |> Ash.Query.filter(corporation_id: corporation_id)
-      |> Ash.read!(domain: Api)
+
+    Ash.Query.filter(corporation_id: corporation_id)
+    Ash.read!(domain: Api)
 
     case members do
       [_ | _] = members ->

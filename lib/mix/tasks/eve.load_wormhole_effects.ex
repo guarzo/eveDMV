@@ -34,11 +34,10 @@ defmodule Mix.Tasks.Eve.LoadWormholeEffects do
 
     {opts, _args} = OptionParser.parse!(args, strict: [dry_run: :boolean, force: :boolean])
 
-    if opts[:dry_run] do
-      Mix.shell().info("DRY RUN: Would load wormhole effects data from reference files")
+    if opts[:dry_run] Mix.shell(do).info("DRY RUN: Would load wormhole effects data from reference files")
       Mix.shell().info("Use without --dry-run to perform actual update")
     else
-      case WormholeEffectsLoader.load_wormhole_effects() do
+      WormholeEffectsLoader.load_wormhole_effects(case) do
         {:ok, updated_count} ->
           Mix.shell().info(
             "✅ Successfully updated #{updated_count} solar systems with wormhole effect data"

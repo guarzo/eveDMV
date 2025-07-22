@@ -67,12 +67,12 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
       Logger.info("Analyzing #{map_size(ship_killmail_data)} ship types")
       # Analyze each ship type
       results =
-        ship_killmail_data
-        |> Enum.map(fn {ship_type_id, killmails} ->
+    ship_killmail_data
+    Enum.map(fn {ship_type_id, killmails} ->
           analyze_ship_type(ship_type_id, killmails)
         end)
-        |> Enum.filter(&match?({:ok, _}, &1))
-        |> Enum.map(fn {:ok, result} -> result end)
+    Enum.filter(&match?({:ok, _}, &1))
+    Enum.map(fn {:ok, result} -> result end)
 
       # Update cached ship role classifications
       update_stats = update_ship_role_cache(results)
@@ -87,7 +87,7 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
         duration_ms: duration_ms,
         ships_analyzed: length(results),
         killmails_processed:
-          ship_killmail_data |> Enum.map(fn {_, killmails} -> length(killmails) end) |> Enum.sum(),
+          ship_killmail_data |> Enum.map(fn {_, killmails} -> length(killmails) end) Enum.sum(),
         cache_updates: update_stats,
         trends_detected: trend_stats,
         completed_at: DateTime.utc_now()
@@ -131,7 +131,7 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
         timer_ref = schedule_next_analysis()
 
         new_state = %{
-          state
+    state
           | timer_ref: timer_ref,
             last_analysis: DateTime.utc_now(),
             stats: stats
@@ -160,7 +160,7 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
         timer_ref = schedule_next_analysis()
 
         new_state = %{
-          state
+    state
           | timer_ref: timer_ref,
             last_analysis: DateTime.utc_now(),
             stats: stats
@@ -211,10 +211,10 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
       try do
         # Analyze each killmail and aggregate role classifications
         role_classifications =
-          killmails
-          |> Enum.map(&classify_killmail_role/1)
-          |> Enum.filter(&match?({:ok, _}, &1))
-          |> Enum.map(fn {:ok, classification} -> classification end)
+    killmails
+    Enum.map(&classify_killmail_role/1)
+    Enum.filter(&match?({:ok, _}, &1))
+    Enum.map(fn {:ok, classification} -> classification end)
 
         if length(role_classifications) > 0 do
           # Aggregate role distributions
@@ -271,16 +271,16 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
     total_classifications = length(classifications)
 
     aggregated =
-      classifications
-      |> Enum.reduce(%{}, fn classification, acc ->
+    classifications
+    Enum.reduce(%{}, fn classification, acc ->
         Enum.reduce(classification, acc, fn {role, score}, role_acc ->
           Map.update(role_acc, role, score, &(&1 + score))
         end)
       end)
-      |> Enum.map(fn {role, total_score} ->
+    Enum.map(fn {role, total_score} ->
         {role, total_score / total_classifications}
       end)
-      |> Enum.into(%{})
+    Enum.into(%{})
 
     # Ensure all roles are present with at least 0.0
     base_roles = %{tackle: 0.0, logistics: 0.0, ewar: 0.0, dps: 0.0, command: 0.0, support: 0.0}
@@ -342,8 +342,8 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
       current_primary = determine_primary_role(current_roles)
 
       historical_primaries =
-        historical_data
-        |> Enum.map(fn %{role_distribution: dist} ->
+    historical_data
+    Enum.map(fn %{role_distribution: dist} ->
           determine_primary_role(dist)
         end)
 
@@ -362,8 +362,8 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
     Logger.info("Updating ship role cache with #{length(analysis_results)} results")
 
     {updated_count, failed_count} =
-      analysis_results
-      |> Enum.reduce({0, 0}, fn result, {updated, failed} ->
+    analysis_results
+    Enum.reduce({0, 0}, fn result, {updated, failed} ->
         case upsert_ship_role_pattern(result) do
           {:ok, _} -> {updated + 1, failed}
           {:error, _} -> {updated, failed + 1}
@@ -449,10 +449,10 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
 
   defp generate_meta_trend_report(analysis_results) do
     trends =
-      analysis_results
-      |> Enum.group_by(& &1.meta_trend)
-      |> Enum.map(fn {trend, results} -> {trend, length(results)} end)
-      |> Enum.into(%{})
+    analysis_results
+    Enum.group_by(& &1.meta_trend)
+    Enum.map(fn {trend, results} -> {trend, length(results)} end)
+    Enum.into(%{})
 
     Logger.info("Meta trends detected: #{inspect(trends)}")
     trends
@@ -462,8 +462,8 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
     today = Date.utc_today()
 
     history_records =
-      analysis_results
-      |> Enum.map(fn result ->
+    analysis_results
+    Enum.map(fn result ->
         %{
           ship_type_id: result.ship_type_id,
           analysis_date: today,

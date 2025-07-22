@@ -14,11 +14,11 @@ defmodule EveDmv.Shared.ShipAnalysis do
 
     # Calculate total usage across all ships
     total_usage =
-      ship_usage
-      |> Map.values()
-      |> Enum.reduce(0, fn ship_data, acc ->
-        acc + Map.get(ship_data, "times_used", 0)
-      end)
+      Map.values(ship_usage)
+
+    Enum.reduce(0, fn ship_data, acc ->
+      acc + Map.get(ship_data, "times_used", 0)
+    end)
 
     # Analyze top ships by usage
     top_ships =
@@ -93,11 +93,13 @@ defmodule EveDmv.Shared.ShipAnalysis do
 
     secondary_role =
       sorted_roles
-      |> Enum.at(1)
-      |> case do
-        nil -> nil
-        {role, _data} -> role
-      end
+
+    Enum.at(1)
+
+    case do
+      nil -> nil
+      {role, _data} -> role
+    end
 
     %{
       role_distribution: role_percentages,
@@ -127,7 +129,6 @@ defmodule EveDmv.Shared.ShipAnalysis do
       |> Enum.with_index(1)
       |> Enum.map(fn {usage, index} -> usage * index end)
       |> Enum.sum()
-
     mean_usage = Enum.sum(sorted_usage) / n
 
     gini = 2 * sum_products / (n * n * mean_usage) - (n + 1) / n
@@ -184,10 +185,10 @@ defmodule EveDmv.Shared.ShipAnalysis do
     if map_size(role_percentages) == 0, do: 0.0
 
     max_percentage =
-      role_percentages
-      |> Map.values()
-      |> Enum.map(& &1.percentage)
-      |> Enum.max(fn -> 0.0 end)
+      Map.values(role_percentages)
+
+    Enum.map(& &1.percentage)
+    Enum.max(fn -> 0.0 end)
 
     max_percentage
   end

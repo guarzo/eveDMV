@@ -15,9 +15,7 @@ defmodule EveDmv.Database.HealthCheck do
   @doc """
   Run all health checks and return a comprehensive health report.
 
-  ## Examples
-
-      HealthCheck.run_health_checks()
+  ## HealthCheck.run_health_checks(Examples)
       #=> %{
       #     connection: :healthy,
       #     partitions: :healthy,
@@ -134,7 +132,7 @@ defmodule EveDmv.Database.HealthCheck do
       indexname,
       idx_scan,
       idx_tup_read,
-      idx_tup_fetch
+    idx_tup_fetch
     FROM pg_stat_user_indexes
     WHERE schemaname = 'public'
     AND idx_scan = 0
@@ -175,7 +173,7 @@ defmodule EveDmv.Database.HealthCheck do
       last_autovacuum,
       n_dead_tup,
       n_live_tup,
-      CASE
+    CASE
         WHEN n_live_tup > 0 THEN (n_dead_tup::float / n_live_tup::float) * 100
         ELSE 0
       END as dead_tuple_percent
@@ -214,14 +212,13 @@ defmodule EveDmv.Database.HealthCheck do
     # pool_info is a list of connection metrics, extract relevant data
     total_ready_connections =
       pool_info
-      |> Enum.map(& &1.ready_conn_count)
-      |> Enum.sum()
+
+    Enum.map(& &1.ready_conn_count) |> Enum.sum()
 
     total_queue_length =
       pool_info
-      |> Enum.map(& &1.checkout_queue_length)
-      |> Enum.sum()
 
+    Enum.map(& &1.checkout_queue_length) |> Enum.sum()
     # Get pool size from config since it's not in the metrics
     pool_config = Application.get_env(:eve_dmv, EveDmv.Repo, [])
     pool_size = Keyword.get(pool_config, :pool_size, 10)
@@ -371,7 +368,7 @@ defmodule EveDmv.Database.HealthCheck do
       idx_scan,
       idx_tup_read,
       idx_tup_fetch,
-      CASE
+    CASE
         WHEN idx_tup_read > 0 THEN round((idx_tup_fetch::numeric / idx_tup_read::numeric) * 100, 2)
         ELSE 0
       END as efficiency_percent

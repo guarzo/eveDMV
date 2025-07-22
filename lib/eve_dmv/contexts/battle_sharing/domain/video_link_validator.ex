@@ -143,31 +143,35 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
     max_concurrent = Keyword.get(options, :max_concurrent, 5)
     timeout = Keyword.get(options, :timeout, @validation_timeout)
 
-    Logger.info("Validating #{length(urls)} video URLs concurrently")
+    Logger.info("Validating #{Kernel.length(urls)} video URLs concurrently")
 
     results =
       urls
-      |> Enum.chunk_every(max_concurrent)
-      |> Enum.flat_map(fn batch ->
-        batch
-        |> Enum.map(&Task.async(fn -> validate_video_url(&1, options) end))
-        |> Enum.map(&Task.await(&1, timeout + 1000))
-      end)
+
+    Enum.chunk_every(max_concurrent)
+
+    Enum.flat_map(fn batch ->
+      batch
+      Enum.map(&Task.async(fn -> validate_video_url(&1, options) end))
+      Enum.map(&Task.await(&1, timeout + 1000))
+    end)
 
     successful_validations =
       results
-      |> Enum.filter(&match?({:ok, _}, &1))
-      |> Enum.map(&elem(&1, 1))
+
+    Enum.filter(&match?({:ok, _}, &1))
+    Enum.map(&elem(&1, 1))
 
     failed_validations =
       results
-      |> Enum.filter(&match?({:error, _}, &1))
-      |> length()
+
+    Enum.filter(&match?({:error, _}, &1))
+    |> Kernel.length()
 
     Logger.info("""
     Batch video validation completed:
-    - Total URLs: #{length(urls)}
-    - Successfully validated: #{length(successful_validations)}
+    - Total URLs: #{Kernel.length(urls)}
+    - Successfully validated: #{Kernel.length(successful_validations)}
     - Failed validations: #{failed_validations}
     """)
 
@@ -209,9 +213,10 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
     if platform_config do
       embed_url =
         platform_config.embed_template
-        |> String.replace("{video_id}", video_id)
-        |> String.replace("{domain}", embed_domain)
-        |> add_embed_parameters(additional_params)
+
+      String.replace("{video_id}", video_id)
+      String.replace("{domain}", embed_domain)
+      add_embed_parameters(additional_params)
 
       {:ok, embed_url}
     else
@@ -227,8 +232,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
       url
       |> String.trim()
       |> String.downcase()
-      |> remove_tracking_parameters()
-      |> ensure_https()
+
+    remove_tracking_parameters()
+    ensure_https()
 
     if valid_url_format?(normalized) do
       {:ok, normalized}
@@ -255,13 +261,15 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
       cleaned_query =
         uri.query
         |> URI.decode_query()
-        |> Map.drop(tracking_params)
-        |> URI.encode_query()
+
+      Map.drop(tracking_params)
+      |> URI.encode_query()
 
       cleaned_query = if cleaned_query == "", do: nil, else: cleaned_query
 
       uri
-      |> Map.put(:query, cleaned_query)
+
+      Map.put(:query, cleaned_query)
       |> URI.to_string()
     else
       url
@@ -282,13 +290,14 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
   end
 
   defp detect_platform(url) do
-    @platforms
+    detected_platform = @platforms
     |> Enum.find_value(fn {platform, config} ->
       if Enum.any?(config.domains, &String.contains?(url, &1)) do
         platform
       end
     end)
-    |> case do
+
+    case detected_platform do
       nil -> {:error, :unsupported_platform}
       platform -> {:ok, platform}
     end
@@ -297,7 +306,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
   defp extract_video_id(url, platform) do
     platform_config = @platforms[platform]
 
-    platform_config.url_patterns
+    video_id = platform_config.url_patterns
     |> Enum.find_value(fn pattern ->
       case Regex.run(pattern, url) do
         nil -> nil
@@ -307,7 +316,8 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
         matches -> List.last(matches)
       end
     end)
-    |> case do
+
+    case video_id do
       nil -> {:error, :invalid_video_url}
       video_id -> {:ok, video_id}
     end
@@ -490,7 +500,8 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
       new_query = URI.encode_query(combined_params)
 
       uri
-      |> Map.put(:query, new_query)
+
+      Map.put(:query, new_query)
       |> URI.to_string()
     else
       embed_url
@@ -518,12 +529,14 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
         Map.get(video_info, :metadata, %{}) |> Map.get(:title, ""),
         Map.get(video_info, :metadata, %{}) |> Map.get(:description, "")
       ]
-      |> Enum.join(" ")
-      |> String.downcase()
+
+    Enum.join(" ")
+    |> String.downcase()
 
     violation_found =
       @moderation_keywords
-      |> Enum.any?(&String.contains?(content_to_check, &1))
+
+    Enum.any?(&String.contains?(content_to_check, &1))
 
     if violation_found do
       {:error, :content_violation}
@@ -577,7 +590,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
   """
   def get_supported_platforms do
     @platforms
-    |> Enum.map(fn {platform, config} ->
+    Enum.map(fn {platform, config} ->
       %{
         platform: platform,
         name: config.name,

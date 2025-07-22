@@ -21,12 +21,12 @@ defmodule EveDmv.Eve.StaticDataLoader.CsvParser do
       [headers | data_rows] ->
         headers = Enum.map(headers, &String.trim/1)
 
-        data_rows
-        |> Enum.map(fn row ->
-          row_map = headers |> Enum.zip(row) |> Map.new()
+    data_rows
+    Enum.map(fn row ->
+          row_map = headers |> Enum.zip(row) Map.new()
           parser_fn.(row_map)
         end)
-        |> Enum.reject(&is_nil/1)
+    Enum.reject(&is_nil/1)
     end
   end
 

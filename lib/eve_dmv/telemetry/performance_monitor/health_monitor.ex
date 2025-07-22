@@ -120,7 +120,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
       pg_wal_lsn_diff(sent_lsn, replay_lsn) as lag_bytes,
       write_lag,
       flush_lag,
-      replay_lag
+    replay_lag
     FROM pg_stat_replication
     """
 
@@ -319,8 +319,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
   # Private helper functions
 
   defp monitor_connection_health do
-    # Delegate to ConnectionPoolMonitor for consistency
-    ConnectionPoolMonitor.monitor_connection_health()
+    # Delegate to ConnectionPoolMonitor for ConnectionPoolMonitor.monitor_connection_health(consistency)
   end
 
   defp replica_lagging?(lag_bytes, replay_lag) do
@@ -356,8 +355,8 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
     Enum.flat_map(health, fn {category, component} ->
       if component[:has_issues] do
         component[:issues]
-        |> Enum.filter(&critical_issue?/1)
-        |> Enum.map(&{category, &1})
+        Enum.filter(&critical_issue?/1)
+        Enum.map(&{category, &1})
       else
         []
       end
@@ -372,8 +371,8 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
     Enum.flat_map(health, fn {category, component} ->
       if component[:has_issues] do
         component[:issues]
-        |> Enum.reject(&critical_issue?/1)
-        |> Enum.map(&{category, &1})
+        Enum.reject(&critical_issue?/1)
+        Enum.map(&{category, &1})
       else
         []
       end
@@ -399,8 +398,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
 
       replicas ->
         replicas
-        |> Enum.map(& &1.lag_bytes)
-        |> Enum.max()
+        Enum.map(& &1.lag_bytes) |> Enum.max()
     end
   end
 

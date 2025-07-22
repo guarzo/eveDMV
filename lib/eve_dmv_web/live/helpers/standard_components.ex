@@ -67,7 +67,7 @@ defmodule EveDmvWeb.Live.Helpers.StandardComponents do
               phx-click={@retry_event}
               class="ml-4 px-3 py-1 bg-red-700 hover:bg-red-600 text-white text-sm rounded transition-colors"
             >
-              Retry
+    Retry
             </button>
           <% end %>
         </div>
@@ -150,7 +150,7 @@ defmodule EveDmvWeb.Live.Helpers.StandardComponents do
               <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
               </svg>
-              Back
+    Back
             </.link>
           <% end %>
 

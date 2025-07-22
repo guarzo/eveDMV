@@ -166,7 +166,7 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorkerTest do
         })
       end
 
-      # 2 Logistics killmails  
+      # 2 Logistics killmails
       for i <- 5..6 do
         insert_test_killmail(999_100 + i, %{
           "victim" => %{

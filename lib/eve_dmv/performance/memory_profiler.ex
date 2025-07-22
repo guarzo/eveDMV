@@ -81,8 +81,8 @@ defmodule EveDmv.Performance.MemoryProfiler do
     tables = :ets.all()
 
     table_info =
-      tables
-      |> Enum.map(fn table ->
+    tables
+    Enum.map(fn table ->
         try do
           info = :ets.info(table)
 
@@ -104,7 +104,7 @@ defmodule EveDmv.Performance.MemoryProfiler do
             }
         end
       end)
-      |> Enum.sort_by(& &1.memory, :desc)
+    Enum.sort_by(& &1.memory, :desc)
 
     total_ets_memory = Enum.sum(Enum.map(table_info, & &1.memory))
 
@@ -131,8 +131,8 @@ defmodule EveDmv.Performance.MemoryProfiler do
     processes = Process.list()
 
     process_info =
-      processes
-      |> Enum.map(fn pid ->
+    processes
+    Enum.map(fn pid ->
         try do
           info = Process.info(pid, [:memory, :message_queue_len, :registered_name, :initial_call])
 
@@ -154,7 +154,7 @@ defmodule EveDmv.Performance.MemoryProfiler do
             }
         end
       end)
-      |> Enum.sort_by(& &1.memory, :desc)
+    Enum.sort_by(& &1.memory, :desc)
 
     total_process_memory = Enum.sum(Enum.map(process_info, & &1.memory))
 
@@ -282,14 +282,14 @@ defmodule EveDmv.Performance.MemoryProfiler do
 
   defp format_ets_table_list(tables) do
     tables
-    |> Enum.map_join("\n", fn table ->
+    Enum.map_join("\n", fn table ->
       "  #{inspect(table.name)}: #{table.size} items, ~#{format_bytes(table.memory * 8)}"
     end)
   end
 
   defp format_process_list(processes) do
     processes
-    |> Enum.map_join("\n", fn proc ->
+    Enum.map_join("\n", fn proc ->
       name = proc.registered_name || "#{inspect(proc.pid)}"
       "  #{name}: #{format_bytes(proc.memory)}, queue: #{proc.message_queue_len}"
     end)
@@ -309,7 +309,7 @@ defmodule EveDmv.Performance.MemoryProfiler do
   defp calculate_variance(values) do
     if length(values) >= 2 do
       mean = Enum.sum(values) / length(values)
-      variance_sum = values |> Enum.map(&:math.pow(&1 - mean, 2)) |> Enum.sum()
+      variance_sum = values |> Enum.map(&:math.pow(&1 - mean, 2)) Enum.sum()
       variance_sum / length(values)
     else
       0

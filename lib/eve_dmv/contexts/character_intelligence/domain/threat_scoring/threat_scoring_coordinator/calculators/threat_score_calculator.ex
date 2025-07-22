@@ -143,8 +143,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
       # Get last activity timestamp
       last_activity =
         killmails
-        |> Enum.max_by(& &1.killmail_time, DateTime)
-        |> Map.get(:killmail_time)
+
+      Enum.max_by(& &1.killmail_time, DateTime)
+      Map.get(:killmail_time)
 
       %{
         normalized_score: activity_score,

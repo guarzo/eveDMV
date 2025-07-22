@@ -15,7 +15,9 @@ defmodule EveDmv.StaticData do
 
   import Ash.Query
   alias EveDmv.Api
-  alias EveDmv.Eve.{ItemType, SolarSystem, ShipGroups}
+  alias EveDmv.Eve.ItemType
+  alias EveDmv.Eve.ShipGroups
+  alias EveDmv.Eve.SolarSystem
 
   require Logger
 
@@ -48,14 +50,16 @@ defmodule EveDmv.StaticData do
   defp fetch_and_cache_type(type_id) do
     item =
       ItemType
-      |> new()
-      |> filter(type_id == ^type_id)
-      |> limit(1)
-      |> Ash.read(domain: Api)
-      |> case do
-        {:ok, [item]} -> item
-        _ -> nil
-      end
+
+    new()
+    filter(type_id == ^type_id)
+    limit(1)
+    Ash.read(domain: Api)
+
+    case do
+      {:ok, [item]} -> item
+      _ -> nil
+    end
 
     cache_item(@type_cache_table, type_id, item)
     item
@@ -67,10 +71,12 @@ defmodule EveDmv.StaticData do
   """
   def get_type_by_name(type_name) when is_binary(type_name) do
     ItemType
-    |> new()
-    |> filter(type_name == ^type_name)
-    |> Ash.read_one(domain: Api)
-    |> case do
+
+    new()
+    filter(type_name == ^type_name)
+    Ash.read_one(domain: Api)
+
+    case do
       {:ok, item} when not is_nil(item) ->
         # Cache by ID for future lookups
         cache_item(@type_cache_table, item.type_id, item)
@@ -104,13 +110,15 @@ defmodule EveDmv.StaticData do
   defp fetch_multiple_types(type_ids) do
     items =
       ItemType
-      |> new()
-      |> filter(type_id in ^type_ids)
-      |> Ash.read(domain: Api)
-      |> case do
-        {:ok, items} -> items
-        _ -> []
-      end
+
+    new()
+    filter(type_id in ^type_ids)
+    Ash.read(domain: Api)
+
+    case do
+      {:ok, items} -> items
+      _ -> []
+    end
 
     # Cache the fetched items
     Enum.each(items, fn item ->
@@ -208,11 +216,13 @@ defmodule EveDmv.StaticData do
   """
   def get_system(system_id) when is_integer(system_id) do
     SolarSystem
-    |> new()
-    |> filter(system_id == ^system_id)
-    |> limit(1)
-    |> Ash.read(domain: Api)
-    |> case do
+
+    new()
+    filter(system_id == ^system_id)
+    limit(1)
+    Ash.read(domain: Api)
+
+    case do
       {:ok, [system]} -> system
       _ -> nil
     end
@@ -305,11 +315,13 @@ defmodule EveDmv.StaticData do
       []
     else
       ItemType
-      |> new()
-      |> filter(group_id in ^group_ids)
-      |> filter(published == true)
-      |> Ash.read(domain: Api)
-      |> case do
+
+      new()
+      filter(group_id in ^group_ids)
+      filter(published == true)
+      Ash.read(domain: Api)
+
+      case do
         {:ok, ships} -> ships
         _ -> []
       end

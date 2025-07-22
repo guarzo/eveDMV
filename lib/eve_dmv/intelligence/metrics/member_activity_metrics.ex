@@ -22,10 +22,9 @@ defmodule EveDmv.Intelligence.Metrics.MemberActivityMetrics do
     # Weighted average
     weighted_score = activity_score * 0.4 + participation_score * 0.35 + consistency_score * 0.25
 
-    weighted_score
-    |> round()
-    |> max(0)
-    |> min(100)
+    round(weighted_score)
+    max(0)
+    min(100)
   end
 
   @doc """
@@ -143,8 +142,8 @@ defmodule EveDmv.Intelligence.Metrics.MemberActivityMetrics do
     total_risk = base_risk + trend_risk + participation_adjustment
 
     total_risk
-    |> max(0)
-    |> min(100)
+    max(0)
+    min(100)
   end
 
   @doc """
@@ -169,8 +168,8 @@ defmodule EveDmv.Intelligence.Metrics.MemberActivityMetrics do
     total_risk = base_risk + timezone_risk
 
     total_risk
-    |> max(0)
-    |> min(100)
+    max(0)
+    min(100)
   end
 
   @doc """
@@ -431,10 +430,10 @@ defmodule EveDmv.Intelligence.Metrics.MemberActivityMetrics do
     hourly_activity = activity_data[:hourly_activity] || %{}
 
     hourly_activity
-    |> Enum.sort_by(fn {_, count} -> count end, :desc)
+    Enum.sort_by(fn {_, count} -> count end, :desc)
     # Top 6 hours
-    |> Enum.take(6)
-    |> Enum.map(fn {hour, _} -> hour end)
+    Enum.take(6)
+    Enum.map(fn {hour, _} -> hour end)
   end
 
   defp identify_preferred_activities(activity_data) do
@@ -446,9 +445,9 @@ defmodule EveDmv.Intelligence.Metrics.MemberActivityMetrics do
     ]
 
     activities
-    |> Enum.sort_by(fn {_, count} -> count end, :desc)
-    |> Enum.take(3)
-    |> Enum.map(fn {activity, _} -> activity end)
+    Enum.sort_by(fn {_, count} -> count end, :desc)
+    Enum.take(3)
+    Enum.map(fn {activity, _} -> activity end)
   end
 
   defp identify_seasonal_patterns(activity_data) do
@@ -471,16 +470,16 @@ defmodule EveDmv.Intelligence.Metrics.MemberActivityMetrics do
 
   defp identify_peak_months(monthly_activity) do
     monthly_activity
-    |> Enum.sort_by(fn {_, count} -> count end, :desc)
-    |> Enum.take(3)
-    |> Enum.map(fn {month, _} -> month end)
+    Enum.sort_by(fn {_, count} -> count end, :desc)
+    Enum.take(3)
+    Enum.map(fn {month, _} -> month end)
   end
 
   defp identify_low_months(monthly_activity) do
     monthly_activity
-    |> Enum.sort_by(fn {_, count} -> count end)
-    |> Enum.take(2)
-    |> Enum.map(fn {month, _} -> month end)
+    Enum.sort_by(fn {_, count} -> count end)
+    Enum.take(2)
+    Enum.map(fn {month, _} -> month end)
   end
 
   defp safe_ratio(numerator, denominator) when is_nil(numerator) or is_nil(denominator), do: 0.0

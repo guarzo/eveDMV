@@ -278,11 +278,14 @@ defmodule EveDmv.Intelligence.Wormhole.FleetComposition do
       accept([:success_rate])
 
       change(fn changeset, _context ->
-        current_usage = Ash.Changeset.get_attribute(changeset, :usage_count) || 0
+        current_usage =
+          Ash.Changeset.get_attribute(changeset, :usage_count) ||
+            0
 
         changeset
-        |> Ash.Changeset.change_attribute(:usage_count, current_usage + 1)
-        |> Ash.Changeset.change_attribute(:last_updated_at, DateTime.utc_now())
+
+        Ash.Changeset.change_attribute(:usage_count, current_usage + 1)
+        Ash.Changeset.change_attribute(:last_updated_at, DateTime.utc_now())
       end)
     end
 

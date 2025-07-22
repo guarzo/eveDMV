@@ -33,13 +33,13 @@ defmodule EveDmv.Database.QueryUtils do
     order_by = Keyword.get(opts, :order_by, :killmail_time)
 
     base_query =
-      KillmailEnriched
-      |> Ash.Query.new()
-      |> Ash.Query.load(load_assocs)
-      |> Ash.Query.filter(killmail_time >= ^start_date)
-      |> Ash.Query.filter(killmail_time <= ^end_date)
-      |> Ash.Query.filter(exists(participants, corporation_id == ^corporation_id))
-      |> Ash.Query.sort([{order_by, :desc}])
+      Ash.Query.new(KillmailEnriched)
+
+    Ash.Query.load(load_assocs)
+    Ash.Query.filter(killmail_time >= ^start_date)
+    Ash.Query.filter(killmail_time <= ^end_date)
+    Ash.Query.filter(exists(participants, corporation_id == ^corporation_id))
+    Ash.Query.sort([{order_by, :desc}])
 
     final_query =
       if limit do
@@ -71,13 +71,13 @@ defmodule EveDmv.Database.QueryUtils do
     order_by = Keyword.get(opts, :order_by, :killmail_time)
 
     character_query =
-      KillmailEnriched
-      |> Ash.Query.new()
-      |> Ash.Query.load(load_assocs)
-      |> Ash.Query.filter(killmail_time >= ^start_date)
-      |> Ash.Query.filter(killmail_time <= ^end_date)
-      |> Ash.Query.filter(exists(participants, character_id == ^character_id))
-      |> Ash.Query.sort([{order_by, :desc}])
+      Ash.Query.new(KillmailEnriched)
+
+    Ash.Query.load(load_assocs)
+    Ash.Query.filter(killmail_time >= ^start_date)
+    Ash.Query.filter(killmail_time <= ^end_date)
+    Ash.Query.filter(exists(participants, character_id == ^character_id))
+    Ash.Query.sort([{order_by, :desc}])
 
     limited_query =
       if limit do
@@ -109,13 +109,13 @@ defmodule EveDmv.Database.QueryUtils do
     limit = Keyword.get(opts, :limit)
 
     participant_query =
-      Participant
-      |> Ash.Query.new()
-      |> Ash.Query.filter(character_id == ^character_id)
-      |> Ash.Query.filter(updated_at >= ^start_date)
-      |> Ash.Query.filter(updated_at <= ^end_date)
-      |> Ash.Query.load(load_assocs)
-      |> Ash.Query.sort([{:updated_at, :desc}])
+      Ash.Query.new(Participant)
+
+    Ash.Query.filter(character_id == ^character_id)
+    Ash.Query.filter(updated_at >= ^start_date)
+    Ash.Query.filter(updated_at <= ^end_date)
+    Ash.Query.load(load_assocs)
+    Ash.Query.sort([{:updated_at, :desc}])
 
     final_participant_query =
       if limit do
@@ -148,10 +148,10 @@ defmodule EveDmv.Database.QueryUtils do
     load_assocs = Keyword.get(opts, :load, [])
 
     base_query =
-      Participant
-      |> Ash.Query.new()
-      |> Ash.Query.filter(killmail_id in ^killmail_ids)
-      |> Ash.Query.load(load_assocs)
+      Ash.Query.new(Participant)
+
+    Ash.Query.filter(killmail_id in ^killmail_ids)
+    Ash.Query.load(load_assocs)
 
     query =
       if exclude_character do
@@ -181,10 +181,10 @@ defmodule EveDmv.Database.QueryUtils do
     active_only = Keyword.get(opts, :active_only, false)
 
     base_query =
-      CharacterStats
-      |> Ash.Query.new()
-      |> Ash.Query.filter(corporation_id == ^corporation_id)
-      |> Ash.Query.load(load_assocs)
+      Ash.Query.new(CharacterStats)
+
+    Ash.Query.filter(corporation_id == ^corporation_id)
+    Ash.Query.load(load_assocs)
 
     query =
       if active_only do
@@ -255,10 +255,10 @@ defmodule EveDmv.Database.QueryUtils do
   ## Examples
 
       iex> wormhole_system?(31_000_001)
-      true
+    true
 
       iex> wormhole_system?(30_000_142)
-      false
+    false
   """
   def wormhole_system?(system_id) when is_integer(system_id) do
     system_id >= 31_000_000
@@ -321,7 +321,7 @@ defmodule EveDmv.Database.QueryUtils do
   ## Examples
 
       iex> days_between(~U[2024-06-01 12:00:00Z], ~U[2024-07-01 12:00:00Z])
-      30
+    30
   """
   def days_between(start_datetime, end_datetime)
       when is_struct(start_datetime, DateTime) and is_struct(end_datetime, DateTime) do
@@ -334,7 +334,7 @@ defmodule EveDmv.Database.QueryUtils do
   ## Examples
 
       iex> days_since(~U[2024-06-01 12:00:00Z])
-      30
+    30
   """
   def days_since(datetime) when is_struct(datetime, DateTime) do
     days_between(datetime, DateTime.utc_now())
@@ -346,7 +346,7 @@ defmodule EveDmv.Database.QueryUtils do
   ## Examples
 
       iex> hours_between(~U[2024-07-01 12:00:00Z], ~U[2024-07-01 15:00:00Z])
-      3
+    3
   """
   def hours_between(start_datetime, end_datetime)
       when is_struct(start_datetime, DateTime) and is_struct(end_datetime, DateTime) do

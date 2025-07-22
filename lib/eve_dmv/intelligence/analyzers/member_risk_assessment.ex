@@ -206,10 +206,10 @@ defmodule EveDmv.Intelligence.Analyzers.MemberRiskAssessment do
   ## Examples
 
       iex> calculate_retention_risk_score(7, 12, 0.8)
-      14
+    14
 
       iex> calculate_retention_risk_score(45, 2, 0.1)
-      90
+    90
   """
   def calculate_retention_risk_score(days_inactive, killmail_count, fleet_participation) do
     # Base risk from inactivity (0-50 points)

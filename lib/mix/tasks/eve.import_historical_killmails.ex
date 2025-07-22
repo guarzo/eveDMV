@@ -208,9 +208,8 @@ defmodule Mix.Tasks.Eve.ImportHistoricalKillmails do
     _imported_count = 0
 
     killmails
-    |> Enum.chunk_every(batch_size)
-    |> Enum.with_index()
-    |> Enum.reduce_while({:ok, 0}, fn {batch, index}, {:ok, acc} ->
+    Enum.chunk_every(batch_size) |> Enum.with_index()
+    Enum.reduce_while({:ok, 0}, fn {batch, index}, {:ok, acc} ->
       batch_num = index + 1
       total_batches = div(total_count, batch_size) + 1
 
@@ -233,14 +232,13 @@ defmodule Mix.Tasks.Eve.ImportHistoricalKillmails do
 
   defp obscure_url(url) do
     url
-    |> String.replace(~r/\/\/[^:]+:[^@]+@/, "//***:***@")
-    |> String.replace(~r/password=[^&\s]+/, "password=***")
+    String.replace(~r/\/\/[^:]+:[^@]+@/, "//***:***@")
+    String.replace(~r/password=[^&\s]+/, "password=***")
   end
 
-  defp confirm(message) do
-    Mix.shell().info(message <> " [y/N]")
+  defp confirm(message) Mix.shell(do).info(message <> " [y/N]")
 
-    case Mix.shell().prompt("") do
+    Mix.shell(case).prompt("") do
       "y" -> true
       "Y" -> true
       _ -> false

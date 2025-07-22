@@ -181,16 +181,17 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
       {:ok, timeline_data} ->
         timeline =
           timeline_data
-          |> Enum.map(fn day ->
-            %{
-              date: Map.get(day, "activity_date"),
-              total_activity: Map.get(day, "kills", 0) + Map.get(day, "losses", 0),
-              kills: Map.get(day, "kills", 0),
-              losses: Map.get(day, "losses", 0),
-              active_members: Map.get(day, "unique_pilots", 0)
-            }
-          end)
-          |> Enum.reverse()
+
+        Enum.map(fn day ->
+          %{
+            date: Map.get(day, "activity_date"),
+            total_activity: Map.get(day, "kills", 0) + Map.get(day, "losses", 0),
+            kills: Map.get(day, "kills", 0),
+            losses: Map.get(day, "losses", 0),
+            active_members: Map.get(day, "unique_pilots", 0)
+          }
+        end)
+        |> Enum.reverse()
 
         Result.ok(timeline)
 
@@ -212,10 +213,11 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
         # Convert to hourly activity map
         hourly_map =
           hourly_data
-          |> Enum.map(fn row ->
-            {trunc(Map.get(row, "hour", 0)), Map.get(row, "kills", 0) + Map.get(row, "losses", 0)}
-          end)
-          |> Map.new()
+
+        Enum.map(fn row ->
+          {trunc(Map.get(row, "hour", 0)), Map.get(row, "kills", 0) + Map.get(row, "losses", 0)}
+        end)
+        |> Map.new()
 
         # Ensure all hours are represented
         full_hourly_data =
@@ -241,9 +243,10 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
       {:ok, data} ->
         hourly_activity =
           data
-          |> Enum.map(fn row ->
-            {trunc(Map.get(row, "hour", 0)), Map.get(row, "kills", 0) + Map.get(row, "losses", 0)}
-          end)
+
+        Enum.map(fn row ->
+          {trunc(Map.get(row, "hour", 0)), Map.get(row, "kills", 0) + Map.get(row, "losses", 0)}
+        end)
 
         {:ok, hourly_activity}
 

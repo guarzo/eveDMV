@@ -20,9 +20,11 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainActivityTracker do
 
     timeline =
       state
-      |> get_chain_timeline(map_id)
-      |> filter_timeline_since(cutoff_time)
-      |> sort_timeline_by_time()
+
+    get_chain_timeline(map_id)
+    filter_timeline_since(cutoff_time)
+
+    sort_timeline_by_time()
 
     {:ok, timeline}
   end

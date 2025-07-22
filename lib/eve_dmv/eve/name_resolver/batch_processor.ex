@@ -196,7 +196,6 @@ defmodule EveDmv.Eve.NameResolver.BatchProcessor do
     duration = end_time - start_time
 
     Logger.debug("Batch #{type} processing: #{length(ids)} items in #{duration}ms")
-
     result
   end
 end

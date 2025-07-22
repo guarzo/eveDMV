@@ -37,26 +37,21 @@ defmodule Mix.Tasks.Eve.QueryPerformance do
     end
   end
 
-  defp show_performance_metrics do
-    Mix.shell().info("=== Query Performance Metrics ===\n")
+  defp show_performance_metrics Mix.shell(do).info("=== Query Performance Metrics ===\n")
 
     metrics = QueryMonitor.get_performance_metrics()
 
-    if Enum.empty?(metrics) do
-      Mix.shell().info("No query metrics collected yet.")
+    if Enum.empty?(metrics) Mix.shell(do).info("No query metrics collected yet.")
       Mix.shell().info("Run the application and perform some operations to collect metrics.")
     else
       # Show summary
       total_queries = Enum.sum(Enum.map(metrics, & &1.query_count))
       total_time = Enum.sum(Enum.map(metrics, & &1.total_time_ms))
-      avg_time = if total_queries > 0, do: Float.round(total_time / total_queries, 2), else: 0
-
-      Mix.shell().info("Total Queries: #{total_queries}")
+      avg_time = if total_queries > 0, do: Float.round(total_time / total_queries, 2), else: Mix.shell(0).info("Total Queries: #{total_queries}")
       Mix.shell().info("Total Time: #{Float.round(total_time, 2)}ms")
       Mix.shell().info("Average Query Time: #{avg_time}ms\n")
 
-      # Show table metrics
-      Mix.shell().info("Table Performance:")
+      # Show table Mix.shell(metrics).info("Table Performance:")
 
       Mix.shell().info(
         String.pad_trailing("Table", 30) <>
@@ -75,35 +70,29 @@ defmodule Mix.Tasks.Eve.QueryPerformance do
             m.avg_time_ms > 1000 -> "🟡 SLOW"
             m.avg_time_ms > 500 -> "🟠 WATCH"
             true -> "🟢 OK"
-          end
-
-        Mix.shell().info(
+          Mix.shell(end).info(
           String.pad_trailing(m.table, 30) <>
             String.pad_trailing(to_string(m.query_count), 10) <>
             String.pad_trailing("#{m.avg_time_ms}ms", 12) <>
             String.pad_trailing("#{m.max_time_ms}ms", 12) <>
-            status
+    status
         )
       end)
     end
 
-    # Show slow query report
-    Mix.shell().info("\n=== Slow Query Report ===\n")
+    # Show slow query Mix.shell(report).info("\n=== Slow Query Report ===\n")
     report = QueryMonitor.get_slow_query_report()
 
-    if report.slow_table_count > 0 do
-      Mix.shell().error("⚠️  Found #{report.slow_table_count} tables with slow queries!")
+    if report.slow_table_count > 0 Mix.shell(do).error("⚠️  Found #{report.slow_table_count} tables with slow queries!")
 
       Mix.shell().info(
         "\nRecommendation: Run `mix eve.query_performance --analyze` for detailed analysis"
       )
-    else
-      Mix.shell().info("✅ No slow queries detected")
+    Mix.shell(else).info("✅ No slow queries detected")
     end
   end
 
-  defp run_deep_analysis do
-    Mix.shell().info("=== Deep Query Analysis ===\n")
+  defp run_deep_analysis Mix.shell(do).info("=== Deep Query Analysis ===\n")
     Mix.shell().info("Fetching slow queries from QueryPlanAnalyzer...")
 
     case QueryPlanAnalyzer.get_slow_queries(10) do
@@ -113,17 +102,15 @@ defmodule Mix.Tasks.Eve.QueryPerformance do
       slow_queries ->
         Mix.shell().info("Found #{length(slow_queries)} slow queries\n")
 
-        slow_queries
-        |> Enum.with_index(1)
-        |> Enum.each(&display_slow_query/1)
+    slow_queries
+    Enum.with_index(1)
+    Enum.each(&display_slow_query/1)
     end
 
-    # Get index suggestions
-    Mix.shell().info("\n=== Index Suggestions ===\n")
+    # Get index Mix.shell(suggestions).info("\n=== Index Suggestions ===\n")
     suggestions = QueryPlanAnalyzer.suggest_indexes()
 
-    if Enum.empty?(suggestions) do
-      Mix.shell().info("No index suggestions at this time.")
+    if Enum.empty?(suggestions) Mix.shell(do).info("No index suggestions at this time.")
     else
       Enum.each(suggestions, fn suggestion ->
         Mix.shell().info("Table: #{suggestion.table}")
@@ -134,35 +121,27 @@ defmodule Mix.Tasks.Eve.QueryPerformance do
       end)
     end
 
-    # Force a new analysis
-    Mix.shell().info("\nRunning fresh analysis...")
-    QueryPlanAnalyzer.force_analysis()
+    # Force a new Mix.shell(analysis).info("\nRunning fresh analysis...") |> QueryPlanAnalyzer.force_analysis()
     Mix.shell().info("Analysis triggered. Check logs for results.")
   end
 
-  defp display_slow_query({query, idx}) do
-    Mix.shell().info("Query ##{idx}:")
+  defp display_slow_query({query, idx}) Mix.shell(do).info("Query ##{idx}:")
     Mix.shell().info("Execution Time: #{query.execution_time_ms}ms")
     Mix.shell().info("Query: #{String.slice(query.query, 0, 200)}...")
 
     if query.recommendations do
       display_recommendations(query.recommendations)
-    end
-
-    Mix.shell().info("\n" <> String.duplicate("-", 80) <> "\n")
+    Mix.shell(end).info("\n" <> String.duplicate("-", 80) <> "\n")
   end
 
-  defp display_recommendations(recommendations) do
-    Mix.shell().info("\nRecommendations:")
+  defp display_recommendations(recommendations) Mix.shell(do).info("\nRecommendations:")
 
     Enum.each(recommendations, fn rec ->
       Mix.shell().info("  - #{rec}")
     end)
   end
 
-  defp reset_metrics do
-    Mix.shell().info("Resetting query performance metrics...")
-    QueryMonitor.reset_metrics()
+  defp reset_metrics Mix.shell(do).info("Resetting query performance metrics...") |> QueryMonitor.reset_metrics()
     Mix.shell().info("✅ Metrics reset successfully")
   end
 end

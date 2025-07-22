@@ -70,7 +70,7 @@ defmodule EveDmv.Workers.GenericTaskSupervisor do
           @table_name,
           task_fn,
           options,
-          metadata
+    metadata
         )
       end
 
@@ -119,7 +119,7 @@ defmodule EveDmv.Workers.GenericTaskSupervisor do
 
       # Check global capacity
       if current_count >= config[:max_concurrent] do
-        true
+    true
       else
         # Check per-user capacity if configured
         case config[:max_per_user] do
@@ -165,7 +165,7 @@ defmodule EveDmv.Workers.GenericTaskSupervisor do
     end
 
     defp emit_telemetry(prefix, event, measurements, metadata) do
-      telemetry_event = [event | prefix] |> Enum.reverse()
+      telemetry_event = [event | prefix] Enum.reverse()
       :telemetry.execute(telemetry_event, measurements, metadata)
     end
   end
@@ -282,7 +282,7 @@ defmodule EveDmv.Workers.GenericTaskSupervisor do
     end
 
     defp emit_telemetry(prefix, event, measurements, metadata) do
-      telemetry_event = [event | prefix] |> Enum.reverse()
+      telemetry_event = [event | prefix] Enum.reverse()
       :telemetry.execute(telemetry_event, measurements, metadata)
     end
   end

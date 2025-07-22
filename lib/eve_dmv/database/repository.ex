@@ -44,7 +44,7 @@ defmodule EveDmv.Database.Repository do
 
       @resource resource
       @cache_type cache_type
-      @resource_name resource |> Module.split() |> List.last() |> Macro.underscore()
+      @resource_name Module.split(resource) List.last() Macro.underscore()
 
       # Standard CRUD operations
 
@@ -75,7 +75,7 @@ defmodule EveDmv.Database.Repository do
               fn ->
                 execute_get_by_id(id, opts)
               end,
-              opts
+    opts
             )
 
           false ->
@@ -139,7 +139,7 @@ defmodule EveDmv.Database.Repository do
               end
             end)
           end,
-          opts
+    opts
         )
       end
 

@@ -4,7 +4,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
 
   Coordinates threat scoring operations through specialized sub-modules:
   - **Data Fetchers**: Combat data collection and processing
-  - **Calculators**: Score calculation and weighting algorithms  
+  - **Calculators**: Score calculation and weighting algorithms
   - **Analyzers**: Trend analysis and pattern detection
   - **Generators**: Insight and comparison generation
   - **Cache Managers**: Performance optimization through caching

@@ -23,7 +23,7 @@ defmodule EveDmv.Analytics.BattleDetector do
 
     query = """
     WITH character_killmails AS (
-      SELECT
+    SELECT
         k.killmail_id,
         k.killmail_time,
         k.solar_system_id,
@@ -36,7 +36,7 @@ defmodule EveDmv.Analytics.BattleDetector do
         k.attackers_corporation_ids,
         k.attackers_alliance_ids,
         array_length(k.attackers_character_ids, 1) as attacker_count,
-        CASE
+    CASE
           WHEN k.victim_character_id = $1 THEN 'loss'
           WHEN $1 = ANY(k.attackers_character_ids) THEN 'kill'
           ELSE 'unknown'
@@ -47,7 +47,7 @@ defmodule EveDmv.Analytics.BattleDetector do
         AND array_length(k.attackers_character_ids, 1) >= 5  -- Multi-pilot engagements
     ),
     battle_clusters AS (
-      SELECT
+    SELECT
         cm.*,
         -- Group killmails that are close in time and space
         COUNT(*) OVER (
@@ -58,7 +58,7 @@ defmodule EveDmv.Analytics.BattleDetector do
     )
     SELECT
       bc.*,
-      CASE
+    CASE
         WHEN bc.system_hour_activity >= 10 THEN 'major_battle'
         WHEN bc.system_hour_activity >= 5 THEN 'skirmish'
         WHEN bc.attacker_count >= 20 THEN 'fleet_engagement'
@@ -100,7 +100,7 @@ defmodule EveDmv.Analytics.BattleDetector do
 
     query = """
     WITH corp_killmails AS (
-      SELECT
+    SELECT
         k.killmail_id,
         k.killmail_time,
         k.solar_system_id,
@@ -114,7 +114,7 @@ defmodule EveDmv.Analytics.BattleDetector do
         k.attackers_corporation_ids,
         k.attackers_alliance_ids,
         array_length(k.attackers_character_ids, 1) as attacker_count,
-        CASE
+    CASE
           WHEN k.victim_corporation_id = $1 THEN 'loss'
           WHEN $1 = ANY(k.attackers_corporation_ids) THEN 'kill'
           ELSE 'unknown'
@@ -131,7 +131,7 @@ defmodule EveDmv.Analytics.BattleDetector do
         AND array_length(k.attackers_character_ids, 1) >= 5  -- Multi-pilot engagements
     ),
     battle_clusters AS (
-      SELECT
+    SELECT
         cm.*,
         -- Group killmails that are close in time and space
         COUNT(*) OVER (
@@ -142,7 +142,7 @@ defmodule EveDmv.Analytics.BattleDetector do
     )
     SELECT
       bc.*,
-      CASE
+    CASE
         WHEN bc.system_hour_activity >= 10 THEN 'major_battle'
         WHEN bc.system_hour_activity >= 5 THEN 'skirmish'
         WHEN bc.attacker_count >= 20 THEN 'fleet_engagement'
@@ -179,13 +179,13 @@ defmodule EveDmv.Analytics.BattleDetector do
 
     query = """
     WITH corp_battles AS (
-      SELECT
+    SELECT
         k.killmail_id,
         k.killmail_time,
         k.total_value,
         k.solar_system_id,
         array_length(k.attackers_character_ids, 1) as fleet_size,
-        CASE
+    CASE
           WHEN k.victim_corporation_id = $1 THEN 'loss'
           WHEN $1 = ANY(k.attackers_corporation_ids) THEN 'kill'
           ELSE 'unknown'
@@ -267,7 +267,7 @@ defmodule EveDmv.Analytics.BattleDetector do
 
     query = """
     WITH system_killmails AS (
-      SELECT
+    SELECT
         k.killmail_id,
         k.killmail_time,
         k.solar_system_id,
@@ -288,7 +288,7 @@ defmodule EveDmv.Analytics.BattleDetector do
         AND array_length(k.attackers_character_ids, 1) >= 5  -- Multi-pilot engagements
     ),
     battle_clusters AS (
-      SELECT
+    SELECT
         km.*,
         -- Group killmails that are close in time (same hour)
         COUNT(*) OVER (
@@ -298,7 +298,7 @@ defmodule EveDmv.Analytics.BattleDetector do
     )
     SELECT
       bc.*,
-      CASE
+    CASE
         WHEN bc.hour_activity >= 15 THEN 'major_battle'
         WHEN bc.hour_activity >= 8 THEN 'fleet_engagement'
         WHEN bc.hour_activity >= 4 THEN 'skirmish'
@@ -336,7 +336,7 @@ defmodule EveDmv.Analytics.BattleDetector do
 
     query = """
     WITH system_battles AS (
-      SELECT
+    SELECT
         k.killmail_id,
         k.killmail_time,
         k.total_value,
@@ -527,8 +527,9 @@ defmodule EveDmv.Analytics.BattleDetector do
       time_bucket =
         if time do
           time
-          |> DateTime.from_naive!("Etc/UTC")
-          |> DateTime.add(
+          DateTime.from_naive!("Etc/UTC")
+
+          DateTime.add(
             -rem(DateTime.to_unix(DateTime.from_naive!(time, "Etc/UTC")), 1800),
             :second
           )
@@ -552,18 +553,18 @@ defmodule EveDmv.Analytics.BattleDetector do
     total_isk =
       killmails
       |> Enum.map(&(Map.get(&1, "total_value") || 0))
-      |> Enum.sum()
+    |> Enum.sum()
 
     participants =
       killmails
       |> Enum.flat_map(fn km ->
-        attackers = Map.get(km, "attackers_character_ids") || []
-        victim = [Map.get(km, "victim_character_id")]
-        attackers ++ victim
-      end)
-      |> Enum.filter(& &1)
-      |> Enum.uniq()
-      |> length()
+      attackers = Map.get(km, "attackers_character_ids") || []
+      victim = [Map.get(km, "victim_character_id")]
+      attackers ++ victim
+    end)
+    |> Enum.filter(& &1)
+    |> Enum.uniq()
+    |> Kernel.length()
 
     %{
       battle_id: generate_battle_id(killmails),
@@ -650,6 +651,7 @@ defmodule EveDmv.Analytics.BattleDetector do
     |> Enum.map(&Map.get(&1, "victim_ship_type_name"))
     |> Enum.filter(& &1)
     |> Enum.frequencies()
+
     |> Enum.sort_by(&elem(&1, 1), :desc)
     |> Enum.take(3)
     |> Enum.map(&elem(&1, 0))

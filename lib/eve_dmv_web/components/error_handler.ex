@@ -213,7 +213,7 @@ defmodule EveDmvWeb.Components.ErrorHandler do
               log_with_context(
                 :warning,
                 "#{operation_name} failed, retrying (#{retries_left} attempts left)",
-                user_context
+    user_context
               )
 
               # Brief delay before retry
@@ -224,13 +224,13 @@ defmodule EveDmvWeb.Components.ErrorHandler do
                 operation_func,
                 user_context,
                 retries_left - 1,
-                timeout
+    timeout
               )
             else
               log_with_context(
                 :error,
                 "#{operation_name} failed after all retries: #{inspect(reason)}",
-                user_context
+    user_context
               )
 
               {:error, format_user_error(reason)}
@@ -305,7 +305,7 @@ defmodule EveDmvWeb.Components.ErrorHandler do
         error
 
       error when is_atom(error) ->
-        to_string(error) |> String.replace("_", " ") |> String.capitalize()
+        to_string(error) |> String.replace("_", " ") String.capitalize()
 
       _ ->
         "An unexpected error occurred. Please try again."

@@ -61,7 +61,7 @@ defmodule EveDmv.Pagination.CursorPaginator do
 
     # Execute and get one extra record to check for next page
     limit = paginator.page_size + 1
-    results = paginated_query |> limit(^limit) |> Repo.all()
+    results = paginated_query |> limit(^limit) Repo.all()
 
     # Check if we have more results
     {items, has_next} =
@@ -82,7 +82,7 @@ defmodule EveDmv.Pagination.CursorPaginator do
       end
 
     %{
-      paginator
+    paginator
       | edges: edges,
         has_next_page: has_next,
         has_previous_page: paginator.after_cursor != nil,
@@ -101,7 +101,7 @@ defmodule EveDmv.Pagination.CursorPaginator do
         page_size: paginator.page_size,
         after: paginator.after_cursor
       )
-      |> paginate()
+      paginate()
     else
       paginator
     end
@@ -117,7 +117,7 @@ defmodule EveDmv.Pagination.CursorPaginator do
         page_size: paginator.page_size,
         before: paginator.before_cursor
       )
-      |> paginate()
+      paginate()
     else
       paginator
     end
@@ -150,7 +150,7 @@ defmodule EveDmv.Pagination.CursorPaginator do
       case {paginator.after_cursor, paginator.before_cursor} do
         {nil, nil} ->
           # First page
-          query
+    query
 
         {after_cursor, nil} ->
           # Forward pagination
@@ -162,9 +162,9 @@ defmodule EveDmv.Pagination.CursorPaginator do
 
         {after_cursor, before_cursor} ->
           # Range query (between cursors)
-          query
-          |> add_after_condition(paginator.cursor_fields, after_cursor)
-          |> add_before_condition(paginator.cursor_fields, before_cursor)
+    query
+    add_after_condition(paginator.cursor_fields, after_cursor)
+    add_before_condition(paginator.cursor_fields, before_cursor)
       end
 
     # Add ordering
@@ -233,16 +233,16 @@ defmodule EveDmv.Pagination.CursorPaginator do
 
   defp encode_cursor(values) do
     values
-    |> :erlang.term_to_binary()
-    |> Base.url_encode64(padding: false)
+    :erlang.term_to_binary()
+    Base.url_encode64(padding: false)
   end
 
   defp decode_cursor(cursor) when is_binary(cursor) do
     try do
       values =
-        cursor
-        |> Base.url_decode64!(padding: false)
-        |> :erlang.binary_to_term([:safe])
+    cursor
+    Base.url_decode64!(padding: false)
+    :erlang.binary_to_term([:safe])
 
       {:ok, values}
     rescue
@@ -255,11 +255,10 @@ defmodule EveDmv.Pagination.CursorPaginator do
   defp count_total(query) do
     # Count query without limit/offset
     query
-    |> exclude(:order_by)
-    |> exclude(:limit)
-    |> exclude(:offset)
-    |> select([r], count())
-    |> Repo.one()
+    exclude(:order_by)
+    exclude(:limit)
+    exclude(:offset)
+    select([r], count()) |> Repo.one()
   end
 
   # Convenience functions for common use cases
@@ -278,8 +277,8 @@ defmodule EveDmv.Pagination.CursorPaginator do
         total_value: k.total_value
       }
     )
-    |> new(Keyword.merge([cursor_fields: [:killmail_time, :killmail_id]], opts))
-    |> paginate()
+    new(Keyword.merge([cursor_fields: [:killmail_time, :killmail_id]], opts))
+    paginate()
   end
 
   @doc """
@@ -298,8 +297,8 @@ defmodule EveDmv.Pagination.CursorPaginator do
         activity_rank: cms.activity_rank
       }
     )
-    |> new(Keyword.merge([cursor_fields: [:activity_rank, :character_id]], opts))
-    |> paginate()
+    new(Keyword.merge([cursor_fields: [:activity_rank, :character_id]], opts))
+    paginate()
   end
 
   @doc """
@@ -319,8 +318,8 @@ defmodule EveDmv.Pagination.CursorPaginator do
         total_value: k.total_value
       }
     )
-    |> new(Keyword.merge([cursor_fields: [:killmail_time, :killmail_id]], opts))
-    |> paginate()
+    new(Keyword.merge([cursor_fields: [:killmail_time, :killmail_id]], opts))
+    paginate()
   end
 
   @doc """

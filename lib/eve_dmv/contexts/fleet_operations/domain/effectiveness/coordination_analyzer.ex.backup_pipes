@@ -1,7 +1,7 @@
 defmodule EveDmv.Contexts.FleetOperations.Domain.Effectiveness.CoordinationAnalyzer do
   @moduledoc """
   Analyzes fleet coordination effectiveness.
-  
+
   Evaluates timing, targeting, and tactical coordination patterns
   to determine fleet cohesion and effectiveness.
   """
@@ -96,7 +96,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.Effectiveness.CoordinationAnaly
   defp analyze_timing_coordination(killmails, participant_ids) do
     # Analyze kill timing patterns
     fleet_kills = filter_fleet_kills(killmails, participant_ids)
-    
+
     if length(fleet_kills) < 2 do
       %{
         kill_clustering: 0,
@@ -105,14 +105,14 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.Effectiveness.CoordinationAnaly
       }
     else
       sorted_kills = Enum.sort_by(fleet_kills, &(&1.timestamp))
-      
+
       time_gaps = calculate_time_gaps(sorted_kills)
       avg_gap = if Enum.empty?(time_gaps), do: 0, else: Enum.sum(time_gaps) / length(time_gaps)
-      
+
       # Calculate clustering (kills close together in time)
       clustered_kills = Enum.count(time_gaps, &(&1 < 120)) # Within 2 minutes
       clustering_rate = clustered_kills / length(time_gaps)
-      
+
       %{
         kill_clustering: Float.round(clustering_rate, 2),
         average_time_between_kills: Float.round(avg_gap, 0),
@@ -138,20 +138,20 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.Effectiveness.CoordinationAnaly
       avg_gap < 300 -> 0.6
       true -> 0.4
     end
-    
+
     (clustering_score + gap_score) / 2
   end
 
   defp analyze_target_focus(killmails, participant_ids) do
     # Analyze how well the fleet focuses on primary targets
     fleet_kills = filter_fleet_kills(killmails, participant_ids)
-    
+
     if Enum.empty?(fleet_kills) do
       %{focus_efficiency: 0, primary_target_percentage: 0, coordination_score: 0}
     else
       # Group kills by timestamp proximity to identify primary targets
       kill_groups = group_kills_by_time(fleet_kills, 30) # 30 second windows
-      
+
       focus_scores = Enum.map(kill_groups, fn group ->
         if length(group) == 1 do
           1.0 # Single kill = perfect focus
@@ -162,9 +162,9 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.Effectiveness.CoordinationAnaly
           if total_damage > 0, do: max_damage / total_damage, else: 0
         end
       end)
-      
+
       avg_focus = Enum.sum(focus_scores) / length(focus_scores)
-      
+
       %{
         focus_efficiency: Float.round(avg_focus, 2),
         primary_target_percentage: Float.round(avg_focus * 100, 1),
@@ -193,21 +193,21 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.Effectiveness.CoordinationAnaly
   defp analyze_damage_spread(killmails, participant_ids) do
     # Analyze how damage is distributed among fleet members
     fleet_kills = filter_fleet_kills(killmails, participant_ids)
-    
+
     if Enum.empty?(fleet_kills) do
       %{damage_concentration: 0, top_damage_dealers: [], coordination_score: 0.5}
     else
       # Calculate damage dealt by each fleet member
       damage_by_pilot = calculate_damage_by_pilot(fleet_kills, participant_ids)
-      
+
       total_damage = Enum.sum(Map.values(damage_by_pilot))
       sorted_dealers = damage_by_pilot
         |> Enum.sort_by(fn {_, damage} -> damage end, :desc)
         |> Enum.take(5)
-      
+
       # Calculate Gini coefficient for damage distribution
       damage_concentration = calculate_gini_coefficient(Map.values(damage_by_pilot))
-      
+
       %{
         damage_concentration: Float.round(damage_concentration, 2),
         top_damage_dealers: Enum.map(sorted_dealers, fn {pilot_id, damage} ->
@@ -249,7 +249,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.Effectiveness.CoordinationAnaly
         |> Enum.reduce(0, fn {value, index}, acc ->
           acc + (2 * index - n - 1) * value
         end)
-      
+
       mean = Enum.sum(sorted) / n
       gini = sum_of_products / (n * n * mean)
       Float.round(gini, 3)
@@ -274,13 +274,13 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.Effectiveness.CoordinationAnaly
       target_focus: 0.25,
       damage_spread: 0.2
     }
-    
-    weighted_score = 
+
+    weighted_score =
       metrics.kill_participation.coordination_score * weights.kill_participation +
       metrics.timing_coordination.coordination_score * weights.timing_coordination +
       metrics.target_focus.coordination_score * weights.target_focus +
       metrics.damage_spread.coordination_score * weights.damage_spread
-    
+
     Float.round(weighted_score, 2)
   end
 

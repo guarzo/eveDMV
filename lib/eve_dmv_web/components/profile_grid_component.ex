@@ -103,7 +103,7 @@ defmodule EveDmvWeb.ProfileGridComponent do
                     data-confirm="Are you sure you want to delete this profile?"
                     class="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-medium transition-colors"
                   >
-                    Delete
+    Delete
                   </button>
                 </div>
               </div>

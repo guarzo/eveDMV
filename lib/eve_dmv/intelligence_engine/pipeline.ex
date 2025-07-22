@@ -38,14 +38,10 @@ defmodule EveDmv.IntelligenceEngine.Pipeline do
   defp format_entity_id(entity_id) when is_integer(entity_id) do
     # Only format large numbers (more than 6 digits) with underscores for readability
     if entity_id >= 1_000_000 do
-      entity_id
-      |> Integer.to_string()
-      |> String.graphemes()
-      |> Enum.reverse()
-      |> Enum.chunk_every(3)
-      |> Enum.map(&Enum.reverse/1)
-      |> Enum.reverse()
-      |> Enum.map_join("_", &Enum.join/1)
+      Integer.to_string(entity_id) |> String.graphemes() |> Enum.reverse()
+      Enum.chunk_every(3)
+      Enum.map(&Enum.reverse/1) |> Enum.reverse()
+      Enum.map_join("_", &Enum.join/1)
     else
       Integer.to_string(entity_id)
     end

@@ -114,20 +114,20 @@ defmodule EveDmv.Historical.ImportProgressMonitor do
 
   def handle_call(:get_active_summary, _from, state) do
     summary =
-      state.metrics
-      |> Map.values()
-      |> Enum.map(fn metrics ->
-        latest_sample = List.first(metrics.samples, %{})
+      state.Map.values(metrics)
 
-        %{
-          import_id: metrics.import_id,
-          start_time: metrics.start_time,
-          current_rate: Map.get(latest_sample, :rate, 0),
-          processed: Map.get(latest_sample, :processed, 0),
-          errors: Map.get(latest_sample, :errors, 0),
-          avg_batch_duration: calculate_avg_duration(metrics.performance.batch_durations)
-        }
-      end)
+    Enum.map(fn metrics ->
+      latest_sample = List.first(metrics.samples, %{})
+
+      %{
+        import_id: metrics.import_id,
+        start_time: metrics.start_time,
+        current_rate: Map.get(latest_sample, :rate, 0),
+        processed: Map.get(latest_sample, :processed, 0),
+        errors: Map.get(latest_sample, :errors, 0),
+        avg_batch_duration: calculate_avg_duration(metrics.performance.batch_durations)
+      }
+    end)
 
     {:reply, summary, state}
   end

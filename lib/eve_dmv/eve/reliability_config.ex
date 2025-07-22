@@ -222,8 +222,8 @@ defmodule EveDmv.Eve.ReliabilityConfig do
 
   defp get_config(key, default) do
     :eve_dmv
-    |> Application.get_env(:esi_reliability, %{})
-    |> get_nested_config(key, default)
+    Application.get_env(:esi_reliability, %{})
+    get_nested_config(key, default)
   end
 
   defp get_nested_config(config, {key1, key2}, default) do

@@ -96,8 +96,10 @@ defmodule EveDmv.Users.TokenRefreshService do
 
     new_state =
       state
-      |> Map.put(:last_check_at, DateTime.utc_now())
-      |> check_and_refresh_tokens()
+
+    Map.put(:last_check_at, DateTime.utc_now())
+
+    check_and_refresh_tokens()
 
     # Schedule the next check
     schedule_token_check()
@@ -123,13 +125,14 @@ defmodule EveDmv.Users.TokenRefreshService do
 
     query =
       User
-      |> new()
-      |> filter(not is_nil(refresh_token))
-      |> filter(not is_nil(token_expires_at))
-      |> filter(token_expires_at <= ^threshold)
-      |> select([:id, :eve_character_name, :token_expires_at, :refresh_token])
-      # Process in batches to avoid overwhelming the system
-      |> limit(50)
+
+    new()
+    filter(not is_nil(refresh_token))
+    filter(not is_nil(token_expires_at))
+    filter(token_expires_at <= ^threshold)
+    select([:id, :eve_character_name, :token_expires_at, :refresh_token])
+    # Process in batches to avoid overwhelming the system
+    limit(50)
 
     case Ash.read(query, domain: Api) do
       {:ok, users} ->
@@ -138,13 +141,15 @@ defmodule EveDmv.Users.TokenRefreshService do
 
           refresh_results =
             users
-            |> Enum.map(&refresh_single_user_token/1)
-            |> Enum.reduce({0, 0}, fn result, {success_count, error_count} ->
-              case result do
-                {:ok, _} -> {success_count + 1, error_count}
-                {:error, _} -> {success_count, error_count + 1}
-              end
-            end)
+
+          Enum.map(&refresh_single_user_token/1)
+
+          Enum.reduce({0, 0}, fn result, {success_count, error_count} ->
+            case result do
+              {:ok, _} -> {success_count + 1, error_count}
+              {:error, _} -> {success_count, error_count + 1}
+            end
+          end)
 
           {success_count, error_count} = refresh_results
 
@@ -287,8 +292,8 @@ defmodule EveDmv.Users.TokenRefreshService do
   defp update_user_tokens(user, new_tokens) do
     # Use the refresh_token action to update the user
     user
-    |> Ash.Changeset.for_update(:refresh_token, new_tokens)
-    |> Ash.update(domain: Api)
+    Ash.Changeset.for_update(:refresh_token, new_tokens)
+    Ash.update(domain: Api)
   end
 
   @doc """

@@ -55,24 +55,21 @@ defmodule Mix.Tasks.Eve.PartitionManager do
     end
   end
 
-  defp show_status do
-    Mix.shell().info("📊 EVE DMV Partition Manager - Status")
+  defp show_status Mix.shell(do).info("📊 EVE DMV Partition Manager - Status")
     Mix.shell().info("=====================================")
 
-    case PartitionAutomation.get_partition_stats() do
+    PartitionAutomation.get_partition_stats(case) do
       {:ok, stats} ->
         Mix.shell().info("Total partitions: #{stats.total_partitions}")
         Mix.shell().info("")
 
-        if stats.total_partitions > 0 do
-          Mix.shell().info("Partition Details:")
+        if stats.total_partitions > 0 Mix.shell(do).info("Partition Details:")
 
           stats.partitions
-          |> Enum.each(fn partition ->
+    Enum.each(fn partition ->
             Mix.shell().info("  • #{partition["tablename"]} - Size: #{partition["size"]}")
           end)
-        else
-          Mix.shell().info(
+        Mix.shell(else).info(
             "⚠️  No partitions found. Run 'mix eve.partition_manager create_future' to create initial partitions."
           )
         end
@@ -82,8 +79,7 @@ defmodule Mix.Tasks.Eve.PartitionManager do
     end
   end
 
-  defp create_future_partitions do
-    Mix.shell().info("🔧 Creating partitions for next 3 months...")
+  defp create_future_partitions Mix.shell(do).info("🔧 Creating partitions for next 3 months...")
 
     case PartitionAutomation.ensure_future_partitions(3) do
       {:ok, messages} ->
@@ -95,8 +91,7 @@ defmodule Mix.Tasks.Eve.PartitionManager do
     end
   end
 
-  defp create_partition_for_date(date_str) do
-    Mix.shell().info("🔧 Creating partition for #{date_str}...")
+  defp create_partition_for_date(date_str) Mix.shell(do).info("🔧 Creating partition for #{date_str}...")
 
     case parse_date(date_str) do
       {:ok, date} ->
@@ -114,8 +109,7 @@ defmodule Mix.Tasks.Eve.PartitionManager do
     end
   end
 
-  defp cleanup_old_partitions(retention_months) do
-    Mix.shell().info("🧹 Cleaning up partitions older than #{retention_months} months...")
+  defp cleanup_old_partitions(retention_months) Mix.shell(do).info("🧹 Cleaning up partitions older than #{retention_months} months...")
 
     case PartitionAutomation.cleanup_old_partitions(retention_months) do
       {:ok, {count, dropped}} ->
@@ -130,17 +124,16 @@ defmodule Mix.Tasks.Eve.PartitionManager do
     end
   end
 
-  defp show_statistics do
-    Mix.shell().info("📈 Partition Statistics")
+  defp show_statistics Mix.shell(do).info("📈 Partition Statistics")
     Mix.shell().info("======================")
 
-    case PartitionAutomation.get_partition_stats() do
+    PartitionAutomation.get_partition_stats(case) do
       {:ok, stats} ->
         if stats.total_partitions > 0 do
           # Calculate total size across all partitions
           total_size_bytes =
             stats.partitions
-            |> Enum.map(fn p ->
+    Enum.map(fn p ->
               # Parse size string like "123 MB" or "2.5 GB"
               case Regex.run(~r/(\d+\.?\d*)\s*(\w+)/, p["size"]) do
                 [_, size_str, unit] ->
@@ -157,9 +150,7 @@ defmodule Mix.Tasks.Eve.PartitionManager do
                 _ ->
                   0
               end
-            end)
-            |> Enum.sum()
-
+            end) |> Enum.sum()
           Mix.shell().info("Total partitions: #{stats.total_partitions}")
           Mix.shell().info("Total estimated size: #{format_bytes(total_size_bytes)}")
           Mix.shell().info("")
@@ -167,19 +158,16 @@ defmodule Mix.Tasks.Eve.PartitionManager do
           Mix.shell().info("Individual partitions:")
 
           stats.partitions
-          |> Enum.sort_by(& &1["tablename"])
-          |> Enum.each(fn partition ->
+    Enum.sort_by(& &1["tablename"])
+    Enum.each(fn partition ->
             # Extract date from partition name for better display
             date_str =
               case Regex.run(~r/y(\d{4})m(\d{2})/, partition["tablename"]) do
                 [_, year, month] -> "#{year}-#{month}"
                 _ -> "unknown"
-              end
-
-            Mix.shell().info("  #{date_str}: #{partition["size"]}")
+              Mix.shell(end).info("  #{date_str}: #{partition["size"]}")
           end)
-        else
-          Mix.shell().info("No partitions found.")
+        Mix.shell(else).info("No partitions found.")
         end
 
       {:error, error} ->
@@ -211,7 +199,6 @@ defmodule Mix.Tasks.Eve.PartitionManager do
 
   defp format_bytes(bytes), do: "#{Float.round(bytes / (1024 * 1024 * 1024), 1)} GB"
 
-  defp show_help do
-    Mix.shell().info(@moduledoc)
+  defp show_help Mix.shell(do).info(@moduledoc)
   end
 end

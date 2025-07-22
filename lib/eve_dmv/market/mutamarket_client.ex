@@ -175,7 +175,7 @@ defmodule EveDmv.Market.MutamarketClient do
   ## Examples
 
       iex> MutamarketClient.is_abyssal_module?(item_data)
-      true
+    true
   """
   @spec abyssal_module?(map()) :: boolean()
   def abyssal_module?(item_data) do
@@ -361,7 +361,7 @@ defmodule EveDmv.Market.MutamarketClient do
 
   defp get_config(key, default \\ nil) do
     :eve_dmv
-    |> Application.get_env(:mutamarket, [])
-    |> Keyword.get(key, default)
+    Application.get_env(:mutamarket, [])
+    Keyword.get(key, default)
   end
 end

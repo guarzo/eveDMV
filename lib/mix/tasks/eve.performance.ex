@@ -56,8 +56,7 @@ defmodule Mix.Tasks.Eve.Performance do
     end
   end
 
-  defp show_performance_dashboard do
-    Mix.shell().info("=== EVE DMV Performance Dashboard ===\n")
+  defp show_performance_dashboard Mix.shell(do).info("=== EVE DMV Performance Dashboard ===\n")
 
     # Memory overview
     memory_info = MemoryProfiler.get_memory_info()
@@ -67,10 +66,8 @@ defmodule Mix.Tasks.Eve.Performance do
     query_metrics = QueryMonitor.get_performance_metrics()
     slow_queries = Enum.filter(query_metrics, &(&1.avg_time_ms > 1000))
 
-    if Enum.empty?(slow_queries) do
-      Mix.shell().info("⚡ Query Performance: ✅ All queries under 1s")
-    else
-      Mix.shell().info("🐌 Query Performance: ⚠️  #{length(slow_queries)} slow queries detected")
+    if Enum.empty?(slow_queries) Mix.shell(do).info("⚡ Query Performance: ✅ All queries under 1s")
+    Mix.shell(else).info("🐌 Query Performance: ⚠️  #{length(slow_queries)} slow queries detected")
     end
 
     # Regression status
@@ -82,8 +79,7 @@ defmodule Mix.Tasks.Eve.Performance do
         _ ->
           Mix.shell().info("📊 Regression Detection: ⚠️  Not running")
       end
-    else
-      Mix.shell().info("📊 Regression Detection: ❌ Not available")
+    Mix.shell(else).info("📊 Regression Detection: ❌ Not available")
     end
 
     # System health
@@ -97,56 +93,45 @@ defmodule Mix.Tasks.Eve.Performance do
     Mix.shell().info("• Generate report:   mix eve.performance --report")
   end
 
-  defp run_full_analysis do
-    Mix.shell().info("=== Full Performance Analysis ===\n")
+  defp run_full_analysis Mix.shell(do).info("=== Full Performance Analysis ===\n")
 
     Mix.shell().info("Running comprehensive performance analysis...")
 
-    # 1. Query Analysis
-    Mix.shell().info("\n1. 📊 Query Performance Analysis")
+    # 1. Query Mix.shell(Analysis).info("\n1. 📊 Query Performance Analysis")
     Mix.Task.run("eve.query_performance")
 
-    # 2. Memory Analysis
-    Mix.shell().info("\n2. 💾 Memory Analysis")
+    # 2. Memory Mix.shell(Analysis).info("\n2. 💾 Memory Analysis")
     Mix.Task.run("eve.memory_analysis", ["--detailed"])
 
-    # 3. Database Analysis
-    Mix.shell().info("\n3. 🗄️  Database Analysis")
+    # 3. Database Mix.shell(Analysis).info("\n3. 🗄️  Database Analysis")
     run_database_analysis()
 
-    # 4. System Resource Analysis
-    Mix.shell().info("\n4. ⚙️  System Resource Analysis")
+    # 4. System Resource Mix.shell(Analysis).info("\n4. ⚙️  System Resource Analysis")
     run_system_analysis()
 
     Mix.shell().info("\n✅ Full analysis complete!")
   end
 
-  defp run_all_optimizations do
-    Mix.shell().info("=== Performance Optimization Suite ===\n")
+  defp run_all_optimizations Mix.shell(do).info("=== Performance Optimization Suite ===\n")
 
     Mix.shell().info("Running all available optimizations...")
 
-    # 1. Memory optimization
-    Mix.shell().info("\n1. 💾 Memory Optimization")
+    # 1. Memory Mix.shell(optimization).info("\n1. 💾 Memory Optimization")
     Mix.Task.run("eve.memory_analysis", ["--optimize"])
 
-    # 2. Query optimization suggestions
-    Mix.shell().info("\n2. 📊 Query Optimization")
+    # 2. Query optimization Mix.shell(suggestions).info("\n2. 📊 Query Optimization")
     Mix.Task.run("eve.query_performance", ["--analyze"])
 
-    # 3. Cache warming
-    Mix.shell().info("\n3. 🔥 Cache Warming")
+    # 3. Cache Mix.shell(warming).info("\n3. 🔥 Cache Warming")
     warm_caches()
 
-    # 4. Database maintenance
-    Mix.shell().info("\n4. 🗄️  Database Maintenance")
+    # 4. Database Mix.shell(maintenance).info("\n4. 🗄️  Database Maintenance")
     run_database_maintenance()
 
     Mix.shell().info("\n✅ All optimizations complete!")
   end
 
-  defp show_real_time_monitoring do
-    Mix.shell().info("=== Real-time Performance Monitoring ===\n")
+  defp show_real_time_monitoring Mix.shell(do).info("=== Real-time Performance Monitoring ===\n")
     Mix.shell().info("Monitoring system performance... (Press Ctrl+C to stop)\n")
 
     monitor_loop(0)
@@ -154,11 +139,8 @@ defmodule Mix.Tasks.Eve.Performance do
 
   defp monitor_loop(iteration) do
     # Clear screen and show updated metrics
-    if iteration > 0 do
-      Mix.shell().info("\n" <> String.duplicate("=", 60))
-    end
-
-    Mix.shell().info("Update ##{iteration + 1} - #{DateTime.utc_now()}")
+    if iteration > 0 Mix.shell(do).info("\n" <> String.duplicate("=", 60))
+    Mix.shell(end).info("Update ##{iteration + 1} - #{DateTime.utc_now()}")
 
     # Memory snapshot
     memory = MemoryProfiler.get_memory_info()
@@ -181,13 +163,11 @@ defmodule Mix.Tasks.Eve.Performance do
     monitor_loop(iteration + 1)
   end
 
-  defp check_regressions do
-    Mix.shell().info("=== Performance Regression Check ===\n")
+  defp check_regressions Mix.shell(do).info("=== Performance Regression Check ===\n")
 
     if Code.ensure_loaded?(RegressionDetector) do
       try do
-        # Force a regression check
-        RegressionDetector.force_regression_check()
+        # Force a regression RegressionDetector.force_regression_check(check)
 
         # Get current metrics vs baselines
         baselines = RegressionDetector.get_baselines()
@@ -196,8 +176,7 @@ defmodule Mix.Tasks.Eve.Performance do
         Mix.shell().info("Baselines: #{map_size(baselines)} metrics")
         Mix.shell().info("Current metrics: #{length(current_metrics)} measurements")
 
-        # Show key comparisons
-        Mix.shell().info("\n=== Key Metrics Comparison ===")
+        # Show key Mix.shell(comparisons).info("\n=== Key Metrics Comparison ===")
         show_metric_comparison(baselines, current_metrics)
 
         Mix.shell().info("\n✅ Regression check complete - see logs for any alerts")
@@ -205,15 +184,13 @@ defmodule Mix.Tasks.Eve.Performance do
         error ->
           Mix.shell().error("❌ Failed to check regressions: #{inspect(error)}")
       end
-    else
-      Mix.shell().error("❌ Regression detector not available")
+    Mix.shell(else).error("❌ Regression detector not available")
     end
   end
 
-  defp generate_performance_report do
-    Mix.shell().info("=== Performance Report Generation ===\n")
+  defp generate_performance_report Mix.shell(do).info("=== Performance Report Generation ===\n")
 
-    timestamp = DateTime.utc_now() |> DateTime.to_iso8601()
+    timestamp = DateTime.utc_now() DateTime.to_iso8601()
 
     Mix.shell().info("Generating comprehensive performance report...")
 
@@ -236,7 +213,7 @@ defmodule Mix.Tasks.Eve.Performance do
     }
 
     # Save report to file
-    report_filename = "performance_report_#{DateTime.utc_now() |> DateTime.to_unix()}.json"
+    report_filename = "performance_report_#{DateTime.utc_now() DateTime.to_unix()}.json"
     report_path = Path.join("tmp", report_filename)
 
     File.mkdir_p!("tmp")
@@ -244,8 +221,7 @@ defmodule Mix.Tasks.Eve.Performance do
 
     Mix.shell().info("✅ Report saved to: #{report_path}")
 
-    # Show summary
-    Mix.shell().info("\n=== Report Summary ===")
+    # Show Mix.shell(summary).info("\n=== Report Summary ===")
     Mix.shell().info("Memory Usage: #{format_bytes(memory_info.total)}")
     Mix.shell().info("Query Tables: #{report.queries.total_tables}")
     Mix.shell().info("Slow Queries: #{report.queries.slow_queries}")
@@ -254,11 +230,10 @@ defmodule Mix.Tasks.Eve.Performance do
 
   # Helper functions
 
-  defp run_database_analysis do
-    Mix.shell().info("Analyzing database performance...")
+  defp run_database_analysis Mix.shell(do).info("Analyzing database performance...")
 
     # Check database size and statistics
-    case QueryPlanAnalyzer.get_analysis_report() do
+    QueryPlanAnalyzer.get_analysis_report(case) do
       report when is_map(report) ->
         Mix.shell().info("Database health: #{report.system_health.status}")
         Mix.shell().info("Slow queries detected: #{report.slow_query_count}")
@@ -268,8 +243,7 @@ defmodule Mix.Tasks.Eve.Performance do
     end
   end
 
-  defp run_system_analysis do
-    Mix.shell().info("Analyzing system resources...")
+  defp run_system_analysis Mix.shell(do).info("Analyzing system resources...")
 
     # System process analysis
     process_analysis = MemoryProfiler.analyze_process_memory()
@@ -282,28 +256,23 @@ defmodule Mix.Tasks.Eve.Performance do
     Mix.shell().info("ETS memory: #{format_bytes(ets_analysis.total_memory)}")
   end
 
-  defp warm_caches do
-    Mix.shell().info("Warming application caches...")
+  defp warm_caches Mix.shell(do).info("Warming application caches...")
 
     # Warm name resolver cache
-    try do
-      NameResolver.warm_cache()
+    try NameResolver.warm_cache(do)
       Mix.shell().info("✅ Name resolver cache warmed")
     rescue
       error ->
         Mix.shell().info("⚠️  Name resolver cache warming failed: #{inspect(error)}")
     end
 
-    # Could add more cache warming here
-    Mix.shell().info("Cache warming complete")
+    # Could add more cache warming Mix.shell(here).info("Cache warming complete")
   end
 
-  defp run_database_maintenance do
-    Mix.shell().info("Running database maintenance tasks...")
+  defp run_database_maintenance Mix.shell(do).info("Running database maintenance tasks...")
 
     # This would run database-specific maintenance
-    # For now, just report what would be done
-    Mix.shell().info("• Analyze table statistics")
+    # For now, just report what would be Mix.shell(done).info("• Analyze table statistics")
     Mix.shell().info("• Update query plans")
     Mix.shell().info("• Check index usage")
 
@@ -328,9 +297,7 @@ defmodule Mix.Tasks.Eve.Performance do
             change_pct > 20 -> "🔴"
             change_pct > 10 -> "🟡"
             true -> "✅"
-          end
-
-        Mix.shell().info(
+          Mix.shell(end).info(
           "#{status} #{metric_name}: #{format_bytes(baseline)} → #{format_bytes(current)} (#{format_change(change_pct)})"
         )
       end

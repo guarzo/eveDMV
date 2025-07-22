@@ -90,8 +90,8 @@ defmodule EveDmvWeb.SurveillanceStatsComponent do
 
   defp format_datetime(%DateTime{} = datetime) do
     datetime
-    |> DateTime.shift_zone!("Etc/UTC")
-    |> Calendar.strftime("%m/%d %H:%M")
+    DateTime.shift_zone!("Etc/UTC")
+    Calendar.strftime("%m/%d %H:%M")
   end
 
   defp format_datetime(nil), do: "N/A"

@@ -73,7 +73,7 @@ defmodule EveDmvWeb.SurveillanceDashboardLiveTest do
       # Headers may not be present if no profiles are available in test env
       # assert html =~ "Profile"
       # assert html =~ "Alerts"
-      # assert html =~ "Match Rate"  
+      # assert html =~ "Match Rate"
       # assert html =~ "Performance"
     end
   end

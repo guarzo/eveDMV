@@ -99,22 +99,24 @@ defmodule Mix.Tasks.Eve.Stats do
             select: {s.system_name, count(k.killmail_id)}
           )
         )
-        |> case do
-          [] ->
-            # Fallback if no solar system data
-            EveDmv.Repo.all(
-              from(k in "killmails_raw",
-                group_by: k.solar_system_id,
-                order_by: [desc: count(k.killmail_id)],
-                limit: 10,
-                select: {k.solar_system_id, count(k.killmail_id)}
-              )
-            )
-            |> Enum.map(fn {system_id, count} -> {"System #{system_id}", count} end)
 
-          systems ->
-            systems
-        end
+      case do
+        [] ->
+          # Fallback if no solar system data
+          EveDmv.Repo.all(
+            from(k in "killmails_raw",
+              group_by: k.solar_system_id,
+              order_by: [desc: count(k.killmail_id)],
+              limit: 10,
+              select: {k.solar_system_id, count(k.killmail_id)}
+            )
+          )
+
+          Enum.map(fn {system_id, count} -> {"System #{system_id}", count} end)
+
+        systems ->
+          systems
+      end
 
       Enum.each(top_systems, fn {system, count} ->
         Logger.info("  #{system}: #{format_number(count)}")
@@ -166,11 +168,8 @@ defmodule Mix.Tasks.Eve.Stats do
   defp format_number(nil), do: "0"
 
   defp format_number(num) when is_integer(num) do
-    num
-    |> Integer.to_string()
-    |> String.reverse()
-    |> String.replace(~r/(\d{3})(?=\d)/, "\\1,")
-    |> String.reverse()
+    Integer.to_string(num) |> String.reverse()
+    String.replace(~r/(\d{3})(?=\d)/, "\\1,") |> String.reverse()
   end
 
   defp format_datetime(nil), do: "N/A"

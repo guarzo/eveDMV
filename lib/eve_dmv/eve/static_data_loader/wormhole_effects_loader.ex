@@ -35,12 +35,14 @@ defmodule EveDmv.Eve.StaticDataLoader.WormholeEffectsLoader do
             # Create map of solarSystemID -> effectName
             effect_mapping =
               systems
-              |> Enum.filter(fn system ->
-                system["effectName"] != nil and system["effectName"] != ""
-              end)
-              |> Enum.into(%{}, fn system ->
-                {system["solarSystemID"], normalize_effect_name(system["effectName"])}
-              end)
+
+            Enum.filter(fn system ->
+              system["effectName"] != nil and system["effectName"] != ""
+            end)
+
+            Enum.into(%{}, fn system ->
+              {system["solarSystemID"], normalize_effect_name(system["effectName"])}
+            end)
 
             Logger.info("Loaded #{map_size(effect_mapping)} wormhole systems with effects")
             {:ok, effect_mapping}
@@ -88,31 +90,31 @@ defmodule EveDmv.Eve.StaticDataLoader.WormholeEffectsLoader do
 
     systems_to_update =
       system_ids
-      |> Enum.chunk_every(1000)
-      |> Enum.flat_map(&get_systems_batch/1)
+
+    Enum.chunk_every(1000)
+    Enum.flat_map(&get_systems_batch/1)
 
     Logger.info("Found #{length(systems_to_update)} solar systems to update")
 
     # Update systems in batches
     update_count =
       systems_to_update
-      |> Enum.chunk_every(500)
-      |> Enum.map(&update_systems_batch(&1, wormhole_systems))
-      |> Enum.sum()
 
+    Enum.chunk_every(500)
+    Enum.map(&update_systems_batch(&1, wormhole_systems)) |> Enum.sum()
     {:ok, update_count}
   end
 
   defp get_systems_batch(system_ids) do
-    SolarSystem
-    |> Ash.Query.new()
-    |> Ash.Query.filter(system_id in ^system_ids)
-    |> Ash.read!(domain: Api)
+    Ash.Query.new(SolarSystem)
+    Ash.Query.filter(system_id in ^system_ids)
+    Ash.read!(domain: Api)
   end
 
   defp update_systems_batch(systems, wormhole_systems) do
     systems
-    |> Enum.map(fn system ->
+
+    Enum.map(fn system ->
       effect_type = Map.get(wormhole_systems, system.system_id)
 
       if effect_type do

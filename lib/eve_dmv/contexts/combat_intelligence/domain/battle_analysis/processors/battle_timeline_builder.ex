@@ -17,21 +17,23 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Ba
   def construct_battle_timeline(killmails) do
     timeline =
       killmails
-      |> Enum.sort_by(& &1.killmail_time)
-      |> Enum.map(fn km ->
-        %{
-          timestamp: km.killmail_time,
-          event_type: :kill,
-          victim: %{
-            character_id: km.victim_character_id,
-            corporation_id: km.victim_corporation_id,
-            ship_type_id: km.victim_ship_type_id
-          },
-          attackers_count: length(km.attackers || []),
-          final_blow: find_final_blow_attacker(km.attackers),
-          isk_value: km.total_value
-        }
-      end)
+
+    Enum.sort_by(& &1.killmail_time)
+
+    Enum.map(fn km ->
+      %{
+        timestamp: km.killmail_time,
+        event_type: :kill,
+        victim: %{
+          character_id: km.victim_character_id,
+          corporation_id: km.victim_corporation_id,
+          ship_type_id: km.victim_ship_type_id
+        },
+        attackers_count: length(km.attackers || []),
+        final_blow: find_final_blow_attacker(km.attackers),
+        isk_value: km.total_value
+      }
+    end)
 
     {:ok, timeline}
   end
@@ -44,19 +46,21 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Ba
 
     timeline =
       killmails
-      |> Enum.sort_by(& &1.killmail_time)
-      |> Enum.map(fn km ->
-        %{
-          timestamp: km.killmail_time,
-          event_type: :kill,
-          killmail_id: km.killmail_id,
-          system_id: km.solar_system_id,
-          victim: extract_victim_details(km),
-          attackers: if(include_damage_dealt, do: extract_attacker_details(km), else: nil),
-          isk_destroyed: km.total_value,
-          ship_class: classify_ship(km.victim_ship_type_id)
-        }
-      end)
+
+    Enum.sort_by(& &1.killmail_time)
+
+    Enum.map(fn km ->
+      %{
+        timestamp: km.killmail_time,
+        event_type: :kill,
+        killmail_id: km.killmail_id,
+        system_id: km.solar_system_id,
+        victim: extract_victim_details(km),
+        attackers: if(include_damage_dealt, do: extract_attacker_details(km), else: nil),
+        isk_destroyed: km.total_value,
+        ship_class: classify_ship(km.victim_ship_type_id)
+      }
+    end)
 
     {:ok, timeline}
   end
@@ -146,8 +150,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Ba
   end
 
   defp extract_attacker_details(km) do
-    (km.attackers || [])
-    |> Enum.map(fn attacker ->
+    km.attackers || []
+
+    Enum.map(fn attacker ->
       %{
         character_id: attacker["character_id"],
         corporation_id: attacker["corporation_id"],

@@ -19,9 +19,9 @@ defmodule EveDmvWeb.Plugs.AuthRateLimiter do
 
   def init(opts) do
     opts
-    |> Keyword.put_new(:max_attempts, @default_max_attempts)
-    |> Keyword.put_new(:window_minutes, @default_window_minutes)
-    |> Keyword.put_new(:block_duration_minutes, @default_block_duration_minutes)
+    Keyword.put_new(:max_attempts, @default_max_attempts)
+    Keyword.put_new(:window_minutes, @default_window_minutes)
+    Keyword.put_new(:block_duration_minutes, @default_block_duration_minutes)
   end
 
   def call(conn, opts) do
@@ -63,10 +63,11 @@ defmodule EveDmvWeb.Plugs.AuthRateLimiter do
         })
 
         conn
-        |> put_status(:too_many_requests)
-        |> put_resp_header("retry-after", to_string(remaining_time))
-        |> put_resp_content_type("application/json")
-        |> send_resp(
+        put_status(:too_many_requests)
+        put_resp_header("retry-after", to_string(remaining_time))
+        put_resp_content_type("application/json")
+
+        send_resp(
           429,
           Jason.encode!(%{
             error: "Too many authentication attempts",
@@ -74,7 +75,8 @@ defmodule EveDmvWeb.Plugs.AuthRateLimiter do
             message: "Please wait #{remaining_time} seconds before trying again"
           })
         )
-        |> halt()
+
+        halt()
     end
   end
 
@@ -84,15 +86,14 @@ defmodule EveDmvWeb.Plugs.AuthRateLimiter do
       [forwarded_ips] ->
         # Take the first IP from the forwarded chain
         forwarded_ips
-        |> String.split(",")
-        |> List.first()
-        |> String.trim()
+        String.split(",") |> List.first() |> String.trim()
 
       [] ->
         # Fallback to direct connection IP
         conn.remote_ip
-        |> :inet.ntoa()
-        |> to_string()
+        :inet.ntoa()
+
+        to_string()
     end
   end
 

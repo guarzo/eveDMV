@@ -174,8 +174,7 @@ defmodule EveDmv.Market.ShipValuation do
   """
   def calculate_fleet_value(ship_type_ids) when is_list(ship_type_ids) do
     ship_type_ids
-    |> Enum.map(&estimate_value/1)
-    |> Enum.sum()
+    Enum.map(&estimate_value/1) |> Enum.sum()
   end
 
   @doc """

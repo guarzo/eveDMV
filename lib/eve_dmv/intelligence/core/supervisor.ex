@@ -50,7 +50,7 @@ defmodule EveDmv.Intelligence.Core.Supervisor do
 
           {:error, reason} = error ->
             Logger.error("Failed to start analysis task #{task_id}: #{inspect(reason)}")
-            error
+    error
         end
 
       [{pid, _}] ->
@@ -113,8 +113,8 @@ defmodule EveDmv.Intelligence.Core.Supervisor do
     Logger.info("Starting batch analysis for #{length(tasks)} tasks")
 
     results =
-      tasks
-      |> Task.async_stream(
+    tasks
+    Task.async_stream(
         fn {analyzer_module, entity_id, opts} ->
           task_id = generate_task_id(analyzer_module, entity_id)
           result = start_analysis_task(analyzer_module, entity_id, opts)
@@ -123,12 +123,10 @@ defmodule EveDmv.Intelligence.Core.Supervisor do
         max_concurrency: 10,
         timeout: 5000
       )
-      |> Enum.map(fn
+    Enum.map(fn
         {:ok, {task_id, result}} -> {task_id, result}
         {:exit, reason} -> {:error, reason}
-      end)
-      |> Map.new()
-
+      end) |> Map.new()
     successful = Enum.count(results, fn {_, result} -> match?({:ok, _}, result) end)
     failed = length(tasks) - successful
 
@@ -138,7 +136,7 @@ defmodule EveDmv.Intelligence.Core.Supervisor do
   end
 
   defp generate_task_id(analyzer_module, entity_id) do
-    analyzer_name = analyzer_module |> Module.split() |> List.last() |> String.downcase()
+    analyzer_name = Module.split(analyzer_module) List.last() String.downcase()
     "#{analyzer_name}_#{entity_id}"
   end
 end

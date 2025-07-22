@@ -55,7 +55,7 @@ defmodule EveDmv.Cache.StaticDataCache do
 
     # Batch fetch missing
     if missing_ids == [] do
-      cached_map
+    cached_map
     else
       fetched_map = batch_fetch_systems(missing_ids)
       Map.merge(cached_map, fetched_map)
@@ -69,7 +69,7 @@ defmodule EveDmv.Cache.StaticDataCache do
     case :ets.lookup(@table_name, {:system, system_id}) do
       [{_, name}] ->
         GenServer.cast(__MODULE__, {:record_hits, 1})
-        name
+    name
 
       [] ->
         GenServer.cast(__MODULE__, {:record_misses, 1})
@@ -217,7 +217,7 @@ defmodule EveDmv.Cache.StaticDataCache do
 
     # Batch fetch missing
     if missing_ids == [] do
-      cached_map
+    cached_map
     else
       fetched_map = batch_fetch_items(missing_ids, category)
       Map.merge(cached_map, fetched_map)
@@ -228,7 +228,7 @@ defmodule EveDmv.Cache.StaticDataCache do
     case :ets.lookup(@table_name, {category, type_id}) do
       [{_, name}] ->
         GenServer.cast(__MODULE__, {:record_hits, 1})
-        name
+    name
 
       [] ->
         GenServer.cast(__MODULE__, {:record_misses, 1})
@@ -369,7 +369,7 @@ defmodule EveDmv.Cache.StaticDataCache do
       # Ashab
       30_002_761,
       # Common WH system from our data
-      31_002_238
+    31_002_238
     ]
 
     # Warm common ship types
@@ -416,7 +416,7 @@ defmodule EveDmv.Cache.StaticDataCache do
       29_984,
       29_986,
       29_988,
-      29_990
+    29_990
     ]
 
     # Batch load all at once

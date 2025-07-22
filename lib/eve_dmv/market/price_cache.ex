@@ -52,10 +52,12 @@ defmodule EveDmv.Market.PriceCache do
     # Convert keys to strings to match original interface
     string_found =
       found
-      |> Enum.map(fn {{:price, type_id}, value} ->
-        {Integer.to_string(type_id), value}
-      end)
-      |> Enum.into(%{})
+
+    Enum.map(fn {{:price, type_id}, value} ->
+      {Integer.to_string(type_id), value}
+    end)
+
+    Enum.into(%{})
 
     missing = Enum.map(missing_keys, fn {:price, type_id} -> type_id end)
 

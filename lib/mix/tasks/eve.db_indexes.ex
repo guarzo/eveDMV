@@ -180,7 +180,7 @@ defmodule Mix.Tasks.Eve.DbIndexes do
       calls,
       mean_exec_time,
       total_exec_time,
-      query
+    query
     FROM pg_stat_statements
     WHERE query LIKE '%killmails_raw%'
       AND query NOT LIKE '%pg_stat_statements%'
@@ -213,7 +213,7 @@ defmodule Mix.Tasks.Eve.DbIndexes do
       last_vacuum,
       last_autovacuum,
       last_analyze,
-      last_autoanalyze
+    last_autoanalyze
     FROM pg_stat_user_tables
     WHERE tablename = 'killmails_raw'
     """

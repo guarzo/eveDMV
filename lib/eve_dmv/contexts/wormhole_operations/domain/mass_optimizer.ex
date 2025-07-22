@@ -140,8 +140,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
 
       # Sort by priority
       sorted_suggestions =
-        suggestions
-        |> Enum.sort_by(fn s ->
+    suggestions
+    Enum.sort_by(fn s ->
           case s.priority do
             :critical -> 0
             :high -> 1
@@ -151,7 +151,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
           end
         end)
         # Limit to top 10 suggestions
-        |> Enum.take(10)
+    Enum.take(10)
 
       {:ok, sorted_suggestions}
     end
@@ -176,8 +176,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
 
     # Validate individual ship masses
     individual_violations =
-      ships
-      |> Enum.map(fn ship ->
+    ships
+    Enum.map(fn ship ->
         ship_mass = get_ship_mass(ship)
         ship_name = Map.get(ship, :type_name, "Unknown")
 
@@ -192,7 +192,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
           nil
         end
       end)
-      |> Enum.filter(& &1)
+    Enum.filter(& &1)
 
     # Check for dangerous mass utilization
     mass_utilization = total_mass / max_mass
@@ -204,7 +204,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
     # Check total mass violation
     mass_violations =
       if total_mass_valid do
-        base_violations
+    base_violations
       else
         [
           %{
@@ -285,12 +285,12 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
       cached_metrics = get_cached_metrics()
 
       if cached_metrics do
-        cached_metrics
+    cached_metrics
       else
         # Calculate fresh metrics
         metrics = calculate_fresh_metrics()
         cache_metrics(metrics)
-        metrics
+    metrics
       end
     rescue
       error ->
@@ -310,8 +310,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
 
   defp calculate_fleet_mass(ships) do
     ships
-    |> Enum.map(&get_ship_mass/1)
-    |> Enum.sum()
+    Enum.map(&get_ship_mass/1) |> Enum.sum()
   end
 
   defp get_ship_mass(ship) do
@@ -491,7 +490,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
 
   defp categorize_ship_roles(ships) do
     ships
-    |> Enum.reduce(%{dps: 0, logistics: 0, support: 0}, fn ship, acc ->
+    Enum.reduce(%{dps: 0, logistics: 0, support: 0}, fn ship, acc ->
       role = determine_ship_role(ship)
       Map.update(acc, role, 1, &(&1 + 1))
     end)
@@ -522,7 +521,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
       end
     else
       # Fallback to name-based detection for legacy data
-      ship_name = ship |> Map.get(:type_name, "") |> String.downcase()
+      ship_name = ship |> Map.get(:type_name, "") String.downcase()
 
       cond do
         String.contains?(ship_name, [
@@ -560,8 +559,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
       %{light: 0, medium: 0, heavy: 0}
     else
       ships
-      |> Enum.map(&get_ship_mass/1)
-      |> Enum.reduce(%{light: 0, medium: 0, heavy: 0}, fn mass, acc ->
+    Enum.map(&get_ship_mass/1)
+    Enum.reduce(%{light: 0, medium: 0, heavy: 0}, fn mass, acc ->
         cond do
           mass < 50_000_000 -> Map.update(acc, :light, 1, &(&1 + 1))
           mass < 150_000_000 -> Map.update(acc, :medium, 1, &(&1 + 1))
@@ -586,8 +585,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
 
     # Calculate potential mass savings
     potential_savings =
-      ships
-      |> Enum.map(fn ship ->
+    ships
+    Enum.map(fn ship ->
         current_mass = get_ship_mass(ship)
         lighter_alternative = find_lighter_alternative(ship)
 
@@ -596,9 +595,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
         else
           0
         end
-      end)
-      |> Enum.sum()
-
+      end) |> Enum.sum()
     optimization_percentage =
       if current_mass > 0 do
         potential_savings / current_mass * 100
@@ -615,7 +612,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
 
   defp find_lighter_alternative(ship) do
     # Simplified alternative finder
-    ship_name = ship |> Map.get(:type_name, "") |> String.downcase()
+    ship_name = ship |> Map.get(:type_name, "") String.downcase()
 
     # Map battleships to battlecruiser alternatives for wormhole use
     alternatives = %{
@@ -729,8 +726,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
   defp generate_upgrade_suggestions(ships, _wormhole_class) do
     # Check for T1 ships that could be upgraded
     t1_ships =
-      ships
-      |> Enum.filter(fn ship ->
+    ships
+    Enum.filter(fn ship ->
         ship_name = Map.get(ship, :type_name, "")
         is_t1_ship(ship_name)
       end)
@@ -752,7 +749,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
 
   defp generate_doctrine_suggestions(ships, _wormhole_class) do
     # Analyze doctrine coherence
-    ship_types = ships |> Enum.map(&Map.get(&1, :type_name, "")) |> Enum.uniq()
+    ship_types = ships |> Enum.map(&Map.get(&1, :type_name, "")) Enum.uniq()
 
     if length(ship_types) > length(ships) * 0.7 do
       [
@@ -837,9 +834,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
       [{:current, metrics, timestamp}] ->
         # Check if cache is still valid (5 minutes)
         if DateTime.diff(DateTime.utc_now(), timestamp, :second) < 300 do
-          metrics
+    metrics
         else
-          nil
+    nil
         end
 
       [] ->

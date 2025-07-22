@@ -31,17 +31,19 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
 
     socket =
       socket
-      |> assign(:page_title, "Surveillance Alerts")
-      |> assign(:alerts, [])
-      |> assign(:alert_filters, default_filters())
-      |> assign(:selected_alert, nil)
-      |> assign(:show_alert_details, false)
-      |> assign(:new_alert_count, 0)
-      |> assign(:sound_enabled, true)
-      |> assign(:auto_acknowledge, false)
-      |> assign(:alert_metrics, %{})
-      |> load_alerts()
-      |> load_alert_metrics()
+
+    assign(:page_title, "Surveillance Alerts")
+    assign(:alerts, [])
+    assign(:alert_filters, default_filters())
+    assign(:selected_alert, nil)
+    assign(:show_alert_details, false)
+    assign(:new_alert_count, 0)
+    assign(:sound_enabled, true)
+    assign(:auto_acknowledge, false)
+    assign(:alert_metrics, %{})
+
+    load_alerts()
+    load_alert_metrics()
 
     {:ok, socket}
   end
@@ -65,8 +67,10 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
 
     socket =
       socket
-      |> assign(:alert_filters, updated_filters)
-      |> load_alerts()
+
+    assign(:alert_filters, updated_filters)
+
+    load_alerts()
 
     {:noreply, socket}
   end
@@ -80,8 +84,10 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
       {:ok, _updated_alert} ->
         socket =
           socket
-          |> put_flash(:info, "Alert acknowledged")
-          |> load_alerts()
+
+        put_flash(:info, "Alert acknowledged")
+
+        load_alerts()
 
         {:noreply, socket}
 
@@ -100,8 +106,10 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
       {:ok, _updated_alert} ->
         socket =
           socket
-          |> put_flash(:info, "Alert resolved")
-          |> load_alerts()
+
+        put_flash(:info, "Alert resolved")
+
+        load_alerts()
 
         {:noreply, socket}
 
@@ -121,9 +129,11 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
       {:ok, count} ->
         socket =
           socket
-          |> put_flash(:info, "Acknowledged #{count} alerts")
-          |> assign(:new_alert_count, 0)
-          |> load_alerts()
+
+        put_flash(:info, "Acknowledged #{count} alerts")
+        assign(:new_alert_count, 0)
+
+        load_alerts()
 
         {:noreply, socket}
 
@@ -183,9 +193,11 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
     # Trigger visual and audio notifications
     socket =
       socket
-      |> update(:new_alert_count, &(&1 + 1))
-      |> load_alerts()
-      |> trigger_alert_notification(alert_data)
+
+    update(:new_alert_count, &(&1 + 1))
+
+    load_alerts()
+    trigger_alert_notification(alert_data)
 
     {:noreply, socket}
   end
@@ -195,18 +207,20 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
     # Alert state changed, refresh list
     socket =
       socket
-      |> load_alerts()
-      |> then(fn socket ->
-        # Update details if this alert is currently shown
-        if socket.assigns.selected_alert && socket.assigns.selected_alert.id == alert_id do
-          case safe_call(fn -> AlertService.get_alert(alert_id) end) do
-            {:ok, updated_alert} -> assign(socket, :selected_alert, updated_alert)
-            _ -> assign(socket, :selected_alert, nil)
-          end
-        else
-          socket
+
+    load_alerts()
+
+    then(fn socket ->
+      # Update details if this alert is currently shown
+      if socket.assigns.selected_alert && socket.assigns.selected_alert.id == alert_id do
+        case safe_call(fn -> AlertService.get_alert(alert_id) end) do
+          {:ok, updated_alert} -> assign(socket, :selected_alert, updated_alert)
+          _ -> assign(socket, :selected_alert, nil)
         end
-      end)
+      else
+        socket
+      end
+    end)
 
     {:noreply, socket}
   end
@@ -260,13 +274,13 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
     case safe_call(fn -> AlertService.get_alert(alert_id) end) do
       {:ok, alert} ->
         socket
-        |> assign(:selected_alert, alert)
-        |> assign(:show_alert_details, true)
+        assign(:selected_alert, alert)
+        assign(:show_alert_details, true)
 
       _ ->
         socket
-        |> put_flash(:error, "Alert not found")
-        |> assign(:show_alert_details, false)
+        put_flash(:error, "Alert not found")
+        assign(:show_alert_details, false)
     end
   end
 

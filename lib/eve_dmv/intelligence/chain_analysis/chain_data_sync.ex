@@ -152,8 +152,9 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainDataSync do
   defp mark_all_departed(chain_topology_id) do
     {:ok, inhabitants} =
       SystemInhabitant
-      |> Ash.Query.filter(chain_topology_id == ^chain_topology_id and present == true)
-      |> Ash.read(domain: Api)
+
+    Ash.Query.filter(chain_topology_id == ^chain_topology_id and present == true)
+    Ash.read(domain: Api)
 
     # Bulk update all inhabitants to mark as departed
     departure_time = DateTime.utc_now()
@@ -167,8 +168,9 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainDataSync do
     # Get all existing inhabitants for this chain
     {:ok, existing} =
       SystemInhabitant
-      |> Ash.Query.filter(chain_topology_id == ^chain_topology_id)
-      |> Ash.read(domain: Api)
+
+    Ash.Query.filter(chain_topology_id == ^chain_topology_id)
+    Ash.read(domain: Api)
 
     existing_map =
       Map.new(existing, fn inhabitant ->
@@ -241,8 +243,9 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainDataSync do
     # Get all existing connections for this chain
     {:ok, existing} =
       ChainConnection
-      |> Ash.Query.filter(chain_topology_id == ^chain_topology_id)
-      |> Ash.read(domain: Api)
+
+    Ash.Query.filter(chain_topology_id == ^chain_topology_id)
+    Ash.read(domain: Api)
 
     existing_map =
       Map.new(existing, fn connection ->

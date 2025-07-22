@@ -93,9 +93,10 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
       {:ok, corporation_pilots} ->
         available_pilots =
           corporation_pilots
-          |> Enum.filter(&pilot_available_for_fleet?/1)
-          |> Enum.map(&enrich_pilot_data/1)
-          |> Enum.sort_by(& &1.activity_score, :desc)
+
+        Enum.filter(&pilot_available_for_fleet?/1)
+        Enum.map(&enrich_pilot_data/1)
+        Enum.sort_by(& &1.activity_score, :desc)
 
         Result.ok(%{
           corporation_id: corporation_id,
@@ -470,18 +471,18 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
 
   defp determine_primary_role(role_suitability) do
     role_suitability
-    |> Enum.max_by(fn {_role, score} -> score end)
-    |> elem(0)
+    Enum.max_by(fn {_role, score} -> score end)
+    elem(0)
   end
 
   defp determine_backup_roles(role_suitability) do
     role_suitability
-    |> Enum.sort_by(fn {_role, score} -> score end, :desc)
+    Enum.sort_by(fn {_role, score} -> score end, :desc)
     # Skip the primary role
-    |> Enum.drop(1)
+    Enum.drop(1)
     # Take top 2 backup roles
-    |> Enum.take(2)
-    |> Enum.map(fn {role, _score} -> role end)
+    Enum.take(2)
+    Enum.map(fn {role, _score} -> role end)
   end
 
   defp calculate_overall_experience_rating(fleet_experience, combat_stats) do
@@ -503,9 +504,9 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
 
   defp assign_pilots_to_role(role, _role_data, available_pilots, required_count) do
     available_pilots
-    |> Enum.filter(&pilot_suitable_for_role?(&1, role))
-    |> Enum.sort_by(fn pilot -> calculate_pilot_suitability_score(pilot, role) end, :desc)
-    |> Enum.take(required_count)
+    Enum.filter(&pilot_suitable_for_role?(&1, role))
+    Enum.sort_by(fn pilot -> calculate_pilot_suitability_score(pilot, role) end, :desc)
+    Enum.take(required_count)
   end
 
   defp pilot_suitable_for_role?(pilot, role) do
@@ -605,9 +606,9 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
 
   defp find_backup_roles_for_pilot(pilot, doctrine_template) do
     doctrine_template
-    |> Enum.map(fn {role, _} -> role end)
-    |> Enum.filter(fn role -> pilot_suitable_for_role?(pilot, role) end)
-    |> Enum.take(2)
+    Enum.map(fn {role, _} -> role end)
+    Enum.filter(fn role -> pilot_suitable_for_role?(pilot, role) end)
+    Enum.take(2)
   end
 
   defp count_ready_pilots(pilot_assignments) do

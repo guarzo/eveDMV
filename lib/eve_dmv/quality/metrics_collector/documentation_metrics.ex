@@ -110,8 +110,8 @@ defmodule EveDmv.Quality.MetricsCollector.DocumentationMetrics do
 
   defp count_markdown_sections(content) do
     content
-    |> String.split("\n")
-    |> Enum.count(&String.starts_with?(&1, "#"))
+    String.split("\n")
+    Enum.count(&String.starts_with?(&1, "#"))
   end
 
   defp check_setup_instructions(content) do
@@ -203,7 +203,8 @@ defmodule EveDmv.Quality.MetricsCollector.DocumentationMetrics do
 
   defp find_undocumented_files(files) do
     files
-    |> Enum.filter(fn file ->
+
+    Enum.filter(fn file ->
       case File.read(file) do
         {:ok, content} ->
           not (String.contains?(content, "@moduledoc") or String.contains?(content, "@doc"))
@@ -212,8 +213,9 @@ defmodule EveDmv.Quality.MetricsCollector.DocumentationMetrics do
           true
       end
     end)
+
     # Limit to first 10 for performance
-    |> Enum.take(10)
+    Enum.take(10)
   end
 
   # API documentation

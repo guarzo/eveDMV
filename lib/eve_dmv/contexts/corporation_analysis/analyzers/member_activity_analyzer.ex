@@ -84,17 +84,19 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.MemberActivityAnalyzer d
     # Identify highly engaged members
     top_performers =
       member_stats
-      |> Enum.sort_by(fn member -> calculate_member_activity_score(member) end, :desc)
-      |> Enum.take(10)
-      |> Enum.map(fn member ->
-        %{
-          character_id: Map.get(member, :character_id),
-          character_name: Map.get(member, :character_name),
-          activity_score: calculate_member_activity_score(member),
-          last_active: Map.get(member, :last_active),
-          role: Map.get(member, :corp_role, "Member")
-        }
-      end)
+
+    Enum.sort_by(fn member -> calculate_member_activity_score(member) end, :desc)
+    Enum.take(10)
+
+    Enum.map(fn member ->
+      %{
+        character_id: Map.get(member, :character_id),
+        character_name: Map.get(member, :character_name),
+        activity_score: calculate_member_activity_score(member),
+        last_active: Map.get(member, :last_active),
+        role: Map.get(member, :corp_role, "Member")
+      }
+    end)
 
     %{
       engagement_distribution: engagement_categories,
@@ -148,18 +150,21 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.MemberActivityAnalyzer d
     # Analyze timezone distribution of members
     timezone_data =
       member_stats
-      |> Enum.group_by(fn member ->
-        determine_member_timezone(member)
-      end)
-      |> Enum.map(fn {timezone, members} ->
-        {timezone,
-         %{
-           member_count: length(members),
-           active_count: Enum.count(members, &member_active?/1),
-           coverage_score: calculate_timezone_coverage_score(members)
-         }}
-      end)
-      |> Enum.into(%{})
+
+    Enum.group_by(fn member ->
+      determine_member_timezone(member)
+    end)
+
+    Enum.map(fn {timezone, members} ->
+      {timezone,
+       %{
+         member_count: length(members),
+         active_count: Enum.count(members, &member_active?/1),
+         coverage_score: calculate_timezone_coverage_score(members)
+       }}
+    end)
+
+    Enum.into(%{})
 
     # Calculate overall coverage metrics
     coverage_gaps = identify_coverage_gaps(timezone_data)
@@ -344,10 +349,11 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.MemberActivityAnalyzer d
   defp calculate_recent_activity(member_stats) do
     total_recent_activity =
       member_stats
-      |> Enum.map(fn member ->
-        Map.get(member, :recent_kills, 0) + Map.get(member, :recent_losses, 0)
-      end)
-      |> Enum.sum()
+
+    Enum.map(fn member ->
+      Map.get(member, :recent_kills, 0) + Map.get(member, :recent_losses, 0)
+    end)
+    |> Enum.sum()
 
     # Normalize by member count
     member_count = length(member_stats)
@@ -411,9 +417,9 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.MemberActivityAnalyzer d
 
   defp identify_peak_hours(activity_by_hour) do
     activity_by_hour
-    |> Enum.sort_by(fn {_hour, activity} -> activity end, :desc)
-    |> Enum.take(3)
-    |> Enum.map(fn {hour, activity} -> %{hour: hour, activity: activity} end)
+    Enum.sort_by(fn {_hour, activity} -> activity end, :desc)
+    Enum.take(3)
+    Enum.map(fn {hour, activity} -> %{hour: hour, activity: activity} end)
   end
 
   defp identify_activity_patterns(_activity_by_hour, _activity_by_day) do

@@ -632,7 +632,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
           killmail_time >= condition.start_time and killmail_time <= condition.end_time
 
         :hours ->
-          hour = killmail_time |> DateTime.to_time() |> Map.get(:hour)
+          hour = killmail_time(DateTime.to_time() |> Map.get(:hour))
           hour in condition.hours
 
         :days_of_week ->
@@ -687,7 +687,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
         # Calculate jump distance from any system in the chain
         chain_systems =
           Map.get(topology, "systems", [])
-          |> Enum.map(&Map.get(&1, "system_id"))
+
+        Enum.map(&Map.get(&1, "system_id"))
 
         jump_distance = calculate_min_jump_distance(system_id, chain_systems)
 
@@ -719,9 +720,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
       {:ok, inhabitants} ->
         inhabitant_character_ids =
           Enum.map(inhabitants, &Map.get(&1, "character_id"))
-          |> Enum.filter(&(&1 != nil))
-          |> MapSet.new()
 
+        Enum.filter(&(&1 != nil)) |> MapSet.new()
         # Check victim
         victim_match = MapSet.member?(inhabitant_character_ids, killmail_data.victim.character_id)
 
@@ -736,24 +736,26 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
         if matches do
           matched_criteria =
             []
-            |> then(fn acc ->
-              if victim_match do
-                [
-                  %{
-                    type: :chain_inhabitant_victim,
-                    character_id: killmail_data.victim.character_id
-                  }
-                  | acc
-                ]
-              else
-                acc
-              end
+
+          then(fn acc ->
+            if victim_match do
+              [
+                %{
+                  type: :chain_inhabitant_victim,
+                  character_id: killmail_data.victim.character_id
+                }
+                | acc
+              ]
+            else
+              acc
+            end
+          end)
+
+          then(fn acc ->
+            Enum.reduce(attacker_matches, acc, fn attacker, acc ->
+              [%{type: :chain_inhabitant_attacker, character_id: attacker.character_id} | acc]
             end)
-            |> then(fn acc ->
-              Enum.reduce(attacker_matches, acc, fn attacker, acc ->
-                [%{type: :chain_inhabitant_attacker, character_id: attacker.character_id} | acc]
-              end)
-            end)
+          end)
 
           %{
             matches: true,
@@ -777,7 +779,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
       {:ok, topology} ->
         chain_systems =
           Map.get(topology, "systems", [])
-          |> Enum.map(&Map.get(&1, "system_id"))
+
+        Enum.map(&Map.get(&1, "system_id"))
 
         # If killmail is within 1 jump of chain, it could be hostiles entering
         within_one_jump =
@@ -814,8 +817,9 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
       # This should be replaced with proper jump route calculation
       min_distance =
         chain_system_ids
-        |> Enum.map(fn system_id -> abs(target_system_id - system_id) end)
-        |> Enum.min(fn -> 999 end)
+
+      Enum.map(fn system_id -> abs(target_system_id - system_id) end)
+      Enum.min(fn -> 999 end)
 
       cond do
         # Likely adjacent

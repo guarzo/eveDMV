@@ -17,7 +17,7 @@ defmodule EveDmv.Shared.KillmailQueries do
 
     """
     WITH character_activity AS (
-      SELECT
+    SELECT
         p.is_victim,
         COUNT(*) as count,
         COALESCE(SUM(k.zkb_total_value), 0) as total_value

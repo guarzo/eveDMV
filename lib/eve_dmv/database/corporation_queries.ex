@@ -111,7 +111,7 @@ defmodule EveDmv.Database.CorporationQueries do
       days_active,
       activity_rank,
       last_seen,
-      CASE
+    CASE
         WHEN losses = 0 THEN 100.0
         ELSE ROUND((kills::decimal / (kills + losses)::decimal) * 100, 2)
       END as efficiency
@@ -168,7 +168,7 @@ defmodule EveDmv.Database.CorporationQueries do
     query = """
     WITH member_activity AS (
       -- Members who died
-      SELECT
+    SELECT
         victim_character_id as character_id,
         raw_data->'victim'->>'character_name' as character_name,
         COUNT(*) as total_activity,
@@ -183,7 +183,7 @@ defmodule EveDmv.Database.CorporationQueries do
       UNION ALL
 
       -- Members who got kills
-      SELECT
+    SELECT
         (attacker->>'character_id')::integer as character_id,
         attacker->>'character_name' as character_name,
         COUNT(*) as total_activity,
@@ -197,7 +197,7 @@ defmodule EveDmv.Database.CorporationQueries do
       GROUP BY character_id, character_name
     ),
     aggregated AS (
-      SELECT
+    SELECT
         character_id,
         MAX(character_name) as character_name,
         SUM(total_activity) as total_activity,
@@ -212,7 +212,7 @@ defmodule EveDmv.Database.CorporationQueries do
       total_activity,
       kills,
       losses,
-      CASE
+    CASE
         WHEN losses > 0 THEN ROUND(kills::numeric / losses, 2)
         ELSE kills
       END as kd_ratio
@@ -246,7 +246,7 @@ defmodule EveDmv.Database.CorporationQueries do
   def get_timezone_activity(corporation_id, since_date) do
     query = """
     WITH hourly_activity AS (
-      SELECT
+    SELECT
         EXTRACT(HOUR FROM killmail_time AT TIME ZONE 'UTC') as hour,
         COUNT(*) as activity_count,
         'loss' as activity_type
@@ -257,7 +257,7 @@ defmodule EveDmv.Database.CorporationQueries do
 
       UNION ALL
 
-      SELECT
+    SELECT
         EXTRACT(HOUR FROM k.killmail_time AT TIME ZONE 'UTC') as hour,
         COUNT(*) as activity_count,
         'kill' as activity_type
@@ -283,12 +283,12 @@ defmodule EveDmv.Database.CorporationQueries do
         # Convert to map for easy lookup
         activity_map =
           rows
-          |> Enum.map(fn [hour, count] -> {hour, count} end)
-          |> Map.new()
 
+        Enum.map(fn [hour, count] -> {hour, count} end) |> Map.new()
         # Ensure all hours are represented
         0..23
-        |> Enum.map(fn hour ->
+
+        Enum.map(fn hour ->
           %{
             hour: hour,
             activity: Map.get(activity_map, hour, 0)
@@ -308,7 +308,7 @@ defmodule EveDmv.Database.CorporationQueries do
     query = """
     WITH ship_usage AS (
       -- Ships lost by corp members
-      SELECT
+    SELECT
         victim_ship_type_id as ship_type_id,
         COUNT(*) as usage_count,
         SUM(COALESCE((raw_data->>'total_value')::numeric, 0)) as total_value
@@ -321,7 +321,7 @@ defmodule EveDmv.Database.CorporationQueries do
       UNION ALL
 
       -- Ships used by corp members in kills
-      SELECT
+    SELECT
         (attacker->>'ship_type_id')::integer as ship_type_id,
         COUNT(*) as usage_count,
         0 as total_value
@@ -371,7 +371,7 @@ defmodule EveDmv.Database.CorporationQueries do
       k.victim_ship_type_id,
       k.victim_character_id,
       k.raw_data->'victim'->>'character_name' as victim_name,
-      CASE
+    CASE
         WHEN k.victim_corporation_id = $1 THEN 'loss'
         ELSE 'kill'
       END as involvement_type,
@@ -424,11 +424,11 @@ defmodule EveDmv.Database.CorporationQueries do
     query = """
     WITH corp_data AS (
       -- From victims
-      SELECT
+    SELECT
         raw_data->'victim'->>'corporation_name' as corp_name,
         raw_data->'victim'->>'alliance_name' as alliance_name,
         (raw_data->'victim'->>'alliance_id')::integer as alliance_id,
-        killmail_time
+    killmail_time
       FROM killmails_raw
       WHERE victim_corporation_id = $1
       ORDER BY killmail_time DESC
@@ -436,7 +436,7 @@ defmodule EveDmv.Database.CorporationQueries do
     ),
     attacker_data AS (
       -- From attackers
-      SELECT
+    SELECT
         attacker->>'corporation_name' as corp_name,
         attacker->>'alliance_name' as alliance_name,
         (attacker->>'alliance_id')::integer as alliance_id,

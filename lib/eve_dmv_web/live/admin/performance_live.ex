@@ -16,8 +16,7 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
   @impl true
   def mount(_params, _session, socket) do
     if connected?(socket) do
-      # Subscribe to performance updates
-      PerformanceDashboard.subscribe()
+      # Subscribe to performance PerformanceDashboard.subscribe(updates)
       PubSub.subscribe(EveDmv.PubSub, "performance:alerts")
 
       # Schedule periodic refresh
@@ -29,12 +28,12 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
     report = PerformanceDashboard.generate_report(60)
 
     socket =
-      socket
-      |> assign(:page_title, "Performance Monitor")
-      |> assign(:metrics, metrics)
-      |> assign(:report, report)
-      |> assign(:selected_tab, :overview)
-      |> assign(:auto_refresh, true)
+    socket
+    assign(:page_title, "Performance Monitor")
+    assign(:metrics, metrics)
+    assign(:report, report)
+    assign(:selected_tab, :overview)
+    assign(:auto_refresh, true)
 
     {:ok, socket}
   end
@@ -48,9 +47,9 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
   @impl true
   def handle_event("select_tab", %{"tab" => tab}, socket) do
     {:noreply,
-     socket
-     |> assign(:selected_tab, String.to_existing_atom(tab))
-     |> push_patch(to: ~p"/admin/performance?tab=#{tab}")}
+    socket
+    assign(:selected_tab, String.to_existing_atom(tab))
+    push_patch(to: ~p"/admin/performance?tab=#{tab}")}
   end
 
   def handle_event("toggle_refresh", _params, socket) do
@@ -76,9 +75,9 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
       report = PerformanceDashboard.generate_report(60)
 
       socket =
-        socket
-        |> assign(:metrics, metrics)
-        |> assign(:report, report)
+    socket
+    assign(:metrics, metrics)
+    assign(:report, report)
 
       # Schedule next refresh
       Process.send_after(self(), :refresh, @refresh_interval)
@@ -125,28 +124,28 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
           phx-value-tab="overview"
           class={"tab " <> if @selected_tab == :overview, do: "active", else: ""}
         >
-          Overview
+    Overview
         </button>
         <button
           phx-click="select_tab"
           phx-value-tab="queries"
           class={"tab " <> if @selected_tab == :queries, do: "active", else: ""}
         >
-          Queries
+    Queries
         </button>
         <button
           phx-click="select_tab"
           phx-value-tab="cache"
           class={"tab " <> if @selected_tab == :cache, do: "active", else: ""}
         >
-          Cache
+    Cache
         </button>
         <button
           phx-click="select_tab"
           phx-value-tab="memory"
           class={"tab " <> if @selected_tab == :memory, do: "active", else: ""}
         >
-          Memory
+    Memory
         </button>
         <button
           phx-click="select_tab"

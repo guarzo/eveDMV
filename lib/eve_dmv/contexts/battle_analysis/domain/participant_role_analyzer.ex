@@ -35,8 +35,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
     # Analyze each participant
     analyzed_participants =
       participants
-      |> Enum.map(&analyze_participant_role(&1, battle.killmails, options))
-      |> Enum.sort_by(& &1.contribution_score, :desc)
+
+    Enum.map(&analyze_participant_role(&1, battle.killmails, options))
+    Enum.sort_by(& &1.contribution_score, :desc)
 
     # Identify key players and commanders
     key_players = identify_key_players(analyzed_participants)
@@ -109,7 +110,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
 
   defp extract_all_participants(killmails) do
     killmails
-    |> Enum.flat_map(fn killmail ->
+
+    Enum.flat_map(fn killmail ->
       # Extract victim
       victim = %{
         character_id: killmail.victim_character_id,
@@ -124,8 +126,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
         case killmail.raw_data do
           %{"attackers" => attackers} when is_list(attackers) ->
             attackers
-            |> Enum.filter(& &1["character_id"])
-            |> Enum.map(fn attacker ->
+            Enum.filter(& &1["character_id"])
+
+            Enum.map(fn attacker ->
               %{
                 character_id: parse_id(attacker["character_id"]),
                 character_name: attacker["character_name"],
@@ -141,8 +144,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
 
       [victim | attackers]
     end)
-    |> Enum.filter(& &1.character_id)
-    |> Enum.uniq_by(&{&1.character_id, &1.corporation_id})
+
+    Enum.filter(& &1.character_id)
+    Enum.uniq_by(&{&1.character_id, &1.corporation_id})
   end
 
   defp get_participant_activities(participant, killmails) do
@@ -403,8 +407,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
   defp identify_key_players(participants) do
     # Top 10 contributors
     participants
-    |> Enum.take(10)
-    |> Enum.map(fn participant ->
+    Enum.take(10)
+
+    Enum.map(fn participant ->
       %{
         character_id: participant.character_id,
         character_name: participant.character_name,
@@ -420,15 +425,18 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
     # Look for command ships and high-activity participants
     potential_commanders =
       participants
-      |> Enum.filter(fn participant ->
-        # Command ship usage or high activity with diverse roles
-        participant.primary_role == :command or
-          (participant.contribution_score > 100 and participant.activity_summary.total_kills > 3)
-      end)
-      |> Enum.take(3)
+
+    Enum.filter(fn participant ->
+      # Command ship usage or high activity with diverse roles
+      participant.primary_role == :command or
+        (participant.contribution_score > 100 and participant.activity_summary.total_kills > 3)
+    end)
+
+    Enum.take(3)
 
     potential_commanders
-    |> Enum.map(fn participant ->
+
+    Enum.map(fn participant ->
       %{
         character_id: participant.character_id,
         character_name: participant.character_name,
@@ -445,10 +453,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
     total = length(participants)
 
     role_counts
-    |> Enum.map(fn {role, count} ->
+
+    Enum.map(fn {role, count} ->
       {role, %{count: count, percentage: Float.round(count / total * 100, 1)}}
     end)
-    |> Enum.into(%{})
+
+    Enum.into(%{})
   end
 
   defp calculate_participation_rate(activities, killmails) do
@@ -466,7 +476,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
 
   defp count_ships_by_role(ship_types, role) do
     ship_types
-    |> Enum.count(&(classify_ship_role(&1) == role))
+    Enum.count(&(classify_ship_role(&1) == role))
   end
 
   defp classify_ship_role(ship_type_id) do
@@ -574,8 +584,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
     case raw_data do
       %{"attackers" => attackers} when is_list(attackers) ->
         attackers
-        |> Enum.map(&(&1["damage_done"] || 0))
-        |> Enum.sum()
+        Enum.map(&(&1["damage_done"] || 0)) |> Enum.sum()
 
       _ ->
         0

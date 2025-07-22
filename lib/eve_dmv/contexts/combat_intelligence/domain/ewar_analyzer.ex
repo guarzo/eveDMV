@@ -109,7 +109,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
       12086,
       # T2 variants
       14264,
-      14266
+    14266
     ],
     # Neuts
     energy_neutralizer: [
@@ -119,7 +119,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
       12266,
       # T2 variants
       12268,
-      12270
+    12270
     ],
     # Points/Scrams
     warp_disruptor: [
@@ -128,7 +128,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
       3243,
       # T2 variants
       14660,
-      14662
+    14662
     ]
   }
 
@@ -158,9 +158,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
   """
   def analyze_fleet_ewar(ship_list) when is_list(ship_list) do
     ewar_ships =
-      ship_list
-      |> Enum.map(&analyze_single_ship/1)
-      |> Enum.filter(& &1.is_ewar)
+    ship_list
+    Enum.map(&analyze_single_ship/1)
+    Enum.filter(& &1.is_ewar)
 
     fleet_analysis = %{
       total_ships: length(ship_list),
@@ -180,9 +180,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
   """
   def detect_ewar_modules(fitting_items) when is_list(fitting_items) do
     ewar_items =
-      fitting_items
-      |> Enum.filter(&is_ewar_module?/1)
-      |> Enum.map(&categorize_ewar_module/1)
+    fitting_items
+    Enum.filter(&is_ewar_module?/1)
+    Enum.map(&categorize_ewar_module/1)
 
     module_analysis = %{
       has_ewar: not Enum.empty?(ewar_items),
@@ -232,9 +232,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
     else
       analysis =
         build_ewar_analysis(ship_name, ewar_types)
-        |> Map.put(:ship_id, ship_info.type_id)
-        |> Map.put(:ship_group, ship_info.group_name)
-        |> add_ship_bonuses(ship_info)
+    Map.put(:ship_id, ship_info.type_id)
+    Map.put(:ship_group, ship_info.group_name)
+    add_ship_bonuses(ship_info)
 
       {:ok, analysis}
     end
@@ -385,9 +385,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
              "huginn"
            ]
          ) do
-        25
+    25
       else
-        0
+    0
       end
 
     # Recon ships get bonus
@@ -396,9 +396,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
            String.downcase(ship_name),
            ["falcon", "rook", "arazu", "lachesis", "pilgrim", "curse", "huginn"]
          ) do
-        15
+    15
       else
-        0
+    0
       end
 
     # Type-specific bonuses
@@ -616,18 +616,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
 
   defp group_ewar_by_type(ewar_ships) do
     ewar_ships
-    |> Enum.flat_map(fn ship ->
+    Enum.flat_map(fn ship ->
       Enum.map(ship.ewar_types, fn type -> {type, ship} end)
     end)
-    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
-    |> Enum.map(fn {type, ships} ->
+    Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+    Enum.map(fn {type, ships} ->
       {type,
        %{
          count: length(ships),
          ships: Enum.map(ships, & &1.ship_name)
        }}
-    end)
-    |> Map.new()
+    end) |> Map.new()
   end
 
   defp assess_fleet_ewar_threat(ewar_ships) do
@@ -636,10 +635,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
     else
       # Count different EWAR types
       ewar_diversity =
-        ewar_ships
-        |> Enum.flat_map(& &1.ewar_types)
-        |> Enum.uniq()
-        |> length()
+    ewar_ships
+    Enum.flat_map(& &1.ewar_types) |> Enum.uniq()
+        length()
 
       # Check for force multipliers
       has_recons =
@@ -659,11 +657,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
 
   defp identify_ewar_gaps(ewar_ships) do
     present_types =
-      ewar_ships
-      |> Enum.flat_map(& &1.ewar_types)
-      |> Enum.uniq()
-      |> MapSet.new()
-
+    ewar_ships
+    Enum.flat_map(& &1.ewar_types) |> Enum.uniq() |> MapSet.new()
     all_types =
       MapSet.new([:ecm, :damps, :tracking_disruptors, :target_painters, :neuts, :tackle])
 
@@ -708,10 +703,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
     recommendations = []
 
     ewar_types =
-      ewar_ships
-      |> Enum.flat_map(& &1.ewar_types)
-      |> Enum.uniq()
-
+    ewar_ships
+    Enum.flat_map(& &1.ewar_types) |> Enum.uniq()
     recommendations =
       if :ecm in ewar_types do
         ["Use ECCM or sensor boosters", "Spread out to avoid multi-jams" | recommendations]
@@ -792,13 +785,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
 
   defp estimate_module_effectiveness(ewar_items) do
     if Enum.empty?(ewar_items) do
-      0
+    0
     else
       # Simple scoring based on module count and type
       base_score = length(ewar_items) * 20
 
       # Bonus for module diversity
-      unique_types = ewar_items |> Enum.map(& &1.type) |> Enum.uniq() |> length()
+      unique_types = ewar_items |> Enum.map(& &1.type) Enum.uniq() length()
       diversity_bonus = unique_types * 10
 
       min(100, base_score + diversity_bonus)
@@ -807,12 +800,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
 
   defp determine_primary_ewar_role(ewar_items) do
     if Enum.empty?(ewar_items) do
-      nil
+    nil
     else
-      ewar_items
-      |> Enum.frequencies_by(& &1.type)
-      |> Enum.max_by(fn {_type, count} -> count end)
-      |> elem(0)
+    ewar_items
+    Enum.frequencies_by(& &1.type)
+    Enum.max_by(fn {_type, count} -> count end)
+    elem(0)
     end
   end
 

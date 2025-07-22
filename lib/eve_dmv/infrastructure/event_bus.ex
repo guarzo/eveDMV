@@ -38,8 +38,7 @@ defmodule EveDmv.Infrastructure.EventBus do
   @spec publish(struct()) :: :ok | {:error, term()}
   def publish(event) when is_struct(event) do
     event_type =
-      event.__struct__
-      |> Module.split()
+      event.Module.split(__struct__)
       |> List.last()
       |> Macro.underscore()
       |> String.to_existing_atom()
@@ -143,7 +142,7 @@ defmodule EveDmv.Infrastructure.EventBus do
     :ets.new(:event_subscriptions, [:named_table, :set, :protected])
 
     # Validate event flow on startup
-    case Contexts.validate_event_flow() do
+    Contexts.validate_event_flow case do
       :ok ->
         Logger.info("Event bus initialized with valid event flow")
 
@@ -294,9 +293,7 @@ defmodule EveDmv.Infrastructure.EventBus do
   end
 
   defp get_publishing_context(event_type) do
-    event_type
-    |> Contexts.publishers_of()
-    |> List.first()
+    Contexts.publishers_of(event_type) |> List.first()
   end
 
   defp deliver_event(event, subscription) do
@@ -331,8 +328,7 @@ defmodule EveDmv.Infrastructure.EventBus do
 
   defp count_subscriptions_by_event(subscriptions) do
     subscriptions
-    |> Enum.group_by(fn {_, sub} -> sub.event_type end)
-    |> Enum.map(fn {event_type, subs} -> {event_type, length(subs)} end)
-    |> Map.new()
+    Enum.group_by(fn {_, sub} -> sub.event_type end)
+    Enum.map(fn {event_type, subs} -> {event_type, length(subs)} end) |> Map.new()
   end
 end

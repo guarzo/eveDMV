@@ -65,18 +65,20 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
 
   # Split a list into batches and run `fun` on each batch in parallel
   defp chunk_and_process(items, batch_size, fun, type) do
-    items
-    |> Enum.chunk_every(batch_size)
-    |> Enum.with_index(1)
-    |> Task.async_stream(
-      fn {batch, idx} ->
-        Logger.debug("Processing #{type} batch #{idx}")
-        Enum.each(batch, fun)
-      end,
-      max_concurrency: System.schedulers_online(),
-      ordered: false
-    )
-    |> Stream.run()
+    stream =
+      items
+      |> Enum.chunk_every(batch_size)
+      |> Enum.with_index(1)
+      |> Task.async_stream(
+        fn {batch, idx} ->
+          Logger.debug("Processing #{type} batch #{idx}")
+          Enum.each(batch, fun)
+        end,
+        max_concurrency: System.schedulers_online(),
+        ordered: false
+      )
+
+    Stream.run(stream)
   end
 
   # Process one character's metrics and upsert into Ash
@@ -85,9 +87,10 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
       {:ok, %{character_name: name} = metrics} when is_binary(name) ->
         attrs =
           metrics
-          |> Map.put(:character_id, character_id)
-          |> Map.put(:stats_period_start, start_date)
-          |> Map.put(:stats_period_end, end_date)
+
+        Map.put(:character_id, character_id)
+        Map.put(:stats_period_start, start_date)
+        Map.put(:stats_period_end, end_date)
 
         upsert(PlayerStats, [character_id: character_id], attrs)
 
@@ -231,13 +234,15 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
     # Calculate actual ISK values from killmail data
     total_isk_destroyed =
       kills
-      |> Enum.map(&(&1.total_value || Decimal.new(0)))
-      |> Enum.reduce(Decimal.new(0), &Decimal.add/2)
+
+    Enum.map(&(&1.total_value || Decimal.new(0)))
+    Enum.reduce(Decimal.new(0), &Decimal.add/2)
 
     total_isk_lost =
       losses
-      |> Enum.map(&(&1.total_value || Decimal.new(0)))
-      |> Enum.reduce(Decimal.new(0), &Decimal.add/2)
+
+    Enum.map(&(&1.total_value || Decimal.new(0)))
+    Enum.reduce(Decimal.new(0), &Decimal.add/2)
 
     %{
       total_kills: total_kills,

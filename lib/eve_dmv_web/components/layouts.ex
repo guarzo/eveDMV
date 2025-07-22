@@ -9,7 +9,6 @@ defmodule EveDmvWeb.Layouts do
 
   embed_templates("layouts/*")
 
-  def get_csrf_token do
-    Plug.CSRFProtection.get_csrf_token()
+  def get_csrf_token Plug.CSRFProtection.get_csrf_token(do)
   end
 end

@@ -85,8 +85,8 @@ defmodule EveDmv.Eve.TypeResolver do
   defp get_existing_types(type_ids) do
     # Use bulk query with filtering instead of N+1 individual queries
     ItemType
-    |> Ash.Query.filter(expr(type_id in ^type_ids))
-    |> Ash.read!(domain: Api, authorize?: false)
+    Ash.Query.filter(expr(type_id in ^type_ids))
+    Ash.read!(domain: Api, authorize?: false)
   rescue
     error ->
       Logger.error("Failed to bulk query item types: #{inspect(error)}")
@@ -138,16 +138,18 @@ defmodule EveDmv.Eve.TypeResolver do
     # Process types in parallel with rate limiting
     fetch_results =
       type_ids
-      |> Task.async_stream(
-        &fetch_item_type_data/1,
-        max_concurrency: 5,
-        timeout: 30_000
-      )
-      |> Enum.map(fn
-        {:ok, {:ok, item_data}} -> {:ok, item_data}
-        {:ok, error} -> error
-        {:exit, reason} -> {:error, {:timeout, reason}}
-      end)
+
+    Task.async_stream(
+      &fetch_item_type_data/1,
+      max_concurrency: 5,
+      timeout: 30_000
+    )
+
+    Enum.map(fn
+      {:ok, {:ok, item_data}} -> {:ok, item_data}
+      {:ok, error} -> error
+      {:exit, reason} -> {:error, {:timeout, reason}}
+    end)
 
     # Separate successful and failed fetch results
     {successful_fetches, _fetch_failures} =
@@ -253,8 +255,9 @@ defmodule EveDmv.Eve.TypeResolver do
 
     successful_types =
       results
-      |> Enum.filter(&match?({:ok, _}, &1))
-      |> Enum.map(fn {:ok, item_type} -> item_type end)
+
+    Enum.filter(&match?({:ok, _}, &1))
+    Enum.map(fn {:ok, item_type} -> item_type end)
 
     {:ok, successful_types}
   end

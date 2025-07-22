@@ -38,9 +38,9 @@ defmodule EveDmv.Database.CharacterRepository do
       fn ->
         TelemetryHelper.measure_query("character_stats", :get_by_character, fn ->
           query =
-            CharacterStats
-            |> Ash.Query.new()
-            |> Ash.Query.filter(character_id == ^character_id)
+            Ash.Query.new(CharacterStats)
+
+          Ash.Query.filter(character_id == ^character_id)
 
           case Ash.read_one(query, domain: Api) do
             {:ok, stats} -> {:ok, stats}
@@ -82,11 +82,11 @@ defmodule EveDmv.Database.CharacterRepository do
           corporation_id = Keyword.get(opts, :corporation_id)
 
           query =
-            CharacterStats
-            |> Ash.Query.new()
-            |> Ash.Query.filter(dangerous_rating >= ^min_rating)
-            |> Ash.Query.sort(desc: :dangerous_rating)
-            |> Ash.Query.limit(limit)
+            Ash.Query.new(CharacterStats)
+
+          Ash.Query.filter(dangerous_rating >= ^min_rating)
+          Ash.Query.sort(desc: :dangerous_rating)
+          Ash.Query.limit(limit)
 
           query =
             if corporation_id do
@@ -116,10 +116,10 @@ defmodule EveDmv.Database.CharacterRepository do
   def batch_get_character_stats(character_ids) when is_list(character_ids) do
     TelemetryHelper.measure_query("character_stats", :batch_get, fn ->
       query =
-        CharacterStats
-        |> Ash.Query.new()
-        |> Ash.Query.filter(character_id in ^character_ids)
-        |> Ash.Query.sort(:character_name)
+        Ash.Query.new(CharacterStats)
+
+      Ash.Query.filter(character_id in ^character_ids)
+      Ash.Query.sort(:character_name)
 
       Ash.read(query, domain: Api)
     end)
@@ -153,10 +153,10 @@ defmodule EveDmv.Database.CharacterRepository do
           min_activity_days = Keyword.get(opts, :min_activity_days, 30)
 
           query =
-            CharacterStats
-            |> Ash.Query.new()
-            |> Ash.Query.filter(corporation_id == ^corporation_id)
-            |> Ash.Query.sort(:character_name)
+            Ash.Query.new(CharacterStats)
+
+          Ash.Query.filter(corporation_id == ^corporation_id)
+          Ash.Query.sort(:character_name)
 
           query =
             if active_only do

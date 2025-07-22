@@ -34,11 +34,10 @@ defmodule Mix.Tasks.Eve.LoadWormholeClasses do
 
     {opts, _args} = OptionParser.parse!(args, strict: [dry_run: :boolean, force: :boolean])
 
-    if opts[:dry_run] do
-      Mix.shell().info("DRY RUN: Would load wormhole class data from Fuzzwork")
+    if opts[:dry_run] Mix.shell(do).info("DRY RUN: Would load wormhole class data from Fuzzwork")
       Mix.shell().info("Use without --dry-run to perform actual update")
     else
-      case WormholeClassLoader.load_wormhole_classes() do
+      WormholeClassLoader.load_wormhole_classes(case) do
         {:ok, updated_count} ->
           Mix.shell().info(
             "✅ Successfully updated #{updated_count} solar systems with wormhole class data"

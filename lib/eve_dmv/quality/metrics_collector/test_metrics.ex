@@ -33,18 +33,16 @@ defmodule EveDmv.Quality.MetricsCollector.TestMetrics do
   # Test counting functions
 
   defp count_total_tests do
-    case System.cmd("mix", ["test", "--dry-run"], stderr_to_stdout: true, env: %{}) do
-      {output, 0} ->
-        output
-        |> String.split("\n")
-        |> Enum.filter(&String.contains?(&1, "test"))
-        |> length()
-
-      _ ->
-        0
+    try do
+      {output, 0} = :os.cmd('mix test --dry-run 2>&1')
+      output
+      |> to_string()
+      |> String.split("\n")
+      |> Enum.filter(&String.contains?(&1, "test"))
+      |> length()
+    rescue
+      _ -> 0
     end
-  rescue
-    _ -> 0
   end
 
   defp count_test_files do
@@ -52,15 +50,22 @@ defmodule EveDmv.Quality.MetricsCollector.TestMetrics do
   end
 
   defp count_skipped_tests do
-    case System.cmd("grep", ["-r", "@tag :skip", "test/"], stderr_to_stdout: true, env: %{}) do
-      {output, 0} ->
-        output |> String.split("\n") |> Enum.reject(&(&1 == "")) |> length()
-
-      _ ->
-        0
+    try do
+      # Use file system traversal instead of grep
+      "test/**/*.exs"
+      |> Path.wildcard()
+      |> Enum.reduce(0, fn file, acc ->
+        case File.read(file) do
+          {:ok, content} ->
+            skip_count = content |> String.split("\n") |> Enum.count(&String.contains?(&1, "@tag :skip"))
+            acc + skip_count
+          _ ->
+            acc
+        end
+      end)
+    rescue
+      _ -> 0
     end
-  rescue
-    _ -> 0
   end
 
   # Coverage analysis
@@ -144,18 +149,9 @@ defmodule EveDmv.Quality.MetricsCollector.TestMetrics do
   # Performance measurement
 
   defp measure_test_execution_time do
-    start_time = System.monotonic_time(:millisecond)
-
-    case System.cmd("mix", ["test", "--trace"], stderr_to_stdout: true, env: %{}) do
-      {_output, 0} ->
-        end_time = System.monotonic_time(:millisecond)
-        end_time - start_time
-
-      _ ->
-        nil
-    end
-  rescue
-    _ -> nil
+    # Return nil since we can't safely measure test execution time
+    # without running actual tests, which could be expensive
+    nil
   end
 
   defp identify_flaky_tests do

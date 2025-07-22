@@ -49,13 +49,9 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.DisplayFormatters do
   Format numbers with thousand separators.
   """
   def format_number(number) when is_number(number) do
-    number
-    |> to_string()
-    |> String.reverse()
-    |> String.graphemes()
-    |> Enum.chunk_every(3)
-    |> Enum.map_join(",", &Enum.join/1)
-    |> String.reverse()
+    to_string(number) |> String.reverse() |> String.graphemes()
+    Enum.chunk_every(3)
+    Enum.map_join(",", &Enum.join/1) |> String.reverse()
   end
 
   def format_number(_), do: "0"

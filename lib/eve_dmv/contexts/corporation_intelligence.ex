@@ -154,39 +154,45 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
     # Get active members from last 60 days
     sixty_days_ago = DateTime.utc_now() |> DateTime.add(-60, :day)
 
-    case Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id})
-         |> Ash.Query.filter(killmail_time >= ^sixty_days_ago)
-         |> Ash.read(domain: Api) do
+    case(Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id}))
+    Ash.Query.filter(killmail_time >= ^sixty_days_ago)
+
+    Ash.read domain: Api do
       {:ok, participants} ->
         # Get unique character IDs with activity counts
         member_activities =
           participants
-          |> Enum.filter(& &1.character_id)
-          |> Enum.group_by(& &1.character_id)
-          |> Enum.map(fn {char_id, activities} ->
-            {char_id, length(activities)}
-          end)
-          |> Enum.sort_by(fn {_id, count} -> count end, :desc)
-          # Get more to account for failed threat analysis
-          |> Enum.take(limit * 2)
+
+        Enum.filter(& &1.character_id)
+        Enum.group_by(& &1.character_id)
+
+        Enum.map(fn {char_id, activities} ->
+          {char_id, length(activities)}
+        end)
+
+        Enum.sort_by(fn {_id, count} -> count end, :desc)
+        # Get more to account for failed threat analysis
+        Enum.take(limit * 2)
 
         # Analyze threats for most active members
         threat_results =
           member_activities
-          |> Enum.map(fn {character_id, activity_count} ->
-            {:ok, threat_data} = CharacterIntelligence.analyze_character_threat(character_id)
-            character_name = NameResolver.character_name(character_id)
 
-            %{
-              character_id: character_id,
-              character_name: character_name,
-              threat_score: threat_data.threat_score,
-              activity_count: activity_count,
-              threat_level: categorize_threat_level(threat_data.threat_score)
-            }
-          end)
-          |> Enum.sort_by(& &1.threat_score, :desc)
-          |> Enum.take(limit)
+        Enum.map(fn {character_id, activity_count} ->
+          {:ok, threat_data} = CharacterIntelligence.analyze_character_threat(character_id)
+          character_name = NameResolver.character_name(character_id)
+
+          %{
+            character_id: character_id,
+            character_name: character_name,
+            threat_score: threat_data.threat_score,
+            activity_count: activity_count,
+            threat_level: categorize_threat_level(threat_data.threat_score)
+          }
+        end)
+
+        Enum.sort_by(& &1.threat_score, :desc)
+        Enum.take(limit)
 
         # Calculate statistics
         threat_scores = Enum.map(threat_results, & &1.threat_score)
@@ -216,19 +222,20 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
   def calculate_activity_metrics(corporation_id, days_back \\ 30) do
     time_cutoff = DateTime.utc_now() |> DateTime.add(-days_back, :day)
 
-    case Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id})
-         |> Ash.Query.filter(killmail_time >= ^time_cutoff)
-         |> Ash.read(domain: Api) do
+    case(Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id}))
+    Ash.Query.filter(killmail_time >= ^time_cutoff)
+
+    Ash.read domain: Api do
       {:ok, participants} ->
         # Calculate metrics
         total_activities = length(participants)
 
         active_members =
           participants
-          |> Enum.map(& &1.character_id)
-          |> Enum.filter(& &1)
-          |> Enum.uniq()
-          |> length()
+
+        Enum.map(& &1.character_id)
+        Enum.filter(& &1) |> Enum.uniq()
+        length()
 
         kills_per_day = if days_back > 0, do: total_activities / days_back, else: 0.0
 
@@ -275,9 +282,10 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
 
   defp get_corporation_info(corporation_id) do
     # Get corporation info from recent killmail data using Ash
-    case Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id})
-         |> Ash.Query.limit(1)
-         |> Ash.read(domain: Api) do
+    case(Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id}))
+    Ash.Query.limit(1)
+
+    Ash.read domain: Api do
       {:ok, [participant | _]} ->
         {:ok,
          %{
@@ -371,11 +379,9 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
         "Small Gang"
 
       _ ->
-        doctrine
-        |> to_string()
-        |> String.replace("_", " ")
-        |> String.split()
-        |> Enum.map_join(" ", &String.capitalize/1)
+        to_string(doctrine)
+        String.replace("_", " ") |> String.split()
+        Enum.map_join(" ", &String.capitalize/1)
     end
   end
 
@@ -528,11 +534,11 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
   # Helper functions for corporation info
   defp extract_ticker_from_name(corp_name) when is_binary(corp_name) do
     # Simple ticker extraction - first 4 characters uppercase
-    corp_name
-    |> String.upcase()
-    |> String.replace(~r/[^A-Z0-9]/, "")
-    |> String.slice(0, 4)
-    |> case do
+    String.upcase(corp_name)
+    String.replace(~r/[^A-Z0-9]/, "")
+    String.slice(0, 4)
+
+    case do
       "" -> "UNKN"
       ticker -> ticker
     end
@@ -544,16 +550,16 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
     # Count unique members from killmail data in last 90 days
     ninety_days_ago = DateTime.utc_now() |> DateTime.add(-90, :day)
 
-    case Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id})
-         |> Ash.Query.filter(killmail_time >= ^ninety_days_ago)
-         |> Ash.Query.select([:character_id])
-         |> Ash.read(domain: Api) do
+    case(Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id}))
+    Ash.Query.filter(killmail_time >= ^ninety_days_ago)
+    Ash.Query.select([:character_id])
+
+    Ash.read domain: Api do
       {:ok, participants} ->
         participants
-        |> Enum.map(& &1.character_id)
-        |> Enum.filter(& &1)
-        |> Enum.uniq()
-        |> length()
+        Enum.map(& &1.character_id)
+        Enum.filter(& &1) |> Enum.uniq()
+        length()
 
       {:error, _} ->
         0
@@ -590,8 +596,8 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
   defp calculate_threat_distribution(threat_results) do
     distribution =
       threat_results
-      |> Enum.map(& &1.threat_level)
-      |> Enum.frequencies()
+
+    Enum.map(& &1.threat_level) |> Enum.frequencies()
 
     %{
       extreme: Map.get(distribution, :extreme, 0),
@@ -607,20 +613,21 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
     # Get recent participant data for analysis
     ninety_days_ago = DateTime.utc_now() |> DateTime.add(-90, :day)
 
-    case Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id})
-         |> Ash.Query.filter(killmail_time >= ^ninety_days_ago)
-         |> Ash.Query.limit(1000)
-         |> Ash.read(domain: Api) do
+    case(Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id}))
+    Ash.Query.filter(killmail_time >= ^ninety_days_ago)
+    Ash.Query.limit(1000)
+
+    Ash.read domain: Api do
       {:ok, participants} when participants != [] ->
         valid_participants = participants |> Enum.filter(& &1.character_id)
 
         # Analyze ship usage patterns
         ship_usage =
           valid_participants
-          |> Enum.map(& &1.ship_type_id)
-          |> Enum.frequencies()
-          |> Enum.sort_by(fn {_ship, count} -> count end, :desc)
-          |> Enum.take(5)
+
+        Enum.map(& &1.ship_type_id) |> Enum.frequencies()
+        Enum.sort_by(fn {_ship, count} -> count end, :desc)
+        Enum.take(5)
 
         # Determine doctrine hint based on most used ships
         primary_doctrine = infer_doctrine_from_ships(ship_usage)
@@ -634,11 +641,13 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
         # Generate ship composition summary
         ship_names =
           ship_usage
-          |> Enum.map(fn {ship_id, count} ->
-            ship_name = NameResolver.ship_name(ship_id)
-            "#{ship_name} (#{count})"
-          end)
-          |> Enum.take(3)
+
+        Enum.map(fn {ship_id, count} ->
+          ship_name = NameResolver.ship_name(ship_id)
+          "#{ship_name} (#{count})"
+        end)
+
+        Enum.take(3)
 
         fleet_comp_text =
           if length(ship_names) > 0 do
@@ -795,21 +804,22 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
         today = Date.utc_today()
 
         start_date =
-          today
-          |> Date.beginning_of_month()
-          |> Date.shift(month: -i)
-          |> DateTime.new!(~T[00:00:00])
+          Date.beginning_of_month(today)
+
+        Date.shift(month: -i)
+        DateTime.new!(~T[00:00:00])
 
         end_date =
-          today
-          |> Date.beginning_of_month()
-          |> Date.shift(month: -(i - 1))
-          |> DateTime.new!(~T[00:00:00])
+          Date.beginning_of_month(today)
 
-        case Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id})
-             |> Ash.Query.filter(killmail_time >= ^start_date and killmail_time < ^end_date)
-             |> Ash.Query.limit(500)
-             |> Ash.read(domain: Api) do
+        Date.shift(month: -(i - 1))
+        DateTime.new!(~T[00:00:00])
+
+        case(Ash.Query.for_read(Participant, :by_corporation, %{corporation_id: corporation_id}))
+        Ash.Query.filter(killmail_time >= ^start_date and killmail_time < ^end_date)
+        Ash.Query.limit(500)
+
+        Ash.read domain: Api do
           {:ok, participants} when participants != [] ->
             valid_participants = participants |> Enum.filter(& &1.character_id)
             activity_count = length(valid_participants)

@@ -61,7 +61,8 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
       {:table_stats, include_tables, &get_table_statistics/0},
       {:statement_stats, include_statements, &get_statement_statistics/0}
     ]
-    |> Enum.reduce(base_metrics, fn {key, include?, fetch_fn}, acc ->
+
+    Enum.reduce(base_metrics, fn {key, include?, fetch_fn}, acc ->
       if include? do
         Map.put(acc, key, fetch_fn.())
       else
@@ -120,11 +121,11 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
   defp sanitize_sql(sql) when is_binary(sql) do
     sql
     # Replace numbers with placeholders
-    |> String.replace(~r/\b\d+\b/, "?")
+    String.replace(~r/\b\d+\b/, "?")
     # Replace string literals
-    |> String.replace(~r/'[^']*'/, "'?'")
+    String.replace(~r/'[^']*'/, "'?'")
     # Replace parameter placeholders
-    |> String.replace(~r/\$\d+/, "$?")
+    String.replace(~r/\$\d+/, "$?")
   end
 
   defp get_database_size do
@@ -179,7 +180,7 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
       attname,
       n_distinct,
       correlation,
-      most_common_vals
+    most_common_vals
     FROM pg_stats
     WHERE schemaname = 'public'
     ORDER BY tablename, attname

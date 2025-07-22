@@ -36,13 +36,15 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainStatusService do
   def get_all_chains_status(state) do
     chains_status =
       state.chains
-      |> Enum.map(fn {map_id, _chain_data} ->
-        case get_chain_status(map_id, state) do
-          {:ok, status} -> status
-          {:error, _} -> nil
-        end
-      end)
-      |> Enum.filter(&(&1 != nil))
+
+    Enum.map(fn {map_id, _chain_data} ->
+      case get_chain_status(map_id, state) do
+        {:ok, status} -> status
+        {:error, _} -> nil
+      end
+    end)
+
+    Enum.filter(&(&1 != nil))
 
     {:ok, chains_status}
   end
@@ -70,10 +72,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainStatusService do
   defp count_total_inhabitants(chain_data) do
     inhabitants = Map.get(chain_data, :inhabitants, %{})
 
-    inhabitants
-    |> Map.values()
-    |> Enum.map(&length/1)
-    |> Enum.sum()
+    Map.values(inhabitants)
+    Enum.map(&length/1) |> Enum.sum()
   end
 
   defp calculate_current_threat_level(chain_data) do
@@ -83,8 +83,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainStatusService do
       0
     else
       threats
-      |> Enum.map(& &1.threat_level)
-      |> Enum.max()
+      Enum.map(& &1.threat_level) |> Enum.max()
     end
   end
 
@@ -124,8 +123,9 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainStatusService do
   defp format_recent_activity(timeline) do
     timeline
     # Last 10 activities
-    |> Enum.take(10)
-    |> Enum.map(fn activity ->
+    Enum.take(10)
+
+    Enum.map(fn activity ->
       %{
         type: Map.get(activity, :type),
         timestamp: Map.get(activity, :timestamp),

@@ -36,18 +36,19 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.CombatScoring do
   """
   def calculate_tactical_intelligence_score(stats, behavioral_analysis) do
     # Assess tactical decision-making capability
-    tactical_factors = %{
-      pattern_recognition: behavioral_analysis.confidence_score,
-      adaptability: assess_tactical_adaptability(stats),
-      decision_quality: assess_decision_quality(stats),
-      situational_awareness: assess_situational_awareness(behavioral_analysis)
-    }
+    tactical_factors =
+      %{
+        pattern_recognition: behavioral_analysis.confidence_score,
+        adaptability: assess_tactical_adaptability(stats),
+        decision_quality: assess_decision_quality(stats),
+        situational_awareness: assess_situational_awareness(behavioral_analysis)
+      }
 
     # Equal weighting for tactical factors
-    tactical_factors
-    |> Map.values()
+    Map.values(tactical_factors)
     |> Enum.sum()
-    |> Kernel./(map_size(tactical_factors))
+
+    Kernel./(map_size(tactical_factors))
   end
 
   @doc """

@@ -152,7 +152,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
       battles = [
         # 5 participants
         create_escalating_battle(1, 5),
-        # 10 participants  
+        # 10 participants
         create_escalating_battle(2, 10),
         # 15 participants
         create_escalating_battle(3, 15)
@@ -171,7 +171,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
     test "tracks participant flow between battles" do
       battles = [
         create_flow_battle(1, [12345, 67890, 11111]),
-        create_flow_battle(2, [67890, 11111, 22222])
+        create_flow_battle(2, [67890, 11111, 22_222])
       ]
 
       sequence = BattleTimelineService.analyze_battle_sequence(battles)
@@ -180,7 +180,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
       flow = List.first(sequence.participant_flow)
       # 67890, 11111
       assert flow.continuing_participants == 2
-      # 22222
+      # 22_222
       assert flow.new_participants == 1
       # 12345
       assert flow.departing_participants == 1
@@ -243,11 +243,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
         create_test_killmail(%{
           killmail_id: 2,
           killmail_time: ~U[2024-01-01 10:05:00Z],
-          victim_character_id: 22222,
+          victim_character_id: 22_222,
           victim_corporation_id: 98765,
           raw_data: %{
             "victim" => %{
-              "character_id" => 22222,
+              "character_id" => 22_222,
               "character_name" => "Victim Two",
               "corporation_id" => 98765,
               "corporation_name" => "Victim Corp",
@@ -296,13 +296,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
         create_test_killmail(%{
           killmail_id: 2,
           killmail_time: ~U[2024-01-01 10:01:00Z],
-          victim_character_id: 22222
+          victim_character_id: 22_222
         }),
         # Escalation phase - rapid kills
         create_test_killmail(%{
           killmail_id: 3,
           killmail_time: ~U[2024-01-01 10:10:00Z],
-          victim_character_id: 33333
+          victim_character_id: 33_333
         }),
         create_test_killmail(%{
           killmail_id: 4,
@@ -366,7 +366,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
                 "final_blow" => false
               },
               %{
-                "character_id" => 22222,
+                "character_id" => 22_222,
                 # Cyclone
                 "ship_type_id" => 17918,
                 "ship_name" => "Cyclone",
@@ -379,10 +379,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
         create_test_killmail(%{
           killmail_id: 2,
           killmail_time: ~U[2024-01-01 10:05:00Z],
-          victim_character_id: 33333,
+          victim_character_id: 33_333,
           raw_data: %{
             "victim" => %{
-              "character_id" => 33333,
+              "character_id" => 33_333,
               # Scythe
               "ship_type_id" => 11129,
               "ship_name" => "Scythe"
@@ -469,17 +469,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
         create_test_killmail(%{
           killmail_id: 2,
           killmail_time: ~U[2024-01-01 10:05:00Z],
-          victim_character_id: 22222,
+          victim_character_id: 22_222,
           victim_corporation_id: 54321,
           raw_data: %{
             "victim" => %{
-              "character_id" => 22222,
+              "character_id" => 22_222,
               "corporation_id" => 54321,
               "corporation_name" => "Attacker Corp B"
             },
             "attackers" => [
               %{
-                "character_id" => 33333,
+                "character_id" => 33_333,
                 "corporation_id" => 98765,
                 "corporation_name" => "Victim Corp A",
                 "damage_done" => 1200,

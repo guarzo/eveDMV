@@ -40,9 +40,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
         # Query recent killmail activity - simplified for now
         killmail_query =
-          KillmailRaw
-          |> Ash.Query.limit(100)
-          |> Ash.Query.select([:killmail_id, :solar_system_id, :total_value])
+    KillmailRaw
+    Ash.Query.limit(100)
+    Ash.Query.select([:killmail_id, :solar_system_id, :total_value])
 
         case Ash.read(killmail_query, domain: Api) do
           {:ok, killmails} ->
@@ -50,7 +50,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
             total_kills = length(killmails)
 
             active_systems =
-              killmails |> Enum.map(& &1.solar_system_id) |> Enum.uniq() |> length()
+              killmails |> Enum.map(& &1.solar_system_id) Enum.uniq() length()
 
             total_isk_destroyed =
               Enum.reduce(killmails, Decimal.new(0), fn k, acc ->
@@ -120,20 +120,20 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
         # Get killmails with participants to analyze control - simplified for now
         control_query =
-          KillmailRaw
-          |> Ash.Query.limit(100)
-          |> Ash.Query.load([:participants])
-          |> Ash.Query.select([:killmail_id, :participants])
+    KillmailRaw
+    Ash.Query.limit(100)
+    Ash.Query.load([:participants])
+    Ash.Query.select([:killmail_id, :participants])
 
         case Ash.read(control_query, domain: Api) do
           {:ok, killmails} ->
             # Analyze entity presence
             entity_activity =
-              killmails
-              |> Enum.flat_map(&(&1.participants || []))
-              |> Enum.filter(& &1.alliance_id)
-              |> Enum.group_by(& &1.alliance_id)
-              |> Enum.map(fn {alliance_id, participants} ->
+    killmails
+    Enum.flat_map(&(&1.participants || []))
+    Enum.filter(& &1.alliance_id)
+    Enum.group_by(& &1.alliance_id)
+    Enum.map(fn {alliance_id, participants} ->
                 first = List.first(participants)
 
                 {alliance_id,
@@ -141,11 +141,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
                    name: first.alliance_name,
                    activity_count: length(participants),
                    unique_characters:
-                     participants |> Enum.map(& &1.character_id) |> Enum.uniq() |> length()
+                     participants |> Enum.map(& &1.character_id) Enum.uniq() length()
                  }}
               end)
-              |> Enum.sort_by(fn {_, data} -> data.activity_count end, :desc)
-              |> Enum.take(5)
+    Enum.sort_by(fn {_, data} -> data.activity_count end, :desc)
+    Enum.take(5)
 
             # Determine control status
             {control_status, control_stability} = determine_control_status(entity_activity)
@@ -259,21 +259,21 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
         # Query high-value losses as threat indicators - simplified for now
         threat_query =
-          KillmailRaw
-          |> Ash.Query.limit(50)
-          |> Ash.Query.load([:participants])
-          |> Ash.Query.sort(desc: :killmail_time)
-          |> Ash.Query.limit(50)
+    KillmailRaw
+    Ash.Query.limit(50)
+    Ash.Query.load([:participants])
+    Ash.Query.sort(desc: :killmail_time)
+    Ash.Query.limit(50)
 
         case Ash.read(threat_query, domain: Api) do
           {:ok, threat_kills} ->
             # Identify threat sources
             threat_sources =
-              threat_kills
-              |> Enum.flat_map(&(&1.participants || []))
-              |> Enum.filter(&(!&1.is_victim && &1.corporation_id))
-              |> Enum.group_by(&{&1.corporation_id, &1.corporation_name})
-              |> Enum.map(fn {{corp_id, corp_name}, participants} ->
+    threat_kills
+    Enum.flat_map(&(&1.participants || []))
+    Enum.filter(&(!&1.is_victim && &1.corporation_id))
+    Enum.group_by(&{&1.corporation_id, &1.corporation_name})
+    Enum.map(fn {{corp_id, corp_name}, participants} ->
                 %{
                   corporation_id: corp_id,
                   corporation_name: corp_name,
@@ -281,8 +281,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
                   total_damage: Enum.reduce(participants, 0, &(&1.damage_done + &2))
                 }
               end)
-              |> Enum.sort_by(& &1.threat_actions, :desc)
-              |> Enum.take(5)
+    Enum.sort_by(& &1.threat_actions, :desc)
+    Enum.take(5)
 
             # Analyze threat trends
             recent_threats = Enum.take(threat_kills, 10)

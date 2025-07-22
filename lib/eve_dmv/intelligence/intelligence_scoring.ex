@@ -105,11 +105,11 @@ defmodule EveDmv.Intelligence.IntelligenceScoring do
   # Private helper functions
 
   defp gather_base_metrics(character_id) do
-    case CharacterStats
-         |> Ash.Query.new()
-         |> Ash.Query.filter(character_id: character_id)
-         |> Ash.Query.limit(1)
-         |> Ash.read(domain: Api) do
+    case(Ash.Query.new(CharacterStats))
+    Ash.Query.filter(character_id: character_id)
+    Ash.Query.limit(1)
+
+    Ash.read domain: Api do
       {:ok, [stats]} -> {:ok, stats}
       {:ok, []} -> {:error, "Character statistics not available"}
       {:error, reason} -> {:error, reason}

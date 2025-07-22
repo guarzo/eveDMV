@@ -44,9 +44,10 @@ defmodule EveDmv.Intelligence.Calculators.FleetParticipationCalculator do
       # Identify high participation members (>80% participation)
       high_participation_members =
         fleet_data
-        |> Enum.zip(participation_rates)
-        |> Enum.filter(fn {_member, rate} -> rate > 0.8 end)
-        |> Enum.map(fn {member, _rate} -> member end)
+
+      Enum.zip(participation_rates)
+      Enum.filter(fn {_member, rate} -> rate > 0.8 end)
+      Enum.map(fn {member, _rate} -> member end)
 
       # Leadership distribution
       leadership_distribution = %{

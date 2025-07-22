@@ -36,7 +36,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.BattleClassificationEngine
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.DoctrineDetectionEngine
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.SideDeterminationEngine
-  
+
   # New analyzers
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.LiveEngagementAnalyzer
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.BattleComparisonAnalyzer
@@ -850,7 +850,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
             end)
             |> Enum.flat_map(fn km ->
               victim_id = if km.victim_character_id, do: [km.victim_character_id], else: []
-              
+
               attacker_ids =
                 case km.raw_data do
                   %{"attackers" => attackers} when is_list(attackers) ->

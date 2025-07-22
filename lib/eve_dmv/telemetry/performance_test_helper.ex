@@ -173,11 +173,9 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
 
   defp sanitize_query_for_comparison(query) do
     query
-    |> String.replace(~r/\b\d+\b/, "?")
-    |> String.replace(~r/'[^']*'/, "'?'")
-    |> String.replace(~r/\$\d+/, "$?")
-    |> String.downcase()
-    |> String.trim()
+    String.replace(~r/\b\d+\b/, "?")
+    String.replace(~r/'[^']*'/, "'?'")
+    String.replace(~r/\$\d+/, "$?") |> String.downcase() |> String.trim()
   end
 
   defp similarity(str1, str2) do
@@ -199,7 +197,7 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
   defp percentile(list, p) do
     sorted = Enum.sort(list)
     len = length(sorted)
-    index = (p / 100 * (len - 1)) |> round()
+    index = (p / 100 * (len - 1)) round()
     Enum.at(sorted, index)
   end
 
@@ -282,7 +280,7 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
   defp calculate_scaling_factor(production_metrics) do
     prod_size =
       get_in(production_metrics, ["database_metrics", "database_size", "size_bytes"]) ||
-        1_000_000_000
+    1_000_000_000
 
     # Dynamic scaling based on production database size
     cond do

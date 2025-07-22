@@ -119,8 +119,8 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
     # Add calculated metrics
     metrics =
       state.metrics
-      |> add_calculated_metrics()
-      |> add_uptime(state.start_time)
+      add_calculated_metrics()
+    add_uptime(state.start_time)
 
     {:reply, metrics, state}
   end
@@ -129,8 +129,8 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
     # Return recent alerts
     recent_alerts =
       state.alerts
-      |> Enum.take(50)
-      |> Enum.map(fn alert ->
+    Enum.take(50)
+    Enum.map(fn alert ->
         Map.put(alert, :age_seconds, DateTime.diff(DateTime.utc_now(), alert.timestamp))
       end)
 
@@ -142,7 +142,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
 
     history =
       state.history
-      |> Enum.filter(fn snapshot ->
+    Enum.filter(fn snapshot ->
         DateTime.compare(snapshot.timestamp, cutoff) == :gt
       end)
 
@@ -152,7 +152,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
   # Telemetry event handlers
   def handle_info(
         {:telemetry_event, [:eve_dmv, :query, :duration], measurements, metadata},
-        state
+    state
       ) do
     duration = measurements.duration || 0
     query_name = metadata.query || "unknown"
@@ -190,7 +190,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
       end
 
     updated_queries = %{
-      queries
+    queries
       | count: queries.count + 1,
         durations: Enum.take([duration | queries.durations], 1000),
         by_name: by_name,
@@ -244,7 +244,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
 
   def handle_info(
         {:telemetry_event, [:broadway, :processor, :message, event], _measurements, _metadata},
-        state
+    state
       ) do
     metrics = state.metrics
     broadway = metrics.broadway
@@ -293,7 +293,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
       }
 
       updated_database = %{
-        database
+    database
         | slow_queries: Enum.take([slow_query | database.slow_queries], 50)
       }
 
@@ -318,9 +318,8 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
     total_mb = memory_data[:total] / 1_048_576
 
     # Get top memory-consuming processes
-    processes =
-      Process.list()
-      |> Enum.map(fn pid ->
+    processes = |> Process.list()
+    Enum.map(fn pid ->
         case Process.info(pid, [:registered_name, :memory, :message_queue_len]) do
           nil ->
             nil
@@ -334,14 +333,14 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
             }
         end
       end)
-      |> Enum.reject(&is_nil/1)
-      |> Enum.sort_by(& &1.memory_mb, :desc)
-      |> Enum.take(20)
+    Enum.reject(&is_nil/1)
+    Enum.sort_by(& &1.memory_mb, :desc)
+    Enum.take(20)
 
     # Get ETS table sizes
     ets_tables =
       :ets.all()
-      |> Enum.map(fn table ->
+    Enum.map(fn table ->
         info = :ets.info(table)
 
         %{
@@ -350,8 +349,8 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
           memory_mb: (info[:memory] || 0) * :erlang.system_info(:wordsize) / 1_048_576
         }
       end)
-      |> Enum.sort_by(& &1.memory_mb, :desc)
-      |> Enum.take(10)
+    Enum.sort_by(& &1.memory_mb, :desc)
+    Enum.take(10)
 
     metrics = state.metrics
 
@@ -419,7 +418,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
         "performance-dashboard-#{inspect(event)}",
         event,
         handler,
-        nil
+    nil
       )
     end)
   end
@@ -515,7 +514,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
               state,
               :warning,
               "Process using high memory: #{inspect(process.name)}",
-              process
+    process
             )
         end
     end
@@ -565,10 +564,9 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
       performance: %{
         query_stats: metrics.queries.stats,
         top_queries:
-          metrics.queries.by_name
-          |> Map.to_list()
-          |> Enum.sort_by(fn {_, stats} -> stats.total_duration end, :desc)
-          |> Enum.take(10),
+          metrics.queries.Map.to_list(by_name)
+    Enum.sort_by(fn {_, stats} -> stats.total_duration end, :desc)
+    Enum.take(10),
         slow_queries: Enum.take(metrics.queries.slow_queries, 10)
       },
       trends: analyze_trends(history),
@@ -625,7 +623,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
 
   defp average(list, extractor) do
     if length(list) > 0 do
-      sum = list |> Enum.map(extractor) |> Enum.sum()
+      sum = list |> Enum.map(extractor) Enum.sum()
       sum / length(list)
     else
       0.0

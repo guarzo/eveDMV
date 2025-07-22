@@ -191,11 +191,11 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
   @impl GenServer
   def handle_call({:get_doctrine_by_name, doctrine_name}, _from, state) do
     matching_doctrine =
-      state.doctrines
-      |> Map.values()
-      |> Enum.find(fn doctrine ->
-        doctrine.name == doctrine_name and doctrine.is_active
-      end)
+      state.Map.values(doctrines)
+
+    Enum.find(fn doctrine ->
+      doctrine.name == doctrine_name and doctrine.is_active
+    end)
 
     case matching_doctrine do
       nil -> {:reply, {:error, :doctrine_not_found}, state}
@@ -211,17 +211,18 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
     mass_category = Keyword.get(opts, :mass_category)
 
     filtered_doctrines =
-      state.doctrines
-      |> Map.values()
-      |> Enum.filter(fn doctrine ->
-        corporation_match = is_nil(corporation_id) or doctrine.corporation_id == corporation_id
-        type_match = is_nil(doctrine_type) or doctrine.doctrine_type == doctrine_type
-        active_match = not active_only or doctrine.is_active
-        mass_match = is_nil(mass_category) or doctrine.mass_category == mass_category
+      state.Map.values(doctrines)
 
-        corporation_match and type_match and active_match and mass_match
-      end)
-      |> Enum.sort_by(& &1.updated_at, {:desc, DateTime})
+    Enum.filter(fn doctrine ->
+      corporation_match = is_nil(corporation_id) or doctrine.corporation_id == corporation_id
+      type_match = is_nil(doctrine_type) or doctrine.doctrine_type == doctrine_type
+      active_match = not active_only or doctrine.is_active
+      mass_match = is_nil(mass_category) or doctrine.mass_category == mass_category
+
+      corporation_match and type_match and active_match and mass_match
+    end)
+
+    Enum.sort_by(& &1.updated_at, {:desc, DateTime})
 
     {:reply, {:ok, filtered_doctrines}, state}
   end
@@ -745,7 +746,6 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
       |> Map.values()
       |> Enum.map(fn req -> req[:min_count] || 0 end)
       |> Enum.sum()
-
     max(ship_minimums, role_minimums)
   end
 

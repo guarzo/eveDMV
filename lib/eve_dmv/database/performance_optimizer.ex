@@ -401,8 +401,9 @@ defmodule EveDmv.Database.PerformanceOptimizer do
 
     result =
       stats
-      |> Map.put(:checked_at, DateTime.utc_now())
-      |> Map.put(:errors, errors)
+
+    Map.put(:checked_at, DateTime.utc_now())
+    Map.put(:errors, errors)
 
     if Enum.empty?(errors) do
       {:ok, result}
@@ -492,9 +493,9 @@ defmodule EveDmv.Database.PerformanceOptimizer do
     # Check for missing indexes on frequently accessed tables
     high_scan_tables =
       index_usage
-      |> Enum.filter(fn idx -> (idx.tuples_read || 0) > 100_000 end)
-      |> Enum.map(& &1.table_name)
-      |> Enum.uniq()
+
+    Enum.filter(fn idx -> (idx.tuples_read || 0) > 100_000 end)
+    Enum.map(& &1.table_name) |> Enum.uniq()
 
     final_recommendations =
       if length(high_scan_tables) > 0 do

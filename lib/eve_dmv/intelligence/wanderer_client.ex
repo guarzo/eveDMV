@@ -409,15 +409,17 @@ defmodule EveDmv.Intelligence.WandererClient do
 
   defp extract_systems_from_connections(connections) when is_list(connections) do
     connections
-    |> Enum.flat_map(fn conn ->
+
+    Enum.flat_map(fn conn ->
       [
         Map.get(conn, "solar_system_source"),
         Map.get(conn, "solar_system_target")
       ]
     end)
-    |> Enum.reject(&is_nil/1)
-    |> Enum.uniq()
-    |> Enum.map(fn system_id ->
+
+    Enum.reject(&is_nil/1) |> Enum.uniq()
+
+    Enum.map(fn system_id ->
       %{
         "id" => system_id,
         "solar_system_id" => system_id,
@@ -600,8 +602,9 @@ defmodule EveDmv.Intelligence.WandererClient do
     # data: json_data\n\n
 
     chunk
-    |> String.split("\n\n")
-    |> Enum.each(fn event_block ->
+    String.split("\n\n")
+
+    Enum.each(fn event_block ->
       if String.trim(event_block) != "" do
         parse_sse_event(event_block, parent_pid, map_id)
       end

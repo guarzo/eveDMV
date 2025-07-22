@@ -75,16 +75,20 @@ defmodule EveDmv.Contexts.BattleAnalysis.Extractors.ShipInstanceExtractor do
   """
   def create_attacker_ship_instances(killmail) do
     # Extract ship instances for all attackers who participated
-    attackers = killmail["attackers"] || []
+    attackers =
+      killmail["attackers"] ||
+        []
 
     attackers
-    |> Enum.filter(fn attacker ->
+
+    Enum.filter(fn attacker ->
       # Only include attackers with character_id and ship_type_id
       attacker["character_id"] != nil &&
         attacker["ship_type_id"] != nil &&
         attacker["ship_type_id"] != 0
     end)
-    |> Enum.map(fn attacker ->
+
+    Enum.map(fn attacker ->
       %{
         character_id: attacker["character_id"],
         character_name: attacker["character_name"],
@@ -119,8 +123,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Extractors.ShipInstanceExtractor do
   end
 
   defp extract_attacker_data(killmail) do
-    (killmail["attackers"] || [])
-    |> Enum.map(fn attacker ->
+    killmail["attackers"] || []
+
+    Enum.map(fn attacker ->
       %{
         character_id: attacker["character_id"],
         ship_type_id: attacker["ship_type_id"],

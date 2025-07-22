@@ -48,7 +48,8 @@ defmodule EveDmv.Intelligence.Analyzers.MassCalculator do
   """
   def calculate_total_fleet_mass(doctrine_template, ship_data) do
     doctrine_template
-    |> Enum.map(fn {role, config} ->
+
+    Enum.map(fn {role, config} ->
       required = config["required"] || 1
       ships = config["preferred_ships"] || []
 
@@ -91,7 +92,8 @@ defmodule EveDmv.Intelligence.Analyzers.MassCalculator do
     }
 
     hole_types
-    |> Enum.map(fn {hole_type, limit} ->
+
+    Enum.map(fn {hole_type, limit} ->
       can_pass = total_mass <= limit
       mass_usage = if can_pass, do: total_mass / limit, else: 999.0
 
@@ -103,7 +105,8 @@ defmodule EveDmv.Intelligence.Analyzers.MassCalculator do
          "remaining_mass" => max(0, limit - total_mass)
        }}
     end)
-    |> Enum.into(%{})
+
+    Enum.into(%{})
   end
 
   @doc """
@@ -293,7 +296,8 @@ defmodule EveDmv.Intelligence.Analyzers.MassCalculator do
   """
   def calculate_total_fleet_mass(fleet_members) when is_list(fleet_members) do
     fleet_members
-    |> Enum.map(fn member ->
+
+    Enum.map(fn member ->
       case Map.get(member, :ship_mass) do
         nil ->
           ship_name = Map.get(member, :ship_name, "Unknown")

@@ -26,7 +26,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
       n_distinct,
       correlation,
       most_common_vals,
-      most_common_freqs
+    most_common_freqs
     FROM pg_stats
     WHERE tablename = $1
     AND schemaname = 'public'
@@ -48,7 +48,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
       last_vacuum,
       last_autovacuum,
       last_analyze,
-      last_autoanalyze
+    last_autoanalyze
     FROM pg_stat_user_tables
     WHERE tablename = $1
     AND schemaname = 'public'
@@ -131,8 +131,8 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
     ]
 
     critical_tables
-    |> Enum.map(&analyze_table_statistics/1)
-    |> Enum.reject(&is_nil/1)
+    Enum.map(&analyze_table_statistics/1)
+    Enum.reject(&is_nil/1)
   end
 
   @doc """
@@ -163,7 +163,8 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
       end)
 
     candidates
-    |> Enum.map(fn table ->
+
+    Enum.map(fn table ->
       %{
         table_name: table.table_name,
         priority: calculate_maintenance_priority(table),
@@ -171,7 +172,8 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
         recommended_actions: get_maintenance_actions(table)
       }
     end)
-    |> Enum.sort_by(& &1.priority, :desc)
+
+    Enum.sort_by(& &1.priority, :desc)
   end
 
   @doc """
@@ -364,9 +366,8 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
     else
       total_score =
         table_stats
-        |> Enum.map(&calculate_table_health_score/1)
-        |> Enum.sum()
 
+      Enum.map(&calculate_table_health_score/1) |> Enum.sum()
       avg_score = total_score / length(table_stats)
 
       status =
@@ -445,11 +446,11 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
 
   defp compile_top_recommendations(table_stats) do
     table_stats
-    |> Enum.flat_map(& &1.recommendations)
-    |> Enum.frequencies()
-    |> Enum.sort_by(&elem(&1, 1), :desc)
-    |> Enum.take(5)
-    |> Enum.map(fn {recommendation, count} ->
+    Enum.flat_map(& &1.recommendations) |> Enum.frequencies()
+    Enum.sort_by(&elem(&1, 1), :desc)
+    Enum.take(5)
+
+    Enum.map(fn {recommendation, count} ->
       "#{recommendation} (affects #{count} tables)"
     end)
   end

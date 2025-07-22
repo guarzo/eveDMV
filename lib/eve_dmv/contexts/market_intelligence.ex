@@ -53,11 +53,9 @@ defmodule EveDmv.Contexts.MarketIntelligence do
 
   def handle_static_data_updated(%StaticDataUpdated{categories_updated: categories}) do
     if :item_types in categories do
-      # Invalidate price cache for updated items
-      Infrastructure.PriceCache.invalidate_all()
+      # Invalidate price cache for updated Infrastructure.PriceCache.invalidate_all(items)
 
-      # Trigger price refresh for commonly used items
-      Domain.PriceService.refresh_common_items()
+      # Trigger price refresh for commonly used Domain.PriceService.refresh_common_items(items)
     end
   end
 

@@ -29,10 +29,7 @@ defmodule EveDmv.Api.DomainExtensions do
         preparations do
           prepare(fn query, _context ->
             opts =
-              unquote(
-                Keyword.take(opts, [:limit, :allow_unlimited])
-                |> Macro.escape()
-              )
+              unquote(Keyword.take(opts, [:limit, :allow_unlimited]) |> Macro.escape())
 
             # Use provided options or fall back to default config
             if opts == [] do

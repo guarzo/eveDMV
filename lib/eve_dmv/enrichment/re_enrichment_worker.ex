@@ -212,16 +212,18 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
 
         result =
           killmails
-          |> Enum.chunk_every(config.batch_size)
-          |> Enum.reduce(%{processed: 0, updated: 0, errors: 0}, fn batch, acc ->
-            batch_result = update_prices_for_batch(batch)
 
-            %{
-              processed: acc.processed + batch_result.processed,
-              updated: acc.updated + batch_result.updated,
-              errors: acc.errors + batch_result.errors
-            }
-          end)
+        Enum.chunk_every(config.batch_size)
+
+        Enum.reduce(%{processed: 0, updated: 0, errors: 0}, fn batch, acc ->
+          batch_result = update_prices_for_batch(batch)
+
+          %{
+            processed: acc.processed + batch_result.processed,
+            updated: acc.updated + batch_result.updated,
+            errors: acc.errors + batch_result.errors
+          }
+        end)
 
         Logger.info("Price update completed: #{inspect(result)}")
         result
@@ -244,16 +246,18 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
 
         result =
           killmails
-          |> Enum.chunk_every(config.batch_size)
-          |> Enum.reduce(%{processed: 0, updated: 0, errors: 0}, fn batch, acc ->
-            batch_result = update_names_for_batch(batch)
 
-            %{
-              processed: acc.processed + batch_result.processed,
-              updated: acc.updated + batch_result.updated,
-              errors: acc.errors + batch_result.errors
-            }
-          end)
+        Enum.chunk_every(config.batch_size)
+
+        Enum.reduce(%{processed: 0, updated: 0, errors: 0}, fn batch, acc ->
+          batch_result = update_names_for_batch(batch)
+
+          %{
+            processed: acc.processed + batch_result.processed,
+            updated: acc.updated + batch_result.updated,
+            errors: acc.errors + batch_result.errors
+          }
+        end)
 
         Logger.info("Name update completed: #{inspect(result)}")
         result
@@ -268,10 +272,10 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
     # Get recent enriched killmails for price updates
     # Simplified query - get most recent killmails
     query =
-      KillmailEnriched
-      |> Ash.Query.new()
-      |> Ash.Query.sort(killmail_time: :desc)
-      |> Ash.Query.limit(limit)
+      Ash.Query.new(KillmailEnriched)
+
+    Ash.Query.sort(killmail_time: :desc)
+    Ash.Query.limit(limit)
 
     Ash.read(query, domain: Api)
   end
@@ -280,10 +284,10 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
     # Get recent enriched killmails for name updates
     # Simplified query - get most recent killmails
     query =
-      KillmailEnriched
-      |> Ash.Query.new()
-      |> Ash.Query.sort(killmail_time: :desc)
-      |> Ash.Query.limit(limit)
+      Ash.Query.new(KillmailEnriched)
+
+    Ash.Query.sort(killmail_time: :desc)
+    Ash.Query.limit(limit)
 
     Ash.read(query, domain: Api)
   end
@@ -356,19 +360,22 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
 
   defp build_name_updates(killmail, resolved_names) do
     %{}
-    |> maybe_add_name(
+
+    maybe_add_name(
       :victim_character_name,
       killmail.victim_character_id,
       killmail.victim_character_name,
       resolved_names.characters
     )
-    |> maybe_add_name(
+
+    maybe_add_name(
       :victim_corporation_name,
       killmail.victim_corporation_id,
       killmail.victim_corporation_name,
       resolved_names.corporations
     )
-    |> maybe_add_name(
+
+    maybe_add_name(
       :solar_system_name,
       killmail.solar_system_id,
       killmail.solar_system_name,

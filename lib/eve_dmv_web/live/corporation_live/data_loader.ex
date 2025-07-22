@@ -37,9 +37,8 @@ defmodule EveDmvWeb.CorporationLive.DataLoader do
     # Await all tasks and collect results
     results =
       tasks
-      |> Enum.map(&Task.await(&1, 30_000))
-      |> Map.new()
 
+    Enum.map(&Task.await(&1, 30_000)) |> Map.new()
     # Combine all data
     %{
       corporation_id: corporation_id,
@@ -175,9 +174,10 @@ defmodule EveDmvWeb.CorporationLive.DataLoader do
         # Calculate peak hours
         peak_hours =
           activity
-          |> Enum.sort_by(& &1.activity, :desc)
-          |> Enum.take(3)
-          |> Enum.map(& &1.hour)
+
+        Enum.sort_by(& &1.activity, :desc)
+        Enum.take(3)
+        Enum.map(& &1.hour)
 
         # Determine primary timezone based on peak activity
         primary_tz = determine_timezone(peak_hours)

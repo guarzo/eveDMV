@@ -123,17 +123,19 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
     # Collect results with timeout
     results =
       tasks
-      |> Task.await_many(30_000)
-      |> Enum.filter(fn
-        {_id, {:ok, _result}} ->
-          true
 
-        {id, {:error, reason}} ->
-          Logger.warning("Failed to analyze pilot #{id}: #{inspect(reason)}")
-          false
-      end)
-      |> Enum.map(fn {id, {:ok, result}} -> {id, result} end)
-      |> Map.new()
+    Task.await_many(30_000)
+
+    Enum.filter(fn
+      {_id, {:ok, _result}} ->
+        true
+
+      {id, {:error, reason}} ->
+        Logger.warning("Failed to analyze pilot #{id}: #{inspect(reason)}")
+        false
+    end)
+
+    Enum.map(fn {id, {:ok, result}} -> {id, result} end) |> Map.new()
 
     Result.ok(%{
       total_analyzed: map_size(results),
@@ -798,9 +800,10 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
       :unknown
     else
       pilot_analyses
-      |> calculate_threat_distribution()
-      |> Enum.max_by(fn {_level, count} -> count end)
-      |> elem(0)
+
+      calculate_threat_distribution()
+      Enum.max_by(fn {_level, count} -> count end)
+      elem(0)
     end
   end
 

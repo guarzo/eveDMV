@@ -127,12 +127,14 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainEventHandlers do
         source_id = payload["source_system_id"]
         target_id = payload["target_system_id"]
 
-        case ChainConnection
-             |> Ash.Query.filter(
-               chain_topology_id == ^topology.id and source_system_id == ^source_id and
-                 target_system_id == ^target_id
-             )
-             |> Ash.read(domain: Api) do
+        case(ChainConnection)
+
+        Ash.Query.filter(
+          chain_topology_id == ^topology.id and source_system_id == ^source_id and
+            target_system_id == ^target_id
+        )
+
+        Ash.read domain: Api do
           {:ok, [connection]} ->
             Ash.destroy(connection, domain: Api)
 
@@ -164,12 +166,14 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainEventHandlers do
         source_id = payload["source_system_id"]
         target_id = payload["target_system_id"]
 
-        case ChainConnection
-             |> Ash.Query.filter(
-               chain_topology_id == ^topology.id and source_system_id == ^source_id and
-                 target_system_id == ^target_id
-             )
-             |> Ash.read(domain: Api) do
+        case(ChainConnection)
+
+        Ash.Query.filter(
+          chain_topology_id == ^topology.id and source_system_id == ^source_id and
+            target_system_id == ^target_id
+        )
+
+        Ash.read domain: Api do
           {:ok, [connection]} ->
             Ash.update(
               connection,

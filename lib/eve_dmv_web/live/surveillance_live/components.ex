@@ -43,8 +43,7 @@ defmodule EveDmvWeb.SurveillanceLive.Components do
   Returns engine stats with fallback values if the engine is unavailable.
   """
   @spec get_engine_stats() :: map()
-  def get_engine_stats do
-    MatchingEngine.get_stats()
+  def get_engine_stats MatchingEngine.get_stats(do)
   rescue
     error ->
       Logger.warning("Failed to get engine stats: #{inspect(error)}")
@@ -137,7 +136,7 @@ defmodule EveDmvWeb.SurveillanceLive.Components do
   @spec truncate_text(String.t(), non_neg_integer()) :: String.t()
   def truncate_text(text, max_length) when is_binary(text) do
     if String.length(text) <= max_length do
-      text
+    text
     else
       String.slice(text, 0, max_length - 3) <> "..."
     end

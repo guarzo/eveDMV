@@ -152,7 +152,8 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.DoctrineManager do
   """
   def extract_ship_types_from_doctrine(doctrine_template) do
     doctrine_template
-    |> Enum.flat_map(fn {_role, config} ->
+
+    Enum.flat_map(fn {_role, config} ->
       config["preferred_ships"] || []
     end)
     |> Enum.uniq()

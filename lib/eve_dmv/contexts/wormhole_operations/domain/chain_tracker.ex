@@ -316,8 +316,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainTracker do
       to_id = conn.to_system_id
 
       acc
-      |> Map.update(from_id, [to_id], &[to_id | &1])
-      |> Map.update(to_id, [from_id], &[from_id | &1])
+      Map.update(from_id, [to_id], &[to_id | &1])
+      Map.update(to_id, [from_id], &[from_id | &1])
     end)
   end
 
@@ -481,10 +481,12 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainTracker do
 
   defp find_critical_connections(connections) do
     connections
-    |> Enum.filter(fn conn ->
+
+    Enum.filter(fn conn ->
       conn.mass_status == :critical or conn.time_status == :eol
     end)
-    |> Enum.map(fn conn ->
+
+    Enum.map(fn conn ->
       %{
         from: conn.from_system_name,
         to: conn.to_system_name,
@@ -555,12 +557,14 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainTracker do
 
         new_paths =
           neighbors
-          |> Enum.reject(&MapSet.member?(new_visited, &1))
-          |> Enum.map(&{length(path) + 1, &1, path ++ [&1]})
+
+        Enum.reject(&MapSet.member?(new_visited, &1))
+        Enum.map(&{length(path) + 1, &1, path ++ [&1]})
 
         new_queue =
-          (rest ++ new_paths)
-          |> Enum.sort_by(&elem(&1, 0))
+          rest ++ new_paths
+
+        Enum.sort_by(&elem(&1, 0))
 
         dijkstra_search(new_queue, new_visited, target, chain_map)
     end
@@ -595,15 +599,17 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainTracker do
     # Find most active systems
     active_systems =
       kills_by_system
-      |> Enum.map(fn {system_id, system_kills} ->
-        %{
-          system_id: system_id,
-          kill_count: length(system_kills),
-          recent_kill_time: Enum.max_by(system_kills, & &1.kill_time).kill_time,
-          total_destroyed: Enum.sum(Enum.map(system_kills, & &1.total_value))
-        }
-      end)
-      |> Enum.sort_by(& &1.kill_count, :desc)
+
+    Enum.map(fn {system_id, system_kills} ->
+      %{
+        system_id: system_id,
+        kill_count: length(system_kills),
+        recent_kill_time: Enum.max_by(system_kills, & &1.kill_time).kill_time,
+        total_destroyed: Enum.sum(Enum.map(system_kills, & &1.total_value))
+      }
+    end)
+
+    Enum.sort_by(& &1.kill_count, :desc)
 
     # Assess threat based on activity
     threat_level =

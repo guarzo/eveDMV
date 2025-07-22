@@ -48,7 +48,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.BattleClassificationEngine
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.DoctrineDetectionEngine
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.SideDeterminationEngine
-  
+
   # New analyzers
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.LiveEngagementAnalyzer
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.BattleComparisonAnalyzer

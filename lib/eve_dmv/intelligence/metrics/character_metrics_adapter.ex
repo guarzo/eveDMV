@@ -21,7 +21,8 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetricsAdapter do
     legacy_stats = CharacterMetrics.calculate_basic_stats(character_id, killmail_data)
 
     # Try to enhance with V2 ISK efficiency calculation
-    enhanced_stats = try_enhance_with_v2_isk_efficiency(legacy_stats, killmail_data)
+    enhanced_stats =
+      try_enhance_with_v2_isk_efficiency(legacy_stats, killmail_data)
 
     enhanced_stats
   end
@@ -34,7 +35,8 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetricsAdapter do
     legacy_metrics = CharacterMetrics.calculate_all_metrics(character_id, killmail_data)
 
     # Try to enhance specific metrics with V2 calculations
-    enhanced_metrics = try_enhance_with_v2_metrics(legacy_metrics, killmail_data)
+    enhanced_metrics =
+      try_enhance_with_v2_metrics(legacy_metrics, killmail_data)
 
     enhanced_metrics
   end
@@ -99,7 +101,8 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetricsAdapter do
     enhanced_metrics = Map.put(legacy_metrics, :v2_engagement_score, engagement_score)
 
     # Try to enhance ISK efficiency if available
-    enhanced_metrics = try_enhance_with_v2_isk_efficiency(enhanced_metrics, killmail_data)
+    enhanced_metrics =
+      try_enhance_with_v2_isk_efficiency(enhanced_metrics, killmail_data)
 
     enhanced_metrics
   rescue

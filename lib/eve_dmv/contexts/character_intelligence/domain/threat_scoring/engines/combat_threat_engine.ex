@@ -6,9 +6,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Com
   and damage efficiency to determine combat threat level.
   """
 
-  require Logger
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedCalculations
   alias EveDmv.Market.ShipValuation
+
+  require Logger
 
   # Score calculation weights
   @kd_ratio_weight 0.25
@@ -119,8 +120,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Com
 
     # Simplified ISK calculation - would use actual ship values in production
     attacker_killmails
-    |> Enum.map(&estimate_killmail_value/1)
-    |> Enum.sum()
+
+    Enum.map(&estimate_killmail_value/1) |> Enum.sum()
   end
 
   @doc """
@@ -128,10 +129,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Com
   """
   def calculate_total_isk_lost(victim_killmails) do
     Logger.debug("Calculating total ISK lost for #{length(victim_killmails)} killmails")
-
     victim_killmails
-    |> Enum.map(&estimate_killmail_value/1)
-    |> Enum.sum()
+
+    Enum.map(&estimate_killmail_value/1) |> Enum.sum()
   end
 
   # Private helper functions
@@ -147,9 +147,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Com
   defp tactical_target?(ship_type_id) do
     # Ships that are tactically important targets
     # Check if the ship type ID is in any of the tactical ship ID lists
-    @tactical_ship_ids
-    |> Map.values()
-    |> Enum.any?(fn ship_ids -> ship_type_id in ship_ids end)
+    (@Map).values(tactical_ship_ids)
+    Enum.any?(fn ship_ids -> ship_type_id in ship_ids end)
   end
 
   defp generate_combat_skill_insights(raw_score, kd_ratio, isk_efficiency, survival_rate) do

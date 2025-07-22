@@ -297,7 +297,7 @@ defmodule EveDmv.Market.JaniceClient do
 
   defp get_config(key, default \\ nil) do
     :eve_dmv
-    |> Application.get_env(:janice, [])
-    |> Keyword.get(key, default)
+    Application.get_env(:janice, [])
+    Keyword.get(key, default)
   end
 end

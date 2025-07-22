@@ -192,16 +192,18 @@ defmodule EveDmv.Users.User do
           access_token: access_token,
           refresh_token: refresh_token,
           expires_at: expires_at
-        } = extract_eve_sso_data(user_info, oauth_tokens)
+        } =
+          extract_eve_sso_data(user_info, oauth_tokens)
 
         changeset
-        |> Changeset.change_attribute(:eve_character_id, character_id)
-        |> Changeset.change_attribute(:eve_character_name, character_name)
-        |> Changeset.change_attribute(:access_token, access_token)
-        |> Changeset.change_attribute(:refresh_token, refresh_token)
-        |> Changeset.change_attribute(:token_expires_at, expires_at)
-        |> Changeset.change_attribute(:last_login_at, DateTime.utc_now())
-        |> maybe_update_corporation_info(user_info)
+
+        Changeset.change_attribute(:eve_character_id, character_id)
+        Changeset.change_attribute(:eve_character_name, character_name)
+        Changeset.change_attribute(:access_token, access_token)
+        Changeset.change_attribute(:refresh_token, refresh_token)
+        Changeset.change_attribute(:token_expires_at, expires_at)
+        Changeset.change_attribute(:last_login_at, DateTime.utc_now())
+        maybe_update_corporation_info(user_info)
       end)
     end
 
@@ -242,16 +244,18 @@ defmodule EveDmv.Users.User do
           access_token: access_token,
           refresh_token: refresh_token,
           expires_at: expires_at
-        } = extract_eve_sso_data(user_info, oauth_tokens)
+        } =
+          extract_eve_sso_data(user_info, oauth_tokens)
 
         changeset
-        |> Changeset.change_attribute(:eve_character_id, character_id)
-        |> Changeset.change_attribute(:eve_character_name, character_name)
-        |> Changeset.change_attribute(:access_token, access_token)
-        |> Changeset.change_attribute(:refresh_token, refresh_token)
-        |> Changeset.change_attribute(:token_expires_at, expires_at)
-        |> Changeset.change_attribute(:last_login_at, DateTime.utc_now())
-        |> maybe_update_corporation_info(user_info)
+
+        Changeset.change_attribute(:eve_character_id, character_id)
+        Changeset.change_attribute(:eve_character_name, character_name)
+        Changeset.change_attribute(:access_token, access_token)
+        Changeset.change_attribute(:refresh_token, refresh_token)
+        Changeset.change_attribute(:token_expires_at, expires_at)
+        Changeset.change_attribute(:last_login_at, DateTime.utc_now())
+        maybe_update_corporation_info(user_info)
       end)
     end
 
@@ -324,12 +328,12 @@ defmodule EveDmv.Users.User do
       case fetch_character_corporation_info(character_id, access_token) do
         {:ok, corp_info} ->
           Logger.info("Successfully fetched corp info: #{inspect(corp_info)}")
-
           changeset
-          |> Changeset.change_attribute(:eve_corporation_id, corp_info.corporation_id)
-          |> Changeset.change_attribute(:eve_corporation_name, corp_info.corporation_name)
-          |> Changeset.change_attribute(:eve_alliance_id, corp_info.alliance_id)
-          |> Changeset.change_attribute(:eve_alliance_name, corp_info.alliance_name)
+
+          Changeset.change_attribute(:eve_corporation_id, corp_info.corporation_id)
+          Changeset.change_attribute(:eve_corporation_name, corp_info.corporation_name)
+          Changeset.change_attribute(:eve_alliance_id, corp_info.alliance_id)
+          Changeset.change_attribute(:eve_alliance_name, corp_info.alliance_name)
 
         {:error, reason} ->
           Logger.warning(
@@ -404,24 +408,7 @@ defmodule EveDmv.Users.User do
 
               alliance_id = Map.get(corp_data, "alliance_id")
 
-              alliance_name =
-                if alliance_id do
-                  Logger.info("Fetching alliance info for alliance #{alliance_id}")
-
-                  case fetch_alliance_info(alliance_id) do
-                    {:ok, alliance} ->
-                      name = Map.get(alliance, :name) || Map.get(alliance, "name")
-                      Logger.info("Got alliance name: #{name}")
-                      name
-
-                    error ->
-                      Logger.warning("Failed to fetch alliance info: #{inspect(error)}")
-                      nil
-                  end
-                else
-                  Logger.info("No alliance for this corporation")
-                  nil
-                end
+              alliance_name = fetch_alliance_name_if_present(alliance_id)
 
               result = %{
                 corporation_id: corporation_id,
@@ -477,6 +464,26 @@ defmodule EveDmv.Users.User do
 
       error ->
         error
+    end
+  end
+
+  defp fetch_alliance_name_if_present(alliance_id) do
+    if alliance_id do
+      Logger.info("Fetching alliance info for alliance #{alliance_id}")
+
+      case fetch_alliance_info(alliance_id) do
+        {:ok, alliance} ->
+          name = Map.get(alliance, :name) || Map.get(alliance, "name")
+          Logger.info("Got alliance name: #{name}")
+          name
+
+        error ->
+          Logger.warning("Failed to fetch alliance info: #{inspect(error)}")
+          nil
+      end
+    else
+      Logger.info("No alliance for this corporation")
+      nil
     end
   end
 

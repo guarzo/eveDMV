@@ -73,8 +73,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Calculators
 
       older_scores =
         historical_scores
-        |> Enum.drop(window_size)
-        |> Enum.take(window_size)
+
+      Enum.drop(window_size)
+      Enum.take(window_size)
 
       recent_avg = calculate_average(recent_scores)
       older_avg = calculate_average(older_scores)

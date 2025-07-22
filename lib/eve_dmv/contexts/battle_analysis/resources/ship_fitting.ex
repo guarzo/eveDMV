@@ -62,12 +62,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting do
         case parse_eft_fitting(eft_text) do
           {:ok, parsed} ->
             changeset
-            |> Ash.Changeset.change_attribute(:name, parsed.name)
-            |> Ash.Changeset.change_attribute(:ship_type_id, parsed.ship_type_id)
-            |> Ash.Changeset.change_attribute(:raw_fitting, eft_text)
-            |> Ash.Changeset.change_attribute(:parsed_fitting, parsed)
-            |> Ash.Changeset.change_attribute(:source, :eft)
-            |> Ash.Changeset.change_attribute(
+            Ash.Changeset.change_attribute(:name, parsed.name)
+            Ash.Changeset.change_attribute(:ship_type_id, parsed.ship_type_id)
+            Ash.Changeset.change_attribute(:raw_fitting, eft_text)
+            Ash.Changeset.change_attribute(:parsed_fitting, parsed)
+            Ash.Changeset.change_attribute(:source, :eft)
+
+            Ash.Changeset.change_attribute(
               :character_id,
               Ash.Changeset.get_argument(changeset, :character_id)
             )
@@ -91,12 +92,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting do
         case parse_pyfa_fitting(pyfa_xml) do
           {:ok, parsed} ->
             changeset
-            |> Ash.Changeset.change_attribute(:name, parsed.name)
-            |> Ash.Changeset.change_attribute(:ship_type_id, parsed.ship_type_id)
-            |> Ash.Changeset.change_attribute(:raw_fitting, pyfa_xml)
-            |> Ash.Changeset.change_attribute(:parsed_fitting, parsed)
-            |> Ash.Changeset.change_attribute(:source, :pyfa)
-            |> Ash.Changeset.change_attribute(
+            Ash.Changeset.change_attribute(:name, parsed.name)
+            Ash.Changeset.change_attribute(:ship_type_id, parsed.ship_type_id)
+            Ash.Changeset.change_attribute(:raw_fitting, pyfa_xml)
+            Ash.Changeset.change_attribute(:parsed_fitting, parsed)
+            Ash.Changeset.change_attribute(:source, :pyfa)
+
+            Ash.Changeset.change_attribute(
               :character_id,
               Ash.Changeset.get_argument(changeset, :character_id)
             )
@@ -120,15 +122,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting do
         parsed = extract_fitting_from_killmail(killmail)
 
         changeset
-        |> Ash.Changeset.change_attribute(
+
+        Ash.Changeset.change_attribute(
           :name,
           "Detected: #{killmail.victim.ship_name || "Unknown"}"
         )
-        |> Ash.Changeset.change_attribute(:ship_type_id, killmail.victim.ship_type_id)
-        |> Ash.Changeset.change_attribute(:character_id, killmail.victim.character_id)
-        |> Ash.Changeset.change_attribute(:raw_fitting, inspect(killmail.items))
-        |> Ash.Changeset.change_attribute(:parsed_fitting, parsed)
-        |> Ash.Changeset.change_attribute(:source, :detected)
+
+        Ash.Changeset.change_attribute(:ship_type_id, killmail.victim.ship_type_id)
+        Ash.Changeset.change_attribute(:character_id, killmail.victim.character_id)
+        Ash.Changeset.change_attribute(:raw_fitting, inspect(killmail.items))
+        Ash.Changeset.change_attribute(:parsed_fitting, parsed)
+        Ash.Changeset.change_attribute(:source, :detected)
       end)
     end
 
@@ -142,8 +146,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting do
         stats = calculate_fitting_stats(fitting.parsed_fitting, fitting.ship_type_id)
 
         changeset
-        |> Ash.Changeset.change_attribute(:calculated_stats, stats)
-        |> Ash.Changeset.change_attribute(:last_calculated, DateTime.utc_now())
+        Ash.Changeset.change_attribute(:calculated_stats, stats)
+        Ash.Changeset.change_attribute(:last_calculated, DateTime.utc_now())
       end)
     end
 
@@ -301,8 +305,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting do
 
   defp extract_slot_items(items_by_slot, slot_range) do
     slot_range
-    |> Enum.flat_map(fn slot -> Map.get(items_by_slot, slot, []) end)
-    |> Enum.map(&(&1[:type_name] || "Unknown Module"))
+    Enum.flat_map(fn slot -> Map.get(items_by_slot, slot, []) end)
+    Enum.map(&(&1[:type_name] || "Unknown Module"))
   end
 
   defp extract_cargo_items(items_by_slot) do
@@ -310,7 +314,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting do
     cargo_flag = 5
 
     Map.get(items_by_slot, cargo_flag, [])
-    |> Enum.map(fn item ->
+
+    Enum.map(fn item ->
       "#{item[:type_name] || "Unknown"} x#{item[:quantity] || 1}"
     end)
   end
@@ -362,16 +367,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting do
   defp estimate_dps_from_modules(parsed_fitting) do
     weapon_count =
       parsed_fitting[:high_slots]
-      |> Enum.count(fn mod ->
-        String.contains?(mod, [
-          "Launcher",
-          "Turret",
-          "Laser",
-          "Railgun",
-          "Autocannon",
-          "Artillery"
-        ])
-      end)
+
+    Enum.count(fn mod ->
+      String.contains?(mod, [
+        "Launcher",
+        "Turret",
+        "Laser",
+        "Railgun",
+        "Autocannon",
+        "Artillery"
+      ])
+    end)
 
     # Simplified DPS per weapon
     weapon_count * 100

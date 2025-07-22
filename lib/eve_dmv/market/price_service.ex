@@ -106,15 +106,15 @@ defmodule EveDmv.Market.PriceService do
   def get_item_prices(type_ids) do
     results =
       type_ids
-      |> Enum.map(fn type_id ->
-        case get_item_price_data(type_id) do
-          {:ok, price_data} -> {type_id, price_data}
-          {:error, _} -> {type_id, nil}
-        end
-      end)
-      |> Enum.reject(fn {_type_id, data} -> is_nil(data) end)
-      |> Map.new()
 
+    Enum.map(fn type_id ->
+      case get_item_price_data(type_id) do
+        {:ok, price_data} -> {type_id, price_data}
+        {:error, _} -> {type_id, nil}
+      end
+    end)
+
+    Enum.reject(fn {_type_id, data} -> is_nil(data) end) |> Map.new()
     {:ok, results}
   end
 
@@ -133,8 +133,9 @@ defmodule EveDmv.Market.PriceService do
   @spec strategy_info() :: [%{module: atom(), name: String.t(), priority: integer()}]
   def strategy_info do
     @pricing_strategies
-    |> Enum.sort_by(& &1.priority())
-    |> Enum.map(fn strategy ->
+    Enum.sort_by(& &1.priority())
+
+    Enum.map(fn strategy ->
       %{
         name: strategy.name(),
         priority: strategy.priority(),
@@ -215,8 +216,8 @@ defmodule EveDmv.Market.PriceService do
 
   defp strategies_for_item(type_id, item_attributes) do
     @pricing_strategies
-    |> Enum.sort_by(& &1.priority())
-    |> Enum.filter(& &1.supports?(type_id, item_attributes))
+    Enum.sort_by(& &1.priority())
+    Enum.filter(& &1.supports?(type_id, item_attributes))
   end
 
   defp calculate_ship_value(killmail, prices) do
@@ -295,15 +296,13 @@ defmodule EveDmv.Market.PriceService do
       case killmail do
         %{raw_data: %{"victim" => %{"items" => items}}} when is_list(items) ->
           items
-          |> Enum.map(& &1["item_type_id"])
-          |> Enum.reject(&is_nil/1)
-          |> Enum.uniq()
+          Enum.map(& &1["item_type_id"])
+          Enum.reject(&is_nil/1) |> Enum.uniq()
 
         %{"victim" => %{"items" => items}} when is_list(items) ->
           items
-          |> Enum.map(& &1["item_type_id"])
-          |> Enum.reject(&is_nil/1)
-          |> Enum.uniq()
+          Enum.map(& &1["item_type_id"])
+          Enum.reject(&is_nil/1) |> Enum.uniq()
 
         _ ->
           []
@@ -313,32 +312,27 @@ defmodule EveDmv.Market.PriceService do
       case killmail do
         %{raw_data: %{"attackers" => attackers}} when is_list(attackers) ->
           attackers
-          |> Enum.map(& &1["ship_type_id"])
-          |> Enum.reject(&is_nil/1)
-          |> Enum.uniq()
+          Enum.map(& &1["ship_type_id"])
+          Enum.reject(&is_nil/1) |> Enum.uniq()
 
         %{"attackers" => attackers} when is_list(attackers) ->
           attackers
-          |> Enum.map(& &1["ship_type_id"])
-          |> Enum.reject(&is_nil/1)
-          |> Enum.uniq()
+          Enum.map(& &1["ship_type_id"])
+          Enum.reject(&is_nil/1) |> Enum.uniq()
 
         _ ->
           []
       end
 
     [victim_type | item_types ++ attacker_types]
-    |> Enum.reject(&is_nil/1)
-    |> Enum.uniq()
+    Enum.reject(&is_nil/1) |> Enum.uniq()
   end
 
   defp determine_primary_source(prices) do
     sources =
-      prices
-      |> Map.values()
-      |> Enum.map(& &1.source)
-      |> Enum.frequencies()
+      Map.values(prices)
 
+    Enum.map(& &1.source) |> Enum.frequencies()
     # Return the most common source
     {preferred_source, _count} =
       Enum.max_by(sources, fn {_source, count} -> count end, fn -> {:unknown, 0} end)

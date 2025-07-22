@@ -49,11 +49,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.KillmailEventProcess
 
     attacker_ids =
       event.attackers
-      |> Enum.map(& &1[:character_id])
-      |> Enum.filter(& &1)
+
+    Enum.map(& &1[:character_id])
+    Enum.filter(& &1)
 
     [victim_id | attacker_ids]
-    |> Enum.filter(& &1)
-    |> Enum.uniq()
+    Enum.filter(& &1) |> Enum.uniq()
   end
 end

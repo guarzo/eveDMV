@@ -335,9 +335,9 @@ defmodule EveDmv.Database.QueryPlanAnalyzer do
 
   defp get_top_recommendations(state) do
     state.analysis_stats.recommendations
-    |> Enum.filter(&(&1.estimated_benefit in ["High", "Medium"]))
-    |> Enum.sort_by(&(&1.estimated_benefit == "High"), &>=/2)
-    |> Enum.take(5)
+    Enum.filter(&(&1.estimated_benefit in ["High", "Medium"]))
+    Enum.sort_by(&(&1.estimated_benefit == "High"), &>=/2)
+    Enum.take(5)
   end
 
   # Public utilities

@@ -58,7 +58,8 @@ defmodule EveDmv.Eve.StaticDataLoader.SolarSystemProcessor do
   """
   def find_systems_within_range(systems, x, y, z, max_distance) do
     systems
-    |> Enum.map(fn system ->
+
+    Enum.map(fn system ->
       distance =
         calculate_distance(
           {x, y, z},
@@ -67,9 +68,10 @@ defmodule EveDmv.Eve.StaticDataLoader.SolarSystemProcessor do
 
       {system, distance}
     end)
-    |> Enum.filter(fn {_system, distance} -> distance <= max_distance end)
-    |> Enum.sort_by(fn {_system, distance} -> distance end)
-    |> Enum.map(fn {system, _distance} -> system end)
+
+    Enum.filter(fn {_system, distance} -> distance <= max_distance end)
+    Enum.sort_by(fn {_system, distance} -> distance end)
+    Enum.map(fn {system, _distance} -> system end)
   end
 
   @doc """
@@ -78,21 +80,21 @@ defmodule EveDmv.Eve.StaticDataLoader.SolarSystemProcessor do
   def analyze_system_data(systems) do
     security_distribution =
       systems
-      |> Enum.group_by(& &1.security_class)
-      |> Enum.map(fn {class, systems} -> {class, length(systems)} end)
-      |> Map.new()
+
+    Enum.group_by(& &1.security_class)
+    Enum.map(fn {class, systems} -> {class, length(systems)} end) |> Map.new()
 
     region_count =
       systems
-      |> Enum.map(& &1.region_name)
-      |> Enum.uniq()
-      |> length()
+
+    Enum.map(& &1.region_name) |> Enum.uniq()
+    length()
 
     constellation_count =
       systems
-      |> Enum.map(& &1.constellation_name)
-      |> Enum.uniq()
-      |> length()
+
+    Enum.map(& &1.constellation_name) |> Enum.uniq()
+    length()
 
     %{
       total_systems: length(systems),
@@ -204,13 +206,15 @@ defmodule EveDmv.Eve.StaticDataLoader.SolarSystemProcessor do
         max_distance = max_light_years * 9.461e15
 
         systems
-        |> find_systems_within_range(
+
+        find_systems_within_range(
           system.x,
           system.y,
           system.z,
           max_distance
         )
-        |> Enum.reject(&(&1.system_id == system_id))
+
+        Enum.reject(&(&1.system_id == system_id))
     end
   end
 end

@@ -25,7 +25,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.DatabaseMetrics do
       n_live_tup,
       n_dead_tup,
       last_vacuum,
-      last_autovacuum
+    last_autovacuum
     FROM pg_stat_user_tables
     WHERE schemaname = 'public'
     ORDER BY n_live_tup DESC
@@ -36,8 +36,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.DatabaseMetrics do
       {:ok, %{rows: rows, columns: columns}} ->
         Enum.map(rows, fn row ->
           columns
-          |> Enum.zip(row)
-          |> Map.new()
+    Enum.zip(row) |> Map.new()
         end)
 
       {:error, _} ->
@@ -55,7 +54,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.DatabaseMetrics do
       calls,
       mean_exec_time,
       total_exec_time,
-      rows
+    rows
     FROM pg_stat_statements
     WHERE query NOT LIKE '%pg_stat_statements%'
     ORDER BY mean_exec_time DESC
@@ -154,8 +153,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.DatabaseMetrics do
         %{error: "QueryMonitor not running"}
 
       _pid ->
-        try do
-          QueryMonitor.get_performance_analysis()
+        try QueryMonitor.get_performance_analysis(do)
         rescue
           error in [FunctionClauseError, UndefinedFunctionError, ArgumentError] ->
             Logger.warning("Query analysis error: #{inspect(error)}")
@@ -177,8 +175,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.DatabaseMetrics do
         []
 
       _pid ->
-        try do
-          QueryMonitor.get_n_plus_one_alerts()
+        try QueryMonitor.get_n_plus_one_alerts(do)
         rescue
           error in [FunctionClauseError, UndefinedFunctionError, ArgumentError] ->
             Logger.warning("N+1 detection error: #{inspect(error)}")
@@ -208,7 +205,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.DatabaseMetrics do
       n_tup_del,
       n_tup_hot_upd,
       n_live_tup,
-      n_dead_tup
+    n_dead_tup
     FROM pg_stat_user_tables
     WHERE tablename = $1
     """
@@ -229,7 +226,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.DatabaseMetrics do
              del,
              hot_upd,
              live,
-             dead
+    dead
            ]
          ]
        }} ->
@@ -281,7 +278,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.DatabaseMetrics do
       tablename,
       last_analyze,
       last_autoanalyze,
-      n_mod_since_analyze
+    n_mod_since_analyze
     FROM pg_stat_user_tables
     WHERE schemaname = 'public'
       AND (last_analyze IS NULL OR last_analyze < NOW() - INTERVAL '7 days')

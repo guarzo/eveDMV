@@ -33,9 +33,9 @@ defmodule EveDmv.Logging.StructuredFormatter do
           service: "eve_dmv",
           environment: Application.get_env(:eve_dmv, :environment, :prod)
         }
-        |> add_metadata(metadata)
-        |> add_context_fields(metadata)
-        |> Jason.encode!()
+    add_metadata(metadata)
+    add_context_fields(metadata)
+    Jason.encode!()
 
       [log_entry, "\n"]
     rescue
@@ -45,7 +45,7 @@ defmodule EveDmv.Logging.StructuredFormatter do
           case message do
             {:string, binary} when is_binary(binary) -> binary
             {:string, list} when is_list(list) -> IO.iodata_to_binary(list)
-            {format, args} -> :io_lib.format(format, args) |> IO.iodata_to_binary()
+            {format, args} -> :io_lib.format(format, args) IO.iodata_to_binary()
             other -> format_message(other)
           end
 
@@ -70,23 +70,17 @@ defmodule EveDmv.Logging.StructuredFormatter do
           unix_timestamp = mega * 1_000_000 + sec
 
           DateTime.from_unix!(unix_timestamp, :second)
-          |> DateTime.add(micro, :microsecond)
-          |> DateTime.to_iso8601()
-
+    DateTime.add(micro, :microsecond) |> DateTime.to_iso8601()
         timestamp when is_integer(timestamp) ->
           # Modern system timestamp
           System.convert_time_unit(timestamp, :native, :microsecond)
-          |> DateTime.from_unix!(:microsecond)
-          |> DateTime.to_iso8601()
-
+    DateTime.from_unix!(:microsecond) |> DateTime.to_iso8601()
         _ ->
-          # Fallback to current time
-          DateTime.utc_now() |> DateTime.to_iso8601()
+          # Fallback to current DateTime.utc_now(time) DateTime.to_iso8601()
       end
     rescue
       _ ->
-        # If all else fails, use current time
-        DateTime.utc_now() |> DateTime.to_iso8601()
+        # If all else fails, use current DateTime.utc_now(time) DateTime.to_iso8601()
     end
   end
 
@@ -94,7 +88,7 @@ defmodule EveDmv.Logging.StructuredFormatter do
   defp format_message({:string, message}) when is_list(message), do: IO.iodata_to_binary(message)
 
   defp format_message({format, args}) when is_list(format) and is_list(args) do
-    :io_lib.format(format, args) |> IO.iodata_to_binary()
+    :io_lib.format(format, args) IO.iodata_to_binary()
   rescue
     _ -> "#{inspect(format)} #{inspect(args)}"
   end
@@ -120,8 +114,8 @@ defmodule EveDmv.Logging.StructuredFormatter do
     ]
 
     metadata
-    |> Enum.filter(fn {key, _value} -> key in standard_fields end)
-    |> Enum.reduce(log_entry, fn {key, value}, acc ->
+    Enum.filter(fn {key, _value} -> key in standard_fields end)
+    Enum.reduce(log_entry, fn {key, value}, acc ->
       Map.put(acc, key, value)
     end)
   end
@@ -130,10 +124,10 @@ defmodule EveDmv.Logging.StructuredFormatter do
 
   defp add_context_fields(log_entry, metadata) do
     log_entry
-    |> maybe_add_error_context(metadata)
-    |> maybe_add_performance_context(metadata)
-    |> maybe_add_security_context(metadata)
-    |> maybe_add_business_context(metadata)
+    maybe_add_error_context(metadata)
+    maybe_add_performance_context(metadata)
+    maybe_add_security_context(metadata)
+    maybe_add_business_context(metadata)
   end
 
   defp maybe_add_error_context(log_entry, metadata) do
@@ -148,9 +142,7 @@ defmodule EveDmv.Logging.StructuredFormatter do
             exception: format_exception(exception),
             reason: format_reason(reason)
           }
-          |> Enum.reject(fn {_key, value} -> is_nil(value) end)
-          |> Map.new()
-
+    Enum.reject(fn {_key, value} -> is_nil(value) end) |> Map.new()
         Map.put(log_entry, :error_context, error_context)
     end
   end
@@ -159,10 +151,8 @@ defmodule EveDmv.Logging.StructuredFormatter do
     performance_fields = [:duration_ms, :query_time, :response_time, :memory_usage]
 
     performance_data =
-      metadata
-      |> Enum.filter(fn {key, _value} -> key in performance_fields end)
-      |> Map.new()
-
+    metadata
+    Enum.filter(fn {key, _value} -> key in performance_fields end) |> Map.new()
     case performance_data do
       empty when map_size(empty) == 0 -> log_entry
       data -> Map.put(log_entry, :performance, data)
@@ -173,10 +163,8 @@ defmodule EveDmv.Logging.StructuredFormatter do
     security_fields = [:user_id, :character_id, :corporation_id, :threat_level, :security_event]
 
     security_data =
-      metadata
-      |> Enum.filter(fn {key, _value} -> key in security_fields end)
-      |> Map.new()
-
+    metadata
+    Enum.filter(fn {key, _value} -> key in security_fields end) |> Map.new()
     case security_data do
       empty when map_size(empty) == 0 -> log_entry
       data -> Map.put(log_entry, :security, data)
@@ -187,10 +175,8 @@ defmodule EveDmv.Logging.StructuredFormatter do
     business_fields = [:entity_type, :entity_id, :operation, :killmail_id, :battle_id]
 
     business_data =
-      metadata
-      |> Enum.filter(fn {key, _value} -> key in business_fields end)
-      |> Map.new()
-
+    metadata
+    Enum.filter(fn {key, _value} -> key in business_fields end) |> Map.new()
     case business_data do
       empty when map_size(empty) == 0 -> log_entry
       data -> Map.put(log_entry, :business, data)

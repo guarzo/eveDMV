@@ -314,9 +314,9 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveMetrics do
 
       avg_efficiency =
         table_stats
-        |> Enum.map(& &1.efficiency_metrics.storage_efficiency)
-        |> Enum.sum()
-        |> Kernel./(length(table_stats))
+
+      Enum.map(& &1.efficiency_metrics.storage_efficiency) |> Enum.sum()
+      Kernel./(length(table_stats))
 
       %{
         total_archived_records: total_records,
@@ -370,9 +370,9 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveMetrics do
     if length(storage_data) > 0 do
       avg_efficiency =
         storage_data
-        |> Enum.map(& &1.efficiency_ratio)
-        |> Enum.sum()
-        |> Kernel./(length(storage_data))
+
+      Enum.map(& &1.efficiency_ratio) |> Enum.sum()
+      Kernel./(length(storage_data))
 
       Float.round(avg_efficiency, 4)
     else
@@ -442,9 +442,10 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveMetrics do
     # Check for low health scores
     low_health_tables =
       health_factors
-      |> Enum.zip(archive_policies)
-      |> Enum.filter(fn {score, _policy} -> score < 60 end)
-      |> Enum.map(fn {_score, policy} -> policy.table end)
+
+    Enum.zip(archive_policies)
+    Enum.filter(fn {score, _policy} -> score < 60 end)
+    Enum.map(fn {_score, policy} -> policy.table end)
 
     recs_with_low_health =
       if length(low_health_tables) > 0 do

@@ -197,10 +197,9 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityHelpers d
     if length(activity_series) > 2 do
       avg = Enum.sum(activity_series) / length(activity_series)
 
-      activity_series
-      |> Enum.with_index()
-      |> Enum.filter(fn {value, _index} -> value > avg * 1.2 end)
-      |> Enum.map(fn {_value, index} -> index end)
+      Enum.with_index(activity_series)
+      Enum.filter(fn {value, _index} -> value > avg * 1.2 end)
+      Enum.map(fn {_value, index} -> index end)
     else
       []
     end

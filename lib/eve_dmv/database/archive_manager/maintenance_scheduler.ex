@@ -409,10 +409,11 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
   defp get_storage_usage_summary(archive_policies) do
     total_archive_size =
       archive_policies
-      |> Enum.map(fn policy ->
-        PartitionManager.get_archive_table_size(policy.archive_table).total_size
-      end)
-      |> Enum.sum()
+
+    Enum.map(fn policy ->
+      PartitionManager.get_archive_table_size(policy.archive_table).total_size
+    end)
+    |> Enum.sum()
 
     %{
       total_archive_size_bytes: total_archive_size,
@@ -434,8 +435,9 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
   defp generate_maintenance_recommendations(archive_policies) do
     recommendations =
       []
-      |> add_backlog_recommendation(archive_policies)
-      |> add_large_archive_recommendation(archive_policies)
+
+    add_backlog_recommendation(archive_policies)
+    add_large_archive_recommendation(archive_policies)
 
     if Enum.empty?(recommendations) do
       ["No maintenance recommendations at this time"]

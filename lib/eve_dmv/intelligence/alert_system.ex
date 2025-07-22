@@ -80,9 +80,9 @@ defmodule EveDmv.Intelligence.AlertSystem do
 
   def handle_call(:get_active_alerts, _from, state) do
     alerts =
-      state.active_alerts
-      |> Map.values()
-      |> Enum.sort_by(& &1.timestamp, {:desc, DateTime})
+      state.Map.values(active_alerts)
+
+    Enum.sort_by(& &1.timestamp, {:desc, DateTime})
 
     {:reply, alerts, state}
   end

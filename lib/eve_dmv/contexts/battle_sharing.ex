@@ -162,14 +162,16 @@ defmodule EveDmv.Contexts.BattleSharing do
 
     filtered_updates =
       updates
-      |> Enum.filter(fn {key, _value} -> key in allowed_fields end)
-      |> Enum.into(%{})
+
+    Enum.filter(fn {key, _value} -> key in allowed_fields end)
+    Enum.into(%{})
 
     if map_size(filtered_updates) > 0 do
       updated_report =
         report
-        |> Map.merge(filtered_updates)
-        |> Map.put(:updated_at, DateTime.utc_now())
+
+      Map.merge(filtered_updates)
+      Map.put(:updated_at, DateTime.utc_now())
 
       # In production, this would save to database
       {:ok, updated_report}
@@ -231,26 +233,27 @@ defmodule EveDmv.Contexts.BattleSharing do
       # Transform to public format
       public_reports =
         sample_reports
-        |> Enum.map(fn report ->
-          %{
-            report_id: report.report_id,
-            battle_id: report.battle_id,
-            creator: %{
-              character_id: report.creator_character_id,
-              character_name: "Battle Analyst #{report.creator_character_id}"
-            },
-            title: report.title,
-            description: report.description,
-            ratings: %{
-              average: report.metrics.average_rating,
-              count: report.metrics.total_ratings
-            },
-            visibility: report.visibility,
-            tags: report.tags,
-            created_at: report.created_at,
-            updated_at: report.updated_at
-          }
-        end)
+
+      Enum.map(fn report ->
+        %{
+          report_id: report.report_id,
+          battle_id: report.battle_id,
+          creator: %{
+            character_id: report.creator_character_id,
+            character_name: "Battle Analyst #{report.creator_character_id}"
+          },
+          title: report.title,
+          description: report.description,
+          ratings: %{
+            average: report.metrics.average_rating,
+            count: report.metrics.total_ratings
+          },
+          visibility: report.visibility,
+          tags: report.tags,
+          created_at: report.created_at,
+          updated_at: report.updated_at
+        }
+      end)
 
       {:ok, public_reports}
     rescue
@@ -266,7 +269,8 @@ defmodule EveDmv.Contexts.BattleSharing do
 
     if report_count > 0 do
       1..report_count
-      |> Enum.map(fn i ->
+
+      Enum.map(fn i ->
         %{
           report_id: "#{battle_id}_report_#{i}",
           battle_id: battle_id,
@@ -327,26 +331,27 @@ defmodule EveDmv.Contexts.BattleSharing do
       # Transform to public format
       public_reports =
         sorted_reports
-        |> Enum.map(fn report ->
-          %{
-            report_id: report.report_id,
-            battle_id: report.battle_id,
-            title: report.title,
-            description: report.description,
-            ratings: %{
-              average: report.metrics.average_rating,
-              count: report.metrics.total_ratings
-            },
-            visibility: report.visibility,
-            tags: report.tags,
-            metrics: %{
-              views: report.metrics.views,
-              shares: report.metrics.shares
-            },
-            created_at: report.created_at,
-            updated_at: report.updated_at
-          }
-        end)
+
+      Enum.map(fn report ->
+        %{
+          report_id: report.report_id,
+          battle_id: report.battle_id,
+          title: report.title,
+          description: report.description,
+          ratings: %{
+            average: report.metrics.average_rating,
+            count: report.metrics.total_ratings
+          },
+          visibility: report.visibility,
+          tags: report.tags,
+          metrics: %{
+            views: report.metrics.views,
+            shares: report.metrics.shares
+          },
+          created_at: report.created_at,
+          updated_at: report.updated_at
+        }
+      end)
 
       {:ok, public_reports}
     rescue
@@ -361,7 +366,8 @@ defmodule EveDmv.Contexts.BattleSharing do
     base_count = 3 + :rand.uniform(8)
 
     (offset + 1)..(offset + min(limit, base_count))
-    |> Enum.map(fn i ->
+
+    Enum.map(fn i ->
       battle_types = [:fleet_battle, :gang_warfare, :small_gang, :skirmish]
       battle_type = Enum.random(battle_types)
 

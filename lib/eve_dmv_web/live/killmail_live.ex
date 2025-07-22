@@ -18,20 +18,22 @@ defmodule EveDmvWeb.KillmailLive do
       {killmail_id, ""} ->
         socket =
           socket
-          |> assign(:killmail_id, killmail_id)
-          |> assign(:killmail, nil)
-          |> assign(:loading, true)
-          |> assign(:error, nil)
-          |> assign(:export_format, "json")
-          |> load_killmail(killmail_id)
+
+        assign(:killmail_id, killmail_id)
+        assign(:killmail, nil)
+        assign(:loading, true)
+        assign(:error, nil)
+        assign(:export_format, "json")
+        load_killmail(killmail_id)
 
         {:ok, socket}
 
       _ ->
         socket =
           socket
-          |> assign(:error, "Invalid killmail ID")
-          |> assign(:loading, false)
+
+        assign(:error, "Invalid killmail ID")
+        assign(:loading, false)
 
         {:ok, socket}
     end
@@ -48,12 +50,14 @@ defmodule EveDmvWeb.KillmailLive do
           {:ok, {filename, content, content_type}} ->
             socket =
               socket
-              |> push_event("download_file", %{
-                filename: filename,
-                content: content,
-                content_type: content_type
-              })
-              |> put_flash(:info, "Export generated successfully")
+
+            push_event("download_file", %{
+              filename: filename,
+              content: content,
+              content_type: content_type
+            })
+
+            put_flash(:info, "Export generated successfully")
 
             {:noreply, socket}
 
@@ -79,8 +83,9 @@ defmodule EveDmvWeb.KillmailLive do
 
         socket =
           socket
-          |> push_event("copy_to_clipboard", %{text: zkb_url})
-          |> put_flash(:info, "zKillboard URL copied to clipboard")
+
+        push_event("copy_to_clipboard", %{text: zkb_url})
+        put_flash(:info, "zKillboard URL copied to clipboard")
 
         {:noreply, socket}
     end
@@ -92,8 +97,8 @@ defmodule EveDmvWeb.KillmailLive do
     task = Task.async(fn -> fetch_killmail_details(killmail_id) end)
 
     socket
-    |> assign(:loading_task, task)
-    |> assign(:loading, true)
+    assign(:loading_task, task)
+    assign(:loading, true)
   end
 
   @impl true
@@ -103,17 +108,18 @@ defmodule EveDmvWeb.KillmailLive do
     case result do
       {:ok, killmail} ->
         socket
-        |> assign(:killmail, killmail)
-        |> assign(:loading, false)
-        |> assign(:loading_task, nil)
+        assign(:killmail, killmail)
+        assign(:loading, false)
+        assign(:loading_task, nil)
 
       {:error, reason} ->
         socket
-        |> assign(:error, reason)
-        |> assign(:loading, false)
-        |> assign(:loading_task, nil)
+        assign(:error, reason)
+        assign(:loading, false)
+        assign(:loading_task, nil)
     end
-    |> then(&{:noreply, &1})
+
+    then(&{:noreply, &1})
   end
 
   @impl true
@@ -121,9 +127,10 @@ defmodule EveDmvWeb.KillmailLive do
     # Handle task crash
     socket =
       socket
-      |> assign(:error, "Failed to load killmail")
-      |> assign(:loading, false)
-      |> assign(:loading_task, nil)
+
+    assign(:error, "Failed to load killmail")
+    assign(:loading, false)
+    assign(:loading_task, nil)
 
     {:noreply, socket}
   end
@@ -132,9 +139,10 @@ defmodule EveDmvWeb.KillmailLive do
     try do
       query =
         KillmailRaw
-        |> new()
-        |> filter(killmail_id: killmail_id)
-        |> limit(1)
+
+      new()
+      filter(killmail_id: killmail_id)
+      limit(1)
 
       case Ash.read(query, domain: Api) do
         {:ok, [killmail]} ->
@@ -173,11 +181,11 @@ defmodule EveDmvWeb.KillmailLive do
     fitted_items = parse_fitted_items(killmail)
 
     killmail
-    |> Map.put(:calculated_value, killmail_value)
-    |> Map.put(:victim_details, victim_data)
-    |> Map.put(:attackers_details, attackers_data)
-    |> Map.put(:fitted_items, fitted_items)
-    |> Map.put(:damage_stats, calculate_damage_stats(attackers_data))
+    Map.put(:calculated_value, killmail_value)
+    Map.put(:victim_details, victim_data)
+    Map.put(:attackers_details, attackers_data)
+    Map.put(:fitted_items, fitted_items)
+    Map.put(:damage_stats, calculate_damage_stats(attackers_data))
   end
 
   defp parse_victim_data(killmail) do
@@ -201,7 +209,8 @@ defmodule EveDmvWeb.KillmailLive do
     attackers = killmail.raw_data["attackers"] || []
 
     attackers
-    |> Enum.map(fn attacker ->
+
+    Enum.map(fn attacker ->
       %{
         character_id: attacker["character_id"],
         character_name: attacker["character_name"] || "Unknown",
@@ -218,7 +227,8 @@ defmodule EveDmvWeb.KillmailLive do
         security_status: attacker["security_status"] || 0.0
       }
     end)
-    |> Enum.sort_by(& &1.damage_done, :desc)
+
+    Enum.sort_by(& &1.damage_done, :desc)
   end
 
   defp parse_fitted_items(killmail) do
@@ -226,7 +236,8 @@ defmodule EveDmvWeb.KillmailLive do
     items = victim["items"] || []
 
     items
-    |> Enum.map(fn item ->
+
+    Enum.map(fn item ->
       %{
         type_id: item["typeID"],
         type_name: item["typeName"] || "Unknown Item",
@@ -236,7 +247,8 @@ defmodule EveDmvWeb.KillmailLive do
         singleton: item["singleton"] || 0
       }
     end)
-    |> Enum.group_by(fn item ->
+
+    Enum.group_by(fn item ->
       case item.flag do
         # High, Mid, Low slots
         f when f >= 11 and f <= 34 -> :fitted
@@ -321,30 +333,31 @@ defmodule EveDmvWeb.KillmailLive do
 
       attacker_rows =
         killmail.attackers_details
-        |> Enum.map(fn attacker ->
-          [
-            killmail.killmail_id,
-            killmail.killmail_time,
-            killmail.solar_system_id,
-            killmail.victim_details.character_name,
-            killmail.victim_details.corporation_name,
-            killmail.victim_details.ship_name,
-            attacker.character_name,
-            attacker.corporation_name,
-            attacker.ship_name,
-            attacker.damage_done,
-            attacker.final_blow,
-            killmail.calculated_value
-          ]
-        end)
+
+      Enum.map(fn attacker ->
+        [
+          killmail.killmail_id,
+          killmail.killmail_time,
+          killmail.solar_system_id,
+          killmail.victim_details.character_name,
+          killmail.victim_details.corporation_name,
+          killmail.victim_details.ship_name,
+          attacker.character_name,
+          attacker.corporation_name,
+          attacker.ship_name,
+          attacker.damage_done,
+          attacker.final_blow,
+          killmail.calculated_value
+        ]
+      end)
 
       all_rows = [headers] ++ if Enum.empty?(attacker_rows), do: [base_data], else: attacker_rows
 
       content =
         Enum.map_join(all_rows, "\n", fn row ->
           row
-          |> Enum.map(&to_string/1)
-          |> Enum.map_join(",", &escape_csv_field/1)
+          Enum.map(&to_string/1)
+          Enum.map_join(",", &escape_csv_field/1)
         end)
 
       {:ok, content}
@@ -597,17 +610,13 @@ defmodule EveDmvWeb.KillmailLive do
 
   # Helper function to replace Number.Delimit.number_to_delimited
   defp number_to_delimited(number) when is_integer(number) do
-    number
-    |> Integer.to_string()
-    |> String.reverse()
-    |> String.replace(~r/\d{3}(?=\d)/, "\\0,")
-    |> String.reverse()
+    Integer.to_string(number) |> String.reverse()
+    String.replace(~r/\d{3}(?=\d)/, "\\0,") |> String.reverse()
   end
 
   defp number_to_delimited(number) when is_float(number) do
-    number
-    |> round()
-    |> number_to_delimited()
+    round(number)
+    number_to_delimited()
   end
 
   defp number_to_delimited(_), do: "0"

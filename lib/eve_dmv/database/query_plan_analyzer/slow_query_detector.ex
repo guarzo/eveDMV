@@ -30,7 +30,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
       100.0 * shared_blks_hit / nullif(shared_blks_hit + shared_blks_read, 0) AS hit_percent,
       stddev_time,
       min_time,
-      max_time
+    max_time
     FROM pg_stat_statements
     WHERE mean_time > $1
     ORDER BY mean_time DESC
@@ -178,7 +178,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
       mean_time,
       stddev_time,
       stddev_time / nullif(mean_time, 0) as coefficient_of_variation,
-      calls
+    calls
     FROM pg_stat_statements
     WHERE mean_time > $1
       AND stddev_time / nullif(mean_time, 0) > 0.5
@@ -276,8 +276,9 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
     if length(slow_queries) > 0 do
       hit_ratios =
         slow_queries
-        |> Enum.map(& &1.cache_hit_percent)
-        |> Enum.reject(&is_nil/1)
+
+      Enum.map(& &1.cache_hit_percent)
+      Enum.reject(&is_nil/1)
 
       %{
         avg_hit_ratio:
@@ -304,12 +305,12 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
       query_text = String.upcase(query.query)
 
       acc
-      |> update_if_pattern(query_text, :select_queries, "SELECT")
-      |> update_if_pattern(query_text, :insert_queries, "INSERT")
-      |> update_if_pattern(query_text, :update_queries, "UPDATE")
-      |> update_if_pattern(query_text, :delete_queries, "DELETE")
-      |> update_if_pattern(query_text, :join_heavy_queries, "JOIN")
-      |> update_if_pattern(query_text, :aggregation_queries, ["GROUP BY", "COUNT", "SUM", "AVG"])
+      update_if_pattern(query_text, :select_queries, "SELECT")
+      update_if_pattern(query_text, :insert_queries, "INSERT")
+      update_if_pattern(query_text, :update_queries, "UPDATE")
+      update_if_pattern(query_text, :delete_queries, "DELETE")
+      update_if_pattern(query_text, :join_heavy_queries, "JOIN")
+      update_if_pattern(query_text, :aggregation_queries, ["GROUP BY", "COUNT", "SUM", "AVG"])
     end)
   end
 
@@ -331,9 +332,10 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
 
   defp find_top_offenders(slow_queries) do
     slow_queries
-    |> Enum.sort_by(& &1.total_time_ms, :desc)
-    |> Enum.take(5)
-    |> Enum.map(fn query ->
+    Enum.sort_by(& &1.total_time_ms, :desc)
+    Enum.take(5)
+
+    Enum.map(fn query ->
       %{
         query_snippet: String.slice(query.query, 0, 100),
         total_time_ms: query.total_time_ms,

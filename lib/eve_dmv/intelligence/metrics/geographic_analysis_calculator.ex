@@ -16,19 +16,22 @@ defmodule EveDmv.Intelligence.Metrics.GeographicAnalysisCalculator do
     # Analyze system activity
     system_activity =
       killmail_data
-      |> Enum.group_by(fn killmail ->
-        killmail[:solar_system_id] || killmail["solar_system_id"]
-      end)
-      |> Enum.map(fn {system_id, killmails} ->
-        {system_id,
-         %{
-           system_name: extract_system_name(killmails),
-           activity_count: length(killmails),
-           kills_in_system: count_kills(killmails),
-           losses_in_system: count_losses(killmails)
-         }}
-      end)
-      |> Enum.into(%{})
+
+    Enum.group_by(fn killmail ->
+      killmail[:solar_system_id] || killmail["solar_system_id"]
+    end)
+
+    Enum.map(fn {system_id, killmails} ->
+      {system_id,
+       %{
+         system_name: extract_system_name(killmails),
+         activity_count: length(killmails),
+         kills_in_system: count_kills(killmails),
+         losses_in_system: count_losses(killmails)
+       }}
+    end)
+
+    Enum.into(%{})
 
     # Identify region patterns
     region_activity = analyze_region_activity(killmail_data)
@@ -38,11 +41,13 @@ defmodule EveDmv.Intelligence.Metrics.GeographicAnalysisCalculator do
 
     most_active_systems =
       system_activity
-      |> Enum.sort_by(fn {_id, data} -> data.activity_count end, :desc)
-      |> Enum.take(5)
-      |> Enum.map(fn {system_id, data} ->
-        %{system_id: system_id, activity_count: data.activity_count}
-      end)
+
+    Enum.sort_by(fn {_id, data} -> data.activity_count end, :desc)
+    Enum.take(5)
+
+    Enum.map(fn {system_id, data} ->
+      %{system_id: system_id, activity_count: data.activity_count}
+    end)
 
     # Calculate security space distribution
     {highsec_activity, lowsec_activity, nullsec_activity} =
@@ -145,9 +150,9 @@ defmodule EveDmv.Intelligence.Metrics.GeographicAnalysisCalculator do
   """
   def identify_home_systems(system_activity) do
     system_activity
-    |> Enum.sort_by(fn {_id, data} -> data.activity_count end, :desc)
-    |> Enum.take(3)
-    |> Enum.map(fn {system_id, _data} -> system_id end)
+    Enum.sort_by(fn {_id, data} -> data.activity_count end, :desc)
+    Enum.take(3)
+    Enum.map(fn {system_id, _data} -> system_id end)
   end
 
   @doc """
@@ -179,15 +184,18 @@ defmodule EveDmv.Intelligence.Metrics.GeographicAnalysisCalculator do
   """
   def extract_preferred_systems(killmail_data) do
     killmail_data
-    |> Enum.group_by(fn killmail ->
+
+    Enum.group_by(fn killmail ->
       killmail[:solar_system_id] || killmail["solar_system_id"]
     end)
-    |> Enum.map(fn {system_id, killmails} ->
+
+    Enum.map(fn {system_id, killmails} ->
       {system_id, length(killmails)}
     end)
-    |> Enum.sort_by(fn {_id, count} -> count end, :desc)
-    |> Enum.take(5)
-    |> Enum.into(%{})
+
+    Enum.sort_by(fn {_id, count} -> count end, :desc)
+    Enum.take(5)
+    Enum.into(%{})
   end
 
   # Private helper functions

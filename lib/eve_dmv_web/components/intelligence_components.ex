@@ -596,18 +596,15 @@ defmodule EveDmvWeb.IntelligenceComponents do
   # Helper functions for styling and formatting
 
   defp humanize_component(component) when is_atom(component) do
-    component
-    |> Atom.to_string()
-    |> String.replace("_", " ")
-    |> String.split()
-    |> Enum.map_join(" ", &String.capitalize/1)
+    Atom.to_string(component)
+    String.replace("_", " ") |> String.split()
+    Enum.map_join(" ", &String.capitalize/1)
   end
 
   defp humanize_component(component) when is_binary(component) do
     component
-    |> String.replace("_", " ")
-    |> String.split()
-    |> Enum.map_join(" ", &String.capitalize/1)
+    String.replace("_", " ") |> String.split()
+    Enum.map_join(" ", &String.capitalize/1)
   end
 
   defp score_color(score) when score >= 0.8, do: "excellent"
@@ -651,8 +648,7 @@ defmodule EveDmvWeb.IntelligenceComponents do
 
   defp format_timestamp(timestamp) do
     timestamp
-    |> DateTime.truncate(:second)
-    |> DateTime.to_string()
+    DateTime.truncate(:second) |> DateTime.to_string()
   end
 
   defp format_relative_time(timestamp),

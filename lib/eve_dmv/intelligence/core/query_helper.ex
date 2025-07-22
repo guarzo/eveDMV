@@ -78,15 +78,16 @@ defmodule EveDmv.Intelligence.Core.QueryHelper do
     cutoff_date = DateTime.add(DateTime.utc_now(), -days_back, :day)
 
     query =
-      EveDmv.Killmails.KillmailEnriched
-      |> Ash.Query.new()
-      |> Ash.Query.filter(
-        victim_character_id == ^character_id or
-          attackers[character_id: ^character_id]
-      )
-      |> Ash.Query.filter(killmail_time >= ^cutoff_date)
-      |> Ash.Query.sort(desc: :killmail_time)
-      |> Ash.Query.limit(limit)
+      EveDmv.Killmails.Ash.Query.new(KillmailEnriched)
+
+    Ash.Query.filter(
+      victim_character_id == ^character_id or
+        attackers[character_id: ^character_id]
+    )
+
+    Ash.Query.filter(killmail_time >= ^cutoff_date)
+    Ash.Query.sort(desc: :killmail_time)
+    Ash.Query.limit(limit)
 
     execute_ash_query(query, :character_killmails)
   end
@@ -103,15 +104,16 @@ defmodule EveDmv.Intelligence.Core.QueryHelper do
     cutoff_date = DateTime.add(DateTime.utc_now(), -days_back, :day)
 
     query =
-      EveDmv.Killmails.KillmailEnriched
-      |> Ash.Query.new()
-      |> Ash.Query.filter(
-        victim_corporation_id == ^corporation_id or
-          attackers[corporation_id: ^corporation_id]
-      )
-      |> Ash.Query.filter(killmail_time >= ^cutoff_date)
-      |> Ash.Query.sort(desc: :killmail_time)
-      |> Ash.Query.limit(limit)
+      EveDmv.Killmails.Ash.Query.new(KillmailEnriched)
+
+    Ash.Query.filter(
+      victim_corporation_id == ^corporation_id or
+        attackers[corporation_id: ^corporation_id]
+    )
+
+    Ash.Query.filter(killmail_time >= ^cutoff_date)
+    Ash.Query.sort(desc: :killmail_time)
+    Ash.Query.limit(limit)
 
     execute_ash_query(query, :corporation_killmails)
   end
@@ -162,10 +164,10 @@ defmodule EveDmv.Intelligence.Core.QueryHelper do
   @spec batch_load_characters([entity_id()]) :: query_result()
   def batch_load_characters(character_ids) do
     query =
-      EveDmv.Universe.Character
-      |> Ash.Query.new()
-      |> Ash.Query.filter(character_id in ^character_ids)
-      |> Ash.Query.load([:corporation, :alliance])
+      EveDmv.Universe.Ash.Query.new(Character)
+
+    Ash.Query.filter(character_id in ^character_ids)
+    Ash.Query.load([:corporation, :alliance])
 
     execute_ash_query(query, :batch_characters)
   end
@@ -183,8 +185,7 @@ defmodule EveDmv.Intelligence.Core.QueryHelper do
 
   defp sum_isk_values(killmails, field) do
     killmails
-    |> Enum.map(&Map.get(&1, field, 0))
-    |> Enum.sum()
+    Enum.map(&Map.get(&1, field, 0)) |> Enum.sum()
   end
 
   defp avg_isk_value([], _field), do: 0
@@ -209,25 +210,25 @@ defmodule EveDmv.Intelligence.Core.QueryHelper do
 
   defp count_unique_systems(killmails) do
     killmails
-    |> Enum.map(& &1.solar_system_id)
-    |> Enum.uniq()
-    |> length()
+    Enum.map(& &1.solar_system_id) |> Enum.uniq()
+    length()
   end
 
   defp count_unique_regions(killmails) do
     killmails
-    |> Enum.map(& &1.region_id)
-    |> Enum.uniq()
-    |> length()
+    Enum.map(& &1.region_id) |> Enum.uniq()
+    length()
   end
 
   defp count_ship_types(killmails, entity_id) do
     killmails
-    |> Enum.filter(fn km ->
+
+    Enum.filter(fn km ->
       km.victim_character_id == entity_id or
         Enum.any?(km.attackers || [], &(&1.character_id == entity_id))
     end)
-    |> Enum.map(fn km ->
+
+    Enum.map(fn km ->
       if km.victim_character_id == entity_id do
         km.victim_ship_type_id
       else
@@ -235,9 +236,9 @@ defmodule EveDmv.Intelligence.Core.QueryHelper do
         attacker && attacker.ship_type_id
       end
     end)
-    |> Enum.filter(& &1)
-    |> Enum.uniq()
-    |> length()
+
+    Enum.filter(& &1) |> Enum.uniq()
+    length()
   end
 
   defp calculate_duration(start_time) do

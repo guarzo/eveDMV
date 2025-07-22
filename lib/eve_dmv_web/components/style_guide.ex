@@ -157,7 +157,7 @@ defmodule EveDmvWeb.Components.StyleGuide do
         type="text"
         label="Example Field"
         placeholder="Enter some text"
-        required
+    required
       />
     </div>
     """

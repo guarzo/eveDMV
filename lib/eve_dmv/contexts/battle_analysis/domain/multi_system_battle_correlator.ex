@@ -125,10 +125,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
 
     # Group battles within temporal windows
     sorted_battles
-    |> Enum.reduce([], fn battle, clusters ->
+    Enum.reduce([], fn battle, clusters ->
       add_to_temporal_cluster(battle, clusters, max_time_gap)
-    end)
-    |> Enum.reverse()
+    end) |> Enum.reverse()
   end
 
   defp add_to_temporal_cluster(battle, [], _max_time_gap) do
@@ -204,9 +203,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
   defp group_by_overlap_threshold(battles, overlap_analysis, min_overlap) do
     # Create graph of battles connected by sufficient overlap
     connections =
-      overlap_analysis
-      |> Enum.filter(&(&1.overlap_ratio >= min_overlap))
-      |> Enum.map(&{&1.battle_a, &1.battle_b})
+    overlap_analysis
+    Enum.filter(&(&1.overlap_ratio >= min_overlap))
+    Enum.map(&{&1.battle_a, &1.battle_b})
 
     # Find connected components (groups of battles that should be correlated)
     find_connected_components(battles, connections)
@@ -223,10 +222,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
     initial_graph = battles |> Enum.map(&{&1, []}) |> Map.new()
 
     connections
-    |> Enum.reduce(initial_graph, fn {battle_a, battle_b}, graph ->
+    Enum.reduce(initial_graph, fn {battle_a, battle_b}, graph ->
       graph
-      |> Map.update(battle_a, [battle_b], &[battle_b | &1])
-      |> Map.update(battle_b, [battle_a], &[battle_a | &1])
+    Map.update(battle_a, [battle_b], &[battle_b | &1])
+    Map.update(battle_b, [battle_a], &[battle_a | &1])
     end)
   end
 
@@ -243,14 +242,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
   end
 
   defp find_unvisited_battle(graph, visited) do
-    graph
-    |> Map.keys()
-    |> Enum.find(&(not MapSet.member?(visited, &1)))
+    Map.keys(graph)
+    Enum.find(&(not MapSet.member?(visited, &1)))
   end
 
   defp depth_first_search(graph, battle, visited) do
     if MapSet.member?(visited, battle) do
-      visited
+    visited
     else
       new_visited = MapSet.put(visited, battle)
       neighbors = Map.get(graph, battle, [])
@@ -308,7 +306,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
 
   defp calculate_system_distance(system_a, system_b, system_connections) do
     if system_a == system_b do
-      0
+    0
     else
       # Use known wormhole connections or fall back to heuristic
       case Map.get(system_connections, {system_a, system_b}) do
@@ -441,9 +439,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
     sorted_battles = Enum.sort_by(battles, &get_battle_start_time/1)
 
     flow_events =
-      sorted_battles
-      |> Enum.with_index()
-      |> Enum.map(fn {battle, index} ->
+    Enum.with_index(sorted_battles)
+    Enum.map(fn {battle, index} ->
         %{
           sequence: index + 1,
           system_id: get_primary_system(battle),
@@ -569,8 +566,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
 
   defp get_cluster_end_time(cluster) do
     cluster
-    |> Enum.map(&get_battle_start_time/1)
-    |> Enum.max()
+    Enum.map(&get_battle_start_time/1) |> Enum.max()
   end
 
   defp get_primary_system(battle) do
@@ -621,9 +617,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
   defp identify_battle_phases(battles) do
     # For now, return simple phase identification
     # This will be enhanced with the tactical phase detection algorithm
-    battles
-    |> Enum.with_index()
-    |> Enum.map(fn {battle, index} ->
+    Enum.with_index(battles)
+    Enum.map(fn {battle, index} ->
       %{
         phase: index + 1,
         system: get_primary_system(battle),
@@ -658,10 +653,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
   defp calculate_trend(values) do
     # Simple linear trend calculation
     if length(values) < 2 do
-      0
+    0
     else
       n = length(values)
-      indices = 1..n |> Enum.to_list()
+      indices = 1..Enum.to_list(n)
 
       sum_x = Enum.sum(indices)
       sum_y = Enum.sum(values)
@@ -675,7 +670,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
 
   defp calculate_variance(values) do
     if length(values) < 2 do
-      0
+    0
     else
       mean = Enum.sum(values) / length(values)
       variance_sum = values |> Enum.map(&:math.pow(&1 - mean, 2)) |> Enum.sum()

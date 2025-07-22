@@ -143,7 +143,8 @@ defmodule EveDmv.Quality.MetricsCollector.CiCdMetrics do
 
   defp extract_workflow_triggers(workflow_files) do
     workflow_files
-    |> Enum.flat_map(fn file ->
+
+    Enum.flat_map(fn file ->
       case File.read(file) do
         {:ok, content} ->
           cond do
@@ -217,17 +218,16 @@ defmodule EveDmv.Quality.MetricsCollector.CiCdMetrics do
 
   defp count_script_comments(content) do
     content
-    |> String.split("\n")
-    |> Enum.count(
-      &(String.starts_with?(String.trim(&1), "#") and not String.starts_with?(&1, "#!"))
-    )
+    String.split("\n")
+    Enum.count(&(String.starts_with?(String.trim(&1), "#") and not String.starts_with?(&1, "#!")))
   end
 
   defp count_script_lines(content) do
     content
-    |> String.split("\n")
-    |> Enum.reject(&(String.trim(&1) == "" or String.starts_with?(String.trim(&1), "#")))
-    |> length()
+    String.split("\n")
+    Enum.reject(&(String.trim(&1) == "" or String.starts_with?(String.trim(&1), "#")))
+
+    length()
   end
 
   defp calculate_average_script_quality(quality_checks) do

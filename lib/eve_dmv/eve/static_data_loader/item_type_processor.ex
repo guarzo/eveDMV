@@ -172,8 +172,8 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessor do
   defp build_item_types(types, groups_map, categories_map) do
     # Process all types, not just published ones
     types
-    |> Enum.filter(&safe_for_bulk_insert?/1)
-    |> Enum.map(fn type ->
+    Enum.filter(&safe_for_bulk_insert?/1)
+    Enum.map(fn type ->
       group = Map.get(groups_map, type.group_id, %{})
       category = Map.get(categories_map, group[:category_id], %{})
 
@@ -272,8 +272,8 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessor do
       charges: Enum.count(item_types, & &1.is_charge),
       deployables: Enum.count(item_types, & &1.is_deployable),
       blueprints: Enum.count(item_types, & &1.is_blueprint),
-      categories: item_types |> Enum.map(& &1.category_name) |> Enum.uniq() |> length(),
-      groups: item_types |> Enum.map(& &1.group_name) |> Enum.uniq() |> length()
+      categories: item_types |> Enum.map(& &1.category_name) Enum.uniq() length(),
+      groups: item_types |> Enum.map(& &1.group_name) Enum.uniq() length()
     }
   end
 
@@ -287,9 +287,8 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessor do
     keywords = if category_name, do: [String.downcase(category_name) | keywords], else: keywords
 
     # Remove duplicates and empty strings
-    keywords
-    |> Enum.uniq()
-    |> Enum.reject(&(&1 == ""))
+    Enum.uniq(keywords)
+    Enum.reject(&(&1 == ""))
   end
 
   defp safe_for_bulk_insert?(type) do
@@ -304,10 +303,10 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessor do
 
     # Skip items with astronomical values (typically celestial objects)
     if mass_safe and volume_safe and capacity_safe and base_price_safe do
-      true
+    true
     else
       Logger.debug("Skipping type_id #{type.type_id} (#{type.name}) due to numeric overflow")
-      false
+    false
     end
   end
 end

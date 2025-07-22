@@ -33,8 +33,9 @@ defmodule EveDmvWeb.Api.CorporationDoctrineController do
 
       {:error, _} ->
         conn
-        |> put_status(:internal_server_error)
-        |> json(%{
+        put_status(:internal_server_error)
+
+        json(%{
           error: %{message: "Failed to analyze corporation doctrines", code: "INTERNAL_ERROR"}
         })
     end

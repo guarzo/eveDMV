@@ -85,8 +85,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
   defp parse_zkillboard_path(path) do
     segments =
       path
-      |> String.split("/", trim: true)
-      |> Enum.filter(&(&1 != ""))
+
+    String.split("/", trim: true)
+    Enum.filter(&(&1 != ""))
 
     case segments do
       ["kill", killmail_id] ->
@@ -218,8 +219,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
     # zkillboard returns an array of killmail objects
     killmails =
       zkb_data
-      |> Enum.map(&extract_killmail_info/1)
-      |> Enum.filter(&(&1 != nil))
+
+    Enum.map(&extract_killmail_info/1)
+    Enum.filter(&(&1 != nil))
 
     {:ok, killmails}
   end
@@ -245,11 +247,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
     # Fetch full killmail data from ESI and store
     {existing_ids, new_ids} =
       killmail_infos
-      |> Enum.map(&fetch_and_store_killmail/1)
-      |> Enum.split_with(fn
-        {:existing, _id} -> true
-        _ -> false
-      end)
+
+    Enum.map(&fetch_and_store_killmail/1)
+
+    Enum.split_with(fn
+      {:existing, _id} -> true
+      _ -> false
+    end)
 
     existing_count = length(existing_ids)
     new_count = length(Enum.filter(new_ids, &(&1 != nil)))

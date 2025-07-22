@@ -49,10 +49,10 @@ defmodule EveDmv.Utils.ParsingUtils do
       ~U[2024-01-01 12:00:00Z]
 
       iex> parse_datetime(nil)
-      nil
+    nil
 
       iex> parse_datetime("invalid")
-      nil
+    nil
   """
   @spec parse_datetime(String.t() | nil) :: DateTime.t() | nil
   def parse_datetime(datetime_string) when is_binary(datetime_string) do
@@ -70,16 +70,16 @@ defmodule EveDmv.Utils.ParsingUtils do
   ## Examples
 
       iex> parse_integer("123")
-      123
+    123
 
       iex> parse_integer("123", 0)
-      123
+    123
 
       iex> parse_integer("invalid", 0)
-      0
+    0
 
       iex> parse_integer(nil, 42)
-      42
+    42
   """
   @spec parse_integer(term(), integer()) :: integer()
   def parse_integer(value, default \\ 0)

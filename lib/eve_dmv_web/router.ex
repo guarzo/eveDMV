@@ -190,7 +190,7 @@ defmodule EveDmvWeb.Router do
   end
 
   # Production performance monitoring (admin only)
-  if Mix.env() == :prod do
+  Mix.env(if) == :prod do
     import Phoenix.LiveDashboard.Router
 
     scope "/admin" do

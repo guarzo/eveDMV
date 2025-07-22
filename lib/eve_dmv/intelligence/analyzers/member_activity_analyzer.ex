@@ -361,23 +361,27 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
     # Transform recommendations into expected categories (as strings)
     immediate_actions =
       final_recommendations
-      |> Enum.filter(&(&1.priority == :urgent))
-      |> Enum.map(& &1.action)
+
+    Enum.filter(&(&1.priority == :urgent))
+    Enum.map(& &1.action)
 
     engagement_strategies =
       final_recommendations
-      |> Enum.filter(&(&1.category == :engagement))
-      |> Enum.map(& &1.action)
+
+    Enum.filter(&(&1.category == :engagement))
+    Enum.map(& &1.action)
 
     retention_initiatives =
       final_recommendations
-      |> Enum.filter(&(&1.category == :retention))
-      |> Enum.map(& &1.action)
+
+    Enum.filter(&(&1.category == :retention))
+    Enum.map(& &1.action)
 
     long_term_goals =
       final_recommendations
-      |> Enum.filter(&(&1.priority in [:medium, :low]))
-      |> Enum.map(& &1.action)
+
+    Enum.filter(&(&1.priority in [:medium, :low]))
+    Enum.map(& &1.action)
 
     %{
       immediate_actions: immediate_actions,
@@ -739,19 +743,19 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
     else
       all_warning_signs =
         at_risk_members
-        |> Enum.flat_map(&Map.get(&1, :warning_signs, []))
-        |> Enum.frequencies()
-        |> Enum.sort_by(fn {_, count} -> count end, :desc)
-        |> Enum.take(5)
-        |> Enum.map(fn {sign, count} -> %{factor: sign, occurrence_count: count} end)
+
+      Enum.flat_map(&Map.get(&1, :warning_signs, [])) |> Enum.frequencies()
+      Enum.sort_by(fn {_, count} -> count end, :desc)
+      Enum.take(5)
+      Enum.map(fn {sign, count} -> %{factor: sign, occurrence_count: count} end)
 
       trends =
         at_risk_members
-        |> Enum.map(&Map.get(&1, :engagement_trend, :stable))
-        |> Enum.frequencies()
-        |> Enum.sort_by(fn {_, count} -> count end, :desc)
-        |> Enum.take(3)
-        |> Enum.map(fn {trend, count} -> %{factor: "#{trend}_trend", occurrence_count: count} end)
+
+      Enum.map(&Map.get(&1, :engagement_trend, :stable)) |> Enum.frequencies()
+      Enum.sort_by(fn {_, count} -> count end, :desc)
+      Enum.take(3)
+      Enum.map(fn {trend, count} -> %{factor: "#{trend}_trend", occurrence_count: count} end)
 
       # Convert to map structure with factor names as keys
       Enum.reduce(all_warning_signs ++ trends, %{}, fn %{factor: factor, occurrence_count: count},
@@ -767,19 +771,21 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
     # Extract and aggregate activity data
     daily_activities =
       member_activities
-      |> Enum.flat_map(fn member ->
-        Enum.map(Map.get(member, :activity_history, []), fn activity ->
-          killmails = Map.get(activity, :killmails, 0)
-          fleet_ops = Map.get(activity, :fleet_ops, 0)
-          date = Map.get(activity, :date)
-          # Weight fleet ops more heavily
-          {date, killmails + fleet_ops * 2}
-        end)
+
+    Enum.flat_map(fn member ->
+      Enum.map(Map.get(member, :activity_history, []), fn activity ->
+        killmails = Map.get(activity, :killmails, 0)
+        fleet_ops = Map.get(activity, :fleet_ops, 0)
+        date = Map.get(activity, :date)
+        # Weight fleet ops more heavily
+        {date, killmails + fleet_ops * 2}
       end)
-      |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
-      |> Enum.map(fn {date, activities} -> {date, Enum.sum(activities)} end)
-      |> Enum.sort_by(&elem(&1, 0), Date)
-      |> Enum.map(&elem(&1, 1))
+    end)
+
+    Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+    Enum.map(fn {date, activities} -> {date, Enum.sum(activities)} end)
+    Enum.sort_by(&elem(&1, 0), Date)
+    Enum.map(&elem(&1, 1))
 
     daily_activities
   end
@@ -822,11 +828,10 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
   end
 
   defp find_peak_activities(activity_data) do
-    activity_data
-    |> Enum.with_index()
-    |> Enum.sort_by(&elem(&1, 0), :desc)
-    |> Enum.take(3)
-    |> Enum.map(&elem(&1, 1))
+    Enum.with_index(activity_data)
+    Enum.sort_by(&elem(&1, 0), :desc)
+    Enum.take(3)
+    Enum.map(&elem(&1, 1))
   end
 
   defp calculate_communication_distribution(communication_data) do
@@ -984,8 +989,9 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
 
   defp generate_action_items(recommendations) do
     recommendations
-    |> Enum.with_index(1)
-    |> Enum.map(fn {rec, index} ->
+    Enum.with_index(1)
+
+    Enum.map(fn {rec, index} ->
       %{
         id: index,
         priority: rec.priority,

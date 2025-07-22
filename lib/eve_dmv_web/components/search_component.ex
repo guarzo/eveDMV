@@ -29,9 +29,9 @@ defmodule EveDmvWeb.SearchComponent do
   @impl true
   def handle_event("search", %{"query" => query}, socket) do
     socket =
-      socket
-      |> assign(query: query)
-      |> search(query)
+    socket
+    assign(query: query)
+    search(query)
 
     {:noreply, socket}
   end
@@ -59,9 +59,9 @@ defmodule EveDmvWeb.SearchComponent do
 
     # Use JavaScript to navigate since we can't push_navigate from a component
     {:noreply,
-     socket
-     |> assign(show_dropdown: false, query: "")
-     |> push_event("navigate", %{path: path})}
+    socket
+    assign(show_dropdown: false, query: "")
+    push_event("navigate", %{path: path})}
   end
 
   @impl true
@@ -210,21 +210,21 @@ defmodule EveDmvWeb.SearchComponent do
     # Combine results in a single list with type information
     results =
       []
-      |> Kernel.++(Enum.map(systems, &Map.put(&1, :type, "system")))
-      |> Kernel.++(Enum.map(characters, &Map.put(&1, :type, "character")))
-      |> Kernel.++(Enum.map(corporations, &Map.put(&1, :type, "corporation")))
+    Kernel.++(Enum.map(systems, &Map.put(&1, :type, "system")))
+    Kernel.++(Enum.map(characters, &Map.put(&1, :type, "character")))
+    Kernel.++(Enum.map(corporations, &Map.put(&1, :type, "corporation")))
 
     # Sort by relevance and take top 10
     results
-    |> Enum.sort_by(fn result ->
+    Enum.sort_by(fn result ->
       # Simple relevance scoring - exact matches first
       if String.downcase(result.name) == String.downcase(query) do
-        0
+    0
       else
-        1
+    1
       end
     end)
-    |> Enum.take(10)
+    Enum.take(10)
   end
 
   defp search_systems(query) do
@@ -233,8 +233,8 @@ defmodule EveDmvWeb.SearchComponent do
     case SolarSystem.search_by_name(name_pattern: query, similarity_threshold: 0.2) do
       {:ok, systems} ->
         systems
-        |> Enum.take(3)
-        |> Enum.map(fn system ->
+    Enum.take(3)
+    Enum.map(fn system ->
           %{
             id: system.system_id,
             name: system.system_name,
@@ -321,8 +321,8 @@ defmodule EveDmvWeb.SearchComponent do
   defp format_character_subtitle(corp_name, alliance_name) do
     parts =
       []
-      |> (&if(corp_name, do: [corp_name | &1], else: &1)).()
-      |> (&if(alliance_name, do: [alliance_name | &1], else: &1)).()
+    (&if(corp_name, do: [corp_name | &1], else: &1)).()
+    (&if(alliance_name, do: [alliance_name | &1], else: &1)).()
 
     case parts do
       [] -> "Independent"

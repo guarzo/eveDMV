@@ -38,8 +38,8 @@ defmodule EveDmvWeb.Api.BattleRatingController do
 
       {:error, reason} ->
         conn
-        |> put_status(:unprocessable_entity)
-        |> json(%{error: %{message: "Failed to rate battle report", details: inspect(reason)}})
+        put_status(:unprocessable_entity)
+        json(%{error: %{message: "Failed to rate battle report", details: inspect(reason)}})
     end
   end
 end

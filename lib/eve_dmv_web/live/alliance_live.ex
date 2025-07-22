@@ -37,24 +37,24 @@ defmodule EveDmvWeb.AllianceLive do
         activity_trends = calculate_activity_trends(alliance_id)
 
         socket =
-          socket
-          |> assign(:alliance_id, alliance_id)
-          |> assign(:alliance_info, alliance_info)
-          |> assign(:corporations, corporations)
-          |> assign(:recent_activity, recent_activity)
-          |> assign(:alliance_stats, alliance_stats)
-          |> assign(:top_pilots, top_pilots)
-          |> assign(:activity_trends, activity_trends)
-          |> assign(:loading, false)
-          |> assign(:error, nil)
+    socket
+    assign(:alliance_id, alliance_id)
+    assign(:alliance_info, alliance_info)
+    assign(:corporations, corporations)
+    assign(:recent_activity, recent_activity)
+    assign(:alliance_stats, alliance_stats)
+    assign(:top_pilots, top_pilots)
+    assign(:activity_trends, activity_trends)
+    assign(:loading, false)
+    assign(:error, nil)
 
         {:ok, socket}
 
       _ ->
         socket =
-          socket
-          |> assign(:error, "Invalid alliance ID")
-          |> assign(:loading, false)
+    socket
+    assign(:error, "Invalid alliance ID")
+    assign(:loading, false)
 
         {:ok, socket}
     end
@@ -72,14 +72,14 @@ defmodule EveDmvWeb.AllianceLive do
     activity_trends = calculate_activity_trends(alliance_id)
 
     socket =
-      socket
-      |> assign(:alliance_info, alliance_info)
-      |> assign(:corporations, corporations)
-      |> assign(:recent_activity, recent_activity)
-      |> assign(:alliance_stats, alliance_stats)
-      |> assign(:top_pilots, top_pilots)
-      |> assign(:activity_trends, activity_trends)
-      |> put_flash(:info, "Alliance data refreshed")
+    socket
+    assign(:alliance_info, alliance_info)
+    assign(:corporations, corporations)
+    assign(:recent_activity, recent_activity)
+    assign(:alliance_stats, alliance_stats)
+    assign(:top_pilots, top_pilots)
+    assign(:activity_trends, activity_trends)
+    put_flash(:info, "Alliance data refreshed")
 
     {:noreply, socket}
   end
@@ -120,19 +120,19 @@ defmodule EveDmvWeb.AllianceLive do
          ) do
       {:ok, participants} ->
         corporations =
-          participants
-          |> Enum.group_by(& &1.corporation_id)
-          |> Enum.map(fn {corp_id, corp_participants} ->
-            corp_name = corp_participants |> List.first() |> Map.get(:corporation_name, "Unknown")
+    participants
+    Enum.group_by(& &1.corporation_id)
+    Enum.map(fn {corp_id, corp_participants} ->
+            corp_name = List.first(corp_participants) |> Map.get(:corporation_name, "Unknown")
             # Calculate corporation stats
-            members = corp_participants |> Enum.map(& &1.character_id) |> Enum.uniq() |> length()
+            members = corp_participants |> Enum.map(& &1.character_id) Enum.uniq() length()
             kills = Enum.count(corp_participants, &(not &1.is_victim))
             losses = Enum.count(corp_participants, & &1.is_victim)
             # Get latest activity
             latest_activity =
-              corp_participants
-              |> Enum.map(& &1.inserted_at)
-              |> Enum.max(Date, fn -> nil end)
+    corp_participants
+    Enum.map(& &1.inserted_at)
+    Enum.max(Date, fn -> nil end)
 
             %{
               corporation_id: corp_id,
@@ -145,11 +145,11 @@ defmodule EveDmvWeb.AllianceLive do
               latest_activity: latest_activity
             }
           end)
-          |> Enum.sort_by(& &1.total_activity, :desc)
+    Enum.sort_by(& &1.total_activity, :desc)
           # Limit to top 50 most active corporations
-          |> Enum.take(50)
+    Enum.take(50)
 
-        corporations
+    corporations
 
       {:error, _} ->
         []
@@ -189,10 +189,10 @@ defmodule EveDmvWeb.AllianceLive do
          ) do
       {:ok, participants} ->
         participants
-        |> Enum.group_by(& &1.character_id)
-        |> Enum.map(fn {character_id, participations} ->
-          character_name = participations |> List.first() |> Map.get(:character_name, "Unknown")
-          corp_name = participations |> List.first() |> Map.get(:corporation_name, "Unknown")
+    Enum.group_by(& &1.character_id)
+    Enum.map(fn {character_id, participations} ->
+          character_name = List.first(participations) |> Map.get(:character_name, "Unknown")
+          corp_name = List.first(participations) |> Map.get(:corporation_name, "Unknown")
           kills = Enum.count(participations, &(not &1.is_victim))
           losses = Enum.count(participations, & &1.is_victim)
 
@@ -206,8 +206,8 @@ defmodule EveDmvWeb.AllianceLive do
             efficiency_score: calculate_efficiency_score(kills, losses)
           }
         end)
-        |> Enum.sort_by(& &1.efficiency_score, :desc)
-        |> Enum.take(limit)
+    Enum.sort_by(& &1.efficiency_score, :desc)
+    Enum.take(limit)
 
       {:error, _} ->
         []
@@ -216,10 +216,10 @@ defmodule EveDmvWeb.AllianceLive do
 
   defp calculate_alliance_stats(corporations, _alliance_id) do
     total_corporations = length(corporations)
-    total_members = corporations |> Enum.map(& &1.member_count) |> Enum.sum()
-    total_kills = corporations |> Enum.map(& &1.total_kills) |> Enum.sum()
-    total_losses = corporations |> Enum.map(& &1.total_losses) |> Enum.sum()
-    total_activity = corporations |> Enum.map(& &1.total_activity) |> Enum.sum()
+    total_members = corporations |> Enum.map(& &1.member_count) Enum.sum()
+    total_kills = corporations |> Enum.map(& &1.total_kills) Enum.sum()
+    total_losses = corporations |> Enum.map(& &1.total_losses) Enum.sum()
+    total_activity = corporations |> Enum.map(& &1.total_activity) Enum.sum()
     # Calculate averages
     avg_activity_per_corp =
       if total_corporations > 0, do: total_activity / total_corporations, else: 0
@@ -285,8 +285,8 @@ defmodule EveDmvWeb.AllianceLive do
   end
 
   defp calculate_trend_direction(weeks) do
-    recent = weeks |> Enum.take(2) |> Enum.map(& &1.total) |> Enum.sum()
-    older = weeks |> Enum.drop(2) |> Enum.map(& &1.total) |> Enum.sum()
+    recent = weeks |> Enum.take(2) |> Enum.map(& &1.total) Enum.sum()
+    older = weeks |> Enum.drop(2) |> Enum.map(& &1.total) Enum.sum()
 
     cond do
       recent > older * 1.2 -> :increasing

@@ -102,10 +102,10 @@ defmodule EveDmv.Monitoring.ErrorRecoveryWorker do
 
     # Check various failure conditions
     state
-    |> check_pipeline_stall(pipeline_metrics)
-    |> check_error_rates(error_summary, pipeline_metrics)
-    |> check_pipeline_health(pipeline_health)
-    |> Map.put(:last_check, DateTime.utc_now())
+    check_pipeline_stall(pipeline_metrics)
+    check_error_rates(error_summary, pipeline_metrics)
+    check_pipeline_health(pipeline_health)
+    Map.put(:last_check, DateTime.utc_now())
   end
 
   defp check_pipeline_stall(state, metrics) do

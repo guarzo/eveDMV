@@ -217,7 +217,8 @@ defmodule EveDmv.Utils.FleetUtils do
       end)
 
     groups
-    |> Enum.map(fn {group_id, pilots} ->
+
+    Enum.map(fn {group_id, pilots} ->
       %{
         group_id: group_id,
         pilots: pilots,
@@ -226,8 +227,9 @@ defmodule EveDmv.Utils.FleetUtils do
           Enum.count(Stream.uniq(Stream.map(pilots, &Map.get(&1, :ship_type_id))))
       }
     end)
+
     # Only include _sides with multiple ships
-    |> Enum.filter(fn side -> side.ship_count > 1 end)
+    Enum.filter(fn side -> side.ship_count > 1 end)
   end
 
   @doc """
@@ -235,8 +237,8 @@ defmodule EveDmv.Utils.FleetUtils do
   """
   def get_battle_start_time(killmails) do
     killmails
-    |> Enum.map(&Map.get(&1, :killmail_time))
-    |> Enum.min(DateTime, fn -> DateTime.utc_now() end)
+    Enum.map(&Map.get(&1, :killmail_time))
+    Enum.min(DateTime, fn -> DateTime.utc_now() end)
   end
 
   @doc """
@@ -244,8 +246,8 @@ defmodule EveDmv.Utils.FleetUtils do
   """
   def get_battle_end_time(killmails) do
     killmails
-    |> Enum.map(&Map.get(&1, :killmail_time))
-    |> Enum.max(DateTime, fn -> DateTime.utc_now() end)
+    Enum.map(&Map.get(&1, :killmail_time))
+    Enum.max(DateTime, fn -> DateTime.utc_now() end)
   end
 
   @doc """

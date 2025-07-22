@@ -101,7 +101,7 @@ defmodule EveDmv.Database.ArchiveManager.PartitionManager do
   """
   def add_archive_columns(archive_table) do
     columns = [
-      "ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP DEFAULT NOW()",
+      "ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP NOW(DEFAULT)",
       "ADD COLUMN IF NOT EXISTS archive_batch_id UUID DEFAULT gen_random_uuid()",
       "ADD COLUMN IF NOT EXISTS original_table_name VARCHAR(255)"
     ]

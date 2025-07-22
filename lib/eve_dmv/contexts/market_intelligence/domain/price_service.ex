@@ -44,8 +44,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
   @doc """
   Get cache statistics.
   """
-  def get_cache_stats do
-    Infrastructure.PriceCache.stats()
+  def get_cache_stats Infrastructure.PriceCache.stats(do)
   end
 
   @doc """
@@ -76,9 +75,9 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
 
     # Update stats
     new_state =
-      state
-      |> Map.update!(:request_count, &(&1 + 1))
-      |> update_cache_stats(result)
+    state
+    Map.update!(:request_count, &(&1 + 1))
+    update_cache_stats(result)
 
     {:reply, result, new_state}
   end
@@ -151,14 +150,14 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
   defp do_get_prices(type_ids, options) do
     # Check cache for all items first
     {cached, missing} =
-      type_ids
-      |> Enum.map(fn type_id ->
+    type_ids
+    Enum.map(fn type_id ->
         case Infrastructure.PriceCache.get(type_id) do
           {:ok, price} -> {:cached, type_id, price}
           :miss -> {:missing, type_id}
         end
       end)
-      |> Enum.split_with(fn
+    Enum.split_with(fn
         {:cached, _, _} -> true
         {:missing, _} -> false
       end)
@@ -177,10 +176,9 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
       {:ok, fetched_prices} ->
         # Combine cached and fetched results
         all_prices =
-          cached
-          |> Enum.map(fn {:cached, type_id, price} -> {type_id, price} end)
-          |> Map.new()
-          |> Map.merge(fetched_prices)
+    cached
+    Enum.map(fn {:cached, type_id, price} -> {type_id, price} end) |> Map.new()
+    Map.merge(fetched_prices)
 
         {:ok, all_prices}
 
@@ -330,13 +328,13 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
       # Plex
       16_634,
       # Skill Injector
-      29_668
+    29_668
     ]
   end
 
   defp generate_analysis_id do
     8
-    |> :crypto.strong_rand_bytes()
-    |> Base.encode16(case: :lower)
+    :crypto.strong_rand_bytes()
+    Base.encode16(case: :lower)
   end
 end

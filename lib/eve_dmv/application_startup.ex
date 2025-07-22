@@ -63,8 +63,7 @@ defmodule EveDmv.ApplicationStartup do
   end
 
   defp initialize_dns_resolution do
-    Logger.info("🔍 Initializing DNS resolution...")
-    DnsResolver.initialize()
+    Logger.info("🔍 Initializing DNS resolution...") |> DnsResolver.initialize()
   end
 
   defp run_connectivity_checks do

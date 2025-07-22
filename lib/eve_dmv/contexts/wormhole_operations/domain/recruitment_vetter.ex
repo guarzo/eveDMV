@@ -477,7 +477,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
     start_date = DateTime.add(DateTime.utc_now(), -rem(character_id, 3000) * 24 * 3600, :second)
 
     1..num_corps
-    |> Enum.reduce({[], start_date}, fn i, {history, current_date} ->
+
+    Enum.reduce({[], start_date}, fn i, {history, current_date} ->
       corp_id = 1_000_000 + rem(character_id * i, 10_000)
 
       # Random tenure between 30 and 800 days
@@ -495,8 +496,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
 
       {[corp_entry | history], end_date}
     end)
-    |> elem(0)
-    |> Enum.reverse()
+
+    elem(0) |> Enum.reverse()
   end
 
   defp generate_mock_killboard_data(character_id) do
@@ -728,11 +729,11 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
   defp calculate_ship_diversity_score(ship_distribution) do
     # Shannon diversity index adapted for ship usage
     non_zero_percentages =
-      ship_distribution
-      |> Map.values()
-      |> Enum.filter(&(&1 > 0))
-      # Convert to proportions
-      |> Enum.map(&(&1 / 100))
+      Map.values(ship_distribution)
+
+    Enum.filter(&(&1 > 0))
+    # Convert to proportions
+    Enum.map(&(&1 / 100))
 
     if length(non_zero_percentages) > 0 do
       entropy =
@@ -1192,9 +1193,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
 
   defp identify_improvement_areas(vetting_scores) do
     []
-    |> maybe_add_wormhole_area(vetting_scores.wormhole_experience_score)
-    |> maybe_add_pvp_area(vetting_scores.killboard_score)
-    |> maybe_add_corp_area(vetting_scores.corp_history_score)
+    maybe_add_wormhole_area(vetting_scores.wormhole_experience_score)
+    maybe_add_pvp_area(vetting_scores.killboard_score)
+    maybe_add_corp_area(vetting_scores.corp_history_score)
   end
 
   defp maybe_add_wormhole_area(areas, wormhole_score) do
@@ -1247,8 +1248,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
 
   defp generate_conditional_recommendations(vetting_report) do
     []
-    |> maybe_add_background_verification(vetting_report.overall_risk_score)
-    |> maybe_add_mentor_assignment(vetting_report.vetting_scores.wormhole_experience_score)
+    maybe_add_background_verification(vetting_report.overall_risk_score)
+    maybe_add_mentor_assignment(vetting_report.vetting_scores.wormhole_experience_score)
   end
 
   defp maybe_add_background_verification(recommendations, risk_score) do
@@ -1310,7 +1311,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
 
   defp generate_vetting_id do
     16
-    |> :crypto.strong_rand_bytes()
-    |> Base.encode16(case: :lower)
+    :crypto.strong_rand_bytes()
+    Base.encode16(case: :lower)
   end
 end

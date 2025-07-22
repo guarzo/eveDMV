@@ -27,8 +27,9 @@ defmodule EveDmvWeb.HomeLive do
   def handle_event("search", %{"query" => query}, socket) do
     socket =
       socket
-      |> assign(search_query: query)
-      |> perform_search(query)
+
+    assign(search_query: query)
+    perform_search(query)
 
     {:noreply, socket}
   end
@@ -128,8 +129,9 @@ defmodule EveDmvWeb.HomeLive do
     case SolarSystem.search_by_name(name_pattern: query, similarity_threshold: 0.1) do
       {:ok, [_ | _] = systems} ->
         systems
-        |> Enum.take(3)
-        |> Enum.map(fn system ->
+        Enum.take(3)
+
+        Enum.map(fn system ->
           %{
             id: system.system_id,
             name: system.system_name,
@@ -155,7 +157,7 @@ defmodule EveDmvWeb.HomeLive do
       system_id,
       system_name,
       region_name,
-      security_class
+    security_class
     FROM eve_solar_systems
     WHERE system_name ILIKE $1
     ORDER BY system_name

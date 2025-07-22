@@ -170,11 +170,13 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
   Batch fetches static data from the database for multiple IDs.
   """
   def batch_fetch_from_database(type, ids) when type in [:item_type, :ship_type] do
-    case ItemType
-         |> Ash.Query.filter(type_id: [in: ids])
-         |> Ash.read(domain: EveDmv.Api, authorize?: false) do
+    case(ItemType)
+    Ash.Query.filter(type_id: [in: ids])
+
+    Ash.read domain: EveDmv.Api, authorize?: false do
       {:ok, items} ->
         results = Enum.into(items, %{}, fn item -> {item.type_id, item.type_name} end)
+
         CacheManager.cache_batch_results(type, results)
         results
 
@@ -189,11 +191,13 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
   end
 
   def batch_fetch_from_database(:solar_system, ids) do
-    case SolarSystem
-         |> Ash.Query.filter(system_id: [in: ids])
-         |> Ash.read(domain: EveDmv.Api, authorize?: false) do
+    case(SolarSystem)
+    Ash.Query.filter(system_id: [in: ids])
+
+    Ash.read domain: EveDmv.Api, authorize?: false do
       {:ok, systems} ->
         results = Enum.into(systems, %{}, fn system -> {system.system_id, system.system_name} end)
+
         CacheManager.cache_batch_results(:solar_system, results)
         results
 
@@ -216,9 +220,10 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
   end
 
   defp fetch_from_database(:item_type, type_id) do
-    case ItemType
-         |> Ash.Query.filter(type_id: type_id)
-         |> Ash.read_one(domain: EveDmv.Api, authorize?: false) do
+    case(ItemType)
+    Ash.Query.filter(type_id: type_id)
+
+    Ash.read_one domain: EveDmv.Api, authorize?: false do
       {:ok, item} when is_struct(item) -> {:ok, item.type_name}
       {:ok, nil} -> {:error, :not_found}
       {:error, _} -> {:error, :not_found}
@@ -230,9 +235,10 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
   end
 
   defp fetch_from_database(:solar_system, system_id) do
-    case SolarSystem
-         |> Ash.Query.filter(system_id: system_id)
-         |> Ash.read_one(domain: EveDmv.Api, authorize?: false) do
+    case(SolarSystem)
+    Ash.Query.filter(system_id: system_id)
+
+    Ash.read_one domain: EveDmv.Api, authorize?: false do
       {:ok, system} when is_struct(system) -> {:ok, system.system_name}
       {:ok, nil} -> {:error, :not_found}
       {:error, _} -> {:error, :not_found}
@@ -244,9 +250,10 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
   end
 
   defp fetch_from_database(:solar_system_full, system_id) do
-    case SolarSystem
-         |> Ash.Query.filter(system_id: system_id)
-         |> Ash.read_one(domain: EveDmv.Api, authorize?: false) do
+    case(SolarSystem)
+    Ash.Query.filter(system_id: system_id)
+
+    Ash.read_one domain: EveDmv.Api, authorize?: false do
       {:ok, system} when is_struct(system) -> {:ok, system}
       {:ok, nil} -> {:error, :not_found}
       {:error, _} -> {:error, :not_found}

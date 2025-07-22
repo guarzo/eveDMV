@@ -52,9 +52,9 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveOperations do
     total_batches = div(total_count, batch_size) + 1
 
     batch_id =
-      [:positive]
-      |> System.unique_integer()
-      |> to_string()
+      [:positive] |> System.unique_integer()
+
+    to_string()
 
     Logger.info(
       "Starting archive process for #{policy.table}: #{total_count} records in #{total_batches} batches"
@@ -156,16 +156,18 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveOperations do
     # Prepare value placeholders
     value_placeholders =
       rows
-      |> Enum.with_index(1)
-      |> Enum.map_join(", ", fn {_row, index} ->
-        start_param = (index - 1) * length(columns) + 1
-        end_param = start_param + length(columns) - 1
 
-        params = Enum.map(start_param..end_param, &"$#{&1}")
-        values = Enum.join(params, ", ")
+    Enum.with_index(1)
 
-        "(#{values}, NOW(), '#{batch_id}', '#{policy.table}')"
-      end)
+    Enum.map_join(", ", fn {_row, index} ->
+      start_param = (index - 1) * length(columns) + 1
+      end_param = start_param + length(columns) - 1
+
+      params = Enum.map(start_param..end_param, &"$#{&1}")
+      values = Enum.join(params, ", ")
+
+      "(#{values}, NOW(), '#{batch_id}', '#{policy.table}')"
+    end)
 
     # Flatten all row values for parameters
     all_values = List.flatten(rows)

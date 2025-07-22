@@ -89,19 +89,21 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
     # Weekly assessments
     history =
       1..days_back
-      |> Enum.take_every(7)
-      |> Enum.map(fn days_ago ->
-        date = DateTime.add(DateTime.utc_now(), -days_ago, :day)
 
-        %{
-          assessment_date: date,
-          threat_level: Enum.random([:minimal, :low, :medium, :high, :critical]),
-          vulnerability_count: :rand.uniform(10),
-          assessment_confidence: Enum.random([:very_low, :low, :medium, :high]),
-          notes: "Historical assessment sample"
-        }
-      end)
-      |> Enum.reverse()
+    Enum.take_every(7)
+
+    Enum.map(fn days_ago ->
+      date = DateTime.add(DateTime.utc_now(), -days_ago, :day)
+
+      %{
+        assessment_date: date,
+        threat_level: Enum.random([:minimal, :low, :medium, :high, :critical]),
+        vulnerability_count: :rand.uniform(10),
+        assessment_confidence: Enum.random([:very_low, :low, :medium, :high]),
+        notes: "Historical assessment sample"
+      }
+    end)
+    |> Enum.reverse()
 
     Result.ok(history)
   end
@@ -157,9 +159,10 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
 
         enhanced_data =
           corp_data
-          |> Map.merge(member_stats)
-          |> Map.merge(alliance_data)
-          |> Map.merge(activity_data)
+
+        Map.merge(member_stats)
+        Map.merge(alliance_data)
+        Map.merge(activity_data)
 
         Result.ok(enhanced_data)
 
@@ -250,17 +253,19 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
     # Query killmails where character was victim
     victim_query =
       KillmailRaw
-      |> new()
-      |> filter(victim_character_id: character_id)
-      |> filter(killmail_time: [gte: cutoff_date])
-      |> limit(100)
+
+    new()
+    filter(victim_character_id: character_id)
+    filter(killmail_time: [gte: cutoff_date])
+    limit(100)
 
     # Query killmails where character was attacker
     recent_query =
       KillmailRaw
-      |> new()
-      |> filter(killmail_time: [gte: cutoff_date])
-      |> limit(500)
+
+    new()
+    filter(killmail_time: [gte: cutoff_date])
+    limit(500)
 
     case {Ash.read(victim_query, domain: Api), Ash.read(recent_query, domain: Api)} do
       {{:ok, victim_killmails}, {:ok, recent_killmails}} ->
@@ -308,11 +313,12 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
 
     query =
       KillmailRaw
-      |> new()
-      |> filter(victim_character_id: character_id)
-      |> filter(killmail_time: [gte: cutoff_date])
-      |> sort(killmail_time: :desc)
-      |> limit(1)
+
+    new()
+    filter(victim_character_id: character_id)
+    filter(killmail_time: [gte: cutoff_date])
+    sort(killmail_time: :desc)
+    limit(1)
 
     case Ash.read(query, domain: Api) do
       {:ok, [killmail]} ->
@@ -338,11 +344,12 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
 
     query =
       KillmailRaw
-      |> new()
-      |> filter(victim_character_id: character_id)
-      |> filter(killmail_time: [gte: cutoff_date])
-      |> sort(killmail_time: :desc)
-      |> limit(1)
+
+    new()
+    filter(victim_character_id: character_id)
+    filter(killmail_time: [gte: cutoff_date])
+    sort(killmail_time: :desc)
+    limit(1)
 
     case Ash.read(query, domain: Api) do
       {:ok, [killmail]} when killmail.victim_alliance_id != nil ->
@@ -362,18 +369,19 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
     # Get killmails involving corporation members
     query =
       KillmailRaw
-      |> new()
-      |> filter(victim_corporation_id: corporation_id)
-      |> filter(killmail_time: [gte: cutoff_date])
-      |> limit(200)
+
+    new()
+    filter(victim_corporation_id: corporation_id)
+    filter(killmail_time: [gte: cutoff_date])
+    limit(200)
 
     case Ash.read(query, domain: Api) do
       {:ok, killmails} ->
         unique_members =
           killmails
-          |> Enum.map(& &1.victim_character_id)
-          |> Enum.reject(&is_nil/1)
-          |> Enum.uniq()
+
+        Enum.map(& &1.victim_character_id)
+        Enum.reject(&is_nil/1) |> Enum.uniq()
 
         %{
           active_members: length(unique_members),
@@ -400,11 +408,12 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
 
     query =
       KillmailRaw
-      |> new()
-      |> filter(victim_corporation_id: corporation_id)
-      |> filter(killmail_time: [gte: cutoff_date])
-      |> sort(killmail_time: :desc)
-      |> limit(1)
+
+    new()
+    filter(victim_corporation_id: corporation_id)
+    filter(killmail_time: [gte: cutoff_date])
+    sort(killmail_time: :desc)
+    limit(1)
 
     case Ash.read(query, domain: Api) do
       {:ok, [killmail]} when killmail.victim_alliance_id != nil ->
@@ -423,10 +432,11 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
 
     query =
       KillmailRaw
-      |> new()
-      |> filter(victim_corporation_id: corporation_id)
-      |> filter(killmail_time: [gte: cutoff_date])
-      |> limit(100)
+
+    new()
+    filter(victim_corporation_id: corporation_id)
+    filter(killmail_time: [gte: cutoff_date])
+    limit(100)
 
     case Ash.read(query, domain: Api) do
       {:ok, killmails} ->
@@ -440,10 +450,12 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
           # Group by day to find peak activity
           daily_activity =
             killmails
-            |> Enum.group_by(fn km ->
-              Date.from_iso8601!(Date.to_iso8601(DateTime.to_date(km.killmail_time)))
-            end)
-            |> Map.new(fn {date, kms} -> {date, length(kms)} end)
+
+          Enum.group_by(fn km ->
+            Date.from_iso8601!(Date.to_iso8601(DateTime.to_date(km.killmail_time)))
+          end)
+
+          Map.new(fn {date, kms} -> {date, length(kms)} end)
 
           peak_day =
             Enum.max_by(daily_activity, fn {_date, count} -> count end, fn -> {nil, 0} end)
@@ -476,9 +488,10 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
     # as a killmail_id and get participants from that specific engagement
     query =
       KillmailRaw
-      |> new()
-      |> filter(killmail_id: fleet_id)
-      |> limit(1)
+
+    new()
+    filter(killmail_id: fleet_id)
+    limit(1)
 
     case Ash.read(query, domain: Api) do
       {:ok, [killmail]} ->
@@ -487,16 +500,18 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
           %{"attackers" => attackers} when is_list(attackers) ->
             participants =
               attackers
-              |> Enum.map(fn attacker ->
-                %{
-                  character_id: attacker["character_id"],
-                  corporation_id: attacker["corporation_id"],
-                  alliance_id: attacker["alliance_id"],
-                  ship_type_id: attacker["ship_type_id"],
-                  damage_done: attacker["damage_done"] || 0
-                }
-              end)
-              |> Enum.reject(fn p -> is_nil(p.character_id) end)
+
+            Enum.map(fn attacker ->
+              %{
+                character_id: attacker["character_id"],
+                corporation_id: attacker["corporation_id"],
+                alliance_id: attacker["alliance_id"],
+                ship_type_id: attacker["ship_type_id"],
+                damage_done: attacker["damage_done"] || 0
+              }
+            end)
+
+            Enum.reject(fn p -> is_nil(p.character_id) end)
 
             # Add victim as participant
             victim_participant = %{
@@ -523,9 +538,10 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
     # Use the killmail data to provide engagement information
     query =
       KillmailRaw
-      |> new()
-      |> filter(killmail_id: fleet_id)
-      |> limit(1)
+
+    new()
+    filter(killmail_id: fleet_id)
+    limit(1)
 
     case Ash.read(query, domain: Api) do
       {:ok, [killmail]} ->
@@ -572,7 +588,8 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
 
   defp calculate_total_isk_destroyed(killmails) do
     killmails
-    |> Enum.map(fn km ->
+
+    Enum.map(fn km ->
       case km.raw_data do
         %{"zkb" => %{"totalValue" => value}} when is_number(value) -> value
         _ -> 0
@@ -611,10 +628,11 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
 
     victim_query =
       KillmailRaw
-      |> new()
-      |> filter(victim_character_id: character_id)
-      |> filter(killmail_time: [gte: cutoff_date])
-      |> limit(10)
+
+    new()
+    filter(victim_character_id: character_id)
+    filter(killmail_time: [gte: cutoff_date])
+    limit(10)
 
     case Ash.read(victim_query, domain: Api) do
       {:ok, [_ | _] = killmails} ->
@@ -659,17 +677,19 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
     # Fetch killmails where character was victim
     victim_query =
       KillmailRaw
-      |> new()
-      |> filter(victim_character_id: character_id)
-      |> filter(killmail_time: [gte: cutoff_date])
-      |> limit(200)
+
+    new()
+    filter(victim_character_id: character_id)
+    filter(killmail_time: [gte: cutoff_date])
+    limit(200)
 
     # Fetch killmails where character was attacker (simplified approach)
     attacker_query =
       KillmailRaw
-      |> new()
-      |> filter(killmail_time: [gte: cutoff_date])
-      |> limit(1000)
+
+    new()
+    filter(killmail_time: [gte: cutoff_date])
+    limit(1000)
 
     with {:ok, victim_killmails} <- Ash.read(victim_query, domain: Api),
          {:ok, potential_attacker_killmails} <- Ash.read(attacker_query, domain: Api) do
@@ -795,10 +815,10 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
         end)
 
       most_common_hour =
-        hours
-        |> Enum.frequencies()
-        |> Enum.max_by(&elem(&1, 1))
-        |> elem(0)
+        Enum.frequencies(hours)
+
+      Enum.max_by(&elem(&1, 1))
+      elem(0)
 
       case most_common_hour do
         h when h in 0..6 -> "AUTZ"
@@ -813,9 +833,8 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
       %{}
     else
       killmails
-      |> Enum.map(&DateTime.to_time(&1.killmail_time).hour)
-      |> Enum.frequencies()
-      |> Enum.into(%{})
+      Enum.map(&DateTime.to_time(&1.killmail_time).hour) |> Enum.frequencies()
+      Enum.into(%{})
     end
   end
 
@@ -845,10 +864,11 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
 
     query =
       KillmailRaw
-      |> new()
-      |> filter(victim_corporation_id: corporation_id)
-      |> filter(killmail_time: [gte: cutoff_date])
-      |> limit(10)
+
+    new()
+    filter(victim_corporation_id: corporation_id)
+    filter(killmail_time: [gte: cutoff_date])
+    limit(10)
 
     case Ash.read(query, domain: Api) do
       {:ok, [_ | _] = killmails} ->

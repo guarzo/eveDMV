@@ -90,12 +90,10 @@ defmodule EveDmv.Contexts.FleetOperations do
     Domain.FleetAnalyzer.force_reanalyze_engagement(engagement_id)
   end
 
-  def get_fleet_operations_metrics do
-    Domain.FleetAnalyzer.get_metrics()
+  def get_fleet_operations_metrics Domain.FleetAnalyzer.get_metrics(do)
   end
 
-  def refresh_doctrine_cache do
-    Infrastructure.FleetRepository.refresh_doctrine_cache()
+  def refresh_doctrine_cache Infrastructure.FleetRepository.refresh_doctrine_cache(do)
   end
 
   def calculate_wormhole_mass_limits(fleet_data) do

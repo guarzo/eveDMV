@@ -114,9 +114,9 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityDataCollector do
   """
   def get_killmail_participants(killmail_id) do
     query =
-      Participant
-      |> Ash.Query.new()
-      |> Ash.Query.filter(killmail_id == ^killmail_id)
+      Ash.Query.new(Participant)
+
+    Ash.Query.filter(killmail_id == ^killmail_id)
 
     case Ash.read(query, domain: Api) do
       {:ok, participants} -> {:ok, participants}
@@ -189,23 +189,20 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityDataCollector do
 
   defp group_by_day(killmails) do
     killmails
-    |> Enum.group_by(fn km -> Date.to_string(DateTime.to_date(km.killmail_time)) end)
-    |> Enum.map(fn {date, kms} -> {date, length(kms)} end)
-    |> Map.new()
+    Enum.group_by(fn km -> Date.to_string(DateTime.to_date(km.killmail_time)) end)
+    Enum.map(fn {date, kms} -> {date, length(kms)} end) |> Map.new()
   end
 
   defp group_by_hour(killmails) do
     killmails
-    |> Enum.group_by(fn km -> km.killmail_time.hour end)
-    |> Enum.map(fn {hour, kms} -> {hour, length(kms)} end)
-    |> Map.new()
+    Enum.group_by(fn km -> km.killmail_time.hour end)
+    Enum.map(fn {hour, kms} -> {hour, length(kms)} end) |> Map.new()
   end
 
   defp group_by_month(killmails) do
     killmails
-    |> Enum.group_by(fn km -> "#{km.killmail_time.year}-#{km.killmail_time.month}" end)
-    |> Enum.map(fn {month, kms} -> {month, length(kms)} end)
-    |> Map.new()
+    Enum.group_by(fn km -> "#{km.killmail_time.year}-#{km.killmail_time.month}" end)
+    Enum.map(fn {month, kms} -> {month, length(kms)} end) |> Map.new()
   end
 
   defp calculate_member_activity_score(member) do

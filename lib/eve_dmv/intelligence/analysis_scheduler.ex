@@ -135,9 +135,9 @@ defmodule EveDmv.Intelligence.AnalysisScheduler do
   @impl GenServer
   def handle_call(:get_scheduled_tasks, _from, state) do
     task_list =
-      state.scheduled_tasks
-      |> Map.values()
-      |> Enum.sort_by(& &1.scheduled_at, DateTime)
+      state.Map.values(scheduled_tasks)
+
+    Enum.sort_by(& &1.scheduled_at, DateTime)
 
     {:reply, task_list, state}
   end
@@ -193,9 +193,9 @@ defmodule EveDmv.Intelligence.AnalysisScheduler do
     now = DateTime.utc_now()
 
     tasks_to_run =
-      scheduled_tasks
-      |> Map.values()
-      |> Enum.filter(&should_run_task?(&1, now))
+      Map.values(scheduled_tasks)
+
+    Enum.filter(&should_run_task?(&1, now))
 
     if length(tasks_to_run) > 0 do
       Logger.debug("Executing #{length(tasks_to_run)} scheduled analysis tasks")
@@ -204,8 +204,9 @@ defmodule EveDmv.Intelligence.AnalysisScheduler do
       max_concurrent = Config.get_batch_limit(:concurrent_tasks)
 
       tasks_to_run
-      |> Enum.chunk_every(max_concurrent)
-      |> Enum.reduce(%{completed: 0, failed: 0}, fn batch, acc ->
+      Enum.chunk_every(max_concurrent)
+
+      Enum.reduce(%{completed: 0, failed: 0}, fn batch, acc ->
         batch_results = execute_task_batch(batch)
 
         %{

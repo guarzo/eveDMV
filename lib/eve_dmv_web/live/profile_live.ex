@@ -14,11 +14,12 @@ defmodule EveDmvWeb.ProfileLive do
 
     if current_user do
       socket =
-        socket
-        |> assign(:page_title, "Profile")
-        |> assign(:current_user, current_user)
-        |> assign(:loading_stats, true)
-        |> load_character_stats()
+    socket
+    assign(:page_title, "Profile")
+    assign(:current_user, current_user)
+    assign(:loading_stats, true)
+
+      load_character_stats()
 
       {:ok, socket}
     else
@@ -51,10 +52,10 @@ defmodule EveDmvWeb.ProfileLive do
   @impl Phoenix.LiveView
   def handle_info({:stats_loaded, stats, ship_intelligence}, socket) do
     {:noreply,
-     socket
-     |> assign(:loading_stats, false)
-     |> assign(:combat_stats, stats)
-     |> assign(:ship_intelligence, ship_intelligence)}
+    socket
+    assign(:loading_stats, false)
+    assign(:combat_stats, stats)
+    assign(:ship_intelligence, ship_intelligence)}
   end
 
   defp character_portrait(character_id, size \\ 128) do
@@ -158,9 +159,9 @@ defmodule EveDmvWeb.ProfileLive do
     case EveDmv.Auth.refresh_user_token(current_user) do
       {:ok, updated_user} ->
         {:noreply,
-         socket
-         |> assign(:current_user, updated_user)
-         |> put_flash(:info, "Token refreshed successfully")}
+    socket
+    assign(:current_user, updated_user)
+    put_flash(:info, "Token refreshed successfully")}
 
       {:error, reason} ->
         {:noreply, put_flash(socket, :error, "Failed to refresh token: #{reason}")}
@@ -203,7 +204,7 @@ defmodule EveDmvWeb.ProfileLive do
             navigate={~p"/dashboard"}
             class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
           >
-            Dashboard
+    Dashboard
           </.link>
           <.link
             navigate={~p"/feed"}
@@ -215,7 +216,7 @@ defmodule EveDmvWeb.ProfileLive do
             navigate={~p"/surveillance"}
             class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
           >
-            Surveillance
+    Surveillance
           </.link>
         </div>
       </div>
@@ -279,7 +280,7 @@ defmodule EveDmvWeb.ProfileLive do
               <%= if @current_user.last_login_at do %>
                 {Calendar.strftime(@current_user.last_login_at, "%Y-%m-%d %H:%M UTC")}
               <% else %>
-                Never
+    Never
               <% end %>
             </p>
           </div>

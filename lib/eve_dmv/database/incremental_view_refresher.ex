@@ -212,18 +212,18 @@ defmodule EveDmv.Database.IncrementalViewRefresher do
 
     sql = """
     WITH recent_kills AS (
-      SELECT
+    SELECT
         character_id,
         character_name,
         is_victim,
         killmail_time,
-        total_value
+    total_value
       FROM participants p
       JOIN killmails_raw k ON p.killmail_id = k.killmail_id
       WHERE k.killmail_time > $1
     ),
     activity_delta AS (
-      SELECT
+    SELECT
         character_id,
         character_name,
         COUNT(*) FILTER (WHERE is_victim = false) as kills,
@@ -286,7 +286,7 @@ defmodule EveDmv.Database.IncrementalViewRefresher do
 
     sql = """
     WITH recent_activity AS (
-      SELECT
+    SELECT
         solar_system_id,
         DATE_TRUNC('hour', killmail_time) as hour,
         COUNT(*) as kill_count,
@@ -403,7 +403,7 @@ defmodule EveDmv.Database.IncrementalViewRefresher do
       last_full_refresh_time,
       refresh_duration_ms,
       rows_updated,
-      refresh_type
+    refresh_type
     FROM view_refresh_tracking
     ORDER BY view_name
     """

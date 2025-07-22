@@ -749,8 +749,8 @@ defmodule EveDmvWeb.CorporationLive do
       killmail_ids = Enum.map(killmail_data, &elem(&1, 0))
 
       query = """
-      SELECT killmail_id, solar_system_id 
-      FROM killmails_raw 
+      SELECT killmail_id, solar_system_id
+      FROM killmails_raw
       WHERE killmail_id = ANY($1)
       """
 

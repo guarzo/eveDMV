@@ -93,8 +93,9 @@ defmodule EveDmv.Market.Strategies.EsiStrategy do
     # Filter sell orders only (is_buy_order: false)
     sell_orders =
       orders
-      |> Enum.filter(&(!&1["is_buy_order"]))
-      |> Enum.sort_by(& &1["price"])
+
+    Enum.filter(&(!&1["is_buy_order"]))
+    Enum.sort_by(& &1["price"])
 
     case sell_orders do
       [] ->
@@ -107,8 +108,9 @@ defmodule EveDmv.Market.Strategies.EsiStrategy do
 
         price_sample =
           sell_orders
-          |> Enum.take(sample_size)
-          |> Enum.map(& &1["price"])
+
+        Enum.take(sample_size)
+        Enum.map(& &1["price"])
 
         avg_price = Enum.sum(price_sample) / length(price_sample)
         {:ok, avg_price}

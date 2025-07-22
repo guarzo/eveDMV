@@ -977,16 +977,16 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     try do
       # Identify high-value targets based on ship types and fittings
       high_value_targets = identify_high_value_targets(timeline, fleet_analysis)
-      
+
       # Calculate how many high-value targets were actually eliminated
       {priority_kills, total_kills} = calculate_priority_target_performance(timeline, high_value_targets)
-      
+
       # Analyze target switching patterns
       switching_analysis = analyze_target_switching_patterns(timeline)
-      
+
       # Calculate timing efficiency of target selection
       timing_efficiency = calculate_target_timing_efficiency(timeline, high_value_targets)
-      
+
       %{
         priority_targets_hit: if(total_kills > 0, do: priority_kills / total_kills * 100, else: 0.0),
         target_switching_rate: switching_analysis.average_switch_time,
@@ -1458,14 +1458,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   end
 
   # Target selection analysis helper functions
-  
+
   defp identify_high_value_targets(timeline, fleet_analysis) do
     # Identify ships that are high-value targets based on type and role
     timeline
     |> Enum.filter(fn event ->
       ship_type_id = Map.get(event, :victim_ship_type_id)
       ship_value = Map.get(event, :isk_value, 0)
-      
+
       # High value if expensive ship or strategic role
       ship_value > 500_000_000 or is_strategic_ship_type(ship_type_id)
     end)
@@ -1479,26 +1479,26 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       }
     end)
   end
-  
+
   defp calculate_priority_target_performance(timeline, high_value_targets) do
     total_kills = length(timeline)
-    
-    priority_kills = 
+
+    priority_kills =
       Enum.count(high_value_targets, fn target ->
         Enum.any?(timeline, fn event ->
           event.victim.character_id == target.character_id and
           event.victim_ship_type_id == target.ship_type_id
         end)
       end)
-    
+
     {priority_kills, total_kills}
   end
-  
+
   defp analyze_target_switching_patterns(timeline) do
     # Group kills by time windows to identify switching patterns
     sorted_timeline = Enum.sort_by(timeline, & &1.timestamp, DateTime)
-    
-    time_windows = 
+
+    time_windows =
       sorted_timeline
       |> Enum.chunk_every(5)  # Groups of 5 kills
       |> Enum.map(fn window ->
@@ -1510,36 +1510,36 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
           total_kills: length(window)
         }
       end)
-    
-    avg_switch_time = 
+
+    avg_switch_time =
       if length(time_windows) > 1 do
-        total_duration = 
+        total_duration =
           time_windows
           |> Enum.map(fn window ->
             DateTime.diff(window.end_time, window.start_time, :second)
           end)
           |> Enum.sum()
-        
+
         total_duration / length(time_windows)
       else
         0
       end
-    
+
     %{
       average_switch_time: avg_switch_time,
       focus_windows: time_windows,
       target_diversity: calculate_target_diversity(timeline)
     }
   end
-  
+
   defp calculate_target_timing_efficiency(timeline, high_value_targets) do
     if length(high_value_targets) == 0 do
       0.0
     else
       # Calculate how quickly high-value targets were eliminated
       sorted_timeline = Enum.sort_by(timeline, & &1.timestamp, DateTime)
-      
-      early_priority_kills = 
+
+      early_priority_kills =
         sorted_timeline
         |> Enum.take(div(length(sorted_timeline), 3))  # First third of battle
         |> Enum.count(fn event ->
@@ -1547,7 +1547,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
             event.victim.character_id == target.character_id
           end)
         end)
-      
+
       if length(high_value_targets) > 0 do
         early_priority_kills / length(high_value_targets) * 100
       else
@@ -1555,35 +1555,35 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       end
     end
   end
-  
+
   defp calculate_target_focus_score(timeline) do
     # Calculate how focused the fleet was on specific targets
-    target_counts = 
+    target_counts =
       timeline
       |> Enum.group_by(& &1.victim.character_id)
       |> Enum.map(fn {_, kills} -> length(kills) end)
-    
+
     if length(target_counts) > 0 do
       max_kills_on_single_target = Enum.max(target_counts)
       total_kills = Enum.sum(target_counts)
-      
+
       max_kills_on_single_target / total_kills * 100
     else
       0.0
     end
   end
-  
+
   defp analyze_primary_target_preference(timeline) do
     # Analyze what types of ships are primarily targeted
-    ship_type_targets = 
+    ship_type_targets =
       timeline
       |> Enum.group_by(& &1.victim_ship_type_id)
-      |> Enum.map(fn {ship_type, kills} -> 
+      |> Enum.map(fn {ship_type, kills} ->
         {ship_type, length(kills), get_ship_class(ship_type)}
       end)
       |> Enum.sort_by(fn {_, count, _} -> count end, :desc)
-    
-    primary_preferences = 
+
+    primary_preferences =
       ship_type_targets
       |> Enum.take(3)
       |> Enum.map(fn {ship_type, count, ship_class} ->
@@ -1594,22 +1594,22 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
           percentage: count / length(timeline) * 100
         }
       end)
-    
+
     %{
       primary_targets: primary_preferences,
       target_diversity: length(ship_type_targets),
       focused_targeting: calculate_targeting_focus(ship_type_targets)
     }
   end
-  
+
   defp assess_target_selection_quality(timeline, fleet_analysis) do
     # Overall assessment of target selection quality
     threat_elimination = calculate_threat_elimination_score(timeline)
     value_destruction = calculate_value_destruction_efficiency(timeline)
     tactical_impact = assess_tactical_impact(timeline, fleet_analysis)
-    
+
     overall_score = (threat_elimination + value_destruction + tactical_impact) / 3
-    
+
     %{
       overall_quality_score: overall_score,
       threat_elimination: threat_elimination,
@@ -1618,9 +1618,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       quality_grade: grade_quality_score(overall_score)
     }
   end
-  
+
   # Helper functions for target analysis
-  
+
   defp is_strategic_ship_type(ship_type_id) do
     # This would check against a database of ship types
     # For now, use some common strategic ship type IDs (examples)
@@ -1632,33 +1632,33 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       # Logistics
       33472, 33473, 33474, 33475
     ]
-    
+
     ship_type_id in strategic_types
   end
-  
+
   defp calculate_ship_strategic_value(ship_type_id) do
     cond do
       is_strategic_ship_type(ship_type_id) -> :high
       true -> :normal
     end
   end
-  
+
   defp calculate_target_diversity(timeline) do
-    unique_targets = 
+    unique_targets =
       timeline
       |> Enum.map(& &1.victim.character_id)
       |> Enum.uniq()
       |> length()
-    
+
     total_kills = length(timeline)
-    
+
     if total_kills > 0 do
       unique_targets / total_kills
     else
       0.0
     end
   end
-  
+
   defp get_ship_class(ship_type_id) do
     # This would query the ship type database
     # For now, return generic classifications
@@ -1672,18 +1672,18 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       true -> :unknown
     end
   end
-  
+
   defp calculate_targeting_focus(ship_type_targets) do
     if length(ship_type_targets) == 0 do
       0.0
     else
       total_kills = Enum.sum(Enum.map(ship_type_targets, fn {_, count, _} -> count end))
-      top_target_kills = 
+      top_target_kills =
         ship_type_targets
         |> Enum.take(3)
         |> Enum.map(fn {_, count, _} -> count end)
         |> Enum.sum()
-      
+
       if total_kills > 0 do
         top_target_kills / total_kills * 100
       else
@@ -1691,63 +1691,63 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       end
     end
   end
-  
+
   defp calculate_threat_elimination_score(timeline) do
     # Score based on eliminating dangerous/strategic targets
-    strategic_kills = 
+    strategic_kills =
       Enum.count(timeline, fn event ->
         is_strategic_ship_type(event.victim_ship_type_id)
       end)
-    
+
     total_kills = length(timeline)
-    
+
     if total_kills > 0 do
       strategic_kills / total_kills * 100
     else
       0.0
     end
   end
-  
+
   defp calculate_value_destruction_efficiency(timeline) do
     # Score based on ISK efficiency of target selection
-    high_value_kills = 
+    high_value_kills =
       Enum.count(timeline, fn event ->
         Map.get(event, :isk_value, 0) > 100_000_000
       end)
-    
+
     total_kills = length(timeline)
-    
+
     if total_kills > 0 do
       high_value_kills / total_kills * 100
     else
       0.0
     end
   end
-  
+
   defp assess_tactical_impact(timeline, _fleet_analysis) do
     # Assess the tactical impact of target choices
     # This is a simplified implementation
-    logi_kills = 
+    logi_kills =
       Enum.count(timeline, fn event ->
         ship_class = get_ship_class(event.victim_ship_type_id)
         ship_class in [:logistics, :force_auxiliary]
       end)
-    
-    command_kills = 
+
+    command_kills =
       Enum.count(timeline, fn event ->
         ship_class = get_ship_class(event.victim_ship_type_id)
         ship_class in [:command_ship, :strategic_cruiser]
       end)
-    
+
     total_kills = length(timeline)
-    
+
     if total_kills > 0 do
       (logi_kills * 2 + command_kills * 1.5) / total_kills * 100
     else
       0.0
     end
   end
-  
+
   defp grade_quality_score(score) do
     cond do
       score >= 80 -> :excellent

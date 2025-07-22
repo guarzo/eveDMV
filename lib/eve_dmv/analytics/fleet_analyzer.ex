@@ -217,13 +217,15 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
     # Score each doctrine pattern
     doctrine_scores =
       @doctrine_patterns
-      |> Enum.map(fn {doctrine_key, pattern} ->
-        score = calculate_doctrine_score(ship_counts, pattern, fleet_size)
 
-        # Logger.debug("Doctrine #{doctrine_key}: score=#{score}, primary_ships=#{inspect(pattern.primary_ships)}, ship_counts=#{inspect(ship_counts)}")
-        {doctrine_key, pattern, score}
-      end)
-      |> Enum.sort_by(fn {_key, _pattern, score} -> score end, :desc)
+    Enum.map(fn {doctrine_key, pattern} ->
+      score = calculate_doctrine_score(ship_counts, pattern, fleet_size)
+
+      # Logger.debug("Doctrine #{doctrine_key}: score=#{score}, primary_ships=#{inspect(pattern.primary_ships)}, ship_counts=#{inspect(ship_counts)}")
+      {doctrine_key, pattern, score}
+    end)
+
+    Enum.sort_by(fn {_key, _pattern, score} -> score end, :desc)
 
     case doctrine_scores do
       [{best_doctrine, pattern, score} | _] when score >= @doctrine_match_threshold ->
@@ -303,17 +305,18 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
       # Sum up role scores from all ships
       role_totals =
         ship_role_data
-        |> Enum.reduce(%{}, fn ship_data, acc ->
-          case ship_data do
-            %{role_distribution: roles} ->
-              Enum.reduce(roles, acc, fn {role, score}, role_acc ->
-                Map.update(role_acc, role, score, &(&1 + score))
-              end)
 
-            _ ->
-              acc
-          end
-        end)
+      Enum.reduce(%{}, fn ship_data, acc ->
+        case ship_data do
+          %{role_distribution: roles} ->
+            Enum.reduce(roles, acc, fn {role, score}, role_acc ->
+              Map.update(role_acc, role, score, &(&1 + score))
+            end)
+
+          _ ->
+            acc
+        end
+      end)
 
       # Convert to percentages
       role_totals
@@ -345,10 +348,9 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
     support_analysis = analyze_support_coverage(ship_role_data)
     support_recs = support_recommendations(support_analysis)
 
-    (logistics_recs ++ role_balance_recs ++ doctrine_recs ++ support_recs)
-    |> Enum.uniq()
+    logistics_recs ++ role_balance_recs ++ doctrine_recs ++ Enum.uniq(support_recs)
     # Limit to top 8 recommendations
-    |> Enum.take(8)
+    Enum.take(8)
   end
 
   @doc """
@@ -396,14 +398,15 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
       )
 
     role_data_map =
-      query
-      |> Repo.all()
-      |> Enum.map(fn ship -> {ship.ship_type_id, ship} end)
-      |> Enum.into(%{})
+      Repo.all(query)
+
+    Enum.map(fn ship -> {ship.ship_type_id, ship} end)
+    Enum.into(%{})
 
     # Map each ship in fleet to its role data
     fleet_ships
-    |> Enum.map(fn ship_type_id ->
+
+    Enum.map(fn ship_type_id ->
       case Map.get(role_data_map, ship_type_id) do
         nil ->
           # No role data available, use default classification
@@ -517,7 +520,6 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
       support_ships
       |> Enum.map(&Map.get(ship_counts, &1, 0))
       |> Enum.sum()
-
     logistics_ratio = logistics_count / fleet_size
 
     cond do
@@ -538,7 +540,8 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
 
     logistics_count =
       ship_role_data
-      |> Enum.count(fn ship -> ship.primary_role == "logistics" end)
+
+    Enum.count(fn ship -> ship.primary_role == "logistics" end)
 
     logistics_ratio = if total_ships > 0, do: logistics_count / total_ships, else: 0.0
 

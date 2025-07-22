@@ -475,14 +475,12 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
 
     # Shannon diversity index adapted for fleet composition
     diversity =
-      ship_counts
-      |> Map.values()
-      |> Enum.map(fn count ->
+    Map.values(ship_counts)
+    Enum.map(fn count ->
         proportion = count / total_ships
         proportion * :math.log(proportion)
-      end)
-      |> Enum.sum()
-      |> then(&(-&1))
+      end) |> Enum.sum()
+    then(&(-&1))
 
     # Normalize to 0-1 range
     max_diversity = :math.log(unique_classes)
@@ -521,7 +519,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
       end)
 
     ships
-    |> Enum.map(fn ship ->
+    Enum.map(fn ship ->
       ship_type_id =
         case ship do
           %{ship_type_id: id} -> id
@@ -538,8 +536,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
       else
         10_000_000.0
       end
-    end)
-    |> Enum.sum()
+    end) |> Enum.sum()
   end
 
   defp determine_wormhole_compatibility(_total_mass) do
@@ -549,7 +546,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
     Enum.reduce(wh_classes, %{}, fn wh_class, acc ->
       # For now, just check against basic wormhole mass limits
       # This should be improved to check actual mass limits per class
-      wh_atom = String.downcase(wh_class) |> String.to_existing_atom()
+      wh_atom = wh_class |> String.downcase() |> String.to_existing_atom()
       mass_limit = Map.get(@wormhole_mass_limits, wh_atom, 0)
 
       # Simple check - if mass limit exists, assume compatibility
@@ -631,17 +628,14 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
       MapSet.new(Enum.map(killmails, fn km -> km.victim.corporation_id end))
 
     _attacker_corps =
-      killmails
-      |> Enum.flat_map(fn km -> Enum.map(km.attackers, & &1.corporation_id) end)
-      |> MapSet.new()
-
+    killmails
+    Enum.flat_map(fn km -> Enum.map(km.attackers, & &1.corporation_id) end) |> MapSet.new()
     # Assume majority corp is friendly
     all_corps = Enum.map(participants, & &1.corporation_id)
 
     max_corp_tuple =
-      all_corps
-      |> Enum.frequencies()
-      |> Enum.max_by(fn {_corp, count} -> count end)
+    Enum.frequencies(all_corps)
+    Enum.max_by(fn {_corp, count} -> count end)
 
     majority_corp = elem(max_corp_tuple, 0)
 
@@ -886,10 +880,9 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
 
     # Check for over-concentration in single ship class
     max_percentage =
-      composition.ship_classes
-      |> Map.values()
-      |> Enum.map(& &1.percentage)
-      |> Enum.max(fn -> 0 end)
+      composition.Map.values(ship_classes)
+    Enum.map(& &1.percentage)
+    Enum.max(fn -> 0 end)
 
     diversity_recommendations =
       if max_percentage > 70 do
@@ -983,7 +976,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
     # Simplified pilot distribution algorithm
     # In reality, this would be more sophisticated
 
-    total_min_pilots = ship_requirements |> Map.values() |> Enum.map(& &1.min_count) |> Enum.sum()
+    total_min_pilots = Map.values(ship_requirements) |> Enum.map(& &1.min_count) |> Enum.sum()
 
     if pilot_count < total_min_pilots do
       # Not enough pilots for minimum requirements
@@ -1156,7 +1149,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
     new_processing_times = [analysis_time | Enum.take(state.recent_analysis_times, 99)]
 
     %{
-      state
+    state
       | metrics: new_metrics,
         recent_analysis_times: new_processing_times
     }

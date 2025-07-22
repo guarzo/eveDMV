@@ -49,7 +49,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
         |> enrich_battle_metadata()
         |> assign_battle_ids()
 
-      Logger.info("Detected #{length(battles)} battles from #{length(killmails)} killmails")
+      Logger.info(
+        "Detected #{Kernel.length(battles)} battles from #{Kernel.length(killmails)} killmails"
+      )
+
       {:ok, battles}
     end
   end
@@ -74,7 +77,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
         |> enrich_battle_metadata()
         |> assign_battle_ids()
 
-      Logger.info("Detected #{length(battles)} battles in system #{system_id}")
+      Logger.info("Detected #{Kernel.length(battles)} battles in system #{system_id}")
       {:ok, battles}
     end
   end
@@ -84,7 +87,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
   Useful for analyzing battles from external sources like zkillboard.
   """
   def analyze_battle_from_killmail_ids(killmail_ids) when is_list(killmail_ids) do
-    Logger.info("Analyzing battle from #{length(killmail_ids)} killmail IDs")
+    Logger.info("Analyzing battle from #{Kernel.length(killmail_ids)} killmail IDs")
 
     with {:ok, killmails} <- fetch_killmails_by_ids(killmail_ids) do
       case killmails do
@@ -202,11 +205,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
 
   defp cluster_killmails_by_time_and_space(killmails, max_time_gap_minutes, same_system_only) do
     killmails
-    |> Enum.sort_by(& &1.killmail_time)
-    |> Enum.reduce([], fn killmail, clusters ->
+    Enum.sort_by(& &1.killmail_time)
+
+    Enum.reduce([], fn killmail, clusters ->
       add_to_cluster(killmail, clusters, max_time_gap_minutes, same_system_only)
     end)
-    |> Enum.map(&Map.put(&1, :killmails, Enum.reverse(&1.killmails)))
+
+    Enum.map(&Map.put(&1, :killmails, Enum.reverse(&1.killmails)))
   end
 
   defp add_to_cluster(killmail, [], _max_time_gap, _same_system_only) do
@@ -299,10 +304,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
   defp count_unique_participants(killmails) do
     participants =
       killmails
-      |> Enum.flat_map(&ParticipantExtractor.extract_participants/1)
-      |> Enum.uniq()
 
-    length(participants)
+    Enum.flat_map(&ParticipantExtractor.extract_participants/1)
+    |> Enum.uniq()
+
+    Kernel.length(participants)
   end
 
   defp calculate_participant_overlap(killmail, cluster_killmails) do
@@ -310,17 +316,19 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
 
     cluster_participants =
       cluster_killmails
-      |> Enum.flat_map(&ParticipantExtractor.extract_participants/1)
-      |> Enum.uniq()
+
+    Enum.flat_map(&ParticipantExtractor.extract_participants/1)
+    |> Enum.uniq()
 
     if Enum.empty?(cluster_participants) do
       0.0
     else
       overlap_count =
         killmail_participants
-        |> Enum.count(&(&1 in cluster_participants))
 
-      overlap_count / length(cluster_participants)
+      Enum.count(&(&1 in cluster_participants))
+
+      overlap_count / Kernel.length(cluster_participants)
     end
   end
 
@@ -355,7 +363,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
     participant_analysis = analyze_participants(killmails)
 
     base_metadata = %{
-      killmail_count: length(killmails),
+      killmail_count: Kernel.length(killmails),
       duration_minutes: calculate_duration_minutes(killmails),
       unique_participants: participant_analysis.unique_count,
       unique_corporations: participant_analysis.unique_corporations,
@@ -385,20 +393,24 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
     # Get corporation and alliance data
     corporations =
       killmails
-      |> Enum.map(& &1.victim_corporation_id)
-      |> Enum.filter(&(&1 != nil))
-      |> Enum.uniq()
+
+    Enum.map(& &1.victim_corporation_id)
+
+    Enum.filter(&(&1 != nil))
+    |> Enum.uniq()
 
     alliances =
       killmails
-      |> Enum.map(& &1.victim_alliance_id)
-      |> Enum.filter(&(&1 != nil))
-      |> Enum.uniq()
+
+    Enum.map(& &1.victim_alliance_id)
+
+    Enum.filter(&(&1 != nil))
+    |> Enum.uniq()
 
     %{
-      unique_count: length(Enum.uniq(all_participants)),
-      unique_corporations: length(corporations),
-      unique_alliances: length(alliances)
+      unique_count: Kernel.length(Enum.uniq(all_participants)),
+      unique_corporations: Kernel.length(corporations),
+      unique_alliances: Kernel.length(alliances)
     }
   end
 
@@ -423,17 +435,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
 
   defp find_primary_system(killmails) do
     # Find the system with the most killmails
-    killmails
+    result = killmails
     |> Enum.group_by(& &1.solar_system_id)
-    |> Enum.max_by(fn {_system_id, kills} -> length(kills) end, fn -> {nil, []} end)
-    |> elem(0)
+    |> Enum.max_by(fn {_system_id, kills} -> Kernel.length(kills) end, fn -> {nil, []} end)
+    
+    elem(result, 0)
   end
 
   defp calculate_total_isk_destroyed(killmails) do
     case calculate_killmail_values_batch(killmails) do
       {:ok, value} ->
-        value
-        |> round()
+        Kernel.round(value)
 
       {:error, _reason} ->
         # Fallback to individual calculation method
@@ -457,13 +469,14 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
 
       zkb_total =
         zkb_values
-        |> Enum.map(fn killmail ->
-          case extract_zkb_value(killmail) do
-            {:ok, value} -> value
-            _ -> 0.0
-          end
-        end)
-        |> Enum.sum()
+
+      Enum.map(fn killmail ->
+        case extract_zkb_value(killmail) do
+          {:ok, value} -> value
+          _ -> 0.0
+        end
+      end)
+      |> Enum.sum()
 
       # For killmails that need calculation, batch the price fetching
       calculation_total =
@@ -475,14 +488,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
             # Extract all unique type IDs from all killmails
             all_type_ids =
               killmails_to_calculate
-              |> Enum.flat_map(&extract_type_ids/1)
-              |> Enum.uniq()
+
+            Enum.flat_map(&extract_type_ids/1)
+            |> Enum.uniq()
 
             # Batch fetch all prices
             {:ok, price_map} = PriceService.get_item_prices(all_type_ids)
 
             killmails_to_calculate
-            |> Enum.map(fn killmail ->
+
+            Enum.map(fn killmail ->
               calculate_killmail_value_with_prices(killmail, price_map)
             end)
             |> Enum.sum()
@@ -501,14 +516,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
     alias EveDmv.Market.PriceService
 
     killmails
-    |> Enum.map(fn killmail ->
+
+    Enum.map(fn killmail ->
       case PriceService.calculate_killmail_value(killmail) do
         %{total_value: value} when is_number(value) -> value
         _ -> 0.0
       end
     end)
     |> Enum.sum()
-    |> round()
+    |> Kernel.round()
   end
 
   # Helper to extract zKillboard value
@@ -536,8 +552,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
           []
       end
 
-    (type_ids ++ item_type_ids)
-    |> Enum.filter(&(&1 != nil))
+    type_ids ++ item_type_ids
+
+    Enum.filter(&(&1 != nil))
     |> Enum.uniq()
   end
 
@@ -555,7 +572,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
       case killmail.raw_data do
         %{"victim" => %{"items" => items}} when is_list(items) ->
           items
-          |> Enum.map(fn item ->
+
+          Enum.map(fn item ->
             type_id = item["typeID"]
             quantity = item["quantityDestroyed"] || item["quantityDropped"] || 1
 
@@ -575,14 +593,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
 
   defp analyze_ship_types(killmails) do
     killmails
-    |> Enum.group_by(& &1.victim_ship_type_id)
-    |> Enum.map(fn {type_id, kills} ->
-      %{ship_type_id: type_id, count: length(kills)}
+    Enum.group_by(& &1.victim_ship_type_id)
+
+    Enum.map(fn {type_id, kills} ->
+      %{ship_type_id: type_id, count: Kernel.length(kills)}
     end)
   end
 
   defp determine_battle_type(killmails, participant_analysis) do
-    kill_count = length(killmails)
+    kill_count = Kernel.length(killmails)
     participant_count = participant_analysis.unique_count
 
     cond do
@@ -611,7 +630,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
         system_id = first.solar_system_id
 
         timestamp =
-          first.killmail_time |> NaiveDateTime.to_string() |> String.replace([" ", ":", "-"], "")
+          first.killmail_time
+          |> NaiveDateTime.to_string()
+
+        String.replace([" ", ":", "-"], "")
 
         "battle_#{system_id}_#{timestamp}"
     end

@@ -68,8 +68,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
           sig_id: sig_id,
           updated_at: DateTime.utc_now()
         }
-        |> Map.merge(updates)
-        |> handle_status_transition()
+    Map.merge(updates)
+        handle_status_transition()
 
       {:ok, updated_sig}
     end
@@ -90,13 +90,13 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
       previous_ids = MapSet.new(previous_sigs, & &1.sig_id)
 
       # Detect changes
-      new_sigs = MapSet.difference(current_ids, previous_ids) |> MapSet.to_list()
-      missing_sigs = MapSet.difference(previous_ids, current_ids) |> MapSet.to_list()
+      new_sigs = MapSet.difference(current_ids, previous_ids) MapSet.to_list()
+      missing_sigs = MapSet.difference(previous_ids, current_ids) MapSet.to_list()
 
       # Find new K162s (incoming wormholes)
       new_k162s =
-        current_sigs
-        |> Enum.filter(fn sig ->
+    current_sigs
+    Enum.filter(fn sig ->
           sig.sig_id in new_sigs and
             get_in(sig, [:metadata, :wormhole_type]) == "K162"
         end)
@@ -186,12 +186,12 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
     priorities = Map.merge(default_priorities, priorities)
 
     sorted_sigs =
-      signatures
-      |> Enum.map(fn sig ->
+    signatures
+    Enum.map(fn sig ->
         priority_score = calculate_priority_score(sig, priorities)
         Map.put(sig, :scan_priority, priority_score)
       end)
-      |> Enum.sort_by(& &1.scan_priority, :desc)
+    Enum.sort_by(& &1.scan_priority, :desc)
 
     {:ok,
      %{
@@ -293,16 +293,15 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
 
   defp analyze_site_composition(signatures) do
     signatures
-    |> Enum.group_by(& &1.sig_type)
-    |> Enum.map(fn {type, sigs} ->
+    Enum.group_by(& &1.sig_type)
+    Enum.map(fn {type, sigs} ->
       {type,
        %{
          count: length(sigs),
          percentage: length(sigs) / max(length(signatures), 1) * 100,
          identified: Enum.count(sigs, &(&1.status in [:identified, :active]))
        }}
-    end)
-    |> Map.new()
+    end) |> Map.new()
   end
 
   defp assess_signature_threats(new_k162s, site_breakdown, security_class) do
@@ -317,11 +316,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
 
     # Low-class wormholes with many sigs are high-traffic
     total_sigs =
-      site_breakdown
-      |> Map.values()
-      |> Enum.map(& &1.count)
-      |> Enum.sum()
-
+    Map.values(site_breakdown)
+    Enum.map(& &1.count) |> Enum.sum()
     threat_score =
       if security_class in ["C1", "C2", "C3"] and total_sigs > 10 do
         threat_score + 15
@@ -391,8 +387,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
   defp detect_rage_rolling(sig_lifecycles, _time_window) do
     # Rage rolling: Many wormholes appearing and disappearing quickly
     wh_sigs =
-      sig_lifecycles
-      |> Enum.filter(fn {_id, sigs} ->
+    sig_lifecycles
+    Enum.filter(fn {_id, sigs} ->
         Enum.any?(sigs, &(&1.sig_type == :wormhole))
       end)
 
@@ -413,8 +409,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
   defp detect_active_farming(sig_lifecycles) do
     # Active farming: Sites being cleared systematically
     cleared_sites =
-      sig_lifecycles
-      |> Enum.count(fn {_id, sigs} ->
+    sig_lifecycles
+    Enum.count(fn {_id, sigs} ->
         Enum.any?(sigs, fn sig ->
           sig.sig_type in [:data, :relic, :combat] and
             get_in(sig, [:metadata, :cleared])
@@ -431,20 +427,18 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
   defp detect_chain_rolling(sig_lifecycles) do
     # Chain rolling: Specific wormhole being repeatedly collapsed
     wh_collapses =
-      sig_lifecycles
-      |> Enum.map(fn {_id, sigs} ->
+    sig_lifecycles
+    Enum.map(fn {_id, sigs} ->
         wh_sigs = Enum.filter(sigs, &(&1.sig_type == :wormhole))
 
         if length(wh_sigs) >= 2 do
           get_in(List.first(wh_sigs), [:metadata, :wormhole_type])
         end
       end)
-      |> Enum.reject(&is_nil/1)
-      |> Enum.frequencies()
-
+    Enum.reject(&is_nil/1) |> Enum.frequencies()
     max_collapses =
       if map_size(wh_collapses) > 0 do
-        wh_collapses |> Map.values() |> Enum.max()
+        Map.values(wh_collapses) Enum.max()
       else
         0
       end
@@ -452,7 +446,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
     %{
       detected: max_collapses >= 2,
       most_rolled: wh_collapses |> Enum.max_by(fn {_k, v} -> v end, fn -> {nil, 0} end),
-      total_rolls: Map.values(wh_collapses) |> Enum.sum()
+      total_rolls: Map.values(wh_collapses) Enum.sum()
     }
   end
 
@@ -581,8 +575,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
 
     # Adjust for difficulty
     difficulty_modifier =
-      signatures
-      |> Enum.map(fn sig ->
+    signatures
+    Enum.map(fn sig ->
         case sig.sig_type do
           # Wormholes take longer
           :wormhole -> 1.5
@@ -590,9 +584,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
           :unknown -> 2.0
           _ -> 1.0
         end
-      end)
-      |> Enum.sum()
-      |> Kernel./(length(signatures))
+      end) |> Enum.sum()
+    Kernel./(length(signatures))
 
     seconds = base_time * difficulty_modifier
 

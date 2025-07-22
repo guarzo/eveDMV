@@ -75,7 +75,7 @@ defmodule Mix.Tasks.Eve.ApplyQuerySafety do
 
       # Query safety preparations
       preparations do
-        prepare EveDmv.Api.DomainExtensions.query_safety_preparation()
+        EveDmv.Api.DomainExtensions.query_safety_preparation(prepare)
       end
     """
 
@@ -96,9 +96,10 @@ defmodule Mix.Tasks.Eve.ApplyQuerySafety do
     if index do
       # Calculate byte position
       lines
-      |> Enum.take(index)
-      |> Enum.join("\n")
-      |> byte_size()
+      Enum.take(index)
+      Enum.join("\n")
+
+      byte_size()
     else
       # Default to end of attributes block
       case Regex.run(~r/attributes\s+do.*?end/s, content) do

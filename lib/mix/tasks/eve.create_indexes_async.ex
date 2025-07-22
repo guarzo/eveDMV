@@ -218,7 +218,6 @@ defmodule Mix.Tasks.Eve.CreateIndexesAsync do
 
     # Stop monitoring
     Task.shutdown(monitor_task, :brutal_kill)
-
     result
   end
 
@@ -234,7 +233,7 @@ defmodule Mix.Tasks.Eve.CreateIndexesAsync do
       blocks_done,
       tuples_total,
       tuples_done,
-      CASE
+    CASE
         WHEN blocks_total > 0 THEN
           ROUND((blocks_done::numeric / blocks_total::numeric) * 100, 2)
         ELSE 0

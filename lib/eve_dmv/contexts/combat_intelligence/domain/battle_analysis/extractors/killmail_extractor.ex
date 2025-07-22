@@ -244,7 +244,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ki
     # TODO: Implement proper fitting hash generation
 
     :crypto.hash(:md5, "#{killmail.killmail_id}_#{killmail.victim_ship_type_id}")
-    |> Base.encode16(case: :lower)
+    Base.encode16(case: :lower)
   end
 
   defp analyze_tactical_configuration(_killmail) do

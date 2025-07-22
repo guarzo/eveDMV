@@ -150,52 +150,51 @@ defmodule EveDmv.Database.CacheWarmer do
   defp warm_hot_characters do
     # Get recently active characters - just get the most recent ones
     case CharacterStats
-         |> Ash.Query.sort(last_calculated_at: :desc)
-         |> Ash.Query.limit(@batch_size)
-         |> Ash.read(domain: Api) do
+    Ash.Query.sort(last_calculated_at: :desc)
+    Ash.Query.limit(@batch_size)
+    Ash.read(domain: Api) do
       {:ok, characters} ->
         # Warm character intelligence data
-        characters
-        |> Enum.map(& &1.character_id)
-        |> Enum.chunk_every(10)
-        |> Enum.each(&warm_character_batch/1)
+    characters
+    Enum.map(& &1.character_id)
+    Enum.chunk_every(10)
+    Enum.each(&warm_character_batch/1)
 
         length(characters)
 
       {:error, _} ->
-        0
+    0
     end
   end
 
   defp warm_active_systems do
     # Get recent killmails and extract systems
     case KillmailEnriched
-         |> Ash.Query.sort(killmail_time: :desc)
-         |> Ash.Query.limit(@batch_size * 10)
-         |> Ash.read(domain: Api) do
+    Ash.Query.sort(killmail_time: :desc)
+    Ash.Query.limit(@batch_size * 10)
+    Ash.read(domain: Api) do
       {:ok, killmails} ->
         system_ids = Enum.map(killmails, & &1.solar_system_id)
 
         # Warm system information
-        system_ids
-        |> Enum.uniq()
-        |> Enum.take(@batch_size)
-        |> Enum.each(&warm_system_info/1)
+        Enum.uniq(system_ids)
+    Enum.take(@batch_size)
+    Enum.each(&warm_system_info/1)
 
         length(system_ids)
 
       {:error, _} ->
-        0
+    0
     end
   end
 
   defp warm_recent_killmails do
     # Get recent high-value killmails
     case KillmailEnriched
-         |> Ash.Query.sort(total_value: :desc)
-         |> Ash.Query.limit(@batch_size)
-         |> Ash.Query.load(:participants)
-         |> Ash.read(domain: Api) do
+    Ash.Query.sort(total_value: :desc)
+    Ash.Query.limit(@batch_size)
+    Ash.Query.load(:participants)
+    Ash.read(domain: Api) do
       {:ok, killmails} ->
         # Cache enriched killmail data
         Enum.each(killmails, fn killmail ->
@@ -215,7 +214,7 @@ defmodule EveDmv.Database.CacheWarmer do
         length(killmails)
 
       {:error, _} ->
-        0
+    0
     end
   end
 
@@ -261,13 +260,13 @@ defmodule EveDmv.Database.CacheWarmer do
       # Jita 4-4
       11_202,
       # Jita system
-      60_003_760
+    60_003_760
     ]
 
     # Warm item type data
     popular_ship_ids
-    |> Enum.chunk_every(10)
-    |> Enum.each(&warm_item_type_batch/1)
+    Enum.chunk_every(10)
+    Enum.each(&warm_item_type_batch/1)
 
     length(popular_ship_ids)
   end
@@ -275,17 +274,16 @@ defmodule EveDmv.Database.CacheWarmer do
   defp warm_alliance_stats do
     # Get participants with alliances
     case EveDmv.Killmails.Participant
-         |> Ash.Query.filter(not is_nil(alliance_id))
-         |> Ash.Query.sort(updated_at: :desc)
-         |> Ash.Query.limit(@batch_size * 10)
-         |> Ash.read(domain: Api) do
+    Ash.Query.filter(not is_nil(alliance_id))
+    Ash.Query.sort(updated_at: :desc)
+    Ash.Query.limit(@batch_size * 10)
+    Ash.read(domain: Api) do
       {:ok, results} ->
         alliance_ids =
-          results
-          |> Enum.map(& &1.alliance_id)
-          |> Enum.reject(&is_nil/1)
-          |> Enum.uniq()
-          |> Enum.take(@batch_size)
+    results
+    Enum.map(& &1.alliance_id)
+    Enum.reject(&is_nil/1) |> Enum.uniq()
+    Enum.take(@batch_size)
 
         # Warm alliance statistics
         Enum.each(alliance_ids, fn alliance_id ->
@@ -310,7 +308,7 @@ defmodule EveDmv.Database.CacheWarmer do
         length(alliance_ids)
 
       {:error, _} ->
-        0
+    0
     end
   end
 
@@ -349,10 +347,10 @@ defmodule EveDmv.Database.CacheWarmer do
                cache_key,
                fn ->
                  KillmailEnriched
-                 |> Ash.Query.filter(killmail_id == ^killmail_id)
-                 |> Ash.Query.load(:participants)
-                 |> Ash.read_one(domain: Api)
-                 |> case do
+    Ash.Query.filter(killmail_id == ^killmail_id)
+    Ash.Query.load(:participants)
+    Ash.read_one(domain: Api)
+    case do
                    {:ok, killmail} -> killmail
                    _ -> nil
                  end
@@ -441,11 +439,11 @@ defmodule EveDmv.Database.CacheWarmer do
   defp compute_alliance_stats(alliance_id) do
     # Get kill/loss stats for alliance
     case EveDmv.Killmails.Participant
-         |> Ash.Query.filter(alliance_id == ^alliance_id)
-         |> Ash.Query.sort(updated_at: :desc)
-         |> Ash.Query.limit(1000)
-         |> Ash.Query.load(:killmail_enriched)
-         |> Ash.read(domain: Api) do
+    Ash.Query.filter(alliance_id == ^alliance_id)
+    Ash.Query.sort(updated_at: :desc)
+    Ash.Query.limit(1000)
+    Ash.Query.load(:killmail_enriched)
+    Ash.read(domain: Api) do
       {:ok, participants} ->
         kills = Enum.filter(participants, &(not &1.is_victim))
         losses = Enum.filter(participants, & &1.is_victim)
@@ -454,7 +452,7 @@ defmodule EveDmv.Database.CacheWarmer do
           alliance_id: alliance_id,
           kill_count: length(kills),
           loss_count: length(losses),
-          active_members: participants |> Enum.map(& &1.character_id) |> Enum.uniq() |> length(),
+          active_members: participants |> Enum.map(& &1.character_id) Enum.uniq() length(),
           last_activity: participants |> Enum.map(& &1.updated_at) |> Enum.max(fn -> nil end)
         }
 

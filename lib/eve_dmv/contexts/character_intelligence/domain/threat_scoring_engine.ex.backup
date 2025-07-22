@@ -5,7 +5,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   Analyzes character combat data across multiple dimensions to generate accurate threat assessments:
 
   - Combat Skill: Kill efficiency, survival rates, target selection patterns
-  - Ship Mastery: Ship diversity, fitting optimization, tactical adaptation  
+  - Ship Mastery: Ship diversity, fitting optimization, tactical adaptation
   - Gang Effectiveness: Fleet coordination, role execution, leadership indicators
   - Unpredictability: Tactical variance, engagement pattern diversity
   - Recent Activity: Weighted performance trends and current form

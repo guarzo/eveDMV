@@ -693,8 +693,9 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
     else
       time_gaps =
         loss_times
-        |> Enum.zip(tl(loss_times))
-        |> Enum.map(fn {t1, t2} -> DateTime.diff(t2, t1, :second) end)
+
+      Enum.zip(tl(loss_times))
+      Enum.map(fn {t1, t2} -> DateTime.diff(t2, t1, :second) end)
 
       avg_gap = Enum.sum(time_gaps) / length(time_gaps)
 
@@ -712,11 +713,13 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
     total_losses = Enum.sum(Map.values(lost_ship_types))
 
     lost_ship_types
-    |> Enum.filter(fn {_ship_type, count} ->
+
+    Enum.filter(fn {_ship_type, count} ->
       # Ship types representing >30% of losses
       count / total_losses > 0.3
     end)
-    |> Enum.map(fn {ship_type, count} ->
+
+    Enum.map(fn {ship_type, count} ->
       %{ship_type: ship_type, losses: count, percentage: count / total_losses * 100}
     end)
   end
@@ -724,10 +727,11 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
   defp analyze_damage_patterns(fleet_losses) do
     damage_sources =
       fleet_losses
-      |> Enum.flat_map(fn loss ->
-        Enum.map(loss.attackers, & &1.weapon_type_id)
-      end)
-      |> Enum.frequencies()
+
+    Enum.flat_map(fn loss ->
+      Enum.map(loss.attackers, & &1.weapon_type_id)
+    end)
+    |> Enum.frequencies()
 
     %{
       common_damage_sources: damage_sources,

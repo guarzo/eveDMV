@@ -186,11 +186,11 @@ defmodule EveDmv.Database.KillmailRepository do
   def batch_get_with_participants(killmail_ids) when is_list(killmail_ids) do
     TelemetryHelper.measure_query("killmail", :batch_get_with_participants, fn ->
       query =
-        KillmailEnriched
-        |> Ash.Query.new()
-        |> Ash.Query.filter(killmail_id in ^killmail_ids)
-        |> Ash.Query.load([:participants])
-        |> Ash.Query.sort(desc: :killmail_time)
+        Ash.Query.new(KillmailEnriched)
+
+      Ash.Query.filter(killmail_id in ^killmail_ids)
+      Ash.Query.load([:participants])
+      Ash.Query.sort(desc: :killmail_time)
 
       Ash.read(query, domain: Api)
     end)
@@ -206,12 +206,12 @@ defmodule EveDmv.Database.KillmailRepository do
     preload_participants = Keyword.get(opts, :preload_participants, true)
 
     query =
-      KillmailEnriched
-      |> Ash.Query.new()
-      |> Ash.Query.filter(killmail_time >= ^start_date)
-      |> Ash.Query.filter(killmail_time <= ^end_date)
-      |> Ash.Query.sort(desc: :killmail_time)
-      |> Ash.Query.limit(limit)
+      Ash.Query.new(KillmailEnriched)
+
+    Ash.Query.filter(killmail_time >= ^start_date)
+    Ash.Query.filter(killmail_time <= ^end_date)
+    Ash.Query.sort(desc: :killmail_time)
+    Ash.Query.limit(limit)
 
     # Add character involvement filter
     filtered_query =
@@ -244,13 +244,13 @@ defmodule EveDmv.Database.KillmailRepository do
     wormhole_only = Keyword.get(opts, :wormhole_only, false)
 
     query =
-      KillmailEnriched
-      |> Ash.Query.new()
-      |> Ash.Query.filter(killmail_time >= ^start_date)
-      |> Ash.Query.filter(killmail_time <= ^end_date)
-      |> Ash.Query.sort(desc: :killmail_time)
-      |> Ash.Query.limit(limit)
-      |> Ash.Query.load([:participants])
+      Ash.Query.new(KillmailEnriched)
+
+    Ash.Query.filter(killmail_time >= ^start_date)
+    Ash.Query.filter(killmail_time <= ^end_date)
+    Ash.Query.sort(desc: :killmail_time)
+    Ash.Query.limit(limit)
+    Ash.Query.load([:participants])
 
     # Add corporation involvement filter
     corp_filtered_query =
@@ -285,13 +285,13 @@ defmodule EveDmv.Database.KillmailRepository do
     cutoff_time = DateTime.add(DateTime.utc_now(), -hours_back, :hour)
 
     query =
-      KillmailEnriched
-      |> Ash.Query.new()
-      |> Ash.Query.filter(killmail_time >= ^cutoff_time)
-      |> Ash.Query.filter(total_value >= ^min_value)
-      |> Ash.Query.sort(desc: :killmail_time)
-      |> Ash.Query.limit(limit)
-      |> Ash.Query.load([:participants])
+      Ash.Query.new(KillmailEnriched)
+
+    Ash.Query.filter(killmail_time >= ^cutoff_time)
+    Ash.Query.filter(total_value >= ^min_value)
+    Ash.Query.sort(desc: :killmail_time)
+    Ash.Query.limit(limit)
+    Ash.Query.load([:participants])
 
     if wormhole_only do
       Ash.Query.filter(query, solar_system_id >= 31_000_000)
@@ -330,14 +330,16 @@ defmodule EveDmv.Database.KillmailRepository do
     victim_field = victim_entity_field(entity_type)
 
     query =
-      KillmailEnriched
-      |> Ash.Query.new()
-      |> Ash.Query.filter(killmail_time >= ^start_date)
-      |> Ash.Query.filter(
-        field(^victim_field) == ^entity_id or
-          exists(participants, field(^field) == ^entity_id)
-      )
-      |> Ash.Query.load([:participants])
+      Ash.Query.new(KillmailEnriched)
+
+    Ash.Query.filter(killmail_time >= ^start_date)
+
+    Ash.Query.filter(
+      field(^victim_field) == ^entity_id or
+        exists(participants, field(^field) == ^entity_id)
+    )
+
+    Ash.Query.load([:participants])
 
     Ash.read(query, domain: Api)
   end
@@ -365,21 +367,21 @@ defmodule EveDmv.Database.KillmailRepository do
     victim_field = victim_entity_field(entity_type)
 
     killmails
-    |> Enum.filter(fn km ->
+
+    Enum.filter(fn km ->
       Map.get(km, victim_field) != entity_id and
         Enum.any?(km.participants || [], fn p -> Map.get(p, field) == entity_id end)
     end)
-    |> Enum.map(fn km -> km.total_value || 0 end)
-    |> Enum.sum()
+
+    Enum.map(fn km -> km.total_value || 0 end) |> Enum.sum()
   end
 
   defp sum_isk_lost(killmails, entity_type, entity_id) do
     victim_field = victim_entity_field(entity_type)
 
     killmails
-    |> Enum.filter(fn km -> Map.get(km, victim_field) == entity_id end)
-    |> Enum.map(fn km -> km.total_value || 0 end)
-    |> Enum.sum()
+    Enum.filter(fn km -> Map.get(km, victim_field) == entity_id end)
+    Enum.map(fn km -> km.total_value || 0 end) |> Enum.sum()
   end
 
   defp get_date_option(opts, key, default_opts) do

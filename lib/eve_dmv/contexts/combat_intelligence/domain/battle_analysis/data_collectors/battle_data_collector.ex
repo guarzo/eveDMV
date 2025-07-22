@@ -41,7 +41,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.DataCollector
             victim_ship_type_id,
             attacker_count,
             raw_data,
-            source
+          source
           FROM killmails_raw
           WHERE solar_system_id = $1
             AND killmail_time >= $2
@@ -111,7 +111,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.DataCollector
       victim_ship_type_id,
       attacker_count,
       raw_data,
-      source
+    source
     FROM killmails_raw
     WHERE solar_system_id = $1
       AND killmail_time >= $2
@@ -166,10 +166,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.DataCollector
         {:ok, stream} ->
           killmails =
             stream
-            |> Enum.take(10)
-            |> List.flatten()
-            |> Enum.sort_by(& &1.killmail_time, {:desc, DateTime})
-            |> Enum.take(2000)
+
+          Enum.take(10) |> List.flatten()
+          Enum.sort_by(& &1.killmail_time, {:desc, DateTime})
+          Enum.take(2000)
 
           Logger.info("Streaming fetch completed: #{length(killmails)} killmails")
           {:ok, killmails}

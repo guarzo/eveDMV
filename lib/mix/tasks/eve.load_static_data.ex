@@ -34,25 +34,19 @@ defmodule Mix.Tasks.Eve.LoadStaticData do
   def run(args) do
     Mix.Task.run("app.start")
 
-    force = "--force" in args
+    force = "--force" in Mix.shell(args).info("Checking if static data is already loaded...")
 
-    Mix.shell().info("Checking if static data is already loaded...")
+    if not force and StaticDataLoader.static_data_loaded?() Mix.shell(do).info("Static data already loaded. Use --force to reload.")
+    Mix.shell(else).info("Loading EVE static data...")
 
-    if not force and StaticDataLoader.static_data_loaded?() do
-      Mix.shell().info("Static data already loaded. Use --force to reload.")
-    else
-      Mix.shell().info("Loading EVE static data...")
-
-      case StaticDataLoader.load_all_static_data() do
+      StaticDataLoader.load_all_static_data(case) do
         {:ok, %{item_types: item_count, solar_systems: system_count}} ->
           Mix.shell().info("Successfully loaded:")
           Mix.shell().info("  - #{format_number(item_count)} item types")
           Mix.shell().info("  - #{format_number(system_count)} solar systems")
           Mix.shell().info("Static data loading complete!")
 
-          # Warm the cache after loading
-          Mix.shell().info("Warming name resolver cache...")
-          NameResolver.warm_cache()
+          # Warm the cache after Mix.shell(loading).info("Warming name resolver cache...") |> NameResolver.warm_cache()
           Mix.shell().info("Cache warmed successfully!")
 
         {:error, reason} ->
@@ -64,8 +58,7 @@ defmodule Mix.Tasks.Eve.LoadStaticData do
 
   defp format_number(n) do
     # Use Elixir's built-in number formatting with delimiter
-    n
-    |> Integer.to_string()
-    |> String.replace(~r/(\d)(?=(\d{3})+(?!\d))/, "\\1,")
+    Integer.to_string(n)
+    String.replace(~r/(\d)(?=(\d{3})+(?!\d))/, "\\1,")
   end
 end

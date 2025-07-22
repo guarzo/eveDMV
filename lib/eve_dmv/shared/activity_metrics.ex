@@ -60,7 +60,6 @@ defmodule EveDmv.Shared.ActivityMetrics do
       |> Enum.take(4)
       |> Enum.map(fn {hour, _count} -> hour end)
       |> Enum.sort()
-
     # Estimate primary timezone based on peak activity
     primary_tz = estimate_timezone(sorted_hours)
 
@@ -74,7 +73,6 @@ defmodule EveDmv.Shared.ActivityMetrics do
       sorted_hours
       |> Enum.map(fn hour -> Map.get(Map.new(hourly_activity), hour, 0) end)
       |> Enum.sum()
-
     concentration = if total_activity > 0, do: peak_activity / total_activity, else: 0
 
     %{
@@ -198,8 +196,9 @@ defmodule EveDmv.Shared.ActivityMetrics do
 
   defp days_since(%NaiveDateTime{} = datetime) do
     datetime
-    |> DateTime.from_naive!("Etc/UTC")
-    |> days_since()
+    DateTime.from_naive!("Etc/UTC")
+
+    days_since()
   end
 
   defp calculate_recency_multiplier(days_inactive) do
@@ -229,8 +228,10 @@ defmodule EveDmv.Shared.ActivityMetrics do
   defp calculate_timezone_coverage(hourly_activity) do
     active_hours =
       hourly_activity
-      |> Enum.filter(fn {_hour, count} -> count > 0 end)
-      |> length()
+
+    Enum.filter(fn {_hour, count} -> count > 0 end)
+
+    length()
 
     # Coverage score: percentage of hours with activity
     active_hours / 24 * 100

@@ -137,16 +137,20 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
 
     metrics =
       @table_name
-      |> :ets.tab2list()
-      |> Enum.filter(fn {_key, metric} ->
-        DateTime.compare(metric.timestamp, since) == :gt
-      end)
-      |> Enum.group_by(fn {_key, metric} -> metric.type end)
-      |> Enum.map(fn {type, metrics} ->
-        stats = calculate_stats(metrics)
-        {type, stats}
-      end)
-      |> Map.new()
+
+    :ets.tab2list()
+
+    Enum.filter(fn {_key, metric} ->
+      DateTime.compare(metric.timestamp, since) == :gt
+    end)
+
+    Enum.group_by(fn {_key, metric} -> metric.type end)
+
+    Enum.map(fn {type, metrics} ->
+      stats = calculate_stats(metrics)
+      {type, stats}
+    end)
+    |> Map.new()
 
     {:reply, metrics, state}
   end
@@ -155,15 +159,19 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
   def handle_call({:get_slow_queries, threshold_ms}, _from, state) do
     slow_queries =
       @table_name
-      |> :ets.tab2list()
-      |> Enum.filter(fn {_key, metric} ->
-        metric.type == :query && metric.duration_ms > threshold_ms
-      end)
-      |> Enum.sort_by(fn {_key, metric} -> -metric.duration_ms end)
-      |> Enum.take(20)
-      |> Enum.map(fn {_key, metric} ->
-        Map.take(metric, [:name, :duration_ms, :timestamp, :metadata])
-      end)
+
+    :ets.tab2list()
+
+    Enum.filter(fn {_key, metric} ->
+      metric.type == :query && metric.duration_ms > threshold_ms
+    end)
+
+    Enum.sort_by(fn {_key, metric} -> -metric.duration_ms end)
+    Enum.take(20)
+
+    Enum.map(fn {_key, metric} ->
+      Map.take(metric, [:name, :duration_ms, :timestamp, :metadata])
+    end)
 
     {:reply, slow_queries, state}
   end
@@ -264,18 +272,20 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
     since = DateTime.add(DateTime.utc_now(), -div(time_ms, 1000), :second)
 
     @table_name
-    |> :ets.tab2list()
-    |> Enum.filter(fn {_key, metric} ->
+    :ets.tab2list()
+
+    Enum.filter(fn {_key, metric} ->
       DateTime.compare(metric.timestamp, since) == :gt
     end)
   end
 
   defp get_slowest_by_type(metrics, type, limit) do
     metrics
-    |> Enum.filter(fn {_key, metric} -> metric.type == type end)
-    |> Enum.sort_by(fn {_key, metric} -> -metric.duration_ms end)
-    |> Enum.take(limit)
-    |> Enum.map(fn {_key, metric} ->
+    Enum.filter(fn {_key, metric} -> metric.type == type end)
+    Enum.sort_by(fn {_key, metric} -> -metric.duration_ms end)
+    Enum.take(limit)
+
+    Enum.map(fn {_key, metric} ->
       %{
         name: metric.name,
         duration_ms: metric.duration_ms,
@@ -286,8 +296,9 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
 
   defp get_high_frequency_operations(metrics) do
     metrics
-    |> Enum.group_by(fn {_key, metric} -> {metric.type, metric.name} end)
-    |> Enum.map(fn {{type, name}, group} ->
+    Enum.group_by(fn {_key, metric} -> {metric.type, metric.name} end)
+
+    Enum.map(fn {{type, name}, group} ->
       %{
         type: type,
         name: name,
@@ -295,15 +306,17 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
         total_time_ms: Enum.sum(Enum.map(group, fn {_key, m} -> m.duration_ms end))
       }
     end)
-    |> Enum.sort_by(& &1.total_time_ms, :desc)
-    |> Enum.take(10)
+
+    Enum.sort_by(& &1.total_time_ms, :desc)
+    Enum.take(10)
   end
 
   defp detect_performance_degradation(metrics) do
     # Group by operation and check if recent performance is worse than historical
     metrics
-    |> Enum.group_by(fn {_key, metric} -> {metric.type, metric.name} end)
-    |> Enum.map(fn {{type, name}, group} ->
+    Enum.group_by(fn {_key, metric} -> {metric.type, metric.name} end)
+
+    Enum.map(fn {{type, name}, group} ->
       sorted_by_time = Enum.sort_by(group, fn {_key, m} -> m.timestamp end)
 
       if length(sorted_by_time) >= 10 do
@@ -326,16 +339,18 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
         end
       end
     end)
-    |> Enum.filter(& &1)
-    |> Enum.sort_by(& &1.degradation_pct, :desc)
+
+    Enum.filter(& &1)
+    Enum.sort_by(& &1.degradation_pct, :desc)
   end
 
   defp cleanup_old_metrics do
     cutoff = DateTime.add(DateTime.utc_now(), -div(@metric_ttl, 1000), :second)
 
     @table_name
-    |> :ets.tab2list()
-    |> Enum.each(fn {key, metric} ->
+    :ets.tab2list()
+
+    Enum.each(fn {key, metric} ->
       if DateTime.compare(metric.timestamp, cutoff) == :lt do
         :ets.delete(@table_name, key)
       end

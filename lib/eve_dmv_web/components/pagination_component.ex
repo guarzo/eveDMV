@@ -47,19 +47,19 @@ defmodule EveDmvWeb.Components.PaginationComponent do
           <svg class="pagination-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
           </svg>
-          Previous
+    Previous
         </button>
 
         <button
           :if={!@has_previous_page}
           class="pagination-btn pagination-prev pagination-disabled"
-          disabled
+    disabled
           aria-label="Previous page (disabled)"
         >
           <svg class="pagination-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
           </svg>
-          Previous
+    Previous
         </button>
 
         <!-- Page info -->
@@ -81,7 +81,7 @@ defmodule EveDmvWeb.Components.PaginationComponent do
           class="pagination-btn pagination-next"
           aria-label="Next page"
         >
-          Next
+    Next
           <svg class="pagination-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
           </svg>
@@ -90,10 +90,10 @@ defmodule EveDmvWeb.Components.PaginationComponent do
         <button
           :if={!@has_next_page}
           class="pagination-btn pagination-next pagination-disabled"
-          disabled
+    disabled
           aria-label="Next page (disabled)"
         >
-          Next
+    Next
           <svg class="pagination-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
           </svg>
@@ -186,11 +186,8 @@ defmodule EveDmvWeb.Components.PaginationComponent do
   # Helper functions
 
   defp format_number(number) when is_integer(number) do
-    number
-    |> Integer.to_string()
-    |> String.reverse()
-    |> String.replace(~r/(\d{3})(?=\d)/, "\\1,")
-    |> String.reverse()
+    Integer.to_string(number) |> String.reverse()
+    String.replace(~r/(\d{3})(?=\d)/, "\\1,") |> String.reverse()
   end
 
   defp format_number(number) when is_nil(number), do: "0"

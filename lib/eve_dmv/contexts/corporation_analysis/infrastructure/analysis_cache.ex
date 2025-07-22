@@ -129,10 +129,12 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.AnalysisCache do
     # Remove all cache entries for this corporation
     new_cache =
       state.cache
-      |> Enum.reject(fn {key, _} ->
-        String.starts_with?(key, "corp:#{corporation_id}:")
-      end)
-      |> Enum.into(%{})
+
+    Enum.reject(fn {key, _} ->
+      String.starts_with?(key, "corp:#{corporation_id}:")
+    end)
+
+    Enum.into(%{})
 
     removed_count = map_size(state.cache) - map_size(new_cache)
     new_stats = %{state.stats | evictions: state.stats.evictions + removed_count}

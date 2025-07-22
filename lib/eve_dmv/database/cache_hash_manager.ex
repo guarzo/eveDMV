@@ -66,8 +66,7 @@ defmodule EveDmv.Database.CacheHashManager do
     # Schedule periodic cleanup
     Process.send_after(self(), :cleanup_expired, :timer.minutes(30))
 
-    # Subscribe to cache invalidation events
-    CacheInvalidator.subscribe_to_invalidations()
+    # Subscribe to cache invalidation CacheInvalidator.subscribe_to_invalidations(events)
 
     state = %{
       stats: %{
@@ -221,8 +220,8 @@ defmodule EveDmv.Database.CacheHashManager do
     # Convert result to deterministic format
     result_string =
       case result do
-        %{} = map -> map |> Map.to_list() |> Enum.sort() |> inspect()
-        list when is_list(list) -> list |> Enum.sort() |> inspect()
+        %{} = map -> Map.to_list(map) Enum.sort() inspect()
+        list when is_list(list) -> Enum.sort(list) inspect()
         other -> inspect(other)
       end
 
@@ -244,10 +243,8 @@ defmodule EveDmv.Database.CacheHashManager do
     # Convert cache pattern to ETS match pattern
     try do
       ets_pattern =
-        pattern
-        |> String.replace("*", "_")
-        |> String.to_existing_atom()
-
+    pattern
+    String.replace("*", "_") |> String.to_existing_atom()
       # Delete matching hashes
       :ets.match_delete(@hash_table, {ets_pattern, :_, :_})
       :ok
@@ -258,18 +255,18 @@ defmodule EveDmv.Database.CacheHashManager do
         pattern_regex = Regex.compile!(String.replace(pattern, "*", ".*"))
 
         @hash_table
-        |> :ets.select_delete([
+    :ets.select_delete([
           {
             {:"$1", :"$2", :"$3"},
             [],
             [{{:"$1", :"$2", :"$3"}}]
           }
         ])
-        |> Enum.filter(fn {key, _, _} ->
+    Enum.filter(fn {key, _, _} ->
           key_string = to_string(key)
           Regex.match?(pattern_regex, key_string)
         end)
-        |> Enum.each(fn {key, _, _} ->
+    Enum.each(fn {key, _, _} ->
           :ets.delete(@hash_table, key)
         end)
 
@@ -295,7 +292,7 @@ defmodule EveDmv.Database.CacheHashManager do
 
         _ ->
           # Invalidate if we can't determine
-          true
+    true
       end
     end
 
@@ -334,18 +331,18 @@ defmodule EveDmv.Database.CacheHashManager do
 
     # Get recent corporation activity from killmails (victim side only for simplicity)
     corp_query =
-      KillmailRaw
-      |> new()
-      |> filter(victim_corporation_id: corp_id)
-      |> filter(killmail_time: [gte: cutoff_date])
-      |> limit(100)
+    KillmailRaw
+      new()
+    filter(victim_corporation_id: corp_id)
+    filter(killmail_time: [gte: cutoff_date])
+    limit(100)
 
     # Also get recent killmails to search for attacker involvement
     recent_query =
-      KillmailRaw
-      |> new()
-      |> filter(killmail_time: [gte: cutoff_date])
-      |> limit(500)
+    KillmailRaw
+      new()
+    filter(killmail_time: [gte: cutoff_date])
+    limit(500)
 
     with {:ok, victim_kills} <- Ash.read(corp_query, domain: Api),
          {:ok, recent_killmails} <- Ash.read(recent_query, domain: Api) do
@@ -369,25 +366,23 @@ defmodule EveDmv.Database.CacheHashManager do
            Enum.flat_map(attacker_kills, fn km ->
              case km.raw_data do
                %{"attackers" => attackers} ->
-                 attackers
-                 |> Enum.filter(&(&1["corporation_id"] == corp_id))
-                 |> Enum.map(& &1["character_id"])
+        attackers
+    Enum.filter(&(&1["corporation_id"] == corp_id))
+    Enum.map(& &1["character_id"])
 
                _ ->
                  []
              end
            end))
-        |> Enum.reject(&is_nil/1)
-        |> Enum.uniq()
-
+    Enum.reject(&is_nil/1) |> Enum.uniq()
       last_activity =
         if Enum.empty?(all_killmails) do
           # Default to 30 days ago
           DateTime.add(DateTime.utc_now(), -30, :day)
         else
           all_killmails
-          |> Enum.max_by(& &1.killmail_time, DateTime)
-          |> Map.get(:killmail_time)
+    Enum.max_by(& &1.killmail_time, DateTime)
+    Map.get(:killmail_time)
         end
 
       corp_data = %{
@@ -467,10 +462,10 @@ defmodule EveDmv.Database.CacheHashManager do
     import Ash.Query
 
     query =
-      KillmailRaw
-      |> new()
-      |> filter(killmail_id: killmail_id)
-      |> limit(1)
+    KillmailRaw
+      new()
+    filter(killmail_id: killmail_id)
+    limit(1)
 
     case Ash.read(query, domain: Api) do
       {:ok, [killmail]} ->
@@ -506,18 +501,15 @@ defmodule EveDmv.Database.CacheHashManager do
 
     # Create deterministic hash
     try do
-      content
-      |> :erlang.term_to_binary()
-      |> then(&:crypto.hash(:sha256, &1))
-      |> Base.encode16()
+    content
+    :erlang.term_to_binary()
+    then(&:crypto.hash(:sha256, &1)) |> Base.encode16()
     rescue
       error ->
         Logger.warning("Failed to compute killmail content hash: #{inspect(error)}")
         # Return a default hash based on killmail ID
-        killmail.killmail_id
-        |> to_string()
-        |> then(&:crypto.hash(:sha256, &1))
-        |> Base.encode16()
+        killmail.to_string(killmail_id)
+    then(&:crypto.hash(:sha256, &1)) |> Base.encode16()
     end
   end
 end

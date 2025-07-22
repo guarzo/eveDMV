@@ -34,8 +34,7 @@ defmodule Mix.Tasks.Eve.ListIndexes do
         current_table = nil
 
         Enum.each(rows, fn [table, index, indexdef, size] ->
-          if table != current_table do
-            Mix.shell().info("\n📁 #{table}")
+          if table != current_table Mix.shell(do).info("\n📁 #{table}")
             Mix.shell().info("  " <> String.duplicate("-", 58))
           end
 
@@ -44,9 +43,7 @@ defmodule Mix.Tasks.Eve.ListIndexes do
             case Regex.run(~r/\((.*?)\)/, indexdef) do
               [_, cols] -> cols
               _ -> "unknown"
-            end
-
-          Mix.shell().info("  #{index}")
+            Mix.shell(end).info("  #{index}")
           Mix.shell().info("    Columns: #{columns}")
           Mix.shell().info("    Size: #{size}")
         end)

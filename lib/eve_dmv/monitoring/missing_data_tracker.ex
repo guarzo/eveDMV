@@ -155,9 +155,10 @@ defmodule EveDmv.Monitoring.MissingDataTracker do
   def handle_call(:get_missing_ship_types, _from, state) do
     missing_types =
       @table_name
-      |> :ets.tab2list()
-      |> Enum.map(fn {_id, data} -> data end)
-      |> Enum.sort_by(& &1.occurrence_count, :desc)
+
+    :ets.tab2list()
+    Enum.map(fn {_id, data} -> data end)
+    Enum.sort_by(& &1.occurrence_count, :desc)
 
     {:reply, missing_types, state}
   end
@@ -171,10 +172,11 @@ defmodule EveDmv.Monitoring.MissingDataTracker do
   def handle_call({:get_top_missing_ship_types, limit}, _from, state) do
     top_types =
       @table_name
-      |> :ets.tab2list()
-      |> Enum.map(fn {_id, data} -> data end)
-      |> Enum.sort_by(& &1.occurrence_count, :desc)
-      |> Enum.take(limit)
+
+    :ets.tab2list()
+    Enum.map(fn {_id, data} -> data end)
+    Enum.sort_by(& &1.occurrence_count, :desc)
+    Enum.take(limit)
 
     {:reply, top_types, state}
   end
@@ -200,9 +202,10 @@ defmodule EveDmv.Monitoring.MissingDataTracker do
       # Remove least frequent entries
       entries =
         @table_name
-        |> :ets.tab2list()
-        |> Enum.map(fn {id, data} -> {id, data} end)
-        |> Enum.sort_by(fn {_id, data} -> data.occurrence_count end)
+
+      :ets.tab2list()
+      Enum.map(fn {id, data} -> {id, data} end)
+      Enum.sort_by(fn {_id, data} -> data.occurrence_count end)
 
       to_remove = Enum.take(entries, size - @max_entries)
 

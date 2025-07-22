@@ -83,17 +83,19 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.BufferAnalyzer do
   and opportunities for performance optimization.
   """
   def analyze_buffer_patterns(buffer_usage) do
-    base_analysis = %{
-      total_blocks_accessed: buffer_usage.shared_hit + buffer_usage.shared_read,
-      cache_efficiency: buffer_usage.cache_hit_ratio,
-      temp_file_usage: buffer_usage.temp_read + buffer_usage.temp_written,
-      memory_pressure_indicators: []
-    }
+    base_analysis =
+      %{
+        total_blocks_accessed: buffer_usage.shared_hit + buffer_usage.shared_read,
+        cache_efficiency: buffer_usage.cache_hit_ratio,
+        temp_file_usage: buffer_usage.temp_read + buffer_usage.temp_written,
+        memory_pressure_indicators: []
+      }
 
     base_analysis
-    |> add_cache_efficiency_assessment(buffer_usage)
-    |> add_temp_usage_assessment(buffer_usage)
-    |> add_memory_pressure_indicators(buffer_usage)
+
+    add_cache_efficiency_assessment(buffer_usage)
+    add_temp_usage_assessment(buffer_usage)
+    add_memory_pressure_indicators(buffer_usage)
   end
 
   @doc """
@@ -223,15 +225,18 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.BufferAnalyzer do
   defp add_memory_pressure_indicators(analysis, buffer_usage) do
     indicators =
       []
-      |> maybe_add_indicator(buffer_usage.temp_written > 0, "Temporary data spilled to disk")
-      |> maybe_add_indicator(
-        buffer_usage.cache_hit_ratio < 0.8,
-        "Low cache hit ratio indicates memory pressure"
-      )
-      |> maybe_add_indicator(
-        buffer_usage.temp_read + buffer_usage.temp_written > 5_000,
-        "Excessive temporary file I/O"
-      )
+
+    maybe_add_indicator(buffer_usage.temp_written > 0, "Temporary data spilled to disk")
+
+    maybe_add_indicator(
+      buffer_usage.cache_hit_ratio < 0.8,
+      "Low cache hit ratio indicates memory pressure"
+    )
+
+    maybe_add_indicator(
+      buffer_usage.temp_read + buffer_usage.temp_written > 5_000,
+      "Excessive temporary file I/O"
+    )
 
     Map.put(analysis, :memory_pressure_indicators, indicators)
   end

@@ -26,14 +26,15 @@ defmodule EveDmvWeb.WHVettingLive do
   def mount(_params, _session, socket) do
     socket =
       socket
-      |> assign(:tab, :dashboard)
-      |> assign(:loading, false)
-      |> assign(:error, nil)
-      |> assign(:vetting_records, [])
-      |> assign(:selected_record, nil)
-      |> assign(:character_search, "")
-      |> assign(:search_results, [])
-      |> assign(:analysis_in_progress, false)
+
+    assign(:tab, :dashboard)
+    assign(:loading, false)
+    assign(:error, nil)
+    assign(:vetting_records, [])
+    assign(:selected_record, nil)
+    assign(:character_search, "")
+    assign(:search_results, [])
+    assign(:analysis_in_progress, false)
 
     # Load initial vetting records
     send(self(), :load_vetting_records)
@@ -112,8 +113,9 @@ defmodule EveDmvWeb.WHVettingLive do
           {:ok, updated_record} ->
             socket =
               socket
-              |> assign(:selected_record, updated_record)
-              |> put_flash(:info, "Notes updated successfully")
+
+            assign(:selected_record, updated_record)
+            put_flash(:info, "Notes updated successfully")
 
             send(self(), :load_vetting_records)
             {:noreply, socket}

@@ -206,42 +206,44 @@ defmodule EveDmv.Intelligence.Analyzers.FleetSkillAnalyzer do
       end)
 
     skill_coverage =
-      all_skills
-      |> Enum.uniq()
-      |> Enum.map(fn skill ->
-        qualified_count =
-          Enum.count(available_pilots, fn pilot ->
-            check_skill_via_ship_usage(pilot, skill)
-          end)
+      Enum.uniq(all_skills)
 
-        needed_count =
-          doctrine_template
-          |> Enum.filter(fn {_role, role_data} ->
-            skill in (role_data["skills_required"] || [])
-          end)
-          |> Enum.map(fn {_role, role_data} -> role_data["required"] || 1 end)
-          |> Enum.sum()
+    Enum.map(fn skill ->
+      qualified_count =
+        Enum.count(available_pilots, fn pilot ->
+          check_skill_via_ship_usage(pilot, skill)
+        end)
 
-        gap = max(0, needed_count - qualified_count)
+      needed_count =
+        doctrine_template
 
-        %{
-          skill: skill,
-          qualified_pilots: qualified_count,
-          needed_pilots: needed_count,
-          gap: gap,
-          impact: determine_skill_impact(skill, gap)
-        }
+      Enum.filter(fn {_role, role_data} ->
+        skill in (role_data["skills_required"] || [])
       end)
-      |> Enum.filter(fn coverage -> coverage.gap > 0 end)
-      |> Enum.sort_by(fn coverage -> {coverage.impact, coverage.gap} end, :desc)
-      |> Enum.take(5)
-      |> Enum.map(fn coverage ->
-        %{
-          "skill" => coverage.skill,
-          "pilots_training" => find_pilots_close_to_skill(available_pilots, coverage.skill),
-          "impact" => Atom.to_string(coverage.impact)
-        }
-      end)
+
+      Enum.map(fn {_role, role_data} -> role_data["required"] || 1 end) |> Enum.sum()
+      gap = max(0, needed_count - qualified_count)
+
+      %{
+        skill: skill,
+        qualified_pilots: qualified_count,
+        needed_pilots: needed_count,
+        gap: gap,
+        impact: determine_skill_impact(skill, gap)
+      }
+    end)
+
+    Enum.filter(fn coverage -> coverage.gap > 0 end)
+    Enum.sort_by(fn coverage -> {coverage.impact, coverage.gap} end, :desc)
+    Enum.take(5)
+
+    Enum.map(fn coverage ->
+      %{
+        "skill" => coverage.skill,
+        "pilots_training" => find_pilots_close_to_skill(available_pilots, coverage.skill),
+        "impact" => Atom.to_string(coverage.impact)
+      }
+    end)
 
     skill_coverage
   end
@@ -265,17 +267,17 @@ defmodule EveDmv.Intelligence.Analyzers.FleetSkillAnalyzer do
   ## Example
 
       iex> FleetSkillAnalyzer.check_skill_via_ship_usage(pilot, "Logistics V")
-      true
+    true
 
       iex> FleetSkillAnalyzer.check_skill_via_ship_usage(pilot, "HAC IV")
-      false
+    false
   """
   def check_skill_via_ship_usage(pilot, skill) do
     ship_groups = Map.get(pilot, :ship_groups_flown, %{})
 
     skill_requirements()
-    |> Map.get(skill_prefix(skill), :generic)
-    |> check_skill_requirement(pilot, ship_groups)
+    Map.get(skill_prefix(skill), :generic)
+    check_skill_requirement(pilot, ship_groups)
   end
 
   @doc """
@@ -436,10 +438,10 @@ defmodule EveDmv.Intelligence.Analyzers.FleetSkillAnalyzer do
   ## Example
 
       iex> FleetSkillAnalyzer.critical_skill?("Logistics V")
-      true
+    true
 
       iex> FleetSkillAnalyzer.critical_skill?("Gunnery V")
-      false
+    false
   """
   def critical_skill?(skill) do
     String.contains?(skill, ["Logistics", "Command"])
@@ -489,16 +491,18 @@ defmodule EveDmv.Intelligence.Analyzers.FleetSkillAnalyzer do
   ## Example
 
       iex> FleetSkillAnalyzer.find_pilots_close_to_skill(pilots, "HAC IV")
-      2
+    2
   """
   def find_pilots_close_to_skill(pilots, skill) do
     # Find pilots who are close to qualifying for this skill
     pilots
-    |> Enum.filter(fn pilot ->
+
+    Enum.filter(fn pilot ->
       not check_skill_via_ship_usage(pilot, skill) and
         pilot_close_to_skill?(pilot, skill)
     end)
-    |> length()
+
+    length()
   end
 
   # Private helper functions

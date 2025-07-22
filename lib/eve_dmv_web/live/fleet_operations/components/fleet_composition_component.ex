@@ -9,18 +9,18 @@ defmodule EveDmvWeb.Live.FleetOperations.Components.FleetCompositionComponent do
     ~H"""
     <div class="fleet-composition-analysis">
       <h3>Fleet Composition Analysis</h3>
-      
+
       <div class="composition-stats">
         <div class="stat-card">
           <span class="label">Total Ships</span>
           <span class="value"><%= map_size(@composition_data.ship_classes || %{}) %></span>
         </div>
-        
+
         <div class="stat-card">
           <span class="label">Total Value</span>
           <span class="value"><%= format_isk(@composition_data.total_value || 0) %></span>
         </div>
-        
+
         <div class="stat-card">
           <span class="label">Average Value</span>
           <span class="value"><%= format_isk_short(@composition_data.avg_value || 0) %></span>
@@ -42,7 +42,7 @@ defmodule EveDmvWeb.Live.FleetOperations.Components.FleetCompositionComponent do
           <div class={"score-circle score-#{doctrine_score_class(@composition_data.doctrine_analysis.compliance_score)}"}>
             <span class="score"><%= Float.round(@composition_data.doctrine_analysis.compliance_score || 0.0, 1) %>%</span>
           </div>
-          
+
           <span class={"rating-#{compliance_rating(@composition_data.doctrine_analysis.compliance_score)}"}>
             <%= format_compliance_rating(@composition_data.doctrine_analysis.compliance_score) %>
           </span>
@@ -132,14 +132,14 @@ defmodule EveDmvWeb.Live.FleetOperations.Components.FleetCompositionComponent do
   defp format_recommendation_type(type) when is_binary(type), do: String.capitalize(type)
 
   defp format_recommendation_type(type) when is_atom(type),
-    do: type |> Atom.to_string() |> String.capitalize()
+    do: Atom.to_string(type) String.capitalize()
 
   defp format_recommendation_type(_), do: "Unknown"
 
   defp format_deviation_type(type) when is_binary(type), do: String.capitalize(type)
 
   defp format_deviation_type(type) when is_atom(type),
-    do: type |> Atom.to_string() |> String.capitalize()
+    do: Atom.to_string(type) String.capitalize()
 
   defp format_deviation_type(_), do: "Unknown"
 end

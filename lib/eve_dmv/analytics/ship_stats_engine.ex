@@ -37,8 +37,9 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
 
       ids ->
         ids
-        |> Enum.with_index(1)
-        |> Task.async_stream(
+        Enum.with_index(1)
+
+        Task.async_stream(
           fn {ship_id, idx} ->
             if rem(idx, 50) == 1, do: Logger.debug("Processing ship #{idx}")
             process_ship(ship_id, start_date, now)
@@ -59,10 +60,9 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
     case Ash.read(Participant, domain: Api) do
       {:ok, parts} ->
         parts
-        |> Enum.map(&Map.get(&1, field))
-        |> Enum.filter(& &1)
-        |> Enum.uniq()
-        |> Enum.take(limit)
+        Enum.map(&Map.get(&1, field))
+        Enum.filter(& &1) |> Enum.uniq()
+        Enum.take(limit)
 
       {:error, reason} ->
         Logger.error("Failed to fetch participants: #{inspect(reason)}")
@@ -79,13 +79,14 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
          %{ship_name: _} <- metrics do
       attrs =
         metrics
-        |> Map.put(:ship_type_id, ship_type_id)
-        |> Map.put(:ship_category, determine_ship_category(ship_type))
-        |> Map.put(:tech_level, ship_type.tech_level || 1)
-        |> Map.put(:meta_level, ship_type.meta_level || 0)
-        |> Map.put(:is_capital, ship_type.is_capital_ship == true)
-        |> Map.put(:stats_period_start, start_date)
-        |> Map.put(:stats_period_end, end_date)
+
+      Map.put(:ship_type_id, ship_type_id)
+      Map.put(:ship_category, determine_ship_category(ship_type))
+      Map.put(:tech_level, ship_type.tech_level || 1)
+      Map.put(:meta_level, ship_type.meta_level || 0)
+      Map.put(:is_capital, ship_type.is_capital_ship == true)
+      Map.put(:stats_period_start, start_date)
+      Map.put(:stats_period_end, end_date)
 
       upsert(ShipStats, [ship_type_id: ship_type_id], attrs)
     else
@@ -179,18 +180,18 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
       time_metrics = calculate_time_metrics()
 
       basic_metrics
-      |> Map.merge(isk_metrics)
-      |> Map.merge(combat_metrics)
-      |> Map.merge(time_metrics)
-      |> Map.put(:ship_name, ship_name)
+      Map.merge(isk_metrics)
+      Map.merge(combat_metrics)
+      Map.merge(time_metrics)
+      Map.put(:ship_name, ship_name)
     end
   end
 
   defp calculate_basic_metrics(kills, losses, ps) do
     %{
-      total_kills: length(kills),
-      total_losses: length(losses),
-      pilots_flown: ps |> Stream.map(& &1.character_id) |> Enum.uniq() |> length(),
+      total_kills: Kernel.length(kills),
+      total_losses: Kernel.length(losses),
+      pilots_flown: ps |> Stream.map(& &1.character_id) |> Enum.uniq() |> Kernel.length(),
       solo_kills: Enum.count(kills, &((&1.gang_size || 1) == 1))
     }
   end
@@ -238,8 +239,8 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
       Decimal.new(0)
     else
       participants
-      |> Enum.map(&(&1.ship_value || Decimal.new(0)))
-      |> Enum.reduce(Decimal.new(0), &Decimal.add/2)
+      Enum.map(&(&1.ship_value || Decimal.new(0)))
+      Enum.reduce(Decimal.new(0), &Decimal.add/2)
     end
   end
 
@@ -296,14 +297,16 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
   defp perform_ranking_updates(ships) do
     usage_ranked =
       ships
-      |> Enum.sort_by(&(&1.total_kills + &1.total_losses), :desc)
-      |> Enum.with_index(1)
+
+    Enum.sort_by(&(&1.total_kills + &1.total_losses), :desc)
+    Enum.with_index(1)
 
     eff_ranked =
       ships
-      |> Enum.filter(&(&1.total_kills + &1.total_losses >= 25))
-      |> Enum.sort_by(& &1.kill_death_ratio, :desc)
-      |> Enum.with_index(1)
+
+    Enum.filter(&(&1.total_kills + &1.total_losses >= 25))
+    Enum.sort_by(& &1.kill_death_ratio, :desc)
+    Enum.with_index(1)
 
     # Bulk update usage ranks
     Enum.each(usage_ranked, fn {ship, rank} ->

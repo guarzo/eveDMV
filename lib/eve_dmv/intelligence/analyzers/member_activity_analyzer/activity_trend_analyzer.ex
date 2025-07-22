@@ -298,9 +298,8 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityTrendAnal
 
     squared_diffs =
       series
-      |> Enum.map(fn x -> :math.pow(x - mean, 2) end)
-      |> Enum.sum()
 
+    Enum.map(fn x -> :math.pow(x - mean, 2) end) |> Enum.sum()
     squared_diffs / length(series)
   end
 

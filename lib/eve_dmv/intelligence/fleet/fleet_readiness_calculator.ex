@@ -17,12 +17,13 @@ defmodule EveDmv.Intelligence.Fleet.FleetReadinessCalculator do
     # Calculate skill readiness average
     avg_skill_readiness =
       pilot_assignments
-      |> Enum.map(fn {_id, pilot} -> pilot["skill_readiness"] || 0.0 end)
-      |> Enum.sum()
-      |> case do
-        0 -> 0.0
-        sum -> sum / total_assigned
-      end
+
+    Enum.map(fn {_id, pilot} -> pilot["skill_readiness"] || 0.0 end) |> Enum.sum()
+
+    case do
+      0 -> 0.0
+      sum -> sum / total_assigned
+    end
 
     # Factor in critical gaps
     critical_gaps = length(skill_analysis["critical_gaps"] || [])

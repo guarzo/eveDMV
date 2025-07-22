@@ -30,16 +30,18 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
 
     socket =
       socket
-      |> assign(:page_title, "Surveillance Dashboard")
-      |> assign(:time_range, :last_24h)
-      |> assign(:selected_profile, nil)
-      |> assign(:profiles, [])
-      |> assign(:profile_metrics, %{})
-      |> assign(:system_metrics, %{})
-      |> assign(:alert_trends, [])
-      |> assign(:top_performing_profiles, [])
-      |> assign(:performance_recommendations, [])
-      |> load_dashboard_data()
+
+    assign(:page_title, "Surveillance Dashboard")
+    assign(:time_range, :last_24h)
+    assign(:selected_profile, nil)
+    assign(:profiles, [])
+    assign(:profile_metrics, %{})
+    assign(:system_metrics, %{})
+    assign(:alert_trends, [])
+    assign(:top_performing_profiles, [])
+    assign(:performance_recommendations, [])
+
+    load_dashboard_data()
 
     {:ok, socket}
   end
@@ -57,8 +59,10 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
 
     socket =
       socket
-      |> assign(:time_range, time_range)
-      |> load_dashboard_data()
+
+    assign(:time_range, time_range)
+
+    load_dashboard_data()
 
     {:noreply, socket}
   end
@@ -74,8 +78,9 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
   def handle_event("select_profile", %{"profile_id" => profile_id}, socket) do
     socket =
       socket
-      |> assign(:selected_profile, profile_id)
-      |> load_profile_details(profile_id)
+
+    assign(:selected_profile, profile_id)
+    load_profile_details(profile_id)
 
     {:noreply, socket}
   end
@@ -123,12 +128,14 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
     time_range = socket.assigns.time_range
 
     socket
-    |> load_profiles()
-    |> load_system_metrics(time_range)
-    |> load_profile_metrics(time_range)
-    |> load_alert_trends(time_range)
-    |> load_top_performing_profiles(time_range)
-    |> load_performance_recommendations()
+
+    load_profiles()
+    load_system_metrics(time_range)
+    load_profile_metrics(time_range)
+    load_alert_trends(time_range)
+    load_top_performing_profiles(time_range)
+
+    load_performance_recommendations()
   end
 
   defp load_profiles(socket) do
@@ -205,8 +212,9 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
 
     top_profiles =
       Enum.filter(profile_metrics, &(&1.alerts_generated > 0))
-      |> Enum.sort_by(& &1.performance_score, :desc)
-      |> Enum.take(5)
+
+    Enum.sort_by(& &1.performance_score, :desc)
+    Enum.take(5)
 
     assign(socket, :top_performing_profiles, top_profiles)
   end

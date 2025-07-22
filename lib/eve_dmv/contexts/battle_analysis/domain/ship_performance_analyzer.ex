@@ -143,9 +143,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
     performance_data =
       battles
-      |> Enum.map(&analyze_battle_performance(&1, focus_ship: ship_type_id))
-      |> Enum.filter(&match?({:ok, _}, &1))
-      |> Enum.map(&elem(&1, 1))
+
+    Enum.map(&analyze_battle_performance(&1, focus_ship: ship_type_id))
+    Enum.filter(&match?({:ok, _}, &1))
+    Enum.map(&elem(&1, 1))
 
     trend_analysis = %{
       ship_type_id: ship_type_id,
@@ -164,22 +165,24 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
     # Create ship instance records from BOTH victims AND attackers
     victim_instances =
       battle.killmails
-      |> Enum.map(&create_victim_ship_instance/1)
-      |> Enum.filter(&(&1 != nil))
+
+    Enum.map(&create_victim_ship_instance/1)
+    Enum.filter(&(&1 != nil))
 
     attacker_instances =
       battle.killmails
-      |> Enum.flat_map(&create_attacker_ship_instances/1)
-      |> Enum.filter(&(&1 != nil))
-      # Remove duplicates (same character_id + ship_type_id combo)
-      |> Enum.uniq_by(&{&1.character_id, &1.ship_type_id})
-      # Remove attackers who are already in victims (they died later)
-      |> Enum.reject(fn attacker ->
-        Enum.any?(victim_instances, fn victim ->
-          victim.character_id == attacker.character_id &&
-            victim.ship_type_id == attacker.ship_type_id
-        end)
+
+    Enum.flat_map(&create_attacker_ship_instances/1)
+    Enum.filter(&(&1 != nil))
+    # Remove duplicates (same character_id + ship_type_id combo)
+    Enum.uniq_by(&{&1.character_id, &1.ship_type_id})
+    # Remove attackers who are already in victims (they died later)
+    Enum.reject(fn attacker ->
+      Enum.any?(victim_instances, fn victim ->
+        victim.character_id == attacker.character_id &&
+          victim.ship_type_id == attacker.ship_type_id
       end)
+    end)
 
     ship_instances = victim_instances ++ attacker_instances
 
@@ -228,11 +231,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
     case killmail.raw_data do
       %{"attackers" => attackers} when is_list(attackers) ->
         attackers
-        |> Enum.filter(fn attacker ->
+
+        Enum.filter(fn attacker ->
           # Only include attackers with character_id and ship_type_id
           attacker["character_id"] && attacker["ship_type_id"]
         end)
-        |> Enum.map(fn attacker ->
+
+        Enum.map(fn attacker ->
           %{
             killmail_id: killmail.killmail_id,
             ship_type_id: attacker["ship_type_id"],
@@ -275,7 +280,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
     case killmail.raw_data do
       %{"attackers" => attackers} when is_list(attackers) ->
         attackers
-        |> Enum.map(fn attacker ->
+
+        Enum.map(fn attacker ->
           %{
             character_id: attacker["character_id"],
             corporation_id: attacker["corporation_id"],
@@ -336,14 +342,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
     damage_by_type =
       attackers
-      |> Enum.group_by(fn attacker ->
-        classify_damage_type(attacker.weapon_type_id)
-      end)
-      |> Enum.map(fn {damage_type, attackers_of_type} ->
-        damage_amount = Enum.sum(Enum.map(attackers_of_type, & &1.damage_done))
-        {damage_type, damage_amount}
-      end)
-      |> Map.new()
+
+    Enum.group_by(fn attacker ->
+      classify_damage_type(attacker.weapon_type_id)
+    end)
+
+    Enum.map(fn {damage_type, attackers_of_type} ->
+      damage_amount = Enum.sum(Enum.map(attackers_of_type, & &1.damage_done))
+      {damage_type, damage_amount}
+    end)
+    |> Map.new()
 
     %{
       total_damage: total_damage,
@@ -481,29 +489,31 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   defp calculate_performance_metrics(ship_instances, :all) do
     performance_data =
       ship_instances
-      |> Enum.map(fn instance ->
-        # Calculate basic metrics first
-        survivability_score = calculate_survivability_score(instance)
-        enhanced_instance = Map.put(instance, :survivability_score, survivability_score)
 
-        dps_efficiency = calculate_dps_efficiency(enhanced_instance)
-        tactical_contribution = calculate_tactical_contribution(enhanced_instance)
+    Enum.map(fn instance ->
+      # Calculate basic metrics first
+      survivability_score = calculate_survivability_score(instance)
+      enhanced_instance = Map.put(instance, :survivability_score, survivability_score)
 
-        # Add calculated metrics to instance for composite calculations
-        fully_enhanced_instance =
-          enhanced_instance
-          |> Map.put(:dps_efficiency, dps_efficiency)
-          |> Map.put(:tactical_contribution, tactical_contribution)
+      dps_efficiency = calculate_dps_efficiency(enhanced_instance)
+      tactical_contribution = calculate_tactical_contribution(enhanced_instance)
 
-        %{
-          ship_instance: fully_enhanced_instance,
-          survivability_score: survivability_score,
-          dps_efficiency: dps_efficiency,
-          tactical_contribution: tactical_contribution,
-          role_effectiveness: calculate_role_effectiveness(fully_enhanced_instance),
-          threat_assessment: calculate_threat_assessment(fully_enhanced_instance)
-        }
-      end)
+      # Add calculated metrics to instance for composite calculations
+      fully_enhanced_instance =
+        enhanced_instance
+
+      Map.put(:dps_efficiency, dps_efficiency)
+      Map.put(:tactical_contribution, tactical_contribution)
+
+      %{
+        ship_instance: fully_enhanced_instance,
+        survivability_score: survivability_score,
+        dps_efficiency: dps_efficiency,
+        tactical_contribution: tactical_contribution,
+        role_effectiveness: calculate_role_effectiveness(fully_enhanced_instance),
+        threat_assessment: calculate_threat_assessment(fully_enhanced_instance)
+      }
+    end)
 
     {:ok, performance_data}
   end
@@ -513,17 +523,18 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
     # Calculate only specific metrics for performance
     performance_data =
       ship_instances
-      |> Enum.map(fn instance ->
-        base_data = %{ship_instance: instance}
 
-        case metric do
-          :efficiency ->
-            Map.put(base_data, :dps_efficiency, calculate_dps_efficiency(instance))
+    Enum.map(fn instance ->
+      base_data = %{ship_instance: instance}
 
-          :survivability ->
-            Map.put(base_data, :survivability_score, calculate_survivability_score(instance))
-        end
-      end)
+      case metric do
+        :efficiency ->
+          Map.put(base_data, :dps_efficiency, calculate_dps_efficiency(instance))
+
+        :survivability ->
+          Map.put(base_data, :survivability_score, calculate_survivability_score(instance))
+      end
+    end)
 
     {:ok, performance_data}
   end
@@ -696,10 +707,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
       NaiveDateTime.add(instance.death_time, -estimated_battle_duration, :second)
     else
       # For attackers without death_time, use battle end time minus duration
-      # This is a fallback - ideally we'd have actual battle start time
-      DateTime.utc_now()
-      |> DateTime.to_naive()
-      |> NaiveDateTime.add(-estimated_battle_duration, :second)
+      # This is a fallback - ideally we'd have actual battle start DateTime.utc_now(time) |> DateTime.to_naive()
+      NaiveDateTime.add(-estimated_battle_duration, :second)
     end
   end
 
@@ -929,14 +938,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
     try do
       ship_types =
         battle.killmails
-        |> Enum.map(fn killmail ->
-          case killmail do
-            %{"victim" => %{"ship_type_id" => ship_type_id}} -> ship_type_id
-            %{victim: %{ship_type_id: ship_type_id}} -> ship_type_id
-            _ -> nil
-          end
-        end)
-        |> Enum.filter(& &1)
+
+      Enum.map(fn killmail ->
+        case killmail do
+          %{"victim" => %{"ship_type_id" => ship_type_id}} -> ship_type_id
+          %{victim: %{ship_type_id: ship_type_id}} -> ship_type_id
+          _ -> nil
+        end
+      end)
+
+      Enum.filter(& &1)
 
       if length(ship_types) > 0 do
         EveDmv.Analytics.FleetAnalyzer.analyze_fleet_composition(ship_types)
@@ -1037,7 +1048,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp identify_top_performers(performances) do
     performances
-    |> Enum.sort_by(
+
+    Enum.sort_by(
       fn perf ->
         # Composite score prioritizing effectiveness and tactical contribution
         # Reduce survivability weight since it only applies to ships that died
@@ -1051,8 +1063,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
       end,
       :desc
     )
-    |> Enum.take(5)
-    |> Enum.map(fn perf ->
+
+    Enum.take(5)
+
+    Enum.map(fn perf ->
       score =
         perf.survivability_score.normalized_score * 0.15 +
           perf.role_effectiveness.effectiveness_score * 0.5 +
@@ -1082,8 +1096,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp compare_by_role(performances) do
     performances
-    |> Enum.group_by(& &1.ship_instance.estimated_fitting.estimated_role)
-    |> Enum.map(fn {role, role_performances} ->
+    Enum.group_by(& &1.ship_instance.estimated_fitting.estimated_role)
+
+    Enum.map(fn {role, role_performances} ->
       {role, calculate_role_statistics(role_performances)}
     end)
     |> Map.new()
@@ -1113,16 +1128,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp rank_by_efficiency(performances) do
     performances
-    |> Enum.sort_by(& &1.dps_efficiency.efficiency_ratio, :desc)
-    |> Enum.with_index(1)
-    |> Enum.map(fn {perf, rank} -> {rank, perf} end)
+    Enum.sort_by(& &1.dps_efficiency.efficiency_ratio, :desc)
+    Enum.with_index(1)
+    Enum.map(fn {perf, rank} -> {rank, perf} end)
   end
 
   defp rank_by_survivability(performances) do
     performances
-    |> Enum.sort_by(& &1.survivability_score.normalized_score, :desc)
-    |> Enum.with_index(1)
-    |> Enum.map(fn {perf, rank} -> {rank, perf} end)
+    Enum.sort_by(& &1.survivability_score.normalized_score, :desc)
+    Enum.with_index(1)
+    Enum.map(fn {perf, rank} -> {rank, perf} end)
   end
 
   defp analyze_overall_battle_performance(performances) do
@@ -1139,9 +1154,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
       performance_distribution =
         performances
-        |> Enum.group_by(&classify_overall_performance/1)
-        |> Enum.map(fn {category, ships} -> {category, length(ships)} end)
-        |> Map.new()
+
+      Enum.group_by(&classify_overall_performance/1)
+      Enum.map(fn {category, ships} -> {category, length(ships)} end) |> Map.new()
 
       %{
         total_ships: total_ships,
@@ -1194,17 +1209,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp find_dominant_ship_classes(performances) do
     performances
-    |> Enum.group_by(& &1.ship_instance.ship_class)
-    |> Enum.map(fn {class, ships} -> {class, length(ships)} end)
-    |> Enum.sort_by(&elem(&1, 1), :desc)
-    |> Enum.take(3)
+    Enum.group_by(& &1.ship_instance.ship_class)
+    Enum.map(fn {class, ships} -> {class, length(ships)} end)
+    Enum.sort_by(&elem(&1, 1), :desc)
+    Enum.take(3)
   end
 
   defp calculate_role_distribution(performances) do
     performances
-    |> Enum.group_by(& &1.ship_instance.estimated_fitting.estimated_role)
-    |> Enum.map(fn {role, ships} -> {role, length(ships)} end)
-    |> Map.new()
+    Enum.group_by(& &1.ship_instance.estimated_fitting.estimated_role)
+    Enum.map(fn {role, ships} -> {role, length(ships)} end) |> Map.new()
   end
 
   defp generate_key_insights(performances) do
@@ -1266,8 +1280,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp generate_individual_recommendations(ship_performances) do
     ship_performances
-    |> Enum.filter(&(&1.role_effectiveness.effectiveness_score < 0.6))
-    |> Enum.map(&generate_ship_recommendation/1)
+    Enum.filter(&(&1.role_effectiveness.effectiveness_score < 0.6))
+    Enum.map(&generate_ship_recommendation/1)
   end
 
   defp generate_ship_recommendation(performance) do
@@ -1614,25 +1628,24 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp extract_combat_events(character_id, combat_logs) do
     combat_logs
-    |> Enum.filter(&(&1.pilot_name == character_id || &1.character_id == character_id))
-    |> Enum.flat_map(&(&1.parsed_data[:events] || []))
+    Enum.filter(&(&1.pilot_name == character_id || &1.character_id == character_id))
+    Enum.flat_map(&(&1.parsed_data[:events] || []))
   end
 
   defp calculate_damage_dealt(character_id, killmails, combat_events) do
     # From killmails
     km_damage =
       killmails
-      |> Enum.flat_map(&(&1.raw_data["attackers"] || []))
-      |> Enum.filter(&(&1["character_id"] == character_id))
-      |> Enum.map(&(&1["damage_done"] || 0))
-      |> Enum.sum()
 
+    Enum.flat_map(&(&1.raw_data["attackers"] || []))
+    Enum.filter(&(&1["character_id"] == character_id))
+    Enum.map(&(&1["damage_done"] || 0)) |> Enum.sum()
     # From combat logs
     log_damage =
       combat_events
-      |> Enum.filter(&(&1[:type] == :damage && &1[:from] == character_id))
-      |> Enum.map(&(&1[:damage] || 0))
-      |> Enum.sum()
+
+    Enum.filter(&(&1[:type] == :damage && &1[:from] == character_id))
+    Enum.map(&(&1[:damage] || 0)) |> Enum.sum()
 
     %{
       from_killmails: km_damage,
@@ -1645,16 +1658,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
     # From killmails (if they died)
     km_damage =
       killmails
-      |> Enum.filter(&(&1.victim_character_id == character_id))
-      |> Enum.map(&get_victim_damage_taken(&1))
-      |> Enum.sum()
 
+    Enum.filter(&(&1.victim_character_id == character_id))
+    Enum.map(&get_victim_damage_taken(&1)) |> Enum.sum()
     # From combat logs
     log_damage =
       combat_events
-      |> Enum.filter(&(&1[:type] == :damage && &1[:to] == character_id))
-      |> Enum.map(&(&1[:damage] || 0))
-      |> Enum.sum()
+
+    Enum.filter(&(&1[:type] == :damage && &1[:to] == character_id))
+    Enum.map(&(&1[:damage] || 0)) |> Enum.sum()
 
     %{
       from_killmails: km_damage,
@@ -1665,7 +1677,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp count_kills(character_id, killmails) do
     killmails
-    |> Enum.count(fn km ->
+
+    Enum.count(fn km ->
       Enum.any?(
         km.raw_data["attackers"] || [],
         &(&1["character_id"] == character_id && &1["final_blow"])
@@ -1729,10 +1742,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp count_module_activations(combat_events) do
     combat_events
-    |> Enum.filter(&(&1[:type] == :ewar))
-    |> Enum.group_by(& &1[:ewar_type])
-    |> Enum.map(fn {type, events} -> {type, length(events)} end)
-    |> Enum.into(%{})
+    Enum.filter(&(&1[:type] == :ewar))
+    Enum.group_by(& &1[:ewar_type])
+    Enum.map(fn {type, events} -> {type, length(events)} end)
+    Enum.into(%{})
   end
 
   defp analyze_movement(_character_id, _battle_data) do
@@ -1843,13 +1856,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
     # Estimate friendly ship count based on alliance/corporation
     same_alliance =
       battle.killmails
-      |> Enum.count(
-        &(&1.victim_alliance_id == ship_instance.alliance_id and &1.victim_alliance_id != nil)
-      )
+
+    Enum.count(
+      &(&1.victim_alliance_id == ship_instance.alliance_id and &1.victim_alliance_id != nil)
+    )
 
     same_corp =
       battle.killmails
-      |> Enum.count(&(&1.victim_corporation_id == ship_instance.corporation_id))
+
+    Enum.count(&(&1.victim_corporation_id == ship_instance.corporation_id))
 
     max(same_alliance, same_corp)
   end
@@ -1875,7 +1890,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   defp filter_by_ship_type(analysis, ship_type_id) do
     filtered_performances =
       analysis.ship_performances
-      |> Enum.filter(&(&1.ship_instance.ship_type_id == ship_type_id))
+
+    Enum.filter(&(&1.ship_instance.ship_type_id == ship_type_id))
 
     Map.put(analysis, :ship_performances, filtered_performances)
   end
@@ -1887,8 +1903,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
     else
       effectiveness_scores =
         performance_data
-        |> Enum.flat_map(& &1.ship_performances)
-        |> Enum.map(& &1.role_effectiveness.effectiveness_score)
+
+      Enum.flat_map(& &1.ship_performances)
+      Enum.map(& &1.role_effectiveness.effectiveness_score)
 
       %{
         trend: calculate_trend(effectiveness_scores),
@@ -1902,8 +1919,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
     # Find conditions where ship performs best
     best_performance =
       performance_data
-      |> Enum.flat_map(& &1.ship_performances)
-      |> Enum.max_by(& &1.role_effectiveness.effectiveness_score, fn -> nil end)
+
+    Enum.flat_map(& &1.ship_performances)
+    Enum.max_by(& &1.role_effectiveness.effectiveness_score, fn -> nil end)
 
     if best_performance do
       %{
@@ -1963,7 +1981,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   defp calculate_trend(values) do
     # Simple linear trend calculation
     n = length(values)
-    indices = 1..n |> Enum.to_list()
+    indices = 1..Enum.to_list(n)
 
     sum_x = Enum.sum(indices)
     sum_y = Enum.sum(values)

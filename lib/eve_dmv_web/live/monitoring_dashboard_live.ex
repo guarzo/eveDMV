@@ -29,9 +29,10 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
     end
 
     socket =
-      socket
-      |> assign(:page_title, "System Monitoring")
-      |> load_monitoring_data()
+    socket
+    assign(:page_title, "System Monitoring")
+
+    load_monitoring_data()
 
     {:ok, socket}
   end
@@ -48,20 +49,17 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
   end
 
   @impl true
-  def handle_event("clear_errors", _params, socket) do
-    ErrorTracker.clear_all()
+  def handle_event("clear_errors", _params, socket) ErrorTracker.clear_all(do)
     {:noreply, load_monitoring_data(socket)}
   end
 
   @impl true
-  def handle_event("reset_pipeline_metrics", _params, socket) do
-    PipelineMonitor.reset_metrics()
+  def handle_event("reset_pipeline_metrics", _params, socket) PipelineMonitor.reset_metrics(do)
     {:noreply, load_monitoring_data(socket)}
   end
 
   @impl true
-  def handle_event("force_recovery_check", _params, socket) do
-    ErrorRecoveryWorker.check_now()
+  def handle_event("force_recovery_check", _params, socket) ErrorRecoveryWorker.check_now(do)
     {:noreply, put_flash(socket, :info, "Recovery check initiated")}
   end
 
@@ -206,10 +204,10 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
                       Error Code
                     </th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Category
+    Category
                     </th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Count
+    Count
                     </th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Last Seen
@@ -262,7 +260,7 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
                     Ship Type ID
                   </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Occurrences
+    Occurrences
                   </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     First Seen
@@ -396,14 +394,14 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
     top_missing_ship_types = MissingDataTracker.get_top_missing_ship_types(5)
 
     socket
-    |> assign(:pipeline_metrics, pipeline_metrics)
-    |> assign(:pipeline_health, pipeline_health)
-    |> assign(:error_summary, error_summary)
-    |> assign(:recent_alerts, recent_alerts)
-    |> assign(:recovery_history, recovery_history)
-    |> assign(:recent_errors, recent_errors)
-    |> assign(:missing_ship_types_count, missing_ship_types_count)
-    |> assign(:top_missing_ship_types, top_missing_ship_types)
+    assign(:pipeline_metrics, pipeline_metrics)
+    assign(:pipeline_health, pipeline_health)
+    assign(:error_summary, error_summary)
+    assign(:recent_alerts, recent_alerts)
+    assign(:recovery_history, recovery_history)
+    assign(:recent_errors, recent_errors)
+    assign(:missing_ship_types_count, missing_ship_types_count)
+    assign(:top_missing_ship_types, top_missing_ship_types)
   end
 
   defp health_badge_class(:healthy),

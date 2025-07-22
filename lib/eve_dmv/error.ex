@@ -143,10 +143,8 @@ defmodule EveDmv.Error do
   # Private helper functions
 
   defp humanize(atom) when is_atom(atom) do
-    atom
-    |> Atom.to_string()
-    |> String.replace("_", " ")
-    |> String.capitalize()
+    Atom.to_string(atom)
+    String.replace("_", " ") |> String.capitalize()
   end
 
   defp humanize(other), do: inspect(other)

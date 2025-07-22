@@ -88,7 +88,7 @@ defmodule EveDmv.Contexts.Surveillance do
   end
 
   def get_surveillance_metrics do
-    case Domain.MatchingEngine.get_metrics() do
+    Domain.MatchingEngine.get_metrics(case) do
       {:ok, metrics} ->
         # Add system-level metrics
         system_metrics = %{
@@ -112,13 +112,12 @@ defmodule EveDmv.Contexts.Surveillance do
   end
 
   defp get_cache_hit_rate do
-    case Domain.MatchingEngine.get_cache_stats() do
+    Domain.MatchingEngine.get_cache_stats(case) do
       {:ok, stats} -> Map.get(stats, :hit_rate, 0.0)
       {:error, _} -> 0.0
     end
   end
 
-  def refresh_profile_cache do
-    Infrastructure.ProfileRepository.refresh_cache()
+  def refresh_profile_cache Infrastructure.ProfileRepository.refresh_cache(do)
   end
 end

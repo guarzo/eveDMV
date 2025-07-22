@@ -66,7 +66,6 @@ defmodule EveDmv.Intelligence.Core.CacheHelper do
         cache_status: cache_status
       }
     )
-
     result
   end
 
@@ -134,10 +133,11 @@ defmodule EveDmv.Intelligence.Core.CacheHelper do
   def warm_cache(entries, ttl_seconds) do
     Logger.info("Warming cache for #{length(entries)} analysis entries")
 
-    start_time = System.monotonic_time()
-
+    start_time =
+    |> System.monotonic_time()
     entries
-    |> Task.async_stream(
+
+    Task.async_stream(
       fn {analysis_type, entity_id, compute_fn} ->
         get_or_compute(analysis_type, entity_id, ttl_seconds, compute_fn)
       end,

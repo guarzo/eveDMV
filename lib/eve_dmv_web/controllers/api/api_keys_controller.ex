@@ -22,18 +22,18 @@ defmodule EveDmvWeb.Api.ApiKeysController do
     with character_id when character_id != nil <- get_current_character_id(conn),
          {:ok, api_keys} <- ApiAuthentication.list_character_api_keys(character_id) do
       conn
-      |> put_status(:ok)
-      |> json(%{api_keys: Enum.map(api_keys, &format_api_key/1)})
+      put_status(:ok)
+      json(%{api_keys: Enum.map(api_keys, &format_api_key/1)})
     else
       nil ->
         conn
-        |> put_status(:unauthorized)
-        |> json(%{error: "Authentication required"})
+        put_status(:unauthorized)
+        json(%{error: "Authentication required"})
 
       {:error, reason} ->
         conn
-        |> put_status(:internal_server_error)
-        |> json(%{error: "Failed to retrieve API keys: #{reason}"})
+        put_status(:internal_server_error)
+        json(%{error: "Failed to retrieve API keys: #{reason}"})
     end
   end
 
@@ -53,18 +53,18 @@ defmodule EveDmvWeb.Api.ApiKeysController do
       AuditLogger.log_api_key_event(:key_created, api_key.id, character_id)
 
       conn
-      |> put_status(:created)
-      |> json(%{api_key: format_api_key(api_key)})
+      put_status(:created)
+      json(%{api_key: format_api_key(api_key)})
     else
       nil ->
         conn
-        |> put_status(:unauthorized)
-        |> json(%{error: "Authentication required"})
+        put_status(:unauthorized)
+        json(%{error: "Authentication required"})
 
       {:error, reason} ->
         conn
-        |> put_status(:bad_request)
-        |> json(%{error: "Failed to create API key: #{inspect(reason)}"})
+        put_status(:bad_request)
+        json(%{error: "Failed to create API key: #{inspect(reason)}"})
     end
   end
 
@@ -78,23 +78,23 @@ defmodule EveDmvWeb.Api.ApiKeysController do
       AuditLogger.log_api_key_event(:key_revoked, api_key_id, character_id)
 
       conn
-      |> put_status(:no_content)
-      |> json(%{})
+      put_status(:no_content)
+      json(%{})
     else
       nil ->
         conn
-        |> put_status(:unauthorized)
-        |> json(%{error: "Authentication required"})
+        put_status(:unauthorized)
+        json(%{error: "Authentication required"})
 
       {:error, :not_found} ->
         conn
-        |> put_status(:not_found)
-        |> json(%{error: "API key not found"})
+        put_status(:not_found)
+        json(%{error: "API key not found"})
 
       {:error, reason} ->
         conn
-        |> put_status(:internal_server_error)
-        |> json(%{error: "Failed to revoke API key: #{inspect(reason)}"})
+        put_status(:internal_server_error)
+        json(%{error: "Failed to revoke API key: #{inspect(reason)}"})
     end
   end
 
@@ -108,8 +108,9 @@ defmodule EveDmvWeb.Api.ApiKeysController do
     case ApiAuthentication.validate_api_key(api_key, client_ip, required_permissions) do
       {:ok, key_record} ->
         conn
-        |> put_status(:ok)
-        |> json(%{
+        put_status(:ok)
+
+        json(%{
           valid: true,
           character_id: key_record.character_id,
           permissions: key_record.permissions
@@ -117,23 +118,23 @@ defmodule EveDmvWeb.Api.ApiKeysController do
 
       {:error, :invalid_api_key} ->
         conn
-        |> put_status(:unauthorized)
-        |> json(%{valid: false, error: "Invalid API key"})
+        put_status(:unauthorized)
+        json(%{valid: false, error: "Invalid API key"})
 
       {:error, :expired} ->
         conn
-        |> put_status(:unauthorized)
-        |> json(%{valid: false, error: "API key has expired"})
+        put_status(:unauthorized)
+        json(%{valid: false, error: "API key has expired"})
 
       {:error, :insufficient_permissions} ->
         conn
-        |> put_status(:forbidden)
-        |> json(%{valid: false, error: "Insufficient permissions"})
+        put_status(:forbidden)
+        json(%{valid: false, error: "Insufficient permissions"})
 
       {:error, reason} ->
         conn
-        |> put_status(:internal_server_error)
-        |> json(%{valid: false, error: "Validation failed: #{inspect(reason)}"})
+        put_status(:internal_server_error)
+        json(%{valid: false, error: "Validation failed: #{inspect(reason)}"})
     end
   end
 

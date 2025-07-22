@@ -36,10 +36,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
           killmail_id: 3,
           killmail_time: ~U[2024-01-01 10:10:00Z],
           solar_system_id: 30_002_766,
-          victim_character_id: 22222,
+          victim_character_id: 22_222,
           raw_data: %{
-            "victim" => %{"character_id" => 22222},
-            "attackers" => [%{"character_id" => 33333}]
+            "victim" => %{"character_id" => 22_222},
+            "attackers" => [%{"character_id" => 33_333}]
           }
         })
 
@@ -151,9 +151,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
           # 45 minutes later
           killmail_time: ~U[2024-01-01 10:45:00Z],
           solar_system_id: 30_002_765,
-          victim_character_id: 22222,
+          victim_character_id: 22_222,
           raw_data: %{
-            "victim" => %{"character_id" => 22222},
+            "victim" => %{"character_id" => 22_222},
             # Same attacker
             "attackers" => [%{"character_id" => 67890}]
           }

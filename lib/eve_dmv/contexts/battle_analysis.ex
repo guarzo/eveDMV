@@ -175,7 +175,8 @@ defmodule EveDmv.Contexts.BattleAnalysis do
         time_window_seconds = 600
 
         battles
-        |> Enum.filter(fn battle ->
+
+        Enum.filter(fn battle ->
           # Parse each battle's timestamp
           with {:ok, {^system_id, battle_time}} <- parse_battle_id(battle.battle_id) do
             time_diff = abs(NaiveDateTime.diff(requested_time, battle_time, :second))
@@ -184,7 +185,8 @@ defmodule EveDmv.Contexts.BattleAnalysis do
             _ -> false
           end
         end)
-        |> Enum.min_by(
+
+        Enum.min_by(
           fn battle ->
             # Find the battle with the closest timestamp
             case parse_battle_id(battle.battle_id) do
@@ -498,21 +500,25 @@ defmodule EveDmv.Contexts.BattleAnalysis do
 
   defp analyze_battle_types(battles) do
     battles
-    |> Enum.group_by(& &1.metadata.battle_type)
-    |> Enum.map(fn {type, battles_of_type} ->
+    Enum.group_by(& &1.metadata.battle_type)
+
+    Enum.map(fn {type, battles_of_type} ->
       {type, length(battles_of_type)}
     end)
-    |> Enum.into(%{})
+
+    Enum.into(%{})
   end
 
   defp analyze_most_active_systems(battles) do
     battles
-    |> Enum.group_by(& &1.metadata.primary_system)
-    |> Enum.map(fn {system_id, battles_in_system} ->
+    Enum.group_by(& &1.metadata.primary_system)
+
+    Enum.map(fn {system_id, battles_in_system} ->
       {system_id, length(battles_in_system)}
     end)
-    |> Enum.sort_by(fn {_system_id, count} -> count end, :desc)
-    |> Enum.take(10)
+
+    Enum.sort_by(fn {_system_id, count} -> count end, :desc)
+    Enum.take(10)
   end
 
   defp calculate_average_duration(battles) do
@@ -564,10 +570,11 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   defp summarize_ship_performance(performance) do
     top_performers =
       performance
-      |> Map.get(:individual_performance, [])
-      |> Enum.sort_by(& &1.overall_score, :desc)
-      |> Enum.take(3)
-      |> Enum.map(& &1.character_name)
+
+    Map.get(:individual_performance, [])
+    Enum.sort_by(& &1.overall_score, :desc)
+    Enum.take(3)
+    Enum.map(& &1.character_name)
 
     "Top performers: #{Enum.join(top_performers, ", ")}"
   end
@@ -584,18 +591,20 @@ defmodule EveDmv.Contexts.BattleAnalysis do
 
   defp extract_key_timeline_events(timeline) do
     timeline
-    |> Map.get(:events, [])
-    |> Enum.filter(&(&1.significance == :high))
-    |> Enum.take(5)
-    |> Enum.map(& &1.description)
+    Map.get(:events, [])
+    Enum.filter(&(&1.significance == :high))
+    Enum.take(5)
+    Enum.map(& &1.description)
   end
 
   defp extract_key_moments_from_phases(phases) do
     phases
-    |> Enum.flat_map(fn phase ->
+
+    Enum.flat_map(fn phase ->
       phase
-      |> Map.get(:key_events, [])
-      |> Enum.map(fn event ->
+      Map.get(:key_events, [])
+
+      Enum.map(fn event ->
         %{
           time: event.timestamp,
           phase: phase.phase_type,
@@ -604,7 +613,8 @@ defmodule EveDmv.Contexts.BattleAnalysis do
         }
       end)
     end)
-    |> Enum.sort_by(& &1.time)
+
+    Enum.sort_by(& &1.time)
   end
 
   defp generate_tactical_summary(phases, transitions) do
@@ -616,8 +626,8 @@ defmodule EveDmv.Contexts.BattleAnalysis do
     transition_summary =
       if is_map(transitions) do
         transitions
-        |> Map.get(:significant_transitions, [])
-        |> Enum.map_join(", ", & &1.description)
+        Map.get(:significant_transitions, [])
+        Enum.map_join(", ", & &1.description)
       else
         "No transitions available"
       end

@@ -137,10 +137,10 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer do
 
   ## Examples
       iex> days_since_last_activity(~U[2023-01-01 00:00:00Z], ~U[2023-01-15 00:00:00Z])
-      14
+    14
 
       iex> days_since_last_activity(nil, ~U[2023-01-15 00:00:00Z])
-      999
+    999
   """
   defdelegate days_since_last_activity(last_activity, current_time), to: TrendAnalyzer
 

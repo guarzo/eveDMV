@@ -76,11 +76,14 @@ defmodule EveDmv.Config.CircuitBreaker do
 
     # ESI-specific overrides if configured
     esi_failure_threshold = Config.get(:eve_dmv, :esi_circuit_breaker_failure_threshold)
-    esi_recovery_timeout = Config.get(:eve_dmv, :esi_circuit_breaker_recovery_timeout_ms)
+
+    esi_recovery_timeout =
+      Config.get(:eve_dmv, :esi_circuit_breaker_recovery_timeout_ms)
 
     base_config
-    |> Keyword.put_new(:failure_threshold, esi_failure_threshold || failure_threshold())
-    |> Keyword.put_new(:recovery_timeout, esi_recovery_timeout || recovery_timeout())
+
+    Keyword.put_new(:failure_threshold, esi_failure_threshold || failure_threshold())
+    Keyword.put_new(:recovery_timeout, esi_recovery_timeout || recovery_timeout())
   end
 
   def service_config(:janice) do
@@ -88,11 +91,14 @@ defmodule EveDmv.Config.CircuitBreaker do
 
     # Janice-specific overrides if configured
     janice_failure_threshold = Config.get(:eve_dmv, :janice_circuit_breaker_failure_threshold)
-    janice_recovery_timeout = Config.get(:eve_dmv, :janice_circuit_breaker_recovery_timeout_ms)
+
+    janice_recovery_timeout =
+      Config.get(:eve_dmv, :janice_circuit_breaker_recovery_timeout_ms)
 
     base_config
-    |> Keyword.put_new(:failure_threshold, janice_failure_threshold || failure_threshold())
-    |> Keyword.put_new(:recovery_timeout, janice_recovery_timeout || recovery_timeout())
+
+    Keyword.put_new(:failure_threshold, janice_failure_threshold || failure_threshold())
+    Keyword.put_new(:recovery_timeout, janice_recovery_timeout || recovery_timeout())
   end
 
   def service_config(:mutamarket) do

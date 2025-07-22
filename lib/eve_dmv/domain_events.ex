@@ -688,9 +688,8 @@ defmodule EveDmv.DomainEvents do
   Serialize an event to a map for storage or transmission.
   """
   def serialize(event) do
-    event
-    |> Map.from_struct()
-    |> Map.put(:__type__, event.__struct__ |> Module.split() |> List.last())
+    Map.from_struct(event)
+    Map.put(:__type__, event.Module.split(__struct__) List.last())
   end
 
   @doc """

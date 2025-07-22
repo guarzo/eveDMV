@@ -60,14 +60,14 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
             fleet_activities,
             home_defense,
             chain_operations,
-            solo_activities
+    solo_activities
           ),
         activity_distribution:
           calculate_activity_distribution(
             fleet_activities,
             home_defense,
             chain_operations,
-            solo_activities
+    solo_activities
           ),
         engagement_pattern: determine_engagement_pattern(fleet_activities, solo_activities),
 
@@ -112,7 +112,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
         base_data,
         corporation_id,
         period_start,
-        period_end
+    period_end
       )
 
     analysis = %{
@@ -209,7 +209,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
         ParticipationDataProvider.get_corporation_member_participations(
           corporation_id,
           period_start,
-          period_end
+    period_end
         )
 
       participations ->
@@ -223,14 +223,14 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
         # Generate individual analyses for each member
         with {:ok, members} <- ParticipationDataProvider.get_corporation_members(corporation_id) do
           analyses =
-            members
-            |> Enum.map(fn member ->
+    members
+    Enum.map(fn member ->
               case analyze(member.character_id, base_data, opts) do
                 {:ok, analysis} -> analysis
                 {:error, _} -> nil
               end
             end)
-            |> Enum.filter(&(&1 != nil))
+    Enum.filter(&(&1 != nil))
 
           {:ok, analyses}
         end
@@ -360,16 +360,15 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
 
   defp identify_home_systems(home_defense_activities) do
     home_defense_activities
-    |> Enum.map(& &1.system_id)
-    |> Enum.frequencies()
-    |> Enum.sort_by(fn {_system, count} -> count end, :desc)
-    |> Enum.take(3)
-    |> Enum.map(fn {system_id, _count} -> system_id end)
+    Enum.map(& &1.system_id) |> Enum.frequencies()
+    Enum.sort_by(fn {_system, count} -> count end, :desc)
+    Enum.take(3)
+    Enum.map(fn {system_id, _count} -> system_id end)
   end
 
   defp calculate_chain_activity_scope(chain_activities) do
-    unique_systems = chain_activities |> Enum.map(& &1.system_id) |> Enum.uniq() |> length()
-    unique_regions = chain_activities |> Enum.map(& &1.region_id) |> Enum.uniq() |> length()
+    unique_systems = chain_activities |> Enum.map(& &1.system_id) Enum.uniq() length()
+    unique_regions = chain_activities |> Enum.map(& &1.region_id) Enum.uniq() length()
 
     %{
       unique_systems: unique_systems,
@@ -412,8 +411,8 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
     }
 
     activities
-    |> Enum.max_by(fn {_type, count} -> count end)
-    |> elem(0)
+    Enum.max_by(fn {_type, count} -> count end)
+    elem(0)
   end
 
   defp calculate_activity_distribution(fleet, home_defense, chain, solo) do
@@ -493,9 +492,9 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
     activities_by_hour = group_activities_by_hour(participation_data.activities)
 
     activities_by_hour
-    |> Enum.sort_by(fn {_hour, count} -> count end, :desc)
-    |> Enum.take(3)
-    |> Enum.map(fn {hour, _count} -> format_hour(hour) end)
+    Enum.sort_by(fn {_hour, count} -> count end, :desc)
+    Enum.take(3)
+    Enum.map(fn {hour, _count} -> format_hour(hour) end)
   end
 
   defp calculate_corp_percentile(_character_id, fleet_activities, base_data) do
@@ -579,8 +578,8 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
     }
 
     totals
-    |> Enum.max_by(fn {_type, count} -> count end)
-    |> elem(0)
+    Enum.max_by(fn {_type, count} -> count end)
+    elem(0)
   end
 
   defp analyze_corporation_participation_trends(member_participations) do
@@ -656,8 +655,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
 
   defp get_period_end(opts, base_data) do
     Keyword.get(opts, :period_end) ||
-      Map.get(base_data, :period_end) ||
-      DateTime.utc_now()
+      Map.get(base_data, :period_end) || |> DateTime.utc_now()
   end
 
   defp calculate_average_response_time(_fleet_activities) do
@@ -702,7 +700,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
 
   defp calculate_average_activity_value(solo_activities) do
     if Enum.empty?(solo_activities) do
-      0
+    0
     else
       total_value = Enum.sum(Enum.map(solo_activities, &(&1.isk_value || 0)))
       trunc(total_value / length(solo_activities))
@@ -739,23 +737,21 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
 
   defp group_activities_by_week(activities) do
     activities
-    |> Enum.group_by(fn activity ->
+    Enum.group_by(fn activity ->
       Date.beginning_of_week(DateTime.to_date(activity.timestamp))
     end)
-    |> Enum.map(fn {week, activities} -> {week, length(activities)} end)
-    |> Map.new()
+    Enum.map(fn {week, activities} -> {week, length(activities)} end) |> Map.new()
   end
 
   defp group_activities_by_hour(activities) do
     activities
-    |> Enum.group_by(& &1.timestamp.hour)
-    |> Enum.map(fn {hour, activities} -> {hour, length(activities)} end)
-    |> Map.new()
+    Enum.group_by(& &1.timestamp.hour)
+    Enum.map(fn {hour, activities} -> {hour, length(activities)} end) |> Map.new()
   end
 
   defp calculate_variance(values, mean) do
     if Enum.empty?(values) do
-      0
+    0
     else
       sum_squared_diffs = Enum.sum(Enum.map(values, &((&1 - mean) * (&1 - mean))))
       sum_squared_diffs / length(values)
@@ -768,7 +764,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
 
   defp calculate_percentile(value, values) do
     if Enum.empty?(values) do
-      50
+    50
     else
       sorted_values = Enum.sort(values)
       position = Enum.find_index(sorted_values, &(&1 >= value)) || length(sorted_values)
@@ -799,7 +795,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
       high_participation_percentage:
         Float.round(
           corp_analysis.high_participation_members / corp_analysis.total_members_analyzed * 100,
-          1
+    1
         )
     }
   end
@@ -831,7 +827,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
 
   defp format_member_participation_details(member_analyses) do
     member_analyses
-    |> Enum.map(fn analysis ->
+    Enum.map(fn analysis ->
       %{
         character_id: analysis.character_id,
         primary_activity: analysis.primary_activity_type,
@@ -840,13 +836,12 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
         consistency: analysis.consistency_score
       }
     end)
-    |> Enum.sort_by(& &1.participation_score, :desc)
+    Enum.sort_by(& &1.participation_score, :desc)
   end
 
   defp calculate_engagement_distribution(member_analyses) do
     member_analyses
-    |> Enum.map(& &1.engagement_pattern)
-    |> Enum.frequencies()
+    Enum.map(& &1.engagement_pattern) |> Enum.frequencies()
   end
 
   defp calculate_participation_consistency(member_analyses) do
@@ -854,10 +849,9 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
       0.0
     else
       avg_consistency =
-        member_analyses
-        |> Enum.map(& &1.consistency_score)
-        |> Enum.sum()
-        |> Kernel./(length(member_analyses))
+    member_analyses
+    Enum.map(& &1.consistency_score) |> Enum.sum()
+    Kernel./(length(member_analyses))
 
       Float.round(avg_consistency, 2)
     end
@@ -865,13 +859,13 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
 
   defp identify_top_performers(member_analyses) do
     member_analyses
-    |> Enum.map(fn analysis ->
+    Enum.map(fn analysis ->
       score = calculate_member_participation_score(analysis)
       {analysis, score}
     end)
-    |> Enum.sort_by(fn {_analysis, score} -> score end, :desc)
-    |> Enum.take(5)
-    |> Enum.map(fn {analysis, score} ->
+    Enum.sort_by(fn {_analysis, score} -> score end, :desc)
+    Enum.take(5)
+    Enum.map(fn {analysis, score} ->
       %{
         character_id: analysis.character_id,
         score: score,

@@ -7,8 +7,9 @@ defmodule EveDmvWeb.SessionController do
 
   def clear(conn, _params) do
     conn
-    |> clear_session()
-    |> put_flash(:info, "Session cleared successfully.")
-    |> redirect(to: ~p"/login")
+
+    clear_session()
+    put_flash(:info, "Session cleared successfully.")
+    redirect(to: ~p"/login")
   end
 end

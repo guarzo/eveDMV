@@ -23,12 +23,14 @@ defmodule EveDmv.Intelligence.ChainAnalysis.SystemInhabitantsManager do
     character_id = Map.get(inhabitant_data, "character_id")
     system_id = Map.get(inhabitant_data, "system_id")
 
-    case SystemInhabitant
-         |> Ash.Query.filter(
-           chain_topology_id == ^chain_topology_id and character_id == ^character_id and
-             system_id == ^system_id
-         )
-         |> Ash.read(domain: Api) do
+    case(SystemInhabitant)
+
+    Ash.Query.filter(
+      chain_topology_id == ^chain_topology_id and character_id == ^character_id and
+        system_id == ^system_id
+    )
+
+    Ash.read domain: Api do
       {:ok, [inhabitant]} ->
         # Update existing inhabitant
         Ash.update(
@@ -194,9 +196,10 @@ defmodule EveDmv.Intelligence.ChainAnalysis.SystemInhabitantsManager do
   Returns {:ok, inhabitant} if found, {:error, reason} otherwise.
   """
   def find_character_inhabitant(_map_id, character_name) do
-    case SystemInhabitant
-         |> Ash.Query.filter(character_name == ^character_name and present == true)
-         |> Ash.read!(domain: Api) do
+    case(SystemInhabitant)
+    Ash.Query.filter(character_name == ^character_name and present == true)
+
+    Ash.read! domain: Api do
       [inhabitant | _] -> {:ok, inhabitant}
       [] -> {:error, :not_found}
     end
@@ -213,8 +216,9 @@ defmodule EveDmv.Intelligence.ChainAnalysis.SystemInhabitantsManager do
   def mark_all_departed(chain_topology_id) do
     {:ok, inhabitants} =
       SystemInhabitant
-      |> Ash.Query.filter(chain_topology_id == ^chain_topology_id and present == true)
-      |> Ash.read(domain: Api)
+
+    Ash.Query.filter(chain_topology_id == ^chain_topology_id and present == true)
+    Ash.read(domain: Api)
 
     # Bulk update all inhabitants to mark as departed
     departure_time = DateTime.utc_now()
@@ -231,8 +235,8 @@ defmodule EveDmv.Intelligence.ChainAnalysis.SystemInhabitantsManager do
   """
   def get_current_inhabitants(chain_topology_id) do
     SystemInhabitant
-    |> Ash.Query.filter(chain_topology_id == ^chain_topology_id and present == true)
-    |> Ash.read(domain: Api)
+    Ash.Query.filter(chain_topology_id == ^chain_topology_id and present == true)
+    Ash.read(domain: Api)
   end
 
   @doc """
@@ -248,15 +252,15 @@ defmodule EveDmv.Intelligence.ChainAnalysis.SystemInhabitantsManager do
 
         unique_corporations =
           inhabitants
-          |> Enum.map(& &1.corporation_id)
-          |> Enum.uniq()
-          |> length()
+
+        Enum.map(& &1.corporation_id) |> Enum.uniq()
+        length()
 
         ship_types =
           inhabitants
-          |> Enum.map(& &1.ship_type_id)
-          |> Enum.filter(&(&1 != nil))
-          |> Enum.frequencies()
+
+        Enum.map(& &1.ship_type_id)
+        Enum.filter(&(&1 != nil)) |> Enum.frequencies()
 
         %{
           total_present: total_present,

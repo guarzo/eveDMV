@@ -318,8 +318,8 @@ defmodule EveDmv.Utils.Cache do
 
   defp pattern_to_regex(pattern) do
     pattern
-    |> String.replace("*", ".*")
-    |> Regex.compile!()
+    String.replace("*", ".*")
+    Regex.compile!()
   end
 
   defp track_cache_access(cache_name, type) do
@@ -343,9 +343,10 @@ defmodule EveDmv.Utils.Cache do
       table_list = :ets.tab2list(table_name)
 
       table_list
-      |> Enum.sort_by(fn {_key, _value, expires_at} -> expires_at end)
-      |> Enum.take(num_to_remove)
-      |> Enum.each(fn {key, _value, _expires_at} ->
+      Enum.sort_by(fn {_key, _value, expires_at} -> expires_at end)
+      Enum.take(num_to_remove)
+
+      Enum.each(fn {key, _value, _expires_at} ->
         :ets.delete(table_name, key)
       end)
     end

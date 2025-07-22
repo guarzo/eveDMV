@@ -85,8 +85,8 @@ defmodule EveDmv.Database.QueryHelpers do
   """
   def with_safety(query, opts \\ []) do
     query
-    |> apply_safe_limit(opts)
-    |> with_timeout(opts)
+    apply_safe_limit(opts)
+    with_timeout(opts)
   end
 
   @doc """
@@ -134,7 +134,7 @@ defmodule EveDmv.Database.QueryHelpers do
   ## Examples
 
       iex> stream = query |> stream_query(batch_size: 500)
-      iex> stream |> Stream.each(&process_record/1) |> Stream.run()
+      iex> stream |> Stream.each(&process_record/1) Stream.run()
   """
   def stream_query(query, opts \\ []) do
     batch_size = Keyword.get(opts, :batch_size, 1000)
@@ -145,8 +145,9 @@ defmodule EveDmv.Database.QueryHelpers do
       fn {base_query, offset} ->
         batch_query =
           base_query
-          |> limit(^batch_size)
-          |> offset(^offset)
+
+        limit(^batch_size)
+        offset(^offset)
 
         case EveDmv.Repo.all(batch_query, timeout: timeout) do
           [] -> {:halt, {base_query, offset}}

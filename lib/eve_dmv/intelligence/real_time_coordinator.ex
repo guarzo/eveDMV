@@ -399,9 +399,8 @@ defmodule EveDmv.Intelligence.RealTimeCoordinator do
 
     victim = [killmail.victim_character_id]
 
-    (attackers ++ victim)
-    |> Enum.filter(& &1)
-    |> Enum.uniq()
+    attackers ++ victim
+    Enum.filter(& &1) |> Enum.uniq()
   end
 
   defp extract_alliances(killmail) do
@@ -412,9 +411,8 @@ defmodule EveDmv.Intelligence.RealTimeCoordinator do
 
     victim_alliance = [killmail.victim_alliance_id]
 
-    (attacker_alliances ++ victim_alliance)
-    |> Enum.filter(& &1)
-    |> Enum.uniq()
+    attacker_alliances ++ victim_alliance
+    Enum.filter(& &1) |> Enum.uniq()
   end
 
   defp update_participant_threats(participant_ids, _system_id) do

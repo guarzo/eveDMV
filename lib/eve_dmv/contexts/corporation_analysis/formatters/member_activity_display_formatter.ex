@@ -213,12 +213,15 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Formatters.MemberActivityDisplayFo
   defp format_engagement_overview(member_analyses) do
     engagement_groups =
       member_analyses
-      |> Enum.group_by(&format_engagement_status(&1.engagement_score))
-      |> Enum.map(fn {status, members} ->
-        {status,
-         %{count: length(members), percentage: length(members) / length(member_analyses) * 100}}
-      end)
-      |> Enum.into(%{})
+
+    Enum.group_by(&format_engagement_status(&1.engagement_score))
+
+    Enum.map(fn {status, members} ->
+      {status,
+       %{count: length(members), percentage: length(members) / length(member_analyses) * 100}}
+    end)
+
+    Enum.into(%{})
 
     %{
       distribution: engagement_groups,
@@ -245,20 +248,22 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Formatters.MemberActivityDisplayFo
 
   defp calculate_engagement_distribution(member_analyses) do
     member_analyses
-    |> Enum.group_by(&format_engagement_status(&1.engagement_score))
-    |> Enum.map(fn {status, members} ->
+    Enum.group_by(&format_engagement_status(&1.engagement_score))
+
+    Enum.map(fn {status, members} ->
       {status, length(members)}
     end)
-    |> Enum.into(%{})
+
+    Enum.into(%{})
   end
 
   defp calculate_activity_trend(member_analyses) do
     if length(member_analyses) > 0 do
       avg_trend =
         member_analyses
-        |> Enum.map(&(&1.activity_decline || 0))
-        |> Enum.sum()
-        |> Kernel./(length(member_analyses))
+
+      Enum.map(&(&1.activity_decline || 0)) |> Enum.sum()
+      Kernel./(length(member_analyses))
 
       cond do
         avg_trend < -0.1 -> :improving

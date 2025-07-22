@@ -256,8 +256,9 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
       length(recent_stats) > 5 ->
         utilization_values =
           recent_stats
-          |> Enum.map(&get_in(&1, [:stats, :utilization]))
-          |> Enum.reject(&is_nil/1)
+
+        Enum.map(&get_in(&1, [:stats, :utilization]))
+        Enum.reject(&is_nil/1)
 
         avg_utilization = calculate_average(utilization_values)
 

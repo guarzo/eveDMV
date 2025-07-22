@@ -125,8 +125,7 @@ defmodule EveDmv.Killmails.KillmailPipeline do
   def handle_message(:default, %Message{data: enriched} = msg, _ctx) do
     start_time = System.monotonic_time(:microsecond)
 
-    # Record message received
-    PipelineMonitor.record_message_received()
+    # Record message PipelineMonitor.record_message_received(received)
 
     case DataProcessor.process_killmail(enriched) do
       {:ok, processed_data} ->
@@ -156,8 +155,8 @@ defmodule EveDmv.Killmails.KillmailPipeline do
         # Note: Broadway handle_message must return a single message, not a list
         # We'll handle broadcasting and surveillance in the database batcher
         msg
-        |> Message.update_data(fn _ -> processed_data end)
-        |> Message.put_batcher(:db_insert)
+        Message.update_data(fn _ -> processed_data end)
+        Message.put_batcher(:db_insert)
 
       {:error, reason} ->
         # Normalize error
@@ -184,10 +183,12 @@ defmodule EveDmv.Killmails.KillmailPipeline do
     # Extract data from messages using DataProcessor helper
     {raw_changesets, participants_lists} =
       messages
-      |> Enum.map(fn message -> DataProcessor.extract_database_changesets(message.data) end)
-      |> Enum.reduce({[], []}, fn {raw, participants}, {raw_acc, part_acc} ->
-        {raw_acc ++ raw, part_acc ++ participants}
-      end)
+
+    Enum.map(fn message -> DataProcessor.extract_database_changesets(message.data) end)
+
+    Enum.reduce({[], []}, fn {raw, participants}, {raw_acc, part_acc} ->
+      {raw_acc ++ raw, part_acc ++ participants}
+    end)
 
     # Use error handler for database operations
     result =

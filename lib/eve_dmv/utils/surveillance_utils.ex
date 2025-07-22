@@ -49,10 +49,8 @@ defmodule EveDmv.Utils.SurveillanceUtils do
     dangerous_ships =
       Enum.count(ships, fn ship ->
         ship_name =
-          ship
-          |> Map.get("name", "")
-          |> String.downcase()
-
+    ship
+    Map.get("name", "") |> String.downcase()
         ship_name =~ ~r/(dread|carrier|super|titan|recon|interceptor|dictor)/
       end)
 
@@ -106,15 +104,11 @@ defmodule EveDmv.Utils.SurveillanceUtils do
     # In a real implementation, this would check against standings, known hostile lists, etc.
     Enum.filter(inhabitants, fn inhabitant ->
       name =
-        inhabitant
-        |> Map.get("name", "")
-        |> String.downcase()
-
+    inhabitant
+    Map.get("name", "") |> String.downcase()
       corp =
-        inhabitant
-        |> Map.get("corporation", "")
-        |> String.downcase()
-
+    inhabitant
+    Map.get("corporation", "") |> String.downcase()
       # Check for known hostile patterns (simplified)
       name =~ ~r/(hostile|enemy|pirate)/ or corp =~ ~r/(pirate|hostile)/
     end)
@@ -240,7 +234,7 @@ defmodule EveDmv.Utils.SurveillanceUtils do
     n = length(numbers)
 
     if n * sum_x2 - sum_x * sum_x == 0 do
-      0
+    0
     else
       (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x * sum_x)
     end
@@ -282,9 +276,9 @@ defmodule EveDmv.Utils.SurveillanceUtils do
     else
       # Check if threat levels are escalating
       recent_threats =
-        threat_history
-        |> Enum.take(5)
-        |> Enum.map(&threat_level_to_number/1)
+    threat_history
+    Enum.take(5)
+    Enum.map(&threat_level_to_number/1)
 
       trend = calculate_trend(recent_threats)
 
@@ -301,14 +295,14 @@ defmodule EveDmv.Utils.SurveillanceUtils do
   """
   def identify_hotspot_systems(recent_activity) do
     recent_activity
-    |> Enum.group_by(& &1.system_id)
-    |> Enum.map(fn {system_id, activities} ->
+    Enum.group_by(& &1.system_id)
+    Enum.map(fn {system_id, activities} ->
       {system_id, length(activities)}
     end)
-    |> Enum.filter(fn {_, count} -> count >= 3 end)
-    |> Enum.sort_by(fn {_, count} -> count end, :desc)
-    |> Enum.take(5)
-    |> Enum.map(fn {system_id, _} -> system_id end)
+    Enum.filter(fn {_, count} -> count >= 3 end)
+    Enum.sort_by(fn {_, count} -> count end, :desc)
+    Enum.take(5)
+    Enum.map(fn {system_id, _} -> system_id end)
   end
 
   @doc """
@@ -322,9 +316,9 @@ defmodule EveDmv.Utils.SurveillanceUtils do
       now = DateTime.utc_now()
 
       oldest_threat =
-        threat_history
-        |> Enum.map(& &1.detected_at)
-        |> Enum.min_by(&DateTime.to_unix/1, DateTime)
+    threat_history
+    Enum.map(& &1.detected_at)
+    Enum.min_by(&DateTime.to_unix/1, DateTime)
 
       days_span = max(1, DateTime.diff(now, oldest_threat, :day))
       length(threat_history) / days_span
@@ -337,7 +331,7 @@ defmodule EveDmv.Utils.SurveillanceUtils do
   def calculate_overall_chain_threat(system_threats, chain_patterns) do
     # Get highest system threat
     max_system_threat =
-      system_threats
+    system_threats
       |> Enum.map(&(&1 |> Map.get(:threat_level, :low) |> threat_level_to_number()))
       |> Enum.max(&>=/2, fn -> 1 end)
 

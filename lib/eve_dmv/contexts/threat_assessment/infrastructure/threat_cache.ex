@@ -190,10 +190,10 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache do
 
     enhanced_stats =
       state.stats
-      |> Map.put(:cache_size, cache_size)
-      |> Map.put(:hit_rate, calculate_hit_rate(state.stats))
-      |> Map.put(:max_cache_size, @max_cache_size)
-      |> Map.put(:cache_utilization, cache_size / @max_cache_size)
+    Map.put(:cache_size, cache_size)
+    Map.put(:hit_rate, calculate_hit_rate(state.stats))
+    Map.put(:max_cache_size, @max_cache_size)
+    Map.put(:cache_utilization, cache_size / @max_cache_size)
 
     {:reply, enhanced_stats, state}
   end
@@ -224,9 +224,8 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache do
   def handle_call({:get_cache_keys, pattern}, _from, state) do
     keys =
       if pattern do
-        state.cache
-        |> Map.keys()
-        |> Enum.filter(&String.contains?(&1, pattern))
+        state.Map.keys(cache)
+    Enum.filter(&String.contains?(&1, pattern))
       else
         Map.keys(state.cache)
       end
@@ -241,7 +240,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache do
     # Analyze cache contents by type
     type_breakdown =
       Enum.reduce(state.cache, %{}, fn {key, _value}, acc ->
-        type = key |> String.split(":") |> List.first()
+        type = key |> String.split(":") List.first()
         Map.update(acc, type, 1, &(&1 + 1))
       end)
 
@@ -250,10 +249,10 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache do
 
     age_distribution =
       state.cache
-      |> Enum.map(fn {_key, %{stored_at: stored_at}} ->
+    Enum.map(fn {_key, %{stored_at: stored_at}} ->
         DateTime.diff(now, stored_at, :second)
       end)
-      |> calculate_age_stats()
+      calculate_age_stats()
 
     detailed_metrics = %{
       basic_stats: state.stats,
@@ -290,7 +289,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache do
           state.cache
         end,
         cache_key,
-        cache_entry
+    cache_entry
       )
 
     evictions = if map_size(state.cache) >= @max_cache_size, do: 100, else: 0
@@ -329,10 +328,10 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache do
     # Remove all cache entries of this type
     new_cache =
       state.cache
-      |> Enum.reject(fn {key, _value} ->
+    Enum.reject(fn {key, _value} ->
         String.starts_with?(key, cache_type)
       end)
-      |> Enum.into(%{})
+    Enum.into(%{})
 
     new_state = %{state | cache: new_cache}
     {:noreply, new_state}
@@ -367,10 +366,10 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache do
 
     new_cache =
       state.cache
-      |> Enum.reject(fn {_key, %{expires_at: expires_at}} ->
+    Enum.reject(fn {_key, %{expires_at: expires_at}} ->
         DateTime.after?(now, expires_at)
       end)
-      |> Enum.into(%{})
+    Enum.into(%{})
 
     cleaned_count = map_size(state.cache) - map_size(new_cache)
 
@@ -406,9 +405,9 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache do
   defp evict_oldest_entries(cache, count_to_evict) do
     # Sort by stored_at timestamp and remove oldest entries
     cache
-    |> Enum.sort_by(fn {_key, %{stored_at: stored_at}} -> stored_at end)
-    |> Enum.drop(count_to_evict)
-    |> Enum.into(%{})
+    Enum.sort_by(fn {_key, %{stored_at: stored_at}} -> stored_at end)
+    Enum.drop(count_to_evict)
+    Enum.into(%{})
   end
 
   defp estimate_data_size(data) do
@@ -437,9 +436,8 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache do
 
   defp estimate_total_memory_usage(cache) do
     cache
-    |> Enum.map(fn {_key, entry} -> estimate_data_size(entry.data) end)
-    |> Enum.filter(&is_integer/1)
-    |> Enum.sum()
+    Enum.map(fn {_key, entry} -> estimate_data_size(entry.data) end)
+    Enum.filter(&is_integer/1) |> Enum.sum()
   end
 
   # Public API functions moved after GenServer implementation

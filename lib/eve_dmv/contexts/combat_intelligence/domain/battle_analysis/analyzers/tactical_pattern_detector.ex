@@ -46,13 +46,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
           timeline
           |> Enum.filter(&(&1.isk_value >= threshold))
           |> Enum.map(fn event ->
-            %{
-              type: :high_value_kill,
-              timestamp: event.timestamp,
-              isk_value: event.isk_value,
-              victim: event.victim
-            }
-          end)
+          %{
+            type: :high_value_kill,
+            timestamp: event.timestamp,
+            isk_value: event.isk_value,
+            victim: event.victim
+          }
+        end)
 
         moments ++ high_value_kills
       else
@@ -89,10 +89,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
       # Group kills into 2-minute windows
       windows =
         timeline
-        |> Enum.chunk_by(fn event ->
-          div(DateTime.to_unix(event.timestamp), 120)
-        end)
-        |> Enum.filter(fn window -> length(window) > 0 end)
+
+      Enum.chunk_by(fn event ->
+        div(DateTime.to_unix(event.timestamp), 120)
+      end)
+
+      Enum.filter(fn window -> length(window) > 0 end)
 
       # Calculate kill rates for each side per window
       window_stats =
@@ -120,19 +122,22 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
       # Find momentum shifts
       turning_points =
         window_stats
-        |> Enum.chunk_every(2, 1, :discard)
-        |> Enum.filter(fn [prev, curr] ->
-          # Momentum reversed
-          (prev.momentum > 0 and curr.momentum < 0) or
-            (prev.momentum < 0 and curr.momentum > 0)
-        end)
-        |> Enum.map(fn [_prev, curr] ->
-          %{
-            type: :momentum_shift,
-            timestamp: curr.timestamp,
-            new_momentum: curr.momentum
-          }
-        end)
+
+      Enum.chunk_every(2, 1, :discard)
+
+      Enum.filter(fn [prev, curr] ->
+        # Momentum reversed
+        (prev.momentum > 0 and curr.momentum < 0) or
+          (prev.momentum < 0 and curr.momentum > 0)
+      end)
+
+      Enum.map(fn [_prev, curr] ->
+        %{
+          type: :momentum_shift,
+          timestamp: curr.timestamp,
+          new_momentum: curr.momentum
+        }
+      end)
 
       turning_points
     else
@@ -166,10 +171,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
       # Group kills by 30-second windows
       windows =
         timeline
-        |> Enum.chunk_by(fn event ->
-          div(DateTime.to_unix(event.timestamp), 30)
-        end)
-        |> Enum.filter(fn window -> length(window) > 1 end)
+
+      Enum.chunk_by(fn event ->
+        div(DateTime.to_unix(event.timestamp), 30)
+      end)
+
+      Enum.filter(fn window -> length(window) > 1 end)
 
       if Enum.empty?(windows) do
         %{
@@ -248,12 +255,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
       # Identify priority targets (logistics, fleet commanders, high-value ships)
       priority_kills =
         timeline
-        |> Enum.filter(fn event ->
-          ship_class = classify_ship(event.victim.ship_type_id)
-          # 1B+ ISK
-          ship_class in [:logistics, :strategic_cruiser, :capital] or
-            event.isk_value > 1_000_000_000
-        end)
+
+      Enum.filter(fn event ->
+        ship_class = classify_ship(event.victim.ship_type_id)
+        # 1B+ ISK
+        ship_class in [:logistics, :strategic_cruiser, :capital] or
+          event.isk_value > 1_000_000_000
+      end)
 
       priority_ratio =
         if length(timeline) > 0 do
@@ -265,9 +273,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
       # Calculate target switching rate
       target_switches =
         timeline
-        |> Enum.map(& &1.victim.character_id)
-        |> Enum.chunk_every(2, 1, :discard)
-        |> Enum.count(fn [prev, curr] -> prev != curr end)
+
+      Enum.map(& &1.victim.character_id)
+      Enum.chunk_every(2, 1, :discard)
+      Enum.count(fn [prev, curr] -> prev != curr end)
 
       switching_rate =
         if length(timeline) > 1 do
@@ -295,15 +304,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
     # Find windows with high kill concentration
     alpha_strikes =
       windows
-      |> Enum.filter(fn window -> length(window) >= 3 end)
-      |> Enum.map(fn window ->
-        %{
-          pattern: :alpha_strike,
-          timestamp: List.first(window).timestamp,
-          kills: length(window),
-          duration_seconds: 30
-        }
-      end)
+
+    Enum.filter(fn window -> length(window) >= 3 end)
+
+    Enum.map(fn window ->
+      %{
+        pattern: :alpha_strike,
+        timestamp: List.first(window).timestamp,
+        kills: length(window),
+        duration_seconds: 30
+      }
+    end)
 
     alpha_strikes
   end
@@ -323,22 +334,24 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
 
       kiting_patterns =
         time_windows
-        # Look at 3-window sequences
-        |> Enum.chunk_every(3, 1, :discard)
-        |> Enum.filter(&detect_kiting_sequence/1)
-        |> Enum.map(fn [first_window, _mid_window, last_window] ->
-          %{
-            pattern: :kiting,
-            start_timestamp: List.first(first_window).timestamp,
-            end_timestamp: List.last(last_window).timestamp,
-            duration_seconds:
-              DateTime.diff(
-                List.last(last_window).timestamp,
-                List.first(first_window).timestamp
-              ),
-            characteristic: "Sustained range advantage with minimal reciprocal damage"
-          }
-        end)
+
+      # Look at 3-window sequences
+      Enum.chunk_every(3, 1, :discard)
+      Enum.filter(&detect_kiting_sequence/1)
+
+      Enum.map(fn [first_window, _mid_window, last_window] ->
+        %{
+          pattern: :kiting,
+          start_timestamp: List.first(first_window).timestamp,
+          end_timestamp: List.last(last_window).timestamp,
+          duration_seconds:
+            DateTime.diff(
+              List.last(last_window).timestamp,
+              List.first(first_window).timestamp
+            ),
+          characteristic: "Sustained range advantage with minimal reciprocal damage"
+        }
+      end)
 
       kiting_patterns
     end
@@ -359,34 +372,38 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
 
       brawling_patterns =
         time_windows
-        |> Enum.filter(&detect_brawling_window/1)
-        |> Enum.chunk_by(fn window ->
-          # Group consecutive brawling windows
-          first_kill = List.first(window)
-          # 2-minute chunks
-          div(DateTime.to_unix(first_kill.timestamp), 120)
-        end)
-        # At least 2 consecutive windows
-        |> Enum.filter(fn window_group -> length(window_group) >= 2 end)
-        |> Enum.map(fn window_group ->
-          first_window = List.first(window_group)
-          last_window = List.last(window_group)
 
-          all_kills = Enum.flat_map(window_group, & &1)
+      Enum.filter(&detect_brawling_window/1)
 
-          %{
-            pattern: :brawling,
-            start_timestamp: List.first(first_window).timestamp,
-            end_timestamp: List.last(last_window).timestamp,
-            duration_seconds:
-              DateTime.diff(
-                List.last(last_window).timestamp,
-                List.first(first_window).timestamp
-              ),
-            intensity: length(all_kills) / max(1, length(window_group)),
-            characteristic: "High intensity close-range combat with reciprocal losses"
-          }
-        end)
+      Enum.chunk_by(fn window ->
+        # Group consecutive brawling windows
+        first_kill = List.first(window)
+        # 2-minute chunks
+        div(DateTime.to_unix(first_kill.timestamp), 120)
+      end)
+
+      # At least 2 consecutive windows
+      Enum.filter(fn window_group -> length(window_group) >= 2 end)
+
+      Enum.map(fn window_group ->
+        first_window = List.first(window_group)
+        last_window = List.last(window_group)
+
+        all_kills = Enum.flat_map(window_group, & &1)
+
+        %{
+          pattern: :brawling,
+          start_timestamp: List.first(first_window).timestamp,
+          end_timestamp: List.last(last_window).timestamp,
+          duration_seconds:
+            DateTime.diff(
+              List.last(last_window).timestamp,
+              List.first(first_window).timestamp
+            ),
+          intensity: length(all_kills) / max(1, length(window_group)),
+          characteristic: "High intensity close-range combat with reciprocal losses"
+        }
+      end)
 
       brawling_patterns
     end
@@ -396,7 +413,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
 
   defp group_timeline_by_windows(timeline, window_seconds) do
     timeline
-    |> Enum.group_by(fn event ->
+
+    Enum.group_by(fn event ->
       div(DateTime.to_unix(event.timestamp), window_seconds)
     end)
     |> Map.values()
@@ -491,54 +509,57 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
       # Find gaps of more than 5 minutes between kills
       phases =
         timeline
-        |> Enum.chunk_while(
-          [],
-          fn event, acc ->
-            case acc do
-              [] ->
-                {:cont, [event]}
 
-              _ ->
-                last_event = List.first(acc)
-                gap_seconds = DateTime.diff(event.timestamp, last_event.timestamp)
+      Enum.chunk_while(
+        [],
+        fn event, acc ->
+          case acc do
+            [] ->
+              {:cont, [event]}
 
-                # 5 minute gap
-                if gap_seconds > 300 do
-                  {:cont, Enum.reverse(acc), [event]}
-                else
-                  {:cont, [event | acc]}
-                end
-            end
-          end,
-          fn
-            [] -> {:cont, []}
-            acc -> {:cont, Enum.reverse(acc), []}
+            _ ->
+              last_event = List.first(acc)
+              gap_seconds = DateTime.diff(event.timestamp, last_event.timestamp)
+
+              # 5 minute gap
+              if gap_seconds > 300 do
+                {:cont, Enum.reverse(acc), [event]}
+              else
+                {:cont, [event | acc]}
+              end
           end
-        )
-        |> Enum.reject(&Enum.empty?/1)
-        |> Enum.with_index(1)
-        |> Enum.map(fn {phase_events, index} ->
-          %{
-            phase_number: index,
-            start_time: List.first(phase_events).timestamp,
-            end_time: List.last(phase_events).timestamp,
-            duration_seconds:
-              DateTime.diff(
-                List.last(phase_events).timestamp,
-                List.first(phase_events).timestamp
-              ),
-            kills: length(phase_events),
-            intensity:
-              length(phase_events) /
-                max(
-                  DateTime.diff(
-                    List.last(phase_events).timestamp,
-                    List.first(phase_events).timestamp
-                  ) / 60,
-                  1
-                )
-          }
-        end)
+        end,
+        fn
+          [] -> {:cont, []}
+          acc -> {:cont, Enum.reverse(acc), []}
+        end
+      )
+
+      Enum.reject(&Enum.empty?/1)
+      Enum.with_index(1)
+
+      Enum.map(fn {phase_events, index} ->
+        %{
+          phase_number: index,
+          start_time: List.first(phase_events).timestamp,
+          end_time: List.last(phase_events).timestamp,
+          duration_seconds:
+            DateTime.diff(
+              List.last(phase_events).timestamp,
+              List.first(phase_events).timestamp
+            ),
+          kills: length(phase_events),
+          intensity:
+            length(phase_events) /
+              max(
+                DateTime.diff(
+                  List.last(phase_events).timestamp,
+                  List.first(phase_events).timestamp
+                ) / 60,
+                1
+              )
+        }
+      end)
 
       phases
     end
@@ -552,48 +573,53 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
       # Calculate kills per minute in 3-minute windows
       intensities =
         timeline
-        |> Enum.chunk_every(3, 1, :discard)
-        |> Enum.map(fn window ->
-          duration_minutes =
-            DateTime.diff(
-              List.last(window).timestamp,
-              List.first(window).timestamp
-            ) / 60
 
-          %{
-            # Middle of window
-            timestamp: Enum.at(window, 1).timestamp,
-            kills_per_minute:
-              if(duration_minutes > 0, do: length(window) / duration_minutes, else: 0)
-          }
-        end)
+      Enum.chunk_every(3, 1, :discard)
+
+      Enum.map(fn window ->
+        duration_minutes =
+          DateTime.diff(
+            List.last(window).timestamp,
+            List.first(window).timestamp
+          ) / 60
+
+        %{
+          # Middle of window
+          timestamp: Enum.at(window, 1).timestamp,
+          kills_per_minute:
+            if(duration_minutes > 0, do: length(window) / duration_minutes, else: 0)
+        }
+      end)
 
       # Find significant intensity changes (>50% change)
       intensity_changes =
         intensities
-        |> Enum.chunk_every(2, 1, :discard)
-        |> Enum.filter(fn [prev, curr] ->
-          change_ratio =
-            if prev.kills_per_minute > 0 do
-              abs(curr.kills_per_minute - prev.kills_per_minute) / prev.kills_per_minute
-            else
-              1.0
-            end
 
-          change_ratio > 0.5
-        end)
-        |> Enum.map(fn [prev, curr] ->
-          %{
-            timestamp: curr.timestamp,
-            previous_intensity: Float.round(prev.kills_per_minute, 2),
-            new_intensity: Float.round(curr.kills_per_minute, 2),
-            change_type:
-              if(curr.kills_per_minute > prev.kills_per_minute,
-                do: :escalation,
-                else: :deescalation
-              )
-          }
-        end)
+      Enum.chunk_every(2, 1, :discard)
+
+      Enum.filter(fn [prev, curr] ->
+        change_ratio =
+          if prev.kills_per_minute > 0 do
+            abs(curr.kills_per_minute - prev.kills_per_minute) / prev.kills_per_minute
+          else
+            1.0
+          end
+
+        change_ratio > 0.5
+      end)
+
+      Enum.map(fn [prev, curr] ->
+        %{
+          timestamp: curr.timestamp,
+          previous_intensity: Float.round(prev.kills_per_minute, 2),
+          new_intensity: Float.round(curr.kills_per_minute, 2),
+          change_type:
+            if(curr.kills_per_minute > prev.kills_per_minute,
+              do: :escalation,
+              else: :deescalation
+            )
+        }
+      end)
 
       intensity_changes
     end

@@ -149,9 +149,9 @@ defmodule EveDmv.StaticData.SystemData do
     else
       unique_regions =
         system_ids
-        |> Enum.map(&estimate_region/1)
-        |> Enum.uniq()
-        |> length()
+
+      Enum.map(&estimate_region/1) |> Enum.uniq()
+      length()
 
       # Normalize to 0-1 scale (assume max ~50 accessible regions)
       min(1.0, unique_regions / 50.0)
@@ -169,9 +169,9 @@ defmodule EveDmv.StaticData.SystemData do
     else
       unique_types =
         system_ids
-        |> Enum.map(&classify_security_type/1)
-        |> Enum.uniq()
-        |> length()
+
+      Enum.map(&classify_security_type/1) |> Enum.uniq()
+      length()
 
       # Normalize to 0-1 scale (6 security types total)
       unique_types / 6.0

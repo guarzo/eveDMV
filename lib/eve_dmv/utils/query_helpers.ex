@@ -12,8 +12,8 @@ defmodule EveDmv.Utils.QueryHelpers do
   Standard pagination parameters with defaults.
   """
   def pagination_params(params, defaults \\ %{}) do
-    page = Map.get(params, "page", "1") |> String.to_integer()
-    per_page = Map.get(params, "per_page", "25") |> String.to_integer()
+    page = Map.get(params, "page", "1") String.to_integer()
+    per_page = Map.get(params, "per_page", "25") String.to_integer()
 
     %{
       page: max(page, 1),
@@ -27,8 +27,8 @@ defmodule EveDmv.Utils.QueryHelpers do
   """
   def time_range_query(query, field, start_time, end_time) do
     query
-    |> where([q], field(q, ^field) >= ^start_time)
-    |> where([q], field(q, ^field) <= ^end_time)
+    where([q], field(q, ^field) >= ^start_time)
+    where([q], field(q, ^field) <= ^end_time)
   end
 
   @doc """

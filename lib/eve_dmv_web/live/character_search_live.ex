@@ -13,12 +13,13 @@ defmodule EveDmvWeb.CharacterSearchLive do
   def mount(_params, _session, socket) do
     socket =
       socket
-      |> assign(:page_title, "Character Search")
-      |> assign(:search_query, "")
-      |> assign(:search_results, [])
-      |> assign(:searching, false)
-      |> assign(:error_message, nil)
-      |> assign(:recent_searches, load_recent_searches())
+
+    assign(:page_title, "Character Search")
+    assign(:search_query, "")
+    assign(:search_results, [])
+    assign(:searching, false)
+    assign(:error_message, nil)
+    assign(:recent_searches, load_recent_searches())
 
     {:ok, socket}
   end
@@ -27,10 +28,11 @@ defmodule EveDmvWeb.CharacterSearchLive do
   def handle_event("search", %{"search" => %{"query" => query}}, socket) do
     socket =
       socket
-      |> assign(:search_query, query)
-      |> assign(:searching, true)
-      |> assign(:error_message, nil)
-      |> perform_search(query)
+
+    assign(:search_query, query)
+    assign(:searching, true)
+    assign(:error_message, nil)
+    perform_search(query)
 
     {:noreply, socket}
   end
@@ -45,24 +47,24 @@ defmodule EveDmvWeb.CharacterSearchLive do
 
   defp perform_search(socket, query) when byte_size(query) < 3 do
     socket
-    |> assign(:searching, false)
-    |> assign(:search_results, [])
-    |> assign(:error_message, "Please enter at least 3 characters")
+    assign(:searching, false)
+    assign(:search_results, [])
+    assign(:error_message, "Please enter at least 3 characters")
   end
 
   defp perform_search(socket, query) do
     case search_characters(query) do
       {:ok, results} ->
         socket
-        |> assign(:searching, false)
-        |> assign(:search_results, results)
-        |> assign(:error_message, nil)
+        assign(:searching, false)
+        assign(:search_results, results)
+        assign(:error_message, nil)
 
       {:error, _reason} ->
         socket
-        |> assign(:searching, false)
-        |> assign(:search_results, [])
-        |> assign(:error_message, "Search failed. Please try again.")
+        assign(:searching, false)
+        assign(:search_results, [])
+        assign(:error_message, "Search failed. Please try again.")
     end
   end
 
@@ -107,9 +109,7 @@ defmodule EveDmvWeb.CharacterSearchLive do
   defp search_by_character_name(query) do
     # Enhanced character name search using database
     sanitized_query =
-      query
-      |> String.trim()
-      |> String.downcase()
+      String.trim(query) |> String.downcase()
 
     if String.length(sanitized_query) < 3 do
       {:error, :query_too_short}
@@ -120,10 +120,11 @@ defmodule EveDmvWeb.CharacterSearchLive do
           # Enhance results with additional info
           enhanced_results =
             results
-            |> Enum.map(&enhance_character_result/1)
-            |> Enum.sort_by(& &1.killmails_count, :desc)
-            # Limit to top 20 results
-            |> Enum.take(20)
+
+          Enum.map(&enhance_character_result/1)
+          Enum.sort_by(& &1.killmails_count, :desc)
+          # Limit to top 20 results
+          Enum.take(20)
 
           {:ok, enhanced_results}
 
@@ -156,7 +157,8 @@ defmodule EveDmvWeb.CharacterSearchLive do
     case Ecto.Adapters.SQL.query(EveDmv.Repo, query, []) do
       {:ok, %{rows: rows}} ->
         rows
-        |> Enum.map(fn [character_id, activity_count, last_seen] ->
+
+        Enum.map(fn [character_id, activity_count, last_seen] ->
           %{
             character_id: character_id,
             name: NameResolver.character_name(character_id),
@@ -165,7 +167,8 @@ defmodule EveDmvWeb.CharacterSearchLive do
             last_seen: last_seen
           }
         end)
-        |> Enum.filter(&(&1.name != "Unknown Character"))
+
+        Enum.filter(&(&1.name != "Unknown Character"))
 
       {:error, _} ->
         []
@@ -226,7 +229,7 @@ defmodule EveDmvWeb.CharacterSearchLive do
     # Search for characters in killmail data using name patterns
     search_query = """
     WITH character_activity AS (
-      SELECT
+    SELECT
         victim_character_id as character_id,
         victim_character_name as character_name,
         COUNT(*) as killmail_count,
@@ -236,7 +239,7 @@ defmodule EveDmvWeb.CharacterSearchLive do
         AND LOWER(victim_character_name) LIKE $1
       GROUP BY victim_character_id, victim_character_name
 
-      UNION
+    UNION
 
       SELECT DISTINCT
         (attacker->>'character_id')::bigint as character_id,
@@ -268,16 +271,18 @@ defmodule EveDmvWeb.CharacterSearchLive do
       {:ok, %{rows: rows}} ->
         results =
           rows
-          |> Enum.map(fn [character_id, character_name, killmail_count, last_seen] ->
-            %{
-              character_id: character_id,
-              name: character_name || NameResolver.character_name(character_id),
-              killmails_count: killmail_count,
-              last_seen: last_seen
-            }
-          end)
-          |> Enum.filter(&(&1.character_id != nil))
-          |> Enum.uniq_by(& &1.character_id)
+
+        Enum.map(fn [character_id, character_name, killmail_count, last_seen] ->
+          %{
+            character_id: character_id,
+            name: character_name || NameResolver.character_name(character_id),
+            killmails_count: killmail_count,
+            last_seen: last_seen
+          }
+        end)
+
+        Enum.filter(&(&1.character_id != nil))
+        Enum.uniq_by(& &1.character_id)
 
         {:ok, results}
 
@@ -292,13 +297,13 @@ defmodule EveDmvWeb.CharacterSearchLive do
     character_info = get_character_additional_info(result.character_id)
 
     result
-    |> Map.put(:portrait_url, character_portrait(result.character_id))
-    |> Map.put(:corporation_name, character_info.corporation_name)
-    |> Map.put(:alliance_name, character_info.alliance_name)
-    |> Map.put(:security_status, character_info.security_status)
-    |> Map.put(:kills, character_info.kills)
-    |> Map.put(:deaths, character_info.deaths)
-    |> Map.put(:efficiency, calculate_efficiency(character_info.kills, character_info.deaths))
+    Map.put(:portrait_url, character_portrait(result.character_id))
+    Map.put(:corporation_name, character_info.corporation_name)
+    Map.put(:alliance_name, character_info.alliance_name)
+    Map.put(:security_status, character_info.security_status)
+    Map.put(:kills, character_info.kills)
+    Map.put(:deaths, character_info.deaths)
+    Map.put(:efficiency, calculate_efficiency(character_info.kills, character_info.deaths))
   end
 
   defp estimate_security_status(kills, deaths) do

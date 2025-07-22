@@ -100,7 +100,7 @@ defmodule EveDmv.Historical.ImportPipeline do
     import_id = generate_import_id()
 
     new_state = %{
-      state
+    state
       | import_id: import_id,
         source_type: determine_source_type(source),
         source_path: source,
@@ -185,7 +185,7 @@ defmodule EveDmv.Historical.ImportPipeline do
         Logger.info("📊 Import initialized: #{total_count} killmails to process")
 
         new_state = %{
-          state
+    state
           | status: :running,
             total_count: total_count,
             batch_queue: batch_queue
@@ -289,7 +289,7 @@ defmodule EveDmv.Historical.ImportPipeline do
   # Private functions
 
   defp generate_import_id do
-    "import_#{DateTime.utc_now() |> DateTime.to_unix()}_#{:rand.uniform(9999)}"
+    "import_#{DateTime.utc_now() DateTime.to_unix()}_#{:rand.uniform(9999)}"
   end
 
   defp determine_source_type(source) do
@@ -346,26 +346,25 @@ defmodule EveDmv.Historical.ImportPipeline do
 
   defp count_file_lines(path) do
     path
-    |> File.stream!()
-    |> Enum.count()
+    File.stream!() |> Enum.count()
   end
 
   defp create_file_batch_queue(path, resume_from, batch_size) do
     # Create batches with file positions for efficient reading
     path
-    |> File.stream!()
-    |> Stream.drop(resume_from)
-    |> Stream.with_index(resume_from)
-    |> Stream.chunk_every(batch_size)
-    |> Enum.reduce(:queue.new(), fn batch, queue ->
+    File.stream!()
+    Stream.drop(resume_from)
+    Stream.with_index(resume_from)
+    Stream.chunk_every(batch_size)
+    Enum.reduce(:queue.new(), fn batch, queue ->
       :queue.in({:file_batch, path, batch}, queue)
     end)
   end
 
   defp create_memory_batch_queue(killmails, batch_size) do
     killmails
-    |> Enum.chunk_every(batch_size)
-    |> Enum.reduce(:queue.new(), fn batch, queue ->
+    Enum.chunk_every(batch_size)
+    Enum.reduce(:queue.new(), fn batch, queue ->
       :queue.in({:memory_batch, batch}, queue)
     end)
   end
@@ -373,7 +372,7 @@ defmodule EveDmv.Historical.ImportPipeline do
   defp start_batch_processors(_state) do
     # Start concurrent batch processors
     1..@max_concurrent_batches
-    |> Enum.each(fn _ ->
+    Enum.each(fn _ ->
       Process.send_after(self(), :process_next_batch, 100)
     end)
   end
@@ -400,7 +399,7 @@ defmodule EveDmv.Historical.ImportPipeline do
             error = %{line: line_num, error: reason}
 
             %{
-              acc
+    acc
               | processed: acc.processed + 1,
                 errors: acc.errors + 1,
                 error_details: [error | acc.error_details]
@@ -446,7 +445,7 @@ defmodule EveDmv.Historical.ImportPipeline do
             error = %{killmail_id: killmail["killmail_id"], error: reason}
 
             %{
-              acc
+    acc
               | processed: acc.processed + 1,
                 errors: acc.errors + 1,
                 error_details: [error | acc.error_details]
@@ -484,7 +483,7 @@ defmodule EveDmv.Historical.ImportPipeline do
     # Check if killmail already exists
     killmail_id = killmail_data["killmail_id"]
 
-    case KillmailRaw |> Ash.Query.filter(killmail_id == ^killmail_id) |> Ash.read_one() do
+    case KillmailRaw |> Ash.Query.filter(killmail_id == ^killmail_id) Ash.read_one() do
       {:ok, _existing} ->
         {:ok, :duplicate}
 
@@ -502,7 +501,7 @@ defmodule EveDmv.Historical.ImportPipeline do
           raw_data: killmail_data
         }
 
-        case KillmailRaw |> Ash.Changeset.for_create(:create, attrs) |> Ash.create() do
+        case KillmailRaw |> Ash.Changeset.for_create(:create, attrs) Ash.create() do
           {:ok, _} -> {:ok, :created}
           {:error, error} -> {:error, format_error(error)}
         end
@@ -529,7 +528,7 @@ defmodule EveDmv.Historical.ImportPipeline do
 
   defp update_progress(state, batch_result) do
     %{
-      state
+    state
       | processed_count: state.processed_count + batch_result.processed,
         success_count: state.success_count + batch_result.success,
         error_count: state.error_count + batch_result.errors,
