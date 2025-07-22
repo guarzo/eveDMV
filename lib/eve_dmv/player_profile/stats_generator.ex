@@ -60,11 +60,11 @@ defmodule EveDmv.PlayerProfile.StatsGenerator do
       solo_losses: Map.get(combat_stats, :solo_losses, 0),
       gang_kills: calculate_gang_kills(combat_stats),
       gang_losses: calculate_gang_losses(combat_stats),
-      total_isk_destroyed: combat_stats |> Map.get(:isk_destroyed, 0) ensure_decimal(),
-      total_isk_lost: combat_stats |> Map.get(:isk_lost, 0) ensure_decimal(),
+      total_isk_destroyed: combat_stats |> Map.get(:isk_destroyed, 0) |> ensure_decimal(),
+      total_isk_lost: combat_stats |> Map.get(:isk_lost, 0) |> ensure_decimal(),
       danger_rating: extract_danger_rating(behavioral_patterns),
       ship_types_used: get_ship_types_count(ship_preferences),
-      avg_gang_size: behavioral_patterns |> Map.get(:avg_gang_size, 1.0) ensure_decimal(),
+      avg_gang_size: behavioral_patterns |> Map.get(:avg_gang_size, 1.0) |> ensure_decimal(),
       preferred_gang_size:
         determine_gang_preference(Map.get(behavioral_patterns, :avg_gang_size)),
       primary_activity: classify_activity(combat_stats, behavioral_patterns),
@@ -134,7 +134,7 @@ defmodule EveDmv.PlayerProfile.StatsGenerator do
   end
 
   defp determine_gang_preference(%Decimal{} = avg_gang_size) do
-    Decimal.to_float(avg_gang_size) determine_gang_preference()
+    Decimal.to_float(avg_gang_size) |> determine_gang_preference()
   end
 
   defp determine_gang_preference(_), do: "solo"
