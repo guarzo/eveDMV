@@ -84,8 +84,8 @@ defmodule EveDmv.Utils.Validation do
   Validate pagination parameters.
   """
   def validate_pagination(params) do
-    page = Map.get(params, "page", "1") String.to_integer()
-    per_page = Map.get(params, "per_page", "25") String.to_integer()
+    page = Map.get(params, "page", "1") |> String.to_integer()
+    per_page = Map.get(params, "per_page", "25") |> String.to_integer()
 
     cond do
       page < 1 -> {:error, "Page must be >= 1"}
