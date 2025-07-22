@@ -23,7 +23,7 @@ defmodule EveDmv.Telemetry.QueryMonitor do
       "eve-dmv-query-monitor",
       [:eve_dmv, :repo, :query],
       &__MODULE__.handle_event/4,
-    nil
+      nil
     )
 
     {:ok,
@@ -152,11 +152,11 @@ defmodule EveDmv.Telemetry.QueryMonitor do
     # Keep only recent executions within the window
     recent_executions =
       [%{timestamp: current_time, duration: duration} | pattern_executions]
-    Enum.filter(fn exec ->
+      |> Enum.filter(fn exec ->
         DateTime.diff(current_time, exec.timestamp, :millisecond) <= @query_pattern_window
       end)
       # Limit per pattern
-    Enum.take(50)
+      |> Enum.take(50)
 
     updated_patterns = Map.put(state.query_patterns, pattern_key, recent_executions)
 
@@ -189,7 +189,7 @@ defmodule EveDmv.Telemetry.QueryMonitor do
 
     {:noreply,
      %{
-    state
+       state
        | query_patterns: updated_patterns,
          execution_stats: updated_execution_stats,
          n_plus_one_alerts: n_plus_one_alerts
@@ -218,7 +218,7 @@ defmodule EveDmv.Telemetry.QueryMonitor do
     analysis = %{
       query_count: map_size(state.execution_stats),
       total_executions:
-        state.Map.values(execution_stats) |> Stream.map(& &1.count) Enum.sum(),
+        state.execution_stats |> Map.values() |> Stream.map(& &1.count) |> Enum.sum(),
       slowest_patterns: get_slowest_patterns(state.execution_stats),
       most_frequent: get_most_frequent_patterns(state.execution_stats),
       n_plus_one_count: length(state.n_plus_one_alerts),
@@ -250,9 +250,9 @@ defmodule EveDmv.Telemetry.QueryMonitor do
   def handle_call({:get_frequent_queries, limit}, _from, state) do
     frequent_queries =
       state.execution_stats
-    Enum.sort_by(fn {_, stats} -> stats.count end, :desc)
-    Enum.take(limit)
-    Enum.map(fn {query, stats} ->
+      |> Enum.sort_by(fn {_, stats} -> stats.count end, :desc)
+      |> Enum.take(limit)
+      |> Enum.map(fn {query, stats} ->
         Map.put(stats, :query, query)
       end)
 
@@ -281,15 +281,15 @@ defmodule EveDmv.Telemetry.QueryMonitor do
   defp normalize_query(query) when is_binary(query) do
     query
     # Remove specific values and replace with placeholders
-    String.replace(~r/\$\d+|\?\d*/, "?")
-    String.replace(~r/IN\s*\([^)]+\)/i, "IN (?)")
-    String.replace(~r/VALUES\s*\([^)]+\)/i, "VALUES (?)")
-    String.replace(~r/=\s*\d+/, "= ?")
-    String.replace(~r/=\s*'[^']*'/, "= ?")
-    String.replace(~r/LIMIT\s+\d+/i, "LIMIT ?")
-    String.replace(~r/OFFSET\s+\d+/i, "OFFSET ?")
+    |> String.replace(~r/\$\d+|\?\d*/, "?")
+    |> String.replace(~r/IN\s*\([^)]+\)/i, "IN (?)")
+    |> String.replace(~r/VALUES\s*\([^)]+\)/i, "VALUES (?)")
+    |> String.replace(~r/=\s*\d+/, "= ?")
+    |> String.replace(~r/=\s*'[^']*'/, "= ?")
+    |> String.replace(~r/LIMIT\s+\d+/i, "LIMIT ?")
+    |> String.replace(~r/OFFSET\s+\d+/i, "OFFSET ?")
     # Normalize whitespace
-    String.replace(~r/\s+/, " ") |> String.trim()
+    |> String.replace(~r/\s+/, " ") |> String.trim()
   end
 
   defp normalize_query(_), do: "Unknown"
@@ -329,7 +329,7 @@ defmodule EveDmv.Telemetry.QueryMonitor do
         current_alerts
       end
     else
-    current_alerts
+      current_alerts
     end
   end
 
@@ -342,18 +342,18 @@ defmodule EveDmv.Telemetry.QueryMonitor do
 
   defp get_slowest_patterns(execution_stats) do
     execution_stats
-    Enum.sort_by(fn {_, stats} -> stats.avg_duration end, :desc)
-    Enum.take(10)
-    Enum.map(fn {query, stats} ->
+    |> Enum.sort_by(fn {_, stats} -> stats.avg_duration end, :desc)
+    |> Enum.take(10)
+    |> Enum.map(fn {query, stats} ->
       Map.put(stats, :query, query)
     end)
   end
 
   defp get_most_frequent_patterns(execution_stats) do
     execution_stats
-    Enum.sort_by(fn {_, stats} -> stats.count end, :desc)
-    Enum.take(10)
-    Enum.map(fn {query, stats} ->
+    |> Enum.sort_by(fn {_, stats} -> stats.count end, :desc)
+    |> Enum.take(10)
+    |> Enum.map(fn {query, stats} ->
       Map.put(stats, :query, query)
     end)
   end
@@ -364,8 +364,8 @@ defmodule EveDmv.Telemetry.QueryMonitor do
     # Check for queries with high average duration
     slow_avg_queries =
       state.execution_stats
-    Enum.filter(fn {_, stats} -> stats.avg_duration > @slow_query_threshold / 2 end)
-    then(&length/1)
+      |> Enum.filter(fn {_, stats} -> stats.avg_duration > @slow_query_threshold / 2 end)
+      |> then(&length/1)
 
     issues_with_slow =
       if slow_avg_queries > 0,
@@ -375,8 +375,8 @@ defmodule EveDmv.Telemetry.QueryMonitor do
     # Check for highly frequent queries
     frequent_queries =
       state.execution_stats
-    Enum.filter(fn {_, stats} -> stats.count > 100 end)
-    then(&length/1)
+      |> Enum.filter(fn {_, stats} -> stats.count > 100 end)
+      |> then(&length/1)
 
     issues_with_frequent =
       if frequent_queries > 0,
@@ -392,10 +392,10 @@ defmodule EveDmv.Telemetry.QueryMonitor do
     # Check for queries with high duration variance
     high_variance_queries =
       state.execution_stats
-    Enum.filter(fn {_, stats} ->
+      |> Enum.filter(fn {_, stats} ->
         stats.max_duration > stats.min_duration * 10 and stats.count > 5
       end)
-    then(&length/1)
+      |> then(&length/1)
 
     final_issues =
       if high_variance_queries > 0,
