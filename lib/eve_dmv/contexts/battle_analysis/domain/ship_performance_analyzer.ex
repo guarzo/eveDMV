@@ -1613,8 +1613,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp extract_combat_events(character_id, combat_logs) do
     combat_logs
-    Enum.filter(&(&1.pilot_name == character_id || &1.character_id == character_id))
-    Enum.flat_map(&(&1.parsed_data[:events] || []))
+    |> Enum.filter(&(&1.pilot_name == character_id || &1.character_id == character_id))
+    |> Enum.flat_map(&(&1.parsed_data[:events] || []))
   end
 
   defp calculate_damage_dealt(character_id, killmails, combat_events) do
@@ -1662,8 +1662,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp count_kills(character_id, killmails) do
     killmails
-
-    Enum.count(fn km ->
+    |> Enum.count(fn km ->
       Enum.any?(
         km.raw_data["attackers"] || [],
         &(&1["character_id"] == character_id && &1["final_blow"])
@@ -1727,10 +1726,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp count_module_activations(combat_events) do
     combat_events
-    Enum.filter(&(&1[:type] == :ewar))
-    Enum.group_by(& &1[:ewar_type])
-    Enum.map(fn {type, events} -> {type, length(events)} end)
-    Enum.into(%{})
+    |> Enum.filter(&(&1[:type] == :ewar))
+    |> Enum.group_by(& &1[:ewar_type])
+    |> Enum.map(fn {type, events} -> {type, length(events)} end)
+    |> Enum.into(%{})
   end
 
   defp analyze_movement(_character_id, _battle_data) do
