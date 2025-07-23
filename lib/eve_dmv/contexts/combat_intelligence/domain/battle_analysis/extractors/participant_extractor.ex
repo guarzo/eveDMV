@@ -112,8 +112,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
     # TODO: Implement detailed activity tracking
 
     participants
-
-    Enum.map(fn participant ->
+    |> Enum.map(fn participant ->
       activity = %{
         kills: count_participant_kills(participant, killmails),
         deaths: count_participant_deaths(participant, killmails),
@@ -203,9 +202,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
 
   defp group_by_corporation(participants) do
     participants
-    Enum.group_by(& &1.corporation_id)
-
-    Enum.map(fn {corp_id, corp_participants} ->
+    |> Enum.group_by(& &1.corporation_id)
+    |> Enum.map(fn {corp_id, corp_participants} ->
       {corp_id,
        %{
          name: List.first(corp_participants).corporation_name,
@@ -214,16 +212,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
          alliance_id: List.first(corp_participants).alliance_id
        }}
     end)
-
-    Enum.into(%{})
+    |> Enum.into(%{})
   end
 
   defp group_by_alliance(participants) do
     participants
-    Enum.filter(& &1.alliance_id)
-    Enum.group_by(& &1.alliance_id)
-
-    Enum.map(fn {alliance_id, alliance_participants} ->
+    |> Enum.filter(& &1.alliance_id)
+    |> Enum.group_by(& &1.alliance_id)
+    |> Enum.map(fn {alliance_id, alliance_participants} ->
       {alliance_id,
        %{
          name: List.first(alliance_participants).alliance_name,
@@ -232,8 +228,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
          corporations: Enum.uniq_by(alliance_participants, & &1.corporation_id)
        }}
     end)
-
-    Enum.into(%{})
+    |> Enum.into(%{})
   end
 
   defp identify_coalitions(_participants) do

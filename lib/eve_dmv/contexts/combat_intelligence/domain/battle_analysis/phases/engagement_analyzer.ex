@@ -317,10 +317,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Engage
   # Helper functions for calculations
   defp calculate_time_gaps_between_kills(killmails) do
     killmails
-    Enum.sort_by(& &1.killmail_time)
-    Enum.chunk_every(2, 1, :discard)
-
-    Enum.map(fn [first, second] ->
+    |> Enum.sort_by(& &1.killmail_time)
+    |> Enum.chunk_every(2, 1, :discard)
+    |> Enum.map(fn [first, second] ->
       DateTime.diff(second.killmail_time, first.killmail_time, :second)
     end)
   end
