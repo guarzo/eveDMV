@@ -536,19 +536,18 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
     else
       ship_roles =
         killmails
+        |> Enum.flat_map(fn km ->
+          case km.raw_data do
+            %{"attackers" => attackers} when is_list(attackers) ->
+              attackers
+              |> Enum.filter(&(&1["ship_type_id"] != nil))
+              |> Enum.map(&classify_ship_role(&1["ship_type_id"]))
 
-      Enum.flat_map(fn km ->
-        case km.raw_data do
-          %{"attackers" => attackers} when is_list(attackers) ->
-            attackers
-            Enum.filter(&(&1["ship_type_id"] != nil))
-            Enum.map(&classify_ship_role(&1["ship_type_id"]))
-
-          _ ->
-            []
-        end
-      end)
-      |> Enum.frequencies()
+            _ ->
+              []
+          end
+        end)
+        |> Enum.frequencies()
 
       role_coverage = calculate_role_coverage(ship_roles)
       balance_score = calculate_composition_balance(ship_roles)
