@@ -359,9 +359,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
     # Analyze if kills show good fleet composition (diverse ship types)
     ship_types_in_kills =
       attacker_killmails
-
-    Enum.map(& &1.victim_ship_type_id) |> Enum.uniq()
-    length()
+      |> Enum.map(& &1.victim_ship_type_id)
+      |> Enum.uniq()
+      |> length()
 
     if length(attacker_killmails) > 0 do
       diversity_ratio = ship_types_in_kills / length(attacker_killmails)
