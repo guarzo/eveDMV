@@ -231,8 +231,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
 
   defp extract_killmail_timestamps(killmails) do
     killmails
-    Enum.map(& &1.killmail_time)
-    Enum.filter(&(&1 != nil))
+    |> Enum.map(& &1.killmail_time)
+    |> Enum.filter(&(&1 != nil))
   end
 
   defp analyze_hour_of_day_variety(timestamps) do
@@ -553,8 +553,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
 
   defp extract_system_locations(killmails) do
     killmails
-    Enum.map(& &1.solar_system_id)
-    Enum.filter(&(&1 != nil)) |> Enum.frequencies()
+    |> Enum.map(& &1.solar_system_id)
+    |> Enum.filter(&(&1 != nil))
+    |> Enum.frequencies()
   end
 
   defp calculate_location_diversity_entropy(systems) do

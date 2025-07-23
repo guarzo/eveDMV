@@ -278,8 +278,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
 
   defp validate_tags(tags) when is_list(tags) do
     tags
-    Enum.take(10)
-    Enum.map(&String.downcase/1) |> Enum.uniq()
+    |> Enum.take(10)
+    |> Enum.map(&String.downcase/1)
+    |> Enum.uniq()
   end
 
   defp validate_tags(_), do: []

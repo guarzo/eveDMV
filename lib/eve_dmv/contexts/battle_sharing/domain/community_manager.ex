@@ -316,10 +316,10 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.CommunityManager do
     category_representatives =
       categories
 
-    Enum.map(fn category ->
+    |> Enum.map(fn category ->
       candidates
-      Enum.filter(&(&1.featured_category == category))
-      Enum.max_by(& &1.curation_metrics.overall_curation_score)
+      |> Enum.filter(&(&1.featured_category == category))
+      |> Enum.max_by(& &1.curation_metrics.overall_curation_score)
     end)
 
     # Fill remaining slots with highest-scoring reports
@@ -327,13 +327,12 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.CommunityManager do
 
     remaining_candidates =
       candidates
+      |> Enum.reject(&(&1 in category_representatives))
+      |> Enum.take(remaining_slots)
 
-    Enum.reject(&(&1 in category_representatives))
-    Enum.take(remaining_slots)
-
-    category_representatives ++ remaining_candidates
-    Enum.sort_by(& &1.curation_metrics.overall_curation_score, :desc)
-    Enum.take(max_results)
+    (category_representatives ++ remaining_candidates)
+    |> Enum.sort_by(& &1.curation_metrics.overall_curation_score, :desc)
+    |> Enum.take(max_results)
   end
 
   # Private helper functions for search

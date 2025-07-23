@@ -18,22 +18,20 @@ defmodule EveDmvWeb.KillmailLive do
       {killmail_id, ""} ->
         socket =
           socket
-
-        assign(:killmail_id, killmail_id)
-        assign(:killmail, nil)
-        assign(:loading, true)
-        assign(:error, nil)
-        assign(:export_format, "json")
-        load_killmail(killmail_id)
+          |> assign(:killmail_id, killmail_id)
+          |> assign(:killmail, nil)
+          |> assign(:loading, true)
+          |> assign(:error, nil)
+          |> assign(:export_format, "json")
+          |> load_killmail(killmail_id)
 
         {:ok, socket}
 
       _ ->
         socket =
           socket
-
-        assign(:error, "Invalid killmail ID")
-        assign(:loading, false)
+          |> assign(:error, "Invalid killmail ID")
+          |> assign(:loading, false)
 
         {:ok, socket}
     end
@@ -50,14 +48,12 @@ defmodule EveDmvWeb.KillmailLive do
           {:ok, {filename, content, content_type}} ->
             socket =
               socket
-
-            push_event("download_file", %{
-              filename: filename,
-              content: content,
-              content_type: content_type
-            })
-
-            put_flash(:info, "Export generated successfully")
+              |> push_event("download_file", %{
+                filename: filename,
+                content: content,
+                content_type: content_type
+              })
+              |> put_flash(:info, "Export generated successfully")
 
             {:noreply, socket}
 
