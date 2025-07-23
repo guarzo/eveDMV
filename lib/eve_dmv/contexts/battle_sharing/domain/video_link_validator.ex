@@ -147,25 +147,22 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
 
     results =
       urls
-
-    Enum.chunk_every(max_concurrent)
-
-    Enum.flat_map(fn batch ->
-      batch
-      Enum.map(&Task.async(fn -> validate_video_url(&1, options) end))
-      Enum.map(&Task.await(&1, timeout + 1000))
-    end)
+      |> Enum.chunk_every(max_concurrent)
+      |> Enum.flat_map(fn batch ->
+        batch
+        |> Enum.map(&Task.async(fn -> validate_video_url(&1, options) end))
+        |> Enum.map(&Task.await(&1, timeout + 1000))
+      end)
 
     successful_validations =
       results
-
-    Enum.filter(&match?({:ok, _}, &1))
-    Enum.map(&elem(&1, 1))
+      |> Enum.filter(&match?({:ok, _}, &1))
+      |> Enum.map(&elem(&1, 1))
 
     failed_validations =
       results
-
-    Enum.filter(&match?({:error, _}, &1)) |> Kernel.length()
+      |> Enum.filter(&match?({:error, _}, &1))
+      |> Kernel.length()
 
     Logger.info("""
     Batch video validation completed:
@@ -585,7 +582,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
   """
   def get_supported_platforms do
     @platforms
-    Enum.map(fn {platform, config} ->
+    |> Enum.map(fn {platform, config} ->
       %{
         platform: platform,
         name: config.name,

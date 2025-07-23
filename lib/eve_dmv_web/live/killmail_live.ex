@@ -79,9 +79,8 @@ defmodule EveDmvWeb.KillmailLive do
 
         socket =
           socket
-
-        push_event("copy_to_clipboard", %{text: zkb_url})
-        put_flash(:info, "zKillboard URL copied to clipboard")
+          |> push_event("copy_to_clipboard", %{text: zkb_url})
+          |> put_flash(:info, "zKillboard URL copied to clipboard")
 
         {:noreply, socket}
     end
@@ -93,29 +92,30 @@ defmodule EveDmvWeb.KillmailLive do
     task = Task.async(fn -> fetch_killmail_details(killmail_id) end)
 
     socket
-    assign(:loading_task, task)
-    assign(:loading, true)
+    |> assign(:loading_task, task)
+    |> assign(:loading, true)
   end
 
   @impl true
   def handle_info({ref, result}, socket) when socket.assigns.loading_task.ref == ref do
     Process.demonitor(ref, [:flush])
 
-    case result do
-      {:ok, killmail} ->
-        socket
-        assign(:killmail, killmail)
-        assign(:loading, false)
-        assign(:loading_task, nil)
+    socket =
+      case result do
+        {:ok, killmail} ->
+          socket
+          |> assign(:killmail, killmail)
+          |> assign(:loading, false)
+          |> assign(:loading_task, nil)
 
-      {:error, reason} ->
-        socket
-        assign(:error, reason)
-        assign(:loading, false)
-        assign(:loading_task, nil)
-    end
+        {:error, reason} ->
+          socket
+          |> assign(:error, reason)
+          |> assign(:loading, false)
+          |> assign(:loading_task, nil)
+      end
 
-    then(&{:noreply, &1})
+    {:noreply, socket}
   end
 
   @impl true
@@ -123,10 +123,9 @@ defmodule EveDmvWeb.KillmailLive do
     # Handle task crash
     socket =
       socket
-
-    assign(:error, "Failed to load killmail")
-    assign(:loading, false)
-    assign(:loading_task, nil)
+      |> assign(:error, "Failed to load killmail")
+      |> assign(:loading, false)
+      |> assign(:loading_task, nil)
 
     {:noreply, socket}
   end
@@ -135,10 +134,9 @@ defmodule EveDmvWeb.KillmailLive do
     try do
       query =
         KillmailRaw
-
-      new()
-      filter(killmail_id: killmail_id)
-      limit(1)
+        |> new()
+        |> filter(killmail_id: killmail_id)
+        |> limit(1)
 
       case Ash.read(query, domain: Api) do
         {:ok, [killmail]} ->
