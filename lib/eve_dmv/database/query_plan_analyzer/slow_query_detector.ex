@@ -332,10 +332,9 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
 
   defp find_top_offenders(slow_queries) do
     slow_queries
-    Enum.sort_by(& &1.total_time_ms, :desc)
-    Enum.take(5)
-
-    Enum.map(fn query ->
+    |> Enum.sort_by(& &1.total_time_ms, :desc)
+    |> Enum.take(5)
+    |> Enum.map(fn query ->
       %{
         query_snippet: String.slice(query.query, 0, 100),
         total_time_ms: query.total_time_ms,

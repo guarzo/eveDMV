@@ -388,8 +388,7 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
       |> Enum.into(%{})
 
     # Map each ship in fleet to its role data
-    fleet_ships
-    |> Enum.map(fn ship_type_id ->
+    Enum.map(fleet_ships, fn ship_type_id ->
       case Map.get(role_data_map, ship_type_id) do
         nil ->
           # No role data available, use default classification
@@ -522,8 +521,7 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
     total_ships = length(ship_role_data)
 
     logistics_count =
-      ship_role_data
-      |> Enum.count(fn ship -> ship.primary_role == "logistics" end)
+      Enum.count(ship_role_data, fn ship -> ship.primary_role == "logistics" end)
 
     logistics_ratio = if total_ships > 0, do: logistics_count / total_ships, else: 0.0
 
@@ -777,8 +775,7 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
 
   # Helper function to sum role scores from ship data
   defp sum_role_scores(ship_role_data) do
-    ship_role_data
-    |> Enum.reduce(%{}, fn ship_data, acc ->
+    Enum.reduce(ship_role_data, %{}, fn ship_data, acc ->
       case ship_data do
         %{role_distribution: roles} ->
           Enum.reduce(roles, acc, fn {role, score}, role_acc ->

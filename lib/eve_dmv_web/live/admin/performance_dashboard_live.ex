@@ -6,14 +6,14 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
 
   use EveDmvWeb, :live_view
 
-  alias EveDmv.Monitoring.PerformanceTracker
   alias EveDmv.Cache.QueryCache
+  alias EveDmv.Monitoring.PerformanceTracker
   require Logger
 
   # 5 seconds
   @refresh_interval 5_000
 
-  @impl true
+  @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     if connected?(socket) do
       :timer.send_interval(@refresh_interval, self(), :refresh_metrics)
@@ -31,12 +31,12 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
     {:ok, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info(:refresh_metrics, socket) do
     {:noreply, load_metrics(socket)}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("change_time_range", %{"range" => range}, socket) do
     time_range = String.to_existing_atom(range)
 
@@ -50,7 +50,7 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("change_threshold", %{"threshold" => threshold}, socket) do
     case Integer.parse(threshold) do
       {threshold_ms, _} ->
@@ -68,7 +68,7 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
     <div class="container mx-auto px-4 py-8">

@@ -103,14 +103,12 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   def compare_character_threats(character_ids) when is_list(character_ids) do
     threat_analyses =
       character_ids
-
-    Enum.map(fn id ->
-      case analyze_character_threat(id) do
-        {:ok, analysis} -> {id, analysis}
-      end
-    end)
-
-    Enum.sort_by(fn {_id, analysis} -> analysis.threat_score end, :desc)
+      |> Enum.map(fn id ->
+        case analyze_character_threat(id) do
+          {:ok, analysis} -> {id, analysis}
+        end
+      end)
+      |> Enum.sort_by(fn {_id, analysis} -> analysis.threat_score end, :desc)
 
     {:ok, threat_analyses}
   end
@@ -176,8 +174,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
 
     # Add ship intelligence to threat data
     threat_data
-    Map.put(:ship_specialization, format_ship_specialization(ship_intelligence))
-    Map.put(:dimensions, enhanced_dimensions)
+    |> Map.put(:ship_specialization, format_ship_specialization(ship_intelligence))
+    |> Map.put(:dimensions, enhanced_dimensions)
   end
 
   defp calculate_specialization_bonus(ship_intelligence) do
@@ -355,11 +353,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
       |> maybe_add_pattern(:opportunist, dimensions[:target_selection_variance] > 0.6)
 
     # Convert to pattern map with confidence scores
-    Enum.map(patterns, fn pattern ->
+    patterns
+    |> Enum.map(fn pattern ->
       {pattern, calculate_pattern_confidence(pattern, dimensions)}
     end)
-
-    Enum.into(%{})
+    |> Enum.into(%{})
   end
 
   defp maybe_add_pattern(patterns, pattern, true), do: [pattern | patterns]

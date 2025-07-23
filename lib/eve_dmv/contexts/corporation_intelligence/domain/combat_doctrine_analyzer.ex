@@ -255,21 +255,21 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
 
     # Fetch killmails where corporation members were involved
     victim_query =
-    KillmailRaw
-      new()
-    filter(victim_corporation_id: corporation_id)
-    filter(killmail_time: [gte: cutoff_date])
-    sort(killmail_time: :desc)
-    limit(500)
+      KillmailRaw
+      |> Ash.Query.new()
+      |> Ash.Query.filter(victim_corporation_id: corporation_id)
+      |> Ash.Query.filter(killmail_time: [gte: cutoff_date])
+      |> Ash.Query.sort(killmail_time: :desc)
+      |> Ash.Query.limit(500)
 
     # Fetch recent killmails to search for corporation as attackers
     attacker_query =
-    KillmailRaw
-      new()
-    filter(killmail_time: [gte: cutoff_date])
-    sort(killmail_time: :desc)
+      KillmailRaw
+      |> Ash.Query.new()
+      |> Ash.Query.filter(killmail_time: [gte: cutoff_date])
+      |> Ash.Query.sort(killmail_time: :desc)
       # Larger sample for attacker search
-    limit(2000)
+      |> Ash.Query.limit(2000)
 
     with {:ok, victim_killmails} <- Ash.read(victim_query, domain: Api),
          {:ok, potential_attacker_killmails} <- Ash.read(attacker_query, domain: Api) do

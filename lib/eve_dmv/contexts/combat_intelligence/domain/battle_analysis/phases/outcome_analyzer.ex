@@ -1078,14 +1078,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
     # Add general tactical improvements based on outcome
     final_recommendations =
       if outcome_analysis[:primary_factors] do
-        Enum.reduce(outcome_analysis.primary_factors, recommendations, fn factor, acc ->
-          if factor.impact < 0.5 do
-            recommendation = generate_factor_improvement(factor)
-            if recommendation, do: [recommendation | acc], else: acc
-          else
-            acc
-          end
-        end)
+        Enum.reduce(outcome_analysis.primary_factors, recommendations, &maybe_add_factor_recommendation/2)
       else
         recommendations
       end
@@ -1098,6 +1091,15 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
     end)
 
     Enum.take(5)
+  end
+
+  defp maybe_add_factor_recommendation(factor, acc) do
+    if factor.impact < 0.5 do
+      recommendation = generate_factor_improvement(factor)
+      if recommendation, do: [recommendation | acc], else: acc
+    else
+      acc
+    end
   end
 
   defp generate_strategic_adjustments(_outcome_analysis) do

@@ -30,7 +30,6 @@ defmodule EveDmv.Ash.Preparations.QuerySafety do
     limit = Keyword.get(opts, :limit, 1000)
 
     # Apply limit to query
-    query
-    |> Ash.Query.limit(min(limit, 10_000))
+    Ash.Query.limit(query, min(limit, 10_000))
   end
 end

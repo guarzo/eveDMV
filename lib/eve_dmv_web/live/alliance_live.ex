@@ -123,7 +123,7 @@ defmodule EveDmvWeb.AllianceLive do
           participants
           |> Enum.group_by(& &1.corporation_id)
           |> Enum.map(fn {corp_id, corp_participants} ->
-            corp_name = List.first(corp_participants) |> Map.get(:corporation_name, "Unknown")
+            corp_name = Map.get(List.first(corp_participants), :corporation_name, "Unknown")
             # Calculate corporation stats
             members =
               corp_participants
@@ -195,8 +195,8 @@ defmodule EveDmvWeb.AllianceLive do
         participants
         |> Enum.group_by(& &1.character_id)
         |> Enum.map(fn {character_id, participations} ->
-          character_name = List.first(participations) |> Map.get(:character_name, "Unknown")
-          corp_name = List.first(participations) |> Map.get(:corporation_name, "Unknown")
+          character_name = Map.get(List.first(participations), :character_name, "Unknown")
+          corp_name = Map.get(List.first(participations), :corporation_name, "Unknown")
           kills = Enum.count(participations, &(not &1.is_victim))
           losses = Enum.count(participations, & &1.is_victim)
 

@@ -93,12 +93,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
   defp fetch_victim_killmails(character_id, cutoff_date) do
     query =
       KillmailRaw
-
-    new()
-    filter(victim_character_id: character_id)
-    filter(killmail_time: [gte: cutoff_date])
-    sort(killmail_time: :desc)
-    limit(500)
+      |> Ash.Query.new()
+      |> Ash.Query.filter(victim_character_id: character_id)
+      |> Ash.Query.filter(killmail_time: [gte: cutoff_date])
+      |> Ash.Query.sort(killmail_time: :desc)
+      |> Ash.Query.limit(500)
 
     case Ash.read(query, domain: Api) do
       {:ok, killmails} ->
@@ -115,12 +114,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
     # Fetch recent killmails and filter for character as attacker
     query =
       KillmailRaw
-
-    new()
-    filter(killmail_time: [gte: cutoff_date])
-    sort(killmail_time: :desc)
-    # Larger sample for attacker search
-    limit(2000)
+      |> Ash.Query.new()
+      |> Ash.Query.filter(killmail_time: [gte: cutoff_date])
+      |> Ash.Query.sort(killmail_time: :desc)
+      # Larger sample for attacker search
+      |> Ash.Query.limit(2000)
 
     case Ash.read(query, domain: Api) do
       {:ok, potential_killmails} ->

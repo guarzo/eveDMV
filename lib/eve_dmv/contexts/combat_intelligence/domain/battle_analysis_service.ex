@@ -853,8 +853,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
             case km.raw_data do
               %{"attackers" => attackers} when is_list(attackers) ->
                 attackers
-                Enum.map(fn attacker -> attacker["character_id"] end)
-                Enum.filter(&(&1 != nil))
+                |> Enum.map(fn attacker -> attacker["character_id"] end)
+                |> Enum.filter(&(&1 != nil))
 
               _ ->
                 []
@@ -1672,8 +1672,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   defp extract_all_ships_from_composition(ship_composition) do
     # Extract all ships from various composition formats
     ship_composition
-
-    Enum.flat_map(fn
+    |> Enum.flat_map(fn
       {_side, %{ships: ships}} when is_list(ships) -> ships
       {_side, ships} when is_list(ships) -> ships
       {_side, %{composition: ships}} when is_list(ships) -> ships
@@ -2718,15 +2717,15 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     else
       first_half_avg =
         values
-
-      Enum.take(div(length(values), 2)) |> Enum.sum()
-      Kernel./(div(length(values), 2))
+        |> Enum.take(div(length(values), 2))
+        |> Enum.sum()
+        |> Kernel./(div(length(values), 2))
 
       second_half_avg =
         values
-
-      Enum.drop(div(length(values), 2)) |> Enum.sum()
-      Kernel./(length(values) - div(length(values), 2))
+        |> Enum.drop(div(length(values), 2))
+        |> Enum.sum()
+        |> Kernel./(length(values) - div(length(values), 2))
 
       change_percentage = abs(second_half_avg - first_half_avg) / max(1, first_half_avg) * 100
 
@@ -2779,15 +2778,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     # Calculate trend for categorical data like fleet sizes
     size_values =
       categories
-
-    Enum.map(fn
-      :micro_gang -> 1
-      :small_gang -> 2
-      :small_fleet -> 3
-      :medium_fleet -> 4
-      :large_fleet -> 5
-      _ -> 0
-    end)
+      |> Enum.map(fn
+        :micro_gang -> 1
+        :small_gang -> 2
+        :small_fleet -> 3
+        :medium_fleet -> 4
+        :large_fleet -> 5
+        _ -> 0
+      end)
 
     case calculate_usage_trend(size_values) do
       :increasing -> :escalating

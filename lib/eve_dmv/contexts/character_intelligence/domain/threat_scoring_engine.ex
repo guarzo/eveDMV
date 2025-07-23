@@ -183,20 +183,20 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     # Fetch killmails where character was victim
     victim_query =
       KillmailRaw
-    new()
-    filter(victim_character_id: character_id)
-    filter(killmail_time: [gte: cutoff_date])
-    sort(killmail_time: :desc)
+      |> Ash.Query.new()
+      |> Ash.Query.filter(victim_character_id: character_id)
+      |> Ash.Query.filter(killmail_time: [gte: cutoff_date])
+      |> Ash.Query.sort(killmail_time: :desc)
       # Reasonable limit for analysis
-    limit(500)
+      |> Ash.Query.limit(500)
 
     # Fetch killmails where character was attacker
     attacker_query =
       KillmailRaw
-    new()
-    filter(killmail_time: [gte: cutoff_date])
+      |> Ash.Query.new()
+      |> Ash.Query.filter(killmail_time: [gte: cutoff_date])
       # Larger limit to search for attacker involvement
-    limit(1000)
+      |> Ash.Query.limit(1000)
 
     with {:ok, victim_killmails} <- Ash.read(victim_query, domain: Api),
          {:ok, potential_attacker_killmails} <- Ash.read(attacker_query, domain: Api) do
@@ -728,12 +728,12 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     # Assess if character executes expected roles for their ships
     role_consistency =
       ship_types
-    Enum.map(fn {ship_type, uses} ->
+      |> Enum.map(fn {ship_type, uses} ->
         expected_role = get_expected_ship_role(ship_type)
         # Analyze actual performance in that role based on usage patterns
         calculate_role_execution_score(ship_type, uses, expected_role)
       end)
-    average()
+      |> average()
 
     role_consistency
   end
@@ -894,8 +894,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
 
     system_variety =
       killmails
-    Enum.map(& &1.solar_system_id) |> Enum.uniq()
-    length()
+      |> Enum.map(& &1.solar_system_id)
+      |> Enum.uniq()
+      |> length()
 
     time_variety = analyze_engagement_time_variety(killmails)
     ship_variety = map_size(extract_ship_types_used(killmails))
@@ -918,10 +919,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
       hours =
         killmails
     Enum.map(fn km ->
-          km.NaiveDateTime.to_time(killmail_time) |> Time.to_seconds_after_midnight()
-    elem(0)
-          # Convert to hour of day
-    div(3600)
+          km.killmail_time 
+          |> NaiveDateTime.to_time() 
+          |> Time.to_seconds_after_midnight()
+          |> div(3600)
         end) |> Enum.frequencies()
       # High variety = active across many hours
       hours_active = map_size(hours)
@@ -968,8 +969,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
           date = NaiveDateTime.to_date(km.killmail_time)
 
           hour =
-            km.NaiveDateTime.to_time(killmail_time) |> Time.to_seconds_after_midnight()
-    div(3600)
+            km.killmail_time |> NaiveDateTime.to_time() |> Time.to_seconds_after_midnight()
+            |> div(3600)
 
           day_of_week = Date.day_of_week(date)
 
@@ -1018,8 +1019,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     # Ships used multiple times with varying performance suggest fitting experimentation
     repeated_ships =
       ship_types
-    Enum.filter(fn {_ship, uses} -> uses > 2 end)
-    length()
+      |> Enum.filter(fn {_ship, uses} -> uses > 2 end)
+      |> length()
 
     fitting_experimentation = min(1.0, repeated_ships / 5)
 

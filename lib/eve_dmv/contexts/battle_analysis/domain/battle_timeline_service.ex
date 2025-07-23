@@ -507,8 +507,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
 
     # Build adjacency list of hostile relationships
     hostile_map =
-      interactions
-      |> Enum.reduce(%{}, fn interaction, acc ->
+      Enum.reduce(interactions, %{}, fn interaction, acc ->
       if interaction.attacker_group != interaction.victim_group do
         acc
         |> Map.update(
@@ -528,8 +527,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
 
     # Group into sides based on hostile relationships
     {_assigned, sides} =
-      groups
-      |> Enum.reduce({[], []}, fn group, {assigned, sides} ->
+      Enum.reduce(groups, {[], []}, fn group, {assigned, sides} ->
       if group in assigned do
         {assigned, sides}
       else
@@ -610,8 +608,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
 
     # Add phase transitions as key moments
     phase_transitions =
-      phases
-      |> Enum.map(fn phase ->
+      Enum.map(phases, fn phase ->
         %{
           type: :phase_transition,
           timestamp: phase.start_time,
@@ -620,8 +617,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
         }
       end)
 
-    (moments ++ phase_transitions)
-    |> Enum.sort_by(& &1.timestamp)
+    Enum.sort_by(moments ++ phase_transitions, & &1.timestamp)
   end
 
   defp identify_kill_streaks(events) do
@@ -773,8 +769,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
   defp analyze_escalation_pattern(battles) do
     # Track how battles grow or shrink over time
     battles
-
-    Enum.map(fn battle ->
+    |> Enum.map(fn battle ->
       %{
         battle_id: battle.battle_id,
         participant_count: battle.metadata.unique_participants,

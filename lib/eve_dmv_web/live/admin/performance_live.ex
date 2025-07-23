@@ -13,7 +13,7 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
   # 5 seconds
   @refresh_interval 5_000
 
-  @impl true
+  @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     if connected?(socket) do
       # Subscribe to performance updates
@@ -38,13 +38,13 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
     {:ok, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_params(params, _url, socket) do
     tab = String.to_existing_atom(params["tab"] || "overview")
     {:noreply, assign(socket, :selected_tab, tab)}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("select_tab", %{"tab" => tab}, socket) do
     {:noreply,
      socket
@@ -67,7 +67,7 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info(:refresh, socket) do
     if socket.assigns.auto_refresh do
       # Refresh metrics
@@ -96,13 +96,13 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
   def handle_info({:performance_alert, alert}, socket) do
     # Add new alert to report
     report = socket.assigns.report
-    alerts = [alert | report.alerts] |> Enum.take(50)
+    alerts = Enum.take([alert | report.alerts], 50)
     updated_report = %{report | alerts: alerts}
 
     {:noreply, assign(socket, :report, updated_report)}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
     <div class="performance-dashboard">

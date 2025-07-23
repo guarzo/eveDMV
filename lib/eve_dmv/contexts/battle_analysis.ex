@@ -581,11 +581,8 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   end
 
   defp extract_key_moments_from_phases(phases) do
-    phases
-    |> Enum.flat_map(fn phase ->
-      phase
-      |> Map.get(:key_events, [])
-      |> Enum.map(fn event ->
+    Enum.flat_map(phases, fn phase ->
+      Enum.map(Map.get(phase, :key_events, []), fn event ->
         %{
           time: event.timestamp,
           phase: phase.phase_type,

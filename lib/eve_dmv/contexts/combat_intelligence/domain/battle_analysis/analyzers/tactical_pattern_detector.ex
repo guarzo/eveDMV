@@ -178,39 +178,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
         }
       else
         # Calculate focus fire metrics for each window
-        window_metrics =
-          Enum.map(windows, fn window ->
-            # Count unique targets
-            unique_targets =
-              window
-              |> Enum.map(& &1.victim.character_id)
-              |> Enum.uniq()
-              |> length()
-
-            # Perfect focus fire = 1 target per window
-            focus_score = 1.0 / unique_targets
-
-            # Time spread - how close together were the kills
-            time_score =
-              if length(window) > 1 do
-                time_spread =
-                  DateTime.diff(
-                    List.last(window).timestamp,
-                    List.first(window).timestamp
-                  )
-
-                # Normalize to 0-1 where <10s = 1.0
-                max(0, 1.0 - time_spread / 30.0)
-              else
-                1.0
-              end
-
-            %{
-              focus_score: focus_score,
-              time_score: time_score,
-              kills: length(window)
-            }
-          end)
+        window_metrics = Enum.map(windows, &calculate_window_metrics/1)
 
         # Weight by number of kills in each window
         total_kills = Enum.sum(Enum.map(window_metrics, & &1.kills))
@@ -442,6 +410,39 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
     end
   end
 
+  defp calculate_window_metrics(window) do
+    # Count unique targets
+    unique_targets =
+      window
+      |> Enum.map(& &1.victim.character_id)
+      |> Enum.uniq()
+      |> length()
+
+    # Perfect focus fire = 1 target per window
+    focus_score = 1.0 / unique_targets
+
+    # Time spread - how close together were the kills
+    time_score =
+      if length(window) > 1 do
+        time_spread =
+          DateTime.diff(
+            List.last(window).timestamp,
+            List.first(window).timestamp
+          )
+
+        # Normalize to 0-1 where <10s = 1.0
+        max(0, 1.0 - time_spread / 30.0)
+      else
+        1.0
+      end
+
+    %{
+      focus_score: focus_score,
+      time_score: time_score,
+      kills: length(window)
+    }
+  end
+
   defp calculate_window_side_ratio(window) do
     # Simplified side determination based on corporation grouping
     # Group by corporation to approximate sides
@@ -493,27 +494,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
         timeline
         |> Enum.chunk_while(
           [],
-          fn event, acc ->
-            case acc do
-              [] ->
-                {:cont, [event]}
-
-              _ ->
-                last_event = List.first(acc)
-                gap_seconds = DateTime.diff(event.timestamp, last_event.timestamp)
-
-                # 5 minute gap
-                if gap_seconds > 300 do
-                  {:cont, Enum.reverse(acc), [event]}
-                else
-                  {:cont, [event | acc]}
-                end
-            end
-          end,
-          fn
-            [] -> {:cont, []}
-            acc -> {:cont, Enum.reverse(acc), []}
-          end
+          &chunk_events_by_time_gap/2,
+          &finalize_phase_chunk/1
         )
         |> Enum.reject(&Enum.empty?/1)
         |> Enum.with_index(1)
@@ -541,6 +523,31 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
         end)
 
       phases
+    end
+  end
+
+  defp chunk_events_by_time_gap(event, acc) do
+    case acc do
+      [] ->
+        {:cont, [event]}
+
+      _ ->
+        last_event = List.first(acc)
+        gap_seconds = DateTime.diff(event.timestamp, last_event.timestamp)
+
+        # 5 minute gap
+        if gap_seconds > 300 do
+          {:cont, Enum.reverse(acc), [event]}
+        else
+          {:cont, [event | acc]}
+        end
+    end
+  end
+
+  defp finalize_phase_chunk(acc) do
+    case acc do
+      [] -> {:cont, []}
+      acc -> {:cont, Enum.reverse(acc), []}
     end
   end
 

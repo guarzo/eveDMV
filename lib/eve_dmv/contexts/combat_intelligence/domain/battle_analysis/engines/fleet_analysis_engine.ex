@@ -141,12 +141,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
     # Analyze for common doctrine patterns
     doctrines =
       doctrines
-
-    maybe_add_doctrine(:artillery_doctrine, detect_artillery_doctrine(ship_analysis))
-    maybe_add_doctrine(:logistics_heavy, detect_logistics_heavy(ship_analysis))
-    maybe_add_doctrine(:alpha_strike, detect_alpha_strike_doctrine(ship_analysis))
-    maybe_add_doctrine(:kiting_comp, detect_kiting_composition(ship_analysis))
-    maybe_add_doctrine(:brawling_comp, detect_brawling_composition(ship_analysis))
+      |> maybe_add_doctrine(:artillery_doctrine, detect_artillery_doctrine(ship_analysis))
+      |> maybe_add_doctrine(:logistics_heavy, detect_logistics_heavy(ship_analysis))
+      |> maybe_add_doctrine(:alpha_strike, detect_alpha_strike_doctrine(ship_analysis))
+      |> maybe_add_doctrine(:kiting_comp, detect_kiting_composition(ship_analysis))
+      |> maybe_add_doctrine(:brawling_comp, detect_brawling_composition(ship_analysis))
 
     doctrines
   end

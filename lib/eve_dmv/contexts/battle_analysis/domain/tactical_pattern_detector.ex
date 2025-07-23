@@ -480,15 +480,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
 
   defp identify_dominant_formation(formations) do
     formations
-    Enum.max_by(& &1.formation_cohesion, fn -> nil end)
+    |> Enum.max_by(& &1.formation_cohesion, fn -> nil end)
   end
 
   defp calculate_formation_adaptability(formations) do
     # Score based on variety and effectiveness of formations
     unique_formations =
       formations
-
-    Enum.map(& &1.formation_type) |> Enum.uniq() |> Kernel.length()
+      |> Enum.map(& &1.formation_type)
+      |> Enum.uniq()
+      |> Kernel.length()
 
     effectiveness_scores = %{
       highly_effective: 100,
@@ -500,18 +501,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
 
     avg_effectiveness =
       formations
-
-    Enum.map(&Map.get(effectiveness_scores, &1.formation_effectiveness, 50)) |> Enum.sum()
-    Kernel./(max(length(formations), 1))
+      |> Enum.map(&Map.get(effectiveness_scores, &1.formation_effectiveness, 50))
+      |> Enum.sum()
+      |> Kernel./(max(length(formations), 1))
 
     # Combine variety and effectiveness
     adaptability_score =
       unique_formations * 20 + avg_effectiveness * 0.8
 
-    min(100)
-    Float.round(2)
-
     adaptability_score
+    |> min(100)
+    |> Float.round(2)
   end
 
   defp track_attacker_target_switches(sorted_killmails) do
@@ -638,32 +638,36 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
       # Group killmails by victim to track when attackers move between targets
       victim_groups =
         sorted_killmails
-
-      Enum.group_by(& &1.victim_character_id)
-
-      Enum.sort_by(fn {_victim_id, kms} ->
+        |> Enum.group_by(& &1.victim_character_id)
+      |> Enum.sort_by(fn {_victim_id, kms} ->
         List.first(kms).killmail_time
       end)
 
       # Look for coordinated switches between consecutive victim groups
       victim_groups
-      Enum.chunk_every(2, 1, :discard)
-
-      Enum.flat_map(fn [{victim1_id, victim1_kms}, {victim2_id, victim2_kms}] ->
+      |> Enum.chunk_every(2, 1, :discard)
+      |> Enum.flat_map(fn [{victim1_id, victim1_kms}, {victim2_id, victim2_kms}] ->
         # Get attackers from first victim
         attackers1 =
           victim1_kms
+          |> Enum.flat_map(&get_attackers_from_killmail/1)
+          |> Enum.map(& &1["character_id"])
+          |> Enum.uniq()
+          |> MapSet.new()
 
-        Enum.flat_map(&get_attackers_from_killmail/1)
-        Enum.map(& &1["character_id"]) |> Enum.uniq() |> MapSet.new()
         # Get attackers from second victim
         attackers2 =
           victim2_kms
+          |> Enum.flat_map(&get_attackers_from_killmail/1)
+          |> Enum.map(& &1["character_id"])
+          |> Enum.uniq()
+          |> MapSet.new()
 
-        Enum.flat_map(&get_attackers_from_killmail/1)
-        Enum.map(& &1["character_id"]) |> Enum.uniq() |> MapSet.new()
         # Find common attackers (those who switched)
-        switching_attackers = MapSet.intersection(attackers1, attackers2) |> MapSet.size()
+        switching_attackers =
+          attackers1
+          |> MapSet.intersection(attackers2)
+          |> MapSet.size()
 
         # Get time gap between victim groups
         last_time1 = victim1_kms |> Enum.map(& &1.killmail_time) |> Enum.max()

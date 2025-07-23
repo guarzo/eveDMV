@@ -183,4 +183,32 @@ defmodule EveDmvWeb.FormatHelpers do
   defp both_are_decimals?(value1, value2) do
     value1 && value2 && is_struct(value1, Decimal) && is_struct(value2, Decimal)
   end
+
+  @doc """
+  Common CSS classes for small gray text elements.
+  """
+  def small_gray_text_class(), do: "text-sm text-gray-400"
+
+  @doc """
+  Common CSS classes for muted secondary text.
+  """
+  def muted_text_class(), do: "text-sm text-gray-500"
+
+  @doc """
+  Formats error messages consistently across the application.
+  """
+  def format_error_message(operation, reason) do
+    "#{operation} failed: #{inspect(reason)}"
+  end
+
+  @doc """
+  Formats error messages for user display (without inspect).
+  """
+  def format_user_error_message(operation, reason) when is_binary(reason) do
+    "#{operation} failed: #{reason}"
+  end
+
+  def format_user_error_message(operation, _reason) do
+    "#{operation} failed. Please try again."
+  end
 end

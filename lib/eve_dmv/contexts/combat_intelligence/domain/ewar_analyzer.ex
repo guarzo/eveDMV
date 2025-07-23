@@ -234,10 +234,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
     else
       analysis =
         build_ewar_analysis(ship_name, ewar_types)
-
-      Map.put(:ship_id, ship_info.type_id)
-      Map.put(:ship_group, ship_info.group_name)
-      add_ship_bonuses(ship_info)
+        |> Map.put(:ship_id, ship_info.type_id)
+        |> Map.put(:ship_group, ship_info.group_name)
+        |> add_ship_bonuses(ship_info)
 
       {:ok, analysis}
     end
@@ -644,8 +643,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
       ewar_diversity =
         ewar_ships
 
-      Enum.flat_map(& &1.ewar_types) |> Enum.uniq()
-      length()
+      |> Enum.flat_map(& &1.ewar_types) 
+      |> Enum.uniq()
+      |> length()
 
       # Check for force multipliers
       has_recons =
@@ -815,9 +815,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
       nil
     else
       ewar_items
-      Enum.frequencies_by(& &1.type)
-      Enum.max_by(fn {_type, count} -> count end)
-      elem(0)
+      |> Enum.frequencies_by(& &1.type)
+      |> Enum.max_by(fn {_type, count} -> count end)
+      |> elem(0)
     end
   end
 

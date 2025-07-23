@@ -18,8 +18,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Calculators.PerformanceMetricsCalculato
   def calculate_performance_metrics(ship_instances, :all) do
     # Calculate all metrics for comprehensive analysis
     performance_data =
-      ship_instances
-      |> Enum.map(fn instance ->
+      Enum.map(ship_instances, fn instance ->
       # Enhance instance with detailed analysis
       enhanced_instance = enhance_instance_with_analysis(instance)
 
@@ -44,8 +43,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Calculators.PerformanceMetricsCalculato
       when metric in [:efficiency, :survivability] do
     # Calculate only specific metrics for performance
     performance_data =
-      ship_instances
-      |> Enum.map(fn instance ->
+      Enum.map(ship_instances, fn instance ->
       base_data = %{ship_instance: instance}
 
       case metric do
@@ -526,7 +524,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Calculators.PerformanceMetricsCalculato
   end
 
   defp calculate_damage_diversity(damage_breakdown) do
-    total_damage = 
+    total_damage =
       damage_breakdown
       |> Map.values()
       |> Enum.sum()

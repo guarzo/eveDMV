@@ -652,7 +652,8 @@ defmodule EveDmvWeb.IntelligenceComponents do
 
   defp format_timestamp(timestamp) do
     timestamp
-    DateTime.truncate(:second) |> DateTime.to_string()
+    |> DateTime.truncate(:second)
+    |> DateTime.to_string()
   end
 
   defp format_relative_time(timestamp),

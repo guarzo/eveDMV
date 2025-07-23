@@ -371,8 +371,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
 
   defp find_most_expensive_loss(killmails) do
     result =
-      killmails
-      |> Enum.max_by(&get_killmail_value(&1), fn -> nil end)
+      Enum.max_by(killmails, &get_killmail_value(&1), fn -> nil end)
 
     case result do
       nil ->

@@ -445,8 +445,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
   end
 
   defp group_events_by_time(events, window_seconds) do
-    events
-    |> Enum.group_by(fn event ->
+    Enum.group_by(events, fn event ->
       if event.timestamp do
         # Round to nearest window
         unix = event.timestamp |> DateTime.from_naive!("Etc/UTC") |> DateTime.to_unix()
@@ -461,8 +460,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
     target_unix = target_time |> DateTime.from_naive!("Etc/UTC") |> DateTime.to_unix()
 
     # Look for events within 5 minutes
-    -5..5
-    |> Enum.flat_map(fn offset ->
+    Enum.flat_map(-5..5, fn offset ->
       window_key = div(target_unix + offset * 60, 60) * 60
       Map.get(event_windows, window_key, [])
     end)
@@ -476,8 +474,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
 
     cumulative_damage = 0
 
-    damage_events
-    |> Enum.map(fn event ->
+    Enum.map(damage_events, fn event ->
       cumulative_damage = cumulative_damage + event.damage
 
       %{
@@ -556,28 +553,4 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
     end
   end
 
-  defp filter_by_time(events, nil, nil), do: events
-  defp filter_by_time(events, start_time, end_time) do
-    events
-    |> Enum.filter(fn event ->
-      cond do
-        start_time && end_time ->
-          event.timestamp >= start_time && event.timestamp <= end_time
-        start_time ->
-          event.timestamp >= start_time
-        end_time ->
-          event.timestamp <= end_time
-        true ->
-          true
-      end
-    end)
-  end
-
-  defp filter_by_pilot(events, nil), do: events
-  defp filter_by_pilot(events, pilot_name) do
-    events
-    |> Enum.filter(fn event ->
-      event.pilot == pilot_name || event.target == pilot_name
-    end)
-  end
 end

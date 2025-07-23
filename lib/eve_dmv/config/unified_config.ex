@@ -318,9 +318,8 @@ defmodule EveDmv.Config.UnifiedConfig do
   end
 
   defp generate_env_var_name(key_path) do
-    key_path
-    |> Enum.map_join("_", &(to_string(&1) |> String.upcase()))
-    |> then(&("EVE_DMV_" <> &1))
+    env_suffix = Enum.map_join(key_path, "_", &String.upcase(to_string(&1)))
+    "EVE_DMV_" <> env_suffix
   end
 
   defp build_category_config(category, schema) do

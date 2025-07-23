@@ -216,8 +216,10 @@ defmodule EveDmvWeb.CharacterIntelComponents do
   # Private helper functions
 
   defp format_stat_value(value, "number") when is_number(value) do
-    round(value) |> Integer.to_string()
-    String.replace(~r/(\d)(?=(\d{3})+(?!\d))/, "\\1,")
+    value
+    |> round()
+    |> Integer.to_string()
+    |> String.replace(~r/(\d)(?=(\d{3})+(?!\d))/, "\\1,")
   end
 
   defp format_stat_value(value, "isk") when is_number(value) do

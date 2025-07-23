@@ -265,14 +265,12 @@ defmodule EveDmv.Search.SearchSuggestionService do
     # Combine results
     all_suggestions =
       results
-
-    Enum.map(fn
-      {:ok, suggestions} -> suggestions
-      _ -> []
-    end)
-    |> List.flatten()
-
-    Enum.take(total_limit)
+      |> Enum.map(fn
+        {:ok, suggestions} -> suggestions
+        _ -> []
+      end)
+      |> List.flatten()
+      |> Enum.take(total_limit)
 
     {:ok, all_suggestions}
   end

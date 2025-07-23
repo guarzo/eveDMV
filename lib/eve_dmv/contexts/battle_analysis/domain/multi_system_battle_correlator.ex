@@ -244,7 +244,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
 
   defp find_unvisited_battle(graph, visited) do
     Map.keys(graph)
-    Enum.find(&(not MapSet.member?(visited, &1)))
+    |> Enum.find(&(not MapSet.member?(visited, &1)))
   end
 
   defp depth_first_search(graph, battle, visited) do
@@ -440,17 +440,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
     sorted_battles = Enum.sort_by(battles, &get_battle_start_time/1)
 
     flow_events =
-      Enum.with_index(sorted_battles)
-
-    Enum.map(fn {battle, index} ->
-      %{
-        sequence: index + 1,
-        system_id: get_primary_system(battle),
-        start_time: get_battle_start_time(battle),
-        participants: extract_all_participants(battle) |> MapSet.size(),
-        battle_type: battle.metadata.battle_type
-      }
-    end)
+      sorted_battles
+      |> Enum.with_index()
+      |> Enum.map(fn {battle, index} ->
+        %{
+          sequence: index + 1,
+          system_id: get_primary_system(battle),
+          start_time: get_battle_start_time(battle),
+          participants: extract_all_participants(battle) |> MapSet.size(),
+          battle_type: battle.metadata.battle_type
+        }
+      end)
 
     %{
       events: flow_events,
@@ -620,9 +620,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
   defp identify_battle_phases(battles) do
     # For now, return simple phase identification
     # This will be enhanced with the tactical phase detection algorithm
-    Enum.with_index(battles)
-
-    Enum.map(fn {battle, index} ->
+    battles
+    |> Enum.with_index()
+    |> Enum.map(fn {battle, index} ->
       %{
         phase: index + 1,
         system: get_primary_system(battle),
@@ -642,9 +642,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
 
     timestamp =
       first_battle
-
-    get_battle_start_time() |> NaiveDateTime.to_string()
-    String.replace([" ", ":", "-"], "")
+      |> get_battle_start_time()
+      |> NaiveDateTime.to_string()
+      |> String.replace([" ", ":", "-"], "")
 
     system_str = systems |> Enum.join("_")
     "multi_battle_#{system_str}_#{timestamp}"

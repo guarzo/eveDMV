@@ -247,13 +247,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
     # Fetch full killmail data from ESI and store
     {existing_ids, new_ids} =
       killmail_infos
-
-    Enum.map(&fetch_and_store_killmail/1)
-
-    Enum.split_with(fn
-      {:existing, _id} -> true
-      _ -> false
-    end)
+      |> Enum.map(&fetch_and_store_killmail/1)
+      |> Enum.split_with(fn
+        {:existing, _id} -> true
+        _ -> false
+      end)
 
     existing_count = length(existing_ids)
     new_count = length(Enum.filter(new_ids, &(&1 != nil)))

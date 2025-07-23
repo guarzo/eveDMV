@@ -568,9 +568,11 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
   end
 
   defp format_ship_class(class) do
-    to_string(class)
-    String.replace("_", " ") |> String.split()
-    Enum.map_join(" ", &String.capitalize/1)
+    class
+    |> to_string()
+    |> String.replace("_", " ")
+    |> String.split()
+    |> Enum.map_join(" ", &String.capitalize/1)
   end
 
   defp event_color_class(event) do

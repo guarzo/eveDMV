@@ -35,9 +35,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
     # Analyze each participant
     analyzed_participants =
       participants
-
-    Enum.map(&analyze_participant_role(&1, battle.killmails, options))
-    Enum.sort_by(& &1.contribution_score, :desc)
+      |> Enum.map(&analyze_participant_role(&1, battle.killmails, options))
+      |> Enum.sort_by(& &1.contribution_score, :desc)
 
     # Identify key players and commanders
     key_players = identify_key_players(analyzed_participants)
@@ -144,7 +143,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
     end)
 
     Enum.filter(& &1.character_id)
-    Enum.uniq_by(&{&1.character_id, &1.corporation_id})
+    |> Enum.uniq_by(&{&1.character_id, &1.corporation_id})
   end
 
   defp get_participant_activities(participant, killmails) do
@@ -316,10 +315,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
     # If used multiple ship types, may have secondary roles
     if ship_analysis.ship_diversity > 1 do
       ship_analysis.role_distribution
-      Enum.filter(fn {_role, count} -> count > 0 end)
-      Enum.map(fn {role, _count} -> role end)
+      |> Enum.filter(fn {_role, count} -> count > 0 end)
+      |> Enum.map(fn {role, _count} -> role end)
       # Top 2 secondary roles
-      Enum.take(2)
+      |> Enum.take(2)
     else
       []
     end

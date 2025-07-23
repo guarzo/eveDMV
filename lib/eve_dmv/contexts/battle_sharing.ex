@@ -230,8 +230,7 @@ defmodule EveDmv.Contexts.BattleSharing do
 
       # Transform to public format
       public_reports =
-        sample_reports
-        |> Enum.map(fn report ->
+        Enum.map(sample_reports, fn report ->
           %{
             report_id: report.report_id,
             battle_id: report.battle_id,

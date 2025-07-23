@@ -233,9 +233,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Pe
 
         active_participants =
           bucket_kills
-
-        Enum.flat_map(&extract_participants_from_killmail/1) |> Enum.uniq()
-        length()
+          |> Enum.flat_map(&extract_participants_from_killmail/1)
+          |> Enum.uniq()
+          |> length()
 
         # Determine intensity level and score
         intensity_level =

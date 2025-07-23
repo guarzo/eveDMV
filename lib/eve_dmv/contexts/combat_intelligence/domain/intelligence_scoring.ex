@@ -487,8 +487,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
         Enum.frequencies(all_fleet_mates) |> Map.values()
 
       # Flown together 3+ times
-      Enum.filter(&(&1 >= 3))
-      length()
+      mate_frequency = mate_frequency
+      |> Enum.filter(&(&1 >= 3))
+      |> length()
 
       # Normalize to 0-1 scale
       min(mate_frequency / 10.0, 1.0)
@@ -609,15 +610,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
     # Calculate how diverse the ship usage is
     ship_types =
       killmails
-
-    Enum.flat_map(fn k ->
-      k.participants
-      Enum.filter(fn p -> !p.is_victim end)
-      Enum.map(& &1.ship_type_id)
-    end)
-    |> Enum.uniq()
-
-    length()
+      |> Enum.flat_map(fn k ->
+        k.participants
+        |> Enum.filter(fn p -> !p.is_victim end)
+        |> Enum.map(& &1.ship_type_id)
+      end)
+      |> Enum.uniq()
+      |> length()
 
     # Normalize: 1 ship = 0, 5+ ships = 1.0
     min((ship_types - 1) / 4.0, 1.0)

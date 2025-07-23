@@ -37,10 +37,12 @@ defmodule EveDmv.Presentation.Formatters do
 
   def format_number(value) when is_integer(value) do
     Integer.to_string(value)
-    String.split("", trim: true) |> Enum.reverse()
-    Enum.chunk_every(3)
-    Enum.map(&Enum.reverse/1) |> Enum.reverse()
-    Enum.join(",")
+    |> String.split("", trim: true)
+    |> Enum.reverse()
+    |> Enum.chunk_every(3)
+    |> Enum.map(&Enum.reverse/1)
+    |> Enum.reverse()
+    |> Enum.join(",")
   end
 
   def format_number(value) when is_float(value) do

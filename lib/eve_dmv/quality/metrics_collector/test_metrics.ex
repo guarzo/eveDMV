@@ -34,13 +34,24 @@ defmodule EveDmv.Quality.MetricsCollector.TestMetrics do
 
   defp count_total_tests do
     try do
-      {output, 0} = System.cmd("mix", ["test", "--dry-run"], stderr_to_stdout: true, env: %{})
+      # Use file system traversal instead of System.cmd for security
+      "test/**/*_test.exs"
+      |> Path.wildcard()
+      |> Enum.reduce(0, fn file, acc ->
+        case File.read(file) do
+          {:ok, content} ->
+            # Count test definitions
+            test_count =
+              content
+              |> String.split("\n")
+              |> Enum.count(&(String.contains?(&1, "test ") or String.contains?(&1, "describe ")))
 
-      output
-      |> to_string()
-      |> String.split("\n")
-      |> Enum.filter(&String.contains?(&1, "test"))
-      |> length()
+            acc + test_count
+
+          _ ->
+            acc
+        end
+      end)
     rescue
       _ -> 0
     end

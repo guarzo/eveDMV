@@ -174,8 +174,10 @@ defmodule EveDmvWeb.Components.ApiErrorHandler do
 
   # Convert atom errors to human-readable messages.
   defp humanize_error(atom) do
-    Atom.to_string(atom)
-    String.replace("_", " ") |> String.capitalize()
+    atom
+    |> Atom.to_string()
+    |> String.replace("_", " ")
+    |> String.capitalize()
   end
 
   @doc """

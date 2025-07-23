@@ -1,13 +1,13 @@
 defmodule EveDmvWeb.Components.ErrorHandler do
-  import Phoenix.Component, only: [assign: 3]
-  require Logger
-
   @moduledoc """
   Standardized error handling utilities for EVE DMV LiveView components.
 
   Provides consistent error handling patterns, user-friendly error messages,
   and proper logging with user context.
   """
+
+  import Phoenix.Component, only: [assign: 3]
+  require Logger
 
   @doc """
   Safely executes a database operation with proper error handling and logging.

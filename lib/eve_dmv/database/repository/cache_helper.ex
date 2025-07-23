@@ -124,7 +124,7 @@ defmodule EveDmv.Database.Repository.CacheHelper do
 
   defp build_identifier_part(identifier) when is_map(identifier) do
     Enum.sort(identifier)
-    Enum.map_join(":", fn {k, v} -> "#{k}:#{v}" end)
+    |> Enum.map_join(":", fn {k, v} -> "#{k}:#{v}" end)
   end
 
   defp build_identifier_part(identifier) when is_list(identifier) do
@@ -139,8 +139,9 @@ defmodule EveDmv.Database.Repository.CacheHelper do
     cacheable_opts = [:preload, :limit, :offset, :order_by]
 
     opts
-    Keyword.take(cacheable_opts) |> Enum.sort()
-    Enum.map_join(":", fn {k, v} -> "#{k}:#{format_opt_value(v)}" end)
+    |> Keyword.take(cacheable_opts)
+    |> Enum.sort()
+    |> Enum.map_join(":", fn {k, v} -> "#{k}:#{format_opt_value(v)}" end)
   end
 
   defp format_opt_value(value) when is_list(value) do

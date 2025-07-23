@@ -21,9 +21,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.LiveE
   """
   def track_engagement(engagement_data, killmail) do
     engagement_data
-    update_with_killmail(killmail)
-    update_participants(killmail)
-    update_analysis_timestamp()
+    |> update_with_killmail(killmail)
+    |> update_participants(killmail)
+    |> update_analysis_timestamp()
   end
 
   @doc """
@@ -32,10 +32,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.LiveE
   def update_engagement_data(engagement, new_kills) do
     updated =
       engagement
-
-    Map.update(:killmails, new_kills, &(&1 ++ new_kills))
-    Map.put(:last_activity, DateTime.utc_now())
-    update_participant_tracking(new_kills)
+      |> Map.update(:killmails, new_kills, &(&1 ++ new_kills))
+      |> Map.put(:last_activity, DateTime.utc_now())
+      |> update_participant_tracking(new_kills)
 
     {:ok, updated}
   end
@@ -72,8 +71,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.LiveE
     cutoff_time = DateTime.add(DateTime.utc_now(), -@stale_engagement_minutes, :minute)
 
     active_engagements
-
-    Enum.reject(fn {_system_id, engagement} ->
+    |> Enum.reject(fn {_system_id, engagement} ->
       DateTime.compare(engagement.last_activity, cutoff_time) == :lt
     end)
     |> Map.new()
@@ -96,8 +94,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.LiveE
 
   defp update_with_killmail(engagement, killmail) do
     engagement
-    Map.update(:killmails, [killmail], &(&1 ++ [killmail]))
-    Map.put(:last_activity, killmail.timestamp)
+    |> Map.update(:killmails, [killmail], &(&1 ++ [killmail]))
+    |> Map.put(:last_activity, killmail.timestamp)
   end
 
   defp update_participants(engagement, killmail) do
@@ -193,8 +191,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.LiveE
     recent_kills =
       engagement.killmails
 
-    # Last 5 kills
-    Enum.take(-5)
+    |> Enum.take(-5)
 
     if length(recent_kills) < 3 do
       :too_early
@@ -202,8 +199,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.LiveE
       # Analyze momentum
       victim_corps =
         recent_kills
-
-      Enum.map(& &1.victim_corporation_id) |> Enum.frequencies()
+        |> Enum.map(& &1.victim_corporation_id)
+        |> Enum.frequencies()
       # If one corp is taking most losses, they're likely losing
       max_losses = victim_corps |> Map.values() |> Enum.max(fn -> 0 end)
 

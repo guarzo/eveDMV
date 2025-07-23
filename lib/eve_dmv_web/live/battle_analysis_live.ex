@@ -12,8 +12,8 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   alias EveDmv.Contexts.BattleAnalysis.Resources.CombatLog
   alias EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting
   alias EveDmv.Contexts.BattleSharing
-  alias EveDmv.Eve.NameResolver
   alias EveDmv.Performance.BatchNameResolver
+  alias EveDmvWeb.BattleAnalysisLive.Helpers
 
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
@@ -748,110 +748,11 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   def resolve_character_name(_), do: "Unknown"
 
-  def resolve_ship_name(type_id) when is_integer(type_id) do
-    NameResolver.ship_name(type_id)
-  end
-
-  def resolve_ship_name(_), do: "Unknown Ship"
-
-  def resolve_corporation_name(corp_id) when is_integer(corp_id) do
-    NameResolver.corporation_name(corp_id)
-  end
-
-  def resolve_corporation_name(_), do: "Unknown Corp"
-
-  def resolve_alliance_name(alliance_id) when is_integer(alliance_id) do
-    NameResolver.alliance_name(alliance_id)
-  end
-
-  def resolve_alliance_name(_), do: nil
-
-  # Portrait/icon URLs
-  def character_portrait(character_id, size \\ 64) do
-    "https://images.evetech.net/characters/#{character_id}/portrait?size=#{size}"
-  end
-
-  def corporation_logo(corp_id, size \\ 64) do
-    "https://images.evetech.net/corporations/#{corp_id}/logo?size=#{size}"
-  end
-
-  def alliance_logo(alliance_id, size \\ 64) do
-    "https://images.evetech.net/alliances/#{alliance_id}/logo?size=#{size}"
-  end
-
-  def ship_render(type_id, size \\ 64) do
-    "https://images.evetech.net/types/#{type_id}/render?size=#{size}"
-  end
-
-  # Get weapon name from attacker data
-  def get_weapon_name(attacker) do
-    case attacker[:weapon_type_id] do
-      nil ->
-        nil
-
-      weapon_id ->
-        weapon_name = NameResolver.item_name(weapon_id)
-        if String.starts_with?(weapon_name, "Unknown"), do: nil, else: weapon_name
-    end
-  end
-
-  # Get ship class from type ID (simplified mapping)
-  # Format ISK values in short form (1.2B, 850M, etc)
-  def format_isk_short(value) when is_number(value) do
-    cond do
-      value >= 1_000_000_000 -> "#{Float.round(value / 1_000_000_000, 1)}B"
-      value >= 1_000_000 -> "#{Float.round(value / 1_000_000, 1)}M"
-      value >= 1_000 -> "#{Float.round(value / 1_000, 1)}K"
-      true -> "#{round(value)}"
-    end
-  end
-
-  def format_isk_short(_), do: "0"
-
-  # Humanize upload errors
-  def humanize_upload_error(:too_large), do: "File too large (max 10MB)"
-  def humanize_upload_error(:not_accepted), do: "Invalid file type (only .txt or .log allowed)"
-  def humanize_upload_error(error), do: "Upload error: #{inspect(error)}"
-
-  def ship_class_from_id(type_id) when is_integer(type_id) do
-    # This is a simplified mapping - in production would use SDE data
-    cond do
-      type_id in 582..650 -> "Frigate"
-      type_id in 324..380 -> "Destroyer"
-      type_id in 620..634 -> "Cruiser"
-      type_id in 1201..1310 -> "Battlecruiser"
-      type_id in 638..645 -> "Battleship"
-      type_id in 547..554 -> "Carrier"
-      type_id in 671..671 -> "Dreadnought"
-      type_id in 3514..3518 -> "Titan"
-      type_id in 11_567..12_034 -> "Tech 3 Cruiser"
-      type_id in 29_984..29_990 -> "Tech 3 Destroyer"
-      type_id in 35_779..35_781 -> "Triglavian"
-      true -> "Ship"
-    end
-  end
-
-  def ship_class_from_id(_), do: "Unknown"
-
-  # Get effective ship side (manual assignment or automatic)
-  def get_ship_side(pilot, ship_side_assignments) do
-    # Use character_id and ship_type_id for unique pilot/ship combo
-    pilot_key = "pilot_#{pilot.character_id}_#{pilot.ship_type_id}"
-
-    case Map.get(ship_side_assignments, pilot_key) do
-      nil ->
-        # Use automatic side detection based on pilot's analyzed side
-        pilot[:side] || "unassigned"
-
-      manual_side ->
-        manual_side
-    end
-  end
 
   # Get ships for a specific side
   def get_ships_for_side(pilots, side, ship_side_assignments) do
     Enum.filter(pilots || [], fn pilot ->
-      get_ship_side(pilot, ship_side_assignments) == side
+      Helpers.get_ship_side(pilot, ship_side_assignments) == side
     end)
   end
 
@@ -1116,9 +1017,9 @@ defmodule EveDmvWeb.BattleAnalysisLive do
           %{
             character_id: pilot.character_id,
             character_name: pilot[:character_name] || resolve_character_name(pilot.character_id),
-            ship_name: pilot[:ship_name] || resolve_ship_name(pilot.ship_type_id),
+            ship_name: pilot[:ship_name] || Helpers.resolve_ship_name(pilot.ship_type_id),
             corporation_name:
-              pilot[:corporation_name] || resolve_corporation_name(pilot.corporation_id)
+              pilot[:corporation_name] || Helpers.resolve_corporation_name(pilot.corporation_id)
           }
         end)
       else
@@ -1149,7 +1050,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   end
 
   # Check if a target from combat log actually died in this battle
-  defp target_died?(target_name, battle) when is_binary(target_name) and not is_nil(battle) do
+  defp target_died?(target_name, battle) when is_binary(target_name) and is_map(battle) do
     if battle.killmails do
       Enum.any?(battle.killmails, fn killmail ->
         victim_name = get_in(killmail.raw_data, ["victim", "character_name"])

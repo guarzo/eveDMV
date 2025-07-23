@@ -56,23 +56,23 @@ defmodule EveDmv.Shared.ActivityMetrics do
     # Find peak hours
     sorted_hours =
       hourly_activity
-
-    Enum.sort_by(fn {_hour, count} -> count end, :desc)
-    Enum.take(4)
-    Enum.map(fn {hour, _count} -> hour end) |> Enum.sort()
+      |> Enum.sort_by(fn {_hour, count} -> count end, :desc)
+      |> Enum.take(4)
+      |> Enum.map(fn {hour, _count} -> hour end)
+      |> Enum.sort()
     # Estimate primary timezone based on peak activity
     primary_tz = estimate_timezone(sorted_hours)
 
     # Calculate activity concentration
     total_activity =
       hourly_activity
-
-    Enum.map(fn {_hour, count} -> count end) |> Enum.sum()
+      |> Enum.map(fn {_hour, count} -> count end)
+      |> Enum.sum()
 
     peak_activity =
       sorted_hours
-
-    Enum.map(fn hour -> Map.get(Map.new(hourly_activity), hour, 0) end) |> Enum.sum()
+      |> Enum.map(fn hour -> Map.get(Map.new(hourly_activity), hour, 0) end)
+      |> Enum.sum()
     concentration = if total_activity > 0, do: peak_activity / total_activity, else: 0
 
     %{
@@ -228,10 +228,8 @@ defmodule EveDmv.Shared.ActivityMetrics do
   defp calculate_timezone_coverage(hourly_activity) do
     active_hours =
       hourly_activity
-
-    Enum.filter(fn {_hour, count} -> count > 0 end)
-
-    length()
+      |> Enum.filter(fn {_hour, count} -> count > 0 end)
+      |> length()
 
     # Coverage score: percentage of hours with activity
     active_hours / 24 * 100
@@ -241,11 +239,10 @@ defmodule EveDmv.Shared.ActivityMetrics do
     if length(activity_list) > 0 do
       total =
         activity_list
-
-      Enum.map(fn item ->
-        Map.get(item, :total_activity, 0) || Map.get(item, "total_activity", 0)
-      end)
-      |> Enum.sum()
+        |> Enum.map(fn item ->
+          Map.get(item, :total_activity, 0) || Map.get(item, "total_activity", 0)
+        end)
+        |> Enum.sum()
 
       total / length(activity_list)
     else
@@ -264,9 +261,9 @@ defmodule EveDmv.Shared.ActivityMetrics do
 
       variance =
         values
-
-      Enum.map(fn v -> :math.pow(v - mean, 2) end) |> Enum.sum()
-      Kernel./(length(values))
+        |> Enum.map(fn v -> :math.pow(v - mean, 2) end)
+        |> Enum.sum()
+        |> Kernel./(length(values))
 
       std_dev = :math.sqrt(variance)
 

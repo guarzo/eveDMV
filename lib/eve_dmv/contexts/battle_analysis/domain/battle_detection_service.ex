@@ -134,11 +134,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
         {:ok, filtered_killmails} ->
           {:ok, filtered_killmails}
 
-        {:error, error} ->
+        {:error, _error} ->
           {:error, :database_error}
       end
     rescue
-      error ->
+      _error ->
         {:error, :database_error}
     end
   end
@@ -158,11 +158,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
         {:ok, filtered_killmails} ->
           {:ok, filtered_killmails}
 
-        {:error, error} ->
+        {:error, _error} ->
           {:error, :database_error}
       end
     rescue
-      error ->
+      _error ->
         {:error, :database_error}
     end
   end
@@ -181,11 +181,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
 
           {:ok, filtered_killmails}
 
-        {:error, error} ->
+        {:error, _error} ->
           {:error, :database_error}
       end
     rescue
-      error ->
+      _error ->
         {:error, :database_error}
     end
   end
@@ -306,15 +306,14 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
       0.0
     else
       overlap_count =
-        killmail_participants
-        |> Enum.count(&(&1 in cluster_participants))
+        Enum.count(killmail_participants, &(&1 in cluster_participants))
 
       overlap_count / Kernel.length(cluster_participants)
     end
   end
 
   defp find_cluster_with_overlap(killmail, clusters) do
-    result = 
+    result =
       clusters
       |> Enum.with_index()
       |> Enum.find(fn {cluster, _index} ->
@@ -480,7 +479,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
 
       {:ok, zkb_total + calculation_total}
     rescue
-      error ->
+      _error ->
         {:error, :calculation_failed}
     end
   end

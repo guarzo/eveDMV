@@ -131,6 +131,7 @@ defmodule EveDmv.TestDataHelpers do
   @doc """
   Seeds the database with common ship data for tests.
   """
+  @spec seed_test_ships() :: :ok
   def seed_test_ships do
     Enum.each(@common_ships, fn ship_data ->
       case Ash.create(ItemType, ship_data,
@@ -150,6 +151,7 @@ defmodule EveDmv.TestDataHelpers do
   @doc """
   Seeds a specific ship by name and type_id.
   """
+  @spec seed_ship(integer(), String.t(), keyword()) :: {:ok, any()} | {:error, any()}
   def seed_ship(type_id, type_name, opts \\ []) do
     defaults = %{
       type_id: type_id,

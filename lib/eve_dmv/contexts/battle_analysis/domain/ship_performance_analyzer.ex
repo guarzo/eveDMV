@@ -2055,13 +2055,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
       ship_performances
       |> Enum.map(& &1.ship_instance.estimated_fitting.estimated_role)
       |> Enum.uniq()
-      |> length()
+      |> Enum.count()
 
     unique_ship_types =
       ship_performances
       |> Enum.map(& &1.ship_instance.ship_type_id)
       |> Enum.uniq()
-      |> length()
+      |> Enum.count()
 
     total_ships = length(ship_performances)
 
