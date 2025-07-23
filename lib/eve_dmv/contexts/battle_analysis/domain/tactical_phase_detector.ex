@@ -253,9 +253,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
   defp calculate_ship_diversity(window) do
     unique_ship_types =
       window.killmails
-
-    Enum.map(& &1.victim_ship_type_id) |> Enum.uniq()
-    length()
+      |> Enum.map(& &1.victim_ship_type_id)
+      |> Enum.uniq()
+      |> length()
 
     total_ships = length(window.killmails)
 
@@ -326,21 +326,18 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
     end)
 
     # Find elbow point (simplified heuristic)
-    best_k =
+    {optimal_k, _score} =
       wcss_scores
+      |> Enum.filter(fn {_k, score} -> score != :infinity end)
+      |> Enum.min_by(
+        fn {k, score} ->
+          # Balance cluster quality with simplicity
+          score + k * 0.1
+        end,
+        fn -> {3, 0} end
+      )
 
-    Enum.filter(fn {_k, score} -> score != :infinity end)
-
-    Enum.min_by(
-      fn {k, score} ->
-        # Balance cluster quality with simplicity
-        score + k * 0.1
-      end,
-      fn -> {3, 0} end
-    )
-
-    elem(0)
-    then(&max(2, min(&1, max_k)))
+    max(2, min(optimal_k, max_k))
   end
 
   defp kmeans_cluster(feature_vectors, k) do
@@ -405,14 +402,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
 
   defp assign_points_to_centroids(features, centroids) do
     Enum.map(features, fn feature_vector ->
-      closest_centroid_index =
-        Enum.with_index(centroids)
-
-      Enum.min_by(fn {centroid, _index} ->
-        euclidean_distance(feature_vector, centroid)
-      end)
-
-      elem(1)
+      {_closest_centroid, closest_centroid_index} =
+        centroids
+        |> Enum.with_index()
+        |> Enum.min_by(fn {centroid, _index} ->
+          euclidean_distance(feature_vector, centroid)
+        end)
 
       {feature_vector, closest_centroid_index}
     end)
@@ -529,14 +524,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
       # Sort by average time of cluster members
       avg_time =
         cluster.members
-
-      Enum.map(fn member ->
-        member.window.start_time
-        DateTime.from_naive!("Etc/UTC") |> DateTime.to_unix()
-      end)
-      |> Enum.sum()
-
-      div(length(cluster.members))
+        |> Enum.map(fn member ->
+          member.window.start_time
+          |> DateTime.from_naive!("Etc/UTC")
+          |> DateTime.to_unix()
+        end)
+        |> Enum.sum()
+        |> div(length(cluster.members))
 
       avg_time
     end)
@@ -561,10 +555,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
     # Get total kills from all windows in this cluster
     total_kills =
       cluster.members
-
-    Enum.flat_map(& &1.window.killmails)
-    Enum.uniq_by(& &1.killmail_id)
-    length()
+      |> Enum.flat_map(& &1.window.killmails)
+      |> Enum.uniq_by(& &1.killmail_id)
+      |> length()
 
     cond do
       # Single phase small battle (<=5 kills) - classify based on characteristics

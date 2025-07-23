@@ -370,9 +370,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   end
 
   defp get_primary_damage_type(damage_breakdown) do
-    damage_breakdown
-    Enum.max_by(fn {_type, damage} -> damage end, fn -> {:unknown, 0} end)
-    elem(0)
+    {primary_type, _damage} =
+      damage_breakdown
+      |> Enum.max_by(fn {_type, damage} -> damage end, fn -> {:unknown, 0} end)
+
+    primary_type
   end
 
   defp infer_tank_type(damage_profile) do
@@ -2051,15 +2053,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
     # Diversity score based on unique roles and ship types
     unique_roles =
       ship_performances
-
-    Enum.map(& &1.ship_instance.estimated_fitting.estimated_role) |> Enum.uniq()
-    length()
+      |> Enum.map(& &1.ship_instance.estimated_fitting.estimated_role)
+      |> Enum.uniq()
+      |> length()
 
     unique_ship_types =
       ship_performances
-
-    Enum.map(& &1.ship_instance.ship_type_id) |> Enum.uniq()
-    length()
+      |> Enum.map(& &1.ship_instance.ship_type_id)
+      |> Enum.uniq()
+      |> length()
 
     total_ships = length(ship_performances)
 
