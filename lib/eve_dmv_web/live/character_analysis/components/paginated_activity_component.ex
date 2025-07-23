@@ -19,10 +19,8 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.PaginatedActivityComponent do
   def update(%{character_id: _character_id} = assigns, socket) do
     socket =
       socket
-
-    assign(assigns)
-
-    load_activity()
+      |> assign(assigns)
+      |> load_activity()
 
     {:ok, socket}
   end
@@ -33,10 +31,8 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.PaginatedActivityComponent do
 
     socket =
       socket
-
-    assign(page: page)
-
-    load_activity()
+      |> assign(page: page)
+      |> load_activity()
 
     {:noreply, socket}
   end
@@ -46,10 +42,8 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.PaginatedActivityComponent do
     if socket.assigns.page > 1 do
       socket =
         socket
-
-      assign(page: socket.assigns.page - 1)
-
-      load_activity()
+        |> assign(page: socket.assigns.page - 1)
+        |> load_activity()
 
       {:noreply, socket}
     else
@@ -62,10 +56,8 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.PaginatedActivityComponent do
     if socket.assigns.pagination && socket.assigns.pagination.has_next do
       socket =
         socket
-
-      assign(page: socket.assigns.page + 1)
-
-      load_activity()
+        |> assign(page: socket.assigns.page + 1)
+        |> load_activity()
 
       {:noreply, socket}
     else
@@ -86,9 +78,9 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.PaginatedActivityComponent do
       )
 
     socket
-    assign(:activity, result.data)
-    assign(:pagination, result.pagination)
-    assign(:loading, false)
+    |> assign(:activity, result.data)
+    |> assign(:pagination, result.pagination)
+    |> assign(:loading, false)
   end
 
   @impl true
@@ -204,7 +196,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.PaginatedActivityComponent do
 
     cond do
       total <= 7 ->
-        1..total(Enum.to_list())
+        1..total |> Enum.to_list()
 
       current <= 4 ->
         [1, 2, 3, 4, 5, "...", total]
