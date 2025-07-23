@@ -91,13 +91,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting do
         case parse_pyfa_fitting(pyfa_xml) do
           {:ok, parsed} ->
             changeset
-            Ash.Changeset.change_attribute(:name, parsed.name)
-            Ash.Changeset.change_attribute(:ship_type_id, parsed.ship_type_id)
-            Ash.Changeset.change_attribute(:raw_fitting, pyfa_xml)
-            Ash.Changeset.change_attribute(:parsed_fitting, parsed)
-            Ash.Changeset.change_attribute(:source, :pyfa)
-
-            Ash.Changeset.change_attribute(
+            |> Ash.Changeset.change_attribute(:name, parsed.name)
+            |> Ash.Changeset.change_attribute(:ship_type_id, parsed.ship_type_id)
+            |> Ash.Changeset.change_attribute(:raw_fitting, pyfa_xml)
+            |> Ash.Changeset.change_attribute(:parsed_fitting, parsed)
+            |> Ash.Changeset.change_attribute(:source, :pyfa)
+            |> Ash.Changeset.change_attribute(
               :character_id,
               Ash.Changeset.get_argument(changeset, :character_id)
             )

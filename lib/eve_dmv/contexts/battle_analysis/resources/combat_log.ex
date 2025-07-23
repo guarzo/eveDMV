@@ -134,17 +134,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.CombatLog do
              end_time: end_time
            }} ->
             changeset
-            Ash.Changeset.change_attribute(:parsed_data, parsed_data)
-            Ash.Changeset.change_attribute(:summary, summary)
-            Ash.Changeset.change_attribute(:event_count, event_count)
-            Ash.Changeset.change_attribute(:start_time, start_time)
-            Ash.Changeset.change_attribute(:end_time, end_time)
-            Ash.Changeset.change_attribute(:parse_status, :completed)
+            |> Ash.Changeset.change_attribute(:parsed_data, parsed_data)
+            |> Ash.Changeset.change_attribute(:summary, summary)
+            |> Ash.Changeset.change_attribute(:event_count, event_count)
+            |> Ash.Changeset.change_attribute(:start_time, start_time)
+            |> Ash.Changeset.change_attribute(:end_time, end_time)
+            |> Ash.Changeset.change_attribute(:parse_status, :completed)
 
           {:error, reason} ->
             changeset
-            Ash.Changeset.change_attribute(:parse_status, :failed)
-            Ash.Changeset.change_attribute(:parse_error, inspect(reason))
+            |> Ash.Changeset.change_attribute(:parse_status, :failed)
+            |> Ash.Changeset.change_attribute(:parse_error, inspect(reason))
         end
       end)
     end

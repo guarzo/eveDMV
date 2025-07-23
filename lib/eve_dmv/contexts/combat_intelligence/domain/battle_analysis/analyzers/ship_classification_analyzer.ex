@@ -272,13 +272,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Shi
   """
   def count_logistics_ships(participants) do
     participants
-    Enum.count(&(classify_ship_role(&1) == :logistics))
+    |> Enum.count(&(classify_ship_role(&1) == :logistics))
   end
 
   def count_long_range_ships(participants) do
     participants
-
-    Enum.count(fn participant ->
+    |> Enum.count(fn participant ->
       role = classify_ship_role(participant)
       role in [:battleship, :cruiser, :battlecruiser]
     end)
