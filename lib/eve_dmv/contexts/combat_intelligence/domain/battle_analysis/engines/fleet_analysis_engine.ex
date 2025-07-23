@@ -177,8 +177,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
 
   defp extract_all_ships_from_composition(ship_composition) do
     ship_composition
-
-    Enum.flat_map(fn {ship_type_id, count} ->
+    |> Enum.flat_map(fn {ship_type_id, count} ->
       List.duplicate(ship_type_id, count)
     end)
   end
@@ -221,7 +220,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
     end
   end
 
-  defp generate_ewar_analysis(ewar_analysis, intensity) do
+  defp generate_ewar_analysis(_ewar_analysis, intensity) do
     cond do
       intensity >= 0.3 -> "Heavy EWAR presence detected with multiple types"
       intensity >= 0.15 -> "Moderate EWAR capabilities identified"
