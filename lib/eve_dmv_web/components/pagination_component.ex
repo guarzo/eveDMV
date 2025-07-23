@@ -186,8 +186,11 @@ defmodule EveDmvWeb.Components.PaginationComponent do
   # Helper functions
 
   defp format_number(number) when is_integer(number) do
-    Integer.to_string(number) |> String.reverse()
-    String.replace(~r/(\d{3})(?=\d)/, "\\1,") |> String.reverse()
+    number
+    |> Integer.to_string()
+    |> String.reverse()
+    |> String.replace(~r/(\d{3})(?=\d)/, "\\1,")
+    |> String.reverse()
   end
 
   defp format_number(number) when is_nil(number), do: "0"

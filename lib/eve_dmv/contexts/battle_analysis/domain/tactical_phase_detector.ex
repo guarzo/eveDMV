@@ -141,10 +141,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
     step_size = window_size / 2
 
     0
-    Stream.iterate(&(&1 + step_size))
-    Stream.take_while(&(&1 < total_duration))
-
-    Enum.map(fn offset ->
+    |> Stream.iterate(&(&1 + step_size))
+    |> Stream.take_while(&(&1 < total_duration))
+    |> Enum.map(fn offset ->
       window_start = NaiveDateTime.add(battle_start, round(offset), :second)
       window_end = NaiveDateTime.add(window_start, round(window_size), :second)
 
@@ -377,7 +376,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
     else
       # Simple random initialization (k-means++ would be better)
       numeric_features
-      Enum.take_random(k)
+      |> Enum.take_random(k)
     end
   end
 
@@ -505,13 +504,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
     Enum.sum(
       Enum.map(clusters, fn cluster ->
         cluster.members
-
-        Enum.map(fn member ->
+        |> Enum.map(fn _member ->
           # Simplified distance calculation
           1.0
         end)
-
-        Enum.map(fn distance -> :math.pow(distance, 2) end) |> Enum.sum()
+        |> Enum.map(fn distance -> :math.pow(distance, 2) end)
+        |> Enum.sum()
       end)
     )
   end
@@ -844,13 +842,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
 
   defp extract_all_participants(killmails) do
     killmails
-    Enum.flat_map(&ParticipantExtractor.extract_participants/1) |> Enum.uniq()
+    |> Enum.flat_map(&ParticipantExtractor.extract_participants/1)
+    |> Enum.uniq()
   end
 
   defp extract_attackers_count(killmails) do
     killmails
-
-    Enum.map(fn killmail ->
+    |> Enum.map(fn killmail ->
       case killmail.raw_data do
         %{"attackers" => attackers} when is_list(attackers) -> length(attackers)
         _ -> 0
@@ -929,14 +927,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
 
   defp analyze_dominant_ship_types(killmails) do
     killmails
-    Enum.group_by(& &1.victim_ship_type_id)
-
-    Enum.map(fn {type_id, kills} ->
+    |> Enum.group_by(& &1.victim_ship_type_id)
+    |> Enum.map(fn {type_id, kills} ->
       %{ship_type_id: type_id, count: length(kills)}
     end)
-
-    Enum.sort_by(& &1.count, :desc)
-    Enum.take(3)
+    |> Enum.sort_by(& &1.count, :desc)
+    |> Enum.take(3)
   end
 
   defp calculate_cluster_variance(cluster) do

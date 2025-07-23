@@ -292,9 +292,8 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
     cutoff = System.system_time(:millisecond) - @rate_limit_window_ms
 
     requests
-    Enum.filter(&(&1 > cutoff))
-
-    length()
+    |> Enum.filter(&(&1 > cutoff))
+    |> length()
   end
 
   defp fetch_and_cache_item_price(type_id, state) do

@@ -169,8 +169,7 @@ defmodule EveDmvWeb.FormatHelpers do
     text
     |> String.replace("_", " ")
     |> String.split()
-    |> Enum.map(&String.capitalize/1)
-    |> Enum.join(" ")
+    |> Enum.map_join(" ", &String.capitalize/1)
   end
 
   # Private helper for adding commas to number strings
@@ -188,12 +187,12 @@ defmodule EveDmvWeb.FormatHelpers do
   @doc """
   Common CSS classes for small gray text elements.
   """
-  def small_gray_text_class(), do: "text-sm text-gray-400"
+  def small_gray_text_class, do: "text-sm text-gray-400"
 
   @doc """
   Common CSS classes for muted secondary text.
   """
-  def muted_text_class(), do: "text-sm text-gray-500"
+  def muted_text_class, do: "text-sm text-gray-500"
 
   @doc """
   Formats error messages consistently across the application.

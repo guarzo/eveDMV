@@ -87,9 +87,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
         total_kills =
           Map.values(system_activities) |> List.flatten()
 
-        length()
+        total_kill_count = length(total_kills)
 
-        activity_level = determine_activity_level(total_kills, length(systems), time_window_hours)
+        activity_level = determine_activity_level(total_kill_count, length(systems), time_window_hours)
 
         # Find most recent activity
         last_activity = find_most_recent_activity(system_activities)
@@ -578,9 +578,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
   defp aggregate_chain_data(chains) do
     total_systems =
       chains
-
-    Enum.map(&Map.get(&1, :systems, [])) |> List.flatten()
-    length()
+      |> Enum.map(&Map.get(&1, :systems, []))
+      |> List.flatten()
+      |> length()
 
     %{
       total_systems: total_systems,

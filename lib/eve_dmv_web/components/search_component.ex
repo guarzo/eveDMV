@@ -6,7 +6,7 @@ defmodule EveDmvWeb.SearchComponent do
 
   use EveDmvWeb, :live_component
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def mount(socket) do
     {:ok,
      assign(socket,
@@ -21,12 +21,12 @@ defmodule EveDmvWeb.SearchComponent do
      )}
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def update(assigns, socket) do
     {:ok, assign(socket, assigns)}
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def handle_event("search", %{"query" => query}, socket) do
     socket =
       socket

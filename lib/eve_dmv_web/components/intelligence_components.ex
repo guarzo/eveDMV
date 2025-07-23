@@ -605,8 +605,9 @@ defmodule EveDmvWeb.IntelligenceComponents do
 
   defp humanize_component(component) when is_binary(component) do
     component
-    String.replace("_", " ") |> String.split()
-    Enum.map_join(" ", &String.capitalize/1)
+    |> String.replace("_", " ")
+    |> String.split()
+    |> Enum.map_join(" ", &String.capitalize/1)
   end
 
   defp score_color(score) when score >= 0.8, do: "excellent"
@@ -648,7 +649,6 @@ defmodule EveDmvWeb.IntelligenceComponents do
       threats
       |> Enum.map(fn {_threat_type, threat_count} -> threat_count end)
       |> Enum.max(fn -> 1 end)
-      
     if max_count > 0, do: count / max_count * 100, else: 0
   end
 

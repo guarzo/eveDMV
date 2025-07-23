@@ -546,7 +546,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
     case raw_data do
       %{"attackers" => attackers} when is_list(attackers) ->
         attackers
-        Enum.map(&(&1["damage_done"] || 0)) |> Enum.sum()
+        |> Enum.map(&(&1["damage_done"] || 0))
+        |> Enum.sum()
 
       _ ->
         0

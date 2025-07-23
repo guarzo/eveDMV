@@ -165,16 +165,14 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
 
   defp group_by_time_windows(killmails, window_seconds) do
     killmails
-
-    Enum.group_by(fn km ->
+    |> Enum.group_by(fn km ->
       # Round down to nearest window
       timestamp = km.killmail_time
       seconds = DateTime.to_unix(timestamp)
       window_start_seconds = div(seconds, window_seconds) * window_seconds
       DateTime.from_unix!(window_start_seconds)
     end)
-
-    Enum.sort_by(fn {window_start, _} -> window_start end)
+    |> Enum.sort_by(fn {window_start, _} -> window_start end)
   end
 
   defp extract_attacker_targets(killmails) do
@@ -253,9 +251,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
 
   defp identify_high_focus_periods(focus_fire_windows) do
     focus_fire_windows
-    Enum.filter(&(&1.focus_score > 75))
-
-    Enum.map(fn window ->
+    |> Enum.filter(&(&1.focus_score > 75))
+    |> Enum.map(fn window ->
       %{
         period: "#{window.window_start} - #{window.window_end}",
         focus_score: window.focus_score,
@@ -443,7 +440,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
 
   defp detect_formation_transitions(formations) do
     formations
-    Enum.chunk_every(2, 1, :discard)
+    |> Enum.chunk_every(2, 1, :discard)
 
     Enum.map(fn [prev, curr] ->
       %{
@@ -517,8 +514,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
   defp track_attacker_target_switches(sorted_killmails) do
     # Build a map of attacker -> list of {target, timestamp} tuples
     sorted_killmails
-
-    Enum.reduce(%{}, fn km, acc ->
+    |> Enum.reduce(%{}, fn km, acc ->
       attackers = get_attackers_from_killmail(km)
       victim_id = km.victim_character_id
       timestamp = km.killmail_time
@@ -786,9 +782,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
 
   defp extract_target_sequences(killmails) do
     killmails
-    Enum.sort_by(& &1.killmail_time)
-
-    Enum.map(fn km ->
+    |> Enum.sort_by(& &1.killmail_time)
+    |> Enum.map(fn km ->
       %{
         target_id: km.victim_character_id,
         ship_type: km.victim_ship_type_id,
@@ -811,8 +806,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
     Enum.map(time_windows, fn {window, kms} ->
       unique_targets =
         kms
-
-      Enum.map(& &1.victim_character_id) |> Enum.uniq() |> Kernel.length()
+        |> Enum.map(& &1.victim_character_id)
+        |> Enum.uniq()
+        |> Kernel.length()
 
       %{
         window: window,

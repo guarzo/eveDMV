@@ -17,6 +17,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
   alias EveDmv.Api
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor
+  
+  # Note: Using fully qualified Kernel functions to avoid import conflicts
 
   require Logger
   # Cross-system analysis parameters
@@ -704,8 +706,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
         DateTime.to_time(DateTime.truncate(km.killmail_time, :second))
       end)
 
-      Enum.max_by(fn {_hour, kms} -> length(kms) end)
-      elem(0)
+      {peak_hour, _killmails} = 
+        killmails
+        |> Enum.max_by(fn {_hour, kms} -> length(kms) end)
+      peak_hour
     else
       nil
     end
@@ -718,7 +722,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     else
       # Split killmails into two halves and compare
       sorted_killmails = Enum.sort_by(killmails, & &1.killmail_time)
-      mid_point = div(length(sorted_killmails), 2)
+      mid_point = Kernel.div(Kernel.length(sorted_killmails), 2)
 
       first_half = Enum.take(sorted_killmails, mid_point)
       second_half = Enum.drop(sorted_killmails, mid_point)
@@ -1021,9 +1025,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
       peak_hour =
         hourly_distribution
-
-      Enum.max_by(fn {_hour, count} -> count end)
-      elem(0)
+        |> Enum.max_by(fn {_hour, count} -> count end)
+        |> Kernel.elem(0)
 
       %{
         hourly_distribution: hourly_distribution,
@@ -1053,7 +1056,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
         hourly_distribution
 
       Enum.map(fn {_hour, count} -> :math.pow(count - mean_activity, 2) end) |> Enum.sum()
-      div(24)
+      |> Kernel.div(24)
 
       :math.sqrt(variance)
     else
@@ -1189,7 +1192,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     if length(killmails) > 4 do
       # Split into quarters and analyze trend
       sorted_killmails = Enum.sort_by(killmails, & &1.killmail_time)
-      quarter_size = div(length(sorted_killmails), 4)
+      quarter_size = Kernel.div(Kernel.length(sorted_killmails), 4)
 
       quarters = [
         Enum.slice(sorted_killmails, 0, quarter_size),
@@ -1278,7 +1281,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
         scores
 
       Enum.map(fn score -> :math.pow(score - mean, 2) end) |> Enum.sum()
-      div(length(scores))
+      |> Kernel.div(Kernel.length(scores))
 
       std_dev = :math.sqrt(variance)
 
@@ -1808,7 +1811,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
         hour_of_day: km.killmail_time.hour,
         day_of_week: Date.day_of_week(DateTime.to_date(km.killmail_time)),
         # 15-minute buckets
-        minute_marker: div(km.killmail_time.minute, 15) * 15
+        minute_marker: Kernel.div(km.killmail_time.minute, 15) * 15
       }
     end)
   end
@@ -1863,7 +1866,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
     # Create 15-minute buckets
     # 15 minutes = 900 seconds
-    bucket_count = div(DateTime.diff(timeline_end, timeline_start, :second), 900)
+    bucket_count = Kernel.div(DateTime.diff(timeline_end, timeline_start, :second), 900)
 
     buckets =
       0..bucket_count
@@ -1896,7 +1899,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     system_ids = Map.keys(time_series_data)
 
     system_ids
-    combinations(2)
+    |> combinations(2)
 
     Enum.map(fn [system_a, system_b] ->
       series_a = time_series_data[system_a]
@@ -1946,7 +1949,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
   defp calculate_lag_correlation(series_a, series_b) do
     # Calculate correlation at different time lags
     # Up to 12 buckets (3 hours) or 1/4 series length
-    max_lag = min(12, div(length(series_a), 4))
+    max_lag = min(12, Kernel.div(Kernel.length(series_a), 4))
 
     lag_correlations =
       -max_lag..max_lag
@@ -2135,7 +2138,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
       activity_values = Enum.map(time_series, & &1.activity_count)
 
       # Check for daily patterns (96 buckets = 24 hours)
-      daily_lag = min(96, div(length(activity_values), 2))
+      daily_lag = min(96, Kernel.div(Kernel.length(activity_values), 2))
 
       if daily_lag > 12 do
         daily_correlation = calculate_autocorrelation(activity_values, daily_lag)
@@ -2413,9 +2416,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Analyze corporation behavior across multiple systems
     systems_active =
       activities
-
-    Enum.map(& &1.system_id) |> Enum.uniq()
-    length()
+      |> Enum.map(& &1.system_id) 
+      |> Enum.uniq()
+      |> Kernel.length()
 
     total_activity = Enum.sum(Enum.map(activities, & &1.activity_count))
 
@@ -2756,7 +2759,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
   defp identify_corp_system_overlaps(corp_activities) do
     # Identify corporations active in the same systems
     corp_activities
-    combinations(2)
+    |> combinations(2)
 
     Enum.map(fn [corp_a, corp_b] ->
       systems_a = Map.keys(corp_a.territorial_behavior.system_distribution)
@@ -2801,7 +2804,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
   defp identify_corp_temporal_coordination(corp_activities) do
     # Identify temporal coordination between corporations
     corp_activities
-    combinations(2)
+    |> combinations(2)
 
     Enum.map(fn [corp_a, corp_b] ->
       temporal_overlap = analyze_corp_temporal_overlap(corp_a, corp_b)
@@ -3222,9 +3225,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Factor 2: Diversity of pattern types
     unique_pattern_types =
       patterns
-
-    Enum.map(& &1.pattern_type) |> Enum.uniq()
-    length()
+      |> Enum.map(& &1.pattern_type) 
+      |> Enum.uniq()
+      |> Kernel.length()
 
     diversity_confidence = min(1.0, unique_pattern_types / 6.0)
     diversity_confidence_factors = [diversity_confidence | pattern_confidence_factors]

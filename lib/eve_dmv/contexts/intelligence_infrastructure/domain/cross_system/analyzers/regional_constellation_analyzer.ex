@@ -233,7 +233,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
       |> Enum.filter(& &1.victim_alliance_id)
       |> Enum.group_by(& &1.victim_alliance_id)
       |> Enum.map(fn {alliance_id, kills} -> {alliance_id, length(kills)} end)
-    Enum.sort_by(&elem(&1, 1), :desc)
+      |> Enum.sort_by(&elem(&1, 1), :desc)
 
     # Determine control status
     control_status =
