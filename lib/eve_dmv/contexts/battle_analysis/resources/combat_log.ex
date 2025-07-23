@@ -88,24 +88,20 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.CombatLog do
 
         content_hash =
           content
+          |> :crypto.hash(:sha256)
+          |> Base.encode16(case: :lower)
 
-        :crypto.hash(:sha256)
-
-        Base.encode16(case: :lower)
         changeset
-
-        Ash.Changeset.change_attribute(:raw_content, Base.encode64(compressed))
-        Ash.Changeset.change_attribute(:content_hash, content_hash)
-        Ash.Changeset.change_attribute(:file_name, file.filename)
-        Ash.Changeset.change_attribute(:file_size, byte_size(content))
-        Ash.Changeset.change_attribute(:uploaded_at, DateTime.utc_now())
-
-        Ash.Changeset.change_attribute(
+        |> Ash.Changeset.change_attribute(:raw_content, Base.encode64(compressed))
+        |> Ash.Changeset.change_attribute(:content_hash, content_hash)
+        |> Ash.Changeset.change_attribute(:file_name, file.filename)
+        |> Ash.Changeset.change_attribute(:file_size, byte_size(content))
+        |> Ash.Changeset.change_attribute(:uploaded_at, DateTime.utc_now())
+        |> Ash.Changeset.change_attribute(
           :pilot_name,
           Ash.Changeset.get_argument(changeset, :pilot_name)
         )
-
-        Ash.Changeset.change_attribute(
+        |> Ash.Changeset.change_attribute(
           :battle_id,
           Ash.Changeset.get_argument(changeset, :battle_id)
         )

@@ -286,8 +286,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Shi
 
   def count_fast_ships(participants) do
     participants
-
-    Enum.count(fn participant ->
+    |> Enum.count(fn participant ->
       role = classify_ship_role(participant)
       role in [:frigate, :destroyer, :assault_frigate]
     end)
