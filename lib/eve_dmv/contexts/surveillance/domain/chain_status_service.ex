@@ -83,7 +83,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainStatusService do
       0
     else
       threats
-      Enum.map(& &1.threat_level) |> Enum.max()
+      |> Enum.map(& &1.threat_level) 
+      |> Enum.max()
     end
   end
 
@@ -123,9 +124,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainStatusService do
   defp format_recent_activity(timeline) do
     timeline
     # Last 10 activities
-    Enum.take(10)
-
-    Enum.map(fn activity ->
+    |> Enum.take(10)
+    |> Enum.map(fn activity ->
       %{
         type: Map.get(activity, :type),
         timestamp: Map.get(activity, :timestamp),

@@ -121,7 +121,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainThreatAnalyzer do
       0
     else
       threats
-      Enum.map(& &1.threat_level) |> Enum.max()
+      |> Enum.map(& &1.threat_level) 
+      |> Enum.max()
     end
   end
 
