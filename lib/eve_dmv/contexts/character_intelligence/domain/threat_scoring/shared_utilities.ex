@@ -170,14 +170,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtili
       %{"victim" => %{"damage_taken" => total_damage}, "attackers" => attackers}
       when is_list(attackers) and is_number(total_damage) and total_damage > 0 ->
         character_damage =
-          attackers
-
-        Enum.find(&(&1["character_id"] == target_character_id))
-
-        case do
-          %{"damage_done" => damage} when is_number(damage) -> damage
-          _ -> 0
-        end
+          case Enum.find(attackers, &(&1["character_id"] == target_character_id)) do
+            %{"damage_done" => damage} when is_number(damage) -> damage
+            _ -> 0
+          end
 
         character_damage / total_damage
 
