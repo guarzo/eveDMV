@@ -321,16 +321,14 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
     case Jason.decode(payload) do
       {:ok, killmails} when is_list(killmails) ->
         killmails
-
-        Enum.map(fn km ->
+        |> Enum.map(fn km ->
           %Message{
             data: km,
             acknowledger: Broadway.NoopAcknowledger.init(),
             batcher: :db_insert
           }
         end)
-
-        then(&{:batch, &1})
+        |> then(&{:batch, &1})
 
       _ ->
         nil
