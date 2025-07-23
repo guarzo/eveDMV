@@ -389,10 +389,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
 
   defp get_killmail_details(killmail_id) do
     # Fetch the killmail from our database to get system and time info
-    case(KillmailRaw)
-    Ash.Query.filter(killmail_id: killmail_id)
-
-    Ash.read_one domain: Api do
+    case KillmailRaw
+         |> Ash.Query.filter(killmail_id: killmail_id)
+         |> Ash.read_one(domain: Api) do
       {:ok, killmail} when killmail != nil ->
         {:ok, killmail}
 
