@@ -1268,8 +1268,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp generate_individual_recommendations(ship_performances) do
     ship_performances
-    Enum.filter(&(&1.role_effectiveness.effectiveness_score < 0.6))
-    Enum.map(&generate_ship_recommendation/1)
+    |> Enum.filter(&(&1.role_effectiveness.effectiveness_score < 0.6))
+    |> Enum.map(&generate_ship_recommendation/1)
   end
 
   defp generate_ship_recommendation(performance) do
