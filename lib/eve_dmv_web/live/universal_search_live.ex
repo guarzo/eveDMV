@@ -37,9 +37,8 @@ defmodule EveDmvWeb.UniversalSearchLive do
   def handle_event("search", %{"query" => query}, socket) do
     socket =
       socket
-
-    assign(query: query)
-    search_all(query)
+      |> assign(query: query)
+      |> search_all(query)
 
     {:noreply, socket}
   end
@@ -79,7 +78,8 @@ defmodule EveDmvWeb.UniversalSearchLive do
   @impl true
   def handle_event("clear_search", _params, socket) do
     socket =
-      assign(socket,
+      socket
+      |> assign(
         query: "",
         results: %{systems: [], characters: [], corporations: []},
         show_dropdown: false,
@@ -162,9 +162,8 @@ defmodule EveDmvWeb.UniversalSearchLive do
     case SolarSystem.search_by_name(name_pattern: query, similarity_threshold: 0.2) do
       {:ok, systems} ->
         systems
-        Enum.take(5)
-
-        Enum.map(fn system ->
+        |> Enum.take(5)
+        |> Enum.map(fn system ->
           %{
             id: system.system_id,
             name: system.system_name,
@@ -417,9 +416,8 @@ defmodule EveDmvWeb.UniversalSearchLive do
 
   def time_ago(%NaiveDateTime{} = datetime) do
     datetime
-    DateTime.from_naive!("Etc/UTC")
-
-    time_ago()
+    |> DateTime.from_naive!("Etc/UTC")
+    |> time_ago()
   end
 
   def time_ago(_), do: "unknown"
