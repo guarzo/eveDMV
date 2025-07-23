@@ -6,7 +6,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   and combat effectiveness prediction.
   """
 
-  import Ash.Query
   alias EveDmv.Api
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine
   alias EveDmv.Eve.EsiCharacterClient

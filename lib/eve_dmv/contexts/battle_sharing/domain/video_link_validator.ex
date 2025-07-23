@@ -495,7 +495,8 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
       new_query = URI.encode_query(combined_params)
 
       uri
-      Map.put(:query, new_query) |> URI.to_string()
+      |> Map.put(:query, new_query)
+      |> URI.to_string()
     else
       embed_url
     end

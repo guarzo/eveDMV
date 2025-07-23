@@ -724,8 +724,8 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
 
   defp generate_highlight_id do
     12
-    :crypto.strong_rand_bytes()
-    Base.encode16(case: :lower)
+    |> :crypto.strong_rand_bytes()
+    |> Base.encode16(case: :lower)
   end
 
   defp enrich_highlight_data(highlight, _battle_data) do

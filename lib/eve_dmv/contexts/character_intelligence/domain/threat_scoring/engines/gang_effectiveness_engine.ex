@@ -565,10 +565,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
 
     covered_roles =
       essential_roles
+      |> Enum.count(&(Map.get(ship_roles, &1, 0) > 0))
 
-    Enum.count(&(Map.get(ship_roles, &1, 0) > 0))
-
-    covered_roles / length(essential_roles)
+    if length(essential_roles) > 0 do
+      covered_roles / length(essential_roles)
+    else
+      0.0
+    end
   end
 
   defp calculate_composition_balance(ship_roles) do
