@@ -707,8 +707,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
     case killmail.raw_data do
       %{"attackers" => attackers} when is_list(attackers) ->
         attackers
-        Enum.filter(&(&1["ship_type_id"] != nil))
-        Enum.map(&classify_ship_role(&1["ship_type_id"])) |> Enum.frequencies()
+        |> Enum.filter(&(&1["ship_type_id"] != nil))
+        |> Enum.map(&classify_ship_role(&1["ship_type_id"]))
+        |> Enum.frequencies()
 
       _ ->
         %{}
