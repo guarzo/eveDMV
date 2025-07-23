@@ -212,10 +212,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
     if platform_config do
       embed_url =
         platform_config.embed_template
-
-      String.replace("{video_id}", video_id)
-      String.replace("{domain}", embed_domain)
-      add_embed_parameters(additional_params)
+        |> String.replace("{video_id}", video_id)
+        |> String.replace("{domain}", embed_domain)
+        |> add_embed_parameters(additional_params)
 
       {:ok, embed_url}
     else
@@ -228,10 +227,11 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
   defp normalize_url(url) do
     # Clean and normalize the URL
     normalized =
-      String.trim(url) |> String.downcase()
-
-    remove_tracking_parameters()
-    ensure_https()
+      url
+      |> String.trim()
+      |> String.downcase()
+      |> remove_tracking_parameters()
+      |> ensure_https()
 
     if valid_url_format?(normalized) do
       {:ok, normalized}
@@ -256,13 +256,15 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
 
     if uri.query do
       cleaned_query =
-        uri.URI.decode_query(query)
-
-      Map.drop(tracking_params) |> URI.encode_query()
+        uri.query
+        |> URI.decode_query()
+        |> Map.drop(tracking_params)
+        |> URI.encode_query()
       cleaned_query = if cleaned_query == "", do: nil, else: cleaned_query
 
       uri
-      Map.put(:query, cleaned_query) |> URI.to_string()
+      |> Map.put(:query, cleaned_query)
+      |> URI.to_string()
     else
       url
     end

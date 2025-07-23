@@ -733,10 +733,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
     # Add enrichment data to the highlight
     enriched =
       highlight
-
-    add_tactical_insights()
-    add_community_features()
-    add_navigation_data()
+      |> add_tactical_insights()
+      |> add_community_features()
+      |> add_navigation_data()
 
     {:ok, enriched}
   end

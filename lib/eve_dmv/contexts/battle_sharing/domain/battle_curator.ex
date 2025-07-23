@@ -225,10 +225,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
   defp enrich_battle_report(battle_report) do
     enriched_report =
       battle_report
-
-    add_tactical_insights()
-    add_share_urls()
-    add_compatibility_data()
+      |> add_tactical_insights()
+      |> add_share_urls()
+      |> add_compatibility_data()
 
     {:ok, enriched_report}
   end

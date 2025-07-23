@@ -344,11 +344,10 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.CommunityManager do
 
     filtered_results =
       search_results
-
-    apply_text_search(query)
-    apply_search_filters(filters)
-    apply_search_sorting(sort_by)
-    Enum.take(limit)
+      |> apply_text_search(query)
+      |> apply_search_filters(filters)
+      |> apply_search_sorting(sort_by)
+      |> Enum.take(limit)
 
     {:ok, filtered_results}
   end
