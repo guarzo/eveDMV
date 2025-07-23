@@ -120,7 +120,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Com
 
     # Simplified ISK calculation - would use actual ship values in production
     attacker_killmails
-    Enum.map(&estimate_killmail_value/1) |> Enum.sum()
+    |> Enum.map(&estimate_killmail_value/1)
+    |> Enum.sum()
   end
 
   @doc """
@@ -130,7 +131,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Com
     Logger.debug("Calculating total ISK lost for #{length(victim_killmails)} killmails")
 
     victim_killmails
-    Enum.map(&estimate_killmail_value/1) |> Enum.sum()
+    |> Enum.map(&estimate_killmail_value/1)
+    |> Enum.sum()
   end
 
   # Private helper functions
