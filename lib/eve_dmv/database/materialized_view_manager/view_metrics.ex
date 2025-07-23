@@ -399,9 +399,9 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
     if length(health_data) > 0 do
       avg_score =
         health_data
-
-      Enum.map(& &1.health_score) |> Enum.sum()
-      Kernel./(length(health_data))
+        |> Enum.map(& &1.health_score) 
+        |> Enum.sum()
+        |> Kernel./(length(health_data))
 
       round(avg_score)
     else
@@ -445,22 +445,28 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
       []
 
     # Check total size (10GB)
-    maybe_add_recommendation(
-      total_size > 10_737_418_240,
-      "Total materialized view size exceeds 10GB - review data retention policies"
-    )
+    recommendation_list =
+      maybe_add_recommendation(
+        recommendation_list,
+        total_size > 10_737_418_240,
+        "Total materialized view size exceeds 10GB - review data retention policies"
+      )
 
     # Check failure rate
-    maybe_add_recommendation(
-      failure_rate > 10.0,
-      "High refresh failure rate (#{failure_rate}%) - investigate refresh errors"
-    )
+    recommendation_list =
+      maybe_add_recommendation(
+        recommendation_list,
+        failure_rate > 10.0,
+        "High refresh failure rate (#{failure_rate}%) - investigate refresh errors"
+      )
 
     # Check refresh time (5 minutes)
-    maybe_add_recommendation(
-      refresh_stats.avg_refresh_time_ms > 300_000,
-      "Average refresh time exceeds 5 minutes - consider optimization"
-    )
+    recommendation_list =
+      maybe_add_recommendation(
+        recommendation_list,
+        refresh_stats.avg_refresh_time_ms > 300_000,
+        "Average refresh time exceeds 5 minutes - consider optimization"
+      )
 
     if Enum.empty?(recommendation_list) do
       ["Materialized view system is performing well"]
