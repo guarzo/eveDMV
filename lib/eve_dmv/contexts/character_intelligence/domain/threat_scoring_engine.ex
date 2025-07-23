@@ -518,12 +518,14 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   defp calculate_total_isk_destroyed(attacker_killmails) do
     # Simplified ISK calculation - would use actual ship values in production
     attacker_killmails
-    Enum.map(&estimate_killmail_value/1) |> Enum.sum()
+    |> Enum.map(&estimate_killmail_value/1)
+    |> Enum.sum()
   end
 
   defp calculate_total_isk_lost(victim_killmails) do
     victim_killmails
-    Enum.map(&estimate_killmail_value/1) |> Enum.sum()
+    |> Enum.map(&estimate_killmail_value/1)
+    |> Enum.sum()
   end
 
   defp estimate_killmail_value(killmail) do
@@ -1256,8 +1258,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     ]
 
     scores
-    Enum.filter(fn {_desc, score} -> score >= 7.0 end)
-    Enum.map(&elem(&1, 0))
+    |> Enum.filter(fn {_desc, score} -> score >= 7.0 end)
+    |> Enum.map(&elem(&1, 0))
   end
 
   defp identify_key_weaknesses(dimensional_scores) do
@@ -1270,8 +1272,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     ]
 
     scores
-    Enum.filter(fn {_desc, score} -> score <= 3.0 end)
-    Enum.map(&elem(&1, 0))
+    |> Enum.filter(fn {_desc, score} -> score <= 3.0 end)
+    |> Enum.map(&elem(&1, 0))
   end
 
   defp generate_tactical_recommendations(dimensional_scores, threat_level) do
@@ -1475,8 +1477,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
 
   defp analyze_threat_distribution(threat_assessments) do
     threat_assessments
-    Enum.group_by(& &1.threat_level)
-    Enum.map(fn {level, assessments} -> {level, length(assessments)} end) |> Map.new()
+    |> Enum.group_by(& &1.threat_level)
+    |> Enum.map(fn {level, assessments} -> {level, length(assessments)} end)
+    |> Map.new()
   end
 
   defp identify_top_threats(threat_assessments) do
