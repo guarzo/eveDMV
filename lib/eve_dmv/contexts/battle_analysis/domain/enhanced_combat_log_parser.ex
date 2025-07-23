@@ -15,12 +15,27 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
   @doc """
   Parses a combat log file and extracts comprehensive combat events.
 
+  ## Examples
+
+      iex> log_content = "04:27:08\\tCombat\\t278 to Darin Raltin[GI.N](Porpoise) - Scourge Rage Rocket - Hits"
+      iex> {:ok, result} = parse_combat_log(log_content)
+      iex> length(result.events)
+      1
+      iex> result.events |> List.first() |> Map.get(:type)
+      :damage_dealt
+
+  ## Options
+  - `:start_time` - Filter events after this time
+  - `:end_time` - Filter events before this time  
+  - `:pilot_name` - Filter events involving this pilot
+
   ## Returns
   {:ok, %{
     events: [combat_event],
-    tactical_analysis: %{...},
-    summary: %{...},
-    recommendations: [...]
+    tactical_analysis: %{damage_application: ..., tackle_effectiveness: ...},
+    summary: %{total_damage_dealt: integer, total_damage_received: integer},
+    recommendations: [string],
+    metadata: %{start_time: datetime, end_time: datetime}
   }}
   """
   @spec parse_combat_log(String.t(), keyword()) :: {
@@ -59,6 +74,28 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
 
   @doc """
   Correlates combat log with fitting data to analyze module usage effectiveness.
+
+  ## Examples
+
+      iex> events = [%{type: :damage_dealt, weapon: "Scourge Rage Rocket"}]
+      iex> fitting_data = %{modules: [%{type_name: "Rocket Launcher"}]}
+      iex> result = analyze_fitting_vs_usage(events, fitting_data)
+      iex> Map.has_key?(result, :module_usage_analysis)
+      true
+
+      iex> result = analyze_fitting_vs_usage([], nil)
+      iex> result.error
+      "No fitting data available for analysis"
+
+  ## Parameters
+  - `events` - List of parsed combat events from parse_combat_log/2
+  - `fitting_data` - Ship fitting data structure (map) or nil
+
+  ## Returns
+  Map containing:
+  - `:module_usage_analysis` - Usage stats for fitted modules
+  - `:unused_modules` - Modules that were fitted but not used
+  - `:error` - Error message if no fitting data provided
   """
   @spec analyze_fitting_vs_usage(list(), map() | nil) :: map()
   def analyze_fitting_vs_usage(events, fitting_data) do
