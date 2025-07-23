@@ -231,13 +231,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
     case killmail.raw_data do
       %{"attackers" => attackers} when is_list(attackers) ->
         attackers
-
-        Enum.filter(fn attacker ->
+        |> Enum.filter(fn attacker ->
           # Only include attackers with character_id and ship_type_id
           attacker["character_id"] && attacker["ship_type_id"]
         end)
-
-        Enum.map(fn attacker ->
+        |> Enum.map(fn attacker ->
           %{
             killmail_id: killmail.killmail_id,
             ship_type_id: attacker["ship_type_id"],
@@ -280,8 +278,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
     case killmail.raw_data do
       %{"attackers" => attackers} when is_list(attackers) ->
         attackers
-
-        Enum.map(fn attacker ->
+        |> Enum.map(fn attacker ->
           %{
             character_id: attacker["character_id"],
             corporation_id: attacker["corporation_id"],
@@ -1048,8 +1045,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp identify_top_performers(performances) do
     performances
-
-    Enum.sort_by(
+    |> Enum.sort_by(
       fn perf ->
         # Composite score prioritizing effectiveness and tactical contribution
         # Reduce survivability weight since it only applies to ships that died
@@ -1063,10 +1059,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
       end,
       :desc
     )
-
-    Enum.take(5)
-
-    Enum.map(fn perf ->
+    |> Enum.take(5)
+    |> Enum.map(fn perf ->
       score =
         perf.survivability_score.normalized_score * 0.15 +
           perf.role_effectiveness.effectiveness_score * 0.5 +
