@@ -392,8 +392,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
 
   defp extract_gang_sizes(killmails) do
     killmails
-
-    Enum.map(fn km ->
+    |> Enum.map(fn km ->
       case km.raw_data do
         %{"attackers" => attackers} when is_list(attackers) ->
           length(attackers)
@@ -599,9 +598,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
 
   defp get_dominant_roles(ship_roles) do
     ship_roles
-    Enum.sort_by(&elem(&1, 1), :desc)
-    Enum.take(2)
-    Enum.map(&elem(&1, 0))
+    |> Enum.sort_by(&elem(&1, 1), :desc)
+    |> Enum.take(2)
+    |> Enum.map(&elem(&1, 0))
   end
 
   defp calculate_coordination_efficiency(gang_size, coordination_score) do
