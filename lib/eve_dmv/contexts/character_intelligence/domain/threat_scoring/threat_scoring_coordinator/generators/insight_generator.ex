@@ -163,10 +163,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
   # Analyze preferred target ship types
   defp analyze_target_preferences(killmails) do
     killmails
-    Enum.filter(fn km -> is_integer(km.victim_ship_type_id) end)
-    Enum.map(& &1.victim_ship_type_id) |> Enum.frequencies()
-    Enum.sort_by(fn {_, count} -> count end, :desc)
-    Enum.take(5)
+    |> Enum.filter(fn km -> is_integer(km.victim_ship_type_id) end)
+    |> Enum.map(& &1.victim_ship_type_id)
+    |> Enum.frequencies()
+    |> Enum.sort_by(fn {_, count} -> count end, :desc)
+    |> Enum.take(5)
   end
 
   # Analyze fleet participation patterns (average fleet size)
@@ -186,10 +187,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
   # Analyze activity by hour of day
   defp analyze_timezone_patterns(killmails) do
     killmails
-    Enum.filter(fn km -> km.killmail_time != nil end)
-    Enum.map(fn km -> km.killmail_time.hour end) |> Enum.frequencies()
-    Enum.sort_by(fn {_, count} -> count end, :desc)
-    Enum.take(3)
+    |> Enum.filter(fn km -> km.killmail_time != nil end)
+    |> Enum.map(fn km -> km.killmail_time.hour end)
+    |> Enum.frequencies()
+    |> Enum.sort_by(fn {_, count} -> count end, :desc)
+    |> Enum.take(3)
   end
 
   # Calculate overall activity level (killmails per day)
@@ -244,7 +246,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
   end
 
   # Add combat behavior insights
-  defp add_combat_insights(insights, %{aggression_frequency: aggr, victim_frequency: victim})
+  defp add_combat_insights(insights, %{aggression_frequency: aggr, victim_frequency: _victim})
        when aggr > 0.7 do
     [
       "Primarily aggressive combatant - #{Float.round(aggr * 100, 0)}% of engagements as attacker"
@@ -252,7 +254,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
     ]
   end
 
-  defp add_combat_insights(insights, %{aggression_frequency: aggr, victim_frequency: victim})
+  defp add_combat_insights(insights, %{aggression_frequency: _aggr, victim_frequency: victim})
        when victim > 0.7 do
     ["Frequently targeted - #{Float.round(victim * 100, 0)}% of engagements as victim" | insights]
   end
