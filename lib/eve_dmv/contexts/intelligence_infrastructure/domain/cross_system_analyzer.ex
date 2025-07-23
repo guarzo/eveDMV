@@ -1607,10 +1607,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
   end
 
   defp get_factor_value(strategic_factors, factor_key) do
-    strategic_factors
-    Enum.find(fn {key, _value} -> key == factor_key end)
+    result = 
+      strategic_factors
+      |> Enum.find(fn {key, _value} -> key == factor_key end)
 
-    case do
+    case result do
       {_key, value} -> value
       nil -> :unknown
     end
