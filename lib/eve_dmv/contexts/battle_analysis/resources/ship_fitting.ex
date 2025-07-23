@@ -62,13 +62,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting do
         case parse_eft_fitting(eft_text) do
           {:ok, parsed} ->
             changeset
-            Ash.Changeset.change_attribute(:name, parsed.name)
-            Ash.Changeset.change_attribute(:ship_type_id, parsed.ship_type_id)
-            Ash.Changeset.change_attribute(:raw_fitting, eft_text)
-            Ash.Changeset.change_attribute(:parsed_fitting, parsed)
-            Ash.Changeset.change_attribute(:source, :eft)
-
-            Ash.Changeset.change_attribute(
+            |> Ash.Changeset.change_attribute(:name, parsed.name)
+            |> Ash.Changeset.change_attribute(:ship_type_id, parsed.ship_type_id)
+            |> Ash.Changeset.change_attribute(:raw_fitting, eft_text)
+            |> Ash.Changeset.change_attribute(:parsed_fitting, parsed)
+            |> Ash.Changeset.change_attribute(:source, :eft)
+            |> Ash.Changeset.change_attribute(
               :character_id,
               Ash.Changeset.get_argument(changeset, :character_id)
             )
@@ -305,8 +304,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting do
 
   defp extract_slot_items(items_by_slot, slot_range) do
     slot_range
-    Enum.flat_map(fn slot -> Map.get(items_by_slot, slot, []) end)
-    Enum.map(&(&1[:type_name] || "Unknown Module"))
+    |> Enum.flat_map(fn slot -> Map.get(items_by_slot, slot, []) end)
+    |> Enum.map(&(&1[:type_name] || "Unknown Module"))
   end
 
   defp extract_cargo_items(items_by_slot) do

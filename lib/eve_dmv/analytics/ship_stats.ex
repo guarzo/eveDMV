@@ -278,13 +278,13 @@ defmodule EveDmv.Analytics.ShipStats do
           PerformanceCalculator.calculate_solo_kill_percentage(solo_kills, total_kills)
 
         changeset
-        Ash.Changeset.change_attribute(:kill_death_ratio, kill_death_ratio)
-        Ash.Changeset.change_attribute(:isk_efficiency_percent, isk_efficiency)
-        Ash.Changeset.change_attribute(:survival_rate_percent, survival_rate)
-        Ash.Changeset.change_attribute(:avg_kill_value, avg_kill_value)
-        Ash.Changeset.change_attribute(:avg_loss_value, avg_loss_value)
-        Ash.Changeset.change_attribute(:solo_kill_percentage, solo_kill_percentage)
-        Ash.Changeset.change_attribute(:last_updated, DateTime.utc_now())
+        |> Ash.Changeset.change_attribute(:kill_death_ratio, kill_death_ratio)
+        |> Ash.Changeset.change_attribute(:isk_efficiency_percent, isk_efficiency)
+        |> Ash.Changeset.change_attribute(:survival_rate_percent, survival_rate)
+        |> Ash.Changeset.change_attribute(:avg_kill_value, avg_kill_value)
+        |> Ash.Changeset.change_attribute(:avg_loss_value, avg_loss_value)
+        |> Ash.Changeset.change_attribute(:solo_kill_percentage, solo_kill_percentage)
+        |> Ash.Changeset.change_attribute(:last_updated, DateTime.utc_now())
       end)
     end
 
