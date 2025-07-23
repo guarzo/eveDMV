@@ -58,12 +58,12 @@ defmodule EveDmv.Eve.StaticDataLoader.FileManager do
   Checks which files are missing from the data directory.
   """
   def get_missing_files(data_dir, required_files) do
-    Map.values(required_files)
-
-    Enum.reject(fn file_name ->
+    required_files
+    |> Map.values()
+    |> Enum.reject(fn file_name ->
       data_dir
-      Path.join(file_name)
-      File.exists?()
+      |> Path.join(file_name)
+      |> File.exists?()
     end)
   end
 
@@ -152,20 +152,18 @@ defmodule EveDmv.Eve.StaticDataLoader.FileManager do
     if File.exists?(data_dir) do
       files =
         data_dir
+        |> File.ls!()
+        |> Enum.filter(&String.ends_with?(&1, ".csv"))
+        |> Enum.map(fn file ->
+          path = Path.join(data_dir, file)
+          stat = File.stat!(path)
 
-      File.ls!()
-      Enum.filter(&String.ends_with?(&1, ".csv"))
-
-      Enum.map(fn file ->
-        path = Path.join(data_dir, file)
-        stat = File.stat!(path)
-
-        %{
-          name: file,
-          size: stat.size,
-          modified: stat.mtime
-        }
-      end)
+          %{
+            name: file,
+            size: stat.size,
+            modified: stat.mtime
+          }
+        end)
 
       %{
         directory: data_dir,
@@ -184,10 +182,9 @@ defmodule EveDmv.Eve.StaticDataLoader.FileManager do
   # Private functions
 
   defp download_file(url) do
-    case(url)
-    Finch.build(:get)
-
-    Finch.request EveDmv.Finch, receive_timeout: 30_000 do
+    case url
+         |> Finch.build(:get)
+         |> Finch.request(EveDmv.Finch, receive_timeout: 30_000) do
       {:ok, %{status: 200, body: body}} ->
         {:ok, body}
 

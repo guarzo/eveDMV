@@ -10,10 +10,10 @@ defmodule Mix.Tasks.Eve.ApplyQuerySafety do
     mix eve.apply_query_safety               # Apply changes
   """
 
+  @shortdoc "Apply query safety to Ash resources"
+
   use Mix.Task
   require Logger
-
-  @shortdoc "Apply query safety to Ash resources"
 
   @resources_to_update [
     "lib/eve_dmv/killmails/killmail_raw.ex",
@@ -95,16 +95,17 @@ defmodule Mix.Tasks.Eve.ApplyQuerySafety do
 
     if index do
       # Calculate byte position
-      lines
-      Enum.take(index)
-      Enum.join("\n")
+      partial_content =
+        lines
+        |> Enum.take(index)
+        |> Enum.join("\n")
 
-      byte_size()
+      byte_size(partial_content)
     else
       # Default to end of attributes block
       case Regex.run(~r/attributes\s+do.*?end/s, content) do
         [match] ->
-          start_pos = :binary.match(content, match) |> elem(0)
+          {start_pos, _} = :binary.match(content, match)
           start_pos + byte_size(match)
 
         _ ->
@@ -117,6 +118,6 @@ defmodule Mix.Tasks.Eve.ApplyQuerySafety do
   defp generate_diff(original, updated) do
     # Simple diff showing the added lines
     added_lines = String.split(updated, "\n") -- String.split(original, "\n")
-    Enum.map(added_lines, &"+ #{&1}") |> Enum.join("\n")
+    Enum.map_join(added_lines, "\n", &"+ #{&1}")
   end
 end

@@ -18,8 +18,8 @@ defmodule EveDmvWeb.SurveillanceLive.ExportImportService do
   @spec export_profiles_json([String.t()], map()) :: map()
   def export_profiles_json(profile_ids, actor) do
     profiles =
-    profile_ids
-    Enum.reduce([], fn profile_id, acc ->
+      profile_ids
+      |> Enum.reduce([], fn profile_id, acc ->
         case Ash.get(Profile, profile_id, domain: SurveillanceApi, actor: actor) do
           {:ok, profile} ->
             exported = %{
@@ -34,9 +34,10 @@ defmodule EveDmvWeb.SurveillanceLive.ExportImportService do
 
           {:error, error} ->
             Logger.warning("Failed to export profile #{profile_id}: #{inspect(error)}")
-    acc
+            acc
         end
-      end) |> Enum.reverse()
+      end)
+      |> Enum.reverse()
     %{
       "version" => "1.0",
       "exported_at" => DateTime.utc_now(),
@@ -114,7 +115,8 @@ defmodule EveDmvWeb.SurveillanceLive.ExportImportService do
 
   # Helper Functions
 
-  defp reload_matching_engine MatchingEngine.reload_profiles(do)
+  defp reload_matching_engine do
+    MatchingEngine.reload_profiles()
   rescue
     error ->
       Logger.warning("Failed to reload matching engine: #{inspect(error)}")

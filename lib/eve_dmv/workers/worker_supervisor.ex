@@ -59,8 +59,7 @@ defmodule EveDmv.Workers.WorkerSupervisor do
       Supervisor.which_children(__MODULE__)
 
     children
-
-    Enum.map(fn {id, pid, _type, _modules} ->
+    |> Enum.map(fn {id, pid, _type, _modules} ->
       try do
         case GenServer.call(pid, :get_stats, 5000) do
           stats when is_map(stats) -> {id, stats}
@@ -70,8 +69,7 @@ defmodule EveDmv.Workers.WorkerSupervisor do
         _ -> {id, %{status: :error}}
       end
     end)
-
-    Enum.into(%{})
+    |> Enum.into(%{})
   end
 
   @doc """
@@ -80,8 +78,7 @@ defmodule EveDmv.Workers.WorkerSupervisor do
   def stop_all_workers do
     Logger.info("Stopping all workers for maintenance")
     Supervisor.which_children(__MODULE__)
-
-    Enum.each(fn {id, pid, _type, _modules} ->
+    |> Enum.each(fn {id, pid, _type, _modules} ->
       try do
         GenServer.call(pid, :stop_gracefully, 30_000)
         Logger.debug("Gracefully stopped worker: #{id}")
@@ -98,8 +95,7 @@ defmodule EveDmv.Workers.WorkerSupervisor do
   def restart_all_workers do
     Logger.info("Restarting all workers after maintenance")
     Supervisor.which_children(__MODULE__)
-
-    Enum.each(fn {id, _pid, _type, _modules} ->
+    |> Enum.each(fn {id, _pid, _type, _modules} ->
       try do
         Supervisor.restart_child(__MODULE__, id)
         Logger.debug("Restarted worker: #{id}")

@@ -7,7 +7,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewQueryService do
   """
 
   alias EveDmv.Repo
-  alias SQL
+  alias Ecto.Adapters.SQL
 
   @doc """
   Queries data from a materialized view with optional limit.
@@ -104,7 +104,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewQueryService do
       "character_activity_summary",
       "character_name ILIKE $1",
       ["%#{name_pattern}%"],
-    limit
+      limit
     )
   end
 
@@ -160,7 +160,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewQueryService do
       case metric do
         :daily_kills ->
           """
-    SELECT
+          SELECT
             activity_date,
             total_killmails as value
           FROM daily_killmail_summary
@@ -170,7 +170,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewQueryService do
 
         :daily_value ->
           """
-    SELECT
+          SELECT
             activity_date,
             total_value_destroyed as value
           FROM daily_killmail_summary
@@ -180,7 +180,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewQueryService do
 
         :active_systems ->
           """
-    SELECT
+          SELECT
             activity_date,
             systems_active as value
           FROM daily_killmail_summary
@@ -248,7 +248,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewQueryService do
   end
 
   defp export_to_csv(data) when is_list(data) and length(data) > 0 do
-    headers = List.first(data) Map.keys() |> Enum.join(",")
+    headers = data |> List.first() |> Map.keys() |> Enum.join(",")
 
     rows =
       Enum.map(data, fn row ->
@@ -267,7 +267,8 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewQueryService do
         data =
           Enum.map(rows, fn row ->
             columns
-    Enum.zip(row) |> Map.new()
+            |> Enum.zip(row)
+            |> Map.new()
           end)
 
         {:ok, data}

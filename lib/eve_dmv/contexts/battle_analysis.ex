@@ -119,23 +119,13 @@ defmodule EveDmv.Contexts.BattleAnalysis do
               )
             end)
 
-            case Enum.find(battles, fn b -> b.battle_id == battle_id end) do
-              nil ->
-                # Try to find a battle in the same system with similar timestamp
-                similar_battle = find_similar_battle(battles, battle_id, system_id)
-
-                case similar_battle do
-                  nil ->
-                    {:error, :battle_not_found}
-
-                  battle ->
-                    timeline = reconstruct_battle_timeline(battle)
-                    {:ok, Map.put(battle, :timeline, timeline)}
-                end
-
-              battle ->
+            case find_battle_by_id(battles, battle_id, system_id) do
+              {:ok, battle} ->
                 timeline = reconstruct_battle_timeline(battle)
                 {:ok, Map.put(battle, :timeline, timeline)}
+
+              {:error, :battle_not_found} = error ->
+                error
             end
 
           error ->
@@ -175,8 +165,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
         time_window_seconds = 600
 
         battles
-
-        Enum.filter(fn battle ->
+        |> Enum.filter(fn battle ->
           # Parse each battle's timestamp
           with {:ok, {^system_id, battle_time}} <- parse_battle_id(battle.battle_id) do
             time_diff = abs(NaiveDateTime.diff(requested_time, battle_time, :second))
@@ -185,8 +174,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
             _ -> false
           end
         end)
-
-        Enum.min_by(
+        |> Enum.min_by(
           fn battle ->
             # Find the battle with the closest timestamp
             case parse_battle_id(battle.battle_id) do
@@ -500,25 +488,21 @@ defmodule EveDmv.Contexts.BattleAnalysis do
 
   defp analyze_battle_types(battles) do
     battles
-    Enum.group_by(& &1.metadata.battle_type)
-
-    Enum.map(fn {type, battles_of_type} ->
+    |> Enum.group_by(& &1.metadata.battle_type)
+    |> Enum.map(fn {type, battles_of_type} ->
       {type, length(battles_of_type)}
     end)
-
-    Enum.into(%{})
+    |> Enum.into(%{})
   end
 
   defp analyze_most_active_systems(battles) do
     battles
-    Enum.group_by(& &1.metadata.primary_system)
-
-    Enum.map(fn {system_id, battles_in_system} ->
+    |> Enum.group_by(& &1.metadata.primary_system)
+    |> Enum.map(fn {system_id, battles_in_system} ->
       {system_id, length(battles_in_system)}
     end)
-
-    Enum.sort_by(fn {_system_id, count} -> count end, :desc)
-    Enum.take(10)
+    |> Enum.sort_by(fn {_system_id, count} -> count end, :desc)
+    |> Enum.take(10)
   end
 
   defp calculate_average_duration(battles) do
@@ -601,8 +585,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
     |> Enum.flat_map(fn phase ->
       phase
       |> Map.get(:key_events, [])
-
-      Enum.map(fn event ->
+      |> Enum.map(fn event ->
         %{
           time: event.timestamp,
           phase: phase.phase_type,
@@ -657,6 +640,21 @@ defmodule EveDmv.Contexts.BattleAnalysis do
       :chase in phase_types -> :pursuit
       length(phases) > 5 -> :prolonged_engagement
       true -> :standard_fleet_fight
+    end
+  end
+
+  # Helper function to find battle by ID with fallback to similar battles
+  defp find_battle_by_id(battles, battle_id, system_id) do
+    case Enum.find(battles, fn b -> b.battle_id == battle_id end) do
+      nil ->
+        # Try to find a battle in the same system with similar timestamp
+        case find_similar_battle(battles, battle_id, system_id) do
+          nil -> {:error, :battle_not_found}
+          battle -> {:ok, battle}
+        end
+
+      battle ->
+        {:ok, battle}
     end
   end
 end

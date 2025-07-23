@@ -78,8 +78,8 @@ defmodule EveDmv.Analytics.BattleDetector do
 
         # Group nearby battles and enhance with context
         battles
-        group_battles_by_proximity()
-        enhance_with_battle_context()
+        |> group_battles_by_proximity()
+        |> enhance_with_battle_context()
 
       {:error, reason} ->
         Logger.error("Failed to detect battles: #{inspect(reason)}")
@@ -162,8 +162,8 @@ defmodule EveDmv.Analytics.BattleDetector do
 
         # Group nearby battles and enhance with corp context
         battles
-        group_battles_by_proximity()
-        enhance_with_corp_battle_context()
+        |> group_battles_by_proximity()
+        |> enhance_with_corp_battle_context()
 
       {:error, reason} ->
         Logger.error("Failed to detect corp battles: #{inspect(reason)}")
@@ -319,8 +319,8 @@ defmodule EveDmv.Analytics.BattleDetector do
 
         # Group nearby battles and enhance with system context
         battles
-        group_battles_by_proximity()
-        enhance_with_system_battle_context()
+        |> group_battles_by_proximity()
+        |> enhance_with_system_battle_context()
 
       {:error, reason} ->
         Logger.error("Failed to detect system battles: #{inspect(reason)}")
@@ -519,8 +519,7 @@ defmodule EveDmv.Analytics.BattleDetector do
   defp group_battles_by_proximity(battles) do
     # Group battles that occurred within 30 minutes and in the same system
     battles
-
-    Enum.group_by(fn battle ->
+    |> Enum.group_by(fn battle ->
       system_id = Map.get(battle, "solar_system_id")
       time = Map.get(battle, "killmail_time")
 
@@ -528,9 +527,8 @@ defmodule EveDmv.Analytics.BattleDetector do
       time_bucket =
         if time do
           time
-          DateTime.from_naive!("Etc/UTC")
-
-          DateTime.add(
+          |> DateTime.from_naive!("Etc/UTC")
+          |> DateTime.add(
             -rem(DateTime.to_unix(DateTime.from_naive!(time, "Etc/UTC")), 1800),
             :second
           )
@@ -542,12 +540,11 @@ defmodule EveDmv.Analytics.BattleDetector do
       {system_id, time_bucket}
     end)
 
-    Enum.map(fn {_key, group_battles} ->
+    |> Enum.map(fn {_key, group_battles} ->
       # Create a battle summary from the group
       create_battle_summary(group_battles)
     end)
-
-    Enum.sort_by(& &1.battle_time, {:desc, DateTime})
+    |> Enum.sort_by(& &1.battle_time, {:desc, DateTime})
   end
 
   defp create_battle_summary(killmails) do
@@ -555,19 +552,19 @@ defmodule EveDmv.Analytics.BattleDetector do
 
     total_isk =
       killmails
-
-    Enum.map(&(Map.get(&1, "total_value") || 0)) |> Enum.sum()
+      |> Enum.map(&(Map.get(&1, "total_value") || 0))
+      |> Enum.sum()
 
     participants =
       killmails
-
-    Enum.flat_map(fn km ->
-      attackers = Map.get(km, "attackers_character_ids") || []
-      victim = [Map.get(km, "victim_character_id")]
-      attackers ++ victim
-    end)
-
-    Enum.filter(& &1) |> Enum.uniq() |> Kernel.length()
+      |> Enum.flat_map(fn km ->
+        attackers = Map.get(km, "attackers_character_ids") || []
+        victim = [Map.get(km, "victim_character_id")]
+        attackers ++ victim
+      end)
+      |> Enum.filter(& &1)
+      |> Enum.uniq()
+      |> Kernel.length()
 
     %{
       battle_id: generate_battle_id(killmails),
@@ -603,8 +600,9 @@ defmodule EveDmv.Analytics.BattleDetector do
     hash_input = "#{time}_#{system}_#{length(killmails)}"
 
     hash_input
-    then(&:crypto.hash(:md5, &1)) |> Base.encode16()
-    String.slice(0, 8)
+    |> then(&:crypto.hash(:md5, &1))
+    |> Base.encode16()
+    |> String.slice(0, 8)
   end
 
   defp parse_datetime(nil), do: DateTime.utc_now()
@@ -650,11 +648,12 @@ defmodule EveDmv.Analytics.BattleDetector do
 
   defp extract_major_ships(killmails) do
     killmails
-    Enum.map(&Map.get(&1, "victim_ship_type_name"))
-    Enum.filter(& &1) |> Enum.frequencies()
-    Enum.sort_by(&elem(&1, 1), :desc)
-    Enum.take(3)
-    Enum.map(&elem(&1, 0))
+    |> Enum.map(&Map.get(&1, "victim_ship_type_name"))
+    |> Enum.filter(& &1)
+    |> Enum.frequencies()
+    |> Enum.sort_by(&elem(&1, 1), :desc)
+    |> Enum.take(3)
+    |> Enum.map(&elem(&1, 0))
   end
 
   defp estimate_battle_duration(killmail_count) do

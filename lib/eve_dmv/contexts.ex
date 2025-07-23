@@ -110,7 +110,8 @@ defmodule EveDmv.Contexts do
   @spec core_contexts() :: %{context_name() => context()}
   def core_contexts do
     @contexts
-    Enum.filter(fn {_, context} -> context.type == :core end) |> Map.new()
+    |> Enum.filter(fn {_, context} -> context.type == :core end)
+    |> Map.new()
   end
 
   @doc """
@@ -119,8 +120,8 @@ defmodule EveDmv.Contexts do
   @spec publishers_of(event_name()) :: [context_name()]
   def publishers_of(event_name) do
     @contexts
-    Enum.filter(fn {_, context} -> event_name in context.publishes end)
-    Enum.map(fn {name, _} -> name end)
+    |> Enum.filter(fn {_, context} -> event_name in context.publishes end)
+    |> Enum.map(fn {name, _} -> name end)
   end
 
   @doc """
@@ -129,8 +130,8 @@ defmodule EveDmv.Contexts do
   @spec subscribers_of(event_name()) :: [context_name()]
   def subscribers_of(event_name) do
     @contexts
-    Enum.filter(fn {_, context} -> event_name in context.subscribes end)
-    Enum.map(fn {name, _} -> name end)
+    |> Enum.filter(fn {_, context} -> event_name in context.subscribes end)
+    |> Enum.map(fn {name, _} -> name end)
   end
 
   @doc """
@@ -141,8 +142,8 @@ defmodule EveDmv.Contexts do
     errors =
       Enum.flat_map(@contexts, fn {context_name, context} ->
         context.subscribes
-        Enum.filter(fn event -> publishers_of(event) == [] end)
-        Enum.map(fn event -> {context_name, event} end)
+        |> Enum.filter(fn event -> publishers_of(event) == [] end)
+        |> Enum.map(fn event -> {context_name, event} end)
       end)
 
     case errors do
@@ -205,7 +206,8 @@ defmodule EveDmv.Contexts do
     case get(context_name) do
       {:ok, context} ->
         context.subscribes
-        Enum.flat_map(&publishers_of/1) |> Enum.uniq()
+        |> Enum.flat_map(&publishers_of/1)
+        |> Enum.uniq()
 
       {:error, _} ->
         []

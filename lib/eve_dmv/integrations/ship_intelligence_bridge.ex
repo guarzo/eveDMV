@@ -1,10 +1,4 @@
 defmodule EveDmv.Integrations.ShipIntelligenceBridge do
-  import Ecto.Query
-  alias EveDmv.Analytics.ModuleClassifier
-  alias EveDmv.Analytics.FleetAnalyzer
-  alias EveDmv.Repo
-  require Logger
-
   @moduledoc """
   Bridge module that integrates the new ship intelligence features with existing systems.
 
@@ -16,6 +10,12 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
 
   Acts as the central integration point for ship intelligence across the application.
   """
+
+  import Ecto.Query
+  alias EveDmv.Analytics.ModuleClassifier
+  alias EveDmv.Analytics.FleetAnalyzer
+  alias EveDmv.Repo
+  require Logger
 
   ## Battle Analysis Integration
   @doc """

@@ -1,5 +1,5 @@
 defmodule EveDmvWeb.SurveillanceProfilesLive do
-  import EveDmvWeb.SurveillanceProfilesLive.Helpers
+  # import EveDmvWeb.SurveillanceProfilesLive.Helpers
   alias EveDmv.Contexts.Surveillance
   alias EveDmv.Contexts.Surveillance.Domain.MatchingEngine
   alias EveDmv.Intelligence.WandererClient
@@ -28,14 +28,14 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
     end
 
     socket =
-    socket
-    assign(:page_title, "Surveillance Profiles")
-    assign(:profiles, [])
-    assign(:editing_profile, nil)
-    assign(:filter_preview, %{matches: [], count: 0, testing: false})
-    assign(:preview_killmail_limit, @preview_killmail_limit)
-    assign(:chain_status, check_chain_status())
-      load_profiles()
+      socket
+      |> assign(:page_title, "Surveillance Profiles")
+      |> assign(:profiles, [])
+      |> assign(:editing_profile, nil)
+      |> assign(:filter_preview, %{matches: [], count: 0, testing: false})
+      |> assign(:preview_killmail_limit, @preview_killmail_limit)
+      |> assign(:chain_status, check_chain_status())
+      |> load_profiles()
 
     {:ok, socket}
   end
@@ -71,9 +71,9 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
     case safe_call(fn -> Surveillance.delete_profile(id) end) do
       {:ok, _} ->
         socket =
-    socket
-    put_flash(:info, "Profile deleted successfully")
-          load_profiles()
+          socket
+          |> put_flash(:info, "Profile deleted successfully")
+          |> load_profiles()
 
         {:noreply, socket}
 
@@ -91,9 +91,9 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
     case safe_call(fn -> Surveillance.update_profile(id, %{enabled: enabled}) end) do
       {:ok, _} ->
         socket =
-    socket
-    put_flash(:info, "Profile #{if enabled, do: "enabled", else: "disabled"}")
-          load_profiles()
+          socket
+          |> put_flash(:info, "Profile #{if enabled, do: "enabled", else: "disabled"}")
+          |> load_profiles()
 
         {:noreply, socket}
 
@@ -124,11 +124,11 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
         case safe_call(fn -> Surveillance.create_profile(profile_data) end) do
           {:ok, _profile} ->
             socket =
-    socket
-    put_flash(:info, "Profile created successfully")
-    assign(:editing_profile, nil)
-              load_profiles()
-    push_patch(to: ~p"/surveillance-profiles")
+              socket
+              |> put_flash(:info, "Profile created successfully")
+              |> assign(:editing_profile, nil)
+              |> load_profiles()
+              |> push_patch(to: ~p"/surveillance-profiles")
 
             {:noreply, socket}
 
@@ -142,11 +142,11 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
         case safe_call(fn -> Surveillance.update_profile(id, profile_data) end) do
           {:ok, _profile} ->
             socket =
-    socket
-    put_flash(:info, "Profile updated successfully")
-    assign(:editing_profile, nil)
-              load_profiles()
-    push_patch(to: ~p"/surveillance-profiles")
+              socket
+              |> put_flash(:info, "Profile updated successfully")
+              |> assign(:editing_profile, nil)
+              |> load_profiles()
+              |> push_patch(to: ~p"/surveillance-profiles")
 
             {:noreply, socket}
 
@@ -160,9 +160,9 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   @impl Phoenix.LiveView
   def handle_event("cancel_edit", _params, socket) do
     {:noreply,
-    socket
-    assign(:editing_profile, nil)
-    push_patch(to: ~p"/surveillance-profiles")}
+     socket
+     |> assign(:editing_profile, nil)
+     |> push_patch(to: ~p"/surveillance-profiles")}
   end
 
   @impl Phoenix.LiveView
@@ -175,9 +175,9 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
       updated_profile = %{editing_profile | criteria: updated_criteria}
 
       socket =
-    socket
-    assign(:editing_profile, updated_profile)
-    update_filter_preview(updated_profile)
+        socket
+        |> assign(:editing_profile, updated_profile)
+        |> update_filter_preview(updated_profile)
 
       {:noreply, socket}
     else
@@ -195,9 +195,9 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
       updated_profile = %{editing_profile | criteria: updated_criteria}
 
       socket =
-    socket
-    assign(:editing_profile, updated_profile)
-    update_filter_preview(updated_profile)
+        socket
+        |> assign(:editing_profile, updated_profile)
+        |> update_filter_preview(updated_profile)
 
       {:noreply, socket}
     else
@@ -222,9 +222,9 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
         updated_profile = %{editing_profile | criteria: updated_criteria}
 
         socket =
-    socket
-    assign(:editing_profile, updated_profile)
-    update_filter_preview(updated_profile)
+          socket
+          |> assign(:editing_profile, updated_profile)
+          |> update_filter_preview(updated_profile)
 
         {:noreply, socket}
       else
@@ -245,9 +245,9 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
       updated_profile = %{editing_profile | criteria: updated_criteria}
 
       socket =
-    socket
-    assign(:editing_profile, updated_profile)
-    update_filter_preview(updated_profile)
+        socket
+        |> assign(:editing_profile, updated_profile)
+        |> update_filter_preview(updated_profile)
 
       {:noreply, socket}
     else
@@ -278,11 +278,11 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
       suggestions = search_entity_suggestions(field, query)
 
       socket =
-    socket
-    assign(:autocomplete_suggestions, suggestions)
-    assign(:autocomplete_field, field)
-    assign(:autocomplete_index, index)
-    push_event("show_autocomplete", %{
+        socket
+        |> assign(:autocomplete_suggestions, suggestions)
+        |> assign(:autocomplete_field, field)
+        |> assign(:autocomplete_index, index)
+        |> push_event("show_autocomplete", %{
           input_id: "filter_#{index}_#{field}",
           suggestions: suggestions
         })
@@ -332,9 +332,9 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
         Logger.debug("Updated profile criteria: #{inspect(updated_profile.criteria)}")
         # Don't trigger preview update immediately to avoid re-rendering during click
         socket =
-    socket
-    assign(:editing_profile, updated_profile)
-    push_event("hide_autocomplete", %{})
+          socket
+          |> assign(:editing_profile, updated_profile)
+          |> push_event("hide_autocomplete", %{})
 
         # Schedule preview update after a small delay to let the UI settle
         Process.send_after(self(), {:delayed_preview_update, updated_profile}, 100)
@@ -478,7 +478,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
   defp add_filter_to_criteria(criteria, new_filter) do
     conditions = Map.get(criteria, :conditions, [])
-    Map.put(criteria, :conditions, [new_filter | conditions] Enum.reverse())
+    Map.put(criteria, :conditions, [new_filter | conditions] |> Enum.reverse())
   end
 
   defp remove_filter_from_criteria(criteria, index) do
@@ -800,4 +800,5 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
         {:error, :service_unavailable}
     end
   end
+
 end

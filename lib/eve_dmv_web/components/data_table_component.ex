@@ -44,7 +44,7 @@ defmodule EveDmvWeb.Components.DataTableComponent do
           <tr class="bg-gray-900 border-b border-gray-700">
             <th
               :for={col <- @col}
-              class={"px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider #{Map.get(col, :class, "")} #{if Map.get(col, :sortable, false), do: "cursor-pointer hover:text-white", else: ""}"}
+              class={build_column_classes(col)}
             >
               <div class="flex items-center space-x-1">
                 <span><%= col.label %></span>
@@ -78,7 +78,7 @@ defmodule EveDmvWeb.Components.DataTableComponent do
           >
             <td
               :for={col <- @col}
-              class={"px-4 py-3 text-sm text-gray-300 #{Map.get(col, :class, "")}"}
+              class={build_cell_classes(col)}
             >
               <%= render_slot(col, row) %>
             </td>
@@ -87,5 +87,20 @@ defmodule EveDmvWeb.Components.DataTableComponent do
       </table>
     </div>
     """
+  end
+
+  defp build_column_classes(col) do
+    base_classes = "px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
+    custom_class = Map.get(col, :class, "")
+    sortable_class = if Map.get(col, :sortable, false), do: "cursor-pointer hover:text-white", else: ""
+    
+    "#{base_classes} #{custom_class} #{sortable_class}"
+  end
+
+  defp build_cell_classes(col) do
+    base_classes = "px-4 py-3 text-sm text-gray-300"
+    custom_class = Map.get(col, :class, "")
+    
+    "#{base_classes} #{custom_class}"
   end
 end

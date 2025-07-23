@@ -52,16 +52,16 @@ defmodule EveDmv.Performance.BatchNameResolver do
     # For participants, we typically don't have names embedded
     # Extract unique IDs
     character_ids =
-      participants |> Enum.map(& &1.character_id) |> Enum.filter(& &1) Enum.uniq()
+      participants |> Enum.map(& &1.character_id) |> Enum.filter(& &1) |> Enum.uniq()
 
     corp_ids =
-      participants |> Enum.map(& &1.corporation_id) |> Enum.filter(& &1) Enum.uniq()
+      participants |> Enum.map(& &1.corporation_id) |> Enum.filter(& &1) |> Enum.uniq()
 
     alliance_ids =
-      participants |> Enum.map(& &1.alliance_id) |> Enum.filter(& &1) Enum.uniq()
+      participants |> Enum.map(& &1.alliance_id) |> Enum.filter(& &1) |> Enum.uniq()
 
     ship_ids =
-      participants |> Enum.map(& &1.ship_type_id) |> Enum.filter(& &1) Enum.uniq()
+      participants |> Enum.map(& &1.ship_type_id) |> Enum.filter(& &1) |> Enum.uniq()
 
     # Batch load all names
     batch_load_missing_names(%{
@@ -105,7 +105,7 @@ defmodule EveDmv.Performance.BatchNameResolver do
       _ ->
         Logger.warning("Failed to parse ID as integer: #{inspect(id)}")
         # Return a default that won't match any real ID
-    0
+        0
     end
   end
 
@@ -122,7 +122,7 @@ defmodule EveDmv.Performance.BatchNameResolver do
     }
 
     killmails
-    Enum.reduce(initial_state, fn killmail, {names, ids} ->
+    |> Enum.reduce(initial_state, fn killmail, {names, ids} ->
       # Process raw_data which contains the actual names
       raw_data = Map.get(killmail, :raw_data, %{})
 
@@ -137,7 +137,7 @@ defmodule EveDmv.Performance.BatchNameResolver do
 
       {names, ids}
     end)
-    then(fn {names, ids} ->
+    |> then(fn {names, ids} ->
       # Deduplicate IDs
       deduped_ids = %{
         character_ids: Enum.uniq(ids.character_ids),
@@ -156,8 +156,8 @@ defmodule EveDmv.Performance.BatchNameResolver do
 
     # Extract character name if present
     updated_names =
-    names
-    then(fn n ->
+      names
+      |> then(fn n ->
         if victim["character_id"] && victim["character_name"] do
           int_id = ensure_integer_id(victim["character_id"])
           put_in(n, [:characters, int_id], victim["character_name"])
@@ -165,7 +165,7 @@ defmodule EveDmv.Performance.BatchNameResolver do
           n
         end
       end)
-    then(fn n ->
+      |> then(fn n ->
         if victim["corporation_id"] && victim["corporation_name"] do
           int_id = ensure_integer_id(victim["corporation_id"])
           put_in(n, [:corporations, int_id], victim["corporation_name"])
@@ -173,7 +173,7 @@ defmodule EveDmv.Performance.BatchNameResolver do
           n
         end
       end)
-    then(fn n ->
+      |> then(fn n ->
         if victim["alliance_id"] && victim["alliance_name"] do
           int_id = ensure_integer_id(victim["alliance_id"])
           put_in(n, [:alliances, int_id], victim["alliance_name"])
@@ -184,7 +184,7 @@ defmodule EveDmv.Performance.BatchNameResolver do
 
     # Add IDs for missing names - ensure they are integers
     ids = %{
-    ids
+      ids
       | character_ids:
           if(victim["character_id"] && !victim["character_name"],
             do: [ensure_integer_id(victim["character_id"]) | ids.character_ids],
@@ -238,7 +238,7 @@ defmodule EveDmv.Performance.BatchNameResolver do
 
       # Add IDs for missing names - ensure they are integers
       ids_acc = %{
-    ids_acc
+        ids_acc
         | character_ids:
             if(attacker["character_id"] && !attacker["character_name"],
               do: [ensure_integer_id(attacker["character_id"]) | ids_acc.character_ids],
@@ -269,7 +269,7 @@ defmodule EveDmv.Performance.BatchNameResolver do
     victim = Map.get(raw_data, "victim", %{})
 
     %{
-    ids
+      ids
       | ship_ids:
           if(victim["ship_type_id"],
             do: [ensure_integer_id(victim["ship_type_id"]) | ids.ship_ids],
@@ -309,7 +309,7 @@ defmodule EveDmv.Performance.BatchNameResolver do
 
       {names, ids}
     end)
-    then(fn {names, ids} ->
+    |> then(fn {names, ids} ->
       # Deduplicate IDs
       deduped_ids = %{
         character_ids: Enum.uniq(ids.character_ids),
@@ -328,22 +328,22 @@ defmodule EveDmv.Performance.BatchNameResolver do
 
     # For timeline events, names should already be present
     updated_names =
-    names
-    then(fn n ->
+      names
+      |> then(fn n ->
         if victim[:character_id] && victim[:character_name] do
           put_in(n, [:characters, victim.character_id], victim.character_name)
         else
           n
         end
       end)
-    then(fn n ->
+      |> then(fn n ->
         if victim[:corporation_id] && victim[:corporation_name] do
           put_in(n, [:corporations, victim.corporation_id], victim.corporation_name)
         else
           n
         end
       end)
-    then(fn n ->
+      |> then(fn n ->
         if victim[:alliance_id] && victim[:alliance_name] do
           put_in(n, [:alliances, victim.alliance_id], victim.alliance_name)
         else
@@ -353,7 +353,7 @@ defmodule EveDmv.Performance.BatchNameResolver do
 
     # Add IDs for any missing names
     ids = %{
-    ids
+      ids
       | character_ids:
           if(victim[:character_id] && !victim[:character_name],
             do: [victim.character_id | ids.character_ids],
@@ -407,7 +407,7 @@ defmodule EveDmv.Performance.BatchNameResolver do
 
       # Add IDs for missing names
       ids_acc = %{
-    ids_acc
+        ids_acc
         | character_ids:
             if(attacker[:character_id] && !attacker[:character_name],
               do: [attacker.character_id | ids_acc.character_ids],
@@ -457,7 +457,7 @@ defmodule EveDmv.Performance.BatchNameResolver do
           {chars, corps, alliances, ships, systems}
       end
     end)
-    then(fn {chars, corps, alliances, ships, systems} ->
+    |> then(fn {chars, corps, alliances, ships, systems} ->
       {Enum.uniq(chars), Enum.uniq(corps), Enum.uniq(alliances), Enum.uniq(ships),
        Enum.uniq(systems)}
     end)

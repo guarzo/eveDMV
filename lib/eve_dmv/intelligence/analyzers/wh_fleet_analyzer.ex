@@ -163,12 +163,10 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer do
 
     ship_data =
       ship_types
-
-    Enum.map(fn ship_name ->
-      {ship_name, FleetAssetManager.get_ship_info(ship_name)}
-    end)
-
-    Enum.into(%{})
+      |> Enum.map(fn ship_name ->
+        {ship_name, FleetAssetManager.get_ship_info(ship_name)}
+      end)
+      |> Enum.into(%{})
 
     {:ok, ship_data}
   end

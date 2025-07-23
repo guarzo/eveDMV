@@ -1,6 +1,4 @@
 defmodule Mix.Tasks.Eve.LoadWormholeClasses do
-  @shortdoc "Load wormhole class data from Fuzzwork"
-
   @moduledoc """
   Loads wormhole class data from Fuzzwork's mapLocationWormholeClasses.csv
   and updates the solar systems table with wormhole class information.
@@ -24,6 +22,8 @@ defmodule Mix.Tasks.Eve.LoadWormholeClasses do
       mix eve.load_wormhole_classes --force
   """
 
+  @shortdoc "Load wormhole class data from Fuzzwork"
+
   use Mix.Task
 
   alias EveDmv.Eve.StaticDataLoader.WormholeClassLoader
@@ -34,10 +34,11 @@ defmodule Mix.Tasks.Eve.LoadWormholeClasses do
 
     {opts, _args} = OptionParser.parse!(args, strict: [dry_run: :boolean, force: :boolean])
 
-    if opts[:dry_run] Mix.shell(do).info("DRY RUN: Would load wormhole class data from Fuzzwork")
+    if opts[:dry_run] do
+      Mix.shell().info("DRY RUN: Would load wormhole class data from Fuzzwork")
       Mix.shell().info("Use without --dry-run to perform actual update")
     else
-      WormholeClassLoader.load_wormhole_classes(case) do
+      case WormholeClassLoader.load_wormhole_classes() do
         {:ok, updated_count} ->
           Mix.shell().info(
             "✅ Successfully updated #{updated_count} solar systems with wormhole class data"

@@ -125,8 +125,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
 
     # Group battles within temporal windows
     sorted_battles
-
-    Enum.reduce([], fn battle, clusters ->
+    |> Enum.reduce([], fn battle, clusters ->
       add_to_temporal_cluster(battle, clusters, max_time_gap)
     end)
     |> Enum.reverse()
@@ -206,9 +205,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
     # Create graph of battles connected by sufficient overlap
     connections =
       overlap_analysis
-
-    Enum.filter(&(&1.overlap_ratio >= min_overlap))
-    Enum.map(&{&1.battle_a, &1.battle_b})
+      |> Enum.filter(&(&1.overlap_ratio >= min_overlap))
+      |> Enum.map(&{&1.battle_a, &1.battle_b})
 
     # Find connected components (groups of battles that should be correlated)
     find_connected_components(battles, connections)
@@ -225,11 +223,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
     initial_graph = battles |> Enum.map(&{&1, []}) |> Map.new()
 
     connections
-
-    Enum.reduce(initial_graph, fn {battle_a, battle_b}, graph ->
+    |> Enum.reduce(initial_graph, fn {battle_a, battle_b}, graph ->
       graph
-      Map.update(battle_a, [battle_b], &[battle_b | &1])
-      Map.update(battle_b, [battle_a], &[battle_a | &1])
+      |> Map.update(battle_a, [battle_b], &[battle_b | &1])
+      |> Map.update(battle_b, [battle_a], &[battle_a | &1])
     end)
   end
 
@@ -571,7 +568,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
 
   defp get_cluster_end_time(cluster) do
     cluster
-    Enum.map(&get_battle_start_time/1) |> Enum.max()
+    |> Enum.map(&get_battle_start_time/1)
+    |> Enum.max()
   end
 
   defp get_primary_system(battle) do
@@ -585,27 +583,25 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
 
   defp extract_all_participants(battle) do
     battle.killmails
-    Enum.flat_map(&ParticipantExtractor.extract_participants/1) |> MapSet.new()
+    |> Enum.flat_map(&ParticipantExtractor.extract_participants/1)
+    |> MapSet.new()
   end
 
   defp count_unique_participants_across_battles(battles) do
     battles
-
-    Enum.flat_map(fn battle ->
+    |> Enum.flat_map(fn battle ->
       battle.killmails
-      Enum.flat_map(&ParticipantExtractor.extract_participants/1)
+      |> Enum.flat_map(&ParticipantExtractor.extract_participants/1)
     end)
     |> Enum.uniq()
-
-    length()
+    |> length()
   end
 
   defp calculate_multi_system_duration(battles) do
     all_times =
       battles
-
-    Enum.flat_map(& &1.killmails)
-    Enum.map(& &1.killmail_time)
+      |> Enum.flat_map(& &1.killmails)
+      |> Enum.map(& &1.killmail_time)
 
     case all_times do
       [] ->

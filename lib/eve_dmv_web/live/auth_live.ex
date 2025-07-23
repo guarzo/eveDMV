@@ -27,7 +27,7 @@ defmodule EveDmvWeb.AuthLive do
         Logger.debug("Session timeout detected")
         socket = assign(socket, current_user: nil)
         Process.send_after(self(), :session_timeout, 100)
-    socket
+        socket
 
       :valid ->
         # Get current user from session using user ID
@@ -163,9 +163,9 @@ defmodule EveDmvWeb.AuthLive do
       end
 
       {:noreply,
-    socket
-    put_flash(:error, "Your session has expired. Please sign in again.")
-    push_navigate(to: ~p"/login")}
+       socket
+       |> put_flash(:error, "Your session has expired. Please sign in again.")
+       |> push_navigate(to: ~p"/login")}
     end
 
     @impl Phoenix.LiveView

@@ -357,9 +357,8 @@ defmodule EveDmv.Cache.QueryCache do
         # Compile and cache the regex
         regex_pattern =
           pattern
-
-        String.replace("*", ".*")
-        Regex.compile!()
+          |> String.replace("*", ".*")
+          |> Regex.compile!()
 
         # Cache it (with size limit check)
         cache_pattern(pattern, regex_pattern)
@@ -388,9 +387,8 @@ defmodule EveDmv.Cache.QueryCache do
     to_delete = div(length(patterns), 10)
 
     patterns
-    Enum.take(to_delete)
-
-    Enum.each(fn {pattern, _} ->
+    |> Enum.take(to_delete)
+    |> Enum.each(fn {pattern, _} ->
       :ets.delete(@pattern_cache_table, pattern)
     end)
   end
@@ -425,9 +423,8 @@ defmodule EveDmv.Cache.QueryCache do
       # Get all entries sorted by expiry time
       entries =
         @table_name
-
-      :ets.tab2list()
-      Enum.sort_by(fn {_key, _value, expiry} -> expiry end)
+        |> :ets.tab2list()
+        |> Enum.sort_by(fn {_key, _value, expiry} -> expiry end)
 
       # Calculate how many to remove
       # Remove 10% extra
@@ -435,9 +432,8 @@ defmodule EveDmv.Cache.QueryCache do
 
       # Remove oldest entries
       entries
-      Enum.take(to_remove)
-
-      Enum.each(fn {key, _value, _expiry} ->
+      |> Enum.take(to_remove)
+      |> Enum.each(fn {key, _value, _expiry} ->
         :ets.delete(@table_name, key)
       end)
 

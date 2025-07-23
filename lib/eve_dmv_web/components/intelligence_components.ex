@@ -642,7 +642,11 @@ defmodule EveDmvWeb.IntelligenceComponents do
   defp trend_text("stable"), do: "Stable"
 
   defp calculate_bar_width(threats, count) do
-    max_count = threats |> Enum.map(fn {_, c} -> c end) |> Enum.max(fn -> 1 end)
+    max_count =
+      threats
+      |> Enum.map(fn {_threat_type, threat_count} -> threat_count end)
+      |> Enum.max(fn -> 1 end)
+      
     if max_count > 0, do: count / max_count * 100, else: 0
   end
 

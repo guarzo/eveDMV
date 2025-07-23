@@ -161,8 +161,8 @@ defmodule EveDmv.Performance.RegressionDetector do
     query_metrics_map =
       Enum.reduce(query_metrics, %{}, fn metric, acc ->
         acc
-    Map.put("query.#{metric.table}.avg_time", metric.avg_time_ms)
-    Map.put("query.#{metric.table}.max_time", metric.max_time_ms)
+        |> Map.put("query.#{metric.table}.avg_time", metric.avg_time_ms)
+        |> Map.put("query.#{metric.table}.max_time", metric.max_time_ms)
       end)
 
     Map.merge(base_metrics, query_metrics_map)
@@ -192,7 +192,7 @@ defmodule EveDmv.Performance.RegressionDetector do
         case Map.get(baselines, metric_name) do
           nil ->
             # No baseline to compare against
-    acc
+            acc
 
           baseline_value ->
             regression = detect_regression(metric_name, baseline_value, current_value)
@@ -209,7 +209,7 @@ defmodule EveDmv.Performance.RegressionDetector do
     Enum.each(new_alerts, &send_regression_alert/1)
 
     # Update alerts sent
-    new_alert_keys = Enum.map(new_alerts, & &1.alert_key) MapSet.new()
+    new_alert_keys = Enum.map(new_alerts, & &1.alert_key) |> MapSet.new()
     updated_alerts = MapSet.union(state.alerts_sent, new_alert_keys)
 
     %{state | alerts_sent: updated_alerts}
@@ -395,10 +395,10 @@ defmodule EveDmv.Performance.RegressionDetector do
       # Get recent values for this metric
       recent_values =
         @metrics_table
-    :ets.lookup(metric_name)
-    Enum.map(fn {_, _, value, _} -> value end)
+        |> :ets.lookup(metric_name)
+        |> Enum.map(fn {_, _, value, _} -> value end)
         # Last 100 measurements
-    Enum.take(100)
+        |> Enum.take(100)
 
       if length(recent_values) >= 10 do
         # Calculate median as new baseline (more stable than mean)
@@ -420,12 +420,12 @@ defmodule EveDmv.Performance.RegressionDetector do
     one_hour_ago = DateTime.add(DateTime.utc_now(), -3600, :second)
 
     @metrics_table
-    :ets.tab2list()
-    Enum.filter(fn {_, timestamp, _, _} ->
+    |> :ets.tab2list()
+    |> Enum.filter(fn {_, timestamp, _, _} ->
       DateTime.compare(timestamp, one_hour_ago) == :gt
     end)
-    Enum.group_by(fn {metric_name, _, _, _} -> metric_name end)
-    Enum.map(fn {metric_name, entries} ->
+    |> Enum.group_by(fn {metric_name, _, _, _} -> metric_name end)
+    |> Enum.map(fn {metric_name, entries} ->
       values = Enum.map(entries, fn {_, _, value, _} -> value end)
 
       %{

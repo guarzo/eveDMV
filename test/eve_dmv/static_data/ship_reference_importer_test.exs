@@ -118,8 +118,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporterTest do
 
       # Verify data was inserted
       imported =
-        Repo.one(
-          from(s in "ship_role_patterns",
+        from(s in "ship_role_patterns",
             where: s.ship_type_id == 999_001,
             select: %{
               ship_type_id: s.ship_type_id,
@@ -129,7 +128,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporterTest do
               tactical_notes: s.tactical_notes
             }
           )
-        )
+        |> Repo.one()
 
       assert imported != nil
       assert imported.ship_name == "Test Ship Alpha"
@@ -158,8 +157,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporterTest do
 
       # Verify data was inserted
       imported =
-        Repo.one(
-          from(d in "doctrine_patterns",
+        from(d in "doctrine_patterns",
             where: d.doctrine_name == "test_doctrine",
             select: %{
               doctrine_name: d.doctrine_name,
@@ -169,7 +167,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporterTest do
               tactical_role: d.tactical_role
             }
           )
-        )
+        |> Repo.one()
 
       assert imported != nil
       assert imported.tank_type == "armor"
@@ -214,8 +212,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporterTest do
 
       # Verify update
       updated =
-        Repo.one(
-          from(s in "ship_role_patterns",
+        from(s in "ship_role_patterns",
             where: s.ship_type_id == 999_003,
             select: %{
               ship_type_id: s.ship_type_id,
@@ -225,7 +222,7 @@ defmodule EveDmv.StaticData.ShipReferenceImporterTest do
               tactical_notes: s.tactical_notes
             }
           )
-        )
+        |> Repo.one()
 
       assert updated.ship_name == "Test Ship Beta Updated"
       assert updated.reference_role == "updated_role"

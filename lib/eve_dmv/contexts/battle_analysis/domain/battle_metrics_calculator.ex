@@ -301,8 +301,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
     # Use the timeline fleet composition to identify sides
     if battle[:timeline] && battle.timeline[:fleet_composition] do
       battle.timeline.fleet_composition
-      Enum.flat_map(&(&1[:sides] || []))
-      Enum.map(& &1.side_id) |> Enum.uniq()
+      |> Enum.flat_map(&(&1[:sides] || []))
+      |> Enum.map(& &1.side_id)
+      |> Enum.uniq()
     else
       # Fallback to corporation-based side detection
       detect_sides_from_killmails(battle.killmails)
@@ -371,8 +372,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
   defp find_most_expensive_loss(killmails) do
     result =
       killmails
-
-    Enum.max_by(&get_killmail_value(&1), fn -> nil end)
+      |> Enum.max_by(&get_killmail_value(&1), fn -> nil end)
 
     case result do
       nil ->
@@ -393,13 +393,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
 
   defp group_isk_by_ship_class(killmails) do
     killmails
-    Enum.group_by(&get_ship_class(&1.victim_ship_type_id))
-
-    Enum.map(fn {class, kms} ->
+    |> Enum.group_by(&get_ship_class(&1.victim_ship_type_id))
+    |> Enum.map(fn {class, kms} ->
       {class, Enum.sum(Enum.map(kms, &get_killmail_value(&1)))}
     end)
-
-    Enum.into(%{})
+    |> Enum.into(%{})
   end
 
   defp find_top_isk_destroyers(killmails, limit) do
@@ -455,29 +453,24 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
 
   defp group_damage_by_ship_class(killmails) do
     killmails
-
-    Enum.flat_map(fn km ->
+    |> Enum.flat_map(fn km ->
       Enum.map(km.raw_data["attackers"] || [], fn att ->
         Map.merge(att, %{"_source_killmail" => km})
       end)
     end)
-
-    Enum.group_by(&get_ship_class(&1["ship_type_id"]))
-
-    Enum.map(fn {class, attacks} ->
+    |> Enum.group_by(&get_ship_class(&1["ship_type_id"]))
+    |> Enum.map(fn {class, attacks} ->
       {class, Enum.sum(Enum.map(attacks, &(&1["damage_done"] || 0)))}
     end)
-
-    Enum.into(%{})
+    |> Enum.into(%{})
   end
 
   defp analyze_overkill(killmails) do
     # Analyze how much damage was "wasted" on already-dead targets
     overkill_data =
       killmails
-
-    Enum.map(&calculate_killmail_overkill/1)
-    Enum.reject(&is_nil/1)
+      |> Enum.map(&calculate_killmail_overkill/1)
+      |> Enum.reject(&is_nil/1)
 
     if length(overkill_data) > 0 do
       total_overkill = Enum.sum(Enum.map(overkill_data, & &1.overkill_percentage))
@@ -554,18 +547,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
 
   defp analyze_final_blows(killmails) do
     killmails
-
-    Enum.flat_map(fn km ->
+    |> Enum.flat_map(fn km ->
       Enum.map(km.raw_data["attackers"] || [], fn att ->
         Map.merge(att, %{"_source_killmail" => km})
       end)
     end)
-
     # Filter final blows and exclude nil character_ids (NPCs/structures)
-    Enum.filter(&(&1["final_blow"] && &1["character_id"]))
-    Enum.group_by(& &1["character_id"])
-
-    Enum.map(fn {char_id, blows} ->
+    |> Enum.filter(&(&1["final_blow"] && &1["character_id"]))
+    |> Enum.group_by(& &1["character_id"])
+    |> Enum.map(fn {char_id, blows} ->
       {char_id,
        %{
          count: length(blows),
@@ -573,10 +563,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
            List.first(blows)["character_name"] || NameResolver.character_name(char_id)
        }}
     end)
-
-    Enum.sort_by(&elem(&1, 1).count, :desc)
-    Enum.take(5)
-    Enum.into(%{})
+    |> Enum.sort_by(&elem(&1, 1).count, :desc)
+    |> Enum.take(5)
+    |> Enum.into(%{})
   end
 
   defp calculate_ship_class_distribution(killmails) do
@@ -588,9 +577,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
       end)
 
     all_ships
-    Enum.group_by(&get_ship_class(elem(&1, 0)))
-
-    Enum.map(fn {class, ships} ->
+    |> Enum.group_by(&get_ship_class(elem(&1, 0)))
+    |> Enum.map(fn {class, ships} ->
       {class,
        %{
          total: length(ships),
@@ -598,8 +586,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
          active: Enum.count(ships, &(elem(&1, 1) == :active))
        }}
     end)
-
-    Enum.into(%{})
+    |> Enum.into(%{})
   end
 
   defp extract_fleet_sizes(fleet_composition) do
@@ -617,12 +604,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
 
     logi_count =
       killmails
-
-    Enum.flat_map(fn km ->
-      Enum.map(km.raw_data["attackers"] || [], & &1["ship_type_id"])
-    end)
-
-    Enum.count(&(&1 in logi_ship_ids))
+      |> Enum.flat_map(fn km ->
+        Enum.map(km.raw_data["attackers"] || [], & &1["ship_type_id"])
+      end)
+      |> Enum.count(&(&1 in logi_ship_ids))
 
     %{
       logistics_ships_present: logi_count > 0,
@@ -675,8 +660,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
         end
       end)
 
-    victim_ships ++ attacker_ships
-    Enum.reject(&is_nil/1) |> Enum.uniq()
+    (victim_ships ++ attacker_ships)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
   end
 
   defp ship_types_present?(all_ship_types, ewar_ship_types) do
@@ -690,12 +676,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
 
     command_ships =
       killmails
-
-    Enum.flat_map(fn km ->
-      Enum.map(km.raw_data["attackers"] || [], & &1["ship_type_id"])
-    end)
-
-    Enum.filter(&(&1 in command_ship_ids)) |> Kernel.length()
+      |> Enum.flat_map(fn km ->
+        Enum.map(km.raw_data["attackers"] || [], & &1["ship_type_id"])
+      end)
+      |> Enum.filter(&(&1 in command_ship_ids))
+      |> Kernel.length()
 
     %{
       command_ships: command_ships,
@@ -735,16 +720,14 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
     # Analyze what types of ships are targeted first
     target_order =
       killmails
-
-    Enum.map(fn km ->
-      %{
-        ship_class: get_ship_class(km.victim_ship_type_id),
-        timestamp: km.killmail_time,
-        value: get_killmail_value(km)
-      }
-    end)
-
-    Enum.sort_by(& &1.timestamp)
+      |> Enum.map(fn km ->
+        %{
+          ship_class: get_ship_class(km.victim_ship_type_id),
+          timestamp: km.killmail_time,
+          value: get_killmail_value(km)
+        }
+      end)
+      |> Enum.sort_by(& &1.timestamp)
 
     %{
       primary_targets: Enum.map(Enum.take(target_order, 5), & &1.ship_class),

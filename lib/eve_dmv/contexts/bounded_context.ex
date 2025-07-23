@@ -1,13 +1,13 @@
 defmodule EveDmv.Contexts.BoundedContext do
-  alias __MODULE__, as: BoundedContext
-  alias EveDmv.Infrastructure.EventBus
-
   @moduledoc """
   Base behaviour for bounded contexts in the EVE DMV system.
 
   Defines the contract for context management, event handling,
   and anti-corruption layers.
   """
+
+  alias __MODULE__, as: BoundedContext
+  alias EveDmv.Infrastructure.EventBus
 
   @doc """
   Called when the context is starting up.

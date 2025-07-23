@@ -31,7 +31,7 @@ defmodule EveDmv.QualityRegressionTest do
     end
 
     test "compilation succeeds without warnings" do
-      # Use secure approach with System.cmd 
+      # Use secure approach with System.cmd
       {output, _exit_code} =
         System.cmd("mix", ["compile", "--warnings-as-errors"], stderr_to_stdout: true, env: %{})
 
@@ -92,7 +92,8 @@ defmodule EveDmv.QualityRegressionTest do
   end
 
   defp count_large_functions(line_limit) do
-    Path.wildcard("lib/**/*.ex")
+    "lib/**/*.ex"
+    |> Path.wildcard()
     |> Enum.map(&count_large_functions_in_file(&1, line_limit))
     |> Enum.sum()
   end

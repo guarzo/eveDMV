@@ -19,17 +19,17 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
     character_id = String.to_integer(character_id_str)
 
     socket =
-    socket
-    assign(:page_title, "Character Intelligence")
-    assign(:character_id, character_id)
-    assign(:loading, true)
-    assign(:error_message, nil)
-    assign(:intelligence_report, nil)
-    assign(:comparison_characters, [])
-    assign(:show_comparison, false)
-    assign(:search_query, "")
-    assign(:search_results, [])
-    load_character_intelligence(character_id)
+      socket
+      |> assign(:page_title, "Character Intelligence")
+      |> assign(:character_id, character_id)
+      |> assign(:loading, true)
+      |> assign(:error_message, nil)
+      |> assign(:intelligence_report, nil)
+      |> assign(:comparison_characters, [])
+      |> assign(:show_comparison, false)
+      |> assign(:search_query, "")
+      |> assign(:search_results, [])
+      |> load_character_intelligence(character_id)
 
     {:ok, socket}
   end
@@ -40,10 +40,10 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
 
     if character_id != socket.assigns.character_id do
       {:noreply,
-    socket
-    assign(:character_id, character_id)
-    assign(:loading, true)
-    load_character_intelligence(character_id)}
+       socket
+       |> assign(:character_id, character_id)
+       |> assign(:loading, true)
+       |> load_character_intelligence(character_id)}
     else
       {:noreply, socket}
     end
@@ -52,9 +52,9 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
   @impl Phoenix.LiveView
   def handle_event("refresh", _params, socket) do
     updated_socket =
-    socket
-    assign(:loading, true)
-    load_character_intelligence(socket.assigns.character_id)
+      socket
+      |> assign(:loading, true)
+      |> load_character_intelligence(socket.assigns.character_id)
 
     {:noreply, updated_socket}
   end
@@ -74,9 +74,9 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
       end
 
     {:noreply,
-    socket
-    assign(:search_query, query)
-    assign(:search_results, results)}
+     socket
+     |> assign(:search_query, query)
+     |> assign(:search_results, results)}
   end
 
   @impl Phoenix.LiveView
@@ -95,13 +95,13 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
           }
 
           {:noreply,
-    socket
-    assign(
+           socket
+           |> assign(
              :comparison_characters,
              List.insert_at(comparison_characters, -1, character_info)
            )
-    assign(:search_query, "")
-    assign(:search_results, [])}
+           |> assign(:search_query, "")
+           |> assign(:search_results, [])}
 
         _ ->
           {:noreply, socket}
@@ -133,15 +133,15 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
          ) do
       {:ok, report} ->
         socket
-    assign(:intelligence_report, report)
-    assign(:loading, false)
-    assign(:error_message, nil)
-    update_page_title(report.character.name)
+        |> assign(:intelligence_report, report)
+        |> assign(:loading, false)
+        |> assign(:error_message, nil)
+        |> update_page_title(report.character.name)
 
       {:error, error_socket} ->
         error_socket
-    assign(:loading, false)
-    assign(:intelligence_report, nil)
+        |> assign(:loading, false)
+        |> assign(:intelligence_report, nil)
     end
   end
 
@@ -171,8 +171,9 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
 
   def format_dimension_name(dimension) do
     to_string(dimension)
-    String.replace("_", " ") |> String.split()
-    Enum.map_join(" ", &String.capitalize/1)
+    |> String.replace("_", " ")
+    |> String.split()
+    |> Enum.map_join(" ", &String.capitalize/1)
   end
 
   def trend_indicator(current, previous) when current > previous, do: {"↑", "text-red-400"}
@@ -231,7 +232,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
 
   def transform_behavioral_characteristics(characteristics) when is_list(characteristics) do
     Enum.with_index(characteristics)
-    Enum.map(fn {char, index} ->
+    |> Enum.map(fn {char, index} ->
       %{
         indicator_type: "behavioral_#{index}",
         description: char,
@@ -247,8 +248,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
     if Enum.empty?(patterns) do
       0.0
     else
-      Map.values(patterns) |> Enum.sum()
-    Kernel./(length(Map.values(patterns)))
+      (Map.values(patterns) |> Enum.sum()) / length(Map.values(patterns))
     end
   end
 

@@ -50,7 +50,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
             total_kills = length(killmails)
 
             active_systems =
-              killmails |> Enum.map(& &1.solar_system_id) Enum.uniq() length()
+              killmails
+              |> Enum.map(& &1.solar_system_id)
+              |> Enum.uniq()
+              |> length()
 
             total_isk_destroyed =
               Enum.reduce(killmails, Decimal.new(0), fn k, acc ->
@@ -129,11 +132,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
           {:ok, killmails} ->
             # Analyze entity presence
             entity_activity =
-    killmails
-    Enum.flat_map(&(&1.participants || []))
-    Enum.filter(& &1.alliance_id)
-    Enum.group_by(& &1.alliance_id)
-    Enum.map(fn {alliance_id, participants} ->
+              killmails
+              |> Enum.flat_map(&(&1.participants || []))
+              |> Enum.filter(& &1.alliance_id)
+              |> Enum.group_by(& &1.alliance_id)
+              |> Enum.map(fn {alliance_id, participants} ->
                 first = List.first(participants)
 
                 {alliance_id,
@@ -141,11 +144,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
                    name: first.alliance_name,
                    activity_count: length(participants),
                    unique_characters:
-                     participants |> Enum.map(& &1.character_id) Enum.uniq() length()
+                     participants
+                     |> Enum.map(& &1.character_id)
+                     |> Enum.uniq()
+                     |> length()
                  }}
               end)
-    Enum.sort_by(fn {_, data} -> data.activity_count end, :desc)
-    Enum.take(5)
+              |> Enum.sort_by(fn {_, data} -> data.activity_count end, :desc)
+              |> Enum.take(5)
 
             # Determine control status
             {control_status, control_stability} = determine_control_status(entity_activity)

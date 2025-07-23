@@ -16,7 +16,7 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
   @impl true
   def mount(_params, _session, socket) do
     if connected?(socket) do
-      # Subscribe to performance PerformanceDashboard.subscribe(updates)
+      # Subscribe to performance updates
       PubSub.subscribe(EveDmv.PubSub, "performance:alerts")
 
       # Schedule periodic refresh
@@ -28,12 +28,12 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
     report = PerformanceDashboard.generate_report(60)
 
     socket =
-    socket
-    assign(:page_title, "Performance Monitor")
-    assign(:metrics, metrics)
-    assign(:report, report)
-    assign(:selected_tab, :overview)
-    assign(:auto_refresh, true)
+      socket
+      |> assign(:page_title, "Performance Monitor")
+      |> assign(:metrics, metrics)
+      |> assign(:report, report)
+      |> assign(:selected_tab, :overview)
+      |> assign(:auto_refresh, true)
 
     {:ok, socket}
   end
@@ -47,9 +47,9 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
   @impl true
   def handle_event("select_tab", %{"tab" => tab}, socket) do
     {:noreply,
-    socket
-    assign(:selected_tab, String.to_existing_atom(tab))
-    push_patch(to: ~p"/admin/performance?tab=#{tab}")}
+     socket
+     |> assign(:selected_tab, String.to_existing_atom(tab))
+     |> push_patch(to: ~p"/admin/performance?tab=#{tab}")}
   end
 
   def handle_event("toggle_refresh", _params, socket) do
@@ -75,9 +75,9 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
       report = PerformanceDashboard.generate_report(60)
 
       socket =
-    socket
-    assign(:metrics, metrics)
-    assign(:report, report)
+        socket
+        |> assign(:metrics, metrics)
+        |> assign(:report, report)
 
       # Schedule next refresh
       Process.send_after(self(), :refresh, @refresh_interval)

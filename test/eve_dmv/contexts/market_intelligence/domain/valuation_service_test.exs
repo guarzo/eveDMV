@@ -1,8 +1,8 @@
 defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationServiceTest do
   use ExUnit.Case, async: false
   use EveDmv.DataCase, async: false
-  alias EveDmv.Contexts.MarketIntelligence.Domain.ValuationService
   import Mox
+  alias EveDmv.Contexts.MarketIntelligence.Domain.ValuationService
 
   setup :verify_on_exit!
 
@@ -11,6 +11,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationServiceTest do
   @moduletag :skip
 
   describe "calculate_killmail_value/1" do
+    # Test skipped until proper HTTP client mocking is implemented
     @tag :skip
     test "calculates value for killmail with ship only" do
       # This test requires mocking the Janice API client
@@ -107,7 +108,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationServiceTest do
         # Battleship
         %{type_id: 638, type_name: "Raven", quantity: 2},
         # Capital
-        %{type_id: 19724, type_name: "Thanatos", quantity: 1}
+        %{type_id: 19_724, type_name: "Thanatos", quantity: 1}
       ]
 
       {:ok, fleet_valuation} = ValuationService.calculate_fleet_value(ships)

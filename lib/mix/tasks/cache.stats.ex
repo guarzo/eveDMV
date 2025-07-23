@@ -17,11 +17,11 @@ defmodule Mix.Tasks.Cache.Stats do
       mix cache.stats --clear-all
   """
 
+  @shortdoc "Show cache statistics and manage cache entries"
+
   use Mix.Task
 
   alias EveDmv.Cache.AnalysisCache
-
-  @shortdoc "Show cache statistics and manage cache entries"
 
   def run(args) do
     Mix.Task.run("app.start")
@@ -60,15 +60,18 @@ defmodule Mix.Tasks.Cache.Stats do
     Mix.shell().info("Total Entries: #{stats.total_entries}")
     Mix.shell().info("Memory Usage: #{stats.memory_mb} MB (#{stats.memory_bytes} bytes)")
 
-    if stats.total_entries > 0 Mix.shell(do).info("\n💡 Cache Management:")
+    if stats.total_entries > 0 do
+      Mix.shell().info("\n💡 Cache Management:")
       Mix.shell().info("  Clear corporation cache: mix cache.stats --clear-corp CORP_ID")
       Mix.shell().info("  Clear character cache: mix cache.stats --clear-char CHAR_ID")
       Mix.shell().info("  Clear all cache: mix cache.stats --clear-all")
-    Mix.shell(else).info("\n✨ Cache is empty")
+    else
+      Mix.shell().info("\n✨ Cache is empty")
     end
   end
 
-  defp clear_all_cache AnalysisCache.clear_all(do)
+  defp clear_all_cache do
+    AnalysisCache.clear_all()
     Mix.shell().info("✅ Cleared all cache entries")
     show_cache_stats()
   end

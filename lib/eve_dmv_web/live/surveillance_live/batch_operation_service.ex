@@ -137,7 +137,8 @@ defmodule EveDmvWeb.SurveillanceLive.BatchOperationService do
 
   # Helper Functions
 
-  defp reload_matching_engine MatchingEngine.reload_profiles(do)
+  defp reload_matching_engine do
+    MatchingEngine.reload_profiles()
   rescue
     error ->
       Logger.warning("Failed to reload matching engine: #{inspect(error)}")

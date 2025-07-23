@@ -1,6 +1,6 @@
 defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
   use ExUnit.Case, async: true
-  use EveDmv.DataCase
+  use EveDmv.DataCase, async: true
 
   alias EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService
 
@@ -206,12 +206,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
           killmail_id: 1,
           killmail_time: ~U[2024-01-01 10:00:00Z],
           victim_character_id: 12_345,
-          victim_corporation_id: 98765,
+          victim_corporation_id: 98_765,
           raw_data: %{
             "victim" => %{
               "character_id" => 12_345,
               "character_name" => "Victim One",
-              "corporation_id" => 98765,
+              "corporation_id" => 98_765,
               "corporation_name" => "Victim Corp",
               "ship_type_id" => 670,
               "ship_name" => "Capsule"
@@ -220,7 +220,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
               %{
                 "character_id" => 67_890,
                 "character_name" => "Attacker One",
-                "corporation_id" => 54321,
+                "corporation_id" => 54_321,
                 "corporation_name" => "Attacker Corp",
                 "ship_type_id" => 587,
                 "ship_name" => "Rifter",
@@ -230,7 +230,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
               %{
                 "character_id" => 11_111,
                 "character_name" => "Attacker Two",
-                "corporation_id" => 54321,
+                "corporation_id" => 54_321,
                 "corporation_name" => "Attacker Corp",
                 "ship_type_id" => 588,
                 "ship_name" => "Punisher",
@@ -244,12 +244,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
           killmail_id: 2,
           killmail_time: ~U[2024-01-01 10:05:00Z],
           victim_character_id: 22_222,
-          victim_corporation_id: 98765,
+          victim_corporation_id: 98_765,
           raw_data: %{
             "victim" => %{
               "character_id" => 22_222,
               "character_name" => "Victim Two",
-              "corporation_id" => 98765,
+              "corporation_id" => 98_765,
               "corporation_name" => "Victim Corp",
               "ship_type_id" => 587,
               "ship_name" => "Rifter"
@@ -258,7 +258,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
               %{
                 "character_id" => 67_890,
                 "character_name" => "Attacker One",
-                "corporation_id" => 54321,
+                "corporation_id" => 54_321,
                 "corporation_name" => "Attacker Corp",
                 "ship_type_id" => 587,
                 "ship_name" => "Rifter",
@@ -307,17 +307,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
         create_test_killmail(%{
           killmail_id: 4,
           killmail_time: ~U[2024-01-01 10:11:00Z],
-          victim_character_id: 44444
+          victim_character_id: 44_444
         }),
         create_test_killmail(%{
           killmail_id: 5,
           killmail_time: ~U[2024-01-01 10:12:00Z],
-          victim_character_id: 55555
+          victim_character_id: 55_555
         }),
         create_test_killmail(%{
           killmail_id: 6,
           killmail_time: ~U[2024-01-01 10:13:00Z],
-          victim_character_id: 66666
+          victim_character_id: 66_666
         })
       ]
     }
@@ -345,7 +345,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
             "victim" => %{
               "character_id" => 12_345,
               # Cyclone
-              "ship_type_id" => 17918,
+              "ship_type_id" => 17_918,
               "ship_name" => "Cyclone"
             },
             "attackers" => [
@@ -360,7 +360,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
               %{
                 "character_id" => 11_111,
                 # Scythe
-                "ship_type_id" => 11129,
+                "ship_type_id" => 11_129,
                 "ship_name" => "Scythe",
                 "damage_done" => 0,
                 "final_blow" => false
@@ -368,7 +368,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
               %{
                 "character_id" => 22_222,
                 # Cyclone
-                "ship_type_id" => 17918,
+                "ship_type_id" => 17_918,
                 "ship_name" => "Cyclone",
                 "damage_done" => 2000,
                 "final_blow" => true
@@ -384,7 +384,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
             "victim" => %{
               "character_id" => 33_333,
               # Scythe
-              "ship_type_id" => 11129,
+              "ship_type_id" => 11_129,
               "ship_name" => "Scythe"
             },
             "attackers" => [
@@ -441,24 +441,24 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
           killmail_id: 1,
           killmail_time: ~U[2024-01-01 10:00:00Z],
           victim_character_id: 12_345,
-          victim_corporation_id: 98765,
+          victim_corporation_id: 98_765,
           raw_data: %{
             "victim" => %{
               "character_id" => 12_345,
-              "corporation_id" => 98765,
+              "corporation_id" => 98_765,
               "corporation_name" => "Victim Corp A"
             },
             "attackers" => [
               %{
                 "character_id" => 67_890,
-                "corporation_id" => 54321,
+                "corporation_id" => 54_321,
                 "corporation_name" => "Attacker Corp B",
                 "damage_done" => 1000,
                 "final_blow" => true
               },
               %{
                 "character_id" => 11_111,
-                "corporation_id" => 54321,
+                "corporation_id" => 54_321,
                 "corporation_name" => "Attacker Corp B",
                 "damage_done" => 500,
                 "final_blow" => false
@@ -470,17 +470,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
           killmail_id: 2,
           killmail_time: ~U[2024-01-01 10:05:00Z],
           victim_character_id: 22_222,
-          victim_corporation_id: 54321,
+          victim_corporation_id: 54_321,
           raw_data: %{
             "victim" => %{
               "character_id" => 22_222,
-              "corporation_id" => 54321,
+              "corporation_id" => 54_321,
               "corporation_name" => "Attacker Corp B"
             },
             "attackers" => [
               %{
                 "character_id" => 33_333,
-                "corporation_id" => 98765,
+                "corporation_id" => 98_765,
                 "corporation_name" => "Victim Corp A",
                 "damage_done" => 1200,
                 "final_blow" => true
@@ -611,14 +611,14 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
       killmail_time: ~U[2024-01-01 10:00:00Z],
       solar_system_id: 30_002_765,
       victim_character_id: 12_345,
-      victim_corporation_id: 98765,
+      victim_corporation_id: 98_765,
       victim_alliance_id: nil,
       victim_ship_type_id: 670,
       raw_data: %{
         "victim" => %{
           "character_id" => 12_345,
           "character_name" => "Test Victim",
-          "corporation_id" => 98765,
+          "corporation_id" => 98_765,
           "corporation_name" => "Test Corp",
           "ship_type_id" => 670,
           "ship_name" => "Capsule"
@@ -627,7 +627,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
           %{
             "character_id" => 67_890,
             "character_name" => "Test Attacker",
-            "corporation_id" => 54321,
+            "corporation_id" => 54_321,
             "corporation_name" => "Test Attacker Corp",
             "ship_type_id" => 587,
             "ship_name" => "Rifter",

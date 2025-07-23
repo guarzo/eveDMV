@@ -554,11 +554,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
     base_time = ~U[2024-01-01 10:00:00Z]
 
     # Multiple attackers switch targets at same time
-    kills = []
-
     # Time window 1: All attack target A
     kills =
-      kills ++
         Enum.map(0..4, fn i ->
           %{
             killmail_id: 9000 + i,

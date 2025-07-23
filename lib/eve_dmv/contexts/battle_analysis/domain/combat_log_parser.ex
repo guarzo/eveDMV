@@ -41,11 +41,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
 
     events =
       lines
-
-    Enum.map(&parse_line/1)
-    Enum.filter(&(&1 != nil))
-    filter_by_time(options[:start_time], options[:end_time])
-    filter_by_pilot(options[:pilot_name])
+      |> Enum.map(&parse_line/1)
+      |> Enum.filter(&(&1 != nil))
+      |> filter_by_time(options[:start_time], options[:end_time])
+      |> filter_by_pilot(options[:pilot_name])
 
     summary = generate_summary(events, options[:pilot_name])
 
@@ -202,8 +201,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
     # Generic combat event that doesn't match other patterns
     content =
       line
-
-    String.replace(~r/^[^\t]*\tCombat\t/, "") |> String.trim()
+      |> String.replace(~r/^[^\t]*\tCombat\t/, "")
+      |> String.trim()
 
     %{
       type: :combat,
@@ -274,10 +273,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
 
     quality_breakdown =
       hits
-
-    Enum.group_by(& &1.quality)
-
-    Enum.map(fn {quality, events} ->
+      |> Enum.group_by(& &1.quality)
+      |> Enum.map(fn {quality, events} ->
       {quality,
        %{
          count: length(events),
@@ -285,8 +282,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
          total_damage: Enum.sum(Enum.map(events, & &1.damage))
        }}
     end)
-
-    Enum.into(%{})
+    |> Enum.into(%{})
 
     %{
       total_shots: total_shots,
@@ -299,10 +295,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
 
   defp analyze_weapon_performance(events) do
     events
-    Enum.filter(&(&1.type == :damage && &1[:weapon]))
-    Enum.group_by(& &1.weapon.weapon)
-
-    Enum.map(fn {weapon, weapon_events} ->
+    |> Enum.filter(&(&1.type == :damage && &1[:weapon]))
+    |> Enum.group_by(& &1.weapon.weapon)
+    |> Enum.map(fn {weapon, weapon_events} ->
       {weapon,
        %{
          shots_fired: length(weapon_events),
@@ -311,32 +306,28 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
          hit_quality: analyze_damage_application(weapon_events)
        }}
     end)
-
-    Enum.into(%{})
+    |> Enum.into(%{})
   end
 
   defp analyze_ewar_effectiveness(events) do
     events
-    Enum.filter(&(&1.type == :ewar))
-    Enum.group_by(& &1.ewar_type)
-
-    Enum.map(fn {type, ewar_events} ->
+    |> Enum.filter(&(&1.type == :ewar))
+    |> Enum.group_by(& &1.ewar_type)
+    |> Enum.map(fn {type, ewar_events} ->
       {type,
        %{
          activations: length(ewar_events),
          unique_targets: ewar_events |> Enum.map(& &1.ship) |> Enum.uniq() |> Kernel.length()
        }}
     end)
-
-    Enum.into(%{})
+    |> Enum.into(%{})
   end
 
   defp analyze_survivability(events) do
     incoming_damage =
       events
-
-    Enum.filter(&(&1.type == :damage && &1[:to]))
-    Enum.map(& &1.damage)
+      |> Enum.filter(&(&1.type == :damage && &1[:to]))
+      |> Enum.map(& &1.damage)
 
     %{
       total_damage_taken: Enum.sum(incoming_damage),
@@ -397,26 +388,26 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
     # If pilot_name matches, this is damage taken by pilot
     pilot_damage_taken =
       events
-
-    Enum.filter(&(&1.type == :damage))
-    Enum.map(& &1.damage) |> Enum.sum()
+      |> Enum.filter(&(&1.type == :damage))
+      |> Enum.map(& &1.damage)
+      |> Enum.sum()
     # Count unique attackers
     unique_attackers =
       events
-
-    events
-    Enum.filter(&(&1.type == :damage && &1.from))
-    Enum.map(& &1.from) |> Enum.uniq() |> Kernel.length()
+      |> Enum.filter(&(&1.type == :damage && &1.from))
+      |> Enum.map(& &1.from)
+      |> Enum.uniq()
+      |> Kernel.length()
     # Count misses
     total_shots =
       events
-
-    Enum.filter(&(&1.type in [:damage, :miss])) |> Kernel.length()
+      |> Enum.filter(&(&1.type in [:damage, :miss]))
+      |> Kernel.length()
 
     hits =
       events
-
-    Enum.filter(&(&1.type == :damage)) |> Kernel.length()
+      |> Enum.filter(&(&1.type == :damage))
+      |> Kernel.length()
 
     %{
       # This log perspective doesn't show outgoing damage
@@ -435,16 +426,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
   defp extract_metadata(events) do
     participants =
       events
-
-    Enum.flat_map(fn event ->
-      case event.type do
-        :damage -> [event.from, event.to]
-        :ewar -> [event[:target]]
-        _ -> []
-      end
-    end)
-
-    Enum.filter(&(&1 != nil)) |> Enum.uniq()
+      |> Enum.flat_map(fn event ->
+        case event.type do
+          :damage -> [event.from, event.to]
+          :ewar -> [event[:target]]
+          _ -> []
+        end
+      end)
+      |> Enum.filter(&(&1 != nil))
+      |> Enum.uniq()
 
     %{
       start_time: events |> Enum.map(& &1.timestamp) |> Enum.min(fn -> nil end),
@@ -456,8 +446,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
 
   defp group_events_by_time(events, window_seconds) do
     events
-
-    Enum.group_by(fn event ->
+    |> Enum.group_by(fn event ->
       if event.timestamp do
         # Round to nearest window
         unix = event.timestamp |> DateTime.from_naive!("Etc/UTC") |> DateTime.to_unix()
@@ -473,8 +462,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
 
     # Look for events within 5 minutes
     -5..5
-
-    Enum.flat_map(fn offset ->
+    |> Enum.flat_map(fn offset ->
       window_key = div(target_unix + offset * 60, 60) * 60
       Map.get(event_windows, window_key, [])
     end)
@@ -483,15 +471,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
   defp build_damage_timeline(events, killmail) do
     damage_events =
       events
-
-    Enum.filter(&(&1.type == :damage && &1.to == killmail.victim_character_name))
-    Enum.sort_by(& &1.timestamp)
+      |> Enum.filter(&(&1.type == :damage && &1.to == killmail.victim_character_name))
+      |> Enum.sort_by(& &1.timestamp)
 
     cumulative_damage = 0
 
     damage_events
-
-    Enum.map(fn event ->
+    |> Enum.map(fn event ->
       cumulative_damage = cumulative_damage + event.damage
 
       %{
@@ -508,12 +494,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
     # Find damage events in the last 10 seconds before the kill
     final_events =
       events
-
-    Enum.filter(fn event ->
-      event.type == :damage &&
-        event.to == killmail.victim_character_name &&
-        NaiveDateTime.diff(killmail.killmail_time, event.timestamp, :second) <= 10
-    end)
+      |> Enum.filter(fn event ->
+        event.type == :damage &&
+          event.to == killmail.victim_character_name &&
+          NaiveDateTime.diff(killmail.killmail_time, event.timestamp, :second) <= 10
+      end)
 
     %{
       final_blow_damage: final_events |> Enum.map(& &1.damage) |> Enum.sum(),
@@ -540,12 +525,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
 
   defp build_damage_over_time(events) do
     events
-    Enum.filter(&(&1.type == :damage))
-    Enum.sort_by(& &1.timestamp)
-    # Group by 10 events
-    Enum.chunk_every(10)
-
-    Enum.map(fn chunk ->
+    |> Enum.filter(&(&1.type == :damage))
+    |> Enum.sort_by(& &1.timestamp)
+    |> Enum.chunk_every(10)
+    |> Enum.map(fn chunk ->
       %{
         timestamp: List.first(chunk).timestamp,
         damage_dealt: chunk |> Enum.filter(& &1[:from]) |> Enum.map(& &1.damage) |> Enum.sum(),
@@ -571,5 +554,30 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
         end_time = Enum.max(timestamps)
         NaiveDateTime.diff(end_time, start_time, :second) / 60
     end
+  end
+
+  defp filter_by_time(events, nil, nil), do: events
+  defp filter_by_time(events, start_time, end_time) do
+    events
+    |> Enum.filter(fn event ->
+      cond do
+        start_time && end_time ->
+          event.timestamp >= start_time && event.timestamp <= end_time
+        start_time ->
+          event.timestamp >= start_time
+        end_time ->
+          event.timestamp <= end_time
+        true ->
+          true
+      end
+    end)
+  end
+
+  defp filter_by_pilot(events, nil), do: events
+  defp filter_by_pilot(events, pilot_name) do
+    events
+    |> Enum.filter(fn event ->
+      event.pilot == pilot_name || event.target == pilot_name
+    end)
   end
 end

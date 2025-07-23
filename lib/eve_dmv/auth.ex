@@ -53,14 +53,12 @@ defmodule EveDmv.Auth do
 
   defp update_user_token(user, token_data) do
     user
-
-    Ash.Changeset.for_update(:refresh_token, %{
+    |> Ash.Changeset.for_update(:refresh_token, %{
       access_token: token_data.access_token,
       refresh_token: token_data.refresh_token,
       token_expires_at: token_data.expires_at
     })
-
-    Ash.update(domain: Api)
+    |> Ash.update(domain: Api)
   end
 
   @doc """

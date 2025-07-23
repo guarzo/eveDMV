@@ -50,10 +50,10 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
       {:ok, parts} ->
         ids =
           parts
-
-        Enum.map(&Map.get(&1, field))
-        Enum.filter(& &1) |> Enum.uniq()
-        Enum.take(limit)
+          |> Enum.map(&Map.get(&1, field))
+          |> Enum.filter(& &1)
+          |> Enum.uniq()
+          |> Enum.take(limit)
 
         {:ok, ids}
 
@@ -67,9 +67,8 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
   defp chunk_and_process(items, batch_size, fun, type) do
     stream =
       items
-
-    Enum.chunk_every(batch_size)
-    Enum.with_index(1)
+      |> Enum.chunk_every(batch_size)
+      |> Enum.with_index(1)
 
     Task.async_stream(
       fn {batch, idx} ->
@@ -89,10 +88,9 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
       {:ok, %{character_name: name} = metrics} when is_binary(name) ->
         attrs =
           metrics
-
-        Map.put(:character_id, character_id)
-        Map.put(:stats_period_start, start_date)
-        Map.put(:stats_period_end, end_date)
+          |> Map.put(:character_id, character_id)
+          |> Map.put(:stats_period_start, start_date)
+          |> Map.put(:stats_period_end, end_date)
 
         upsert(PlayerStats, [character_id: character_id], attrs)
 
@@ -153,8 +151,7 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
   # Get attacker counts for a list of killmails (excluding victims)
   defp get_attacker_counts_for_killmails(killmail_keys) do
     killmail_keys
-
-    Enum.map(fn {killmail_id, killmail_time} ->
+    |> Enum.map(fn {killmail_id, killmail_time} ->
       case Ash.read(Participant,
              filter: %{
                killmail_id: killmail_id,
@@ -237,15 +234,13 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
     # Calculate actual ISK values from killmail data
     total_isk_destroyed =
       kills
-
-    Enum.map(&(&1.total_value || Decimal.new(0)))
-    Enum.reduce(Decimal.new(0), &Decimal.add/2)
+      |> Enum.map(&(&1.total_value || Decimal.new(0)))
+      |> Enum.reduce(Decimal.new(0), &Decimal.add/2)
 
     total_isk_lost =
       losses
-
-    Enum.map(&(&1.total_value || Decimal.new(0)))
-    Enum.reduce(Decimal.new(0), &Decimal.add/2)
+      |> Enum.map(&(&1.total_value || Decimal.new(0)))
+      |> Enum.reduce(Decimal.new(0), &Decimal.add/2)
 
     %{
       total_kills: total_kills,
@@ -265,14 +260,12 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
 
       {fav_id, fav_name} =
         ship_groups
-
-      Enum.map(fn {ship_type_id, ship_participants} ->
-        {ship_type_id, List.first(ship_participants).ship_name || "Unknown",
-         length(ship_participants)}
-      end)
-
-      Enum.max_by(fn {_id, _name, count} -> count end, fn -> {nil, "Unknown", 0} end)
-      then(fn {id, name, _count} -> {id, name} end)
+        |> Enum.map(fn {ship_type_id, ship_participants} ->
+          {ship_type_id, List.first(ship_participants).ship_name || "Unknown",
+           length(ship_participants)}
+        end)
+        |> Enum.max_by(fn {_id, _name, count} -> count end, fn -> {nil, "Unknown", 0} end)
+        |> then(fn {id, name, _count} -> {id, name} end)
 
       %{diversity: diversity, fav_id: fav_id, fav_name: fav_name}
     end

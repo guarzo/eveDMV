@@ -25,7 +25,8 @@ defmodule Mix.Tasks.Eve.CheckIndexes do
     Mix.shell().info("✅ Index check complete!")
   end
 
-  defp check_existing_indexes Mix.shell(do).info("\n📊 Existing Indexes by Table")
+  defp check_existing_indexes do
+    Mix.shell().info("\n📊 Existing Indexes by Table")
     Mix.shell().info("=" <> String.duplicate("=", 50))
 
     query = """
@@ -46,8 +47,10 @@ defmodule Mix.Tasks.Eve.CheckIndexes do
         current_table = nil
 
         Enum.each(rows, fn [table, index, size] ->
-          if table != current_table Mix.shell(do).info("\n#{table}:")
-          Mix.shell(end).info("  - #{index} (#{size})")
+          if table != current_table do
+            Mix.shell().info("\n#{table}:")
+          end
+          Mix.shell().info("  - #{index} (#{size})")
         end)
 
       {:error, error} ->
@@ -55,7 +58,8 @@ defmodule Mix.Tasks.Eve.CheckIndexes do
     end
   end
 
-  defp check_missing_indexes Mix.shell(do).info("\n\n💡 Recommended Missing Indexes")
+  defp check_missing_indexes do
+    Mix.shell().info("\n\n💡 Recommended Missing Indexes")
     Mix.shell().info("=" <> String.duplicate("=", 50))
 
     # Check for common query patterns without indexes

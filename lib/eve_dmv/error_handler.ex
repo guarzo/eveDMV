@@ -1,17 +1,16 @@
 # credo:disable-for-this-file Credo.Check.Refactor.LongQuoteBlocks
 defmodule EveDmv.ErrorHandler do
-  import EveDmv.Result
-  alias EveDmv.Error
-  alias EveDmv.ErrorCodes
-  require Logger
-  require Logger
-
   @moduledoc """
   Behavior for consistent error handling across modules.
 
   Provides retry logic, fallback values, error transformation,
   and telemetry integration for standardized error handling.
   """
+
+  import EveDmv.Result
+  alias EveDmv.Error
+  alias EveDmv.ErrorCodes
+  require Logger
 
   @type error_action ::
           {:retry, delay_ms :: non_neg_integer()}

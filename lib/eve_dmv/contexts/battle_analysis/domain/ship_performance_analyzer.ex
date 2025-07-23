@@ -342,16 +342,14 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
     damage_by_type =
       attackers
-
-    Enum.group_by(fn attacker ->
-      classify_damage_type(attacker.weapon_type_id)
-    end)
-
-    Enum.map(fn {damage_type, attackers_of_type} ->
-      damage_amount = Enum.sum(Enum.map(attackers_of_type, & &1.damage_done))
-      {damage_type, damage_amount}
-    end)
-    |> Map.new()
+      |> Enum.group_by(fn attacker ->
+        classify_damage_type(attacker.weapon_type_id)
+      end)
+      |> Enum.map(fn {damage_type, attackers_of_type} ->
+        damage_amount = Enum.sum(Enum.map(attackers_of_type, & &1.damage_done))
+        {damage_type, damage_amount}
+      end)
+      |> Map.new()
 
     %{
       total_damage: total_damage,
@@ -1222,41 +1220,35 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   end
 
   defp generate_key_insights(performances) do
-    insights = []
-
-    # High survivability insight
     high_survival_rate =
       Enum.count(performances, &(&1.survivability_score.normalized_score > 0.7)) /
         length(performances)
 
-    insights =
-      if high_survival_rate > 0.6 do
-        ["High survivability battle - most ships performed well defensively" | insights]
-      else
-        insights
-      end
-
-    # DPS efficiency insight
     avg_dps_efficiency = average(Enum.map(performances, & &1.dps_efficiency.efficiency_ratio))
 
-    insights =
-      if avg_dps_efficiency > 0.8 do
-        ["Excellent DPS efficiency - ships performed close to theoretical maximum" | insights]
-      else
-        insights
-      end
-
-    # Role effectiveness insight
     avg_role_effectiveness =
       average(Enum.map(performances, & &1.role_effectiveness.effectiveness_score))
 
-    insights =
-      if avg_role_effectiveness > 0.7 do
-        ["Strong tactical coordination - ships fulfilled their roles effectively" | insights]
-      else
-        insights
-      end
+    []
+    |> maybe_add_insight(
+      "High survivability battle - most ships performed well defensively",
+      high_survival_rate > 0.6
+    )
+    |> maybe_add_insight(
+      "Excellent DPS efficiency - ships performed close to theoretical maximum",
+      avg_dps_efficiency > 0.8
+    )
+    |> maybe_add_insight(
+      "Strong tactical coordination - ships fulfilled their roles effectively",
+      avg_role_effectiveness > 0.7
+    )
+  end
 
+  defp maybe_add_insight(insights, insight, true) do
+    [insight | insights]
+  end
+
+  defp maybe_add_insight(insights, _insight, false) do
     insights
   end
 
@@ -1285,15 +1277,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   end
 
   defp generate_ship_recommendation(performance) do
-    recommendations = []
-
-    # Build recommendations list efficiently
     recommendations =
-      recommendations
-
-    maybe_add_survivability_recommendation(performance)
-    maybe_add_dps_recommendation(performance)
-    maybe_add_role_recommendation(performance)
+      []
+      |> maybe_add_survivability_recommendation(performance)
+      |> maybe_add_dps_recommendation(performance)
+      |> maybe_add_role_recommendation(performance)
 
     %{
       ship_type_id: performance.ship_instance.ship_type_id,

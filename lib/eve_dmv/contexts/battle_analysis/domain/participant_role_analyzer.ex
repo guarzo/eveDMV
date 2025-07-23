@@ -110,8 +110,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
 
   defp extract_all_participants(killmails) do
     killmails
-
-    Enum.flat_map(fn killmail ->
+    |> Enum.flat_map(fn killmail ->
       # Extract victim
       victim = %{
         character_id: killmail.victim_character_id,
@@ -126,9 +125,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
         case killmail.raw_data do
           %{"attackers" => attackers} when is_list(attackers) ->
             attackers
-            Enum.filter(& &1["character_id"])
-
-            Enum.map(fn attacker ->
+            |> Enum.filter(& &1["character_id"])
+            |> Enum.map(fn attacker ->
               %{
                 character_id: parse_id(attacker["character_id"]),
                 character_name: attacker["character_name"],
@@ -307,8 +305,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
 
     # Return role with highest score
     role_scores
-    Enum.max_by(fn {_role, score} -> score end)
-    elem(0)
+    |> Enum.max_by(fn {_role, score} -> score end)
+    |> elem(0)
   end
 
   defp determine_secondary_roles(ship_analysis, _damage_analysis) do
@@ -359,57 +357,27 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
   end
 
   defp identify_characteristics(activities, ship_analysis, damage_analysis) do
-    characteristics = []
+    []
+    |> maybe_add_characteristic(:high_activity, activities.kills > 5)
+    |> maybe_add_characteristic(:survivor, activities.losses == 0 and activities.kills > 0)
+    |> maybe_add_characteristic(:heavy_damage, damage_analysis.total_damage_dealt > 10000)
+    |> maybe_add_characteristic(:versatile, ship_analysis.ship_diversity > 2)
+    |> maybe_add_characteristic(:finisher, damage_analysis.final_blow_ratio > 0.5)
+  end
 
-    # High activity
-    characteristics =
-      if activities.kills > 5 do
-        [:high_activity | characteristics]
-      else
-        characteristics
-      end
+  defp maybe_add_characteristic(characteristics, characteristic, true) do
+    [characteristic | characteristics]
+  end
 
-    # Survivability
-    characteristics =
-      if activities.losses == 0 and activities.kills > 0 do
-        [:survivor | characteristics]
-      else
-        characteristics
-      end
-
-    # Damage dealer
-    characteristics =
-      if damage_analysis.total_damage_dealt > 10000 do
-        [:heavy_damage | characteristics]
-      else
-        characteristics
-      end
-
-    # Versatile (multiple ship types)
-    characteristics =
-      if ship_analysis.ship_diversity > 2 do
-        [:versatile | characteristics]
-      else
-        characteristics
-      end
-
-    # Final blow specialist
-    characteristics =
-      if damage_analysis.final_blow_ratio > 0.5 do
-        [:finisher | characteristics]
-      else
-        characteristics
-      end
-
+  defp maybe_add_characteristic(characteristics, _characteristic, false) do
     characteristics
   end
 
   defp identify_key_players(participants) do
     # Top 10 contributors
     participants
-    Enum.take(10)
-
-    Enum.map(fn participant ->
+    |> Enum.take(10)
+    |> Enum.map(fn participant ->
       %{
         character_id: participant.character_id,
         character_name: participant.character_name,
@@ -425,18 +393,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
     # Look for command ships and high-activity participants
     potential_commanders =
       participants
-
-    Enum.filter(fn participant ->
-      # Command ship usage or high activity with diverse roles
-      participant.primary_role == :command or
-        (participant.contribution_score > 100 and participant.activity_summary.total_kills > 3)
-    end)
-
-    Enum.take(3)
+      |> Enum.filter(fn participant ->
+        # Command ship usage or high activity with diverse roles
+        participant.primary_role == :command or
+          (participant.contribution_score > 100 and participant.activity_summary.total_kills > 3)
+      end)
+      |> Enum.take(3)
 
     potential_commanders
-
-    Enum.map(fn participant ->
+    |> Enum.map(fn participant ->
       %{
         character_id: participant.character_id,
         character_name: participant.character_name,
@@ -453,12 +418,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
     total = length(participants)
 
     role_counts
-
-    Enum.map(fn {role, count} ->
+    |> Enum.map(fn {role, count} ->
       {role, %{count: count, percentage: Float.round(count / total * 100, 1)}}
     end)
-
-    Enum.into(%{})
+    |> Enum.into(%{})
   end
 
   defp calculate_participation_rate(activities, killmails) do
@@ -476,7 +439,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
 
   defp count_ships_by_role(ship_types, role) do
     ship_types
-    Enum.count(&(classify_ship_role(&1) == role))
+    |> Enum.count(&(classify_ship_role(&1) == role))
   end
 
   defp classify_ship_role(ship_type_id) do
@@ -639,32 +602,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
   end
 
   defp analyze_command_indicators(participant, _killmails) do
-    indicators = []
+    []
+    |> maybe_add_indicator(:command_ship, participant.primary_role == :command)
+    |> maybe_add_indicator(:high_activity, participant.activity_summary.total_kills > 5)
+    |> maybe_add_indicator(:survived_battle, participant.activity_summary.total_losses == 0)
+  end
 
-    # Command ship usage
-    indicators =
-      if participant.primary_role == :command do
-        [:command_ship | indicators]
-      else
-        indicators
-      end
+  defp maybe_add_indicator(indicators, indicator, true) do
+    [indicator | indicators]
+  end
 
-    # High activity
-    indicators =
-      if participant.activity_summary.total_kills > 5 do
-        [:high_activity | indicators]
-      else
-        indicators
-      end
-
-    # Survivability
-    indicators =
-      if participant.activity_summary.total_losses == 0 do
-        [:survived_battle | indicators]
-      else
-        indicators
-      end
-
+  defp maybe_add_indicator(indicators, _indicator, false) do
     indicators
   end
 end

@@ -66,7 +66,8 @@ defmodule Mix.Tasks.EveDmv.ImportHistorical do
     end
   end
 
-  defp import_historical_data(source, opts) Mix.shell(do).info("🚀 Starting historical import from: #{source}")
+  defp import_historical_data(source, opts) do
+    Mix.shell().info("🚀 Starting historical import from: #{source}")
 
     # Convert options
     import_opts = [
@@ -108,11 +109,12 @@ defmodule Mix.Tasks.EveDmv.ImportHistorical do
     after
       5000 ->
         # Check status periodically
-        ImportPipeline.get_status(case) do
+        case ImportPipeline.get_status() do
           {:ok, status} ->
             if status.status in [:running, :processing, :paused] do
               wait_for_import_completion(import_id)
-            Mix.shell(else).info("Import finished with status: #{status.status}")
+            else
+              Mix.shell().info("Import finished with status: #{status.status}")
             end
 
           _ ->
@@ -130,7 +132,9 @@ defmodule Mix.Tasks.EveDmv.ImportHistorical do
         end_time ->
           seconds = DateTime.diff(end_time, state.start_time, :second)
           format_duration(seconds)
-      Mix.shell(end).info("")
+      end
+
+    Mix.shell().info("")
     Mix.shell().info("=" |> String.duplicate(60))
     Mix.shell().info("📊 Import Complete: #{state.import_id}")
     Mix.shell().info("=" |> String.duplicate(60))
@@ -144,12 +148,13 @@ defmodule Mix.Tasks.EveDmv.ImportHistorical do
     Mix.shell().info("Peak Rate: #{state.peak_rate} killmails/min")
     Mix.shell().info("=" |> String.duplicate(60))
 
-    if state.error_count > 0 and length(state.errors) > 0 Mix.shell(do).info("")
+    if state.error_count > 0 and length(state.errors) > 0 do
+      Mix.shell().info("")
       Mix.shell().info("Recent Errors:")
 
       state.errors
-    Enum.take(5)
-    Enum.each(fn error ->
+      |> Enum.take(5)
+      |> Enum.each(fn error ->
         Mix.shell().info("  - #{inspect(error)}")
       end)
     end
@@ -159,7 +164,7 @@ defmodule Mix.Tasks.EveDmv.ImportHistorical do
     # Simple progress display loop
     :timer.sleep(2000)
 
-    ImportPipeline.get_status(case) do
+    case ImportPipeline.get_status() do
       {:ok, status} when status.status in [:running, :processing] ->
         percentage = calculate_percentage(status.progress.processed, status.progress.total)
         bar = progress_bar(percentage)

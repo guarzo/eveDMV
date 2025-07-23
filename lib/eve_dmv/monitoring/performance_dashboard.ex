@@ -515,7 +515,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
               state,
               :warning,
               "Process using high memory: #{inspect(process.name)}",
-    process
+              process
             )
         end
     end
@@ -565,9 +565,10 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
       performance: %{
         query_stats: metrics.queries.stats,
         top_queries:
-          metrics.queries.Map.to_list(by_name)
-    Enum.sort_by(fn {_, stats} -> stats.total_duration end, :desc)
-    Enum.take(10),
+          metrics.queries.by_name
+          |> Map.to_list()
+          |> Enum.sort_by(fn {_, stats} -> stats.total_duration end, :desc)
+          |> Enum.take(10),
         slow_queries: Enum.take(metrics.queries.slow_queries, 10)
       },
       trends: analyze_trends(history),
@@ -624,7 +625,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
 
   defp average(list, extractor) do
     if length(list) > 0 do
-      sum = list |> Enum.map(extractor) Enum.sum()
+      sum = list |> Enum.map(extractor) |> Enum.sum()
       sum / length(list)
     else
       0.0

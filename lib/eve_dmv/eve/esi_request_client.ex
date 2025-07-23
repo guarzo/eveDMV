@@ -273,7 +273,7 @@ defmodule EveDmv.Eve.EsiRequestClient do
 
     case FallbackStrategy.execute_with_stale_cache(
            fn -> execute_esi_request(path, opts) end,
-    cache_key_str
+           cache_key_str
          ) do
       {:ok, data} ->
         Logger.info("Using stale cache data for ESI request", %{path: path})
@@ -294,7 +294,7 @@ defmodule EveDmv.Eve.EsiRequestClient do
           path,
           auth_token,
           Keyword.get(opts, :params, %{}),
-    opts
+          opts
         )
     end
   end
@@ -369,8 +369,8 @@ defmodule EveDmv.Eve.EsiRequestClient do
 
   defp get_config(key, default) do
     :eve_dmv
-    Application.get_env(:esi, [])
-    Keyword.get(key, default)
+    |> Application.get_env(:esi, [])
+    |> Keyword.get(key, default)
   end
 
   # Remove auth_token from error data before logging
@@ -381,7 +381,7 @@ defmodule EveDmv.Eve.EsiRequestClient do
 
       tuple when is_tuple(tuple) ->
         # Handle tuples that might contain sensitive data
-        Tuple.to_list(tuple) sanitize_list_for_logging() List.to_tuple()
+        tuple |> Tuple.to_list() |> sanitize_list_for_logging() |> List.to_tuple()
 
       list when is_list(list) ->
         sanitize_list_for_logging(list)

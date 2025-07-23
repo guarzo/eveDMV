@@ -11,8 +11,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
   alias EveDmv.Api
   alias EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor
   alias EveDmv.Killmails.KillmailRaw
+  alias EveDmv.Market.PriceService
 
-  require Logger
 
   # Battle detection parameters
   @max_time_gap_minutes 30
@@ -39,20 +39,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
     max_time_gap = Keyword.get(options, :max_time_gap, @max_time_gap_minutes)
     same_system_only = Keyword.get(options, :same_system_only, true)
 
-    Logger.info("Detecting battles between #{inspect(start_time)} and #{inspect(end_time)}")
 
     with {:ok, killmails} <- fetch_killmails_in_range(start_time, end_time) do
       battles =
         killmails
+        |> cluster_killmails_by_time_and_space(max_time_gap, same_system_only)
+        |> filter_by_participant_count(min_participants)
+        |> enrich_battle_metadata()
+        |> assign_battle_ids()
 
-      cluster_killmails_by_time_and_space(max_time_gap, same_system_only)
-      filter_by_participant_count(min_participants)
-      enrich_battle_metadata()
-      assign_battle_ids()
-
-      Logger.info(
-        "Detected #{Kernel.length(battles)} battles from #{Kernel.length(killmails)} killmails"
-      )
 
       {:ok, battles}
     end
@@ -62,26 +57,21 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
   Detects battles in a specific solar system within a time range.
   """
   def detect_battles_in_system(system_id, start_time, end_time, options \\ []) do
-    Logger.info("Detecting battles in system #{system_id}")
 
     with {:ok, killmails} <- fetch_killmails_in_system(system_id, start_time, end_time) do
       battles =
         killmails
+        |> cluster_killmails_by_time_and_space(
+          Keyword.get(options, :max_time_gap, @max_time_gap_minutes),
+          # same_system_only is always true for system-specific search
+          true
+        )
+        |> filter_by_participant_count(
+          Keyword.get(options, :min_participants, @min_participants_for_battle)
+        )
+        |> enrich_battle_metadata()
+        |> assign_battle_ids()
 
-      cluster_killmails_by_time_and_space(
-        Keyword.get(options, :max_time_gap, @max_time_gap_minutes),
-        # same_system_only is always true for system-specific search
-        true
-      )
-
-      filter_by_participant_count(
-        Keyword.get(options, :min_participants, @min_participants_for_battle)
-      )
-
-      enrich_battle_metadata()
-      assign_battle_ids()
-
-      Logger.info("Detected #{Kernel.length(battles)} battles in system #{system_id}")
       {:ok, battles}
     end
   end
@@ -91,7 +81,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
   Useful for analyzing battles from external sources like zkillboard.
   """
   def analyze_battle_from_killmail_ids(killmail_ids) when is_list(killmail_ids) do
-    Logger.info("Analyzing battle from #{Kernel.length(killmail_ids)} killmail IDs")
 
     with {:ok, killmails} <- fetch_killmails_by_ids(killmail_ids) do
       case killmails do
@@ -116,10 +105,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
           # Multiple killmails - analyze as battle
           battles =
             multiple_kills
-
-          cluster_killmails_by_time_and_space(@max_time_gap_minutes, false)
-          enrich_battle_metadata()
-          assign_battle_ids()
+            |> cluster_killmails_by_time_and_space(@max_time_gap_minutes, false)
+            |> enrich_battle_metadata()
+            |> assign_battle_ids()
 
           case battles do
             [single_battle] -> {:ok, single_battle}
@@ -136,24 +124,21 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
     try do
       query =
         KillmailRaw
-
-      new()
-      filter(killmail_time: [gte: start_time, lte: end_time])
-      sort(killmail_time: :asc)
-      # Reasonable limit for battle analysis
-      limit(1000)
+        |> new()
+        |> filter(killmail_time: [gte: start_time, lte: end_time])
+        |> sort(killmail_time: :asc)
+        # Reasonable limit for battle analysis
+        |> limit(1000)
 
       case Ash.read(query, domain: Api) do
         {:ok, filtered_killmails} ->
           {:ok, filtered_killmails}
 
         {:error, error} ->
-          Logger.error("Failed to fetch killmails in range: #{inspect(error)}")
           {:error, :database_error}
       end
     rescue
       error ->
-        Logger.error("Failed to fetch killmails in range: #{inspect(error)}")
         {:error, :database_error}
     end
   end
@@ -162,25 +147,22 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
     try do
       query =
         KillmailRaw
-
-      new()
-      filter(solar_system_id: system_id)
-      filter(killmail_time: [gte: start_time, lte: end_time])
-      sort(killmail_time: :asc)
-      # Reasonable limit for single system
-      limit(500)
+        |> new()
+        |> filter(solar_system_id: system_id)
+        |> filter(killmail_time: [gte: start_time, lte: end_time])
+        |> sort(killmail_time: :asc)
+        # Reasonable limit for single system
+        |> limit(500)
 
       case Ash.read(query, domain: Api) do
         {:ok, filtered_killmails} ->
           {:ok, filtered_killmails}
 
         {:error, error} ->
-          Logger.error("Failed to fetch killmails in system #{system_id}: #{inspect(error)}")
           {:error, :database_error}
       end
     rescue
       error ->
-        Logger.error("Failed to fetch killmails in system #{system_id}: #{inspect(error)}")
         {:error, :database_error}
     end
   end
@@ -189,10 +171,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
     try do
       query =
         KillmailRaw
-
-      new()
-      filter(killmail_id: [in: killmail_ids])
-      sort(killmail_time: :asc)
+        |> new()
+        |> filter(killmail_id: [in: killmail_ids])
+        |> sort(killmail_time: :asc)
 
       case Ash.read(query, domain: Api) do
         {:ok, killmails} ->
@@ -201,25 +182,21 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
           {:ok, filtered_killmails}
 
         {:error, error} ->
-          Logger.error("Failed to fetch killmails by IDs: #{inspect(error)}")
           {:error, :database_error}
       end
     rescue
       error ->
-        Logger.error("Failed to fetch killmails by IDs: #{inspect(error)}")
         {:error, :database_error}
     end
   end
 
   defp cluster_killmails_by_time_and_space(killmails, max_time_gap_minutes, same_system_only) do
     killmails
-    Enum.sort_by(& &1.killmail_time)
-
-    Enum.reduce([], fn killmail, clusters ->
+    |> Enum.sort_by(& &1.killmail_time)
+    |> Enum.reduce([], fn killmail, clusters ->
       add_to_cluster(killmail, clusters, max_time_gap_minutes, same_system_only)
     end)
-
-    Enum.map(&Map.put(&1, :killmails, Enum.reverse(&1.killmails)))
+    |> Enum.map(&Map.put(&1, :killmails, Enum.reverse(&1.killmails)))
   end
 
   defp add_to_cluster(killmail, [], _max_time_gap, _same_system_only) do
@@ -312,8 +289,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
   defp count_unique_participants(killmails) do
     participants =
       killmails
-
-    Enum.flat_map(&ParticipantExtractor.extract_participants/1) |> Enum.uniq()
+      |> Enum.flat_map(&ParticipantExtractor.extract_participants/1)
+      |> Enum.uniq()
     Kernel.length(participants)
   end
 
@@ -322,37 +299,37 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
 
     cluster_participants =
       cluster_killmails
-
-    Enum.flat_map(&ParticipantExtractor.extract_participants/1) |> Enum.uniq()
+      |> Enum.flat_map(&ParticipantExtractor.extract_participants/1)
+      |> Enum.uniq()
 
     if Enum.empty?(cluster_participants) do
       0.0
     else
       overlap_count =
         killmail_participants
-
-      Enum.count(&(&1 in cluster_participants))
+        |> Enum.count(&(&1 in cluster_participants))
 
       overlap_count / Kernel.length(cluster_participants)
     end
   end
 
   defp find_cluster_with_overlap(killmail, clusters) do
-    Enum.with_index(clusters)
+    result = 
+      clusters
+      |> Enum.with_index()
+      |> Enum.find(fn {cluster, _index} ->
+        time_gap_minutes =
+          NaiveDateTime.diff(killmail.killmail_time, cluster.end_time, :second) / 60
 
-    Enum.find(fn {cluster, _index} ->
-      time_gap_minutes =
-        NaiveDateTime.diff(killmail.killmail_time, cluster.end_time, :second) / 60
+        overlap_ratio = calculate_participant_overlap(killmail, cluster.killmails)
 
-      overlap_ratio = calculate_participant_overlap(killmail, cluster.killmails)
+        # Check if killmail can be added to this cluster
+        time_gap_minutes <= @max_participant_time_gap_minutes and
+          overlap_ratio >= @min_participant_overlap_ratio and
+          killmail.solar_system_id == cluster.system_id
+      end)
 
-      # Check if killmail can be added to this cluster
-      time_gap_minutes <= @max_participant_time_gap_minutes and
-        overlap_ratio >= @min_participant_overlap_ratio and
-        killmail.solar_system_id == cluster.system_id
-    end)
-
-    case do
+    case result do
       {_cluster, index} -> {:found, index}
       nil -> :not_found
     end
@@ -399,17 +376,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
     # Get corporation and alliance data
     corporations =
       killmails
-
-    Enum.map(& &1.victim_corporation_id)
-
-    Enum.filter(&(&1 != nil)) |> Enum.uniq()
+      |> Enum.map(& &1.victim_corporation_id)
+      |> Enum.filter(&(&1 != nil))
+      |> Enum.uniq()
 
     alliances =
       killmails
-
-    Enum.map(& &1.victim_alliance_id)
-
-    Enum.filter(&(&1 != nil)) |> Enum.uniq()
+      |> Enum.map(& &1.victim_alliance_id)
+      |> Enum.filter(&(&1 != nil))
+      |> Enum.uniq()
 
     %{
       unique_count: Kernel.length(Enum.uniq(all_participants)),
@@ -441,9 +416,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
     # Find the system with the most killmails
     result =
       killmails
-
-    Enum.group_by(& &1.solar_system_id)
-    Enum.max_by(fn {_system_id, kills} -> Kernel.length(kills) end, fn -> {nil, []} end)
+      |> Enum.group_by(& &1.solar_system_id)
+      |> Enum.max_by(fn {_system_id, kills} -> Kernel.length(kills) end, fn -> {nil, []} end)
 
     elem(result, 0)
   end
@@ -461,7 +435,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
 
   # Optimized batch processing for killmail values
   defp calculate_killmail_values_batch(killmails) do
-    alias EveDmv.Market.PriceService
 
     try do
       # First, try to extract zKillboard values (fastest path)
@@ -475,14 +448,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
 
       zkb_total =
         zkb_values
-
-      Enum.map(fn killmail ->
-        case extract_zkb_value(killmail) do
-          {:ok, value} -> value
-          _ -> 0.0
-        end
-      end)
-      |> Enum.sum()
+        |> Enum.map(fn killmail ->
+          case extract_zkb_value(killmail) do
+            {:ok, value} -> value
+            _ -> 0.0
+          end
+        end)
+        |> Enum.sum()
 
       # For killmails that need calculation, batch the price fetching
       calculation_total =
@@ -494,14 +466,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
             # Extract all unique type IDs from all killmails
             all_type_ids =
               killmails_to_calculate
-
-            Enum.flat_map(&extract_type_ids/1) |> Enum.uniq()
+              |> Enum.flat_map(&extract_type_ids/1)
+              |> Enum.uniq()
             # Batch fetch all prices
             {:ok, price_map} = PriceService.get_item_prices(all_type_ids)
 
             killmails_to_calculate
-
-            Enum.map(fn killmail ->
+            |> Enum.map(fn killmail ->
               calculate_killmail_value_with_prices(killmail, price_map)
             end)
             |> Enum.sum()
@@ -510,18 +481,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
       {:ok, zkb_total + calculation_total}
     rescue
       error ->
-        Logger.error("Error in calculate_killmail_values_batch: #{inspect(error)}")
         {:error, :calculation_failed}
     end
   end
 
   # Fallback to original individual calculation method
   defp calculate_total_isk_destroyed_fallback(killmails) do
-    alias EveDmv.Market.PriceService
 
     killmails
-
-    Enum.map(fn killmail ->
+    |> Enum.map(fn killmail ->
       case PriceService.calculate_killmail_value(killmail) do
         %{total_value: value} when is_number(value) -> value
         _ -> 0.0
@@ -556,9 +524,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
           []
       end
 
-    type_ids ++ item_type_ids
-
-    Enum.filter(&(&1 != nil)) |> Enum.uniq()
+    (type_ids ++ item_type_ids)
+    |> Enum.filter(&(&1 != nil))
+    |> Enum.uniq()
   end
 
   # Helper to calculate killmail value using pre-fetched prices
@@ -575,8 +543,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
       case killmail.raw_data do
         %{"victim" => %{"items" => items}} when is_list(items) ->
           items
-
-          Enum.map(fn item ->
+          |> Enum.map(fn item ->
             type_id = item["typeID"]
             quantity = item["quantityDestroyed"] || item["quantityDropped"] || 1
 
@@ -596,9 +563,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
 
   defp analyze_ship_types(killmails) do
     killmails
-    Enum.group_by(& &1.victim_ship_type_id)
-
-    Enum.map(fn {type_id, kills} ->
+    |> Enum.group_by(& &1.victim_ship_type_id)
+    |> Enum.map(fn {type_id, kills} ->
       %{ship_type_id: type_id, count: Kernel.length(kills)}
     end)
   end
@@ -633,9 +599,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
         system_id = first.solar_system_id
 
         timestamp =
-          first.NaiveDateTime.to_string(killmail_time)
-
-        String.replace([" ", ":", "-"], "")
+          first.killmail_time
+          |> NaiveDateTime.to_string()
+          |> String.replace([" ", ":", "-"], "")
 
         "battle_#{system_id}_#{timestamp}"
     end

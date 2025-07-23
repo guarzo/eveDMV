@@ -8,7 +8,6 @@ defmodule EveDmv.Application do
   use Application
 
   alias EveDmv.Config.RateLimit
-  alias EveDmv.Eve.NameResolver
   alias EveDmv.Eve.StaticDataLoader
   alias EveDmv.Performance.RegressionDetector
 

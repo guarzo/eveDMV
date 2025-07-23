@@ -120,15 +120,15 @@ defmodule EveDmvWeb.Plugs.ApiAuth do
     case ApiAuthentication.validate_api_key(api_key, client_ip, opts.permissions) do
       {:ok, api_key_record} ->
         conn
-    assign(:api_authenticated, true)
-    assign(:current_api_key, api_key_record)
-    assign(:api_created_by, api_key_record.created_by_character_id)
+        |> assign(:api_authenticated, true)
+        |> assign(:current_api_key, api_key_record)
+        |> assign(:api_created_by, api_key_record.created_by_character_id)
 
       {:error, reason} ->
         Logger.warning("API authentication failed", %{
           reason: reason,
           ip: client_ip,
-          user_agent: conn |> get_req_header("user-agent") List.first()
+          user_agent: conn |> get_req_header("user-agent") |> List.first()
         })
 
         error_message = format_api_error_message(reason)
@@ -140,20 +140,22 @@ defmodule EveDmvWeb.Plugs.ApiAuth do
     case get_req_header(conn, "x-forwarded-for") do
       [forwarded_ips] ->
         forwarded_ips
-    String.split(",") |> List.first() |> String.trim()
+        |> String.split(",")
+        |> List.first()
+        |> String.trim()
       [] ->
         conn.remote_ip
-    :inet.ntoa()
-        to_string()
+        |> :inet.ntoa()
+        |> to_string()
     end
   end
 
   @spec send_unauthorized(Plug.Conn.t(), String.t()) :: Plug.Conn.t()
   defp send_unauthorized(conn, message) do
     conn
-    put_status(:unauthorized)
-    put_resp_content_type("application/json")
-    send_resp(
+    |> put_status(:unauthorized)
+    |> put_resp_content_type("application/json")
+    |> send_resp(
       401,
       Jason.encode!(%{
         error: "Unauthorized",
@@ -161,7 +163,7 @@ defmodule EveDmvWeb.Plugs.ApiAuth do
         timestamp: DateTime.utc_now()
       })
     )
-    halt()
+    |> halt()
   end
 
   defp format_api_error_message(:not_found), do: "Invalid API key"

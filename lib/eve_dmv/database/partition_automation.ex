@@ -22,7 +22,7 @@ defmodule EveDmv.Database.PartitionAutomation do
 
     results =
       0..(months_ahead - 1)
-    Enum.map(fn month_offset ->
+      |> Enum.map(fn month_offset ->
         target_date = Date.utc_today() |> Date.add(month_offset * 30)
         create_partition_for_month(target_date)
       end)
@@ -74,10 +74,10 @@ defmodule EveDmv.Database.PartitionAutomation do
       old_partitions = find_old_partitions(cutoff_date)
 
       dropped_partitions =
-    old_partitions
-    Enum.map(&drop_partition/1)
-    Enum.filter(&match?({:ok, _}, &1))
-    Enum.map(fn {:ok, name} -> name end)
+        old_partitions
+        |> Enum.map(&drop_partition/1)
+        |> Enum.filter(&match?({:ok, _}, &1))
+        |> Enum.map(fn {:ok, name} -> name end)
 
       Logger.info("Dropped #{length(dropped_partitions)} old partitions")
       {:ok, {length(dropped_partitions), dropped_partitions}}
@@ -107,8 +107,8 @@ defmodule EveDmv.Database.PartitionAutomation do
     case Repo.query(query) do
       {:ok, %{rows: rows, columns: columns}} ->
         stats =
-    rows
-    Enum.map(fn row ->
+          rows
+          |> Enum.map(fn row ->
             Enum.zip(columns, row) |> Enum.into(%{})
           end)
 
@@ -161,11 +161,14 @@ defmodule EveDmv.Database.PartitionAutomation do
   end
 
   defp generate_date_range(%Date{} = target_date) do
-    start_date = Date.beginning_of_month(target_date) Date.to_iso8601()
+    start_date = target_date |> Date.beginning_of_month() |> Date.to_iso8601()
 
     end_date =
-      Date.beginning_of_month(target_date)
-    Date.add(32) |> Date.beginning_of_month() |> Date.to_iso8601()
+      target_date
+      |> Date.beginning_of_month()
+      |> Date.add(32)
+      |> Date.beginning_of_month()
+      |> Date.to_iso8601()
     {start_date, end_date}
   end
 
@@ -209,10 +212,11 @@ defmodule EveDmv.Database.PartitionAutomation do
     query =
       "SELECT tablename FROM pg_tables WHERE tablename ~ '^killmails_raw_y[0-9]{4}m[0-9]{2}$'"
 
-    {:ok, %{rows: rows}} = Repo.query!(query)
+    {:ok, %{rows: rows}} = Repo.query(query)
 
-    List.flatten(rows)
-    Enum.filter(fn partition_name ->
+    rows
+    |> List.flatten()
+    |> Enum.filter(fn partition_name ->
       case extract_date_from_partition_name(partition_name) do
         {:ok, partition_date} -> Date.compare(partition_date, cutoff_date) == :lt
         _ -> false

@@ -361,7 +361,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
         end) |> List.flatten()
       # Calculate overlap ratio
       total_sightings = length(all_characters)
-      unique_sightings = Enum.uniq(all_characters) length()
+      unique_sightings = all_characters |> Enum.uniq() |> length()
 
       if total_sightings > 0 do
         overlap_ratio = 1 - unique_sightings / total_sightings
@@ -441,7 +441,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       char_id != nil and length(sightings) > 1
     end)
     Enum.map(fn {char_id, sightings} ->
-      systems = sightings |> Enum.map(& &1.solar_system_id) Enum.uniq()
+      systems = sightings |> Enum.map(& &1.solar_system_id) |> Enum.uniq()
 
       %{
         type: :character_movement,
@@ -466,7 +466,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       %{
         type: :fleet_operation,
         entity_type: :fleet,
-        systems: chunk |> Enum.map(& &1.solar_system_id) Enum.uniq(),
+        systems: chunk |> Enum.map(& &1.solar_system_id) |> Enum.uniq(),
         size: length(chunk),
         time_window: List.first(chunk).killmail_time,
         participants: extract_fleet_participants(chunk),
@@ -487,7 +487,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
         entity_type: :structure,
         systems: [system],
         structure_count: length(kills),
-        total_value: kills |> Enum.map(&(&1.total_value || 0)) Enum.sum(),
+        total_value: kills |> Enum.map(&(&1.total_value || 0)) |> Enum.sum(),
         time_range: calculate_time_span(kills),
         relevance_score: min(1.0, length(kills) * 0.3)
       }
@@ -502,7 +502,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     Enum.group_by(& &1.victim_alliance_id)
     Enum.filter(fn {_alliance, kills} -> length(kills) > 5 end)
     Enum.map(fn {alliance_id, kills} ->
-      systems = kills |> Enum.map(& &1.solar_system_id) Enum.uniq()
+      systems = kills |> Enum.map(& &1.solar_system_id) |> Enum.uniq()
 
       %{
         type: :alliance_operation,
@@ -685,7 +685,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     if Enum.empty?(items) do
       %{hours: 0, start: nil, end: nil}
     else
-      times = items |> Enum.map(& &1.killmail_time) Enum.sort()
+      times = items |> Enum.map(& &1.killmail_time) |> Enum.sort()
       first = List.first(times)
       last = List.last(times)
 
@@ -1005,7 +1005,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
         select: count()
       )
 
-    active_alliances = Repo.all(query) length()
+    active_alliances = query |> Repo.all() |> length()
 
     cond do
       # Highly contested

@@ -10,12 +10,13 @@ defmodule Mix.Tasks.Eve.Benchmark do
       mix eve.benchmark --compare    # Compare with and without cache
   """
 
+  @shortdoc "Run performance benchmarks"
+
   use Mix.Task
 
-  alias EveDmv.Database.{CharacterQueries, CorporationQueries}
   alias EveDmv.Cache.QueryCache
-
-  @shortdoc "Run performance benchmarks"
+  alias EveDmv.Database.CharacterQueries
+  alias EveDmv.Database.CorporationQueries
 
   def run(args) do
     Mix.Task.run("app.start")
@@ -43,7 +44,8 @@ defmodule Mix.Tasks.Eve.Benchmark do
     end
   end
 
-  defp run_all_benchmarks(opts) Mix.shell(do).info("\n🚀 Running EVE DMV Performance Benchmarks\n")
+  defp run_all_benchmarks(opts) do
+    Mix.shell().info("\n🚀 Running EVE DMV Performance Benchmarks\n")
 
     run_character_benchmarks(opts)
     Mix.shell().info("")
@@ -54,8 +56,9 @@ defmodule Mix.Tasks.Eve.Benchmark do
     Mix.shell().info("\n✅ Benchmarks complete!")
   end
 
-  defp run_character_benchmarks(opts) Mix.shell(do).info("📊 Character Query Benchmarks")
-    Mix.shell().info("=" |> String.duplicate(50))
+  defp run_character_benchmarks(opts) do
+    Mix.shell().info("📊 Character Query Benchmarks")
+    Mix.shell().info(String.duplicate("=", 50))
 
     # Test data
     # Example character ID
@@ -63,9 +66,11 @@ defmodule Mix.Tasks.Eve.Benchmark do
     since_date = DateTime.add(DateTime.utc_now(), -30, :day)
 
     if opts[:compare] do
-      # Clear cache for fair QueryCache.clear_all(comparison)
+      # Clear cache for fair comparison
+      QueryCache.clear_all()
 
-      # Without Mix.shell(cache).info("\nWithout cache:")
+      # Without cache
+      Mix.shell().info("\nWithout cache:")
 
       {time_no_cache, _} =
         measure_time(fn ->
@@ -111,8 +116,9 @@ defmodule Mix.Tasks.Eve.Benchmark do
     end
   end
 
-  defp run_corporation_benchmarks(opts) Mix.shell(do).info("📊 Corporation Query Benchmarks")
-    Mix.shell().info("=" |> String.duplicate(50))
+  defp run_corporation_benchmarks(opts) do
+    Mix.shell().info("📊 Corporation Query Benchmarks")
+    Mix.shell().info(String.duplicate("=", 50))
 
     # Test data
     # Example corporation ID
@@ -120,9 +126,11 @@ defmodule Mix.Tasks.Eve.Benchmark do
     since_date = DateTime.add(DateTime.utc_now(), -30, :day)
 
     if opts[:compare] do
-      # Clear cache for fair QueryCache.clear_all(comparison)
+      # Clear cache for fair comparison
+      QueryCache.clear_all()
 
-      # Without Mix.shell(cache).info("\nWithout cache:")
+      # Without cache
+      Mix.shell().info("\nWithout cache:")
 
       {time_no_cache, _} =
         measure_time(fn ->
@@ -172,8 +180,9 @@ defmodule Mix.Tasks.Eve.Benchmark do
     end
   end
 
-  defp run_cache_benchmarks Mix.shell(do).info("📊 Cache Performance")
-    Mix.shell().info("=" |> String.duplicate(50))
+  defp run_cache_benchmarks do
+    Mix.shell().info("📊 Cache Performance")
+    Mix.shell().info(String.duplicate("=", 50))
 
     stats = QueryCache.get_stats()
 
@@ -187,16 +196,15 @@ defmodule Mix.Tasks.Eve.Benchmark do
 
   defp run_benchmarks(benchmarks) do
     results =
-    benchmarks
-    Enum.map(fn {name, func} ->
+      Enum.map(benchmarks, fn {name, func} ->
         # Warm up
-        func.()
+        _ = func.()
 
         # Measure
         times =
           for _ <- 1..5 do
             {time, _} = measure_time(func)
-    time
+            time
           end
 
         avg_time = Enum.sum(times) / length(times)
@@ -206,7 +214,8 @@ defmodule Mix.Tasks.Eve.Benchmark do
         {name, avg_time, min_time, max_time}
       end)
 
-    # Display Mix.shell(results).info("\nQuery Performance (5 runs each):")
+    # Display results
+    Mix.shell().info("\nQuery Performance (5 runs each):")
     Mix.shell().info("--------------------------------")
 
     Enum.each(results, fn {name, avg, min, max} ->

@@ -212,13 +212,13 @@ defmodule EveDmv.Database.HealthCheck do
     # pool_info is a list of connection metrics, extract relevant data
     total_ready_connections =
       pool_info
-
-    Enum.map(& &1.ready_conn_count) |> Enum.sum()
+      |> Enum.map(& &1.ready_conn_count)
+      |> Enum.sum()
 
     total_queue_length =
       pool_info
-
-    Enum.map(& &1.checkout_queue_length) |> Enum.sum()
+      |> Enum.map(& &1.checkout_queue_length)
+      |> Enum.sum()
     # Get pool size from config since it's not in the metrics
     pool_config = Application.get_env(:eve_dmv, EveDmv.Repo, [])
     pool_size = Keyword.get(pool_config, :pool_size, 10)

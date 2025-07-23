@@ -28,8 +28,9 @@ defmodule EveDmv.Constants.Isk do
   """
   @spec to_billions(number() | Decimal.t()) :: float()
   def to_billions(value) when is_struct(value, Decimal) do
-    Decimal.to_float(value)
-    to_billions()
+    value
+    |> Decimal.to_float()
+    |> to_billions()
   end
 
   def to_billions(value) when is_number(value) do
@@ -43,8 +44,9 @@ defmodule EveDmv.Constants.Isk do
   """
   @spec to_millions(number() | Decimal.t()) :: float()
   def to_millions(value) when is_struct(value, Decimal) do
-    Decimal.to_float(value)
-    to_millions()
+    value
+    |> Decimal.to_float()
+    |> to_millions()
   end
 
   def to_millions(value) when is_number(value) do
@@ -76,8 +78,9 @@ defmodule EveDmv.Constants.Isk do
   """
   @spec format_isk(number() | Decimal.t()) :: String.t()
   def format_isk(decimal_value) when is_struct(decimal_value, Decimal) do
-    Decimal.to_float(decimal_value)
-    format_isk()
+    decimal_value
+    |> Decimal.to_float()
+    |> format_isk()
   end
 
   def format_isk(value) when is_number(value) do

@@ -73,8 +73,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer do
     case SQL.query(EveDmv.Repo, query) do
       {:ok, %{rows: rows}} ->
         rows
-
-        Enum.map(fn [parent, partition, size, count, vacuum, autovacuum] ->
+        |> Enum.map(fn [parent, partition, size, count, vacuum, autovacuum] ->
           %{
             parent_table: parent,
             partition_name: partition,
@@ -85,8 +84,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer do
             needs_vacuum: needs_vacuum?(count, vacuum, autovacuum)
           }
         end)
-
-        Enum.group_by(& &1.parent_table)
+        |> Enum.group_by(& &1.parent_table)
 
       {:error, _} ->
         %{}
@@ -394,9 +392,8 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer do
 
   defp find_unused_indexes(index_stats) do
     index_stats
-    Enum.filter(&(&1.scans == 0 and not &1.is_primary))
-
-    Enum.map(fn idx ->
+    |> Enum.filter(&(&1.scans == 0 and not &1.is_primary))
+    |> Enum.map(fn idx ->
       %{
         table: idx.table,
         index: idx.index,
@@ -408,9 +405,8 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer do
 
   defp find_inefficient_indexes(index_stats) do
     index_stats
-    Enum.filter(&(&1.efficiency < 50 and &1.scans > 100))
-
-    Enum.map(fn idx ->
+    |> Enum.filter(&(&1.efficiency < 50 and &1.scans > 100))
+    |> Enum.map(fn idx ->
       %{
         table: idx.table,
         index: idx.index,
@@ -423,9 +419,8 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer do
 
   defp suggest_missing_indexes(table_stats) do
     table_stats
-    Enum.filter(&(&1.seq_scan_ratio > 80 and &1.sequential_scans > 1000))
-
-    Enum.map(fn stat ->
+    |> Enum.filter(&(&1.seq_scan_ratio > 80 and &1.sequential_scans > 1000))
+    |> Enum.map(fn stat ->
       %{
         table: stat.table,
         sequential_scans: stat.sequential_scans,

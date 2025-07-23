@@ -128,14 +128,13 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.PriceCache do
       # For simplicity, return recent items (would need access tracking for real hot items)
       now = System.system_time(:millisecond)
 
-      :ets.tab2list(@cache_table)
-      Enum.filter(fn {_type_id, _data, expires_at} -> expires_at > now end)
-
-      Enum.map(fn {type_id, data, _expires_at} ->
+      @cache_table
+      |> :ets.tab2list()
+      |> Enum.filter(fn {_type_id, _data, expires_at} -> expires_at > now end)
+      |> Enum.map(fn {type_id, data, _expires_at} ->
         Map.put(data, :type_id, type_id)
       end)
-
-      Enum.take(limit)
+      |> Enum.take(limit)
     rescue
       _error -> []
     end
@@ -199,10 +198,9 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.PriceCache do
 
     expired_keys =
       @cache_table
-
-    :ets.tab2list()
-    Enum.filter(fn {_type_id, _data, expires_at} -> expires_at <= now end)
-    Enum.map(fn {type_id, _data, _expires_at} -> type_id end)
+      |> :ets.tab2list()
+      |> Enum.filter(fn {_type_id, _data, expires_at} -> expires_at <= now end)
+      |> Enum.map(fn {type_id, _data, _expires_at} -> type_id end)
 
     Enum.each(expired_keys, &:ets.delete(@cache_table, &1))
 

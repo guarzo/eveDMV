@@ -1,6 +1,4 @@
 defmodule Mix.Tasks.Eve.LoadWormholeEffects do
-  @shortdoc "Load wormhole effect types from reference data"
-
   @moduledoc """
   Loads wormhole effect types from reference data files (tmp/wormholeSystems.json
   and tmp/effects.json) and updates the solar systems table with effect information.
@@ -24,6 +22,8 @@ defmodule Mix.Tasks.Eve.LoadWormholeEffects do
       mix eve.load_wormhole_effects --force
   """
 
+  @shortdoc "Load wormhole effect types from reference data"
+
   use Mix.Task
 
   alias EveDmv.Eve.StaticDataLoader.WormholeEffectsLoader
@@ -34,10 +34,11 @@ defmodule Mix.Tasks.Eve.LoadWormholeEffects do
 
     {opts, _args} = OptionParser.parse!(args, strict: [dry_run: :boolean, force: :boolean])
 
-    if opts[:dry_run] Mix.shell(do).info("DRY RUN: Would load wormhole effects data from reference files")
+    if opts[:dry_run] do
+      Mix.shell().info("DRY RUN: Would load wormhole effects data from reference files")
       Mix.shell().info("Use without --dry-run to perform actual update")
     else
-      WormholeEffectsLoader.load_wormhole_effects(case) do
+      case WormholeEffectsLoader.load_wormhole_effects() do
         {:ok, updated_count} ->
           Mix.shell().info(
             "✅ Successfully updated #{updated_count} solar systems with wormhole effect data"

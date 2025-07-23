@@ -57,7 +57,8 @@ defmodule Mix.Tasks.Eve.MemoryAnalysis do
     end
   end
 
-  defp show_basic_memory_info Mix.shell(do).info("=== Basic Memory Analysis ===\n")
+  defp show_basic_memory_info do
+    Mix.shell().info("=== Basic Memory Analysis ===\n")
 
     memory_info = MemoryProfiler.get_memory_info()
 
@@ -88,33 +89,38 @@ defmodule Mix.Tasks.Eve.MemoryAnalysis do
       "  ETS:          #{format_bytes(memory_info.ets)} (#{percentage(memory_info.ets, memory_info.total)}%)"
     )
 
-    # Memory health Mix.shell(assessment).info("\n=== Memory Health Assessment ===")
+    # Memory health assessment
+    Mix.shell().info("\n=== Memory Health Assessment ===")
     assess_memory_health(memory_info)
   end
 
-  defp show_detailed_analysis Mix.shell(do).info("=== Detailed Memory Analysis ===\n")
+  defp show_detailed_analysis do
+    Mix.shell().info("=== Detailed Memory Analysis ===\n")
 
     # Basic info first
     show_basic_memory_info()
 
-    # ETS Mix.shell(analysis).info("\n=== ETS Table Analysis ===")
+    # ETS analysis
+    Mix.shell().info("\n=== ETS Table Analysis ===")
     ets_analysis = MemoryProfiler.analyze_ets_tables()
 
     Mix.shell().info("Total ETS Memory: #{format_bytes(ets_analysis.total_memory)}")
     Mix.shell().info("Number of Tables: #{ets_analysis.table_count}")
 
-    if ets_analysis.table_count > 0 Mix.shell(do).info("\nTop 10 Tables by Memory:")
+    if ets_analysis.table_count > 0 do
+      Mix.shell().info("\nTop 10 Tables by Memory:")
 
       ets_analysis.tables
-    Enum.take(10)
-    Enum.each(fn table ->
+      |> Enum.take(10)
+      |> Enum.each(fn table ->
         Mix.shell().info(
           "  #{inspect(table.name)}: #{table.size} items, ~#{format_bytes(table.memory * 8)}"
         )
       end)
     end
 
-    # Process Mix.shell(analysis).info("\n=== Process Memory Analysis ===")
+    # Process analysis
+    Mix.shell().info("\n=== Process Memory Analysis ===")
     process_analysis = MemoryProfiler.analyze_process_memory()
 
     Mix.shell().info("Total Process Memory: #{format_bytes(process_analysis.total_memory)}")
@@ -132,14 +138,16 @@ defmodule Mix.Tasks.Eve.MemoryAnalysis do
     end)
   end
 
-  defp profile_module(module_name) Mix.shell(do).info("=== Module Profiling: #{module_name} ===\n")
+  defp profile_module(module_name) do
+    Mix.shell().info("=== Module Profiling: #{module_name} ===\n")
 
     try do
       # Try to find and profile a common function in the module
       module = Module.safe_concat([module_name])
 
       # Check if module exists
-      if Code.ensure_loaded?(module) Mix.shell(do).info("Module #{module_name} found. Looking for profileable functions...")
+      if Code.ensure_loaded?(module) do
+        Mix.shell().info("Module #{module_name} found. Looking for profileable functions...")
 
         # For demo, we'll profile a simple operation
         {_result, profile} =
@@ -158,7 +166,8 @@ defmodule Mix.Tasks.Eve.MemoryAnalysis do
         Mix.shell().info("    Total: #{format_bytes(profile.memory_usage.total)}")
         Mix.shell().info("    Processes: #{format_bytes(profile.memory_usage.processes)}")
         Mix.shell().info("    Binary: #{format_bytes(profile.memory_usage.binary)}")
-      Mix.shell(else).error("Module #{module_name} not found")
+      else
+        Mix.shell().error("Module #{module_name} not found")
       end
     rescue
       error ->
@@ -166,19 +175,25 @@ defmodule Mix.Tasks.Eve.MemoryAnalysis do
     end
   end
 
-  defp run_memory_optimization Mix.shell(do).info("=== Memory Optimization ===\n")
+  defp run_memory_optimization do
+    Mix.shell().info("=== Memory Optimization ===\n")
 
     Mix.shell().info("Running memory optimization...")
     result = MemoryProfiler.optimize_memory()
 
-    if result.memory_freed > 0 Mix.shell(do).info("✅ Memory optimization successful!")
+    if result.memory_freed > 0 do
+      Mix.shell().info("✅ Memory optimization successful!")
       Mix.shell().info("Memory freed: #{format_bytes(result.memory_freed)}")
-    Mix.shell(else).info("ℹ️  No significant memory was freed")
-    Mix.shell(end).info("Before: #{format_bytes(result.initial_memory.total)}")
+    else
+      Mix.shell().info("ℹ️  No significant memory was freed")
+    end
+
+    Mix.shell().info("Before: #{format_bytes(result.initial_memory.total)}")
     Mix.shell().info("After:  #{format_bytes(result.final_memory.total)}")
   end
 
-  defp run_leak_detection Mix.shell(do).info("=== Memory Leak Detection ===\n")
+  defp run_leak_detection do
+    Mix.shell().info("=== Memory Leak Detection ===\n")
 
     Mix.shell().info("Collecting memory samples over time...")
     Mix.shell().info("This will take several seconds...")
@@ -190,21 +205,26 @@ defmodule Mix.Tasks.Eve.MemoryAnalysis do
         {new_samples, _indicators} = MemoryProfiler.detect_memory_leaks(acc)
         # Wait 2 seconds between samples
         Process.sleep(2000)
-    new_samples
+        new_samples
       end)
 
     # Final analysis
     {_final_samples, indicators} = MemoryProfiler.detect_memory_leaks(samples)
 
-    if Map.get(indicators, :insufficient_data) Mix.shell(do).info("Insufficient data for leak detection")
+    if Map.get(indicators, :insufficient_data) do
+      Mix.shell().info("Insufficient data for leak detection")
     else
-      if indicators.upward_trend Mix.shell(do).error("⚠️  Potential memory leak detected!")
+      if indicators.upward_trend do
+        Mix.shell().error("⚠️  Potential memory leak detected!")
         Mix.shell().error("Memory growth trend detected")
-      Mix.shell(else).info("✅ No memory leaks detected")
+      else
+        Mix.shell().info("✅ No memory leaks detected")
       end
 
-      if indicators.total_growth > 0 Mix.shell(do).info("Total memory growth: +#{format_bytes(indicators.total_growth)}")
-      Mix.shell(else).info("Total memory change: #{format_bytes(indicators.total_growth)}")
+      if indicators.total_growth > 0 do
+        Mix.shell().info("Total memory growth: +#{format_bytes(indicators.total_growth)}")
+      else
+        Mix.shell().info("Total memory change: #{format_bytes(indicators.total_growth)}")
       end
     end
   end
@@ -240,25 +260,31 @@ defmodule Mix.Tasks.Eve.MemoryAnalysis do
         issues
       end
 
-    if Enum.empty?(issues) Mix.shell(do).info("✅ Memory usage appears healthy")
-    Mix.shell(else).error("⚠️  Memory health concerns:")
+    if Enum.empty?(issues) do
+      Mix.shell().info("✅ Memory usage appears healthy")
+    else
+      Mix.shell().error("⚠️  Memory health concerns:")
 
       Enum.each(issues, fn issue ->
         Mix.shell().error("  - #{issue}")
       end)
     end
 
-    # Mix.shell(Recommendations).info("\n=== Recommendations ===")
+    # Recommendations
+    Mix.shell().info("\n=== Recommendations ===")
 
-    if process_percentage > 60 Mix.shell(do).info(
+    if process_percentage > 60 do
+      Mix.shell().info(
         "• Consider running garbage collection: mix eve.memory_analysis --optimize"
       )
     end
 
-    if ets_percentage > 20 Mix.shell(do).info("• Review ETS table usage with: mix eve.memory_analysis --detailed")
+    if ets_percentage > 20 do
+      Mix.shell().info("• Review ETS table usage with: mix eve.memory_analysis --detailed")
     end
 
-    if total_mb > 500 Mix.shell(do).info(
+    if total_mb > 500 do
+      Mix.shell().info(
         "• Monitor for memory leaks with: mix eve.memory_analysis --leak-detection"
       )
     end

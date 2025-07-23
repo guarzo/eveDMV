@@ -9,11 +9,11 @@ defmodule Mix.Tasks.Eve.DbIndexes do
       mix eve.db_indexes --analyze      # Analyze query performance
   """
 
+  @shortdoc "Manage database indexes for performance"
+
   use Mix.Task
   # import Ecto.Query
   require Logger
-
-  @shortdoc "Manage database indexes for performance"
 
   def run(args) do
     Mix.Task.run("app.start")

@@ -13,14 +13,15 @@ defmodule EveDmvWeb.PriceMonitorComponent do
   @impl Phoenix.LiveComponent
   def mount(socket) do
     # Subscribe to all price updates
-    if connected?(socket) RealTimePriceUpdater.subscribe_to_all_updates(do)
+    if connected?(socket) do
+      RealTimePriceUpdater.subscribe_to_all_updates()
     end
 
     socket =
-    socket
-    assign(:price_updates, [])
-    assign(:max_updates, 20)
-    assign(:monitoring_enabled, true)
+      socket
+      |> assign(:price_updates, [])
+      |> assign(:max_updates, 20)
+      |> assign(:monitoring_enabled, true)
 
     {:ok, socket}
   end
@@ -37,9 +38,9 @@ defmodule EveDmvWeb.PriceMonitorComponent do
     new_state = not socket.assigns.monitoring_enabled
 
     socket =
-    socket
-    assign(:monitoring_enabled, new_state)
-    put_flash(
+      socket
+      |> assign(:monitoring_enabled, new_state)
+      |> put_flash(
         :info,
         if(new_state, do: "Price monitoring enabled", else: "Price monitoring paused")
       )
@@ -50,9 +51,9 @@ defmodule EveDmvWeb.PriceMonitorComponent do
   @impl Phoenix.LiveComponent
   def handle_event("clear_updates", _params, socket) do
     socket =
-    socket
-    assign(:price_updates, [])
-    put_flash(:info, "Price update history cleared")
+      socket
+      |> assign(:price_updates, [])
+      |> put_flash(:info, "Price update history cleared")
 
     {:noreply, socket}
   end

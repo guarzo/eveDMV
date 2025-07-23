@@ -12,6 +12,8 @@ defmodule EveDmvWeb.SystemLive do
   alias EveDmv.Eve.SolarSystem
   alias EveDmv.Analytics.BattleDetector
 
+  import EveDmvWeb.FormatHelpers
+
   @impl true
   def mount(%{"system_id" => system_id}, _session, socket) do
     system_id = String.to_integer(system_id)
@@ -351,7 +353,9 @@ defmodule EveDmvWeb.SystemLive do
         activity_by_hour =
           Enum.map(0..23, fn hour ->
             count =
-              Enum.find_value(rows, 0, fn [h, count] -> if h == hour, do: count, else: nil end)
+              Enum.find_value(rows, 0, fn [hour_value, count] -> 
+                if hour_value == hour, do: count, else: nil 
+              end)
 
             %{hour: hour, count: count}
           end)

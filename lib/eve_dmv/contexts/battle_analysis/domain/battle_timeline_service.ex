@@ -61,8 +61,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
 
   defp build_events_from_killmails(killmails) do
     killmails
-    Enum.map(&build_event_from_killmail/1)
-    Enum.sort_by(& &1.timestamp)
+    |> Enum.map(&build_event_from_killmail/1)
+    |> Enum.sort_by(& &1.timestamp)
   end
 
   defp build_event_from_killmail(killmail) do
@@ -174,8 +174,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
       if final_phase, do: Enum.reverse([final_phase | initial_phases]), else: initial_phases
 
     all_phases
-    Enum.filter(&(&1 != nil))
-    Enum.sort_by(& &1.start_time)
+    |> Enum.filter(&(&1 != nil))
+    |> Enum.sort_by(& &1.start_time)
   end
 
   defp identify_initial_engagement(events) do
@@ -205,18 +205,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
   defp identify_escalations(events, initial_phase) do
     # Look for periods where kill rate increases significantly
     events
-    Enum.chunk_every(5, 1, :discard)
-
-    Enum.map(fn chunk ->
+    |> Enum.chunk_every(5, 1, :discard)
+    |> Enum.map(fn chunk ->
       analyze_kill_rate_change(chunk)
     end)
-
-    Enum.filter(fn analysis ->
+    |> Enum.filter(fn analysis ->
       analysis.is_escalation and
         NaiveDateTime.compare(analysis.start_time, initial_phase.end_time) == :gt
     end)
-
-    Enum.map(fn analysis ->
+    |> Enum.map(fn analysis ->
       %{
         phase_type: :escalation,
         start_time: analysis.start_time,
@@ -312,35 +309,32 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
 
       [first | _] ->
         events
-
-        Enum.group_by(fn event ->
+        |> Enum.group_by(fn event ->
           seconds_since_start = NaiveDateTime.diff(event.timestamp, first.timestamp, :second)
           window_index = div(seconds_since_start, window_seconds)
           NaiveDateTime.add(first.timestamp, window_index * window_seconds, :second)
         end)
-
-        Enum.sort_by(fn {timestamp, _} -> timestamp end)
+        |> Enum.sort_by(fn {timestamp, _} -> timestamp end)
     end
   end
 
   defp count_unique_attackers(events) do
     events
-    Enum.flat_map(& &1.attackers)
-    Enum.map(& &1.character_id)
-    Enum.filter(&(&1 != nil)) |> Enum.uniq() |> Kernel.length()
+    |> Enum.flat_map(& &1.attackers)
+    |> Enum.map(& &1.character_id)
+    |> Enum.filter(&(&1 != nil)) |> Enum.uniq() |> Kernel.length()
   end
 
   defp count_unique_victims(events) do
     events
-    Enum.map(& &1.victim.character_id)
-    Enum.filter(&(&1 != nil)) |> Enum.uniq() |> Kernel.length()
+    |> Enum.map(& &1.victim.character_id)
+    |> Enum.filter(&(&1 != nil)) |> Enum.uniq() |> Kernel.length()
   end
 
   defp analyze_ship_types_in_window(events, sides_analysis) do
     # Analyze individual pilots and their ships
     events
-
-    Enum.flat_map(fn event ->
+    |> Enum.flat_map(fn event ->
       # Add victim as a pilot
       victim_entry =
         if event.victim.character_id do
@@ -367,10 +361,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
       # Add attackers as pilots
       attacker_entries =
         event.attackers
-
-      Enum.filter(&(&1.character_id && &1.ship_type_id))
-
-      Enum.map(fn attacker ->
+        |> Enum.filter(&(&1.character_id && &1.ship_type_id))
+        |> Enum.map(fn attacker ->
         %{
           character_id: attacker.character_id,
           character_name: attacker.character_name,
@@ -389,13 +381,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
 
       victim_entry ++ attacker_entries
     end)
-
-    Enum.group_by(fn pilot ->
+    |> Enum.group_by(fn pilot ->
       # Group by character and ship to aggregate stats
       {pilot.character_id, pilot.ship_type_id}
     end)
-
-    Enum.map(fn {{char_id, ship_id}, pilot_entries} ->
+    |> Enum.map(fn {{char_id, ship_id}, pilot_entries} ->
       # Aggregate stats for same pilot/ship combo
       first = List.first(pilot_entries)
 
@@ -415,8 +405,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
         side: determine_pilot_side_from_analysis(first, sides_analysis)
       }
     end)
-
-    Enum.sort_by(&(&1.damage_given + &1.damage_taken), :desc)
+    |> Enum.sort_by(&(&1.damage_given + &1.damage_taken), :desc)
   end
 
   defp determine_pilot_side_from_analysis(pilot, sides_analysis) do
@@ -433,16 +422,14 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
   defp analyze_corporation_breakdown(events) do
     victim_corps =
       events
-
-    Enum.map(& &1.victim.corporation_id)
-    Enum.filter(&(&1 != nil))
+      |> Enum.map(& &1.victim.corporation_id)
+      |> Enum.filter(&(&1 != nil))
 
     attacker_corps =
       events
-
-    Enum.flat_map(& &1.attackers)
-    Enum.map(& &1.corporation_id)
-    Enum.filter(&(&1 != nil))
+      |> Enum.flat_map(& &1.attackers)
+      |> Enum.map(& &1.corporation_id)
+      |> Enum.filter(&(&1 != nil))
 
     %{
       victim_corporations: Enum.frequencies(victim_corps),
@@ -474,22 +461,19 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
     # Group corporations by their alliance or standalone
     corp_groups =
       interactions
-
-    Enum.flat_map(fn i ->
+      |> Enum.flat_map(fn i ->
       [
         {i.attacker_corp, i.attacker_alliance || "standalone_#{i.attacker_corp}"},
         {i.victim_corp, i.victim_alliance || "standalone_#{i.victim_corp}"}
       ]
     end)
     |> Enum.uniq()
-
-    Enum.group_by(fn {_corp, group} -> group end, fn {corp, _} -> corp end)
+    |> Enum.group_by(fn {_corp, group} -> group end, fn {corp, _} -> corp end)
 
     # Calculate damage dealt between groups
     group_interactions =
       interactions
-
-    Enum.group_by(fn i ->
+      |> Enum.group_by(fn i ->
       attacker_group =
         Map.get(
           corp_groups,
@@ -502,8 +486,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
 
       {attacker_group, victim_group}
     end)
-
-    Enum.map(fn {{attacker_group, victim_group}, interactions} ->
+    |> Enum.map(fn {{attacker_group, victim_group}, interactions} ->
       %{
         attacker_group: attacker_group,
         victim_group: victim_group,
@@ -525,18 +508,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
     # Build adjacency list of hostile relationships
     hostile_map =
       interactions
-
-    Enum.reduce(%{}, fn interaction, acc ->
+      |> Enum.reduce(%{}, fn interaction, acc ->
       if interaction.attacker_group != interaction.victim_group do
         acc
-
-        Map.update(
+        |> Map.update(
           interaction.attacker_group,
           [interaction.victim_group],
           &[interaction.victim_group | &1]
         )
-
-        Map.update(
+        |> Map.update(
           interaction.victim_group,
           [interaction.attacker_group],
           &[interaction.attacker_group | &1]
@@ -549,23 +529,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
     # Group into sides based on hostile relationships
     {_assigned, sides} =
       groups
-
-    Enum.reduce({[], []}, fn group, {assigned, sides} ->
+      |> Enum.reduce({[], []}, fn group, {assigned, sides} ->
       if group in assigned do
         {assigned, sides}
       else
         # Find which side this group belongs to
-        side_index =
-          sides
-
-        Enum.find_index(fn side_groups ->
-          # Check if this group is hostile to any group in this side
-          not Enum.any?(side_groups, fn side_group ->
-            hostile_map
-            Map.get(group, [])
-            Enum.member?(side_group)
-          end)
-        end)
+        side_index = find_non_hostile_side(group, sides, hostile_map)
 
         if side_index do
           # Add to existing side
@@ -579,13 +548,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
     end)
 
     # Convert to detailed side information
-    Enum.with_index(sides)
-
-    Enum.map(fn {side_groups, index} ->
+    sides
+    |> Enum.with_index()
+    |> Enum.map(fn {side_groups, index} ->
       corps =
         side_groups
-
-      Enum.flat_map(fn group -> Map.get(corp_groups, group, []) end) |> Enum.uniq()
+        |> Enum.flat_map(fn group -> Map.get(corp_groups, group, []) end) |> Enum.uniq()
 
       %{
         side_id: "side_#{index + 1}",
@@ -643,24 +611,22 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
     # Add phase transitions as key moments
     phase_transitions =
       phases
+      |> Enum.map(fn phase ->
+        %{
+          type: :phase_transition,
+          timestamp: phase.start_time,
+          description: "#{phase.phase_type} began",
+          phase: phase
+        }
+      end)
 
-    Enum.map(fn phase ->
-      %{
-        type: :phase_transition,
-        timestamp: phase.start_time,
-        description: "#{phase.phase_type} began",
-        phase: phase
-      }
-    end)
-
-    moments ++ phase_transitions
-    Enum.sort_by(& &1.timestamp)
+    (moments ++ phase_transitions)
+    |> Enum.sort_by(& &1.timestamp)
   end
 
   defp identify_kill_streaks(events) do
     events
-
-    Enum.chunk_while(
+    |> Enum.chunk_while(
       {nil, []},
       fn event, {last_killer, streak} ->
         current_killer = event.final_blow.character_id
@@ -699,10 +665,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
           {:cont, []}
       end
     )
-
-    Enum.filter(&is_map/1)
-
-    Enum.map(fn streak ->
+    |> Enum.filter(&is_map/1)
+    |> Enum.map(fn streak ->
       %{
         type: :kill_streak,
         timestamp: streak.timestamp,
@@ -728,18 +692,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
 
   defp find_battle_connections(battles) do
     # Find battles that might be connected (same participants, nearby systems, etc.)
-    Enum.with_index(battles)
-
-    Enum.flat_map(fn {battle1, idx1} ->
+    battles
+    |> Enum.with_index()
+    |> Enum.flat_map(fn {battle1, idx1} ->
       battles
-      Enum.drop(idx1 + 1)
-      Enum.with_index(idx1 + 1)
-
-      Enum.filter(fn {battle2, _idx2} ->
+      |> Enum.drop(idx1 + 1)
+      |> Enum.with_index(idx1 + 1)
+      |> Enum.filter(fn {battle2, _idx2} ->
         are_battles_connected?(battle1, battle2)
       end)
-
-      Enum.map(fn {battle2, _idx2} ->
+      |> Enum.map(fn {battle2, _idx2} ->
         %{
           battle1_id: battle1.battle_id,
           battle2_id: battle2.battle_id,
@@ -796,8 +758,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
         case km.raw_data do
           %{"attackers" => attackers} when is_list(attackers) ->
             attackers
-            Enum.map(&get_attacker_id(&1, "character_id"))
-            Enum.filter(&(&1 != nil))
+            |> Enum.map(&get_attacker_id(&1, "character_id"))
+            |> Enum.filter(&(&1 != nil))
 
           _ ->
             []
@@ -825,9 +787,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
   defp track_participant_flow(battles) do
     # Track how participants move between battles
     battles
-    Enum.chunk_every(2, 1, :discard)
-
-    Enum.map(fn [battle1, battle2] ->
+    |> Enum.chunk_every(2, 1, :discard)
+    |> Enum.map(fn [battle1, battle2] ->
       participants1 = MapSet.new(extract_all_participants(battle1))
       participants2 = MapSet.new(extract_all_participants(battle2))
 
@@ -839,6 +800,19 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
         new_participants: participants2 |> MapSet.difference(participants1) |> MapSet.size(),
         departing_participants: participants1 |> MapSet.difference(participants2) |> MapSet.size()
       }
+    end)
+  end
+
+  # Helper function to find non-hostile side for a group
+  defp find_non_hostile_side(group, sides, hostile_map) do
+    sides
+    |> Enum.find_index(fn side_groups ->
+      # Check if this group is hostile to any group in this side
+      not Enum.any?(side_groups, fn side_group ->
+        hostile_map
+        |> Map.get(group, [])
+        |> Enum.member?(side_group)
+      end)
     end)
   end
 end

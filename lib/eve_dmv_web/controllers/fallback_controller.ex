@@ -21,17 +21,17 @@ defmodule EveDmvWeb.FallbackController do
     case get_response_format(conn) do
       :json ->
         conn
-    put_status(:bad_request)
-    json(%{
+        |> put_status(:bad_request)
+        |> json(%{
           error: "Validation failed",
           details: errors
         })
 
       :html ->
         conn
-    put_status(:bad_request)
-    put_view(EveDmvWeb.ErrorView)
-    render(:"400")
+        |> put_status(:bad_request)
+        |> put_view(EveDmvWeb.ErrorView)
+        |> render(:"400")
     end
   end
 
@@ -41,17 +41,17 @@ defmodule EveDmvWeb.FallbackController do
     case get_response_format(conn) do
       :json ->
         conn
-    put_status(:not_found)
-    json(%{
+        |> put_status(:not_found)
+        |> json(%{
           error: "Resource not found",
           message: "The requested resource could not be found"
         })
 
       :html ->
         conn
-    put_status(:not_found)
-    put_view(EveDmvWeb.ErrorView)
-    render(:"404")
+        |> put_status(:not_found)
+        |> put_view(EveDmvWeb.ErrorView)
+        |> render(:"404")
     end
   end
 
@@ -61,17 +61,17 @@ defmodule EveDmvWeb.FallbackController do
     case get_response_format(conn) do
       :json ->
         conn
-    put_status(:forbidden)
-    json(%{
+        |> put_status(:forbidden)
+        |> json(%{
           error: "Access forbidden",
           message: "You do not have permission to access this resource"
         })
 
       :html ->
         conn
-    put_status(:forbidden)
-    put_view(EveDmvWeb.ErrorView)
-    render(:"403")
+        |> put_status(:forbidden)
+        |> put_view(EveDmvWeb.ErrorView)
+        |> render(:"403")
     end
   end
 
@@ -81,17 +81,17 @@ defmodule EveDmvWeb.FallbackController do
     case get_response_format(conn) do
       :json ->
         conn
-    put_status(:internal_server_error)
-    json(%{
+        |> put_status(:internal_server_error)
+        |> json(%{
           error: "Internal server error",
           message: "An unexpected error occurred"
         })
 
       :html ->
         conn
-    put_status(:internal_server_error)
-    put_view(EveDmvWeb.ErrorView)
-    render(:"500")
+        |> put_status(:internal_server_error)
+        |> put_view(EveDmvWeb.ErrorView)
+        |> render(:"500")
     end
   end
 
@@ -104,16 +104,16 @@ defmodule EveDmvWeb.FallbackController do
 
     conn
     put_status(:bad_request)
-    json(%{
+        |> json(%{
           error: "Validation failed",
           details: errors
         })
 
       :html ->
         conn
-    put_status(:unprocessable_entity)
-    put_view(EveDmvWeb.ChangesetView)
-    render("error.json", changeset: changeset)
+        |> put_status(:unprocessable_entity)
+        |> put_view(EveDmvWeb.ChangesetView)
+        |> render("error.json", changeset: changeset)
     end
   end
 
@@ -121,17 +121,17 @@ defmodule EveDmvWeb.FallbackController do
     case get_response_format(conn) do
       :json ->
         conn
-    put_status(:not_found)
-    json(%{
+        |> put_status(:not_found)
+        |> json(%{
           error: "Not found",
           message: "The requested resource could not be found"
         })
 
       :html ->
         conn
-    put_status(:not_found)
-    put_view(EveDmvWeb.ErrorView)
-    render(:"404")
+        |> put_status(:not_found)
+        |> put_view(EveDmvWeb.ErrorView)
+        |> render(:"404")
     end
   end
 
@@ -139,17 +139,17 @@ defmodule EveDmvWeb.FallbackController do
     case get_response_format(conn) do
       :json ->
         conn
-    put_status(:unauthorized)
-    json(%{
+        |> put_status(:unauthorized)
+        |> json(%{
           error: "Unauthorized",
           message: "Authentication required"
         })
 
       :html ->
         conn
-    put_status(:unauthorized)
-    put_view(EveDmvWeb.ErrorView)
-    render(:"401")
+        |> put_status(:unauthorized)
+        |> put_view(EveDmvWeb.ErrorView)
+        |> render(:"401")
     end
   end
 
@@ -157,17 +157,17 @@ defmodule EveDmvWeb.FallbackController do
     case get_response_format(conn) do
       :json ->
         conn
-    put_status(:forbidden)
-    json(%{
+        |> put_status(:forbidden)
+        |> json(%{
           error: "Forbidden",
           message: "You do not have permission to access this resource"
         })
 
       :html ->
         conn
-    put_status(:forbidden)
-    put_view(EveDmvWeb.ErrorView)
-    render(:"403")
+        |> put_status(:forbidden)
+        |> put_view(EveDmvWeb.ErrorView)
+        |> render(:"403")
     end
   end
 
@@ -175,17 +175,17 @@ defmodule EveDmvWeb.FallbackController do
     case get_response_format(conn) do
       :json ->
         conn
-    put_status(:bad_request)
-    json(%{
+        |> put_status(:bad_request)
+        |> json(%{
           error: "Invalid parameters",
           message: "The provided parameters are invalid"
         })
 
       :html ->
         conn
-    put_status(:bad_request)
-    put_view(EveDmvWeb.ErrorView)
-    render(:"400")
+        |> put_status(:bad_request)
+        |> put_view(EveDmvWeb.ErrorView)
+        |> render(:"400")
     end
   end
 
@@ -195,17 +195,17 @@ defmodule EveDmvWeb.FallbackController do
     case get_response_format(conn) do
       :json ->
         conn
-    put_status(:request_timeout)
-    json(%{
+        |> put_status(:request_timeout)
+        |> json(%{
           error: "Request timeout",
           message: "The request took too long to process"
         })
 
       :html ->
         conn
-    put_status(:request_timeout)
-    put_view(EveDmvWeb.ErrorView)
-    render(:"408")
+        |> put_status(:request_timeout)
+        |> put_view(EveDmvWeb.ErrorView)
+        |> render(:"408")
     end
   end
 
@@ -213,17 +213,17 @@ defmodule EveDmvWeb.FallbackController do
     case get_response_format(conn) do
       :json ->
         conn
-    put_status(:too_many_requests)
-    json(%{
+        |> put_status(:too_many_requests)
+        |> json(%{
           error: "Rate limited",
           message: "Too many requests. Please try again later"
         })
 
       :html ->
         conn
-    put_status(:too_many_requests)
-    put_view(EveDmvWeb.ErrorView)
-    render(:"429")
+        |> put_status(:too_many_requests)
+        |> put_view(EveDmvWeb.ErrorView)
+        |> render(:"429")
     end
   end
 
@@ -233,17 +233,17 @@ defmodule EveDmvWeb.FallbackController do
     case get_response_format(conn) do
       :json ->
         conn
-    put_status(:bad_request)
-    json(%{
+        |> put_status(:bad_request)
+        |> json(%{
           error: "Request failed",
           message: reason
         })
 
       :html ->
         conn
-    put_status(:bad_request)
-    put_view(EveDmvWeb.ErrorView)
-    render(:"400")
+        |> put_status(:bad_request)
+        |> put_view(EveDmvWeb.ErrorView)
+        |> render(:"400")
     end
   end
 
@@ -255,17 +255,17 @@ defmodule EveDmvWeb.FallbackController do
     case get_response_format(conn) do
       :json ->
         conn
-    put_status(:bad_request)
-    json(%{
+        |> put_status(:bad_request)
+        |> json(%{
           error: "Request failed",
           message: message
         })
 
       :html ->
         conn
-    put_status(:bad_request)
-    put_view(EveDmvWeb.ErrorView)
-    render(:"400")
+        |> put_status(:bad_request)
+        |> put_view(EveDmvWeb.ErrorView)
+        |> render(:"400")
     end
   end
 
@@ -275,17 +275,17 @@ defmodule EveDmvWeb.FallbackController do
     case get_response_format(conn) do
       :json ->
         conn
-    put_status(:internal_server_error)
-    json(%{
+        |> put_status(:internal_server_error)
+        |> json(%{
           error: "Internal server error",
           message: "An unexpected error occurred"
         })
 
       :html ->
         conn
-    put_status(:internal_server_error)
-    put_view(EveDmvWeb.ErrorView)
-    render(:"500")
+        |> put_status(:internal_server_error)
+        |> put_view(EveDmvWeb.ErrorView)
+        |> render(:"500")
     end
   end
 
@@ -295,17 +295,17 @@ defmodule EveDmvWeb.FallbackController do
     case get_response_format(conn) do
       :json ->
         conn
-    put_status(:not_found)
-    json(%{
+        |> put_status(:not_found)
+        |> json(%{
           error: "Not found",
           message: "The requested resource could not be found"
         })
 
       :html ->
         conn
-    put_status(:not_found)
-    put_view(EveDmvWeb.ErrorView)
-    render(:"404")
+        |> put_status(:not_found)
+        |> put_view(EveDmvWeb.ErrorView)
+        |> render(:"404")
     end
   end
 
@@ -315,17 +315,17 @@ defmodule EveDmvWeb.FallbackController do
     case get_response_format(conn) do
       :json ->
         conn
-    put_status(:internal_server_error)
-    json(%{
+        |> put_status(:internal_server_error)
+        |> json(%{
           error: "Internal server error",
           message: "An unexpected error occurred"
         })
 
       :html ->
         conn
-    put_status(:internal_server_error)
-    put_view(EveDmvWeb.ErrorView)
-    render(:"500")
+        |> put_status(:internal_server_error)
+        |> put_view(EveDmvWeb.ErrorView)
+        |> render(:"500")
     end
   end
 
@@ -390,5 +390,5 @@ defmodule EveDmvWeb.FallbackController do
   defp humanize_error_atom(:cache_error), do: "Cache operation failed"
 
   defp humanize_error_atom(atom),
-    do: to_string(atom) |> String.replace("_", " ") String.capitalize()
+    do: to_string(atom) |> String.replace("_", " ") |> String.capitalize()
 end

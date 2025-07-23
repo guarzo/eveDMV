@@ -18,12 +18,13 @@ defmodule Mix.Tasks.Eve.CreateIndexesAsync do
     * `--timeout` - Set timeout in seconds (default: 3600)
   """
 
-  use Mix.Task
-  require Logger
-
-  alias EveDmv.Repo
-
   @shortdoc "Creates database indexes asynchronously with progress monitoring"
+
+  use Mix.Task
+  
+  alias EveDmv.Repo
+  
+  require Logger
 
   def run(args) do
     Mix.Task.run("app.start")

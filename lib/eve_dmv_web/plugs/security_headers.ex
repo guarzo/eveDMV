@@ -32,8 +32,8 @@ defmodule EveDmvWeb.Plugs.SecurityHeaders do
     form-action 'self';
     upgrade-insecure-requests;
     """
-
-    String.replace("\n", " ") |> String.trim()
+    |> String.replace("\n", " ")
+    |> String.trim()
   end
 
   defp permissions_policy do
@@ -48,7 +48,7 @@ defmodule EveDmvWeb.Plugs.SecurityHeaders do
     payment=(),
     usb=()
     """
-
-    String.replace("\n", " ") |> String.trim()
+    |> String.replace("\n", " ")
+    |> String.trim()
   end
 end

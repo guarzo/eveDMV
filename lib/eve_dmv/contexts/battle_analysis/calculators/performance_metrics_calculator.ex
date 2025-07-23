@@ -19,8 +19,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Calculators.PerformanceMetricsCalculato
     # Calculate all metrics for comprehensive analysis
     performance_data =
       ship_instances
-
-    Enum.map(fn instance ->
+      |> Enum.map(fn instance ->
       # Enhance instance with detailed analysis
       enhanced_instance = enhance_instance_with_analysis(instance)
 
@@ -46,8 +45,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Calculators.PerformanceMetricsCalculato
     # Calculate only specific metrics for performance
     performance_data =
       ship_instances
-
-    Enum.map(fn instance ->
+      |> Enum.map(fn instance ->
       base_data = %{ship_instance: instance}
 
       case metric do
@@ -221,9 +219,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Calculators.PerformanceMetricsCalculato
   defp enhance_instance_with_analysis(instance) do
     # Add analysis-specific data to instance
     instance
-    Map.put(:damage_profile, analyze_damage_profile(instance))
-    Map.put(:tank_analysis, analyze_tank_profile(instance))
-    Map.put(:weapon_analysis, analyze_weapon_profile(instance))
+    |> Map.put(:damage_profile, analyze_damage_profile(instance))
+    |> Map.put(:tank_analysis, analyze_tank_profile(instance))
+    |> Map.put(:weapon_analysis, analyze_weapon_profile(instance))
   end
 
   defp analyze_damage_profile(instance) do
@@ -231,14 +229,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Calculators.PerformanceMetricsCalculato
 
     damage_breakdown =
       attackers
-
-    Enum.group_by(&classify_damage_type(&1.weapon_type_id))
-
-    Enum.map(fn {type, attackers_of_type} ->
-      total_damage = Enum.sum(Enum.map(attackers_of_type, & &1.damage_done))
-      {type, total_damage}
-    end)
-    |> Map.new()
+      |> Enum.group_by(&classify_damage_type(&1.weapon_type_id))
+      |> Enum.map(fn {type, attackers_of_type} ->
+        total_damage = Enum.sum(Enum.map(attackers_of_type, & &1.damage_done))
+        {type, total_damage}
+      end)
+      |> Map.new()
 
     primary_damage_type = get_primary_damage_type(damage_breakdown)
 
@@ -525,26 +521,26 @@ defmodule EveDmv.Contexts.BattleAnalysis.Calculators.PerformanceMetricsCalculato
 
   defp get_primary_damage_type(damage_breakdown) do
     damage_breakdown
-    Enum.max_by(fn {_type, amount} -> amount end, fn -> {"Unknown", 0} end)
-    elem(0)
+    |> Enum.max_by(fn {_type, amount} -> amount end, fn -> {"Unknown", 0} end)
+    |> elem(0)
   end
 
   defp calculate_damage_diversity(damage_breakdown) do
-    total_damage = Map.values(damage_breakdown) |> Enum.sum()
+    total_damage = 
+      damage_breakdown
+      |> Map.values()
+      |> Enum.sum()
 
     if total_damage > 0 do
       # Calculate entropy-like measure of damage type diversity
       damage_breakdown
-
-      Enum.map(fn {_type, amount} ->
+      |> Enum.map(fn {_type, amount} ->
         ratio = amount / total_damage
         # Avoid log(0)
         -ratio * :math.log2(ratio + 0.001)
       end)
       |> Enum.sum()
-
-      # Normalize
-      Kernel./(2.0)
+      |> Kernel./(2.0)
     else
       0
     end
@@ -582,9 +578,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Calculators.PerformanceMetricsCalculato
 
     # Identify which damage types caused the most damage
     breakdown
-    Enum.sort_by(fn {_type, amount} -> -amount end)
-    Enum.take(2)
-    Enum.map(fn {type, _amount} -> type end)
+    |> Enum.sort_by(fn {_type, amount} -> -amount end)
+    |> Enum.take(2)
+    |> Enum.map(fn {type, _amount} -> type end)
   end
 
   defp classify_weapon_type(weapon_type_id) when is_nil(weapon_type_id), do: "Unknown"

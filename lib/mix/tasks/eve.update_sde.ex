@@ -1,6 +1,4 @@
 defmodule Mix.Tasks.Eve.UpdateSde do
-  @shortdoc "Update EVE SDE data from Fuzzwork"
-
   @moduledoc """
   Updates EVE Static Data Export (SDE) data from Fuzzwork.
 
@@ -25,6 +23,8 @@ defmodule Mix.Tasks.Eve.UpdateSde do
       mix eve.update_sde --check-only
       mix eve.update_sde --verbose
   """
+
+  @shortdoc "Update EVE SDE data from Fuzzwork"
 
   use Mix.Task
 
@@ -56,9 +56,10 @@ defmodule Mix.Tasks.Eve.UpdateSde do
     end
   end
 
-  defp check_only Mix.shell(do).info("🔍 Checking for SDE updates...")
+  defp check_only do
+    Mix.shell().info("🔍 Checking for SDE updates...")
 
-    SdeVersionManager.check_for_updates(case) do
+    case SdeVersionManager.check_for_updates() do
       {:ok, :up_to_date} ->
         Mix.shell().info("✅ SDE data is up to date")
 
@@ -72,13 +73,15 @@ defmodule Mix.Tasks.Eve.UpdateSde do
     end
   end
 
-  defp perform_update(force) Mix.shell(do).info("🚀 Starting SDE update process...")
+  defp perform_update(force) do
+    Mix.shell().info("🚀 Starting SDE update process...")
 
-    if force Mix.shell(do).info("⚡ Force mode enabled - will update regardless of version")
+    if force do
+      Mix.shell().info("⚡ Force mode enabled - will update regardless of version")
     end
 
     # Check service status
-    SdeStartupService.get_status(case) do
+    case SdeStartupService.get_status() do
       %{enabled: true} ->
         Mix.shell().info("📡 SDE startup service is enabled")
 
@@ -90,11 +93,13 @@ defmodule Mix.Tasks.Eve.UpdateSde do
     end
 
     # Perform the update
-    SdeVersionManager.check_for_updates(case) do
+    case SdeVersionManager.check_for_updates() do
       {:ok, :up_to_date} ->
-        if force Mix.shell(do).info("🔄 Forcing update even though data appears current...")
+        if force do
+          Mix.shell().info("🔄 Forcing update even though data appears current...")
           force_update()
-        Mix.shell(else).info("✅ SDE data is already up to date")
+        else
+          Mix.shell().info("✅ SDE data is already up to date")
         end
 
       {:ok, results} ->
@@ -108,7 +113,7 @@ defmodule Mix.Tasks.Eve.UpdateSde do
   end
 
   defp force_update do
-    SdeStartupService.force_update(case) do
+    case SdeStartupService.force_update() do
       {:ok, results} ->
         Mix.shell().info("✅ Forced SDE update completed successfully!")
         display_results(results)
@@ -119,7 +124,8 @@ defmodule Mix.Tasks.Eve.UpdateSde do
     end
   end
 
-  defp display_results(results) Mix.shell(do).info("📊 Update Results:")
+  defp display_results(results) do
+    Mix.shell().info("📊 Update Results:")
 
     case results do
       %{wormhole_classes: {:ok, classes_count}, wormhole_effects: {:ok, effects_count}} ->

@@ -157,8 +157,7 @@ defmodule EveDmvWeb.CharacterSearchLive do
     case Ecto.Adapters.SQL.query(EveDmv.Repo, query, []) do
       {:ok, %{rows: rows}} ->
         rows
-
-        Enum.map(fn [character_id, activity_count, last_seen] ->
+        |> Enum.map(fn [character_id, activity_count, last_seen] ->
           %{
             character_id: character_id,
             name: NameResolver.character_name(character_id),

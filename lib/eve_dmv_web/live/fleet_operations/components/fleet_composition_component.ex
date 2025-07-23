@@ -132,14 +132,14 @@ defmodule EveDmvWeb.Live.FleetOperations.Components.FleetCompositionComponent do
   defp format_recommendation_type(type) when is_binary(type), do: String.capitalize(type)
 
   defp format_recommendation_type(type) when is_atom(type),
-    do: Atom.to_string(type) String.capitalize()
+    do: Atom.to_string(type) |> String.capitalize()
 
   defp format_recommendation_type(_), do: "Unknown"
 
   defp format_deviation_type(type) when is_binary(type), do: String.capitalize(type)
 
   defp format_deviation_type(type) when is_atom(type),
-    do: Atom.to_string(type) String.capitalize()
+    do: Atom.to_string(type) |> String.capitalize()
 
   defp format_deviation_type(_), do: "Unknown"
 end

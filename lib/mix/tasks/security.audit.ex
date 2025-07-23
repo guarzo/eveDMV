@@ -54,7 +54,9 @@ defmodule Mix.Tasks.Security.Audit do
         {Keyword.get(opts, :database, false), Keyword.get(opts, :container, false)}
       else
         {run_database, run_container}
-      Mix.shell(end).info("🔒 Starting EVE DMV Security Audit...")
+      end
+
+    Mix.shell().info("🔒 Starting EVE DMV Security Audit...")
     Mix.shell().info("")
 
     audit_results = %{
@@ -79,7 +81,8 @@ defmodule Mix.Tasks.Security.Audit do
     display_audit_summary(audit_results)
   end
 
-  defp run_database_audit Mix.shell(do).info("📊 Running Database Security Audit...")
+  defp run_database_audit do
+    Mix.shell().info("📊 Running Database Security Audit...")
 
     # Database security review implementation deferred pending security requirements
     results = %{
@@ -92,7 +95,8 @@ defmodule Mix.Tasks.Security.Audit do
     results
   end
 
-  defp run_container_audit Mix.shell(do).info("🐳 Running Container Security Audit...")
+  defp run_container_audit do
+    Mix.shell().info("🐳 Running Container Security Audit...")
 
     # Container security review implementation deferred pending containerization
     results = %{
@@ -111,7 +115,8 @@ defmodule Mix.Tasks.Security.Audit do
     if output_file do
       File.write!(output_file, report)
       Mix.shell().info("📄 Report written to #{output_file}")
-    Mix.shell(else).info(report)
+    else
+      Mix.shell().info(report)
     end
   end
 
@@ -121,7 +126,8 @@ defmodule Mix.Tasks.Security.Audit do
     if output_file do
       File.write!(output_file, json_report)
       Mix.shell().info("📄 JSON report written to #{output_file}")
-    Mix.shell(else).info(json_report)
+    else
+      Mix.shell().info(json_report)
     end
   end
 
@@ -160,8 +166,9 @@ defmodule Mix.Tasks.Security.Audit do
         detailed_report
       end
 
-    Enum.reverse(final_report)
-    Enum.join("\n")
+    final_report
+    |> Enum.reverse()
+    |> Enum.join("\n")
   end
 
   defp generate_database_text_section(db_audit) do
@@ -226,8 +233,8 @@ defmodule Mix.Tasks.Security.Audit do
 
   defp format_recommendations(recommendations, indent) do
     recommendations
-    Enum.with_index(1)
-    Enum.map(fn {rec, index} ->
+    |> Enum.with_index(1)
+    |> Enum.map(fn {rec, index} ->
       priority_icon =
         case rec.priority do
           :high -> "🔴"
@@ -242,8 +249,9 @@ defmodule Mix.Tasks.Security.Audit do
         "#{indent}   Implementation: #{rec.implementation}",
         ""
       ]
-    end) |> List.flatten()
-    Enum.join("\n")
+    end)
+    |> List.flatten()
+    |> Enum.join("\n")
   end
 
   defp generate_html_report(audit_results) do
@@ -329,7 +337,8 @@ defmodule Mix.Tasks.Security.Audit do
     end)
   end
 
-  defp display_audit_summary(audit_results) Mix.shell(do).info("")
+  defp display_audit_summary(audit_results) do
+    Mix.shell().info("")
     Mix.shell().info("📋 AUDIT SUMMARY")
     Mix.shell().info(String.duplicate("=", 20))
 
@@ -344,7 +353,8 @@ defmodule Mix.Tasks.Security.Audit do
           Enum.count(audit_results.database_audit.recommendations, &(&1.priority == :high))
 
         new_total = total_recommendations + db_recs
-        new_high = high_priority + Mix.shell(db_high).info("Database: #{db_recs} recommendations (#{db_high} high priority)")
+        new_high = high_priority + db_high
+        Mix.shell().info("Database: #{db_recs} recommendations (#{db_high} high priority)")
         {new_total, new_high}
       else
         {total_recommendations, high_priority}
@@ -358,21 +368,26 @@ defmodule Mix.Tasks.Security.Audit do
           Enum.count(audit_results.container_audit.recommendations, &(&1.priority == :high))
 
         new_total = db_total_recommendations + container_recs
-        new_high = db_high_priority + Mix.shell(container_high).info(
+        new_high = db_high_priority + container_high
+        Mix.shell().info(
           "Container: #{container_recs} recommendations (#{container_high} high priority)"
         )
 
         {new_total, new_high}
       else
         {db_total_recommendations, db_high_priority}
-      Mix.shell(end).info("")
+      end
+
+    Mix.shell().info("")
 
     Mix.shell().info(
       "Total: #{final_total_recommendations} recommendations (#{final_high_priority} high priority)"
     )
 
-    if final_high_priority > 0 Mix.shell(do).info("⚠️  Address high priority recommendations first!")
-    Mix.shell(else).info("✅ No high priority security issues found")
+    if final_high_priority > 0 do
+      Mix.shell().info("⚠️  Address high priority recommendations first!")
+    else
+      Mix.shell().info("✅ No high priority security issues found")
     end
   end
 end

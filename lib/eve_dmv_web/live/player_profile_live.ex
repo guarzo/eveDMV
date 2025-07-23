@@ -28,14 +28,14 @@ defmodule EveDmvWeb.PlayerProfileLive do
     case Integer.parse(character_id_str) do
       {character_id, ""} ->
         socket =
-    socket
-    assign(:character_id, character_id)
-    assign(:player_stats, nil)
-    assign(:character_intel, nil)
-    assign(:character_info, nil)
-    assign(:loading, true)
-    assign(:error, nil)
-    assign(:no_data, false)
+          socket
+          |> assign(:character_id, character_id)
+          |> assign(:player_stats, nil)
+          |> assign(:character_intel, nil)
+          |> assign(:character_info, nil)
+          |> assign(:loading, true)
+          |> assign(:error, nil)
+          |> assign(:no_data, false)
 
         # Load data asynchronously
         send(self(), {:load_character_data, character_id})
@@ -44,9 +44,9 @@ defmodule EveDmvWeb.PlayerProfileLive do
 
       _ ->
         socket =
-    socket
-    assign(:error, "Invalid character ID")
-    assign(:loading, false)
+          socket
+          |> assign(:error, "Invalid character ID")
+          |> assign(:loading, false)
 
         {:ok, socket}
     end
@@ -61,10 +61,10 @@ defmodule EveDmvWeb.PlayerProfileLive do
     if player_stats || character_intel do
       # We have some data in our database
       {:noreply,
-    socket
-    assign(:player_stats, player_stats)
-    assign(:character_intel, character_intel)
-    assign(:loading, false)}
+       socket
+       |> assign(:player_stats, player_stats)
+       |> assign(:character_intel, character_intel)
+       |> assign(:loading, false)}
     else
       # No data found, fetch from ESI and historical killmails
       DataLoader.load_character_data(character_id, self())
@@ -83,27 +83,27 @@ defmodule EveDmvWeb.PlayerProfileLive do
           character_intel = load_character_intel(character_id)
 
           {:noreply,
-    socket
-    assign(:player_stats, player_stats)
-    assign(:character_intel, character_intel)
-    assign(:character_info, character_info)
-    assign(:loading, false)}
+           socket
+           |> assign(:player_stats, player_stats)
+           |> assign(:character_intel, character_intel)
+           |> assign(:character_info, character_info)
+           |> assign(:loading, false)}
 
         {:error, _} ->
           # Show basic info only
           {:noreply,
-    socket
-    assign(:character_info, character_info)
-    assign(:no_data, true)
-    assign(:loading, false)}
+           socket
+           |> assign(:character_info, character_info)
+           |> assign(:no_data, true)
+           |> assign(:loading, false)}
       end
     else
       # No killmail data available
       {:noreply,
-    socket
-    assign(:character_info, character_info)
-    assign(:no_data, true)
-    assign(:loading, false)}
+       socket
+       |> assign(:character_info, character_info)
+       |> assign(:no_data, true)
+       |> assign(:loading, false)}
     end
   end
 
@@ -118,9 +118,9 @@ defmodule EveDmvWeb.PlayerProfileLive do
       end
 
     {:noreply,
-    socket
-    assign(:loading, false)
-    assign(:error, error_msg)}
+     socket
+     |> assign(:loading, false)
+     |> assign(:error, error_msg)}
   end
 
   @impl Phoenix.LiveView
@@ -137,10 +137,10 @@ defmodule EveDmvWeb.PlayerProfileLive do
     character_intel = load_character_intel(character_id)
 
     socket =
-    socket
-    assign(:player_stats, player_stats)
-    assign(:character_intel, character_intel)
-    put_flash(:info, "Statistics refreshed")
+      socket
+      |> assign(:player_stats, player_stats)
+      |> assign(:character_intel, character_intel)
+      |> put_flash(:info, "Statistics refreshed")
 
     {:noreply, socket}
   end
@@ -155,9 +155,9 @@ defmodule EveDmvWeb.PlayerProfileLive do
         player_stats = load_player_stats(character_id)
 
         socket =
-    socket
-    assign(:player_stats, player_stats)
-    put_flash(:info, "Player statistics generated successfully")
+          socket
+          |> assign(:player_stats, player_stats)
+          |> put_flash(:info, "Player statistics generated successfully")
 
         {:noreply, socket}
 

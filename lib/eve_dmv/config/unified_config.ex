@@ -265,13 +265,11 @@ defmodule EveDmv.Config.UnifiedConfig do
     # Find matching environment variable
     env_var =
       @env_mappings
-
-    Enum.find(fn {_env, path} -> path == key_path end)
-
-    case do
-      {env_var, _} -> env_var
-      nil -> generate_env_var_name(key_path)
-    end
+      |> Enum.find(fn {_env, path} -> path == key_path end)
+      |> case do
+        {env_var, _} -> env_var
+        nil -> generate_env_var_name(key_path)
+      end
 
     case System.get_env(env_var) do
       nil -> nil
@@ -321,8 +319,8 @@ defmodule EveDmv.Config.UnifiedConfig do
 
   defp generate_env_var_name(key_path) do
     key_path
-    Enum.map_join("_", &(to_string(&1) |> String.upcase()))
-    then(&("EVE_DMV_" <> &1))
+    |> Enum.map_join("_", &(to_string(&1) |> String.upcase()))
+    |> then(&("EVE_DMV_" <> &1))
   end
 
   defp build_category_config(category, schema) do
@@ -364,7 +362,8 @@ defmodule EveDmv.Config.UnifiedConfig do
   end
 
   defp count_env_variables_set do
-    (@Map).keys(env_mappings)
-    Enum.count(&System.get_env/1)
+    @env_mappings
+    |> Map.keys()
+    |> Enum.count(&System.get_env/1)
   end
 end

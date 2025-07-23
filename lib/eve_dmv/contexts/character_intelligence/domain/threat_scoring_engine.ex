@@ -17,8 +17,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   import Ash.Query
 
   alias EveDmv.Api
-  alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
+  alias EveDmv.Killmails.KillmailRaw
 
   require Logger
 
@@ -1180,10 +1180,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     # Assess current activity level
     days_active =
       recent_killmails
-    Enum.map(fn km ->
+      |> Enum.map(fn km ->
         NaiveDateTime.to_date(km.killmail_time)
-      end) |> Enum.uniq()
-    length()
+      end)
+      |> Enum.uniq()
+      |> length()
 
     kills_per_day = length(recent_killmails) / max(1, days_active)
 
@@ -1203,8 +1204,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
       kd_ratio: if(deaths > 0, do: kills / deaths, else: kills),
       activity_days:
         recent_killmails
-    Enum.map(&NaiveDateTime.to_date(&1.killmail_time)) |> Enum.uniq()
-    length()
+        |> Enum.map(&NaiveDateTime.to_date(&1.killmail_time))
+        |> Enum.uniq()
+        |> length()
     }
   end
 

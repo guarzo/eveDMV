@@ -294,7 +294,7 @@
                   _ -> "text-gray-400"
                 end %>
                 <span class={"text-sm font-medium #{frequency_color}"}>
-                  <%= @system_data.battle_stats.battle_frequency |> String.replace("_", " ") |> String.split() |> Enum.map(&String.capitalize/1) |> Enum.join(" ") %>
+                  <%= format_title_case(@system_data.battle_stats.battle_frequency) %>
                 </span>
               </div>
               <div class="text-sm text-gray-400">

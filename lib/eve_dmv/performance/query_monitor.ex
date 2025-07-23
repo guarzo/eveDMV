@@ -195,8 +195,7 @@ defmodule EveDmv.Performance.QueryMonitor do
 
   defp format_recommendations(recommendations) do
     recommendations
-
-    Enum.map_join("\n", fn rec ->
+    |> Enum.map_join("\n", fn rec ->
       "- #{rec}"
     end)
   end
@@ -208,9 +207,8 @@ defmodule EveDmv.Performance.QueryMonitor do
     ensure_metrics_table()
 
     :query_metrics
-    :ets.tab2list()
-
-    Enum.map(fn {{table, :performance}, metrics} ->
+    |> :ets.tab2list()
+    |> Enum.map(fn {{table, :performance}, metrics} ->
       avg_time = if metrics.count > 0, do: metrics.total_time / metrics.count, else: 0
 
       %{
@@ -223,8 +221,7 @@ defmodule EveDmv.Performance.QueryMonitor do
         last_query_at: metrics.last_query_at
       }
     end)
-
-    Enum.sort_by(& &1.avg_time_ms, :desc)
+    |> Enum.sort_by(& &1.avg_time_ms, :desc)
   end
 
   @doc """
@@ -269,9 +266,8 @@ defmodule EveDmv.Performance.QueryMonitor do
 
     slow_tables =
       metrics
-
-    Enum.filter(&(&1.avg_time_ms > @slow_query_threshold_ms))
-    Enum.take(10)
+      |> Enum.filter(&(&1.avg_time_ms > @slow_query_threshold_ms))
+      |> Enum.take(10)
 
     %{
       slow_tables: slow_tables,

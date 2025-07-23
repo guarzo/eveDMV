@@ -26,17 +26,17 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
 
     # Start with simple loading state
     socket =
-    socket
-    assign(:character_id, character_id)
-    assign(:loading, true)
-    assign(:analysis, nil)
-    assign(:intelligence, nil)
-    assign(:recent_battles, [])
-    assign(:battle_stats, nil)
-    assign(:ship_specialization, nil)
-    assign(:ship_preferences, nil)
-    assign(:error, nil)
-    assign(:active_tab, :overview)
+      socket
+      |> assign(:character_id, character_id)
+      |> assign(:loading, true)
+      |> assign(:analysis, nil)
+      |> assign(:intelligence, nil)
+      |> assign(:recent_battles, [])
+      |> assign(:battle_stats, nil)
+      |> assign(:ship_specialization, nil)
+      |> assign(:ship_preferences, nil)
+      |> assign(:error, nil)
+      |> assign(:active_tab, :overview)
 
     # Load analysis asynchronously
     send(self(), :load_analysis)
@@ -88,23 +88,23 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
     case basic_analysis_result do
       {:ok, analysis} ->
         socket =
-    socket
-    assign(:loading, false)
-    assign(:analysis, analysis)
-    assign(:intelligence, intelligence_result)
-    assign(:recent_battles, battles)
-    assign(:battle_stats, battle_stats)
-    assign(:ship_specialization, ship_specialization)
-    assign(:ship_preferences, ship_preferences)
-    assign(:error, nil)
+          socket
+          |> assign(:loading, false)
+          |> assign(:analysis, analysis)
+          |> assign(:intelligence, intelligence_result)
+          |> assign(:recent_battles, battles)
+          |> assign(:battle_stats, battle_stats)
+          |> assign(:ship_specialization, ship_specialization)
+          |> assign(:ship_preferences, ship_preferences)
+          |> assign(:error, nil)
 
         {:noreply, socket}
 
       {:error, error} ->
         socket =
-    socket
-    assign(:loading, false)
-    assign(:error, error)
+          socket
+          |> assign(:loading, false)
+          |> assign(:error, error)
 
         {:noreply, socket}
     end
@@ -123,9 +123,9 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
     AnalysisCache.delete(AnalysisCache.char_analysis_key(character_id))
 
     socket =
-    socket
-    assign(:loading, true)
-    assign(:error, nil)
+      socket
+      |> assign(:loading, true)
+      |> assign(:error, nil)
 
     send(self(), :load_analysis)
     {:noreply, socket}
@@ -136,13 +136,13 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
     case generate_character_export_data(socket.assigns, format) do
       {:ok, {filename, content, content_type}} ->
         socket =
-    socket
-    push_event("download_file", %{
+          socket
+          |> push_event("download_file", %{
             filename: filename,
             content: content,
             content_type: content_type
           })
-    put_flash(:info, "Analysis exported successfully")
+          |> put_flash(:info, "Analysis exported successfully")
 
         {:noreply, socket}
 
@@ -309,9 +309,10 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
         Map.get(analysis, :isk_destroyed, 0),
         Map.get(analysis, :isk_lost, 0),
         Map.get(analysis, :average_ship_value, 0),
-    ship_specialization
-    get_in([:preferred_ships]) |> List.first()
-        format_ship_name(),
+        ship_specialization
+        |> get_in([:preferred_ships])
+        |> List.first()
+        |> format_ship_name(),
         Map.get(intelligence, :primary_role, "Unknown"),
         Map.get(intelligence, :threat_score, 0),
         Map.get(intelligence, :activity_level, "Unknown"),
@@ -321,8 +322,8 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
       content =
         Enum.map_join([headers, row], "\n", fn row ->
           row
-    Enum.map(&to_string/1)
-    Enum.map_join(",", &escape_csv_field/1)
+          |> Enum.map(&to_string/1)
+          |> Enum.map_join(",", &escape_csv_field/1)
         end)
 
       {:ok, content}

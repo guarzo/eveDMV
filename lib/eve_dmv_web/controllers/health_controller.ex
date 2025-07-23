@@ -12,14 +12,14 @@ defmodule EveDmvWeb.HealthController do
   Returns 200 OK if the application and database are healthy.
   """
   def check(conn, _params) do
-    HealthCheck.check(case) do
+    case HealthCheck.check() do
       :ok ->
         conn
-    put_status(200)
-    json(%{
+        |> put_status(200)
+        |> json(%{
           status: "healthy",
           timestamp: DateTime.utc_now(),
-          version: :eve_dmv |> Application.spec(:vsn) to_string(),
+          version: :eve_dmv |> Application.spec(:vsn) |> to_string(),
           environment: Application.get_env(:eve_dmv, :environment, "unknown"),
           services: %{
             database: "healthy",
@@ -29,8 +29,8 @@ defmodule EveDmvWeb.HealthController do
 
       {:error, reason} ->
         conn
-    put_status(503)
-    json(%{
+        |> put_status(503)
+        |> json(%{
           status: "unhealthy",
           timestamp: DateTime.utc_now(),
           error: to_string(reason),

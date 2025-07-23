@@ -1,9 +1,4 @@
 defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
-  import Ash.Expr
-  alias EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache
-  require Logger
-  require Ash.Query
-
   @moduledoc """
   Calculates various intelligence scores for characters.
 
@@ -11,6 +6,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
   hunter effectiveness, fleet command ability, solo pilot skill,
   and awox (betrayal) risk.
   """
+
+  import Ash.Expr
+  alias EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache
+  require Logger
+  require Ash.Query
 
   use GenServer
 

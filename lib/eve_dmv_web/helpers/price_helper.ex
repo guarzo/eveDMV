@@ -15,26 +15,24 @@ defmodule EveDmvWeb.Helpers.PriceHelper do
   to calculate it on-demand (with caching).
   """
   def get_killmail_value(killmail) when is_map(killmail) do
-    case killmail do
-      %{total_value: value} when value > 0 ->
-        # Value already calculated
-        {:ok, value}
+    cond do
+      has_calculated_value?(killmail) ->
+        {:ok, killmail.total_value}
 
-      _ ->
-        # Try to calculate on-demand if we have the raw data
-        case Map.get(killmail, :raw_data) do
-          nil ->
-            {:ok, 0.0}
+      has_raw_data?(killmail) and should_calculate_value?(killmail.raw_data) ->
+        calculate_value_async(killmail.raw_data)
 
-          raw_data ->
-            # Only calculate if it's a high-value kill (has expensive ship)
-            if should_calculate_value?(raw_data) do
-              calculate_value_async(raw_data)
-            else
-              {:ok, 0.0}
-            end
-        end
+      true ->
+        {:ok, 0.0}
     end
+  end
+
+  defp has_calculated_value?(killmail) do
+    Map.get(killmail, :total_value, 0) > 0
+  end
+
+  defp has_raw_data?(killmail) do
+    Map.has_key?(killmail, :raw_data) and not is_nil(killmail.raw_data)
   end
 
   @doc """

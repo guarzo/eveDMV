@@ -198,7 +198,7 @@ defmodule EveDmvWeb.Telemetry do
   Measure surveillance profile statistics.
   """
   def measure_surveillance_profiles do
-    MatchingEngine.get_stats case do
+    case MatchingEngine.get_stats() do
       %{profiles_loaded: count} when is_integer(count) ->
         :telemetry.execute([:eve_dmv, :surveillance, :active_profiles], %{}, %{value: count})
 
