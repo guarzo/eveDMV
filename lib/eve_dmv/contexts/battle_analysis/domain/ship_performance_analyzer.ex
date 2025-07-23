@@ -1090,9 +1090,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp compare_by_role(performances) do
     performances
-    Enum.group_by(& &1.ship_instance.estimated_fitting.estimated_role)
-
-    Enum.map(fn {role, role_performances} ->
+    |> Enum.group_by(& &1.ship_instance.estimated_fitting.estimated_role)
+    |> Enum.map(fn {role, role_performances} ->
       {role, calculate_role_statistics(role_performances)}
     end)
     |> Map.new()
@@ -1122,16 +1121,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp rank_by_efficiency(performances) do
     performances
-    Enum.sort_by(& &1.dps_efficiency.efficiency_ratio, :desc)
-    Enum.with_index(1)
-    Enum.map(fn {perf, rank} -> {rank, perf} end)
+    |> Enum.sort_by(& &1.dps_efficiency.efficiency_ratio, :desc)
+    |> Enum.with_index(1)
+    |> Enum.map(fn {perf, rank} -> {rank, perf} end)
   end
 
   defp rank_by_survivability(performances) do
     performances
-    Enum.sort_by(& &1.survivability_score.normalized_score, :desc)
-    Enum.with_index(1)
-    Enum.map(fn {perf, rank} -> {rank, perf} end)
+    |> Enum.sort_by(& &1.survivability_score.normalized_score, :desc)
+    |> Enum.with_index(1)
+    |> Enum.map(fn {perf, rank} -> {rank, perf} end)
   end
 
   defp analyze_overall_battle_performance(performances) do
@@ -1203,16 +1202,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp find_dominant_ship_classes(performances) do
     performances
-    Enum.group_by(& &1.ship_instance.ship_class)
-    Enum.map(fn {class, ships} -> {class, length(ships)} end)
-    Enum.sort_by(&elem(&1, 1), :desc)
-    Enum.take(3)
+    |> Enum.group_by(& &1.ship_instance.ship_class)
+    |> Enum.map(fn {class, ships} -> {class, length(ships)} end)
+    |> Enum.sort_by(&elem(&1, 1), :desc)
+    |> Enum.take(3)
   end
 
   defp calculate_role_distribution(performances) do
     performances
-    Enum.group_by(& &1.ship_instance.estimated_fitting.estimated_role)
-    Enum.map(fn {role, ships} -> {role, length(ships)} end) |> Map.new()
+    |> Enum.group_by(& &1.ship_instance.estimated_fitting.estimated_role)
+    |> Enum.map(fn {role, ships} -> {role, length(ships)} end)
+    |> Map.new()
   end
 
   defp generate_key_insights(performances) do
