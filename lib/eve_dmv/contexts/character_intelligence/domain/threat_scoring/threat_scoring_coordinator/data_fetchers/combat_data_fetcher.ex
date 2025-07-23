@@ -9,8 +9,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
   - Validating data quality for analysis
   """
 
-  import Ash.Query
-
   alias EveDmv.Api
   alias EveDmv.Killmails.KillmailRaw
 

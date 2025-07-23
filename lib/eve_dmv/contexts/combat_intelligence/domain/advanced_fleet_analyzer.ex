@@ -662,11 +662,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     threshold = avg_speed * 0.6
 
     ship_analyses
-    Enum.filter(fn ship ->
+    |> Enum.filter(fn ship ->
       speed = (ship.stats && ship.stats.mobility.max_velocity) || 0
       speed > 0 and speed < threshold
     end)
-    Enum.map(& &1.ship_name)
+    |> Enum.map(& &1.ship_name)
   end
 
   defp analyze_engagement_range(ship_analyses) do
@@ -997,8 +997,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
   defp identify_priority_threats(vulnerabilities) do
     vulnerabilities
-    Enum.filter(&(&1.severity in [:critical, :high]))
-    Enum.map(& &1.type)
+    |> Enum.filter(&(&1.severity in [:critical, :high]))
+    |> Enum.map(& &1.type)
   end
 
   # Recommendations
@@ -1085,11 +1085,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
   defp get_top_ships(ship_analyses, count) do
     ship_analyses
-    Enum.group_by(& &1.ship_name)
-    Enum.map(fn {name, ships} -> {name, length(ships)} end)
-    Enum.sort_by(&elem(&1, 1), :desc)
-    Enum.take(count)
-    Enum.map(fn {name, count} -> %{ship: name, count: count} end)
+    |> Enum.group_by(& &1.ship_name)
+    |> Enum.map(fn {name, ships} -> {name, length(ships)} end)
+    |> Enum.sort_by(&elem(&1, 1), :desc)
+    |> Enum.take(count)
+    |> Enum.map(fn {name, count} -> %{ship: name, count: count} end)
   end
 
   defp analyze_engagement_profile(ship_analyses, capabilities) do

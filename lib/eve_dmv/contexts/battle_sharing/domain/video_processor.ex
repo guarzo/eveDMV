@@ -123,10 +123,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoProcessor do
 
     platform =
       @supported_platforms
-
-    Enum.find(fn {_platform, config} ->
-      Enum.any?(config.domains, &String.contains?(url_lower, &1))
-    end)
+      |> Enum.find(fn {_platform, config} ->
+        Enum.any?(config.domains, &String.contains?(url_lower, &1))
+      end)
 
     case platform do
       {platform_name, _config} -> {:ok, platform_name}
