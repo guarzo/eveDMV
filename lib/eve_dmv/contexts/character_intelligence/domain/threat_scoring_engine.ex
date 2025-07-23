@@ -1484,9 +1484,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
 
   defp identify_top_threats(threat_assessments) do
     threat_assessments
-    Enum.sort_by(& &1.overall_score, :desc)
-    Enum.take(5)
-    Enum.map(fn assessment ->
+    |> Enum.sort_by(& &1.overall_score, :desc)
+    |> Enum.take(5)
+    |> Enum.map(fn assessment ->
       %{
         character_id: assessment.character_id,
         threat_level: assessment.threat_level,
@@ -1498,9 +1498,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
 
   defp rank_by_threat_level(threat_assessments) do
     threat_assessments
-    Enum.sort_by(& &1.overall_score, :desc)
-    Enum.with_index(1)
-    Enum.map(fn {assessment, rank} ->
+    |> Enum.sort_by(& &1.overall_score, :desc)
+    |> Enum.with_index(1)
+    |> Enum.map(fn {assessment, rank} ->
       %{
         rank: rank,
         character_id: assessment.character_id,
