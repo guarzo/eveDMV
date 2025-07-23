@@ -30,7 +30,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
   defp analyze_regional_activity(region_id, _cutoff_time) do
     # Get all systems in the region
-    systems_query = Ash.Query.filter(SolarSystem, region_id == ^region_id)
+    systems_query = Ash.Query.filter(SolarSystem, region_id == region_id)
 
     case Ash.read(systems_query, domain: Api) do
       {:ok, systems} ->
@@ -130,9 +130,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     # Get recent killmails with participant data
     systems_query =
       SolarSystem
-
-    Ash.Query.filter(region_id == ^region_id)
-    Ash.Query.select([:system_id])
+      |> Ash.Query.filter(region_id == region_id)
+      |> Ash.Query.select([:system_id])
 
     case Ash.read(systems_query, domain: Api) do
       {:ok, systems} ->
@@ -208,7 +207,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
   defp assess_regional_strategy(region_id, _cutoff_time) do
     # Analyze strategic control based on corporation/alliance presence
-    systems_query = Ash.Query.filter(SolarSystem, region_id == ^region_id)
+    systems_query = Ash.Query.filter(SolarSystem, region_id == region_id)
 
     case Ash.read(systems_query, domain: Api) do
       {:ok, systems} ->
@@ -295,9 +294,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
     systems_query =
       SolarSystem
-
-    Ash.Query.filter(region_id == ^region_id)
-    Ash.Query.select([:system_id])
+      |> Ash.Query.filter(region_id == region_id)
+      |> Ash.Query.select([:system_id])
 
     case Ash.read(systems_query, domain: Api) do
       {:ok, systems} ->

@@ -482,17 +482,15 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
                 1.0
 
               s1 < s2 ->
-                case(correlations)
-
-                Enum.find fn {{sys1, sys2}, _} -> sys1 == s1 and sys2 == s2 end do
+                case correlations
+                     |> Enum.find(fn {{sys1, sys2}, _} -> sys1 == s1 and sys2 == s2 end) do
                   nil -> 0.0
                   {_, corr} -> corr
                 end
 
               s1 > s2 ->
-                case(correlations)
-
-                Enum.find fn {{sys1, sys2}, _} -> sys1 == s2 and sys2 == s1 end do
+                case correlations
+                     |> Enum.find(fn {{sys1, sys2}, _} -> sys1 == s2 and sys2 == s1 end) do
                   nil -> 0.0
                   {_, corr} -> corr
                 end
@@ -607,15 +605,19 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     else
       optimal_lags =
         Enum.map(lag_analysis, fn {_pair, correlations} ->
-          correlations
-          Enum.max_by(&elem(&1, 1))
-          elem(0)
+          {lag, _corr} = 
+            correlations
+            |> Enum.max_by(&elem(&1, 1))
+          lag
         end)
 
       # Find most common lag
-      Enum.frequencies(optimal_lags)
-      Enum.max_by(&elem(&1, 1))
-      elem(0)
+      {most_common_lag, _count} =
+        optimal_lags
+        |> Enum.frequencies()
+        |> Enum.max_by(&elem(&1, 1))
+      
+      most_common_lag
     end
   end
 
@@ -778,8 +780,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       end
     end)
 
-    elem(1)
-    Enum.filter(fn cluster -> length(cluster) > 1 end)
+    |> elem(1)
+    |> Enum.filter(fn cluster -> length(cluster) > 1 end)
   end
 
   defp find_cluster(system, correlation_map, visited) do

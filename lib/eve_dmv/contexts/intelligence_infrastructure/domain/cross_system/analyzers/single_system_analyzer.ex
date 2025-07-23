@@ -151,9 +151,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     # Get neighboring systems in the same constellation
     neighbors_query =
       SolarSystem
-
-    Ash.Query.filter(constellation_id == ^system.constellation_id)
-    Ash.Query.select([:system_id, :system_name, :security_class])
+      |> Ash.Query.filter(constellation_id == system.constellation_id)
+      |> Ash.Query.select([:system_id, :system_name, :security_class])
 
     case Ash.read(neighbors_query, domain: Api) do
       {:ok, neighbors} ->
@@ -231,8 +230,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
           end)
         end)
 
-        Enum.map(& &1.solar_system_id) |> Enum.uniq()
-        length()
+        |> Enum.map(& &1.solar_system_id)
+        |> Enum.uniq()
+        |> length()
 
         # Influence radius based on activity spread
         cond do

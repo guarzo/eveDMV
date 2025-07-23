@@ -9,6 +9,8 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   use EveDmvWeb, :live_view
 
   alias EveDmv.Contexts.BattleAnalysis
+  alias EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser
+  alias EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer
   alias EveDmv.Contexts.BattleAnalysis.Resources.CombatLog
   alias EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting
   alias EveDmv.Contexts.BattleSharing
@@ -206,7 +208,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
               content = :zlib.uncompress(compressed)
 
               # Parse the log with ENHANCED parser
-              case EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser.parse_combat_log(
+              case EnhancedCombatLogParser.parse_combat_log(
                      content,
                      pilot_name: combat_log.pilot_name
                    ) do
@@ -344,7 +346,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       |> Map.put(:fitting_data, existing_fitting)
       |> Map.put(:combat_log_analysis, combat_log_analysis)
 
-    case EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer.analyze_ship_performance(
+    case ShipPerformanceAnalyzer.analyze_ship_performance(
            enhanced_ship_data,
            socket.assigns.current_battle
          ) do
@@ -539,7 +541,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       # Update ship data with new fitting
       ship_data = Map.put(socket.assigns.selected_ship, :fitting_data, fitting.parsed_fitting)
 
-      case EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer.analyze_ship_performance(
+      case ShipPerformanceAnalyzer.analyze_ship_performance(
              ship_data,
              socket.assigns.current_battle
            ) do
@@ -698,14 +700,15 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   def format_duration(_), do: "0m"
 
   def format_number(number) when is_integer(number) do
-    Integer.to_string(number)
+    number
+    |> Integer.to_string()
     |> String.reverse()
     |> String.replace(~r/(\d{3})(?=\d)/, "\\1,")
     |> String.reverse()
   end
 
   def format_number(number) when is_float(number) do
-    round(number) |> format_number()
+    number |> round() |> format_number()
   end
 
   def format_number(_), do: "0"
@@ -730,7 +733,8 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   end
 
   def format_phase_type(phase_type) do
-    to_string(phase_type)
+    phase_type
+    |> to_string()
     |> String.replace("_", " ")
     |> String.capitalize()
   end

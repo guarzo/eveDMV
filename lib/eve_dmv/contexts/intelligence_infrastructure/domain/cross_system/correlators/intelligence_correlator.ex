@@ -245,8 +245,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     consistency = Map.get(metrics, :consistency, 0)
 
     # Multiple data points increase reliability
+    hourly_metrics = Map.get(metrics, :hourly_metrics, %{})
     data_points =
-      metrics.Map.values(hourly_metrics) |> Enum.sum()
+      Map.values(hourly_metrics) |> Enum.sum()
     point_score = min(1.0, data_points / 100)
 
     consistency * 0.6 + point_score * 0.4
@@ -391,12 +392,13 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     else
       # Check for simultaneous activity windows
       time_overlaps =
-    intel_coverage
-    Enum.map(fn {system, data} ->
+    time_overlaps = 
+      intel_coverage
+      |> Enum.map(fn {system, data} ->
           metrics = Map.get(data, :coverage_metrics, %{})
           {system, metrics.earliest_activity, metrics.latest_activity}
         end)
-        calculate_time_overlap_score()
+      |> calculate_time_overlap_score()
 
       Float.round(time_overlaps, 2)
     end
@@ -703,8 +705,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     Enum.flat_map(fn k ->
       [k.victim_character_id, k.victim_corporation_id, k.victim_alliance_id]
     end)
-    Enum.filter(& &1) |> Enum.uniq()
-    length()
+    |> Enum.filter(& &1)
+    |> Enum.uniq()
+    |> length()
   end
 
   defp determine_quality_issue(coverage) do

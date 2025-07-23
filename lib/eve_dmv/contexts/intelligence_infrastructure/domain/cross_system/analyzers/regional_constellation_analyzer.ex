@@ -71,7 +71,12 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   and clear frameworks for expansion.
   """
 
+  import Ecto.Query
+  require Ash.Query
   require Logger
+  
+  alias EveDmv.Api
+  alias EveDmv.Killmails.KillmailRaw
 
   @doc """
   Analyze regional intelligence patterns.
@@ -215,25 +220,19 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     start_time = DateTime.add(DateTime.utc_now(), -14 * 24 * 3_600, :second)
 
     query =
-      from(k in "killmails_enriched",
-        where: k.killmail_time >= ^start_time,
-        select: %{
-          victim_alliance_id: k.victim_alliance_id,
-          victim_corporation_id: k.victim_corporation_id,
-          killmail_time: k.killmail_time
-        },
-        limit: 2_000
-      )
+      KillmailRaw
+      |> Ash.Query.filter(killmail_time >= ^start_time)
+      |> Ash.Query.select([:victim_alliance_id, :victim_corporation_id, :killmail_time])
+      |> Ash.Query.limit(2_000)
 
-    killmails = EveDmv.Repo.all(query)
+    {:ok, killmails} = Ash.read(query, domain: Api)
 
     # Count kills by alliance/corp to determine control
     alliance_kills =
       killmails
-
-    Enum.filter(& &1.victim_alliance_id)
-    Enum.group_by(& &1.victim_alliance_id)
-    Enum.map(fn {alliance_id, kills} -> {alliance_id, length(kills)} end)
+      |> Enum.filter(& &1.victim_alliance_id)
+      |> Enum.group_by(& &1.victim_alliance_id)
+      |> Enum.map(fn {alliance_id, kills} -> {alliance_id, length(kills)} end)
     Enum.sort_by(&elem(&1, 1), :desc)
 
     # Determine control status
@@ -257,9 +256,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     # Get controlling entities
     controlling_entities =
       alliance_kills
-
-    Enum.take(3)
-    Enum.map(&elem(&1, 0))
+      |> Enum.take(3)
+      |> Enum.map(&elem(&1, 0))
 
     # Calculate control stability (variance in kill distribution over time)
     daily_variance = calculate_daily_control_variance(killmails)
@@ -426,9 +424,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
     # Prioritize and limit to top recommendations
     all_recommendations
-    Enum.sort_by(& &1.priority_score, :desc)
-    Enum.take(10)
-    Enum.map(&Map.put(&1, :region_id, region_data.region_id))
+    |> Enum.sort_by(& &1.priority_score, :desc)
+    |> Enum.take(10)
+    |> Enum.map(&Map.put(&1, :region_id, region_data.region_id))
   end
 
   defp predict_regional_patterns(region_data, activity_analysis, threat_analysis, hours_ahead) do
@@ -571,9 +569,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
     # Prioritize recommendations
     all_recommendations
-    Enum.sort_by(& &1.priority_score, :desc)
-    Enum.take(8)
-    Enum.map(&Map.put(&1, :constellation_id, constellation_data.constellation_id))
+    |> Enum.sort_by(& &1.priority_score, :desc)
+    |> Enum.take(8)
+    |> Enum.map(&Map.put(&1, :constellation_id, constellation_data.constellation_id))
   end
 
   defp generate_constellation_projections(
@@ -644,19 +642,15 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     # Calculate variance in control over daily periods
     daily_control =
       killmails
-
-    Enum.group_by(fn km -> DateTime.to_date(km.killmail_time) end)
-
-    Enum.map(fn {date, daily_kills} ->
+      |> Enum.group_by(fn km -> DateTime.to_date(km.killmail_time) end)
+      |> Enum.map(fn {date, daily_kills} ->
       # Get dominant entity for the day
-      dominant =
+      {dominant, _count} =
         daily_kills
-
-      Enum.filter(& &1.victim_alliance_id)
-      Enum.group_by(& &1.victim_alliance_id)
-      Enum.map(fn {alliance, kills} -> {alliance, length(kills)} end)
-      Enum.max_by(&elem(&1, 1), fn -> {nil, 0} end)
-      elem(0)
+        |> Enum.filter(& &1.victim_alliance_id)
+        |> Enum.group_by(& &1.victim_alliance_id)
+        |> Enum.map(fn {alliance, kills} -> {alliance, length(kills)} end)
+        |> Enum.max_by(&elem(&1, 1), fn -> {nil, 0} end)
 
       {date, dominant}
     end)
@@ -664,9 +658,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     # Calculate how often control changes
     changes =
       daily_control
-
-    Enum.chunk_every(2, 1, :discard)
-    Enum.count(fn [{_, d1}, {_, d2}] -> d1 != d2 end)
+      |> Enum.chunk_every(2, 1, :discard)
+      |> Enum.count(fn [{_, d1}, {_, d2}] -> d1 != d2 end)
 
     if length(daily_control) > 1 do
       changes / (length(daily_control) - 1)
@@ -703,12 +696,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   end
 
   defp get_top_alliance(kills) do
-    kills
-    Enum.filter(& &1.victim_alliance_id)
-    Enum.group_by(& &1.victim_alliance_id)
-    Enum.map(fn {alliance, k} -> {alliance, length(k)} end)
-    Enum.max_by(&elem(&1, 1), fn -> {nil, 0} end)
-    elem(0)
+    {top_alliance, _count} = 
+      kills
+      |> Enum.filter(& &1.victim_alliance_id)
+      |> Enum.group_by(& &1.victim_alliance_id)
+      |> Enum.map(fn {alliance, k} -> {alliance, length(k)} end)
+      |> Enum.max_by(&elem(&1, 1), fn -> {nil, 0} end)
+    
+    top_alliance
   end
 
   # Database query helper

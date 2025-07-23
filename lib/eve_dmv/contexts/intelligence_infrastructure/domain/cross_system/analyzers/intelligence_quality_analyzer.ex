@@ -395,9 +395,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
   defp count_unique_participants(killmails) do
     killmails
-    Enum.flat_map(fn km -> [km.attacker_character_id, km.victim_character_id] end) |> Enum.uniq()
-    Enum.filter(& &1)
-    length()
+    |> Enum.flat_map(fn km -> [km.attacker_character_id, km.victim_character_id] end)
+    |> Enum.uniq()
+    |> Enum.filter(& &1)
+    |> length()
   end
 
   defp count_unique_systems(killmails) do

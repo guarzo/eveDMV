@@ -30,7 +30,7 @@ defmodule EveDmvWeb.FormatHelpers do
     add_commas(Integer.to_string(number))
   end
 
-  def format_number(%Decimal{} = number), do: Decimal.to_float(number) |> format_number()
+  def format_number(%Decimal{} = number), do: number |> Decimal.to_float() |> format_number()
 
   def format_number(number) when is_float(number) do
     cond do
@@ -63,7 +63,7 @@ defmodule EveDmvWeb.FormatHelpers do
   def format_percentage(nil), do: "0%"
 
   def format_percentage(%Decimal{} = decimal) do
-    "#{Decimal.to_float(decimal) |> Float.round(1)}%"
+    "#{decimal |> Decimal.to_float() |> Float.round(1)}%"
   end
 
   def format_percentage(percentage) do
@@ -175,7 +175,8 @@ defmodule EveDmvWeb.FormatHelpers do
 
   # Private helper for adding commas to number strings
   defp add_commas(number_string) do
-    String.reverse(number_string)
+    number_string
+    |> String.reverse()
     |> String.replace(~r/(\d{3})(?=\d)/, "\\1,")
     |> String.reverse()
   end

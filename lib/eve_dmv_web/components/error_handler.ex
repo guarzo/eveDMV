@@ -305,7 +305,7 @@ defmodule EveDmvWeb.Components.ErrorHandler do
         error
 
       error when is_atom(error) ->
-        to_string(error) |> String.replace("_", " ") |> String.capitalize()
+        error |> to_string() |> String.replace("_", " ") |> String.capitalize()
 
       _ ->
         "An unexpected error occurred. Please try again."
