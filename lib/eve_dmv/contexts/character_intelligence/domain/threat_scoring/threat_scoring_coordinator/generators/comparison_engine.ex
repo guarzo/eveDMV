@@ -96,28 +96,24 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
   # Analyze distribution of threat levels
   defp analyze_threat_distribution(threat_assessments) do
     threat_assessments
-
-    Enum.group_by(fn assessment ->
+    |> Enum.group_by(fn assessment ->
       categorize_threat_level(Map.get(assessment, :threat_score, 0.0))
     end)
-
-    Enum.map(fn {level, assessments} -> {level, length(assessments)} end) |> Map.new()
+    |> Enum.map(fn {level, assessments} -> {level, length(assessments)} end)
+    |> Map.new()
   end
 
   # Identify top threats by score
   defp identify_top_threats(threat_assessments) do
     threat_assessments
-
-    Enum.sort_by(
+    |> Enum.sort_by(
       fn assessment ->
         Map.get(assessment, :threat_score, 0.0)
       end,
       :desc
     )
-
-    Enum.take(5)
-
-    Enum.map(fn assessment ->
+    |> Enum.take(5)
+    |> Enum.map(fn assessment ->
       %{
         character_id: Map.get(assessment, :character_id),
         threat_level: categorize_threat_level(Map.get(assessment, :threat_score, 0.0)),
@@ -130,17 +126,14 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
   # Rank all characters by threat level
   defp rank_by_threat_level(threat_assessments) do
     threat_assessments
-
-    Enum.sort_by(
+    |> Enum.sort_by(
       fn assessment ->
         Map.get(assessment, :threat_score, 0.0)
       end,
       :desc
     )
-
-    Enum.with_index(1)
-
-    Enum.map(fn {assessment, rank} ->
+    |> Enum.with_index(1)
+    |> Enum.map(fn {assessment, rank} ->
       threat_score = Map.get(assessment, :threat_score, 0.0)
 
       %{
