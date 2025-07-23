@@ -1084,13 +1084,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
       end
 
     final_recommendations
-    Enum.uniq_by(& &1.action)
-
-    Enum.sort_by(fn r ->
+    |> Enum.uniq_by(& &1.action)
+    |> Enum.sort_by(fn r ->
       {urgency_to_number(r.urgency), impact_to_number(r.expected_impact)}
     end)
-
-    Enum.take(5)
+    |> Enum.take(5)
   end
 
   defp maybe_add_factor_recommendation(factor, acc) do

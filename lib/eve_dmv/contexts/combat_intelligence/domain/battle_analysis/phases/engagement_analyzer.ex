@@ -340,8 +340,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Engage
     # Primary targets are considered high-value strategic ships
 
     killmails
-
-    Enum.count(fn killmail ->
+    |> Enum.count(fn killmail ->
       killmail.victim_ship_name &&
         (String.contains?(killmail.victim_ship_name, "Logistics") ||
            String.contains?(killmail.victim_ship_name, "Command"))

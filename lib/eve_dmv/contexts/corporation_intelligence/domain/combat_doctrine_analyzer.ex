@@ -14,7 +14,6 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
   to provide comprehensive intelligence on corporation combat capabilities and preferences.
   """
 
-  import Ash.Query
   alias EveDmv.Api
   alias EveDmv.Killmails.KillmailRaw
 

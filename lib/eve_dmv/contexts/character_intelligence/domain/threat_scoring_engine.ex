@@ -14,8 +14,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   techniques to provide actionable intelligence for fleet commanders and solo pilots.
   """
 
-  import Ash.Query
-
   alias EveDmv.Api
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   alias EveDmv.Killmails.KillmailRaw
