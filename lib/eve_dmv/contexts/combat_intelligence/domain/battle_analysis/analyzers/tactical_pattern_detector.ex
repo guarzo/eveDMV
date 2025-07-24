@@ -63,8 +63,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
       end
 
     # Combine all moments and sort by timestamp
-    (high_value_moments ++ first_blood_moments)
-    |> Enum.sort_by(& &1.timestamp)
+    Enum.sort_by(high_value_moments ++ first_blood_moments, & &1.timestamp)
   end
 
   @doc """

@@ -264,7 +264,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
     Logger.debug("Scoring adjacency for #{inspect(length(battle_groups))} groups")
     Logger.debug("First group type check: #{inspect(List.first(battle_groups) |> is_list())}")
 
-    |> Enum.map(battle_groups, fn group ->
+    Enum.map(battle_groups, fn group ->
       if is_list(group) do
         Logger.debug("Processing group type: list, size: #{inspect(length(group))}")
 

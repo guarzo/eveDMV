@@ -148,15 +148,14 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
   # Private helper functions
 
   defp extract_victim_character_ids(killmail) do
-    case killmail.raw_data do
+    (case killmail.raw_data do
       %{"victim" => %{"character_id" => char_id}}
       when is_binary(char_id) or is_integer(char_id) ->
         [normalize_character_id(char_id)]
 
       _ ->
         [killmail.victim_character_id]
-    end
-
+    end)
     |> Enum.reject(&is_nil/1)
   end
 

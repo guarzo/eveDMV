@@ -2558,7 +2558,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       end)
 
       |> Enum.group_by(&classify_ship_by_type_id/1)
-      Enum.map(fn {class, ships} -> {class, length(ships)} end) |> Map.new()
+      |> Enum.map(fn {class, ships} -> {class, length(ships)} end)
+      |> Map.new()
     end
   end
 
@@ -2570,8 +2571,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
     support_count =
       support_classes
-
-    Enum.map(fn class -> Map.get(ship_classes, class, 0) end) |> Enum.sum()
+      |> Enum.map(fn class -> Map.get(ship_classes, class, 0) end)
+      |> Enum.sum()
 
     total_ships =
       Map.values(ship_classes) |> Enum.sum()
@@ -3826,7 +3827,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   defp aggregate_successful_ships(participants) do
     participants
     |> Enum.filter(&(&1.success_rate > 0.6))
-    Enum.flat_map(& &1.ships_flown) |> Enum.frequencies()
+    |> Enum.flat_map(& &1.ships_flown)
+    |> Enum.frequencies()
     |> Enum.sort_by(fn {_ship, count} -> -count end)
     |> Enum.take(3)
     |> Enum.map(fn {ship, _count} -> ship end)
@@ -3957,8 +3959,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     # Extract patterns from losses
     loss_causes =
       fleets
-
-    Enum.flat_map(& &1.loss_analysis) |> Enum.frequencies()
+      |> Enum.flat_map(& &1.loss_analysis)
+      |> Enum.frequencies()
     |> Enum.sort_by(fn {_cause, count} -> -count end)
     |> Enum.take(3)
     |> Enum.map(fn {cause, _count} -> cause end)
@@ -4115,15 +4117,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   defp analyze_ewar_impact(compositions) do
     ewar_ships =
       compositions
-
-    |> Enum.flat_map(& &1.ships)
-    |> Enum.filter(&is_ewar_ship?/1)
-    length()
+      |> Enum.flat_map(& &1.ships)
+      |> Enum.filter(&is_ewar_ship?/1)
+      |> length()
 
     total_ships =
       compositions
-
-    Enum.map(& &1.fleet_size) |> Enum.sum()
+      |> Enum.map(& &1.fleet_size)
+      |> Enum.sum()
 
     if total_ships > 0 do
       # 10% EWAR is max effectiveness
@@ -4583,8 +4584,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       # Average confidence across all patterns
       total_confidence =
         patterns
-
-      Enum.map(&extract_confidence/1) |> Enum.sum()
+        |> Enum.map(&extract_confidence/1)
+        |> Enum.sum()
+        
       total_confidence / length(patterns)
     end
   end
@@ -4828,13 +4830,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   defp calculate_distribution_variance(distributions) do
     all_doctrines =
       distributions
-
-    Enum.flat_map(&Map.keys/1) |> Enum.uniq()
+      |> Enum.flat_map(&Map.keys/1)
+      |> Enum.uniq()
 
     variances =
       all_doctrines
-
-    |> Enum.map(fn doctrine ->
+      |> Enum.map(fn doctrine ->
       values = Enum.map(distributions, &Map.get(&1, doctrine, 0))
       calculate_variance(values)
     end)
@@ -4853,18 +4854,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
       sum_squares =
         values
-
-      Enum.map(fn v -> (v - mean) * (v - mean) end) |> Enum.sum()
+        |> Enum.map(fn v -> (v - mean) * (v - mean) end)
+        |> Enum.sum()
       sum_squares / length(values)
     end
   end
 
   defp find_dominant_doctrine(effectiveness_analysis) do
-    effectiveness_analysis
-    |> Enum.filter(&(&1.effectiveness_score >= 60))
-    Enum.filter(&(&1.battle_count >= 3)) |> List.first()
-
-    case do
+    case effectiveness_analysis
+         |> Enum.filter(&(&1.effectiveness_score >= 60))
+         |> Enum.filter(&(&1.battle_count >= 3))
+         |> List.first() do
       nil -> nil
       doctrine -> doctrine.doctrine
     end

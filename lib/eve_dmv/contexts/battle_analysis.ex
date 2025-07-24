@@ -112,7 +112,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
             Logger.debug("Battle search window: #{inspect(start_time)} to #{inspect(end_time)}")
 
             # Log battle details for debugging
-            |> Enum.each(battles, fn b ->
+            Enum.each(battles, fn b ->
               Logger.debug(
                 "Battle #{b.battle_id}: #{length(b.killmails)} kills, " <>
                   "time range: #{inspect(b.metadata.start_time)} - #{inspect(b.metadata.end_time)}"

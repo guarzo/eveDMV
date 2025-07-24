@@ -266,49 +266,41 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
     ewar_presence = Map.get(fleet_analysis, :ewar_presence, false)
     logistics_ratio = Map.get(fleet_analysis, :logistics_ratio, 0.0)
 
-    recommendations = []
-
-    recommendations =
-      if ewar_presence do
-        recommendations
+    ewar_recommendations = 
+      if not ewar_presence do
+        [%{
+          type: :strategic,
+          priority: :medium,
+          title: "Electronic Warfare Integration",
+          description: "Add EWAR ships for force multiplication",
+          actions: [
+            "Deploy ECM/dampening ships",
+            "Train EWAR pilots",
+            "Coordinate EWAR tactics"
+          ]
+        }]
       else
-        [
-          %{
-            type: :strategic,
-            priority: :medium,
-            title: "Electronic Warfare Integration",
-            description: "Add EWAR ships for force multiplication",
-            actions: [
-              "Deploy ECM/dampening ships",
-              "Train EWAR pilots",
-              "Coordinate EWAR tactics"
-            ]
-          }
-          | recommendations
-        ]
+        []
       end
 
-    recommendations =
+    logistics_recommendations =
       if logistics_ratio < 0.1 do
-        [
-          %{
-            type: :strategic,
-            priority: :high,
-            title: "Logistics Support",
-            description: "Increase logistics ship presence",
-            actions: [
-              "Add logistics ships",
-              "Train logistics pilots",
-              "Improve repair coordination"
-            ]
-          }
-          | recommendations
-        ]
+        [%{
+          type: :strategic,
+          priority: :high,
+          title: "Logistics Support",
+          description: "Increase logistics ship presence",
+          actions: [
+            "Add logistics ships",
+            "Train logistics pilots",
+            "Improve repair coordination"
+          ]
+        }]
       else
-        recommendations
+        []
       end
 
-    recommendations
+    ewar_recommendations ++ logistics_recommendations
   end
 
   defp generate_counter_doctrine_recommendations(fleet_analysis) do
@@ -359,49 +351,41 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
     patterns = Map.get(tactical_analysis, :patterns, [])
     focus_fire = Map.get(tactical_analysis, :focus_fire_effectiveness, 0.5)
 
-    recommendations = []
-
-    recommendations =
+    focus_fire_recommendations =
       if focus_fire < 0.6 do
-        [
-          %{
-            type: :training,
-            priority: :high,
-            title: "Focus Fire Training",
-            description: "Improve target calling and focus fire coordination",
-            actions: [
-              "Practice target calling",
-              "Improve communication discipline",
-              "Coordinate alpha strikes"
-            ]
-          }
-          | recommendations
-        ]
+        [%{
+          type: :training,
+          priority: :high,
+          title: "Focus Fire Training",
+          description: "Improve target calling and focus fire coordination",
+          actions: [
+            "Practice target calling",
+            "Improve communication discipline",
+            "Coordinate alpha strikes"
+          ]
+        }]
       else
-        recommendations
+        []
       end
 
-    recommendations =
+    positioning_recommendations =
       if Enum.any?(patterns, &(&1.name == :poor_positioning)) do
-        [
-          %{
-            type: :training,
-            priority: :medium,
-            title: "Positioning Skills",
-            description: "Improve fleet positioning and maneuvering",
-            actions: [
-              "Practice fleet movements",
-              "Study positioning theory",
-              "Review engagement angles"
-            ]
-          }
-          | recommendations
-        ]
+        [%{
+          type: :training,
+          priority: :medium,
+          title: "Positioning Skills",
+          description: "Improve fleet positioning and maneuvering",
+          actions: [
+            "Practice fleet movements",
+            "Study positioning theory",
+            "Review engagement angles"
+          ]
+        }]
       else
-        recommendations
+        []
       end
 
-    recommendations
+    focus_fire_recommendations ++ positioning_recommendations
   end
 
   defp pattern_to_recommendations(pattern) do
