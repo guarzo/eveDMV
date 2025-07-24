@@ -15,11 +15,9 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewLifecycle do
   Ensures all defined materialized views exist in the database.
   """
   def ensure_all_views_exist do
-    view_results = 
-      ViewDefinitions.all_views()
-      |> Enum.map(&ensure_view_exists/1)
-    
-    Enum.into(view_results, %{})
+    ViewDefinitions.all_views()
+    |> Enum.map(&ensure_view_exists/1)
+    |> Enum.into(%{})
   end
 
   @doc """
