@@ -488,7 +488,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
         strengths
       end
 
-    |> Enum.uniq(strengths)
+    Enum.uniq(strengths)
   end
 
   defp identify_weaknesses(ship_name, _ewar_types) do
