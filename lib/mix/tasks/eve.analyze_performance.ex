@@ -43,7 +43,7 @@ defmodule Mix.Tasks.Eve.AnalyzePerformance do
       Mix.shell().info("\n🐌 Slow Queries (>1 second)")
       Mix.shell().info("=" <> String.duplicate("=", 40))
 
-      |> Enum.each(analysis.slow_queries, fn query ->
+      Enum.each(analysis.slow_queries, fn query ->
         query_text =
           case query.query do
             query_str when is_binary(query_str) ->
@@ -66,7 +66,7 @@ defmodule Mix.Tasks.Eve.AnalyzePerformance do
     Mix.shell().info("\n💡 Recommendations")
     Mix.shell().info("=" <> String.duplicate("=", 40))
 
-    |> Enum.each(analysis.recommendations, fn rec ->
+    Enum.each(analysis.recommendations, fn rec ->
       Mix.shell().info("• #{rec}")
     end)
   end

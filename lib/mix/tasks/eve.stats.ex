@@ -40,7 +40,7 @@ defmodule Mix.Tasks.Eve.Stats do
 
       source_counts = EveDmv.Repo.all(from(k in "killmails_raw", group_by: k.source, select: {k.source, count(k.killmail_id)}))
 
-      |> Enum.each(source_counts, fn {source, count} ->
+      Enum.each(source_counts, fn {source, count} ->
         Logger.info("  #{source}: #{format_number(count)}")
       end)
 
@@ -60,7 +60,7 @@ defmodule Mix.Tasks.Eve.Stats do
 
       monthly_counts = EveDmv.Repo.all(from(k in "killmails_raw", where: k.killmail_time >= ^six_months_ago, group_by: fragment("DATE_TRUNC('month', ?)", k.killmail_time), order_by: [desc: fragment("DATE_TRUNC('month', ?)", k.killmail_time)], select: {fragment("DATE_TRUNC('month', ?)", k.killmail_time), count(k.killmail_id)}))
 
-      |> Enum.each(monthly_counts, fn {month, count} ->
+      Enum.each(monthly_counts, fn {month, count} ->
         month_str = Calendar.strftime(month, "%B %Y")
         Logger.info("  #{month_str}: #{format_number(count)}")
       end)
@@ -75,13 +75,13 @@ defmodule Mix.Tasks.Eve.Stats do
           [] ->
             # Fallback if no solar system data
             fallback_data = EveDmv.Repo.all(from(k in "killmails_raw", group_by: k.solar_system_id, order_by: [desc: count(k.killmail_id)], limit: 10, select: {k.solar_system_id, count(k.killmail_id)}))
-            |> Enum.map(fallback_data, fn {system_id, count} -> {"System #{system_id}", count} end)
+            Enum.map(fallback_data, fn {system_id, count} -> {"System #{system_id}", count} end)
 
           systems ->
             systems
         end
 
-      |> Enum.each(top_systems, fn {system, count} ->
+      Enum.each(top_systems, fn {system, count} ->
         Logger.info("  #{system}: #{format_number(count)}")
       end)
 
@@ -106,7 +106,7 @@ defmodule Mix.Tasks.Eve.Stats do
           )
         )
 
-      |> Enum.each(table_sizes, fn %{table: table, size: size} ->
+      Enum.each(table_sizes, fn %{table: table, size: size} ->
         Logger.info("  #{table}: #{size}")
       end)
     end
