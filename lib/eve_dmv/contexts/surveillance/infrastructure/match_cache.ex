@@ -162,13 +162,12 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
     # Filter and limit matches
     filtered_matches =
       candidate_match_ids
-
-    # Take more to account for filtering
-    Enum.take(limit * 2)
-    Enum.map(&Map.get(state.matches, &1))
-    Enum.filter(&(&1 != nil))
-    filter_matches_by_time(since)
-    Enum.take(limit)
+      # Take more to account for filtering
+      |> Enum.take(limit * 2)
+      |> Enum.map(&Map.get(state.matches, &1))
+      |> Enum.filter(&(&1 != nil))
+      |> filter_matches_by_time(since)
+      |> Enum.take(limit)
 
     {:reply, {:ok, filtered_matches}, state}
   end
@@ -179,13 +178,12 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
 
     profile_matches =
       profile_match_ids
-
-    # Take more to account for filtering
-    Enum.take(limit * 2)
-    Enum.map(&Map.get(state.matches, &1))
-    Enum.filter(&(&1 != nil))
-    filter_matches_by_time(since)
-    Enum.take(limit)
+      # Take more to account for filtering
+      |> Enum.take(limit * 2)
+      |> Enum.map(&Map.get(state.matches, &1))
+      |> Enum.filter(&(&1 != nil))
+      |> filter_matches_by_time(since)
+      |> Enum.take(limit)
 
     {:reply, {:ok, profile_matches}, state}
   end
@@ -376,7 +374,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
   end
 
   defp update_hourly_distribution(current_distribution, timestamp) do
-    hour = timestamp(DateTime.to_time() |> Map.get(:hour))
+    hour = timestamp |> DateTime.to_time() |> Map.get(:hour)
     Map.update(current_distribution, hour, 1, &(&1 + 1))
   end
 
@@ -394,10 +392,9 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
 
     time_filtered_matches =
       profile_match_ids
-
-    Enum.map(&Map.get(state.matches, &1))
-    Enum.filter(&(&1 != nil))
-    filter_matches_by_time(cutoff_time)
+      |> Enum.map(&Map.get(state.matches, &1))
+      |> Enum.filter(&(&1 != nil))
+      |> filter_matches_by_time(cutoff_time)
 
     %{
       matches_in_range: length(time_filtered_matches),
