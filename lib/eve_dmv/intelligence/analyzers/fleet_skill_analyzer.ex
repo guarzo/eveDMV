@@ -565,7 +565,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetSkillAnalyzer do
       pilot.kill_count + pilot.loss_count >= 10
     else
       # Check all required skills
-      |> Enum.all?(required_skills, fn skill ->
+      Enum.all?(required_skills, fn skill ->
         check_skill_via_ship_usage(pilot, skill)
       end)
     end
