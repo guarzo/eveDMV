@@ -233,7 +233,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.ReadinessAnalyzer do
       statuses = Enum.map(critical_readiness, fn {_role, data} -> data.status end)
 
       cond do
-        |> Enum.all?(statuses, &(&1 in ["excellent", "good"])) -> "all_good"
+        Enum.all?(statuses, &(&1 in ["excellent", "good"])) -> "all_good"
         Enum.any?(statuses, &(&1 == "critical")) -> "critical_issues"
         true -> "needs_attention"
       end
