@@ -283,7 +283,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
   defp calculate_progression_ratio(window) do
     # Simple progression based on timestamp
     # More sophisticated version would use battle context
-    length(window.killmails) |> :math.log() |> max(0.1)
+    window.killmails |> length() |> :math.log() |> max(0.1)
   end
 
   defp apply_clustering(feature_vectors, max_clusters, :kmeans) do
@@ -294,13 +294,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
         feature_vectors
         |> Enum.with_index()
         |> Enum.map(fn {features, index} ->
-        %{
-          cluster_id: index,
-          centroid: extract_numeric_features(features),
-          members: [features],
-          size: 1
-        }
-      end)
+          %{
+            cluster_id: index,
+            centroid: extract_numeric_features(features),
+            members: [features],
+            size: 1
+          }
+        end)
 
       {:ok, clusters}
     else
@@ -314,11 +314,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
     wcss_scores =
       1..max_k
       |> Enum.map(fn k ->
-      case kmeans_cluster(feature_vectors, k) do
-        {:ok, clusters} -> {k, calculate_wcss(clusters)}
-        _ -> {k, :infinity}
-      end
-    end)
+        case kmeans_cluster(feature_vectors, k) do
+          {:ok, clusters} -> {k, calculate_wcss(clusters)}
+          _ -> {k, :infinity}
+        end
+      end)
 
     # Find elbow point (simplified heuristic)
     {optimal_k, _score} =
@@ -417,9 +417,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
     old_centroids
     |> Enum.with_index()
     |> Enum.map(fn {old_centroid, cluster_id} ->
-      cluster_points =
-        Map.get(cluster_groups, cluster_id, [])
-        |> Enum.map(fn {point, _cluster} -> point end)
+      cluster_points = Map.get(cluster_groups, cluster_id, [])
+
+      _members =
+        Enum.map(cluster_points, fn {point, _cluster} -> point end)
 
       if length(cluster_points) > 0 do
         calculate_centroid_mean(cluster_points)
@@ -441,6 +442,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
           points
           |> Enum.map(&Enum.at(&1, feature_index))
           |> Enum.sum()
+
         feature_sum / length(points)
       end)
     end
@@ -461,6 +463,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
       pairs
       |> Enum.map(fn {a, b} -> :math.pow(a - b, 2) end)
       |> Enum.sum()
+
     :math.sqrt(sum_of_squares)
   end
 
@@ -487,7 +490,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
         size: length(members)
       }
     end)
-
     |> Enum.filter(&(&1.size > 0))
   end
 
@@ -497,10 +499,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
       Enum.map(clusters, fn cluster ->
         cluster.members
         |> Enum.map(fn _member ->
-          # Simplified distance calculation
-          1.0
+          # Simplified distance calculation - returns squared distance directly
+          :math.pow(1.0, 2)
         end)
-        |> Enum.map(fn distance -> :math.pow(distance, 2) end)
         |> Enum.sum()
       end)
     )
@@ -509,28 +510,26 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
   defp classify_phase_types(clusters, _temporal_windows) do
     phases =
       clusters
+      |> Enum.sort_by(fn cluster ->
+        # Sort by average time of cluster members
+        avg_time =
+          cluster.members
+          |> Enum.map(fn member ->
+            member.window.start_time
+            |> DateTime.from_naive!("Etc/UTC")
+            |> DateTime.to_unix()
+          end)
+          |> Enum.sum()
+          |> div(length(cluster.members))
 
-    |> Enum.sort_by(fn cluster ->
-      # Sort by average time of cluster members
-      avg_time =
-        cluster.members
-        |> Enum.map(fn member ->
-          member.window.start_time
-          |> DateTime.from_naive!("Etc/UTC")
-          |> DateTime.to_unix()
-        end)
-        |> Enum.sum()
-        |> div(length(cluster.members))
+        avg_time
+      end)
+      |> Enum.with_index()
+      |> Enum.map(fn {cluster, phase_index} ->
+        phase_type = determine_phase_type(cluster, phase_index, length(clusters))
 
-      avg_time
-    end)
-    |> Enum.with_index()
-
-    |> Enum.map(fn {cluster, phase_index} ->
-      phase_type = determine_phase_type(cluster, phase_index, length(clusters))
-
-      create_phase_summary(cluster, phase_type, phase_index)
-    end)
+        create_phase_summary(cluster, phase_type, phase_index)
+      end)
 
     {:ok, phases}
   end
@@ -628,7 +627,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
       ewar_intensity: cluster.members |> Enum.map(& &1.ewar_usage) |> average(),
       ship_diversity: cluster.members |> Enum.map(& &1.ship_diversity) |> average(),
       isk_destruction_rate: cluster.members |> Enum.map(& &1.isk_destruction_rate) |> average(),
-      unique_participants: extract_all_participants(killmails) |> length(),
+      unique_participants: length(extract_all_participants(killmails)),
       dominant_ship_types: analyze_dominant_ship_types(killmails),
       # Additional fields expected by template
       avg_distance: calculate_average_distance(killmails),
@@ -655,7 +654,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
         true -> "small"
       end
 
-    "#{intensity} #{scale} #{to_string(phase_type) |> String.replace("_", " ")} with #{participants} participants"
+    phase_type_string = phase_type |> to_string() |> String.replace("_", " ")
+    "#{intensity} #{scale} #{phase_type_string} with #{participants} participants"
   end
 
   defp calculate_average_distance(killmails) do
@@ -664,8 +664,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
 
     total_distance =
       killmails
-
-    Enum.map(&estimate_engagement_distance/1) |> Enum.sum()
+      |> Enum.map(&estimate_engagement_distance/1)
+      |> Enum.sum()
     killmail_count = length(killmails)
 
     if killmail_count > 0 do
