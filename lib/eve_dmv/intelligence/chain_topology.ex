@@ -202,7 +202,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainTopology do
       calculation(fn records, _context ->
         cutoff = DateTime.add(DateTime.utc_now(), -4, :hour)
 
-        |> Enum.map(records, fn record ->
+        Enum.map(records, fn record ->
           case record.last_activity_at do
             nil -> false
             activity_time -> DateTime.compare(activity_time, cutoff) == :gt
