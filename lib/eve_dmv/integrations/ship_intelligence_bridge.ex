@@ -12,8 +12,8 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
   """
 
   import Ecto.Query
-  alias EveDmv.Analytics.ModuleClassifier
   alias EveDmv.Analytics.FleetAnalyzer
+  alias EveDmv.Analytics.ModuleClassifier
   alias EveDmv.Repo
   require Logger
 

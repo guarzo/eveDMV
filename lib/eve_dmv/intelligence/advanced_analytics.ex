@@ -13,10 +13,10 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   alias EveDmv.Intelligence.WhSpace.Vetting, as: WHVetting
 
   require Ash.Query
+  require Logger
 
   # Confidence reduction factor when analysis is performed with limited vetting data
   @limited_data_confidence_factor 0.8
-  require Logger
 
   @doc """
   Perform advanced behavioral pattern analysis on a character.
