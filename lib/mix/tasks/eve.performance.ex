@@ -313,7 +313,7 @@ defmodule Mix.Tasks.Eve.Performance do
     # Show key metrics if available
     key_metrics = ["memory.total", "memory.processes", "system.process_count"]
 
-    |> Enum.each(key_metrics, fn metric_name ->
+    Enum.each(key_metrics, fn metric_name ->
       baseline = Map.get(baselines, metric_name)
       current = find_current_metric(current_metrics, metric_name)
 
