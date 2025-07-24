@@ -266,7 +266,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter do
 
   defp format_preferred_regions(geographic_patterns) do
     geographic_patterns
-    Map.get(:region_activity, %{})
+    |> Map.get(:region_activity, %{})
     |> Enum.sort_by(fn {_region, activity} -> activity end, :desc)
     |> Enum.take(5)
     |> Enum.map(fn {region, activity} -> %{region: region, activity_count: activity} end)
