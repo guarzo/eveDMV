@@ -191,7 +191,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
            |> Ash.read(domain: Api) do
       {:ok, stats_list} ->
         character_tuples = Enum.map(stats_list, fn stats -> {stats.character_id, stats} end)
-        |> Enum.filter(character_tuples, fn {_, stats} -> not is_nil(stats) end)
+        Enum.filter(character_tuples, fn {_, stats} -> not is_nil(stats) end)
 
       _ ->
         []
@@ -832,7 +832,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
       correlations.behavioral_correlation.correlation_score
     ]
 
-    |> Enum.sum(scores) / length(scores)
+    Enum.sum(scores) / length(scores)
   end
 
   defp classify_relationship_type(_correlations, overall_score) do
