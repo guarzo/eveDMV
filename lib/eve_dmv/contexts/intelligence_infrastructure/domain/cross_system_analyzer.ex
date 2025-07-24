@@ -470,7 +470,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
   defp calculate_total_mass_capacity(connections) do
     connections
-    Enum.map(& &1.mass_capacity) |> Enum.sum()
+    |> Enum.map(& &1.mass_capacity) 
+    |> Enum.sum()
   end
 
   defp identify_critical_connections(connections) do
@@ -668,8 +669,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
     unique_pilots =
       killmails
-
-    Enum.flat_map(&extract_all_participants_from_killmail/1) |> Enum.uniq()
+      |> Enum.flat_map(&extract_all_participants_from_killmail/1)
+      |> Enum.uniq()
 
     %{
       unique_pilots: length(unique_pilots),
@@ -1650,9 +1651,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
   end
 
   defp generate_analysis_id do
-    16
-    :crypto.strong_rand_bytes()
-    Base.encode16(case: :lower)
+    :crypto.strong_rand_bytes(16)
+    |> Base.encode16(case: :lower)
   end
 
   defp calculate_analysis_confidence(chain_map, connection_data, activity_analysis) do
