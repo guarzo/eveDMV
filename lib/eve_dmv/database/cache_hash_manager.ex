@@ -9,11 +9,11 @@ defmodule EveDmv.Database.CacheHashManager do
 
   use GenServer
 
+  import Ash.Query
+
+  alias EveDmv.Api
   alias EveDmv.Cache.QueryCache
   alias EveDmv.Database.CacheInvalidator
-  alias EveDmv.Api
-
-  import Ash.Query
   require Logger
 
   # Hash storage - maps cache keys to content hashes
@@ -243,39 +243,37 @@ defmodule EveDmv.Database.CacheHashManager do
 
   defp cleanup_hashes_for_pattern(pattern) do
     # Convert cache pattern to ETS match pattern
-    try do
-      ets_pattern =
-        pattern
-        |> String.replace("*", "_")
-        |> String.to_existing_atom()
+    ets_pattern =
+      pattern
+      |> String.replace("*", "_")
+      |> String.to_existing_atom()
 
-      # Delete matching hashes
-      :ets.match_delete(@hash_table, {ets_pattern, :_, :_})
+    # Delete matching hashes
+    :ets.match_delete(@hash_table, {ets_pattern, :_, :_})
+    :ok
+  rescue
+    ArgumentError ->
+      # Pattern doesn't exist as atom, try more conservative cleanup
+      # Use select_delete with more flexible matching
+      pattern_regex = Regex.compile!(String.replace(pattern, "*", ".*"))
+
+      @hash_table
+      |> :ets.select([
+        {
+          {:"$1", :"$2", :"$3"},
+          [],
+          [{{:"$1", :"$2", :"$3"}}]
+        }
+      ])
+      |> Enum.filter(fn {key, _, _} ->
+        key_string = to_string(key)
+        Regex.match?(pattern_regex, key_string)
+      end)
+      |> Enum.each(fn {key, _, _} ->
+        :ets.delete(@hash_table, key)
+      end)
+
       :ok
-    rescue
-      ArgumentError ->
-        # Pattern doesn't exist as atom, try more conservative cleanup
-        # Use select_delete with more flexible matching
-        pattern_regex = Regex.compile!(String.replace(pattern, "*", ".*"))
-
-        @hash_table
-        |> :ets.select([
-          {
-            {:"$1", :"$2", :"$3"},
-            [],
-            [{{:"$1", :"$2", :"$3"}}]
-          }
-        ])
-        |> Enum.filter(fn {key, _, _} ->
-          key_string = to_string(key)
-          Regex.match?(pattern_regex, key_string)
-        end)
-        |> Enum.each(fn {key, _, _} ->
-          :ets.delete(@hash_table, key)
-        end)
-
-        :ok
-    end
   end
 
   # Public utilities

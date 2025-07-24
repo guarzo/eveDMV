@@ -52,21 +52,19 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.PriceCache do
   """
   @spec put(integer(), map(), keyword()) :: :ok | {:error, term()}
   def put(type_id, price_data, opts \\ []) when is_integer(type_id) and is_map(price_data) do
-    try do
-      ttl = Keyword.get(opts, :ttl, @default_ttl)
-      expires_at = System.system_time(:millisecond) + ttl
+    ttl = Keyword.get(opts, :ttl, @default_ttl)
+    expires_at = System.system_time(:millisecond) + ttl
 
-      # Add timestamp to price data
-      enriched_data = Map.put(price_data, :cached_at, DateTime.utc_now())
+    # Add timestamp to price data
+    enriched_data = Map.put(price_data, :cached_at, DateTime.utc_now())
 
-      :ets.insert(@cache_table, {type_id, enriched_data, expires_at})
-      increment_stat(:puts)
-      :ok
-    rescue
-      error ->
-        Logger.error("Error storing price cache: #{inspect(error)}")
-        {:error, :cache_error}
-    end
+    :ets.insert(@cache_table, {type_id, enriched_data, expires_at})
+    increment_stat(:puts)
+    :ok
+  rescue
+    error ->
+      Logger.error("Error storing price cache: #{inspect(error)}")
+      {:error, :cache_error}
   end
 
   @doc """
@@ -81,27 +79,25 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.PriceCache do
           hit_rate: float()
         }
   def stats do
-    try do
-      size = :ets.info(@cache_table, :size) || 0
-      memory = :ets.info(@cache_table, :memory) || 0
-      memory_bytes = memory * :erlang.system_info(:wordsize)
+    size = :ets.info(@cache_table, :size) || 0
+    memory = :ets.info(@cache_table, :memory) || 0
+    memory_bytes = memory * :erlang.system_info(:wordsize)
 
-      hits = get_stat(:hits)
-      misses = get_stat(:misses)
-      puts = get_stat(:puts)
+    hits = get_stat(:hits)
+    misses = get_stat(:misses)
+    puts = get_stat(:puts)
 
-      %{
-        size: size,
-        memory_bytes: memory_bytes,
-        hits: hits,
-        misses: misses,
-        puts: puts,
-        hit_rate: if(hits + misses > 0, do: hits / (hits + misses), else: 0.0)
-      }
-    rescue
-      _error ->
-        %{size: 0, memory_bytes: 0, hits: 0, misses: 0, puts: 0, hit_rate: 0.0}
-    end
+    %{
+      size: size,
+      memory_bytes: memory_bytes,
+      hits: hits,
+      misses: misses,
+      puts: puts,
+      hit_rate: if(hits + misses > 0, do: hits / (hits + misses), else: 0.0)
+    }
+  rescue
+    _error ->
+      %{size: 0, memory_bytes: 0, hits: 0, misses: 0, puts: 0, hit_rate: 0.0}
   end
 
   @doc """
@@ -109,13 +105,11 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.PriceCache do
   """
   @spec invalidate_all() :: :ok
   def invalidate_all do
-    try do
-      :ets.delete_all_objects(@cache_table)
-      reset_stats()
-      :ok
-    rescue
-      _error -> :ok
-    end
+    :ets.delete_all_objects(@cache_table)
+    reset_stats()
+    :ok
+  rescue
+    _error -> :ok
   end
 
   @doc """
@@ -123,21 +117,19 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.PriceCache do
   """
   @spec get_hot_items(pos_integer()) :: [map()]
   def get_hot_items(limit) when is_integer(limit) and limit > 0 do
-    try do
-      # Get all items and sort by access patterns
-      # For simplicity, return recent items (would need access tracking for real hot items)
-      now = System.system_time(:millisecond)
+    # Get all items and sort by access patterns
+    # For simplicity, return recent items (would need access tracking for real hot items)
+    now = System.system_time(:millisecond)
 
-      @cache_table
-      |> :ets.tab2list()
-      |> Enum.filter(fn {_type_id, _data, expires_at} -> expires_at > now end)
-      |> Enum.map(fn {type_id, data, _expires_at} ->
-        Map.put(data, :type_id, type_id)
-      end)
-      |> Enum.take(limit)
-    rescue
-      _error -> []
-    end
+    @cache_table
+    |> :ets.tab2list()
+    |> Enum.filter(fn {_type_id, _data, expires_at} -> expires_at > now end)
+    |> Enum.map(fn {type_id, data, _expires_at} ->
+      Map.put(data, :type_id, type_id)
+    end)
+    |> Enum.take(limit)
+  rescue
+    _error -> []
   end
 
   # GenServer callbacks

@@ -366,6 +366,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
         table_stats
         |> Enum.map(&calculate_table_health_score/1)
         |> Enum.sum()
+
       avg_score = total_score / length(table_stats)
 
       status =

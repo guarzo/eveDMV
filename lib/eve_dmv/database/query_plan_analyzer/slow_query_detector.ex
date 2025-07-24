@@ -276,9 +276,8 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
     if length(slow_queries) > 0 do
       hit_ratios =
         slow_queries
-
-      |> Enum.map(& &1.cache_hit_percent)
-      |> Enum.reject(&is_nil/1)
+        |> Enum.map(& &1.cache_hit_percent)
+        |> Enum.reject(&is_nil/1)
 
       %{
         avg_hit_ratio:

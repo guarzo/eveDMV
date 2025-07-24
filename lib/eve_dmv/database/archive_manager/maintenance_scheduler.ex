@@ -6,10 +6,12 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
   maintenance tasks to keep the archive system running efficiently.
   """
 
+  alias AM.ArchiveOperations
+  alias AM.PartitionManager
   alias Ecto.Adapters.SQL
   alias EveDmv.Database.ArchiveManager, as: AM
-  alias AM.{ArchiveOperations, PartitionManager}
   alias EveDmv.Repo
+  
   require Logger
 
   @doc """
@@ -409,11 +411,10 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
   defp get_storage_usage_summary(archive_policies) do
     total_archive_size =
       archive_policies
-
-    |> Enum.map(fn policy ->
-      PartitionManager.get_archive_table_size(policy.archive_table).total_size
-    end)
-    |> Enum.sum()
+      |> Enum.map(fn policy ->
+        PartitionManager.get_archive_table_size(policy.archive_table).total_size
+      end)
+      |> Enum.sum()
 
     %{
       total_archive_size_bytes: total_archive_size,
@@ -433,15 +434,12 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
   end
 
   defp generate_maintenance_recommendations(archive_policies) do
-    recommendations = []
-
-    recommendations = add_backlog_recommendation(recommendations, archive_policies)
-    recommendations = add_large_archive_recommendation(recommendations, archive_policies)
-
-    if Enum.empty?(recommendations) do
-      ["No maintenance recommendations at this time"]
-    else
-      recommendations
+    []
+    |> add_backlog_recommendation(archive_policies)
+    |> add_large_archive_recommendation(archive_policies)
+    |> case do
+      [] -> ["No maintenance recommendations at this time"]
+      recommendations -> recommendations
     end
   end
 

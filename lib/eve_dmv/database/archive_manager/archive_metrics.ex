@@ -443,8 +443,8 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveMetrics do
     low_health_tables =
       health_factors
       |> Enum.zip(archive_policies)
-    |> Enum.filter(fn {score, _policy} -> score < 60 end)
-    |> Enum.map(fn {_score, policy} -> policy.table end)
+      |> Enum.filter(fn {score, _policy} -> score < 60 end)
+      |> Enum.map(fn {_score, policy} -> policy.table end)
 
     recs_with_low_health =
       if length(low_health_tables) > 0 do

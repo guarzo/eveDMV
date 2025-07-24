@@ -5,8 +5,8 @@ defmodule EveDmv.Database.CorporationQueries do
   Uses efficient SQL queries to avoid expensive JSONB operations and N+1 query issues.
   """
 
-  alias EveDmv.Repo
   alias EveDmv.Cache.QueryCache
+  alias EveDmv.Repo
   require Logger
 
   @doc """
@@ -285,6 +285,7 @@ defmodule EveDmv.Database.CorporationQueries do
           rows
           |> Enum.map(fn [hour, count] -> {hour, count} end)
           |> Map.new()
+
         # Ensure all hours are represented
         0..23
         |> Enum.map(fn hour ->

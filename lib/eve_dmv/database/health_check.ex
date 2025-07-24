@@ -219,6 +219,7 @@ defmodule EveDmv.Database.HealthCheck do
       pool_info
       |> Enum.map(& &1.checkout_queue_length)
       |> Enum.sum()
+
     # Get pool size from config since it's not in the metrics
     pool_config = Application.get_env(:eve_dmv, EveDmv.Repo, [])
     pool_size = Keyword.get(pool_config, :pool_size, 10)

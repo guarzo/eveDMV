@@ -159,7 +159,6 @@ defmodule EveDmv.Database.QueryPerformance do
             index_benefit: calculate_index_benefit(n_distinct, correlation)
           }
         end)
-
         |> Enum.filter(&(&1.index_benefit > 0.5))
 
       _ ->

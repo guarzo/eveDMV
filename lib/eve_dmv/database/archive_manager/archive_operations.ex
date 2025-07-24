@@ -6,8 +6,8 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveOperations do
   and transaction safety for moving data between tables.
   """
 
-  alias EveDmv.Repo
   alias Ecto.Adapters.SQL
+  alias EveDmv.Repo
   require Logger
 
   @doc """
@@ -154,18 +154,16 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveOperations do
     # Prepare value placeholders
     value_placeholders =
       rows
+      |> Enum.with_index(1)
+      |> Enum.map_join(", ", fn {_row, index} ->
+        start_param = (index - 1) * length(columns) + 1
+        end_param = start_param + length(columns) - 1
 
-    |> Enum.with_index(1)
+        params = Enum.map(start_param..end_param, &"$#{&1}")
+        values = Enum.join(params, ", ")
 
-    |> Enum.map_join(", ", fn {_row, index} ->
-      start_param = (index - 1) * length(columns) + 1
-      end_param = start_param + length(columns) - 1
-
-      params = Enum.map(start_param..end_param, &"$#{&1}")
-      values = Enum.join(params, ", ")
-
-      "(#{values}, NOW(), '#{batch_id}', '#{policy.table}')"
-    end)
+        "(#{values}, NOW(), '#{batch_id}', '#{policy.table}')"
+      end)
 
     # Flatten all row values for parameters
     all_values = List.flatten(rows)

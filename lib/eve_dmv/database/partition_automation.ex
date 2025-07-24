@@ -168,6 +168,7 @@ defmodule EveDmv.Database.PartitionAutomation do
       |> Date.add(32)
       |> Date.beginning_of_month()
       |> Date.to_iso8601()
+
     {start_date, end_date}
   end
 

@@ -316,7 +316,9 @@ defmodule EveDmv.Database.IndexPerformanceVerifier do
     # Check for slow queries
     slow_queries =
       results
-      |> Enum.filter(&(&1[:metrics] && &1.metrics[:total_time_ms] && &1.metrics.total_time_ms > 100))
+      |> Enum.filter(
+        &(&1[:metrics] && &1.metrics[:total_time_ms] && &1.metrics.total_time_ms > 100)
+      )
 
     recommendations =
       if length(slow_queries) > 0 do

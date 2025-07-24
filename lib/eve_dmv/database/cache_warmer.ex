@@ -261,7 +261,7 @@ defmodule EveDmv.Database.CacheWarmer do
       # Jita 4-4
       11_202,
       # Jita system
-    60_003_760
+      60_003_760
     ]
 
     # Warm item type data
