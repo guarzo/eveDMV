@@ -253,7 +253,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.AcquisitionPlanner do
         end
       end)
 
-    |> Enum.reverse(selected)
+    Enum.reverse(selected)
   end
 
   defp determine_price_trend(missing_assets) do
