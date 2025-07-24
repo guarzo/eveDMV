@@ -123,9 +123,8 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.CorporationAnalyz
   def fetch_corporation_members(corporation_id) do
     members =
       CharacterStats
-
-    Ash.Query.filter(corporation_id: corporation_id)
-    Ash.read!(domain: Api)
+      |> Ash.Query.filter(corporation_id: corporation_id)
+      |> Ash.read!(domain: Api)
 
     case members do
       [_ | _] = members ->
