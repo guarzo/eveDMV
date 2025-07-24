@@ -990,8 +990,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
       # Check if peak times are within 2 hours of each other
       time_differences =
         peak_times
-
-      Enum.map(&Time.to_seconds_after_midnight/1) |> Enum.sort()
+        |> Enum.map(&Time.to_seconds_after_midnight/1)
+        |> Enum.sort()
       max_time = List.last(time_differences)
       min_time = List.first(time_differences)
 
@@ -1055,9 +1055,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
       variance =
         hourly_distribution
-
-      Enum.map(fn {_hour, count} -> :math.pow(count - mean_activity, 2) end) |> Enum.sum()
-      |> Kernel.div(24)
+        |> Enum.map(fn {_hour, count} -> :math.pow(count - mean_activity, 2) end) 
+        |> Enum.sum()
+        |> Kernel.div(24)
 
       :math.sqrt(variance)
     else
@@ -1139,10 +1139,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
     aggressor_corps =
       killmails
-
-    Enum.flat_map(&extract_aggressor_corps/1) |> Enum.frequencies()
-    |> Enum.sort_by(fn {_corp_id, count} -> count end, :desc)
-    |> Enum.take(5)
+      |> Enum.flat_map(&extract_aggressor_corps/1)
+      |> Enum.frequencies()
+      |> Enum.sort_by(fn {_corp_id, count} -> count end, :desc)
+      |> Enum.take(5)
 
     %{
       hostile_corporations: aggressor_corps,
@@ -1250,13 +1250,13 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
       numerator =
         Enum.zip(x_values, y_values)
-
-      Enum.map(fn {x, y} -> (x - x_mean) * (y - y_mean) end) |> Enum.sum()
+        |> Enum.map(fn {x, y} -> (x - x_mean) * (y - y_mean) end)
+        |> Enum.sum()
 
       denominator =
         x_values
-
-      Enum.map(fn x -> :math.pow(x - x_mean, 2) end) |> Enum.sum()
+        |> Enum.map(fn x -> :math.pow(x - x_mean, 2) end)
+        |> Enum.sum()
 
       if denominator > 0 do
         slope = numerator / denominator
@@ -1280,9 +1280,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
       variance =
         scores
-
-      Enum.map(fn score -> :math.pow(score - mean, 2) end) |> Enum.sum()
-      |> Kernel.div(Kernel.length(scores))
+        |> Enum.map(fn score -> :math.pow(score - mean, 2) end) 
+        |> Enum.sum()
+        |> Kernel.div(Kernel.length(scores))
 
       std_dev = :math.sqrt(variance)
 
@@ -1736,10 +1736,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Extract detailed pilot activity patterns
     pilot_data =
       killmails
-
-    Enum.flat_map(&extract_all_participants_from_killmail/1) |> Enum.frequencies()
-
-    |> Enum.map(fn {pilot_id, activity_count} ->
+      |> Enum.flat_map(&extract_all_participants_from_killmail/1)
+      |> Enum.frequencies()
+      |> Enum.map(fn {pilot_id, activity_count} ->
       pilot_killmails = Enum.filter(killmails, &pilot_participated_in_killmail?(&1, pilot_id))
 
       %{
@@ -1763,10 +1762,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Extract corporation activity patterns
     corp_data =
       killmails
-
-    Enum.flat_map(&extract_corp_ids_from_killmail/1) |> Enum.frequencies()
-
-    |> Enum.map(fn {corp_id, activity_count} ->
+      |> Enum.flat_map(&extract_corp_ids_from_killmail/1)
+      |> Enum.frequencies()
+      |> Enum.map(fn {corp_id, activity_count} ->
       corp_killmails = Enum.filter(killmails, &corp_participated_in_killmail?(&1, corp_id))
 
       %{
@@ -1790,9 +1788,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Extract ship type usage patterns
     ship_usage =
       killmails
-
-    Enum.flat_map(&extract_ship_types_from_killmail/1) |> Enum.frequencies()
-    |> Enum.sort_by(fn {_ship_type, count} -> count end, :desc)
+      |> Enum.flat_map(&extract_ship_types_from_killmail/1)
+      |> Enum.frequencies()
+      |> Enum.sort_by(fn {_ship_type, count} -> count end, :desc)
 
     %{
       ship_type_distribution: ship_usage,
@@ -3450,7 +3448,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     case killmails do
       [_first | _] ->
         killmails
-        Enum.map(& &1.killmail_time) |> Enum.min()
+        |> Enum.map(& &1.killmail_time) 
+        |> Enum.min()
 
       [] ->
         nil
@@ -3461,7 +3460,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     case killmails do
       [_ | _] ->
         killmails
-        Enum.map(& &1.killmail_time) |> Enum.max()
+        |> Enum.map(& &1.killmail_time) 
+        |> Enum.max()
 
       [] ->
         nil
