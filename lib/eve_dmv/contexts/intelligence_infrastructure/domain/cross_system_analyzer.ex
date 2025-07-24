@@ -1675,7 +1675,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     confidence_factors = [data_availability, chain_completeness, connection_quality]
 
     if length(confidence_factors) > 0 do
-      |> Enum.sum(confidence_factors) / length(confidence_factors)
+      Enum.sum(confidence_factors) / length(confidence_factors)
     else
       0.0
     end
@@ -2343,7 +2343,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
       end)
 
       if length(transitions) > 0 do
-        |> Enum.sum(transitions) / length(transitions)
+        Enum.sum(transitions) / length(transitions)
       else
         0
       end
@@ -3237,7 +3237,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     final_confidence_factors = [implications_confidence | diversity_confidence_factors]
 
     if length(final_confidence_factors) > 0 do
-      |> Enum.sum(final_confidence_factors) / length(final_confidence_factors)
+      Enum.sum(final_confidence_factors) / length(final_confidence_factors)
     else
       0.0
     end

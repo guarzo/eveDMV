@@ -288,8 +288,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     insights = activity_insights ++ threat_insights ++ movement_insights ++ cross_pattern_insights
 
     # Sort by priority/relevance
-    |> Enum.uniq(insights)
-
+    insights
+    |> Enum.uniq()
     |> Enum.take(10)
   end
 

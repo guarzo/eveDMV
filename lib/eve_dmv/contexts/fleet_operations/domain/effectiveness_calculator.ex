@@ -230,14 +230,14 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
     # Based on engagement duration efficiency and pilot performance
     avg_engagement_duration =
       if length(metrics.engagement_durations) > 0 do
-        |> Enum.sum(metrics.engagement_durations) / length(metrics.engagement_durations)
+        Enum.sum(metrics.engagement_durations) / length(metrics.engagement_durations)
       else
         0
       end
 
     avg_pilot_performance =
       if length(metrics.pilot_performance_scores) > 0 do
-        |> Enum.sum(metrics.pilot_performance_scores) / length(metrics.pilot_performance_scores)
+        Enum.sum(metrics.pilot_performance_scores) / length(metrics.pilot_performance_scores)
       else
         0.5
       end
@@ -395,20 +395,20 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
   defp calculate_total_damage_dealt(participants, killmails) do
     participant_ids = MapSet.new(participants, & &1.character_id)
 
-    |> Enum.sum(
-      Enum.map(killmails, fn killmail ->
-        # Sum damage dealt by fleet members in this killmail
-        Enum.sum(
-          Enum.map(killmail.attackers, fn attacker ->
-            if MapSet.member?(participant_ids, attacker.character_id) do
-              attacker.damage_done || 0
-            else
-              0
-            end
-          end)
-        )
-      end)
-    )
+    killmails
+    |> Enum.map(fn killmail ->
+      # Sum damage dealt by fleet members in this killmail
+      Enum.sum(
+        Enum.map(killmail.attackers, fn attacker ->
+          if MapSet.member?(participant_ids, attacker.character_id) do
+            attacker.damage_done || 0
+          else
+            0
+          end
+        end)
+      )
+    end)
+    |> Enum.sum()
   end
 
   defp analyze_fleet_coordination(participants, killmails) do
@@ -446,7 +446,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
 
     average_participation =
       if length(participation_rates) > 0 do
-        |> Enum.sum(participation_rates) / length(participation_rates)
+        Enum.sum(participation_rates) / length(participation_rates)
       else
         0.0
       end
@@ -481,7 +481,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
 
     sync_score =
       if length(kill_windows) > 0 do
-        |> Enum.sum(kill_windows) / length(kill_windows)
+        Enum.sum(kill_windows) / length(kill_windows)
       else
         0.0
       end
@@ -593,7 +593,8 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
     # Group by time buckets (simplified implementation)
     now = DateTime.utc_now()
 
-    |> Enum.group_by(engagements, fn engagement ->
+    engagements
+    |> Enum.group_by(fn engagement ->
       days_ago = DateTime.diff(now, engagement.timestamp, :day)
       div(days_ago, bucket_size)
     end)
@@ -693,9 +694,8 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
     else
       time_gaps =
         loss_times
-
-      |> Enum.zip(tl(loss_times))
-      |> Enum.map(fn {t1, t2} -> DateTime.diff(t2, t1, :second) end)
+        |> Enum.zip(tl(loss_times))
+        |> Enum.map(fn {t1, t2} -> DateTime.diff(t2, t1, :second) end)
 
       avg_gap = Enum.sum(time_gaps) / length(time_gaps)
 
@@ -713,12 +713,10 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
     total_losses = Enum.sum(Map.values(lost_ship_types))
 
     lost_ship_types
-
     |> Enum.filter(fn {_ship_type, count} ->
       # Ship types representing >30% of losses
       count / total_losses > 0.3
     end)
-
     |> Enum.map(fn {ship_type, count} ->
       %{ship_type: ship_type, losses: count, percentage: count / total_losses * 100}
     end)
@@ -727,11 +725,10 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
   defp analyze_damage_patterns(fleet_losses) do
     damage_sources =
       fleet_losses
-
-    |> Enum.flat_map(fn loss ->
-      Enum.map(loss.attackers, & &1.weapon_type_id)
-    end)
-    |> Enum.frequencies()
+      |> Enum.flat_map(fn loss ->
+        Enum.map(loss.attackers, & &1.weapon_type_id)
+      end)
+      |> Enum.frequencies()
 
     %{
       common_damage_sources: damage_sources,
@@ -830,7 +827,8 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
   defp calculate_capability_reduction(role_impact, participants) do
     _total_participants = length(participants)
 
-    |> Enum.reduce(role_impact, %{}, fn {role, losses}, acc ->
+    role_impact
+    |> Enum.reduce(%{}, fn {role, losses}, acc ->
       current_role_count =
         Enum.count(participants, fn p ->
           determine_ship_role(p.ship_type_id) == role

@@ -355,7 +355,7 @@ defmodule EveDmv.Contexts.FleetOperations.Api do
   defp validate_ship_requirements(ship_requirements) when is_map(ship_requirements) do
     if map_size(ship_requirements) > 0 do
       # Validate each ship requirement entry
-      |> Enum.reduce_while(ship_requirements, :ok, fn {ship_type_id, requirement}, :ok ->
+      Enum.reduce_while(ship_requirements, :ok, fn {ship_type_id, requirement}, :ok ->
         case validate_ship_requirement(ship_type_id, requirement) do
           :ok -> {:cont, :ok}
           {:error, reason} -> {:halt, {:error, {ship_type_id, reason}}}

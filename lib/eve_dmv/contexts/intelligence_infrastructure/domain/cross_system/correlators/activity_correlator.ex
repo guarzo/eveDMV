@@ -180,7 +180,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     killmails = Repo.all(query)
 
     # Group by system
-    |> Enum.group_by(killmails, & &1.solar_system_id)
+    killmails
+    |> Enum.group_by(& &1.solar_system_id)
   rescue
     error ->
       Logger.error("Failed to fetch systems activity data: #{inspect(error)}")
@@ -367,12 +368,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       # Group systems that are all correlated with each other
       systems =
         strong_correlations
+        |> Enum.flat_map(fn {{s1, s2}, _} -> [s1, s2] end)
+        |> Enum.uniq()
 
-      Enum.flat_map(fn {{s1, s2}, _} -> [s1, s2] end) |> Enum.uniq()
       # Find fully connected clusters
       clusters = find_connected_components(systems, strong_correlations)
 
-      |> Enum.map(clusters, fn cluster ->
+      clusters
+      |> Enum.map(fn cluster ->
         %{
           systems: cluster,
           size: length(cluster),
@@ -791,7 +794,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       new_visited = MapSet.put(visited, system)
       neighbors = Map.get(correlation_map, system, [])
 
-      |> Enum.reduce(neighbors, new_visited, fn neighbor, acc ->
+      Enum.reduce(neighbors, new_visited, fn neighbor, acc ->
         find_cluster(neighbor, correlation_map, acc)
       end)
     end
@@ -945,9 +948,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   defp categorize_daily_pattern(peak_hours) do
     # Categorize the daily activity pattern
     cond do
-      |> Enum.all?(peak_hours, fn h -> h >= 16 and h <= 23 end) -> :evening_peak
-      |> Enum.all?(peak_hours, fn h -> h >= 8 and h <= 16 end) -> :day_peak
-      |> Enum.all?(peak_hours, fn h -> h >= 0 and h <= 8 end) -> :night_peak
+      Enum.all?(peak_hours, fn h -> h >= 16 and h <= 23 end) -> :evening_peak
+      Enum.all?(peak_hours, fn h -> h >= 8 and h <= 16 end) -> :day_peak
+      Enum.all?(peak_hours, fn h -> h >= 0 and h <= 8 end) -> :night_peak
       true -> :distributed
     end
   end

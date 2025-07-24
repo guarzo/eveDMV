@@ -36,9 +36,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     else
       covered_systems =
         intel_data
-
-      Map.get(:coverage_map, %{}) |> Map.keys()
-      |> Enum.count(fn system_id -> system_id in system_ids end)
+        |> Map.get(:coverage_map, %{})
+        |> Map.keys()
+        |> Enum.count(fn system_id -> system_id in system_ids end)
 
       covered_systems / length(system_ids) * 100.0
     end
@@ -53,12 +53,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     else
       correlation_scores =
         shared_intel
+        |> Enum.map(fn intel_item ->
+          Map.get(intel_item, :reliability_score, 0.5)
+        end)
 
-      |> Enum.map(fn intel_item ->
-        Map.get(intel_item, :reliability_score, 0.5)
-      end)
-
-      |> Enum.sum(correlation_scores) / length(correlation_scores)
+      Enum.sum(correlation_scores) / length(correlation_scores)
     end
   end
 
@@ -442,7 +441,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   defp is_strategic_target(killmail) do
     strategic_ships = ["Logistics", "Command", "Capital", "Supercarrier", "Titan", "Dreadnought"]
 
-    |> Enum.any?(strategic_ships, fn ship_type ->
+    Enum.any?(strategic_ships, fn ship_type ->
       killmail.victim_ship_name && String.contains?(killmail.victim_ship_name, ship_type)
     end)
   end

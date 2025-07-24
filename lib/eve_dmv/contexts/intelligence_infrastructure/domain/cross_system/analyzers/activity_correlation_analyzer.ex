@@ -637,7 +637,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
         end)
 
       if length(similarities) > 0 do
-        |> Enum.sum(similarities) / length(similarities)
+        Enum.sum(similarities) / length(similarities)
       else
         0.0
       end
@@ -776,7 +776,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
       avg_activity =
         if length(hourly_activity) > 0 do
-          |> Enum.sum(hourly_activity) / length(hourly_activity)
+          Enum.sum(hourly_activity) / length(hourly_activity)
         else
           0
         end

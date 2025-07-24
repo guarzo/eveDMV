@@ -325,7 +325,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     killmails = Repo.all(query)
 
     # Group by system
-    |> Enum.group_by(killmails, & &1.solar_system_id)
+    killmails
+    |> Enum.group_by(& &1.solar_system_id)
   rescue
     error ->
       Logger.error("Failed to fetch threat data: #{inspect(error)}")
@@ -617,10 +618,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
   defp predict_escalation_trajectory(indicators) do
     cond do
-      |> Enum.empty?(indicators) -> :stable
+      Enum.empty?(indicators) -> :stable
       length(Enum.filter(indicators, &(&1.severity == :high))) > 1 -> :rapid_escalation
-      |> Enum.any?(indicators, &(&1.type == :geographic_expansion)) -> :expanding
-      |> Enum.any?(indicators, &(&1.type == :larger_fleets)) -> :intensifying
+      Enum.any?(indicators, &(&1.type == :geographic_expansion)) -> :expanding
+      Enum.any?(indicators, &(&1.type == :larger_fleets)) -> :intensifying
       true -> :gradual_escalation
     end
   end

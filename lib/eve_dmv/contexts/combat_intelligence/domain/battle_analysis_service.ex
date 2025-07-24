@@ -1183,9 +1183,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       # Get the most common flow type
       dominant_flow =
         flow_type_counts
-
-      |> Enum.max_by(fn {_type, count} -> count end, fn -> {:stable, 0} end)
-      elem(0)
+        |> Enum.max_by(fn {_type, count} -> count end, fn -> {:stable, 0} end)
+        |> elem(0)
 
       # Check for patterns
       cond do
@@ -4904,7 +4903,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
         "Watch for enemy tackle"
       ]
     else
-      |> Enum.uniq(base_actions)
+      base_actions |> Enum.uniq()
     end
   end
 end

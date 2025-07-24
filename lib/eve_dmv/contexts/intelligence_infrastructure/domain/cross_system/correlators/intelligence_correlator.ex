@@ -783,7 +783,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     else
       freshness_scores = Enum.map(quality_metrics, &calculate_system_freshness_score/1)
 
-      |> Enum.sum(freshness_scores) / length(freshness_scores)
+      Enum.sum(freshness_scores) / length(freshness_scores)
     end
   end
 
@@ -794,7 +794,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     else
       completeness_scores = Enum.map(quality_metrics, &calculate_system_completeness_score/1)
 
-      |> Enum.sum(completeness_scores) / length(completeness_scores)
+      Enum.sum(completeness_scores) / length(completeness_scores)
     end
   end
 
@@ -805,7 +805,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     else
       reliability_scores = Enum.map(quality_metrics, &calculate_system_reliability_score/1)
 
-      |> Enum.sum(reliability_scores) / length(reliability_scores)
+      Enum.sum(reliability_scores) / length(reliability_scores)
     end
   end
 

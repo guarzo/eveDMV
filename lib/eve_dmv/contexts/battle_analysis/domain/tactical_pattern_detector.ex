@@ -631,9 +631,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
       victim_groups =
         sorted_killmails
         |> Enum.group_by(& &1.victim_character_id)
-      |> Enum.sort_by(fn {_victim_id, kms} ->
-        List.first(kms).killmail_time
-      end)
+        |> Enum.sort_by(fn {_victim_id, kms} ->
+          List.first(kms).killmail_time
+        end)
 
       # Look for coordinated switches between consecutive victim groups
       victim_groups
@@ -725,9 +725,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
       Enum.map(time_windows, fn {window_start, window_kms} ->
         attacker_count =
           window_kms
-
-        |> Enum.flat_map(&get_attackers_from_killmail/1)
-        Enum.uniq_by(& &1["character_id"]) |> Kernel.length()
+          |> Enum.flat_map(&get_attackers_from_killmail/1)
+          |> Enum.uniq_by(& &1["character_id"])
+          |> Kernel.length()
 
         damage_total =
           window_kms
@@ -944,8 +944,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
     # Analyze kills to determine dominant tactic
     ship_types =
       extract_all_ship_types(phase_killmails)
-
-    Enum.map(&categorize_ship_role/1) |> Enum.frequencies()
+      |> Enum.map(&categorize_ship_role/1)
+      |> Enum.frequencies()
     # Determine tactic based on ship composition and kill patterns
     cond do
       Map.get(ship_types, :interdiction, 0) > length(phase_killmails) * 0.2 -> :bubble_camp

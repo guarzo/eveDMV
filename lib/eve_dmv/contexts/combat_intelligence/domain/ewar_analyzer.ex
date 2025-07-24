@@ -245,7 +245,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
   defp detect_ewar_types(ship_name) do
     normalized_name = String.downcase(ship_name)
 
-    |> Enum.reduce(@ewar_ships, [], fn {ewar_type, ships}, acc ->
+    @ewar_ships
+    |> Enum.reduce([], fn {ewar_type, ships}, acc ->
       all_ships =
         List.flatten([
           Map.get(ships, :t1, []),
@@ -671,7 +672,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
 
     missing = MapSet.difference(all_types, present_types)
 
-    |> Enum.map(missing, fn type ->
+    missing
+    |> Enum.map(fn type ->
       %{
         type: type,
         impact: assess_gap_impact(type),
@@ -760,7 +762,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
       end
 
     if type_id do
-      |> Enum.any?(@ewar_modules, fn {_type, ids} -> type_id in ids end)
+      Enum.any?(@ewar_modules, fn {_type, ids} -> type_id in ids end)
     else
       false
     end
@@ -856,7 +858,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
       if Enum.empty?(multipliers) do
         1.0
       else
-        |> Enum.reduce(multipliers, 1.0, &*/2)
+        Enum.reduce(multipliers, 1.0, &*/2)
       end
 
     round(base * final_multiplier)

@@ -270,7 +270,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
 
     if length(values) > 0 do
       # Rough conversion
-      |> Enum.sum(values) / length(values) * 10_000
+      Enum.sum(values) / length(values) * 10_000
     else
       0
     end
