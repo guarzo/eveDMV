@@ -350,8 +350,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer do
       "SET log_lock_waits = on"
     ]
 
-    queries
-    |> Enum.each(fn query ->
+    Enum.each(queries, fn query ->
       case SQL.query(Repo, query, []) do
         {:ok, _} ->
           :ok

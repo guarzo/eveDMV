@@ -138,7 +138,7 @@ defmodule EveDmv.Database.IndexPerformanceVerifier do
       result = Repo.query!(query)
 
       # Parse EXPLAIN output
-      explain_text = result.rows(List.flatten() |> Enum.join("\n"))
+      explain_text = result.rows |> List.flatten() |> Enum.join("\n")
 
       # Check if expected index is used
       index_used = String.contains?(explain_text, expected_index)
@@ -316,8 +316,7 @@ defmodule EveDmv.Database.IndexPerformanceVerifier do
     # Check for slow queries
     slow_queries =
       results
-
-    |> Enum.filter(&(&1[:metrics] && &1.metrics[:total_time_ms] && &1.metrics.total_time_ms > 100))
+      |> Enum.filter(&(&1[:metrics] && &1.metrics[:total_time_ms] && &1.metrics.total_time_ms > 100))
 
     recommendations =
       if length(slow_queries) > 0 do
@@ -332,8 +331,7 @@ defmodule EveDmv.Database.IndexPerformanceVerifier do
     # Check for sequential scans
     seq_scan_queries =
       results
-
-    |> Enum.filter(&(&1[:metrics] && &1.metrics[:has_sequential_scan]))
+      |> Enum.filter(&(&1[:metrics] && &1.metrics[:has_sequential_scan]))
 
     recommendations =
       if length(seq_scan_queries) > 0 do

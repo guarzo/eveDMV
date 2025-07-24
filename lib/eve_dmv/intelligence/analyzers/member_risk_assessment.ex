@@ -178,7 +178,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberRiskAssessment do
         _ -> solo_indicators
       end
 
-    |> Enum.reverse(final_indicators)
+    Enum.reverse(final_indicators)
   end
 
   @doc """

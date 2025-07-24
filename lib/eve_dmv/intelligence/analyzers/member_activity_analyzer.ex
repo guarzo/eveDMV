@@ -754,7 +754,8 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
         |> Enum.map(fn {trend, count} -> %{factor: "#{trend}_trend", occurrence_count: count} end)
 
       # Convert to map structure with factor names as keys
-      |> Enum.reduce(all_warning_signs ++ trends, %{}, fn %{factor: factor, occurrence_count: count},
+      (all_warning_signs ++ trends)
+      |> Enum.reduce(%{}, fn %{factor: factor, occurrence_count: count},
                                                        acc ->
         Map.put(acc, factor, count)
       end)

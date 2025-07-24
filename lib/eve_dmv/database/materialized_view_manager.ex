@@ -118,8 +118,9 @@ defmodule EveDmv.Database.MaterializedViewManager do
 
   def handle_info(:scheduled_refresh, state) do
     {refreshed_views, new_stats} =
-      ViewRefreshScheduler.refresh_all_views(state.views, state.refresh_stats)
-      |> ViewRefreshScheduler.schedule_refresh()
+      ViewRefreshScheduler.schedule_refresh(
+        ViewRefreshScheduler.refresh_all_views(state.views, state.refresh_stats)
+      )
 
     new_state = %{
       state
@@ -133,8 +134,9 @@ defmodule EveDmv.Database.MaterializedViewManager do
 
   def handle_info(:incremental_refresh, state) do
     refreshed_views =
-      ViewRefreshScheduler.perform_incremental_refreshes(state.views)
-      |> ViewRefreshScheduler.schedule_incremental_refresh()
+      ViewRefreshScheduler.schedule_incremental_refresh(
+        ViewRefreshScheduler.perform_incremental_refreshes(state.views)
+      )
 
     new_state = %{state | views: Map.merge(state.views, refreshed_views)}
     {:noreply, new_state}

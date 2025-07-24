@@ -6,11 +6,11 @@ defmodule EveDmv.Database.SurveillanceRepository do
   and related data with proper preloading and caching.
   """
 
-  alias EveDmv.Cache
-  require Logger
-
   alias EveDmv.Api.SurveillanceApi
+  alias EveDmv.Cache
   alias EveDmv.Surveillance.Profile
+
+  require Logger
 
   @cache_type :hot_data
 

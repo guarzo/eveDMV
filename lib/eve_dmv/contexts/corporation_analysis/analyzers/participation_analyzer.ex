@@ -856,9 +856,9 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
     else
       avg_consistency =
         member_analyses
-
-      Enum.map(& &1.consistency_score) |> Enum.sum()
-      Kernel./(length(member_analyses))
+        |> Enum.map(& &1.consistency_score)
+        |> Enum.sum()
+        |> Kernel./(length(member_analyses))
 
       Float.round(avg_consistency, 2)
     end

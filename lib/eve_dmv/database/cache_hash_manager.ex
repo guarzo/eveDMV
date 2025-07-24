@@ -500,7 +500,7 @@ defmodule EveDmv.Database.CacheHashManager do
           %{"attackers" => attackers} when is_list(attackers) -> length(attackers)
           _ -> 0
         end,
-      total_value: Map.get(killmail.raw_data || %{}, "zkb", %{}) |> Map.get("totalValue", 0)
+      total_value: killmail.raw_data || %{} |> Map.get("zkb", %{}) |> Map.get("totalValue", 0)
     }
 
     # Create deterministic hash

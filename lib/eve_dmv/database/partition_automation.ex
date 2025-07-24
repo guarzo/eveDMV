@@ -21,9 +21,8 @@ defmodule EveDmv.Database.PartitionAutomation do
     Logger.info("Creating partitions for next #{months_ahead} months")
 
     results =
-      0..(months_ahead - 1)
-      |> Enum.map(fn month_offset ->
-        target_date = Date.utc_today() |> Date.add(month_offset * 30)
+      Enum.map(0..(months_ahead - 1), fn month_offset ->
+        target_date = Date.add(Date.utc_today(), month_offset * 30)
         create_partition_for_month(target_date)
       end)
 
@@ -67,7 +66,7 @@ defmodule EveDmv.Database.PartitionAutomation do
   @spec cleanup_old_partitions(pos_integer()) ::
           {:ok, {pos_integer(), [String.t()]}} | {:error, any()}
   def cleanup_old_partitions(retention_months \\ 12) do
-    cutoff_date = Date.utc_today() |> Date.add(-retention_months * 30)
+    cutoff_date = Date.add(Date.utc_today(), -retention_months * 30)
     Logger.info("Cleaning up partitions older than #{cutoff_date} (#{retention_months} months)")
 
     try do
@@ -109,7 +108,7 @@ defmodule EveDmv.Database.PartitionAutomation do
         stats =
           rows
           |> Enum.map(fn row ->
-            Enum.zip(columns, row) |> Enum.into(%{})
+            columns |> Enum.zip(row) |> Enum.into(%{})
           end)
 
         summary = %{

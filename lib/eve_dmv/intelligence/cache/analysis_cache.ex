@@ -131,7 +131,8 @@ defmodule EveDmv.Intelligence.Cache.AnalysisCache do
       {:member_activity, character_id}
     ]
 
-    |> Enum.each(patterns, fn pattern ->
+    patterns
+    |> Enum.each(fn pattern ->
       Cache.delete(:analysis, pattern)
     end)
 

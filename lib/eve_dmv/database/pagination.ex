@@ -155,13 +155,13 @@ defmodule EveDmv.Database.Pagination do
     page =
       case params["page"] do
         nil -> 1
-        page_str -> String.to_integer(page_str) |> Kernel.max(1)
+        page_str -> max(String.to_integer(page_str), 1)
       end
 
     page_size =
       case params["page_size"] do
         nil -> @default_page_size
-        size_str -> String.to_integer(size_str) |> Kernel.min(@max_page_size) |> Kernel.max(1)
+        size_str -> String.to_integer(size_str) |> min(@max_page_size) |> max(1)
       end
 
     %{page: page, page_size: page_size}

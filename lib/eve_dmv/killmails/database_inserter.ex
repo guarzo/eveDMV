@@ -99,7 +99,7 @@ defmodule EveDmv.Killmails.DatabaseInserter do
   def valid_participant?(participant) when is_map(participant) do
     required_fields = [:killmail_id, :killmail_time, :ship_type_id]
 
-    |> Enum.all?(required_fields, fn field ->
+    Enum.all?(required_fields, fn field ->
       value = Map.get(participant, field)
       not is_nil(value) and value != ""
     end)
@@ -195,16 +195,14 @@ defmodule EveDmv.Killmails.DatabaseInserter do
   # Deduplication helpers
 
   defp deduplicate_killmails(raw_changesets) do
-    raw_changesets
-    |> Enum.uniq_by(fn changeset ->
+    Enum.uniq_by(raw_changesets, fn changeset ->
       # Deduplicate by killmail_id to prevent constraint violations
       Map.get(changeset, :killmail_id)
     end)
   end
 
   defp deduplicate_participants(participants) do
-    participants
-    |> Enum.uniq_by(fn participant ->
+    Enum.uniq_by(participants, fn participant ->
       # Deduplicate by unique combination that matches the actual constraint:
       # unique_participant_per_killmail: [:killmail_id, :killmail_time, :character_id, :ship_type_id]
       {

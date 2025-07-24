@@ -16,7 +16,7 @@ defmodule EveDmv.Database.ArchiveManager.PartitionManager do
   def initialize_all_archive_tables(archive_policies) do
     Logger.info("Initializing archive tables")
 
-    |> Enum.each(archive_policies, fn policy ->
+    Enum.each(archive_policies, fn policy ->
       case ensure_archive_table_exists(policy) do
         :ok ->
           Logger.info("Archive table #{policy.archive_table} ready")
@@ -106,8 +106,7 @@ defmodule EveDmv.Database.ArchiveManager.PartitionManager do
       "ADD COLUMN IF NOT EXISTS original_table_name VARCHAR(255)"
     ]
 
-    columns
-    |> Enum.each(fn column_def ->
+    Enum.each(columns, fn column_def ->
       sql = "ALTER TABLE #{archive_table} #{column_def}"
 
       case SQL.query(Repo, sql, []) do
@@ -130,8 +129,7 @@ defmodule EveDmv.Database.ArchiveManager.PartitionManager do
       "CREATE INDEX IF NOT EXISTS idx_#{archive_table}_date ON #{archive_table} (#{policy.date_column})"
     ]
 
-    indexes
-    |> Enum.each(fn index_sql ->
+    Enum.each(indexes, fn index_sql ->
       case SQL.query(Repo, index_sql, []) do
         {:ok, _} ->
           :ok
@@ -285,7 +283,8 @@ defmodule EveDmv.Database.ArchiveManager.PartitionManager do
   defp compare_column_structures(source_columns, archive_columns) do
     # Simple comparison - in practice you'd want more sophisticated matching
     length(source_columns) == length(archive_columns) and
-      Enum.zip(source_columns, archive_columns)
+      source_columns
+      |> Enum.zip(archive_columns)
       |> Enum.all?(fn {source, archive} ->
         source.name == archive.name and source.type == archive.type
       end)

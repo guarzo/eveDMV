@@ -215,48 +215,41 @@ defmodule EveDmv.Intelligence.CharacterStats do
             {:ok, updated_stats} ->
               # Update changeset with fresh statistics
               changeset
-              Ash.Changeset.change_attribute(:total_kills, updated_stats.total_kills)
-              Ash.Changeset.change_attribute(:total_losses, updated_stats.total_losses)
-              Ash.Changeset.change_attribute(:solo_kills, updated_stats.solo_kills)
-              Ash.Changeset.change_attribute(:solo_losses, updated_stats.solo_losses)
-              Ash.Changeset.change_attribute(:ship_usage, updated_stats.ship_usage)
-
-              Ash.Changeset.change_attribute(
+              |> Ash.Changeset.change_attribute(:total_kills, updated_stats.total_kills)
+              |> Ash.Changeset.change_attribute(:total_losses, updated_stats.total_losses)
+              |> Ash.Changeset.change_attribute(:solo_kills, updated_stats.solo_kills)
+              |> Ash.Changeset.change_attribute(:solo_losses, updated_stats.solo_losses)
+              |> Ash.Changeset.change_attribute(:ship_usage, updated_stats.ship_usage)
+              |> Ash.Changeset.change_attribute(
                 :frequent_associates,
                 updated_stats.frequent_associates
               )
-
-              Ash.Changeset.change_attribute(:active_systems, updated_stats.active_systems)
-              Ash.Changeset.change_attribute(:target_profile, updated_stats.target_profile)
-              Ash.Changeset.change_attribute(:aggression_index, updated_stats.aggression_index)
-              Ash.Changeset.change_attribute(:avg_gang_size, updated_stats.avg_gang_size)
-              Ash.Changeset.change_attribute(:prime_timezone, updated_stats.prime_timezone)
-              Ash.Changeset.change_attribute(:home_system_id, updated_stats.home_system_id)
-              Ash.Changeset.change_attribute(:home_system_name, updated_stats.home_system_name)
-              Ash.Changeset.change_attribute(:uses_cynos, updated_stats.uses_cynos)
-              Ash.Changeset.change_attribute(:flies_capitals, updated_stats.flies_capitals)
-              Ash.Changeset.change_attribute(:has_logi_support, updated_stats.has_logi_support)
-
-              Ash.Changeset.change_attribute(
+              |> Ash.Changeset.change_attribute(:active_systems, updated_stats.active_systems)
+              |> Ash.Changeset.change_attribute(:target_profile, updated_stats.target_profile)
+              |> Ash.Changeset.change_attribute(:aggression_index, updated_stats.aggression_index)
+              |> Ash.Changeset.change_attribute(:avg_gang_size, updated_stats.avg_gang_size)
+              |> Ash.Changeset.change_attribute(:prime_timezone, updated_stats.prime_timezone)
+              |> Ash.Changeset.change_attribute(:home_system_id, updated_stats.home_system_id)
+              |> Ash.Changeset.change_attribute(:home_system_name, updated_stats.home_system_name)
+              |> Ash.Changeset.change_attribute(:uses_cynos, updated_stats.uses_cynos)
+              |> Ash.Changeset.change_attribute(:flies_capitals, updated_stats.flies_capitals)
+              |> Ash.Changeset.change_attribute(:has_logi_support, updated_stats.has_logi_support)
+              |> Ash.Changeset.change_attribute(
                 :batphone_probability,
                 updated_stats.batphone_probability
               )
-
-              Ash.Changeset.change_attribute(:isk_efficiency, updated_stats.isk_efficiency)
-              Ash.Changeset.change_attribute(:kill_death_ratio, updated_stats.kill_death_ratio)
-              Ash.Changeset.change_attribute(:dangerous_rating, updated_stats.dangerous_rating)
-
-              Ash.Changeset.change_attribute(
+              |> Ash.Changeset.change_attribute(:isk_efficiency, updated_stats.isk_efficiency)
+              |> Ash.Changeset.change_attribute(:kill_death_ratio, updated_stats.kill_death_ratio)
+              |> Ash.Changeset.change_attribute(:dangerous_rating, updated_stats.dangerous_rating)
+              |> Ash.Changeset.change_attribute(
                 :identified_weaknesses,
                 updated_stats.identified_weaknesses
               )
-
-              Ash.Changeset.change_attribute(
+              |> Ash.Changeset.change_attribute(
                 :data_completeness,
                 updated_stats.data_completeness
               )
-
-              Ash.Changeset.change_attribute(:last_calculated_at, DateTime.utc_now())
+              |> Ash.Changeset.change_attribute(:last_calculated_at, DateTime.utc_now())
 
             {:error, _reason} ->
               # If analysis fails, just update the timestamp

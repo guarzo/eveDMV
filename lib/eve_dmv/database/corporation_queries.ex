@@ -283,11 +283,10 @@ defmodule EveDmv.Database.CorporationQueries do
         # Convert to map for easy lookup
         activity_map =
           rows
-
-        Enum.map(fn [hour, count] -> {hour, count} end) |> Map.new()
+          |> Enum.map(fn [hour, count] -> {hour, count} end)
+          |> Map.new()
         # Ensure all hours are represented
         0..23
-
         |> Enum.map(fn hour ->
           %{
             hour: hour,

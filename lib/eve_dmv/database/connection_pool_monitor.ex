@@ -89,8 +89,7 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
     alerts = check_for_alerts(stats)
 
     # Log alerts
-    alerts
-    |> Enum.each(fn alert ->
+    Enum.each(alerts, fn alert ->
       Logger.warning("Connection pool alert: #{alert.message}")
     end)
 

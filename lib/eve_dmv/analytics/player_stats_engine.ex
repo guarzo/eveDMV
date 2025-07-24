@@ -73,7 +73,7 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
     Task.async_stream(
       fn {batch, idx} ->
         Logger.debug("Processing #{type} batch #{idx}")
-        |> Enum.each(batch, fun)
+        Enum.each(batch, fun)
       end,
       max_concurrency: System.schedulers_online(),
       ordered: false

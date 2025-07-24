@@ -82,7 +82,8 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityDataCollector do
                 p.character_id == character_id
               end)
 
-            |> Enum.map(character_participants, fn participant ->
+            character_participants
+            |> Enum.map(fn participant ->
               %{
                 killmail_id: killmail.killmail_id,
                 killmail_time: killmail.killmail_time,

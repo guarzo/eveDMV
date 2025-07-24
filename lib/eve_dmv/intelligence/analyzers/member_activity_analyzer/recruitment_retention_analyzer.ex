@@ -145,7 +145,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.RecruitmentRetent
     final_factors =
       if communication_score < 10, do: [:low_communication | fleet_factors], else: fleet_factors
 
-    |> Enum.reverse(final_factors)
+    Enum.reverse(final_factors)
   end
 
   defp classify_risk_level(risk_score) do
@@ -250,7 +250,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.RecruitmentRetent
     if final_actions == [] do
       ["Continue monitoring"]
     else
-      |> Enum.reverse(final_actions)
+      Enum.reverse(final_actions)
     end
   end
 

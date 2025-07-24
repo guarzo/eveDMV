@@ -17,7 +17,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.BehavioralScoring do
       get_activity_consistency(behavioral_analysis)
     ]
 
-    |> Enum.sum(stability_factors) / length(stability_factors)
+    Enum.sum(stability_factors) / length(stability_factors)
   end
 
   @doc """
@@ -31,7 +31,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.BehavioralScoring do
       assess_commitment_level(stats)
     ]
 
-    |> Enum.sum(reliability_factors) / length(reliability_factors)
+    Enum.sum(reliability_factors) / length(reliability_factors)
   end
 
   @doc """

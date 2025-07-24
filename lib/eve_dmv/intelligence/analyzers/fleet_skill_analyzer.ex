@@ -144,21 +144,20 @@ defmodule EveDmv.Intelligence.Analyzers.FleetSkillAnalyzer do
       }
   """
   def calculate_role_shortfalls(doctrine_template, available_pilots) do
-    role_requirements_list =
-      Enum.map(doctrine_template, fn {role, role_data} ->
-        required_skills = role_data["skills_required"] || []
-        qualified_pilots = count_qualified_pilots_for_role(available_pilots, required_skills)
-        required_count = role_data["required"] || 1
-        shortage = max(0, required_count - qualified_pilots)
+    doctrine_template
+    |> Enum.map(fn {role, role_data} ->
+      required_skills = role_data["skills_required"] || []
+      qualified_pilots = count_qualified_pilots_for_role(available_pilots, required_skills)
+      required_count = role_data["required"] || 1
+      shortage = max(0, required_count - qualified_pilots)
 
-        {role,
-         %{
-           "shortage" => shortage,
-           "qualified_pilots" => qualified_pilots
-         }}
-      end)
-
-    |> Enum.into(role_requirements_list, %{})
+      {role,
+       %{
+         "shortage" => shortage,
+         "qualified_pilots" => qualified_pilots
+       }}
+    end)
+    |> Enum.into(%{})
   end
 
   @doc """

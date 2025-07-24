@@ -219,7 +219,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.SystemInhabitantsManager do
     # Bulk update all inhabitants to mark as departed
     departure_time = DateTime.utc_now()
 
-    |> Enum.each(inhabitants, fn inhabitant ->
+    Enum.each(inhabitants, fn inhabitant ->
       Ash.update!(inhabitant, %{present: false, departure_time: departure_time}, domain: Api)
     end)
   end

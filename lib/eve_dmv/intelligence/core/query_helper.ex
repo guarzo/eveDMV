@@ -193,15 +193,17 @@ defmodule EveDmv.Intelligence.Core.QueryHelper do
   defp get_first_activity_date([]), do: nil
 
   defp get_first_activity_date(killmails) do
-    killmail_times = Enum.map(killmails, & &1.killmail_time)
-    |> Enum.min(killmail_times, DateTime)
+    killmails
+    |> Enum.map(& &1.killmail_time)
+    |> Enum.min(DateTime)
   end
 
   defp get_last_activity_date([]), do: nil
 
   defp get_last_activity_date(killmails) do
-    killmail_times = Enum.map(killmails, & &1.killmail_time)
-    |> Enum.max(killmail_times, DateTime)
+    killmails
+    |> Enum.map(& &1.killmail_time)
+    |> Enum.max(DateTime)
   end
 
   defp count_unique_systems(killmails) do
@@ -222,7 +224,7 @@ defmodule EveDmv.Intelligence.Core.QueryHelper do
     killmails
     |> Enum.filter(fn km ->
       km.victim_character_id == entity_id or
-        |> Enum.any?(km.attackers || [], &(&1.character_id == entity_id))
+        Enum.any?(km.attackers || [], &(&1.character_id == entity_id))
     end)
     |> Enum.map(fn km ->
       if km.victim_character_id == entity_id do

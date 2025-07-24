@@ -208,7 +208,7 @@ defmodule EveDmv.Database.IncrementalViewRefresher do
   # Specific refresh implementations
 
   def refresh_character_activity(last_refresh) do
-    cutoff_time = last_refresh || DateTime.add(DateTime.utc_now(), -86400, :second)
+    cutoff_time = last_refresh || DateTime.add(DateTime.utc_now(), -86_400, :second)
 
     sql = """
     WITH recent_kills AS (
