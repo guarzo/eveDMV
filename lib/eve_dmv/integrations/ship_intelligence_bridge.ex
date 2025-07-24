@@ -108,10 +108,10 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
       enhanced_tactical = enhance_tactical_analysis(ship_perf, enhanced_role)
 
       ship_perf
-      Map.put(:enhanced_role_classification, enhanced_role)
-      Map.put(:role_execution_score, role_execution_score)
-      Map.put(:doctrine_compliance, doctrine_compliance)
-      Map.update(:tactical_analysis, enhanced_tactical, &Map.merge(&1, enhanced_tactical))
+      |> Map.put(:enhanced_role_classification, enhanced_role)
+      |> Map.put(:role_execution_score, role_execution_score)
+      |> Map.put(:doctrine_compliance, doctrine_compliance)
+      |> Map.update(:tactical_analysis, enhanced_tactical, &Map.merge(&1, enhanced_tactical))
     end)
   end
 

@@ -161,7 +161,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetPilotAnalyzer do
     # Extract ship types and quantities from doctrine template
     ship_roles = Map.get(doctrine_template, :ship_roles, [])
 
-    |> Enum.map(ship_roles, fn role ->
+    Enum.map(ship_roles, fn role ->
       %{
         ship_type_id: Map.get(role, :ship_type_id, 0),
         ship_name: Map.get(role, :ship_name, "Unknown Ship"),
