@@ -249,8 +249,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     system_kills =
       killmails
       |> Enum.group_by(& &1.solar_system_id)
+      |> Enum.map(fn {system_id, kills} -> {system_id, length(kills)} end)
+      |> Map.new()
 
-    Enum.map(fn {system_id, kills} -> {system_id, length(kills)} end) |> Map.new()
     # Calculate statistics
     kill_counts = Map.values(system_kills)
 
@@ -512,10 +513,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     # Calculate strategic value for each system based on route participation
     strategic_value =
       corridors
-
-    Enum.flat_map(fn c -> [c.from_system, c.to_system] end)
-    |> Enum.frequencies()
-    |> Enum.map(fn {system, count} ->
+      |> Enum.flat_map(fn c -> [c.from_system, c.to_system] end)
+      |> Enum.frequencies()
+      |> Enum.map(fn {system, count} ->
       value =
         cond do
           count > 10 -> :critical
@@ -578,14 +578,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
         s1_activity =
           system_activity
           |> Enum.filter(fn {{sys, _}, _} -> sys == s1 end)
-
-        Enum.map(fn {{_, time}, count} -> {time, count} end) |> Map.new()
+          |> Enum.map(fn {{_, time}, count} -> {time, count} end)
+          |> Map.new()
 
         s2_activity =
           system_activity
           |> Enum.filter(fn {{sys, _}, _} -> sys == s2 end)
-
-        Enum.map(fn {{_, time}, count} -> {time, count} end) |> Map.new()
+          |> Enum.map(fn {{_, time}, count} -> {time, count} end)
+          |> Map.new()
         # Calculate correlation coefficient (simplified)
         correlation = calculate_correlation_coefficient(s1_activity, s2_activity)
 

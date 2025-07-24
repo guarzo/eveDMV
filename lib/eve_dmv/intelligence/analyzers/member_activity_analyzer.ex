@@ -7,6 +7,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
   for specific analysis tasks.
   """
 
+  alias Ecto.Adapters.SQL
   alias EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.CorporationAnalyzer
   alias EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.EngagementAnalyzer
 
@@ -406,21 +407,21 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
   """
   def fetch_corporation_members(corporation_id) when is_integer(corporation_id) do
     # Implement real corporation member fetching via ESI API
-    try do
-      # Get authentication token for ESI request (simplified - would need proper auth flow)
-      case get_corporation_auth_token(corporation_id) do
-        {:error, :no_auth_token} ->
-          # Fallback to database lookup if no ESI auth available
-          fetch_members_from_database(corporation_id)
+    case get_corporation_auth_token(corporation_id) do
+      {:error, :no_auth_token} ->
+        # Fallback to database lookup if no ESI auth available
+        fetch_members_from_database(corporation_id)
 
-        {:error, reason} ->
-          {:error, reason}
-      end
-    rescue
-      error ->
-        Logger.error("Error fetching corporation members: #{inspect(error)}")
-        {:error, :fetch_failed}
+      {:error, reason} ->
+        {:error, reason}
+
+      result ->
+        result
     end
+  rescue
+    error ->
+      Logger.error("Error fetching corporation members: #{inspect(error)}")
+      {:error, :fetch_failed}
   end
 
   def fetch_corporation_members(_invalid_id) do
@@ -754,8 +755,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
         |> Enum.map(fn {trend, count} -> %{factor: "#{trend}_trend", occurrence_count: count} end)
 
       # Convert to map structure with factor names as keys
-      (all_warning_signs ++ trends)
-      |> Enum.reduce(%{}, fn %{factor: factor, occurrence_count: count},
+      Enum.reduce(all_warning_signs ++ trends, %{}, fn %{factor: factor, occurrence_count: count},
                                                        acc ->
         Map.put(acc, factor, count)
       end)
@@ -1069,37 +1069,35 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
 
   defp fetch_members_from_database(corporation_id) do
     # Fallback: get members from participant/killmail data
-    try do
-      query = """
-      SELECT DISTINCT p.character_id, p.character_name
-      FROM participants p
-      WHERE p.corporation_id = $1
-        AND p.character_id IS NOT NULL
-        AND p.killmail_time >= NOW() - INTERVAL '90 days'
-      ORDER BY p.character_name
-      LIMIT 1000
-      """
+    query = """
+    SELECT DISTINCT p.character_id, p.character_name
+    FROM participants p
+    WHERE p.corporation_id = $1
+      AND p.character_id IS NOT NULL
+      AND p.killmail_time >= NOW() - INTERVAL '90 days'
+    ORDER BY p.character_name
+    LIMIT 1000
+    """
 
-      case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [corporation_id]) do
-        {:ok, %{rows: rows}} ->
-          members =
-            Enum.map(rows, fn [char_id, char_name] ->
-              %{
-                character_id: char_id,
-                character_name: char_name,
-                source: :database_fallback
-              }
-            end)
+    case SQL.query(EveDmv.Repo, query, [corporation_id]) do
+      {:ok, %{rows: rows}} ->
+        members =
+          Enum.map(rows, fn [char_id, char_name] ->
+            %{
+              character_id: char_id,
+              character_name: char_name,
+              source: :database_fallback
+            }
+          end)
 
-          {:ok, members}
+        {:ok, members}
 
-        {:error, reason} ->
-          {:error, reason}
-      end
-    rescue
-      error ->
-        Logger.error("Database fallback failed: #{inspect(error)}")
-        {:error, :database_fallback_failed}
+      {:error, reason} ->
+        {:error, reason}
     end
+  rescue
+    error ->
+      Logger.error("Database fallback failed: #{inspect(error)}")
+      {:error, :database_fallback_failed}
   end
 end

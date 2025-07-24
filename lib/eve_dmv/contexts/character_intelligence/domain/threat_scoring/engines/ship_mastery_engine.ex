@@ -6,9 +6,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
   to determine ship mastery threat level.
   """
 
-  require Logger
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   alias EveDmv.StaticData.ShipTypes
+
+  require Logger
 
   # Normalization constants for ship mastery calculations
   @max_usage_count 10
@@ -241,30 +242,16 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
   end
 
   defp generate_ship_mastery_insights(ship_diversity, class_mastery, specialization_score) do
-    insights = []
+    base_insights = []
 
-    insights =
-      if ship_diversity > @ship_diversity_excellence_threshold do
-        ["Excellent ship diversity - comfortable with many hull types" | insights]
-      else
-        insights
-      end
+    base_insights
+    |> add_insight_if(ship_diversity > @ship_diversity_excellence_threshold, "Excellent ship diversity - comfortable with many hull types")
+    |> add_insight_if(class_mastery > @class_mastery_excellence_threshold, "Strong mastery across multiple ship classes")
+    |> add_insight_if(specialization_score > @specialization_balance_threshold, "Good balance between specialization and versatility")
+  end
 
-    insights =
-      if class_mastery > @class_mastery_excellence_threshold do
-        ["Strong mastery across multiple ship classes" | insights]
-      else
-        insights
-      end
-
-    insights =
-      if specialization_score > @specialization_balance_threshold do
-        ["Good balance between specialization and versatility" | insights]
-      else
-        insights
-      end
-
-    insights
+  defp add_insight_if(insights, condition, insight) do
+    if condition, do: [insight | insights], else: insights
   end
 
   defp normalize_to_10_scale(score) do

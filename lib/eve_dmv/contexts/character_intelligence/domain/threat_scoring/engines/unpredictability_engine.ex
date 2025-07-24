@@ -6,9 +6,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
   to determine unpredictability threat level.
   """
 
-  require Logger
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   alias EveDmv.StaticData.SystemData
+
+  require Logger
 
   # Ship type IDs for tactical roles
   @logistics_ids [11_978, 11_987, 11_985, 12_003]
@@ -244,6 +245,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
         timestamps
         |> Enum.map(&(&1 |> DateTime.to_time() |> Map.get(:hour)))
         |> Enum.frequencies()
+
       # Calculate entropy of hour distribution
       total_engagements = Enum.sum(Map.values(hours))
 
@@ -270,6 +272,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
         timestamps
         |> Enum.map(&(&1 |> DateTime.to_date() |> Date.day_of_week()))
         |> Enum.frequencies()
+
       # Calculate entropy of day distribution
       total_engagements = Enum.sum(Map.values(days))
 
@@ -409,6 +412,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
         attacker_killmails
         |> Enum.map(& &1.victim_ship_type_id)
         |> Enum.frequencies()
+
       # Calculate Shannon entropy of target selection
       total_kills = Enum.sum(Map.values(target_ships))
 
@@ -610,44 +614,18 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
          tactical_variance,
          location_diversity
        ) do
-    insights = []
+    base_insights = []
 
-    insights =
-      if raw_score > 0.8 do
-        ["Highly unpredictable opponent - difficult to anticipate" | insights]
-      else
-        insights
-      end
+    base_insights
+    |> add_insight_if(raw_score > 0.8, "Highly unpredictable opponent - difficult to anticipate")
+    |> add_insight_if(time_variety > 0.7, "Varies engagement times - no clear schedule pattern")
+    |> add_insight_if(tactical_variance > 0.7, "High tactical adaptability - changes approach frequently")
+    |> add_insight_if(location_diversity > 0.8, "Operates across diverse regions - wide operational range")
+    |> add_insight_if(raw_score < 0.3, "Predictable patterns - may be easier to anticipate")
+  end
 
-    insights =
-      if time_variety > 0.7 do
-        ["Varies engagement times - no clear schedule pattern" | insights]
-      else
-        insights
-      end
-
-    insights =
-      if tactical_variance > 0.7 do
-        ["High tactical adaptability - changes approach frequently" | insights]
-      else
-        insights
-      end
-
-    insights =
-      if location_diversity > 0.8 do
-        ["Operates across diverse regions - wide operational range" | insights]
-      else
-        insights
-      end
-
-    insights =
-      if raw_score < 0.3 do
-        ["Predictable patterns - may be easier to anticipate" | insights]
-      else
-        insights
-      end
-
-    insights
+  defp add_insight_if(insights, condition, insight) do
+    if condition, do: [insight | insights], else: insights
   end
 
   defp normalize_to_10_scale(score) do

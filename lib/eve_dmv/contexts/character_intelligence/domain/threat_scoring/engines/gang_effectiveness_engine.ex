@@ -243,8 +243,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
           |> Enum.sort_by(&(-(&1["damage_done"] || 0)))
 
         character_position =
-          sorted_attackers
-          |> Enum.find_index(&(&1["character_id"] == killmail.victim_character_id))
+          Enum.find_index(sorted_attackers, &(&1["character_id"] == killmail.victim_character_id))
 
         if character_position, do: character_position + 1, else: 999
 
@@ -256,7 +255,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
   defp analyze_support_behavior(ship_roles, attacker_killmails) do
     logistics_usage = Map.get(ship_roles, :logistics, 0)
     ewar_usage = Map.get(ship_roles, :ewar, 0)
-    total_usage = Map.values(ship_roles) |> Enum.sum()
+    total_usage = Enum.sum(Map.values(ship_roles))
 
     if total_usage == 0 do
       0.5
@@ -294,7 +293,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
       # Priority targets: logistics, command ships, high-value targets
       priority_kills =
         Enum.count(attacker_killmails, fn km ->
-          is_priority_target?(km.victim_ship_type_id)
+          priority_target?(km.victim_ship_type_id)
         end)
 
       priority_rate = priority_kills / length(attacker_killmails)
@@ -303,7 +302,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
     end
   end
 
-  defp is_priority_target?(ship_type_id) do
+  defp priority_target?(ship_type_id) do
     ship_type_id in [
       # Logistics
       11_978,
@@ -575,10 +574,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
     if map_size(ship_roles) == 0 do
       0.5
     else
-      total_ships = Map.values(ship_roles) |> Enum.sum()
+      total_ships = Enum.sum(Map.values(ship_roles))
 
       # Calculate how balanced the composition is (avoid too much of one role)
-      max_role_usage = Map.values(ship_roles) |> Enum.max()
+      max_role_usage = Enum.max(Map.values(ship_roles))
       balance_ratio = max_role_usage / total_ships
 
       # Good balance = no single role dominates too much
@@ -691,9 +690,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
     if Enum.empty?(gang_compositions) do
       0.5
     else
-      synergy_scores =
-        gang_compositions
-        |> Enum.map(&calculate_role_synergy_score/1)
+      synergy_scores = Enum.map(gang_compositions, &calculate_role_synergy_score/1)
 
       Enum.sum(synergy_scores) / length(synergy_scores)
     end
@@ -730,37 +727,17 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
          leadership_score,
          coordination_score
        ) do
-    insights = []
+    base_insights = []
 
-    insights =
-      if raw_score > 0.8 do
-        ["Excellent gang effectiveness - strong team player" | insights]
-      else
-        insights
-      end
+    base_insights
+    |> add_insight_if(raw_score > 0.8, "Excellent gang effectiveness - strong team player")
+    |> add_insight_if(fleet_role_score > 0.8, "Highly effective in fleet roles")
+    |> add_insight_if(leadership_score > 0.7, "Shows strong leadership indicators")
+    |> add_insight_if(coordination_score > 0.8, "Excellent coordination with gang members")
+  end
 
-    insights =
-      if fleet_role_score > 0.8 do
-        ["Highly effective in fleet roles" | insights]
-      else
-        insights
-      end
-
-    insights =
-      if leadership_score > 0.7 do
-        ["Shows strong leadership indicators" | insights]
-      else
-        insights
-      end
-
-    insights =
-      if coordination_score > 0.8 do
-        ["Excellent coordination with gang members" | insights]
-      else
-        insights
-      end
-
-    insights
+  defp add_insight_if(insights, condition, insight) do
+    if condition, do: [insight | insights], else: insights
   end
 
   defp normalize_to_10_scale(score) do
