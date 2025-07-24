@@ -6,10 +6,10 @@ defmodule EveDmv.Database.ArchiveManager.RestoreOperations do
   and safe restoration of archived data when needed.
   """
 
-  alias AM.ArchiveOperations
-  alias AM.PartitionManager
   alias Ecto.Adapters.SQL
   alias EveDmv.Database.ArchiveManager, as: AM
+  alias AM.ArchiveOperations
+  alias AM.PartitionManager
   alias EveDmv.Repo
   
   require Logger

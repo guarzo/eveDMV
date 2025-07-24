@@ -6,10 +6,10 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
   maintenance tasks to keep the archive system running efficiently.
   """
 
-  alias AM.ArchiveOperations
-  alias AM.PartitionManager
   alias Ecto.Adapters.SQL
   alias EveDmv.Database.ArchiveManager, as: AM
+  alias AM.ArchiveOperations
+  alias AM.PartitionManager
   alias EveDmv.Repo
   
   require Logger
