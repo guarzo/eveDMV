@@ -166,7 +166,7 @@ defmodule EveDmv.Eve.NameResolver.BatchProcessor do
   """
   def validate_batch_request(ids) when is_list(ids) do
     cond do
-      |> Enum.empty?(ids) ->
+      Enum.empty?(ids) ->
         {:error, :empty_id_list}
 
       length(ids) > 10_000 ->
