@@ -48,7 +48,7 @@ defmodule EveDmv.Eve.NameResolver.PerformanceOptimizer do
     ]
 
     # Wait for all tasks to complete
-    |> Enum.each(tasks, &Task.await(&1, @task_timeout))
+    Enum.each(tasks, &Task.await(&1, @task_timeout))
 
     Logger.debug("Name preloading complete")
     :ok
@@ -108,7 +108,7 @@ defmodule EveDmv.Eve.NameResolver.PerformanceOptimizer do
       Task.async(fn -> EsiEntityResolver.corporation_names(Enum.uniq(corp_ids)) end)
     ]
 
-    |> Enum.each(tasks, &Task.await(&1, @task_timeout))
+    Enum.each(tasks, &Task.await(&1, @task_timeout))
 
     Logger.debug("Fleet name preloading complete")
     :ok
@@ -158,7 +158,7 @@ defmodule EveDmv.Eve.NameResolver.PerformanceOptimizer do
       Task.async(fn -> StaticDataResolver.system_names(Enum.uniq(system_ids)) end)
     ]
 
-    |> Enum.each(tasks, &Task.await(&1, @task_timeout))
+    Enum.each(tasks, &Task.await(&1, @task_timeout))
 
     Logger.debug("Market name preloading complete")
     :ok
@@ -192,7 +192,7 @@ defmodule EveDmv.Eve.NameResolver.PerformanceOptimizer do
         Task.async(fn -> EsiEntityResolver.alliance_names(alliance_ids) end)
       ]
 
-      |> Enum.each(tasks, &Task.await(&1, @task_timeout))
+      Enum.each(tasks, &Task.await(&1, @task_timeout))
     end
 
     Logger.info("Intelligent cache warming complete")

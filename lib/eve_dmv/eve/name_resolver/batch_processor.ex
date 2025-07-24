@@ -33,7 +33,7 @@ defmodule EveDmv.Eve.NameResolver.BatchProcessor do
     all_results = Map.merge(cached, missing_results)
 
     # Fill in any remaining missing with fallback
-    |> Enum.into(unique_ids, %{}, fn id ->
+    Enum.into(unique_ids, %{}, fn id ->
       case Map.get(all_results, id) do
         nil -> {id, fallback_fn.(id)}
         name -> {id, name}
@@ -141,7 +141,7 @@ defmodule EveDmv.Eve.NameResolver.BatchProcessor do
   """
   def chunk_for_processing(type, ids) do
     batch_size = get_optimal_batch_size(type)
-    |> Enum.chunk_every(ids, batch_size)
+    Enum.chunk_every(ids, batch_size)
   end
 
   @doc """
