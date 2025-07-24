@@ -72,11 +72,12 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   """
 
   import Ecto.Query
-  require Ash.Query
-  require Logger
   
   alias EveDmv.Api
   alias EveDmv.Killmails.KillmailRaw
+  
+  require Ash.Query
+  require Logger
 
   @doc """
   Analyze regional intelligence patterns.
@@ -644,16 +645,16 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
       killmails
       |> Enum.group_by(fn km -> DateTime.to_date(km.killmail_time) end)
       |> Enum.map(fn {date, daily_kills} ->
-      # Get dominant entity for the day
-      {dominant, _count} =
-        daily_kills
-        |> Enum.filter(& &1.victim_alliance_id)
-        |> Enum.group_by(& &1.victim_alliance_id)
-        |> Enum.map(fn {alliance, kills} -> {alliance, length(kills)} end)
-        |> Enum.max_by(&elem(&1, 1), fn -> {nil, 0} end)
+        # Get dominant entity for the day
+        {dominant, _count} =
+          daily_kills
+          |> Enum.filter(& &1.victim_alliance_id)
+          |> Enum.group_by(& &1.victim_alliance_id)
+          |> Enum.map(fn {alliance, kills} -> {alliance, length(kills)} end)
+          |> Enum.max_by(&elem(&1, 1), fn -> {nil, 0} end)
 
-      {date, dominant}
-    end)
+        {date, dominant}
+      end)
 
     # Calculate how often control changes
     changes =
@@ -696,13 +697,13 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   end
 
   defp get_top_alliance(kills) do
-    {top_alliance, _count} = 
+    {top_alliance, _count} =
       kills
       |> Enum.filter(& &1.victim_alliance_id)
       |> Enum.group_by(& &1.victim_alliance_id)
       |> Enum.map(fn {alliance, k} -> {alliance, length(k)} end)
       |> Enum.max_by(&elem(&1, 1), fn -> {nil, 0} end)
-    
+
     top_alliance
   end
 

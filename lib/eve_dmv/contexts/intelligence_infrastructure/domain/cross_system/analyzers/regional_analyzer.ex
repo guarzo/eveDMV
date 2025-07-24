@@ -28,9 +28,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     }
   end
 
-  defp analyze_regional_activity(_region_id, _cutoff_time) do
+  defp analyze_regional_activity(region_id, _cutoff_time) do
     # Get all systems in the region
-    systems_query = Ash.Query.filter(SolarSystem, region_id == region_id)
+    systems_query = Ash.Query.filter(SolarSystem, region_id == ^region_id)
 
     case Ash.read(systems_query, domain: Api) do
       {:ok, systems} ->
@@ -48,20 +48,18 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
           {:ok, killmails} ->
             activity_by_system =
               killmails
-
-            |> Enum.group_by(& &1.solar_system_id)
-
-            |> Enum.map(fn {system_id, kills} ->
-              {system_id,
-               %{
-                 kill_count: length(kills),
-                 total_isk_destroyed:
-                   Enum.reduce(kills, Decimal.new(0), fn k, acc ->
-                     Decimal.add(acc, k.total_value || Decimal.new(0))
-                   end)
-               }}
-            end)
-            |> Map.new()
+              |> Enum.group_by(& &1.solar_system_id)
+              |> Enum.map(fn {system_id, kills} ->
+                {system_id,
+                 %{
+                   kill_count: length(kills),
+                   total_isk_destroyed:
+                     Enum.reduce(kills, Decimal.new(0), fn k, acc ->
+                       Decimal.add(acc, k.total_value || Decimal.new(0))
+                     end)
+                 }}
+              end)
+              |> Map.new()
 
             # Identify hotspots (systems with high activity)
             total_kills = length(killmails)
@@ -71,24 +69,21 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
             hotspots =
               activity_by_system
+              |> Enum.filter(fn {_system_id, data} ->
+                data.kill_count > avg_kills_per_system * 2
+              end)
+              |> Enum.map(fn {system_id, data} ->
+                system = Enum.find(systems, &(&1.system_id == system_id))
 
-            |> Enum.filter(fn {_system_id, data} ->
-              data.kill_count > avg_kills_per_system * 2
-            end)
-
-            |> Enum.map(fn {system_id, data} ->
-              system = Enum.find(systems, &(&1.system_id == system_id))
-
-              %{
-                system_id: system_id,
-                system_name: system && system.system_name,
-                kill_count: data.kill_count,
-                isk_destroyed: data.total_isk_destroyed
-              }
-            end)
-
-            |> Enum.sort_by(& &1.kill_count, :desc)
-            |> Enum.take(5)
+                %{
+                  system_id: system_id,
+                  system_name: system && system.system_name,
+                  kill_count: data.kill_count,
+                  isk_destroyed: data.total_isk_destroyed
+                }
+              end)
+              |> Enum.sort_by(& &1.kill_count, :desc)
+              |> Enum.take(5)
 
             activity_level =
               cond do
@@ -130,7 +125,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     # Get recent killmails with participant data
     systems_query =
       SolarSystem
-      |> Ash.Query.filter(region_id == region_id)
+      |> Ash.Query.filter(region_id == ^region_id)
       |> Ash.Query.select([:system_id])
 
     case Ash.read(systems_query, domain: Api) do
@@ -151,26 +146,23 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
             # Analyze threat sources (frequent attackers)
             threat_sources =
               high_value_kills
+              |> Enum.flat_map(&(&1.participants || []))
+              |> Enum.filter(&(!&1.is_victim && &1.corporation_id))
+              |> Enum.group_by(& &1.corporation_id)
+              |> Enum.map(fn {corp_id, participants} ->
+                first_participant = List.first(participants)
 
-            |> Enum.flat_map(&(&1.participants || []))
-            |> Enum.filter(&(!&1.is_victim && &1.corporation_id))
-            |> Enum.group_by(& &1.corporation_id)
-
-            |> Enum.map(fn {corp_id, participants} ->
-              first_participant = List.first(participants)
-
-              %{
-                corporation_id: corp_id,
-                corporation_name: first_participant.corporation_name,
-                alliance_id: first_participant.alliance_id,
-                alliance_name: first_participant.alliance_name,
-                kill_count: length(participants),
-                total_damage: Enum.reduce(participants, 0, &(&1.damage_done + &2))
-              }
-            end)
-
-            |> Enum.sort_by(& &1.kill_count, :desc)
-            |> Enum.take(10)
+                %{
+                  corporation_id: corp_id,
+                  corporation_name: first_participant.corporation_name,
+                  alliance_id: first_participant.alliance_id,
+                  alliance_name: first_participant.alliance_name,
+                  kill_count: length(participants),
+                  total_damage: Enum.reduce(participants, 0, &(&1.damage_done + &2))
+                }
+              end)
+              |> Enum.sort_by(& &1.kill_count, :desc)
+              |> Enum.take(10)
 
             threat_level =
               cond do
@@ -207,7 +199,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
   defp assess_regional_strategy(_region_id, _cutoff_time) do
     # Analyze strategic control based on corporation/alliance presence
-    systems_query = Ash.Query.filter(SolarSystem, region_id == region_id)
+    systems_query = Ash.Query.filter(SolarSystem, region_id == ^region_id)
 
     case Ash.read(systems_query, domain: Api) do
       {:ok, systems} ->
@@ -227,24 +219,23 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
             # Analyze alliance presence by system
             alliance_presence =
               killmails
+              |> Enum.flat_map(fn km ->
+                km.participants ||
+                  []
+                  |> Enum.filter(& &1.alliance_id)
+                  |> Enum.map(&{km.solar_system_id, &1.alliance_id, &1.alliance_name})
+              end)
+              |> Enum.group_by(fn {system_id, _, _} -> system_id end)
 
-            |> Enum.flat_map(fn km ->
-              km.participants || []
-              |> Enum.filter(& &1.alliance_id)
-              |> Enum.map(&{km.solar_system_id, &1.alliance_id, &1.alliance_name})
-            end)
-
-            |> Enum.group_by(fn {system_id, _, _} -> system_id end)
             Enum.map(&calculate_system_alliance_counts/1) |> Map.new()
             # Determine control status
             dominant_alliances =
               alliance_presence
-
-            |> Enum.flat_map(&extract_alliance_entries/1)
-            |> Enum.group_by(fn {id, _} -> id end)
-            |> Enum.map(&calculate_alliance_activity/1)
-            |> Enum.sort_by(fn {_, data} -> data.total_activity end, :desc)
-            |> Enum.take(3)
+              |> Enum.flat_map(&extract_alliance_entries/1)
+              |> Enum.group_by(fn {id, _} -> id end)
+              |> Enum.map(&calculate_alliance_activity/1)
+              |> Enum.sort_by(fn {_, data} -> data.total_activity end, :desc)
+              |> Enum.take(3)
 
             control_status =
               case dominant_alliances do
@@ -294,7 +285,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
     systems_query =
       SolarSystem
-      |> Ash.Query.filter(region_id == region_id)
+      |> Ash.Query.filter(region_id == ^region_id)
       |> Ash.Query.select([:system_id])
 
     case Ash.read(systems_query, domain: Api) do
@@ -410,24 +401,21 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     # Identify uncontrolled valuable systems
     uncontrolled_systems =
       systems
+      |> Enum.filter(fn system ->
+        presence = Map.get(alliance_presence, system.system_id, %{})
 
-    |> Enum.filter(fn system ->
-      presence = Map.get(alliance_presence, system.system_id, %{})
-
-      length(Map.keys(presence)) < 2 and
-        (system.security_class in ["lowsec", "nullsec"] or system.wormhole_class_id)
-    end)
-
-    |> Enum.take(5)
-
-    |> Enum.map(fn system ->
-      %{
-        system_id: system.system_id,
-        system_name: system.system_name,
-        security_class: system.security_class,
-        opportunity_type: :uncontrolled_valuable_system
-      }
-    end)
+        length(Map.keys(presence)) < 2 and
+          (system.security_class in ["lowsec", "nullsec"] or system.wormhole_class_id)
+      end)
+      |> Enum.take(5)
+      |> Enum.map(fn system ->
+        %{
+          system_id: system.system_id,
+          system_name: system.system_name,
+          security_class: system.security_class,
+          opportunity_type: :uncontrolled_valuable_system
+        }
+      end)
 
     uncontrolled_systems
   end
@@ -435,8 +423,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   defp calculate_system_alliance_counts({system_id, entries}) do
     alliance_counts =
       entries
+      |> Enum.group_by(fn {_, alliance_id, _} -> alliance_id end)
 
-    |> Enum.group_by(fn {_, alliance_id, _} -> alliance_id end)
     Enum.map(&calculate_alliance_count/1) |> Map.new()
     {system_id, alliance_counts}
   end

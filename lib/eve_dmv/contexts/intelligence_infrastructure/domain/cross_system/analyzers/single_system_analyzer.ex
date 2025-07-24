@@ -160,32 +160,29 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
         direct_connections =
           neighbors
 
-        # Assume first 5 are direct gate connections (would need gate data)
-        |> Enum.take(5)
-
-        |> Enum.map(fn n ->
-          %{
-            system_id: n.system_id,
-            system_name: n.system_name,
-            security_class: n.security_class
-          }
-        end)
+          # Assume first 5 are direct gate connections (would need gate data)
+          |> Enum.take(5)
+          |> Enum.map(fn n ->
+            %{
+              system_id: n.system_id,
+              system_name: n.system_name,
+              security_class: n.security_class
+            }
+          end)
 
         # Strategic connections are those with different security classes
         strategic_connections =
           neighbors
-
-        |> Enum.filter(&(&1.security_class != system.security_class))
-        |> Enum.take(3)
-
-        |> Enum.map(fn n ->
-          %{
-            system_id: n.system_id,
-            system_name: n.system_name,
-            security_class: n.security_class,
-            strategic_value: :gateway
-          }
-        end)
+          |> Enum.filter(&(&1.security_class != system.security_class))
+          |> Enum.take(3)
+          |> Enum.map(fn n ->
+            %{
+              system_id: n.system_id,
+              system_name: n.system_name,
+              security_class: n.security_class,
+              strategic_value: :gateway
+            }
+          end)
 
         %{
           direct_connections: direct_connections,
