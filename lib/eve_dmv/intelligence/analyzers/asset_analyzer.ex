@@ -184,7 +184,7 @@ defmodule EveDmv.Intelligence.Analyzers.AssetAnalyzer do
     available_ships = group_ships_by_type(assets)
 
     # Map doctrine requirements to available ships
-    |> Enum.into(
+    Enum.into(
       Enum.map(doctrine_template, fn {role, role_config} ->
         preferred_ships = role_config["preferred_ships"] || []
         required_count = role_config["required"] || 0

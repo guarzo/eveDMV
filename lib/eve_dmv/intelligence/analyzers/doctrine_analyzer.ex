@@ -150,7 +150,7 @@ defmodule EveDmv.Intelligence.Analyzers.DoctrineAnalyzer do
          }}
       end)
 
-    |> Enum.into(mapped_categories, %{})
+    Enum.into(mapped_categories, %{})
   end
 
   defp calculate_adherence_score(ship_usage, doctrine_patterns) do
