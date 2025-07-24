@@ -81,9 +81,9 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
     timeout = Keyword.get(opts, :timeout, 30_000)
 
     Logger.info("Starting batch character analysis for #{length(character_ids)} characters")
-    character_ids
 
     Task.async_stream(
+      character_ids,
       &analyze_character_fast/1,
       max_concurrency: max_concurrency,
       timeout: timeout
