@@ -121,9 +121,10 @@ defmodule EveDmv.Intelligence.Analyzers.StatisticalAnalyzer do
     range = max_val - min_val
 
     if range == 0 do
-      |> Enum.map(values, fn _ -> scale / 2 end)
+      Enum.map(values, fn _ -> scale / 2 end)
     else
-      |> Enum.map(values, &((&1 - min_val) / range * scale))
+      values
+      |> Enum.map(&((&1 - min_val) / range * scale))
     end
   end
 
