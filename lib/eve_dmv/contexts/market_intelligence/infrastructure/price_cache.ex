@@ -202,7 +202,8 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.PriceCache do
       |> Enum.filter(fn {_type_id, _data, expires_at} -> expires_at <= now end)
       |> Enum.map(fn {type_id, _data, _expires_at} -> type_id end)
 
-    |> Enum.each(expired_keys, &:ets.delete(@cache_table, &1))
+    expired_keys
+    |> Enum.each(&:ets.delete(@cache_table, &1))
 
     if length(expired_keys) > 0 do
       Logger.debug("Cleaned up #{length(expired_keys)} expired price cache entries")

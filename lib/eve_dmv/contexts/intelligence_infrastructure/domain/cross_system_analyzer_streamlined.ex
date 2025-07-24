@@ -299,7 +299,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzerS
   defp count_completed_analyses(results) do
     analyses = [:constellation_analysis, :activity_correlation, :threat_analysis]
 
-    |> Enum.count(analyses, fn analysis ->
+    analyses
+    |> Enum.count(fn analysis ->
       case Map.get(results, analysis) do
         nil -> false
         %{analysis_skipped: true} -> false

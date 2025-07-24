@@ -210,7 +210,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
 
     filtered_history =
       if since do
-        |> Enum.filter(profile_history, fn notification ->
+        profile_history
+        |> Enum.filter(fn notification ->
           DateTime.compare(notification.created_at, since) == :gt
         end)
       else

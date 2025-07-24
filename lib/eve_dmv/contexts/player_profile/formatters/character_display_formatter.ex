@@ -139,11 +139,10 @@ defmodule EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter do
     geographic_recommendations =
       generate_geographic_recommendations(character_stats.geographic_patterns)
 
-    |> Enum.take(
-      recommendations ++
-        ship_recommendations ++ tactical_recommendations ++ geographic_recommendations,
-      5
-    )
+    # Combine all recommendations
+    all_recommendations = recommendations ++ ship_recommendations ++ tactical_recommendations ++ geographic_recommendations
+    
+    Enum.take(all_recommendations, 5)
   end
 
   defp format_threat_assessment(analysis_results) do
@@ -299,12 +298,12 @@ defmodule EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter do
   defp generate_ship_counter_recommendations(ship_usage) when is_map(ship_usage) do
     top_ships =
       ship_usage
+      |> Enum.sort_by(fn {_ship, count} -> count end, :desc)
+      |> Enum.take(3)
+      |> Enum.map(fn {ship_name, _count} -> ship_name end)
 
-    |> Enum.sort_by(fn {_ship, count} -> count end, :desc)
-    |> Enum.take(3)
-    |> Enum.map(fn {ship_name, _count} -> ship_name end)
-
-    |> Enum.map(top_ships, fn ship_name ->
+    top_ships
+    |> Enum.map(fn ship_name ->
       %{
         category: :ship_counter,
         text:

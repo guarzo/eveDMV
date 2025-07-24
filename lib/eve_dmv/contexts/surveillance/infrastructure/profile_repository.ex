@@ -250,7 +250,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository do
 
     limited_profiles =
       if limit do
-        |> Enum.take(filtered_profiles, limit)
+        Enum.take(filtered_profiles, limit)
       else
         filtered_profiles
       end

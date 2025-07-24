@@ -2073,7 +2073,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
       burst_threshold = mean_activity + 1.5 * std_dev
 
-      |> Enum.with_index(time_series)
+      time_series
+      |> Enum.with_index()
       |> Enum.filter(fn {bucket, _index} -> bucket.activity_count > burst_threshold end)
       |> Enum.map(fn {bucket, index} -> {index, bucket.timestamp} end)
     else
@@ -2216,7 +2217,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     ]
 
     # Calculate weighted average
-    |> Enum.sum(final_confidence_factors) / length(final_confidence_factors)
+    Enum.sum(final_confidence_factors) / length(final_confidence_factors)
   end
 
   defp count_significant_correlations(correlations) do
@@ -3537,13 +3538,13 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Group by hour and identify peak periods
     hourly_activity =
       killmails
-
-    |> Enum.group_by(fn km -> km.killmail_time.hour end)
-    |> Enum.map(fn {hour, kms} -> {hour, length(kms)} end)
-    |> Enum.sort_by(fn {_hour, count} -> count end, :desc)
+      |> Enum.group_by(fn km -> km.killmail_time.hour end)
+      |> Enum.map(fn {hour, kms} -> {hour, length(kms)} end)
+      |> Enum.sort_by(fn {_hour, count} -> count end, :desc)
 
     # Take top 3 hours as peaks
-    |> Enum.take(hourly_activity, 3)
+    hourly_activity
+    |> Enum.take(3)
   end
 
   defp extract_pilot_ship_usage(killmails, pilot_id) do

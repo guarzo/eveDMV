@@ -382,7 +382,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainTracker do
   defp analyze_system_composition(system_ids) do
     system_classes = Enum.map(system_ids, &StaticData.classify_system/1)
 
-    |> Enum.frequencies(system_classes)
+    Enum.frequencies(system_classes)
   end
 
   defp assess_chain_threats(system_ids, connections) do
@@ -571,7 +571,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainTracker do
   defp path_has_critical_connection?(path, connections) do
     path_pairs = Enum.zip(path, Enum.drop(path, 1))
 
-    |> Enum.any?(connections, fn conn ->
+    connections
+    |> Enum.any?(fn conn ->
       Enum.any?(path_pairs, fn {from, to} ->
         (conn.from_system_id == from and conn.to_system_id == to) or
           (conn.from_system_id == to and conn.to_system_id == from)
