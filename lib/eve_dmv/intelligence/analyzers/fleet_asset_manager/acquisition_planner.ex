@@ -198,7 +198,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.AcquisitionPlanner do
         |> Map.put("priority_level", priority_level)
       end)
 
-    |> Enum.sort_by(assets_with_priority, &{&1["priority_level"], -&1["importance_score"]})
+    Enum.sort_by(assets_with_priority, &{&1["priority_level"], -&1["importance_score"]})
   end
 
   @doc """
@@ -233,7 +233,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.AcquisitionPlanner do
         available < needed
       end)
 
-    |> Enum.map(missing_assets, fn {_type_id, ship_data} ->
+    Enum.map(missing_assets, fn {_type_id, ship_data} ->
       shortage =
         Map.get(ship_data, "quantity_needed", 1) - Map.get(ship_data, "quantity_available", 0)
 
