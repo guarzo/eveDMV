@@ -391,14 +391,13 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       0.0
     else
       # Check for simultaneous activity windows
-      time_overlaps =
-    time_overlaps = 
-      intel_coverage
-      |> Enum.map(fn {system, data} ->
-          metrics = Map.get(data, :coverage_metrics, %{})
-          {system, metrics.earliest_activity, metrics.latest_activity}
-        end)
-      |> calculate_time_overlap_score()
+      time_overlaps = 
+        intel_coverage
+        |> Enum.map(fn {system, data} ->
+            metrics = Map.get(data, :coverage_metrics, %{})
+            {system, metrics.earliest_activity, metrics.latest_activity}
+          end)
+        |> calculate_time_overlap_score()
 
       Float.round(time_overlaps, 2)
     end
@@ -524,7 +523,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   defp analyze_system_coverage(system_ids) do
     # Analyze intelligence coverage for each system in parallel
     system_ids
-    Task.async_stream(
+    |> Task.async_stream(
       fn system_id ->
         coverage = analyze_single_system_coverage(system_id)
         {system_id, coverage}

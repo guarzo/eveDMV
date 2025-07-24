@@ -544,7 +544,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
   defp extract_affected_systems(spillover_vectors) do
     spillover_vectors
-    Enum.flat_map(fn v -> [v.from_system, v.to_system] end) |> Enum.uniq() |> Enum.sort()
+    |> Enum.flat_map(fn v -> [v.from_system, v.to_system] end) 
+    |> Enum.uniq() 
+    |> Enum.sort()
   end
 
   defp fetch_recent_threat_metrics(system_ids) do

@@ -341,9 +341,9 @@ defmodule EveDmv.Database.KillmailRepository do
     field = entity_field(entity_type)
     victim_field = victim_entity_field(entity_type)
 
-    |> Enum.count(killmails, fn km ->
+    Enum.count(killmails, fn km ->
       Map.get(km, victim_field) != entity_id and
-        |> Enum.any?(km.participants || [], fn p -> Map.get(p, field) == entity_id end)
+        Enum.any?(km.participants || [], fn p -> Map.get(p, field) == entity_id end)
     end)
   end
 

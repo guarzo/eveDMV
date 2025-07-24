@@ -398,7 +398,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzerS
 
   defp identify_strategic_opportunities(integrated_intelligence) do
     # Identify opportunities from the analysis results
-    results = integrated_intelligence.results
+    _results = integrated_intelligence.results
     opportunities = []
 
     # Check for low-threat, high-value areas

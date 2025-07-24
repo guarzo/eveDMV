@@ -701,14 +701,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Estimate when peak activity occurred
     if length(killmails) > 0 do
       # Group killmails by hour and find peak
-      killmails
-
-      |> Enum.group_by(fn km ->
-        DateTime.to_time(DateTime.truncate(km.killmail_time, :second))
-      end)
+      grouped_killmails =
+        killmails
+        |> Enum.group_by(fn km ->
+          DateTime.to_time(DateTime.truncate(km.killmail_time, :second))
+        end)
 
       {peak_hour, _killmails} = 
-        killmails
+        grouped_killmails
         |> Enum.max_by(fn {_hour, kms} -> length(kms) end)
       peak_hour
     else
@@ -745,10 +745,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
     corp_participation =
       killmails
-
-    Enum.flat_map(&extract_corp_ids_from_killmail/1) |> Enum.frequencies()
-    |> Enum.sort_by(fn {_corp_id, count} -> count end, :desc)
-    |> Enum.take(10)
+      |> Enum.flat_map(&extract_corp_ids_from_killmail/1)
+      |> Enum.frequencies()
+      |> Enum.sort_by(fn {_corp_id, count} -> count end, :desc)
+      |> Enum.take(10)
 
     %{
       active_corporations: length(corp_participation),
@@ -785,8 +785,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Calculate diversity using Shannon diversity index
     total_participation =
       corp_participation
-
-    Enum.map(fn {_corp_id, count} -> count end) |> Enum.sum()
+      |> Enum.map(fn {_corp_id, count} -> count end)
+      |> Enum.sum()
 
     if total_participation > 0 do
       diversity =

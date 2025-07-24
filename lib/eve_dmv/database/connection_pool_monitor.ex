@@ -89,7 +89,8 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
     alerts = check_for_alerts(stats)
 
     # Log alerts
-    |> Enum.each(alerts, fn alert ->
+    alerts
+    |> Enum.each(fn alert ->
       Logger.warning("Connection pool alert: #{alert.message}")
     end)
 
@@ -237,7 +238,7 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
     recent_alerts = state.alerts
 
     cond do
-      |> Enum.any?(recent_alerts, &(&1.severity == :critical)) ->
+      Enum.any?(recent_alerts, &(&1.severity == :critical)) ->
         %{
           status: :critical,
           message: "Critical pool issues detected",
@@ -245,7 +246,7 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
           recommendation: "Immediate attention required - pool may be exhausted"
         }
 
-      |> Enum.any?(recent_alerts, &(&1.severity == :warning)) ->
+      Enum.any?(recent_alerts, &(&1.severity == :warning)) ->
         %{
           status: :warning,
           message: "Pool performance issues detected",
@@ -256,9 +257,8 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
       length(recent_stats) > 5 ->
         utilization_values =
           recent_stats
-
-        |> Enum.map(&get_in(&1, [:stats, :utilization]))
-        |> Enum.reject(&is_nil/1)
+          |> Enum.map(&get_in(&1, [:stats, :utilization]))
+          |> Enum.reject(&is_nil/1)
 
         avg_utilization = calculate_average(utilization_values)
 

@@ -589,7 +589,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       max_correlations =
         Enum.map(lag_analysis, fn {_pair, correlations} ->
           correlations
-          Enum.map(&elem(&1, 1)) |> Enum.max()
+          |> Enum.map(&elem(&1, 1)) 
+          |> Enum.max()
         end)
 
       if length(max_correlations) > 0 do

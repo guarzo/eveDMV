@@ -207,7 +207,8 @@ defmodule EveDmv.Database.CacheInvalidator do
       "system:updated"
     ]
 
-    |> Enum.each(topics, fn topic ->
+    topics
+    |> Enum.each(fn topic ->
       PubSub.subscribe(EveDmv.PubSub, topic)
     end)
   end
@@ -363,7 +364,8 @@ defmodule EveDmv.Database.CacheInvalidator do
       "activity_summary_*"
     ]
 
-    |> Enum.each(patterns, &perform_pattern_invalidation/1)
+    patterns
+    |> Enum.each(&perform_pattern_invalidation/1)
   end
 
   defp execute_hooks(hooks, cache_type, entity_id) do
