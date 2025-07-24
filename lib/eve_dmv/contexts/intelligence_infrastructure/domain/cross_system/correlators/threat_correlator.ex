@@ -172,9 +172,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
           # Based on historical patterns and current activity
           vector_strength =
             spillover_vectors
-
-          Enum.map(& &1.confidence) |> Enum.sum()
-          Kernel./(length(spillover_vectors))
+            |> Enum.map(& &1.confidence)
+            |> Enum.sum()
+            |> Kernel./(length(spillover_vectors))
 
           Float.round(min(1.0, vector_strength * 1.2), 2)
         else

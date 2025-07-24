@@ -414,7 +414,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
 
     activities
     |> Enum.max_by(fn {_type, count} -> count end)
-    elem(0)
+    |> elem(0)
   end
 
   defp calculate_activity_distribution(fleet, home_defense, chain, solo) do
@@ -581,7 +581,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
 
     totals
     |> Enum.max_by(fn {_type, count} -> count end)
-    elem(0)
+    |> elem(0)
   end
 
   defp analyze_corporation_participation_trends(member_participations) do
@@ -739,18 +739,18 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
 
   defp group_activities_by_week(activities) do
     activities
-
     |> Enum.group_by(fn activity ->
       Date.beginning_of_week(DateTime.to_date(activity.timestamp))
     end)
-
-    Enum.map(fn {week, activities} -> {week, length(activities)} end) |> Map.new()
+    |> Enum.map(fn {week, activities} -> {week, length(activities)} end)
+    |> Map.new()
   end
 
   defp group_activities_by_hour(activities) do
     activities
     |> Enum.group_by(& &1.timestamp.hour)
-    Enum.map(fn {hour, activities} -> {hour, length(activities)} end) |> Map.new()
+    |> Enum.map(fn {hour, activities} -> {hour, length(activities)} end)
+    |> Map.new()
   end
 
   defp calculate_variance(values, mean) do

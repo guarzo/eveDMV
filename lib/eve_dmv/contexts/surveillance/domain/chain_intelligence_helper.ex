@@ -364,70 +364,52 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
   defp analyze_killmail_patterns(_map_id, chain_data) do
     recent_kills = Map.get(chain_data, :recent_activity, [])
 
-    # Look for concerning patterns in killmails
-    patterns = []
-
     # Pattern 1: High frequency of kills (possible camp)
-    patterns =
+    high_frequency_patterns =
       if length(recent_kills) >= 5 do
-        [
-          %{
-            type: :high_kill_frequency,
-            threat_level: :high,
-            details: %{kill_count: length(recent_kills), timeframe: "24h"}
-          }
-          | patterns
-        ]
+        [%{
+          type: :high_kill_frequency,
+          threat_level: :high,
+          details: %{kill_count: length(recent_kills), timeframe: "24h"}
+        }]
       else
-        patterns
+        []
       end
 
     # Pattern 2: Kills in multiple systems (roaming gang)
     system_kills = Enum.group_by(recent_kills, fn kill -> kill.system_id end)
 
-    patterns =
+    roaming_patterns =
       if map_size(system_kills) >= 3 do
-        [
-          %{
-            type: :roaming_activity,
-            threat_level: :medium,
-            details: %{systems_affected: Map.keys(system_kills)}
-          }
-          | patterns
-        ]
+        [%{
+          type: :roaming_activity,
+          threat_level: :medium,
+          details: %{systems_affected: Map.keys(system_kills)}
+        }]
       else
-        patterns
+        []
       end
 
-    patterns
+    high_frequency_patterns ++ roaming_patterns
   end
 
   defp analyze_system_vulnerabilities(_map_id, chain_data) do
     topology = Map.get(chain_data, :topology, %{})
-
-    # Analyze topology for vulnerabilities
-    vulnerabilities = []
 
     # Check for single-connection systems (easily cut off)
     systems = Map.get(topology, "systems", [])
     connections = Map.get(topology, "connections", [])
 
     # This is a simplified analysis - in reality would need proper graph analysis
-    vulnerabilities =
-      if length(systems) > 0 and length(connections) < length(systems) do
-        [
-          %{
-            type: :topology_vulnerability,
-            threat_level: :low,
-            details: %{reason: "Potential bottleneck systems detected"}
-          }
-          | vulnerabilities
-        ]
-      else
-        vulnerabilities
-      end
-
-    vulnerabilities
+    if length(systems) > 0 and length(connections) < length(systems) do
+      [%{
+        type: :topology_vulnerability,
+        threat_level: :low,
+        details: %{reason: "Potential bottleneck systems detected"}
+      }]
+    else
+      []
+    end
   end
 
   defp calculate_activity_threat_level(kills) do
