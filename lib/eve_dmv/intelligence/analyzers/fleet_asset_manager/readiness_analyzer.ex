@@ -151,7 +151,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.ReadinessAnalyzer do
 
     requirements = Map.merge(default_minimums, min_requirements)
 
-    actual_counts =
+    _actual_counts =
       Enum.reduce(ship_requirements, %{}, fn {_type_id, ship_data}, acc ->
         role = Map.get(ship_data, "role", "unknown")
         available = Map.get(ship_data, "quantity_available", 0)
@@ -218,7 +218,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.ReadinessAnalyzer do
   defp determine_role_status(_), do: "critical"
 
   defp get_unique_roles(ship_requirements) do
-    roles_list =
+    _roles_list =
       Enum.map(ship_requirements, fn {_type_id, ship_data} ->
         Map.get(ship_data, "role", "unknown")
       end)
@@ -296,7 +296,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.ReadinessAnalyzer do
   defp has_critical_role_issues?(role_readiness) do
     critical_roles = ["logistics", "fc"]
 
-    |> Enum.any?(critical_roles, fn role ->
+    Enum.any?(critical_roles, fn role ->
       status = get_in(role_readiness, [role, :status])
       status in ["poor", "critical"]
     end)
