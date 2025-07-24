@@ -28,7 +28,7 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
     # Filter queries based on threshold_ms if needed
     filtered_queries =
       if threshold_ms > 0 do
-        Enum.filter(all_slow_queries, fn query ->
+        |> Enum.filter(all_slow_queries, fn query ->
           query[:avg_time] >= threshold_ms
         end)
       else
@@ -62,7 +62,7 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
       {:statement_stats, include_statements, &get_statement_statistics/0}
     ]
 
-    Enum.reduce(base_metrics, fn {key, include?, fetch_fn}, acc ->
+    |> Enum.reduce(base_metrics, fn {key, include?, fetch_fn}, acc ->
       if include? do
         Map.put(acc, key, fetch_fn.())
       else

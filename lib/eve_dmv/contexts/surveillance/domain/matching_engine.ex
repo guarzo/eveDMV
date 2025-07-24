@@ -152,7 +152,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
       end)
 
     # Store matches and trigger alerts
-    Enum.each(matches, fn match ->
+    |> Enum.each(matches, fn match ->
       MatchCache.store_match(match)
 
       EventBus.publish(%SurveillanceMatch{
@@ -688,7 +688,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
         chain_systems =
           Map.get(topology, "systems", [])
 
-        Enum.map(&Map.get(&1, "system_id"))
+        |> Enum.map(&Map.get(&1, "system_id"))
 
         jump_distance = calculate_min_jump_distance(system_id, chain_systems)
 
@@ -721,7 +721,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
         inhabitant_character_ids =
           inhabitants
 
-        Enum.map(&Map.get(&1, "character_id"))
+        |> Enum.map(&Map.get(&1, "character_id"))
         Enum.filter(&(&1 != nil)) |> MapSet.new()
         # Check victim
         victim_match = MapSet.member?(inhabitant_character_ids, killmail_data.victim.character_id)
@@ -779,7 +779,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
         chain_systems =
           Map.get(topology, "systems", [])
 
-        Enum.map(&Map.get(&1, "system_id"))
+        |> Enum.map(&Map.get(&1, "system_id"))
 
         # If killmail is within 1 jump of chain, it could be hostiles entering
         within_one_jump =
@@ -817,8 +817,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
       min_distance =
         chain_system_ids
 
-      Enum.map(fn system_id -> abs(target_system_id - system_id) end)
-      Enum.min(fn -> 999 end)
+      |> Enum.map(fn system_id -> abs(target_system_id - system_id) end)
+      |> Enum.min(fn -> 999 end)
 
       cond do
         # Likely adjacent

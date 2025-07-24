@@ -292,7 +292,7 @@ defmodule EveDmv.Intelligence.SystemInhabitant do
       calculation(fn records, _context ->
         now = DateTime.utc_now()
 
-        Enum.map(records, fn record ->
+        |> Enum.map(records, fn record ->
           if record.present do
             DateTime.diff(now, record.first_seen_at, :minute)
           else
@@ -311,7 +311,7 @@ defmodule EveDmv.Intelligence.SystemInhabitant do
       calculation(fn records, _context ->
         now = DateTime.utc_now()
 
-        Enum.map(records, fn record ->
+        |> Enum.map(records, fn record ->
           DateTime.diff(now, record.last_seen_at, :minute)
         end)
       end)
@@ -323,7 +323,7 @@ defmodule EveDmv.Intelligence.SystemInhabitant do
       calculation(fn records, _context ->
         now = DateTime.utc_now()
 
-        Enum.map(records, fn record ->
+        |> Enum.map(records, fn record ->
           if record.present do
             minutes = DateTime.diff(now, record.first_seen_at, :minute)
 

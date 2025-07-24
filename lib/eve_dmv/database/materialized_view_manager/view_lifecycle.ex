@@ -16,7 +16,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewLifecycle do
   """
   def ensure_all_views_exist do
     view_results = Enum.map(ViewDefinitions.all_views(), &ensure_view_exists/1)
-    Enum.into(view_results, %{})
+    |> Enum.into(view_results, %{})
   end
 
   @doc """

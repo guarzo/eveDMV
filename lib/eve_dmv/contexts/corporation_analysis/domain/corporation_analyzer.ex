@@ -349,7 +349,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer do
       total_score =
         leadership_members
 
-      Enum.map(fn leader ->
+      |> Enum.map(fn leader ->
         recent_activity = (leader.recent_kills || 0) + (leader.recent_losses || 0)
         min(100, recent_activity * 2)
       end)
@@ -374,11 +374,11 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer do
     matching =
       cache_entries
 
-    Enum.filter(fn {_, %{data: data}} ->
+    |> Enum.filter(fn {_, %{data: data}} ->
       Map.has_key?(data, component_key(component))
     end)
 
-    Enum.sort_by(fn {_, %{timestamp: ts}} -> ts end, {:desc, DateTime})
+    |> Enum.sort_by(fn {_, %{timestamp: ts}} -> ts end, {:desc, DateTime})
 
     case matching do
       [{_, %{data: data}} | _] ->

@@ -98,7 +98,7 @@ defmodule EveDmv.Quality.MetricsCollector.SecurityMetrics do
 
     elixir_files = Path.wildcard("lib/**/*.ex")
 
-    Enum.count(elixir_files, fn file ->
+    |> Enum.count(elixir_files, fn file ->
       case File.read(file) do
         {:ok, content} ->
           # Look for hardcoded values (quoted strings after secret patterns)
@@ -116,7 +116,7 @@ defmodule EveDmv.Quality.MetricsCollector.SecurityMetrics do
     # Simplified SQL injection risk detection
     elixir_files = Path.wildcard("lib/**/*.ex")
 
-    Enum.count(elixir_files, fn file ->
+    |> Enum.count(elixir_files, fn file ->
       case File.read(file) do
         {:ok, content} ->
           # Look for string interpolation in query contexts
@@ -132,7 +132,7 @@ defmodule EveDmv.Quality.MetricsCollector.SecurityMetrics do
     # Simplified XSS risk detection
     elixir_files = Path.wildcard("lib/**/*.ex")
 
-    Enum.count(elixir_files, fn file ->
+    |> Enum.count(elixir_files, fn file ->
       case File.read(file) do
         {:ok, content} ->
           # Look for raw HTML output

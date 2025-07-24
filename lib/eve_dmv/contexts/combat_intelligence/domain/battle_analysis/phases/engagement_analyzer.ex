@@ -366,7 +366,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Engage
     isk_destroyed =
       killmails
 
-    Enum.filter(fn killmail ->
+    |> Enum.filter(fn killmail ->
       killmail.attackers &&
         Enum.any?(killmail.attackers, fn attacker ->
           attacker.character_id in side_character_ids
@@ -378,7 +378,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Engage
     isk_lost =
       killmails
 
-    Enum.filter(fn killmail ->
+    |> Enum.filter(fn killmail ->
       killmail.victim_character_id in side_character_ids
     end)
 

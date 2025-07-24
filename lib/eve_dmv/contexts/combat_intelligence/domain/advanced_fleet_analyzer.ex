@@ -562,13 +562,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     ewar_breakdown =
       ewar_ships
 
-    Enum.flat_map(fn ship ->
+    |> Enum.flat_map(fn ship ->
       Enum.map(ship.ewar[:ewar_types] || [], fn type -> {type, ship} end)
     end)
 
-    Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
 
-    Enum.map(fn {type, ships} ->
+    |> Enum.map(fn {type, ships} ->
       {type,
        %{
          count: length(ships),
@@ -627,8 +627,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     speeds =
       ship_analyses
 
-    Enum.map(fn ship -> (ship.stats && ship.stats.mobility.max_velocity) || 0 end)
-    Enum.reject(&(&1 == 0))
+    |> Enum.map(fn ship -> (ship.stats && ship.stats.mobility.max_velocity) || 0 end)
+    |> Enum.reject(&(&1 == 0))
 
     if Enum.empty?(speeds) do
       %{average_speed: 0, mobility_rating: :unknown}
@@ -674,7 +674,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     range_groups =
       ship_analyses
 
-    Enum.group_by(fn ship ->
+    |> Enum.group_by(fn ship ->
       if ship.stats do
         case ship.stats.dps.breakdown.optimal_range do
           "0-10km" -> :brawl
@@ -730,11 +730,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     damage_profiles =
       ship_analyses
 
-    Enum.map(fn ship ->
+    |> Enum.map(fn ship ->
       ship.stats && ship.stats.dps.breakdown.damage_profile
     end)
 
-    Enum.reject(&is_nil/1)
+    |> Enum.reject(&is_nil/1)
 
     if Enum.empty?(damage_profiles) do
       %{primary: :unknown, secondary: :unknown}
@@ -751,8 +751,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
       sorted =
         aggregated
 
-      Enum.sort_by(&elem(&1, 1), :desc)
-      Enum.map(&elem(&1, 0))
+      |> Enum.sort_by(&elem(&1, 1), :desc)
+      |> Enum.map(&elem(&1, 0))
 
       %{
         primary: List.first(sorted) || :unknown,
@@ -789,7 +789,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     tank_types =
       ship_analyses
 
-    Enum.map(fn ship -> ship.stats && ship.stats.meta_info.tank_type end)
+    |> Enum.map(fn ship -> ship.stats && ship.stats.meta_info.tank_type end)
     Enum.reject(&is_nil/1) |> Enum.frequencies()
     # Homogeneous tank is more efficient
     dominant_tank_percentage =
@@ -813,7 +813,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     flexibility_score =
       [has_tackle, has_ewar, has_logi, has_command]
 
-    Enum.count(& &1)
+    |> Enum.count(& &1)
 
     case flexibility_score do
       4 -> :excellent
@@ -951,19 +951,19 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     resist_holes =
       ship_analyses
 
-    Enum.map(fn ship ->
+    |> Enum.map(fn ship ->
       ship.stats && ship.stats.ehp.resist_profile
     end)
 
-    Enum.reject(&is_nil/1)
-    Enum.group_by(& &1.damage_type)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.group_by(& &1.damage_type)
 
-    Enum.map(fn {damage_type, profiles} ->
+    |> Enum.map(fn {damage_type, profiles} ->
       avg_resist = Enum.sum(Enum.map(profiles, & &1.resistance)) / length(profiles)
       {damage_type, avg_resist}
     end)
 
-    Enum.min_by(&elem(&1, 1), fn -> {:unknown, 0.5} end)
+    |> Enum.min_by(&elem(&1, 1), fn -> {:unknown, 0.5} end)
 
     case resist_holes do
       {damage_type, avg_resist} when avg_resist < 0.5 ->
@@ -1017,20 +1017,20 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     # Vulnerability-based recommendations
     vuln_recs =
       vulnerabilities.vulnerabilities
-
-    Enum.map(& &1.mitigation)
+      |> Enum.map(& &1.mitigation)
 
     recommendations = recommendations ++ vuln_recs
 
     # Prioritize and deduplicate
-    Enum.uniq(recommendations)
-    Enum.take(10)
+    recommendations
+    |> Enum.uniq()
+    |> Enum.take(10)
   end
 
   defp generate_role_recommendations(composition) do
     composition.missing_roles
 
-    Enum.map(fn missing ->
+    |> Enum.map(fn missing ->
       "Add #{missing.ships_needed} #{missing.role} ships: #{Enum.join(missing.recommendation, ", ")}"
     end)
   end
@@ -1231,12 +1231,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     doctrine_matches =
       @fleet_doctrines
 
-    Enum.map(fn {doctrine_name, doctrine} ->
+    |> Enum.map(fn {doctrine_name, doctrine} ->
       compliance = calculate_doctrine_compliance(ship_analyses, doctrine)
       {doctrine_name, compliance}
     end)
 
-    Enum.sort_by(&elem(&1, 1), :desc)
+    |> Enum.sort_by(&elem(&1, 1), :desc)
 
     best_match = List.first(doctrine_matches)
 

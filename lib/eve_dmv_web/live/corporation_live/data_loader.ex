@@ -175,9 +175,9 @@ defmodule EveDmvWeb.CorporationLive.DataLoader do
         peak_hours =
           activity
 
-        Enum.sort_by(& &1.activity, :desc)
-        Enum.take(3)
-        Enum.map(& &1.hour)
+        |> Enum.sort_by(& &1.activity, :desc)
+        |> Enum.take(3)
+        |> Enum.map(& &1.hour)
 
         # Determine primary timezone based on peak activity
         primary_tz = determine_timezone(peak_hours)

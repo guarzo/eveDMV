@@ -332,7 +332,7 @@ defmodule EveDmv.Intelligence.PatternAnalysis do
     ]
 
     # Average of all factors
-    Enum.sum(factors) / length(factors)
+    |> Enum.sum(factors) / length(factors)
   end
 
   defp consistency_factor(stats) do

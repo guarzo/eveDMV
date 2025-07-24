@@ -479,7 +479,7 @@ defmodule EveDmvWeb.SurveillanceLive do
       if MapSet.size(socket.assigns.selected_profiles) > 0 do
         MapSet.to_list(socket.assigns.selected_profiles)
       else
-        Enum.map(socket.assigns.profiles, & &1.id)
+        |> Enum.map(socket.assigns.profiles, & &1.id)
       end
 
     export_data =

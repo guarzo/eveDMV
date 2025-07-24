@@ -380,7 +380,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
       _ ->
         to_string(doctrine)
         String.replace("_", " ") |> String.split()
-        Enum.map_join(" ", &String.capitalize/1)
+        |> Enum.map_join(" ", &String.capitalize/1)
     end
   end
 

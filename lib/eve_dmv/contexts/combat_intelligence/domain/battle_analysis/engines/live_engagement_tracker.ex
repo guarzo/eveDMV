@@ -135,7 +135,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.LiveE
     attackers =
       killmail.attackers
 
-    Enum.map(fn attacker ->
+    |> Enum.map(fn attacker ->
       {attacker.character_id,
        %{
          kills: 1,

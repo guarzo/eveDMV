@@ -29,7 +29,7 @@ defmodule EveDmv.Shared.MetricsCalculator do
   def calculate_current_metrics(state) do
     avg_time =
       if length(state.recent_analysis_times) > 0 do
-        Enum.sum(state.recent_analysis_times) / length(state.recent_analysis_times)
+        |> Enum.sum(state.recent_analysis_times) / length(state.recent_analysis_times)
       else
         0.0
       end

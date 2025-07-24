@@ -94,9 +94,9 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
         available_pilots =
           corporation_pilots
 
-        Enum.filter(&pilot_available_for_fleet?/1)
-        Enum.map(&enrich_pilot_data/1)
-        Enum.sort_by(& &1.activity_score, :desc)
+        |> Enum.filter(&pilot_available_for_fleet?/1)
+        |> Enum.map(&enrich_pilot_data/1)
+        |> Enum.sort_by(& &1.activity_score, :desc)
 
         Result.ok(%{
           corporation_id: corporation_id,
@@ -137,7 +137,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
         assigned_pilots =
           assign_pilots_to_role(role, role_data, available_pilots, required_count)
 
-        Enum.reduce(assigned_pilots, acc, fn pilot, acc2 ->
+        |> Enum.reduce(assigned_pilots, acc, fn pilot, acc2 ->
           assignment = %{
             character_name: pilot.character_name,
             assigned_role: role,
@@ -320,12 +320,12 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
             ship_groups =
               ship_categories
 
-            Enum.map(fn {category, count} ->
+            |> Enum.map(fn {category, count} ->
               group = map_category_to_group(category)
               {group, count}
             end)
 
-            Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+            |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
             Enum.map(fn {group, counts} -> {group, Enum.sum(counts)} end) |> Map.new()
             ship_groups
 
@@ -474,18 +474,18 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
 
   defp determine_primary_role(role_suitability) do
     role_suitability
-    Enum.max_by(fn {_role, score} -> score end)
+    |> Enum.max_by(fn {_role, score} -> score end)
     elem(0)
   end
 
   defp determine_backup_roles(role_suitability) do
     role_suitability
-    Enum.sort_by(fn {_role, score} -> score end, :desc)
+    |> Enum.sort_by(fn {_role, score} -> score end, :desc)
     # Skip the primary role
-    Enum.drop(1)
+    |> Enum.drop(1)
     # Take top 2 backup roles
-    Enum.take(2)
-    Enum.map(fn {role, _score} -> role end)
+    |> Enum.take(2)
+    |> Enum.map(fn {role, _score} -> role end)
   end
 
   defp calculate_overall_experience_rating(fleet_experience, combat_stats) do
@@ -507,9 +507,9 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
 
   defp assign_pilots_to_role(role, _role_data, available_pilots, required_count) do
     available_pilots
-    Enum.filter(&pilot_suitable_for_role?(&1, role))
-    Enum.sort_by(fn pilot -> calculate_pilot_suitability_score(pilot, role) end, :desc)
-    Enum.take(required_count)
+    |> Enum.filter(&pilot_suitable_for_role?(&1, role))
+    |> Enum.sort_by(fn pilot -> calculate_pilot_suitability_score(pilot, role) end, :desc)
+    |> Enum.take(required_count)
   end
 
   defp pilot_suitable_for_role?(pilot, role) do
@@ -609,9 +609,9 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
 
   defp find_backup_roles_for_pilot(pilot, doctrine_template) do
     doctrine_template
-    Enum.map(fn {role, _} -> role end)
-    Enum.filter(fn role -> pilot_suitable_for_role?(pilot, role) end)
-    Enum.take(2)
+    |> Enum.map(fn {role, _} -> role end)
+    |> Enum.filter(fn role -> pilot_suitable_for_role?(pilot, role) end)
+    |> Enum.take(2)
   end
 
   defp count_ready_pilots(pilot_assignments) do
@@ -622,9 +622,9 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
 
   defp calculate_skill_coverage(pilot_assignments) do
     pilot_assignments
-    Enum.group_by(fn {_pilot_id, assignment} -> assignment.assigned_role end)
+    |> Enum.group_by(fn {_pilot_id, assignment} -> assignment.assigned_role end)
 
-    Enum.map(fn {role, assignments} ->
+    |> Enum.map(fn {role, assignments} ->
       avg_readiness =
         assignments
 
@@ -647,7 +647,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
     avg_availability =
       pilot_assignments
 
-    Enum.map(fn {_pilot_id, assignment} ->
+    |> Enum.map(fn {_pilot_id, assignment} ->
       case assignment.availability do
         "high" -> 5
         "medium" -> 10

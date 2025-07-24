@@ -92,7 +92,7 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
     doctrine_scores =
       doctrines
 
-    Enum.map(fn doctrine ->
+    |> Enum.map(fn doctrine ->
       compliant_ships =
         Enum.count(ship_analysis, &EveDmv.StaticData.doctrine_ship?(&1.name, doctrine))
 

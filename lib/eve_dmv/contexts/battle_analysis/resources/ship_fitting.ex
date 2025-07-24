@@ -311,7 +311,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting do
 
     Map.get(items_by_slot, cargo_flag, [])
 
-    Enum.map(fn item ->
+    |> Enum.map(fn item ->
       "#{item[:type_name] || "Unknown"} x#{item[:quantity] || 1}"
     end)
   end

@@ -158,7 +158,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetSkillAnalyzer do
          }}
       end)
 
-    Enum.into(role_requirements_list, %{})
+    |> Enum.into(role_requirements_list, %{})
   end
 
   @doc """
@@ -208,7 +208,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetSkillAnalyzer do
     skill_coverage =
       Enum.uniq(all_skills)
 
-    Enum.map(fn skill ->
+    |> Enum.map(fn skill ->
       qualified_count =
         Enum.count(available_pilots, fn pilot ->
           check_skill_via_ship_usage(pilot, skill)
@@ -217,7 +217,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetSkillAnalyzer do
       needed_count =
         doctrine_template
 
-      Enum.filter(fn {_role, role_data} ->
+      |> Enum.filter(fn {_role, role_data} ->
         skill in (role_data["skills_required"] || [])
       end)
 
@@ -565,7 +565,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetSkillAnalyzer do
       pilot.kill_count + pilot.loss_count >= 10
     else
       # Check all required skills
-      Enum.all?(required_skills, fn skill ->
+      |> Enum.all?(required_skills, fn skill ->
         check_skill_via_ship_usage(pilot, skill)
       end)
     end

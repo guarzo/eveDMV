@@ -804,7 +804,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
 
       # Average the balance scores
       if length(balance_scores) > 0 do
-        Enum.sum(balance_scores) / length(balance_scores)
+        |> Enum.sum(balance_scores) / length(balance_scores)
       else
         0.0
       end

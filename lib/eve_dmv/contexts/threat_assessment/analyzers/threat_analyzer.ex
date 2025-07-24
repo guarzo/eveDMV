@@ -126,7 +126,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
 
     Task.await_many(30_000)
 
-    Enum.filter(fn
+    |> Enum.filter(fn
       {_id, {:ok, _result}} ->
         true
 

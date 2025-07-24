@@ -160,8 +160,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
     ewar_ships =
       ship_list
 
-    Enum.map(&analyze_single_ship/1)
-    Enum.filter(& &1.is_ewar)
+    |> Enum.map(&analyze_single_ship/1)
+    |> Enum.filter(& &1.is_ewar)
 
     fleet_analysis = %{
       total_ships: length(ship_list),
@@ -183,8 +183,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
     ewar_items =
       fitting_items
 
-    Enum.filter(&is_ewar_module?/1)
-    Enum.map(&categorize_ewar_module/1)
+    |> Enum.filter(&is_ewar_module?/1)
+    |> Enum.map(&categorize_ewar_module/1)
 
     module_analysis = %{
       has_ewar: not Enum.empty?(ewar_items),
@@ -245,7 +245,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
   defp detect_ewar_types(ship_name) do
     normalized_name = String.downcase(ship_name)
 
-    Enum.reduce(@ewar_ships, [], fn {ewar_type, ships}, acc ->
+    |> Enum.reduce(@ewar_ships, [], fn {ewar_type, ships}, acc ->
       all_ships =
         List.flatten([
           Map.get(ships, :t1, []),
@@ -487,7 +487,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
         strengths
       end
 
-    Enum.uniq(strengths)
+    |> Enum.uniq(strengths)
   end
 
   defp identify_weaknesses(ship_name, _ewar_types) do
@@ -671,7 +671,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
 
     missing = MapSet.difference(all_types, present_types)
 
-    Enum.map(missing, fn type ->
+    |> Enum.map(missing, fn type ->
       %{
         type: type,
         impact: assess_gap_impact(type),
@@ -760,7 +760,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
       end
 
     if type_id do
-      Enum.any?(@ewar_modules, fn {_type, ids} -> type_id in ids end)
+      |> Enum.any?(@ewar_modules, fn {_type, ids} -> type_id in ids end)
     else
       false
     end
@@ -856,7 +856,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
       if Enum.empty?(multipliers) do
         1.0
       else
-        Enum.reduce(multipliers, 1.0, &*/2)
+        |> Enum.reduce(multipliers, 1.0, &*/2)
       end
 
     round(base * final_multiplier)

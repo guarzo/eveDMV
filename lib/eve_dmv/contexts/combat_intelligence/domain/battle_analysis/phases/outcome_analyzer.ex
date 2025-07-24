@@ -798,7 +798,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
       end)
 
     # Check for capital support
-    multipliers =
+    multipliers_with_capital =
       Enum.reduce(sides, multipliers, fn {side_id, data}, acc ->
         if Map.get(data, :capital_ships, 0) > 0 do
           [
@@ -816,7 +816,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
       end)
 
     # Sort by impact factor
-    Enum.sort_by(multipliers, & &1.factor, :desc)
+    Enum.sort_by(multipliers_with_capital, & &1.factor, :desc)
   end
 
   defp analyze_coordination_effectiveness(coordination_data, tactical_patterns) do
@@ -1938,8 +1938,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
       intervals =
         Enum.sort(timestamps)
 
-      Enum.chunk_every(2, 1, :discard)
-      Enum.map(fn [a, b] -> b - a end)
+      |> Enum.chunk_every(2, 1, :discard)
+      |> Enum.map(fn [a, b] -> b - a end)
 
       avg_interval = average(intervals)
 

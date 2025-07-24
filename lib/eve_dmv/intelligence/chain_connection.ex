@@ -290,7 +290,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainConnection do
       calculation(fn records, _context ->
         now = DateTime.utc_now()
 
-        Enum.map(records, fn record ->
+        |> Enum.map(records, fn record ->
           DateTime.diff(now, record.first_discovered_at, :hour)
         end)
       end)
@@ -302,7 +302,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainConnection do
       calculation(fn records, _context ->
         now = DateTime.utc_now()
 
-        Enum.map(records, fn record ->
+        |> Enum.map(records, fn record ->
           case record.last_transit_at do
             # Never used
             nil -> 9999

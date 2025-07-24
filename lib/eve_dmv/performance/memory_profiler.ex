@@ -228,7 +228,7 @@ defmodule EveDmv.Performance.MemoryProfiler do
     # Run garbage collection on all processes
     processes = Process.list()
 
-    Enum.each(processes, fn pid ->
+    |> Enum.each(processes, fn pid ->
       try do
         :erlang.garbage_collect(pid)
       rescue

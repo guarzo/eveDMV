@@ -74,7 +74,7 @@ defmodule EveDmv.Intelligence.Fleet.DoctrineTemplateBuilder do
     required_pilots =
       Enum.map(doctrine_template, fn {_role, config} -> config["required"] || 1 end)
 
-    Enum.sum(required_pilots)
+    |> Enum.sum(required_pilots)
   end
 
   @doc """

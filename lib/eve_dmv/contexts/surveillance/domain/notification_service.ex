@@ -210,7 +210,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
 
     filtered_history =
       if since do
-        Enum.filter(profile_history, fn notification ->
+        |> Enum.filter(profile_history, fn notification ->
           DateTime.compare(notification.created_at, since) == :gt
         end)
       else
@@ -307,7 +307,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
 
     enabled_channels = get_enabled_channels(notification_config)
 
-    Enum.map(enabled_channels, fn channel ->
+    |> Enum.map(enabled_channels, fn channel ->
       %{
         id: generate_notification_id(),
         alert_id: alert.id,
@@ -665,7 +665,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
     status_distribution =
       recent_notifications
 
-    Enum.group_by(& &1.status)
+    |> Enum.group_by(& &1.status)
     Map.new(fn {status, notifications} -> {status, length(notifications)} end)
 
     %{

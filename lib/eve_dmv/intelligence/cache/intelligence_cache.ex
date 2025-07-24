@@ -155,7 +155,7 @@ defmodule EveDmv.Intelligence.Cache.IntelligenceCache do
       {:threat_score, character_id, [analysis_window_days: 90]}
     ]
 
-    Enum.each(threat_keys_to_delete, fn key ->
+    |> Enum.each(threat_keys_to_delete, fn key ->
       Cache.delete(:analysis, key)
     end)
 

@@ -233,9 +233,9 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
   defp identify_active_timezones(active_hours) do
     # Simplified timezone identification
     cond do
-      Enum.any?(active_hours, &(&1 >= 0 and &1 < 8)) -> [:asia]
-      Enum.any?(active_hours, &(&1 >= 8 and &1 < 16)) -> [:europe]
-      Enum.any?(active_hours, &(&1 >= 16 and &1 < 24)) -> [:us]
+      |> Enum.any?(active_hours, &(&1 >= 0 and &1 < 8)) -> [:asia]
+      |> Enum.any?(active_hours, &(&1 >= 8 and &1 < 16)) -> [:europe]
+      |> Enum.any?(active_hours, &(&1 >= 16 and &1 < 24)) -> [:us]
       true -> [:mixed]
     end
   end
@@ -320,7 +320,7 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
 
       corp_participants > 3
     end)
-    Enum.map(fn km ->
+    |> Enum.map(fn km ->
       %{
         killmail_id: km.id,
         # Placeholder response time in seconds

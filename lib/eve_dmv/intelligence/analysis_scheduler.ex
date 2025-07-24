@@ -195,7 +195,7 @@ defmodule EveDmv.Intelligence.AnalysisScheduler do
     tasks_to_run =
       Map.values(scheduled_tasks)
 
-    Enum.filter(&should_run_task?(&1, now))
+    |> Enum.filter(&should_run_task?(&1, now))
 
     if length(tasks_to_run) > 0 do
       Logger.debug("Executing #{length(tasks_to_run)} scheduled analysis tasks")
@@ -233,7 +233,7 @@ defmodule EveDmv.Intelligence.AnalysisScheduler do
         timeout: Config.get_timeout(:analysis)
       )
 
-    Enum.reduce(stream_results, %{completed: 0, failed: 0}, fn
+    |> Enum.reduce(stream_results, %{completed: 0, failed: 0}, fn
       {:ok, :ok}, acc -> %{acc | completed: acc.completed + 1}
       {:ok, {:error, _}}, acc -> %{acc | failed: acc.failed + 1}
       {:exit, _}, acc -> %{acc | failed: acc.failed + 1}

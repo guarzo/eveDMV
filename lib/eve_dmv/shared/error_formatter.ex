@@ -36,7 +36,7 @@ defmodule EveDmv.Shared.ErrorFormatter do
       end)
     end)
 
-    Enum.map_join("; ", fn {field, errors} ->
+    |> Enum.map_join("; ", fn {field, errors} ->
       "#{field}: #{Enum.join(errors, ", ")}"
     end)
   end

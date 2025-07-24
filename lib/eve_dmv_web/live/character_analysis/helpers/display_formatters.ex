@@ -50,7 +50,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.DisplayFormatters do
   """
   def format_number(number) when is_number(number) do
     to_string(number) |> String.reverse() |> String.graphemes()
-    Enum.chunk_every(3)
+    |> Enum.chunk_every(3)
     Enum.map_join(",", &Enum.join/1) |> String.reverse()
   end
 

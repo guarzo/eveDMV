@@ -802,7 +802,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   # Calculate corporation kill/loss/ISK statistics
   defp calculate_corp_summaries(battle) do
     if battle && battle.timeline && battle.timeline.events do
-      Enum.reduce(battle.timeline.events, %{}, fn event, acc ->
+      |> Enum.reduce(battle.timeline.events, %{}, fn event, acc ->
         # Process victim corporation
         victim_corp = event.victim.corporation_id
         victim_value = event[:isk_value] || 0
@@ -1049,14 +1049,14 @@ defmodule EveDmvWeb.BattleAnalysisLive do
           []
       end
     else
-      Enum.take(battle_pilots, 8)
+      |> Enum.take(battle_pilots, 8)
     end
   end
 
   # Check if a target from combat log actually died in this battle
   defp target_died?(target_name, battle) when is_binary(target_name) and is_map(battle) do
     if battle.killmails do
-      Enum.any?(battle.killmails, fn killmail ->
+      |> Enum.any?(battle.killmails, fn killmail ->
         victim_name = get_in(killmail.raw_data, ["victim", "character_name"])
         victim_name == target_name
       end)
@@ -1115,7 +1115,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   defp has_combat_log?(pilot_name, combat_logs)
        when is_binary(pilot_name) and is_list(combat_logs) do
-    Enum.any?(combat_logs, fn log ->
+    |> Enum.any?(combat_logs, fn log ->
       case log do
         %{pilot_name: ^pilot_name} -> true
         %{"pilot_name" => ^pilot_name} -> true

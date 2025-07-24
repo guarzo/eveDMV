@@ -153,7 +153,7 @@ defmodule EveDmv.Intelligence.Supervisor do
     Logger.warning("Restarting Intelligence system - ongoing analyses will be interrupted")
 
     # Stop all analyzer processes
-    Enum.each(DynamicSupervisor.which_children(AnalyzerSupervisor), fn {_, pid, _, _} ->
+    |> Enum.each(DynamicSupervisor.which_children(AnalyzerSupervisor), fn {_, pid, _, _} ->
       DynamicSupervisor.terminate_child(AnalyzerSupervisor, pid)
     end)
 
@@ -168,14 +168,14 @@ defmodule EveDmv.Intelligence.Supervisor do
   defp build_analyzer_breakdown(children) do
     children
 
-    Enum.group_by(fn {id, _pid, _type, _modules} ->
+    |> Enum.group_by(fn {id, _pid, _type, _modules} ->
       case id do
         {analyzer_module, _entity_id} -> analyzer_module
         _ -> :unknown
       end
     end)
 
-    Enum.map(fn {analyzer_module, analyzer_children} ->
+    |> Enum.map(fn {analyzer_module, analyzer_children} ->
       {analyzer_module, length(analyzer_children)}
     end)
     |> Map.new()
@@ -237,8 +237,8 @@ defmodule EveDmv.Intelligence.Supervisor do
 
   defp determine_overall_health(statuses) do
     cond do
-      Enum.any?(statuses, &(&1 == :unhealthy)) -> :unhealthy
-      Enum.all?(statuses, &(&1 in [:healthy, :idle])) -> :healthy
+      |> Enum.any?(statuses, &(&1 == :unhealthy)) -> :unhealthy
+      |> Enum.all?(statuses, &(&1 in [:healthy, :idle])) -> :healthy
       true -> :degraded
     end
   end

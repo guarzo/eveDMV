@@ -139,7 +139,7 @@ defmodule EveDmv.Performance.RegressionDetector do
     # Set initial baselines based on current system state
     current_metrics = collect_system_metrics()
 
-    Enum.each(current_metrics, fn {metric_name, value} ->
+    |> Enum.each(current_metrics, fn {metric_name, value} ->
       :ets.insert(@baseline_table, {metric_name, value})
     end)
 
@@ -173,7 +173,7 @@ defmodule EveDmv.Performance.RegressionDetector do
     timestamp = DateTime.utc_now()
 
     # Store all current metrics
-    Enum.each(current_metrics, fn {metric_name, value} ->
+    |> Enum.each(current_metrics, fn {metric_name, value} ->
       :ets.insert(@metrics_table, {metric_name, timestamp, value, %{}})
     end)
 
@@ -206,7 +206,7 @@ defmodule EveDmv.Performance.RegressionDetector do
         MapSet.member?(state.alerts_sent, reg.alert_key)
       end)
 
-    Enum.each(new_alerts, &send_regression_alert/1)
+    |> Enum.each(new_alerts, &send_regression_alert/1)
 
     # Update alerts sent
     new_alert_keys = Enum.map(new_alerts, & &1.alert_key) |> MapSet.new()
@@ -379,7 +379,7 @@ defmodule EveDmv.Performance.RegressionDetector do
       {_keep, remove} = Enum.split(sorted_entries, 1000)
 
       # Remove old entries
-      Enum.each(remove, fn entry ->
+      |> Enum.each(remove, fn entry ->
         :ets.delete_object(@metrics_table, entry)
       end)
     end
@@ -391,7 +391,7 @@ defmodule EveDmv.Performance.RegressionDetector do
     # Calculate new baselines based on recent performance
     current_metrics = collect_system_metrics()
 
-    Enum.each(current_metrics, fn {metric_name, current_value} ->
+    |> Enum.each(current_metrics, fn {metric_name, current_value} ->
       # Get recent values for this metric
       recent_values =
         @metrics_table
@@ -451,7 +451,7 @@ defmodule EveDmv.Performance.RegressionDetector do
       (Enum.at(sorted, mid - 1) + Enum.at(sorted, mid)) / 2
     else
       # Odd number of elements
-      Enum.at(sorted, div(length, 2))
+      |> Enum.at(sorted, div(length, 2))
     end
   end
 end

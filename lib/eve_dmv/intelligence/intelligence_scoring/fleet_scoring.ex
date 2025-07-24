@@ -124,7 +124,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.FleetScoring do
 
   defp calculate_fleet_individual_competency(individual_scores) do
     scores = Enum.map(individual_scores, fn {_id, score} -> score.overall_score end)
-    Enum.sum(scores) / length(scores)
+    |> Enum.sum(scores) / length(scores)
   end
 
   defp calculate_fleet_role_balance(individual_scores) do
@@ -166,7 +166,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.FleetScoring do
       assess_coordination_potential(individual_scores)
     ]
 
-    Enum.sum(coherence_indicators) / length(coherence_indicators)
+    |> Enum.sum(coherence_indicators) / length(coherence_indicators)
   end
 
   defp assess_operational_reliability(individual_scores) do
@@ -175,7 +175,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.FleetScoring do
         score.component_scores.intelligence_reliability
       end)
 
-    Enum.sum(reliability_scores) / length(reliability_scores)
+    |> Enum.sum(reliability_scores) / length(reliability_scores)
   end
 
   defp calculate_overall_fleet_score(fleet_metrics) do
@@ -188,7 +188,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.FleetScoring do
       operational_reliability: 0.10
     }
 
-    Enum.reduce(fleet_metrics, 0.0, fn {metric, score}, acc ->
+    |> Enum.reduce(fleet_metrics, 0.0, fn {metric, score}, acc ->
       weight = Map.get(weights, metric, 0.0)
       acc + score * weight
     end)
@@ -372,7 +372,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.FleetScoring do
         score.component_scores.behavioral_stability
       end)
 
-    Enum.sum(communication_scores) / length(communication_scores)
+    |> Enum.sum(communication_scores) / length(communication_scores)
   end
 
   defp assess_coordination_potential(individual_scores) do
@@ -384,7 +384,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.FleetScoring do
            score.component_scores.operational_value) / 2.0
       end)
 
-    Enum.sum(coordination_indicators) / length(coordination_indicators)
+    |> Enum.sum(coordination_indicators) / length(coordination_indicators)
   end
 
   defp calculate_role_distribution(individual_scores) do
@@ -515,7 +515,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.FleetScoring do
     # More than 1/3 of fleet in same role
     threshold = max(1, div(fleet_size, 3))
 
-    Enum.map(Enum.filter(role_counts, fn {_role, count} -> count > threshold end), fn {role,
+    |> Enum.map(Enum.filter(role_counts, fn {_role, count} -> count > threshold end), fn {role,
                                                                                        _count} ->
       role
     end)

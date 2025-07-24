@@ -568,7 +568,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
   defp count_recent_corp_changes(corp_history, days) do
     cutoff_date = DateTime.add(DateTime.utc_now(), -days * 24 * 3600, :second)
 
-    Enum.count(corp_history, fn corp_entry ->
+    |> Enum.count(corp_history, fn corp_entry ->
       not is_nil(corp_entry.left_at) and
         DateTime.compare(corp_entry.left_at, cutoff_date) == :gt
     end)

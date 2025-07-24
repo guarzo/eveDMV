@@ -180,7 +180,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     killmails = Repo.all(query)
 
     # Group by system
-    Enum.group_by(killmails, & &1.solar_system_id)
+    |> Enum.group_by(killmails, & &1.solar_system_id)
   rescue
     error ->
       Logger.error("Failed to fetch systems activity data: #{inspect(error)}")
@@ -263,7 +263,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
         numerator =
           values1
 
-        Enum.zip(values2)
+        |> Enum.zip(values2)
         Enum.map(fn {x, y} -> (x - mean1) * (y - mean2) end) |> Enum.sum()
 
         denominator1 =
@@ -372,7 +372,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       # Find fully connected clusters
       clusters = find_connected_components(systems, strong_correlations)
 
-      Enum.map(clusters, fn cluster ->
+      |> Enum.map(clusters, fn cluster ->
         %{
           systems: cluster,
           size: length(cluster),
@@ -397,20 +397,20 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     all_activities =
       activity_data
 
-    Enum.flat_map(fn {_system, activities} -> activities end)
-    Enum.sort_by(& &1.killmail_time)
+    |> Enum.flat_map(fn {_system, activities} -> activities end)
+    |> Enum.sort_by(& &1.killmail_time)
 
     # Group activities by time windows
     time_clusters =
       all_activities
 
-    Enum.chunk_by(fn activity ->
+    |> Enum.chunk_by(fn activity ->
       DateTime.truncate(activity.killmail_time, :second)
     end)
 
-    Enum.filter(fn cluster -> length(cluster) > 3 end)
+    |> Enum.filter(fn cluster -> length(cluster) > 3 end)
 
-    Enum.map(fn cluster ->
+    |> Enum.map(fn cluster ->
       %{
         time_window: List.first(cluster).killmail_time,
         activity_count: length(cluster),
@@ -431,19 +431,19 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       activity_timeline =
         activity_data
 
-      Enum.flat_map(fn {system, activities} ->
+      |> Enum.flat_map(fn {system, activities} ->
         Enum.map(activities, fn a -> Map.put(a, :system_id, system) end)
       end)
 
-      Enum.sort_by(& &1.killmail_time)
+      |> Enum.sort_by(& &1.killmail_time)
 
       # Group into potential waves
       waves =
         activity_timeline
 
-      Enum.chunk_every(10, 5, :discard)
+      |> Enum.chunk_every(10, 5, :discard)
 
-      Enum.map(fn chunk ->
+      |> Enum.map(fn chunk ->
         systems = chunk |> Enum.map(& &1.system_id) |> Enum.uniq()
         time_span = calculate_time_span(chunk)
 
@@ -457,7 +457,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
         }
       end)
 
-      Enum.filter(fn wave -> length(wave.systems) > 1 end)
+      |> Enum.filter(fn wave -> length(wave.systems) > 1 end)
 
       waves
     end
@@ -633,9 +633,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       peak_hours =
         hourly_patterns
 
-      Enum.sort_by(&elem(&1, 1), :desc)
-      Enum.take(3)
-      Enum.map(&elem(&1, 0))
+      |> Enum.sort_by(&elem(&1, 1), :desc)
+      |> Enum.take(3)
+      |> Enum.map(&elem(&1, 0))
 
       # Calculate cycle strength
       activities = Enum.map(hourly_patterns, &elem(&1, 1))
@@ -676,9 +676,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       peak_days =
         daily_activity
 
-      Enum.sort_by(& &1.kill_count, :desc)
-      Enum.take(3)
-      Enum.map(& &1.day_of_week)
+      |> Enum.sort_by(& &1.kill_count, :desc)
+      |> Enum.take(3)
+      |> Enum.map(& &1.day_of_week)
 
       [
         %{
@@ -758,12 +758,12 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     correlation_map =
       correlations
 
-    Enum.flat_map(fn {{s1, s2}, _} ->
+    |> Enum.flat_map(fn {{s1, s2}, _} ->
       # Include both directions for bidirectional graph
       [{s1, s2}, {s2, s1}]
     end)
 
-    Enum.group_by(&elem(&1, 0))
+    |> Enum.group_by(&elem(&1, 0))
     Enum.map(fn {s, pairs} -> {s, Enum.map(pairs, &elem(&1, 1))} end) |> Map.new()
     # Find clusters using simple traversal
     visited = MapSet.new()
@@ -771,7 +771,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
     systems
 
-    Enum.reduce({visited, clusters}, fn system, {v, c} ->
+    |> Enum.reduce({visited, clusters}, fn system, {v, c} ->
       if MapSet.member?(v, system) do
         {v, c}
       else
@@ -791,7 +791,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       new_visited = MapSet.put(visited, system)
       neighbors = Map.get(correlation_map, system, [])
 
-      Enum.reduce(neighbors, new_visited, fn neighbor, acc ->
+      |> Enum.reduce(neighbors, new_visited, fn neighbor, acc ->
         find_cluster(neighbor, correlation_map, acc)
       end)
     end
@@ -804,8 +804,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     cluster_correlations =
       correlations
 
-    Enum.filter(fn {{s1, s2}, _} -> {s1, s2} in pairs end)
-    Enum.map(&elem(&1, 1))
+    |> Enum.filter(fn {{s1, s2}, _} -> {s1, s2} in pairs end)
+    |> Enum.map(&elem(&1, 1))
 
     if length(cluster_correlations) > 0 do
       Float.round(Enum.sum(cluster_correlations) / length(cluster_correlations), 2)
@@ -900,7 +900,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       numerator =
         values1
 
-      Enum.zip(values2)
+      |> Enum.zip(values2)
       Enum.map(fn {x, y} -> (x - mean1) * (y - mean2) end) |> Enum.sum()
       variance1 = values1 |> Enum.map(fn x -> (x - mean1) * (x - mean1) end) |> Enum.sum()
       variance2 = values2 |> Enum.map(fn y -> (y - mean2) * (y - mean2) end) |> Enum.sum()
@@ -945,9 +945,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   defp categorize_daily_pattern(peak_hours) do
     # Categorize the daily activity pattern
     cond do
-      Enum.all?(peak_hours, fn h -> h >= 16 and h <= 23 end) -> :evening_peak
-      Enum.all?(peak_hours, fn h -> h >= 8 and h <= 16 end) -> :day_peak
-      Enum.all?(peak_hours, fn h -> h >= 0 and h <= 8 end) -> :night_peak
+      |> Enum.all?(peak_hours, fn h -> h >= 16 and h <= 23 end) -> :evening_peak
+      |> Enum.all?(peak_hours, fn h -> h >= 8 and h <= 16 end) -> :day_peak
+      |> Enum.all?(peak_hours, fn h -> h >= 0 and h <= 8 end) -> :night_peak
       true -> :distributed
     end
   end
@@ -957,10 +957,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     total_activity =
       hourly_data
 
-    Enum.map(fn {_system, hours} ->
+    |> Enum.map(fn {_system, hours} ->
       # Sum activity for this hour across all days
       hours
-      Enum.filter(fn {time, _} -> time.hour == hour end)
+      |> Enum.filter(fn {time, _} -> time.hour == hour end)
       Enum.map(&elem(&1, 1)) |> Enum.sum()
     end)
     |> Enum.sum()

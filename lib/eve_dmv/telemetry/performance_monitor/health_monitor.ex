@@ -22,7 +22,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
     }
 
     # Log warnings for any issues
-    Enum.each(health_metrics, fn {category, metrics} ->
+    |> Enum.each(health_metrics, fn {category, metrics} ->
       if metrics[:has_issues] do
         Logger.warning("Database health issue in #{category}: #{inspect(metrics[:issues])}")
       end
@@ -355,8 +355,8 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
     Enum.flat_map(health, fn {category, component} ->
       if component[:has_issues] do
         component[:issues]
-        Enum.filter(&critical_issue?/1)
-        Enum.map(&{category, &1})
+        |> Enum.filter(&critical_issue?/1)
+        |> Enum.map(&{category, &1})
       else
         []
       end
@@ -371,8 +371,8 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
     Enum.flat_map(health, fn {category, component} ->
       if component[:has_issues] do
         component[:issues]
-        Enum.reject(&critical_issue?/1)
-        Enum.map(&{category, &1})
+        |> Enum.reject(&critical_issue?/1)
+        |> Enum.map(&{category, &1})
       else
         []
       end

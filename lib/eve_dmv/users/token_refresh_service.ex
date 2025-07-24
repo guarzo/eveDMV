@@ -142,9 +142,9 @@ defmodule EveDmv.Users.TokenRefreshService do
           refresh_results =
             users
 
-          Enum.map(&refresh_single_user_token/1)
+          |> Enum.map(&refresh_single_user_token/1)
 
-          Enum.reduce({0, 0}, fn result, {success_count, error_count} ->
+          |> Enum.reduce({0, 0}, fn result, {success_count, error_count} ->
             case result do
               {:ok, _} -> {success_count + 1, error_count}
               {:error, _} -> {success_count, error_count + 1}

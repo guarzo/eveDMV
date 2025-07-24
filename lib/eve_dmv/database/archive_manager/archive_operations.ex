@@ -155,9 +155,9 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveOperations do
     value_placeholders =
       rows
 
-    Enum.with_index(1)
+    |> Enum.with_index(1)
 
-    Enum.map_join(", ", fn {_row, index} ->
+    |> Enum.map_join(", ", fn {_row, index} ->
       start_param = (index - 1) * length(columns) + 1
       end_param = start_param + length(columns) - 1
 
@@ -194,10 +194,10 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveOperations do
     pk_index = Enum.find_index(columns, &(&1 == pk_column))
 
     if pk_index do
-      Enum.map(rows, &Enum.at(&1, pk_index))
+      |> Enum.map(rows, &Enum.at(&1, pk_index))
     else
       # Fallback: use first column
-      Enum.map(rows, &List.first/1)
+      |> Enum.map(rows, &List.first/1)
     end
   end
 

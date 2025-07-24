@@ -109,9 +109,9 @@ defmodule EveDmv.Intelligence.Analyzers.DoctrineAnalyzer do
       ship_categories =
         categorized_ships
 
-      Enum.group_by(&elem(&1, 0), &elem(&1, 1))
-      Enum.map(fn {category, counts} -> {category, Enum.sum(counts)} end)
-      Enum.sort_by(&elem(&1, 1), :desc)
+      |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+      |> Enum.map(fn {category, counts} -> {category, Enum.sum(counts)} end)
+      |> Enum.sort_by(&elem(&1, 1), :desc)
 
       case ship_categories do
         [{primary_category, _} | _] -> primary_category
@@ -150,7 +150,7 @@ defmodule EveDmv.Intelligence.Analyzers.DoctrineAnalyzer do
          }}
       end)
 
-    Enum.into(mapped_categories, %{})
+    |> Enum.into(mapped_categories, %{})
   end
 
   defp calculate_adherence_score(ship_usage, doctrine_patterns) do
@@ -161,8 +161,8 @@ defmodule EveDmv.Intelligence.Analyzers.DoctrineAnalyzer do
       primary_doctrine_usage =
         Map.values(doctrine_patterns)
 
-      Enum.map(& &1.total_usage)
-      Enum.max(fn -> 0 end)
+      |> Enum.map(& &1.total_usage)
+      |> Enum.max(fn -> 0 end)
 
       total_usage = Enum.sum(Map.values(ship_usage))
 

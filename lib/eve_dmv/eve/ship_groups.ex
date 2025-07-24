@@ -123,8 +123,8 @@ defmodule EveDmv.Eve.ShipGroups do
   """
   def get_groups_by_classification(classification) do
     @ship_groups
-    Enum.filter(fn {_group_id, class} -> class == classification end)
-    Enum.map(fn {group_id, _class} -> group_id end)
+    |> Enum.filter(fn {_group_id, class} -> class == classification end)
+    |> Enum.map(fn {group_id, _class} -> group_id end)
   end
 
   @doc """

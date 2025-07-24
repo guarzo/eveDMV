@@ -133,7 +133,7 @@ defmodule Mix.Tasks.Eve.CreateIndexesAsync do
   defp check_indexes(indexes) do
     Logger.info("Checking #{length(indexes)} indexes...")
 
-    Enum.each(indexes, fn index ->
+    |> Enum.each(indexes, fn index ->
       exists = index_exists?(index.name)
       status = if exists, do: "✓", else: "✗"
       Logger.info("#{status} #{index.name} on #{index.table}")
@@ -146,10 +146,10 @@ defmodule Mix.Tasks.Eve.CreateIndexesAsync do
     # Group indexes by table to avoid conflicts
     grouped = Enum.group_by(indexes, & &1.table)
 
-    Enum.each(grouped, fn {table, table_indexes} ->
+    |> Enum.each(grouped, fn {table, table_indexes} ->
       Logger.info("Processing #{length(table_indexes)} indexes for table: #{table}")
 
-      Enum.each(table_indexes, fn index ->
+      |> Enum.each(table_indexes, fn index ->
         if index_exists?(index.name) do
           Logger.info("✓ Index #{index.name} already exists, skipping...")
         else

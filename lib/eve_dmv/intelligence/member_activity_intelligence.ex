@@ -492,7 +492,7 @@ defmodule EveDmv.Intelligence.MemberActivityIntelligence do
       calculation(fn records, _context ->
         now = DateTime.utc_now()
 
-        Enum.map(records, fn record ->
+        |> Enum.map(records, fn record ->
           DateTime.diff(now, record.analysis_generated_at, :day)
         end)
       end)

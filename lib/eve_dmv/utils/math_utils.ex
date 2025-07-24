@@ -93,7 +93,7 @@ defmodule EveDmv.Utils.MathUtils do
     weighted_sum =
       values
 
-    Enum.zip(weights)
+    |> Enum.zip(weights)
     Enum.map(fn {value, weight} -> value * weight end) |> Enum.sum()
     total_weight = Enum.sum(weights)
     safe_division(weighted_sum, total_weight, 0.0)
@@ -349,7 +349,7 @@ defmodule EveDmv.Utils.MathUtils do
       ss_res =
         y_values
 
-      Enum.zip(predicted_values)
+      |> Enum.zip(predicted_values)
       Enum.map(fn {actual, predicted} -> :math.pow(actual - predicted, 2) end) |> Enum.sum()
       r_squared = if ss_tot == 0, do: 1.0, else: 1 - ss_res / ss_tot
 
@@ -399,8 +399,8 @@ defmodule EveDmv.Utils.MathUtils do
 
   def calculate_moving_average(values, window_size) do
     values
-    Enum.chunk_every(window_size, 1, :discard)
-    Enum.map(&calculate_mean/1)
+    |> Enum.chunk_every(window_size, 1, :discard)
+    |> Enum.map(&calculate_mean/1)
   end
 
   @doc """
@@ -415,8 +415,8 @@ defmodule EveDmv.Utils.MathUtils do
   @spec categorize_by_thresholds(number(), map()) :: atom()
   def categorize_by_thresholds(score, thresholds) do
     thresholds
-    Enum.sort_by(fn {_category, threshold} -> threshold end)
-    Enum.find(fn {_category, threshold} -> score <= threshold end)
+    |> Enum.sort_by(fn {_category, threshold} -> threshold end)
+    |> Enum.find(fn {_category, threshold} -> score <= threshold end)
 
     case do
       {category, _threshold} -> category

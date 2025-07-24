@@ -34,16 +34,16 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
       enhanced_roles =
         killmails
 
-      Enum.map(&classify_ship_role_from_killmail/1)
-      Enum.filter(&match?({:ok, _}, &1))
-      Enum.map(fn {:ok, result} -> result end)
+      |> Enum.map(&classify_ship_role_from_killmail/1)
+      |> Enum.filter(&match?({:ok, _}, &1))
+      |> Enum.map(fn {:ok, result} -> result end)
 
       # Get fleet composition analysis
       ship_types =
         killmails
 
-      Enum.map(&extract_ship_type_id/1)
-      Enum.filter(& &1)
+      |> Enum.map(&extract_ship_type_id/1)
+      |> Enum.filter(& &1)
 
       fleet_analysis =
         case FleetAnalyzer.analyze_fleet_composition(ship_types) do
@@ -380,7 +380,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
   defp calculate_classification_confidence(classification) when is_map(classification) do
     # Calculate confidence based on the highest role score
     Map.values(classification)
-    Enum.max(fn -> 0.0 end)
+    |> Enum.max(fn -> 0.0 end)
   end
 
   defp calculate_classification_confidence(_classification), do: 0.0
@@ -504,9 +504,9 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
 
   defp analyze_ship_usage_patterns(killmail_data) do
     killmail_data
-    Enum.group_by(& &1.victim_ship_type_id)
+    |> Enum.group_by(& &1.victim_ship_type_id)
 
-    Enum.map(fn {ship_type_id, killmails} ->
+    |> Enum.map(fn {ship_type_id, killmails} ->
       {ship_type_id,
        %{
          usage_count: length(killmails),
@@ -515,7 +515,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
        }}
     end)
 
-    Enum.into(%{})
+    |> Enum.into(%{})
   end
 
   defp calculate_role_preferences(killmail_data) do
@@ -523,7 +523,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
     role_counts =
       killmail_data
 
-    Enum.map(fn km ->
+    |> Enum.map(fn km ->
       classification = ModuleClassifier.classify_ship_role(km.raw_data)
       determine_primary_role(classification)
     end)
@@ -533,7 +533,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
 
     role_counts
 
-    Enum.map(fn {role, count} ->
+    |> Enum.map(fn {role, count} ->
       %{
         role: role,
         count: count,
@@ -541,7 +541,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
       }
     end)
 
-    Enum.sort_by(& &1.percentage, :desc)
+    |> Enum.sort_by(& &1.percentage, :desc)
   end
 
   defp determine_primary_role(classification) when is_map(classification) do
@@ -570,14 +570,14 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
     ship_performance =
       killmail_data
 
-    Enum.group_by(& &1.victim_ship_type_id)
+    |> Enum.group_by(& &1.victim_ship_type_id)
 
-    Enum.map(fn {ship_type_id, killmails} ->
+    |> Enum.map(fn {ship_type_id, killmails} ->
       mastery_score = calculate_individual_ship_mastery(killmails)
       {ship_type_id, mastery_score}
     end)
 
-    Enum.into(%{})
+    |> Enum.into(%{})
 
     ship_performance
   end
@@ -608,7 +608,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
   defp extract_ship_types_from_composition(fleet_composition) do
     fleet_composition
 
-    Enum.map(fn ship ->
+    |> Enum.map(fn ship ->
       case ship do
         %{ship_type_id: id} -> id
         %{"ship_type_id" => id} -> id
@@ -617,7 +617,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
       end
     end)
 
-    Enum.filter(& &1)
+    |> Enum.filter(& &1)
   end
 
   defp assess_operational_readiness(analysis) do
@@ -745,9 +745,9 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
 
   defp extract_primary_ship_classes(specialization) do
     Map.get(specialization, :specializations, %{})
-    Enum.sort_by(fn {_ship_id, data} -> Map.get(data, :usage_percentage, 0) end, :desc)
-    Enum.take(3)
-    Enum.map(fn {ship_id, _data} -> ship_id end)
+    |> Enum.sort_by(fn {_ship_id, data} -> Map.get(data, :usage_percentage, 0) end, :desc)
+    |> Enum.take(3)
+    |> Enum.map(fn {ship_id, _data} -> ship_id end)
   end
 
   defp calculate_specialization_diversity(specialization) do

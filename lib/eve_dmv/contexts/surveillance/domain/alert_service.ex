@@ -384,13 +384,13 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
   defp determine_alert_type(match) do
     # Determine alert type based on what was matched
     cond do
-      Enum.any?(match.matched_criteria, &(&1.type == :victim)) ->
+      |> Enum.any?(match.matched_criteria, &(&1.type == :victim)) ->
         :target_killed
 
-      Enum.any?(match.matched_criteria, &(&1.type in [:attacker, :attacker_corporation])) ->
+      |> Enum.any?(match.matched_criteria, &(&1.type in [:attacker, :attacker_corporation])) ->
         :target_active
 
-      Enum.any?(match.matched_criteria, &(&1.type == :system)) ->
+      |> Enum.any?(match.matched_criteria, &(&1.type == :system)) ->
         :location_activity
 
       true ->

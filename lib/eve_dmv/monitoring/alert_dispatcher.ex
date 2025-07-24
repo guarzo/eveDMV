@@ -194,7 +194,7 @@ defmodule EveDmv.Monitoring.AlertDispatcher do
       [:eve_dmv, :error_recovery, :action_taken]
     ]
 
-    Enum.each(events, fn event ->
+    |> Enum.each(events, fn event ->
       :telemetry.attach(
         "alert-dispatcher-#{inspect(event)}",
         event,

@@ -70,12 +70,12 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
         system_activities =
           systems
 
-        Enum.map(fn system_id ->
+        |> Enum.map(fn system_id ->
           activity = get_system_killmail_activity(system_id, hours: time_window_hours)
           {system_id, activity}
         end)
 
-        Enum.into(%{})
+        |> Enum.into(%{})
 
         # Analyze temporal patterns
         temporal_patterns = analyze_temporal_patterns(system_activities)
@@ -143,12 +143,12 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
         system_threats =
           systems
 
-        Enum.map(fn system_id ->
+        |> Enum.map(fn system_id ->
           threats = analyze_system_threat_indicators(system_id, corporation_id)
           {system_id, threats}
         end)
 
-        Enum.into(%{})
+        |> Enum.into(%{})
 
         # Calculate overall threat metrics
         total_hostiles = count_total_hostiles(system_threats)
@@ -229,12 +229,12 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
         system_importance =
           systems
 
-        Enum.map(fn system_id ->
+        |> Enum.map(fn system_id ->
           {:ok, strategic_value} = calculate_system_strategic_value(system_id)
           {system_id, strategic_value}
         end)
 
-        Enum.into(%{})
+        |> Enum.into(%{})
 
         # Calculate current coverage effectiveness
         current_coverage = calculate_current_coverage(current_positions, topology_graph)

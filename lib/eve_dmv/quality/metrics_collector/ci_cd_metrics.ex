@@ -144,7 +144,7 @@ defmodule EveDmv.Quality.MetricsCollector.CiCdMetrics do
   defp extract_workflow_triggers(workflow_files) do
     workflow_files
 
-    Enum.flat_map(fn file ->
+    |> Enum.flat_map(fn file ->
       case File.read(file) do
         {:ok, content} ->
           cond do
@@ -219,7 +219,7 @@ defmodule EveDmv.Quality.MetricsCollector.CiCdMetrics do
   defp count_script_comments(content) do
     content
     String.split("\n")
-    Enum.count(&(String.starts_with?(String.trim(&1), "#") and not String.starts_with?(&1, "#!")))
+    |> Enum.count(&(String.starts_with?(String.trim(&1), "#") and not String.starts_with?(&1, "#!")))
   end
 
   defp count_script_lines(content) do
@@ -288,7 +288,7 @@ defmodule EveDmv.Quality.MetricsCollector.CiCdMetrics do
       if(File.exists?("docker-compose.yml"), do: 20, else: 0)
     ]
 
-    Enum.sum(scores)
+    |> Enum.sum(scores)
   end
 
   # Monitoring setup
@@ -360,6 +360,6 @@ defmodule EveDmv.Quality.MetricsCollector.CiCdMetrics do
       if(check_metrics_endpoint(), do: 20, else: 0)
     ]
 
-    Enum.sum(scores)
+    |> Enum.sum(scores)
   end
 end

@@ -46,21 +46,21 @@ defmodule EveDmv.Intelligence.LegacyAdapter do
         legacy_results =
           batch_results.successful
 
-        Enum.map(fn {char_id, result} ->
+        |> Enum.map(fn {char_id, result} ->
           {char_id, {:ok, convert_to_legacy_character_format(result)}}
         end)
 
-        Enum.into(%{})
+        |> Enum.into(%{})
 
         # Add failed results
         failed_results =
           batch_results.failed
 
-        Enum.map(fn {char_id, reason} ->
+        |> Enum.map(fn {char_id, reason} ->
           {char_id, {:error, reason}}
         end)
 
-        Enum.into(%{})
+        |> Enum.into(%{})
 
         all_results = Map.merge(legacy_results, failed_results)
 

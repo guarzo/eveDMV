@@ -310,7 +310,7 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
 
     # Update each killmail with resolved names
     result = %{processed: 0, updated: 0, errors: 0}
-    Enum.reduce(killmails, result, &update_killmail_names(&1, &2, resolved_names))
+    |> Enum.reduce(killmails, result, &update_killmail_names(&1, &2, resolved_names))
   end
 
   defp extract_missing_name_ids(killmails) do

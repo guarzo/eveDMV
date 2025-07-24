@@ -86,7 +86,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.RequirementsBuilder do
       preferred_ships = role_config["preferred_ships"] || []
       required_count = role_config["required"] || 1
 
-      Enum.reduce(preferred_ships, acc, fn ship_name, acc2 ->
+      |> Enum.reduce(preferred_ships, acc, fn ship_name, acc2 ->
         ship_info = ship_data[ship_name] || %{mass_kg: 12_000_000, estimated_cost: 50_000_000}
 
         # Get wormhole restrictions from StaticData
@@ -126,7 +126,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.RequirementsBuilder do
   def build_ship_requirements_from_list(ship_list) do
     Enum.with_index(ship_list)
 
-    Enum.reduce(%{}, fn {ship_name, index}, acc ->
+    |> Enum.reduce(%{}, fn {ship_name, index}, acc ->
       ship_info = get_ship_info(ship_name)
       type_id = Integer.to_string(index)
 

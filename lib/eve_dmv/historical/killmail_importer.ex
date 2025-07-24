@@ -197,7 +197,7 @@ defmodule EveDmv.Historical.KillmailImporter do
   defp log_sample_errors(errors) do
     errors
 
-    Enum.reject(fn error ->
+    |> Enum.reject(fn error ->
       error_msg = inspect(error)
 
       String.contains?(error_msg, "killmail_id") and
@@ -206,9 +206,9 @@ defmodule EveDmv.Historical.KillmailImporter do
            String.contains?(error_msg, "duplicate key"))
     end)
 
-    Enum.take(3)
+    |> Enum.take(3)
 
-    Enum.each(fn error ->
+    |> Enum.each(fn error ->
       Logger.error("Import error: #{inspect(error)}")
     end)
   end

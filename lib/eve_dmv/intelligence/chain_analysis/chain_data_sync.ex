@@ -158,7 +158,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainDataSync do
     # Bulk update all inhabitants to mark as departed
     departure_time = DateTime.utc_now()
 
-    Enum.each(inhabitants, fn inhabitant ->
+    |> Enum.each(inhabitants, fn inhabitant ->
       Ash.update!(inhabitant, %{present: false, departure_time: departure_time}, domain: Api)
     end)
   end
@@ -221,7 +221,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainDataSync do
     end
 
     if updates != [] do
-      Enum.each(updates, fn update_attrs ->
+      |> Enum.each(updates, fn update_attrs ->
         case Ash.get(SystemInhabitant, update_attrs.id, domain: Api) do
           {:ok, record} ->
             update_data = Map.delete(update_attrs, :id)
@@ -290,7 +290,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainDataSync do
     end
 
     if updates != [] do
-      Enum.each(updates, fn update_attrs ->
+      |> Enum.each(updates, fn update_attrs ->
         case Ash.get(ChainConnection, update_attrs.id, domain: Api) do
           {:ok, record} ->
             update_data = Map.delete(update_attrs, :id)

@@ -90,9 +90,9 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
     history =
       1..days_back
 
-    Enum.take_every(7)
+    |> Enum.take_every(7)
 
-    Enum.map(fn days_ago ->
+    |> Enum.map(fn days_ago ->
       date = DateTime.add(DateTime.utc_now(), -days_ago, :day)
 
       %{
@@ -501,7 +501,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
               }
             end)
 
-            Enum.reject(fn p -> is_nil(p.character_id) end)
+            |> Enum.reject(fn p -> is_nil(p.character_id) end)
 
             # Add victim as participant
             victim_participant = %{
@@ -738,7 +738,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
           end
         end)
 
-      Enum.sum(values) / length(values)
+      |> Enum.sum(values) / length(values)
     end
   end
 

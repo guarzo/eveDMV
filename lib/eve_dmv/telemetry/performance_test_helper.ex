@@ -190,7 +190,7 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
     if rem(len, 2) == 0 do
       (Enum.at(sorted, div(len, 2) - 1) + Enum.at(sorted, div(len, 2))) / 2
     else
-      Enum.at(sorted, div(len, 2))
+      |> Enum.at(sorted, div(len, 2))
     end
   end
 
@@ -198,7 +198,7 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
     sorted = Enum.sort(list)
     len = length(sorted)
     index = (p / 100 * (len - 1)) |> round()
-    Enum.at(sorted, index)
+    |> Enum.at(sorted, index)
   end
 
   defp estimate_row_count(stat) do

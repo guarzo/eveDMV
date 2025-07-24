@@ -193,7 +193,7 @@ defmodule EveDmv.Security.ApiAuthentication do
 
   defp has_required_permissions?(key_record, required_permissions) do
     key_permissions = key_record.permissions || []
-    Enum.all?(required_permissions, fn perm -> perm in key_permissions end)
+    |> Enum.all?(required_permissions, fn perm -> perm in key_permissions end)
   end
 
   defp generate_api_key do

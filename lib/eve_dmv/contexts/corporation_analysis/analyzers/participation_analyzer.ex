@@ -225,14 +225,14 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
           analyses =
             members
 
-          Enum.map(fn member ->
+          |> Enum.map(fn member ->
             case analyze(member.character_id, base_data, opts) do
               {:ok, analysis} -> analysis
               {:error, _} -> nil
             end
           end)
 
-          Enum.filter(&(&1 != nil))
+          |> Enum.filter(&(&1 != nil))
 
           {:ok, analyses}
         end
@@ -363,9 +363,9 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
   defp identify_home_systems(home_defense_activities) do
     home_defense_activities
     Enum.map(& &1.system_id) |> Enum.frequencies()
-    Enum.sort_by(fn {_system, count} -> count end, :desc)
-    Enum.take(3)
-    Enum.map(fn {system_id, _count} -> system_id end)
+    |> Enum.sort_by(fn {_system, count} -> count end, :desc)
+    |> Enum.take(3)
+    |> Enum.map(fn {system_id, _count} -> system_id end)
   end
 
   defp calculate_chain_activity_scope(chain_activities) do
@@ -413,7 +413,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
     }
 
     activities
-    Enum.max_by(fn {_type, count} -> count end)
+    |> Enum.max_by(fn {_type, count} -> count end)
     elem(0)
   end
 
@@ -494,9 +494,9 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
     activities_by_hour = group_activities_by_hour(participation_data.activities)
 
     activities_by_hour
-    Enum.sort_by(fn {_hour, count} -> count end, :desc)
-    Enum.take(3)
-    Enum.map(fn {hour, _count} -> format_hour(hour) end)
+    |> Enum.sort_by(fn {_hour, count} -> count end, :desc)
+    |> Enum.take(3)
+    |> Enum.map(fn {hour, _count} -> format_hour(hour) end)
   end
 
   defp calculate_corp_percentile(_character_id, fleet_activities, base_data) do
@@ -580,7 +580,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
     }
 
     totals
-    Enum.max_by(fn {_type, count} -> count end)
+    |> Enum.max_by(fn {_type, count} -> count end)
     elem(0)
   end
 
@@ -722,7 +722,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
   defp count_recent_activities(participation_data, days) do
     cutoff = DateTime.add(DateTime.utc_now(), -days, :day)
 
-    Enum.count(participation_data.activities, &(DateTime.compare(&1.timestamp, cutoff) == :gt))
+    |> Enum.count(participation_data.activities, &(DateTime.compare(&1.timestamp, cutoff) == :gt))
   end
 
   defp calculate_historical_average(participation_data) do
@@ -740,7 +740,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
   defp group_activities_by_week(activities) do
     activities
 
-    Enum.group_by(fn activity ->
+    |> Enum.group_by(fn activity ->
       Date.beginning_of_week(DateTime.to_date(activity.timestamp))
     end)
 
@@ -749,7 +749,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
 
   defp group_activities_by_hour(activities) do
     activities
-    Enum.group_by(& &1.timestamp.hour)
+    |> Enum.group_by(& &1.timestamp.hour)
     Enum.map(fn {hour, activities} -> {hour, length(activities)} end) |> Map.new()
   end
 
@@ -832,7 +832,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
   defp format_member_participation_details(member_analyses) do
     member_analyses
 
-    Enum.map(fn analysis ->
+    |> Enum.map(fn analysis ->
       %{
         character_id: analysis.character_id,
         primary_activity: analysis.primary_activity_type,
@@ -842,7 +842,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
       }
     end)
 
-    Enum.sort_by(& &1.participation_score, :desc)
+    |> Enum.sort_by(& &1.participation_score, :desc)
   end
 
   defp calculate_engagement_distribution(member_analyses) do
@@ -867,15 +867,15 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
   defp identify_top_performers(member_analyses) do
     member_analyses
 
-    Enum.map(fn analysis ->
+    |> Enum.map(fn analysis ->
       score = calculate_member_participation_score(analysis)
       {analysis, score}
     end)
 
-    Enum.sort_by(fn {_analysis, score} -> score end, :desc)
-    Enum.take(5)
+    |> Enum.sort_by(fn {_analysis, score} -> score end, :desc)
+    |> Enum.take(5)
 
-    Enum.map(fn {analysis, score} ->
+    |> Enum.map(fn {analysis, score} ->
       %{
         character_id: analysis.character_id,
         score: score,

@@ -132,9 +132,9 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
 
         results
         # Top 10 ships
-        Enum.take(10)
+        |> Enum.take(10)
 
-        Enum.map(fn result ->
+        |> Enum.map(fn result ->
           ship_type_id = result["ship_type_id"]
           usage_count = result["usage_count"] || 0
           ship_name = result["ship_name"] || "Unknown Ship"
@@ -238,7 +238,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
 
             rows
 
-            Enum.map(fn [weapon_type_id, weapon_name, weapon_group, usage_count, last_used] ->
+            |> Enum.map(fn [weapon_type_id, weapon_name, weapon_group, usage_count, last_used] ->
               # Categorize weapon type
               weapon_category = categorize_weapon_type(weapon_name, weapon_group)
 
@@ -565,7 +565,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
           {:ok, %{rows: rows}} ->
             rows
 
-            Enum.map(fn [
+            |> Enum.map(fn [
                           corp_id,
                           corp_name,
                           alliance_id,
@@ -897,12 +897,12 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
     {preferred, _score} =
       patterns
 
-    Enum.map(fn {category, data} ->
+    |> Enum.map(fn {category, data} ->
       combined_score = data.percentage + data.isk_percentage
       {category, combined_score}
     end)
 
-    Enum.max_by(fn {_category, score} -> score end, fn -> {:unknown, 0} end)
+    |> Enum.max_by(fn {_category, score} -> score end, fn -> {:unknown, 0} end)
 
     preferred
   end
@@ -914,7 +914,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
     active_categories =
       patterns
 
-    Enum.count(fn {_category, data} -> data.kill_count > 0 end)
+    |> Enum.count(fn {_category, data} -> data.kill_count > 0 end)
 
     case active_categories do
       0 -> :no_data

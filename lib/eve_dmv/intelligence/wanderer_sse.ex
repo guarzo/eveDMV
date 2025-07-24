@@ -244,7 +244,7 @@ defmodule EveDmv.Intelligence.WandererSSE do
     chunk
     String.split("\n\n")
 
-    Enum.each(fn event_block ->
+    |> Enum.each(fn event_block ->
       if String.starts_with?(event_block, "data: ") do
         json_data = String.trim_leading(event_block, "data: ")
 

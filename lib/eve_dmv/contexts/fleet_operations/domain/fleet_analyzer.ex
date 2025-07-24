@@ -477,7 +477,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
     diversity =
       Map.values(ship_counts)
 
-    Enum.map(fn count ->
+    |> Enum.map(fn count ->
       proportion = count / total_ships
       proportion * :math.log(proportion)
     end)
@@ -523,7 +523,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
 
     ships
 
-    Enum.map(fn ship ->
+    |> Enum.map(fn ship ->
       ship_type_id =
         case ship do
           %{ship_type_id: id} -> id
@@ -548,7 +548,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
     # Check compatibility for standard wormhole classes
     wh_classes = ["C1", "C2", "C3", "C4", "C5", "C6"]
 
-    Enum.reduce(wh_classes, %{}, fn wh_class, acc ->
+    |> Enum.reduce(wh_classes, %{}, fn wh_class, acc ->
       # For now, just check against basic wormhole mass limits
       # This should be improved to check actual mass limits per class
       wh_atom = wh_class |> String.downcase() |> String.to_existing_atom()
@@ -642,11 +642,11 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
     max_corp_tuple =
       Enum.frequencies(all_corps)
 
-    Enum.max_by(fn {_corp, count} -> count end)
+    |> Enum.max_by(fn {_corp, count} -> count end)
 
     majority_corp = elem(max_corp_tuple, 0)
 
-    Enum.split_with(participants, fn participant ->
+    |> Enum.split_with(participants, fn participant ->
       participant.corporation_id == majority_corp
     end)
   end
@@ -889,8 +889,8 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
     max_percentage =
       composition.Map.values(ship_classes)
 
-    Enum.map(& &1.percentage)
-    Enum.max(fn -> 0 end)
+    |> Enum.map(& &1.percentage)
+    |> Enum.max(fn -> 0 end)
 
     diversity_recommendations =
       if max_percentage > 70 do

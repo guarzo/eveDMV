@@ -184,7 +184,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
           metadata: metadata
         }
 
-        Enum.take([query | queries.slow_queries], 100)
+        |> Enum.take([query | queries.slow_queries], 100)
       else
         queries.slow_queries
       end
@@ -414,7 +414,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
       {[:eve_dmv, :materialized_views, :refresh], &__MODULE__.handle_telemetry/4}
     ]
 
-    Enum.each(handlers, fn {event, handler} ->
+    |> Enum.each(handlers, fn {event, handler} ->
       :telemetry.attach(
         "performance-dashboard-#{inspect(event)}",
         event,

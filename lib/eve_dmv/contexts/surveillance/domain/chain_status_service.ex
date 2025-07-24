@@ -37,14 +37,14 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainStatusService do
     chains_status =
       state.chains
 
-    Enum.map(fn {map_id, _chain_data} ->
+    |> Enum.map(fn {map_id, _chain_data} ->
       case get_chain_status(map_id, state) do
         {:ok, status} -> status
         {:error, _} -> nil
       end
     end)
 
-    Enum.filter(&(&1 != nil))
+    |> Enum.filter(&(&1 != nil))
 
     {:ok, chains_status}
   end

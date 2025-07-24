@@ -207,7 +207,7 @@ defmodule EveDmv.Database.CacheInvalidator do
       "system:updated"
     ]
 
-    Enum.each(topics, fn topic ->
+    |> Enum.each(topics, fn topic ->
       PubSub.subscribe(EveDmv.PubSub, topic)
     end)
   end
@@ -257,9 +257,9 @@ defmodule EveDmv.Database.CacheInvalidator do
     perform_type_invalidation(entity_type, entity_id)
 
     # Invalidate related entities
-    Enum.each(related_types, fn {related_type, related_ids} ->
+    |> Enum.each(related_types, fn {related_type, related_ids} ->
       if is_list(related_ids) do
-        Enum.each(related_ids, fn related_id ->
+        |> Enum.each(related_ids, fn related_id ->
           perform_type_invalidation(related_type, related_id)
         end)
       else
@@ -361,7 +361,7 @@ defmodule EveDmv.Database.CacheInvalidator do
       "activity_summary_*"
     ]
 
-    Enum.each(patterns, &perform_pattern_invalidation/1)
+    |> Enum.each(patterns, &perform_pattern_invalidation/1)
   end
 
   defp execute_hooks(hooks, cache_type, entity_id) do

@@ -214,8 +214,8 @@ defmodule EveDmv.Market.PriceService do
 
   defp strategies_for_item(type_id, item_attributes) do
     @pricing_strategies
-    Enum.sort_by(& &1.priority())
-    Enum.filter(& &1.supports?(type_id, item_attributes))
+    |> Enum.sort_by(& &1.priority())
+    |> Enum.filter(& &1.supports?(type_id, item_attributes))
   end
 
   defp calculate_ship_value(killmail, prices) do

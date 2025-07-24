@@ -273,9 +273,9 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.IngestionService do
   defp extract_attackers_summary(killmail) do
     killmail.attackers
     # Limit to top 5 attackers for event
-    Enum.take(5)
+    |> Enum.take(5)
 
-    Enum.map(fn attacker ->
+    |> Enum.map(fn attacker ->
       %{
         character_id: Map.get(attacker, :character_id),
         corporation_id: Map.get(attacker, :corporation_id),

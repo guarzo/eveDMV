@@ -80,7 +80,7 @@ defmodule EveDmv.Intelligence.Core.CacheHelper do
       "Invalidating cache for entity #{entity_id} across #{length(analysis_types)} analysis types"
     )
 
-    Enum.each(analysis_types, fn analysis_type ->
+    |> Enum.each(analysis_types, fn analysis_type ->
       cache_key = generate_cache_key(analysis_type, entity_id)
       Cache.delete(@cache_name, cache_key)
 

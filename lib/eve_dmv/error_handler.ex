@@ -341,7 +341,7 @@ defmodule EveDmv.ErrorHandler do
       }
     ]
 
-    Enum.each(handlers, fn {id, event, handler, config} ->
+    |> Enum.each(handlers, fn {id, event, handler, config} ->
       :telemetry.attach(id, event, handler, config)
     end)
   end

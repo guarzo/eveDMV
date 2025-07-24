@@ -160,7 +160,7 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
 
     new_state = %{state | buffer: remaining_buffer}
 
-    Enum.reduce(events, new_state, fn event, acc_state ->
+    |> Enum.reduce(events, new_state, fn event, acc_state ->
       process_event(event, acc_state, character_id)
     end)
   end
@@ -198,7 +198,7 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
   defp parse_sse_event(text) do
     lines = String.split(text, "\n", trim: true)
 
-    Enum.reduce(lines, %{event: nil, data: nil}, fn line, acc ->
+    |> Enum.reduce(lines, %{event: nil, data: nil}, fn line, acc ->
       case String.split(line, ":", parts: 2) do
         ["event", event_type] -> %{acc | event: String.trim(event_type)}
         ["data", data] -> %{acc | data: String.trim(data)}
@@ -226,7 +226,7 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
         )
 
         # Process killmails
-        Enum.each(killmails, &store_killmail/1)
+        |> Enum.each(killmails, &store_killmail/1)
 
         %{
           state

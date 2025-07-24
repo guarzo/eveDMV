@@ -18,9 +18,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Ba
     timeline =
       killmails
 
-    Enum.sort_by(& &1.killmail_time)
+    |> Enum.sort_by(& &1.killmail_time)
 
-    Enum.map(fn km ->
+    |> Enum.map(fn km ->
       %{
         timestamp: km.killmail_time,
         event_type: :kill,
@@ -47,9 +47,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Ba
     timeline =
       killmails
 
-    Enum.sort_by(& &1.killmail_time)
+    |> Enum.sort_by(& &1.killmail_time)
 
-    Enum.map(fn km ->
+    |> Enum.map(fn km ->
       %{
         timestamp: km.killmail_time,
         event_type: :kill,
@@ -72,7 +72,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Ba
     participants =
       Enum.reduce(killmails, %{}, fn km, acc ->
         # Add victim
-        acc =
+        acc_with_victim =
           Map.put(acc, km.victim_character_id, %{
             character_id: km.victim_character_id,
             corporation_id: km.victim_corporation_id,
@@ -85,7 +85,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Ba
           })
 
         # Add attackers
-        Enum.reduce(km.attackers || [], acc, fn attacker, acc2 ->
+        Enum.reduce(km.attackers || [], acc_with_victim, fn attacker, acc2 ->
           char_id = attacker["character_id"]
 
           if char_id && char_id != 0 do
@@ -152,7 +152,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Ba
   defp extract_attacker_details(km) do
     km.attackers || []
 
-    Enum.map(fn attacker ->
+    |> Enum.map(fn attacker ->
       %{
         character_id: attacker["character_id"],
         corporation_id: attacker["corporation_id"],

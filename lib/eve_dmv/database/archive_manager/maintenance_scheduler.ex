@@ -349,8 +349,8 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
     health_statuses = Enum.map(health_results, fn {_table, status} -> status end)
 
     cond do
-      Enum.any?(health_statuses, &match?({:issues, _}, &1)) -> :degraded
-      Enum.any?(health_statuses, &match?({:warning, _}, &1)) -> :warning
+      |> Enum.any?(health_statuses, &match?({:issues, _}, &1)) -> :degraded
+      |> Enum.any?(health_statuses, &match?({:warning, _}, &1)) -> :warning
       true -> :healthy
     end
   end
@@ -410,7 +410,7 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
     total_archive_size =
       archive_policies
 
-    Enum.map(fn policy ->
+    |> Enum.map(fn policy ->
       PartitionManager.get_archive_table_size(policy.archive_table).total_size
     end)
     |> Enum.sum()

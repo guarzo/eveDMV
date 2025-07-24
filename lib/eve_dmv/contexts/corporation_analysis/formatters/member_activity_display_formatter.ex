@@ -214,14 +214,14 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Formatters.MemberActivityDisplayFo
     engagement_groups =
       member_analyses
 
-    Enum.group_by(&format_engagement_status(&1.engagement_score))
+    |> Enum.group_by(&format_engagement_status(&1.engagement_score))
 
-    Enum.map(fn {status, members} ->
+    |> Enum.map(fn {status, members} ->
       {status,
        %{count: length(members), percentage: length(members) / length(member_analyses) * 100}}
     end)
 
-    Enum.into(%{})
+    |> Enum.into(%{})
 
     %{
       distribution: engagement_groups,

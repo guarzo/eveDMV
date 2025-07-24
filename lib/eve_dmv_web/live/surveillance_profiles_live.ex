@@ -548,15 +548,15 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   defp parse_id_list(value) when is_binary(value) do
     value
     String.split(",")
-    Enum.map(&String.trim/1)
-    Enum.reject(&(&1 == ""))
-    Enum.map(fn id_str ->
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.map(fn id_str ->
       case Integer.parse(id_str) do
         {id, _} -> id
         :error -> nil
       end
     end)
-    Enum.reject(&is_nil/1)
+    |> Enum.reject(&is_nil/1)
   end
 
   defp parse_id_list(_), do: []
@@ -578,7 +578,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
       # Test criteria against killmails
       matches =
     test_killmails
-    Enum.map(fn killmail ->
+    |> Enum.map(fn killmail ->
           case MatchingEngine.test_criteria(profile.criteria, killmail) do
             {:ok, result} ->
               if result.matches do
@@ -594,9 +594,9 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
               end
           end
         end)
-    Enum.reject(&is_nil/1)
+    |> Enum.reject(&is_nil/1)
         # Show top 10 matches
-    Enum.take(10)
+    |> Enum.take(10)
 
       %{
         matches: matches,

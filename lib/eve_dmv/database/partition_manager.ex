@@ -169,7 +169,7 @@ defmodule EveDmv.Database.PartitionManager do
       Date.add(current_date, 60)
     ]
 
-    Enum.flat_map(future_dates, fn date ->
+    |> Enum.flat_map(future_dates, fn date ->
       case create_partition_for_table_and_date(table_config.table, date) do
         {:ok, partition_name} -> [partition_name]
         {:exists, _} -> []
@@ -254,7 +254,7 @@ defmodule EveDmv.Database.PartitionManager do
       "CREATE INDEX IF NOT EXISTS #{partition_name}_solar_system_idx ON #{partition_name} (solar_system_id)"
     ]
 
-    Enum.each(indexes, fn sql ->
+    |> Enum.each(indexes, fn sql ->
       case SQL.query(Repo, sql, []) do
         {:ok, _} ->
           :ok
@@ -272,7 +272,7 @@ defmodule EveDmv.Database.PartitionManager do
       cutoff_date = Date.add(Date.utc_today(), -table_config.retention_months * 30)
       old_partitions = find_old_partitions(table, cutoff_date)
 
-      Enum.map(old_partitions, &drop_partition/1)
+      |> Enum.map(old_partitions, &drop_partition/1)
     else
       []
     end

@@ -186,7 +186,7 @@ defmodule EveDmv.Eve.StaticDataLoader.SolarSystemProcessor do
   def find_system_by_name(systems, system_name) do
     normalized_name = String.downcase(system_name)
 
-    Enum.find(systems, fn system ->
+    |> Enum.find(systems, fn system ->
       String.downcase(system.system_name) == normalized_name
     end)
   end

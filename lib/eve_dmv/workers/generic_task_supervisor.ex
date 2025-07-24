@@ -142,7 +142,7 @@ defmodule EveDmv.Workers.GenericTaskSupervisor do
     defp count_user_tasks(table_name, user_id) do
       table_list = table_name |> :ets.tab2list()
 
-      Enum.count(table_list, fn {_pid, task_info} ->
+      |> Enum.count(table_list, fn {_pid, task_info} ->
         Map.get(task_info.metadata, :user_id) == user_id
       end)
     end
@@ -305,7 +305,7 @@ defmodule EveDmv.Workers.GenericTaskSupervisor do
 
       avg_duration =
         if running_tasks > 0 do
-          Enum.sum(task_durations) / running_tasks
+          |> Enum.sum(task_durations) / running_tasks
         else
           0
         end
@@ -321,7 +321,7 @@ defmodule EveDmv.Workers.GenericTaskSupervisor do
     def get_running_tasks(table_name) do
       table_list = table_name |> :ets.tab2list()
 
-      Enum.map(table_list, fn {pid, task_info} ->
+      |> Enum.map(table_list, fn {pid, task_info} ->
         %{
           pid: pid,
           duration_ms: System.monotonic_time(:millisecond) - task_info.started_at,

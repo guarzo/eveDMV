@@ -288,7 +288,7 @@ defmodule EveDmv.Database.CacheWarmer do
           |> Enum.take(@batch_size)
 
         # Warm alliance statistics
-        Enum.each(alliance_ids, fn alliance_id ->
+        |> Enum.each(alliance_ids, fn alliance_id ->
           cache_key = "alliance_stats_#{alliance_id}"
 
           try do

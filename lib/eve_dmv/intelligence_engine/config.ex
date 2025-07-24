@@ -108,7 +108,7 @@ defmodule EveDmv.IntelligenceEngine.Config do
     standard_plugins = get_in(@default_config, [:plugins, domain, :standard]) || []
     full_plugins = get_in(@default_config, [:plugins, domain, :full]) || []
 
-    Enum.uniq(basic_plugins ++ standard_plugins ++ full_plugins)
+    |> Enum.uniq(basic_plugins ++ standard_plugins ++ full_plugins)
   end
 
   def validate_config(config) when is_map(config) do

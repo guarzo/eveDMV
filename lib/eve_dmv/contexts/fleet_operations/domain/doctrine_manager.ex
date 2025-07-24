@@ -222,7 +222,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
         corporation_match and type_match and active_match and mass_match
       end)
 
-    Enum.sort_by(& &1.updated_at, {:desc, DateTime})
+    |> Enum.sort_by(& &1.updated_at, {:desc, DateTime})
 
     {:reply, {:ok, filtered_doctrines}, state}
   end
@@ -439,7 +439,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
     # Calculate average ship compliance
     ship_score =
       if length(compliance_scores) > 0 do
-        Enum.sum(compliance_scores) / length(compliance_scores)
+        |> Enum.sum(compliance_scores) / length(compliance_scores)
       else
         1.0
       end
@@ -488,7 +488,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
     # Calculate average role compliance
     role_score =
       if length(compliance_scores) > 0 do
-        Enum.sum(compliance_scores) / length(compliance_scores)
+        |> Enum.sum(compliance_scores) / length(compliance_scores)
       else
         1.0
       end

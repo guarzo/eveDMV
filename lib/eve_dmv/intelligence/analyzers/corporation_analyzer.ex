@@ -161,13 +161,13 @@ defmodule EveDmv.Intelligence.Analyzers.CorporationAnalyzer do
     members =
       killmails
 
-    Enum.flat_map(fn killmail ->
+    |> Enum.flat_map(fn killmail ->
       Enum.filter(killmail.participants || [], &(&1.corporation_id == corporation_id))
     end)
 
-    Enum.group_by(& &1.character_id)
+    |> Enum.group_by(& &1.character_id)
 
-    Enum.map(fn {character_id, participations} ->
+    |> Enum.map(fn {character_id, participations} ->
       participation_damages = Enum.map(participations, &(&1.damage_done || 0))
       ship_type_ids = Enum.map(participations, & &1.ship_type_id)
       participation_times = Enum.map(participations, & &1.killmail_time)

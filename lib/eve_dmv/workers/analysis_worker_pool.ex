@@ -541,7 +541,7 @@ defmodule EveDmv.Workers.AnalysisWorkerPool do
     {to_remove, to_keep} = Enum.split(idle_workers, count)
 
     # Shutdown workers to remove
-    Enum.each(to_remove, fn {_id, worker} ->
+    |> Enum.each(to_remove, fn {_id, worker} ->
       send(worker.pid, :shutdown)
     end)
 

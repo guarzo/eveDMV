@@ -216,7 +216,7 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessor do
         type.group_id in @ship_group_ids and type.published
       end)
 
-    Enum.map(ship_types, fn type ->
+    |> Enum.map(ship_types, fn type ->
       %{
         type_id: type.type_id,
         type_name: type.name,

@@ -121,10 +121,10 @@ defmodule EveDmvWeb.CharacterSearchLive do
           enhanced_results =
             results
 
-          Enum.map(&enhance_character_result/1)
-          Enum.sort_by(& &1.killmails_count, :desc)
+          |> Enum.map(&enhance_character_result/1)
+          |> Enum.sort_by(& &1.killmails_count, :desc)
           # Limit to top 20 results
-          Enum.take(20)
+          |> Enum.take(20)
 
           {:ok, enhanced_results}
 
@@ -167,7 +167,7 @@ defmodule EveDmvWeb.CharacterSearchLive do
           }
         end)
 
-        Enum.filter(&(&1.name != "Unknown Character"))
+        |> Enum.filter(&(&1.name != "Unknown Character"))
 
       {:error, _} ->
         []
@@ -271,7 +271,7 @@ defmodule EveDmvWeb.CharacterSearchLive do
         results =
           rows
 
-        Enum.map(fn [character_id, character_name, killmail_count, last_seen] ->
+        |> Enum.map(fn [character_id, character_name, killmail_count, last_seen] ->
           %{
             character_id: character_id,
             name: character_name || NameResolver.character_name(character_id),
@@ -280,8 +280,8 @@ defmodule EveDmvWeb.CharacterSearchLive do
           }
         end)
 
-        Enum.filter(&(&1.character_id != nil))
-        Enum.uniq_by(& &1.character_id)
+        |> Enum.filter(&(&1.character_id != nil))
+        |> Enum.uniq_by(& &1.character_id)
 
         {:ok, results}
 

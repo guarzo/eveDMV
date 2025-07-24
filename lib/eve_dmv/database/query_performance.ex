@@ -160,7 +160,7 @@ defmodule EveDmv.Database.QueryPerformance do
           }
         end)
 
-        Enum.filter(&(&1.index_benefit > 0.5))
+        |> Enum.filter(&(&1.index_benefit > 0.5))
 
       _ ->
         []

@@ -102,10 +102,10 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewRefreshScheduler do
       refreshed_views =
         incremental_views
 
-      Enum.map(&ViewDefinitions.find_view_by_name/1)
-      Enum.filter(&(not is_nil(&1)))
+      |> Enum.map(&ViewDefinitions.find_view_by_name/1)
+      |> Enum.filter(&(not is_nil(&1)))
 
-      Enum.reduce(%{}, fn view_def, acc ->
+      |> Enum.reduce(%{}, fn view_def, acc ->
         case refresh_view(view_def) do
           {:ok, refresh_time_ms} ->
             Map.put(acc, view_def.name, %{

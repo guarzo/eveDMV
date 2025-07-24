@@ -382,7 +382,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainTracker do
   defp analyze_system_composition(system_ids) do
     system_classes = Enum.map(system_ids, &StaticData.classify_system/1)
 
-    Enum.frequencies(system_classes)
+    |> Enum.frequencies(system_classes)
   end
 
   defp assess_chain_threats(system_ids, connections) do
@@ -556,13 +556,13 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainTracker do
         new_paths =
           neighbors
 
-        Enum.reject(&MapSet.member?(new_visited, &1))
-        Enum.map(&{length(path) + 1, &1, path ++ [&1]})
+        |> Enum.reject(&MapSet.member?(new_visited, &1))
+        |> Enum.map(&{length(path) + 1, &1, path ++ [&1]})
 
         new_queue =
           rest ++ new_paths
 
-        Enum.sort_by(&elem(&1, 0))
+        |> Enum.sort_by(&elem(&1, 0))
 
         dijkstra_search(new_queue, new_visited, target, chain_map)
     end
@@ -571,7 +571,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainTracker do
   defp path_has_critical_connection?(path, connections) do
     path_pairs = Enum.zip(path, Enum.drop(path, 1))
 
-    Enum.any?(connections, fn conn ->
+    |> Enum.any?(connections, fn conn ->
       Enum.any?(path_pairs, fn {from, to} ->
         (conn.from_system_id == from and conn.to_system_id == to) or
           (conn.from_system_id == to and conn.to_system_id == from)
@@ -598,7 +598,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainTracker do
     active_systems =
       kills_by_system
 
-    Enum.map(fn {system_id, system_kills} ->
+    |> Enum.map(fn {system_id, system_kills} ->
       %{
         system_id: system_id,
         kill_count: length(system_kills),
@@ -607,7 +607,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainTracker do
       }
     end)
 
-    Enum.sort_by(& &1.kill_count, :desc)
+    |> Enum.sort_by(& &1.kill_count, :desc)
 
     # Assess threat based on activity
     threat_level =

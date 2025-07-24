@@ -25,7 +25,7 @@ defmodule EveDmv.Killmails.DisplayService do
 
     # Preload names for raw killmails
     preload_raw_killmail_names(raw)
-    Enum.map(raw, &build_killmail_from_raw/1)
+    |> Enum.map(raw, &build_killmail_from_raw/1)
   end
 
   def preload_killmail_names(killmails) do
@@ -46,7 +46,7 @@ defmodule EveDmv.Killmails.DisplayService do
     NameResolver.system_names(system_ids)
 
     # Preload system security data too
-    Enum.each(system_ids, &NameResolver.system_security/1)
+    |> Enum.each(system_ids, &NameResolver.system_security/1)
   end
 
   # REMOVED: build_killmail_from_enriched function
@@ -156,7 +156,7 @@ defmodule EveDmv.Killmails.DisplayService do
     NameResolver.system_names(system_ids)
 
     # Preload system security data
-    Enum.each(system_ids, &NameResolver.system_security/1)
+    |> Enum.each(system_ids, &NameResolver.system_security/1)
   end
 
   defp build_killmail_from_raw(raw) do

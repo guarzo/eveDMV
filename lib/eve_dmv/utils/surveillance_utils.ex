@@ -94,7 +94,7 @@ defmodule EveDmv.Utils.SurveillanceUtils do
         _ -> []
       end
 
-    Enum.uniq(base_actions ++ context_actions)
+    |> Enum.uniq(base_actions ++ context_actions)
   end
 
   @doc """
@@ -282,8 +282,8 @@ defmodule EveDmv.Utils.SurveillanceUtils do
       recent_threats =
         threat_history
 
-      Enum.take(5)
-      Enum.map(&threat_level_to_number/1)
+      |> Enum.take(5)
+      |> Enum.map(&threat_level_to_number/1)
 
       trend = calculate_trend(recent_threats)
 
@@ -300,16 +300,16 @@ defmodule EveDmv.Utils.SurveillanceUtils do
   """
   def identify_hotspot_systems(recent_activity) do
     recent_activity
-    Enum.group_by(& &1.system_id)
+    |> Enum.group_by(& &1.system_id)
 
-    Enum.map(fn {system_id, activities} ->
+    |> Enum.map(fn {system_id, activities} ->
       {system_id, length(activities)}
     end)
 
-    Enum.filter(fn {_, count} -> count >= 3 end)
-    Enum.sort_by(fn {_, count} -> count end, :desc)
-    Enum.take(5)
-    Enum.map(fn {system_id, _} -> system_id end)
+    |> Enum.filter(fn {_, count} -> count >= 3 end)
+    |> Enum.sort_by(fn {_, count} -> count end, :desc)
+    |> Enum.take(5)
+    |> Enum.map(fn {system_id, _} -> system_id end)
   end
 
   @doc """
@@ -325,8 +325,8 @@ defmodule EveDmv.Utils.SurveillanceUtils do
       oldest_threat =
         threat_history
 
-      Enum.map(& &1.detected_at)
-      Enum.min_by(&DateTime.to_unix/1, DateTime)
+      |> Enum.map(& &1.detected_at)
+      |> Enum.min_by(&DateTime.to_unix/1, DateTime)
 
       days_span = max(1, DateTime.diff(now, oldest_threat, :day))
       length(threat_history) / days_span
@@ -342,7 +342,7 @@ defmodule EveDmv.Utils.SurveillanceUtils do
       system_threats
 
     Enum.map(&(&1 |> Map.get(:threat_level, :low) |> threat_level_to_number()))
-    Enum.max(&>=/2, fn -> 1 end)
+    |> Enum.max(&>=/2, fn -> 1 end)
 
     # Factor in chain patterns
     pattern_modifier =

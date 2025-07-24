@@ -107,28 +107,28 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.AcquisitionPlanner do
     case role do
       "logistics" ->
         ["Guardian", "Scimitar", "Osprey", "Exequror"]
-        Enum.reject(&(&1 == ship_name))
-        Enum.take(3)
+        |> Enum.reject(&(&1 == ship_name))
+        |> Enum.take(3)
 
       "dps" ->
         ["Ishtar", "Cerberus", "Zealot", "Eagle"]
-        Enum.reject(&(&1 == ship_name))
-        Enum.take(3)
+        |> Enum.reject(&(&1 == ship_name))
+        |> Enum.take(3)
 
       "tackle" ->
         ["Stiletto", "Malediction", "Crow", "Ares"]
-        Enum.reject(&(&1 == ship_name))
-        Enum.take(3)
+        |> Enum.reject(&(&1 == ship_name))
+        |> Enum.take(3)
 
       "fc" ->
         ["Damnation", "Nighthawk", "Claymore", "Sleipnir"]
-        Enum.reject(&(&1 == ship_name))
-        Enum.take(3)
+        |> Enum.reject(&(&1 == ship_name))
+        |> Enum.take(3)
 
       "ewar" ->
         ["Griffin", "Maulus", "Crucifier", "Vigil"]
-        Enum.reject(&(&1 == ship_name))
-        Enum.take(3)
+        |> Enum.reject(&(&1 == ship_name))
+        |> Enum.take(3)
 
       _ ->
         []
@@ -198,7 +198,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.AcquisitionPlanner do
         |> Map.put("priority_level", priority_level)
       end)
 
-    Enum.sort_by(assets_with_priority, &{&1["priority_level"], -&1["importance_score"]})
+    |> Enum.sort_by(assets_with_priority, &{&1["priority_level"], -&1["importance_score"]})
   end
 
   @doc """
@@ -233,7 +233,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.AcquisitionPlanner do
         available < needed
       end)
 
-    Enum.map(missing_assets, fn {_type_id, ship_data} ->
+    |> Enum.map(missing_assets, fn {_type_id, ship_data} ->
       shortage =
         Map.get(ship_data, "quantity_needed", 1) - Map.get(ship_data, "quantity_available", 0)
 
@@ -253,7 +253,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.AcquisitionPlanner do
         end
       end)
 
-    Enum.reverse(selected)
+    |> Enum.reverse(selected)
   end
 
   defp determine_price_trend(missing_assets) do

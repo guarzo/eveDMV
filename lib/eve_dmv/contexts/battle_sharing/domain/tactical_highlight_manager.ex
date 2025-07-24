@@ -475,7 +475,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
     relevant_killmails =
       battle_data.killmails
 
-    Enum.filter(fn km ->
+    |> Enum.filter(fn km ->
       km_timestamp = calculate_killmail_timestamp_offset(km, battle_data)
       abs(km_timestamp - timestamp) <= time_window
     end)
@@ -671,9 +671,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
     # Simple tag extraction from note content
     String.downcase(note)
     String.split(~r/\W+/)
-    Enum.filter(&(String.length(&1) > 3))
-    Enum.filter(&is_tactical_term/1)
-    Enum.take(3)
+    |> Enum.filter(&(String.length(&1) > 3))
+    |> Enum.filter(&is_tactical_term/1)
+    |> Enum.take(3)
   end
 
   defp extract_tags_from_note(_note), do: []

@@ -33,8 +33,8 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewDefinitions do
   """
   def views_by_strategy(strategy) do
     all_views()
-    Enum.filter(&(&1.refresh_strategy == strategy))
-    Enum.map(& &1.name)
+    |> Enum.filter(&(&1.refresh_strategy == strategy))
+    |> Enum.map(& &1.name)
   end
 
   @doc """

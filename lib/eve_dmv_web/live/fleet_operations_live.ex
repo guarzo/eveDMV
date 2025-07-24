@@ -491,7 +491,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
     raw_data = Map.get(killmail, :raw_data, %{})
     attackers = Map.get(raw_data, "attackers", [])
 
-    Enum.map(attackers, fn attacker ->
+    |> Enum.map(attackers, fn attacker ->
       %{
         character_id: Map.get(attacker, "character_id"),
         character_name: Map.get(attacker, "character_name"),
@@ -511,7 +511,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
         Map.get(p, :alliance_id) || Map.get(p, :corporation_id) || "unknown"
       end)
 
-    Enum.map(groups, fn {group_id, pilots} ->
+    |> Enum.map(groups, fn {group_id, pilots} ->
       %{
         group_id: group_id,
         pilots: pilots,

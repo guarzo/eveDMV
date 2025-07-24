@@ -296,7 +296,7 @@ defmodule EveDmv.Search.SearchSuggestionService do
         suggestions =
           rows
 
-        Enum.map(fn [
+        |> Enum.map(fn [
                       character_id,
                       character_name,
                       corporation_name,
@@ -386,7 +386,7 @@ defmodule EveDmv.Search.SearchSuggestionService do
         suggestions =
           rows
 
-        Enum.map(fn [
+        |> Enum.map(fn [
                       character_id,
                       character_name,
                       corporation_name,

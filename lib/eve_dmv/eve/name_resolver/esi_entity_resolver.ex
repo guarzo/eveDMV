@@ -159,9 +159,9 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
 
   def bulk_esi_lookup(type, ids) when type == :character and length(ids) > 1000 do
     ids
-    Enum.chunk_every(1000)
+    |> Enum.chunk_every(1000)
 
-    Enum.reduce_while({:ok, %{}}, fn chunk, {:ok, acc} ->
+    |> Enum.reduce_while({:ok, %{}}, fn chunk, {:ok, acc} ->
       case bulk_esi_lookup(type, chunk) do
         {:ok, results} -> {:cont, {:ok, Map.merge(acc, results)}}
         error -> {:halt, error}
@@ -171,9 +171,9 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
 
   def bulk_esi_lookup(type, ids) when type in [:corporation, :alliance] and length(ids) > 50 do
     ids
-    Enum.chunk_every(50)
+    |> Enum.chunk_every(50)
 
-    Enum.reduce_while({:ok, %{}}, fn chunk, {:ok, acc} ->
+    |> Enum.reduce_while({:ok, %{}}, fn chunk, {:ok, acc} ->
       case bulk_esi_lookup(type, chunk) do
         {:ok, results} -> {:cont, {:ok, Map.merge(acc, results)}}
         error -> {:halt, error}

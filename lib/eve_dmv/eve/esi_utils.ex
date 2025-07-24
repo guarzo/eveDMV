@@ -305,9 +305,9 @@ defmodule EveDmv.Eve.EsiUtils do
   defp calculate_tenure_from_records(records) do
     today = Date.utc_today()
 
-    Enum.with_index(records)
+    |> Enum.with_index(records)
 
-    Enum.reduce(0, fn {record, index}, acc ->
+    |> Enum.reduce(0, fn {record, index}, acc ->
       start_date = parse_employment_date(Map.get(record, "start_date"))
 
       # Determine end date

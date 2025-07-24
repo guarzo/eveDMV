@@ -442,7 +442,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
     formations
     |> Enum.chunk_every(2, 1, :discard)
 
-    Enum.map(fn [prev, curr] ->
+    |> Enum.map(fn [prev, curr] ->
       %{
         from: prev.formation_type,
         to: curr.formation_type,
@@ -550,7 +550,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
       {attacker_id, switches}
     end)
 
-    Enum.into(%{})
+    |> Enum.into(%{})
   end
 
   defp calculate_switch_frequency(switches) do
@@ -726,7 +726,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
         attacker_count =
           window_kms
 
-        Enum.flat_map(&get_attackers_from_killmail/1)
+        |> Enum.flat_map(&get_attackers_from_killmail/1)
         Enum.uniq_by(& &1["character_id"]) |> Kernel.length()
 
         damage_total =
@@ -866,12 +866,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
     # Identify periods where coordination broke down
     time_windows = group_by_time_windows(killmails, 60)
 
-    Enum.filter(time_windows, fn {_window, kms} ->
+    time_windows
+    |> Enum.filter(fn {_window, kms} ->
       # Low kill count in a minute indicates breakdown
       length(kms) < 2
     end)
-
-    Enum.map(fn {window, _kms} ->
+    |> Enum.map(fn {window, _kms} ->
       %{
         period_start: window,
         duration_seconds: 60,
@@ -884,11 +884,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
     # Identify periods of peak coordination
     time_windows = group_by_time_windows(killmails, 30)
 
-    Enum.filter(time_windows, fn {_window, kms} ->
+    time_windows
+    |> Enum.filter(fn {_window, kms} ->
       length(kms) >= 5
     end)
 
-    Enum.map(fn {window, kms} ->
+    |> Enum.map(fn {window, kms} ->
       %{
         period_start: window,
         kills_achieved: length(kms),

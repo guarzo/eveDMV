@@ -231,7 +231,7 @@ defmodule EveDmv.Database.ArchiveManager.RestoreOperations do
     {placeholders, values} =
       Enum.with_index(records)
 
-    Enum.map(fn {record, index} ->
+    |> Enum.map(fn {record, index} ->
       start_param = index * length(column_names) + 1
 
       row_values =

@@ -131,7 +131,7 @@ defmodule EveDmv.Intelligence.Cache.AnalysisCache do
       {:member_activity, character_id}
     ]
 
-    Enum.each(patterns, fn pattern ->
+    |> Enum.each(patterns, fn pattern ->
       Cache.delete(:analysis, pattern)
     end)
 
@@ -162,7 +162,7 @@ defmodule EveDmv.Intelligence.Cache.AnalysisCache do
   def warm_cache(character_ids) when is_list(character_ids) do
     Logger.info("Warming analysis cache for #{length(character_ids)} characters")
 
-    Enum.each(character_ids, fn character_id ->
+    |> Enum.each(character_ids, fn character_id ->
       # Fire and forget cache warming
       Task.start(fn ->
         get_character_analysis(character_id)

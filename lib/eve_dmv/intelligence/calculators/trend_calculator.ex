@@ -63,7 +63,7 @@ defmodule EveDmv.Intelligence.Calculators.TrendCalculator do
       0.0
     else
       mean = Enum.sum(data) / length(data)
-      Enum.sum(Enum.map(data, fn x -> :math.pow(x - mean, 2) end)) / length(data)
+      |> Enum.sum(Enum.map(data, fn x -> :math.pow(x - mean, 2) end)) / length(data)
     end
   end
 

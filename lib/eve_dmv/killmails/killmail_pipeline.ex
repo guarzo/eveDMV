@@ -248,7 +248,7 @@ defmodule EveDmv.Killmails.KillmailPipeline do
             )
 
             # Process each killmail for intelligence
-            Enum.each(broadcast_messages, fn message ->
+            |> Enum.each(broadcast_messages, fn message ->
               case message.data do
                 %{killmail_id: _} = killmail_data ->
                   RealTimeCoordinator.process_killmail(killmail_data)
@@ -294,7 +294,7 @@ defmodule EveDmv.Killmails.KillmailPipeline do
         Logger.error("Failed to insert killmail batch: #{error.message} (code: #{error.code})")
 
         # Return failed messages
-        Enum.map(messages, &Message.failed(&1, error))
+        |> Enum.map(messages, &Message.failed(&1, error))
     end
   end
 end

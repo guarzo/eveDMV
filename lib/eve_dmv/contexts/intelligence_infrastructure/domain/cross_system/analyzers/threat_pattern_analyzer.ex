@@ -125,7 +125,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
         end
       end)
 
-    Enum.filter(& &1)
+    |> Enum.filter(& &1)
 
     %{
       spillover_incidents: spillover_patterns,
@@ -145,7 +145,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     time_grouped_entities =
       entities
 
-    Enum.group_by(fn entity ->
+    |> Enum.group_by(fn entity ->
       # Group by hour to detect coordination
       entity.last_activity |> DateTime.truncate(:hour)
     end)
@@ -153,9 +153,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     coordinated_groups =
       time_grouped_entities
 
-    Enum.filter(fn {_time, group_entities} -> length(group_entities) > 3 end)
+    |> Enum.filter(fn {_time, group_entities} -> length(group_entities) > 3 end)
 
-    Enum.map(fn {time, group_entities} ->
+    |> Enum.map(fn {time, group_entities} ->
       times = Enum.map(group_entities, & &1.last_activity)
 
       %{
@@ -167,8 +167,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
       }
     end)
 
-    Enum.filter(fn group -> group.coordination_score > 0.6 end)
-    Enum.sort_by(& &1.threat_level, :desc)
+    |> Enum.filter(fn group -> group.coordination_score > 0.6 end)
+    |> Enum.sort_by(& &1.threat_level, :desc)
 
     %{
       coordinated_groups: coordinated_groups,
@@ -202,17 +202,17 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     entities =
       killmails
 
-    Enum.flat_map(fn killmail ->
+    |> Enum.flat_map(fn killmail ->
       [
         %{character_id: killmail.attacker_character_id, role: :attacker, killmail: killmail},
         %{character_id: killmail.victim_character_id, role: :victim, killmail: killmail}
       ]
     end)
 
-    Enum.filter(fn entity -> entity.character_id end)
-    Enum.group_by(& &1.character_id)
+    |> Enum.filter(fn entity -> entity.character_id end)
+    |> Enum.group_by(& &1.character_id)
 
-    Enum.map(fn {character_id, character_activities} ->
+    |> Enum.map(fn {character_id, character_activities} ->
       %{
         character_id: character_id,
         activity_count: length(character_activities),
@@ -222,7 +222,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
       }
     end)
 
-    Enum.sort_by(& &1.threat_level, :desc)
+    |> Enum.sort_by(& &1.threat_level, :desc)
 
     %{
       total_entities: length(entities),
@@ -297,8 +297,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
       time_diffs =
         Enum.sort(times)
 
-      Enum.chunk_every(2, 1, :discard)
-      Enum.map(fn [t1, t2] -> DateTime.diff(t2, t1, :minute) end)
+      |> Enum.chunk_every(2, 1, :discard)
+      |> Enum.map(fn [t1, t2] -> DateTime.diff(t2, t1, :minute) end)
 
       avg_diff = Enum.sum(time_diffs) / length(time_diffs)
 

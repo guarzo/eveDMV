@@ -133,7 +133,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
   """
   def find_final_blow_attacker(killmail) do
     extract_attacker_details(killmail)
-    Enum.find(&(&1[:final_blow] == true))
+    |> Enum.find(&(&1[:final_blow] == true))
   end
 
   @doc """
@@ -157,7 +157,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
         [killmail.victim_character_id]
     end
 
-    Enum.reject(&is_nil/1)
+    |> Enum.reject(&is_nil/1)
   end
 
   defp extract_attacker_character_ids(killmail) do

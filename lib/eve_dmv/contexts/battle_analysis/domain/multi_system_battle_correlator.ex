@@ -264,7 +264,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
     Logger.debug("Scoring adjacency for #{inspect(length(battle_groups))} groups")
     Logger.debug("First group type check: #{inspect(List.first(battle_groups) |> is_list())}")
 
-    Enum.map(battle_groups, fn group ->
+    |> Enum.map(battle_groups, fn group ->
       if is_list(group) do
         Logger.debug("Processing group type: list, size: #{inspect(length(group))}")
 
@@ -338,7 +338,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
   defp apply_correlation_algorithm(adjacency_scored_groups) do
     Logger.debug("Applying correlation to #{inspect(length(adjacency_scored_groups))} groups")
 
-    Enum.map(adjacency_scored_groups, fn {group, adjacency_scores} ->
+    |> Enum.map(adjacency_scored_groups, fn {group, adjacency_scores} ->
       # Ensure group is a list
       group_list = ensure_list(group)
 

@@ -246,7 +246,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
     cleaned_cache =
       state.cache
 
-    Enum.filter(fn {_type_id, {_price, cached_at}} ->
+    |> Enum.filter(fn {_type_id, {_price, cached_at}} ->
       now - cached_at < @cache_ttl_seconds
     end)
     |> Map.new()
@@ -351,7 +351,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
   defp split_cached_items(type_ids, cache) do
     now = System.system_time(:second)
 
-    Enum.reduce(type_ids, {%{}, []}, fn type_id, {cached, missing} ->
+    |> Enum.reduce(type_ids, {%{}, []}, fn type_id, {cached, missing} ->
       case Map.get(cache, type_id) do
         {price_info, cached_at} when now - cached_at < @cache_ttl_seconds ->
           {Map.put(cached, type_id, price_info), missing}
@@ -375,7 +375,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
   defp parse_bulk_price_response(body) when is_map(body) do
     body
 
-    Enum.map(fn {type_id_str, price_data} ->
+    |> Enum.map(fn {type_id_str, price_data} ->
       type_id = String.to_integer(type_id_str)
       price_info = parse_price_response(price_data)
       {type_id, price_info}
@@ -390,7 +390,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
   defp cache_bulk_prices(cache, bulk_prices) do
     now = System.system_time(:second)
 
-    Enum.reduce(bulk_prices, cache, fn {type_id, price_info}, acc ->
+    |> Enum.reduce(bulk_prices, cache, fn {type_id, price_info}, acc ->
       Map.put(acc, type_id, {price_info, now})
     end)
   end

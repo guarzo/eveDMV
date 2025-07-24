@@ -213,8 +213,8 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
     top_profiles =
       Enum.filter(profile_metrics, &(&1.alerts_generated > 0))
 
-    Enum.sort_by(& &1.performance_score, :desc)
-    Enum.take(5)
+    |> Enum.sort_by(& &1.performance_score, :desc)
+    |> Enum.take(5)
 
     assign(socket, :top_performing_profiles, top_profiles)
   end
@@ -301,7 +301,7 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
       {:ok, alerts} ->
         cutoff_time = get_cutoff_time(time_range)
 
-        Enum.count(alerts, fn alert ->
+        |> Enum.count(alerts, fn alert ->
           DateTime.compare(alert.created_at, cutoff_time) == :gt
         end)
 
@@ -463,7 +463,7 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
         }
       end)
 
-    Enum.reverse(hourly_activity)
+    |> Enum.reverse(hourly_activity)
   end
 
   defp generate_system_recommendations(profiles, profile_metrics) do
@@ -570,7 +570,7 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
         # Check for conflicting criteria
         has_chain_and_system =
           Enum.any?(conditions, &(&1.type == :chain_watch)) and
-            Enum.any?(conditions, &(&1.type == :system_watch))
+            |> Enum.any?(conditions, &(&1.type == :system_watch))
 
         recommendations =
           if has_chain_and_system do

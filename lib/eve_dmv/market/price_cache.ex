@@ -53,11 +53,11 @@ defmodule EveDmv.Market.PriceCache do
     string_found =
       found
 
-    Enum.map(fn {{:price, type_id}, value} ->
+    |> Enum.map(fn {{:price, type_id}, value} ->
       {Integer.to_string(type_id), value}
     end)
 
-    Enum.into(%{})
+    |> Enum.into(%{})
 
     missing = Enum.map(missing_keys, fn {:price, type_id} -> type_id end)
 

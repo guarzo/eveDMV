@@ -94,7 +94,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
       case Map.get(tactical_analysis, :patterns) do
         patterns when is_list(patterns) ->
           generate_pattern_based_recommendations(patterns)
-          Enum.map(&tactical_pattern_to_recommendation/1)
+          |> Enum.map(&tactical_pattern_to_recommendation/1)
 
         _ ->
           []

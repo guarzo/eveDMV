@@ -276,10 +276,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
             # Identify threat sources
             threat_sources =
     threat_kills
-    Enum.flat_map(&(&1.participants || []))
-    Enum.filter(&(!&1.is_victim && &1.corporation_id))
-    Enum.group_by(&{&1.corporation_id, &1.corporation_name})
-    Enum.map(fn {{corp_id, corp_name}, participants} ->
+    |> Enum.flat_map(&(&1.participants || []))
+    |> Enum.filter(&(!&1.is_victim && &1.corporation_id))
+    |> Enum.group_by(&{&1.corporation_id, &1.corporation_name})
+    |> Enum.map(fn {{corp_id, corp_name}, participants} ->
                 %{
                   corporation_id: corp_id,
                   corporation_name: corp_name,
@@ -287,8 +287,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
                   total_damage: Enum.reduce(participants, 0, &(&1.damage_done + &2))
                 }
               end)
-    Enum.sort_by(& &1.threat_actions, :desc)
-    Enum.take(5)
+    |> Enum.sort_by(& &1.threat_actions, :desc)
+    |> Enum.take(5)
 
             # Analyze threat trends
             recent_threats = Enum.take(threat_kills, 10)

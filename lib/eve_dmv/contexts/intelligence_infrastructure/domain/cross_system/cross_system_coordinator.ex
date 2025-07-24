@@ -288,9 +288,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     insights = activity_insights ++ threat_insights ++ movement_insights ++ cross_pattern_insights
 
     # Sort by priority/relevance
-    Enum.uniq(insights)
+    |> Enum.uniq(insights)
 
-    Enum.take(10)
+    |> Enum.take(10)
   end
 
   # Threat analysis helper functions
@@ -300,20 +300,20 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     system_threats =
       killmails
 
-    Enum.group_by(& &1.solar_system_id)
+    |> Enum.group_by(& &1.solar_system_id)
 
-    Enum.map(fn {system_id, kills} ->
+    |> Enum.map(fn {system_id, kills} ->
       threat_score = calculate_system_threat_score(kills)
       {system_id, threat_score}
     end)
 
-    Enum.sort_by(&elem(&1, 1), :desc)
+    |> Enum.sort_by(&elem(&1, 1), :desc)
 
     # Return top threat systems
     system_threats
-    Enum.take(5)
+    |> Enum.take(5)
 
-    Enum.map(fn {system_id, score} ->
+    |> Enum.map(fn {system_id, score} ->
       %{
         system_id: system_id,
         threat_score: Float.round(score, 2),
@@ -366,10 +366,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     migration_patterns =
       time_buckets
 
-    Enum.sort_by(&elem(&1, 0))
-    Enum.chunk_every(2, 1, :discard)
+    |> Enum.sort_by(&elem(&1, 0))
+    |> Enum.chunk_every(2, 1, :discard)
 
-    Enum.map(fn [{earlier_bucket, earlier_kills}, {later_bucket, later_kills}] ->
+    |> Enum.map(fn [{earlier_bucket, earlier_kills}, {later_bucket, later_kills}] ->
       earlier_systems = earlier_kills |> Enum.map(& &1.solar_system_id) |> MapSet.new()
       later_systems = later_kills |> Enum.map(& &1.solar_system_id) |> MapSet.new()
 
@@ -517,11 +517,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     daily_activity =
       killmails
 
-    Enum.group_by(fn kill ->
+    |> Enum.group_by(fn kill ->
       DateTime.to_date(kill.killmail_time)
     end)
 
-    Enum.map(fn {date, kills} ->
+    |> Enum.map(fn {date, kills} ->
       {date,
        %{
          kill_count: length(kills),
@@ -530,7 +530,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
        }}
     end)
 
-    Enum.sort_by(&elem(&1, 0))
+    |> Enum.sort_by(&elem(&1, 0))
 
     # Simple trend projection
     trend = calculate_activity_trend(daily_activity)
@@ -539,9 +539,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     system_trends =
       killmails
 
-    Enum.group_by(& &1.solar_system_id)
+    |> Enum.group_by(& &1.solar_system_id)
 
-    Enum.map(fn {system_id, kills} ->
+    |> Enum.map(fn {system_id, kills} ->
       recent_kills =
         Enum.filter(kills, fn k ->
           DateTime.diff(DateTime.utc_now(), k.killmail_time, :hour) <= 48
@@ -551,14 +551,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
       {system_id, trend_score}
     end)
 
-    Enum.sort_by(&elem(&1, 1), :desc)
+    |> Enum.sort_by(&elem(&1, 1), :desc)
 
     predicted_hotspots =
       system_trends
 
-    Enum.filter(fn {_, score} -> score > 0.6 end)
-    Enum.take(5)
-    Enum.map(&elem(&1, 0))
+    |> Enum.filter(fn {_, score} -> score > 0.6 end)
+    |> Enum.take(5)
+    |> Enum.map(&elem(&1, 0))
 
     # Calculate prediction confidence based on data quality
     data_points = length(daily_activity)
@@ -586,14 +586,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
       recent =
         daily_activity
 
-      Enum.take(-3)
+      |> Enum.take(-3)
 
       Enum.map(fn {_, metrics} -> metrics.kill_count end) |> Enum.sum()
 
       older =
         daily_activity
 
-      Enum.take(3)
+      |> Enum.take(3)
 
       Enum.map(fn {_, metrics} -> metrics.kill_count end) |> Enum.sum()
 
@@ -610,9 +610,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     capital_activity =
       killmails
 
-    Enum.filter(fn km -> km.victim_ship_type_id && km.victim_ship_type_id > 20_000 end)
+    |> Enum.filter(fn km -> km.victim_ship_type_id && km.victim_ship_type_id > 20_000 end)
 
-    Enum.map(fn km ->
+    |> Enum.map(fn km ->
       %{
         killmail_id: km.killmail_id,
         system_id: km.solar_system_id,
@@ -633,11 +633,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     high_value_losses =
       killmails
 
-    Enum.filter(fn km -> (km.total_value || 0) > high_value_threshold end)
-    Enum.sort_by(& &1.total_value, :desc)
-    Enum.take(10)
+    |> Enum.filter(fn km -> (km.total_value || 0) > high_value_threshold end)
+    |> Enum.sort_by(& &1.total_value, :desc)
+    |> Enum.take(10)
 
-    Enum.map(fn km ->
+    |> Enum.map(fn km ->
       %{
         killmail_id: km.killmail_id,
         system_id: km.solar_system_id,

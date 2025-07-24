@@ -56,7 +56,7 @@ defmodule EveDmv.IntelligenceMigrationAdapter do
       max_concurrency: 4
     )
 
-    Enum.reduce(%{}, fn {:ok, {entity_id, result}}, acc ->
+    |> Enum.reduce(%{}, fn {:ok, {entity_id, result}}, acc ->
       Map.put(acc, entity_id, result)
     end)
 
@@ -192,7 +192,7 @@ defmodule EveDmv.IntelligenceMigrationAdapter do
     }
 
     # Map new analysis format to legacy plugin format
-    Enum.reduce(plugins, base_result, fn plugin, acc ->
+    |> Enum.reduce(plugins, base_result, fn plugin, acc ->
       case plugin do
         :combat_stats ->
           Map.put(acc, :combat_stats, Map.get(analysis, :combat_analysis, %{}))

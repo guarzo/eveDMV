@@ -26,7 +26,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.CombatScoring do
       engagement_frequency: 0.2
     }
 
-    Enum.reduce(factors, 0.0, fn {factor, value}, acc ->
+    |> Enum.reduce(factors, 0.0, fn {factor, value}, acc ->
       acc + value * Map.get(weights, factor, 0.0)
     end)
   end
@@ -63,7 +63,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.CombatScoring do
       versatility: assess_operational_versatility(stats)
     }
 
-    Enum.reduce(value_factors, 0.0, fn {_factor, value}, acc ->
+    |> Enum.reduce(value_factors, 0.0, fn {_factor, value}, acc ->
       acc + value
     end) / map_size(value_factors)
   end
@@ -136,7 +136,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.CombatScoring do
       assess_situational_ship_choices(stats)
     ]
 
-    Enum.sum(adaptability_indicators) / length(adaptability_indicators)
+    |> Enum.sum(adaptability_indicators) / length(adaptability_indicators)
   end
 
   defp assess_decision_quality(stats) do
@@ -160,7 +160,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.CombatScoring do
     coordination_score = Map.get(stats, :coordination_score, 0.5)
 
     leadership_indicators = [fleet_participation, command_experience, coordination_score]
-    Enum.sum(leadership_indicators) / length(leadership_indicators)
+    |> Enum.sum(leadership_indicators) / length(leadership_indicators)
   end
 
   defp assess_operational_versatility(stats) do

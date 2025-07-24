@@ -157,8 +157,8 @@ defmodule EveDmv.Monitoring.MissingDataTracker do
       @table_name
 
     :ets.tab2list()
-    Enum.map(fn {_id, data} -> data end)
-    Enum.sort_by(& &1.occurrence_count, :desc)
+    |> Enum.map(fn {_id, data} -> data end)
+    |> Enum.sort_by(& &1.occurrence_count, :desc)
 
     {:reply, missing_types, state}
   end
@@ -174,9 +174,9 @@ defmodule EveDmv.Monitoring.MissingDataTracker do
       @table_name
 
     :ets.tab2list()
-    Enum.map(fn {_id, data} -> data end)
-    Enum.sort_by(& &1.occurrence_count, :desc)
-    Enum.take(limit)
+    |> Enum.map(fn {_id, data} -> data end)
+    |> Enum.sort_by(& &1.occurrence_count, :desc)
+    |> Enum.take(limit)
 
     {:reply, top_types, state}
   end
@@ -204,12 +204,12 @@ defmodule EveDmv.Monitoring.MissingDataTracker do
         @table_name
 
       :ets.tab2list()
-      Enum.map(fn {id, data} -> {id, data} end)
-      Enum.sort_by(fn {_id, data} -> data.occurrence_count end)
+      |> Enum.map(fn {id, data} -> {id, data} end)
+      |> Enum.sort_by(fn {_id, data} -> data.occurrence_count end)
 
       to_remove = Enum.take(entries, size - @max_entries)
 
-      Enum.each(to_remove, fn {id, _data} ->
+      |> Enum.each(to_remove, fn {id, _data} ->
         :ets.delete(@table_name, id)
       end)
 
@@ -228,7 +228,7 @@ defmodule EveDmv.Monitoring.MissingDataTracker do
     if item in list do
       list
     else
-      Enum.take([item | list], limit)
+      |> Enum.take([item | list], limit)
     end
   end
 

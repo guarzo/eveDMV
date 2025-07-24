@@ -228,7 +228,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TrendAnaly
     Enum.flat_map(member_activities, fn member ->
       activity_history = Map.get(member, :activity_history, [])
 
-      Enum.map(activity_history, fn day_data ->
+      |> Enum.map(activity_history, fn day_data ->
         Map.get(day_data, :killmails, 0) + Map.get(day_data, :fleet_ops, 0)
       end)
     end)
@@ -386,7 +386,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TrendAnaly
   defp calculate_variance(values) do
     if length(values) > 0 do
       mean = Enum.sum(values) / length(values)
-      Enum.sum(Enum.map(values, fn x -> :math.pow(x - mean, 2) end)) / length(values)
+      |> Enum.sum(Enum.map(values, fn x -> :math.pow(x - mean, 2) end)) / length(values)
     else
       0.0
     end

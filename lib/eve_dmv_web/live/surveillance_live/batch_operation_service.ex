@@ -30,7 +30,7 @@ defmodule EveDmvWeb.SurveillanceLive.BatchOperationService do
         not_found_ids = profile_ids -- found_ids
 
         # Log any profiles that weren't found
-        Enum.each(not_found_ids, fn id ->
+        |> Enum.each(not_found_ids, fn id ->
           Logger.warning("Profile not found for deletion: #{id}")
         end)
 
@@ -82,7 +82,7 @@ defmodule EveDmvWeb.SurveillanceLive.BatchOperationService do
         not_found_ids = profile_ids -- found_ids
 
         # Log any profiles that weren't found
-        Enum.each(not_found_ids, fn id ->
+        |> Enum.each(not_found_ids, fn id ->
           Logger.warning("Profile not found for update: #{id}")
         end)
 

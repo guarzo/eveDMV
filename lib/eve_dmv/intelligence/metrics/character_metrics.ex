@@ -135,10 +135,10 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
     associates =
       killmail_data
 
-    Enum.flat_map(fn killmail ->
+    |> Enum.flat_map(fn killmail ->
       participants = get_participants(killmail)
 
-      Enum.map(participants, fn participant ->
+      |> Enum.map(participants, fn participant ->
         %{
           character_id: participant[:character_id] || participant["character_id"],
           character_name: participant[:character_name] || participant["character_name"],
@@ -148,9 +148,9 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
       end)
     end)
 
-    Enum.group_by(& &1.character_id)
+    |> Enum.group_by(& &1.character_id)
 
-    Enum.map(fn {char_id, instances} ->
+    |> Enum.map(fn {char_id, instances} ->
       first = List.first(instances)
 
       {char_id,
@@ -162,15 +162,15 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
        }}
     end)
 
-    Enum.into(%{})
+    |> Enum.into(%{})
 
     frequent_associates =
       associates
 
-    Enum.filter(fn {_id, data} -> data.frequency > 2 end)
-    Enum.sort_by(fn {_id, data} -> data.frequency end, :desc)
-    Enum.take(20)
-    Enum.into(%{})
+    |> Enum.filter(fn {_id, data} -> data.frequency > 2 end)
+    |> Enum.sort_by(fn {_id, data} -> data.frequency end, :desc)
+    |> Enum.take(20)
+    |> Enum.into(%{})
 
     %{
       all_associates: associates,
@@ -189,7 +189,7 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
       |> Enum.flat_map(fn killmail ->
         participants = get_participants(killmail)
 
-        Enum.map(participants, fn participant ->
+        |> Enum.map(participants, fn participant ->
           participant[:character_name] || participant["character_name"]
         end)
       end)
@@ -255,7 +255,7 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
   defp build_activity_timeline(killmail_data) do
     killmail_data
 
-    Enum.map(fn killmail ->
+    |> Enum.map(fn killmail ->
       %{
         timestamp: get_killmail_time(killmail),
         system_id: killmail[:solar_system_id] || killmail["solar_system_id"],
@@ -263,7 +263,7 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
       }
     end)
 
-    Enum.sort_by(& &1.timestamp)
+    |> Enum.sort_by(& &1.timestamp)
   end
 
   defp assess_threat_level(killmail_data) do
@@ -355,7 +355,7 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
     target_analysis =
       killmail_data
 
-    Enum.flat_map(fn killmail ->
+    |> Enum.flat_map(fn killmail ->
       participants = get_participants(killmail)
 
       participants
@@ -366,9 +366,9 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
     end)
     |> Enum.frequencies()
 
-    Enum.sort_by(fn {_ship, count} -> count end, :desc)
-    Enum.take(5)
-    Enum.into(%{})
+    |> Enum.sort_by(fn {_ship, count} -> count end, :desc)
+    |> Enum.take(5)
+    |> Enum.into(%{})
 
     # Calculate average target value (simplified)
     total_targets = Enum.sum(Map.values(target_analysis))
@@ -513,9 +513,9 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
       loss_patterns
 
     Enum.flat_map(& &1.killer_ships) |> Enum.frequencies()
-    Enum.sort_by(fn {_ship, count} -> count end, :desc)
-    Enum.take(5)
-    Enum.map(fn {ship, _count} -> ship end)
+    |> Enum.sort_by(fn {_ship, count} -> count end, :desc)
+    |> Enum.take(5)
+    |> Enum.map(fn {ship, _count} -> ship end)
 
     killer_ship_counts
   end
@@ -554,17 +554,17 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
   defp extract_character_kill_value(character_id, killmail_data) do
     killmail_data
 
-    Enum.filter(fn killmail ->
+    |> Enum.filter(fn killmail ->
       participants = get_participants(killmail)
 
-      Enum.any?(participants, fn p ->
+      |> Enum.any?(participants, fn p ->
         char_id = p[:character_id] || p["character_id"]
         is_victim = get_is_victim(p)
         char_id == character_id and not is_victim
       end)
     end)
 
-    Enum.map(fn killmail ->
+    |> Enum.map(fn killmail ->
       zkb = killmail[:zkb] || killmail["zkb"] || %{}
       # Fallback to 20M
       zkb[:totalValue] || zkb["totalValue"] || 20_000_000
@@ -575,17 +575,17 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
   defp extract_character_loss_value(character_id, killmail_data) do
     killmail_data
 
-    Enum.filter(fn killmail ->
+    |> Enum.filter(fn killmail ->
       participants = get_participants(killmail)
 
-      Enum.any?(participants, fn p ->
+      |> Enum.any?(participants, fn p ->
         char_id = p[:character_id] || p["character_id"]
         is_victim = get_is_victim(p)
         char_id == character_id and is_victim
       end)
     end)
 
-    Enum.map(fn killmail ->
+    |> Enum.map(fn killmail ->
       zkb = killmail[:zkb] || killmail["zkb"] || %{}
       # Fallback to 25M
       zkb[:totalValue] || zkb["totalValue"] || 25_000_000
@@ -598,7 +598,7 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
     Enum.count(killmail_data, fn killmail ->
       participants = get_participants(killmail)
 
-      Enum.any?(participants, fn p ->
+      |> Enum.any?(participants, fn p ->
         char_id = p[:character_id] || p["character_id"]
         is_victim = get_is_victim(p)
         char_id == character_id and not is_victim
@@ -610,7 +610,7 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
     Enum.count(killmail_data, fn killmail ->
       participants = get_participants(killmail)
 
-      Enum.any?(participants, fn p ->
+      |> Enum.any?(participants, fn p ->
         char_id = p[:character_id] || p["character_id"]
         is_victim = get_is_victim(p)
         char_id == character_id and is_victim

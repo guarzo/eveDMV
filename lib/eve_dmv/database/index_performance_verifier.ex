@@ -201,7 +201,7 @@ defmodule EveDmv.Database.IndexPerformanceVerifier do
       }
     ]
 
-    Enum.map(queries, &benchmark_query/1)
+    |> Enum.map(queries, &benchmark_query/1)
   end
 
   # Private helper functions
@@ -316,7 +316,7 @@ defmodule EveDmv.Database.IndexPerformanceVerifier do
     slow_queries =
       results
 
-    Enum.filter(&(&1[:metrics] && &1.metrics[:total_time_ms] && &1.metrics.total_time_ms > 100))
+    |> Enum.filter(&(&1[:metrics] && &1.metrics[:total_time_ms] && &1.metrics.total_time_ms > 100))
 
     recommendations =
       if length(slow_queries) > 0 do
@@ -332,7 +332,7 @@ defmodule EveDmv.Database.IndexPerformanceVerifier do
     seq_scan_queries =
       results
 
-    Enum.filter(&(&1[:metrics] && &1.metrics[:has_sequential_scan]))
+    |> Enum.filter(&(&1[:metrics] && &1.metrics[:has_sequential_scan]))
 
     recommendations =
       if length(seq_scan_queries) > 0 do

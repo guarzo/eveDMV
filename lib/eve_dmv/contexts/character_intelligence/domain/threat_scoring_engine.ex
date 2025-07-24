@@ -918,7 +918,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     else
       hours =
         killmails
-    Enum.map(fn km ->
+    |> Enum.map(fn km ->
           km.killmail_time
           |> NaiveDateTime.to_time()
           |> Time.to_seconds_after_midnight()
@@ -966,7 +966,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
       # Group by day of week and hour
       timing_patterns =
         killmails
-    Enum.map(fn km ->
+    |> Enum.map(fn km ->
           date = NaiveDateTime.to_date(km.killmail_time)
 
           hour =

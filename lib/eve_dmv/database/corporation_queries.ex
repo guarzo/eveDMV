@@ -288,7 +288,7 @@ defmodule EveDmv.Database.CorporationQueries do
         # Ensure all hours are represented
         0..23
 
-        Enum.map(fn hour ->
+        |> Enum.map(fn hour ->
           %{
             hour: hour,
             activity: Map.get(activity_map, hour, 0)

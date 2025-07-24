@@ -121,7 +121,7 @@ defmodule EveDmv.StaticData do
     end
 
     # Cache the fetched items
-    Enum.each(items, fn item ->
+    |> Enum.each(items, fn item ->
       cache_item(@type_cache_table, item.type_id, item)
     end)
 

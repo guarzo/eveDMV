@@ -256,7 +256,7 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
       [threat_info | socket.assigns.live_threats]
 
     # Keep last 20 threat updates
-    Enum.take(20)
+    |> Enum.take(20)
 
     recent_event = %{
       type: :threat_change,
@@ -305,13 +305,13 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
     updated_battles =
       [battle_info | socket.assigns.active_battles]
 
-    Enum.filter(fn battle ->
+    |> Enum.filter(fn battle ->
       # Keep battles from last 2 hours or still developing
       DateTime.diff(DateTime.utc_now(), battle.detected_at, :second) < 7200 or
         battle.status == :developing
     end)
 
-    Enum.take(10)
+    |> Enum.take(10)
 
     recent_event = %{
       type: :battle_detected,
@@ -357,12 +357,12 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
     updated_alerts =
       [alert_info | socket.assigns.threat_alerts]
 
-    Enum.filter(fn alert ->
+    |> Enum.filter(fn alert ->
       # Filter out expired alerts
       is_nil(alert.expires_at) or DateTime.compare(DateTime.utc_now(), alert.expires_at) == :lt
     end)
 
-    Enum.take(10)
+    |> Enum.take(10)
 
     recent_event = %{
       type: :intelligence_alert,
@@ -645,8 +645,8 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
       content =
         Enum.map_join([headers | rows], "\n", fn row ->
           row
-          Enum.map(&to_string/1)
-          Enum.map_join(",", &escape_csv_field/1)
+          |> Enum.map(&to_string/1)
+          |> Enum.map_join(",", &escape_csv_field/1)
         end)
 
       {:ok, content}

@@ -488,7 +488,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
       }
     end)
 
-    Enum.filter(&(&1.size > 0))
+    |> Enum.filter(&(&1.size > 0))
   end
 
   defp calculate_wcss(clusters) do
@@ -510,7 +510,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
     phases =
       clusters
 
-    Enum.sort_by(fn cluster ->
+    |> Enum.sort_by(fn cluster ->
       # Sort by average time of cluster members
       avg_time =
         cluster.members
@@ -526,7 +526,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
     end)
     |> Enum.with_index()
 
-    Enum.map(fn {cluster, phase_index} ->
+    |> Enum.map(fn {cluster, phase_index} ->
       phase_type = determine_phase_type(cluster, phase_index, length(clusters))
 
       create_phase_summary(cluster, phase_type, phase_index)
@@ -823,7 +823,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
 
     # Return highest significance
     [phase_change_significance, intensity_significance]
-    Enum.max_by(&significance_value/1)
+    |> Enum.max_by(&significance_value/1)
   end
 
   defp significance_value(:high), do: 3
@@ -936,11 +936,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
       # Calculate variance for each feature dimension
       variances =
         0..(length(cluster.centroid) - 1)
-
-      Enum.map(fn feature_index ->
-        feature_values = Enum.map(feature_vectors, &Enum.at(&1, feature_index))
-        calculate_variance(feature_values)
-      end)
+        |> Enum.map(fn feature_index ->
+          feature_values = Enum.map(feature_vectors, &Enum.at(&1, feature_index))
+          calculate_variance(feature_values)
+        end)
 
       # Return average variance across all dimensions
       Enum.sum(variances) / length(variances)

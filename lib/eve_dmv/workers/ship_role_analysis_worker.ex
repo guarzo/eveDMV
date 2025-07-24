@@ -198,7 +198,7 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
 
     killmails = Repo.all(query)
     # Group by ship type
-    Enum.group_by(killmails, & &1.victim_ship_type_id)
+    |> Enum.group_by(killmails, & &1.victim_ship_type_id)
   end
 
   defp analyze_ship_type(ship_type_id, killmails) do

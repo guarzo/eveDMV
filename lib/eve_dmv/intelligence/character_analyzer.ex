@@ -89,7 +89,7 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
       timeout: timeout
     )
 
-    Enum.map(fn
+    |> Enum.map(fn
       {:ok, result} -> result
       {:exit, reason} -> {:error, {:timeout_or_exit, reason}}
     end)

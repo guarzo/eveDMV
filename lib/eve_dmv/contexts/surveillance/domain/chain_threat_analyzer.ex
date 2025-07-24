@@ -73,11 +73,11 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainThreatAnalyzer do
     threats =
       inhabitants
 
-    Enum.flat_map(fn {system_id, system_inhabitants} ->
+    |> Enum.flat_map(fn {system_id, system_inhabitants} ->
       detect_system_threats(system_id, system_inhabitants)
     end)
 
-    Enum.filter(&(&1.threat_level > 10))
+    |> Enum.filter(&(&1.threat_level > 10))
 
     {:ok, threats}
   rescue

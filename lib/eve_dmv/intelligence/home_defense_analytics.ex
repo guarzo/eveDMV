@@ -387,7 +387,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalytics do
       calculation(fn records, _context ->
         now = DateTime.utc_now()
 
-        Enum.map(records, fn record ->
+        |> Enum.map(records, fn record ->
           DateTime.diff(now, record.last_updated_at, :day)
         end)
       end)

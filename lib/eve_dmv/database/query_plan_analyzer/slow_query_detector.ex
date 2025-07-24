@@ -277,8 +277,8 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
       hit_ratios =
         slow_queries
 
-      Enum.map(& &1.cache_hit_percent)
-      Enum.reject(&is_nil/1)
+      |> Enum.map(& &1.cache_hit_percent)
+      |> Enum.reject(&is_nil/1)
 
       %{
         avg_hit_ratio:
@@ -301,7 +301,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
       aggregation_queries: 0
     }
 
-    Enum.reduce(slow_queries, patterns, fn query, acc ->
+    |> Enum.reduce(slow_queries, patterns, fn query, acc ->
       query_text = String.upcase(query.query)
 
       acc

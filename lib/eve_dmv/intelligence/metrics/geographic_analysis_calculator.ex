@@ -17,11 +17,11 @@ defmodule EveDmv.Intelligence.Metrics.GeographicAnalysisCalculator do
     system_activity =
       killmail_data
 
-    Enum.group_by(fn killmail ->
+    |> Enum.group_by(fn killmail ->
       killmail[:solar_system_id] || killmail["solar_system_id"]
     end)
 
-    Enum.map(fn {system_id, killmails} ->
+    |> Enum.map(fn {system_id, killmails} ->
       {system_id,
        %{
          system_name: extract_system_name(killmails),
@@ -31,7 +31,7 @@ defmodule EveDmv.Intelligence.Metrics.GeographicAnalysisCalculator do
        }}
     end)
 
-    Enum.into(%{})
+    |> Enum.into(%{})
 
     # Identify region patterns
     region_activity = analyze_region_activity(killmail_data)
@@ -42,10 +42,10 @@ defmodule EveDmv.Intelligence.Metrics.GeographicAnalysisCalculator do
     most_active_systems =
       system_activity
 
-    Enum.sort_by(fn {_id, data} -> data.activity_count end, :desc)
-    Enum.take(5)
+    |> Enum.sort_by(fn {_id, data} -> data.activity_count end, :desc)
+    |> Enum.take(5)
 
-    Enum.map(fn {system_id, data} ->
+    |> Enum.map(fn {system_id, data} ->
       %{system_id: system_id, activity_count: data.activity_count}
     end)
 
@@ -98,7 +98,7 @@ defmodule EveDmv.Intelligence.Metrics.GeographicAnalysisCalculator do
 
     highsec_activity =
       if total_activity > 0 do
-        Enum.sum(Enum.map(highsec_systems, fn {_id, data} -> data.activity_count end)) /
+        |> Enum.sum(Enum.map(highsec_systems, fn {_id, data} -> data.activity_count end)) /
           total_activity
       else
         0.0
@@ -106,7 +106,7 @@ defmodule EveDmv.Intelligence.Metrics.GeographicAnalysisCalculator do
 
     lowsec_activity =
       if total_activity > 0 do
-        Enum.sum(Enum.map(lowsec_systems, fn {_id, data} -> data.activity_count end)) /
+        |> Enum.sum(Enum.map(lowsec_systems, fn {_id, data} -> data.activity_count end)) /
           total_activity
       else
         0.0
@@ -114,7 +114,7 @@ defmodule EveDmv.Intelligence.Metrics.GeographicAnalysisCalculator do
 
     nullsec_activity =
       if total_activity > 0 do
-        Enum.sum(Enum.map(nullsec_systems, fn {_id, data} -> data.activity_count end)) /
+        |> Enum.sum(Enum.map(nullsec_systems, fn {_id, data} -> data.activity_count end)) /
           total_activity
       else
         0.0
@@ -150,9 +150,9 @@ defmodule EveDmv.Intelligence.Metrics.GeographicAnalysisCalculator do
   """
   def identify_home_systems(system_activity) do
     system_activity
-    Enum.sort_by(fn {_id, data} -> data.activity_count end, :desc)
-    Enum.take(3)
-    Enum.map(fn {system_id, _data} -> system_id end)
+    |> Enum.sort_by(fn {_id, data} -> data.activity_count end, :desc)
+    |> Enum.take(3)
+    |> Enum.map(fn {system_id, _data} -> system_id end)
   end
 
   @doc """
@@ -185,17 +185,17 @@ defmodule EveDmv.Intelligence.Metrics.GeographicAnalysisCalculator do
   def extract_preferred_systems(killmail_data) do
     killmail_data
 
-    Enum.group_by(fn killmail ->
+    |> Enum.group_by(fn killmail ->
       killmail[:solar_system_id] || killmail["solar_system_id"]
     end)
 
-    Enum.map(fn {system_id, killmails} ->
+    |> Enum.map(fn {system_id, killmails} ->
       {system_id, length(killmails)}
     end)
 
-    Enum.sort_by(fn {_id, count} -> count end, :desc)
-    Enum.take(5)
-    Enum.into(%{})
+    |> Enum.sort_by(fn {_id, count} -> count end, :desc)
+    |> Enum.take(5)
+    |> Enum.into(%{})
   end
 
   # Private helper functions

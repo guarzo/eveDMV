@@ -99,7 +99,7 @@ defmodule EveDmv.Killmails.DatabaseInserter do
   def valid_participant?(participant) when is_map(participant) do
     required_fields = [:killmail_id, :killmail_time, :ship_type_id]
 
-    Enum.all?(required_fields, fn field ->
+    |> Enum.all?(required_fields, fn field ->
       value = Map.get(participant, field)
       not is_nil(value) and value != ""
     end)

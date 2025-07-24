@@ -232,7 +232,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.KillmailEventProcessor do
 
     attackers_data
 
-    Enum.map(fn attacker ->
+    |> Enum.map(fn attacker ->
       %{
         character_id: get_safe_integer(attacker["character_id"]),
         corporation_id: get_safe_integer(attacker["corporation_id"]),
@@ -245,7 +245,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.KillmailEventProcessor do
       }
     end)
 
-    Enum.filter(fn attacker ->
+    |> Enum.filter(fn attacker ->
       # Filter out attackers without character_id (like structures)
       is_map(attacker) and Map.has_key?(attacker, :character_id) and attacker.character_id != nil
     end)

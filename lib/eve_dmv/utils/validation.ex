@@ -111,7 +111,7 @@ defmodule EveDmv.Utils.Validation do
         cond do
           not is_map(victim) -> {:error, "Victim must be an object"}
           not is_list(attackers) -> {:error, "Attackers must be an array"}
-          Enum.empty?(attackers) -> {:error, "At least one attacker required"}
+          |> Enum.empty?(attackers) -> {:error, "At least one attacker required"}
           true -> {:ok, killmail}
         end
 

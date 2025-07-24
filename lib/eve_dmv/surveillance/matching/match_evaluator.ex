@@ -45,7 +45,7 @@ defmodule EveDmv.Surveillance.Matching.MatchEvaluator do
       timeout: 1000
     )
 
-    Enum.reduce([], fn
+    |> Enum.reduce([], fn
       {:ok, nil}, acc ->
         acc
 

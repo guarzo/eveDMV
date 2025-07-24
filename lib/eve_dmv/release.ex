@@ -72,7 +72,7 @@ defmodule EveDmv.Release do
     all_killmails
     Enum.chunk_every(batch_size) |> Enum.with_index()
 
-    Enum.each(fn {killmail_batch, batch_index} ->
+    |> Enum.each(fn {killmail_batch, batch_index} ->
       Logger.info(
         "Processing batch #{batch_index + 1}/#{total_batches} (#{length(killmail_batch)} killmails)"
       )

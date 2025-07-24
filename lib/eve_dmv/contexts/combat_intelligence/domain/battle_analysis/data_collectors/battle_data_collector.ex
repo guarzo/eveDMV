@@ -168,8 +168,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.DataCollector
             stream
 
           Enum.take(10) |> List.flatten()
-          Enum.sort_by(& &1.killmail_time, {:desc, DateTime})
-          Enum.take(2000)
+          |> Enum.sort_by(& &1.killmail_time, {:desc, DateTime})
+          |> Enum.take(2000)
 
           Logger.info("Streaming fetch completed: #{length(killmails)} killmails")
           {:ok, killmails}

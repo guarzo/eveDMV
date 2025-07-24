@@ -374,14 +374,14 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.ConnectionPoolMonitor do
       if health[:has_issues] do
         health[:issues]
 
-        Enum.map(fn
+        |> Enum.map(fn
           "near_pool_limit" -> "Connection pool is near capacity"
           "idle_in_transaction" -> "Idle transactions detected - review transaction handling"
           "long_running_queries" -> "Long running queries detected - review query optimization"
           issue -> issue
         end)
 
-        Enum.concat(utilization_recommendations)
+        |> Enum.concat(utilization_recommendations)
       else
         utilization_recommendations
       end

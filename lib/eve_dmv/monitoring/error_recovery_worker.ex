@@ -276,7 +276,7 @@ defmodule EveDmv.Monitoring.ErrorRecoveryWorker do
     Logger.warning("Handling pipeline health issues: #{inspect(details.issues)}")
 
     # Take specific actions based on health issues
-    Enum.each(details.issues, fn issue ->
+    |> Enum.each(details.issues, fn issue ->
       case issue do
         "No successful processing in last" <> _ ->
           restart_pipeline()

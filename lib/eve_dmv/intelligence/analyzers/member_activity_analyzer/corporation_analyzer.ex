@@ -66,7 +66,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.CorporationAnalyz
         attention_list =
           at_risk_members
 
-        Enum.map(fn member ->
+        |> Enum.map(fn member ->
           %{
             character_id: member.character_id,
             character_name: member.character_name,
@@ -77,7 +77,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.CorporationAnalyz
           }
         end)
 
-        Enum.sort_by(& &1.contact_priority, :desc)
+        |> Enum.sort_by(& &1.contact_priority, :desc)
 
         {:ok, attention_list}
 

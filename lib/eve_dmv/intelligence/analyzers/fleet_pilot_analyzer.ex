@@ -28,8 +28,8 @@ defmodule EveDmv.Intelligence.Analyzers.FleetPilotAnalyzer do
           available_pilots =
             members
 
-          Enum.filter(&pilot_available?/1)
-          Enum.map(&enhance_pilot_data/1)
+          |> Enum.filter(&pilot_available?/1)
+          |> Enum.map(&enhance_pilot_data/1)
 
           {:ok, available_pilots}
 
@@ -161,7 +161,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetPilotAnalyzer do
     # Extract ship types and quantities from doctrine template
     ship_roles = Map.get(doctrine_template, :ship_roles, [])
 
-    Enum.map(ship_roles, fn role ->
+    |> Enum.map(ship_roles, fn role ->
       %{
         ship_type_id: Map.get(role, :ship_type_id, 0),
         ship_name: Map.get(role, :ship_name, "Unknown Ship"),
@@ -206,12 +206,12 @@ defmodule EveDmv.Intelligence.Analyzers.FleetPilotAnalyzer do
         best_match =
           sorted_scores
 
-        Enum.filter(fn score ->
+        |> Enum.filter(fn score ->
           score.ship_type_id == ship_req.ship_type_id and
             not MapSet.member?(used_pilots, score.pilot_id)
         end)
 
-        Enum.take(ship_req.quantity_needed)
+        |> Enum.take(ship_req.quantity_needed)
 
         new_assignments =
           Enum.map(best_match, fn match ->

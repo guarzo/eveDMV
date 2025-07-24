@@ -63,10 +63,10 @@ defmodule EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter do
 
   defp format_ship_usage_display(ship_usage) when is_map(ship_usage) do
     ship_usage
-    Enum.sort_by(fn {_ship, count} -> count end, :desc)
-    Enum.take(10)
+    |> Enum.sort_by(fn {_ship, count} -> count end, :desc)
+    |> Enum.take(10)
 
-    Enum.map(fn {ship_name, usage_count} ->
+    |> Enum.map(fn {ship_name, usage_count} ->
       %{
         ship_name: ship_name,
         usage_count: usage_count,
@@ -139,7 +139,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter do
     geographic_recommendations =
       generate_geographic_recommendations(character_stats.geographic_patterns)
 
-    Enum.take(
+    |> Enum.take(
       recommendations ++
         ship_recommendations ++ tactical_recommendations ++ geographic_recommendations,
       5
@@ -237,9 +237,9 @@ defmodule EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter do
 
   defp format_top_ships(ship_usage) when is_map(ship_usage) do
     ship_usage
-    Enum.sort_by(fn {_ship, count} -> count end, :desc)
-    Enum.take(3)
-    Enum.map(fn {ship_name, count} -> %{ship: ship_name, count: count} end)
+    |> Enum.sort_by(fn {_ship, count} -> count end, :desc)
+    |> Enum.take(3)
+    |> Enum.map(fn {ship_name, count} -> %{ship: ship_name, count: count} end)
   end
 
   defp format_top_ships(_), do: []
@@ -248,9 +248,9 @@ defmodule EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter do
     region_data = Map.get(geographic_patterns, :region_activity, %{})
 
     region_data
-    Enum.sort_by(fn {_region, count} -> count end, :desc)
-    Enum.take(3)
-    Enum.map(fn {region_name, count} -> %{region: region_name, activity: count} end)
+    |> Enum.sort_by(fn {_region, count} -> count end, :desc)
+    |> Enum.take(3)
+    |> Enum.map(fn {region_name, count} -> %{region: region_name, activity: count} end)
   end
 
   defp format_top_regions(_), do: []
@@ -268,9 +268,9 @@ defmodule EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter do
   defp format_preferred_regions(geographic_patterns) do
     geographic_patterns
     Map.get(:region_activity, %{})
-    Enum.sort_by(fn {_region, activity} -> activity end, :desc)
-    Enum.take(5)
-    Enum.map(fn {region, activity} -> %{region: region, activity_count: activity} end)
+    |> Enum.sort_by(fn {_region, activity} -> activity end, :desc)
+    |> Enum.take(5)
+    |> Enum.map(fn {region, activity} -> %{region: region, activity_count: activity} end)
   end
 
   defp estimate_timezone(temporal_patterns) do
@@ -300,11 +300,11 @@ defmodule EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter do
     top_ships =
       ship_usage
 
-    Enum.sort_by(fn {_ship, count} -> count end, :desc)
-    Enum.take(3)
-    Enum.map(fn {ship_name, _count} -> ship_name end)
+    |> Enum.sort_by(fn {_ship, count} -> count end, :desc)
+    |> Enum.take(3)
+    |> Enum.map(fn {ship_name, _count} -> ship_name end)
 
-    Enum.map(top_ships, fn ship_name ->
+    |> Enum.map(top_ships, fn ship_name ->
       %{
         category: :ship_counter,
         text:
@@ -394,10 +394,10 @@ defmodule EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter do
     relevant_usage =
       ship_types
 
-    Enum.map(fn ship_type ->
+    |> Enum.map(fn ship_type ->
       Map.to_list(ship_usage)
 
-      Enum.map(fn {ship_name, count} ->
+      |> Enum.map(fn {ship_name, count} ->
         if String.contains?(ship_name, ship_type), do: count, else: 0
       end)
       |> Enum.sum()

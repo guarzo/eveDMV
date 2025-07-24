@@ -158,7 +158,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.ReadinessAnalyzer do
         Map.update(acc, role, available, &(&1 + available))
       end)
 
-    Enum.all?(requirements, fn {role, min_count} ->
+    |> Enum.all?(requirements, fn {role, min_count} ->
       Map.get(actual_counts, role, 0) >= min_count
     end)
   end
@@ -223,7 +223,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.ReadinessAnalyzer do
         Map.get(ship_data, "role", "unknown")
       end)
 
-    Enum.uniq(roles_list)
+    |> Enum.uniq(roles_list)
   end
 
   defp assess_critical_roles(critical_readiness) do
@@ -233,7 +233,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.ReadinessAnalyzer do
       statuses = Enum.map(critical_readiness, fn {_role, data} -> data.status end)
 
       cond do
-        Enum.all?(statuses, &(&1 in ["excellent", "good"])) -> "all_good"
+        |> Enum.all?(statuses, &(&1 in ["excellent", "good"])) -> "all_good"
         Enum.any?(statuses, &(&1 == "critical")) -> "critical_issues"
         true -> "needs_attention"
       end
@@ -296,7 +296,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.ReadinessAnalyzer do
   defp has_critical_role_issues?(role_readiness) do
     critical_roles = ["logistics", "fc"]
 
-    Enum.any?(critical_roles, fn role ->
+    |> Enum.any?(critical_roles, fn role ->
       status = get_in(role_readiness, [role, :status])
       status in ["poor", "critical"]
     end)

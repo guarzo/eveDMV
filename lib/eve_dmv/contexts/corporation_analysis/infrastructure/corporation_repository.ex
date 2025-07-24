@@ -182,7 +182,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
         timeline =
           timeline_data
 
-        Enum.map(fn day ->
+        |> Enum.map(fn day ->
           %{
             date: Map.get(day, "activity_date"),
             total_activity: Map.get(day, "kills", 0) + Map.get(day, "losses", 0),
@@ -214,7 +214,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
         hourly_map =
           hourly_data
 
-        Enum.map(fn row ->
+        |> Enum.map(fn row ->
           {trunc(Map.get(row, "hour", 0)), Map.get(row, "kills", 0) + Map.get(row, "losses", 0)}
         end)
         |> Map.new()
@@ -244,7 +244,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
         hourly_activity =
           data
 
-        Enum.map(fn row ->
+        |> Enum.map(fn row ->
           {trunc(Map.get(row, "hour", 0)), Map.get(row, "kills", 0) + Map.get(row, "losses", 0)}
         end)
 

@@ -60,7 +60,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
       end
 
     # Find first blood
-    moments =
+    moments_with_first =
       if first_kill = List.first(timeline) do
         [
           %{
@@ -75,7 +75,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
       end
 
     # Sort by timestamp
-    Enum.sort_by(moments, & &1.timestamp)
+    Enum.sort_by(moments_with_first, & &1.timestamp)
   end
 
   @doc """

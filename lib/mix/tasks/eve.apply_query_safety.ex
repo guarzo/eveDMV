@@ -33,7 +33,7 @@ defmodule Mix.Tasks.Eve.ApplyQuerySafety do
 
     Logger.info("Applying query safety to Ash resources#{if dry_run, do: " (DRY RUN)", else: ""}")
 
-    Enum.each(@resources_to_update, fn file_path ->
+    |> Enum.each(@resources_to_update, fn file_path ->
       apply_query_safety_to_file(file_path, dry_run)
     end)
 
@@ -118,6 +118,6 @@ defmodule Mix.Tasks.Eve.ApplyQuerySafety do
   defp generate_diff(original, updated) do
     # Simple diff showing the added lines
     added_lines = String.split(updated, "\n") -- String.split(original, "\n")
-    Enum.map_join(added_lines, "\n", &"+ #{&1}")
+    |> Enum.map_join(added_lines, "\n", &"+ #{&1}")
   end
 end

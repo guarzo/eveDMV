@@ -105,8 +105,8 @@ defmodule EveDmv.Eve.EsiMarketClient do
       timeout: 30_000
     )
 
-    Enum.map(fn {:ok, result} -> result end)
-    Enum.into(%{})
+    |> Enum.map(fn {:ok, result} -> result end)
+    |> Enum.into(%{})
 
     {:ok, results}
   end

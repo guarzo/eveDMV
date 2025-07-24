@@ -898,7 +898,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
         _ -> []
       end
 
-    Enum.uniq(base_actions ++ context_actions)
+    |> Enum.uniq(base_actions ++ context_actions)
   end
 
   defp classify_inhabitants(inhabitants) when is_list(inhabitants) do

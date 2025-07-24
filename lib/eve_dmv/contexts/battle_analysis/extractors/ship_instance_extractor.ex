@@ -123,7 +123,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Extractors.ShipInstanceExtractor do
   defp extract_attacker_data(killmail) do
     killmail["attackers"] || []
 
-    Enum.map(fn attacker ->
+    |> Enum.map(fn attacker ->
       %{
         character_id: attacker["character_id"],
         ship_type_id: attacker["ship_type_id"],

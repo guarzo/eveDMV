@@ -269,14 +269,14 @@ defmodule EveDmv.Surveillance.MatchingEngine do
           # Process profiles in parallel batches for better performance
           profiles
           # Process in batches of 10
-          Enum.chunk_every(10)
+          |> Enum.chunk_every(10)
 
           Task.async_stream(&process_profile_batch/1,
             max_concurrency: 4,
             timeout: 30_000
           )
 
-          Enum.reduce(0, fn
+          |> Enum.reduce(0, fn
             {:ok, count}, acc -> acc + count
             {:error, _}, acc -> acc
           end)
