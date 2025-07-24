@@ -93,7 +93,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
     pattern_recommendations =
       case Map.get(tactical_analysis, :patterns) do
         patterns when is_list(patterns) ->
-          generate_pattern_based_recommendations(patterns)
+          patterns
+          |> generate_pattern_based_recommendations()
           |> Enum.map(&tactical_pattern_to_recommendation/1)
 
         _ ->
@@ -126,8 +127,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
     # Add force multiplication recommendations
     force_mult_recommendations = generate_force_multiplication_recommendations(fleet_analysis)
 
-    (base_recommendations ++ isk_recommendations ++ force_mult_recommendations)
-    |> Enum.take(6)
+    Enum.take(base_recommendations ++ isk_recommendations ++ force_mult_recommendations, 6)
   end
 
   defp perform_basic_doctrine_recommendations(battle_analysis) do
@@ -146,8 +146,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
     # Add counter-doctrine recommendations
     counter_recommendations = generate_counter_doctrine_recommendations(fleet_analysis)
 
-    (base_recommendations ++ counter_recommendations)
-    |> Enum.take(5)
+    Enum.take(base_recommendations ++ counter_recommendations, 5)
   end
 
   defp perform_basic_training_recommendations(battle_analysis) do
@@ -170,8 +169,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
     # Add tactical skill recommendations
     tactical_recommendations = generate_tactical_skill_recommendations(tactical_analysis)
 
-    (base_recommendations ++ gap_recommendations ++ tactical_recommendations)
-    |> Enum.take(7)
+    Enum.take(base_recommendations ++ gap_recommendations ++ tactical_recommendations, 7)
   end
 
   defp tactical_pattern_to_recommendation(pattern) do
@@ -266,8 +264,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
     ewar_presence = Map.get(fleet_analysis, :ewar_presence, false)
     logistics_ratio = Map.get(fleet_analysis, :logistics_ratio, 0.0)
 
-    ewar_recommendations = 
-      if not ewar_presence do
+    ewar_recommendations =
+      if ewar_presence do
+        []
+      else
         [%{
           type: :strategic,
           priority: :medium,
@@ -279,8 +279,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
             "Coordinate EWAR tactics"
           ]
         }]
-      else
-        []
       end
 
     logistics_recommendations =

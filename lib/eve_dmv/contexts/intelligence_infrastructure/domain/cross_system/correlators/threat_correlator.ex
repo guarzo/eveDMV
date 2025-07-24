@@ -36,13 +36,12 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
         # Calculate how many threat entities appear in multiple systems
         threat_entities =
           threat_data
-
-        |> Enum.flat_map(fn {_system_id, threats} ->
-          Enum.map(threats, & &1.attacker_alliance_id)
-        end)
-
-        # Remove nil values
-        Enum.filter(& &1) |> Enum.frequencies()
+          |> Enum.flat_map(fn {_system_id, threats} ->
+            Enum.map(threats, & &1.attacker_alliance_id)
+          end)
+          # Remove nil values
+          |> Enum.filter(& &1)
+          |> Enum.frequencies()
         # Count entities active in multiple systems
         multi_system_threats =
           Enum.count(threat_entities, fn {_entity, count} -> count > 1 end)

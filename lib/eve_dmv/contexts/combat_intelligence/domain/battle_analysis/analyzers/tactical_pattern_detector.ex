@@ -16,12 +16,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
   Identify tactical patterns from engagement timeline.
   """
   def identify_tactical_patterns(timeline) do
-    [
+    List.flatten([
       identify_alpha_strike_pattern(timeline),
       identify_kiting_pattern(timeline),
       identify_brawling_pattern(timeline)
-    ]
-    |> List.flatten()
+    ])
   end
 
   @doc """

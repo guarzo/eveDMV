@@ -1929,8 +1929,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
       numerator =
         Enum.zip(values_a, values_b)
-
-      Enum.map(fn {a, b} -> (a - mean_a) * (b - mean_b) end) |> Enum.sum()
+        |> Enum.map(fn {a, b} -> (a - mean_a) * (b - mean_b) end)
+        |> Enum.sum()
       sum_sq_a = Enum.map(values_a, fn a -> :math.pow(a - mean_a, 2) end) |> Enum.sum()
       sum_sq_b = Enum.map(values_b, fn b -> :math.pow(b - mean_b, 2) end) |> Enum.sum()
 
@@ -2170,9 +2170,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     if length(values) > 1 do
       variance =
         values
-
-      Enum.map(fn val -> :math.pow(val - mean, 2) end) |> Enum.sum()
-      Kernel./(length(values) - 1)
+        |> Enum.map(fn val -> :math.pow(val - mean, 2) end)
+        |> Enum.sum()
+        |> Kernel./(length(values) - 1)
 
       :math.sqrt(variance)
     else
@@ -2187,8 +2187,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Factor 1: Sample size adequacy
     min_sample_size =
       Map.values(time_series_data)
-
-    Enum.map(&length/1) |> Enum.min()
+      |> Enum.map(&length/1)
+      |> Enum.min()
     # 50 buckets = ~12.5 hours
     sample_confidence = min(1.0, min_sample_size / 50.0)
     sample_confidence_factors = [sample_confidence | initial_confidence_factors]
@@ -2293,8 +2293,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
     systems_visited =
       activities
-
-    Enum.map(& &1.system_id) |> Enum.uniq()
+      |> Enum.map(& &1.system_id)
+      |> Enum.uniq()
 
     movement_timeline =
       sorted_activities
@@ -2470,9 +2470,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
       numerator =
         activities
-
-      |> Enum.with_index(1)
-      Enum.map(fn {activity, index} -> (2 * index - n - 1) * activity end) |> Enum.sum()
+        |> Enum.with_index(1)
+        |> Enum.map(fn {activity, index} -> (2 * index - n - 1) * activity end)
+        |> Enum.sum()
       gini = numerator / (n * total)
       max(0.0, min(1.0, gini))
     else
@@ -2495,12 +2495,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     if length(activities) > 1 do
       all_timestamps =
         activities
-
-      |> Enum.flat_map(fn activity ->
-        [activity.first_activity, activity.last_activity]
-      end)
-
-      Enum.filter(&(&1 != nil)) |> Enum.sort()
+        |> Enum.flat_map(fn activity ->
+          [activity.first_activity, activity.last_activity]
+        end)
+        |> Enum.filter(&(&1 != nil))
+        |> Enum.sort()
 
       if length(all_timestamps) > 0 do
         activity_span =
@@ -3005,8 +3004,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     if length(correlations) > 0 do
       total_strength =
         correlations
-
-      Enum.map(&abs(&1.correlation_coefficient)) |> Enum.sum()
+        |> Enum.map(&abs(&1.correlation_coefficient))
+        |> Enum.sum()
       Float.round(total_strength / length(correlations), 3)
     else
       0.0
@@ -3517,9 +3516,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
       variance =
         time_gaps
-
-      Enum.map(fn gap -> :math.pow(gap - mean_gap, 2) end) |> Enum.sum()
-      Kernel./(length(time_gaps))
+        |> Enum.map(fn gap -> :math.pow(gap - mean_gap, 2) end)
+        |> Enum.sum()
+        |> Kernel./(length(time_gaps))
 
       std_dev = :math.sqrt(variance)
 
@@ -3768,7 +3767,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
   defp count_ships_in_range(ship_usage, range) do
     ship_usage
     |> Enum.filter(fn {ship_type_id, _count} -> ship_type_id in range end)
-    Enum.map(fn {_ship, count} -> count end) |> Enum.sum()
+    |> Enum.map(fn {_ship, count} -> count end)
+    |> Enum.sum()
   end
 
   defp calculate_ship_diversity_index(ship_usage) do

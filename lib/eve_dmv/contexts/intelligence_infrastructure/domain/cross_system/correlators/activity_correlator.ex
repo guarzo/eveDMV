@@ -263,19 +263,19 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
         numerator =
           values1
-
-        |> Enum.zip(values2)
-        Enum.map(fn {x, y} -> (x - mean1) * (y - mean2) end) |> Enum.sum()
+          |> Enum.zip(values2)
+          |> Enum.map(fn {x, y} -> (x - mean1) * (y - mean2) end)
+          |> Enum.sum()
 
         denominator1 =
           values1
-
-        Enum.map(fn x -> (x - mean1) * (x - mean1) end) |> Enum.sum()
+          |> Enum.map(fn x -> (x - mean1) * (x - mean1) end)
+          |> Enum.sum()
 
         denominator2 =
           values2
-
-        Enum.map(fn y -> (y - mean2) * (y - mean2) end) |> Enum.sum()
+          |> Enum.map(fn y -> (y - mean2) * (y - mean2) end)
+          |> Enum.sum()
         denominator = :math.sqrt(denominator1 * denominator2)
 
         if denominator > 0 do
@@ -316,9 +316,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
     # Find common timestamps
     common_times =
-      Map.keys(map1) |> MapSet.new()
-
-    MapSet.intersection(MapSet.new(Map.keys(map2))) |> Enum.sort()
+      Map.keys(map1)
+      |> MapSet.new()
+      |> MapSet.intersection(MapSet.new(Map.keys(map2)))
+      |> Enum.sort()
     # Extract aligned data
     aligned1 = Enum.map(common_times, &Map.get(map1, &1))
     aligned2 = Enum.map(common_times, &Map.get(map2, &1))
@@ -474,8 +475,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       # Get all systems
       all_systems =
         correlations
-
-      Enum.flat_map(fn {{s1, s2}, _} -> [s1, s2] end) |> Enum.uniq() |> Enum.sort()
+        |> Enum.flat_map(fn {{s1, s2}, _} -> [s1, s2] end)
+        |> Enum.uniq()
+        |> Enum.sort()
       # Build matrix
       matrix =
         for s1 <- all_systems, s2 <- all_systems, into: %{} do
@@ -547,8 +549,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       # Get all time points
       all_times =
         hourly_data
-
-      Enum.flat_map(fn {_system, hours} -> Map.keys(hours) end) |> Enum.uniq() |> Enum.sort()
+        |> Enum.flat_map(fn {_system, hours} -> Map.keys(hours) end)
+        |> Enum.uniq()
+        |> Enum.sort()
       # Calculate correlation for each time point
       time_correlations =
         Enum.map(all_times, fn time ->
@@ -903,9 +906,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
       numerator =
         values1
-
-      |> Enum.zip(values2)
-      Enum.map(fn {x, y} -> (x - mean1) * (y - mean2) end) |> Enum.sum()
+        |> Enum.zip(values2)
+        |> Enum.map(fn {x, y} -> (x - mean1) * (y - mean2) end)
+        |> Enum.sum()
       variance1 = values1 |> Enum.map(fn x -> (x - mean1) * (x - mean1) end) |> Enum.sum()
       variance2 = values2 |> Enum.map(fn y -> (y - mean2) * (y - mean2) end) |> Enum.sum()
 
@@ -960,14 +963,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     # Calculate total activity for a specific hour across all systems
     total_activity =
       hourly_data
-
-    |> Enum.map(fn {_system, hours} ->
-      # Sum activity for this hour across all days
-      hours
-      |> Enum.filter(fn {time, _} -> time.hour == hour end)
-      Enum.map(&elem(&1, 1)) |> Enum.sum()
-    end)
-    |> Enum.sum()
+      |> Enum.map(fn {_system, hours} ->
+        # Sum activity for this hour across all days
+        hours
+        |> Enum.filter(fn {time, _} -> time.hour == hour end)
+        |> Enum.map(&elem(&1, 1))
+        |> Enum.sum()
+      end)
+      |> Enum.sum()
 
     {hour, total_activity}
   end
