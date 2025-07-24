@@ -791,7 +791,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
       "brutix"
     ]
 
-    |> Enum.any?(t1_ships, fn t1 -> String.contains?(ship_name, t1) end)
+    Enum.any?(t1_ships, fn t1 -> String.contains?(ship_name, t1) end)
   end
 
   defp generate_constraint_recommendations(violations, _ships, _constraints) do

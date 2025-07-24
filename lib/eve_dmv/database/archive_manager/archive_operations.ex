@@ -194,10 +194,10 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveOperations do
     pk_index = Enum.find_index(columns, &(&1 == pk_column))
 
     if pk_index do
-      |> Enum.map(rows, &Enum.at(&1, pk_index))
+      Enum.map(rows, &Enum.at(&1, pk_index))
     else
       # Fallback: use first column
-      |> Enum.map(rows, &List.first/1)
+      Enum.map(rows, &List.first/1)
     end
   end
 

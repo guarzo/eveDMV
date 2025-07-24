@@ -257,9 +257,11 @@ defmodule EveDmv.Database.CacheInvalidator do
     perform_type_invalidation(entity_type, entity_id)
 
     # Invalidate related entities
-    |> Enum.each(related_types, fn {related_type, related_ids} ->
+    related_types
+    |> Enum.each(fn {related_type, related_ids} ->
       if is_list(related_ids) do
-        |> Enum.each(related_ids, fn related_id ->
+        related_ids
+        |> Enum.each(fn related_id ->
           perform_type_invalidation(related_type, related_id)
         end)
       else

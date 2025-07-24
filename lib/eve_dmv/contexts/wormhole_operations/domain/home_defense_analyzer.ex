@@ -613,11 +613,11 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
     # Identify common ship doctrines from frequency patterns
     sorted_types =
       type_frequencies
+      |> Enum.sort_by(&elem(&1, 1), :desc)
+      |> Enum.take(5)
 
-    |> Enum.sort_by(&elem(&1, 1), :desc)
-    |> Enum.take(5)
-
-    |> Enum.map(sorted_types, fn {type_id, count} ->
+    sorted_types
+    |> Enum.map(fn {type_id, count} ->
       %{
         ship_type_id: type_id,
         count: count,
@@ -760,7 +760,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
     estimated_entries = round(base_entries * activity_factor)
 
     # Generate entry point details
-    |> Enum.map(1..estimated_entries, fn i ->
+    1..estimated_entries
+    |> Enum.map(fn i ->
       %{
         entry_id: i,
         connection_type: Enum.random([:c1, :c2, :c3, :null, :low]),
@@ -792,7 +793,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
         entry.monitoring_status != :monitored
       end)
 
-    |> Enum.map(unmonitored_entries, fn entry ->
+    unmonitored_entries
+    |> Enum.map(fn entry ->
       %{
         entry_id: entry.entry_id,
         connection_type: entry.connection_type,
@@ -876,7 +878,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
         :emergency -> min(1, connection_count - 2)
       end
 
-    |> Enum.map(1..route_count, fn i ->
+    1..route_count
+    |> Enum.map(fn i ->
       %{
         route_id: i,
         route_type: route_type,
@@ -904,7 +907,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
       end)
 
     # Generate defensive position recommendations
-    |> Enum.map(1..min(3, high_threat_entries + 1), fn i ->
+    1..min(3, high_threat_entries + 1)
+    |> Enum.map(fn i ->
       %{
         position_id: i,
         position_type: Enum.random([:chokepoint, :overview, :fallback]),
@@ -996,10 +1000,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
     else
       readiness_scores =
         Map.values(defense_analyses)
+        |> Enum.map(& &1.defense_readiness)
 
-      |> Enum.map(& &1.defense_readiness)
-
-      |> Enum.sum(readiness_scores) / length(readiness_scores)
+      Enum.sum(readiness_scores) / length(readiness_scores)
     end
   end
 
@@ -1110,7 +1113,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
     # Count kills in last 7 days
     seven_days_ago = DateTime.add(DateTime.utc_now(), -7 * 24 * 3600, :second)
 
-    |> Enum.count(system_activity, fn activity ->
+    system_activity
+    |> Enum.count(fn activity ->
       DateTime.compare(activity.killmail_time, seven_days_ago) == :gt
     end)
   end

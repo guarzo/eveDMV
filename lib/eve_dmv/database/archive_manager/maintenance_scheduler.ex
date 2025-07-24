@@ -349,8 +349,8 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
     health_statuses = Enum.map(health_results, fn {_table, status} -> status end)
 
     cond do
-      |> Enum.any?(health_statuses, &match?({:issues, _}, &1)) -> :degraded
-      |> Enum.any?(health_statuses, &match?({:warning, _}, &1)) -> :warning
+      Enum.any?(health_statuses, &match?({:issues, _}, &1)) -> :degraded
+      Enum.any?(health_statuses, &match?({:warning, _}, &1)) -> :warning
       true -> :healthy
     end
   end
