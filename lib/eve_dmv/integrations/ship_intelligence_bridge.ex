@@ -341,7 +341,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
         killmails
 
       %{battles: battles} when is_list(battles) ->
-        battles |> Enum.flat_map(fn battle -> battle.killmails || [] end)
+        Enum.flat_map(battles, fn battle -> battle.killmails || [] end)
 
       _ ->
         []
@@ -349,23 +349,21 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
   end
 
   defp classify_ship_role_from_killmail(killmail) do
-    try do
-      classification = ModuleClassifier.classify_ship_role(killmail)
-      ship_type_id = extract_ship_type_id(killmail)
+    classification = ModuleClassifier.classify_ship_role(killmail)
+    ship_type_id = extract_ship_type_id(killmail)
 
-      {:ok,
-       %{
-         killmail_id: killmail["killmail_id"] || killmail.killmail_id,
-         ship_type_id: ship_type_id,
-         role_classification: classification,
-         confidence: calculate_classification_confidence(classification),
-         classified_at: DateTime.utc_now()
-       }}
-    rescue
-      error ->
-        Logger.debug("Failed to classify ship role from killmail: #{inspect(error)}")
-        {:error, error}
-    end
+    {:ok,
+     %{
+       killmail_id: killmail["killmail_id"] || killmail.killmail_id,
+       ship_type_id: ship_type_id,
+       role_classification: classification,
+       confidence: calculate_classification_confidence(classification),
+       classified_at: DateTime.utc_now()
+     }}
+  rescue
+    error ->
+      Logger.debug("Failed to classify ship role from killmail: #{inspect(error)}")
+      {:error, error}
   end
 
   defp extract_ship_type_id(killmail) do
@@ -379,8 +377,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
 
   defp calculate_classification_confidence(classification) when is_map(classification) do
     # Calculate confidence based on the highest role score
-    Map.values(classification)
-    |> Enum.max(fn -> 0.0 end)
+    Enum.max(Map.values(classification), fn -> 0.0 end)
   end
 
   defp calculate_classification_confidence(_classification), do: 0.0
@@ -484,7 +481,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
 
   # Character intelligence helper functions
   defp get_character_killmail_data(character_id, days_back) do
-    cutoff_date = DateTime.utc_now() |> DateTime.add(-days_back, :day)
+    cutoff_date = DateTime.add(DateTime.utc_now(), -days_back, :day)
 
     query =
       from(k in "killmails_raw",

@@ -277,7 +277,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
       patterns.operational_patterns.resource_efficiency
     ]
 
-    avg_confidence = Enum.sum(confidence_factors) |> Kernel./(length(confidence_factors))
+    avg_confidence = Enum.sum(confidence_factors) / length(confidence_factors)
     Float.round(max(0.0, min(1.0, avg_confidence)), 2)
   end
 
@@ -452,7 +452,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   defp predict_engagement_likelihood(stats, horizon) do
     # Predict engagement likelihood based on stats
     total_activity = Map.get(stats, :total_kills, 0) + Map.get(stats, :total_losses, 0)
-    avg_gang_size = Map.get(stats, :avg_gang_size, 1.0) |> to_float()
+    avg_gang_size = to_float(Map.get(stats, :avg_gang_size, 1.0))
     ship_diversity = Map.get(stats, :ship_types_used, 1)
 
     # Base likelihood from activity level
@@ -532,7 +532,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   defp predict_corp_stability(stats) do
     # Predict corporation stability based on character metrics
     total_activity = Map.get(stats, :total_kills, 0) + Map.get(stats, :total_losses, 0)
-    avg_gang_size = Map.get(stats, :avg_gang_size, 1.0) |> to_float()
+    avg_gang_size = to_float(Map.get(stats, :avg_gang_size, 1.0))
     primary_activity = Map.get(stats, :primary_activity, :mixed)
 
     # Calculate loyalty indicators
@@ -656,7 +656,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
       # Extract tactical preferences
       tactical_profiles =
         Enum.map(character_data, fn {_id, stats} ->
-          avg_gang_size = Map.get(stats, :avg_gang_size, 1.0) |> to_float()
+          avg_gang_size = to_float(Map.get(stats, :avg_gang_size, 1.0))
           primary_activity = Map.get(stats, :primary_activity, :mixed)
           ship_diversity = Map.get(stats, :ship_types_used, 1)
 
@@ -716,7 +716,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
       # Extract social indicators
       social_profiles =
         Enum.map(character_data, fn {_id, stats} ->
-          avg_gang_size = Map.get(stats, :avg_gang_size, 1.0) |> to_float()
+          avg_gang_size = to_float(Map.get(stats, :avg_gang_size, 1.0))
           primary_activity = Map.get(stats, :primary_activity, :mixed)
           total_activity = Map.get(stats, :total_kills, 0) + Map.get(stats, :total_losses, 0)
 
@@ -873,9 +873,23 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
       0.0
     else
       # Calculate cosine similarity
-      dot_product = Enum.zip(vec1, vec2) |> Enum.map(fn {a, b} -> a * b end) |> Enum.sum()
-      magnitude1 = :math.sqrt(Enum.map(vec1, fn x -> x * x end) |> Enum.sum())
-      magnitude2 = :math.sqrt(Enum.map(vec2, fn x -> x * x end) |> Enum.sum())
+      dot_product = 
+        vec1
+        |> Enum.zip(vec2)
+        |> Enum.map(fn {a, b} -> a * b end)
+        |> Enum.sum()
+      
+      magnitude1 = 
+        vec1
+        |> Enum.map(fn x -> x * x end)
+        |> Enum.sum()
+        |> :math.sqrt()
+        
+      magnitude2 = 
+        vec2
+        |> Enum.map(fn x -> x * x end)
+        |> Enum.sum()
+        |> :math.sqrt()
 
       if magnitude1 > 0 and magnitude2 > 0 do
         dot_product / (magnitude1 * magnitude2)
