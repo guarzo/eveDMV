@@ -75,7 +75,8 @@ defmodule EveDmv.Database.PartitionUtils do
   def get_partition_row_counts(table) do
     partitions = list_partitions(table)
 
-    |> Enum.map(partitions, fn partition ->
+    partitions
+    |> Enum.map(fn partition ->
       count = get_table_row_count(partition)
 
       %{

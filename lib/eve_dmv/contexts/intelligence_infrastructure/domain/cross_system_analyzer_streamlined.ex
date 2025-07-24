@@ -21,8 +21,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzerS
 
   # Cross-system analysis parameters
   @activity_correlation_threshold 0.7
-  @intelligence_fusion_confidence 0.8
-  @strategic_analysis_window_days 14
 
   @doc """
   Analyzes wormhole chain connections and activity patterns.

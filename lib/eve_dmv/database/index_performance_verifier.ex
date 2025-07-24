@@ -201,7 +201,8 @@ defmodule EveDmv.Database.IndexPerformanceVerifier do
       }
     ]
 
-    |> Enum.map(queries, &benchmark_query/1)
+    queries
+    |> Enum.map(&benchmark_query/1)
   end
 
   # Private helper functions

@@ -744,12 +744,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     if total_ships > 0 do
       logistics_ships =
         ship_composition
-
-      |> Enum.filter(fn {ship_type_id, _count} ->
-        classify_ship(ship_type_id) == :logistics
-      end)
-
-      Enum.map(fn {_, count} -> count end) |> Enum.sum()
+        |> Enum.filter(fn {ship_type_id, _count} ->
+          classify_ship(ship_type_id) == :logistics
+        end)
+        |> Enum.map(fn {_, count} -> count end)
+        |> Enum.sum()
       Float.round(logistics_ships / total_ships, 3)
     else
       0.0
@@ -1154,9 +1153,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       else
         variance =
           participant_counts
-
-        Enum.map(fn count -> :math.pow(count - mean, 2) end) |> Enum.sum()
-        Kernel./(length(participant_counts))
+          |> Enum.map(fn count -> :math.pow(count - mean, 2) end)
+          |> Enum.sum()
+          |> Kernel./(length(participant_counts))
 
         std_dev = :math.sqrt(variance)
         coefficient_of_variation = std_dev / mean
@@ -1282,7 +1281,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   defp group_ships_by_class(ship_data) do
     ship_data
     |> Enum.group_by(&classify_ship_by_type_id/1)
-    Map.delete(:unknown)
+    |> Map.delete(:unknown)
   end
 
   defp classify_ship_by_type_id(ship) do

@@ -301,7 +301,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
       aggregation_queries: 0
     }
 
-    |> Enum.reduce(slow_queries, patterns, fn query, acc ->
+    Enum.reduce(slow_queries, patterns, fn query, acc ->
       query_text = String.upcase(query.query)
 
       acc

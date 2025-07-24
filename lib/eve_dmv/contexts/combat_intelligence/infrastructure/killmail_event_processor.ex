@@ -37,7 +37,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.KillmailEventProcess
     character_ids = extract_character_ids(event)
 
     # Trigger analysis for each character
-    |> Enum.each(character_ids, fn character_id ->
+    Enum.each(character_ids, fn character_id ->
       CharacterAnalyzer.analyze(character_id, %{})
     end)
 

@@ -161,7 +161,7 @@ defmodule EveDmv.Enrichment.RealTimePriceUpdater do
       errors: 0
     }
 
-    |> Enum.reduce(killmails, results, fn killmail, acc ->
+    Enum.reduce(killmails, results, fn killmail, acc ->
       case update_and_broadcast_if_changed(killmail) do
         {:ok, :updated} ->
           %{
