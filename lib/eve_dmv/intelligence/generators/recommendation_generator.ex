@@ -93,7 +93,7 @@ defmodule EveDmv.Intelligence.Generators.RecommendationGenerator do
   defp filter_engagement_recommendations(recommendations) do
     engagement_keywords = ["engagement", "events", "engaging"]
 
-    |> Enum.filter(recommendations, fn rec ->
+    Enum.filter(recommendations, fn rec ->
       Enum.any?(engagement_keywords, &String.contains?(rec, &1))
     end)
   end
@@ -101,7 +101,7 @@ defmodule EveDmv.Intelligence.Generators.RecommendationGenerator do
   defp filter_leadership_recommendations(recommendations) do
     leadership_keywords = ["attention", "leadership", "contact"]
 
-    |> Enum.filter(recommendations, fn rec ->
+    Enum.filter(recommendations, fn rec ->
       Enum.any?(leadership_keywords, &String.contains?(rec, &1))
     end)
   end
@@ -109,7 +109,7 @@ defmodule EveDmv.Intelligence.Generators.RecommendationGenerator do
   defp filter_operational_recommendations(recommendations) do
     operational_keywords = ["fleet", "scheduling", "operations", "communication"]
 
-    |> Enum.filter(recommendations, fn rec ->
+    Enum.filter(recommendations, fn rec ->
       Enum.any?(operational_keywords, &String.contains?(rec, &1))
     end)
   end
