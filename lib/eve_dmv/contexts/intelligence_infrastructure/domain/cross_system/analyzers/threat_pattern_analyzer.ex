@@ -111,8 +111,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
       Enum.map(time_windows, fn {_window, window_kills} ->
         systems_in_window =
           window_kills
-
-        Enum.map(& &1.solar_system_id) |> Enum.uniq()
+          |> Enum.map(& &1.solar_system_id)
+          |> Enum.uniq()
 
         if length(systems_in_window) > 1 do
           %{

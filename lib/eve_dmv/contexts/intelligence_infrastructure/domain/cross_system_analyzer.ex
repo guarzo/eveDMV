@@ -15,9 +15,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
   """
 
   alias EveDmv.Api
-  alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor
-  
+  alias EveDmv.Killmails.KillmailRaw
+
   # Note: Using fully qualified Kernel functions to avoid import conflicts
 
   require Logger
@@ -403,22 +403,21 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Generate a simple chain with random connections
     chain_systems =
       1..min(max_depth, 5)
+      |> Enum.reduce({systems, connections}, fn depth, {sys_acc, conn_acc} ->
+        new_system_id = starting_system_id + depth * 1000
 
-    |> Enum.reduce({systems, connections}, fn depth, {sys_acc, conn_acc} ->
-      new_system_id = starting_system_id + depth * 1000
+        connection = %{
+          from_system: List.last(sys_acc),
+          to_system: new_system_id,
+          wormhole_type: determine_wormhole_type(depth),
+          mass_capacity: calculate_mass_capacity(depth),
+          time_remaining: :rand.uniform(24),
+          stability: determine_stability(depth),
+          discovered_at: DateTime.utc_now()
+        }
 
-      connection = %{
-        from_system: List.last(sys_acc),
-        to_system: new_system_id,
-        wormhole_type: determine_wormhole_type(depth),
-        mass_capacity: calculate_mass_capacity(depth),
-        time_remaining: :rand.uniform(24),
-        stability: determine_stability(depth),
-        discovered_at: DateTime.utc_now()
-      }
-
-      {[new_system_id | sys_acc], [connection | conn_acc]}
-    end)
+        {[new_system_id | sys_acc], [connection | conn_acc]}
+      end)
 
     {final_systems, final_connections} = chain_systems
 
@@ -470,7 +469,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
   defp calculate_total_mass_capacity(connections) do
     connections
-    |> Enum.map(& &1.mass_capacity) 
+    |> Enum.map(& &1.mass_capacity)
     |> Enum.sum()
   end
 
@@ -483,21 +482,20 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Analyze the wormhole connections for traffic, stability, and strategic value
     connection_analysis =
       chain_map.connections
-
-    |> Enum.map(fn connection ->
-      %{
-        connection_id: generate_connection_id(connection),
-        from_system: connection.from_system,
-        to_system: connection.to_system,
-        wormhole_type: connection.wormhole_type,
-        mass_capacity: connection.mass_capacity,
-        estimated_traffic: estimate_traffic_volume(connection, time_window_hours),
-        strategic_value: assess_connection_strategic_value(connection, chain_map),
-        threat_level: assess_connection_threat_level(connection),
-        stability_trend: analyze_stability_trend(connection),
-        time_until_collapse: estimate_collapse_time(connection)
-      }
-    end)
+      |> Enum.map(fn connection ->
+        %{
+          connection_id: generate_connection_id(connection),
+          from_system: connection.from_system,
+          to_system: connection.to_system,
+          wormhole_type: connection.wormhole_type,
+          mass_capacity: connection.mass_capacity,
+          estimated_traffic: estimate_traffic_volume(connection, time_window_hours),
+          strategic_value: assess_connection_strategic_value(connection, chain_map),
+          threat_level: assess_connection_threat_level(connection),
+          stability_trend: analyze_stability_trend(connection),
+          time_until_collapse: estimate_collapse_time(connection)
+        }
+      end)
 
     {:ok, connection_analysis}
   end
@@ -624,17 +622,16 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Analyze activity patterns across the wormhole chain
     system_activities =
       chain_map.systems
-
-    |> Enum.map(fn system_id ->
-      %{
-        system_id: system_id,
-        killmails: get_system_killmails(system_id, time_window_hours),
-        pilot_activity: estimate_pilot_activity(system_id, time_window_hours),
-        corp_presence: analyze_corp_presence(system_id, time_window_hours),
-        activity_level: calculate_activity_level(system_id, time_window_hours),
-        threat_indicators: identify_threat_indicators(system_id, time_window_hours)
-      }
-    end)
+      |> Enum.map(fn system_id ->
+        %{
+          system_id: system_id,
+          killmails: get_system_killmails(system_id, time_window_hours),
+          pilot_activity: estimate_pilot_activity(system_id, time_window_hours),
+          corp_presence: analyze_corp_presence(system_id, time_window_hours),
+          activity_level: calculate_activity_level(system_id, time_window_hours),
+          threat_indicators: identify_threat_indicators(system_id, time_window_hours)
+        }
+      end)
 
     activity_analysis = %{
       systems: system_activities,
@@ -707,9 +704,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
           DateTime.to_time(DateTime.truncate(km.killmail_time, :second))
         end)
 
-      {peak_hour, _killmails} = 
+      {peak_hour, _killmails} =
         grouped_killmails
         |> Enum.max_by(fn {_hour, kms} -> length(kms) end)
+
       peak_hour
     else
       nil
@@ -768,7 +766,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
           attackers
           |> Enum.map(& &1["corporation_id"])
           |> Enum.filter(&(&1 != nil))
-
           |> Enum.map(fn
             id when is_binary(id) -> String.to_integer(id)
             id when is_integer(id) -> id
@@ -791,17 +788,16 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     if total_participation > 0 do
       diversity =
         corp_participation
+        |> Enum.map(fn {_corp_id, count} ->
+          proportion = count / total_participation
 
-      |> Enum.map(fn {_corp_id, count} ->
-        proportion = count / total_participation
-
-        if proportion > 0 do
-          -proportion * :math.log2(proportion)
-        else
-          0
-        end
-      end)
-      |> Enum.sum()
+          if proportion > 0 do
+            -proportion * :math.log2(proportion)
+          else
+            0
+          end
+        end)
+        |> Enum.sum()
 
       diversity
     else
@@ -876,14 +872,13 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Capital ship type ID ranges (simplified)
     ship_type_id in 19_720..19_740 or
       (killmail.raw_data["attackers"] || [])
-
-    |> Enum.any?(fn attacker ->
-      case attacker["ship_type_id"] do
-        id when is_integer(id) -> id in 19_720..19_740
-        id when is_binary(id) -> String.to_integer(id) in 19_720..19_740
-        _ -> false
-      end
-    end)
+      |> Enum.any?(fn attacker ->
+        case attacker["ship_type_id"] do
+          id when is_integer(id) -> id in 19_720..19_740
+          id when is_binary(id) -> String.to_integer(id) in 19_720..19_740
+          _ -> false
+        end
+      end)
   end
 
   defp is_high_value_target(killmail) do
@@ -916,17 +911,16 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Calculate overall activity level for the entire chain
     total_activity =
       system_activities
-
-    |> Enum.map(fn system ->
-      case system.activity_level do
-        :very_high -> 5
-        :high -> 4
-        :medium -> 3
-        :low -> 2
-        :very_low -> 1
-      end
-    end)
-    |> Enum.sum()
+      |> Enum.map(fn system ->
+        case system.activity_level do
+          :very_high -> 5
+          :high -> 4
+          :medium -> 3
+          :low -> 2
+          :very_low -> 1
+        end
+      end)
+      |> Enum.sum()
 
     average_activity = total_activity / length(system_activities)
 
@@ -942,11 +936,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
   defp identify_activity_hotspots(system_activities) do
     # Identify systems with highest activity
     system_activities
-
     |> Enum.filter(fn system ->
       system.activity_level in [:high, :very_high]
     end)
-
     |> Enum.sort_by(& &1.pilot_activity.activity_score, :desc)
     |> Enum.take(3)
   end
@@ -982,9 +974,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Simplified - would analyze temporal correlations in production
     peak_times =
       system_activities
-
-    |> Enum.map(& &1.pilot_activity.peak_activity_time)
-    |> Enum.filter(&(&1 != nil))
+      |> Enum.map(& &1.pilot_activity.peak_activity_time)
+      |> Enum.filter(&(&1 != nil))
 
     if length(peak_times) > 1 do
       # Check if peak times are within 2 hours of each other
@@ -992,6 +983,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
         peak_times
         |> Enum.map(&Time.to_seconds_after_midnight/1)
         |> Enum.sort()
+
       max_time = List.last(time_differences)
       min_time = List.first(time_differences)
 
@@ -1006,23 +998,19 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Analyze temporal distribution of activity
     all_killmails =
       system_activities
-
-    |> Enum.flat_map(& &1.killmails)
+      |> Enum.flat_map(& &1.killmails)
 
     if length(all_killmails) > 0 do
       # Group by hour of day
       hourly_distribution =
         all_killmails
-
-      |> Enum.group_by(fn km ->
-        DateTime.to_time(km.killmail_time).hour
-      end)
-
-      |> Enum.map(fn {hour, kms} ->
-        {hour, length(kms)}
-      end)
-
-      |> Enum.sort_by(fn {hour, _count} -> hour end)
+        |> Enum.group_by(fn km ->
+          DateTime.to_time(km.killmail_time).hour
+        end)
+        |> Enum.map(fn {hour, kms} ->
+          {hour, length(kms)}
+        end)
+        |> Enum.sort_by(fn {hour, _count} -> hour end)
 
       peak_hour =
         hourly_distribution
@@ -1055,7 +1043,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
       variance =
         hourly_distribution
-        |> Enum.map(fn {_hour, count} -> :math.pow(count - mean_activity, 2) end) 
+        |> Enum.map(fn {_hour, count} -> :math.pow(count - mean_activity, 2) end)
         |> Enum.sum()
         |> Kernel.div(24)
 
@@ -1077,10 +1065,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Analyze threats across the wormhole chain
     system_threats =
       chain_map.systems
-
-    |> Enum.map(fn system_id ->
-      analyze_system_threats(system_id, time_window_hours)
-    end)
+      |> Enum.map(fn system_id ->
+        analyze_system_threats(system_id, time_window_hours)
+      end)
 
     chain_threat_analysis = %{
       system_threats: system_threats,
@@ -1157,7 +1144,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
         attackers
         |> Enum.map(& &1["corporation_id"])
         |> Enum.filter(&(&1 != nil))
-
         |> Enum.map(fn
           id when is_binary(id) -> String.to_integer(id)
           id when is_integer(id) -> id
@@ -1171,7 +1157,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
   defp assess_entity_threats(aggressor_corps) do
     # Assess threat level of different entities
     aggressor_corps
-
     |> Enum.map(fn {corp_id, activity_count} ->
       threat_level =
         case activity_count do
@@ -1204,9 +1189,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
       quarter_threat_scores =
         quarters
-
-      |> Enum.map(&calculate_system_threat_level/1)
-      |> Enum.map(&threat_level_to_score/1)
+        |> Enum.map(&calculate_system_threat_level/1)
+        |> Enum.map(&threat_level_to_score/1)
 
       # Analyze trend
       trend = analyze_score_trend(quarter_threat_scores)
@@ -1280,7 +1264,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
       variance =
         scores
-        |> Enum.map(fn score -> :math.pow(score - mean, 2) end) 
+        |> Enum.map(fn score -> :math.pow(score - mean, 2) end)
         |> Enum.sum()
         |> Kernel.div(Kernel.length(scores))
 
@@ -1355,10 +1339,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Calculate overall threat level for the chain
     threat_scores =
       system_threats
-
-    |> Enum.map(fn system ->
-      threat_level_to_score(system.threat_level)
-    end)
+      |> Enum.map(fn system ->
+        threat_level_to_score(system.threat_level)
+      end)
 
     if length(threat_scores) > 0 do
       average_threat = Enum.sum(threat_scores) / length(threat_scores)
@@ -1379,13 +1362,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Identify primary threat vectors across the chain
     all_threat_vectors =
       system_threats
-
-    |> Enum.flat_map(fn system ->
-      system.vulnerability_assessment
-    end)
-    |> Enum.frequencies()
-
-    |> Enum.sort_by(fn {_vector, count} -> count end, :desc)
+      |> Enum.flat_map(fn system ->
+        system.vulnerability_assessment
+      end)
+      |> Enum.frequencies()
+      |> Enum.sort_by(fn {_vector, count} -> count end, :desc)
 
     all_threat_vectors
   end
@@ -1397,8 +1378,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Check for high-threat systems
     high_threat_systems =
       system_threats
-
-    |> Enum.filter(fn system -> system.threat_level in [:high, :critical] end)
+      |> Enum.filter(fn system -> system.threat_level in [:high, :critical] end)
 
     threat_recommendations =
       if length(high_threat_systems) > 0 do
@@ -1410,8 +1390,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Check for defensive weaknesses
     vulnerable_systems =
       system_threats
-
-    |> Enum.filter(fn system -> :weak_defenses in system.vulnerability_assessment end)
+      |> Enum.filter(fn system -> :weak_defenses in system.vulnerability_assessment end)
 
     defense_recommendations =
       if length(vulnerable_systems) > 0 do
@@ -1423,8 +1402,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Check for strategic exposure
     exposed_systems =
       system_threats
-
-    |> Enum.filter(fn system -> :strategic_exposure in system.vulnerability_assessment end)
+      |> Enum.filter(fn system -> :strategic_exposure in system.vulnerability_assessment end)
 
     strategic_recommendations =
       if length(exposed_systems) > 0 do
@@ -1456,8 +1434,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Factor in connection quality
     high_value_connections =
       connection_data
-
-    |> Enum.count(fn conn -> conn.strategic_value in [:high, :very_high] end)
+      |> Enum.count(fn conn -> conn.strategic_value in [:high, :very_high] end)
 
     connection_significance =
       case high_value_connections do
@@ -1507,17 +1484,16 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Calculate overall strategic rating
     factor_scores =
       strategic_factors
-
-    |> Enum.map(fn {_factor, significance} ->
-      case significance do
-        :very_high -> 5
-        :high -> 4
-        :medium -> 3
-        :low -> 2
-        :minimal -> 1
-        _ -> 0
-      end
-    end)
+      |> Enum.map(fn {_factor, significance} ->
+        case significance do
+          :very_high -> 5
+          :high -> 4
+          :medium -> 3
+          :low -> 2
+          :minimal -> 1
+          _ -> 0
+        end
+      end)
 
     if length(factor_scores) > 0 do
       average_score = Enum.sum(factor_scores) / length(factor_scores)
@@ -1611,7 +1587,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
   end
 
   defp get_factor_value(strategic_factors, factor_key) do
-    result = 
+    result =
       strategic_factors
       |> Enum.find(fn {key, _value} -> key == factor_key end)
 
@@ -1691,20 +1667,19 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
     system_activities =
       system_ids
+      |> Enum.map(fn system_id ->
+        killmails = get_system_killmails(system_id, time_window_hours)
 
-    |> Enum.map(fn system_id ->
-      killmails = get_system_killmails(system_id, time_window_hours)
-
-      %{
-        system_id: system_id,
-        killmails: killmails,
-        activity_timeline: build_activity_timeline(killmails),
-        pilot_activity: extract_pilot_activity_data(killmails),
-        corp_activity: extract_corp_activity_data(killmails),
-        ship_activity: extract_ship_activity_data(killmails),
-        temporal_markers: extract_temporal_markers(killmails)
-      }
-    end)
+        %{
+          system_id: system_id,
+          killmails: killmails,
+          activity_timeline: build_activity_timeline(killmails),
+          pilot_activity: extract_pilot_activity_data(killmails),
+          corp_activity: extract_corp_activity_data(killmails),
+          ship_activity: extract_ship_activity_data(killmails),
+          temporal_markers: extract_temporal_markers(killmails)
+        }
+      end)
 
     {:ok,
      %{
@@ -1718,7 +1693,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
   defp build_activity_timeline(killmails) do
     # Build detailed timeline of activity events
     killmails
-
     |> Enum.map(fn km ->
       %{
         timestamp: km.killmail_time,
@@ -1728,7 +1702,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
         activity_intensity: calculate_killmail_intensity(km)
       }
     end)
-
     |> Enum.sort_by(& &1.timestamp)
   end
 
@@ -1739,17 +1712,17 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
       |> Enum.flat_map(&extract_all_participants_from_killmail/1)
       |> Enum.frequencies()
       |> Enum.map(fn {pilot_id, activity_count} ->
-      pilot_killmails = Enum.filter(killmails, &pilot_participated_in_killmail?(&1, pilot_id))
+        pilot_killmails = Enum.filter(killmails, &pilot_participated_in_killmail?(&1, pilot_id))
 
-      %{
-        pilot_id: pilot_id,
-        activity_count: activity_count,
-        first_seen: get_first_activity_time(pilot_killmails),
-        last_seen: get_last_activity_time(pilot_killmails),
-        activity_pattern: analyze_pilot_activity_pattern(pilot_killmails),
-        ship_preferences: extract_pilot_ship_usage(pilot_killmails, pilot_id)
-      }
-    end)
+        %{
+          pilot_id: pilot_id,
+          activity_count: activity_count,
+          first_seen: get_first_activity_time(pilot_killmails),
+          last_seen: get_last_activity_time(pilot_killmails),
+          activity_pattern: analyze_pilot_activity_pattern(pilot_killmails),
+          ship_preferences: extract_pilot_ship_usage(pilot_killmails, pilot_id)
+        }
+      end)
 
     %{
       unique_pilots: length(pilot_data),
@@ -1765,17 +1738,17 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
       |> Enum.flat_map(&extract_corp_ids_from_killmail/1)
       |> Enum.frequencies()
       |> Enum.map(fn {corp_id, activity_count} ->
-      corp_killmails = Enum.filter(killmails, &corp_participated_in_killmail?(&1, corp_id))
+        corp_killmails = Enum.filter(killmails, &corp_participated_in_killmail?(&1, corp_id))
 
-      %{
-        corp_id: corp_id,
-        activity_count: activity_count,
-        first_activity: get_first_activity_time(corp_killmails),
-        last_activity: get_last_activity_time(corp_killmails),
-        engagement_style: analyze_corp_engagement_style(corp_killmails),
-        territorial_focus: analyze_corp_territorial_focus(corp_killmails)
-      }
-    end)
+        %{
+          corp_id: corp_id,
+          activity_count: activity_count,
+          first_activity: get_first_activity_time(corp_killmails),
+          last_activity: get_last_activity_time(corp_killmails),
+          engagement_style: analyze_corp_engagement_style(corp_killmails),
+          territorial_focus: analyze_corp_territorial_focus(corp_killmails)
+        }
+      end)
 
     %{
       active_corporations: length(corp_data),
@@ -1802,7 +1775,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
   defp extract_temporal_markers(killmails) do
     # Extract temporal markers for correlation analysis
     killmails
-
     |> Enum.map(fn km ->
       %{
         timestamp: km.killmail_time,
@@ -1823,12 +1795,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Extract time series data for each system
     time_series_data =
       system_activities.systems
-
-    |> Enum.map(fn system ->
-      {system.system_id, build_time_series(system.activity_timeline)}
-    end)
-
-    |> Enum.into(%{})
+      |> Enum.map(fn system ->
+        {system.system_id, build_time_series(system.activity_timeline)}
+      end)
+      |> Enum.into(%{})
 
     # Calculate cross-correlations between systems
     correlations = calculate_cross_correlations(time_series_data)
@@ -1868,26 +1838,24 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
     buckets =
       0..bucket_count
+      |> Enum.map(fn bucket_index ->
+        bucket_start = DateTime.add(timeline_start, bucket_index * 900, :second)
+        bucket_end = DateTime.add(bucket_start, 900, :second)
 
-    |> Enum.map(fn bucket_index ->
-      bucket_start = DateTime.add(timeline_start, bucket_index * 900, :second)
-      bucket_end = DateTime.add(bucket_start, 900, :second)
+        bucket_activity =
+          activity_timeline
+          |> Enum.filter(fn event ->
+            DateTime.compare(event.timestamp, bucket_start) in [:gt, :eq] and
+              DateTime.compare(event.timestamp, bucket_end) == :lt
+          end)
 
-      bucket_activity =
-        activity_timeline
-
-      |> Enum.filter(fn event ->
-        DateTime.compare(event.timestamp, bucket_start) in [:gt, :eq] and
-          DateTime.compare(event.timestamp, bucket_end) == :lt
+        %{
+          bucket_index: bucket_index,
+          timestamp: bucket_start,
+          activity_count: length(bucket_activity),
+          intensity_sum: Enum.sum(Enum.map(bucket_activity, & &1.activity_intensity))
+        }
       end)
-
-      %{
-        bucket_index: bucket_index,
-        timestamp: bucket_start,
-        activity_count: length(bucket_activity),
-        intensity_sum: Enum.sum(Enum.map(bucket_activity, & &1.activity_intensity))
-      }
-    end)
 
     buckets
   end
@@ -1898,7 +1866,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
     system_ids
     |> combinations(2)
-
     |> Enum.map(fn [system_a, system_b] ->
       series_a = time_series_data[system_a]
       series_b = time_series_data[system_b]
@@ -1931,6 +1898,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
         Enum.zip(values_a, values_b)
         |> Enum.map(fn {a, b} -> (a - mean_a) * (b - mean_b) end)
         |> Enum.sum()
+
       sum_sq_a = Enum.map(values_a, fn a -> :math.pow(a - mean_a, 2) end) |> Enum.sum()
       sum_sq_b = Enum.map(values_b, fn b -> :math.pow(b - mean_b, 2) end) |> Enum.sum()
 
@@ -1951,18 +1919,15 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
     lag_correlations =
       -max_lag..max_lag
-
-    |> Enum.map(fn lag ->
-      shifted_correlation = calculate_shifted_correlation(series_a, series_b, lag)
-      {lag, shifted_correlation}
-    end)
-
-    |> Enum.into(%{})
+      |> Enum.map(fn lag ->
+        shifted_correlation = calculate_shifted_correlation(series_a, series_b, lag)
+        {lag, shifted_correlation}
+      end)
+      |> Enum.into(%{})
 
     best_lag =
       lag_correlations
-
-    |> Enum.max_by(fn {_lag, correlation} -> abs(correlation) end)
+      |> Enum.max_by(fn {_lag, correlation} -> abs(correlation) end)
 
     %{
       lag_correlations: lag_correlations,
@@ -2052,8 +2017,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
       # Find high-activity periods for each system
       burst_periods =
         all_series
-
-      |> Enum.map(&identify_activity_bursts/1)
+        |> Enum.map(&identify_activity_bursts/1)
 
       # Check for overlapping burst periods
       has_overlapping_bursts(burst_periods)
@@ -2085,11 +2049,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     if length(burst_periods_list) > 1 do
       all_burst_indices =
         burst_periods_list
-
-      |> Enum.flat_map(fn burst_periods ->
-        Enum.map(burst_periods, fn {index, _timestamp} -> index end)
-      end)
-      |> Enum.frequencies()
+        |> Enum.flat_map(fn burst_periods ->
+          Enum.map(burst_periods, fn {index, _timestamp} -> index end)
+        end)
+        |> Enum.frequencies()
 
       # If any time bucket has bursts from multiple systems, they're synchronized
       Map.values(all_burst_indices)
@@ -2102,7 +2065,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
   defp has_sequential_waves(correlations) do
     # Check for sequential activity waves (lag correlations)
     correlations
-
     |> Enum.any?(fn correlation ->
       correlation.lag_analysis.best_lag != {0, correlation.correlation_coefficient} and
         abs(elem(correlation.lag_analysis.best_lag, 1)) > 0.5
@@ -2112,7 +2074,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
   defp has_anti_correlation(correlations) do
     # Check for anti-correlated activity patterns
     correlations
-
     |> Enum.any?(fn correlation ->
       correlation.correlation_coefficient < -0.4 and
         correlation.significance in [:significant, :very_significant]
@@ -2124,7 +2085,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     all_series = Map.values(time_series_data)
 
     all_series
-
     |> Enum.any?(fn series ->
       detect_periodicity(series)
     end)
@@ -2189,6 +2149,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
       Map.values(time_series_data)
       |> Enum.map(&length/1)
       |> Enum.min()
+
     # 50 buckets = ~12.5 hours
     sample_confidence = min(1.0, min_sample_size / 50.0)
     sample_confidence_factors = [sample_confidence | initial_confidence_factors]
@@ -2220,7 +2181,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
   defp count_significant_correlations(correlations) do
     correlations
-
     |> Enum.count(fn correlation ->
       correlation.significance in [:significant, :very_significant]
     end)
@@ -2256,33 +2216,29 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Extract all pilot activities with timestamps and locations
     all_pilot_activities =
       system_activities.systems
-
-    |> Enum.flat_map(fn system ->
-      system.pilot_activity.pilot_details
-
-      |> Enum.map(fn pilot ->
-        %{
-          pilot_id: pilot.pilot_id,
-          system_id: system.system_id,
-          first_seen: pilot.first_seen,
-          last_seen: pilot.last_seen,
-          activity_count: pilot.activity_count
-        }
+      |> Enum.flat_map(fn system ->
+        system.pilot_activity.pilot_details
+        |> Enum.map(fn pilot ->
+          %{
+            pilot_id: pilot.pilot_id,
+            system_id: system.system_id,
+            first_seen: pilot.first_seen,
+            last_seen: pilot.last_seen,
+            activity_count: pilot.activity_count
+          }
+        end)
       end)
-    end)
 
     # Group by pilot and analyze movement patterns
     pilot_movements =
       all_pilot_activities
+      |> Enum.group_by(& &1.pilot_id)
+      |> Enum.map(fn {pilot_id, activities} ->
+        analyze_pilot_movement_pattern(pilot_id, activities)
+      end)
 
-    |> Enum.group_by(& &1.pilot_id)
-
-    |> Enum.map(fn {pilot_id, activities} ->
-      analyze_pilot_movement_pattern(pilot_id, activities)
-    end)
-
-    # Only multi-system pilots
-    |> Enum.filter(fn movement -> movement.systems_visited > 1 end)
+      # Only multi-system pilots
+      |> Enum.filter(fn movement -> movement.systems_visited > 1 end)
 
     {:ok, pilot_movements}
   end
@@ -2298,15 +2254,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
     movement_timeline =
       sorted_activities
-
-    |> Enum.map(fn activity ->
-      %{
-        system_id: activity.system_id,
-        entry_time: activity.first_seen,
-        exit_time: activity.last_seen,
-        dwell_time: DateTime.diff(activity.last_seen, activity.first_seen, :second)
-      }
-    end)
+      |> Enum.map(fn activity ->
+        %{
+          system_id: activity.system_id,
+          entry_time: activity.first_seen,
+          exit_time: activity.last_seen,
+          dwell_time: DateTime.diff(activity.last_seen, activity.first_seen, :second)
+        }
+      end)
 
     %{
       pilot_id: pilot_id,
@@ -2334,12 +2289,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     if length(movement_timeline) > 1 do
       transitions =
         movement_timeline
-
-      |> Enum.chunk_every(2, 1, :discard)
-
-      |> Enum.map(fn [prev, curr] ->
-        DateTime.diff(curr.entry_time, prev.exit_time, :second)
-      end)
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.map(fn [prev, curr] ->
+          DateTime.diff(curr.entry_time, prev.exit_time, :second)
+        end)
 
       if length(transitions) > 0 do
         Enum.sum(transitions) / length(transitions)
@@ -2376,31 +2329,27 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Aggregate corp activities across all systems
     all_corp_activities =
       system_activities.systems
-
-    |> Enum.flat_map(fn system ->
-      system.corp_activity.corp_details
-
-      |> Enum.map(fn corp ->
-        %{
-          corp_id: corp.corp_id,
-          system_id: system.system_id,
-          activity_count: corp.activity_count,
-          first_activity: corp.first_activity,
-          last_activity: corp.last_activity,
-          engagement_style: corp.engagement_style
-        }
+      |> Enum.flat_map(fn system ->
+        system.corp_activity.corp_details
+        |> Enum.map(fn corp ->
+          %{
+            corp_id: corp.corp_id,
+            system_id: system.system_id,
+            activity_count: corp.activity_count,
+            first_activity: corp.first_activity,
+            last_activity: corp.last_activity,
+            engagement_style: corp.engagement_style
+          }
+        end)
       end)
-    end)
 
     # Group by corporation and analyze patterns
     corp_analyses =
       all_corp_activities
-
-    |> Enum.group_by(& &1.corp_id)
-
-    |> Enum.map(fn {corp_id, activities} ->
-      analyze_corp_cross_system_behavior(corp_id, activities)
-    end)
+      |> Enum.group_by(& &1.corp_id)
+      |> Enum.map(fn {corp_id, activities} ->
+        analyze_corp_cross_system_behavior(corp_id, activities)
+      end)
 
     {:ok,
      %{
@@ -2415,7 +2364,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Analyze corporation behavior across multiple systems
     systems_active =
       activities
-      |> Enum.map(& &1.system_id) 
+      |> Enum.map(& &1.system_id)
       |> Enum.uniq()
       |> Kernel.length()
 
@@ -2438,9 +2387,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Analyze territorial control and focus patterns
     system_activity_distribution =
       activities
-
-    |> Enum.map(fn activity -> {activity.system_id, activity.activity_count} end)
-    |> Enum.into(%{})
+      |> Enum.map(fn activity -> {activity.system_id, activity.activity_count} end)
+      |> Enum.into(%{})
 
     _total_activity = Enum.sum(Map.values(system_activity_distribution))
 
@@ -2449,8 +2397,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
     dominant_system =
       system_activity_distribution
-
-    |> Enum.max_by(fn {_system, activity} -> activity end)
+      |> Enum.max_by(fn {_system, activity} -> activity end)
 
     %{
       territorial_concentration: concentration,
@@ -2473,6 +2420,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
         |> Enum.with_index(1)
         |> Enum.map(fn {activity, index} -> (2 * index - n - 1) * activity end)
         |> Enum.sum()
+
       gini = numerator / (n * total)
       max(0.0, min(1.0, gini))
     else
@@ -2591,11 +2539,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Identify strong temporal correlation patterns
     strong_correlations =
       temporal_correlations.correlations
-
-    |> Enum.filter(fn corr ->
-      abs(corr.correlation_coefficient) >= min_correlation and
-        corr.significance in [:significant, :very_significant]
-    end)
+      |> Enum.filter(fn corr ->
+        abs(corr.correlation_coefficient) >= min_correlation and
+          corr.significance in [:significant, :very_significant]
+      end)
 
     initial_patterns = []
 
@@ -2623,7 +2570,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
   defp identify_lag_based_patterns(correlations) do
     # Identify patterns where one system leads activity in another
     correlations
-
     |> Enum.filter(fn corr ->
       best_lag_info = corr.lag_analysis.best_lag
       lag = elem(best_lag_info, 0)
@@ -2631,7 +2577,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
       lag != 0 and abs(correlation_at_lag) > 0.5
     end)
-
     |> Enum.map(fn corr ->
       {lag, correlation_strength} = corr.lag_analysis.best_lag
 
@@ -2676,28 +2621,24 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Identify common movement routes
     route_signatures =
       pilot_movements
-
-    |> Enum.map(fn movement ->
-      {movement.pilot_id, movement.system_sequence}
-    end)
-
-    |> Enum.group_by(fn {_pilot_id, route} -> route end)
+      |> Enum.map(fn movement ->
+        {movement.pilot_id, movement.system_sequence}
+      end)
+      |> Enum.group_by(fn {_pilot_id, route} -> route end)
 
     common_routes =
       route_signatures
-
-    |> Enum.filter(fn {_route, pilots} -> length(pilots) > 1 end)
-
-    |> Enum.map(fn {route, pilots} ->
-      %{
-        pattern_type: :common_movement_route,
-        description: "Multiple pilots following same route",
-        route_sequence: route,
-        pilot_count: length(pilots),
-        pilots: Enum.map(pilots, fn {pilot_id, _route} -> pilot_id end),
-        coordination_likelihood: :moderate
-      }
-    end)
+      |> Enum.filter(fn {_route, pilots} -> length(pilots) > 1 end)
+      |> Enum.map(fn {route, pilots} ->
+        %{
+          pattern_type: :common_movement_route,
+          description: "Multiple pilots following same route",
+          route_sequence: route,
+          pilot_count: length(pilots),
+          pilots: Enum.map(pilots, fn {pilot_id, _route} -> pilot_id end),
+          coordination_likelihood: :moderate
+        }
+      end)
 
     common_routes
   end
@@ -2707,29 +2648,26 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Group movements by time windows
     synchronized_groups =
       pilot_movements
-
-    |> Enum.group_by(fn movement ->
-      # Group by hour to find synchronized movements
-      if movement.movement_timeline != [] do
-        first_movement = List.first(movement.movement_timeline)
-        first_movement.entry_time.hour
-      else
-        -1
-      end
-    end)
-
-    |> Enum.filter(fn {hour, movements} -> hour != -1 and length(movements) > 1 end)
-
-    |> Enum.map(fn {hour, movements} ->
-      %{
-        pattern_type: :synchronized_movement,
-        description: "Multiple pilots moving during same time window",
-        time_window: hour,
-        pilot_count: length(movements),
-        pilots: Enum.map(movements, & &1.pilot_id),
-        coordination_likelihood: :high
-      }
-    end)
+      |> Enum.group_by(fn movement ->
+        # Group by hour to find synchronized movements
+        if movement.movement_timeline != [] do
+          first_movement = List.first(movement.movement_timeline)
+          first_movement.entry_time.hour
+        else
+          -1
+        end
+      end)
+      |> Enum.filter(fn {hour, movements} -> hour != -1 and length(movements) > 1 end)
+      |> Enum.map(fn {hour, movements} ->
+        %{
+          pattern_type: :synchronized_movement,
+          description: "Multiple pilots moving during same time window",
+          time_window: hour,
+          pilot_count: length(movements),
+          pilots: Enum.map(movements, & &1.pilot_id),
+          coordination_likelihood: :high
+        }
+      end)
 
     synchronized_groups
   end
@@ -2738,8 +2676,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Identify coordination patterns between corporations
     multi_system_corps =
       corp_activities.corp_analyses
-
-    |> Enum.filter(&(&1.systems_active > 1))
+      |> Enum.filter(&(&1.systems_active > 1))
 
     if length(multi_system_corps) > 1 do
       # Look for corporations active in same systems
@@ -2758,7 +2695,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Identify corporations active in the same systems
     corp_activities
     |> combinations(2)
-
     |> Enum.map(fn [corp_a, corp_b] ->
       systems_a = Map.keys(corp_a.territorial_behavior.system_distribution)
       systems_b = Map.keys(corp_b.territorial_behavior.system_distribution)
@@ -2782,7 +2718,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
         nil
       end
     end)
-
     |> Enum.filter(&(&1 != nil))
   end
 
@@ -2803,7 +2738,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Identify temporal coordination between corporations
     corp_activities
     |> combinations(2)
-
     |> Enum.map(fn [corp_a, corp_b] ->
       temporal_overlap = analyze_corp_temporal_overlap(corp_a, corp_b)
 
@@ -2820,7 +2754,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
         nil
       end
     end)
-
     |> Enum.filter(&(&1 != nil))
   end
 
@@ -2932,8 +2865,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Detect coordinated multi-corporation operation
     strong_correlations =
       temporal_correlations.correlations
-
-    |> Enum.filter(&(&1.significance in [:significant, :very_significant]))
+      |> Enum.filter(&(&1.significance in [:significant, :very_significant]))
 
     multi_system_pilots = Enum.filter(pilot_movements, &(&1.systems_visited > 1))
     multi_system_corps = Enum.filter(corp_activities.corp_analyses, &(&1.systems_active > 1))
@@ -2958,12 +2890,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Detect reconnaissance sweep patterns
     rapid_movers =
       pilot_movements
-
-    |> Enum.filter(fn movement ->
-      # Moving to new system within 1 hour
-      movement.movement_pattern in [:limited_roaming, :extensive_roaming] and
-        movement.movement_velocity < 3600
-    end)
+      |> Enum.filter(fn movement ->
+        # Moving to new system within 1 hour
+        movement.movement_pattern in [:limited_roaming, :extensive_roaming] and
+          movement.movement_velocity < 3600
+      end)
 
     if length(rapid_movers) > 0 and temporal_correlations.confidence > 0.6 do
       %{
@@ -3006,6 +2937,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
         correlations
         |> Enum.map(&abs(&1.correlation_coefficient))
         |> Enum.sum()
+
       Float.round(total_strength / length(correlations), 3)
     else
       0.0
@@ -3177,7 +3109,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
   defp extract_systems_from_patterns(patterns) do
     # Extract system IDs mentioned in patterns
     patterns
-
     |> Enum.flat_map(fn pattern ->
       case pattern do
         %{system_pairs: pairs} -> Enum.flat_map(pairs, fn {a, b} -> [a, b] end)
@@ -3223,7 +3154,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Factor 2: Diversity of pattern types
     unique_pattern_types =
       patterns
-      |> Enum.map(& &1.pattern_type) 
+      |> Enum.map(& &1.pattern_type)
       |> Enum.uniq()
       |> Kernel.length()
 
@@ -3245,7 +3176,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Categorize patterns by type for summary
     patterns
     |> Enum.group_by(& &1.pattern_type)
-
     |> Enum.map(fn {pattern_type, pattern_list} ->
       %{
         category: pattern_type,
@@ -3278,18 +3208,16 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     if length(threat_implications) > 0 do
       max_severity =
         threat_implications
-
-      |> Enum.map(& &1[:severity])
-
-      |> Enum.max_by(fn severity ->
-        case severity do
-          :very_high -> 4
-          :high -> 3
-          :medium -> 2
-          :low -> 1
-          _ -> 0
-        end
-      end)
+        |> Enum.map(& &1[:severity])
+        |> Enum.max_by(fn severity ->
+          case severity do
+            :very_high -> 4
+            :high -> 3
+            :medium -> 2
+            :low -> 1
+            _ -> 0
+          end
+        end)
 
       %{
         overall_threat_level: max_severity,
@@ -3447,7 +3375,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     case killmails do
       [_first | _] ->
         killmails
-        |> Enum.map(& &1.killmail_time) 
+        |> Enum.map(& &1.killmail_time)
         |> Enum.min()
 
       [] ->
@@ -3459,7 +3387,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     case killmails do
       [_ | _] ->
         killmails
-        |> Enum.map(& &1.killmail_time) 
+        |> Enum.map(& &1.killmail_time)
         |> Enum.max()
 
       [] ->
@@ -3487,7 +3415,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
     sorted_killmails
     |> Enum.chunk_every(2, 1, :discard)
-
     |> Enum.map(fn [prev, curr] ->
       DateTime.diff(curr.killmail_time, prev.killmail_time, :hour)
     end)
@@ -3550,8 +3477,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Extract ship types used by specific pilot
     pilot_ships =
       killmails
+      |> Enum.filter(&pilot_participated_in_killmail?(&1, pilot_id))
 
-    |> Enum.filter(&pilot_participated_in_killmail?(&1, pilot_id))
     Enum.flat_map(&extract_pilot_ships_from_killmail(&1, pilot_id)) |> Enum.frequencies()
 
     %{
@@ -3578,7 +3505,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
       case killmail.raw_data do
         %{"attackers" => attackers} when is_list(attackers) ->
           attackers
-
           |> Enum.filter(fn attacker ->
             case attacker["character_id"] do
               ^pilot_id ->
@@ -3591,7 +3517,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
                 false
             end
           end)
-
           |> Enum.map(fn attacker ->
             case attacker["ship_type_id"] do
               id when is_integer(id) -> id
@@ -3599,7 +3524,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
               _ -> nil
             end
           end)
-
           |> Enum.filter(&(&1 != nil))
 
         _ ->
@@ -3722,7 +3646,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
       case killmail.raw_data do
         %{"attackers" => attackers} when is_list(attackers) ->
           attackers
-
           |> Enum.map(fn attacker ->
             case attacker["ship_type_id"] do
               id when is_integer(id) -> id
@@ -3730,7 +3653,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
               _ -> nil
             end
           end)
-
           |> Enum.filter(&(&1 != nil))
 
         _ ->
@@ -3777,7 +3699,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
 
     if total_count > 0 do
       ship_usage
-
       |> Enum.map(fn {_ship, count} ->
         proportion = count / total_count
         if proportion > 0, do: -proportion * :math.log2(proportion), else: 0
@@ -3791,8 +3712,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
   defp determine_tactical_focus(categories, total_ships) do
     max_category =
       categories
-
-    |> Enum.max_by(fn {_category, count} -> count end)
+      |> Enum.max_by(fn {_category, count} -> count end)
 
     case max_category do
       {category, count} when count / total_ships > 0.6 -> category

@@ -73,7 +73,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
     # Extract peak hours and sort them
     _peak_hours = Enum.map(peak_hours, &elem(&1, 0)) |> Enum.sort()
-    
+
     # Calculate activity distribution across systems
     system_activity = calculate_activity_distribution(system_ids, killmails)
 

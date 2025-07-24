@@ -292,13 +292,13 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
     coverage = Map.get(intel_data, :coverage_percentage, 50.0)
 
-    improvements =
+    improvements_with_coverage =
       if coverage < 70.0, do: ["Improve system coverage" | improvements], else: improvements
 
     recency = Map.get(intel_data, :hours_since_update, 24)
 
     final_improvements =
-      if recency > 12, do: ["Increase data refresh frequency" | improvements], else: improvements
+      if recency > 12, do: ["Increase data refresh frequency" | improvements_with_coverage], else: improvements_with_coverage
 
     final_improvements
   end

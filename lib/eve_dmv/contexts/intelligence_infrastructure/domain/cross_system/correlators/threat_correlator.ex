@@ -42,6 +42,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
           # Remove nil values
           |> Enum.filter(& &1)
           |> Enum.frequencies()
+
         # Count entities active in multiple systems
         multi_system_threats =
           Enum.count(threat_entities, fn {_entity, count} -> count > 1 end)
@@ -360,13 +361,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     # Detect structure warfare patterns
     structure_kills =
       threat_data
-
-    |> Enum.flat_map(fn {_system, kills} -> kills end)
-
-    |> Enum.filter(fn kill ->
-      # Structure type IDs typically > 35_000
-      kill.victim_ship_type_id && kill.victim_ship_type_id > 35_000
-    end)
+      |> Enum.flat_map(fn {_system, kills} -> kills end)
+      |> Enum.filter(fn kill ->
+        # Structure type IDs typically > 35_000
+        kill.victim_ship_type_id && kill.victim_ship_type_id > 35_000
+      end)
 
     if length(structure_kills) > 0 do
       affected_systems = structure_kills |> Enum.map(& &1.solar_system_id) |> Enum.uniq()
@@ -390,11 +389,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       Enum.flat_map(threat_data, fn {_system, kills} ->
         # Group kills by time window to find fleet ops
         kills
-
         |> Enum.chunk_by(fn k ->
           DateTime.truncate(k.killmail_time, :second)
         end)
-
         |> Enum.filter(fn chunk -> length(chunk) > 3 end)
       end)
 
@@ -429,14 +426,12 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     # Detect capital ship involvement
     capital_kills =
       threat_data
-
-    |> Enum.flat_map(fn {_system, kills} -> kills end)
-
-    |> Enum.filter(fn kill ->
-      # Capital ship type IDs
-      kill.victim_ship_type_id && kill.victim_ship_type_id > 20_000 &&
-        kill.victim_ship_type_id < 30_000
-    end)
+      |> Enum.flat_map(fn {_system, kills} -> kills end)
+      |> Enum.filter(fn kill ->
+        # Capital ship type IDs
+        kill.victim_ship_type_id && kill.victim_ship_type_id > 20_000 &&
+          kill.victim_ship_type_id < 30_000
+      end)
 
     if length(capital_kills) > 0 do
       ship_types = capital_kills |> Enum.map(& &1.victim_ship_type_id) |> Enum.uniq()
@@ -485,35 +480,30 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       # Group by entity and analyze movement
       entity_movements =
         threat_timeline
-
-      |> Enum.group_by(& &1.attacker_alliance_id)
-      |> Enum.filter(fn {entity, _} -> entity != nil end)
-
-      |> Enum.flat_map(fn {entity, events} ->
-        # Find sequential system changes
-        events
-        |> Enum.chunk_every(2, 1, :discard)
-
-        |> Enum.filter(fn [e1, e2] ->
-          e1.solar_system_id != e2.solar_system_id and
-            DateTime.diff(e2.killmail_time, e1.killmail_time, :hour) < 3
+        |> Enum.group_by(& &1.attacker_alliance_id)
+        |> Enum.filter(fn {entity, _} -> entity != nil end)
+        |> Enum.flat_map(fn {entity, events} ->
+          # Find sequential system changes
+          events
+          |> Enum.chunk_every(2, 1, :discard)
+          |> Enum.filter(fn [e1, e2] ->
+            e1.solar_system_id != e2.solar_system_id and
+              DateTime.diff(e2.killmail_time, e1.killmail_time, :hour) < 3
+          end)
+          |> Enum.map(fn [e1, e2] ->
+            %{
+              entity: entity,
+              from_system: e1.solar_system_id,
+              to_system: e2.solar_system_id,
+              time_gap: DateTime.diff(e2.killmail_time, e1.killmail_time, :minute),
+              confidence: 0.7
+            }
+          end)
         end)
-
-        |> Enum.map(fn [e1, e2] ->
-          %{
-            entity: entity,
-            from_system: e1.solar_system_id,
-            to_system: e2.solar_system_id,
-            time_gap: DateTime.diff(e2.killmail_time, e1.killmail_time, :minute),
-            confidence: 0.7
-          }
-        end)
-      end)
 
       # Aggregate and return top spillover vectors
       entity_movements
       |> Enum.group_by(fn m -> {m.from_system, m.to_system} end)
-
       |> Enum.map(fn {{from, to}, movements} ->
         %{
           from_system: from,
@@ -524,7 +514,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
           confidence: min(1.0, length(movements) * 0.2)
         }
       end)
-
       |> Enum.sort_by(& &1.frequency, :desc)
       |> Enum.take(5)
     end
@@ -606,12 +595,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
       weighted_sum =
         indicators
-
-      |> Enum.map(fn ind ->
-        weight = Map.get(severity_weights, ind.severity, 0.1)
-        weight * min(ind.change_ratio, 3) / 3
-      end)
-      |> Enum.sum()
+        |> Enum.map(fn ind ->
+          weight = Map.get(severity_weights, ind.severity, 0.1)
+          weight * min(ind.change_ratio, 3) / 3
+        end)
+        |> Enum.sum()
 
       Float.round(min(1.0, weighted_sum), 2)
     end
@@ -642,23 +630,19 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   defp create_time_windows(threat_data) do
     # Create 15-minute time windows for correlation analysis
     threat_data
-
     |> Enum.flat_map(fn {system, kills} ->
       Enum.map(kills, fn k -> {system, DateTime.truncate(k.killmail_time, :second)} end)
     end)
-
     |> Enum.group_by(&elem(&1, 1))
   end
 
   defp find_simultaneous_activity(time_windows) do
     # Find time windows with activity in multiple systems
     time_windows
-
     |> Enum.filter(fn {_time, entries} ->
       systems = entries |> Enum.map(&elem(&1, 0)) |> Enum.uniq()
       length(systems) > 1
     end)
-
     |> Enum.map(fn {time, entries} ->
       systems = entries |> Enum.map(&elem(&1, 0)) |> Enum.uniq()
       %{time: time, systems: systems, correlation_strength: length(systems) / 10}
@@ -668,19 +652,15 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   defp find_common_threat_entities(threat_data) do
     # Find entities active in multiple systems
     threat_data
-
     |> Enum.flat_map(fn {system, kills} ->
       Enum.map(kills, fn k -> {k.attacker_alliance_id, system} end)
     end)
-
     |> Enum.filter(fn {entity, _} -> entity != nil end)
     |> Enum.group_by(&elem(&1, 0))
-
     |> Enum.filter(fn {_entity, locations} ->
       systems = locations |> Enum.map(&elem(&1, 1)) |> Enum.uniq()
       length(systems) > 1
     end)
-
     |> Enum.map(fn {entity, _} -> entity end)
   end
 

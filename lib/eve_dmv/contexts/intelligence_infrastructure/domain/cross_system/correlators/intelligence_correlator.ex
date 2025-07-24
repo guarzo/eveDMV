@@ -88,9 +88,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       shared_intel = character_intel ++ fleet_intel ++ structure_intel ++ alliance_intel
 
       # Sort by relevance and take top results
-    shared_intel
-    |> Enum.sort_by(& &1.relevance_score, :desc)
-    |> Enum.take(10)
+      shared_intel
+      |> Enum.sort_by(& &1.relevance_score, :desc)
+      |> Enum.take(10)
     end
   end
 
@@ -108,9 +108,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
       # Identify systems with poor coverage
       coverage_gaps =
-    coverage_analysis
-    |> Enum.filter(fn {_system, coverage} -> coverage.coverage_score < 0.3 end)
-    |> Enum.map(fn {system, coverage} ->
+        coverage_analysis
+        |> Enum.filter(fn {_system, coverage} -> coverage.coverage_score < 0.3 end)
+        |> Enum.map(fn {system, coverage} ->
           %{
             system_id: system,
             coverage_score: coverage.coverage_score,
@@ -121,11 +121,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
       # Identify data quality issues
       data_quality_issues =
-    coverage_analysis
-    |> Enum.filter(fn {_system, coverage} ->
+        coverage_analysis
+        |> Enum.filter(fn {_system, coverage} ->
           coverage.data_age_hours > 24 or coverage.data_completeness < 0.5
         end)
-    |> Enum.map(fn {system, coverage} ->
+        |> Enum.map(fn {system, coverage} ->
           %{
             system_id: system,
             issue_type: determine_quality_issue(coverage),
@@ -136,16 +136,16 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
       # Prioritize systems for intelligence gathering
       priority_systems =
-    coverage_analysis
-    |> Enum.sort_by(
+        coverage_analysis
+        |> Enum.sort_by(
           fn {_system, coverage} ->
             # Prioritize by strategic value and coverage gap
             coverage.strategic_value * (1 - coverage.coverage_score)
           end,
           :desc
         )
-    |> Enum.take(5)
-    |> Enum.map(fn {system, coverage} ->
+        |> Enum.take(5)
+        |> Enum.map(fn {system, coverage} ->
           %{
             system_id: system,
             priority_score:
@@ -246,8 +246,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
     # Multiple data points increase reliability
     hourly_metrics = Map.get(metrics, :hourly_metrics, %{})
+
     data_points =
       Map.values(hourly_metrics) |> Enum.sum()
+
     point_score = min(1.0, data_points / 100)
 
     consistency * 0.6 + point_score * 0.4
@@ -342,7 +344,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
          data_density: calculate_data_density(r),
          temporal_coverage: calculate_temporal_coverage(r)
        }}
-    end) |> Map.new()
+    end)
+    |> Map.new()
   rescue
     error ->
       Logger.error("Failed to fetch intelligence coverage: #{inspect(error)}")
@@ -356,10 +359,12 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     else
       # Extract all unique entities across systems
       all_characters =
-    intel_coverage
-    |> Enum.flat_map(fn {_system, data} ->
+        intel_coverage
+        |> Enum.flat_map(fn {_system, data} ->
           get_in(data, [:coverage_metrics, :unique_characters]) || []
-        end) |> List.flatten()
+        end)
+        |> List.flatten()
+
       # Calculate overlap ratio
       total_sightings = length(all_characters)
       unique_sightings = all_characters |> Enum.uniq() |> length()
@@ -391,12 +396,12 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       0.0
     else
       # Check for simultaneous activity windows
-      time_overlaps = 
+      time_overlaps =
         intel_coverage
         |> Enum.map(fn {system, data} ->
-            metrics = Map.get(data, :coverage_metrics, %{})
-            {system, metrics.earliest_activity, metrics.latest_activity}
-          end)
+          metrics = Map.get(data, :coverage_metrics, %{})
+          {system, metrics.earliest_activity, metrics.latest_activity}
+        end)
         |> calculate_time_overlap_score()
 
       Float.round(time_overlaps, 2)
@@ -589,7 +594,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     |> Enum.map(fn system_id ->
       metrics = fetch_system_quality_metrics(system_id)
       {system_id, metrics}
-    end) |> Map.new()
+    end)
+    |> Map.new()
   end
 
   defp fetch_system_quality_metrics(system_id) do
@@ -602,8 +608,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     ]
 
     metrics =
-    time_windows
-    |> Enum.map(fn {hours, start_time} ->
+      time_windows
+      |> Enum.map(fn {hours, start_time} ->
         query =
           from(k in "killmails_enriched",
             where: k.solar_system_id == ^system_id and k.killmail_time >= ^start_time,
@@ -612,7 +618,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
         count = Repo.one(query) || 0
         {hours, count}
-      end) |> Map.new()
+      end)
+      |> Map.new()
+
     %{
       hourly_metrics: metrics,
       consistency: calculate_data_consistency(metrics),
@@ -769,8 +777,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       0.0
     else
       total_score =
-    coverage_analysis
-    Enum.map(fn {_system, coverage} -> coverage.coverage_score end) |> Enum.sum()
+        coverage_analysis
+
+      Enum.map(fn {_system, coverage} -> coverage.coverage_score end) |> Enum.sum()
       Float.round(total_score / map_size(coverage_analysis), 2)
     end
   end
@@ -911,7 +920,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       # Rens
       30_002_510,
       # Hek
-    30_002_053
+      30_002_053
     ]
 
     if system_id in trade_hubs do

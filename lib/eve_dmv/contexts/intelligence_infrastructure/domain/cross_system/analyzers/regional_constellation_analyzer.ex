@@ -72,10 +72,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   """
 
   import Ecto.Query
-  
+
   alias EveDmv.Api
   alias EveDmv.Killmails.KillmailRaw
-  
+
   require Ash.Query
   require Logger
 
