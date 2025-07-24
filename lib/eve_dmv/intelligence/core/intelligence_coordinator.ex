@@ -200,9 +200,9 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
     system_threats = get_system_activity_alerts(cutoff_time)
 
     # Combine and sort by severity and timestamp
-    threat_alerts ++ battle_threats ++ character_threats ++ system_threats
-    Enum.sort_by(&{threat_severity_priority(&1.severity), &1.timestamp}, :desc)
-    Enum.take(10)
+    (threat_alerts ++ battle_threats ++ character_threats ++ system_threats)
+    |> Enum.sort_by(&{threat_severity_priority(&1.severity), &1.timestamp}, :desc)
+    |> Enum.take(10)
   rescue
     error ->
       Logger.warning("Failed to fetch threat alerts: #{inspect(error)}")
@@ -243,9 +243,9 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
     vetting_analyses = get_recent_vetting_analyses(cutoff_time, limit)
 
     # Combine and sort by timestamp
-    analyses ++ character_analyses ++ battle_analyses ++ vetting_analyses
-    Enum.sort_by(& &1.timestamp, :desc)
-    Enum.take(limit)
+    (analyses ++ character_analyses ++ battle_analyses ++ vetting_analyses)
+    |> Enum.sort_by(& &1.timestamp, :desc)
+    |> Enum.take(limit)
   rescue
     error ->
       Logger.warning("Failed to fetch recent analyses: #{inspect(error)}")

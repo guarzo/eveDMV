@@ -105,10 +105,9 @@ defmodule EveDmv.Presentation.Formatters do
 
     parts =
       []
-
-    add_duration_part(hours, "h")
-    add_duration_part(minutes, "m")
-    add_duration_part(seconds, "s")
+      |> add_duration_part(hours, "h")
+      |> add_duration_part(minutes, "m")
+      |> add_duration_part(seconds, "s")
 
     case parts do
       [] -> "0s"

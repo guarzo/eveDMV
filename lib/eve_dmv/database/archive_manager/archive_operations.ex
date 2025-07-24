@@ -52,9 +52,7 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveOperations do
     total_batches = div(total_count, batch_size) + 1
 
     batch_id =
-      [:positive] |> System.unique_integer()
-
-    to_string()
+      [:positive] |> System.unique_integer() |> to_string()
 
     Logger.info(
       "Starting archive process for #{policy.table}: #{total_count} records in #{total_batches} batches"

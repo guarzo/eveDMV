@@ -94,7 +94,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.LiveE
 
   defp update_with_killmail(engagement, killmail) do
     engagement
-    |> Map.update(:killmails, [killmail], &(&1 ++ [killmail]))
+    |> Map.update(:killmails, [killmail], &[killmail | &1])
     |> Map.put(:last_activity, killmail.timestamp)
   end
 
@@ -190,8 +190,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.LiveE
     # Simple prediction based on kill patterns
     recent_kills =
       engagement.killmails
-
-    |> Enum.take(-5)
+      |> Enum.take(-5)
 
     if length(recent_kills) < 3 do
       :too_early

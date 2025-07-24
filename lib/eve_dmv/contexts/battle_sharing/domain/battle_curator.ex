@@ -153,18 +153,18 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
 
   defp process_highlights(highlights, battle_data) when is_list(highlights) do
     processed_highlights =
-      Enum.with_index(highlights)
-
-    Enum.map(fn {highlight, index} ->
-      %{
-        highlight_id: index + 1,
-        timestamp: Map.get(highlight, :timestamp),
-        title: Map.get(highlight, :title, "Tactical Moment #{index + 1}"),
-        description: Map.get(highlight, :description, ""),
-        highlight_type: Map.get(highlight, :type, :tactical_moment),
-        tactical_significance: assess_highlight_significance(highlight, battle_data)
-      }
-    end)
+      highlights
+      |> Enum.with_index()
+      |> Enum.map(fn {highlight, index} ->
+        %{
+          highlight_id: index + 1,
+          timestamp: Map.get(highlight, :timestamp),
+          title: Map.get(highlight, :title, "Tactical Moment #{index + 1}"),
+          description: Map.get(highlight, :description, ""),
+          highlight_type: Map.get(highlight, :type, :tactical_moment),
+          tactical_significance: assess_highlight_significance(highlight, battle_data)
+        }
+      end)
 
     {:ok, processed_highlights}
   end
@@ -266,7 +266,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
   defp extract_key_statistics(_battle_data), do: %{participants: 50, isk_destroyed: 5_000_000_000}
 
   defp generate_report_id,
-    do: "br_" <> (:crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower))
+    do: "br_" <> Base.encode16(:crypto.strong_rand_bytes(8), case: :lower)
 
   defp generate_auto_title(auto_analysis), do: "Battle Report - #{auto_analysis.battle_type}"
 
@@ -359,5 +359,5 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
   end
 
   defp generate_highlight_id,
-    do: "hl_" <> (:crypto.strong_rand_bytes(6) |> Base.encode16(case: :lower))
+    do: "hl_" <> Base.encode16(:crypto.strong_rand_bytes(6), case: :lower)
 end

@@ -151,8 +151,9 @@ defmodule EveDmv.Killmails.KillmailProcessor do
     victim_participants = build_victim_participant(structured_data)
     attacker_participants = build_attacker_participants(structured_data)
 
-    [victim_participants | attacker_participants] |> List.flatten()
-    Enum.reject(&is_nil/1)
+    [victim_participants | attacker_participants]
+    |> List.flatten()
+    |> Enum.reject(&is_nil/1)
   end
 
   @doc """
@@ -171,11 +172,10 @@ defmodule EveDmv.Killmails.KillmailProcessor do
   def validate_killmail(killmail_data) do
     errors =
       []
-
-    validate_required_fields(killmail_data)
-    validate_participant_data(killmail_data)
-    validate_system_data(killmail_data)
-    validate_timestamp_data(killmail_data)
+      |> validate_required_fields(killmail_data)
+      |> validate_participant_data(killmail_data)
+      |> validate_system_data(killmail_data)
+      |> validate_timestamp_data(killmail_data)
 
     case errors do
       [] -> :ok
@@ -401,9 +401,9 @@ defmodule EveDmv.Killmails.KillmailProcessor do
   defp generate_hash(raw_data) do
     # Simple hash generation - could be enhanced
     raw_data
-    :erlang.term_to_binary()
-    then(&:crypto.hash(:sha256, &1))
-    Base.encode16(case: :lower)
+    |> :erlang.term_to_binary()
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16(case: :lower)
   end
 
   # Validation helper functions

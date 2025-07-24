@@ -184,15 +184,14 @@ defmodule EveDmv.Intelligence.Analyzers.DoctrineAnalyzer do
     else
       # Find most used ship category
       ship_usage
-
-      Enum.group_by(
+      |> Enum.group_by(
         fn {ship_id, _count} -> categorize_ship_doctrine(ship_id) end,
         fn {_ship_id, count} -> count end
       )
 
-      Enum.map(fn {category, counts} -> {category, Enum.sum(counts)} end)
-      Enum.max_by(&elem(&1, 1), fn -> {:unknown, 0} end)
-      elem(0)
+      |> Enum.map(fn {category, counts} -> {category, Enum.sum(counts)} end)
+      |> Enum.max_by(&elem(&1, 1), fn -> {:unknown, 0} end)
+      |> elem(0)
     end
   end
 

@@ -29,7 +29,8 @@ defmodule Mix.Tasks.Eve.UpdateSde do
   use Mix.Task
 
   alias EveDmv.Eve.StaticDataLoader, as: SDL
-  alias SDL.{SdeVersionManager, SdeStartupService}
+  alias SDL.SdeStartupService
+  alias SDL.SdeVersionManager
 
   def run(args) do
     # Start the application to access the database

@@ -141,8 +141,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
 
       [victim | attackers]
     end)
-
-    Enum.filter(& &1.character_id)
+    |> Enum.filter(& &1.character_id)
     |> Enum.uniq_by(&{&1.character_id, &1.corporation_id})
   end
 

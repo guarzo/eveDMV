@@ -20,7 +20,7 @@ defmodule EveDmv.Eve.ReliabilitySupervisor do
   @impl Supervisor
   def init(_init_arg) do
     # Validate configuration on startup
-    ReliabilityConfig.validate_config case do
+    case ReliabilityConfig.validate_config() do
       :ok ->
         Logger.info("ESI reliability configuration validated successfully")
 

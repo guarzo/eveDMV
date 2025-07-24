@@ -132,9 +132,8 @@ defmodule EveDmv.Intelligence.Metrics.TemporalAnalysisCalculator do
     # Find peak hour and estimate timezone
     peak_hour =
       hourly_activity
-
-    Enum.max_by(fn {_hour, count} -> count end, fn -> {12, 0} end)
-    elem(0)
+      |> Enum.max_by(fn {_hour, count} -> count end, fn -> {12, 0} end)
+      |> elem(0)
 
     # Simple timezone estimation (very rough)
     cond do

@@ -120,14 +120,12 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
     # Sync topology data for all maps concurrently
     sync_results =
       map_ids
-
-    Task.async_stream(
-      fn map_id -> sync_single_chain_topology(map_id) end,
-      timeout: 30_000,
-      max_concurrency: 4
-    )
-
-    Enum.map(fn {:ok, result} -> result end)
+      |> Task.async_stream(
+        fn map_id -> sync_single_chain_topology(map_id) end,
+        timeout: 30_000,
+        max_concurrency: 4
+      )
+      |> Enum.map(fn {:ok, result} -> result end)
 
     # Check if all syncs were successful
     failed_syncs = Enum.filter(sync_results, fn {status, _} -> status == :error end)
@@ -264,8 +262,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
   defp fetch_chain_analysis_data(map_id) do
     # Fetch all relevant data for threat analysis
     %{
-      topology: WandererClient.get_chain_topology(map_id) |> elem(1),
-      inhabitants: WandererClient.get_chain_inhabitants(map_id) |> elem(1),
+      topology: elem(WandererClient.get_chain_topology(map_id), 1),
+      inhabitants: elem(WandererClient.get_chain_inhabitants(map_id), 1),
       recent_activity: get_recent_chain_activity(map_id, hours: 24),
       system_info: get_chain_system_info(map_id)
     }
@@ -319,10 +317,9 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
 
     hostile_activity =
       recent_kills
-
-    # Multi-attacker kills suggest PvP
-    Enum.filter(fn kill -> kill.attackers > 1 end)
-    Enum.group_by(fn kill -> kill.system_id end)
+      # Multi-attacker kills suggest PvP
+      |> Enum.filter(fn kill -> kill.attackers > 1 end)
+      |> Enum.group_by(fn kill -> kill.system_id end)
 
     threats =
       Enum.map(hostile_activity, fn {system_id, kills} ->
@@ -443,8 +440,9 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
   end
 
   defp combine_threat_analyses(analyses) do
-    Enum.concat(analyses)
-    Enum.sort_by(fn threat -> threat_level_to_number(threat.threat_level) end, :desc)
+    analyses
+    |> Enum.concat()
+    |> Enum.sort_by(fn threat -> threat_level_to_number(threat.threat_level) end, :desc)
   end
 
   defp threat_level_to_number(level) do
@@ -544,9 +542,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
       # Process each detected threat
       threat_actions =
         threat_result.threats_detected
-
-      Enum.map(fn threat -> process_individual_threat(threat, threat_result) end)
-      Enum.reject(&is_nil/1)
+        |> Enum.map(fn threat -> process_individual_threat(threat, threat_result) end)
+        |> Enum.reject(&is_nil/1)
 
       # Generate appropriate alerts based on overall threat level
       alert_actions = generate_threat_alerts(threat_result)

@@ -60,13 +60,12 @@ defmodule EveDmv.Search.SearchSuggestionService do
 
         corporation_query =
           Participant
-
-        new()
-        filter(not is_nil(corporation_name))
-        filter(fragment("LOWER(?) LIKE ?", corporation_name, ^query_pattern))
-        select([:corporation_id, :corporation_name])
-        distinct([:corporation_id])
-        limit(limit)
+          |> Ash.Query.new()
+          |> Ash.Query.filter(not is_nil(corporation_name))
+          |> Ash.Query.filter(fragment("LOWER(?) LIKE ?", corporation_name, ^query_pattern))
+          |> Ash.Query.select([:corporation_id, :corporation_name])
+          |> Ash.Query.distinct([:corporation_id])
+          |> Ash.Query.limit(limit)
 
         case Ash.read(corporation_query, domain: Api) do
           {:ok, corporations} ->
@@ -109,13 +108,12 @@ defmodule EveDmv.Search.SearchSuggestionService do
 
         alliance_query =
           Participant
-
-        new()
-        filter(not is_nil(alliance_name))
-        filter(fragment("LOWER(?) LIKE ?", alliance_name, ^query_pattern))
-        select([:alliance_id, :alliance_name])
-        distinct([:alliance_id])
-        limit(limit)
+          |> Ash.Query.new()
+          |> Ash.Query.filter(not is_nil(alliance_name))
+          |> Ash.Query.filter(fragment("LOWER(?) LIKE ?", alliance_name, ^query_pattern))
+          |> Ash.Query.select([:alliance_id, :alliance_name])
+          |> Ash.Query.distinct([:alliance_id])
+          |> Ash.Query.limit(limit)
 
         case Ash.read(alliance_query, domain: Api) do
           {:ok, alliances} ->
@@ -158,11 +156,10 @@ defmodule EveDmv.Search.SearchSuggestionService do
 
         system_query =
           EveSolarSystem
-
-        new()
-        filter(fragment("LOWER(?) LIKE ?", system_name, ^query_pattern))
-        select([:system_id, :system_name, :region_name, :security_status])
-        limit(limit)
+          |> Ash.Query.new()
+          |> Ash.Query.filter(fragment("LOWER(?) LIKE ?", system_name, ^query_pattern))
+          |> Ash.Query.select([:system_id, :system_name, :region_name, :security_status])
+          |> Ash.Query.limit(limit)
 
         case Ash.read(system_query, domain: Api) do
           {:ok, systems} ->
@@ -207,13 +204,12 @@ defmodule EveDmv.Search.SearchSuggestionService do
 
         ship_query =
           EveItemType
-
-        new()
-        filter(is_ship: true)
-        filter(published: true)
-        filter(fragment("LOWER(?) LIKE ?", type_name, ^query_pattern))
-        select([:type_id, :type_name, :group_name, :category_name])
-        limit(limit)
+          |> Ash.Query.new()
+          |> Ash.Query.filter(is_ship: true)
+          |> Ash.Query.filter(published: true)
+          |> Ash.Query.filter(fragment("LOWER(?) LIKE ?", type_name, ^query_pattern))
+          |> Ash.Query.select([:type_id, :type_name, :group_name, :category_name])
+          |> Ash.Query.limit(limit)
 
         case Ash.read(ship_query, domain: Api) do
           {:ok, ships} ->

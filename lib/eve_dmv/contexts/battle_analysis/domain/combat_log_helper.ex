@@ -8,6 +8,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogHelper do
 
   require Logger
 
+  alias EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser
+  alias EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser
+  alias EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting
+
   @doc """
   Parse combat log content and extract structured data.
   """
@@ -16,7 +20,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogHelper do
 
     Logger.info("🔍 USING ENHANCED PARSER for combat log")
 
-    case EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser.parse_combat_log(
+    case EnhancedCombatLogParser.parse_combat_log(
            content,
            pilot_name: pilot_name
          ) do
@@ -59,7 +63,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogHelper do
     performance_metrics =
       if fitting_data do
         fitting_analysis =
-          EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser.analyze_fitting_vs_usage(
+          EnhancedCombatLogParser.analyze_fitting_vs_usage(
             events,
             fitting_data
           )
@@ -79,7 +83,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogHelper do
   """
   def correlate_with_battle(events, battle_killmails) do
     correlation =
-      EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser.correlate_with_killmails(
+      CombatLogParser.correlate_with_killmails(
         events,
         battle_killmails
       )
@@ -93,7 +97,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogHelper do
   end
 
   defp get_fitting_data(pilot_name) do
-    case Ash.read(EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting,
+    case Ash.read(ShipFitting,
            filter: [pilot_name: pilot_name],
            sort: [updated_at: :desc],
            limit: 1

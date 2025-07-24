@@ -126,12 +126,10 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.EngagementAnalyze
   """
   def group_members_by_engagement(member_engagement_data) do
     member_engagement_data
-
-    Enum.group_by(fn {_member_id, score} ->
+    |> Enum.group_by(fn {_member_id, score} ->
       classify_engagement_level(score)
     end)
-
-    Enum.into(%{}, fn {level, members} ->
+    |> Enum.into(%{}, fn {level, members} ->
       {level,
        Enum.map(members, fn {member_id, score} ->
          %{member_id: member_id, score: score}

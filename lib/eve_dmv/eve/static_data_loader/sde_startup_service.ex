@@ -33,7 +33,7 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeStartupService do
   def handle_info(:check_sde_updates, state) do
     Logger.info("Starting SDE update check on startup...")
 
-    SdeVersionManager.check_for_updates case do
+    case SdeVersionManager.check_for_updates() do
       {:ok, :up_to_date} ->
         Logger.info("SDE data is up to date")
 

@@ -100,10 +100,9 @@ defmodule EveDmv.Security.ApiAuthentication do
     import Ash.Query
 
     __MODULE__
-
-    new()
-    filter(character_id == ^character_id)
-    Ash.read(domain: EveDmv.Api)
+    |> new()
+    |> filter(character_id == ^character_id)
+    |> Ash.read(domain: EveDmv.Api)
   end
 
   @doc """
@@ -128,12 +127,14 @@ defmodule EveDmv.Security.ApiAuthentication do
   def validate_api_key(api_key, client_ip, required_permissions \\ []) do
     import Ash.Query
 
-    case(__MODULE__)
+    key_hash = hash_api_key(api_key)
 
-    new()
-    filter(key_hash == ^api_key)
+    query =
+      __MODULE__
+      |> new()
+      |> filter(key_hash == ^key_hash)
 
-    Ash.read_one domain: EveDmv.Api do
+    case Ash.read_one(query, domain: EveDmv.Api) do
       {:ok, key_record} when key_record != nil ->
         cond do
           key_expired?(key_record) ->
@@ -162,16 +163,16 @@ defmodule EveDmv.Security.ApiAuthentication do
   def revoke_api_key(api_key_id, character_id) do
     import Ash.Query
 
-    case(__MODULE__)
+    query =
+      __MODULE__
+      |> new()
+      |> filter(id == ^api_key_id and character_id == ^character_id)
 
-    new()
-    filter(id == ^api_key_id and character_id == ^character_id)
-
-    Ash.read_one domain: EveDmv.Api do
+    case Ash.read_one(query, domain: EveDmv.Api) do
       {:ok, api_key} when api_key != nil ->
         api_key
-        Ash.Changeset.for_update(:deactivate)
-        Ash.update!(domain: EveDmv.Api)
+        |> Ash.Changeset.for_update(:deactivate)
+        |> Ash.update!(domain: EveDmv.Api)
 
       {:ok, nil} ->
         {:error, :not_found}

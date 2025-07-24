@@ -653,15 +653,14 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
       end
 
     recent_notifications =
-      state.Map.values(notifications)
-
-    Enum.filter(&(DateTime.compare(&1.created_at, cutoff_time) == :gt))
+      state.notifications
+      |> Map.values()
+      |> Enum.filter(&(DateTime.compare(&1.created_at, cutoff_time) == :gt))
 
     channel_distribution =
       recent_notifications
-
-    Enum.group_by(& &1.channel)
-    Map.new(fn {channel, notifications} -> {channel, length(notifications)} end)
+      |> Enum.group_by(& &1.channel)
+      |> Map.new(fn {channel, notifications} -> {channel, length(notifications)} end)
 
     status_distribution =
       recent_notifications

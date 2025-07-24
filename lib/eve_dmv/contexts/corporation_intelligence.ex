@@ -156,7 +156,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
 
     case Participant
          |> Ash.Query.for_read(:by_corporation, %{corporation_id: corporation_id})
-         |> Ash.Query.filter(killmail_time >= sixty_days_ago)
+         |> Ash.Query.filter(killmail_time >= ^sixty_days_ago)
          |> Ash.read(domain: Api) do
       {:ok, participants} ->
         # Get unique character IDs with activity counts

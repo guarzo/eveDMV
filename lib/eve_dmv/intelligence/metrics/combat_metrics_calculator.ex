@@ -23,7 +23,7 @@ defmodule EveDmv.Intelligence.Metrics.CombatMetricsCalculator do
         attackers = Enum.filter(participants, &(!get_is_victim(&1)))
         victims = Enum.filter(participants, &get_is_victim(&1))
         # Kill killmail: has attackers and exactly 1 victim
-        length(attackers) > 0 and length(victims) == 1
+        not Enum.empty?(attackers) and length(victims) == 1
       end)
 
     loss_kms =
@@ -33,7 +33,7 @@ defmodule EveDmv.Intelligence.Metrics.CombatMetricsCalculator do
         attackers = Enum.filter(participants, &(!get_is_victim(&1)))
         victims = Enum.filter(participants, &get_is_victim(&1))
         # Loss killmail: has exactly 1 victim and attackers
-        length(victims) == 1 and length(attackers) > 0
+        length(victims) == 1 and not Enum.empty?(attackers)
       end)
 
     kills = length(kill_kms)

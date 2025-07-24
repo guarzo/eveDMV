@@ -210,10 +210,10 @@ defmodule EveDmv.Contexts.ThreatAssessment.Domain.ThreatAnalyzer do
         threat_level = Map.get(assessment, :threat_level, :unknown)
 
         new_state =
-          %{state | analysis_cache: new_cache}
-
-        update_metrics(:cache_miss, analysis_time)
-        update_threat_level_distribution(threat_level)
+          state
+          |> Map.put(:analysis_cache, new_cache)
+          |> update_metrics(:cache_miss, analysis_time)
+          |> update_threat_level_distribution(threat_level)
 
         {:reply, {:ok, assessment}, new_state}
 

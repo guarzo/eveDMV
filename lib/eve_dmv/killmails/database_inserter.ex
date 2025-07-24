@@ -152,9 +152,8 @@ defmodule EveDmv.Killmails.DatabaseInserter do
 
     # Log first few errors for debugging
     result.errors
-    Enum.take(3)
-
-    Enum.each(fn error ->
+    |> Enum.take(3)
+    |> Enum.each(fn error ->
       Logger.error("Participant bulk insert error: #{inspect(error)}")
     end)
 
@@ -172,9 +171,8 @@ defmodule EveDmv.Killmails.DatabaseInserter do
 
     # Log first few errors for debugging
     result.errors
-    Enum.take(3)
-
-    Enum.each(fn error ->
+    |> Enum.take(3)
+    |> Enum.each(fn error ->
       Logger.error("#{String.capitalize(entity_type)} bulk insert error: #{inspect(error)}")
     end)
 
@@ -186,9 +184,8 @@ defmodule EveDmv.Killmails.DatabaseInserter do
     Logger.error("#{String.capitalize(entity_type)} bulk insert failed completely")
 
     result.errors
-    Enum.take(5)
-
-    Enum.each(fn error ->
+    |> Enum.take(5)
+    |> Enum.each(fn error ->
       Logger.error("#{String.capitalize(entity_type)} bulk insert error: #{inspect(error)}")
     end)
 
@@ -199,8 +196,7 @@ defmodule EveDmv.Killmails.DatabaseInserter do
 
   defp deduplicate_killmails(raw_changesets) do
     raw_changesets
-
-    Enum.uniq_by(fn changeset ->
+    |> Enum.uniq_by(fn changeset ->
       # Deduplicate by killmail_id to prevent constraint violations
       Map.get(changeset, :killmail_id)
     end)
@@ -208,8 +204,7 @@ defmodule EveDmv.Killmails.DatabaseInserter do
 
   defp deduplicate_participants(participants) do
     participants
-
-    Enum.uniq_by(fn participant ->
+    |> Enum.uniq_by(fn participant ->
       # Deduplicate by unique combination that matches the actual constraint:
       # unique_participant_per_killmail: [:killmail_id, :killmail_time, :character_id, :ship_type_id]
       {

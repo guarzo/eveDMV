@@ -11,11 +11,12 @@ defmodule EveDmv.Killmails.KillmailPipeline do
   use EveDmv.ErrorHandler
 
   alias Broadway.Message
+  alias EveDmv.Error
+  alias EveDmv.Intelligence.RealTimeCoordinator
   alias EveDmv.Killmails.DatabaseInserter
   alias EveDmv.Killmails.DataProcessor
   alias EveDmv.Killmails.KillmailBroadcaster
   alias EveDmv.Monitoring.PipelineMonitor
-  alias EveDmv.Error
 
   require Logger
 
@@ -38,7 +39,7 @@ defmodule EveDmv.Killmails.KillmailPipeline do
         db_insert: [
           concurrency: Application.get_env(:eve_dmv, :batcher_concurrency, 4),
           batch_size: Application.get_env(:eve_dmv, :batch_size, 100),
-          batch_timeout: Application.get_env(:eve_dmv, :batch_timeout, 30000)
+          batch_timeout: Application.get_env(:eve_dmv, :batch_timeout, 30_000)
         ]
       ]
     )
@@ -250,7 +251,7 @@ defmodule EveDmv.Killmails.KillmailPipeline do
             Enum.each(broadcast_messages, fn message ->
               case message.data do
                 %{killmail_id: _} = killmail_data ->
-                  EveDmv.Intelligence.RealTimeCoordinator.process_killmail(killmail_data)
+                  RealTimeCoordinator.process_killmail(killmail_data)
 
                 _ ->
                   :skip

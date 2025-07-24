@@ -72,10 +72,9 @@ defmodule EveDmv.Monitoring.AlertDispatcher do
       # Update state
       new_state =
         state
-
-      update_in([:alerts], &[alert | Enum.take(&1, 99)])
-      put_in([:last_alert_times, type], DateTime.utc_now())
-      update_in([:alert_counts, type], &((&1 || 0) + 1))
+        |> update_in([:alerts], &[alert | Enum.take(&1, 99)])
+        |> put_in([:last_alert_times, type], DateTime.utc_now())
+        |> update_in([:alert_counts, type], &((&1 || 0) + 1))
 
       {:noreply, new_state}
     else

@@ -306,7 +306,8 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.PlanAnalyzer do
 
       plans when is_list(plans) ->
         plans
-        Enum.map(&calculate_max_depth(&1, current_depth + 1)) |> Enum.max()
+        |> Enum.map(&calculate_max_depth(&1, current_depth + 1))
+        |> Enum.max()
     end
   end
 

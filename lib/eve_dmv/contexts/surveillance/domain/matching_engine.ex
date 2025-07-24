@@ -632,7 +632,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
           killmail_time >= condition.start_time and killmail_time <= condition.end_time
 
         :hours ->
-          hour = killmail_time(DateTime.to_time() |> Map.get(:hour))
+          hour = killmail_time |> DateTime.to_time() |> Map.get(:hour)
           hour in condition.hours
 
         :days_of_week ->
@@ -737,8 +737,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
         if matches do
           matched_criteria =
             []
-
-          then(fn acc ->
+            |> then(fn acc ->
             if victim_match do
               [
                 %{
@@ -751,8 +750,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
               acc
             end
           end)
-
-          then(fn acc ->
+          |> then(fn acc ->
             Enum.reduce(attacker_matches, acc, fn attacker, acc ->
               [%{type: :chain_inhabitant_attacker, character_id: attacker.character_id} | acc]
             end)

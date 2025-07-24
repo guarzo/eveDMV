@@ -138,9 +138,8 @@ defmodule EveDmv.Eve.EsiCharacterClient do
 
   defp build_character_map(character_ids, results) do
     character_ids
-    Enum.zip(results)
-
-    Enum.reduce(%{}, fn {char_id, result}, acc ->
+    |> Enum.zip(results)
+    |> Enum.reduce(%{}, fn {char_id, result}, acc ->
       case result do
         {:ok, character} -> Map.put(acc, char_id, character)
         {:ok, character, _type} -> Map.put(acc, char_id, character)

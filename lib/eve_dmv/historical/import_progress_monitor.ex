@@ -114,9 +114,9 @@ defmodule EveDmv.Historical.ImportProgressMonitor do
 
   def handle_call(:get_active_summary, _from, state) do
     summary =
-      state.Map.values(metrics)
-
-    Enum.map(fn metrics ->
+      state.metrics
+      |> Map.values()
+      |> Enum.map(fn metrics ->
       latest_sample = List.first(metrics.samples, %{})
 
       %{

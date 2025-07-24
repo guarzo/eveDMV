@@ -399,7 +399,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
     if length(health_data) > 0 do
       avg_score =
         health_data
-        |> Enum.map(& &1.health_score) 
+        |> Enum.map(& &1.health_score)
         |> Enum.sum()
         |> Kernel./(length(health_data))
 

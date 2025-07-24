@@ -94,14 +94,13 @@ defmodule EveDmv.Eve.StaticDataLoader.WormholeClassLoader do
 
   defp get_systems_batch(system_ids) do
     Ash.Query.new(SolarSystem)
-    Ash.Query.filter(system_id in ^system_ids)
-    Ash.read!(domain: Api)
+    |> Ash.Query.filter(system_id in ^system_ids)
+    |> Ash.read!(domain: Api)
   end
 
   defp update_systems_batch(systems, wormhole_data) do
     systems
-
-    Enum.map(fn system ->
+    |> Enum.map(fn system ->
       wormhole_class_id = Map.get(wormhole_data, system.system_id)
 
       if wormhole_class_id do

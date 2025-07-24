@@ -569,7 +569,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
     end
   end
 
-
   # Filter and summary functions (simplified versions of existing functions)
 
   defp generate_enhanced_summary(events, _pilot_name) do
@@ -666,13 +665,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
   defp calculate_tactical_score(events) do
     damage_dealt_events = Enum.filter(events, &(&1.type == :damage_dealt))
     damage_received_events = Enum.filter(events, &(&1.type == :damage_received))
-    
-    if length(damage_dealt_events) == 0 and length(damage_received_events) == 0 do
+
+    if Enum.empty?(damage_dealt_events) and Enum.empty?(damage_received_events) do
       0.0
     else
       total_damage_dealt = Enum.sum(Enum.map(damage_dealt_events, & &1.damage))
       total_damage_received = Enum.sum(Enum.map(damage_received_events, & &1.damage))
-      
+
       # Calculate efficiency ratio (0-100 scale)
       if total_damage_received == 0 do
         100.0

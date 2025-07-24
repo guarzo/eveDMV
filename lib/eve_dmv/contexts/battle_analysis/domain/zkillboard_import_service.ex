@@ -8,6 +8,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
 
   alias EveDmv.Api
   alias EveDmv.Killmails.KillmailRaw
+  alias EveDmv.Repo
 
   require Logger
   require Ash.Query
@@ -85,9 +86,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
   defp parse_zkillboard_path(path) do
     segments =
       path
-
-    String.split("/", trim: true)
-    Enum.filter(&(&1 != ""))
+      |> String.split("/", trim: true)
+      |> Enum.filter(&(&1 != ""))
 
     case segments do
       ["kill", killmail_id] ->
@@ -219,9 +219,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
     # zkillboard returns an array of killmail objects
     killmails =
       zkb_data
-
-    Enum.map(&extract_killmail_info/1)
-    Enum.filter(&(&1 != nil))
+      |> Enum.map(&extract_killmail_info/1)
+      |> Enum.filter(&(&1 != nil))
 
     {:ok, killmails}
   end
@@ -296,7 +295,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
       )
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [killmail_id]) do
+    case Ecto.Adapters.SQL.query(Repo, query, [killmail_id]) do
       {:ok, %{rows: [[exists]]}} ->
         exists
 

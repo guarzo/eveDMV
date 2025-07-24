@@ -53,18 +53,18 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
 
     results =
       character_ids
+      |> Task.async_stream(
+        fn char_id ->
+          case fetch_character_history(char_id) do
+            {:ok, count} -> {char_id, {:ok, count}}
+            error -> {char_id, error}
+          end
+        end,
+        timeout: 180_000
+      )
+      |> Enum.map(fn {:ok, result} -> result end)
+      |> Map.new()
 
-    Task.async_stream(
-      fn char_id ->
-        case fetch_character_history(char_id) do
-          {:ok, count} -> {char_id, {:ok, count}}
-          error -> {char_id, error}
-        end
-      end,
-      timeout: 180_000
-    )
-
-    Enum.map(fn {:ok, result} -> result end) |> Map.new()
     {:ok, results}
   end
 
@@ -340,9 +340,8 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
 
     attacker_participants =
       attackers
-
-    Enum.filter(& &1["ship_type_id"])
-    Enum.map(&build_participant(&1, enriched, false))
+      |> Enum.filter(& &1["ship_type_id"])
+      |> Enum.map(&build_participant(&1, enriched, false))
 
     victim_participants ++ attacker_participants
   end

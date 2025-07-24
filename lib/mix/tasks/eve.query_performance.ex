@@ -10,8 +10,8 @@ defmodule Mix.Tasks.Eve.QueryPerformance do
   """
 
   use Mix.Task
-  alias EveDmv.Performance.QueryMonitor
   alias EveDmv.Database.QueryPlanAnalyzer
+  alias EveDmv.Performance.QueryMonitor
 
   @impl Mix.Task
   def run(args) do

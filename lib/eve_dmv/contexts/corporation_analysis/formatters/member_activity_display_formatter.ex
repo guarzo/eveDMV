@@ -248,13 +248,11 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Formatters.MemberActivityDisplayFo
 
   defp calculate_engagement_distribution(member_analyses) do
     member_analyses
-    Enum.group_by(&format_engagement_status(&1.engagement_score))
-
-    Enum.map(fn {status, members} ->
+    |> Enum.group_by(&format_engagement_status(&1.engagement_score))
+    |> Enum.map(fn {status, members} ->
       {status, length(members)}
     end)
-
-    Enum.into(%{})
+    |> Enum.into(%{})
   end
 
   defp calculate_activity_trend(member_analyses) do

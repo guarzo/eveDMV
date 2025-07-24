@@ -28,7 +28,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     }
   end
 
-  defp analyze_regional_activity(region_id, _cutoff_time) do
+  defp analyze_regional_activity(_region_id, _cutoff_time) do
     # Get all systems in the region
     systems_query = Ash.Query.filter(SolarSystem, region_id == region_id)
 
@@ -126,7 +126,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     end
   end
 
-  defp analyze_regional_threats(region_id, _cutoff_time) do
+  defp analyze_regional_threats(_region_id, _cutoff_time) do
     # Get recent killmails with participant data
     systems_query =
       SolarSystem
@@ -205,7 +205,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     end
   end
 
-  defp assess_regional_strategy(region_id, _cutoff_time) do
+  defp assess_regional_strategy(_region_id, _cutoff_time) do
     # Analyze strategic control based on corporation/alliance presence
     systems_query = Ash.Query.filter(SolarSystem, region_id == region_id)
 
@@ -285,7 +285,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     end
   end
 
-  defp analyze_regional_trends(region_id, cutoff_time) do
+  defp analyze_regional_trends(_region_id, cutoff_time) do
     # Compare recent activity to historical baseline
     # Last 24h
     _recent_cutoff = DateTime.add(DateTime.utc_now(), -24 * 3_600, :second)

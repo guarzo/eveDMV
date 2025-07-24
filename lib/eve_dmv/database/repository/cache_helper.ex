@@ -27,8 +27,8 @@ defmodule EveDmv.Database.Repository.CacheHelper do
     opts_part = build_opts_part(opts)
 
     [base_key, identifier_part, opts_part]
-    Enum.filter(&(&1 != ""))
-    Enum.join(":")
+    |> Enum.filter(&(&1 != ""))
+    |> Enum.join(":")
   end
 
   @doc """
@@ -123,13 +123,11 @@ defmodule EveDmv.Database.Repository.CacheHelper do
   end
 
   defp build_identifier_part(identifier) when is_map(identifier) do
-    Enum.sort(identifier)
-    |> Enum.map_join(":", fn {k, v} -> "#{k}:#{v}" end)
+    Enum.map_join(Enum.sort(identifier), ":", fn {k, v} -> "#{k}:#{v}" end)
   end
 
   defp build_identifier_part(identifier) when is_list(identifier) do
-    Enum.sort(identifier)
-    Enum.join(":")
+    Enum.join(Enum.sort(identifier), ":")
   end
 
   defp build_identifier_part(_), do: ""
@@ -145,8 +143,9 @@ defmodule EveDmv.Database.Repository.CacheHelper do
   end
 
   defp format_opt_value(value) when is_list(value) do
-    Enum.sort(value)
-    Enum.join(",")
+    value
+    |> Enum.sort()
+    |> Enum.join(",")
   end
 
   defp format_opt_value(value), do: to_string(value)

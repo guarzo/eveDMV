@@ -21,10 +21,10 @@ defmodule EveDmv.Database.PartitionUtils do
   Get all partitions for a date range.
   """
   def partitions_for_date_range(table, start_date, end_date) do
-    start_date
-    Date.range(end_date)
-    Enum.map(&Date.beginning_of_month/1) |> Enum.uniq()
-    Enum.map(&partition_name_for_date(table, &1))
+    Date.range(start_date, end_date)
+    |> Enum.map(&Date.beginning_of_month/1)
+    |> Enum.uniq()
+    |> Enum.map(&partition_name_for_date(table, &1))
   end
 
   @doc """

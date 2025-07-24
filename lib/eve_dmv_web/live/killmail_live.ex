@@ -9,7 +9,6 @@ defmodule EveDmvWeb.KillmailLive do
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Market.PriceService
 
-  import Ash.Query
   require Logger
 
   @impl true

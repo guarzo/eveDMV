@@ -316,8 +316,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainTracker do
       to_id = conn.to_system_id
 
       acc
-      Map.update(from_id, [to_id], &[to_id | &1])
-      Map.update(to_id, [from_id], &[from_id | &1])
+      |> Map.update(from_id, [to_id], &[to_id | &1])
+      |> Map.update(to_id, [from_id], &[from_id | &1])
     end)
   end
 
@@ -481,12 +481,10 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainTracker do
 
   defp find_critical_connections(connections) do
     connections
-
-    Enum.filter(fn conn ->
+    |> Enum.filter(fn conn ->
       conn.mass_status == :critical or conn.time_status == :eol
     end)
-
-    Enum.map(fn conn ->
+    |> Enum.map(fn conn ->
       %{
         from: conn.from_system_name,
         to: conn.to_system_name,

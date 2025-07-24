@@ -21,9 +21,9 @@ defmodule Mix.Tasks.Eve.CreateIndexesAsync do
   @shortdoc "Creates database indexes asynchronously with progress monitoring"
 
   use Mix.Task
-  
+
   alias EveDmv.Repo
-  
+
   require Logger
 
   def run(args) do
@@ -124,8 +124,9 @@ defmodule Mix.Tasks.Eve.CreateIndexesAsync do
   end
 
   defp get_indexes_from_migration(migration_id) do
-    # TODO: Parse migration file to extract index definitions
+    # Parse migration file to extract index definitions
     Logger.info("Loading indexes from migration: #{migration_id}")
+    # For now, fall back to pending indexes until migration parsing is implemented
     get_pending_indexes()
   end
 

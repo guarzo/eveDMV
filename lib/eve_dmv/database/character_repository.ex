@@ -39,8 +39,7 @@ defmodule EveDmv.Database.CharacterRepository do
         TelemetryHelper.measure_query("character_stats", :get_by_character, fn ->
           query =
             Ash.Query.new(CharacterStats)
-
-          Ash.Query.filter(character_id == ^character_id)
+            |> Ash.Query.filter(character_id == ^character_id)
 
           case Ash.read_one(query, domain: Api) do
             {:ok, stats} -> {:ok, stats}
@@ -83,10 +82,9 @@ defmodule EveDmv.Database.CharacterRepository do
 
           query =
             Ash.Query.new(CharacterStats)
-
-          Ash.Query.filter(dangerous_rating >= ^min_rating)
-          Ash.Query.sort(desc: :dangerous_rating)
-          Ash.Query.limit(limit)
+            |> Ash.Query.filter(dangerous_rating >= ^min_rating)
+            |> Ash.Query.sort(desc: :dangerous_rating)
+            |> Ash.Query.limit(limit)
 
           query =
             if corporation_id do
@@ -117,9 +115,8 @@ defmodule EveDmv.Database.CharacterRepository do
     TelemetryHelper.measure_query("character_stats", :batch_get, fn ->
       query =
         Ash.Query.new(CharacterStats)
-
-      Ash.Query.filter(character_id in ^character_ids)
-      Ash.Query.sort(:character_name)
+        |> Ash.Query.filter(character_id in ^character_ids)
+        |> Ash.Query.sort(:character_name)
 
       Ash.read(query, domain: Api)
     end)
@@ -154,9 +151,8 @@ defmodule EveDmv.Database.CharacterRepository do
 
           query =
             Ash.Query.new(CharacterStats)
-
-          Ash.Query.filter(corporation_id == ^corporation_id)
-          Ash.Query.sort(:character_name)
+            |> Ash.Query.filter(corporation_id == ^corporation_id)
+            |> Ash.Query.sort(:character_name)
 
           query =
             if active_only do

@@ -25,8 +25,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
       gaps = IntelligenceQualityAnalyzer.identify_intelligence_gaps(system_ids, killmails)
   """
 
-  import Ecto.Query
-  alias EveDmv.Repo
   require Logger
 
   @doc """
@@ -458,10 +456,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
   defp identify_dominant_entities(system_kills) do
     system_kills
-    Enum.group_by(& &1.attacker_character_id)
-    Enum.map(fn {char_id, kills} -> {char_id, length(kills)} end)
-    Enum.sort_by(fn {_char_id, kill_count} -> kill_count end, :desc)
-    Enum.take(5)
+    |> Enum.group_by(& &1.attacker_character_id)
+    |> Enum.map(fn {char_id, kills} -> {char_id, length(kills)} end)
+    |> Enum.sort_by(fn {_char_id, kill_count} -> kill_count end, :desc)
+    |> Enum.take(5)
   end
 
   defp calculate_control_strength(system_kills) do

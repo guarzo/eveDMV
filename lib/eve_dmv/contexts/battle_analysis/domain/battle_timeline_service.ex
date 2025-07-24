@@ -746,8 +746,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
 
   defp extract_all_participants(battle) do
     battle.killmails
-
-    Enum.flat_map(fn km ->
+    |> Enum.flat_map(fn km ->
       victim = [km.victim_character_id]
 
       attackers =

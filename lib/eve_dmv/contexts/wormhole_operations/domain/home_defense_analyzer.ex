@@ -305,9 +305,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
 
     # Filter and prioritize based on context
     recommendations
-    Enum.uniq_by(& &1.type)
-    Enum.sort_by(fn rec -> priority_weight(rec.priority) end)
-    Enum.take(8)
+    |> Enum.uniq_by(& &1.type)
+    |> Enum.sort_by(fn rec -> priority_weight(rec.priority) end)
+    |> Enum.take(8)
   end
 
   @doc """
@@ -374,14 +374,16 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
 
   defp count_active_members(member_activity) do
     member_activity
-    Enum.map(& &1.character_id) |> Enum.uniq()
-    length()
+    |> Enum.map(& &1.character_id)
+    |> Enum.uniq()
+    |> length()
   end
 
   defp count_available_ships(member_ships) do
     member_ships
-    Enum.map(& &1.ship_type_id) |> Enum.uniq()
-    length()
+    |> Enum.map(& &1.ship_type_id)
+    |> Enum.uniq()
+    |> length()
   end
 
   defp calculate_defense_readiness(active_members, available_ships, member_activity) do
@@ -560,13 +562,11 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
   defp categorize_ships(member_ships) do
     # Simplified ship categorization based on type IDs
     member_ships
-
-    Enum.group_by(fn ship ->
+    |> Enum.group_by(fn ship ->
       categorize_ship_type(ship.ship_type_id)
     end)
-
-    Enum.map(fn {category, ships} -> {category, length(ships)} end)
-    Enum.into(%{})
+    |> Enum.map(fn {category, ships} -> {category, length(ships)} end)
+    |> Enum.into(%{})
   end
 
   defp categorize_ship_type(ship_type_id) do
@@ -983,9 +983,10 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
     recent_activity = get_system_activity(system_id, 30)
 
     recent_activity
-    Enum.map(& &1.victim_corporation_id)
-    Enum.filter(& &1) |> Enum.uniq()
-    Enum.take(5)
+    |> Enum.map(& &1.victim_corporation_id)
+    |> Enum.filter(& &1)
+    |> Enum.uniq()
+    |> Enum.take(5)
   end
 
   defp calculate_overall_system_readiness(defense_analyses) do
@@ -1117,9 +1118,10 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
   defp count_active_corporations(system_activity) do
     # Count unique corporations in recent activity
     system_activity
-    Enum.map(& &1.victim_corporation_id)
-    Enum.filter(& &1) |> Enum.uniq()
-    length()
+    |> Enum.map(& &1.victim_corporation_id)
+    |> Enum.filter(& &1)
+    |> Enum.uniq()
+    |> length()
   end
 
   defp analyze_activity_trend(system_activity) do
@@ -1203,9 +1205,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
         recommendations
       end
 
-    recommendations ++ defensive_doctrines.doctrine_recommendations
-
-    Enum.map(fn rec ->
+    (recommendations ++ defensive_doctrines.doctrine_recommendations)
+    |> Enum.map(fn rec ->
       if is_binary(rec) do
         %{
           type: :fleet_doctrine,

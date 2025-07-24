@@ -12,6 +12,8 @@ defmodule EveDmv.Killmails.KillmailRaw do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
+  alias EveDmv.Ash.Preparations.QuerySafety
+
   postgres do
     table("killmails_raw")
     repo(EveDmv.Repo)
@@ -235,7 +237,7 @@ defmodule EveDmv.Killmails.KillmailRaw do
   # Preparations for query safety
   preparations do
     prepare(fn query, _ ->
-      EveDmv.Ash.Preparations.QuerySafety.prepare(query, [limit: 500], %{})
+      QuerySafety.prepare(query, [limit: 500], %{})
     end)
   end
 

@@ -328,9 +328,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Engage
     # Basic logistics ship count using ship name pattern matching
     # Enhanced ship type identification could be added using EVE static data
 
-    participants
-
-    Enum.count(fn participant ->
+    Enum.count(participants, fn participant ->
       participant.ship_name && String.contains?(participant.ship_name, "Logistics")
     end)
   end

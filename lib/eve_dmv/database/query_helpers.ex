@@ -12,6 +12,9 @@ defmodule EveDmv.Database.QueryHelpers do
 
   import Ecto.Query
 
+  alias Ecto.Adapters.SQL
+  alias EveDmv.Repo
+
   @default_limit 1000
   @max_limit 10_000
   @default_timeout_ms 30_000
@@ -85,8 +88,8 @@ defmodule EveDmv.Database.QueryHelpers do
   """
   def with_safety(query, opts \\ []) do
     query
-    apply_safe_limit(opts)
-    with_timeout(opts)
+    |> apply_safe_limit(opts)
+    |> with_timeout(opts)
   end
 
   @doc """
@@ -145,9 +148,8 @@ defmodule EveDmv.Database.QueryHelpers do
       fn {base_query, offset} ->
         batch_query =
           base_query
-
-        limit(^batch_size)
-        offset(^offset)
+          |> limit(^batch_size)
+          |> offset(^offset)
 
         case EveDmv.Repo.all(batch_query, timeout: timeout) do
           [] -> {:halt, {base_query, offset}}
@@ -180,9 +182,9 @@ defmodule EveDmv.Database.QueryHelpers do
     if use_estimate do
       estimate_count(query)
     else
-      limited_query = query |> limit(^max_count + 1)
+      limited_query = limit(query, ^max_count + 1)
 
-      case EveDmv.Repo.aggregate(limited_query, :count) do
+      case Repo.aggregate(limited_query, :count) do
         count when count > max_count -> {:max, max_count}
         count -> {:ok, count}
       end
@@ -239,7 +241,7 @@ defmodule EveDmv.Database.QueryHelpers do
         WHERE relname = $1
         """
 
-        case Ecto.Adapters.SQL.query(EveDmv.Repo, sql, [table]) do
+        case SQL.query(Repo, sql, [table]) do
           {:ok, %{rows: [[estimate]]}} -> {:estimate, estimate}
           _ -> {:error, :estimation_failed}
         end

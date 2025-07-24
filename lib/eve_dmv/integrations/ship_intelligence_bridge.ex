@@ -546,8 +546,8 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
 
   defp determine_primary_role(classification) when is_map(classification) do
     classification
-    Enum.max_by(fn {_role, score} -> score end, fn -> {"unknown", 0} end)
-    elem(0)
+    |> Enum.max_by(fn {_role, score} -> score end, fn -> {"unknown", 0} end)
+    |> elem(0)
   end
 
   defp determine_primary_role(_classification), do: "unknown"

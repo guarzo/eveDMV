@@ -242,19 +242,18 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       # Extract hours from timestamps
       hours =
         timestamps
-
-      Enum.map(&(&1 |> DateTime.to_time() |> Map.get(:hour))) |> Enum.frequencies()
+        |> Enum.map(&(&1 |> DateTime.to_time() |> Map.get(:hour)))
+        |> Enum.frequencies()
       # Calculate entropy of hour distribution
       total_engagements = Enum.sum(Map.values(hours))
 
       entropy =
         hours
-
-      Enum.map(fn {_hour, count} ->
-        probability = count / total_engagements
-        -probability * :math.log(probability)
-      end)
-      |> Enum.sum()
+        |> Enum.map(fn {_hour, count} ->
+          probability = count / total_engagements
+          -probability * :math.log(probability)
+        end)
+        |> Enum.sum()
 
       # Normalize entropy (max entropy for 24 hours is log(24))
       max_entropy = :math.log(24)
@@ -269,19 +268,18 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       # Extract day of week from timestamps
       days =
         timestamps
-
-      Enum.map(&(&1 |> DateTime.to_date() |> Date.day_of_week())) |> Enum.frequencies()
+        |> Enum.map(&(&1 |> DateTime.to_date() |> Date.day_of_week()))
+        |> Enum.frequencies()
       # Calculate entropy of day distribution
       total_engagements = Enum.sum(Map.values(days))
 
       entropy =
         days
-
-      Enum.map(fn {_day, count} ->
-        probability = count / total_engagements
-        -probability * :math.log(probability)
-      end)
-      |> Enum.sum()
+        |> Enum.map(fn {_day, count} ->
+          probability = count / total_engagements
+          -probability * :math.log(probability)
+        end)
+        |> Enum.sum()
 
       # Normalize entropy (max entropy for 7 days is log(7))
       max_entropy = :math.log(7)
@@ -298,10 +296,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
 
       gaps =
         sorted_timestamps
-
-      Enum.chunk_every(2, 1, :discard)
-      Enum.map(fn [t1, t2] -> DateTime.diff(t2, t1, :hour) end)
-      Enum.filter(&(&1 > 0))
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.map(fn [t1, t2] -> DateTime.diff(t2, t1, :hour) end)
+        |> Enum.filter(&(&1 > 0))
 
       if Enum.empty?(gaps) do
         0.5
@@ -311,9 +308,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
 
         variance =
           gaps
-
-        Enum.map(&((&1 - mean_gap) * (&1 - mean_gap))) |> Enum.sum()
-        Kernel./(length(gaps))
+          |> Enum.map(&((&1 - mean_gap) * (&1 - mean_gap)))
+          |> Enum.sum()
+          |> Kernel./(length(gaps))
 
         std_dev = :math.sqrt(variance)
         coefficient_of_variation = if mean_gap > 0, do: std_dev / mean_gap, else: 0
@@ -339,10 +336,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       mean_usage = total_usage / map_size(ship_usage)
 
       variance =
-        Map.values(ship_usage)
-
-      Enum.map(&((&1 - mean_usage) * (&1 - mean_usage))) |> Enum.sum()
-      Kernel./(map_size(ship_usage))
+        ship_usage
+        |> Map.values()
+        |> Enum.map(&((&1 - mean_usage) * (&1 - mean_usage)))
+        |> Enum.sum()
+        |> Kernel./(map_size(ship_usage))
 
       # Normalize variance to 0-1 scale
       normalized_variance = min(1.0, variance / (mean_usage * mean_usage))
@@ -389,12 +387,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       # Shannon entropy
       entropy =
         ship_usage
-
-      Enum.map(fn {_ship, usage} ->
-        probability = usage / total_usage
-        -probability * :math.log(probability)
-      end)
-      |> Enum.sum()
+        |> Enum.map(fn {_ship, usage} ->
+          probability = usage / total_usage
+          -probability * :math.log(probability)
+        end)
+        |> Enum.sum()
 
       # Normalize by maximum possible entropy
       unique_ships = map_size(ship_usage)
@@ -410,19 +407,18 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       # Analyze variety in target ship types
       target_ships =
         attacker_killmails
-
-      Enum.map(& &1.victim_ship_type_id) |> Enum.frequencies()
+        |> Enum.map(& &1.victim_ship_type_id)
+        |> Enum.frequencies()
       # Calculate Shannon entropy of target selection
       total_kills = Enum.sum(Map.values(target_ships))
 
       entropy =
         target_ships
-
-      Enum.map(fn {_ship, count} ->
-        probability = count / total_kills
-        -probability * :math.log(probability)
-      end)
-      |> Enum.sum()
+        |> Enum.map(fn {_ship, count} ->
+          probability = count / total_kills
+          -probability * :math.log(probability)
+        end)
+        |> Enum.sum()
 
       # Normalize entropy
       unique_targets = map_size(target_ships)
@@ -438,17 +434,16 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       # Extract engagement sizes (number of attackers per killmail)
       engagement_sizes =
         killmails
+        |> Enum.map(fn km ->
+          case km.raw_data do
+            %{"attackers" => attackers} when is_list(attackers) ->
+              length(attackers)
 
-      Enum.map(fn km ->
-        case km.raw_data do
-          %{"attackers" => attackers} when is_list(attackers) ->
-            length(attackers)
-
-          _ ->
-            1
-        end
-      end)
-      |> Enum.frequencies()
+            _ ->
+              1
+          end
+        end)
+        |> Enum.frequencies()
 
       # Calculate variance in engagement sizes
       if map_size(engagement_sizes) <= 1 do
@@ -459,12 +454,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
 
         entropy =
           engagement_sizes
-
-        Enum.map(fn {_size, count} ->
-          probability = count / total_engagements
-          -probability * :math.log(probability)
-        end)
-        |> Enum.sum()
+          |> Enum.map(fn {_size, count} ->
+            probability = count / total_engagements
+            -probability * :math.log(probability)
+          end)
+          |> Enum.sum()
 
         # Normalize entropy
         unique_sizes = map_size(engagement_sizes)
@@ -481,9 +475,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       # Analyze variance in damage contribution patterns
       damage_contributions =
         attacker_killmails
-
-      Enum.map(&SharedUtilities.extract_damage_contribution(&1, character_id))
-      Enum.filter(&(&1 > 0))
+        |> Enum.map(&SharedUtilities.extract_damage_contribution(&1, character_id))
+        |> Enum.filter(&(&1 > 0))
 
       if length(damage_contributions) < 2 do
         0.5
@@ -493,9 +486,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
 
         variance =
           damage_contributions
-
-        Enum.map(&((&1 - mean_damage) * (&1 - mean_damage))) |> Enum.sum()
-        Kernel./(length(damage_contributions))
+          |> Enum.map(&((&1 - mean_damage) * (&1 - mean_damage)))
+          |> Enum.sum()
+          |> Kernel./(length(damage_contributions))
 
         std_dev = :math.sqrt(variance)
         coefficient_of_variation = if mean_damage > 0, do: std_dev / mean_damage, else: 0
@@ -510,10 +503,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
     # Analyze variance in tactical roles played
     ship_roles =
       killmails
-
-    Enum.flat_map(&SharedUtilities.extract_ship_types_used/1)
-    Enum.filter(&(&1 != nil))
-    Enum.map(&classify_tactical_role/1) |> Enum.frequencies()
+      |> Enum.flat_map(&SharedUtilities.extract_ship_types_used/1)
+      |> Enum.filter(&(&1 != nil))
+      |> Enum.map(&classify_tactical_role/1)
+      |> Enum.frequencies()
 
     if map_size(ship_roles) <= 1 do
       # No role variance
@@ -524,12 +517,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
 
       entropy =
         ship_roles
-
-      Enum.map(fn {_role, usage} ->
-        probability = usage / total_usage
-        -probability * :math.log(probability)
-      end)
-      |> Enum.sum()
+        |> Enum.map(fn {_role, usage} ->
+          probability = usage / total_usage
+          -probability * :math.log(probability)
+        end)
+        |> Enum.sum()
 
       # Normalize entropy
       unique_roles = map_size(ship_roles)
@@ -567,12 +559,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       # Shannon entropy for system distribution
       entropy =
         systems
-
-      Enum.map(fn {_system, count} ->
-        probability = count / total_engagements
-        -probability * :math.log(probability)
-      end)
-      |> Enum.sum()
+        |> Enum.map(fn {_system, count} ->
+          probability = count / total_engagements
+          -probability * :math.log(probability)
+        end)
+        |> Enum.sum()
 
       # Normalize entropy
       unique_systems = map_size(systems)
@@ -586,9 +577,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
     # For now, estimate region diversity based on system ID ranges
     systems =
       killmails
-
-    Enum.map(& &1.solar_system_id)
-    Enum.filter(&(&1 != nil)) |> Enum.uniq()
+      |> Enum.map(& &1.solar_system_id)
+      |> Enum.filter(&(&1 != nil))
+      |> Enum.uniq()
 
     if Enum.empty?(systems) do
       0.5
@@ -605,9 +596,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
     # This is simplified - would need EVE static data for actual security status
     systems =
       killmails
-
-    Enum.map(& &1.solar_system_id)
-    Enum.filter(&(&1 != nil))
+      |> Enum.map(& &1.solar_system_id)
+      |> Enum.filter(&(&1 != nil))
 
     SystemData.calculate_security_diversity(systems)
   end

@@ -106,9 +106,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
 
     threat_assessments =
       character_ids
-    Enum.map(&calculate_threat_score(&1, options))
-    Enum.filter(&match?({:ok, _}, &1))
-    Enum.map(&elem(&1, 1))
+      |> Enum.map(&calculate_threat_score(&1, options))
+      |> Enum.filter(&match?({:ok, _}, &1))
+      |> Enum.map(&elem(&1, 1))
 
     comparison = %{
       characters_analyzed: length(threat_assessments),
@@ -140,7 +140,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
 
     trend_data =
       time_periods
-    Enum.map(fn {days, label} ->
+      |> Enum.map(fn {days, label} ->
         case calculate_threat_score(character_id,
                analysis_window_days: days,
                include_detailed_breakdown: false
@@ -158,7 +158,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
             nil
         end
       end)
-    Enum.filter(&(&1 != nil))
+      |> Enum.filter(&(&1 != nil))
 
     trend_analysis = %{
       character_id: character_id,
@@ -682,9 +682,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   defp analyze_ship_usage_patterns(ship_types_map) do
     sorted_ships =
       ship_types_map
-    Enum.sort_by(&elem(&1, 1), :desc)
+      |> Enum.sort_by(&elem(&1, 1), :desc)
       # Top 5 most used ships
-    Enum.take(5)
+      |> Enum.take(5)
 
     %{
       most_used_ships: sorted_ships,
@@ -793,9 +793,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
       # Look for coordinated strikes (multiple kills in short timeframes)
       coordinated_strikes =
         killmails
-    Enum.sort_by(& &1.killmail_time)
-    Enum.chunk_every(2, 1, :discard)
-    Enum.count(fn [km1, km2] ->
+        |> Enum.sort_by(& &1.killmail_time)
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.count(fn [km1, km2] ->
           time_diff = NaiveDateTime.diff(km2.killmail_time, km1.killmail_time, :second)
           # Within 5 minutes
           time_diff < 300
@@ -835,7 +835,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     # Analyze effectiveness in support roles (EWAR, logistics, etc.)
     support_ships_used =
       killmails
-    Enum.filter(fn km ->
+      |> Enum.filter(fn km ->
         support_ship?(km.victim_ship_type_id) or
           has_support_ship_in_attackers(km)
       end)
@@ -872,7 +872,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     # Analyze patterns in gang/fleet composition and tactics
     gang_sizes =
       killmails
-    Enum.map(fn km ->
+      |> Enum.map(fn km ->
         case km.raw_data do
           %{"attackers" => attackers} when is_list(attackers) -> length(attackers)
           _ -> 1
@@ -919,8 +919,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
       hours =
         killmails
     Enum.map(fn km ->
-          km.killmail_time 
-          |> NaiveDateTime.to_time() 
+          km.killmail_time
+          |> NaiveDateTime.to_time()
           |> Time.to_seconds_after_midnight()
           |> div(3600)
         end) |> Enum.frequencies()
@@ -943,10 +943,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
 
       entropy =
         ship_types
-    Enum.map(fn {_ship, uses} ->
+        |> Enum.map(fn {_ship, uses} ->
           prob = uses / total_uses
           -prob * :math.log(prob)
-        end) |> Enum.sum()
+        end)
+        |> Enum.sum()
       max_entropy = :math.log(map_size(ship_types))
 
       if max_entropy > 0 do
@@ -993,11 +994,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
       # Analyze variety in target types
       target_ship_types =
         attacker_killmails
-    Enum.map(& &1.victim_ship_type_id) |> Enum.frequencies()
+        |> Enum.map(& &1.victim_ship_type_id)
+        |> Enum.frequencies()
       target_corps =
         attacker_killmails
-    Enum.map(& &1.victim_corporation_id)
-    Enum.filter(&(&1 != nil)) |> Enum.frequencies()
+        |> Enum.map(& &1.victim_corporation_id)
+        |> Enum.filter(&(&1 != nil))
+        |> Enum.frequencies()
       ship_type_variety = map_size(target_ship_types)
       corp_variety = map_size(target_corps)
 
@@ -1035,13 +1038,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
       # Group killmails by time periods and analyze performance variance
       time_periods =
         combat_data.killmails
-    Enum.sort_by(& &1.killmail_time)
+        |> Enum.sort_by(& &1.killmail_time)
         # Groups of 5 killmails
-    Enum.chunk_every(5)
+        |> Enum.chunk_every(5)
 
       performance_scores =
         time_periods
-    Enum.map(&calculate_period_performance/1)
+        |> Enum.map(&calculate_period_performance/1)
 
       if length(performance_scores) > 1 do
         variance = calculate_variance(performance_scores)
@@ -1069,28 +1072,28 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   defp identify_behavioral_patterns(killmails) do
     # Identify specific behavioral patterns
     solo_hunter_pattern =
-      if is_solo_hunter(killmails) do
+      if solo_hunter?(killmails) do
         [:solo_hunter]
       else
         []
       end
 
     fleet_anchor_pattern =
-      if is_fleet_anchor(killmails) do
+      if fleet_anchor?(killmails) do
         [:fleet_anchor]
       else
         []
       end
 
     opportunist_pattern =
-      if is_opportunist(killmails) do
+      if opportunist?(killmails) do
         [:opportunist]
       else
         []
       end
 
     specialist_pattern =
-      if is_specialist(killmails) do
+      if specialist?(killmails) do
         [:specialist]
       else
         []
@@ -1099,7 +1102,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     solo_hunter_pattern ++ fleet_anchor_pattern ++ opportunist_pattern ++ specialist_pattern
   end
 
-  defp is_solo_hunter(killmails) do
+  defp solo_hunter?(killmails) do
     solo_kills =
       Enum.count(killmails, fn km ->
         case km.raw_data do
@@ -1117,7 +1120,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     solo_rate > 0.6
   end
 
-  defp is_fleet_anchor(killmails) do
+  defp fleet_anchor?(killmails) do
     fleet_kills =
       Enum.count(killmails, fn km ->
         case km.raw_data do
@@ -1135,7 +1138,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     fleet_rate > 0.7
   end
 
-  defp is_opportunist(killmails) do
+  defp opportunist?(killmails) do
     # High value targets relative to own ship usage
     high_value_kills =
       Enum.count(killmails, fn km ->
@@ -1148,7 +1151,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     opportunist_rate > 0.3
   end
 
-  defp is_specialist(killmails) do
+  defp specialist?(killmails) do
     ship_types = extract_ship_types_used(killmails)
 
     if map_size(ship_types) == 0 do

@@ -34,12 +34,11 @@ defmodule EveDmv.Database.QueryUtils do
 
     base_query =
       Ash.Query.new(KillmailEnriched)
-
-    Ash.Query.load(load_assocs)
-    Ash.Query.filter(killmail_time >= ^start_date)
-    Ash.Query.filter(killmail_time <= ^end_date)
-    Ash.Query.filter(exists(participants, corporation_id == ^corporation_id))
-    Ash.Query.sort([{order_by, :desc}])
+      |> Ash.Query.load(load_assocs)
+      |> Ash.Query.filter(killmail_time >= ^start_date)
+      |> Ash.Query.filter(killmail_time <= ^end_date)
+      |> Ash.Query.filter(exists(participants, corporation_id == ^corporation_id))
+      |> Ash.Query.sort([{order_by, :desc}])
 
     final_query =
       if limit do
@@ -72,12 +71,11 @@ defmodule EveDmv.Database.QueryUtils do
 
     character_query =
       Ash.Query.new(KillmailEnriched)
-
-    Ash.Query.load(load_assocs)
-    Ash.Query.filter(killmail_time >= ^start_date)
-    Ash.Query.filter(killmail_time <= ^end_date)
-    Ash.Query.filter(exists(participants, character_id == ^character_id))
-    Ash.Query.sort([{order_by, :desc}])
+      |> Ash.Query.load(load_assocs)
+      |> Ash.Query.filter(killmail_time >= ^start_date)
+      |> Ash.Query.filter(killmail_time <= ^end_date)
+      |> Ash.Query.filter(exists(participants, character_id == ^character_id))
+      |> Ash.Query.sort([{order_by, :desc}])
 
     limited_query =
       if limit do
@@ -110,12 +108,11 @@ defmodule EveDmv.Database.QueryUtils do
 
     participant_query =
       Ash.Query.new(Participant)
-
-    Ash.Query.filter(character_id == ^character_id)
-    Ash.Query.filter(updated_at >= ^start_date)
-    Ash.Query.filter(updated_at <= ^end_date)
-    Ash.Query.load(load_assocs)
-    Ash.Query.sort([{:updated_at, :desc}])
+      |> Ash.Query.filter(character_id == ^character_id)
+      |> Ash.Query.filter(killmail_time >= ^start_date)
+      |> Ash.Query.filter(killmail_time <= ^end_date)
+      |> Ash.Query.load(load_assocs)
+      |> Ash.Query.sort([{:killmail_time, :desc}])
 
     final_participant_query =
       if limit do
@@ -149,9 +146,8 @@ defmodule EveDmv.Database.QueryUtils do
 
     base_query =
       Ash.Query.new(Participant)
-
-    Ash.Query.filter(killmail_id in ^killmail_ids)
-    Ash.Query.load(load_assocs)
+      |> Ash.Query.filter(killmail_id in ^killmail_ids)
+      |> Ash.Query.load(load_assocs)
 
     query =
       if exclude_character do
@@ -182,9 +178,8 @@ defmodule EveDmv.Database.QueryUtils do
 
     base_query =
       Ash.Query.new(CharacterStats)
-
-    Ash.Query.filter(corporation_id == ^corporation_id)
-    Ash.Query.load(load_assocs)
+      |> Ash.Query.filter(corporation_id == ^corporation_id)
+      |> Ash.Query.load(load_assocs)
 
     query =
       if active_only do

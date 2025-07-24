@@ -30,9 +30,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedCalcu
     else
       damage_contributions =
         attacker_killmails
-
-      Enum.map(&extract_damage_contribution/1)
-      Enum.filter(&(&1 > 0))
+        |> Enum.map(&extract_damage_contribution/1)
+        |> Enum.filter(&(&1 > 0))
 
       if Enum.empty?(damage_contributions) do
         0.0

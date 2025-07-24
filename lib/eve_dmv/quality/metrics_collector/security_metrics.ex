@@ -71,7 +71,7 @@ defmodule EveDmv.Quality.MetricsCollector.SecurityMetrics do
   defp run_dependency_audit do
     # Check for hex security advisory database
     case File.read("mix.lock") do
-      {:ok, content} ->
+      {:ok, _content} ->
         # Basic check - in real scenario would use hex API
         %{status: "passed", vulnerabilities: 0}
 

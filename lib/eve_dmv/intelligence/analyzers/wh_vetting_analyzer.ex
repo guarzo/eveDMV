@@ -168,7 +168,7 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
         alliance_name = Map.get(km, :attacker_alliance_name, "")
 
         # Check if participants list exists, otherwise check corp/alliance names
-        if is_list(participants) and length(participants) > 0 do
+        if is_list(participants) and not Enum.empty?(participants) do
           has_eviction_group_participation?(participants, eviction_corps)
         else
           # Check known eviction group names
@@ -178,9 +178,9 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
 
     %{
       eviction_group_associations: length(eviction_activity),
-      has_eviction_ties: length(eviction_activity) > 0,
+      has_eviction_ties: not Enum.empty?(eviction_activity),
       # Test expects this key
-      eviction_group_detected: length(eviction_activity) > 0,
+      eviction_group_detected: not Enum.empty?(eviction_activity),
       # Test expects this key
       known_groups: extract_known_groups(eviction_activity),
       # Test expects this key
@@ -747,7 +747,7 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
       0.0
     else
       # Higher confidence when eviction groups are detected
-      if length(eviction_activity) > 0 do
+      if not Enum.empty?(eviction_activity) do
         # Base confidence for detection
         base_confidence = 0.7
         # Bonus for multiple detections

@@ -212,7 +212,7 @@ defmodule Mix.Tasks.Eve.Performance do
   defp generate_performance_report do
     Mix.shell().info("=== Performance Report Generation ===\n")
 
-    timestamp = DateTime.utc_now() |> DateTime.to_iso8601()
+    timestamp = DateTime.to_iso8601(DateTime.utc_now())
 
     Mix.shell().info("Generating comprehensive performance report...")
 
@@ -235,7 +235,7 @@ defmodule Mix.Tasks.Eve.Performance do
     }
 
     # Save report to file
-    report_filename = "performance_report_#{DateTime.utc_now() |> DateTime.to_unix()}.json"
+    report_filename = "performance_report_#{DateTime.to_unix(DateTime.utc_now())}.json"
     report_path = Path.join("tmp", report_filename)
 
     File.mkdir_p!("tmp")

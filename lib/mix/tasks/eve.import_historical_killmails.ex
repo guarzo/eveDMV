@@ -31,6 +31,7 @@ defmodule Mix.Tasks.Eve.ImportHistoricalKillmails do
 
   use Mix.Task
 
+  alias Ecto.Adapters.SQL
   alias EveDmv.Historical.KillmailImporter
 
   require Logger
@@ -126,7 +127,7 @@ defmodule Mix.Tasks.Eve.ImportHistoricalKillmails do
     end
 
     # Check table exists
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, "SELECT COUNT(*) FROM killmails_raw LIMIT 1", []) do
+    case SQL.query(EveDmv.Repo, "SELECT COUNT(*) FROM killmails_raw LIMIT 1", []) do
       {:ok, _} ->
         Logger.info("✅ killmails_raw table exists")
 
@@ -154,31 +155,29 @@ defmodule Mix.Tasks.Eve.ImportHistoricalKillmails do
   end
 
   defp validate_file_structure(file_path) do
-    try do
-      case File.read(file_path) do
-        {:ok, content} ->
-          data = Jason.decode!(content)
+    case File.read(file_path) do
+      {:ok, content} ->
+        data = Jason.decode!(content)
 
-          unless is_list(data) do
-            raise "Root element must be array"
-          end
+        unless is_list(data) do
+          raise "Root element must be array"
+        end
 
-          if Enum.empty?(data) do
-            raise "File is empty"
-          end
+        if Enum.empty?(data) do
+          raise "File is empty"
+        end
 
-          # Validate first record structure
-          first_record = hd(data)
-          validate_killmail_structure(first_record)
+        # Validate first record structure
+        first_record = hd(data)
+        validate_killmail_structure(first_record)
 
-          :ok
+        :ok
 
-        {:error, reason} ->
-          {:error, "Cannot read file: #{reason}"}
-      end
-    rescue
-      error -> {:error, Exception.message(error)}
+      {:error, reason} ->
+        {:error, "Cannot read file: #{reason}"}
     end
+  rescue
+    error -> {:error, Exception.message(error)}
   end
 
   defp validate_killmail_structure(killmail) do
@@ -186,21 +185,19 @@ defmodule Mix.Tasks.Eve.ImportHistoricalKillmails do
   end
 
   defp import_file(file_path, batch_size, dry_run) do
-    try do
-      content = File.read!(file_path)
-      killmails = Jason.decode!(content)
+    content = File.read!(file_path)
+    killmails = Jason.decode!(content)
 
-      Logger.info("Found #{length(killmails)} killmails in #{Path.basename(file_path)}")
+    Logger.info("Found #{length(killmails)} killmails in #{Path.basename(file_path)}")
 
-      if dry_run do
-        Logger.info("DRY RUN: Would import #{length(killmails)} records")
-        {:ok, length(killmails)}
-      else
-        import_killmails_in_batches(killmails, batch_size)
-      end
-    rescue
-      error -> {:error, Exception.message(error)}
+    if dry_run do
+      Logger.info("DRY RUN: Would import #{length(killmails)} records")
+      {:ok, length(killmails)}
+    else
+      import_killmails_in_batches(killmails, batch_size)
     end
+  rescue
+    error -> {:error, Exception.message(error)}
   end
 
   defp import_killmails_in_batches(killmails, batch_size) do

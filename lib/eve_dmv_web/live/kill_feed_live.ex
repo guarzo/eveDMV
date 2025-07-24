@@ -31,12 +31,11 @@ defmodule EveDmvWeb.KillFeedLive do
 
     socket =
       socket
-
-    assign(:killmails, killmails)
-    assign(:system_stats, system_stats)
-    assign(:total_kills_today, length(killmails))
-    assign(:total_isk_destroyed, DisplayService.calculate_total_isk(killmails))
-    stream(:killmail_stream, killmails)
+      |> assign(:killmails, killmails)
+      |> assign(:system_stats, system_stats)
+      |> assign(:total_kills_today, length(killmails))
+      |> assign(:total_isk_destroyed, DisplayService.calculate_total_isk(killmails))
+      |> stream(:killmail_stream, killmails)
 
     {:ok, socket}
   end
@@ -54,17 +53,14 @@ defmodule EveDmvWeb.KillFeedLive do
 
     socket =
       socket
-
-    assign(:killmails, limited_killmails)
-    assign(:system_stats, system_stats)
-    assign(:total_kills_today, socket.assigns.total_kills_today + 1)
-
-    assign(
-      :total_isk_destroyed,
-      Decimal.add(socket.assigns.total_isk_destroyed, new_killmail.total_value)
-    )
-
-    stream_insert(:killmail_stream, new_killmail, at: 0)
+      |> assign(:killmails, limited_killmails)
+      |> assign(:system_stats, system_stats)
+      |> assign(:total_kills_today, socket.assigns.total_kills_today + 1)
+      |> assign(
+        :total_isk_destroyed,
+        Decimal.add(socket.assigns.total_isk_destroyed, new_killmail.total_value)
+      )
+      |> stream_insert(:killmail_stream, new_killmail, at: 0)
 
     {:noreply, socket}
   end

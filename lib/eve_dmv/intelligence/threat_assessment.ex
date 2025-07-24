@@ -192,13 +192,11 @@ defmodule EveDmv.Intelligence.ThreatAssessment do
 
     # Add specific strategies based on indicators
     base_strategies
-
-    maybe_add_strategy(
+    |> maybe_add_strategy(
       threat_indicators.combat_effectiveness > 0.7,
       "Combat threat protocols"
     )
-
-    maybe_add_strategy(
+    |> maybe_add_strategy(
       threat_indicators.intelligence_gathering > 0.6,
       "Counter-intelligence measures"
     )
@@ -216,7 +214,7 @@ defmodule EveDmv.Intelligence.ThreatAssessment do
 
   defp get_character_stats(character_id) do
     CharacterStats
-    Ash.Query.filter(character_id == ^character_id)
-    Ash.read(domain: Api)
+    |> Ash.Query.filter(character_id == character_id)
+    |> Ash.read(domain: Api)
   end
 end

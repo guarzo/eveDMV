@@ -8,7 +8,6 @@ defmodule EveDmv.Database.MaterializedViewManager do
 
   use GenServer
 
-  alias EveDmv.Database.CacheInvalidator
   alias EveDmv.Database.MaterializedViewManager.ViewLifecycle
   alias EveDmv.Database.MaterializedViewManager.ViewMetrics
   alias EveDmv.Database.MaterializedViewManager.ViewQueryService

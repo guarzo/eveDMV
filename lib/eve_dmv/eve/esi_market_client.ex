@@ -127,9 +127,8 @@ defmodule EveDmv.Eve.EsiMarketClient do
 
   defp get_highest_price(orders) do
     orders
-    Enum.max_by(& &1["price"], fn -> nil end)
-
-    case do
+    |> Enum.max_by(& &1["price"], fn -> nil end)
+    |> case do
       nil -> nil
       order -> order["price"]
     end
@@ -139,9 +138,8 @@ defmodule EveDmv.Eve.EsiMarketClient do
 
   defp get_lowest_price(orders) do
     orders
-    Enum.min_by(& &1["price"], fn -> nil end)
-
-    case do
+    |> Enum.min_by(& &1["price"], fn -> nil end)
+    |> case do
       nil -> nil
       order -> order["price"]
     end

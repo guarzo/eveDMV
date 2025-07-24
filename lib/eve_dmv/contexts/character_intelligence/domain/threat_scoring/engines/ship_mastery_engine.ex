@@ -148,10 +148,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
 
     sorted_ships =
       ship_types_map
-
-    Enum.sort_by(&elem(&1, 1), :desc)
-    # Top 5 most used ships
-    Enum.take(5)
+      |> Enum.sort_by(&elem(&1, 1), :desc)
+      # Top 5 most used ships
+      |> Enum.take(5)
 
     %{
       most_used_ships: sorted_ships,

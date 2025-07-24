@@ -103,7 +103,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.CommunityManager do
   end
 
   defp update_report_ratings(battle_report, rating_record) do
-    current_ratings = Map.get(battle_report, :community_features, %{}) |> Map.get(:ratings, [])
+    current_ratings = Map.get(Map.get(battle_report, :community_features, %{}), :ratings, [])
     updated_ratings = [rating_record | current_ratings]
 
     # Calculate new statistics
@@ -136,9 +136,8 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.CommunityManager do
     Enum.reduce(all_categories, %{}, fn category, acc ->
       category_ratings =
         ratings
-
-      Enum.map(&Map.get(&1.category_ratings, category))
-      Enum.filter(& &1)
+        |> Enum.map(&Map.get(&1.category_ratings, category))
+        |> Enum.filter(& &1)
 
       if length(category_ratings) > 0 do
         average = Enum.sum(category_ratings) / length(category_ratings)
@@ -161,10 +160,10 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.CommunityManager do
 
     # Category balance factor
     scores =
-      Map.values(category_averages)
-
-    Enum.filter(fn avg -> avg > 0 end)
-    Enum.map(fn avg -> avg / 10.0 end)
+      category_averages
+      |> Map.values()
+      |> Enum.filter(fn avg -> avg > 0 end)
+      |> Enum.map(fn avg -> avg / 10.0 end)
 
     category_balance =
       case scores do
@@ -246,8 +245,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.CommunityManager do
   defp analyze_curation_metrics(reports) do
     analyzed_reports =
       reports
-
-    Enum.map(fn report ->
+      |> Enum.map(fn report ->
       engagement_score = calculate_engagement_score(report)
       tactical_value = assess_tactical_value(report)
       educational_value = assess_educational_value(report)
@@ -280,18 +278,17 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.CommunityManager do
       Enum.reduce(categories, %{}, fn category, acc ->
         category_reports =
           reports
-
-        Enum.filter(&meets_category_criteria(&1, category))
-        Enum.sort_by(&get_category_score(&1, category), :desc)
-        Enum.take(10) |> Enum.with_index()
-
-        Enum.map(fn {report, index} ->
-          Map.merge(report, %{
-            featured_category: category,
-            category_rank: index + 1,
-            category_score: get_category_score(report, category)
-          })
-        end)
+          |> Enum.filter(&meets_category_criteria(&1, category))
+          |> Enum.sort_by(&get_category_score(&1, category), :desc)
+          |> Enum.take(10)
+          |> Enum.with_index()
+          |> Enum.map(fn {report, index} ->
+            Map.merge(report, %{
+              featured_category: category,
+              category_rank: index + 1,
+              category_score: get_category_score(report, category)
+            })
+          end)
 
         Map.put(acc, category, category_reports)
       end)
@@ -301,9 +298,10 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.CommunityManager do
 
   defp select_featured_battles(categorized_reports, max_results) do
     all_candidates =
-      Map.values(categorized_reports) |> List.flatten()
-
-    Enum.sort_by(& &1.curation_metrics.overall_curation_score, :desc)
+      categorized_reports
+      |> Map.values()
+      |> List.flatten()
+      |> Enum.sort_by(& &1.curation_metrics.overall_curation_score, :desc)
 
     selected = select_diverse_reports(all_candidates, max_results)
     {:ok, selected}

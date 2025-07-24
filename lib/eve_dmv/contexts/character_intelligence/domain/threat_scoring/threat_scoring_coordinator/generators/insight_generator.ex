@@ -54,20 +54,16 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
       # Query killmails where character was involved as victim or attacker
       victim_killmails =
         KillmailRaw
-
-      Api.read!()
-
-      Enum.filter(fn km ->
+        |> Api.read!()
+        |> Enum.filter(fn km ->
         km.victim_character_id == character_id and
           km.killmail_time >= thirty_days_ago
       end)
 
       attacker_killmails =
         KillmailRaw
-
-      Api.read!()
-
-      Enum.filter(fn km ->
+        |> Api.read!()
+        |> Enum.filter(fn km ->
         km.killmail_time >= thirty_days_ago and
           Enum.any?(km.attackers || [], fn attacker ->
             attacker.character_id == character_id
@@ -174,9 +170,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
   defp analyze_fleet_participation(killmails) do
     fleet_sizes =
       killmails
-
-    Enum.map(fn km -> length(km.attackers || []) end)
-    Enum.filter(fn size -> size > 0 end)
+      |> Enum.map(fn km -> length(km.attackers || []) end)
+      |> Enum.filter(fn size -> size > 0 end)
 
     case fleet_sizes do
       [] -> 0.0

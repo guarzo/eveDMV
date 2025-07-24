@@ -232,17 +232,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
       index == 0 ->
         :first_blood
 
-      is_capital_ship(ship_type_id) ->
+      capital_ship?(ship_type_id) ->
         :capital_kill
 
-      is_logistics_ship(ship_type_id) or
+      logistics_ship?(ship_type_id) or
           ship_name =~ ~r/Logistics|Basilisk|Guardian|Oneiros|Scimitar/i ->
         :logistics_kill
 
-      is_command_ship(ship_type_id) or ship_name =~ ~r/Command|Booster/i ->
+      command_ship?(ship_type_id) or ship_name =~ ~r/Command|Booster/i ->
         :command_kill
 
-      is_ewar_ship(ship_type_id) or ship_name =~ ~r/Blackbird|Falcon|Rook|Arazu|Lachesis/i ->
+      ewar_ship?(ship_type_id) or ship_name =~ ~r/Blackbird|Falcon|Rook|Arazu|Lachesis/i ->
         :ewar_kill
 
       is_high_value ->
@@ -306,8 +306,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
   defp identify_key_moments(timeline_events, killmails) do
     # Sophisticated key moment detection with context
     significant_events =
-      timeline_events
-      |> Enum.filter(fn event ->
+      Enum.filter(timeline_events, fn event ->
         event.tactical_significance not in [:standard_kill]
       end)
 
@@ -319,7 +318,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
 
     # Combine all key moments
     all_moments =
-      (significant_events |> Enum.map(&event_to_key_moment/1)) ++
+      Enum.map(significant_events, &event_to_key_moment/1) ++
         momentum_shifts ++
         turning_points
 
@@ -363,15 +362,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
       window_count = max(1, div(duration_seconds, 60))
 
       # Calculate intensity for each time window
-      0..window_count
-      |> Enum.map(fn window_index ->
+      Enum.map(0..window_count, fn window_index ->
         window_start = DateTime.add(start_time, window_index * 60, :second)
         window_end = DateTime.add(window_start, 60, :second)
 
         # Get events in this window
         window_events =
-          timeline_events
-          |> Enum.filter(fn event ->
+          Enum.filter(timeline_events, fn event ->
             DateTime.compare(event.timestamp, window_start) != :lt and
               DateTime.compare(event.timestamp, window_end) == :lt
           end)
@@ -454,8 +451,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
     value_escalations = detect_value_based_escalations(timeline_events)
 
     # Combine and sort all escalation points
-    (escalation_points ++ kill_rate_escalations ++ capital_escalations ++ value_escalations)
-    |> Enum.sort_by(& &1.timestamp)
+    Enum.sort_by(escalation_points ++ kill_rate_escalations ++ capital_escalations ++ value_escalations, & &1.timestamp)
   end
 
   defp identify_de_escalation_points(timeline_events, intensity_curve) do
@@ -488,15 +484,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
     withdrawal_points = detect_tactical_withdrawals(timeline_events)
 
     # Combine and sort all de-escalation points
-    (de_escalation_points ++ kill_rate_drops ++ lull_starts ++ withdrawal_points)
-    |> Enum.sort_by(& &1.timestamp)
+    Enum.sort_by(de_escalation_points ++ kill_rate_drops ++ lull_starts ++ withdrawal_points, & &1.timestamp)
   end
 
   # Additional helper functions for timeline analysis
 
   defp categorize_event_type(killmail) do
     cond do
-      is_capital_ship(Map.get(killmail, :victim_ship_type_id, 0)) -> :capital_kill
+      capital_ship?(Map.get(killmail, :victim_ship_type_id, 0)) -> :capital_kill
       Map.get(killmail, :attacker_count, 0) > 50 -> :fleet_kill
       Map.get(killmail, :attacker_count, 0) == 1 -> :solo_kill
       true -> :small_gang_kill
@@ -588,7 +583,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
 
     %{
       unique_targets: map_size(victim_counts),
-      max_focus: Map.values(victim_counts) |> Enum.max(fn -> 0 end),
+      max_focus: victim_counts |> Map.values() |> Enum.max(fn -> 0 end),
       focus_ratio: calculate_focus_ratio(victim_counts)
     }
   end
@@ -682,30 +677,30 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
     else
       events
       |> Enum.chunk_every(5, 1, :discard)
-      |> Enum.filter(&is_momentum_shift/1)
+      |> Enum.filter(&momentum_shift?/1)
       |> Enum.map(&create_momentum_shift_moment/1)
     end
   end
 
   # Ship type classification helpers
-  defp is_capital_ship(type_id) do
+  defp capital_ship?(type_id) do
     # Capital ship type IDs (simplified - in reality would use EVE SDE)
-    type_id in [20185, 19720, 19722, 19724, 19726, 23757, 23911, 23915, 24483]
+    type_id in [20_185, 19_720, 19_722, 19_724, 19_726, 23_757, 23_911, 23_915, 24_483]
   end
 
-  defp is_logistics_ship(type_id) do
+  defp logistics_ship?(type_id) do
     # Logistics ship type IDs
-    type_id in [11985, 11987, 11989, 11978, 23915, 11969, 11971]
+    type_id in [11_985, 11_987, 11_989, 11_978, 23_915, 11_969, 11_971]
   end
 
-  defp is_command_ship(type_id) do
+  defp command_ship?(type_id) do
     # Command ship type IDs
-    type_id in [22442, 22444, 22446, 22448, 22452, 22456, 22460, 22464]
+    type_id in [22_442, 22_444, 22_446, 22_448, 22_452, 22_456, 22_460, 22_464]
   end
 
-  defp is_ewar_ship(type_id) do
+  defp ewar_ship?(type_id) do
     # Electronic warfare ship type IDs
-    type_id in [11957, 11959, 11961, 11963, 11965, 11969, 11971]
+    type_id in [11_957, 11_959, 11_961, 11_963, 11_965, 11_969, 11_971]
   end
 
   defp calculate_average_kill_value(killmails) do
@@ -836,8 +831,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
   defp suggest_optimal_target_sequence(events, _fleet_analysis) do
     # Suggest optimal targeting order based on tactical value
     events
-
-    Enum.sort_by(fn event ->
+    |> Enum.sort_by(fn event ->
       case event.tactical_significance do
         :logistics_kill -> 1
         :command_kill -> 2
@@ -847,9 +841,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
         _ -> 6
       end
     end)
-
-    Enum.take(10)
-    Enum.map(& &1.victim)
+    |> Enum.take(10)
+    |> Enum.map(& &1.victim)
   end
 
   # Helper functions for phase detection
@@ -862,20 +855,18 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
   end
 
   defp calculate_segment_value_rates(segments, killmails) do
-    segments
-
-    Enum.map(fn segment ->
+    Enum.map(segments, fn segment ->
       segment_ids = Enum.map(segment, & &1.sequence)
 
       segment_killmails =
         killmails
-
-      Enum.with_index(1)
-      Enum.filter(fn {_km, idx} -> idx in segment_ids end)
-      Enum.map(&elem(&1, 0))
+        |> Enum.with_index(1)
+        |> Enum.filter(fn {_km, idx} -> idx in segment_ids end)
+        |> Enum.map(&elem(&1, 0))
 
       segment_killmails
-      Enum.map(&Map.get(&1, :total_value, 0)) |> Enum.sum()
+      |> Enum.map(&Map.get(&1, :total_value, 0))
+      |> Enum.sum()
     end)
   end
 
@@ -890,9 +881,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
   defp detect_escalation_phases(kill_rates, _value_rates) do
     escalations =
       kill_rates
-
-    Enum.chunk_every(2, 1, :discard)
-    Enum.filter(fn [prev, curr] -> curr > prev * 1.5 end)
+      |> Enum.chunk_every(2, 1, :discard)
+      |> Enum.filter(fn [prev, curr] -> curr > prev * 1.5 end)
 
     if length(escalations) > 0, do: [:escalation], else: []
   end
@@ -1230,7 +1220,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
     |> length()
   end
 
-  defp is_momentum_shift(chunk) do
+  defp momentum_shift?(chunk) do
     # Detect if this chunk represents a momentum shift
     values = Enum.map(chunk, & &1.accumulated_value)
     kills = length(chunk)

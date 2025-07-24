@@ -352,21 +352,19 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
     # Sort by severity
     anomalies
-    Enum.sort_by(& &1.severity, :desc)
-    Enum.take(10)
+    |> Enum.sort_by(& &1.severity, :desc)
+    |> Enum.take(10)
   end
 
   defp group_by_character_activity(killmails) do
     killmails
-
-    Enum.flat_map(fn kill ->
+    |> Enum.flat_map(fn kill ->
       # Add victim
       victim_entry = {kill.victim_character_id, kill.solar_system_id, kill.killmail_time}
       # For now, we only have victim data readily available
       [victim_entry]
     end)
-
-    Enum.group_by(&elem(&1, 0))
+    |> Enum.group_by(&elem(&1, 0))
 
     Enum.map(fn {char_id, activities} ->
       systems_visited = activities |> Enum.map(&elem(&1, 1)) |> Enum.uniq()
@@ -384,19 +382,17 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
       systems = data.systems
       # Create pairs of consecutive systems (simplified - would need timestamps)
       systems
-      Enum.chunk_every(2, 1, :discard)
-      Enum.map(fn [from, to] -> {from, to} end)
+      |> Enum.chunk_every(2, 1, :discard)
+      |> Enum.map(fn [from, to] -> {from, to} end)
     end)
     |> Enum.frequencies()
 
     # Find most used corridors
     corridors =
       movement_pairs
-
-    Enum.sort_by(&elem(&1, 1), :desc)
-    Enum.take(10)
-
-    Enum.map(fn {{from, to}, count} ->
+      |> Enum.sort_by(&elem(&1, 1), :desc)
+      |> Enum.take(10)
+      |> Enum.map(fn {{from, to}, count} ->
       %{
         from_system: from,
         to_system: to,
@@ -575,13 +571,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   defp group_by_system_and_time(killmails) do
     # Group killmails by system and time window (hourly)
     killmails
-
-    Enum.group_by(fn km ->
+    |> Enum.group_by(fn km ->
       hour = DateTime.truncate(km.killmail_time, :second)
       {km.solar_system_id, hour}
     end)
-
-    Enum.map(fn {{system_id, hour}, kills} ->
+    |> Enum.map(fn {{system_id, hour}, kills} ->
       {{system_id, hour}, length(kills)}
     end)
     |> Map.new()
@@ -653,7 +647,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   defp extract_correlated_systems(strong_correlations) do
     # Extract unique systems that show correlation
     strong_correlations
-    Enum.flat_map(fn {{s1, s2}, _} -> [s1, s2] end) |> Enum.uniq() |> Enum.sort()
+    |> Enum.flat_map(fn {{s1, s2}, _} -> [s1, s2] end)
+    |> Enum.uniq()
+    |> Enum.sort()
   end
 
   defp calculate_overall_correlation_strength(correlations) do
@@ -663,8 +659,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
       # Average correlation strength
       total_correlation =
         correlations
-
-      Enum.map(&elem(&1, 1)) |> Enum.sum()
+        |> Enum.map(&elem(&1, 1))
+        |> Enum.sum()
       Float.round(total_correlation / length(correlations), 2)
     end
   end
@@ -693,10 +689,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   defp detect_cascading_patterns(correlations, _system_activity) do
     # Simplified cascading pattern detection
     correlations
-    Enum.filter(fn {_, score} -> score > 0.5 and score < 0.8 end)
-    Enum.take(3)
-
-    Enum.map(fn {{s1, s2}, score} ->
+    |> Enum.filter(fn {_, score} -> score > 0.5 and score < 0.8 end)
+    |> Enum.take(3)
+    |> Enum.map(fn {{s1, s2}, score} ->
       %{
         type: :cascading_activity,
         from_system: s1,
@@ -770,17 +765,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
   defp calculate_system_baselines(killmails) do
     killmails
-    Enum.group_by(& &1.solar_system_id)
-
-    Enum.map(fn {system_id, system_kills} ->
+    |> Enum.group_by(& &1.solar_system_id)
+    |> Enum.map(fn {system_id, system_kills} ->
       hourly_activity =
         system_kills
-
-      Enum.group_by(fn kill ->
-        DateTime.truncate(kill.killmail_time, :second)
-      end)
-
-      Enum.map(fn {_hour, kills} -> length(kills) end)
+        |> Enum.group_by(fn kill ->
+          DateTime.truncate(kill.killmail_time, :second)
+        end)
+        |> Enum.map(fn {_hour, kills} -> length(kills) end)
 
       avg_activity =
         if length(hourly_activity) > 0 do
@@ -796,12 +788,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
   defp detect_activity_spikes(killmails, baselines) do
     killmails
-
-    Enum.group_by(fn kill ->
+    |> Enum.group_by(fn kill ->
       {kill.solar_system_id, DateTime.truncate(kill.killmail_time, :second)}
     end)
-
-    Enum.flat_map(fn {{system_id, hour}, hour_kills} ->
+    |> Enum.flat_map(fn {{system_id, hour}, hour_kills} ->
       baseline = get_in(baselines, [system_id, :average_hourly_activity]) || 0
 
       if baseline > 0 and length(hour_kills) > baseline * 3 do
@@ -827,9 +817,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   defp detect_timing_anomalies(killmails) do
     # Detect unusual timing patterns (e.g., activity at normally quiet hours)
     killmails
-    Enum.group_by(& &1.killmail_time.hour)
-
-    Enum.flat_map(fn {hour, hour_kills} ->
+    |> Enum.group_by(& &1.killmail_time.hour)
+    |> Enum.flat_map(fn {hour, hour_kills} ->
       # Consider hours 0-6 as "quiet hours" in EVE time
       if hour >= 0 and hour <= 6 and length(hour_kills) > 10 do
         [

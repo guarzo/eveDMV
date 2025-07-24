@@ -224,10 +224,9 @@ defmodule EveDmv.Quality.MetricsCollector.CiCdMetrics do
 
   defp count_script_lines(content) do
     content
-    String.split("\n")
-    Enum.reject(&(String.trim(&1) == "" or String.starts_with?(String.trim(&1), "#")))
-
-    length()
+    |> String.split("\n")
+    |> Enum.reject(&(String.trim(&1) == "" or String.starts_with?(String.trim(&1), "#")))
+    |> length()
   end
 
   defp calculate_average_script_quality(quality_checks) do

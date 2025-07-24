@@ -6,8 +6,9 @@ defmodule EveDmv.Database.QueryPerformance do
   and identify bottlenecks.
   """
 
-  require EveDmv.Monitoring.PerformanceTracker
-  import EveDmv.Monitoring.PerformanceTracker, only: [time_query: 3]
+  alias EveDmv.Monitoring.PerformanceTracker
+  import PerformanceTracker, only: [time_query: 3]
+  require PerformanceTracker
 
   @doc """
   Execute a query with performance tracking.
@@ -57,7 +58,7 @@ defmodule EveDmv.Database.QueryPerformance do
   """
   defmacro track_query(name, opts \\ [], do: block) do
     quote do
-      EveDmv.Monitoring.PerformanceTracker.time_query unquote(name), unquote(opts) do
+      PerformanceTracker.time_query unquote(name), unquote(opts) do
         unquote(block)
       end
     end
@@ -150,8 +151,7 @@ defmodule EveDmv.Database.QueryPerformance do
     case EveDmv.Repo.query(sql, [table_name]) do
       {:ok, %{rows: rows}} ->
         rows
-
-        Enum.map(fn [_schema, _table, column, n_distinct, correlation] ->
+        |> Enum.map(fn [_schema, _table, column, n_distinct, correlation] ->
           %{
             column: column,
             distinct_values: n_distinct,

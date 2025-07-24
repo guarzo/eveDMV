@@ -581,7 +581,8 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   end
 
   defp extract_key_moments_from_phases(phases) do
-    Enum.flat_map(phases, fn phase ->
+    phases
+    |> Enum.flat_map(fn phase ->
       Enum.map(Map.get(phase, :key_events, []), fn event ->
         %{
           time: event.timestamp,
@@ -591,8 +592,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
         }
       end)
     end)
-
-    Enum.sort_by(& &1.time)
+    |> Enum.sort_by(& &1.time)
   end
 
   defp generate_tactical_summary(phases, transitions) do

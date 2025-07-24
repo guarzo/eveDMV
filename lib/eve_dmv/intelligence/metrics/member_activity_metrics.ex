@@ -22,9 +22,10 @@ defmodule EveDmv.Intelligence.Metrics.MemberActivityMetrics do
     # Weighted average
     weighted_score = activity_score * 0.4 + participation_score * 0.35 + consistency_score * 0.25
 
-    round(weighted_score)
-    max(0)
-    min(100)
+    weighted_score
+    |> round()
+    |> max(0)
+    |> min(100)
   end
 
   @doc """
@@ -142,8 +143,8 @@ defmodule EveDmv.Intelligence.Metrics.MemberActivityMetrics do
     total_risk = base_risk + trend_risk + participation_adjustment
 
     total_risk
-    max(0)
-    min(100)
+    |> max(0)
+    |> min(100)
   end
 
   @doc """
@@ -168,8 +169,8 @@ defmodule EveDmv.Intelligence.Metrics.MemberActivityMetrics do
     total_risk = base_risk + timezone_risk
 
     total_risk
-    max(0)
-    min(100)
+    |> max(0)
+    |> min(100)
   end
 
   @doc """

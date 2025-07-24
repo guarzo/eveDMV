@@ -392,7 +392,7 @@ defmodule EveDmv.Contexts.BattleSharing do
     # that would be returned by the BattleCurator's fetch_battle_report function
     full_report = %{
       report_id: report_id,
-      battle_id: "battle_#{:crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)}",
+      battle_id: "battle_#{Base.encode16(:crypto.strong_rand_bytes(8), case: :lower)}",
       creator_character_id: 12_345,
       creator_name: "Battle Analyst",
       title: "Comprehensive Battle Report #{report_id}",

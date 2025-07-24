@@ -19,10 +19,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
 
     participants =
       killmails
-
-    Enum.flat_map(&extract_participants_from_killmail/1)
-    Enum.uniq_by(& &1.character_id)
-    Enum.map(&enrich_participant_data/1)
+      |> Enum.flat_map(&extract_participants_from_killmail/1)
+      |> Enum.uniq_by(& &1.character_id)
+      |> Enum.map(&enrich_participant_data/1)
 
     %{
       participants: participants,
@@ -62,19 +61,16 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
 
     role_distribution =
       participants
-
-    Enum.group_by(& &1.tactical_role)
-
-    Enum.map(fn {role, role_participants} ->
-      {role,
-       %{
-         count: length(role_participants),
-         effectiveness: calculate_role_effectiveness(role_participants),
-         key_players: identify_key_players(role_participants)
-       }}
-    end)
-
-    Enum.into(%{})
+      |> Enum.group_by(& &1.tactical_role)
+      |> Enum.map(fn {role, role_participants} ->
+        {role,
+         %{
+           count: length(role_participants),
+           effectiveness: calculate_role_effectiveness(role_participants),
+           key_players: identify_key_players(role_participants)
+         }}
+      end)
+      |> Enum.into(%{})
 
     %{
       role_distribution: role_distribution,

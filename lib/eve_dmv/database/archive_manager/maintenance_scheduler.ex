@@ -433,11 +433,10 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
   end
 
   defp generate_maintenance_recommendations(archive_policies) do
-    recommendations =
-      []
+    recommendations = []
 
-    add_backlog_recommendation(archive_policies)
-    add_large_archive_recommendation(archive_policies)
+    recommendations = add_backlog_recommendation(recommendations, archive_policies)
+    recommendations = add_large_archive_recommendation(recommendations, archive_policies)
 
     if Enum.empty?(recommendations) do
       ["No maintenance recommendations at this time"]

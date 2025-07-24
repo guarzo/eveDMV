@@ -305,12 +305,12 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
       query_text = String.upcase(query.query)
 
       acc
-      update_if_pattern(query_text, :select_queries, "SELECT")
-      update_if_pattern(query_text, :insert_queries, "INSERT")
-      update_if_pattern(query_text, :update_queries, "UPDATE")
-      update_if_pattern(query_text, :delete_queries, "DELETE")
-      update_if_pattern(query_text, :join_heavy_queries, "JOIN")
-      update_if_pattern(query_text, :aggregation_queries, ["GROUP BY", "COUNT", "SUM", "AVG"])
+      |> update_if_pattern(query_text, :select_queries, "SELECT")
+      |> update_if_pattern(query_text, :insert_queries, "INSERT")
+      |> update_if_pattern(query_text, :update_queries, "UPDATE")
+      |> update_if_pattern(query_text, :delete_queries, "DELETE")
+      |> update_if_pattern(query_text, :join_heavy_queries, "JOIN")
+      |> update_if_pattern(query_text, :aggregation_queries, ["GROUP BY", "COUNT", "SUM", "AVG"])
     end)
   end
 

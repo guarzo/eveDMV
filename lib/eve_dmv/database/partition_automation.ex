@@ -156,7 +156,7 @@ defmodule EveDmv.Database.PartitionAutomation do
   # Private functions
 
   defp generate_partition_name(%Date{year: year, month: month}) do
-    month_str = Integer.to_string(month) |> String.pad_leading(2, "0")
+    month_str = String.pad_leading(Integer.to_string(month), 2, "0")
     "killmails_raw_y#{year}m#{month_str}"
   end
 

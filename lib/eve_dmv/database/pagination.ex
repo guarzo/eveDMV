@@ -18,14 +18,13 @@ defmodule EveDmv.Database.Pagination do
       paginate_query(query, page: 2, page_size: 20)
   """
   def paginate_query(query, opts \\ []) do
-    page = opts |> Keyword.get(:page, 1) |> max(1)
+    page = opts |> Keyword.get(:page, 1) |> Kernel.max(1)
 
     page_size =
       opts
-
-    Keyword.get(:page_size, @default_page_size)
-    min(@max_page_size)
-    max(1)
+      |> Keyword.get(:page_size, @default_page_size)
+      |> Kernel.min(@max_page_size)
+      |> Kernel.max(1)
 
     offset = (page - 1) * page_size
 
@@ -41,14 +40,13 @@ defmodule EveDmv.Database.Pagination do
   Execute a paginated query and return results with metadata.
   """
   def paginated_query(base_query, params, opts \\ []) do
-    page = max(Keyword.get(opts, :page, 1), 1)
+    page = Kernel.max(Keyword.get(opts, :page, 1), 1)
 
     page_size =
       opts
-
-    Keyword.get(:page_size, @default_page_size)
-    min(@max_page_size)
-    max(1)
+      |> Keyword.get(:page_size, @default_page_size)
+      |> Kernel.min(@max_page_size)
+      |> Kernel.max(1)
 
     offset = (page - 1) * page_size
 
@@ -95,9 +93,8 @@ defmodule EveDmv.Database.Pagination do
 
     limit =
       opts
-
-    Keyword.get(:limit, @default_page_size)
-    min(@max_page_size)
+      |> Keyword.get(:limit, @default_page_size)
+      |> Kernel.min(@max_page_size)
 
     direction = Keyword.get(opts, :direction, :desc)
 
@@ -128,8 +125,8 @@ defmodule EveDmv.Database.Pagination do
   """
   def build_pagination_links(current_page, total_pages, base_path) do
     # Show up to 5 page links around current page
-    start_page = max(1, current_page - 2)
-    end_page = min(total_pages, current_page + 2)
+    start_page = Kernel.max(1, current_page - 2)
+    end_page = Kernel.min(total_pages, current_page + 2)
 
     pages =
       Enum.map(start_page..end_page, fn page ->
@@ -158,13 +155,13 @@ defmodule EveDmv.Database.Pagination do
     page =
       case params["page"] do
         nil -> 1
-        page_str -> page_str(String.to_integer() |> max(1))
+        page_str -> String.to_integer(page_str) |> Kernel.max(1)
       end
 
     page_size =
       case params["page_size"] do
         nil -> @default_page_size
-        size_str -> size_str(String.to_integer() |> min(@max_page_size) |> max(1))
+        size_str -> String.to_integer(size_str) |> Kernel.min(@max_page_size) |> Kernel.max(1)
       end
 
     %{page: page, page_size: page_size}

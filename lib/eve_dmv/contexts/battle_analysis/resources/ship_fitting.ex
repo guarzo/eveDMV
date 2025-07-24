@@ -120,17 +120,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting do
         parsed = extract_fitting_from_killmail(killmail)
 
         changeset
-
-        Ash.Changeset.change_attribute(
+        |> Ash.Changeset.change_attribute(
           :name,
           "Detected: #{killmail.victim.ship_name || "Unknown"}"
         )
-
-        Ash.Changeset.change_attribute(:ship_type_id, killmail.victim.ship_type_id)
-        Ash.Changeset.change_attribute(:character_id, killmail.victim.character_id)
-        Ash.Changeset.change_attribute(:raw_fitting, inspect(killmail.items))
-        Ash.Changeset.change_attribute(:parsed_fitting, parsed)
-        Ash.Changeset.change_attribute(:source, :detected)
+        |> Ash.Changeset.change_attribute(:ship_type_id, killmail.victim.ship_type_id)
+        |> Ash.Changeset.change_attribute(:character_id, killmail.victim.character_id)
+        |> Ash.Changeset.change_attribute(:raw_fitting, inspect(killmail.items))
+        |> Ash.Changeset.change_attribute(:parsed_fitting, parsed)
+        |> Ash.Changeset.change_attribute(:source, :detected)
       end)
     end
 
@@ -144,8 +142,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting do
         stats = calculate_fitting_stats(fitting.parsed_fitting, fitting.ship_type_id)
 
         changeset
-        Ash.Changeset.change_attribute(:calculated_stats, stats)
-        Ash.Changeset.change_attribute(:last_calculated, DateTime.utc_now())
+        |> Ash.Changeset.change_attribute(:calculated_stats, stats)
+        |> Ash.Changeset.change_attribute(:last_calculated, DateTime.utc_now())
       end)
     end
 
@@ -365,8 +363,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting do
   defp estimate_dps_from_modules(parsed_fitting) do
     weapon_count =
       parsed_fitting[:high_slots]
-
-    Enum.count(fn mod ->
+      |> Enum.count(fn mod ->
       String.contains?(mod, [
         "Launcher",
         "Turret",

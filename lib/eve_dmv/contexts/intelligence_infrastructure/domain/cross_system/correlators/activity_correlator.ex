@@ -209,13 +209,12 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
     # Group by system
     results
-    Enum.group_by(& &1.system_id)
-
-    Enum.map(fn {system_id, hours} ->
+    |> Enum.group_by(& &1.system_id)
+    |> Enum.map(fn {system_id, hours} ->
       hourly_data =
         hours
-
-      Enum.map(fn h -> {h.hour, h.kill_count} end) |> Map.new()
+        |> Enum.map(fn h -> {h.hour, h.kill_count} end)
+        |> Map.new()
       {system_id, hourly_data}
     end)
     |> Map.new()
@@ -334,12 +333,13 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     synchronized_pairs =
       correlations
 
-    Enum.filter(fn {_pair, correlation} -> correlation > 0.7 end)
-    Enum.sort_by(&elem(&1, 1), :desc)
+    |> Enum.filter(fn {_pair, correlation} -> correlation > 0.7 end)
+    |> Enum.sort_by(&elem(&1, 1), :desc)
 
     # Extract unique systems
     synchronized_pairs
-    Enum.flat_map(fn {{s1, s2}, _} -> [s1, s2] end) |> Enum.uniq()
+    |> Enum.flat_map(fn {{s1, s2}, _} -> [s1, s2] end)
+    |> Enum.uniq()
   end
 
   defp analyze_synchronization_patterns(activity_data) do
@@ -570,10 +570,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
       # Find peaks (high activity with low variance = synchronized)
       time_correlations
-      Enum.filter(fn tc -> tc.total_activity > 5 and tc.variance < 10 end)
-      Enum.sort_by(& &1.total_activity, :desc)
-      Enum.take(5)
-      Enum.map(& &1.time)
+      |> Enum.filter(fn tc -> tc.total_activity > 5 and tc.variance < 10 end)
+      |> Enum.sort_by(& &1.total_activity, :desc)
+      |> Enum.take(5)
+      |> Enum.map(& &1.time)
     end
   end
 

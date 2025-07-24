@@ -220,19 +220,17 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
         # Count unique systems where participants from our system are active
         influenced_systems =
           killmails
-
-        Enum.filter(fn km ->
-          # Check if any participant is frequently active in our system
-          # This is simplified - would need historical data
-          Enum.any?(km.participants || [], fn p ->
-            # Simplified check - in reality would check historical activity
-            p.character_id && rem(p.character_id, 10) == rem(1, 10)
+          |> Enum.filter(fn km ->
+            # Check if any participant is frequently active in our system
+            # This is simplified - would need historical data
+            Enum.any?(km.participants || [], fn p ->
+              # Simplified check - in reality would check historical activity
+              p.character_id && rem(p.character_id, 10) == rem(1, 10)
+            end)
           end)
-        end)
-
-        |> Enum.map(& &1.solar_system_id)
-        |> Enum.uniq()
-        |> length()
+          |> Enum.map(& &1.solar_system_id)
+          |> Enum.uniq()
+          |> length()
 
         # Influence radius based on activity spread
         cond do

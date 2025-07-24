@@ -234,31 +234,11 @@ defmodule Mix.Tasks.Eve.MemoryAnalysis do
     process_percentage = percentage(memory_info.processes, memory_info.total)
     ets_percentage = percentage(memory_info.ets, memory_info.total)
 
-    issues = []
-
-    # Check for high memory usage
     issues =
-      if total_mb > 1000 do
-        ["High total memory usage (>1GB)" | issues]
-      else
-        issues
-      end
-
-    # Check for high process memory
-    issues =
-      if process_percentage > 70 do
-        ["High process memory percentage (>70%)" | issues]
-      else
-        issues
-      end
-
-    # Check for high ETS usage
-    issues =
-      if ets_percentage > 30 do
-        ["High ETS memory percentage (>30%)" | issues]
-      else
-        issues
-      end
+      []
+      |> maybe_add_issue(total_mb > 1000, "High total memory usage (>1GB)")
+      |> maybe_add_issue(process_percentage > 70, "High process memory percentage (>70%)")
+      |> maybe_add_issue(ets_percentage > 30, "High ETS memory percentage (>30%)")
 
     if Enum.empty?(issues) do
       Mix.shell().info("✅ Memory usage appears healthy")
@@ -297,6 +277,9 @@ defmodule Mix.Tasks.Eve.MemoryAnalysis do
     do: "#{Float.round(bytes / (1024 * 1024), 2)}MB"
 
   defp format_bytes(bytes), do: "#{Float.round(bytes / (1024 * 1024 * 1024), 2)}GB"
+
+  defp maybe_add_issue(issues, true, message), do: [message | issues]
+  defp maybe_add_issue(issues, false, _message), do: issues
 
   defp percentage(part, total) when total > 0, do: Float.round(part / total * 100, 1)
   defp percentage(_, _), do: 0.0

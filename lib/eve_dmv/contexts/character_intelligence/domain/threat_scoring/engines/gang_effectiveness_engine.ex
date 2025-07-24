@@ -239,14 +239,12 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
         # Sort by damage done and find character's position
         sorted_attackers =
           attackers
-
-        Enum.filter(&(&1["damage_done"] != nil))
-        Enum.sort_by(&(-(&1["damage_done"] || 0)))
+          |> Enum.filter(&(&1["damage_done"] != nil))
+          |> Enum.sort_by(&(-(&1["damage_done"] || 0)))
 
         character_position =
           sorted_attackers
-
-        Enum.find_index(&(&1["character_id"] == killmail.victim_character_id))
+          |> Enum.find_index(&(&1["character_id"] == killmail.victim_character_id))
 
         if character_position, do: character_position + 1, else: 999
 
@@ -434,10 +432,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
     # Analyze if character consistently engages at similar times in fights
     engagement_positions =
       killmails
-
-    Enum.map(&analyze_aggressor_position/1)
-    # Only consider meaningful positions
-    Enum.filter(&(&1 < 10))
+      |> Enum.map(&analyze_aggressor_position/1)
+      # Only consider meaningful positions
+      |> Enum.filter(&(&1 < 10))
 
     if length(engagement_positions) < 2 do
       0.5
@@ -447,9 +444,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
 
       variance =
         engagement_positions
-
-      Enum.map(&((&1 - avg_position) * (&1 - avg_position))) |> Enum.sum()
-      Kernel./(length(engagement_positions))
+        |> Enum.map(&((&1 - avg_position) * (&1 - avg_position)))
+        |> Enum.sum()
+        |> Kernel./(length(engagement_positions))
 
       # Lower variance = better consistency
       consistency_score = max(0.0, 1.0 - variance / 10.0)
@@ -642,9 +639,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
     # Good teams have balanced damage contribution
     damage_contributions =
       killmails
-
-    Enum.map(&extract_character_damage_contribution/1)
-    Enum.filter(&(&1 > 0))
+      |> Enum.map(&extract_character_damage_contribution/1)
+      |> Enum.filter(&(&1 > 0))
 
     if length(damage_contributions) < 2 do
       0.5
@@ -654,9 +650,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
 
       variance =
         damage_contributions
-
-      Enum.map(&((&1 - avg_contribution) * (&1 - avg_contribution))) |> Enum.sum()
-      Kernel./(length(damage_contributions))
+        |> Enum.map(&((&1 - avg_contribution) * (&1 - avg_contribution)))
+        |> Enum.sum()
+        |> Kernel./(length(damage_contributions))
 
       # Lower variance = better balance
       balance_score = max(0.0, 1.0 - variance)
@@ -670,8 +666,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
       when is_list(attackers) and is_number(total_damage) and total_damage > 0 ->
         character_attacker =
           attackers
-
-        Enum.find(&(&1["character_id"] == killmail.victim_character_id))
+          |> Enum.find(&(&1["character_id"] == killmail.victim_character_id))
 
         character_damage =
           case character_attacker do
@@ -690,17 +685,15 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
     # Analyze if gangs have complementary roles
     gang_compositions =
       killmails
-
-    Enum.map(&extract_gang_composition/1)
-    Enum.filter(&(map_size(&1) > 1))
+      |> Enum.map(&extract_gang_composition/1)
+      |> Enum.filter(&(map_size(&1) > 1))
 
     if Enum.empty?(gang_compositions) do
       0.5
     else
       synergy_scores =
         gang_compositions
-
-      Enum.map(&calculate_role_synergy_score/1)
+        |> Enum.map(&calculate_role_synergy_score/1)
 
       Enum.sum(synergy_scores) / length(synergy_scores)
     end

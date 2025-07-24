@@ -215,7 +215,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   @doc """
   Analyze constellation control patterns.
   """
-  def analyze_constellation_control_patterns(constellation_id) do
+  def analyze_constellation_control_patterns(_constellation_id) do
     # Analyze who controls the constellation based on kill patterns
     start_time = DateTime.add(DateTime.utc_now(), -14 * 24 * 3_600, :second)
 

@@ -196,9 +196,8 @@ defmodule EveDmv.Shared.ActivityMetrics do
 
   defp days_since(%NaiveDateTime{} = datetime) do
     datetime
-    DateTime.from_naive!("Etc/UTC")
-
-    days_since()
+    |> DateTime.from_naive!()
+    |> days_since()
   end
 
   defp calculate_recency_multiplier(days_inactive) do

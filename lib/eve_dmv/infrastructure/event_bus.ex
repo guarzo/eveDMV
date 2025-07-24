@@ -294,7 +294,9 @@ defmodule EveDmv.Infrastructure.EventBus do
   end
 
   defp get_publishing_context(event_type) do
-    Contexts.publishers_of(event_type) |> List.first()
+    event_type
+    |> Contexts.publishers_of()
+    |> List.first()
   end
 
   defp deliver_event(event, subscription) do

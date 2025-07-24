@@ -13,6 +13,7 @@ defmodule EveDmv.Database.CacheHashManager do
   alias EveDmv.Database.CacheInvalidator
   alias EveDmv.Api
 
+  import Ash.Query
   require Logger
 
   # Hash storage - maps cache keys to content hashes
@@ -327,7 +328,6 @@ defmodule EveDmv.Database.CacheHashManager do
 
     # Query for member count from corporation table or killmail data
     alias EveDmv.Killmails.KillmailRaw
-    import Ash.Query
 
     # Last 7 days
     cutoff_date = DateTime.add(DateTime.utc_now(), -7, :day)
@@ -464,7 +464,6 @@ defmodule EveDmv.Database.CacheHashManager do
   defp compute_killmail_hash(killmail_id) do
     # Fetch fresh killmail data and compute content hash
     alias EveDmv.Killmails.KillmailRaw
-    import Ash.Query
 
     query =
       KillmailRaw

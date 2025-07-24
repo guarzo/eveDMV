@@ -32,12 +32,14 @@ defmodule Mix.Tasks.EveDmv.ImportHistorical do
       mix eve_dmv.import_historical /data/killmails.jsonl --resume-from 50000
   """
 
-  use Mix.Task
-  require Logger
-
-  alias EveDmv.Historical.{ImportPipeline, ImportProgressMonitor}
-
   @shortdoc "Import historical killmail data"
+
+  use Mix.Task
+
+  alias EveDmv.Historical.ImportPipeline
+  alias EveDmv.Historical.ImportProgressMonitor
+
+  require Logger
 
   @impl Mix.Task
   def run(args) do
@@ -135,9 +137,9 @@ defmodule Mix.Tasks.EveDmv.ImportHistorical do
       end
 
     Mix.shell().info("")
-    Mix.shell().info("=" |> String.duplicate(60))
+    Mix.shell().info(String.duplicate("=", 60))
     Mix.shell().info("📊 Import Complete: #{state.import_id}")
-    Mix.shell().info("=" |> String.duplicate(60))
+    Mix.shell().info(String.duplicate("=", 60))
     Mix.shell().info("Status: #{state.status}")
     Mix.shell().info("Duration: #{duration}")
     Mix.shell().info("Total Processed: #{state.processed_count}")
@@ -146,7 +148,7 @@ defmodule Mix.Tasks.EveDmv.ImportHistorical do
     Mix.shell().info("Duplicates: #{state.duplicate_count}")
     Mix.shell().info("Average Rate: #{state.current_rate} killmails/min")
     Mix.shell().info("Peak Rate: #{state.peak_rate} killmails/min")
-    Mix.shell().info("=" |> String.duplicate(60))
+    Mix.shell().info(String.duplicate("=", 60))
 
     if state.error_count > 0 and length(state.errors) > 0 do
       Mix.shell().info("")

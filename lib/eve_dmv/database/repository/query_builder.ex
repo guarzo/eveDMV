@@ -14,8 +14,8 @@ defmodule EveDmv.Database.Repository.QueryBuilder do
   @spec build_get_query(module(), integer(), keyword()) :: Ash.Query.t()
   def build_get_query(resource, id, opts) do
     Ash.Query.new(resource)
-    apply_preloads(opts)
-    Ash.Query.filter(id == ^id)
+    |> apply_preloads(opts)
+    |> Ash.Query.filter(id == ^id)
   end
 
   @doc """
@@ -24,10 +24,10 @@ defmodule EveDmv.Database.Repository.QueryBuilder do
   @spec build_list_query(module(), keyword()) :: Ash.Query.t()
   def build_list_query(resource, opts) do
     Ash.Query.new(resource)
-    apply_filters(opts)
-    apply_preloads(opts)
-    apply_pagination(opts)
-    apply_sorting(opts)
+    |> apply_filters(opts)
+    |> apply_preloads(opts)
+    |> apply_pagination(opts)
+    |> apply_sorting(opts)
   end
 
   @doc """
@@ -35,8 +35,7 @@ defmodule EveDmv.Database.Repository.QueryBuilder do
   """
   @spec build_count_query(module(), keyword()) :: Ash.Query.t()
   def build_count_query(resource, opts) do
-    Ash.Query.new(resource)
-    apply_filters(opts)
+    apply_filters(Ash.Query.new(resource), opts)
   end
 
   @doc """
@@ -45,9 +44,9 @@ defmodule EveDmv.Database.Repository.QueryBuilder do
   @spec build_batch_query(module(), [integer()], keyword()) :: Ash.Query.t()
   def build_batch_query(resource, ids, opts) do
     Ash.Query.new(resource)
-    apply_preloads(opts)
-    Ash.Query.filter(id in ^ids)
-    apply_sorting(opts)
+    |> apply_preloads(opts)
+    |> Ash.Query.filter(id in ^ids)
+    |> apply_sorting(opts)
   end
 
   @doc """
@@ -102,8 +101,8 @@ defmodule EveDmv.Database.Repository.QueryBuilder do
   @spec apply_pagination(Ash.Query.t(), keyword()) :: Ash.Query.t()
   def apply_pagination(query, opts) do
     query
-    apply_limit(opts)
-    apply_offset(opts)
+    |> apply_limit(opts)
+    |> apply_offset(opts)
   end
 
   @doc """

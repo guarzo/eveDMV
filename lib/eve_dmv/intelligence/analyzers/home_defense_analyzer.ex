@@ -309,7 +309,7 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
   defp identify_response_events(killmails) do
     # Simplified response event identification
     killmails
-    Enum.filter(fn km ->
+    |> Enum.filter(fn km ->
       # Look for defensive kills (multiple corp members involved)
       corp_participants =
         Enum.count(km.participants || [], fn _p ->

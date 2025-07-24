@@ -55,8 +55,8 @@ defmodule EveDmv.Killmails.ParticipantBuilder do
   @spec build_attacker_participants([map()], map()) :: [map()]
   def build_attacker_participants(attackers, enriched) do
     attackers
-    Enum.filter(&has_valid_ship_type_id?(&1, enriched["killmail_id"]))
-    Enum.map(&build_participant_data(&1, enriched, false))
+    |> Enum.filter(&has_valid_ship_type_id?(&1, enriched["killmail_id"]))
+    |> Enum.map(&build_participant_data(&1, enriched, false))
   end
 
   @doc """
@@ -158,7 +158,8 @@ defmodule EveDmv.Killmails.ParticipantBuilder do
         datetime
 
       {:error, _reason} ->
-        Logger.warning("Failed to parse timestamp: #{timestamp}") |> DateTime.utc_now()
+        Logger.warning("Failed to parse timestamp: #{timestamp}")
+        DateTime.utc_now()
     end
   end
 

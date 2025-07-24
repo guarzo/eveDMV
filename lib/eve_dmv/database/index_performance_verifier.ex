@@ -243,14 +243,14 @@ defmodule EveDmv.Database.IndexPerformanceVerifier do
     index_scans =
       Regex.scan(~r/Index Scan|Index Only Scan|Bitmap Index Scan/, explain_text)
 
-    length()
+    index_scan_count = length(index_scans)
 
     %{
       planning_time_ms: planning_time,
       execution_time_ms: execution_time,
       total_time_ms: Float.round((planning_time || 0) + (execution_time || 0), 2),
       has_sequential_scan: has_seq_scan,
-      index_scan_count: index_scans
+      index_scan_count: index_scan_count
     }
   end
 

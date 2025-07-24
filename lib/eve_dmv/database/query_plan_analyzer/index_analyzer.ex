@@ -100,9 +100,8 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
       if length(sequential_scans) > 0 do
         scan_suggestions =
           sequential_scans
-
-        Enum.map(&suggest_index_for_scan/1)
-        Enum.reject(&is_nil/1)
+          |> Enum.map(&suggest_index_for_scan/1)
+          |> Enum.reject(&is_nil/1)
 
         scan_suggestions ++ base_recommendations
       else
@@ -255,8 +254,8 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
 
   defp count_index_types(index_usage) do
     index_usage
-    Enum.group_by(& &1.type)
-    Enum.into(%{}, fn {type, indexes} -> {type, length(indexes)} end)
+    |> Enum.group_by(& &1.type)
+    |> Enum.into(%{}, fn {type, indexes} -> {type, length(indexes)} end)
   end
 
   defp calculate_index_efficiency(index_usage) do
@@ -265,8 +264,9 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
     else
       total_efficiency =
         index_usage
+        |> Enum.map(&calculate_single_index_efficiency/1)
+        |> Enum.sum()
 
-      Enum.map(&calculate_single_index_efficiency/1) |> Enum.sum()
       total_efficiency / length(index_usage)
     end
   end
@@ -282,19 +282,18 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
 
   defp find_potentially_unused_indexes(index_usage) do
     index_usage
-
-    Enum.filter(fn index ->
+    |> Enum.filter(fn index ->
       # Consider an index potentially unused if it has very high cost relative to rows
       index.cost > 1_000 and index.rows < 10
     end)
-
-    Enum.map(& &1.index_name) |> Enum.uniq()
+    |> Enum.map(& &1.index_name)
+    |> Enum.uniq()
   end
 
   defp find_high_cost_indexes(index_usage) do
     index_usage
-    Enum.filter(&(&1.cost > 1_000))
-    Enum.sort_by(& &1.cost, :desc)
+    |> Enum.filter(&(&1.cost > 1_000))
+    |> Enum.sort_by(& &1.cost, :desc)
   end
 
   defp suggest_index_for_scan(scan) do
@@ -311,15 +310,13 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
   defp extract_columns_from_filter(filter) when is_binary(filter) do
     # Very simplified column extraction - in practice this would need more sophisticated parsing
     filter
-    String.split(~r/[=<>!\s]+/)
-
-    Enum.filter(fn part ->
+    |> String.split(~r/[=<>!\s]+/)
+    |> Enum.filter(fn part ->
       String.match?(part, ~r/^[a-zA-Z][a-zA-Z0-9]*$/) and
         not String.match?(part, ~r/^(AND|OR|NOT|NULL|TRUE|FALSE)$/i)
     end)
-
     # Limit to 3 columns for composite index
-    Enum.take(3)
+    |> Enum.take(3)
   end
 
   defp extract_columns_from_filter(_), do: []

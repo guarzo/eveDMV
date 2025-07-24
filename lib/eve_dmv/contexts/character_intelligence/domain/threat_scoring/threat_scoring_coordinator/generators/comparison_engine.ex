@@ -42,20 +42,18 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
     try do
       threat_assessments =
         character_ids
+        |> Enum.map(fn character_id ->
+          case ThreatScoringCoordinator.calculate_threat_score_uncached(character_id, options) do
+            {:ok, assessment} ->
+              {:ok, Map.put(assessment, :character_id, character_id)}
 
-      Enum.map(fn character_id ->
-        case ThreatScoringCoordinator.calculate_threat_score_uncached(character_id, options) do
-          {:ok, assessment} ->
-            {:ok, Map.put(assessment, :character_id, character_id)}
-
-          {:error, reason} ->
-            Logger.debug("Failed to assess character #{character_id}: #{inspect(reason)}")
-            {:error, reason}
-        end
-      end)
-
-      Enum.filter(&match?({:ok, _}, &1))
-      Enum.map(&elem(&1, 1))
+            {:error, reason} ->
+              Logger.debug("Failed to assess character #{character_id}: #{inspect(reason)}")
+              {:error, reason}
+          end
+        end)
+        |> Enum.filter(&match?({:ok, _}, &1))
+        |> Enum.map(&elem(&1, 1))
 
       if Enum.empty?(threat_assessments) do
         {:error, "No valid threat assessments could be generated"}

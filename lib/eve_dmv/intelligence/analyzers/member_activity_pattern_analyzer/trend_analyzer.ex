@@ -352,8 +352,9 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TrendAnaly
       avg_activity = Enum.sum(Map.values(hourly_activity)) / map_size(hourly_activity)
 
       hourly_activity
-      Enum.filter(fn {_hour, activity} -> activity > avg_activity * 1.2 end)
-      Enum.map(fn {hour, _activity} -> hour end) |> Enum.sort()
+      |> Enum.filter(fn {_hour, activity} -> activity > avg_activity * 1.2 end)
+      |> Enum.map(fn {hour, _activity} -> hour end)
+      |> Enum.sort()
     else
       []
     end
@@ -364,8 +365,9 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TrendAnaly
       avg_activity = Enum.sum(Map.values(daily_activity)) / map_size(daily_activity)
 
       daily_activity
-      Enum.filter(fn {_day, activity} -> activity > avg_activity * 1.2 end)
-      Enum.map(fn {day, _activity} -> day end) |> Enum.sort()
+      |> Enum.filter(fn {_day, activity} -> activity > avg_activity * 1.2 end)
+      |> Enum.map(fn {day, _activity} -> day end)
+      |> Enum.sort()
     else
       []
     end

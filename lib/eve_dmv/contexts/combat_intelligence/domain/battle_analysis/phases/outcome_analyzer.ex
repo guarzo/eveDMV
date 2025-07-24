@@ -260,10 +260,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
     end
   end
 
-  defp identify_secondary_victory_factors(_tactical_analysis, _performance_metrics) do
-    # TODO: Implement secondary victory factor analysis
-    # This should analyze positioning, timing, coordination, EWAR, and intelligence factors
+  defp identify_secondary_victory_factors(tactical_analysis, performance_metrics) do
     []
+    |> add_positioning_factors(tactical_analysis)
+    |> add_timing_factors(tactical_analysis)
+    |> add_coordination_factors(performance_metrics)
+    |> add_ewar_factors(tactical_analysis)
+    |> add_intelligence_factors(tactical_analysis)
   end
 
   defp add_positioning_factors(factors_acc, tactical_analysis) do
@@ -1640,9 +1643,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
   end
 
   defp prioritize_recommendations(immediate_actions) do
-    immediate_actions
-
-    Enum.sort_by(
+    Enum.sort_by(immediate_actions,
       fn action ->
         urgency_score = urgency_to_number(Map.get(action, :urgency, :low))
         impact_score = impact_to_number(Map.get(action, :expected_impact, :low))

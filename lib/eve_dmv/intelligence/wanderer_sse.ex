@@ -182,16 +182,13 @@ defmodule EveDmv.Intelligence.WandererSSE do
 
     params =
       []
-
-    maybe_add_param("token", state.api_token)
-    maybe_add_param("include_state", "true")
-
-    maybe_add_param(
-      "events",
-      "character_location_changed,add_system,character_ship_changed,character_online_status_changed"
-    )
-
-    Enum.filter(fn {_k, v} -> v end)
+      |> maybe_add_param("token", state.api_token)
+      |> maybe_add_param("include_state", "true")
+      |> maybe_add_param(
+        "events",
+        "character_location_changed,add_system,character_ship_changed,character_online_status_changed"
+      )
+      |> Enum.filter(fn {_k, v} -> v end)
 
     if params == [] do
       base_url

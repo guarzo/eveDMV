@@ -13,7 +13,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Market.PriceService
 
-
   # Battle detection parameters
   @max_time_gap_minutes 30
   @max_participant_time_gap_minutes 60
@@ -39,7 +38,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
     max_time_gap = Keyword.get(options, :max_time_gap, @max_time_gap_minutes)
     same_system_only = Keyword.get(options, :same_system_only, true)
 
-
     with {:ok, killmails} <- fetch_killmails_in_range(start_time, end_time) do
       battles =
         killmails
@@ -47,7 +45,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
         |> filter_by_participant_count(min_participants)
         |> enrich_battle_metadata()
         |> assign_battle_ids()
-
 
       {:ok, battles}
     end

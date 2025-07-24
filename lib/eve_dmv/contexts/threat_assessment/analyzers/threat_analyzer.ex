@@ -800,10 +800,9 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
       :unknown
     else
       pilot_analyses
-
-      calculate_threat_distribution()
-      Enum.max_by(fn {_level, count} -> count end)
-      elem(0)
+      |> calculate_threat_distribution()
+      |> Enum.max_by(fn {_level, count} -> count end)
+      |> elem(0)
     end
   end
 

@@ -90,12 +90,13 @@ defmodule EveDmv.Intelligence.PatternAnalysis do
   Identifies unusual patterns and inconsistencies in behavior.
   """
   def detect_behavioral_anomalies(stats) do
-    anomalies =
-      []
+    anomalies = []
 
-    check_activity_anomalies(stats)
-    check_ratio_anomalies(stats)
-    check_pattern_inconsistencies(stats)
+    anomalies =
+      anomalies
+      |> check_activity_anomalies(stats)
+      |> check_ratio_anomalies(stats)
+      |> check_pattern_inconsistencies(stats)
 
     %{
       anomalies_detected: anomalies,

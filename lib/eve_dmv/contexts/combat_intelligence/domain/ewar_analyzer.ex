@@ -618,14 +618,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
 
   defp group_ewar_by_type(ewar_ships) do
     ewar_ships
-
-    Enum.flat_map(fn ship ->
+    |> Enum.flat_map(fn ship ->
       Enum.map(ship.ewar_types, fn type -> {type, ship} end)
     end)
-
-    Enum.group_by(&elem(&1, 0), &elem(&1, 1))
-
-    Enum.map(fn {type, ships} ->
+    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+    |> Enum.map(fn {type, ships} ->
       {type,
        %{
          count: length(ships),

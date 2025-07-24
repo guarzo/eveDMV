@@ -281,9 +281,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
     phases = chunk_by_time_gaps(sorted_killmails, 120)
 
     # Label phases
-    Enum.with_index(phases)
-
-    Enum.map(fn {phase_kms, index} ->
+    phases
+    |> Enum.with_index()
+    |> Enum.map(fn {phase_kms, index} ->
       phase_name =
         case index do
           0 -> :initial_engagement
@@ -331,7 +331,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
     # Calculate composition percentages
     total_ships = length(all_ships)
 
-    Enum.map(ship_roles, fn {role, ships} ->
+    ship_roles
+    |> Enum.map(fn {role, ships} ->
       {role,
        %{
          count: length(ships),
@@ -339,8 +340,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
          ship_types: Enum.frequencies(ships)
        }}
     end)
-
-    Enum.into(%{})
+    |> Enum.into(%{})
   end
 
   defp extract_all_ship_types(killmails) do
@@ -527,22 +527,18 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
         end)
       end)
     end)
-
-    Enum.map(fn {attacker_id, targets} ->
+    |> Enum.map(fn {attacker_id, targets} ->
       # Reverse to get chronological order
       sorted_targets = Enum.reverse(targets)
 
       # Detect switches
       switches =
         sorted_targets
-
-      Enum.chunk_every(2, 1, :discard)
-
-      Enum.filter(fn [{prev_target, _}, {curr_target, _}] ->
-        prev_target != curr_target
-      end)
-
-      Enum.map(fn [{prev_target, prev_time}, {curr_target, curr_time}] ->
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.filter(fn [{prev_target, _}, {curr_target, _}] ->
+          prev_target != curr_target
+        end)
+        |> Enum.map(fn [{prev_target, prev_time}, {curr_target, curr_time}] ->
         %{
           from_target: prev_target,
           to_target: curr_target,
@@ -735,9 +731,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
 
         damage_total =
           window_kms
-
-        Enum.flat_map(&get_attackers_from_killmail/1)
-        Enum.map(&(&1["damage_done"] || 0)) |> Enum.sum()
+          |> Enum.flat_map(&get_attackers_from_killmail/1)
+          |> Enum.map(&(&1["damage_done"] || 0))
+          |> Enum.sum()
 
         %{
           window: window_start,

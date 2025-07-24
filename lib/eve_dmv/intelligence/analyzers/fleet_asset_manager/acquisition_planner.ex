@@ -95,8 +95,8 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.AcquisitionPlanner do
       end)
 
     optimized_assets
-    Enum.sort_by(& &1["cost_effectiveness"], :desc)
-    select_within_budget(budget_limit)
+    |> Enum.sort_by(& &1["cost_effectiveness"], :desc)
+    |> select_within_budget(budget_limit)
   end
 
   @doc """
@@ -194,8 +194,8 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.AcquisitionPlanner do
           end
 
         asset
-        Map.put("importance_score", importance)
-        Map.put("priority_level", priority_level)
+        |> Map.put("importance_score", importance)
+        |> Map.put("priority_level", priority_level)
       end)
 
     Enum.sort_by(assets_with_priority, &{&1["priority_level"], -&1["importance_score"]})
@@ -297,9 +297,9 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.AcquisitionPlanner do
   defp determine_logistics_complexity(acquisition_plan) do
     unique_ship_types =
       acquisition_plan
-
-    Enum.map(&Map.get(&1, "ship_name")) |> Enum.uniq()
-    length()
+      |> Enum.map(&Map.get(&1, "ship_name"))
+      |> Enum.uniq()
+      |> length()
 
     cond do
       unique_ship_types > 10 -> "high"

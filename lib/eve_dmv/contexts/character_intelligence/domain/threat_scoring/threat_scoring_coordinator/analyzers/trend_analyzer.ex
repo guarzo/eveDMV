@@ -34,12 +34,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
 
     historical_scores =
       analysis_periods
-
-    Enum.map(fn days ->
-      calculate_period_threat_score(character_id, days, options)
-    end)
-
-    Enum.reject(&is_nil/1)
+      |> Enum.map(fn days ->
+        calculate_period_threat_score(character_id, days, options)
+      end)
+      |> Enum.reject(&is_nil/1)
 
     if length(historical_scores) < 2 do
       {:error, :insufficient_data_for_trend_analysis}

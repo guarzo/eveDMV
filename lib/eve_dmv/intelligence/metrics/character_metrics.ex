@@ -184,19 +184,18 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
   # Private helper functions
 
   defp extract_character_name(killmail_data) do
-    killmail_data
+    result = 
+      killmail_data
+      |> Enum.flat_map(fn killmail ->
+        participants = get_participants(killmail)
 
-    Enum.flat_map(fn killmail ->
-      participants = get_participants(killmail)
-
-      Enum.map(participants, fn participant ->
-        participant[:character_name] || participant["character_name"]
+        Enum.map(participants, fn participant ->
+          participant[:character_name] || participant["character_name"]
+        end)
       end)
-    end)
+      |> Enum.find(&(&1 != nil))
 
-    Enum.find(&(&1 != nil))
-
-    case do
+    case result do
       nil -> "Unknown"
       name -> name
     end
@@ -283,21 +282,23 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
 
   defp calculate_corporation_diversity(associates) do
     corporations =
-      Map.values(associates)
-
-    Enum.map(& &1.corporation_id) |> Enum.uniq()
-    length()
+      associates
+      |> Map.values()
+      |> Enum.map(& &1.corporation_id)
+      |> Enum.uniq()
+      |> length
 
     min(corporations / 10.0, 1.0)
   end
 
   defp calculate_alliance_diversity(associates) do
     alliances =
-      Map.values(associates)
-
-    Enum.map(& &1.alliance_id)
-    Enum.filter(&(&1 != nil)) |> Enum.uniq()
-    length()
+      associates
+      |> Map.values()
+      |> Enum.map(& &1.alliance_id)
+      |> Enum.filter(&(&1 != nil))
+      |> Enum.uniq()
+      |> length
 
     min(alliances / 5.0, 1.0)
   end
@@ -358,9 +359,8 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
       participants = get_participants(killmail)
 
       participants
-      Enum.filter(&get_is_victim(&1))
-
-      Enum.map(fn victim ->
+      |> Enum.filter(&get_is_victim(&1))
+      |> Enum.map(fn victim ->
         victim[:ship_name] || victim["ship_name"] || "Unknown"
       end)
     end)
@@ -496,9 +496,8 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
         participants = get_participants(killmail)
         # Find losses for this character
         participants
-        Enum.filter(&get_is_victim(&1))
-
-        Enum.map(fn victim ->
+        |> Enum.filter(&get_is_victim(&1))
+        |> Enum.map(fn victim ->
           # Find what killed them
           attackers = Enum.filter(participants, &(!get_is_victim(&1)))
 
