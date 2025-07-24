@@ -364,10 +364,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
     # Simplified ship role categorization
     # In production, this would use actual EVE ship data
     case ship_type_id do
-      id when id in [11978, 11985, 11987, 11989] -> :logistics
-      id when id in [22428, 22430, 22436, 22440] -> :command
-      id when id in [11379, 11377, 11381, 11383] -> :interdiction
-      id when id in [11957, 11959, 11961, 11963] -> :ewar
+      id when id in [11_978, 11_985, 11_987, 11_989] -> :logistics
+      id when id in [22_428, 22_430, 22_436, 22_440] -> :command
+      id when id in [11_379, 11_377, 11_381, 11_383] -> :interdiction
+      id when id in [11_957, 11_959, 11_961, 11_963] -> :ewar
       _ -> :dps
     end
   end
@@ -441,7 +441,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
   defp detect_formation_transitions(formations) do
     formations
     |> Enum.chunk_every(2, 1, :discard)
-
     |> Enum.map(fn [prev, curr] ->
       %{
         from: prev.formation_type,
@@ -476,8 +475,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
   end
 
   defp identify_dominant_formation(formations) do
-    formations
-    |> Enum.max_by(& &1.formation_cohesion, fn -> nil end)
+    Enum.max_by(formations, & &1.formation_cohesion, fn -> nil end)
   end
 
   defp calculate_formation_adaptability(formations) do
@@ -539,17 +537,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
           prev_target != curr_target
         end)
         |> Enum.map(fn [{prev_target, prev_time}, {curr_target, curr_time}] ->
-        %{
-          from_target: prev_target,
-          to_target: curr_target,
-          switch_time: curr_time,
-          time_on_prev_target: DateTime.diff(curr_time, prev_time)
-        }
-      end)
+          %{
+            from_target: prev_target,
+            to_target: curr_target,
+            switch_time: curr_time,
+            time_on_prev_target: DateTime.diff(curr_time, prev_time)
+          }
+        end)
 
       {attacker_id, switches}
     end)
-
     |> Enum.into(%{})
   end
 
@@ -784,7 +781,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
         target_id: km.victim_character_id,
         ship_type: km.victim_ship_type_id,
         timestamp: km.killmail_time,
-        attackers: get_attackers_from_killmail(km) |> Kernel.length()
+        attackers: km |> get_attackers_from_killmail() |> Kernel.length()
       }
     end)
   end
@@ -792,7 +789,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
   defp analyze_target_priority_adherence(_target_sequences) do
     # Check if high-value targets are prioritized
     # In real implementation, would check ship values
-    Float.round(:rand.uniform() * 100, 2)
+    # Return placeholder value for now
+    50.0
   end
 
   defp analyze_simultaneous_targeting(killmails) do
@@ -836,7 +834,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
   defp analyze_movement_coordination(_killmails) do
     # Simplified movement coordination analysis
     %{
-      formation_maintenance: Float.round(:rand.uniform() * 100, 2),
+      formation_maintenance: 75.0,
       synchronized_warps: 0,
       scatter_incidents: 0
     }
@@ -888,7 +886,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
     |> Enum.filter(fn {_window, kms} ->
       length(kms) >= 5
     end)
-
     |> Enum.map(fn {window, kms} ->
       %{
         period_start: window,
@@ -942,10 +939,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
 
   defp identify_dominant_tactic(phase_killmails) do
     # Analyze kills to determine dominant tactic
-    ship_types =
-      extract_all_ship_types(phase_killmails)
+    ship_types = phase_killmails
+      |> extract_all_ship_types()
       |> Enum.map(&categorize_ship_role/1)
       |> Enum.frequencies()
+
     # Determine tactic based on ship composition and kill patterns
     cond do
       Map.get(ship_types, :interdiction, 0) > length(phase_killmails) * 0.2 -> :bubble_camp
@@ -958,7 +956,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
 
   defp generate_pattern_summary(killmails) do
     %{
-      total_patterns_detected: :rand.uniform(10),
+      total_patterns_detected: 3,
       confidence_level: calculate_confidence_level(length(killmails)),
       most_effective_pattern: :focus_fire,
       recommendations: generate_tactical_recommendations(killmails)
@@ -976,16 +974,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
 
   defp generate_tactical_recommendations(killmails) do
     # Generate recommendations based on analysis
-    recommendations = []
-
-    # Add recommendations based on killmail count
-    recommendations =
-      if length(killmails) < 10 do
-        ["Insufficient data for comprehensive tactical analysis" | recommendations]
-      else
-        ["Continue current tactical approach" | recommendations]
-      end
-
-    recommendations
+    if length(killmails) < 10 do
+      ["Insufficient data for comprehensive tactical analysis"]
+    else
+      ["Continue current tactical approach"]
+    end
   end
 end

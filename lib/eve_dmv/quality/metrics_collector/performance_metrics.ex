@@ -215,11 +215,4 @@ defmodule EveDmv.Quality.MetricsCollector.PerformanceMetrics do
     end
   end
 
-  defp clean_env do
-    %{
-      "PATH" => System.get_env("PATH", ""),
-      "HOME" => System.get_env("HOME", ""),
-      "MIX_ENV" => System.get_env("MIX_ENV", "dev")
-    }
-  end
 end

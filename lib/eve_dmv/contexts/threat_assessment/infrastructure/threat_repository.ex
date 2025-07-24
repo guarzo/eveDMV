@@ -8,11 +8,11 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
 
   use EveDmv.ErrorHandler
 
-  alias EveDmv.Result
-  alias EveDmv.Killmails.KillmailRaw
-  alias EveDmv.Api
-
   import Ash.Query
+
+  alias EveDmv.Api
+  alias EveDmv.Killmails.KillmailRaw
+  alias EveDmv.Result
   require Logger
 
   @doc """
@@ -89,21 +89,19 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
     # Weekly assessments
     history =
       1..days_back
+      |> Enum.take_every(7)
+      |> Enum.map(fn days_ago ->
+        date = DateTime.add(DateTime.utc_now(), -days_ago, :day)
 
-    |> Enum.take_every(7)
-
-    |> Enum.map(fn days_ago ->
-      date = DateTime.add(DateTime.utc_now(), -days_ago, :day)
-
-      %{
-        assessment_date: date,
-        threat_level: Enum.random([:minimal, :low, :medium, :high, :critical]),
-        vulnerability_count: :rand.uniform(10),
-        assessment_confidence: Enum.random([:very_low, :low, :medium, :high]),
-        notes: "Historical assessment sample"
-      }
-    end)
-    |> Enum.reverse()
+        %{
+          assessment_date: date,
+          threat_level: Enum.random([:minimal, :low, :medium, :high, :critical]),
+          vulnerability_count: :rand.uniform(10),
+          assessment_confidence: Enum.random([:very_low, :low, :medium, :high]),
+          notes: "Historical assessment sample"
+        }
+      end)
+      |> Enum.reverse()
 
     Result.ok(history)
   end
@@ -159,10 +157,9 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
 
         enhanced_data =
           corp_data
-
-        Map.merge(member_stats)
-        Map.merge(alliance_data)
-        Map.merge(activity_data)
+          |> Map.merge(member_stats)
+          |> Map.merge(alliance_data)
+          |> Map.merge(activity_data)
 
         Result.ok(enhanced_data)
 
@@ -442,12 +439,11 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
         else
           # Group by day to find peak activity
           daily_activity =
-            killmails
-            |> Enum.group_by(fn km ->
-            Date.from_iso8601!(Date.to_iso8601(DateTime.to_date(km.killmail_time)))
-          end)
+            Enum.group_by(killmails, fn km ->
+              Date.from_iso8601!(Date.to_iso8601(DateTime.to_date(km.killmail_time)))
+            end)
 
-          Map.new(fn {date, kms} -> {date, length(kms)} end)
+          |> Map.new(fn {date, kms} -> {date, length(kms)} end)
 
           peak_day =
             Enum.max_by(daily_activity, fn {_date, count} -> count end, fn -> {nil, 0} end)
@@ -492,16 +488,15 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
             participants =
               attackers
               |> Enum.map(fn attacker ->
-              %{
-                character_id: attacker["character_id"],
-                corporation_id: attacker["corporation_id"],
-                alliance_id: attacker["alliance_id"],
-                ship_type_id: attacker["ship_type_id"],
-                damage_done: attacker["damage_done"] || 0
-              }
-            end)
-
-            |> Enum.reject(fn p -> is_nil(p.character_id) end)
+                %{
+                  character_id: attacker["character_id"],
+                  corporation_id: attacker["corporation_id"],
+                  alliance_id: attacker["alliance_id"],
+                  ship_type_id: attacker["ship_type_id"],
+                  damage_done: attacker["damage_done"] || 0
+                }
+              end)
+              |> Enum.reject(fn p -> is_nil(p.character_id) end)
 
             # Add victim as participant
             victim_participant = %{
@@ -633,7 +628,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
           alliance_id: first_killmail.victim_alliance_id,
           security_status: 0.0,
           # Estimate
-          creation_date: DateTime.utc_now() |> DateTime.add(-365 * 3, :day),
+          creation_date: DateTime.add(DateTime.utc_now(), -365 * 3, :day),
           last_seen: DateTime.utc_now()
         }
 
@@ -647,7 +642,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
           corporation_id: nil,
           alliance_id: nil,
           security_status: 0.0,
-          creation_date: DateTime.utc_now() |> DateTime.add(-365, :day),
+          creation_date: DateTime.add(DateTime.utc_now(), -365, :day),
           last_seen: nil
         }
 
@@ -690,8 +685,6 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
           end
         end)
 
-      all_killmails = victim_killmails ++ attacker_killmails
-
       activity_stats = %{
         total_kills: length(attacker_killmails),
         total_losses: length(victim_killmails),
@@ -699,11 +692,11 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
         recent_losses: length(victim_killmails),
         avg_ship_value: calculate_avg_ship_value(victim_killmails),
         solo_ratio: calculate_solo_ratio(attacker_killmails),
-        aggression_percentile: calculate_aggression_percentile(all_killmails),
+        aggression_percentile: calculate_aggression_percentile(victim_killmails ++ attacker_killmails),
         is_fc: detect_fc_activity(attacker_killmails),
-        prime_timezone: analyze_prime_timezone(all_killmails),
-        activity_by_hour: analyze_activity_by_hour(all_killmails),
-        batphone_probability: calculate_batphone_probability(all_killmails)
+        prime_timezone: analyze_prime_timezone(victim_killmails ++ attacker_killmails),
+        activity_by_hour: analyze_activity_by_hour(victim_killmails ++ attacker_killmails),
+        batphone_probability: calculate_batphone_probability(victim_killmails ++ attacker_killmails)
       }
 
       {:ok, activity_stats}
@@ -738,7 +731,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
           end
         end)
 
-      |> Enum.sum(values) / length(values)
+      Enum.sum(values) / length(values)
     end
   end
 

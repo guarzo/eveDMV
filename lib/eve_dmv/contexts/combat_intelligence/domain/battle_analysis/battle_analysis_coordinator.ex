@@ -162,11 +162,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleAnalysi
       # Combine recommendations with guidance
       enhanced_recommendations =
         prioritized_recommendations
-
-      |> Enum.map(fn rec ->
-        guidance = Map.get(implementation_guidance, rec.type, %{})
-        Map.merge(rec, guidance)
-      end)
+        |> Enum.map(fn rec ->
+          guidance = Map.get(implementation_guidance, rec.type, %{})
+          Map.merge(rec, guidance)
+        end)
 
       # Broadcast tactical insight event
       EventBus.publish(%TacticalInsightGenerated{
@@ -243,12 +242,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleAnalysi
 
     cleaned_cache =
       state.cache
-
-    |> Enum.filter(fn {_key, %{timestamp: timestamp}} ->
-      DateTime.compare(timestamp, cutoff_time) == :gt
-    end)
-
-    |> Enum.into(%{})
+      |> Enum.filter(fn {_key, %{timestamp: timestamp}} ->
+        DateTime.compare(timestamp, cutoff_time) == :gt
+      end)
+      |> Enum.into(%{})
 
     # Schedule next cleanup
     Process.send_after(self(), :cleanup_cache, 3_600_000)
@@ -509,12 +506,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleAnalysi
   defp prioritize_recommendations(recommendations, battle_analysis) do
     # Sort recommendations by priority and relevance
     recommendations
-
     |> Enum.map(fn rec ->
       priority_score = calculate_recommendation_priority(rec, battle_analysis)
       Map.put(rec, :priority_score, priority_score)
     end)
-
     |> Enum.sort_by(& &1.priority_score, :desc)
   end
 
@@ -522,7 +517,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleAnalysi
     # Generate implementation guidance for each recommendation type
     recommendations
     |> Enum.group_by(& &1.type)
-
     |> Enum.map(fn {type, recs} ->
       guidance = create_implementation_guidance(type, recs, battle_analysis)
       {type, guidance}
@@ -535,8 +529,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleAnalysi
     # Analyze the timeline of the battle
     killmails
     |> Enum.sort_by(& &1.killmail_time)
-    Enum.chunk_every(10) |> Enum.with_index()
 
+    Enum.chunk_every(10)
+    |> Enum.with_index()
     |> Enum.map(fn {chunk, index} ->
       %{
         phase: index + 1,
@@ -552,7 +547,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleAnalysi
     # Analyze fleet compositions from killmail data
     killmails
     |> Enum.group_by(& &1.victim_alliance_id)
-
     |> Enum.map(fn {alliance_id, alliance_kills} ->
       ships = Enum.group_by(alliance_kills, & &1.victim_ship_type_id)
       ship_counts = Enum.map(ships, fn {ship_type, kills} -> {ship_type, length(kills)} end)
@@ -625,9 +619,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleAnalysi
     # Determine battle outcome based on losses
     alliance_losses =
       fleet_compositions
-
-    |> Enum.map(fn {alliance_id, data} -> {alliance_id, data.isk_lost} end)
-    |> Enum.sort_by(&elem(&1, 1), :desc)
+      |> Enum.map(fn {alliance_id, data} -> {alliance_id, data.isk_lost} end)
+      |> Enum.sort_by(&elem(&1, 1), :desc)
 
     {winner_alliance, _} = List.last(alliance_losses)
     {loser_alliance, _} = List.first(alliance_losses)
@@ -642,12 +635,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleAnalysi
 
   defp extract_participants(killmails) do
     killmails
-    Enum.map(& &1.victim_character_id) |> Enum.uniq()
+    |> Enum.map(& &1.victim_character_id)
+    |> Enum.uniq()
   end
 
   defp calculate_total_isk_destroyed(killmails) do
     killmails
-    Enum.map(& &1.total_value) |> Enum.sum()
+    |> Enum.map(& &1.total_value)
+    |> Enum.sum()
   end
 
   defp calculate_battle_duration(start_time, end_time) do
