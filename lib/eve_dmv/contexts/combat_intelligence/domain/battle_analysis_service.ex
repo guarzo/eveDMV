@@ -1383,8 +1383,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
     support_count =
       support_ships
-
-    Enum.map(fn class -> Map.get(ship_classes, class, []) |> length() end) |> Enum.sum()
+      |> Enum.map(fn class -> Map.get(ship_classes, class, []) |> length() end)
+      |> Enum.sum()
 
     total_ships =
       Map.values(ship_classes) |> Enum.map(&length/1) |> Enum.sum()
@@ -1412,8 +1412,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       else
         diversity =
           percentages
-
-        Enum.map(fn p -> -p * :math.log2(p) end) |> Enum.sum()
+          |> Enum.map(fn p -> -p * :math.log2(p) end)
+          |> Enum.sum()
         Float.round(diversity, 2)
       end
     end
@@ -1625,8 +1625,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       # Weight confidence by ship diversity and support presence
       base_confidence =
         doctrine_matches
-
-      Enum.map(& &1.confidence) |> Enum.max()
+        |> Enum.map(& &1.confidence)
+        |> Enum.max()
       # Adjust for ship diversity (higher diversity = lower confidence in single doctrine)
       diversity_penalty = min(20, ship_analysis.ship_diversity * 5)
 
@@ -2172,13 +2172,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     # Group entities by attack patterns
     entities =
       attack_relationships
-
-    Enum.flat_map(fn rel -> [rel.attacker, rel.victim] end) |> Enum.uniq()
+      |> Enum.flat_map(fn rel -> [rel.attacker, rel.victim] end)
+      |> Enum.uniq()
     # For each entity, determine who they primarily attack vs who attacks them
     entity_patterns =
       entities
-
-    |> Enum.map(fn entity ->
+      |> Enum.map(fn entity ->
       # Who does this entity attack?
       targets =
         attack_relationships
@@ -2417,14 +2416,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     # Look for evidence of tactical adaptation between battles
     adaptations =
       sorted_battles
-
-    Enum.chunk_every(2, 1, :discard) |> Enum.with_index()
-
-    |> Enum.map(fn {[prev_battle, curr_battle], index} ->
-      detect_tactical_adaptations(prev_battle, curr_battle, index)
-    end)
-
-    |> Enum.filter(& &1.adaptations_detected)
+      |> Enum.chunk_every(2, 1, :discard)
+      |> Enum.with_index()
+      |> Enum.map(fn {[prev_battle, curr_battle], index} ->
+        detect_tactical_adaptations(prev_battle, curr_battle, index)
+      end)
+      |> Enum.filter(& &1.adaptations_detected)
 
     %{
       adaptation_events: adaptations,
@@ -2459,9 +2456,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     else
       unique_types =
         doctrines
-
-      Enum.map(& &1.type) |> Enum.uniq()
-      length()
+        |> Enum.map(& &1.type)
+        |> Enum.uniq()
+        |> length()
 
       Float.round(unique_types / max(1, length(doctrines)), 2)
     end
@@ -2517,15 +2514,15 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
       first_avg_diversity =
         first_half
-
-      Enum.map(& &1.doctrine_diversity) |> Enum.sum()
-      Kernel./(length(first_half))
+        |> Enum.map(& &1.doctrine_diversity)
+        |> Enum.sum()
+        |> Kernel./(length(first_half))
 
       second_avg_diversity =
         second_half
-
-      Enum.map(& &1.doctrine_diversity) |> Enum.sum()
-      Kernel./(length(second_half))
+        |> Enum.map(& &1.doctrine_diversity)
+        |> Enum.sum()
+        |> Kernel./(length(second_half))
 
       cond do
         second_avg_diversity > first_avg_diversity + 0.1 -> :increasing_diversity

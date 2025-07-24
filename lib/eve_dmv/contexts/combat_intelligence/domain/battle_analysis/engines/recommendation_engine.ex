@@ -103,8 +103,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
     # Add fleet composition recommendations
     composition_recommendations = generate_fleet_composition_recommendations(fleet_analysis)
 
-    (base_recommendations ++ pattern_recommendations ++ composition_recommendations)
-    |> Enum.take(8)
+    Enum.take(base_recommendations ++ pattern_recommendations ++ composition_recommendations, 8)
   end
 
   defp perform_basic_strategic_recommendations(battle_analysis) do

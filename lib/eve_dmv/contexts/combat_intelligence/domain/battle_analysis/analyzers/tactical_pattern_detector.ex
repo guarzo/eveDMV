@@ -16,51 +16,40 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
   Identify tactical patterns from engagement timeline.
   """
   def identify_tactical_patterns(timeline) do
-    patterns = []
-
-    # Pattern 1: Alpha strike (many kills in short time)
-    patterns = patterns ++ identify_alpha_strike_pattern(timeline)
-
-    # Pattern 2: Kiting (consistent damage over time with minimal losses)
-    patterns = patterns ++ identify_kiting_pattern(timeline)
-
-    # Pattern 3: Brawling (high kill rate on both sides)
-    patterns = patterns ++ identify_brawling_pattern(timeline)
-
-    patterns
+    [
+      identify_alpha_strike_pattern(timeline),
+      identify_kiting_pattern(timeline),
+      identify_brawling_pattern(timeline)
+    ]
+    |> List.flatten()
   end
 
   @doc """
   Identify significant moments in the battle.
   """
   def identify_key_moments(timeline) do
-    moments = []
-
     # Find high-value kills (top 10% by ISK value)
-    moments =
+    high_value_moments =
       if length(timeline) > 0 do
         isk_values = Enum.map(timeline, & &1.isk_value)
         threshold = Enum.max(isk_values) * 0.9
 
-        high_value_kills =
-          timeline
-          |> Enum.filter(&(&1.isk_value >= threshold))
-          |> Enum.map(fn event ->
-            %{
-              type: :high_value_kill,
-              timestamp: event.timestamp,
-              isk_value: event.isk_value,
-              victim: event.victim
-            }
-          end)
-
-        moments ++ high_value_kills
+        timeline
+        |> Enum.filter(&(&1.isk_value >= threshold))
+        |> Enum.map(fn event ->
+          %{
+            type: :high_value_kill,
+            timestamp: event.timestamp,
+            isk_value: event.isk_value,
+            victim: event.victim
+          }
+        end)
       else
-        moments
+        []
       end
 
     # Find first blood
-    moments_with_first =
+    first_blood_moments =
       if first_kill = List.first(timeline) do
         [
           %{
@@ -68,14 +57,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
             timestamp: first_kill.timestamp,
             victim: first_kill.victim
           }
-          | moments
         ]
       else
-        moments
+        []
       end
 
-    # Sort by timestamp
-    Enum.sort_by(moments_with_first, & &1.timestamp)
+    # Combine all moments and sort by timestamp
+    (high_value_moments ++ first_blood_moments)
+    |> Enum.sort_by(& &1.timestamp)
   end
 
   @doc """

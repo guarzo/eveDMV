@@ -188,9 +188,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.LiveE
 
   defp predict_engagement_outcome(engagement) do
     # Simple prediction based on kill patterns
-    recent_kills =
-      engagement.killmails
-      |> Enum.take(-5)
+    recent_kills = Enum.take(engagement.killmails, -5)
 
     if length(recent_kills) < 3 do
       :too_early
