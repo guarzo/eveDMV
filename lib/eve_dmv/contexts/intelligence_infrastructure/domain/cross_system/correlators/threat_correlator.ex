@@ -401,9 +401,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     if length(fleet_indicators) > 0 do
       avg_fleet_size =
         fleet_indicators
-
-      Enum.map(&length/1) |> Enum.sum()
-      Kernel./(length(fleet_indicators))
+        |> Enum.map(&length/1)
+        |> Enum.sum()
+        |> Kernel./(length(fleet_indicators))
 
       pattern =
         cond do
@@ -543,8 +543,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
   defp extract_affected_systems(spillover_vectors) do
     spillover_vectors
-    |> Enum.flat_map(fn v -> [v.from_system, v.to_system] end) 
-    |> Enum.uniq() 
+    |> Enum.flat_map(fn v -> [v.from_system, v.to_system] end)
+    |> Enum.uniq()
     |> Enum.sort()
   end
 
