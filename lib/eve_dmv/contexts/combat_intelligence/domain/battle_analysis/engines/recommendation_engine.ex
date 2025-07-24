@@ -269,7 +269,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
     recommendations = []
 
     recommendations =
-      if not ewar_presence do
+      if ewar_presence do
+        recommendations
+      else
         [
           %{
             type: :strategic,
@@ -284,8 +286,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
           }
           | recommendations
         ]
-      else
-        recommendations
       end
 
     recommendations =
