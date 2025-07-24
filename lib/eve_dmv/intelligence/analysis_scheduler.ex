@@ -233,7 +233,7 @@ defmodule EveDmv.Intelligence.AnalysisScheduler do
         timeout: Config.get_timeout(:analysis)
       )
 
-    |> Enum.reduce(stream_results, %{completed: 0, failed: 0}, fn
+    Enum.reduce(stream_results, %{completed: 0, failed: 0}, fn
       {:ok, :ok}, acc -> %{acc | completed: acc.completed + 1}
       {:ok, {:error, _}}, acc -> %{acc | failed: acc.failed + 1}
       {:exit, _}, acc -> %{acc | failed: acc.failed + 1}
