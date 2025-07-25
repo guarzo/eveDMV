@@ -31,9 +31,8 @@ defmodule EveDmvWeb.Api.CharacterBehaviorController do
 
       {:error, _} ->
         conn
-        put_status(:internal_server_error)
-
-        json(%{
+        |> put_status(:internal_server_error)
+        |> json(%{
           error: %{message: "Failed to analyze behavioral patterns", code: "INTERNAL_ERROR"}
         })
     end

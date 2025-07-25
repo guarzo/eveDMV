@@ -34,9 +34,8 @@ defmodule EveDmvWeb.Api.CorporationThreatController do
 
       {:error, _} ->
         conn
-        put_status(:internal_server_error)
-
-        json(%{
+        |> put_status(:internal_server_error)
+        |> json(%{
           error: %{message: "Failed to assess corporation threat", code: "INTERNAL_ERROR"}
         })
     end

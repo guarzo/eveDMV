@@ -29,13 +29,13 @@ defmodule EveDmvWeb.Api.MultiSystemBattleController do
 
       {:error, :battle_not_found} ->
         conn
-        put_status(:not_found)
-        json(%{error: %{message: "Battle not found", code: "BATTLE_NOT_FOUND"}})
+        |> put_status(:not_found)
+        |> json(%{error: %{message: "Battle not found", code: "BATTLE_NOT_FOUND"}})
 
       {:error, _} ->
         conn
-        put_status(:internal_server_error)
-        json(%{error: %{message: "Failed to load multi-system data", code: "INTERNAL_ERROR"}})
+        |> put_status(:internal_server_error)
+        |> json(%{error: %{message: "Failed to load multi-system data", code: "INTERNAL_ERROR"}})
     end
   end
 end

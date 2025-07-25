@@ -30,9 +30,8 @@ defmodule EveDmvWeb.Api.BattleShareController do
     case BattleSharing.create_battle_report(battle_id, creator_id, options) do
       {:ok, report} ->
         conn
-        put_status(:created)
-
-        json(%{
+        |> put_status(:created)
+        |> json(%{
           data: %{
             report_id: report.report_id,
             share_url: report.share_url,
@@ -43,8 +42,8 @@ defmodule EveDmvWeb.Api.BattleShareController do
 
       {:error, reason} ->
         conn
-        put_status(:unprocessable_entity)
-        json(%{error: %{message: "Failed to create battle report", details: inspect(reason)}})
+        |> put_status(:unprocessable_entity)
+        |> json(%{error: %{message: "Failed to create battle report", details: inspect(reason)}})
     end
   end
 end
