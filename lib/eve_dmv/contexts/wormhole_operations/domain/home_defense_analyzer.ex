@@ -6,8 +6,10 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
   and strategic recommendations for wormhole operations.
   """
 
-  alias EveDmv.Repo
   import Ecto.Query
+
+  alias EveDmv.Repo
+
   require Logger
 
   @doc """
@@ -176,13 +178,11 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
       # Analyze defense readiness for each corporation
       defense_analyses =
         resident_corporations
-
-      |> Enum.map(fn corp_id ->
-        {:ok, analysis} = analyze_defense_capabilities(corp_id)
-        {corp_id, analysis}
-      end)
-
-      |> Enum.into(%{})
+        |> Enum.map(fn corp_id ->
+          {:ok, analysis} = analyze_defense_capabilities(corp_id)
+          {corp_id, analysis}
+        end)
+        |> Enum.into(%{})
 
       # Assess system vulnerabilities
       {:ok, vulnerability_assessment} = assess_system_vulnerabilities(system_id)
@@ -255,9 +255,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
       # Sort by priority
       sorted_recommendations =
         recommendations
-
-      |> Enum.sort_by(fn rec -> priority_weight(rec.priority) end)
-      |> Enum.take(10)
+        |> Enum.sort_by(fn rec -> priority_weight(rec.priority) end)
+        |> Enum.take(10)
 
       {:ok, sorted_recommendations}
     rescue
@@ -277,34 +276,22 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
   def generate_defense_recommendations(system_id, defense_analysis, threat_event) do
     Logger.debug("Generating contextual defense recommendations for system #{system_id}")
 
-    recommendations = []
-
     # Base recommendations from threat event
     threat_severity = Map.get(threat_event, :severity, :medium)
     threat_type = Map.get(threat_event, :type, :unknown)
 
-    # Immediate response recommendations
-    immediate_recs = generate_immediate_response_recommendations(threat_severity, threat_type)
-    recommendations = recommendations ++ immediate_recs
-
-    # Tactical recommendations based on defense analysis
-    tactical_recs = generate_tactical_recommendations(defense_analysis, threat_event)
-    recommendations = recommendations ++ tactical_recs
-
-    # Strategic recommendations for long-term defense
-    strategic_recs = generate_strategic_recommendations(defense_analysis, threat_type)
-    recommendations = recommendations ++ strategic_recs
-
-    # Resource allocation recommendations
-    resource_recs = generate_resource_recommendations(defense_analysis, threat_event)
-    recommendations = recommendations ++ resource_recs
-
-    # Communication recommendations
-    communication_recs = generate_communication_recommendations(threat_severity, defense_analysis)
-    recommendations = recommendations ++ communication_recs
+    # Build recommendations using efficient list operations
+    all_recommendations = [
+      generate_immediate_response_recommendations(threat_severity, threat_type),
+      generate_tactical_recommendations(defense_analysis, threat_event),
+      generate_strategic_recommendations(defense_analysis, threat_type),
+      generate_resource_recommendations(defense_analysis, threat_event),
+      generate_communication_recommendations(threat_severity, defense_analysis)
+    ]
+    |> List.flatten()
 
     # Filter and prioritize based on context
-    recommendations
+    all_recommendations
     |> Enum.uniq_by(& &1.type)
     |> Enum.sort_by(fn rec -> priority_weight(rec.priority) end)
     |> Enum.take(8)
@@ -418,21 +405,18 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
     # Analyze activity by hour to determine timezone coverage
     hourly_activity =
       member_activity
-
-    |> Enum.group_by(fn activity ->
-      activity.killmail_time.hour
-    end)
-
-    |> Enum.map(fn {hour, activities} -> {hour, length(activities)} end)
-    |> Enum.into(%{})
+      |> Enum.group_by(fn activity ->
+        activity.killmail_time.hour
+      end)
+      |> Enum.map(fn {hour, activities} -> {hour, length(activities)} end)
+      |> Enum.into(%{})
 
     # Find peak activity hours
     peak_hours =
       hourly_activity
-
-    |> Enum.sort_by(&elem(&1, 1), :desc)
-    |> Enum.take(8)
-    |> Enum.map(&elem(&1, 0))
+      |> Enum.sort_by(&elem(&1, 1), :desc)
+      |> Enum.take(8)
+      |> Enum.map(&elem(&1, 0))
 
     # Calculate coverage percentage
     active_hours = Map.keys(hourly_activity)
@@ -502,10 +486,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
 
       range_counts =
         hour_ranges
-
-      |> Enum.map(fn range ->
-        Enum.count(hours, fn h -> h in range end)
-      end)
+        |> Enum.map(fn range ->
+          Enum.count(hours, fn h -> h in range end)
+        end)
 
       # Better distribution = more even spread across ranges
       max_count = Enum.max(range_counts)
@@ -572,7 +555,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
   defp categorize_ship_type(ship_type_id) do
     # Simplified categorization based on type ID ranges
     cond do
-      ship_type_id >= 19720 and ship_type_id <= 19740 -> :capital
+      ship_type_id >= 19_720 and ship_type_id <= 19_740 -> :capital
       ship_type_id >= 600 and ship_type_id <= 700 -> :battleship
       ship_type_id >= 300 and ship_type_id <= 400 -> :cruiser
       ship_type_id >= 1 and ship_type_id <= 100 -> :frigate
@@ -645,11 +628,11 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
       # Find most common ship types
       top_types =
         type_frequencies
+        |> Enum.sort_by(&elem(&1, 1), :desc)
+        |> Enum.take(3)
 
-      |> Enum.sort_by(&elem(&1, 1), :desc)
-      |> Enum.take(3)
-      Enum.map(&elem(&1, 1)) |> Enum.sum()
-      coherence = top_types / total_ships
+      top_ship_count = top_types |> Enum.map(&elem(&1, 1)) |> Enum.sum()
+      coherence = top_ship_count / total_ships
       Float.round(coherence, 2)
     else
       0.0
@@ -658,29 +641,12 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
 
   defp generate_doctrine_recommendations(type_frequencies) do
     # Generate recommendations based on ship distribution
-    recommendations = []
-
     total_ships = Map.values(type_frequencies) |> Enum.sum()
-
-    # Check for doctrine gaps
-    recommendations =
-      if total_ships < 20 do
-        ["Increase overall fleet size for better defense coverage" | recommendations]
-      else
-        recommendations
-      end
-
-    # Check for ship type diversity
     ship_type_count = map_size(type_frequencies)
 
-    recommendations =
-      if ship_type_count > 10 do
-        ["Consider standardizing around fewer ship types for better logistics" | recommendations]
-      else
-        recommendations
-      end
-
-    recommendations
+    []
+    |> add_recommendation_if("Increase overall fleet size for better defense coverage", total_ships < 20)
+    |> add_recommendation_if("Consider standardizing around fewer ship types for better logistics", ship_type_count > 10)
   end
 
   defp get_system_topology(system_id) do
@@ -830,30 +796,21 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
 
   defp generate_coverage_recommendations(blind_spots, entry_points) do
     # Generate recommendations for improving coverage
-    recommendations = []
+    base_recommendations = []
 
-    # Recommendations based on blind spots
-    recommendations =
-      if length(blind_spots) > 2 do
-        ["Deploy scouts to cover unmonitored entry points" | recommendations]
-      else
-        recommendations
-      end
-
-    # Recommendations based on high-threat entries
+    # Count high-threat entries
     high_threat_entries =
       Enum.count(entry_points, fn entry ->
         entry.threat_level == :high
       end)
 
-    recommendations =
-      if high_threat_entries > 1 do
-        ["Increase monitoring on high-threat connections" | recommendations]
-      else
-        recommendations
-      end
+    base_recommendations
+    |> add_recommendation_if(length(blind_spots) > 2, "Deploy scouts to cover unmonitored entry points")
+    |> add_recommendation_if(high_threat_entries > 1, "Increase monitoring on high-threat connections")
+  end
 
-    recommendations
+  defp add_recommendation_if(recommendations, condition, recommendation) do
+    if condition, do: [recommendation | recommendations], else: recommendations
   end
 
   defp analyze_escape_routes(topology, _system_id) do
@@ -1013,17 +970,15 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
     # Add defense-related vulnerabilities
     defense_vulnerabilities =
       Map.values(defense_analyses)
-
-    |> Enum.filter(fn analysis -> analysis.defense_readiness < 0.5 end)
-
-    |> Enum.map(fn _analysis ->
-      %{
-        type: :low_defense_readiness,
-        description: "Corporation has low defense readiness",
-        severity: :medium,
-        recommendation: "Improve member activity and fleet readiness"
-      }
-    end)
+      |> Enum.filter(fn analysis -> analysis.defense_readiness < 0.5 end)
+      |> Enum.map(fn _analysis ->
+        %{
+          type: :low_defense_readiness,
+          description: "Corporation has low defense readiness",
+          severity: :medium,
+          recommendation: "Improve member activity and fleet readiness"
+        }
+      end)
 
     base_vulnerabilities ++ defense_vulnerabilities
   end
@@ -1534,5 +1489,13 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
       end
 
     recommendations
+  end
+
+  defp add_recommendation_if(recommendations, message, condition) do
+    if condition do
+      [message | recommendations]
+    else
+      recommendations
+    end
   end
 end

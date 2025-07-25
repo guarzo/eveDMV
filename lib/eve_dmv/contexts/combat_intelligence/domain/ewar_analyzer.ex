@@ -73,62 +73,62 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
     # ECM
     ecm: [
       # Multispectral ECM
-      1952,
-      1953,
-      1954,
-      1955,
+      1_952,
+      1_953,
+      1_954,
+      1_955,
       # Racial ECM
-      1956,
-      1957,
-      1958,
-      1959
+      1_956,
+      1_957,
+      1_958,
+      1_959
     ],
     # Damps
     sensor_dampener: [
       # Remote Sensor Dampener
-      1847,
-      1848,
-      1849,
+      1_847,
+      1_848,
+      1_849,
       # T2 variants
-      14244,
-      14246
+      14_244,
+      14_246
     ],
     # Tracking Disruptors
     tracking_disruptor: [
       # Tracking Disruptor
-      1978,
-      1979,
+      1_978,
+      1_979,
       # T2 variants
-      14250,
-      14252
+      14_250,
+      14_252
     ],
     # Target Painters
     target_painter: [
       # Target Painter
-      12084,
-      12086,
+      12_084,
+      12_086,
       # T2 variants
-      14264,
-      14266
+      14_264,
+      14_266
     ],
     # Neuts
     energy_neutralizer: [
       # Small/Medium/Heavy
-      12262,
-      12264,
-      12266,
+      12_262,
+      12_264,
+      12_266,
       # T2 variants
-      12268,
-      12270
+      12_268,
+      12_270
     ],
     # Points/Scrams
     warp_disruptor: [
       # Warp Disruptor/Scrambler
-      3241,
-      3243,
+      3_241,
+      3_243,
       # T2 variants
-      14660,
-      14662
+      14_660,
+      14_662
     ]
   }
 
@@ -159,9 +159,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
   def analyze_fleet_ewar(ship_list) when is_list(ship_list) do
     ewar_ships =
       ship_list
-
-    |> Enum.map(&analyze_single_ship/1)
-    |> Enum.filter(& &1.is_ewar)
+      |> Enum.map(&analyze_single_ship/1)
+      |> Enum.filter(& &1.is_ewar)
 
     fleet_analysis = %{
       total_ships: length(ship_list),
@@ -182,9 +181,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
   def detect_ewar_modules(fitting_items) when is_list(fitting_items) do
     ewar_items =
       fitting_items
-
-    |> Enum.filter(&is_ewar_module?/1)
-    |> Enum.map(&categorize_ewar_module/1)
+      |> Enum.filter(&ewar_module?/1)
+      |> Enum.map(&categorize_ewar_module/1)
 
     module_analysis = %{
       has_ewar: not Enum.empty?(ewar_items),
@@ -640,10 +638,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
       # Count different EWAR types
       ewar_diversity =
         ewar_ships
-
-      |> Enum.flat_map(& &1.ewar_types) 
-      |> Enum.uniq()
-      |> length()
+        |> Enum.flat_map(& &1.ewar_types)
+        |> Enum.uniq()
+        |> length()
 
       # Check for force multipliers
       has_recons =
@@ -753,7 +750,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
 
   # Module detection functions
 
-  defp is_ewar_module?(item) do
+  defp ewar_module?(item) do
     type_id =
       case item do
         %{type_id: id} -> id

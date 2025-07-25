@@ -70,19 +70,19 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Shi
 
   # Ship type ID ranges for classification
   @ship_type_ranges %{
-    capital: 19720..19740,
-    titan: 23757..23919,
+    capital: 19_720..19_740,
+    titan: 23_757..23_919,
     battleship: 640..644,
-    marauder: 17738..17740,
+    marauder: 17_738..17_740,
     cruiser: 358..894,
-    heavy_assault_cruiser: 17634..17738,
+    heavy_assault_cruiser: 17_634..17_738,
     frigate: 1..100,
-    assault_frigate: 17476..17634,
+    assault_frigate: 17_476..17_634,
     destroyer: 420..441,
     interdictor: 648..672,
-    supercarrier: 29986..29990,
-    battlecruiser: 16227..33875,
-    supercapital: 22852..23919
+    supercarrier: 29_986..29_990,
+    battlecruiser: 16_227..33_875,
+    supercapital: 22_852..23_919
   }
 
   @ship_name_patterns %{
