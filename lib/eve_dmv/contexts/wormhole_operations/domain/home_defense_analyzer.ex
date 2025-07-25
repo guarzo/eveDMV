@@ -1000,19 +1000,19 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
     # Calculate total defensive assets across all corporations
     total_active_members =
       Map.values(defense_analyses)
-
-    Enum.map(& &1.active_members) |> Enum.sum()
+      |> Enum.map(& &1.active_members)
+      |> Enum.sum()
 
     total_available_ships =
       Map.values(defense_analyses)
-
-    Enum.map(& &1.available_ships) |> Enum.sum()
+      |> Enum.map(& &1.available_ships)
+      |> Enum.sum()
 
     avg_response_time =
       Map.values(defense_analyses)
-
-    Enum.map(& &1.response_time_estimate) |> Enum.sum()
-    Kernel./(max(map_size(defense_analyses), 1))
+      |> Enum.map(& &1.response_time_estimate)
+      |> Enum.sum()
+      |> Kernel./(max(map_size(defense_analyses), 1))
 
     %{
       active_members: total_active_members,

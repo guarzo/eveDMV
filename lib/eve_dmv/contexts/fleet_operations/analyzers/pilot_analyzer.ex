@@ -625,9 +625,9 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
     |> Enum.map(fn {role, assignments} ->
       avg_readiness =
         assignments
-
-      Enum.map(fn {_pilot_id, assignment} -> assignment.skill_readiness end) |> Enum.sum()
-      Kernel./(length(assignments))
+        |> Enum.map(fn {_pilot_id, assignment} -> assignment.skill_readiness end)
+        |> Enum.sum()
+        |> Kernel./(length(assignments))
 
       {role, Float.round(avg_readiness, 2)}
     end)

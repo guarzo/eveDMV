@@ -778,8 +778,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     else
       total_score =
         coverage_analysis
+        |> Enum.map(fn {_system, coverage} -> coverage.coverage_score end)
+        |> Enum.sum()
 
-      Enum.map(fn {_system, coverage} -> coverage.coverage_score end) |> Enum.sum()
       Float.round(total_score / map_size(coverage_analysis), 2)
     end
   end

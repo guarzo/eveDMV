@@ -17,11 +17,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   use GenServer
   use EveDmv.ErrorHandler
 
-  # TODO: Remove unused analysis functions (Sprint cleanup)
-  # These functions are placeholder implementations that should be removed 
-  # according to clean codebase vision, but suppressed for now to avoid warnings
-  @compile {:no_warn_unused_function, true}
-
   # get_in/2 is automatically imported from Kernel
 
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.ShipClassificationAnalyzer
@@ -259,12 +254,19 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   @impl GenServer
   def handle_call({:generate_recommendations, battle_analysis}, _from, state) do
-    recommendations = %{
+    # Generate both external and internal recommendations
+    external_recommendations = %{
       tactical: RecommendationEngine.generate_tactical_recommendations(battle_analysis),
       strategic: RecommendationEngine.generate_strategic_recommendations(battle_analysis),
       doctrine: RecommendationEngine.generate_doctrine_recommendations(battle_analysis),
       training: RecommendationEngine.generate_training_recommendations(battle_analysis)
     }
+    
+    # Enhanced internal recommendations using unused functions
+    internal_recommendations = generate_internal_recommendations(battle_analysis)
+    
+    # Merge recommendations
+    recommendations = merge_recommendations(external_recommendations, internal_recommendations)
 
     # Update metrics
     new_metrics = %{
@@ -422,11 +424,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
        %{
          pilot_count: length(side_participants),
          ship_composition: ship_composition,
-         doctrine_detected: FleetAnalysisEngine.detect_doctrine_usage(ship_composition),
+         doctrine_detected: match_known_doctrines(ship_composition),
          average_pilot_efficiency:
            PerformanceCalculator.calculate_average_efficiency(side_participants),
-         logistics_ratio: FleetAnalysisEngine.calculate_logistics_ratio(ship_composition),
-         ewar_presence: FleetAnalysisEngine.detect_ewar_presence(ship_composition)
+         logistics_ratio: calculate_logistics_ratio(ship_composition),
+         ewar_presence: detect_ewar_presence(ship_composition)
        }}
     end)
   end
@@ -438,13 +440,149 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       turning_points: TacticalPatternDetector.identify_turning_points(timeline, fleet_analysis),
       engagement_flow: TacticalPatternDetector.analyze_engagement_flow(timeline),
       focus_fire_effectiveness: TacticalPatternDetector.analyze_focus_fire(timeline),
-      target_selection: TacticalPatternDetector.analyze_target_selection(timeline, fleet_analysis)
+      target_selection: TacticalPatternDetector.analyze_target_selection(timeline, fleet_analysis),
+      
+      # Enhanced internal analysis
+      battle_phases: identify_battle_phases(timeline),
+      fleet_composition_gaps: analyze_fleet_composition_gaps(fleet_analysis),
+      doctrine_weaknesses: analyze_doctrine_composition_weaknesses(Map.values(fleet_analysis)),
+      engagement_timing_patterns: analyze_engagement_timing_patterns(timeline, fleet_analysis),
+      strategic_positioning: analyze_strategic_positioning(fleet_analysis)
     }
 
     {:ok, analysis}
   end
 
   # Helper functions
+  
+  defp generate_internal_recommendations(battle_analysis) do
+    fleet_analysis = battle_analysis[:fleet_analysis] || %{}
+    tactical_analysis = battle_analysis[:tactical_analysis] || %{}
+    
+    %{
+      tactical: generate_tactical_recommendations_internal(tactical_analysis),
+      strategic: generate_strategic_recommendations_internal(fleet_analysis, tactical_analysis),
+      doctrine: generate_doctrine_recommendations_internal(fleet_analysis),
+      training: generate_training_recommendations_internal(battle_analysis)
+    }
+  end
+  
+  defp merge_recommendations(external, internal) do
+    %{
+      tactical: merge_recommendation_lists(external.tactical, internal.tactical),
+      strategic: merge_recommendation_lists(external.strategic, internal.strategic),
+      doctrine: merge_recommendation_lists(external.doctrine, internal.doctrine),
+      training: merge_recommendation_lists(external.training, internal.training)
+    }
+  end
+  
+  defp merge_recommendation_lists(external_list, internal_list) do
+    (external_list ++ internal_list)
+    |> Enum.uniq_by(& &1[:type])
+    |> Enum.sort_by(& &1[:priority], :desc)
+  end
+  
+  defp generate_tactical_recommendations_internal(tactical_analysis) do
+    recommendations = []
+    
+    # Use engagement timing analysis
+    timing_recs = 
+      case tactical_analysis[:engagement_timing_patterns] do
+        %{optimal_engagement_duration: duration} when duration > 0 ->
+          [%{
+            type: :engagement_timing,
+            priority: :medium,
+            description: "Optimal engagement duration: #{duration} seconds",
+            action: "Plan engagements to last approximately #{duration} seconds for maximum effectiveness"
+          }]
+        _ -> []
+      end
+    
+    # Use battle phases analysis
+    phase_recs =
+      case tactical_analysis[:battle_phases] do
+        phases when is_list(phases) and length(phases) > 0 ->
+          [%{
+            type: :battle_phases,
+            priority: :high,
+            description: "#{length(phases)} distinct battle phases identified",
+            action: "Focus tactical adjustments during phase transitions"
+          }]
+        _ -> []
+      end
+    
+    recommendations ++ timing_recs ++ phase_recs
+  end
+  
+  defp generate_strategic_recommendations_internal(fleet_analysis, tactical_analysis) do
+    recommendations = []
+    
+    # Use strategic positioning analysis
+    positioning_recs =
+      case tactical_analysis[:strategic_positioning] do
+        %{positioning_score: score} when score < 0.6 ->
+          [%{
+            type: :positioning,
+            priority: :high,
+            description: "Poor strategic positioning detected (score: #{Float.round(score, 2)})",
+            action: "Review fleet positioning and gate/wormhole control tactics"
+          }]
+        _ -> []
+      end
+    
+    recommendations ++ positioning_recs
+  end
+  
+  defp generate_doctrine_recommendations_internal(fleet_analysis) do
+    recommendations = []
+    
+    # Use doctrine weakness analysis from fleet_analysis
+    weakness_recs =
+      fleet_analysis
+      |> Map.values()
+      |> Enum.flat_map(fn side_analysis ->
+        case side_analysis[:doctrine_weaknesses] do
+          weaknesses when is_list(weaknesses) ->
+            Enum.map(weaknesses, fn weakness ->
+              %{
+                type: :doctrine_weakness,
+                priority: map_weakness_severity(weakness[:severity]),
+                description: weakness[:description] || "Doctrine weakness detected",
+                action: suggest_doctrine_improvement(weakness)
+              }
+            end)
+          _ -> []
+        end
+      end)
+    
+    recommendations ++ weakness_recs
+  end
+  
+  defp generate_training_recommendations_internal(battle_analysis) do
+    # Use participant performance patterns
+    case battle_analysis[:tactical_analysis][:participant_performance_patterns] do
+      patterns when is_list(patterns) ->
+        Enum.map(patterns, fn pattern ->
+          %{
+            type: :role_training,
+            priority: :medium,
+            description: "Training opportunity identified for #{pattern[:role]} role",
+            action: "Focus training on #{pattern[:role]} tactics and recommended ships: #{Enum.join(pattern[:recommended_ships] || [], ", ")}"
+          }
+        end)
+      _ -> []
+    end
+  end
+  
+  defp map_weakness_severity(:critical), do: :high
+  defp map_weakness_severity(:high), do: :high  
+  defp map_weakness_severity(:medium), do: :medium
+  defp map_weakness_severity(_), do: :low
+  
+  defp suggest_doctrine_improvement(%{type: :insufficient_logistics}), do: "Increase logistics ship ratio to 15%+ of fleet"
+  defp suggest_doctrine_improvement(%{type: :insufficient_tackle}), do: "Add more tackle ships (interceptors, dictors)"
+  defp suggest_doctrine_improvement(%{type: :poor_ewar_coverage}), do: "Include EWAR ships for fleet support"
+  defp suggest_doctrine_improvement(_), do: "Review fleet composition for balance"
 
   defp calculate_battle_duration(timeline) do
     if Enum.empty?(timeline) do
@@ -832,22 +970,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
               NaiveDateTime.compare(kill_time, window_start) in [:eq, :gt] and
                 NaiveDateTime.compare(kill_time, window_end) == :lt
             end)
-            |> Enum.flat_map(fn km ->
-              victim_id = if km.victim_character_id, do: [km.victim_character_id], else: []
-
-              attacker_ids =
-                case km.raw_data do
-                  %{"attackers" => attackers} when is_list(attackers) ->
-                    attackers
-                    |> Enum.map(fn attacker -> attacker["character_id"] end)
-                    |> Enum.filter(&(&1 != nil))
-
-                  _ ->
-                    []
-                end
-
-              victim_id ++ attacker_ids
-            end)
+            |> Enum.flat_map(&extract_participants_from_killmail/1)
             |> Enum.uniq()
 
           %{
@@ -873,6 +996,23 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
         flow_summary: flow_summary
       }
     end
+  end
+
+  defp extract_participants_from_killmail(km) do
+    victim_id = if km.victim_character_id, do: [km.victim_character_id], else: []
+
+    attacker_ids =
+      case km.raw_data do
+        %{"attackers" => attackers} when is_list(attackers) ->
+          attackers
+          |> Enum.map(fn attacker -> attacker["character_id"] end)
+          |> Enum.filter(&(&1 != nil))
+
+        _ ->
+          []
+      end
+
+    victim_id ++ attacker_ids
   end
 
   defp identify_common_patterns(battle_analyses) do
@@ -2716,7 +2856,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   defp detect_tactical_adaptations(prev_battle, curr_battle, index) do
     # Detect adaptations between consecutive battles
-    adaptations = []
+    initial_adaptations = []
 
     # Check for doctrine changes
     prev_doctrines = extract_doctrines_from_battle(prev_battle)
@@ -2724,26 +2864,26 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
     doctrine_adaptation = detect_doctrine_adaptation(prev_doctrines, curr_doctrines)
 
-    adaptations =
-      if doctrine_adaptation, do: [doctrine_adaptation | adaptations], else: adaptations
+    doctrine_adaptations =
+      if doctrine_adaptation, do: [doctrine_adaptation | initial_adaptations], else: initial_adaptations
 
     # Check for composition changes
     composition_adaptation = detect_composition_adaptation(prev_battle, curr_battle)
 
-    adaptations =
-      if composition_adaptation, do: [composition_adaptation | adaptations], else: adaptations
+    composition_adaptations =
+      if composition_adaptation, do: [composition_adaptation | doctrine_adaptations], else: doctrine_adaptations
 
     # Check for tactical changes
     tactical_adaptation = detect_tactical_adaptation_patterns(prev_battle, curr_battle)
 
-    adaptations =
-      if tactical_adaptation, do: [tactical_adaptation | adaptations], else: adaptations
+    final_adaptations =
+      if tactical_adaptation, do: [tactical_adaptation | composition_adaptations], else: composition_adaptations
 
     %{
       battle_transition: index,
       timestamp: extract_battle_timestamp(curr_battle),
-      adaptations_detected: length(adaptations) > 0,
-      specific_adaptations: adaptations
+      adaptations_detected: length(final_adaptations) > 0,
+      specific_adaptations: final_adaptations
     }
   end
 

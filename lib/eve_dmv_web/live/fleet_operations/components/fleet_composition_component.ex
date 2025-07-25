@@ -4,6 +4,7 @@ defmodule EveDmvWeb.Live.FleetOperations.Components.FleetCompositionComponent do
   """
 
   use Phoenix.LiveComponent
+  alias EveDmvWeb.Utils.FormattingUtils
 
   def render(assigns) do
     ~H"""
@@ -84,17 +85,9 @@ defmodule EveDmvWeb.Live.FleetOperations.Components.FleetCompositionComponent do
   defp format_isk(nil), do: "0"
   defp format_isk(_), do: "0"
 
-  defp format_isk_short(value) when is_number(value) do
-    cond do
-      value >= 1_000_000_000 -> "#{Float.round(value / 1_000_000_000, 1)}B"
-      value >= 1_000_000 -> "#{Float.round(value / 1_000_000, 1)}M"
-      value >= 1_000 -> "#{Float.round(value / 1_000, 1)}K"
-      true -> "#{round(value)}"
-    end
+  defp format_isk_short(value) do
+    FormattingUtils.format_isk_short(value)
   end
-
-  defp format_isk_short(nil), do: "0"
-  defp format_isk_short(_), do: "0"
 
   defp doctrine_score_class(score) when is_number(score) do
     cond do

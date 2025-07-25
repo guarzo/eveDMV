@@ -436,8 +436,8 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
     else
       total_usage =
         Map.values(ship_usage)
-
-      Enum.map(fn ship_data -> Map.get(ship_data, :times_used, 0) end) |> Enum.sum()
+        |> Enum.map(fn ship_data -> Map.get(ship_data, :times_used, 0) end)
+        |> Enum.sum()
 
       max_usage =
         Map.values(ship_usage)

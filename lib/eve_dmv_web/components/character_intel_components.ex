@@ -4,6 +4,7 @@ defmodule EveDmvWeb.CharacterIntelComponents do
   Provides loading states, error handling, and data visualization components.
   """
   use Phoenix.Component
+  alias EveDmvWeb.Utils.FormattingUtils
 
   @doc """
   Renders a skeleton loading state for character intel data.
@@ -216,19 +217,11 @@ defmodule EveDmvWeb.CharacterIntelComponents do
   # Private helper functions
 
   defp format_stat_value(value, "number") when is_number(value) do
-    value
-    |> round()
-    |> Integer.to_string()
-    |> String.replace(~r/(\d)(?=(\d{3})+(?!\d))/, "\\1,")
+    FormattingUtils.format_number_with_commas(value)
   end
 
   defp format_stat_value(value, "isk") when is_number(value) do
-    cond do
-      value >= 1_000_000_000 -> "#{Float.round(value / 1_000_000_000, 1)}B"
-      value >= 1_000_000 -> "#{Float.round(value / 1_000_000, 1)}M"
-      value >= 1_000 -> "#{Float.round(value / 1_000, 1)}K"
-      true -> "#{round(value)}"
-    end
+    FormattingUtils.format_isk_short(value)
   end
 
   defp format_stat_value(value, _), do: to_string(value)

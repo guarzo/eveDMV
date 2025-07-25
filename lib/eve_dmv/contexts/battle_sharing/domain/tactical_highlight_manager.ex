@@ -549,8 +549,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
   defp count_participants(killmails) do
     participants =
       killmails
+      |> Enum.flat_map(&extract_participants_from_killmail/1)
+      |> Enum.uniq()
 
-    Enum.flat_map(&extract_participants_from_killmail/1) |> Enum.uniq()
     length(participants)
   end
 
@@ -661,18 +662,18 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
     # Add tags based on learning notes content
     note_tags =
       learning_notes
+      |> Enum.flat_map(&extract_tags_from_note/1)
+      |> Enum.uniq()
 
-    Enum.flat_map(&extract_tags_from_note/1) |> Enum.uniq()
     (type_tags ++ note_tags) |> Enum.take(10)
   end
 
   defp extract_tags_from_note(note) when is_binary(note) do
     # Simple tag extraction from note content
-    String.downcase(note)
-
-    String.split(~r/\W+/)
-    |> Enum.filter(&(String.length(&1) > 3))
-    |> Enum.filter(&is_tactical_term/1)
+    note
+    |> String.downcase()
+    |> String.split(~r/\W+/)
+    |> Enum.filter(&(String.length(&1) > 3 && is_tactical_term(&1)))
     |> Enum.take(3)
   end
 

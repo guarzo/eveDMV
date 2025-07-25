@@ -786,37 +786,8 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
 
             # Build patterns map with all categories
             patterns =
-              Enum.reduce(rows, %{}, fn [
-                                          category,
-                                          count,
-                                          avg_size,
-                                          isk_destroyed,
-                                          avg_value,
-                                          systems
-                                        ],
-                                        acc ->
-                percentage =
-                  if total_kills > 0, do: Float.round(count / total_kills * 100, 1), else: 0.0
-
-                isk_percentage =
-                  if total_isk > 0,
-                    do:
-                      Float.round(
-                        Decimal.to_float(isk_destroyed || Decimal.new(0)) / total_isk * 100,
-                        1
-                      ),
-                    else: 0.0
-
-                Map.put(acc, String.to_existing_atom(category), %{
-                  kill_count: count,
-                  percentage: percentage,
-                  avg_gang_size: Float.round(Decimal.to_float(avg_size || Decimal.new(0)), 1),
-                  total_isk_destroyed: Decimal.to_float(isk_destroyed || Decimal.new(0)),
-                  isk_percentage: isk_percentage,
-                  avg_kill_value: Decimal.to_float(avg_value || Decimal.new(0)),
-                  systems_active: systems || 0,
-                  effectiveness_rating: calculate_gang_effectiveness(percentage, isk_percentage)
-                })
+              Enum.reduce(rows, %{}, fn row, acc ->
+                process_gang_size_row(row, acc, total_kills, total_isk)
               end)
 
             # Ensure all categories exist with defaults
@@ -1481,6 +1452,31 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
       total_score >= 10 -> :poor
       true -> :insufficient_data
     end
+  end
+
+  defp process_gang_size_row([category, count, avg_size, isk_destroyed, avg_value, systems], acc, total_kills, total_isk) do
+    percentage =
+      if total_kills > 0, do: Float.round(count / total_kills * 100, 1), else: 0.0
+
+    isk_percentage =
+      if total_isk > 0,
+        do:
+          Float.round(
+            Decimal.to_float(isk_destroyed || Decimal.new(0)) / total_isk * 100,
+            1
+          ),
+        else: 0.0
+
+    Map.put(acc, String.to_existing_atom(category), %{
+      kill_count: count,
+      percentage: percentage,
+      avg_gang_size: Float.round(Decimal.to_float(avg_size || Decimal.new(0)), 1),
+      total_isk_destroyed: Decimal.to_float(isk_destroyed || Decimal.new(0)),
+      isk_percentage: isk_percentage,
+      avg_kill_value: Decimal.to_float(avg_value || Decimal.new(0)),
+      systems_active: systems || 0,
+      effectiveness_rating: calculate_gang_effectiveness(percentage, isk_percentage)
+    })
   end
 
   # defp get_corporation_alliance_from_killmails(_character_id), do: {nil, nil, nil, nil}

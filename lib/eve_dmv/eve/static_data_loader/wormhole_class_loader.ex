@@ -86,8 +86,9 @@ defmodule EveDmv.Eve.StaticDataLoader.WormholeClassLoader do
     update_count =
       systems_to_update
       |> Enum.chunk_every(500)
+      |> Enum.map(&update_systems_batch(&1, wormhole_data))
+      |> Enum.sum()
 
-    Enum.map(&update_systems_batch(&1, wormhole_data)) |> Enum.sum()
     {:ok, update_count}
   end
 

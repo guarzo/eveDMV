@@ -529,8 +529,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleAnalysi
     # Analyze the timeline of the battle
     killmails
     |> Enum.sort_by(& &1.killmail_time)
-
-    Enum.chunk_every(10)
+    |> Enum.chunk_every(10)
     |> Enum.with_index()
     |> Enum.map(fn {chunk, index} ->
       %{

@@ -298,9 +298,9 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.FleetScoring do
     # Calculate variance from ideal distribution
     variance =
       Map.values(role_counts)
-
-    Enum.map(fn count -> :math.pow(count - ideal_distribution, 2) end) |> Enum.sum()
-    Kernel./(map_size(role_counts))
+      |> Enum.map(fn count -> :math.pow(count - ideal_distribution, 2) end)
+      |> Enum.sum()
+      |> Kernel./(map_size(role_counts))
 
     # Normalize variance to 0-1 scale (lower variance = lower redundancy score)
     normalized_variance = min(variance / (ideal_distribution * ideal_distribution), 1.0)
@@ -327,9 +327,9 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.FleetScoring do
     # Good distribution has reasonable average with not too much variance
     variance =
       scores
-
-    Enum.map(fn score -> :math.pow(score - avg_leadership, 2) end) |> Enum.sum()
-    Kernel./(length(scores))
+      |> Enum.map(fn score -> :math.pow(score - avg_leadership, 2) end)
+      |> Enum.sum()
+      |> Kernel./(length(scores))
 
     # Lower variance indicates better distribution
     max(0.0, 1.0 - variance)
@@ -355,9 +355,9 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.FleetScoring do
 
       variance =
         tactical_scores
-
-      Enum.map(fn score -> :math.pow(score - avg_tactical, 2) end) |> Enum.sum()
-      Kernel./(length(tactical_scores))
+        |> Enum.map(fn score -> :math.pow(score - avg_tactical, 2) end)
+        |> Enum.sum()
+        |> Kernel./(length(tactical_scores))
 
       # Lower variance = higher consistency
       max(0.0, 1.0 - variance * 2.0)

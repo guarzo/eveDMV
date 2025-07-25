@@ -74,12 +74,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
   defp parse_zkillboard_url(url) do
     uri = URI.parse(url)
 
-    cond do
-      uri.host != "zkillboard.com" ->
-        {:error, :invalid_zkillboard_url}
-
-      true ->
-        parse_zkillboard_path(uri.path)
+    if uri.host != "zkillboard.com" do
+      {:error, :invalid_zkillboard_url}
+    else
+      parse_zkillboard_path(uri.path)
     end
   end
 

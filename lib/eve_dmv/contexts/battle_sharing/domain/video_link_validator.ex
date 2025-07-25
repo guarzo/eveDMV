@@ -149,9 +149,11 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
       urls
       |> Enum.chunk_every(max_concurrent)
       |> Enum.flat_map(fn batch ->
-        batch
-        |> Enum.map(&Task.async(fn -> validate_video_url(&1, options) end))
-        |> Enum.map(&Task.await(&1, timeout + 1000))
+        Enum.map(batch, fn url ->
+          url
+          |> (&Task.async(fn -> validate_video_url(&1, options) end)).()
+          |> Task.await(timeout + 1000)
+        end)
       end)
 
     successful_validations =
@@ -522,8 +524,8 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
         Map.get(video_info, :metadata, %{}) |> Map.get(:title, ""),
         Map.get(video_info, :metadata, %{}) |> Map.get(:description, "")
       ]
-
-    Enum.join(" ") |> String.downcase()
+      |> Enum.join(" ")
+      |> String.downcase()
 
     violation_found =
       @moderation_keywords

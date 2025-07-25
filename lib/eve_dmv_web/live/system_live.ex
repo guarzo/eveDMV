@@ -349,34 +349,38 @@ defmodule EveDmvWeb.SystemLive do
 
     case Ecto.Adapters.SQL.query(EveDmv.Repo, heatmap_query, [system_id, thirty_days_ago]) do
       {:ok, %{rows: rows}} ->
-        # Create array for all 24 hours
-        activity_by_hour =
-          Enum.map(0..23, fn hour ->
-            count =
-              Enum.find_value(rows, 0, fn [hour_value, count] ->
-                if hour_value == hour, do: count, else: nil
-              end)
-
-            %{hour: hour, count: count}
-          end)
-
-        max_count = Map.get(Enum.max_by(activity_by_hour, & &1.count), :count, 1)
-
-        # Calculate percentages for visualization
-        heatmap_data =
-          Enum.map(activity_by_hour, fn %{hour: hour, count: count} ->
-            %{
-              hour: hour,
-              count: count,
-              percentage: if(max_count > 0, do: round(count / max_count * 100), else: 0)
-            }
-          end)
-
+        heatmap_data = process_activity_heatmap_data(rows)
         {:ok, heatmap_data}
 
       {:error, reason} ->
         {:error, reason}
     end
+  end
+
+  defp process_activity_heatmap_data(rows) do
+    # Create array for all 24 hours
+    activity_by_hour =
+      Enum.map(0..23, fn hour ->
+        count = find_hour_count(rows, hour)
+        %{hour: hour, count: count}
+      end)
+
+    max_count = Map.get(Enum.max_by(activity_by_hour, & &1.count), :count, 1)
+
+    # Calculate percentages for visualization
+    Enum.map(activity_by_hour, fn %{hour: hour, count: count} ->
+      %{
+        hour: hour,
+        count: count,
+        percentage: if(max_count > 0, do: round(count / max_count * 100), else: 0)
+      }
+    end)
+  end
+
+  defp find_hour_count(rows, hour) do
+    Enum.find_value(rows, 0, fn [hour_value, count] ->
+      if hour_value == hour, do: count, else: nil
+    end)
   end
 
   # Calculate primary timezone based on peak activity hour

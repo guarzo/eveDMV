@@ -710,8 +710,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
 
     ewar_types =
       ewar_ships
-
-    Enum.flat_map(& &1.ewar_types) |> Enum.uniq()
+      |> Enum.flat_map(& &1.ewar_types)
+      |> Enum.uniq()
 
     recommendations =
       if :ecm in ewar_types do

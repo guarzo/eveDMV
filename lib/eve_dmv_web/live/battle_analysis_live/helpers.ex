@@ -5,6 +5,7 @@ defmodule EveDmvWeb.BattleAnalysisLive.Helpers do
   """
 
   alias EveDmv.Eve.NameResolver
+  alias EveDmvWeb.Utils.FormattingUtils
 
   @doc """
   Resolves ship name from type ID.
@@ -78,16 +79,9 @@ defmodule EveDmvWeb.BattleAnalysisLive.Helpers do
   @doc """
   Formats ISK values in short form (1.2B, 850M, etc).
   """
-  def format_isk_short(value) when is_number(value) do
-    cond do
-      value >= 1_000_000_000 -> "#{Float.round(value / 1_000_000_000, 1)}B"
-      value >= 1_000_000 -> "#{Float.round(value / 1_000_000, 1)}M"
-      value >= 1_000 -> "#{Float.round(value / 1_000, 1)}K"
-      true -> "#{round(value)}"
-    end
+  def format_isk_short(value) do
+    FormattingUtils.format_isk_short(value)
   end
-
-  def format_isk_short(_), do: "0"
 
   @doc """
   Humanizes upload errors for user display.

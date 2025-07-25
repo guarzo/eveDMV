@@ -181,10 +181,9 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationService do
     # Extract all unique item type IDs for bulk pricing
     item_type_ids =
       items
-
-    Enum.map(& &1["item_type_id"])
-    |> Enum.uniq()
-    |> Enum.filter(&is_integer/1)
+      |> Enum.map(& &1["item_type_id"])
+      |> Enum.uniq()
+      |> Enum.filter(&is_integer/1)
 
     # Get prices in bulk for efficiency
     item_prices = get_bulk_item_prices(item_type_ids)

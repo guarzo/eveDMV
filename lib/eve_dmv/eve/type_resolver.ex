@@ -138,17 +138,16 @@ defmodule EveDmv.Eve.TypeResolver do
     # Process types in parallel with rate limiting
     fetch_results =
       type_ids
-
-    Task.async_stream(
-      &fetch_item_type_data/1,
-      max_concurrency: 5,
-      timeout: 30_000
-    )
-    |> Enum.map(fn
-      {:ok, {:ok, item_data}} -> {:ok, item_data}
-      {:ok, error} -> error
-      {:exit, reason} -> {:error, {:timeout, reason}}
-    end)
+      |> Task.async_stream(
+        &fetch_item_type_data/1,
+        max_concurrency: 5,
+        timeout: 30_000
+      )
+      |> Enum.map(fn
+        {:ok, {:ok, item_data}} -> {:ok, item_data}
+        {:ok, error} -> error
+        {:exit, reason} -> {:error, {:timeout, reason}}
+      end)
 
     # Separate successful and failed fetch results
     {successful_fetches, _fetch_failures} =

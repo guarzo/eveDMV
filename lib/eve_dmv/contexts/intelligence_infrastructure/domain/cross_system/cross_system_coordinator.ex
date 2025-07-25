@@ -325,9 +325,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
 
     avg_attackers =
       kills
-
-    Enum.map(&(&1.attacker_count || 1)) |> Enum.sum()
-    Kernel./(kill_count)
+      |> Enum.map(&(&1.attacker_count || 1))
+      |> Enum.sum()
+      |> Kernel./(kill_count)
 
     # Weighted threat score
     # Billions
@@ -572,14 +572,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
       recent =
         daily_activity
         |> Enum.take(-3)
-
-      Enum.map(fn {_, metrics} -> metrics.kill_count end) |> Enum.sum()
+        |> Enum.map(fn {_, metrics} -> metrics.kill_count end)
+        |> Enum.sum()
 
       older =
         daily_activity
         |> Enum.take(3)
-
-      Enum.map(fn {_, metrics} -> metrics.kill_count end) |> Enum.sum()
+        |> Enum.map(fn {_, metrics} -> metrics.kill_count end)
+        |> Enum.sum()
 
       cond do
         recent > older * 1.5 -> :increasing
@@ -632,34 +632,34 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
 
   # Generate cross-pattern insights by analyzing connections between different pattern types
   defp generate_cross_pattern_insights(activity_patterns, threat_patterns, movement_patterns) do
-    insights = []
+    initial_insights = []
 
     # Activity-threat correlation insights
-    insights =
+    activity_threat_insights =
       if map_size(activity_patterns) > 0 and map_size(threat_patterns) > 0 do
-        ["Activity and threat patterns show correlation in key systems" | insights]
+        ["Activity and threat patterns show correlation in key systems" | initial_insights]
       else
-        insights
+        initial_insights
       end
 
     # Movement-activity correlation insights  
-    insights =
+    movement_activity_insights =
       if map_size(movement_patterns) > 0 and map_size(activity_patterns) > 0 do
-        ["Movement patterns correlate with activity spikes" | insights]
+        ["Movement patterns correlate with activity spikes" | activity_threat_insights]
       else
-        insights
+        activity_threat_insights
       end
 
     # Threat-movement correlation insights
-    insights =
+    final_insights =
       if map_size(threat_patterns) > 0 and map_size(movement_patterns) > 0 do
-        ["Threat patterns follow predictable movement corridors" | insights]
+        ["Threat patterns follow predictable movement corridors" | movement_activity_insights]
       else
-        insights
+        movement_activity_insights
       end
 
     # Return insights as structured data
-    insights
+    final_insights
     |> Enum.map(fn insight ->
       %{
         type: :cross_pattern,

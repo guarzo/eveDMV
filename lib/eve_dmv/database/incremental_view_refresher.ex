@@ -323,7 +323,7 @@ defmodule EveDmv.Database.IncrementalViewRefresher do
     """
 
     case SQL.query(EveDmv.Repo, sql, [view_name]) do
-      {:ok, %{rows: [[timestamp]]}} when not is_nil(timestamp) -> timestamp
+      {:ok, %{rows: [[timestamp]]}} when timestamp != nil -> timestamp
       _ -> nil
     end
   end
@@ -336,7 +336,7 @@ defmodule EveDmv.Database.IncrementalViewRefresher do
     """
 
     case SQL.query(EveDmv.Repo, sql, [view_name]) do
-      {:ok, %{rows: [[timestamp]]}} when not is_nil(timestamp) -> timestamp
+      {:ok, %{rows: [[timestamp]]}} when timestamp != nil -> timestamp
       _ -> nil
     end
   end

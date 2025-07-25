@@ -612,8 +612,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     else
       total_effectiveness =
         Map.values(ewar_breakdown)
+        |> Enum.map(& &1.effectiveness)
+        |> Enum.sum()
 
-      Enum.map(& &1.effectiveness) |> Enum.sum()
       avg_effectiveness = total_effectiveness / map_size(ewar_breakdown)
 
       cond do
@@ -962,25 +963,25 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
   # Recommendations
 
   defp generate_recommendations(composition, capabilities, vulnerabilities) do
-    recommendations = []
+    initial_recommendations = []
 
     # Role-based recommendations
     role_recs = generate_role_recommendations(composition)
-    recommendations = recommendations ++ role_recs
+    role_recommendations = initial_recommendations ++ role_recs
 
     # Capability-based recommendations
     cap_recs = generate_capability_recommendations(capabilities)
-    recommendations = recommendations ++ cap_recs
+    capability_recommendations = role_recommendations ++ cap_recs
 
     # Vulnerability-based recommendations
     vuln_recs =
       vulnerabilities.vulnerabilities
       |> Enum.map(& &1.mitigation)
 
-    recommendations = recommendations ++ vuln_recs
+    final_recommendations = capability_recommendations ++ vuln_recs
 
     # Prioritize and deduplicate
-    recommendations
+    final_recommendations
     |> Enum.uniq()
     |> Enum.take(10)
   end
@@ -1015,8 +1016,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
   defp generate_fleet_summary(ship_analyses, composition) do
     total_value =
       ship_analyses
-
-    Enum.map(&(&1.value || 0)) |> Enum.sum()
+      |> Enum.map(&(&1.value || 0))
+      |> Enum.sum()
 
     %{
       total_pilots: composition.total_ships,

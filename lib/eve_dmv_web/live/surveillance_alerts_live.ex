@@ -31,19 +31,17 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
 
     socket =
       socket
-
-    assign(:page_title, "Surveillance Alerts")
-    assign(:alerts, [])
-    assign(:alert_filters, default_filters())
-    assign(:selected_alert, nil)
-    assign(:show_alert_details, false)
-    assign(:new_alert_count, 0)
-    assign(:sound_enabled, true)
-
-    assign(:auto_acknowledge, false)
-    |> assign(:alert_metrics, %{})
-    |> load_alerts()
-    |> load_alert_metrics()
+      |> assign(:page_title, "Surveillance Alerts")
+      |> assign(:alerts, [])
+      |> assign(:alert_filters, default_filters())
+      |> assign(:selected_alert, nil)
+      |> assign(:show_alert_details, false)
+      |> assign(:new_alert_count, 0)
+      |> assign(:sound_enabled, true)
+      |> assign(:auto_acknowledge, false)
+      |> assign(:alert_metrics, %{})
+      |> load_alerts()
+      |> load_alert_metrics()
 
     {:ok, socket}
   end
@@ -183,7 +181,7 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
     Logger.info("Received real-time surveillance alert: #{alert_data.alert_id}")
 
     # Trigger visual and audio notifications
-    trigger_alert_notification(alert_data)
+    socket = trigger_alert_notification(socket, alert_data)
 
     socket =
       socket
@@ -199,17 +197,7 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
     socket =
       socket
       |> load_alerts()
-      |> then(fn socket ->
-        # Update details if this alert is currently shown
-        if socket.assigns.selected_alert && socket.assigns.selected_alert.id == alert_id do
-          case safe_call(fn -> AlertService.get_alert(alert_id) end) do
-            {:ok, updated_alert} -> assign(socket, :selected_alert, updated_alert)
-            _ -> assign(socket, :selected_alert, nil)
-          end
-        else
-          socket
-        end
-      end)
+      |> update_selected_alert_if_needed(alert_id)
 
     {:noreply, socket}
   end
@@ -226,6 +214,18 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
   end
 
   # Private functions
+
+  defp update_selected_alert_if_needed(socket, alert_id) do
+    # Update details if this alert is currently shown
+    if socket.assigns.selected_alert && socket.assigns.selected_alert.id == alert_id do
+      case safe_call(fn -> AlertService.get_alert(alert_id) end) do
+        {:ok, updated_alert} -> assign(socket, :selected_alert, updated_alert)
+        _ -> assign(socket, :selected_alert, nil)
+      end
+    else
+      socket
+    end
+  end
 
   defp load_alerts(socket) do
     filters = socket.assigns.alert_filters
@@ -383,29 +383,6 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
 
   def format_confidence_score(_), do: "N/A"
 
-  # Data loading functions
-  defp load_alerts(socket) do
-    # TODO: Implement real alert loading from surveillance service
-    socket
-    |> assign(:alerts, [])
-    |> assign(:filtered_alerts, [])
-  end
-
-  defp load_alert_metrics(socket) do
-    # TODO: Implement real alert metrics loading
-    socket
-    |> assign(:alert_metrics, %{
-      total_active: 0,
-      high_priority: 0,
-      acknowledged: 0,
-      resolved: 0
-    })
-  end
-
-  defp trigger_alert_notification(_alert_data) do
-    # TODO: Implement real alert notification system
-    :ok
-  end
 
   # Safe call helper for surveillance services
   defp safe_call(fun) when is_function(fun, 0) do

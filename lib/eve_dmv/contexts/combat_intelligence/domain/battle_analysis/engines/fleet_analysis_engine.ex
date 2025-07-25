@@ -62,8 +62,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
         |> Enum.filter(fn {ship_type_id, _count} ->
           classify_ship(ship_type_id) == :logistics
         end)
+        |> Enum.map(fn {_, count} -> count end)
+        |> Enum.sum()
 
-      Enum.map(fn {_, count} -> count end) |> Enum.sum()
       Float.round(logistics_ships / total_ships, 3)
     else
       0.0
@@ -265,8 +266,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
 
       entropy =
         proportions
+        |> Enum.map(fn p -> if p > 0, do: -p * :math.log2(p), else: 0 end)
+        |> Enum.sum()
 
-      Enum.map(fn p -> if p > 0, do: -p * :math.log2(p), else: 0 end) |> Enum.sum()
       # Normalize to 0-1 scale
       max_entropy = :math.log2(map_size(ship_classes))
       if max_entropy > 0, do: entropy / max_entropy, else: 0.0

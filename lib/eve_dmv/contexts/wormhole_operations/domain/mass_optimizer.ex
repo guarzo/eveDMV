@@ -318,18 +318,15 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
     # Use static data for accurate mass data
     type_id = Map.get(ship, :type_id) || Map.get(ship, :ship_type_id)
 
-    cond do
-      # Try ship type ID lookup from static data
-      is_integer(type_id) ->
-        case EveDmv.StaticData.get_ship_mass(type_id) do
-          {:ok, mass} -> mass
-          # Realistic cruiser mass fallback
-          {:error, _} -> 12_000_000.0
-        end
-
+    if is_integer(type_id) do
+      case EveDmv.StaticData.get_ship_mass(type_id) do
+        {:ok, mass} -> mass
+        # Realistic cruiser mass fallback
+        {:error, _} -> 12_000_000.0
+      end
+    else
       # Final fallback for ships without type_id
-      true ->
-        12_000_000.0
+      12_000_000.0
     end
   end
 
