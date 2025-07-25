@@ -1405,15 +1405,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   defp match_known_doctrines(ship_analysis) do
     # Match against known EVE Online doctrine patterns
-    doctrines = []
+    base_doctrines = []
 
     # Analyze for common doctrines based on dominant ship classes
-    doctrines = doctrines ++ analyze_capital_doctrines(ship_analysis)
-    doctrines = doctrines ++ analyze_subcap_doctrines(ship_analysis)
-    doctrines = doctrines ++ analyze_specialized_doctrines(ship_analysis)
-
+    (base_doctrines ++ analyze_capital_doctrines(ship_analysis) ++ 
+     analyze_subcap_doctrines(ship_analysis) ++ 
+     analyze_specialized_doctrines(ship_analysis))
     # Sort by confidence score
-    doctrines
     |> Enum.sort_by(& &1.confidence, :desc)
     # Return top 3 matches
     |> Enum.take(3)
@@ -2825,24 +2823,19 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   defp calculate_tactical_complexity(battle) do
     # Calculate tactical complexity based on various factors
-    base_score = 0
-
-    # Add points for EWAR presence
-    base_score = base_score + if has_ewar?(battle), do: 20, else: 0
-
-    # Add points for multiple doctrines
+    ewar_score = if has_ewar?(battle), do: 20, else: 0
+    
     doctrine_count = count_doctrines(battle)
-    base_score = base_score + min(30, doctrine_count * 10)
-
-    # Add points for multiple phases
+    doctrine_score = min(30, doctrine_count * 10)
+    
     phase_count = count_battle_phases(battle)
-    base_score = base_score + min(25, phase_count * 5)
-
-    # Add points for participant diversity
+    phase_score = min(25, phase_count * 5)
+    
     participant_count = extract_participant_count(battle)
-    base_score = base_score + min(25, participant_count)
+    participant_score = min(25, participant_count)
 
-    Float.round(min(100, base_score), 1)
+    total_score = ewar_score + doctrine_score + phase_score + participant_score
+    Float.round(min(100, total_score), 1)
   end
 
   defp has_ewar?(battle) do
