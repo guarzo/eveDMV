@@ -62,7 +62,7 @@ defmodule EveDmv.Surveillance.Matching.IndexManager do
     indexable_criteria = extract_indexable_criteria(profile.filter_tree)
 
     # Build indexes for each criterion
-    |> Enum.each(indexable_criteria, fn {field, values} ->
+    Enum.each(indexable_criteria, fn {field, values} ->
       build_field_index(profile.id, field, values)
     end)
 
@@ -252,7 +252,7 @@ defmodule EveDmv.Surveillance.Matching.IndexManager do
        })
        when is_list(values) do
     if KillmailFieldExtractor.indexable_field?(field) do
-      |> Enum.map(values, fn value -> {field, value} end)
+      Enum.map(values, fn value -> {field, value} end)
     else
       []
     end
@@ -260,7 +260,7 @@ defmodule EveDmv.Surveillance.Matching.IndexManager do
 
   defp extract_criteria_from_node(%{"type" => type, "children" => children})
        when type in ["and", "or"] and is_list(children) do
-    |> Enum.flat_map(children, &extract_criteria_from_node/1)
+    Enum.flat_map(children, &extract_criteria_from_node/1)
   end
 
   defp extract_criteria_from_node(_), do: []

@@ -17,7 +17,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   use GenServer
   use EveDmv.ErrorHandler
 
-  import Kernel, only: [get_in: 3]
+  # get_in/2 is automatically imported from Kernel
 
   # alias EveDmv.Contexts.CombatIntelligence.Infrastructure.BattleCache
   # alias EveDmv.Contexts.CombatIntelligence.Infrastructure.KillmailRepository
@@ -406,8 +406,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     # Basic fallback analysis
     sides =
       Map.values(participants)
-
-    |> Enum.group_by(& &1.side)
+      |> Enum.group_by(& &1.side)
 
     Map.new(sides, fn {side, side_participants} ->
       ship_composition = FleetAnalysisEngine.analyze_side_ship_composition(side_participants)
@@ -479,45 +478,50 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       []
     else
       # Simple phase identification based on kill clustering
-      detailed_phases = [
-        %{
-          phase_number: 1,
-          start_time: List.first(timeline).timestamp,
-          end_time: List.last(timeline).timestamp,
-          duration_seconds:
-            DateTime.diff(List.last(timeline).timestamp, List.first(timeline).timestamp),
-          kills: length(timeline),
-          intensity:
-            length(timeline) /
-              max(
-                1,
-                DateTime.diff(List.last(timeline).timestamp, List.first(timeline).timestamp) / 60
-              )
-        }
-      ]
+      initial_phases =
+        [
+          %{
+            phase_number: 1,
+            start_time: List.first(timeline).timestamp,
+            end_time: List.last(timeline).timestamp,
+            duration_seconds:
+              DateTime.diff(List.last(timeline).timestamp, List.first(timeline).timestamp),
+            kills: length(timeline),
+            intensity:
+              length(timeline) /
+                max(
+                  1,
+                  DateTime.diff(List.last(timeline).timestamp, List.first(timeline).timestamp) /
+                    60
+                )
+          }
+        ]
 
-      |> Enum.with_index(detailed_phases)
+      detailed_phases =
+        initial_phases
+        |> Enum.with_index()
+        |> Enum.map(fn {phase, index} ->
+          # Determine phase type based on position and characteristics
+          phase_type = determine_phase_type(phase, index, length(initial_phases))
 
-      |> Enum.map(fn {phase, index} ->
-        # Determine phase type based on position and characteristics
-        phase_type = determine_phase_type(phase, index, length(detailed_phases))
+          # Calculate additional metrics
+          dominant_side = calculate_dominant_side_for_phase(timeline, phase)
+          key_events = identify_key_events_in_phase(timeline, phase)
 
-        # Calculate additional metrics
-        dominant_side = calculate_dominant_side_for_phase(timeline, phase)
-        key_events = identify_key_events_in_phase(timeline, phase)
+          %{
+            phase_type: phase_type,
+            start_time: phase.start_time,
+            end_time: phase.end_time,
+            duration_seconds: phase.duration_seconds,
+            kills_in_phase: phase.kills,
+            dominant_side: dominant_side,
+            intensity_rating: classify_intensity_rating(phase.intensity),
+            key_events: key_events,
+            phase_number: phase.phase_number
+          }
+        end)
 
-        %{
-          phase_type: phase_type,
-          start_time: phase.start_time,
-          end_time: phase.end_time,
-          duration_seconds: phase.duration_seconds,
-          kills_in_phase: phase.kills,
-          dominant_side: dominant_side,
-          intensity_rating: classify_intensity_rating(phase.intensity),
-          key_events: key_events,
-          phase_number: phase.phase_number
-        }
-      end)
+      detailed_phases
     end
   end
 
@@ -551,12 +555,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       # Count kills by side (simplified - would need proper side determination)
       side_kills =
         phase_events
-
-      |> Enum.map(fn event ->
-        # Use corporation/alliance to determine side (simplified)
-        determine_side(event.victim_corporation_id, event.victim_alliance_id)
-      end)
-      |> Enum.frequencies()
+        |> Enum.map(fn event ->
+          # Use corporation/alliance to determine side (simplified)
+          determine_side(event.victim_corporation_id, event.victim_alliance_id)
+        end)
+        |> Enum.frequencies()
 
       case Enum.max_by(side_kills, &elem(&1, 1), fn -> {:unknown, 0} end) do
         {:unknown, _} -> :balanced
@@ -574,14 +577,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       end)
 
     phase_events
-
     |> Enum.filter(fn event ->
       # Consider an event "key" if it meets certain criteria
       high_value_kill?(event) or
         capital_ship_kill?(event) or
         commander_kill?(event)
     end)
-
     |> Enum.map(fn event ->
       %{
         timestamp: event.timestamp,
@@ -591,7 +592,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
         description: generate_event_description(event)
       }
     end)
-
     |> Enum.sort_by(& &1.timestamp)
   end
 
@@ -749,6 +749,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
         end)
         |> Enum.map(fn {_, count} -> count end)
         |> Enum.sum()
+
       Float.round(logistics_ships / total_ships, 3)
     else
       0.0
@@ -833,45 +834,41 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       # Track participants in each window
       window_participants =
         time_windows
+        |> Enum.map(fn {window_start, window_end} ->
+          participants_in_window =
+            sorted_timeline
+            |> Enum.filter(fn km ->
+              kill_time = km.killmail_time
 
-      |> Enum.map(fn {window_start, window_end} ->
-        participants_in_window =
-          sorted_timeline
+              NaiveDateTime.compare(kill_time, window_start) in [:eq, :gt] and
+                NaiveDateTime.compare(kill_time, window_end) == :lt
+            end)
+            |> Enum.flat_map(fn km ->
+              victim_id = if km.victim_character_id, do: [km.victim_character_id], else: []
 
-        |> Enum.filter(fn km ->
-          kill_time = km.killmail_time
+              attacker_ids =
+                case km.raw_data do
+                  %{"attackers" => attackers} when is_list(attackers) ->
+                    attackers
+                    |> Enum.map(fn attacker -> attacker["character_id"] end)
+                    |> Enum.filter(&(&1 != nil))
 
-          NaiveDateTime.compare(kill_time, window_start) in [:eq, :gt] and
-            NaiveDateTime.compare(kill_time, window_end) == :lt
+                  _ ->
+                    []
+                end
+
+              victim_id ++ attacker_ids
+            end)
+            |> Enum.uniq()
+
+          %{
+            window_start: window_start,
+            window_end: window_end,
+            participants: participants_in_window,
+            participant_count: length(participants_in_window)
+          }
         end)
-
-        |> Enum.flat_map(fn km ->
-          victim_id = if km.victim_character_id, do: [km.victim_character_id], else: []
-
-          attacker_ids =
-            case km.raw_data do
-              %{"attackers" => attackers} when is_list(attackers) ->
-                attackers
-                |> Enum.map(fn attacker -> attacker["character_id"] end)
-                |> Enum.filter(&(&1 != nil))
-
-              _ ->
-                []
-            end
-
-          victim_id ++ attacker_ids
-        end)
-        |> Enum.uniq()
-
-        %{
-          window_start: window_start,
-          window_end: window_end,
-          participants: participants_in_window,
-          participant_count: length(participants_in_window)
-        }
-      end)
-
-      |> Enum.filter(fn window -> window.participant_count > 0 end)
+        |> Enum.filter(fn window -> window.participant_count > 0 end)
 
       # Analyze participant flow between windows
       flow_analysis = analyze_participant_flow_between_windows(window_participants)
@@ -897,33 +894,29 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       # Extract patterns from each battle
       all_patterns =
         battle_analyses
-
-      |> Enum.flat_map(fn analysis ->
-        extract_patterns_from_battle(analysis)
-      end)
-
-      |> Enum.group_by(& &1.pattern_type)
+        |> Enum.flat_map(fn analysis ->
+          extract_patterns_from_battle(analysis)
+        end)
+        |> Enum.group_by(& &1.pattern_type)
 
       # Find patterns that appear in multiple battles
       common_patterns =
         all_patterns
-
-      |> Enum.map(fn {pattern_type, instances} ->
-        if length(instances) >= 2 do
-          %{
-            pattern_type: pattern_type,
-            occurrences: length(instances),
-            frequency: Float.round(length(instances) / length(battle_analyses) * 100, 1),
-            examples: Enum.take(instances, 3),
-            confidence: calculate_pattern_confidence(instances)
-          }
-        else
-          nil
-        end
-      end)
-
-      |> Enum.filter(&(&1 != nil))
-      |> Enum.sort_by(& &1.frequency, :desc)
+        |> Enum.map(fn {pattern_type, instances} ->
+          if length(instances) >= 2 do
+            %{
+              pattern_type: pattern_type,
+              occurrences: length(instances),
+              frequency: Float.round(length(instances) / length(battle_analyses) * 100, 1),
+              examples: Enum.take(instances, 3),
+              confidence: calculate_pattern_confidence(instances)
+            }
+          else
+            nil
+          end
+        end)
+        |> Enum.filter(&(&1 != nil))
+        |> Enum.sort_by(& &1.frequency, :desc)
 
       common_patterns
     end
@@ -999,7 +992,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     bucket_count = max(2, div(duration_seconds, interval_seconds))
 
     0..(bucket_count - 1)
-
     |> Enum.map(fn bucket_index ->
       bucket_start = NaiveDateTime.add(start_time, bucket_index * interval_seconds, :second)
       bucket_end = NaiveDateTime.add(start_time, (bucket_index + 1) * interval_seconds, :second)
@@ -1017,78 +1009,74 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
     {joiners, leavers, flow_events} =
       window_participants
+      |> Enum.chunk_every(2, 1, :discard)
+      |> Enum.reduce({[], [], []}, fn [prev_window, curr_window],
+                                      {acc_joiners, acc_leavers, acc_events} ->
+        prev_participants = MapSet.new(prev_window.participants)
+        curr_participants = MapSet.new(curr_window.participants)
 
-    |> Enum.chunk_every(2, 1, :discard)
+        # Find new participants (joiners)
+        new_participants = MapSet.difference(curr_participants, prev_participants)
 
-    |> Enum.reduce({[], [], []}, fn [prev_window, curr_window],
-                                 {acc_joiners, acc_leavers, acc_events} ->
-      prev_participants = MapSet.new(prev_window.participants)
-      curr_participants = MapSet.new(curr_window.participants)
+        # Find departed participants (leavers)
+        departed_participants = MapSet.difference(prev_participants, curr_participants)
 
-      # Find new participants (joiners)
-      new_participants = MapSet.difference(curr_participants, prev_participants)
+        # Create flow events if there are significant changes
+        flow_event =
+          if MapSet.size(new_participants) > 0 or MapSet.size(departed_participants) > 0 do
+            %{
+              timestamp: curr_window.window_start,
+              window_transition:
+                "#{format_timestamp(prev_window.window_start)} -> #{format_timestamp(curr_window.window_start)}",
+              joiners_count: MapSet.size(new_participants),
+              leavers_count: MapSet.size(departed_participants),
+              net_change: MapSet.size(new_participants) - MapSet.size(departed_participants),
+              joiners: MapSet.to_list(new_participants),
+              leavers: MapSet.to_list(departed_participants),
+              flow_type:
+                determine_flow_type(
+                  MapSet.size(new_participants),
+                  MapSet.size(departed_participants)
+                )
+            }
+          else
+            nil
+          end
 
-      # Find departed participants (leavers)
-      departed_participants = MapSet.difference(prev_participants, curr_participants)
+        # Create joiner records
+        new_joiner_records =
+          MapSet.to_list(new_participants)
+          |> Enum.map(fn participant_id ->
+            %{
+              participant_id: participant_id,
+              joined_at: curr_window.window_start,
+              join_window: curr_window.window_start,
+              context: %{
+                participants_before: MapSet.size(prev_participants),
+                participants_after: MapSet.size(curr_participants)
+              }
+            }
+          end)
 
-      # Create flow events if there are significant changes
-      flow_event =
-        if MapSet.size(new_participants) > 0 or MapSet.size(departed_participants) > 0 do
-          %{
-            timestamp: curr_window.window_start,
-            window_transition:
-              "#{format_timestamp(prev_window.window_start)} -> #{format_timestamp(curr_window.window_start)}",
-            joiners_count: MapSet.size(new_participants),
-            leavers_count: MapSet.size(departed_participants),
-            net_change: MapSet.size(new_participants) - MapSet.size(departed_participants),
-            joiners: MapSet.to_list(new_participants),
-            leavers: MapSet.to_list(departed_participants),
-            flow_type:
-              determine_flow_type(
-                MapSet.size(new_participants),
-                MapSet.size(departed_participants)
-              )
-          }
-        else
-          nil
-        end
+        # Create leaver records
+        new_leaver_records =
+          MapSet.to_list(departed_participants)
+          |> Enum.map(fn participant_id ->
+            %{
+              participant_id: participant_id,
+              left_at: curr_window.window_start,
+              leave_window: prev_window.window_start,
+              context: %{
+                participants_before: MapSet.size(prev_participants),
+                participants_after: MapSet.size(curr_participants)
+              }
+            }
+          end)
 
-      # Create joiner records
-      new_joiner_records =
-        MapSet.to_list(new_participants)
+        updated_events = if flow_event, do: [flow_event | acc_events], else: acc_events
 
-      |> Enum.map(fn participant_id ->
-        %{
-          participant_id: participant_id,
-          joined_at: curr_window.window_start,
-          join_window: curr_window.window_start,
-          context: %{
-            participants_before: MapSet.size(prev_participants),
-            participants_after: MapSet.size(curr_participants)
-          }
-        }
+        {acc_joiners ++ new_joiner_records, acc_leavers ++ new_leaver_records, updated_events}
       end)
-
-      # Create leaver records
-      new_leaver_records =
-        MapSet.to_list(departed_participants)
-
-      |> Enum.map(fn participant_id ->
-        %{
-          participant_id: participant_id,
-          left_at: curr_window.window_start,
-          leave_window: prev_window.window_start,
-          context: %{
-            participants_before: MapSet.size(prev_participants),
-            participants_after: MapSet.size(curr_participants)
-          }
-        }
-      end)
-
-      updated_events = if flow_event, do: [flow_event | acc_events], else: acc_events
-
-      {acc_joiners ++ new_joiner_records, acc_leavers ++ new_leaver_records, updated_events}
-    end)
 
     %{
       joiners: Enum.reverse(joiners),
@@ -1207,8 +1195,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     else
       most_active_window =
         window_participants
-
-      |> Enum.max_by(& &1.participant_count, fn -> nil end)
+        |> Enum.max_by(& &1.participant_count, fn -> nil end)
 
       if most_active_window do
         %{
@@ -1236,14 +1223,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     # Convert ship composition to analyzable format
     ship_data =
       ship_composition
-
-    |> Enum.flat_map(fn {_side, side_data} ->
-      case side_data do
-        %{ships: ships} when is_list(ships) -> ships
-        ships when is_list(ships) -> ships
-        _ -> []
-      end
-    end)
+      |> Enum.flat_map(fn {_side, side_data} ->
+        case side_data do
+          %{ships: ships} when is_list(ships) -> ships
+          ships when is_list(ships) -> ships
+          _ -> []
+        end
+      end)
 
     # Group ships by class and analyze patterns
     ship_classes = group_ships_by_class(ship_data)
@@ -1252,19 +1238,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     # Calculate ship class percentages
     class_percentages =
       ship_classes
-
-    |> Enum.map(fn {class, ships} ->
-      percentage = if total_ships > 0, do: length(ships) / total_ships * 100, else: 0
-      {class, %{count: length(ships), percentage: Float.round(percentage, 1)}}
-    end)
-    |> Map.new()
+      |> Enum.map(fn {class, ships} ->
+        percentage = if total_ships > 0, do: length(ships) / total_ships * 100, else: 0
+        {class, %{count: length(ships), percentage: Float.round(percentage, 1)}}
+      end)
+      |> Map.new()
 
     # Identify dominant ship classes (>20% of fleet)
     dominant_classes =
       class_percentages
-
-    |> Enum.filter(fn {_class, data} -> data.percentage > 20 end)
-    |> Enum.map(fn {class, _data} -> class end)
+      |> Enum.filter(fn {_class, data} -> data.percentage > 20 end)
+      |> Enum.map(fn {class, _data} -> class end)
 
     # Analyze support ships and special roles
     support_analysis = analyze_support_ships(ship_classes)
@@ -1403,9 +1387,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     else
       percentages =
         Map.values(class_percentages)
-
-      |> Enum.map(& &1.percentage/100)
-      |> Enum.filter(&(&1 > 0))
+        |> Enum.map(& &1.percentage/100)
+        |> Enum.filter(&(&1 > 0))
 
       if Enum.empty?(percentages) do
         0.0
@@ -1414,6 +1397,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
           percentages
           |> Enum.map(fn p -> -p * :math.log2(p) end)
           |> Enum.sum()
+
         Float.round(diversity, 2)
       end
     end
@@ -1627,6 +1611,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
         doctrine_matches
         |> Enum.map(& &1.confidence)
         |> Enum.max()
+
       # Adjust for ship diversity (higher diversity = lower confidence in single doctrine)
       diversity_penalty = min(20, ship_analysis.ship_diversity * 5)
 
@@ -1999,17 +1984,16 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       # Weight by EWAR strength
       strength_bonus =
         ewar_analysis.ewar_ships
-
-      |> Enum.map(fn ewar_ship ->
-        case ewar_ship.ewar_strength do
-          :very_high -> 2.0
-          :high -> 1.5
-          :medium -> 1.0
-          :low -> 0.5
-          _ -> 0.0
-        end
-      end)
-      |> Enum.sum()
+        |> Enum.map(fn ewar_ship ->
+          case ewar_ship.ewar_strength do
+            :very_high -> 2.0
+            :high -> 1.5
+            :medium -> 1.0
+            :low -> 0.5
+            _ -> 0.0
+          end
+        end)
+        |> Enum.sum()
 
       Kernel./(ewar_count)
 
@@ -2040,10 +2024,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       # Analyze breakdown by ship class
       ship_classes =
         ewar_analysis.ewar_ships
-
-      |> Enum.group_by(& &1.ship_class)
-      |> Enum.map(fn {class, ships} -> "#{length(ships)} #{class}" end)
-      |> Enum.join(", ")
+        |> Enum.group_by(& &1.ship_class)
+        |> Enum.map(fn {class, ships} -> "#{length(ships)} #{class}" end)
+        |> Enum.join(", ")
 
       intensity_desc =
         cond do
@@ -2105,7 +2088,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   defp build_attack_relationships(timeline) do
     # Build a graph of who attacked whom
     timeline
-
     |> Enum.flat_map(fn killmail ->
       victim_id = get_entity_id(killmail.victim_corporation_id, killmail.victim_alliance_id)
 
@@ -2114,11 +2096,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
         case killmail.raw_data do
           %{"attackers" => attackers} when is_list(attackers) ->
             attackers
-
             |> Enum.map(fn attacker ->
               get_entity_id(attacker["corporation_id"], attacker["alliance_id"])
             end)
-
             |> Enum.filter(&(&1 != nil))
 
           _ ->
@@ -2126,16 +2106,16 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
         end
 
       # Create attack relationships
-      |> Enum.map(attackers, fn attacker_id ->
-        %{
-          attacker: attacker_id,
-          victim: victim_id,
-          timestamp: killmail.killmail_time,
-          damage: extract_damage_from_attacker(killmail.raw_data, attacker_id)
-        }
-      end)
+      attackers
+      |> Enum.map(fn attacker_id ->
+          %{
+            attacker: attacker_id,
+            victim: victim_id,
+            timestamp: killmail.killmail_time,
+            damage: extract_damage_from_attacker(killmail.raw_data, attacker_id)
+          }
+        end)
     end)
-
     |> Enum.filter(fn rel -> rel.attacker != nil and rel.victim != nil end)
   end
 
@@ -2174,31 +2154,32 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       attack_relationships
       |> Enum.flat_map(fn rel -> [rel.attacker, rel.victim] end)
       |> Enum.uniq()
+
     # For each entity, determine who they primarily attack vs who attacks them
     entity_patterns =
       entities
       |> Enum.map(fn entity ->
-      # Who does this entity attack?
-      targets =
-        attack_relationships
+        # Who does this entity attack?
+        targets =
+          attack_relationships
+          |> Enum.filter(fn rel -> rel.attacker == entity end)
 
-      |> Enum.filter(fn rel -> rel.attacker == entity end)
-      Enum.map(& &1.victim) |> Enum.frequencies()
-      # Who attacks this entity?
-      attackers =
-        attack_relationships
+        Enum.map(& &1.victim) |> Enum.frequencies()
+        # Who attacks this entity?
+        attackers =
+          attack_relationships
+          |> Enum.filter(fn rel -> rel.victim == entity end)
 
-      |> Enum.filter(fn rel -> rel.victim == entity end)
-      Enum.map(& &1.attacker) |> Enum.frequencies()
+        Enum.map(& &1.attacker) |> Enum.frequencies()
 
-      %{
-        entity: entity,
-        targets: targets,
-        attackers: attackers,
-        target_count: map_size(targets),
-        attacker_count: map_size(attackers)
-      }
-    end)
+        %{
+          entity: entity,
+          targets: targets,
+          attackers: attackers,
+          target_count: map_size(targets),
+          attacker_count: map_size(attackers)
+        }
+      end)
 
     # Group entities that share similar attack patterns
     group_entities_by_patterns(entity_patterns)
@@ -2216,10 +2197,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
           # Find entities that share targets or enemies with this entity
           similar_entities =
             acc_unassigned
-
-          |> Enum.filter(fn other_entity ->
-            entities_are_allied?(entity, other_entity)
-          end)
+            |> Enum.filter(fn other_entity ->
+              entities_are_allied?(entity, other_entity)
+            end)
 
           # Create new group
           new_group = %{
@@ -2247,9 +2227,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     # Do they attack the same targets?
     shared_targets =
       Map.keys(entity1.targets)
-
-    |> Enum.filter(fn target -> Map.has_key?(entity2.targets, target) end)
-    length()
+      |> Enum.filter(fn target -> Map.has_key?(entity2.targets, target) end)
+      |> length()
 
     # Do they attack each other?
     mutual_attacks =
@@ -2259,9 +2238,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     # Are they attacked by the same entities?
     shared_enemies =
       Map.keys(entity1.attackers)
-
-    |> Enum.filter(fn enemy -> Map.has_key?(entity2.attackers, enemy) end)
-    length()
+      |> Enum.filter(fn enemy -> Map.has_key?(entity2.attackers, enemy) end)
+      |> length()
 
     # Criteria for being allied:
     # 1. Share targets OR share enemies
@@ -2271,24 +2249,25 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   defp merge_target_lists(entities) do
     entities
-    Enum.flat_map(fn entity -> Map.keys(entity.targets) end) |> Enum.frequencies()
+    |> Enum.flat_map(fn entity -> Map.keys(entity.targets) end) 
+    |> Enum.frequencies()
   end
 
   defp merge_attacker_lists(entities) do
     entities
-    Enum.flat_map(fn entity -> Map.keys(entity.attackers) end) |> Enum.frequencies()
+    |> Enum.flat_map(fn entity -> Map.keys(entity.attackers) end) 
+    |> Enum.frequencies()
   end
 
   defp create_side_mappings(group_analysis) do
     # Convert groups into side mappings
     Enum.with_index(group_analysis)
-
     |> Enum.flat_map(fn {group, index} ->
       side_name = generate_side_name(index, group)
-
-      |> Enum.map(group.entities, fn entity ->
-        {entity.entity, side_name}
-      end)
+        
+      Enum.map(group.entities, fn entity ->
+          {entity.entity, side_name}
+        end)
     end)
     |> Map.new()
   end
@@ -2323,17 +2302,16 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     # Track how doctrines change over time
     doctrine_timeline =
       Enum.with_index(sorted_battles)
+      |> Enum.map(fn {battle, index} ->
+        doctrines = extract_doctrines_from_battle(battle)
 
-    |> Enum.map(fn {battle, index} ->
-      doctrines = extract_doctrines_from_battle(battle)
-
-      %{
-        battle_index: index,
-        timestamp: extract_battle_timestamp(battle),
-        primary_doctrines: doctrines,
-        doctrine_diversity: calculate_doctrine_diversity(doctrines)
-      }
-    end)
+        %{
+          battle_index: index,
+          timestamp: extract_battle_timestamp(battle),
+          primary_doctrines: doctrines,
+          doctrine_diversity: calculate_doctrine_diversity(doctrines)
+        }
+      end)
 
     # Analyze doctrine trends
     doctrine_changes = identify_doctrine_changes(doctrine_timeline)
@@ -2351,19 +2329,18 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     # Analyze how ship compositions change over time
     composition_timeline =
       Enum.with_index(sorted_battles)
+      |> Enum.map(fn {battle, index} ->
+        composition = extract_ship_composition_from_battle(battle)
 
-    |> Enum.map(fn {battle, index} ->
-      composition = extract_ship_composition_from_battle(battle)
-
-      %{
-        battle_index: index,
-        timestamp: extract_battle_timestamp(battle),
-        ship_classes: analyze_ship_class_distribution(composition),
-        support_ratio: calculate_composition_support_ratio(composition),
-        average_ship_value: calculate_average_ship_value(composition),
-        size_category: categorize_fleet_size(composition)
-      }
-    end)
+        %{
+          battle_index: index,
+          timestamp: extract_battle_timestamp(battle),
+          ship_classes: analyze_ship_class_distribution(composition),
+          support_ratio: calculate_composition_support_ratio(composition),
+          average_ship_value: calculate_average_ship_value(composition),
+          size_category: categorize_fleet_size(composition)
+        }
+      end)
 
     # Identify trends
     ship_class_trends = track_ship_class_trends(composition_timeline)
@@ -2383,20 +2360,19 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     # Analyze how engagement patterns change
     engagement_timeline =
       Enum.with_index(sorted_battles)
+      |> Enum.map(fn {battle, index} ->
+        engagement_patterns = extract_engagement_patterns_from_battle(battle)
 
-    |> Enum.map(fn {battle, index} ->
-      engagement_patterns = extract_engagement_patterns_from_battle(battle)
-
-      %{
-        battle_index: index,
-        timestamp: extract_battle_timestamp(battle),
-        duration_category: categorize_battle_duration(battle),
-        intensity_level: extract_battle_intensity(battle),
-        participant_count: extract_participant_count(battle),
-        tactical_complexity: calculate_tactical_complexity(battle),
-        patterns: engagement_patterns
-      }
-    end)
+        %{
+          battle_index: index,
+          timestamp: extract_battle_timestamp(battle),
+          duration_category: categorize_battle_duration(battle),
+          intensity_level: extract_battle_intensity(battle),
+          participant_count: extract_participant_count(battle),
+          tactical_complexity: calculate_tactical_complexity(battle),
+          patterns: engagement_patterns
+        }
+      end)
 
     # Analyze trends
     duration_trend = analyze_duration_trends(engagement_timeline)
@@ -2468,7 +2444,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     # Identify significant doctrine changes between battles
     doctrine_timeline
     |> Enum.chunk_every(2, 1, :discard)
-
     |> Enum.map(fn [prev, curr] ->
       prev_doctrine_names = Enum.map(prev.primary_doctrines, & &1.name)
       curr_doctrine_names = Enum.map(curr.primary_doctrines, & &1.name)
@@ -2489,7 +2464,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
         nil
       end
     end)
-
     |> Enum.filter(&(&1 != nil))
   end
 
@@ -2548,7 +2522,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     else
       # Extract ship classes from composition data
       composition
-
       |> Enum.flat_map(fn {_side, side_data} ->
         case side_data do
           %{ships: ships} when is_list(ships) -> ships
@@ -2556,7 +2529,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
           _ -> []
         end
       end)
-
       |> Enum.group_by(&classify_ship_by_type_id/1)
       |> Enum.map(fn {class, ships} -> {class, length(ships)} end)
       |> Map.new()
@@ -2593,12 +2565,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     else
       total_value =
         ship_classes
-
-      |> Enum.map(fn {class, count} ->
-        estimated_value = estimate_ship_class_value(class)
-        estimated_value * count
-      end)
-      |> Enum.sum()
+        |> Enum.map(fn {class, count} ->
+          estimated_value = estimate_ship_class_value(class)
+          estimated_value * count
+        end)
+        |> Enum.sum()
 
       total_ships = Map.values(ship_classes) |> Enum.sum()
 
@@ -2657,26 +2628,24 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
       class_trends =
         major_classes
+        |> Enum.map(fn class ->
+          usage_over_time =
+            composition_timeline
+            |> Enum.map(fn timeline_entry ->
+              Map.get(timeline_entry.ship_classes, class, 0)
+            end)
 
-      |> Enum.map(fn class ->
-        usage_over_time =
-          composition_timeline
+          trend_direction = calculate_usage_trend(usage_over_time)
 
-        |> Enum.map(fn timeline_entry ->
-          Map.get(timeline_entry.ship_classes, class, 0)
+          {class,
+           %{
+             usage_timeline: usage_over_time,
+             trend_direction: trend_direction,
+             peak_usage: Enum.max(usage_over_time),
+             average_usage: Float.round(Enum.sum(usage_over_time) / length(usage_over_time), 1)
+           }}
         end)
-
-        trend_direction = calculate_usage_trend(usage_over_time)
-
-        {class,
-         %{
-           usage_timeline: usage_over_time,
-           trend_direction: trend_direction,
-           peak_usage: Enum.max(usage_over_time),
-           average_usage: Float.round(Enum.sum(usage_over_time) / length(usage_over_time), 1)
-         }}
-      end)
-      |> Map.new()
+        |> Map.new()
 
       %{
         class_trends: class_trends,
@@ -2736,13 +2705,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   defp determine_overall_ship_trend(class_trends) do
     increasing_count =
       Map.values(class_trends)
-
-    |> Enum.count(fn trend -> trend.trend_direction == :increasing end)
+      |> Enum.count(fn trend -> trend.trend_direction == :increasing end)
 
     decreasing_count =
       Map.values(class_trends)
-
-    |> Enum.count(fn trend -> trend.trend_direction == :decreasing end)
+      |> Enum.count(fn trend -> trend.trend_direction == :decreasing end)
 
     cond do
       increasing_count > decreasing_count -> :escalation
@@ -2903,17 +2870,15 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   defp analyze_duration_trends(engagement_timeline) do
     durations =
       engagement_timeline
-
-    |> Enum.map(& &1.duration_category)
-
-    |> Enum.map(fn
-      :instant -> 1
-      :brief -> 2
-      :standard -> 3
-      :prolonged -> 4
-      :extended -> 5
-      _ -> 0
-    end)
+      |> Enum.map(& &1.duration_category)
+      |> Enum.map(fn
+        :instant -> 1
+        :brief -> 2
+        :standard -> 3
+        :prolonged -> 4
+        :extended -> 5
+        _ -> 0
+      end)
 
     %{
       trend_direction: calculate_usage_trend(durations),
@@ -2924,17 +2889,15 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   defp analyze_intensity_trends(engagement_timeline) do
     intensities =
       engagement_timeline
-
-    |> Enum.map(& &1.intensity_level)
-
-    |> Enum.map(fn
-      :very_low -> 1
-      :low -> 2
-      :medium -> 3
-      :high -> 4
-      :very_high -> 5
-      _ -> 0
-    end)
+      |> Enum.map(& &1.intensity_level)
+      |> Enum.map(fn
+        :very_low -> 1
+        :low -> 2
+        :medium -> 3
+        :high -> 4
+        :very_high -> 5
+        _ -> 0
+      end)
 
     %{
       trend_direction: calculate_usage_trend(intensities),
@@ -3150,10 +3113,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       # Analyze each side's composition for gaps
       side_gaps =
         fleet_compositions
-
-      |> Enum.flat_map(fn {side, composition} ->
-        analyze_side_composition_gaps(side, composition)
-      end)
+        |> Enum.flat_map(fn {side, composition} ->
+          analyze_side_composition_gaps(side, composition)
+        end)
 
       # Add cross-side comparison gaps
       all_gaps = side_gaps ++ analyze_cross_side_gaps(fleet_compositions)
@@ -3325,7 +3287,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
         total_weaknesses: length(weaknesses),
         critical_weaknesses: Enum.count(weaknesses, fn w -> w.severity == :critical end),
         analysis: generate_weakness_analysis(weaknesses),
-        recommendations: Enum.map(weaknesses, &weakness_to_recommendation/1)
+        recommendations: [] # TODO: Implement weakness_to_recommendation/1
       }
     end
   end
@@ -3345,7 +3307,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
           total_gaps: length(skill_gaps),
           priority_gaps: Enum.filter(skill_gaps, fn gap -> gap.priority == :high end),
           skill_analysis: generate_skill_gap_analysis(skill_gaps),
-          training_recommendations: generate_training_recommendations(skill_gaps)
+          training_recommendations: [] # TODO: Implement generate_training_recommendations/1
         }
 
       _ ->
@@ -3518,7 +3480,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   defp identify_enemy_doctrine_patterns(fleet_compositions) do
     fleet_compositions
     |> Enum.group_by(& &1.doctrine_type)
-
     |> Enum.map(fn {doctrine, fleets} ->
       %{
         doctrine_type: doctrine,
@@ -3530,7 +3491,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
         weaknesses: identify_doctrine_weaknesses(doctrine, fleets)
       }
     end)
-
     |> Enum.sort_by(& &1.frequency, :desc)
   end
 
@@ -3617,7 +3577,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   defp identify_optimal_role_distributions(compositions) do
     compositions
     |> Enum.filter(&(&1.success_rate > 0.7))
-
     |> Enum.map(fn comp ->
       %{
         fleet_size: comp.fleet_size,
@@ -3626,14 +3585,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
         use_case: categorize_fleet_use_case(comp)
       }
     end)
-
     |> Enum.uniq_by(& &1.use_case)
   end
 
   defp analyze_participant_performance_patterns(participants) do
     participants
     |> Enum.group_by(& &1.preferred_role)
-
     |> Enum.map(fn {role, role_participants} ->
       %{
         role: role,
@@ -3667,7 +3624,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   defp identify_common_doctrine_ships(fleets) do
     fleets
-    Enum.flat_map(& &1.ship_types) |> Enum.frequencies()
+
+    Enum.flat_map(& &1.ship_types)
+    |> Enum.frequencies()
     |> Enum.sort_by(fn {_ship, count} -> -count end)
     |> Enum.take(5)
     |> Enum.map(fn {ship, _count} -> ship end)
@@ -3678,13 +3637,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
     if length(role_distributions) > 0 do
       # Average role distribution across fleets
-      all_roles = role_distributions |> Enum.flat_map(&Map.keys/1) |> Enum.uniq()
-
-      |> Enum.reduce(all_roles, %{}, fn role, acc ->
-        total = Enum.sum(Enum.map(role_distributions, &Map.get(&1, role, 0)))
-        avg = Float.round(total / length(role_distributions), 1)
-        Map.put(acc, role, avg)
-      end)
+      all_roles =
+        role_distributions
+        |> Enum.flat_map(&Map.keys/1)
+        |> Enum.uniq()
+        
+      all_roles
+      |> Enum.reduce(%{}, fn role, acc ->
+          total = Enum.sum(Enum.map(role_distributions, &Map.get(&1, role, 0)))
+          avg = Float.round(total / length(role_distributions), 1)
+          Map.put(acc, role, avg)
+        end)
     else
       %{}
     end
@@ -3710,8 +3673,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
     # Add observed weaknesses from battle data
     observed_weaknesses = analyze_doctrine_loss_patterns(fleets)
-
-    |> Enum.uniq(base_weaknesses ++ observed_weaknesses)
+    
+    (base_weaknesses ++ observed_weaknesses)
+    |> Enum.uniq()
   end
 
   defp suggest_counter_composition(enemy_pattern) do
@@ -3749,23 +3713,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   defp identify_counter_ships(enemy_pattern) do
     weaknesses = enemy_pattern.weaknesses
 
-    ships = []
+    base_ships = []
 
-    ships =
-      if Enum.member?(weaknesses, "Vulnerable to hard tackle") do
-        ["Lachesis", "Arazu", "Huginn" | ships]
-      else
-        ships
-      end
+    base_ships
+    |> add_ships_if(Enum.member?(weaknesses, "Vulnerable to hard tackle"), ["Lachesis", "Arazu", "Huginn"])
+    |> add_ships_if(Enum.member?(weaknesses, "Limited range control"), ["Cerberus", "Eagle", "Tengu"])
+    |> Enum.uniq()
+    |> Enum.take(5)
+  end
 
-    ships =
-      if Enum.member?(weaknesses, "Limited range control") do
-        ["Cerberus", "Eagle", "Tengu" | ships]
-      else
-        ships
-      end
-
-    |> Enum.take(Enum.uniq(ships), 5)
+  defp add_ships_if(ships, condition, new_ships) do
+    if condition, do: new_ships ++ ships, else: ships
   end
 
   defp generate_enemy_counter_tactics(enemy_pattern) do
@@ -3837,11 +3795,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   defp identify_phase_transitions(timeline) do
     timeline
     |> Enum.chunk_every(2, 1, :discard)
-
     |> Enum.filter(fn [prev, curr] ->
       prev.phase != curr.phase
     end)
-
     |> Enum.map(fn [_prev, curr] ->
       %{
         time: curr.timestamp,
@@ -3864,7 +3820,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   defp identify_critical_combat_phases(timeline) do
     timeline
     |> Enum.group_by(& &1.phase)
-
     |> Enum.map(fn {phase, events} ->
       %{
         phase: phase,
@@ -3873,7 +3828,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
         importance: calculate_phase_importance(phase, events)
       }
     end)
-
     |> Enum.filter(&(&1.importance > 0.7))
   end
 
@@ -3903,13 +3857,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   defp assess_doctrine_mobility(fleets) do
     # Simplified mobility assessment
-    avg_speed =
+    speeds =
       fleets
+      |> Enum.map(& &1.average_speed)
+      |> Enum.filter(& &1)
 
-    |> Enum.map(& &1.average_speed)
-    |> Enum.filter(& &1)
-
-    case do
+    avg_speed = case speeds do
       [] -> 0
       speeds -> Enum.sum(speeds) / length(speeds)
     end
@@ -3936,13 +3889,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   defp categorize_engagement_style(fleets) do
     # Analyze engagement patterns
-    avg_duration =
+    durations =
       fleets
+      |> Enum.map(& &1.engagement_duration)
+      |> Enum.filter(& &1)
 
-    |> Enum.map(& &1.engagement_duration)
-    |> Enum.filter(& &1)
-
-    case do
+    avg_duration = case durations do
       [] -> 0
       durations -> Enum.sum(durations) / length(durations)
     end
@@ -3961,9 +3913,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       fleets
       |> Enum.flat_map(& &1.loss_analysis)
       |> Enum.frequencies()
-    |> Enum.sort_by(fn {_cause, count} -> -count end)
-    |> Enum.take(3)
-    |> Enum.map(fn {cause, _count} -> cause end)
+      |> Enum.sort_by(fn {_cause, count} -> -count end)
+      |> Enum.take(3)
+      |> Enum.map(fn {cause, _count} -> cause end)
 
     loss_causes
   end
@@ -4137,18 +4089,16 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   defp calculate_logistics_impact(compositions) do
     logi_ratio =
       compositions
+      |> Enum.map(fn comp ->
+        logi_count = Map.get(comp.role_counts, :logistics, 0)
 
-    |> Enum.map(fn comp ->
-      logi_count = Map.get(comp.role_counts, :logistics, 0)
-
-      if comp.fleet_size > 0 do
-        logi_count / comp.fleet_size
-      else
-        0.0
-      end
-    end)
-
-    |> Enum.max(fn -> 0.0 end)
+        if comp.fleet_size > 0 do
+          logi_count / comp.fleet_size
+        else
+          0.0
+        end
+      end)
+      |> Enum.max(fn -> 0.0 end)
 
     # Optimal is around 20-25% logistics
     cond do
@@ -4163,10 +4113,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   defp estimate_command_boost_effect(compositions) do
     command_ships =
       compositions
-
-    |> Enum.flat_map(& &1.ships)
-    |> Enum.filter(&is_command_ship?/1)
-    length()
+      |> Enum.flat_map(& &1.ships)
+      |> Enum.filter(&is_command_ship?/1)
+      |> length()
 
     if command_ships > 0 do
       # Each command ship adds 30% effectiveness
@@ -4194,7 +4143,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       "Lachesis"
     ]
 
-    |> Enum.member?(ewar_ships, ship_name)
+    Enum.member?(ewar_ships, ship_name)
   end
 
   defp is_command_ship?(ship_name) do
@@ -4213,13 +4162,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       "Stork"
     ]
 
-    |> Enum.member?(command_ships, ship_name)
+    Enum.member?(command_ships, ship_name)
   end
 
   # Doctrine adjustment helper functions
   defp analyze_doctrine_composition_weaknesses(fleet_comps) do
     fleet_comps
-
     |> Enum.flat_map(fn comp ->
       weaknesses = []
 
@@ -4415,7 +4363,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   # Doctrine weakness analysis helpers
   defp check_role_coverage(fleet_comps) do
     fleet_comps
-
     |> Enum.flat_map(fn comp ->
       missing_roles = []
 
@@ -4440,7 +4387,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   defp check_ship_synergy(fleet_comps) do
     fleet_comps
-
     |> Enum.flat_map(fn comp ->
       synergy_issues = []
 
@@ -4536,22 +4482,22 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     # Analyze gaps between different sides/fleets
     if length(fleet_compositions) > 1 do
       [first | rest] = fleet_compositions
+        
+      Enum.flat_map(rest, fn other_fleet ->
+          size_diff = abs(first.fleet_size - other_fleet.fleet_size)
 
-      |> Enum.flat_map(rest, fn other_fleet ->
-        size_diff = abs(first.fleet_size - other_fleet.fleet_size)
-
-        if size_diff > 10 do
-          [
-            %{
-              type: :size_imbalance,
-              severity: :high,
-              description: "Significant fleet size imbalance (#{size_diff} pilots)"
-            }
-          ]
-        else
-          []
-        end
-      end)
+          if size_diff > 10 do
+            [
+              %{
+                type: :size_imbalance,
+                severity: :high,
+                description: "Significant fleet size imbalance (#{size_diff} pilots)"
+              }
+            ]
+          else
+            []
+          end
+        end)
     else
       []
     end
@@ -4586,7 +4532,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
         patterns
         |> Enum.map(&extract_confidence/1)
         |> Enum.sum()
-        
+
       total_confidence / length(patterns)
     end
   end
@@ -4602,21 +4548,23 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   end
 
   defp extract_patterns_from_battle(battle) do
-    patterns = []
+    base_patterns = []
 
     # Extract doctrine patterns
     doctrine_patterns = extract_doctrine_patterns(battle)
-    patterns = patterns ++ doctrine_patterns
+    all_patterns = base_patterns ++ doctrine_patterns
 
     # Extract tactical patterns using TacticalPatternDetector
-    if timeline = get_in(battle, [:timeline_analysis, :timeline]) do
-      tactical_patterns =
-        TacticalPatternDetector.identify_tactical_patterns(timeline)
+    all_patterns_with_tactical =
+      if timeline = get_in(battle, [:timeline_analysis, :timeline]) do
+        tactical_patterns =
+          TacticalPatternDetector.identify_tactical_patterns(timeline)
+          |> Enum.map(&%{type: :tactical, name: &1.name, confidence: &1.confidence})
 
-      |> Enum.map(&%{type: :tactical, name: &1.name, confidence: &1.confidence})
-
-      patterns = patterns ++ tactical_patterns
-    end
+        all_patterns ++ tactical_patterns
+      else
+        all_patterns
+      end
 
     # Extract timing patterns using TacticalPatternDetector
     if timeline = get_in(battle, [:timeline_analysis, :timeline]) do
@@ -4625,34 +4573,31 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
           timeline,
           get_in(battle, [:fleet_analysis])
         )
+        |> Enum.map(&%{type: :timing, name: &1.event_type, confidence: &1.significance})
 
-      |> Enum.map(&%{type: :timing, name: &1.event_type, confidence: &1.significance})
-
-      patterns = patterns ++ timing_patterns
+      all_patterns_with_tactical ++ timing_patterns
+    else
+      all_patterns_with_tactical
     end
-
-    patterns
   end
 
   defp extract_doctrine_patterns(battle) do
-    doctrines = get_in(battle, [:fleet_analysis, :doctrines]) || []
-
-    |> Enum.map(doctrines, fn doctrine ->
-      %{
-        type: :doctrine,
-        name: doctrine.name,
-        ship_count: doctrine.ship_count,
-        confidence: doctrine.confidence || 70
-      }
-    end)
+    (get_in(battle, [:fleet_analysis, :doctrines]) || [])
+    |> Enum.map(fn doctrine ->
+        %{
+          type: :doctrine,
+          name: doctrine.name,
+          ship_count: doctrine.ship_count,
+          confidence: doctrine.confidence || 70
+        }
+      end)
   end
 
   defp determine_doctrine_evolution_pattern(battles) do
     doctrine_usage =
       battles
-
-    |> Enum.map(&extract_doctrine_usage/1)
-    |> Enum.reject(&Enum.empty?/1)
+      |> Enum.map(&extract_doctrine_usage/1)
+      |> Enum.reject(&Enum.empty?/1)
 
     if length(doctrine_usage) < 3 do
       :insufficient_data
@@ -4691,23 +4636,21 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     # Group battles by doctrine
     doctrine_results =
       battles
+      |> Enum.flat_map(&expand_battle_by_doctrines/1)
+      |> Enum.group_by(& &1.doctrine)
+      |> Enum.map(fn {doctrine, doctrine_battles} ->
+        wins = Enum.count(doctrine_battles, & &1.won)
+        total = length(doctrine_battles)
+        success_rate = if total > 0, do: wins / total, else: 0
 
-    |> Enum.flat_map(&expand_battle_by_doctrines/1)
-    |> Enum.group_by(& &1.doctrine)
-
-    |> Enum.map(fn {doctrine, doctrine_battles} ->
-      wins = Enum.count(doctrine_battles, & &1.won)
-      total = length(doctrine_battles)
-      success_rate = if total > 0, do: wins / total, else: 0
-
-      {doctrine,
-       %{
-         battles: total,
-         wins: wins,
-         success_rate: Float.round(success_rate * 100, 1)
-       }}
-    end)
-    |> Map.new()
+        {doctrine,
+         %{
+           battles: total,
+           wins: wins,
+           success_rate: Float.round(success_rate * 100, 1)
+         }}
+      end)
+      |> Map.new()
 
     doctrine_results
   end
@@ -4716,20 +4659,23 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     doctrines = get_in(battle, [:fleet_analysis, :doctrines]) || []
 
     won =
-      get_in(battle, [:outcome_analysis, :victor]) == get_in(battle, [:metadata, :analyzed_side])
-
-    |> Enum.map(doctrines, fn doctrine ->
-      %{
-        doctrine: doctrine.name,
-        won: won,
-        battle_id: get_in(battle, [:metadata, :battle_id])
-      }
-    end)
+      get_in(battle, [:outcome_analysis, :victor]) ==
+        get_in(battle, [:metadata, :analyzed_side])
+        
+    Enum.map(doctrines, fn doctrine ->
+          %{
+            doctrine: doctrine.name,
+            won: won,
+            battle_id: get_in(battle, [:metadata, :battle_id])
+          }
+        end)
   end
 
   defp identify_most_used_doctrines(battles) do
     battles
-    Enum.flat_map(&extract_doctrine_usage/1) |> Enum.frequencies()
+
+    Enum.flat_map(&extract_doctrine_usage/1)
+    |> Enum.frequencies()
     |> Enum.sort_by(fn {_doctrine, count} -> count end, :desc)
     |> Enum.take(5)
     |> Enum.map(fn {doctrine, count} -> %{name: doctrine, usage_count: count} end)
@@ -4744,7 +4690,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       )
 
     all_doctrines
-
     |> Enum.map(fn doctrine ->
       success_data = Map.get(success_rates, doctrine, %{success_rate: 0, battles: 0})
       usage_data = Enum.find(usage_counts, %{usage_count: 0}, &(&1.name == doctrine))
@@ -4765,7 +4710,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
         rating: rate_doctrine_effectiveness(effectiveness_score)
       }
     end)
-
     |> Enum.sort_by(& &1.effectiveness_score, :desc)
   end
 
@@ -4794,9 +4738,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     # Get doctrine usage over time windows
     usage_windows =
       battles
-
-    |> Enum.chunk_every(5)
-    |> Enum.map(&calculate_window_doctrine_distribution/1)
+      |> Enum.chunk_every(5)
+      |> Enum.map(&calculate_window_doctrine_distribution/1)
 
     if length(usage_windows) < 2 do
       # Not enough data, assume stable
@@ -4810,16 +4753,16 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   defp calculate_window_doctrine_distribution(window_battles) do
     total_doctrines =
       window_battles
-
-    |> Enum.flat_map(&extract_doctrine_usage/1)
-    length()
+      |> Enum.flat_map(&extract_doctrine_usage/1)
+      |> length()
 
     if total_doctrines == 0 do
       %{}
     else
       window_battles
-      Enum.flat_map(&extract_doctrine_usage/1) |> Enum.frequencies()
 
+      Enum.flat_map(&extract_doctrine_usage/1)
+      |> Enum.frequencies()
       |> Enum.map(fn {doctrine, count} ->
         {doctrine, count / total_doctrines}
       end)
@@ -4836,9 +4779,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     variances =
       all_doctrines
       |> Enum.map(fn doctrine ->
-      values = Enum.map(distributions, &Map.get(&1, doctrine, 0))
-      calculate_variance(values)
-    end)
+        values = Enum.map(distributions, &Map.get(&1, doctrine, 0))
+        calculate_variance(values)
+      end)
 
     avg_variance = if Enum.empty?(variances), do: 0, else: Enum.sum(variances) / length(variances)
 
@@ -4856,6 +4799,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
         values
         |> Enum.map(fn v -> (v - mean) * (v - mean) end)
         |> Enum.sum()
+
       sum_squares / length(values)
     end
   end
@@ -4876,18 +4820,16 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     # Extract positioning-related recommendations
     positioning_recs =
       recommendations
-
-    |> Enum.filter(&String.contains?(&1, ["range", "kite", "close", "position"]))
+      |> Enum.filter(&String.contains?(&1, ["range", "kite", "close", "position"]))
 
     base_actions = base_actions ++ positioning_recs
 
     # Add phase-specific positioning
     phase_actions =
       phase_specific_actions
-
-    |> Enum.flat_map(fn {_phase, actions} ->
-      Enum.filter(actions, &String.contains?(&1, ["position", "range", "anchor"]))
-    end)
+      |> Enum.flat_map(fn {_phase, actions} ->
+        Enum.filter(actions, &String.contains?(&1, ["position", "range", "anchor"]))
+      end)
 
     base_actions = base_actions ++ phase_actions
 

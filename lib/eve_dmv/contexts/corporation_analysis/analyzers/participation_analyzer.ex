@@ -224,15 +224,13 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
         with {:ok, members} <- ParticipationDataProvider.get_corporation_members(corporation_id) do
           analyses =
             members
-
-          |> Enum.map(fn member ->
-            case analyze(member.character_id, base_data, opts) do
-              {:ok, analysis} -> analysis
-              {:error, _} -> nil
-            end
-          end)
-
-          |> Enum.filter(&(&1 != nil))
+            |> Enum.map(fn member ->
+              case analyze(member.character_id, base_data, opts) do
+                {:ok, analysis} -> analysis
+                {:error, _} -> nil
+              end
+            end)
+            |> Enum.filter(&(&1 != nil))
 
           {:ok, analyses}
         end
@@ -362,7 +360,9 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
 
   defp identify_home_systems(home_defense_activities) do
     home_defense_activities
-    Enum.map(& &1.system_id) |> Enum.frequencies()
+
+    Enum.map(& &1.system_id)
+    |> Enum.frequencies()
     |> Enum.sort_by(fn {_system, count} -> count end, :desc)
     |> Enum.take(3)
     |> Enum.map(fn {system_id, _count} -> system_id end)
@@ -721,8 +721,11 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
 
   defp count_recent_activities(participation_data, days) do
     cutoff = DateTime.add(DateTime.utc_now(), -days, :day)
-
-    |> Enum.count(participation_data.activities, &(DateTime.compare(&1.timestamp, cutoff) == :gt))
+    
+    Enum.count(
+      participation_data.activities,
+      &(DateTime.compare(&1.timestamp, cutoff) == :gt)
+    )
   end
 
   defp calculate_historical_average(participation_data) do
@@ -831,7 +834,6 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
 
   defp format_member_participation_details(member_analyses) do
     member_analyses
-
     |> Enum.map(fn analysis ->
       %{
         character_id: analysis.character_id,
@@ -841,13 +843,13 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
         consistency: analysis.consistency_score
       }
     end)
-
     |> Enum.sort_by(& &1.participation_score, :desc)
   end
 
   defp calculate_engagement_distribution(member_analyses) do
     member_analyses
-    Enum.map(& &1.engagement_pattern) |> Enum.frequencies()
+    |> Enum.map(& &1.engagement_pattern)
+    |> Enum.frequencies()
   end
 
   defp calculate_participation_consistency(member_analyses) do
@@ -866,15 +868,12 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
 
   defp identify_top_performers(member_analyses) do
     member_analyses
-
     |> Enum.map(fn analysis ->
       score = calculate_member_participation_score(analysis)
       {analysis, score}
     end)
-
     |> Enum.sort_by(fn {_analysis, score} -> score end, :desc)
     |> Enum.take(5)
-
     |> Enum.map(fn {analysis, score} ->
       %{
         character_id: analysis.character_id,
