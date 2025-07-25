@@ -96,10 +96,9 @@ defmodule EveDmv.Users.TokenRefreshService do
 
     new_state =
       state
+      |> Map.put(:last_check_at, DateTime.utc_now())
 
-    Map.put(:last_check_at, DateTime.utc_now())
-
-    check_and_refresh_tokens()
+    check_and_refresh_tokens(state)
 
     # Schedule the next check
     schedule_token_check()
@@ -288,8 +287,8 @@ defmodule EveDmv.Users.TokenRefreshService do
   defp update_user_tokens(user, new_tokens) do
     # Use the refresh_token action to update the user
     user
-    Ash.Changeset.for_update(:refresh_token, new_tokens)
-    Ash.update(domain: Api)
+    |> Ash.Changeset.for_update(:refresh_token, new_tokens)
+    |> Ash.update(domain: Api)
   end
 
   @doc """

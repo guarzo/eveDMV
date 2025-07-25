@@ -570,7 +570,7 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
         # Check for conflicting criteria
         has_chain_and_system =
           Enum.any?(conditions, &(&1.type == :chain_watch)) and
-            |> Enum.any?(conditions, &(&1.type == :system_watch))
+            Enum.any?(conditions, &(&1.type == :system_watch))
 
         recommendations =
           if has_chain_and_system do

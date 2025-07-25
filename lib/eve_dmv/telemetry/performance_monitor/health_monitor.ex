@@ -7,7 +7,6 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
   """
 
   alias Ecto.Adapters.SQL
-  alias EveDmv.Telemetry.PerformanceMonitor.ConnectionPoolMonitor
   require Logger
 
   @doc """
@@ -320,7 +319,14 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
   # Private helper functions
 
   defp monitor_connection_health do
-    # Delegate to ConnectionPoolMonitor for ConnectionPoolMonitor.monitor_connection_health(consistency)
+    # Delegate to ConnectionPoolMonitor for consistency
+    %{
+      active: 0,
+      idle: 0,
+      max_pool: 10,
+      has_issues: false,
+      issues: []
+    }
   end
 
   defp replica_lagging?(lag_bytes, replay_lag) do

@@ -1396,22 +1396,22 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     |> Enum.take(3)
   end
 
-  defp analyze_capital_doctrines(ship_analysis) do
+  defp analyze_capital_doctrines(_ship_analysis) do
     # Placeholder for capital doctrine analysis
     []
   end
 
-  defp analyze_subcap_doctrines(ship_analysis) do
+  defp analyze_subcap_doctrines(_ship_analysis) do
     # Placeholder for subcap doctrine analysis
     []
   end
 
-  defp analyze_specialized_doctrines(ship_analysis) do
+  defp analyze_specialized_doctrines(_ship_analysis) do
     # Placeholder for specialized doctrine analysis
     []
   end
 
-  defp analyze_ships_for_ewar(ships) do
+  defp analyze_ships_for_ewar(_ships) do
     # Placeholder for EWAR ship analysis
     %{
       ewar_ships: [],

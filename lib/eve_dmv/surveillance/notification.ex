@@ -237,11 +237,12 @@ defmodule EveDmv.Surveillance.Notification do
       description("Age of notification in minutes")
 
       calculation(fn records, _context ->
-        now =
-          DateTime.utc_now()
-          |> Enum.map(records, fn record ->
-            DateTime.diff(now, record.inserted_at, :minute)
-          end)
+        now = DateTime.utc_now()
+        
+        records
+        |> Enum.map(fn record ->
+          DateTime.diff(now, record.inserted_at, :minute)
+        end)
       end)
     end
 

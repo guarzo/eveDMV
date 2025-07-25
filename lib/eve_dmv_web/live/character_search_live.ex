@@ -28,11 +28,10 @@ defmodule EveDmvWeb.CharacterSearchLive do
   def handle_event("search", %{"search" => %{"query" => query}}, socket) do
     socket =
       socket
-
-    assign(:search_query, query)
-    assign(:searching, true)
-    assign(:error_message, nil)
-    perform_search(query)
+      |> assign(:search_query, query)
+      |> assign(:searching, true)
+      |> assign(:error_message, nil)
+      |> perform_search(query)
 
     {:noreply, socket}
   end
@@ -47,24 +46,24 @@ defmodule EveDmvWeb.CharacterSearchLive do
 
   defp perform_search(socket, query) when byte_size(query) < 3 do
     socket
-    assign(:searching, false)
-    assign(:search_results, [])
-    assign(:error_message, "Please enter at least 3 characters")
+    |> assign(:searching, false)
+    |> assign(:search_results, [])
+    |> assign(:error_message, "Please enter at least 3 characters")
   end
 
   defp perform_search(socket, query) do
     case search_characters(query) do
       {:ok, results} ->
         socket
-        assign(:searching, false)
-        assign(:search_results, results)
-        assign(:error_message, nil)
+        |> assign(:searching, false)
+        |> assign(:search_results, results)
+        |> assign(:error_message, nil)
 
       {:error, _reason} ->
         socket
-        assign(:searching, false)
-        assign(:search_results, [])
-        assign(:error_message, "Search failed. Please try again.")
+        |> assign(:searching, false)
+        |> assign(:search_results, [])
+        |> assign(:error_message, "Search failed. Please try again.")
     end
   end
 
@@ -292,13 +291,13 @@ defmodule EveDmvWeb.CharacterSearchLive do
     character_info = get_character_additional_info(result.character_id)
 
     result
-    Map.put(:portrait_url, character_portrait(result.character_id))
-    Map.put(:corporation_name, character_info.corporation_name)
-    Map.put(:alliance_name, character_info.alliance_name)
-    Map.put(:security_status, character_info.security_status)
-    Map.put(:kills, character_info.kills)
-    Map.put(:deaths, character_info.deaths)
-    Map.put(:efficiency, calculate_efficiency(character_info.kills, character_info.deaths))
+    |> Map.put(:portrait_url, character_portrait(result.character_id))
+    |> Map.put(:corporation_name, character_info.corporation_name)
+    |> Map.put(:alliance_name, character_info.alliance_name)
+    |> Map.put(:security_status, character_info.security_status)
+    |> Map.put(:kills, character_info.kills)
+    |> Map.put(:deaths, character_info.deaths)
+    |> Map.put(:efficiency, calculate_efficiency(character_info.kills, character_info.deaths))
   end
 
   defp estimate_security_status(kills, deaths) do

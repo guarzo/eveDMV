@@ -76,9 +76,8 @@ defmodule EveDmvWeb.Helpers.TimeFormatter do
   def format_friendly_time(%NaiveDateTime{} = datetime) do
     # Convert NaiveDateTime to DateTime (assuming UTC)
     datetime
-    DateTime.from_naive!("Etc/UTC")
-
-    format_friendly_time()
+    |> DateTime.from_naive!("Etc/UTC")
+    |> format_friendly_time()
   end
 
   def format_friendly_time(_), do: "Unknown"

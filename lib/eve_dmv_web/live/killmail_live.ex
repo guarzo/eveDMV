@@ -10,6 +10,7 @@ defmodule EveDmvWeb.KillmailLive do
   alias EveDmv.Market.PriceService
 
   require Logger
+  import Ash.Query
 
   @impl true
   def mount(%{"killmail_id" => killmail_id_str}, _session, socket) do

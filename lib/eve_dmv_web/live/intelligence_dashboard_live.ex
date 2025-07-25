@@ -107,9 +107,14 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
   @impl Phoenix.LiveView
   def handle_event("clear_cache", _params, socket) do
     IntelligenceCache.clear_cache()
-    socket = put_flash(socket, :info, "Intelligence cache cleared successfully")
     send(self(), :load_dashboard)
-    {:noreply, assign(socket, :loading, true)}
+    
+    socket =
+      socket
+      |> put_flash(:info, "Intelligence cache cleared successfully")
+      |> assign(:loading, true)
+      
+    {:noreply, socket}
   end
 
   @impl Phoenix.LiveView
@@ -135,14 +140,12 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
       {:ok, {filename, content, content_type}} ->
         socket =
           socket
-
-        push_event("download_file", %{
-          filename: filename,
-          content: content,
-          content_type: content_type
-        })
-
-        put_flash(:info, "Dashboard data exported successfully")
+          |> push_event("download_file", %{
+            filename: filename,
+            content: content,
+            content_type: content_type
+          })
+          |> put_flash(:info, "Dashboard data exported successfully")
 
         {:noreply, socket}
 
@@ -213,7 +216,7 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
       socket
 
     assign(:recent_analyses, Enum.take(updated_analyses, 10))
-    put_flash(:info, "New intelligence analysis completed")
+    |> put_flash(:info, "New intelligence analysis completed")
 
     {:noreply, socket}
   end
@@ -227,7 +230,7 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
       socket
 
     assign(:threat_alerts, Enum.take(updated_alerts, 5))
-    put_flash(:error, "New threat alert: #{alert.message}")
+    |> put_flash(:error, "New threat alert: #{alert.message}")
 
     {:noreply, socket}
   end
@@ -333,7 +336,7 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
     assign(:active_battles, updated_battles)
     assign(:recent_events, updated_events)
     assign(:last_update, DateTime.utc_now())
-    put_flash(:info, "🔥 New battle detected: #{recent_event.message}")
+    |> put_flash(:info, "🔥 New battle detected: #{recent_event.message}")
 
     {:noreply, socket}
   end

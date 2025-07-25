@@ -26,7 +26,7 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
     assign(:time_range, :hour)
     assign(:threshold_ms, 1000)
 
-    load_metrics()
+    load_metrics(socket)
 
     {:ok, socket}
   end
@@ -45,7 +45,7 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
 
     assign(:time_range, time_range)
 
-    load_metrics()
+    load_metrics(socket)
 
     {:noreply, socket}
   end
@@ -56,10 +56,8 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
       {threshold_ms, _} ->
         socket =
           socket
-
-        assign(:threshold_ms, threshold_ms)
-
-        load_metrics()
+          |> assign(:threshold_ms, threshold_ms)
+          |> load_metrics()
 
         {:noreply, socket}
 
@@ -283,10 +281,10 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
     cache_stats = QueryCache.get_stats()
 
     socket
-    assign(:metrics_summary, metrics_summary)
-    assign(:slow_queries, slow_queries)
-    assign(:bottlenecks, bottlenecks)
-    assign(:cache_stats, cache_stats)
+    |> assign(:metrics_summary, metrics_summary)
+    |> assign(:slow_queries, slow_queries)
+    |> assign(:bottlenecks, bottlenecks)
+    |> assign(:cache_stats, cache_stats)
   end
 
   defp truncate_string(str, max_length) do

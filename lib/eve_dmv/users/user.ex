@@ -196,14 +196,13 @@ defmodule EveDmv.Users.User do
           extract_eve_sso_data(user_info, oauth_tokens)
 
         changeset
-
-        Changeset.change_attribute(:eve_character_id, character_id)
-        Changeset.change_attribute(:eve_character_name, character_name)
-        Changeset.change_attribute(:access_token, access_token)
-        Changeset.change_attribute(:refresh_token, refresh_token)
-        Changeset.change_attribute(:token_expires_at, expires_at)
-        Changeset.change_attribute(:last_login_at, DateTime.utc_now())
-        maybe_update_corporation_info(user_info)
+        |> Changeset.change_attribute(:eve_character_id, character_id)
+        |> Changeset.change_attribute(:eve_character_name, character_name)
+        |> Changeset.change_attribute(:access_token, access_token)
+        |> Changeset.change_attribute(:refresh_token, refresh_token)
+        |> Changeset.change_attribute(:token_expires_at, expires_at)
+        |> Changeset.change_attribute(:last_login_at, DateTime.utc_now())
+        |> maybe_update_corporation_info(user_info)
       end)
     end
 
@@ -248,14 +247,13 @@ defmodule EveDmv.Users.User do
           extract_eve_sso_data(user_info, oauth_tokens)
 
         changeset
-
-        Changeset.change_attribute(:eve_character_id, character_id)
-        Changeset.change_attribute(:eve_character_name, character_name)
-        Changeset.change_attribute(:access_token, access_token)
-        Changeset.change_attribute(:refresh_token, refresh_token)
-        Changeset.change_attribute(:token_expires_at, expires_at)
-        Changeset.change_attribute(:last_login_at, DateTime.utc_now())
-        maybe_update_corporation_info(user_info)
+        |> Changeset.change_attribute(:eve_character_id, character_id)
+        |> Changeset.change_attribute(:eve_character_name, character_name)
+        |> Changeset.change_attribute(:access_token, access_token)
+        |> Changeset.change_attribute(:refresh_token, refresh_token)
+        |> Changeset.change_attribute(:token_expires_at, expires_at)
+        |> Changeset.change_attribute(:last_login_at, DateTime.utc_now())
+        |> maybe_update_corporation_info(user_info)
       end)
     end
 
@@ -329,11 +327,10 @@ defmodule EveDmv.Users.User do
         {:ok, corp_info} ->
           Logger.info("Successfully fetched corp info: #{inspect(corp_info)}")
           changeset
-
-          Changeset.change_attribute(:eve_corporation_id, corp_info.corporation_id)
-          Changeset.change_attribute(:eve_corporation_name, corp_info.corporation_name)
-          Changeset.change_attribute(:eve_alliance_id, corp_info.alliance_id)
-          Changeset.change_attribute(:eve_alliance_name, corp_info.alliance_name)
+          |> Changeset.change_attribute(:eve_corporation_id, corp_info.corporation_id)
+          |> Changeset.change_attribute(:eve_corporation_name, corp_info.corporation_name)
+          |> Changeset.change_attribute(:eve_alliance_id, corp_info.alliance_id)
+          |> Changeset.change_attribute(:eve_alliance_name, corp_info.alliance_name)
 
         {:error, reason} ->
           Logger.warning(
@@ -467,6 +464,8 @@ defmodule EveDmv.Users.User do
     end
   end
 
+  defp fetch_alliance_info(_), do: {:error, :invalid_alliance_id}
+
   defp fetch_alliance_name_if_present(alliance_id) do
     if alliance_id do
       Logger.info("Fetching alliance info for alliance #{alliance_id}")
@@ -486,8 +485,6 @@ defmodule EveDmv.Users.User do
       nil
     end
   end
-
-  defp fetch_alliance_info(_), do: {:error, :invalid_alliance_id}
 
   def signing_secret(_resource, _opts) do
     # Always use SECRET_KEY_BASE for token signing

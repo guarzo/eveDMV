@@ -118,9 +118,8 @@ defmodule EveDmvWeb.CorporationLive do
     # Show loading state
     socket =
       socket
-
-    assign(:loading, true)
-    put_flash(:info, "Refreshing corporation data...")
+      |> assign(:loading, true)
+      |> put_flash(:info, "Refreshing corporation data...")
 
     # Reload data asynchronously
     send(self(), :load_corporation_data)

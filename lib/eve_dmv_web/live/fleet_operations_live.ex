@@ -490,9 +490,8 @@ defmodule EveDmvWeb.FleetOperationsLive do
   defp extract_attacker_data(killmail) do
     raw_data = Map.get(killmail, :raw_data, %{})
 
-    attackers =
-      Map.get(raw_data, "attackers", [])
-      |> Enum.map(attackers, fn attacker ->
+    Map.get(raw_data, "attackers", [])
+    |> Enum.map(fn attacker ->
         %{
           character_id: Map.get(attacker, "character_id"),
           character_name: Map.get(attacker, "character_name"),
@@ -507,11 +506,11 @@ defmodule EveDmvWeb.FleetOperationsLive do
 
   defp group_participants_into_sides(participants) do
     # Group by alliance (or corporation if no alliance)
-    groups =
-      Enum.group_by(participants, fn p ->
+    participants
+    |> Enum.group_by(fn p ->
         Map.get(p, :alliance_id) || Map.get(p, :corporation_id) || "unknown"
       end)
-      |> Enum.map(groups, fn {group_id, pilots} ->
+      |> Enum.map(fn {group_id, pilots} ->
         %{
           group_id: group_id,
           pilots: pilots,
