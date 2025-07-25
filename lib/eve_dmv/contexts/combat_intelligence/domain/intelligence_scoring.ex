@@ -389,8 +389,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
           killmails
 
           # Fleet = 5+ members
-          |> Enum.filter(fn k -> k.attacker_count >= 5 end)
           |> Enum.filter(fn killmail ->
+            killmail.attacker_count >= 5 &&
             Enum.any?(killmail.participants || [], fn p ->
               p.character_id == character_id && !p.is_victim
             end)
@@ -503,9 +503,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
       {:ok, killmails} ->
         # Get solo kills (attacker_count = 1)
         solo_kills =
-          killmails
-          |> Enum.filter(fn k -> k.attacker_count == 1 end)
-          |> Enum.filter(fn killmail ->
+          Enum.filter(killmails, fn killmail ->
+            killmail.attacker_count == 1 &&
             Enum.any?(killmail.participants || [], fn p ->
               p.character_id == character_id && !p.is_victim
             end)

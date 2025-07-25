@@ -313,46 +313,54 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
     if map_size(active_systems) == 0 do
       %{highsec: 0, lowsec: 0, nullsec: 0, wspace: 0}
     else
-      total_activity =
-        Map.values(active_systems)
-        |> Enum.map(fn system_data ->
-          Map.get(system_data, "kills", 0) + Map.get(system_data, "losses", 0)
-        end)
-        |> Enum.sum()
-
+      total_activity = calculate_total_activity(active_systems)
+      
       if total_activity == 0 do
         %{highsec: 0, lowsec: 0, nullsec: 0, wspace: 0}
       else
-        security_activity =
-          active_systems
-          |> Enum.reduce(%{highsec: 0, lowsec: 0, nullsec: 0, wspace: 0}, fn {_system_id,
-                                                                              system_data},
-                                                                             acc ->
-            security = Map.get(system_data, "security", 0.0)
-            activity = Map.get(system_data, "kills", 0) + Map.get(system_data, "losses", 0)
-
-            security_type =
-              cond do
-                security >= 0.5 -> :highsec
-                security > 0.0 -> :lowsec
-                security == 0.0 -> :nullsec
-                security < 0.0 -> :wspace
-                true -> :unknown
-              end
-
-            if security_type != :unknown do
-              Map.update(acc, security_type, activity, &(&1 + activity))
-            else
-              acc
-            end
-          end)
-
-        # Convert to percentages
-        security_activity
-        |> Enum.map(fn {sec_type, activity} -> {sec_type, activity / total_activity} end)
-        |> Enum.into(%{})
+        security_activity = aggregate_security_activity(active_systems)
+        convert_to_percentages(security_activity, total_activity)
       end
     end
+  end
+
+  defp calculate_total_activity(active_systems) do
+    Map.values(active_systems)
+    |> Enum.map(fn system_data ->
+      Map.get(system_data, "kills", 0) + Map.get(system_data, "losses", 0)
+    end)
+    |> Enum.sum()
+  end
+
+  defp aggregate_security_activity(active_systems) do
+    active_systems
+    |> Enum.reduce(%{highsec: 0, lowsec: 0, nullsec: 0, wspace: 0}, fn {_system_id, system_data}, acc ->
+      security = Map.get(system_data, "security", 0.0)
+      activity = Map.get(system_data, "kills", 0) + Map.get(system_data, "losses", 0)
+      security_type = classify_security_type(security)
+
+      if security_type != :unknown do
+        Map.update(acc, security_type, activity, &(&1 + activity))
+      else
+        acc
+      end
+    end)
+  end
+
+  defp classify_security_type(security) do
+    cond do
+      security >= 0.5 -> :highsec
+      security > 0.0 -> :lowsec
+      security == 0.0 -> :nullsec
+      security < 0.0 -> :wspace
+      true -> :unknown
+    end
+  end
+
+  defp convert_to_percentages(security_activity, total_activity) do
+    security_activity
+    |> Enum.map(fn {sec_type, activity} -> {sec_type, activity / total_activity} end)
+    |> Enum.into(%{})
   end
 
   defp find_most_active_system(active_systems) do

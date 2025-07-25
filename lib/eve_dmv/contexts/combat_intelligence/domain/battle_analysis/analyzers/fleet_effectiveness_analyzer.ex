@@ -230,21 +230,21 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Fle
 
       # Check for essential roles
       issues =
-        if not Map.has_key?(role_distribution, :logistics),
-          do: ["Missing logistics support" | issues],
-          else: issues
+        if Map.has_key?(role_distribution, :logistics),
+          do: issues,
+          else: ["Missing logistics support" | issues]
 
       issues =
-        if not (Map.has_key?(role_distribution, :battleship) or
-                  Map.has_key?(role_distribution, :cruiser)),
-           do: ["Missing primary DPS ships" | issues],
-           else: issues
+        if (Map.has_key?(role_distribution, :battleship) or
+              Map.has_key?(role_distribution, :cruiser)),
+           do: issues,
+           else: ["Missing primary DPS ships" | issues]
 
       issues =
-        if not (Map.has_key?(role_distribution, :frigate) or
-                  Map.has_key?(role_distribution, :destroyer)),
-           do: ["Missing tackle ships" | issues],
-           else: issues
+        if (Map.has_key?(role_distribution, :frigate) or
+              Map.has_key?(role_distribution, :destroyer)),
+           do: issues,
+           else: ["Missing tackle ships" | issues]
 
       # Calculate balance score
       balance_score = calculate_role_balance_score(role_distribution)

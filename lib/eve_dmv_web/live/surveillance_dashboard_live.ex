@@ -181,7 +181,7 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
   defp load_profile_metrics(socket, time_range) do
     profiles = socket.assigns.profiles
 
-    profile_metrics =
+    unsorted_metrics =
       Enum.map(profiles, fn profile ->
         %{
           profile_id: profile.id,
@@ -196,9 +196,9 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
         }
       end)
 
-    profile_metrics = Enum.sort_by(profile_metrics, & &1.performance_score, :desc)
+    sorted_metrics = Enum.sort_by(unsorted_metrics, & &1.performance_score, :desc)
 
-    assign(socket, :profile_metrics, profile_metrics)
+    assign(socket, :profile_metrics, sorted_metrics)
   end
 
   defp load_alert_trends(socket, time_range) do
@@ -212,9 +212,8 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
 
     top_profiles =
       Enum.filter(profile_metrics, &(&1.alerts_generated > 0))
-
-    |> Enum.sort_by(& &1.performance_score, :desc)
-    |> Enum.take(5)
+      |> Enum.sort_by(& &1.performance_score, :desc)
+      |> Enum.take(5)
 
     assign(socket, :top_performing_profiles, top_profiles)
   end
@@ -299,11 +298,11 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
   defp get_profile_alert_count(profile_id, time_range) do
     case safe_call(fn -> AlertService.get_recent_alerts(profile_id: profile_id, limit: 1000) end) do
       {:ok, alerts} ->
-        cutoff_time = get_cutoff_time(time_range)
-
-        |> Enum.count(alerts, fn alert ->
-          DateTime.compare(alert.created_at, cutoff_time) == :gt
-        end)
+        cutoff_time =
+          get_cutoff_time(time_range)
+          |> Enum.count(alerts, fn alert ->
+            DateTime.compare(alert.created_at, cutoff_time) == :gt
+          end)
 
       _ ->
         0
@@ -462,8 +461,7 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
           hour_label: String.slice(Time.to_string(DateTime.to_time(timestamp)), 0, 5)
         }
       end)
-
-    |> Enum.reverse(hourly_activity)
+      |> Enum.reverse(hourly_activity)
   end
 
   defp generate_system_recommendations(profiles, profile_metrics) do

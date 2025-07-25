@@ -508,8 +508,6 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
     |> Enum.sort_by(fn {_ship, count} -> count end, :desc)
     |> Enum.take(5)
     |> Enum.map(fn {ship, _count} -> ship end)
-
-    killer_ship_counts
   end
 
   defp identify_general_vulnerabilities(combat_metrics, ship_usage) do

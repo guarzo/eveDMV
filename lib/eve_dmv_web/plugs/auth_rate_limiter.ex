@@ -19,9 +19,9 @@ defmodule EveDmvWeb.Plugs.AuthRateLimiter do
 
   def init(opts) do
     opts
-    Keyword.put_new(:max_attempts, @default_max_attempts)
-    Keyword.put_new(:window_minutes, @default_window_minutes)
-    Keyword.put_new(:block_duration_minutes, @default_block_duration_minutes)
+    |> Keyword.put_new(:max_attempts, @default_max_attempts)
+    |> Keyword.put_new(:window_minutes, @default_window_minutes)
+    |> Keyword.put_new(:block_duration_minutes, @default_block_duration_minutes)
   end
 
   def call(conn, opts) do

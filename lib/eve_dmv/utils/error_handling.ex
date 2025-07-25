@@ -57,9 +57,7 @@ defmodule EveDmv.Utils.ErrorHandling do
   Format Ecto changeset errors for display.
   """
   def format_changeset_errors(%Ecto.Changeset{errors: errors}) do
-    errors
-    |> Enum.map(fn {field, {message, _}} -> "#{field}: #{message}" end)
-    |> Enum.join(", ")
+    Enum.map_join(errors, ", ", fn {field, {message, _}} -> "#{field}: #{message}" end)
   end
 
   @doc """

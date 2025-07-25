@@ -157,7 +157,7 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
     slow_queries =
       @table_name
 
-    :ets.tab2list()
+    slow_queries = :ets.tab2list()
     |> Enum.filter(fn {_key, metric} ->
       metric.type == :query && metric.duration_ms > threshold_ms
     end)
@@ -166,6 +166,8 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
     |> Enum.map(fn {_key, metric} ->
       Map.take(metric, [:name, :duration_ms, :timestamp, :metadata])
     end)
+
+    slow_queries
 
     {:reply, slow_queries, state}
   end

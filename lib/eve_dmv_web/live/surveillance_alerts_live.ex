@@ -39,11 +39,11 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
     assign(:show_alert_details, false)
     assign(:new_alert_count, 0)
     assign(:sound_enabled, true)
-    assign(:auto_acknowledge, false)
-    assign(:alert_metrics, %{})
 
-    load_alerts()
-    load_alert_metrics()
+    assign(:auto_acknowledge, false)
+    |> assign(:alert_metrics, %{})
+    |> load_alerts()
+    |> load_alert_metrics()
 
     {:ok, socket}
   end
@@ -67,10 +67,8 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
 
     socket =
       socket
-
-    assign(:alert_filters, updated_filters)
-
-    load_alerts()
+      |> assign(:alert_filters, updated_filters)
+      |> load_alerts()
 
     {:noreply, socket}
   end
@@ -84,10 +82,8 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
       {:ok, _updated_alert} ->
         socket =
           socket
-
-        put_flash(:info, "Alert acknowledged")
-
-        load_alerts()
+          |> put_flash(:info, "Alert acknowledged")
+          |> load_alerts()
 
         {:noreply, socket}
 
@@ -106,10 +102,8 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
       {:ok, _updated_alert} ->
         socket =
           socket
-
-        put_flash(:info, "Alert resolved")
-
-        load_alerts()
+          |> put_flash(:info, "Alert resolved")
+          |> load_alerts()
 
         {:noreply, socket}
 
@@ -129,11 +123,9 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
       {:ok, count} ->
         socket =
           socket
-
-        put_flash(:info, "Acknowledged #{count} alerts")
-        assign(:new_alert_count, 0)
-
-        load_alerts()
+          |> put_flash(:info, "Acknowledged #{count} alerts")
+          |> assign(:new_alert_count, 0)
+          |> load_alerts()
 
         {:noreply, socket}
 
@@ -191,13 +183,12 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
     Logger.info("Received real-time surveillance alert: #{alert_data.alert_id}")
 
     # Trigger visual and audio notifications
+    trigger_alert_notification(alert_data)
+
     socket =
       socket
-
-    update(:new_alert_count, &(&1 + 1))
-
-    load_alerts()
-    trigger_alert_notification(alert_data)
+      |> update(:new_alert_count, &(&1 + 1))
+      |> load_alerts()
 
     {:noreply, socket}
   end
@@ -207,20 +198,18 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
     # Alert state changed, refresh list
     socket =
       socket
-
-    load_alerts()
-
-    then(fn socket ->
-      # Update details if this alert is currently shown
-      if socket.assigns.selected_alert && socket.assigns.selected_alert.id == alert_id do
-        case safe_call(fn -> AlertService.get_alert(alert_id) end) do
-          {:ok, updated_alert} -> assign(socket, :selected_alert, updated_alert)
-          _ -> assign(socket, :selected_alert, nil)
+      |> load_alerts()
+      |> then(fn socket ->
+        # Update details if this alert is currently shown
+        if socket.assigns.selected_alert && socket.assigns.selected_alert.id == alert_id do
+          case safe_call(fn -> AlertService.get_alert(alert_id) end) do
+            {:ok, updated_alert} -> assign(socket, :selected_alert, updated_alert)
+            _ -> assign(socket, :selected_alert, nil)
+          end
+        else
+          socket
         end
-      else
-        socket
-      end
-    end)
+      end)
 
     {:noreply, socket}
   end
@@ -393,6 +382,30 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
   end
 
   def format_confidence_score(_), do: "N/A"
+
+  # Data loading functions
+  defp load_alerts(socket) do
+    # TODO: Implement real alert loading from surveillance service
+    socket
+    |> assign(:alerts, [])
+    |> assign(:filtered_alerts, [])
+  end
+
+  defp load_alert_metrics(socket) do
+    # TODO: Implement real alert metrics loading
+    socket
+    |> assign(:alert_metrics, %{
+      total_active: 0,
+      high_priority: 0,
+      acknowledged: 0,
+      resolved: 0
+    })
+  end
+
+  defp trigger_alert_notification(_alert_data) do
+    # TODO: Implement real alert notification system
+    :ok
+  end
 
   # Safe call helper for surveillance services
   defp safe_call(fun) when is_function(fun, 0) do

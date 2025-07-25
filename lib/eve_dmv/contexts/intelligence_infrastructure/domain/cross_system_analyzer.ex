@@ -1188,9 +1188,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
       ]
 
       quarter_threat_scores =
-        quarters
-        |> Enum.map(&calculate_system_threat_level/1)
-        |> Enum.map(&threat_level_to_score/1)
+        Enum.map(quarters, fn quarter ->
+          quarter
+          |> calculate_system_threat_level()
+          |> threat_level_to_score()
+        end)
 
       # Analyze trend
       trend = analyze_score_trend(quarter_threat_scores)
@@ -2510,29 +2512,29 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Identify meaningful correlation patterns from all analyses
     Logger.info("Identifying correlation patterns with minimum correlation #{min_correlation}")
 
-    patterns = []
+    initial_patterns = []
 
     # Pattern 1: Strong temporal correlations
     strong_temporal_patterns =
       identify_strong_temporal_patterns(temporal_correlations, min_correlation)
 
-    patterns = patterns ++ strong_temporal_patterns
+    patterns_with_temporal = initial_patterns ++ strong_temporal_patterns
 
     # Pattern 2: Coordinated pilot movements
     movement_patterns = identify_coordinated_movement_patterns(pilot_movements)
-    patterns = patterns ++ movement_patterns
+    patterns_with_movement = patterns_with_temporal ++ movement_patterns
 
     # Pattern 3: Corporation coordination patterns
     corp_coordination_patterns = identify_corp_coordination_patterns(corp_activities)
-    patterns = patterns ++ corp_coordination_patterns
+    patterns_with_corp = patterns_with_movement ++ corp_coordination_patterns
 
     # Pattern 4: Combined tactical patterns
     tactical_patterns =
       identify_combined_tactical_patterns(temporal_correlations, pilot_movements, corp_activities)
 
-    patterns = patterns ++ tactical_patterns
+    final_patterns = patterns_with_corp ++ tactical_patterns
 
-    {:ok, patterns}
+    {:ok, final_patterns}
   end
 
   defp identify_strong_temporal_patterns(temporal_correlations, min_correlation) do

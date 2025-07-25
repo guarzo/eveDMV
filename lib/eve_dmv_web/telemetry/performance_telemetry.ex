@@ -177,8 +177,9 @@ defmodule EveDmvWeb.Telemetry.PerformanceTelemetry do
     case Regex.run(~r/#{keyword}\s+([^\s,]+)/i, query_string) do
       [_, table] ->
         table
-        String.replace("\"", "")
-        String.split(".") |> List.last()
+        |> String.replace("\"", "")
+        |> String.split(".")
+        |> List.last()
 
       _ ->
         "unknown"

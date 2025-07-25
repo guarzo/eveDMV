@@ -238,7 +238,7 @@ defmodule EveDmv.Surveillance.Notification do
 
       calculation(fn records, _context ->
         now = DateTime.utc_now()
-        
+
         records
         |> Enum.map(fn record ->
           DateTime.diff(now, record.inserted_at, :minute)

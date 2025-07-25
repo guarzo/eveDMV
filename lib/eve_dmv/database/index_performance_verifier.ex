@@ -18,21 +18,7 @@ defmodule EveDmv.Database.IndexPerformanceVerifier do
     Logger.info("Starting index performance verification for battle detection")
 
     # First check if the tables exist
-    if not table_exists?("killmails_raw") do
-      Logger.warning("Table killmails_raw does not exist yet")
-
-      %{
-        summary: %{
-          total_queries: 0,
-          passed: 0,
-          failed: 0,
-          errors: 0,
-          success_rate: 0.0
-        },
-        details: [],
-        recommendations: ["Table killmails_raw does not exist. Run migrations first."]
-      }
-    else
+    if table_exists?("killmails_raw") do
       queries = [
         # Spatial-temporal query for battle detection
         {
@@ -125,6 +111,20 @@ defmodule EveDmv.Database.IndexPerformanceVerifier do
       results = Enum.map(queries, &verify_query/1)
 
       generate_report(results)
+    else
+      Logger.warning("Table killmails_raw does not exist yet")
+
+      %{
+        summary: %{
+          total_queries: 0,
+          passed: 0,
+          failed: 0,
+          errors: 0,
+          success_rate: 0.0
+        },
+        details: [],
+        recommendations: ["Table killmails_raw does not exist. Run migrations first."]
+      }
     end
   end
 

@@ -465,44 +465,50 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     if Enum.empty?(correlations) do
       %{}
     else
-      # Get all systems
-      all_systems =
-        correlations
-        |> Enum.flat_map(fn {{s1, s2}, _} -> [s1, s2] end)
-        |> Enum.uniq()
-        |> Enum.sort()
-
-      # Build matrix
-      matrix =
-        for s1 <- all_systems, s2 <- all_systems, into: %{} do
-          correlation =
-            cond do
-              s1 == s2 ->
-                1.0
-
-              s1 < s2 ->
-                case correlations
-                     |> Enum.find(fn {{sys1, sys2}, _} -> sys1 == s1 and sys2 == s2 end) do
-                  nil -> 0.0
-                  {_, corr} -> corr
-                end
-
-              s1 > s2 ->
-                case correlations
-                     |> Enum.find(fn {{sys1, sys2}, _} -> sys1 == s2 and sys2 == s1 end) do
-                  nil -> 0.0
-                  {_, corr} -> corr
-                end
-            end
-
-          {{s1, s2}, correlation}
-        end
+      all_systems = extract_all_systems(correlations)
+      matrix = build_matrix_from_systems(all_systems, correlations)
 
       %{
         systems: all_systems,
         matrix: matrix,
         size: length(all_systems)
       }
+    end
+  end
+
+  defp extract_all_systems(correlations) do
+    correlations
+    |> Enum.flat_map(fn {{s1, s2}, _} -> [s1, s2] end)
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
+
+  defp build_matrix_from_systems(all_systems, correlations) do
+    for s1 <- all_systems, s2 <- all_systems, into: %{} do
+      correlation = find_correlation_value(s1, s2, correlations)
+      {{s1, s2}, correlation}
+    end
+  end
+
+  defp find_correlation_value(s1, s2, correlations) do
+    cond do
+      s1 == s2 -> 1.0
+      s1 < s2 -> find_direct_correlation(s1, s2, correlations)
+      s1 > s2 -> find_reverse_correlation(s1, s2, correlations)
+    end
+  end
+
+  defp find_direct_correlation(s1, s2, correlations) do
+    case Enum.find(correlations, fn {{sys1, sys2}, _} -> sys1 == s1 and sys2 == s2 end) do
+      nil -> 0.0
+      {_, corr} -> corr
+    end
+  end
+
+  defp find_reverse_correlation(s1, s2, correlations) do
+    case Enum.find(correlations, fn {{sys1, sys2}, _} -> sys1 == s2 and sys2 == s1 end) do
+      nil -> 0.0
+      {_, corr} -> corr
     end
   end
 

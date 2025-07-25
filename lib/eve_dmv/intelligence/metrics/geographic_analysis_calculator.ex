@@ -134,9 +134,9 @@ defmodule EveDmv.Intelligence.Metrics.GeographicAnalysisCalculator do
     %{
       wormhole_activity_count: length(wh_killmails),
       wormhole_percentage:
-        if(not Enum.empty?(killmail_data),
-          do: length(wh_killmails) / length(killmail_data),
-          else: 0.0
+        if(Enum.empty?(killmail_data),
+          do: 0.0,
+          else: length(wh_killmails) / length(killmail_data)
         )
     }
   end

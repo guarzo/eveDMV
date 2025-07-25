@@ -492,38 +492,38 @@ defmodule EveDmvWeb.FleetOperationsLive do
 
     Map.get(raw_data, "attackers", [])
     |> Enum.map(fn attacker ->
-        %{
-          character_id: Map.get(attacker, "character_id"),
-          character_name: Map.get(attacker, "character_name"),
-          corporation_id: Map.get(attacker, "corporation_id"),
-          alliance_id: Map.get(attacker, "alliance_id"),
-          ship_type_id: Map.get(attacker, "ship_type_id"),
-          role: :attacker,
-          final_blow: Map.get(attacker, "final_blow", false)
-        }
-      end)
+      %{
+        character_id: Map.get(attacker, "character_id"),
+        character_name: Map.get(attacker, "character_name"),
+        corporation_id: Map.get(attacker, "corporation_id"),
+        alliance_id: Map.get(attacker, "alliance_id"),
+        ship_type_id: Map.get(attacker, "ship_type_id"),
+        role: :attacker,
+        final_blow: Map.get(attacker, "final_blow", false)
+      }
+    end)
   end
 
   defp group_participants_into_sides(participants) do
     # Group by alliance (or corporation if no alliance)
     participants
     |> Enum.group_by(fn p ->
-        Map.get(p, :alliance_id) || Map.get(p, :corporation_id) || "unknown"
-      end)
-      |> Enum.map(fn {group_id, pilots} ->
-        %{
-          group_id: group_id,
-          pilots: pilots,
-          ship_count: length(pilots),
-          unique_ship_types:
-            pilots
-            |> Enum.map(&Map.get(&1, :ship_type_id))
-            |> Enum.uniq()
-            |> length()
-        }
-      end)
-      # Only include sides with multiple ships
-      |> Enum.filter(fn side -> side.ship_count > 1 end)
+      Map.get(p, :alliance_id) || Map.get(p, :corporation_id) || "unknown"
+    end)
+    |> Enum.map(fn {group_id, pilots} ->
+      %{
+        group_id: group_id,
+        pilots: pilots,
+        ship_count: length(pilots),
+        unique_ship_types:
+          pilots
+          |> Enum.map(&Map.get(&1, :ship_type_id))
+          |> Enum.uniq()
+          |> length()
+      }
+    end)
+    # Only include sides with multiple ships
+    |> Enum.filter(fn side -> side.ship_count > 1 end)
   end
 
   defp get_battle_start_time(killmails) do

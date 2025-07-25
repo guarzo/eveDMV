@@ -98,9 +98,8 @@ defmodule EveDmvWeb.KillFeedLive do
         # Invalid system ID format, show all killmails
         socket =
           socket
-
-        |> stream(:killmail_stream, socket.assigns.killmails, reset: true)
-        |> put_flash(:error, "Invalid system ID")
+          |> stream(:killmail_stream, socket.assigns.killmails, reset: true)
+          |> put_flash(:error, "Invalid system ID")
 
         {:noreply, socket}
     end

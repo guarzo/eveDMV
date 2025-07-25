@@ -306,14 +306,14 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
   end
 
   defp assess_signature_threats(new_k162s, site_breakdown, security_class) do
-    threat_score = 0
+    base_threat_score = 0
 
     # K162s are immediate threats
-    threat_score = threat_score + length(new_k162s) * 30
+    k162_threat_score = base_threat_score + length(new_k162s) * 30
 
     # Many combat sites might indicate active farmers
     combat_count = get_in(site_breakdown, [:combat, :count]) || 0
-    threat_score = threat_score + if combat_count > 5, do: 20, else: 0
+    combat_threat_score = k162_threat_score + if combat_count > 5, do: 20, else: 0
 
     # Low-class wormholes with many sigs are high-traffic
     total_sigs =
@@ -321,21 +321,21 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
       |> Enum.map(& &1.count)
       |> Enum.sum()
 
-    threat_score =
+    final_threat_score =
       if security_class in ["C1", "C2", "C3"] and total_sigs > 10 do
-        threat_score + 15
+        combat_threat_score + 15
       else
-        threat_score
+        combat_threat_score
       end
 
     %{
-      score: threat_score,
+      score: final_threat_score,
       level:
         cond do
-          threat_score >= 60 -> :extreme
-          threat_score >= 40 -> :high
-          threat_score >= 20 -> :medium
-          threat_score >= 10 -> :low
+          final_threat_score >= 60 -> :extreme
+          final_threat_score >= 40 -> :high
+          final_threat_score >= 20 -> :medium
+          final_threat_score >= 10 -> :low
           true -> :minimal
         end,
       factors: %{
@@ -347,43 +347,43 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
   end
 
   defp generate_recommendations(new_k162s, site_breakdown, threat_assessment) do
-    recommendations = []
+    initial_recommendations = []
 
     # K162 recommendations
-    recommendations =
+    k162_recommendations =
       if length(new_k162s) > 0 do
-        ["#{length(new_k162s)} new K162(s) detected - check for hostiles" | recommendations]
+        ["#{length(new_k162s)} new K162(s) detected - check for hostiles" | initial_recommendations]
       else
-        recommendations
+        initial_recommendations
       end
 
     # Threat level recommendations
-    recommendations =
+    threat_recommendations =
       case threat_assessment.level do
         level when level in [:extreme, :high] ->
-          ["High threat environment - maintain hole control" | recommendations]
+          ["High threat environment - maintain hole control" | k162_recommendations]
 
         :medium ->
-          ["Moderate activity - keep scouts active" | recommendations]
+          ["Moderate activity - keep scouts active" | k162_recommendations]
 
         _ ->
-          recommendations
+          k162_recommendations
       end
 
     # Site recommendations
     wh_count = get_in(site_breakdown, [:wormhole, :count]) || 0
 
-    recommendations =
+    final_recommendations =
       if wh_count > 3 do
-        ["Multiple wormholes present - map chain carefully" | recommendations]
+        ["Multiple wormholes present - map chain carefully" | threat_recommendations]
       else
-        recommendations
+        threat_recommendations
       end
 
-    if Enum.empty?(recommendations) do
+    if Enum.empty?(final_recommendations) do
       ["System appears quiet - continue normal operations"]
     else
-      recommendations
+      final_recommendations
     end
   end
 

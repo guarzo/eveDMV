@@ -261,9 +261,7 @@ defmodule EveDmvWeb.UniversalSearchLive do
   end
 
   defp format_character_subtitle(corp_name, alliance_name) do
-    parts = []
-    parts = if corp_name, do: [corp_name | parts], else: parts
-    parts = if alliance_name, do: [alliance_name | parts], else: parts
+    parts = build_character_parts(corp_name, alliance_name)
 
     case parts do
       [] -> "Independent"
@@ -272,6 +270,15 @@ defmodule EveDmvWeb.UniversalSearchLive do
       _ -> Enum.join(parts, " • ")
     end
   end
+
+  defp build_character_parts(corp_name, alliance_name) do
+    []
+    |> add_if_present(corp_name)
+    |> add_if_present(alliance_name)
+  end
+
+  defp add_if_present(parts, nil), do: parts
+  defp add_if_present(parts, value), do: [value | parts]
 
   defp format_corporation_subtitle(alliance_name, member_count) do
     alliance_part = if alliance_name, do: alliance_name, else: "Independent"

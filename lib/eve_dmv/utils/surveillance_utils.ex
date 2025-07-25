@@ -48,10 +48,9 @@ defmodule EveDmv.Utils.SurveillanceUtils do
     # Count dangerous ship types
     dangerous_ships =
       Enum.count(ships, fn ship ->
-        ship_name =
-          ship
-
-        Map.get("name", "") |> String.downcase()
+        ship_name = ship
+        |> Map.get("name", "")
+        |> String.downcase()
         ship_name =~ ~r/(dread|carrier|super|titan|recon|interceptor|dictor)/
       end)
 
@@ -107,12 +106,12 @@ defmodule EveDmv.Utils.SurveillanceUtils do
       name =
         inhabitant
 
-      Map.get("name", "") |> String.downcase()
+      |> Map.get("name", "")
+      |> String.downcase()
 
-      corp =
-        inhabitant
-
-      Map.get("corporation", "") |> String.downcase()
+      corp = inhabitant
+      |> Map.get("corporation", "")
+      |> String.downcase()
       # Check for known hostile patterns (simplified)
       name =~ ~r/(hostile|enemy|pirate)/ or corp =~ ~r/(pirate|hostile)/
     end)
@@ -337,7 +336,8 @@ defmodule EveDmv.Utils.SurveillanceUtils do
     max_system_threat =
       system_threats
 
-    Enum.map(&(&1 |> Map.get(:threat_level, :low) |> threat_level_to_number()))
+    max_threat = threats
+    |> Enum.map(&(&1 |> Map.get(:threat_level, :low) |> threat_level_to_number()))
     |> Enum.max(&>=/2, fn -> 1 end)
 
     # Factor in chain patterns

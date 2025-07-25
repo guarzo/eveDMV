@@ -108,12 +108,12 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
   def handle_event("clear_cache", _params, socket) do
     IntelligenceCache.clear_cache()
     send(self(), :load_dashboard)
-    
+
     socket =
       socket
       |> put_flash(:info, "Intelligence cache cleared successfully")
       |> assign(:loading, true)
-      
+
     {:noreply, socket}
   end
 
@@ -274,22 +274,21 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
 
     updated_events = [recent_event | socket.assigns.recent_events] |> Enum.take(50)
 
-    socket =
+    updated_socket =
       socket
-
-    assign(:live_threats, updated_threats)
-    assign(:recent_events, updated_events)
-    assign(:last_update, DateTime.utc_now())
+      |> assign(:live_threats, updated_threats)
+      |> assign(:recent_events, updated_events)
+      |> assign(:last_update, DateTime.utc_now())
 
     # Show flash message for significant threat changes
-    socket =
+    final_socket =
       if recent_event.priority == :high do
-        put_flash(socket, :warning, "⚠️ Significant threat level change detected")
+        put_flash(updated_socket, :warning, "⚠️ Significant threat level change detected")
       else
-        socket
+        updated_socket
       end
 
-    {:noreply, socket}
+    {:noreply, final_socket}
   end
 
   @impl Phoenix.LiveView
@@ -335,6 +334,7 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
 
     assign(:active_battles, updated_battles)
     assign(:recent_events, updated_events)
+
     assign(:last_update, DateTime.utc_now())
     |> put_flash(:info, "🔥 New battle detected: #{recent_event.message}")
 
@@ -372,23 +372,22 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
 
     updated_events = [recent_event | socket.assigns.recent_events] |> Enum.take(50)
 
-    socket =
+    updated_socket =
       socket
-
-    assign(:threat_alerts, updated_alerts)
-    assign(:recent_events, updated_events)
-    assign(:last_update, DateTime.utc_now())
+      |> assign(:threat_alerts, updated_alerts)
+      |> assign(:recent_events, updated_events)
+      |> assign(:last_update, DateTime.utc_now())
 
     # Show appropriate flash message based on priority
-    socket =
+    final_socket =
       case event.priority do
-        :critical -> put_flash(socket, :error, "🚨 CRITICAL ALERT: #{event.title}")
-        :high -> put_flash(socket, :warning, "⚠️ HIGH PRIORITY: #{event.title}")
-        :medium -> put_flash(socket, :info, "ℹ️ Alert: #{event.title}")
-        _ -> socket
+        :critical -> put_flash(updated_socket, :error, "🚨 CRITICAL ALERT: #{event.title}")
+        :high -> put_flash(updated_socket, :warning, "⚠️ HIGH PRIORITY: #{event.title}")
+        :medium -> put_flash(updated_socket, :info, "ℹ️ Alert: #{event.title}")
+        _ -> updated_socket
       end
 
-    {:noreply, socket}
+    {:noreply, final_socket}
   end
 
   @impl Phoenix.LiveView
@@ -404,21 +403,20 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
 
     updated_events = [recent_event | socket.assigns.recent_events] |> Enum.take(50)
 
-    socket =
+    updated_socket =
       socket
-
-    assign(:recent_events, updated_events)
-    assign(:last_update, DateTime.utc_now())
+      |> assign(:recent_events, updated_events)
+      |> assign(:last_update, DateTime.utc_now())
 
     # Show flash for significant spikes
-    socket =
+    final_socket =
       if event.spike_magnitude >= 3.0 do
-        put_flash(socket, :info, "📈 Activity spike detected in system #{event.system_id}")
+        put_flash(updated_socket, :info, "📈 Activity spike detected in system #{event.system_id}")
       else
-        socket
+        updated_socket
       end
 
-    {:noreply, socket}
+    {:noreply, final_socket}
   end
 
   @impl Phoenix.LiveView

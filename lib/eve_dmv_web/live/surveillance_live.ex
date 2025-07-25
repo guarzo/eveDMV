@@ -37,21 +37,19 @@ defmodule EveDmvWeb.SurveillanceLive do
 
       socket =
         socket
-
-      assign(:user_id, user_id)
-      assign(:profiles, profiles)
-      assign(:recent_matches, [])
-      assign(:engine_stats, %{})
-      assign(:notifications, [])
-      assign(:unread_count, unread_count)
-      assign(:show_create_modal, false)
-      assign(:show_notifications, false)
-      assign(:show_batch_modal, false)
-      assign(:selected_profiles, MapSet.new())
-      assign(:batch_mode, false)
-      assign(:loading_data, true)
-
-      assign(:new_profile_form, %{
+        |> assign(:user_id, user_id)
+        |> assign(:profiles, profiles)
+        |> assign(:recent_matches, [])
+        |> assign(:engine_stats, %{})
+        |> assign(:notifications, [])
+        |> assign(:unread_count, unread_count)
+        |> assign(:show_create_modal, false)
+        |> assign(:show_notifications, false)
+        |> assign(:show_batch_modal, false)
+        |> assign(:selected_profiles, MapSet.new())
+        |> assign(:batch_mode, false)
+        |> assign(:loading_data, true)
+        |> assign(:new_profile_form, %{
         "name" => "",
         "description" => "",
         "filter_tree" => Components.sample_filter_tree()
@@ -89,9 +87,8 @@ defmodule EveDmvWeb.SurveillanceLive do
     # Show temporary notification
     socket =
       socket
-
-    assign(:recent_matches, updated_matches)
-    put_flash(:info, "🎯 #{length(payload.profile_ids)} surveillance profiles matched!")
+      |> assign(:recent_matches, updated_matches)
+      |> put_flash(:info, "🎯 #{length(payload.profile_ids)} surveillance profiles matched!")
 
     {:noreply, socket}
   end
@@ -111,10 +108,9 @@ defmodule EveDmvWeb.SurveillanceLive do
 
     socket =
       socket
-
-    assign(:notifications, updated_notifications)
-    assign(:unread_count, unread_count)
-    put_flash(:info, "📬 New notification: #{payload.notification.title}")
+      |> assign(:notifications, updated_notifications)
+      |> assign(:unread_count, unread_count)
+      |> put_flash(:info, "📬 New notification: #{payload.notification.title}")
 
     {:noreply, socket}
   end
@@ -198,11 +194,10 @@ defmodule EveDmvWeb.SurveillanceLive do
 
     socket =
       socket
-
-    assign(:recent_matches, recent_matches)
-    assign(:engine_stats, engine_stats)
-    assign(:notifications, notifications)
-    assign(:loading_data, false)
+      |> assign(:recent_matches, recent_matches)
+      |> assign(:engine_stats, engine_stats)
+      |> assign(:notifications, notifications)
+      |> assign(:loading_data, false)
 
     {:noreply, socket}
   rescue
@@ -213,11 +208,10 @@ defmodule EveDmvWeb.SurveillanceLive do
       # Fallback to empty data
       updated_socket =
         error_socket
-
-      assign(:recent_matches, [])
-      assign(:engine_stats, %{})
-      assign(:notifications, [])
-      assign(:loading_data, false)
+        |> assign(:recent_matches, [])
+        |> assign(:engine_stats, %{})
+        |> assign(:notifications, [])
+        |> assign(:loading_data, false)
 
       {:noreply, updated_socket}
   end
@@ -266,10 +260,9 @@ defmodule EveDmvWeb.SurveillanceLive do
 
         socket =
           socket
-
-        assign(:profiles, profiles)
-        assign(:show_create_modal, false)
-        put_flash(:info, "Surveillance profile '#{profile.name}' created successfully!")
+          |> assign(:profiles, profiles)
+          |> assign(:show_create_modal, false)
+          |> put_flash(:info, "Surveillance profile '#{profile.name}' created successfully!")
 
         then(fn socket ->
           if has_json_error do
@@ -301,9 +294,8 @@ defmodule EveDmvWeb.SurveillanceLive do
 
         socket =
           socket
-
-        assign(:profiles, profiles)
-        put_flash(:info, "Profile status updated")
+          |> assign(:profiles, profiles)
+          |> put_flash(:info, "Profile status updated")
 
         {:noreply, socket}
 
@@ -323,9 +315,8 @@ defmodule EveDmvWeb.SurveillanceLive do
 
         socket =
           socket
-
-        assign(:profiles, profiles)
-        put_flash(:info, "Profile deleted")
+          |> assign(:profiles, profiles)
+          |> put_flash(:info, "Profile deleted")
 
         {:noreply, socket}
 
@@ -348,10 +339,9 @@ defmodule EveDmvWeb.SurveillanceLive do
 
     socket =
       socket
-
-    assign(:batch_mode, batch_mode)
-    assign(:selected_profiles, MapSet.new())
-    put_flash(:info, if(batch_mode, do: "Batch mode enabled", else: "Batch mode disabled"))
+      |> assign(:batch_mode, batch_mode)
+      |> assign(:selected_profiles, MapSet.new())
+      |> put_flash(:info, if(batch_mode, do: "Batch mode enabled", else: "Batch mode disabled"))
 
     {:noreply, socket}
   end
@@ -375,8 +365,8 @@ defmodule EveDmvWeb.SurveillanceLive do
   def handle_event("select_all_profiles", _params, socket) do
     all_profile_ids =
       socket.assigns.profiles
-
-    Enum.map(& &1.id) |> MapSet.new()
+      |> Enum.map(& &1.id)
+      |> MapSet.new()
     socket = assign(socket, :selected_profiles, all_profile_ids)
     {:noreply, socket}
   end
@@ -417,12 +407,11 @@ defmodule EveDmvWeb.SurveillanceLive do
 
     socket =
       socket
-
-    assign(:profiles, profiles)
-    assign(:selected_profiles, MapSet.new())
-    assign(:batch_mode, false)
-    assign(:show_batch_modal, false)
-    put_flash(:info, "Deleted #{results.success} profiles, #{results.failed} failed")
+      |> assign(:profiles, profiles)
+      |> assign(:selected_profiles, MapSet.new())
+      |> assign(:batch_mode, false)
+      |> assign(:show_batch_modal, false)
+      |> put_flash(:info, "Deleted #{results.success} profiles, #{results.failed} failed")
 
     {:noreply, socket}
   end
@@ -440,12 +429,11 @@ defmodule EveDmvWeb.SurveillanceLive do
 
     socket =
       socket
-
-    assign(:profiles, profiles)
-    assign(:selected_profiles, MapSet.new())
-    assign(:batch_mode, false)
-    assign(:show_batch_modal, false)
-    put_flash(:info, "Enabled #{results.success} profiles, #{results.failed} failed")
+      |> assign(:profiles, profiles)
+      |> assign(:selected_profiles, MapSet.new())
+      |> assign(:batch_mode, false)
+      |> assign(:show_batch_modal, false)
+      |> put_flash(:info, "Enabled #{results.success} profiles, #{results.failed} failed")
 
     {:noreply, socket}
   end
@@ -463,12 +451,11 @@ defmodule EveDmvWeb.SurveillanceLive do
 
     socket =
       socket
-
-    assign(:profiles, profiles)
-    assign(:selected_profiles, MapSet.new())
-    assign(:batch_mode, false)
-    assign(:show_batch_modal, false)
-    put_flash(:info, "Disabled #{results.success} profiles, #{results.failed} failed")
+      |> assign(:profiles, profiles)
+      |> assign(:selected_profiles, MapSet.new())
+      |> assign(:batch_mode, false)
+      |> assign(:show_batch_modal, false)
+      |> put_flash(:info, "Disabled #{results.success} profiles, #{results.failed} failed")
 
     {:noreply, socket}
   end
@@ -479,7 +466,7 @@ defmodule EveDmvWeb.SurveillanceLive do
       if MapSet.size(socket.assigns.selected_profiles) > 0 do
         MapSet.to_list(socket.assigns.selected_profiles)
       else
-        |> Enum.map(socket.assigns.profiles, & &1.id)
+        socket.assigns.profiles |> Enum.map(& &1.id)
       end
 
     export_data =
@@ -489,9 +476,8 @@ defmodule EveDmvWeb.SurveillanceLive do
 
     socket =
       socket
-
-    push_event("download", download_event)
-    put_flash(:info, "Exported #{length(export_data["profiles"])} profiles")
+      |> push_event("download", download_event)
+      |> put_flash(:info, "Exported #{length(export_data["profiles"])} profiles")
 
     {:noreply, socket}
   end
@@ -511,9 +497,8 @@ defmodule EveDmvWeb.SurveillanceLive do
 
         socket =
           socket
-
-        assign(:profiles, profiles)
-        put_flash(:info, "Successfully imported #{count} profiles")
+          |> assign(:profiles, profiles)
+          |> put_flash(:info, "Successfully imported #{count} profiles")
 
         {:noreply, socket}
 
@@ -545,9 +530,8 @@ defmodule EveDmvWeb.SurveillanceLive do
 
         socket =
           socket
-
-        assign(:notifications, notifications)
-        assign(:unread_count, unread_count)
+          |> assign(:notifications, notifications)
+          |> assign(:unread_count, unread_count)
 
         {:noreply, socket}
 
@@ -571,10 +555,9 @@ defmodule EveDmvWeb.SurveillanceLive do
 
         socket =
           socket
-
-        assign(:notifications, notifications)
-        assign(:unread_count, unread_count)
-        put_flash(:info, flash_message)
+          |> assign(:notifications, notifications)
+          |> assign(:unread_count, unread_count)
+          |> put_flash(:info, flash_message)
 
         {:noreply, socket}
 

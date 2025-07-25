@@ -326,6 +326,7 @@ defmodule EveDmv.Users.User do
       case fetch_character_corporation_info(character_id, access_token) do
         {:ok, corp_info} ->
           Logger.info("Successfully fetched corp info: #{inspect(corp_info)}")
+
           changeset
           |> Changeset.change_attribute(:eve_corporation_id, corp_info.corporation_id)
           |> Changeset.change_attribute(:eve_corporation_name, corp_info.corporation_name)
