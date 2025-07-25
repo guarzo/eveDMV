@@ -24,7 +24,7 @@ defmodule EveDmv.StaticData.ShipTypes do
         # Faction Frigates
         {600, 619},
         # T2 Frigates (Assault Ships, Interceptors, etc.)
-        {11176, 11200}
+        {11_176, 11_200}
       ],
       destroyer: [
         # T1 Destroyers
@@ -32,7 +32,7 @@ defmodule EveDmv.StaticData.ShipTypes do
         # T2 Destroyers (Interdictors)
         {440, 459},
         # T3 Destroyers
-        {32874, 32880}
+        {32_874, 32_880}
       ],
       cruiser: [
         # T1 Cruisers
@@ -40,9 +40,9 @@ defmodule EveDmv.StaticData.ShipTypes do
         # T2 Cruisers (HACs, HICs, Recons)
         {640, 659},
         # T3 Cruisers
-        {29984, 30000},
+        {29_984, 30_000},
         # Faction Cruisers
-        {17634, 17740}
+        {17_634, 17_740}
       ],
       battlecruiser: [
         # T1 Battlecruisers
@@ -50,7 +50,7 @@ defmodule EveDmv.StaticData.ShipTypes do
         # T2 Battlecruisers (Command Ships)
         {560, 579},
         # Navy Battlecruisers
-        {16227, 16240}
+        {16_227, 16_240}
       ],
       battleship: [
         # T1 Battleships
