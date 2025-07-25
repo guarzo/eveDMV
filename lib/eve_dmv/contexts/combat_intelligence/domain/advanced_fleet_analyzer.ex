@@ -295,12 +295,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
       |> Enum.map(fn {role, ships} ->
         {role,
          %{
-         count: length(ships),
-         percentage: length(ships) / total_ships,
-         ships: Enum.map(ships, & &1.ship_name)
-       }}
-    end)
-    |> Map.new()
+           count: length(ships),
+           percentage: length(ships) / total_ships,
+           ships: Enum.map(ships, & &1.ship_name)
+         }}
+      end)
+      |> Map.new()
+
     # Analyze ship classes
     ship_classes =
       ship_analyses
@@ -311,6 +312,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
         {class, length(ships)}
       end)
       |> Map.new()
+
     # Analyze tank types
     tank_distribution = analyze_tank_distribution(ship_analyses)
 
@@ -373,29 +375,29 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
       scores =
         @ideal_composition
         |> Enum.map(fn {role, ideal} ->
-        actual = Map.get(role_distribution, role, %{percentage: 0}).percentage
+          actual = Map.get(role_distribution, role, %{percentage: 0}).percentage
 
-        # Calculate deviation from ideal range
-        score =
-          cond do
-            actual < ideal.min ->
-              # Under minimum - bad
-              max(0, 1 - (ideal.min - actual) * 5)
+          # Calculate deviation from ideal range
+          score =
+            cond do
+              actual < ideal.min ->
+                # Under minimum - bad
+                max(0, 1 - (ideal.min - actual) * 5)
 
-            actual > ideal.max ->
-              # Over maximum - less bad
-              max(0, 1 - (actual - ideal.max) * 3)
+              actual > ideal.max ->
+                # Over maximum - less bad
+                max(0, 1 - (actual - ideal.max) * 3)
 
-            true ->
-              # Within range - perfect
-              1.0
-          end
+              true ->
+                # Within range - perfect
+                1.0
+            end
 
-        # Weight critical roles more heavily
-        weight = if ideal.critical, do: 2.0, else: 1.0
+          # Weight critical roles more heavily
+          weight = if ideal.critical, do: 2.0, else: 1.0
 
-        {score * weight, weight}
-      end)
+          {score * weight, weight}
+        end)
 
       # Calculate weighted average
       {total_score, total_weight} =
@@ -478,6 +480,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
       ship_analyses
       |> Enum.map(fn ship -> (ship.stats && ship.stats.ehp.total) || 0 end)
       |> Enum.sum()
+
     # Logistics capabilities
     logi_power = calculate_logistics_power(ship_analyses)
 
@@ -534,6 +537,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
         end
       end)
       |> Enum.sum()
+
     %{
       logi_count: length(logi_ships),
       total_rep_power: total_rep_power,
@@ -561,22 +565,20 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     # Group by EWAR type
     ewar_breakdown =
       ewar_ships
+      |> Enum.flat_map(fn ship ->
+        Enum.map(ship.ewar[:ewar_types] || [], fn type -> {type, ship} end)
+      end)
+      |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+      |> Enum.map(fn {type, ships} ->
+        {type,
+         %{
+           count: length(ships),
+           ships: Enum.map(ships, & &1.ship_name),
+           effectiveness: calculate_ewar_effectiveness(type, ships)
+         }}
+      end)
+      |> Map.new()
 
-    |> Enum.flat_map(fn ship ->
-      Enum.map(ship.ewar[:ewar_types] || [], fn type -> {type, ship} end)
-    end)
-
-    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
-
-    |> Enum.map(fn {type, ships} ->
-      {type,
-       %{
-         count: length(ships),
-         ships: Enum.map(ships, & &1.ship_name),
-         effectiveness: calculate_ewar_effectiveness(type, ships)
-       }}
-    end)
-    |> Map.new()
     %{
       has_ewar: not Enum.empty?(ewar_ships),
       ewar_ship_count: length(ewar_ships),
@@ -626,9 +628,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
   defp analyze_fleet_mobility(ship_analyses) do
     speeds =
       ship_analyses
-
-    |> Enum.map(fn ship -> (ship.stats && ship.stats.mobility.max_velocity) || 0 end)
-    |> Enum.reject(&(&1 == 0))
+      |> Enum.map(fn ship -> (ship.stats && ship.stats.mobility.max_velocity) || 0 end)
+      |> Enum.reject(&(&1 == 0))
 
     if Enum.empty?(speeds) do
       %{average_speed: 0, mobility_rating: :unknown}
@@ -673,20 +674,19 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     # Group ships by optimal range
     range_groups =
       ship_analyses
-
-    |> Enum.group_by(fn ship ->
-      if ship.stats do
-        case ship.stats.dps.breakdown.optimal_range do
-          "0-10km" -> :brawl
-          "10-30km" -> :short
-          "20-50km" -> :medium
-          "30-80km" -> :long
-          _ -> :variable
+      |> Enum.group_by(fn ship ->
+        if ship.stats do
+          case ship.stats.dps.breakdown.optimal_range do
+            "0-10km" -> :brawl
+            "10-30km" -> :short
+            "20-50km" -> :medium
+            "30-80km" -> :long
+            _ -> :variable
+          end
+        else
+          :unknown
         end
-      else
-        :unknown
-      end
-    end)
+      end)
 
     dominant_range =
       range_groups
@@ -729,12 +729,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
   defp analyze_damage_types(ship_analyses) do
     damage_profiles =
       ship_analyses
-
-    |> Enum.map(fn ship ->
-      ship.stats && ship.stats.dps.breakdown.damage_profile
-    end)
-
-    |> Enum.reject(&is_nil/1)
+      |> Enum.map(fn ship ->
+        ship.stats && ship.stats.dps.breakdown.damage_profile
+      end)
+      |> Enum.reject(&is_nil/1)
 
     if Enum.empty?(damage_profiles) do
       %{primary: :unknown, secondary: :unknown}
@@ -750,9 +748,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
       # Sort by total weight
       sorted =
         aggregated
-
-      |> Enum.sort_by(&elem(&1, 1), :desc)
-      |> Enum.map(&elem(&1, 0))
+        |> Enum.sort_by(&elem(&1, 1), :desc)
+        |> Enum.map(&elem(&1, 0))
 
       %{
         primary: List.first(sorted) || :unknown,
@@ -788,8 +785,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     # Analyze how well the tank types work together
     tank_types =
       ship_analyses
+      |> Enum.map(fn ship -> ship.stats && ship.stats.meta_info.tank_type end)
 
-    |> Enum.map(fn ship -> ship.stats && ship.stats.meta_info.tank_type end)
     Enum.reject(&is_nil/1) |> Enum.frequencies()
     # Homogeneous tank is more efficient
     dominant_tank_percentage =
@@ -812,8 +809,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
     flexibility_score =
       [has_tackle, has_ewar, has_logi, has_command]
-
-    |> Enum.count(& &1)
+      |> Enum.count(& &1)
 
     case flexibility_score do
       4 -> :excellent
@@ -827,55 +823,40 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
   # Vulnerability analysis
 
   defp analyze_vulnerabilities(ship_analyses, composition) do
-    vulnerabilities = []
+    base_vulnerabilities = []
 
-    # Check for bomber vulnerability
-    vulnerabilities =
-      if vulnerable_to_bombers?(ship_analyses) do
-        [
-          %{
-            type: :bomber_vulnerable,
-            severity: :high,
-            description: "Large signature battleships without sufficient anti-frigate support",
-            mitigation: "Add destroyers or light missile cruisers for anti-bomber screen"
-          }
-          | vulnerabilities
-        ]
-      else
-        vulnerabilities
-      end
-
-    # Check for kiting vulnerability
-    vulnerabilities =
-      if vulnerable_to_kiting?(ship_analyses) do
-        [
-          %{
-            type: :kiting_vulnerable,
-            severity: :medium,
-            description: "Short range composition with limited tackle",
-            mitigation: "Add long-range tackle (Lachesis, Arazu, Huginn)"
-          }
-          | vulnerabilities
-        ]
-      else
-        vulnerabilities
-      end
-
-    # Check role-specific vulnerabilities
+    # Get all vulnerability types
     role_vulns = check_role_vulnerabilities(composition)
-    vulnerabilities = vulnerabilities ++ role_vulns
-
-    # Check tank vulnerabilities
     tank_vulns = check_tank_vulnerabilities(ship_analyses)
-    vulnerabilities = vulnerabilities ++ tank_vulns
+
+    # Build vulnerability list with conditions
+    all_vulnerabilities = base_vulnerabilities
+    |> add_vulnerability_if(vulnerable_to_bombers?(ship_analyses), %{
+      type: :bomber_vulnerable,
+      severity: :high,
+      description: "Large signature battleships without sufficient anti-frigate support",
+      mitigation: "Add destroyers or light missile cruisers for anti-bomber screen"
+    })
+    |> add_vulnerability_if(vulnerable_to_kiting?(ship_analyses), %{
+      type: :kiting_vulnerable,
+      severity: :medium,
+      description: "Short range composition with limited tackle", 
+      mitigation: "Add long-range tackle (Lachesis, Arazu, Huginn)"
+    })
+    |> Kernel.++(role_vulns)
+    |> Kernel.++(tank_vulns)
 
     vulnerability_analysis = %{
-      vulnerabilities: vulnerabilities,
-      overall_vulnerability: assess_overall_vulnerability(vulnerabilities),
-      priority_threats: identify_priority_threats(vulnerabilities)
+      vulnerabilities: all_vulnerabilities,
+      overall_vulnerability: assess_overall_vulnerability(all_vulnerabilities),
+      priority_threats: identify_priority_threats(all_vulnerabilities)
     }
 
     {:ok, vulnerability_analysis}
+  end
+
+  defp add_vulnerability_if(vulnerabilities, condition, vulnerability) do
+    if condition, do: [vulnerability | vulnerabilities], else: vulnerabilities
   end
 
   defp vulnerable_to_bombers?(ship_analyses) do
@@ -907,63 +888,39 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
   end
 
   defp check_role_vulnerabilities(composition) do
-    vulnerabilities = []
-
-    # No logistics
-    vulnerabilities =
-      if Map.get(composition.role_distribution, :logistics, %{count: 0}).count == 0 do
-        [
-          %{
-            type: :no_logistics,
-            severity: :critical,
-            description: "No logistics support - vulnerable to attrition",
-            mitigation: "Add 2-4 logistics ships immediately"
-          }
-          | vulnerabilities
-        ]
-      else
-        vulnerabilities
-      end
-
-    # Insufficient tackle
+    base_vulnerabilities = []
     tackle_ratio = Map.get(composition.role_distribution, :tackle, %{percentage: 0}).percentage
+    has_logistics = Map.get(composition.role_distribution, :logistics, %{count: 0}).count > 0
 
-    vulnerabilities =
-      if tackle_ratio < 0.05 and composition.total_ships > 10 do
-        [
-          %{
-            type: :insufficient_tackle,
-            severity: :high,
-            description: "Insufficient tackle - enemies can disengage",
-            mitigation: "Add fast tackle ships (interceptors, interdictors)"
-          }
-          | vulnerabilities
-        ]
-      else
-        vulnerabilities
-      end
-
-    vulnerabilities
+    base_vulnerabilities
+    |> add_vulnerability_if(not has_logistics, %{
+      type: :no_logistics,
+      severity: :critical,
+      description: "No logistics support - vulnerable to attrition",
+      mitigation: "Add 2-4 logistics ships immediately"
+    })
+    |> add_vulnerability_if(tackle_ratio < 0.05 and composition.total_ships > 10, %{
+      type: :insufficient_tackle,
+      severity: :high,
+      description: "Insufficient tackle - enemies can disengage",
+      mitigation: "Add fast tackle ships (interceptors, interdictors)"
+    })
   end
 
   defp check_tank_vulnerabilities(ship_analyses) do
     # Get resist profiles
     resist_holes =
       ship_analyses
-
-    |> Enum.map(fn ship ->
-      ship.stats && ship.stats.ehp.resist_profile
-    end)
-
-    |> Enum.reject(&is_nil/1)
-    |> Enum.group_by(& &1.damage_type)
-
-    |> Enum.map(fn {damage_type, profiles} ->
-      avg_resist = Enum.sum(Enum.map(profiles, & &1.resistance)) / length(profiles)
-      {damage_type, avg_resist}
-    end)
-
-    |> Enum.min_by(&elem(&1, 1), fn -> {:unknown, 0.5} end)
+      |> Enum.map(fn ship ->
+        ship.stats && ship.stats.ehp.resist_profile
+      end)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.group_by(& &1.damage_type)
+      |> Enum.map(fn {damage_type, profiles} ->
+        avg_resist = Enum.sum(Enum.map(profiles, & &1.resistance)) / length(profiles)
+        {damage_type, avg_resist}
+      end)
+      |> Enum.min_by(&elem(&1, 1), fn -> {:unknown, 0.5} end)
 
     case resist_holes do
       {damage_type, avg_resist} when avg_resist < 0.5 ->
@@ -1029,40 +986,27 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
   defp generate_role_recommendations(composition) do
     composition.missing_roles
-
     |> Enum.map(fn missing ->
       "Add #{missing.ships_needed} #{missing.role} ships: #{Enum.join(missing.recommendation, ", ")}"
     end)
   end
 
   defp generate_capability_recommendations(capabilities) do
-    recs = []
+    base_recs = []
 
-    # Mobility recommendations
-    recs =
-      if capabilities.mobility.mobility_rating in [:low, :very_low] do
-        ["Consider adding faster ships or using mobility implants/drugs" | recs]
-      else
-        recs
-      end
-
-    # EWAR recommendations
-    recs =
-      if capabilities.ewar.ewar_strength in [:none, :minimal] do
-        ["Add EWAR support for tactical flexibility" | recs]
-      else
-        recs
-      end
-
-    # Tank efficiency
-    recs =
-      if capabilities.defense.tank_efficiency < 0.7 do
-        ["Standardize tank type across fleet for better logistics efficiency" | recs]
-      else
-        recs
-      end
-
-    recs
+    base_recs
+    |> add_recommendation_if(
+      capabilities.mobility.mobility_rating in [:low, :very_low],
+      "Consider adding faster ships or using mobility implants/drugs"
+    )
+    |> add_recommendation_if(
+      capabilities.ewar.ewar_strength in [:none, :minimal],
+      "Add EWAR support for tactical flexibility"
+    )
+    |> add_recommendation_if(
+      capabilities.defense.tank_efficiency < 0.7,
+      "Standardize tank type across fleet for better logistics efficiency"
+    )
   end
 
   # Summary and engagement profile
@@ -1230,13 +1174,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     # Check against known doctrines
     doctrine_matches =
       @fleet_doctrines
-
-    |> Enum.map(fn {doctrine_name, doctrine} ->
-      compliance = calculate_doctrine_compliance(ship_analyses, doctrine)
-      {doctrine_name, compliance}
-    end)
-
-    |> Enum.sort_by(&elem(&1, 1), :desc)
+      |> Enum.map(fn {doctrine_name, doctrine} ->
+        compliance = calculate_doctrine_compliance(ship_analyses, doctrine)
+        {doctrine_name, compliance}
+      end)
+      |> Enum.sort_by(&elem(&1, 1), :desc)
 
     best_match = List.first(doctrine_matches)
 
