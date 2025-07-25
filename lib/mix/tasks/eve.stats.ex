@@ -30,22 +30,29 @@ defmodule Mix.Tasks.Eve.Stats do
     Logger.info("==========================")
 
     # Total killmails
-    total_killmails = EveDmv.Repo.one(from(k in "killmails_raw", select: count(k.killmail_id)))
+    total_killmails =
+      from(k in "killmails_raw", select: count(k.killmail_id))
+      |> EveDmv.Repo.one()
 
-    Logger.info("Total Killmails: #{format_number(total_killmails)}")
+    formatted_total = format_number(total_killmails)
+    Logger.info("Total Killmails: #{formatted_total}")
 
     if verbose do
       # Killmails by source
       Logger.info("\nKillmails by Source:")
 
-      source_counts = EveDmv.Repo.all(from(k in "killmails_raw", group_by: k.source, select: {k.source, count(k.killmail_id)}))
+      source_counts =
+        from(k in "killmails_raw", group_by: k.source, select: {k.source, count(k.killmail_id)})
+        |> EveDmv.Repo.all()
 
       Enum.each(source_counts, fn {source, count} ->
         Logger.info("  #{source}: #{format_number(count)}")
       end)
 
       # Date range
-      {oldest, newest} = EveDmv.Repo.one(from(k in "killmails_raw", select: {min(k.killmail_time), max(k.killmail_time)}))
+      {oldest, newest} =
+        from(k in "killmails_raw", select: {min(k.killmail_time), max(k.killmail_time)})
+        |> EveDmv.Repo.one()
 
       if oldest && newest do
         Logger.info("\nDate Range:")
@@ -58,7 +65,14 @@ defmodule Mix.Tasks.Eve.Stats do
 
       six_months_ago = DateTime.add(DateTime.utc_now(), -180, :day)
 
-      monthly_counts = EveDmv.Repo.all(from(k in "killmails_raw", where: k.killmail_time >= ^six_months_ago, group_by: fragment("DATE_TRUNC('month', ?)", k.killmail_time), order_by: [desc: fragment("DATE_TRUNC('month', ?)", k.killmail_time)], select: {fragment("DATE_TRUNC('month', ?)", k.killmail_time), count(k.killmail_id)}))
+      monthly_counts =
+        from(k in "killmails_raw",
+          where: k.killmail_time >= ^six_months_ago,
+          group_by: fragment("DATE_TRUNC('month', ?)", k.killmail_time),
+          order_by: [desc: fragment("DATE_TRUNC('month', ?)", k.killmail_time)],
+          select: {fragment("DATE_TRUNC('month', ?)", k.killmail_time), count(k.killmail_id)}
+        )
+        |> EveDmv.Repo.all()
 
       Enum.each(monthly_counts, fn {month, count} ->
         month_str = Calendar.strftime(month, "%B %Y")
@@ -68,14 +82,32 @@ defmodule Mix.Tasks.Eve.Stats do
       # Top systems
       Logger.info("\nTop 10 Systems by Kills:")
 
-      initial_systems = EveDmv.Repo.all(from(k in "killmails_raw", join: s in "eve_solar_systems", on: k.solar_system_id == s.system_id, group_by: [k.solar_system_id, s.system_name], order_by: [desc: count(k.killmail_id)], limit: 10, select: {s.system_name, count(k.killmail_id)}))
+      initial_systems =
+        from(k in "killmails_raw",
+          join: s in "eve_solar_systems",
+          on: k.solar_system_id == s.system_id,
+          group_by: [k.solar_system_id, s.system_name],
+          order_by: [desc: count(k.killmail_id)],
+          limit: 10,
+          select: {s.system_name, count(k.killmail_id)}
+        )
+        |> EveDmv.Repo.all()
 
       top_systems =
         case initial_systems do
           [] ->
             # Fallback if no solar system data
-            fallback_data = EveDmv.Repo.all(from(k in "killmails_raw", group_by: k.solar_system_id, order_by: [desc: count(k.killmail_id)], limit: 10, select: {k.solar_system_id, count(k.killmail_id)}))
-            Enum.map(fallback_data, fn {system_id, count} -> {"System #{system_id}", count} end)
+            fallback_data =
+              from(k in "killmails_raw",
+                group_by: k.solar_system_id,
+                order_by: [desc: count(k.killmail_id)],
+                limit: 10,
+                select: {k.solar_system_id, count(k.killmail_id)}
+              )
+              |> EveDmv.Repo.all()
+
+            fallback_data
+            |> Enum.map(fn {system_id, count} -> {"System #{system_id}", count} end)
 
           systems ->
             systems
@@ -89,8 +121,7 @@ defmodule Mix.Tasks.Eve.Stats do
       Logger.info("\nStorage Information:")
 
       table_sizes =
-        EveDmv.Repo.all(
-          from(t in fragment("SELECT
+        from(t in fragment("SELECT
             schemaname,
             tablename,
             pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size,
@@ -99,12 +130,12 @@ defmodule Mix.Tasks.Eve.Stats do
           WHERE schemaname = 'public'
             AND tablename LIKE 'killmails_raw%'
           ORDER BY size_bytes DESC"),
-            select: %{
-              table: fragment("tablename"),
-              size: fragment("size")
-            }
-          )
+          select: %{
+            table: fragment("tablename"),
+            size: fragment("size")
+          }
         )
+        |> EveDmv.Repo.all()
 
       Enum.each(table_sizes, fn %{table: table, size: size} ->
         Logger.info("  #{table}: #{size}")
@@ -131,8 +162,11 @@ defmodule Mix.Tasks.Eve.Stats do
   defp format_number(nil), do: "0"
 
   defp format_number(num) when is_integer(num) do
-    Integer.to_string(num) |> String.reverse()
-    String.replace(~r/(\d{3})(?=\d)/, "\\1,") |> String.reverse()
+    num
+    |> Integer.to_string()
+    |> String.reverse()
+    |> String.replace(~r/(\d{3})(?=\d)/, "\\1,")
+    |> String.reverse()
   end
 
   defp format_datetime(nil), do: "N/A"

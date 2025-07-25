@@ -87,7 +87,8 @@
           {Credo.Check.Readability.VariableNames, []},
           {Credo.Check.Readability.WithSingleClause, []},
           # Enhanced: Additional readability checks
-          {Credo.Check.Readability.SinglePipe, []},
+          # Disabled due to conflicts with PipeChainStart - prefer pipeline style
+          # {Credo.Check.Readability.SinglePipe, []},
           {Credo.Check.Readability.ImplTrue, []},
           {Credo.Check.Readability.MultiAlias, []},
           {Credo.Check.Readability.NestedFunctionCalls, [min_pipeline_length: 3]},
@@ -147,7 +148,8 @@
           {Credo.Check.Refactor.ModuleDependencies, [max_deps: 15]},
           {Credo.Check.Refactor.NegatedIsNil, []},
           {Credo.Check.Refactor.PassAsyncInTestCases, []},
-          {Credo.Check.Refactor.PipeChainStart, []},
+          # Disabled due to conflicts with Ecto query patterns - from/1 macro is idiomatic
+          # {Credo.Check.Refactor.PipeChainStart, []},
           {Credo.Check.Refactor.RejectReject, []},
           {Credo.Check.Refactor.VariableRebinding, []},
 

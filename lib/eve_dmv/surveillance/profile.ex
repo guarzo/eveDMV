@@ -232,7 +232,7 @@ defmodule EveDmv.Surveillance.Profile do
   defp validate_filter_tree(%{"condition" => condition, "rules" => rules})
        when condition in ["and", "or"] and is_list(rules) do
     if length(rules) > 0 do
-      |> Enum.reduce_while(rules, :ok, fn rule, :ok ->
+      Enum.reduce_while(rules, :ok, fn rule, :ok ->
         case validate_rule(rule) do
           :ok -> {:cont, :ok}
           error -> {:halt, error}

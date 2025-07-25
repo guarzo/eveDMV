@@ -47,10 +47,9 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetAnalyzer do
       # Aggregate ship categories
       ship_categories =
         members
-
-      |> Enum.group_by(& &1.ship_category)
-      |> Enum.map(fn {category, ships} -> {category, length(ships)} end)
-      |> Enum.into(%{})
+        |> Enum.group_by(& &1.ship_category)
+        |> Enum.map(fn {category, ships} -> {category, length(ships)} end)
+        |> Enum.into(%{})
 
       # Calculate total mass
       total_mass = MassCalculator.calculate_total_fleet_mass(members)
@@ -61,10 +60,9 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetAnalyzer do
       # Analyze role distribution
       role_distribution =
         members
-
-      |> Enum.group_by(&Map.get(&1, :role, categorize_ship_role(&1.ship_name)))
-      |> Enum.map(fn {role, ships} -> {role, length(ships)} end)
-      |> Enum.into(%{})
+        |> Enum.group_by(&Map.get(&1, :role, categorize_ship_role(&1.ship_name)))
+        |> Enum.map(fn {role, ships} -> {role, length(ships)} end)
+        |> Enum.into(%{})
 
       %{
         total_members: length(members),
@@ -331,26 +329,22 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetAnalyzer do
       # Categorize each member by role
       role_counts =
         fleet_members
-
-      |> Enum.group_by(fn member ->
-        ship_name = Map.get(member, :ship_name, "Unknown")
-        categorize_ship_role(ship_name)
-      end)
-
-      |> Enum.map(fn {role, members} -> {role, length(members)} end)
-      |> Enum.into(%{})
+        |> Enum.group_by(fn member ->
+          ship_name = Map.get(member, :ship_name, "Unknown")
+          categorize_ship_role(ship_name)
+        end)
+        |> Enum.map(fn {role, members} -> {role, length(members)} end)
+        |> Enum.into(%{})
 
       total_members = length(fleet_members)
 
       # Calculate role coverage percentages
       role_coverage =
         role_counts
-
-      |> Enum.map(fn {role, count} ->
-        {role, round(count / total_members * 100)}
-      end)
-
-      |> Enum.into(%{})
+        |> Enum.map(fn {role, count} ->
+          {role, round(count / total_members * 100)}
+        end)
+        |> Enum.into(%{})
 
       # Define recommended ratios
       recommended_ratio = %{

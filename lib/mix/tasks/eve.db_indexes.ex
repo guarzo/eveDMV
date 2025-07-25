@@ -91,7 +91,7 @@ defmodule Mix.Tasks.Eve.DbIndexes do
     else
       Logger.warning("⚠️  Missing indexes that could improve performance:")
 
-      |> Enum.each(missing, fn {name, column} ->
+      Enum.each(missing, fn {name, column} ->
         Logger.warning("  - #{name} on column: #{column}")
       end)
 
@@ -134,7 +134,7 @@ defmodule Mix.Tasks.Eve.DbIndexes do
       {"idx_killmails_attackers_gin", "((raw_data->'attackers'))", nil, "GIN"}
     ]
 
-    |> Enum.each(indexes, fn index_spec ->
+    Enum.each(indexes, fn index_spec ->
       case index_spec do
         {name, columns, where_clause, index_type} ->
           create_index(name, columns, where_clause, index_type)
@@ -192,7 +192,7 @@ defmodule Mix.Tasks.Eve.DbIndexes do
       {:ok, %{rows: [_ | _] = rows}} ->
         Logger.info("\nTop slow queries involving killmails_raw:")
 
-        |> Enum.each(rows, fn [calls, mean_time, total_time, query] ->
+        Enum.each(rows, fn [calls, mean_time, total_time, query] ->
           Logger.info(
             "\nCalls: #{calls}, Mean: #{Float.round(mean_time, 2)}ms, Total: #{Float.round(total_time, 2)}ms"
           )

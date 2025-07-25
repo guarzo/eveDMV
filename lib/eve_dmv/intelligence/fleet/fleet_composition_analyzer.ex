@@ -91,14 +91,13 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
 
     doctrine_scores =
       doctrines
+      |> Enum.map(fn doctrine ->
+        compliant_ships =
+          Enum.count(ship_analysis, &EveDmv.StaticData.doctrine_ship?(&1.name, doctrine))
 
-    |> Enum.map(fn doctrine ->
-      compliant_ships =
-        Enum.count(ship_analysis, &EveDmv.StaticData.doctrine_ship?(&1.name, doctrine))
-
-      {doctrine, compliant_ships / length(ship_analysis)}
-    end)
-    |> Map.new()
+        {doctrine, compliant_ships / length(ship_analysis)}
+      end)
+      |> Map.new()
 
     {best_doctrine, _score} = Enum.max_by(doctrine_scores, fn {_doctrine, score} -> score end)
 

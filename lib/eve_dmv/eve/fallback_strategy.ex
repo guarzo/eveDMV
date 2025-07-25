@@ -135,10 +135,11 @@ defmodule EveDmv.Eve.FallbackStrategy do
 
       true ->
         # Too many failures
-        first_error = 
+        first_error =
           failures
           |> List.first()
           |> elem(1)
+
         {:error, {:parallel_failure, first_error}}
     end
   end

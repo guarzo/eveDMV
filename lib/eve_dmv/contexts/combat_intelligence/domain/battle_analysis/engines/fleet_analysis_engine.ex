@@ -59,10 +59,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
     if total_ships > 0 do
       logistics_ships =
         ship_composition
-
-      |> Enum.filter(fn {ship_type_id, _count} ->
-        classify_ship(ship_type_id) == :logistics
-      end)
+        |> Enum.filter(fn {ship_type_id, _count} ->
+          classify_ship(ship_type_id) == :logistics
+        end)
 
       Enum.map(fn {_, count} -> count end) |> Enum.sum()
       Float.round(logistics_ships / total_ships, 3)
@@ -113,19 +112,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
     # Classify ships by category
     ship_classes =
       ship_composition
+      |> Enum.map(fn {ship_type_id, count} ->
+        {classify_ship(ship_type_id), count}
+      end)
+      |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
 
-    |> Enum.map(fn {ship_type_id, count} ->
-      {classify_ship(ship_type_id), count}
-    end)
-
-    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
     Enum.map(fn {class, counts} -> {class, Enum.sum(counts)} end) |> Map.new()
     # Find dominant ship classes (>20% of fleet)
     dominant_classes =
       ship_classes
-
-    |> Enum.filter(fn {_class, count} -> count / total_ships > 0.2 end)
-    |> Enum.map(&elem(&1, 0))
+      |> Enum.filter(fn {_class, count} -> count / total_ships > 0.2 end)
+      |> Enum.map(&elem(&1, 0))
 
     %{
       breakdown: ship_classes,
@@ -264,8 +261,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
       # Shannon diversity index calculation
       proportions =
         Map.values(ship_classes)
-
-      |> Enum.map(&(&1 / total_ships))
+        |> Enum.map(&(&1 / total_ships))
 
       entropy =
         proportions

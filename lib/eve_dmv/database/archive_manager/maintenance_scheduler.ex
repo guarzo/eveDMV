@@ -11,7 +11,7 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
   alias AM.ArchiveOperations
   alias AM.PartitionManager
   alias EveDmv.Repo
-  
+
   require Logger
 
   @doc """

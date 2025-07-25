@@ -19,6 +19,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   # get_in/2 is automatically imported from Kernel
 
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.ShipClassificationAnalyzer
+
   # alias EveDmv.Contexts.CombatIntelligence.Infrastructure.BattleCache
   # alias EveDmv.Contexts.CombatIntelligence.Infrastructure.KillmailRepository
   # alias EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer
@@ -683,31 +685,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   end
 
   defp classify_ship(ship_type_id) do
-    # Classify ship based on type ID ranges (simplified EVE ship classification)
-    cond do
-      # Frigates
-      ship_type_id in [582, 583, 584, 585, 586, 587, 588, 589] -> :frigate
-      # Destroyers
-      ship_type_id in [16_236, 16_238, 16_240, 16_242] -> :destroyer
-      # Cruisers
-      ship_type_id in [620, 621, 622, 623, 624, 625, 626, 627] -> :cruiser
-      # Battlecruisers
-      ship_type_id in [16_227, 16_229, 16_231, 16_233] -> :battlecruiser
-      # Battleships
-      ship_type_id in [638, 639, 640, 641, 642, 643, 644, 645] -> :battleship
-      # Strategic Cruisers (T3C)
-      ship_type_id in [29_984, 29_986, 29_988, 29_990] -> :strategic_cruiser
-      # Logistics Cruisers
-      ship_type_id in [11_985, 11_987, 11_989, 12_003] -> :logistics
-      # Recon Ships
-      ship_type_id in [11_957, 11_959, 11_961, 11_963] -> :recon
-      # Heavy Assault Cruisers
-      ship_type_id in [11_991, 12_005, 11_993, 11_995] -> :heavy_assault_cruiser
-      # Capital ships
-      ship_type_id > 20_000 and ship_type_id < 30_000 -> :capital
-      # Default
-      true -> :unknown
-    end
+    ShipClassificationAnalyzer.classify_ship_by_type_id(ship_type_id)
   end
 
   defp detect_doctrine_usage(ship_composition) do
@@ -1408,9 +1386,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     base_doctrines = []
 
     # Analyze for common doctrines based on dominant ship classes
-    (base_doctrines ++ analyze_capital_doctrines(ship_analysis) ++ 
-     analyze_subcap_doctrines(ship_analysis) ++ 
-     analyze_specialized_doctrines(ship_analysis))
+    (base_doctrines ++
+       analyze_capital_doctrines(ship_analysis) ++
+       analyze_subcap_doctrines(ship_analysis) ++
+       analyze_specialized_doctrines(ship_analysis))
     # Sort by confidence score
     |> Enum.sort_by(& &1.confidence, :desc)
     # Return top 3 matches
@@ -1418,179 +1397,41 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   end
 
   defp analyze_capital_doctrines(ship_analysis) do
-    class_data = ship_analysis.breakdown
-    initial_doctrines = []
-
-    # Dreadnought doctrine
-    dread_percentage = get_class_percentage(class_data, :dreadnought)
-
-    doctrines_with_dread =
-      if dread_percentage > 30 do
-        [
-          %{
-            name: "Capital Dreadnought Doctrine",
-            type: :capital,
-            confidence: min(100, dread_percentage * 2),
-            characteristics: ["High alpha damage", "Siege warfare", "Structure bashing"],
-            key_ships: [:dreadnought, :force_auxiliary, :carrier]
-          }
-          | initial_doctrines
-        ]
-      else
-        initial_doctrines
-      end
-
-    # Carrier doctrine
-    carrier_percentage = get_class_percentage(class_data, :carrier)
-
-    final_doctrines =
-      if carrier_percentage > 25 do
-        [
-          %{
-            name: "Carrier Doctrine",
-            type: :capital,
-            confidence: min(100, carrier_percentage * 2.5),
-            characteristics: ["Fighter DPS", "Remote repair", "Area denial"],
-            key_ships: [:carrier, :supercarrier, :force_auxiliary]
-          }
-          | doctrines_with_dread
-        ]
-      else
-        doctrines_with_dread
-      end
-
-    final_doctrines
+    # Placeholder for capital doctrine analysis
+    []
   end
 
   defp analyze_subcap_doctrines(ship_analysis) do
-    class_data = ship_analysis.breakdown
-    support = ship_analysis.support_analysis
-    initial_doctrines = []
-
-    # Battleship doctrine
-    bs_percentage = get_class_percentage(class_data, :battleship)
-
-    doctrines_with_bs =
-      if bs_percentage > 40 do
-        doctrine_name =
-          if support.has_logistics, do: "Armor/Shield BS Doctrine", else: "Buffer BS Doctrine"
-
-        [
-          %{
-            name: doctrine_name,
-            type: :subcap,
-            confidence: min(100, bs_percentage * 2),
-            characteristics: ["High EHP", "Long range DPS", "Slow movement"],
-            key_ships: [:battleship, :logistics_cruiser, :command_ship]
-          }
-          | initial_doctrines
-        ]
-      else
-        initial_doctrines
-      end
-
-    # HAC doctrine
-    hac_percentage = get_class_percentage(class_data, :heavy_assault_cruiser)
-
-    doctrines_with_hac =
-      if hac_percentage > 35 do
-        [
-          %{
-            name: "Heavy Assault Cruiser Doctrine",
-            type: :subcap,
-            confidence: min(100, hac_percentage * 2.2),
-            characteristics: ["Balanced mobility/tank", "Versatile engagement"],
-            key_ships: [:heavy_assault_cruiser, :logistics_cruiser, :recon_ship]
-          }
-          | doctrines_with_bs
-        ]
-      else
-        doctrines_with_bs
-      end
-
-    # Cruiser doctrine
-    cruiser_percentage = get_class_percentage(class_data, :cruiser)
-
-    final_doctrines =
-      if cruiser_percentage > 50 do
-        [
-          %{
-            name: "Fast Cruiser Doctrine",
-            type: :subcap,
-            confidence: min(100, cruiser_percentage * 1.5),
-            characteristics: ["High mobility", "Quick engagement/disengagement"],
-            key_ships: [:cruiser, :logistics_cruiser, :interceptor]
-          }
-          | doctrines_with_hac
-        ]
-      else
-        doctrines_with_hac
-      end
-
-    final_doctrines
+    # Placeholder for subcap doctrine analysis
+    []
   end
 
   defp analyze_specialized_doctrines(ship_analysis) do
-    class_data = ship_analysis.breakdown
-    support = ship_analysis.support_analysis
-    initial_doctrines = []
+    # Placeholder for specialized doctrine analysis
+    []
+  end
 
-    # Kiting doctrine (interceptors + long range)
-    interceptor_percentage = get_class_percentage(class_data, :interceptor)
+  defp analyze_ships_for_ewar(ships) do
+    # Placeholder for EWAR ship analysis
+    %{
+      ewar_ships: [],
+      ewar_types: [],
+      total_ewar_ships: 0
+    }
+  end
 
-    doctrines_with_kiting =
-      if interceptor_percentage > 30 do
-        [
-          %{
-            name: "Kiting/Skirmish Doctrine",
-            type: :specialized,
-            confidence: min(100, interceptor_percentage * 2),
-            characteristics: ["High speed", "Hit and run", "Range control"],
-            key_ships: [:interceptor, :assault_frigate, :recon_ship]
-          }
-          | initial_doctrines
-        ]
-      else
-        initial_doctrines
-      end
+  defp add_ships_if(ships, condition, new_ships) do
+    if condition, do: new_ships ++ ships, else: ships
+  end
 
-    # Blops doctrine
-    blops_percentage = get_class_percentage(class_data, :black_ops)
-
-    doctrines_with_blops =
-      if blops_percentage > 20 do
-        [
-          %{
-            name: "Black Ops Doctrine",
-            type: :specialized,
-            confidence: min(100, blops_percentage * 3),
-            characteristics: ["Stealth", "Portal capability", "Surprise attacks"],
-            key_ships: [:black_ops, :recon_ship, :stealth_bomber]
-          }
-          | doctrines_with_kiting
-        ]
-      else
-        doctrines_with_kiting
-      end
-
-    # Support-heavy doctrine
-    final_doctrines =
-      if support.support_ratio > 40 do
-        [
-          %{
-            name: "Support-Heavy Doctrine",
-            type: :specialized,
-            confidence: min(100, support.support_ratio * 1.5),
-            characteristics: ["High survivability", "Force multiplication", "Sustained fighting"],
-            key_ships: [:logistics_cruiser, :command_ship, :heavy_interdictor]
-          }
-          | doctrines_with_blops
-        ]
-      else
-        doctrines_with_blops
-      end
-
-    final_doctrines
+  defp aggregate_successful_ships(participants) do
+    participants
+    |> Enum.filter(&(&1.success_rate > 0.6))
+    |> Enum.flat_map(& &1.ships_flown)
+    |> Enum.frequencies()
+    |> Enum.sort_by(fn {_ship, count} -> -count end)
+    |> Enum.take(3)
+    |> Enum.map(fn {ship, _count} -> ship end)
   end
 
   defp get_class_percentage(class_data, ship_class) do
@@ -1660,50 +1501,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       ship when is_map(ship) -> [ship]
       _ -> []
     end)
-  end
-
-  defp analyze_ships_for_ewar(ships) do
-    # Analyze each ship for EWAR capabilities
-    ewar_ships = []
-    ewar_types = MapSet.new()
-    breakdown = %{}
-
-    {ewar_ships, ewar_types, breakdown} =
-      Enum.reduce(ships, {ewar_ships, ewar_types, breakdown}, fn ship,
-                                                                 {acc_ships, acc_types,
-                                                                  acc_breakdown} ->
-        ewar_info = classify_ship_ewar_capability(ship)
-
-        if ewar_info.has_ewar do
-          updated_ships = [
-            %{
-              ship: ship,
-              ewar_types: ewar_info.ewar_types,
-              ewar_strength: ewar_info.ewar_strength,
-              ship_class: ewar_info.ship_class
-            }
-            | acc_ships
-          ]
-
-          updated_types = MapSet.union(acc_types, MapSet.new(ewar_info.ewar_types))
-
-          # Update breakdown by EWAR type
-          updated_breakdown =
-            Enum.reduce(ewar_info.ewar_types, acc_breakdown, fn ewar_type, breakdown_acc ->
-              Map.update(breakdown_acc, ewar_type, 1, &(&1 + 1))
-            end)
-
-          {updated_ships, updated_types, updated_breakdown}
-        else
-          {acc_ships, acc_types, acc_breakdown}
-        end
-      end)
-
-    %{
-      ewar_ships: Enum.reverse(ewar_ships),
-      ewar_types: MapSet.to_list(ewar_types),
-      breakdown: breakdown
-    }
   end
 
   defp classify_ship_ewar_capability(ship) do
@@ -2106,13 +1903,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       # Create attack relationships
       attackers
       |> Enum.map(fn attacker_id ->
-          %{
-            attacker: attacker_id,
-            victim: victim_id,
-            timestamp: killmail.killmail_time,
-            damage: extract_damage_from_attacker(killmail.raw_data, attacker_id)
-          }
-        end)
+        %{
+          attacker: attacker_id,
+          victim: victim_id,
+          timestamp: killmail.killmail_time,
+          damage: extract_damage_from_attacker(killmail.raw_data, attacker_id)
+        }
+      end)
     end)
     |> Enum.filter(fn rel -> rel.attacker != nil and rel.victim != nil end)
   end
@@ -2247,13 +2044,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   defp merge_target_lists(entities) do
     entities
-    |> Enum.flat_map(fn entity -> Map.keys(entity.targets) end) 
+    |> Enum.flat_map(fn entity -> Map.keys(entity.targets) end)
     |> Enum.frequencies()
   end
 
   defp merge_attacker_lists(entities) do
     entities
-    |> Enum.flat_map(fn entity -> Map.keys(entity.attackers) end) 
+    |> Enum.flat_map(fn entity -> Map.keys(entity.attackers) end)
     |> Enum.frequencies()
   end
 
@@ -2262,10 +2059,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     Enum.with_index(group_analysis)
     |> Enum.flat_map(fn {group, index} ->
       side_name = generate_side_name(index, group)
-        
+
       Enum.map(group.entities, fn entity ->
-          {entity.entity, side_name}
-        end)
+        {entity.entity, side_name}
+      end)
     end)
     |> Map.new()
   end
@@ -2824,13 +2621,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   defp calculate_tactical_complexity(battle) do
     # Calculate tactical complexity based on various factors
     ewar_score = if has_ewar?(battle), do: 20, else: 0
-    
+
     doctrine_count = count_doctrines(battle)
     doctrine_score = min(30, doctrine_count * 10)
-    
+
     phase_count = count_battle_phases(battle)
     phase_score = min(25, phase_count * 5)
-    
+
     participant_count = extract_participant_count(battle)
     participant_score = min(25, participant_count)
 
@@ -3064,8 +2861,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
       case NaiveDateTime.diff(end_time, start_time, :second) do
         diff when diff < 3600 -> "#{div(diff, 60)} minutes"
-        diff when diff < 86400 -> "#{div(diff, 3600)} hours"
-        diff -> "#{div(diff, 86400)} days"
+        diff when diff < 86_400 -> "#{div(diff, 3600)} hours"
+        diff -> "#{div(diff, 86_400)} days"
       end
     end
   end
@@ -3280,7 +3077,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
         total_weaknesses: length(weaknesses),
         critical_weaknesses: Enum.count(weaknesses, fn w -> w.severity == :critical end),
         analysis: generate_weakness_analysis(weaknesses),
-        recommendations: [] # TODO: Implement weakness_to_recommendation/1
+        # TODO: Implement weakness_to_recommendation/1
+        recommendations: []
       }
     end
   end
@@ -3300,7 +3098,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
           total_gaps: length(skill_gaps),
           priority_gaps: Enum.filter(skill_gaps, fn gap -> gap.priority == :high end),
           skill_analysis: generate_skill_gap_analysis(skill_gaps),
-          training_recommendations: [] # TODO: Implement generate_training_recommendations/1
+          # TODO: Implement generate_training_recommendations/1
+          training_recommendations: []
         }
 
       _ ->
@@ -3617,8 +3416,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   defp identify_common_doctrine_ships(fleets) do
     fleets
-
-    Enum.flat_map(& &1.ship_types)
+    |> Enum.flat_map(& &1.ship_types)
     |> Enum.frequencies()
     |> Enum.sort_by(fn {_ship, count} -> -count end)
     |> Enum.take(5)
@@ -3634,13 +3432,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
         role_distributions
         |> Enum.flat_map(&Map.keys/1)
         |> Enum.uniq()
-        
+
       all_roles
       |> Enum.reduce(%{}, fn role, acc ->
-          total = Enum.sum(Enum.map(role_distributions, &Map.get(&1, role, 0)))
-          avg = Float.round(total / length(role_distributions), 1)
-          Map.put(acc, role, avg)
-        end)
+        total = Enum.sum(Enum.map(role_distributions, &Map.get(&1, role, 0)))
+        avg = Float.round(total / length(role_distributions), 1)
+        Map.put(acc, role, avg)
+      end)
     else
       %{}
     end
@@ -3666,7 +3464,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
     # Add observed weaknesses from battle data
     observed_weaknesses = analyze_doctrine_loss_patterns(fleets)
-    
+
     (base_weaknesses ++ observed_weaknesses)
     |> Enum.uniq()
   end
@@ -3709,14 +3507,18 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     base_ships = []
 
     base_ships
-    |> add_ships_if(Enum.member?(weaknesses, "Vulnerable to hard tackle"), ["Lachesis", "Arazu", "Huginn"])
-    |> add_ships_if(Enum.member?(weaknesses, "Limited range control"), ["Cerberus", "Eagle", "Tengu"])
+    |> add_ships_if(Enum.member?(weaknesses, "Vulnerable to hard tackle"), [
+      "Lachesis",
+      "Arazu",
+      "Huginn"
+    ])
+    |> add_ships_if(Enum.member?(weaknesses, "Limited range control"), [
+      "Cerberus",
+      "Eagle",
+      "Tengu"
+    ])
     |> Enum.uniq()
     |> Enum.take(5)
-  end
-
-  defp add_ships_if(ships, condition, new_ships) do
-    if condition, do: new_ships ++ ships, else: ships
   end
 
   defp generate_enemy_counter_tactics(enemy_pattern) do
@@ -3773,16 +3575,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       average: calculate_average_skill(skill_levels),
       distribution: Enum.frequencies(skill_levels)
     }
-  end
-
-  defp aggregate_successful_ships(participants) do
-    participants
-    |> Enum.filter(&(&1.success_rate > 0.6))
-    |> Enum.flat_map(& &1.ships_flown)
-    |> Enum.frequencies()
-    |> Enum.sort_by(fn {_ship, count} -> -count end)
-    |> Enum.take(3)
-    |> Enum.map(fn {ship, _count} -> ship end)
   end
 
   defp identify_phase_transitions(timeline) do
@@ -3855,10 +3647,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       |> Enum.map(& &1.average_speed)
       |> Enum.filter(& &1)
 
-    avg_speed = case speeds do
-      [] -> 0
-      speeds -> Enum.sum(speeds) / length(speeds)
-    end
+    avg_speed =
+      case speeds do
+        [] -> 0
+        speeds -> Enum.sum(speeds) / length(speeds)
+      end
 
     cond do
       avg_speed > 2000 -> :high
@@ -3887,10 +3680,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       |> Enum.map(& &1.engagement_duration)
       |> Enum.filter(& &1)
 
-    avg_duration = case durations do
-      [] -> 0
-      durations -> Enum.sum(durations) / length(durations)
-    end
+    avg_duration =
+      case durations do
+        [] -> 0
+        durations -> Enum.sum(durations) / length(durations)
+      end
 
     cond do
       avg_duration < 300 -> :hit_and_run
@@ -4063,7 +3857,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     ewar_ships =
       compositions
       |> Enum.flat_map(& &1.ships)
-      |> Enum.filter(&is_ewar_ship?/1)
+      |> Enum.filter(&ewar_ship?/1)
       |> length()
 
     total_ships =
@@ -4107,7 +3901,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     command_ships =
       compositions
       |> Enum.flat_map(& &1.ships)
-      |> Enum.filter(&is_command_ship?/1)
+      |> Enum.filter(&command_ship?/1)
       |> length()
 
     if command_ships > 0 do
@@ -4124,7 +3918,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     0.5
   end
 
-  defp is_ewar_ship?(ship_name) do
+  defp ewar_ship?(ship_name) do
     ewar_ships = [
       "Falcon",
       "Rook",
@@ -4139,7 +3933,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     Enum.member?(ewar_ships, ship_name)
   end
 
-  defp is_command_ship?(ship_name) do
+  defp command_ship?(ship_name) do
     command_ships = [
       "Claymore",
       "Vulture",
@@ -4475,22 +4269,22 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     # Analyze gaps between different sides/fleets
     if length(fleet_compositions) > 1 do
       [first | rest] = fleet_compositions
-        
-      Enum.flat_map(rest, fn other_fleet ->
-          size_diff = abs(first.fleet_size - other_fleet.fleet_size)
 
-          if size_diff > 10 do
-            [
-              %{
-                type: :size_imbalance,
-                severity: :high,
-                description: "Significant fleet size imbalance (#{size_diff} pilots)"
-              }
-            ]
-          else
-            []
-          end
-        end)
+      Enum.flat_map(rest, fn other_fleet ->
+        size_diff = abs(first.fleet_size - other_fleet.fleet_size)
+
+        if size_diff > 10 do
+          [
+            %{
+              type: :size_imbalance,
+              severity: :high,
+              description: "Significant fleet size imbalance (#{size_diff} pilots)"
+            }
+          ]
+        else
+          []
+        end
+      end)
     else
       []
     end
@@ -4577,13 +4371,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   defp extract_doctrine_patterns(battle) do
     (get_in(battle, [:fleet_analysis, :doctrines]) || [])
     |> Enum.map(fn doctrine ->
-        %{
-          type: :doctrine,
-          name: doctrine.name,
-          ship_count: doctrine.ship_count,
-          confidence: doctrine.confidence || 70
-        }
-      end)
+      %{
+        type: :doctrine,
+        name: doctrine.name,
+        ship_count: doctrine.ship_count,
+        confidence: doctrine.confidence || 70
+      }
+    end)
   end
 
   defp determine_doctrine_evolution_pattern(battles) do
@@ -4654,20 +4448,19 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     won =
       get_in(battle, [:outcome_analysis, :victor]) ==
         get_in(battle, [:metadata, :analyzed_side])
-        
+
     Enum.map(doctrines, fn doctrine ->
-          %{
-            doctrine: doctrine.name,
-            won: won,
-            battle_id: get_in(battle, [:metadata, :battle_id])
-          }
-        end)
+      %{
+        doctrine: doctrine.name,
+        won: won,
+        battle_id: get_in(battle, [:metadata, :battle_id])
+      }
+    end)
   end
 
   defp identify_most_used_doctrines(battles) do
     battles
-
-    Enum.flat_map(&extract_doctrine_usage/1)
+    |> Enum.flat_map(&extract_doctrine_usage/1)
     |> Enum.frequencies()
     |> Enum.sort_by(fn {_doctrine, count} -> count end, :desc)
     |> Enum.take(5)
@@ -4753,8 +4546,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       %{}
     else
       window_battles
-
-      Enum.flat_map(&extract_doctrine_usage/1)
+      |> Enum.flat_map(&extract_doctrine_usage/1)
       |> Enum.frequencies()
       |> Enum.map(fn {doctrine, count} ->
         {doctrine, count / total_doctrines}

@@ -118,6 +118,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.Consistenc
   def calculate_variance(values) do
     if length(values) > 0 do
       mean = Enum.sum(values) / length(values)
+
       values
       |> Enum.map(fn x -> :math.pow(x - mean, 2) end)
       |> Enum.sum()

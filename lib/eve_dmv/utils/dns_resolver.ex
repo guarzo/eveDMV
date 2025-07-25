@@ -108,7 +108,9 @@ defmodule EveDmv.Utils.DnsResolver do
         String.replace(base_url, "host.docker.internal", "127.0.0.1"),
         # Try environment-specific fallback
         System.get_env("WANDERER_FALLBACK_URL", "http://localhost:4004")
-      ] |> Enum.uniq()
+      ]
+      |> Enum.uniq()
+
     case get_working_url(fallback_urls) do
       {:ok, working_url} ->
         working_url

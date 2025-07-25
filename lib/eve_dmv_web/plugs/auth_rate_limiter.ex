@@ -141,9 +141,10 @@ defmodule EveDmvWeb.Plugs.AuthRateLimiter do
 
   defp count_recent_attempts(client_ip, window_start) do
     attempts_key = "auth_attempts:#{client_ip}"
-    attempts = get_attempts(attempts_key)
 
-    |> Enum.count(attempts, &(&1 > window_start))
+    attempts =
+      get_attempts(attempts_key)
+      |> Enum.count(attempts, &(&1 > window_start))
   end
 
   defp get_block_status(client_ip, current_time) do

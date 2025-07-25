@@ -309,9 +309,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting do
     # Cargo bay
     cargo_flag = 5
 
-    Map.get(items_by_slot, cargo_flag, [])
-
-    |> Enum.map(fn item ->
+    Enum.map(Map.get(items_by_slot, cargo_flag, []), fn item ->
       "#{item[:type_name] || "Unknown"} x#{item[:quantity] || 1}"
     end)
   end
@@ -362,17 +360,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting do
 
   defp estimate_dps_from_modules(parsed_fitting) do
     weapon_count =
-      parsed_fitting[:high_slots]
-      |> Enum.count(fn mod ->
-      String.contains?(mod, [
-        "Launcher",
-        "Turret",
-        "Laser",
-        "Railgun",
-        "Autocannon",
-        "Artillery"
-      ])
-    end)
+      Enum.count(parsed_fitting[:high_slots], fn mod ->
+        String.contains?(mod, [
+          "Launcher",
+          "Turret",
+          "Laser",
+          "Railgun",
+          "Autocannon",
+          "Artillery"
+        ])
+      end)
 
     # Simplified DPS per weapon
     weapon_count * 100

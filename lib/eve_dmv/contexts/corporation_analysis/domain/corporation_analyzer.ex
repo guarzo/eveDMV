@@ -202,9 +202,9 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer do
 
         new_state =
           %{state | analysis_cache: new_cache}
+          |> update_metrics(:cache_miss, analysis_time)
 
-        update_metrics(:cache_miss, analysis_time)
-        update_health_distribution(analysis.activity_summary.health_rating)
+        new_state = update_health_distribution(new_state, analysis.activity_summary.health_rating)
 
         {:reply, {:ok, analysis}, new_state}
 
@@ -348,12 +348,11 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer do
     else
       total_score =
         leadership_members
-
-      |> Enum.map(fn leader ->
-        recent_activity = (leader.recent_kills || 0) + (leader.recent_losses || 0)
-        min(100, recent_activity * 2)
-      end)
-      |> Enum.sum()
+        |> Enum.map(fn leader ->
+          recent_activity = (leader.recent_kills || 0) + (leader.recent_losses || 0)
+          min(100, recent_activity * 2)
+        end)
+        |> Enum.sum()
 
       total_score / length(leadership_members)
     end
@@ -373,12 +372,10 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer do
   defp find_latest_component(cache_entries, component) do
     matching =
       cache_entries
-
-    |> Enum.filter(fn {_, %{data: data}} ->
-      Map.has_key?(data, component_key(component))
-    end)
-
-    |> Enum.sort_by(fn {_, %{timestamp: ts}} -> ts end, {:desc, DateTime})
+      |> Enum.filter(fn {_, %{data: data}} ->
+        Map.has_key?(data, component_key(component))
+      end)
+      |> Enum.sort_by(fn {_, %{timestamp: ts}} -> ts end, {:desc, DateTime})
 
     case matching do
       [{_, %{data: data}} | _] ->

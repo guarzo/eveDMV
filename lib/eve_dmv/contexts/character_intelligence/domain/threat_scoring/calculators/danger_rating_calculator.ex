@@ -62,21 +62,14 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Calculators
   defp determine_danger_level(_), do: :minimal
 
   defp identify_risk_factors(threat_score, context) do
-    risk_factors = []
-
-    risk_factors =
-      if threat_score > 8.0, do: ["extremely_dangerous" | risk_factors], else: risk_factors
-
-    risk_factors =
-      if threat_score > 6.0, do: ["high_combat_skill" | risk_factors], else: risk_factors
-
-    risk_factors =
-      if Map.get(context, :recent_activity, false),
-        do: ["currently_active" | risk_factors],
-        else: risk_factors
-
-    risk_factors
+    []
+    |> maybe_add_risk_factor("extremely_dangerous", threat_score > 8.0)
+    |> maybe_add_risk_factor("high_combat_skill", threat_score > 6.0)
+    |> maybe_add_risk_factor("currently_active", Map.get(context, :recent_activity, false))
   end
+
+  defp maybe_add_risk_factor(factors, _factor, false), do: factors
+  defp maybe_add_risk_factor(factors, factor, true), do: [factor | factors]
 
   defp calculate_confidence(_threat_score, context) do
     # Base confidence on data quality and recency
@@ -90,31 +83,29 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Calculators
   end
 
   defp generate_recommendations(danger_level, risk_factors) do
-    recommendations = []
-
-    recommendations =
+    base_recommendations =
       case danger_level do
-        :extreme -> ["Avoid engagement", "Extreme caution advised" | recommendations]
-        :very_high -> ["Engage with overwhelming force", "High risk target" | recommendations]
-        :high -> ["Engage with caution", "Prepare for skilled opponent" | recommendations]
-        :moderate -> ["Standard engagement protocols", "Moderate threat level" | recommendations]
-        :low -> ["Low risk engagement", "Suitable for training" | recommendations]
-        :minimal -> ["Minimal threat", "Low priority target" | recommendations]
+        :extreme -> ["Avoid engagement", "Extreme caution advised"]
+        :very_high -> ["Engage with overwhelming force", "High risk target"]
+        :high -> ["Engage with caution", "Prepare for skilled opponent"]
+        :moderate -> ["Standard engagement protocols", "Moderate threat level"]
+        :low -> ["Low risk engagement", "Suitable for training"]
+        :minimal -> ["Minimal threat", "Low priority target"]
       end
 
     # Add specific recommendations based on risk factors
-    recommendations =
-      if "extremely_dangerous" in risk_factors,
-        do: ["Consider fleet engagement only" | recommendations],
-        else: recommendations
-
-    recommendations =
-      if "currently_active" in risk_factors,
-        do: ["Monitor recent activity" | recommendations],
-        else: recommendations
-
-    recommendations
+    base_recommendations
+    |> maybe_add_recommendation(
+      "Consider fleet engagement only",
+      "extremely_dangerous" in risk_factors
+    )
+    |> maybe_add_recommendation("Monitor recent activity", "currently_active" in risk_factors)
   end
+
+  defp maybe_add_recommendation(recommendations, _recommendation, false), do: recommendations
+
+  defp maybe_add_recommendation(recommendations, recommendation, true),
+    do: [recommendation | recommendations]
 
   defp find_highest_danger(ratings) do
     Enum.max_by(ratings, fn {_character_id, rating} -> rating.numeric_rating end)

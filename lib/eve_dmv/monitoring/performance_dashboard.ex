@@ -152,7 +152,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
   # Telemetry event handlers
   def handle_info(
         {:telemetry_event, [:eve_dmv, :query, :duration], measurements, metadata},
-    state
+        state
       ) do
     duration = measurements.duration || 0
     query_name = metadata.query || "unknown"
@@ -184,13 +184,13 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
           metadata: metadata
         }
 
-        |> Enum.take([query | queries.slow_queries], 100)
+        Enum.take([query | queries.slow_queries], 100)
       else
         queries.slow_queries
       end
 
     updated_queries = %{
-    queries
+      queries
       | count: queries.count + 1,
         durations: Enum.take([duration | queries.durations], 1000),
         by_name: by_name,
@@ -244,7 +244,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
 
   def handle_info(
         {:telemetry_event, [:broadway, :processor, :message, event], _measurements, _metadata},
-    state
+        state
       ) do
     metrics = state.metrics
     broadway = metrics.broadway
@@ -414,7 +414,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
       {[:eve_dmv, :materialized_views, :refresh], &__MODULE__.handle_telemetry/4}
     ]
 
-    |> Enum.each(handlers, fn {event, handler} ->
+    Enum.each(handlers, fn {event, handler} ->
       :telemetry.attach(
         "performance-dashboard-#{inspect(event)}",
         event,

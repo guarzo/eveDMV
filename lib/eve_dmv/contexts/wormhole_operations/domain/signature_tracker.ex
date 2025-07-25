@@ -320,6 +320,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
       Map.values(site_breakdown)
       |> Enum.map(& &1.count)
       |> Enum.sum()
+
     threat_score =
       if security_class in ["C1", "C2", "C3"] and total_sigs > 10 do
         threat_score + 15
@@ -439,6 +440,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
       end)
       |> Enum.reject(&is_nil/1)
       |> Enum.frequencies()
+
     max_collapses =
       if map_size(wh_collapses) > 0 do
         Map.values(wh_collapses) |> Enum.max()

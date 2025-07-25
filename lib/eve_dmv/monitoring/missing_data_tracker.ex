@@ -202,14 +202,13 @@ defmodule EveDmv.Monitoring.MissingDataTracker do
       # Remove least frequent entries
       entries =
         @table_name
-
-      :ets.tab2list()
-      |> Enum.map(fn {id, data} -> {id, data} end)
-      |> Enum.sort_by(fn {_id, data} -> data.occurrence_count end)
+        |> :ets.tab2list()
+        |> Enum.map(fn {id, data} -> {id, data} end)
+        |> Enum.sort_by(fn {_id, data} -> data.occurrence_count end)
 
       to_remove = Enum.take(entries, size - @max_entries)
 
-      |> Enum.each(to_remove, fn {id, _data} ->
+      Enum.each(to_remove, fn {id, _data} ->
         :ets.delete(@table_name, id)
       end)
 
@@ -228,7 +227,7 @@ defmodule EveDmv.Monitoring.MissingDataTracker do
     if item in list do
       list
     else
-      |> Enum.take([item | list], limit)
+      Enum.take([item | list], limit)
     end
   end
 

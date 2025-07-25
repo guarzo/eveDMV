@@ -122,7 +122,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability do
       comprehensive_score.component_scores.behavioral_stability
     ]
 
-    |> Enum.sum(stealth_factors) / length(stealth_factors)
+    Enum.sum(stealth_factors) / length(stealth_factors)
   end
 
   defp assess_information_gathering_skill(comprehensive_score) do
@@ -135,7 +135,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability do
       comprehensive_score.component_scores.intelligence_reliability * 0.6
     ]
 
-    |> Enum.sum(gathering_factors) / length(gathering_factors)
+    Enum.sum(gathering_factors) / length(gathering_factors)
   end
 
   defp assess_analytical_capability(behavioral_patterns) do
@@ -147,7 +147,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability do
       Map.get(behavioral_patterns, :detail_orientation_score, 0.5)
     ]
 
-    |> Enum.sum(analytical_indicators) / length(analytical_indicators)
+    Enum.sum(analytical_indicators) / length(analytical_indicators)
   end
 
   defp assess_discretion_level(behavioral_patterns) do
@@ -159,7 +159,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability do
       assess_social_engineering_resistance(behavioral_patterns)
     ]
 
-    |> Enum.sum(discretion_indicators) / length(discretion_indicators)
+    Enum.sum(discretion_indicators) / length(discretion_indicators)
   end
 
   defp assess_technical_competency(comprehensive_score) do
@@ -170,7 +170,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability do
       assess_technical_aptitude(comprehensive_score)
     ]
 
-    |> Enum.sum(technical_factors) / length(technical_factors)
+    Enum.sum(technical_factors) / length(technical_factors)
   end
 
   defp calculate_intelligence_score(intel_components) do
@@ -184,7 +184,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability do
       technical_competency: 0.10
     }
 
-    |> Enum.reduce(intel_components, 0.0, fn {component, score}, acc ->
+    Enum.reduce(intel_components, 0.0, fn {component, score}, acc ->
       weight = Map.get(weights, component, 0.0)
 
       # Extract numeric score from complex data structures
@@ -359,7 +359,6 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability do
 
     # Return top 3 roles
     role_scores
-
     |> Enum.sort_by(fn {_role, score} -> score end, :desc)
     |> Enum.take(3)
     |> Enum.map(fn {role, _score} -> role end)

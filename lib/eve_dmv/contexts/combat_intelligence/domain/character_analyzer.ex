@@ -442,6 +442,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
         end)
         |> Enum.map(fn {day, events} -> {day, length(events)} end)
         |> Map.new()
+
       # Find peak hours (top 3 hours with most activity)
       peak_hours =
         hourly_counts
@@ -480,6 +481,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
           end
         end)
         |> Enum.frequencies()
+
       total = length(activity_data)
 
       %{
@@ -508,6 +510,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
         activity_data
         |> Enum.map(& &1.victim_ship_type_id)
         |> Enum.frequencies()
+
       total_ships = length(activity_data)
       unique_ships = map_size(ship_usage)
 
@@ -534,6 +537,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
         activity_data
         |> Enum.map(& &1.solar_system_id)
         |> Enum.frequencies()
+
       total_events = length(activity_data)
       unique_systems = map_size(system_usage)
 
@@ -597,6 +601,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
             {character_id, get_character_comparison_data(character_id)}
           end)
           |> Map.new()
+
         # Perform comparative analysis
         comparison_results = %{
           characters: character_ids,
@@ -747,6 +752,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
       engagement_styles
       |> Enum.map(fn {_char_id, style} -> style end)
       |> Enum.frequencies()
+
     %{
       character_styles: engagement_styles,
       style_distribution: style_distribution,
@@ -815,6 +821,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
         {char_id, generate_character_tactical_recommendations(data)}
       end)
       |> Map.new()
+
     # Generate comparative recommendations
     comparative_recommendations =
       [

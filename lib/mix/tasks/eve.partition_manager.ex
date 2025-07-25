@@ -68,7 +68,7 @@ defmodule Mix.Tasks.Eve.PartitionManager do
         if stats.total_partitions > 0 do
           Mix.shell().info("Partition Details:")
 
-          |> Enum.each(stats.partitions, fn partition ->
+          Enum.each(stats.partitions, fn partition ->
             Mix.shell().info("  • #{partition["tablename"]} - Size: #{partition["size"]}")
           end)
         else
@@ -88,7 +88,7 @@ defmodule Mix.Tasks.Eve.PartitionManager do
     case PartitionAutomation.ensure_future_partitions(3) do
       {:ok, messages} ->
         Mix.shell().info("✅ Success!")
-        |> Enum.each(messages, &Mix.shell().info("  • #{&1}"))
+        Enum.each(messages, &Mix.shell().info("  • #{&1}"))
 
       {:error, error} ->
         Mix.shell().error("❌ Failed to create partitions: #{inspect(error)}")
@@ -122,7 +122,7 @@ defmodule Mix.Tasks.Eve.PartitionManager do
         Mix.shell().info("✅ Cleaned up #{count} old partitions")
 
         if count > 0 do
-          |> Enum.each(dropped, &Mix.shell().info("  • Dropped: #{&1}"))
+          Enum.each(dropped, &Mix.shell().info("  • Dropped: #{&1}"))
         end
 
       {:error, error} ->
@@ -142,6 +142,7 @@ defmodule Mix.Tasks.Eve.PartitionManager do
             stats.partitions
             |> Enum.map(fn p -> parse_size_to_bytes(p["size"]) end)
             |> Enum.sum()
+
           Mix.shell().info("Total partitions: #{stats.total_partitions}")
           Mix.shell().info("Total estimated size: #{format_bytes(total_size_bytes)}")
           Mix.shell().info("")

@@ -38,6 +38,7 @@ defmodule EveDmvWeb.SurveillanceLive.ExportImportService do
         end
       end)
       |> Enum.reverse()
+
     %{
       "version" => "1.0",
       "exported_at" => DateTime.utc_now(),

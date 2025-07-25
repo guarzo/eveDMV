@@ -42,6 +42,7 @@ defmodule EveDmv.Analytics.BattleDetector.Assessment do
         battles
         |> Enum.map(&Map.get(&1, :duration_minutes, 0))
         |> Enum.sum()
+
       round(total_duration / Kernel.length(battles))
     else
       0

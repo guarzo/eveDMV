@@ -556,30 +556,30 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
     # Multiple attackers switch targets at same time
     # Time window 1: All attack target A
     kills =
-        Enum.map(0..4, fn i ->
-          %{
-            killmail_id: 9000 + i,
-            killmail_time: DateTime.add(base_time, i * 2, :second),
-            solar_system_id: 30_002_765,
-            # Target A
-            victim_character_id: 90_001,
-            victim_ship_type_id: 24_698,
-            raw_data: %{
-              "victim" => %{
-                "character_id" => 90_001,
-                "ship_type_id" => 24_698
-              },
-              "attackers" => [
-                %{
-                  "character_id" => 100_000 + i,
-                  "ship_type_id" => 621,
-                  "damage_done" => 1000,
-                  "final_blow" => i == 0
-                }
-              ]
-            }
+      Enum.map(0..4, fn i ->
+        %{
+          killmail_id: 9000 + i,
+          killmail_time: DateTime.add(base_time, i * 2, :second),
+          solar_system_id: 30_002_765,
+          # Target A
+          victim_character_id: 90_001,
+          victim_ship_type_id: 24_698,
+          raw_data: %{
+            "victim" => %{
+              "character_id" => 90_001,
+              "ship_type_id" => 24_698
+            },
+            "attackers" => [
+              %{
+                "character_id" => 100_000 + i,
+                "ship_type_id" => 621,
+                "damage_done" => 1000,
+                "final_blow" => i == 0
+              }
+            ]
           }
-        end)
+        }
+      end)
 
     # Time window 2: All switch to target B
     kills ++

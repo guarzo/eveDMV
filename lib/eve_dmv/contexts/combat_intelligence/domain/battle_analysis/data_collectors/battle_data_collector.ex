@@ -86,7 +86,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.DataCollector
     cutoff_time = DateTime.add(DateTime.utc_now(), -seconds_back, :second)
 
     # Use streaming for large time windows (> 4 hours) or when expecting > 1000 kills
-    if seconds_back > 14400 do
+    if seconds_back > 14_400 do
       use_streaming_fetch(system_id, cutoff_time)
     else
       use_standard_fetch(system_id, cutoff_time)
@@ -167,7 +167,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.DataCollector
           killmails =
             stream
 
-          Enum.take(10) |> List.flatten()
+          Enum.take(10)
+          |> List.flatten()
           |> Enum.sort_by(& &1.killmail_time, {:desc, DateTime})
           |> Enum.take(2000)
 

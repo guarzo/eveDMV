@@ -120,7 +120,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.BehavioralScoring do
       engagement_consistency
     ]
 
-    |> Enum.sum(consistency_factors) / length(consistency_factors)
+    Enum.sum(consistency_factors) / length(consistency_factors)
   end
 
   defp assess_commitment_level(stats) do
@@ -134,7 +134,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.BehavioralScoring do
     duration_score = min(activity_duration / 12.0, 1.0)
 
     commitment_factors = [duration_score, engagement_depth, investment_level]
-    |> Enum.sum(commitment_factors) / length(commitment_factors)
+    Enum.sum(commitment_factors) / length(commitment_factors)
   end
 
   # Psychological assessment functions
@@ -201,7 +201,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.BehavioralScoring do
       Map.get(behavioral_patterns, :confidentiality_adherence, 0.5)
     ]
 
-    |> Enum.sum(discretion_indicators) / length(discretion_indicators)
+    Enum.sum(discretion_indicators) / length(discretion_indicators)
   end
 
   @doc """
@@ -216,6 +216,6 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.BehavioralScoring do
       Map.get(behavioral_patterns, :detail_orientation, 0.5)
     ]
 
-    |> Enum.sum(analytical_indicators) / length(analytical_indicators)
+    Enum.sum(analytical_indicators) / length(analytical_indicators)
   end
 end

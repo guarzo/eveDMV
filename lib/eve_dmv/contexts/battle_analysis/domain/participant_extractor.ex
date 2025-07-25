@@ -12,8 +12,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
     victim_ids = extract_victim_character_ids(killmail)
     attacker_ids = extract_attacker_character_ids(killmail)
 
-    (victim_ids ++ Enum.uniq(attacker_ids))
-    |> Enum.reject(&is_nil/1)
+    Enum.reject(victim_ids ++ Enum.uniq(attacker_ids), &is_nil/1)
   end
 
   @doc """
@@ -73,8 +72,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
     victim = extract_victim_details(killmail)
     attackers = extract_attacker_details(killmail)
 
-    [victim | attackers]
-    |> Enum.reject(&is_nil/1)
+    Enum.reject([victim | attackers], &is_nil/1)
   end
 
   @doc """
@@ -100,7 +98,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
     all_participants = [victim | attackers]
 
     all_participants
-    |> Enum.map(& &1[:alliance_id]) |> Enum.uniq()
+    |> Enum.map(& &1[:alliance_id])
+    |> Enum.uniq()
     |> Enum.reject(&is_nil/1)
   end
 
@@ -113,7 +112,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
     all_participants = [victim | attackers]
 
     all_participants
-    |> Enum.map(& &1[:ship_type_id]) |> Enum.uniq()
+    |> Enum.map(& &1[:ship_type_id])
+    |> Enum.uniq()
     |> Enum.reject(&is_nil/1)
   end
 
@@ -121,7 +121,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
   Extracts weapon type IDs from attackers.
   """
   def extract_weapon_type_ids(killmail) do
-    extract_attacker_details(killmail)
+    killmail
+    |> extract_attacker_details()
     |> Enum.map(& &1[:weapon_type_id])
     |> Enum.uniq()
     |> Enum.reject(&is_nil/1)
@@ -132,15 +133,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
   Returns the attacker map with final_blow: true or nil.
   """
   def find_final_blow_attacker(killmail) do
-    extract_attacker_details(killmail)
-    |> Enum.find(&(&1[:final_blow] == true))
+    Enum.find(extract_attacker_details(killmail), &(&1[:final_blow] == true))
   end
 
   @doc """
   Calculates total damage done by all attackers.
   """
   def calculate_total_damage(killmail) do
-    extract_attacker_details(killmail)
+    killmail
+    |> extract_attacker_details()
     |> Enum.map(&(&1[:damage_done] || 0))
     |> Enum.sum()
   end
@@ -148,15 +149,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
   # Private helper functions
 
   defp extract_victim_character_ids(killmail) do
-    (case killmail.raw_data do
-      %{"victim" => %{"character_id" => char_id}}
-      when is_binary(char_id) or is_integer(char_id) ->
-        [normalize_character_id(char_id)]
+    victim_ids =
+      case killmail.raw_data do
+        %{"victim" => %{"character_id" => char_id}}
+        when is_binary(char_id) or is_integer(char_id) ->
+          [normalize_character_id(char_id)]
 
-      _ ->
-        [killmail.victim_character_id]
-    end)
-    |> Enum.reject(&is_nil/1)
+        _ ->
+          [killmail.victim_character_id]
+      end
+
+    Enum.reject(victim_ids, &is_nil/1)
   end
 
   defp extract_attacker_character_ids(killmail) do

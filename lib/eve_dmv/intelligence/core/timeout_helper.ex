@@ -91,16 +91,15 @@ defmodule EveDmv.Intelligence.Core.TimeoutHelper do
 
     results =
       tasks
-
-    Task.async_stream(
-      fn {func, operation_type} ->
-        with_timeout(func, timeout_ms, operation_type)
-      end,
-      max_concurrency: 10,
-      timeout: timeout_ms + 1_000,
-      on_timeout: :kill_task
-    )
-    |> Enum.to_list()
+      |> Task.async_stream(
+        fn {func, operation_type} ->
+          with_timeout(func, timeout_ms, operation_type)
+        end,
+        max_concurrency: 10,
+        timeout: timeout_ms + 1_000,
+        on_timeout: :kill_task
+      )
+      |> Enum.to_list()
 
     duration_ms = calculate_duration(start_time)
 
@@ -127,7 +126,7 @@ defmodule EveDmv.Intelligence.Core.TimeoutHelper do
       %{timeout_ms: timeout_ms}
     )
 
-    |> Enum.map(results, fn
+    Enum.map(results, fn
       {:ok, result} -> result
       {:exit, :timeout} -> {:error, :timeout}
       {:exit, reason} -> {:error, {:exit, reason}}

@@ -69,13 +69,11 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
         # Get killmail activity for all systems in the chain
         system_activities =
           systems
-
-        |> Enum.map(fn system_id ->
-          activity = get_system_killmail_activity(system_id, hours: time_window_hours)
-          {system_id, activity}
-        end)
-
-        |> Enum.into(%{})
+          |> Enum.map(fn system_id ->
+            activity = get_system_killmail_activity(system_id, hours: time_window_hours)
+            {system_id, activity}
+          end)
+          |> Enum.into(%{})
 
         # Analyze temporal patterns
         temporal_patterns = analyze_temporal_patterns(system_activities)
@@ -84,12 +82,12 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
         movement_patterns = analyze_movement_patterns(system_activities, systems)
 
         # Calculate overall activity level
-        total_kills =
-          Map.values(system_activities) |> List.flatten()
+        total_kills = system_activities |> Map.values() |> List.flatten()
 
         total_kill_count = length(total_kills)
 
-        activity_level = determine_activity_level(total_kill_count, length(systems), time_window_hours)
+        activity_level =
+          determine_activity_level(total_kill_count, length(systems), time_window_hours)
 
         # Find most recent activity
         last_activity = find_most_recent_activity(system_activities)
@@ -142,13 +140,11 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
         # Analyze recent hostile activity in each system
         system_threats =
           systems
-
-        |> Enum.map(fn system_id ->
-          threats = analyze_system_threat_indicators(system_id, corporation_id)
-          {system_id, threats}
-        end)
-
-        |> Enum.into(%{})
+          |> Enum.map(fn system_id ->
+            threats = analyze_system_threat_indicators(system_id, corporation_id)
+            {system_id, threats}
+          end)
+          |> Enum.into(%{})
 
         # Calculate overall threat metrics
         total_hostiles = count_total_hostiles(system_threats)
@@ -228,13 +224,11 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
         # Calculate strategic importance of each system
         system_importance =
           systems
-
-        |> Enum.map(fn system_id ->
-          {:ok, strategic_value} = calculate_system_strategic_value(system_id)
-          {system_id, strategic_value}
-        end)
-
-        |> Enum.into(%{})
+          |> Enum.map(fn system_id ->
+            {:ok, strategic_value} = calculate_system_strategic_value(system_id)
+            {system_id, strategic_value}
+          end)
+          |> Enum.into(%{})
 
         # Calculate current coverage effectiveness
         current_coverage = calculate_current_coverage(current_positions, topology_graph)
@@ -631,35 +625,12 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
          operational_metrics,
          strategic_analysis
        ) do
-    recommendations = []
-
-    # Threat-based recommendations
+    # Build recommendations using functional pipeline to avoid variable reassignment
     recommendations =
-      case threat_assessment.level do
-        :high ->
-          ["Increase defensive posture", "Deploy additional scouts" | recommendations]
-
-        :critical ->
-          ["Increase defensive posture", "Deploy additional scouts" | recommendations]
-
-        _ ->
-          recommendations
-      end
-
-    # Operational recommendations
-    recommendations =
-      if operational_metrics.coverage_efficiency < 0.6 do
-        ["Optimize scout positioning", "Improve chain coverage" | recommendations]
-      else
-        recommendations
-      end
-
-    # Strategic recommendations
-    recommendations =
-      case strategic_analysis.territorial_control do
-        :limited -> ["Consider expanding monitored territory" | recommendations]
-        _ -> recommendations
-      end
+      []
+      |> maybe_add_threat_recommendations(threat_assessment.level)
+      |> maybe_add_operational_recommendations(operational_metrics.coverage_efficiency)
+      |> maybe_add_strategic_recommendations(strategic_analysis.territorial_control)
 
     if Enum.empty?(recommendations) do
       ["Maintain current operations", "Continue monitoring"]
@@ -675,5 +646,34 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainIntelligenceService do
       threat_level: Map.get(chain, :threat_level, :unknown),
       last_activity: Map.get(chain, :last_activity)
     }
+  end
+
+  # Helper functions for functional recommendation building
+  defp maybe_add_threat_recommendations(recommendations, level) do
+    case level do
+      :high ->
+        ["Increase defensive posture", "Deploy additional scouts" | recommendations]
+
+      :critical ->
+        ["Increase defensive posture", "Deploy additional scouts" | recommendations]
+
+      _ ->
+        recommendations
+    end
+  end
+
+  defp maybe_add_operational_recommendations(recommendations, coverage_efficiency) do
+    if coverage_efficiency < 0.6 do
+      ["Optimize scout positioning", "Improve chain coverage" | recommendations]
+    else
+      recommendations
+    end
+  end
+
+  defp maybe_add_strategic_recommendations(recommendations, territorial_control) do
+    case territorial_control do
+      :limited -> ["Consider expanding monitored territory" | recommendations]
+      _ -> recommendations
+    end
   end
 end

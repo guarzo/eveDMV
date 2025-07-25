@@ -75,8 +75,12 @@ defmodule EveDmvWeb.FormatHelpers do
   """
   def format_ratio(kills, losses) do
     case {kills, losses} do
-      {0, 0} -> "0.00"
-      {k, 0} -> "#{k}.00"
+      {0, 0} ->
+        "0.00"
+
+      {k, 0} ->
+        "#{k}.00"
+
       {k, l} ->
         (k / l)
         |> Float.round(2)

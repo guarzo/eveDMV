@@ -167,11 +167,13 @@ defmodule EveDmv.Contexts.BattleAnalysis do
         battles
         |> Enum.filter(fn battle ->
           # Parse each battle's timestamp
-          with {:ok, {^system_id, battle_time}} <- parse_battle_id(battle.battle_id) do
-            time_diff = abs(NaiveDateTime.diff(requested_time, battle_time, :second))
-            time_diff <= time_window_seconds
-          else
-            _ -> false
+          case parse_battle_id(battle.battle_id) do
+            {:ok, {^system_id, battle_time}} ->
+              time_diff = abs(NaiveDateTime.diff(requested_time, battle_time, :second))
+              time_diff <= time_window_seconds
+
+            _ ->
+              false
           end
         end)
         |> Enum.min_by(

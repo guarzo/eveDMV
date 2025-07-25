@@ -35,8 +35,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.DatabaseMetrics do
     case SQL.query(EveDmv.Repo, query) do
       {:ok, %{rows: rows, columns: columns}} ->
         Enum.map(rows, fn row ->
-          columns
-          |> Enum.zip(row) |> Map.new()
+          columns |> Enum.zip(row) |> Map.new()
         end)
 
       {:error, _} ->

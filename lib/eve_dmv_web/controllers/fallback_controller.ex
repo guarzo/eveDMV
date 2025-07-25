@@ -102,8 +102,8 @@ defmodule EveDmvWeb.FallbackController do
       :json ->
         errors = format_changeset_errors(changeset)
 
-    conn
-    put_status(:bad_request)
+        conn
+        |> put_status(:bad_request)
         |> json(%{
           error: "Validation failed",
           details: errors
@@ -389,6 +389,10 @@ defmodule EveDmvWeb.FallbackController do
   defp humanize_error_atom(:external_api_error), do: "External API request failed"
   defp humanize_error_atom(:cache_error), do: "Cache operation failed"
 
-  defp humanize_error_atom(atom),
-    do: to_string(atom) |> String.replace("_", " ") |> String.capitalize()
+  defp humanize_error_atom(atom) do
+    atom
+    |> to_string()
+    |> String.replace("_", " ")
+    |> String.capitalize()
+  end
 end

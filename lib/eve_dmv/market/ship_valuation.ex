@@ -26,7 +26,7 @@ defmodule EveDmv.Market.ShipValuation do
     # 1-5B ISK
     capital: {1000, 5000},
     # 20-100B ISK
-    supercapital: {20000, 100_000},
+    supercapital: {20_000, 100_000},
     # 20M-1B ISK
     industrial: {20, 1000},
     # 30-300M ISK
@@ -136,16 +136,16 @@ defmodule EveDmv.Market.ShipValuation do
     cond do
       # T2 ships often have IDs in certain ranges
       # T2 Frigates
-      type_id in 11176..11400 -> 2
+      type_id in 11_176..11_400 -> 2
       # T2 Cruisers
-      type_id in 12003..12048 -> 2
+      type_id in 12_003..12_048 -> 2
       # T2 Battleships
-      type_id in 22428..22474 -> 2
+      type_id in 22_428..22_474 -> 2
       # T3 ships
       # T3 Cruisers
-      type_id in 29984..30000 -> 3
+      type_id in 29_984..30_000 -> 3
       # T3 Destroyers
-      type_id in 32874..32880 -> 3
+      type_id in 32_874..32_880 -> 3
       # Default to T1
       true -> 1
     end
@@ -174,7 +174,8 @@ defmodule EveDmv.Market.ShipValuation do
   """
   def calculate_fleet_value(ship_type_ids) when is_list(ship_type_ids) do
     ship_type_ids
-    Enum.map(&estimate_value/1) |> Enum.sum()
+    |> Enum.map(&estimate_value/1)
+    |> Enum.sum()
   end
 
   @doc """

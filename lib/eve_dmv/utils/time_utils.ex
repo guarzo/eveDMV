@@ -141,7 +141,7 @@ defmodule EveDmv.Utils.TimeUtils do
   """
   def date_range(start_date, end_date)
       when is_struct(start_date, Date) and is_struct(end_date, Date) do
-    |> Enum.to_list(Date.range(start_date, end_date))
+    Date.range(start_date, end_date) |> Enum.to_list()
   end
 
   @doc """
@@ -161,7 +161,8 @@ defmodule EveDmv.Utils.TimeUtils do
 
     hours_diff = hours_between(start_hour, end_hour)
 
-    |> Enum.map(0..hours_diff, fn hour_offset ->
+    0..hours_diff
+    |> Enum.map(fn hour_offset ->
       DateTime.add(start_hour, hour_offset, :hour)
     end)
   end

@@ -441,37 +441,28 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
     total_size = calculate_total_size(size_analysis)
     failure_rate = calculate_failure_rate(refresh_stats)
 
-    recommendation_list =
+    recommendations =
       []
-
-    # Check total size (10GB)
-    recommendation_list =
-      maybe_add_recommendation(
-        recommendation_list,
+      # Check total size (10GB)
+      |> maybe_add_recommendation(
         total_size > 10_737_418_240,
         "Total materialized view size exceeds 10GB - review data retention policies"
       )
-
-    # Check failure rate
-    recommendation_list =
-      maybe_add_recommendation(
-        recommendation_list,
+      # Check failure rate
+      |> maybe_add_recommendation(
         failure_rate > 10.0,
         "High refresh failure rate (#{failure_rate}%) - investigate refresh errors"
       )
-
-    # Check refresh time (5 minutes)
-    recommendation_list =
-      maybe_add_recommendation(
-        recommendation_list,
+      # Check refresh time (5 minutes)
+      |> maybe_add_recommendation(
         refresh_stats.avg_refresh_time_ms > 300_000,
         "Average refresh time exceeds 5 minutes - consider optimization"
       )
 
-    if Enum.empty?(recommendation_list) do
+    if Enum.empty?(recommendations) do
       ["Materialized view system is performing well"]
     else
-      recommendation_list
+      recommendations
     end
   end
 

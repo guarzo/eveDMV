@@ -345,7 +345,7 @@ defmodule EveDmv.Market.MutamarketClient do
       2113
     ]
 
-    |> Enum.any?(abyssal_attribute_ids, &Map.has_key?(attributes, &1))
+    Enum.any?(abyssal_attribute_ids, &Map.has_key?(attributes, &1))
   end
 
   defp with_retry(fun, attempts \\ @retry_attempts) do

@@ -42,16 +42,16 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
   """
   def analyze_batch(fleet_ids, base_data, opts \\ []) when is_list(fleet_ids) do
     results =
-    fleet_ids
-    |> Task.async_stream(
+      fleet_ids
+      |> Task.async_stream(
         fn fleet_id ->
           {fleet_id, analyze(fleet_id, base_data, opts)}
         end,
         timeout: 30_000,
         max_concurrency: 4
       )
-    |> Enum.map(fn {:ok, result} -> result end)
-    |> merge_batch_results()
+      |> Enum.map(fn {:ok, result} -> result end)
+      |> merge_batch_results()
 
     Result.ok(results)
   end
@@ -86,11 +86,11 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
   defp analyze_ship_composition(participant_data) do
     # Group by actual ship names for detailed breakdown
     ship_type_composition =
-    participant_data
-    |> Enum.group_by(fn participant ->
+      participant_data
+      |> Enum.group_by(fn participant ->
         participant.ship_type || participant.ship_name || "Unknown Ship"
       end)
-    |> Enum.map(fn {ship_name, participants} ->
+      |> Enum.map(fn {ship_name, participants} ->
         {ship_name,
          %{
            count: length(participants),
@@ -100,31 +100,32 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
            pilots: Enum.map(participants, &(&1.character_name || "Unknown"))
          }}
       end)
-    |> Enum.into(%{})
+      |> Enum.into(%{})
 
     # Also group by ship class for high-level overview
     ship_class_composition =
-    participant_data
-    |> Enum.group_by(fn participant ->
+      participant_data
+      |> Enum.group_by(fn participant ->
         participant.ship_group || get_ship_class_from_participant(participant) || "Unknown Class"
       end)
-    |> Enum.map(fn {ship_class, participants} ->
+      |> Enum.map(fn {ship_class, participants} ->
         {ship_class,
          %{
            count: length(participants),
            percentage: safe_divide(length(participants), length(participant_data)) * 100,
            ship_types:
-    participants
-    |> Enum.map(&(&1.ship_type || &1.ship_name || "Unknown")) |> Enum.frequencies()
+             participants
+             |> Enum.map(&(&1.ship_type || &1.ship_name || "Unknown"))
+             |> Enum.frequencies()
          }}
       end)
-    |> Enum.into(%{})
+      |> Enum.into(%{})
 
     most_common_ships =
-    ship_type_composition
-    |> Enum.sort_by(fn {_ship, data} -> data.count end, :desc)
-    |> Enum.take(5)
-    |> Enum.map(fn {ship_name, data} ->
+      ship_type_composition
+      |> Enum.sort_by(fn {_ship, data} -> data.count end, :desc)
+      |> Enum.take(5)
+      |> Enum.map(fn {ship_name, data} ->
         %{ship_name: ship_name, count: data.count, percentage: data.percentage}
       end)
 
@@ -270,7 +271,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
       2509,
       2510,
       2511,
-    2512
+      2512
     ]
   end
 
@@ -288,7 +289,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
       # Remote hull repairers
       2456,
       2457,
-    2458
+      2458
     ]
   end
 
@@ -310,7 +311,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
       # Tracking disruptors
       2205,
       2206,
-    2207
+      2207
     ]
   end
 
@@ -414,7 +415,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
         :capital_dps
 
       # Industrial (shouldn't be in combat fleets but handle gracefully)
-    group
+      group
       when group in [
              "Hauler",
              "Deep Space Transport",
@@ -433,8 +434,8 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
 
   defp analyze_role_distribution(participant_data) do
     role_distribution =
-    participant_data
-    |> Enum.group_by(fn participant ->
+      participant_data
+      |> Enum.group_by(fn participant ->
         # Use static data to get proper ship group and then tactical role
         ship_type_id = participant.ship_type_id
 
@@ -448,7 +449,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
             categorize_ship_role(participant.ship_group || "Unknown")
         end
       end)
-    |> Enum.map(fn {role, participants} ->
+      |> Enum.map(fn {role, participants} ->
         count = length(participants)
         percentage = safe_divide(count, length(participant_data)) * 100
 
@@ -466,7 +467,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
              end)
          }}
       end)
-    |> Enum.into(%{})
+      |> Enum.into(%{})
 
     role_balance = assess_role_balance(role_distribution)
     missing_roles = identify_missing_roles(role_distribution)
@@ -515,7 +516,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
         role_balance,
         size_balance,
         value_balance,
-    experience_balance
+        experience_balance
       ])
 
     %{
@@ -691,14 +692,14 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
     if map_size(ship_composition) <= 1, do: 0.0
 
     total_ships =
-    Map.values(ship_composition)
-    |> Enum.map(& &1.count) |> Enum.sum()
-    
+      Map.values(ship_composition) |> Enum.map(& &1.count) |> Enum.sum()
+
     Map.values(ship_composition)
     |> Enum.map(fn group_data ->
       proportion = group_data.count / total_ships
       if proportion > 0, do: -proportion * :math.log2(proportion), else: 0
-    end) |> Enum.sum()
+    end)
+    |> Enum.sum()
   end
 
   defp categorize_ship_role(ship_group) do
@@ -758,12 +759,14 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
     # Calculate balance based on role diversity and ratios
     # Handle both simple counts and map structures
     total_ships =
-    Map.values(role_distribution)
-    |> Enum.map(fn
+      Map.values(role_distribution)
+      |> Enum.map(fn
         %{count: count} when is_number(count) -> count
         count when is_number(count) -> count
         _ -> 0
-      end) |> Enum.sum()
+      end)
+      |> Enum.sum()
+
     if total_ships == 0 do
       0.0
     else
@@ -783,8 +786,8 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
 
       # Calculate how close actual ratios are to ideal
       balance_scores =
-    ideal_ratios
-    |> Enum.map(fn {role, ideal_ratio} ->
+        ideal_ratios
+        |> Enum.map(fn {role, ideal_ratio} ->
           role_data = Map.get(role_distribution, role, 0)
 
           actual_count =
@@ -813,12 +816,14 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
 
   defp identify_missing_roles(role_distribution) do
     total_ships =
-    Map.values(role_distribution)
-    |> Enum.map(fn
+      Map.values(role_distribution)
+      |> Enum.map(fn
         %{count: count} when is_number(count) -> count
         count when is_number(count) -> count
         _ -> 0
-      end) |> Enum.sum()
+      end)
+      |> Enum.sum()
+
     if total_ships == 0 do
       [:dps, :logistics, :ewar, :tackle]
     else
@@ -834,8 +839,8 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
         dps: 0.4
       }
 
-    min_thresholds
-    |> Enum.filter(fn {role, min_ratio} ->
+      min_thresholds
+      |> Enum.filter(fn {role, min_ratio} ->
         role_data = Map.get(role_distribution, role, 0)
 
         actual_count =
@@ -848,15 +853,15 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
         actual_ratio = if total_ships > 0, do: actual_count / total_ships, else: 0.0
         actual_ratio < min_ratio
       end)
-    |> Enum.map(&elem(&1, 0))
+      |> Enum.map(&elem(&1, 0))
     end
   end
 
   defp analyze_damage_capabilities(participant_data) do
     # Calculate estimated DPS based on actual ship types
     total_dps =
-    participant_data
-    |> Enum.map(&estimate_ship_dps/1) |> Enum.sum()
+      participant_data |> Enum.map(&estimate_ship_dps/1) |> Enum.sum()
+
     # Rate damage capabilities based on fleet size and total DPS
     fleet_size = length(participant_data)
     dps_per_pilot = if fleet_size > 0, do: total_dps / fleet_size, else: 0
@@ -881,8 +886,8 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
     logi_ships = [11_985, 11_987, 11_989, 625, 624, 11_978, 22_474]
 
     logi_count =
-    participant_data
-    |> Enum.count(fn participant ->
+      participant_data
+      |> Enum.count(fn participant ->
         ship_type_id = participant[:ship_type_id] || participant["ship_type_id"]
         ship_type_id in logi_ships
       end)
@@ -909,8 +914,8 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
   defp analyze_mobility_capabilities(participant_data) do
     # Estimate average speed based on ship classes
     total_speed =
-    participant_data
-    |> Enum.map(&estimate_ship_speed/1) |> Enum.sum()
+      participant_data |> Enum.map(&estimate_ship_speed/1) |> Enum.sum()
+
     fleet_size = length(participant_data)
     avg_speed = if fleet_size > 0, do: total_speed / fleet_size, else: 0
 
@@ -977,7 +982,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
 
   defp calculate_estimated_dps(participant_data) do
     participant_data
-    |> Enum.map(&estimate_ship_dps/1) 
+    |> Enum.map(&estimate_ship_dps/1)
     |> Enum.sum()
     |> round()
   end
@@ -1025,7 +1030,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
 
   defp calculate_effective_hp(participant_data) do
     participant_data
-    |> Enum.map(&estimate_ship_ehp/1) 
+    |> Enum.map(&estimate_ship_ehp/1)
     |> Enum.sum()
     |> round()
   end
@@ -1112,13 +1117,15 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
 
     # Analyze the actual ship groups present
     ship_groups =
-    participant_data
-    |> Enum.map(fn participant ->
+      participant_data
+      |> Enum.map(fn participant ->
         case get_ship_info_from_static_data(participant.ship_type_id) do
           {:ok, ship_info} -> ship_info.group_name
           {:error, _} -> "Unknown"
         end
-      end) |> Enum.frequencies()
+      end)
+      |> Enum.frequencies()
+
     # Generate specific insights based on composition
     insights = []
 
@@ -1309,24 +1316,27 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
     fittings
     |> Enum.map(fn fitting ->
       fitting.high_slots
-    |> Enum.count(&is_weapon_module/1)
-    end) |> Enum.sum()
+      |> Enum.count(&is_weapon_module/1)
+    end)
+    |> Enum.sum()
   end
 
   defp count_logi_modules_in_fittings(fittings) do
     fittings
     |> Enum.map(fn fitting ->
       fitting.high_slots
-    |> Enum.count(&is_remote_repair_module/1)
-    end) |> Enum.sum()
+      |> Enum.count(&is_remote_repair_module/1)
+    end)
+    |> Enum.sum()
   end
 
   defp count_ewar_modules_in_fittings(fittings) do
     fittings
     |> Enum.map(fn fitting ->
       fitting.high_slots
-    |> Enum.count(&is_ewar_module/1)
-    end) |> Enum.sum()
+      |> Enum.count(&is_ewar_module/1)
+    end)
+    |> Enum.sum()
   end
 
   defp calculate_fitting_role_confidence(fittings, sample_size) do

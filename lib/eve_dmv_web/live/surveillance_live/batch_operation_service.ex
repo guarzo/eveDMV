@@ -27,12 +27,14 @@ defmodule EveDmvWeb.SurveillanceLive.BatchOperationService do
     case Ash.read(profiles_query, domain: SurveillanceApi, actor: actor) do
       {:ok, profiles} ->
         found_ids = Enum.map(profiles, & &1.id)
-        not_found_ids = profile_ids -- found_ids
 
-        # Log any profiles that weren't found
-        |> Enum.each(not_found_ids, fn id ->
-          Logger.warning("Profile not found for deletion: #{id}")
-        end)
+        not_found_ids =
+          (profile_ids -- found_ids)
+
+          # Log any profiles that weren't found
+          |> Enum.each(not_found_ids, fn id ->
+            Logger.warning("Profile not found for deletion: #{id}")
+          end)
 
         # Use bulk_destroy for efficient batch deletion
         case Ash.bulk_destroy(profiles, :destroy, %{},
@@ -79,12 +81,14 @@ defmodule EveDmvWeb.SurveillanceLive.BatchOperationService do
     case Ash.read(profiles_query, domain: SurveillanceApi, actor: actor) do
       {:ok, profiles} ->
         found_ids = Enum.map(profiles, & &1.id)
-        not_found_ids = profile_ids -- found_ids
 
-        # Log any profiles that weren't found
-        |> Enum.each(not_found_ids, fn id ->
-          Logger.warning("Profile not found for update: #{id}")
-        end)
+        not_found_ids =
+          (profile_ids -- found_ids)
+
+          # Log any profiles that weren't found
+          |> Enum.each(not_found_ids, fn id ->
+            Logger.warning("Profile not found for update: #{id}")
+          end)
 
         # Use bulk_update for efficient batch updates
         case Ash.bulk_update(profiles, :update, update_data,

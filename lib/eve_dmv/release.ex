@@ -70,8 +70,8 @@ defmodule EveDmv.Release do
     total_batches = ceil(length(all_killmails) / batch_size)
 
     all_killmails
-    Enum.chunk_every(batch_size) |> Enum.with_index()
-
+    |> Enum.chunk_every(batch_size)
+    |> Enum.with_index()
     |> Enum.each(fn {killmail_batch, batch_index} ->
       Logger.info(
         "Processing batch #{batch_index + 1}/#{total_batches} (#{length(killmail_batch)} killmails)"
@@ -148,10 +148,10 @@ defmodule EveDmv.Release do
         else
           # Last resort: generate from entire killmail data
           killmail
-          :erlang.term_to_binary()
-          (&:crypto.hash(:sha256, &1)).()
-          Base.encode16(case: :lower)
-          String.slice(0..39)
+          |> :erlang.term_to_binary()
+          |> (&:crypto.hash(:sha256, &1)).()
+          |> Base.encode16(case: :lower)
+          |> String.slice(0..39)
         end
     end
   end

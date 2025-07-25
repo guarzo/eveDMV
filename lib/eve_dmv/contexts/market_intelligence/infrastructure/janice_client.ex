@@ -245,11 +245,10 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
 
     cleaned_cache =
       state.cache
-
-    |> Enum.filter(fn {_type_id, {_price, cached_at}} ->
-      now - cached_at < @cache_ttl_seconds
-    end)
-    |> Map.new()
+      |> Enum.filter(fn {_type_id, {_price, cached_at}} ->
+        now - cached_at < @cache_ttl_seconds
+      end)
+      |> Map.new()
 
     removed_count = map_size(state.cache) - map_size(cleaned_cache)
 
@@ -375,7 +374,6 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
 
   defp parse_bulk_price_response(body) when is_map(body) do
     body
-
     |> Enum.map(fn {type_id_str, price_data} ->
       type_id = String.to_integer(type_id_str)
       price_info = parse_price_response(price_data)

@@ -409,7 +409,6 @@ defmodule EveDmv.Intelligence.WandererClient do
 
   defp extract_systems_from_connections(connections) when is_list(connections) do
     connections
-
     |> Enum.flat_map(fn conn ->
       [
         Map.get(conn, "solar_system_source"),
@@ -417,8 +416,8 @@ defmodule EveDmv.Intelligence.WandererClient do
       ]
     end)
 
-    Enum.reject(&is_nil/1) |> Enum.uniq()
-
+    Enum.reject(&is_nil/1)
+    |> Enum.uniq()
     |> Enum.map(fn system_id ->
       %{
         "id" => system_id,
@@ -439,7 +438,7 @@ defmodule EveDmv.Intelligence.WandererClient do
         Enum.flat_map(systems, fn system ->
           inhabitants = Map.get(system, "inhabitants", [])
 
-          |> Enum.map(inhabitants, fn inhabitant ->
+          Enum.map(inhabitants, fn inhabitant ->
             %{
               "character_id" => Map.get(inhabitant, "character_id"),
               "character_name" => Map.get(inhabitant, "character_name"),
@@ -468,7 +467,7 @@ defmodule EveDmv.Intelligence.WandererClient do
         Enum.flat_map(systems_data, fn system ->
           inhabitants = Map.get(system, "inhabitants", [])
 
-          |> Enum.map(inhabitants, fn inhabitant ->
+          Enum.map(inhabitants, fn inhabitant ->
             %{
               "character_id" => Map.get(inhabitant, "character_id"),
               "character_name" => Map.get(inhabitant, "character_name"),
@@ -602,8 +601,7 @@ defmodule EveDmv.Intelligence.WandererClient do
     # data: json_data\n\n
 
     chunk
-    String.split("\n\n")
-
+    |> String.split("\n\n")
     |> Enum.each(fn event_block ->
       if String.trim(event_block) != "" do
         parse_sse_event(event_block, parent_pid, map_id)

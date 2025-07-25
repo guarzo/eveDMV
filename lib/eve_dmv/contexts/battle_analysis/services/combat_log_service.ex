@@ -6,8 +6,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.CombatLogService do
   reducing dependencies in the resource module.
   """
 
-  alias EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser
   alias EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser
+  alias EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser
   alias EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting
 
   require Logger

@@ -104,8 +104,9 @@ defmodule EveDmv.Utils.DataTransform do
   """
   def compact_map(map, allowed_keys \\ nil) when is_map(map) do
     map
-    Map.take(allowed_keys || Map.keys(map))
-    Enum.reject(fn {_k, v} -> is_nil(v) end) |> Map.new()
+    |> Map.take(allowed_keys || Map.keys(map))
+    |> Enum.reject(fn {_k, v} -> is_nil(v) end)
+    |> Map.new()
   end
 
   @doc """
@@ -113,7 +114,7 @@ defmodule EveDmv.Utils.DataTransform do
   """
   def clamp(value, min_val, max_val) do
     value
-    max(min_val)
-    min(max_val)
+    |> max(min_val)
+    |> min(max_val)
   end
 end

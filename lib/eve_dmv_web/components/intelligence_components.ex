@@ -649,6 +649,7 @@ defmodule EveDmvWeb.IntelligenceComponents do
       threats
       |> Enum.map(fn {_threat_type, threat_count} -> threat_count end)
       |> Enum.max(fn -> 1 end)
+
     if max_count > 0, do: count / max_count * 100, else: 0
   end
 

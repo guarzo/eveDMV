@@ -6,11 +6,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogHelper do
   to reduce module dependencies and improve maintainability.
   """
 
-  require Logger
-
   alias EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser
   alias EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser
   alias EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting
+  require Logger
 
   @doc """
   Parse combat log content and extract structured data.

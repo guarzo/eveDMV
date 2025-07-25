@@ -18,7 +18,7 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
   # 5 seconds
   @refresh_interval 5_000
 
-  @impl true
+  @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     if connected?(socket) do
       # Subscribe to monitoring events
@@ -36,36 +36,36 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
     {:ok, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info(:refresh, socket) do
     {:noreply, load_monitoring_data(socket)}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:monitoring_update, _data}, socket) do
     # Real-time updates from monitoring system
     {:noreply, load_monitoring_data(socket)}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("clear_errors", _params, socket) do
     ErrorTracker.clear_all()
     {:noreply, load_monitoring_data(socket)}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("reset_pipeline_metrics", _params, socket) do
     PipelineMonitor.reset_metrics()
     {:noreply, load_monitoring_data(socket)}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("force_recovery_check", _params, socket) do
     ErrorRecoveryWorker.check_now()
     {:noreply, put_flash(socket, :info, "Recovery check initiated")}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

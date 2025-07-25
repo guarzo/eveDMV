@@ -204,7 +204,7 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
     successes = []
     failures = []
 
-    |> Enum.reduce(character_ids, {successes, failures}, fn char_id, {acc_success, acc_fail} ->
+    Enum.reduce(character_ids, {successes, failures}, fn char_id, {acc_success, acc_fail} ->
       try do
         case analyze_character_optimized(char_id, use_cache) do
           {:ok, analysis} ->
@@ -316,7 +316,7 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
     # For now, we'll use a placeholder implementation
     top_character_ids = get_top_character_ids(count)
 
-    |> Enum.each(top_character_ids, fn char_id ->
+    Enum.each(top_character_ids, fn char_id ->
       spawn(fn ->
         IntelligenceCache.get_character_analysis(char_id)
         IntelligenceCache.get_vetting_analysis(char_id)
@@ -330,7 +330,7 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
     # This would identify recently analyzed characters
     recent_character_ids = get_recent_character_ids(count)
 
-    |> Enum.each(recent_character_ids, fn char_id ->
+    Enum.each(recent_character_ids, fn char_id ->
       spawn(fn ->
         IntelligenceCache.get_character_analysis(char_id)
       end)
@@ -343,7 +343,7 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
     # This would identify high-threat or important characters
     critical_character_ids = get_critical_character_ids(count)
 
-    |> Enum.each(critical_character_ids, fn char_id ->
+    Enum.each(critical_character_ids, fn char_id ->
       spawn(fn ->
         IntelligenceCache.get_character_analysis(char_id)
         IntelligenceCache.get_vetting_analysis(char_id)

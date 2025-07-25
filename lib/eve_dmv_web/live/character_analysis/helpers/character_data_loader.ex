@@ -116,16 +116,17 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
     cache_key =
       "ship_preferences:#{character_id}:#{Date.to_iso8601(DateTime.to_date(since_date))}"
 
-    QueryCache.get_or_compute(
-      cache_key,
-      fn ->
-        query = KillmailQueries.ship_usage_query(:character, character_id, 90)
-        KillmailQueries.execute(query, [character_id, since_date])
-      end,
-      ttl: @ship_preferences_ttl
-    )
+    result =
+      QueryCache.get_or_compute(
+        cache_key,
+        fn ->
+          query = KillmailQueries.ship_usage_query(:character, character_id, 90)
+          KillmailQueries.execute(query, [character_id, since_date])
+        end,
+        ttl: @ship_preferences_ttl
+      )
 
-    case do
+    case result do
       {:ok, results} ->
         # Calculate total usage for percentages
         total_usage = Enum.sum(Enum.map(results, &(&1["usage_count"] || 0)))
@@ -133,7 +134,6 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
         results
         # Top 10 ships
         |> Enum.take(10)
-
         |> Enum.map(fn result ->
           ship_type_id = result["ship_type_id"]
           usage_count = result["usage_count"] || 0
@@ -237,7 +237,6 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
             total_usage = Enum.sum(Enum.map(rows, fn [_, _, _, count, _] -> count end))
 
             rows
-
             |> Enum.map(fn [weapon_type_id, weapon_name, weapon_group, usage_count, last_used] ->
               # Categorize weapon type
               weapon_category = categorize_weapon_type(weapon_name, weapon_group)
@@ -564,20 +563,19 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
              ]) do
           {:ok, %{rows: rows}} ->
             rows
-
             |> Enum.map(fn [
-                          corp_id,
-                          corp_name,
-                          alliance_id,
-                          alliance_name,
-                          kills_together,
-                          unique_pilots,
-                          systems_active,
-                          total_isk,
-                          avg_kill_value,
-                          last_seen,
-                          first_seen
-                        ] ->
+                             corp_id,
+                             corp_name,
+                             alliance_id,
+                             alliance_name,
+                             kills_together,
+                             unique_pilots,
+                             systems_active,
+                             total_isk,
+                             avg_kill_value,
+                             last_seen,
+                             first_seen
+                           ] ->
               # Calculate collaboration strength
               collaboration_strength =
                 calculate_collaboration_strength(kills_together, unique_pilots, systems_active)
@@ -659,10 +657,17 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
     # Calculate time span
     time_span_days =
       if first_seen && last_seen do
-        Date.diff(
-          Date.from_iso8601!(Date.to_iso8601(last_seen)),
-          Date.from_iso8601!(Date.to_iso8601(first_seen))
-        )
+        last_seen_date =
+          last_seen
+          |> Date.to_iso8601()
+          |> Date.from_iso8601!()
+
+        first_seen_date =
+          first_seen
+          |> Date.to_iso8601()
+          |> Date.from_iso8601!()
+
+        Date.diff(last_seen_date, first_seen_date)
       else
         0
       end
@@ -896,13 +901,11 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
     # Find the category with highest combined score (kills + ISK percentage)
     {preferred, _score} =
       patterns
-
-    |> Enum.map(fn {category, data} ->
-      combined_score = data.percentage + data.isk_percentage
-      {category, combined_score}
-    end)
-
-    |> Enum.max_by(fn {_category, score} -> score end, fn -> {:unknown, 0} end)
+      |> Enum.map(fn {category, data} ->
+        combined_score = data.percentage + data.isk_percentage
+        {category, combined_score}
+      end)
+      |> Enum.max_by(fn {_category, score} -> score end, fn -> {:unknown, 0} end)
 
     preferred
   end
@@ -913,8 +916,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
   defp calculate_activity_diversity(patterns) do
     active_categories =
       patterns
-
-    |> Enum.count(fn {_category, data} -> data.kill_count > 0 end)
+      |> Enum.count(fn {_category, data} -> data.kill_count > 0 end)
 
     case active_categories do
       0 -> :no_data

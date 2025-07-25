@@ -3673,7 +3673,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
         destroyers: count_ships_in_range(ship_usage, 420..430),
         cruisers: count_ships_in_range(ship_usage, 358..380),
         battleships: count_ships_in_range(ship_usage, 27..30),
-        capitals: count_ships_in_range(ship_usage, 19720..19740)
+        capitals: count_ships_in_range(ship_usage, 19_720..19_740)
       }
 
       %{

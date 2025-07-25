@@ -58,41 +58,41 @@ defmodule EveDmv.StaticData.ShipTypes do
         # T2 Battleships (Marauders, Black Ops)
         {670, 699},
         # Faction/Navy Battleships
-        {17636, 17740}
+        {17_636, 17_740}
       ],
       capital: [
         # Carriers
-        {19720, 19730},
+        {19_720, 19_730},
         # Dreadnoughts
-        {19740, 19750},
+        {19_740, 19_750},
         # Supercarriers
-        {23757, 23774},
+        {23_757, 23_774},
         # Titans (specific IDs)
         {3514, 3514},
         # Erebus
         {671, 671},
         # Avatar
-        {11567, 11567},
+        {11_567, 11_567},
         # Ragnarok
-        {23773, 23773},
+        {23_773, 23_773},
         # Leviathan
-        {23913, 23913}
+        {23_913, 23_913}
       ],
       industrial: [
         # T1 Industrials
         {648, 657},
         # T2 Industrials (Transport Ships)
-        {12729, 12753},
+        {12_729, 12_753},
         # Orca
-        {28606, 28606},
+        {28_606, 28_606},
         # Rorqual
-        {28352, 28352}
+        {28_352, 28_352}
       ],
       mining: [
         # Mining Barges
-        {17476, 17480},
+        {17_476, 17_480},
         # Exhumers
-        {22544, 22548}
+        {22_544, 22_548}
       ],
       supercapital: [
         # Erebus
@@ -100,15 +100,15 @@ defmodule EveDmv.StaticData.ShipTypes do
         # Avatar variant
         {671, 671},
         # Avatar
-        {11567, 11567},
+        {11_567, 11_567},
         # Ragnarok
-        {23773, 23773},
+        {23_773, 23_773},
         # Leviathan
-        {23913, 23913},
+        {23_913, 23_913},
         # Supercarriers
-        {23917, 23919},
+        {23_917, 23_919},
         # Faction Titans
-        {42241, 42246}
+        {42_241, 42_246}
       ]
     }
   end

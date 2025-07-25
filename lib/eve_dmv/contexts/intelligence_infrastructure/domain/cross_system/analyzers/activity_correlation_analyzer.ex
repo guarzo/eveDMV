@@ -302,7 +302,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
             div(hours_ago, bucket_size)
           end)
 
-        buckets = Enum.map(buckets, fn {bucket, kills} -> {bucket, length(kills)} end) |> Enum.sort()
+        buckets =
+          Enum.map(buckets, fn {bucket, kills} -> {bucket, length(kills)} end) |> Enum.sort()
+
         trend = calculate_trend_direction(buckets)
         {system_id, trend}
       end)
@@ -430,6 +432,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
       |> Enum.sort_by(&elem(&1, 1), :desc)
       |> Enum.take(10)
       |> Map.new()
+
     # Analyze peak travel times (simplified - would need timestamps)
     # EVE prime time
     peak_travel_times = [17, 18, 19, 20, 21, 22]
@@ -516,17 +519,17 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
       |> Enum.flat_map(fn c -> [c.from_system, c.to_system] end)
       |> Enum.frequencies()
       |> Enum.map(fn {system, count} ->
-      value =
-        cond do
-          count > 10 -> :critical
-          count > 5 -> :high
-          count > 2 -> :moderate
-          true -> :low
-        end
+        value =
+          cond do
+            count > 10 -> :critical
+            count > 5 -> :high
+            count > 2 -> :moderate
+            true -> :low
+          end
 
-      {system, value}
-    end)
-    |> Map.new()
+        {system, value}
+      end)
+      |> Map.new()
 
     %{
       primary_routes: primary_routes,
@@ -586,6 +589,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
           |> Enum.filter(fn {{sys, _}, _} -> sys == s2 end)
           |> Enum.map(fn {{_, time}, count} -> {time, count} end)
           |> Map.new()
+
         # Calculate correlation coefficient (simplified)
         correlation = calculate_correlation_coefficient(s1_activity, s2_activity)
 

@@ -128,6 +128,7 @@ defmodule EveDmv.Intelligence.Core.Supervisor do
         {:exit, reason} -> {:error, reason}
       end)
       |> Map.new()
+
     successful = Enum.count(results, fn {_, result} -> match?({:ok, _}, result) end)
     failed = length(tasks) - successful
 

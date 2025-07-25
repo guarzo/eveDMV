@@ -144,7 +144,6 @@ defmodule EveDmv.Eve.TypeResolver do
       max_concurrency: 5,
       timeout: 30_000
     )
-
     |> Enum.map(fn
       {:ok, {:ok, item_data}} -> {:ok, item_data}
       {:ok, error} -> error
@@ -255,9 +254,8 @@ defmodule EveDmv.Eve.TypeResolver do
 
     successful_types =
       results
-
-    |> Enum.filter(&match?({:ok, _}, &1))
-    |> Enum.map(fn {:ok, item_type} -> item_type end)
+      |> Enum.filter(&match?({:ok, _}, &1))
+      |> Enum.map(fn {:ok, item_type} -> item_type end)
 
     {:ok, successful_types}
   end

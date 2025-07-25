@@ -6,6 +6,8 @@ defmodule EveDmv.Ash.QuerySafetyConfig do
   for all resources without modifying each resource file.
   """
 
+  alias EveDmv.Ash.Preparations.QuerySafety
+
   @doc """
   Get query safety configuration for a specific resource.
 
@@ -58,7 +60,7 @@ defmodule EveDmv.Ash.QuerySafetyConfig do
       else
         case safety_config_for(resource) do
           nil -> query
-          config -> EveDmv.Ash.Preparations.QuerySafety.prepare(query, config, %{})
+          config -> QuerySafety.prepare(query, config, %{})
         end
       end
     else

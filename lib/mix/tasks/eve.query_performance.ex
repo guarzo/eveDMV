@@ -67,14 +67,15 @@ defmodule Mix.Tasks.Eve.QueryPerformance do
 
       Mix.shell().info(String.duplicate("-", 80))
 
-      |> Enum.each(metrics, fn m ->
+      Enum.each(metrics, fn m ->
         status =
           cond do
             m.avg_time_ms > 5000 -> "🔴 CRITICAL"
             m.avg_time_ms > 1000 -> "🟡 SLOW"
             m.avg_time_ms > 500 -> "🟠 WATCH"
             true -> "🟢 OK"
-        end
+          end
+
         Mix.shell().info(
           String.pad_trailing(m.table, 30) <>
             String.pad_trailing(to_string(m.query_count), 10) <>
@@ -123,7 +124,7 @@ defmodule Mix.Tasks.Eve.QueryPerformance do
     if Enum.empty?(suggestions) do
       Mix.shell().info("No index suggestions at this time.")
     else
-      |> Enum.each(suggestions, fn suggestion ->
+      Enum.each(suggestions, fn suggestion ->
         Mix.shell().info("Table: #{suggestion.table}")
         Mix.shell().info("Columns: #{Enum.join(suggestion.columns, ", ")}")
         Mix.shell().info("Reason: #{suggestion.reason}")
@@ -146,13 +147,14 @@ defmodule Mix.Tasks.Eve.QueryPerformance do
     if query.recommendations do
       display_recommendations(query.recommendations)
     end
+
     Mix.shell().info("\n" <> String.duplicate("-", 80) <> "\n")
   end
 
   defp display_recommendations(recommendations) do
     Mix.shell().info("\nRecommendations:")
 
-    |> Enum.each(recommendations, fn rec ->
+    Enum.each(recommendations, fn rec ->
       Mix.shell().info("  - #{rec}")
     end)
   end

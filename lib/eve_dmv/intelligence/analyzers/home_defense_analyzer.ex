@@ -219,7 +219,8 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
       km.killmail_time
       |> DateTime.to_time()
       |> Time.to_erl()
-      |> elem(0)  # Extract hour
+      # Extract hour
+      |> elem(0)
     end)
     |> Enum.map(fn {hour, kms} -> {hour, length(kms)} end)
     |> Enum.into(%{})
@@ -315,7 +316,7 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
         Enum.count(km.participants || [], fn _p ->
           # This would check if participant is from the analyzed corp
           # Simplified
-    true
+          true
         end)
 
       corp_participants > 3
@@ -333,9 +334,10 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
   defp calculate_response_effectiveness(response_events) do
     if length(response_events) > 0 do
       avg_participants =
-    response_events
-    Enum.map(& &1.participants) |> Enum.sum()
-    Kernel./(length(response_events))
+        response_events
+        |> Enum.map(& &1.participants)
+        |> Enum.sum()
+        |> Kernel./(length(response_events))
 
       # Normalize to 0-1
       min(1.0, avg_participants / 10)
@@ -366,6 +368,7 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
       |> Enum.flat_map(fn km -> km.participants || [] end)
       |> Enum.map(& &1.ship_type_id)
       |> Enum.frequencies()
+
     %{
       ship_diversity: map_size(ship_types),
       most_used_ships: ship_types |> Enum.sort_by(&elem(&1, 1), :desc) |> Enum.take(5)
@@ -379,6 +382,7 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
       |> Enum.flat_map(fn km -> km.participants || [] end)
       |> Enum.map(& &1.character_id)
       |> Enum.uniq()
+
     %{
       active_member_ratio: length(active_members) / length(members),
       total_active_members: length(active_members)

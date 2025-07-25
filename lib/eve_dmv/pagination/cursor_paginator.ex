@@ -96,7 +96,8 @@ defmodule EveDmv.Pagination.CursorPaginator do
   """
   def next_page(%__MODULE__{} = paginator) do
     if paginator.has_next_page and paginator.after_cursor do
-      new(paginator.query,
+      paginator.query
+      |> new(
         cursor_fields: paginator.cursor_fields,
         page_size: paginator.page_size,
         after: paginator.after_cursor
@@ -112,7 +113,8 @@ defmodule EveDmv.Pagination.CursorPaginator do
   """
   def previous_page(%__MODULE__{} = paginator) do
     if paginator.has_previous_page and paginator.before_cursor do
-      new(paginator.query,
+      paginator.query
+      |> new(
         cursor_fields: paginator.cursor_fields,
         page_size: paginator.page_size,
         before: paginator.before_cursor

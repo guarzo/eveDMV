@@ -213,7 +213,7 @@ defmodule EveDmv.Surveillance.Matching.IndexManager do
       |> Enum.filter(fn {_key, _matches, expires_at} -> expires_at <= current_time end)
       |> Enum.map(fn {key, _matches, _expires_at} -> key end)
 
-    |> Enum.each(expired_keys, fn key ->
+    Enum.each(expired_keys, fn key ->
       :ets.delete(@match_cache, key)
     end)
 

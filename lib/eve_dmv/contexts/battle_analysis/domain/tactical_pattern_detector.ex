@@ -504,8 +504,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
     adaptability_score =
       unique_formations * 20 + avg_effectiveness * 0.8
 
-    adaptability_score
-    |> min(100)
+    min(adaptability_score, 100)
     |> Float.round(2)
   end
 
@@ -939,8 +938,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
 
   defp identify_dominant_tactic(phase_killmails) do
     # Analyze kills to determine dominant tactic
-    ship_types = phase_killmails
-      |> extract_all_ship_types()
+    ship_types =
+      extract_all_ship_types(phase_killmails)
       |> Enum.map(&categorize_ship_role/1)
       |> Enum.frequencies()
 

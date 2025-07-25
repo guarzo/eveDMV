@@ -175,7 +175,8 @@ defmodule EveDmv.Intelligence.CacheCleanupWorker do
       nil ->
         %{cache_size: 0, error: "Cache process not running"}
 
-      _pid -> IntelligenceCache.get_cache_stats()
+      _pid ->
+        IntelligenceCache.get_cache_stats()
     end
   rescue
     error ->

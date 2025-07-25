@@ -68,7 +68,8 @@ defmodule EveDmv.Surveillance.NotificationService do
     # Group profiles by user to avoid duplicate notifications
     profiles_by_user = get_profiles_by_user(matched_profile_ids)
 
-    |> Enum.each(profiles_by_user, fn {user_id, user_profiles} ->
+    profiles_by_user
+    |> Enum.each(fn {user_id, user_profiles} ->
       # Create a single notification for all matched profiles for this user
       create_user_batch_notification(user_id, user_profiles, killmail)
     end)
@@ -189,8 +190,9 @@ defmodule EveDmv.Surveillance.NotificationService do
   defp get_profiles_by_user(profile_ids) do
     case Ash.read(Profile, domain: SurveillanceApi) do
       {:ok, all_profiles} ->
-        profiles = Enum.filter(all_profiles, &(&1.id in profile_ids))
-        |> Enum.group_by(profiles, & &1.user_id)
+        all_profiles
+        |> Enum.filter(&(&1.id in profile_ids))
+        |> Enum.group_by(& &1.user_id)
 
       _ ->
         %{}

@@ -52,9 +52,8 @@ defmodule EveDmv.Eve.EsiCache do
     # Convert back to character_id => data format
     found_map =
       found
-
-    |> Enum.map(fn {{:esi, :character, id}, data} -> {id, data} end)
-    |> Enum.into(%{})
+      |> Enum.map(fn {{:esi, :character, id}, data} -> {id, data} end)
+      |> Enum.into(%{})
 
     missing_ids = Enum.map(missing_keys, fn {:esi, :character, id} -> id end)
 

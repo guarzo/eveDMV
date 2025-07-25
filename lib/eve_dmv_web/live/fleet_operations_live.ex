@@ -489,19 +489,20 @@ defmodule EveDmvWeb.FleetOperationsLive do
 
   defp extract_attacker_data(killmail) do
     raw_data = Map.get(killmail, :raw_data, %{})
-    attackers = Map.get(raw_data, "attackers", [])
 
-    |> Enum.map(attackers, fn attacker ->
-      %{
-        character_id: Map.get(attacker, "character_id"),
-        character_name: Map.get(attacker, "character_name"),
-        corporation_id: Map.get(attacker, "corporation_id"),
-        alliance_id: Map.get(attacker, "alliance_id"),
-        ship_type_id: Map.get(attacker, "ship_type_id"),
-        role: :attacker,
-        final_blow: Map.get(attacker, "final_blow", false)
-      }
-    end)
+    attackers =
+      Map.get(raw_data, "attackers", [])
+      |> Enum.map(attackers, fn attacker ->
+        %{
+          character_id: Map.get(attacker, "character_id"),
+          character_name: Map.get(attacker, "character_name"),
+          corporation_id: Map.get(attacker, "corporation_id"),
+          alliance_id: Map.get(attacker, "alliance_id"),
+          ship_type_id: Map.get(attacker, "ship_type_id"),
+          role: :attacker,
+          final_blow: Map.get(attacker, "final_blow", false)
+        }
+      end)
   end
 
   defp group_participants_into_sides(participants) do
@@ -510,21 +511,20 @@ defmodule EveDmvWeb.FleetOperationsLive do
       Enum.group_by(participants, fn p ->
         Map.get(p, :alliance_id) || Map.get(p, :corporation_id) || "unknown"
       end)
-
-    |> Enum.map(groups, fn {group_id, pilots} ->
-      %{
-        group_id: group_id,
-        pilots: pilots,
-        ship_count: length(pilots),
-        unique_ship_types:
-          pilots
-          |> Enum.map(&Map.get(&1, :ship_type_id))
-          |> Enum.uniq()
-          |> length()
-      }
-    end)
-    # Only include sides with multiple ships
-    |> Enum.filter(fn side -> side.ship_count > 1 end)
+      |> Enum.map(groups, fn {group_id, pilots} ->
+        %{
+          group_id: group_id,
+          pilots: pilots,
+          ship_count: length(pilots),
+          unique_ship_types:
+            pilots
+            |> Enum.map(&Map.get(&1, :ship_type_id))
+            |> Enum.uniq()
+            |> length()
+        }
+      end)
+      # Only include sides with multiple ships
+      |> Enum.filter(fn side -> side.ship_count > 1 end)
   end
 
   defp get_battle_start_time(killmails) do
@@ -719,7 +719,8 @@ defmodule EveDmvWeb.FleetOperationsLive do
 
       </div>
     </div>
-    """ |> Phoenix.HTML.raw()
+    """
+    |> Phoenix.HTML.raw()
   end
 
   defp render_effectiveness_analysis(data) do
@@ -826,7 +827,8 @@ defmodule EveDmvWeb.FleetOperationsLive do
 
       </div>
     </div>
-    """ |> Phoenix.HTML.raw()
+    """
+    |> Phoenix.HTML.raw()
   end
 
   defp render_performance_analysis(data) do
@@ -936,7 +938,8 @@ defmodule EveDmvWeb.FleetOperationsLive do
 
       </div>
     </div>
-    """ |> Phoenix.HTML.raw()
+    """
+    |> Phoenix.HTML.raw()
   end
 
   # Generate a user-friendly fleet ID based on date/time
@@ -1007,6 +1010,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
       |> Enum.map(&Map.get(&1, :ship_name))
       |> Enum.uniq()
       |> length()
+
     total_pilots = length(participants)
 
     if total_pilots > 0 do

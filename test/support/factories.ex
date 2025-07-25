@@ -11,7 +11,7 @@ defmodule EveDmv.Factories do
   # Rifter, Punisher, Merlin, Incursus, etc.
   @frigates [587, 588, 589, 590, 591, 592, 593, 594]
   # Algos, Catalyst, Cormorant, Coercer
-  @destroyers [16219, 16227, 16236, 16242]
+  @destroyers [16_219, 16_227, 16_236, 16_242]
   # Arbitrator, Augoror, Bellicose, etc.
   @cruisers [620, 621, 622, 623, 624, 625, 626, 627]
   # Abaddon, Apocalypse, Armageddon, Megathron, etc.

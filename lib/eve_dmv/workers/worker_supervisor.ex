@@ -77,6 +77,7 @@ defmodule EveDmv.Workers.WorkerSupervisor do
   """
   def stop_all_workers do
     Logger.info("Stopping all workers for maintenance")
+
     Supervisor.which_children(__MODULE__)
     |> Enum.each(fn {id, pid, _type, _modules} ->
       try do
@@ -94,6 +95,7 @@ defmodule EveDmv.Workers.WorkerSupervisor do
   """
   def restart_all_workers do
     Logger.info("Restarting all workers after maintenance")
+
     Supervisor.which_children(__MODULE__)
     |> Enum.each(fn {id, _pid, _type, _modules} ->
       try do

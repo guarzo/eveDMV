@@ -186,16 +186,17 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
 
     # Load character data using batch operation to prevent N+1 queries
     character_data =
-      case Ash.Query.new(CharacterStats)
+      case CharacterStats
+           |> Ash.Query.new()
            |> Ash.Query.filter(character_id in ^character_ids)
            |> Ash.read(domain: Api) do
-      {:ok, stats_list} ->
-        character_tuples = Enum.map(stats_list, fn stats -> {stats.character_id, stats} end)
-        Enum.filter(character_tuples, fn {_, stats} -> not is_nil(stats) end)
+        {:ok, stats_list} ->
+          character_tuples = Enum.map(stats_list, fn stats -> {stats.character_id, stats} end)
+          Enum.filter(character_tuples, fn {_, stats} -> not is_nil(stats) end)
 
-      _ ->
-        []
-    end
+        _ ->
+          []
+      end
 
     if length(character_data) >= 2 do
       correlations = %{
@@ -471,11 +472,12 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
     likelihood = base_likelihood * horizon_adjustment
 
     # Determine key factors
-    factors = []
-    factors = if total_activity > 200, do: ["high_historical_activity" | factors], else: factors
-    factors = if avg_gang_size > 5.0, do: ["fleet_preference" | factors], else: factors
-    factors = if ship_diversity > 5, do: ["ship_variety" | factors], else: factors
-    factors = if Enum.empty?(factors), do: ["limited_data"], else: factors
+    factors =
+      []
+      |> then(&if total_activity > 200, do: ["high_historical_activity" | &1], else: &1)
+      |> then(&if avg_gang_size > 5.0, do: ["fleet_preference" | &1], else: &1)
+      |> then(&if ship_diversity > 5, do: ["ship_variety" | &1], else: &1)
+      |> then(&if Enum.empty?(&1), do: ["limited_data"], else: &1)
 
     %{
       likelihood: Float.round(likelihood, 2),
@@ -873,19 +875,19 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
       0.0
     else
       # Calculate cosine similarity
-      dot_product = 
+      dot_product =
         vec1
         |> Enum.zip(vec2)
         |> Enum.map(fn {a, b} -> a * b end)
         |> Enum.sum()
-      
-      magnitude1 = 
+
+      magnitude1 =
         vec1
         |> Enum.map(fn x -> x * x end)
         |> Enum.sum()
         |> :math.sqrt()
-        
-      magnitude2 = 
+
+      magnitude2 =
         vec2
         |> Enum.map(fn x -> x * x end)
         |> Enum.sum()
@@ -910,19 +912,17 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   defp get_vetting_data(character_id) do
     # Return empty vetting data if the WHVetting resource doesn't exist
     # This prevents errors when the wormhole vetting system isn't fully implemented
-    try do
-      WHVetting
-      |> Ash.Query.new()
-      |> Ash.Query.filter(character_id: character_id)
-      |> Ash.Query.limit(1)
-      |> Ash.read(domain: Api)
-    rescue
-      ArgumentError ->
-        {:ok, []}
-
-      _ ->
-        {:ok, []}
+    case WHVetting
+         |> Ash.Query.new()
+         |> Ash.Query.filter(character_id: character_id)
+         |> Ash.Query.limit(1)
+         |> Ash.read(domain: Api) do
+      {:ok, data} -> {:ok, data}
+      {:error, _} -> {:ok, []}
     end
+  rescue
+    ArgumentError -> {:ok, []}
+    _ -> {:ok, []}
   end
 
   # Helper function to safely convert values to float

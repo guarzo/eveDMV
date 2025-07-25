@@ -16,13 +16,13 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
   use GenServer
   use EveDmv.ErrorHandler
 
+  require Logger
+
   alias EveDmv.Contexts.Surveillance.Domain.ChainActivityTracker
   alias EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper
   alias EveDmv.Contexts.Surveillance.Domain.ChainStatusService
-  alias EveDmv.Intelligence.ChainAnalysis.ChainMonitor
   alias EveDmv.Contexts.Surveillance.Domain.ChainThreatAnalyzer
-
-  require Logger
+  alias EveDmv.Intelligence.ChainAnalysis.ChainMonitor
 
   # Chain monitoring intervals
   # 30 seconds
@@ -515,10 +515,9 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
     # Analyze hourly patterns to predict next likely activity
     hourly_distribution =
       events
-
-    |> Enum.group_by(& &1.timestamp.hour)
-    |> Enum.map(fn {hour, hour_events} -> {hour, length(hour_events)} end)
-    |> Enum.sort_by(fn {_hour, count} -> count end, :desc)
+      |> Enum.group_by(& &1.timestamp.hour)
+      |> Enum.map(fn {hour, hour_events} -> {hour, length(hour_events)} end)
+      |> Enum.sort_by(fn {_hour, count} -> count end, :desc)
 
     case hourly_distribution do
       [{peak_hour, _count} | _] ->
@@ -547,9 +546,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
     # Look for patterns indicating escalating threats
     recent_threats =
       events
-
-    |> Enum.filter(&(&1.event_type in [:hostile_reported, :killmail_activity]))
-    |> Enum.take(10)
+      |> Enum.filter(&(&1.event_type in [:hostile_reported, :killmail_activity]))
+      |> Enum.take(10)
 
     threat_trend = length(recent_threats)
 

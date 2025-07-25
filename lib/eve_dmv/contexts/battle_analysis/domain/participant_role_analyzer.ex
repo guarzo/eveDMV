@@ -220,7 +220,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
     ship_frequency = Enum.frequencies(activities.ship_types)
 
     primary_ship =
-      ship_frequency |> Enum.max_by(fn {_ship, count} -> count end, fn -> {nil, 0} end) |> elem(0)
+      ship_frequency
+      |> Enum.max_by(fn {_ship, count} -> count end, fn -> {nil, 0} end)
+      |> elem(0)
 
     # Categorize ships by role
     ship_roles = %{
@@ -358,7 +360,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
     []
     |> maybe_add_characteristic(:high_activity, activities.kills > 5)
     |> maybe_add_characteristic(:survivor, activities.losses == 0 and activities.kills > 0)
-    |> maybe_add_characteristic(:heavy_damage, damage_analysis.total_damage_dealt > 10000)
+    |> maybe_add_characteristic(:heavy_damage, damage_analysis.total_damage_dealt > 10_000)
     |> maybe_add_characteristic(:versatile, ship_analysis.ship_diversity > 2)
     |> maybe_add_characteristic(:finisher, damage_analysis.final_blow_ratio > 0.5)
   end
@@ -398,8 +400,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
       end)
       |> Enum.take(3)
 
-    potential_commanders
-    |> Enum.map(fn participant ->
+    Enum.map(potential_commanders, fn participant ->
       %{
         character_id: participant.character_id,
         character_name: participant.character_name,
@@ -436,34 +437,33 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
   # Ship role classification helpers
 
   defp count_ships_by_role(ship_types, role) do
-    ship_types
-    |> Enum.count(&(classify_ship_role(&1) == role))
+    Enum.count(ship_types, &(classify_ship_role(&1) == role))
   end
 
   defp classify_ship_role(ship_type_id) do
     case ship_type_id do
       # Logistics ships
       # Scythe
-      11978 -> :logistics
+      11_978 -> :logistics
       # Scythe
-      11129 -> :logistics
+      11_129 -> :logistics
       # Osprey
-      11985 -> :logistics
+      11_985 -> :logistics
       # DPS ships
       # Rifter
       587 -> :dps
       # Punisher
       588 -> :dps
       # Cyclone
-      17918 -> :dps
+      17_918 -> :dps
       # Tackle ships
       # Tormentor (often used for tackle)
       15 -> :tackle
       # Command ships
       # Sleipnir
-      22474 -> :command
+      22_474 -> :command
       # Damnation
-      22546 -> :command
+      22_546 -> :command
       # Scout ships
       # Capsule
       670 -> :scout

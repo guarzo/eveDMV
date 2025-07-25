@@ -47,7 +47,7 @@ defmodule Mix.Tasks.Eve.MemoryAnalysis do
       "--leak-detection" in args ->
         {:leak_detection}
 
-      |> Enum.any?(args, &String.starts_with?(&1, "--profile")) ->
+      Enum.any?(args, &String.starts_with?(&1, "--profile")) ->
         profile_arg = Enum.find(args, &String.starts_with?(&1, "--profile"))
         module_name = String.replace(profile_arg, "--profile=", "")
         {:profile, module_name}
@@ -244,7 +244,6 @@ defmodule Mix.Tasks.Eve.MemoryAnalysis do
       Mix.shell().info("✅ Memory usage appears healthy")
     else
       Mix.shell().error("⚠️  Memory health concerns:")
-
       |> Enum.each(issues, fn issue ->
         Mix.shell().error("  - #{issue}")
       end)

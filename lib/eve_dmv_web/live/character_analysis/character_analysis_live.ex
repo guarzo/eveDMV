@@ -8,17 +8,16 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
 
   use EveDmvWeb, :live_view
 
-  alias EveDmv.Cache.AnalysisCache
   alias EveDmv.Analytics.BattleDetector
+  alias EveDmv.Cache.AnalysisCache
   alias EveDmv.Integrations.ShipIntelligenceBridge
-  alias EveDmvWeb.CharacterAnalysis.Helpers.{CharacterDataLoader, DisplayFormatters}
+  alias EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader
+  alias EveDmvWeb.CharacterAnalysis.Helpers.DisplayFormatters
 
-  alias EveDmvWeb.CharacterAnalysis.Components.{
-    CharacterHeaderComponent,
-    IntelligenceSummaryComponent,
-    StatisticsPanelComponent,
-    ActivityFeedComponent
-  }
+  alias EveDmvWeb.CharacterAnalysis.Components.ActivityFeedComponent
+  alias EveDmvWeb.CharacterAnalysis.Components.CharacterHeaderComponent
+  alias EveDmvWeb.CharacterAnalysis.Components.IntelligenceSummaryComponent
+  alias EveDmvWeb.CharacterAnalysis.Components.StatisticsPanelComponent
 
   @impl Phoenix.LiveView
   def mount(%{"character_id" => character_id}, _session, socket) do

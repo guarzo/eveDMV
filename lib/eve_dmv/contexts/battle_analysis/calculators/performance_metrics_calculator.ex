@@ -19,22 +19,22 @@ defmodule EveDmv.Contexts.BattleAnalysis.Calculators.PerformanceMetricsCalculato
     # Calculate all metrics for comprehensive analysis
     performance_data =
       Enum.map(ship_instances, fn instance ->
-      # Enhance instance with detailed analysis
-      enhanced_instance = enhance_instance_with_analysis(instance)
+        # Enhance instance with detailed analysis
+        enhanced_instance = enhance_instance_with_analysis(instance)
 
-      survivability_score = calculate_survivability_score(enhanced_instance)
-      dps_efficiency = calculate_dps_efficiency(enhanced_instance)
-      tactical_contribution = calculate_tactical_contribution(enhanced_instance)
+        survivability_score = calculate_survivability_score(enhanced_instance)
+        dps_efficiency = calculate_dps_efficiency(enhanced_instance)
+        tactical_contribution = calculate_tactical_contribution(enhanced_instance)
 
-      %{
-        ship_instance: enhanced_instance,
-        survivability_score: survivability_score,
-        dps_efficiency: dps_efficiency,
-        tactical_contribution: tactical_contribution,
-        role_effectiveness: calculate_role_effectiveness(enhanced_instance),
-        threat_assessment: calculate_threat_assessment(enhanced_instance)
-      }
-    end)
+        %{
+          ship_instance: enhanced_instance,
+          survivability_score: survivability_score,
+          dps_efficiency: dps_efficiency,
+          tactical_contribution: tactical_contribution,
+          role_effectiveness: calculate_role_effectiveness(enhanced_instance),
+          threat_assessment: calculate_threat_assessment(enhanced_instance)
+        }
+      end)
 
     {:ok, performance_data}
   end
@@ -44,16 +44,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Calculators.PerformanceMetricsCalculato
     # Calculate only specific metrics for performance
     performance_data =
       Enum.map(ship_instances, fn instance ->
-      base_data = %{ship_instance: instance}
+        base_data = %{ship_instance: instance}
 
-      case metric do
-        :efficiency ->
-          Map.put(base_data, :dps_efficiency, calculate_dps_efficiency(instance))
+        case metric do
+          :efficiency ->
+            Map.put(base_data, :dps_efficiency, calculate_dps_efficiency(instance))
 
-        :survivability ->
-          Map.put(base_data, :survivability_score, calculate_survivability_score(instance))
-      end
-    end)
+          :survivability ->
+            Map.put(base_data, :survivability_score, calculate_survivability_score(instance))
+        end
+      end)
 
     {:ok, performance_data}
   end

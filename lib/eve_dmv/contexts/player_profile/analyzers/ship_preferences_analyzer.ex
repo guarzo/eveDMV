@@ -227,7 +227,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
       tech_counts =
         ship_usage
         |> Enum.reduce(%{tech1: 0, tech2: 0, tech3: 0, faction: 0}, fn {ship_type_id, usage_data},
-                                                                         acc ->
+                                                                       acc ->
           times_used = Map.get(usage_data, "times_used", 0)
           tech_level = classify_ship_tech_level(ship_type_id)
           Map.update(acc, tech_level, times_used, &(&1 + times_used))
@@ -302,6 +302,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
           end
         end)
         |> Enum.uniq()
+
       # Diversity is unique classes / total possible classes (simplified)
       # Approximate number of major ship classes
       length(ship_classes) / 15.0
@@ -318,14 +319,15 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
           Map.get(system_data, "kills", 0) + Map.get(system_data, "losses", 0)
         end)
         |> Enum.sum()
+
       if total_activity == 0 do
         %{highsec: 0, lowsec: 0, nullsec: 0, wspace: 0}
       else
         security_activity =
           active_systems
           |> Enum.reduce(%{highsec: 0, lowsec: 0, nullsec: 0, wspace: 0}, fn {_system_id,
-                                                                                system_data},
-                                                                               acc ->
+                                                                              system_data},
+                                                                             acc ->
             security = Map.get(system_data, "security", 0.0)
             activity = Map.get(system_data, "kills", 0) + Map.get(system_data, "losses", 0)
 
@@ -622,6 +624,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
         values
         |> Enum.map(fn value -> :math.pow(value - mean, 2) end)
         |> Enum.sum()
+
       sum_of_squares / (length(values) - 1)
     end
   end

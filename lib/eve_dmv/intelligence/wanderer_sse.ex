@@ -242,8 +242,7 @@ defmodule EveDmv.Intelligence.WandererSSE do
   defp process_sse_chunk(map_id, chunk, parent_pid) do
     # Parse SSE format: "data: {...}\n\n"
     chunk
-    String.split("\n\n")
-
+    |> String.split("\n\n")
     |> Enum.each(fn event_block ->
       if String.starts_with?(event_block, "data: ") do
         json_data = String.trim_leading(event_block, "data: ")

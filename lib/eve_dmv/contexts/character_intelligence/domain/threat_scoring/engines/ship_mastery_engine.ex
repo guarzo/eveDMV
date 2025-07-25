@@ -245,9 +245,18 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
     base_insights = []
 
     base_insights
-    |> add_insight_if(ship_diversity > @ship_diversity_excellence_threshold, "Excellent ship diversity - comfortable with many hull types")
-    |> add_insight_if(class_mastery > @class_mastery_excellence_threshold, "Strong mastery across multiple ship classes")
-    |> add_insight_if(specialization_score > @specialization_balance_threshold, "Good balance between specialization and versatility")
+    |> add_insight_if(
+      ship_diversity > @ship_diversity_excellence_threshold,
+      "Excellent ship diversity - comfortable with many hull types"
+    )
+    |> add_insight_if(
+      class_mastery > @class_mastery_excellence_threshold,
+      "Strong mastery across multiple ship classes"
+    )
+    |> add_insight_if(
+      specialization_score > @specialization_balance_threshold,
+      "Good balance between specialization and versatility"
+    )
   end
 
   defp add_insight_if(insights, condition, insight) do

@@ -15,9 +15,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   actionable intelligence for fleet commanders and individual pilots.
   """
 
+  alias EveDmv.Analytics.FleetAnalyzer
   alias EveDmv.Eve.NameResolver
   alias EveDmv.Integrations.ShipIntelligenceBridge
-  alias EveDmv.Analytics.FleetAnalyzer
 
   require Logger
   # Performance analysis parameters
@@ -177,11 +177,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
       |> Enum.uniq_by(&{&1.character_id, &1.ship_type_id})
       # Remove attackers who are already in victims (they died later)
       |> Enum.reject(fn attacker ->
-      Enum.any?(victim_instances, fn victim ->
-        victim.character_id == attacker.character_id &&
-          victim.ship_type_id == attacker.ship_type_id
+        Enum.any?(victim_instances, fn victim ->
+          victim.character_id == attacker.character_id &&
+            victim.ship_type_id == attacker.ship_type_id
+        end)
       end)
-    end)
 
     ship_instances = victim_instances ++ attacker_instances
 
@@ -276,8 +276,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   defp extract_attacker_data(killmail) do
     case killmail.raw_data do
       %{"attackers" => attackers} when is_list(attackers) ->
-        attackers
-        |> Enum.map(fn attacker ->
+        Enum.map(attackers, fn attacker ->
           %{
             character_id: attacker["character_id"],
             corporation_id: attacker["corporation_id"],
@@ -367,8 +366,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp get_primary_damage_type(damage_breakdown) do
     {primary_type, _damage} =
-      damage_breakdown
-      |> Enum.max_by(fn {_type, damage} -> damage end, fn -> {:unknown, 0} end)
+      Enum.max_by(damage_breakdown, fn {_type, damage} -> damage end, fn -> {:unknown, 0} end)
 
     primary_type
   end
@@ -484,30 +482,29 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp calculate_performance_metrics(ship_instances, :all) do
     performance_data =
-      ship_instances
-      |> Enum.map(fn instance ->
-      # Calculate basic metrics first
-      survivability_score = calculate_survivability_score(instance)
-      enhanced_instance = Map.put(instance, :survivability_score, survivability_score)
+      Enum.map(ship_instances, fn instance ->
+        # Calculate basic metrics first
+        survivability_score = calculate_survivability_score(instance)
+        enhanced_instance = Map.put(instance, :survivability_score, survivability_score)
 
-      dps_efficiency = calculate_dps_efficiency(enhanced_instance)
-      tactical_contribution = calculate_tactical_contribution(enhanced_instance)
+        dps_efficiency = calculate_dps_efficiency(enhanced_instance)
+        tactical_contribution = calculate_tactical_contribution(enhanced_instance)
 
-      # Add calculated metrics to instance for composite calculations
-      fully_enhanced_instance =
-        enhanced_instance
-        |> Map.put(:dps_efficiency, dps_efficiency)
-        |> Map.put(:tactical_contribution, tactical_contribution)
+        # Add calculated metrics to instance for composite calculations
+        fully_enhanced_instance =
+          enhanced_instance
+          |> Map.put(:dps_efficiency, dps_efficiency)
+          |> Map.put(:tactical_contribution, tactical_contribution)
 
-      %{
-        ship_instance: fully_enhanced_instance,
-        survivability_score: survivability_score,
-        dps_efficiency: dps_efficiency,
-        tactical_contribution: tactical_contribution,
-        role_effectiveness: calculate_role_effectiveness(fully_enhanced_instance),
-        threat_assessment: calculate_threat_assessment(fully_enhanced_instance)
-      }
-    end)
+        %{
+          ship_instance: fully_enhanced_instance,
+          survivability_score: survivability_score,
+          dps_efficiency: dps_efficiency,
+          tactical_contribution: tactical_contribution,
+          role_effectiveness: calculate_role_effectiveness(fully_enhanced_instance),
+          threat_assessment: calculate_threat_assessment(fully_enhanced_instance)
+        }
+      end)
 
     {:ok, performance_data}
   end
@@ -516,18 +513,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
        when metric in [:efficiency, :survivability] do
     # Calculate only specific metrics for performance
     performance_data =
-      ship_instances
-      |> Enum.map(fn instance ->
-      base_data = %{ship_instance: instance}
+      Enum.map(ship_instances, fn instance ->
+        base_data = %{ship_instance: instance}
 
-      case metric do
-        :efficiency ->
-          Map.put(base_data, :dps_efficiency, calculate_dps_efficiency(instance))
+        case metric do
+          :efficiency ->
+            Map.put(base_data, :dps_efficiency, calculate_dps_efficiency(instance))
 
-        :survivability ->
-          Map.put(base_data, :survivability_score, calculate_survivability_score(instance))
-      end
-    end)
+          :survivability ->
+            Map.put(base_data, :survivability_score, calculate_survivability_score(instance))
+        end
+      end)
 
     {:ok, performance_data}
   end
@@ -1301,57 +1297,58 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   end
 
   defp generate_fleet_recommendations(comparative_metrics) do
-    recommendations = []
-
-    # Role balance recommendations
     role_distribution = comparative_metrics.role_comparisons
-
-    recommendations =
-      if Map.get(role_distribution, :logistics, %{count: 0}).count == 0 do
-        ["Consider adding logistics ships for improved fleet survivability" | recommendations]
-      else
-        recommendations
-      end
-
-    # DPS recommendations
     avg_dps_efficiency = comparative_metrics.overall_battle_analysis.battle_efficiency
 
-    recommendations =
-      if avg_dps_efficiency < 0.6 do
-        [
-          "Fleet DPS efficiency is low - review fitting optimization and target calling"
-          | recommendations
-        ]
-      else
-        recommendations
-      end
+    []
+    |> maybe_add_logistics_recommendation(role_distribution)
+    |> maybe_add_fleet_dps_recommendation(avg_dps_efficiency)
+  end
 
-    recommendations
+  defp maybe_add_logistics_recommendation(recommendations, role_distribution) do
+    if Map.get(role_distribution, :logistics, %{count: 0}).count == 0 do
+      ["Consider adding logistics ships for improved fleet survivability" | recommendations]
+    else
+      recommendations
+    end
+  end
+
+  defp maybe_add_fleet_dps_recommendation(recommendations, avg_dps_efficiency) do
+    if avg_dps_efficiency < 0.6 do
+      [
+        "Fleet DPS efficiency is low - review fitting optimization and target calling"
+        | recommendations
+      ]
+    else
+      recommendations
+    end
   end
 
   defp generate_tactical_recommendations(battle_summary) do
-    recommendations = []
-
     insights = battle_summary.key_insights
 
-    recommendations =
-      if "High survivability battle" in insights do
-        recommendations
-      else
-        ["Focus on defensive positioning and tank optimization" | recommendations]
-      end
+    []
+    |> maybe_add_tactical_survivability_recommendation(insights)
+    |> maybe_add_damage_recommendation(insights)
+  end
 
-    recommendations =
-      if "Excellent DPS efficiency" in insights do
-        recommendations
-      else
-        [
-          "Improve damage application through better target selection and positioning"
-          | recommendations
-        ]
-      end
+  defp maybe_add_tactical_survivability_recommendation(recommendations, insights) do
+    if "High survivability battle" in insights do
+      recommendations
+    else
+      ["Focus on defensive positioning and tank optimization" | recommendations]
+    end
+  end
 
-    recommendations
+  defp maybe_add_damage_recommendation(recommendations, insights) do
+    if "Excellent DPS efficiency" in insights do
+      recommendations
+    else
+      [
+        "Improve damage application through better target selection and positioning"
+        | recommendations
+      ]
+    end
   end
 
   # Legacy compatibility methods for existing battle analysis system
@@ -1448,45 +1445,44 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   Generates recommendations based on performance analysis.
   """
   def generate_recommendations(efficiency_metrics, actual_performance) do
-    recommendations = []
+    []
+    |> add_dps_recommendations(efficiency_metrics)
+    |> add_tank_recommendations(efficiency_metrics)
+    |> add_survival_recommendations(actual_performance)
+  end
 
-    # DPS recommendations
-    recommendations =
-      recommendations ++
-        if efficiency_metrics[:dps_efficiency] &&
-             efficiency_metrics.dps_efficiency[:percentage] < 50 do
-          [
-            "Consider improving application with webs/paints - achieving only #{round(efficiency_metrics.dps_efficiency.percentage)}% of potential DPS"
-          ]
-        else
-          []
-        end
+  defp add_dps_recommendations(recommendations, efficiency_metrics) do
+    if efficiency_metrics[:dps_efficiency] && efficiency_metrics.dps_efficiency[:percentage] < 50 do
+      [
+        "Consider improving application with webs/paints - achieving only #{round(efficiency_metrics.dps_efficiency.percentage)}% of potential DPS"
+        | recommendations
+      ]
+    else
+      recommendations
+    end
+  end
 
-    # Tank recommendations
-    recommendations =
-      recommendations ++
-        if efficiency_metrics[:tank_efficiency] &&
-             efficiency_metrics.tank_efficiency[:used_percentage] > 90 do
-          [
-            "Tank nearly depleted (#{round(efficiency_metrics.tank_efficiency.used_percentage)}% used) - consider more buffer or active reps"
-          ]
-        else
-          []
-        end
+  defp add_tank_recommendations(recommendations, efficiency_metrics) do
+    if efficiency_metrics[:tank_efficiency] &&
+         efficiency_metrics.tank_efficiency[:used_percentage] > 90 do
+      [
+        "Tank nearly depleted (#{round(efficiency_metrics.tank_efficiency.used_percentage)}% used) - consider more buffer or active reps"
+        | recommendations
+      ]
+    else
+      recommendations
+    end
+  end
 
-    # Survival recommendations
-    # Less than 2 minutes
-    recommendations =
-      recommendations ++
-        if actual_performance.time_on_field < 120 do
-          [
-            "Very short time on field (#{Float.round(actual_performance.time_on_field / 60, 1)} min) - consider safer engagement range"
-          ]
-        else
-          []
-        end
-
-    recommendations
+  defp add_survival_recommendations(recommendations, actual_performance) do
+    if actual_performance.time_on_field < 120 do
+      [
+        "Very short time on field (#{Float.round(actual_performance.time_on_field / 60, 1)} min) - consider safer engagement range"
+        | recommendations
+      ]
+    else
+      recommendations
+    end
   end
 
   # Legacy helper functions for backward compatibility
@@ -1615,6 +1611,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
       |> Enum.filter(&(&1["character_id"] == character_id))
       |> Enum.map(&(&1["damage_done"] || 0))
       |> Enum.sum()
+
     # From combat logs
     log_damage =
       combat_events
@@ -1636,6 +1633,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
       |> Enum.filter(&(&1.victim_character_id == character_id))
       |> Enum.map(&get_victim_damage_taken(&1))
       |> Enum.sum()
+
     # From combat logs
     log_damage =
       combat_events
@@ -1651,8 +1649,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   end
 
   defp count_kills(character_id, killmails) do
-    killmails
-    |> Enum.count(fn km ->
+    Enum.count(killmails, fn km ->
       Enum.any?(
         km.raw_data["attackers"] || [],
         &(&1["character_id"] == character_id && &1["final_blow"])
@@ -1829,14 +1826,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   defp estimate_friendly_count(battle, ship_instance) do
     # Estimate friendly ship count based on alliance/corporation
     same_alliance =
-      battle.killmails
-      |> Enum.count(
+      Enum.count(
+        battle.killmails,
         &(&1.victim_alliance_id == ship_instance.alliance_id and &1.victim_alliance_id != nil)
       )
 
     same_corp =
-      battle.killmails
-      |> Enum.count(&(&1.victim_corporation_id == ship_instance.corporation_id))
+      Enum.count(battle.killmails, &(&1.victim_corporation_id == ship_instance.corporation_id))
 
     max(same_alliance, same_corp)
   end
@@ -1861,8 +1857,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp filter_by_ship_type(analysis, ship_type_id) do
     filtered_performances =
-      analysis.ship_performances
-      |> Enum.filter(&(&1.ship_instance.ship_type_id == ship_type_id))
+      Enum.filter(analysis.ship_performances, &(&1.ship_instance.ship_type_id == ship_type_id))
 
     Map.put(analysis, :ship_performances, filtered_performances)
   end
@@ -1904,19 +1899,25 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   end
 
   defp identify_improvement_areas(performance_data) do
-    all_performances = performance_data |> Enum.flat_map(& &1.ship_performances)
+    all_performances = Enum.flat_map(performance_data, & &1.ship_performances)
 
     if Enum.empty?(all_performances) do
       []
     else
       avg_survivability =
-        average(Enum.map(all_performances, & &1.survivability_score.normalized_score))
+        all_performances
+        |> Enum.map(& &1.survivability_score.normalized_score)
+        |> average()
 
       avg_dps_efficiency =
-        average(Enum.map(all_performances, & &1.dps_efficiency.efficiency_ratio))
+        all_performances
+        |> Enum.map(& &1.dps_efficiency.efficiency_ratio)
+        |> average()
 
       avg_role_effectiveness =
-        average(Enum.map(all_performances, & &1.role_effectiveness.effectiveness_score))
+        all_performances
+        |> Enum.map(& &1.role_effectiveness.effectiveness_score)
+        |> average()
 
       improvements = []
 
@@ -1969,8 +1970,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   defp calculate_improvement_rate(values) when length(values) < 2, do: 0.0
 
   defp calculate_improvement_rate(values) do
-    first_half = values |> Enum.take(div(length(values), 2))
-    second_half = values |> Enum.drop(div(length(values), 2))
+    first_half = Enum.take(values, div(length(values), 2))
+    second_half = Enum.drop(values, div(length(values), 2))
 
     if length(first_half) > 0 and length(second_half) > 0 do
       avg_first = average(first_half)

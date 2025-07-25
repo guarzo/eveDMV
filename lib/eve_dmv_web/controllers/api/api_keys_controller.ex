@@ -53,8 +53,8 @@ defmodule EveDmvWeb.Api.ApiKeysController do
       AuditLogger.log_api_key_event(:key_created, api_key.id, character_id)
 
       conn
-      put_status(:created)
-      json(%{api_key: format_api_key(api_key)})
+      |> put_status(:created)
+      |> json(%{api_key: format_api_key(api_key)})
     else
       nil ->
         conn

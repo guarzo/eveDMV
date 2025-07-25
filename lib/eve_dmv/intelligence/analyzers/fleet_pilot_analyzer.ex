@@ -27,9 +27,8 @@ defmodule EveDmv.Intelligence.Analyzers.FleetPilotAnalyzer do
           # Filter and enhance with pilot data
           available_pilots =
             members
-
-          |> Enum.filter(&pilot_available?/1)
-          |> Enum.map(&enhance_pilot_data/1)
+            |> Enum.filter(&pilot_available?/1)
+            |> Enum.map(&enhance_pilot_data/1)
 
           {:ok, available_pilots}
 
@@ -205,13 +204,11 @@ defmodule EveDmv.Intelligence.Analyzers.FleetPilotAnalyzer do
         # Find best available pilot for this ship requirement
         best_match =
           sorted_scores
-
-        |> Enum.filter(fn score ->
-          score.ship_type_id == ship_req.ship_type_id and
-            not MapSet.member?(used_pilots, score.pilot_id)
-        end)
-
-        |> Enum.take(ship_req.quantity_needed)
+          |> Enum.filter(fn score ->
+            score.ship_type_id == ship_req.ship_type_id and
+              not MapSet.member?(used_pilots, score.pilot_id)
+          end)
+          |> Enum.take(ship_req.quantity_needed)
 
         new_assignments =
           Enum.map(best_match, fn match ->
@@ -227,9 +224,9 @@ defmodule EveDmv.Intelligence.Analyzers.FleetPilotAnalyzer do
 
         new_used_pilots =
           best_match
-
-        Enum.map(& &1.pilot_id) |> MapSet.new()
-        MapSet.union(used_pilots)
+          |> Enum.map(& &1.pilot_id)
+          |> MapSet.new()
+          |> MapSet.union(used_pilots)
 
         {assignments ++ new_assignments, new_used_pilots}
       end)
@@ -248,9 +245,9 @@ defmodule EveDmv.Intelligence.Analyzers.FleetPilotAnalyzer do
     else
       avg_score =
         assignments
-
-      Enum.map(& &1.assignment_score) |> Enum.sum()
-      Kernel./(length(assignments))
+        |> Enum.map(& &1.assignment_score)
+        |> Enum.sum()
+        |> Kernel./(length(assignments))
 
       %{
         overall_score: Float.round(avg_score, 2),

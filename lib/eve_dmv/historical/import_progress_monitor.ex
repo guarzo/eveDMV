@@ -117,17 +117,17 @@ defmodule EveDmv.Historical.ImportProgressMonitor do
       state.metrics
       |> Map.values()
       |> Enum.map(fn metrics ->
-      latest_sample = List.first(metrics.samples, %{})
+        latest_sample = List.first(metrics.samples, %{})
 
-      %{
-        import_id: metrics.import_id,
-        start_time: metrics.start_time,
-        current_rate: Map.get(latest_sample, :rate, 0),
-        processed: Map.get(latest_sample, :processed, 0),
-        errors: Map.get(latest_sample, :errors, 0),
-        avg_batch_duration: calculate_avg_duration(metrics.performance.batch_durations)
-      }
-    end)
+        %{
+          import_id: metrics.import_id,
+          start_time: metrics.start_time,
+          current_rate: Map.get(latest_sample, :rate, 0),
+          processed: Map.get(latest_sample, :processed, 0),
+          errors: Map.get(latest_sample, :errors, 0),
+          avg_batch_duration: calculate_avg_duration(metrics.performance.batch_durations)
+        }
+      end)
 
     {:reply, summary, state}
   end

@@ -598,6 +598,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
         end
       end)
       |> Enum.sum()
+
     optimization_percentage =
       if current_mass > 0 do
         potential_savings / current_mass * 100
@@ -836,9 +837,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
       [{:current, metrics, timestamp}] ->
         # Check if cache is still valid (5 minutes)
         if DateTime.diff(DateTime.utc_now(), timestamp, :second) < 300 do
-    metrics
+          metrics
         else
-    nil
+          nil
         end
 
       [] ->

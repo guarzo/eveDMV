@@ -105,8 +105,8 @@ defmodule EveDmv.Monitoring.AlertDispatcher do
 
   defp generate_id do
     8
-    :crypto.strong_rand_bytes()
-    Base.encode16(case: :lower)
+    |> :crypto.strong_rand_bytes()
+    |> Base.encode16(case: :lower)
   end
 
   defp should_send_alert?(type, state) do
@@ -194,7 +194,7 @@ defmodule EveDmv.Monitoring.AlertDispatcher do
       [:eve_dmv, :error_recovery, :action_taken]
     ]
 
-    |> Enum.each(events, fn event ->
+    Enum.each(events, fn event ->
       :telemetry.attach(
         "alert-dispatcher-#{inspect(event)}",
         event,

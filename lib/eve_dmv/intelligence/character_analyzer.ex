@@ -7,8 +7,8 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
   intelligence operations and performance testing.
   """
 
-  alias EveDmv.Contexts.CharacterIntelligence
   alias EveDmv.Analytics.BattleDetector
+  alias EveDmv.Contexts.CharacterIntelligence
 
   require Logger
 
@@ -88,7 +88,6 @@ defmodule EveDmv.Intelligence.CharacterAnalyzer do
       max_concurrency: max_concurrency,
       timeout: timeout
     )
-
     |> Enum.map(fn
       {:ok, result} -> result
       {:exit, reason} -> {:error, {:timeout_or_exit, reason}}

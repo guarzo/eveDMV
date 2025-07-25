@@ -918,12 +918,14 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     else
       hours =
         killmails
-    |> Enum.map(fn km ->
+        |> Enum.map(fn km ->
           km.killmail_time
           |> NaiveDateTime.to_time()
           |> Time.to_seconds_after_midnight()
           |> div(3600)
-        end) |> Enum.frequencies()
+        end)
+        |> Enum.frequencies()
+
       # High variety = active across many hours
       hours_active = map_size(hours)
       # 12+ hours active = max variety
@@ -948,6 +950,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
           -prob * :math.log(prob)
         end)
         |> Enum.sum()
+
       max_entropy = :math.log(map_size(ship_types))
 
       if max_entropy > 0 do
@@ -966,17 +969,21 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
       # Group by day of week and hour
       timing_patterns =
         killmails
-    |> Enum.map(fn km ->
+        |> Enum.map(fn km ->
           date = NaiveDateTime.to_date(km.killmail_time)
 
           hour =
-            km.killmail_time |> NaiveDateTime.to_time() |> Time.to_seconds_after_midnight()
+            km.killmail_time
+            |> NaiveDateTime.to_time()
+            |> Time.to_seconds_after_midnight()
             |> div(3600)
 
           day_of_week = Date.day_of_week(date)
 
           {day_of_week, hour}
-        end) |> Enum.frequencies()
+        end)
+        |> Enum.frequencies()
+
       # High variety in timing = more unpredictable
       unique_timing_slots = map_size(timing_patterns)
       # 7 days * 24 hours
@@ -996,11 +1003,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
         attacker_killmails
         |> Enum.map(& &1.victim_ship_type_id)
         |> Enum.frequencies()
+
       target_corps =
         attacker_killmails
         |> Enum.map(& &1.victim_corporation_id)
         |> Enum.filter(&(&1 != nil))
         |> Enum.frequencies()
+
       ship_type_variety = map_size(target_ship_types)
       corp_variety = map_size(target_corps)
 
@@ -1345,64 +1354,33 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   # Insight generation functions
 
   defp generate_combat_skill_insights(raw_score, kd_ratio, isk_efficiency, survival_rate) do
-    insights = []
-
-    insights =
-      if kd_ratio > 3.0 do
-        ["Excellent kill/death ratio (#{Float.round(kd_ratio, 1)}:1)" | insights]
-      else
-        insights
-      end
-
-    insights =
-      if isk_efficiency > 2.0 do
-        ["Strong ISK efficiency - destroys more value than lost" | insights]
-      else
-        insights
-      end
-
-    insights =
-      if survival_rate > 0.8 do
-        ["High survival rate (#{round(survival_rate * 100)}%) - good at disengaging" | insights]
-      else
-        insights
-      end
-
-    insights =
-      if raw_score > 0.8 do
-        ["Elite combat performance across all metrics" | insights]
-      else
-        insights
-      end
-
-    insights
+    []
+    |> maybe_add_insight(
+      "Excellent kill/death ratio (#{Float.round(kd_ratio, 1)}:1)",
+      kd_ratio > 3.0
+    )
+    |> maybe_add_insight(
+      "Strong ISK efficiency - destroys more value than lost",
+      isk_efficiency > 2.0
+    )
+    |> maybe_add_insight(
+      "High survival rate (#{round(survival_rate * 100)}%) - good at disengaging",
+      survival_rate > 0.8
+    )
+    |> maybe_add_insight("Elite combat performance across all metrics", raw_score > 0.8)
   end
 
   defp generate_ship_mastery_insights(ship_diversity, class_mastery, specialization_score) do
-    insights = []
-
-    insights =
-      if ship_diversity > 0.8 do
-        ["Excellent ship diversity - comfortable with many hull types" | insights]
-      else
-        insights
-      end
-
-    insights =
-      if class_mastery > 0.8 do
-        ["Strong mastery across multiple ship classes" | insights]
-      else
-        insights
-      end
-
-    insights =
-      if specialization_score > 0.8 do
-        ["Good balance between specialization and versatility" | insights]
-      else
-        insights
-      end
-
-    insights
+    []
+    |> maybe_add_insight(
+      "Excellent ship diversity - comfortable with many hull types",
+      ship_diversity > 0.8
+    )
+    |> maybe_add_insight("Strong mastery across multiple ship classes", class_mastery > 0.8)
+    |> maybe_add_insight(
+      "Good balance between specialization and versatility",
+      specialization_score > 0.8
+    )
   end
 
   defp generate_gang_effectiveness_insights(
@@ -1410,30 +1388,19 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
          role_execution,
          leadership_indicators
        ) do
-    insights = []
-
-    insights =
+    base_insight =
       if fleet_participation > 0.7 do
-        ["Primarily operates in fleet environments" | insights]
+        "Primarily operates in fleet environments"
       else
-        ["Operates frequently in small gang or solo scenarios" | insights]
+        "Operates frequently in small gang or solo scenarios"
       end
 
-    insights =
-      if leadership_indicators > 0.7 do
-        ["Shows strong leadership patterns - likely FC or key fleet member" | insights]
-      else
-        insights
-      end
-
-    insights =
-      if role_execution > 0.8 do
-        ["Excellent fleet role execution" | insights]
-      else
-        insights
-      end
-
-    insights
+    [base_insight]
+    |> maybe_add_insight(
+      "Shows strong leadership patterns - likely FC or key fleet member",
+      leadership_indicators > 0.7
+    )
+    |> maybe_add_insight("Excellent fleet role execution", role_execution > 0.8)
   end
 
   defp generate_unpredictability_insights(tactical_variance, ship_selection_variance) do
@@ -1667,5 +1634,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
 
   defp average(values) do
     SharedUtilities.average(values)
+  end
+
+  defp maybe_add_insight(insights, message, condition) do
+    if condition do
+      [message | insights]
+    else
+      insights
+    end
   end
 end

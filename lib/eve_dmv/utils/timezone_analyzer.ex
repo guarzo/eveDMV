@@ -24,7 +24,9 @@ defmodule EveDmv.Utils.TimezoneAnalyzer do
     hourly_distribution =
       killmails
       |> Enum.map(&extract_hour_from_killmail/1)
-      |> Enum.filter(& &1) |> Enum.frequencies()
+      |> Enum.filter(& &1)
+      |> Enum.frequencies()
+
     if map_size(hourly_distribution) == 0 do
       "Unknown"
     else
@@ -57,7 +59,9 @@ defmodule EveDmv.Utils.TimezoneAnalyzer do
     hourly_distribution =
       killmails
       |> Enum.map(&extract_hour_from_killmail/1)
-      |> Enum.filter(& &1) |> Enum.frequencies()
+      |> Enum.filter(& &1)
+      |> Enum.frequencies()
+
     # Calculate activity for each timezone
     eutz_activity = calculate_timezone_activity(hourly_distribution, eutz_hours())
     ustz_activity = calculate_timezone_activity(hourly_distribution, ustz_hours())
@@ -95,8 +99,7 @@ defmodule EveDmv.Utils.TimezoneAnalyzer do
   defp ustz_hours, do: [21, 22, 23, 0, 1, 2, 3]
 
   defp calculate_timezone_activity(hourly_distribution, timezone_hours) do
-    timezone_hours
-    |> Enum.map(&Map.get(hourly_distribution, &1, 0)) |> Enum.sum()
+    timezone_hours |> Enum.map(&Map.get(hourly_distribution, &1, 0)) |> Enum.sum()
   end
 
   defp determine_primary_from_distribution(eutz, ustz, autz) do

@@ -306,9 +306,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
   defp prepare_notifications(alert, profile) do
     notification_config = profile.notification_config || %{}
 
-    enabled_channels = get_enabled_channels(notification_config)
-
-    |> Enum.map(enabled_channels, fn channel ->
+    get_enabled_channels(notification_config)
+    |> Enum.map(fn channel ->
       %{
         id: generate_notification_id(),
         alert_id: alert.id,
@@ -406,8 +405,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
     email_body = format_email_body(alert)
 
     email_body
-    String.replace("\n", "<br>")
-    String.replace("  ", "&nbsp;&nbsp;")
+    |> String.replace("\n", "<br>")
+    |> String.replace("  ", "&nbsp;&nbsp;")
   end
 
   defp format_in_app_title(alert) do
@@ -665,8 +664,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
 
     status_distribution =
       recent_notifications
+      |> Enum.group_by(& &1.status)
 
-    |> Enum.group_by(& &1.status)
     Map.new(fn {status, notifications} -> {status, length(notifications)} end)
 
     %{

@@ -218,7 +218,7 @@ defmodule Mix.Tasks.Eve.Benchmark do
     Mix.shell().info("\nQuery Performance (5 runs each):")
     Mix.shell().info("--------------------------------")
 
-    |> Enum.each(results, fn {name, avg, min, max} ->
+    Enum.each(results, fn {name, avg, min, max} ->
       Mix.shell().info(
         "#{String.pad_trailing(name, 30)} Avg: #{format_time(avg)} (#{format_time(min)}-#{format_time(max)})"
       )

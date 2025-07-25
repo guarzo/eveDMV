@@ -196,9 +196,9 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
         }
       )
 
-    killmails = Repo.all(query)
+    Repo.all(query)
     # Group by ship type
-    |> Enum.group_by(killmails, & &1.victim_ship_type_id)
+    |> Enum.group_by(& &1.victim_ship_type_id)
   end
 
   defp analyze_ship_type(ship_type_id, killmails) do
@@ -388,12 +388,11 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
 
     # Check if record exists
     existing =
-      Repo.one(
-        from(s in "ship_role_patterns",
-          where: s.ship_type_id == ^analysis_result.ship_type_id,
-          select: %{ship_type_id: s.ship_type_id}
-        )
+      from(s in "ship_role_patterns",
+        where: s.ship_type_id == ^analysis_result.ship_type_id,
+        select: %{ship_type_id: s.ship_type_id}
       )
+      |> Repo.one()
 
     case existing do
       nil ->
@@ -409,20 +408,22 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
 
       _ ->
         # Update existing record
-        case Repo.update_all(
-               from(s in "ship_role_patterns",
-                 where: s.ship_type_id == ^analysis_result.ship_type_id
-               ),
-               set: [
-                 primary_role: attrs.primary_role,
-                 role_distribution: attrs.role_distribution,
-                 confidence_score: attrs.confidence_score,
-                 sample_size: attrs.sample_size,
-                 last_analyzed: attrs.last_analyzed,
-                 meta_trend: attrs.meta_trend,
-                 updated_at: attrs.updated_at
-               ]
-             ) do
+        update_query =
+          from(s in "ship_role_patterns",
+            where: s.ship_type_id == ^analysis_result.ship_type_id
+          )
+
+        update_set = [
+          primary_role: attrs.primary_role,
+          role_distribution: attrs.role_distribution,
+          confidence_score: attrs.confidence_score,
+          sample_size: attrs.sample_size,
+          last_analyzed: attrs.last_analyzed,
+          meta_trend: attrs.meta_trend,
+          updated_at: attrs.updated_at
+        ]
+
+        case Repo.update_all(update_query, set: update_set) do
           {1, _} -> {:ok, :updated}
           _ -> {:error, :update_failed}
         end
@@ -432,12 +433,11 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
   defp get_reference_attrs(ship_type_id) do
     # Get ship name from eve_item_types if available
     ship_info =
-      Repo.one(
-        from(i in "eve_item_types",
-          where: i.type_id == ^ship_type_id,
-          select: %{type_name: i.type_name}
-        )
+      from(i in "eve_item_types",
+        where: i.type_id == ^ship_type_id,
+        select: %{type_name: i.type_name}
       )
+      |> Repo.one()
 
     %{
       ship_name: ship_info[:type_name] || "Unknown Ship",

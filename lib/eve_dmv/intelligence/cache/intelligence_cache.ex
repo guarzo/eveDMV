@@ -10,6 +10,7 @@ defmodule EveDmv.Intelligence.Cache.IntelligenceCache do
   alias EveDmv.Intelligence.Analyzers.CharacterAnalyzer
   alias EveDmv.Intelligence.Analyzers.WHVettingAnalyzer
   alias EveDmv.Intelligence.Core.CorrelationEngine
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator
   require Logger
 
   @doc """
@@ -155,8 +156,7 @@ defmodule EveDmv.Intelligence.Cache.IntelligenceCache do
       {:threat_score, character_id, [analysis_window_days: 90]}
     ]
 
-    threat_keys_to_delete
-    |> Enum.each(fn key ->
+    Enum.each(threat_keys_to_delete, fn key ->
       Cache.delete(:analysis, key)
     end)
 
@@ -226,7 +226,7 @@ defmodule EveDmv.Intelligence.Cache.IntelligenceCache do
          ) do
       true ->
         try do
-          EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.calculate_threat_score(
+          ThreatScoringCoordinator.calculate_threat_score(
             character_id,
             options
           )

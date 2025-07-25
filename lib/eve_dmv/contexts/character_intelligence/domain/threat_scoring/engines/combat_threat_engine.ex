@@ -148,43 +148,28 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Com
   defp tactical_target?(ship_type_id) do
     # Ships that are tactically important targets
     # Check if the ship type ID is in any of the tactical ship ID lists
-    Map.values(@tactical_ship_ids)
-    |> Enum.any?(fn ship_ids -> ship_type_id in ship_ids end)
+    Enum.any?(Map.values(@tactical_ship_ids), fn ship_ids -> ship_type_id in ship_ids end)
   end
 
   defp generate_combat_skill_insights(raw_score, kd_ratio, isk_efficiency, survival_rate) do
-    insights = []
-
-    insights =
-      if kd_ratio > 3.0 do
-        ["Excellent kill/death ratio (#{Float.round(kd_ratio, 1)}:1)" | insights]
-      else
-        insights
-      end
-
-    insights =
-      if isk_efficiency > 2.0 do
-        ["Strong ISK efficiency - destroys more value than lost" | insights]
-      else
-        insights
-      end
-
-    insights =
-      if survival_rate > 0.8 do
-        ["High survival rate (#{round(survival_rate * 100)}%) - good at disengaging" | insights]
-      else
-        insights
-      end
-
-    insights =
-      if raw_score > 0.8 do
-        ["Elite combat performance across all metrics" | insights]
-      else
-        insights
-      end
-
-    insights
+    []
+    |> maybe_add_insight(
+      "Excellent kill/death ratio (#{Float.round(kd_ratio, 1)}:1)",
+      kd_ratio > 3.0
+    )
+    |> maybe_add_insight(
+      "Strong ISK efficiency - destroys more value than lost",
+      isk_efficiency > 2.0
+    )
+    |> maybe_add_insight(
+      "High survival rate (#{round(survival_rate * 100)}%) - good at disengaging",
+      survival_rate > 0.8
+    )
+    |> maybe_add_insight("Elite combat performance across all metrics", raw_score > 0.8)
   end
+
+  defp maybe_add_insight(insights, _insight, false), do: insights
+  defp maybe_add_insight(insights, insight, true), do: [insight | insights]
 
   defp normalize_score(value, min_val, max_val) do
     clamped_value = min(max_val, max(min_val, value))

@@ -66,8 +66,9 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
       limit = Keyword.get(opts, :limit, 100)
 
       EveDmv.Killmails.KillmailEnriched
-      Ash.Query.limit(limit)
-      Ash.Query.sort(killmail_time: :desc) |> Ash.read()
+      |> Ash.Query.limit(limit)
+      |> Ash.Query.sort(killmail_time: :desc)
+      |> Ash.read()
     end
   end
 
@@ -99,9 +100,10 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
       limit = Keyword.get(opts, :limit, 100)
 
       EveDmv.Killmails.KillmailEnriched
-      Ash.Query.filter(solar_system_id: system_id)
-      Ash.Query.limit(limit)
-      Ash.Query.sort(killmail_time: :desc) |> Ash.read()
+      |> Ash.Query.filter(solar_system_id: system_id)
+      |> Ash.Query.limit(limit)
+      |> Ash.Query.sort(killmail_time: :desc)
+      |> Ash.read()
     end
   end
 
@@ -120,9 +122,10 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
       limit = Keyword.get(opts, :limit, 100)
 
       EveDmv.Killmails.KillmailEnriched
-      Ash.Query.filter(victim_character_id: character_id)
-      Ash.Query.limit(limit)
-      Ash.Query.sort(killmail_time: :desc) |> Ash.read()
+      |> Ash.Query.filter(victim_character_id: character_id)
+      |> Ash.Query.limit(limit)
+      |> Ash.Query.sort(killmail_time: :desc)
+      |> Ash.read()
     end
   end
 
@@ -145,9 +148,10 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
       min_value = Keyword.get(opts_with_defaults, :min_value, 1_000_000_000)
 
       EveDmv.Killmails.KillmailEnriched
-      Ash.Query.filter(expr(total_value >= ^min_value))
-      Ash.Query.limit(limit)
-      Ash.Query.sort(total_value: :desc) |> Ash.read()
+      |> Ash.Query.filter(expr(total_value >= ^min_value))
+      |> Ash.Query.limit(limit)
+      |> Ash.Query.sort(total_value: :desc)
+      |> Ash.read()
     end
   end
 

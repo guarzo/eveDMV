@@ -77,17 +77,16 @@ defmodule EveDmv.Eve.StaticDataLoader.WormholeClassLoader do
     # Get all solar systems that need wormhole class updates
     systems_to_update =
       Map.keys(wormhole_data)
-
-    |> Enum.chunk_every(1000)
-    |> Enum.flat_map(&get_systems_batch/1)
+      |> Enum.chunk_every(1000)
+      |> Enum.flat_map(&get_systems_batch/1)
 
     Logger.info("Found #{length(systems_to_update)} solar systems to update")
 
     # Update systems in batches
     update_count =
       systems_to_update
+      |> Enum.chunk_every(500)
 
-    |> Enum.chunk_every(500)
     Enum.map(&update_systems_batch(&1, wormhole_data)) |> Enum.sum()
     {:ok, update_count}
   end

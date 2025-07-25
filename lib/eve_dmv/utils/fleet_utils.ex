@@ -191,19 +191,20 @@ defmodule EveDmv.Utils.FleetUtils do
   """
   def extract_attacker_data(killmail) do
     raw_data = Map.get(killmail, :raw_data, %{})
-    attackers = Map.get(raw_data, "attackers", [])
 
-    |> Enum.map(attackers, fn attacker ->
-      %{
-        character_id: Map.get(attacker, "character_id"),
-        character_name: Map.get(attacker, "character_name"),
-        corporation_id: Map.get(attacker, "corporation_id"),
-        alliance_id: Map.get(attacker, "alliance_id"),
-        ship_type_id: Map.get(attacker, "ship_type_id"),
-        role: :attacker,
-        final_blow: Map.get(attacker, "final_blow", false)
-      }
-    end)
+    _attackers =
+      Map.get(raw_data, "attackers", [])
+      |> Enum.map(fn attacker ->
+        %{
+          character_id: Map.get(attacker, "character_id"),
+          character_name: Map.get(attacker, "character_name"),
+          corporation_id: Map.get(attacker, "corporation_id"),
+          alliance_id: Map.get(attacker, "alliance_id"),
+          ship_type_id: Map.get(attacker, "ship_type_id"),
+          role: :attacker,
+          final_blow: Map.get(attacker, "final_blow", false)
+        }
+      end)
   end
 
   @doc """
@@ -217,7 +218,6 @@ defmodule EveDmv.Utils.FleetUtils do
       end)
 
     groups
-
     |> Enum.map(fn {group_id, pilots} ->
       %{
         group_id: group_id,

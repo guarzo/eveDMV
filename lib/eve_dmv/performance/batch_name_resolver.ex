@@ -208,7 +208,7 @@ defmodule EveDmv.Performance.BatchNameResolver do
   defp extract_attackers_data(raw_data, names, ids) do
     attackers = Map.get(raw_data, "attackers", [])
 
-    |> Enum.reduce(attackers, {names, ids}, fn attacker, {names_acc, ids_acc} ->
+    Enum.reduce(attackers, {names, ids}, fn attacker, {names_acc, ids_acc} ->
       # Extract character name if present
       names_acc =
         if attacker["character_id"] && attacker["character_name"] do
@@ -292,7 +292,7 @@ defmodule EveDmv.Performance.BatchNameResolver do
       %{character_ids: [], corp_ids: [], alliance_ids: [], ship_ids: [], system_ids: []}
     }
 
-    |> Enum.reduce(events, initial_state, fn event, {names, ids} ->
+    Enum.reduce(events, initial_state, fn event, {names, ids} ->
       # Extract from victim
       {names, ids} = extract_event_victim_data(event, names, ids)
 
@@ -382,7 +382,7 @@ defmodule EveDmv.Performance.BatchNameResolver do
   defp extract_event_attackers_data(event, names, ids) do
     attackers = Map.get(event, :attackers, [])
 
-    |> Enum.reduce(attackers, {names, ids}, fn attacker, {names_acc, ids_acc} ->
+    Enum.reduce(attackers, {names, ids}, fn attacker, {names_acc, ids_acc} ->
       # Extract names if present
       names_acc =
         if attacker[:character_id] && attacker[:character_name] do

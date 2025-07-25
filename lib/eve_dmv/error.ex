@@ -145,7 +145,7 @@ defmodule EveDmv.Error do
   defp humanize(atom) when is_atom(atom) do
     atom
     |> Atom.to_string()
-    |> String.replace("_", " ") 
+    |> String.replace("_", " ")
     |> String.capitalize()
   end
 

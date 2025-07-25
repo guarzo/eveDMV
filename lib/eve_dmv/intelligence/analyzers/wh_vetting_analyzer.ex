@@ -747,15 +747,15 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
       0.0
     else
       # Higher confidence when eviction groups are detected
-      if not Enum.empty?(eviction_activity) do
+      if Enum.empty?(eviction_activity) do
+        # Return 0.0 when no eviction activity detected
+        0.0
+      else
         # Base confidence for detection
         base_confidence = 0.7
         # Bonus for multiple detections
         evidence_bonus = min(0.3, length(eviction_activity) * 0.1)
         Float.round(base_confidence + evidence_bonus, 2)
-      else
-        # Return 0.0 when no eviction activity detected
-        0.0
       end
     end
   end

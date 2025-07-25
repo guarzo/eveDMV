@@ -102,7 +102,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
     if fitting_data do
       %{
         module_usage_analysis: analyze_fitted_module_usage(events, fitting_data),
-        unused_modules: identify_unused_modules(events, fitting_data),
+        unused_modules: identify_unused_modules(events, fitting_data)
       }
     else
       %{error: "No fitting data available for analysis"}
@@ -322,7 +322,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
     %{
       type: :range_failure,
       timestamp: timestamp,
-      reason: "Target too far away",
+      reason: "Target too far away"
     }
   end
 
@@ -415,7 +415,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
       tackle_effectiveness: analyze_tackle_effectiveness(events),
       defensive_reactions: analyze_defensive_reactions(events),
       range_management: analyze_range_management(events),
-      target_selection: analyze_target_selection(events),
+      target_selection: analyze_target_selection(events)
     }
   end
 
@@ -447,7 +447,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
       %{
         total_shots: length(damage_events),
         average_application: avg_application,
-        quality_breakdown: quality_breakdown,
+        quality_breakdown: quality_breakdown
       }
     else
       %{total_shots: 0, average_application: 0}
@@ -461,7 +461,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
     %{
       tackle_attempts: length(tackle_attempts),
       tackle_received: length(tackle_received),
-      tackle_modules_used: tackle_attempts |> Enum.map(& &1.module) |> Enum.uniq(),
+      tackle_modules_used: tackle_attempts |> Enum.map(& &1.module) |> Enum.uniq()
     }
   end
 
@@ -493,21 +493,21 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
       damage_events
       |> Enum.group_by(& &1.target)
       |> Enum.map(fn {target, target_events} ->
-      {target,
-       %{
-         shots: length(target_events),
-         damage: Enum.sum(Enum.map(target_events, & &1.damage)),
-         avg_application:
-           Enum.sum(Enum.map(target_events, & &1.application_percentage)) /
-             length(target_events),
-         ship_type: List.first(target_events).target_ship
-       }}
-    end)
-    |> Enum.into(%{})
+        {target,
+         %{
+           shots: length(target_events),
+           damage: Enum.sum(Enum.map(target_events, & &1.damage)),
+           avg_application:
+             Enum.sum(Enum.map(target_events, & &1.application_percentage)) /
+               length(target_events),
+           ship_type: List.first(target_events).target_ship
+         }}
+      end)
+      |> Enum.into(%{})
 
     %{
       targets_engaged: length(Map.keys(target_stats)),
-      target_statistics: target_stats,
+      target_statistics: target_stats
     }
   end
 
@@ -677,22 +677,25 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
         100.0
       else
         efficiency = total_damage_dealt / total_damage_received
-        min(efficiency * 50, 100.0) |> Float.round(1)
+        Float.round(min(efficiency * 50, 100.0), 1)
       end
     end
   end
 
   defp filter_by_time(events, nil, nil), do: events
+
   defp filter_by_time(events, start_time, end_time) do
-    events
-    |> Enum.filter(fn event ->
+    Enum.filter(events, fn event ->
       cond do
         start_time && end_time ->
           event.timestamp >= start_time && event.timestamp <= end_time
+
         start_time ->
           event.timestamp >= start_time
+
         end_time ->
           event.timestamp <= end_time
+
         true ->
           true
       end
@@ -700,17 +703,20 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
   end
 
   defp filter_by_pilot(events, nil), do: events
+
   defp filter_by_pilot(events, pilot_name) do
-    events
-    |> Enum.filter(fn event ->
+    Enum.filter(events, fn event ->
       # Check for pilot name in relevant fields based on event type
       case event.type do
         :damage_dealt ->
           Map.get(event, :target) == pilot_name
+
         :damage_received ->
           Map.get(event, :attacker) == pilot_name
+
         :miss_received ->
           Map.get(event, :attacker) == pilot_name
+
         _ ->
           false
       end

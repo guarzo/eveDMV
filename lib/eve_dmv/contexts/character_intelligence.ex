@@ -207,7 +207,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   defp get_combat_statistics(character_id) do
     # Calculate kills where character was attacker
     kills_query =
-      Ash.Query.new(KillmailRaw)
+      KillmailRaw
+      |> Ash.Query.new()
       |> Ash.Query.sort(killmail_time: :desc)
       |> Ash.Query.limit(1000)
 
@@ -226,9 +227,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
           end)
 
         # Count losses where character was victim
-        losses_query =
-          KillmailRaw
-          |> Ash.Query.filter(victim_character_id: character_id)
+        losses_query = Ash.Query.filter(KillmailRaw, victim_character_id: character_id)
 
         losses_count =
           case Ash.count(losses_query, domain: Api) do
@@ -244,9 +243,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
           end)
 
         # For now, calculate ISK lost from the raw data since total_value might not be populated
-        isk_lost_query =
-          KillmailRaw
-          |> Ash.Query.filter(victim_character_id: character_id)
+        isk_lost_query = Ash.Query.filter(KillmailRaw, victim_character_id: character_id)
 
         isk_lost =
           case Ash.read(isk_lost_query, domain: Api) do
@@ -380,38 +377,27 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
 
   defp generate_behavioral_characteristics(threat_data) do
     dimensions = Map.get(threat_data, :dimensions, %{})
-    characteristics = []
-    # Add characteristics based on dimensions
-    characteristics =
-      if dimensions[:combat_skill] > 80 do
-        ["Highly skilled combatant" | characteristics]
-      else
-        characteristics
-      end
 
-    characteristics =
-      if dimensions[:ship_mastery] > 75 do
-        ["Proficient with multiple ship types" | characteristics]
-      else
-        characteristics
-      end
-
-    characteristics =
-      if dimensions[:gang_effectiveness] > 70 do
-        ["Effective in fleet operations" | characteristics]
-      else
-        characteristics
-      end
-
-    characteristics =
-      if dimensions[:unpredictability] > 60 do
-        ["Unpredictable engagement patterns" | characteristics]
-      else
-        characteristics
-      end
-
-    characteristics
+    []
+    |> maybe_add_characteristic("Highly skilled combatant", dimensions[:combat_skill] > 80)
+    |> maybe_add_characteristic(
+      "Proficient with multiple ship types",
+      dimensions[:ship_mastery] > 75
+    )
+    |> maybe_add_characteristic(
+      "Effective in fleet operations",
+      dimensions[:gang_effectiveness] > 70
+    )
+    |> maybe_add_characteristic(
+      "Unpredictable engagement patterns",
+      dimensions[:unpredictability] > 60
+    )
   end
+
+  defp maybe_add_characteristic(characteristics, _characteristic, false), do: characteristics
+
+  defp maybe_add_characteristic(characteristics, characteristic, true),
+    do: [characteristic | characteristics]
 
   defp generate_intelligence_summary(threat_analysis, behavioral_patterns) do
     primary_pattern = Map.get(behavioral_patterns, :primary_pattern, :unknown)
@@ -442,7 +428,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
     |> Enum.take(3)
     |> Enum.map(fn {key, value} ->
       %{
-        dimension: to_string(key) |> String.replace("_", " ") |> String.capitalize(),
+        dimension: key |> to_string() |> String.replace("_", " ") |> String.capitalize(),
         score: value
       }
     end)

@@ -502,6 +502,7 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
       support_ships
       |> Enum.map(&Map.get(ship_counts, &1, 0))
       |> Enum.sum()
+
     logistics_ratio = logistics_count / fleet_size
 
     cond do

@@ -161,8 +161,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.CombatLog do
                  log.pilot_name
                ) do
             {:ok, performance_metrics} ->
-              changeset
-              |> Ash.Changeset.change_attribute(:performance_metrics, performance_metrics)
+              Ash.Changeset.change_attribute(changeset, :performance_metrics, performance_metrics)
 
             {:error, _reason} ->
               changeset
@@ -189,8 +188,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.CombatLog do
                  battle.killmails
                ) do
             {:ok, battle_correlation} ->
-              changeset
-              |> Ash.Changeset.change_attribute(:battle_correlation, battle_correlation)
+              Ash.Changeset.change_attribute(changeset, :battle_correlation, battle_correlation)
 
             {:error, _reason} ->
               changeset

@@ -56,19 +56,19 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
         KillmailRaw
         |> Api.read!()
         |> Enum.filter(fn km ->
-        km.victim_character_id == character_id and
-          km.killmail_time >= thirty_days_ago
-      end)
+          km.victim_character_id == character_id and
+            km.killmail_time >= thirty_days_ago
+        end)
 
       attacker_killmails =
         KillmailRaw
         |> Api.read!()
         |> Enum.filter(fn km ->
-        km.killmail_time >= thirty_days_ago and
-          Enum.any?(km.attackers || [], fn attacker ->
-            attacker.character_id == character_id
-          end)
-      end)
+          km.killmail_time >= thirty_days_ago and
+            Enum.any?(km.attackers || [], fn attacker ->
+              attacker.character_id == character_id
+            end)
+        end)
 
       all_killmails = Enum.uniq_by(victim_killmails ++ attacker_killmails, & &1.killmail_id)
 

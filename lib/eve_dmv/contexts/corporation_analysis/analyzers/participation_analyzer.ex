@@ -360,8 +360,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
 
   defp identify_home_systems(home_defense_activities) do
     home_defense_activities
-
-    Enum.map(& &1.system_id)
+    |> Enum.map(& &1.system_id)
     |> Enum.frequencies()
     |> Enum.sort_by(fn {_system, count} -> count end, :desc)
     |> Enum.take(3)
@@ -721,7 +720,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
 
   defp count_recent_activities(participation_data, days) do
     cutoff = DateTime.add(DateTime.utc_now(), -days, :day)
-    
+
     Enum.count(
       participation_data.activities,
       &(DateTime.compare(&1.timestamp, cutoff) == :gt)

@@ -16,9 +16,7 @@ defmodule Mix.Tasks.Eve.Performance do
 
   alias EveDmv.Database.QueryPlanAnalyzer
   alias EveDmv.Eve.NameResolver
-  alias EveDmv.Performance.MemoryProfiler
-  alias EveDmv.Performance.QueryMonitor
-  alias EveDmv.Performance.RegressionDetector
+  alias EveDmv.Performance
 
   @impl Mix.Task
   def run(args) do
@@ -60,11 +58,11 @@ defmodule Mix.Tasks.Eve.Performance do
     Mix.shell().info("=== EVE DMV Performance Dashboard ===\n")
 
     # Memory overview
-    memory_info = MemoryProfiler.get_memory_info()
+    memory_info = Performance.MemoryProfiler.get_memory_info()
     Mix.shell().info("💾 Memory Usage: #{format_bytes(memory_info.total)}")
 
     # Query performance
-    query_metrics = QueryMonitor.get_performance_metrics()
+    query_metrics = Performance.QueryMonitor.get_performance_metrics()
     slow_queries = Enum.filter(query_metrics, &(&1.avg_time_ms > 1000))
 
     if Enum.empty?(slow_queries) do
@@ -74,9 +72,9 @@ defmodule Mix.Tasks.Eve.Performance do
     end
 
     # Regression status
-    if Code.ensure_loaded?(RegressionDetector) do
+    if Code.ensure_loaded?(Performance.RegressionDetector) do
       try do
-        baselines = RegressionDetector.get_baselines()
+        baselines = Performance.RegressionDetector.get_baselines()
         Mix.shell().info("📊 Regression Detection: ✅ Monitoring #{map_size(baselines)} metrics")
       rescue
         _ ->
@@ -155,19 +153,20 @@ defmodule Mix.Tasks.Eve.Performance do
   defp monitor_loop(iteration) do
     # Clear screen and show updated metrics
     if iteration > 0 do
-      Mix.shell().info("\n" <> String.duplicate("=", 60))
+      Mix.shell().info("\n" <> :binary.copy("=", 60))
     end
+
     Mix.shell().info("Update ##{iteration + 1} - #{DateTime.utc_now()}")
 
     # Memory snapshot
-    memory = MemoryProfiler.get_memory_info()
+    memory = Performance.MemoryProfiler.get_memory_info()
 
     Mix.shell().info(
       "Memory: #{format_bytes(memory.total)} (Processes: #{format_bytes(memory.processes)})"
     )
 
     # Recent query performance
-    metrics = QueryMonitor.get_performance_metrics()
+    metrics = Performance.QueryMonitor.get_performance_metrics()
     slow_count = Enum.count(metrics, &(&1.avg_time_ms > 1000))
     Mix.shell().info("Queries: #{length(metrics)} monitored, #{slow_count} slow")
 
@@ -183,14 +182,14 @@ defmodule Mix.Tasks.Eve.Performance do
   defp check_regressions do
     Mix.shell().info("=== Performance Regression Check ===\n")
 
-    if Code.ensure_loaded?(RegressionDetector) do
+    if Code.ensure_loaded?(Performance.RegressionDetector) do
       try do
         # Force a regression check
-        RegressionDetector.force_regression_check()
+        Performance.RegressionDetector.force_regression_check()
 
         # Get current metrics vs baselines
-        baselines = RegressionDetector.get_baselines()
-        current_metrics = RegressionDetector.get_current_metrics()
+        baselines = Performance.RegressionDetector.get_baselines()
+        current_metrics = Performance.RegressionDetector.get_current_metrics()
 
         Mix.shell().info("Baselines: #{map_size(baselines)} metrics")
         Mix.shell().info("Current metrics: #{length(current_metrics)} measurements")
@@ -217,8 +216,8 @@ defmodule Mix.Tasks.Eve.Performance do
     Mix.shell().info("Generating comprehensive performance report...")
 
     # Collect all metrics
-    memory_info = MemoryProfiler.get_memory_info()
-    query_metrics = QueryMonitor.get_performance_metrics()
+    memory_info = Performance.MemoryProfiler.get_memory_info()
+    query_metrics = Performance.QueryMonitor.get_performance_metrics()
 
     report = %{
       timestamp: timestamp,
@@ -271,12 +270,12 @@ defmodule Mix.Tasks.Eve.Performance do
     Mix.shell().info("Analyzing system resources...")
 
     # System process analysis
-    process_analysis = MemoryProfiler.analyze_process_memory()
+    process_analysis = Performance.MemoryProfiler.analyze_process_memory()
     Mix.shell().info("Total processes: #{process_analysis.process_count}")
     Mix.shell().info("Process memory: #{format_bytes(process_analysis.total_memory)}")
 
     # ETS analysis
-    ets_analysis = MemoryProfiler.analyze_ets_tables()
+    ets_analysis = Performance.MemoryProfiler.analyze_ets_tables()
     Mix.shell().info("ETS tables: #{ets_analysis.table_count}")
     Mix.shell().info("ETS memory: #{format_bytes(ets_analysis.total_memory)}")
   end
@@ -327,7 +326,8 @@ defmodule Mix.Tasks.Eve.Performance do
             change_pct > 20 -> "🔴"
             change_pct > 10 -> "🟡"
             true -> "✅"
-        end
+          end
+
         Mix.shell().info(
           "#{status} #{metric_name}: #{format_bytes(baseline)} → #{format_bytes(current)} (#{format_change(change_pct)})"
         )
@@ -342,8 +342,8 @@ defmodule Mix.Tasks.Eve.Performance do
     end
   end
 
-  defp format_change(pct) when pct > 0, do: "+#{Float.round(pct, 1)}%"
-  defp format_change(pct), do: "#{Float.round(pct, 1)}%"
+  defp format_change(pct) when pct > 0, do: "+#{:erlang.float_to_binary(pct, decimals: 1)}%"
+  defp format_change(pct), do: "#{:erlang.float_to_binary(pct, decimals: 1)}%"
 
   defp get_system_uptime do
     # Simple uptime calculation
@@ -352,10 +352,13 @@ defmodule Mix.Tasks.Eve.Performance do
   end
 
   defp format_bytes(bytes) when bytes < 1024, do: "#{bytes}B"
-  defp format_bytes(bytes) when bytes < 1024 * 1024, do: "#{Float.round(bytes / 1024, 2)}KB"
+
+  defp format_bytes(bytes) when bytes < 1024 * 1024,
+    do: "#{:erlang.float_to_binary(bytes / 1024, decimals: 2)}KB"
 
   defp format_bytes(bytes) when bytes < 1024 * 1024 * 1024,
-    do: "#{Float.round(bytes / (1024 * 1024), 2)}MB"
+    do: "#{:erlang.float_to_binary(bytes / (1024 * 1024), decimals: 2)}MB"
 
-  defp format_bytes(bytes), do: "#{Float.round(bytes / (1024 * 1024 * 1024), 2)}GB"
+  defp format_bytes(bytes),
+    do: "#{:erlang.float_to_binary(bytes / (1024 * 1024 * 1024), decimals: 2)}GB"
 end

@@ -342,12 +342,10 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
   defp find_latest_component(cache_entries, component) do
     matching =
       cache_entries
-
-    |> Enum.filter(fn {_, %{data: data}} ->
-      Map.has_key?(data, component_key(component))
-    end)
-
-    |> Enum.sort_by(fn {_, %{timestamp: ts}} -> ts end, {:desc, DateTime})
+      |> Enum.filter(fn {_, %{data: data}} ->
+        Map.has_key?(data, component_key(component))
+      end)
+      |> Enum.sort_by(fn {_, %{timestamp: ts}} -> ts end, {:desc, DateTime})
 
     case matching do
       [{_, %{data: data}} | _] ->

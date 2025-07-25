@@ -127,12 +127,10 @@ defmodule EveDmv.Security.ApiAuthentication do
   def validate_api_key(api_key, client_ip, required_permissions \\ []) do
     import Ash.Query
 
-    key_hash = hash_api_key(api_key)
-
     query =
       __MODULE__
-      |> new()
-      |> filter(key_hash == ^key_hash)
+      |> Ash.Query.new()
+      |> Ash.Query.filter(api_key == ^api_key)
 
     case Ash.read_one(query, domain: EveDmv.Api) do
       {:ok, key_record} when key_record != nil ->
@@ -193,7 +191,7 @@ defmodule EveDmv.Security.ApiAuthentication do
 
   defp has_required_permissions?(key_record, required_permissions) do
     key_permissions = key_record.permissions || []
-    |> Enum.all?(required_permissions, fn perm -> perm in key_permissions end)
+    Enum.all?(required_permissions, fn perm -> perm in key_permissions end)
   end
 
   defp generate_api_key do
@@ -211,12 +209,10 @@ defmodule EveDmv.Security.ApiAuthentication do
 
   defp update_last_used(key_record, client_ip) do
     key_record
-
-    Ash.Changeset.for_update(:use_api_key, %{
+    |> Ash.Changeset.for_update(:use_api_key, %{
       last_used_at: DateTime.utc_now(),
       last_used_ip: client_ip
     })
-
-    Ash.update!(domain: EveDmv.Api)
+    |> Ash.update!(domain: EveDmv.Api)
   end
 end

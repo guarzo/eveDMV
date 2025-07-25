@@ -36,15 +36,13 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainStatusService do
   def get_all_chains_status(state) do
     chains_status =
       state.chains
-
-    |> Enum.map(fn {map_id, _chain_data} ->
-      case get_chain_status(map_id, state) do
-        {:ok, status} -> status
-        {:error, _} -> nil
-      end
-    end)
-
-    |> Enum.filter(&(&1 != nil))
+      |> Enum.map(fn {map_id, _chain_data} ->
+        case get_chain_status(map_id, state) do
+          {:ok, status} -> status
+          {:error, _} -> nil
+        end
+      end)
+      |> Enum.filter(&(&1 != nil))
 
     {:ok, chains_status}
   end
@@ -83,7 +81,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainStatusService do
       0
     else
       threats
-      |> Enum.map(& &1.threat_level) 
+      |> Enum.map(& &1.threat_level)
       |> Enum.max()
     end
   end

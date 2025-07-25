@@ -248,17 +248,15 @@ defmodule EveDmv.Workers.BackgroundTaskSupervisor do
   defp get_task_details(children) do
     {total_memory, details} =
       children
-
-    |> Enum.map(fn {_, pid, _, _} ->
-      case get_task_info(pid) do
-        {:ok, info} -> info
-        {:error, _} -> %{pid: pid, memory: 0, description: "Unknown", runtime: 0}
-      end
-    end)
-
-    |> Enum.reduce({0, []}, fn task, {mem_acc, list_acc} ->
-      {mem_acc + task.memory, [task | list_acc]}
-    end)
+      |> Enum.map(fn {_, pid, _, _} ->
+        case get_task_info(pid) do
+          {:ok, info} -> info
+          {:error, _} -> %{pid: pid, memory: 0, description: "Unknown", runtime: 0}
+        end
+      end)
+      |> Enum.reduce({0, []}, fn task, {mem_acc, list_acc} ->
+        {mem_acc + task.memory, [task | list_acc]}
+      end)
 
     {total_memory, Enum.reverse(details)}
   end

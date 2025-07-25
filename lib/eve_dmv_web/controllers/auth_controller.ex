@@ -46,7 +46,9 @@ defmodule EveDmvWeb.AuthController do
     case get_req_header(conn, "x-forwarded-for") do
       [forwarded_ips] ->
         forwarded_ips
-        String.split(",") |> List.first() |> String.trim()
+        |> String.split(",")
+        |> List.first()
+        |> String.trim()
 
       [] ->
         conn.remote_ip

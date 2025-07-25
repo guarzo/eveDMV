@@ -442,8 +442,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
             Enum.group_by(killmails, fn km ->
               Date.from_iso8601!(Date.to_iso8601(DateTime.to_date(km.killmail_time)))
             end)
-
-          |> Map.new(fn {date, kms} -> {date, length(kms)} end)
+            |> Map.new(fn {date, kms} -> {date, length(kms)} end)
 
           peak_day =
             Enum.max_by(daily_activity, fn {_date, count} -> count end, fn -> {nil, 0} end)
@@ -692,11 +691,13 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
         recent_losses: length(victim_killmails),
         avg_ship_value: calculate_avg_ship_value(victim_killmails),
         solo_ratio: calculate_solo_ratio(attacker_killmails),
-        aggression_percentile: calculate_aggression_percentile(victim_killmails ++ attacker_killmails),
+        aggression_percentile:
+          calculate_aggression_percentile(victim_killmails ++ attacker_killmails),
         is_fc: detect_fc_activity(attacker_killmails),
         prime_timezone: analyze_prime_timezone(victim_killmails ++ attacker_killmails),
         activity_by_hour: analyze_activity_by_hour(victim_killmails ++ attacker_killmails),
-        batphone_probability: calculate_batphone_probability(victim_killmails ++ attacker_killmails)
+        batphone_probability:
+          calculate_batphone_probability(victim_killmails ++ attacker_killmails)
       }
 
       {:ok, activity_stats}

@@ -284,7 +284,6 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
   defp log_creation_errors(errors, type, id_field) do
     errors
     |> Enum.take(5)
-
     |> Enum.each(fn error ->
       case error do
         {changeset, _error} ->

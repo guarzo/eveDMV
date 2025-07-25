@@ -275,7 +275,6 @@ defmodule EveDmv.Surveillance.MatchingEngine do
             max_concurrency: 4,
             timeout: 30_000
           )
-
           |> Enum.reduce(0, fn
             {:ok, count}, acc -> acc + count
             {:error, _}, acc -> acc

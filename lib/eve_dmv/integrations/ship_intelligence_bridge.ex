@@ -33,17 +33,15 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
       # Analyze each ship's role using our ModuleClassifier
       enhanced_roles =
         killmails
-
-      |> Enum.map(&classify_ship_role_from_killmail/1)
-      |> Enum.filter(&match?({:ok, _}, &1))
-      |> Enum.map(fn {:ok, result} -> result end)
+        |> Enum.map(&classify_ship_role_from_killmail/1)
+        |> Enum.filter(&match?({:ok, _}, &1))
+        |> Enum.map(fn {:ok, result} -> result end)
 
       # Get fleet composition analysis
       ship_types =
         killmails
-
-      |> Enum.map(&extract_ship_type_id/1)
-      |> Enum.filter(& &1)
+        |> Enum.map(&extract_ship_type_id/1)
+        |> Enum.filter(& &1)
 
       fleet_analysis =
         case FleetAnalyzer.analyze_fleet_composition(ship_types) do
@@ -502,7 +500,6 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
   defp analyze_ship_usage_patterns(killmail_data) do
     killmail_data
     |> Enum.group_by(& &1.victim_ship_type_id)
-
     |> Enum.map(fn {ship_type_id, killmails} ->
       {ship_type_id,
        %{
@@ -511,7 +508,6 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
          recent_usage: Enum.take(killmails, 10)
        }}
     end)
-
     |> Enum.into(%{})
   end
 
@@ -519,17 +515,15 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
     # Classify ships and aggregate role preferences
     role_counts =
       killmail_data
-
-    |> Enum.map(fn km ->
-      classification = ModuleClassifier.classify_ship_role(km.raw_data)
-      determine_primary_role(classification)
-    end)
-    |> Enum.frequencies()
+      |> Enum.map(fn km ->
+        classification = ModuleClassifier.classify_ship_role(km.raw_data)
+        determine_primary_role(classification)
+      end)
+      |> Enum.frequencies()
 
     total_kills = length(killmail_data)
 
     role_counts
-
     |> Enum.map(fn {role, count} ->
       %{
         role: role,
@@ -537,7 +531,6 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
         percentage: count / total_kills * 100
       }
     end)
-
     |> Enum.sort_by(& &1.percentage, :desc)
   end
 
@@ -566,15 +559,12 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
     # Calculate mastery based on consistency and performance
     ship_performance =
       killmail_data
-
-    |> Enum.group_by(& &1.victim_ship_type_id)
-
-    |> Enum.map(fn {ship_type_id, killmails} ->
-      mastery_score = calculate_individual_ship_mastery(killmails)
-      {ship_type_id, mastery_score}
-    end)
-
-    |> Enum.into(%{})
+      |> Enum.group_by(& &1.victim_ship_type_id)
+      |> Enum.map(fn {ship_type_id, killmails} ->
+        mastery_score = calculate_individual_ship_mastery(killmails)
+        {ship_type_id, mastery_score}
+      end)
+      |> Enum.into(%{})
 
     ship_performance
   end
@@ -604,7 +594,6 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
   # Fleet operations helper functions
   defp extract_ship_types_from_composition(fleet_composition) do
     fleet_composition
-
     |> Enum.map(fn ship ->
       case ship do
         %{ship_type_id: id} -> id
@@ -613,7 +602,6 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
         _ -> nil
       end
     end)
-
     |> Enum.filter(& &1)
   end
 

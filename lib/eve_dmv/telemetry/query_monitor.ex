@@ -289,7 +289,8 @@ defmodule EveDmv.Telemetry.QueryMonitor do
     |> String.replace(~r/LIMIT\s+\d+/i, "LIMIT ?")
     |> String.replace(~r/OFFSET\s+\d+/i, "OFFSET ?")
     # Normalize whitespace
-    |> String.replace(~r/\s+/, " ") |> String.trim()
+    |> String.replace(~r/\s+/, " ")
+    |> String.trim()
   end
 
   defp normalize_query(_), do: "Unknown"

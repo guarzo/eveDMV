@@ -143,6 +143,7 @@ defmodule EveDmvWeb.Plugs.ApiAuth do
         |> String.split(",")
         |> List.first()
         |> String.trim()
+
       [] ->
         conn.remote_ip
         |> :inet.ntoa()

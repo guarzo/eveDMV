@@ -6,6 +6,8 @@ defmodule EveDmvWeb.SearchComponent do
 
   use EveDmvWeb, :live_component
 
+  alias Ecto.Adapters.SQL
+
   @impl Phoenix.LiveComponent
   def mount(socket) do
     {:ok,
@@ -36,18 +38,18 @@ defmodule EveDmvWeb.SearchComponent do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def handle_event("focus", _params, socket) do
     {:noreply, assign(socket, focused: true, show_dropdown: true)}
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def handle_event("blur", _params, socket) do
     send(self(), {:hide_dropdown, socket.assigns.id})
     {:noreply, assign(socket, focused: false)}
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def handle_event("select_result", %{"type" => type, "id" => id}, socket) do
     path =
       case type do
@@ -64,7 +66,7 @@ defmodule EveDmvWeb.SearchComponent do
      |> push_event("navigate", %{path: path})}
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def handle_event("clear_search", _params, socket) do
     {:noreply, assign(socket, query: "", results: [], show_dropdown: false)}
   end
@@ -94,7 +96,7 @@ defmodule EveDmvWeb.SearchComponent do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def render(assigns) do
     ~H"""
     <div class="relative" id={@id}>
@@ -267,7 +269,7 @@ defmodule EveDmvWeb.SearchComponent do
 
     search_pattern = "%#{query}%"
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, character_query, [search_pattern]) do
+    case SQL.query(EveDmv.Repo, character_query, [search_pattern]) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [char_id, char_name, corp_name, alliance_name, _activity] ->
           %{
@@ -302,7 +304,7 @@ defmodule EveDmvWeb.SearchComponent do
 
     search_pattern = "%#{query}%"
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, corp_query, [search_pattern]) do
+    case SQL.query(EveDmv.Repo, corp_query, [search_pattern]) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [corp_id, corp_name, alliance_name, members] ->
           %{

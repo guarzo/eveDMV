@@ -539,7 +539,6 @@ defmodule EveDmv.Analytics.BattleDetector do
 
       {system_id, time_bucket}
     end)
-
     |> Enum.map(fn {_key, group_battles} ->
       # Create a battle summary from the group
       create_battle_summary(group_battles)

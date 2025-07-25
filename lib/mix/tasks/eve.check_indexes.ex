@@ -46,10 +46,11 @@ defmodule Mix.Tasks.Eve.CheckIndexes do
       {:ok, %{rows: rows}} ->
         current_table = nil
 
-        |> Enum.each(rows, fn [table, index, size] ->
+        Enum.each(rows, fn [table, index, size] ->
           if table != current_table do
             Mix.shell().info("\n#{table}:")
           end
+
           Mix.shell().info("  - #{index} (#{size})")
         end)
 
@@ -84,7 +85,7 @@ defmodule Mix.Tasks.Eve.CheckIndexes do
       {"character_stats", ["corporation_id", "dangerous_rating"], "Corp threat assessment"}
     ]
 
-    |> Enum.each(critical_indexes, fn {table, columns, purpose} ->
+    Enum.each(critical_indexes, fn {table, columns, purpose} ->
       if not index_exists?(table, columns) do
         column_list = Enum.join(columns, ", ")
         Mix.shell().info("\n⚠️  Missing: #{table}(#{column_list})")

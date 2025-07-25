@@ -82,8 +82,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityDataCollector do
                 p.character_id == character_id
               end)
 
-            character_participants
-            |> Enum.map(fn participant ->
+            Enum.map(character_participants, fn participant ->
               %{
                 killmail_id: killmail.killmail_id,
                 killmail_time: killmail.killmail_time,
@@ -115,7 +114,8 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityDataCollector do
   """
   def get_killmail_participants(killmail_id) do
     query =
-      Ash.Query.new(Participant)
+      Participant
+      |> Ash.Query.new()
       |> Ash.Query.filter(killmail_id == ^killmail_id)
 
     case Ash.read(query, domain: Api) do

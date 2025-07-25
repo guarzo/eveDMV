@@ -91,9 +91,13 @@ defmodule EveDmvWeb.Components.DataTableComponent do
 
   # Builds CSS classes for table header columns
   defp build_column_classes(col) do
-    base_classes = "px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
+    base_classes =
+      "px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
+
     custom_class = Map.get(col, :class, "")
-    sortable_class = if Map.get(col, :sortable, false), do: "cursor-pointer hover:text-white", else: ""
+
+    sortable_class =
+      if Map.get(col, :sortable, false), do: "cursor-pointer hover:text-white", else: ""
 
     "#{base_classes} #{custom_class} #{sortable_class}"
   end

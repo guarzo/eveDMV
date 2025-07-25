@@ -365,22 +365,20 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Engage
     # Calculate ISK destroyed by this side
     isk_destroyed =
       killmails
-
-    |> Enum.filter(fn killmail ->
-      killmail.attackers &&
-        Enum.any?(killmail.attackers, fn attacker ->
-          attacker.character_id in side_character_ids
-        end)
-    end)
+      |> Enum.filter(fn killmail ->
+        killmail.attackers &&
+          Enum.any?(killmail.attackers, fn attacker ->
+            attacker.character_id in side_character_ids
+          end)
+      end)
 
     Enum.map(&(&1.total_value || 0)) |> Enum.sum()
     # Calculate ISK lost by this side
     isk_lost =
       killmails
-
-    |> Enum.filter(fn killmail ->
-      killmail.victim_character_id in side_character_ids
-    end)
+      |> Enum.filter(fn killmail ->
+        killmail.victim_character_id in side_character_ids
+      end)
 
     Enum.map(&(&1.total_value || 0)) |> Enum.sum()
 

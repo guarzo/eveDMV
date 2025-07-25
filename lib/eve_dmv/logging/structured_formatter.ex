@@ -73,12 +73,14 @@ defmodule EveDmv.Logging.StructuredFormatter do
           |> DateTime.from_unix!(:second)
           |> DateTime.add(micro, :microsecond)
           |> DateTime.to_iso8601()
+
         timestamp when is_integer(timestamp) ->
           # Modern system timestamp
           timestamp
           |> System.convert_time_unit(:native, :microsecond)
           |> DateTime.from_unix!(:microsecond)
           |> DateTime.to_iso8601()
+
         _ ->
           # Fallback to current time
           DateTime.utc_now() |> DateTime.to_iso8601()
@@ -150,6 +152,7 @@ defmodule EveDmv.Logging.StructuredFormatter do
           }
           |> Enum.reject(fn {_key, value} -> is_nil(value) end)
           |> Map.new()
+
         Map.put(log_entry, :error_context, error_context)
     end
   end
@@ -161,6 +164,7 @@ defmodule EveDmv.Logging.StructuredFormatter do
       metadata
       |> Enum.filter(fn {key, _value} -> key in performance_fields end)
       |> Map.new()
+
     case performance_data do
       empty when map_size(empty) == 0 -> log_entry
       data -> Map.put(log_entry, :performance, data)
@@ -174,6 +178,7 @@ defmodule EveDmv.Logging.StructuredFormatter do
       metadata
       |> Enum.filter(fn {key, _value} -> key in security_fields end)
       |> Map.new()
+
     case security_data do
       empty when map_size(empty) == 0 -> log_entry
       data -> Map.put(log_entry, :security, data)
@@ -187,6 +192,7 @@ defmodule EveDmv.Logging.StructuredFormatter do
       metadata
       |> Enum.filter(fn {key, _value} -> key in business_fields end)
       |> Map.new()
+
     case business_data do
       empty when map_size(empty) == 0 -> log_entry
       data -> Map.put(log_entry, :business, data)

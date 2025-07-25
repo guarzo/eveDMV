@@ -121,17 +121,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Extractors.ShipInstanceExtractor do
   end
 
   defp extract_attacker_data(killmail) do
-    killmail["attackers"] || []
-
-    |> Enum.map(fn attacker ->
-      %{
-        character_id: attacker["character_id"],
-        ship_type_id: attacker["ship_type_id"],
-        damage_done: attacker["damage_done"] || 0,
-        weapon_type_id: attacker["weapon_type_id"],
-        final_blow: attacker["final_blow"] || false
-      }
-    end)
+    killmail["attackers"] ||
+      []
+      |> Enum.map(fn attacker ->
+        %{
+          character_id: attacker["character_id"],
+          ship_type_id: attacker["ship_type_id"],
+          damage_done: attacker["damage_done"] || 0,
+          weapon_type_id: attacker["weapon_type_id"],
+          final_blow: attacker["final_blow"] || false
+        }
+      end)
   end
 
   defp extract_final_blow_data(killmail) do

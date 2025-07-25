@@ -217,7 +217,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
   def calculate_activity_metrics(corporation_id, days_back \\ 30) do
     time_cutoff = DateTime.utc_now() |> DateTime.add(-days_back, :day)
 
-    query = 
+    query =
       Participant
       |> Ash.Query.for_read(:by_corporation, %{corporation_id: corporation_id})
       |> Ash.Query.filter(killmail_time >= ^time_cutoff)
@@ -279,7 +279,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
 
   defp get_corporation_info(corporation_id) do
     # Get corporation info from recent killmail data using Ash
-    query = 
+    query =
       Participant
       |> Ash.Query.for_read(:by_corporation, %{corporation_id: corporation_id})
       |> Ash.Query.limit(1)
@@ -379,7 +379,9 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
 
       _ ->
         to_string(doctrine)
-        String.replace("_", " ") |> String.split()
+
+        String.replace("_", " ")
+        |> String.split()
         |> Enum.map_join(" ", &String.capitalize/1)
     end
   end
@@ -533,7 +535,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
   # Helper functions for corporation info
   defp extract_ticker_from_name(corp_name) when is_binary(corp_name) do
     # Simple ticker extraction - first 4 characters uppercase
-    ticker = 
+    ticker =
       corp_name
       |> String.upcase()
       |> String.replace(~r/[^A-Z0-9]/, "")
@@ -551,7 +553,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
     # Count unique members from killmail data in last 90 days
     ninety_days_ago = DateTime.utc_now() |> DateTime.add(-90, :day)
 
-    query = 
+    query =
       Participant
       |> Ash.Query.for_read(:by_corporation, %{corporation_id: corporation_id})
       |> Ash.Query.filter(killmail_time >= ^ninety_days_ago)
@@ -559,13 +561,13 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
 
     case Ash.read(query, domain: Api) do
       {:ok, participants} ->
-        count = 
+        count =
           participants
           |> Enum.map(& &1.character_id)
           |> Enum.filter(& &1)
           |> Enum.uniq()
           |> length()
-        
+
         count
 
       {:error, _} ->
@@ -620,7 +622,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
     # Get recent participant data for analysis
     ninety_days_ago = DateTime.utc_now() |> DateTime.add(-90, :day)
 
-    query = 
+    query =
       Participant
       |> Ash.Query.for_read(:by_corporation, %{corporation_id: corporation_id})
       |> Ash.Query.filter(killmail_time >= ^ninety_days_ago)
@@ -822,7 +824,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
         Date.shift(month: -(i - 1))
         DateTime.new!(~T[00:00:00])
 
-        query = 
+        query =
           Participant
           |> Ash.Query.for_read(:by_corporation, %{corporation_id: corporation_id})
           |> Ash.Query.filter(killmail_time >= ^start_date and killmail_time < ^end_date)

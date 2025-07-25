@@ -22,7 +22,8 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
     }
 
     # Log warnings for any issues
-    |> Enum.each(health_metrics, fn {category, metrics} ->
+    health_metrics
+    |> Enum.each(fn {category, metrics} ->
       if metrics[:has_issues] do
         Logger.warning("Database health issue in #{category}: #{inspect(metrics[:issues])}")
       end
@@ -398,7 +399,8 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
 
       replicas ->
         replicas
-        Enum.map(& &1.lag_bytes) |> Enum.max()
+        |> Enum.map(& &1.lag_bytes)
+        |> Enum.max()
     end
   end
 

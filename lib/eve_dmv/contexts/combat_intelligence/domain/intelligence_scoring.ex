@@ -183,12 +183,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
         # Filter killmails where character is an attacker
         character_kills =
           killmails
-
-        |> Enum.filter(fn killmail ->
-          Enum.any?(killmail.participants || [], fn p ->
-            p.character_id == character_id && !p.is_victim
+          |> Enum.filter(fn killmail ->
+            Enum.any?(killmail.participants || [], fn p ->
+              p.character_id == character_id && !p.is_victim
+            end)
           end)
-        end)
 
         kill_count = length(character_kills)
 
@@ -264,9 +263,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
     # For now, use ship type ID as a rough proxy (bigger ID often = more expensive)
     values =
       killmails
-
-    |> Enum.map(fn k -> k.victim_ship_type_id || 0 end)
-    |> Enum.filter(fn id -> id > 0 end)
+      |> Enum.map(fn k -> k.victim_ship_type_id || 0 end)
+      |> Enum.filter(fn id -> id > 0 end)
 
     if length(values) > 0 do
       # Rough conversion
@@ -291,12 +289,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
         # Get kills where character participated
         character_participations =
           killmails
-
-        |> Enum.flat_map(fn killmail ->
-          killmail.participants
-          |> Enum.filter(fn p -> p.character_id == character_id && !p.is_victim end)
-          |> Enum.map(fn p -> {killmail, p} end)
-        end)
+          |> Enum.flat_map(fn killmail ->
+            killmail.participants
+            |> Enum.filter(fn p -> p.character_id == character_id && !p.is_victim end)
+            |> Enum.map(fn p -> {killmail, p} end)
+          end)
 
         total_kills = length(character_participations)
 
@@ -314,23 +311,20 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
           # Analyze hunting patterns
           solo_kills =
             character_participations
-
-          |> Enum.count(fn {killmail, _p} -> killmail.attacker_count == 1 end)
+            |> Enum.count(fn {killmail, _p} -> killmail.attacker_count == 1 end)
 
           # Check for tackle ship usage (simplified - check common tackle ships)
           # Interceptors
-          tackle_ships = [11969, 11971, 11963, 11965]
+          tackle_ships = [11_969, 11_971, 11_963, 11_965]
 
           tackle_usage =
             character_participations
-
-          |> Enum.count(fn {_k, p} -> p.ship_type_id in tackle_ships end)
+            |> Enum.count(fn {_k, p} -> p.ship_type_id in tackle_ships end)
 
           # Final blow percentage
           final_blows =
             character_participations
-
-          |> Enum.count(fn {_k, p} -> p.final_blow end)
+            |> Enum.count(fn {_k, p} -> p.final_blow end)
 
           # Calculate hunter score
           # Max 4 points
@@ -394,14 +388,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
         fleet_participations =
           killmails
 
-        # Fleet = 5+ members
-        |> Enum.filter(fn k -> k.attacker_count >= 5 end)
-
-        |> Enum.filter(fn killmail ->
-          Enum.any?(killmail.participants || [], fn p ->
-            p.character_id == character_id && !p.is_victim
+          # Fleet = 5+ members
+          |> Enum.filter(fn k -> k.attacker_count >= 5 end)
+          |> Enum.filter(fn killmail ->
+            Enum.any?(killmail.participants || [], fn p ->
+              p.character_id == character_id && !p.is_victim
+            end)
           end)
-        end)
 
         fleet_count = length(fleet_participations)
 
@@ -472,12 +465,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
     # Calculate how often the character flies with the same people
     all_fleet_mates =
       fleet_participations
-
-    |> Enum.flat_map(fn killmail ->
-      killmail.participants
-      |> Enum.filter(fn p -> p.character_id != character_id && !p.is_victim end)
-      |> Enum.map(& &1.character_id)
-    end)
+      |> Enum.flat_map(fn killmail ->
+        killmail.participants
+        |> Enum.filter(fn p -> p.character_id != character_id && !p.is_victim end)
+        |> Enum.map(& &1.character_id)
+      end)
 
     if Enum.empty?(all_fleet_mates) do
       0.0
@@ -487,9 +479,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
         Enum.frequencies(all_fleet_mates) |> Map.values()
 
       # Flown together 3+ times
-      mate_frequency = mate_frequency
-      |> Enum.filter(&(&1 >= 3))
-      |> length()
+      mate_frequency =
+        mate_frequency
+        |> Enum.filter(&(&1 >= 3))
+        |> length()
 
       # Normalize to 0-1 scale
       min(mate_frequency / 10.0, 1.0)
@@ -511,22 +504,19 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
         # Get solo kills (attacker_count = 1)
         solo_kills =
           killmails
-
-        |> Enum.filter(fn k -> k.attacker_count == 1 end)
-
-        |> Enum.filter(fn killmail ->
-          Enum.any?(killmail.participants || [], fn p ->
-            p.character_id == character_id && !p.is_victim
+          |> Enum.filter(fn k -> k.attacker_count == 1 end)
+          |> Enum.filter(fn killmail ->
+            Enum.any?(killmail.participants || [], fn p ->
+              p.character_id == character_id && !p.is_victim
+            end)
           end)
-        end)
 
         # Get solo losses
         solo_losses =
           killmails
-
-        |> Enum.filter(fn killmail ->
-          killmail.victim_character_id == character_id && killmail.attacker_count == 1
-        end)
+          |> Enum.filter(fn killmail ->
+            killmail.victim_character_id == character_id && killmail.attacker_count == 1
+          end)
 
         kill_count = length(solo_kills)
         loss_count = length(solo_losses)
@@ -636,35 +626,33 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
         # Where character killed someone from same corp/alliance
         friendly_fire_incidents =
           killmails
+          |> Enum.filter(fn killmail ->
+            attacker =
+              Enum.find(killmail.participants || [], fn p ->
+                p.character_id == character_id && !p.is_victim
+              end)
 
-        |> Enum.filter(fn killmail ->
-          attacker =
-            Enum.find(killmail.participants || [], fn p ->
-              p.character_id == character_id && !p.is_victim
-            end)
+            if attacker do
+              # Check if victim was in same corp/alliance
+              victim_corp = killmail.victim_corporation_id
+              victim_alliance = killmail.victim_alliance_id
 
-          if attacker do
-            # Check if victim was in same corp/alliance
-            victim_corp = killmail.victim_corporation_id
-            victim_alliance = killmail.victim_alliance_id
-
-            (victim_corp && victim_corp == attacker.corporation_id) ||
-              (victim_alliance && victim_alliance == attacker.alliance_id)
-          else
-            false
-          end
-        end)
+              (victim_corp && victim_corp == attacker.corporation_id) ||
+                (victim_alliance && victim_alliance == attacker.alliance_id)
+            else
+              false
+            end
+          end)
 
         ff_count = length(friendly_fire_incidents)
         # Get total kills to calculate ratio
         total_kills =
           killmails
-
-        |> Enum.count(fn killmail ->
-          Enum.any?(killmail.participants || [], fn p ->
-            p.character_id == character_id && !p.is_victim
+          |> Enum.count(fn killmail ->
+            Enum.any?(killmail.participants || [], fn p ->
+              p.character_id == character_id && !p.is_victim
+            end)
           end)
-        end)
 
         # Calculate awox risk score
         if total_kills == 0 do

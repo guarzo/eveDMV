@@ -160,27 +160,24 @@ defmodule EveDmv.Intelligence.Analyzers.CorporationAnalyzer do
   defp extract_corporation_members(killmails, corporation_id) do
     members =
       killmails
+      |> Enum.flat_map(fn killmail ->
+        Enum.filter(killmail.participants || [], &(&1.corporation_id == corporation_id))
+      end)
+      |> Enum.group_by(& &1.character_id)
+      |> Enum.map(fn {character_id, participations} ->
+        participation_damages = Enum.map(participations, &(&1.damage_done || 0))
+        ship_type_ids = Enum.map(participations, & &1.ship_type_id)
+        participation_times = Enum.map(participations, & &1.killmail_time)
 
-    |> Enum.flat_map(fn killmail ->
-      Enum.filter(killmail.participants || [], &(&1.corporation_id == corporation_id))
-    end)
-
-    |> Enum.group_by(& &1.character_id)
-
-    |> Enum.map(fn {character_id, participations} ->
-      participation_damages = Enum.map(participations, &(&1.damage_done || 0))
-      ship_type_ids = Enum.map(participations, & &1.ship_type_id)
-      participation_times = Enum.map(participations, & &1.killmail_time)
-
-      %{
-        character_id: character_id,
-        participation_count: length(participations),
-        total_damage: Enum.sum(participation_damages),
-        ship_types: Enum.uniq(ship_type_ids),
-        first_seen: Enum.min(participation_times),
-        last_seen: Enum.max(participation_times)
-      }
-    end)
+        %{
+          character_id: character_id,
+          participation_count: length(participations),
+          total_damage: Enum.sum(participation_damages),
+          ship_types: Enum.uniq(ship_type_ids),
+          first_seen: Enum.min(participation_times),
+          last_seen: Enum.max(participation_times)
+        }
+      end)
 
     if Enum.empty?(members) do
       {:error, "No active members found for corporation"}
@@ -287,9 +284,9 @@ defmodule EveDmv.Intelligence.Analyzers.CorporationAnalyzer do
     # Simplified coordination calculation
     avg_ship_diversity =
       members
-
-    Enum.map(&length(&1.ship_types)) |> Enum.sum()
-    Kernel./(length(members))
+      |> Enum.map(&length(&1.ship_types))
+      |> Enum.sum()
+      |> Kernel./(length(members))
 
     # Higher diversity might indicate better coordination
     min(100, round(avg_ship_diversity * 10))

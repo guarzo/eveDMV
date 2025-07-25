@@ -205,42 +205,42 @@ defmodule EveDmv.Intelligence.Analyzers.FleetSkillAnalyzer do
       end)
 
     skill_coverage =
-      Enum.uniq(all_skills)
+      all_skills
+      |> Enum.uniq()
+      |> Enum.map(fn skill ->
+        qualified_count =
+          Enum.count(available_pilots, fn pilot ->
+            check_skill_via_ship_usage(pilot, skill)
+          end)
 
-    |> Enum.map(fn skill ->
-      qualified_count =
-        Enum.count(available_pilots, fn pilot ->
-          check_skill_via_ship_usage(pilot, skill)
-        end)
+        needed_count =
+          doctrine_template
+          |> Enum.filter(fn {_role, role_data} ->
+            skill in (role_data["skills_required"] || [])
+          end)
+          |> Enum.map(fn {_role, role_data} -> role_data["required"] || 1 end)
+          |> Enum.sum()
 
-      needed_count =
-        doctrine_template
+        gap = max(0, needed_count - qualified_count)
 
-      |> Enum.filter(fn {_role, role_data} ->
-        skill in (role_data["skills_required"] || [])
+        %{
+          skill: skill,
+          qualified_pilots: qualified_count,
+          needed_pilots: needed_count,
+          gap: gap,
+          impact: determine_skill_impact(skill, gap)
+        }
       end)
-
-      Enum.map(fn {_role, role_data} -> role_data["required"] || 1 end) |> Enum.sum()
-      gap = max(0, needed_count - qualified_count)
-
-      %{
-        skill: skill,
-        qualified_pilots: qualified_count,
-        needed_pilots: needed_count,
-        gap: gap,
-        impact: determine_skill_impact(skill, gap)
-      }
-    end)
-    |> Enum.filter(fn coverage -> coverage.gap > 0 end)
-    |> Enum.sort_by(fn coverage -> {coverage.impact, coverage.gap} end, :desc)
-    |> Enum.take(5)
-    |> Enum.map(fn coverage ->
-      %{
-        "skill" => coverage.skill,
-        "pilots_training" => find_pilots_close_to_skill(available_pilots, coverage.skill),
-        "impact" => Atom.to_string(coverage.impact)
-      }
-    end)
+      |> Enum.filter(fn coverage -> coverage.gap > 0 end)
+      |> Enum.sort_by(fn coverage -> {coverage.impact, coverage.gap} end, :desc)
+      |> Enum.take(5)
+      |> Enum.map(fn coverage ->
+        %{
+          "skill" => coverage.skill,
+          "pilots_training" => find_pilots_close_to_skill(available_pilots, coverage.skill),
+          "impact" => Atom.to_string(coverage.impact)
+        }
+      end)
 
     skill_coverage
   end

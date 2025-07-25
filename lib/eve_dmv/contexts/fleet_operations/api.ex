@@ -384,7 +384,7 @@ defmodule EveDmv.Contexts.FleetOperations.Api do
   defp validate_role_requirements(role_requirements) when is_map(role_requirements) do
     valid_roles = [:dps, :logistics, :tackle, :ewar, :command, :support]
 
-    |> Enum.reduce_while(role_requirements, :ok, fn {role, requirement}, :ok ->
+    Enum.reduce_while(role_requirements, :ok, fn {role, requirement}, :ok ->
       cond do
         role not in valid_roles -> {:halt, {:error, {:invalid_role, role}}}
         not is_map(requirement) -> {:halt, {:error, {:invalid_role_requirement, role}}}

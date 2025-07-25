@@ -193,9 +193,9 @@ defmodule EveDmv.Intelligence.AnalysisScheduler do
     now = DateTime.utc_now()
 
     tasks_to_run =
-      Map.values(scheduled_tasks)
-
-    |> Enum.filter(&should_run_task?(&1, now))
+      scheduled_tasks
+      |> Map.values()
+      |> Enum.filter(&should_run_task?(&1, now))
 
     if length(tasks_to_run) > 0 do
       Logger.debug("Executing #{length(tasks_to_run)} scheduled analysis tasks")

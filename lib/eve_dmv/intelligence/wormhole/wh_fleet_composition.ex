@@ -283,9 +283,8 @@ defmodule EveDmv.Intelligence.Wormhole.FleetComposition do
             0
 
         changeset
-
-        Ash.Changeset.change_attribute(:usage_count, current_usage + 1)
-        Ash.Changeset.change_attribute(:last_updated_at, DateTime.utc_now())
+        |> Ash.Changeset.change_attribute(:usage_count, current_usage + 1)
+        |> Ash.Changeset.change_attribute(:last_updated_at, DateTime.utc_now())
       end)
     end
 
@@ -414,7 +413,7 @@ defmodule EveDmv.Intelligence.Wormhole.FleetComposition do
       calculation(fn records, _context ->
         now = DateTime.utc_now()
 
-        |> Enum.map(records, fn record ->
+        Enum.map(records, fn record ->
           DateTime.diff(now, record.last_updated_at, :day)
         end)
       end)

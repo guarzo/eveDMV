@@ -171,14 +171,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
     streams =
       battle_ids
       |> Enum.map(fn battle_id ->
-      Task.Supervisor.async_stream_nolink(
-        EveDmv.TaskSupervisor,
-        analysis_functions,
-        fn analysis_fn -> analysis_fn.(battle_id, opts) end,
-        max_concurrency: 2,
-        timeout: @stream_timeout
-      )
-    end)
+        Task.Supervisor.async_stream_nolink(
+          EveDmv.TaskSupervisor,
+          analysis_functions,
+          fn analysis_fn -> analysis_fn.(battle_id, opts) end,
+          max_concurrency: 2,
+          timeout: @stream_timeout
+        )
+      end)
 
     combined_stream = Stream.concat(streams)
 
@@ -461,29 +461,29 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
     all_participants =
       killmails
       |> Enum.flat_map(fn km ->
-      attackers =
-        Enum.map(km.attackers, fn attacker ->
+        attackers =
+          Enum.map(km.attackers, fn attacker ->
+            %{
+              character_id: get_in(attacker, ["character_id"]),
+              corporation_id: get_in(attacker, ["corporation_id"]),
+              alliance_id: get_in(attacker, ["alliance_id"]),
+              ship_type_id: get_in(attacker, ["ship_type_id"]),
+              role: :attacker
+            }
+          end)
+
+        victim = [
           %{
-            character_id: get_in(attacker, ["character_id"]),
-            corporation_id: get_in(attacker, ["corporation_id"]),
-            alliance_id: get_in(attacker, ["alliance_id"]),
-            ship_type_id: get_in(attacker, ["ship_type_id"]),
-            role: :attacker
+            character_id: km.victim_character_id,
+            corporation_id: km.victim_corporation_id,
+            alliance_id: km.victim_alliance_id,
+            ship_type_id: km.victim_ship_type_id,
+            role: :victim
           }
-        end)
+        ]
 
-      victim = [
-        %{
-          character_id: km.victim_character_id,
-          corporation_id: km.victim_corporation_id,
-          alliance_id: km.victim_alliance_id,
-          ship_type_id: km.victim_ship_type_id,
-          role: :victim
-        }
-      ]
-
-      attackers ++ victim
-    end)
+        attackers ++ victim
+      end)
       |> Enum.filter(fn p -> not is_nil(p.character_id) end)
 
     %{
@@ -550,6 +550,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
       events
       |> Enum.map(& &1.attacker_count)
       |> Enum.sum()
+
     if length(events) > 0, do: div(total_participants, length(events)), else: 0
   end
 end

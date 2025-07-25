@@ -114,6 +114,7 @@ defmodule EveDmv.Market.PriceService do
       end)
       |> Enum.reject(fn {_type_id, data} -> is_nil(data) end)
       |> Map.new()
+
     {:ok, results}
   end
 
@@ -336,6 +337,7 @@ defmodule EveDmv.Market.PriceService do
       Map.values(prices)
       |> Enum.map(& &1.source)
       |> Enum.frequencies()
+
     # Return the most common source
     {preferred_source, _count} =
       Enum.max_by(sources, fn {_source, count} -> count end, fn -> {:unknown, 0} end)

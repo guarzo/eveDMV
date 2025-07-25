@@ -365,7 +365,7 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
     case BattleAnalysis.detect_recent_battles(hours_back) do
       {:ok, battles} ->
         battles
-        |> Enum.filter(&is_high_threat_battle/1)
+        |> Enum.filter(&high_threat_battle?/1)
         |> Enum.map(&convert_battle_to_threat_alert/1)
         |> Enum.take(5)
 
@@ -423,7 +423,7 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
     _error -> nil
   end
 
-  defp is_high_threat_battle(battle) do
+  defp high_threat_battle?(battle) do
     # Determine if a battle represents a high threat
     participant_count = Map.get(battle.metadata, :total_participants, 0)
     isk_destroyed = Map.get(battle.metadata, :isk_destroyed, 0)
@@ -512,7 +512,6 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
       case Ash.read(Vetting, domain: EveDmv.Api) do
         {:ok, vettings} ->
           vettings
-
           |> Enum.filter(fn v ->
             case v.analysis_timestamp do
               %DateTime{} = dt -> DateTime.compare(dt, cutoff_time) != :lt

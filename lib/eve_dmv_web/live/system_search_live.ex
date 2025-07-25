@@ -10,7 +10,7 @@ defmodule EveDmvWeb.SystemSearchLive do
 
   alias EveDmv.Eve.SolarSystem
 
-  @impl true
+  @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     {:ok,
      assign(socket,
@@ -24,7 +24,7 @@ defmodule EveDmvWeb.SystemSearchLive do
      )}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("search", %{"query" => query}, socket) do
     socket =
       socket
@@ -34,29 +34,29 @@ defmodule EveDmvWeb.SystemSearchLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("focus", _params, socket) do
     {:noreply, assign(socket, focused: true, show_dropdown: true)}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("blur", _params, socket) do
     # Delay hiding dropdown to allow click events
     Process.send_after(self(), :hide_dropdown, 200)
     {:noreply, assign(socket, focused: false)}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("select_system", %{"system_id" => system_id}, socket) do
     {:noreply, push_navigate(socket, to: ~p"/system/#{system_id}")}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("key_down", %{"key" => key}, socket) do
     handle_keyboard_navigation(socket, key)
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("clear_search", _params, socket) do
     socket =
       socket
@@ -65,7 +65,7 @@ defmodule EveDmvWeb.SystemSearchLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info(:hide_dropdown, socket) do
     if socket.assigns.focused do
       {:noreply, socket}
@@ -74,7 +74,7 @@ defmodule EveDmvWeb.SystemSearchLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:search_results, query, results}, socket) do
     if query == socket.assigns.query do
       {:noreply, assign(socket, results: results, loading: false, show_dropdown: true)}

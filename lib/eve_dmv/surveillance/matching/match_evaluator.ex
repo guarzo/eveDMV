@@ -25,8 +25,7 @@ defmodule EveDmv.Surveillance.Matching.MatchEvaluator do
 
     # Evaluate candidates in parallel for better performance
     limited_candidates
-
-    Task.async_stream(
+    |> Task.async_stream(
       fn profile_id ->
         case IndexManager.get_compiled_profile(profile_id) do
           {:ok, compiled_fn} ->
@@ -44,7 +43,6 @@ defmodule EveDmv.Surveillance.Matching.MatchEvaluator do
       max_concurrency: System.schedulers_online(),
       timeout: 1000
     )
-
     |> Enum.reduce([], fn
       {:ok, nil}, acc ->
         acc

@@ -95,8 +95,9 @@ defmodule EveDmv.Intelligence.EngagementCalculator do
     if length(member_analyses) > 0 do
       total_engagement =
         member_analyses
+        |> Enum.map(&Map.get(&1, :engagement_score, 0))
+        |> Enum.sum()
 
-      Enum.map(&Map.get(&1, :engagement_score, 0)) |> Enum.sum()
       total_engagement / length(member_analyses)
     else
       0.0

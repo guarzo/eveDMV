@@ -33,7 +33,7 @@ defmodule Mix.Tasks.Eve.ListIndexes do
       {:ok, %{rows: rows}} ->
         current_table = nil
 
-        |> Enum.each(rows, fn [table, index, indexdef, size] ->
+        Enum.each(rows, fn [table, index, indexdef, size] ->
           if table != current_table do
             Mix.shell().info("\n📁 #{table}")
             Mix.shell().info("  " <> String.duplicate("-", 58))

@@ -134,16 +134,15 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.LiveE
 
     attackers =
       killmail.attackers
-
-    |> Enum.map(fn attacker ->
-      {attacker.character_id,
-       %{
-         kills: 1,
-         losses: 0,
-         last_seen: killmail.timestamp
-       }}
-    end)
-    |> Map.new()
+      |> Enum.map(fn attacker ->
+        {attacker.character_id,
+         %{
+           kills: 1,
+           losses: 0,
+           last_seen: killmail.timestamp
+         }}
+      end)
+      |> Map.new()
 
     Map.merge(victim, attackers)
   end
@@ -198,6 +197,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.LiveE
         recent_kills
         |> Enum.map(& &1.victim_corporation_id)
         |> Enum.frequencies()
+
       # If one corp is taking most losses, they're likely losing
       max_losses = victim_corps |> Map.values() |> Enum.max(fn -> 0 end)
 

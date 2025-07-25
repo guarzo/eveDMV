@@ -265,7 +265,6 @@ defmodule EveDmv.Contexts.BattleSharing do
 
     if report_count > 0 do
       1..report_count
-
       |> Enum.map(fn i ->
         %{
           report_id: "#{battle_id}_report_#{i}",
@@ -361,7 +360,6 @@ defmodule EveDmv.Contexts.BattleSharing do
     base_count = 3 + :rand.uniform(8)
 
     (offset + 1)..(offset + min(limit, base_count))
-
     |> Enum.map(fn i ->
       battle_types = [:fleet_battle, :gang_warfare, :small_gang, :skirmish]
       battle_type = Enum.random(battle_types)

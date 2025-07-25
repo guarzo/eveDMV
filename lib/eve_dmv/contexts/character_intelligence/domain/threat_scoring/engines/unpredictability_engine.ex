@@ -619,8 +619,14 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
     base_insights
     |> add_insight_if(raw_score > 0.8, "Highly unpredictable opponent - difficult to anticipate")
     |> add_insight_if(time_variety > 0.7, "Varies engagement times - no clear schedule pattern")
-    |> add_insight_if(tactical_variance > 0.7, "High tactical adaptability - changes approach frequently")
-    |> add_insight_if(location_diversity > 0.8, "Operates across diverse regions - wide operational range")
+    |> add_insight_if(
+      tactical_variance > 0.7,
+      "High tactical adaptability - changes approach frequently"
+    )
+    |> add_insight_if(
+      location_diversity > 0.8,
+      "Operates across diverse regions - wide operational range"
+    )
     |> add_insight_if(raw_score < 0.3, "Predictable patterns - may be easier to anticipate")
   end
 

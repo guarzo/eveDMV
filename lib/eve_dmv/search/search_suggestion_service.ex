@@ -11,6 +11,8 @@ defmodule EveDmv.Search.SearchSuggestionService do
   alias EveDmv.Static.EveSolarSystem
   alias EveDmv.Static.EveItemType
 
+  import AshPostgres.Expr, only: [fragment: 2]
+
   require Logger
 
   @doc """
@@ -55,11 +57,13 @@ defmodule EveDmv.Search.SearchSuggestionService do
     else
       try do
         # Query unique corporations from participants
+        query_pattern = "%#{String.downcase(query)}%"
+
         corporation_query =
           Participant
           |> Ash.Query.new()
           |> Ash.Query.filter(not is_nil(corporation_name))
-          |> Ash.Query.filter(fragment("LOWER(?) LIKE ?", corporation_name, ^"%#{String.downcase(query)}%"))
+          |> Ash.Query.filter(fragment("LOWER(corporation_name) LIKE ?", ^query_pattern))
           |> Ash.Query.select([:corporation_id, :corporation_name])
           |> Ash.Query.distinct([:corporation_id])
           |> Ash.Query.limit(limit)
@@ -101,11 +105,13 @@ defmodule EveDmv.Search.SearchSuggestionService do
       {:ok, []}
     else
       try do
+        query_pattern = "%#{String.downcase(query)}%"
+
         alliance_query =
           Participant
           |> Ash.Query.new()
           |> Ash.Query.filter(not is_nil(alliance_name))
-          |> Ash.Query.filter(fragment("LOWER(?) LIKE ?", alliance_name, ^"%#{String.downcase(query)}%"))
+          |> Ash.Query.filter(fragment("LOWER(alliance_name) LIKE ?", ^query_pattern))
           |> Ash.Query.select([:alliance_id, :alliance_name])
           |> Ash.Query.distinct([:alliance_id])
           |> Ash.Query.limit(limit)
@@ -147,11 +153,12 @@ defmodule EveDmv.Search.SearchSuggestionService do
       {:ok, []}
     else
       try do
+        query_pattern = "%#{String.downcase(query)}%"
 
         system_query =
           EveSolarSystem
           |> Ash.Query.new()
-          |> Ash.Query.filter(fragment("LOWER(?) LIKE ?", system_name, ^"%#{String.downcase(query)}%"))
+          |> Ash.Query.filter(fragment("LOWER(system_name) LIKE ?", ^query_pattern))
           |> Ash.Query.select([:system_id, :system_name, :region_name, :security_status])
           |> Ash.Query.limit(limit)
 
@@ -194,13 +201,14 @@ defmodule EveDmv.Search.SearchSuggestionService do
       {:ok, []}
     else
       try do
+        query_pattern = "%#{String.downcase(query)}%"
 
         ship_query =
           EveItemType
           |> Ash.Query.new()
           |> Ash.Query.filter(is_ship: true)
           |> Ash.Query.filter(published: true)
-          |> Ash.Query.filter(fragment("LOWER(?) LIKE ?", type_name, ^"%#{String.downcase(query)}%"))
+          |> Ash.Query.filter(fragment("LOWER(type_name) LIKE ?", ^query_pattern))
           |> Ash.Query.select([:type_id, :type_name, :group_name, :category_name])
           |> Ash.Query.limit(limit)
 

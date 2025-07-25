@@ -272,7 +272,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   def handle_event(
         "search_autocomplete",
         %{"value" => query, "field" => field, "index" => index},
-    socket
+        socket
       ) do
     if String.length(query) >= 2 do
       suggestions = search_entity_suggestions(field, query)
@@ -298,7 +298,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   def handle_event(
         "select_suggestion",
         %{"id" => suggestion_id, "field" => field, "index" => index},
-    socket
+        socket
       ) do
     editing_profile = socket.assigns.editing_profile
 
@@ -394,8 +394,8 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
       _ ->
         socket
-    put_flash(:error, "Failed to load profiles")
-    assign(:profiles, [])
+        put_flash(:error, "Failed to load profiles")
+        assign(:profiles, [])
     end
   end
 
@@ -547,6 +547,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
   defp parse_id_list(value) when is_binary(value) do
     value
+
     String.split(",")
     |> Enum.map(&String.trim/1)
     |> Enum.reject(&(&1 == ""))
@@ -577,8 +578,8 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
       test_killmails = get_recent_killmails_for_testing(@preview_killmail_limit)
       # Test criteria against killmails
       matches =
-    test_killmails
-    |> Enum.map(fn killmail ->
+        test_killmails
+        |> Enum.map(fn killmail ->
           case MatchingEngine.test_criteria(profile.criteria, killmail) do
             {:ok, result} ->
               if result.matches do
@@ -594,9 +595,9 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
               end
           end
         end)
-    |> Enum.reject(&is_nil/1)
+        |> Enum.reject(&is_nil/1)
         # Show top 10 matches
-    |> Enum.take(10)
+        |> Enum.take(10)
 
       %{
         matches: matches,
@@ -616,8 +617,9 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
     try do
       query =
         EveDmv.Killmails.Ash.Query.new(KillmailRaw)
-    Ash.Query.limit(limit)
-    Ash.Query.sort(killmail_time: :desc)
+
+      Ash.Query.limit(limit)
+      Ash.Query.sort(killmail_time: :desc)
 
       case Ash.read(query) do
         {:ok, killmails} ->
@@ -699,7 +701,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
       _ ->
         # Default to user ID 1 if not authenticated
         # In production, this would redirect to login
-    1
+        1
     end
   end
 
@@ -800,5 +802,4 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
         {:error, :service_unavailable}
     end
   end
-
 end

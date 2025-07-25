@@ -139,6 +139,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TimezoneAn
           |> Enum.sum()
         end)
         |> Enum.max()
+
       if total_activity > 0 do
         max_6h_activity / total_activity
       else

@@ -66,6 +66,7 @@ defmodule EveDmv.Intelligence.Core.CacheHelper do
         cache_status: cache_status
       }
     )
+
     result
   end
 
@@ -80,7 +81,7 @@ defmodule EveDmv.Intelligence.Core.CacheHelper do
       "Invalidating cache for entity #{entity_id} across #{length(analysis_types)} analysis types"
     )
 
-    |> Enum.each(analysis_types, fn analysis_type ->
+    Enum.each(analysis_types, fn analysis_type ->
       cache_key = generate_cache_key(analysis_type, entity_id)
       Cache.delete(@cache_name, cache_key)
 
@@ -144,6 +145,7 @@ defmodule EveDmv.Intelligence.Core.CacheHelper do
       timeout: 60_000
     )
     |> Stream.run()
+
     warm_duration_native = System.monotonic_time() - start_time
     duration_ms = System.convert_time_unit(warm_duration_native, :native, :millisecond)
 

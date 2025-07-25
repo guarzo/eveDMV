@@ -171,9 +171,11 @@ defmodule EveDmv.Utils.Cache do
   """
   def get_many(cache_name, keys) do
     table_name = cache_table_name(cache_name)
+
     now = timestamp_ms()
 
-    |> Enum.reduce(keys, {%{}, []}, fn key, {found, missing} ->
+    keys
+    |> Enum.reduce({%{}, []}, fn key, {found, missing} ->
       case :ets.lookup(table_name, key) do
         [{^key, value, expires_at}] ->
           if now < expires_at do
@@ -279,7 +281,8 @@ defmodule EveDmv.Utils.Cache do
         table_name
       )
 
-    |> Enum.each(matching_keys, fn key ->
+    matching_keys
+    |> Enum.each(fn key ->
       :ets.delete(table_name, key)
     end)
 
@@ -318,8 +321,8 @@ defmodule EveDmv.Utils.Cache do
 
   defp pattern_to_regex(pattern) do
     pattern
-    String.replace("*", ".*")
-    Regex.compile!()
+    |> String.replace("*", ".*")
+    |> Regex.compile!()
   end
 
   defp track_cache_access(cache_name, type) do
@@ -345,7 +348,6 @@ defmodule EveDmv.Utils.Cache do
       table_list
       |> Enum.sort_by(fn {_key, _value, expires_at} -> expires_at end)
       |> Enum.take(num_to_remove)
-
       |> Enum.each(fn {key, _value, _expires_at} ->
         :ets.delete(table_name, key)
       end)

@@ -6,16 +6,9 @@ defmodule EveDmv.Cache.QueryCache do
   """
 
   use GenServer
-  require Logger
 
   alias EveDmv.Monitoring.PerformanceTracker
-
-  @table_name :query_cache
-  @pattern_cache_table :query_cache_patterns
-  @default_ttl :timer.minutes(15)
-  @max_cache_size 10_000
-  @cleanup_interval :timer.minutes(5)
-  @max_pattern_cache_size 1_000
+  require Logger
 
   defstruct [
     :cache_table,
@@ -23,6 +16,13 @@ defmodule EveDmv.Cache.QueryCache do
     :pattern_cache_table,
     :start_time
   ]
+
+  @table_name :query_cache
+  @pattern_cache_table :query_cache_patterns
+  @default_ttl :timer.minutes(15)
+  @max_cache_size 10_000
+  @cleanup_interval :timer.minutes(5)
+  @max_pattern_cache_size 1_000
 
   # Client API
 
@@ -282,28 +282,26 @@ defmodule EveDmv.Cache.QueryCache do
   # Private functions
 
   defp compute_and_cache(key, compute_fn, ttl) do
-    try do
-      result = compute_fn.()
+    result = compute_fn.()
 
-      case result do
-        {:ok, value} ->
-          put(key, value, ttl)
-          {:ok, value}
+    case result do
+      {:ok, value} ->
+        put(key, value, ttl)
+        {:ok, value}
 
-        {:error, _} = error ->
-          # Don't cache errors
-          error
+      {:error, _} = error ->
+        # Don't cache errors
+        error
 
-        value ->
-          # Assume bare values are successful
-          put(key, value, ttl)
-          {:ok, value}
-      end
-    rescue
-      error ->
-        Logger.error("Error computing cache value for #{key}: #{inspect(error)}")
-        {:error, error}
+      value ->
+        # Assume bare values are successful
+        put(key, value, ttl)
+        {:ok, value}
     end
+  rescue
+    error ->
+      Logger.error("Error computing cache value for #{key}: #{inspect(error)}")
+      {:error, error}
   end
 
   defp record_hit(key, start_time) do

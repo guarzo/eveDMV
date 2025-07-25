@@ -151,20 +151,20 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
         end
       end)
 
-    # Store matches and trigger alerts
-    |> Enum.each(matches, fn match ->
-      MatchCache.store_match(match)
+      # Store matches and trigger alerts
+      |> Enum.each(fn match ->
+        MatchCache.store_match(match)
 
-      EventBus.publish(%SurveillanceMatch{
-        profile_id: match.profile_id,
-        killmail_id: match.killmail_id,
-        # Default type
-        match_type: :character,
-        match_details: %{id: match.id, matched_criteria: match.matched_criteria},
-        confidence_score: match.confidence_score,
-        timestamp: DateTime.utc_now()
-      })
-    end)
+        EventBus.publish(%SurveillanceMatch{
+          profile_id: match.profile_id,
+          killmail_id: match.killmail_id,
+          # Default type
+          match_type: :character,
+          match_details: %{id: match.id, matched_criteria: match.matched_criteria},
+          confidence_score: match.confidence_score,
+          timestamp: DateTime.utc_now()
+        })
+      end)
 
     end_time = System.monotonic_time(:millisecond)
     processing_time = end_time - start_time
@@ -687,8 +687,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
         # Calculate jump distance from any system in the chain
         chain_systems =
           Map.get(topology, "systems", [])
-
-        |> Enum.map(&Map.get(&1, "system_id"))
+          |> Enum.map(&Map.get(&1, "system_id"))
 
         jump_distance = calculate_min_jump_distance(system_id, chain_systems)
 
@@ -720,8 +719,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
       {:ok, inhabitants} ->
         inhabitant_character_ids =
           inhabitants
+          |> Enum.map(&Map.get(&1, "character_id"))
 
-        |> Enum.map(&Map.get(&1, "character_id"))
         Enum.filter(&(&1 != nil)) |> MapSet.new()
         # Check victim
         victim_match = MapSet.member?(inhabitant_character_ids, killmail_data.victim.character_id)
@@ -738,23 +737,23 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
           matched_criteria =
             []
             |> then(fn acc ->
-            if victim_match do
-              [
-                %{
-                  type: :chain_inhabitant_victim,
-                  character_id: killmail_data.victim.character_id
-                }
-                | acc
-              ]
-            else
-              acc
-            end
-          end)
-          |> then(fn acc ->
-            Enum.reduce(attacker_matches, acc, fn attacker, acc ->
-              [%{type: :chain_inhabitant_attacker, character_id: attacker.character_id} | acc]
+              if victim_match do
+                [
+                  %{
+                    type: :chain_inhabitant_victim,
+                    character_id: killmail_data.victim.character_id
+                  }
+                  | acc
+                ]
+              else
+                acc
+              end
             end)
-          end)
+            |> then(fn acc ->
+              Enum.reduce(attacker_matches, acc, fn attacker, acc ->
+                [%{type: :chain_inhabitant_attacker, character_id: attacker.character_id} | acc]
+              end)
+            end)
 
           %{
             matches: true,
@@ -778,8 +777,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
       {:ok, topology} ->
         chain_systems =
           Map.get(topology, "systems", [])
-
-        |> Enum.map(&Map.get(&1, "system_id"))
+          |> Enum.map(&Map.get(&1, "system_id"))
 
         # If killmail is within 1 jump of chain, it could be hostiles entering
         within_one_jump =
@@ -816,9 +814,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
       # This should be replaced with proper jump route calculation
       min_distance =
         chain_system_ids
-
-      |> Enum.map(fn system_id -> abs(target_system_id - system_id) end)
-      |> Enum.min(fn -> 999 end)
+        |> Enum.map(fn system_id -> abs(target_system_id - system_id) end)
+        |> Enum.min(fn -> 999 end)
 
       cond do
         # Likely adjacent

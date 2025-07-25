@@ -33,28 +33,26 @@ defmodule EveDmv.Quality.MetricsCollector.TestMetrics do
   # Test counting functions
 
   defp count_total_tests do
-    try do
-      # Use file system traversal instead of System.cmd for security
-      "test/**/*_test.exs"
-      |> Path.wildcard()
-      |> Enum.reduce(0, fn file, acc ->
-        case File.read(file) do
-          {:ok, content} ->
-            # Count test definitions
-            test_count =
-              content
-              |> String.split("\n")
-              |> Enum.count(&(String.contains?(&1, "test ") or String.contains?(&1, "describe ")))
+    # Use file system traversal instead of System.cmd for security
+    "test/**/*_test.exs"
+    |> Path.wildcard()
+    |> Enum.reduce(0, fn file, acc ->
+      case File.read(file) do
+        {:ok, content} ->
+          # Count test definitions
+          test_count =
+            content
+            |> String.split("\n")
+            |> Enum.count(&(String.contains?(&1, "test ") or String.contains?(&1, "describe ")))
 
-            acc + test_count
+          acc + test_count
 
-          _ ->
-            acc
-        end
-      end)
-    rescue
-      _ -> 0
-    end
+        _ ->
+          acc
+      end
+    end)
+  rescue
+    _ -> 0
   end
 
   defp count_test_files do
@@ -62,25 +60,23 @@ defmodule EveDmv.Quality.MetricsCollector.TestMetrics do
   end
 
   defp count_skipped_tests do
-    try do
-      # Use file system traversal instead of grep
-      "test/**/*.exs"
-      |> Path.wildcard()
-      |> Enum.reduce(0, fn file, acc ->
-        case File.read(file) do
-          {:ok, content} ->
-            skip_count =
-              content |> String.split("\n") |> Enum.count(&String.contains?(&1, "@tag :skip"))
+    # Use file system traversal instead of grep
+    "test/**/*.exs"
+    |> Path.wildcard()
+    |> Enum.reduce(0, fn file, acc ->
+      case File.read(file) do
+        {:ok, content} ->
+          skip_count =
+            content |> String.split("\n") |> Enum.count(&String.contains?(&1, "@tag :skip"))
 
-            acc + skip_count
+          acc + skip_count
 
-          _ ->
-            acc
-        end
-      end)
-    rescue
-      _ -> 0
-    end
+        _ ->
+          acc
+      end
+    end)
+  rescue
+    _ -> 0
   end
 
   # Coverage analysis

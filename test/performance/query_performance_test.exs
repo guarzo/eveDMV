@@ -18,15 +18,15 @@ defmodule EveDmv.Performance.QueryPerformanceTest do
   # Real EVE ship type IDs for performance testing
   @ship_ids [587, 588, 589, 590, 620, 621, 622, 623, 641, 642, 11_985, 11_987, 22_456, 29_984]
 
-  # Helper function to get real ship IDs instead of modulo calculation
-  defp get_real_ship_id(index), do: Enum.at(@ship_ids, rem(index, length(@ship_ids)))
-
   # milliseconds
   @max_character_query_time 100
   # milliseconds
   @max_corp_query_time 200
   # number of test killmails to create
   @test_data_size 1000
+
+  # Helper function to get real ship IDs instead of modulo calculation
+  defp get_real_ship_id(index), do: Enum.at(@ship_ids, rem(index, length(@ship_ids)))
 
   setup do
     # Ensure QueryCache is available

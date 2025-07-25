@@ -49,17 +49,14 @@ defmodule EveDmv.StaticData do
 
   defp fetch_and_cache_type(type_id) do
     item =
-      ItemType
-
-    new()
-    filter(type_id == ^type_id)
-    limit(1)
-    Ash.read(domain: Api)
-
-    case do
-      {:ok, [item]} -> item
-      _ -> nil
-    end
+      case ItemType
+           |> new()
+           |> filter(type_id == ^type_id)
+           |> limit(1)
+           |> Ash.read(domain: Api) do
+        {:ok, [item]} -> item
+        _ -> nil
+      end
 
     cache_item(@type_cache_table, type_id, item)
     item
@@ -70,14 +67,11 @@ defmodule EveDmv.StaticData do
   Returns the full ItemType struct or nil if not found.
   """
   def get_type_by_name(type_name) when is_binary(type_name) do
-    ItemType
-
-    new()
-    filter(type_name == ^type_name)
-    Ash.read_one(domain: Api)
-
-    case do
-      {:ok, item} when not is_nil(item) ->
+    case ItemType
+         |> new()
+         |> filter(type_name == ^type_name)
+         |> Ash.read_one(domain: Api) do
+      {:ok, item} when is_map(item) ->
         # Cache by ID for future lookups
         cache_item(@type_cache_table, item.type_id, item)
         item
@@ -109,19 +103,16 @@ defmodule EveDmv.StaticData do
 
   defp fetch_multiple_types(type_ids) do
     items =
-      ItemType
-
-    new()
-    filter(type_id in ^type_ids)
-    Ash.read(domain: Api)
-
-    case do
-      {:ok, items} -> items
-      _ -> []
-    end
+      case ItemType
+           |> new()
+           |> filter(type_id in ^type_ids)
+           |> Ash.read(domain: Api) do
+        {:ok, items} -> items
+        _ -> []
+      end
 
     # Cache the fetched items
-    |> Enum.each(items, fn item ->
+    Enum.each(items, fn item ->
       cache_item(@type_cache_table, item.type_id, item)
     end)
 
@@ -200,7 +191,7 @@ defmodule EveDmv.StaticData do
 
   def get_ship_mass(ship_type_id) when is_integer(ship_type_id) do
     case get_type(ship_type_id) do
-      %ItemType{mass: mass} when not is_nil(mass) ->
+      %ItemType{mass: mass} when is_struct(mass, Decimal) ->
         {:ok, Decimal.to_float(mass)}
 
       %ItemType{mass: nil} ->
@@ -215,14 +206,14 @@ defmodule EveDmv.StaticData do
   Get solar system information by ID.
   """
   def get_system(system_id) when is_integer(system_id) do
-    SolarSystem
+    result =
+      SolarSystem
+      |> Ash.Query.new()
+      |> Ash.Query.filter(system_id == ^system_id)
+      |> Ash.Query.limit(1)
+      |> Ash.read(domain: Api)
 
-    new()
-    filter(system_id == ^system_id)
-    limit(1)
-    Ash.read(domain: Api)
-
-    case do
+    case result do
       {:ok, [system]} -> system
       _ -> nil
     end
@@ -314,14 +305,14 @@ defmodule EveDmv.StaticData do
     if group_ids == [] do
       []
     else
-      ItemType
+      result =
+        ItemType
+        |> Ash.Query.new()
+        |> Ash.Query.filter(group_id in ^group_ids)
+        |> Ash.Query.filter(published == true)
+        |> Ash.read(domain: Api)
 
-      new()
-      filter(group_id in ^group_ids)
-      filter(published == true)
-      Ash.read(domain: Api)
-
-      case do
+      case result do
         {:ok, ships} -> ships
         _ -> []
       end
@@ -340,7 +331,7 @@ defmodule EveDmv.StaticData do
           cond do
             tech_level == 2 -> :tech2
             tech_level == 3 -> :tech3
-            is_faction_ship?(name, meta_level) -> :faction
+            faction_ship?(name, meta_level) -> :faction
             true -> :tech1
           end
 
@@ -592,30 +583,28 @@ defmodule EveDmv.StaticData do
   # Private functions
 
   defp classify_by_security(sec_status, sec_class, system_id) do
-    cond do
+    if is_wormhole_system?(system_id) do
       # Wormhole systems
-      is_wormhole_system?(system_id) ->
-        case sec_class do
-          "C1" -> :wormhole_c1
-          "C2" -> :wormhole_c2
-          "C3" -> :wormhole_c3
-          "C4" -> :wormhole_c4
-          "C5" -> :wormhole_c5
-          "C6" -> :wormhole_c6
-          # Shattered
-          "C13" -> :wormhole_c13
-          # Drifter systems
-          "C14" -> :wormhole_c14
-          _ -> :wormhole_unknown
-        end
-
+      case sec_class do
+        "C1" -> :wormhole_c1
+        "C2" -> :wormhole_c2
+        "C3" -> :wormhole_c3
+        "C4" -> :wormhole_c4
+        "C5" -> :wormhole_c5
+        "C6" -> :wormhole_c6
+        # Shattered
+        "C13" -> :wormhole_c13
+        # Drifter systems
+        "C14" -> :wormhole_c14
+        _ -> :wormhole_unknown
+      end
+    else
       # K-space systems
-      true ->
-        case Decimal.to_float(sec_status || Decimal.new(0)) do
-          sec when sec >= 0.5 -> :highsec
-          sec when sec > 0.0 -> :lowsec
-          _ -> :nullsec
-        end
+      case Decimal.to_float(sec_status || Decimal.new(0)) do
+        sec when sec >= 0.5 -> :highsec
+        sec when sec > 0.0 -> :lowsec
+        _ -> :nullsec
+      end
     end
   end
 
@@ -669,7 +658,7 @@ defmodule EveDmv.StaticData do
 
   # Helper functions for tech level classification
 
-  defp is_faction_ship?(name, meta_level) when is_binary(name) do
+  defp faction_ship?(name, meta_level) when is_binary(name) do
     # Faction ships often have meta level 5-8 and specific name patterns
     (meta_level >= 5 and meta_level <= 8) or
       String.contains?(name, [
@@ -698,7 +687,7 @@ defmodule EveDmv.StaticData do
       ])
   end
 
-  defp is_faction_ship?(_, _), do: false
+  defp faction_ship?(_, _), do: false
 
   # Race determination based on ship names and patterns
   defp determine_race_from_name(ship_name, group_name) do

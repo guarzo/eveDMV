@@ -247,9 +247,9 @@ defmodule EveDmvWeb.HomeLive do
   end
 
   def show_search_dropdown?(assigns) do
-    assigns[:current_user] && 
-    assigns.show_search_dropdown && 
-    !assigns.search_loading && 
-    has_search_results?(assigns.search_results)
+    assigns[:current_user] &&
+      assigns.show_search_dropdown &&
+      !assigns.search_loading &&
+      has_search_results?(assigns.search_results)
   end
 end

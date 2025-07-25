@@ -28,7 +28,8 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
     # Filter queries based on threshold_ms if needed
     filtered_queries =
       if threshold_ms > 0 do
-        |> Enum.filter(all_slow_queries, fn query ->
+        all_slow_queries
+        |> Enum.filter(fn query ->
           query[:avg_time] >= threshold_ms
         end)
       else
@@ -61,7 +62,6 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
       {:table_stats, include_tables, &get_table_statistics/0},
       {:statement_stats, include_statements, &get_statement_statistics/0}
     ]
-
     |> Enum.reduce(base_metrics, fn {key, include?, fetch_fn}, acc ->
       if include? do
         Map.put(acc, key, fetch_fn.())
@@ -121,11 +121,11 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
   defp sanitize_sql(sql) when is_binary(sql) do
     sql
     # Replace numbers with placeholders
-    String.replace(~r/\b\d+\b/, "?")
+    |> String.replace(~r/\b\d+\b/, "?")
     # Replace string literals
-    String.replace(~r/'[^']*'/, "'?'")
+    |> String.replace(~r/'[^']*'/, "'?'")
     # Replace parameter placeholders
-    String.replace(~r/\$\d+/, "$?")
+    |> String.replace(~r/\$\d+/, "$?")
   end
 
   defp get_database_size do

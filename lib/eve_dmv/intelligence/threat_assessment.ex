@@ -214,7 +214,7 @@ defmodule EveDmv.Intelligence.ThreatAssessment do
 
   defp get_character_stats(character_id) do
     CharacterStats
-    |> Ash.Query.filter(character_id == character_id)
+    |> Ash.Query.filter(character_id == ^character_id)
     |> Ash.read(domain: Api)
   end
 end

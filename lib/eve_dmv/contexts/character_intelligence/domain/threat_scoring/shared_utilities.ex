@@ -149,6 +149,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtili
         attacker_killmails
         |> Enum.map(&extract_damage_contribution/1)
         |> Enum.sum()
+
       average_contribution = total_damage_contribution / length(attacker_killmails)
 
       # Normalize damage contribution (higher is better)

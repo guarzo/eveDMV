@@ -1081,7 +1081,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
     # Add general tactical improvements based on outcome
     final_recommendations =
       if outcome_analysis[:primary_factors] do
-        Enum.reduce(outcome_analysis.primary_factors, recommendations, &maybe_add_factor_recommendation/2)
+        Enum.reduce(
+          outcome_analysis.primary_factors,
+          recommendations,
+          &maybe_add_factor_recommendation/2
+        )
       else
         recommendations
       end
@@ -1643,7 +1647,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
   end
 
   defp prioritize_recommendations(immediate_actions) do
-    Enum.sort_by(immediate_actions,
+    Enum.sort_by(
+      immediate_actions,
       fn action ->
         urgency_score = urgency_to_number(Map.get(action, :urgency, :low))
         impact_score = impact_to_number(Map.get(action, :expected_impact, :low))
@@ -1937,9 +1942,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
 
       intervals =
         Enum.sort(timestamps)
-
-      |> Enum.chunk_every(2, 1, :discard)
-      |> Enum.map(fn [a, b] -> b - a end)
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.map(fn [a, b] -> b - a end)
 
       avg_interval = average(intervals)
 

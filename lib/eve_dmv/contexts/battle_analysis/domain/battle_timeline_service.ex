@@ -322,13 +322,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
     events
     |> Enum.flat_map(& &1.attackers)
     |> Enum.map(& &1.character_id)
-    |> Enum.filter(&(&1 != nil)) |> Enum.uniq() |> Kernel.length()
+    |> Enum.filter(&(&1 != nil))
+    |> Enum.uniq()
+    |> Kernel.length()
   end
 
   defp count_unique_victims(events) do
     events
     |> Enum.map(& &1.victim.character_id)
-    |> Enum.filter(&(&1 != nil)) |> Enum.uniq() |> Kernel.length()
+    |> Enum.filter(&(&1 != nil))
+    |> Enum.uniq()
+    |> Kernel.length()
   end
 
   defp analyze_ship_types_in_window(events, sides_analysis) do
@@ -363,21 +367,21 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
         event.attackers
         |> Enum.filter(&(&1.character_id && &1.ship_type_id))
         |> Enum.map(fn attacker ->
-        %{
-          character_id: attacker.character_id,
-          character_name: attacker.character_name,
-          corporation_id: attacker.corporation_id,
-          corporation_name: attacker.corporation_name,
-          alliance_id: attacker.alliance_id,
-          ship_type_id: attacker.ship_type_id,
-          ship_name: attacker.ship_name,
-          damage_taken: 0,
-          damage_given: attacker.damage_done,
-          kills: if(attacker.final_blow, do: 1, else: 0),
-          losses: 0,
-          is_victim: false
-        }
-      end)
+          %{
+            character_id: attacker.character_id,
+            character_name: attacker.character_name,
+            corporation_id: attacker.corporation_id,
+            corporation_name: attacker.corporation_name,
+            alliance_id: attacker.alliance_id,
+            ship_type_id: attacker.ship_type_id,
+            ship_name: attacker.ship_name,
+            damage_taken: 0,
+            damage_given: attacker.damage_done,
+            kills: if(attacker.final_blow, do: 1, else: 0),
+            losses: 0,
+            is_victim: false
+          }
+        end)
 
       victim_entry ++ attacker_entries
     end)
@@ -462,38 +466,38 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
     corp_groups =
       interactions
       |> Enum.flat_map(fn i ->
-      [
-        {i.attacker_corp, i.attacker_alliance || "standalone_#{i.attacker_corp}"},
-        {i.victim_corp, i.victim_alliance || "standalone_#{i.victim_corp}"}
-      ]
-    end)
-    |> Enum.uniq()
-    |> Enum.group_by(fn {_corp, group} -> group end, fn {corp, _} -> corp end)
+        [
+          {i.attacker_corp, i.attacker_alliance || "standalone_#{i.attacker_corp}"},
+          {i.victim_corp, i.victim_alliance || "standalone_#{i.victim_corp}"}
+        ]
+      end)
+      |> Enum.uniq()
+      |> Enum.group_by(fn {_corp, group} -> group end, fn {corp, _} -> corp end)
 
     # Calculate damage dealt between groups
     group_interactions =
       interactions
       |> Enum.group_by(fn i ->
-      attacker_group =
-        Map.get(
-          corp_groups,
-          i.attacker_corp,
-          i.attacker_alliance || "standalone_#{i.attacker_corp}"
-        )
+        attacker_group =
+          Map.get(
+            corp_groups,
+            i.attacker_corp,
+            i.attacker_alliance || "standalone_#{i.attacker_corp}"
+          )
 
-      victim_group =
-        Map.get(corp_groups, i.victim_corp, i.victim_alliance || "standalone_#{i.victim_corp}")
+        victim_group =
+          Map.get(corp_groups, i.victim_corp, i.victim_alliance || "standalone_#{i.victim_corp}")
 
-      {attacker_group, victim_group}
-    end)
-    |> Enum.map(fn {{attacker_group, victim_group}, interactions} ->
-      %{
-        attacker_group: attacker_group,
-        victim_group: victim_group,
-        total_damage: Enum.sum(Enum.map(interactions, & &1.damage)),
-        interaction_count: length(interactions)
-      }
-    end)
+        {attacker_group, victim_group}
+      end)
+      |> Enum.map(fn {{attacker_group, victim_group}, interactions} ->
+        %{
+          attacker_group: attacker_group,
+          victim_group: victim_group,
+          total_damage: Enum.sum(Enum.map(interactions, & &1.damage)),
+          interaction_count: length(interactions)
+        }
+      end)
 
     # Identify sides based on who shoots whom
     identify_sides_from_interactions(corp_groups, group_interactions)
@@ -508,42 +512,42 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
     # Build adjacency list of hostile relationships
     hostile_map =
       Enum.reduce(interactions, %{}, fn interaction, acc ->
-      if interaction.attacker_group != interaction.victim_group do
-        acc
-        |> Map.update(
-          interaction.attacker_group,
-          [interaction.victim_group],
-          &[interaction.victim_group | &1]
-        )
-        |> Map.update(
-          interaction.victim_group,
-          [interaction.attacker_group],
-          &[interaction.attacker_group | &1]
-        )
-      else
-        acc
-      end
-    end)
+        if interaction.attacker_group != interaction.victim_group do
+          acc
+          |> Map.update(
+            interaction.attacker_group,
+            [interaction.victim_group],
+            &[interaction.victim_group | &1]
+          )
+          |> Map.update(
+            interaction.victim_group,
+            [interaction.attacker_group],
+            &[interaction.attacker_group | &1]
+          )
+        else
+          acc
+        end
+      end)
 
     # Group into sides based on hostile relationships
     {_assigned, sides} =
       Enum.reduce(groups, {[], []}, fn group, {assigned, sides} ->
-      if group in assigned do
-        {assigned, sides}
-      else
-        # Find which side this group belongs to
-        side_index = find_non_hostile_side(group, sides, hostile_map)
-
-        if side_index do
-          # Add to existing side
-          updated_sides = List.update_at(sides, side_index, &[group | &1])
-          {[group | assigned], updated_sides}
+        if group in assigned do
+          {assigned, sides}
         else
-          # Create new side
-          {[group | assigned], [[group] | sides]}
+          # Find which side this group belongs to
+          side_index = find_non_hostile_side(group, sides, hostile_map)
+
+          if side_index do
+            # Add to existing side
+            updated_sides = List.update_at(sides, side_index, &[group | &1])
+            {[group | assigned], updated_sides}
+          else
+            # Create new side
+            {[group | assigned], [[group] | sides]}
+          end
         end
-      end
-    end)
+      end)
 
     # Convert to detailed side information
     sides
@@ -551,7 +555,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
     |> Enum.map(fn {side_groups, index} ->
       corps =
         side_groups
-        |> Enum.flat_map(fn group -> Map.get(corp_groups, group, []) end) |> Enum.uniq()
+        |> Enum.flat_map(fn group -> Map.get(corp_groups, group, []) end)
+        |> Enum.uniq()
 
       %{
         side_id: "side_#{index + 1}",
@@ -767,8 +772,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
 
   defp analyze_escalation_pattern(battles) do
     # Track how battles grow or shrink over time
-    battles
-    |> Enum.map(fn battle ->
+    Enum.map(battles, fn battle ->
       %{
         battle_id: battle.battle_id,
         participant_count: battle.metadata.unique_participants,
@@ -799,8 +803,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
 
   # Helper function to find non-hostile side for a group
   defp find_non_hostile_side(group, sides, hostile_map) do
-    sides
-    |> Enum.find_index(fn side_groups ->
+    Enum.find_index(sides, fn side_groups ->
       # Check if this group is hostile to any group in this side
       not Enum.any?(side_groups, fn side_group ->
         hostile_map

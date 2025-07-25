@@ -124,8 +124,8 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.RequirementsBuilder do
   Build ship requirements from a simple ship list.
   """
   def build_ship_requirements_from_list(ship_list) do
-    Enum.with_index(ship_list)
-
+    ship_list
+    |> Enum.with_index()
     |> Enum.reduce(%{}, fn {ship_name, index}, acc ->
       ship_info = get_ship_info(ship_name)
       type_id = Integer.to_string(index)

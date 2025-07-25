@@ -281,14 +281,15 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
     threat_type = Map.get(threat_event, :type, :unknown)
 
     # Build recommendations using efficient list operations
-    all_recommendations = [
-      generate_immediate_response_recommendations(threat_severity, threat_type),
-      generate_tactical_recommendations(defense_analysis, threat_event),
-      generate_strategic_recommendations(defense_analysis, threat_type),
-      generate_resource_recommendations(defense_analysis, threat_event),
-      generate_communication_recommendations(threat_severity, defense_analysis)
-    ]
-    |> List.flatten()
+    all_recommendations =
+      [
+        generate_immediate_response_recommendations(threat_severity, threat_type),
+        generate_tactical_recommendations(defense_analysis, threat_event),
+        generate_strategic_recommendations(defense_analysis, threat_type),
+        generate_resource_recommendations(defense_analysis, threat_event),
+        generate_communication_recommendations(threat_severity, defense_analysis)
+      ]
+      |> List.flatten()
 
     # Filter and prioritize based on context
     all_recommendations
@@ -645,8 +646,14 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
     ship_type_count = map_size(type_frequencies)
 
     []
-    |> add_recommendation_if("Increase overall fleet size for better defense coverage", total_ships < 20)
-    |> add_recommendation_if("Consider standardizing around fewer ship types for better logistics", ship_type_count > 10)
+    |> add_recommendation_if(
+      "Increase overall fleet size for better defense coverage",
+      total_ships < 20
+    )
+    |> add_recommendation_if(
+      "Consider standardizing around fewer ship types for better logistics",
+      ship_type_count > 10
+    )
   end
 
   defp get_system_topology(system_id) do
@@ -805,8 +812,14 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
       end)
 
     base_recommendations
-    |> add_recommendation_if(length(blind_spots) > 2, "Deploy scouts to cover unmonitored entry points")
-    |> add_recommendation_if(high_threat_entries > 1, "Increase monitoring on high-threat connections")
+    |> add_recommendation_if(
+      length(blind_spots) > 2,
+      "Deploy scouts to cover unmonitored entry points"
+    )
+    |> add_recommendation_if(
+      high_threat_entries > 1,
+      "Increase monitoring on high-threat connections"
+    )
   end
 
   defp add_recommendation_if(recommendations, condition, recommendation) do
@@ -1489,13 +1502,5 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
       end
 
     recommendations
-  end
-
-  defp add_recommendation_if(recommendations, message, condition) do
-    if condition do
-      [message | recommendations]
-    else
-      recommendations
-    end
   end
 end

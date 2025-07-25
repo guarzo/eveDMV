@@ -74,7 +74,6 @@ defmodule EveDmv.Quality.MetricsCollector.CodeQualityMetrics do
     end
   end
 
-
   # Dialyzer analysis
 
   defp run_dialyzer_analysis do
@@ -92,8 +91,8 @@ defmodule EveDmv.Quality.MetricsCollector.CodeQualityMetrics do
     elixir_files = Path.wildcard("lib/**/*.ex")
 
     total_lines =
-      elixir_files
-      |> Enum.map(&count_lines_in_file/1) |> Enum.sum()
+      elixir_files |> Enum.map(&count_lines_in_file/1) |> Enum.sum()
+
     %{
       total_files: length(elixir_files),
       total_lines_of_code: total_lines,
@@ -217,5 +216,4 @@ defmodule EveDmv.Quality.MetricsCollector.CodeQualityMetrics do
 
     max(0, base_score - complexity_penalty - very_large_penalty + small_file_bonus)
   end
-
 end

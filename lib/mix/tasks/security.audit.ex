@@ -369,6 +369,7 @@ defmodule Mix.Tasks.Security.Audit do
 
         new_total = db_total_recommendations + container_recs
         new_high = db_high_priority + container_high
+
         Mix.shell().info(
           "Container: #{container_recs} recommendations (#{container_high} high priority)"
         )

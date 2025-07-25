@@ -96,9 +96,8 @@ defmodule EveDmv.Quality.MetricsCollector.SecurityMetrics do
     # Count files with potential hardcoded secrets
     secret_patterns = ["password", "secret", "key", "token"]
 
-    elixir_files = Path.wildcard("lib/**/*.ex")
-
-    |> Enum.count(elixir_files, fn file ->
+    Path.wildcard("lib/**/*.ex")
+    |> Enum.count(fn file ->
       case File.read(file) do
         {:ok, content} ->
           # Look for hardcoded values (quoted strings after secret patterns)
@@ -114,9 +113,8 @@ defmodule EveDmv.Quality.MetricsCollector.SecurityMetrics do
 
   defp scan_for_sql_injection do
     # Simplified SQL injection risk detection
-    elixir_files = Path.wildcard("lib/**/*.ex")
-
-    |> Enum.count(elixir_files, fn file ->
+    Path.wildcard("lib/**/*.ex")
+    |> Enum.count(fn file ->
       case File.read(file) do
         {:ok, content} ->
           # Look for string interpolation in query contexts
@@ -130,9 +128,8 @@ defmodule EveDmv.Quality.MetricsCollector.SecurityMetrics do
 
   defp scan_for_xss_risks do
     # Simplified XSS risk detection
-    elixir_files = Path.wildcard("lib/**/*.ex")
-
-    |> Enum.count(elixir_files, fn file ->
+    Path.wildcard("lib/**/*.ex")
+    |> Enum.count(fn file ->
       case File.read(file) do
         {:ok, content} ->
           # Look for raw HTML output
@@ -201,9 +198,9 @@ defmodule EveDmv.Quality.MetricsCollector.SecurityMetrics do
       potential_secrets_count: length(findings),
       files_with_secrets:
         findings
-        |> Enum.map(&elem(&1, 0)) |> Enum.uniq()
+        |> Enum.map(&elem(&1, 0))
+        |> Enum.uniq()
         |> length()
     }
   end
-
 end

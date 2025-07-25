@@ -18,25 +18,24 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Pe
   def calculate_performance_metrics(killmails, participants) do
     # Group by side
     sides =
-      Map.values(participants)
-
-    |> Enum.group_by(& &1.side)
+      participants
+      |> Map.values()
+      |> Enum.group_by(& &1.side)
 
     by_side =
       sides
-
-    |> Enum.map(fn {side, side_participants} ->
-      {side,
-       %{
-         kills: Enum.sum(Enum.map(side_participants, & &1.kills)),
-         losses: Enum.sum(Enum.map(side_participants, & &1.losses)),
-         isk_destroyed: calculate_side_isk_destroyed(side, killmails),
-         isk_lost: calculate_side_isk_lost(side, killmails),
-         efficiency: calculate_side_efficiency(side, killmails),
-         k_d_ratio: calculate_side_kd_ratio(side_participants)
-       }}
-    end)
-    |> Map.new()
+      |> Enum.map(fn {side, side_participants} ->
+        {side,
+         %{
+           kills: Enum.sum(Enum.map(side_participants, & &1.kills)),
+           losses: Enum.sum(Enum.map(side_participants, & &1.losses)),
+           isk_destroyed: calculate_side_isk_destroyed(side, killmails),
+           isk_lost: calculate_side_isk_lost(side, killmails),
+           efficiency: calculate_side_efficiency(side, killmails),
+           k_d_ratio: calculate_side_kd_ratio(side_participants)
+         }}
+      end)
+      |> Map.new()
 
     by_ship_class = analyze_ship_class_performance(killmails, participants)
     top_performers = identify_top_performers(participants)
@@ -142,10 +141,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Pe
     # Combine data for comprehensive analysis
     ship_classes =
       [ship_usage, kills_by_class, losses_by_class]
+      |> Enum.flat_map(&Map.keys/1)
+      |> Enum.uniq()
 
-    Enum.flat_map(&Map.keys/1) |> Enum.uniq()
-
-    |> Enum.map(ship_classes, fn ship_class ->
+    ship_classes
+    |> Enum.map(fn ship_class ->
       ships_used = Map.get(ship_usage, ship_class, 0)
       kills_made = Map.get(kills_by_class, ship_class, 0)
       losses_taken = Map.get(losses_by_class, ship_class, 0)
@@ -178,11 +178,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Pe
   Identify top performers by kill count.
   """
   def identify_top_performers(participants) do
-    Map.values(participants)
+    participants
+    |> Map.values()
     |> Enum.filter(&(&1.kills > 0))
     |> Enum.sort_by(& &1.kills, :desc)
     |> Enum.take(10)
-
     |> Enum.map(fn participant ->
       %{
         character_id: participant.character_id,
@@ -214,50 +214,48 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Pe
       # Calculate metrics for each time bucket
       timeline_data =
         time_buckets
+        |> Enum.map(fn bucket_start ->
+          bucket_end = DateTime.add(bucket_start, 60, :second)
 
-      |> Enum.map(fn bucket_start ->
-        bucket_end = DateTime.add(bucket_start, 60, :second)
+          # Find kills in this bucket
+          bucket_kills =
+            Enum.filter(sorted_kills, fn km ->
+              DateTime.compare(km.killmail_time, bucket_start) != :lt and
+                DateTime.compare(km.killmail_time, bucket_end) == :lt
+            end)
 
-        # Find kills in this bucket
-        bucket_kills =
-          Enum.filter(sorted_kills, fn km ->
-            DateTime.compare(km.killmail_time, bucket_start) != :lt and
-              DateTime.compare(km.killmail_time, bucket_end) == :lt
-          end)
+          # Calculate bucket metrics
+          kills_count = length(bucket_kills)
+          total_isk = Enum.sum(Enum.map(bucket_kills, &calculate_killmail_isk_value/1))
 
-        # Calculate bucket metrics
-        kills_count = length(bucket_kills)
-        total_isk = Enum.sum(Enum.map(bucket_kills, &calculate_killmail_isk_value/1))
+          active_participants =
+            bucket_kills
+            |> Enum.flat_map(&extract_participants_from_killmail/1)
+            |> Enum.uniq()
+            |> length()
 
-        active_participants =
-          bucket_kills
-          |> Enum.flat_map(&extract_participants_from_killmail/1)
-          |> Enum.uniq()
-          |> length()
+          # Determine intensity level and score
+          intensity_level =
+            determine_intensity_level(kills_count, total_isk / 60, active_participants)
 
-        # Determine intensity level and score
-        intensity_level =
-          determine_intensity_level(kills_count, total_isk / 60, active_participants)
+          intensity_score =
+            calculate_intensity_score(kills_count, total_isk / 60, active_participants)
 
-        intensity_score =
-          calculate_intensity_score(kills_count, total_isk / 60, active_participants)
-
-        %{
-          timestamp: bucket_start,
-          kills_per_minute: kills_count,
-          isk_per_minute: Float.round(total_isk / 60, 0),
-          active_participants: active_participants,
-          intensity_level: intensity_level,
-          intensity_score: intensity_score
-        }
-      end)
+          %{
+            timestamp: bucket_start,
+            kills_per_minute: kills_count,
+            isk_per_minute: Float.round(total_isk / 60, 0),
+            active_participants: active_participants,
+            intensity_level: intensity_level,
+            intensity_score: intensity_score
+          }
+        end)
 
       # Calculate overall metrics
       peak_intensity =
         timeline_data
-
-      |> Enum.map(& &1.intensity_score)
-      |> Enum.max(fn -> 0 end)
+        |> Enum.map(& &1.intensity_score)
+        |> Enum.max(fn -> 0 end)
 
       average_intensity =
         if length(timeline_data) > 0 do
@@ -308,17 +306,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Pe
       0.0
     else
       efficiencies =
-        Map.values(participants)
+        participants
+        |> Map.values()
+        |> Enum.map(fn participant ->
+          total_activity = participant.kills + participant.losses
 
-      |> Enum.map(fn participant ->
-        total_activity = participant.kills + participant.losses
-
-        if total_activity > 0 do
-          participant.kills / total_activity * 100
-        else
-          0.0
-        end
-      end)
+          if total_activity > 0 do
+            participant.kills / total_activity * 100
+          else
+            0.0
+          end
+        end)
 
       if length(efficiencies) > 0 do
         Float.round(Enum.sum(efficiencies) / length(efficiencies), 2)
@@ -388,9 +386,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Pe
 
   defp extract_ship_usage_from_participants(participants) do
     Map.values(participants)
-
     |> Enum.flat_map(fn participant ->
-      participant.ships_used(MapSet.to_list() |> Enum.map(&classify_ship/1))
+      participant.ships_used |> MapSet.to_list() |> Enum.map(&classify_ship/1)
     end)
     |> Enum.frequencies()
   end
@@ -432,7 +429,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Pe
     bucket_count = max(div(duration_seconds, interval_seconds), 1)
 
     0..(bucket_count - 1)
-
     |> Enum.map(fn i ->
       DateTime.add(start_time, i * interval_seconds, :second)
     end)
@@ -482,10 +478,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Pe
     participants = [killmail.victim_character_id]
 
     attacker_participants =
-      killmail.attackers || []
-
-    |> Enum.map(& &1["character_id"])
-    |> Enum.filter(&(&1 && &1 != 0))
+      killmail.attackers ||
+        []
+        |> Enum.map(& &1["character_id"])
+        |> Enum.filter(&(&1 && &1 != 0))
 
     participants ++ attacker_participants
   end

@@ -451,7 +451,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
     value_escalations = detect_value_based_escalations(timeline_events)
 
     # Combine and sort all escalation points
-    Enum.sort_by(escalation_points ++ kill_rate_escalations ++ capital_escalations ++ value_escalations, & &1.timestamp)
+    Enum.sort_by(
+      escalation_points ++ kill_rate_escalations ++ capital_escalations ++ value_escalations,
+      & &1.timestamp
+    )
   end
 
   defp identify_de_escalation_points(timeline_events, intensity_curve) do
@@ -484,7 +487,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
     withdrawal_points = detect_tactical_withdrawals(timeline_events)
 
     # Combine and sort all de-escalation points
-    Enum.sort_by(de_escalation_points ++ kill_rate_drops ++ lull_starts ++ withdrawal_points, & &1.timestamp)
+    Enum.sort_by(
+      de_escalation_points ++ kill_rate_drops ++ lull_starts ++ withdrawal_points,
+      & &1.timestamp
+    )
   end
 
   # Additional helper functions for timeline analysis

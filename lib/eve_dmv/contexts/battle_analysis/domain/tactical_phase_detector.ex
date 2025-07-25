@@ -419,11 +419,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
     |> Enum.map(fn {old_centroid, cluster_id} ->
       cluster_points = Map.get(cluster_groups, cluster_id, [])
 
-      _members =
-        Enum.map(cluster_points, fn {point, _cluster} -> point end)
-
       if length(cluster_points) > 0 do
-        calculate_centroid_mean(cluster_points)
+        points = Enum.map(cluster_points, fn {point, _cluster} -> point end)
+        calculate_centroid_mean(points)
       else
         old_centroid
       end
@@ -666,6 +664,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
       killmails
       |> Enum.map(&estimate_engagement_distance/1)
       |> Enum.sum()
+
     killmail_count = length(killmails)
 
     if killmail_count > 0 do

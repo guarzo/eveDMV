@@ -15,10 +15,9 @@ defmodule EveDmv.Shared.ShipAnalysis do
     # Calculate total usage across all ships
     total_usage =
       Map.values(ship_usage)
-
-    |> Enum.reduce(0, fn ship_data, acc ->
-      acc + Map.get(ship_data, "times_used", 0)
-    end)
+      |> Enum.reduce(0, fn ship_data, acc ->
+        acc + Map.get(ship_data, "times_used", 0)
+      end)
 
     # Analyze top ships by usage
     top_ships =
@@ -267,7 +266,8 @@ defmodule EveDmv.Shared.ShipAnalysis do
   def flies_capitals?(character_stats) do
     ship_usage = Map.get(character_stats, :ship_usage, %{}) || %{}
 
-    |> Enum.any?(ship_usage, fn {_ship_id, ship_data} ->
+    ship_usage
+    |> Enum.any?(fn {_ship_id, ship_data} ->
       ship_group = Map.get(ship_data, "ship_group", "")
       String.contains?(ship_group, ["Capital", "Dreadnought", "Titan", "Supercarrier"])
     end)

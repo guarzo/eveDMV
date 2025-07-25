@@ -246,29 +246,29 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.CommunityManager do
     analyzed_reports =
       reports
       |> Enum.map(fn report ->
-      engagement_score = calculate_engagement_score(report)
-      tactical_value = assess_tactical_value(report)
-      educational_value = assess_educational_value(report)
-      content_quality = assess_content_quality(report)
-      uniqueness = assess_uniqueness(report)
-      recency_score = calculate_recency_score(report.created_at)
+        engagement_score = calculate_engagement_score(report)
+        tactical_value = assess_tactical_value(report)
+        educational_value = assess_educational_value(report)
+        content_quality = assess_content_quality(report)
+        uniqueness = assess_uniqueness(report)
+        recency_score = calculate_recency_score(report.created_at)
 
-      overall_curation_score =
-        engagement_score * 0.25 + tactical_value * 0.25 + educational_value * 0.2 +
-          content_quality * 0.15 + uniqueness * 0.1 + recency_score * 0.05
+        overall_curation_score =
+          engagement_score * 0.25 + tactical_value * 0.25 + educational_value * 0.2 +
+            content_quality * 0.15 + uniqueness * 0.1 + recency_score * 0.05
 
-      curation_metrics = %{
-        engagement_score: engagement_score,
-        tactical_value: tactical_value,
-        educational_value: educational_value,
-        content_quality: content_quality,
-        uniqueness: uniqueness,
-        recency_score: recency_score,
-        overall_curation_score: Float.round(overall_curation_score, 3)
-      }
+        curation_metrics = %{
+          engagement_score: engagement_score,
+          tactical_value: tactical_value,
+          educational_value: educational_value,
+          content_quality: content_quality,
+          uniqueness: uniqueness,
+          recency_score: recency_score,
+          overall_curation_score: Float.round(overall_curation_score, 3)
+        }
 
-      Map.put(report, :curation_metrics, curation_metrics)
-    end)
+        Map.put(report, :curation_metrics, curation_metrics)
+      end)
 
     {:ok, analyzed_reports}
   end
@@ -313,12 +313,11 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.CommunityManager do
     # Try to get at least one from each category
     category_representatives =
       categories
-
-    |> Enum.map(fn category ->
-      candidates
-      |> Enum.filter(&(&1.featured_category == category))
-      |> Enum.max_by(& &1.curation_metrics.overall_curation_score)
-    end)
+      |> Enum.map(fn category ->
+        candidates
+        |> Enum.filter(&(&1.featured_category == category))
+        |> Enum.max_by(& &1.curation_metrics.overall_curation_score)
+      end)
 
     # Fill remaining slots with highest-scoring reports
     remaining_slots = max_results - length(category_representatives)
@@ -376,7 +375,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.CommunityManager do
         tags: generate_sample_tags(battle_type, scale),
         has_video: :rand.uniform() > 0.5,
         has_highlights: :rand.uniform() > 0.3,
-        views: :rand.uniform(10000),
+        views: :rand.uniform(10_000),
         comments: :rand.uniform(50)
       }
     end

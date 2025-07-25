@@ -214,8 +214,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
       :awox_risk_score
     ]
 
-    score_types
-    |> Enum.each(fn score_type ->
+    Enum.each(score_types, fn score_type ->
       cache_key = {:intelligence_score, character_id, score_type}
       Cache.delete(@cache_type, cache_key)
     end)

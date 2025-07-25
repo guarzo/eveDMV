@@ -214,5 +214,4 @@ defmodule EveDmv.Quality.MetricsCollector.PerformanceMetrics do
       %{processes: 0, atom: 0, binary: 0, code: 0, ets: 0}
     end
   end
-
 end

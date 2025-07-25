@@ -130,6 +130,7 @@ defmodule EveDmvWeb.AllianceLive do
               |> Enum.map(& &1.character_id)
               |> Enum.uniq()
               |> length()
+
             kills = Enum.count(corp_participants, &(not &1.is_victim))
             losses = Enum.count(corp_participants, & &1.is_victim)
             # Get latest activity
@@ -153,7 +154,7 @@ defmodule EveDmvWeb.AllianceLive do
           # Limit to top 50 most active corporations
           |> Enum.take(50)
 
-    corporations
+        corporations
 
       {:error, _} ->
         []
@@ -220,6 +221,7 @@ defmodule EveDmvWeb.AllianceLive do
 
   defp calculate_alliance_stats(corporations, _alliance_id) do
     total_corporations = length(corporations)
+
     total_members =
       corporations
       |> Enum.map(& &1.member_count)
@@ -239,6 +241,7 @@ defmodule EveDmvWeb.AllianceLive do
       corporations
       |> Enum.map(& &1.total_activity)
       |> Enum.sum()
+
     # Calculate averages
     avg_activity_per_corp =
       if total_corporations > 0, do: total_activity / total_corporations, else: 0

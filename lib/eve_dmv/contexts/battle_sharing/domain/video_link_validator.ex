@@ -257,6 +257,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
         |> URI.decode_query()
         |> Map.drop(tracking_params)
         |> URI.encode_query()
+
       cleaned_query = if cleaned_query == "", do: nil, else: cleaned_query
 
       uri
@@ -283,12 +284,11 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
   defp detect_platform(url) do
     detected_platform =
       @platforms
-
-    |> Enum.find_value(fn {platform, config} ->
-      if Enum.any?(config.domains, &String.contains?(url, &1)) do
-        platform
-      end
-    end)
+      |> Enum.find_value(fn {platform, config} ->
+        if Enum.any?(config.domains, &String.contains?(url, &1)) do
+          platform
+        end
+      end)
 
     case detected_platform do
       nil -> {:error, :unsupported_platform}
@@ -301,16 +301,15 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
 
     video_id =
       platform_config.url_patterns
-
-    |> Enum.find_value(fn pattern ->
-      case Regex.run(pattern, url) do
-        nil -> nil
-        [_, video_id] -> video_id
-        [_, video_id, _] -> video_id
-        [_, _, _, video_id] -> video_id
-        matches -> List.last(matches)
-      end
-    end)
+      |> Enum.find_value(fn pattern ->
+        case Regex.run(pattern, url) do
+          nil -> nil
+          [_, video_id] -> video_id
+          [_, video_id, _] -> video_id
+          [_, _, _, video_id] -> video_id
+          matches -> List.last(matches)
+        end
+      end)
 
     case video_id do
       nil -> {:error, :invalid_video_url}
@@ -528,8 +527,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
 
     violation_found =
       @moderation_keywords
-
-    |> Enum.any?(&String.contains?(content_to_check, &1))
+      |> Enum.any?(&String.contains?(content_to_check, &1))
 
     if violation_found do
       {:error, :content_violation}

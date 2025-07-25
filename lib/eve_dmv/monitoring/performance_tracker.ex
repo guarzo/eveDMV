@@ -139,13 +139,10 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
       @table_name
 
     :ets.tab2list()
-
     |> Enum.filter(fn {_key, metric} ->
       DateTime.compare(metric.timestamp, since) == :gt
     end)
-
     |> Enum.group_by(fn {_key, metric} -> metric.type end)
-
     |> Enum.map(fn {type, metrics} ->
       stats = calculate_stats(metrics)
       {type, stats}
@@ -161,14 +158,11 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
       @table_name
 
     :ets.tab2list()
-
     |> Enum.filter(fn {_key, metric} ->
       metric.type == :query && metric.duration_ms > threshold_ms
     end)
-
     |> Enum.sort_by(fn {_key, metric} -> -metric.duration_ms end)
     |> Enum.take(20)
-
     |> Enum.map(fn {_key, metric} ->
       Map.take(metric, [:name, :duration_ms, :timestamp, :metadata])
     end)
@@ -265,15 +259,14 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
   defp calculate_percentile(list, percentile) do
     sorted = Enum.sort(list)
     index = round(percentile * length(sorted) - 1)
-    |> Enum.at(sorted, max(0, index), 0)
+    Enum.at(sorted, max(0, index), 0)
   end
 
   defp get_recent_metrics(time_ms) do
     since = DateTime.add(DateTime.utc_now(), -div(time_ms, 1000), :second)
 
     @table_name
-    :ets.tab2list()
-
+    |> :ets.tab2list()
     |> Enum.filter(fn {_key, metric} ->
       DateTime.compare(metric.timestamp, since) == :gt
     end)
@@ -284,7 +277,6 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
     |> Enum.filter(fn {_key, metric} -> metric.type == type end)
     |> Enum.sort_by(fn {_key, metric} -> -metric.duration_ms end)
     |> Enum.take(limit)
-
     |> Enum.map(fn {_key, metric} ->
       %{
         name: metric.name,
@@ -297,7 +289,6 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
   defp get_high_frequency_operations(metrics) do
     metrics
     |> Enum.group_by(fn {_key, metric} -> {metric.type, metric.name} end)
-
     |> Enum.map(fn {{type, name}, group} ->
       %{
         type: type,
@@ -306,7 +297,6 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
         total_time_ms: Enum.sum(Enum.map(group, fn {_key, m} -> m.duration_ms end))
       }
     end)
-
     |> Enum.sort_by(& &1.total_time_ms, :desc)
     |> Enum.take(10)
   end
@@ -315,7 +305,6 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
     # Group by operation and check if recent performance is worse than historical
     metrics
     |> Enum.group_by(fn {_key, metric} -> {metric.type, metric.name} end)
-
     |> Enum.map(fn {{type, name}, group} ->
       sorted_by_time = Enum.sort_by(group, fn {_key, m} -> m.timestamp end)
 
@@ -339,7 +328,6 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
         end
       end
     end)
-
     |> Enum.filter(& &1)
     |> Enum.sort_by(& &1.degradation_pct, :desc)
   end
@@ -348,8 +336,7 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
     cutoff = DateTime.add(DateTime.utc_now(), -div(@metric_ttl, 1000), :second)
 
     @table_name
-    :ets.tab2list()
-
+    |> :ets.tab2list()
     |> Enum.each(fn {key, metric} ->
       if DateTime.compare(metric.timestamp, cutoff) == :lt do
         :ets.delete(@table_name, key)

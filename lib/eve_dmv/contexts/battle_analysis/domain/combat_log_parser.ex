@@ -275,14 +275,14 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
       hits
       |> Enum.group_by(& &1.quality)
       |> Enum.map(fn {quality, events} ->
-      {quality,
-       %{
-         count: length(events),
-         percentage: length(events) / max(total_shots, 1) * 100,
-         total_damage: Enum.sum(Enum.map(events, & &1.damage))
-       }}
-    end)
-    |> Enum.into(%{})
+        {quality,
+         %{
+           count: length(events),
+           percentage: length(events) / max(total_shots, 1) * 100,
+           total_damage: Enum.sum(Enum.map(events, & &1.damage))
+         }}
+      end)
+      |> Enum.into(%{})
 
     %{
       total_shots: total_shots,
@@ -391,6 +391,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
       |> Enum.filter(&(&1.type == :damage))
       |> Enum.map(& &1.damage)
       |> Enum.sum()
+
     # Count unique attackers
     unique_attackers =
       events
@@ -398,6 +399,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
       |> Enum.map(& &1.from)
       |> Enum.uniq()
       |> Kernel.length()
+
     # Count misses
     total_shots =
       events
@@ -490,8 +492,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
   defp analyze_final_blow(events, killmail) do
     # Find damage events in the last 10 seconds before the kill
     final_events =
-      events
-      |> Enum.filter(fn event ->
+      Enum.filter(events, fn event ->
         event.type == :damage &&
           event.to == killmail.victim_character_name &&
           NaiveDateTime.diff(killmail.killmail_time, event.timestamp, :second) <= 10
@@ -552,5 +553,4 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
         NaiveDateTime.diff(end_time, start_time, :second) / 60
     end
   end
-
 end

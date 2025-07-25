@@ -268,32 +268,36 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
       if ewar_presence do
         []
       else
-        [%{
-          type: :strategic,
-          priority: :medium,
-          title: "Electronic Warfare Integration",
-          description: "Add EWAR ships for force multiplication",
-          actions: [
-            "Deploy ECM/dampening ships",
-            "Train EWAR pilots",
-            "Coordinate EWAR tactics"
-          ]
-        }]
+        [
+          %{
+            type: :strategic,
+            priority: :medium,
+            title: "Electronic Warfare Integration",
+            description: "Add EWAR ships for force multiplication",
+            actions: [
+              "Deploy ECM/dampening ships",
+              "Train EWAR pilots",
+              "Coordinate EWAR tactics"
+            ]
+          }
+        ]
       end
 
     logistics_recommendations =
       if logistics_ratio < 0.1 do
-        [%{
-          type: :strategic,
-          priority: :high,
-          title: "Logistics Support",
-          description: "Increase logistics ship presence",
-          actions: [
-            "Add logistics ships",
-            "Train logistics pilots",
-            "Improve repair coordination"
-          ]
-        }]
+        [
+          %{
+            type: :strategic,
+            priority: :high,
+            title: "Logistics Support",
+            description: "Increase logistics ship presence",
+            actions: [
+              "Add logistics ships",
+              "Train logistics pilots",
+              "Improve repair coordination"
+            ]
+          }
+        ]
       else
         []
       end
@@ -351,34 +355,38 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
 
     focus_fire_recommendations =
       if focus_fire < 0.6 do
-        [%{
-          type: :training,
-          priority: :high,
-          title: "Focus Fire Training",
-          description: "Improve target calling and focus fire coordination",
-          actions: [
-            "Practice target calling",
-            "Improve communication discipline",
-            "Coordinate alpha strikes"
-          ]
-        }]
+        [
+          %{
+            type: :training,
+            priority: :high,
+            title: "Focus Fire Training",
+            description: "Improve target calling and focus fire coordination",
+            actions: [
+              "Practice target calling",
+              "Improve communication discipline",
+              "Coordinate alpha strikes"
+            ]
+          }
+        ]
       else
         []
       end
 
     positioning_recommendations =
       if Enum.any?(patterns, &(&1.name == :poor_positioning)) do
-        [%{
-          type: :training,
-          priority: :medium,
-          title: "Positioning Skills",
-          description: "Improve fleet positioning and maneuvering",
-          actions: [
-            "Practice fleet movements",
-            "Study positioning theory",
-            "Review engagement angles"
-          ]
-        }]
+        [
+          %{
+            type: :training,
+            priority: :medium,
+            title: "Positioning Skills",
+            description: "Improve fleet positioning and maneuvering",
+            actions: [
+              "Practice fleet movements",
+              "Study positioning theory",
+              "Review engagement angles"
+            ]
+          }
+        ]
       else
         []
       end

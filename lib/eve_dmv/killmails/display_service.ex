@@ -41,6 +41,7 @@ defmodule EveDmv.Killmails.DisplayService do
       |> Stream.map(& &1.solar_system_id)
       |> Stream.reject(&is_nil/1)
       |> Enum.uniq()
+
     # Bulk preload all names into cache
     NameResolver.ship_names(ship_type_ids)
     NameResolver.system_names(system_ids)
@@ -151,6 +152,7 @@ defmodule EveDmv.Killmails.DisplayService do
       end)
       |> Enum.reject(&is_nil/1)
       |> Enum.uniq()
+
     # Bulk preload all names into cache
     NameResolver.ship_names(ship_type_ids)
     NameResolver.system_names(system_ids)

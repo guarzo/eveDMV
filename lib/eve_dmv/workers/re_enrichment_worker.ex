@@ -482,10 +482,10 @@ defmodule EveDmv.Workers.ReEnrichmentWorker do
 
   defp apply_config_updates(state, config) do
     state
-    update_if_present(config, :batch_size, :batch_size, & &1)
-    update_if_present(config, :processing_interval, :processing_interval_seconds, &(&1 * 1000))
-    update_if_present(config, :max_retries, :max_retries, & &1)
-    update_if_present(config, :max_concurrent, :max_concurrent_batches, & &1)
+    |> update_if_present(config, :batch_size, :batch_size, & &1)
+    |> update_if_present(config, :processing_interval, :processing_interval_seconds, &(&1 * 1000))
+    |> update_if_present(config, :max_retries, :max_retries, & &1)
+    |> update_if_present(config, :max_concurrent, :max_concurrent_batches, & &1)
   end
 
   defp update_if_present(state, config, state_key, config_key, transform_fn) do

@@ -222,8 +222,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
     # Build adjacency list representation
     initial_graph = battles |> Enum.map(&{&1, []}) |> Map.new()
 
-    connections
-    |> Enum.reduce(initial_graph, fn {battle_a, battle_b}, graph ->
+    Enum.reduce(connections, initial_graph, fn {battle_a, battle_b}, graph ->
       graph
       |> Map.update(battle_a, [battle_b], &[battle_b | &1])
       |> Map.update(battle_b, [battle_a], &[battle_a | &1])
@@ -243,8 +242,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
   end
 
   defp find_unvisited_battle(graph, visited) do
-    Map.keys(graph)
-    |> Enum.find(&(not MapSet.member?(visited, &1)))
+    Enum.find(Map.keys(graph), &(not MapSet.member?(visited, &1)))
   end
 
   defp depth_first_search(graph, battle, visited) do
@@ -262,7 +260,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
 
   defp score_system_adjacency(battle_groups, system_connections) do
     Logger.debug("Scoring adjacency for #{inspect(length(battle_groups))} groups")
-    Logger.debug("First group type check: #{inspect(List.first(battle_groups) |> is_list())}")
+    Logger.debug("First group type check: #{inspect(is_list(List.first(battle_groups)))}")
 
     Enum.map(battle_groups, fn group ->
       if is_list(group) do
@@ -338,7 +336,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
   defp apply_correlation_algorithm(adjacency_scored_groups) do
     Logger.debug("Applying correlation to #{inspect(length(adjacency_scored_groups))} groups")
 
-    |> Enum.map(adjacency_scored_groups, fn {group, adjacency_scores} ->
+    Enum.map(adjacency_scored_groups, fn {group, adjacency_scores} ->
       # Ensure group is a list
       group_list = ensure_list(group)
 
@@ -447,7 +445,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
           sequence: index + 1,
           system_id: get_primary_system(battle),
           start_time: get_battle_start_time(battle),
-          participants: extract_all_participants(battle) |> MapSet.size(),
+          participants: MapSet.size(extract_all_participants(battle)),
           battle_type: battle.metadata.battle_type
         }
       end)
@@ -590,8 +588,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
   defp count_unique_participants_across_battles(battles) do
     battles
     |> Enum.flat_map(fn battle ->
-      battle.killmails
-      |> Enum.flat_map(&ParticipantExtractor.extract_participants/1)
+      Enum.flat_map(battle.killmails, &ParticipantExtractor.extract_participants/1)
     end)
     |> Enum.uniq()
     |> length()
@@ -646,12 +643,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
       |> NaiveDateTime.to_string()
       |> String.replace([" ", ":", "-"], "")
 
-    system_str = systems |> Enum.join("_")
+    system_str = Enum.join(systems, "_")
     "multi_battle_#{system_str}_#{timestamp}"
   end
 
   defp count_multi_system_battles(battles) do
-    Enum.count(battles, &(Map.get(&1, :systems_involved, []) |> length() > 1))
+    Enum.count(battles, &(length(Map.get(&1, :systems_involved, [])) > 1))
   end
 
   defp calculate_trend(values) do

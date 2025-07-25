@@ -197,7 +197,7 @@ defmodule EveDmv.Database.IndexPerformanceVerifier do
         ORDER BY k.killmail_time DESC
         LIMIT 100
         """,
-        [12345, ~N[2024-01-01 00:00:00]]
+        [12_345, ~N[2024-01-01 00:00:00]]
       }
     ]
 

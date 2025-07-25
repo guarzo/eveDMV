@@ -229,9 +229,9 @@ defmodule EveDmv.Intelligence.Wormhole.Vetting do
 
       change(fn changeset, _context ->
         changeset
-        Ash.Changeset.change_attribute(:status, "pending")
-        Ash.Changeset.change_attribute(:vetting_requested_at, DateTime.utc_now())
-        Ash.Changeset.change_attribute(:last_updated_at, DateTime.utc_now())
+        |> Ash.Changeset.change_attribute(:status, "pending")
+        |> Ash.Changeset.change_attribute(:vetting_requested_at, DateTime.utc_now())
+        |> Ash.Changeset.change_attribute(:last_updated_at, DateTime.utc_now())
       end)
     end
 
@@ -388,7 +388,7 @@ defmodule EveDmv.Intelligence.Wormhole.Vetting do
       calculation(fn records, _context ->
         now = DateTime.utc_now()
 
-        |> Enum.map(records, fn record ->
+        Enum.map(records, fn record ->
           DateTime.diff(now, record.vetting_requested_at, :day)
         end)
       end)

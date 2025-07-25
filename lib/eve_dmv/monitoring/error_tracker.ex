@@ -362,7 +362,7 @@ defmodule EveDmv.Monitoring.ErrorTracker do
         DateTime.compare(record.timestamp, cutoff) == :lt
       end)
 
-    |> Enum.each(old_records, fn {id, _record} ->
+    Enum.each(old_records, fn {id, _record} ->
       :ets.delete(@table_name, id)
     end)
 

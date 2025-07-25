@@ -47,18 +47,16 @@ defmodule EveDmv.IntelligenceMigrationAdapter do
     # Execute batch analysis using Task.async_stream for parallel processing
     results =
       entity_ids
-
-    Task.async_stream(
-      fn entity_id ->
-        {entity_id, analyze(domain, entity_id, opts)}
-      end,
-      timeout: 30_000,
-      max_concurrency: 4
-    )
-
-    |> Enum.reduce(%{}, fn {:ok, {entity_id, result}}, acc ->
-      Map.put(acc, entity_id, result)
-    end)
+      |> Task.async_stream(
+        fn entity_id ->
+          {entity_id, analyze(domain, entity_id, opts)}
+        end,
+        timeout: 30_000,
+        max_concurrency: 4
+      )
+      |> Enum.reduce(%{}, fn {:ok, {entity_id, result}}, acc ->
+        Map.put(acc, entity_id, result)
+      end)
 
     {:ok, results}
   end
@@ -192,7 +190,7 @@ defmodule EveDmv.IntelligenceMigrationAdapter do
     }
 
     # Map new analysis format to legacy plugin format
-    |> Enum.reduce(plugins, base_result, fn plugin, acc ->
+    Enum.reduce(plugins, base_result, fn plugin, acc ->
       case plugin do
         :combat_stats ->
           Map.put(acc, :combat_stats, Map.get(analysis, :combat_analysis, %{}))

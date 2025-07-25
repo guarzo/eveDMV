@@ -65,7 +65,6 @@ defmodule EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter do
     ship_usage
     |> Enum.sort_by(fn {_ship, count} -> count end, :desc)
     |> Enum.take(10)
-
     |> Enum.map(fn {ship_name, usage_count} ->
       %{
         ship_name: ship_name,
@@ -140,8 +139,10 @@ defmodule EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter do
       generate_geographic_recommendations(character_stats.geographic_patterns)
 
     # Combine all recommendations
-    all_recommendations = recommendations ++ ship_recommendations ++ tactical_recommendations ++ geographic_recommendations
-    
+    all_recommendations =
+      recommendations ++
+        ship_recommendations ++ tactical_recommendations ++ geographic_recommendations
+
     Enum.take(all_recommendations, 5)
   end
 
@@ -392,16 +393,14 @@ defmodule EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter do
 
     relevant_usage =
       ship_types
-
-    |> Enum.map(fn ship_type ->
-      Map.to_list(ship_usage)
-
-      |> Enum.map(fn {ship_name, count} ->
-        if String.contains?(ship_name, ship_type), do: count, else: 0
+      |> Enum.map(fn ship_type ->
+        Map.to_list(ship_usage)
+        |> Enum.map(fn {ship_name, count} ->
+          if String.contains?(ship_name, ship_type), do: count, else: 0
+        end)
+        |> Enum.sum()
       end)
       |> Enum.sum()
-    end)
-    |> Enum.sum()
 
     if total_usage > 0 do
       relevant_usage / total_usage > 0.3

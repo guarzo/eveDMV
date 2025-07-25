@@ -830,21 +830,22 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     tank_vulns = check_tank_vulnerabilities(ship_analyses)
 
     # Build vulnerability list with conditions
-    all_vulnerabilities = base_vulnerabilities
-    |> add_vulnerability_if(vulnerable_to_bombers?(ship_analyses), %{
-      type: :bomber_vulnerable,
-      severity: :high,
-      description: "Large signature battleships without sufficient anti-frigate support",
-      mitigation: "Add destroyers or light missile cruisers for anti-bomber screen"
-    })
-    |> add_vulnerability_if(vulnerable_to_kiting?(ship_analyses), %{
-      type: :kiting_vulnerable,
-      severity: :medium,
-      description: "Short range composition with limited tackle", 
-      mitigation: "Add long-range tackle (Lachesis, Arazu, Huginn)"
-    })
-    |> Kernel.++(role_vulns)
-    |> Kernel.++(tank_vulns)
+    all_vulnerabilities =
+      base_vulnerabilities
+      |> add_vulnerability_if(vulnerable_to_bombers?(ship_analyses), %{
+        type: :bomber_vulnerable,
+        severity: :high,
+        description: "Large signature battleships without sufficient anti-frigate support",
+        mitigation: "Add destroyers or light missile cruisers for anti-bomber screen"
+      })
+      |> add_vulnerability_if(vulnerable_to_kiting?(ship_analyses), %{
+        type: :kiting_vulnerable,
+        severity: :medium,
+        description: "Short range composition with limited tackle",
+        mitigation: "Add long-range tackle (Lachesis, Arazu, Huginn)"
+      })
+      |> Kernel.++(role_vulns)
+      |> Kernel.++(tank_vulns)
 
     vulnerability_analysis = %{
       vulnerabilities: all_vulnerabilities,
@@ -1417,5 +1418,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
       value >= 1_000_000 -> "#{Float.round(value / 1_000_000, 1)}M ISK"
       true -> "#{round(value)} ISK"
     end
+  end
+
+  defp add_recommendation_if(recommendations, condition, recommendation) do
+    if condition, do: [recommendation | recommendations], else: recommendations
   end
 end

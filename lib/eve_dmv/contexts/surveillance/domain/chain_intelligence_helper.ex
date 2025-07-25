@@ -6,11 +6,13 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
   direct access to the GenServer state.
   """
 
+  alias Ecto.Adapters.SQL
   alias EveDmv.Contexts.Surveillance.Domain.AlertService
   alias EveDmv.Contexts.Surveillance.Domain.ChainActivityTracker
   alias EveDmv.Contexts.Surveillance.Domain.ChainThreatAnalyzer
   alias EveDmv.DomainEvents.ChainThreatDetected
   alias EveDmv.Intelligence.WandererClient
+  alias EveDmv.Repo
   alias Phoenix.PubSub
 
   require Logger
@@ -283,7 +285,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
     LIMIT 100
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [map_id, since]) do
+    case SQL.query(Repo, query, [map_id, since]) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [id, time, system_id, ship_type, attackers] ->
           %{
@@ -367,11 +369,13 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
     # Pattern 1: High frequency of kills (possible camp)
     high_frequency_patterns =
       if length(recent_kills) >= 5 do
-        [%{
-          type: :high_kill_frequency,
-          threat_level: :high,
-          details: %{kill_count: length(recent_kills), timeframe: "24h"}
-        }]
+        [
+          %{
+            type: :high_kill_frequency,
+            threat_level: :high,
+            details: %{kill_count: length(recent_kills), timeframe: "24h"}
+          }
+        ]
       else
         []
       end
@@ -381,11 +385,13 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
 
     roaming_patterns =
       if map_size(system_kills) >= 3 do
-        [%{
-          type: :roaming_activity,
-          threat_level: :medium,
-          details: %{systems_affected: Map.keys(system_kills)}
-        }]
+        [
+          %{
+            type: :roaming_activity,
+            threat_level: :medium,
+            details: %{systems_affected: Map.keys(system_kills)}
+          }
+        ]
       else
         []
       end
@@ -402,11 +408,13 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
 
     # This is a simplified analysis - in reality would need proper graph analysis
     if length(systems) > 0 and length(connections) < length(systems) do
-      [%{
-        type: :topology_vulnerability,
-        threat_level: :low,
-        details: %{reason: "Potential bottleneck systems detected"}
-      }]
+      [
+        %{
+          type: :topology_vulnerability,
+          threat_level: :low,
+          details: %{reason: "Potential bottleneck systems detected"}
+        }
+      ]
     else
       []
     end
@@ -647,10 +655,10 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
   end
 
   defp generate_threat_alerts(threat_result) do
-    alerts = []
+    base_alerts = []
 
     # Generate escalation alert for high-level threats
-    alerts =
+    escalation_alerts =
       if threat_result.threat_level in [:high, :critical] do
         escalation_alert = %{
           action: :escalation_alert,
@@ -666,9 +674,9 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
           threat_result.threat_level
         })
 
-        [escalation_alert | alerts]
+        [escalation_alert | base_alerts]
       else
-        alerts
+        base_alerts
       end
 
     # Generate summary alert
@@ -680,7 +688,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
       threats_detected: length(threat_result.threats_detected)
     }
 
-    [summary_alert | alerts]
+    [summary_alert | escalation_alerts]
   end
 
   defp update_threat_tracking(threat_result) do
@@ -704,7 +712,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
 
   defp notify_threat_systems(threat_result, actions) do
     # Notify relevant systems about threat detection
-    notifications = []
+    base_notifications = []
 
     # Notify chain members via PubSub
     PubSub.broadcast(EveDmv.PubSub, "chain_intelligence:#{threat_result.map_id}", {
@@ -714,18 +722,18 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
       actions
     })
 
-    notifications = [{:pubsub_broadcast, :chain_members} | notifications]
+    pubsub_notifications = [{:pubsub_broadcast, :chain_members} | base_notifications]
 
     # Notify external systems if threat level is high
-    notifications =
+    final_notifications =
       if threat_result.threat_level in [:high, :critical] do
         # Could notify Discord, Slack, etc.
-        [{:external_notification, :high_threat} | notifications]
+        [{:external_notification, :high_threat} | pubsub_notifications]
       else
-        notifications
+        pubsub_notifications
       end
 
-    notifications
+    final_notifications
   end
 
   defp log_threat_handling(threat_result, threat_actions, alert_actions) do
@@ -795,7 +803,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
     LIMIT 50
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [system_id, since]) do
+    case SQL.query(Repo, query, [system_id, since]) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [id, time, ship_type, attackers] ->
           %{killmail_id: id, killmail_time: time, ship_type: ship_type, attackers: attackers}

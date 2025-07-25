@@ -18,7 +18,7 @@ defmodule EveDmv.Intelligence.Metrics.ShipAnalysisCalculator do
       Enum.flat_map(killmail_data, fn killmail ->
         participants = get_participants(killmail)
 
-        |> Enum.map(participants, fn participant ->
+        Enum.map(participants, fn participant ->
           %{
             ship_type_id: participant[:ship_type_id] || participant["ship_type_id"],
             ship_name: participant[:ship_name] || participant["ship_name"] || "Unknown",
@@ -29,20 +29,17 @@ defmodule EveDmv.Intelligence.Metrics.ShipAnalysisCalculator do
 
     ship_usage =
       ship_usage_raw
-
-    |> Enum.group_by(& &1.ship_name)
-
-    |> Enum.map(fn {ship_name, usages} ->
-      {ship_name,
-       %{
-         total_usage: length(usages),
-         kills_in_ship: Enum.count(usages, &(!&1.is_victim)),
-         losses_in_ship: Enum.count(usages, & &1.is_victim),
-         ship_type_id: List.first(usages).ship_type_id
-       }}
-    end)
-
-    |> Enum.into(%{})
+      |> Enum.group_by(& &1.ship_name)
+      |> Enum.map(fn {ship_name, usages} ->
+        {ship_name,
+         %{
+           total_usage: length(usages),
+           kills_in_ship: Enum.count(usages, &(!&1.is_victim)),
+           losses_in_ship: Enum.count(usages, & &1.is_victim),
+           ship_type_id: List.first(usages).ship_type_id
+         }}
+      end)
+      |> Enum.into(%{})
 
     # Calculate ship categories
     ship_categories = categorize_ships(ship_usage)
@@ -55,10 +52,10 @@ defmodule EveDmv.Intelligence.Metrics.ShipAnalysisCalculator do
       favorite_ships:
         Enum.map(preferred_ships, fn {ship_name, data} ->
           data
-          Map.put(:ship_name, ship_name)
-          Map.put(:count, data.total_usage)
-          Map.put(:kills, data.kills_in_ship)
-          Map.put(:losses, data.losses_in_ship)
+          |> Map.put(:ship_name, ship_name)
+          |> Map.put(:count, data.total_usage)
+          |> Map.put(:kills, data.kills_in_ship)
+          |> Map.put(:losses, data.losses_in_ship)
         end),
       ship_diversity: calculate_ship_diversity(ship_usage),
       capital_usage: extract_capital_ships(ship_usage),
@@ -82,7 +79,7 @@ defmodule EveDmv.Intelligence.Metrics.ShipAnalysisCalculator do
       other: []
     }
 
-    |> Enum.reduce(ship_usage, categories, fn {ship_name, _data}, acc ->
+    Enum.reduce(ship_usage, categories, fn {ship_name, _data}, acc ->
       category = categorize_ship_type(ship_name)
       %{acc | category => [ship_name | Map.get(acc, category, [])]}
     end)
@@ -149,12 +146,10 @@ defmodule EveDmv.Intelligence.Metrics.ShipAnalysisCalculator do
   """
   def extract_capital_ships(ship_usage) do
     ship_usage
-
     |> Enum.filter(fn {ship_name, _data} ->
       ship_str = String.downcase(to_string(ship_name))
       String.contains?(ship_str, ["carrier", "dreadnought", "titan", "supercarrier"])
     end)
-
     |> Enum.into(%{})
   end
 
@@ -165,12 +160,10 @@ defmodule EveDmv.Intelligence.Metrics.ShipAnalysisCalculator do
   """
   def extract_t2_ships(ship_usage) do
     ship_usage
-
     |> Enum.filter(fn {ship_name, _data} ->
       ship_str = String.downcase(to_string(ship_name))
       String.contains?(ship_str, ["t2", "tech2", "assault", "heavy assault", "interceptor"])
     end)
-
     |> Enum.into(%{})
   end
 
@@ -182,17 +175,17 @@ defmodule EveDmv.Intelligence.Metrics.ShipAnalysisCalculator do
   def detect_capital_usage(killmail_data) do
     capital_ships = ["Dreadnought", "Carrier", "Supercarrier", "Titan", "Force Auxiliary"]
 
-    |> Enum.any?(
+    Enum.any?(
       Enum.flat_map(killmail_data, fn killmail ->
         participants = get_participants(killmail)
 
-        |> Enum.map(participants, fn participant ->
+        Enum.map(participants, fn participant ->
           participant[:ship_name] || participant["ship_name"]
         end)
       end),
       fn ship_name ->
         ship_str = to_string(ship_name)
-        |> Enum.any?(capital_ships, &String.contains?(ship_str, &1))
+        Enum.any?(capital_ships, &String.contains?(ship_str, &1))
       end
     )
   end

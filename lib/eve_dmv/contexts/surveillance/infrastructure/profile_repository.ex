@@ -9,6 +9,8 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository do
   use GenServer
   use EveDmv.ErrorHandler
 
+  alias Ecto.Adapters.SQL
+  alias EveDmv.Repo
   require Logger
 
   # This would typically use an Ash resource, but for this implementation
@@ -216,8 +218,8 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository do
       state.profiles
       |> Map.values()
       |> Enum.find(fn profile ->
-      profile.name == name and profile.user_id == user_id and not profile.is_archived
-    end)
+        profile.name == name and profile.user_id == user_id and not profile.is_archived
+      end)
 
     result =
       case matching_profile do
@@ -239,14 +241,14 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository do
       state.profiles
       |> Map.values()
       |> Enum.filter(fn profile ->
-      user_match = is_nil(user_id) or profile.user_id == user_id
-      active_match = not active_only or profile.is_active
-      archived_match = not profile.is_archived
+        user_match = is_nil(user_id) or profile.user_id == user_id
+        active_match = not active_only or profile.is_active
+        archived_match = not profile.is_archived
 
-      user_match and active_match and archived_match
-    end)
-    |> Enum.sort_by(& &1.updated_at, {:desc, DateTime})
-    |> Enum.drop(offset)
+        user_match and active_match and archived_match
+      end)
+      |> Enum.sort_by(& &1.updated_at, {:desc, DateTime})
+      |> Enum.drop(offset)
 
     limited_profiles =
       if limit do
@@ -264,8 +266,8 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository do
       state.profiles
       |> Map.values()
       |> Enum.filter(fn profile ->
-      profile.is_active and not profile.is_archived
-    end)
+        profile.is_active and not profile.is_archived
+      end)
 
     {:reply, {:ok, active_profiles}, state}
   end
@@ -429,21 +431,19 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository do
 
   defp count_recent_matches(profile, cutoff_time) do
     # Query killmails that match the profile criteria since cutoff_time
-    try do
-      # Build query based on profile criteria
-      base_query = "SELECT COUNT(*) FROM killmails_raw WHERE killmail_time >= $1"
-      params = [cutoff_time]
+    # Build query based on profile criteria
+    base_query = "SELECT COUNT(*) FROM killmails_raw WHERE killmail_time >= $1"
+    params = [cutoff_time]
 
-      # Add profile-specific filters
-      {query, final_params} = add_profile_filters(base_query, params, profile)
+    # Add profile-specific filters
+    {query, final_params} = add_profile_filters(base_query, params, profile)
 
-      case Ecto.Adapters.SQL.query(EveDmv.Repo, query, final_params) do
-        {:ok, %{rows: [[count]]}} -> count
-        _ -> 0
-      end
-    rescue
+    case SQL.query(Repo, query, final_params) do
+      {:ok, %{rows: [[count]]}} -> count
       _ -> 0
     end
+  rescue
+    _ -> 0
   end
 
   defp add_profile_filters(query, params, profile) do

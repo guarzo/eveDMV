@@ -54,7 +54,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
   Detects battles in a specific solar system within a time range.
   """
   def detect_battles_in_system(system_id, start_time, end_time, options \\ []) do
-
     with {:ok, killmails} <- fetch_killmails_in_system(system_id, start_time, end_time) do
       battles =
         killmails
@@ -78,7 +77,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
   Useful for analyzing battles from external sources like zkillboard.
   """
   def analyze_battle_from_killmail_ids(killmail_ids) when is_list(killmail_ids) do
-
     with {:ok, killmails} <- fetch_killmails_by_ids(killmail_ids) do
       case killmails do
         [] ->
@@ -118,73 +116,67 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
   # Private functions
 
   defp fetch_killmails_in_range(start_time, end_time) do
-    try do
-      query =
-        KillmailRaw
-        |> new()
-        |> filter(killmail_time: [gte: start_time, lte: end_time])
-        |> sort(killmail_time: :asc)
-        # Reasonable limit for battle analysis
-        |> limit(1000)
+    query =
+      KillmailRaw
+      |> new()
+      |> filter(killmail_time: [gte: start_time, lte: end_time])
+      |> sort(killmail_time: :asc)
+      # Reasonable limit for battle analysis
+      |> limit(1000)
 
-      case Ash.read(query, domain: Api) do
-        {:ok, filtered_killmails} ->
-          {:ok, filtered_killmails}
+    case Ash.read(query, domain: Api) do
+      {:ok, filtered_killmails} ->
+        {:ok, filtered_killmails}
 
-        {:error, _error} ->
-          {:error, :database_error}
-      end
-    rescue
-      _error ->
+      {:error, _error} ->
         {:error, :database_error}
     end
+  rescue
+    _error ->
+      {:error, :database_error}
   end
 
   defp fetch_killmails_in_system(system_id, start_time, end_time) do
-    try do
-      query =
-        KillmailRaw
-        |> new()
-        |> filter(solar_system_id: system_id)
-        |> filter(killmail_time: [gte: start_time, lte: end_time])
-        |> sort(killmail_time: :asc)
-        # Reasonable limit for single system
-        |> limit(500)
+    query =
+      KillmailRaw
+      |> new()
+      |> filter(solar_system_id: system_id)
+      |> filter(killmail_time: [gte: start_time, lte: end_time])
+      |> sort(killmail_time: :asc)
+      # Reasonable limit for single system
+      |> limit(500)
 
-      case Ash.read(query, domain: Api) do
-        {:ok, filtered_killmails} ->
-          {:ok, filtered_killmails}
+    case Ash.read(query, domain: Api) do
+      {:ok, filtered_killmails} ->
+        {:ok, filtered_killmails}
 
-        {:error, _error} ->
-          {:error, :database_error}
-      end
-    rescue
-      _error ->
+      {:error, _error} ->
         {:error, :database_error}
     end
+  rescue
+    _error ->
+      {:error, :database_error}
   end
 
   defp fetch_killmails_by_ids(killmail_ids) do
-    try do
-      query =
-        KillmailRaw
-        |> new()
-        |> filter(killmail_id: [in: killmail_ids])
-        |> sort(killmail_time: :asc)
+    query =
+      KillmailRaw
+      |> new()
+      |> filter(killmail_id: [in: killmail_ids])
+      |> sort(killmail_time: :asc)
 
-      case Ash.read(query, domain: Api) do
-        {:ok, killmails} ->
-          filtered_killmails = killmails
+    case Ash.read(query, domain: Api) do
+      {:ok, killmails} ->
+        filtered_killmails = killmails
 
-          {:ok, filtered_killmails}
+        {:ok, filtered_killmails}
 
-        {:error, _error} ->
-          {:error, :database_error}
-      end
-    rescue
-      _error ->
+      {:error, _error} ->
         {:error, :database_error}
     end
+  rescue
+    _error ->
+      {:error, :database_error}
   end
 
   defp cluster_killmails_by_time_and_space(killmails, max_time_gap_minutes, same_system_only) do
@@ -288,6 +280,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
       killmails
       |> Enum.flat_map(&ParticipantExtractor.extract_participants/1)
       |> Enum.uniq()
+
     Kernel.length(participants)
   end
 
@@ -431,59 +424,56 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
 
   # Optimized batch processing for killmail values
   defp calculate_killmail_values_batch(killmails) do
-
-    try do
-      # First, try to extract zKillboard values (fastest path)
-      {zkb_values, needs_calculation} =
-        Enum.split_with(killmails, fn killmail ->
-          case extract_zkb_value(killmail) do
-            {:ok, _value} -> true
-            _ -> false
-          end
-        end)
-
-      zkb_total =
-        zkb_values
-        |> Enum.map(fn killmail ->
-          case extract_zkb_value(killmail) do
-            {:ok, value} -> value
-            _ -> 0.0
-          end
-        end)
-        |> Enum.sum()
-
-      # For killmails that need calculation, batch the price fetching
-      calculation_total =
-        case needs_calculation do
-          [] ->
-            0.0
-
-          killmails_to_calculate ->
-            # Extract all unique type IDs from all killmails
-            all_type_ids =
-              killmails_to_calculate
-              |> Enum.flat_map(&extract_type_ids/1)
-              |> Enum.uniq()
-            # Batch fetch all prices
-            {:ok, price_map} = PriceService.get_item_prices(all_type_ids)
-
-            killmails_to_calculate
-            |> Enum.map(fn killmail ->
-              calculate_killmail_value_with_prices(killmail, price_map)
-            end)
-            |> Enum.sum()
+    # First, try to extract zKillboard values (fastest path)
+    {zkb_values, needs_calculation} =
+      Enum.split_with(killmails, fn killmail ->
+        case extract_zkb_value(killmail) do
+          {:ok, _value} -> true
+          _ -> false
         end
+      end)
 
-      {:ok, zkb_total + calculation_total}
-    rescue
-      _error ->
-        {:error, :calculation_failed}
-    end
+    zkb_total =
+      zkb_values
+      |> Enum.map(fn killmail ->
+        case extract_zkb_value(killmail) do
+          {:ok, value} -> value
+          _ -> 0.0
+        end
+      end)
+      |> Enum.sum()
+
+    # For killmails that need calculation, batch the price fetching
+    calculation_total =
+      case needs_calculation do
+        [] ->
+          0.0
+
+        killmails_to_calculate ->
+          # Extract all unique type IDs from all killmails
+          all_type_ids =
+            killmails_to_calculate
+            |> Enum.flat_map(&extract_type_ids/1)
+            |> Enum.uniq()
+
+          # Batch fetch all prices
+          {:ok, price_map} = PriceService.get_item_prices(all_type_ids)
+
+          killmails_to_calculate
+          |> Enum.map(fn killmail ->
+            calculate_killmail_value_with_prices(killmail, price_map)
+          end)
+          |> Enum.sum()
+      end
+
+    {:ok, zkb_total + calculation_total}
+  rescue
+    _error ->
+      {:error, :calculation_failed}
   end
 
   # Fallback to original individual calculation method
   defp calculate_total_isk_destroyed_fallback(killmails) do
-
     killmails
     |> Enum.map(fn killmail ->
       case PriceService.calculate_killmail_value(killmail) do

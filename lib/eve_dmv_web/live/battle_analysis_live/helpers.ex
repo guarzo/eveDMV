@@ -1,7 +1,6 @@
 defmodule EveDmvWeb.BattleAnalysisLive.Helpers do
   @moduledoc """
   Helper functions for BattleAnalysisLive to reduce dependency count.
-  
   Contains utility functions for formatting, name resolution, and data manipulation.
   """
 

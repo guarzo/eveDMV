@@ -166,9 +166,9 @@ defmodule EveDmv.Intelligence.Formatters.MemberActivityFormatter do
     # Simplified trend analysis - could be enhanced with historical data
     avg_activity =
       member_analyses
-
-    Enum.map(&Map.get(&1, :activity_score, 0)) |> Enum.sum()
-    Kernel./(length(member_analyses))
+      |> Enum.map(&Map.get(&1, :activity_score, 0))
+      |> Enum.sum()
+      |> Kernel./(length(member_analyses))
 
     cond do
       avg_activity > 70 -> :increasing

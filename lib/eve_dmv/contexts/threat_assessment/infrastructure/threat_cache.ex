@@ -282,12 +282,12 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache do
 
     # Check if we need to evict entries
     new_cache =
-      (if map_size(state.cache) >= @max_cache_size do
+      if map_size(state.cache) >= @max_cache_size do
         # Evict 100 oldest entries
         evict_oldest_entries(state.cache, 100)
       else
         state.cache
-      end)
+      end
       |> Map.put(cache_key, cache_entry)
 
     evictions = if map_size(state.cache) >= @max_cache_size, do: 100, else: 0

@@ -143,7 +143,6 @@ defmodule EveDmv.Quality.MetricsCollector.CiCdMetrics do
 
   defp extract_workflow_triggers(workflow_files) do
     workflow_files
-
     |> Enum.flat_map(fn file ->
       case File.read(file) do
         {:ok, content} ->
@@ -218,8 +217,10 @@ defmodule EveDmv.Quality.MetricsCollector.CiCdMetrics do
 
   defp count_script_comments(content) do
     content
-    String.split("\n")
-    |> Enum.count(&(String.starts_with?(String.trim(&1), "#") and not String.starts_with?(&1, "#!")))
+    |> String.split("\n")
+    |> Enum.count(
+      &(String.starts_with?(String.trim(&1), "#") and not String.starts_with?(&1, "#!"))
+    )
   end
 
   defp count_script_lines(content) do
@@ -281,14 +282,13 @@ defmodule EveDmv.Quality.MetricsCollector.CiCdMetrics do
   end
 
   defp calculate_deployment_readiness do
-    scores = [
+    [
       if(File.exists?("Dockerfile"), do: 30, else: 0),
       if(check_release_config(), do: 30, else: 0),
       if(File.exists?(".env.example"), do: 20, else: 0),
       if(File.exists?("docker-compose.yml"), do: 20, else: 0)
     ]
-
-    |> Enum.sum(scores)
+    |> Enum.sum()
   end
 
   # Monitoring setup
@@ -353,13 +353,12 @@ defmodule EveDmv.Quality.MetricsCollector.CiCdMetrics do
   end
 
   defp calculate_monitoring_completeness do
-    scores = [
+    [
       if(check_telemetry_setup(), do: 30, else: 0),
       if(check_logging_config(), do: 25, else: 0),
       if(check_health_endpoints(), do: 25, else: 0),
       if(check_metrics_endpoint(), do: 20, else: 0)
     ]
-
-    |> Enum.sum(scores)
+    |> Enum.sum()
   end
 end

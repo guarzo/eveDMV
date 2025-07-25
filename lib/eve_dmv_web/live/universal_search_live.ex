@@ -13,7 +13,7 @@ defmodule EveDmvWeb.UniversalSearchLive do
   alias EveDmv.Eve.SolarSystem
   alias EveDmv.Cache.AnalysisCache
 
-  @impl true
+  @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     {:ok,
      assign(socket,
@@ -33,7 +33,7 @@ defmodule EveDmvWeb.UniversalSearchLive do
      )}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("search", %{"query" => query}, socket) do
     socket =
       socket
@@ -43,18 +43,18 @@ defmodule EveDmvWeb.UniversalSearchLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("focus", _params, socket) do
     {:noreply, assign(socket, focused: true, show_dropdown: true)}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("blur", _params, socket) do
     Process.send_after(self(), :hide_dropdown, 200)
     {:noreply, assign(socket, focused: false)}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("select_result", %{"type" => type, "id" => id}, socket) do
     # Save to recent searches
     save_recent_search(type, id, socket.assigns.query)
@@ -70,12 +70,12 @@ defmodule EveDmvWeb.UniversalSearchLive do
     {:noreply, push_navigate(socket, to: path)}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("key_down", %{"key" => key}, socket) do
     handle_keyboard_navigation(socket, key)
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("clear_search", _params, socket) do
     socket =
       socket
@@ -90,13 +90,13 @@ defmodule EveDmvWeb.UniversalSearchLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("clear_recent", _params, socket) do
     clear_recent_searches()
     {:noreply, assign(socket, recent_searches: [])}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info(:hide_dropdown, socket) do
     if socket.assigns.focused do
       {:noreply, socket}
@@ -105,7 +105,7 @@ defmodule EveDmvWeb.UniversalSearchLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:search_results, query, results}, socket) do
     if query == socket.assigns.query do
       # Flatten results for navigation

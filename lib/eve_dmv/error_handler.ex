@@ -314,7 +314,7 @@ defmodule EveDmv.ErrorHandler do
   Should be called during application startup.
   """
   def attach_telemetry_handlers do
-    handlers = [
+    [
       {
         "eve-dmv-validation-errors",
         [:eve_dmv, :error, :validation],
@@ -340,8 +340,7 @@ defmodule EveDmv.ErrorHandler do
         nil
       }
     ]
-
-    |> Enum.each(handlers, fn {id, event, handler, config} ->
+    |> Enum.each(fn {id, event, handler, config} ->
       :telemetry.attach(id, event, handler, config)
     end)
   end
